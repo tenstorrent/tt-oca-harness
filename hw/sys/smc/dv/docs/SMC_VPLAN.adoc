@@ -18222,7 +18222,7 @@ watchdog reset input `tb_sep_wdt_reset_n`
 *Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `fw`; not in `hosted`
 (needs the RISC-V toolchain of the `c_compile` stage); `run_modes` `smoke`; `timeout_sec` 3600;
 tags `firmware`, `cpu`, `reset`, `axi`; seed 1; args `+smc_hold_cpu_boot`,
-`+smc_scratch_ram_hex=hello_world.ecc.hex` and `+axi_sva_need_<cpu_mmio_core_rst|misc_warm|sep_in|sys_in|sys_out|jtag_in|cpu_front|cpu_mmio>`;
+`+smc_scratch_ram_hex=hello_world.ecc.hex` and `+axi_sva_need_<cpu_mmio_uncore_rst|misc_warm|sep_in|sys_in|sys_out|jtag_in|cpu_front|cpu_mmio>`;
 firmware image `hello_world`; graded on VCS.
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
@@ -18237,7 +18237,9 @@ and silent.
 * Leg A, core 0 reset through CPU_CTRL `RESET_CTRL`: a core held in reset does not isolate the
   cluster boundary and the other cores' MMIO and L2 frontend traffic continue (`cpu.adoc`
   256-258), so cluster-memory reads parked on SEP_IN and SYS_IN before the reset complete with
-  OKAY and RLAST and `SMC_BASE_CONFIG` answers on both ports while the core is held.
+  OKAY and RLAST and `SMC_BASE_CONFIG` answers on both ports while the core is held. The MMIO port
+  stays connected and its uncore reset stays high on every edge of the hold, so the uncore-domain
+  MMIO checker keeps grading the port and no own-domain reset edge occurs in this leg.
 * Leg B, warm reset entered through `tb_sep_wdt_reset_n`: the warm reset asserts while the input is
   low and stays low for at least 32 reference clock cycles after it releases (`clk_rst.adoc`
   213-216). SEP_IN reads of `SCRATCH_COLD` and SYS_OUT writes stay open across the edge; no
@@ -18245,9 +18247,10 @@ and silent.
 * After each release one fresh access on SEP_IN, SYS_IN, JTAG_IN, SYS_OUT, the CPU front port (a
   cluster-memory write and read) and the CPU MMIO port (the firmware's PASS store after the core
   restarts), and a read on the misc warm leg.
-* The own-domain checkers `u_cpu_mmio_core_rst_axi_sva` (core 0's reset, `MASTER_SYNC_RESET`) and
-  `u_misc_warm_axil_sva` (the misc wrapper's warm reset) grade the reset rules and flush their
-  tracking on those resets; the ten primary-reset checkers keep the open transactions tracked.
+* The own-domain checkers `u_cpu_mmio_uncore_rst_axi_sva` (the cluster uncore reset,
+  `MASTER_SYNC_RESET`) and `u_misc_warm_axil_sva` (the misc wrapper's warm reset) grade the reset
+  rules and flush their tracking on those resets, which leg B takes low; the ten primary-reset
+  checkers keep the open transactions tracked.
 
 *Test Procedure*:
 
@@ -18278,26 +18281,26 @@ with the last AW/W/AR/B/R handshake of the link and the reset samples.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-G2-CORE-HELD-TRAFFIC` |While core 0 is held the isolate request stays low, the SEP_IN and SYS_IN reads opened before the reset complete with OKAY, RLAST and their words, and `SMC_BASE_CONFIG` answers OKAY on both ports
+|`CHK-G2-CORE-HELD-TRAFFIC` |While core 0 is held the isolate request and the MMIO isolated status stay low and the uncore reset stays high, the SEP_IN and SYS_IN reads opened before the reset complete with OKAY, RLAST and their words, and `SMC_BASE_CONFIG` answers OKAY on both ports
 |`CHK-G2-WARM-ENTRY` |The warm reset asserts while `tb_sep_wdt_reset_n` is low and releases at least 32 reference clock cycles after it releases
 |`CHK-G2-LIVENESS` |After leg A every one of the six links answers a fresh access OKAY; after leg B every link's fresh access is answered (codes logged as `OBS-G2-WARM-OPEN-TXN`)
 |`CHK-G2-TRACK-CLEARED` |After each release the first fresh access on the CPU front port, the CPU MMIO port and the misc warm leg answers OKAY
 |`CHK-G2-PRIMARY-RECONCILED` |Every transaction open at either edge is completed or recorded unanswered with its samples; an unanswered one fails the leaf
-|`CHK-G2-RESET-VALID-LOW` |Both legs sampled own-domain reset edges and the bench's shadow of the own-domain `*_VALID_RESET_LOW` conditions counted none
+|`CHK-G2-RESET-VALID-LOW` |Leg A sampled no own-domain reset edge, leg B sampled own-domain reset edges, and the bench's shadow of the own-domain `*_VALID_RESET_LOW` conditions counted none
 |`CHK-G2-ALL-SILENT` |Every `ocah_axi_sva` instance of the bench has `en_i` 1 and the own-domain VALID-in-reset shadow is 0
 |`CHK-TIMEOUT-PATHS` |Every bounded wait has an expiry path and none expired
 |`CHK-NONVAC` |The stage stamps setup, legA_open, legA_assert, legA_hold, legA_release, legB_open, legB_enter, legB_release and reconcile are present, in order and strictly increasing
 |===
 
 *Pass Criteria*: every checker above is emitted, the bench's final block prints
-`CHK-AXI-SVA-CPU-MMIO-CORE-RST` and `CHK-AXI-SVA-MISC-WARM` with a non-zero handshake count (each
+`CHK-AXI-SVA-CPU-MMIO-UNCORE-RST` and `CHK-AXI-SVA-MISC-WARM` with a non-zero handshake count (each
 `+axi_sva_need_<port>` of the entry is satisfied), and the log carries no `OCAH_AXI_*` or
 `OCAH_AXIL_*` fire. Enrolled in: `all`, `fw`.
 
 *Scope limit*: The outcome of a transaction open at the watchdog-entered warm edge and the
 post-release response codes are observation lines (SF-003, ruling #3341); so are the reset nets the
 CPU boundary follows (SF-001), the misc warm leg's reset (SF-002), the MMIO valids on the first
-core-reset edge (ruling #3170) and the held core's own MMIO transaction (SF-005). The CPU front port
+uncore-reset edge (ruling #3170) and the held core's own MMIO transaction (SF-005). The CPU front port
 has no core-reset checker: it carries CPU_CTRL traffic while a core is held, and
 `OBS-G2-FRONT-PORT-DOMAIN` counts that traffic.
 
@@ -49573,10 +49576,10 @@ names them for their Phase 3 users.
 |The AXI4-Lite rules of `ocah_axi_sva` (reset, handshake, X and response rules) on the JTAG-side OTP link (TB master, armed like the inbound ports), the DTP CSR link (no responder on `smc_wrapper`, so no AW or AR handshake occurs) and, inside `smc`, the log-engine and peripherals links. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. The two-state rules grade on both simulators (the SMC Verilator targets pass `--assert`); the X-hygiene rules grade on VCS only.
 |Every test; the OTP link is driven by `smc_efuse_jtag_otp_data_walk_test` (`+axi_sva_need_otp_jtag`), the log-engine link by `smc_fw_uart_log_engine_single_entry_test` (`+axi_sva_need_log_engine`), the peripherals link by `smc_canonical_smoke_test` (`+axi_sva_need_periph`); no test carries `+axi_sva_need_dtp_csr`
 |<<smc-vplan-area-reset,RESET>>
-|Own-domain AXI protocol checkers (`u_cpu_mmio_core_rst_axi_sva`, `u_misc_warm_axil_sva`)
+|Own-domain AXI protocol checkers (`u_cpu_mmio_uncore_rst_axi_sva`, `u_misc_warm_axil_sva`)
 |Monitor (`ocah_axi_sva`)
-|The rules of `ocah_axi_sva` on the CPU MMIO link with `aresetn` core 0's reset `tb_cpu_core_reset_n` and `MASTER_SYNC_RESET` (AWVALID, WVALID and ARVALID may stay high on the first edge that samples the reset low), and the AXI4-Lite rules on the `SCRATCH_COLD_WARM` leg of the misc wrapper's demux with `aresetn` the wrapper's warm reset. Their reset rules grade VALID in that reset and their tracking flushes on it. The CPU front port has no core-reset instance: it carries CPU_CTRL traffic while a core is held, so its domain is the primary reset. Each is on once its reset is known; the MMIO instance also follows the CPU-port hold-off. The final block prints `CHK-AXI-SVA-CPU-MMIO-CORE-RST` and `CHK-AXI-SVA-MISC-WARM`; `+axi_sva_need_<cpu_mmio_core_rst|misc_warm>` fails a test whose checker graded no AW or AR handshake. Protocol, not data.
-|Every test; both are driven across their own resets by `smc_axi_partial_reset_open_txn_test` (`+axi_sva_need_cpu_mmio_core_rst`, `+axi_sva_need_misc_warm`)
+|The rules of `ocah_axi_sva` on the CPU MMIO link with `aresetn` the cluster uncore reset `tb_cpu_uncore_reset_n` and `MASTER_SYNC_RESET` (AWVALID, WVALID and ARVALID may stay high on the first edge that samples the reset low), and the AXI4-Lite rules on the `SCRATCH_COLD_WARM` leg of the misc wrapper's demux with `aresetn` the wrapper's warm reset. Their reset rules grade VALID in that reset and their tracking flushes on it. The MMIO port is shared by the four cores behind the uncore bridge: the uncore reset isolates it, and a core reset or core reset pulse leaves it connected, so the other cores' MMIO traffic is graded while a core is held. The CPU front port has no core-reset instance: it carries CPU_CTRL traffic while a core is held, so its domain is the primary reset. Each is on once its reset is known; the MMIO instance also follows the CPU-port hold-off. The final block prints `CHK-AXI-SVA-CPU-MMIO-UNCORE-RST` and `CHK-AXI-SVA-MISC-WARM`; `+axi_sva_need_<cpu_mmio_uncore_rst|misc_warm>` fails a test whose checker graded no AW or AR handshake. Protocol, not data.
+|Every test; both are driven across their own resets by `smc_axi_partial_reset_open_txn_test` (`+axi_sva_need_cpu_mmio_uncore_rst`, `+axi_sva_need_misc_warm`)
 |<<smc-vplan-area-fabric,FABRIC>>
 |Data accelerator AXI protocol checkers (`u_dma_axi_sva`, `u_dma_ctrl_axi_sva`)
 |Monitor (`ocah_axi_sva`)

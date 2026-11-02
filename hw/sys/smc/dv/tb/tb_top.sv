@@ -2578,17 +2578,20 @@ module smc_uvm_top
     // primary reset is known, ANDed with smc_tb_if.axi_sva_en under SV-UVM.
     //
     // Two more instances grade a link against the reset of its own domain:
-    // u_cpu_mmio_core_rst_axi_sva watches the CPU MMIO link on core 0's reset
-    // (tb_cpu_core_reset_n), and u_misc_warm_axil_sva watches the
-    // SCRATCH_COLD_WARM leg of the misc wrapper's AXI-Lite demux on the
+    // u_cpu_mmio_uncore_rst_axi_sva watches the CPU MMIO link on the cluster
+    // uncore reset (tb_cpu_uncore_reset_n), and u_misc_warm_axil_sva watches
+    // the SCRATCH_COLD_WARM leg of the misc wrapper's AXI-Lite demux on the
     // wrapper's warm reset. Their reset rules grade VALID in that reset and
-    // their tracking flushes on it. The MMIO instance sets MASTER_SYNC_RESET:
-    // AWVALID, WVALID and ARVALID may stay high on the first edge that samples
-    // the core reset low and must be low from the next edge on. Each is on
-    // once its reset is known; the MMIO instance also follows the CPU-port
-    // hold-off below. The CPU front port has no core-reset instance: it
-    // carries CPU_CTRL traffic while a core is held, so its AXI domain is the
-    // primary reset.
+    // their tracking flushes on it. The MMIO port is shared by the four cores
+    // behind the uncore bridge: the uncore reset isolates it, and a core reset
+    // or core reset pulse leaves it connected, carrying the other cores'
+    // traffic, so no core reset is a reset of this link. The MMIO instance
+    // sets MASTER_SYNC_RESET: AWVALID, WVALID and ARVALID may stay high on the
+    // first edge that samples the uncore reset low and must be low from the
+    // next edge on. Each is on once its reset is known; the MMIO instance also
+    // follows the CPU-port hold-off below. The CPU front port has no
+    // core-reset instance: it carries CPU_CTRL traffic while a core is held,
+    // so its AXI domain is the primary reset.
     //
     // Sixteen more instances grade, on the primary reset, the links inside
     // smc and the two AXI-Lite links smc drives into smc_ip_integration:
@@ -3239,8 +3242,8 @@ module smc_uvm_top
                             u_dut.u_smc.efuse_bank_ctrl_resp_i, 3'd2)
     );
 
-`define SMC_AXI_CORE_RST_ON \
-        (!$isunknown(tb_cpu_core_reset_n) && `SMC_AXI_SVA_ON && !cpu_reset_probe)
+`define SMC_AXI_UNCORE_RST_ON \
+        (!$isunknown(tb_cpu_uncore_reset_n) && `SMC_AXI_SVA_ON && !cpu_reset_probe)
 `define SMC_AXI_MISC_WARM_ON (!$isunknown(misc_warm_rst_n) && `SMC_AXI_SVA_ON)
 
     smc_pkg::smc_axil_32_32_req_t  misc_warm_req;
@@ -3258,10 +3261,10 @@ module smc_uvm_top
         .DATA_WIDTH        (64),
         .ID_WIDTH          (3),
         .MASTER_SYNC_RESET (1'b1)
-    ) u_cpu_mmio_core_rst_axi_sva (       // CPU MMIO port on core 0's reset
-        .en_i (`SMC_AXI_CORE_RST_ON),
+    ) u_cpu_mmio_uncore_rst_axi_sva (     // CPU MMIO port on the cluster uncore reset
+        .en_i (`SMC_AXI_UNCORE_RST_ON),
         `SMC_AXI_SVA_PORTS_RST(u_dut.u_smc.cpu_axi_mmio_port_req,
-                               u_dut.u_smc.cpu_axi_mmio_port_resp, tb_cpu_core_reset_n)
+                               u_dut.u_smc.cpu_axi_mmio_port_resp, tb_cpu_uncore_reset_n)
     );
 
     ocah_axi_sva #(
@@ -3293,7 +3296,7 @@ module smc_uvm_top
     int unsigned axi_dk_w_dtp_csr, axi_dk_r_dtp_csr;
     int unsigned axi_dk_w_log_engine, axi_dk_r_log_engine;
     int unsigned axi_dk_w_periph, axi_dk_r_periph;
-    int unsigned axi_dk_w_cpu_mmio_core_rst, axi_dk_r_cpu_mmio_core_rst;
+    int unsigned axi_dk_w_cpu_mmio_uncore_rst, axi_dk_r_cpu_mmio_uncore_rst;
     int unsigned axi_dk_w_misc_warm, axi_dk_r_misc_warm;
     int unsigned axi_dk_w_dma, axi_dk_r_dma;
     int unsigned axi_dk_w_dma_ctrl, axi_dk_r_dma_ctrl;
@@ -3445,14 +3448,14 @@ module smc_uvm_top
     smc_axi_data_known_sva #(
         .DATA_WIDTH     (64),
         .EN_W_DATA_RULE (1'b1)
-    ) u_cpu_mmio_core_rst_data_sva (
+    ) u_cpu_mmio_uncore_rst_data_sva (
         .aclk      (clk_smc),
-        .aresetn   (tb_cpu_core_reset_n),
-        .en_i      (`SMC_AXI_CORE_RST_ON),
+        .aresetn   (tb_cpu_uncore_reset_n),
+        .en_i      (`SMC_AXI_UNCORE_RST_ON),
         `SMC_AXI_DK_W(u_dut.u_smc.cpu_axi_mmio_port_req),
         `SMC_AXI_DK_R_IDLE(64),
-        .w_beats_o (axi_dk_w_cpu_mmio_core_rst),
-        .r_beats_o (axi_dk_r_cpu_mmio_core_rst)
+        .w_beats_o (axi_dk_w_cpu_mmio_uncore_rst),
+        .r_beats_o (axi_dk_r_cpu_mmio_uncore_rst)
     );
 
     smc_axi_data_known_sva #(
@@ -3791,30 +3794,30 @@ module smc_uvm_top
     // Own-reset observation for the partial-reset leaf: the edges each
     // own-domain checker spent with its reset low, the edges at which the
     // condition of one of their <CH>_VALID_RESET_LOW rules held, the AW/W/AR
-    // valids of the CPU MMIO master on the first edge that sampled the core
+    // valids of the CPU MMIO master on the first edge that sampled the uncore
     // reset low, the AW/AR handshakes the front-port checker graded while the
     // core reset was low, and the CPU MMIO responses (one per B and per R
     // carrying RLAST) split by OKAY.
 `define SMC_AXI_ANY_VALID(REQ, RSP) \
         ((REQ.aw_valid || REQ.w_valid || REQ.ar_valid || RSP.b_valid || RSP.r_valid) === 1'b1)
 `define SMC_AXI_RSP_VALID(RSP) ((RSP.b_valid || RSP.r_valid) === 1'b1)
-    logic        cpu_core_rst_q, misc_warm_rst_q;
-    int unsigned axi_core_rst_edges, axi_misc_warm_rst_edges, axi_own_rst_valid_hits;
+    logic        cpu_uncore_rst_q, misc_warm_rst_q;
+    int unsigned axi_uncore_rst_edges, axi_misc_warm_rst_edges, axi_own_rst_valid_hits;
     int unsigned cpu_mmio_msr_first_edges, axi_cpu_front_core_held_hs;
     int unsigned cpu_mmio_rsp_okay, cpu_mmio_rsp_err;
     logic [2:0]  cpu_mmio_msr_first_edge_valid;  // {AWVALID, WVALID, ARVALID}
     always_ff @(posedge clk_smc) begin
-        cpu_core_rst_q  <= tb_cpu_core_reset_n;
+        cpu_uncore_rst_q <= tb_cpu_uncore_reset_n;
         misc_warm_rst_q <= misc_warm_rst_n;
-        if (`SMC_AXI_CORE_RST_ON && tb_cpu_core_reset_n === 1'b0) begin
-            axi_core_rst_edges <= axi_core_rst_edges + 1;
-            if (cpu_core_rst_q === 1'b1) begin
+        if (`SMC_AXI_UNCORE_RST_ON && tb_cpu_uncore_reset_n === 1'b0) begin
+            axi_uncore_rst_edges <= axi_uncore_rst_edges + 1;
+            if (cpu_uncore_rst_q === 1'b1) begin
                 cpu_mmio_msr_first_edges      <= cpu_mmio_msr_first_edges + 1;
                 cpu_mmio_msr_first_edge_valid <= {u_dut.u_smc.cpu_axi_mmio_port_req.aw_valid,
                                                   u_dut.u_smc.cpu_axi_mmio_port_req.w_valid,
                                                   u_dut.u_smc.cpu_axi_mmio_port_req.ar_valid};
             end
-            if ((cpu_core_rst_q === 1'b0 &&
+            if ((cpu_uncore_rst_q === 1'b0 &&
                  `SMC_AXI_ANY_VALID(u_dut.u_smc.cpu_axi_mmio_port_req,
                                     u_dut.u_smc.cpu_axi_mmio_port_resp)) ||
                 `SMC_AXI_RSP_VALID(u_dut.u_smc.cpu_axi_mmio_port_resp))
@@ -3873,7 +3876,7 @@ module smc_uvm_top
     int unsigned axi_stall_dtp_csr[5];
     int unsigned axi_stall_log_engine[5];
     int unsigned axi_stall_periph[5];
-    int unsigned axi_stall_cpu_mmio_core_rst[5];
+    int unsigned axi_stall_cpu_mmio_uncore_rst[5];
     int unsigned axi_stall_misc_warm[5];
     int unsigned axi_stall_dma[5];
     int unsigned axi_stall_dma_ctrl[5];
@@ -3896,7 +3899,7 @@ module smc_uvm_top
     int unsigned axi_hs_sys_in, axi_hs_jtag_in, axi_hs_sep_in, axi_hs_sys_out;
     int unsigned axi_hs_cpu_front, axi_hs_cpu_mmio, axi_hs_otp_jtag, axi_hs_dtp_csr;
     int unsigned axi_hs_log_engine, axi_hs_periph;
-    int unsigned axi_hs_cpu_mmio_core_rst, axi_hs_misc_warm;
+    int unsigned axi_hs_cpu_mmio_uncore_rst, axi_hs_misc_warm;
     int unsigned axi_hs_dma, axi_hs_dma_ctrl, axi_hs_dfx_csr, axi_hs_ar_ctrl;
     int unsigned axi_hs_mr_ctrl, axi_hs_xr_ctrl, axi_hs_infilt_ctrl, axi_hs_outfilt_ctrl;
     int unsigned axi_hs_mailbox, axi_hs_base_config, axi_hs_local_out, axi_hs_to_output;
@@ -3932,10 +3935,10 @@ module smc_uvm_top
         if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(u_dut.u_smc.axil_peripherals_req,
                                            u_dut.u_smc.axil_peripherals_resp))
             axi_hs_periph <= axi_hs_periph + 1;
-        if (`SMC_AXI_CORE_RST_ON &&
+        if (`SMC_AXI_UNCORE_RST_ON &&
             `SMC_AXI_HS(u_dut.u_smc.cpu_axi_mmio_port_req,
                         u_dut.u_smc.cpu_axi_mmio_port_resp))
-            axi_hs_cpu_mmio_core_rst <= axi_hs_cpu_mmio_core_rst + 1;
+            axi_hs_cpu_mmio_uncore_rst <= axi_hs_cpu_mmio_uncore_rst + 1;
         if (`SMC_AXI_MISC_WARM_ON && `SMC_AXI_HS(misc_warm_req, misc_warm_resp))
             axi_hs_misc_warm <= axi_hs_misc_warm + 1;
         if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(`SMC_BASE.axi_data_accel_req,
@@ -4010,7 +4013,7 @@ module smc_uvm_top
         `SMC_AXI_STALL(axi_stall_periph, `SMC_AXI_SVA_ON,
                        u_dut.u_smc.axil_peripherals_req,
                        u_dut.u_smc.axil_peripherals_resp)
-        `SMC_AXI_STALL(axi_stall_cpu_mmio_core_rst, `SMC_AXI_CORE_RST_ON,
+        `SMC_AXI_STALL(axi_stall_cpu_mmio_uncore_rst, `SMC_AXI_UNCORE_RST_ON,
                        u_dut.u_smc.cpu_axi_mmio_port_req,
                        u_dut.u_smc.cpu_axi_mmio_port_resp)
         `SMC_AXI_STALL(axi_stall_misc_warm, `SMC_AXI_MISC_WARM_ON,
@@ -4086,8 +4089,8 @@ module smc_uvm_top
                  axi_hs_log_engine);
         $display("CHK-AXI-SVA-PERIPH: aw_ar_handshakes=%0d instance=u_periph_axil_sva",
                  axi_hs_periph);
-        $display("CHK-AXI-SVA-CPU-MMIO-CORE-RST: aw_ar_handshakes=%0d instance=%s",
-                 axi_hs_cpu_mmio_core_rst, "u_cpu_mmio_core_rst_axi_sva");
+        $display("CHK-AXI-SVA-CPU-MMIO-UNCORE-RST: aw_ar_handshakes=%0d instance=%s",
+                 axi_hs_cpu_mmio_uncore_rst, "u_cpu_mmio_uncore_rst_axi_sva");
         $display("CHK-AXI-SVA-MISC-WARM: aw_ar_handshakes=%0d instance=u_misc_warm_axil_sva",
                  axi_hs_misc_warm);
         $display("CHK-AXI-SVA-DMA: aw_ar_handshakes=%0d instance=u_dma_axi_sva",
@@ -4165,9 +4168,9 @@ module smc_uvm_top
         if ($test$plusargs("axi_sva_need_periph") && axi_hs_periph == 0)
             $error("%s", {"u_periph_axil_sva: +axi_sva_need_periph, ",
                           "but no AW or AR handshake was graded"});
-        if ($test$plusargs("axi_sva_need_cpu_mmio_core_rst") && axi_hs_cpu_mmio_core_rst == 0)
-            $error("%s", {"u_cpu_mmio_core_rst_axi_sva: ",
-                          "+axi_sva_need_cpu_mmio_core_rst, ",
+        if ($test$plusargs("axi_sva_need_cpu_mmio_uncore_rst") && axi_hs_cpu_mmio_uncore_rst == 0)
+            $error("%s", {"u_cpu_mmio_uncore_rst_axi_sva: ",
+                          "+axi_sva_need_cpu_mmio_uncore_rst, ",
                           "but no AW or AR handshake was graded"});
         if ($test$plusargs("axi_sva_need_misc_warm") && axi_hs_misc_warm == 0)
             $error("%s", {"u_misc_warm_axil_sva: +axi_sva_need_misc_warm, ",
@@ -4222,7 +4225,7 @@ module smc_uvm_top
                           "but no AW or AR handshake was graded"});
         $display("CHK-AXI-DATA-KNOWN-W: instances=%0d beats_checked=%0d", 13,
                  axi_dk_w_sys_out + axi_dk_w_cpu_mmio + axi_dk_w_dtp_csr + axi_dk_w_log_engine +
-                 axi_dk_w_cpu_mmio_core_rst + axi_dk_w_dma + axi_dk_w_dma_ctrl +
+                 axi_dk_w_cpu_mmio_uncore_rst + axi_dk_w_dma + axi_dk_w_dma_ctrl +
                  axi_dk_w_local_out + axi_dk_w_to_output + axi_dk_w_filtered_sys +
                  axi_dk_w_sep_remap + axi_dk_w_external + axi_dk_w_efuse_bank);
         $display("CHK-AXI-DATA-KNOWN-R: instances=%0d beats_checked=%0d", 15,
@@ -4250,8 +4253,8 @@ module smc_uvm_top
                  axi_dk_w_log_engine, axi_dk_r_log_engine);
         $display("INFO-AXI-DATA-KNOWN-PERIPH: w_beats=%0d r_beats=%0d",
                  axi_dk_w_periph, axi_dk_r_periph);
-        $display("INFO-AXI-DATA-KNOWN-CPU-MMIO-CORE-RST: w_beats=%0d r_beats=%0d",
-                 axi_dk_w_cpu_mmio_core_rst, axi_dk_r_cpu_mmio_core_rst);
+        $display("INFO-AXI-DATA-KNOWN-CPU-MMIO-UNCORE-RST: w_beats=%0d r_beats=%0d",
+                 axi_dk_w_cpu_mmio_uncore_rst, axi_dk_r_cpu_mmio_uncore_rst);
         $display("INFO-AXI-DATA-KNOWN-MISC-WARM: w_beats=%0d r_beats=%0d",
                  axi_dk_w_misc_warm, axi_dk_r_misc_warm);
         $display("INFO-AXI-DATA-KNOWN-DMA: w_beats=%0d r_beats=%0d",
@@ -4306,8 +4309,9 @@ module smc_uvm_top
                  `SMC_AXI_STALL_ARGS(axi_stall_log_engine), "u_log_engine_axil_sva");
         $display("CHK-AXI-STALL-PERIPH: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
                  `SMC_AXI_STALL_ARGS(axi_stall_periph), "u_periph_axil_sva");
-        $display("CHK-AXI-STALL-CPU-MMIO-CORE-RST: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
-                 `SMC_AXI_STALL_ARGS(axi_stall_cpu_mmio_core_rst), "u_cpu_mmio_core_rst_axi_sva");
+        $display("CHK-AXI-STALL-CPU-MMIO-UNCORE-RST: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
+                 `SMC_AXI_STALL_ARGS(axi_stall_cpu_mmio_uncore_rst),
+                 "u_cpu_mmio_uncore_rst_axi_sva");
         $display("CHK-AXI-STALL-MISC-WARM: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
                  `SMC_AXI_STALL_ARGS(axi_stall_misc_warm), "u_misc_warm_axil_sva");
         $display("CHK-AXI-STALL-DMA: aw=%0d w=%0d b=%0d ar=%0d r=%0d instance=%s",
@@ -4372,8 +4376,8 @@ module smc_uvm_top
         `SMC_AXI_STALL_UNPLACED("DTP-CSR", axi_stall_dtp_csr, "u_dtp_csr_axil_sva");
         `SMC_AXI_STALL_UNPLACED("LOG-ENGINE", axi_stall_log_engine, "u_log_engine_axil_sva");
         `SMC_AXI_STALL_UNPLACED("PERIPH", axi_stall_periph, "u_periph_axil_sva");
-        `SMC_AXI_STALL_UNPLACED("CPU-MMIO-CORE-RST", axi_stall_cpu_mmio_core_rst,
-                                "u_cpu_mmio_core_rst_axi_sva");
+        `SMC_AXI_STALL_UNPLACED("CPU-MMIO-UNCORE-RST", axi_stall_cpu_mmio_uncore_rst,
+                                "u_cpu_mmio_uncore_rst_axi_sva");
         `SMC_AXI_STALL_UNPLACED("MISC-WARM", axi_stall_misc_warm, "u_misc_warm_axil_sva");
         `SMC_AXI_STALL_UNPLACED("DMA", axi_stall_dma, "u_dma_axi_sva");
         `SMC_AXI_STALL_UNPLACED("DMA-CTRL", axi_stall_dma_ctrl, "u_dma_ctrl_axi_sva");
@@ -4453,10 +4457,10 @@ module smc_uvm_top
             $error("%s", {"u_periph_axil_sva: ",
                           "+axi_sva_need_stall_periph, ",
                           "but no READY stall was counted"});
-        if ($test$plusargs("axi_sva_need_stall_cpu_mmio_core_rst") &&
-            `SMC_AXI_STALL_SUM(axi_stall_cpu_mmio_core_rst) == 0)
-            $error("%s", {"u_cpu_mmio_core_rst_axi_sva: ",
-                          "+axi_sva_need_stall_cpu_mmio_core_rst, ",
+        if ($test$plusargs("axi_sva_need_stall_cpu_mmio_uncore_rst") &&
+            `SMC_AXI_STALL_SUM(axi_stall_cpu_mmio_uncore_rst) == 0)
+            $error("%s", {"u_cpu_mmio_uncore_rst_axi_sva: ",
+                          "+axi_sva_need_stall_cpu_mmio_uncore_rst, ",
                           "but no READY stall was counted"});
         if ($test$plusargs("axi_sva_need_stall_misc_warm") &&
             `SMC_AXI_STALL_SUM(axi_stall_misc_warm) == 0)
@@ -4557,7 +4561,7 @@ module smc_uvm_top
 `undef SMC_AXI_RSP_VALID
 `undef SMC_AXI_ANY_VALID
 `undef SMC_AXI_MISC_WARM_ON
-`undef SMC_AXI_CORE_RST_ON
+`undef SMC_AXI_UNCORE_RST_ON
 `undef SMC_AXI_MASTER_KNOWN
 `undef SMC_AXI_SVA_ON
 `undef SMC_AXI_HS

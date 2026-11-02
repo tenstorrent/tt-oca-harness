@@ -147,7 +147,7 @@ firmware = "hello_world"
 args = [
     "+smc_hold_cpu_boot",
     "+smc_scratch_ram_hex=hello_world.ecc.hex",
-    "+axi_sva_need_cpu_mmio_core_rst",
+    "+axi_sva_need_cpu_mmio_uncore_rst",
     "+axi_sva_need_misc_warm",
     "+axi_sva_need_sep_in",
     "+axi_sva_need_sys_in",

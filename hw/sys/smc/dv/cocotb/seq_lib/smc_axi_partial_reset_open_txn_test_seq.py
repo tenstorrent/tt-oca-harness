@@ -17,12 +17,15 @@ targets; no SCRATCH_COLD_WARM access is open across it. Their outcome and the
 post-release response codes are measured, never compared (SF-003, ruling
 #3341).
 
-The bench's own-domain checkers (u_cpu_mmio_core_rst_axi_sva on core 0's reset,
-u_misc_warm_axil_sva on the misc wrapper's warm reset) grade the reset rules
-and flush their tracking on those resets; the ten primary-reset checkers keep
-the open transactions tracked across both. Rule fires are $error lines in the
-simulator log. The bench's shadow of the own-domain VALID_RESET_LOW conditions
-is read here so that the fires= field is a measurement.
+The bench's own-domain checkers (u_cpu_mmio_uncore_rst_axi_sva on the cluster
+uncore reset, u_misc_warm_axil_sva on the misc wrapper's warm reset) grade the
+reset rules and flush their tracking on those resets; the ten primary-reset
+checkers keep the open transactions tracked across both. Leg A leaves both
+own-domain resets high: the MMIO port stays connected and its uncore-domain
+checker keeps grading it while core 0 is held. Leg B takes both low. Rule fires
+are $error lines in the simulator log. The bench's shadow of the own-domain
+VALID_RESET_LOW conditions is read here so that the fires= field is a
+measurement.
 
 Every wait is a bounded count of clk_smc_i (or reference clock) edges; an expiry
 fails the leaf with the last AW/W/AR/B/R handshake of the link and the reset
@@ -107,7 +110,7 @@ PRIMARY_INSTANCES = (
     "u_log_engine_axil_sva",
     "u_periph_axil_sva",
 )
-OWN_DOMAIN_INSTANCES = ("u_cpu_mmio_core_rst_axi_sva", "u_misc_warm_axil_sva")
+OWN_DOMAIN_INSTANCES = ("u_cpu_mmio_uncore_rst_axi_sva", "u_misc_warm_axil_sva")
 
 LINKS = ("SEP_IN", "SYS_IN", "JTAG_IN", "SYS_OUT", "CPU_MMIO", "CPU_FRONT")
 
@@ -247,6 +250,10 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
     @staticmethod
     def _shadow(name: str) -> int:
         return _int(getattr(cocotb.top, name), name)
+
+    def _own_edges(self) -> int:
+        """Edges either own-domain checker spent with its reset low."""
+        return self._shadow("axi_uncore_rst_edges") + self._shadow("axi_misc_warm_rst_edges")
 
     @staticmethod
     def _resets() -> str:
@@ -523,22 +530,26 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
         self._stage("legA_open")
 
         # S4 LEG A ASSERT
-        edges0 = self._shadow("axi_core_rst_edges")
+        edges0 = self._own_edges()
         front_held0 = self._shadow("axi_cpu_front_core_held_hs")
-        msr0 = self._shadow("cpu_mmio_msr_first_edges")
         hits0 = self._shadow("axi_own_rst_valid_hits")
-        isolate_seen = {"max": 0}
+        isolate_seen = {"req": 0, "mmio_isolated": 0, "uncore_low": 0}
 
         async def _isolate_monitor() -> None:
             while True:
                 await RisingEdge(dut.clk_smc_i)
                 if _int(dut.tb_cpu_isolate_req, "tb_cpu_isolate_req"):
-                    isolate_seen["max"] = 1
+                    isolate_seen["req"] = 1
+                if _int(dut.tb_cpu_mmio_isolated, "tb_cpu_mmio_isolated"):
+                    isolate_seen["mmio_isolated"] = 1
+                if not _int(dut.tb_cpu_uncore_reset_n, "tb_cpu_uncore_reset_n"):
+                    isolate_seen["uncore_low"] = 1
 
         iso_task = cocotb.start_soon(_isolate_monitor())
         await self.csr_write("RESET_CTRL_CORE0_LO", RESET_CTRL, reset_ctrl & ~CORE0_N, length=8)
         await self._wait_level("tb_cpu_core_reset_n", 0, RESET_BOUND, "CPU_MMIO")
         edge_ns = get_sim_time("ns")
+        mmio_hs0 = self._shadow("axi_hs_cpu_mmio_uncore_rst")
         for txn in open_a:
             txn.edge = f"legA@{edge_ns}ns"
         pending = (
@@ -547,22 +558,10 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
             _int(dut.tb_cpu_mmio_pending_ar, "tb_cpu_mmio_pending_ar"),
         )
         cocotb.log.info(
-            "OBS-G2-CPU-RST-NET: legA edge t=%d ns %s; own-domain first edge in reset: "
-            "u_cpu_mmio_core_rst_axi_sva t=%d ns, u_misc_warm_axil_sva none (misc_warm_rst_n=%s); "
-            "open at edge %s (observation, SF-001)",
+            "OBS-G2-CPU-RST-NET: legA edge t=%d ns %s; open at edge %s (observation, SF-001)",
             edge_ns,
             self._resets(),
-            edge_ns,
-            _sample(dut.misc_warm_rst_n),
             [(t.link, t.task.done()) for t in open_a],
-        )
-        await self._clk(2)
-        msr_valid = _sample(dut.cpu_mmio_msr_first_edge_valid)
-        cocotb.log.info(
-            "OBS-G2-MSR-FIRST-EDGE: CPU MMIO {AWVALID,WVALID,ARVALID} on the first edge that "
-            "sampled the core reset low = %s (first-edge samples +%d) (observation, ruling #3170)",
-            msr_valid,
-            self._shadow("cpu_mmio_msr_first_edges") - msr0,
         )
         cocotb.log.info(
             "OBS-G2-HELD-CORE-OWN-TXN: MMIO isolate pending aw/w/ar at the core reset edge = "
@@ -585,14 +584,17 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
             "core 0 left reset before the held-core checks finished"
         )
         iso_task.cancel()
-        assert isolate_seen["max"] == 0, (
-            "the CPU isolate request asserted during a core-only reset (cpu.adoc:256-258)"
+        assert not any(isolate_seen.values()), (
+            f"the MMIO port left the connected state during a core-only reset: {isolate_seen} "
+            f"(cpu.adoc:256-258)"
         )
         self._chk(
             "CHK-G2-CORE-HELD-TRAFFIC",
-            f"open_completed={len(open_a)} fresh_ok={len(fresh)} isolate=0 "
-            f"(SEP_IN/SYS_IN cluster reads opened before the core reset completed OKAY with RLAST "
-            f"and their data; SMC_BASE_CONFIG answered OKAY on both ports while core 0 was held)",
+            f"open_completed={len(open_a)} fresh_ok={len(fresh)} isolate_req=0 mmio_isolated=0 "
+            f"uncore_reset_n=1 (SEP_IN/SYS_IN cluster reads opened before the core reset completed "
+            f"OKAY with RLAST and their data; SMC_BASE_CONFIG answered OKAY on both ports while "
+            f"core 0 was held; the MMIO port and its uncore reset stayed connected and high on "
+            f"every edge of the hold)",
         )
         self._stage("legA_hold")
 
@@ -600,12 +602,16 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
         mmio_a = self._mmio_base()
         await self.csr_write("RESET_CTRL_CORE0_HI", RESET_CTRL, reset_ctrl | CORE0_N, length=8)
         await self._wait_level("tb_cpu_core_reset_n", 1, RESET_BOUND, "CPU_MMIO")
-        leg_a_edges = self._shadow("axi_core_rst_edges") - edges0
         front_held = self._shadow("axi_cpu_front_core_held_hs") - front_held0
         cocotb.log.info(
             "OBS-G2-FRONT-PORT-DOMAIN: u_cpu_front_axi_sva graded %d AW/AR handshakes while "
             "tb_cpu_core_reset_n was 0 (observation, evidence for SF-001)",
             front_held,
+        )
+        cocotb.log.info(
+            "OBS-G2-CORE-HELD-MMIO: u_cpu_mmio_uncore_rst_axi_sva graded %d AW/AR handshakes "
+            "while core 0 was held (observation)",
+            self._shadow("axi_hs_cpu_mmio_uncore_rst") - mmio_hs0,
         )
         codes_a = await self._probe_links("LEGA", SPM_WORDS[SPM_PROBE], mmio_a)
         misc_a = await self._misc_leg("LEGA")
@@ -616,7 +622,7 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
         )
         self.leg_a_ok = len(codes_a)
         self.leg_a_counts = {
-            "edges": leg_a_edges,
+            "edges": self._own_edges() - edges0,
             "hits": self._shadow("axi_own_rst_valid_hits") - hits0,
         }
         self._stage("legA_release")
@@ -624,8 +630,8 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
         # S7 LEG B OPEN: cold-domain targets only; no SCRATCH_COLD_WARM access is open.
         await self.csr_write("LEGB_SCRATCH0_CLEAR", CPU_CTRL_SCRATCH_0, 0)
         await self.csr_read("LEGB_SCRATCH0_CLEAR_RB", CPU_CTRL_SCRATCH_0, expected=0)
-        warm_edges0 = self._shadow("axi_misc_warm_rst_edges")
-        core_edges0 = self._shadow("axi_core_rst_edges")
+        edges_b0 = self._own_edges()
+        msr0 = self._shadow("cpu_mmio_msr_first_edges")
         hits_b0 = self._shadow("axi_own_rst_valid_hits")
         dut.tb_sep_axi_r_hold.value = 1
         dut.tb_output_axi_resp_hold.value = 1
@@ -674,6 +680,14 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
         ]
         cocotb.log.info("INFO-OPEN: at the warm edge %s; %s", open_at_warm, self._resets())
         await self._wait_level("misc_warm_rst_n", 0, RESET_BOUND, "SEP_IN")
+        await self._wait_level("tb_cpu_uncore_reset_n", 0, RESET_BOUND, "CPU_MMIO")
+        await self._clk(2)
+        cocotb.log.info(
+            "OBS-G2-MSR-FIRST-EDGE: CPU MMIO {AWVALID,WVALID,ARVALID} on the first edge that "
+            "sampled the uncore reset low = %s (first-edge samples +%d) (observation, ruling #3170)",
+            _sample(dut.cpu_mmio_msr_first_edge_valid),
+            self._shadow("cpu_mmio_msr_first_edges") - msr0,
+        )
         dut.tb_sep_wdt_reset_n.value = 1
         ref_cycles = 0
         self.waits += 1
@@ -721,8 +735,7 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
         )
         self.leg_b_answered = len(codes_b)
         self.leg_b_counts = {
-            "edges": (self._shadow("axi_misc_warm_rst_edges") - warm_edges0)
-            + (self._shadow("axi_core_rst_edges") - core_edges0),
+            "edges": self._own_edges() - edges_b0,
             "hits": self._shadow("axi_own_rst_valid_hits") - hits_b0,
         }
         assert self.leg_a_ok == len(LINKS) and self.leg_b_answered == len(LINKS)
@@ -775,13 +788,15 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
                 legs[1]["hits"],
                 self._resets(),
             )
-        assert legs[0]["edges"] > 0 and legs[1]["edges"] > 0, (
-            f"a leg sampled no own reset edge: {legs}"
+        assert legs[0]["edges"] == 0, (
+            f"an own-domain reset went low during the core-only leg: {legs} (cpu.adoc:256-258)"
         )
+        assert legs[1]["edges"] > 0, f"the warm leg sampled no own-domain reset edge: {legs}"
         assert fires == 0, f"{fires} own-domain *_VALID_RESET_LOW condition sample(s)"
         self._chk(
             "CHK-G2-RESET-VALID-LOW",
-            f"legA_edges={legs[0]['edges']} legB_edges={legs[1]['edges']} fires=0",
+            f"legA_edges=0 legB_edges={legs[1]['edges']} fires=0 (the core-only leg left the "
+            f"uncore and misc warm resets high; the warm leg took both low with no VALID in reset)",
         )
         enabled = {}
         for inst in PRIMARY_INSTANCES + OWN_DOMAIN_INSTANCES:
