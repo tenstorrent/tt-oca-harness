@@ -3885,3 +3885,23 @@ args = [
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
   "+sep_smc_scratch8=00005000",
 ]
+
+[[tests]]
+# MAN-020 positive only: oca_validate or oca_validate_manifest (whichever is linked; this ROM links
+# oca_validate_manifest) runs before MANIFEST_VALIDATED and calls the ROM's
+# sha256, verify_signature, revocation and security-version callbacks from library text; all eight
+# spec roles are wired in the ROM's callback table. Hardware routing of each callback is not graded.
+name = "sep_rom_oca_library_callback_test"
+module = "rom_fw.sep_rom_oca_library_callback_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "manifest", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+]
