@@ -68,7 +68,7 @@ class sep_rom_sanity_test(sep_base_test):
         # calling into the ROM after two functions would still pass. Count the
         # per-function lines the firmware emits and require all seven.
         console = self.sb.console_text()
-        seen = console.count("[PASS] IFU")
+        seen = console.count("CHK-IFU-TYPES PASS")
         assert seen == _EXPECTED_IFU_CHECKS, (
             f"expected {_EXPECTED_IFU_CHECKS} ROM IFU function checks in the console, saw {seen}"
         )

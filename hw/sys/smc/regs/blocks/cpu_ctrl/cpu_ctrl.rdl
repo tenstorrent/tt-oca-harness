@@ -180,7 +180,7 @@ addrmap cpu_ctrl {
         field  {
             sw=rw;
             hw=r;
-            desc="Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles";
+            desc="Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles";
         } data [31:0] = 0x4000;
     };
 

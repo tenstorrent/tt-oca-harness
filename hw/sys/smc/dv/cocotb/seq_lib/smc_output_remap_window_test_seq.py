@@ -1155,6 +1155,10 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
         assert sorted(b["id"] for b in jb) == list(_JTAG_IDS) and all(b["resp"] == 0 for b in jb), (
             f"[ID_GROUP_WR] JTAG B beats {jb}, want one OKAY per ID 0..3"
         )
+        assert peak_w == len(_JTAG_IDS), (
+            f"[ID_GROUP_WR] at most {peak_w} of the {len(_JTAG_IDS)} JTAG writes were "
+            f"outstanding at once"
+        )
         for a, w in zip(addrs, words):
             held = responder.read_int(a, _WORD)
             assert held == w, f"[ID_GROUP_WR] SYS_OUT 0x{a:x} 0x{held:016x}, want 0x{w:016x}"
@@ -1175,6 +1179,10 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 jr.append(f)
         assert sorted(r["id"] for r in jr) == list(_JTAG_IDS) and all(r["resp"] == 0 for r in jr), (
             f"[ID_GROUP_RD] JTAG R beats {jr}, want one OKAY per ID 0..3"
+        )
+        assert peak_r == len(_JTAG_IDS), (
+            f"[ID_GROUP_RD] at most {peak_r} of the {len(_JTAG_IDS)} JTAG reads were "
+            f"outstanding at once"
         )
         for i, item, w in zip(_JTAG_IDS, reads, words):
             assert item.resp_code == 0 and item.rdata == w, (

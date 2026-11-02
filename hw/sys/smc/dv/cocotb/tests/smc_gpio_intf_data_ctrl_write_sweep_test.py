@@ -21,12 +21,12 @@ from smc_base_test import smc_base_test
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
 # sequence that silently stopped issuing accesses.
 #
-# 65 GPIO_INTF instances, 18 SEP_IN AXI accesses each: the reset read, a write
-# and readback for lsio_select, the active-high write with a readback at each
-# pad level, a write and readback for each of active-low, rising edge, falling
-# edge, the masked level and the unmasked level, and the restore write and
-# readback.
-GPIO_INTF_DATA_CTRL_WRITE_SWEEP_MIN_CSR_ACCESSES = 65 * 18
+# 65 GPIO_INTF instances, 20 SEP_IN AXI accesses each: the reset read, a write
+# and readback for lsio_select, a write and readback with core2pad clear, the
+# active-high write with a readback at each pad level, a write and readback for
+# each of active-low, rising edge, falling edge, the masked level and the
+# unmasked level, and the restore write and readback.
+GPIO_INTF_DATA_CTRL_WRITE_SWEEP_MIN_CSR_ACCESSES = 65 * 20
 
 
 @pyuvm.test()

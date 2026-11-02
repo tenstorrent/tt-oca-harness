@@ -57,11 +57,20 @@ Checkers:
   CHK-SCAN-TM-HOLD      secure_tm_o keeps the leg strap value (0 and 1) on
                         every sample of the session while the strap moves
                         (no cold reset and no fuse-sense completion, so no
-                        sampling event). Control: at least 3 samples with
-                        test_en_i = 1 and the strap opposite per session.
+                        sampling event). Control per session, from the
+                        sampled strap with test_en_i = 1: f1 opposite on
+                        every scan_rst_ni-low edge and at the release, f2
+                        back at the leg value on at least 1 sample, f3
+                        opposite on every sample from its move to the
+                        test_en_i fall (at least 1).
+  CTRL-SCAN-TE-FALL      every session ends with test_en_i = 0 on each sample
+                        after its last test_en_i = 1 sample (at least 1).
   CHK-SCAN-SECRET-ZERO  at strap 1 the 32 secret shadow words read 0 on every
                         sample of the session. Control: at strap 0 they read
                         the staged words before the session.
+  CTRL-SCAN-SECRET-STORED after the strap-1 session, the shadow storage
+                        (shadow_efuse_values_n0_scan and shadow_efuse_values)
+                        holds every staged secret word.
   CTRL-SECDIS-SET        security_disable_o goes 0 to 1 at the SEC_DIS go with
                         the token whose digest tb_top binds.
   CHK-SCAN-SECDIS-HOLD  security_disable_o, the SEC_DIS digest and its valid
@@ -86,8 +95,12 @@ OBS-SCAN-FEAT-HOLD (``FEAT_CTRL``, the DEMOTE state and lock bits and the
 shadow words whose value is not in ``shadow_efuse_values_n0_scan``; the
 specification does not state that every Class-1 word carries the name),
 OBS-SCAN-SHADOW-WR (a ``SIP_DIS``
-shadow write with ``test_en_i`` = 1 at strap 0) and OBS-SCAN-SECDIS-GO (a
-mismatch SEC_DIS go with ``test_en_i`` = 1, after the last session). The
+shadow write with ``test_en_i`` = 1 at strap 0), OBS-SCAN-SECRET0 (per strap-0
+session, the samples on which the secret shadow outputs equal the staged words),
+OBS-SCAN-KM-COPY (the three Key Manager OTP copy signals through each session)
+and OBS-SCAN-SECDIS-GO (a mismatch SEC_DIS go with ``test_en_i`` = 1, after the
+last session). ``INFO-SCAN-FEAT-ORIENT`` prints the PROD profile words of DEMOTE
+0/0 and 1/1 (model values) for orientation. The
 specification does not state these values under a scan reset.
 
 The graded window (owner code of this test) is open for each session only.
@@ -102,11 +115,13 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
+from env.sep_chk_log import word_digest
 from env.sep_efuse_plan import (
     CH_SEC_DIS,
     CODE_MATCH,
     CODE_MISMATCH,
     DEFAULT_VECTOR,
+    DIGEST_FIELDS,
     FIELD_NAMES,
     FIELD_VECTORS,
     MATCH_ADDR,
@@ -315,6 +330,9 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             "secdis": _bit(sig_bits(dut.lcc_security_disable_probe_o)),
             "dvalid": _bit(sig_bits(dut.token_digest_sdis_valid_o)),
             "digest": _int(sig_bits(dut.token_digest_sdis_sticky_o)),
+            "km_rlock": _int(sig_bits(dut.km_csr_otp_read_lock_o)),
+            "km_rlock_cold": _int(sig_bits(dut.km_csr_otp_read_lock_cold_o)),
+            "km_chg": _int(sig_bits(dut.km_csr_otp_change_status_o)),
         }
 
     async def _sampler(self, rec: list, stop: dict) -> None:
@@ -355,13 +373,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             f"CHK-SCAN-TM-HOLD FAIL: control: secure_tm_o did not read {strap} within "
             f"{STM_BOUND} cycles after sensing with the strap at {strap}"
         )
-        self.logger.info("BOOT strap=%d secure_tm_o=%d after sensing", strap, strap)
+        self.logger.info("INFO-BOOT strap=%d secure_tm_o=%d after sensing", strap, strap)
 
     async def _demote_and_lock(self) -> None:
         for reg in (1, 2):
             for op, val in (("demote", DEMOTE_BIT), ("lock", LOCK_BIT)):
                 resp = await self.fd.wr_graded_by_readback(DEMOTE_ADDR[reg], val, length=8)
-                self.logger.info("DEMOTE LOG: reg=DEMOTE_%d op=%s resp=%d", reg, op, resp)
+                self.logger.info("INFO-DEMOTE LOG: reg=DEMOTE_%d op=%s resp=%d", reg, op, resp)
 
     async def _release_km(self) -> None:
         dut: Any = cocotb.top
@@ -384,7 +402,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         await ReadOnly()
         base = [n for n, v in zip([x[0] for x in NETS], self._sample()["nets"]) if v != 1]
         await RisingEdge(dut.clk_i)
-        assert not base, f"precondition FAIL: nets not high before the session: {base}"
+        line = f"nets_high={N_NETS - len(base)}/{N_NETS} not_high={base}"
+        # Same text as SepChkLog.ctrl(): CTRL-SCAN-REACH grades a fall of these
+        # nets, so each must be released high before the session.
+        if base:
+            self.logger.error("CTRL-MISSING SCAN-PRE: %s", line)
+            raise AssertionError(f"CTRL-MISSING SCAN-PRE: {line}")
+        self.logger.info("CTRL-SCAN-PRE seen: %s", line)
 
     async def _shadow_write_obs(self) -> None:
         """OBS-SCAN-SHADOW-WR: a SIP_DIS shadow write with test_en_i = 1 at strap 0."""
@@ -475,11 +499,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         not_low = [(s["t"], [names[i] for i, v in enumerate(s["nets"]) if v != 0]) for s in during]
         not_low = [x for x in not_low if x[1]]
         assert len(during) == cfg.w and not not_low, (
-            f"CTRL-SCAN-REACH FAIL: leg={leg} edges_low={len(during)} expected={cfg.w}: "
+            f"CTRL-MISSING SCAN-REACH: leg={leg} edges_low={len(during)} expected={cfg.w}: "
             f"nets not low with scan_rst_ni=0 test_en_i=1: {not_low[:4]}"
         )
         self.logger.info(
-            "CTRL-SCAN-REACH: leg=%s nets_low=%d/%d on %d edges w=%d phase=%d scan_rst_ni "
+            "CTRL-SCAN-REACH seen: leg=%s nets_low=%d/%d on %d edges w=%d phase=%d scan_rst_ni "
             "fell t=%d rose t=%d",
             leg,
             N_NETS,
@@ -491,14 +515,51 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             t_rise,
         )
         assert len(pre) >= PRE - 1 and win, f"{leg}: too few samples (pre={len(pre)})"
-        flipped = sum(1 for x in win if x["strap"] == 1 - strap and x["te"] == 1)
-        assert flipped >= 3, (
-            f"CHK-SCAN-TM-HOLD FAIL: control: leg={leg} strap at {1 - strap} with test_en_i=1 "
-            f"on {flipped} samples"
+        # One count per strap move, each from the sampled strap with test_en_i = 1:
+        # f1 opposite on every scan_rst_ni-low edge and on the last edge before the
+        # release, f2 back at the leg value after the release, f3 opposite again on
+        # every edge from its move to the test_en_i fall.
+        opp = 1 - strap
+        held = [x for x in win if x["t"] < t_rise and x["te"] == 1]
+        after = [x for x in win if x["t"] > t_rise and x["te"] == 1]
+        back = [i for i, x in enumerate(after) if x["strap"] == strap]
+        tail = after[back[-1] + 1 :] if back else []
+        moves = {
+            "f1": sum(1 for x in during if x["strap"] == opp and x["te"] == 1),
+            "f2": len(back),
+            "f3": sum(1 for x in tail if x["strap"] == opp),
+        }
+        flips = ",".join(f"{k}:{v}" for k, v in moves.items())
+        assert (
+            moves["f1"] == cfg.w
+            and held
+            and held[-1]["strap"] == opp
+            and moves["f2"] >= 1
+            and moves["f3"] >= 1
+            and moves["f3"] == len(tail)
+        ), (
+            f"CHK-SCAN-TM-HOLD FAIL: control: leg={leg} strap moves not seen with "
+            f"test_en_i=1: samples {flips} (f1 needs {cfg.w} opposite on the scan_rst_ni-low "
+            f"edges and opposite at the release, f2 >= 1 back at {strap}, f3 >= 1 opposite "
+            f"up to the test_en_i fall)"
         )
+        last_te1 = max((i for i, x in enumerate(win) if x["te"] == 1), default=-1)
+        fell = win[last_te1 + 1 :]
+        line = (
+            f"leg={leg} te1_samples={sum(1 for x in win if x['te'] == 1)} "
+            f"te0_samples_after={len(fell)} last_te1_t="
+            f"{win[last_te1]['t'] if last_te1 >= 0 else '-'} t_end={t_end}"
+        )
+        # Same text as SepChkLog.ctrl(): f3 and the session checks grade the
+        # strap at the test_en_i fall, so a session whose test_en_i never falls
+        # fails the leaf.
+        if last_te1 < 0 or not fell or any(x["te"] != 0 for x in fell):
+            self.logger.error("CTRL-MISSING SCAN-TE-FALL: %s", line)
+            raise AssertionError(f"CTRL-MISSING SCAN-TE-FALL: {line}")
+        self.logger.info("CTRL-SCAN-TE-FALL seen: %s", line)
         for line in self.strap_flips[-3:]:
             self.logger.info("INFO-STRAP-FLIP LOG: %s", line)
-        return {"pre": pre, "win": win, "t_rise": t_rise, "flipped": flipped}
+        return {"pre": pre, "win": win, "t_rise": t_rise, "flips": flips}
 
     # -- logged items ----------------------------------------------------------
 
@@ -533,6 +594,17 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             len(win),
             " ".join(f"{k}={v}" for k, v in moved.items()),
             ",".join(feats[:4]),
+        )
+        km = ("km_rlock", "km_rlock_cold", "km_chg")
+        self.logger.info(
+            "OBS-SCAN-KM-COPY: leg=%s strap=%d before %s; samples=%d moved %s; during %s; last %s",
+            leg,
+            strap,
+            " ".join(f"{k}={_hex(base[k], 3)}" for k in km),
+            len(win),
+            " ".join(f"{k}={sum(1 for x in win if x[k] != base[k])}" for k in km),
+            " ".join(f"{k}={','.join(sorted({_hex(x[k], 3) for x in win}))}" for k in km),
+            " ".join(f"{k}={_hex(win[-1][k], 3)}" for k in km),
         )
 
     def _obs_class1_names(self) -> None:
@@ -573,25 +645,29 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             sum(1 for p in set(found) if "sense_done" in p.lower()),
         )
 
-    async def _n0_scan_check(self) -> None:
-        """CTRL-SCAN-N0-STAGED, CHK-SCAN-N0-CLASS1 and OBS-SCAN-N0-COMPLETE after a sense."""
+    async def _storage(self, tag: str) -> tuple[list, list]:
+        """The words of shadow_efuse_values_n0_scan and shadow_efuse_values."""
         dut: Any = cocotb.top
-        img = self.n0_img
         h: Any = dut
         for part in SHADOW_REGS.split("."):
             h = getattr(h, part, None)
-            assert h is not None, f"CHK-SCAN-N0-CLASS1 FAIL: no handle {SHADOW_REGS} ({part})"
+            assert h is not None, f"{tag} FAIL: no handle {SHADOW_REGS} ({part})"
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         n0_bits = sig_bits(h.shadow_efuse_values_n0_scan)
         nm_bits = sig_bits(h.shadow_efuse_values)
         await RisingEdge(dut.clk_i)
         assert n0_bits and len(n0_bits) % 32 == 0 and nm_bits and len(nm_bits) % 32 == 0, (
-            f"CHK-SCAN-N0-CLASS1 FAIL: storage widths n0_scan={len(n0_bits)} "
-            f"normal={len(nm_bits)} bits"
+            f"{tag} FAIL: storage widths n0_scan={len(n0_bits)} normal={len(nm_bits)} bits"
         )
         n0 = [probe_word(n0_bits, k) for k in range(len(n0_bits) // 32)]
         nm = [probe_word(nm_bits, k) for k in range(len(nm_bits) // 32)]
+        return n0, nm
+
+    async def _n0_scan_check(self) -> None:
+        """CTRL-SCAN-N0-STAGED, CHK-SCAN-N0-CLASS1 and OBS-SCAN-N0-COMPLETE after a sense."""
+        img = self.n0_img
+        n0, nm = await self._storage("CHK-SCAN-N0-CLASS1")
         staged = [img.shadow_word(i) for i in range(NUM_FUSE_WORDS)]
         owner: dict[int, list[str]] = {}
         for i, v in enumerate(staged):
@@ -601,13 +677,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
 
         got = sorted(v if v is not None else -1 for v in n0 + nm)
         assert got == sorted(staged), (
-            f"CTRL-SCAN-N0-STAGED FAIL: the two storage arrays (n0_scan={len(n0)} "
+            f"CTRL-MISSING SCAN-N0-STAGED: the two storage arrays (n0_scan={len(n0)} "
             f"normal={len(nm)} entries) do not hold the {NUM_FUSE_WORDS} staged words: "
             f"extra={sorted(set(got) - set(staged))[:4]} "
             f"missing={sorted(set(staged) - set(got))[:4]}"
         )
         self.logger.info(
-            "CTRL-SCAN-N0-STAGED: n0_scan=%d normal=%d entries hold the %d staged words",
+            "CTRL-SCAN-N0-STAGED seen: n0_scan=%d normal=%d entries hold the %d staged words",
             len(n0),
             len(nm),
             NUM_FUSE_WORDS,
@@ -644,11 +720,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
                 missing.append((f, i - field_word(f), staged[i]))
         for f, k, v in missing:
             self.logger.info(
-                "OBS-SCAN-N0-COMPLETE: field=%s word=%d value=0x%08x not in "
+                "OBS-SCAN-N0-COMPLETE: field=%s word=%d value=%s not in "
                 "shadow_efuse_values_n0_scan; in shadow_efuse_values=%d",
                 f,
                 k,
-                v,
+                f"sha:{word_digest(v)}" if f in SECRET_FIELDS or f in DIGEST_FIELDS else _hex(v),
                 int(v in nm),
             )
         self.logger.info(
@@ -672,6 +748,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         await self._release_km()
         s = await self._session(leg, strap)
         self._obs_hold(leg, strap, s)
+        staged = [(SECRETS[f] >> (32 * (idx - field_word(f)))) & M32 for f, idx in SECRET_WORDS]
         win = s["win"]
         bad = [(x["t"], x["stm"]) for x in win if x["stm"] != strap]
         assert not bad, (
@@ -680,11 +757,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
         self.tm_pass.append(
             f"strap={strap} secure_tm_o={strap} samples={len(win)} w={self.tcfg.w} "
-            f"strap_flips=3 opposite_strap_samples={s['flipped']}"
+            f"strap_move_samples={s['flips']}"
         )
         if strap == 1:
             nz = [
-                (x["t"], SECRET_WORDS[i][0], _hex(v))
+                (x["t"], SECRET_WORDS[i][0], _hex(v) if v is None else f"sha:{word_digest(v)}")
                 for x in win
                 for i, v in enumerate(x["secret"])
                 if v != 0
@@ -694,8 +771,27 @@ class sep_scan_mode_state_hold_test(sep_base_test):
                 f"during the scan session: {nz[:4]}"
             )
             self.secret1 = len(win)
+            n0, nm = await self._storage("CTRL-MISSING SCAN-SECRET-STORED")
+            left = [v for v in n0 + nm if v is not None]
+            absent = []
+            for (f, idx), v in zip(SECRET_WORDS, staged):
+                if v in left:
+                    left.remove(v)
+                else:
+                    absent.append((f, idx - field_word(f), f"sha:{word_digest(v)}"))
+            line = (
+                f"leg={leg} after the session: secret words={len(SECRET_WORDS)} "
+                f"non-zero staged={sum(1 for v in staged if v)} in storage="
+                f"{len(SECRET_WORDS) - len(absent)} absent={absent[:4]}"
+            )
+            # Same text as SepChkLog.ctrl(): CHK-SCAN-SECRET-ZERO at strap 1 needs
+            # the secret words held in the shadow storage through the session, so
+            # a zero output is the mask and not an empty store.
+            if absent or not any(staged):
+                self.logger.error("CTRL-MISSING SCAN-SECRET-STORED: %s", line)
+                raise AssertionError(f"CTRL-MISSING SCAN-SECRET-STORED: {line}")
+            self.logger.info("CTRL-SCAN-SECRET-STORED seen: %s", line)
         else:
-            staged = [(SECRETS[f] >> (32 * (idx - field_word(f)))) & M32 for f, idx in SECRET_WORDS]
             ctl = [x["secret"] == staged for x in s["pre"]]
             self.secret0 = (sum(ctl), len(ctl), staged[0])
             same = sum(1 for x in win if x["secret"] == staged)
@@ -735,8 +831,8 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             and after["dvalid"] == 1
             and bound is not None
             and after["digest"] == bound
-        ), f"CTRL-SECDIS-SET FAIL: {line}"
-        self.logger.info("CTRL-SECDIS-SET: %s", line)
+        ), f"CTRL-MISSING SECDIS-SET: {line}"
+        self.logger.info("CTRL-SECDIS-SET seen: %s", line)
         s = await self._session(leg, 0)
         self._obs_hold(leg, 0, s)
         win = s["win"]
@@ -761,8 +857,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         tm_bad = [(x["t"], x["stm"]) for x in win if x["stm"] != 0]
         assert not tm_bad, f"CHK-SCAN-TM-HOLD FAIL: leg={leg} secure_tm_o left 0: {tm_bad[:4]}"
         self.tm_pass.append(
-            f"strap=0 sec_dis=1 secure_tm_o=0 samples={len(win)} strap_flips=3 "
-            f"opposite_strap_samples={s['flipped']}"
+            f"strap=0 sec_dis=1 secure_tm_o=0 samples={len(win)} strap_move_samples={s['flips']}"
         )
 
         # OBS-SCAN-SECDIS-GO: a mismatch go with test_en_i = 1.
@@ -796,10 +891,10 @@ class sep_scan_mode_state_hold_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.tcfg = cfg = _Cfg(seed)
         self.logger.info(
-            "DRAW w=%d phase=%d strap_order=%s strap_flip=%d,%d,%d",
+            "INFO-DRAW w=%d phase=%d strap_order=%s strap_flip=%d,%d,%d",
             cfg.w,
             cfg.phase,
             ",".join(str(s) for s in cfg.straps),
@@ -811,7 +906,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         self.cfg.wdt_clk_period_ns = P_W * self.cfg.sys_clk_period_ns
         self.clock_phases_ps = {"clk_wdt_i": WDT_PHASE_PCT * self.sys_ps // 100}
         self.logger.info(
-            "CFG H=%d pre=%d p_w=%d wdt_phase_pct=%d sense_bound=%d tap_bound=%d stm_bound=%d",
+            "INFO-CFG H=%d pre=%d p_w=%d wdt_phase_pct=%d sense_bound=%d tap_bound=%d stm_bound=%d",
             H,
             PRE,
             P_W,
@@ -853,7 +948,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             for d in (0, 1)
         }
         self.logger.info(
-            "OBS-SCAN-FEAT-HOLD orientation: profile PROD demote 0/0=0x%016x 1/1=0x%016x "
+            "INFO-SCAN-FEAT-ORIENT: profile PROD demote 0/0=0x%016x 1/1=0x%016x "
             "(staged SIP_DIS=0x%016x SYS_DIS=0x%016x)",
             orient[0],
             orient[1],
@@ -878,11 +973,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
         self.logger.info(
             "CHK-SCAN-SECRET-ZERO PASS: strap=1 words=%d zero on %d session samples; "
-            "control strap=0 staged on %d/%d samples (CHIPLET_UID word0=0x%08x)",
+            "control strap=0 staged on %d/%d samples (CHIPLET_UID word0_sha=%s)",
             len(SECRET_WORDS),
             self.secret1,
             ok0,
             n0,
-            w0,
+            word_digest(w0),
         )
         self.result_pass(TEST, seed, len(self.required_evidence))

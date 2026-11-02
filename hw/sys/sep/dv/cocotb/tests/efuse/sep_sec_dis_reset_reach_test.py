@@ -19,6 +19,11 @@ withheld profile. After sensing completes with the override off, the reset
 releases, the same read returns the reset default again, and FEAT_CTRL reads
 the PROD golden of the pinned image, so the withheld read is not a register
 stuck at zero.
+
+In the same released window, with sensing still open, a 64-bit read of
+``SEP_FUSE_SENSE_STATUS`` is logged (OBS-SENSE-STATUS-PRE: response, data, and
+sense done before and after the read). No text states the response or value of
+that read while sensing runs.
 """
 
 from __future__ import annotations
@@ -28,6 +33,7 @@ import pyuvm
 from cocotb.handle import Immediate
 from cocotb.triggers import ReadWrite, RisingEdge, Timer
 from env.sep_axi_agent import SepAxiOp
+from env.sep_efuse_image import SEP_FUSE_SENSE_STATUS
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -154,8 +160,8 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         await ReadWrite()
 
     @staticmethod
-    def _pack(*, enable_port: int | None) -> int:
-        """All-ones TDR word, optionally with one port's reset_enable cleared.
+    def _pack(*, enable_port: int | None, control_port: int | None = None) -> int:
+        """All-ones TDR word, optionally with one port's reset_enable or reset_control cleared.
 
         Bit 0 is reset_hold. Port ``n`` stores reset_enable at ``2*n+1`` and
         reset_control at ``2*n+2``.
@@ -163,7 +169,23 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         value = (1 << _IC_RESET_BITS) - 1
         if enable_port is not None:
             value &= ~(1 << (2 * enable_port + 1))
+        if control_port is not None:
+            value &= ~(1 << (2 * control_port + 2))
         return value
+
+    async def _shift_only(self, value: int) -> None:
+        """Shift ``value`` in LSB first with no Capture-DR and no Update-DR."""
+        dut = cocotb.top
+        dut.jtag_ic_reset_select_i.value = 1
+        dut.jtag_ic_reset_capture_en_i.value = 0
+        dut.jtag_ic_reset_update_en_i.value = 0
+        dut.jtag_ic_reset_shift_en_i.value = 1
+        for bit in range(_IC_RESET_BITS):
+            dut.jtag_ic_reset_tdi_i.value = (value >> bit) & 1
+            await self._tck()
+        dut.jtag_ic_reset_shift_en_i.value = 0
+        dut.jtag_ic_reset_tdi_i.value = 0
+        dut.jtag_ic_reset_select_i.value = 0
 
     async def _capture_shift_update(self, value: int) -> int:
         """Capture-DR, shift LSB first, Update-DR. Returns the captured word."""
@@ -209,6 +231,40 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         )
         return got
 
+    async def _log_sense_status_pre(self) -> None:
+        """OBS-SENSE-STATUS-PRE: SEP_FUSE_SENSE_STATUS read while sensing runs.
+
+        The TDR keeps ``sep_reset_n`` released and no token is presented, so the
+        read reaches ``sep_cpu_ctrl`` while the sense is still in progress.
+        """
+        dut = cocotb.top
+        done_before = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        seq = SepAxiAccessSeq(
+            "sense_status_pre",
+            op=SepAxiOp.READ,
+            addr=SEP_FUSE_SENSE_STATUS,
+            length=8,
+            size=3,
+            allow_ungraded_read_resp=True,
+            allow_timeout=True,
+        )
+        await self.start_seq(seq)
+        done_after = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        cpu_rst, fabric_rst = self._probes()
+        self.logger.info(
+            "OBS-SENSE-STATUS-PRE: SEP_FUSE_SENSE_STATUS @0x%08x resp=%d timed_out=%d "
+            "rdata=0x%016x sense_done_before=%d sense_done_after=%d "
+            "sep_cpu_reset_n_o=%d dbg_sep_reset_n_o=%d",
+            SEP_FUSE_SENSE_STATUS,
+            seq.resp_code,
+            int(seq.timed_out),
+            seq.rdata & ((1 << 64) - 1),
+            done_before,
+            done_after,
+            cpu_rst,
+            fabric_rst,
+        )
+
     async def run_scenario(self) -> None:
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
@@ -232,27 +288,45 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         )
 
         # reset_control first, with reset_enable still at its reset 1, so the
-        # mux select does not move on this Update-DR.
-        captured = await self._capture_shift_update(self._pack(enable_port=None))
+        # mux select does not move on this Update-DR. The next Capture-DR reads
+        # the written word back.
+        ctrl_word = self._pack(enable_port=None, control_port=_SEP_RESET_N_PORT)
+        captured = await self._capture_shift_update(ctrl_word)
         self._require_sense_open("CHK-TDR-CAPTURE")
         idle = (1 << _IC_RESET_BITS) - 1
         assert captured == idle, (
             f"CHK-TDR-CAPTURE FAIL: shifted-out 0x{captured:x} want 0x{idle:x} "
             "(the TDR reset value)"
         )
-        await self._hold_probes(0, "CHK-TDR-CTRL")
         self.logger.info(
             "CHK-TDR-CAPTURE PASS: shifted-out 0x%x (reset_hold and every "
             "reset_enable/reset_control at 1)",
             captured,
         )
-        self.logger.info(
-            "CHK-TDR-CTRL PASS: Update-DR of reset_control leaves "
-            "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 for %d cycles",
-            _RESET_SYNC_CYCLES,
-        )
+        await self._hold_probes(0, "CHK-TDR-CTRL")
 
-        await self._capture_shift_update(self._pack(enable_port=_SEP_RESET_N_PORT))
+        # The shift register now holds a word other than the written one, so only a
+        # Capture-DR that loads the updated TDR returns the written word.
+        decoy = self._pack(enable_port=None)
+        await self._shift_only(decoy)
+        readback = await self._capture_shift_update(self._pack(enable_port=_SEP_RESET_N_PORT))
+        self._require_sense_open("CHK-TDR-CTRL")
+        assert decoy != ctrl_word and readback == ctrl_word, (
+            f"CHK-TDR-CTRL FAIL: Capture-DR after the reset_control[{_SEP_RESET_N_PORT}]=0 "
+            f"Update-DR and a shift of 0x{decoy:x} with no update shifted out "
+            f"0x{readback:x}, want the written 0x{ctrl_word:x}"
+        )
+        self.logger.info(
+            "CHK-TDR-CTRL PASS: Update-DR of reset_control[%d]=0 with reset_enable[%d]=1 "
+            "leaves sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 for %d cycles; "
+            "after a shift of 0x%x with no update, Capture-DR reads back 0x%x (written 0x%x)",
+            _SEP_RESET_N_PORT,
+            _SEP_RESET_N_PORT,
+            _RESET_SYNC_CYCLES,
+            decoy,
+            readback,
+            ctrl_word,
+        )
         self._require_sense_open("CHK-TDR-RELEASE")
         await self._wait_probes(1, "CHK-TDR-RELEASE")
         self._pins_stay_clear("CHK-TDR-RELEASE")
@@ -272,16 +346,20 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
             got,
         )
 
+        await self._log_sense_status_pre()
+
         self._require_sense_open("CHK-FEAT-CLOSED")
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         feat = feat_ctrl_expected(_WITHHELD_LC, 0, 0, sec_dis=0)
         ctl = SepLccFeatCtrlCheckSeq(feat)
+        mark = self.sb_mark()
         await self.start_seq(ctl)
         self._require_sense_open("CHK-FEAT-CLOSED")
         assert sec_dis == 0 and ctl.feat_ctrl == feat, (
             f"CHK-FEAT-CLOSED FAIL: sec_dis={sec_dis} FEAT_CTRL=0x{ctl.feat_ctrl:016x} "
             f"want 0 / 0x{feat:016x}"
         )
+        self.assert_sb_judged(mark, "CHK-FEAT-CLOSED")
         self.logger.info(
             "CHK-FEAT-CLOSED PASS: sense_done=0 sec_dis=0 FEAT_CTRL=0x%016x",
             ctl.feat_ctrl,
@@ -328,11 +406,13 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
             "so CHK-FEAT-SENSED could not tell them apart"
         )
         ctl = SepLccFeatCtrlCheckSeq(sensed)
+        mark = self.sb_mark()
         await self.start_seq(ctl)
         assert ctl.feat_ctrl == sensed, (
             f"CHK-FEAT-SENSED FAIL: FEAT_CTRL=0x{ctl.feat_ctrl:016x} after sense-done, "
             f"want the PROD golden 0x{sensed:016x}"
         )
+        self.assert_sb_judged(mark, "CHK-FEAT-SENSED")
         self.logger.info(
             "CHK-FEAT-SENSED PASS: after sense-done FEAT_CTRL=0x%016x, the PROD golden; "
             "the same read returned the withheld 0x%016x while sensing was open",

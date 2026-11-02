@@ -17,6 +17,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
+from env.sep_chk_log import word_digest
 from env.sep_lcc_golden import LC_PROD
 from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_rma_token_seq import (
@@ -89,8 +90,8 @@ class sep_efuse_digest_latch_fault_test(sep_base_test):
         captured_valid = int(dut.token_digest_valid_o.value)
         assert captured_valid == 1
         assert captured_digest == cfg.sip_digest, (
-            f"CHK-DIGEST-LATCH FAIL: sticky digest 0x{captured_digest:064x} "
-            f"!= independent SHA-256 of the presented token 0x{cfg.sip_digest:064x}"
+            f"CHK-DIGEST-LATCH FAIL: sticky digest sha {word_digest(captured_digest)} "
+            f"!= independent SHA-256 of the presented token, sha {word_digest(cfg.sip_digest)}"
         )
 
         for _ in range(2):

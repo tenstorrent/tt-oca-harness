@@ -62,6 +62,7 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
+from .smc_addr_map import _REPO, _field_mask
 from .smc_output_fabric_vip_utils import (
     OUTPUT_FABRIC_ADDR,
     OUTPUT_FABRIC_MODEL_BASE,
@@ -114,9 +115,13 @@ _STATUS_CYCLES = 40000
 _BURST_WAIT_CYCLES = 40000
 
 _MASK64 = (1 << 64) - 1
-#: `base` [55:0] of GLOBAL_BASE / LOCAL_BASE and `size` [31:0] of REGION_SIZE.
-_BASE_FIELD = (1 << 56) - 1
-_SIZE_FIELD = (1 << 32) - 1
+_SMC_BASE_CFG_H = (
+    _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "smc_base_config.h"
+)
+#: `base` of GLOBAL_BASE and of LOCAL_BASE, and `size` of REGION_SIZE.
+_BASE_FIELD = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__GLOBAL_BASE__BASE_bm")
+_LOCAL_BASE_FIELD = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__LOCAL_BASE__BASE_bm")
+_SIZE_FIELD = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__REGION_SIZE__SIZE_bm")
 #: GLOBAL_BASE for the start-address legs: REGION_SIZE-aligned, and neither its
 #: window nor the M-mode / Xvisor windows above it hold a power of two.
 _RELOCATED_GLOBAL_BASE = 0x6000_0000
@@ -330,6 +335,11 @@ class smc_zeroer_size_corners_test_seq(output_fabric_pass_all_cfg_seq):
         await self._await_idle(f"{label}_FOLLOW")
         end_writes, _ = output_responder_counts()
         self.empty_bursts = end_writes - start_writes
+        assert self.empty_bursts == 1, (
+            f"{label}: the output responder booked {self.empty_bursts} write transactions "
+            f"across a SIZE 0 trigger and the eight-byte job after it; only the eight-byte "
+            f"job writes"
+        )
         kept = await self._fabric_read(_EMPTY_DEST)
         assert kept == _EMPTY_POISON, (
             f"{label}: 0x{_EMPTY_DEST:08x} reads 0x{kept:016x} after a job of SIZE 0 aimed "
@@ -497,7 +507,7 @@ class smc_zeroer_size_corners_test_seq(output_fabric_pass_all_cfg_seq):
         local = await self.csr_read("LOCAL_BASE", SMC_BASE_CONFIG_LOCAL_BASE_REG_ADDR, length=8)
         glob = await self.csr_read("GLOBAL_BASE", SMC_BASE_CONFIG_GLOBAL_BASE_REG_ADDR, length=8)
         region = await self.csr_read("REGION_SIZE", SMC_BASE_CONFIG_REGION_SIZE_REG_ADDR, length=8)
-        local &= _BASE_FIELD
+        local &= _LOCAL_BASE_FIELD
         glob &= _BASE_FIELD
         self.global_base_live = glob
         region &= _SIZE_FIELD

@@ -34,7 +34,8 @@ K_a, the HMAC software decoy key K_d and the AES software key K_s (K_h differs
 from K_a, K_d from K_h, and K_s differs from K_a in every 32-bit word), the
 message length (1 to 128 bytes) and bytes, the AES key size and mode of the
 software-key leg, the order of the 11 mismatched HMAC cells, the digest size of
-the Key_None leg and the AES ALERT_TEST bit of the alert control. The 14 keyed
+the Key_None leg, the AES ALERT_TEST bit of the alert control and the AES key
+size (128 or 192) of the sideload key-size leg. The 14 keyed
 HMAC cells, the Key_None leg, the AES legs and the two-engine leg run on every
 seed.
 
@@ -52,6 +53,10 @@ Checkers:
                             bit 32 (Crypto alert, source 33) and both AES alert
                             status bits 0. Controls: an AES ALERT_TEST write
                             pulses bit 32; sideload = 1 encrypts with K_a.
+  CHK-KEYSEL-AES-KEYLEN     sideload = 1 with a drawn AES-128 or AES-192 key size
+                            encrypts with the low 4 or 6 words of K_a
+                            (``crypto.adoc``:186-190; upstream aes
+                            ``programmers_guide.md``:31-32).
   CHK-KEYSEL-TWO            after back-to-back transfers, HMAC uses K_h and AES
                             (sideload = 1, AES_256) uses K_a.
   CHK-KEYSEL-AES-NOKEY      after CMD_ENGINE_SHRED of AES (return code 0), a
@@ -70,11 +75,16 @@ Checkers:
                             sideload key is marked as valid."). Controls: the
                             sideload = 1 block with a valid key gives the golden of
                             K_a in t_side clocks; STATUS before the block reads
-                            OUTPUT_VALID = 0 and IDLE = 1.
+                            OUTPUT_VALID = 0, IDLE = 1 and INPUT_READY = 1, and
+                            every STATUS read after the DATA_IN writes reads
+                            INPUT_READY = 0 (``aes.hjson`` STATUS.INPUT_READY).
 The digest of a mismatched length above 128 bits has no stated value:
 ``hmac.adoc`` (OCAH Modifications) calls it "wrong but repeatable" but does not
 state the padding below the delivered key. Its compare with the matching-length
 digest and the decoy golden is logged as ``OBS-KEYSEL-MISMATCH``.
+No text states which key an HMAC run uses when CMD_ENGINE_SHRED of HMAC lands
+between hash_start and hash_process; that run is logged as
+``OBS-KEYSEL-SHRED-MIDOP``.
 
 DIGEST byte order: ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
 gives digest[511:0] = {DIGEST0, DIGEST1, ...} for the SHA-2 hash value, which FIPS 180-4
@@ -83,8 +93,7 @@ of digest bytes 4n..4n+3 ("be"). ``digest_swap`` = 1 "reverses the byte-order in
 HMAC or SHA hash" (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:13),
 so each word is the little-endian read ("le").
 Every HMAC golden compare is at ``digest_swap`` = 0 and expects the big-endian read
-(``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order the first readback matches is
-logged as ``OBS-HMAC-DIGEST-ORDER``.
+(``env/sep_hmac_golden.py`` ``SepDigestOrder``).
 """
 
 from __future__ import annotations
@@ -227,6 +236,7 @@ class Plan:
     mismatch_order: tuple[tuple[int, int], ...]
     none_sha: int
     alert_field: str  # an AES ALERT_TEST field name (aes.rdl ALERT_TEST)
+    side_bits: int = 128  # the AES key size of the graded sideload block (128 or 192)
 
     @staticmethod
     def words(row: int) -> list[int]:
@@ -238,7 +248,8 @@ class Plan:
             f"ks={KEY_ROWS[self.ks][0]} msg_len={len(self.msg)} msg={self.msg.hex()} "
             f"aes_keylen={self.aes_bits} aes_mode={self.aes_mode} "
             f"mismatch_order={','.join(f'{s}/{k}' for s, k in self.mismatch_order)} "
-            f"none_sha={self.none_sha} alert_test_field={self.alert_field}"
+            f"none_sha={self.none_sha} alert_test_field={self.alert_field} "
+            f"side_keylen={self.side_bits}"
         )
 
 
@@ -274,9 +285,10 @@ def draw_plan(seed: int) -> Plan:
     rng.shuffle(order)
     none_sha = rng.choice((256, 384, 512))
     alert_field = rng.choice(ALERT_TEST_FIELDS)
+    side_bits = rng.choice((128, 192))
     return Plan(
         seed, kh, ka, kd, ks, tuple(decoy), bytes(msg), aes_bits, aes_mode, tuple(order),
-        none_sha, alert_field,
+        none_sha, alert_field, side_bits,
     )  # fmt: skip
 
 
@@ -289,6 +301,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         "CHK-KEYSEL-HMAC-MISMATCH",
         "CHK-KEYSEL-HMAC-NONE",
         "CHK-KEYSEL-AES-SW",
+        "CHK-KEYSEL-AES-KEYLEN",
         "CHK-KEYSEL-TWO",
         "CHK-KEYSEL-AES-NOKEY",
     )
@@ -301,11 +314,11 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         await self.bring_up_entropy(strict=True, score_km="observe", score_sinks={"aes": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.digest_order = SepDigestOrder()
@@ -354,10 +367,13 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         for line in mismatch:
             self.chk.ok("KEYSEL-HMAC-MISMATCH", line.pop("_ok"), **line)
         await self._decoy_ctrl()
+        # The mid-operation shred grades nothing, so its run fills no owner bin.
+        close_graded_window(self.logger)
+        await self._shred_midop(h_h, kh)
+        open_graded_window(TEST, self.logger)
 
         await self._aes_legs(ka)
         await self._aes_nokey_leg()
-        self.chk.obs("HMAC-DIGEST-ORDER", **self.digest_order.fields())
         close_graded_window(self.logger)
 
         await self.km.check_outbound_empty("EOT")
@@ -434,7 +450,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             digest, _ = await self._hmac_run(sha, keylen)
             return digest
         except TrialTimeout as exc:
-            self.logger.info("HMAC run sha=%d keylen=%d: %s", sha, keylen, exc)
+            self.logger.info("INFO-HMAC-RUN sha=%d keylen=%d: %s", sha, keylen, exc)
             return None
 
     async def _matched_cells(self, g_kh: dict[int, bytes]) -> dict[int, list[int] | None]:
@@ -487,6 +503,61 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             rc_shred=rc,
             **{"digest==golden_decoy": int(hit)},
         )
+
+    async def _shred_midop(self, handle: int, kh: list[int]) -> None:
+        """CMD_ENGINE_SHRED of HMAC between hash_start and hash_process of one run.
+
+        The delivered key K_h is transferred again, the run starts with key_length 256
+        and the first half of the message, the shred lands, and the rest of the message
+        and hash_process follow. No text states which key the run uses after a shred
+        in mid-operation, so the result is logged as OBS-KEYSEL-SHRED-MIDOP.
+        """
+        msg = self.plan.msg
+        half = (len(msg) // 2) & ~3
+        rc_t, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_HMAC)
+        rc = -1
+        busy = -1
+        err = -1
+        d: list[int] | None = None
+        reason = ""
+        try:
+            await self._poll_hmac(
+                HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, WAIT_LIMIT, "hmac_idle"
+            )
+            for i, w in enumerate(self.plan.decoy):
+                await self.hmac._wr(HMAC_KEY[i], w)
+            await self.hmac._wr(HMAC_INTR_STATE, HMAC_INTR_ERR | HMAC_INTR_DONE)
+            await self.hmac._wr(
+                HMAC.addr("CFG"), build_cfg(hmac_en=True, sha_bits=256, key_bits=256)
+            )
+            await self.hmac._wr(HMAC_CMD, HMAC_CMD_HASH_START)
+            await self._push_msg(msg[:half])
+            rc, _ = await self.km.engine_shred(dest=KM_DEST_HMAC)
+            busy = int(not await self.hmac._rd(HMAC_STATUS) & HMAC_STATUS_IDLE)
+            await self._push_msg(msg[half:])
+            await self.hmac._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+            await self._poll_hmac(
+                HMAC_INTR_STATE, HMAC_INTR_DONE, HMAC_INTR_DONE, WAIT_LIMIT, "hmac_done"
+            )
+            d = await self._read_digest(256)
+            err = int(bool(await self.hmac._rd(HMAC_INTR_STATE) & HMAC_INTR_ERR))
+            await self.hmac._wr(HMAC_INTR_STATE, HMAC_INTR_ERR | HMAC_INTR_DONE)
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+        g_kh = hmac_golden(_sideload_key_bytes(kh), msg, 256)
+        g_decoy = hmac_golden(_sw_key_bytes(list(self.plan.decoy)[:8]), msg, 256)
+        fields = {
+            "rc_transfer": rc_t,
+            "rc_shred": rc,
+            "status_busy_at_rc": busy,
+            "hmac_err": err,
+            "split_bytes": half,
+            "digest==golden_kh": int(d is not None and digest_order(d, g_kh) is not None),
+            "digest==golden_decoy": int(d is not None and digest_order(d, g_decoy) is not None),
+        }
+        if reason:
+            fields["reason"] = reason
+        self.chk.obs("KEYSEL-SHRED-MIDOP", **fields)
 
     async def _mismatched_cells(
         self, kh: list[int], matched: dict[int, list[int] | None]
@@ -611,12 +682,12 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         self.aes_t_ov = self.vec.clk - t_in
         return [await self.aes._rd(AES_DATA_OUT[i]) for i in range(4)]
 
-    async def _aes_sideload_block(self) -> list[int] | None:
-        ctrl = build_aes_ctrl(sideload=True, mode=AES_MODE_ECB, key_len=AES_KEY_LEN_256)
+    async def _aes_sideload_block(self, key_len: int = AES_KEY_LEN_256) -> list[int] | None:
+        ctrl = build_aes_ctrl(sideload=True, mode=AES_MODE_ECB, key_len=key_len)
         try:
             return await self._aes_block(ctrl, None, None)
         except TrialTimeout as exc:
-            self.logger.info("AES sideload block: %s", exc)
+            self.logger.info("INFO-AES-SIDELOAD-BLOCK: %s", exc)
             return None
 
     async def _aes_legs(self, ka: list[int]) -> None:
@@ -684,6 +755,28 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             fields["reason"] = reason
         ok = not reason and ct == g_ks and alert_cycles == 0 and status_err == 0 and ne != 0
         self.chk.ok("KEYSEL-AES-SW", ok, **fields)
+        await self._aes_keylen_leg(ka)
+
+    async def _aes_keylen_leg(self, ka: list[int]) -> None:
+        """A shorter sideload key size uses the low words of the delivered key.
+
+        Delivered word N carries key bits [32N+31:32N] (``crypto.adoc``:186-190), and
+        AES-128 / AES-192 use KEY_SHARE*_0..3 / _0..5 (``vendor/lowRISC/opentitan/
+        upstream/hw/ip/aes/doc/programmers_guide.md``:31-32), so the golden is the
+        ECB block under the low ``bits / 32`` words of K_a.
+        """
+        bits = self.plan.side_bits
+        golden = aes_encrypt_words("ecb", ka[: bits // 32], _le_words(AES_PT))
+        g_256 = aes_encrypt_words("ecb", ka, _le_words(AES_PT))
+        assert golden != g_256, f"the AES-{bits} and AES-256 goldens of K_a are equal"
+        side = await self._aes_sideload_block(AES_KEYLEN_CTRL[bits])
+        self.chk.ok(
+            "KEYSEL-AES-KEYLEN",
+            side == golden,
+            keylen=bits,
+            **{"ct==golden_low_words": int(side == golden), "ct==golden_256": int(side == g_256)},
+            timed_out=int(side is None),
+        )
 
     async def _aes_nokey_leg(self) -> None:
         """Shred the AES key, start a new sideload message and write one block.
@@ -721,7 +814,9 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         close_graded_window(self.logger)
-        base_ok = base >= 0 and bool(base & ST_IDLE) and not base & ST_OV
+        base_ok = (
+            base >= 0 and bool(base & ST_IDLE) and bool(base & ST_IN_READY) and not base & ST_OV
+        )
         self.chk.ctrl("KEYSEL-AES-NOKEY-BASE", base_ok, status=f"0x{max(base, 0):x}")
         ov_bad = sum(1 for st in samples if int(bool(st & ST_OV)) != EXP_NOKEY_OV)
         # Control: the DATA_IN writes landed and were not loaded, so INPUT_READY reads 0

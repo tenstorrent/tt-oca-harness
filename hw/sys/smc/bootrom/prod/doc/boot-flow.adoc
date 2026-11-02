@@ -30,7 +30,7 @@ if (Repair result permits boot?) then (no)
   stop
 endif
 :Initialize gp and early mtvec;
-:Clear coordination scratch 8, 9, 11, 13, 14;
+:Clear coordination scratch 3, 8, 9, 11, 13, 14;
 :Select per-hart stack and enter _start;
 if (Hart 0?) then (yes)
   :Copy initialized data, clear BSS,\nand run constructors;
@@ -51,7 +51,7 @@ endif
 :Read eFuses and straps, then set POST phase 1;
 if (Lifecycle encoding and value valid?) then (no)
   :Record invalid lifecycle;
-  :WFI forever;
+  :Park hart 0;
   stop
 endif
 :Call weak PLL hook if BL0_PLLCLK is set;
@@ -60,15 +60,18 @@ endif
 :Phase 4 - initialize OCCP transports;
 if (All configured transports initialized?) then (no)
   :Record OCCP initialization failure;
-  :WFI forever;
+  :Park hart 0;
   stop
 endif
 :Phase 5 - process OCCP commands;
-if (ExecuteImage accepted?) then (yes)
+if (Park requested in scratch 3?) then (yes)
+  :Park hart 0;
+  stop
+elseif (ExecuteImage accepted?) then (yes)
   :Respond and jump;
   stop
 elseif (AuthenticateImage accepted?) then (yes)
-  :Respond, publish manifest, WFI forever;
+  :Respond, publish manifest, park hart 0;
   stop
 else
   :Continue command loop;
@@ -86,7 +89,7 @@ endif
 . Call the strong `__metal_memory_repair_check` implementation.
 . Establish `gp`.
 . Install `early_trap_vector` in `mtvec`.
-. Clear coordination scratch registers 8, 9, 11, 13, and 14 while preserving scratch register 15.
+. On the boot hart, clear coordination scratch registers 3, 8, 9, 11, 13, and 14 while preserving scratch register 15.
 . Establish a 16-byte-aligned stack for the current hart and call `_start`.
 
 On hart 0, the C runtime copies initialized data from ROM, clears BSS, and
@@ -97,8 +100,9 @@ the production ROM FW is a no-op, and then disables its interrupt sources.
 Hart 0 calls `main`; the other harts enter the `secondary_main` `wfi` loop.
 
 Unused ROM is filled with the 32-bit `EBREAK` instruction.
-Once the early trap vector is installed, a breakpoint whose `mepc` lies in the linker-defined padding range writes `0xBADF00D0` to scratch register 15 and loops.
-Other early traps write `0xFFFFFFFF` to scratch register 0 and loop.
+Once the early trap vector is installed, a breakpoint whose `mepc` lies in the linker-defined padding range writes `0xBADF00D0` to scratch register 15.
+Other traps write `0xFFFFFFFF` to scratch register 0.
+The trap vector stays installed for the whole ROM run. Hart 0 then parks (<<smc-park-interlock>>); a secondary hart loops.
 
 === C boot phases
 
@@ -113,7 +117,7 @@ starts the phase 1 strap and eFuse work.
 
 .Phase 1 -- straps, eFuses, and lifecycle
 Caches the eFuse and strap fields used by the ROM.
-The ROM validates the differential lifecycle encoding and halts on an invalid encoding or unsupported lifecycle value.
+The ROM validates the differential lifecycle encoding and parks hart 0 (<<smc-park-interlock>>) on an invalid encoding or unsupported lifecycle value.
 If `BL0_PLLCLK` is set, it calls `smc_pll_init`; the open implementation is a weak hook that returns success without programming a PLL.
 
 .Phase 2 -- SRAM state
@@ -128,7 +132,7 @@ than querying the software map.
 
 .Phase 4 -- OCCP ready
 Initializes the fixed target-interface set, updates the OCCP interface status, and drives status GPIO 58 high on success or low on failure.
-Any initialization error is fatal to the C boot flow.
+Any initialization error is fatal to the C boot flow, and hart 0 parks.
 
 .Phase 5 -- OCCP processing
 Enters the non-returning command loop described in <<occp-command-processing>>.

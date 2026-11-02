@@ -10703,7 +10703,8 @@ sequence's own raise, outside the scoreboard
 
 *Test Coverage*:
 
-* Submission: index 0 of an input array holds `token[31:0]`, a write of 1 to `TOKEN_EOP` bit 0 starts the SIP lane and bit 8 the chiplet lane, and writing the words alone does not launch a comparison (`hw/sys/sep/doc/token_processing.adoc`, "Token Submission"; `hw/ip/efuse/regs/efuse_mmr.rdl`, `TOKEN_EOP`). The SIP result reads 0x00 with eight SIP words written and no `TOKEN_EOP`, and the chiplet result reads 0x00 while the SIP result holds its match (`CHK-SEP-RMA-IDLE`); the chiplet result read right after the `TOKEN_EOP` 0x1 write is 0x00 and the SIP result read right after the `TOKEN_EOP` 0x100 write is 0x15, each bit starting its own lane only (`CHK-SEP-RMA-START`).
+* Submission: index 0 of an input array holds `token[31:0]`, a write of 1 to `TOKEN_EOP` bit 0 starts the SIP lane and bit 8 the chiplet lane, and writing the words alone does not launch a comparison (`hw/sys/sep/doc/token_processing.adoc`, "Token Submission"; `hw/ip/efuse/regs/efuse_mmr.rdl`, `TOKEN_EOP`). The SIP result reads 0x00 with eight SIP words written and no `TOKEN_EOP`, and the chiplet result reads 0x00 while the SIP result holds its match (`CHK-SEP-RMA-IDLE`); the chiplet result read right after the `TOKEN_EOP` 0x1 write is 0x00 and the SIP result read right after the `TOKEN_EOP` 0x100 write, with the SIP words rewritten one bit
+  off, is 0x15, each bit starting its own lane only (`CHK-SEP-RMA-START`).
 * Results: the encodings are idle 0x00, match 0x15 and mismatch 0x2a, the six-bit `TOKEN_MATCH_STATUS` field (`token_processing.adoc`, "Token result encodings"; `efuse_mmr.rdl`, `TOKEN_MATCH`). The SIP token reads 0x15 (`CHK-SEP-RMA-SIP-MATCH`); the chiplet legs run in an order where each expected result differs from the one the leg before left, so a leftover result cannot satisfy a compare: the chiplet token with bit 0 flipped (pinned, every seed) reads 0x2a after idle (`CHK-SEP-RMA-CHIP-MISMATCH`), the correct chiplet token reads 0x15 after it (`CHK-SEP-RMA-CHIP-MATCH`), and the chiplet token with a seed-drawn bit 1 to 255 flipped reads 0x2a after the match (`CHK-SEP-RMA-CHIP-MISMATCH`); the matches are the positive controls of the mismatch and the idle reads are the controls of the matches.
 * Independence: the SIP result still reads 0x15 after the chiplet lane changed from idle to mismatch to match to mismatch (`CHK-SEP-RMA-INDEP`; `efuse_mmr.rdl`, `RMA_SIP_TOKEN_MATCH` and `RMA_CHIPLET_TOKEN_MATCH`).
 * Settling: in each of the four started legs the result leaves 0x00 within a bounded poll count, each poll a recorded wait site (`CHK-TIMEOUT-PATHS`); the polls used are logged and no cycle count is compared.
@@ -10718,7 +10719,10 @@ sequence's own raise, outside the scoreboard
 . Write the eight SIP token words and read the SIP result before any `TOKEN_EOP` write.
 . Write `TOKEN_EOP` 0x1, read the chiplet result once, then poll the SIP result, within a bound, until it leaves 0x00.
 . Read the chiplet result while the SIP result holds its match.
-. Error injection. Point: the chiplet token lane, eight words written over the SEP debug system bus and started with `TOKEN_EOP` 0x100. Kind: a deliberately mismatching token, the fused chiplet token with bit 0 flipped (pinned, every seed). Expected response: the chiplet result, polled within a bound until it leaves 0x00, reads mismatch (0x2a), and the SIP result read once right after the `TOKEN_EOP` 0x100 write is 0x15.
+. Rewrite the eight SIP token words with the SIP token bit 0 flipped, without a `TOKEN_EOP`
+  write. Error injection. Point: the chiplet token lane, eight words written over the SEP debug
+  system bus and started with `TOKEN_EOP` 0x100. Kind: a deliberately mismatching token, the fused chiplet token with bit 0 flipped (pinned, every seed). Expected response: the chiplet result, polled within a bound until it leaves 0x00, reads mismatch (0x2a), and the SIP result read once right after the `TOKEN_EOP` 0x100 write is 0x15, where a SIP hash
+  started by that write would read 0x00 or 0x2a.
 . Write the eight chiplet words of the correct token, write `TOKEN_EOP` 0x100 and poll the chiplet result, within a bound, until it leaves 0x00; it reads match (0x15) after the mismatch (0x2a) the leg before left.
 . Error injection. Point: the same chiplet token lane. Kind: the fused chiplet token with the drawn bit flipped. Expected response: the chiplet result, polled within a bound until it leaves 0x00, reads mismatch (0x2a) after the match (0x15) the leg before left.
 . Re-read the SIP result.
@@ -10731,7 +10735,8 @@ sequence's own raise, outside the scoreboard
 |===
 |Checker |Description
 |`CHK-SEP-RMA-IDLE` |the SIP result reads 0x00 with eight words written and no TOKEN_EOP, and the chiplet result reads 0x00 while the SIP result holds its match
-|`CHK-SEP-RMA-START` |the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read right after TOKEN_EOP 0x100 is 0x15, each lane starting its own hash only
+|`CHK-SEP-RMA-START` |the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read right after TOKEN_EOP 0x100, with the SIP words rewritten one bit off, is
+0x15, each lane starting its own hash only
 |`CHK-SEP-RMA-SIP-MATCH` |after the eight words of the SIP token and TOKEN_EOP 0x1 the SIP result reads 0x15, having read 0x00 before TOKEN_EOP
 |`CHK-SEP-RMA-CHIP-MISMATCH` |the chiplet token with bit 0 flipped (pinned, every seed), written and started first, reads 0x2a, having read 0x00 before it; the chiplet token with the seed-drawn bit 1 to 255 flipped, written and started after the correct token, reads 0x2a, having read 0x15 in the leg before
 |`CHK-SEP-RMA-CHIP-MATCH` |the correct chiplet token written and started after the pinned mismatch leg reads 0x15, having read 0x2a in the leg before
