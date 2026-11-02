@@ -3905,3 +3905,22 @@ args = [
   # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
   "+esrc_noise_force",
 ]
+
+[[tests]]
+# ENT-020: no noise driver, so the forced ESRC noise holds 0 and the startup health test fails;
+# the ROM halts on ROM_ERR_ENTROPY_INIT_FAILED with a FAIL verdict and never tries the backup
+# slot. Only the Phase B health-test failure is exercised.
+name = "sep_rom_entropy_health_fail_terminal_test"
+module = "rom_fw.sep_rom_entropy_health_fail_terminal_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "negative", "entropy", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # The noise driver stays off; the force holds every decorrelator input at 0.
+  "+esrc_noise_force",
+]
