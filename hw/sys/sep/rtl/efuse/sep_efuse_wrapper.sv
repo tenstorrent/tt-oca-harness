@@ -8,7 +8,7 @@
 // muxes it with the Key Manager AXI-Lite path into the eFuse controller register port. The
 // controller's shim CSR port leaves through an axi_cut.
 // In a restricted state (PROD / RMA_SiP, or an LC-state differential-decode integrity
-// error), JTAG accesses outside the MMR / token register space receive DECERR with read
+// error), JTAG accesses outside the MMR / token register space receive SLVERR with read
 // data 0xBADCAB1E; the MMR space stays accessible for RMA_SiP token programming.
 // secure_tm_req_i is latched into secure_tm_o on the second clock edge after rst_ni
 // release when security is disabled, and otherwise on the rising edge of fuse sense done.
@@ -53,7 +53,7 @@ module sep_efuse_wrapper #(
                                                            // of fuse sense done.
 
   input  sep_efuse_pkg::efuse_axil_req_t     axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager interface, filtered by the lifecycle JTAG policy.
-  output sep_efuse_pkg::efuse_axil_resp_t    axil_sep_otp_jtag_resp_o,  // Response to the OTP debug manager; DECERR for accesses the JTAG policy blocks.
+  output sep_efuse_pkg::efuse_axil_resp_t    axil_sep_otp_jtag_resp_o,  // Response to the OTP debug manager; SLVERR for accesses the JTAG policy blocks.
 
   input  sep_efuse_pkg::efuse_axil_req_t     km_efuse_axil_req_i,  // Key Manager AXI-Lite manager
                                                                    // interface, muxed with the
@@ -281,6 +281,7 @@ module sep_efuse_wrapper #(
     .AXI_DATA_WIDTH(sep_efuse_pkg::DataWidth),
     .axil_req_t    (sep_efuse_pkg::efuse_axil_req_t),
     .axil_resp_t   (sep_efuse_pkg::efuse_axil_resp_t),
+    .RESP          (axi_pkg::RESP_SLVERR),
     .RESP_WIDTH    (sep_efuse_pkg::DataWidth),
     .RESP_DATA     (32'hbadcab1e),
     .MAX_TRANS     (2)

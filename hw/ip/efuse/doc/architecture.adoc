@@ -343,7 +343,7 @@ JTAG access policies differ between SMC and SEP variants. The table below descri
 the SMC variant policy, which restricts JTAG access in production and RMA states.
 SEP applies a different policy: in restricted states (PROD or RMA_SIP), JTAG
 accesses to the MMR (token register) space remain allowed for token programming;
-accesses outside the MMR space are blocked with an error response.
+accesses outside the MMR space are blocked with an SLVERR response.
 
 *SMC JTAG Policy:*
 
@@ -355,14 +355,14 @@ to eFuse registers is restricted (<<efuse-lifecycle-based-jtag-permissions-table
 .eFuse JTAG permissions (SMC)
 |=====================================================================================
 |Access Type |PROD/RMA_SOP State |Other States
-|JTAG Write |*Blocked* (error response) |Allowed
+|JTAG Write |*Blocked* (SLVERR response) |Allowed
 |JTAG Read |*Blocked* except JTAG_PUBLIC_IDENTITY |Allowed
 |JTAG Read JTAG_PUBLIC_IDENTITY |Allowed |Allowed
 |=====================================================================================
 
 The access control mechanism uses an AXI-Lite demux that routes blocked
 requests to an error slave. When a request is blocked, the error slave
-returns an error response with data value `0xbadcab1e`.
+returns an SLVERR response with data value `0xbadcab1e`.
 
 *SMC exception for JTAG_PUBLIC_IDENTITY:*
 
