@@ -40,20 +40,6 @@ schema_version = 1
 # it.
 
 [[tests]]
-# CPU_CTRL.WDT_TIMEOUT written to 0 with no first-stage timeout raises
-# smc_ras_o.wdt_second_timeout on the next clock and holds the warm domain in
-# reset (smc_cpu_ctrl_wrap.sv flags the second timeout whenever the reloaded
-# counter reads 0); cpu_ctrl.rdl gives the field no range and defines no 0.
-name = "smc_wdt_timeout_zero_idle_test"
-module = "smc_wdt_timeout_zero_idle_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "WDT_TIMEOUT=0 raises the second-stage timeout with no first-stage timeout"
-expect_fail_match = "CHK-WDT-TIMEOUT-ZERO-IDLE FAIL"
-
-[[tests]]
 # A SCRATCH_COLD_WARM read while the warm reset is asserted is accepted by the
 # primary-domain axi_lite_demux and never answered (smc_misc_wrap.sv has no
 # isolation on the warm-domain leg), so the peripheral crossbar's read channel
@@ -211,6 +197,22 @@ tools = ["vcs"]
 tags = ["uvm", "clock"]
 run_modes = ["smoke"]
 
+[[tests]]
+# A watchdog warm reset asserted while an SPM write burst from SEP_IN is inside
+# the CPU cluster boundary (AW handshake done, B not returned, the L2-frontend
+# isolate's pending write count above 0) leaves the boundary unanswering until
+# a primary reset: the cut write gets no B, and later SPM and CPU_CTRL writes
+# with the same AXI ID bits [2:0] never complete. cpu.adoc (CPU AXI Isolation)
+# says each cluster port is drained before the reset takes effect.
+name = "smc_spm_write_cut_by_warm_reset_test"
+module = "smc_spm_write_cut_by_warm_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "an SPM write cut by a watchdog warm reset receives no B after the release and later writes with its AXI ID bits [2:0] never complete"
+expect_fail_match = "CHK-SPM-WRITE-CUT-BY-WARM-RESET FAIL"
+
 [[groups]]
 # Register-clock gate mapping, traffic-bearing wakes and closure.
 name = "cg_uvm_extended"
@@ -270,10 +272,10 @@ tests = [
 name = "rtl_issue"
 expected_count = 4
 tests = [
-    "smc_wdt_timeout_zero_idle_test",
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
+    "smc_spm_write_cut_by_warm_reset_test",
 ]
 
 [[groups]]

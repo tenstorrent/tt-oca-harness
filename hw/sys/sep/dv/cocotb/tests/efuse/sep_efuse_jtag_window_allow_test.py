@@ -31,6 +31,9 @@ class sep_efuse_jtag_window_allow_test(sep_base_test):
     """
 
     build_env = False
+    # The TEST_DEV image must be sensed before the windows are read; the shared
+    # backdoor compare of the sensed shadow is the proof of that step.
+    required_evidence = ("CHK-SENSE-BACKDOOR", "CHK-JTAG-WINDOW-ALLOW")
 
     async def _allow(self, label: str, addr: int) -> None:
         code, rdata = await self.jtag_axil_op(write=False, addr=addr)

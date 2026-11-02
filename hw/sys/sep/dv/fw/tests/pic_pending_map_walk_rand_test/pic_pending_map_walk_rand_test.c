@@ -17,6 +17,8 @@
 //   REQ kstall on=<0|1>       the host drives kmac_fifo_drain_stall_i
 //   REQ ext step=<k> n=<n>    the host drives n bits of sep_ext_interrupts_i
 //   REQ win <op>=<0|1>        the host opens or closes a per-clock vector window
+//   REQ dinj t=<on|off>       the host forces or releases the DMA alert pair
+//   REQ race i=<k> src=<s>    the host times a boundary pulse to the next meigwclr
 //   MEIP t=<tag> w0=.. w7=..  the eight meip words of one read
 //   FILL ip=.. full=.. ...    the FIFO-empty set-up of one IP
 //   FE ip=.. ...              the FIFO-empty enable-clear cell of one IP
@@ -26,10 +28,19 @@
 //   IDLE-STATUS when=.. ...   the engine statuses of the idle window
 //   GW src=.. cell=.. ...     one gateway cell
 //   GWCLR v=.. held=.. after=..   one value of the clear-value corner
+//   GWL2E src=.. before=.. ...    the level-to-edge switch with the input asserted
+//   GWRACE i=.. src=.. ...    one meigwclr write with a timed boundary pulse
+//   DINJ under=.. held=.. after_clr=..  meip bit 12 around the malformed DMA alert pair
 //   HOLD src=.. ...           the level hold
 //   CLRIDLE src=.. ...        the idle clear
 //   CTRL-AES-STATUS status=.. cfg_ok=.. valid=.. out0..3=..  the slotless encryption
 //   CTRL-MAP-STATE p=.. src=.. state=..  INTR_STATE of an event source after a map pass
+//   CTRL-PICIO mcgc=.. picio=..          mcgc read before the masked report
+//   MASKED src=33 meie12=.. pri12=.. meie33=.. pri33=.. meip1_bit1=.. src12_bit=..
+//                             the masked report read, with the meie and meipl
+//                             readbacks of sources 12 and 33
+//   UNMASKED meie12=.. pri12=.. meie33=.. pri33=..  the readbacks after re-arming
+//   INFO-FIFO-EMPTY t=.. intr_state_kmac=..  KMAC INTR_STATE after a FIFO-empty step
 // A REQ is followed by a spin, so the host acts before the next bus access.
 
 #include <stdint.h>
@@ -71,6 +82,7 @@ enum {
     P_HOLD,               // hold window (clocks)
     P_SETTLE,             // settle window (clocks)
     P_FILL,               // bounded number of message-FIFO writes
+    P_L2E,                // gateway index of the level-to-edge source
     P_COUNT
 };
 
@@ -114,6 +126,7 @@ volatile uint32_t g_p[P_COUNT] = {
     2000u,
     64u,
     64u,
+    8u,
 };
 
 // ---- Map sources (index = order of this table) ----
@@ -220,6 +233,8 @@ static const uint8_t k_gw_map[N_GW] = {0, 1, 2, 3, 4, 5, 6, 7, 10, 13, 16, 20}; 
 #define FIRST_BAND 44u
 #define LAST_SRC 255u
 #define SRC17 17u
+#define CSR_MCGC 0x7F8
+#define MCGC_PICIO (1u << 9)
 
 static int g_err;
 static uint32_t g_ip_en[6]; // INTR_ENABLE values the map pass wrote
@@ -287,6 +302,14 @@ static void dump_meip(const char *tag) {
         rec_hex(k[i], w[i]);
     }
     rec_end();
+}
+
+// The meie and meipl fields of the masked-report sources, read back.
+static void pic_rec_arm(void) {
+    rec_num("meie12", pic_read_source_enable(12u) & EL2_PIC__MEIE__INTEN_bm);
+    rec_num("pri12", pic_read_priority(12u) & EL2_PIC__MEIPL__INTPRIORITY_bm);
+    rec_num("meie33", pic_read_source_enable(33u) & EL2_PIC__MEIE__INTEN_bm);
+    rec_num("pri33", pic_read_priority(33u) & EL2_PIC__MEIPL__INTPRIORITY_bm);
 }
 
 static uint32_t meip_bit(uint32_t src) {
@@ -509,13 +532,10 @@ static void write_enables(int pass) {
     }
 }
 
-static void obs_fifo_empty(const char *tag) {
-    rec_obs("FIFO-EMPTY");
+static void info_fifo_empty(const char *tag) {
+    rec_info("FIFO-EMPTY");
     rec_str("t", tag);
-    rec_str("intr_state_hmac", "na");
-    rec_hex("intr_enable_hmac", rd(HM(ENABLE)));
     rec_hex("intr_state_kmac", rd(KM(STATE)));
-    rec_hex("intr_enable_kmac", rd(KM(ENABLE)));
     rec_end();
 }
 
@@ -536,7 +556,7 @@ static void map_assert(int pass) {
     req_tag_n("vec", "p", (uint32_t)pass);
     dump_meip(pass == 1 ? "p1" : "p2");
     if (pass == 1) {
-        obs_fifo_empty("p1");
+        info_fifo_empty("p1");
     }
     for (uint32_t i = 0; i < N_MAP; i++) {
         const struct src *s = &k_map[i];
@@ -571,7 +591,7 @@ static void fe_cell(const char *ip, uint32_t src, uint32_t en, uint32_t bit) {
     uint32_t w0b = pic_read_meip(0);
     uint32_t w1b = pic_read_meip(1);
     uint32_t before = meip_bit(src);
-    obs_fifo_empty(ip);
+    info_fifo_empty(ip);
     wr(en, rd(en) & ~bit);
     wait_clk(g_p[P_SETTLE]);
     req_tag("vec", ip[0] == 'h' ? "feh1" : "fek1");
@@ -686,6 +706,20 @@ static void gw_cell(uint32_t g) {
     }
     pic_set_priority(id, 1u);
     pic_enable_source(id);
+    uint32_t ectl_latched = 0u, ectl_clr = 1u;
+    if (!(cell >> 1)) {
+        // Control for the level clear: the same meigwclr write on this source
+        // drops an edge latched in active-high edge mode.
+        pic_set_gateway(id, 1u, 0u);
+        pic_write_meigwclr(id, clr);
+        gw_assert(s);
+        wait_clk(g_p[P_SETTLE]);
+        gw_deassert(s);
+        wait_clk(g_p[P_SETTLE]);
+        ectl_latched = meip_bit(id);
+        pic_write_meigwclr(id, clr);
+        ectl_clr = meip_bit(id);
+    }
     pic_set_gateway(id, cell >> 1, cell & 1u);
     if (cell >> 1) {
         // The edge latch holds any earlier assertion of the source (the map
@@ -697,6 +731,13 @@ static void gw_cell(uint32_t g) {
     gw_assert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t a1 = meip_bit(id);
+    uint32_t lclr = 0u;
+    if (!(cell >> 1)) {
+        // A level cell takes a meigwclr write with its input asserted; the
+        // pending bit after it is logged.
+        pic_write_meigwclr(id, clr);
+        lclr = meip_bit(id);
+    }
     gw_deassert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t d1 = meip_bit(id);
@@ -723,6 +764,9 @@ static void gw_cell(uint32_t g) {
     rec_num("after_clr", c1);
     rec_num("reasserted", a2);
     rec_num("after_clr2", c2);
+    rec_num("lclr", lclr);
+    rec_num("ectl_latched", ectl_latched);
+    rec_num("ectl_clr", ectl_clr);
     rec_hex("clr_val", clr);
     rec_end();
     pic_set_gateway(id, 0u, 0u);
@@ -739,6 +783,44 @@ static uint32_t gw_src_of_cell(uint32_t want_cell, int event) {
         }
     }
     return 0u;
+}
+
+// The event source of gateway index g is held at its active level in level
+// mode, then its gateway switches to edge mode with the input still asserted.
+static void gw_level_to_edge(uint32_t g) {
+    const struct src *s = &k_map[k_gw_map[g]];
+    uint32_t id = s->id;
+    wr(s->en, rd(s->en) | s->bit);
+    pic_set_priority(id, 1u);
+    pic_enable_source(id);
+    pic_set_gateway(id, 0u, 0u);
+    pic_write_meigwclr(id, 0u);
+    gw_assert(s);
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t before = meip_bit(id);
+    uint32_t cfg_level = pic_read_gateway(id);
+    pic_set_gateway(id, 1u, 0u);
+    uint32_t after = meip_bit(id);
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t settled = meip_bit(id);
+    uint32_t cfg_edge = pic_read_gateway(id);
+    gw_deassert(s);
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t released = meip_bit(id);
+    pic_write_meigwclr(id, 0u);
+    uint32_t after_clr = meip_bit(id);
+    sep_mbx_puts("GWL2E");
+    rec_num("src", id);
+    rec_num("before", before);
+    rec_num("type_before", (cfg_level & EL2_PIC__MEIGWCTRL__IRQ_TYPE_bm) != 0u);
+    rec_num("after", after);
+    rec_num("settled", settled);
+    rec_num("type_after", (cfg_edge & EL2_PIC__MEIGWCTRL__IRQ_TYPE_bm) != 0u);
+    rec_num("released", released);
+    rec_num("after_clr", after_clr);
+    rec_end();
+    pic_set_gateway(id, 0u, 0u);
+    wr(s->en, rd(s->en) & ~s->bit);
 }
 
 static void gwclr_corner(uint32_t g) {
@@ -854,6 +936,70 @@ static uint32_t wait_band(uint32_t want_min, uint32_t want_zero) {
     return n;
 }
 
+// The first pending source above the assigned band, or 0.
+static uint32_t band_first(void) {
+    for (uint32_t w = 1; w < N_MEIP; w++) {
+        uint32_t v = pic_read_meip(w);
+        if (w == 1u) {
+            v &= ~((1u << (FIRST_BAND - 32u)) - 1u);
+        }
+        for (uint32_t b = 0; b < 32u; b++) {
+            if ((v >> b) & 1u) {
+                return 32u * w + b;
+            }
+        }
+    }
+    return 0u;
+}
+
+static void req_ext(uint32_t step, uint32_t n) {
+    rec_req("ext");
+    rec_num("step", step);
+    rec_num("n", n);
+    rec_end();
+    rec_spin(REQ_SPIN);
+}
+
+// meigwclr race: the boundary source of the drawn bit b1 in edge mode. Each
+// attempt runs the same code from its "REQ race" line to its meigwclr write,
+// so the host times a one-clock pulse of the input against the write from the
+// attempt before. Attempt 0 has no pulse.
+#define N_RACE 4u
+static void gwclr_race(void) {
+    req_ext(4u, 1u);
+    (void)wait_band(1u, 0u);
+    uint32_t id = band_first();
+    req_ext(5u, 0u);
+    (void)wait_band(0u, 1u);
+    if (id == 0u) {
+        fail("meigwclr race: no boundary source pending");
+        return;
+    }
+    pic_set_gateway(id, 1u, 0u);
+    pic_write_meigwclr(id, 0u);
+    for (uint32_t i = 0; i < N_RACE; i++) {
+        wait_clk(g_p[P_SETTLE]);
+        uint32_t before = meip_bit(id);
+        rec_req("race");
+        rec_num("i", i);
+        rec_num("src", id);
+        rec_end();
+        rec_spin(REQ_SPIN);
+        pic_write_meigwclr(id, 0u);
+        wait_clk(g_p[P_SETTLE]);
+        uint32_t after = meip_bit(id);
+        sep_mbx_puts("GWRACE");
+        rec_num("i", i);
+        rec_num("src", id);
+        rec_num("before", before);
+        rec_num("after", after);
+        rec_end();
+        pic_write_meigwclr(id, 0u);
+    }
+    pic_set_gateway(id, 0u, 0u);
+    pic_write_meigwclr(id, 0u);
+}
+
 // Idle window: HMAC and KMAC hold an open message, OTBN runs a loop longer than
 // the hold window and AES streams blocks. It runs before the FIFO-empty set-up,
 // because the HMAC drain stall leaves the HMAC message unable to complete.
@@ -934,6 +1080,7 @@ static void print_params(void) {
     rec_hex("gword0", g_p[P_GWORD]);
     rec_hex("idle0", g_p[P_IDLE0]);
     rec_hex("idle1", g_p[P_IDLE1]);
+    rec_num("l2e", g_p[P_L2E]);
     rec_end();
 }
 
@@ -1005,7 +1152,9 @@ int main(void) {
 
     // Single-source reads.
     rec_mark(1, "single");
+    req_tag("m", "s0");
     single_walk();
+    req_tag("m", "s1");
     wr(CS(ENABLE), CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bm);
 
     // Alert kinds, the no-write window and the pair trial.
@@ -1043,7 +1192,24 @@ int main(void) {
     req_tag("m", "d2");
     pic_write_meigwclr(12u, 0u);
 
-    // Masked report (logged).
+    // Malformed DMA alert pair: the host forces both wires of the DMA alert
+    // receiver to one value between the "on" and "off" requests.
+    req_tag("dinj", "on");
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t dinj_under = meip_bit(12u);
+    req_tag("dinj", "off");
+    wait_clk(g_p[P_SETTLE]);
+    req_tag("m", "di2");
+    uint32_t dinj_held = meip_bit(12u);
+    pic_write_meigwclr(12u, 0u);
+    uint32_t dinj_clr = meip_bit(12u);
+    sep_mbx_puts("DINJ");
+    rec_num("under", dinj_under);
+    rec_num("held", dinj_held);
+    rec_num("after_clr", dinj_clr);
+    rec_end();
+
+    // Masked report: the host grades the read (CHK-MASKED-VISIBLE).
     rec_mark(0, "masked");
     uint32_t km = (g_p[P_AKIND] >> 12) & 0xFu;
     wr(SEP_TOP_SECURE_DMA_ALERT_TEST_BASE_ADDR, SECURE_DMA__ALERT_TEST__FATAL_FAULT_bm);
@@ -1053,11 +1219,16 @@ int main(void) {
     pic_set_priority(12u, 0u);
     pic_disable_source(33u);
     pic_set_priority(33u, 0u);
+    uint32_t mcgc;
+    __asm__ volatile("csrr %0, %1" : "=r"(mcgc) : "i"(CSR_MCGC));
+    rec_ctl("PICIO");
+    rec_hex("mcgc", mcgc);
+    rec_num("picio", (mcgc & MCGC_PICIO) ? 1u : 0u);
+    rec_end();
     uint32_t m0 = pic_read_meip(0), m1 = pic_read_meip(1);
-    rec_obs("MASKED-VISIBLE");
+    sep_mbx_puts("MASKED");
     rec_num("src", 33u);
-    rec_num("meie", 0u);
-    rec_num("pri", 0u);
+    pic_rec_arm();
     rec_num("meip1_bit1", (m1 >> 1) & 1u);
     rec_num("src12_bit", (m0 >> 12) & 1u);
     rec_end();
@@ -1065,6 +1236,10 @@ int main(void) {
     pic_set_priority(12u, 1u);
     pic_enable_source(33u);
     pic_set_priority(33u, 1u);
+    sep_mbx_puts("UNMASKED");
+    pic_rec_arm();
+    rec_end();
+    dump_meip("masked_set");
     pic_write_meigwclr(12u, 0u);
     pic_write_meigwclr(33u, 0u);
     dump_meip("masked_clr");
@@ -1125,7 +1300,7 @@ int main(void) {
     uint32_t lcc = rd(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
     wait_clk(g_p[P_SETTLE]);
     req_kv("win", "lcc", 0u);
-    rec_info("SLOTLESS-READS");
+    rec_ctl("SLOTLESS-READS");
     rec_hex("otp", otp);
     rec_hex("lcc", lcc);
     rec_end();
@@ -1138,6 +1313,8 @@ int main(void) {
     for (uint32_t i = 0; i < N_GW; i++) {
         gw_cell(field(P_GWORD, i, 4u));
     }
+    rec_mark(1, "gw_l2e");
+    gw_level_to_edge(g_p[P_L2E]);
     rec_mark(1, "gwclr");
     gwclr_corner(gw_src_of_cell(CELL_EH, 1));
     rec_mark(1, "hold");
@@ -1152,15 +1329,13 @@ int main(void) {
     static const uint32_t want[4] = {1u, 0u, 2u, 0u};
     static const char *tags[4] = {"ext1", "ext1r", "ext2", "ext2r"};
     for (uint32_t step = 0; step < 4u; step++) {
-        rec_req("ext");
-        rec_num("step", step);
-        rec_num("n", want[step]);
-        rec_end();
-        rec_spin(REQ_SPIN);
+        req_ext(step, want[step]);
         (void)wait_band(want[step], want[step] == 0u);
         wait_clk(g_p[P_SETTLE]);
         dump_meip(tags[step]);
     }
+    rec_mark(1, "gwclr_race");
+    gwclr_race();
 
     // Final release and clean-up of every touched entry.
     rec_mark(1, "final");

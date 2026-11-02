@@ -62,6 +62,30 @@ and cleared windows; the two-share delivery with share0 XOR share1 = K gives
 the AES-256 golden of K (``CTRL-SS-BOTH-SHARES``, the engine consumes both
 shares).
 
+Open-value leg (logged, not graded; each control fails the leaf), after the
+single-share instances. The host writes the AES share0 with a key K and share1
+with 0, write-locks KM SRAM region 1, sets ``SRAM_EXEC_MODE.enable`` and posts
+a POKE JUMP into a snippet staged in that region. The snippet stores one drawn
+byte (``sb``) and one drawn halfword (``sh``) at byte offset 0 of two drawn
+share0 words, sets KEY_VALID, saves KMCSR IRQ_STATUS, KEY_CTRL and a marker
+to KM SRAM words 95 to 97 and spins: the first fetch from locked SRAM engages
+the ROM lockout, so the snippet cannot return to the POKE image. The host then
+encrypts one block from the sideload key. The draws come from their own
+``SepSeededRng`` stream (the run seed XOR a leg salt), so the plan draws keep
+their seed mapping.
+  CTRL-BANK-SUBWORD  per size (byte, half): the KM AXI-adapter write capture
+                   (``km_axi_wr_addr_o``, ``km_axi_wr_strb_o``) shows a write
+                   to the share word with strobe 0x1 (byte) or 0x3 (half), and
+                   the snippet marker reads back.
+  OBS-BANK-SUBWORD the ciphertext against the AES-256 goldens of each
+                   per-word outcome: ``merged`` (only the strobed lanes take the
+                   value), ``whole`` (the word takes the bus data, the value
+                   repeated across the lanes), ``ignored`` (K stays); with
+                   IRQ_STATUS, KEY_CTRL and the sub-word count. Neither
+                   ``architecture.adoc`` ("Key Delivery") nor
+                   ``aes_wrapper_key.rdl`` states a strobe rule for the share
+                   words.
+
 Shards (``env/sep_shard.py``): without ``+sep_shard`` the leaf runs every leg.
 ``+sep_shard=1`` runs steps 2 to 7. ``+sep_shard=2`` runs steps 2 to 7 and
 the single-share leg; its step 6 grades CHK-BANK-SK-CONSUME and logs the KEY
@@ -78,12 +102,12 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_poke as kp
 from env.sep_abr_kem_nist import NIST_KEM_ENC_C, NIST_KEM_ENC_EK, NIST_KEM_ENC_K
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_axi_agent import SepAxiOp
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_fcov_gate import (
     KM_SK_PASS_CONSUME,
     KM_SK_PASS_IRQ,
@@ -92,8 +116,11 @@ from env.sep_fcov_gate import (
     open_graded_window,
     set_km_sk_pass,
     set_km_ss_pass,
+    set_open_value_leg_pass,
 )
 from env.sep_reg_meta import SEP_CPU_CTRL
+from env.sep_rv32_asm import Asm, lw, store, sw
+from env.sep_seeded_rng import SepSeededRng
 from env.sep_shard import sep_shard
 from km import sep_km_key_bank_register_rand_plan as pl
 from sep_base_test import sep_base_test
@@ -135,6 +162,19 @@ _CT_PREFIX = 4  # ciphertext words logged against the vector
 _WIPE_HOLD_CLKS = 16  # clocks KM_WIPE_CTRL.wipe_state is held at 1
 _LABEL_CLKS = 2  # clocks after a pass-label write, so the sampler sees its rise
 
+# Sub-word leg: snippet region, result words, marker, bounds and leg salt.
+_SUBWORD_REGION = 1
+_SUBWORD_REGION_BYTES = 0x400  # km_csr.adoc, SRAM_LOCK: one bit per 1 KB region
+_W_SUBWORD = 95  # 95 IRQ_STATUS, 96 KEY_CTRL, 97 marker
+_SUBWORD_MARK = 0x5357_0001  # host-chosen; never a DUT value
+_SUBWORD_BOUND = 20_000  # clocks for the snippet marker
+_SUBWORD_SALT = 0x5342_5744
+_SUBWORD_SIZES = (("byte", 1, 0x1, 0xFF, 0x0101_0101), ("half", 2, 0x3, 0xFFFF, 0x0001_0001))
+_KMCSR_IRQ_STATUS = pl.KM.KMCSR_IRQ_STATUS_REG_ADDR
+_KMCSR_SRAM_LOCK = pl.KM.KMCSR_SRAM_LOCK_REG_ADDR
+_KMCSR_SRAM_EXEC_MODE = pl.KM.KMCSR_SRAM_EXEC_MODE_REG_ADDR
+_SRAM_EXEC_ENABLE = 0x1  # km_csr.adoc, SRAM_EXEC_MODE.enable
+
 _KM_WIPE_CTRL = SEP_CPU_CTRL.addr("KM_WIPE_CTRL")
 _KM_WIPE_BIT = SEP_CPU_CTRL.field_mask("KM_WIPE_CTRL", "wipe_state")
 
@@ -159,6 +199,10 @@ _SHARD_EVIDENCE = {
 }
 
 _ALL_SW = sum(1 << b for b in SW_RESET_N_BIT.values())
+
+
+def _nonzero_at(words) -> list[int]:
+    return [i for i, w in enumerate(words) if w]
 
 
 def _h(v: int) -> str:
@@ -438,7 +482,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
                 else:
                     nonzero += 1
                     if len(bad) < 4:
-                        bad.append(f"{pl.BANKS[bit].name}.s{s}[{i}]={_h(d)}")
+                        bad.append(f"{pl.BANKS[bit].name}.s{s}[{i}]")
                 if not _flags_ok(f):
                     resp_err += 1
                 if f is not None:
@@ -557,7 +601,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         self.chk.obs(
             "SK-WORDS",
             phase="delivery1",
-            words=[_h(w) for w in words],
+            words_sha=word_digest(words),
             match_vector=list(words) == list(NIST_KEM_ENC_K),
         )
         valid = r[9].value & pl.SK_VALID
@@ -597,7 +641,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         ]
         r = await self._run(ops)
         pre = tuple(r[1].data)
-        self.chk.obs("SK-WORDS", phase="before_consume", words=[_h(w) for w in pre])
+        self.chk.obs("SK-WORDS", phase="before_consume", words_sha=word_digest(pre))
         self._control(
             "SK-PRE-CONSUME",
             bool(r[0].value & pl.SK_VALID) and any(pre) and _ok(r[0]) and _ok(r[1]),
@@ -625,8 +669,8 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             set_km_sk_pass(label, self.logger)
             await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
         if not grade_words:
-            self.chk.obs("SK-WORDS", phase="after_consume", words=[_h(w) for w in r[4].data])
-            self.chk.obs("SK-WORDS", phase="after_set", words=[_h(w) for w in r[7].data])
+            self.chk.obs("SK-WORDS", phase="after_consume", nonzero_at=_nonzero_at(r[4].data))
+            self.chk.obs("SK-WORDS", phase="after_set", nonzero_at=_nonzero_at(r[7].data))
             return
         # Zeroize: the words read 0 after the consume and stay 0 after the
         # refused set.
@@ -635,8 +679,8 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             "BANK-SK-SW",
             words_zero,
             words_zero=words_zero,
-            words_after_consume=[_h(w) for w in r[4].data],
-            words_after_set=[_h(w) for w in r[7].data],
+            nonzero_after_consume=_nonzero_at(r[4].data),
+            nonzero_after_set=_nonzero_at(r[7].data),
         ):
             # Pass label: releases cp_sk_delivery_state[firmware_consumes].
             set_km_sk_pass(label | KM_SK_PASS_WORDS, self.logger)
@@ -785,6 +829,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         self._open()
         for leg in self.plan.single_share:
             await self._single_share_leg(leg)
+        await self._subword()
         close_graded_window(self.logger)
         await self.stop_fifo_drain()
         if not self.drbg_sb.report():
@@ -821,7 +866,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             "SINGLE-SHARE",
             ct == golden and v_pre == 1 and v_wipe == 0 and v_post == 1 and resp,
             share=leg.share,
-            key=[_h(w) for w in leg.key],
+            key_sha=word_digest(leg.key),
             pt=[_h(w) for w in leg.pt],
             ct=[_h(w) for w in ct],
             golden=[_h(w) for w in golden],
@@ -835,6 +880,122 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             # instance from the KEY_VALID rise and samples it on this rise.
             set_km_ss_pass(True, self.logger)
             await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
+
+    def _subword_draws(self) -> tuple:
+        """K, PT, and (share0 word, value) per size with three distinct outcomes."""
+        rng = SepSeededRng(self.plan.seed ^ _SUBWORD_SALT)
+        key = [rng.getrandbits(32) | 1 for _ in range(pl.AES_BANK.words)]
+        pt = [rng.getrandbits(32) for _ in range(pl.AES_PT_WORDS)]
+        words = rng.sample(range(pl.AES_BANK.words), len(_SUBWORD_SIZES))
+        stores = []
+        for (size, _, _, lanes, rep), j in zip(_SUBWORD_SIZES, words):
+            while True:
+                v = rng.getrandbits(lanes.bit_length())
+                outcomes = {key[j], (key[j] & ~lanes & pl.WORD) | v, v * rep}
+                if len(outcomes) == 3:
+                    break
+            stores.append((size, j, v))
+        return key, pt, stores
+
+    @staticmethod
+    def _subword_snippet(base: int, stores: list, addr: list[int]) -> list[int]:
+        """Sub-word stores, KEY_VALID set, results to KM SRAM words 95-97, then spin."""
+        a = pl.AES_BANK
+        asm = Asm(base)
+        for (_, nbytes, *_), (_, _, v), at in zip(_SUBWORD_SIZES, stores, addr):
+            asm.li(5, at).li(6, v).op(store(nbytes, 6, 5, 0))
+        asm.li(5, a.ctrl).li(6, a.valid_mask).op(sw(6, 5, 0))
+        asm.li(7, kp.sram_addr(_W_SUBWORD))
+        asm.li(5, _KMCSR_IRQ_STATUS).op(lw(6, 5, 0), sw(6, 7, 0))
+        asm.li(5, a.ctrl).op(lw(6, 5, 0), sw(6, 7, 4))
+        asm.li(6, _SUBWORD_MARK).op(sw(6, 7, 8))
+        asm.label("spin").j("spin")
+        return asm.words()
+
+    async def _subword(self) -> None:
+        """Byte and halfword KM CPU stores to AES share0 words, then one AES block."""
+        a = pl.AES_BANK
+        key, pt, stores = self._subword_draws()
+        addr = [a.share0[j] for _, j, _ in stores]
+        self.logger.info(
+            "DRAW subword key_words=%d pt=%s stores=%s",
+            len(key),
+            [_h(w) for w in pt],
+            [(size, j) for size, j, _ in stores],
+        )
+        base = kp.KM_SRAM_BASE + _SUBWORD_REGION * _SUBWORD_REGION_BYTES
+        snippet = self._subword_snippet(base, stores, addr)
+        pre = await self._run(
+            [
+                kp.wrblk(a.share0[0], key),
+                kp.fill(a.share1[0], 0, a.words),
+                kp.wrblk(base, snippet),
+                kp.fill(kp.sram_addr(_W_SUBWORD), 0, 3),
+                kp.wr(_KMCSR_SRAM_LOCK, 1 << _SUBWORD_REGION),
+                kp.wr(_KMCSR_SRAM_EXEC_MODE, _SRAM_EXEC_ENABLE),
+            ]
+        )
+        sub0 = self.rd(self.dut.km_axi_subword_wr_count_o)
+        last: dict[int, int] = {}
+
+        async def watch() -> None:
+            while True:
+                await RisingEdge(self.dut.clk_i)
+                await ReadOnly()
+                wa = self.rd(self.dut.km_axi_wr_addr_o)
+                if wa in addr:
+                    last[wa] = self.rd(self.dut.km_axi_wr_strb_o)
+
+        task = cocotb.start_soon(watch())
+        await self.poke.post([kp.disarm(), kp.jump(base)])
+        marker = 0
+        for _ in range(0, _SUBWORD_BOUND, 16):
+            marker = self.poke.word(_W_SUBWORD + 2, allow_unknown=True)
+            if marker == _SUBWORD_MARK:
+                break
+            await ClockCycles(self.dut.clk_i, 16)
+        await ClockCycles(self.dut.clk_i, 2)
+        task.cancel()
+        sub = self.rd(self.dut.km_axi_subword_wr_count_o) - sub0
+        reached = True
+        for (size, _, expect, _, _), at in zip(_SUBWORD_SIZES, addr):
+            ok = self._control(
+                "BANK-SUBWORD",
+                last.get(at) == expect and marker == _SUBWORD_MARK and all(_ok(x) for x in pre),
+                size=size,
+                addr=_h(at),
+                wstrb=f"0x{last.get(at, 0):x}",
+                expect=f"0x{expect:x}",
+                marker=_h(marker),
+            )
+            reached = reached and ok
+            if ok:
+                set_open_value_leg_pass(f"km_bank_subword_{size}", self.logger)
+                await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
+                set_open_value_leg_pass(None, self.logger)
+                await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
+        if not reached:
+            return
+        ct = await self._aes_block(tuple(pt))
+        outcomes = []
+        for (_, _, _, lanes, rep), (_, j, v) in zip(_SUBWORD_SIZES, stores):
+            merged = (key[j] & ~lanes & pl.WORD) | v
+            outcomes.append({"merged": merged, "whole": v * rep, "ignored": key[j]})
+        match = "none"
+        for b_name, b_word in outcomes[0].items():
+            for h_name, h_word in outcomes[1].items():
+                k = list(key)
+                k[stores[0][1]], k[stores[1][1]] = b_word, h_word
+                if aes256_ecb_encrypt_words(k, list(pt)) == ct:
+                    match = f"byte:{b_name},half:{h_name}"
+        self.chk.obs(
+            "BANK-SUBWORD",
+            ct=[_h(w) for w in ct],
+            match=match,
+            irq_status=_h(self.poke.word(_W_SUBWORD)),
+            key_ctrl=_h(self.poke.word(_W_SUBWORD + 1)),
+            subword_writes=sub,
+        )
 
     # ------------------------------------------------- step 8: all set
 

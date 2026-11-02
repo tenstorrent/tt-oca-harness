@@ -36,6 +36,17 @@ Checkers:
   CHK-ALIAS-CLASS  per class, direction and run (valid 1 and valid 0): the
                    admitted address of the pair of probes is the model address.
   CHK-ALIAS-CACHE  per probe: the AxCACHE at the alias remap output.
+  CTRL-ALIAS-CACHE-IN per probe: the AxCACHE at the alias remap input equals
+                   the issued AxCACHE, so the override and miss cells run on
+                   the drawn input (stimulus control; no spec states the
+                   LSU-to-remap pass-through).
+  CHK-ALIAS-OVERLAP with a second valid region over the same pages, whose
+                   offset differs in bit 33 and whose index the seed draws
+                   above or below ``k``, a read of the middle page leaves the
+                   remap at the address of the lower-numbered region:
+                   ``hw/ip/axi_alias_remap/regs/alias_remap.rdl:42`` "When more
+                   than one valid region contains the address, the
+                   lowest-numbered region applies."
   CTRL-ALIAS-RAND   stimulus completeness: at least one hit, one miss and one
                    AxCACHE override ran (no DUT claim).
 """
@@ -53,7 +64,7 @@ from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LCC_FEAT_CTRL
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import LOCAL_MASTER_ALIAS_REMAP_CTRL_0, SEP_CPU_CTRL, sep_reg
+from sep_reg_meta import LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0, SEP_CPU_CTRL, sep_reg
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -70,12 +81,12 @@ from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 ADDR_MASK: int = FILTER_ADDR_MASK
 TEST = "sep_fabric_alias_remap_attr_rand_test"
 
-_META = LOCAL_MASTER_ALIAS_REMAP_CTRL_0
-# One region per LOCAL_MASTER_ALIAS_REMAP_CTRL instance of the generated map.
+_META = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0
+# One region per LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP instance of the generated map.
 N_REGIONS = sum(
     1
     for k in range(64)
-    if hasattr(sep_reg, f"LOCAL_MASTER_ALIAS_REMAP_CTRL_{k}__REG_MAP_BASE_ADDR")
+    if hasattr(sep_reg, f"LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_{k}__REG_MAP_BASE_ADDR")
 )
 PAGE = 0x1000
 START_FIELD = _META.field_mask("REGION_REGION_START", "start_addr")
@@ -142,6 +153,11 @@ class _Cfg:
                 raise RuntimeError(f"class {cls}: translated 0x{t:x} is not in [2^32, 2^56)")
             if src < REGION_FLOOR or src > SMU_HI:
                 raise RuntimeError(f"class {cls}: source 0x{src:x} leaves the SMU window")
+        # A second region over the same pages with an offset that differs in
+        # bit 33 only, so both translations stay in [2^32, 2^56).
+        others = [r for r in range(N_REGIONS) if r != self.region]
+        self.overlap_region = rng.choice(others) if others else None
+        self.overlap_offset = self.offset ^ (1 << 33)
 
     def src(self, cls: str) -> int:
         return {
@@ -213,13 +229,13 @@ def attrs_word(offset: int, cacheable: int, valid: bool) -> int:
 class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
     """Alias remap boundary classes, AxCACHE override and valid gate."""
 
-    required_evidence = ("CHK-ALIAS-CLASS", "CHK-ALIAS-CACHE")
+    required_evidence = ("CHK-ALIAS-CLASS", "CHK-ALIAS-CACHE", "CHK-ALIAS-OVERLAP")
 
     async def _probe(
         self, addr: int, *, write: bool, cache: int, expect_okay: bool
     ) -> tuple[int, object, object]:
         """One 1-byte LSU probe (AxSIZE 0, AxLEN 0). Returns (resp, in beat, out beat)."""
-        mi, mo = self.tap_in.mark(), self.tap_out.mark()
+        mi, mo, mp = self.tap_in.mark(), self.tap_out.mark(), self.tap_pr_out.mark()
         if not expect_okay:
             self.env.axi_monitor.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
@@ -250,7 +266,73 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             f"PR-ALIAS output shows no {ch} request at or after the input handshake "
             f"for 0x{addr:x} (t_in={ins[0].t_ps} ps)"
         )
+        if seq.resp_code == RESP_OKAY:
+            pr = next((b for b in self.tap_pr_out.since(mp, ch) if b.t_ps >= out.t_ps), None)
+            self.logger.info(
+                "OBS-ALIAS-OUT-CACHE dir=%s src=0x%x alias_out_addr=%s alias_out_cache=%s "
+                "pr_out_addr=%s pr_out_cache=%s",
+                "W" if write else "R",
+                addr,
+                _hx(out.addr),
+                _hx(out.cache),
+                _hx(pr.addr) if pr is not None else "none",
+                _hx(pr.cache) if pr is not None else "none",
+            )
         return seq.resp_code, ins[0], out
+
+    async def _overlap_probe(self, alias: _AliasRegion) -> None:
+        """Two valid regions over the same pages with different offsets: one read.
+
+        CHK-ALIAS-OVERLAP: the alias remap output carries one AR at the source
+        translated by the offset of the lower-numbered region. The response
+        comes from the outbound filter entry, which covers region ``k``'s
+        translation only, and is logged (``OBS-ALIAS-OVERLAP``).
+        """
+        cfg = self.tcfg
+        k2 = cfg.overlap_region
+        if k2 is None:
+            raise AssertionError(
+                f"CHK-ALIAS-OVERLAP FAIL: the map has {N_REGIONS} alias region(s); the leg needs two"
+            )
+        mid = cfg.src("mid")
+        await alias.program(
+            k2,
+            cfg.start,
+            cfg.end,
+            attrs_word(cfg.overlap_offset, cfg.cacheable, True),
+            "overlap",
+        )
+        await self.filt.program(cfg.entry, self._entry(translate(mid, cfg.offset)))
+        mo = self.tap_out.mark()
+        self.env.axi_monitor.arm_expected_decerr(1)
+        seq = SepAxiAccessSeq(
+            "alias_overlap",
+            op=SepAxiOp.READ,
+            addr=mid,
+            length=1,
+            size=0,
+            allow_ungraded_read_resp=True,
+            prot=PROBE_PROT,
+            attrs={"cache": cfg.axcache},
+        )
+        await self.start_seq(seq)
+        if seq.resp_code != RESP_DECERR:
+            self.env.axi_monitor.release_expected_decerr(1)
+        outs = self.tap_out.since(mo, "ar")
+        low_offset = cfg.offset if cfg.region < k2 else cfg.overlap_offset
+        want = translate(mid, low_offset)
+        line = (
+            f"region_a={cfg.region} offset_a=0x{cfg.offset:014x} region_b={k2} "
+            f"offset_b=0x{cfg.overlap_offset:014x} src=0x{mid:x} "
+            f"alias_out_addr={','.join(_hx(b.addr) for b in outs) or 'none'} n_out={len(outs)} "
+            f"expect=0x{want:x} (region {min(cfg.region, k2)})"
+        )
+        assert [b.addr for b in outs] == [want], f"CHK-ALIAS-OVERLAP FAIL: {line}"
+        self.logger.info("CHK-ALIAS-OVERLAP PASS: %s", line)
+        self.logger.info("OBS-ALIAS-OVERLAP resp=%s", _rname(seq.resp_code))
+        # Clear valid first: a valid region with START 0 covers this register block.
+        await alias._wr64(ALIAS_BASE + k2 * ALIAS_STRIDE + ALIAS_ATTRS, 0)
+        await alias.program(k2, 0, 0, 0, "overlap_clear")
 
     async def _class_pair(self, cls: str, *, write: bool, valid: bool, cache: int) -> None:
         """Steps 5 to 7 of one class and direction."""
@@ -309,7 +391,8 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             f"expect={'0x%x' % cfg.cacheable if hit else _hx(ci)} hit={int(hit)}"
         )
         assert ci is not None and co is not None, f"CHK-ALIAS-CACHE FAIL: X/Z AxCACHE: {line}"
-        assert ci == issued, f"CHK-ALIAS-CACHE FAIL: remap input differs from issued: {line}"
+        assert ci == issued, f"CTRL-ALIAS-CACHE-IN FAIL: remap input differs from issued: {line}"
+        self.n_cache_in += 1
         want = cfg.cacheable if hit else ci
         assert co == want, f"CHK-ALIAS-CACHE FAIL: {line}"
         if hit and (ci ^ cfg.cacheable) != 0xF:
@@ -320,8 +403,8 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         self.tcfg = cfg = _Cfg(self.random_seed())
-        self.logger.info("alias remap attr: %s", cfg.summary())
-        self.n_hit = self.n_miss = self.n_override = 0
+        self.logger.info("INFO-CFG alias remap attr: %s", cfg.summary())
+        self.n_hit = self.n_miss = self.n_override = self.n_cache_in = 0
 
         # Step 1.
         await self.bring_up_no_cpu()
@@ -332,10 +415,11 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             )
             await self.start_seq(rd)
             feat |= (rd.rdata & 0xFFFF_FFFF) << (32 * half)
-        self.logger.info("FEAT_CTRL LOG: value=0x%016x", feat)
+        self.logger.info("INFO-FEAT-CTRL value=0x%016x", feat)
 
         self.tap_in = SepFabricTap("PR-ALIAS-IN").start()
         self.tap_out = SepFabricTap("PR-ALIAS-OUT").start()
+        self.tap_pr_out = SepFabricTap("PR-OUT").start()
         self.filt = SepFilterBank(self, "out")
         alias = _AliasRegion(self)
         k = cfg.region
@@ -347,6 +431,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         for cls in CLASSES:
             for write in cfg.dirs():
                 await self._class_pair(cls, write=write, valid=True, cache=cfg.axcache)
+        await self._overlap_probe(alias)
 
         # Step 9: AxCACHE corners on the middle-page hit probe.
         mid = cfg.src("mid")
@@ -409,7 +494,14 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         await self.filt.restore_reset(cfg.entry)
         await self.tap_in.stop()
         await self.tap_out.stop()
+        await self.tap_pr_out.stop()
 
+        assert self.n_cache_in >= 1, "CTRL-ALIAS-CACHE-IN FAIL: no AxCACHE probe ran"
+        self.logger.info(
+            "CTRL-ALIAS-CACHE-IN PASS: probes=%d; the remap input AxCACHE equals the issued "
+            "AxCACHE on every probe",
+            self.n_cache_in,
+        )
         line = (
             f"seed={cfg.seed} hits={self.n_hit} misses={self.n_miss} "
             f"cache_override={self.n_override}"

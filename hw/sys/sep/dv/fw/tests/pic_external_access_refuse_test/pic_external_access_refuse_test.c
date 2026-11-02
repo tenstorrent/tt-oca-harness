@@ -145,13 +145,13 @@ static uint32_t meip0_masked(void) {
 
 // ---- Inbound filter entry ----
 static void filt_program(uint32_t idx, uint32_t start, uint32_t end, uint32_t cfg) {
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), 0u);
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx), start);
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx), end);
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
-    wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), cfg);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), 0u);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(idx), start);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(idx), end);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
+    wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), cfg);
 }
 
 static void mbx_window(uint32_t idx, uint32_t m) {
@@ -315,12 +315,17 @@ static int pop_completion(const char *r, uint32_t want) {
 static void print_window(uint32_t idx, uint32_t ns) {
     sep_mbx_puts("PIC-WINDOW");
     rec_num("ns", ns);
-    rec_hex("FILTER_CONFIG", rd(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx)));
-    rec_hex("START_ADDR", rd(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx)));
-    rec_hex("END_ADDR", rd(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx)));
-    rec_hex("cfg_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + FILT_HI_OFF));
-    rec_hex("start_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + FILT_HI_OFF));
-    rec_hex("end_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + FILT_HI_OFF));
+    rec_hex("FILTER_CONFIG",
+            rd(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx)));
+    rec_hex("START_ADDR",
+            rd(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(idx)));
+    rec_hex("END_ADDR", rd(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(idx)));
+    rec_hex("cfg_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) +
+                         FILT_HI_OFF));
+    rec_hex("start_hi", rd(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) +
+                           FILT_HI_OFF));
+    rec_hex("end_hi",
+            rd(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + FILT_HI_OFF));
     rec_end();
 }
 
@@ -421,7 +426,7 @@ int main(void) {
     rec_mark(0, "end");
     // Clean-up: close the PIC and mailbox windows, return the armed entries to reset.
     for (uint32_t e = 0; e < 4u; e++) {
-        wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(e), 0u);
+        wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(e), 0u);
     }
     uint32_t ent[3] = {SRC_FIRST, g_p[P_J], SRC_LAST};
     for (int i = 0; i < 3; i++) {

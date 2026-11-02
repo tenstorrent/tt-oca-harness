@@ -42,7 +42,7 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import SPM_MEMORY_BASE, SPM_MEMORY_SIZE, smc_addr
+from .smc_addr_map import SPM_MEMORY_BASE, SPM_MEMORY_SIZE, log_engine_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_log_engine_utils import (
     CTRL_EN,
@@ -67,6 +67,12 @@ from .smc_log_engine_utils import (
 from .smc_regblock_field_sweep_utils import array_reg_instances
 
 WRAP = 0
+# LOG_REGION_ADDR is 64 bits wide behind 32-bit accesses: the high field's bit position
+# names the word that holds it.
+_ADDR_LO_BITS = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_bm")
+_ADDR_HI_SHIFT = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bp")
+_ADDR_HI_OFFSET = _ADDR_HI_SHIFT // 8
+
 _WINDOW_OFFSET = 0x40000
 _WINDOW_BYTES = 0x200
 _HIGH_TAG = 0xA5
@@ -243,8 +249,10 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
         )
         await self._load_window()
         region_addr = engine_reg(WRAP, "LOG_REGION_ADDR")
-        await self.csr_write("REGION_ADDR_LO", region_addr, self.window & 0xFFFF_FFFF)
-        await self.csr_write("REGION_ADDR_HI", region_addr + 4, self.window >> 32)
+        await self.csr_write("REGION_ADDR_LO", region_addr, self.window & _ADDR_LO_BITS)
+        await self.csr_write(
+            "REGION_ADDR_HI", region_addr + _ADDR_HI_OFFSET, self.window >> _ADDR_HI_SHIFT
+        )
         await self.csr_write("LE_ON", engine_reg(WRAP, "CTRL"), CTRL_EN)
         await self.csr_read("LE_ON_RB", engine_reg(WRAP, "CTRL"), expected=CTRL_EN)
 
@@ -509,7 +517,7 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
         await self.csr_write("REGION_SIZE_CLR", engine_reg(WRAP, "LOG_REGION_SIZE"), 0)
         region_addr = engine_reg(WRAP, "LOG_REGION_ADDR")
         await self.csr_write("REGION_ADDR_LO_CLR", region_addr, 0)
-        await self.csr_write("REGION_ADDR_HI_CLR", region_addr + 4, 0)
+        await self.csr_write("REGION_ADDR_HI_CLR", region_addr + _ADDR_HI_OFFSET, 0)
         await restore_uart(self, WRAP)
         await ClockCycles(cocotb.top.clk_smc_i, 2)
         self._mark("S7")

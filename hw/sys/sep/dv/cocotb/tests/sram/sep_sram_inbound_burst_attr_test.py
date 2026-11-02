@@ -19,18 +19,20 @@ overlay write whose first and last beats carry partial strobes, then two
 CPU-LSU word writes into the same span, then a burst read of the whole span.
 Every inbound access draws AxID (non-zero), AxPROT, AxCACHE, AxQOS, AxREGION,
 AxUSER and WUSER, and the read draws ARLOCK when the burst meets the AXI4
-exclusive-access rules. AWLOCK stays 0: an exclusive write that a slave
+exclusive-access rules. AWLOCK of the cases stays 0: an exclusive write that a slave
 refuses leaves memory unchanged, so its data result is not defined.
 
-CHK-SRAM-IN-STIM: each AW / AR handshake on the m_axi port carries the drawn
+CTRL-SRAM-IN-STIM: each AW / AR handshake on the m_axi port carries the drawn
 ID, address, AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE, AxPROT, AxQOS, AxREGION
-and AxUSER, so the verdicts below are about the attributes the log names.
+and AxUSER, and every W beat of a write carries the drawn WUSER, so the
+verdicts below are about the attributes the log names.
 
 CHK-SRAM-IN-WRITE: every inbound write answers OKAY with BID equal to AWID.
 
 CHK-SRAM-IN-READ: every beat of the burst read answers OKAY (EXOKAY allowed
-on an exclusive read), RLAST falls on the last beat and on no other (sampled
-on the m_axi R channel), RID equals ARID, and every beat equals the byte model.
+on an exclusive read) and RLAST falls on the last beat and on no other (both
+sampled per beat on the m_axi R channel), RID equals ARID, and every beat
+equals the byte model.
 
 CHK-SRAM-IN-STRB: on the overlay's first and last beats, the strobed bytes
 hold the overlay and the unstrobed bytes keep the burst data (AXI4 A3.4.3).
@@ -45,6 +47,15 @@ then fails once, naming each of CHK-SRAM-IN-READ, CHK-SRAM-IN-STRB and
 CHK-SRAM-IN-XPATH that saw a mismatch, with its count and first mismatch. A
 fault in one byte lane then shows on every data checker it reaches.
 
+Logged, not graded: after the cases, one SRAM word in the window takes an
+exclusive read and then a write with AWLOCK 1 and the same ID and address. No
+SEP document states the result. CTRL-SRAM-IN-ATTR: the AR handshake of the
+read and the AW handshake of the write on the m_axi port carried lock 1, the
+drawn ID and the word address. OBS-SRAM-IN-EXCL-WR logs the response of each
+access and the word before and after, read by the CPU-LSU master. The leg runs
+in the coverage window of this leaf. It draws on a seeded stream of its own, so the
+case draws keep their values.
+
 Run mode: no_cpu (CPU-LSU master) with the external SMN master, and
 +skip_fuse_sense with no shadow preload. LC_STATE is then INVALID, FEAT_CTRL is
 zero and the inbound filter is in the m_axi path, so the test programs the
@@ -56,8 +67,11 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_common import resp_name
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_open_value_leg_pass
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, take_handshake
 from seq_lib.sep_inbound_attr_seq import (
@@ -77,8 +91,13 @@ from seq_lib.sep_sram_inbound_burst_seq import (
     SepSramInboundCase,
     SepSramInboundCfg,
     capture_ax,
-    capture_rlast,
+    capture_r_beats,
+    capture_wuser,
 )
+
+TEST = "sep_sram_inbound_burst_attr_test"
+# Seeded stream of the AWLOCK leg.
+_ATTR_SALT = 0x5352_4154
 
 
 def _w(v: int) -> str:
@@ -91,7 +110,6 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
     """Inbound INCR bursts with seeded attributes write and read SRAM exactly."""
 
     required_evidence = (
-        "CHK-SRAM-IN-STIM",
         "CHK-SRAM-IN-WRITE",
         "CHK-SRAM-IN-READ",
         "CHK-SRAM-IN-STRB",
@@ -147,7 +165,7 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
         )
 
         self.logger.info(
-            "CHK-SRAM-IN-STIM PASS: %d AW/AR handshakes on m_axi carried the drawn "
+            "CTRL-SRAM-IN-STIM LOG: %d AW/AR handshakes on m_axi carried the drawn "
             "ID, address, AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE, AxPROT, AxQOS, "
             "AxREGION and AxUSER; %s",
             self.n["stim"],
@@ -185,8 +203,74 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
             sum(len(c.pokes) for c in cfg.cases),
         )
 
+        open_graded_window(TEST, self.logger)
+        try:
+            await self._attr_leg(cfg)
+        finally:
+            close_graded_window(self.logger)
+
         for entry in (0, 1):
             await filt.disable_entry(entry)
+
+    async def _ext(self, op: SepAxiOp, addr: int, axi_id: int, **kw) -> SepAxiAccessSeq:
+        """One 8-byte inbound access whose response the leaf logs, not grades."""
+        if op is SepAxiOp.READ:
+            kw["allow_ungraded_read_resp"] = True
+        else:
+            kw["allow_unverified_write_resp"] = True
+        seq = SepAxiAccessSeq(
+            f"sram_in_attr_{op.value}",
+            op=op,
+            addr=addr,
+            length=BEAT_BYTES,
+            size=SIZE_8B,
+            burst=BURST_INCR,
+            axi_id=axi_id,
+            **kw,
+        )
+        await self.start_ext_seq(seq)
+        return seq
+
+    async def _attr_leg(self, cfg: SepSramInboundCfg) -> None:
+        """AWLOCK 1 after an exclusive read, on an SRAM word."""
+        rng = SepSeededRng(self.random_seed() ^ _ATTR_SALT)
+        word = rng.choice(range(cfg.win_base, cfg.win_end + 1, BEAT_BYTES))
+        axi_id = rng.randrange(1, 16)
+        data = rng.getrandbits(64)
+        before = await self._lsu_read(word)
+
+        task = cocotb.start_soon(capture_ax("ar"))
+        rd = await self._ext(SepAxiOp.READ, word, axi_id, attrs={"lock": 1})
+        ar_hs = take_handshake(task)
+        task = cocotb.start_soon(capture_ax("aw"))
+        wr = await self._ext(SepAxiOp.WRITE, word, axi_id, wdata=data, attrs={"lock": 1})
+        aw_hs = take_handshake(task)
+        after = await self._lsu_read(word)
+
+        want = {"lock": 1, "id": axi_id, "addr": word}
+        seen = {
+            ch: None if hs is None else {k: hs[k] for k in want}
+            for ch, hs in (("ar", ar_hs), ("aw", aw_hs))
+        }
+        line = f"ar_seen={seen['ar']} aw_seen={seen['aw']} expect={want}"
+        assert seen["ar"] == want and seen["aw"] == want, f"CTRL-SRAM-IN-ATTR FAIL: {line}"
+        self.logger.info("CTRL-SRAM-IN-ATTR LOG: %s", line)
+        set_open_value_leg_pass("sram_in_excl_write", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        self.logger.info(
+            "OBS-SRAM-IN-EXCL-WR addr=0x%08x id=0x%x excl_read_resp=%s rdata=%s "
+            "write_resp=%s bid=%s wdata=%s before=%s after=%s",
+            word,
+            axi_id,
+            resp_name(rd.resp_code),
+            _w(rd.rdata & MASK64),
+            resp_name(wr.resp_code),
+            wr.resp_id,
+            _w(data),
+            _w(before),
+            _w(after),
+        )
 
     def _attrs(
         self, *, write: bool, beats: int, lock_ok: bool, lock: int | None = None
@@ -196,7 +280,7 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
         return a
 
     def _grade_stim(self, hs, a: SepInboundAttrs, *, addr: int, beats: int, what: str) -> None:
-        assert hs is not None, f"CHK-SRAM-IN-STIM FAIL: no {what} handshake seen on m_axi"
+        assert hs is not None, f"CTRL-SRAM-IN-STIM FAIL: no {what} handshake seen on m_axi"
         want = {
             "id": a.axi_id,
             "addr": addr,
@@ -212,7 +296,7 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
         }
         bad = {k: (hs[k], v) for k, v in want.items() if hs[k] != v}
         assert not bad, (
-            f"CHK-SRAM-IN-STIM FAIL: {what} handshake differs from the draw "
+            f"CTRL-SRAM-IN-STIM FAIL: {what} handshake differs from the draw "
             f"(field: (port, drawn)) {bad}"
         )
         self.n["stim"] += 1
@@ -231,9 +315,15 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
             **a.kwargs(),
         )
         task = cocotb.start_soon(capture_ax("aw"))
+        w_task = cocotb.start_soon(capture_wuser())
         await self.start_ext_seq(seq)
         self._grade_stim(
             take_handshake(task), a, addr=addr, beats=beats, what=f"{what} @0x{addr:08x}"
+        )
+        wusers = take_handshake(w_task)
+        assert wusers == [a.attrs["wuser"]] * beats, (
+            f"CTRL-SRAM-IN-STIM FAIL: {what} @0x{addr:08x} W beats wuser={wusers} "
+            f"expected {beats} x 0x{a.attrs['wuser']:03x}"
         )
         assert seq.resp_code == RESP_OKAY and seq.resp_id == a.axi_id, (
             f"CHK-SRAM-IN-WRITE FAIL: {what} @0x{addr:08x} {len(data)} B ({a}) answered "
@@ -301,7 +391,7 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
             **a.kwargs(),
         )
         task = cocotb.start_soon(capture_ax("ar"))
-        r_task = cocotb.start_soon(capture_rlast(a.axi_id))
+        r_task = cocotb.start_soon(capture_r_beats(a.axi_id))
         await self.start_ext_seq(seq)
         self._grade_stim(
             take_handshake(task), a, addr=c.start, beats=c.beats, what=f"case{c.idx} read"
@@ -309,19 +399,19 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
         if not r_task.done():
             # The tap samples the RLAST beat on the edge the read completes on.
             await RisingEdge(cocotb.top.clk_i)
-        flags = take_handshake(r_task)
+        r_beats = take_handshake(r_task)
+        flags = None if r_beats is None else [last for _resp, last in r_beats]
         assert flags is not None and flags == [0] * (c.beats - 1) + [1], (
             f"CHK-SRAM-IN-READ FAIL: case {c.idx} read of {c.beats} beats (RID "
             f"0x{a.axi_id:02x}): RLAST per beat on m_axi = {flags}, expected it on "
             f"beat {c.beats} only"
         )
         self.n["rlast"] += 1
-        # resp_code folds the RRESP beats into one worst code, so grade each
-        # beat from resp_list.
-        resps = list(seq.resp_list)
-        assert resps and all(r in a.ok_resps() for r in resps), (
-            f"CHK-SRAM-IN-READ FAIL: case {c.idx} read ({a}) of {c.beats} beats answered "
-            f"{sorted(set(resps))}, expected only {a.ok_resps()}"
+        resps = [resp for resp, _last in r_beats]
+        bad_beats = [(i, r) for i, r in enumerate(resps) if r not in a.ok_resps()]
+        assert not bad_beats, (
+            f"CHK-SRAM-IN-READ FAIL: case {c.idx} read ({a}) of {c.beats} beats: RRESP "
+            f"(beat, code) on m_axi {bad_beats[:4]}, expected only {a.ok_resps()} on every beat"
         )
         assert seq.resp_id == a.axi_id, (
             f"CHK-SRAM-IN-READ FAIL: case {c.idx} read issued ARID 0x{a.axi_id:02x} and "

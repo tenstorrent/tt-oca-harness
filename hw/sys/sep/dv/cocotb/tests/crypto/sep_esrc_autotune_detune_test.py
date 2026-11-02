@@ -34,8 +34,9 @@ Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): lane k, the window W (256, 512 or 2048), the three clean gaps (2, 3
 or 4 windows), the non-zero masks m1 != m2, the non-zero mask m3 that is not
 all ones (its complement m3c is non-zero), the ``balanced`` masks and
-permutation, the order of the divide values 0 to 5 and one divide value of 6 to
-the field maximum.
+permutation, the order of the divide values 0 to 5, one divide value of 6 to
+the field maximum, the one enable (module or ring) of the one-enable step and
+its new divide value (0 to 5, at a ratio other than that of the last value).
 
 Checkers:
   CHK-TUNE-MANUAL   probe == DETUNE readback == written mask for 0, m1, m2; with
@@ -45,7 +46,8 @@ Checkers:
   CHK-TUNE-IGNORED  with autotune on and clean noise the probe keeps p0 after
                     DETUNE = m3 and after DETUNE = m3c, and the edge record
                     shows zero probe changes from the p0 sample to the end of
-                    the leg (count logged). Control: the leg lasts at least as
+                    the leg (count logged), and the DETUNE readback after each
+                    write equals the written mask. Control: the leg lasts at least as
                     long as the latest first toggle of bit k after a burst
                     start (CHK-TUNE-TOGGLE), so a tune state machine that
                     toggles with no failure at the failing-noise rate changes
@@ -69,6 +71,14 @@ Checkers:
                     periods of ``entropy_rosc_sample_clk_i`` equal the bench
                     period. After a pass, three more lane periods are graded
                     the same way inside the graded window.
+
+Logged only: OBS-ESRC-ANY-FAIL-GEN, ALERT_SUMMARY_FAIL_COUNTS before and after
+each burst (no text states whether a generator failure counts in it).
+OBS-SCLK-ONE-ENABLE, with the graded window closed: only one of
+CTRL.MODULE_ENABLE and RING_OSC_ENABLE.ENABLE bit 0 is cleared, the lane 0 edges
+are counted for four old periods, a new divide is written, the enable is
+restored and the lane periods are logged against the new and old ratio (no text
+names the enable that disables a generator).
 
 Functional coverage (owner code of this leaf, docs/SEP_FCOV.adoc): the
 tuning bins are held by the sampler and sampled only when the pass label
@@ -144,6 +154,9 @@ SRC_GRADE = 4  # periods of entropy_rosc_sample_clk_i in CTRL-SCLK-SRC
 # Bound of an edge wait: this factor times the time of the edges at the largest
 # stated ratio, so a lane at a wrong ratio still logs its periods.
 SCLK_BOUND_FACTOR = 2
+# Old lane periods held with one generator enable clear in the one-enable step.
+SCLK_ONE_HOLD = 4
+ONE_ENABLES = ("module", "ring")
 
 # Shards (env/sep_shard.py). Each shard boots once.
 # 1: the manual, off and ignored legs and burst 1, which gives the controls of the
@@ -185,6 +198,7 @@ A_RING_OSC_CTRL = _addr("RING_OSC_CTRL")
 A_RING_OSC_ENABLE = _addr("RING_OSC_ENABLE")
 REG_DIV0 = "GENERATOR_0_SAMPLE_CLK_CONFIG"
 A_DIV0 = _addr(REG_DIV0)
+A_ANY_FAIL = _addr("ALERT_SUMMARY_FAIL_COUNTS")
 
 M_INTR_ALL = ENTROPY_SOURCE.mask("INTR_ENABLE")
 M_AUTOTUNE_FAIL = _fmask("INTR_STATUS", "AUTOTUNE_FAIL")
@@ -195,6 +209,7 @@ M_SELECT = _fmask("RING_OSC_CTRL", "SAMPLE_CLK_SELECT")
 BP_SELECT = _fbp("RING_OSC_CTRL", "SAMPLE_CLK_SELECT")
 M_RING_OSC_ENABLE = ENTROPY_SOURCE.mask("RING_OSC_ENABLE")
 M_DIVIDE = _fmask(REG_DIV0, "SAMPLE_CLK_DIVIDE")
+M_ANY_FAIL = _fmask("ALERT_SUMMARY_FAIL_COUNTS", "ANY_FAIL_COUNT")
 BP_DIVIDE = _fbp(REG_DIV0, "SAMPLE_CLK_DIVIDE")
 DIVIDE_MAX = M_DIVIDE >> BP_DIVIDE
 # Lane 0 is the only lane whose sample clock the bench taps (esrc_sample_clk_lane0_o).
@@ -237,6 +252,8 @@ class Plan:
     balanced: tuple[Balanced, ...]
     div_order: tuple[int, ...]
     div_other: int
+    one_enable: str
+    div_v2: int
 
     @property
     def m3c(self) -> int:
@@ -250,7 +267,8 @@ class Plan:
         return (
             f"lane={self.lane} window={self.window} gaps={list(self.gaps)} "
             f"m1=0x{self.m1:03x} m2=0x{self.m2:03x} m3=0x{self.m3:03x} m3c=0x{self.m3c:03x} "
-            f"{describe(self.balanced)} divide={list(self.div_values)}"
+            f"{describe(self.balanced)} divide={list(self.div_values)} "
+            f"one_enable={self.one_enable} divide_v2={self.div_v2}"
         )
 
 
@@ -273,6 +291,10 @@ def draw_plan(seed: int) -> Plan:
     div_order = list(range(len(DIV_RATIOS)))
     rng.shuffle(div_order)
     div_other = rng.randrange(len(DIV_RATIOS), DIVIDE_MAX + 1)
+    one_enable = rng.choice(ONE_ENABLES)
+    div_v2 = rng.choice(
+        [v for v in range(len(DIV_RATIOS)) if DIV_RATIOS[v] != div_ratio(div_other)]
+    )
     return Plan(
         seed,
         lane,
@@ -284,6 +306,8 @@ def draw_plan(seed: int) -> Plan:
         balanced,
         tuple(div_order),
         div_other,
+        one_enable,
+        div_v2,
     )
 
 
@@ -312,12 +336,12 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         dut = cocotb.top
         shard = sep_shard(self, SHARD_EVIDENCE)
         await self.bring_up_no_cpu(park=BASELINE_PARK)
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
         self.plan = plan
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _Esrc(self)
         self.clk = SepBitWatch(dut.rst_ni, {"rst_ni": 0}, name="clk_count").start()
@@ -475,6 +499,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         lane-byte control covers the burst and the gap.
         """
         W = self.plan.window
+        any_fail_before = await self._any_fail()
         c0, m0 = self.noise.byte_control()
         self.noise.byte_check(True)
         t0 = _now_ps()
@@ -495,7 +520,20 @@ class sep_esrc_autotune_detune_test(sep_base_test):
                 compared=c1 - c0,
                 mismatched=m1 - m0,
             )
-        return t0, _now_ps()
+        t1 = _now_ps()
+        self.chk.obs(
+            "ESRC-ANY-FAIL-GEN",
+            leg=what,
+            lane=self.plan.lane,
+            any_fail_before=any_fail_before,
+            any_fail_after=await self._any_fail(),
+        )
+        return t0, t1
+
+    async def _any_fail(self) -> int:
+        return (await self.esrc._rd(A_ANY_FAIL) & M_ANY_FAIL) >> _fbp(
+            "ALERT_SUMMARY_FAIL_COUNTS", "ANY_FAIL_COUNT"
+        )
 
     # --- legs --------------------------------------------------------------------
     async def _manual_leg(self) -> dict:
@@ -536,16 +574,19 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         p0 = await self._probe()
         t_p0 = _now_ps()
         probes = []
+        readbacks = []
         try:
             for mask in (self.plan.m3, self.plan.m3c):
-                await self._write_detune(mask)
+                readbacks.append(await self._write_detune(mask))
                 await self._words(W, "ignored_window")
                 probes.append(await self._probe())
         except TrialTimeout as exc:
             out["reason"] = f"timeout:{exc.what} bound={exc.bound}"
         t_end = _now_ps()
         changes = [c for c in self.timer.since(t_p0, until_ps=t_end) if c.t_ps > t_p0]
-        out.update(p0=p0, probes=probes, changes=len(changes), span_ps=t_end - t_p0)
+        out.update(
+            p0=p0, probes=probes, readbacks=readbacks, changes=len(changes), span_ps=t_end - t_p0
+        )
         return out
 
     async def _auto_burst(self, i: int) -> int | None:
@@ -660,8 +701,11 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             span_ps=span_ps,
             first_toggle_ps=self.first_toggle_ps or "na",
         )
+        readbacks = ign["readbacks"]
+        written = (plan.m3, plan.m3c)
         fields = {
-            "detune_regs": f"0x{plan.m3:03x},0x{plan.m3c:03x}",
+            "detune_written": f"0x{plan.m3:03x},0x{plan.m3c:03x}",
+            "detune_regs": ",".join(f"0x{rb:03x}" for rb in readbacks) or "na",
             "p0": f"0x{p0:03x}",
             "probe": ",".join(f"0x{p:03x}" for p in probes) or "na",
             "changes_after_p0": changes,
@@ -671,7 +715,11 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         if ign["reason"]:
             fields["reason"] = ign["reason"]
         ok = (
-            not ign["reason"] and len(probes) == 2 and all(p == p0 for p in probes) and changes == 0
+            not ign["reason"]
+            and len(probes) == 2
+            and all(p == p0 for p in probes)
+            and changes == 0
+            and tuple(readbacks) == written
         )
         self._ok("TUNE-IGNORED", ok, **fields)
 
@@ -747,6 +795,54 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         )
         for i, v in enumerate(self.plan.div_values):
             await self._sclk_one(v, select=i == 0, src_ps=src_ps)
+        await self._sclk_one_enable(src_ps)
+
+    async def _sclk_one_enable(self, src_ps: int) -> None:
+        """OBS-SCLK-ONE-ENABLE: clear only one generator enable of lane 0, count
+        the lane edges while it is clear, write a new divide, restore the enable
+        and measure the lane period. The graded window is closed."""
+        plan = self.plan
+        wr, rd = self.esrc._wr, self.esrc._rd
+        v_before = (await rd(A_DIV0) & M_DIVIDE) >> BP_DIVIDE
+        want_old = div_ratio(v_before) * src_ps
+        want_new = div_ratio(plan.div_v2) * src_ps
+        if plan.one_enable == "module":
+            await wr(A_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0, AUTOTUNE_ENABLE=0))
+        else:
+            await wr(
+                A_RING_OSC_ENABLE,
+                ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=ENABLE_RESET & ~LANE0),
+            )
+        lane = cocotb.top.esrc_sample_clk_lane0_o
+        edges = 0
+
+        async def count() -> None:
+            nonlocal edges
+            while True:
+                await RisingEdge(lane)
+                edges += 1
+
+        counter = cocotb.start_soon(count())
+        sys_ps = round(self.cfg.sys_clk_period_ns * 1000)
+        await ClockCycles(cocotb.top.clk_i, -(-SCLK_ONE_HOLD * want_old // sys_ps))
+        counter.cancel()
+        await wr(A_DIV0, ENTROPY_SOURCE.value(REG_DIV0, SAMPLE_CLK_DIVIDE=plan.div_v2))
+        if plan.one_enable == "module":
+            await wr(A_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1, AUTOTUNE_ENABLE=0))
+        else:
+            await wr(A_RING_OSC_ENABLE, RING_OSC_ENABLE_RESET)
+        v_after = (await rd(A_DIV0) & M_DIVIDE) >> BP_DIVIDE
+        periods = _periods(await self._rises(lane, SCLK_DISCARD + SCLK_GRADE + 1))[SCLK_DISCARD:]
+        self.chk.obs(
+            "SCLK-ONE-ENABLE",
+            which=plan.one_enable,
+            v_before=v_before,
+            v_after=v_after,
+            lane_edges_while_disabled=edges,
+            period_ps_after=",".join(str(p) for p in periods) or "none",
+            want_ps_new=want_new,
+            want_ps_old=want_old,
+        )
 
     async def _sclk_one(self, v: int, *, select: bool, src_ps: int) -> None:
         rd = self.esrc._rd

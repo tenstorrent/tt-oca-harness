@@ -5,11 +5,12 @@
 Run mode: no_cpu (``lsu_stub_all_live``), real PROD fuse sense, the Key Manager
 held in reset with no image. Randomization: every seed walks every cell of the
 inventory; the seed draws the offset inside each cell, the row order, the SI
-AxID (non-zero) and the burst start and AxLEN.
+AxID (non-zero) and the burst start and AxLEN. The open-value legs draw from
+their own stream (the seed XOR a leg salt), so the cell walk keeps its draws.
 
 The expected cells come from ``hw/sys/sep/regs/gen/adoc/memory_map.adoc`` (Hole
 in Extent and Past Extent columns, through ``env.sep_decode_resp``), the
-``ocah_*`` annotations of ``hw/sys/sep/regs/sep.rdl`` and the register
+``ocah_*`` annotations of ``hw/sys/sep/regs/include/sep_memory_map.rdl`` and the register
 allocation of the generated IP-XACT (``seq_lib.sep_row_response_seq``). The
 table states each cell for a 32-bit access at the inbound AXI port, so every
 graded single beat uses AxSIZE 2 in both halves of the 64-bit data bus; an
@@ -23,9 +24,17 @@ from the filter.
 
 CHK-ROW: response code and addressed data lane of every cell (Reserved, Past
 Extent, Hole in Extent, live word), with X or Z in an error payload failing on
-VCS. A hole write leaves its neighbour register unchanged; the in-extent write
+VCS. The SI live-word read uses the default SI attributes; the line logs the
+attributes captured on the SI port. A hole write leaves its neighbour register unchanged; the in-extent write
 of the same data to the neighbour changes it (control, run before the hole
 writes of the unit).
+
+CHK-SI-ID-ECHO: every SI access, OKAY and error rows alike and the logged burst
+leg too, answers with the drawn non-zero AxID on BID or RID, sampled from the
+m_axi response handshake; an access with no response fails it.
+Golden: a response carries the ID of its request (AMBA AXI IHI 0022), and the
+SEP fabric "retains the AXI IDs needed for responses" across the AXI4-Lite
+bridge (``hw/sys/sep/doc/fabric.adoc:22-23``).
 
 CTRL-ROW-RAND: stimulus completeness. Every inventory cell was walked.
 
@@ -75,6 +84,60 @@ the instance passed; the leaf drops the held samples at the start of each graded
 instance, so a logged or ungraded access fills no bin. The OTBN AxCACHE cells
 sample only on the release of an OTBN cache instance, after CHK-ROW-CACHE.
 
+CHK-ROW-FILTER-SRC: with inbound entry 0 set to a drawn non-zero ``src_id``,
+an SI read of the inbound filter entry 1 ``START_ADDR`` word whose AxUSER
+equals ``src_id`` returns the LSU read-back, as the read through the wildcard
+entry just before does, and a read whose AxUSER differs answers DECERR (the
+response codes of the admitted reads are logged, not graded). A foreign source ID
+does not match the entry, no other inbound entry is enabled, and unmatched
+inbound traffic is blocked with DECERR while SEP-scope debug is off
+(``hw/ip/axi_filter/doc/index.adoc``, Match, Then Permit and Blocked
+Transactions; the bring-up line records ``sep_debug=0``).
+
+CHK-ROW-FABRIC-CSR: the SI read of the inbound filter ``START_ADDR`` word and of
+the alias remap ``START`` word returns the value the LSU staged, and the SI read
+of both halves of ``FEAT_CTRL`` returns the bring-up golden (response codes
+logged, not graded)
+(``hw/sys/sep/doc/fabric.adoc``, Fabric Topology: the inbound crossbar reaches
+the system CSRs; ``hw/sys/sep/doc/memory_map.adoc``, Units Unreachable from the
+Inbound Port). The AP and STEE remap ``ATTRS`` words are logged
+(``OBS-ROW-FABRIC-CSR``).
+
+CHK-REG-SUBWORD-WDT: an LSU AxSIZE 0 read at byte offset 1 and an AxSIZE 1 read
+at byte offset 2 of the watchdog ``WKUP_THOLD_LO`` word answer OKAY, and the
+writes of the same shapes answer SLVERR. "A narrow read inside a register
+returns OKAY"; a partial write, "a byte strobe that misses a byte the register
+owns", gets a TL-UL error and "the faulting access also received SLVERR
+synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``;
+the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
+write and the other sub-word targets are logged (``OBS-REG-SUBWORD``).
+
+CHK-OTBN-IMEM-SUBWORD-CRC: OTBN ``LOAD_CHECKSUM`` reads the same value before and
+after each AxSIZE 0 and AxSIZE 1 write to the ``otbn_imem`` word: "Writes that are
+less than 32b or not aligned on a 32b boundary are ignored and not factored into
+the CRC calculation" (``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/
+theory_of_operation.md:454``). Control CTRL-OTBN-CRC-LIVE: after ``LOAD_CHECKSUM``
+is written 0, the full-word write to that word makes ``LOAD_CHECKSUM`` read the
+CRC-32-IEEE of its 48b record ``{imem, idx, wdata}`` (``:447-453``) in one of the
+two byte orders (the text fixes the layout, not the order), so the register
+follows the writes to that memory.
+
+After the graded window closes, each live word is read again from SI with the
+AxPROT[2], AxUSER, AxCACHE, AxQOS, AxREGION and AxLOCK drawn at its CHK-ROW cell;
+the table states one cell per row for any attributes, so CHK-ROW grades the read
+as at the default-attribute read. OBS-ROW-ATTR: SI accesses with attributes that
+no specification gives a response for: exclusive
+reads with drawn attributes of the pool ``STATUS`` (one 64-bit access), an ABR
+register, the SPI host ``CSID`` and the DMA live word; an SI write of ``CSID``
+with drawn AW attributes and WUSER. The line logs the response, the read data or the LSU read-back, and
+grades nothing. CTRL-ROW-ATTR: the SI address handshake (and the W beat) carried
+the drawn attributes, address and size; every live row has its drawn read.
+
+OBS-ROW-NARROW: 1- and 2-byte SI reads and writes to a drawn Reserved, Past
+Extent and Hole in Extent cell; the table states the cells for 32-bit accesses
+only. CTRL-ROW-NARROW: the SI address handshake carried AxSIZE 0 or 1 at the
+drawn address.
+
 Not graded: the Forwarded and adopter-defined rows; the response of a burst to
 a register region outside the crypto region and the SPI host extent (the
 specification states none); any AxSIZE 3 access except the pool ``STATUS``
@@ -83,26 +146,47 @@ probe.
 
 from __future__ import annotations
 
+import binascii
 from collections import Counter
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_decode_resp import logical_region
-from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, RESP_SLVERR
+from env.sep_fabric_common import FILTER_ADDR_MASK, RESP_DECERR, RESP_OKAY, RESP_SLVERR
 from env.sep_fabric_common import RESP_NAME as _RN
-from env.sep_fcov_gate import close_graded_window, open_graded_window, set_row_pass
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_open_value_leg_pass,
+    set_row_pass,
+)
 from env.sep_filter_model import FilterEntry
-from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected
+from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC, OTBN, sep_reg
 from seq_lib import sep_row_response_seq as rr
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
+from seq_lib.sep_fabric_csr_bank_seq import (
+    ALIAS_BASE,
+    ALIAS_START,
+    ALIAS_START_MASK,
+    ALIAS_STRIDE,
+    AP_BASE,
+    FILTER_START_ADDR,
+    FILTER_STRIDE,
+    INFILT_BASE,
+    REMAP_ATTRS,
+    REMAP_OFFSET_LO_MASK,
+    REMAP_STRIDE,
+    STEE_BASE,
+)
 from seq_lib.sep_fabric_deadspace_seq import in_crypto_region
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
+from seq_lib.sep_wdt_aon_seq import WDT_CDC_CLKS
 
 _TEST = "sep_fabric_row_response_matrix_test"
 _MAX_SENSE_CYCLES = 20_000
@@ -156,8 +240,50 @@ _SYS_DIS = 0x00FF_00FF_00FF_00FF
 SI_PROT = 0b010
 OKAY, DECERR, SLVERR = RESP_OKAY, RESP_DECERR, RESP_SLVERR
 AXI_INCR = 1
+# Request attributes of an SI address handshake that the attribute legs draw.
+# AxPROT[1] stays at SI_PROT[1], so inbound entry 0 admits every draw.
+AX_ATTRS = ("prot", "user", "cache", "qos", "region", "lock")
+# Separates the stream of the open-value legs from the cell walk of the same seed.
+_ATTR_SALT = 0x524F_5741
 # The inbound entry admits the whole SEP Local region of the CPU logical map.
 _SEP_LOCAL = logical_region("logical:sep_local")
+# Last register word of the rows whose 2-beat SI burst runs one beat past the extent.
+BURST_PAST_ROWS = (
+    ("dma", rr.ROW_BASE["dma"]),
+    ("wdt", rr.ROW_BASE["wdt"]),
+    ("cpu_ctrl", sep_reg.SEP_CPU_CTRL_REG_MAP_BASE_ADDR),
+)
+# Sub-word LSU targets: (name, word address, whether a changed value is written
+# and the word restored after). A target without restore takes its own value.
+SUBWORD_TARGETS = (
+    ("scratch", sep_reg.SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR, True),
+    ("wdt_wkup_thold_lo", sep_reg.WDT_TIMER_WKUP_THOLD_LO_REG_ADDR, True),
+    ("cpu_ctrl_nmi_vec", sep_reg.SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR, True),
+    ("spi_csid", sep_reg.SPI_CONTROLLER_CSID_REG_ADDR, True),
+    ("spi_configopts", sep_reg.SPI_CONTROLLER_CONFIGOPTS_REG_ADDR, True),
+    ("km_mbox_irq_enable", rr.KM_IRQ_ENABLE, True),
+    ("otbn_imem", sep_reg.OTBN_IMEM_MEM_BASE_ADDR, True),
+    ("efuse_shadow", sep_reg.SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, False),
+    ("efuse_program_ctrl", sep_reg.EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR, False),
+    ("sw_reset_n", rr.SW_RESET_N, False),
+)
+# A narrow read inside a peripheral register answers OKAY and a partial write
+# answers SLVERR (hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393;
+# the watchdog block is PERIPH_BUS_ERR_STATUS.wdt, :442).
+SUBWORD_GRADED = "wdt_wkup_thold_lo"
+OTBN_LOAD_CHECKSUM = sep_reg.OTBN_LOAD_CHECKSUM_REG_ADDR
+# LOAD_CHECKSUM record byte orders: theory_of_operation.md:449-453 fixes the 48b
+# layout, not the order.
+_CKSUM_ORDERS = ("little", "big")
+
+
+def _load_checksum_golden(writes: list[tuple[int, int, int]], order: str) -> int:
+    """CRC-32-IEEE over 48b ``{imem, idx[14:0], wdata}`` records (theory_of_operation.md:447-453)."""
+    crc = 0
+    for imem, idx, wdata in writes:
+        rec = ((imem & 1) << 47) | ((idx & 0x7FFF) << 32) | (wdata & 0xFFFF_FFFF)
+        crc = binascii.crc32(rec.to_bytes(6, order), crc)
+    return crc
 
 
 def _kmac_prefix_count() -> int:
@@ -201,6 +327,30 @@ async def _capture_axcache(channel: str) -> int:
             return int(cache.value)
 
 
+async def _capture_si(channel: str, fields: tuple[str, ...]) -> dict[str, int]:
+    """``fields`` of the next ``channel`` handshake (``ar``, ``aw`` or ``w``) on the SI port.
+
+    ``m_axi_*`` is the bus that drives the SEP inbound request, and the handshake
+    completes only when the DUT raises READY, so the values are the request the
+    DUT accepted.
+    """
+    dut = cocotb.top
+    valid = getattr(dut, f"m_axi_{channel}valid")
+    ready = getattr(dut, f"m_axi_{channel}ready")
+    sig = {f: getattr(dut, f"m_axi_{channel}{f}") for f in fields}
+    while True:
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        if valid.value == 1 and ready.value == 1:
+            return {f: int(v.value) for f, v in sig.items()}
+
+
+def _attr_txt(attrs: dict[str, int | None] | None) -> str:
+    if attrs is None:
+        return "none"
+    return " ".join(f"{k}={_hex(v)}" for k, v in attrs.items())
+
+
 def _reg_named(key: str, name: str) -> rr.Reg:
     return next(r for r in rr.row_regs(key) if r.name == name)
 
@@ -220,6 +370,10 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         "CHK-ROW-POOL-UNMAPPED",
         "CHK-ROW-SPI-BURST",
         "CHK-ROW-SPI-BURST-CONTROL",
+        "CHK-SI-ID-ECHO",
+        "CHK-ROW-FILTER-SRC",
+        "CHK-ROW-FABRIC-CSR",
+        "CHK-OTBN-IMEM-SUBWORD-CRC",
     )
 
     # ------------------------------------------------------------------ access
@@ -280,12 +434,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         wdata: int = 0,
         length: int | None = None,
         burst: int | None = None,
+        prot: int = SI_PROT,
+        user: int = 0,
+        attrs: dict[str, int] | None = None,
+        rng: SepSeededRng | None = None,
     ) -> SepAxiAccessSeq:
-        """One SI access through inbound entry 0 with a drawn non-zero AxID."""
+        """One SI access through inbound entry 0 with a non-zero AxID drawn from
+        ``rng`` (the cell-walk stream when None)."""
         length = (1 << size) if length is None else length
         mon = self.env.ext_axi_monitor
         if op is SepAxiOp.READ:
             mon.open_error_rdata_window()
+        axi_id = (rng or self.rng).randrange(1, 64)
         seq = SepAxiAccessSeq(
             f"row_si_{op.value}_0x{addr:08x}",
             op=op,
@@ -294,8 +454,10 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             length=length,
             size=size,
             burst=burst,
-            prot=SI_PROT,
-            axi_id=self.rng.randrange(1, 64),
+            prot=prot,
+            user=user,
+            attrs=attrs,
+            axi_id=axi_id,
             allow_unverified_write_resp=op is SepAxiOp.WRITE,
         )
         try:
@@ -303,7 +465,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         finally:
             if op is SepAxiOp.READ:
                 mon.close_error_rdata_window()
-        assert not seq.timed_out, f"SI {op.value} 0x{addr:08x} timed out"
+        assert not seq.timed_out, (
+            f"CHK-SI-ID-ECHO FAIL: SI {op.value} 0x{addr:08x} returned no response"
+        )
+        if seq.resp_id == axi_id:
+            self.si_id_ok += 1
+        else:
+            self.si_id_bad += 1
+            self._fail(
+                "CHK-SI-ID-ECHO",
+                f"SI {op.value} 0x{addr:08x} resp={_RN.get(seq.resp_code)} "
+                f"{'RID' if op is SepAxiOp.READ else 'BID'}={seq.resp_id} expected {axi_id}",
+            )
         return seq
 
     # ------------------------------------------------------------- bookkeeping
@@ -316,6 +489,17 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         set_row_pass(ROW_PASS_DROP, self.logger)
         self.logger.error("%s FAIL: %s", chk, line)
         self.fails.append(f"{chk}: {line}")
+
+    def _ctrl(self, name: str, ok: bool, line: str) -> bool:
+        """Log one control; a missing control is a recorded failure."""
+        if ok:
+            self.logger.info("CTRL-%s LOG: seed=%d %s", name, self.random_seed(), line)
+        else:
+            close_graded_window(self.logger)
+            set_row_pass(ROW_PASS_DROP, self.logger)
+            self.logger.error("CTRL-MISSING %s: seed=%d %s", name, self.random_seed(), line)
+            self.fails.append(f"CTRL-MISSING {name}: {line}")
+        return ok
 
     def _abort(self, chk: str, line: str) -> None:
         """A FAIL that ends the leaf."""
@@ -409,6 +593,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         # The image carries no SEC_DIS token, so the golden takes SEC_DIS 0 from
         # the image, not from the DUT.
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
+        self.feat_golden = feat
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
         self.logger.info(
@@ -418,7 +603,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             ctl.sep_debug,
         )
 
-    async def _program_entry(self) -> None:
+    async def _program_entry(self, src_id: int = 0) -> None:
         bank = SepFilterBank(self, "in")
         await bank.program(
             0,
@@ -430,8 +615,20 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 write_allowed=True,
                 allow_ns=bool((SI_PROT >> 1) & 1),
                 allow_burst=True,
+                src_id=src_id,
             ),
         )
+        # The Reserved-row DECERR cells take entry 0 as covering the whole SEP
+        # local window, so its range must read back as programmed.
+        _, rb_s, rb_e = await bank.read_entry(0)
+        want_s, want_e = _SEP_LOCAL[0] & FILTER_ADDR_MASK, _SEP_LOCAL[1] & FILTER_ADDR_MASK
+        line = (
+            f"rb_start=0x{rb_s:x} rb_end=0x{rb_e:x} want_start=0x{want_s:x} want_end=0x{want_e:x}"
+        )
+        if (rb_s, rb_e) != (want_s, want_e):
+            self.logger.error("CTRL-ROW-FILTER-RANGE FAIL (control not met): %s", line)
+            raise AssertionError(f"CTRL-ROW-FILTER-RANGE control not met: {line}")
+        self.logger.info("CTRL-ROW-FILTER-RANGE: %s", line)
 
     # ---------------------------------------------------------------- inventory
     def _inventory(self) -> set[tuple[str, str, str, str]]:
@@ -771,8 +968,23 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         mask = reg.word_mask(a)
         exp = self._expect_reg(a)
         _r, lsu_b = await self._lsu(SepAxiOp.READ, a)
+        # Attributes of the drawn-attribute read of this word (_attr_read_leg).
+        drawn = {
+            "prot": SI_PROT | (self.rng.getrandbits(1) << 2),
+            "user": self.rng.getrandbits(12),
+            "cache": self.rng.getrandbits(4),
+            "qos": self.rng.getrandbits(4),
+            "region": self.rng.getrandbits(4),
+            "lock": self.rng.getrandbits(1),
+        }
+        hs = cocotb.start_soon(_capture_si("ar", AX_ATTRS))
         s = await self._si(SepAxiOp.READ, a)
+        default = take_handshake(hs)
         _r, lsu_a = await self._lsu(SepAxiOp.READ, a)
+        if drawn == default:
+            # The drawn read differs from this read on at least one attribute.
+            drawn["prot"] ^= 1 << 2
+        self.live_draw[key] = (reg, drawn)
         got = s.rdata & 0xFFFF_FFFF
         pre_ok = (lsu_b & mask) == (exp & mask) and (lsu_a & mask) == (exp & mask)
         nonzero_ok = key not in rr.NONZERO_LIVE or (exp & mask) != 0
@@ -782,7 +994,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             f"row={key} kind=live init=SI dir=R size=2 addr=0x{a:08x} wdata=na "
             f"resp={_RN.get(s.resp_code)} rdata=0x{got & mask:08x} expect=OKAY/0x{exp & mask:08x} "
             f"field_mask=0x{mask:08x} lsu_before=0x{lsu_b & mask:08x} "
-            f"lsu_after=0x{lsu_a & mask:08x} rsvd=0x{got & ~mask & 0xFFFF_FFFF:08x} reg={reg.name}",
+            f"lsu_after=0x{lsu_a & mask:08x} rsvd=0x{got & ~mask & 0xFFFF_FFFF:08x} reg={reg.name} "
+            f"attrs=[{_attr_txt(default)}]",
         )
         self._walk(key, "live", "R", "SI")
         return ok
@@ -857,9 +1070,11 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     else:
                         self._fail("CHK-ROW-KM", line)
         self._close()
+        ctl = []
         for v in (rr.KM_IRQ_ENABLE_CTL, 0):
             s = await self._si(SepAxiOp.WRITE, rr.KM_IRQ_ENABLE, wdata=v)
             r = await self._si(SepAxiOp.READ, rr.KM_IRQ_ENABLE)
+            ctl.append(f"wrote=0x{v:x}/read=0x{r.rdata & 0xFFFF_FFFF:x}")
             if s.resp_code != OKAY or r.resp_code != OKAY or (r.rdata & 0xFFFF_FFFF) != v:
                 self._abort(
                     "CHK-ROW-KM",
@@ -869,7 +1084,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 )
         self.regval[rr.KM_IRQ_ENABLE] = 0
         for line in lines:
-            self.logger.info("CHK-ROW-KM PASS: %s baseline_ctl=0x%x", line, rr.KM_IRQ_ENABLE_CTL)
+            self.logger.info("CHK-ROW-KM PASS: %s baseline_ctl %s", line, " ".join(ctl))
         await self._release()
 
     async def _snapshot(self, key: str) -> dict[int, tuple[int, int]]:
@@ -1080,7 +1295,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         ):
             await self._lsu_write_reg(a, v, f"SPI {tag} stage")
         self.logger.info(
-            "ROW-SPI-STAGE LOG: csid=0x%08x error_enable=0x%02x event_enable=0x%02x",
+            "INFO-ROW-SPI-STAGE LOG: csid=0x%08x error_enable=0x%02x event_enable=0x%02x",
             self.regval[SPI_CSID],
             self.regval[SPI_ERROR_ENABLE],
             self.regval[SPI_EVENT_ENABLE],
@@ -1279,7 +1494,471 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             for start in starts:
                 await self._spi_cross(op, start)
 
+    # -------------------------------------------------------- open-value legs
+    def _draw_attrs(self, *, lock: int | None = None) -> dict[str, int]:
+        """SI attributes off the default: AxPROT[0] and [2], a non-zero AxUSER,
+        AxCACHE, AxQOS, AxREGION, and AxLOCK unless ``lock`` fixes it."""
+        r = self.leg_rng
+        return {
+            "prot": SI_PROT | (r.getrandbits(1) << 2) | r.getrandbits(1),
+            "user": r.randrange(1, 1 << 12),
+            "cache": r.getrandbits(4),
+            "qos": r.getrandbits(4),
+            "region": r.getrandbits(4),
+            "lock": r.getrandbits(1) if lock is None else lock,
+        }
+
+    async def _si_attrs(
+        self,
+        op: SepAxiOp,
+        addr: int,
+        drawn: dict[str, int],
+        *,
+        size: int = 2,
+        wdata: int = 0,
+        wuser: int | None = None,
+    ) -> tuple[SepAxiAccessSeq, dict[str, int] | None]:
+        """One SI access with ``drawn`` attributes; also returns what the SI port
+        carried on its address handshake (with the WUSER of the W beat when
+        given), or None when no handshake was seen."""
+        ch = "ar" if op is SepAxiOp.READ else "aw"
+        fields = AX_ATTRS + ("addr", "size")
+        hs = cocotb.start_soon(_capture_si(ch, fields))
+        ws = cocotb.start_soon(_capture_si("w", ("user",))) if wuser is not None else None
+        attrs = {k: drawn[k] for k in ("cache", "qos", "region", "lock")}
+        if wuser is not None:
+            attrs["wuser"] = wuser
+        s = await self._si(
+            op,
+            addr,
+            size=size,
+            wdata=wdata,
+            prot=drawn["prot"],
+            user=drawn["user"],
+            attrs=attrs,
+            rng=self.leg_rng,
+        )
+        seen = take_handshake(hs)
+        if seen is not None and ws is not None:
+            w = take_handshake(ws)
+            seen["wuser"] = None if w is None else w["user"]
+        return s, seen
+
+    def _attr_ctrl(self, row: str, d: str, want: dict, seen: dict | None) -> bool:
+        """CTRL-ROW-ATTR: the SI port carried the drawn request to the cell."""
+        ok = seen is not None and all(seen.get(k) == v for k, v in want.items())
+        return self._ctrl(
+            "ROW-ATTR",
+            ok,
+            f"row={row} dir={d} seen=[{_attr_txt(seen)}] drawn=[{_attr_txt(want)}]",
+        )
+
+    async def _leg_cov(self, leg: str, ok: bool) -> None:
+        """Pass label of an open-value leg whose controls all passed."""
+        if ok:
+            set_open_value_leg_pass(leg)
+            await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+            set_open_value_leg_pass(None)
+            await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+
+    async def _attr_read(
+        self,
+        row: str,
+        reg: rr.Reg | None,
+        drawn: dict[str, int],
+        *,
+        addr: int = 0,
+        graded: bool = False,
+    ) -> bool:
+        """SI read of a register word with ``drawn`` attributes between two LSU reads.
+
+        ``reg`` None: one 64-bit SI read of the pool ``STATUS`` at ``addr``, the
+        only pool access shape the pool states, with no LSU reads (``fifo_level``
+        moves while the pool fills). ``graded``: the word is a live row cell, and
+        CHK-ROW grades the read against the table as at its default-attribute
+        read; otherwise the read is logged (OBS-ROW-ATTR)."""
+        if reg is None:
+            a, size, mask = addr, 3, (1 << 64) - 1
+            lsu_b = lsu_a = None
+        else:
+            a, size, mask = reg.addr, 2, reg.word_mask(reg.addr)
+            lsu_b = (await self._lsu(SepAxiOp.READ, a))[1] & mask
+        s, seen = await self._si_attrs(SepAxiOp.READ, a, drawn, size=size)
+        if reg is not None:
+            lsu_a = (await self._lsu(SepAxiOp.READ, a))[1] & mask
+        ctrl = self._attr_ctrl(row, "R", {**drawn, "addr": a, "size": size}, seen)
+        if graded:
+            exp = self._expect_reg(a) & mask
+            got = s.rdata & 0xFFFF_FFFF
+            nonzero_ok = row not in rr.NONZERO_LIVE or exp != 0
+            ok = (
+                s.resp_code == OKAY
+                and (got & mask) == exp
+                and lsu_b == exp
+                and lsu_a == exp
+                and nonzero_ok
+            )
+            self._row_line(
+                ok,
+                f"row={row} kind=live init=SI dir=R size=2 addr=0x{a:08x} wdata=na "
+                f"resp={_RN.get(s.resp_code)} rdata=0x{got & mask:08x} expect=OKAY/0x{exp:08x} "
+                f"field_mask=0x{mask:08x} lsu_before=0x{lsu_b:08x} lsu_after=0x{lsu_a:08x} "
+                f"rsvd=0x{got & ~mask & 0xFFFF_FFFF:08x} reg={reg.name} attrs=[{_attr_txt(drawn)}]",
+            )
+            return ctrl and ok
+        self.logger.info(
+            "OBS-ROW-ATTR LOG: row=%s dir=R size=%d addr=0x%08x attrs=[%s] resp=%s "
+            "rdata=0x%x lsu_before=%s lsu_after=%s field_mask=0x%x graded=0",
+            row,
+            size,
+            a,
+            _attr_txt(drawn),
+            _RN.get(s.resp_code),
+            s.rdata & mask,
+            _hex(lsu_b),
+            _hex(lsu_a),
+            mask,
+        )
+        return ctrl
+
+    async def _attr_read_leg(self) -> None:
+        """Each live SI word read again with the attributes drawn at its CHK-ROW cell (CHK-ROW)."""
+        missing = sorted(set(rr.LIVE_SI_ROWS) - set(self.live_draw))
+        ok = self._ctrl(
+            "ROW-ATTR",
+            not missing,
+            f"rows={len(self.live_draw)} live_rows={len(rr.LIVE_SI_ROWS)} missing={missing}",
+        )
+        for key, (reg, drawn) in self.live_draw.items():
+            # ABR is graded at the control value, as at its default-attribute read.
+            restore = self._expect_reg(reg.addr) if key == "abr" else None
+            if restore is not None:
+                await self._lsu_write_reg(reg.addr, ~restore & 0xFFFF_FFFF, "abr live-word value")
+            ok = await self._attr_read(key, reg, drawn, graded=True) and ok
+            if restore is not None:
+                await self._lsu_write_reg(reg.addr, restore, "abr neighbour restore")
+        await self._leg_cov("row_attr_drawn_read", ok)
+
+    async def _attr_cell_leg(self) -> None:
+        """Exclusive reads with drawn attributes: the pool STATUS (one 64-bit
+        access) and an ABR register, then the SPI host CSID and the DMA live word."""
+        cells = (
+            ("pool", None),
+            ("abr", _reg_named("abr", HOLE_NEIGHBOUR_NAME["abr"])),
+            ("spi_host", rr.reg_by_word()[SPI_CSID]),
+            ("dma", rr.live_word("dma")),
+        )
+        oks = [
+            await self._attr_read(row, reg, self._draw_attrs(lock=1), addr=POOL_STATUS)
+            for row, reg in cells
+        ]
+        await self._leg_cov("row_attr_pool_cell", all(oks[:2]))
+        await self._leg_cov("row_attr_spi_dma_cell", all(oks[2:]))
+
+    async def _attr_write(self, drawn: dict[str, int], *, wuser: int) -> bool:
+        """SI write of the complement of ``CSID`` with ``drawn`` attributes, read
+        back and restored from the LSU."""
+        before = self._expect_reg(SPI_CSID)
+        wd = (~before) & 0xFFFF_FFFF
+        s, seen = await self._si_attrs(SepAxiOp.WRITE, SPI_CSID, drawn, wdata=wd, wuser=wuser)
+        _r, back = await self._lsu(SepAxiOp.READ, SPI_CSID)
+        self.logger.info(
+            "OBS-ROW-ATTR LOG: row=spi_host dir=W size=2 addr=0x%08x reg=CSID attrs=[%s] "
+            "wuser=%s bresp=%s wdata=0x%08x before=0x%08x readback=0x%08x graded=0",
+            SPI_CSID,
+            _attr_txt(drawn),
+            _hex(wuser),
+            _RN.get(s.resp_code),
+            wd,
+            before,
+            back & 0xFFFF_FFFF,
+        )
+        self.regval[SPI_CSID] = back & 0xFFFF_FFFF
+        await self._lsu_write_reg(SPI_CSID, before, "SPI CSID restore")
+        want = {**drawn, "addr": SPI_CSID, "size": 2, "wuser": wuser}
+        return self._attr_ctrl("spi_host", "W", want, seen)
+
+    async def _attr_write_leg(self) -> None:
+        """A write with drawn AW attributes and WUSER."""
+        wuser = self.leg_rng.getrandbits(len(cocotb.top.m_axi_wuser))
+        ok = await self._attr_write(self._draw_attrs(), wuser=wuser)
+        await self._leg_cov("row_attr_drawn_write", ok)
+
+    async def _narrow_leg(self) -> None:
+        """1- and 2-byte SI reads and writes to a Reserved, a Past Extent and a Hole cell."""
+        r = self.leg_rng
+        rsvd = r.choice(rr.RESERVED_BASES)
+        past = r.choice(rr.PAST_ROWS)
+        hole = r.choice(rr.HOLE_ROWS)
+        prow = rr.map_row(past)
+        cells = (
+            (f"rsvd_{rsvd:08x}", "reserved", rsvd),
+            (past, "past", prow.base + prow.extent),
+            (hole, "hole", r.choice(rr.hole_words(hole))),
+        )
+        ok = True
+        for row, kind, word in cells:
+            for size in (0, 1):
+                n = 1 << size
+                for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+                    d = "R" if op is SepAxiOp.READ else "W"
+                    a = word + n * r.randrange(0, 4 // n)
+                    wd = r.getrandbits(8 * n) if op is SepAxiOp.WRITE else None
+                    hs = cocotb.start_soon(
+                        _capture_si("ar" if wd is None else "aw", ("addr", "size"))
+                    )
+                    s = await self._si(op, a, size=size, wdata=wd or 0, rng=r)
+                    seen = take_handshake(hs)
+                    self.logger.info(
+                        "OBS-ROW-NARROW LOG: cell=%s kind=%s dir=%s size=%d addr=0x%08x resp=%s "
+                        "rdata=%s wdata=%s graded=0",
+                        row,
+                        kind,
+                        d,
+                        size,
+                        a,
+                        _RN.get(s.resp_code),
+                        _hex(s.rdata & ((1 << (8 * n)) - 1)) if wd is None else "na",
+                        _hex(wd),
+                    )
+                    reached = seen is not None and (seen["addr"], seen["size"]) == (a, size)
+                    ok = (
+                        self._ctrl(
+                            "ROW-NARROW",
+                            reached,
+                            f"cell={row} kind={kind} dir={d} addr=0x{a:08x} "
+                            f"axsize={_hex(None if seen is None else seen['size'])} expect={size}",
+                        )
+                        and ok
+                    )
+        await self._leg_cov("row_narrow_unbacked", ok)
+
+    async def _open_value_legs(self) -> None:
+        """Window closed: the attribute and narrow legs, whose results no
+        specification states, log OBS lines behind their CTRL lines."""
+        await self._attr_read_leg()
+        await self._attr_cell_leg()
+        await self._attr_write_leg()
+        await self._narrow_leg()
+
     # ---------------------------------------------------------------- scenario
+    # ------------------------------------------------------------ logged legs
+    async def _burst_past_leg(self) -> None:
+        """A 2-beat SI INCR burst from the last register word of a non-crypto row.
+
+        The response codes and data are logged (``OBS-ROW-BURST``); the response ID
+        of each burst is graded by ``CHK-SI-ID-ECHO`` in ``_si``.
+        """
+        mon = self.env.ext_axi_monitor
+        for name, base in BURST_PAST_ROWS:
+            row = rr.map_row(base)
+            last = row.base + row.extent - 4
+            _r, before = await self._lsu(SepAxiOp.READ, last)
+            mon.start_beat_capture()
+            r = await self._si(SepAxiOp.READ, last, length=8, burst=AXI_INCR)
+            mon.take_beat_capture()
+            detail = mon.last_beat_detail
+            wd = (before & 0xFFFF_FFFF) | (self.rng.getrandbits(32) << 32)
+            w = await self._si(SepAxiOp.WRITE, last, wdata=wd, length=8, burst=AXI_INCR)
+            # The read-back of a watchdog register waits for the previous write to
+            # land in the clk_wdt_i domain.
+            saved = self.cfg.axi_timeout_ns
+            self.cfg.axi_timeout_ns = max(saved, WDT_CDC_CLKS * self.cfg.wdt_clk_period_ns)
+            try:
+                _r, after = await self._lsu(SepAxiOp.READ, last)
+            finally:
+                self.cfg.axi_timeout_ns = saved
+            self.logger.info(
+                "OBS-ROW-BURST row=%s start=0x%08x len=1 rresp=%s rresp_resp=%s bresp=%s "
+                "rdata=0x%016x lsu_before=0x%08x lsu_after=0x%08x",
+                name,
+                last,
+                ",".join(_RN.get(b[0], "X") for b in detail) or "none",
+                _RN.get(r.resp_code),
+                _RN.get(w.resp_code),
+                r.rdata,
+                before & 0xFFFF_FFFF,
+                after & 0xFFFF_FFFF,
+            )
+
+    async def _load_checksum(self) -> int:
+        _r, crc = await self._lsu(SepAxiOp.READ, OTBN_LOAD_CHECKSUM)
+        return crc & 0xFFFF_FFFF
+
+    async def _subword_leg(self) -> None:
+        """LSU AxSIZE 0 and 1 reads and writes to registers and memories."""
+        for name, addr, restore in SUBWORD_TARGETS:
+            otbn = name == "otbn_imem"
+            if otbn:
+                # A memory word holds a written value before its first read.
+                await self._lsu(SepAxiOp.WRITE, OTBN_LOAD_CHECKSUM, wdata=0)
+                wd = self.rng.getrandbits(32)
+                await self._lsu(SepAxiOp.WRITE, addr, wdata=wd)
+                idx = (addr - sep_reg.OTBN_IMEM_MEM_BASE_ADDR) // 4
+                crc = await self._load_checksum()
+                cands = [_load_checksum_golden([(1, idx, wd)], o) for o in _CKSUM_ORDERS]
+                self._ctrl(
+                    "OTBN-CRC-LIVE",
+                    crc in cands,
+                    f"crc=0x{crc:08x} candidates=[{', '.join(f'0x{c:08x}' for c in cands)}] "
+                    f"idx={idx} wdata=0x{wd:08x}",
+                )
+            _r, cur = await self._lsu(SepAxiOp.READ, addr)
+            cur &= 0xFFFF_FFFF
+            for size, off in ((0, 1), (1, 2)):
+                mask = (1 << (8 << size)) - 1
+                old = (cur >> (8 * off)) & mask
+                wv = (~old & mask) if restore else old
+                rd_resp, rdata = await self._lsu(SepAxiOp.READ, addr + off, size=size, expect="any")
+                if otbn:
+                    crc_before = await self._load_checksum()
+                    tl_before = int(cocotb.top.otbn_imem_tl_partial_wr_count_o.value)
+                wr_resp, _w = await self._lsu(
+                    SepAxiOp.WRITE, addr + off, size=size, wdata=wv, expect="any"
+                )
+                if otbn:
+                    tl_writes = int(cocotb.top.otbn_imem_tl_partial_wr_count_o.value) - tl_before
+                    self._ctrl(
+                        "OTBN-SUBWORD-TL",
+                        tl_writes == 1,
+                        f"addr=0x{addr + off:08x} size={size} tl_partial_writes={tl_writes} "
+                        "expect=1",
+                    )
+                    crc_after = await self._load_checksum()
+                    line = (
+                        f"target={name} addr=0x{addr + off:08x} size={size} "
+                        f"crc_before=0x{crc_before:08x} crc_after=0x{crc_after:08x} "
+                        "expect=crc_before"
+                    )
+                    if crc_after == crc_before:
+                        self.logger.info("CHK-OTBN-IMEM-SUBWORD-CRC PASS: %s", line)
+                    else:
+                        self._fail("CHK-OTBN-IMEM-SUBWORD-CRC", line)
+                _r, rb = await self._lsu(SepAxiOp.READ, addr)
+                self.logger.info(
+                    "OBS-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "
+                    "wr_resp=%s wdata=0x%x word_before=0x%08x word_after=0x%08x",
+                    name,
+                    addr + off,
+                    size,
+                    _RN.get(rd_resp),
+                    rdata & mask,
+                    _RN.get(wr_resp),
+                    wv,
+                    cur,
+                    rb & 0xFFFF_FFFF,
+                )
+                if name == SUBWORD_GRADED:
+                    line = (
+                        f"target={name} addr=0x{addr + off:08x} size={size} "
+                        f"rd_resp={_RN.get(rd_resp)} wr_resp={_RN.get(wr_resp)} "
+                        f"expect=OKAY/SLVERR"
+                    )
+                    if (rd_resp, wr_resp) == (OKAY, SLVERR):
+                        self.logger.info("CHK-REG-SUBWORD-WDT PASS: %s", line)
+                    else:
+                        self._fail("CHK-REG-SUBWORD-WDT", line)
+                if restore:
+                    await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
+
+    async def _fabric_csr_leg(self) -> None:
+        """SI reads of fabric CSRs that the LSU staged, and of FEAT_CTRL.
+
+        CHK-ROW-FABRIC-CSR: the inbound crossbar reaches the system CSRs, which
+        program the inbound filter entries and the remaps (``fabric.adoc``, Fabric
+        Topology), and forwards the other addresses below ``0x4000_0000`` to the
+        local crossbar (``memory_map.adoc``, Units Unreachable from the Inbound
+        Port), so an SI read of the inbound filter START word, of the alias remap
+        START word and of ``FEAT_CTRL`` returns the staged value or the bring-up
+        golden. No TT text states the response code of these reads; it is logged in
+        the same line. The AP and STEE remap words are logged
+        (``OBS-ROW-FABRIC-CSR``): ``memory_map.adoc`` lists the AP/STEE remap
+        regions as unreachable from the inbound port.
+        """
+        targets = (
+            ("infilt_start", INFILT_BASE + FILTER_STRIDE + FILTER_START_ADDR, 0xFFFF_FFF8),
+            ("alias_start", ALIAS_BASE + ALIAS_STRIDE + ALIAS_START, ALIAS_START_MASK),
+            ("ap_attrs", AP_BASE + REMAP_STRIDE + REMAP_ATTRS, REMAP_OFFSET_LO_MASK),
+            ("stee_attrs", STEE_BASE + REMAP_ATTRS, REMAP_OFFSET_LO_MASK),
+        )
+        src_addr = targets[0][1]
+        for name, addr, mask in targets:
+            _r, cur = await self._lsu(SepAxiOp.READ, addr)
+            staged = self.rng.getrandbits(32) & mask
+            await self._lsu(SepAxiOp.WRITE, addr, wdata=staged)
+            _r, lsu_rb = await self._lsu(SepAxiOp.READ, addr)
+            s = await self._si(SepAxiOp.READ, addr)
+            line = (
+                f"target={name} addr=0x{addr:08x} staged=0x{staged:08x} "
+                f"lsu_rb=0x{lsu_rb & 0xFFFF_FFFF:08x} si_resp={_RN.get(s.resp_code)} "
+                f"si_rdata=0x{s.rdata & 0xFFFF_FFFF:08x}"
+            )
+            if name in ("ap_attrs", "stee_attrs"):
+                self.logger.info("OBS-ROW-FABRIC-CSR %s", line)
+            elif (s.rdata & 0xFFFF_FFFF) == staged:
+                self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s expect=staged", line)
+            else:
+                self._fail("CHK-ROW-FABRIC-CSR", f"{line} expect=staged")
+            if name == "stee_attrs":
+                src = self.rng.randrange(1, 16)
+                miss = self.rng.choice([u for u in range(16) if u != src])
+                # Probed on the inbound filter START word of entry 1, which the SI
+                # reaches; entry 0 (the probe's entry) leaves it unchanged. A
+                # non-zero staged value makes a refused read that returns zero
+                # data fail the data terms.
+                _r, src_cur = await self._lsu(SepAxiOp.READ, src_addr)
+                src_staged = self.rng.randrange(1, 1 << 29) << 3
+                await self._lsu(SepAxiOp.WRITE, src_addr, wdata=src_staged)
+                _r, ref = await self._lsu(SepAxiOp.READ, src_addr)
+                ref &= 0xFFFF_FFFF
+                w = await self._si(SepAxiOp.READ, src_addr)
+                await self._program_entry(src_id=src)
+                got = {}
+                for kind, u in (("src_match", src), ("src_mismatch", miss)):
+                    t = await self._si(SepAxiOp.READ, src_addr, user=u)
+                    got[kind] = (t.resp_code, t.rdata & 0xFFFF_FFFF)
+                await self._program_entry()
+                await self._lsu(SepAxiOp.WRITE, src_addr, wdata=src_cur)
+                wild = (w.resp_code, w.rdata & 0xFFFF_FFFF)
+                line = (
+                    f"target=infilt_start entry_src_id={src} axuser_match=0x{src:x} "
+                    f"axuser_mismatch=0x{miss:x} wildcard={_RN.get(wild[0])}/0x{wild[1]:08x} "
+                    f"match={_RN.get(got['src_match'][0])}/0x{got['src_match'][1]:08x} "
+                    f"mismatch={_RN.get(got['src_mismatch'][0])}/0x{got['src_mismatch'][1]:08x} "
+                    f"staged=0x{src_staged:08x} expect=0x{ref:08x},0x{ref:08x},DECERR"
+                )
+                if (
+                    ref == src_staged
+                    and wild[1] == ref
+                    and got["src_match"][1] == ref
+                    and got["src_mismatch"][0] == RESP_DECERR
+                ):
+                    self.logger.info("CHK-ROW-FILTER-SRC PASS: %s", line)
+                else:
+                    self._fail("CHK-ROW-FILTER-SRC", line)
+            await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
+        # FEAT_CTRL sits behind the local crossbar, so each SI read must show its
+        # AR at the crossbar's ext initiator, past the inbound filter: a refused
+        # read that returns zero data then fails on the count, not on the data.
+        _r, lsu_v = await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL)
+        task, ars = self.watch_xbar_ext_in(write=False)
+        try:
+            lo = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL)
+            hi = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL + 4)
+        finally:
+            task.kill()
+        n_ar = sum(1 for a in ars if (a & ~0x7) == (LCC_FEAT_CTRL & ~0x7))
+        got = ((hi.rdata & 0xFFFF_FFFF) << 32) | (lo.rdata & 0xFFFF_FFFF)
+        line = (
+            f"target=lc_feat_ctrl addr=0x{LCC_FEAT_CTRL:08x} lsu_rb=0x{lsu_v & 0xFFFF_FFFF:08x} "
+            f"si_resp={_RN.get(lo.resp_code)},{_RN.get(hi.resp_code)} si_rdata=0x{got:016x} "
+            f"ext_ar={n_ar} expect=0x{self.feat_golden:016x},ext_ar=2"
+        )
+        if got == self.feat_golden and n_ar == 2:
+            self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s", line)
+        else:
+            self._fail("CHK-ROW-FABRIC-CSR", line)
+
     async def _graded_legs(self) -> None:
         """Every graded leg; each opens the window only around its graded accesses."""
         self._open()
@@ -1299,15 +1978,23 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         await self._pool_leg()
         await self._spi_leg()
         self._close()
+        await self._open_value_legs()
+        await self._burst_past_leg()
+        await self._fabric_csr_leg()
+        await self._subword_leg()
 
     async def run_scenario(self) -> None:
         self.rng = SepSeededRng(self.random_seed())
         self.walked: set[tuple[str, str, str, str]] = set()
         self.fails: list[str] = []
         self.released = 0
+        self.si_id_ok = 0
+        self.si_id_bad = 0
         self.regval: dict[int, int] = {}
         self.noalias_draws: Counter = Counter()
         self.noalias_ctl: set[str] = set()
+        self.live_draw: dict[str, tuple[rr.Reg, dict[str, int]]] = {}
+        self.leg_rng = SepSeededRng(self.random_seed() ^ _ATTR_SALT)
         inventory = self._inventory()
         self.logger.info(
             "INFO-ROW-INVENTORY LOG: seed=%d cells=%d live=%s",
@@ -1333,7 +2020,14 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             close_graded_window(self.logger)
             set_row_pass(ROW_PASS_DROP, self.logger)
             raise
-        self.logger.info("ROW-PASS LOG: releases=%d fails=%d", self.released, len(self.fails))
+        self.logger.info("INFO-ROW-PASS LOG: releases=%d fails=%d", self.released, len(self.fails))
+        if self.si_id_ok == 0:
+            self._fail("CHK-SI-ID-ECHO", "no SI access answered, nothing graded")
+        elif not self.si_id_bad:
+            self.logger.info(
+                "CHK-SI-ID-ECHO PASS: %d SI accesses answered BID/RID equal to the drawn AxID",
+                self.si_id_ok,
+            )
 
         # The no-alias control must have changed each reference.
         missing_ctl = {"reset_ctrl", "hmac", "kmac"} - self.noalias_ctl

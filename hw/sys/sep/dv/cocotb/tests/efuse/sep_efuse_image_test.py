@@ -16,10 +16,11 @@ multi-bit W1S program persistence across a resense.
 Checkers:
   CHK-PRE-SENSE-FAIL-CLOSED  FEAT_CTRL reads the whole 64-bit zero (INVALID
                       profile) while sep_fuse_sense_done_o is 0 (base test).
-  CHK-SENSE-SHADOW    after sense-done, the sep_fuse_sense_done field of
-                      SEP_FUSE_SENSE_STATUS reads 1 and every shadow word matches
-                      the image golden. The reserved bits have no stated value
-                      and are logged OBS.
+  CHK-SENSE-SHADOW    after sense-done every shadow word matches the image
+                      golden. The sep_fuse_sense_done field of
+                      SEP_FUSE_SENSE_STATUS (OBS-SENSE-STATUS-DONE) and the
+                      reserved bits (OBS-SENSE-STATUS-RSVD) have no stated value
+                      and are logged.
   CHK-PRE-SENSE-OPEN  FEAT_CTRL reads the fail-closed zero before sense-done and
                       the image golden after it.
   CHK-OTP-DIRECT      the burned bits read 1 in a direct OTP read before the resense.
@@ -28,9 +29,20 @@ Checkers:
                       before the programs (no random burn draws them), and the
                       direct OTP read of that word equals the golden word
                       exactly before and after.
-  CHK-W1S-PERSIST     after the resense the sep_fuse_sense_done field of
-                      SEP_FUSE_SENSE_STATUS reads 1 and the shadow equals the
-                      image plus every W1S bit; the reserved bits are logged OBS.
+  CTRL-RESENSE        sep_fuse_sense_done_o reads 0 on the last clock of the
+                      rst_ni hold and rises again after the release, so the
+                      resense ran.
+  CHK-W1S-PERSIST     after the resense the shadow equals the image plus every
+                      W1S bit; the done field and the reserved bits are logged
+                      OBS.
+
+Bench record: INFO-EFUSE-OTP-PLAIN, after the first sense, the AXI read of every
+shadow word of CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID with its response,
+compared with the image word the bench loaded; only the match and the indexes of
+differing words are logged, not the values. No text states whether these fields are
+stored obfuscated. The line shows only that the sense and read path returns the
+stored word unchanged; it cannot show how the stored value relates to the secret
+or UID it carries, or any transform firmware applies after the read.
 
 FCOV graded window (owner sep_efuse_image_test): it opens after the reset
 release and before the pre-sense FEAT_CTRL read, and closes after
@@ -49,15 +61,17 @@ from collections.abc import Awaitable
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_feat_ctrl import feat_ctrl_nonvacuous_fixed
 from env.sep_efuse_image import SEP_FUSE_SENSE_STATUS, WORD_BITS, SepEfuseImage
+from env.sep_fabric_common import RESP_NAME
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_efimg_pass
 from env.sep_lcc_golden import feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL, sym
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
@@ -66,9 +80,8 @@ from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 TEST = "sep_efuse_image_test"
 _MAX_SENSE_CYCLES = 20_000
 
-# SEP_FUSE_SENSE_STATUS after sense-done: the done field reads 1
-# (regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:322). Bits 63:1 are reserved with no
-# stated reset (:321), so they are logged, not graded.
+# SEP_FUSE_SENSE_STATUS (regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:321-322) states no
+# value after sense-done, so the register is logged, not graded.
 _SENSE_DONE_MASK = SEP_CPU_CTRL.field_mask("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
 
 # CHIPLET_UID is a benign, shadow-visible data field pinned to zero in the initial
@@ -79,6 +92,7 @@ _UID_WORD0 = sym("SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET") // 4
 assert _UID_FIELD.word == _UID_WORD0, "CHIPLET_UID offset disagrees with the generated map"
 _UID_NBITS = _UID_FIELD.n_words * WORD_BITS
 _NUM_BURN = 10
+_PLAIN_FIELDS = ("CLASS_KEY", "CHIPLET_UID", "SIP_UID", "SYS_UID")
 
 
 class _ShadowStatusSeq(sep_efuse_shadow_check_seq):
@@ -126,19 +140,23 @@ class sep_efuse_image_test(sep_base_test):
         set_efimg_pass(False, self.logger)
 
     async def _check_sense_shadow(self, img: SepEfuseImage, chk: str = "CHK-SENSE-SHADOW") -> None:
-        """``chk``: the done field of the status word and every shadow word after sense-done.
+        """``chk``: every shadow word after sense-done.
 
-        The reserved bits of ``SEP_FUSE_SENSE_STATUS`` have no stated reset, so
-        they are logged (OBS-SENSE-STATUS-RSVD) and not graded.
+        No specification line states the value of the ``sep_fuse_sense_done`` field
+        of ``SEP_FUSE_SENSE_STATUS`` after sense-done, so it is logged
+        (OBS-SENSE-STATUS-DONE). The reserved bits have no stated reset, so they are
+        logged (OBS-SENSE-STATUS-RSVD). Neither is graded.
         """
         seq = _ShadowStatusSeq(img)
         mark = self.sb_mark()
         await self.start_seq(seq)
         assert seq.status is not None, f"{chk} FAIL: no SEP_FUSE_SENSE_STATUS read"
         done_field = seq.status & _SENSE_DONE_MASK
-        assert done_field == _SENSE_DONE_MASK, (
-            f"{chk} FAIL: sep_fuse_sense_done field=0x{done_field:x} "
-            f"(SEP_FUSE_SENSE_STATUS=0x{seq.status:08x}), expected 0x{_SENSE_DONE_MASK:x}"
+        self.logger.info(
+            "OBS-SENSE-STATUS-DONE: %s sep_fuse_sense_done field=0x%x SEP_FUSE_SENSE_STATUS=0x%08x",
+            chk,
+            done_field,
+            seq.status,
         )
         self.assert_sb_judged(mark, chk)
         done = int(self.rd(cocotb.top.sep_fuse_sense_done_o))
@@ -149,11 +167,8 @@ class sep_efuse_image_test(sep_base_test):
         )
         assert done == 1, f"{chk} FAIL: sep_fuse_sense_done_o={done} after the status read"
         self.logger.info(
-            "%s PASS: sep_fuse_sense_done=0x%x (expected 0x%x) "
-            "sep_fuse_sense_done_o=%d shadow judged=%d/%d reads",
+            "%s PASS: sep_fuse_sense_done_o=%d shadow judged=%d/%d reads",
             chk,
-            done_field,
-            _SENSE_DONE_MASK,
             done,
             judged,
             shadow_reads,
@@ -163,6 +178,47 @@ class sep_efuse_image_test(sep_base_test):
             chk,
             seq.status & ~_SENSE_DONE_MASK & 0xFFFF_FFFF,
         )
+
+    async def _log_otp_plain(self, img: SepEfuseImage) -> None:
+        """INFO-EFUSE-OTP-PLAIN: each shadow word of the key and UID fields beside its image word."""
+        for name in _PLAIN_FIELDS:
+            fld = SepEfuseImage.field(name)
+            shadow, resp = [], []
+            for i in range(fld.n_words):
+                addr = fld.shadow_addr + 4 * i
+                seq = SepAxiAccessSeq(f"plain_rd_0x{addr:08x}", op=SepAxiOp.READ, addr=addr, size=2)
+                await self.start_seq(seq)
+                shadow.append(seq.rdata & 0xFFFF_FFFF)
+                resp.append(RESP_NAME.get(seq.resp_code, seq.resp_code))
+            image = img.words[fld.word : fld.word + fld.n_words]
+            self.logger.info(
+                "INFO-EFUSE-OTP-PLAIN: field=%s words=%d equal=%d resp=[%s] diff_words=[%s]",
+                name,
+                fld.n_words,
+                int(shadow == image),
+                ",".join(str(r) for r in resp),
+                ",".join(str(i) for i, (s, w) in enumerate(zip(shadow, image)) if s != w),
+            )
+
+    async def _watch_resense(self) -> tuple[str | None, int | None]:
+        """``sep_fuse_sense_done_o`` on the last clock of the next ``rst_ni`` hold, and
+        the clocks from the ``rst_ni`` release to the next done rise."""
+        dut = cocotb.top
+        await FallingEdge(dut.rst_ni)
+        hold_done = None
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if dut.rst_ni.value.is_resolvable and int(dut.rst_ni.value):
+                break
+            hold_done = str(dut.sep_fuse_sense_done_o.value)
+        for clocks in range(_MAX_SENSE_CYCLES + 1):
+            done = dut.sep_fuse_sense_done_o.value
+            if done.is_resolvable and int(done):
+                return hold_done, clocks
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+        return hold_done, None
 
     async def run_scenario(self) -> None:
         # One initial image with CHIPLET_UID pinned to 0 (the pre-sim efuse stage
@@ -187,6 +243,7 @@ class sep_efuse_image_test(sep_base_test):
         await self._grade(self._check_sense_shadow(img))
         await self._pass_label()
         close_graded_window(self.logger)
+        await self._log_otp_plain(img)
         opened = feat_ctrl_expected(
             img.lc_raw(), img.field_int("SIP_DIS"), img.field_int("SYS_DIS")
         )
@@ -294,8 +351,21 @@ class sep_efuse_image_test(sep_base_test):
         # already holds the W1S bits from the programs above; this only updates the
         # expected image), resense, and verify the shadow tracks image + all bits.
         self.write_efuse_image(golden)
+        watch = cocotb.start_soon(self._watch_resense())
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        hold_done, rise_clocks = await watch
+        assert hold_done == "0" and rise_clocks is not None, (
+            f"CTRL-MISSING RESENSE: sep_fuse_sense_done_o={hold_done} at the end of the "
+            f"rst_ni hold, rise after {rise_clocks} clocks"
+        )
+        self.logger.info(
+            "CTRL-RESENSE seen: sep_fuse_sense_done_o=%s at the end of the rst_ni hold, "
+            "rise %d clocks after the release",
+            hold_done,
+            rise_clocks,
+        )
         await self._check_sense_shadow(golden, chk="CHK-W1S-PERSIST")
         self.logger.info(
-            "CHK-W1S-PERSIST PASS: resense shadow == initial image + %d W1S bits", _NUM_BURN
+            "CHK-W1S-PERSIST PASS: resense shadow == initial image + %d W1S bits",
+            len(burn_offsets) + len((nc_a, nc_b)),
         )

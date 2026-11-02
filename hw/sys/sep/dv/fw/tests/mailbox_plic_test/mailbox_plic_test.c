@@ -290,13 +290,15 @@ static void filt_wr(uint32_t addr, uint32_t value) {
 
 // Inbound filter entry idx: a read/write window over [start, end].
 static void filt_program(uint32_t idx, uint32_t start, uint32_t end, uint32_t cfg) {
-    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), 0u);
-    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
-    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx), start);
-    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
-    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx), end);
-    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
-    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), cfg);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), 0u);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + FILT_HI_OFF,
+            0u);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(idx), start);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + FILT_HI_OFF,
+            0u);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(idx), end);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), cfg);
 }
 
 // Half-zero leg: one 32-bit store of word to half (0 low, 1 high) of the

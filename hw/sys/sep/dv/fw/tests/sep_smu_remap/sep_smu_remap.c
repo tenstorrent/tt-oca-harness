@@ -26,12 +26,14 @@ static int program_output_remap(void) {
     ap.w = 0;
     ap.f.offset = AP_REGION0_OFFSET;
     ap.f.valid = 1;
-    WRITE_REG64(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), ap.w);
+    WRITE_REG64(SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(0),
+                ap.w);
 
     stee.w = 0;
     stee.f.offset = STEE_REGION0_OFFSET;
     stee.f.valid = 1;
-    WRITE_REG64(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), stee.w);
+    WRITE_REG64(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(0),
+                stee.w);
 
     return 0;
 }

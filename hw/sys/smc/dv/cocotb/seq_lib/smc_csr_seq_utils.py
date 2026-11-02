@@ -390,7 +390,9 @@ class SmcCsrSeq(smc_base_test_seq):
     # The integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`) gives
     # each I2C instance four consecutive pads, SCL, SDA, SMB_A and SMB_D, with
     # instance `i` starting at its "I2C[i] SCL" row. DATA_CTRL stride from GPIO0.
-    _GPIO_INTF0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+    _GPIO_INTF0_DATA_CTRL = smc_indexed_addr(
+        "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0
+    )
     _GPIO_INTF_STRIDE = GPIO_INTF_STRIDE
     _I2C0_SCL_PAD = pad_index("I2C[0] SCL")
     _GPIO_LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")

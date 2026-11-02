@@ -488,10 +488,12 @@ static void dccm_leg(void) {
 static void pic_src2_pending(void) {
     uint32_t m = PIC_MBOX;
     volatile uint32_t *cfg =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(m);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+            m);
     volatile uint32_t *st =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(m);
-    volatile uint32_t *en = (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(m);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(m);
+    volatile uint32_t *en =
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(m);
     uint32_t base = m * SEP_AXIL_MBOX_STRIDE;
     uint32_t s = SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR + base;
     cfg[0] = 0u;

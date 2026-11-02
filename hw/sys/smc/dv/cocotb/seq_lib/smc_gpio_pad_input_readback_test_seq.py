@@ -79,7 +79,7 @@ class smc_gpio_pad_input_readback_test_seq(SmcCsrSeq):
 
     @staticmethod
     def _data_ctrl(wrap: int) -> int:
-        return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", wrap)
+        return smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", wrap)
 
     async def _await_pad2core(self, wrap: int, want: int) -> int:
         addr = self._data_ctrl(wrap)

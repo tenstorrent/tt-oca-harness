@@ -77,6 +77,11 @@ from Y's outputs G, so a run of Y changes a graded window) and
 write-only (``abr_reg.rdl``:190); the leaf writes the same mu both times.
 ``OBS-ABR-PARKED-MSG`` logs the ``MLKEM_MSG`` readback at the park and grades
 nothing.
+``OBS-ABR-START-PARKED`` logs the fields of the graded STATUS read after Y's
+refused command (READY, VALID, ERROR and, on ML-DSA, MSG_STREAM_READY) and the
+write response of that CTRL write: ``abr_reg.rdl`` gives ERROR only for the end
+of a process and no text states ERROR, MSG_STREAM_READY or the bus response of a
+command written while parked.
 ``INFO-ABR-SECRET-PRE`` logs which secret windows held a non-zero word before a
 ZEROIZE; a window that held none records ``INFO-ABR-SECRET-EMPTY`` and is not
 graded. A zero window proves that the window is not readable, not that the
@@ -131,7 +136,7 @@ from env.sep_fcov_gate import (
     set_abr_reject_class,
 )
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spec_tables import abr_ctrl_cmd, abr_off
+from env.sep_spec_tables import abr_ctrl_cmd, abr_field_mask, abr_off
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_keygen_seq import (
     ABR_BASE,
@@ -337,6 +342,9 @@ class _Block:
     error: int
     zeroize: int
 
+
+# ML-DSA only: MLKEM_STATUS has no streaming field (abr_reg.rdl MLKEM_STATUS).
+ST_MSG_STREAM_READY = abr_field_mask("MLDSA_STATUS", "MSG_STREAM_READY")
 
 DSA = _Block("dsa", ABR_CTRL, ABR_STATUS, ST_READY, ST_VALID, ST_ERROR, CTRL_ZEROIZE)
 KEM = _Block(
@@ -634,7 +642,8 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
                 first_diff=f"{n}@{i}:got={g_w!s}/exp=0x{p[n][i]:08x}",
             )
             return
-        st = await self._status(blk)
+        raw = await self.abr.rd32(blk.status)
+        st = raw & (blk.ready | blk.valid | blk.error)
         f = self._fields(blk, st)
         self._ok(
             name,
@@ -645,6 +654,15 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             windows=sizes,
             first_diff="none",
             **f,
+        )
+        self.chk.obs(
+            "ABR-START-PARKED",
+            **base,
+            ready=f["ready"],
+            valid=f["valid"],
+            error=f["obs_error"],
+            msg_stream_ready=int(bool(raw & ST_MSG_STREAM_READY)) if blk is DSA else "na",
+            status=f"0x{raw:x}",
         )
 
     # --- cells --------------------------------------------------------------
