@@ -184,7 +184,7 @@ A green regression proves only the sections that the traceability matrix credits
 |===
 |Group |Role
 |`sanity` |Dual-SMC bring-up: `smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test` (`expected_count = 3`)
-|`occp_rom` |The ROM regression: 35 tests (`expected_count = 35`). `smc_occp_ring_buffer_stress_test` is left out for its runtime and runs by name
+|`occp_rom` |The ROM regression: 37 tests (`expected_count = 37`). `smc_occp_ring_buffer_stress_test` is left out for its runtime and runs by name
 |`all` |Not a member. It belongs to <<smc-vplan>>
 |===
 
@@ -211,12 +211,12 @@ the procedure groups whose tests map to the section. *Tests* counts those tests.
 |Section |Summary |Groups |Tests
 |`boot-flow.adoc`, Assembly early boot |Pre-C checks, including the DFT gate |<<smc-rom-vplan-dft-gate>> |3
 |`boot-flow.adoc`, Boot flow |Overall boot sequence and halt behaviour |<<smc-rom-vplan-dft-gate>> |3
-|`boot-flow.adoc`, C boot phases |Phase order and the POST phases |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |3
+|`boot-flow.adoc`, C boot phases |Phase order and the POST phases |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |5
 |`hardware-initialization.adoc`, MBIST and memory repair |Failure codes and halt on repair or MBIST failure |<<smc-rom-vplan-dft-gate>> |3
 |`interfaces.adoc`, Address selection |OCCP target address selection |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-latch>> |3
 |`interfaces.adoc`, GPIO side effects |Ready GPIO that tells the controller the ROM can serve |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>> |4
 |`memory-security.adoc`, Image and SRAM layout |SRAM windows that OCCP can reach |<<smc-rom-vplan-memory-policy>> |1
-|`memory-security.adoc`, Lifecycle handling |Lifecycle validation and the secure-state limits |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |3
+|`memory-security.adoc`, Lifecycle handling |Lifecycle validation and the secure-state limits |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |5
 |`memory-security.adoc`, OCCP memory-access policy |Permitted windows, alignment and image-address checks |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |13
 |`occp-processing.adoc`, Failed-frame cleanup |Recovery after a rejected frame |<<smc-rom-vplan-malformed>> |4
 |`occp-processing.adoc`, Polling and latching |Interface latch and unlatch rules |<<smc-rom-vplan-latch>>, <<smc-rom-vplan-park>> |3
@@ -232,8 +232,8 @@ the procedure groups whose tests map to the section. *Tests* counts those tests.
 |`occp-protocol.adoc`, Packet format |Header layout and maximum body size |<<smc-rom-vplan-occp-command>> |1
 |`occp-protocol.adoc`, ReadData |Memory read command |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>> |11
 |`occp-protocol.adoc`, WriteData |Memory write command |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |15
-|`status-coordination.adoc`, Hart 0 park interlock |Park request, D-cache write-back and HART0_PARKED |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |4
-|`status-coordination.adoc`, POST word |POST phase and error fields |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |2
+|`status-coordination.adoc`, Hart 0 park interlock |Park request, D-cache write-back and HART0_PARKED |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |6
+|`status-coordination.adoc`, POST word |POST phase and error fields |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |4
 |`status-coordination.adoc`, Ring buffers |SMC and SEP ring-buffer layout and order |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-status-ring>> |7
 |`status-coordination.adoc`, Ring-buffer status values |Status codes that the ROM records |<<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>> |8
 |`status-coordination.adoc`, Scratch registers |Scratch-register contract with the SEP and the host |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-dft-gate>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |9
@@ -336,6 +336,8 @@ Procedure: <<smc-rom-vplan-lifecycle>>.
 |Test |Expected outcome
 |`smc_occp_jump_rejection_test` |Each ExecuteImage returns an error response with code 0x00000002 (Invalid_Msgid) and no jump occurs; GET_VERSION before and after succeeds; with STATUS_RPT_DISABLE clear, the SMC ring holds a 0x0F030201 (JUMP_SECURITY) entry, and with it set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch0 = 0xACAFACA1.
 |`smc_rom_invalid_lc_state_test` |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`.
+|`smc_rom_invalid_lc_state_0x4_test` |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`.
+|`smc_rom_invalid_lc_state_0x5_test` |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`.
 |===
 
 ==== Early DFT gate
@@ -789,11 +791,11 @@ verdict and every checker in its member row pass.
 [[smc-rom-vplan-lifecycle]]
 ==== Lifecycle policy
 
-*Tests:* 2.
+*Tests:* 4.
 
 *Base:* `hw/sys/smc/dv/cocotb/tests/smc_rom_invalid_lc_state_test.py`, `hw/sys/smc/dv/cocotb/tests/smc_occp_rom_only_test.py`.
 
-*Objective:* The ROM refuses ExecuteImage in a secure lifecycle state, and it stops with the lifecycle error POST code when the lifecycle value is 0x9 to 0xF.
+*Objective:* The ROM refuses ExecuteImage in a secure lifecycle state, and it stops with the lifecycle error POST code when the lifecycle value is 0x4, 0x5 or 0x9 to 0xF.
 
 *Procedure:*
 
@@ -822,6 +824,8 @@ verdict and every checker in its member row pass.
 |Test |Stimulus |Expected |Checkers |Specification
 |`smc_occp_jump_rejection_test` |{plus}lc_state=1 sets target lifecycle PROD (secure). Controller firmware (I3C): 10 random commands; GET_VERSION; 4 ExecuteImage to random addresses in [0xC0066400, 0xC0157000); GET_VERSION; drain GetStatus 0x8001 to 0; 5 random commands. STATUS_RPT_DISABLE random. DV shortcut: TB drives the target lc_state pins. |Each ExecuteImage returns an error response with code 0x00000002 (Invalid_Msgid) and no jump occurs; GET_VERSION before and after succeeds; with STATUS_RPT_DISABLE clear, the SMC ring holds a 0x0F030201 (JUMP_SECURITY) entry, and with it set, the drain GetStatus 0x8001 returns error 0x07 (Unsupported_StatusID) instead; controller scratch0 = 0xACAFACA1. |`fw: jump-rejected-invalid-msgid`, `fw: get-version-around-jump`, `fw: jump-security-in-ring`, `fw: random-command-result` |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `memory-security.adoc`, OCCP memory-access policy; `memory-security.adoc`, Lifecycle handling; `status-coordination.adoc`, Ring-buffer status values; `occp-protocol.adoc`, GetStatus
 |`smc_rom_invalid_lc_state_test` |TB drives the target lc_state to a well-formed but undefined value (0x9 to 0xF with complementary halves; 0xA for seed 1) before cold reset. No controller command is checked. DV shortcut: TB drives the target lc_state pins to the illegal value. |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`. |`tb: post-error-invalid-sec-mode`, `tb: no-pass-on-illegal-lifecycle`, `tb: illegal-value-guard`, `CHK-ROM-PARK-ON-HALT` |`memory-security.adoc`, Lifecycle handling; `boot-flow.adoc`, C boot phases; `status-coordination.adoc`, POST word; `status-coordination.adoc`, Hart 0 park interlock
+|`smc_rom_invalid_lc_state_0x4_test` |TB drives the target lc_state to 0x4 ({plus}lc_state=0x4, complementary halves), which lies between RMA SoP and RMA chiplet, before cold reset. No controller command is checked. DV shortcut: TB drives the target lc_state pins to the illegal value. |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`. |`tb: post-error-invalid-sec-mode`, `tb: no-pass-on-illegal-lifecycle`, `tb: illegal-value-guard`, `CHK-ROM-PARK-ON-HALT` |`memory-security.adoc`, Lifecycle handling; `boot-flow.adoc`, C boot phases; `status-coordination.adoc`, POST word; `status-coordination.adoc`, Hart 0 park interlock
+|`smc_rom_invalid_lc_state_0x5_test` |TB drives the target lc_state to 0x5 ({plus}lc_state=0x5, complementary halves), which lies between RMA SoP and RMA chiplet, before cold reset. No controller command is checked. DV shortcut: TB drives the target lc_state pins to the illegal value. |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`. |`tb: post-error-invalid-sec-mode`, `tb: no-pass-on-illegal-lifecycle`, `tb: illegal-value-guard`, `CHK-ROM-PARK-ON-HALT` |`memory-security.adoc`, Lifecycle handling; `boot-flow.adoc`, C boot phases; `status-coordination.adoc`, POST word; `status-coordination.adoc`, Hart 0 park interlock
 |===
 
 *Checker contracts:*
@@ -835,7 +839,7 @@ verdict and every checker in its member row pass.
 |`smc_occp_jump_rejection_test` |`fw: random-command-result` |Every random command gets a CRC-valid response with the expected error state; GET_VERSION is 1.0.0, with STATUS_RPT_DISABLE clear GetStatus 0x0002 bits 7:0 match the command count and GetStatus 0x8000 matches the SEP ring model (with it set, each GetStatus returns error 0x07), and scoreboard reads match earlier writes.
 |`smc_rom_invalid_lc_state_test` |`tb: post-error-invalid-sec-mode` |POST boot phase == 0x7 and POST error == 0x5 within {plus}rom_test_timeout.
 |`smc_rom_invalid_lc_state_test` |`tb: no-pass-on-illegal-lifecycle` |Target scratch0 must not equal 0xACAFACA1.
-|`smc_rom_invalid_lc_state_test` |`tb: illegal-value-guard` |A named {plus}lc_state outside 0x9 to 0xF is rejected, so the test cannot run on a legal state.
+|`smc_rom_invalid_lc_state_test` |`tb: illegal-value-guard` |A named {plus}lc_state other than 0x4, 0x5 or 0x9 to 0xF is rejected, so the test cannot run on a legal state. The `_0x4` and `_0x5` entries run this module with the same checkers.
 |`smc_rom_invalid_lc_state_test` |`CHK-ROM-PARK-ON-HALT` |Target scratch 9 bit 4 sets within 50000 cycles of the halt being observed; then, after a 200-cycle settle, every hart-0 retired PC sampled every 50 cycles over 4000 cycles is one of the two park-loop addresses, `smc_park_hart0_wfi` and `smc_park_hart0_wfi` + 4, taken from `prod_rom.sym`.
 |===
 
@@ -1033,7 +1037,7 @@ verdict and every checker in its member row pass.
 |===
 |Group |Members |Use
 |`sanity` |`smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test` |Dual-SMC bring-up gate
-|`occp_rom` |35 tests: every entry except the two harness tests and `smc_occp_ring_buffer_stress_test` |ROM regression
+|`occp_rom` |37 tests: every entry except the two harness tests and `smc_occp_ring_buffer_stress_test` |ROM regression
 |By name |`smc_occp_ring_buffer_stress_test` |Long-running stress, run on demand
 |===
 
