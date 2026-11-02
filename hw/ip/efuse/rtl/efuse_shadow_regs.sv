@@ -177,7 +177,7 @@ module efuse_shadow_regs
   end
 
   logic chiplet_state_change_completed_n0_scan;
-  logic sop_state_change_completed_n0_scan;
+  logic sip_state_change_completed_n0_scan;
 
   logic [LcStateWidth-1:0] lc_state_raw_d;
   logic [2*LcStateWidth-1:0] lc_state_diff_d;
@@ -563,7 +563,7 @@ module efuse_shadow_regs
       end
 
       chiplet_state_change_completed_n0_scan <= 1'b0;
-      sop_state_change_completed_n0_scan <= 1'b0;
+      sip_state_change_completed_n0_scan <= 1'b0;
 
     end else begin
       /////////////////////////////////////////
@@ -639,17 +639,17 @@ module efuse_shadow_regs
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;
               chiplet_state_change_completed_n0_scan <= 1'b1;
-            end else if (sip_rma_update && !sop_state_change_completed_n0_scan) begin
+            end else if (sip_rma_update && !sip_state_change_completed_n0_scan) begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;
-              sop_state_change_completed_n0_scan <= 1'b1;
+              sip_state_change_completed_n0_scan <= 1'b1;
             end
           end
         end else begin
           // No chiplet state change in the SMC instance.
           chiplet_state_change_completed_n0_scan <= 1'b1;
-          sop_state_change_completed_n0_scan <= 1'b1;
+          sip_state_change_completed_n0_scan <= 1'b1;
         end
       end
     end
