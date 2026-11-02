@@ -2480,6 +2480,59 @@ DFX_CTRL_DEBUG_CTRL_REG_TYPE = 'DFX_CTRL_STATUS_DEBUG_CTRL'
 DFX_CTRL_DEBUG_BUS_MUX_REG_OFFSET = 0x00000010
 DFX_CTRL_DEBUG_BUS_MUX_REG_ADDR = 0xC000B810
 DFX_CTRL_DEBUG_BUS_MUX_REG_TYPE = 'DFX_CTRL_STATUS_DEBUG_BUS_MUX'
+SMC_PWM_REG_MAP_BASE_ADDR = 0xC000C000
+SMC_PWM_REG_MAP_SIZE = 0x00000044
+SMC_PWM_ALERT_TEST_REG_OFFSET = 0x00000000
+SMC_PWM_ALERT_TEST_REG_ADDR = 0xC000C000
+SMC_PWM_ALERT_TEST_REG_TYPE = 'PWM_ALERT_TEST'
+SMC_PWM_REGWEN_REG_OFFSET = 0x00000004
+SMC_PWM_REGWEN_REG_ADDR = 0xC000C004
+SMC_PWM_REGWEN_REG_TYPE = 'PWM_REGWEN'
+SMC_PWM_CFG_REG_OFFSET = 0x00000008
+SMC_PWM_CFG_REG_ADDR = 0xC000C008
+SMC_PWM_CFG_REG_TYPE = 'PWM_CFG'
+SMC_PWM_PWM_EN_REG_OFFSET = 0x0000000C
+SMC_PWM_PWM_EN_REG_ADDR = 0xC000C00C
+SMC_PWM_PWM_EN_REG_TYPE = 'PWM_PWM_EN'
+SMC_PWM_INVERT_REG_OFFSET = 0x00000010
+SMC_PWM_INVERT_REG_ADDR = 0xC000C010
+SMC_PWM_INVERT_REG_TYPE = 'PWM_INVERT'
+SMC_PWM_PWM_PARAM_0__REG_OFFSET = 0x00000014
+SMC_PWM_PWM_PARAM_0__REG_ADDR = 0xC000C014
+SMC_PWM_PWM_PARAM_0__REG_TYPE = 'PWM_PWM_PARAM'
+SMC_PWM_PWM_PARAM_1__REG_OFFSET = 0x00000018
+SMC_PWM_PWM_PARAM_1__REG_ADDR = 0xC000C018
+SMC_PWM_PWM_PARAM_1__REG_TYPE = 'PWM_PWM_PARAM'
+SMC_PWM_PWM_PARAM_2__REG_OFFSET = 0x0000001C
+SMC_PWM_PWM_PARAM_2__REG_ADDR = 0xC000C01C
+SMC_PWM_PWM_PARAM_2__REG_TYPE = 'PWM_PWM_PARAM'
+SMC_PWM_PWM_PARAM_3__REG_OFFSET = 0x00000020
+SMC_PWM_PWM_PARAM_3__REG_ADDR = 0xC000C020
+SMC_PWM_PWM_PARAM_3__REG_TYPE = 'PWM_PWM_PARAM'
+SMC_PWM_DUTY_CYCLE_0__REG_OFFSET = 0x00000024
+SMC_PWM_DUTY_CYCLE_0__REG_ADDR = 0xC000C024
+SMC_PWM_DUTY_CYCLE_0__REG_TYPE = 'PWM_DUTY_CYCLE'
+SMC_PWM_DUTY_CYCLE_1__REG_OFFSET = 0x00000028
+SMC_PWM_DUTY_CYCLE_1__REG_ADDR = 0xC000C028
+SMC_PWM_DUTY_CYCLE_1__REG_TYPE = 'PWM_DUTY_CYCLE'
+SMC_PWM_DUTY_CYCLE_2__REG_OFFSET = 0x0000002C
+SMC_PWM_DUTY_CYCLE_2__REG_ADDR = 0xC000C02C
+SMC_PWM_DUTY_CYCLE_2__REG_TYPE = 'PWM_DUTY_CYCLE'
+SMC_PWM_DUTY_CYCLE_3__REG_OFFSET = 0x00000030
+SMC_PWM_DUTY_CYCLE_3__REG_ADDR = 0xC000C030
+SMC_PWM_DUTY_CYCLE_3__REG_TYPE = 'PWM_DUTY_CYCLE'
+SMC_PWM_BLINK_PARAM_0__REG_OFFSET = 0x00000034
+SMC_PWM_BLINK_PARAM_0__REG_ADDR = 0xC000C034
+SMC_PWM_BLINK_PARAM_0__REG_TYPE = 'PWM_BLINK_PARAM'
+SMC_PWM_BLINK_PARAM_1__REG_OFFSET = 0x00000038
+SMC_PWM_BLINK_PARAM_1__REG_ADDR = 0xC000C038
+SMC_PWM_BLINK_PARAM_1__REG_TYPE = 'PWM_BLINK_PARAM'
+SMC_PWM_BLINK_PARAM_2__REG_OFFSET = 0x0000003C
+SMC_PWM_BLINK_PARAM_2__REG_ADDR = 0xC000C03C
+SMC_PWM_BLINK_PARAM_2__REG_TYPE = 'PWM_BLINK_PARAM'
+SMC_PWM_BLINK_PARAM_3__REG_OFFSET = 0x00000040
+SMC_PWM_BLINK_PARAM_3__REG_ADDR = 0xC000C040
+SMC_PWM_BLINK_PARAM_3__REG_TYPE = 'PWM_BLINK_PARAM'
 SMC_BASE_CONFIG_REG_MAP_BASE_ADDR = 0xC0010000
 SMC_BASE_CONFIG_REG_MAP_SIZE = 0x0000004C
 SMC_BASE_CONFIG_GLOBAL_BASE_REG_OFFSET = 0x00000000
@@ -17072,6 +17125,321 @@ class DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_u, self).__init__(*args, **kwargs)
         self.val = DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+PWM_ALERT_TEST_REG_DEFAULT = 0x00000000
+PWM_ALERT_TEST_REG_FIELD_ACCESS = (
+    ('fatal_fault', 'w', '', '', False),
+)
+
+PWM_ALERT_TEST_REG_WIDTH = 32
+PWM_ALERT_TEST_REG_FIELDS = (
+    ('fatal_fault', 0, 0, 'w', 'r', '', '', False, False, 0),
+)
+
+class PWM_ALERT_TEST_reg_t(Structure):
+    _fields_ = [
+        ('fatal_fault', c_uint8, 1),
+    ]
+
+PWM_ALERT_TEST_REG_DEFAULT = 0x00000000
+
+class PWM_ALERT_TEST_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', PWM_ALERT_TEST_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(PWM_ALERT_TEST_reg_u, self).__init__(*args, **kwargs)
+        self.val = PWM_ALERT_TEST_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+PWM_REGWEN_REG_DEFAULT = 0x00000001
+PWM_REGWEN_REG_FIELD_ACCESS = (
+    ('REGWEN', 'rw', 'wzc', '', False),
+)
+
+PWM_REGWEN_REG_WIDTH = 32
+PWM_REGWEN_REG_FIELDS = (
+    ('REGWEN', 0, 0, 'rw', 'na', 'wzc', '', False, False, 1),
+)
+
+class PWM_REGWEN_reg_t(Structure):
+    _fields_ = [
+        ('regwen', c_uint8, 1),
+    ]
+
+PWM_REGWEN_REG_DEFAULT = 0x00000001
+
+class PWM_REGWEN_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', PWM_REGWEN_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(PWM_REGWEN_reg_u, self).__init__(*args, **kwargs)
+        self.val = PWM_REGWEN_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+PWM_CFG_REG_DEFAULT = 0x38008000
+PWM_CFG_REG_FIELD_ACCESS = (
+    ('CLK_DIV', 'rw', '', '', False),
+    ('DC_RESN', 'rw', '', '', False),
+    ('CNTR_EN', 'rw', '', '', False),
+)
+
+PWM_CFG_REG_WIDTH = 32
+PWM_CFG_REG_FIELDS = (
+    ('CLK_DIV', 0, 26, 'rw', 'r', '', '', False, False, 32768),
+    ('DC_RESN', 27, 30, 'rw', 'r', '', '', False, False, 7),
+    ('CNTR_EN', 31, 31, 'rw', 'r', '', '', False, False, 0),
+)
+
+class PWM_CFG_reg_t(Structure):
+    _fields_ = [
+        ('clk_div', c_uint32, 27),
+        ('dc_resn', c_uint32, 4),
+        ('cntr_en', c_uint32, 1),
+    ]
+
+PWM_CFG_REG_DEFAULT = 0x38008000
+
+class PWM_CFG_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', PWM_CFG_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(PWM_CFG_reg_u, self).__init__(*args, **kwargs)
+        self.val = PWM_CFG_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+PWM_PWM_EN_REG_DEFAULT = 0x00000000
+PWM_PWM_EN_REG_FIELD_ACCESS = (
+    ('EN', 'rw', '', '', False),
+)
+
+PWM_PWM_EN_REG_WIDTH = 32
+PWM_PWM_EN_REG_FIELDS = (
+    ('EN', 0, 3, 'rw', 'r', '', '', False, False, 0),
+)
+
+class PWM_PWM_EN_reg_t(Structure):
+    _fields_ = [
+        ('en', c_uint8, 4),
+    ]
+
+PWM_PWM_EN_REG_DEFAULT = 0x00000000
+
+class PWM_PWM_EN_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', PWM_PWM_EN_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(PWM_PWM_EN_reg_u, self).__init__(*args, **kwargs)
+        self.val = PWM_PWM_EN_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+PWM_INVERT_REG_DEFAULT = 0x00000000
+PWM_INVERT_REG_FIELD_ACCESS = (
+    ('INVERT', 'rw', '', '', False),
+)
+
+PWM_INVERT_REG_WIDTH = 32
+PWM_INVERT_REG_FIELDS = (
+    ('INVERT', 0, 3, 'rw', 'r', '', '', False, False, 0),
+)
+
+class PWM_INVERT_reg_t(Structure):
+    _fields_ = [
+        ('invert', c_uint8, 4),
+    ]
+
+PWM_INVERT_REG_DEFAULT = 0x00000000
+
+class PWM_INVERT_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', PWM_INVERT_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(PWM_INVERT_reg_u, self).__init__(*args, **kwargs)
+        self.val = PWM_INVERT_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+PWM_PWM_PARAM_REG_DEFAULT = 0x00000000
+PWM_PWM_PARAM_REG_FIELD_ACCESS = (
+    ('PHASE_DELAY', 'rw', '', '', False),
+    ('HTBT_EN', 'rw', '', '', False),
+    ('BLINK_EN', 'rw', '', '', False),
+)
+
+PWM_PWM_PARAM_REG_WIDTH = 32
+PWM_PWM_PARAM_REG_FIELDS = (
+    ('PHASE_DELAY', 0, 15, 'rw', 'r', '', '', False, False, 0),
+    ('HTBT_EN', 30, 30, 'rw', 'r', '', '', False, False, 0),
+    ('BLINK_EN', 31, 31, 'rw', 'r', '', '', False, False, 0),
+)
+
+class PWM_PWM_PARAM_reg_t(Structure):
+    _fields_ = [
+        ('phase_delay', c_uint32, 16),
+        ('rsvd_0', c_uint32, 14),
+        ('htbt_en', c_uint32, 1),
+        ('blink_en', c_uint32, 1),
+    ]
+
+PWM_PWM_PARAM_REG_DEFAULT = 0x00000000
+
+class PWM_PWM_PARAM_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', PWM_PWM_PARAM_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(PWM_PWM_PARAM_reg_u, self).__init__(*args, **kwargs)
+        self.val = PWM_PWM_PARAM_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+PWM_DUTY_CYCLE_REG_DEFAULT = 0x7FFF7FFF
+PWM_DUTY_CYCLE_REG_FIELD_ACCESS = (
+    ('A', 'rw', '', '', False),
+    ('B', 'rw', '', '', False),
+)
+
+PWM_DUTY_CYCLE_REG_WIDTH = 32
+PWM_DUTY_CYCLE_REG_FIELDS = (
+    ('A', 0, 15, 'rw', 'r', '', '', False, False, 32767),
+    ('B', 16, 31, 'rw', 'r', '', '', False, False, 32767),
+)
+
+class PWM_DUTY_CYCLE_reg_t(Structure):
+    _fields_ = [
+        ('a', c_uint32, 16),
+        ('b', c_uint32, 16),
+    ]
+
+PWM_DUTY_CYCLE_REG_DEFAULT = 0x7FFF7FFF
+
+class PWM_DUTY_CYCLE_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', PWM_DUTY_CYCLE_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(PWM_DUTY_CYCLE_reg_u, self).__init__(*args, **kwargs)
+        self.val = PWM_DUTY_CYCLE_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+PWM_BLINK_PARAM_REG_DEFAULT = 0x00000000
+PWM_BLINK_PARAM_REG_FIELD_ACCESS = (
+    ('X', 'rw', '', '', False),
+    ('Y', 'rw', '', '', False),
+)
+
+PWM_BLINK_PARAM_REG_WIDTH = 32
+PWM_BLINK_PARAM_REG_FIELDS = (
+    ('X', 0, 15, 'rw', 'r', '', '', False, False, 0),
+    ('Y', 16, 31, 'rw', 'r', '', '', False, False, 0),
+)
+
+class PWM_BLINK_PARAM_reg_t(Structure):
+    _fields_ = [
+        ('x', c_uint32, 16),
+        ('y', c_uint32, 16),
+    ]
+
+PWM_BLINK_PARAM_REG_DEFAULT = 0x00000000
+
+class PWM_BLINK_PARAM_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', PWM_BLINK_PARAM_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(PWM_BLINK_PARAM_reg_u, self).__init__(*args, **kwargs)
+        self.val = PWM_BLINK_PARAM_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

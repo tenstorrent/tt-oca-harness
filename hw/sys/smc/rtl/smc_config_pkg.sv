@@ -49,6 +49,12 @@ package smc_config_pkg;
   localparam int unsigned LogEngineFifoDepth = 4;
   localparam bit [NumUart-1:0] GenLogEngines = {NumUart{1'b1}};    // determines which UART instances have a log engine.
 
+  ////////////////////
+  // PWM Parameters //
+  ////////////////////
+
+  localparam int unsigned NumPwmOutputs = 4;
+
   ///////////////////////
   // AVSBus Parameters //
   ///////////////////////

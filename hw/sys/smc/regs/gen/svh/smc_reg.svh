@@ -2720,6 +2720,51 @@ localparam int unsigned DFX_CTRL_DEBUG_BUS_MUX_REG_ADDR                         
 
 
 //==============================================================================
+// Addresses for Address Map: smc_pwm
+//==============================================================================
+
+
+localparam int unsigned SMC_PWM_REG_MAP_BASE_ADDR                                                                 = 32'hC000C000;
+localparam int unsigned SMC_PWM_REG_MAP_SIZE                                                                      = 32'h00000044;
+
+
+localparam int unsigned SMC_PWM_ALERT_TEST_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned SMC_PWM_ALERT_TEST_REG_ADDR                                                               = 32'hC000C000;
+localparam int unsigned SMC_PWM_REGWEN_REG_OFFSET                                                                 = 32'h00000004;
+localparam int unsigned SMC_PWM_REGWEN_REG_ADDR                                                                   = 32'hC000C004;
+localparam int unsigned SMC_PWM_CFG_REG_OFFSET                                                                    = 32'h00000008;
+localparam int unsigned SMC_PWM_CFG_REG_ADDR                                                                      = 32'hC000C008;
+localparam int unsigned SMC_PWM_PWM_EN_REG_OFFSET                                                                 = 32'h0000000C;
+localparam int unsigned SMC_PWM_PWM_EN_REG_ADDR                                                                   = 32'hC000C00C;
+localparam int unsigned SMC_PWM_INVERT_REG_OFFSET                                                                 = 32'h00000010;
+localparam int unsigned SMC_PWM_INVERT_REG_ADDR                                                                   = 32'hC000C010;
+localparam int unsigned SMC_PWM_PWM_PARAM_0__REG_OFFSET                                                           = 32'h00000014;
+localparam int unsigned SMC_PWM_PWM_PARAM_0__REG_ADDR                                                             = 32'hC000C014;
+localparam int unsigned SMC_PWM_PWM_PARAM_1__REG_OFFSET                                                           = 32'h00000018;
+localparam int unsigned SMC_PWM_PWM_PARAM_1__REG_ADDR                                                             = 32'hC000C018;
+localparam int unsigned SMC_PWM_PWM_PARAM_2__REG_OFFSET                                                           = 32'h0000001C;
+localparam int unsigned SMC_PWM_PWM_PARAM_2__REG_ADDR                                                             = 32'hC000C01C;
+localparam int unsigned SMC_PWM_PWM_PARAM_3__REG_OFFSET                                                           = 32'h00000020;
+localparam int unsigned SMC_PWM_PWM_PARAM_3__REG_ADDR                                                             = 32'hC000C020;
+localparam int unsigned SMC_PWM_DUTY_CYCLE_0__REG_OFFSET                                                          = 32'h00000024;
+localparam int unsigned SMC_PWM_DUTY_CYCLE_0__REG_ADDR                                                            = 32'hC000C024;
+localparam int unsigned SMC_PWM_DUTY_CYCLE_1__REG_OFFSET                                                          = 32'h00000028;
+localparam int unsigned SMC_PWM_DUTY_CYCLE_1__REG_ADDR                                                            = 32'hC000C028;
+localparam int unsigned SMC_PWM_DUTY_CYCLE_2__REG_OFFSET                                                          = 32'h0000002C;
+localparam int unsigned SMC_PWM_DUTY_CYCLE_2__REG_ADDR                                                            = 32'hC000C02C;
+localparam int unsigned SMC_PWM_DUTY_CYCLE_3__REG_OFFSET                                                          = 32'h00000030;
+localparam int unsigned SMC_PWM_DUTY_CYCLE_3__REG_ADDR                                                            = 32'hC000C030;
+localparam int unsigned SMC_PWM_BLINK_PARAM_0__REG_OFFSET                                                         = 32'h00000034;
+localparam int unsigned SMC_PWM_BLINK_PARAM_0__REG_ADDR                                                           = 32'hC000C034;
+localparam int unsigned SMC_PWM_BLINK_PARAM_1__REG_OFFSET                                                         = 32'h00000038;
+localparam int unsigned SMC_PWM_BLINK_PARAM_1__REG_ADDR                                                           = 32'hC000C038;
+localparam int unsigned SMC_PWM_BLINK_PARAM_2__REG_OFFSET                                                         = 32'h0000003C;
+localparam int unsigned SMC_PWM_BLINK_PARAM_2__REG_ADDR                                                           = 32'hC000C03C;
+localparam int unsigned SMC_PWM_BLINK_PARAM_3__REG_OFFSET                                                         = 32'h00000040;
+localparam int unsigned SMC_PWM_BLINK_PARAM_3__REG_ADDR                                                           = 32'hC000C040;
+
+
+//==============================================================================
 // Addresses for Address Map: smc_base_config
 //==============================================================================
 
@@ -10902,6 +10947,14 @@ localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_200_MEM_WORD_REG_DEFAULT     
 localparam longint unsigned DFX_CTRL_STATUS_STATUS_REG_DEFAULT                                                    = 64'h0000000000000000;
 localparam longint unsigned DFX_CTRL_STATUS_DEBUG_CTRL_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT                                             = 64'h0000000000000000;
+localparam longint unsigned PWM_ALERT_TEST_REG_DEFAULT                                                            = 32'h00000000;
+localparam longint unsigned PWM_REGWEN_REG_DEFAULT                                                                = 32'h00000001;
+localparam longint unsigned PWM_CFG_REG_DEFAULT                                                                   = 32'h38008000;
+localparam longint unsigned PWM_PWM_EN_REG_DEFAULT                                                                = 32'h00000000;
+localparam longint unsigned PWM_INVERT_REG_DEFAULT                                                                = 32'h00000000;
+localparam longint unsigned PWM_PWM_PARAM_REG_DEFAULT                                                             = 32'h00000000;
+localparam longint unsigned PWM_DUTY_CYCLE_REG_DEFAULT                                                            = 32'h7FFF7FFF;
+localparam longint unsigned PWM_BLINK_PARAM_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned SMC_BASE_CONFIG_GLOBAL_BASE_REG_DEFAULT                                               = 64'h0000000040000000;
 localparam longint unsigned SMC_BASE_CONFIG_LOCAL_BASE_REG_DEFAULT                                                = 64'h00000000C0000000;
 localparam longint unsigned SMC_BASE_CONFIG_REGION_SIZE_REG_DEFAULT                                               = 64'h0000000001000000;
@@ -12788,6 +12841,48 @@ localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG6_SHIFT      
 
 localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG7_MASK                                         = 64'hFC00000000000000;
 localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG7_SHIFT                                        = 58;
+
+localparam int unsigned PWM_ALERT_TEST_FATAL_FAULT_MASK                                                           = 32'h1;
+localparam int unsigned PWM_ALERT_TEST_FATAL_FAULT_SHIFT                                                          = 0;
+
+localparam int unsigned PWM_REGWEN_REGWEN_MASK                                                                    = 32'h1;
+localparam int unsigned PWM_REGWEN_REGWEN_SHIFT                                                                   = 0;
+
+localparam int unsigned PWM_CFG_CLK_DIV_MASK                                                                      = 32'h7FFFFFF;
+localparam int unsigned PWM_CFG_CLK_DIV_SHIFT                                                                     = 0;
+
+localparam int unsigned PWM_CFG_DC_RESN_MASK                                                                      = 32'h78000000;
+localparam int unsigned PWM_CFG_DC_RESN_SHIFT                                                                     = 27;
+
+localparam int unsigned PWM_CFG_CNTR_EN_MASK                                                                      = 32'h80000000;
+localparam int unsigned PWM_CFG_CNTR_EN_SHIFT                                                                     = 31;
+
+localparam int unsigned PWM_PWM_EN_EN_MASK                                                                        = 32'hF;
+localparam int unsigned PWM_PWM_EN_EN_SHIFT                                                                       = 0;
+
+localparam int unsigned PWM_INVERT_INVERT_MASK                                                                    = 32'hF;
+localparam int unsigned PWM_INVERT_INVERT_SHIFT                                                                   = 0;
+
+localparam int unsigned PWM_PWM_PARAM_PHASE_DELAY_MASK                                                            = 32'hFFFF;
+localparam int unsigned PWM_PWM_PARAM_PHASE_DELAY_SHIFT                                                           = 0;
+
+localparam int unsigned PWM_PWM_PARAM_HTBT_EN_MASK                                                                = 32'h40000000;
+localparam int unsigned PWM_PWM_PARAM_HTBT_EN_SHIFT                                                               = 30;
+
+localparam int unsigned PWM_PWM_PARAM_BLINK_EN_MASK                                                               = 32'h80000000;
+localparam int unsigned PWM_PWM_PARAM_BLINK_EN_SHIFT                                                              = 31;
+
+localparam int unsigned PWM_DUTY_CYCLE_A_MASK                                                                     = 32'hFFFF;
+localparam int unsigned PWM_DUTY_CYCLE_A_SHIFT                                                                    = 0;
+
+localparam int unsigned PWM_DUTY_CYCLE_B_MASK                                                                     = 32'hFFFF0000;
+localparam int unsigned PWM_DUTY_CYCLE_B_SHIFT                                                                    = 16;
+
+localparam int unsigned PWM_BLINK_PARAM_X_MASK                                                                    = 32'hFFFF;
+localparam int unsigned PWM_BLINK_PARAM_X_SHIFT                                                                   = 0;
+
+localparam int unsigned PWM_BLINK_PARAM_Y_MASK                                                                    = 32'hFFFF0000;
+localparam int unsigned PWM_BLINK_PARAM_Y_SHIFT                                                                   = 16;
 
 localparam longint unsigned SMC_BASE_CONFIG_GLOBAL_BASE_BASE_MASK                                                 = 64'hFFFFFFFFFFFFFF;
 localparam     int unsigned SMC_BASE_CONFIG_GLOBAL_BASE_BASE_SHIFT                                                = 0;
@@ -17074,6 +17169,9 @@ localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_SHIFT                        
 
 
 
+
+
+
 typedef struct packed {
     logic [2:0]   rsvd3 ;
     logic [0:0]   wdogip0 ;
@@ -18363,6 +18461,61 @@ typedef struct packed {
     logic [5:0]   dbmid ;
     logic [1:0]   dbmmode ;
 } dfx_ctrl_status_debug_bus_mux_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   fatal_fault ;
+} pwm_alert_test_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   regwen ;
+} pwm_regwen_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   cntr_en ;
+    logic [3:0]   dc_resn ;
+    logic [26:0]   clk_div ;
+} pwm_cfg_reg_t;
+
+
+
+typedef struct packed {
+    logic [3:0]   en ;
+} pwm_pwm_en_reg_t;
+
+
+
+typedef struct packed {
+    logic [3:0]   invert ;
+} pwm_invert_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   blink_en ;
+    logic [0:0]   htbt_en ;
+    logic [13:0]   rsvd_0 ;
+    logic [15:0]   phase_delay ;
+} pwm_pwm_param_reg_t;
+
+
+
+typedef struct packed {
+    logic [15:0]   b ;
+    logic [15:0]   a ;
+} pwm_duty_cycle_reg_t;
+
+
+
+typedef struct packed {
+    logic [15:0]   y ;
+    logic [15:0]   x ;
+} pwm_blink_param_reg_t;
 
 
 

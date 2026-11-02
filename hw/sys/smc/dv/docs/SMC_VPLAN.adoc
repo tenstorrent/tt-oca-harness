@@ -8219,7 +8219,7 @@ draws nothing from the seed.
 
 * Every expectation comes from the generated register map (`hw/sys/smc/regs/gen/py/smc_reg.py`) or from a co-resident write/readback pattern, never from a first read of the DUT. A region whose reset is zero throughout is proven by the co-resident pattern rather than by a 0 == 0 compare, because a dead or unmapped window commonly reads 0.
 * The co-resident shape writes several addresses before any of them is read back, so a decode that collapses two windows onto one physical register returns a neighbour's pattern and fails the exact compare -- which a per-address write-then-read cannot see.
-* Three addresses no generated-map block declares and no crossbar rule covers (past the watchdog cluster, past the DFX block, past the fabric-control block) are declared expected-error to the SEP_IN monitor and required to answer DECERR from the fabric error slave.
+* Three addresses no generated-map block declares and no crossbar rule covers (past the watchdog cluster, past the PWM block's aperture, past the fabric-control block) are declared expected-error to the SEP_IN monitor and required to answer DECERR from the fabric error slave.
 * The first word past the straps block in the external window (`SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR` plus `SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE` from the generated `smc_addr.h`) is claimed by no target of the window's demux. It must reach the external port and be answered DECERR there, and `STRAPS_LO`/`STRAPS_HI` must read the same on both sides of it.
 * **Past a block's generated extent.** The crossbars decode each block to its generated `SIZE` or `TOTAL_SIZE` and send every other address to the error slave. A read and a write at the first word past `GPIO_INTF[64]` (`GPIO_INTF_TOTAL_SIZE`), and a write past misc_wrap (`SIZE`), must each be refused with an error response, and the last register before each must read the same afterwards.
 * **Data-accelerator range.** The crossbar decodes the DMA block to `SMC_TOP_DMA_CTRL_SIZE` and the zeroer block to `SMC_TOP_ZEROER_CTRL_SIZE`, both cross-checked against the decoded extent of the generated memory map (`regs/gen/py/smc_memory_map.py`), whose RDL past-extent response (`ocah_past_extent_resp`) is DECERR for a read and a write. The first word past the DMA block (the gap below the zeroer, `0xC0038138` in the current map) and the first word past the zeroer block (`0xC0038218`) each take a read and an all-ones write, and each access must answer DECERR. Every DMA descriptor register and the zeroer's `DEST_ADDR` read 0 before and after, so a write that reached either block at any offset fails the readback.
@@ -11104,8 +11104,9 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * The address gap between apertures answers DECERR (`memmap.adoc`, Address Space Organization;
-  `smc.rdl`, `ocah_gap_resp`): the first and last word of the gap at offsets 0xC000 to 0xFFFF read
-  DECERR with the error-slave word 0xBADCAB1E and write DECERR from SEP_IN at the local base.
+  `smc.rdl`, `ocah_gap_resp`): the first and last word of the gap at offsets 0xD000 to 0xFFFF,
+  between the PWM aperture and `smc_base_config`, read DECERR with the error-slave word 0xBADCAB1E
+  and write DECERR from SEP_IN at the local base.
 * The gap at offsets 0x3_8300 to 0x3_8FFF between the zeroer and CPU control apertures gives the
   same responses for both directions.
 * The same two gaps answer identically from SYS_IN and JTAG at the local base and from all three
@@ -11136,8 +11137,8 @@ draws nothing from the seed.
   bring-up signals, write inbound filter entry 0 `START_ADDR` 0, `END_ADDR` 0x00FF_FFFF_FFFF_FFFF
   and `FILTER_CONFIG` pass-all over SEP_IN as 8-byte writes, then read the local base from SYS_IN
   while sampling `tb_inb_read_hit` (bounded by 6 000 cycles), requiring OKAY and the hit bit seen.
-. Error injection. Point: SEP_IN at the local base, the gap at offsets 0xC000 to 0xFFFF. Kind:
-  reads of the first (0xC000) and last (0xFFF8) word of the gap. Expected response: DECERR with
+. Error injection. Point: SEP_IN at the local base, the gap at offsets 0xD000 to 0xFFFF. Kind:
+  reads of the first (0xD000) and last (0xFFF8) word of the gap. Expected response: DECERR with
   0xBADCAB1E.
 . Error injection. Point: the same two gap words from SEP_IN at the local base. Kind: writes.
   Expected response: DECERR.
@@ -11171,9 +11172,9 @@ draws nothing from the seed.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GAP-READ-DECERR` |The reads at offsets 0xC000 and 0xFFF8 from SEP_IN at the local base answer
+|`CHK-GAP-READ-DECERR` |The reads at offsets 0xD000 and 0xFFF8 from SEP_IN at the local base answer
 DECERR with rdata 0xBADCAB1E, after the admission probe read answered OKAY with the filter hit seen
-|`CHK-GAP-WRITE-DECERR` |The writes at offsets 0xC000 and 0xFFF8 from SEP_IN
+|`CHK-GAP-WRITE-DECERR` |The writes at offsets 0xD000 and 0xFFF8 from SEP_IN
 at the local base answer DECERR
 |`CHK-GAP-ZEROER-CPU-DECERR` |The reads at offsets 0x3_8300 and 0x3_8FF8 answer DECERR with
 0xBADCAB1E and the writes answer DECERR
@@ -11739,7 +11740,7 @@ admission read; `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk
 bring-up wait; registers inbound filter entry 0, `GLOBAL_BASE`, `LOCAL_BASE`, `REGION_SIZE` and
 `CLOCK_GATE_CONTROL` of `SMC_BASE_CONFIG`, `SCRATCH_COLD` word 0; the outside-window addresses
 0xBFFF_FFFC, 0x8000_0000, 0xD000_0000 and 0x0000_0100_0000_0000 and the gap addresses at offsets
-0xC000, 0x3_8300 and 0x1_6200 from the local base and the first address past the core 0 watchdog's
+0xD000, 0x3_8300 and 0x1_6200 from the local base and the first address past the core 0 watchdog's
 decoded extent
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
@@ -11787,7 +11788,7 @@ draws nothing from the seed.
   each; after each run `CLOCK_GATE_CONTROL` reads OKAY with 0x1F00_0000.
 . Write 0x5A3C_96E1 to `SCRATCH_COLD` word 0 over SEP_IN and read it back, read it back from SYS_IN
   and JTAG, and restore it to 0 and read 0 back; every access OKAY with exact values.
-. Error injection. Point: SEP_IN, the gap addresses at offsets 0xC000, 0x3_8300 and 0x1_6200. Kind:
+. Error injection. Point: SEP_IN, the gap addresses at offsets 0xD000, 0x3_8300 and 0x1_6200. Kind:
   33 consecutive probes cycling the three addresses, alternating read and write. Expected response:
   DECERR on each, 0xBADCAB1E on each read, and each probe finishing within 50 000 ns.
 . Restore inbound filter entry 0 `FILTER_CONFIG`, `END_ADDR` and `START_ADDR` to their register
@@ -24708,7 +24709,8 @@ response code and read data seen by the SEP_IN scoreboard; bench signals `tb_fus
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: `dfx_ctrl` addresses, DECERR past the extent and the gap at 0xC.
+*Objective*: `dfx_ctrl` addresses, DECERR past the extent, the next block after the aperture and
+the gap at 0xC.
 
 *Test Coverage*:
 
@@ -24728,9 +24730,11 @@ draws nothing from the seed.
   response and the word are taken from the generated map row of `dfx_ctrl`
   (`memory_map.adoc`, Past Extent: DECERR, 0xBADCAB1E).
 * Writes past the register extent answer DECERR and leave the three registers as they were.
-* The first address after the aperture, 0xC000_C000, lies between the `dfx_ctrl` aperture and
-  `smc_base_config` at BASE + 0x1_0000, so it reaches no unit; `memmap.adoc` states that a read
-  or write between unit apertures answers DECERR, and a read returns 0xBADCAB1E.
+* The first address after the aperture, 0xC000_C000, is the base of the next unit in the
+  generated map, the PWM block, whose first register `ALERT_TEST` is write-only and reads 0. The
+  read answers OKAY with that word, so it is decoded by the PWM block and not by `dfx_ctrl`,
+  whose past-extent answer is DECERR with 0xBADCAB1E. A hole would also read OKAY with 0, so
+  `DUTY_CYCLE_0`, at its generated address, must read its non-zero reset word 0x7FFF_7FFF.
 * The offset 0xC between `DEBUG_CTRL` and `DEBUG_BUS_MUX`, inside the register extent, holds no
   register; `memory_map.adoc` (Hole in Extent) documents OKAY with data 0x0 for it. The leaf
   compares the response and data with the generated Hole in Extent answer.
@@ -24751,9 +24755,9 @@ draws nothing from the seed.
   `dfx_ctrl` register extent. Kind: all-ones past-extent writes. Expected response: each answers
   the generated past-extent write response (DECERR). Read the three registers again and require
   them equal to their step 2 values.
-. Error injection. Point: the SEP_IN AXI read address, at 0xC000_C000, the first address after
-  the `dfx_ctrl` aperture, which lies between unit apertures and reaches no unit. Kind: read of
-  an address between unit apertures. Expected response: DECERR carrying 0xBADCAB1E.
+. Read 0xC000_C000, the first address after the `dfx_ctrl` aperture and the PWM `ALERT_TEST`
+  register, and require OKAY with its generated reset word 0; then read PWM `DUTY_CYCLE_0` and
+  require OKAY with its generated reset word.
 . Read 0xC000_B80C and require OKAY with data 0x0.
 . Wait one rising edge of `clk_smc_i`, log the two bounded waits (the SEP_IN access bound and
   fuse sense), then require the step stamps in order and increasing and print the ordered-fence
@@ -24773,8 +24777,9 @@ carrying 0xBADCAB1E; any other response or data fails it
 |`CHK-APERTURE-PAST-WRITE` |Writes at 0xC000_B818 and 0xC000_BFFC answer DECERR and `STATUS_SMU`,
 `DEBUG_CTRL` and `DEBUG_BUS_MUX` read the values they held before; an OKAY response or a changed
 register fails it
-|`CHK-APERTURE-NEXT-BLOCK` |The read at 0xC000_C000 answers DECERR carrying 0xBADCAB1E; any other
-response or data fails it
+|`CHK-APERTURE-NEXT-BLOCK` |The read at 0xC000_C000, the PWM `ALERT_TEST` register, and the read
+of PWM `DUTY_CYCLE_0` answer OKAY with their generated reset words; any other response or data
+fails it
 |`CHK-APERTURE-HOLE` |The read at offset 0xC compares OKAY, 0x0; any other response or data
 fails it
 |`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker

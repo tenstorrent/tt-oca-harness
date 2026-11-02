@@ -121,6 +121,9 @@ localparam longint unsigned SMC_TOP_DTP_CTRL_REG_SIZE = 64'h800;
 localparam longint unsigned SMC_TOP_DFX_CTRL_BASE_ADDR = 64'hC000B800;
 localparam longint unsigned SMC_TOP_DFX_CTRL_SIZE = 64'h18;
 
+localparam longint unsigned SMC_TOP_SMC_PWM_BASE_ADDR = 64'hC000C000;
+localparam longint unsigned SMC_TOP_SMC_PWM_SIZE = 64'h44;
+
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_SIZE = 64'h4C;
 
@@ -938,6 +941,23 @@ localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE
 localparam longint unsigned SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR = 64'hC000B800;
 localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR = 64'hC000B808;
 localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR = 64'hC000B810;
+localparam longint unsigned SMC_TOP_SMC_PWM_ALERT_TEST_BASE_ADDR = 64'hC000C000;
+localparam longint unsigned SMC_TOP_SMC_PWM_REGWEN_BASE_ADDR = 64'hC000C004;
+localparam longint unsigned SMC_TOP_SMC_PWM_CFG_BASE_ADDR = 64'hC000C008;
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_EN_BASE_ADDR = 64'hC000C00C;
+localparam longint unsigned SMC_TOP_SMC_PWM_INVERT_BASE_ADDR = 64'hC000C010;
+function automatic longint unsigned SMC_TOP_SMC_PWM_PWM_PARAM_BASE_ADDR(input int unsigned PWM_PARAM_idx);
+    return 64'hC000C014 + (PWM_PARAM_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_PARAM_NUM = 64'h4;
+function automatic longint unsigned SMC_TOP_SMC_PWM_DUTY_CYCLE_BASE_ADDR(input int unsigned DUTY_CYCLE_idx);
+    return 64'hC000C024 + (DUTY_CYCLE_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_PWM_DUTY_CYCLE_NUM = 64'h4;
+function automatic longint unsigned SMC_TOP_SMC_PWM_BLINK_PARAM_BASE_ADDR(input int unsigned BLINK_PARAM_idx);
+    return 64'hC000C034 + (BLINK_PARAM_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_PWM_BLINK_PARAM_NUM = 64'h4;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR = 64'hC0010008;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR = 64'hC0010010;

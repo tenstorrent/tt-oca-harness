@@ -92,7 +92,7 @@ stops the result on idle. The output, `avs_clock`, leaves through
 |===
 |Clock |Logic and boundary
 |`clk_smc_i` |CPU cluster, local fabric, remapping/filtering, register crossbar,
-OCTS, and telemetry decoding/message storage. Individual blocks may gate this clock.
+OCTS, PWM, and telemetry decoding/message storage. Individual blocks may gate this clock.
 |`clk_ref_i` |Power-good/reset conditioning, FLR countdowns, DFD local time tick
 and peripheral reference-clock inputs.
 |`clk_periph_i` |AVSBus, I2C, UART/log-engine and I3C operation. Register accesses

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""dfx_ctrl register addresses, past-extent DECERR and the gap at offset 0xC.
+"""dfx_ctrl register addresses, past-extent DECERR, the next block and the gap at offset 0xC.
 
 Spec: smc.rdl dfx_ctrl placement, dfx_ctrl_status.rdl address map, memmap.adoc address space.
 """
@@ -19,8 +19,11 @@ from .smc_addr_map import (
     DFX_MEM_REPAIR_SUCCESS,
     _component_row,
     generated_past_extent_resp,
+    generated_unit_at,
     generated_window,
+    pwm_reset_word,
     smc_addr,
+    smc_indexed_addr,
 )
 from .smc_csr_seq_utils import ALL_ONES_WORD, SmcCsrSeq
 
@@ -30,7 +33,7 @@ _TERMS = {
     "S2": "REGISTERS_OKAY",
     "S3": "PAST_READS_DECERR",
     "S4": "PAST_WRITES_DECERR_NO_EFFECT",
-    "S5": "NEXT_BLOCK_DECERR",
+    "S5": "NEXT_BLOCK_OKAY",
     "S6": "HOLE_OKAY_ZERO",
     "S7": "CLOCK_EDGE",
 }
@@ -39,8 +42,6 @@ RESP_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
 _RESP_NAMES = {code: name for name, code in RESP_CODES.items()}
 _IDLE_MASK = DFX_MEM_REPAIR_DONE | DFX_MEM_REPAIR_SUCCESS | DFX_MBIST_DONE | DFX_MBIST_PASS
 _ABORT_PINS = ("tb_mem_repair_abort", "tb_mbist_abort")
-# memmap.adoc: a read between unit apertures answers DECERR with this data word.
-DEADSPACE_RDATA = 0xBADCAB1E
 DEBUG_CTRL_PATTERN = 0x2A5A5A5A
 DEBUG_BUS_MUX_PATTERN = 0x0123456789ABCDEF
 
@@ -69,7 +70,15 @@ HOLE_ADDR = DFX_DEBUG_CTRL_ADDR + 4
 PAST_EXTENT_ADDR = DFX_BASE + DFX_EXTENT
 PAST_MID_ADDR = DFX_BASE + 0x100
 PAST_LAST_ADDR = DFX_BASE + DFX_APERTURE - 4
+# The PWM block starts where the dfx_ctrl aperture ends; its first register is ALERT_TEST.
 NEXT_BLOCK_ADDR = DFX_BASE + DFX_APERTURE
+assert generated_unit_at(_DFX_LAST + 1) == _component_row("smc_pwm")["label"]
+assert NEXT_BLOCK_ADDR == smc_addr("SMC_TOP_SMC_PWM_ALERT_TEST_BASE_ADDR")
+NEXT_BLOCK_RDATA = pwm_reset_word("ALERT_TEST")
+# ALERT_TEST reads 0, as a hole would; DUTY_CYCLE_0's non-zero reset names the block.
+NEXT_BLOCK_ID_ADDR = smc_indexed_addr("SMC_TOP_SMC_PWM_DUTY_CYCLE_BASE_ADDR", 0)
+NEXT_BLOCK_ID_RDATA = pwm_reset_word("DUTY_CYCLE")
+assert NEXT_BLOCK_ID_RDATA != 0
 
 
 class smc_dfx_aperture_extent_test_seq(SmcCsrSeq):
@@ -174,17 +183,27 @@ class smc_dfx_aperture_extent_test_seq(SmcCsrSeq):
 
         next_item = await self._read_item("NEXT_BLOCK", NEXT_BLOCK_ADDR)
         assert (
-            next_item.resp_code == RESP_CODES["DECERR"]
-            and next_item.rdata & 0xFFFFFFFF == DEADSPACE_RDATA
+            next_item.resp_code == RESP_CODES["OKAY"]
+            and next_item.rdata & 0xFFFFFFFF == NEXT_BLOCK_RDATA
         ), (
             f"read @0x{NEXT_BLOCK_ADDR:x}: resp={next_item.resp_code} "
-            f"rdata=0x{next_item.rdata:x}, want DECERR 0x{DEADSPACE_RDATA:08x}"
+            f"rdata=0x{next_item.rdata:x}, want OKAY 0x{NEXT_BLOCK_RDATA:08x} (PWM ALERT_TEST)"
+        )
+        id_item = await self._read_item("NEXT_BLOCK_ID", NEXT_BLOCK_ID_ADDR)
+        assert (
+            id_item.resp_code == RESP_CODES["OKAY"]
+            and id_item.rdata & 0xFFFFFFFF == NEXT_BLOCK_ID_RDATA
+        ), (
+            f"read @0x{NEXT_BLOCK_ID_ADDR:x}: resp={id_item.resp_code} "
+            f"rdata=0x{id_item.rdata:x}, want OKAY 0x{NEXT_BLOCK_ID_RDATA:08x} (PWM DUTY_CYCLE_0)"
         )
         self._stamp("S5")
         self._chk(
             "CHK-APERTURE-NEXT-BLOCK",
             "S5",
-            f"read @0x{NEXT_BLOCK_ADDR:x} answered DECERR carrying 0x{next_item.rdata:x}",
+            f"read @0x{NEXT_BLOCK_ADDR:x}, the PWM ALERT_TEST register, answered OKAY "
+            f"carrying 0x{next_item.rdata:x}, and PWM DUTY_CYCLE_0 @0x{NEXT_BLOCK_ID_ADDR:x} "
+            f"its reset word 0x{id_item.rdata:x}",
         )
 
         hole = await self._read_item("HOLE", HOLE_ADDR)

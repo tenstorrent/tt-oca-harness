@@ -418,6 +418,16 @@ def wdt_u32(symbol: str) -> int:
     return _field_mask(_WDT_H, symbol)
 
 
+_PWM_H = (
+    _REPO / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs" / "pwm" / "regs" / "gen" / "c"
+) / "pwm.h"
+
+
+def pwm_reset_word(reg: str) -> int:
+    """Reset word of PWM register ``reg`` from generated ``pwm.h``."""
+    return reg_reset_word(_PWM_H, "PWM", reg)
+
+
 _RESET_UNIT_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "reset_unit.h"
 
 

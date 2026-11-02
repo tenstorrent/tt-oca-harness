@@ -635,7 +635,7 @@ sources:
   - target: any(sep, axi_lite_to_ahb)
     files:
       - hw/common/axi/axi_lite_to_ahb.sv
-  - target: any(drbg, sep)
+  - target: any(drbg, sep, smc)
     files:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
@@ -965,6 +965,9 @@ sources:
     files:
       - hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv
       - hw/ip/output_remap/rtl/output_remap.sv
+  - target: smc
+    files:
+      - hw/ip/pwm/rtl/pwm_wrap.sv
   - target: any(sep, key_manager, scrambler)
     files:
       - hw/ip/scrambler/rtl/scrambler.sv

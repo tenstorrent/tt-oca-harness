@@ -45,7 +45,7 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic sep_entropy_pool aon_timer dfd smc_cla dma_ctrl \
   pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager \
-  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap
+  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
@@ -178,6 +178,7 @@ OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   kmac \
   oca_i3c_wrap \
   otbn \
+  pwm \
   secure_dma \
   sep_external \
   smc \

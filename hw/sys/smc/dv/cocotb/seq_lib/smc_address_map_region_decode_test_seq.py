@@ -57,6 +57,7 @@ from smc_reg import (  # noqa: E402
     FILTER_CTRL_END_ADDR_REG_DEFAULT,
     GPIO_INTF_ACCESS_FILTER_REG_DEFAULT,
     I2C_STATUS_REG_DEFAULT,
+    PWM_DUTY_CYCLE_REG_DEFAULT,
     RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_DEFAULT,
     RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT,
     RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT,
@@ -145,12 +146,17 @@ TELEMETRY0_STATUS = smc_indexed_addr(
 OCTS_CTRL = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR")
 DFX_STATUS_SMU = smc_addr("SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR")
 DFX_DEBUG_BUS_MUX = smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR")
-# The DFX block is the last one the generated map declares below the fabric
+PWM_NUM = smc_addr("SMC_TOP_SMC_PWM_BLINK_PARAM_NUM")
+PWM_DUTY_CYCLE_0 = smc_indexed_addr("SMC_TOP_SMC_PWM_DUTY_CYCLE_BASE_ADDR", 0)
+PWM_BLINK_PARAM_0 = smc_indexed_addr("SMC_TOP_SMC_PWM_BLINK_PARAM_BASE_ADDR", 0)
+# BLINK_PARAM is the last array in the PWM block and resets to 0.
+PWM_BLINK_PARAM_LAST = smc_indexed_addr("SMC_TOP_SMC_PWM_BLINK_PARAM_BASE_ADDR", PWM_NUM - 1)
+# The PWM block is the last one the generated map declares below the fabric
 # control registers at 0xC001_0000. The first address past the aperture the
-# RDL reserves for it (ocah_aperture_size, 2 KiB) belongs to no block.
-DFX_REGION_BEYOND = LOCAL_BASE_RESET + generated_window("dfx_ctrl")[1] + 1
-assert generated_unit_at(DFX_REGION_BEYOND - LOCAL_BASE_RESET) is None
-assert DFX_REGION_BEYOND < smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
+# RDL reserves for it (ocah_aperture_size, 4 KiB) belongs to no block.
+SECDFT_REGION_BEYOND = LOCAL_BASE_RESET + generated_window("smc_pwm")[1] + 1
+assert generated_unit_at(SECDFT_REGION_BEYOND - LOCAL_BASE_RESET) is None
+assert SECDFT_REGION_BEYOND < smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
 
 # --- fabric control ----------------------------------------------------------------------------
 GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
@@ -211,7 +217,7 @@ _SPM_PATTERN_HI = 0x5A5A_A5A5_FFFF_FFF8
 # Exact-value compares this body issues (reads carrying ``expected=``). A
 # literal, so a table edit that silently dropped an expectation fails here
 # rather than shrinking the floor with it.
-EXPECTED_VALUE_CHECKS = 56
+EXPECTED_VALUE_CHECKS = 61
 EXPECTED_DECERR_CHECKS = 4
 
 
@@ -357,13 +363,24 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT,
             length=8,
         )
-        await self.read_decerr("SECDFT_REGION_BEYOND", DFX_REGION_BEYOND)
+        await self.read_reset(
+            "SECDFT_PWM_DUTY_CYCLE_0", PWM_DUTY_CYCLE_0, PWM_DUTY_CYCLE_REG_DEFAULT
+        )
+        await self.rw_coresident(
+            [
+                ("SECDFT_PWM_BLINK_PARAM_0", PWM_BLINK_PARAM_0, _PATTERN_A, 0),
+                (f"SECDFT_PWM_BLINK_PARAM_{PWM_NUM - 1}", PWM_BLINK_PARAM_LAST, _PATTERN_B, 0),
+            ]
+        )
+        await self.read_decerr("SECDFT_REGION_BEYOND", SECDFT_REGION_BEYOND)
         self.close_cell(
             "security-timing-dft-region",
             f"eFuse READ_REQ_TIMEOUT=0x{EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT:x}, "
             f"telemetry STATUS=0x{TELEMETRY_RECEIVER_STATUS_REG_DEFAULT:x}, OCTS "
-            f"CTRL=0x{SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT:x}, DFX STATUS_SMU=0x{DFX_STATUS_IDLE:x}; "
-            f"0x{DFX_REGION_BEYOND:08x} answered DECERR",
+            f"CTRL=0x{SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT:x}, DFX STATUS_SMU=0x{DFX_STATUS_IDLE:x}, "
+            f"PWM DUTY_CYCLE_0=0x{PWM_DUTY_CYCLE_REG_DEFAULT:x}, PWM BLINK_PARAM_0 and "
+            f"BLINK_PARAM_{PWM_NUM - 1} held distinct co-resident patterns; "
+            f"0x{SECDFT_REGION_BEYOND:08x} answered DECERR",
         )
 
     async def _region_fabric_control(self) -> None:
@@ -539,7 +556,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
         # The SEP_IN monitor flags any DECERR it was not told to expect; these
-        # nine are the intended error-slave probes: three past the WDT, DFX and
+        # nine are the intended error-slave probes: three past the WDT, PWM and
         # fabric-control windows; two in the adopter window, answered by its
         # terminator (the supplementary base, since this bench attaches no
         # supplementary device, and the first word past the straps block); and
@@ -548,7 +565,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         self.env.axi_monitor.expected_decerr_addrs.update(
             {
                 WDT_REGION_BEYOND,
-                DFX_REGION_BEYOND,
+                SECDFT_REGION_BEYOND,
                 FABRIC_CTRL_BEYOND,
                 EXTERNAL_SUPPLEMENTARY_BASE,
                 STRAPS_BEYOND,
@@ -587,7 +604,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.close_cell(
             "beyond-region-does-not",
-            f"0x{WDT_REGION_BEYOND:08x}, 0x{DFX_REGION_BEYOND:08x} and 0x{FABRIC_CTRL_BEYOND:08x} "
+            f"0x{WDT_REGION_BEYOND:08x}, 0x{SECDFT_REGION_BEYOND:08x} and 0x{FABRIC_CTRL_BEYOND:08x} "
             f"(no generated-map block, no crossbar rule) each answered DECERR",
         )
         self.close_cell(

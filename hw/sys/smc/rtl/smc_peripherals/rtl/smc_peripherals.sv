@@ -4,7 +4,7 @@
 // Aggregate SMC peripherals, eFuse, and pad-facing I/O.
 //
 // Instantiates the peripheral CSR crossbar and its clock-domain crossings, the padring
-// and GPIOs, UART, I2C, I3C, telemetry receivers, AVSBus controller, eFuse wrapper,
+// and GPIOs, UART, I2C, I3C, PWM, telemetry receivers, AVSBus controller, eFuse wrapper,
 // system timer, misc registers and the SMC reset unit. The SPI controller is outside this
 // module: its signals only pass through the padring to the SPI pads. Returns UART/GPIO
 // interrupts, the gated I3C clock, and debug buses.
@@ -412,6 +412,9 @@ module smc_peripherals #(
   smc_pkg::smc_axil_32_32_req_t  axil_system_timer_octs_req;
   smc_pkg::smc_axil_32_32_resp_t axil_system_timer_octs_resp;
 
+  smc_pkg::smc_axil_32_32_req_t  axil_pwm_req;
+  smc_pkg::smc_axil_32_32_resp_t axil_pwm_resp;
+
   smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_smc_clk;
   smc_pkg::smc_axil_32_32_resp_t axil_i3c_resp_smc_clk;
   smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_periph_clk;
@@ -566,7 +569,9 @@ module smc_peripherals #(
     .misc_req_o                       (axil_misc_req),
     .misc_resp_i                      (axil_misc_resp),
     .external_req_o                   (axil_external_req),
-    .external_resp_i                  (axil_external_resp)
+    .external_resp_i                  (axil_external_resp),
+    .pwm_req_o                        (axil_pwm_req),
+    .pwm_resp_i                       (axil_pwm_resp)
   );
 
   ///////////////////////////////////
@@ -1178,6 +1183,42 @@ module smc_peripherals #(
 
   assign axil_log_engine_req_o = axil_log_engine_req_smc_clk;
   assign axil_log_engine_resp_smc_clk = axil_log_engine_resp_i;
+
+  /////////
+  // PWM //
+  /////////
+
+  logic [smc_config_pkg::NumPwmOutputs-1:0] pwm_out;
+  logic [smc_config_pkg::NumPwmOutputs-1:0] pwm_out_en;
+  logic                                     pwm_fatal_alert;
+
+  pwm_wrap #(
+    .NUM_OUTPUTS            (smc_config_pkg::NumPwmOutputs),
+    .REG_MAP_BASE_ADDR      (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR)),
+    .REG_MAP_SIZE           (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE)),
+    .PWM_PARAM_REG_OFFSET   (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_PARAM_BASE_ADDR(0)
+                                 - smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR)),
+    .DUTY_CYCLE_REG_OFFSET  (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_DUTY_CYCLE_BASE_ADDR(0)
+                                 - smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR)),
+    .BLINK_PARAM_REG_OFFSET (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BLINK_PARAM_BASE_ADDR(0)
+                                 - smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR)),
+    .axil_req_t             (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t            (smc_pkg::smc_axil_32_32_resp_t)
+  ) u_pwm_wrap (
+    .clk_i           (clk_smc_i),
+    .rst_ni          (rst_primary_smc_clk_no),
+    .clk_core_i      (clk_smc_i),
+    .rst_core_ni     (rst_primary_smc_clk_no),
+    .test_en_i       (test_en_i),
+    .csr_axil_req_i  (axil_pwm_req),
+    .csr_axil_resp_o (axil_pwm_resp),
+    .pwm_o           (pwm_out),
+    .pwm_en_o        (pwm_out_en),
+    .fatal_alert_o   (pwm_fatal_alert)
+  );
+
+  logic unused_pwm;
+  assign unused_pwm = ^{pwm_out, pwm_out_en, pwm_fatal_alert};
 
   ////////////////////
   // Telemetry Unit //
