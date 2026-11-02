@@ -119,6 +119,10 @@ STALL_POLL_STEP = 64
 FILL_POLL_CAP = 4096
 # The CHK-STALL-CLEAR bound, in clocks, also bounds the RAS field fall.
 STALL_CLEAR_CAP = 20000
+# DV-owned allowance, in clocks, from the acknowledge to the RAS field fall: the field
+# holds "until the next acknowledge" (port_table.adoc:130, delegating to the sep_pkg
+# field comment), and the allowance covers one register stage and the sampling edge.
+STALL_RAS_CLEAR_LAG = 2
 
 
 class _LevelStep:
@@ -268,10 +272,10 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         clear = next((c for c in falls if ack_clk is not None and c >= ack_clk), None)
         self._ras_chk(
             "CLEAR",
-            clear is not None and clear <= ack_clk + STALL_CLEAR_CAP,
+            clear is not None and clear <= ack_clk + STALL_RAS_CLEAR_LAG,
             ack_clk=ack_clk,
             fall_clk=clear,
-            bound=STALL_CLEAR_CAP,
+            bound=STALL_RAS_CLEAR_LAG,
         )
         self._ras_lines.obs(
             "RAS-ENTROPY_FILL_STALL-DELAY",

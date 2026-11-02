@@ -69,6 +69,10 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    edge detection; an input left at its active level after
                    the clear stays pending) and ``:59-60`` (the IP flop holds
                    until firmware clears it).
+* CTRL-GWCLR-WRITES  per source, the firmware count of its meigwclr writes
+                   equals the write count at that entry on ``pic_wr_probe_o``,
+                   and each source CHK-CLR-IDLE or CHK-GWCLR-LEVEL grades has
+                   at least one; a mismatch fails the leaf.
 * CHK-GWCLR-LEVEL  each LH cell reads 1 after a meigwclr write with its input
                    asserted: a level source keeps no IP bit, so pending follows
                    the active input (PRM ``interrupts.md:69``; ``:157-159``,
@@ -106,25 +110,35 @@ The pulse fields of ``sep_ras_o`` (``hw/sys/sep/doc/port_table.adoc``, row
 own ``CHK-RAS-<FIELD>-<HALF> PASS|FAIL`` line; the leaf raises once at its end
 if any failed:
 
-* CHK-RAS-DMA_ALERT-IDLE   0 on every clock of ``d0``..``d1``.
+* CHK-RAS-DMA_ALERT-IDLE   0 on every clock of ``d0``..``d1``, of each
+                           ``aq<k>``..``ae<k>``, of ``nw0``..``nw1``,
+                           ``pr0``..``pr1`` and of each native window
+                           ``na<s>``..``nc<s>`` (no DMA alert there).
   CHK-RAS-DMA_ALERT-RISE   at least one rise in ``d1``..``d2`` (the DMA
                            ``ALERT_TEST`` write).
   CHK-RAS-DMA_ALERT-SHAPE  every high run there is one clock.
-* CHK-RAS-CRYPTO_ALERT-IDLE   0 on every clock of each ``aq<k>``..``aw<k>`` and
-                              of ``nw0``..``nw1``.
+* CHK-RAS-CRYPTO_ALERT-IDLE   0 on every clock of each ``aq<k>``..``aw<k>``,
+                              of ``nw0``..``nw1`` and of the DMA alert
+                              windows ``d0``..``d2``; the pair force window
+                              ``di0``..``di2`` is left out (the field comment
+                              names no alert pair).
   CHK-RAS-CRYPTO_ALERT-RISE   at least one rise in each ``aw<k>``..``ae<k>`` of
                               the 11 kinds.
   CHK-RAS-CRYPTO_ALERT-SHAPE  every high run there is one clock.
 * CHK-RAS-CSRNG_FATAL-IDLE, -RISE, -SHAPE, -TEST and the same four of
   CHK-RAS-EDN_FATAL, for the CSRNG and EDN fatal alert kinds: 0 on every clock
-  of ``aq<k>``..``aw<k>``; at least one rise in ``aw<k>``..``ae<k>``; every high
-  run there is one clock; exactly one rise there ("ALERT_TEST sends one").
+  of ``aq<k>``..``aw<k>``, of every other kind's ``aq<j>``..``ae<j>``, of
+  ``nw0``..``nw1``, each ``na<s>``..``nc<s>``, ``d0``..``d2``, ``di0``..``di2``,
+  and ``pr0``..``pr1`` when the pair holds no kind k; at least one rise in
+  ``aw<k>``..``ae<k>``; every high run there is one clock; exactly one rise
+  there ("ALERT_TEST sends one").
 
 Logged, not graded: ``OBS-RAS-<FIELD>-DELAY`` (clocks from the opening mark to
 the first rise, and the pulse count), ``OBS-RAS-DMA_ALERT-MODE2`` (the field
 under the alert pair force: the rise after the first forced clock, the high
-clocks to the release mark ``di1`` and any fall before it; the port table names
-``dma_alert`` a one-cycle pulse and states no integrity-fail level),
+clocks to the release mark ``di1`` and any fall before it; ``port_table.adoc:130``
+calls ``dma_alert`` a one-cycle pulse, while the ``sep_ras_t`` field comment it
+delegates to calls it a level while an alert pair fails; the port table wins),
 ``OBS-RAS-DMA_ALERT-INTEG-FALL`` (the fall after the pair release),
 ``OBS-RAS-CRYPTO_ALERT-PAIR`` (the run lengths of the pair window, where two
 pulses can be adjacent) and
@@ -644,6 +658,19 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                     (len(self.con.lines), (val >> 32) & 0x7FFF, val & 0xFFFF_FFFF, xm & 0xFFFF_FFFF)
                 )
 
+    async def _gwclr_tap(self) -> None:
+        """Count the PIC writes at each meigwclr entry on ``pic_wr_probe_o``, one per clock."""
+        sig = self.dut.pic_wr_probe_o
+        while True:
+            await RisingEdge(self.dut.clk_i)
+            await ReadOnly()
+            v = sig.value
+            if not v.is_resolvable or not (int(v) >> 15) & 1:
+                continue
+            off = (int(v) & 0x7FFF) - GWCLR1_OFF
+            if 0 <= off and off % GWCLR_STRIDE == 0:
+                self.gwclr_bus[off // GWCLR_STRIDE + 1] += 1
+
     # ---- record helpers ----
     def _lines(self, prefix: str) -> list[tuple[int, dict]]:
         out = []
@@ -1108,6 +1135,34 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             f"meip1_bit1={b33} src12_bit={b12} want=1,1",
         )
 
+    def _ctrl_gwclr_writes(self) -> None:
+        """CTRL-GWCLR-WRITES: each meigwclr write of the firmware reaches the PIC.
+
+        Per source, the firmware count of its meigwclr writes equals the write
+        count on ``pic_wr_probe_o``, and every source that CHK-CLR-IDLE or
+        CHK-GWCLR-LEVEL grades has at least one write, so a graded write that
+        never reaches the PIC fails here.
+        """
+        fw = {int(kv["src"]): int(kv["n"]) for _, kv in self._lines("GWCLR-WR")}
+        graded = {s for s in GW_SRCS if self.wc.cell(s) == "LH"}
+        graded.add(next(s for s in GW_EVENT if self.wc.cell(s) == "EH"))
+        bad = []
+        for src in sorted(set(fw) | set(self.gwclr_bus) | graded):
+            n_fw, n_bus = fw.get(src, 0), self.gwclr_bus[src]
+            ok = n_fw == n_bus and (n_fw > 0 or src not in graded)
+            self.logger.info(
+                "CTRL-GWCLR-WRITES %s seed=%d src=%d fw=%d bus=%d graded=%d",
+                "PASS" if ok else "FAIL",
+                self.wc.seed,
+                src,
+                n_fw,
+                n_bus,
+                int(src in graded),
+            )
+            if not ok:
+                bad.append(src)
+        assert not bad, f"CTRL-GWCLR-WRITES FAIL seed={self.wc.seed} sources={bad}"
+
     def _chk_gateway(self) -> None:
         gws = {int(kv["src"]): kv for _, kv in self._lines("GW")}
         assert sorted(gws) == sorted(GW_SRCS), f"gateway cells ran for {sorted(gws)}"
@@ -1324,13 +1379,25 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
 
     def _chk_ras(self) -> None:
-        """The CHK-RAS-<FIELD>-<HALF> checks of ``RAS_HALVES``, then the OBS-RAS lines."""
-        self._ras_pulse_halves("dma_alert", ["d0..d1"], ["d1..d2"])
-        self._ras_dma_alert_mode2()
+        """The CHK-RAS-<FIELD>-<HALF> checks of ``RAS_HALVES``, then the OBS-RAS lines.
+
+        Each IDLE half covers every window of the leaf in which the cited text
+        sends nothing on that field: the DMA alert is source 12 and no crypto
+        alert (``interrupts.adoc``; ``crypto.adoc`` alert routing table), and a
+        fatal field pulses only for its own block's fatal alert.
+        """
         order = self.wc.alert_order
+        alert_wins = [f"aq{k}..ae{k}" for k in order]
+        native_wins = [f"na{s}..nc{s}" for s, _, _ in NATIVE]
+        self._ras_pulse_halves(
+            "dma_alert",
+            ["d0..d1", *alert_wins, "nw0..nw1", "pr0..pr1", *native_wins],
+            ["d1..d2"],
+        )
+        self._ras_dma_alert_mode2()
         self._ras_pulse_halves(
             "crypto_alert",
-            [*(f"aq{k}..aw{k}" for k in order), "nw0..nw1"],
+            [*(f"aq{k}..aw{k}" for k in order), "nw0..nw1", "d0..d2"],
             [f"aw{k}..ae{k}" for k in order],
         )
         _, runs, _ = self._ras_win("pr0", "pr1", "crypto_alert")
@@ -1340,7 +1407,11 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
         for f, kind in RAS_FATAL_KIND.items():
             k = next(i for i, a in enumerate(ALERTS) if a[:2] == kind)
-            self._ras_pulse_halves(f, [f"aq{k}..aw{k}"], [f"aw{k}..ae{k}"])
+            idle = [f"aq{k}..aw{k}", *(w for j, w in zip(order, alert_wins) if j != k)]
+            idle += ["nw0..nw1", *native_wins, "d0..d2", "di0..di2"]
+            if k not in self.wc.pair:
+                idle.append("pr0..pr1")
+            self._ras_pulse_halves(f, idle, [f"aw{k}..ae{k}"])
             _, runs, _ = self._ras_win(f"aw{k}", f"ae{k}", f)
             self._ras(
                 len(runs) == 1,
@@ -1529,6 +1600,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.ras_chk = RasChkLines(self.logger, c.seed)
         self.race: list = []
         self.race_d = None
+        self.gwclr_bus: Counter = Counter()
         self.dut.dma_alert_inject_i.value = 0
         self.dut.dma_alert_inject_val_i.value = 0
         vec = self.dut.sep_internal_interrupts_probe_o
@@ -1554,6 +1626,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             self.wv.start()
             self.wr.start()
             tasks.append(cocotb.start_soon(self._rd_tap()))
+            tasks.append(cocotb.start_soon(self._gwclr_tap()))
 
         self.sb.expected_line = _BANNER
         self.con = SepFwConsole(self, graded_test=_TEST).start()
@@ -1608,6 +1681,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self._chk_idle(ctrl)
         self._chk_ctrl_window()
         self._chk_slotless()
+        self._ctrl_gwclr_writes()
         self._chk_gateway()
         self._chk_ext()
         self._chk_masked_visible()

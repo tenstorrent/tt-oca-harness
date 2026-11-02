@@ -86,7 +86,15 @@ from env.sep_fcov_gate import close_graded_window, set_tcm_trap_pass
 from env.sep_fw_console import ConsoleRec, SepFwConsole, parse_kv
 from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_tcm_flip import DCCM_BASE, DCCM_BYTES, ICCM_BASE, WORD_BITS, bit_mask, write_flip_list
+from env.sep_tcm_flip import (
+    DATA_BITS,
+    DCCM_BASE,
+    DCCM_BYTES,
+    ICCM_BASE,
+    WORD_BITS,
+    bit_mask,
+    write_flip_list,
+)
 from sep_base_test import sep_base_test
 
 TEST = "sep_tcm_ecc_cpu_trap_test"
@@ -237,11 +245,17 @@ class TcmCfg:
         busy = {c.ld - 1, c.ld, c.ld + 1, c.st - 1, c.st, c.st + 1}
         c.singles = rng.sample([i for i in range(1, WIN_WORDS - 1) if i not in busy], c.n)
         c.sbits = [rng.randrange(WORD_BITS) for _ in range(c.n)]
+        # At least one single flip lands on a data bit, so the DATA compare grades a correction.
+        if all(b >= DATA_BITS for b in c.sbits):
+            c.sbits[rng.randrange(c.n)] = rng.randrange(DATA_BITS)
         c.ld_bits = tuple(rng.sample(range(WORD_BITS), 2))
         c.st_bits = tuple(rng.sample(range(WORD_BITS), 2))
         c.tbl_bits = tuple(rng.sample(range(WORD_BITS), 2))
         c.lane = rng.randrange(4)
-        c.byte = rng.randrange(256)
+        # The stored byte differs from the byte it replaces, so a dropped store fails.
+        old = (c.data[c.st_nbr] >> (8 * c.lane)) & 0xFF
+        c.byte = rng.randrange(255)
+        c.byte += c.byte >= old
         c.iue_bits = tuple(rng.sample(range(WORD_BITS), 2))
         return c
 

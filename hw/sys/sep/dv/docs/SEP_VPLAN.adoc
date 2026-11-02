@@ -1986,7 +1986,7 @@ logged as `OBS-RAS-<FIELD>-<WHAT>`.
 |`wdt_bite` |`sep_reset_wdt_sanity_test` |`CHK-RAS-WDT_BITE-IDLE`, `-RISE`, `-SHAPE`
 |`iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue` |`sep_tcm_ecc_cpu_trap_test` |`CHK-RAS-<FIELD>-IDLE`, `-RISE`, `-SHAPE` (every high run is one clock)
 |`km_correctable` |`sep_km_command_protocol_rand_test` |`CHK-RAS-KM_CORRECTABLE-IDLE`, `-RISE`, `-SHAPE`, `-CLEAR`
-|`dma_alert` |`sep_pic_pending_map_walk_rand_test` |`CHK-RAS-DMA_ALERT-IDLE`, `-RISE`, `-SHAPE`; the field under the alert pair force is logged only (`OBS-RAS-DMA_ALERT-MODE2`): the port table names it a one-cycle pulse and states no integrity-fail level
+|`dma_alert` |`sep_pic_pending_map_walk_rand_test` |`CHK-RAS-DMA_ALERT-IDLE`, `-RISE`, `-SHAPE`; the field under the alert pair force is logged only (`OBS-RAS-DMA_ALERT-MODE2`): the port table calls it a one-cycle pulse, the field comment it delegates to calls it a level under an integrity fail, and the port table wins
 |`crypto_alert` |`sep_pic_pending_map_walk_rand_test` |`CHK-RAS-CRYPTO_ALERT-IDLE`, `-RISE`, `-SHAPE`
 |`csrng_fatal`, `edn_fatal` |`sep_drbg_fatal_err_inject_rand_test`, `sep_pic_pending_map_walk_rand_test` |`CHK-RAS-<FIELD>-IDLE`, `-RISE`, `-SHAPE`, `-MODE2` (repeat until reset) in the first leaf; `-TEST` (ALERT_TEST sends one pulse) in the second
 |`dma_reg_bus_err` |`sep_cpu_bridge_fault_matrix_rand_test` |`CHK-RAS-DMA_REG_BUS_ERR-IDLE`, `-RISE`, `-SHAPE`, `-CLEAR`

@@ -49,10 +49,13 @@ clear pulse of the host-path latch, across the pin release) and -CLEAR (a fall w
 all four are logged. The rise and fall delays and the field in the fabric-DECERR leg
 are logged only (OBS-RAS-DMA_HOST_INTG_ERR-*): no document states them.
 
-OBS-HOSTINTG-ARM-PIN logs ``dma_host_intg_inject_i`` on the clock of the firmware
-control read of DMA_BUS_ERR_STATUS before GO and of the read after the injected
-command, from the CPU reads of that register on the PR-LSU-XBAR tap
-(``env/sep_fabric_tap.py``).
+CTRL-HOSTINTG-ARM-PIN requires ``dma_host_intg_inject_i`` = 1 on the clock of the
+firmware control read of DMA_BUS_ERR_STATUS before GO and of the read after the
+injected command, from the CPU reads of that register on the PR-LSU-XBAR tap
+(``env/sep_fabric_tap.py``). CHK-HOSTINTG-STICKY requires sep_internal_interrupts[41]
+to stay 1 from the pin release to the firmware CHK-HOSTINTG-HELD marker, which the
+firmware prints after it reads DMA_BUS_ERR_STATUS = host_path_err and before it
+writes DMA_BUS_ERR_CLEAR.
 
 FCOV: the graded window of this leaf opens when the CPU is released and closes after
 the host has parsed the console. ``cp_error_class_exclusive`` holds each cell at the
@@ -171,6 +174,7 @@ class sep_dma_basic_test(sep_base_test):
     # The leaf's own graded records; the base-class records do not count.
     required_evidence = (
         "CHK-HOSTINTG-PIC",
+        "CHK-HOSTINTG-STICKY",
         "CHK-HOSTINTG-CLR",
         "CHK-ERR-CLASS",
         "CHK-RAND-REP",
@@ -265,18 +269,53 @@ class sep_dma_basic_test(sep_base_test):
             raise AssertionError("firmware never printed CHK-HOSTINTG-RELEASE")
 
         # The last two DMA_BUS_ERR_STATUS reads before CHK-HOSTINTG-RELEASE are the
-        # control read before GO and the read after the injected command.
-        ctrl, after = ([(None, None)] * 2 + self._status_reads)[-2:]
-        self._ras_chk.obs(
-            "HOSTINTG-ARM-PIN",
-            status_reads=len(self._status_reads),
-            control_read_ps=ctrl[0],
-            pin_at_control_read=ctrl[1],
-            after_cmd_read_ps=after[0],
-            pin_at_after_cmd_read=after[1],
+        # control read before GO and the read after the injected command. The
+        # control read proves the pin alone does not set the latch only if the pin
+        # is high at that read.
+        release_ps = get_sim_time("ps")
+        reads = [r for r in self._status_reads if r[0] <= release_ps]
+        ctrl, after = ([(None, None)] * 2 + reads)[-2:]
+        arm_ok = ctrl[1] == 1 and after[1] == 1
+        arm_line = (
+            f"CTRL-HOSTINTG-ARM-PIN {'PASS' if arm_ok else 'FAIL'}: "
+            f"seed={self.random_seed()} status_reads={len(reads)} "
+            f"control_read_ps={ctrl[0]} pin_at_control_read={ctrl[1]} "
+            f"after_cmd_read_ps={after[0]} pin_at_after_cmd_read={after[1]}"
         )
+        if not arm_ok:
+            self.logger.error(arm_line)
+            raise AssertionError(arm_line)
+        self.logger.info(arm_line)
         dut.dma_host_intg_inject_i.value = 0
         self.logger.info("STEP host-intg: dma_host_intg_inject_i=0")
+
+        # The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:67-69):
+        # bit 41 holds 1 after the pin falls, through the firmware STATUS read that
+        # precedes the CLEAR write (CHK-HOSTINTG-HELD).
+        held_clocks = 0
+        for _ in range(_MAX_RUN_CYCLES):
+            await RisingEdge(dut.clk_i)
+            if "CHK-HOSTINTG-HELD" in self.sb.console_text():
+                break
+            bit = (
+                self.rd(dut.sep_internal_interrupts_probe_o, mask=1 << IRQ_DMA_HOST_PATH)
+                >> IRQ_DMA_HOST_PATH
+            )
+            if bit != 1:
+                raise AssertionError(
+                    f"CHK-HOSTINTG-STICKY FAIL: sep_internal_interrupts[41]={bit} "
+                    f"{held_clocks} clocks after the pin release, before CHK-HOSTINTG-HELD"
+                )
+            held_clocks += 1
+            if self.sb.fw_done:
+                raise AssertionError("firmware finished without printing CHK-HOSTINTG-HELD")
+        else:
+            raise AssertionError("firmware never printed CHK-HOSTINTG-HELD")
+        self.logger.info(
+            "CHK-HOSTINTG-STICKY PASS: sep_internal_interrupts[41]=1 on %d clocks from the "
+            "pin release to CHK-HOSTINTG-HELD",
+            held_clocks,
+        )
 
         # rd() raises on X/Z, so only a known 0 counts as a cleared bit.
         bit = None
@@ -305,7 +344,8 @@ class sep_dma_basic_test(sep_base_test):
                 pin = self.rd_known(dut.dma_host_intg_inject_i)
                 assert pin == 0, f"CHK-HOSTFABRIC-ARM: dma_host_intg_inject_i={pin}, expected 0"
                 self.logger.info(
-                    "STEP host-intg: dma_host_intg_inject_i=0 at firmware CHK-HOSTFABRIC-ARM"
+                    "CTRL-HOSTFABRIC-ARM-PIN PASS: dma_host_intg_inject_i=0 at firmware "
+                    "CHK-HOSTFABRIC-ARM"
                 )
                 return
             if self.sb.fw_done:
@@ -570,7 +610,8 @@ class sep_dma_basic_test(sep_base_test):
         close_graded_window(self.logger)
         cfg = self._dma_cfg
         self.logger.info(
-            "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",
+            "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP at 4B, widths 1B/2B/4B at INCR; "
+            "seed=%d nbytes=%d",
             cfg.seed,
             cfg.nbytes,
         )
