@@ -636,10 +636,12 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # outstanding entropy request, which is what keeps req_pending asserted.
         req = cocotb.top.pool_edn_req_o.value
         assert req.is_resolvable, f"pool_edn_req_o is unresolvable ({req})"
-        assert int(req) == 1, (
-            f"write-SLVERR arming left no outstanding pool request "
-            f"(level={level_room}, pool_edn_req_o=0)"
+        arm_line = (
+            f"CTRL-WRITE-ARM {'PASS' if int(req) == 1 else 'FAIL'}: "
+            f"pool_edn_req_o={int(req)} level={level_room}"
         )
+        assert int(req) == 1, arm_line
+        self.logger.info(arm_line)
         write_cells = (
             ("status", POOL_STATUS),
             ("irq-cause", POOL_IRQ_CAUSE),
@@ -669,10 +671,9 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             )
         self.logger.info(
             "CHK-WRITE-SLVERR PASS: %d live/unmapped write cells, AW and W observed "
-            "in the same cycle, returned SLVERR, level unchanged (%d < depth %d)",
+            "in the same cycle, returned SLVERR, level unchanged (%d)",
             len(write_cells),
             level_room,
-            FIFO_DEPTH,
         )
 
         # AW and W carry no ordering requirement between them (AMBA IHI 0022
