@@ -7013,8 +7013,8 @@ results of the no-data commands are measured.
   the zero-length commands. The leaf requires the low word of every `NEXT_ID_0` read of its six
   submits to be non-zero and prints the six IDs. `DONE_0` before and after, `STATUS_0[9:0]` before
   and after and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command are
-  measured, not compared: `dma.adoc` and `dma_ctrl.rdl` differ on `DONE_0` (the most recently
-  retired ID in `dma.adoc`, a cumulative count in the RDL).
+  measured, not compared; the retirement count a no-data command adds to `DONE_0` (`dma.adoc`,
+  Retirement Counting) is graded by `smc_dma_transfer_matrix_rand_test` (`CHK-DXM-ZERO-LENGTH-DONE`).
 * A length-0 command moves no data (`dma.adoc`, Linear and Two-Dimensional Copies, the DMA register
   storage table): a linear command (`NUM_REPETITIONS_LO` 1) and a 2D command (`NUM_REPETITIONS_LO`
   4, source stride 0x30, destination stride 0x28) with `LENGTH` 0 must leave 16 and 136 destination
@@ -7109,8 +7109,8 @@ Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `DONE_0` before and after, `STATUS_0[9:0]` before and after and the bit 322 pulse
 count and widths of the `ENABLED_ND`-cleared command, and the `DONE_0` change, `STATUS_0[9:0]` and
-bit 322 pulse count of both zero-length commands, are measured and not compared until the open
-issue above is resolved.
+bit 322 pulse count of both zero-length commands, are measured and not compared; the retirement
+count of a no-data command is graded by `smc_dma_transfer_matrix_rand_test`.
 
 [[sec-559-smc_dma_transfer_matrix_rand_test]]
 ===== 559 `smc_dma_transfer_matrix_rand_test`
