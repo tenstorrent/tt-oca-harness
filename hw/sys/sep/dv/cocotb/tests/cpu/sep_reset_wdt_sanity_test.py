@@ -434,22 +434,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             wr = self._write_after("intr_state", r1[0], clr.clk)
             f1 = self._span(fld, "fall", r1[0], self.ras.clk)
             first_fall = f1[0] if f1 else None
-            if not any(r == "intr_state" for r, _ in self.ras_writes):
-                self.ras_chk.obs(
-                    "RAS-WDT_BARK-TAP", intr_state_writes=0, shape="one_rise_one_fall_before_clear"
-                )
-                nr1 = len(self._span(fld, "rise", bad.clk, clr.clk))
-                nf1 = len(self._span(fld, "fall", bad.clk, clr.clk))
-                self._ras(
-                    fld,
-                    "SHAPE",
-                    nr1 == 1 and nf1 == 1,
-                    window="bad-address_line..CHK-WDT-CLEAR",
-                    rises=nr1,
-                    falls=nf1,
-                    exp="1/1",
-                )
-            elif wr is None:
+            if wr is None:
                 self._ras(
                     fld,
                     "SHAPE",
