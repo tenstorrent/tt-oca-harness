@@ -75,7 +75,9 @@ Checkers:
                    bus" (``architecture.adoc:474-476``); on a neighbour whose
                    CTRL read shows lock_use it returns 0 with SLVERR ("Key-data
                    reads return zero with SLVERR", ``architecture.adoc:419-420``).
-                   The graded reads must include one without lock_use. A
+                   With the scrambler off the port passes the word through
+                   (``km_kpv.rdl:183``). The graded reads must include one
+                   whose stored word is non-zero. A
                    snapshot overlaps an erase
                    when the CTRL read of the slot or of a neighbour that the
                    snapshot takes before the word reads, or the KM-KPV CTRL tap
@@ -969,7 +971,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         for w in self.watches:
             by_slot.setdefault(w.slot, []).append(w)
         changes = 0
-        port_bad = port_graded = port_locked = port_excluded = 0
+        port_bad = port_graded = port_locked = port_nonzero = port_excluded = 0
         ops = 0
         moved = True
         for slot, ws in by_slot.items():
@@ -981,6 +983,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             port_excluded += sum(1 for w in ws for ov in w.erase_overlap if ov)
             port_graded += len(port)
             port_locked += sum(1 for _v, _slv, exp in port if exp == (0, 1))
+            port_nonzero += sum(1 for _v, _slv, exp in port if exp[0] != 0)
             port_bad += sum(1 for v, slv, exp in port if (v, slv) != exp)
             ops += sum(w.ops for w in ws)
             changes += sum(1 for i in range(1, len(snaps)) if snaps[i] != snaps[0])
@@ -991,11 +994,12 @@ class sep_km_kpv_rand_test(sep_base_test):
         self.controls["neigh_twin"] = self.chk.ctrl("KPV-NEIGH-TWIN", moved, slots=len(by_slot))
         self.chk.ok(
             "KPV-NEIGH-PORT",
-            port_bad == 0 and port_graded > port_locked,
-            contract="key_manager/doc/architecture.adoc:474-476",
+            port_bad == 0 and port_nonzero > 0,
+            contract="key_manager/doc/architecture.adoc:474-476,key_manager/regs/km_kpv.rdl:183",
             slots=len(by_slot),
             compared=port_graded,
             lock_use_reads=port_locked,
+            nonzero_compared=port_nonzero,
             excluded_erase_overlap=port_excluded,
             port_word0_mismatch=port_bad,
         )
