@@ -3963,3 +3963,42 @@ args = [
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_bl1ver36_spread.toml",
   "+esrc_noise_force",
 ]
+
+[[tests]]
+# SB-100: the primary key keeps the authorized ROM key 0 modulus but carries exponent 5, with a
+# signature valid under (n, 5); the primary is refused and the backup boots. Refusal timing and
+# code are not graded.
+name = "sep_rom_rsa_exponent_non_f4_refuse_test"
+module = "rom_fw.sep_rom_rsa_exponent_non_f4_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 21600
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+  "+sep_rsa_signed_exponent=5",
+]
+
+[[tests]]
+# SB-100: as above, but the signature is valid under (n, 65537), which the F4 verifier computes,
+# so a ROM that ignores the exponent would boot the primary. Refusal timing and code are not graded.
+name = "sep_rom_rsa_exponent_non_f4_refuse_test_f4_signed"
+module = "rom_fw.sep_rom_rsa_exponent_non_f4_refuse_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 21600
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+  "+sep_rsa_signed_exponent=65537",
+]
