@@ -170,6 +170,15 @@ reset is active-high, so `dtp_smc_stap_tap_ctrl.trst_n` passes through an
 inverter. <<smu-reset-distribution>> shows reset distribution within the SMU,
 not the reset logic inside each subsystem.
 
+The order in which these resets release the SEP and the SMC cores, and the boot that
+follows from power-on until SMC BL1 runs, is specified in the Programmer's Guide's
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smu-boot-spec[SMU Boot Specification].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smu-boot-spec[SMU Boot Specification].
+endif::backend-pdf[]
+
 [[smu-clock-distribution]]
 .SMU clock distribution
 image::smu-clock-distribution.svg[alt="SMU clock sources and consumers",width=100%,pdfwidth=100%]
