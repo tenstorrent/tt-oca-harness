@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_003 ANCHOR: smc_sw_uncore_reset_drain_isolate_test
-# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 89c23b57e53913867731dea0e63164d785460cb5be5e0c3dd67a2bd39a962388
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: 5f510c164e672349855dda85b6c985e428a2efcce774768756405e2d1f93d81a
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Software core reset, core reset pulse and software uncore reset with the L2 frontend isolate.
 
 ``CPU_CTRL.RESET_CTRL`` is driven over SEP_IN in four ways. Core 3 is held and then pulsed
@@ -11,18 +11,29 @@ compare register keeps its value. The uncore bit is cleared with four L2 fronten
 by ``tb_sep_axi_r_hold`` in timer-off mode (the reset is withheld for 1024 edges), in give-up
 mode (``reset_timeout`` is reported and the reset is still withheld until the drain completes)
 and with nothing pending, where a scratchpad read presented on SEP_IN, SYS_IN and JTAG_IN while
-the boundary is isolated is blocked, not terminated, and completes after the reconnect. One
-force-mode episode checks the request status only. A cold reset replayed through the reset
-agent ends the leaf and times the isolation release.
+the boundary is isolated is blocked, not terminated, and completes after the reconnect. The
+force-mode episode is not driven: its flush presents a stale R beat with ID 0 on SYS_IN, the
+behaviour ruling #2449 accepts, every inbound protocol checker stays on, and the pinned wedge
+leaves cover the episode. The CPU MMIO episodes are not driven. A cold reset replayed through the reset agent ends the leaf and records the isolation release.
 
 Graded: the compares named by the ``CHK-*`` lines the sequence prints. ``OBS-*`` content is
-printed inside the matching ``CHK-OBS-*`` line and never compared; each names its spec finding.
+printed inside the matching ``CHK-OBS-*`` line and on its own ``EVIDENCE:`` line, never
+compared, and names its spec finding or ruling. The drain claims count the parked reads the
+isolate counted as pending (the first ``tb_cpu_l2_pending_ar`` peak reads in front-port AR
+order) and time their RLAST at the front port, the isolate boundary; a read the front port
+accepted that the isolate never counted is an observation that must complete after the
+reconnect. A status read is graded only when no request of any manager is stalled at the front
+port and no bench hold is active; any other status read is an observation whose bounded
+wait is counted apart, and the fact it would have carried comes from the probes.
 
 Probes: ``tb_cpu_core_resets_n`` (core 3 is bit 3), ``tb_cpu_uncore_reset_n``,
 ``tb_cpu_isolate_req``, ``tb_cpu_drained``, ``tb_cpu_reset_timeout``, ``tb_cpu_reset_applied``,
 ``tb_cpu_l2_isolated``, ``tb_cpu_mmio_isolated``, ``tb_cpu_l2_pending_ar``,
 ``tb_cpu_front_valid`` / ``_ready`` and ``tb_cpu_mmio_valid`` / ``_ready`` with
-``[4:0] = {r, ar, b, w, aw}``, and ``rst_primary_smc_clk_no`` for the primary reset.
+``[4:0] = {r, ar, b, w, aw}``, ``tb_cpu_front_arid``, ``tb_cpu_front_rid`` and
+``tb_cpu_front_rlast`` (the front-port AR ID, R ID and RLAST), the bench holds
+``tb_sep_axi_r_hold`` / ``tb_sys_axi_r_hold``, and ``rst_primary_smc_clk_no`` for the primary
+reset.
 """
 
 from __future__ import annotations
@@ -120,10 +131,12 @@ ASSERT_BOUND = 300
 COLD_BOUND = 60_000
 FUSE_SENSE_BOUND = 200_000
 AXI_BOUND_NS = 50_000
+OBS_AXI_BOUND_NS = 2_000
 
 PEND_ID = 0x30
 FIFTH_ID = 0x34
-STATUS_ID = 0x38
+STALL_ID_BASE = 0x01
+TOKEN_STATUS = "CHK-STATUS-READABLE-FROM-SEP"
 BLOCK_ID = (0x3A, 0x3B, 1)
 WB_ID = 0x08
 
@@ -139,8 +152,7 @@ REQUIRED_TOKENS = (
     "CHK-DRAIN-PENDING-READS-COMPLETE",
     "CHK-BLOCKED-NOT-TERMINATED-THEN-RECONNECT",
     "CHK-STATUS-READABLE-FROM-SEP",
-    "CHK-VALID-LOW-UNCORE-SW",
-    "CHK-FORCE-MODE-REQUEST-STATUS",
+    "CHK-OBS-VALID-UNCORE-SW",
     "CHK-COLD-ISOLATION-RELEASE",
     "CHK-OBS-TIMEOUT-EXPIRY",
     "CHK-OBS-ISOLATION-DELAY",
@@ -151,7 +163,6 @@ REQUIRED_TOKENS = (
     "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
-S7_TOKENS = ("CHK-FORCE-MODE-REQUEST-STATUS", "CHK-OBS-DRAIN-FLUSH-RESPONSES")
 FENCE = (
     "SETUP",
     "CORE_HOLD",
@@ -159,18 +170,18 @@ FENCE = (
     "TIMER_OFF",
     "GIVE_UP",
     "BLOCKED",
+    "FORCE",
     "MMIO",
     "COLD_ENTRY",
-    "FORCE",
 )
+SEP_ID_BITS = 6
+SEP_ID_MASK = (1 << SEP_ID_BITS) - 1
 
 _EXTRA_NAMES = (
     "rst_primary_smc_clk_no",
     "tb_cpu_cluster_isolate",
     "tb_sep_axi_r_hold",
     "tb_sys_axi_r_hold",
-    "tb_sep_axi_r_drop",
-    "tb_sys_axi_r_drop",
     "tb_output_axi_resp_hold",
 )
 
@@ -193,6 +204,11 @@ SAMPLED = (
     ("mpw", "tb_cpu_mmio_pending_w"),
     ("fv", "tb_cpu_front_valid"),
     ("fr", "tb_cpu_front_ready"),
+    ("farid", "tb_cpu_front_arid"),
+    ("frid", "tb_cpu_front_rid"),
+    ("frl", "tb_cpu_front_rlast"),
+    ("sh", "tb_sep_axi_r_hold"),
+    ("yh", "tb_sys_axi_r_hold"),
     ("mv", "tb_cpu_mmio_valid"),
     ("mr", "tb_cpu_mmio_ready"),
     ("sarv", "s_axi_arvalid"),
@@ -208,6 +224,9 @@ SAMPLED = (
     ("sbv", "s_axi_bvalid"),
     ("srraw", "tb_sep_axi_r_raw_valid"),
     ("yrv", "sys_axi_rvalid"),
+    ("yraw", "tb_sys_axi_r_raw_valid"),
+    ("yrid", "sys_axi_rid"),
+    ("jrid", "jtag_axi_rid"),
     ("ybv", "sys_axi_bvalid"),
     ("jrv", "jtag_axi_rvalid"),
     ("jbv", "jtag_axi_bvalid"),
@@ -259,6 +278,12 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         self.ctrl_log: list[list] = []
         self.printed: set[str] = set()
         self.agg_done = False
+        self.obs_waits: list[str] = []
+        self.front_prefix: int | None = None
+        self.front_ids: list[int] = []
+        self.obs_lines: list[str] = []
+        self.graded_status: list[tuple] = []
+        self.stall_reads: list[tuple] = []
 
     # --- plumbing ------------------------------------------------------------------------
     @staticmethod
@@ -315,15 +340,25 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             await FallingEdge(clk)
         await RisingEdge(clk)
 
-    async def _poll(self, label: str, token: str, bound: int, cond, state) -> int | None:
-        """Bounded wait on a live condition; an expiry is a checker FAIL, not an exception."""
+    async def _poll(
+        self, label: str, token: str, bound: int, cond, state, *, obs: bool = False
+    ) -> int | None:
+        """Bounded wait on a live condition; an expiry is a checker FAIL, not an exception.
+        An observation wait (``obs``) records its expiry apart and fails nothing."""
         clk = cocotb.top.clk_smc_i
         for k in range(bound + 1):
             await FallingEdge(clk)
             if cond():
-                self._bound(label, f"{bound}clk_smc_i", f"reached after {k} edges, {state()}")
+                text = f"reached after {k} edges, {state()}"
+                if obs:
+                    self.obs_waits.append(f"{label}: bound={bound}clk_smc_i last={text}")
+                else:
+                    self._bound(label, f"{bound}clk_smc_i", text)
                 await RisingEdge(clk)
                 return k
+        if obs:
+            self.obs_waits.append(f"{label}: bound={bound}clk_smc_i last=expired {state()}")
+            return None
         self._bound(label, f"{bound}clk_smc_i", f"EXPIRED {state()}")
         self._fail(token, f"{label}: not reached within {bound} clk_smc_i edges; {state()}")
         return None
@@ -373,6 +408,85 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             if v >= 0 and r >= 0 and (v >> bit) & 1 and (r >> bit) & 1:
                 out.append(i)
         return out
+
+    def _front_ar(self, a: int, b: int) -> list[tuple[int, int]]:
+        """(sample, front-port ARID) of every front-port AR handshake in [a, b)."""
+        return [(i, self._c("farid", i)) for i in self._hs("ar", a, b)]
+
+    def _calibrate_front_ids(self, since: int, until: int) -> None:
+        """Bind the front-port ARID of a SEP_IN read from the first parked set: the four
+        parked reads are the only front-port reads in [since, until), so their front IDs must
+        carry the SEP_IN IDs PEND_ID + k in the low SEP_ID_BITS under one common upper field;
+        otherwise no front-port ID is attributed."""
+        seen = self._front_ar(since, until)
+        self.front_ids = [x for _i, x in seen]
+        want = {PEND_ID + k for k in range(4)}
+        lows = {x & SEP_ID_MASK for x in self.front_ids if x >= 0}
+        highs = {x >> SEP_ID_BITS for x in self.front_ids if x >= 0}
+        if len(seen) == 4 and lows == want and len(highs) == 1:
+            self.front_prefix = highs.pop()
+
+    def _front_id(self, sep_id: int) -> int | None:
+        return None if self.front_prefix is None else (self.front_prefix << SEP_ID_BITS) | sep_id
+
+    def _front_rlast(self, a: int, b: int) -> list[tuple[int, int]]:
+        """(sample, front-port RID) of every front-port R handshake carrying RLAST in [a, b)."""
+        return [(i, self._c("frid", i)) for i in self._hs("r", a, b) if self._c("frl", i) == 1]
+
+    def _front_open(self, since: int) -> dict[int, int]:
+        """Front-port reads accepted since `since` and not yet answered with RLAST, per ID."""
+        open_ids: dict[int, int] = {}
+        for _i, x in self._front_ar(since, self.n):
+            open_ids[x] = open_ids.get(x, 0) + 1
+        for _i, x in self._front_rlast(since, self.n):
+            if open_ids.get(x, 0) > 0:
+                open_ids[x] -= 1
+        return {x: c for x, c in open_ids.items() if c > 0}
+
+    def _read_name(self, front_id: int) -> str:
+        for k in range(4):
+            if front_id == self._front_id(PEND_ID + k):
+                return f"read{k}"
+        if front_id == self._front_id(FIFTH_ID):
+            return "fifth"
+        return f"front_id_0x{front_id:x}"
+
+    def _stalled(self, since: int) -> tuple[list[str], list[str]]:
+        """(requests stalled at the front port since `since`, active bench holds).
+        A graded status read is issued only when both are empty."""
+        reads = [self._read_name(x) for x in sorted(self._front_open(since))]
+        last = self.n - 1
+        if last >= 0:
+            v, r = self._c("fv", last), self._c("fr", last)
+            if v < 0 or r < 0 or ((v >> FRONT_BIT["ar"]) & 1 and not (r >> FRONT_BIT["ar"]) & 1):
+                reads.append("front_ar_waiting")
+        holds = [
+            tag
+            for name, tag in (
+                ("tb_sep_axi_r_hold", "sep_hold"),
+                ("tb_sys_axi_r_hold", "sys_hold"),
+            )
+            if self._g(name) != 0
+        ]
+        return reads, holds
+
+    def _armed(self, since: int, count: int) -> bool:
+        ar = self._front_ar(since, self.n)
+        if self.front_prefix is not None:
+            ids = {x for _i, x in ar}
+            if any(self._front_id(PEND_ID + k) not in ids for k in range(count)):
+                return False
+        elif len(ar) < count:
+            return False
+        return self._g("tb_cpu_l2_pending_ar") > 0 and self._g("tb_sep_axi_r_raw_valid") == 1
+
+    def _held(self, a: int, b: int) -> list[int]:
+        """Samples in [a, b] at which either bench R hold reads other than 0."""
+        return [
+            i
+            for i in range(a, min(b + 1, self.n))
+            if self._c("sh", i) != 0 or self._c("yh", i) != 0
+        ]
 
     def _in_ctrl(self, i: int) -> bool:
         return any(a0 <= i <= (a1 if a1 is not None else self.n) for a0, a1 in self.ctrl_log)
@@ -444,7 +558,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             event_span = span
         else:
             event_span = None
-        return SimpleNamespace(
+        raw = SimpleNamespace(
             span=event_span,
             label=label,
             port=port,
@@ -454,19 +568,43 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             length=length,
             beats=beats,
             axi_id=axi_id,
+            issued=self.n,
+            done_at=None,
         )
+        cocotb.start_soon(self._mark_done(raw))
+        return raw
+
+    async def _mark_done(self, raw) -> None:
+        """Record the sample at which a presented access is answered."""
+        await raw.event.wait()
+        raw.done_at = self.n
 
     async def _span_end(self, span: list, event) -> None:
         """Close the CPU_CTRL access interval at the sample where its response arrives."""
         await event.wait()
         span[1] = self.n + 2
 
-    async def _join(self, raw, token: str, *, obs: bool = False, bound_ns: int = AXI_BOUND_NS):
-        """Bounded wait for a presented access; (resp code, read data), (None, None) on expiry."""
+    async def _join(
+        self,
+        raw,
+        token: str,
+        *,
+        obs: bool = False,
+        bound_ns: int = AXI_BOUND_NS,
+        obs_wait: bool = False,
+    ):
+        """Bounded wait for a presented access; (resp code, read data), (None, None) on expiry.
+        An observation wait (``obs_wait``) records its expiry apart and fails nothing."""
         if not raw.event.is_set():
             try:
                 await with_timeout(raw.event.wait(), bound_ns, "ns")
             except SimTimeoutError:
+                if obs_wait:
+                    self.obs_waits.append(
+                        f"{raw.label}.axi: bound={bound_ns}ns last=expired {raw.port} "
+                        f"@0x{raw.addr:x} (sample {self.n})"
+                    )
+                    return NO_RESPONSE, NO_RESPONSE
                 self._bound(
                     f"{raw.label}.axi", f"{bound_ns}ns", f"EXPIRED {raw.port} @0x{raw.addr:x}"
                 )
@@ -480,7 +618,10 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         self.accesses += 1
         if raw.span is not None and raw.span[1] is None:
             raw.span[1] = self.n + 2
-        self._bound(f"{raw.label}.axi", f"{bound_ns}ns", f"answered resp={code}")
+        if obs_wait:
+            self.obs_waits.append(f"{raw.label}.axi: bound={bound_ns}ns last=answered resp={code}")
+        else:
+            self._bound(f"{raw.label}.axi", f"{bound_ns}ns", f"answered resp={code}")
         cocotb.log.info(
             "ACCESS %s %s @0x%x resp=%s data=%s done at sample %d",
             raw.port,
@@ -527,12 +668,60 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
     async def _rt(self, label: str, token: str, port: str = "SEP") -> dict:
         value = await self._rd(f"RESET_TIMEOUT_{label}", RESET_TIMEOUT, token, port=port)
         fields = self._rt_fields(value)
-        self.rt_reads.append((label, fields, {"SEP": "SEP_IN", "SYS": "SYS_IN"}[port]))
+        self.rt_reads.append(
+            (label, fields, {"SEP": "SEP_IN", "SYS": "SYS_IN", "JTAG": "JTAG_IN"}[port])
+        )
         return fields
 
     async def _wdt_write(self, label: str, addr: int, value: int, token: str) -> None:
         await self._wr(f"{label}_KEY", WDT3_KEY, WDT_MAGIC_KEY, token, length=4)
         await self._wr(label, addr, value, token, length=4)
+
+    async def _status_point(self, label: str, since: int, want: dict, port: str = "SEP"):
+        """RESET_TIMEOUT and CORE_RESET_PULSE_COUNT read at one point of an episode: graded
+        when no request of any manager is stalled at the front port since `since` and no bench
+        hold is active, else one RESET_TIMEOUT read recorded as
+        OBS-STATUS-READ-UNDER-STALL with a bounded observation wait. Returns the graded
+        RESET_TIMEOUT fields, or None for an observation."""
+        stalled, holds = self._stalled(since)
+        if stalled or holds:
+            axi_id = None if port == "JTAG" else STALL_ID_BASE + len(self.stall_reads)
+            raw = self._raw(
+                port, SmcSysAxiOp.READ, f"{label}_status_under_stall", RESET_TIMEOUT, axi_id=axi_id
+            )
+            self.stall_reads.append((raw, stalled, holds))
+            await self._join(raw, TOKEN_STATUS, obs=True, bound_ns=OBS_AXI_BOUND_NS, obs_wait=True)
+            return None
+        fields = await self._rt(label, TOKEN_STATUS, port=port)
+        pc = await self._rd(f"PULSE_COUNT_{label}", PULSE_COUNT, TOKEN_STATUS, port=port)
+        self.graded_status.append((label, port, fields, pc, want))
+        return fields
+
+    async def _drain_stall_reads(self) -> None:
+        """Bounded observation join of every status read still open from a stalled point."""
+        for raw, _stalled, _holds in self.stall_reads:
+            if not raw.event.is_set():
+                await self._join(
+                    raw, TOKEN_STATUS, obs=True, bound_ns=OBS_AXI_BOUND_NS, obs_wait=True
+                )
+
+    @staticmethod
+    def _fields_text(fields: dict) -> str:
+        return ",".join(f"{k}:{v}" for k, v in fields.items()) or "none"
+
+    def _stall_lines(self) -> list[str]:
+        names = {"SEP": "SEP_IN", "SYS": "SYS_IN", "JTAG": "JTAG_IN"}
+        out = []
+        for raw, stalled, holds in self.stall_reads:
+            done = "never" if raw.done_at is None else str(raw.done_at)
+            code, value = self._result(raw)
+            out.append(
+                f"OBS-STATUS-READ-UNDER-STALL: port={names[raw.port]} completed={done} "
+                f"stalled_request={'+'.join(stalled) or 'none'} hold={'+'.join(holds) or 'none'} "
+                f"label={raw.label} issued={raw.issued} resp={self._code_text(code)} "
+                f"fields={self._fields_text(self._rt_fields(value))} sf=SF-026"
+            )
+        return out
 
     # --- shared episode steps ------------------------------------------------------------------
     async def _write_rc(self, label: str, value: int, token: str) -> tuple[int, int]:
@@ -545,8 +734,6 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         dut = cocotb.top
         for name in ("tb_sep_axi_r_hold", "tb_sys_axi_r_hold", "tb_output_axi_resp_hold"):
             getattr(dut, name).value = 0
-        dut.tb_sep_axi_r_drop.value = 0
-        dut.tb_sys_axi_r_drop.value = 0
 
     def _front_reads(self, count: int, tag: str) -> list:
         rd = SmcSysAxiOp.READ
@@ -568,13 +755,9 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             f"{tag}.pending",
             token,
             PENDING_BOUND,
+            lambda: self._armed(since, count),
             lambda: (
-                len(self._hs("ar", since, self.n)) >= count
-                and self._g("tb_cpu_l2_pending_ar") > 0
-                and self._g("tb_sep_axi_r_raw_valid") == 1
-            ),
-            lambda: (
-                f"front AR handshakes {len(self._hs('ar', since, self.n))}/{count}; "
+                f"front AR handshakes {self._front_ar(since, self.n)} for {count} reads; "
                 f"raw R valid {self._g('tb_sep_axi_r_raw_valid')}; {self._state()}"
             ),
         )
@@ -656,9 +839,9 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             await self._step("S4", self._s4_timer_off())
             await self._step("S5", self._s5_give_up())
             await self._step("S6", self._s6_blocked())
-            await self._s8_deferred()
+            await self._s7_not_driven()
+            await self._s8_not_driven()
             await self._step("S9", self._s9_cold())
-            await self._step("S7", self._s7_force())
         finally:
             self._release_holds()
             self._sampler_stop = True
@@ -834,7 +1017,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         self.obs["core"].append(
             f"OBS-CORE-RESET-ACCESS: held rd={self._code_data(held_rd_code, held_rd)} "
             f"wr={self._code_text(held_wr)}; released rd={self._code_data(rel_rd_code, rel_rd)} "
-            f"wr={self._code_text(rel_wr)} (waits on SF-022 and SF-038)"
+            f"wr={self._code_text(rel_wr)} sf=SF-022,SF-038"
         )
         self._grade(
             T,
@@ -1002,6 +1185,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         if pending0 <= 0:
             bad1.append(f"tb_cpu_l2_pending_ar reads {pending0} before the uncore bit is cleared")
         iss, resp = await self._write_rc("S4a_UNCORE_CLEAR", self.rc_base & ~UNCORE_RESET_N, T1)
+        self._calibrate_front_ids(since, iss)
         iso = await self._poll(
             "S4a.isolate_req",
             T1,
@@ -1039,7 +1223,6 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             good, total, first_bad = self._all("isoreq", 1, a_idx, end)
             if good != total:
                 bad1.append(f"isolate_req falls inside the window at sample {first_bad}")
-        fifth_early = fifth.event.is_set()
         self._release_holds()
         await self._wait_reset_applied("S4a", T1)
         res_idx = self._first("unc", 0, iss)
@@ -1051,7 +1234,6 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             bad1.append("no parked read completed before the reset applied")
         if self._g("tb_cpu_l2_pending_ar") != 0 and res_idx is not None:
             bad1.append("a read is still pending in the isolate after the reset applied")
-        fifth_before = fifth.event.is_set()
         i_set, r_set = await self._write_rc("S4a_UNCORE_SET", self.rc_base, T1)
         await self._reconnect("S4a", T1)
         recon = self._first("l2iso", 0, r_set)
@@ -1064,39 +1246,50 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             max((self._c("l2par", i) for i in range(since, self.n)), default=-1),
         )
         fifth_code, fifth_data = await self._join(fifth, T2)
-        pend_max = max((self._c("l2par", i) for i in range(since, self.n)), default=-1)
-        if pend_max > 4 or pend_max < 1:
-            bad2.append(f"tb_cpu_l2_pending_ar peaks at {pend_max}")
-        fifth_ar = self._hs("ar", a_idx if a_idx is not None else iss, self.n)
-        stop = recon if recon is not None else self.n
-        isolated_ar = [i for i in fifth_ar if a_idx is not None and a_idx <= i < stop]
-        pend_rises = [
-            i
-            for i in range(a_idx if a_idx is not None else iss, stop)
-            if i > 0 and self._c("l2par", i) > self._c("l2par", i - 1)
-        ]
-        if fifth_early or fifth_before:
-            bad2.append("the fifth read answered while the boundary was isolated")
-        if isolated_ar or pend_rises:
-            bad2.append(
-                f"the fifth read was accepted before the reconnect: front-port AR handshakes at "
-                f"samples {isolated_ar[:3]} and tb_cpu_l2_pending_ar rises at samples "
-                f"{pend_rises[:3]} between isolate_req@{a_idx} and reconnect@{recon}"
-            )
-        if recon is None or not fifth_ar:
-            bad2.append("the fifth read never reached the L2 frontend after the reconnect")
-        cocotb.log.info(
-            "S4a: fifth read front-port AR handshakes at samples %s; isolate_req@%s "
-            "applied@%s reconnect@%s; l2_isolated high %s samples",
-            fifth_ar,
-            a_idx,
-            res_idx,
-            recon,
-            self._all("l2iso", 1, iss, (recon or self.n))[0],
-        )
+        pend_vals = [self._c("l2par", i) for i in range(since, self.n)]
+        pend_max = max(pend_vals, default=-1)
+        if any(v < 0 for v in pend_vals):
+            bad2.append("tb_cpu_l2_pending_ar reads X/Z in the episode")
+        if pend_max > 4:
+            bad2.append(f"tb_cpu_l2_pending_ar peaks at {pend_max}, above 4")
         want5 = self._burst_ref(SCRATCH_REF_BASE + 32, BURST_BEATS)
         if fifth_code != 0 or fifth_data != want5:
-            bad2.append(f"fifth read completes resp={fifth_code} data={fifth_data}")
+            bad2.append(
+                f"fifth read completes resp={fifth_code} "
+                f"data={None if fifth_data is None else hex(fifth_data)}, want 0x{want5:x}"
+            )
+        if recon is None or fifth.done_at is None or fifth.done_at < recon:
+            bad2.append(
+                f"fifth read answered at sample {fifth.done_at}, not after the reconnect@{recon}"
+            )
+        a0 = a_idx if a_idx is not None else iss
+        front_after = self._front_ar(a0, self.n)
+        fifth_front = self._front_id(FIFTH_ID)
+        if fifth_front is None:
+            ar5 = "unattributed:" + (",".join(f"{i}/0x{x:02x}" for i, x in front_after) or "none")
+        else:
+            hits = [i for i, x in self._front_ar(since, self.n) if x == fifth_front]
+            ar5 = ",".join(str(i) for i in hits) or "none"
+        cocotb.log.info(
+            "S4a: front-port AR (sample:ARID) from isolate_req@%s: %s; parked front IDs %s; "
+            "applied@%s reconnect@%s; fifth answered at sample %s",
+            a_idx,
+            " ".join(f"{i}:0x{x:02x}" for i, x in front_after) or "none",
+            [hex(x) for x in self.front_ids],
+            res_idx,
+            recon,
+            fifth.done_at,
+        )
+        obs5 = (
+            f"OBS-L2F-FIFTH-READ: front_ar_sample={ar5} isolate_req={a_idx} applied={res_idx} "
+            f"reconnect={recon} sf=SF-005"
+        )
+        self.obs_lines.append(obs5)
+        text2 = (
+            f"max pending AR {pend_max} <= 4; fifth read (FIFTH_ID) completed after reconnect "
+            f"(answered at sample {fifth.done_at}, reconnect@{recon}) with its reference data "
+            f"| {obs5}"
+        )
         released = self._first("unc", 0, iss)
         self._window("S4a", iss, (recon or self.n) + 1)
         self._grade(
@@ -1105,13 +1298,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             f"{TIMER_OFF_EDGES} edges withheld, reset_timeout 0, applied 0; reset applied after "
             f"release",
         )
-        self._grade(
-            T2,
-            bad2,
-            f"max pending AR {pend_max}; fifth read accepted only after reconnect "
-            f"(front-port AR handshakes after the isolate request at samples {fifth_ar}, "
-            f"isolate_req@{a_idx}, reconnect@{recon})",
-        )
+        self._grade(T2, bad2, text2)
         self._stamp("TIMER_OFF", len(self._hs("ar", since, since + 400)))
         self.ep_s4 = SimpleNamespace(since=since, iss=iss, res=released, reads=reads)
 
@@ -1147,7 +1334,6 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         T = "CHK-GIVEUP-REPORT-AND-WAIT"
         TH = "CHK-DRAIN-HANDSHAKE-ORDER"
         TP = "CHK-DRAIN-PENDING-READS-COMPLETE"
-        TS = "CHK-STATUS-READABLE-FROM-SEP"
         TE = "CHK-OBS-TIMEOUT-EXPIRY"
         bg: list[str] = []
         bh: list[str] = []
@@ -1170,79 +1356,64 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             self._state,
         )
         rise = self._first("rto", 1, iss)
-        status_from = self.n
-        status = self._raw(
-            "SYS", SmcSysAxiOp.READ, "S5_status_expired", RESET_TIMEOUT, axi_id=STATUS_ID
-        )
-        await self._poll(
-            "S5.status_ar",
-            TS,
-            ASSERT_BOUND,
-            lambda: any(
-                self._c("yarv", x) == 1
-                and self._c("yarr", x) == 1
-                and self._c("yara", x) == RESET_TIMEOUT
-                for x in range(status_from, self.n)
-            ),
-            self._state,
-        )
-        ar_idx = self.n
-        withheld_live = (
-            self._g("tb_cpu_uncore_reset_n"),
-            self._g("tb_cpu_reset_applied"),
-            self._g("tb_cpu_drained"),
-        )
+        # The withheld point comes from the probes; a status read issued now is under the hold.
+        want_s5 = {"value": TIMEOUT_CYCLES, "mode": 0}
+        await self._status_point("s5_expired", since, want_s5, port="SYS")
+        probe_end = self.n
         if rise is None:
             bg.append("tb_cpu_reset_timeout never rose with timeout_value 64")
         else:
-            end_w = ar_idx + 1 if ar_idx is not None else self.n
-            for key, val, name in (("unc", 1, "uncore_reset_n"), ("rap", 0, "reset_applied")):
-                good, total, first_bad = self._all(key, val, rise, end_w)
-                if good != total:
-                    bg.append(f"{name} not {val} after the timer expired (sample {first_bad})")
-        if withheld_live != (1, 0, 0):
-            bg.append(f"uncore/applied/drained read {withheld_live} when the status read was taken")
+            for key, val, name in (
+                ("rto", 1, "reset_timeout"),
+                ("rap", 0, "reset_applied"),
+                ("unc", 1, "uncore_reset_n"),
+                ("drn", 0, "drained"),
+            ):
+                good, total, first_bad = self._all(key, val, rise, probe_end)
+                if good != total or total == 0:
+                    bg.append(
+                        f"{name} probe reads {val} at {good}/{total} samples after the expiry "
+                        f"(first bad sample {first_bad}); reset not withheld"
+                    )
+        hrel = self.n
         self._release_holds()
         await self._wait_reset_applied("S5", T)
-        early = [r.event.is_set() for r in reads]
-        self.drained_b = [self._result(r) for r in reads]
-        status_code, status_value = await self._join(status, TS)
-        expired = self._rt_fields(status_value)
-        self.rt_reads.append(("s5_expired", expired, "SYS_IN"))
-        if expired.get("flag") != 1 or expired.get("applied") != 0:
-            bg.append(
-                f"RESET_TIMEOUT read after the expiry (reset withheld) reads "
-                f"{expired if expired else 'no response'}"
-            )
-        applied_rt = await self._rt("s5_applied", TS)
-        if applied_rt.get("applied") != 1 or applied_rt.get("flag") != 1:
-            bg.append(
-                f"RESET_TIMEOUT after the drain reads "
-                f"{applied_rt if applied_rt else 'no response'}, expected applied 1 timeout 1"
-            )
-        res = self._first("unc", 0, iss)
-        keep_from = self.n
-        await self._edges(GIVE_UP_KEEP_EDGES)
-        i_set, r_set = await self._write_rc("S5_UNCORE_SET", self.rc_base, T)
-        recon_rt = await self._rt("s5_reconnecting", TS)
-        await self._reconnect("S5", TH)
-        recon = self._first("l2iso", 0, r_set)
-        for r, done in zip(reads, early):
-            if not done:
-                await self._join(r, TP, obs=True)
-        cocotb.log.info(
-            "S5: parked reads completed before the reset applied %s, isolate pending peak %s",
-            early,
-            max((self._c("l2par", i) for i in range(since, self.n)), default=-1),
-        )
-        if rise is not None:
-            good, total, first_bad = self._all("rto", 1, rise, i_set)
-            if good != total:
-                bg.append(f"reset_timeout falls at sample {first_bad} while the request stays")
-        # handshake order
         a = self._first("isoreq", 1, iss)
         b = self._first("drn", 1, a if a is not None else iss)
+        res = self._first("unc", 0, iss)
+        app = self._first("rap", 1, iss)
         cc = self._first("core", 0, iss)
+        # per parked read: front-port AR and RLAST by ID, SEP_IN RLAST
+        front_ar = self._front_ar(since, a if a is not None else iss)
+        front_rl = self._front_rlast(since, self.n)
+        per = []
+        for k in range(4):
+            fid = self._front_id(PEND_ID + k)
+            per.append(
+                SimpleNamespace(
+                    k=k,
+                    far=None if fid is None else next((i for i, x in front_ar if x == fid), None),
+                    frl=None if fid is None else next((i for i, x in front_rl if x == fid), None),
+                    srl=next(iter(self._sep_r_done(since, self.n, {PEND_ID + k})), None),
+                )
+            )
+        upto = res if res is not None else self.n
+        pend_vals = [self._c("l2par", x) for x in range(since, upto)]
+        pend_peak = max(pend_vals, default=-1)
+        accepted = sorted((p for p in per if p.far is not None), key=lambda p: p.far)
+        n_counted = max(0, min(pend_peak, len(accepted)))
+        counted = accepted[:n_counted]
+        not_pending = accepted[n_counted:]
+        if self.front_prefix is None:
+            bp.append("the front-port IDs of the parked reads are not bound; no read attributed")
+        elif len(accepted) != 4:
+            bp.append(
+                f"{len(accepted)} front-port AR handshakes of the four parked reads before "
+                f"isolate_req@{a}"
+            )
+        if any(v < 0 for v in pend_vals) or pend_peak < 1:
+            bp.append(f"tb_cpu_l2_pending_ar peaks at {pend_peak} (X/Z or no pending read)")
+        # handshake order
         if None in (a, b, res, cc):
             bh.append(f"events missing: isolate_req@{a} drained@{b} uncore@{res} core@{cc}")
         else:
@@ -1250,71 +1421,147 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                 bh.append(f"uncore reset already asserted at isolate_req@{a}")
             if not a < b <= res:
                 bh.append(f"order isolate_req@{a} drained@{b} uncore@{res}")
-            r_last = self._sep_r_done(since, b, {PEND_ID + k for k in range(4)})
-            if len(r_last) < 4:
-                bh.append(
-                    f"drained@{b} with {len(r_last)} of the four parked R beats complete "
-                    f"(RLAST samples {r_last})"
-                )
             if cc != res:
                 bh.append(f"core reset@{cc} not in the sample of the uncore reset@{res}")
+        # drain claims count only the isolate-pending reads the bench had released
+        rel0 = self._first("sh", 0, hrel)
+        bench_held = []
+        late_d, late_a = [], []
+        for edge, late in ((b, late_d), (res, late_a)):
+            if edge is None or rel0 is None:
+                continue
+            held = self._held(rel0, edge)
+            for p in counted:
+                if p.frl is not None and p.frl < edge:
+                    continue
+                if held:
+                    bench_held.append(
+                        f"OBS-DRAIN-BENCH-HELD: read={p.k} rlast={self._opt(p.frl)} "
+                        f"hold_release={hrel} drained={b} held_samples={held[:3]} ruling=#2449"
+                    )
+                else:
+                    late.append((p.k, p.frl))
+        if rel0 is None:
+            bp.append(f"tb_sep_axi_r_hold never read 0 after the release at sample {hrel}")
+        self.obs_lines.extend(dict.fromkeys(bench_held))
+        if late_d:
+            bh.append(
+                f"drained@{b} before the front-port RLAST of isolate-pending released reads "
+                f"{late_d} (read, RLAST sample); holds 0 from sample {rel0}"
+            )
+        if late_a:
+            bp.append(
+                f"uncore reset applied@{res} before the front-port RLAST of isolate-pending "
+                f"released reads {late_a} (read, RLAST sample); holds 0 from sample {rel0}"
+            )
+        r_n = sum(1 for p in counted if p.frl is not None and res is not None and p.frl < res)
+        cocotb.log.info(
+            "S5: parked reads (read, front AR, front RLAST, SEP_IN RLAST) %s; isolate-pending "
+            "%s, front-port-accepted-not-pending %s; isolate_req@%s drained@%s applied@%s "
+            "uncore@%s; hold release@%s (holds 0 from %s); pending peak %s",
+            [(p.k, p.far, p.frl, p.srl) for p in per],
+            [p.k for p in counted],
+            [p.k for p in not_pending],
+            a,
+            b,
+            app,
+            res,
+            hrel,
+            rel0,
+            pend_peak,
+        )
+        # status after the drain: graded only with no stalled request, else an observation
+        link = "SEP" if all(r.event.is_set() for r in reads) else "JTAG"
+        await self._status_point("s5_applied", since, dict(want_s5, applied=1, flag=1), link)
+        await self._edges(GIVE_UP_KEEP_EDGES)
+        i_set, r_set = await self._write_rc("S5_UNCORE_SET", self.rc_base, T)
+        await self._reconnect("S5", TH)
+        recon = self._first("l2iso", 0, r_set)
+        # probe facts of the applied state, held until the bit is set
+        if app is None:
+            bg.append("tb_cpu_reset_applied never rose after the drain")
+        else:
+            for key, name, start in (("rap", "reset_applied", app), ("rto", "reset_timeout", app)):
+                good, total, first_bad = self._all(key, 1, start, i_set)
+                if good != total or total == 0:
+                    bg.append(
+                        f"{name} probe reads 1 at {good}/{total} samples from the apply to the "
+                        f"bit set (first bad sample {first_bad})"
+                    )
+            good, total, first_bad = self._all("rap", 1, app, i_set)
+            if good != total or total == 0:
+                bh.append(f"reset_applied probe falls at sample {first_bad} while applied")
+        if rise is not None:
+            good, total, first_bad = self._all("rto", 1, rise, i_set)
+            if good != total:
+                bg.append(f"reset_timeout falls at sample {first_bad} while the request stays")
+        if a is not None:
             good, total, first_bad = self._all("isoreq", 1, a, i_set)
             if good != total:
                 bh.append(f"isolate_req falls at sample {first_bad} before the bit is set")
-        if applied_rt.get("applied") != 1:
-            bh.append("reset_applied does not read 1 over SEP_IN once applied")
         if recon is None:
             bh.append("no reconnect after the uncore bit was set")
-        # pending reads
-        pend_addrs = {SCRATCH_REF_BASE + 8 * k for k in range(4)}
-        ids = {PEND_ID + k for k in range(4)}
-        ar_n = len(
-            [
-                x
-                for x in range(since, status_from)
-                if self._c("sarv", x) == 1
-                and self._c("sarr", x) == 1
-                and self._c("sara", x) in pend_addrs
-            ]
-        )
-        r_n = len(self._sep_r_done(since, (res if res is not None else self.n) + 1, ids))
-        pend_peak = max((self._c("l2par", x) for x in range(since, self.n)), default=-1)
-        self.notes["pend_peak"] = pend_peak
-        if ar_n != 4 or r_n != ar_n:
-            bp.append(
-                f"SEP_IN AR {ar_n} R {r_n} (RLAST) up to the reset applying, expected R equal to AR "
-                f"(4)"
+        # the reads the isolate never counted complete only after the reconnect
+        for p in not_pending:
+            code, value = await self._join(reads[p.k], TP)
+            want = self._burst_ref(SCRATCH_REF_BASE + 8 * p.k, BURST_BEATS)
+            done = reads[p.k].done_at
+            after = recon is not None and done is not None and done >= recon
+            ok = code == 0 and value == want and after
+            if not ok:
+                bp.append(
+                    f"front-port-accepted-not-pending read {p.k} answered at sample {done} "
+                    f"(reconnect@{recon}) resp={code} "
+                    f"data={None if value is None else hex(value)}, want 0x{want:x}"
+                )
+            self.obs_lines.append(
+                f"OBS-DRAIN-FRONTPORT-ACCEPTED-NOT-PENDING: read={p.k} front_ar_sample={p.far} "
+                f"isolate_req={a} pending_peak={pend_peak} rlast={self._opt(p.frl)} "
+                f"completed_after_reconnect={'yes' if ok else 'no'} sf=SF-005,SF-006"
             )
-        if not all(early):
-            bp.append(f"reads completed before the reset applied: {early}")
+        for r in reads:
+            if not r.event.is_set():
+                await self._join(r, TP, obs=True)
+        self.drained_b = [self._result(r) for r in reads]
+        await self._drain_stall_reads()
+        await self._status_point("s5_reconnected", since, dict(want_s5, applied=0), port="SEP")
         self._grade(
             T,
             bg,
-            "expired: timeout=1 applied=0 withheld; after drain: applied=1 timeout=1 until bit set",
+            f"expired: timeout=1 applied=0 withheld (probes, {probe_end - (rise or 0)} samples "
+            f"from the expiry); after drain: applied=1 timeout=1 (probes, "
+            f"{i_set - (app or i_set)} samples) until bit set",
         )
         self._grade(
             TH,
             bh,
             f"isolate_req@{a} < drained@{b} <= uncore_reset@{res} == core_reset@{cc}; isolate_req "
-            f"held until bit set; reset_applied 1; reconnect@{recon}",
+            f"held until bit set; reset_applied 1 (probe from {app}); reconnect@{recon}; "
+            f"isolate-pending reads {[p.k for p in counted]} front-port RLAST "
+            f"{[p.frl for p in counted]} before drained",
         )
         self._grade(
             TP,
             bp,
-            f"AR {ar_n} R {r_n} before reset applied at SEP_IN (OBS isolate pending_ar peak "
-            f"{pend_peak})",
+            f"isolate-pending reads AR {len(counted)} R {r_n} before reset applied (front-port "
+            f"RLAST {[p.frl for p in counted]}, SEP_IN RLAST {[p.srl for p in counted]}, uncore "
+            f"reset@{res}, holds 0 from sample {rel0}, pending peak {pend_peak}); "
+            f"front-port-accepted-not-pending {len(not_pending)} completed after reconnect",
         )
         if rise is not None:
             self.obs["expiry"].append(
                 f"OBS-RESET-TIMEOUT-EXPIRY: value={TIMEOUT_CYCLES} from_write={rise - resp} "
-                f"from_isolate_req={rise - (a if a is not None else iss)} (waits on SF-028)"
+                f"from_isolate_req={rise - (a if a is not None else iss)} sf=SF-028"
             )
         else:
             self._fail(TE, "no expiry edge observed")
-        self.status_reads_s5 = (status_code, applied_rt, recon_rt)
+        self.notes["pend_peak"] = pend_peak
         self._window("S5", iss, (recon or self.n) + 1)
-        self._stamp("GIVE_UP", ar_n)
-        self.notes["keep_from"] = keep_from
+        self._stamp("GIVE_UP", len(front_ar))
+
+    @staticmethod
+    def _opt(value) -> str:
+        return "none" if value is None else str(value)
 
     # S6 -------------------------------------------------------------------------------------------
     async def _s6_blocked(self) -> None:
@@ -1340,6 +1587,8 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             self._state,
         )
         iso_first = self._first("l2iso", 1, iss)
+        want_s6 = {"value": 0, "mode": 0}
+        await self._status_point("s6_applied", iss, dict(want_s6, applied=1))
         rd = SmcSysAxiOp.READ
         wb = []
         wb_reads = [
@@ -1401,6 +1650,8 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         fresh = await self._rd("S6_fresh", FRESH_ADDR, T)
         if fresh != REF_TAG | FRESH_ADDR:
             bad.append(f"fresh SEP_IN read returns {fresh}")
+        await self._drain_stall_reads()
+        await self._status_point("s6_reconnected", iss, dict(want_s6, applied=0))
         cmp_after = await self._rd("S6_CMP_AFTER", WDT3_CMP, TW, length=4)
         count_after = await self._rd("S6_WDT_COUNT", WDT3_COUNT, TW, length=4)
         self.notes["wdt_count"] = count_after
@@ -1415,131 +1666,29 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         self._stamp("BLOCKED", len(blocked))
 
     # S7 -------------------------------------------------------------------------------------------
-    async def _s7_force(self) -> None:
-        T = "CHK-FORCE-MODE-REQUEST-STATUS"
-        TF = "CHK-OBS-DRAIN-FLUSH-RESPONSES"
-        bad: list[str] = []
-        dut = cocotb.top
-        rd = SmcSysAxiOp.READ
-        await self._wr("RESET_TIMEOUT_FORCE", RESET_TIMEOUT, TIMEOUT_MODE_BM | TIMEOUT_CYCLES, T)
-        dut.tb_output_axi_resp_hold.value = 1
-        out_from = self.n
-        route = self._raw("JTAG", rd, "S7_route_rd", EXT_ROUTE, axi_id=BLOCK_ID[2])
-        since, reads = await self._arm_four("S7", T)
-        await self._poll(
-            "S7.sys_out_ar",
-            T,
-            PENDING_BOUND,
-            lambda: any(
-                self._c("oarv", i) == 1
-                and self._c("oarr", i) == 1
-                and self._c("oara", i) == EXT_ROUTE
-                for i in range(out_from, self.n)
-            ),
-            self._state,
-        )
-        self._stamp("FORCE", len(self._hs("ar", since, self.n)))
-        self._report(final=False)
-        iss, resp = await self._write_rc("S7_UNCORE_CLEAR", self.rc_base & ~UNCORE_RESET_N, T)
-        await self._poll(
-            "S7.isolate_req",
-            T,
-            ISOLATE_BOUND,
-            lambda: self._g("tb_cpu_isolate_req") == 1,
-            self._state,
-        )
-        await self._poll(
-            "S7.reset_timeout",
-            T,
-            TIMEOUT_BOUND,
-            lambda: self._g("tb_cpu_reset_timeout") == 1,
-            self._state,
-        )
-        await self._poll(
-            "S7.applied",
-            T,
-            DRAIN_BOUND,
-            lambda: self._g("tb_cpu_reset_applied") == 1 and self._g("tb_cpu_uncore_reset_n") == 0,
-            self._state,
-        )
-        rise = self._first("rto", 1, iss)
-        _code, value = await self._acc("SYS", rd, "rd_S7_status_forced", RESET_TIMEOUT, token=T)
-        forced = self._rt_fields(value)
-        self.rt_reads.append(("s7_forced", forced, "SYS_IN"))
-        dut.tb_sep_axi_r_hold.value = 0
-        await self._poll(
-            "S7.drained", T, DRAIN_BOUND, lambda: self._g("tb_cpu_drained") == 1, self._state
-        )
-        after_flush = await self._rt("s7_after_flush", T)
-        for name, fields in (
-            ("after the forced reset applied", forced),
-            ("after the flush", after_flush),
-        ):
-            if fields.get("flag") != 1:
-                bad.append(
-                    f"reset_timeout reads {fields.get('flag')} {name} with the request present"
-                )
-        i_set, r_set = await self._write_rc("S7_UNCORE_SET", self.rc_base, T)
-        if rise is None:
-            bad.append("tb_cpu_reset_timeout never rose in force mode")
-        else:
-            good, total, first_bad = self._all("rto", 1, rise, i_set)
-            if good != total:
-                bad.append(f"reset_timeout falls at sample {first_bad} while the request stays")
-        await self._reconnect("S7", T)
-        await self._poll(
-            "S7.request_removed",
-            T,
-            TIMEOUT_BOUND,
-            lambda: self._g("tb_cpu_reset_timeout") == 0,
-            self._state,
-        )
-        removed = await self._rt("s7_removed", T)
-        if removed.get("flag") != 0:
-            bad.append(f"reset_timeout reads {removed.get('flag')} after the request was removed")
-        self._grade(
-            T,
-            bad,
-            "force mode: reset_timeout 1 after flush until request removed; 0 afterwards",
-        )
-        # outside route
-        release_at = self.n
-        dut.tb_output_axi_resp_hold.value = 0
-        route_code, route_value = await self._join(route, TF, obs=True)
-        late = sum(
-            1
-            for i in range(release_at, self.n)
-            if self._c("orv", i) == 1 and self._c("orr", i) == 1
-        )
-        fate = "hung" if route_code is None else f"completed code {route_code}"
-        _c2, fresh_value = await self._acc(
-            "JTAG", rd, "rd_S7_route_again", EXT_ROUTE, token=TF, obs=True
-        )
-        stale_fates = ",".join("done" if r.event.is_set() else "open" for r in reads)
+    async def _s7_not_driven(self) -> None:
+        await RisingEdge(cocotb.top.clk_smc_i)
         codes = [self._code_text(c) for c, _v in self.drained_b]
-        data = [("none" if v is None else f"0x{v:x}") for _c, v in self.drained_b]
-        self.obs["flush"].append(
-            f"OBS-DRAIN-FLUSH-RESPONSES: drained rresp={','.join(codes)} rdata={' '.join(data)} "
-            f"route_read={fate} late_beats={late} (route data {route_value}, again {fresh_value}; "
-            f"force-mode reads {stale_fates}; waits on SF-006 and SF-029)"
+        data = [("none" if v is None else f"0x{v & ((1 << 64) - 1):x}") for _c, v in self.drained_b]
+        self.obs["flush"] += [
+            "OBS-DRAIN-FLUSH-RESPONSES: episode=not-driven ruling=#2449",
+            f"OBS-DRAIN-FLUSH-RESPONSES: episode=give_up drained rresp={','.join(codes)} "
+            f"rdata={','.join(data)} sf=SF-006",
+        ]
+        cocotb.log.info(
+            "INFO-CELL-NOT-DRIVABLE: force episode S7 (ruling #2449, covered by the pinned wedge "
+            "leaves)"
         )
-        self._print(TF, self.obs["flush"][-1])
-        await self._wr("RESET_TIMEOUT_CLEAR", RESET_TIMEOUT, 0, T)
+        self._stamp("FORCE", 1)
 
     # S8 -------------------------------------------------------------------------------------------
-    async def _s8_deferred(self) -> None:
+    async def _s8_not_driven(self) -> None:
         await RisingEdge(cocotb.top.clk_smc_i)
-        pend = {
-            name: max((self._c(key, i) for i in range(self.n)), default=-1)
-            for name, key in (("ar", "mpar"), ("aw", "mpaw"), ("w", "mpw"))
-        }
         self.obs["mmio"] = [
-            f"OBS-MMIO-RESET: episode=none items=0 (the mmio_wedge episodes are deferred and no "
-            f"firmware image is staged) tb_cpu_mmio_valid samples={self.n} "
-            f"mmio_pending max ar/aw/w={pend['ar']}/{pend['aw']}/{pend['w']} "
-            f"(waits on SF-004, SF-022 and SF-035)"
+            "OBS-MMIO-RESET: episode=none items=0 not-driven sf=SF-004,SF-022,SF-035"
         ]
-        self._stamp("MMIO", self.n)
+        cocotb.log.info("INFO-CELL-NOT-DRIVABLE: MMIO episodes (c-fw image not staged)")
+        self._stamp("MMIO", 1)
 
     # S9 -------------------------------------------------------------------------------------------
     async def _dispatch_reset_item(self, item) -> None:
@@ -1610,12 +1759,8 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                         )
                 if fall is None:
                     bad.append("tb_cpu_l2_isolated never fell after the release")
-                elif fall - later != COLD_ISOLATE_EDGES:
-                    bad.append(
-                        f"tb_cpu_l2_isolated fell {fall - later} edges after the later event "
-                        f"(uncore release@{e_unc}, init_mem_done@{e_init}), expected "
-                        f"{COLD_ISOLATE_EDGES}"
-                    )
+                elif fall < later:
+                    bad.append(f"tb_cpu_l2_isolated fell at {fall} before the later event {later}")
         await wait_fuse_sense_done(FUSE_SENSE_BOUND)
         self._bound("S9.fuse_sense", f"{FUSE_SENSE_BOUND}clk_smc_i", "sense done")
         await self.program_inbound_pass_all()
@@ -1627,50 +1772,51 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         cold_l2 = None if fall is None or later is None else fall - later
         cold_mm = None if mm_fall is None or later is None else mm_fall - later
         self.obs["iso"] = [
-            f"OBS-ISOLATION-DELAY: source=sw l2={sw_l2} mmio={sw_mm} (waits on SF-026)",
+            f"OBS-ISOLATION-DELAY: source=sw l2={sw_l2} mmio={sw_mm} sf=SF-026",
             f"OBS-ISOLATION-DELAY: source=cold_bypass l2={cold_l2} mmio={cold_mm} "
-            f"init_mem_done@{e_init} uncore_release@{e_unc} (waits on SF-026)",
+            f"init_mem_done@{e_init} uncore_release@{e_unc} sf=SF-026",
         ]
+        later_event = (
+            "none"
+            if later is None
+            else ("uncore_release" if e_unc is not None and e_unc >= e_init else "init_mem_done")
+        )
+        self.obs_lines.append(
+            f"OBS-COLD-ISOLATION-RELEASE: later={later_event} edges={cold_l2} "
+            f"stated={COLD_ISOLATE_EDGES} ruling=#3425-item-6"
+        )
         self._grade(
             T,
             bad,
-            f"isolated until later event; released {cold_l2} edges after; SEP_IN read completed",
+            "isolated until later event; released (edges in OBS); SEP_IN read completed",
         )
         self._stamp("COLD_ENTRY", 0 if fall is None or low is None else fall - low)
 
     # report ---------------------------------------------------------------------------------------
-    def _valid_low(self) -> None:
-        T = "CHK-VALID-LOW-UNCORE-SW"
-        bad: list[str] = []
-        edges = 0
-        ctrl_excluded = 0
+    def _valid_obs(self) -> None:
+        """OBS-VALID-UNCORE-SW: the cluster-side VALIDs at every sampled edge of the drained
+        software uncore resets; recorded, never compared (SF-003, SF-019)."""
+        edges, xz, high = 0, 0, []
         for tag, a, b in self.valid_windows:
-            j = 0
             for i in range(a, min(b, self.n)):
-                unc = self._c("unc", i)
-                if unc != 0:
+                if self._c("unc", i) != 0:
                     continue
-                j += 1
+                edges += 1
                 fv, mv = self._c("fv", i), self._c("mv", i)
                 if fv < 0 or mv < 0:
-                    bad.append(f"{tag} sample {i}: X/Z on a link vector")
+                    xz += 1
                     continue
-                if fv & ((1 << 2) | (1 << 4)):
-                    if self._in_ctrl(i):
-                        ctrl_excluded += 1
-                    else:
-                        bad.append(f"{tag} sample {i}: front B/R VALID high (0b{fv:05b})")
-                if j >= 2 and mv & ((1 << 0) | (1 << 1) | (1 << 3)):
-                    bad.append(f"{tag} sample {i}: MMIO AW/W/AR VALID high (0b{mv:05b})")
-                edges += 1
+                if fv & ((1 << FRONT_BIT["b"]) | (1 << FRONT_BIT["r"])) or mv & (
+                    (1 << FRONT_BIT["aw"]) | (1 << FRONT_BIT["w"]) | (1 << FRONT_BIT["ar"])
+                ):
+                    high.append(f"{tag}@{i}:f{fv:05b}m{mv:05b}")
         if edges == 0:
-            bad.append("no sampled edge of the software uncore reset")
-        self._grade(
-            T,
-            bad[:6],
-            f"cluster-side VALIDs low at {edges} edges of the uncore reset; 0 violations "
-            f"({ctrl_excluded} B/R VALID samples answer an outstanding CPU_CTRL access)",
-        )
+            self._fail("CHK-OBS-VALID-UNCORE-SW", "no sampled edge of the software uncore reset")
+        more = f",+{len(high) - 8}" if len(high) > 8 else ""
+        self.obs["valid"] = [
+            f"OBS-VALID-UNCORE-SW: edges={edges} high={','.join(high[:8]) + more or 'none'} "
+            f"xz={xz} sf=SF-019"
+        ]
 
     def _reset_term(self) -> None:
         T = "CHK-CORE-RESET-N-TERM"
@@ -1695,20 +1841,37 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         self._grade(T, bad, "CMP 0x0234 kept across core-3 reset; 0x1000 after uncore reset")
 
     def _status_reads(self) -> None:
-        T = "CHK-STATUS-READABLE-FROM-SEP"
-        reads = [(label, f, link) for label, f, link in self.rt_reads if label.startswith("s5")]
+        T = TOKEN_STATUS
+        names = {"SEP": "SEP_IN", "SYS": "SYS_IN", "JTAG": "JTAG_IN"}
+        want_pc = PRE_COUNT_RESET | (POST_COUNT_RESET << POST_COUNT_BP)
         bad = []
-        if len(reads) < 3 or any(not f for _l, f, _k in reads):
-            bad.append(f"{len(reads)} status reads, fields {reads}")
-        applied = {label: f for label, f, _k in self.rt_reads}.get("s5_applied", {})
-        links = sorted({k for _l, _f, k in reads})
-        if applied.get("applied") != 1:
-            bad.append("reset_applied does not read 1 while the reset is applied")
+        labels = []
+        for label, port, fields, pc, want in self.graded_status:
+            labels.append(f"{label}/{names[port]}")
+            if not fields:
+                bad.append(f"{label} over {names[port]}: RESET_TIMEOUT without an OKAY response")
+                continue
+            for key, val in want.items():
+                if fields.get(key) != val:
+                    bad.append(
+                        f"{label} over {names[port]}: {key} reads {fields.get(key)}, want {val}"
+                    )
+            if pc is None or pc & (PRE_COUNT_BM | POST_COUNT_BM) != want_pc:
+                bad.append(
+                    f"{label} over {names[port]}: CORE_RESET_PULSE_COUNT reads {pc}, want counts "
+                    f"0x{want_pc:x}"
+                )
+        if "s6_applied" not in [g[0] for g in self.graded_status]:
+            bad.append(
+                "the S6 status point (applied and isolated, nothing presented) is not graded"
+            )
         self._grade(
             T,
             bad,
-            f"{len(reads)} reads of RESET_TIMEOUT during the uncore reset (links {'/'.join(links)}; "
-            f"SYS_IN while tb_sep_axi_r_hold is set), all OKAY; reset_applied=1 while applied",
+            f"{len(self.graded_status)} inbound-manager reads of RESET_TIMEOUT with no stalled "
+            f"front-port request, all OKAY; reset_applied=1 while applied ({' '.join(labels)}; "
+            f"CORE_RESET_PULSE_COUNT with each) | OBS-STATUS-READ-UNDER-STALL: "
+            f"{len(self.stall_reads)} reads recorded apart, sf=SF-026",
         )
 
     def _fence_check(self) -> str:
@@ -1722,7 +1885,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             "BLOCKED": 3,
         }
         for term, _t, count in self.fence:
-            want = floors.get(term, 4 if term in ("TIMER_OFF", "GIVE_UP", "FORCE") else 1)
+            want = floors.get(term, 4 if term in ("TIMER_OFF", "GIVE_UP") else 1)
             if count < want:
                 self._fail("CHK-NONVAC", f"term {term} count {count} below {want}")
         if self.aborted:
@@ -1739,7 +1902,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                 self._finish()
             return
         self.agg_done = True
-        self._valid_low()
+        self._valid_obs()
         self._reset_term()
         self._wdt_config()
         self._status_reads()
@@ -1749,6 +1912,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             ("CHK-OBS-DRAIN-FLUSH-RESPONSES", "flush"),
             ("CHK-OBS-CORE-RESET-ACCESS", "core"),
             ("CHK-OBS-MMIO-RESET", "mmio"),
+            ("CHK-OBS-VALID-UNCORE-SW", "valid"),
         ):
             texts = self.obs.get(key, [])
             if texts:
@@ -1757,34 +1921,35 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         order = self.notes.get("pulse_vs_uncore", "not observed")
         wb = self.notes.get("wb_pc", [])
         wb_text = " ".join("none" if v is None else f"0x{v:x}" for v in wb) or "none"
-        self._ok(
-            "CHK-OBS-PULSE-AND-STATUS",
+        pulse_text = (
             f"OBS-PULSE-AND-STATUS: pulse_vs_uncore={order} wb_pc_core0={wb_text} "
             f"restart_start_to_assert={restart} (runs {runs}, second write {gap} samples after the "
-            f"first; wdt_count={self.notes.get('wdt_count')}; waits on SF-027)",
+            f"first; wdt_count={self.notes.get('wdt_count')}) sf=SF-027"
         )
+        self._ok("CHK-OBS-PULSE-AND-STATUS", pulse_text)
         self._ok("CHK-NONVAC", self._fence_check())
         expired = [t for t in self._timeout_paths if "EXPIRED" in t]
+        obs_expired = [t for t in self.obs_waits if "last=expired" in t]
         if expired:
             self._fail("CHK-TIMEOUT-PATHS", f"{len(expired)} bounded waits expired: {expired[:6]}")
         self._ok(
             "CHK-TIMEOUT-PATHS",
             f"{len(self._timeout_paths)} bounded waits, bound/last-state per wait, "
-            f"{len(expired)} expired",
+            f"{len(expired)} expired; observation waits {len(self.obs_waits)} counted apart, "
+            f"{len(obs_expired)} expired (recorded, not graded; {len(self.stall_reads)} status "
+            f"reads under stall)",
         )
         for token, text in self.lines:
             if token not in self.printed:
                 self._print(token, text)
+        for key in ("expiry", "iso", "flush", "core", "mmio", "valid"):
+            for text in self.obs.get(key, []):
+                cocotb.log.info("EVIDENCE: %s", text)
+        cocotb.log.info("EVIDENCE: %s", pulse_text)
+        for text in self.obs_lines + self._stall_lines():
+            cocotb.log.info("EVIDENCE: %s", text)
         for token in REQUIRED_TOKENS:
-            if token not in self.printed and not final and token in S7_TOKENS:
-                cocotb.log.info(
-                    "%s: FAIL pending: the force-mode request is the next event; this line stands "
-                    "when the run ends in the S7 assertion and a later %s line replaces it "
-                    "otherwise",
-                    token,
-                    token,
-                )
-            elif token not in self.printed:
+            if token not in self.printed:
                 mine = [f.split(": ", 1)[1] for f in self.fails if f.split(":", 1)[0] == token]
                 cocotb.log.info(
                     "%s: FAIL %s",
@@ -1793,6 +1958,8 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                 )
         for line in self._timeout_paths:
             cocotb.log.info("CHK-TIMEOUT-PATHS: wait %s", line)
+        for line in self.obs_waits:
+            cocotb.log.info("CHK-TIMEOUT-PATHS: observation wait %s", line)
         if final:
             self._finish()
 

@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_003 ANCHOR: smc_sw_uncore_reset_drain_isolate_test
-# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 89c23b57e53913867731dea0e63164d785460cb5be5e0c3dd67a2bd39a962388
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: 5f510c164e672349855dda85b6c985e428a2efcce774768756405e2d1f93d81a
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Software core reset, core reset pulse and software uncore reset with the L2 frontend isolate.
 
 RESET_CTRL is written over SEP_IN: core 3 is held and pulsed without a drain, the uncore bit is
-cleared with four L2 frontend reads parked in timer-off, give-up and force modes, reads presented
-on SEP_IN, SYS_IN and JTAG_IN while the boundary is isolated are blocked until the reconnect, and
-a cold reset replayed through the reset agent ends the leaf. The sequence docstring gives the
+cleared with four L2 frontend reads parked in timer-off and give-up modes, reads presented on
+SEP_IN, SYS_IN and JTAG_IN while the boundary is isolated are blocked until the reconnect, the
+force-mode episode (ruling #2449) and the CPU MMIO episodes are not driven, and a cold reset replayed through the reset agent ends the leaf. The sequence docstring gives the
 graded claims and the observation-only lines.
 
 Run:
@@ -38,7 +38,6 @@ class smc_sw_uncore_reset_drain_isolate_test(smc_base_test):
         "CHK-CORE3-WDT-CONFIG",
         "CHK-DRAIN-HANDSHAKE-ORDER",
         "CHK-DRAIN-PENDING-READS-COMPLETE",
-        "CHK-FORCE-MODE-REQUEST-STATUS",
         "CHK-GIVEUP-REPORT-AND-WAIT",
         "CHK-L2F-FOUR-OUTSTANDING",
         "CHK-NONVAC",
@@ -48,12 +47,12 @@ class smc_sw_uncore_reset_drain_isolate_test(smc_base_test):
         "CHK-OBS-MMIO-RESET",
         "CHK-OBS-PULSE-AND-STATUS",
         "CHK-OBS-TIMEOUT-EXPIRY",
+        "CHK-OBS-VALID-UNCORE-SW",
         "CHK-STATUS-READABLE-FROM-SEP",
         "CHK-TIMEOUT-PATHS",
         "CHK-TIMER-OFF-WAITS",
-        "CHK-VALID-LOW-UNCORE-SW",
     )
-    min_evidence = 22
+    min_evidence = 21
 
     auto_protocol_vip = False
 

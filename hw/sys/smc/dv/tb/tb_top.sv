@@ -1656,7 +1656,8 @@ module smc_uvm_top
     // five AXI channel valids (or readies) of one link, bit order [4:0] =
     // {r, ar, b, w, aw}. The periph link is AXI-Lite, the CPU front and CPU
     // MMIO links are full AXI; a valid or ready is taken from whichever of
-    // the request or response struct drives it.
+    // the request or response struct drives it. The CPU front link also
+    // exposes its AR ID, R ID and RLAST.
     assign tb_periph_axil_valid = {u_dut.u_smc.axil_peripherals_resp.r_valid,
                                    u_dut.u_smc.axil_peripherals_req.ar_valid,
                                    u_dut.u_smc.axil_peripherals_resp.b_valid,
@@ -1672,6 +1673,9 @@ module smc_uvm_top
                                  u_dut.u_smc.cpu_axi_front_port_resp.b_valid,
                                  u_dut.u_smc.cpu_axi_front_port_req.w_valid,
                                  u_dut.u_smc.cpu_axi_front_port_req.aw_valid};
+    assign tb_cpu_front_arid  = u_dut.u_smc.cpu_axi_front_port_req.ar.id;
+    assign tb_cpu_front_rid   = u_dut.u_smc.cpu_axi_front_port_resp.r.id;
+    assign tb_cpu_front_rlast = u_dut.u_smc.cpu_axi_front_port_resp.r.last;
     assign tb_cpu_front_ready = {u_dut.u_smc.cpu_axi_front_port_req.r_ready,
                                  u_dut.u_smc.cpu_axi_front_port_resp.ar_ready,
                                  u_dut.u_smc.cpu_axi_front_port_req.b_ready,
