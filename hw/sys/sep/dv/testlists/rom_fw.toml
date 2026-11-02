@@ -4021,3 +4021,26 @@ args = [
   # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
   "+esrc_noise_force",
 ]
+
+[[tests]]
+# PL-050: TEST_DEV with debug open boots both slots carrying the encrypted payload made validly
+# unsigned (secure_boot_control 0); each slot is refused, no decryption starts (no decrypt-path
+# PC, no CPU AES access) and the boot ends on MANIFEST_LOAD_FAILED and the FAIL verdict. The spec
+# names two codes for the refusal (SECURE_BOOT_INVARIANT in PL-050, ENCRYPTION_REQUIRES_SECURE_BOOT
+# in MAN-030 and the registry); bl0_state.error_code must be one of them. Spec conflict: ISSUE-023
+# in docs/superpowers/plans/sep_rom/sep_rom_gap_issue_log.md.
+name = "sep_rom_encryption_requires_secure_boot_test"
+module = "rom_fw.sep_rom_encryption_requires_secure_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "encrypted", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+]
