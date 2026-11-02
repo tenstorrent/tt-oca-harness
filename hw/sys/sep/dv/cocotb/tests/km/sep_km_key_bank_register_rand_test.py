@@ -155,7 +155,7 @@ from env.sep_fcov_gate import (
     set_km_ss_pass,
     set_open_value_leg_pass,
 )
-from env.sep_reg_meta import SEP_CPU_CTRL
+from env.sep_reg_meta import SEP_CPU_CTRL, CHeaderRegBlock, ip_c_header
 from env.sep_rv32_asm import Asm, lw, store, sw
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_shard import sep_shard
@@ -210,7 +210,8 @@ _SUBWORD_SIZES = (("byte", 1, 0x1, 0xFF, 0x0101_0101), ("half", 2, 0x3, 0xFFFF, 
 _KMCSR_IRQ_STATUS = pl.KM.KMCSR_IRQ_STATUS_REG_ADDR
 _KMCSR_SRAM_LOCK = pl.KM.KMCSR_SRAM_LOCK_REG_ADDR
 _KMCSR_SRAM_EXEC_MODE = pl.KM.KMCSR_SRAM_EXEC_MODE_REG_ADDR
-_SRAM_EXEC_ENABLE = 0x1  # km_csr.adoc, SRAM_EXEC_MODE.enable
+_KM_CSR = CHeaderRegBlock("KM_CSR", ip_c_header("key_manager").with_name("km_csr.h"))
+_SRAM_EXEC_ENABLE = _KM_CSR.fields("SRAM_EXEC_MODE_REG")["ENABLE"]["bm"]
 
 _KM_WIPE_CTRL = SEP_CPU_CTRL.addr("KM_WIPE_CTRL")
 _KM_WIPE_BIT = SEP_CPU_CTRL.field_mask("KM_WIPE_CTRL", "wipe_state")

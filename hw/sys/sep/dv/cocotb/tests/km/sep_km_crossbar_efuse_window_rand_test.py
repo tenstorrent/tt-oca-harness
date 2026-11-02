@@ -753,6 +753,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
+        self.mon_xz = 0
         fp = plan(TEST, seed)
         self.fp = fp
         self.logger.info("DRAW fuse_plan %s", fp.summary())
@@ -1171,7 +1172,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         return out
 
     async def _efuse_ar_monitor(self, sink: list[int], ch: str = "ar") -> None:
-        """Addresses of the handshakes on channel ``ch`` of ``efuse_req_o`` (KM-BUS)."""
+        """Addresses of the handshakes on channel ``ch`` of ``efuse_req_o`` (KM-BUS).
+
+        A clock with VALID or READY unknown counts in ``mon_xz`` and is no handshake.
+        """
         dut = cocotb.top
         valid = getattr(dut, f"km_efuse_{ch}_valid_o")
         ready = getattr(dut, f"km_efuse_{ch}_ready_o")
@@ -1179,8 +1183,22 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         while True:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            if self.rd(valid, allow_unknown=True) and self.rd(ready, allow_unknown=True):
+            v, r = self._known(valid), self._known(ready)
+            if v and r:
                 sink.append(self.rd(addr))
+
+    def _known(self, sig) -> int:
+        """``sig`` as int; an unknown bit counts one clock in ``mon_xz`` and reads 0."""
+        try:
+            return self.rd(sig)
+        except AssertionError:
+            self.mon_xz += 1
+            return 0
+
+    def _xz_problems(self) -> list[str]:
+        if self.mon_xz:
+            return [f"{self.mon_xz} monitor clocks read an unknown VALID, READY or request tap"]
+        return []
 
     def _grade_forward(self, seed: int, fwd: dict) -> None:
         """CHK-XBAR-EFUSE: no graded eFuse-gap access reaches efuse_req_o."""
@@ -1204,14 +1222,15 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 f"{fwd['gap_answered']} of {fwd['gap_ops']} replayed eFuse-gap accesses "
                 "answered SLVERR (each must, so each ran)"
             )
-        self._fail("CHK-XBAR-EFUSE", problems)
+        self._fail("CHK-XBAR-EFUSE", problems + self._xz_problems())
         self.logger.info(
             "CHK-XBAR-EFUSE PASS seed=%d forward=none gap_ops=%d gap_answered_slverr=%d "
-            "efuse_req_ar=0 efuse_req_aw=0 control_map_rd_ar=%d",
+            "efuse_req_ar=0 efuse_req_aw=0 control_map_rd_ar=%d xz_cycles=%d",
             seed,
             fwd["gap_ops"],
             fwd["gap_answered"],
             fwd["control_ar"],
+            self.mon_xz,
         )
 
     def _grade_efw_rd(
@@ -1322,11 +1341,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             uppers.add(addr >> KM_EFUSE_LOW_BITS)
         if len(uppers) > 1:
             problems.append(f"efuse_req_o bits [31:12] take {len(uppers)} values: {sorted(uppers)}")
-        self._fail("CHK-REMAP-BUS", problems)
+        self._fail("CHK-REMAP-BUS", problems + self._xz_problems())
         base = next(iter(uppers)) << KM_EFUSE_LOW_BITS
         self.logger.info("OBS-REMAP-BASE base=0x%08x", base)
         self.logger.info(
-            "CHK-REMAP-BUS PASS draws=%d low12=ok base_constant=1 base=0x%08x", len(draws), base
+            "CHK-REMAP-BUS PASS draws=%d low12=ok base_constant=1 base=0x%08x xz_cycles=%d",
+            len(draws),
+            base,
+            self.mon_xz,
         )
 
     # --- steps 9, 10 and 12: programs -----------------------------------------
@@ -1754,14 +1776,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         )
 
     async def _rise_monitor(self, sig, sink: list[int]) -> None:
-        """Clock index of each 0 to 1 edge of the 1-bit tap ``sig``."""
+        """Clock index of each 0 to 1 edge of the 1-bit tap ``sig`` (unknown: ``mon_xz``)."""
         clk = cocotb.top.clk_i
         n = prev = 0
         while True:
             await RisingEdge(clk)
             await ReadOnly()
             n += 1
-            cur = int(bool(self.rd(sig, allow_unknown=True)))
+            cur = int(bool(self._known(sig)))
             if cur and not prev:
                 sink.append(n)
             prev = cur
@@ -2087,9 +2109,9 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 "control: a boot-one OTP word of a spare != staged + its bit: "
                 + ", ".join(f"{p}=0x{prog[p]['otp']['word']:08x}" for p in ("km", "host"))
             )
-        self._fail("CHK-EFW-TM", problems)
+        self._fail("CHK-EFW-TM", problems + self._xz_problems())
         self.logger.info(
-            "CHK-EFW-TM PASS km_host_equal=1 req_err=%d read_zero=%d read_reqs=%d,%d "
+            "CHK-EFW-TM PASS xz_cycles=%d km_host_equal=1 req_err=%d read_zero=%d read_reqs=%d,%d "
             "prog_reqs=%d,%d path_order=%s read_done_before=%d,%d prog_done_before=%d,%d "
             "read_done_rise=%d,%d prog_done_rise=%d,%d done_taps=1 busy_taps=0 "
             "read_addr_echo=1,1 prog_status=%d,%d "
@@ -2097,6 +2119,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             "host_word_eq_model=1 control_landed=%d path_reset_secure_tm=%d secure_tm=%d "
             "km_writes=%d "
             "efuse_req_aw=%d km_wr_resp_eq_host=1 efuse_addr_echo=%d,%d",
+            self.mon_xz,
             km_tuple[0],
             read_zero,
             tm_res["km"]["read_reqs"],

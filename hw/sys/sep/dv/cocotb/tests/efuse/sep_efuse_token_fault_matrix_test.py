@@ -617,6 +617,10 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         await self._close_step(tag, ok)
 
         await self._end_match(ch, f"{label}.end")
+        flags_pre = await self._faults()
+        await ReadOnly()
+        pic_pre = self._pic40()
+        await RisingEdge(dut.clk_i)
         exp_words = token_words(self.last_token[ch])
         tag = await self._open_step(_STEP_RESET)
         await self.pulse_rst_ni()
@@ -626,12 +630,12 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         ok = self._grade(
             "FAULT-RESET",
-            flags_z == 0 and pic_z == 0 and flags_w == _FAULT_BIT[ch] and pic_w == 1,
+            flags_z == 0 and pic_z == 0 and flags_pre == _FAULT_BIT[ch] and pic_pre == 1,
             flags=f"0x{flags_z:x}",
             pic40=pic_z,
             words_logged=1,
-            pre_reset_flags=f"0x{flags_w:x}",
-            pre_reset_pic40=pic_w,
+            pre_reset_flags=f"0x{flags_pre:x}",
+            pre_reset_pic40=pic_pre,
         )
         await self._close_step(tag, ok)
         words = [await self.fd.rd(a) for a in TOKEN_ARRAY_ADDR[ch]]

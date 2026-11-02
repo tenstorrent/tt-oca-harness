@@ -604,11 +604,15 @@ class sep_km_kpv_rand_test(sep_base_test):
             res, rises = await self._erase_rises(s, self._watched(_Watch(s), groups))
             self._erase_done(res[0], s)
             vals = []
+            wr_n = wr_ok = 0
             for grp, r in zip(groups, res, strict=True):
                 if grp is wf and f == m.ERASE:
                     self._erase_done(r, s)
                 if grp[0].code == kp.OP_RD:
                     vals.append(self._ctrl(r[0].value))
+                elif grp[0].code == kp.OP_WR:
+                    wr_n += 1
+                    wr_ok += r[0].flags_known and r[0].slv == 0 and r[0].dec == 0
             c_start, c_w0, c_set = vals[0], vals[1], vals[2]
             rest = vals[3:]
             c_keep = rest.pop(0) if lock else None
@@ -626,8 +630,9 @@ class sep_km_kpv_rand_test(sep_base_test):
             erase_writes = 1 + (4 if f == m.ERASE else 0)
             self.chk.ctrl(
                 "KPV-CTRLW-ERASE",
-                rises == erase_writes,
+                rises == erase_writes and wr_ok == wr_n,
                 slot=s,
+                wr_ok=f"{wr_ok}/{wr_n}",
                 field=m.FIELD_NAME[f],
                 g=m.FIELD_NAME[g],
                 erase_writes=erase_writes,
@@ -1005,7 +1010,7 @@ class sep_km_kpv_rand_test(sep_base_test):
                 slot=s0,
                 rdata=_h(x.value) if x.known else "X",
                 axi_slverr=x.slv,
-                erase=int(bool(c.value & m.ERASE)) if c.known else "X",
+                erase=int(bool(self._ctrl(c.value) & m.ERASE)) if c.known else "X",
             )
         cells = p.scr_cells
         d = p.scr_values
@@ -1243,6 +1248,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         kv_post = self._key_valid()
 
         both = m.SCR_ENABLE | m.SCR_LOCK
+        self._ctrl(pre[2].value)
         vault_pre = (
             key_pre == p.kk2
             and list(pre[0].data) == va

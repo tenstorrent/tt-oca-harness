@@ -103,6 +103,11 @@ runs once:
                 ``hw/ip/key_manager/regs/otbn_wrapper_key.rdl:51``, ``:57``).
                 The offsets come from the generated Key Manager register
                 header.
+  OBS-ABR-CLR-VALID
+                the VALID bit of each failed CHK-ABR-CLR KV read. crypto.adoc,
+                km-key-delivery-summary, says only "Seed read does not complete",
+                and kv_def.rdl says VALID means the flow is done; no text states
+                VALID for a read that ends with KV_READ_FAIL, so it is logged.
   OBS-XFER-PAD  share0 ^ share1 words n..11 and the positions that are not 0.
                 firmware.adoc, "Crypto Engine Drivers", pads short keys with
                 DRBG words and states no pad position; the pad values are
@@ -427,6 +432,17 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             KEM_ST_READY,
             KEM_ST_READY,
             what=f"{what} ML-KEM READY",
+        )
+
+    def _obs_clr_valid(self, tag: int, leg: str, st: int) -> None:
+        """OBS-ABR-CLR-VALID: the VALID bit of a failed KV read on a shredded block."""
+        self.logger.info(
+            "OBS-ABR-CLR-VALID r=%d leg=%s valid=%d error=%d status=0x%08x",
+            tag,
+            leg.replace(" ", "_"),
+            kv_status_field(st, "VALID"),
+            kv_status_field(st, "ERROR"),
+            st,
         )
 
     async def _kv_read(self, ctrl: int, status: int, *, what: str) -> tuple[int, int]:
@@ -789,6 +805,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 name,
                 st,
             )
+            self._obs_clr_valid(tag, name, st)
 
         # D and Z one at a time: deliver one of them again, so the D||Z read
         # can only fail on the other one's KEY_VALID. Then deliver the other one
@@ -814,6 +831,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 f"the shred, the D||Z KV read reports ERROR={err} (status 0x{st:08x}), "
                 f"expected KV_READ_FAIL={KV_READ_FAIL}: the shred left {other} KEY_VALID set"
             )
+            self._obs_clr_valid(tag, f"only {DEST_NAME[again]}", st)
             await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} recover")
             await self._transfer(r, self.handles[r][other_dest], other_dest)
             st_ok, err_ok = await self._kv_read(

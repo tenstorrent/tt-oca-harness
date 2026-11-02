@@ -413,6 +413,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"CHK-SRAM-VER FAIL: rc={rc}, expected {KM_RC_FAILURE} -- ROM-only image"
         )
         self.logger.info("CHK-SRAM-VER PASS: ROM-only image returned RC_FAILURE")
+        await self._check_alive("post-sram-ver")
 
         # --- CHK-GEN: the KM produces a key ----------------------------------
         # req_size is the word count minus one, per the command's argument
@@ -813,6 +814,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         assert rc == KM_RC_INVALID_ARG, (
             f"CHK-OTP FAIL: reserved lock bit returned rc={rc}, expected {KM_RC_INVALID_ARG}"
         )
+        await self._check_alive("post-otp-reserved-bit")
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [])
         assert rc == KM_RC_INVALID_LEN, (
             f"CHK-OTP FAIL: zero-length lock payload returned rc={rc}, expected {KM_RC_INVALID_LEN}"

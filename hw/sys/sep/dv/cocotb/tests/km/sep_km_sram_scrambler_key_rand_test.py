@@ -27,8 +27,10 @@ Provisioning": the SRAM scrambler key and enable/lock state survive warm reset);
 
 Checks:
   CHK-SSCR-KEY      the kept write of P at a1 under kB carries other data than the
-                    kept write of P at a1 under kA; the 8 words read under kA after
-                    the key returns to kA equal the plaintexts
+                    kept write of P at a1 under kA; SCRAMBLER_KEY holds kB at the
+                    reads under kB and kA again at the second kA reads (``KM-CSR``);
+                    the 8 words read under kA after the key returns to kA equal the
+                    plaintexts
   CHK-SSCR-STORED   the two kept writes of P at a1 and a2 under kA carry different data
   CHK-SSCR-ALIAS    64 distinct words at 64 distinct addresses read back under kA
   CHK-SSCR-LOCK     after the lock with the enable at 1: SCRAMBLER_KEY reads 0, a key
@@ -40,11 +42,13 @@ Checks:
                     scrambled write
   CHK-SSCR-ROWS     the 64 stores are 64 accepted SRAM writes that change at most
                     64 rows of the array
-  CHK-SSCR-EN0      each of the 8 reads with ``SCRAMBLER_CTRL.enable`` 0 returns
-                    the data bits of the array word at the same word index
-                    (``KM-SRAM`` tap, peeked once the message is in the FIFO),
-                    and ``KM-COUNT`` shows no accepted SRAM write from before the
-                    reads to the peek: "Enable SRAM scrambling. When 0, data
+  CHK-SSCR-EN0      after the cold reset, with ``SCRAMBLER_CTRL.enable`` at its
+                    reset value 0, the 8 drawn non-zero words are stored at the 8
+                    addresses: the array word at the same word index holds each
+                    word in its data bits (``KM-SRAM`` tap, peeked once the read
+                    message is in the FIFO), each of the 8 reads returns it, and
+                    ``KM-COUNT`` shows exactly the 8 accepted SRAM writes: "Enable
+                    SRAM scrambling. When 0, data
                     passes through unmodified."
                     (``hw/ip/key_manager/regs/km_csr.rdl:581``); "When
                     ``scrambler_en_i`` is deasserted, addresses and data pass
@@ -54,13 +58,18 @@ Checks:
 Anchors: the scrambled-write monitor at the SRAM macro port and the array word at
 its kept rows (``KM-SRAM-MON``), the count of accepted SRAM writes
 (``KM-COUNT``), the read-only array tap in stored form (``KM-SRAM``), and the
-frames of the KM mailbox read through ``HOST-MBX`` with an OKAY response.
+frames of the KM mailbox read through ``HOST-MBX`` with an OKAY response, and
+the SCRAMBLER_KEY value and its write count (``KM-CSR``).
 
 Controls (a missing one fails the leaf): the first kA reads, the array word at
 each kept row, SCRAMBLER_KEY read before the lock, SCRAMBLER_CTRL 0x0 after the
 enable is cleared before the lock, the kB write before the lock that changes the
-stored word, the store before the lock that does not count, the tap word at the
-kept rows, the empty mailbox before the warm reset.
+stored word and the key write after the lock that reaches SCRAMBLER_KEY
+(``key_wr_reached``), the SCRAMBLER_KEY write count at each kept slot (slots 0
+and 1 under one key, slot 2 one key write later, slot 3 two), the store before
+the lock that does not count, the tap word at the kept rows, the empty mailbox
+before the warm reset, SCRAMBLER_CTRL with the enable at 0 before the enable-0
+stores.
 
 Logged only: the 8 reads under kB (``OBS-SSCR-KB``), whether each kept data word
 differs from its plaintext (``OBS-SSCR-STORED``), the number of changed rows
@@ -116,7 +125,7 @@ _MBX_ST = _KM_MBX.fields("STATUS_REG")
 # --- image layout (km_rom_scr.S; checked against the image signature) -----------
 SIG_ADDR = 0x40
 SIG_MAGIC = 0x5343_5231  # "SCR1"
-LAYOUT_VERSION = 1
+LAYOUT_VERSION = 2
 PHASE_MAGIC = 0x5048_0000
 MSG_READY = 0x5245_4459
 MSG_ONE = 0x4F4E_4531
@@ -404,10 +413,12 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         """KM-SRAM-MON at the clock its count first reads 4 (the fourth scrambled write).
 
         The kept rows and data stay in the monitor; the array word at each kept row
-        is taken in the same clock, before the next write can land.
+        is taken in the same clock, before the next write can land. At each rise of
+        the scrambled-write count the count of SCRAMBLER_KEY writes is kept per slot.
         """
         dut = self.dut
         n = len(dut.km_sram_scr_wr_addr_o) // KEPT_SLOTS
+        self.slot_key_wr: list[int | None] = [None] * KEPT_SLOTS
         for _ in range(_CAPTURE_BOUND):
             if not self._cap_on:
                 return
@@ -415,8 +426,12 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             await ReadOnly()
             try:
                 cnt = self.rd_known(dut.km_sram_scr_wr_count_o)
+                kw = self.rd_known(dut.km_csr_scrambler_key_wr_count_o)
             except AssertionError:
                 continue
+            for i in range(min(cnt, KEPT_SLOTS)):
+                if self.slot_key_wr[i] is None:
+                    self.slot_key_wr[i] = kw
             if cnt < KEPT_SLOTS:
                 continue
             rows = self.rd_known(dut.km_sram_scr_wr_addr_o)
@@ -454,22 +469,20 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         p = self.plan
         d8 = p.data8
 
+        key_tap: dict = {}
+
+        def tap_key(name: str):
+            async def fn() -> None:
+                key_tap[name] = self.rd_known(self.dut.km_csr_scrambler_key_o)
+
+            return fn
+
         g_ka = await self._recv(8, "ka", "SSCR-KEY")
-        g_kb = await self._recv(8, "kb", "SSCR-KEY")
-        en0: dict = {}
-
-        async def before_en0_reads() -> None:
-            en0["w0"] = self.rd_known(self.dut.km_sram_write_count_o)
-
-        async def at_en0() -> None:
-            en0["peek"] = await self._peek((a - KM_SRAM_BASE) // 4 for a in p.addrs8)
-            en0["w1"] = self.rd_known(self.dut.km_sram_write_count_o)
-
-        g_ka2 = await self._recv(8, "ka-again", "SSCR-KEY", before=before_en0_reads)
+        g_kb = await self._recv(8, "kb", "SSCR-KEY", before=tap_key("kb"))
+        g_ka2 = await self._recv(8, "ka-again", "SSCR-KEY", before=tap_key("ka2"))
         self._cap_on = False
         await capture
-        g_en0 = await self._recv(9, "enable0", "SSCR-LOCK", before=at_en0)
-        self._en0_check(g_en0[1:], en0)
+        g_en0 = await self._recv(9, "enable0", "SSCR-LOCK")
 
         rows_state: dict = {}
 
@@ -487,9 +500,22 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         g64: list[int] = []
         for k in range(4):
             g64 += await self._recv(16, f"words64-{k}", "SSCR-ALIAS")
+        key_wr: dict = {}
+
+        def count_key_wr(name: str):
+            async def fn() -> None:
+                key_wr[name] = self.rd_known(self.dut.km_csr_scrambler_key_wr_count_o)
+
+            return fn
+
         g_key_unlocked = await self._recv(1, "key-unlocked", "SSCR-LOCK", key_at=(0,))
-        g_locked = await self._recv(2, "locked", "SSCR-LOCK", key_at=(1,))
-        g_kb_locked = await self._recv(8, "kb-locked", "SSCR-LOCK")
+        g_locked = await self._recv(
+            2, "locked", "SSCR-LOCK", key_at=(1,), before=count_key_wr("locked")
+        )
+        g_kb_locked = await self._recv(
+            8, "kb-locked", "SSCR-LOCK", before=count_key_wr("kb_locked")
+        )
+        key_wr_reached = key_wr["kb_locked"] - key_wr["locked"]
         g_en0_locked = await self._recv(9, "enable0-locked", "SSCR-LOCK")
         g_lock0_locked = await self._recv(9, "lock0-locked", "SSCR-LOCK")
 
@@ -506,23 +532,35 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             )
             self.chk.ok("SSCR-STORED", False, reason="kept writes not captured")
             self._lock_checks(
-                None, g_en0, g_key_unlocked, g_locked, g_kb_locked, g_en0_locked, g_lock0_locked
+                None,
+                key_wr_reached,
+                g_en0,
+                g_key_unlocked,
+                g_locked,
+                g_kb_locked,
+                g_en0_locked,
+                g_lock0_locked,
             )
         else:
             data = cap["data"]
             key_pair_ne = data[0] != data[2]
             ka_again_ok = self._count_ok(g_ka2, d8)
+            kb_landed = key_tap["kb"] == p.kb
+            ka_restored = key_tap["ka2"] == p.ka
             self.chk.ok(
                 "SSCR-KEY",
-                key_pair_ne and ka_again_ok == 8,
+                key_pair_ne and ka_again_ok == 8 and kb_landed and ka_restored,
                 ka_ok=f"{ka_ok}(control)",
                 key_pair_ne=key_pair_ne,
                 ka_again_ok=ka_again_ok,
+                kb_landed=int(kb_landed),
+                ka_restored=int(ka_restored),
             )
             self.chk.obs("SSCR-KB", kb_eq=self._count_ok(g_kb, d8))
             self._stored_checks(cap)
             self._lock_checks(
                 key_pair_ne,
+                key_wr_reached,
                 g_en0,
                 g_key_unlocked,
                 g_locked,
@@ -561,6 +599,14 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             rows=[hex(r) for r in rows],
             open_owner="sep_km_mem_smoke_test",
         )
+        kw = self.slot_key_wr
+        slot_key_ok = None not in kw and [k - kw[0] for k in kw] == [0, 0, 1, 2]
+        self.chk.ctrl(
+            "SSCR-SLOT-KEY",
+            slot_key_ok,
+            key_wr_counts=kw,
+            expect_rel=[0, 0, 1, 2],
+        )
         same_p_pair_ne = data[0] != data[1]
         self.chk.ok(
             "SSCR-STORED",
@@ -574,26 +620,35 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             stored_ne=sum(1 for d, q in zip(data, plain, strict=True) if d != q),
         )
 
-    def _en0_check(self, reads: list[int], en0: dict) -> None:
-        """CHK-SSCR-EN0: the enable-0 reads against the array words at the same index."""
-        peek = en0["peek"]
-        array = [None if w is None else w & WORD for w in peek]
-        match = sum(1 for r, a in zip(reads, array, strict=True) if r == a)
+    def _en0_check(self, cold_ctrl: int, reads: list[int], en0: dict) -> None:
+        """CHK-SSCR-EN0: the 8 stores and reads with the enable at 0 against the array."""
+        d8 = self.plan.data8
+        array = [None if w is None else w & WORD for w in en0["peek"]]
         writes = en0["w1"] - en0["w0"]
+        self.chk.ctrl(
+            "SSCR-EN0-OFF",
+            not cold_ctrl & SCR_ENABLE and all(d8),
+            ctrl=_h(cold_ctrl),
+            words_nonzero=int(all(d8)),
+        )
+        array_eq = sum(1 for a, d in zip(array, d8, strict=True) if a == d)
+        reads_eq = sum(1 for r, d in zip(reads, d8, strict=True) if r == d)
         self.chk.ok(
             "SSCR-EN0",
-            match == len(reads) and writes == 0,
+            array_eq == len(d8) and reads_eq == len(d8) and writes == len(d8),
             contract="key_manager/regs/km_csr.rdl:581,scrambler/doc/architecture.adoc:251",
-            reads_eq_array=f"{match}/{len(reads)}",
+            array_eq_written=f"{array_eq}/{len(d8)}",
+            reads_eq_written=f"{reads_eq}/{len(d8)}",
             reads=[_h(r) for r in reads],
             array=[_h(a) for a in array],
-            sram_writes_between=writes,
-            expect_writes=0,
+            sram_writes=writes,
+            expect_writes=len(d8),
         )
 
     def _lock_checks(
         self,
         key_pair_ne,
+        key_wr_reached,
         g_en0,
         g_key_unlocked,
         g_locked,
@@ -607,7 +662,12 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         self.chk.ctrl("SSCR-LOCK-KEYRD", key_rd_unlocked_ok, key_match=key_rd_unlocked_ok)
         en0_ctrl = g_en0[0]
         self.chk.ctrl("SSCR-LOCK-EN0", en0_ctrl == 0, en0_ctrl=_h(en0_ctrl))
-        self.chk.ctrl("SSCR-LOCK-KEYWR", bool(key_pair_ne), key_pair_ne=key_pair_ne)
+        self.chk.ctrl(
+            "SSCR-LOCK-KEYWR",
+            bool(key_pair_ne) and key_wr_reached >= 1,
+            key_pair_ne=key_pair_ne,
+            key_wr_reached=key_wr_reached,
+        )
         ctrl_rds = [g_locked[0], g_en0_locked[0], g_lock0_locked[0]]
         key_rd_locked = g_locked[1]
         kb_ok = self._count_ok(g_kb_locked, d8)
@@ -702,8 +762,19 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         """Cold reset: SCRAMBLER_CTRL reads its reset value and a kB write lands."""
         p = self.plan
         await self._cold_release(3)
-        g = await self._recv(2, "cold", "SSCR-RST", key_at=(1,))
+        en0: dict = {}
+
+        async def before_en0_stores() -> None:
+            en0["w0"] = self.rd_known(self.dut.km_sram_write_count_o)
+
+        async def at_en0() -> None:
+            en0["peek"] = await self._peek((a - KM_SRAM_BASE) // 4 for a in p.addrs8)
+            en0["w1"] = self.rd_known(self.dut.km_sram_write_count_o)
+
+        g = await self._recv(2, "cold", "SSCR-RST", key_at=(1,), before=before_en0_stores)
+        g_en0 = await self._recv(8, "cold-enable0", "SSCR-EN0", before=at_en0)
         close_graded_window(self.logger)
+        self._en0_check(g[0], g_en0, en0)
         warm_ctrl = self.warm[0]
         warm_reads_ok = self._count_ok(self.warm[1:], p.data8)
         cold_ctrl, cold_key = g

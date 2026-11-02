@@ -282,26 +282,31 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         )
         return rel, sense
 
-    def _sense_capture(self, leg: str, rel: int, sense: int, cap: int) -> str:
+    def _sense_capture(self, leg: str, rel: int, sense: int, seen: int) -> str:
         """CHK-STM-SENSE-CAPTURE on one boot; returns the PASS line text.
 
-        ``rel`` is the release sample, ``sense`` the sense-done rise sample and ``cap``
-        the first sample with ``secure_tm_o`` at the strap value. The next sampling
-        event is the next ``rst_ni`` fall, which must be in the record.
+        ``rel`` is the release sample, ``sense`` the sense-done rise sample and ``seen``
+        the sample at which the leg saw ``secure_tm_o`` at the strap value. The
+        capture is the first sample from the sense rise with ``secure_tm_o`` at the
+        strap value, and it is at or before ``seen``. The next sampling event is the
+        next ``rst_ni`` fall, which must be in the record.
         """
         strap = self.rec[sense]["strap"]
+        cap = next((i for i in range(sense, len(self.rec)) if self.rec[i]["stm"] == strap), seen)
         nxt = next((i for i in range(cap, len(self.rec)) if self.rec[i]["rst"] == 0), None)
         pre = self._window(rel, sense - 1)
         held = self._window(cap, nxt - 1) if nxt is not None else []
         line = (
             f"leg={leg} strap_at_rise={strap} exp_secure_tm_o={strap} release={rel} "
-            f"sense_rise={sense} capture=sense+{cap - sense} bound={_STM_BOUND} "
+            f"sense_rise={sense} capture=sense+{cap - sense} seen=sense+{seen - sense} "
+            f"bound={_STM_BOUND} "
             f"zero_before_rise={sum(1 for v in pre if v == 0)}/{len(pre)} "
             f"held={sum(1 for v in held if v == strap)}/{len(held)} next_rst_fall={nxt} "
             f"strap_pin=secure_tm_req_i(tb_top.sv:681 test_en_strap_i) {_SENSE_CAPTURE_CONTRACT}"
         )
         assert (
             strap == 1
+            and cap <= seen
             and cap - sense <= _STM_BOUND
             and nxt is not None
             and pre

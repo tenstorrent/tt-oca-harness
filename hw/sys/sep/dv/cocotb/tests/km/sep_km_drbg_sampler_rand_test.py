@@ -80,8 +80,8 @@ Checkers:
                   KM-ENTROPY, COUNT_GOOD + 1 (architecture.adoc:881-882, 873-876,
                   840). Controls: CFG reads PREFETCH 1 and timeout 0, STATUS reads
                   PREFETCHED 0 before the read, TREADY is high before the read
-                  and the read start shows one TREADY-low clock before the
-                  entropy initialization starts.
+                  and the read start shows a TREADY-low stretch (length logged,
+                  OBS-SMP-READ-DIP) before the entropy initialization starts.
   CHK-SMP-WR     writes to DATA and PREFETCH_DATA answer SLVERR and leave STATUS
                   and PREFETCH_DATA unchanged, on the stalled stream and again
                   with a prefetched word held (a known PREFETCH_DATA value).
@@ -470,8 +470,9 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
 
         Before the read the prefetch path requests (TREADY 1). A DATA read that
         starts stops the prefetch path, and the read path enters its request
-        state one clock later (architecture.adoc:873, 881-882), so the read start
-        shows one TREADY-low clock and then TREADY high with the read waiting.
+        state (architecture.adoc:873, 881-882), so the read start shows a
+        TREADY-low stretch and then TREADY high with the read waiting. The text
+        gives no length for the stretch, so its length is logged.
         The entropy initialization starts after that clock. A handshake is a
         clock with ``km_entropy_tvalid_o`` and ``km_entropy_tready_o`` both 1;
         its word is ``km_entropy_tdata_o``.
@@ -480,15 +481,16 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         out["tready_at_start"] = self.rd_known(dut.km_entropy_tready_o)
-        low = False
+        low = 0
         for n in range(_DIP_BOUND):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             ready = self.rd_known(dut.km_entropy_tready_o)
-            if not low and ready == 0:
-                low = True
-            elif low and ready == 1:
+            if ready == 0:
+                low += 1
+            elif low:
                 out["read_start_clk"] = n
+                out["dip_clks"] = low
                 break
         else:
             raise AssertionError(
@@ -978,6 +980,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             tready_before_read=rel.get("tready_at_start"),
             read_start_clk=rel.get("read_start_clk", "none"),
         )
+        self.chk.obs("SMP-READ-DIP", dip_clks=rel.get("dip_clks", "none"))
         self.chk.ctrl(
             "SMP-PRE-DISCRIM",
             b1 is not None and b2 is not None and b1 != b2 and partial_word != b2,

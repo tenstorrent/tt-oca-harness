@@ -80,7 +80,8 @@ Checkers:
                         the token whose digest tb_top binds.
   CHK-SCAN-SECDIS-HOLD  security_disable_o, the SEC_DIS digest and its valid
                         bit keep their values on every sample of the session.
-  CHK-SCAN-SHADOW-WR    strap-1 leg, after the boot: with test_en_i = 1, a
+  CHK-SCAN-SHADOW-WR    strap-1 leg, after the boot, secure_tm_o = 1: with
+                        test_en_i = 0 and then with test_en_i = 1, a
                         frontdoor write of SIP_DIS word 0 with its lowest 0
                         bit set leaves the word: the read before equals the
                         staged word and the read after equals the read
@@ -439,6 +440,9 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = test_en
         await ClockCycles(dut.clk_i, PIN_BOUND)
+        await ReadOnly()
+        stm = _bit(sig_bits(dut.secure_tm_o))
+        await RisingEdge(dut.clk_i)
         r0, before = await self.fd.rd_graded_by_data(_SIP_DIS_ADDR)
         bit = next(i for i in range(32) if not (before >> i) & 1) if before != M32 else 0
         new = before | (1 << bit)
@@ -447,12 +451,21 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = 0
         await ClockCycles(dut.clk_i, H)
-        return {"before": before, "new": new, "after": after, "r0": r0, "r1": r1, "wresp": wresp}
+        return {
+            "before": before,
+            "new": new,
+            "after": after,
+            "r0": r0,
+            "r1": r1,
+            "wresp": wresp,
+            "stm": stm,
+        }
 
     @staticmethod
     def _wr_line(strap: int, test_en: int, r: dict[str, int]) -> str:
         return (
-            f"strap={strap} test_en_i={test_en} field=SIP_DIS word=0 staged=0x{_SIP_DIS_W0:08x} "
+            f"strap={strap} test_en_i={test_en} secure_tm_o={r['stm']} field=SIP_DIS word=0 "
+            f"staged=0x{_SIP_DIS_W0:08x} "
             f"before=0x{r['before']:08x} wrote=0x{r['new']:08x} after=0x{r['after']:08x} "
             f"rresp={r['r0']},{r['r1']} wresp={r['wresp']}"
         )
@@ -474,15 +487,22 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
 
     async def _shadow_write_strap1(self) -> None:
-        """CHK-SCAN-SHADOW-WR: at SECURE_TM = 1 a SIP_DIS shadow write leaves the word."""
-        r = await self._shadow_write(1)
-        line = self._wr_line(1, 1, r)
-        assert r["before"] == _SIP_DIS_W0 and r["after"] == r["before"], (
-            f"CHK-SCAN-SHADOW-WR FAIL: secure_tm_o=1 SIP_DIS shadow word changed or did not "
-            f"read its staged value (exp after=before=0x{_SIP_DIS_W0:08x}; "
-            f"{_SHADOW_WR_CONTRACT}): {line}"
-        )
-        self.shadow_wr_chk = line
+        """CHK-SCAN-SHADOW-WR: at SECURE_TM = 1 a SIP_DIS shadow write leaves the word.
+
+        The write runs with test_en_i = 0 and then with test_en_i = 1. The
+        test_en_i = 0 write differs from CTRL-SCAN-SHADOW-WR-LIVE only in SECURE_TM.
+        """
+        lines = []
+        for test_en in (0, 1):
+            r = await self._shadow_write(test_en)
+            line = self._wr_line(1, test_en, r)
+            assert r["stm"] == 1 and r["before"] == _SIP_DIS_W0 and r["after"] == r["before"], (
+                f"CHK-SCAN-SHADOW-WR FAIL: secure_tm_o=1 SIP_DIS shadow word changed or did not "
+                f"read its staged value (exp after=before=0x{_SIP_DIS_W0:08x}; "
+                f"{_SHADOW_WR_CONTRACT}): {line}"
+            )
+            lines.append(line)
+        self.shadow_wr_chk = "; ".join(lines)
 
     async def _hold_flip(self, leg: str, at: dict[int, int], where: str) -> None:
         """Hold H clk_i cycles and drive the strap to ``at[n]`` after cycle ``n``."""

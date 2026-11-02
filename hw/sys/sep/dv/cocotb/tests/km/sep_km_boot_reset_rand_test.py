@@ -692,14 +692,17 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         """Steps 7 to 11 and the KM-CSR part of step 13 at one reset point."""
         tag = f"reset{k} point={d.point}"
         # Step 7: reach the reset point.
+        cmds_ok = partial_words = unread = 0
         if d.point == pl.POINT_CMDS:
             for i in range(d.c):
                 code, _ = await self._cmd(pl.CMD_STAT, (), f"{tag} stat{i}")
                 if code != pl.RC_SUCCESS:
                     raise AssertionError(f"[{tag}] CMD_STAT {i} returned {code}")
+                cmds_ok += 1
         elif d.point == pl.POINT_PARTIAL:
             await self._write_words(d.partial, separator=False, tag=f"{tag} partial")
             await self._wait_depth(inbound=0, outbound=None, tag=f"{tag} partial consumed")
+            partial_words = len(d.partial)
         elif d.point == pl.POINT_UNREAD:
             for _ in range(d.r):
                 await self._write_words(
@@ -709,9 +712,24 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             await self._wait_depth(
                 inbound=None, outbound=pl.unread_depth(d.r), tag=f"{tag} unread responses"
             )
+            unread = d.r
         if d.point != pl.POINT_UNREAD:
             await self._pop_all(f"{tag} before the reset")
         _, d_out = await self._depths()
+        self.chk.ctrl(
+            "RESET-POINT",
+            {
+                pl.POINT_CMDS: cmds_ok == d.c,
+                pl.POINT_PARTIAL: partial_words == len(d.partial) > 0,
+                pl.POINT_UNREAD: d_out == pl.unread_depth(d.r),
+            }.get(d.point, True),
+            boot=tag,
+            point=d.point,
+            cmds=cmds_ok,
+            partial_words=partial_words,
+            unread=unread,
+            out_depth=d_out,
+        )
 
         # Step 8: warm reset, held.
         cbd_held = await self._park(tag)

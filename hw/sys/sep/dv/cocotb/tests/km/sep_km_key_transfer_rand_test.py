@@ -650,15 +650,20 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         # Negative stimulus differs from the legal value.
         assert p.x & ~p.p1 & pl.ALL_BANKS, f"X {_h(p.x)} holds no bit outside P1 {_h(p.p1)}"
         assert p.z and not p.z & p.p1, f"Z {_h(p.z)} is not outside P1 {_h(p.p1)}"
+        self.bus.start()
         code_x, arg_x = await self._transfer(h1, p.x)
+        writes_x = len(await self.bus.stop())
+        self.bus.start()
         code_z, arg_z = await self._transfer(h1, p.z)
+        writes_z = len(await self.bus.stop())
         self.chk.ctrl(
             "REFUSE-Z",
-            code_z == KM_RC_FAILURE and arg_z is None,
+            code_z == KM_RC_FAILURE and arg_z is None and writes_z == 0,
             p1=_h(p.p1),
             z=_h(p.z),
             code=code_z,
             arg="none" if arg_z is None else f"0x{arg_z:08x}",
+            writes=writes_z,
         )
         hmac = await self._hmac_read(p.k1)
         aes_in = bool((p.x | p.z) & (1 << pl.AES))
@@ -668,11 +673,16 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         self.chk.ctrl("REFUSE-ALLOW", permitted_ok, m=_h(p.m))
         self.chk.ok(
             "REFUSE",
-            code_x == KM_RC_FAILURE and arg_x is None and hmac == "nokey" and aes != "key",
+            code_x == KM_RC_FAILURE
+            and arg_x is None
+            and writes_x == 0
+            and hmac == "nokey"
+            and aes != "key",
             p1=_h(p.p1),
             x=_h(p.x),
             code=code_x,
             arg="none" if arg_x is None else f"0x{arg_x:08x}",
+            writes=writes_x,
             witness_hmac=hmac,
             aes_key=int(aes == "key"),
             keyvalid=_h(kv),
