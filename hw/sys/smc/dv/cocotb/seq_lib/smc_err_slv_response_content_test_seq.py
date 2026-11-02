@@ -10,9 +10,9 @@ misc_wrap register descriptions; the AXI rules transcribed in the ocah_axi_sva h
 
 Every response is graded from a passive per-port sampler of the tb_top R, B, AR, AW and
 W handshakes, because the bench item carries one merged response code. Values the
-contract leaves open (second words, burst beats, narrow lanes, the straddling unit,
-merged split-slot answers) are printed as OBS lines that name their finding and are
-never compared.
+contract leaves open (second words, burst beats, narrow lanes, the straddling unit below
+the REGION_SIZE limit, merged split-slot answers) are printed as OBS lines that name their
+finding and are never compared.
 """
 
 from __future__ import annotations
@@ -39,6 +39,7 @@ from .smc_addr_map import (
     LOCAL_BASE_RESET,
     REGION_SIZE_RESET,
     SPM_MEMORY_BASE,
+    SPM_MEMORY_SIZE,
     TELEMETRY_CG_EN,
     UART_CG_EN,
     generated_decoded_extent,
@@ -89,10 +90,15 @@ LOCAL_BASE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR")
 REGION_SIZE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 
 # AXIFAB-ERR-REGIONSIZE.S3: at REGION_SIZE 1 MiB the scratchpad RAM aperture
-# (BASE+0x6_0000..0x15_FFFF) straddles BASE+REGION_SIZE.
+# (BASE+0x6_0000..0x15_FFFF) straddles BASE+REGION_SIZE. BASE+REGION_SIZE itself is
+# outside the aperture (memmap.adoc:63-64, DECERR); whether the part of the unit below
+# the limit answers is open (SPEC issue #3551), so those accesses are OBS lines.
 REGION_SIZE_STRADDLE = 0x10_0000
 STRADDLE_ADDR = SPM_MEMORY_BASE
+STRADDLE_LIMIT_ADDR = LOCAL_BASE_RESET + REGION_SIZE_STRADDLE
+STRADDLE_ISSUE = "#3551"
 STRADDLE_D0 = 0x0D0D_0D0D_5EED_0000
+STRADDLE_D0_LIMIT = 0x0D0F_0D0F_5EED_0F00
 STRADDLE_D1 = {"SEP_IN": 0x0D1D_1D1D_5EED_0001, "SYS_IN": 0x0D1D_1D1D_5EED_0011}
 STRADDLE_D2 = {"SEP_IN": 0x0D2D_2D2D_5EED_0002, "SYS_IN": 0x0D2D_2D2D_5EED_0012}
 
@@ -374,11 +380,11 @@ def _families() -> list[Family]:
         (
             ("cpu_ctrl", "smc_cpu_ctrl"),
             ("base_config", "smc_base_config"),
-            ("alias_remap", "smc_alias_remap"),
-            ("mmode_remap", "smc_mmode_remap"),
-            ("xvisor_remap", "smc_xvisor_remap"),
-            ("ib_filter", "smc_inbound_filter_ctrl"),
-            ("ob_filter", "smc_outbound_filter_ctrl"),
+            ("alias_remap", "smc_alias_remap_wrap"),
+            ("mmode_remap", "smc_mmode_remap_wrap"),
+            ("xvisor_remap", "smc_xvisor_remap_wrap"),
+            ("ib_filter", "smc_inbound_filter_ctrl_wrap"),
+            ("ob_filter", "smc_outbound_filter_ctrl_wrap"),
         ),
         "SF-004,SF-005,SF-006",
     )
@@ -405,7 +411,7 @@ def _families() -> list[Family]:
         full6,
     )
 
-    gpio_first, gpio_last = generated_window("gpio_intf")
+    gpio_first, gpio_last = generated_window("gpio_intf_wrap")
     gpio_past = gpio_first + GPIO_INTF_NUM * GPIO_INTF_STRIDE
     gpiopast = Family(
         "GPIOPAST",
@@ -965,17 +971,17 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
         for name, sym, value in (
             (
                 "ALIAS_REMAP7_ATTRS",
-                "SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR",
+                "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR",
                 0x0000_00AB_C000_0000,
             ),
             (
                 "MMODE_REMAP7_ATTRS",
-                "SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR",
+                "SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR",
                 0x0000_00AB_C100_0000,
             ),
             (
                 "XVISOR_REMAP7_ATTRS",
-                "SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR",
+                "SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR",
                 0x0000_00AB_C200_0000,
             ),
         ):
@@ -983,12 +989,12 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
         for name, sym, value in (
             (
                 "INBOUND15_END",
-                "SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR",
+                "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR",
                 0x0000_00AB_C300_0000,
             ),
             (
                 "OUTBOUND15_END",
-                "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR",
+                "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR",
                 0x0000_00AB_C400_0000,
             ),
         ):
@@ -1008,7 +1014,9 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
             ),
             (
                 f"GPIO_INTF{GPIO_INTF_NUM - 1}_ACCESS_FILTER",
-                smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_INTF_NUM - 1),
+                smc_indexed_addr(
+                    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_INTF_NUM - 1
+                ),
                 4,
             ),
         ):
@@ -1189,37 +1197,89 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
 
     async def _straddle(self) -> int:
         fam = self.by_key["REGIONSIZE"]
+        assert STRADDLE_ADDR < STRADDLE_LIMIT_ADDR < SPM_MEMORY_BASE + SPM_MEMORY_SIZE, (
+            f"0x{STRADDLE_LIMIT_ADDR:x} is not in the scratchpad above 0x{STRADDLE_ADDR:x}"
+        )
         n = 0
-        await self.csr_write("STRADDLE_D0", STRADDLE_ADDR, STRADDLE_D0, length=8)
-        await self.csr_read("STRADDLE_D0_RB", STRADDLE_ADDR, expected=STRADDLE_D0, length=8)
+        for label, addr, value in (
+            ("STRADDLE_D0", STRADDLE_ADDR, STRADDLE_D0),
+            ("STRADDLE_D0_LIMIT", STRADDLE_LIMIT_ADDR, STRADDLE_D0_LIMIT),
+        ):
+            await self.csr_write(label, addr, value, length=8)
+            await self.csr_read(f"{label}_RB", addr, expected=value, length=8)
         await self.csr_write("REGION_SIZE_1M", REGION_SIZE_REG, REGION_SIZE_STRADDLE)
         await self.csr_read("REGION_SIZE_1M_RB", REGION_SIZE_REG, expected=REGION_SIZE_STRADDLE)
+        below: list[tuple[str, str, int | None, int | None]] = []
         for port in ("SYS_IN", "SEP_IN"):
             cell = f"{port}/spm/rs1M"
-            item, hs = await self._issue(port, "STRADDLE_RD", STRADDLE_ADDR, write=False)
-            r = self._check_read(fam, f"{cell} 64-bit read", port, item, hs, 1, DECERR)
-            cocotb.log.info(
-                "OBS-ERRC-REGIONSIZE-STRADDLE: port=%s rdata=%s sf=SF-003",
-                port,
-                _hl(r[0].data) if r else "none",
-            )
+            where = f"{cell} 0x{STRADDLE_LIMIT_ADDR:x}"
             item, hs = await self._issue(
-                port, "STRADDLE_WR", STRADDLE_ADDR, write=True, wdata=STRADDLE_D1[port]
+                port, "STRADDLE_LIMIT_RD", STRADDLE_LIMIT_ADDR, write=False
             )
-            self._check_write(fam, f"{cell} 64-bit write", port, item, hs, 1, DECERR)
+            r = self._check_read(fam, f"{where} 64-bit read", port, item, hs, 1, DECERR)
+            if r:
+                self._word(fam, f"{where} 64-bit read", r[0].data, upper=False)
+            self._obs_beats(fam, cell, STRADDLE_LIMIT_ADDR, r)
+            item, hs = await self._issue(
+                port, "STRADDLE_LIMIT_WR", STRADDLE_LIMIT_ADDR, write=True, wdata=WRITE_WORD
+            )
+            self._check_write(fam, f"{where} 64-bit write", port, item, hs, 1, DECERR)
             fam.cells[f"S3 {cell}"] = 1
+            n += 2
+            item, hs = await self._issue(port, "STRADDLE_BELOW_RD", STRADDLE_ADDR, write=False)
+            r = hs["r"]
+            below.append((port, "rd", r[0].resp if r else None, r[0].data if r else None))
+            item, hs = await self._issue(
+                port, "STRADDLE_BELOW_WR", STRADDLE_ADDR, write=True, wdata=STRADDLE_D1[port]
+            )
+            b = hs["b"]
+            below.append((port, "wr", b[0].resp if b else None, None))
             n += 2
         await self.csr_write("REGION_SIZE_RESTORE", REGION_SIZE_REG, REGION_SIZE_RESET)
         await self.csr_read("REGION_SIZE_RESTORE_RB", REGION_SIZE_REG, expected=REGION_SIZE_RESET)
+        seen: set[int] = set()
         for port in ("SYS_IN", "SEP_IN"):
             cell = f"{port}/spm/rs16M"
-            item, hs = await self._issue(port, "STRADDLE_D0_RE", STRADDLE_ADDR, write=False)
-            r = self._check_read(fam, f"{cell} re-read", port, item, hs, 1, OKAY)
-            if r and r[0].data != STRADDLE_D0:
-                fam.findings.append(
-                    f"{cell}: re-read {_hl(r[0].data)}, want D0 0x{STRADDLE_D0:016x}"
-                )
-            n += 1
+            item, hs = await self._issue(
+                port, "STRADDLE_LIMIT_RE", STRADDLE_LIMIT_ADDR, write=False
+            )
+            ctx = f"{cell} re-read 0x{STRADDLE_LIMIT_ADDR:x}"
+            r = self._check_read(fam, ctx, port, item, hs, 1, OKAY)
+            if r and r[0].data != STRADDLE_D0_LIMIT:
+                fam.findings.append(f"{ctx}: {_hl(r[0].data)}, want D0' 0x{STRADDLE_D0_LIMIT:016x}")
+            item, hs = await self._issue(port, "STRADDLE_BELOW_RE", STRADDLE_ADDR, write=False)
+            ctx = f"{cell} re-read 0x{STRADDLE_ADDR:x}"
+            r = self._check_read(fam, ctx, port, item, hs, 1, OKAY)
+            if r and r[0].data is not None:
+                seen.add(r[0].data)
+            cocotb.log.info(
+                "INFO-STRADDLE-REREAD: port=%s addr=0x%x rresp=%s rdata=%s issue=%s",
+                port,
+                STRADDLE_ADDR,
+                _rname(r[0].resp) if r else "none",
+                _hl(r[0].data) if r else "none",
+                STRADDLE_ISSUE,
+            )
+            n += 2
+        # A below-limit write landed when its data is read back later: by the other port
+        # inside the straddle or after the restore. A below-limit read reached the unit
+        # when it answered OKAY with a word the leaf stored there.
+        stored = {STRADDLE_D0, *STRADDLE_D1.values()}
+        seen.update(data for _p, op, _resp, data in below if op == "rd" and data is not None)
+        for port, op, resp, data in below:
+            if op == "rd":
+                landed = resp == OKAY and data in stored
+            else:
+                landed = STRADDLE_D1[port] in seen
+            cocotb.log.info(
+                "OBS-ERRC-REGIONSIZE-STRADDLE: port=%s op=%s resp=%s rdata=%s landed=%s issue=%s",
+                port,
+                op,
+                _rname(resp),
+                _hl(data) if op == "rd" else "none",
+                "y" if landed else "n",
+                STRADDLE_ISSUE,
+            )
         for port in ("SYS_IN", "SEP_IN"):
             cell = f"{port}/spm/rs16M"
             d2 = STRADDLE_D2[port]
@@ -1358,7 +1418,7 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                             start, _ = self._place(t, ln + 1)
                             if start is not None:
                                 addrs.add(start)
-        addrs.add(STRADDLE_ADDR)
+        addrs.update((STRADDLE_ADDR, STRADDLE_LIMIT_ADDR))
         for _cell, addr, _reset in SPLIT_SLOTS:
             addrs.update((addr, addr + 4))
         return addrs
@@ -1426,7 +1486,7 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
             self._mark(term, count, planned)
 
         straddle = await self._straddle()
-        self._mark("STRADDLE", straddle, 2 * 2 + 2 * 4)
+        self._mark("STRADDLE", straddle, 2 * 4 + 2 * 2 + 2 * 3)
         redirect = await self._gate_redirect()
         self._mark("GATE_REDIRECT", redirect, 2 * len(GATED_UNITS) * len(PORTS))
         split = await self._split_slots()
@@ -1492,8 +1552,9 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
             if fam.key == "REGIONSIZE":
                 extra = (
                     f"; REGION_SIZE 0x{REGION_SIZE_STRADDLE:X}: SYS_IN and SEP_IN read and write at "
-                    f"0x{STRADDLE_ADDR:x} DECERR, D0 kept, D2 written and read OKAY at "
-                    f"0x{REGION_SIZE_RESET:X}"
+                    f"0x{STRADDLE_LIMIT_ADDR:x} DECERR one beat and one B, D0' kept at "
+                    f"0x{REGION_SIZE_RESET:X}; 0x{STRADDLE_ADDR:x} below the limit observed "
+                    f"({STRADDLE_ISSUE}), D2 written and read OKAY"
                 )
             if fam.key == "CLKGATE":
                 extra = (

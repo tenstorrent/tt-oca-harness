@@ -11799,9 +11799,12 @@ count, IDs and data word, and the port stays live afterwards.
   each family's single writes and write bursts.
 * A fresh 64-bit read of `LOCAL_BASE` on the same port and ID answers OKAY 0x0000_0000_C000_0000
   after each family location.
-* Straddling unit: at `REGION_SIZE` 0x10_0000 a 64-bit read and write at `BASE + 0x6_0000` on
-  SYS_IN and SEP_IN answer DECERR; after the restore to 0x100_0000 the seeded word is unchanged and
-  a written word reads back with OKAY.
+* Straddling unit, graded per address: at `REGION_SIZE` 0x10_0000 the scratchpad aperture
+  (`BASE + 0x6_0000` to `BASE + 0x15_FFFF`) straddles the limit; a 64-bit read and a 64-bit write at
+  `BASE + 0x10_0000` (at the limit, scratchpad offset 0xA_0000) on SYS_IN and SEP_IN answer DECERR
+  with one beat and one B, and the word seeded there is unchanged after the restore to 0x100_0000;
+  after the restore a written word at `BASE + 0x6_0000` reads back with OKAY. The 64-bit read and
+  write at `BASE + 0x6_0000`, below the limit, are observation only (#3551).
 * Gate redirect: for each gated peripheral and port, the first read after the B of the enabling
   `CLOCK_GATE_CONTROL` write answers SLVERR with 0xBADCAB1E and the first read after the B of the
   clearing write answers OKAY.
@@ -11816,8 +11819,9 @@ count, IDs and data word, and the port stays live afterwards.
   `OBS-ERRC-REGIONSIZE`, `OBS-ERRC-GAP`, `OBS-ERRC-DEBUGWIN`, `OBS-ERRC-PASTEXT64`,
   `OBS-ERRC-PASTEXT32`, `OBS-ERRC-MISCHOLE`, `OBS-ERRC-GPIOPAST` and `OBS-ERRC-CLKGATE` (RRESP and
   RDATA of every read beat, run-length per burst, and the lanes of each narrow read; SF-002,
-  SF-003, SF-004, SF-005, SF-006, SF-010, SF-020, SF-027), `OBS-ERRC-REGIONSIZE-STRADDLE` (SF-003)
-  `OBS-ERRC-SPLITSLOT` (merged code and data of the 64-bit read, the write BRESP and whether +0
+  SF-003, SF-004, SF-005, SF-006, SF-010, SF-020, SF-027), `OBS-ERRC-REGIONSIZE-STRADDLE` (response,
+  data and whether the access landed, for the read and the write at `BASE + 0x6_0000` below the
+  `REGION_SIZE` 0x10_0000 limit on SYS_IN and SEP_IN; #3551), `OBS-ERRC-SPLITSLOT` (merged code and data of the 64-bit read, the write BRESP and whether +0
   took the low word; SF-004, SF-010) and `OBS-ERRC-SPLITSLOT-NDMCOUNT` (the misc wrapper +0 word on
   every port). `INFO-PATH` prints the peripheral AXI-Lite handshake count
   of each gap and 32-bit island read (SF-020, SF-010).
@@ -11834,8 +11838,13 @@ count, IDs and data word, and the port stays live afterwards.
   error location. Kind: the access shape of the phase. Expected response: the stated code per beat,
   the stated beat and B counts and IDs, the stated data word; the bystanders and responder counters
   unchanged after each family's writes.
-. STRADDLE: the `REGION_SIZE` 0x10_0000 refusal and the restore positive control, with a
-  `LOCAL_BASE` read on each port after the restore.
+. STRADDLE: from SEP_IN seed D0 at `BASE + 0x6_0000` and D0' at `BASE + 0x10_0000` and write
+  `REGION_SIZE` 0x10_0000 (read back). On SYS_IN and SEP_IN: a 64-bit read and a 64-bit write at
+  `BASE + 0x10_0000`, graded DECERR with one beat and one B; a 64-bit read and a 64-bit write of D1
+  at `BASE + 0x6_0000`, printed as `OBS-ERRC-REGIONSIZE-STRADDLE` (#3551) and never compared.
+  Restore `REGION_SIZE` 0x100_0000 (read back), re-read `BASE + 0x10_0000` (graded OKAY, still D0')
+  and `BASE + 0x6_0000` (OKAY, word recorded), write D2 at `BASE + 0x6_0000` and read it back
+  (graded OKAY, D2), then a `LOCAL_BASE` read on each port.
 . GATE_REDIRECT: the set and clear sequence per gated peripheral and port.
 . SPLIT_SLOTS: the four accesses per split slot and port, restoring the reset unit and base config
   +0 registers from SEP_IN with a 32-bit write of their reset value (the read-only misc wrapper +0
@@ -11852,9 +11861,13 @@ count, IDs and data word, and the port stays live afterwards.
 |`CHK-ERRC-OUTSIDE` |Outside both apertures on SEP_IN and SYS_IN: DECERR on every single, paired,
 narrow and write-burst answer, one beat or AxLEN+1 beats with RID and RLAST as stated, one B with
 BID per write, bystanders and responder counters unchanged, liveness OKAY; read data is OBS
-|`CHK-ERRC-REGIONSIZE` |PLIC, CLINT and BEU0 at the reset `REGION_SIZE` answer DECERR as stated,
-the straddling scratchpad unit is refused at 0x10_0000 and keeps D0, and D2 reads back OKAY at
-0x100_0000
+|`CHK-ERRC-REGIONSIZE` |PLIC, CLINT and BEU0 at the reset `REGION_SIZE` answer DECERR as stated;
+at `REGION_SIZE` 0x10_0000 the read and write at `BASE + 0x10_0000` answer DECERR with one beat and
+one B on SYS_IN and SEP_IN and the word there keeps D0'; D2 reads back OKAY at 0x100_0000. The
+accesses at `BASE + 0x6_0000` below the limit are `OBS-ERRC-REGIONSIZE-STRADDLE` (#3551)
+|`OBS-ERRC-REGIONSIZE-STRADDLE` |Observation only (#3551): response code, read data and landed
+status of the 64-bit read and write at `BASE + 0x6_0000` on SYS_IN and SEP_IN while the scratchpad
+unit straddles `BASE + REGION_SIZE`; never compared
 |`CHK-ERRC-GAP` |The six reserved gaps at both bases on the three ports answer DECERR with
 `RDATA[31:0]` = 0xBADCAB1E and the word in the addressed half of each 32-bit read
 |`CHK-ERRC-DEBUGWIN` |The Debug Module window answers DECERR with 0xBADCAB1E on the three ports
@@ -11886,7 +11899,9 @@ printed, and no access goes unanswered. A FAIL on a stated value is a finding. E
 *Scope limit*: The read data that accompanies an outside-aperture or past-`REGION_SIZE` answer, the
 second word of a 64-bit read, the per-beat code and data of a read burst, the lanes of a narrow
 read and the merged answer of a split slot wait on SF-002, SF-003, SF-004, SF-005, SF-006 and
-SF-010 and are OBS lines. `NDMRESET_CLUSTER_COUNT` reports an integration value and is an OBS line. Which crossbar answers a gap (SF-020) is attributed only by the
+SF-010 and are OBS lines. `NDMRESET_CLUSTER_COUNT` reports an integration value and is an OBS line.
+Whether a unit that straddles `BASE + REGION_SIZE` answers below the limit is open (#3551, Known
+Limitations): those accesses are OBS lines. Which crossbar answers a gap (SF-020) is attributed only by the
 peripheral AXI-Lite handshake count. `ocah_axi_sva` fires are read from the kept log.
 
 '''''
@@ -51097,6 +51112,7 @@ in <<smc-deferred-disposition>>.
 |A read whose AR the front port accepted before the drain request but that the isolate never counted as pending is not drained before the uncore reset applies and completes only after the reconnect; status reads from every manager stall behind it meanwhile |`smc_sw_uncore_reset_drain_isolate_test` counts only the isolate-pending reads in `CHK-DRAIN-HANDSHAKE-ORDER` and `CHK-DRAIN-PENDING-READS-COMPLETE`, records the other read as `OBS-DRAIN-FRONTPORT-ACCEPTED-NOT-PENDING ... sf=SF-005,SF-006` and grades only its completion after the reconnect; the status reads issued meanwhile are `OBS-STATUS-READ-UNDER-STALL` |Designer question under SF-005 / SF-006 / SF-026 (is such a read outstanding for the drain?), draft on file; grade it against the drain once answered
 |The force-mode flush of the software uncore reset presents a stale R beat with ID 0 and no open AR on SYS_IN as the forced reset applies, the behaviour issue #2449 accepts as a known limitation of force-mode reset (#2318 and #2323 are folded into #2449) |`smc_sw_uncore_reset_drain_isolate_test` keeps the SYS_IN protocol checker (`u_sys_in_axi_sva`) and every other inbound and CPU-port checker on, and therefore does not drive the force episode: it prints `INFO-CELL-NOT-DRIVABLE: force episode S7 (ruling #2449, covered by the pinned wedge leaves)` and `OBS-DRAIN-FLUSH-RESPONSES: episode=not-driven ruling=#2449`; the force-mode flush, its request status and its stale response are covered by the pinned wedge leaves (`smc_cpu_l2_read_wedge_test` family) |Ruling #2449 (known limitation of force-mode reset, with #2318 folded in)
 |The partial-strobe semantics of a 64-bit AXI-Lite write to `CPU_CTRL.REFERENCE_COUNTER` are unstated: which byte lanes load the reference counter, and whether a partial-strobe or WSTRB 0x00 write counts as a write for the register's write-once-then-poll rule (SF-012, #3425 item 5) |`smc_axil_narrow_zero_strobe_write_test` observes them: it records the readback of every driven strobe as an `OBS-PLAIN-STROBE` line and never compares it, polls only the strobed lanes above lane 0 until they read the written byte, issues the WSTRB 0x00 write last and does not poll it, and does not drive the lane-0-only strobe WSTRB 0x01 on REFERENCE_COUNTER (`INFO-CELL-NOT-DRIVABLE`), which has no lane the write-then-poll protocol can observe |Grade the lanes and drive WSTRB 0x01 once SF-012 states the partial-strobe rule
+|A unit whose aperture straddles `BASE + REGION_SIZE` stays reachable below the limit: at `REGION_SIZE` 0x10_0000 the scratchpad answers OKAY at `BASE + 0x6_0000` and the write lands, while three texts (`memmap.adoc`, the `REGION_SIZE` description and the integrator guide) promise DECERR for such a unit |`smc_err_slv_response_content_test` grades S9 per address (DECERR at `BASE + 0x10_0000`, at the limit) and records the accesses below the limit as `OBS-ERRC-REGIONSIZE-STRADDLE` without comparing them |SPEC issue #3551: the owner either rewords the three texts to the per-address rule or adds a unit-extent check; the OBS line becomes a graded check once that ruling lands
 |===
 
 [[smc-held-out-testcases]]

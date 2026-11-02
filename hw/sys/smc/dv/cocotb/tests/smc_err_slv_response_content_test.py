@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: TC_M9 ANCHOR: smc_err_slv_response_content_test
-# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 494f59dc2b58d18ddd2bbf1da728e344c645a26d52c8242e88d59910a96e4447
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_AXI_FAB_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: f48c42315ea24e4a4e8c4294c6323360b3fc558144c9693147c5e95502fe11e8
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_AXI_FAB_VPLAN_DETAIL.md @ artifact_revision 3 ENV: cocotb
 """Response content of every SMC error subordinate seen from SEP_IN, SYS_IN and JTAG_IN.
 
 Drives single, paired 32-bit, written, INCR burst and narrow accesses to every error
