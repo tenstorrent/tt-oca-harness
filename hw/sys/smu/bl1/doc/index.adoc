@@ -29,7 +29,8 @@ for SMC hart 0's first mutable code, SMC BL1:
 This chapter is the contract between the two stages, and between SEP BL1 and the SMC Boot
 ROM. `hw/sys/smu/bl1/include/smu_bl1_contract.h` encodes every value it names. Both BL1
 images include that header, and the BL1 build checks it against the SMC Boot ROM's own
-definitions.
+definitions. The <<smu-boot-spec,SMU Boot Specification>> places this contract in the boot of
+the whole SMU.
 
 [[smu-bl1-address-views]]
 == Address views
