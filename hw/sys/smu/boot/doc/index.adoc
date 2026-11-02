@@ -1,0 +1,726 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smu-boot-spec]]
+= SMU Boot Specification
+:toc: left
+:toclevels: 3
+:sectnums:
+
+[WARNING]
+====
+The reference first-stage bootloaders are works in progress and are not ready for production
+use.
+====
+
+[[smu-boot-scope]]
+== Scope and conventions
+
+This specification describes how the System Management Unit (SMU) boots, from the release of
+its cold reset until SMC hart 0 runs SMC BL1. It covers every lifecycle state, with and
+without secure boot enforced, and every boot role the straps select. It is the reference a
+verification plan traces to: each requirement names what is true of a correct boot and what
+can be observed to show it.
+
+The boot passes through four software stages on two processors:
+
+[[smu-boot-stage-table]]
+.Boot stages
+[cols="1,1,4",options="header"]
+|===
+|Stage |Runs on |Specified in
+
+|SEP BL0
+|SEP
+|<<sep-boot-rom,SEP Boot ROM>> appendix, and the SEP ROM boot architecture
+(`hw/sys/sep/bootrom/prod/doc/rom.adoc`, requirements `SEP-ROM-<AREA>-<NNN>`)
+
+|SMC BL0
+|SMC hart 0
+|<<smc-boot-rom,SMC Boot ROM>> appendix
+
+|SEP BL1
+|SEP
+|<<smu-bl1-contract,SMU First-Stage Boot Contract>> appendix
+
+|SMC BL1
+|SMC hart 0
+|<<smu-bl1-contract,SMU First-Stage Boot Contract>> and <<smc-bl1,SMC BL1 Reference
+Bootloader>> appendices
+|===
+
+This specification adds what those documents leave out: the hardware sequence that starts the
+two processors, the boot role and lifecycle policy of the SMU as a whole, the order and
+conditions that connect the stages, and what a verification environment observes at each
+step. Where a stage document already states a value, this specification cites it instead of
+repeating it. The defining headers are `smu_bl1_contract.h`, `smc_rom_defs.h`,
+`sep_smc_interface.h` and the generated register headers.
+
+Out of scope: anything after SMC BL1 confirms to SEP BL1, delivery of a boot image over I3C
+by an external host, and multi-chiplet distribution, which the System-in-Package Secure Boot
+application note describes.
+
+[[smu-boot-conventions]]
+=== Requirement identifiers
+
+_Shall_ marks a requirement, _should_ a recommendation and _may_ a permission. A requirement
+carries an identifier of the form `SMU-BOOT-<AREA>-<NNN>`:
+
+[[smu-boot-area-table]]
+.Requirement areas
+[cols="1,4",options="header"]
+|===
+|Area |Covers
+
+|`HW` |Hardware reset and release sequence
+|`ROLE` |Boot roles and straps
+|`LC` |Lifecycle classification
+|`SB` |Secure-boot decision
+|`SEP` |SEP BL0 phases
+|`SMC` |SMC BL0 phases
+|`BL1` |The SEP BL1 to SMC BL1 handoff
+|`WAIT` |Waits between the subsystems
+|`OBS` |Observables
+|`FAIL` |Failure and terminal behaviour
+|===
+
+Numbers advance in steps of 10. A retired number is never reused. An identifier is given only
+to a statement that is independently verifiable and that a correct boot depends on.
+<<smu-boot-req-index>> lists every identifier.
+
+[[smu-boot-hardware]]
+== Hardware boot sequence
+
+Both processors start from hardware, not from each other's firmware. <<smu-boot-hw-figure>>
+shows the order.
+
+[[smu-boot-hw-figure]]
+.Hardware release of the SEP and the SMC cores
+[plantuml,smu-boot-hardware-release,svg]
+....
+@startuml
+skinparam sequenceMessageAlign center
+hide footbox
+participant "Cold / primary\nreset" as RST
+participant "SEP eFuse\ncontroller" as SFUSE
+participant "SMC eFuse\nand reset unit" as MFUSE
+participant "Integration\n(repair, straps)" as INT
+participant "SEP" as SEP
+participant "SMC cores" as SMC
+
+RST -> SFUSE : release
+RST -> MFUSE : release
+SFUSE -> SFUSE : sense SEP fuses
+MFUSE -> MFUSE : sense SMC fuses
+MFUSE -> INT : smc_fuse_sense_done
+INT -> MFUSE : ext_boot_seq_done (qualified by the SMC)
+MFUSE -> SFUSE : ext_boot_seq_done (qualified)
+SFUSE -> SEP : release reset
+note over SEP : SEP BL0 starts
+MFUSE -> SMC : release, unless boot stall
+SMC -> SMC : SRAM zero-fill,\nthen all four harts run
+note over SMC : SMC BL0 starts on every hart
+@enduml
+....
+
+. [[req-SMU-BOOT-HW-010]]*[SMU-BOOT-HW-010]* The SEP shall leave reset when its own fuse
+  sensing completes and the boot-sequence-done signal, as the SMC qualifies it, is set. Boot
+  stall shall not hold the SEP in reset.
+. [[req-SMU-BOOT-HW-020]]*[SMU-BOOT-HW-020]* The SMC cores shall leave reset only when SMC
+  fuse sensing is done, the qualified boot-sequence-done signal is set, and boot stall is low.
+  Boot stall comes from its pad or from the DTP JTAG override. It is sticky: once low, it stays
+  low until the next primary reset.
+. [[req-SMU-BOOT-HW-030]]*[SMU-BOOT-HW-030]* Unless SRAM auto-initialization is disabled, the
+  SMC cores shall stay in reset until the scratchpad zero-fill completes.
+. [[req-SMU-BOOT-HW-040]]*[SMU-BOOT-HW-040]* Hardware shall release all four SMC harts at the
+  SMC Boot ROM base, the `RESET_VECTOR` reset value. No SEP software releases an SMC hart for
+  the SMC Boot ROM. The SEP Boot ROM only ever holds the harts in reset, on an invalid
+  lifecycle (SMU-BOOT-LC-030).
+. [[req-SMU-BOOT-HW-050]]*[SMU-BOOT-HW-050]* Under the security-disable token, the SMC eFuse
+  controller shall skip sensing and report fuse sensing done at once.
+
+The two processors therefore start at independent times. Neither may assume the other has
+reached any point; the coordination in <<smu-boot-waits>> is the only ordering between them.
+
+The TRM's SMU chapter (Clocks and Resets) and the Integrator's Guide's SMC integration chapter
+describe the reset distribution, the eFuse sense timing and the external boot-sequence
+interface.
+
+[[smu-boot-roles]]
+== Boot roles and straps
+
+The straps select a role and a boot source. Both ROMs read them from the SMC strap register.
+The SEP reads it through the SMC window.
+
+[[smu-boot-strap-table]]
+.Straps that change the boot
+[cols="2,3,3",options="header"]
+|===
+|Strap |SEP BL0 |SMC BL0
+
+|`PRIMARY_CHIPLET`
+|With `BOOT_RECOVERY` clear, boots from SPI flash. Otherwise waits for a manifest staged in
+SMC SRAM.
+|Reports the role only (POST and ring). The command loop is the same in every role.
+
+|`BOOT_RECOVERY`
+|On a primary chiplet, selects recovery: wait for a manifest staged in SMC SRAM, as a
+secondary does.
+|Reports a warning only.
+
+|`ROTATE_UPDATE`
+|Swaps the order of the primary and backup SPI slots.
+|—
+
+|`BL0_PLLCLK`
+|Asserted: runs on the PLL at the fused frequency, or on the reference clock if the frequency
+field is blank. Clear: runs on the reference clock.
+|Asserted: calls the PLL hook. Clear: runs on the reference clock.
+
+|`STATUS_RPT_DISABLE`
+|Skips waiting for, and writing to, the SEP status ring.
+|`GetStatus` answers Unsupported.
+
+|`BOOT_I2C`
+|—
+|Reports the alternate boot channel only.
+
+|`BYPASS_SRAM_REPAIR`, `MBIST_BYPASS`
+|Skips the matching memory-health check.
+|Skips the matching memory-health check.
+
+|`SRAM_AUTO_ZERO_DISABLE`
+|—
+|Leaves the ROM's SRAM zeroing to the AXI zeroer before the stack is used.
+|===
+
+. [[req-SMU-BOOT-ROLE-010]]*[SMU-BOOT-ROLE-010]* The SEP Boot ROM shall boot from SPI flash
+  exactly when `PRIMARY_CHIPLET` is set and `BOOT_RECOVERY` is clear. Otherwise it shall boot
+  from a manifest staged in SMC SRAM.
+. [[req-SMU-BOOT-ROLE-020]]*[SMU-BOOT-ROLE-020]* A boot from SPI flash shall try the primary
+  slot and then the backup slot, in the order `ROTATE_UPDATE` selects. A boot from SMC SRAM
+  shall make one attempt.
+. [[req-SMU-BOOT-ROLE-030]]*[SMU-BOOT-ROLE-030]* The SMC Boot ROM shall behave the same in
+  every role. It reports the role, serves OCCP as a target, and accepts a staged image through
+  `AuthenticateImage`.
+
+[[smu-boot-lifecycle]]
+== Lifecycle and secure-boot policy
+
+The two ROMs read the same lifecycle value and each applies its own policy. The SEP decides
+whether secure boot is enforced. The SMC decides which OCCP operations it allows. SEP BL1
+checks, before it starts SMC BL1, that the two agree.
+
+[[smu-boot-lc-classification]]
+=== Lifecycle classification
+
+The lifecycle value is an 8-bit differential encoding: the high nibble is the complement of
+the low nibble, and the low nibble carries the state. The SEP lifecycle controller exports it
+unchanged as `lc_state_o`, and the SMC latches it in `CHIP_CONFIG.LC_STATE`.
+
+[[smu-boot-lc-table]]
+.Lifecycle classification
+[cols="1,2,2,2",options="header"]
+|===
+|Low nibble |State |SEP BL0 |SMC BL0
+
+|`0x0` |TEST_DEV |Valid |Valid, non-secure
+|`0x1` |PROD |Valid |Valid, secure
+|`0x2`–`0x3` |RMA_SiP |Valid |Valid, non-secure
+|`0x4`–`0x5` |— |Invalid |Invalid
+|`0x6`–`0x7` |RMA_CHIPLET |Valid |Valid, non-secure
+|`0x8` |PROD_END |Valid |Valid, secure
+|`0x9`–`0xF` |— |Invalid |Invalid
+|===
+
+. [[req-SMU-BOOT-LC-010]]*[SMU-BOOT-LC-010]* Both ROMs shall classify each low-nibble value as
+  <<smu-boot-lc-table>> shows.
+. [[req-SMU-BOOT-LC-020]]*[SMU-BOOT-LC-020]* The SMC Boot ROM shall treat a value whose high
+  nibble is not the complement of its low nibble as invalid. The SEP Boot ROM does not check
+  the encoding yet (<<smu-boot-deviations>>).
+. [[req-SMU-BOOT-LC-030]]*[SMU-BOOT-LC-030]* On an invalid lifecycle, the SEP Boot ROM shall
+  clear the four core bits of SMC `CPU_CTRL.RESET_CTRL`, holding every SMC hart in reset, then
+  stop with `ROM_ERR_LIFECYCLE_INVALID`.
+. [[req-SMU-BOOT-LC-040]]*[SMU-BOOT-LC-040]* On an invalid lifecycle, the SMC Boot ROM shall
+  write the POST error phase with the invalid-security-mode error, record
+  `SMC_STATUS_INVALID_SEC_MODE` in its ring, and park hart 0. It has already published its
+  coordination state, so a SEP waiting on it is not left without the status ring.
+. [[req-SMU-BOOT-LC-050]]*[SMU-BOOT-LC-050]* In a secure SMC lifecycle (PROD, PROD_END), the
+  SMC Boot ROM shall refuse `ExecuteImage` and confine OCCP memory access to the SEP-safe SRAM
+  range. In a non-secure lifecycle it shall allow `ExecuteImage` and any address outside its
+  own SRAM area, including `CPU_CTRL`.
+
+[[smu-boot-sb-decision]]
+=== Secure-boot decision
+
+The SEP decides whether secure boot is enforced for each manifest it validates. Three inputs
+decide it, consulted in order, and the first that applies settles the question:
+
+. the manifest's `secure_boot_control` enforcement bit: set means enforced;
+. the `SBOOT_DIS` fuse: set means not enforced;
+. the device's view: PROD and PROD_END enforce, and so do TEST_DEV and RMA_SiP when chiplet
+  debug is locked (`CHIPLET_DBG` set in `SIP_DIS` or `SYS_DIS`, or either read-locked). Every
+  other valid state does not.
+
+//
+
+. [[req-SMU-BOOT-SB-010]]*[SMU-BOOT-SB-010]* The SEP Boot ROM shall decide secure boot by the
+  precedence above and record the result in `bl0_state.secure_boot`. The SEP ROM boot
+  architecture states the same rule as `SEP-ROM-SB-010` to `SEP-ROM-SB-041`.
+. [[req-SMU-BOOT-SB-020]]*[SMU-BOOT-SB-020]* With secure boot enforced, a manifest that names
+  no signature class shall fail validation.
+. [[req-SMU-BOOT-SB-030]]*[SMU-BOOT-SB-030]* With secure boot not enforced, the SEP Boot ROM
+  shall skip root-key authorization, revocation, the security version and the signature, and
+  shall still check the manifest framing and hash, identity, the lifecycle bitmap, the version
+  range and every payload hash. It shall require the signing fields to be zero, reject an
+  encrypted payload, and take both boot measurements.
+. [[req-SMU-BOOT-SB-040]]*[SMU-BOOT-SB-040]* The SMC Boot ROM's policy shall depend on the
+  lifecycle value alone. It reads no secure-boot, debug-lock, demotion or security-disable
+  input.
+
+[[smu-boot-matrix]]
+=== Combined policy
+
+<<smu-boot-matrix-table>> gives the outcome of every combination. _M_ is the manifest's
+enforcement bit, _SD_ is `SBOOT_DIS` and _DL_ is the chiplet-debug lock.
+
+[[smu-boot-matrix-table]]
+.Lifecycle, secure-boot and SMC policy
+[cols="2,2,3,2,4",options="header"]
+|===
+|Lifecycle |Inputs |SEP secure boot |SMC policy |Boot outcome
+
+|PROD, PROD_END
+|M = 1
+|Enforced
+|Secure
+|Signed images only. OCCP confined to the SEP-safe range.
+
+|PROD, PROD_END
+|M = 0, SD = 0
+|Enforced
+|Secure
+|An image without a signature class fails (SMU-BOOT-SB-020).
+
+|PROD, PROD_END
+|M = 0, SD = 1
+|Not enforced
+|Secure
+|Unsigned images boot. The SMC ROM still refuses `ExecuteImage`. SEP BL1 reports not secure.
+
+|TEST_DEV, RMA_SiP
+|DL set, and M = 1 or SD = 0
+|Enforced
+|Non-secure
+|Signed images only on the SEP. The SMC ROM still allows `ExecuteImage` and `CPU_CTRL` writes:
+residual risk, see the contract's <<smu-bl1-residual-risk>>.
+
+|TEST_DEV, RMA_SiP
+|DL set, M = 0, SD = 1
+|Not enforced
+|Non-secure
+|Unsigned images boot.
+
+|TEST_DEV, RMA_SiP
+|DL clear
+|Enforced only if M = 1
+|Non-secure
+|The manifest decides.
+
+|RMA_CHIPLET
+|any
+|Enforced only if M = 1
+|Non-secure
+|The manifest decides. The debug lock does not apply.
+
+|`0x4`–`0x5`, `0x9`–`0xF`
+|any
+|— (SEP stops)
+|Invalid
+|SEP holds the SMC harts in reset and stops; the SMC ROM parks.
+
+|Broken encoding
+|any
+|Decided from the low nibble
+|Invalid
+|The SMC ROM parks. The SEP continues and stops at the first wait on the SMC or, through SPI,
+at SEP BL1's lifecycle cross-check (<<smu-boot-deviations>>).
+|===
+
+. [[req-SMU-BOOT-SB-050]]*[SMU-BOOT-SB-050]* Each row of <<smu-boot-matrix-table>> shall
+  produce the outcome it states.
+. [[req-SMU-BOOT-SB-060]]*[SMU-BOOT-SB-060]* SEP BL1 shall stop the boot before releasing SMC
+  hart 0 if the lifecycle the SMC latched differs from the SEP's, or if the secure-boot state
+  it re-derives differs from the one SEP BL0 recorded
+  (<<smu-bl1-sequence,SEP BL1 sequence>>).
+
+[[smu-boot-phases]]
+== Boot phases
+
+Each phase lists its entry condition, what it does, how it ends and what a verification
+environment can observe. The two ROMs run concurrently. <<smu-boot-waits>> lists every point at
+which one waits for the other.
+
+[[smu-boot-phase-smc-bl0]]
+=== SMC BL0
+
+. [[req-SMU-BOOT-SMC-010]]*[SMU-BOOT-SMC-010]* *Early start-up* (every hart, assembly): check
+  memory health (MBIST and repair, unless bypassed), set the trap vector, and on the boot hart
+  clear the coordination scratch registers 3, 8, 9, 11, 13 and 14 while keeping register 15.
+  An MBIST failure or a memory-repair failure stops the hart unless eFuse
+  `SMC_CONFIG.dft_ignore_error` is set; an MBIST abort stops it regardless.
+  Harts 1 to 3 then wait in `wfi`.
+. [[req-SMU-BOOT-SMC-020]]*[SMU-BOOT-SMC-020]* *Coordination* (hart 0, POST phases 0 and 2):
+  initialize both status rings, publish the SEP ring offset and the SEP-safe SRAM range, and
+  set `BUFFER_READY` and `SRAM_INIT` in scratch 9. This happens before the lifecycle check.
+. [[req-SMU-BOOT-SMC-030]]*[SMU-BOOT-SMC-030]* *Straps, fuses and lifecycle* (POST phase 1):
+  read the straps and fuses, classify the lifecycle (SMU-BOOT-LC-040, SMU-BOOT-LC-050), and run
+  the PLL hook if `BL0_PLLCLK` is asserted.
+. [[req-SMU-BOOT-SMC-040]]*[SMU-BOOT-SMC-040]* *OCCP* (POST phases 3 to 5): initialize the
+  target interfaces and serve commands until one of:
+  * `AuthenticateImage` accepted: publish the manifest offset in scratch 8, set
+    `MANIFEST_READY`, and park hart 0;
+  * `ExecuteImage` accepted (non-secure lifecycle only): set POST phase 6 and jump;
+  * a park request in scratch 3: park hart 0.
+
+The SMC Boot ROM appendix describes each step (<<boot-flow>>, <<occp-command-processing>>,
+<<smc-park-interlock>>).
+
+[[smu-boot-phase-sep-bl0]]
+=== SEP BL0
+
+. [[req-SMU-BOOT-SEP-010]]*[SMU-BOOT-SEP-010]* *Start-up*: warm-reset dispatch, PMP fences and
+  the memory-health gate, then read the straps and start status reporting
+  (SMU-BOOT-WAIT-010).
+. [[req-SMU-BOOT-SEP-020]]*[SMU-BOOT-SEP-020]* *Fuses and lifecycle*: wait for SMC fuse sensing
+  (SMU-BOOT-WAIT-020), set the clock, validate the lifecycle (SMU-BOOT-LC-030), self-test,
+  hash the ROM into measurement slot 0, and latch `SBOOT_DIS` and the chiplet-debug lock.
+. [[req-SMU-BOOT-SEP-030]]*[SMU-BOOT-SEP-030]* *Boot source*: select SPI or SMC SRAM
+  (SMU-BOOT-ROLE-010). For SMC SRAM, wait for `MANIFEST_READY` (SMU-BOOT-WAIT-030) and reject
+  the invalid-offset marker.
+. [[req-SMU-BOOT-SEP-040]]*[SMU-BOOT-SEP-040]* *Validation*: load the manifest and payload,
+  decide secure boot (SMU-BOOT-SB-010) and validate. A failure on SPI tries the other slot. A
+  failure from SMC SRAM is terminal.
+. [[req-SMU-BOOT-SEP-050]]*[SMU-BOOT-SEP-050]* *Hand-off*: decide demotion, record the boot
+  measurement in slot 1, lock the fuse secrets and confirm the lock, check the stack canary,
+  copy SEP BL1 to ICCM and jump to it. SEP BL0 never writes the PASS verdict.
+
+The SEP Boot ROM appendix describes each step (<<sep-prod-rom-boot-flow>>,
+<<sep-prod-rom-smc-coordination>>, <<sep-prod-rom-bl1-handoff>>).
+
+[[smu-boot-phase-bl1]]
+=== SEP BL1 and SMC BL1
+
+. [[req-SMU-BOOT-BL1-010]]*[SMU-BOOT-BL1-010]* SEP BL1 shall start SMC BL1 only through the
+  sequence the contract specifies (<<smu-bl1-sequence>>): park hart 0 through the interlock,
+  stage and verify the image, measure it into slot 2, then pulse hart 0 alone at the SMC BL1
+  entry.
+. [[req-SMU-BOOT-BL1-020]]*[SMU-BOOT-BL1-020]* Harts 1 to 3 shall stay in the SMC Boot ROM's
+  `wfi` loop throughout.
+. [[req-SMU-BOOT-BL1-030]]*[SMU-BOOT-BL1-030]* SMC BL1 shall clear `HART0_PARKED` before
+  anything else, answer the challenge, and park (<<smu-bl1-smc-obligations>>).
+. [[req-SMU-BOOT-BL1-040]]*[SMU-BOOT-BL1-040]* The boot is complete when SEP BL1 has received a
+  matching confirmation, re-hashed the image, and restored `RESET_VECTOR[0]`
+  (<<smu-bl1-exit-state>>).
+
+[[smu-boot-waits]]
+== Waits between the subsystems
+
+[[smu-boot-wait-table]]
+.Where one subsystem waits for the other
+[cols="1,2,2,2",options="header"]
+|===
+|Waiter |Waits for |Bound |If it never comes
+
+|SEP BL0
+|`BUFFER_READY` in SMC scratch 9 (skipped when `STATUS_RPT_DISABLE` is set)
+|None
+|SEP hangs before reading any fuse
+
+|SEP BL0
+|SMC fuse sensing done
+|None
+|SEP hangs before reading any fuse
+
+|SEP BL0 (SMC SRAM boot)
+|`MANIFEST_READY` in SMC scratch 9
+|None
+|SEP hangs after reporting `SEP_MSG_WAIT_FOR_SMC_MANIFEST_READY`
+
+|SEP BL1
+|`HART0_PARKED` after a park request
+|Contract time limit
+|SEP BL1 forces the park with a core-reset pulse
+
+|SEP BL1
+|SMC BL1's confirmation
+|Contract time limit
+|SEP BL1 holds hart 0 in reset and reports the timeout
+|===
+
+. [[req-SMU-BOOT-WAIT-010]]*[SMU-BOOT-WAIT-010]* Unless `STATUS_RPT_DISABLE` is set, SEP BL0
+  shall wait for `BUFFER_READY` before it reports any status to the ring.
+. [[req-SMU-BOOT-WAIT-020]]*[SMU-BOOT-WAIT-020]* SEP BL0 shall read no fuse shadow before SMC
+  fuse sensing completes. A read taken earlier returns zero, which decodes as TEST_DEV.
+. [[req-SMU-BOOT-WAIT-030]]*[SMU-BOOT-WAIT-030]* For a boot from SMC SRAM, SEP BL0 shall read
+  the manifest offset only after `MANIFEST_READY` is set.
+
+The three SEP BL0 waits have no timeout: the ROM accepts a hang as the failure mode. A
+verification environment detects such a hang from the last status the SEP reported, not from
+a terminal verdict. The contract's <<smu-bl1-time-limits>> gives the SEP BL1 bounds.
+
+[[smu-boot-observables]]
+== Observables
+
+A verification environment judges a boot from the registers and memory below. Each row names
+the document that defines the values.
+
+[[smu-boot-observable-table]]
+.Boot observables
+[cols="2,3,3",options="header"]
+|===
+|Observable |What it shows |Values defined in
+
+|SMC scratch 1, POST word
+|SMC BL0 phase (0 to 7), error code, security, boot and strap observations. SMC BL1 uses phase
+8.
+|`smc_post_code.h`; <<status-reporting>>; <<smc-bl1-status>>
+
+|SMC scratch 9
+|`SRAM_INIT`, `MANIFEST_READY`, `BUFFER_READY`, `HART0_PARKED`
+|`smc_rom_defs.h`; <<status-reporting>>
+
+|SMC scratch 3, 8, 11, 13, 14
+|Park request; manifest offset; SEP ring offset; SEP-safe SRAM range
+|<<status-reporting>>; <<smu-bl1-park-interlock>>
+
+|SMC scratch 15
+|SMC memory-health result
+|<<hardware-initialization>>
+
+|SMC status ring
+|SMC BL0 (firmware ID 3) and SMC BL1 (firmware ID 4) entries
+|`smc_status.h`; <<status-reporting>>; <<smc-bl1-status>>
+
+|SEP status ring and SEP `cold_scratch[1]`
+|Every SEP BL0 (firmware ID 1) and SEP BL1 (firmware ID 2) status word
+|`status_values.h`; <<sep-prod-rom-status-errors>>; contract status tables
+
+|SEP `cold_scratch[0]`
+|Verdict: FAIL from SEP BL0, PASS only from SEP BL1
+|`errors.h`; <<sep-prod-rom-status-errors>>
+
+|SEP `bl0_state`, `bl1_state`
+|Boot mode, lifecycle, secure-boot decision, `SBOOT_DIS`, measurements
+|`bl0_state.h`; <<sep-prod-rom-bl1-handoff>>; contract
+
+|Soft-PCR slots 0 to 2
+|ROM hash; boot state; SMC BL1 image
+|`measurement.h`; contract
+
+|SMC `CPU_CTRL.RESET_CTRL`, `RESET_VECTOR[0]`
+|Which harts run, and where hart 0 starts
+|SMC register map; <<smu-bl1-sequence>>
+
+|Hart 0 retired PC
+|Inside `smc_park_hart0_wfi` when parked; inside SMC BL1 after the release
+|`prod_rom.sym`; SMC BL1 `.sym`
+|===
+
+. [[req-SMU-BOOT-OBS-010]]*[SMU-BOOT-OBS-010]* Every boot shall end with its outcome readable
+  from the observables above, without waveforms or a debugger: the failing stage and step, or
+  the confirmation.
+. [[req-SMU-BOOT-OBS-020]]*[SMU-BOOT-OBS-020]* A secure-boot decision shall be observable:
+  `bl0_state.secure_boot` and the slot-1 boot-state record carry it, and SEP BL1 reports a
+  not-secure warning when it is off.
+. [[req-SMU-BOOT-OBS-030]]*[SMU-BOOT-OBS-030]* The SMC lifecycle classification shall be
+  observable in the POST word's security bits. The PROD bit means the lifecycle is exactly
+  PROD; PROD_END sets only the secure bit.
+
+Console output on SEP `cold_scratch[2]` and SMC scratch 2 exists only in debug builds. A check
+that must hold for a release build uses the status channels.
+
+[[smu-boot-failures]]
+== Failure and terminal behaviour
+
+[[smu-boot-failure-table]]
+.How each failure ends
+[cols="3,3,3",options="header"]
+|===
+|Failure |Effect |Signature
+
+|SMC MBIST abort
+|SMC hart stops in `wfi` without parking. The SEP waits at SMU-BOOT-WAIT-010.
+|SMC scratch 15 abort code; no `BUFFER_READY`
+
+|SMC MBIST or memory-repair failure
+|As an MBIST abort, unless eFuse `SMC_CONFIG.dft_ignore_error` is set. Then the boot continues
+as if the check had passed.
+|SMC scratch 15 failure code, kept for the rest of the boot; with the eFuse unset, no
+`BUFFER_READY`
+
+|SEP memory health
+|SEP stops in `wfi`.
+|SEP `cold_scratch[1]` gate codes; no verdict
+
+|Invalid lifecycle
+|SEP holds the SMC harts in reset and stops; the SMC ROM parks.
+|`ROM_ERR_LIFECYCLE_INVALID`; SMC POST error 5; `RESET_CTRL` core bits clear
+
+|SMC BL0 halt (PLL hook, OCCP initialization, unexpected exit, trap on hart 0)
+|Hart 0 parks.
+|SMC POST error phase; `HART0_PARKED`
+
+|Manifest or payload rejected
+|From SPI, the other slot is tried. From SMC SRAM, the SEP stops. The SMC is left running.
+|SEP status error code; FAIL verdict
+
+|Any SEP BL1 failure before the release
+|SMC hart 0 is not released.
+|SEP BL1 error status; contract
+
+|Any SEP BL1 failure after the release
+|Hart 0 held in reset; a failure record extended into slot 2.
+|SEP BL1 error status; `RESET_CTRL` hold value
+|===
+
+. [[req-SMU-BOOT-FAIL-010]]*[SMU-BOOT-FAIL-010]* No failure path shall start SMC hart 0 on an
+  image that SEP BL1 has not staged, verified and measured.
+. [[req-SMU-BOOT-FAIL-020]]*[SMU-BOOT-FAIL-020]* Every SEP BL0 failure detected in C shall
+  write the FAIL verdict and an error status, then stop. Only the waits of <<smu-boot-waits>>
+  end without a verdict.
+. [[req-SMU-BOOT-FAIL-030]]*[SMU-BOOT-FAIL-030]* Every stop of SMC hart 0 in SMC BL0 after the
+  memory-health checks shall end in the park routine, with its data cache written back and
+  `HART0_PARKED` set.
+
+[[smu-boot-verification]]
+== Verification guidance
+
+[[smu-boot-platform-table]]
+.Where each area can be verified
+[cols="2,4",options="header"]
+|===
+|Area |Platforms
+
+|Hardware sequence (HW)
+|SMU RTL testbench. The virtual platform models the release order but not its timing.
+
+|Roles and straps (ROLE)
+|SMU virtual platform (`smu-vp`) and SMU RTL testbench; SEP ROM testbench for the SEP side
+alone
+
+|Lifecycle and policy (LC, SB)
+|SEP ROM and SMC ROM testbenches for each ROM's rule; `smu-vp` and the SMU RTL testbench for
+the combined outcome
+
+|Phases and waits (SEP, SMC, WAIT)
+|The ROM testbenches, `smu-vp`, SMU RTL testbench
+
+|Handoff (BL1)
+|`smu-vp` first, then the SMU RTL testbench
+
+|Observables and failures (OBS, FAIL)
+|Every platform; each verification plan names the observables its checkers read
+|===
+
+A verification plan entry cites the identifiers it checks. An entry that exercises a
+requirement without checking it does not cite it.
+
+[[smu-boot-deviations]]
+== Known deviations
+
+The items below are places where the implementation does not yet meet this specification, or
+where the specification is still open. Each is tracked for a fix.
+
+[[smu-boot-deviation-table]]
+.Known deviations
+[cols="1,4,3",options="header"]
+|===
+|Item |Deviation |Affects
+
+|SEP lifecycle encoding
+|The SEP Boot ROM decodes only the low nibble of `LC_STATE` and does not check the
+complement.
+|SMU-BOOT-LC-020; the broken-encoding row of <<smu-boot-matrix-table>>
+
+|Escalation flag
+|The SEP ROM boot architecture specifies an unauthenticated escalation flag
+(`SEP-ROM-SB-020`, `SEP-ROM-SB-030`) that the validator does not implement. This
+specification's decision (SMU-BOOT-SB-010) is the implemented one.
+|SMU-BOOT-SB-010
+
+|Debug-locked SMC policy
+|In debug-locked TEST_DEV and RMA_SiP, the SMC Boot ROM still allows `ExecuteImage`.
+|SMU-BOOT-SB-040; residual risk
+
+|Security-disable shadow contents
+|Which SMC shadow fields the ROMs read under the security-disable token, and what they hold,
+is not yet specified.
+|SMU-BOOT-HW-050
+|===
+
+[[smu-boot-req-index]]
+== Requirement index
+
+[[smu-boot-req-index-table]]
+.SMU boot requirements
+[cols="2,5,2",options="header"]
+|===
+|Identifier |Summary |Section
+
+|<<req-SMU-BOOT-HW-010,SMU-BOOT-HW-010>> |SEP reset release conditions |<<smu-boot-hardware>>
+|<<req-SMU-BOOT-HW-020,SMU-BOOT-HW-020>> |SMC core release conditions and sticky boot stall
+|<<smu-boot-hardware>>
+|<<req-SMU-BOOT-HW-030,SMU-BOOT-HW-030>> |SRAM zero-fill holds the SMC cores |<<smu-boot-hardware>>
+|<<req-SMU-BOOT-HW-040,SMU-BOOT-HW-040>> |Hardware releases all four SMC harts at the ROM base
+|<<smu-boot-hardware>>
+|<<req-SMU-BOOT-HW-050,SMU-BOOT-HW-050>> |Security disable skips SMC fuse sensing
+|<<smu-boot-hardware>>
+|<<req-SMU-BOOT-ROLE-010,SMU-BOOT-ROLE-010>> |SPI boot exactly on primary without recovery
+|<<smu-boot-roles>>
+|<<req-SMU-BOOT-ROLE-020,SMU-BOOT-ROLE-020>> |SPI slot order; one SMC SRAM attempt |<<smu-boot-roles>>
+|<<req-SMU-BOOT-ROLE-030,SMU-BOOT-ROLE-030>> |SMC ROM behaves the same in every role
+|<<smu-boot-roles>>
+|<<req-SMU-BOOT-LC-010,SMU-BOOT-LC-010>> |Lifecycle classification table |<<smu-boot-lc-classification>>
+|<<req-SMU-BOOT-LC-020,SMU-BOOT-LC-020>> |Broken encoding is invalid |<<smu-boot-lc-classification>>
+|<<req-SMU-BOOT-LC-030,SMU-BOOT-LC-030>> |SEP holds the SMC harts on an invalid lifecycle
+|<<smu-boot-lc-classification>>
+|<<req-SMU-BOOT-LC-040,SMU-BOOT-LC-040>> |SMC ROM reports and parks on an invalid lifecycle
+|<<smu-boot-lc-classification>>
+|<<req-SMU-BOOT-LC-050,SMU-BOOT-LC-050>> |SMC secure and non-secure OCCP policy
+|<<smu-boot-lc-classification>>
+|<<req-SMU-BOOT-SB-010,SMU-BOOT-SB-010>> |Secure-boot precedence |<<smu-boot-sb-decision>>
+|<<req-SMU-BOOT-SB-020,SMU-BOOT-SB-020>> |Enforced boot needs a signature class |<<smu-boot-sb-decision>>
+|<<req-SMU-BOOT-SB-030,SMU-BOOT-SB-030>> |Checks kept and skipped without secure boot
+|<<smu-boot-sb-decision>>
+|<<req-SMU-BOOT-SB-040,SMU-BOOT-SB-040>> |SMC policy depends on lifecycle alone |<<smu-boot-sb-decision>>
+|<<req-SMU-BOOT-SB-050,SMU-BOOT-SB-050>> |Combined policy outcomes |<<smu-boot-matrix>>
+|<<req-SMU-BOOT-SB-060,SMU-BOOT-SB-060>> |SEP BL1 lifecycle and secure-state cross-check
+|<<smu-boot-matrix>>
+|<<req-SMU-BOOT-SMC-010,SMU-BOOT-SMC-010>> |SMC BL0 early start-up |<<smu-boot-phase-smc-bl0>>
+|<<req-SMU-BOOT-SMC-020,SMU-BOOT-SMC-020>> |SMC BL0 publishes coordination before the lifecycle check
+|<<smu-boot-phase-smc-bl0>>
+|<<req-SMU-BOOT-SMC-030,SMU-BOOT-SMC-030>> |SMC BL0 straps, fuses and lifecycle |<<smu-boot-phase-smc-bl0>>
+|<<req-SMU-BOOT-SMC-040,SMU-BOOT-SMC-040>> |SMC BL0 OCCP terminal events |<<smu-boot-phase-smc-bl0>>
+|<<req-SMU-BOOT-SEP-010,SMU-BOOT-SEP-010>> |SEP BL0 start-up |<<smu-boot-phase-sep-bl0>>
+|<<req-SMU-BOOT-SEP-020,SMU-BOOT-SEP-020>> |SEP BL0 fuses and lifecycle |<<smu-boot-phase-sep-bl0>>
+|<<req-SMU-BOOT-SEP-030,SMU-BOOT-SEP-030>> |SEP BL0 boot source |<<smu-boot-phase-sep-bl0>>
+|<<req-SMU-BOOT-SEP-040,SMU-BOOT-SEP-040>> |SEP BL0 validation and retry |<<smu-boot-phase-sep-bl0>>
+|<<req-SMU-BOOT-SEP-050,SMU-BOOT-SEP-050>> |SEP BL0 hand-off order |<<smu-boot-phase-sep-bl0>>
+|<<req-SMU-BOOT-BL1-010,SMU-BOOT-BL1-010>> |SMC BL1 started only through the contract sequence
+|<<smu-boot-phase-bl1>>
+|<<req-SMU-BOOT-BL1-020,SMU-BOOT-BL1-020>> |Harts 1 to 3 stay in the ROM |<<smu-boot-phase-bl1>>
+|<<req-SMU-BOOT-BL1-030,SMU-BOOT-BL1-030>> |SMC BL1 clears the parked bit first |<<smu-boot-phase-bl1>>
+|<<req-SMU-BOOT-BL1-040,SMU-BOOT-BL1-040>> |Boot completion |<<smu-boot-phase-bl1>>
+|<<req-SMU-BOOT-WAIT-010,SMU-BOOT-WAIT-010>> |SEP waits for the status ring |<<smu-boot-waits>>
+|<<req-SMU-BOOT-WAIT-020,SMU-BOOT-WAIT-020>> |SEP waits for SMC fuse sensing |<<smu-boot-waits>>
+|<<req-SMU-BOOT-WAIT-030,SMU-BOOT-WAIT-030>> |SEP waits for the staged manifest |<<smu-boot-waits>>
+|<<req-SMU-BOOT-OBS-010,SMU-BOOT-OBS-010>> |Outcome readable from the observables |<<smu-boot-observables>>
+|<<req-SMU-BOOT-OBS-020,SMU-BOOT-OBS-020>> |Secure-boot decision observable |<<smu-boot-observables>>
+|<<req-SMU-BOOT-OBS-030,SMU-BOOT-OBS-030>> |SMC lifecycle classification in the POST word
+|<<smu-boot-observables>>
+|<<req-SMU-BOOT-FAIL-010,SMU-BOOT-FAIL-010>> |No path starts SMC hart 0 on an unverified image
+|<<smu-boot-failures>>
+|<<req-SMU-BOOT-FAIL-020,SMU-BOOT-FAIL-020>> |SEP BL0 C failures write a verdict |<<smu-boot-failures>>
+|<<req-SMU-BOOT-FAIL-030,SMU-BOOT-FAIL-030>> |SMC BL0 stops end in the park routine |<<smu-boot-failures>>
+|===

@@ -22,7 +22,8 @@ proves that it is running by echoing a challenge from SEP BL1, and parks.
 
 The reference implementation is in `hw/sys/smc/bl1/`. It does nothing beyond its part of the
 SMU First-Stage Boot Contract, so it is also the template for a product's own SMC BL1. The
-contract, including the SEP BL1 side, is the SMU First-Stage Boot Contract appendix.
+contract, including the SEP BL1 side, is the SMU First-Stage Boot Contract appendix. The
+<<smu-boot-spec,SMU Boot Specification>> places it in the boot of the whole SMU.
 
 [[smc-bl1-memory]]
 == Memory windows

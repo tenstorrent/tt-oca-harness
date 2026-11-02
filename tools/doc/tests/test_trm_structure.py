@@ -113,6 +113,7 @@ class Structure(unittest.TestCase):
         self.assertEqual(
             appendices,
             [
+                "../../../hw/sys/smu/boot/doc/index.adoc",
                 "../../../hw/sys/smc/bootrom/prod/doc/index.adoc",
                 "../../../hw/sys/sep/bootrom/prod/doc/index.adoc",
                 "../../../hw/sys/smu/bl1/doc/index.adoc",

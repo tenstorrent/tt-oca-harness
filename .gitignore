@@ -80,6 +80,7 @@ doc/*/modules/aou/
 doc/*/modules/smu/
 doc/*/modules/smu-bl1/
 doc/*/modules/smc-bl1/
+doc/*/modules/smu-boot/
 doc/*/modules/ip/
 
 
