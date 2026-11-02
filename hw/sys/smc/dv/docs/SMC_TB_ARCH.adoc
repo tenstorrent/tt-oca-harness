@@ -843,6 +843,33 @@ for the same output tap. Readback is compared against a shadow computed from
 the issued data and strobes, independently of DUT readback. No shared
 scoreboard feature is added.
 
+`smc_sep_in_reset_monitor` is an env component, enabled only by the ingress
+reset leaf. The env supplies its SEP_IN VIP interface and `smc_tb_if`; the
+thin test passes the component handle to the scenario. The scenario queries
+sampled state and calls `arm`, `clear_counts` and `disarm`, without accessing
+the VIP virtual interface. The monitor samples through `mon_cb`, counts
+AW/W/AR and B/R handshakes and tracks pending work separately by direction.
+Response predicates use pending state from before the current sample.
+
+Before arm and after disarm it updates phase levels without counting traffic
+or recording resets. Arm clears all cell evidence and requires reset high;
+the scenario waits for a new sample before baseline traffic. The first
+armed primary-reset edge snapshots the held-response phase and abandons
+pending work. Further reset edges are counted and fail the epoch prerequisite.
+Post-reset counters detect response VALID without pending work, including
+cycles with READY low. Recovery provides controls for both response directions.
+Orphan handshakes do not underflow pending counters. The scenario waits with
+a bound for sampled request-idle and both response READY levels low before
+recovery, then disarms after grading the cell's evidence.
+
+The ingress-reset scenario uses two accepted, single-beat requests awaiting
+responses. The AXI master driver does not guarantee reset cancellation;
+the scenario requires request VALID low at reset and the old pipeline to
+terminate through its bounded timeout before issuing new work. Both SEP_IN
+interfaces share SMC primary reset in this bench. Interrupted SPM writes
+are overwritten by fresh monitored writes before readback, so the passive
+SPM model does not impose an undefined retention or commit expectation.
+
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
 subscribes to the SEP_IN monitor stream, rebuilds a shadow of the

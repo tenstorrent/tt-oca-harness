@@ -42,6 +42,7 @@ import smc_seq_lib_pkg::*;
 `include "smc_wdt_second_stage_reset_test.svh"
 `include "smc_mailbox_cool_reset_recovery_test.svh"
 `include "smc_external_reg_lane_test.svh"
+`include "smc_ingress_reset_inflight_test.svh"
 
 // Adopter overlay hook: a build outside this tree may append test classes by
 // defining SMC_OVERLAY_TESTS to the quoted name of an include file on its own
