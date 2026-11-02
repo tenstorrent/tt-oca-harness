@@ -387,6 +387,9 @@ int main(void) {
 
     // ---- PHASE A: reset controller ----
     uint32_t sw_reset_n = sep_reset_rd(SEP_RESET_CTRL_SW_RESET_N);
+    sep_mbx_puts("CHK-SWRST-DEFAULT REC read=");
+    sep_mbx_puthex(sw_reset_n);
+    sep_mbx_putc('\n');
     if (sw_reset_n != SEP_SW_RESET_N_DEFAULT) {
         sep_mbx_puts("FAIL: SW_RESET_N default ");
         sep_mbx_puthex(sw_reset_n);
@@ -413,6 +416,18 @@ int main(void) {
     store_err_leg("DECERR", STORE_DECERR_ADDR, STORE_DECERR_DATA);
     (void)(*(volatile uint32_t *)(RESET_CTRL_BAD_ADDR + 0x8u));
     settle();
+    // The load NMI is the second record; the testbench grades its mcause and
+    // mdseac:
+    //   CHK-BADADDR REC nmi=<n> load_addr=<a> mcause=<c> mdseac=<d>
+    sep_mbx_puts("CHK-BADADDR REC nmi=");
+    sep_mbx_puthex(g_bad_addr_nmi);
+    sep_mbx_puts(" load_addr=");
+    sep_mbx_puthex(RESET_CTRL_BAD_ADDR + 0x8u);
+    sep_mbx_puts(" mcause=");
+    sep_mbx_puthex(g_bad_addr_nmi >= 2u ? g_buserr_mcause[1] : 0u);
+    sep_mbx_puts(" mdseac=");
+    sep_mbx_puthex(g_bad_addr_nmi >= 2u ? g_buserr_mdseac[1] : 0u);
+    sep_mbx_putc('\n');
     if (g_bad_addr_nmi != 2u) {
         sep_mbx_puts("FAIL: bad-address NMI count ");
         sep_mbx_puthex(g_bad_addr_nmi);

@@ -10,7 +10,7 @@ The reset_wdt_sanity firmware:
     domain's probe CSRs and leaves every probe outside that reset bit unchanged, and that each
     probe is writable again after release;
   * checks that a write and a read to an unmapped fabric gap each raise a D-bus-error NMI
-    (count == 2);
+    (count == 2), the load's with the load-bus-error ``mcause`` and its address in ``mdseac``;
   * stores to a target that answers DECERR (the reset-controller gap) and to one that answers
     SLVERR (the read-only entropy pool), and reports the NMI count, ``mcause`` and ``mdseac`` of
     each; then stores to an OKAY register (OTBN ``INTR_ENABLE``) and restores it, and reports
@@ -99,7 +99,7 @@ from env.sep_fabric_tap import SepFabricTap, TapBeat
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
 from sep_base_test import sep_base_test
-from sep_reg_meta import OTBN, sym
+from sep_reg_meta import OTBN, SEP_RESET_CTRL, sym
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -114,7 +114,6 @@ _PROGRESS_EVERY = 5_000
 # Console anchors. Each names a leg the firmware scores separately, so a stale image
 # that dropped one is visible here rather than hiding behind the PASS magic.
 _BADADDR_LINE = "reset_ctrl bad-address NMI count == 2 OK"
-_SWRST_DEFAULT_NEEDLE = "PASS: SW_RESET_N default"
 _RESET_WIRE_IPS = ("otbn", "aes", "hmac", "kmac", "abr", "esrc", "csrng", "edn")
 # Reset bit of each probe's domain: esrc, csrng and edn share the TRNG bit.
 _RESET_DOMAIN = {ip: ("trng" if ip in ("esrc", "csrng", "edn") else ip) for ip in _RESET_WIRE_IPS}
@@ -130,8 +129,9 @@ _BANNER = "SEP reset+WDT sanity test"
 
 # Store-response legs. VeeR EL2 Programmer's Reference Manual (linked from
 # hw/sys/sep/doc/cpu.adoc), non-maskable interrupt mcause values: 0xF000_0000 is
-# a store bus error.
+# a store bus error and 0xF000_0001 a load bus error.
 _MCAUSE_STORE_BUS_ERR = 0xF000_0000
+_MCAUSE_LOAD_BUS_ERR = 0xF000_0001
 # Store address of each error-response leg, from the register map: the word past
 # the reset-controller register (its aperture answers DECERR past the register,
 # hw/sys/sep/regs/sep.rdl) and the entropy pool STATUS register (any write is
@@ -152,6 +152,11 @@ _STORE_ERR_RE = re.compile(
     r"CHK-STORE-ERR-NMI REC resp=(\w+) addr=0x([0-9a-f]{8}) nmi=0x([0-9a-f]{8}) "
     r"mcause=0x([0-9a-f]{8}) mdseac=0x([0-9a-f]{8})"
 )
+_BADADDR_RE = re.compile(
+    r"CHK-BADADDR REC nmi=0x([0-9a-f]{8}) load_addr=0x([0-9a-f]{8}) "
+    r"mcause=0x([0-9a-f]{8}) mdseac=0x([0-9a-f]{8})"
+)
+_SWRST_DEFAULT_RE = re.compile(r"CHK-SWRST-DEFAULT REC read=0x([0-9a-f]{8})")
 _STORE_OK_RE = re.compile(
     r"CHK-STORE-OK-QUIET REC addr=0x([0-9a-f]{8}) wrote=0x([0-9a-f]{8}) "
     r"readback=0x([0-9a-f]{8}) restored=0x([0-9a-f]{8}) nmi=0x([0-9a-f]{8})"
@@ -239,7 +244,23 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             f"firmware console has no {_BADADDR_LINE!r} line, so the unmapped-gap "
             f"bus-error count was not checked. Console was:\n{console}"
         )
-        self.logger.info("CHK-BADADDR PASS: firmware reported the bad-address NMI count == 2")
+        m = _BADADDR_RE.search(console)
+        assert m, f"CHK-BADADDR FAIL: no CHK-BADADDR REC record. Console was:\n{console}"
+        nmi, load_addr, mcause, mdseac = (int(x, 16) for x in m.groups())
+        want_addr = _STORE_ERR_ADDR["DECERR"] + 0x8
+        line = (
+            f"nmi={nmi} load_addr=0x{load_addr:08x} mcause=0x{mcause:08x} mdseac=0x{mdseac:08x} "
+            f"expected nmi=2 load_addr=0x{want_addr:08x} mcause=0x{_MCAUSE_LOAD_BUS_ERR:08x} "
+            f"mdseac=load_addr"
+        )
+        if not (
+            nmi == 2
+            and load_addr == want_addr
+            and mcause == _MCAUSE_LOAD_BUS_ERR
+            and mdseac == want_addr
+        ):
+            raise AssertionError(f"CHK-BADADDR FAIL: {line}")
+        self.logger.info("CHK-BADADDR PASS: %s", line)
         self._grade_store_responses(console, lsu_tap)
         wired = [ip for ip in _RESET_WIRE_IPS if f"{ip} reset wire OK" in console]
         assert len(wired) == len(_RESET_WIRE_IPS), (
@@ -275,11 +296,16 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             "probe value written after the release",
             len(writable),
         )
-        assert _SWRST_DEFAULT_NEEDLE in console, (
-            f"firmware console has no {_SWRST_DEFAULT_NEEDLE!r} in its verdict line, so "
-            f"the SW_RESET_N default was not checked. Console was:\n{console}"
+        m = _SWRST_DEFAULT_RE.search(console)
+        assert m, (
+            f"CHK-SWRST-DEFAULT FAIL: no CHK-SWRST-DEFAULT REC record. Console was:\n{console}"
         )
-        self.logger.info("CHK-SWRST-DEFAULT PASS: firmware reported the SW_RESET_N default")
+        read = int(m.group(1), 16)
+        want = SEP_RESET_CTRL.reset("SW_RESET_N")
+        line = f"read=0x{read:08x} expected=0x{want:08x} (RDL reset)"
+        if read != want:
+            raise AssertionError(f"CHK-SWRST-DEFAULT FAIL: {line}")
+        self.logger.info("CHK-SWRST-DEFAULT PASS: %s", line)
 
         # Now observe the BITE: the still-enabled WDT reaches BITE_THOLD
         # and asserts the real wdt_timer_rst_req_o output.

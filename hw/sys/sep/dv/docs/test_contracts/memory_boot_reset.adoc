@@ -124,7 +124,7 @@ reaches its wait before the interrupt fires.
 
 [arabic]
 . Check the software reset register default, which is `0x7E`: the Key Manager is held and OTBN, AES, HMAC, KMAC, the TRNG and Adams Bridge come up released. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The TRNG is not parked, because it supplies entropy rather than requesting it. The firmware then probes each per-IP reset wire, including the shared TRNG bit: assert the bit, confirm the register goes to its reset value, release, confirm it is writable again.
-. Perform a bad write and a bad read of the unmapped gap, with settling in between; expect two bus-error interrupts. The NMI handler records `mcause` and `mdseac` of each bus-error interrupt and writes `mdeau` to unlock `mdseac` before it returns. The firmware reports the interrupt count, `mcause` and `mdseac` of the bad write (a DECERR store: the reset-controller aperture answers DECERR past its one register, `hw/sys/sep/regs/sep.rdl`).
+. Perform a bad write and a bad read of the unmapped gap, with settling in between; expect two bus-error interrupts. The NMI handler records `mcause` and `mdseac` of each bus-error interrupt and writes `mdeau` to unlock `mdseac` before it returns. The firmware reports the interrupt count, `mcause` and `mdseac` of the bad write and of the bad read (a DECERR store: the reset-controller aperture answers DECERR past its one register, `hw/sys/sep/regs/sep.rdl`).
 . Store to the entropy pool `STATUS` register (a write to any offset ends with `BRESP=SLVERR`, `hw/sys/sep/doc/entropy_pool.adoc`, Access Policy) and report the interrupt count, `mcause` and `mdseac` the same way. Each error store waits for its interrupt for a bounded number of polls, then settles, so a second interrupt for the same store is also counted.
 . Store a non-reset value to the OTBN `INTR_ENABLE` register (OKAY), wait the same bounded window, read it back, restore the reset value and wait again. Report the interrupt count over both stores, the readback and the restored value.
 . Configure the watchdog with small bark and bite thresholds; enable.
@@ -138,7 +138,7 @@ reaches its wait before the interrupt fires.
 |===
 |Checker |Contract
 |CHK-BADADDR
-|Accesses to the unmapped gap raise exactly two bus-error interrupts.
+|Accesses to the unmapped gap raise exactly two bus-error interrupts. The second is the load's: `mcause` = `0xF000_0001` (load bus error) and `mdseac` = the load address, which the testbench derives from the register map (VeeR EL2 Programmer's Reference Manual, linked from `hw/sys/sep/doc/cpu.adoc`: non-maskable interrupt `mcause` values). A load that raises no interrupt, or a second store-error interrupt in its place, fails. Evidence: `CHK-BADADDR PASS: nmi=2 load_addr=<a> mcause=0xf0000001 mdseac=<a> ...`.
 |CHK-STORE-ERR-NMI
 |The store to the reset-controller gap gets B response DECERR (`0b11`, `hw/sys/sep/regs/sep.rdl`: the reset-controller aperture answers DECERR past its one register) and the store to the entropy pool gets SLVERR (`0b10`, `hw/sys/sep/doc/entropy_pool.adoc`, Access Policy). Each store raises exactly one non-maskable interrupt with `mcause` = `0xF000_0000` (store bus error) and `mdseac` = the store address (VeeR EL2 Programmer's Reference Manual, linked from `hw/sys/sep/doc/cpu.adoc`: non-maskable interrupt `mcause` values, `mdseac` and its `mdeau` unlock). The B response is read on the PR-LSU-XBAR tap: exactly one AW to the 64-bit word of the store address, its B paired by AXI ID in issue order. The testbench grades one record per response kind against the address it derives from the register map and the `mcause` constant. A missing AW or B, a wrong BRESP, a store that completes with no interrupt, a second interrupt, a load-error `mcause` or a wrong `mdseac` fails. Anchor: the B response on the LSU demux port and the CPU CSR values the handler reads. Control: `mdseac` equal to the store address shows the store reached the fabric and its error came back. Evidence: `CHK-STORE-ERR-NMI PASS: resp=<DECERR\|SLVERR> addr=<a> aw_count=1 aw/bresp=<aw>/<0b11\|0b10> nmi=1 mcause=0xf0000000 mdseac=<a> ...`.
 |CHK-STORE-OK-QUIET
@@ -154,7 +154,7 @@ reaches its wait before the interrupt fires.
 |CHK-BITE
 |The bite reset request reaches the real output pin.
 |CHK-SWRST-DEFAULT
-|The software reset register holds its specified default of `0x7E`.
+|The software reset register holds its specified default of `0x7E`: the firmware logs the value it reads first, and the testbench compares it with the RDL reset of `SW_RESET_N` (`hw/sys/sep/regs/sep.rdl`). Evidence: `CHK-SWRST-DEFAULT PASS: read=0x0000007e expected=0x0000007e (RDL reset)`.
 |CHK-SWRST-WIRE
 |Pulsing each per-IP bit, the shared TRNG bit and the Adams Bridge bit included, returns that domain's probe register to its reset value and leaves every probe outside that reset bit unchanged: seven probes for an OTBN, AES, HMAC, KMAC or Adams Bridge pulse and five for a TRNG pulse, since the entropy source, CSRNG and EDN share the TRNG bit. The firmware logs the count per pulse and the testbench requires those exact counts.
 |CHK-SWRST-WRITABLE
