@@ -109,8 +109,10 @@ three of the SMC base configuration registers:
   SMC input fabric's local/global split as well as SMU-level routing and
   SEP-to-SMC decode. Firmware must not program it to zero, and must keep
   `LOCAL_BASE + REGION_SIZE` inside the 32-bit SMC-local address space.
-  SMC units whose window extends past `REGION_SIZE` answer `DECERR` to the SMU
-  and the SEP. At the reset value these are the PLIC, CLINT and bus-error units,
+  An access from the SMU or the SEP at or above `BASE + REGION_SIZE` answers
+  `DECERR`; a unit that straddles the limit stays reachable below it, so pick a
+  `REGION_SIZE` that no unit straddles. At the reset value the PLIC, CLINT and
+  bus-error units lie wholly beyond the limit,
   so firmware must widen `REGION_SIZE` to cover them before either accesses them.
 
 For full details on alias remapping and outbound routing, see the SMC
