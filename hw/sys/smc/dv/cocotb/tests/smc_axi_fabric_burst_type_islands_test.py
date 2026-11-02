@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: TC_M4 ANCHOR: smc_axi_fabric_burst_type_islands_test
-# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 97dba3f67449f660c3fb954a12d88e28546a257a7f91f0e4364edd1f968d702a
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_AXI_FAB_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 2444e7860c720f57bf108ff162d352ef9b0826806e0e4e3569edeac49cb838a8
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_AXI_FAB_VPLAN_DETAIL.md @ artifact_revision 3 ENV: cocotb
 """FIXED, WRAP and INCR bursts from SEP_IN, SYS_IN and JTAG_IN at the SMC register islands.
 
 Drives the three burst types at the 64-bit islands behind the AXI-to-AXI-Lite conversion

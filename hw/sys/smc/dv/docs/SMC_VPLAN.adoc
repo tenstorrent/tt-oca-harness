@@ -11941,42 +11941,69 @@ IHI 0022 burst footprint unchanged.
 
 *Test Coverage*:
 
-* Register islands, each a 32-byte window that holds the named registers and no other register of
-  the generated map (checked at setup): alias remap slot 2, the base-config hang-detector window
-  (`HANG_DET_SYS_AXI_*`, `HANG_DET_SEP_AXI_*`), CPU-control `SCRATCH[4..7]`, misc
-  `SCRATCH_COLD[0..7]` and `SCRATCH_COLD_WARM[0..7]`, and the reset-unit FLR counters
+* Register islands, each a 32-byte window checked at setup: the leaf fails before any burst if a
+  window holds a register of the generated map (`smc_addr.h`) other than the island's own; reserved
+  space inside a window is allowed. The islands are alias remap slot 2, the base-config
+  hang-detector window (`HANG_DET_SYS_AXI_*`, `HANG_DET_SEP_AXI_*`), CPU-control `SCRATCH[4..7]`,
+  misc `SCRATCH_COLD[0..7]` and `SCRATCH_COLD_WARM[0..7]`, and the reset-unit FLR counters
   (`ISOLATE_REQ_VIS`, `ISOLATE_REQ_FLR_COUNTER_VALUE`, `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`).
+  The neighbours of each window are the nearest register of the generated map below and above it:
+  alias slot 1 `REGION_ATTRS` and slot 3 `REGION_START`; `CLOCK_GATE_CONTROL` and
+  `HANG_DET_DATA_ACCEL_CTRL`; CPU-control `SCRATCH[3]` and `SCRATCH[8]`;
+  `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` and `SCRATCH_COLD_WARM[0]`; `SCRATCH_COLD[7]` and
+  `CHIP_CONFIG.VERSION_LO`; `ISOLATE_REQ_SMCEN_REG` and `SCRATCH_COLD[0]`.
   Per port and island: INCR write and read (AxLEN=3), FIXED write of four distinct words and FIXED
   read (AxLEN=3) at +0x8 (+0x0 for the reset unit), WRAP write and read (AxLEN=3, first beat at
-  +0x10). Before each write the registers the previous burst touched are re-seeded from SEP_IN
-  with fresh distinct values; after it every island register and the neighbours outside the
-  window are read from SEP_IN. Alias `REGION_ATTRS.valid` and the hang-detector `enable` and
-  `irq_test` bits stay 0 in every written value; both hang-detector `CTRL` registers are seeded with
-  `irq_en`=1, which no burst beat sets.
+  +0x10). After each write every island register and both neighbours are read from SEP_IN.
+* Seeding rule: at setup, SEP_IN seeds every writable island register and every writable
+  neighbour with a distinct non-zero value that its RDL fields can hold, in fields that differ from
+  every 32-bit lane of every beat a burst writes there; the read-back, whose seeded fields must
+  equal the seed, is the reference. Before each write the registers a previous burst landed on are
+  seeded again. Each unchanged compare is counted as one that can fail only when its seeded fields
+  differ from every beat; an `INFO-COMPARES` line per island prints that count. Alias
+  `REGION_ATTRS.valid` stays 0 in every seed and beat. The hang-detector `CTRL` registers,
+  `HANG_DET_DATA_ACCEL_CTRL` included, are seeded with `irq_en`=1 and `enable`=`irq_test`=0, which
+  no burst beat sets; `CLOCK_GATE_CONTROL` is seeded in `cg_hysteresis` only (every clock-gate
+  enable stays 0) with a value of 0x20 or more, which no beat carries there.
+* Protocol-only cells: a register that is read-only in the RDL (`ISOLATE_REQ_VIS`,
+  `CHIP_CONFIG.VERSION_LO`, `NDMRESET_REQUEST`) is read with its response graded and printed as
+  `INFO-PROTOCOL-ONLY`; no unchanged claim is made for it.
 * Partial strobes: WSTRB=0xF0 to `SCRATCH_COLD[0]/[1]`, `SCRATCH_COLD_WARM[0]/[1]` and
   `ISOLATE_REQ_VIS`/`ISOLATE_REQ_FLR_COUNTER_VALUE`, WSTRB=0x0F to the misc pairs, WSTRB=0x30 to
   the cold pair, WSTRB=0xF0 all-ones to `CPU_CTRL.SCRATCH[12]`, and a 64-bit read of each misc pair.
-* GPIO slots 19..23 with AxPROT privileged: INCR write and read from slot 20 + 0x8, FIXED write and
-  read of the slot 21 word, WRAP write and read (AxLEN=1) from slot 21 + 0x8. Before the bursts
-  each slot is seeded from SEP_IN with values distinct per slot in `DATA_CTRL` (`core2pad`,
-  `interrupt_type`), `DATA_CTRL_ENABLE` (`use_reg_*`, `use_reg_tx` set whenever `use_reg_core2pad`
-  is) and `ACCESS_FILTER` (`awprot_requirement`, `arprot_requirement`), with `interface_enable`,
-  `enable_rx_tx` and both filter enables 0, and restored afterwards; every write carries the values
-  read before it.
+* GPIO burst slots 20..22 (k = 20) with AxPROT privileged: INCR write and read from slot 20 + 0x8,
+  FIXED write and read of the slot 21 word, WRAP write and read (AxLEN=1) from slot 21 + 0x8. The
+  burst slots are never seeded: every write carries the values read before it. The neighbour slots
+  19 and 23 are seeded from SEP_IN before the bursts with distinct non-zero values of the writable
+  fields the generated header names, `DATA_CTRL` (`core2pad`, `interrupt_type`), `DATA_CTRL_ENABLE`
+  (`use_reg_*`, `use_reg_tx` set whenever `use_reg_core2pad` is) and `ACCESS_FILTER`
+  (`awprot_requirement`, `arprot_requirement`), with `interface_enable`, `enable_rx_tx` and both
+  filter enables 0, each differing from every beat, and restored afterwards. A burst-slot register
+  outside the footprint is compared with its read-before value and counted as a compare that cannot
+  fail when that value equals a beat. `DATA_CTRL` `pad2core` and `lsio_enable` are read-only fields
+  that the pad and LSIO hardware drive, so every unchanged `DATA_CTRL` compare (bank and slot 64)
+  excludes them.
 * Scratchpad: INCR write and read with AxLEN 0, 7 and 255 crossing 64-byte stripes in one page,
   WRAP write and read with AxLEN 1, 3, 7 and 15 starting mid-window, FIXED write and read
   (AxLEN=3), narrow writes (AxSIZE 0, 1, 2) and a WSTRB=0x5A write each followed by a 64-bit read,
   guard words below and above each footprint, and an INCR write (AxLEN=3) to the scratchpad ROM
   with the ROM words read before and after.
-* Alias slot edge (slots 3..6, k = 4): INCR write and read from slot k + 0x10, WRAP write and read
-  (AxLEN=7, 64-byte window over slots k and k+1, first beat at slot k+1 + 0x10), WRAP write
-  (AxLEN=3, 32-byte window = slot k, first beat at slot k + 0x10).
+* Alias slot edge (island slots k = 4 and k+1, every register of slots k-1 and k+2 a seeded
+  neighbour): INCR write and read from slot k + 0x10, WRAP write and read (AxLEN=7, 64-byte window
+  over slots k and k+1, first beat at slot k+1 + 0x10), WRAP write (AxLEN=3, 32-byte window = slot
+  k, first beat at slot k + 0x10).
 * Extent edges: INCR read and write (AxLEN=3) starting on the last live register of the CPU
   control (+0x2B8), alias slot 7, inbound filter entry 15 (written with its current value), misc
   wrapper (+0x208), reset unit (+0xC8) and GPIO slot 64, with the registers below each start read
-  before and after. `DUMMY_ROM_NULL[1]`/`[2]` are seeded with distinct non-zero values and
-  `NDMRESET_PROCESS` with a distinct value in the bits at or above `NDMRESET_CLUSTER_COUNT` before
-  the write, and restored after it.
+  before and after. At setup every writable one is seeded with a distinct non-zero value that no
+  beat of its burst carries: `DUMMY_ROM_NULL[1]`/`[2]`; alias slot 7 `REGION_START`/`REGION_END`
+  with `valid`=0; inbound filter entry 15 `START_ADDR` (4 KiB aligned) and `FILTER_CONFIG`
+  `src_id`/`group_id` with `entry_enabled` and `locked` 0, so the filter configuration in force
+  does not change; `NDMRESET_PROCESS` in the bits at or above `NDMRESET_CLUSTER_COUNT`;
+  `ISOLATE_REQ_FLR_COUNTER_VALUE` (seeded again before the first extent-edge burst, since the
+  island and strobe steps write it); GPIO slot 64 `DATA_CTRL` and `DATA_CTRL_ENABLE` and slot 63
+  `ACCESS_FILTER` as in the GPIO bank. They are restored after the last extent-edge burst.
+  `NDMRESET_REQUEST` and `ISOLATE_REQ_VIS` are protocol-only.
 * Rule and window ends: INCR write and read (AxLEN=7) ending on the last scratchpad word with the
   first CLA word read before and after, an INCR read (AxLEN=7) ending on the last word of the CPU
   control aperture, and INCR read and write (AxLEN=15) ending on the last word below
@@ -12000,8 +12027,9 @@ IHI 0022 burst footprint unchanged.
 . ADMIT: wait for the fuse sense (bounded by 200 000 `clk_smc_i` cycles), start the sampler,
   register the open-response burst addresses, program inbound filter entry 0 pass-all with
   `allow_burst`=1 and read it back; `CTRL-M4-ADMIT`: a SYS_IN 64-bit read of `LOCAL_BASE` answers
-  OKAY 0x0000_0000_C000_0000. Check each island window, check that alias slots 0 and 7 have
-  `valid`=0, seed every island register from SEP_IN and read it back.
+  OKAY 0x0000_0000_C000_0000. Check each island window against the generated map, check that alias
+  slots 0 and 7 have `valid`=0, seed every writable island register, island neighbour and
+  extent-edge lower register from SEP_IN and read it back.
 . ISLAND64, ISLAND32: the six shapes per port and island, then `LOCAL_BASE` on that port.
 . STROBES, GPIO, SPM, SLOT_EDGE, EXTENT_EDGE, RULE_ENDS per port, each family followed by a
   `LOCAL_BASE` read; LIVENESS closes with one `LOCAL_BASE` read per port.
@@ -12018,15 +12046,15 @@ IHI 0022 burst footprint unchanged.
 |Checker |Description
 |`CHK-BT-ISLAND64` |For each burst shape, 64-bit island and port: every W beat accepted with WLAST
 on beat AxLEN and one B with BID=AWID and no EXOKAY; AxLEN+1 R beats with RID=ARID, RLAST on the
-last beat only and no EXOKAY; every register outside the burst footprint reads its reference;
-liveness OKAY
+last beat only and no EXOKAY; every writable island register and neighbour outside the burst
+footprint reads its seeded reference, which no beat carries; liveness OKAY
 |`CHK-BT-ISLAND32` |The same through the 64-to-32-bit downsizer on the misc scratch words and the
 reset-unit FLR counters
 |`CHK-BT-STRB-UPPER` |WSTRB=0xF0: OKAY, +4 takes D[63:32], +0 keeps its value (`ISOLATE_REQ_VIS`
 its reset value); WSTRB=0x0F: +0 takes D[31:0], +4 kept; WSTRB=0x30: +0 kept; CPU-control
 `SCRATCH` reads bits [63:32]=0 and its value in [31:0]; the 64-bit pair read assembles +0 and +4
-|`CHK-BT-GPIO` |GPIO burst protocol as above, slots and words outside the footprint keep their
-read-before contents, liveness OKAY
+|`CHK-BT-GPIO` |GPIO burst protocol as above, the seeded neighbour slots 19 and 23 and the
+burst-slot words outside the footprint keep their read-before contents, liveness OKAY
 |`CHK-BT-SPM` |INCR: OKAY and every beat reads the data written; WRAP and FIXED: protocol held and
 the guard words outside the window or the neighbouring words kept; narrow and strobed writes change
 only the strobed bytes with OKAY; the ROM write answers one B with SLVERR and the ROM words are
@@ -12034,8 +12062,9 @@ unchanged; liveness OKAY
 |`CHK-BT-SLOTEDGE` |Slot-edge burst protocol, every register of slots k-1..k+2 outside the
 footprint keeps its reference, liveness OKAY
 |`CHK-BT-EXTENTEDGE` |Extent-edge burst protocol, every writable register below the burst start
-keeps its value, liveness OKAY; the read-only `NDMRESET_REQUEST` is printed as
-`INFO-PROTOCOL-ONLY`
+reads back the seed it held before the burst (a value no beat carries), liveness OKAY; the line
+reports the number of compares that can fail; the read-only `NDMRESET_REQUEST` and
+`ISOLATE_REQ_VIS` are printed as `INFO-PROTOCOL-ONLY`
 |`CHK-BT-RULEEDGE` |The scratchpad-end burst answers OKAY with the written data and the first CLA
 word is unchanged; the CPU-control-end read returns AxLEN+1 beats with RLAST on the last only
 |`CHK-BT-REGIONEDGE` |Window-end burst protocol at the reset `REGION_SIZE` and at 0x400, the core-0
@@ -12060,10 +12089,12 @@ GPIO access filter or the L2 frontend answer, the landing of beats inside a foot
 decoded extent or the window end and the `REGION_SIZE` restore path wait on SF-005, SF-007, SF-008,
 SF-010, SF-011, SF-022, SF-024 and SF-025 and are OBS lines. The reset-unit island window ends past
 the decoded extent of the reset unit, so its WRAP first beat and the upper words of its INCR bursts
-address the past-extent region. `NDMRESET_REQUEST` below the misc wrapper extent edge is read-only
-in the RDL, so a stray beat cannot change it: its reads are protocol graded and printed as
-`INFO-PROTOCOL-ONLY`, and no integrity claim is made for it. `ocah_axi_sva` fires are read from the
-kept log.
+address the past-extent region. `ISOLATE_REQ_VIS`, `CHIP_CONFIG.VERSION_LO` and
+`NDMRESET_REQUEST` are read-only in the RDL, so a stray beat cannot change them: their reads are
+protocol graded and printed as `INFO-PROTOCOL-ONLY`, and no integrity claim is made for them. The
+GPIO burst slots carry their read-first values, so an unchanged compare there whose reference
+equals a beat cannot fail; the seeded neighbour slots carry that claim. `ocah_axi_sva` fires are
+read from the kept log.
 
 '''''
 

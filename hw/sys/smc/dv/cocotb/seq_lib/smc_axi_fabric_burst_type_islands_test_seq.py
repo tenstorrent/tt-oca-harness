@@ -79,11 +79,13 @@ _SCRATCH_H = _BLOCKS_H / "scratch.h"
 _RESET_UNIT_H = _BLOCKS_H / "reset_unit.h"
 _ALIAS_H = _REPO / "hw" / "ip" / "axi_alias_remap" / "regs" / "gen" / "c" / "alias_remap.h"
 _GPIO_INTF_H = _REPO / "hw" / "ip" / "gpio" / "regs" / "gen" / "c" / "gpio_intf.h"
+_FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
 
 HANG_CTRL_SEED = _field_mask(_BASE_CFG_H, "SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_EN_bm")
 HANG_CTRL_UNSAFE = _field_mask(_BASE_CFG_H, "SMC_BASE_CONFIG__HANG_DET_CTRL__ENABLE_bm") | (
     _field_mask(_BASE_CFG_H, "SMC_BASE_CONFIG__HANG_DET_CTRL__IRQ_TEST_bm")
 )
+CG_HYSTERESIS = _field_mask(_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bm")
 HANG_THRESHOLD_MASK = _field_mask(
     _BASE_CFG_H, "SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bm"
 )
@@ -99,11 +101,18 @@ FLR_COUNTER_MASK = _field_mask(
     _RESET_UNIT_H,
     "RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_bm",
 )
-# Reg.seed_mask markers for the extent-edge lower registers: READ_ONLY drops the unchanged
-# compare; NDM_ABOVE_COUNT seeds only NDMRESET_PROCESS bits at or above NDMRESET_CLUSTER_COUNT,
-# which are not driven on the process output.
-READ_ONLY = -1
+# Reg.seed_mask marker: NDMRESET_PROCESS is seeded only in the bits at or above
+# NDMRESET_CLUSTER_COUNT, which are not driven on the process output.
 NDM_ABOVE_COUNT = -2
+SMCEN_MASK = _field_mask(
+    _RESET_UNIT_H, "RESET_UNIT__ISOLATE_REQ_SMCEN_REG__ISOLATE_REQ_SMCEN_REG_bm"
+)
+DUMMY_NULL_MASK = _field_mask(_CPU_CTRL_H, "CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_bm")
+# Entry 15 keeps entry_enabled and locked 0, so the filter configuration in force is unchanged.
+FILTER_ID_SEED = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__SRC_ID_bm") | _field_mask(
+    _FILTER_H, "FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bm"
+)
+FILTER_START_SEED = _field_mask(_FILTER_H, "FILTER_CTRL__START_ADDR__START_ADDR_bm") & ~0xFFF
 FLR_RESET_MASK = _field_mask(
     _RESET_UNIT_H,
     "RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_bm",
@@ -117,6 +126,13 @@ GPIO_USE_REG_TX = _field_mask(_GPIO_INTF_H, "GPIO_INTF__DATA_CTRL_ENABLE__USE_RE
 GPIO_USE_REG_RX = _field_mask(_GPIO_INTF_H, "GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_RX_bm")
 GPIO_AWPROT_REQ = _field_mask(_GPIO_INTF_H, "GPIO_INTF__ACCESS_FILTER__AWPROT_REQUIREMENT_bm")
 GPIO_ARPROT_REQ = _field_mask(_GPIO_INTF_H, "GPIO_INTF__ACCESS_FILTER__ARPROT_REQUIREMENT_bm")
+GPIO_DATA_CTRL_SEED = GPIO_CORE2PAD | GPIO_INTERRUPT_TYPE
+# Read-only DATA_CTRL fields the pad and LSIO hardware drive; no write can change them.
+GPIO_DATA_CTRL_HW = _field_mask(_GPIO_INTF_H, "GPIO_INTF__DATA_CTRL__PAD2CORE_bm") | _field_mask(
+    _GPIO_INTF_H, "GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm"
+)
+GPIO_ENABLE_SEED = GPIO_USE_REG_CORE2PAD | GPIO_USE_REG_TX | GPIO_USE_REG_RX
+GPIO_ACCESS_SEED = GPIO_AWPROT_REQ | GPIO_ARPROT_REQ
 ISOLATE_REQ_VIS_RESET = reg_reset_word(_RESET_UNIT_H, "RESET_UNIT", "ISOLATE_REQ_VIS")
 ALL64 = (1 << 64) - 1
 BEAT_TAG = 0x0EE0
@@ -127,12 +143,11 @@ SPM_SIZE = smc_addr("SMC_TOP_SPM_MEMORY_SIZE")
 SPM_ROM_BASE = smc_addr("SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR")
 CLA_BASE = smc_addr("SMC_TOP_SMC_CLA_BASE_ADDR")
 GPIO_K = 20
-EXTENT_SEEDED = ("cpu_ctrl-0x2B8", "misc_wrap-0x208")
 ALIAS_ISLAND_SLOT = 2
 ALIAS_EDGE_K = 4
-ALIAS_LAST_SLOT = smc_addr("SMC_TOP_SMC_ALIAS_REMAP_NUM") - 1
-FILTER_LAST = smc_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_NUM") - 1
-GPIO_LAST = smc_addr("SMC_TOP_GPIO_INTF_NUM") - 1
+ALIAS_LAST_SLOT = smc_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM") - 1
+FILTER_LAST = smc_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM") - 1
+GPIO_LAST = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM") - 1
 CPU_STRB_SCRATCH = 12
 
 WDT_REGS = tuple(
@@ -192,8 +207,8 @@ def footprint(addr: int, beats: int, burst: int) -> tuple[int, ...]:
     return tuple(lo + ((addr - lo + BEAT * i) % size) for i in range(beats))
 
 
-def _unit_register_addrs(prefix: str) -> set[int]:
-    """Every register address the generated SMC map gives the unit whose symbols start ``prefix``."""
+def _unit_register_addrs(prefix: str = "SMC_TOP_") -> set[int]:
+    """Every register address the generated SMC map gives the symbols that start ``prefix``."""
     addrs = {smc_addr(sym) for sym in smc_addr_symbols(rf"{prefix}\w*_BASE_ADDR")}
     for sym, (base, stride) in _parse_indexed_bases(_SMC_ADDR_H).items():
         if not (sym.startswith(prefix) and sym.endswith("_BASE_ADDR")):
@@ -211,10 +226,32 @@ class Reg:
     width: int
     seed_mask: int = 0
     stated: int | None = None
+    ro: bool = False
+    hw_bits: int = 0
 
     @property
     def word(self) -> int:
         return self.addr & ~(BEAT - 1)
+
+    def same(self, value: int | None, ref: int | None) -> bool:
+        """Equal outside the read-only fields that hardware drives."""
+        if value is None or ref is None:
+            return value == ref
+        return not (value ^ ref) & ~self.hw_bits
+
+
+def can_fail(mask: int, ref: int, beats: list[int], width: int) -> bool:
+    """True when every value a beat could write into the register differs from ``ref`` in ``mask``.
+
+    ``mask`` is the seeded writable fields; a 32-bit register is compared with both halves of
+    every beat, since a stray beat may land on either lane.
+    """
+    if not mask:
+        return False
+    values = list(beats)
+    if width == 4:
+        values = [h for b in beats for h in (b & 0xFFFF_FFFF, (b >> 32) & 0xFFFF_FFFF)]
+    return all((ref ^ v) & mask for v in values)
 
 
 @dataclass
@@ -227,7 +264,6 @@ class Island:
     neighbours: tuple[Reg, ...]
     data_mask: int
     fixed_off: int
-    dirty: set[Reg] = field(default_factory=set)
 
 
 @dataclass
@@ -241,7 +277,22 @@ class Fam:
     findings: list[str] = field(default_factory=list)
     graded: int = 0
     compares: int = 0
+    failable: int = 0
     bursts: int = 0
+    per_island: dict[str, list] = field(default_factory=dict)
+
+    def tally(self, island: str, reg: Reg, failable: bool | None) -> None:
+        """Count one unchanged compare (True/False: can or cannot fail) or a protocol-only cell."""
+        row = self.per_island.setdefault(island, [0, 0, set()])
+        if failable is None:
+            row[2].add(reg.name)
+            return
+        self.compares += 1
+        if failable:
+            self.failable += 1
+            row[0] += 1
+        else:
+            row[1] += 1
 
 
 @dataclass
@@ -423,12 +474,12 @@ def _r64(name: str, addr: int, mask: int = 0) -> Reg:
     return Reg(name, addr, 8, mask)
 
 
-def _r32(name: str, addr: int, mask: int = 0, stated: int | None = None) -> Reg:
-    return Reg(name, addr, 4, mask, stated)
+def _r32(name: str, addr: int, mask: int = 0, stated: int | None = None, ro: bool = False) -> Reg:
+    return Reg(name, addr, 4, mask, stated, ro)
 
 
 def _alias_regs(slot: int) -> tuple[Reg, Reg, Reg]:
-    sym = "SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_{}_BASE_ADDR"
+    sym = "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_{}_BASE_ADDR"
     return (
         _r64(f"ALIAS{slot}.START", smc_indexed_addr(sym.format("START"), slot), ALIAS_ADDR_MASK),
         _r64(f"ALIAS{slot}.END", smc_indexed_addr(sym.format("END"), slot), ALIAS_END_MASK),
@@ -464,7 +515,7 @@ def _islands64() -> tuple[Island, ...]:
     return (
         Island(
             "alias_remap-slot2",
-            "SMC_TOP_SMC_ALIAS_REMAP_",
+            "SMC_TOP_SMC_ALIAS_REMAP_WRAP_",
             alias[0].addr,
             0x20,
             alias,
@@ -479,8 +530,12 @@ def _islands64() -> tuple[Island, ...]:
             0x20,
             hang,
             (
-                _r64("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL),
-                _r32("HANG_DET_DATA_ACCEL_CTRL", _base_cfg("HANG_DET_DATA_ACCEL_CTRL")),
+                _r64("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, CG_HYSTERESIS),
+                _r32(
+                    "HANG_DET_DATA_ACCEL_CTRL",
+                    _base_cfg("HANG_DET_DATA_ACCEL_CTRL"),
+                    HANG_CTRL_SEED,
+                ),
             ),
             ALL64 & ~(HANG_CTRL_UNSAFE | (HANG_CTRL_UNSAFE << 32)),
             0x8,
@@ -516,6 +571,7 @@ def _islands32() -> tuple[Island, ...]:
             "ISOLATE_REQ_VIS",
             smc_addr(ru.format("ISOLATE_REQ_VIS")),
             stated=ISOLATE_REQ_VIS_RESET,
+            ro=True,
         ),
         _r32(
             "ISOLATE_REQ_FLR_COUNTER_VALUE",
@@ -528,6 +584,12 @@ def _islands32() -> tuple[Island, ...]:
             FLR_RESET_MASK,
         ),
     )
+    version_lo = _r32(
+        "CHIP_CONFIG.VERSION_LO",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR"),
+        ro=True,
+    )
+    smcen = _r32("ISOLATE_REQ_SMCEN_REG", smc_addr(ru.format("ISOLATE_REQ_SMCEN_REG")), SMCEN_MASK)
     return (
         Island(
             "misc-scratch_cold",
@@ -535,7 +597,7 @@ def _islands32() -> tuple[Island, ...]:
             cold[0].addr,
             0x20,
             cold,
-            (),
+            (flr[2], warm[0]),
             ALL64,
             0x8,
         ),
@@ -545,7 +607,7 @@ def _islands32() -> tuple[Island, ...]:
             warm[0].addr,
             0x20,
             warm,
-            (),
+            (cold[7], version_lo),
             ALL64,
             0x8,
         ),
@@ -555,7 +617,7 @@ def _islands32() -> tuple[Island, ...]:
             flr[0].addr,
             0x20,
             flr,
-            (_r32("ISOLATE_REQ_SMCEN_REG", smc_addr(ru.format("ISOLATE_REQ_SMCEN_REG"))),),
+            (smcen, cold[0]),
             ALL64,
             0x0,
         ),
@@ -563,29 +625,54 @@ def _islands32() -> tuple[Island, ...]:
 
 
 def _slot_edge_island() -> Island:
-    regs: tuple[Reg, ...] = ()
-    for slot in range(ALIAS_EDGE_K - 1, ALIAS_EDGE_K + 3):
-        regs += _alias_regs(slot)
+    """Alias slots k and k+1; every register of slots k-1 and k+2 is a seeded neighbour."""
+    regs = _alias_regs(ALIAS_EDGE_K) + _alias_regs(ALIAS_EDGE_K + 1)
     return Island(
         "alias-slot-pair",
-        "SMC_TOP_SMC_ALIAS_REMAP_",
+        "SMC_TOP_SMC_ALIAS_REMAP_WRAP_",
         regs[0].addr,
-        4 * smc_addr("SMC_TOP_SMC_ALIAS_REMAP_STRIDE"),
+        2 * smc_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_STRIDE"),
         regs,
-        (),
+        _alias_regs(ALIAS_EDGE_K - 1) + _alias_regs(ALIAS_EDGE_K + 2),
         ALL64 & ~ALIAS_VALID,
         0,
     )
 
 
 def _gpio_regs(slot: int) -> tuple[Reg, Reg, Reg]:
-    sym = "SMC_TOP_GPIO_INTF_{}_BASE_ADDR"
+    sym = "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_{}_BASE_ADDR"
     return (
-        _r32(f"GPIO{slot}.DATA_CTRL", smc_indexed_addr(sym.format("DATA_CTRL"), slot)),
-        _r32(
-            f"GPIO{slot}.DATA_CTRL_ENABLE", smc_indexed_addr(sym.format("DATA_CTRL_ENABLE"), slot)
+        Reg(
+            f"GPIO{slot}.DATA_CTRL",
+            smc_indexed_addr(sym.format("DATA_CTRL"), slot),
+            4,
+            GPIO_DATA_CTRL_SEED,
+            hw_bits=GPIO_DATA_CTRL_HW,
         ),
-        _r32(f"GPIO{slot}.ACCESS_FILTER", smc_indexed_addr(sym.format("ACCESS_FILTER"), slot)),
+        _r32(
+            f"GPIO{slot}.DATA_CTRL_ENABLE",
+            smc_indexed_addr(sym.format("DATA_CTRL_ENABLE"), slot),
+            GPIO_ENABLE_SEED,
+        ),
+        _r32(
+            f"GPIO{slot}.ACCESS_FILTER",
+            smc_indexed_addr(sym.format("ACCESS_FILTER"), slot),
+            GPIO_ACCESS_SEED,
+        ),
+    )
+
+
+def _gpio_island() -> Island:
+    """GPIO burst slots k..k+2; slots k-1 and k+3 are the seeded neighbours."""
+    return Island(
+        "gpio-slots",
+        "SMC_TOP_GPIO_INTF_WRAP_",
+        smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR", GPIO_K),
+        3 * smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE"),
+        tuple(reg for s in range(GPIO_K, GPIO_K + 3) for reg in _gpio_regs(s)),
+        _gpio_regs(GPIO_K - 1) + _gpio_regs(GPIO_K + 3),
+        ALL64,
+        0,
     )
 
 
@@ -718,6 +805,12 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         self.i64 = _islands64()
         self.i32 = _islands32()
         self.edge = _slot_edge_island()
+        self.gpio_isl = _gpio_island()
+        self.ext = self._extent_targets()
+        self.ext_orig: dict[Reg, int | None] = {}
+        self.ndm_mask = 0
+        self.dirty: set[Reg] = set()
+        self.map_addrs = _unit_register_addrs()
         self.sampler: SmcPortHandshakeSampler | None = None
         self.dispatch_reset = None
         self.fence: list[tuple[str, int, int, int]] = []
@@ -958,15 +1051,28 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             planned,
         )
 
+    def _mask(self, reg: Reg) -> int:
+        return self.ndm_mask if reg.seed_mask == NDM_ABOVE_COUNT else reg.seed_mask
+
     def _seed_value(self, reg: Reg) -> int:
         self.serial += 1
         s = self.serial
-        if reg.seed_mask == HANG_CTRL_SEED:
+        mask = self._mask(reg)
+        if mask == HANG_CTRL_SEED:
             value = HANG_CTRL_SEED & ~BEAT_TAG
             assert value, "every island beat sets HANG_DET_CTRL.irq_en"
             return value
+        if mask == CG_HYSTERESIS:
+            return _fv(CG_HYSTERESIS, 0x20 | (s & 0x1F))
+        if mask in (GPIO_DATA_CTRL_SEED, GPIO_ENABLE_SEED, GPIO_ACCESS_SEED):
+            fields = (GPIO_DATA_CTRL_SEED, GPIO_ENABLE_SEED, GPIO_ACCESS_SEED)
+            return _gpio_seeds(1 + s % 3)[fields.index(mask)]
+        if mask == FILTER_ID_SEED:
+            src = _fv(_field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__SRC_ID_bm"), 1 + s % 15)
+            grp = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bm")
+            return src | _fv(grp, 15 - s % 15)
         raw = (0x5A << 56) | ((s & 0xFFFFF) << 32) | (0x5E << 24) | ((s & 0xFFF) << 12) | 0x5ED
-        value = raw & reg.seed_mask
+        value = raw & mask
         assert value, f"seed of {reg.name} is zero under mask 0x{reg.seed_mask:x}"
         return value
 
@@ -986,13 +1092,14 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
     # ---------------------------------------------------------------- islands
 
     def _check_window(self, isl: Island) -> None:
-        """Fail at setup unless the window holds the named registers and no other register."""
+        """Fail at setup unless the window holds the named registers and no other register of
+        the generated map (reserved space is allowed)."""
         lo, hi = isl.base, isl.base + isl.span
         named = {reg.addr for reg in isl.regs}
         unit = _unit_register_addrs(isl.unit_prefix)
         missing = sorted(a for a in named if a not in unit)
         outside = sorted(r.name for r in isl.regs if not (lo <= r.addr and r.addr + r.width <= hi))
-        foreign = sorted(a for a in unit if lo <= a < hi and a not in named)
+        foreign = sorted(a for a in self.map_addrs if lo <= a < hi and a not in named)
         assert not missing and not outside and not foreign, (
             f"island {isl.key} window 0x{lo:x}-0x{hi - 1:x}: named registers not in the map "
             f"{[hex(a) for a in missing]}, outside the window {outside}, other registers "
@@ -1009,36 +1116,74 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             covered,
             isl.span - covered,
         )
+        cocotb.log.info(
+            "INFO-ISLAND-NEIGHBOURS: %s %s; writable ones seeded, read-only ones protocol-only",
+            isl.key,
+            ", ".join(
+                f"{r.name}@0x{r.addr:x}{' read-only' if r.ro else ''}" for r in isl.neighbours
+            ),
+        )
+
+    def _protocol_only(self, ctx: str, reg: Reg, value: int | None) -> None:
+        cocotb.log.info(
+            "INFO-PROTOCOL-ONLY: %s %s @ 0x%x is read-only in the RDL, reads %s; protocol graded, "
+            "no unchanged claim",
+            ctx,
+            reg.name,
+            reg.addr,
+            _hx(value),
+        )
+
+    async def _seed(self, fam: Fam, reg: Reg, tag: str, prot: int = 0) -> None:
+        """Write a seed and take the read-back as the reference once its seeded fields match."""
+        mask = self._mask(reg)
+        assert mask, f"writable {reg.name} has no seed mask"
+        value = self._seed_value(reg)
+        await self._wr(fam, "SEP_IN", f"{tag}_{reg.name}", reg.addr, value, reg.width, prot)
+        got = await self._rd(fam, "SEP_IN", f"{tag}_RB_{reg.name}", reg.addr, reg.width, prot)
+        self.setup_compares += 1
+        if got is None or got & mask != value:
+            fam.findings.append(
+                f"{tag} {reg.name} @ 0x{reg.addr:x} reads {_hx(got)}, seeded fields want "
+                f"0x{value:x} under 0x{mask:x}"
+            )
+        self.ref[reg] = value if got is None else got
+        self.dirty.discard(reg)
 
     async def _seed_island(self, isl: Island, fam: Fam) -> None:
         for reg in isl.regs + isl.neighbours:
-            if reg.seed_mask:
-                value = self._seed_value(reg)
-                await self._wr(fam, "SEP_IN", f"SEED_{reg.name}", reg.addr, value, reg.width)
-                self.ref[reg] = value
-            elif reg.stated is not None:
-                self.ref[reg] = reg.stated
-            else:
-                got = await self._rd(fam, "SEP_IN", f"SNAP_{reg.name}", reg.addr, reg.width)
-                assert got is not None, f"{reg.name} snapshot read returned no data"
-                self.ref[reg] = got
-        isl.dirty.clear()
+            if not reg.ro and reg not in self.ref:
+                await self._seed(fam, reg, "SEED")
         back = await self._readback(isl, fam, "SETUP")
         for reg, value in back.items():
+            if reg.ro:
+                self._protocol_only(f"SETUP {isl.key}", reg, value)
+                continue
             self.setup_compares += 1
-            if value != self.ref[reg]:
+            if not reg.same(value, self.ref[reg]):
                 fam.findings.append(
-                    f"setup {isl.key} {reg.name} @ 0x{reg.addr:x} reads 0x{value:x}, "
+                    f"setup {isl.key} {reg.name} @ 0x{reg.addr:x} reads {_hx(value)}, "
                     f"want 0x{self.ref[reg]:x}"
                 )
 
     async def _reseed(self, isl: Island, fam: Fam) -> None:
-        for reg in isl.regs:
-            if reg in isl.dirty and reg.seed_mask:
-                value = self._seed_value(reg)
-                await self._wr(fam, "SEP_IN", f"RESEED_{reg.name}", reg.addr, value, reg.width)
-                self.ref[reg] = value
-        isl.dirty.clear()
+        for reg in isl.regs + isl.neighbours:
+            if reg in self.dirty:
+                await self._seed(fam, reg, "RESEED")
+
+    def _unchanged(
+        self, fam: Fam, island: str, ctx: str, reg: Reg, value, ref: int, beats: list[int]
+    ) -> None:
+        """Compare an out-of-footprint register with its reference and count whether it can fail."""
+        failable = can_fail(self._mask(reg), ref, beats, reg.width)
+        fam.tally(island, reg, failable)
+        if not failable:
+            fam.findings.append(f"{ctx}: seeded {reg.name} reference 0x{ref:x} equals a beat")
+        if not reg.same(value, ref):
+            fam.findings.append(
+                f"{ctx}: out-of-footprint {reg.name} @ 0x{reg.addr:x} reads {_hx(value)}, "
+                f"want 0x{ref:x}"
+            )
 
     async def _readback(self, isl: Island, fam: Fam, tag: str) -> dict[Reg, int | None]:
         out = {}
@@ -1081,16 +1226,15 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                 inside = []
                 for reg in isl.regs + isl.neighbours:
                     value = after[reg]
-                    if reg in isl.regs and reg.word in words:
-                        inside.append(f"{reg.name}:{'X' if value is None else hex(value)}")
-                        isl.dirty.add(reg)
+                    if reg.ro:
+                        fam.tally(isl.key, reg, None)
+                        self._protocol_only(ctx, reg, value)
                         continue
-                    fam.compares += 1
-                    if value != self.ref[reg]:
-                        fam.findings.append(
-                            f"{ctx}: out-of-footprint {reg.name} @ 0x{reg.addr:x} reads "
-                            f"{'X' if value is None else hex(value)}, want 0x{self.ref[reg]:x}"
-                        )
+                    if reg.word in words:
+                        inside.append(f"{reg.name}:{_hx(value)}")
+                        self.dirty.add(reg)
+                        continue
+                    self._unchanged(fam, isl.key, ctx, reg, value, self.ref[reg], data)
                 self._obs(
                     fam,
                     port=port,
@@ -1237,8 +1381,9 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
 
     async def _gpio(self, port: str, pidx: int) -> int:
         fam = self.fams["GPIO"]
-        slots = range(GPIO_K - 1, GPIO_K + 4)
-        regs = [reg for s in slots for reg in _gpio_regs(s)]
+        isl = self.gpio_isl
+        lower, upper = isl.neighbours[:3], isl.neighbours[3:]
+        regs = list(lower) + list(isl.regs) + list(upper)
         by_addr = {reg.addr: reg for reg in regs}
 
         async def read_all(tag: str) -> dict[int, int | None]:
@@ -1254,8 +1399,8 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             hi = values.get(addr + 4) if addr + 4 in by_addr else 0
             return ((hi or 0) << 32) | lo
 
-        slot_k = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", GPIO_K)
-        slot_k1 = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", GPIO_K + 1)
+        slot_k = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR", GPIO_K)
+        slot_k1 = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR", GPIO_K + 1)
         shapes = (
             ("slot-cross/wr", "S1", INCR, True, slot_k + 0x8, 4),
             ("slot-cross/rd", "S2", INCR, False, slot_k + 0x8, 4),
@@ -1266,18 +1411,21 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         )
         orig = await read_all("ORIG")
         seeds = {}
-        for j, s in enumerate(slots):
-            for reg, value in zip(_gpio_regs(s), _gpio_seeds(j)):
+        for j, group in ((0, lower), (4, upper)):
+            for reg, value in zip(group, _gpio_seeds(j)):
                 await self._wr(
                     fam, "SEP_IN", f"GPIO_SEED_{reg.name}", reg.addr, value, 4, PROT_PRIVILEGED
                 )
                 seeds[reg.addr] = value
         before = await read_all("PRE")
-        for reg in regs:
-            if before[reg.addr] != seeds[reg.addr]:
+        seed_ref = {}
+        for addr, value in seeds.items():
+            got = before[addr]
+            seed_ref[addr] = value if got is None else got
+            if got is None or got & by_addr[addr].seed_mask != value:
                 fam.findings.append(
-                    f"GPIO {port} seed {reg.name} reads {_hx(before[reg.addr])}, "
-                    f"want 0x{seeds[reg.addr]:x}"
+                    f"GPIO {port} seed {by_addr[addr].name} reads {_hx(got)}, "
+                    f"seeded fields want 0x{value:x}"
                 )
         n = 0
         for shape, scen, burst, write, start, beats in shapes:
@@ -1302,11 +1450,18 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     if reg.word in set(words):
                         inside.append(f"{reg.name}:{_hx(after[reg.addr])}")
                         continue
-                    fam.compares += 1
-                    if after[reg.addr] != before[reg.addr]:
+                    ref = before[reg.addr]
+                    if reg.addr in seeds:
+                        self._unchanged(
+                            fam, isl.key, ctx, reg, after[reg.addr], seed_ref[reg.addr], data
+                        )
+                        continue
+                    # Burst slots hold their read-first values, which the beats also carry.
+                    fam.tally(isl.key, reg, can_fail(reg.seed_mask, ref or 0, data, 4))
+                    if not reg.same(after[reg.addr], ref):
                         fam.findings.append(
                             f"{ctx}: out-of-footprint {reg.name} reads {_hx(after[reg.addr])}, "
-                            f"read-before {_hx(before[reg.addr])}"
+                            f"read-before {_hx(ref)}"
                         )
                 self._obs(
                     fam,
@@ -1340,7 +1495,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             fam.bursts += 1
             self._cell(fam, scen, f"{port}/{shape}")
             n += 1
-        for reg in regs:
+        for reg in lower + upper:
             if orig[reg.addr] is not None:
                 await self._wr(
                     fam,
@@ -1534,8 +1689,10 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
     async def _slot_edge(self, port: str, pidx: int) -> int:
         fam = self.fams["SLOTEDGE"]
         isl = self.edge
-        stride = smc_addr("SMC_TOP_SMC_ALIAS_REMAP_STRIDE")
-        slot_k = smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR", ALIAS_EDGE_K)
+        stride = smc_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_STRIDE")
+        slot_k = smc_indexed_addr(
+            "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_BASE_ADDR", ALIAS_EDGE_K
+        )
         slot_k1 = slot_k + stride
         shapes = (
             ("incr/wr", "S1", INCR, True, slot_k + 0x10, 4),
@@ -1563,19 +1720,14 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                 bresp = self._check_write(fam, ctx, port, item, hs)
                 after = await self._readback(isl, fam, shape.replace("/", "_"))
                 k1 = []
-                for reg in isl.regs:
+                for reg in isl.regs + isl.neighbours:
                     value = after[reg]
                     if reg.addr in (slot_k1, slot_k1 + 0x8):
                         k1.append(f"{reg.name}:{_hx(value)}")
                     if reg.word in words:
-                        isl.dirty.add(reg)
+                        self.dirty.add(reg)
                         continue
-                    fam.compares += 1
-                    if value != self.ref[reg]:
-                        fam.findings.append(
-                            f"{ctx}: out-of-footprint {reg.name} reads {_hx(value)}, "
-                            f"want 0x{self.ref[reg]:x}"
-                        )
+                    self._unchanged(fam, isl.key, ctx, reg, value, self.ref[reg], data)
                 self._obs(
                     fam,
                     port=port,
@@ -1610,7 +1762,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
     # ------------------------------------------------------------- extent edge
 
     def _extent_targets(self) -> tuple:
-        ib = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_{}_BASE_ADDR"
+        ib = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{}_BASE_ADDR"
         ru = "SMC_TOP_SMC_RESET_UNIT_{}_BASE_ADDR"
         nd = "SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_{}_BASE_ADDR"
         null = "SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADDR"
@@ -1631,8 +1783,8 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                 8,
                 0,
                 (
-                    _r64("DUMMY_ROM_NULL[2]", smc_indexed_addr(null, 2), ALL64),
-                    _r64("DUMMY_ROM_NULL[1]", smc_indexed_addr(null, 1), ALL64),
+                    _r64("DUMMY_ROM_NULL[2]", smc_indexed_addr(null, 2), DUMMY_NULL_MASK),
+                    _r64("DUMMY_ROM_NULL[1]", smc_indexed_addr(null, 1), DUMMY_NULL_MASK),
                 ),
                 False,
                 (0, 0, 0),
@@ -1647,10 +1799,12 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     _r64(
                         "INBOUND15.FILTER_CONFIG",
                         smc_indexed_addr(ib.format("FILTER_CONFIG"), FILTER_LAST),
+                        FILTER_ID_SEED,
                     ),
                     _r64(
                         "INBOUND15.START_ADDR",
                         smc_indexed_addr(ib.format("START_ADDR"), FILTER_LAST),
+                        FILTER_START_SEED,
                     ),
                 ),
                 False,
@@ -1663,7 +1817,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                 0,
                 (
                     _r32("NDMRESET_PROCESS", smc_addr(nd.format("PROCESS")), NDM_ABOVE_COUNT),
-                    _r32("NDMRESET_REQUEST", smc_addr(nd.format("REQUEST")), READ_ONLY),
+                    _r32("NDMRESET_REQUEST", smc_addr(nd.format("REQUEST")), ro=True),
                 ),
                 False,
                 (0, 0, 0),
@@ -1681,25 +1835,69 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     _r32(
                         "ISOLATE_REQ_FLR_COUNTER_VALUE",
                         smc_addr(ru.format("ISOLATE_REQ_FLR_COUNTER_VALUE")),
+                        FLR_COUNTER_MASK,
                     ),
-                    _r32("ISOLATE_REQ_VIS", smc_addr(ru.format("ISOLATE_REQ_VIS"))),
+                    _r32("ISOLATE_REQ_VIS", smc_addr(ru.format("ISOLATE_REQ_VIS")), ro=True),
                 ),
                 True,
                 (0, 0, 0),
             ),
-            ("gpio-slot64", g64[2], 4, PROT_PRIVILEGED, (g64[0], g64[1], g63[2]), False, (0, 0, 0)),
+            (
+                "gpio-slot64",
+                g64[2],
+                4,
+                PROT_PRIVILEGED,
+                (g64[0], g64[1], g63[2]),
+                False,
+                (0, 0, 0),
+            ),
         )
+
+    async def _seed_extent(self, fam: Fam) -> None:
+        """S1 seeds of the writable registers below each extent-edge burst start."""
+        count = None
+        for key, live, _width, prot, below, *_rest in self.ext:
+            if key == "misc_wrap-0x208":
+                count = await self._rd(fam, "SEP_IN", f"EXT_SNAP_{live.name}", live.addr, 4)
+                assert count is not None and count < 32, f"{live.name} reads {_hx(count)}"
+                self.ndm_mask = 0xFFFF_FFFF & ~((1 << count) - 1)
+            for reg in below:
+                if reg.ro:
+                    continue
+                self.ext_orig[reg] = await self._rd(
+                    fam, "SEP_IN", f"EXT_SNAP_{reg.name}", reg.addr, reg.width, prot
+                )
+                await self._seed(fam, reg, "EXT_SEED", prot)
+
+    async def _reseed_extent(self, fam: Fam) -> None:
+        """Re-seed the extent-edge lower registers that an island or strobe step also writes."""
+        earlier = {r for isl in self.i64 + self.i32 for r in isl.regs + isl.neighbours}
+        for key, _live, _width, prot, below, *_rest in self.ext:
+            for reg in below:
+                if reg in earlier and not reg.ro:
+                    cocotb.log.info(
+                        "INFO-RESEED: %s %s is also an island register (S3, S4 write it); "
+                        "seeded again before the extent-edge bursts",
+                        key,
+                        reg.name,
+                    )
+                    await self._seed(fam, reg, "EXT_RESEED", prot)
 
     async def _extent_edge(self, port: str, pidx: int) -> int:
         fam = self.fams["EXTENTEDGE"]
         n = 0
-        for key, live, width, prot, below, distinct, tail in self._extent_targets():
+        for key, live, width, prot, below, distinct, tail in self.ext:
             start = live.addr
             ctx = f"EXTENTEDGE {port}/{key} 0x{start:x}"
-            pre_below = {
-                reg: await self._rd(fam, "SEP_IN", f"EXT_PRE_{reg.name}", reg.addr, reg.width, prot)
-                for reg in below
-            }
+            for reg in below:
+                pre = await self._rd(
+                    fam, "SEP_IN", f"EXT_PRE_{reg.name}", reg.addr, reg.width, prot
+                )
+                if not reg.ro and not reg.same(pre, self.ref[reg]):
+                    fam.findings.append(
+                        f"{ctx}: {reg.name} reads {_hx(pre)} before the burst, seeded "
+                        f"0x{self.ref[reg]:x}"
+                    )
             pre_live = await self._rd(
                 fam, "SEP_IN", f"EXT_LIVE_PRE_{live.name}", start, width, prot
             )
@@ -1708,20 +1906,6 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             )
             r = self._check_read(fam, ctx + " read", port, item, hs)
             self._cell(fam, "S1", f"{port}/{key}/rd")
-            seeded = {}
-            if key in EXTENT_SEEDED:
-                for reg in below:
-                    if reg.seed_mask == READ_ONLY or not reg.seed_mask:
-                        continue
-                    mask = reg.seed_mask
-                    if mask == NDM_ABOVE_COUNT:
-                        mask = 0xFFFF_FFFF & ~((1 << (pre_live or 0)) - 1)
-                    value = self._seed_value(Reg(reg.name, reg.addr, reg.width, mask))
-                    await self._wr(
-                        fam, "SEP_IN", f"EXT_SEED_{reg.name}", reg.addr, value, reg.width, prot
-                    )
-                    seeded[reg] = pre_below[reg]
-                    pre_below[reg] = value
             if pre_live is None:
                 live_value = 0
             elif distinct:
@@ -1739,27 +1923,15 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             )
             bresp = self._check_write(fam, ctx + " write", port, item, hs)
             self._cell(fam, "S2", f"{port}/{key}/wr")
-            for reg, value in pre_below.items():
+            for reg in below:
                 got = await self._rd(
                     fam, "SEP_IN", f"EXT_POST_{reg.name}", reg.addr, reg.width, prot
                 )
-                if reg.seed_mask == READ_ONLY:
-                    cocotb.log.info(
-                        "INFO-PROTOCOL-ONLY: %s %s @ 0x%x is read-only in the RDL, read before "
-                        "%s after %s; protocol graded, integrity not claimable",
-                        ctx,
-                        reg.name,
-                        reg.addr,
-                        _hx(value),
-                        _hx(got),
-                    )
+                if reg.ro:
+                    fam.tally(key, reg, None)
+                    self._protocol_only(ctx, reg, got)
                     continue
-                fam.compares += 1
-                if got != value:
-                    fam.findings.append(
-                        f"{ctx}: register below the burst start {reg.name} reads {_hx(got)}, "
-                        f"before the burst {_hx(value)}"
-                    )
+                self._unchanged(fam, key, ctx, reg, got, self.ref[reg], wbeats)
             post_live = await self._rd(
                 fam, "SEP_IN", f"EXT_LIVE_POST_{live.name}", start, width, prot
             )
@@ -1780,17 +1952,21 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             )
             fam.bursts += 2
             n += 2
-            for reg, value in seeded.items():
-                if value is not None:
-                    await self._wr(
-                        fam, "SEP_IN", f"EXT_RESTORE_{reg.name}", reg.addr, value, reg.width, prot
-                    )
             if distinct and pre_live is not None:
                 await self._wr(
                     fam, "SEP_IN", f"EXT_RESTORE_{live.name}", start, pre_live, width, prot
                 )
         await self._live(fam, port, "S3", f"{port}/after-extentedge")
         return n
+
+    async def _extent_restore(self, fam: Fam) -> None:
+        for _key, _live, _width, prot, below, *_rest in self.ext:
+            for reg in below:
+                value = self.ext_orig.get(reg)
+                if value is not None:
+                    await self._wr(
+                        fam, "SEP_IN", f"EXT_RESTORE_{reg.name}", reg.addr, value, reg.width, prot
+                    )
 
     # --------------------------------------------------------------- rule ends
 
@@ -2000,8 +2176,10 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         addrs: set[int] = {REGION_SIZE_REG}
         for isl in self.i64 + self.i32:
             addrs.update(self._shape_start(isl, b) for _s, b, _w, _c in SHAPES)
-        stride = smc_addr("SMC_TOP_SMC_ALIAS_REMAP_STRIDE")
-        slot_k = smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR", ALIAS_EDGE_K)
+        stride = smc_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_STRIDE")
+        slot_k = smc_indexed_addr(
+            "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_BASE_ADDR", ALIAS_EDGE_K
+        )
         addrs.update((slot_k + 0x10, slot_k + stride + 0x10))
         for _k, live, *_rest in self._extent_targets():
             addrs.add(live.addr)
@@ -2037,20 +2215,13 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         setup = self.fams["SETUP"]
         self.env.axi_monitor.expected_decerr_addrs.update(self._decerr_addrs())
         await self._admit(setup, "S1")
-        for isl in self.i64 + self.i32 + (self.edge,):
+        for isl in self.i64 + self.i32 + (self.edge, self.gpio_isl):
             self._check_window(isl)
-        gpio_lo = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", GPIO_K - 1)
-        gpio_isl = Island(
-            "gpio-slots",
-            "SMC_TOP_GPIO_INTF_",
-            gpio_lo,
-            5 * smc_addr("SMC_TOP_GPIO_INTF_STRIDE"),
-            tuple(reg for s in range(GPIO_K - 1, GPIO_K + 4) for reg in _gpio_regs(s)),
-            (),
-            ALL64,
-            0,
+        cocotb.log.info(
+            "INFO-HW-BITS: GPIO DATA_CTRL pad2core and lsio_enable (mask 0x%x) are read-only "
+            "fields the pad and LSIO hardware drive; unchanged compares exclude them",
+            GPIO_DATA_CTRL_HW,
         )
-        self._check_window(gpio_isl)
         for slot in (0, ALIAS_LAST_SLOT):
             attrs = _alias_regs(slot)[2]
             got = await self._rd(setup, "SEP_IN", f"ALIAS{slot}_ATTRS_SNAP", attrs.addr)
@@ -2060,10 +2231,8 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             )
         for isl in self.i64 + self.i32 + (self.edge,):
             await self._seed_island(isl, setup)
-        seeded = self.i64 + self.i32 + (self.edge,)
-        self._mark(
-            "ADMIT", self.setup_compares, sum(len(i.regs) + len(i.neighbours) for i in seeded)
-        )
+        await self._seed_extent(setup)
+        self._mark("ADMIT", self.setup_compares, len(self.ref))
 
         fam = self.fams["ISLAND64"]
         for pidx, port in enumerate(PORTS):
@@ -2105,8 +2274,10 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         self._report(self.fams["SLOTEDGE"])
 
         count = 0
+        await self._reseed_extent(self.fams["EXTENTEDGE"])
         for pidx, port in enumerate(PORTS):
             count += await self._extent_edge(port, pidx)
+        await self._extent_restore(self.fams["EXTENTEDGE"])
         self._mark("EXTENT_EDGE", count, 2 * len(self._extent_targets()) * len(PORTS))
         self._report(self.fams["EXTENTEDGE"])
 
@@ -2161,9 +2332,34 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             fam.findings.append(f"{len(missing)} planned cells not driven, first {missing[:3]}")
         for finding in fam.findings:
             cocotb.log.info("INFO-FINDING: %s %s", fam.key, finding)
+        for island, (fails, cannot, protocol) in fam.per_island.items():
+            cocotb.log.info(
+                "INFO-COMPARES: %s %s %d unchanged compares that can fail, %d that cannot "
+                "(reference equal to a beat), protocol-only cells [%s]",
+                fam.key,
+                island,
+                fails,
+                cannot,
+                ", ".join(sorted(protocol)) or "none",
+            )
         if fam.findings:
             return
         cells = len(fam.planned)
+        if fam.key == "EXTENTEDGE":
+            cocotb.log.info(
+                "CHK-BT-EXTENTEDGE: %d extent-edge bursts x 3 ports, protocol held, seeded lower "
+                "registers unchanged (%d compares that can fail), read-only lower registers "
+                "protocol-only, liveness OKAY",
+                fam.bursts,
+                fam.failable,
+            )
+            cocotb.log.info(
+                "INFO-CHK-BT-EXTENTEDGE: %d cells of %d planned, %d graded accesses",
+                len(fam.cells),
+                cells,
+                fam.graded,
+            )
+            return
         text = {
             "ISLAND64": f"{fam.bursts} bursts on 3 islands x 3 ports, protocol held, "
             f"out-of-footprint registers unchanged, liveness OKAY",
@@ -2177,9 +2373,6 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             "unchanged, liveness OKAY",
             "SLOTEDGE": f"{fam.bursts} slot-edge bursts x 3 ports, protocol held, "
             f"out-of-footprint slots unchanged, liveness OKAY",
-            "EXTENTEDGE": f"{fam.bursts} extent-edge bursts x 3 ports, protocol held, lower "
-            f"writable registers unchanged, read-only lower registers protocol only, "
-            f"liveness OKAY",
             "RULEEDGE": "scratchpad-end burst OKAY with data, CLA word unchanged, CPU-control-end "
             "read protocol held",
             "REGIONEDGE": f"window-end bursts protocol held, watchdog unchanged, REGION_SIZE "
