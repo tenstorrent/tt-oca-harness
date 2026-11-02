@@ -1413,7 +1413,9 @@ module smc_peripherals #(
     .NUM_I3C            (smc_config_pkg::NumI3c),
     .I3C_REG_ADDR_WIDTH (ot_i3c_wrap_pkg::I3cRegAddrWidth),
     .BASE_ADDR          (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
-    .INSTANCE_SPACING   (ot_i3c_wrap_pkg::I3cInstanceSpacing)
+    .INSTANCE_SPACING   (ot_i3c_wrap_pkg::I3cInstanceSpacing),
+    .CLK_FREQ           (smc_config_pkg::I3cClkFreqHz),
+    .NUM_TARGETS        (smc_config_pkg::NumI3cTargets)
   ) u_ot_i3c_wrapper (
     .clk_i              (gated_clk_periph_i3c),
     .rst_ni             (rst_primary_periph_clk_n),

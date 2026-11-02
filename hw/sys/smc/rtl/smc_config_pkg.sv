@@ -4,7 +4,8 @@
 // Configure SMC peripheral instance counts and FIFO depths.
 //
 // Sets how many I3C, I2C, UART, telemetry, and AVSBus instances the SMC builds.
-// FIFO and delay parameters here size those peripheral wrappers. Also sets the CPU
+// FIFO and delay parameters here size those peripheral wrappers, and the I3C clock
+// frequency and target count configure the I3C instances. Also sets the CPU
 // cluster count for NDM reset requests, the chip ID reported in chip_config, and whether
 // the output fabric omits the M-mode and Xvisor remap.
 
@@ -17,6 +18,8 @@ package smc_config_pkg;
   // I3C Parameters //
   ////////////////////
   localparam int unsigned NumI3c = 6;    // a minimum of 3 is required, [0] for board level communication, [1] and [2] for interchiplet communication.
+  localparam int unsigned I3cClkFreqHz = 200_000_000;  // frequency of the peripheral clock driving the I3C instances; sets their default bus timings, so keep it equal to PERIPHERALCLK_PERIOD in flows/synth/constraints/clock_periods.tcl.
+  localparam int unsigned NumI3cTargets = 2;  // target addresses each I3C instance answers to on the bus.
 
   ////////////////////
   // I2C Parameters //
