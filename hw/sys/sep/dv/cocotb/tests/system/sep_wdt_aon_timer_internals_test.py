@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, NextTimeStep, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
@@ -810,6 +810,17 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
         return {"count": run["count"], "hi": hi, "intr": intr, "cause": cause}
 
+    async def _wkup_count_at_set(self, out: dict) -> None:
+        """Record wkup_count on the first clk_wdt_i edge where the wakeup interrupt reads 1."""
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_wdt_i)
+            await ReadOnly()
+            v = self.rd(dut.aon_wkup_probe_o, allow_unknown=True)
+            if v >> 32 & 1:
+                out["count"] = v & 0xFFFF_FFFF
+                return
+
     async def _chk_wkup_expire_point(self) -> None:
         """CHK-WKUP-EXPIRE (point) and CHK-WKUP-CAUSE (point): the expiry fires at the threshold.
 
@@ -871,7 +882,17 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"cause=0x{b_cause:x} expected 0x0 (WKUP_CAUSE=0x{below['cause']:08x})",
         )
         start_a = on_t + 1 + _EXPIRE_GUARD
+        tap: dict = {}
+        sampler = cocotb.start_soon(self._wkup_count_at_set(tap))
         above = await self._expire_leg("above", thold, start_a)
+        sampler.cancel()
+        # No line states which count the core compares at the completion that
+        # sets the expiry: the count on the wakeup tap at that edge is logged.
+        self.logger.info(
+            "OBS-WKUP-EXPIRE-COUNT thold=%d count_at_set=%s",
+            thold,
+            tap.get("count", "none"),
+        )
         await self._grade(
             above["hi"] == 0 and above["count"] > thold and start_a < thold,
             chk,

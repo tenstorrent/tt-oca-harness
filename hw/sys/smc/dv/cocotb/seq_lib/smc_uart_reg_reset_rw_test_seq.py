@@ -12,12 +12,17 @@ import cocotb
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import CLOCK_GATE_CONTROL, UART_CG_EN, uart_16550_main_u32
+from .smc_addr_map import (
+    _REPO,
+    CLOCK_GATE_CONTROL,
+    UART_CG_EN,
+    reg_reset_word,
+    uart_16550_main_u32,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_log_engine_utils import (
     DLL_OFFSET,
     DLM_OFFSET,
-    IIR_PENDING,
     LCR_DLAB,
     LSR_LINE_ERRORS,
     LSR_TEMT,
@@ -63,11 +68,14 @@ ITR_DEFINED = 0
 for _bit in ITR_BITS:
     ITR_DEFINED |= _bit
 
-IIR_RESET = IIR_PENDING
-LSR_RESET = LSR_THRE | LSR_TEMT
+_UART_16550_MAIN_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
+)
 DL_PATTERNS = (0x00, 0xFF, 0xA5, 0x5A)
 MAIN_REGS = ("RBR", "IER", "IIR", "LCR", "MCR", "LSR", "MSR", "SCR", "ECR", "ITR")
-RESET_EXPECT = {"IIR": IIR_RESET, "LSR": LSR_RESET}
+RESET_EXPECT = {r: reg_reset_word(_UART_16550_MAIN_H, "UART_16550_MAIN", r) for r in MAIN_REGS}
+IIR_RESET = RESET_EXPECT["IIR"]
+LSR_RESET = RESET_EXPECT["LSR"]
 ISO_REGS = ("IER", "LCR", "MCR", "SCR", "ECR")
 ISO_ALL = ISO_REGS + ("DLL", "DLM")
 
@@ -249,7 +257,7 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
             for reg in MAIN_REGS:
                 if reg == "MSR":
                     continue
-                want = RESET_EXPECT.get(reg, 0)
+                want = RESET_EXPECT[reg]
                 assert vec[reg] == want, (
                     f"instance {wrap} {reg} reads 0x{vec[reg]:x}, reset value is 0x{want:x}"
                 )

@@ -28,14 +28,15 @@ class aou_t1_env extends uvm_env;
   aou_scoreboard       sb;
   aou_t1_status        status;
   aou_t1_sw_isr        sw_isr;
-  aou_t1_orphan_chk    orphan;
   aou_t1_axi4pc_ctl    axi4pc;
   aou_t1_mo_chk        mo_chk;
   aou_t1_sw_reset_chk  sw_rst_chk;
+  aou_t1_lp_cfg_chk    lp_cfg_chk;
   aou_t1_dbg_fifo_chk  dbg_chk;
   aou_t1_crd_flow_chk  crd_chk;
   aou_t1_crd_rr_chk    crd_rr;
   aou_t1_early_tbl_chk early_tbl;
+  aou_t1_wdt_chk       wdt_chk;
   aou_t1_attr_chk      attr_chk;
   aou_t1_xfer_cov      xfer_cov;
   aou_t1_rx_fifo_chk   rx_fifo_chk;
@@ -105,10 +106,10 @@ class aou_t1_env extends uvm_env;
     sw_isr.hold_on_deact = cfg.sw_hold_on_deact;
     sw_isr.drain_before_deact = cfg.sw_drain_before_deact;
     sw_isr.n_rp = cfg.n_rp;
-    orphan = aou_t1_orphan_chk::type_id::create("orphan", this);
     axi4pc = aou_t1_axi4pc_ctl::type_id::create("axi4pc", this);
     mo_chk = aou_t1_mo_chk::type_id::create("mo_chk", this);
     sw_rst_chk = aou_t1_sw_reset_chk::type_id::create("sw_rst_chk", this);
+    lp_cfg_chk = aou_t1_lp_cfg_chk::type_id::create("lp_cfg_chk", this);
     dbg_chk = aou_t1_dbg_fifo_chk::type_id::create("dbg_chk", this);
     dbg_chk.cfg = cfg;
     crd_chk = aou_t1_crd_flow_chk::type_id::create("crd_chk", this);
@@ -118,6 +119,8 @@ class aou_t1_env extends uvm_env;
     rx_align = aou_t1_rx_align_chk::type_id::create("rx_align", this);
     early_tbl = aou_t1_early_tbl_chk::type_id::create("early_tbl", this);
     early_tbl.cfg = cfg;
+    wdt_chk = aou_t1_wdt_chk::type_id::create("wdt_chk", this);
+    wdt_chk.n_rp = cfg.n_rp;
     xfer_cov = aou_t1_xfer_cov::type_id::create("xfer_cov", this);
     if (cfg.attr_chk_en) begin
       attr_chk = aou_t1_attr_chk::type_id::create("attr_chk", this);
@@ -169,6 +172,7 @@ class aou_t1_env extends uvm_env;
     vseqr.regs = regs.model;
     foreach (m_sub[r]) m_sub[r].ap.connect(dbg_chk.mport_imp);
     rmgr.ap.connect(dbg_chk.remote_imp);
+    rmgr.req_ap.connect(dbg_chk.remote_req_imp);
     dbg_chk.rm = regs.model;
     dbg_chk.clk_vif = m_sub[0].cfg.vif;
     l3.ap_rx_msg.connect(crd_chk.rx_msg_imp);
@@ -188,6 +192,7 @@ class aou_t1_env extends uvm_env;
     rx_align.mb_vif = fdi[cfg.lsm_cfg.active_phy].vif;
     l3.ap_tx_msg.connect(early_tbl.rem_msg_imp);
     early_tbl.rm = regs.model;
+    wdt_chk.rm = regs.model;
     early_tbl.vif = new[cfg.n_rp];
     foreach (s_mgr[r]) early_tbl.vif[r] = s_mgr[r].cfg.vif;
     if (fdi_chk != null) fdi_chk.credit_manage = regs.model.aou_con0.credit_manage;
@@ -195,10 +200,11 @@ class aou_t1_env extends uvm_env;
     lsm.mon.ap.connect(axi4pc.lsm_imp);
     axi4pc.m_drv = new[cfg.n_rp];
     foreach (m_sub[r]) axi4pc.m_drv[r] = m_sub[r].drv;
-    orphan.vif = new[cfg.n_rp];
-    foreach (m_sub[r]) orphan.vif[r] = m_sub[r].cfg.vif;
     mo_chk.vif = new[cfg.n_rp];
     foreach (m_sub[r]) mo_chk.vif[r] = m_sub[r].cfg.vif;
+    l3.ap_tx_msg.connect(mo_chk.rem_msg_imp);
+    l3.ap_rx_msg.connect(mo_chk.dut_msg_imp);
+    mo_chk.l3_cfg = cfg.l3_cfg;
     xfer_cov.s_vif = new[cfg.n_rp];
     xfer_cov.m_vif = new[cfg.n_rp];
     foreach (s_mgr[r]) xfer_cov.s_vif[r] = s_mgr[r].cfg.vif;
@@ -209,6 +215,7 @@ class aou_t1_env extends uvm_env;
       xfer_cov.rem_bytes[r] = cfg.remote_bytes_of(r);
     end
     foreach (s_mgr[r]) s_mgr[r].ap.connect(xfer_cov.req_fifo.analysis_export);
+    foreach (m_sub[r]) m_sub[r].ap.connect(xfer_cov.sub_fifo.analysis_export);
     rmgr.ap.connect(xfer_cov.req_fifo.analysis_export);
     l4a.cov = xfer_cov;
     if (attr_chk != null) begin
@@ -218,9 +225,12 @@ class aou_t1_env extends uvm_env;
       rmgr.ap.connect(attr_chk.rmt_fifo.analysis_export);
       l3.ap_rx_msg.connect(attr_chk.dut_fifo.analysis_export);
     end
-    sw_rst_chk.vif = new[cfg.n_rp];
-    foreach (s_mgr[r]) sw_rst_chk.vif[r] = s_mgr[r].cfg.vif;
     sw_rst_chk.rst_vif = rst.vif;
+    sw_rst_chk.m_vif = new[cfg.n_rp];
+    foreach (m_sub[r]) sw_rst_chk.m_vif[r] = m_sub[r].cfg.vif;
+    lp_cfg_chk.rm = regs.model;
+    lp_cfg_chk.status = status;
+    apb.mon.ap.connect(lp_cfg_chk.apb_imp);
     rx_align.rst_vif = rst.vif;
     if (rx_fifo_chk != null) begin
       rx_fifo_chk.vif = new[cfg.n_rp];
@@ -256,15 +266,17 @@ class aou_t1_env extends uvm_env;
   endtask
 
   // Reset contract (docs/ARCHITECTURE.md): called on every reset the reset
-  // agent drives (bus_reset = 1: the AXI ports are reset too), and by the
-  // vseq after AOU_SW_RESET (bus_reset = 0: the AXI ports are not reset, so
-  // the local agents keep every handshake legal and only stop waiting for
-  // responses). I_PRESETN alone resets only the APB side (BUGS/016): the core,
-  // the AoU link and every transaction keep running, so only the local
-  // software's pending interrupt service is cancelled. Otherwise the remote
-  // die (L3, its managers, the L1 pump) drops everything with the link, and
-  // transactions the AXI managers (local and remote) had outstanding end as
-  // aborted; the scoreboard counts them.
+  // agent drives and by the vseq once AOU_SW_RESET has put the core in reset,
+  // both with bus_reset = 1: the local AXI agents are on the DUT's AXI-port
+  // reset (I_RESETN and AOU_SW_RESET), so they drop their transactions and
+  // restart idle with the core, as the SoC's AXI peers must (MAS 7.3.6).
+  // bus_reset = 0 (abort_traffic): no reset at all, the agents keep every
+  // handshake legal and only stop waiting for responses. I_PRESETN alone resets
+  // only the APB side (integration guide 3.1.1): the core, the AoU link and every transaction
+  // keep running, so only the local software's pending interrupt service is
+  // cancelled. Otherwise the remote die (L3, its managers, the L1 pump) drops
+  // everything with the link, and transactions the AXI managers (local and
+  // remote) had outstanding end as aborted; the scoreboard counts them.
   virtual function void reset_flush(aou_t1_rst_e which = AOU_T1_RST_BOTH, bit bus_reset = 1'b1);
     aou_axi_txn aborted[$];
     `uvm_info(get_type_name(), $sformatf("reset: flushing the environment (%s, bus reset %0b)",
@@ -272,9 +284,9 @@ class aou_t1_env extends uvm_env;
     sw_isr.cancel();
     if (which == AOU_T1_RST_APB) return;
     sw_isr.hold_requests(1'b0);
-    if (!bus_reset) orphan.note_sw_reset();
     mo_chk.clear();
     status.reset_flush();
+    lp_cfg_chk.reset_flush();
     dbg_chk.reset_flush();
     crd_chk.reset_flush();
     early_tbl.reset_flush();
@@ -298,11 +310,12 @@ class aou_t1_env extends uvm_env;
                 UVM_LOW)
   endfunction
 
-  // Brackets the APB write that requests AOU_SW_RESET (sw_reset()). The local
-  // managers' transactions on the bus at the request are marked
-  // reset_outstanding: the scoreboard lets them end with SLVERR (BUGS/015
-  // interim). The remote die's cannot complete with the link down, and
-  // reset_flush() aborts them.
+  // Brackets the APB write that requests AOU_SW_RESET (sw_reset()), from the
+  // request to the core reset. The local managers' transactions on the bus in
+  // the window are marked reset_outstanding: a write that completes before the
+  // reset is lost or landed (the scoreboard allows either), a read may end with
+  // SLVERR (BUGS/015 interim). The rest are aborted by reset_flush() at the
+  // core reset, as are the remote die's, which cannot complete with the link down.
   function void sw_reset_window(bit open);
     foreach (s_mgr[r]) if (s_mgr[r].mon != null) s_mgr[r].mon.sw_reset_window(open);
   endfunction

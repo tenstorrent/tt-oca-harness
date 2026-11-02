@@ -8,8 +8,10 @@ Results"; ``hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc``,
 Register Map"; ``hw/sys/sep/regs/gen/adoc/memory_map.adoc``, SEP AXI-Lite
 Mailbox Wrapper row; ``hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.adoc``):
 
-* K1: a ``READ_DATA`` read of an empty FIFO answers SLVERR with 0xFEEDDEAD on
-  the low 32 bits and sets ``ERROR_FLAGS.read_error`` and ``IRQS.eirq``.
+* K1: a 64-bit ``READ_DATA`` read of an empty FIFO answers SLVERR with
+  0x0000_0000_FEED_DEAD and sets ``ERROR_FLAGS.read_error`` and ``IRQS.eirq``
+  (``hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox.rdl:37-38`` "A read while
+  the fifo is empty returns 0x0000_0000_FEED_DEAD with an error response").
 * K2: a ``WRITE_DATA`` write to a full FIFO answers SLVERR, discards the word
   and sets ``ERROR_FLAGS.write_error`` and ``IRQS.eirq``.
 * K3: a write to ``READ_DATA``, ``STATUS``, ``ERROR_FLAGS`` or ``IRQP``
@@ -58,8 +60,9 @@ CHK-FLAGS-CLEAR, CHK-FLAGS-BOTH, CHK-ERR-LINE, CHK-WO-READ, CHK-TWIN,
 CHK-MBX-ERR-UPPER-CLEAR.
 Controls: CTRL-RESP (K6), CTRL-UPPER-CLEAR, CTRL-MISSING when a K4/K5 live value
 reads 0.
-Log only: the high 32 bits of the empty-read and ``WRITE_DATA`` read data,
-and ``ERROR_FLAGS``/``IRQS`` after a hole access (``OBS-HOLE-FLAGS``).
+Log only: the high 32-bit word of the ``WRITE_DATA`` read data, and
+``ERROR_FLAGS``/``IRQS`` after a hole access (``OBS-HOLE-FLAGS``). CHK-ERR-RD
+grades the high 32 bits of the empty read as 0.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``, RAND-REP:
 every draw comes from ``SepSeededRng`` and the run seed. The base set (K1 and
@@ -94,7 +97,7 @@ from env.sep_mbox_pair_model import IRQ_ALL, MboxSystem, popcount
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0 as MBX_REGS
-from sep_reg_meta import INBOUND_FILTER_CTRL_0, sep_addr_define
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0, sep_addr_define
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_mailbox_iface_seq import SepMbox
 from seq_lib.sep_mbox_port_ops import (
@@ -131,7 +134,9 @@ RO_TARGETS = ("READ_DATA", "STATUS", "ERROR_FLAGS", "IRQP")
 QUIET_CLKS = 32
 # IRQS threshold causes (wtirq, rtirq) and FILTER_CONFIG.entry_enabled, from the RDL.
 IRQS_THR = IRQ_WTIRQ | IRQ_RTIRQ
-FILT_ENTRY_ENABLED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "entry_enabled")
+FILT_ENTRY_ENABLED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask(
+    "FILTER_CONFIG", "entry_enabled"
+)
 
 
 class Inj:
@@ -357,7 +362,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         r.shuffle(base)
         self.injections = base
         for i, inj in enumerate(base):
-            self.logger.info("DRAW inj%d %s", i, inj.line())
+            self.logger.info("INFO-DRAW inj%d %s", i, inj.line())
         # Two-flag corner: any port but outbound mailbox 0.
         while True:
             m, p = r.randrange(0, 8), r.choice(["out", "in"])
@@ -375,13 +380,13 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             r.choice([("rd", "wr"), ("wr", "rd")]),
         )
         self.logger.info(
-            "DRAW upper_clear mbox=%d port=%s order=%s",
+            "INFO-DRAW upper_clear mbox=%d port=%s order=%s",
             self.upper[0],
             self.upper[1],
             ",".join(self.upper[2]),
         )
         self.logger.info(
-            "DRAW n_extra=%d interior=0x%x both_mbox=%d both_port=%s line_mbox=%d",
+            "INFO-DRAW n_extra=%d interior=0x%x both_mbox=%d both_port=%s line_mbox=%d",
             n_extra,
             interior,
             m,
@@ -389,7 +394,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             self.line_mbox,
         )
         self.logger.info(
-            "DRAW wo_first_half=%s",
+            "INFO-DRAW wo_first_half=%s",
             ",".join(f"{mm}{pp}:{h}" for (mm, pp), h in sorted(self.wo_first_half.items())),
         )
 
@@ -415,13 +420,14 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         irqs = await self._rd(m, p, "IRQS")
         lo, hi = data & M32, (data >> 32) & M32
         txt = (
-            f"mbox={m} port={p} resp={resp_name(resp)} data=0x{lo:08X} data_hi=0x{hi:08x} "
+            f"mbox={m} port={p} resp={resp_name(resp)} data=0x{lo:08X} data_hi=0x{hi:08X} "
             f"read_err={first & ERR_READ and 1} irqs=0x{irqs:x} exp_irqs=0x{exp_irqs:x}"
         )
         if (
             resp != RESP_SLVERR
             or mresp != "SLVERR"
             or lo != READ_EMPTY_SENTINEL
+            or hi != 0
             or first != ERR_READ
             or irqs != exp_irqs
         ):
@@ -820,7 +826,6 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         for m in range(8):
             for p in ("out", "in"):
                 await self._clear_port(m, p)
-        his = []
         n = 0
         for m in range(8):
             for p in ("out", "in"):
@@ -847,10 +852,9 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                 st = await self._rd(m, p, "STATUS")
                 lo = got[0][1] & M32
                 hi = got[1][1] & M32
-                his.append(hi)
                 txt = (
                     f"mbox={m} port={p} first_half={first} resp_lo={resp_name(got[0][0])} "
-                    f"resp_hi={resp_name(got[1][0])} data_lo=0x{lo:08X} data_hi=0x{hi:08x} "
+                    f"resp_hi={resp_name(got[1][0])} data_lo=0x{lo:08X} "
                     f"status_before=0x{s0[0]:x}/0x{s0[1]:x} status_after=0x{s1[0]:x}/0x{s1[1]:x} "
                     f"flags=0x{flags:x} pop=0x{pg:016x} exp=0x{pe:016x} empty_after={int(bool(st & ST_EMPTY))}"
                 )
@@ -866,13 +870,20 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                     and st & ST_EMPTY
                 )
                 self.logger.info("INFO-WO-READ LOG seed=%d %s", self.seed, txt)
+                self.logger.info(
+                    "OBS-MBX-DATA-HI seed=%d mbox=%d port=%s check=WO-READ data_hi=0x%08x",
+                    self.seed,
+                    m,
+                    p,
+                    hi,
+                )
                 if not ok:
                     self._fail("CHK-WO-READ", txt)
                 n += 1
         self._pass(
             "CHK-WO-READ",
             f"apertures={n} resp=OKAY data_lo=0x{WRITE_DATA_RD_SENTINEL:08X} "
-            f"data_hi={','.join(f'0x{h:x}' for h in sorted(set(his)))} status_same={n} flags=0x0",
+            f"status_same={n} flags=0x0",
         )
 
     async def _induce(self, m: int, p: str, kind: str) -> tuple[int, int, list[int]]:
@@ -981,7 +992,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         self.n_checks = 0
         self.rng = SepSeededRng(self.seed)
         self.used: set[int] = set()
-        self.logger.info("SEED seed=%d", self.seed)
+        self.logger.info("INFO-SEED seed=%d", self.seed)
         self._draw()
         close_graded_window(self.logger)
 
@@ -1008,7 +1019,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
 
         open_graded_window(TEST, self.logger)
         for i, inj in enumerate(self.injections):
-            self.logger.info("INJ LOG seed=%d idx=%d %s", self.seed, i, inj.line())
+            self.logger.info("INFO-INJ LOG seed=%d idx=%d %s", self.seed, i, inj.line())
             if inj.kind == "K1":
                 await self._k1(inj)
             elif inj.kind == "K2":

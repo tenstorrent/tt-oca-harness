@@ -284,7 +284,7 @@ program.
 |SEP efuse map |`0x10930000` |1 KiB |Fuse shadow registers; see <<tbl:fuse_fields>>.
 |AXI-Lite mailboxes |`0x10A00000` |64 KiB |Inbound/outbound mailbox pairs; not used by BL0
 boot decisions.
-|Outbound AXI filter |`0x10A20000` |— |Egress filter windows (`OUTBOUND_FILTER_CTRL_n`).
+|Outbound AXI filter |`0x10A20000` |— |Egress filter windows (`OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_n`).
 |OpenTitan SPI host |`0x10B00000` |— |Boot-flash transport option A.
 |XIP flash controller |SEP external region `0x20000000` |— |Boot-flash transport option B
 (adopter-defined controller registers).
@@ -1315,7 +1315,9 @@ For the recovery and secondary boot modes, the manifest+payload arrive via the S
 over I3C by the platform, per the SMC ROM specification):
 
 1. [[req-SEP-ROM-SMC-040]]*[SEP-ROM-SMC-040]* The ROM shall wait (unbounded poll) for
-   `scratch9.MANIFEST_READY` before consuming scratch[8].
+   `scratch9.MANIFEST_READY` before consuming scratch[8]. READY only announces that scratch[8]
+   has been published; the marker and bounds checks of SEP-ROM-SMC-050 decide whether the
+   offset is usable.
 2. [[req-SEP-ROM-SMC-050]]*[SEP-ROM-SMC-050]* The ROM shall reject a manifest offset of
    `0xFFFFFFFF` and shall bounds-check the staged manifest and any payload region announced
    via scratch[13]/[14] against the 1 MiB SMC SRAM window before reading.

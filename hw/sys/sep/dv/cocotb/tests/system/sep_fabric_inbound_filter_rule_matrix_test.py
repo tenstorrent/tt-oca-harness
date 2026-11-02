@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Each inbound-filter entry admits only the traffic its rule allows; all other traffic is DECERR.
 
-OCAH provenance: ``sep_inbound_filter_blockbydefault_test`` checks default
-denial, ``sep_inbound_filter_programming_ownership_test`` checks programming
-ownership, and ``sep_inbound_id_remap_test`` checks source-ID remapping.
-
 With the SEP inbound filter active (feat_ctrl.sep_debug=0, real PROD fuse), the
 CPU-LSU master programs inbound FILTER_CONFIG allow-entries and the external SMN
 master (m_axi, the only path through u_inbound_filter) proves per-entry rule
@@ -47,10 +43,19 @@ CHK-BURST-TO-SINGLE watches the system-CSR AXI-Lite AR/AW after
 ``u_system_csr_a2l_1``: a denied AxLEN=1 produces zero Lite handshakes
 (filter before the converter); an allowed AxLEN=1 produces two Lite
 singles (fabric.adoc: axi_to_axi_lite splits bursts into individual
-transactions). The single-beat access of each deny cell reaches the Lite
-port as one single at its address, so the watch is live when the denied
-burst shows none. WRAP/FIXED/AxLEN>1 are
-not walked.
+transactions). CTRL-BURST-LITE-LIVE: the single-beat access of each deny cell
+reaches the Lite port as one single at its address, so the watch is live
+when the denied burst shows none. WRAP/FIXED/AxLEN>1 are
+not walked. The denied 2-beat read also grades its R beats on the m_axi
+pins: an error response still returns every beat of the burst with RLAST
+on the last beat only, each beat with RID equal to the ARID (AMBA AXI
+IHI 0022), and the filter answers DECERR on RRESP
+(``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions"). The ARID is
+drawn from 1 to 62 (ARID 63 is the pre-sense read), so an RID that drops
+to 0 fails.
+OBS-SI-PRESENSE-READ runs last: after an ``rst_ni`` pulse, one external
+read with ARID 63 is sent while fuse sensing runs and is watched for 256
+clocks after ``sep_reset_n`` releases. It grades nothing.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
 allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
@@ -81,6 +86,13 @@ with allow_burst 0 or 1. The response codes are logged at once and graded after
 the 2-beat INCR, so the burst is checked whatever code the writes answered. The
 lock is sticky until reset, so this cell runs last on entry 15.
 
+CHK-FILT-RSVD-READ: through an entry whose window runs from the last SRAM
+granule to the Reserved row base 0x10050000, an external read of that base
+answers DECERR with 0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``;
+the column is the inbound-port answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``).
+CTRL-FILT-RSVD-ALLOW reads a staged SRAM word through the same entry first and
+needs that word back, so the DECERR is not a filter denial.
+
 Functional coverage: the window of this leaf holds only the graded bursts
 and the refused FILTER_CONFIG writes with their read-backs. A
 ``cp_lite_split`` cell samples only after the check of its burst passed
@@ -99,12 +111,19 @@ import contextlib
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, NextTimeStep
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_lite_split_pass
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
+from seq_lib import sep_row_response_seq as rr
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_BURST, FILTER_RW_MASK
 from seq_lib.sep_inbound_filter_rule_seq import (
+    AXI_BURST_INCR,
+    BURST_BYTES,
     FILTER_LOCKED_HI_BIT,
     GRANULE_BYTES,
     PAGE_SHIFT,
@@ -122,6 +141,20 @@ from seq_lib.sep_inbound_filter_rule_seq import (
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
 _TEST = "sep_fabric_inbound_filter_rule_matrix_test"
+# Separate stream for the denied-burst ARID, so the matrix draws keep their seed mapping.
+_BURST_ID_SALT = 0x4255_5253
+_M_AXI_ID_MAX = 62
+# Separate stream for the CTRL-FILT-RSVD-ALLOW staged word.
+_RSVD_CTRL_SALT = 0x5253_5644
+# Read data of the Reserved row cell (hw/sys/sep/regs/gen/adoc/memory_map.adoc:41).
+RSVD_RDATA = 0xBADC_AB1E
+# ARID of the read sent before fuse sensing ends; no other read of this leaf uses it,
+# so an R beat that never comes leaves no later read of that ID to pair with.
+_PRESENSE_ARID = 63
+# clk_i cycles the pre-sense read is watched after sep_reset_n releases.
+_PRESENSE_WAIT = 256
+# clk_i cycles rst_ni is held low before the pre-sense read.
+_PRESENSE_RST_HOLD = 20
 _MAX_SENSE_CYCLES = 20_000
 # Clocks the leaf keeps its coverage window open after a graded step, so the
 # sampler sees a pass label rise while the window is still open.
@@ -136,7 +169,14 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     """External traffic gets OKAY only where an entry's rule allows it, and DECERR elsewhere."""
 
     def _grade(self, name: str, ok: bool, detail: str) -> None:
-        """Log one PASS or FAIL line; a FAIL closes the coverage window, then raises."""
+        """Log one PASS or FAIL line; a FAIL closes the coverage window, then raises.
+
+        ``name`` is ``<PREFIX>-<NAME>`` optionally followed by a leg tag; the tag
+        goes after the verdict as ``leg=<tag>``.
+        """
+        name, _, leg = name.partition(" ")
+        if leg:
+            detail = f"leg={leg.replace(' ', '_')} {detail}"
         if ok:
             self.logger.info("%s PASS: %s", name, detail)
             return
@@ -188,6 +228,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         allow leg proves readable.
         """
         resp, data = await self._ext_read(addr, user=user)
+        self.logger.info(
+            "OBS-FILT-DENY-RDATA addr=0x%08x user=0x%x resp=%d rdata=0x%08x", addr, user, resp, data
+        )
         assert resp == RESP_DECERR, f"{tag}: ext read 0x{addr:08x} resp={resp}, expected DECERR"
         if staged is not None:
             assert data != staged & 0xFFFF_FFFF, (
@@ -201,8 +244,22 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self.start_ext_seq(seq)
         return seq.resp_code
 
-    async def _ext_burst_read(self, addr: int, *, expect_error: bool = False) -> tuple[int, int]:
-        seq = ext_burst_read_seq(addr, expect_error=expect_error)
+    async def _ext_burst_read(
+        self, addr: int, *, expect_error: bool = False, axi_id: int = 0
+    ) -> tuple[int, int]:
+        if axi_id:
+            seq = SepAxiAccessSeq(
+                "infilt_ext_burst_rd_id",
+                op=SepAxiOp.READ,
+                addr=addr,
+                length=BURST_BYTES,
+                size=2,
+                burst=AXI_BURST_INCR,
+                expect_error=expect_error,
+                axi_id=axi_id,
+            )
+        else:
+            seq = ext_burst_read_seq(addr, expect_error=expect_error)
         await self.start_ext_seq(seq)
         return seq.resp_code, (seq.rdata & 0xFFFF_FFFF)
 
@@ -228,11 +285,11 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         return resp, list(addrs)
 
     async def _ext_burst_read_watch(
-        self, addr: int, *, expect_error: bool = False
+        self, addr: int, *, expect_error: bool = False, axi_id: int = 0
     ) -> tuple[int, int, list[int]]:
         task, addrs = self.watch_sys_csr_lite(write=False)
         try:
-            resp, data = await self._ext_burst_read(addr, expect_error=expect_error)
+            resp, data = await self._ext_burst_read(addr, expect_error=expect_error, axi_id=axi_id)
         finally:
             task.kill()
         return resp, data, list(addrs)
@@ -289,13 +346,25 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"CHK-BURST-DENY: single-beat rdata 0x{data:08x} != staged 0x{burst_val:08x}"
         )
         self._expect_lite_split(
-            lite_sb, start=burst_addr, nbeats=1, tag="CHK-BURST-TO-SINGLE single-beat AR"
+            lite_sb, start=burst_addr, nbeats=1, tag="CTRL-BURST-LITE-LIVE single-beat AR"
         )
+        arid = SepSeededRng(mcfg.seed ^ _BURST_ID_SALT).randrange(1, _M_AXI_ID_MAX + 1)
+        mon = self.env.ext_axi_monitor
         async with self._graded_window():
-            resp, data, lite_ar = await self._ext_burst_read_watch(burst_addr, expect_error=True)
+            mon.start_beat_capture()
+            resp, data, lite_ar = await self._ext_burst_read_watch(
+                burst_addr, expect_error=True, axi_id=arid
+            )
+            mon.take_beat_capture()
+            beats = list(mon.last_beat_detail)
             assert resp == RESP_DECERR, (
                 f"CHK-BURST-DENY FAIL: allow_burst=0 2-beat INCR read of "
                 f"0x{burst_addr:08x} resp={resp}, expected DECERR"
+            )
+            want = [(RESP_DECERR, arid, 0), (RESP_DECERR, arid, 1)]
+            assert beats == want, (
+                f"CHK-BURST-DENY FAIL: allow_burst=0 2-beat INCR read of 0x{burst_addr:08x} "
+                f"arid={arid} R beats (rresp, rid, rlast)={beats}, expected {want}"
             )
             assert data != burst_val, (
                 f"CHK-BURST-DENY FAIL: denied burst returned the staged value "
@@ -307,12 +376,15 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             self._release_lite_split()
         self.logger.info(
             "CHK-BURST-DENY PASS: allow_burst=0 single-beat OKAY rdata=0x%08x as Lite AR %s; "
-            "2-beat INCR DECERR at 0x%08x, rdata=0x%08x, Lite AR %s",
+            "2-beat INCR DECERR at 0x%08x, rdata=0x%08x, Lite AR %s, arid=%d "
+            "R beats (rresp, rid, rlast)=%s",
             burst_val,
             [hex(a) for a in lite_sb],
             burst_addr,
             data,
             [hex(a) for a in lite_ar],
+            arid,
+            beats,
         )
 
         await self.filt.disable_all()
@@ -388,7 +460,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"(0x{landed:08x} != 0x{poke_sb:08x})"
         )
         self._expect_lite_split(
-            lite_sb, start=burst_addr, nbeats=1, tag="CHK-BURST-TO-SINGLE single-beat AW"
+            lite_sb, start=burst_addr, nbeats=1, tag="CTRL-BURST-LITE-LIVE single-beat AW"
         )
         await self.filt.stage_target(burst_addr, burst_val)
         async with self._graded_window():
@@ -460,7 +532,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             [hex(a) for a in lite_aw],
         )
         self.logger.info(
-            "CHK-BURST-WALK PASS: allow_burst deny + allow walked on AR and AW "
+            "CTRL-BURST-WALK PASS: allow_burst deny + allow walked on AR and AW "
             "of the scratch window"
         )
 
@@ -617,7 +689,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await program_widen()
         cfg_lo = await self.filt.read_cpu(cell.cfg_addr)
         assert cfg_lo & F_ALLOW_BURST, (
-            f"CHK-CONFIG-LOCK: allow_burst not set before the lock "
+            f"CHK-CONFIG-LOCK FAIL: allow_burst not set before the lock "
             f"(FILTER_CONFIG lo 0x{cfg_lo:08x})"
         )
         await self.filt.lock_entry(wcfg.entry)
@@ -675,7 +747,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             hi_after & rsvd,
         )
         self.logger.info(
-            "CHK-CONFIG-LOCK entry %d locked FILTER_CONFIG writes: lo resp=%d, hi resp=%d "
+            "INFO-CONFIG-LOCK entry %d locked FILTER_CONFIG writes: lo resp=%d, hi resp=%d "
             "(spec DECERR=%d)",
             wcfg.entry,
             resp_lo,
@@ -697,7 +769,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
         self._expect_lite_split(lite_ar, start=probe_addr, nbeats=2, tag="CHK-CONFIG-LOCK burst AR")
         self.logger.info(
-            "CHK-CONFIG-LOCK entry %d 2-beat INCR at 0x%08x under the lock: resp=%d "
+            "INFO-CONFIG-LOCK entry %d 2-beat INCR at 0x%08x under the lock: resp=%d "
             "rdata=0x%08x, Lite AR %s",
             wcfg.entry,
             probe_addr,
@@ -725,6 +797,157 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             [hex(a) for a in lite_ar],
         )
 
+    def _presense_si_read_start(self):
+        """Send one SI read of SRAM word 0 before fuse sensing ends; watch its handshakes."""
+        dut = cocotb.top
+        addr = sym("SEP_SRAM_MEM_BASE_ADDR")
+        rec: dict = {"stop": False}
+
+        async def _watch() -> None:
+            while not rec["stop"]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if (
+                    "ar" not in rec
+                    and dut.m_axi_arvalid.value == 1
+                    and dut.m_axi_arready.value == 1
+                    and int(dut.m_axi_arid.value) == _PRESENSE_ARID
+                ):
+                    rec["ar"] = self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True)
+                if (
+                    dut.m_axi_rvalid.value == 1
+                    and dut.m_axi_rready.value == 1
+                    and int(dut.m_axi_rid.value) == _PRESENSE_ARID
+                ):
+                    rec["r"] = int(dut.m_axi_rresp.value)
+
+        watch = cocotb.start_soon(_watch())
+        vip = self.env.ext_axi_agent.driver.axi
+        read = cocotb.start_soon(
+            vip.read_bytes_result(
+                addr, 4, size=2, id=_PRESENSE_ARID, check_response=False, allow_timeout=True
+            )
+        )
+        return addr, rec, watch, read
+
+    async def _presense_si_read_after_pulse(self) -> None:
+        """Pulse ``rst_ni`` and send the pre-sense SI read while fuse sensing runs.
+
+        Runs after every graded step: the FCOV System Interface tracker pairs a
+        completion with the one read outstanding, so a read left unanswered
+        must not overlap graded reads.
+        """
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 0
+        await ClockCycles(dut.clk_i, _PRESENSE_RST_HOLD)
+        await ReadOnly()
+        self._require_sense_restart()
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 1
+        await ClockCycles(dut.clk_i, 2)
+        pre_sense = self._presense_si_read_start()
+        await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        await self._presense_si_read_log(*pre_sense)
+
+    async def _presense_si_read_log(self, addr: int, rec: dict, watch, read) -> None:
+        """OBS-SI-PRESENSE-READ: no line states what an SI read before sensing ends gets."""
+        dut = cocotb.top
+        for _ in range(_MAX_SENSE_CYCLES):
+            if self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True):
+                break
+            await RisingEdge(dut.clk_i)
+        else:
+            raise AssertionError(
+                f"CTRL-MISSING PRESENSE-RELEASE: sep_reset_n stayed low {_MAX_SENSE_CYCLES} "
+                "clocks after fuse sense ended"
+            )
+        await ClockCycles(dut.clk_i, _PRESENSE_WAIT)
+        rec["stop"] = True
+        await watch
+        self.env.ext_axi_monitor.forget_pending_reads(_PRESENSE_ARID)
+        self.logger.info(
+            "OBS-SI-PRESENSE-READ addr=0x%08x arid=%d accepted=%s sep_reset_n_at_accept=%s "
+            "response=%s rresp=%s window_clk_after_release=%d vip_done=%d",
+            addr,
+            _PRESENSE_ARID,
+            "y" if "ar" in rec else "n",
+            rec.get("ar", "na"),
+            "y" if "r" in rec else "n",
+            rec.get("r", "na"),
+            _PRESENSE_WAIT,
+            int(read.done()),
+        )
+
+    async def _reserved_si_read(self, seed: int) -> None:
+        """CHK-FILT-RSVD-READ: one SI read of a Reserved row through an allow entry over it.
+
+        The memory map gives the Reserved row 0x10050000-0x107FFFFF the cell
+        "DECERR, 0xBADCAB1E / DECERR" (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``),
+        the answer at the inbound AXI port (``hw/sys/sep/doc/memory_map.adoc:66-69``).
+        A filter denial gives the same code and data, so CTRL-FILT-RSVD-ALLOW
+        first reads the last SRAM word through the same entry, whose window
+        runs from that word to the Reserved base: the staged value shows the entry
+        admits the read (the response code is logged in the same line).
+        CTRL-FILT-RSVD-PASSED then requires the Reserved read itself to show one
+        AR at the local crossbar's ext initiator, which is past the filter.
+        """
+        addr = rr.RESERVED_BASES[0]
+        ctrl = sym("SEP_SRAM_MEM_BASE_ADDR") + sym("SEP_SRAM_MEM_SIZE") - GRANULE_BYTES
+        staged = SepSeededRng(seed ^ _RSVD_CTRL_SALT).getrandbits(32)
+        await self.filt.disable_all()
+        await self.filt.stage_target(ctrl, staged)
+        cell = SepInboundFilterCfg(entry=0, allow_addr=ctrl, allow_value=staged)
+        await self.filt.program_rule(cell, read_allowed=True, write_allowed=False, end_addr=addr)
+        resp, data = await self._ext_read(ctrl)
+        self._grade(
+            "CTRL-FILT-RSVD-ALLOW",
+            data == staged,
+            f"entry=0 window=0x{ctrl:08x}..0x{addr:08x} addr=0x{ctrl:08x} resp={resp} "
+            f"rdata=0x{data:08x} expect=0x{staged:08x}",
+        )
+        task, ars = self.watch_xbar_ext_in(write=False)
+        try:
+            resp, data = await self._ext_read(addr)
+        finally:
+            task.kill()
+        passed = [a for a in ars if (a & ~(GRANULE_BYTES - 1)) == addr]
+        self._grade(
+            "CTRL-FILT-RSVD-PASSED",
+            len(passed) == 1,
+            f"addr=0x{addr:08x} ar_past_filter={len(passed)} ars="
+            f"[{' '.join(f'0x{a:08x}' for a in ars)}] expect=1",
+        )
+        self._grade(
+            "CHK-FILT-RSVD-READ",
+            (resp, data) == (RESP_DECERR, RSVD_RDATA),
+            f"row=reserved addr=0x{addr:08x} resp={resp} rdata=0x{data:08x} "
+            f"expect={RESP_DECERR}/0x{RSVD_RDATA:08x}",
+        )
+        await self.filt.disable_all()
+
+    async def _src_mismatch_premise(
+        self, cell: SepInboundFilterCfg, addr: int, val: int, read_ok: bool, write_ok: bool
+    ) -> None:
+        """CTRL-SRC-ID-CFG: the mismatch cell's entry is programmed and live.
+
+        A disabled or mis-programmed entry also answers DECERR, so the deny
+        proves the source-ID mismatch only once the FILTER_CONFIG read-back
+        equals the programmed word and a read with ``user`` equal to the
+        programmed ``src_id`` returns the staged value through the same entry.
+        """
+        expected = cell.config_word(read_allowed=read_ok, write_allowed=write_ok)
+        cfg_rb = await self.filt.read_cpu(cell.cfg_addr)
+        resp, data = await self._ext_read(addr, user=cell.src_id)
+        self._grade(
+            "CTRL-SRC-ID-CFG",
+            (cfg_rb & FILTER_RW_MASK) == (expected & FILTER_RW_MASK) and data == val,
+            f"entry={cell.entry} cfg_rw=0x{cfg_rb & FILTER_RW_MASK:08x} "
+            f"expect=0x{expected & FILTER_RW_MASK:08x} src_id=0x{cell.src_id:x} "
+            f"addr=0x{addr:08x} user=0x{cell.src_id:x} resp={resp} rdata=0x{data:08x} "
+            f"expect_rdata=0x{val:08x}",
+        )
+
     async def _bring_up_prod_filter_active(self) -> None:
         """Real-sense a PROD image -> sep_debug=0 (inbound filter active)."""
         image = self.select_efuse_image(
@@ -746,11 +969,11 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"sep_debug must be 0 (filter active) in PROD, got {ctl.sep_debug} "
             f"(FEAT_CTRL=0x{ctl.feat_ctrl:016x})"
         )
-        self.logger.info("inbound filter ACTIVE: %s sep_debug=0", lc_state_name(image.lc_raw()))
+        self.logger.info("INFO-FILTER-ACTIVE %s sep_debug=0", lc_state_name(image.lc_raw()))
 
     async def run_scenario(self) -> None:
         mcfg = SepInboundFilterMatrixCfg.from_seed(self.random_seed())
-        self.logger.info("inbound-filter matrix: %s", mcfg.summary())
+        self.logger.info("INFO-CFG inbound-filter matrix: %s", mcfg.summary())
 
         await self._bring_up_prod_filter_active()
         self.filt = SepInboundFilter(self)
@@ -785,6 +1008,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             await self.filt.program_rule(cell, read_allowed=read_ok, write_allowed=write_ok)
 
             if not expect_hit:
+                await self._src_mismatch_premise(cell, addr, val, read_ok, write_ok)
                 await self._assert_ext_deny_read(
                     addr,
                     user=axi_user,
@@ -919,10 +1143,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             first = False
 
         assert walked == mcfg.n_cells(), (
-            f"CHK-RAND-REP FAIL: walked {walked} cells, n_cells()={mcfg.n_cells()}"
+            f"CTRL-RAND-REP FAIL: walked {walked} cells, n_cells()={mcfg.n_cells()}"
         )
         self.logger.info(
-            "CHK-RAND-REP PASS: walked all %d discrete cells "
+            "CTRL-RAND-REP PASS: walked all %d discrete cells "
             "(entries %s x %d windows x rw/r/w match-all + "
             "entry0/window0 x rw/r/w match + 1 mismatch)",
             walked,
@@ -931,6 +1155,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
 
         await self._check_burst_dimension(mcfg)
+        await self._reserved_si_read(mcfg.seed)
 
         # Restore entry 0 / window A / rw for the ownership checks.
         await self.filt.disable_all()
@@ -999,7 +1224,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
 
         self.logger.info(
-            "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)"
+            "CTRL-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)"
         )
 
         await self._check_page_widen(mcfg)
+        await self._presense_si_read_after_pulse()

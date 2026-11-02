@@ -50,8 +50,8 @@ def _gpio_pad_rows() -> dict[str, int]:
 
 
 def gpio_pad_count() -> int:
-    """Number of GPIO interfaces the RDL declares (``gpio_intf[N]`` in ``smc.rdl``)."""
-    return smc_addr("SMC_TOP_GPIO_INTF_NUM")
+    """Number of GPIO interfaces ``gpio_intf_wrap`` declares in ``smc.rdl``."""
+    return smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM")
 
 
 def pad_index(function: str) -> int:

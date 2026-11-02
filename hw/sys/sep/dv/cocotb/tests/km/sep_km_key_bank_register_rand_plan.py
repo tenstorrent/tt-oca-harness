@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from env.sep_abr_kem_nist import NIST_KEM_ENC_M
+from env.sep_chk_log import word_digest
 from env.sep_seeded_rng import SepSeededRng
 
 WORD = 0xFFFF_FFFF
@@ -258,21 +259,26 @@ def _hw(words) -> str:
 
 
 def draw_lines(plan: Plan) -> list[str]:
+    """The DRAW lines; key and share words appear only as ``word_digest`` digests."""
     lines = []
     for b in BANKS:
         s0, s1 = plan.shares[b.bit]
         lines.append(
-            f"DRAW share bank={b.name} s0=[{','.join(f'0x{w:08x}' for w in s0)}] "
-            f"s1=[{','.join(f'0x{w:08x}' for w in s1)}]"
+            f"DRAW share bank={b.name} words={len(s0)} "
+            f"s0_sha={word_digest(s0)} s1_sha={word_digest(s1)}"
         )
     lines.append("DRAW bank_order=" + ",".join(BANKS[i].name for i in plan.bank_order))
     lines.append("DRAW engine_order=" + ",".join(plan.engine_order))
     lines.append(f"DRAW idle_ops={plan.idle_ops}")
     for i, leg in enumerate(plan.single_share):
         lines.append(
-            f"DRAW single_share leg={i} share={leg.share} pre_s0={_hw(leg.pre[0])} "
-            f"pre_s1={_hw(leg.pre[1])} key={_hw(leg.key)} pt={_hw(leg.pt)}"
+            f"DRAW single_share leg={i} share={leg.share} "
+            f"pre_s0_sha={word_digest(leg.pre[0])} pre_s1_sha={word_digest(leg.pre[1])} "
+            f"key_sha={word_digest(leg.key)} pt={_hw(leg.pt)}"
         )
     b = plan.both_shares
-    lines.append(f"DRAW both_shares s0={_hw(b.s0)} s1={_hw(b.s1)} key={_hw(b.key)} pt={_hw(b.pt)}")
+    lines.append(
+        f"DRAW both_shares s0_sha={word_digest(b.s0)} s1_sha={word_digest(b.s1)} "
+        f"key_sha={word_digest(b.key)} pt={_hw(b.pt)}"
+    )
     return lines

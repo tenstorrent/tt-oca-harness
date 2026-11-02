@@ -32,11 +32,18 @@ is not. The prefix set is defined in
 ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``, section "Log line prefixes".
 Names are upper case: ``[A-Z0-9_-]``, with or without the ``CHK-`` prefix. Field values print as given: ``bool`` as 0/1, ``int`` in decimal, a
 list as ``[a,b]``; pass a register value as a string, e.g. ``f"0x{v:08x}"``.
+
+A key, key share, UID, token, token digest or other secret word is never
+printed. ``word_digest`` gives a short SHA-256 digest of the words (or of a
+wide integer), so two lines can be compared, and
+``diff_words`` gives the indexes of the words that differ.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
+from collections.abc import Iterable, Sequence
 from typing import Any
 
 _NAME = re.compile(r"^[A-Z0-9][A-Z0-9_-]*$")
@@ -58,6 +65,24 @@ def _fmt(value: Any) -> str:
         return "[" + ",".join(_fmt(v) for v in value) + "]"
     text = str(value)
     return repr(text) if (not text or any(c.isspace() for c in text)) else text
+
+
+def word_digest(words: Iterable[int] | int) -> str:
+    """First 8 hex digits of SHA-256 over ``words``, each a 32-bit big-endian word.
+
+    An ``int`` is taken as its 32-bit words, least significant first, so
+    ``word_digest(w)`` equals ``word_digest([w])`` for one word.
+    """
+    if isinstance(words, int):
+        n = max(1, (words.bit_length() + 31) // 32)
+        words = [(words >> (32 * k)) & 0xFFFF_FFFF for k in range(n)]
+    return hashlib.sha256(b"".join(w.to_bytes(4, "big") for w in words)).hexdigest()[:8]
+
+
+def diff_words(got: Sequence[int], exp: Sequence[int]) -> list[int]:
+    """Indexes where ``got`` and ``exp`` differ; a length mismatch adds the extra indexes."""
+    n = max(len(got), len(exp))
+    return [i for i in range(n) if i >= len(got) or i >= len(exp) or got[i] != exp[i]]
 
 
 class SepChkLog:

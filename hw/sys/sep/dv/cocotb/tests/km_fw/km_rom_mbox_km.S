@@ -64,6 +64,9 @@
 #   PH_FL_PRE    SEP cells: the pre-flush KM_STATUS is in R3; the image waits
 #                for flushed_by_sep and the post-flush sync word.
 #   PH_FL_DONE   R0-R12 of the cell (see flush_cell). Then sync.
+#   PH_RACE_READY R0 attempt; the image waits for two inbound words (see
+#                phase_race).
+#   PH_RACE_DONE R0-R6 of the attempt (see phase_race). Then sync.
 #   PH_IRQ_START R0 KM_CTRL, R1/R2 IRQ_STATUS before and after the clear, R3
 #                IRQ_ENABLE. Then sync.
 #   PH_IRQ_NEED  ERR word = run << 8 | source; the host raises that source.
@@ -186,6 +189,8 @@
     .equ PH_IRQ_RUN,   0x0C
     .equ PH_IRQ_CTL,   0x0D
     .equ PH_END,       0x0E
+    .equ PH_RACE_READY, 0x0F
+    .equ PH_RACE_DONE, 0x10
     .equ PH_ERROR,     0xEE
 
     .equ ERR_PARAM,     1       // detail: 1 magic, 2 id, 3 length, 4 check word
@@ -215,6 +220,8 @@
     .equ FLUSH_FILL,      4
 
     .equ SYNC_WORD,    0x53594E43   // "SYNC"
+    .equ RACE_END_WORD, 0x454E4421  // "END!"
+    .equ RACE_WORD,    0x52430000   // "RC" | attempt
     .equ QUIET_ITERS,  64
     .equ QUIET_MASK,   0xFFFFFFE7   // CPU IRQ bits 3 and 4 unmasked
     .equ SETTLE_READS, 32
@@ -278,7 +285,7 @@ irq_vec:
     // Layout table: the host reads it from the committed .parhex.
     .org SIG_ADDR
     .word 0x4D424B4D            // "MBKM"
-    .word 1                     // layout version
+    .word 2                     // layout version
     .word PARAM_BASE
     .word PARAM_ID_WORD
     .word PAYLOAD_WORDS
@@ -292,6 +299,7 @@ irq_vec:
     .word CTRL_OVF_RESP, CTRL_UDF_RESP, CTRL_FLUSH, SEP_SET
     .word CSR_SLVERR, CSR_DRBG, CSR_DRBG_EN, CSR_DRBG_SET, CSR_IRQ_ALL
     .word STATE_MAGIC
+    .word RACE_END_WORD, RACE_WORD
 sig_end:
 
 boot:
@@ -366,6 +374,7 @@ boot:
     jal   x1, phase_in
     jal   x1, phase_err
     jal   x1, phase_flush
+    jal   x1, phase_race
     jal   x1, phase_irq
 
     lw    x7, MB_STATUS(x4)
@@ -936,6 +945,69 @@ flush_done:
     PUB   PH_FL_DONE
     jal   x1, sync
     POP   x1
+    jalr  x0, 0(x1)
+
+# ---------------------------------------------------------------------------
+# Flush race: one outbound write per attempt against a SEP flush.
+
+    # Each attempt publishes PH_RACE_READY (R0 attempt) and waits for two
+    # inbound words: SYNC_WORD for an attempt or RACE_END_WORD to end the
+    # phase, then the delay d. The host writes SEP_CTRL.flush after both words
+    # have left the inbound FIFO. The image runs d loop passes, writes
+    # RACE_WORD | attempt to KM_WRITE_DATA, waits for flushed_by_sep and
+    # publishes PH_RACE_DONE: R0 attempt, R1 d, R2 KM_STATUS right after the
+    # write, R3 1 when flushed_by_sep was seen, R4 KM_STATUS after the wait,
+    # R5 KM_IRQ_STATUS before the write of 1 to flushed_by_sep, R6 after it.
+    # The host drains the outbound FIFO before the sync word.
+phase_race:
+    PUSH  x1
+    li    x13, 0
+1:  RST   x13, 0
+    PUB   PH_RACE_READY
+    li    x11, 2
+    jal   x1, wait_in_depth
+    bnez  x10, 2f
+    FAIL  ERR_WAIT_TO, 0x71
+2:  lw    x15, MB_RDATA(x4)
+    lw    x14, MB_RDATA(x4)
+    lw    x7, MB_STATUS(x4)
+    andi  x8, x7, ST_IN_EMPTY
+    bnez  x8, 3f
+    li    x10, ERR_SYNC_LEFT
+    mv    x11, x7
+    j     fail
+3:  li    x8, RACE_END_WORD
+    beq   x15, x8, 7f
+    li    x8, SYNC_WORD
+    beq   x15, x8, 4f
+    li    x10, ERR_SYNC_WORD
+    mv    x11, x15
+    j     fail
+4:  mv    x8, x14
+    beqz  x8, 6f
+5:  addi  x8, x8, -1
+    bnez  x8, 5b
+6:  li    x7, RACE_WORD
+    or    x7, x7, x13
+    sw    x7, MB_WDATA(x4)
+    lw    x7, MB_STATUS(x4)
+    RST   x7, 2
+    RST   x14, 1
+    jal   x1, wait_irq_flushed
+    RST   x10, 3
+    lw    x7, MB_STATUS(x4)
+    RST   x7, 4
+    lw    x7, MB_IRQST(x4)
+    RST   x7, 5
+    li    x7, IRQ_FLUSHED
+    sw    x7, MB_IRQST(x4)
+    lw    x7, MB_IRQST(x4)
+    RST   x7, 6
+    PUB   PH_RACE_DONE
+    jal   x1, sync
+    addi  x13, x13, 1
+    j     1b
+7:  POP   x1
     jalr  x0, 0(x1)
 
 # ---------------------------------------------------------------------------

@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """WDT_TIMEOUT written to 0 with no first-stage timeout leaves the second stage idle.
 
-Reproducer for #3386: with no core's first-stage timeout raised, a write of 0
-to `CPU_CTRL.WDT_TIMEOUT` must leave `smc_ras_o.wdt_second_timeout` low and the
-warm reset released.
+With no core's first-stage timeout raised, a write of 0 to
+`CPU_CTRL.WDT_TIMEOUT` leaves `smc_ras_o.wdt_second_timeout` low and the warm
+reset released.
 """
 
 from __future__ import annotations

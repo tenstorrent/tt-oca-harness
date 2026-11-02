@@ -86,7 +86,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, Event, FallingEdge, ReadOnly, RisingEdge
 from env import sep_km_img_h as imgh
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_image import LC_PROD, SepEfuseImage
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_km_fuse_plan import OTP_DUAL_RAIL_FIELDS
@@ -816,10 +816,11 @@ class sep_km_handover_rand_test(sep_base_test):
             ok, f = md.grade_sk_words(sk_words, exp)
             self.chk.ok("HO-SK-WORDS", ok, **f)
         self.logger.info(
-            "INFO-HO-SK-WORDS LOG pass=%d seed=%d words=%s",
+            "INFO-HO-SK-WORDS LOG pass=%d seed=%d nonzero_at=%s words_sha=%s",
             exp.no,
             self.plan.seed,
-            ",".join(_hx(w) for w in sk_words),
+            [i for i, w in enumerate(sk_words) if w],
+            word_digest(sk_words),
         )
         skipped: list[int] = []
         while first != imgh.MAGIC:
@@ -864,9 +865,11 @@ class sep_km_handover_rand_test(sep_base_test):
             ",".join(_hx(w) for w in rep.free_words),
         )
         self.logger.info(
-            "LOG pass=%d otp secret_val0=%s public_val0=%s staged_public_val0=%s control=1",
+            "LOG pass=%d otp secret_val0_nonzero=%s secret_val0_eq_staged=%s public_val0=%s "
+            "staged_public_val0=%s control=1",
             exp.no,
-            {k: _hx(v) for k, v in rep.secret_val0.items()},
+            {k: int(v != 0) for k, v in rep.secret_val0.items()},
+            {k: int(v == exp.staged_secret_val0.get(k)) for k, v in rep.secret_val0.items()},
             {k: _hx(v) for k, v in rep.public_val0.items()},
             {k: _hx(v) for k, v in exp.staged_public_val0.items()},
         )
@@ -926,13 +929,13 @@ class sep_km_handover_rand_test(sep_base_test):
         )
         self.logger.info(
             "LOG pass=%d pre-state completed=0x%02x tap_bank_valid=0x%02x shared=%d "
-            "registered_slots=%d staged_secret_val0=%s",
+            "registered_slots=%d staged_secret_val0_sha=%s",
             no,
             done,
             self._bank_valid(),
             shared,
             registered,
-            {k: _hx(v) for k, v in exp.staged_secret_val0.items()},
+            {k: word_digest([v]) for k, v in exp.staged_secret_val0.items()},
         )
         await self._handover_pass(exp, via_load=(no == 1), junk=p.junk if no == 1 else [])
 

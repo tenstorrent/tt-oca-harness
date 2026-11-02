@@ -134,10 +134,10 @@ from smc_reg import (  # noqa: E402
     SMC_BASE_CONFIG_GLOBAL_BASE_REG_ADDR,
     SMC_BASE_CONFIG_LOCAL_BASE_REG_ADDR,
     SMC_BASE_CONFIG_REGION_SIZE_REG_ADDR,
-    SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
-    SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
-    SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
-    SMC_XVISOR_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
 )
 
 _REG_WINDOW_BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
@@ -162,10 +162,26 @@ _XVISOR0_TARGET = 0x0260_0000
 _MMODE2_STALE_TARGET = 0x0270_0000
 # (label, ATTRS address, value written)
 _ENTRIES = (
-    ("MMODE0", SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR, _VALID | _MMODE0_TARGET),
-    ("MMODE1", SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR, _VALID | _MMODE1_TARGET),
-    ("MMODE2", SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_ADDR, _MMODE2_STALE_TARGET),
-    ("XVISOR0", SMC_XVISOR_REMAP_0__REGION_REGION_ATTRS_REG_ADDR, _VALID | _XVISOR0_TARGET),
+    (
+        "MMODE0",
+        SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
+        _VALID | _MMODE0_TARGET,
+    ),
+    (
+        "MMODE1",
+        SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
+        _VALID | _MMODE1_TARGET,
+    ),
+    (
+        "MMODE2",
+        SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
+        _MMODE2_STALE_TARGET,
+    ),
+    (
+        "XVISOR0",
+        SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
+        _VALID | _XVISOR0_TARGET,
+    ),
 )
 
 _WORD = 8
@@ -209,7 +225,9 @@ _FILTER_ENTRIES = (
 
 
 def _outbound(reg: str, entry: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_{reg}_BASE_ADDR", entry)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", entry
+    )
 
 
 _REGIONS = range(8)
@@ -222,7 +240,9 @@ _TOP_LANE = 0x80
 
 
 def _attrs(window: str, region: int) -> int:
-    return getattr(_regs, f"SMC_{window}_REMAP_{region}__REGION_REGION_ATTRS_REG_ADDR")
+    return getattr(
+        _regs, f"SMC_{window}_REMAP_WRAP_OUTPUT_REMAP_{region}__REGION_REGION_ATTRS_REG_ADDR"
+    )
 
 
 # (label, register prefix, window base, set offset, WSTRB=0x0F offset, WSTRB=0x80 offset)
@@ -447,7 +467,9 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
 
         resets = {}
         for reg in ("FILTER_CONFIG", "START_ADDR", "END_ADDR"):
-            resets[reg] = rdl_contract(f"smc_outbound_filter_ctrl/{reg}").reset_word
+            resets[reg] = rdl_contract(
+                f"smc_outbound_filter_ctrl_wrap/filter_ctrl/{reg}"
+            ).reset_word
         for entry, start, end, config in _FILTER_ENTRIES:
             await self.csr_read(
                 f"OB{entry}_CONFIG_RESET",
@@ -741,7 +763,9 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
 
     async def _alias_cacheable(self) -> None:
         for a, offset in zip(_REGIONS, _ALIAS_OFFSETS):
-            addr = getattr(_regs, f"SMC_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR")
+            addr = getattr(
+                _regs, f"SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR"
+            )
             await self.csr_read(
                 f"ALIAS{a}_ATTRS_RESET",
                 addr,
@@ -780,7 +804,9 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 )
                 count += 1
         for a in _REGIONS:
-            addr = getattr(_regs, f"SMC_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR")
+            addr = getattr(
+                _regs, f"SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR"
+            )
             await self.csr_read(
                 f"ALIAS{a}_FINAL",
                 addr,
@@ -921,7 +947,9 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
     async def _attr_setup(self) -> None:
         count = 0
         for a in _REGIONS:
-            addr = getattr(_regs, f"SMC_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR")
+            addr = getattr(
+                _regs, f"SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR"
+            )
             await self.csr_write(
                 f"ALIAS{a}_RESTORE", addr, REMAP_REGION_REGION_ATTRS_REG_DEFAULT, length=_WORD
             )
@@ -1127,6 +1155,10 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
         assert sorted(b["id"] for b in jb) == list(_JTAG_IDS) and all(b["resp"] == 0 for b in jb), (
             f"[ID_GROUP_WR] JTAG B beats {jb}, want one OKAY per ID 0..3"
         )
+        assert peak_w == len(_JTAG_IDS), (
+            f"[ID_GROUP_WR] at most {peak_w} of the {len(_JTAG_IDS)} JTAG writes were "
+            f"outstanding at once"
+        )
         for a, w in zip(addrs, words):
             held = responder.read_int(a, _WORD)
             assert held == w, f"[ID_GROUP_WR] SYS_OUT 0x{a:x} 0x{held:016x}, want 0x{w:016x}"
@@ -1147,6 +1179,10 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 jr.append(f)
         assert sorted(r["id"] for r in jr) == list(_JTAG_IDS) and all(r["resp"] == 0 for r in jr), (
             f"[ID_GROUP_RD] JTAG R beats {jr}, want one OKAY per ID 0..3"
+        )
+        assert peak_r == len(_JTAG_IDS), (
+            f"[ID_GROUP_RD] at most {peak_r} of the {len(_JTAG_IDS)} JTAG reads were "
+            f"outstanding at once"
         )
         for i, item, w in zip(_JTAG_IDS, reads, words):
             assert item.resp_code == 0 and item.rdata == w, (

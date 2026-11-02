@@ -42,18 +42,18 @@ BURST_INCR = 1
 
 _INTERNAL_XBAR = {
     "smc_base_config",
-    "smc_alias_remap",
-    "smc_mmode_remap",
-    "smc_xvisor_remap",
-    "smc_inbound_filter_ctrl",
-    "smc_outbound_filter_ctrl",
+    "smc_alias_remap_wrap",
+    "smc_mmode_remap_wrap",
+    "smc_xvisor_remap_wrap",
+    "smc_inbound_filter_ctrl_wrap",
+    "smc_outbound_filter_ctrl_wrap",
     "smc_mailbox",
     "dfx_ctrl",
 }
 _PERIPH_XBAR = {
     "smc_reset_unit",
     "smc_misc_wrap",
-    "gpio_intf",
+    "gpio_intf_wrap",
     "smc_avsbus_controller",
     "smc_i2c_wrap",
     "smc_uart_wrap",
@@ -113,14 +113,18 @@ def _rname(code) -> str:
 
 
 def _rdl_gap_resp() -> dict:
-    """``ocah_gap_resp`` of smc.rdl as the generated map's response dict shape."""
-    text = (Path(__file__).resolve().parents[3] / "regs" / "smc.rdl").read_text()
+    """``ocah_gap_resp`` of the SMC memory-map annotations as the generated map's response dict shape."""
+    text = (
+        Path(__file__).resolve().parents[3] / "regs" / "include" / "smc_memory_map.rdl"
+    ).read_text()
+    for name, value in re.findall(r"^`define (\w+) (.+)$", text, re.M):
+        text = text.replace(f"`{name}", value)
     m = re.search(
         r"ocah_gap_resp\s*=\s*ocah_resp'\{rresp:\s*ocah_resp_e::(\w+),\s*"
         r"rdata:\s*(0x[0-9A-Fa-f]+),\s*bresp:\s*ocah_resp_e::(\w+)\}",
         text,
     )
-    assert m, "ocah_gap_resp not found in smc.rdl"
+    assert m, "ocah_gap_resp not found in smc_memory_map.rdl"
     return {"rresp": m.group(1), "rdata": int(m.group(2), 16), "bresp": m.group(3)}
 
 
@@ -366,15 +370,20 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         )
         assert scratch_cold_7 == base + 0x281C and scratch_cold_6 == base + 0x2818
         assert scratch_warm_0 == base + 0x2880
-        gpio_last = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 64)
+        gpio_last = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 64)
         assert gpio_last == base + 0x3408
-        outfilt_last = smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 15) + 0x18
+        outfilt_last = (
+            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 15)
+            + 0x18
+        )
         assert outfilt_last == base + 0x1_61F8
         cpu_last = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADDR", 3)
         assert cpu_last == base + 0x3_92B8
-        alias_0 = smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0)
+        alias_0 = smc_indexed_addr(
+            "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0
+        )
         assert alias_0 == base + 0x1_2000
-        gpio_0 = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+        gpio_0 = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
         assert gpio_0 == base + 0x3000
         mb_wd = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR")
         assert mb_wd == base + 0x1_8000

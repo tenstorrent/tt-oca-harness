@@ -153,8 +153,24 @@ READBACK_FIELDS = (
     | avs_field("AVSBUS_CONTROLLER__AVS_READBACK__CMD_DATA_bm")
     | avs_field("AVSBUS_CONTROLLER__AVS_READBACK__CRC_bm")
 )
-CLEAR_ALL = 0x1FF
-CLEAR_SLAVE_ISSUED = 0x1
+INTR_SOURCES = (
+    "AVS_SLAVE_ISSUED_INTERRUPT",
+    "CMD_FIFO_FULL_INT",
+    "READBACK_FIFO_FULL_INT",
+    "READBACK_HAS_DATA_INT",
+    "SLAVE_UNRESPONSIVE_INT",
+    "MAX_RETRIES_ATTEMPTED_INT",
+    "CMD_FIFO_OVERFLOW_INT",
+    "READBACK_UNDERFLOW_INT",
+    "READBACK_OVERFLOW_INT",
+)
+CLEAR_ALL = sum(
+    avs_field(f"AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_{source}_bm")
+    for source in INTR_SOURCES
+)
+CLEAR_SLAVE_ISSUED = avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_AVS_SLAVE_ISSUED_INTERRUPT_bm"
+)
 
 # The AVS_CMD words of the contract: CmdGroup 1 commit and hold writes of
 # CMD_DATA 0xA5C3, then a CmdGroup 0 commit write of CMD_DATA 0x5A3C.
@@ -172,7 +188,9 @@ STATUS_BIT1 = 0b00010
 STATUS_BIT1_REPLY = reply(0, STATUS_BIT1, 0xFFFF)
 STATUS_ZERO_REPLY = reply(0, 0b00000, 0xFFFF)
 # AVS_SLAVE_STATUS after the status-bit-1 reply: AVS_SLAVE_ACK 0, response 0b00010.
-SLAVE_STATUS_BIT1 = 0x00000002
+SLAVE_STATUS_BIT1 = STATUS_BIT1 << avs_field(
+    "AVSBUS_CONTROLLER__AVS_SLAVE_STATUS__AVS_SLAVE_STATUS_RESPONSE_bp"
+)
 CRC_CODES = 8
 CRC3_MASK = 0x7
 
@@ -641,7 +659,7 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
             f"S5: none of the eight CRC codes updated AVS_LATEST_SLAVE_SUBFRAME for reply "
             f"0x{STATUS_ZERO_REPLY:08x}"
         )
-        assert not cleared_status & 0x2, (
+        assert not cleared_status & SLAVE_STATUS_BIT1, (
             f"S5: AVS_SLAVE_STATUS 0x{cleared_status:08x} keeps bit 1 after the accepted "
             f"status-0 reply 0x{STATUS_ZERO_REPLY | cleared_code:08x}"
         )

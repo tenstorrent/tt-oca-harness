@@ -21,7 +21,7 @@ the offset inside the block whether the port carries the KM address or the
 block offset; the module checks this at import.
 
 Seed plan. ``draw_plan`` turns one ``SepSeededRng`` into every value the leaf
-draws, and ``draw_lines`` gives the ``DRAW`` lines that the leaf logs.
+draws, and ``draw_lines`` gives the ``INFO-DRAW`` lines that the leaf logs.
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ import importlib.util
 from dataclasses import dataclass
 from pathlib import Path
 
+from env.sep_chk_log import word_digest
 from env.sep_seeded_rng import SepSeededRng
 
 WORD = 0xFFFF_FFFF
@@ -320,7 +321,15 @@ SHARD_EVIDENCE = {
     1: ("CHK-GOLD", "CHK-POLICY", "CHK-BANKS"),
     2: ("CHK-GOLD", "CHK-POLICY", "CHK-BANKS"),
     3: ("CHK-POLICY", "CHK-BANKS"),
-    4: ("CHK-POLICY", "CHK-REFUSE", "CHK-SHRED-SUBSET", "CHK-BANKS", "CHK-ENG-ORDER"),
+    4: (
+        "CHK-POLICY",
+        "CHK-REFUSE",
+        "CHK-SHRED-SUBSET",
+        "CHK-BANKS",
+        "CHK-ENG-ORDER",
+        "CHK-AES-NOKEY",
+        "CHK-DELIV-COUNT",
+    ),
 }
 POLICY_SHARD = 4
 
@@ -339,31 +348,27 @@ def in_shard(shard: int | None, r: Round) -> bool:
     return aes_width
 
 
-def _words(ws: tuple[int, ...]) -> str:
-    return "[" + ",".join(f"0x{w:08x}" for w in ws) + "]"
-
-
 def draw_lines(plan: Plan) -> list[str]:
-    lines = [f"DRAW witness_size_{BANK_NAME[e]}={plan.witness_drawn[e]}" for e in WITNESS]
-    lines += [f"DRAW size_class_{BANK_NAME[e]}={plan.other_class[e]}" for e in NO_WITNESS]
+    lines = [f"INFO-DRAW witness_size_{BANK_NAME[e]}={plan.witness_drawn[e]}" for e in WITNESS]
+    lines += [f"INFO-DRAW size_class_{BANK_NAME[e]}={plan.other_class[e]}" for e in NO_WITNESS]
     for i, r in enumerate(plan.rounds):
         lines.append(
-            f"DRAW round{i}=eng:{BANK_NAME[r.eng]},size:{r.size},class:{r.size_class},"
-            f"runs:{int(r.runs)} key={_words(r.words)}"
+            f"INFO-DRAW round{i}=eng:{BANK_NAME[r.eng]},size:{r.size},class:{r.size_class},"
+            f"runs:{int(r.runs)} key_sha={word_digest(r.words)}"
         )
     lines += [
-        f"DRAW p1=0x{plan.p1:02x}",
-        f"DRAW p2=0x{plan.p2:02x}",
-        f"DRAW m=0x{plan.m:02x}",
-        f"DRAW x=0x{plan.x:02x}",
-        f"DRAW z=0x{plan.z:02x}",
-        f"DRAW m2=0x{plan.m2:02x}",
-        f"DRAW v=0x{plan.v:02x}",
-        f"DRAW s=0x{plan.s:02x}",
-        f"DRAW leg_order={','.join(plan.leg_order)}",
-        f"DRAW k1={_words(plan.k1)}",
-        f"DRAW k2={_words(plan.k2)}",
-        f"DRAW k3={_words(plan.k3)}",
+        f"INFO-DRAW p1=0x{plan.p1:02x}",
+        f"INFO-DRAW p2=0x{plan.p2:02x}",
+        f"INFO-DRAW m=0x{plan.m:02x}",
+        f"INFO-DRAW x=0x{plan.x:02x}",
+        f"INFO-DRAW z=0x{plan.z:02x}",
+        f"INFO-DRAW m2=0x{plan.m2:02x}",
+        f"INFO-DRAW v=0x{plan.v:02x}",
+        f"INFO-DRAW s=0x{plan.s:02x}",
+        f"INFO-DRAW leg_order={','.join(plan.leg_order)}",
+        f"INFO-DRAW k1_sha={word_digest(plan.k1)}",
+        f"INFO-DRAW k2_sha={word_digest(plan.k2)}",
+        f"INFO-DRAW k3_sha={word_digest(plan.k3)}",
     ]
     return lines
 

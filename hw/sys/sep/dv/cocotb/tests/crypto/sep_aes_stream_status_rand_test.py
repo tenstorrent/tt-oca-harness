@@ -49,10 +49,12 @@ Checkers:
                       Control: four DATA_IN words start a block.
   CHK-AES-START-MANUAL  in manual mode, with block 1 written to DATA_IN, every
                       STATUS read of a 20 x t_blk window before the START write
-                      shows IDLE = 1 and OUTPUT_VALID = 0, and OUTPUT_VALID rises
-                      after the START write (aes.adoc:106, MANUAL_OPERATION: the
-                      unit "only starts to encrypt/decrypt after receiving a start
-                      trigger"). Control: in automatic mode the same DATA_IN write
+                      shows IDLE = 1, OUTPUT_VALID = 0 and INPUT_READY = 0, and
+                      OUTPUT_VALID rises after the START write (aes.adoc:106,
+                      MANUAL_OPERATION: the unit "only starts to encrypt/decrypt
+                      after receiving a start trigger"; aes.rdl STATUS.INPUT_READY:
+                      0 while the DATA_IN values are not loaded, so block 1 is
+                      shown to be in DATA_IN). Control: in automatic mode the same DATA_IN write
                       gives OUTPUT_VALID inside the window.
   CHK-AES-LOST        manual overwrite sets OUTPUT_LOST, DATA_OUT holds block
                       2, OUTPUT_LOST stays 1 after the full DATA_OUT read, and a
@@ -108,6 +110,8 @@ Checkers:
   OUTPUT_LOST is not graded in automatic mode (aes.rdl STATUS.OUTPUT_LOST:
   "not meaningful if MANUAL_OPERATION=0"); its value is logged.
 Vector bits 36 and 37 (entropy pool sources) are logged as ``OBS-POOL-VEC``.
+OUTPUT_VALID after each word of the first DATA_OUT read that the streams make
+word by word is logged as ``OBS-AES-OV-PARTIAL``.
 ``aes.rdl`` is ``vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl``; the two ``.md``
 files are under ``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/``; ``aes.hjson`` is
 ``vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson``.
@@ -126,7 +130,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes_cbc_decrypt, aes_decrypt_block, aes_encrypt_words
 from env.sep_bit_watch import SepBitWatch
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_crypto_kat_rows import AES_IV_ROWS, AES_KEY_ROWS
 from env.sep_edge_timer import SepEdgeTimer
 from env.sep_fcov_gate import (
@@ -293,7 +297,7 @@ class BusyPlan:
 
     def describe(self) -> str:
         return (
-            f"busy_key_word={self.key_word} busy_key_mask=0x{self.key_mask:08x} "
+            f"busy_key_word={self.key_word} busy_key_mask_sha={word_digest(self.key_mask)} "
             f"busy_iv_new={[hex(w) for w in self.iv_new]} piv_missing={self.piv_missing}"
         )
 
@@ -433,11 +437,11 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         await self.bring_up_entropy(strict=True, score_km=False)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.aes = SepAes(self)
@@ -446,6 +450,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         # Clock count of the leaf: the clk of a watcher that samples every rising edge.
         self.clk = SepBitWatch(cocotb.top.rst_ni, {"rst_ni": 0}, name="clk_count").start()
         self.t_blk: int | None = None
+        self.ov_partial_done = False
         self.auto_start_clk = -1
         self.quiet = False
         self.idle_busy = 0
@@ -464,7 +469,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         s0 = self.rd_known(dut.sep_internal_interrupts_probe_o)
         vec = SepEdgeTimer(dut.sep_internal_interrupts_probe_o, name="vector").start()
         t0_ps = get_sim_time("ps")
-        self.logger.info("S0 vector=0x%011x", s0)
+        self.logger.info("INFO-S0-VECTOR vector=0x%011x", s0)
 
         for s in plan.streams:
             await self._stream(s)
@@ -632,7 +637,24 @@ class sep_aes_stream_status_rand_test(sep_base_test):
             return None
         if s.out_gap[i]:
             await ClockCycles(cocotb.top.clk_i, s.out_gap[i])
+        if not self.ov_partial_done:
+            self.ov_partial_done = True
+            return await self._read_out_partial(s.mode, i)
         return await self._read_out()
+
+    async def _read_out_partial(self, mode: str, i: int) -> list[int]:
+        """DATA_OUT read word by word with a STATUS read after each word.
+
+        No text states OUTPUT_VALID after a read of only some DATA_OUT words, so the
+        four values are logged as OBS-AES-OV-PARTIAL.
+        """
+        out: list[int] = []
+        ov_after: list[int] = []
+        for k in range(4):
+            out.append(await self.aes._rd(AES_DATA_OUT[k]))
+            ov_after.append(int(bool(await self.aes._rd(AES_STATUS) & ST_OV)))
+        self.chk.obs("AES-OV-PARTIAL", mode=mode, block=i, ov_after=ov_after)
+        return out
 
     # --- streams ------------------------------------------------------------------
     async def _stream(self, s: StreamPlan) -> None:
@@ -868,11 +890,12 @@ class sep_aes_stream_status_rand_test(sep_base_test):
             "AES-START-MANUAL", 0 <= auto_clk < window, auto_start_clk=auto_clk, window_clk=window
         )
         pre = self.manual_pre
-        pre_bad = [st for _, st in pre if not st & ST_IDLE or st & ST_OV]
+        pre_bad = [st for _, st in pre if not st & ST_IDLE or st & ST_OV or st & ST_IR]
         start_fields = {
             "pre_samples": len(pre),
             "pre_idle": 0 if any(not st & ST_IDLE for st in pre_bad) else 1,
             "pre_output_valid": 1 if any(st & ST_OV for st in pre_bad) else 0,
+            "pre_input_ready": 1 if any(st & ST_IR for st in pre_bad) else 0,
             "run_clk": self.manual_run_clk,
             "window_clk": window,
             "auto_start_clk": auto_clk,
@@ -1075,7 +1098,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         fields = {
             **self._bw_fields(before, after),
             "key_word": bp.key_word,
-            "key_mask": f"0x{bp.key_mask:08x}",
+            "key_mask_sha": word_digest(bp.key_mask),
             "ct==old_key_golden": ct_ok,
             "twin_new_key": int(twin_ok),
         }

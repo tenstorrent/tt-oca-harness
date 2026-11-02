@@ -22,6 +22,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
+from sep_chk_log import word_digest
 from sep_efuse_plan import DEFAULT_VECTOR, FIELD_VECTORS, SECRET_FIELDS, words_token
 from sep_reg_meta import RegBlock
 from sep_seeded_rng import SepSeededRng
@@ -214,7 +215,7 @@ class SepKmOtpIdCfg:
         return {**self.ids, **SECRETS, "LOCKS": self.locks}
 
     def summary(self) -> str:
-        ids = " ".join(f"{f}={self.ids[f]:#066x}" for f in ID_FIELDS)
+        ids = " ".join(f"{f}_sha={word_digest(self.ids[f])}" for f in ID_FIELDS)
         return (
             f"seed={self.seed} eFuse read-locked={self.locked_field} LOCKS={self.locks:#018x} {ids}"
         )

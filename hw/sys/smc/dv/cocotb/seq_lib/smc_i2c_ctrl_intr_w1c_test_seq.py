@@ -152,9 +152,32 @@ TX_FILL_BYTE = 0xFF
 ALERT_WRITE_BYTE = 0xC5
 NACK_DATA_BYTE = 0x5A
 
-INTR_TEST_W1P = 0x000FE3E8
-INTR_CLEAR_A = 0x000AA2A0
-INTR_CLEAR_B = 0x00054148
+
+def _intr_test(*fields: str) -> int:
+    mask = 0
+    for field in fields:
+        mask |= _i2c_u32(f"I2C__INTR_TEST__{field}_bm")
+    return mask
+
+
+INTR_CLEAR_A = _intr_test(
+    "SCL_INTERFERENCE",
+    "STRETCH_TIMEOUT",
+    "CMD_COMPLETE",
+    "UNEXP_STOP",
+    "SMBALERT",
+    "CONTROLLER_RX_FIFO_ERROR",
+    "TARGET_RX_FIFO_ERROR",
+)
+INTR_CLEAR_B = _intr_test(
+    "RX_OVERFLOW",
+    "SDA_INTERFERENCE",
+    "SDA_UNSTABLE",
+    "HOST_TIMEOUT",
+    "CONTROLLER_TX_FIFO_ERROR",
+    "TARGET_TX_FIFO_ERROR",
+)
+INTR_TEST_W1P = INTR_CLEAR_A | INTR_CLEAR_B
 # Every INTR_STATE field of i2c.rdl, from the generated field masks: the 13 write-one-to-clear
 # event bits (INTR_TEST_W1P) and the 7 read-only level bits that INTR_TEST holds while it is set.
 INTR_STATE_BITS = sum(
@@ -166,15 +189,19 @@ INTR_LEVEL_BITS = INTR_STATE_BITS & ~INTR_TEST_W1P
 # Drawn mask walk (RAND-REP) on instances 1 and 2: the enable, test and clear masks and the
 # order of the three writes; see _draw_masks.
 MASK_WRITES = ("enable", "test", "clear")
-INTR_TEST_RW_FIELDS = (
-    (0, "FMT_THRESHOLD"),
-    (1, "RX_THRESHOLD"),
-    (2, "ACQ_THRESHOLD"),
-    (4, "CONTROLLER_HALT"),
-    (10, "TX_STRETCH"),
-    (11, "TX_THRESHOLD"),
-    (12, "ACQ_STRETCH"),
+INTR_TEST_RW_FIELDS = tuple(
+    (_i2c_u32(f"I2C__INTR_TEST__{field}_bp"), field)
+    for field in (
+        "FMT_THRESHOLD",
+        "RX_THRESHOLD",
+        "ACQ_THRESHOLD",
+        "CONTROLLER_HALT",
+        "TX_STRETCH",
+        "TX_THRESHOLD",
+        "ACQ_STRETCH",
+    )
 )
+RDATA_DATA = _i2c_u32("I2C__RDATA__DATA_bm")
 INTR_CONTROLLER_HALT = _i2c_u32("I2C__INTR_STATE__CONTROLLER_HALT_bm")
 INTR_UNEXP_STOP = _i2c_u32("I2C__INTR_STATE__UNEXP_STOP_bm")
 ENABLE_CMD_COMPLETE = _i2c_u32("I2C__INTR_ENABLE__CMD_COMPLETE_bm")
@@ -1224,7 +1251,7 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             await self._wait_field(
                 f"{label}_rdata", "STATUS", c, I2C_STATUS_RXEMPTY, 0, RX_POLLS, RX_STEP
             )
-            rdata = (await self._rd(f"{label}_RDATA", "RDATA", c)) & 0xFF
+            rdata = (await self._rd(f"{label}_RDATA", "RDATA", c)) & RDATA_DATA
             assert rdata == TX_BYTE, f"{label}: RDATA=0x{rdata:02x}, expected 0x{TX_BYTE:02x}"
 
             async def stopped(stops=stops) -> tuple[bool, str]:
@@ -1399,7 +1426,7 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
         )
         done = await self._wait_done(c, label, stops)
         await self._wait_field(f"{label}_rdata", "STATUS", c, I2C_STATUS_RXEMPTY, 0, RX_POLLS, 1)
-        rdata = (await self._rd(f"{label}_RDATA", "RDATA", c)) & 0xFF
+        rdata = (await self._rd(f"{label}_RDATA", "RDATA", c)) & RDATA_DATA
         intr = await self._rd(f"{label}_TGT_INTR", "INTR_STATE", k)
         return f"{done} RDATA=0x{rdata:02x} wire {self._frames(base)}", intr
 

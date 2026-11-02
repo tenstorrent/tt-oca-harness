@@ -1,8 +1,8 @@
 diff --git a/DOC/MAS/architecture.adoc b/DOC/MAS/architecture.adoc
-index 72ab63a..4c34655 100644
+index d3cefc8..7290d75 100644
 --- a/DOC/MAS/architecture.adoc
 +++ b/DOC/MAS/architecture.adoc
-@@ -447,7 +447,14 @@ The [.monospaced]#++WRITE_EARLY_RESPONSE_WDT_CTL++# register ([.monospaced]#++0x
+@@ -458,7 +458,14 @@ The [.monospaced]#++WRITE_EARLY_RESPONSE_WDT_CTL++# register ([.monospaced]#++0x
  |WDT_THRESHOLD |[31:0] |RW |Watchdog threshold in I_CLK cycles. Reset [.monospaced]#++0xC3500++# (800000 cycles).
  |==============================================================================================
  
@@ -19,10 +19,10 @@ index 72ab63a..4c34655 100644
  [[aou-axi-aggregator]]
  === AXI Aggregator
 diff --git a/DOC/MAS/software-operation.adoc b/DOC/MAS/software-operation.adoc
-index df66ad4..5811c2d 100644
+index a6d4f93..5148783 100644
 --- a/DOC/MAS/software-operation.adoc
 +++ b/DOC/MAS/software-operation.adoc
-@@ -394,7 +394,17 @@ image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Acce
+@@ -436,7 +436,17 @@ image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Acce
  
  When the early write-response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#) and the actual BRESP from the remote die carries an error for a transaction that already received an early OKAY, the error is reported via the [.monospaced]#++INT_EARLY_RESP_ERR++# interrupt. The failing transactionpass:[']s AXI ID and BRESP type are captured in [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++#. SW clears the error by writing 1 to [.monospaced]#++WRITE_RESP_ERR++# (W1C).
  

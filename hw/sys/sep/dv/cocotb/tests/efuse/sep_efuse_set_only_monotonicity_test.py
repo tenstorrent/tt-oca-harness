@@ -32,6 +32,18 @@ _MAX_SENSE_CYCLES = 20_000
 class sep_efuse_set_only_monotonicity_test(sep_base_test):
     """Sensed ones survive write-0; new ones stick; writable shadows overwrite."""
 
+    async def _write_zero(self, shadow: SepEfuseShadow, field, step: str) -> None:
+        # write_word returns only on an OKAY write response.
+        name, word = field.name, field.word_idx
+        await shadow.write_word(name, word, field.drive_word(0))
+        self.logger.info(
+            "CTRL-WR0-RESP seen: %s %s[%d] @0x%08x write 0x0 resp=OKAY",
+            step,
+            name,
+            word,
+            shadow._addr(name, word),
+        )
+
     async def _check_field(self, shadow: SepEfuseShadow, field) -> None:
         name, word = field.name, field.word_idx
         got = await shadow.read_word(name, word)
@@ -41,7 +53,7 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
         self.logger.info("CHK-SENSE PASS: %s[%d] sensed 0x%08x", name, word, got)
 
         if field.sensed:
-            await shadow.write_word(name, word, field.drive_word(0))
+            await self._write_zero(shadow, field, "CLEAR-REJECT")
             got = await shadow.read_word(name, word)
             assert got == field.sensed, (
                 f"CHK-CLEAR-REJECT FAIL: {name}[{word}] write-0 cleared "
@@ -65,7 +77,7 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
             got,
         )
 
-        await shadow.write_word(name, word, field.drive_word(0))
+        await self._write_zero(shadow, field, "OR-MERGE")
         got = await shadow.read_word(name, word)
         assert got == field.after_set, (
             f"CHK-OR-MERGE FAIL: {name}[{word}] write-0 cleared "
@@ -115,7 +127,16 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
                 + [w.name for w in cfg.writable]
             )
         )
+        # The sequence reads SEP_FUSE_SENSE_STATUS, then every word of each walked row.
+        reads = 1 + sum(len(img.expected_field(name)) for name in walked)
+        mark = self.sb_mark()
         await self.start_seq(sep_efuse_shadow_check_seq(img, fields=walked))
+        self.assert_sb_judged(mark, "CHK-SENSE-WALK")
+        judged = self.env.scoreboard.value_checks - mark[1]
+        assert judged == reads, f"CHK-SENSE-WALK FAIL: scoreboard judged {judged} of {reads} reads"
+        self.logger.info(
+            "CHK-SENSE-WALK PASS: rows=%d judged=%d/%d reads", len(walked), judged, reads
+        )
 
         shadow = SepEfuseShadow(self)
         for field in cfg.fields:

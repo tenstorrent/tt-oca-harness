@@ -32,7 +32,7 @@ from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_indexed_addr
+from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_gpio_vip_utils import drive_gpio_pad
 from .smc_pad_table import gpio_pad_count
@@ -43,21 +43,20 @@ PROBE_BOUND_CYCLES = 64
 #: DATA_CTRL reads a pad2core poll issues before it fails.
 PAD2CORE_BOUND_READS = 8
 
-# gpio_intf.adoc DATA_CTRL.
-CORE2PAD = 1 << 0
-RX_TX_SHIFT = 4
-IF_ENABLE = 1 << 16
-LSIO_SELECT = 1 << 17
-IRQ_ENABLE = 1 << 18
-LSIO_DISABLE = 1 << 19
-IRQ_TYPE = 0b11 << 20
-LSIO_ENABLE = 1 << 25
-PAD2CORE = 1 << 31
-DATA_CTRL_RW = 0x003F_0031
-# gpio_intf.adoc DATA_CTRL_ENABLE.
-USE_REG_CORE2PAD = 1 << 0
-USE_REG_TX = 1 << 4
-USE_REG_RX = 1 << 5
+CORE2PAD = gpio_intf_u32("GPIO_INTF__DATA_CTRL__CORE2PAD_bm")
+RX_TX = gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bm")
+RX_TX_SHIFT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
+IF_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
+LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")
+IRQ_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_ENABLE_bm")
+LSIO_DISABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bm")
+IRQ_TYPE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bm")
+LSIO_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
+PAD2CORE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")
+DATA_CTRL_RW = CORE2PAD | RX_TX | IF_ENABLE | LSIO_SELECT | IRQ_ENABLE | LSIO_DISABLE | IRQ_TYPE
+USE_REG_CORE2PAD = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_bm")
+USE_REG_TX = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_bm")
+USE_REG_RX = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_RX_bm")
 DATA_CTRL_ENABLE_RW = USE_REG_RX | USE_REG_TX | USE_REG_CORE2PAD
 
 
@@ -126,11 +125,11 @@ _PROBES = {"out": "tb_core2pad_o", "en": "tb_core2pad_en_o", "ie": "tb_pad2core_
 
 
 def _data_ctrl(pad: int) -> int:
-    return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
+    return smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
 
 
 def _data_ctrl_enable(pad: int) -> int:
-    return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad)
+    return smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad)
 
 
 class smc_gpio_pad_enable_walk_test_seq(SmcCsrSeq):

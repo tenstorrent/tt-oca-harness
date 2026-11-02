@@ -17,13 +17,24 @@
 #include "smc_rom_defs.h"
 
 /*
- * Clear scratch registers used for SMC/SEP coordination.
+ * Clear scratch registers used for SMC/SEP coordination, including any park request
+ * left from before the reset.
  * Scratch register 15 is preserved because it carries MBIST/memory repair status.
+ * Only the boot hart clears them: the registers describe hart 0, and a secondary hart that
+ * re-enters the ROM must not erase a pending park request or the readiness flags.
  */
 .global __metal_clear_coordination_scratch_regs
 .type __metal_clear_coordination_scratch_regs, @function
 __metal_clear_coordination_scratch_regs:
     mv      t6, ra
+
+    csrr    t0, mhartid
+    la      t1, __metal_boot_hart
+    bne     t0, t1, clear_coordination_done
+
+    /* Scratch Register 3: SEP park request */
+    li      t0, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(SMC_SCRATCH_PARK_REQ)
+    sd      zero, 0(t0)
 
     /* Scratch Register 9: SMC status to SEP */
     li      t0, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(SMC_SCRATCH_SMC_STATUS_TO_SEP)
@@ -45,6 +56,7 @@ __metal_clear_coordination_scratch_regs:
     li      t0, SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(SMC_SCRATCH_SEP_SAFE_SRAM_SIZE)
     sd      zero, 0(t0)
 
+clear_coordination_done:
     mv      ra, t6
     ret
 

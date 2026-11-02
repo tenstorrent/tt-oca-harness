@@ -156,8 +156,9 @@ LIST_MAGIC = 0x50
 F_RAW = 1 << 8
 F_OPT = 1 << 9
 
+ERR_HDR = 1  # km_rom_poke.S ERR_HDR
 ERR_NAMES = {
-    1: "list header [31:24] is not 0x50",
+    ERR_HDR: "list header [31:24] is not 0x50",
     2: "list longer than BUF_WORDS",
     3: "unknown opcode",
     4: "more than N_SLOTS result slots",

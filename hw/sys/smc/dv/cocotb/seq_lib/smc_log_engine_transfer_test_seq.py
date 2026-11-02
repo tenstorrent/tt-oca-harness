@@ -51,6 +51,7 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
+    _LOG_ENGINE_H,
     _REPO,
     GLOBAL_BASE_RESET,
     LOCAL_BASE_RESET,
@@ -58,6 +59,7 @@ from .smc_addr_map import (
     SPM_MEMORY_BASE,
     SPM_MEMORY_SIZE,
     log_engine_u32,
+    reg_reset_word,
     smc_addr,
     smc_indexed_addr,
 )
@@ -105,9 +107,27 @@ _ENABLE_BITS = log_engine_u32("LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bm") | log
     "LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bm"
 )
 _SIZE_BITS = log_engine_u32("LOG_ENGINE__LOG_REGION_SIZE__LOG_REGION_SIZE_bm")
-_ADDR_HI_BITS = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bm") >> 32
-_ADDR_HI_RESERVED = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__RESERVED_bm") >> 32
+# LOG_REGION_ADDR is 64 bits wide behind 32-bit accesses: the high field's bit position
+# names the word that holds it.
+_ADDR_LO_BITS = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_bm")
+_ADDR_HI_SHIFT = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bp")
+_ADDR_HI_OFFSET = _ADDR_HI_SHIFT // 8
+_ADDR_HI_BITS = (
+    log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bm") >> _ADDR_HI_SHIFT
+)
+_ADDR_HI_RESERVED = log_engine_u32("LOG_ENGINE__LOG_REGION_ADDR__RESERVED_bm") >> _ADDR_HI_SHIFT
+_WRITE_ADDR_BITS = log_engine_u32("LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bm")
 _WORD = 0xFFFF_FFFF
+
+_ADDR_RESET = reg_reset_word(_LOG_ENGINE_H, "LOG_ENGINE", "LOG_REGION_ADDR")
+_LOG_CTRL_RESET = reg_reset_word(_LOG_ENGINE_H, "LOG_ENGINE", "LOG_CTRL")
+_RESET_WORDS = {
+    name: reg_reset_word(_LOG_ENGINE_H, "LOG_ENGINE", name)
+    for name in ("CTRL", "LOG_REGION_SIZE", "LOG_WRITE_ADDR", "INTR_STATUS", "INTR_ENABLE")
+} | {
+    "LOG_REGION_ADDR_LO": _ADDR_RESET & _WORD,
+    "LOG_REGION_ADDR_HI": _ADDR_RESET >> _ADDR_HI_SHIFT,
+}
 
 # log_engine.adoc: LOG_REGION_SIZE[19:0], LOG_REGION_ADDR [55:32] and [31:0] with [63:56]
 # reading 0, LOG_WRITE_ADDR[31:0], INTR_ENABLE bits 0 and 4, LOG_CTRL.LOG_LEN [15:0];
@@ -379,8 +399,10 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
     async def _program_region(self, wrap: int, label: str, region: int, size: int) -> None:
         await self.csr_write(f"{label}_W{wrap}_SIZE", engine_reg(wrap, "LOG_REGION_SIZE"), size)
         addr = engine_reg(wrap, "LOG_REGION_ADDR")
-        await self.csr_write(f"{label}_W{wrap}_ADDR_LO", addr, region & _WORD)
-        await self.csr_write(f"{label}_W{wrap}_ADDR_HI", addr + 4, region >> 32)
+        await self.csr_write(f"{label}_W{wrap}_ADDR_LO", addr, region & _ADDR_LO_BITS)
+        await self.csr_write(
+            f"{label}_W{wrap}_ADDR_HI", addr + _ADDR_HI_OFFSET, region >> _ADDR_HI_SHIFT
+        )
 
     # -- S1 / S2 ---------------------------------------------------------
 
@@ -409,7 +431,7 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
             ("CTRL", engine_reg(wrap, "CTRL")),
             ("LOG_REGION_SIZE", engine_reg(wrap, "LOG_REGION_SIZE")),
             ("LOG_REGION_ADDR_LO", addr),
-            ("LOG_REGION_ADDR_HI", addr + 4),
+            ("LOG_REGION_ADDR_HI", addr + _ADDR_HI_OFFSET),
             ("LOG_WRITE_ADDR", engine_reg(wrap, "LOG_WRITE_ADDR")),
             ("INTR_STATUS", engine_reg(wrap, "INTR_STATUS")),
             ("INTR_ENABLE", engine_reg(wrap, "INTR_ENABLE")),
@@ -430,7 +452,10 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
         for wrap in range(self.wraps):
             for name, addr in self._engine_words(wrap):
                 data = await self._read_okay(f"S2_W{wrap}_{name}", addr)
-                assert data == 0, f"S2 wrapper {wrap} {name}: reset read 0x{data:08x}, not 0x0"
+                want = _LOG_CTRL_RESET if name.startswith("LOG_CTRL") else _RESET_WORDS[name]
+                assert data == want, (
+                    f"S2 wrapper {wrap} {name}: reset read 0x{data:08x}, not 0x{want:08x}"
+                )
                 reads += 1
             resp, data = await self._read_resp(
                 f"S2_W{wrap}_INTR_TEST", engine_reg(wrap, "INTR_TEST"), allow_error=True
@@ -462,9 +487,9 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
         addr = engine_reg(wrap, "LOG_REGION_ADDR")
         regs = [
             ("LOG_REGION_SIZE", engine_reg(wrap, "LOG_REGION_SIZE"), _SIZE_BITS, 0),
-            ("LOG_REGION_ADDR_LO", addr, _WORD, 0),
-            ("LOG_REGION_ADDR_HI", addr + 4, _ADDR_HI_BITS, _ADDR_HI_RESERVED),
-            ("LOG_WRITE_ADDR", engine_reg(wrap, "LOG_WRITE_ADDR"), _WORD, 0),
+            ("LOG_REGION_ADDR_LO", addr, _ADDR_LO_BITS, 0),
+            ("LOG_REGION_ADDR_HI", addr + _ADDR_HI_OFFSET, _ADDR_HI_BITS, _ADDR_HI_RESERVED),
+            ("LOG_WRITE_ADDR", engine_reg(wrap, "LOG_WRITE_ADDR"), _WRITE_ADDR_BITS, 0),
             ("INTR_ENABLE", engine_reg(wrap, "INTR_ENABLE"), _ENABLE_BITS, 0),
         ]
         log_ctrl = {e.addr for e in self._elements[wrap]}
@@ -798,7 +823,7 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
             for name, reg in (
                 ("SIZE", engine_reg(wrap, "LOG_REGION_SIZE")),
                 ("ADDR_LO", addr),
-                ("ADDR_HI", addr + 4),
+                ("ADDR_HI", addr + _ADDR_HI_OFFSET),
                 ("WRITE_ADDR", engine_reg(wrap, "LOG_WRITE_ADDR")),
             ):
                 await self.csr_write(f"S10_W{wrap}_{name}_CLR", reg, 0)
