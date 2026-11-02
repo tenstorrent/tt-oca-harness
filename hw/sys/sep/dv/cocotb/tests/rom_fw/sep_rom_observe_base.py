@@ -9,6 +9,9 @@ the grading; the base owns bring-up, the observer and the verdict call.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from types import MappingProxyType
+
 import cocotb
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
@@ -25,7 +28,7 @@ class sep_rom_observe_base(sep_base_test):
     verdict_source = "scratch0"
     lc_state = LC_TEST_DEV
     max_run_cycles = 4_000_000
-    observer_kwargs: dict = {}
+    observer_kwargs: Mapping = MappingProxyType({})
 
     def build_efuse_image(self) -> SepEfuseImage:
         img = SepEfuseImage()

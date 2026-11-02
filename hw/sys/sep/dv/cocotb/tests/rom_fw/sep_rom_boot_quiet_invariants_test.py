@@ -348,10 +348,12 @@ class sep_rom_boot_quiet_invariants_test(sep_rom_observe_base):
         # The "entered _start" status store to cold_scratch[1] that precedes the clear.
         status = _first(
             head,
-            lambda r: is_store(r.insn)
-            and not _trapped(r)
-            and r.mem_addr == _COLD_1
-            and r.mem_data == _STATUS_ENTERED_START,
+            lambda r: (
+                is_store(r.insn)
+                and not _trapped(r)
+                and r.mem_addr == _COLD_1
+                and r.mem_data == _STATUS_ENTERED_START
+            ),
         )
         # The first PMP CSR write, which follows the clear.
         pmp = _first(head, lambda r: _writes_csr(r, _PMP_CSRS))

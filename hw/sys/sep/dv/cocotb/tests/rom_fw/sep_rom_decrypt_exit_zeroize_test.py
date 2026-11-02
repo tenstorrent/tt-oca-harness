@@ -260,18 +260,18 @@ class _Dccm:
                 if we:
                     self.writes.append((int(b.t_ps), _off(slot), data))
                     self.written.add(slot)
-                    times, datas = self.by_slot.setdefault(slot, ([], []))
+                    times, data_words = self.by_slot.setdefault(slot, ([], []))
                     times.append(int(b.t_ps))
-                    datas.append(data)
+                    data_words.append(data)
                 else:
                     self.reads += 1
                     self.unwritten_reads += slot not in self.written
 
     def write_of(self, addr: int, t_ps: int, data: int | None) -> int | None:
         """Time of the first write to addr's word at or after t_ps, matching data when given."""
-        times, datas = self.by_slot.get(_slot(addr), ((), ()))
+        times, data_words = self.by_slot.get(_slot(addr), ((), ()))
         for i in range(bisect_left(times, t_ps), len(times)):
-            if data is None or datas[i] == data:
+            if data is None or data_words[i] == data:
                 return times[i]
         return None
 

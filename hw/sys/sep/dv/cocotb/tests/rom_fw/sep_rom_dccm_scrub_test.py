@@ -153,9 +153,9 @@ class sep_rom_dccm_scrub_test(sep_rom_observe_base):
                     if we:
                         data = b.lane("wdata", bank, DATA_BITS)
                         written[slot] = (data, b.lane("wecc", bank, ECC_BITS))
-                        times, datas = wbeats.setdefault(slot, ([], []))
+                        times, data_words = wbeats.setdefault(slot, ([], []))
                         times.append(b.t_ps)
-                        datas.append(data)
+                        data_words.append(data)
                         w["writes"] += 1
                         early_writes += first_t is None or b.t_ps < first_t
                         if data == 0 and c_t is not None and b.t_ps < c_t:
@@ -197,9 +197,9 @@ class sep_rom_dccm_scrub_test(sep_rom_observe_base):
         """Probes whose stored word appears on slot_of(addr) within win_ps of the retirement."""
         hits = 0
         for r in probes:
-            times, datas = wbeats.get(slot_of(r.mem_addr), ((), ()))
+            times, data_words = wbeats.get(slot_of(r.mem_addr), ((), ()))
             lo, hi = bisect_left(times, r.t_ps - win_ps), bisect_right(times, r.t_ps + win_ps)
-            hits += r.mem_data in datas[lo:hi]
+            hits += r.mem_data in data_words[lo:hi]
         return hits
 
     def grade(self, obs, chk) -> None:

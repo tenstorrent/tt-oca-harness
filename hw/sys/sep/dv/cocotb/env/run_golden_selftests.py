@@ -40,6 +40,7 @@ _GOLDENS = (
     _HERE / "sep_rv32_trace_decode.py",
     _HERE / "sep_rom_observer.py",
     _HERE.parent / "tests" / "rom_fw" / "sep_measurement_golden.py",
+    _HERE.parent / "tests" / "rom_fw" / "sep_rom_status_ring_model.py",
     # Freshness of the committed expected shadow the SV-UVM sense test loads.
     _HERE / "sep_efuse_default_shadow.py",
 )

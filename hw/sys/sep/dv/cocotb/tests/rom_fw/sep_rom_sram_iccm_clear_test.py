@@ -413,9 +413,9 @@ class sep_rom_sram_iccm_clear_test(sep_rom_observe_base):
                 if not we:
                     continue
                 slot = (bank, row)
-                times, datas = iw.setdefault(slot, ([], []))
+                times, data_words = iw.setdefault(slot, ([], []))
                 times.append(b.t_ps)
-                datas.append(data)
+                data_words.append(data)
                 if t_ext is not None and b.t_ps < t_ext:
                     before += 1
                     if data == 0:
@@ -461,9 +461,9 @@ class sep_rom_sram_iccm_clear_test(sep_rom_observe_base):
         def score(slot_of) -> int:
             hits = 0
             for r in probes:
-                times, datas = iw.get(slot_of(r.pc), ((), ()))
+                times, data_words = iw.get(slot_of(r.pc), ((), ()))
                 i = bisect_left(times, r.t_ps)
-                hits += i > 0 and datas[i - 1] == r.insn
+                hits += i > 0 and data_words[i - 1] == r.insn
             return hits
 
         real = score(_islot)
