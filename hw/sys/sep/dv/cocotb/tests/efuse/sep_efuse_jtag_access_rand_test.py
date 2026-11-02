@@ -162,15 +162,17 @@ SHIM_REG_ADDR = SHIM_BLOCK.addr(SHIM_REG)
 
 
 def _shim_addr(p: SepEfusePlan, op: str) -> int:
-    """One word address of the shim span: below the MAP window, above the last register
-    window, or the map address of ``EFUSE_BANK_INIT_TIME``."""
+    """One 8-byte-aligned address of the shim span: below the MAP window, above the last
+    register window, or the map address of ``EFUSE_BANK_INIT_TIME``. The shim control
+    model decodes address bit 2 and answers SLVERR when it is set, so an aligned address
+    that passes the lifecycle filter answers OKAY, and only the filter gives the error."""
     if SHIM_SPAN_GAP_LO <= SHIM_REG_ADDR < SHIM_SPAN_GAP_HI:
         raise AssertionError(f"test bug: 0x{SHIM_REG_ADDR:08x} is not in the shim span")
     region = p.draw.choice(f"shim_{op}_region", ("below", "above", "reg"))
     if region == "reg":
         return p.draw.put(f"shim_{op}_addr", SHIM_REG_ADDR)
     lo, hi = (0, SHIM_SPAN_GAP_LO) if region == "below" else (SHIM_SPAN_GAP_HI, ADDR_END)
-    return 4 * p.draw.randrange(f"shim_{op}_word", lo // 4, hi // 4)
+    return 8 * p.draw.randrange(f"shim_{op}_dword", -(-lo // 8), hi // 8)
 
 
 def _field_bits(addr: int) -> int:
@@ -283,10 +285,10 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         value of ``EFUSE_BANK_INIT_TIME`` before and after, and the data of the JTAG read.
         """
         s = self.shim_draw
-        before = await self.fd.rd(SHIM_REG_ADDR)
+        before_resp, before = await self.fd.rd_graded_by_data(SHIM_REG_ADDR)
         rd_resp, rd_data = await self._jrd(s["rd_addr"])
         wr_resp = await self._jwr(s["wr_addr"], s["wdata"])
-        after = await self.fd.rd(SHIM_REG_ADDR)
+        after_resp, after = await self.fd.rd_graded_by_data(SHIM_REG_ADDR)
         self.chk.ok(
             "JTAG-SHIM-DENY",
             rd_resp in ERROR_RESP and wr_resp in ERROR_RESP,
@@ -303,7 +305,9 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             reg=SHIM_REG,
             reg_addr=f"0x{SHIM_REG_ADDR:08x}",
             fd_before=f"0x{before:08x}",
+            fd_before_resp=before_resp,
             fd_after=f"0x{after:08x}",
+            fd_after_resp=after_resp,
             rd_addr=f"0x{s['rd_addr']:08x}",
             jtag_rdata=f"0x{rd_data:08x}",
         )
