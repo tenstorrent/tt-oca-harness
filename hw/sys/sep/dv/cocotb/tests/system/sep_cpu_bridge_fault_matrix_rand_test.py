@@ -537,7 +537,8 @@ class _RasCmp:
     flight; still compared with 1 up to the clear pulse of its own latch),
     ``clr`` (the clear pulse was seen; not compared), ``off`` (suspended) and
     ``resume`` (suspended until the next status read). ``settle`` ends the
-    ``rise``, ``clr_wait``, ``clr`` and ``resume`` states at a status read.
+    ``rise``, ``clr_wait``, ``clr`` and ``resume`` states at a status read,
+    so a clear of a latch still in ``rise`` raises.
     A mismatch while ``exp`` is 1 is a SHAPE miss; while ``exp`` is 0 it is an
     IDLE miss before the first fault of the latch and a CLEAR miss after it.
     """
@@ -622,6 +623,8 @@ class _RasCmp:
         self.seen[k] = None
 
     def begin_clear(self, k: str) -> None:
+        if self.state[k] == "rise":
+            raise AssertionError(f"clear of {k} sent before a status read ended its rise")
         if self.state[k] == "cmp" and self.exp[k]:
             self.state[k] = "clr_wait"
 
@@ -1293,6 +1296,8 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         c = self.c
         await self._arm()
         await self._restore_full()
+        exp_full = self.latched & PERIPH_MASK
+        full = await self._periph()
         b = c.retrig_clear
         await self._wr_ok(PERIPH_CLEAR_ADDR, BIT[b])
         self.latched &= ~BIT[b]
@@ -1305,11 +1310,13 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         exp_others = self.latched & ~BIT[b]
         line = (
             f"block={b} relatched={int(bool(after & BIT[b]))} others_kept=0x{others:02x} "
+            f"restored_status=0x{full & PERIPH_MASK:02x} exp_restored=0x{exp_full:02x} "
             f"cleared_status=0x{mid & PERIPH_MASK:02x} exp_cleared=0x{exp_mid:02x} "
             f"after=0x{after & PERIPH_MASK:02x} vec42={self._b(vec, 42)}"
         )
         if (
-            (mid & PERIPH_MASK) != exp_mid
+            (full & PERIPH_MASK) != exp_full
+            or (mid & PERIPH_MASK) != exp_mid
             or not after & BIT[b]
             or others != exp_others
             or self._b(vec, 42) != 1
