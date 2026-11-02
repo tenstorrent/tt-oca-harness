@@ -4044,3 +4044,86 @@ args = [
   # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
   "+esrc_noise_force",
 ]
+
+[[tests]]
+# PL-080 (software residue, partial): the encrypted primary decrypts and boots; when the decryption
+# stage returns and at the hand-off mret, DCCM holds no 16-byte segment of the class key, the derived
+# key or the KDF input.
+name = "sep_rom_decrypt_exit_zeroize_test_success"
+module = "rom_fw.sep_rom_decrypt_exit_zeroize_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+  "+sep_rom_decrypt_exit=success",
+]
+
+[[tests]]
+# Blocked: ISSUE-024 in docs/superpowers/plans/sep_rom/sep_rom_gap_issue_log.md.
+# PL-080 (partial): entropy complex in reset and an AES reset pulse at the decryption stage entry,
+# so the cipher never starts; no key material in DCCM when the stage returns and at the verdict.
+name = "sep_rom_decrypt_exit_zeroize_test_aes_init_fail"
+module = "rom_fw.sep_rom_decrypt_exit_zeroize_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 72000
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+  "+sep_rom_decrypt_exit=aes_init_fail",
+]
+
+[[tests]]
+# PL-080 (software residue, partial): the HMAC message FIFO stops draining during the stage, so key
+# derivation fails; when the stage returns and at the FAIL verdict, DCCM holds no key material.
+name = "sep_rom_decrypt_exit_zeroize_test_kdf_fail"
+module = "rom_fw.sep_rom_decrypt_exit_zeroize_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+  "+sep_rom_decrypt_exit=kdf_fail",
+]
+
+[[tests]]
+# Blocked: ISSUE-024 in docs/superpowers/plans/sep_rom/sep_rom_gap_issue_log.md.
+# PL-080 (partial): entropy complex in reset at the stage entry, so the AES stalls at the key load;
+# no key material in DCCM when the stage returns and at the verdict.
+name = "sep_rom_decrypt_exit_zeroize_test_aes_dec_fail"
+module = "rom_fw.sep_rom_decrypt_exit_zeroize_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 72000
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+  "+sep_rom_decrypt_exit=aes_dec_fail",
+]
