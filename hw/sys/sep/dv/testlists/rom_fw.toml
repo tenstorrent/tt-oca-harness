@@ -3944,3 +3944,22 @@ args = [
   # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
   "+esrc_noise_force",
 ]
+
+[[tests]]
+# SB-080: a secure boot whose manifest carries a security-version flag the fuses lack, with no
+# update suppression, leaves every OTP bank word unchanged from reset to the end of the run and
+# puts no PROGRAM command on the eFuse shim; BL1 boots. The bl0_state commit directive is not graded.
+name = "sep_rom_no_fuse_program_test"
+module = "rom_fw.sep_rom_no_fuse_program_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "rollback", "efuse", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_bl1ver36_spread.toml",
+  "+esrc_noise_force",
+]
