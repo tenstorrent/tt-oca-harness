@@ -20,8 +20,8 @@ SEP uses the 32-bit RISC-V
 https://github.com/chipsalliance/Cores-VeeR-EL2[VeeR EL2 CPU] to run boot and
 security-service firmware. This chapter describes the SEP configuration,
 local memories, reset vector and debug integration. The
-https://github.com/tenstorrent/tt-Cores-VeeR-EL2/tree/07a51d817c5042f57850e931a1fb5e6a557a9333/docs/source[EL2 Programmer's Reference Manual]
-at `tt-Cores-VeeR-EL2@07a51d817`, the `veer_el2` revision in `Bender.yml`, defines the core programming model.
+https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html[EL2 Programmer's Reference Manual]
+defines the core programming model.
 The Programmer's Guide gives the
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-pic[programming guidance]
