@@ -1277,6 +1277,31 @@ module smc_uvm_top
     assign cpu_scratch0_inject_fire   = `CPU_MEM_DV.scratch0_inject_fire_q;
     `undef CPU_MEM_DV
 
+    // Scratch macro peek. The bank selector is a mux over constant generate
+    // indices, because a hierarchical reference into a generate block needs a
+    // constant index.
+    logic [$clog2(chipyard_4core_mem_pkg::NumSramBanks)-1:0]       cpu_scratch_peek_bank;
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamAddrWidth-1:0] cpu_scratch_peek_entry;
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamDataWidth-1:0]
+        cpu_scratch_peek_bank_data [chipyard_4core_mem_pkg::NumSramBanks];
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamDataWidth-1:0] cpu_scratch_peek_word;
+
+    always_comb begin
+        cpu_scratch_peek_bank  = smc_scratch_map_pkg::smc_scratch_bank(
+                                     32'(tb_cpu_scratch_peek_offset));
+        cpu_scratch_peek_entry = smc_scratch_map_pkg::smc_scratch_entry(
+                                     32'(tb_cpu_scratch_peek_offset));
+    end
+
+    for (genvar b = 0; b < chipyard_4core_mem_pkg::NumSramBanks; b++) begin : gen_cpu_scratch_peek
+        assign cpu_scratch_peek_bank_data[b] =
+            u_dut.u_smc_ip_integration.u_mems.gen_scratch_rams[b].u_mem.u_mem
+                .mem[cpu_scratch_peek_entry];
+    end
+
+    assign cpu_scratch_peek_word    = cpu_scratch_peek_bank_data[cpu_scratch_peek_bank];
+    assign tb_cpu_scratch_peek_data = cpu_scratch_peek_word[63:0];
+
     // Probe pin on the cocotb init surface; do not OR into the score.
     logic unused_ecc_probe;
     assign unused_ecc_probe = tb_cpu_ecc_inject_probe;
@@ -1750,6 +1775,8 @@ module smc_uvm_top
     assign tb_cpu_l2_pending_aw    = `SMC_L2_ISO.i_axi_isolate.pending_aw_q;
     assign tb_cpu_l2_pending_w     = `SMC_L2_ISO.i_axi_isolate.pending_w_q;
     assign tb_cpu_l2_pending_ar    = `SMC_L2_ISO.i_axi_isolate.pending_ar_q;
+    assign tb_cpu_l2_slv_arvalid   = `SMC_L2_ISO.slv_req_i.ar_valid;
+    assign tb_cpu_l2_slv_arready   = `SMC_L2_ISO.slv_resp_o.ar_ready;
     assign tb_cpu_l2_flush_active  = `SMC_L2_ISO.flush_active_q;
     assign tb_cpu_mmio_isolated    = `SMC_CPU.mmio_isolated;
     assign tb_cpu_mmio_pending_aw  = `SMC_MMIO_ISO.i_axi_isolate.pending_aw_q;
@@ -5852,6 +5879,7 @@ module smc_uvm_top
     assign tb_cpu_ecc_poke_en      = 1'b0;
     assign tb_cpu_ecc_poke_entry   = '0;
     assign tb_cpu_ecc_poke_mask    = '0;
+    assign tb_cpu_scratch_peek_offset = '0;
     assign tb_dfd_fault_inject     = 1'b0;
 
     // Product lifecycle state idle: complementary TEST_DEV ({~0, 0}).

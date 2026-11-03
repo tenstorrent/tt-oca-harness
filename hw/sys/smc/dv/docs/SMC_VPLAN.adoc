@@ -1472,6 +1472,10 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_flr_isolation_sources_test` |2 |Isolation sources, FLR latch set and clear, skip_mem_repair_o.
 |`smc_plic_register_test` |2 |PLIC PRIORITY, PENDING, ENABLE, THRESHOLD and CLAIM register behaviour.
 |`smc_spm_aperture_region_size_test` |3 |SPM window alias and REGION_SIZE reach and limit over SEP_IN.
+|`smc_cpu_reset_timeout_zero_test` |3 |A `RESET_TIMEOUT.timeout_value` of zero leaves a stuck uncore drain withheld past the field's longest count; a nonzero value written on the same request fires the timer after that value.
+|`smc_cpu_uncore_reset_scope_test` |3 |A software uncore reset holds all four cores on its own edge, and `isolate_req` stays up on every edge until the bit is set again.
+|`smc_cpu_l2_isolate_depth_and_block_test` |3 |The L2 frontend isolate holds four outstanding reads and makes a fifth wait; isolated, it blocks a new read until release and then answers it OKAY.
+|`smc_spm_bank_formula_test` |3 |Scratchpad bank `4 * offset[19:17] + offset[7:6]` at the bank read counters and entry `{offset[16:8], offset[5:3]}` in the macro word, over SEP_IN.
 |===
 
 ==== JTAG
@@ -24364,16 +24368,16 @@ other location of the pass written with the read word.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SPM-WALK-ENTRY0` |Every L0 u LX location returns the word written to it in each of the five passes (2325 scoreboard compares), every response OKAY. The bank and entry each address selects is not stated (LINKED-ISSUE SF-016)
+|`CHK-SPM-WALK-ENTRY0` |Every L0 u LX location returns the word written to it in each of the five passes (2325 scoreboard compares), every response OKAY. The bank and entry each address selects are graded by `smc_spm_bank_formula_test`
 |`CHK-SPM-WALK-POW2` |Every LP location returns its own written word in the one LP pass, and every LX location at a non-zero entry offset (229) does so in each of the five passes (1248 + 1145 scoreboard compares), every response OKAY. The per-bank entry count behind the offsets is inferred (LINKED-ISSUE SF-017)
 |`CHK-SPM-WALK-CORESIDENT` |Every read of a pass starts after the pass's last write and returns its own location's word rather than another's: five L0 u LX passes (asc, desc, asc, desc, asc) and one LP pass (desc)
 |`CHK-NONVAC` |Ordered fence SETUP < ADDRESS_SET < per-pass (L0_LX_WRITE_ALL < L0_LX_READ_ALL) x5 < LP_WRITE_ALL < LP_READ_ALL, 7146 accesses, each term with its count and sim time
 |===
 
-*Known Limitations*: The bank/entry address mapping and the SECDED encoding are not documented,
-so the 72-bit bank port word is not predicted and which bank each address reaches is not
-observed. Pattern classes repeat across locations, so aliasing between two locations holding the
-same class is not distinguishable.
+*Known Limitations*: The SECDED encoding is not documented, so the 72-bit bank port word is not
+predicted; the bank and entry each address reaches are graded by `smc_spm_bank_formula_test`.
+Pattern classes repeat across locations, so aliasing between two locations holding the same class
+is not distinguishable.
 
 *Pass Criteria*: `CHK-NONVAC`, `CHK-SPM-WALK-CORESIDENT`, `CHK-SPM-WALK-ENTRY0`,
 `CHK-SPM-WALK-POW2` hold after their compares. Enrolled in: `all`, `hosted`.
@@ -24893,8 +24897,8 @@ draws nothing from the seed.
   (`cpu.adoc` "CPU AXI Isolation").
 * External boot done rising while fuse sensing is still running after a second cold reset: no CPU
   reset releases before sense done.
-* The release latencies and the four-cycle isolate release count are measured and printed; the
-  specification does not state the values.
+* The release latencies are measured and printed; the specification does not state them. The
+  isolate release count is compared with the documented four cycles.
 
 *Test Procedure*:
 
@@ -24947,21 +24951,24 @@ draws nothing from the seed.
   primary reset releases until it falls; the `tb_cpu_isolate_req` values around the fall are
   printed.
 |`CHK-COLD-SELF-ISOLATE-RELEASE` |`tb_cpu_cluster_isolate` must fall after the latest of init-done,
-  core release and uncore release; the delay in `clk_smc_i` rises is measured and printed against
-  the documented four cycles without comparing it.
-|`CHK-NONVAC` |The seven steps must stamp in order with strictly increasing time, the seven checker
+  core release and uncore release; the delay in `clk_smc_i` rises is measured and printed.
+|`CHK-COLD-SELF-ISOLATE-FOUR-CYCLES` |That delay must be 4 `clk_smc_i` rises (`cpu.adoc` "CPU AXI
+  Isolation": "releasing four cycles after SRAM initialization completes and the uncore is out of
+  reset"); the terms and the isolate are sampled on the same rise.
+|`CHK-NONVAC` |The seven steps must stamp in order with strictly increasing time, the eight checker
   lines must print in step order and the fence edges must increase, so a truncated run fails.
 |===
 
 *Pass Criteria*: Every checker above is emitted and the sequence asserts hold: CPU resets held
 until both fuse sense and external boot are done, `smc_init_mem_done_o` 1 whenever a CPU reset
 output is 1, isolate held then released after the latest of init-done and the CPU releases, and the
-same hold in the second cold reset with external boot raised mid-sense. The release latencies and
-the isolate delay are recorded without comparison. The run requires `+smc_hold_ext_boot`.
+same hold in the second cold reset with external boot raised mid-sense, and the isolate release
+delay of four rises. The release latencies are recorded without comparison. The run requires
+`+smc_hold_ext_boot`.
 
-*Scope limit*: The release latencies after the sense-done and external-boot rises, the latency of
-the mid-sense release and the isolate release delay against the documented four cycles are measured
-and printed and not compared, because the specification does not state the values. The levels of
+*Scope limit*: The release latencies after the sense-done and external-boot rises and the latency of
+the mid-sense release are measured and printed and not compared, because the specification does not
+state the values. The levels of
 `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` in the hold window, the first edge on which
 `smc_init_mem_done_o` reads 1 and the `tb_cpu_isolate_req` values around the isolate fall are
 printed.
@@ -53141,6 +53148,234 @@ Drive `smc_isolate_req_smc_lane_test_seq`. Each checker below is a named compare
 |===
 
 *Pass Criteria*: every checker above holds; enrolled in `reset.toml` with the `ci` tag and in `all`.
+'''''
+[[sec-576-smc_cpu_reset_timeout_zero_test]]
+===== 576 `smc_cpu_reset_timeout_zero_test`
+
+*Phase*: 3
+
+*Area*: CPU
+
+*Source Module*: `smc_cpu_reset_timeout_zero_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; TB holds SEP_IN R (`tb_sep_axi_r_hold`); probes
+`tb_cpu_reset_timeout`, `tb_cpu_reset_applied`, `tb_cpu_uncore_reset_n`, `tb_cpu_isolate_req`,
+`tb_cpu_drained`, `tb_cpu_l2_pending_ar`
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`, `cpu`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: `cpu.adoc` "Timeout Recovery": "A `timeout_value` of zero disables the timer." With the
+drain stuck, the withheld uncore reset is never applied while the value is zero. The positive
+control rewrites a nonzero value on the same request and shows the timer fire after that count,
+so the window is graded against a live timer and live probes.
+
+*Test Coverage*:
+
+* Four 64-byte SEP_IN reads of preloaded scratchpad words are parked by the R hold, so the L2
+  frontend isolate cannot drain; the uncore reset bit is cleared with `timeout_mode` 1 and
+  `timeout_value` 0.
+* On every one of 2^16 + 64 `clk_smc_i` rises (past the longest count the 16-bit field holds)
+  `reset_timeout`, `reset_applied`, `uncore_reset_n`, `isolate_req` and `drained` read 0, 0, 1, 1, 0
+  and the pending AR count is nonzero.
+* `RESET_TIMEOUT` rewritten with `timeout_value` 0x40 in `timeout_mode` 0: `reset_timeout` rises
+  0x40 +/- 8 rises after the write completes and `reset_applied` stays 0 (report mode withholds).
+* Positive control: the hold released, the four reads complete OKAY with their words, the drain
+  completes, the reset is applied, and the release clears both status bits.
+
+*Test Procedure*:
+
+Drive `smc_cpu_reset_timeout_zero_test_seq`. Each checker below is a named compare the DUT can fail;
+a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-RESET-TIMEOUT-ZERO-DISABLED` |With `timeout_value` 0 the withheld state held on all 2^16 + 64 sampled rises with the drain stuck
+|`CHK-RESET-TIMEOUT-REARMS` |`timeout_value` 0x40 written on the same request raised `reset_timeout` 0x40 +/- 8 rises after the write while the reset stayed withheld
+|===
+
+*Pass Criteria*: both checkers hold and the parked reads complete OKAY after the release. Enrolled
+in: `all`, `hosted`, `cpu`.
+
+*Scope limit*: The timer is re-armed in report mode; the force-mode flush of a stuck drain is
+`smc_cpu_l2_read_wedge_test`.
+
+'''''
+
+[[sec-577-smc_cpu_uncore_reset_scope_test]]
+===== 577 `smc_cpu_uncore_reset_scope_test`
+
+*Phase*: 3
+
+*Area*: CPU
+
+*Source Module*: `smc_cpu_uncore_reset_scope_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN for `RESET_CTRL` and `RESET_TIMEOUT`; a sampler of
+`tb_cpu_uncore_reset_n`, `tb_cpu_core_resets_n`, `tb_cpu_isolate_req`, `tb_cpu_cluster_isolate`,
+`tb_cpu_reset_applied`, `tb_cpu_drained` and `tb_cpu_reset_timeout` on every `clk_smc_i` rise
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`, `cpu`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: `cpu.adoc` "Reset and Boot": "An uncore reset also holds every core in reset, on the
+same clock edge"; "Drain Handshake": "`isolate_req_i` stays high until the uncore reset bit is set
+again. The boundary then reconnects."
+
+*Test Coverage*:
+
+* With the fabric idle and `RESET_TIMEOUT` in force mode, the uncore reset bit is cleared with every
+  core released: the drain applies the reset (`drained` 1, `reset_timeout` 0 at the edge), the edge
+  on which `tb_cpu_uncore_reset_n` reads 0 is the edge on which all four bits of
+  `tb_cpu_core_resets_n` read 0, and no core bit reads 0 earlier.
+* The bit stays clear for 2000 rises after `reset_applied`: `tb_cpu_isolate_req` and
+  `tb_cpu_cluster_isolate` read 1, the uncore and core resets 0, on every one of them.
+* The bit set again: `isolate_req` falls only after that write and within 64 rises of it completing;
+  the boundary de-isolates after the request falls; no core reset releases before the uncore.
+
+*Test Procedure*:
+
+Drive `smc_cpu_uncore_reset_scope_test_seq`. Each checker below is a named compare the DUT can fail;
+a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UNCORE-HOLDS-ALL-CORES-SAME-EDGE` |All four core resets read 0 on the edge the uncore reset read 0 and 1 on every earlier edge after the write
+|`CHK-ISOLATE-REQ-HELD-UNTIL-RELEASE` |`isolate_req` and the cluster isolate read 1 on all 2000 held edges, `isolate_req` fell only after the bit was set again, the boundary de-isolated after it
+|===
+
+*Pass Criteria*: both checkers hold and `RESET_TIMEOUT` reads clear after the release. Enrolled in:
+`all`, `hosted`, `cpu`.
+
+*Scope limit*: None stated.
+
+'''''
+
+[[sec-578-smc_cpu_l2_isolate_depth_and_block_test]]
+===== 578 `smc_cpu_l2_isolate_depth_and_block_test`
+
+*Phase*: 3
+
+*Area*: CPU
+
+*Source Module*: `smc_cpu_l2_isolate_depth_and_block_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, event-API reads beside sequencer CSR accesses; TB holds
+SEP_IN R (`tb_sep_axi_r_hold`); probes `tb_cpu_l2_pending_ar`, `tb_cpu_l2_isolated`,
+`tb_cpu_l2_slv_arvalid` / `tb_cpu_l2_slv_arready` (the isolate's slave AR handshake), SEP_IN
+`s_axi_arvalid` / `s_axi_arready` / `s_axi_rvalid` / `s_axi_rready`
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`, `cpu`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: `cpu.adoc` "CPU AXI Isolation": the two `axi_isolate` instances are "each sized for up
+to four outstanding transactions", and the L2 frontend port "blocks new transactions rather than
+terminating them".
+
+*Test Coverage*:
+
+* Depth: five 64-byte reads on one ID with R held; `tb_cpu_l2_pending_ar` sampled on every rise
+  reaches 4, never reads 5, the isolate's slave port holds an AR valid with ready low while 4 are
+  pending (the fifth refused at the isolate), and once a read's last beat passes the isolate the
+  count reads 3 then 4 again (the fifth admitted into the freed slot); all five reads complete OKAY
+  with their words.
+* Block: an uncore reset applied by the drain (`reset_timeout` 0) with the fabric idle,
+  `tb_cpu_l2_isolated` 1; a fresh SEP_IN read of a preloaded word sees the isolate 1, its slave port
+  refusing the AR and no SEP_IN R handshake on 512 rises, then completes OKAY with the word within
+  256 rises of the isolate falling after the release.
+
+*Test Procedure*:
+
+Drive `smc_cpu_l2_isolate_depth_and_block_test_seq`. Each checker below is a named compare the DUT can
+fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-L2-ISOLATE-DEPTH-FOUR` |Pending AR peaked at exactly 4 with five reads offered, the isolate refused an AR while 4 were pending, and the count read 3 then 4 again once a slot freed
+|`CHK-L2-ISOLATED-BLOCKS-NEW-ACCESS` |A read presented at SEP_IN into the isolated port was refused at the isolate's slave port, got no R on 512 rises and completed OKAY with its word after the release
+|===
+
+*Pass Criteria*: both checkers hold and `RESET_TIMEOUT` reads clear after the release. Enrolled in:
+`all`, `hosted`, `cpu`.
+
+*Scope limit*: The MMIO isolate's depth and its SLVERR termination are not graded here.
+
+'''''
+
+[[sec-579-smc_spm_bank_formula_test]]
+===== 579 `smc_spm_bank_formula_test`
+
+*Phase*: 3
+
+*Area*: CPU
+
+*Source Module*: `smc_spm_bank_formula_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN with the scoreboard's 64-bit `expected=` compares;
+`tb_cpu_scratch_bank_read_count` (one counter per bank port); `tb_cpu_scratch_peek_offset` /
+`tb_cpu_scratch_peek_data` (the macro word at the bank and entry `smc_scratch_map_pkg` resolves
+for an offset)
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`, `cpu`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: `cpu.adoc` "Memory System": "bank = 4 * offset[19:17] + offset[7:6]; entry =
+{offset[16:8], offset[5:3]}" and "the bank number is the index of the bank's memory interface port
+at the SMC boundary".
+
+*Test Coverage*:
+
+* With the four cores held (a core reset leaves the boundary connected), 23 distinct words are
+  written at offsets that toggle each bank bit and each entry bit alone from offset 0, land on
+  entries 4088 and 4095 of bank 31 and on the last entry of bank 3 before the first group boundary.
+* Each word is read back through SEP_IN with the 32 bank counters snapshotted around the read: only
+  the counter at `4 * offset[19:17] + offset[7:6]` advances.
+* The macro word at entry `{offset[16:8], offset[5:3]}` of that bank is the word written at the
+  offset.
+
+*Expectation Sources*: `hw/sys/smc/doc/cpu.adoc` (scratchpad geometry and the bank/entry formula).
+
+*Test Procedure*:
+
+Drive `smc_spm_bank_formula_test_seq` after fuse sense completes. Each checker below is a named
+compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SPM-BANK-SELECT-FORMULA` |For every offset of the walk only the counter of bank `4 * offset[19:17] + offset[7:6]` advanced on the read
+|`CHK-SPM-ENTRY-SELECT-FORMULA` |For every offset of the walk the macro word at entry `{offset[16:8], offset[5:3]}` of that bank is the written word, every readback equal
+|===
+
+*Pass Criteria*: both checkers hold and the cores are released with `RESET_CTRL` restored. Enrolled
+in: `all`, `hosted`, `cpu`.
+
+*Scope limit*: The 72-bit codeword's SECDED bits are not predicted; the peek compares the 64 data
+bits.
+
 '''''
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
 ===== 161 `smc_occp_dual_unsecure_boot_test`

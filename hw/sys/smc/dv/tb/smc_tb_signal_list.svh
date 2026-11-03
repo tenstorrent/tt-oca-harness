@@ -488,6 +488,10 @@
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_read_count)
 `SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NumSramBanks*32-1:0], tb_cpu_scratch_bank_read_count)
+// Scratch macro peek: the 64 data bits of the macro word at the bank and entry
+// smc_scratch_map_pkg resolves for a byte offset of the scratch window.
+`SMC_TB_IN(logic [19:0], tb_cpu_scratch_peek_offset)
+`SMC_TB_OUT(logic [63:0], tb_cpu_scratch_peek_data)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_write_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_fw_mailbox)
 `SMC_TB_OUT(logic, tb_cpu_fw_mailbox_valid)
@@ -524,6 +528,10 @@
 `SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_aw)
 `SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_w)
 `SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_ar)
+// The L2 frontend isolate's slave AR handshake: a read refused at the isolate
+// holds valid with ready low here.
+`SMC_TB_OUT(logic, tb_cpu_l2_slv_arvalid)
+`SMC_TB_OUT(logic, tb_cpu_l2_slv_arready)
 `SMC_TB_OUT(logic, tb_cpu_l2_flush_active)
 `SMC_TB_OUT(logic, tb_cpu_mmio_isolated)
 `SMC_TB_OUT(logic [3:0], tb_cpu_mmio_pending_aw)
