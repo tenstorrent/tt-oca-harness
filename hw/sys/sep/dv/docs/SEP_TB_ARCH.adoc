@@ -287,6 +287,13 @@ Observation probe groups:
   counter (bit 1 `prstb_synced_rd` on `clk_ref_i`, bit 0 `prstb_synced_write`
   on `clk_i`, of `u_sep_system_csr.u_reference_counter_counter`); owner
   `sep_scan_reset_override_test`.
+* RAS struct tap (`sep_ras_probe_o`): the whole `sep_ras_o` output of the DUT
+  (`sep_ras_w`, type `sep_pkg::sep_ras_t`) on one monitor output of `tb_top`. It
+  is monitor-only: it drives nothing and adds no force. The bit of each field
+  follows the declaration order of `sep_ras_t`, first field at the MSB, and
+  `env/sep_ras_map.py` names the bits (`ras_bit`, `ras_field`). `sep_fcov`
+  reads the same tap for `sep_ras_cg`. Owners: the host leaves of the
+  `sep_ras_o` rows of `docs/SEP_VPLAN.adoc` (`CHK-RAS-*`).
 * Core JTAG and DMI outputs: `jtag_tdo_o` (core TAP TDO), `dmi_uncore_en_o`
   and `dmi_uncore_wr_en_o` (wrapper ports `dmi_uncore_en`,
   `dmi_uncore_wr_en`). Owner: `sep_debug_master_target_matrix_test`.
@@ -422,7 +429,7 @@ Observation probe groups:
    `OTP_CHANGE_STATUS`, the `SCRAMBLER_KEY` register value, the count of KM
    writes to `SCRAMBLER_KEY` and `SCRAMBLER_CTRL`, on every clock. Users:
    `sep_km_cpu_protect_rand_test`, `sep_km_boot_reset_rand_test`,
-   `sep_km_fault_inject_rand_test`.
+   `sep_km_fault_inject_rand_test`, `sep_km_sram_scrambler_key_rand_test`.
 ** KM-SRAM (`km_sram_peek_o`): the word of the 8192-word KM SRAM array at
    `km_sram_peek_addr_i`, in stored form `{parity, data}`. The address input
    is a select of the tap and drives nothing in the DUT; it is 0 by default.
@@ -437,9 +444,13 @@ Observation probe groups:
    ahead of the isolation stages, read at `<engine>_key_axil_req_i` and
    `<engine>_key_axil_resp_o`. Index i, address at `[32*i +: 32]`, is bench
    isolate stage 8 + i: 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 Adams Bridge. Users:
-   `sep_km_key_transfer_rand_test` (CHK-ENG-ORDER),
+   `sep_km_key_transfer_rand_test` (CHK-ENG-ORDER, CHK-KM-BUS-PERM,
+   CHK-DELIV-COUNT, CHK-REFUSE),
    `sep_km_handover_rand_test` (CHK-HO-SIDELOAD-BUS),
-   `sep_km_fault_inject_rand_test` (CHK-KEYCRC, CHK-XFER-STOP).
+   `sep_km_fault_inject_rand_test` (CHK-KEYCRC, CHK-XFER-STOP),
+   `sep_km_sideload_share_walk_test` (CHK-XFER-SHORT-KEY),
+   `sep_km_abr_mlkem_sideload_test` (CHK-KEM-KEY-OFFSETS),
+   `sep_km_crossbar_efuse_window_rand_test` (CHK-XBAR-SHARE-ZERO).
 ** KM-OUTFIFO (`km_outfifo_depth_o[8:0]`): the fill level of the outbound
    FIFO of the Key Manager mailbox, on every clock. User:
    `sep_km_fault_inject_rand_test` (CHK-SHRED-FIRST).
@@ -692,6 +703,8 @@ Observation probe groups:
    address, ID, AxLEN, AxSIZE; W strobe and last; B and R response. Owners:
    `sep_boot_rom_aperture_sweep_test`, `sep_cpu_demux_unmapped_fetch_test`,
    `sep_reset_wdt_sanity_test` (PR-LSU-XBAR B response of its stores),
+   `sep_dma_basic_test` (PR-LSU-XBAR AR address of its `DMA_BUS_ERR_STATUS`
+   reads),
    `sep_cpu_lsu_alias_window_twin_test` (AxLEN of both ports,
    CHK-CPU-SINGLE-BEAT).
 ** PR-XBAR-TCM (`pr_xbar_tcm_*`): the local crossbar `cpu_tcm` target, the
@@ -1176,7 +1189,8 @@ Exceptions (a closed set):
   `sep_pic_pending_map_walk_rand_test` (HMAC and KMAC, CHK-FIFO-EMPTY),
   `sep_hmac_fifo_stream_rand_test` (HMAC, CHK-HMAC-BACKPRESSURE-HOLD and the
   FIFO-full cells), `sep_kmac_stream_cfg_rand_test` (KMAC, the control of
-  CHK-KMAC-FIFO-DONE: a `STATUS` read with message words held in the FIFO).
+  CHK-KMAC-FIFO-DONE: a `STATUS` read with message words held in the FIFO; and
+  CHK-KMAC-FIFO-FULL: the fill to `fifo_full`).
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *TCM bit-flip* — stored-bit error inject on the ICCM and DCCM macro arrays,

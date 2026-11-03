@@ -19,7 +19,8 @@ Contract:
     (``hw/ip/entropy_source/regs/entropy_source.rdl:352``).
   * The five total-failure counters count since the last ``MODULE_ENABLE``
     rising edge (``entropy_source.rdl:821-861``), and the rising edge restarts
-    startup health testing (``architecture.adoc:226-227``).
+    startup health testing (``architecture.adoc:226-227``). A falling edge is not
+    that edge, so it does not clear a counter.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20: the TRNG domain runs, the
@@ -52,6 +53,12 @@ Checkers:
   CHK-BOOT-RESTART  after the rise every counter that read non-zero before the
                     fall reads 0 at once, and BOOT_PHASE_DONE returns to 1.
                     Control: REPCNT_TOTAL_FAILS read non-zero before.
+  CHK-BOOT-FALL-KEEP in the same leg, the five counters read after the
+                    MODULE_ENABLE = 0 write and before the rise are each at least
+                    their value before the fall (no clear at the fall). Control:
+                    CTRL-BOOT-RESTART, REPCNT_TOTAL_FAILS non-zero before. Whether a
+                    counter still counts while MODULE_ENABLE is 0 is not stated: the
+                    values after the fall are also logged as OBS-BOOT-COUNTERS.
   CHK-BOOT-TOGGLE   per drawn moment (boot, after_boot, bad_pattern): IDLE = 1
                     after the fall; after the rise every counter that read
                     non-zero before the fall reads 0 at once, the first
@@ -221,6 +228,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         "CHK-BOOT-BAD",
         "CHK-BOOT-IDLE",
         "CHK-BOOT-RESTART",
+        "CHK-BOOT-FALL-KEEP",
         "CHK-BOOT-TOGGLE",
     )
 
@@ -630,6 +638,15 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         idle_ok, _, idle_bound = await self._wait_idle("restart_leg")
         after_fall = await self._totals()
         self.chk.obs("BOOT-COUNTERS", leg="restart", after_fall=self._fmt_totals(after_fall))
+        cleared = [k for k, _ in TOTALS if after_fall[k] < before[k]]
+        self.chk.ok(
+            "BOOT-FALL-KEEP",
+            not cleared,
+            total_fails_before=self._fmt_totals(before),
+            total_fails_after_fall=self._fmt_totals(after_fall),
+            below_before=cleared,
+            expect="each_after_fall>=before",
+        )
         await self._enable(1)
         after_edge = await self._totals()
         done_ok, done_clk = await self._wait_done(HOLD_FACTOR * self.t_boot)

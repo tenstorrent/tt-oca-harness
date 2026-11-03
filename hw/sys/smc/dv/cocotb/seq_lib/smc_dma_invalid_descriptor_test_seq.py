@@ -13,8 +13,8 @@ whole 136-byte destination span, and a linear 16-byte copy writes its first row.
 Every NEXT_ID_0 read of the leaf must return a non-zero transfer ID: dma.adoc (Linear and
 Two-Dimensional Copies) and dma_ctrl.rdl both state that every read returns one, including the
 reads that submit a command with no data to move. DONE_0 before and after a no-data command and
-the bit 322 pulse count are measured, not compared; the two documents differ on DONE_0 (the most
-recently retired ID in dma.adoc, a cumulative count in the RDL).
+the bit 322 pulse count are measured, not compared; the retirement count a no-data command adds
+to DONE_0 (dma.adoc, Retirement Counting) is graded by smc_dma_transfer_matrix_rand_test.
 """
 
 from __future__ import annotations

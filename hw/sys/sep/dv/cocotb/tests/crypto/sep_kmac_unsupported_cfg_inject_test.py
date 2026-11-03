@@ -97,14 +97,23 @@ Checkers:
                      that is not propagated leaves a state machine in its error
                      state. The DUT reads 0 there, and that gap is open, so the
                      bit is logged, not graded.
+  CHK-KMAC-MODE01-DONE  mode 2'b01, en bit 1, after the message and
+                     ``CMD.process``: ``INTR_STATE.kmac_done`` reads 0 after the
+                     start and reads 1 within ``_OUTER_CLK`` clocks of the
+                     process write. The poll waits on ``kmac_done`` alone, since
+                     ``kmac_err`` is already set from the start.
+                     ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/theory_of_operation.md``:787
+                     "the KMAC HWIP proceeds the hashing operation as other
+                     combinations does not cause any malfunctions inside the IP."
 
 Controls and observations: ``CTRL-KMAC-UNSUP`` per supported cell (no
 kmac_err, absorb reached; its start time sets t_clean). ``CTRL-KMAC-UNSUP-SHA3``
 (SHA3-256 with the en bit 0 reaches absorb with no kmac_err; its start time
-joins t_clean before the SHA3-128 cell). ``OBS-KMAC-MODE01`` logs the rest of the mode 2'b01
-run with ``en_unsupported_modestrength`` = 1 (message, process): ``kmac_done``,
-``kmac_err``, ``ERR_CODE``, ``STATUS`` and four ``STATE`` words, which no text
-states.
+joins t_clean before the SHA3-128 cell). ``OBS-KMAC-MODE01`` logs the end state of the
+mode 2'b01 run with ``en_unsupported_modestrength`` = 1 after ``kmac_done``:
+``kmac_err``, ``ERR_CODE``, ``STATUS`` and four ``STATE`` words. Mode 2'b01 is a
+reserved value, so no text gives its digest (theory_of_operation.md:788 "The SW
+may get the incorrect digest value."), and no text states the other values.
 
 Time bounds: t_clean is the longest clean start time of the supported group,
 measured from the ``CMD.start`` write to the read that shows absorb. The
@@ -294,6 +303,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         "CHK-KMAC-UNSUP-EN",
         "CHK-KMAC-ERRPROC",
         "CHK-KMAC-ERRCODE",
+        "CHK-KMAC-MODE01-DONE",
     )
 
     # --- grading and the coverage window -------------------------------------
@@ -711,7 +721,8 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         await self._reset_kmac()
 
     async def _rsvd_enabled_cell(self, plan: Plan, t_clean: int) -> None:
-        """Mode 2'b01, drawn strength, en bit 1: CHK-KMAC-UNSUP-EN grades absorb; the rest is logged.
+        """Mode 2'b01, drawn strength, en bit 1: CHK-KMAC-UNSUP-EN grades absorb and
+        CHK-KMAC-MODE01-DONE grades the completion of the hash; the end state is logged.
 
         ``INTR_ENABLE.kmac_err`` is set before the start, and CTRL-KMAC-UNSUP-LINE
         requires a rise of vector bit 22. Runs after the owner window closed: no
@@ -771,8 +782,23 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             await self.kmac._push_msg_bytes(plan.rsvd_msg)
         t1 = self._now_clk()
         await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
-        end_seen, _, end_clk = await self._poll(KMAC_INTR_STATE, _DONE | _ERR, t1, _OUTER_CLK)
+        end_seen, _, end_clk = await self._poll(KMAC_INTR_STATE, _DONE, t1, _OUTER_CLK)
         intr = await self._rd(KMAC_INTR_STATE)
+        reason = "absorb_timeout" if not absorb_seen else "" if end_seen else "done_timeout"
+        self._grade(
+            "KMAC-MODE01-DONE",
+            absorb_seen and _bits(start_intr, _DONE) == 0 and end_seen and _bits(intr, _DONE) == 1,
+            mode_code=KMAC_MODE_RSVD,
+            kstrength=plan.rsvd_strength,
+            en_unsup=1,
+            len=len(plan.rsvd_msg),
+            done_after_start=_bits(start_intr, _DONE),
+            done=_bits(intr, _DONE),
+            expected_done=1,
+            done_clk=end_clk,
+            bound=_OUTER_CLK,
+            **({"reason": reason} if reason else {}),
+        )
         code = await self._rd(KMAC_ERR_CODE)
         status = await self._rd(KMAC_STATUS)
         state = await self.kmac.read_digest(4)
@@ -782,10 +808,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             kstrength=plan.rsvd_strength,
             en_unsup=1,
             len=len(plan.rsvd_msg),
-            done=_bits(intr, _DONE),
             kmac_err=_bits(intr, _ERR),
-            end_seen=int(end_seen),
-            end_clk=end_clk,
             err_code=f"0x{code & _ERR_CODE_MASK:08x}",
             status=f"0x{status & _STAGE_MASK:x}",
             state=":".join(f"{w:08x}" for w in state),

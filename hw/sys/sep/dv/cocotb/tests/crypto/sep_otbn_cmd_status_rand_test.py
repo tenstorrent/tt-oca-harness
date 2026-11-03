@@ -63,6 +63,21 @@ Checkers:
                        ``FATAL_ALERT_CAUSE`` = 0.
   CHK-OTBN-CMD-BUSY    the first non-IDLE code on the OTBN status probe after
                        the ``CMD`` write is the busy code of the command.
+  CHK-OTBN-STATUS-SEQ  every code on the OTBN status probe from the ``CMD`` write
+                       to the first IDLE, and every non-IDLE ``STATUS`` read of
+                       that wait, is the busy code of the command: 0x02 for
+                       SEC_WIPE_DMEM, 0x03 for SEC_WIPE_IMEM, and 0x01 or 0x04 for
+                       EXECUTE. "In the STATUS register the different BUSY_* values
+                       represent the operation that is currently being performed."
+                       (ToO:110); EXECUTE sets BUSY_EXECUTE (ToO:132); codes 0x01
+                       to 0x04 (``registers.md`` :169-172); "A secure wipe of the
+                       internal state only is triggered automatically after reset
+                       and when OTBN ends the software execution" (ToO:482), so a
+                       SEC_WIPE command shows no 0x04. EXECUTE ends with a
+                       secure wipe of internal state (ToO:136) and no sentence
+                       states whether ``STATUS`` shows BUSY_SEC_WIPE_INT then, so
+                       the check accepts 0x04 for EXECUTE and
+                       ``OBS-OTBN-STATUS-SEQ`` logs the codes.
   CHK-OTBN-INSN        ``INSN_CNT`` reads 0 after a reset, equals the length of
                        each straight-line program (``ecall`` included), differs
                        by b - a for the two programs, each DMEM result equals the
@@ -248,7 +263,9 @@ read response reached the integrity check), ``CTRL-OTBN-SWERR-KIND`` (the same
 program with a legal instruction in place of the faulting one ends at IDLE with
 ``ERR_BITS`` = 0), ``CTRL-OTBN-ILLEGAL-BUS`` (the same host read at IDLE returns the
 non-zero staged word).
-Log-only: ``OBS-OTBN-STATUS-SEQ``; ``OBS-OTBN-INITDONE-DONE`` (``INTR_STATE.done``
+Log-only: ``OBS-OTBN-STATUS-SEQ`` (the polled and the probe codes of each command:
+no sentence states whether EXECUTE shows BUSY_SEC_WIPE_INT during its end-of-run
+wipe); ``OBS-OTBN-INITDONE-DONE`` (``INTR_STATE.done``
 after the post-reset wipe: no sentence states its value); ``INFO-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
 program, a chance outcome); ``OBS-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of the recoverable run: no sentence states the bits other
@@ -604,6 +621,7 @@ _ERR_LEG_CHECKS = ("CHK-OTBN-RND-CLEAN", "CHK-OTBN-SWERR-KIND")
 _EXEC_LEG_CHECKS = (
     "CHK-OTBN-CMD-END",
     "CHK-OTBN-CMD-BUSY",
+    "CHK-OTBN-STATUS-SEQ",
     "CHK-OTBN-INSN",
     "CHK-OTBN-DONE-LINE",
     "CHK-OTBN-CMD-IGNORE",
@@ -627,6 +645,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         "CHK-OTBN-ILLEGAL-BUS",
         "CHK-OTBN-CMD-END",
         "CHK-OTBN-CMD-BUSY",
+        "CHK-OTBN-STATUS-SEQ",
         "CHK-OTBN-INSN",
         "CHK-OTBN-DONE-LINE",
         "CHK-OTBN-CMD-IGNORE",
@@ -971,8 +990,19 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             busy = [c.value for c in self.status_t.since(t0) if c.value != ST_IDLE]
             first = busy[0] if busy else None
             first_s = "none" if not busy else ("X" if first is None else f"0x{first:02x}")
+            arc: list[int | None] = []
+            for c in self.status_t.since(t0):
+                if c.value == ST_IDLE:
+                    break
+                arc.append(c.value)
+            arc_s = ",".join("X" if v is None else f"0x{v:02x}" for v in arc) or "-"
             self.chk.obs(
-                "OTBN-STATUS-SEQ", seed=seed, idx=idx, cmd=f"0x{cmd:02x}", polled=_runs(vals)
+                "OTBN-STATUS-SEQ",
+                seed=seed,
+                idx=idx,
+                cmd=f"0x{cmd:02x}",
+                polled=_runs(vals),
+                probe=arc_s,
             )
             if self._grade(
                 "OTBN-CMD-BUSY",
@@ -998,6 +1028,18 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 await self._reset_otbn(f"cmd{idx}-timeout")
                 await self._clear_done()
                 continue
+            allowed = (ST_BUSY[cmd], ST_SEC_WIPE_INT) if cmd == CMD_EXECUTE else (ST_BUSY[cmd],)
+            polled_busy = [v for v in vals if v != ST_IDLE]
+            self._grade(
+                "OTBN-STATUS-SEQ",
+                bool(arc) and all(v in allowed for v in arc + polled_busy),
+                seed=seed,
+                idx=idx,
+                cmd=f"0x{cmd:02x}",
+                probe=arc_s,
+                polled=_runs(vals),
+                allowed=",".join(f"0x{v:02x}" for v in allowed),
+            )
             counts.append(clks)
             done = await self._rd(A_INTR_STATE, M_DONE)
             err = await self._rd(A_ERR_BITS, M_ERR_BITS)
