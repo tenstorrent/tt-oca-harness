@@ -261,8 +261,8 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     rows.push_back('{"HMAC", 64'(HMAC_INTR_STATE_REG_ADDR), 1'b0, 32'h0});
     rows.push_back('{"KMAC", 64'(KMAC_CFG_SHADOWED_REG_ADDR), 1'b1,
                    32'(KMAC_CFG_SHADOWED_REG_DEFAULT)});
-    rows.push_back('{"DRBG_CSRNG", 64'(CSRNG_REGWEN_REG_ADDR), 1'b1,
-                   32'(CSRNG_REGWEN_REG_DEFAULT)});
+    rows.push_back('{"DRBG_CSRNG", 64'(CSRNG_REGWEN_REG_ADDR), 1'b1, 32'(CSRNG_REGWEN_REG_DEFAULT)
+                   });
     rows.push_back('{"DRBG_EDN", 64'(EDN_REGWEN_REG_ADDR), 1'b1, 32'(EDN_REGWEN_REG_DEFAULT)});
     rows.push_back('{"ENTROPY_SRC", 64'(ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR), 1'b1,
                    32'(ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT)});
