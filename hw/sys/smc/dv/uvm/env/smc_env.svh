@@ -20,6 +20,9 @@
 //   * smc_sep_in_history on that passive env's item_ap, counting completed
 //     SEP_IN reads and writes for scenario access accounting; it publishes
 //     and checks nothing;
+//   * smc_sep_in_reset_monitor on SEP_IN, built only when
+//     enable_sep_in_reset_monitor is set, sampling requests, responses and
+//     stale response VALID across a reset epoch; it drives nothing;
 //   * one reference model per scoreboard feature on the SEP_IN stream
 //     (smc_scratch_csr_ref_model, smc_default_reg_ref_model,
 //     smc_lock_csr_ref_model, smc_mutex_sema_ref_model,

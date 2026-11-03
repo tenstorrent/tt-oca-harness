@@ -25,27 +25,27 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
   bit write_cell;
   bit [15:0] id;
   bit [63:0] base, baseline_data[Ops], fresh[Ops];
-  int unsigned hold_cycles, item_bound, old_timeouts, compare_before;
+  int unsigned hold_cycles, item_bound, compare_before;
 
   function new(string name = "smc_ingress_reset_inflight_test_seq");
     super.new(name);
   endfunction
 
-  protected function void require_value(string id, bit condition, string label,
+  protected function void require_value(string check_id, bit condition, string label,
                                         string context_s = "");
     string detail = context_s == "" ? label : {label, " ", context_s};
-    if (!m_check.expect_true(id, condition, detail))
+    if (!m_check.expect_true(check_id, condition, detail))
       `uvm_fatal(get_type_name(), {"ingress reset prerequisite: ", detail})
   endfunction
 
-  protected task wait_reset_level(bit level, string id);
+  protected task wait_reset_level(bit level, string check_id);
     bit reached;
     for (int unsigned cycle = 0; cycle < ResetBound; cycle++) begin
       reached = tb_vif.rst_primary_smc_clk_n === level && tb_vif.rst_warm_smc_clk_n === level;
       if (reached) break;
       wait_smc_cycles(1);
     end
-    require_value(id, reached, "primary and warm reset level", $sformatf(
+    require_value(check_id, reached, "primary and warm reset level", $sformatf(
                   "expected=%b primary=%b warm=%b bound=%0d",
                   level,
                   tb_vif.rst_primary_smc_clk_n,
@@ -54,9 +54,10 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
                   ));
   endtask
 
-  protected task grade(string id, string label, bit condition, string context_s = "");
-    check_evidence(id, label, 64'(condition), 64'(!negative), context_s);
-  endtask
+  protected function void grade(string check_id, string label, bit condition,
+                                string context_s = "");
+    check_evidence(check_id, label, 64'(condition), 64'(!negative), context_s);
+  endfunction
 
   protected function bit clean_epoch();
     return (reset_monitor.stale_b == 0 && reset_monitor.stale_r == 0) &&
@@ -97,7 +98,7 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
     end
     begin
       int unsigned sample_before = reset_monitor.sample_count;
-      reset_monitor.arm(write_cell);
+      reset_monitor.arm(write_cell, Ops);
       for (int unsigned c = 0; c < PhaseBound; c++) begin
         if (reset_monitor.sample_count != sample_before) break;
         wait_smc_cycles(1);
@@ -135,6 +136,7 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
     smc_ingress_reset_pipeline_seq pipe;
     bit reached;
     int unsigned cold_before, cool_before;
+    int unsigned reset_delay, sample_before, delay_samples;
     reset_monitor.clear_counts();
     pipe = smc_ingress_reset_pipeline_seq::type_id::create("pipe");
     pipe.cfg = master_cfg;
@@ -159,6 +161,18 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
                   pipe.done,
                   reset_monitor.counters_context()
                   ));
+    reset_delay = int'(random_pattern(32) % (hold_cycles / 2 + 1));
+    uvm_wait_for_nba_region();
+    sample_before = reset_monitor.sample_count;
+    wait_smc_cycles(reset_delay);
+    uvm_wait_for_nba_region();
+    delay_samples = reset_monitor.sample_count - sample_before;
+    require_value(ChkPhase, delay_samples >= reset_delay,
+                  "drawn reset delay sampled before assertion", $sformatf(
+                  "delay=%0d samples=%0d max=%0d", reset_delay, delay_samples, hold_cycles / 2));
+    `uvm_info(get_type_name(),
+              $sformatf("OBS-RIF-RESET-DELAY seed=%0d delay=%0d samples=%0d max=%0d",
+                        scenario_seed, reset_delay, delay_samples, hold_cycles / 2), UVM_LOW)
     cold_before = tb_vif.cold_rst_assert_count;
     cool_before = tb_vif.cool_rst_assert_count;
     tb_vif.rst_cool_n <= 1'b0;
@@ -198,11 +212,10 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
     require_value(ChkPhase, pipe.done, "interrupted pipeline terminates within bound", $sformatf(
                   "done=%b bound=%0d %s", pipe.done, item_bound, reset_monitor.counters_context()));
     foreach (pipe.ops[i]) begin
-      if (pipe.ops[i].timed_out) old_timeouts++;
-      require_value(
-          ChkPhase, pipe.ops[i].timed_out && pipe.ops[i].resp_list.size() == 0,
-          "old operation timed out without response", $sformatf(
-          "index=%0d timed_out=%b responses=%p", i, pipe.ops[i].timed_out, pipe.ops[i].resp_list));
+      grade(ChkStale, "old operation timed out without response",
+            pipe.ops[i].timed_out && pipe.ops[i].resp_list.size() == 0, $sformatf(
+            "index=%0d timed_out=%b responses=%p", i, pipe.ops[i].timed_out, pipe.ops[i].resp_list
+            ));
       `uvm_info(get_type_name(), $sformatf(
                 "OBS-RIF-ABANDONED seed=%0d write=%0b id=%h timed_out=%0b responses=%0d",
                 scenario_seed,
@@ -244,8 +257,7 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
       pipe.start(p_sequencer.m_sep_in_seqr);
       foreach (pipe.ops[i]) begin
         bit valid = pipe.ops[i].is_ok() && !pipe.ops[i].any_resp_xz() &&
-            pipe.ops[i].resp_list.size() == 1 && pipe.ops[i].observed_id_valid &&
-            pipe.ops[i].observed_id == id;
+            pipe.ops[i].resp_list.size() == 1 && pipe.ops[i].id_match();
         if (direction != 0) begin
           valid &= pipe.ops[i].data_words.size() == 1 && pipe.ops[i].data_xz_masks.size() == 1;
           if (pipe.ops[i].data_words.size() == 1 && pipe.ops[i].data_xz_masks.size() == 1) begin
@@ -285,11 +297,11 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
       wait_smc_cycles(1);
     end
     check_evidence(ChkNonvac, "helper accesses", mem_accesses, 2 * Ops);
-    check_evidence(ChkNonvac, "old operation timeouts", old_timeouts, Ops);
-    check_evidence(ChkNonvac, "abandoned operations", reset_monitor.abandoned, Ops);
     check_evidence(ChkNonvac, "SPM comparisons", scoreboard.compare_count(SmcFeatureSpmMem
                    ) - compare_before, 2 * Ops);
     require_value(ChkSva, !reset_monitor.sva_disabled, "assertions remained enabled");
+    require_value(ChkEpoch, reset_monitor.extra_resets == 0, "no further reset edge in the pass",
+                  reset_monitor.counters_context());
     reset_monitor.disarm();
     finalize_evidence();
   endtask

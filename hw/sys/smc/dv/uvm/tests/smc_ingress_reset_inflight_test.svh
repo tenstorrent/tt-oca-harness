@@ -4,13 +4,15 @@
 // Runs SEP_IN held-response reset and same-ID recovery checks.
 class smc_ingress_reset_inflight_test extends smc_base_test;
   `uvm_component_utils(smc_ingress_reset_inflight_test)
+  localparam int unsigned TimeoutBeyondHoldCycles = 8192;
+
   function new(string name = "smc_ingress_reset_inflight_test", uvm_component parent = null);
     super.new(name, parent);
   endfunction
   virtual function void configure_test_cfg(smc_test_cfg cfg);
     super.configure_test_cfg(cfg);
     cfg.require_feature(SmcFeatureSpmMem);
-    cfg.axi_timeout_cycles = 8192;
+    cfg.axi_timeout_cycles = TimeoutBeyondHoldCycles;
     cfg.enable_sep_in_reset_monitor = 1;
   endfunction
   virtual function void plumb_scenario_seq(ocah_sequence seq);

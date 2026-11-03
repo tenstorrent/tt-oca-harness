@@ -11,7 +11,8 @@
 //
 // Include order is load-bearing: types first (every class reads them), then
 // the cfgs (the env cfg derives from the test cfg), the virtual sequencer,
-// the reference models, the scoreboard, the env last.
+// the SEP_IN reset monitor, the reference models, the scoreboard, the SEP_IN
+// history, the env last.
 
 `timescale 1ns / 1ps
 

@@ -9,7 +9,7 @@ class smc_sep_in_reset_monitor extends uvm_component;
   bit armed, reset_seen, phase_valid, sva_disabled, write_cell;
   bit master_ready_low;
   logic sampled_bready, sampled_rready;
-  int unsigned sample_count, extra_resets;
+  int unsigned sample_count, extra_resets, expected_ops;
   bit request_idle, held_response;
   int unsigned aw, w, ar, b, r, write_complete, pending_read;
   int unsigned orphan_b, orphan_r, shape_errors, stale_b, stale_r;
@@ -36,11 +36,12 @@ class smc_sep_in_reset_monitor extends uvm_component;
     held_valid = 0;
   endfunction
 
-  function void arm(bit is_write);
+  function void arm(bit is_write, int unsigned ops);
     if (armed || vif == null || vif.aresetn !== 1'b1) begin
       `uvm_fatal(get_type_name(), "Reset monitor must be idle and out of reset before arm")
     end
     write_cell = is_write;
+    expected_ops = ops;
     reset_seen = 0;
     phase_valid = 0;
     phase_context = "";
@@ -68,10 +69,12 @@ class smc_sep_in_reset_monitor extends uvm_component;
   protected function void reset_epoch();
     int unsigned held_before = held_valid;
     phase_context = $sformatf(
-        "request_idle=%0b held_response=%0b aw=%0d w=%0d ar=%0d b=%0d r=%0d held_valid=%0d",
-        request_idle, held_response, aw, w, ar, b, r, held_valid);
-    phase_valid = request_idle && held_response && b == 0 && r == 0 &&
-        (write_cell ? aw == 2 && w == 2 && ar == 0 : ar == 2 && aw == 0 && w == 0);
+        {"request_idle=%0b held_response=%0b aw=%0d w=%0d ar=%0d b=%0d r=%0d ",
+         "held_valid=%0d expected_ops=%0d"},
+        request_idle, held_response, aw, w, ar, b, r, held_valid, expected_ops);
+    phase_valid = request_idle && held_response && b == 0 && r == 0;
+    if (write_cell) phase_valid &= aw == expected_ops && w == expected_ops && ar == 0;
+    else phase_valid &= ar == expected_ops && aw == 0 && w == 0;
     abandoned = pending_write() + pending_read;
     clear_counts();
     held_valid = held_before;
