@@ -1760,7 +1760,9 @@ test uses the AXI front door, and either readout can run any source:
 
 `sep_efuse_sense_test`:: *Backdoor* shadow compare (the default), reading the
   sensed array directly from the top-level `efuse_shadow_probe_o` port. Enrolled
-  with `+sep_efuse_preload` (committed default preload).
+  with `+sep_efuse_preload` (committed default preload). It also reads the
+  `km_otp_sep_*_id_o` ports on every clock of the pre-sense window and logs when
+  each identity field reaches them (OBS-SHADOW-PRESENSE-WITHHELD).
 `sep_efuse_image_test`:: The *one* test that reads the shadow over the *AXI front
   door* (exercising the real software read datapath), plus a resense cycle with a
   fresh image. Runs the default (random) source.
