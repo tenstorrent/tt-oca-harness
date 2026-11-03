@@ -368,6 +368,8 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         "CHK-TCM-APERT",
         "CHK-TCM-CLEAN",
         "CHK-TCM-SBE",
+        "CHK-TCM-SBE-WB",
+        "CHK-TCM-SUBWORD-WR",
         "CHK-TCM-DBE",
         "CHK-TCM-DMA-DBG",
     )
