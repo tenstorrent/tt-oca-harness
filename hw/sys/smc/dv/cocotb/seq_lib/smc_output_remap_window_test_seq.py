@@ -31,12 +31,11 @@ memory at the address the entry predicts, and nowhere else:
   target still holds its sentinel;
 * a read through the same window returns the word.
 
-**Source-ID matching in the outbound filter.** `fabric.adoc` ("SMC Source ID by
-Traffic Path", and the output-fabric figure `assets/smc-output-fabric.svg`)
-has the M-mode output remap set the AxUSER source ID to `MMODE_ID` (0xC) and
-the Xvisor remap set it to `OTHER_ID` (0); the leaf carries both as its own
-constants. `filter_ctrl.rdl` makes a `src_id` of 0 the wildcard, so only
-`MMODE_ID` can be matched.
+**Source-ID matching in the outbound filter.** `fabric.adoc` (Output Remapping
+and the table "SMC Source ID by Traffic Path") has the M-mode output remap set
+the AxUSER source ID to `MMODE_ID` (0xC), the Xvisor remap set it to `OTHER_ID`
+(0x0) and the direct path leave with `SMC_ID` (0x3). `filter_ctrl.rdl` makes a
+`src_id` of 0 the wildcard, so only `MMODE_ID` and `SMC_ID` can be matched.
 
 While the words go out, outbound filter entry 0 allows reads and writes to the
 M-mode targets for source `MMODE_ID`. Entry 1 matches the hypervisor target for
@@ -88,14 +87,20 @@ regions are at their reset. Write-then-read pairs at `D` and `W0` carry:
 * AxQOS, AxREGION and AxLOCK varied one at a time, the AxLOCK = 1 pair an
   exclusive read then exclusive write; output values and the exclusive
   response are logged (SF-008);
-* AWUSER / ARUSER 0xFFF then 0 and WUSER 0xFFF then 0; output values logged
-  (SF-006, SF-007);
+* AWUSER / ARUSER 0xFFF then 0 and WUSER 0xFFF then 0; at `D` the output
+  AWUSER, ARUSER and WUSER all equal `SMC_ID` and at `W0` all equal `MMODE_ID`
+  (`fabric.adoc`: each path replaces the whole AWUSER, ARUSER and WUSER with
+  its source ID, so bits [11:4] leave as zero);
 * AWID / ARID 0..3, each answered with its own BID / RID, then four writes and
   four reads outstanding at once; output AWID / ARID logged (SF-009).
 
-Every pair answers OKAY and reads back the word it wrote. During the region
-leg the output AW and AR address of every word is compared and its AxUSER
-logged (SF-006). A passive sampler records the output_axi and JTAG handshakes.
+Every pair answers OKAY and reads back the word it wrote. The sampler also
+records the AxUSER the JTAG manager presented at its own AW, AR and W
+handshakes, and every USER compare first requires the driven value there.
+During the region leg every word carries AxUSER 0xFFF and the output AW and AR
+address of every word is compared, with AWUSER and ARUSER equal to `MMODE_ID` through the M-mode
+window and `OTHER_ID` through the Xvisor window, valid or clear. A passive
+sampler records the output_axi and JTAG handshakes.
 
 Every region and both filter entries end at their reset.
 """
@@ -187,12 +192,13 @@ _ENTRIES = (
 _WORD = 8
 AXI_RESP_DECERR = 3
 
-# fabric.adoc, "SMC Source ID by Traffic Path" and the output-fabric figure
-# (assets/smc-output-fabric.svg): the M-mode output remap sets the AxUSER
-# source ID to MMODE (0xC), the Xvisor remap to OTHERS (0) and the direct path
-# to SMC (3). filter_ctrl.rdl makes src_id 0 the wildcard.
+# fabric.adoc, "SMC Source ID by Traffic Path": the M-mode output remap sets the
+# AxUSER source ID to MMODE_ID (0xC), the Xvisor remap to OTHER_ID (0x0) and the
+# direct path to SMC_ID (0x3). filter_ctrl.rdl makes src_id 0 the wildcard.
 MMODE_ID = 0xC
 OTHER_ID = 0x0
+SMC_ID = 0x3
+_WINDOW_ID = {"mmode": MMODE_ID, "xvisor": OTHER_ID}
 assert MMODE_ID != 0 and MMODE_ID != OTHER_ID, "entry 0 needs a non-wildcard M-mode source ID"
 
 _FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
@@ -619,10 +625,12 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
         await watcher
         await self._restore(resets)
 
-    async def _send(self, label: str, addr: int, landing: int, word: int, keep: dict) -> None:
+    async def _send(
+        self, label: str, addr: int, landing: int, word: int, keep: dict, **attrs
+    ) -> None:
         """Write ``word`` at ``addr`` over JTAG; it must land at ``landing`` and nowhere in ``keep``."""
         responder = self.cfg.sys_out_mem
-        await self._jtag(SmcSysAxiOp.WRITE, addr, word)
+        await self._jtag(SmcSysAxiOp.WRITE, addr, word, **attrs)
         landed = responder.read_int(landing, _WORD)
         assert landed == word, (
             f"[{label}] a write at 0x{addr:x} left SYS_OUT 0x{landing:x} holding "
@@ -634,7 +642,7 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 f"[{label}] SYS_OUT 0x{at:x} holds 0x{held:016x} after the write at 0x{addr:x}; "
                 f"it should still hold 0x{value:016x}, the word belongs only at 0x{landing:x}"
             )
-        got = await self._jtag(SmcSysAxiOp.READ, addr)
+        got = await self._jtag(SmcSysAxiOp.READ, addr, **attrs)
         assert got.rdata == word, (
             f"[{label}] a read at 0x{addr:x} returned 0x{got.rdata:016x}; the write through "
             f"the same window put 0x{word:016x} at 0x{landing:x}"
@@ -671,7 +679,15 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 responder.write_int(addr, _SENTINEL, _WORD)
                 responder.write_int(remapped, _SENTINEL, _WORD)
                 mark = len(self._events)
-                await self._send(f"{prefix}{r}_VALID", addr, remapped, first, {addr: _SENTINEL})
+                await self._send(
+                    f"{prefix}{r}_VALID",
+                    addr,
+                    remapped,
+                    first,
+                    {addr: _SENTINEL},
+                    axi_user=_USER_ALL,
+                    axi_wuser=_USER_ALL,
+                )
                 self._route_capture(label, f"{prefix}{r}_VALID", mark, remapped)
                 attrs = _attrs(prefix, r)
                 await self.csr_write(f"{prefix}{r}_VALID_CLEAR", attrs, offset, length=_WORD)
@@ -679,7 +695,15 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                     f"{prefix}{r}_VALID_CLEAR_RB", attrs, expected=offset, length=_WORD
                 )
                 mark = len(self._events)
-                await self._send(f"{prefix}{r}_CLEARED", addr, addr, second, {remapped: first})
+                await self._send(
+                    f"{prefix}{r}_CLEARED",
+                    addr,
+                    addr,
+                    second,
+                    {remapped: first},
+                    axi_user=_USER_ALL,
+                    axi_wuser=_USER_ALL,
+                )
                 self._route_capture(label, f"{prefix}{r}_CLEARED", mark, addr)
                 landings.append(f"{label}{r}:0x{addr:x}->0x{remapped:x}|0x{addr:x}")
                 cocotb.log.info(
@@ -712,13 +736,14 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
         assert captured == 4 * n, f"{captured} AxUSER values captured, want {4 * n}"
         self._chk(
             "CHK-OUT-SRCID",
-            " ".join(
-                f"{k} AWUSER/ARUSER {{"
-                + " ".join(f"{leg}=0x{aw:x}/0x{ar:x}" for leg, aw, ar in v)
+            f"AxUSER 0x{_USER_ALL:x} driven and seen at the JTAG ingress AW and AR; "
+            + " ".join(
+                f"{k} AWUSER/ARUSER == 0x{_WINDOW_ID[k]:03x} {{"
+                + " ".join(f"{leg}=0x{aw:03x}/0x{ar:03x}" for leg, aw, ar in v)
                 + "}"
                 for k, v in users.items()
             )
-            + f" {captured}/{4 * n} captured (LINKED-ISSUE SF-006)",
+            + f" {captured}/{4 * n} compared, bits [11:4] zero",
         )
 
     async def _wstrb(self, window: tuple) -> None:
@@ -852,7 +877,7 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
         }
         jtag_hs = {
             ch: (getattr(top, f"jtag_axi_{ch}valid"), getattr(top, f"jtag_axi_{ch}ready"))
-            for ch in ("aw", "ar", "b", "r")
+            for ch in ("aw", "ar", "w", "b", "r")
         }
         while not self._watch_stop:
             await RisingEdge(top.clk_smc_i)
@@ -880,7 +905,9 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 if not (val(v, f"jtag {ch}valid") and val(r, f"jtag {ch}ready")):
                     continue
                 fields = {}
-                if ch == "b":
+                if ch in ("aw", "ar", "w"):
+                    fields = {"user": val(getattr(top, f"jtag_axi_{ch}user"), f"jtag {ch}user")}
+                elif ch == "b":
                     fields = {
                         f: val(getattr(top, f"jtag_axi_b{f}"), f"jtag b{f}") for f in ("id", "resp")
                     }
@@ -903,6 +930,16 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
         assert aw["addr"] == want and ar["addr"] == want, (
             f"[{leg}] output_axi AWADDR 0x{aw['addr']:x} ARADDR 0x{ar['addr']:x}, "
             f"want 0x{want:x} (fabric.adoc / output_remap.adoc)"
+        )
+        jaws, jars = self._since(mark, "jaw"), self._since(mark, "jar")
+        assert [j["user"] for j in jaws] == [_USER_ALL] and [j["user"] for j in jars] == [
+            _USER_ALL
+        ], f"[{leg}] JTAG ingress AWUSER {jaws} ARUSER {jars}, driven 0x{_USER_ALL:x} once each"
+        src = _WINDOW_ID[window]
+        assert aw["user"] == src and ar["user"] == src, (
+            f"CHK-OUT-SRCID: [{leg}] output_axi AWUSER 0x{aw['user']:03x} ARUSER "
+            f"0x{ar['user']:03x} with AxUSER 0x{_USER_ALL:x} driven, want 0x{src:03x} "
+            f"(fabric.adoc Output Remapping: the {window} window leaves with its source ID)"
         )
         self._route_aw[window].append((leg, aw["user"], ar["user"]))
 
@@ -942,7 +979,16 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
             f"[{label}] output_axi AWADDR 0x{aws[0]['addr']:x} ARADDR 0x{ars[0]['addr']:x}, "
             f"want 0x{landing:x}"
         )
-        return {"aw": aws[0], "ar": ars[0], "w": ws[0], "wr": wr, "rd": rd}
+        return {
+            "aw": aws[0],
+            "ar": ars[0],
+            "w": ws[0],
+            "wr": wr,
+            "rd": rd,
+            "jaw": self._since(mark, "jaw"),
+            "jar": self._since(mark, "jar"),
+            "jw": self._since(mark, "jw"),
+        }
 
     async def _attr_setup(self) -> None:
         count = 0
@@ -1097,7 +1143,7 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
         )
 
     async def _user(self) -> None:
-        pairs = 0
+        pairs = compares = 0
         rows = []
         for n, (label, attrs) in enumerate(_USERS):
             for place, addr, landing in self._places(0x4000 + _WORD * n):
@@ -1106,15 +1152,36 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                     f"{label}_{place}", addr, landing, {**attrs, "wstrb": 0xFF}, rattrs
                 )
                 pairs += 1
-                rows.append(
-                    f"{place} {label} -> AWUSER 0x{got['aw']['user']:x} ARUSER "
-                    f"0x{got['ar']['user']:x} WUSER 0x{got['w']['user']:x}"
+                want = SMC_ID if place == "D" else MMODE_ID
+                driven = {
+                    "aw": attrs["axi_user"],
+                    "ar": rattrs["axi_user"],
+                    "w": attrs["axi_wuser"],
+                }
+                seen = {ch: [j["user"] for j in got[f"j{ch}"]] for ch in ("aw", "ar", "w")}
+                assert all(seen[ch] == [driven[ch]] for ch in seen), (
+                    f"[{label}_{place}] JTAG ingress AWUSER/ARUSER/WUSER {seen}, driven {driven} "
+                    f"once each"
                 )
-        assert pairs == 8, f"{pairs} user pairs, want 8"
+                out = {ch: got[ch]["user"] for ch in ("aw", "ar", "w")}
+                assert all(v == want for v in out.values()), (
+                    f"CHK-AXUSER-WHOLE-REPLACED: [{label}_{place}] output_axi AWUSER "
+                    f"0x{out['aw']:03x} ARUSER 0x{out['ar']:03x} WUSER 0x{out['w']:03x} with "
+                    f"{label} driven, want 0x{want:03x} on all three (fabric.adoc Output "
+                    f"Remapping: each path replaces the whole AWUSER, ARUSER and WUSER with "
+                    f"its source ID, bits [11:4] zero)"
+                )
+                compares += 3
+                rows.append(
+                    f"{place} {label} -> AWUSER 0x{out['aw']:03x} ARUSER 0x{out['ar']:03x} "
+                    f"WUSER 0x{out['w']:03x} == 0x{want:03x}"
+                )
+        assert pairs == 8 and compares == 24, f"{pairs} user pairs, {compares} compares"
         self._mark("USER", pairs)
         self._chk(
-            "CHK-OUT-USER",
-            f"{pairs}/8 pairs data match OKAY; {'; '.join(rows)} (LINKED-ISSUE SF-006/SF-007)",
+            "CHK-AXUSER-WHOLE-REPLACED",
+            f"{pairs}/8 pairs data match OKAY; driven AxUSER/WUSER seen at the JTAG ingress "
+            f"AW/AR/W; {compares}/24 USER compares: {'; '.join(rows)}",
         )
 
     async def _ids(self) -> None:

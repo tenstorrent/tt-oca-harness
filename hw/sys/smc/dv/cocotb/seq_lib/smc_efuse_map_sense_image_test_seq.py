@@ -46,7 +46,7 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
         super().__init__(name)
         self.image: EfuseImage | None = None
         self.kind = "default"
-        self.seed = 1
+        self.words_seed = 1
         self.dispatch_reset = None
         self.access_floor = 0
         self._calls = 0
@@ -66,7 +66,7 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
     def _chk(self, chk_id: str, fmt: str, *args) -> None:
         self._events.append(("chk", chk_id))
-        cocotb.log.info("%s: " + fmt, chk_id, *args)
+        cocotb.log.info("%s: cell=%s: " + fmt, chk_id, self.kind, *args)
 
     # --- probes ---------------------------------------------------------
     @staticmethod
@@ -162,6 +162,12 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
         finally:
             sampler.cancel()
 
+    def _words_note(self) -> str:
+        """The random kind's words seed; the other kinds do not use it."""
+        if self.kind == "random":
+            return f"words seed 0x{self.words_seed:x}"
+        return "words seed unused"
+
     async def _scenario(self) -> None:
         image = self.image
         rec = self._rec
@@ -171,10 +177,10 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
         # S1
         cocotb.log.info(
-            "S1 image=%s kind=%s seed=%d locks=0x%016x",
+            "S1 image=%s kind=%s %s locks=0x%016x",
             image.path.name,
             self.kind,
-            self.seed,
+            self._words_note(),
             image.locks,
         )
         assert_edge = len(rec)
@@ -254,12 +260,12 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
             self._chk(
                 chk_id,
-                "image %s (%s, seed %d): %d SEP_IN reads equal the image words, word 0 0x%08x and "
-                "word 255 0x%08x included; %s; all %d efuse_shadow_probe_o words equal the image "
-                "again after the sweep",
+                "image %s (%s, %s): %d SEP_IN reads equal the image words, word 0 "
+                "0x%08x and word 255 0x%08x included; %s; all %d efuse_shadow_probe_o words equal "
+                "the image again after the sweep",
                 image.path.name,
                 self.kind,
-                self.seed,
+                self._words_note(),
                 read,
                 image.words[0],
                 image.words[EFUSE_MAP_WORDS - 1],
@@ -390,7 +396,8 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
                     f"{ident} printed before step {chk_step[ident]} completed"
                 )
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s ps",
+            "CHK-NONVAC: cell=%s: ordered fence %s; checker lines %s; stamps %s ps",
+            self.kind,
             " < ".join(_TERMS[s] for s in steps),
             ", ".join(printed),
             ", ".join(f"{s}={t}" for s, t in self._stamps),
@@ -403,7 +410,8 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
         ]
         cocotb.log.info(
-            "CHK-TIMEOUT-PATHS: %d bounded waits: %s",
+            "CHK-TIMEOUT-PATHS: cell=%s: %d bounded waits: %s",
+            self.kind,
             len(bounds),
             " ".join(
                 f"{name}={bound}(fails with AssertionError on expiry) last={state}"

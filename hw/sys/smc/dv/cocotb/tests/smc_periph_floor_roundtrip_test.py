@@ -4,11 +4,14 @@
 
 Spec: clk_rst.adoc (Peripheral Timing Requirements), avsbus_controller memmap.adoc (AVS_CFG_0).
 
-The ``+smc_cell`` run argument selects the peripheral period (periph10, periph5 or periph3); the
-reference clock is 10 ns and the SMC clock 1.25 ns in every cell.
+The cell is the peripheral period (periph10, periph5 or periph3); the reference clock is 10 ns
+and the SMC clock 1.25 ns in every cell. The ``+smc_cell`` run argument or a subclass ``CELL``
+pins it; otherwise build_phase draws it uniformly from the seed.
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 import pyuvm
@@ -29,24 +32,35 @@ class smc_periph_floor_roundtrip_test(smc_base_test):
         "CHK-PERIPH-FLOOR-ROUNDTRIP",
         "CHK-TIMEOUT-PATHS",
     )
-    CELL = "periph5"
+    # None draws the cell from the seed; a variant subclass pins one.
+    CELL: str | None = None
     min_evidence = 3
 
     auto_protocol_vip = False
 
     def build_phase(self) -> None:
         super().build_phase()
-        cell = cocotb.plusargs.get("smc_cell", self.CELL)
-        assert cell in PERIPH_PERIODS_NS, (
-            f"+smc_cell={cell} is not one of {sorted(PERIPH_PERIODS_NS)}"
+        seed = self.random_seed()
+        pinned = cocotb.plusargs.get("smc_cell", self.CELL)
+        cell = (
+            pinned if pinned is not None else random.Random(seed).choice(sorted(PERIPH_PERIODS_NS))
         )
+        assert cell in PERIPH_PERIODS_NS, f"cell {cell} is not one of {sorted(PERIPH_PERIODS_NS)}"
         self.cell = cell
         self.cfg.ref_clk_period_ns = REF_CLK_PERIOD_NS
         self.cfg.smc_clk_period_ns = SMC_CLK_PERIOD_NS
         self.cfg.periph_clk_period_ns = PERIPH_PERIODS_NS[cell]
+        if pinned is None:
+            source = "drawn"
+        elif "smc_cell" in cocotb.plusargs:
+            source = "pinned by +smc_cell"
+        else:
+            source = "pinned by the class"
+        self.logger.info("RAND-SEED: %d; RAND-DRAW: cell=%s (%s)", seed, cell, source)
         self.logger.info(
-            "SMC timing pinned by the leaf: cell=%s ref=%sns smc=%sns periph=%sns",
+            "SMC timing set by the leaf: cell=%s (%s) ref=%sns smc=%sns periph=%sns",
             cell,
+            source,
             REF_CLK_PERIOD_NS,
             SMC_CLK_PERIOD_NS,
             self.cfg.periph_clk_period_ns,
