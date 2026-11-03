@@ -30,8 +30,11 @@ that pair. Expected values come from the generated `i2c.adoc` field text and fro
 the stimulus:
 
 * `CTRL.LLPBK` in target mode: every SDA level sampled at the SCL high of each
-  written data bit equals the bit driven; with `LLPBK` clear the acquisition FIFO
-  holds the START with the address, both bytes and the STOP.
+  written data bit equals the bit driven, and a read of the target that follows
+  returns the two written bytes in order: a target puts data on SDA only during a
+  read, and its transmit FIFO is empty before the write. With `LLPBK` clear the DUT
+  pulls SDA low on no written data bit, and the acquisition FIFO holds the START
+  with the address, both bytes and the STOP.
 * `OVRD.TXOVRDEN` with each `SCLVAL` / `SDAVAL` pair: the pads follow the values
   (0 pulls low, 1 releases) and `VAL` bit 0 (`SCL_RX`) and bit 16 (`SDA_RX`) follow
   the pads, also while the bench pulls each line low; an ordinary write then lands.
@@ -98,6 +101,7 @@ from .smc_i2c_protocol_vip import (
 )
 from .smc_i2c_target_ack_ctrl_test_seq import (
     CLOCK_GATE_CONTROL,
+    I2C0,
     I2C0_ACQDATA,
     I2C0_CTRL,
     I2C0_FIFO_CTRL,
@@ -121,13 +125,13 @@ from .smc_i2c_target_ack_ctrl_test_seq import (
 
 I2C0_TXDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR", 0)
 CTRL_LLPBK = _i2c_u32("I2C__CTRL__LLPBK_bm")
+RDATA_DATA = _i2c_u32("I2C__RDATA__DATA_bm")
 
 TARGET_ADDR = 0x2A
 VIP_SPEED = 2_000_000
 ECHO = bytes((0xC5, 0x3A))
 #: Upper bound on the transmit FIFO depth; the fill stops at STATUS.TXFULL.
 MAX_TX_DEPTH = 512
-SETTLE_CYCLES = 200
 
 
 #: I2C instance 1 legs.
@@ -223,8 +227,11 @@ class SmcI2c1PadVip(SmcI2cMasterVip):
         self._sda, self._sda_ext, self._scl, self._scl_ext, _ = _pads(I2C1)
         _set_ext_low(self._sda_ext, _SDA_LOW, self._id, False)
         _set_ext_low(self._scl_ext, _SCL_LOW, self._id, False)
+        self._sda_dut_low = cocotb.top.tb_i2c1_sda_pad_low
         #: (driven bit, SDA level sampled in the SCL high) for every bit sent.
         self.samples: list[tuple[int, int]] = []
+        #: The DUT's own SDA pull-down, sampled with each entry of ``samples``.
+        self.dut_low: list[int] = []
 
     async def send_bit(self, bit: int) -> None:
         self._pull_sda(not bool(bit))
@@ -233,21 +240,30 @@ class SmcI2c1PadVip(SmcI2cMasterVip):
         await self._wait_scl_high()
         await Timer(self._half_ns, unit="ns")
         self.samples.append((bit, _level(self._sda)))
+        self.dut_low.append(_level(self._sda_dut_low))
         await Timer(self._bit_ns - self._half_ns, unit="ns")
         self._pull_scl(True)
         await Timer(self._half_ns, unit="ns")
 
-    async def write_sampled(self, addr: int, data: bytes) -> tuple[list[int], list[tuple]]:
-        """Write without stopping on a NACK; return the acknowledge bits and data-bit samples."""
+    async def write_sampled(
+        self, addr: int, data: bytes
+    ) -> tuple[list[int], list[tuple[int, int]], list[int]]:
+        """Write without stopping on a NACK.
+
+        Returns the acknowledge bits, the data-bit samples and the DUT SDA pull-down at
+        each of those samples.
+        """
         await self.send_start()
         acks = [await self.send_byte((addr & 0x7F) << 1)]
         data_samples = []
+        dut_low = []
         for b in data:
             mark = len(self.samples)
             acks.append(await self.send_byte(b))
             data_samples.extend(self.samples[mark : mark + 8])
+            dut_low.extend(self.dut_low[mark : mark + 8])
         await self.send_stop()
-        return acks, data_samples
+        return acks, data_samples, dut_low
 
 
 def _preload(index: int) -> int:
@@ -317,7 +333,16 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
         master = SmcI2cMasterVip(speed=VIP_SPEED, name="smc_i2c0_loopback_master")
         await Timer(1, unit="us")
         await master.write(TARGET_ADDR, ECHO)
-        await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
+        await self._poll_reg(
+            "I2C0_ACQ_BLOCKED",
+            "TARGET_FIFO_STATUS",
+            lambda v: (
+                ((v & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> I2C_TARGET_FIFO_STATUS_ACQLVL_BP) >= 2
+            ),
+            ACQ_POLLS,
+            POLL_GAP_CYCLES,
+            idx=I2C0,
+        )
         waiting = await self._acq_level("ACQ_BLOCKED")
         status = await self.csr_read("STATUS_BLOCKED", I2C0_STATUS)
         assert waiting == 2 and status & I2C_STATUS_TXFULL, (
@@ -327,13 +352,16 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
         )
         word = await self.csr_read("ACQDATA_BLOCKED", I2C0_ACQDATA)
         signal = (word & I2C_ACQDATA_SIGNAL) >> I2C_ACQDATA_SIGNAL_BP
-        assert signal == I2C_ACQ_SIGNAL_NONE and word & 0xFF == ECHO[1], (
+        assert signal == I2C_ACQ_SIGNAL_NONE and word & I2C_ACQDATA_ABYTE == ECHO[1], (
             f"ACQDATA returned 0x{word:08x}; the waiting entry is the data byte 0x{ECHO[1]:02x}"
         )
-        await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
-        status = await self.csr_read("STATUS_UNBLOCKED", I2C0_STATUS)
-        assert status & I2C_STATUS_ACQEMPTY, (
-            f"the STOP entry did not leave after the data byte was read (STATUS=0x{status:08x})"
+        await self._poll_reg(
+            "I2C0_STOP_ENTRY_LEFT",
+            "STATUS",
+            lambda v: v & I2C_STATUS_ACQEMPTY,
+            ACQ_POLLS,
+            POLL_GAP_CYCLES,
+            idx=I2C0,
         )
         cocotb.log.info(
             "CHK-I2C-TGT-LOOPBACK-BLOCKED: with CTRL.LLPBK set and one free entry in a "
@@ -350,11 +378,13 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             f"the read returned {got.hex()}, not the {preload} bytes loaded through TXDATA "
             f"followed by the first byte written ({want.hex()})"
         )
-        await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
-        status = await self.csr_read("STATUS_END", I2C0_STATUS)
-        assert status & I2C_STATUS_ACQEMPTY, (
-            f"the acquisition FIFO is not empty after the read (STATUS=0x{status:08x}); in "
-            f"loopback nothing in it is left for software"
+        await self._poll_reg(
+            "I2C0_ACQ_EMPTY_AFTER_READ",
+            "STATUS",
+            lambda v: v & I2C_STATUS_ACQEMPTY,
+            ACQ_POLLS,
+            POLL_GAP_CYCLES,
+            idx=I2C0,
         )
         await self.csr_write("I2C0_CTRL_OFF", I2C0_CTRL, 0)
         cocotb.log.info(
@@ -397,11 +427,13 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             f"cycles; last {self._pad_state()}"
         )
 
-    async def _poll_reg(self, name: str, register: str, done, polls: int, gap: int) -> int:
-        """Read `register` until `done(value)`; raise with the last value on expiry."""
+    async def _poll_reg(
+        self, name: str, register: str, done, polls: int, gap: int, idx: int = I2C1
+    ) -> int:
+        """Read `register` of instance `idx` until `done(value)`; raise with the last value on expiry."""
         value = 0
         for i in range(polls):
-            value = await self.csr_read(f"{name}_{register}{i}", _reg(register))
+            value = await self.csr_read(f"{name}_{register}{i}", _reg(register, idx))
             if done(value):
                 return value
             await ClockCycles(cocotb.top.clk_periph_i, gap)
@@ -554,7 +586,12 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
         await self.csr_write(f"{name}_CTRL", _reg("CTRL"), ctrl)
         await self.csr_read(f"{name}_CTRL_RB", _reg("CTRL"), expected=ctrl)
         self.master.samples.clear()
-        acks, samples = await self.master.write_sampled(I2C1_TARGET_ADDR, LLPBK_DATA)
+        self.master.dut_low.clear()
+        acks, samples, dut_low = await self.master.write_sampled(I2C1_TARGET_ADDR, LLPBK_DATA)
+        await self._wait_targetidle(name)
+        return {"acks": acks, "samples": samples, "dut_low": dut_low}
+
+    async def _wait_targetidle(self, name: str) -> None:
         await self._poll_reg(
             f"{name}_TGT_IDLE",
             "STATUS",
@@ -562,7 +599,6 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             IDLE_POLLS,
             POLL_GAP_CYCLES,
         )
-        return {"acks": acks, "samples": samples}
 
     async def _s2_llpbk_target(self) -> None:
         await self.csr_write("S2_CTRL_OFF", _reg("CTRL"), 0)
@@ -573,6 +609,8 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             "S2_TARGET_ID", _reg("TARGET_ID"), _pack_target_id(I2C1_TARGET_ADDR, 0x7F, 0, 0)
         )
         on = await self._target_write("S2_LLPBK_ON", True)
+        read_back = await self.master.read(I2C1_TARGET_ADDR, len(LLPBK_DATA))
+        await self._wait_targetidle("S2_LLPBK_ON_READ")
         on_entries = await self._drain_acq("S2_LLPBK_ON")
         driven = [b for byte in LLPBK_DATA for b in ((byte >> (7 - i)) & 1 for i in range(8))]
         assert [d for d, _ in on["samples"]] == driven, f"bench drove {on['samples']}"
@@ -581,14 +619,22 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             f"with CTRL.LLPBK=1 the SDA pad differed from the driven data bit at bit(s) "
             f"{mismatched}: (driven, sampled) {on['samples']}"
         )
+        assert read_back == LLPBK_DATA, (
+            f"with CTRL.LLPBK=1 the target must send the received SDA data back out: a "
+            f"{len(LLPBK_DATA)}-byte read after the write of {LLPBK_DATA.hex()} into an empty "
+            f"transmit FIFO returned {read_back.hex()}"
+        )
         self._chk(
             "CHK-I2C1-LLPBK-ECHO",
             f"with I2C1 CTRL.LLPBK=1 in target mode at 0x{I2C1_TARGET_ADDR:02x} the bench wrote "
             f"{LLPBK_DATA.hex()} and every tb_i2c1_sda level sampled at the SCL high of each data "
-            f"bit equalled the driven bit (16 of 16); observed acknowledge bits {on['acks']} "
+            f"bit equalled the driven bit (16 of 16), and the {len(LLPBK_DATA)}-byte read that "
+            f"followed returned {read_back.hex()}, the written bytes in order; DUT SDA pull-down "
+            f"on the written data bits {on['dut_low']}, observed acknowledge bits {on['acks']} "
             f"(0 = ACK) and ACQ entries (SIGNAL, ABYTE) "
-            f"{[(s, f'0x{b:02x}') for s, b in on_entries]} logged, not compared "
-            f"(LINKED-ISSUE SF-013)",
+            f"{[(s, f'0x{b:02x}') for s, b in on_entries]} logged, not compared: whether LLPBK "
+            f"drives the received data back onto SDA during the write is a question for the I2C "
+            f"owner (the RDL says the target sends all received SDA data back out)",
         )
 
         off = await self._target_write("S2_LLPBK_OFF", False)
@@ -611,6 +657,10 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             (I2C_ACQ_SIGNAL_NONE, LLPBK_DATA[0]),
             (I2C_ACQ_SIGNAL_NONE, LLPBK_DATA[1]),
         ]
+        assert len(off["dut_low"]) == 16 and not any(off["dut_low"]), (
+            f"with LLPBK=0 the DUT pulled SDA low during a written data bit: DUT pull-down "
+            f"{off['dut_low']} for driven bits {driven}"
+        )
         assert off["acks"] == [0, 0, 0], (
             f"with LLPBK=0 the target acknowledged {off['acks']} (0 = ACK), expected address and "
             f"both bytes acknowledged"
@@ -624,7 +674,8 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             f"with LLPBK=0 the target acknowledged the address and both bytes and ACQDATA held "
             f"(SIGNAL, ABYTE) {[(sig, f'0x{b:02x}') for sig, b in got]} = START/0x"
             f"{I2C1_TARGET_ADDR << 1:02x}, 0x{LLPBK_DATA[0]:02x}, 0x{LLPBK_DATA[1]:02x}, STOP "
-            f"(SIGNAL 0x1, 0x0, 0x0, 0x2)",
+            f"(SIGNAL 0x1, 0x0, 0x0, 0x2), and the DUT's own SDA pull-down was 0 on all 16 "
+            f"written data bits",
         )
         self._step_done("S2")
 
@@ -704,7 +755,7 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             empty_status = await self.csr_read(f"S5_DRAIN_STATUS{i}", _reg("STATUS"))
             if empty_status & I2C_STATUS_RXEMPTY:
                 break
-            popped.append(await self.csr_read(f"S5_RDATA{i}", _reg("RDATA")) & 0xFF)
+            popped.append(await self.csr_read(f"S5_RDATA{i}", _reg("RDATA")) & RDATA_DATA)
         else:
             raise AssertionError(
                 f"S5: RXEMPTY not reached in {DRAIN_LIMIT} reads; popped {len(popped)}; last "
@@ -720,7 +771,7 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             if status & I2C_STATUS_RXEMPTY:
                 await ClockCycles(cocotb.top.clk_periph_i, POLL_GAP_CYCLES)
             else:
-                late.append(await self.csr_read(f"S5_LATE_RDATA{i}", _reg("RDATA")) & 0xFF)
+                late.append(await self.csr_read(f"S5_LATE_RDATA{i}", _reg("RDATA")) & RDATA_DATA)
         else:
             raise AssertionError(
                 f"S5: the controller did not return to idle with RX empty in {DRAIN_LIMIT} reads; "
@@ -840,7 +891,7 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
         await self._wait_hostidle("S7_CLEAN")
         got = bytes(
             [
-                (await self.csr_read(f"S7_CLEAN_RDATA{i}", _reg("RDATA"))) & 0xFF
+                (await self.csr_read(f"S7_CLEAN_RDATA{i}", _reg("RDATA"))) & RDATA_DATA
                 for i in range(SDA_READ_BYTES)
             ]
         )
@@ -925,12 +976,12 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
         return [
             f"axi_access (every SEP_IN read and write)={self.cfg.axi_timeout_ns} ns "
             f"enforced-by=smc_sys_axi_agent fail-on-expiry=AssertionError last=access address",
-            "i2c0_lsio_ready (pre-existing I2C0 leg)=2000 polls 4 clk_smc_i cycles apart "
+            "i2c0_lsio_ready=2000 polls 4 clk_smc_i cycles apart "
             "enforced-by=smc_csr_seq_utils.wait_i2c0_lsio_ready fail-on-expiry=AssertionError "
             "last=I2C0 enable, bus SCL and pad-sense SCL/SDA",
-            f"i2c0_txfull_fill (pre-existing I2C0 leg)={MAX_TX_DEPTH} STATUS reads "
+            f"i2c0_txfull_fill={MAX_TX_DEPTH} STATUS reads "
             f"fail-on-expiry=AssertionError last=STATUS",
-            f"i2c0_vip_scl_release (pre-existing I2C0 leg)="
+            f"i2c0_vip_scl_release="
             f"{SmcI2cMasterVip.DEFAULT_SCL_TIMEOUT_HALF_PERIODS * (int(1e9 / VIP_SPEED) // 2)} ns "
             f"per SCL release enforced-by=smc_i2c_protocol_vip.SmcI2cMasterVip (outside the leaf) "
             f"fail-on-expiry=SmcI2cVipError last=hold time",
@@ -957,7 +1008,9 @@ class smc_i2c_target_loopback_test_seq(SmcCsrSeq):
             f"intr_state={INTR_POLLS} INTR_STATE polls {POLL_GAP_CYCLES} {poll} "
             f"last=INTR_STATE and pads",
             "bus_recover=at most 18 SCL pulses then pad_level last=tb_i2c1_scl/tb_i2c1_sda",
-            f"fixed waits with no expiry (pre-existing I2C0 leg): 1 us before the VIP write and "
-            f"{SETTLE_CYCLES} clk_smc_i cycles after the write, after the ACQDATA read and after "
-            f"the read",
+            f"i2c0_acq_level={ACQ_POLLS} TARGET_FIFO_STATUS polls {POLL_GAP_CYCLES} {poll} "
+            f"last=TARGET_FIFO_STATUS",
+            f"i2c0_acq_empty={ACQ_POLLS} STATUS polls {POLL_GAP_CYCLES} {poll} last=STATUS, "
+            f"after the ACQDATA read and after the read",
+            "fixed wait with no expiry (I2C0 leg): 1 us before the VIP write",
         ]

@@ -3,7 +3,7 @@
 """The OpenTitan SPI host sends JEDEC ID (0x9F) on the pads and returns the flash ID in RXDATA.
 
 The flash BFM must log 0x9F as its last opcode, and RXDATA must equal the BFM's
-ID bytes (CHK-JEDEC). Run mode: no_cpu with +skip_fuse_sense.
+ID bytes (CHK-JEDEC-ID). Run mode: no_cpu with +skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
             assert seq.rxdata == SPI_RX_JEDEC_WORD, (
                 f"unexpected JEDEC response 0x{seq.rxdata:08x}, expected 0x{SPI_RX_JEDEC_WORD:08x}"
             )
-            self.logger.info("CHK-JEDEC PASS: opcode=0x9F rxdata=0x%08x", seq.rxdata)
+            self.logger.info("CHK-JEDEC-ID PASS: opcode=0x9F rxdata=0x%08x", seq.rxdata)
             # RXDATA holds the first received byte in its least significant byte
             # (ByteOrder 1); the three identifier bytes are the delivered data.
             sb.expect_rx(0x9F, seq.rxdata.to_bytes(4, "little")[:3], source="dut", label="RXDATA")

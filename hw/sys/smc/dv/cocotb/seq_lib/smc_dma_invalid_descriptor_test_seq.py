@@ -13,8 +13,8 @@ whole 136-byte destination span, and a linear 16-byte copy writes its first row.
 Every NEXT_ID_0 read of the leaf must return a non-zero transfer ID: dma.adoc (Linear and
 Two-Dimensional Copies) and dma_ctrl.rdl both state that every read returns one, including the
 reads that submit a command with no data to move. DONE_0 before and after a no-data command and
-the bit 322 pulse count are measured, not compared; the two documents differ on DONE_0 (the most
-recently retired ID in dma.adoc, a cumulative count in the RDL).
+the bit 322 pulse count are measured, not compared; the retirement count a no-data command adds
+to DONE_0 (dma.adoc, Retirement Counting) is graded by smc_dma_transfer_matrix_rand_test.
 """
 
 from __future__ import annotations
@@ -23,8 +23,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 
-from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_dma_sanity_test_seq import (
+from .smc_addr_map import (
     DMA_CONFIG_ENABLED_ND,
     DMA_CTRL_CONFIG,
     DMA_CTRL_DONE_0,
@@ -42,6 +41,9 @@ from .smc_dma_sanity_test_seq import (
     DMA_CTRL_SRC_STRIDE_HI,
     DMA_CTRL_SRC_STRIDE_LO,
     DMA_CTRL_STATUS_0,
+)
+from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_dma_sanity_test_seq import (
     INBOUND0_END,
     INBOUND0_FILTER_CONFIG,
     INBOUND0_START,

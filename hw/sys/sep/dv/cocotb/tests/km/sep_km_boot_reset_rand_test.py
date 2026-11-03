@@ -7,7 +7,7 @@ no_cpu / lsu_stub_all_live / real fuse sense / +esrc_noise_force /
 with the shipped defaults ``KM_BOOT_WIPE=1 KM_UNREC_WIPE=1``). RAND-REP:
 ``SepSeededRng`` from the run seed draws the reset points and their order, the
 point parameters c, j and r, the stale word count w, the stale and partial words
-and the spin image; every draw is logged as ``DRAW``. Contract: VPLAN 7.26,
+and the spin image; every draw is logged as ``INFO-DRAW``. Contract: VPLAN 7.26,
 ``docs/test_contracts/key_manager.adoc``.
 
 The testbench LSU master is the SEP host. It reaches the KM only through the
@@ -35,6 +35,10 @@ Checks:
                   leaf at that boot
   CHK-BOOT-ORDER  at both cold boots COLD_BOOT_DONE reads 0 while the KM is held
                   and rises before the first host read that shows the READY word
+  CHK-BOOT-ORDER-WARM
+                  at every warm boot COLD_BOOT_DONE reads 1 while the KM is held
+                  and after the READY word (``reset_controller.adoc:96,182``;
+                  ``km_csr.rdl:697,701``; ``architecture.adoc:1119``)
   CHK-BOOT-FLUSH  at each warm reset of the warm-reset leg: the FIFOs keep their
                   words while the KM is held (every stale write OKAY, inbound depth
                   w, outbound depth as before the reset); after the release the
@@ -45,6 +49,13 @@ Checks:
   CHK-FWSIZE      CMD_SRAM_EXEC returns -7 with no argument after the cold reset
                   and after the next warm reset
   CHK-SRAM-VER    CMD_SRAM_VER returns -1 with no argument with an image stored
+  CHK-BOOT-FLUSHED-BY-KM
+                  ``KM_IRQ_STATUS.flushed_by_km`` on the SEP side reads 1 at the
+                  first read after the boots and before the leaf clears it: the
+                  KM boot flush sets the peer's flushed-by-other status
+                  (``architecture.adoc:232-233``), and the SEP-side IRQ_STATUS
+                  is not in the KM address map (``key_manager.rdl:107`` maps
+                  only ``km_mailbox_km``; ``km_mailbox_sep.rdl:255-263``)
   CHK-RST-AXI-VALID
                   at each AXI reset point (rst_ni driven low in the half clock
                   of a pending KM CPU read, then of a pending write) the three
@@ -65,8 +76,7 @@ the cold-boot reference and after each warm reset of the warm-reset leg); the
 CMD_SRAM_EXEC success with the image stored (``control_warm_exec`` of
 CHK-FWSIZE); the confirmation and the handover flush of the image load
 (``stored`` of CHK-SRAM-VER); the SCRAMBLER_KEY writes of the cold-boot
-reference (``control_n_cold`` of each warm CHK-SCR-KEEP line). COLD_BOOT_DONE at
-a warm boot is logged as ``OBS-BOOT-ORDER-WARM`` with ``control=1``.
+reference (``control_n_cold`` of each warm CHK-SCR-KEEP line).
 
 The procedure steps that serve only planned checkers do not run: the witnesses
 and the resident state (steps 3 to 6), the witness reads and
@@ -208,19 +218,21 @@ class sep_km_boot_reset_rand_test(sep_base_test):
     required_evidence = (
         "CHK-WIPE-READY",
         "CHK-BOOT-ORDER",
+        "CHK-BOOT-ORDER-WARM",
         "CHK-BOOT-FLUSH",
         "CHK-SCR-KEEP",
         "CHK-FWSIZE",
         "CHK-SRAM-VER",
         "CHK-RST-AXI-VALID",
         "CHK-SEQ0",
+        "CHK-BOOT-FLUSHED-BY-KM",
     )
 
     # ------------------------------------------------------------------ main
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.plan = pl.BootResetPlan(seed)
         for line in self.plan.draw_lines():
             self.logger.info(line)
@@ -382,10 +394,13 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             (st >> KM_STATUS_OUTBOUND_DEPTH_LSB) & KM_STATUS_OUTBOUND_DEPTH_MASK,
         )
 
-    async def _write_words(self, words, *, separator: bool, tag: str) -> None:
-        """Write ``words`` while the inbound FIFO has room; the separator goes on the last word."""
+    async def _write_words(self, words, *, separator: bool, tag: str) -> int:
+        """Write ``words`` while the inbound FIFO has room; the separator goes on the last word.
+
+        Returns the count of data writes with an OKAY response.
+        """
         n = len(words)
-        i = 0
+        i = okay = 0
         while i < n:
             for _ in range(INBOUND_POLLS):
                 in_d, _ = await self._depths()
@@ -399,10 +414,15 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             for _ in range(KM_MBOX_DEPTH - in_d):
                 if separator and i == n - 1:
                     await self._wr(KM_MBOX_WRITE_SEPARATOR, 1)
-                await self._wr(KM_MBOX_WRITE_DATA, words[i] & pl.WORD_MASK)
+                if await self._wr_resp(KM_MBOX_WRITE_DATA, words[i] & pl.WORD_MASK) != RESP_OKAY:
+                    raise AssertionError(
+                        f"KM mailbox write @0x{KM_MBOX_BASE + KM_MBOX_WRITE_DATA:08x} not OKAY"
+                    )
+                okay += 1
                 i += 1
                 if i == n:
                     break
+        return okay
 
     async def _wait_depth(self, *, inbound: int | None, outbound: int | None, tag: str) -> None:
         for _ in range(DEPTH_POLLS):
@@ -425,7 +445,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             for _ in range(out_d):
                 words.append(await self._rd(KM_MBOX_READ_DATA))
         if words:
-            self.logger.info("LOG %s popped=%d words=%s", tag, len(words), [_a(w) for w in words])
+            self.logger.info(
+                "INFO-POPPED %s popped=%d words=%s", tag, len(words), [_a(w) for w in words]
+            )
         return words
 
     # ---------------------------------------------------------- frame reader
@@ -541,7 +563,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             scr_count0=scr0,
         )
         self.logger.info(
-            "LOG boot=%s kind=%s boot_clk=%d bound_clk=%d ready_depth=%d word=%s ready=%d",
+            "INFO-BOOT boot=%s kind=%s boot_clk=%d bound_clk=%d ready_depth=%d word=%s ready=%d",
             tag,
             kind,
             b.boot_clk,
@@ -589,6 +611,24 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             ready_visible_cycle=b.ready_cycle,
         )
 
+    def _boot_order_warm(self, tag: str, cbd_held: int, cbd_ready: int) -> None:
+        """CHK-BOOT-ORDER-WARM: a KM warm reset keeps COLD_BOOT_DONE at 1.
+
+        ``hw/sys/sep/doc/reset_controller.adoc:96,182``: SW_RESET_N bit 0 drives the
+        KM warm reset; ``hw/ip/key_manager/regs/km_csr.rdl:697,701``: the bit stays
+        set until the next cold reset; ``hw/ip/key_manager/doc/architecture.adoc:1119``:
+        on a warm reset ``COLD_BOOT_DONE`` already reads 1. The cold-boot reference
+        before every warm reset proves the rise (CHK-BOOT-ORDER).
+        """
+        self.chk.ok(
+            "BOOT-ORDER-WARM",
+            cbd_held == 1 and cbd_ready == 1,
+            boot=tag,
+            cbd_held=cbd_held,
+            cbd_ready=cbd_ready,
+            golden=1,
+        )
+
     async def _scr_keep(self, b: _Boot) -> None:
         """CHK-SCR-KEEP of one boot, sampled after its first command."""
         n_now, ctrl = await self._scr()
@@ -624,7 +664,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         _, out_held = await self._depths()
         b = await self._boot(tag, "warm", out_held)
         cbd_ready = await self._cbd()
-        self.chk.obs("BOOT-ORDER-WARM", control=1, boot=tag, cbd_held=cbd_held, cbd_ready=cbd_ready)
+        self._boot_order_warm(tag, cbd_held, cbd_ready)
         self._ready_or_stop(b)
         return b
 
@@ -652,20 +692,26 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             raise _Stop(
                 f"[{tag}] the first frame after RESP_KM_READY is {[_a(w) for w in f.words]}"
             )
-        self.logger.info("LOG %s cold_boot_done_after=%d control=1", tag, await self._cbd())
+        self.logger.info(
+            "INFO-CBD-AFTER %s cold_boot_done_after=%d control=1", tag, await self._cbd()
+        )
         await self._scr_keep(b)
 
     async def _warm_leg(self, k: int, d: pl.PointDraw) -> None:
         """Steps 7 to 11 and the KM-CSR part of step 13 at one reset point."""
         tag = f"reset{k} point={d.point}"
         # Step 7: reach the reset point.
+        cmds_ok = partial_words = unread = 0
         if d.point == pl.POINT_CMDS:
             for i in range(d.c):
                 code, _ = await self._cmd(pl.CMD_STAT, (), f"{tag} stat{i}")
                 if code != pl.RC_SUCCESS:
                     raise AssertionError(f"[{tag}] CMD_STAT {i} returned {code}")
+                cmds_ok += 1
         elif d.point == pl.POINT_PARTIAL:
-            await self._write_words(d.partial, separator=False, tag=f"{tag} partial")
+            partial_words = await self._write_words(
+                d.partial, separator=False, tag=f"{tag} partial"
+            )
             await self._wait_depth(inbound=0, outbound=None, tag=f"{tag} partial consumed")
         elif d.point == pl.POINT_UNREAD:
             for _ in range(d.r):
@@ -676,9 +722,24 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             await self._wait_depth(
                 inbound=None, outbound=pl.unread_depth(d.r), tag=f"{tag} unread responses"
             )
+            unread = d.r
         if d.point != pl.POINT_UNREAD:
             await self._pop_all(f"{tag} before the reset")
         _, d_out = await self._depths()
+        self.chk.ctrl(
+            "RESET-POINT",
+            {
+                pl.POINT_CMDS: cmds_ok == d.c,
+                pl.POINT_PARTIAL: partial_words == len(d.partial) > 0,
+                pl.POINT_UNREAD: d_out == pl.unread_depth(d.r),
+            }.get(d.point, True),
+            boot=tag,
+            point=d.point,
+            cmds=cmds_ok,
+            partial_words=partial_words,
+            unread=unread,
+            out_depth=d_out,
+        )
 
         # Step 8: warm reset, held.
         cbd_held = await self._park(tag)
@@ -694,7 +755,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         # Step 10: release; the first word is RESP_KM_READY.
         b = await self._boot(tag, "warm", out_held)
         cbd_ready = await self._cbd()
-        self.chk.obs("BOOT-ORDER-WARM", control=1, boot=tag, cbd_held=cbd_held, cbd_ready=cbd_ready)
+        self._boot_order_warm(tag, cbd_held, cbd_ready)
 
         # Step 11: CMD_STAT at sequence 0; its response must be the next frame.
         echo, code, rseq, f = False, None, -1, None
@@ -743,9 +804,26 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         n = self.plan.image_n
         code, arg = await self._cmd(pl.CMD_SRAM_LOAD_EXEC, (n,), f"{tag} load")
         confirm = code == pl.RC_SUCCESS and arg is None
-        # The boot flush left FLUSHED_BY_KM set; clear it so that only the
-        # handover flush sets it again. That flush follows the store of the image
-        # size ("SRAM Firmware Handover"), so the warm reset of step 16 waits for it.
+        # The KM boot flush sets FLUSHED_BY_KM on the SEP side, which is not in
+        # the KM address map, so the bit reads 1 here, at the first read of the
+        # SEP IRQ status since the boots. The W1C below makes the handover flush
+        # the only one that sets it again. That flush follows the store of the
+        # image size ("SRAM Firmware Handover"), so the warm reset of step 16
+        # waits for it.
+        pre = await self._rd(KM_MBOX_IRQ_STATUS)
+        flushed_by_km = (pre >> KM_IRQ_FLUSHED_BY_KM) & 1
+        self.chk.ok(
+            "BOOT-FLUSHED-BY-KM",
+            flushed_by_km == 1,
+            contract=(
+                "key_manager/doc/architecture.adoc:232-233(Mailbox_Transport),"
+                "key_manager.rdl:107(mailbox_km),km_mailbox_sep.rdl:255-263(FLUSHED_BY_KM)"
+            ),
+            boot=tag,
+            irq_status=_a(pre),
+            flushed_by_km=flushed_by_km,
+            expected=1,
+        )
         await self._wr(KM_MBOX_IRQ_STATUS, 1 << KM_IRQ_FLUSHED_BY_KM)
         irq = await self._rd(KM_MBOX_IRQ_STATUS)
         if irq & (1 << KM_IRQ_FLUSHED_BY_KM):
@@ -765,7 +843,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         popped = await self._pop_all(f"{tag} after the handover")
         stored = confirm and flushed == 1 and not popped
         self.logger.info(
-            "LOG %s n=%d confirm_code=%d confirm_arg=%s flushed=%d popped=%d stored=%d control=1",
+            "INFO-HANDOVER %s n=%d confirm_code=%d confirm_arg=%s flushed=%d popped=%d stored=%d control=1",
             tag,
             n,
             code,
@@ -784,7 +862,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         self.drbg_sb.stop()
         rec = await self.pulse_rst_ni(release_bound=SEP_RESET_BOUND)
         self.swrst.value = SW_RESET_N_RESET_DEFAULT
-        self.logger.info("LOG %s release_clks=%d", tag, rec["release_clks"])
+        self.logger.info("INFO-RELEASE %s release_clks=%d", tag, rec["release_clks"])
         await self._entropy_up()
         await self._graded(True)
         return await self._cbd()
@@ -878,7 +956,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             held_rst_n=held["rst_n"],
         )
         self.swrst.value = SW_RESET_N_RESET_DEFAULT
-        self.logger.info("LOG %s release_clks=%d", tag, rec["release_clks"])
+        self.logger.info("INFO-RELEASE %s release_clks=%d", tag, rec["release_clks"])
 
     async def _cold_domain_leg(self) -> None:
         """Steps 15 to 20 without the CMD_OTP_READ_LOCK_COLD commands."""
@@ -900,7 +978,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             stored=int(stored),
         )
         warm_exec, warm_arg = await self._cmd(pl.CMD_SRAM_EXEC, (), f"{tag} CMD_SRAM_EXEC")
-        self.logger.info("LOG %s warm_exec=%d arg=%s control=1", tag, warm_exec, _a(warm_arg))
+        self.logger.info(
+            "INFO-WARM-EXEC %s warm_exec=%d arg=%s control=1", tag, warm_exec, _a(warm_arg)
+        )
         await self._pop_all(f"{tag} after CMD_SRAM_EXEC")
 
         # Step 18: cold reset.
@@ -909,7 +989,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         b = await self._boot(ctag, "cold", 0)
         self._boot_order(b, held)
         self._ready_or_stop(b)
-        self.logger.info("LOG %s cold_boot_done_after=%d control=1", ctag, await self._cbd())
+        self.logger.info(
+            "INFO-CBD-AFTER %s cold_boot_done_after=%d control=1", ctag, await self._cbd()
+        )
 
         # Step 19.
         cold_exec, cold_arg = await self._cmd(pl.CMD_SRAM_EXEC, (), f"{ctag} CMD_SRAM_EXEC")

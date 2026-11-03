@@ -103,8 +103,8 @@ module smc_dma_fcov (
 
   wire status0_busy_e = transfer_in_flight_q && (status0_i !== 10'h3FF) && (^status0_i !== 1'bx);
   wire done0_set_e = (done_id_i !== done_id_q) && (done_id_i !== 32'd0) && (^done_id_q !== 1'bx);
-  // dma_ctrl.rdl DONE: "Holds the cumulative number of completed transfers", so
-  // a read after a completion returns the retired count and leaves it in place.
+  // dma_ctrl.rdl DONE: "Retirement counter for the stream. Resets to 1 and adds 1 per
+  // retirement", so a read after a completion returns the retired count and leaves it in place.
   wire done0_holds_e = done_seen_q && (done_id_re_i === 1'b1) && (done_id_q !== 32'd0)
       && (done_id_i === done_id_q);
   `OCAH_FCOV_COVER(c_status0_busy_during, status0_busy_e, clk_smc_i, in_reset)

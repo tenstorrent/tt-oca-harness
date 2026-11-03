@@ -16,11 +16,11 @@
 <tr><td>0x10</td><td><a href="#REGION_SIZE">REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x18</td><td><a href="#CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x20</td><td><a href="#HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control and interrupt status.</td></tr>
-<tr><td>0x28</td><td><a href="#HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x28</td><td><a href="#HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.</td></tr>
 <tr><td>0x30</td><td><a href="#HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control and interrupt status.</td></tr>
-<tr><td>0x38</td><td><a href="#HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x38</td><td><a href="#HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.</td></tr>
 <tr><td>0x40</td><td><a href="#HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</a></td><td>RW</td><td>AXI hang detector control and interrupt status.</td></tr>
-<tr><td>0x48</td><td><a href="#HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x48</td><td><a href="#HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="GLOBAL_BASE">GLOBAL_BASE</h3>
@@ -78,7 +78,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
 </table>
 <h3 id="HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</h3>
 <table>
@@ -96,7 +96,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
 </table>
 <h3 id="HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</h3>
 <table>
@@ -114,6 +114,6 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</td></tr>
 </table>
 </div>

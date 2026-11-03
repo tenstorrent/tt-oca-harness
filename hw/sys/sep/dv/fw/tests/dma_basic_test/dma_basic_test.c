@@ -849,6 +849,18 @@ static int chk_host_intg(void) {
     for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
     }
 
+    // The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:67-69):
+    // with the pin low again, STATUS still holds host_path_err. The testbench
+    // requires aggregator bit 41 high up to CHK-HOSTINTG-HELD.
+    bus = rd(status_addr);
+    if (bus != host_bit) {
+        sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" after the pin release, expected exclusive host_path_err\n");
+        e++;
+    }
+    sep_mbx_puts("CHK-HOSTINTG-HELD\n");
+
     // The clear register always reads 0, so reading it back proves nothing;
     // the status returning to 0 is the contract.
     wr(clear_addr, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
@@ -891,8 +903,8 @@ static int chk_host_intg(void) {
     wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-HOSTINTG PASS: STATUS 0 with the pin high before GO; exclusive "
-                     "host_path_err after injected command integrity; CLEAR; recovery copy "
-                     "matches source\n");
+                     "host_path_err after injected command integrity, held after the pin "
+                     "release; CLEAR; recovery copy matches source\n");
     }
     return e;
 }

@@ -118,6 +118,10 @@ static void i2c_wr(uint32_t base, uint32_t abs_base_for_idx0, uint32_t value) {
     write_reg(base + ctrl_off(abs_base_for_idx0), value);
 }
 
+/* VALUE truncated to the width of TIMINGn.FIELD, from the generated field mask. */
+#define TIMING_FIELD(value, REG, FIELD) \
+    ((value) & (I2C__##REG##__##FIELD##_bm >> I2C__##REG##__##FIELD##_bp))
+
 /**
  * STEP S1 - program TIMING0-4 before ENABLEHOST; emit CHK-TIMING-BEFORE-ENABLE.
  *
@@ -155,12 +159,16 @@ static void step_s1_timing_before_enable(uint32_t idx, const i2c_timing_config_t
 
     /* Truncate each computed value to its field width, as i2c_config_timing()
      * does. */
-    if (t0.f.THIGH != (timing->thigh & 0x1FFFu) || t0.f.TLOW != (timing->tlow & 0x1FFFu) ||
-        t1.f.T_R != (timing->t_r & 0x3FFu) || t1.f.T_F != (timing->t_f & 0x1FFu) ||
-        t2.f.TSU_STA != (timing->tsu_sta & 0x1FFFu) ||
-        t2.f.THD_STA != (timing->thd_sta & 0x1FFFu) || t3.f.TSU_DAT != (timing->tsu_dat & 0x1FFu) ||
-        t3.f.THD_DAT != (timing->thd_dat & 0x1FFFu) ||
-        t4.f.TSU_STO != (timing->tsu_sto & 0x1FFFu) || t4.f.T_BUF != (timing->t_buf & 0x1FFFu)) {
+    if (t0.f.THIGH != TIMING_FIELD(timing->thigh, TIMING0, THIGH) ||
+        t0.f.TLOW != TIMING_FIELD(timing->tlow, TIMING0, TLOW) ||
+        t1.f.T_R != TIMING_FIELD(timing->t_r, TIMING1, T_R) ||
+        t1.f.T_F != TIMING_FIELD(timing->t_f, TIMING1, T_F) ||
+        t2.f.TSU_STA != TIMING_FIELD(timing->tsu_sta, TIMING2, TSU_STA) ||
+        t2.f.THD_STA != TIMING_FIELD(timing->thd_sta, TIMING2, THD_STA) ||
+        t3.f.TSU_DAT != TIMING_FIELD(timing->tsu_dat, TIMING3, TSU_DAT) ||
+        t3.f.THD_DAT != TIMING_FIELD(timing->thd_dat, TIMING3, THD_DAT) ||
+        t4.f.TSU_STO != TIMING_FIELD(timing->tsu_sto, TIMING4, TSU_STO) ||
+        t4.f.T_BUF != TIMING_FIELD(timing->t_buf, TIMING4, T_BUF)) {
         simputs("  ERROR: TIMING readback != computed. read t0=");
         simputshex32("", t0.w);
         simputs(" t1=");

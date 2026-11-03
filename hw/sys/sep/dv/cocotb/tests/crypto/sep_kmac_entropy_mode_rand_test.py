@@ -22,13 +22,21 @@ Legs: a six-seed leg first (gives t_ctrl, the clean start time), then in drawn
 order: seed count (5 and 0 words), mode lock (sw first and edn first), timer
 (prescaler 0 and P, wait timers T, 2T, 8, then 0), counter (N hashes,
 ``hash_cnt_clr``, ``entropy_req``) and reseed (threshold R, then 0 on the same
-KMAC). "Chain up" is the state after the ESRC, CSRNG and EDN bring-up. "Chain
+KMAC). A ``msg_mask`` leg runs last and is logged only (``OBS-KMAC-MSGMASK``).
+"Chain up" is the state after the ESRC, CSRNG and EDN bring-up. "Chain
 uninitialized" is the state after a TRNG reset with no bring-up after it: EDN
 does not answer, which is the starvation of the timer leg.
 
 Checkers:
-  CHK-KMAC-SWSEED          six seeds -> absorb in bound; SHA3-256 == golden.
+  CHK-KMAC-SWSEED          sw mode, six seeds -> absorb in bound; SHA3-256 ==
+                           golden. ``CTRL-KMAC-SWSEED part=program`` reads
+                           ``entropy_mode`` sw and ``entropy_ready`` 1 before
+                           the seeds. The check does not show that the six
+                           seeds are needed: that is CHK-KMAC-SWSEED-NEG.
   CHK-KMAC-MODE-LOCK       reset mode 0; a late write changes only the readback;
+                           ``CTRL-KMAC-MODE-LOCK part=program`` reads the locked
+                           ``entropy_mode`` and ``entropy_ready`` 1 before the
+                           late write;
                            with EDN locked, the late write to sw leaves the
                            module in EDN mode: after the hash, ``CMD.entropy_req``
                            gives >= 1 acknowledge on ``crypto_edn_ack_o[1]``
@@ -54,22 +62,32 @@ Checkers:
                            gives bits 23:0 a value for this code: they are
                            masked and logged as ``OBS-KMAC-TIMER-ERRCODE``.
   CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
+                           At prescaler 0 the window is (2^16 // 7 + 4) x the
+                           error time at wait timer 8 (at least 7 whole pulse
+                           periods), so it is longer than 2^16 timer pulses (kmac.adoc ``ENTROPY_PERIOD``: a
+                           16-bit timer) and a DUT that counts 0 as a finite
+                           16-bit count expires in it. At prescaler P the
+                           window is 4 x that error time.
   CHK-KMAC-HASHCNT         counter 1..N, 0 after hash_cnt_clr, 1, 0 after
                            entropy_req, which adds an acknowledge.
-  CHK-KMAC-AUTORESEED      threshold R, M hashes -> acknowledge >= 1, counter < M.
+  CHK-KMAC-AUTORESEED      threshold R, M hashes -> acknowledge >= 1, and the
+                           counter after hash i reads i mod R (``kmac.hjson``
+                           :806-810: a counter that "hits (GTE)" the threshold
+                           requests a seed and is reset).
   CHK-KMAC-AUTORESEED-OFF  threshold 0, M hashes -> no acknowledge, counter == M.
 
 Log-only (``OBS-BLOCKED``): CHK-KMAC-SWSEED-NEG (five or zero seeds -> no
-absorb) and the absorb part of the sw-locked CHK-KMAC-MODE-LOCK leg. The
-seed gate text (``kmac.hjson`` ``ENTROPY_SEED``: "Only after that, the module
-can start processing commands") does not state whether a start before six
-seeds is refused or only gives no digest, and the register text SEP uses
-(``kmac.adoc`` ``ENTROPY_SEED``) does not carry it. These legs log the
-observed absorb, the seed count and ``kmac_err`` as ``OBS`` lines. No text
-gives an error for a start before the seeds: error 0x09 (theory_of_operation.md
-:729) applies only when the masking feature is enabled, no SEP text states that
-build value, and the seed count itself differs between ``kmac.hjson``
-``ENTROPY_SEED`` (6 writes, :857) and theory_of_operation.md:705 (9 writes).
+absorb) and the absorb part of the sw-locked CHK-KMAC-MODE-LOCK leg.
+``kmac.hjson`` ``CFG_SHADOWED.entropy_mode`` sw_mode (:549-551) says the module
+waits for six ``ENTROPY_SEED`` writes and "Only after that, the module can
+start processing commands"; theory_of_operation.md:705 gives 9 writes. Both
+counts exceed 0 and 5, so a start with 0 or 5 seed words is not processed
+under either text. The DUT reaches ``sha3_absorb`` on such a start, and that
+gap between text and DUT is open, so these legs log the observed absorb, the
+seed count and ``kmac_err`` as ``OBS`` lines and grade none of them. No text
+gives an error code for a start before the seeds: error 0x09
+(theory_of_operation.md:729) applies only when the masking feature is enabled,
+and no SEP text states that build value.
 
 Observables: KMAC register readback over the CPU-LSU master,
 ``crypto_edn_req_o[1]`` and ``crypto_edn_ack_o[1]`` (client 1 is KMAC,
@@ -134,6 +152,8 @@ ST_SQUEEZE = KMAC.field_mask("STATUS", "sha3_squeeze")
 CFG_MODE_MASK = KMAC.field_mask("CFG_SHADOWED", "entropy_mode")
 CFG_MODE_LSB = KMAC.field_lsb("CFG_SHADOWED", "entropy_mode")
 CFG_READY = KMAC.field_mask("CFG_SHADOWED", "entropy_ready")
+CFG_MSG_MASK = KMAC.field_mask("CFG_SHADOWED", "msg_mask")
+CFG_FAST_PROCESS = KMAC.field_mask("CFG_SHADOWED", "entropy_fast_process")
 CMD_ENTROPY_REQ = KMAC.field_mask("CMD", "entropy_req")
 CMD_HASH_CNT_CLR = KMAC.field_mask("CMD", "hash_cnt_clr")
 HASH_CNT_MASK = KMAC.field_mask("ENTROPY_REFRESH_HASH_CNT", "hash_cnt")
@@ -177,9 +197,12 @@ WIN_MULT = 4  # negative windows: WIN_MULT x the clean reference time
 WIN_FLOOR = 64  # clocks; floor of a window built from a short reference
 POLL_EVERY = 4  # clocks between STATUS polls
 BOUND_CLK = 60_000  # outer limit of a start, squeeze, idle, seeding or request wait
+# kmac.adoc ENTROPY_PERIOD.prescaler: "EDN Wait timer has 16 bit value."
+TIMER_PULSES_16B = 1 << 16
+CTRL_WT = 8  # wait timer of the control run that sizes the timer-0 window
 LEGS = ("seed_count", "mode_lock", "timer", "counter", "reseed")
-# The seed gate does not state whether a start before six seeds is refused.
-SEED_GATE_BLOCKED = "sw_start_before_six_seeds_not_stated"
+# kmac.hjson:549-551 states the seed gate; the DUT absorbs before it (open gap).
+SEED_GATE_BLOCKED = "sw_seed_gate_text_vs_dut_open"
 
 
 @dataclass(frozen=True)
@@ -199,7 +222,7 @@ class Plan:
 
     def line(self, seed: int) -> str:
         return (
-            f"PLAN seed={seed} legs={','.join(self.legs)} seed_counts="
+            f"INFO-PLAN seed={seed} legs={','.join(self.legs)} seed_counts="
             f"{','.join(map(str, self.seed_counts))} lock_order={','.join(self.lock_order)} "
             f"late_when_sw={self.late_sw} late_when_edn=sw prescaler_order="
             f"{','.join(self.prescaler_order)} T={self.t} P={self.p} N={self.n} R={self.r} "
@@ -348,6 +371,21 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             await self._wait_clocks(POLL_EVERY)
         return None
 
+    async def _ctrl_cfg(self, check: str, mode: str, **fields) -> bool:
+        """Read CFG_SHADOWED after ``program``; control: ``entropy_mode`` and ``entropy_ready`` hold the written values."""
+        cfg = await self.kmac.read(KMAC_CFG)
+        got = (cfg & CFG_MODE_MASK) >> CFG_MODE_LSB
+        ready = int(bool(cfg & CFG_READY))
+        return self.chk.ctrl(
+            check,
+            got == ENTROPY_MODE[mode] and ready == 1,
+            part="program",
+            **fields,
+            exp_mode=ENTROPY_MODE[mode],
+            cfg_mode=got,
+            cfg_ready=ready,
+        )
+
     async def _hold_no_absorb(self, window: int) -> tuple[int, int]:
         """Read STATUS for ``window`` clocks; return (reads, reads with absorb 1)."""
         t0 = self._clk()
@@ -385,7 +423,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         await self.swrst.release("kmac")
         self.chain = "up"
-        self.logger.info("CHAIN up (bring-up %d)", self.bringups)
+        self.logger.info("INFO-CHAIN up (bring-up %d)", self.bringups)
         self.bringups += 1
 
     async def _retire_scoreboard(self) -> None:
@@ -404,7 +442,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         await self.swrst.release("trng")
         await self.swrst.release("kmac")
         self.chain = "uninit"
-        self.logger.info("CHAIN uninitialized (TRNG reset, no bring-up)")
+        self.logger.info("INFO-CHAIN uninitialized (TRNG reset, no bring-up)")
 
     async def _need_chain_up(self) -> None:
         if self.chain != "up":
@@ -446,13 +484,22 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             cnts.append(await self.kmac.read(KMAC_HASH_CNT) & HASH_CNT_MASK)
         return "ok", cnts
 
+    async def _keyed_digest(self) -> tuple[str, list[int]]:
+        """One keyed KMAC-256 hash; returns (status, digest) as ``_sha3_hash`` does."""
+        if await self._poll(ST_IDLE, BOUND_CLK) is None:
+            return "idle_timeout", []
+        await self.kmac.cmd(KMAC_CMD_START)
+        if await self._poll(ST_ABSORB, BOUND_CLK) is None:
+            return "absorb_timeout", []
+        return await self._sha3_hash(self.msg + right_encode(KMAC_KEYED_OUT_BITS))
+
     async def _measure_t_reseed(self, req_mark, ack_mark) -> int | None:
         """Clocks from the crypto_edn_req_o[1] rise to the next ack rise (window closed)."""
         try:
             req_clk = await self.w_req.wait_rise(req_mark, BOUND_CLK)
             ack_clk = await self.w_ack.wait_rise(ack_mark, BOUND_CLK)
         except BitWatchTimeout as exc:
-            self.logger.info("t_reseed not measured: %s", exc)
+            self.logger.info("INFO-T-RESEED not measured: %s", exc)
             return None
         return max(ack_clk - req_clk, 1)
 
@@ -461,6 +508,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         await self._reset_kmac()
         self._open()
         await self.kmac.program(entropy_mode="sw", keyed=False)
+        await self._ctrl_cfg("KMAC-SWSEED", "sw")
         seed_words = SEED_ROW
         for word in seed_words[:6]:
             await self.kmac.seed(word)
@@ -528,6 +576,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             reset_mode = (await self.kmac.read(KMAC_CFG) & CFG_MODE_MASK) >> CFG_MODE_LSB
             req_m, ack_m = self.w_req.mark(), self.w_ack.mark()
             await self.kmac.program(entropy_mode=locked, keyed=False)
+            await self._ctrl_cfg("KMAC-MODE-LOCK", locked, locked=locked)
             late = self.plan.late_sw if locked == "sw" else "sw"
             await self.kmac.write_cfg(
                 self.kmac.cfg_word(entropy_mode=late, ready=True, keyed=False)
@@ -649,7 +698,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
     async def _leg_timer(self) -> None:
         await self._chain_uninit()
         t = self.plan.t
-        wts = (t, 2 * t, 8)
+        wts = (t, 2 * t, CTRL_WT)
         passes: dict[str, list[dict]] = {}
         for name in self.plan.prescaler_order:
             prescaler = 0 if name == "p0" else self.plan.p
@@ -693,6 +742,8 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             reason="ok" if all_clean else "timeout_or_no_error",
         )
 
+        self.chk.obs("KMAC-TIMER-CLK", t=t, p=self.plan.p, p0_err_clk=clks(p0), p_err_clk=clks(pp))
+
         def err_code(run: dict) -> int | None:
             return (run["code"] >> ERR_CODE_LSB) & 0xFF if "code" in run else None
 
@@ -725,8 +776,18 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
 
     async def _timer0(self, prescaler: int, ctrl: dict) -> None:
         ctrl_clk = ctrl["err_clk"]
-        self.chk.ctrl("KMAC-TIMER0", ctrl_clk is not None, wt=8, p=prescaler, ctrl_err_clk=ctrl_clk)
-        window = max(WIN_MULT * ctrl_clk, WIN_FLOOR) if ctrl_clk is not None else BOUND_CLK
+        self.chk.ctrl(
+            "KMAC-TIMER0", ctrl_clk is not None, wt=CTRL_WT, p=prescaler, ctrl_err_clk=ctrl_clk
+        )
+        if ctrl_clk is None:
+            window = BOUND_CLK
+        elif prescaler == 0:
+            # ctrl_clk spans at least CTRL_WT - 1 whole pulse periods (the phase of
+            # the first pulse is not stated), so the window spans more than
+            # TIMER_PULSES_16B pulses.
+            window = (TIMER_PULSES_16B // (CTRL_WT - 1) + WIN_MULT) * ctrl_clk
+        else:
+            window = max(WIN_MULT * ctrl_clk, WIN_FLOOR)
         await self._reset_kmac()
         self._open()
         await self.kmac._wr(KMAC_INTR_ENABLE, KMAC_INTR_KMAC_ERR)
@@ -837,7 +898,6 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         clr_r = await self.kmac.read(KMAC_HASH_CNT) & HASH_CNT_MASK
         ack_m = self.w_ack.mark()
         status, cnts = await self._keyed_run(m)
-        cnt_r = cnts[-1] if cnts else None
         if status == "ok":
             await self._wait_clocks(settle)
             try:
@@ -845,7 +905,9 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             except BitWatchTimeout:
                 status = "req_low_timeout"
         acks_r = self.w_ack.high_clocks_since(ack_m)
-        r_ok = status == "ok" and clr_r == 0 and acks_r >= 1 and cnt_r is not None and cnt_r < m
+        # kmac.hjson:806-810: the counter is reset when it reaches the threshold.
+        exp_cnts = [i % r for i in range(1, m + 1)]
+        r_ok = status == "ok" and clr_r == 0 and acks_r >= 1 and cnts == exp_cnts
         self.chk.ok(
             "KMAC-AUTORESEED",
             r_ok,
@@ -853,8 +915,8 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             n=m,
             clr=clr_r,
             acks=acks_r,
-            cnt_after=cnt_r,
-            cnt_below_n=int(cnt_r is not None and cnt_r < m),
+            cnts=",".join(map(str, cnts)),
+            exp_cnts=",".join(map(str, exp_cnts)),
             settle_clk=settle,
             stage=status,
         )
@@ -885,6 +947,46 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         self._close()
         await self._reset_kmac()
 
+    async def _leg_msgmask(self) -> None:
+        """Keyed EDN-mode hashes with ``msg_mask``, then with ``msg_mask`` and
+        ``entropy_fast_process``, beside one hash with neither; logged only, window closed."""
+        await self._need_chain_up()
+        self._close()
+        variants = (
+            ("none", 0),
+            ("msg_mask", CFG_MSG_MASK),
+            ("msg_mask+fast_process", CFG_MSG_MASK | CFG_FAST_PROCESS),
+        )
+        ref: list[int] | None = None
+        for name, flag in variants:
+            await self._reset_kmac()
+            await self.kmac.set_threshold(0)
+            await self.kmac.write_keyed_regs(self.key)
+            await self.kmac.write_cfg(
+                self.kmac.cfg_word(entropy_mode="edn", ready=False, keyed=True) | flag
+            )
+            req_m, ack_m = self.w_req.mark(), self.w_ack.mark()
+            await self.kmac.write_cfg(
+                self.kmac.cfg_word(entropy_mode="edn", ready=True, keyed=True) | flag
+            )
+            await self._measure_t_reseed(req_m, ack_m)
+            req_m = self.w_req.mark()
+            t0 = self._clk()
+            status, digest = await self._keyed_digest()
+            clk = self._clk() - t0
+            if ref is None:
+                ref = digest
+                continue
+            self.chk.obs(
+                "KMAC-MSGMASK",
+                flag=name,
+                stage=status,
+                **{"digest==unflagged_digest": int(bool(digest) and digest == ref)},
+                start_to_done_clk=clk,
+                edn_req_rises=self.w_req.rises_since(req_m),
+            )
+        await self._reset_kmac()
+
     # -------------------------------------------------------------- scenario
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -898,7 +1000,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         self.bringups = 0
 
         await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "abr"))
-        self.logger.info("BASELINE SW_RESET_N=0x%08x", await self.swrst.read_back())
+        self.logger.info("INFO-BASELINE SW_RESET_N=0x%08x", await self.swrst.read_back())
         dut = cocotb.top
         self.w_req = SepBitWatch(dut.crypto_edn_req_o, {"req": EDN_CLIENT_KMAC}).start()
         self.w_ack = SepBitWatch(dut.crypto_edn_ack_o, {"ack": EDN_CLIENT_KMAC}).start()
@@ -915,8 +1017,9 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             "reseed": self._leg_reseed,
         }
         for leg in self.plan.legs:
-            self.logger.info("LEG %s", leg)
+            self.logger.info("INFO-LEG %s", leg)
             await runners[leg]()
+        await self._leg_msgmask()
 
         self._close()
         if self.chain == "up":

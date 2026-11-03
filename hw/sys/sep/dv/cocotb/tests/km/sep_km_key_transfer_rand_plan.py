@@ -18,10 +18,12 @@ Manager RDL (``hw/ip/key_manager/regs/gen/py/key_manager_reg.py``,
 ``hw/ip/key_manager/regs/gen/adoc/abr_wrapper_key.adoc``). Every key block sits
 at a 4 KiB boundary and is smaller than 4 KiB, so the low 12 address bits are
 the offset inside the block whether the port carries the KM address or the
-block offset; the module checks this at import.
+block offset; the module checks this at import. ``bank_offset`` gives the
+offset of a write inside its bank, and ``SHARE_OFFSETS`` the offsets of the
+``KEY_SHARE0`` and ``KEY_SHARE1`` words of each bank, from the same header.
 
 Seed plan. ``draw_plan`` turns one ``SepSeededRng`` into every value the leaf
-draws, and ``draw_lines`` gives the ``DRAW`` lines that the leaf logs.
+draws, and ``draw_lines`` gives the ``INFO-DRAW`` lines that the leaf logs.
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ import importlib.util
 from dataclasses import dataclass
 from pathlib import Path
 
+from env.sep_chk_log import word_digest
 from env.sep_seeded_rng import SepSeededRng
 
 WORD = 0xFFFF_FFFF
@@ -106,6 +109,32 @@ if _ABR_BASE % _BLOCK_SPAN or _a("ABR_WRAPPER_KEY_REG_MAP_SIZE") > _BLOCK_SPAN:
     raise AssertionError("ABR_WRAPPER_KEY: not a 4 KiB-aligned block below 4 KiB")
 
 
+_BANK_PREFIX = {
+    OTBN: "OTBN_WRAPPER_KEY",
+    AES: "AES_WRAPPER_KEY",
+    HMAC: "HMAC_WRAPPER_KEY",
+    KMAC: "KMAC_WRAPPER_KEY",
+    MLDSA: "ABR_WRAPPER_KEY_MLDSA_SEED",
+    SEED_D: "ABR_WRAPPER_KEY_MLKEM_SEED_D",
+    SEED_Z: "ABR_WRAPPER_KEY_MLKEM_SEED_Z",
+    MSG: "ABR_WRAPPER_KEY_MLKEM_MSG",
+}
+_BANK_BASE = {bit: _a(f"{blk}_BASE_ADDR") for blk, bit in _PORT_BLOCK.values()} | {
+    bit: _a(f"{rf}_BASE_ADDR") for bit, rf in _ABR_RF.items()
+}
+SHARE_OFFSETS = {
+    bit: frozenset(
+        _a(f"{pre}_KEY_SHARE{s}_{i}__REG_ADDR") - _BANK_BASE[bit]
+        for s in (0, 1)
+        for i in range(WIDTH[bit])
+    )
+    for bit, pre in _BANK_PREFIX.items()
+}
+for _bit, _offs in SHARE_OFFSETS.items():
+    if len(_offs) != 2 * WIDTH[_bit]:
+        raise AssertionError(f"{BANK_NAME[_bit]}: share offsets are not 2 x width distinct words")
+
+
 def bank_of(port: int, addr: int) -> int | None:
     """The bank of one key-path write, or None for an address outside every bank."""
     off = addr % _BLOCK_SPAN
@@ -116,6 +145,46 @@ def bank_of(port: int, addr: int) -> int | None:
             if lo <= off < lo + size:
                 return bit
     return None
+
+
+def bank_offset(port: int, addr: int) -> int | None:
+    """The offset of one key-path write inside its bank, or None outside every bank."""
+    bank = bank_of(port, addr)
+    if bank is None:
+        return None
+    off = addr % _BLOCK_SPAN
+    return off - _ABR_WIN[bank][0] if port == ABR_PORT else off
+
+
+@dataclass(frozen=True)
+class PermResult:
+    ok: bool
+    banks: int
+    share_writes: int
+    repeated: tuple[str, ...]
+    missing: tuple[str, ...]
+
+
+def grade_perm(writes: list[tuple[int, int]], mask: int) -> PermResult:
+    """CHK-KM-BUS-PERM over the (port, address) AW handshakes of one transfer.
+
+    For each bank of ``mask`` the share-word writes must cover each of the
+    bank's ``SHARE_OFFSETS`` exactly once. Writes to other offsets of the bank
+    (KEY_CTRL) and to banks outside ``mask`` are not counted here.
+    """
+    seen: dict[int, list[int]] = {b: [] for b in range(len(BANK_NAME)) if (mask >> b) & 1}
+    for port, addr in writes:
+        bank = bank_of(port, addr)
+        if bank in seen and (off := bank_offset(port, addr)) in SHARE_OFFSETS[bank]:
+            seen[bank].append(off)
+    repeated, missing = [], []
+    for bank, offs in seen.items():
+        name = BANK_NAME[bank]
+        repeated += [f"{name}+0x{o:03x}" for o in sorted(set(offs)) if offs.count(o) > 1]
+        missing += [f"{name}+0x{o:03x}" for o in sorted(SHARE_OFFSETS[bank] - set(offs))]
+    ok = bool(seen) and not repeated and not missing
+    share_writes = sum(len(offs) for offs in seen.values())
+    return PermResult(ok, len(seen), share_writes, tuple(repeated), tuple(missing))
 
 
 @dataclass(frozen=True)
@@ -320,7 +389,16 @@ SHARD_EVIDENCE = {
     1: ("CHK-GOLD", "CHK-POLICY", "CHK-BANKS"),
     2: ("CHK-GOLD", "CHK-POLICY", "CHK-BANKS"),
     3: ("CHK-POLICY", "CHK-BANKS"),
-    4: ("CHK-POLICY", "CHK-REFUSE", "CHK-SHRED-SUBSET", "CHK-BANKS", "CHK-ENG-ORDER"),
+    4: (
+        "CHK-POLICY",
+        "CHK-REFUSE",
+        "CHK-SHRED-SUBSET",
+        "CHK-BANKS",
+        "CHK-ENG-ORDER",
+        "CHK-AES-NOKEY",
+        "CHK-DELIV-COUNT",
+        "CHK-KM-BUS-PERM",
+    ),
 }
 POLICY_SHARD = 4
 
@@ -339,31 +417,27 @@ def in_shard(shard: int | None, r: Round) -> bool:
     return aes_width
 
 
-def _words(ws: tuple[int, ...]) -> str:
-    return "[" + ",".join(f"0x{w:08x}" for w in ws) + "]"
-
-
 def draw_lines(plan: Plan) -> list[str]:
-    lines = [f"DRAW witness_size_{BANK_NAME[e]}={plan.witness_drawn[e]}" for e in WITNESS]
-    lines += [f"DRAW size_class_{BANK_NAME[e]}={plan.other_class[e]}" for e in NO_WITNESS]
+    lines = [f"INFO-DRAW witness_size_{BANK_NAME[e]}={plan.witness_drawn[e]}" for e in WITNESS]
+    lines += [f"INFO-DRAW size_class_{BANK_NAME[e]}={plan.other_class[e]}" for e in NO_WITNESS]
     for i, r in enumerate(plan.rounds):
         lines.append(
-            f"DRAW round{i}=eng:{BANK_NAME[r.eng]},size:{r.size},class:{r.size_class},"
-            f"runs:{int(r.runs)} key={_words(r.words)}"
+            f"INFO-DRAW round{i}=eng:{BANK_NAME[r.eng]},size:{r.size},class:{r.size_class},"
+            f"runs:{int(r.runs)} key_sha={word_digest(r.words)}"
         )
     lines += [
-        f"DRAW p1=0x{plan.p1:02x}",
-        f"DRAW p2=0x{plan.p2:02x}",
-        f"DRAW m=0x{plan.m:02x}",
-        f"DRAW x=0x{plan.x:02x}",
-        f"DRAW z=0x{plan.z:02x}",
-        f"DRAW m2=0x{plan.m2:02x}",
-        f"DRAW v=0x{plan.v:02x}",
-        f"DRAW s=0x{plan.s:02x}",
-        f"DRAW leg_order={','.join(plan.leg_order)}",
-        f"DRAW k1={_words(plan.k1)}",
-        f"DRAW k2={_words(plan.k2)}",
-        f"DRAW k3={_words(plan.k3)}",
+        f"INFO-DRAW p1=0x{plan.p1:02x}",
+        f"INFO-DRAW p2=0x{plan.p2:02x}",
+        f"INFO-DRAW m=0x{plan.m:02x}",
+        f"INFO-DRAW x=0x{plan.x:02x}",
+        f"INFO-DRAW z=0x{plan.z:02x}",
+        f"INFO-DRAW m2=0x{plan.m2:02x}",
+        f"INFO-DRAW v=0x{plan.v:02x}",
+        f"INFO-DRAW s=0x{plan.s:02x}",
+        f"INFO-DRAW leg_order={','.join(plan.leg_order)}",
+        f"INFO-DRAW k1_sha={word_digest(plan.k1)}",
+        f"INFO-DRAW k2_sha={word_digest(plan.k2)}",
+        f"INFO-DRAW k3_sha={word_digest(plan.k3)}",
     ]
     return lines
 
