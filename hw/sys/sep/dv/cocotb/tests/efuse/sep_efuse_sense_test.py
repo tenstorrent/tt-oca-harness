@@ -56,11 +56,15 @@ def _bits(sig) -> str:
 
 
 def _lc_byte(shadow: str) -> int | None:
-    """The ``LC_STATE`` byte of a shadow-probe value, or None when it has X or Z."""
+    """The ``LC_STATE`` field bits (``LC_FIELD_MASK``) of a shadow-probe value, or None when
+    one of them is X or Z."""
     w = field_word("LC_STATE")
     lo = len(shadow) - 32 * (w + 1)
-    byte = shadow[lo + 24 : lo + 32]
-    return int(byte, 2) if set(byte) <= {"0", "1"} else None
+    word = shadow[lo : lo + 32]
+    bits = [(i, word[31 - i]) for i in range(32) if LC_FIELD_MASK >> i & 1]
+    if not {b for _, b in bits} <= {"0", "1"}:
+        return None
+    return sum(int(b) << i for i, b in bits)
 
 
 def _bits_int(sig) -> int | None:
