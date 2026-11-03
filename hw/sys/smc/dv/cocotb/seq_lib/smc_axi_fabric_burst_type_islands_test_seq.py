@@ -158,6 +158,8 @@ WDT_REGS = tuple(
     (name, smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE0_WDT_{name}_BASE_ADDR"))
     for name in ("CTRL", "COUNT", "SCALED_COUNT", "FEED", "KEY", "CMP")
 )
+WDT_KEY_REG = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR")
+WDT_KEY = 0x51F15E  # wdt.rdl: the magic key that unlocks the next write to any other register
 
 FENCE = (
     "ADMIT",
@@ -2188,6 +2190,21 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             name: await self._rd(fam, "SEP_IN", f"WDT_PRE_{name}", addr, 4)
             for name, addr in WDT_REGS
         }
+        # Unlock the core-0 watchdog so a beat that wraps onto CTRL / COUNT lands (wdt.rdl drops a
+        # write while locked, and every landed write relocks, so KEY reading 1 after the bursts
+        # shows nothing landed).
+        await self._wr(fam, "SEP_IN", "WDT_KEY_UNLOCK", WDT_KEY_REG, WDT_KEY, 4)
+        key = await self._rd(fam, "SEP_IN", "WDT_KEY_UNLOCKED", WDT_KEY_REG, 4)
+        cocotb.log.info(
+            "CTRL-BT-WDT-UNLOCKED: core-0 WDT KEY reads %s after the 0x%x write (want 1)",
+            _hx(key),
+            WDT_KEY,
+        )
+        assert key == 1, (
+            f"core-0 WDT KEY reads {_hx(key)} after the 0x{WDT_KEY:x} write: the 1 KiB window "
+            f"legs would run against a locked watchdog"
+        )
+        wdt_pre["KEY"] = key
         before = self._region_size_out()
         await self._wr(fam, "SEP_IN", "REGION_SIZE_1K", REGION_SIZE_REG, REGION_SIZE_1K)
         after = self._region_size_out()
@@ -2245,9 +2262,10 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             got = await self._rd(fam, "SEP_IN", f"WDT_POST_{name}", addr, 4)
             fam.compares += 1
             if got != wdt_pre[name]:
+                what = "relocked (a write landed)" if name == "KEY" else "changed"
                 fam.findings.append(
-                    f"REGIONEDGE core-0 watchdog {name} {_hx(wdt_pre[name])} -> {_hx(got)} "
-                    f"after the 1 KiB window bursts"
+                    f"REGIONEDGE unlocked core-0 watchdog {name} {what}: {_hx(wdt_pre[name])} -> "
+                    f"{_hx(got)} after the 1 KiB window bursts"
                 )
         for port in PORTS:
             assert not self.sampler.pending(port), f"{port} has a transaction outstanding"

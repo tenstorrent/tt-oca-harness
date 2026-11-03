@@ -12120,7 +12120,9 @@ IHI 0022 burst footprint unchanged.
   first CLA word read before and after, an INCR read (AxLEN=7) ending on the last word of the CPU
   control aperture, and INCR read and write (AxLEN=15) ending on the last word below
   `BASE + REGION_SIZE` (SYS_IN at the global base).
-* Last leg: core-0 watchdog registers read, `REGION_SIZE` written 0x400 and its value taken from
+* Last leg: core-0 watchdog registers read and its `KEY` written 0x51F15E (read back 1, printed as
+  `CTRL-BT-WDT-UNLOCKED`, so a beat landing on `CTRL` or `COUNT` would change it and relock the
+  watchdog), `REGION_SIZE` written 0x400 and its value taken from
   the DUT output `smc_region_size_o` before and after the write (0x0100_0000, then 0x400, printed
   as `CTRL-BT-REGION-SIZE-1K`; once the window is 1 KiB the CSR lies beyond it and no inbound port
   can read it back), INCR read and write (AxLEN=3) from `BASE + 0x3F0` across the window end on
@@ -12199,7 +12201,8 @@ reports the number of compares that can fail; the read-only `NDMRESET_REQUEST` a
 word is unchanged; the CPU-control-end read returns AxLEN+1 beats with RLAST on the last only
 |`CHK-BT-REGIONEDGE` |Window-end burst protocol at the reset `REGION_SIZE` and at 0x400 (the 1 KiB
 legs run only once `smc_region_size_o` reads 0x400 after the write and read 0x0100_0000 before
-it), the core-0 watchdog registers unchanged, `REGION_SIZE` reads 0x0100_0000 after the primary reset and the
+it), the unlocked core-0 watchdog registers unchanged and its `KEY` still reading 1 after the bursts,
+`REGION_SIZE` reads 0x0100_0000 after the primary reset and the
 `LOCAL_BASE` read on each port answers OKAY
 |`CHK-NONVAC` |Ordered fence ADMIT < ISLAND64 < ISLAND32 < STROBES < GPIO < SPM < SLOT_EDGE <
 EXTENT_EDGE < RULE_ENDS < LIVENESS < WINDOW_1K, each term with its time and a count no lower than
@@ -44177,7 +44180,7 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 |`CHK-ZEROER-FULL-START` |A full-width write of 0 starts the zeroer, STATUS bit 32 clears within the bound and 64 of 64 bytes read 0x00
 |`CHK-ZEROER-COMPLETION-NOT-SUCCESS` |With the destination at 0xC000_1900 the start completes within the bound
 |`CHK-ISOLATE-SMC-W1C-STROBE` |ISOLATE_REQ_SMC_REG is set by the FLR edge without a timed cool reset, keeps 1 on a write of 0 and on writes of 1 with strobes 0x02, 0x04, 0x08 and 0x00, and clears on a byte 0 write of 1
-|`CHK-RESET-CTRL-START-BIT` |A byte 0 write with the core 3 start bit pulses the core 3 probe, the start bits read 0, no second pulse follows within 128 edges and the uncore bit reads 1 after every write
+|`CHK-RESET-CTRL-START-BIT` |A byte 0 write with the core 3 start bit pulses the core 3 probe exactly once within 128 edges (one fall and one rise counted), the byte 1, byte 3 and WSTRB 0x00 writes and the final read are followed by no pulse within 128 edges, the start bits read 0 and the uncore bit reads 1 after every write
 |`CHK-SEMA-FULL-WRITE` |SEMA[0] reads 5 after a full write of 5 and 3 after a full write of 0xFFFE
 |`CHK-LOCK-BIT0-MASKS-WRITES` |SS_CONFIG bit 0 and SS_COLD_RESET_N bit 0 stay 0 after their lock bit 0 is set
 |`CHK-OBS-PLAIN-STROBE` |One observation line per register and strobe pattern of the plain, reset-unit and base-configuration steps (LINKED-ISSUE SF-012, SF-034), never compared

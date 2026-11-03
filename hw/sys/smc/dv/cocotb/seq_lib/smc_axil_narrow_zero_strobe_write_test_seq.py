@@ -1122,6 +1122,12 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             self._bounded.append(
                 ("core3_pulse", f"{PULSE_BOUND} edges", f"falls={mon.falls} rises={mon.rises}")
             )
+            await ClockCycles(clk, PROBE_EDGES)
+            assert (mon.falls, mon.rises) == (1, 1), (
+                f"core 3 reset probe fell {mon.falls} times and rose {mon.rises} times within "
+                f"{PROBE_EDGES} edges of the byte-0 start pulse: exactly one pulse is expected"
+            )
+            self._bounded.append(("core3_single", f"{PROBE_EDGES} edges", "falls=1 rises=1"))
             rb = await self._rd("RESET_CTRL_B0_RB", rc, 8)
             assert rb & 0xF0 == 0, f"RESET_CTRL reads 0x{rb:x}: start bits must read 0"
             assert rb & 0x100, f"RESET_CTRL reads 0x{rb:x}: the uncore bit must read 1"
@@ -1129,7 +1135,6 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                 "OBS-SIDEEFFECT-NARROW",
                 f"reg=RESET_CTRL wstrb=0x01 bresp={RESP_NAME[resp]} readback={_hx(rb)} pulse=1",
             )
-            await ClockCycles(clk, PROBE_EDGES)
             for tag, s, lane_value in (
                 ("B1", 0x02, 0x01),
                 ("B3", 0x08, None),
@@ -1147,6 +1152,11 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                 assert rb & 0xF0 == 0, f"RESET_CTRL reads 0x{rb:x} after {tag}: start bits 0"
                 assert rb & 0x100, f"RESET_CTRL reads 0x{rb:x} after {tag}: uncore bit 1"
                 pulse = 1 if (mon.falls > falls0 or mon.rises > rises0) else 0
+                assert pulse == 0, (
+                    f"core 3 reset probe moved (falls {falls0}->{mon.falls}, rises "
+                    f"{rises0}->{mon.rises}) within {PROBE_EDGES} edges of the RESET_CTRL {tag} "
+                    f"write with wstrb 0x{s:02x}: only a strobed byte 0 may start a pulse"
+                )
                 self._obs(
                     "OBS-SIDEEFFECT-NARROW",
                     f"reg=RESET_CTRL wstrb=0x{s:02x} bresp={RESP_NAME[resp]} "
@@ -1164,7 +1174,8 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             mon.stop()
         self._chk(
             "CHK-RESET-CTRL-START-BIT",
-            "byte-0 start write -> pulse; start bits read 0; no second pulse in 128 edges; uncore bit 1",
+            "byte-0 start write -> exactly one pulse in 128 edges; B1/B3/WSTRB-0 writes and the final "
+            "read -> no pulse in 128 edges; start bits read 0; uncore bit 1",
         )
 
         # (S4) WDT_TIMEOUT_RESET.
