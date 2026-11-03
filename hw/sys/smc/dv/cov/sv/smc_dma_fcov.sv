@@ -2,8 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SMC DMA functional coverage: the stream-0 command launch, what the
-// programmed length turns into on the AXI master, and the clock gating of the
-// frontend against the request-manager/backend clock.
+// programmed length turns into on the AXI master, the clock gating of the
+// frontend against the request-manager/backend clock, and the launch
+// geometry of smc_dma_geometry_cg.
 //
 // The DMA carries two independent gaters, so "gated together" is covered as
 // both gated clocks held in the same sample rather than as one enable.
@@ -30,6 +31,22 @@ module smc_dma_fcov (
   input wire [63:0] src_addr_i,
   input wire [63:0] dst_addr_i,
   input wire [63:0] length_i,
+  input wire [63:0] reps_i,
+
+  // SEP_IN write channels, for the DMA CONFIG register as written.
+  input wire sep_awvalid_i,
+  input wire sep_awready_i,
+  input wire [55:0] sep_awaddr_i,
+  input wire sep_wvalid_i,
+  input wire sep_wready_i,
+  input wire sep_wlast_i,
+  input wire [63:0] sep_wdata_i,
+  input wire sep_bvalid_i,
+  input wire sep_bready_i,
+  input wire [1:0] sep_bresp_i,
+
+  // Graded-window gate (tb_fcov_gate), driven by the owning leaf.
+  input wire fcov_gate_i,
 
   // Frontend request handshake and completion.
   input wire fe_req_valid_i,
@@ -53,6 +70,8 @@ module smc_dma_fcov (
   input wire frontend_wakeup_i,
   input wire backend_busy_i
 );
+
+  import smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_CONFIG_BASE_ADDR;
 
   wire in_reset = (rst_cold_ni !== 1'b1);
 
@@ -278,6 +297,250 @@ module smc_dma_fcov (
       if (w_acc) u_cg_dma_burst.sample(beat_awlen, strb_ones);
       u_cg_dma_gates.sample(cg_en_i, frontend_wakeup_i, backend_busy_i, frontend_clk_toggling,
                             gated_clk_toggling);
+    end
+  end
+
+  // ------------------------------------------------------------------
+  // smc_dma_geometry_cg (SMC_FCOV.adoc, smc_dma_geometry_cg): the geometry
+  // and CONFIG of each launch inside the owner's graded window.
+  // ------------------------------------------------------------------
+  // CONFIG fields per dma_ctrl.rdl: DECOUPLE_AW [0], SRC_REDUCE_LEN [2],
+  // DST_REDUCE_LEN [3], ENABLED_ND [10]; the positions mirror the
+  // DMA_CTRL__CONFIG__*_bp of the generated dma_ctrl.h and the
+  // DMA_CTRL_CONFIG_*_SHIFT of smc_reg.svh, which this build does not include.
+  localparam logic [55:0] DmaConfigAddr = 56'(SMC_TOP_DMA_CTRL_CONFIG_BASE_ADDR);
+  localparam int unsigned CfgDecoupleAw = 0;
+  localparam int unsigned CfgSrcReduce = 2;
+  localparam int unsigned CfgDstReduce = 3;
+  localparam int unsigned CfgEnabledNd = 10;
+
+  // CONFIG as written over SEP_IN: the last write that completed OKAY at the
+  // CONFIG address, taken from the low 32-bit lane of its single beat with all
+  // four strobes assumed set. One SEP_IN write is outstanding at a time. A DMA
+  // reset clears the register without a write and this copy follows the cold
+  // reset only, so it holds inside a window that drives no other reset.
+  wire cfg_aw_acc = (sep_awvalid_i === 1'b1) && (sep_awready_i === 1'b1);
+  wire cfg_w_last_acc = (sep_wvalid_i === 1'b1) && (sep_wready_i === 1'b1)
+      && (sep_wlast_i === 1'b1);
+  wire cfg_b_okay = (sep_bvalid_i === 1'b1) && (sep_bready_i === 1'b1)
+      && (sep_bresp_i === 2'b00);
+
+  logic cfg_addr_hit_q;
+  logic [31:0] cfg_wdata_q;
+  logic [31:0] dma_config_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      cfg_addr_hit_q <= 1'b0;
+      cfg_wdata_q <= '0;
+      dma_config_q <= '0;
+    end else begin
+      if (cfg_aw_acc) cfg_addr_hit_q <= (sep_awaddr_i === DmaConfigAddr);
+      if (cfg_w_last_acc) cfg_wdata_q <= sep_wdata_i[31:0];
+      if (cfg_b_okay && cfg_addr_hit_q) dma_config_q <= cfg_wdata_q;
+    end
+  end
+
+  // Launch class. A copy moves data: ENABLED_ND set and LENGTH non-zero.
+  // dma.adoc names the two commands that move no data: LENGTH 0, and
+  // ENABLED_ND clear. A launch with both has no class bin.
+  localparam logic [1:0] LaunchCopy = 2'd0;
+  localparam logic [1:0] LaunchZeroLength = 2'd1;
+  localparam logic [1:0] LaunchNdClear = 2'd2;
+  localparam logic [1:0] LaunchNone = 2'd3;
+  wire cfg_nd = (dma_config_q[CfgEnabledNd] === 1'b1);
+  wire len_zero = (length_i === 64'd0);
+  wire [1:0] launch_cls = (cfg_nd && !len_zero) ? LaunchCopy
+                        : (cfg_nd && len_zero)  ? LaunchZeroLength
+                        : (!cfg_nd && !len_zero) ? LaunchNdClear : LaunchNone;
+  wire copy_launch = (launch_cls == LaunchCopy);
+
+  // Row buckets of SMC_FCOV.adoc. LENGTH: 1, 2 to 7, 8, 9 to 255, 256 and
+  // above; NUM_REPETITIONS: 1, 2, 3 to 15, 16 and above. A value outside the
+  // buckets (0) maps to code 7, which no bin lists.
+  function automatic logic [2:0] len_bucket(input logic [63:0] len);
+    if (len == 64'd1) return 3'd0;
+    if (len >= 64'd2 && len <= 64'd7) return 3'd1;
+    if (len == 64'd8) return 3'd2;
+    if (len >= 64'd9 && len <= 64'd255) return 3'd3;
+    if (len >= 64'd256) return 3'd4;
+    return 3'd7;
+  endfunction
+
+  function automatic logic [2:0] reps_bucket(input logic [63:0] reps);
+    if (reps == 64'd1) return 3'd0;
+    if (reps == 64'd2) return 3'd1;
+    if (reps >= 64'd3 && reps <= 64'd15) return 3'd2;
+    if (reps >= 64'd16) return 3'd3;
+    return 3'd7;
+  endfunction
+
+  // Each copy coverpoint is a tuple led by the copy flag, and every bin
+  // lists flag 1, so a no-data launch, which reuses a drawn transfer's
+  // geometry and CONFIG, adds no count to a copy cell. Every cell of a row
+  // has a bin; no bin and no ignore_bins share a value.
+  covergroup smc_dma_geometry_cg with function sample (
+      logic copy,
+      logic [2:0] len_b,
+      logic [2:0] reps_b,
+      logic src_unal,
+      logic dst_unal,
+      logic src_reduce,
+      logic dst_reduce,
+      logic decouple_aw,
+      logic [1:0] cls
+  );
+    option.per_instance = 1;
+    // {copy, LENGTH bucket, NUM_REPETITIONS bucket}: 20 cells.
+    cp_length_reps: coverpoint {
+      copy, len_b, reps_b
+    } {
+      bins l1_r1 = {7'b1_000_000};
+      bins l1_r2 = {7'b1_000_001};
+      bins l1_r3_15 = {7'b1_000_010};
+      bins l1_r16up = {7'b1_000_011};
+      bins l2_7_r1 = {7'b1_001_000};
+      bins l2_7_r2 = {7'b1_001_001};
+      bins l2_7_r3_15 = {7'b1_001_010};
+      bins l2_7_r16up = {7'b1_001_011};
+      bins l8_r1 = {7'b1_010_000};
+      bins l8_r2 = {7'b1_010_001};
+      bins l8_r3_15 = {7'b1_010_010};
+      bins l8_r16up = {7'b1_010_011};
+      bins l9_255_r1 = {7'b1_011_000};
+      bins l9_255_r2 = {7'b1_011_001};
+      bins l9_255_r3_15 = {7'b1_011_010};
+      bins l9_255_r16up = {7'b1_011_011};
+      bins l256up_r1 = {7'b1_100_000};
+      bins l256up_r2 = {7'b1_100_001};
+      bins l256up_r3_15 = {7'b1_100_010};
+      bins l256up_r16up = {7'b1_100_011};
+    }
+    // {copy, source offset in the word non-zero, destination offset
+    // non-zero}: 4 cells.
+    cp_start: coverpoint {
+      copy, src_unal, dst_unal
+    } {
+      bins s0_d0 = {3'b1_0_0};
+      bins s0_d1_7 = {3'b1_0_1};
+      bins s1_7_d0 = {3'b1_1_0};
+      bins s1_7_d1_7 = {3'b1_1_1};
+    }
+    // cp_start crossed with cp_length_reps: 80 cells.
+    cp_start_x_length_reps: coverpoint {
+      copy, len_b, reps_b, src_unal, dst_unal
+    } {
+      bins l1_r1_s0_d0 = {9'b1_000_000_0_0};
+      bins l1_r1_s0_d1_7 = {9'b1_000_000_0_1};
+      bins l1_r1_s1_7_d0 = {9'b1_000_000_1_0};
+      bins l1_r1_s1_7_d1_7 = {9'b1_000_000_1_1};
+      bins l1_r2_s0_d0 = {9'b1_000_001_0_0};
+      bins l1_r2_s0_d1_7 = {9'b1_000_001_0_1};
+      bins l1_r2_s1_7_d0 = {9'b1_000_001_1_0};
+      bins l1_r2_s1_7_d1_7 = {9'b1_000_001_1_1};
+      bins l1_r3_15_s0_d0 = {9'b1_000_010_0_0};
+      bins l1_r3_15_s0_d1_7 = {9'b1_000_010_0_1};
+      bins l1_r3_15_s1_7_d0 = {9'b1_000_010_1_0};
+      bins l1_r3_15_s1_7_d1_7 = {9'b1_000_010_1_1};
+      bins l1_r16up_s0_d0 = {9'b1_000_011_0_0};
+      bins l1_r16up_s0_d1_7 = {9'b1_000_011_0_1};
+      bins l1_r16up_s1_7_d0 = {9'b1_000_011_1_0};
+      bins l1_r16up_s1_7_d1_7 = {9'b1_000_011_1_1};
+      bins l2_7_r1_s0_d0 = {9'b1_001_000_0_0};
+      bins l2_7_r1_s0_d1_7 = {9'b1_001_000_0_1};
+      bins l2_7_r1_s1_7_d0 = {9'b1_001_000_1_0};
+      bins l2_7_r1_s1_7_d1_7 = {9'b1_001_000_1_1};
+      bins l2_7_r2_s0_d0 = {9'b1_001_001_0_0};
+      bins l2_7_r2_s0_d1_7 = {9'b1_001_001_0_1};
+      bins l2_7_r2_s1_7_d0 = {9'b1_001_001_1_0};
+      bins l2_7_r2_s1_7_d1_7 = {9'b1_001_001_1_1};
+      bins l2_7_r3_15_s0_d0 = {9'b1_001_010_0_0};
+      bins l2_7_r3_15_s0_d1_7 = {9'b1_001_010_0_1};
+      bins l2_7_r3_15_s1_7_d0 = {9'b1_001_010_1_0};
+      bins l2_7_r3_15_s1_7_d1_7 = {9'b1_001_010_1_1};
+      bins l2_7_r16up_s0_d0 = {9'b1_001_011_0_0};
+      bins l2_7_r16up_s0_d1_7 = {9'b1_001_011_0_1};
+      bins l2_7_r16up_s1_7_d0 = {9'b1_001_011_1_0};
+      bins l2_7_r16up_s1_7_d1_7 = {9'b1_001_011_1_1};
+      bins l8_r1_s0_d0 = {9'b1_010_000_0_0};
+      bins l8_r1_s0_d1_7 = {9'b1_010_000_0_1};
+      bins l8_r1_s1_7_d0 = {9'b1_010_000_1_0};
+      bins l8_r1_s1_7_d1_7 = {9'b1_010_000_1_1};
+      bins l8_r2_s0_d0 = {9'b1_010_001_0_0};
+      bins l8_r2_s0_d1_7 = {9'b1_010_001_0_1};
+      bins l8_r2_s1_7_d0 = {9'b1_010_001_1_0};
+      bins l8_r2_s1_7_d1_7 = {9'b1_010_001_1_1};
+      bins l8_r3_15_s0_d0 = {9'b1_010_010_0_0};
+      bins l8_r3_15_s0_d1_7 = {9'b1_010_010_0_1};
+      bins l8_r3_15_s1_7_d0 = {9'b1_010_010_1_0};
+      bins l8_r3_15_s1_7_d1_7 = {9'b1_010_010_1_1};
+      bins l8_r16up_s0_d0 = {9'b1_010_011_0_0};
+      bins l8_r16up_s0_d1_7 = {9'b1_010_011_0_1};
+      bins l8_r16up_s1_7_d0 = {9'b1_010_011_1_0};
+      bins l8_r16up_s1_7_d1_7 = {9'b1_010_011_1_1};
+      bins l9_255_r1_s0_d0 = {9'b1_011_000_0_0};
+      bins l9_255_r1_s0_d1_7 = {9'b1_011_000_0_1};
+      bins l9_255_r1_s1_7_d0 = {9'b1_011_000_1_0};
+      bins l9_255_r1_s1_7_d1_7 = {9'b1_011_000_1_1};
+      bins l9_255_r2_s0_d0 = {9'b1_011_001_0_0};
+      bins l9_255_r2_s0_d1_7 = {9'b1_011_001_0_1};
+      bins l9_255_r2_s1_7_d0 = {9'b1_011_001_1_0};
+      bins l9_255_r2_s1_7_d1_7 = {9'b1_011_001_1_1};
+      bins l9_255_r3_15_s0_d0 = {9'b1_011_010_0_0};
+      bins l9_255_r3_15_s0_d1_7 = {9'b1_011_010_0_1};
+      bins l9_255_r3_15_s1_7_d0 = {9'b1_011_010_1_0};
+      bins l9_255_r3_15_s1_7_d1_7 = {9'b1_011_010_1_1};
+      bins l9_255_r16up_s0_d0 = {9'b1_011_011_0_0};
+      bins l9_255_r16up_s0_d1_7 = {9'b1_011_011_0_1};
+      bins l9_255_r16up_s1_7_d0 = {9'b1_011_011_1_0};
+      bins l9_255_r16up_s1_7_d1_7 = {9'b1_011_011_1_1};
+      bins l256up_r1_s0_d0 = {9'b1_100_000_0_0};
+      bins l256up_r1_s0_d1_7 = {9'b1_100_000_0_1};
+      bins l256up_r1_s1_7_d0 = {9'b1_100_000_1_0};
+      bins l256up_r1_s1_7_d1_7 = {9'b1_100_000_1_1};
+      bins l256up_r2_s0_d0 = {9'b1_100_001_0_0};
+      bins l256up_r2_s0_d1_7 = {9'b1_100_001_0_1};
+      bins l256up_r2_s1_7_d0 = {9'b1_100_001_1_0};
+      bins l256up_r2_s1_7_d1_7 = {9'b1_100_001_1_1};
+      bins l256up_r3_15_s0_d0 = {9'b1_100_010_0_0};
+      bins l256up_r3_15_s0_d1_7 = {9'b1_100_010_0_1};
+      bins l256up_r3_15_s1_7_d0 = {9'b1_100_010_1_0};
+      bins l256up_r3_15_s1_7_d1_7 = {9'b1_100_010_1_1};
+      bins l256up_r16up_s0_d0 = {9'b1_100_011_0_0};
+      bins l256up_r16up_s0_d1_7 = {9'b1_100_011_0_1};
+      bins l256up_r16up_s1_7_d0 = {9'b1_100_011_1_0};
+      bins l256up_r16up_s1_7_d1_7 = {9'b1_100_011_1_1};
+    }
+    // {copy, SRC_REDUCE_LEN, DST_REDUCE_LEN, DECOUPLE_AW}: 8 cells. The
+    // *_MAX_LLEN bounds are what the owner checks each burst against, not bins.
+    cp_burst_cfg: coverpoint {
+      copy, src_reduce, dst_reduce, decouple_aw
+    } {
+      bins sred0_dred0_aw0 = {4'b1_0_0_0};
+      bins sred0_dred0_aw1 = {4'b1_0_0_1};
+      bins sred0_dred1_aw0 = {4'b1_0_1_0};
+      bins sred0_dred1_aw1 = {4'b1_0_1_1};
+      bins sred1_dred0_aw0 = {4'b1_1_0_0};
+      bins sred1_dred0_aw1 = {4'b1_1_0_1};
+      bins sred1_dred1_aw0 = {4'b1_1_1_0};
+      bins sred1_dred1_aw1 = {4'b1_1_1_1};
+    }
+    // The two launches that move no data: 2 cells.
+    cp_no_data: coverpoint cls {
+      bins zero_length = {LaunchZeroLength}; bins nd_clear = {LaunchNdClear};
+    }
+  endgroup
+
+  smc_dma_geometry_cg u_cg_dma_geometry = new();
+
+  // One sample per launch: the NEXT_ID_0 read strobe, with the registers the
+  // command consumed, only while the owning leaf holds tb_fcov_gate high.
+  wire geometry_sample_e = next_id_read_e && (fcov_gate_i === 1'b1);
+  always_ff @(posedge clk_smc_i) begin
+    if (!in_reset && geometry_sample_e) begin
+      u_cg_dma_geometry.sample(copy_launch, len_bucket(length_i), reps_bucket(reps_i),
+                               (src_addr_i[2:0] != 3'd0), (dst_addr_i[2:0] != 3'd0),
+                               dma_config_q[CfgSrcReduce], dma_config_q[CfgDstReduce],
+                               dma_config_q[CfgDecoupleAw], launch_cls);
     end
   end
 

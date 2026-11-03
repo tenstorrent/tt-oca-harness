@@ -18,7 +18,9 @@ on the SMC CPU. `docs/SMC_VPLAN.adoc` carries the per-test contracts.
 SYS_OUT, pin-level protocol VIPs, and the firmware images under `fw/`.
 **Backend** = Verilator is the acceptance backend (CI and nightly); VCS runs
 the SV-UVM shape and `--cov` coverage. Xcelium builds the model but has no
-coverage configuration in this tree.
+coverage configuration in this tree. The `ocah_axi_sva` protocol checkers
+grade their two-state rules on both simulators (the Verilator targets pass
+`--assert`) and their X-hygiene rules on VCS only.
 
 See `docs/index.adoc` for the chapter set: `docs/SMC_TB_ARCH.adoc` for the
 testbench architecture and test development, `docs/SMC_VPLAN.adoc` for what
