@@ -2760,7 +2760,10 @@ module smc_uvm_top
     // sets MASTER_SYNC_RESET: AWVALID, WVALID and ARVALID may stay high on the
     // first edge that samples the uncore reset low and must be low from the
     // next edge on. Each is on once its reset is known; the MMIO instance also
-    // follows the CPU-port hold-off below. The CPU front port has no
+    // follows the CPU-port hold-off below, and the misc instance is off on the
+    // warm-reset cycles where its leg carries the AR the one leaf that presents
+    // it on purpose issues (+smc_misc_warm_in_reset_assertoff beside it). The
+    // CPU front port has no
     // core-reset instance: it carries CPU_CTRL traffic while a core is held,
     // so its AXI domain is the primary reset.
     //
@@ -3438,13 +3441,27 @@ module smc_uvm_top
                                u_dut.u_smc.cpu_axi_mmio_port_resp, tb_cpu_uncore_reset_n)
     );
 
+    // The warm-domain reproducer (smc_warm_domain_access_during_reset_test)
+    // reads SCRATCH_COLD_WARM while the warm reset is low on purpose, and the
+    // primary-reset demux presents that AR on this leg in its reset. That leaf
+    // alone asks this instance off on the cycles of that reset where the leg's
+    // ARVALID is high. The reset rules are the only rules live in that reset
+    // (every other rule is disabled by aresetn low and the tracking is in its
+    // flush), so the hold-off reaches those rules on the cycles the leaf's AR
+    // occupies and nothing else: they stay live on every other reset cycle,
+    // the instance grades the leg in full once the reset releases, and the
+    // shadow counters above and below keep counting through the window.
+    bit misc_warm_in_reset_probe = $test$plusargs("smc_misc_warm_in_reset_assertoff");
+
     ocah_axi_sva #(
         .IS_LITE    (1'b1),
         .ADDR_WIDTH (32),
         .DATA_WIDTH (32),
         .ID_WIDTH   (1)
     ) u_misc_warm_axil_sva (              // misc demux SCRATCH_COLD_WARM leg on the warm reset
-        .en_i (`SMC_AXI_MISC_WARM_ON),
+        .en_i (`SMC_AXI_MISC_WARM_ON &&
+               !(misc_warm_in_reset_probe && misc_warm_rst_n === 1'b0 &&
+                 misc_warm_req.ar_valid === 1'b1)),
         `SMC_AXIL_SVA_PORTS_RST(misc_warm_req, misc_warm_resp, 3'd2, misc_warm_rst_n)
     );
 
