@@ -1774,7 +1774,7 @@ states.
 |`smc_uart_log_engine_field_sweep_test` |3 |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |3 |Run UART/log-engine register write/readback/restore checks.
 |`smc_uart_loopback_test` |2 |AXI-program UART0 THR and capture the byte on pad12 TX.
-|`smc_uart_pad_mux_enable_test` |3 |UART0 THR frame on pad 12 with CTRL.UART_EN set, cleared (pad measured) and set again.
+|`smc_uart_pad_mux_enable_test` |3 |UART0 THR frame on pad 12 with CTRL.UART_EN set, held at 0 with it cleared, and the frame again after it is set.
 |`smc_uart_sanity_test` |1 |UART pad-cross byte exchange on pairs 0→3 and 1→2.
 |`smc_uart_spi_log_engine_test` |1 |Run the UART/log-engine representative CSR precheck.
 |`smc_uart_fifo_control_depth_test` |3 |UART0 FIFO enable change, depth, trigger fields and read order.
@@ -41067,7 +41067,8 @@ not compared, because the document does not state it (SF-012).
 
 *BFM / Model*: SEP_IN AXI sequencer writing and reading `CTRL.UART_EN` of wrapper 0, the UART0
 `THR`, `LSR.THRE` and `LSR.TEMT`, the pad-12 GPIO `DATA_CTRL` fields `interface_enable`,
-`enable_rx_tx` and `core2pad`, and `CLOCK_GATE_CONTROL` (`UART_CG_EN`); the UART0 pad VIP sink on
+`lsio_select`, `enable_rx_tx` and `core2pad`, `DATA_CTRL_ENABLE` (`use_reg_*`), and
+`CLOCK_GATE_CONTROL` (`UART_CG_EN`); the UART0 pad VIP sink on
 `tb_uart0_tx_from_dut` (pad 12) decodes 8N1 frames at 115200 baud, and the same signal is also
 sampled on every `clk_smc_i` rise; `tb_uart0_rx_ext_drive` (pad 11) is bound by the VIP and left
 idle
@@ -41079,7 +41080,8 @@ idle
 draws nothing from the seed.
 
 *Objective*: `THR` 0xA5 reaches pad 12 as one frame with `UART_EN` set, again after `UART_EN` is
-cleared and set, and the UART transmits with `UART_EN` clear while the pad is only measured.
+cleared and set, and with `UART_EN` clear the UART transmits while pad 12, holding no register
+override, carries no frame and stays at output data 0.
 
 *Test Coverage*:
 
@@ -41089,9 +41091,11 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
 * `UART_EN` cleared while idle: `LSR.TEMT` reads 0 after the `THR` write and `LSR.THRE` and
   `LSR.TEMT` read 1 together after the byte is shifted out (`uart_16550_main.rdl` `LSR`), so the
   UART itself transmitted.
-* The frames the pad VIP decodes on pad 12 within a window of 3 frame times and the minimum and
-  maximum pad level on every `clk_smc_i` rise are measured, not compared; the document does not
-  state the pad behaviour with `UART_EN` clear.
+* `UART_EN` cleared with pad-12 `DATA_CTRL.interface_enable`, `DATA_CTRL.lsio_select` and the
+  `DATA_CTRL_ENABLE.use_reg_*` bits read back 0: the pad VIP decodes no frame on pad 12 within a
+  window of 3 frame times and the pad output reads 0 on every `clk_smc_i` rise of that window
+  (compared; `uart_log_engine_ctrl.rdl` `CTRL.UART_EN`, the hardware LSIO request of the UART pads,
+  and the GPIO data and direction selection: no request and no override gives output data 0).
 * Pad-12 `DATA_CTRL` with `interface_enable` 1, `enable_rx_tx` 1 and `core2pad` 1 then 0: the
   fields read back the written values (compared, `gpio_intf.rdl`); the pad level equals core2pad
   after each write and after its read-back, within 64 clk_smc_i cycles (compared, gpio_intf.rdl
@@ -41110,12 +41114,13 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
   `CHK-UART-PADMUX-FRAME-ON`.
 . Error injection. Point: wrapper 0 `CTRL.UART_EN` and UART0 `THR`. Kind: a `THR` write of 0xA5 with
   `UART_EN` cleared (read back 0), the pad function off. Expected response: `LSR.TEMT` reads 0 after
-  the write and `TEMT` and `THRE` read 1 together within 5000 us (the UART itself transmitted); the
-  frames decoded on pad 12 and the minimum and maximum pad level over the 3-frame-time window are
-  measured, not compared. Before the write, read `LSR` (both bits 1), write `UART_EN` 0 and read it
-  back, read `LSR` again and start the `clk_smc_i` level sampler; after the idle reads complete the
-  3-frame-time window; stamp S3, print `CHK-UART-PADMUX-OFF-TX-SHIFTED` after its compare and the
-  measured `CHK-UART-PADMUX-OFF-PAD-MEASURED`.
+  the write and `TEMT` and `THRE` read 1 together within 5000 us (the UART itself transmitted); no
+  frame is decoded on pad 12 and the pad output reads 0 at every sample of the 3-frame-time window.
+  Before the write, read `LSR` (both bits 1), write `UART_EN` 0 and read it back, read pad-12
+  `DATA_CTRL` and `DATA_CTRL_ENABLE` requiring `interface_enable`, `lsio_select` and `use_reg_*` 0,
+  read `LSR` again and start the `clk_smc_i` level sampler; after the idle reads complete the
+  3-frame-time window; stamp S3, print `CHK-UART-PADMUX-OFF-TX-SHIFTED` and
+  `CHK-UART-PADMUX-OFF-PAD-HELD` after their compares.
 . With `UART_EN` still 0 write pad-12 `DATA_CTRL` with `interface_enable`, `enable_rx_tx` 1 and
   `core2pad` 1, require the pad to equal `core2pad` within 64 `clk_smc_i` cycles after the write and
   again after the read-back, repeat with `core2pad` 0, then write the saved `DATA_CTRL` back and
@@ -41137,8 +41142,10 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
 |`CHK-UART-PADMUX-OFF-TX-SHIFTED` |With `UART_EN` read back 0, `LSR.TEMT` reads 0 after the `THR`
   write and `TEMT` and `THRE` read 1 together before 5000 us, after idle reads of 1 and 1 before
   the write; a `TEMT` that never reads 0 or an idle that never returns fails
-|`CHK-UART-PADMUX-OFF-PAD-MEASURED` |Measured, not compared: frames decoded, their bytes and the
-  minimum and maximum pad-12 level over the 3-frame-time window; an X/Z sample or no sample fails
+|`CHK-UART-PADMUX-OFF-PAD-HELD` |With `UART_EN` read back 0 and pad-12 `interface_enable`,
+  `lsio_select` and `use_reg_*` read back 0, the frames decoded on pad 12 over the 3-frame-time
+  window compare equal to 0 and the pad output compares equal to 0 at every `clk_smc_i` sample; a
+  decoded frame, a sample of 1, an X/Z sample, no sample or a set override bit fails
 |`CHK-UART-PADMUX-GPIO-LEVEL-MEASURED` |Pad-12 `DATA_CTRL` `interface_enable`, `enable_rx_tx` and
   `core2pad` read back the written values (compared) and the saved value after the restore; the pad
   level equals `core2pad` within 64 `clk_smc_i` cycles after each write and after its read-back
@@ -41149,13 +41156,7 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
   five checker lines printed in order, each after its own step
 |===
 
-*Pass Criteria*: all checkers hold after their compares. The pad behaviour with `UART_EN` clear
-is observed and is not part of the claim. Enrolled in: `all`, `hosted`.
-
-*Scope limit*: With `UART_EN` clear, the frames the pad VIP decodes on pad 12 within the
-3-frame-time window and the minimum and maximum pad level on every `clk_smc_i` rise are measured,
-not compared, because the document does not state the pad behaviour with `UART_EN` clear. The
-pad level after each pad-12 `DATA_CTRL` write is measured, not compared, for the same reason.
+*Pass Criteria*: all checkers hold after their compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -49242,10 +49243,6 @@ Where a test uses part of a blocked feature, the note says what the test does.
 |The mailbox clock gate closes during an idle gap while `CLOCK_GATE_CONTROL.mailbox_cg_en` is set.
 |Blocked: the specification does not state whether the gate closes on an idle gap with the enable set, nor after how many idle cycles. Source: `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`CLOCK_GATE_CONTROL.mailbox_cg_en`, "Clockgate enable for the mailbox"); `hw/sys/smc/doc/clk_rst.adoc` (Subsystem Controls and Clock Gating).
 |`smc_mailbox_register_map_reset_test` sets the enable and grades that every aperture still answers, and logs the completion latency of the first write after the idle gap; `smc_mailbox_irq_ack_output_test` holds the gate enabled through its 512-cycle idle window. The bench has no gated-clock observation for the mailbox, so no entry grades the gate itself.
-|<<smc-vplan-area-uart,UART>>
-|The effect of `CTRL.UART_EN` = 0 on the UART0 transmit pad.
-|Blocked: the specification does not state what the TX pad carries while `UART_EN` is clear (held idle, held at its last level, or released to the GPIO wrap). Source: `hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl.rdl` (`CTRL.UART_EN`); no chapter states the pad level.
-|`smc_uart_pad_mux_enable_test` grades the frame with `UART_EN` set, again after a clear and set, and logs the pad level and the decoded frames with `UART_EN` clear without grading them.
 |<<smc-vplan-area-reset,RESET>>
 |The reset domain of `SCRATCH_COLD_WARM` of the misc wrap across a watchdog warm reset.
 |Blocked: the specification does not state whether `SCRATCH_COLD_WARM` is the register it calls the warm scratch register. Source: `hw/sys/smc/doc/clk_rst.adoc` ("Reset Architecture": `rst_warm_smc_clk_no` resets "the warm scratch register" without naming which register it is); `hw/sys/smc/regs/blocks/misc_wrap/misc_wrap.rdl` (`scratch_cold_warm`).
