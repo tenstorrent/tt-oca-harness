@@ -5425,7 +5425,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-J2AMX-DATA",
             "every SPM, SCRATCH_COLD and outside write and read completes with op 0, the read at "
             "the issued address returns the merged payload on the selected lanes and the word "
-            "held equals the merge; adopter and DTP CSR responses are measured and logged only",
+            "held equals the merge, and every eFuse-map word read through an OTP bridge equals "
+            "the shadow preload word at its index; adopter and DTP CSR responses and the "
+            "interface-control, MMR and SEP LC_STATE words are measured and logged only",
         ),
         (
             "CHK-J2AMX-SERIES",

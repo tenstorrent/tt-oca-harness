@@ -166,6 +166,10 @@ EXTRA_KINDS = (
 # hw/ip/efuse/regs/efuse_mmr.rdl: TOKEN_EOP is write-only (sw = w), so no read verdict is
 # stated for it.
 WRITE_ONLY_WORDS = frozenset({c_header_u32(_SEP_ADDR_H, "SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR")})
+#: The SEP LC_STATE shadow word: the preload's low 2 x LcStateWidth bits are replaced by the
+#: differential encoder's output (efuse_shadow_regs.sv, preload_shadow_regs), so the word read
+#: back is not the image line; lc_state_o grades that word at the entry.
+SEP_LC_STATE_ADDR = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
 
 _STRUCT_MEMBER = re.compile(r"^\s*(\w+)\s+(\w+)(?:\[(\d+)\])?(?:\[(\d+)\])?;")
 _INT_BYTES = {"uint32_t": 4, "uint64_t": 8}
@@ -254,6 +258,20 @@ def smc_otp_words(image: str) -> list[tuple[str, int]]:
     words = [(n, a) for n, a in words if not _read_locked(_SMC_EFUSE_MAP_H, n, locks)]
     words += _block_words(_SMC_ADDR_H, "SMC_TOP_EFUSE_INTERFACE_CTRL", None)
     return words
+
+
+def image_map(image: str, header: Path, prefix: str, skip: tuple[int, ...] = ()) -> dict[int, int]:
+    """Address -> image word of every eFuse-map word the shadow file stores as written.
+
+    ``efuse_shadow_regs.sv`` loads the preload into the shadow words one for one and a read
+    returns the stored word, so every map word is pinned to its image line; the words in
+    ``skip`` (the SEP LC_STATE word, whose low bits take the differential encoder's output)
+    are not.
+    """
+    base = c_header_u32(header, f"{prefix}_BASE_ADDR")
+    size = c_header_u32(header, f"{prefix}_SIZE")
+    words = _image_words(image, size // 4)
+    return {base + 4 * i: w for i, w in enumerate(words) if base + 4 * i not in skip}
 
 
 def sep_otp_words(image: str) -> list[tuple[str, int]]:
@@ -727,6 +745,12 @@ class smu_jtag2axi_access_matrix_rand_test_seq:
         smc_image = str(cocotb.plusargs["smc_shadow_reg_preload"])
         sep_image = str(cocotb.plusargs["sep_shadow_reg_preload"])
         self.plan = draw_plan(self.seed, smc_otp_words(smc_image), sep_otp_words(sep_image))
+        self.otp_image = {
+            "smc_otp": image_map(smc_image, _SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_MAP"),
+            "sep_otp": image_map(
+                sep_image, _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP", skip=(SEP_LC_STATE_ADDR,)
+            ),
+        }
         self._log(f"SEED: RANDOM_SEED={self.seed} {self._draw_text()}")
         apertures = []
         for base, size in (
@@ -945,7 +969,15 @@ class smu_jtag2axi_access_matrix_rand_test_seq:
         mark = len(seen)
         status, rdata = await self._otp_read(tdr, cell["addr"], cell["label"])
         key = f"{cell['label']} {cell['reg']} 0x{cell['addr']:08x}"
-        self._log(f"OBSERVATION {key} read data 0x{rdata:08x}; the image word, not graded")
+        image_word = self.otp_image[cell["kind"]].get(cell["addr"])
+        if image_word is None:
+            self._log(
+                f"OBSERVATION {key} read data 0x{rdata:08x}; no image word pins it "
+                f"(interface-control, MMR or the encoded LC_STATE word), not graded"
+            )
+        else:
+            self._log(f"{key} read data 0x{rdata:08x} image word 0x{image_word:08x}")
+            self._record("data", key, rdata, image_word)
         self._record(
             "addr", key, (status, seen[mark:]), (J2A_STATUS_SUCCESS, [("r", cell["addr"])])
         )

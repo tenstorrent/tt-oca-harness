@@ -743,6 +743,21 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
         self._count(SYS_IN, admitted)
         return observed, expected
 
+    def _cross_check_polarity(self, table: str, ns: int, tapped: dict[int, list[int]]) -> None:
+        """The probe's AxPROT[1] at the egress tap agrees with the allow_ns the filter paired it
+        with: the probe that left the filter carries AxPROT[1] == ns, the other left nothing
+        (hw/ip/axi_filter/doc/index.adoc, the ``prot[1] == allow_ns`` match term)."""
+        got = {k: tapped[k] for k in (0, 1)}
+        want = {ns: [ns], 1 - ns: []}
+        self.sb.expect_eq(
+            f"CHK-FMATCH-TERMS {table} polarity probe: the probe the filter let out carries "
+            f"AxPROT[1]={ns} at the egress tap and the probe it refused reached the tap with "
+            f"nothing, so allow_ns={ns} is the initiator's AxPROT[1] and not an inverted term",
+            got,
+            want,
+            evidence="CHK-FMATCH-TERMS",
+        )
+
     async def _smc_probe(self, ch: str, addr: int, admitted: bool):
         mem = self.cfg.axi_out_mem
         tag = self._next_tag()
@@ -1181,16 +1196,23 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
         cell = self.cells[SMC_OUT]
         window = self.win[SMC_OUT][1]
         addr = self._edges(SMC_OUT, 1)["low edge"]
-        refused = {}
+        refused, tapped = {}, {}
         for ns in (0, 1):
             await self._program(SMC_OUT, cell["lo"], window, _config(read=0, write=0, allow_ns=ns))
+            mark = self.tap.mark()
             o, _ = await self._smc_probe(AW, addr, True)
             self.verdicts[SMC_OUT]["admitted"] -= 1
             refused[ns] = o[0] == J2A_STATUS_DECERR
-        self._log(f"OBSERVATION SMC_OUT bridge polarity refused={refused} (measured only)")
+            aw, _ar = self.tap.since(mark)
+            tapped[ns] = sorted({(p[3] >> 1) & 1 for p in aw})
+        self._log(
+            f"OBSERVATION SMC_OUT bridge polarity refused={refused}; AxPROT[1] of the probe at "
+            f"the egress tap per allow_ns={tapped}"
+        )
         if sum(refused.values()) != 1:
             raise AssertionError(f"SMC_OUT polarity probe: refused={refused}, want exactly one")
         self.ns[SMC_OUT] = 0 if refused[0] else 1
+        self._cross_check_polarity(SMC_OUT, self.ns[SMC_OUT], tapped)
         await self._disable(SMC_OUT, cell["lo"])
 
     async def _smc_idma(self, sb) -> None:
@@ -1268,16 +1290,23 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
         cell = self.cells[SEP_OUT]
         window = self.win[SEP_OUT][1]
         addr = self._edges(SEP_OUT, 1)["low edge"]
-        admitted = {}
+        admitted, tapped = {}, {}
         for ns in (0, 1):
             await self._program(SEP_OUT, cell["lo"], window, _config(read=1, write=1, allow_ns=ns))
+            mark = self.tap.mark()
             o, _ = await self._sep_probe(AW, addr, True)
             self.verdicts[SEP_OUT]["admitted"] -= 1
             admitted[ns] = not o[0]
-        self._log(f"OBSERVATION SEP_OUT system-bus polarity admitted={admitted} (measured only)")
+            aw, _ar = self.tap.since(mark)
+            tapped[ns] = sorted({(p[3] >> 1) & 1 for p in aw})
+        self._log(
+            f"OBSERVATION SEP_OUT system-bus polarity admitted={admitted}; AxPROT[1] of the probe "
+            f"at the egress tap per allow_ns={tapped}"
+        )
         if sum(admitted.values()) != 1:
             raise AssertionError(f"SEP_OUT polarity probe: admitted={admitted}, want exactly one")
         self.ns[SEP_OUT] = 0 if admitted[0] else 1
+        self._cross_check_polarity(SEP_OUT, self.ns[SEP_OUT], tapped)
         await self._disable(SEP_OUT, cell["lo"])
 
     def _timeout_paths(self, sb) -> None:

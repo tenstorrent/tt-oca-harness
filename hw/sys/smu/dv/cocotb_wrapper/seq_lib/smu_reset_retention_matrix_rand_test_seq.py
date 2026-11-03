@@ -23,9 +23,10 @@ the drawn pattern), one word of each scratch bank and its pattern, and a JTAG2AX
 operation (none, a write or a read), its target and its issue cycle before the reset trigger
 (under the warm kind, after the arming access); the operation is not held in flight across the
 reset.
-A register whose reset value is all zeros is compared on a four-state simulator only; on
-Verilator its value is printed. The scratch banks, the ``ss_reset_ctrl_o`` lanes, the target of
-the operation and the SINGLE_OP capture after the reset are printed, not compared.
+Every graded register is read back as its non-zero drawn pattern before the reset, so a 0 after
+a clearing reset separates cleared from kept on every simulator, the all-zero reset values
+included. The scratch banks, the ``ss_reset_ctrl_o`` lanes, the target of the operation and the
+SINGLE_OP capture after the reset are printed, not compared.
 
 Every register access is a JTAG2AXI access on the SMC fabric; nothing is forced.
 """
@@ -186,11 +187,6 @@ EXPECTED_SITES = sum(EXPECTED_SITE_KINDS.values())
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8")
 
 
-def four_state_simulator() -> bool:
-    name = str(getattr(cocotb, "SIM_NAME", "") or "").lower()
-    return "verilator" not in name
-
-
 def _draw_word(rng: random.Random, mask: int, avoid: set[int], force: int = 0) -> tuple[int, int]:
     """A word under ``mask`` with the ``force`` bits set, outside ``avoid``; (word, redraws)."""
     for redraws in range(MAX_REDRAWS):
@@ -297,7 +293,6 @@ class smu_reset_retention_matrix_rand_test_seq:
             raise AssertionError(f"WDT_TIMEOUT arming count 0x{self.arming:x} not usable")
         self.seed = test.random_seed()
         self.plan = draw_plan(self.seed, self.arming)
-        self.four_state = four_state_simulator()
         self.sites: list[dict] = []
         self.stamp_ps: dict[str, int] = {}
         self.j2a_polls: list[int] = []
@@ -634,12 +629,11 @@ class smu_reset_retention_matrix_rand_test_seq:
         )
         self.log.info(
             "SEED: RANDOM_SEED=%d drawn order=%s %s; pinned every kind on every seed, "
-            "WDT_TIMEOUT=0x%x under the warm kind; four-state=%s",
+            "WDT_TIMEOUT=0x%x under the warm kind",
             self.seed,
             order,
             drawn,
             self.arming,
-            self.four_state,
         )
         await self.cfg.reset_done.wait()
         self._drive_isolation_pin_low()
@@ -683,17 +677,13 @@ class smu_reset_retention_matrix_rand_test_seq:
             yield name, reset, bank, cell["patterns"][name], res["before"][name], res["after"][name]
 
     def _check_cleared(self) -> None:
-        got, want, printed = {}, {}, {}
+        got, want = {}, {}
         for kind in self.plan["order"]:
             for name, reset, bank, pattern, before, after in self._cells(kind):
                 if bank not in CLEARED_BANKS[kind]:
                     continue
                 key = f"{kind} {name}"
-                cell = (before, after, before != reset)
-                if reset == 0 and not self.four_state:
-                    printed[key] = cell
-                    continue
-                got[key] = cell
+                got[key] = (before, after, before != reset)
                 want[key] = (pattern, reset, True)
             for name in LOGGED_ONLY[kind]:
                 res = self.results[kind]
@@ -706,14 +696,6 @@ class smu_reset_retention_matrix_rand_test_seq:
                     res["after"][name],
                     REGS[name][2],
                 )
-        for key, (before, after, _d) in printed.items():
-            self.log.info(
-                "OBSERVATION CHK-RETMX-CLEARED %s before=0x%08x after=0x%08x: all-zero reset "
-                "value, compared on a four-state simulator only",
-                key,
-                before,
-                after,
-            )
         self.log.info(
             "CHK-RETMX-CLEARED: (before, after, before differs from reset) %s expected %s",
             {k: (f"0x{b:08x}", f"0x{a:08x}", d) for k, (b, a, d) in got.items()},
@@ -762,20 +744,12 @@ class smu_reset_retention_matrix_rand_test_seq:
                 reset = REGS[name][2]
                 key = f"{kind} {name}"
                 cell_val = (res["before"][name], res["after"][name])
-                if reset == 0 and not self.four_state:
-                    self.log.info(
-                        "OBSERVATION CHK-RETMX-RESETVAL %s before=0x%08x after=0x%08x: all-zero "
-                        "reset value, compared on a four-state simulator only",
-                        key,
-                        *cell_val,
-                    )
-                    continue
                 got[key] = (cell_val[0] != reset, cell_val[1])
                 want[key] = (True, reset)
         self.log.info("CHK-RETMX-RESETVAL: %s expected %s", got, want)
         self.sb.expect_eq(
             "CHK-RETMX-RESETVAL SS_WARM_RESET_N reads all ones after the drawn cold reset "
-            "(SS_COLD_RESET_N 0 on a four-state simulator)",
+            "and SS_COLD_RESET_N 0 after the cool and cold kinds",
             got,
             want,
             evidence="CHK-RETMX-RESETVAL",
