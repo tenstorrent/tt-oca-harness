@@ -374,6 +374,9 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
             pad, code = c["pad"], c["code"]
             base = _pad_vec(dut, "tb_core2pad_en_o")
             assert not (base >> pad) & 1, f"core2pad_en_o[{pad}] set before its write"
+            # The DATA_CTRL readback carries pad2core, which must be known on the bus; an
+            # undriven pad resolves to X between the pad shim and the bench pull-up.
+            drive_gpio_pad(dut, pad, 0)
             tx = 1 if code in TX_CODES else 0
             await self.csr_write(
                 f"GPIO{pad}_DIR_{code:02b}", self._data_ctrl(pad), self._word(code)
