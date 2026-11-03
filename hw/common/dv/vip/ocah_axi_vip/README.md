@@ -515,10 +515,11 @@ VIPs.
 
 ## Response-dependency assertion selftests
 
-The `sva_dependencies` group drives the existing wire harness directly into
+The `sva_dependencies` group drives the VIP wire harness directly into
 `ocah_axi_sva`, for AXI4 and AXI4-Lite. It contains two legal controls and
 20 expected-failure controls. The legal controls also belong to `smoke` and
-`all` in the cocotb view; fault leaves stay outside `smoke`, `all` and `ci`.
+`all` in the cocotb view and carry the `ci` tag; fault leaves stay outside
+`smoke`, `all` and `ci`.
 
 Legal controls exercise W-before-AW, READY backpressure, the earliest legal
 response and reset recovery. The AXI4 control also exercises multiple IDs
