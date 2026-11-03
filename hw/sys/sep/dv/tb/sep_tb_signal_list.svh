@@ -672,6 +672,10 @@
 // Monitor only; PIC vector bits 30 and 31 carry the same faults.
 `SEP_TB_OUT(logic, km_unrecoverable_err_o)
 `SEP_TB_OUT(logic, km_recoverable_err_o)
+// The whole sep_ras_o struct of the DUT (frontdoor), monitor only. Bit
+// positions follow sep_pkg::sep_ras_t declaration order, first field at the
+// MSB; cocotb/env/sep_ras_map.py names them.
+`SEP_TB_OUT(logic [$bits(sep_pkg::sep_ras_t)-1:0], sep_ras_probe_o)
 `SEP_TB_OUT(logic, km_abr_sk_valid_o)
 `SEP_TB_OUT(logic [255:0], km_abr_sk_key_o)
 `SEP_TB_OUT(logic, km_abr_sk_irq_status_o)
