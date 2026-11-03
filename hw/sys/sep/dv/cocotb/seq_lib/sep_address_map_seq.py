@@ -7,7 +7,7 @@ Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bu
   * READ_ONLY   — read hw-driven / non-deterministic registers (resp-check only);
                   SEP_TEST_CTRL also gets a write of its complement and a
                   re-read that must leave its sw=r field bits unchanged.
-  * REF_COUNTER — read both REFERENCE_COUNTER words and log the observed value.
+  * REF_COUNTER — read both REFERENCE_COUNTER words; the low half must advance.
   * BASE_ADDR_RW — write/read/restore SEP base/size CSRs used by the local remap.
   * WRITE_READBACK — write a pattern to pure-RW scratch/threshold regs, read it
                      back masked to the register's implemented fields, then
@@ -59,6 +59,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_fabric_common import RESP_DECERR
 from env.sep_fabric_tap import SepFabricTap, TapBeat
 from pyuvm import uvm_sequence
 from sep_reg_meta import (
@@ -326,7 +327,10 @@ class sep_address_map_seq(uvm_sequence):
         the first on those bits; otherwise a hardware change could read as a
         write effect. Bits outside the fields have no stated value, and no
         line states the response to a write of an ``sw=r`` register: both are
-        logged, not graded.
+        logged, not graded. The write must reach ``sep_cpu_ctrl``: its B
+        response is not DECERR and no AW leaves SEP on PR-OUT or PR-EXT while it
+        is in flight (CTRL-SEP-TEST-CTRL-WRITE-REACH), since a refused write
+        would also leave the fields unchanged.
         """
         mask = SEP_CPU_CTRL.mask32("SEP_TEST_CTRL")
         v0b = await self._read(addr, expected=None, name="SEP_TEST_CTRL_again")
@@ -341,7 +345,22 @@ class sep_address_map_seq(uvm_sequence):
             v0 & mask,
         )
         wdata = ~v0 & 0xFFFF_FFFF
+        out = SepFabricTap("PR-OUT").start()
+        ext = SepFabricTap("PR-EXT").start()
+        out_mark, ext_mark = out.mark(), ext.mark()
         wr = await self._write(addr, wdata, name="SEP_TEST_CTRL", allow_unverified_resp=True)
+        left = out.since(out_mark, "aw") + ext.since(ext_mark, "aw")
+        out.check_life(out_mark)
+        ext.check_life(ext_mark)
+        await out.stop()
+        await ext.stop()
+        reach = (
+            f"addr=0x{addr:08x} wdata=0x{wdata:08x} resp={wr.resp_code} "
+            f"pr_out_aw={len(out.since(out_mark, 'aw'))} pr_ext_aw={len(ext.since(ext_mark, 'aw'))}"
+        )
+        if wr.resp_code == RESP_DECERR or left:
+            raise AssertionError(f"CTRL-MISSING SEP-TEST-CTRL-WRITE-REACH: {reach}")
+        cocotb.log.info("CTRL-SEP-TEST-CTRL-WRITE-REACH: %s expect resp!=3 aw=0", reach)
         v1 = await self._read(addr, expected=None, name="SEP_TEST_CTRL_after_write")
         self.test_ctrl_reads = (v0, v0b, v1)
         self.test_ctrl_wr_resp = wr.resp_code
