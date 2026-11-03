@@ -567,7 +567,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, real fuse sense
 |OTP bank model with its image preload and the sensed-shadow probe `efuse_shadow_probe_o` (no AXI master)
-|Proves the eFuse sense sequence runs to completion at reset and that what landed in the shadow registers matches the programmed image word for word. `CHK-SENSE-WORD-ORDER` grades the load order stated in `otp_fuse_controller.adoc` (eFuse sensing): the first clock on which each changed shadow word changes at `efuse_shadow_probe_o` rises strictly with the word index, and the sense-done rise comes one clock after the change of word 255. The first clock per field, with the clock of the sense-done rise, is logged as `OBS-SENSE-FIELD-ORDER` and not graded.
+|Proves the eFuse sense sequence runs to completion at reset and that what landed in the shadow registers matches the programmed image word for word. `CHK-SENSE-WORD-ORDER` grades the load order stated in `otp_fuse_controller.adoc` (eFuse sensing): the first clock on which each changed shadow word changes at `efuse_shadow_probe_o` rises strictly with the word index, and the sense-done rise comes one clock after the change of word 255. The first clock per field, with the clock of the sense-done rise, is logged as `OBS-SENSE-FIELD-ORDER` and not graded. `CHK-LC-STATE-PRESENSE-HOLD` grades that `lc_state_o` holds the INVALID encoding 0x0F on every clock from the `rst_ni` release to the sense-done rise while the sensed `LC_STATE` byte already equals the staged encoding, and `CHK-LC-STATE-RELEASE` grades that `lc_state_o` equals the sensed byte on the first clock with sense done high, which the test takes as the point where sensing has completed (`otp_fuse_controller.adoc`, Fuse Sensing and Boot Sequencing, names no clock).
 |<<sep_spi_flash_jedec_smoke_test,`sep_spi_flash_jedec_smoke_test`>>
 |1
 |no_cpu, +skip_fuse_sense
@@ -3325,7 +3325,7 @@ the test does.
 |`sep_efuse_token_channel_rand_test` logs `OBS-TOKEN-DIGEST-LAYOUT` as an open question.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Pre-sense upper nibble of `lc_state_o`
-|The register description and the specification agree that the `LC_STATE` shadow holds the INVALID state `4'b1111` (word `0x0F`) before sense. `sep_reset_mid_transfer_recovery_test` grades that word with `rst_ni` low (`CHK-SHADOW-CLEAR`), and `sep_sec_dis_timing_rand_test` (`CHK-SDIS-RESET-VALUES`, `CHK-SDIS-HOLD`) and `sep_sec_dis_override_test` (`CHK-RETAIN-LC-RESET`) grade it after a cold reset under SEC_DIS. `sep_sec_dis_override_test` (`CHK-LC-STATE-PORT`) grades `lc_state_o` at the first clock after reset release as 0x0F, and `sep_sec_dis_timing_rand_test` (`CHK-LC-STATE-PORT`) grades it after a cold reset under SEC_DIS.
+|The register description and the specification agree that the `LC_STATE` shadow holds the INVALID state `4'b1111` (word `0x0F`) before sense. `sep_reset_mid_transfer_recovery_test` grades that word with `rst_ni` low (`CHK-SHADOW-CLEAR`), and `sep_sec_dis_timing_rand_test` (`CHK-SDIS-RESET-VALUES`, `CHK-SDIS-HOLD`) and `sep_sec_dis_override_test` (`CHK-RETAIN-LC-RESET`) grade it after a cold reset under SEC_DIS. `sep_sec_dis_override_test` (`CHK-LC-STATE-PORT`) grades `lc_state_o` at the first clock after reset release as 0x0F, `sep_sec_dis_timing_rand_test` (`CHK-LC-STATE-PORT`) grades it after a cold reset under SEC_DIS, and `sep_efuse_sense_test` (`CHK-LC-STATE-PRESENSE-HOLD`) grades it on every clock of the pre-sense window with SEC_DIS 0.
 |`sep_sec_dis_override_test` grades that a JTAG write to the pre-sense `LC_STATE` word under SEC_DIS leaves it at `0x0000000f` (`CHK-SECDIS-LC-WR`) and logs the write response (`OBS-SECDIS-LC-WR`).
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`LC_STATE` write with a wrong upper nibble
@@ -4661,7 +4661,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`lc_state_probe_o`
 |Read-only tap
 |The `sep` output `lc_state_o`, the differentially encoded lifecycle state, which is open in the DUT instance without the tap.
-|`sep_lcc_lc_state_transition_matrix_test` (CHK-LC-STATE-PORT)
+|`sep_lcc_lc_state_transition_matrix_test` (CHK-LC-STATE-PORT), `sep_efuse_sense_test` (CHK-LC-STATE-PRESENSE-HOLD, CHK-LC-STATE-RELEASE)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Clock-gater test pins and AXI cell test inputs
 |Read-only tap

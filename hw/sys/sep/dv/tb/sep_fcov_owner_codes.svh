@@ -166,6 +166,7 @@ localparam int unsigned FcovOwnSepLccDemoteFeatCtrlMatrixTest = 769;
 localparam int unsigned FcovOwnSepSecDisOverrideTest = 770;
 localparam int unsigned FcovOwnSepEfuseLccLcStateStitchTest = 771;
 localparam int unsigned FcovOwnSepEfuseTokenMatchFaultPicTest = 785;
+localparam int unsigned FcovOwnSepEfuseSenseTest = 786;
 
 // Key Manager.
 localparam int unsigned FcovOwnSepKmCommandProtocolRandTest = 722;
