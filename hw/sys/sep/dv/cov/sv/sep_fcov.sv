@@ -38386,6 +38386,8 @@ module sep_fcov (
     logic pp_v;  // cp_presense_port: port differs from the LC_STATE reset value
     logic [4:0] cg;
     logic cg_v;  // x_cond_gate: {wrong level, condition, port}
+    logic [1:0] ph;
+    logic ph_v;  // cp_presense_hold: {port left the reset value, sensed byte loaded}
   } ef_pgt_t;
 
   covergroup sep_lc_port_gate_cg with function sample (ef_pgt_t s);
@@ -38400,6 +38402,13 @@ module sep_fcov (
     // value, the INVALID encoding.
     cp_presense_port: coverpoint s.pp iff (s.pp_v) {
       bins invalid_reset_value = {1'b0}; illegal_bins other_value = {1'b1};
+    }
+    // The pre-sense window of a sense with SEC_DIS 0, sampled once at the
+    // sense-done rise: {lc_state_o left the LC_STATE reset value on a clock of
+    // the window, the sensed LC_STATE byte differed from that value on a clock
+    // of the window}. A window in which the byte never loaded fills no bin.
+    cp_presense_hold: coverpoint s.ph iff (s.ph_v) {
+      bins held_over_loaded_byte = {2'b01}; illegal_bins port_left_reset_value = {2'b10, 2'b11};
     }
     // Condition 0 before sense with SEC_DIS 0, 1 SEC_DIS 1, 2 integrity error
     // with SEC_DIS 0; port 0 dbg_disable, 1 sep_fuse_dft_disable, 2
@@ -38479,6 +38488,37 @@ module sep_fcov (
       e.pp = (lc_state_i !== EfLcReset);
       e.pp_v = 1'b1;
       u_sep_lc_port_gate_cg.sample(e);
+    end
+  end
+
+  // cp_presense_hold: from the reset-release clock to the sense-done rise.
+  wire  ef_own_sense = (graded_owner == FcovOwnSepEfuseSenseTest);
+  wire  ef_ph_open = (fuse_sense_done_i !== 1'b1);
+  logic ef_ph_win = 1'b0;
+  logic ef_ph_leak = 1'b0;
+  logic ef_ph_load = 1'b0;
+  logic ef_ph_sd = 1'b0;
+  always @(posedge clk_i) begin
+    ef_pgt_t e;
+    if (in_reset) begin
+      ef_ph_win <= 1'b0;
+    end else if (ef_rel) begin
+      ef_ph_win  <= !skip_fuse_sense_q && ef_ph_open;
+      ef_ph_leak <= (lc_state_i !== EfLcReset);
+      ef_ph_load <= (ef_lc_word[7:0] !== EfLcReset);
+      ef_ph_sd   <= (sec_dis_i !== 1'b0);
+    end else if (ef_ph_win && ef_ph_open) begin
+      ef_ph_leak <= ef_ph_leak || (lc_state_i !== EfLcReset);
+      ef_ph_load <= ef_ph_load || (ef_lc_word[7:0] !== EfLcReset);
+      ef_ph_sd   <= ef_ph_sd || (sec_dis_i !== 1'b0);
+    end else if (ef_ph_win) begin
+      ef_ph_win <= 1'b0;
+      if (ef_own_sense && !ef_ph_sd) begin
+        e = '0;
+        e.ph = {ef_ph_leak, ef_ph_load};
+        e.ph_v = 1'b1;
+        u_sep_lc_port_gate_cg.sample(e);
+      end
     end
   end
 

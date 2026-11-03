@@ -15,6 +15,20 @@ words whose staged value differs from reset, the first clock on which each word 
 ``sep_fuse_sense_done_o`` rise must come one clock after the change of word 255 (or after
 the last changed word when word 255 stays at reset). At least two changed words are required.
 
+``CHK-LC-STATE-PRESENSE-HOLD`` grades the ``LC_STATE`` hold that
+``hw/sys/sep/doc/otp_fuse_controller.adoc`` (Fuse Sensing and Boot Sequencing) states: the
+logical ``LC_STATE`` output remains ``4'b1111`` until fuse sensing completes. On every clock
+from the ``rst_ni`` release until the ``sep_fuse_sense_done_o`` rise, the port ``lc_state_o``
+(tap ``lc_state_probe_o``, ``{~raw, raw}`` by ``doc/integrator/src/smu-sep.adoc``) must equal
+the ``LC_STATE`` RDL reset value 0x0F, the INVALID encoding, with ``security_disable_o`` at 0.
+The check also requires that the sensed ``LC_STATE`` byte at ``efuse_shadow_probe_o`` differs
+from 0x0F on at least one of those clocks, so the hold is graded while the sensed value is
+already present. The staged ``LC_STATE`` must not encode INVALID.
+
+``CHK-LC-STATE-RELEASE`` grades the other half of the same sentence: on the clock of the
+``sep_fuse_sense_done_o`` rise, ``lc_state_o`` equals the sensed ``LC_STATE`` byte and the
+encoding of the staged raw state.
+
 Log-only: ``OBS-SENSE-FIELD-ORDER`` gives, per field, the first clock on which one of its
 words changed and the clock of the ``sep_fuse_sense_done_o`` rise, counted from the start of
 the leaf.
@@ -25,8 +39,11 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ReadOnly, RisingEdge
+from env.sep_efuse_image import LC_FIELD_MASK, SepEfuseImage, lc_encode
 from env.sep_efuse_plan import FIELD_NAMES, field_n_words, field_word
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
+from sep_reg_meta import word_reset
 
 _MAX_SENSE_CYCLES = 20_000
 
@@ -37,17 +54,52 @@ def _bits(sig) -> str:
     return (s if s is not None else str(v)).strip()
 
 
+def _lc_byte(shadow: str) -> int | None:
+    """The ``LC_STATE`` byte of a shadow-probe value, or None when it has X or Z."""
+    w = field_word("LC_STATE")
+    lo = len(shadow) - 32 * (w + 1)
+    byte = shadow[lo + 24 : lo + 32]
+    return int(byte, 2) if set(byte) <= {"0", "1"} else None
+
+
+def _bits_int(sig) -> int | None:
+    s = _bits(sig)
+    return int(s, 2) if set(s) <= {"0", "1"} else None
+
+
 async def _sense_order(rec: dict) -> None:
     """Per shadow word, the first clock it differs from the previous clock; stops at the
-    ``sep_fuse_sense_done_o`` rise."""
+    ``sep_fuse_sense_done_o`` rise. From the ``rst_ni`` release it also records, per clock
+    before that rise, ``lc_state_o``, the sensed ``LC_STATE`` byte and ``security_disable_o``,
+    and on the rise clock ``lc_state_o`` and the sensed byte."""
     dut = cocotb.top
+    lc = rec["lc"]
     prev = None
     clk = 0
+    seen_low = False
     while True:
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         clk += 1
         cur = _bits(dut.efuse_shadow_probe_o)
+        rst = _bits(dut.rst_ni)
+        if rst != "1":
+            seen_low = seen_low or rst == "0"
+        elif seen_low:
+            port = _bits_int(dut.lc_state_probe_o)
+            sensed = _lc_byte(cur)
+            if _bits(dut.sep_fuse_sense_done_o) == "1":
+                lc["rel"] = (clk, port, sensed)
+            else:
+                lc["clocks"] += 1
+                if port != lc["want"] and lc["bad"] is None:
+                    lc["bad"] = (clk, port, sensed)
+                if sensed != lc["want"]:
+                    lc["loaded"] += 1
+                    if lc["first_loaded"] is None:
+                        lc["first_loaded"] = clk
+                if _bits(dut.lcc_security_disable_probe_o) != "0":
+                    lc["sdis"] += 1
         if prev is not None and cur != prev:
             n = len(cur) // 32
             for w in range(n):
@@ -75,16 +127,38 @@ class sep_efuse_sense_test(sep_base_test):
         "CHK-SENSE-WORD-ORDER",
         "CHK-SENSE-BACKDOOR",
         "CHK-IMAGE-MATCH",
+        "CHK-LC-STATE-PRESENSE-HOLD",
+        "CHK-LC-STATE-RELEASE",
     )
 
     async def run_scenario(self) -> None:
         img = self.select_efuse_image()
         self.write_efuse_image(img)
-        rec: dict = {"first": {}, "done": None}
+        invalid = word_reset(SepEfuseImage.field("LC_STATE").shadow_addr) & LC_FIELD_MASK
+        assert invalid == lc_encode(0xF), (
+            f"test bug: LC_STATE RDL reset 0x{invalid:02x} is not INVALID 0x{lc_encode(0xF):02x}"
+        )
+        staged_lc = lc_encode(img.lc_raw())
+        assert staged_lc != invalid, (
+            f"test bug: staged LC_STATE 0x{staged_lc:02x} is INVALID; the hold check needs "
+            "a sensed value that differs from the held one"
+        )
+        lc = {
+            "want": invalid,
+            "clocks": 0,
+            "bad": None,
+            "loaded": 0,
+            "first_loaded": None,
+            "sdis": 0,
+            "rel": None,
+        }
+        rec: dict = {"first": {}, "done": None, "lc": lc}
+        open_graded_window("sep_efuse_sense_test", self.logger)
         sampler = cocotb.start_soon(_sense_order(rec))
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         if not sampler.done():
             sampler.cancel()
+        close_graded_window(self.logger)
         first = {
             f: min(
                 (
@@ -123,6 +197,35 @@ class sep_efuse_sense_test(sep_base_test):
             len(words),
             rec["done"],
             last,
+        )
+        hold_ok = lc["clocks"] > 0 and lc["bad"] is None and lc["loaded"] > 0 and lc["sdis"] == 0
+        assert hold_ok, (
+            f"CHK-LC-STATE-PRESENSE-HOLD FAIL: presense_clocks={lc['clocks']} "
+            f"first_bad(clk,port,sensed)={lc['bad']} loaded_clocks={lc['loaded']} "
+            f"secdis_clocks={lc['sdis']} want=0x{invalid:02x}"
+        )
+        self.logger.info(
+            "CHK-LC-STATE-PRESENSE-HOLD PASS: lc_state_o=0x%02x on all %d clocks from the "
+            "rst_ni release to the sense-done rise; sensed LC_STATE byte 0x%02x present on "
+            "%d of them from clock %d; secdis_clocks=0",
+            invalid,
+            lc["clocks"],
+            staged_lc,
+            lc["loaded"],
+            lc["first_loaded"],
+        )
+        rel = lc["rel"]
+        assert rel is not None and rel[1] == rel[2] == staged_lc, (
+            f"CHK-LC-STATE-RELEASE FAIL: sense-done clock (clk,port,sensed)={rel} "
+            f"want port == sensed == staged 0x{staged_lc:02x}"
+        )
+        self.logger.info(
+            "CHK-LC-STATE-RELEASE PASS: sense-done clock %d lc_state_o=0x%02x "
+            "sensed=0x%02x staged=0x%02x",
+            rel[0],
+            rel[1],
+            rel[2],
+            staged_lc,
         )
         # The bring-up runs the shared backdoor compare of every shadow word
         # (CHK-SENSE-BACKDOOR); +skip_fuse_sense skips it.

@@ -347,7 +347,7 @@ not grade that rejection.
 
 *Objective*: Proves the eFuse sense sequence runs to completion at reset and that what landed in the shadow registers matches the programmed image word for word.
 
-*Test Coverage*: Reset sense-done; shadow words match the programmed image.
+*Test Coverage*: Reset sense-done; shadow words match the programmed image; `lc_state_o` holds INVALID through the pre-sense window and takes the sensed value at sense done.
 
 *Test Procedure*:
 
@@ -355,6 +355,7 @@ not grade that rejection.
 . Stage an eFuse image and bring up with real fuse sense — no skip plusarg.
 . Wait for sense-done.
 . Compare all shadow words against the staged image.
+. From the `rst_ni` release to the sense-done rise, sample `lc_state_o`, the sensed `LC_STATE` byte and `security_disable_o` on every clock, and on the rise clock sample `lc_state_o` and the sensed byte.
 
 *Checkers*:
 
@@ -367,11 +368,15 @@ not grade that rejection.
 |The sense loads the shadow words in ascending word order, one word per response strobe, and `sep_fuse_sense_done_o` rises one clock after the strobe that stores word 255 (`hw/sys/sep/doc/otp_fuse_controller.adoc`, eFuse sensing). Over the words whose staged value differs from reset, the first clock on which each word changes at `efuse_shadow_probe_o` rises strictly with the word index; the done rise is one clock after the change of word 255, or after the last changed word when word 255 stays at reset. Fewer than two changed words fails the check.
 |CHK-IMAGE-MATCH
 |Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare shows a store only for a word whose staged value differs from its RDL reset value. The image keeps the `LOCKS` and `LOCKS_SPARE` words at their reset value 0, because a non-zero lock word locks the image, so for those words the compare also passes on a word that was not stored; `CHK-SENSE-WORD-ORDER` prints the count of words that changed (`changed_words`). The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
+|CHK-LC-STATE-PRESENSE-HOLD
+|On every clock from the `rst_ni` release until the `sep_fuse_sense_done_o` rise, `lc_state_o` (tap `lc_state_probe_o`) equals the `LC_STATE` RDL reset value 0x0F, the INVALID encoding, and `security_disable_o` is 0 (`hw/sys/sep/doc/otp_fuse_controller.adoc`, Fuse Sensing and Boot Sequencing: the logical `LC_STATE` output remains `4'b1111` until fuse sensing completes). The sensed `LC_STATE` byte at `efuse_shadow_probe_o` must differ from 0x0F on at least one of those clocks, so the hold is graded while the sensed value is present; the staged state must not encode INVALID. A window of zero clocks fails the check.
+|CHK-LC-STATE-RELEASE
+|On the clock of the `sep_fuse_sense_done_o` rise, `lc_state_o` equals the sensed `LC_STATE` byte and the encoding `{~raw, raw}` of the staged raw state (same section; `doc/integrator/src/smu-sep.adoc`, `lc_state_o`).
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: `cocotb/tests/efuse/sep_efuse_sense_test.py` logs `CHK-SENSE-DONE PASS` with the clock of the `sep_fuse_sense_done_o` rise. The shared backdoor compare (`cocotb/seq_lib/sep_efuse_backdoor_check.py`, run by the bring-up) logs `CHK-SENSE-BACKDOOR PASS words=<n> errors=0 secure_tm=<s>`, or `CHK-SENSE-BACKDOOR FAIL` and fails the leaf. `CHK-IMAGE-MATCH PASS words=<n>` follows only when that compare logged its PASS and `+skip_fuse_sense` is absent. The leaf names the four records in `required_evidence`, so a missing record fails it. `CHK-SENSE-WORD-ORDER` is its own record. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock, and grades nothing.
+*Evidence*: `cocotb/tests/efuse/sep_efuse_sense_test.py` logs `CHK-SENSE-DONE PASS` with the clock of the `sep_fuse_sense_done_o` rise. The shared backdoor compare (`cocotb/seq_lib/sep_efuse_backdoor_check.py`, run by the bring-up) logs `CHK-SENSE-BACKDOOR PASS words=<n> errors=0 secure_tm=<s>`, or `CHK-SENSE-BACKDOOR FAIL` and fails the leaf. `CHK-IMAGE-MATCH PASS words=<n>` follows only when that compare logged its PASS and `+skip_fuse_sense` is absent. The leaf names the six records in `required_evidence`, so a missing record fails it. `CHK-LC-STATE-PRESENSE-HOLD PASS` logs the window length in clocks, the sensed byte and the number of window clocks on which it was present; `CHK-LC-STATE-RELEASE PASS` logs the sense-done clock, the port, the sensed byte and the staged encoding. `CHK-SENSE-WORD-ORDER` is its own record. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock, and grades nothing.
 
 '''''
 
@@ -626,6 +631,8 @@ graded as the increments of each pass. The STATUS read response is CHK-CSR-RESP.
 (`+SEP_TEST_LOOPS`, `+SEP_EFUSE_LCC_TEST_LOOPS`, `+SEP_EFUSE_SENSE_TEST_LOOPS`);
 the sense runs once at bring-up and each pass compares the held shadow again.
 The staged image is the committed default preload (`+sep_efuse_hex`).
+The SV-UVM pass does not grade CHK-SENSE-WORD-ORDER, CHK-LC-STATE-PRESENSE-HOLD
+or CHK-LC-STATE-RELEASE; the cocotb leaf grades them.
 CHK-SENSE-DONE is named CHK-FUSE-SENSE-DONE. CHK-SENSE compares the whole
 shadow probe with the committed expected shadow
 `tb/efuse_preloads/sep_efuse_default.shadow.hex` (`+sep_efuse_shadow_hex`),
