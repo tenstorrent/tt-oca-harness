@@ -8248,7 +8248,7 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * SMC OSS output-fabric responder-backed protocol test.
-* **Response USER to the debug manager** -- the SYS_OUT responder draws BUSER/RUSER from a fixed seed (`randomize_resp_user`) before the JTAG-AXI write and read, so the 12-bit B and R USER sideband on the direct output path carries non-zero values. A passive sampler pairs each JTAG B/R beat with the SYS_OUT beat the responder drove for it and logs both USER values; their equality is measured and logged, not compared, while SF-001 is open.
+* **Response USER to the debug manager** -- the SYS_OUT responder draws BUSER/RUSER from a fixed seed (`randomize_resp_user`) before the JTAG-AXI write and read, so the 12-bit B and R USER sideband on the direct output path carries non-zero values. A passive sampler pairs each JTAG B/R beat with the SYS_OUT beat the responder drove for it and compares the two USER values: `fabric.adoc` (Output Remapping) has BUSER and RUSER pass back through the source-ID replacement unchanged.
 
 *Test Procedure*:
 
@@ -8262,13 +8262,12 @@ Drive the JTAG-AXI write and read from the test module (`smc_output_fabric_wr_rd
 |Checker |Description
 |`CHK-NONVAC` |Ordered fence USER-SEEDED < JTAG-WRITE < JTAG-READ < GOLDEN, each term with its own sim time and a non-zero count. Fails on a missing, zero-count or out-of-order term
 |`CHK-OUTPUT-FABRIC-WR-RD-GOLDEN` |A JTAG-AXI 64-bit write to 0x0200_0000 followed by a read through the output fabric advances the SYS_OUT responder write counter by exactly 1 and the read counter by at least 1, leaves last_addr/last_wdata equal to the write, and the read data matches the scoreboard memory-model golden (updates >= 1, checks >= 1). Fails on an extra or missing responder write beat, a missing read beat, a stale last_addr/last_wdata, an X/Z observability counter, a golden mismatch, or a read the scoreboard never checked
-|`CHK-RSP-USER-DBG-READ` |The JTAG-AXI read returns RRESP OKAY and RDATA 0x1122334455667788 at the manager, exactly one SYS_OUT R beat carrying that data precedes it, and the RUSER the responder drew for it is non-zero. Logs the seed, the responder RUSER and the RUSER the JTAG manager received with their equality (measured, LINKED-ISSUE SF-001). Fails on no R within the bound, RRESP not OKAY, an RDATA mismatch, a drawn RUSER of 0, or X/Z on either RUSER
-|`CHK-RSP-USER-DBG-WRITE` |The JTAG-AXI write returns BRESP OKAY at the manager, the SYS_OUT responder write counter advances by exactly 1 with exactly one SYS_OUT B beat before the manager's, and the BUSER the responder drew for it is non-zero. Logs the seed, the responder BUSER and the BUSER the JTAG manager received with their equality (measured, LINKED-ISSUE SF-001). Fails on no B within the bound, BRESP not OKAY, a drawn BUSER of 0, X/Z on either BUSER, or a write count other than +1
+|`CHK-RSP-USER-UNCHANGED` |The JTAG-AXI write returns BRESP OKAY at the manager, the SYS_OUT responder write counter advances by exactly 1 with exactly one SYS_OUT B beat before the manager's, the BUSER the responder drew for it is non-zero and the BUSER the JTAG manager received equals it; the JTAG-AXI read returns RRESP OKAY and RDATA 0x1122334455667788 at the manager, exactly one SYS_OUT R beat carrying that data precedes it, the RUSER the responder drew is non-zero and the RUSER the manager received equals it (`fabric.adoc` Output Remapping: BUSER and RUSER pass back through the replacement unchanged). Fails on no B or R within the bound, a response not OKAY, an RDATA mismatch, a drawn USER of 0, X/Z on either USER, a write count other than +1, or a USER that differs between the responder and the manager
 |`CHK-TIMEOUT-PATHS` |Lists every bounded wait (JTAG B and R responses, the sampler catch-up for each, the two responder counter observations) with its bound and last observed state; each expiry raises with that state
 |===
 
 
-*Pass Criteria*: `CHK-NONVAC`, `CHK-OUTPUT-FABRIC-WR-RD-GOLDEN`, `CHK-RSP-USER-DBG-READ`, `CHK-RSP-USER-DBG-WRITE`, `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-NONVAC`, `CHK-OUTPUT-FABRIC-WR-RD-GOLDEN`, `CHK-RSP-USER-UNCHANGED`, `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 '''''
@@ -10655,8 +10654,9 @@ to 7 and `ocah_axi_vip` (AXI, SEP_IN) for programming and restoring the M-mode o
 `tb_output_axi_write_count`, `tb_output_axi_read_count`, `tb_output_axi_last_addr` and
 `tb_output_axi_last_wdata`; `u_output_axi_if` members `awvalid`, `awready`, `awaddr`, `awprot`,
 `awuser`, `arvalid`, `arready`, `araddr`, `arprot` and `aruser` sampled at every AW and AR handshake
-on `clk_smc_i`; `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` after the
-fuse-sense wait
+on `clk_smc_i`, and `jtag_axi_awvalid`/`awready`/`awaddr`/`awuser` and
+`arvalid`/`arready`/`araddr`/`aruser` sampled the same way at the JTAG ingress;
+`tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` after the fuse-sense wait
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
@@ -10665,8 +10665,8 @@ fuse-sense wait
 draws nothing from the seed.
 
 *Objective*: AxPROT passes unchanged through the M-mode remap, the Xvisor remap,
-the direct path and an alias remap hit, and the AxUSER source ID of each path is observed and
-printed.
+the direct path and an alias remap hit, and each path leaves with its own AxUSER source ID
+(`SMC_ID` 0x3, `MMODE_ID` 0xC, `OTHER_ID` 0x0) in the whole 12-bit AWUSER and ARUSER.
 
 *Test Coverage*:
 
@@ -10682,16 +10682,16 @@ to p and the seeded read words returned.
 * After an alias remap hit (`fabric.adoc` Alias Remapping, `alias_remap.rdl`): region 6 over
 0x0203_0000..0x0203_1000 with `REGION_ATTRS` 0x8000_0000_0010_0000 moves a prot 0b101 write at
 0x0203_0040 to 0x0213_0040 with `awprot` still 0b101.
-* `fabric.adoc` (Output Remapping, Outbound Traffic Flow; source ID by traffic path
-table): each remap sets its own AxUSER source ID and the table names `SMC_ID` for the direct path,
-`MMODE_ID` through the M-mode remap and `OTHER_ID` through the Xvisor remap. The numeric values are
-not stated in the documents, so the leaf prints the `awuser` and `aruser` of
-three writes and three reads on each path and requires only that they are resolvable and constant
-across the requests of a path.
+* `fabric.adoc` (Output Remapping, Outbound Traffic Flow; table "SMC Source ID by Traffic
+Path"): the source ID occupies AxUSER[3:0], each path replaces the whole AWUSER and ARUSER with its
+source ID so bits [11:4] leave as zero, and the table gives `SMC_ID` 0x3 for the direct path,
+`MMODE_ID` 0xC through the M-mode remap and `OTHER_ID` 0x0 through the Xvisor remap. Three writes
+and three reads on each path drive AxUSER 0xFFF, and the `awuser` and `aruser` captured at every
+SYS_OUT handshake must equal the path's ID over all 12 bits.
 * `output_remap.rdl` (`REGION_ATTRS.valid`: a clear region passes accesses with their address
-unchanged): M-mode region 4, programmed with offset 0x02B0_0000 and `valid` clear, passes a write
-and a read at 0xC140_0100 through at their own address; the `awuser` and `aruser` of that access are
-printed beside the direct and M-mode ones, and which source ID a clear region carries is not stated.
+unchanged) and `fabric.adoc` (a request to a remap window leaves with the window's source ID):
+M-mode region 4, programmed with offset 0x02B0_0000 and `valid` clear, passes a write and a read at
+0xC140_0100 through at their own address with `awuser` and `aruser` equal to `MMODE_ID`.
 * The remap registers are read at their reset words before programming and restored and read back at
 the end.
 
@@ -10712,10 +10712,11 @@ present exactly one AW handshake at the remapped address and carry `awprot` equa
 land or return its seed at its own address with `awprot` or `arprot` equal to p.
 . JTAG-write 0x0203_0040 with prot 0b101 and require it at 0x0213_0040 with `awprot` 0b101.
 . On the direct path at 0x0200_0100, the M-mode path at 0xC110_0100 and the Xvisor path at
-0xC190_0100, issue three prot 0 writes and three prot 0 reads each; require each channel's `awuser`
-or `aruser` constant across the three requests and print it.
-. JTAG-write and JTAG-read 0xC140_0100 through the clear M-mode region 4, require the address
-unchanged and print `awuser` and `aruser`.
+0xC190_0100, issue three prot 0 writes and three prot 0 reads each with AxUSER 0xFFF; require
+AxUSER 0xFFF at the JTAG ingress handshake of each, and `awuser` and `aruser` equal to 0x003, 0x00C
+and 0x000 on every request of the path.
+. JTAG-write and JTAG-read 0xC140_0100 with AxUSER 0xFFF through the clear M-mode region 4, require
+the address unchanged and `awuser` and `aruser` equal to 0x00C.
 . Restore the six registers to their reset words and read each back, require at least 81 SEP_IN and
 JTAG accesses in total, then print the wait record and the ordered-fence line.
 
@@ -10732,18 +10733,15 @@ remapped addresses 0x0250_0040 + 8p and present `awprot` equal to p at the SYS_O
 return at their own addresses and present `awprot` and `arprot` equal to p
 |`CHK-PROT-AFTER-REMAPS` |The prot 0b101 write that hits alias region 6 lands at 0x0213_0040 and
 presents `awprot` 0b101, so the alias remap leaves AxPROT unchanged
-|`CHK-SRCID-DIRECT-OBSERVE` |Measures and prints the `awuser` and `aruser` of three writes and three
-reads on the direct path; no source ID value is compared, only that each is resolvable and constant
-across the requests
-|`CHK-SRCID-MMODE-OBSERVE` |Measures and prints the `awuser` and `aruser` of three writes and three
-reads through the M-mode remap; no source ID value is compared, only that each is resolvable and
-constant
-|`CHK-SRCID-XVISOR-OBSERVE` |Measures and prints the `awuser` and `aruser` of three writes and three
-reads through the Xvisor remap; no source ID value is compared, only that each is resolvable and
-constant
-|`CHK-VALID0-SRCID-OBSERVE` |Records the `awuser` and `aruser` of the write and read through the
-clear M-mode region 4, which land at their own address, beside the direct and M-mode values, without
-comparing them
+|`CHK-SRCID-DIRECT-0X3` |The `awuser` and `aruser` of three writes and three reads on the direct
+path with AxUSER 0xFFF driven, and seen at the JTAG ingress handshake, equal `SMC_ID` 0x003 on every
+request, bits [11:4] zero
+|`CHK-SRCID-MMODE-0XC` |The `awuser` and `aruser` of three writes and three reads through the M-mode
+remap with AxUSER 0xFFF driven equal `MMODE_ID` 0x00C on every request, bits [11:4] zero
+|`CHK-SRCID-XVISOR-0X0` |The `awuser` and `aruser` of three writes and three reads through the
+Xvisor remap with AxUSER 0xFFF driven equal `OTHER_ID` 0x000 on every request, bits [11:4] zero
+|`CHK-VALID0-SRCID-MMODE-0XC` |The write and read through the clear M-mode region 4 land at their
+own address and carry `awuser` and `aruser` equal to `MMODE_ID` 0x00C with AxUSER 0xFFF driven
 |`CHK-NONVAC` |The step stamps S1 to S8 are recorded in order with strictly increasing time, each
 checker line is printed after its step in the fixed order, and the SEP_IN plus JTAG access count
 reaches the floor of 81; a control-flow invariant, not a DUT compare
@@ -10754,15 +10752,14 @@ are the bounded accesses themselves, so an expired bound raises before this line
 
 *Pass Criteria*: `CHK-PROT-MMODE`, `CHK-PROT-XVISOR`, `CHK-PROT-DIRECT` and `CHK-PROT-AFTER-REMAPS`
 hold: every access lands at its remapped or direct address, returns or lands its word and presents
-the driven AxPROT. The four source-ID checkers (`CHK-SRCID-DIRECT-OBSERVE`,
-`CHK-SRCID-MMODE-OBSERVE`, `CHK-SRCID-XVISOR-OBSERVE` and `CHK-VALID0-SRCID-OBSERVE`) report what
-was measured and are held only to resolvability and constancy per path. `CHK-NONVAC` and
-`CHK-TIMEOUT-PATHS` are printed after the access floor of 81. Enrolled in: `all`, `hosted`.
+the driven AxPROT. `CHK-SRCID-DIRECT-0X3`, `CHK-SRCID-MMODE-0XC`, `CHK-SRCID-XVISOR-0X0` and
+`CHK-VALID0-SRCID-MMODE-0XC` hold: every captured `awuser` and `aruser` equals the path's source ID
+over all 12 bits. `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed after the access floor of 81.
+Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The `awuser` and `aruser` source IDs of the direct, M-mode and Xvisor paths are
-printed and held only to resolvability and constancy per path, because the documents do not state
-their numeric values; which source ID a clear region carries is not stated, so the `awuser` and
-`aruser` of the access through the clear M-mode region 4 are printed without a compare.
+*Scope limit*: Only the JTAG initiator drives the three paths; the SMC CPU and the DMA engine share
+the output fabric but run under firmware. WUSER is compared by `smc_output_remap_window_test`
+(`CHK-AXUSER-WHOLE-REPLACED`).
 
 '''''
 
@@ -11057,7 +11054,8 @@ the bring-up wait; registers `REGION_START`, `REGION_END` and `REGION_ATTRS` of 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Alias remap adds the region offset: edges, carry, open cases.
+*Objective*: Alias remap adds the region offset: edges, carry, the bit-55 wrap, overlap priority
+and empty regions.
 
 *Test Coverage*:
 
@@ -11075,13 +11073,18 @@ draws nothing from the seed.
   keep their own address.
 * The offset addition carries into bit 32: region 5 over 0x0000_FFFF_F000 to 0x0001_0000_0000 moves
   a write at 0x0000_FFFF_F7A8 to 0x0001_0000_07A8.
-* Overlapping regions 1 and 2: where an address that hits both lands is not fixed by the register
-  description, so the leg requires one of three landings (either offset alone or the summed
-  offset, 0x0290_E010) and prints which, and prints the response and the hit-probe level without
-  comparing them.
-* Empty (`REGION_START` equal to `REGION_END`) and inverted regions: the register description fixes
-  no behaviour, so each write is required to answer OKAY and to land at its own address or at the
-  region offset past it, and the landing is printed.
+* The offset is added to address bits [55:12] modulo 2^44 and a carry out of bit 55 is discarded
+  (`fabric.adoc`, Alias Remapping): region 5 reprogrammed over 0x0300_0000 to 0x0300_1000 with
+  offset 0xFF_FFFF_F800 pages (0x03000 + offset = 2^44 + 0x2800) moves a write at 0x0300_07A8 to
+  0x0280_07A8.
+* When more than one valid region contains an address, the lowest-numbered region applies
+  (`fabric.adoc`, Alias Remapping): regions 1 and 2 over the same page with offsets 0x0040_0000 and
+  0x0050_0000 move a write at 0x0200_E010 to 0x0240_E010 and leave 0x0250_E010 at the sentinel;
+  with the two offsets swapped a write at 0x0200_E020 lands at 0x0250_E020, region 1 again.
+* A region whose `REGION_END` is at or below its `REGION_START` contains no address and never remaps
+  (`fabric.adoc`, Alias Remapping): with region 4 empty (`REGION_START` equal to `REGION_END`) and
+  region 6 inverted, each write answers OKAY, lands at its own address and leaves both offset
+  landings at the sentinel.
 * An offset changed over SEP_IN while a twelve-write JTAG group is outstanding: the register
   description fixes no point at which a new offset takes effect, so every write is required to
   answer OKAY and to land at exactly the old or the new offset, in issue order with at most one
@@ -11110,16 +11113,18 @@ draws nothing from the seed.
   address and no AR handshake.
 . Program region 5 (0x0000_FFFF_F000 to 0x0001_0000_0000, `REGION_ATTRS` 0x8300_0000_0000_1000),
   JTAG-write 0x0000_FFFF_F7A8 and require it at 0x0001_0000_07A8 with 0x0000_0000_07A8 at the
-  sentinel.
+  sentinel. Reprogram region 5 (0x0300_0000 to 0x0300_1000, `REGION_ATTRS` 0x83FF_FFFF_F800_0000),
+  JTAG-write 0x0300_07A8 and require it at 0x0280_07A8 with AW there and the source at the sentinel.
 . Program regions 1 and 2 over 0x0200_E000 to 0x0200_F000 with offsets 0x0040_0000 and 0x0050_0000,
-  clear the hit-probe record, JTAG-write 0x0200_E010 and require the word at exactly one of
-  0x0240_E010, 0x0250_E010 and 0x0290_E010 with the AW address equal to it; the response and
-  `tb_remap_jtag_aw_hit` are printed.
+  JTAG-write 0x0200_E010 and require it at 0x0240_E010 with AW there, the source and 0x0250_E010 at
+  the sentinel; swap the two offsets, JTAG-write 0x0200_E020 and require it at 0x0250_E020 with
+  0x0240_E020 at the sentinel.
 . Error injection. Point: alias regions 4 and 6. Kind: an empty region (`REGION_START` and
   `REGION_END` both 0x0201_0000, offset 0x0060_0000) and an inverted region (`REGION_START`
-  0x0201_2000, `REGION_END` 0x0201_1000, offset 0x0070_0000), then JTAG writes at 0x0201_0010,
-  0x0201_1010 and 0x0201_2010. Expected response: OKAY and a landing at exactly one of the source,
-  source plus 0x0060_0000 and source plus 0x0070_0000; each landing and its offset are printed.
+  0x0201_2000, `REGION_END` 0x0201_1000, offset 0x0070_0000), then JTAG writes at 0x0201_0000
+  (region 4's `REGION_START` word), 0x0201_0010, 0x0201_1010 and 0x0201_2010. Expected response:
+  OKAY, each word at its own address with AW there,
+  and source plus 0x0060_0000 and source plus 0x0070_0000 at the sentinel.
 . Rewrite region 3 `REGION_ATTRS` to 0x8300_0000_0020_0000, seed old and new landing words, start a
   JTAG group of twelve 8-byte writes at 0x0200_5000 + 8k, write 0x8300_0000_0030_0000 to region 3
   `REGION_ATTRS` over SEP_IN while it runs, wait for the group and for the output write count,
@@ -11128,8 +11133,8 @@ draws nothing from the seed.
   the memory landing.
 . Write 0 to `REGION_START`, `REGION_END` and `REGION_ATTRS` of regions 0 to 7 and read each back
   expecting 0; stop the watcher, log the bounded waits, and require the ten step stamps in
-  increasing order, the nine checker lines in their order and the combined SEP_IN and JTAG access
-  count at least 123; the test also requires the JTAG access count to be 30.
+  increasing order, the ten checker lines in their order and the combined SEP_IN and JTAG access
+  count at least 136; the test also requires the JTAG access count to be 33.
 
 *Checkers*:
 
@@ -11150,16 +11155,21 @@ while the page at `REGION_END` and the page below `REGION_START` land at their o
 addresses, one AW per write and no AR
 |`CHK-ALIAS-CARRY` |The write at 0x0000_FFFF_F7A8 lands at 0x0001_0000_07A8 and the no-carry address
 0x0000_0000_07A8 keeps the sentinel
-|`CHK-ALIAS-OVERLAP-OBSERVE` |The write over overlapping regions 1 and 2 lands at exactly one of the
-three candidate addresses with AW at that address; the response, the landing and the hit probe are
-printed, and the choice between the two offsets is recorded, not asserted
-|`CHK-ALIAS-EMPTY-REGION-OBSERVE` |Each write through an empty or inverted region answers OKAY and
-lands at exactly one of the source and the two offset addresses; which one is recorded, not asserted
+|`CHK-ALIAS-OFFSET-WRAPS-AT-BIT55` |The write at 0x0300_07A8 through region 5 with offset
+0xFF_FFFF_F800 pages lands at 0x0280_07A8 with AW there, answers OKAY and leaves the source at the
+sentinel: the carry out of bit 55 is discarded
+|`CHK-ALIAS-LOWEST-REGION-WINS` |The write at 0x0200_E010 over regions 1 and 2 lands at 0x0240_E010,
+region 1's translation, with AW there, and 0x0250_E010 keeps the sentinel; with the offsets swapped
+the write at 0x0200_E020 lands at 0x0250_E020, region 1's translation again, and 0x0240_E020 keeps
+the sentinel
+|`CHK-ALIAS-EMPTY-REGION-IDENTITY` |Each write through the empty region 4, including the write at
+its `REGION_START` word, and the inverted region 6 answers OKAY, lands at its own address with AW
+there, and both offset landings keep the sentinel
 |`CHK-ALIAS-REPROGRAM-OUTSTANDING` |All twelve writes answer OKAY and each lands at the old or the
 new offset, in issue order with no new-to-old switch and at most one old-to-new switch, with the AW
 addresses equal to the memory landing; the switch point is printed, not asserted
 |`CHK-NONVAC` |The ten steps were stamped in strictly increasing time, each checker line was printed
-after its step and in order, and the access count reached its floor of 123; a control-flow invariant
+after its step and in order, and the access count reached its floor of 136; a control-flow invariant
 that catches a truncated run, not a DUT-failable compare
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits of the run (fuse sense, reset releases, SEP_IN and
 JTAG accesses, output write-count poll, group completion) with their bounds; the expiry of any
@@ -11172,11 +11182,9 @@ open case landing at one of its allowed addresses, and the 30 JTAG accesses and 
 The overlap choice, the empty-region landing and the reprogramming switch point are recorded without
 a fixed expected value. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: Where a write that hits overlapping regions 1 and 2 lands is not fixed by the
-register description, so one of three landings is required and which one, the response and the
-hit-probe level are printed without a compare. The register description fixes no behaviour for an
-empty or inverted region, so each landing is printed. It fixes no point at which a new offset takes
-effect, so the old-to-new switch point of the twelve outstanding writes is printed, not asserted.
+*Scope limit*: No document fixes the point at which a new offset takes effect, so the old-to-new
+switch point of the twelve outstanding writes is printed, not asserted. Only the JTAG initiator is
+driven through the alias remap.
 
 '''''
 
@@ -15392,8 +15400,8 @@ each AxLEN, one admitted and one blocked probe; a probe holds a term cell only w
 term as passing, or for an equal or wildcard `src_id` as failing, on that entry changes the golden
 response); the draws repeat on the same stream until one is kept. The golden of each probe is
 computed from the drawn table alone. `CHK-IFM-NO-MATCH-BLOCK`, `CHK-IFM-LOWEST-WINS`,
-`CHK-IFM-SRC-ID` and `CHK-IFM-MATCH-TERMS` grade the cells; 3 seeds per regression
-(`reseed = 3`).
+`CHK-IFM-SRC-ID`, `CHK-INB-SRCID-UPPER-BITS-IGNORED` and `CHK-IFM-MATCH-TERMS` grade the cells;
+3 seeds per regression (`reseed = 3`).
 
 *Objective*: Seeded inbound filter rule tables of 2 to 6 entries, with drawn window edges, overlaps,
 match terms, permission bits, `src_id`, AxLEN and channel, admit each SYS_IN access only through the
@@ -15417,21 +15425,18 @@ with the reset words of the entries logged as a control.
 * No match: an access that matches no entry is blocked (`fabric.adoc`, Inbound Filtering) with a
   DECERR that leaves the SPM word unchanged (`index.adoc`, Blocked Transactions).
 * Source ID: `src_id` 0 is a wildcard and a non-zero value must equal the source ID
-  (`filter_ctrl.rdl`, `src_id`); the source ID is carried in AxUSER (`fabric.adoc`, the filter
-  figure `smc-traffic-filter-diagram`, whose asset `smc-traffic-filters.svg` carries the label
-  "AxUSER[3:0] = src_id", and Output Remapping for outbound requests) and the lane is AxUSER[3:0] as
-  the figure's asset names it, the only source that states the lane; the `axi_user` field of the
+  (`filter_ctrl.rdl`, `src_id`); the source ID occupies AxUSER[3:0] and the SMC inbound filter
+  compares those four bits (`fabric.adoc`, Output Remapping; the filter figure
+  `smc-traffic-filter-diagram` labels the lane "AxUSER[3:0] = src_id"); the `axi_user` field of the
   SYS_IN items drives that lane for the compared cells.
-* Measured and logged only: the AxUSER lane that carries `src_id` is stated by the asset of the
-  figure `smc-traffic-filter-diagram` (`smc-traffic-filters.svg`, AxUSER[3:0]) only and the chapter
-  prose names no lane, so each probe on which a non-zero `src_id` entry meets every other term is
-  repeated once with a drawn non-zero value above AxUSER[3:0] (a write repeat carries the words the
-  SPM already holds) and the response is printed; the figure is the only source of the lane and the
-  question is the FABRIC bullet on the AxUSER bits above [3:0] in <<smc-vplan-phase3-unstated>>. The
-  AxUSER lane is driven through the `axi_user` field of the SYS_IN items, an existing bench hook
-  (`sys_axi_awuser` and `sys_axi_aruser` are cocotb-driven top ports of the signal list), so the
-  source-ID cells are reachable from the bench as it is; the enrolled directed tests drive the
-  SYS_IN masters with AxUSER 0, and this entry drives `axi_user` non-zero.
+* Upper AxUSER bits: because the filter compares AxUSER[3:0] only, each probe on which a non-zero
+  `src_id` entry meets every other term is repeated once with a drawn non-zero value in AxUSER[11:4]
+  above the same AxUSER[3:0] (a write repeat carries the words the SPM already holds) and must
+  answer the same response as the probe, an admitted read returning the same words. The AxUSER lane
+  is driven through the `axi_user` field of the SYS_IN items, an existing bench hook
+  (`sys_axi_awuser` and `sys_axi_aruser` are cocotb-driven top ports of the signal list); the
+  enrolled directed tests drive the SYS_IN masters with AxUSER 0, and this entry drives `axi_user`
+  non-zero.
 
 *Test Procedure*:
 
@@ -15476,8 +15481,10 @@ pinned pairs.
 through `axi_user` of the SYS_IN items, among the probes of step 2. Kind: values equal to and
 different from `src_id`, and an entry with `src_id` 0 under a non-zero value. Expected response:
 an equal value selects the entry, a different value falls through to the next match or the block,
-and `src_id` 0 matches every value; the repeats with the value above AxUSER[3:0] are printed; print
-`CHK-IFM-SRC-ID`.
+and `src_id` 0 matches every value; print `CHK-IFM-SRC-ID`. Each probe on which a non-zero
+`src_id` entry meets every other term is repeated with a drawn non-zero AxUSER[11:4] above the same
+AxUSER[3:0] and must answer the same response, an admitted read returning the same words, with at
+least one repeat of a `src_equal` probe; print `CHK-INB-SRCID-UPPER-BITS-IGNORED`.
 . Require among the probes of step 2 an admitted probe of each AxLEN 0, 1, 3, 7 and 15, a probe
 whose response turns on the granule range, on `entry_enabled`, on `allow_ns` and on `allow_burst`
 with AxLEN of one entry (treating that term as passing there changes the golden response), and a
@@ -15521,12 +15528,18 @@ entry whose window holds the address, each aimed
 at an entry whose permission bit admits the channel.
 |`CHK-IFM-SRC-ID` |A non-zero `src_id` selected the entry when AxUSER[3:0] equalled it and fell
 through when it differed, and `src_id` 0 matched a non-zero value, each cell at least once and each
-probe answering its golden; the repeats with the value above AxUSER[3:0] are printed, not compared.
+probe answering its golden.
+|`CHK-INB-SRCID-UPPER-BITS-IGNORED` |Every probe on which a non-zero `src_id` entry meets every
+other term was repeated with AxUSER[11:4] drawn in 1..0xFF above the same AxUSER[3:0], that value
+seen on `sys_axi_awuser` or `sys_axi_aruser` at the handshake; at least one repeat is of a probe
+whose answer turns on the equal `src_id` (a `src_equal` cell), and each repeat answered the same
+response as its probe, an admitted read returning the same words (`fabric.adoc` Output Remapping:
+the source ID occupies AxUSER[3:0] and the inbound filter compares those four bits).
 |`CHK-IFM-RESTORE` |Entries 0 and 1 read their first reads and the programmed entries read their
 reset words.
 |`CHK-NONVAC` |The stamps of steps 1, 2 and 7 (S1, S2, S7) are in increasing time order (steps 3
 to 6 grade the probes of step 2 with no simulation time of their own and are fenced on its stamp),
-the 5 checker lines above and the control line `CHK-IFM-RESET` were printed in step order each
+the 6 checker lines above and the control line `CHK-IFM-RESET` were printed in step order each
 after the stamp of its step, and the 48 drawn and every pinned SYS_IN probe were issued with at
 least one admitted and one blocked; a control-flow invariant, not a DUT compare.
 |`CHK-TIMEOUT-PATHS` |Reports every bounded wait with its bound (the fuse-sense wait of 200000
@@ -15535,15 +15548,15 @@ it is a printed report with no compare, each wait raising its own failure when i
 |===
 
 *Pass Criteria*: `CHK-IFM-MATCH-TERMS`, `CHK-IFM-LOWEST-WINS`, `CHK-IFM-NO-MATCH-BLOCK`,
-`CHK-IFM-SRC-ID`, `CHK-IFM-RESTORE`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed and the
-control line `CHK-IFM-RESET` is printed; every probe answers as the lowest matching entry's
-permission bit or the no-match block states, every block is a DECERR that leaves its word unchanged,
-and every admitted access returns or lands the word of its address. Enrolled in: `all`, `hosted`.
+`CHK-IFM-SRC-ID`, `CHK-INB-SRCID-UPPER-BITS-IGNORED`, `CHK-IFM-RESTORE`, `CHK-NONVAC` and
+`CHK-TIMEOUT-PATHS` are all printed and the control line `CHK-IFM-RESET` is printed; every probe
+answers as the lowest matching entry's permission bit or the no-match block states, every block is
+a DECERR that leaves its word unchanged, every admitted access returns or lands the word of its
+address, and every repeat with AxUSER[11:4] non-zero answers as its probe. Enrolled in: `all`,
+`hosted`.
 
-*Scope limit*: The hit vectors and the response of the repeats with the source ID above AxUSER[3:0]
-are printed, not compared, because the chapter prose names no AxUSER lane (the figure does; the
-FABRIC bullet of <<smc-vplan-phase3-unstated>> on the AxUSER bits above [3:0]) and no document
-states what the probe reports for overlapping entries. The `src_id` cells are driven through
+*Scope limit*: The hit vectors are printed, not compared, because no document states what the probe
+reports for overlapping entries. The `src_id` cells are driven through
 `axi_user` of the SYS_IN items; the 56-bit address leg of the directed leaves is not repeated. The
 non-zero source ID has no row in <<smc-vplan-phase3-noobs>>: the cocotb SYS_IN agent already
 carries `axi_user` (every enrolled directed test leaves it 0), and only the SV-UVM shape of
@@ -15980,15 +15993,18 @@ hit, any value other than the region's `cacheable`; for an edge or valid-clear m
 other than the `cacheable` of every region of its configuration, asserted in code, so a
 `cacheable` applied on a miss differs from the driven value); the address and AxCACHE of the reset
 probe;
-the two region indices, translated pages and `cacheable` values of the overlap leg and the region
-index and `cacheable` of the offset-sum leg. Filters, each asserted in code: the regions of a
-configuration do not overlap and leave the page before the start and the end page outside every
-other region; every source and translated page lies in the responder span outside both SMC
-apertures (0x4000_0000 and 0xC000_0000, 16 MiB each); the offset sum stays below bit 56; the
+the two region indices, translated pages, distinct `cacheable` values and the driven AxCACHE of the
+overlap leg, and the region index, source page (above every translated page and below the first
+aperture, asserted outside both apertures), translated page, `cacheable` and driven AxCACHE of the
+wrap leg. Filters, each asserted in code: the regions of a configuration do not overlap and leave the page before the start and the
+end page outside every other region; every source and translated page lies in the responder span
+outside both SMC apertures (0x4000_0000 and 0xC000_0000, 16 MiB each); the offset sum of a
+configuration's region stays below bit 56 and the wrap leg's offset sum reaches 2^44; the
 translated range lies above the source range. `CHK-ALR-HIT-TRANSLATE` and `CHK-ALR-HIT-CACHE`
 grade the drawn regions and hit probes, `CHK-ALR-EDGE-MISS` and `CHK-ALR-VALID-CLEAR` the drawn
-miss probes and `CHK-ALR-RESET-TRANSPARENT` the drawn reset probe, each PASS line carrying the
-drawn cells; 3 seeds per regression (`reseed = 3`).
+miss probes, `CHK-ALR-RESET-TRANSPARENT` the drawn reset probe, `CHK-ALR-LOWEST-REGION-WINS` the
+drawn overlap pair and `CHK-ALR-OFFSET-WRAPS-AT-BIT55` the drawn wrap pair, each PASS line carrying
+the drawn cells; 3 seeds per regression (`reseed = 3`).
 
 *Objective*: Seeded alias remap regions, with a drawn region index, start page, page count, offset
 and `cacheable` value, translate every JTAG access inside the region by the offset with the low 12
@@ -16015,11 +16031,13 @@ control.
   1-byte accesses at that byte, the others 8-byte accesses.
 * Valid clear: a region programmed over the drawn range with `valid` clear does not remap
   (`alias_remap.rdl`, `valid`).
-* Measured and logged only: which of two overlapping valid regions wins (the question is in
-  <<smc-vplan-phase3-blocked-legs>>, the row on overlapping alias regions 1 and 2), and the address
-  that an offset sum carrying past bit 55 reaches, whose row is in <<smc-vplan-phase3-blocked-legs>>
-  as well; the leaf programs each case once, prints the address that reaches the responder, and
-  compares nothing.
+* Overlap: when more than one valid region contains an address, the lowest-numbered region applies
+  (`fabric.adoc`, Alias Remapping); two drawn regions over one page with distinct offsets and
+  `cacheable` values translate the pair by the lower-numbered region's offset with its `cacheable`,
+  and the other region's landing keeps its sentinel.
+* Wrap: the offset is added to bits [55:12] modulo 2^44 and a carry out of bit 55 is discarded
+  (`fabric.adoc`, Alias Remapping); a drawn region whose source page plus offset equals 2^44 plus
+  a drawn destination page translates the pair to that destination page.
 
 *Test Procedure*:
 
@@ -16041,10 +16059,13 @@ there.
 the last byte of the last page; require the handshake at the translated address with `cacheable` as
 AxCACHE, the low 12 bits equal to the driven ones, the word landed and returned there and the
 source address keeping its sentinel. Steps 3 to 5 run once per configuration.
-. Measured legs: program two overlapping valid regions, then an offset whose sum carries past bit
-55; issue one JTAG write and read for each and print the response and the handshake address and
-AxCACHE.
-. Write the reset words back to every programmed region and read them back; require 50 JTAG accesses
+. Program the two drawn overlapping regions, seed the higher-numbered region's landing with the
+sentinel, JTAG write and read one word in the shared page; require the handshake at the
+lower-numbered region's translation with its `cacheable` as AxCACHE, the word landed and returned
+there, and the other landing at the sentinel. Clear them, program the drawn wrap region, JTAG write
+and read one word in it; require the handshake at the drawn destination page with bits [11:0] kept
+and `cacheable` as AxCACHE, the word landed and returned there.
+. Write the reset words back to every programmed region and read them back; require 54 JTAG accesses
 in the compared legs; print `CHK-TIMEOUT-PATHS`, then run the fence that prints `CHK-NONVAC`.
 
 *Checkers*:
@@ -16071,11 +16092,15 @@ page pass unchanged with the driven AxCACHE, drawn different from every region's
 word landed and returned at the input address.
 |`CHK-ALR-VALID-CLEAR` |A region programmed with `valid` clear leaves its range untranslated with
 the driven AxCACHE, drawn different from every region's `cacheable`.
-|`CHK-ALR-LOGGED` |The overlap leg and the offset-sum leg each completed within the guard and
-printed one line with the response, the handshake address and AxCACHE; nothing is compared.
+|`CHK-ALR-LOWEST-REGION-WINS` |The pair in the page two drawn valid regions share reaches the
+responder at the lower-numbered region's translation with its `cacheable` as AxCACHE, the word lands
+and returns there, and the higher-numbered region's landing keeps its sentinel.
+|`CHK-ALR-OFFSET-WRAPS-AT-BIT55` |The pair through the drawn wrap region, whose source page plus
+offset is 2^44 plus the drawn destination page, reaches the responder at that destination page with
+bits [11:0] kept and `cacheable` as AxCACHE, and the word lands and returns there.
 |`CHK-NONVAC` |The step stamps (S1, S2, S3 to S5 once per configuration, S6, S7) are in increasing
-time order, the 6 checker lines above and the control line `CHK-ALR-RESET-WORDS` were printed in
-step order each after the last stamp of its own step, and 50 JTAG accesses were issued in the
+time order, the 7 checker lines above and the control line `CHK-ALR-RESET-WORDS` were printed in
+step order each after the last stamp of its own step, and 54 JTAG accesses were issued in the
 compared legs with at least one hit and one miss among them and at least one hit expecting AxCACHE
 0; a control-flow invariant, not a DUT compare.
 |`CHK-TIMEOUT-PATHS` |Reports every bounded wait with its bound (the fuse-sense wait of 200000
@@ -16084,15 +16109,15 @@ is a printed report with no compare, each wait raising its own failure when its 
 |===
 
 *Pass Criteria*: `CHK-ALR-RESET-TRANSPARENT`, `CHK-ALR-HIT-TRANSLATE`, `CHK-ALR-HIT-CACHE`,
-`CHK-ALR-EDGE-MISS`, `CHK-ALR-VALID-CLEAR`, `CHK-ALR-LOGGED`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS`
-are all printed and the control line `CHK-ALR-RESET-WORDS` is printed; every hit is translated by
-the drawn offset with its low 12 bits kept and carries `cacheable` as AxCACHE, and every edge miss,
-valid-clear and reset access passes unchanged with its driven AxCACHE. Enrolled in: `all`,
-`hosted`.
+`CHK-ALR-EDGE-MISS`, `CHK-ALR-VALID-CLEAR`, `CHK-ALR-LOWEST-REGION-WINS`,
+`CHK-ALR-OFFSET-WRAPS-AT-BIT55`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed and the
+control line `CHK-ALR-RESET-WORDS` is printed; every hit is translated by the drawn offset with its
+low 12 bits kept and carries `cacheable` as AxCACHE, every edge miss, valid-clear and reset access
+passes unchanged with its driven AxCACHE, the overlap pair lands through the lower-numbered region
+and the wrap pair lands at the destination page modulo 2^44. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Only the JTAG initiator is driven; the other three initiators share the table but are
-not driven here. The overlap priority of two valid regions and the offset sum past bit 55 are
-printed, not compared, because no document states either. The firmware register-attribute cells of
+not driven here. The firmware register-attribute cells of
 `smc_alias_remap_region_attrs_test` and the output remaps of `smc_xvisor_remap_test` are not
 repeated. This entry consolidates the cells of `smc_alias_remap_region_attrs_test`, which stays
 enrolled.
@@ -48163,7 +48188,7 @@ with each of the eight CRC codes and exactly one of them must be accepted.
 
 *Source Module*: `smc_output_remap_window_test`
 
-*BFM / Model*: ocah_axi_vip (AXI, SEP_IN for the remap registers and JTAG ingress for the traffic); the SYS_OUT responder's memory; a passive sampler of the `u_output_axi_if` AW / AR / W / B / R handshakes and the JTAG B / R handshakes
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN for the remap registers and JTAG ingress for the traffic); the SYS_OUT responder's memory; a passive sampler of the `u_output_axi_if` AW / AR / W / B / R handshakes and the JTAG AW / AR / W (AxUSER, WUSER) and B / R handshakes
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
@@ -48179,7 +48204,7 @@ draws nothing from the seed.
 * `output_remap.rdl`: when an entry's `valid` bit is set, its `offset` replaces the upper bits of the address; the entry is selected by the access's 1 MB slot within its window, and the low 20 bits are kept. When `valid` is clear the address passes through unchanged. The leaf programs M-mode entries 0 and 1 and hypervisor entry 0 with distinct offsets in SYS_OUT memory and `valid` set, and M-mode entry 2 with an offset and `valid` clear, reading each entry's reset first.
 * Seven words go out over the JTAG ingress: through the M-mode window's local copy in slots 0, 1 and 2 and its global copy, through the hypervisor window's local and global copies, and to one address just past the hypervisor window. Each must land in the responder's memory at the address the entry predicts, and the window address itself must keep its sentinel. The slot-2 word and the address past the window must land unremapped, and entry 2's offset target must keep its sentinel. Each word must read back through the same window. The entries are restored and read back.
 
-* **Source-ID matching in the outbound filter.** `fabric.adoc` ("SMC Source ID by Traffic Path", and the output-fabric figure `assets/smc-output-fabric.svg`) has the M-mode output remap set the AxUSER source ID to `MMODE_ID` (0xC) and the Xvisor remap set it to `OTHER_ID` (0); the leaf carries both values as its own constants. `filter_ctrl.rdl` makes a `src_id` of 0 the wildcard, so only `MMODE_ID` can be matched.
+* **Source-ID matching in the outbound filter.** `fabric.adoc` (Output Remapping and the table "SMC Source ID by Traffic Path") has the M-mode output remap set the AxUSER source ID to `MMODE_ID` (0xC), the Xvisor remap set it to `OTHER_ID` (0x0) and the direct path leave with `SMC_ID` (0x3). `filter_ctrl.rdl` makes a `src_id` of 0 the wildcard, so only `MMODE_ID` and `SMC_ID` can be matched.
 ** While the words go out, outbound filter entry 0 allows reads and writes to the M-mode targets for source `MMODE_ID`.
 ** Entry 1 covers the hypervisor target for the same source and allows nothing. The hypervisor words must still land, which they can only do if entry 1 does not match `OTHER_ID`.
 ** Entry 0 is then re-armed to deny the M-mode targets for `MMODE_ID` and one more M-mode word is written through the window: it must be refused with DECERR (`fabric.adoc`: a matching deny entry routes the transaction to an error slave that returns a decode error) and its SYS_OUT target must keep its sentinel, which only a path carrying exactly `MMODE_ID` does.
@@ -48187,14 +48212,14 @@ draws nothing from the seed.
 * **Every region's valid bit.** Each of the eight M-mode and eight Xvisor `region_attrs` registers is read at its reset (`valid` 0), written with `valid` set and a distinct 1 MB-aligned offset, and read back. With the region valid, a word through slot r of the window's local copy must land at the offset's bits [55:20] (`output_remap.adoc`: 36 MSBs for 8 x 1 MB regions) with the request's low 20 bits and leave the request address alone. The region is rewritten with the same offset and `valid` clear and read back; a second word at the same window address must land at the request address and leave the first word at the remapped address. Every word reads back through the window.
 * **Partial-lane writes.** Each region is written with WSTRB=0x0F (offset [31:0] on the enabled lanes, `valid` set on the disabled top lane), then with WSTRB=0x80 (`valid` set, another offset on the disabled lanes), and read back after each write. Whether a write honours its strobes is not stated (SF-027): both readbacks are logged, not compared. One word through slot r must then land where the second readback's `valid` and offset put it, and nowhere else.
 * **Alias cacheable field.** Each of the eight alias remap regions (`alias_remap.adoc`: `cacheable` 59:56, `offset` 55:12, `valid` 63) is read at its reset, written with `cacheable` 0xF and a distinct offset, then with `cacheable` 0x0 and the same offset, `valid` clear, and read back exactly after each write.
-* **Region addresses and source ID on output_axi.** During the valid-bit leg the AW and AR of every word are captured on `output_axi`: with the region valid both must carry `{offset[55:20], request[19:0]}`, and with it clear the request address (`fabric.adoc`: eight 1 MiB regions, valid clear passes the address unchanged). The AWUSER and ARUSER of all 32 words are logged per window and valid state, since `MMODE_ID`, `OTHER_ID` and their AxUSER bit positions are not pinned (SF-006).
+* **Region addresses and source ID on output_axi.** During the valid-bit leg every word carries AxUSER 0xFFF and the AW and AR of every word are captured on `output_axi`: with the region valid both must carry `{offset[55:20], request[19:0]}`, and with it clear the request address (`fabric.adoc`: eight 1 MiB regions, valid clear passes the address unchanged); the AWUSER and ARUSER of all 32 words must equal `MMODE_ID` through the M-mode window and `OTHER_ID` through the Xvisor window, valid or clear (`fabric.adoc` Output Remapping: a request to a remap window leaves with the window's source ID, bits [11:4] zero).
 * **Outbound attributes over JTAG.** `LOCAL_BASE`, `GLOBAL_BASE` and `REGION_SIZE` are read at their reset, and `D` = 0x0280_0000 is asserted outside both apertures and both remap windows, so `fabric.adoc` sends it down the direct path untranslated. The alias regions are put back to their reset and M-mode region 0 is set valid at offset `T0` = 0x0600_0000, so `W0`, slot 0 of the M-mode window's local copy, lands at `T0`. Each write-then-read pair below must answer OKAY, read back its word, and show one AW and one AR on `output_axi` at the predicted address:
 ** an 8-byte single beat at `D`, with AW and AR address `D`;
 ** INCR bursts of 1, 2, 4, 8 and 16 beats at `D` + 0x100k, each with one OKAY BRESP and every beat read back with RRESP OKAY and RLAST on the last beat only (31 beats). The output AxLEN and beat counts are logged (SF-010);
 ** AxPROT 0..7 at `D` and `W0`: AWPROT and ARPROT on `output_axi` must equal the value issued (`fabric.adoc`: AxPROT passes unchanged);
 ** AxCACHE 0xF down to 0x0 at `D` and `W0`, with no alias region valid: AWCACHE and ARCACHE must equal the value issued (`fabric.adoc`: a transaction that hits no alias region keeps its initiator's AxCACHE);
 ** AxQOS 0xF then 0, AxREGION 0xF then 0 and AxLOCK 0 at `D` and `W0`, plus an exclusive read then exclusive write of one word. The output AxQOS, AxREGION and AxLOCK and the exclusive responses and readback are logged (SF-008);
-** AWUSER / ARUSER 0xFFF then 0, and WUSER 0xFFF then 0, at `D` and `W0`. The output AxUSER and WUSER are logged (SF-006, SF-007);
+** AWUSER / ARUSER 0xFFF then 0, and WUSER 0xFFF then 0, at `D` and `W0`. The output AWUSER, ARUSER and WUSER must all equal `SMC_ID` at `D` and `MMODE_ID` at `W0` (`fabric.adoc` Output Remapping: each path replaces the whole AWUSER, ARUSER and WUSER with its source ID, so bits [11:4] leave as zero);
 ** AWID / ARID 0..3 at `D`, each answered with its own BID / RID, then four writes and four reads with IDs 0..3 outstanding at once, each completing with its own ID and word. The output AWID / ARID are logged with bits 3 and 7 (SF-009).
 * Every M-mode, Xvisor and alias region is restored to its reset and read back, and both filter entries are read at their reset.
 
@@ -48211,7 +48236,7 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 |`CHK-ORMP-VALID-MMODE` |Each of the eight M-mode regions read `valid` 0 at reset, `valid` 1 with its offset after the set, and `valid` 0 with the same offset after the clear (exact)
 |`CHK-ORMP-VALID-XVISOR` |The same for the eight Xvisor regions
 |`CHK-ORMP-VALID-ROUTE` |For all sixteen regions, the word sent while valid landed at the remapped address with the request address untouched and AW and AR on `output_axi` at `{offset[55:20], request[19:0]}`, the word sent once cleared landed at the request address with AW and AR at the request address and the first word kept at the remapped address, and both read back through the window
-|`CHK-OUT-SRCID` |The AWUSER and ARUSER of all 32 region words were captured without X and logged per window and valid state (64 values; LINKED-ISSUE SF-006)
+|`CHK-OUT-SRCID` |The AWUSER and ARUSER of all 32 region words, driven with AxUSER 0xFFF and seen as 0xFFF at the JTAG ingress AW and AR, were captured without X and equal `MMODE_ID` 0x00C through the M-mode window and `OTHER_ID` 0x000 through the Xvisor window, valid and clear alike (64 compares)
 |`CHK-ORMP-WSTRB` |For all sixteen regions, the readbacks after the WSTRB=0x0F and WSTRB=0x80 writes are logged (LINKED-ISSUE SF-027), and the word through slot r landed where the second readback's `valid` and offset put it and nowhere else
 |`CHK-ALIAS-CACHEABLE` |Each of the eight alias regions read `cacheable` 0xF after the first write and 0x0 after the second, with offset and `valid` as written (exact)
 |`CHK-OUT-DIRECT-RW` |The 8-byte write and read at `D` answered OKAY, AW and AR on `output_axi` carried `D`, and the read returned the word written
@@ -48219,7 +48244,7 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 |`CHK-OUT-PROT` |For AxPROT 0..7 at `D` and `W0`, AWPROT and ARPROT on `output_axi` equalled the value issued (32 compares), and every pair read back its word with OKAY
 |`CHK-OUT-CACHE` |For AxCACHE 0xF..0x0 at `D` and `W0` with no alias region valid, AWCACHE and ARCACHE on `output_axi` equalled the value issued (64 compares), and every pair read back its word with OKAY
 |`CHK-OUT-QRL` |The ten AxQOS, AxREGION and AxLOCK = 0 pairs read back their words with OKAY; output AxQOS / AxREGION / AxLOCK and the exclusive pair's responses and readback logged (LINKED-ISSUE SF-008)
-|`CHK-OUT-USER` |The eight AxUSER and WUSER pairs read back their words with OKAY; output AWUSER / ARUSER / WUSER logged per path (LINKED-ISSUE SF-006, SF-007)
+|`CHK-AXUSER-WHOLE-REPLACED` |The eight AxUSER and WUSER pairs read back their words with OKAY, the JTAG ingress AW, AR and W carried the driven AxUSER / WUSER, and the output AWUSER, ARUSER and WUSER of every pair equal `SMC_ID` 0x003 at `D` and `MMODE_ID` 0x00C at `W0` for the driven values 0xFFF and 0 alike (24 compares)
 |`CHK-OUT-ID` |Each of IDs 0..3 was answered with its own BID and RID and read back its word; four outstanding writes and four outstanding reads completed with one OKAY response per ID and each read returned its own word; output AWID / ARID logged (LINKED-ISSUE SF-009)
 |`CHK-NONVAC` |Ordered fence SETUP < EXISTING < MMODE_VALID < XVISOR_VALID < EVERY-REGION < MMODE_WSTRB < XVISOR_WSTRB < ALIAS_CACHEABLE < ATTR-SETUP < DIRECT < BURST < PROT < CACHE < QRL < USER < ID < RESTORED, each term with a non-zero count and a later sim time than the one before
 |`CHK-TIMEOUT-PATHS` |Every SEP_IN and JTAG access and each outstanding group is bounded by the cfg AXI bound, whose expiry fails the run with the access; the counts and last state are logged and none expired
@@ -51173,14 +51198,6 @@ the leg is graded only on a four-state simulator.
 |Whether the fields written together with the lock bit are applied. Source: `hw/ip/axi_filter/regs/filter_ctrl.rdl` (`locked`); `hw/ip/axi_filter/doc/index.adoc` (Locking a Filter Entry).
 |`smc_filter_lock_scope_test` requires the two `FILTER_CONFIG` reads to agree and bit 63 to be set exactly when the write answered `OKAY`, and logs the response and the two reads.
 |<<smc-vplan-area-fabric,FABRIC>>
-|An access through a clear (`valid` 0) output remap region.
-|Which source ID the access carries. Source: `hw/ip/output_remap/regs/output_remap.rdl` (`REGION_ATTRS.valid`).
-|`smc_outremap_prot_srcid_test` logs `awuser` and `aruser` of the region 4 access beside the direct and M-mode values without comparing them.
-|<<smc-vplan-area-fabric,FABRIC>>
-|A write that hits overlapping alias regions 1 and 2.
-|Which region wins. Source: `hw/ip/axi_alias_remap/regs/alias_remap.rdl` (`REGION`, `REGION_ATTRS.valid`).
-|`smc_alias_remap_translate_test` requires one of the three possible landings and logs which, the response and the hit-probe level.
-|<<smc-vplan-area-fabric,FABRIC>>
 |The first address past the SHIM range of the external window.
 |Which block answers it. Source: `hw/sys/smc/doc/memmap.adoc` (AXI-Lite External Window).
 |`smc_ext_window_routing_test` requires the eFuse activity probe to stay low and logs the response, the data and whether an external request appeared.
@@ -51345,10 +51362,6 @@ burst with the watchdog warm reset and asserts the drain reading under `expect_f
 |The end of the probe-ID run that survives a telemetry buffer overflow.
 |Which end of the run survives when the message buffer is filled past full. Source: `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl` (`STATUS.BUFFER_FULL`); `hw/ip/telemetry_receiver/doc/architecture.adoc` (Message Queue and Readout).
 |`smc_telemetry_buffer_overflow_test` requires the drain to return exactly the depth's worth as one in-order run and logs which end survived.
-|<<smc-vplan-area-fabric,FABRIC>>
-|An alias-remap offset whose sum with the input page carries past bit 55.
-|The specification does not state the address such an access leaves at. Source: `hw/ip/axi_alias_remap/regs/alias_remap.rdl` (`REGION_ATTRS.offset`, "added to bits [55:12] of the input address" with no carry or wrap rule); `hw/sys/smc/doc/fabric.adoc` (Alias Remapping).
-|`smc_alias_remap_attr_rand_test` programs one such cell, prints the address that reaches the responder and compares nothing.
 |===
 
 [[smc-vplan-phase3-unstated]]
@@ -51379,11 +51392,6 @@ that records the value.
 
 * A unit whose aperture crosses `BASE + REGION_SIZE`: `hw/sys/smc/doc/memmap.adoc` states that the inbound port reaches a unit only while its whole aperture lies below the boundary, and no enrolled test places the boundary inside an aperture. `smc_region_gated_units_decode_test` and `smc_region_zero_reset_recovery_test` grade units wholly below or wholly above it.
 * The reset state of the sixteen inbound filter entries: `hw/sys/smc/doc/fabric.adoc` (Inbound Filtering) leaves the default to the chiplet integration and `hw/ip/axi_filter/regs/filter_ctrl.rdl` resets every entry disabled. `smc_sys_axi_in_port_test` issues its pre-admit SYS_IN read with the error response tolerated and logs the response.
-* The AxUSER bits above [3:0] of a SYS_IN access: `hw/sys/smc/doc/fabric.adoc` (Inbound Filtering)
-  names no lane for the source ID, and the asset of the filter figure `smc-traffic-filter-diagram`
-  (`smc-traffic-filters.svg`) names AxUSER[3:0] as `src_id`. `smc_infilt_rule_matrix_rand_test`
-  repeats each probe on which a non-zero `src_id` entry meets every other term with a value above
-  AxUSER[3:0] and prints the response without comparing it.
 
 <<smc-vplan-area-efuse,EFUSE>>:
 
