@@ -29,8 +29,10 @@
 // and requires its sw=r field bits unchanged (CHK-SEP-TEST-CTRL-RO); this
 // sequence reads SEP_TEST_CTRL with a response check only and never writes it.
 // The twin also observes the PR-EXT and PR-OUT taps (CTRL-EXT-DEMUX-PORT,
-// CTRL-EXT-DEMUX-SHIM, CTRL-FABRIC-WALK-LOCAL); this sequence grades the
-// response class of the boundary words and walked reads only.
+// CTRL-EXT-DEMUX-SHIM, CTRL-FABRIC-WALK-LOCAL, CTRL-CPU-CTRL-HOLE-LOCAL); this
+// sequence grades the response class of the boundary words, the response of
+// each walked read and the hole accesses, and the value of the walked rows
+// whose register has a non-zero RDL reset.
 
 class sep_address_map_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_address_map_test_seq)

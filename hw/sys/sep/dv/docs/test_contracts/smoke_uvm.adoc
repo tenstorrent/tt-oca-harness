@@ -592,7 +592,8 @@ response of each sweep access. Adds `+SEP_RANDOM_COUNT`
 seeded random patterns per storage register, a readback after each restore,
 and a read of `0x10A3_0170` after the hole write that must return zero. The
 scoreboard check CHK-SB-CPU-CTRL-CSR is required. The PR-EXT and PR-OUT tap
-checks (CTRL-EXT-DEMUX-PORT, CTRL-EXT-DEMUX-SHIM, CTRL-FABRIC-WALK-LOCAL) and
+checks (CTRL-EXT-DEMUX-PORT, CTRL-EXT-DEMUX-SHIM, CTRL-FABRIC-WALK-LOCAL,
+CTRL-CPU-CTRL-HOLE-LOCAL) and
 the `SEP_TEST_CTRL` write check (CHK-SEP-TEST-CTRL-RO) run on cocotb only. The
 SV sequence grades the response class of the eFuse-shim boundary words, the
 response of each walked read and, for the rows whose register has a non-zero

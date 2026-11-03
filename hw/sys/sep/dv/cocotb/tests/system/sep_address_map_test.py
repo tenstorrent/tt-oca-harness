@@ -248,6 +248,12 @@ class sep_address_map_test(sep_base_test):
             "dead, so the no-alias check below would hold for the wrong reason"
         )
 
+        # The bench outbound responder also answers OKAY with zero, so the hole
+        # accesses must not leave SEP: the PR-OUT and PR-EXT taps record no AR or
+        # AW while they run (CTRL-CPU-CTRL-HOLE-LOCAL).
+        hole_out = SepFabricTap("PR-OUT").start()
+        hole_ext = SepFabricTap("PR-EXT").start()
+        hole_out_mark, hole_ext_mark = hole_out.mark(), hole_ext.mark()
         hole_reads: list[str] = []
         for addr in CPU_CTRL_INTERIOR_HOLES:
             hole = await self._access(SepAxiOp.READ, addr)
@@ -257,8 +263,8 @@ class sep_address_map_test(sep_base_test):
             )
             assert hole.resp_code == RESP_OKAY, (
                 f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} resp={hole.resp_code}, "
-                "expected OKAY -- memory_map.adoc says a unit accepts an offset "
-                "inside its extent that owns no register"
+                "expected OKAY -- doc/trm/src/memory_map.adoc: an offset between "
+                "the registers of a register block answers OKAY"
             )
             got = hole.rdata & MASK32
             assert got == 0, (
@@ -273,9 +279,22 @@ class sep_address_map_test(sep_base_test):
         assert not wr.timed_out, f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} timed out"
         assert wr.resp_code == RESP_OKAY, (
             f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} resp={wr.resp_code}, "
-            "expected OKAY -- memory_map.adoc says a unit accepts an offset "
-            "inside its extent that owns no register"
+            "expected OKAY -- doc/trm/src/memory_map.adoc: an offset between "
+            "the registers of a register block answers OKAY"
         )
+        left = hole_out.since(hole_out_mark) + hole_ext.since(hole_ext_mark)
+        hole_out.check_life(hole_out_mark)
+        hole_ext.check_life(hole_ext_mark)
+        await hole_out.stop()
+        await hole_ext.stop()
+        local = (
+            f"reads={len(CPU_CTRL_INTERIOR_HOLES)} write=0x{named:08x} "
+            f"pr_out={[(b.ch, b.fields.get('addr')) for b in hole_out.since(hole_out_mark)]} "
+            f"pr_ext={[(b.ch, b.fields.get('addr')) for b in hole_ext.since(hole_ext_mark)]}"
+        )
+        if left:
+            raise AssertionError(f"CTRL-MISSING CPU-CTRL-HOLE-LOCAL: {local}")
+        self.logger.info("CTRL-CPU-CTRL-HOLE-LOCAL: %s expect no AR/AW", local)
         sw_after = (await self._access(SepAxiOp.READ, sw_addr)).rdata & MASK32
         assert sw_after == probe, (
             f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} changed SEP_SW_DEBUG "
