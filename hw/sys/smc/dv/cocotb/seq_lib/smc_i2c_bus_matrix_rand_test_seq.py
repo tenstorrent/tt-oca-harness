@@ -3,7 +3,7 @@
 """Seeded I2C bus matrix on the shared three-instance bus.
 
 Sources: hw/ip/i2c/regs/i2c.rdl (CTRL, TARGET_ID, TARGET_ACK_CTRL, STATUS, FDATA, RDATA, ACQDATA,
-CONTROLLER_EVENTS, FIFO_CTRL).
+CONTROLLER_EVENTS, FIFO_CTRL) and hw/ip/i2c/regs/i2c_ctrl.rdl (I2C_CTRL).
 
 `+smc_i2c_shared_bus` joins I2C0, I2C1 and I2C2 on one open-drain bus that the bench observes on
 the I2C0 pads. The seed draws the target address pair, the target instance of the address and
@@ -52,8 +52,10 @@ from .smc_i2c_field_masks import (
     I2C_STATUS_HOSTIDLE,
     I2C_STATUS_RXEMPTY,
     I2C_TARGET_ACK_CTRL_NACK,
+    I2C_WRAP_CONTROLLER_MODE,
     I2C_WRAP_CTRL_HOST,
     I2C_WRAP_CTRL_TARGET,
+    I2C_WRAP_EN,
     acq_abyte,
     acq_signal,
 )
@@ -85,6 +87,18 @@ CTRL_ACK_CONTROL = CTRL_TARGET | I2C_CTRL_ACK_CTRL_EN
 ROLE_CELLS = (("CTRL 0", 0, 1), ("ENABLEHOST", I2C_CTRL_ENABLEHOST, 1), ("ENABLETARGET", None, 0))
 # i2c.rdl CTRL: ENABLEHOST and ENABLETARGET are sw=rw and select the operating mode.
 CTRL_ROLE = I2C_CTRL_ENABLEHOST | I2C_CTRL_ENABLETARGET
+CTRL_TARGET_FIELDS = CTRL_ROLE | I2C_CTRL_ACQ_START_STOP_EN
+# i2c.rdl TARGET_ID: ADDRESS0, MASK0, ADDRESS1 and MASK1 are sw=rw.
+TARGET_ID_FIELDS = (
+    _i2c_u32("I2C__TARGET_ID__ADDRESS0_bm")
+    | _i2c_u32("I2C__TARGET_ID__MASK0_bm")
+    | _i2c_u32("I2C__TARGET_ID__ADDRESS1_bm")
+    | _i2c_u32("I2C__TARGET_ID__MASK1_bm")
+)
+# i2c_ctrl.rdl I2C_CTRL: I2C_EN and I2C_CONTROLLER_MODE_EN are sw=rw.
+WRAP_MODE_FIELDS = I2C_WRAP_EN | I2C_WRAP_CONTROLLER_MODE
+RDATA_DATA = _i2c_u32("I2C__RDATA__DATA_bm")
+RDATA_DATA_POS = _i2c_u32("I2C__RDATA__DATA_bp")
 # Bench write target of the NACK leg; the drawn addresses exclude it.
 BENCH_NACK_ADDR = 0x12
 # 7-bit addresses outside the reserved 0x00-0x07 and 0x78-0x7F groups.
@@ -278,6 +292,24 @@ class smc_i2c_bus_matrix_rand_test_seq(SmcCsrSeq):
         await self.csr_write(f"{label}_TGT{idx}_TARGET_ID", _reg("TARGET_ID", idx), target_id)
         await self.csr_write(f"{label}_TGT{idx}_FIFO", _reg("FIFO_CTRL", idx), FIFO_ALL)
         await self.csr_write(f"{label}_TGT{idx}_CTRL", _reg("CTRL", idx), ctrl)
+
+    async def _readback_target(self, idx: int, label: str, target_id: int) -> str:
+        """Wrapper mode, TARGET_ID and CTRL of a ``CTRL_TARGET`` instance, required as written."""
+        wrap = await self.csr_read(f"{label}_TGT{idx}_WRAP_RB", _wrap(idx))
+        tid = await self.csr_read(f"{label}_TGT{idx}_TARGET_ID_RB", _reg("TARGET_ID", idx))
+        ctrl = await self.csr_read(f"{label}_TGT{idx}_CTRL_RB", _reg("CTRL", idx))
+        assert wrap & WRAP_MODE_FIELDS == I2C_WRAP_CTRL_TARGET, (
+            f"{label}: I2C{idx} wrapper I2C_CTRL readback 0x{wrap:08x}, mode bits "
+            f"0x{wrap & WRAP_MODE_FIELDS:x} != written 0x{I2C_WRAP_CTRL_TARGET:x}"
+        )
+        assert tid & TARGET_ID_FIELDS == target_id, (
+            f"{label}: I2C{idx} TARGET_ID readback 0x{tid:08x} != written 0x{target_id:08x}"
+        )
+        assert ctrl & CTRL_TARGET_FIELDS == CTRL_TARGET, (
+            f"{label}: I2C{idx} CTRL readback 0x{ctrl:08x}, ENABLEHOST/ENABLETARGET/"
+            f"ACQ_START_STOP_EN 0x{ctrl & CTRL_TARGET_FIELDS:x} != written 0x{CTRL_TARGET:x}"
+        )
+        return f"readback I2C_CTRL 0x{wrap:08x} TARGET_ID 0x{tid:08x} CTRL 0x{ctrl:08x}"
 
     async def _enable_controller(self, idx: int, label: str) -> None:
         await self._disable(idx, label)
@@ -539,9 +571,9 @@ class smc_i2c_bus_matrix_rand_test_seq(SmcCsrSeq):
         a = d["a0"]
         await self._disable_all(label)
         await self._enable_target(t, label, _pack_target_id(a, FULL_MASK, 0, 0))
-        await self._enable_target(
-            bystander, f"{label}_BY", _pack_target_id(d["a1"], FULL_MASK, 0, 0)
-        )
+        by_id = _pack_target_id(d["a1"], FULL_MASK, 0, 0)
+        await self._enable_target(bystander, f"{label}_BY", by_id)
+        by_rb = await self._readback_target(bystander, f"{label}_BY", by_id)
         if mix != "write":
             for i, byte in enumerate(p["tdata"]):
                 await self.csr_write(f"{label}_TXDATA{i}", _reg("TXDATA", t), byte)
@@ -584,7 +616,8 @@ class smc_i2c_bus_matrix_rand_test_seq(SmcCsrSeq):
             async def rx() -> tuple[bool, str]:
                 st = await self.csr_read(f"{label}_RX_STATUS", _reg("STATUS", c))
                 if not st & I2C_STATUS_RXEMPTY:
-                    got.append(await self.csr_read(f"{label}_RDATA", _reg("RDATA", c)) & 0xFF)
+                    rdata = await self.csr_read(f"{label}_RDATA", _reg("RDATA", c))
+                    got.append((rdata & RDATA_DATA) >> RDATA_DATA_POS)
                 return len(got) == length, f"popped=[{_hex(got)}]"
 
             await self._poll(f"{label}_rdata", RX_POLLS, RX_STEP, rx)
@@ -620,7 +653,7 @@ class smc_i2c_bus_matrix_rand_test_seq(SmcCsrSeq):
         return (
             f"P{n} I2C{c}->I2C{t} ({mix}, len {length}): wire {' '.join(str(f) for f in frames)}, "
             f"I2C{t} entries {_fmt(entries)}, bystander I2C{bystander} at 0x{d['a1']:02x} "
-            f"entries {_fmt(by_entries)}, RDATA [{_hex(got)}], events 0x{events:08x}"
+            f"{by_rb} entries {_fmt(by_entries)}, RDATA [{_hex(got)}], events 0x{events:08x}"
         )
 
     async def _s4(self) -> None:
@@ -631,7 +664,9 @@ class smc_i2c_bus_matrix_rand_test_seq(SmcCsrSeq):
             "S4",
             "CHK-IBM-PAIR",
             f"{'; '.join(rows)}; every pass acknowledged and recorded in the target instance "
-            f"only, every read returned its bytes through RDATA; pinned write and read passes, "
+            f"only, each bystander's I2C_CTRL, TARGET_ID and CTRL readback held the written "
+            f"target enable and address before its pass and its ACQDATA stayed empty, every "
+            f"read returned its bytes through RDATA; pinned write and read passes, "
             f"drawn=pairs {[(p['c'], p['t']) for p in self.d['passes']]} mixes {mixes}",
         )
 

@@ -207,6 +207,7 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
         self.windows = 0
         self.window_samples = 0
         self.pad2core_reads = 0
+        self.dir_reads = 0
         self.pads_moved: set[int] = set()
         self.done = False
 
@@ -378,20 +379,38 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
                 f"GPIO{pad}_DIR_{code:02b}", self._data_ctrl(pad), self._word(code)
             )
             rise = await self._await_oe(pad, tx, base, f"pad {pad} code {code:02b}", not tx)
+            # enable_rx_tx and interface_enable reset to 0, so core2pad_en_o alone cannot show
+            # that a code 00 or 10 write landed.
+            rb = await self.csr_read(f"GPIO{pad}_DIR_{code:02b}_RB", self._data_ctrl(pad))
+            rb_code = (rb & _RXTX_BM) >> _RXTX_BP
+            rb_if = 1 if rb & _IF_ENABLE else 0
+            assert rb_code == code and rb_if == 1, (
+                f"pad {pad}: DATA_CTRL 0x{rb:08x} after the {code:02b} write reads "
+                f"enable_rx_tx {rb_code:02b} interface_enable {rb_if}, want {code:02b} and 1"
+            )
+            self.dir_reads += 1
             await self.csr_write(f"GPIO{pad}_DIR_CLEAR", self._data_ctrl(pad), self._word(0))
             fall = await self._await_oe(pad, 0, base, f"pad {pad} field cleared", not tx)
             await self.csr_write(f"GPIO{pad}_DIR_RESET", self._data_ctrl(pad), DATA_CTRL_RESET)
+            readback = f"readback enable_rx_tx {rb_code:02b} interface_enable {rb_if}"
             if tx:
-                self.dir_log.append(f"pad {pad} {code:02b}: rose at {rise}, released at {fall}")
+                self.dir_log.append(
+                    f"pad {pad} {code:02b}: {readback}, rose at {rise}, released at {fall}"
+                )
                 self.pads_moved.add(pad)
             else:
-                self.dir_log.append(f"pad {pad} {code:02b}: 0 for {OE_BOUND} rises, twice")
+                self.dir_log.append(
+                    f"pad {pad} {code:02b}: {readback}, 0 for {OE_BOUND} rises, twice"
+                )
         self.waits.append(f"oe_follow<={OE_BOUND} clk_smc_i per write")
         assert {c["code"] for c in self.cfgs} == set(CODES)
+        assert self.dir_reads == N_CFG, f"{self.dir_reads} DATA_CTRL readbacks, want {N_CFG}"
         self._mark("S4")
         self._chk(
             "S4",
             "CHK-PADCFG-DIR",
+            f"DATA_CTRL read back after every direction write with enable_rx_tx equal to the "
+            f"written code and interface_enable 1 ({self.dir_reads} reads); "
             f"core2pad_en_o bit of the drawn pad rose for TX codes 01/11 and stayed 0 for 00/10, "
             f"released when enable_rx_tx was cleared, no other bit of tb_core2pad_en_o moved at "
             f"any sampled rise: {'; '.join(self.dir_log)}; {self._drawn()}",

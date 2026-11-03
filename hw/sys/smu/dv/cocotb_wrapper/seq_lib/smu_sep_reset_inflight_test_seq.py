@@ -51,7 +51,11 @@ S8  EARLY: 0 then 1 at gaps of 0 and 8 debug-bus operations for OTBN, AES and TR
 S9  JTAG: SW_RESET_N = 0x7F read back, then the IC_RESET sep_reset_n override with ext_in
     and a CPU egress load outstanding;
     the debug-module bring-up is repeated when the first system-bus access reports busy.
-S10 BITE: the SEP watchdog bite with ext_in and a CPU egress load outstanding; the same
+S10 BITE: the SEP watchdog bite with ext_in and a CPU egress load outstanding; the SEP SRAM
+    read is issued with RREADY held before the bite request rises, and its ext_in AR handshake
+    must precede the watchdog reset (``rst_wdt_n`` low, ``doc/trm/src/reset.adoc:44``; the SEP
+    ``wdt_rst_ni`` that resets the CPU and holds the bite request until it asserts,
+    ``hw/sys/sep/doc/port_table.adoc:25-26``) and its R handshake follow it; the same
     conditional bring-up after the bite; the status readback, the watchdog registers and the
     egress accesses after the bite are bounded observation windows.
 S11 TIMEOUT: every proof-path wait is bounded and logged with its bound, the cycles used and its
@@ -406,6 +410,7 @@ def _site_plan() -> dict[str, Counter]:
             egress_ar=1,
             responder_hold=1,
             bite_req=2,
+            reset_level=1,
             retire=1,
         ),
     }
@@ -1805,6 +1810,7 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         self._enter("BITE", "S10", "bus-fault status, watchdog bite with traffic outstanding")
         dut = self.dut
         req = hier(smu_scope(dut), "sep_wdt_timer_rst_req")
+        wdt_rst = hier(smu_scope(dut), "rst_wdt_n")
         await self._halt(jtag, "s10")
         await self._install_stub(jtag)
         for name, value in (
@@ -1856,17 +1862,25 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         bite: dict = {}
 
         async def watch() -> None:
+            bite["mark"] = self.cyc
+            # RREADY stays low from here to the fall, so the SRAM read is answered only after
+            # the watchdog reset.
+            self._r_pause(True)
+            bite["outstanding"] = {
+                "sram": self._start(write=False, local=sram, nbytes=8, ident=S10_IDS["sram"]),
+            }
             bite["rise"] = await self._wait_pin(
                 "bite_req", "rise", req, "sep_wdt_timer_rst_req", 1, BITE_RISE_BOUND
             )
             bite["sba_at_rise"] = self.sba_writes
-            self._r_pause(True)
-            bite["outstanding"] = {
-                "wscratch": self._start(
-                    write=False, local=WSCRATCH_LOCAL, nbytes=8, ident=S10_IDS["wscratch"]
-                ),
-                "sram": self._start(write=False, local=sram, nbytes=8, ident=S10_IDS["sram"]),
-            }
+            reset_edge = cocotb.start_soon(
+                self._wait_pin(
+                    "reset_level", "s10_wdt_rst", wdt_rst, "rst_wdt_n", 0, BITE_FALL_BOUND
+                )
+            )
+            bite["outstanding"]["wscratch"] = self._start(
+                write=False, local=WSCRATCH_LOCAL, nbytes=8, ident=S10_IDS["wscratch"]
+            )
             await ClockCycles(dut.clk_smu_i, BITE_DURING_GAP)
             bite["during_req"] = sample(req, "sep_wdt_timer_rst_req")
             bite["during"] = self._start(
@@ -1876,6 +1890,7 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                 "bite_req", "fall", req, "sep_wdt_timer_rst_req", 0, BITE_FALL_BOUND
             )
             bite["sba_at_fall"] = self.sba_writes
+            bite["reset"] = await reset_edge
             self._r_pause(False)
             bite["pc"] = await self._first_retire("s10_first_retire")
 
@@ -1963,23 +1978,34 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             f"({resp_name(sram_at[0])}, {_hex_lanes(sram_at[1])}) fresh=({resp_name(fw)}, "
             f"{resp_name(fr)}) egress responder=0x{held_word:08x} written=0x{egress_word:08x}"
         )
+        sram_id = S10_IDS["sram"]
+        sram_ar = self._hs_cycle(self.ar_hs, sram_id, bite["mark"])
+        sram_r = self._hs_cycle(self.r_hs, sram_id, sram_ar) if sram_ar > 0 else -1
+        sram_held = 0 < sram_ar < bite["reset"] < sram_r
+        self._log(
+            f"CTRL-SEPRST-BITE-SRAM-OUTSTANDING: arid=0x{sram_id:x} ar_hs@{sram_ar} "
+            f"rst_wdt_n_low@{bite['reset']} r_hs@{sram_r} (req rise@{bite['rise']} "
+            f"fall@{bite['fall']}) ar_before_reset={int(0 < sram_ar < bite['reset'])} "
+            f"r_after_reset={int(sram_r > bite['reset'])}"
+        )
         sram_lanes = _lanes(sram_word.to_bytes(8, "little"), 8)
         fresh_lanes = _lanes(fresh_word.to_bytes(8, "little"), 8)
         self.soft = False
         self._verdict(
             "CHK-SEPRST-BITE-INFLIGHT",
-            "CHK-SEPRST-BITE-INFLIGHT: req self-cleared; cpu restart; sram-at-bite OKAY; fresh "
-            "sram rw OKAY; status/egress OBS (#3341)",
+            "CHK-SEPRST-BITE-INFLIGHT: req self-cleared; cpu restart; sram read AR before and R "
+            "after rst_wdt_n low, OKAY with the written word; fresh sram rw OKAY; status/egress "
+            "OBS (#3341)",
             (
                 bite["sba_at_rise"] == bite["sba_at_fall"],
                 BOOT_ROM_LOCAL <= bite["pc"] < BOOT_ROM_END,
-                (sram_at[0], sram_at[1] == sram_lanes),
+                (sram_held, sram_at[0], sram_at[1] == sram_lanes),
                 (fw, fr, flanes == fresh_lanes),
             ),
             (
                 True,
                 True,
-                (RESP_OKAY, True),
+                (True, RESP_OKAY, True),
                 (RESP_OKAY, RESP_OKAY, True),
             ),
         )

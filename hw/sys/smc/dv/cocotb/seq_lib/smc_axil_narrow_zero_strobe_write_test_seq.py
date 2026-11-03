@@ -58,12 +58,14 @@ ZERO_PATTERN = 0x5A5A_5A5A_5A5A_5A5A
 STROBES = (0x0F, 0xF0, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x00)
 BASE_STROBES = (0x03, 0x0C, 0x30, 0xC0, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x00)
 
-# wdt.adoc:11-13, 87-95; wdt.h field masks are repeated here only as bit positions of
-# the documented CTRL fields.
+# wdt.adoc:11-13, 87-95.
 WDT_KEY = 0x51F15E
 WDT_FEED = 0x0D09_F00D
-WDT_CTRL_MASK = 0xF | (1 << 8) | (1 << 9) | (1 << 12) | (1 << 13)
-WDT_CTRL_AWAKE_BITS = (1 << 12) | (1 << 13)
+_WDT_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "wdt.h"
+WDT_CTRL_SCALE = reg_field_encode(_WDT_H, "WDT", "CTRL", wdogscale=0xF)
+WDT_CTRL_BYTE1_BITS = reg_field_encode(_WDT_H, "WDT", "CTRL", wdogrsten=1, wdogzerocmp=1)
+WDT_CTRL_AWAKE_BITS = reg_field_encode(_WDT_H, "WDT", "CTRL", wdogenalways=1, wdogcoreawake=1)
+WDT_CTRL_MASK = WDT_CTRL_SCALE | WDT_CTRL_BYTE1_BITS | WDT_CTRL_AWAKE_BITS
 
 _ZEROER_CTRL_H = _REPO / "hw" / "ip" / "zeroer" / "regs" / "gen" / "c" / "zeroer_ctrl.h"
 ZEROER_INT_EN = reg_field_encode(_ZEROER_CTRL_H, "ZEROER_CTRL", "CTRL_STATUS", int_en=1)
@@ -106,7 +108,7 @@ PLANNED_WRITES = {
     "MAILBOX": 6,
     "ZEROER": 5 * 11 + 3,
     "SIDE_EFFECT": 8 + 4 + 4 + 6,
-    "LOCKS": 8,
+    "LOCKS": 12,
 }
 PLANNED_OBS = {
     "OBS-PLAIN-STROBE": 13 * len(STROBES) - len(REFCNT_NOT_DRIVEN) + 10 + 2 * len(BASE_STROBES),
@@ -151,6 +153,16 @@ CHECKERS = (
 
 def _reg(path: str) -> RdlReg:
     return rdl_register(path)
+
+
+def _fmask(reg: RdlReg, *names: str) -> int:
+    by_name = {f.name: f.mask for f in reg.fields}
+    missing = [n for n in names if n not in by_name]
+    assert not missing, f"{reg.path} has no field {missing}"
+    mask = 0
+    for n in names:
+        mask |= by_name[n]
+    return mask
 
 
 def _hx(value: int) -> str:
@@ -761,7 +773,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             "SCALED_COUNT lock only on bytes0-1",
         )
         # (S4) CTRL bytes.
-        base_ctrl = ctrl0 & WDT_CTRL_MASK & ~0xF
+        base_ctrl = ctrl0 & WDT_CTRL_MASK & ~WDT_CTRL_SCALE
         await self._wdt_unlock("S4_B0")
         await self._wdt_write("B0", "CTRL", 0x0000_0003, 0x01)
         ctrl = await self._wdt_read("B0_RB", "CTRL")
@@ -769,9 +781,9 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             f"CTRL reads 0x{ctrl:x} after byte 0 of 0x3, expected wdogscale 3 and no other field"
         )
         await self._wdt_unlock("S4_B1")
-        await self._wdt_write("B1", "CTRL", 0x0000_0300, 0x02)
+        await self._wdt_write("B1", "CTRL", WDT_CTRL_BYTE1_BITS, 0x02)
         ctrl = await self._wdt_read("B1_RB", "CTRL")
-        assert ctrl & WDT_CTRL_MASK == base_ctrl | 0x3 | 0x300, (
+        assert ctrl & WDT_CTRL_MASK == base_ctrl | 0x3 | WDT_CTRL_BYTE1_BITS, (
             f"CTRL reads 0x{ctrl:x} after byte 1 of 0x300, expected wdogrsten, wdogzerocmp set "
             f"and wdogscale still 3"
         )
@@ -984,6 +996,16 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
     async def _zeroer_shape(self, label: str, wstrb: int | None, data: int, stated: bool):
         await self._zeroer_prepare(label, self.zr_region, ZEROER_BYTES)
         await self._zeroer_fill(label)
+        if stated:
+            filled = await self._zeroer_bytes(f"FILL_RB_{label}")
+            ones = sum(1 for b in filled if b == 0xFF)
+            assert ones == ZEROER_BYTES, (
+                f"zeroer {label}: destination reads {ones}/{ZEROER_BYTES} bytes 0xFF after the "
+                f"all-ones fill, so the start has no non-zero bytes to clear"
+            )
+            self.zr_filled = ones
+            idle = await self._rd(f"ZEROER_PRE_{label}", self.zr_status.addr, 8)
+            assert not idle & ZEROER_STATUS, f"zeroer {label}: STATUS[32] set before the start"
         mon = _ZeroerMonitor()
         mon.start()
         try:
@@ -1000,7 +1022,8 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         finally:
             mon.stop()
         content = await self._zeroer_bytes(label)
-        rose = 1 if (first & ZEROER_STATUS or mon.busy_seen) else 0
+        self.zr_seen = (1 if first & ZEROER_STATUS else 0, mon.busy_seen)
+        rose = 1 if any(self.zr_seen) else 0
         return resp, rose, content, mon.intp_rises
 
     async def _zeroer(self) -> None:
@@ -1010,6 +1033,10 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         self.zr_status = _reg("zeroer_ctrl/CTRL_STATUS")
         self.zr_region = LOCAL_BASE_RESET + generated_window("spm_memory")[0] + ZEROER_DEST_OFFSET
         resp, rose, content, pulses = await self._zeroer_shape("FULL", None, 0, True)
+        assert rose, (
+            "zeroer full start: neither STATUS[32] on the first poll nor the zeroer busy probe "
+            "rose after the start write, so no clear started"
+        )
         zeroed = sum(1 for b in content if b == 0)
         assert zeroed == ZEROER_BYTES, f"zeroer full start zeroed {zeroed}/{ZEROER_BYTES} bytes"
         self._obs(
@@ -1018,7 +1045,10 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             f"pulse={1 if pulses else 0}",
         )
         self._chk(
-            "CHK-ZEROER-FULL-START", f"start write 0; STATUS[32] unset; {zeroed}/64 bytes zeroed"
+            "CHK-ZEROER-FULL-START",
+            f"fill read back {self.zr_filled}/{ZEROER_BYTES} bytes 0xff; start write 0 observed "
+            f"(first STATUS[32]={self.zr_seen[0]} probe={self.zr_seen[1]}); STATUS[32] unset; "
+            f"{zeroed}/{ZEROER_BYTES} bytes zeroed",
         )
         for label, s, data in (("LO0F", 0x0F, 0), ("HI_F0", 0xF0, 0), ("ZERO00", 0x00, 0)):
             resp, rose, content, pulses = await self._zeroer_shape(label, s, data, False)
@@ -1072,7 +1102,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
     async def _side_effects(self) -> None:
         dut = cocotb.top
         clk = dut.clk_smc_i
-        smc_bit = 1
+        smc_bit = _fmask(self.iso_smc, "isolate_req_smc_reg")
         sm = self.iso_smc.addr
 
         def cool_idle(where: str) -> None:
@@ -1101,11 +1131,11 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         for data, s in keeps:
             await self._wr(f"ISO_SMC_D{data}_S{s:02X}", sm, data, 4, s)
             got = await self._rd(f"ISO_SMC_D{data}_S{s:02X}_RB", sm, 4)
-            assert got & smc_bit == 1, (
+            assert got & smc_bit == smc_bit, (
                 f"ISOLATE_REQ_SMC_REG reads 0x{got:x} after a write of {data} with wstrb "
                 f"0x{s:02x}: only a 1 on a strobed byte 0 clears it"
             )
-        await self._wr("ISO_SMC_CLEAR", sm, 1, 4, 0x01)
+        await self._wr("ISO_SMC_CLEAR", sm, smc_bit, 4, 0x01)
         got = await self._rd("ISO_SMC_CLEAR_RB", sm, 4)
         assert got & smc_bit == 0, (
             f"ISOLATE_REQ_SMC_REG reads 0x{got:x} after the byte-0 write of 1"
@@ -1124,7 +1154,14 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
 
         # (S3) RESET_CTRL start bit.
         rc = self.reset_ctrl.addr
-        start = 0x80 | 0x0F
+        core3_start = _fmask(self.reset_ctrl, "core3_reset_pulse_start_n0_scan")
+        start_bits = _fmask(
+            self.reset_ctrl,
+            *(f"core{i}_reset_pulse_start_n0_scan" for i in range(4)),
+        )
+        core_resets_n = _fmask(self.reset_ctrl, *(f"core{i}_reset_n_n0_scan" for i in range(4)))
+        uncore_n = _fmask(self.reset_ctrl, "uncore_reset_n_n0_scan")
+        start = core3_start | core_resets_n
         mon = _Core3Monitor()
         mon.start()
         try:
@@ -1150,8 +1187,8 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             )
             self._bounded.append(("core3_single", f"{PROBE_EDGES} edges", "falls=1 rises=1"))
             rb = await self._rd("RESET_CTRL_B0_RB", rc, 8)
-            assert rb & 0xF0 == 0, f"RESET_CTRL reads 0x{rb:x}: start bits must read 0"
-            assert rb & 0x100, f"RESET_CTRL reads 0x{rb:x}: the uncore bit must read 1"
+            assert rb & start_bits == 0, f"RESET_CTRL reads 0x{rb:x}: start bits must read 0"
+            assert rb & uncore_n, f"RESET_CTRL reads 0x{rb:x}: the uncore bit must read 1"
             self._obs(
                 "OBS-SIDEEFFECT-NARROW",
                 f"reg=RESET_CTRL wstrb=0x01 bresp={RESP_NAME[resp]} readback={_hx(rb)} pulse=1",
@@ -1168,13 +1205,13 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                     data = cur
                 # The core 3 start bit rides in the unstrobed byte 0, so a DUT that ignores the
                 # byte-0 strobe pulses core 3 and fails the no-pulse assert below.
-                data |= 0x80
+                data |= core3_start
                 falls0, rises0 = mon.falls, mon.rises
                 resp = await self._wr(f"RESET_CTRL_{tag}", rc, data, 8, s)
                 await ClockCycles(clk, PROBE_EDGES)
                 rb = await self._rd(f"RESET_CTRL_{tag}_RB", rc, 8)
-                assert rb & 0xF0 == 0, f"RESET_CTRL reads 0x{rb:x} after {tag}: start bits 0"
-                assert rb & 0x100, f"RESET_CTRL reads 0x{rb:x} after {tag}: uncore bit 1"
+                assert rb & start_bits == 0, f"RESET_CTRL reads 0x{rb:x} after {tag}: start bits 0"
+                assert rb & uncore_n, f"RESET_CTRL reads 0x{rb:x} after {tag}: uncore bit 1"
                 pulse = 1 if (mon.falls > falls0 or mon.rises > rises0) else 0
                 assert pulse == 0, (
                     f"core 3 reset probe moved (falls {falls0}->{mon.falls}, rises "
@@ -1189,7 +1226,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             falls0, rises0 = mon.falls, mon.rises
             final = await self._rd("RESET_CTRL_FINAL", rc, 8)
             await ClockCycles(clk, PROBE_EDGES)
-            assert final & 0xF0 == 0, f"RESET_CTRL reads 0x{final:x}: start bits must read 0"
+            assert final & start_bits == 0, f"RESET_CTRL reads 0x{final:x}: start bits must read 0"
             assert (mon.falls, mon.rises) == (falls0, rises0), (
                 f"a second core 3 pulse appeared within {PROBE_EDGES} edges of the RESET_CTRL read"
             )
@@ -1226,21 +1263,22 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
 
         # (S5) SEMA[0].
         sema = self.sema0.addr
+        sema_mask = _fmask(self.sema0, "sema")
         start_val = await self._rd("SEMA0_START", sema, 8)
-        assert start_val & 0xFFFF == 0, f"SEMA[0] reads 0x{start_val:x}, documented reset 0x0"
+        assert start_val & sema_mask == 0, f"SEMA[0] reads 0x{start_val:x}, documented reset 0x0"
         resp = await self._wr("SEMA0_P5", sema, 0x0005, 8)
         v5 = await self._rd("SEMA0_P5_RB", sema, 8)
         self._obs(
             "OBS-SIDEEFFECT-NARROW",
             f"reg=SEMA[0] wstrb=0xff bresp={RESP_NAME[resp]} readback={_hx(v5)} pulse=0",
         )
-        resp = await self._wr("SEMA0_M2", sema, 0xFFFE, 8)
+        resp = await self._wr("SEMA0_M2", sema, -2 & sema_mask, 8)
         v3 = await self._rd("SEMA0_M2_RB", sema, 8)
         self._obs(
             "OBS-SIDEEFFECT-NARROW",
             f"reg=SEMA[0] wstrb=0xff bresp={RESP_NAME[resp]} readback={_hx(v3)} pulse=0",
         )
-        assert v5 & 0xFFFF == 5 and v3 & 0xFFFF == 3, (
+        assert v5 & sema_mask == 5 and v3 & sema_mask == 3, (
             f"SEMA[0] reads 0x{v5:x} after +5 and 0x{v3:x} after -2, expected 5 then 3"
         )
         self._chk("CHK-SEMA-FULL-WRITE", "0 -> +5 reads 5 -> -2 reads 3")
@@ -1255,10 +1293,10 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                 "OBS-SIDEEFFECT-NARROW",
                 f"reg=SEMA[0] wstrb=0x{s:02x} bresp={RESP_NAME[resp]} readback={_hx(rb)} pulse=0",
             )
-        cur = (await self._rd("SEMA0_BEFORE_RESTORE", sema, 8)) & 0xFFFF
-        await self._wr("SEMA0_RESTORE", sema, (0x10000 - cur) & 0xFFFF, 8)
+        cur = (await self._rd("SEMA0_BEFORE_RESTORE", sema, 8)) & sema_mask
+        await self._wr("SEMA0_RESTORE", sema, -cur & sema_mask, 8)
         end = await self._rd("SEMA0_END", sema, 8)
-        cocotb.log.info("S10 SEMA[0] restored from 0x%x to 0x%x", cur, end & 0xFFFF)
+        cocotb.log.info("S10 SEMA[0] restored from 0x%x to 0x%x", cur, end & sema_mask)
         self._mark("SIDE_EFFECT")
 
     # ---- lock registers ------------------------------------------------------------------
@@ -1267,6 +1305,13 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         async def lock_pair(lock: RdlReg, guarded: RdlReg, name: str) -> None:
             before = await self._rd(f"{name}_GUARDED_BEFORE", guarded.addr, 4)
             assert before & 1 == 0, f"{guarded.path} reads 0x{before:x} before the lock"
+            # Unlocked, bit 0 of the guarded register takes a 1 and returns to 0.
+            for value in (before | 1, before):
+                await self._wr(f"{guarded.symbol}_UNLOCKED_{value & 1}", guarded.addr, value, 4)
+                got = await self._rd(f"{guarded.symbol}_UNLOCKED_{value & 1}_RB", guarded.addr, 4)
+                assert got & 1 == value & 1, (
+                    f"{guarded.path} reads 0x{got:x} after the unlocked write of 0x{value:x}"
+                )
             resp = await self._wr(f"{name}_SET", lock.addr, 0x1, 4, 0x01)
             lk = await self._rd(f"{name}_SET_RB", lock.addr, 4)
             assert lk & 1 == 1, f"{lock.path} reads 0x{lk:x} after the byte-0 write of 1"
@@ -1284,7 +1329,8 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         await lock_pair(self.cold_lock, self.cold_n, "SS_COLD_RESET_LOCK")
         self._chk(
             "CHK-LOCK-BIT0-MASKS-WRITES",
-            "SS_CONFIG[0] and SS_COLD_RESET_N[0] stay 0 after their lock bit 0 is set",
+            "SS_CONFIG[0] and SS_COLD_RESET_N[0] take 1 and 0 while unlocked, then stay 0 on a "
+            "write of 1 after their lock bit 0 is set",
         )
         cur_cfg = await self._rd("SS_CONFIG_BEFORE_BIT8", self.ss_cfg.addr, 4)
         for s in (0x01, 0x00):

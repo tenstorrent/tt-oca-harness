@@ -4,8 +4,9 @@
 
 Spec sources: memmap.adoc (register islands, 64-bit and 32-bit access, REGION_SIZE window);
 fabric.adoc (AXI-to-AXI-Lite conversion, 64-to-32-bit downsizer); cpu.adoc (scratchpad RAM);
-rom.adoc:9 (the boot ROM is a read-only region; its write response is unstated, so a ROM
-write is graded not OKAY with the targeted words unchanged); the generated SMC memory map and
+rom.adoc:9 (the boot ROM is a read-only region; no document states its write response, so a
+ROM write is graded on one well-formed B and the targeted words unchanged, and its BRESP is an
+observation); the generated SMC memory map and
 register descriptions (smc_base_config, alias_remap, cpu_ctrl, misc_wrap, reset_unit);
 filter_ctrl.rdl allow_burst; the AXI rules transcribed in the ocah_axi_sva header.
 
@@ -1790,15 +1791,13 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             port, "SPM_ROM_WR", rom, write=True, beats=4, wdata=_pack(words)
         )
         bresp = self._check_write(fam, ctx, port, item, hs)
-        if bresp == OKAY:
-            fam.findings.append(f"{ctx}: BRESP OKAY for a write to the read-only ROM")
         rom_after = [await self._rd(fam, "SEP_IN", "ROM_POST", rom + BEAT * i) for i in range(4)]
         fam.compares += 1
         if rom_after != rom_before or None in rom_before or None in rom_after:
             fam.findings.append(
                 f"{ctx}: ROM words {[_hx(v) for v in rom_before]} -> {[_hx(v) for v in rom_after]}"
             )
-        self._obs(fam, port=port, shape="ROM_WR", bresp=_rname(bresp), stated_bresp="not-OKAY")
+        self._obs(fam, port=port, shape="ROM_WR", bresp=_rname(bresp), stated_bresp="open")
         self._cell(fam, "S5", f"{port}/rom-wr")
         fam.bursts += 1
         n += 1
@@ -2553,8 +2552,8 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             "GPIO": f"{fam.bursts} GPIO bursts x 3 ports, protocol held, INCR data landed where "
             f"the write answers OKAY ({fam.data_compares} register compares), seeded slots "
             f"GPIO{GPIO_K - 1}..GPIO{GPIO_K + 3} unchanged outside each footprint, liveness OKAY",
-            "SPM": "INCR data match, WRAP/FIXED protocol held, strobes exact, ROM write not OKAY "
-            "with its words unchanged (BRESP in OBS-BT-SPM), liveness OKAY",
+            "SPM": "INCR data match, WRAP/FIXED protocol held, strobes exact, ROM write answers one "
+            "B with its words unchanged (BRESP in OBS-BT-SPM), liveness OKAY",
             "SLOTEDGE": f"{fam.bursts} slot-edge bursts x 3 ports, protocol held, INCR data "
             f"landed where the write answers OKAY ({fam.data_compares} register compares), "
             f"out-of-footprint slots unchanged, liveness OKAY",

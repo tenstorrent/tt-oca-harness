@@ -12309,8 +12309,7 @@ register holding its beat's value in its seeded fields; every register of the se
 (19..23) outside a write footprint keeps its reference, which no beat carries; liveness OKAY
 |`CHK-BT-SPM` |INCR: OKAY and every beat reads the data written; WRAP and FIXED: protocol held and
 the guard words outside the window or the neighbouring words kept; narrow and strobed writes change
-only the strobed bytes with OKAY; the ROM write answers one B that is not OKAY (no SMC document
-states the code; the observed BRESP is printed in `OBS-BT-SPM`) and the ROM words, which no payload
+only the strobed bytes with OKAY; the ROM write answers one B with its ID, not X and not EXOKAY (no SMC document states the code; the observed BRESP is printed in `OBS-BT-SPM`) and the ROM words, which no payload
 word equals, are unchanged; liveness OKAY
 |`CHK-BT-SLOTEDGE` |Slot-edge burst protocol; an INCR write that answers OKAY leaves each writable
 footprint register holding its beat's lane in its seeded fields; every register of slots k-1..k+2
@@ -33431,7 +33430,8 @@ response is printed and not compared here, because the window is adopter-owned a
 (`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP`) grades the error response of the window today; print
 `CHK-PADCFG-RESET` as the control line of steps 2 and 3.
 . For each drawn instance, with the bench drive released, write `DATA_CTRL` with the drawn
-`enable_rx_tx` and `interface_enable`; for the TX codes require exactly the drawn bit of
+`enable_rx_tx` and `interface_enable`, read `DATA_CTRL` back and require `enable_rx_tx` equal to the
+written code and `interface_enable` 1; for the TX codes require exactly the drawn bit of
 `tb_core2pad_en_o` to rise within 64 rises, clear the field and require it to release within 64;
 for the other codes require the bit 0 on each of 64 rises after the write and after the clear; on
 every sampled rise require no other bit to differ from the snapshot taken before the write; return
@@ -33468,11 +33468,13 @@ and `smc_gpio_intf_reset_writeback_test` (`CHK-GPIO-RESET-WRITEBACK`) grade on a
 the response and data of the GPIO_CTRL `CONTROL` address of every drawn instance are printed, not
 asserted here, beside the error response `smc_gpio_ctrl_full_sweep_test`
 (`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP`) grades.
-|`CHK-PADCFG-DIR` |For every drawn `enable_rx_tx` the `core2pad_en_o` bit of the drawn instance
-rose within 64 `clk_smc_i` rises exactly for the TX codes 01 and 11 and released within 64 when the
-field was cleared, read 0 on each of 64 rises after the write and after the clear for the codes 00
-and 10, and no other bit of `tb_core2pad_en_o` moved on any sampled rise; every seed carries the
-four codes, and the line lists each instance, code and rise count.
+|`CHK-PADCFG-DIR` |For every drawn `enable_rx_tx` the `DATA_CTRL` readback after the write
+returned `enable_rx_tx` equal to the written code and `interface_enable` 1, and the
+`core2pad_en_o` bit of the drawn instance rose within 64 `clk_smc_i` rises exactly for the TX codes
+01 and 11 and released within 64 when the field was cleared, read 0 on each of 64 rises after the
+write and after the clear for the codes 00 and 10, and no other bit of `tb_core2pad_en_o` moved on
+any sampled rise; every seed carries the four codes, and the line lists each instance, code,
+readback and rise count.
 |`CHK-PADCFG-LEVEL` |For every drawn configuration of type 0 or 1 with RX and `interrupt_enable`
 set, `tb_gpio_irq_any` read 0 at the idle level and, at the end of each level's 24-rise window, 1
 on its last 8 rises while the pad was at the type's active level and 0 after the pad returned to
@@ -39818,9 +39820,12 @@ nothing; the drawn addresses and target instance are in the PASS line.
 `CTRL` 0 and with `ENABLEHOST` alone the drawn target address was not
 acknowledged and nothing was acquired, and with `ENABLETARGET` set it was acknowledged and
 recorded.
-|`CHK-IBM-PAIR` |For every drawn ordered instance pair the transfer was acknowledged on the wire
-and recorded in the target instance's `ACQDATA` only, every written byte was acknowledged with its
-value, every read returned the target's `TXDATA` bytes through `RDATA`, and the controller's
+|`CHK-IBM-PAIR` |For every drawn ordered instance pair the third instance's wrapper `I2C_CTRL`,
+`TARGET_ID` and `CTRL` read back as written (target mode, `ADDRESS0` = the drawn `ADDRESS1` with a
+full mask, `ENABLETARGET` and `ACQ_START_STOP_EN` set, `ENABLEHOST` clear) before the pass; the
+transfer was acknowledged on the wire and recorded in the target instance's `ACQDATA` only, with no
+entry in the third instance, every written byte was acknowledged with its value, every read
+returned the target's `TXDATA` bytes through `RDATA`, and the controller's
 `CONTROLLER_EVENTS.NACK` stayed clear.
 |`CHK-IBM-NAKOK` |A NACK on the pinned non-zero and on the drawn data byte set
 `CONTROLLER_EVENTS.NACK` when `NAKOK` was clear on it, and with `NAKOK` set the transfer completed
@@ -44943,12 +44948,12 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 |`CHK-MUTEX-UPPER-READ-HELD` |The 32-bit read at +4 and the byte read at +3 return 0 and acquire; the mutex stays held until a full write, then reads 1
 |`CHK-MUTEX-RELEASE-AND-INDEPENDENCE` |A full write releases a held mutex; acquiring MUTEX[1] leaves MUTEX[0], [2] and [3] free
 |`CHK-MAILBOX-HOLE-SLVERR` |The hole word reads SLVERR with 0x0 and writes SLVERR; BASE + 0x379D0 reads DECERR with 0xBADCAB1E and writes DECERR
-|`CHK-ZEROER-FULL-START` |A full-width write of 0 starts the zeroer, STATUS bit 32 clears within the bound and 64 of 64 bytes read 0x00
+|`CHK-ZEROER-FULL-START` |With the 64-byte destination reading back 0xFF in every byte and STATUS bit 32 reading 0 before the start, a full-width write of 0 starts the zeroer (STATUS bit 32 on the first poll or the zeroer busy probe), STATUS bit 32 clears within the bound and 64 of 64 bytes read 0x00
 |`CHK-ZEROER-COMPLETION-NOT-SUCCESS` |With DEST_ADDR and SIZE reading back 0xC000_1900 and 8 and STATUS bit 32 reading 0 before the start, the start raises busy (STATUS bit 32 on the first poll or the zeroer busy probe) and STATUS bit 32 returns to 0 within the bound
 |`CHK-ISOLATE-SMC-W1C-STROBE` |ISOLATE_REQ_SMC_REG is set by the FLR edge without a timed cool reset, keeps 1 on a write of 0 and on writes of 1 with strobes 0x02, 0x04, 0x08 and 0x00, and clears on a byte 0 write of 1
 |`CHK-RESET-CTRL-START-BIT` |A byte 0 write with the core 3 start bit pulses the core 3 probe within 400 edges with no second fall or rise in the 128 edges after it, the byte 1, byte 3 and WSTRB 0x00 writes, each carrying the core 3 start bit (0x80) in the unstrobed byte 0, and the final read are followed by no pulse within 128 edges, one fall and one rise are counted over the whole RESET_CTRL step, the start bits read 0 and the uncore bit reads 1 after every write
 |`CHK-SEMA-FULL-WRITE` |SEMA[0] reads 5 after a full write of 5 and 3 after a full write of 0xFFFE
-|`CHK-LOCK-BIT0-MASKS-WRITES` |SS_CONFIG bit 0 and SS_COLD_RESET_N bit 0 stay 0 after their lock bit 0 is set
+|`CHK-LOCK-BIT0-MASKS-WRITES` |SS_CONFIG bit 0 and SS_COLD_RESET_N bit 0 read 1 then 0 after unlocked writes of 1 and 0, and stay 0 on a write of 1 after their lock bit 0 is set
 |`CHK-OBS-PLAIN-STROBE` |One observation line per register and strobe pattern of the plain, reset-unit and base-configuration steps (LINKED-ISSUE SF-012, SF-034), never compared
 |`CHK-OBS-ZERO-STROBE` |One observation line per WSTRB 0x00 target with the value before and after (LINKED-ISSUE SF-012), never compared
 |`CHK-OBS-MUTEX-NARROW-RELEASE` |One observation line per narrow release strobe 0x01, 0xF0 and 0x00 (LINKED-ISSUE SF-015), never compared

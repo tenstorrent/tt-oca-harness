@@ -2549,7 +2549,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEPRST-BITE-INFLIGHT",
             "CHK-SEPRST-BITE-INFLIGHT",
             "the bite request falls with no software write; the first retired PC is in the boot "
-            "ROM; the SEP SRAM read outstanding at the bite returns OKAY with the written word; "
+            "ROM; the SEP SRAM read issued before the bite, with its ext_in AR handshake before "
+            "rst_wdt_n asserts and its R handshake after, returns OKAY with the written word; "
             "a fresh SEP SRAM write and read after the release are OKAY with their data; the "
             "DMA / PERIPH bus-error status readback and the system-bus egress write and read "
             "after the bite are logged as OBS-SEPRST-BITE-ORPHAN lines, never compared",
