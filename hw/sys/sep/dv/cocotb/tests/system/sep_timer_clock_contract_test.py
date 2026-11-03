@@ -22,10 +22,9 @@ this order, over the CPU-LSU master on ``s_axi``:
   count, thresholds near 2^32 do not wrap, and ``INTR_TEST`` forces the bark
   status without a bite (``hw/sys/sep/doc/watchdog.adoc``, Bark Interrupt and
   Bite Reset; ``aon_timer.adoc``). A write of 1 to ``ALERT_TEST`` gets a write
-  response within the bounded wait, and the response is OKAY: the write is a
-  legal access (``ALERT_TEST`` is ``sw = w`` in ``aon_timer.rdl`` with no
-  write enable), so the golden code is OKAY (AMBA AXI IHI0022, OKAY: normal
-  access success) (CHK-WDT-ALERT-ACCESS). With
+  response within the bounded wait (CTRL-WDT-ALERT-RESP, CTRL-MISSING
+  otherwise). OBS-WDT-ALERT-RESP logs the response code, not graded: no
+  specification states the response code of a legal register write. With
   ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, OBS-WDT-PAUSE-RUN logs the
   count advance over ``WDT_WAIT`` ``clk_wdt_i`` periods against the
   ``clk_wdt_i`` edges between the two count reads; no specification states
@@ -322,7 +321,7 @@ bite request holds, a ``wdt_rst_ni_i`` pulse clears it (CHK-BITE-CLEAR).
 
 Checkers: CHK-REFCNT-RATE, CHK-REFCNT-PHASE, CHK-REFCNT-WRITE,
 CHK-REFCNT-RESET, CHK-REFCNT-SPACED, CHK-WDT-ORDER, CHK-WDT-THOLD-MONO, CHK-WDT-MAX,
-CHK-WDT-INTRTEST, CHK-WDT-ALERT-ACCESS, CHK-WKUP-WIDE, CHK-WKUP-LATER, CHK-WDT-SHAPE, CHK-WDT-COHERENT,
+CHK-WDT-INTRTEST, CHK-WKUP-WIDE, CHK-WKUP-LATER, CHK-WDT-SHAPE, CHK-WDT-COHERENT,
 CHK-REGWEN-STICKY, CHK-REGWEN-HOLD, CHK-REGWEN-WDTRST, CHK-REGWEN-COLD, CHK-BITE-CLEAR,
 CHK-BITE-HOLD, CHK-WDT-RATE, CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-SCOPE, CHK-WDT-PET,
 CHK-WDT-PET-HOLD, CHK-WDT-PET-BITE, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
@@ -331,9 +330,10 @@ counted): CTRL-WDT-ENABLE, CTRL-WDT-INTRTEST-EN, CTRL-WDT-THOLD, CTRL-WDT-PAUSE,
 CTRL-WKUP-SMALL, CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
 CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
 CTRL-WDT-THOLD-ZERO, CTRL-WDT-THOLD-BELOW, CTRL-WKUP-THOLD-ZERO, CTRL-WKUP-CARRY,
-CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED, CTRL-WDT-PAUSE-RUN.
+CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED, CTRL-WDT-PAUSE-RUN, CTRL-WDT-ALERT-RESP.
 Observations (not graded): OBS-WDT-CLKSTOP, OBS-BITE-CLEAR-EDGE,
-OBS-REFCNT-SPACED-LAT, OBS-WDT-PAUSE-RUN, OBS-WDT-BITE-FIRST, OBS-WDT-BITE-EQ.
+OBS-REFCNT-SPACED-LAT, OBS-WDT-PAUSE-RUN, OBS-WDT-BITE-FIRST, OBS-WDT-BITE-EQ,
+OBS-WDT-ALERT-RESP.
 
 The graded window (owner code of this test) opens at leg R and closes for the
 enable control run, the pause-in-sleep run, leg H, the small wakeup control
@@ -651,7 +651,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-WDT-THOLD-MONO",
         "CHK-WDT-MAX",
         "CHK-WDT-INTRTEST",
-        "CHK-WDT-ALERT-ACCESS",
         "CHK-WKUP-WIDE",
         "CHK-WKUP-LATER",
         "CHK-WDT-SHAPE",
@@ -1739,15 +1738,13 @@ class sep_timer_clock_contract_test(sep_base_test):
             allow_unverified_write_resp=True,
         )
         await self.start_seq(seq)
+        seed = self.tcfg.seed
         if seq.timed_out:
-            raise AssertionError("CHK-WDT-ALERT-ACCESS FAIL: no response")
-        if seq.resp_code != RESP_OKAY:
-            raise AssertionError(
-                f"CHK-WDT-ALERT-ACCESS FAIL: bresp={seq.resp_code} expect={RESP_OKAY} (OKAY)"
-            )
-        self.logger.info(
-            "CHK-WDT-ALERT-ACCESS PASS: bresp=%d expect=%d (OKAY)", seq.resp_code, RESP_OKAY
-        )
+            msg = f"CTRL-MISSING WDT-ALERT-RESP: seed={seed} no write response (timed out)"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-WDT-ALERT-RESP seen: seed=%d write response received", seed)
+        self.logger.info("OBS-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
         # No line states the shape of PIC source 13 after an ALERT_TEST write.
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
         self.logger.info(

@@ -924,7 +924,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.mbx_word = xr.getrandbits(64) | 1
         self.nmi_armed = other_value(xr, NMI_MASK, (NMI_RESET,))
         self.logger.info(
-            "INFO-OBS-ARM mbox=%d word=0x%016x nmi_vec=0x%08x",
+            "INFO-ARM mbox=%d word=0x%016x nmi_vec=0x%08x",
             self.mbx_m,
             self.mbx_word,
             self.nmi_armed,
