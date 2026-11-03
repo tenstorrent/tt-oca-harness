@@ -383,8 +383,6 @@ class smu_remap_attr_rand_test_seq(smu_sep_out_filter_rule_matrix_test_seq):
             await ClockCycles(self.clk, 1)
             used += 1
         aw, _ = self.tap.since(mark)
-        # A logged-only leg has no specified outcome: no AW inside the bound is one of its
-        # two recorded results, not an expired wait, so the site stays inside its bound.
         last = f"{label} aw={[hex(p[0]) for p in aw]}" if aw else f"{label} no AW inside the bound"
         self._site("logged_observe", OBSERVE_BOUND_CYCLES, used, last, "clk_smu cycles")
         self._log(
