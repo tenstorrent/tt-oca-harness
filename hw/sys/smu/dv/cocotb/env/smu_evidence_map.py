@@ -2452,6 +2452,204 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the last state recorded",
         ),
     ],
+    "smu_sep_reset_inflight_test": [
+        (
+            "CHK-SEPRST-OTBN-ISOLATE",
+            "CHK-SEPRST-OTBN-ISOLATE",
+            "SW_RESET_N bit 1 (SEP-local 0x10900000): every read accepted before the system-bus "
+            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
+            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
+            "write a fresh read and write are OKAY",
+        ),
+        (
+            "CHK-SEPRST-AES-ISOLATE",
+            "CHK-SEPRST-AES-ISOLATE",
+            "SW_RESET_N bit 2 (SEP-local 0x10910000): every read accepted before the system-bus "
+            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
+            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
+            "write a fresh read and write are OKAY",
+        ),
+        (
+            "CHK-SEPRST-HMAC-ISOLATE",
+            "CHK-SEPRST-HMAC-ISOLATE",
+            "SW_RESET_N bit 3 (SEP-local 0x10911000): every read accepted before the system-bus "
+            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
+            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
+            "write a fresh read and write are OKAY",
+        ),
+        (
+            "CHK-SEPRST-KMAC-ISOLATE",
+            "CHK-SEPRST-KMAC-ISOLATE",
+            "SW_RESET_N bit 4 (SEP-local 0x10913000): every read accepted before the system-bus "
+            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
+            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
+            "write a fresh read and write are OKAY",
+        ),
+        (
+            "CHK-SEPRST-ABR-ISOLATE",
+            "CHK-SEPRST-ABR-ISOLATE",
+            "SW_RESET_N bit 6 (SEP-local 0x10940000): every read accepted before the system-bus "
+            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
+            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
+            "write a fresh read and write are OKAY",
+        ),
+        (
+            "CHK-SEPRST-TRNG-ISOLATE",
+            "CHK-SEPRST-TRNG-ISOLATE",
+            "ESRC reads accepted before the bit 5 = 0 write complete; ESRC, CSRNG and EDN reads "
+            "are SLVERR with 0x1501A7ED in each 32-bit word and writes SLVERR; the entropy pool "
+            "answers without the isolation response; after bit 5 = 1 each path reads OKAY",
+        ),
+        (
+            "CHK-SEPRST-KM-MAILBOX",
+            "CHK-SEPRST-KM-MAILBOX",
+            "the KM mailbox SEP-side status word (offset 0xC) reads OKAY with no 32-bit lane at "
+            "0x1501A7ED with bit 0 held from power-up, released and held again (value logged), "
+            "and SW_RESET_N bit 0 reads 1 after the 1 write",
+        ),
+        (
+            "CHK-SEPRST-NEVER-ISO",
+            "CHK-SEPRST-NEVER-ISO",
+            "with SW_RESET_N = 0x00 the KM mailbox status read (offset 0xC) is OKAY with no lane "
+            "at 0x1501A7ED and the mailbox write (offset 0x0) is OKAY, three eFuse windows and "
+            "the lifecycle controller are OKAY with no isolation word; the external TRNG window "
+            "is DECERR with 0xBADCAB1E in each lane on read and DECERR on write",
+        ),
+        (
+            "CHK-SEPRST-DOMAIN-INDEP",
+            "CHK-SEPRST-DOMAIN-INDEP",
+            "with OTBN held an AES read and with AES held an HMAC read are OKAY; SEP SRAM write "
+            "and readback are OKAY under every held domain; a CPU egress load held across a "
+            "system-bus SW_RESET_N = 0x00 completes with the responder word",
+        ),
+        (
+            "CHK-SEPRST-EARLY-RELEASE",
+            "CHK-SEPRST-EARLY-RELEASE",
+            "for OTBN, AES and TRNG, six pairs of system-bus 0 and 1 writes 0 and 8 debug-bus "
+            "operations apart: every read and probe completes and SW_RESET_N reads 0x7E",
+        ),
+        (
+            "CHK-SEPRST-JTAG-INFLIGHT",
+            "CHK-SEPRST-JTAG-INFLIGHT",
+            "sep_reset_n_o reads 0 from the IC_RESET engage to the release, the aperture ports "
+            "read SEP_GLOBAL_BASE_ADDR 0x0 and SEP_REGION_SIZE 0x1000000 while held, the first "
+            "retired PC after the release is in the boot ROM, "
+            "SW_RESET_N reads 0x7E where 0x7F was written, and a system-bus egress write and "
+            "read complete with sberror 0 and the responder word",
+        ),
+        (
+            "CHK-SEPRST-BITE-INFLIGHT",
+            "CHK-SEPRST-BITE-INFLIGHT",
+            "the bite request falls with no software write; the first retired PC is in the boot "
+            "ROM; the SEP SRAM read outstanding at the bite returns OKAY with the written word; "
+            "a fresh SEP SRAM write and read after the release are OKAY with their data; the "
+            "DMA / PERIPH bus-error status readback and the system-bus egress write and read "
+            "after the bite are logged as OBS-SEPRST-BITE-ORPHAN lines, never compared",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence SETUP < DRAIN < ISOLATED < RELEASE < TRNG < KM < ALL_DOMAINS "
+            "< EARLY < JTAG < BITE < PASS with a non-zero access count per term and 2 drain "
+            "cells x 5 domains",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded proof-path wait logs its bound, cycles used and last state, none "
+            "expires, and the sites per kind match the literal counts of the step list; every "
+            "observation window is listed by name with its bound, cycles used and expired=<0|1>, "
+            "and the windows per OBS line match the step list",
+        ),
+    ],
+    "smu_smc_reset_inflight_test": [
+        (
+            "CHK-SMC-WARM-TRAFFIC",
+            "CHK-SMC-WARM-TRAFFIC",
+            "for the CORE0 second timeout, and for the SEP bite when its warm fall happens inside "
+            "the OBS-SMCRST-BITE-NO-WARM window, the ext_in SS_CONFIG reads accepted before the "
+            "warm fall return OKAY with the written pattern and the ext_in RESET_CTRL read issued "
+            "in warm returns OKAY with 0x0100010D; after release SCRATCH[0] write and read are "
+            "OKAY with the word and the JTAG2AXI reads of the egress page and of SEP SRAM capture "
+            "SUCCESS with the responder and SRAM words; bite cells without a fall are recorded, "
+            "never compared",
+        ),
+        (
+            "CHK-SMC-COOL-TRAFFIC",
+            "CHK-SMC-COOL-TRAFFIC",
+            "pin trial 1, and trial 2 unless the SEP debug path was lost (its term then not run), "
+            "issue at least one system-bus access during the hold, each with the primary reset at "
+            "0; the SS_CONFIG and RESET_VECTOR[0] rewrites before trial 2 and the FLR read back; "
+            "the held ext_in read's AR is accepted before each pin and FLR "
+            "primary-reset fall (its outcome logged); after each pin release and the FLR release "
+            "the ext_in reads at 0x40000000 are OKAY with RESET_VECTOR[0] 0xC0040000, SS_CONFIG "
+            "0x0 and ISOLATE_REQ_REG at its written pattern",
+        ),
+        (
+            "CHK-SMC-PRIMARY-RETAIN",
+            "CHK-SMC-PRIMARY-RETAIN",
+            "the S2 images read back as written and read the same again after both warm resets, "
+            "just before the pin reset; after the pin cool reset SS_CONFIG and SS_COLD_RESET_N "
+            "read 0x0, RESET_VECTOR[0..3] 0xC0040000, RESET_CTRL 0x10F, WDT_TIMEOUT 0x4000, "
+            "RESET_TIMEOUT 0x0, GLOBAL_BASE 0x40000000, REGION_SIZE 0x1000000",
+        ),
+        (
+            "CHK-SMC-WARM-RETAIN",
+            "CHK-SMC-WARM-RETAIN",
+            "after each compared warm reset RESET_CTRL reads 0x0100010D, RESET_VECTOR[0] and "
+            "WDT_TIMEOUT their written values, GLOBAL_BASE/REGION_SIZE 0x60000000/0x02000000; the "
+            "CORE0 watchdog count advances and the CORE1 count does not over 512 clk_smc; the bite "
+            "source is compared only when OBS-SMCRST-BITE-NO-WARM reports warm_fell=1",
+        ),
+        (
+            "CHK-SMC-PRIMARY-WARM-EQ",
+            "CHK-SMC-PRIMARY-WARM-EQ",
+            "in each pin trial and the FLR trial every clk_smu sample with the primary reset at 0 "
+            "has the warm reset at 0, and each reset reads 0 at least once",
+        ),
+        (
+            "CHK-SMC-ISO-LATCH-ACCESS",
+            "CHK-SMC-ISO-LATCH-ACCESS",
+            "ISOLATE_REQ_SMC_REG, read with 8-byte correctly framed JTAG2AXI captures, reads 1 "
+            "when the latched ext_in and smc_out accesses are issued and 0 after the byte-0 "
+            "strobed clearing write; the FLR edge is applied and the framing probe ran before "
+            "the reads; the accesses' outcomes are logged",
+        ),
+        (
+            "CHK-SMC-SW-CORE",
+            "CHK-SMC-SW-CORE",
+            "each core's watchdog count stays while its RESET_CTRL reset_n is 0 and advances after "
+            "1; core_resets_done reads 0xF at reset and after the default and programmed pulses "
+            "with a 0 in bit 0 inside the programmed pulse, and the bench tap sees bit 0 low during "
+            "the default pulse; CORE0 CTRL/CMP unchanged, COUNT kept",
+        ),
+        (
+            "CHK-SMC-SW-UNCORE",
+            "CHK-SMC-SW-UNCORE",
+            "idle over ext_in reset_applied 1 then 0; in the held mode-0 trial over ext_in the "
+            "smc_in port reports undrained=1 at the uncore request with no unresolved R level "
+            "(held value unobservable, SF-009); after RREADY is released the answered train reads "
+            "are OBS only (SF-009) and RESET_TIMEOUT shows reset_applied 1 within the poll bound; after the release write RESET_CTRL "
+            "reads back as written and reset_applied 0; CORE0 CTRL 0x0, CMP 0x1000, COUNT 0x0 "
+            "after the idle uncore reset",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered sim-time fence SETUP < IMAGES < WARM < WARM_POST < COOL < COOL_POST < FLR < "
+            "SW_CORE < SW_UNCORE < PASS, each term with accesses, two warm sources and two cool "
+            "trials",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every bounded proof-path wait logs its bound, cycles used and last state, none "
+            "expires, every site has a positive bound it did not exceed, and the sites per step "
+            "and kind match the literal counts of the step list; every observation window is "
+            "listed by OBS name with its bound, cycles used and expired=<0|1>, apart from the "
+            "proof-path waits",
+        ),
+    ],
     "smu_sep_wdt_bite_to_smc_reset_test": [
         (
             "CHK-SEP-WDT-SMC-REQ",
@@ -4706,6 +4904,243 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "unmatched ext_in read and write DECERR with the issued IDs and nothing reaches ext_out",
         ),
     ],
+    "smu_xbar_decerr_burst_response_test": [
+        (
+            "CHK-BIT55-MISS",
+            "CHK-BIT55-MISS",
+            "the A55 read and write are answered by the crossbar with one DECERR beat (RLAST=1, "
+            "RID 0x2D) and one DECERR B (BID 0xD2), nothing is counted at smc_in, and the "
+            "SMC-base read is counted there once",
+        ),
+        (
+            "CHK-RDATA-SINGLE-OBS",
+            "CHK-RDATA-SINGLE-OBS",
+            "the RDATA of the A55 DECERR beat was captured and logged as OBS-DECERR-RDATA-SINGLE "
+            "without a verdict (SF-003)",
+        ),
+        (
+            "CHK-RD-BURST",
+            "CHK-RD-BURST",
+            "INCR reads of ARLEN 1, 7, 15 and 255 at M return ARLEN+1 beats with RLAST on the "
+            "last only, RID equal to ARID on every beat and DECERR on the first; no subordinate "
+            "counter or the sep_in AR tap moves",
+        ),
+        (
+            "CHK-RD-WRAP-FIXED",
+            "CHK-RD-WRAP-FIXED",
+            "WRAP reads of ARLEN 1, 3, 7, 15 and FIXED reads of ARLEN 3, 15 at M return ARLEN+1 "
+            "beats with RLAST on the last only, RID echoed and DECERR on the first",
+        ),
+        (
+            "CHK-RDATA-BURST-OBS",
+            "CHK-RDATA-BURST-OBS",
+            "one RDATA capture and one OBS-DECERR-RDATA-BURST line per counted DECERR beat of S3 "
+            "and S4 (SF-003)",
+        ),
+        (
+            "CHK-WR-W-FIRST",
+            "CHK-WR-W-FIRST",
+            "a single-beat write at M whose W beat is accepted before AW gets exactly one B, "
+            "DECERR with BID 0x5A, and no second B within 2000 cycles",
+        ),
+        (
+            "CHK-WR-BURST",
+            "CHK-WR-BURST",
+            "INCR writes of AWLEN 1, 7, 15 and 255 at M have every W beat accepted and exactly "
+            "one DECERR B with BID equal to AWID after WLAST; no subordinate counter moves",
+        ),
+        (
+            "CHK-WR-GAPS",
+            "CHK-WR-GAPS",
+            "the AWLEN 15 write with a seeded WVALID gap before each beat has sixteen W "
+            "handshakes, each after its logged gap, then one DECERR B with BID 0x3F",
+        ),
+        (
+            "CHK-NO-SIDE-EFFECT",
+            "CHK-NO-SIDE-EFFECT",
+            "SCRATCH_COLD written with Q through the SMC window answers OKAY and is counted at "
+            "smc_in, the bit-55 alias write of P is DECERR and counted nowhere, and SCRATCH_COLD "
+            "reads back Q with OKAY",
+        ),
+        (
+            "CHK-ERR-CAPACITY",
+            "CHK-ERR-CAPACITY",
+            "32 reads at M under ARIDs 0x00..0x1F with RREADY low on every cycle of a hold of at "
+            "least 2000 cycles and RVALID high from its first assertion to the release all "
+            "complete within 4000 cycles of the release, each one DECERR beat with RLAST and "
+            "every RID once; the accepted count is OBS only (SF-011)",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered cycle fence APERTURES_SAMPLED < BIT55_DONE < RD_BURST_DONE < WRAP_FIXED_DONE "
+            "< WR_SINGLE_DONE < WR_BURST_DONE < SIDE_EFFECT_DONE < ERR_CAPACITY_DONE with S1..S9 "
+            "complete",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every handshake, JTAG2AXI and release wait carries a finite bound and fails the test "
+            "on expiry; none expired",
+        ),
+    ],
+    "smu_xbar_aperture_edge_burst_test": [
+        (
+            "CHK-END-EXCL",
+            "CHK-END-EXCL",
+            "E-8 and 0x4000_07F8 are counted once at the SEP / SMC port and E-8 reads back OKAY; "
+            "E and 0x4000_0800 answer DECERR with no counter moving (index.adoc:116-121)",
+        ),
+        (
+            "CHK-SEP-NOALIGN",
+            "CHK-SEP-NOALIGN",
+            "SEP_REGION_SIZE and sep_xbar_region_size_o read 0x1000_0840, the edges route as "
+            "[B, B+size), and the word written at base+0x1000_0000 is at SEP-local SRAM "
+            "0x1000_0000; OBS-SEP-NOALIGN-LEGAL logged (SF-029)",
+        ),
+        (
+            "CHK-SEP-PAST-END",
+            "CHK-SEP-PAST-END",
+            "INCR read and write of 8 beats from E-16: one AR / AW at sep_in, 8 beats with RLAST "
+            "last, 8 W and one B, IDs echoed, no other counter; OBS-PAST-END-SEP-RESP (SF-005)",
+        ),
+        (
+            "CHK-WRAP-FIXED",
+            "CHK-WRAP-FIXED",
+            "WRAP ARLEN 15 and FIXED ARLEN/AWLEN 3 at the SEP end: one AR / AW at sep_in, ARLEN+1 "
+            "beats with RLAST last, one B; OBS-WRAP-FIXED-RESP (SF-005)",
+        ),
+        (
+            "CHK-CARRY-BURST",
+            "CHK-CARRY-BURST",
+            "with base+size = 2^56 the 8-beat INCR read and write from 0xFF_FFFF_FFFF_FFC0 reach "
+            "sep_in with RLAST last and one B; OBS-CARRY-RESP",
+        ),
+        (
+            "CHK-WIDE-SEP",
+            "CHK-WIDE-SEP",
+            "a SEP aperture of 0x8000_0000 routes B+0x4000_0008 and B+0x4000_0000 to sep_in and "
+            "the SEP answers DECERR with the ID echoed; OBS-WIDE-SEP-RDATA (SF-007, SF-008)",
+        ),
+        (
+            "CHK-ADJACENT-SINGLES",
+            "CHK-ADJACENT-SINGLES",
+            "with adjacent SEP and SMC apertures each edge single is counted at exactly the port "
+            "the arithmetic selects",
+        ),
+        (
+            "CHK-ADJACENT-BURST",
+            "CHK-ADJACENT-BURST",
+            "a burst running into the adjacent aperture is counted only at its first address's "
+            "port with 8 beats and RLAST last; the SMC word at 0x4000_0400 reads OKAY unchanged, "
+            "and a KEY-unlocked CTRL write of WDOGCOREAWAKE reads back changed",
+        ),
+        (
+            "CHK-SMC-PAST-END",
+            "CHK-SMC-PAST-END",
+            "INCR read and write of 8 beats from 0x4000_07F0 past the SMC end: one AR / AW at "
+            "smc_in, 8 beats with RLAST last, 8 W and one B, IDs echoed; OBS-PAST-END-SMC-RESP "
+            "(SF-005, SF-006)",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered cycle fence SETUP_OK < SEP_EDGES < SEP_REBASE < SEP_PAST_END < WRAP_FIXED < "
+            "CARRY < WIDE_SEP < SMC_PHASE_SET < SEP_BELOW < SMC_BELOW < SMC_PAST_END < "
+            "COLD_RESET_BASELINE with S1..S11 complete",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every handshake, system-bus, JTAG2AXI, port and reset wait carries a finite bound, a "
+            "fail-on-expiry path and a last state, and none expired",
+        ),
+    ],
+    "smu_xbar_reset_held_target_test": [
+        (
+            "CHK-HELD-REACH",
+            "CHK-HELD-REACH",
+            "in each of holds A-D sep_reset_n_o reads 0 from the IC_RESET SEP-slice update to "
+            "the release while the SEP rst_ni stays 1; the bench sep_in override expectation "
+            "window opened at every fall and closed after every release, never outside a hold "
+            "and not at the end; OBS-HELD-XBAR-RESET, OBS-HELD-APERTURE and OBS-SEPIN-WITHDRAWN "
+            "logged per hold",
+        ),
+        (
+            "CHK-ORPHAN-OBS",
+            "CHK-ORPHAN-OBS",
+            "hold A: the sep_in AR tap and sep_xbar_in_aw_count_o each moved by 1 and exactly 4 "
+            "R and 4 W beats were handshaken before sep_reset_n fell; the orphan's fate is OBS "
+            "only (SF-013)",
+        ),
+        (
+            "CHK-SAMEID-NO-OVERTAKE",
+            "CHK-SAMEID-NO-OVERTAKE",
+            "hold B: the S10 ARID 0x11 AR is handshaken on ext_in while the orphan has no RLAST, "
+            "and the later ARID 0x11 VERSION_LO beat is never handshaken before the orphaned "
+            "read's RLAST (IHI0022 A5.3); OBS-SAMEID-HELD logged (SF-012)",
+        ),
+        (
+            "CHK-DIFFID-LIVE",
+            "CHK-DIFFID-LIVE",
+            "hold A, with no ARID 0x11 and no sep_in-bound request issued since the orphan: "
+            "each of ARID 0x21..0x24 completes within 2000 clk_smu_i cycles OKAY with RID=ARID "
+            "and the VERSION_LO RDL reset value, and smc_xbar_in_ar_count_o moves by 4",
+        ),
+        (
+            "CHK-FRESH-OBS",
+            "CHK-FRESH-OBS",
+            "hold A: OBS-FRESH-DURING and OBS-FRESH-AFTER logged with sep_reset_n 0 for the "
+            "during-access and 1 for the after-access (SF-013)",
+        ),
+        (
+            "CHK-ACCEPT-PER-ID-OBS",
+            "CHK-ACCEPT-PER-ID-OBS",
+            "hold C: OBS-ACCEPT-SAME-ID, the ARID 0x41 AR handshakes accepted before ARREADY "
+            "stayed low for 4096 cycles, issued during the hold with nothing queued ahead (SF-011)",
+        ),
+        (
+            "CHK-ACCEPT-SEP-OBS",
+            "CHK-ACCEPT-SEP-OBS",
+            "hold D: OBS-ACCEPT-SEP-SUB, the distinct-ID AR handshakes toward sep_in accepted "
+            "before ARREADY stayed low for 4096 cycles, nothing queued ahead (SF-011)",
+        ),
+        (
+            "CHK-IDW-SEP-LIMIT-OBS",
+            "CHK-IDW-SEP-LIMIT-OBS",
+            "OBS-IDW-SEP-PER-ID (hold C) and OBS-IDW-SEP-UNIQUE (hold D): the sep_in AR tap "
+            "counts beside the ext_in counts (SF-023)",
+        ),
+        (
+            "CHK-OTHER-INIT-OBS",
+            "CHK-OTHER-INIT-OBS",
+            "hold B: OBS-OTHER-INITIATOR, the JTAG2AXI smc_out read issued while the S10 same-ID "
+            "read is held (its R not yet returned), its status, the smu_axi_out_read_count_o "
+            "delta and the ext_in ARVALID / ARREADY levels at issue (SF-011)",
+        ),
+        (
+            "CHK-CLEAR",
+            "CHK-CLEAR",
+            "after every rst_cold_ni and re-programming (holds A-D) the SEP SRAM write of a word "
+            "distinct per hold is OKAY, its read returns that word OKAY and VERSION_LO returns OKAY with its RDL reset value; "
+            "OBS-CLEARED-BY logged per hold",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered cycle fence BASELINE_OK < ORPHAN_A < HOLD_A < ORPHAN_OBSERVED < DIFFID_DONE "
+            "< FRESH_DURING < RELEASED_A < COLD_A < HOLD_B < SAMEID_OBSERVED < OTHER_INIT < "
+            "COLD_B < HOLD_C < LIMITS_SAMEID < COLD_C < HOLD_D < LIMITS_DISTINCT < COLD_D with "
+            "S1..S19 complete",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every proof-path wait carries a finite bound, a fail-on-expiry path and a last "
+            "state and none expired; every observation window logged its length and outcome; "
+            "the bench expectation window is closed at the end",
+        ),
+    ],
     "smu_xbar_zero_aperture_test": [
         (
             "CHK-XBAR-ZERO-BASELINE",
@@ -5432,6 +5867,59 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-TIMEOUT-PATHS",
             "four bounded waits in two kinds (event 2, release 2), none expired, with the "
             "bound, cycles used and last state recorded, no unresolved probe sample",
+        ),
+    ],
+    "smu_dtp_jtag2axi_smc_reset_inflight_test": [
+        (
+            "CHK-J2A-RV-BASELINE",
+            "CHK-J2A-RV-BASELINE",
+            "the JTAG2AXI read of RESET_VECTOR[0] out of reset captures OKAY with 0xC0040000, "
+            "and the ISOLATE_REQ_REG and SS_CONFIG pattern writes capture OKAY and read back",
+        ),
+        (
+            "CHK-J2A-DURING-COOL",
+            "CHK-J2A-DURING-COOL",
+            "obs_smc_rst_n_o reads 0 at the Update-DR of the read and the write and at every "
+            "clk_smu sample until the scheduled release, for the pin and the FLR cool reset; "
+            "the outcomes are OBS lines",
+        ),
+        (
+            "CHK-J2A-MID-RELEASE",
+            "CHK-J2A-MID-RELEASE",
+            "for the 0, 8 and 32 TCK offsets the primary reset reads 0 at the launching "
+            "Update-DR and rises before the capture poll ends",
+        ),
+        (
+            "CHK-J2A-POST-RESET-VALUES",
+            "CHK-J2A-POST-RESET-VALUES",
+            "after the resets SS_CONFIG captures OKAY with 0x0 and ISOLATE_REQ_REG captures OKAY "
+            "with its written pattern",
+        ),
+        (
+            "CHK-J2A-FRESH-ACCESS",
+            "CHK-J2A-FRESH-ACCESS",
+            "the fresh SCRATCH[0] write captures OKAY, its readback captures OKAY with the "
+            "written word and RESET_VECTOR[0] reads 0xC0040000",
+        ),
+        (
+            "CHK-J2A-DURING-WARM",
+            "CHK-J2A-DURING-WARM",
+            "the warm probe reads 0 and the primary reset 1 at the launching Update-DR, the "
+            "primary reset reads 1 from arming to the warm release, and an OKAY capture carries "
+            "the SS_CONFIG pattern",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence SETUP < BASELINE < DURING_COOL < MID_RELEASE < POST < "
+            "FRESH < DURING_WARM < PASS, each term with a non-zero JTAG2AXI operation count",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "37 bounded waits in four kinds (capture 17, in-reset capture 8, reset 10, warm 2) "
+            "logged with bound, used and last state; no graded wait expired and no probe "
+            "sample was unresolved",
         ),
     ],
     "smu_ext_in_error_inject_rand_test": [

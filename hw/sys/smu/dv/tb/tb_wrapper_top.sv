@@ -730,6 +730,117 @@ module smu_wrapper_uvm_top
 `endif
 `endif
 
+  // The JTAG IC_RESET sep_reset_n override resets the SEP side of sep_in with
+  // no isolation sequence, so an R beat presented there is withdrawn at the
+  // fall: the R_VALID_HELD and R_PAYLOAD_STABLE rules of u_xbar_sep_in_axi_sva
+  // and of u_iwc_sep_axi_sva on the same R path, and the req1 assertion and
+  // lock_req assumption of the R-channel arbiter in the SEP SRAM burst
+  // demultiplexer fire. The crossbar, on the primary reset, keeps presenting
+  // AW, W and AR to the held SEP, so the AW, W and AR VALID_RESET_LOW rules of
+  // u_xbar_sep_in_sep_rst_axi_sva fire while sep_reset_n is low.
+  // With +axi_sva_expect_sep_in_override, and only from a fall of sep_reset_n
+  // under that override with the SMC primary reset high, until
+  // SepInOverrideMarginClks clk_smu_i edges after its rise, those rules are
+  // killed; every other rule, including the rest of that demultiplexer, every
+  // instance and every other leaf is unaffected. A fall of the primary reset
+  // while the window is open prints a line that fails the run, so the primary
+  // reset is high on every cycle the rules are off. The obs_ signals let the
+  // leaf grade the window.
+  logic       obs_sep_in_expect_window_open = 1'b0;
+  logic [7:0] obs_sep_in_expect_window_count = '0;
+`ifndef VERILATOR
+`ifndef UVM
+  localparam int unsigned SepInOverrideMarginClks = 8;
+  wire sep_in_override_held =
+      (u_dut.u_smu.jtag_sep_reset_ctrl.ovrd.sep_reset_n_ovrd === 1'b1) &&
+      (u_dut.u_smu.jtag_sep_reset_ctrl.val.sep_reset_n_val === 1'b0);
+  time sep_in_override_opened_at = 0;
+
+  task automatic sep_in_override_checks(input bit enable);
+    if (enable) begin
+      $asserton(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
+      $asserton(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE
+          .OCAH_AXI_R_PAYLOAD_STABLE);
+      $asserton(0, u_iwc_sep_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
+      $asserton(0, u_iwc_sep_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE.OCAH_AXI_R_PAYLOAD_STABLE);
+      $asserton(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_AW_VALID_RESET_LOW
+          .OCAH_AXI_AW_VALID_RESET_LOW);
+      $asserton(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_W_VALID_RESET_LOW
+          .OCAH_AXI_W_VALID_RESET_LOW);
+      $asserton(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_AR_VALID_RESET_LOW
+          .OCAH_AXI_AR_VALID_RESET_LOW);
+      $asserton(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
+          .gen_arbiter.req1);
+      $asserton(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
+          .gen_arbiter.gen_int_rr.gen_lock.lock_req);
+    end else begin
+      $assertkill(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
+      $assertkill(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE
+          .OCAH_AXI_R_PAYLOAD_STABLE);
+      $assertkill(0, u_iwc_sep_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
+      $assertkill(0, u_iwc_sep_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE.OCAH_AXI_R_PAYLOAD_STABLE);
+      $assertkill(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_AW_VALID_RESET_LOW
+          .OCAH_AXI_AW_VALID_RESET_LOW);
+      $assertkill(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_W_VALID_RESET_LOW
+          .OCAH_AXI_W_VALID_RESET_LOW);
+      $assertkill(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_AR_VALID_RESET_LOW
+          .OCAH_AXI_AR_VALID_RESET_LOW);
+      $assertkill(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
+          .gen_arbiter.req1);
+      $assertkill(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
+          .gen_arbiter.gen_int_rr.gen_lock.lock_req);
+    end
+  endtask
+
+  initial begin : sep_in_override_expect_window
+    time rose_at;
+    int unsigned margin;
+    if ($test$plusargs("axi_sva_expect_sep_in_override")) begin
+      forever begin
+        @(negedge sep_reset_n);
+        if (rst_primary_smc_clk_n === 1'b1 && sep_in_override_held) begin
+          sep_in_override_checks(1'b0);
+          sep_in_override_opened_at = $time;
+          obs_sep_in_expect_window_open = 1'b1;
+          obs_sep_in_expect_window_count++;
+          $display({"[tb] sep_in override expectation window open at %0t: ",
+                    "sep_reset_n fell under the JTAG override, window %0d"},
+                   $time, obs_sep_in_expect_window_count);
+          fork
+            begin : primary_held_through_window
+              @(negedge rst_primary_smc_clk_n);
+              $display({"[tb] sep_in override expectation window: primary reset fell ",
+                        "inside the window at %0t"}, $time);
+            end
+          join_none
+          wait (sep_reset_n === 1'b1);
+          rose_at = $time;
+          margin  = 0;
+          while (margin < SepInOverrideMarginClks) begin
+            @(posedge clk_smu_i);
+            margin++;
+          end
+          disable fork;
+          sep_in_override_checks(1'b1);
+          obs_sep_in_expect_window_open = 1'b0;
+          $display({"[tb] sep_in override expectation window closed at %0t: ",
+                    "sep_reset_n rose at %0t, margin %0d clk_smu_i cycles"},
+                   $time, rose_at, margin);
+        end
+      end
+    end
+  end
+
+  final begin
+    if (obs_sep_in_expect_window_open) begin
+      $display({"[tb] sep_in override expectation window still open at end: ",
+                "opened at %0t, sep_reset_n=%b"},
+               sep_in_override_opened_at, sep_reset_n);
+    end
+  end
+`endif
+`endif
+
   // powergood_stable is the SMC reset controller's stretched and synchronized
   // view of powergood_i (smc_reset_ctrl.sv), so it rises only once the DUT's own
   // synchronizer chain has clocked it through. The sticky low record carries no
@@ -1102,12 +1213,18 @@ module smu_wrapper_uvm_top
   assign sep_xbar_global_base_o = u_dut.u_smu.sep_global_base_o;
   assign sep_xbar_region_size_o = u_dut.u_smu.sep_region_size_o[31:0];
 
+  // Crossbar -> SEP inbound AR, the read side of the sep_xbar_in_aw_* tap.
+  logic [31:0] sep_xbar_in_ar_count_o;
+  logic [55:0] sep_xbar_in_ar_addr_o;
+
   always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_smn_out_aw_count_o <= '0;
       sep_xbar_in_aw_count_o <= '0;
       sep_xbar_in_aw_user_o  <= '0;
       sep_xbar_in_aw_addr_o  <= '0;
+      sep_xbar_in_ar_count_o <= '0;
+      sep_xbar_in_ar_addr_o  <= '0;
       smc_xbar_in_ar_count_o <= '0;
       smc_xbar_in_aw_count_o <= '0;
     end else begin
@@ -1125,6 +1242,10 @@ module smu_wrapper_uvm_top
         sep_xbar_in_aw_count_o <= sep_xbar_in_aw_count_o + 32'd1;
         sep_xbar_in_aw_user_o  <= 12'(u_dut.u_smu.xbar_to_sep_req.aw.user);
         sep_xbar_in_aw_addr_o  <= 56'(u_dut.u_smu.xbar_to_sep_req.aw.addr);
+      end
+      if (u_dut.u_smu.xbar_to_sep_req.ar_valid && u_dut.u_smu.xbar_to_sep_resp.ar_ready) begin
+        sep_xbar_in_ar_count_o <= sep_xbar_in_ar_count_o + 32'd1;
+        sep_xbar_in_ar_addr_o  <= 56'(u_dut.u_smu.xbar_to_sep_req.ar.addr);
       end
     end
   end
@@ -1945,12 +2066,14 @@ module smu_wrapper_uvm_top
   // rule here.
   //
   // Reset-domain instances grade the links whose far side resets on a
-  // narrower reset, with MASTER_SYNC_RESET set: u_xbar_sep_in_sep_rst_axi_sva
-  // and u_sep_to_smc_sep_rst_axi_sva take aresetn = sep_reset_n, the
-  // boot-qualified SEP reset, and are held off while sep_reset_n or the
-  // link's AW and AR valids are X; u_xbar_smc_in_warm_rst_axi_sva takes
-  // aresetn = the SMC warm reset rst_warm_smc_clk_n. The SMC cool reset feeds
-  // the primary reset, so the ten instances above already grade it.
+  // narrower reset, the SEP side under sep_reset_n, with MASTER_SYNC_RESET
+  // set: u_xbar_sep_in_sep_rst_axi_sva and u_sep_to_smc_sep_rst_axi_sva take
+  // aresetn = sep_reset_n, the boot-qualified SEP reset, and are held off
+  // while sep_reset_n or the link's AW and AR valids are X. No SMC-side link
+  // has such a far side: the SMC warm reset rst_warm_smc_clk_n resets only
+  // the CPU cluster and the warm scratch register, and the crossbar SMC
+  // target link resets on the primary reset at both ends. The SMC cool reset
+  // feeds the primary reset, so the ten instances above already grade it.
   //
   // Six further links carry their own checker on the primary reset: the two
   // ID-width converter outputs toward the SEP (u_iwc_sep_axi_sva) and the SMC
@@ -2121,8 +2244,6 @@ module smu_wrapper_uvm_top
 `define SMU_AXI_SEP_RST_ON(REQ)                                        \
     (`SMU_AXI_SVA_ON && !$isunknown(sep_reset_n) && !$isunknown(REQ.aw_valid) \
      && !$isunknown(REQ.ar_valid))
-
-`define SMU_AXI_SMC_WARM_RST u_dut.u_smu.u_smc.rst_warm_smc_clk_n
 
 `define SMU_AXI_SVA_INJ_PORTS(REQ, RSP)                                     \
     .aclk    (clk_smu_i),                                                   \
@@ -2458,19 +2579,6 @@ module smu_wrapper_uvm_top
   );
 
   ocah_axi_sva #(
-    .IS_LITE           (1'b0),
-    .ADDR_WIDTH        (56),
-    .DATA_WIDTH        (64),
-    .MAX_OUTSTANDING   (16),
-    .ID_WIDTH          (10),
-    .MASTER_SYNC_RESET (1'b1)
-  ) u_xbar_smc_in_warm_rst_axi_sva (  // crossbar target port: SMC, on the SMC warm reset
-    .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_RST_PORTS(`SMU_AXI_XBAR.smc_in_req_o,
-                           `SMU_AXI_XBAR.smc_in_resp_i, `SMU_AXI_SMC_WARM_RST)
-  );
-
-  ocah_axi_sva #(
     .IS_LITE         (1'b0),
     .ADDR_WIDTH      (56),
     .DATA_WIDTH      (64),
@@ -2666,16 +2774,6 @@ module smu_wrapper_uvm_top
   smu_axi_data_known_sva #(
     .EN_W_DATA_RULE (1'b1),
     .EN_R_DATA_RULE (1'b1)
-  ) u_xbar_smc_in_warm_rst_data_sva (
-    .aclk    (clk_smu_i),
-    .aresetn (`SMU_AXI_SMC_WARM_RST),
-    .en_i    (`SMU_AXI_SVA_ON),
-    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.smc_in_req_o, `SMU_AXI_XBAR.smc_in_resp_i)
-  );
-
-  smu_axi_data_known_sva #(
-    .EN_W_DATA_RULE (1'b1),
-    .EN_R_DATA_RULE (1'b1)
   ) u_iwc_sep_data_sva (
     .aclk    (clk_smu_i),
     .aresetn (rst_primary_smc_clk_n_o),
@@ -2771,7 +2869,6 @@ module smu_wrapper_uvm_top
   end
 
   int unsigned axi_hs_xbar_sep_in_sep_rst, axi_hs_sep_to_smc_sep_rst;
-  int unsigned axi_hs_xbar_smc_in_warm_rst;
   int unsigned axi_hs_iwc_sep, axi_hs_iwc_smc, axi_hs_incut;
   int unsigned axi_hs_otp_smc, axi_hs_otp_sep, axi_hs_dtp_csr;
   always_ff @(posedge clk_smu_i) begin
@@ -2782,9 +2879,6 @@ module smu_wrapper_uvm_top
         && `SMU_AXI_HS(u_dut.u_smu.sep_ext_to_smc_axi_req,
                        u_dut.u_smu.sep_ext_to_smc_axi_resp))
       axi_hs_sep_to_smc_sep_rst <= axi_hs_sep_to_smc_sep_rst + 1;
-    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(`SMU_AXI_XBAR.smc_in_req_o,
-                                       `SMU_AXI_XBAR.smc_in_resp_i))
-      axi_hs_xbar_smc_in_warm_rst <= axi_hs_xbar_smc_in_warm_rst + 1;
     if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.sep_smn_inbound_axi_req,
                                        u_dut.u_smu.sep_smn_inbound_axi_resp))
       axi_hs_iwc_sep <= axi_hs_iwc_sep + 1;
@@ -2808,8 +2902,6 @@ module smu_wrapper_uvm_top
                 `SMU_AXI_XBAR.sep_in_req_o, `SMU_AXI_XBAR.sep_in_resp_i)
   `SMU_AXI_STALL(sep_to_smc_sep_rst, `SMU_AXI_SEP_RST_ON(u_dut.u_smu.sep_ext_to_smc_axi_req),
                 u_dut.u_smu.sep_ext_to_smc_axi_req, u_dut.u_smu.sep_ext_to_smc_axi_resp)
-  `SMU_AXI_STALL(xbar_smc_in_warm_rst, `SMU_AXI_SVA_ON,
-                `SMU_AXI_XBAR.smc_in_req_o, `SMU_AXI_XBAR.smc_in_resp_i)
   `SMU_AXI_STALL(iwc_sep, `SMU_AXI_SVA_ON,
                 u_dut.u_smu.sep_smn_inbound_axi_req, u_dut.u_smu.sep_smn_inbound_axi_resp)
   `SMU_AXI_STALL(iwc_smc, `SMU_AXI_SVA_ON,
@@ -2828,8 +2920,6 @@ module smu_wrapper_uvm_top
              axi_hs_xbar_sep_in_sep_rst, "u_xbar_sep_in_sep_rst_axi_sva");
     $display("CHK-AXI-SVA-SEP-TO-SMC-SEP-RST: aw_ar_handshakes=%0d instance=%s",
              axi_hs_sep_to_smc_sep_rst, "u_sep_to_smc_sep_rst_axi_sva");
-    $display("CHK-AXI-SVA-XBAR-SMC-IN-WARM-RST: aw_ar_handshakes=%0d instance=%s",
-             axi_hs_xbar_smc_in_warm_rst, "u_xbar_smc_in_warm_rst_axi_sva");
     $display("CHK-AXI-SVA-IWC-SEP: aw_ar_handshakes=%0d instance=u_iwc_sep_axi_sva",
              axi_hs_iwc_sep);
     $display("CHK-AXI-SVA-IWC-SMC: aw_ar_handshakes=%0d instance=u_iwc_smc_axi_sva",
@@ -2847,9 +2937,6 @@ module smu_wrapper_uvm_top
              "but no AW or AR handshake was graded");
     if ($test$plusargs("axi_sva_need_sep_to_smc_sep_rst") && axi_hs_sep_to_smc_sep_rst == 0)
       $error("u_sep_to_smc_sep_rst_axi_sva: +axi_sva_need_sep_to_smc_sep_rst, ",
-             "but no AW or AR handshake was graded");
-    if ($test$plusargs("axi_sva_need_xbar_smc_in_warm_rst") && axi_hs_xbar_smc_in_warm_rst == 0)
-      $error("u_xbar_smc_in_warm_rst_axi_sva: +axi_sva_need_xbar_smc_in_warm_rst, ",
              "but no AW or AR handshake was graded");
     if ($test$plusargs("axi_sva_need_iwc_sep") && axi_hs_iwc_sep == 0)
       $error("u_iwc_sep_axi_sva: +axi_sva_need_iwc_sep, ",
@@ -2875,9 +2962,6 @@ module smu_wrapper_uvm_top
     `SMU_AXI_STALL_REPORT(sep_to_smc_sep_rst, "CHK-AXI-STALL-SEP-TO-SMC-SEP-RST",
                           "u_sep_to_smc_sep_rst_axi_sva",
                           "axi_sva_need_stall_sep_to_smc_sep_rst")
-    `SMU_AXI_STALL_REPORT(xbar_smc_in_warm_rst, "CHK-AXI-STALL-XBAR-SMC-IN-WARM-RST",
-                          "u_xbar_smc_in_warm_rst_axi_sva",
-                          "axi_sva_need_stall_xbar_smc_in_warm_rst")
     `SMU_AXI_STALL_REPORT(iwc_sep, "CHK-AXI-STALL-IWC-SEP",
                           "u_iwc_sep_axi_sva",
                           "axi_sva_need_stall_iwc_sep")
@@ -2900,7 +2984,6 @@ module smu_wrapper_uvm_top
 `endif
 
 `undef SMU_AXI_SVA_INJ_PORTS
-`undef SMU_AXI_SMC_WARM_RST
 `undef SMU_AXI_SEP_RST_ON
 `undef SMU_AXI_DATA_PORTS
 `undef SMU_AXIL_SVA_PORTS
