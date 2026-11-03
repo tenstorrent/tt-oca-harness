@@ -1433,6 +1433,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         # Tap clocks: the STATUS.BUSY rise of this copy, the write, and the
         # first STATUS.DONE rise after the write.
         busy_rise = next(iter(ev.rises("busy")), None)
+        busy_rises = len(list(ev.rises("busy")))
         done_rise = next((c for c in ev.rises("done") if c >= wr_c1), None)
         ctrl = (
             f"go={plan.busy_go} write_resp={wseq.resp_code} busy_through_write={busy_through} "
@@ -1455,9 +1456,9 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self.logger.info("CTRL-DMA-CTRL-BUSY PASS seed=%d %s", self.seed, ctrl)
             self._pass(
                 "CHK-DMA-CTRL-BUSY",
-                len(ev.ar) == x.n_txn and len(ev.aw) == x.n_txn,
+                len(ev.ar) == x.n_txn and len(ev.aw) == x.n_txn and busy_rises == 1,
                 f"contract=hw/sys/sep/doc/dma.adoc:79-86 go=1 ar={len(ev.ar)} aw={len(ev.aw)} "
-                f"expect={x.n_txn}",
+                f"expect={x.n_txn} busy_rises={busy_rises} expect_busy_rises=1",
             )
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE | ST_ERROR)
 

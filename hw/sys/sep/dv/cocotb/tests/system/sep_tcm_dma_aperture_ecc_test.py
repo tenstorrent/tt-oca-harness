@@ -651,9 +651,11 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Correctable Ecc/Parity Errors' "
             f":638-639,646-647 mem={mem} addr=0x{addr:08x} k={k} "
             f"written_data={'X' if wb is None else hex(wb & M32)} "
-            f"written_ecc={'X' if wb is None else hex(wb >> DATA_BITS)} expect=0x{data:08x}"
+            f"written_ecc={'X' if wb is None else hex(wb >> DATA_BITS)} expect=0x{data:08x} "
+            f"expect_ecc={'X' if written is None else hex(written >> DATA_BITS)}"
         )
-        if wb is None or wb & M32 != data:
+        # The corrected word is the stored word before the flip: data and ECC bits.
+        if wb is None or written is None or wb & M32 != data or wb != written:
             self._fail("CHK-TCM-SBE-WB", line)
         self.logger.info("CHK-TCM-SBE-WB PASS: %s", line)
         self.n_checks += 1
