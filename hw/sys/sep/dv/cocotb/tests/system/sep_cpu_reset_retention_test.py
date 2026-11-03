@@ -181,15 +181,17 @@ calibrated copy time after GO); ``CTRL-DEMOTE-COLD-CLEAR`` (the ``rst_ni`` pulse
 at the end of the demotion-hold leg returns ``DEMOTE_1`` and ``DEMOTE_2`` to
 their RDL reset value, so the readback of CHK-DEMOTE-HELD is live);
 ``CTRL-JTAG-TRST-EDGE`` (``jtag_trst_probe_o`` falls and then rises in the
-``jtag_trst_ni`` pulse). Observations: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC`` and
-``REFERENCE_COUNTER`` after each event) and ``OBS-AGG-UNLATCHED``
-(``host_path_err`` and the hmac, csrng and edn bits of
-``PERIPH_BUS_ERR_STATUS`` before and after each pulse sequence, with the reason
-no access of the leaf latches them: a host-path fault needs a DMA bus fault,
-and the leaf locks the DMA range to the SRAM before the sequences; the leaf
-holds HMAC in its engine reset through every pulse; the CSRNG and EDN windows
-answer an unmapped offset with DECERR before the register bridge,
-``docs/SEP_FCOV.adoc`` ``periph_bus_err_csrng``). The DBG lines of CHK-BANK
+``jtag_trst_ni`` pulse). Observation: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC``
+and ``REFERENCE_COUNTER`` after each event). Info: ``INFO-AGG-UNLATCHED``
+records that ``host_path_err`` and the hmac, csrng and edn bits of
+``PERIPH_BUS_ERR_STATUS`` are not observable in this bench, with the reason
+per bit: a host-path fault needs a DMA bus fault, and the leaf locks the DMA
+range to the SRAM before the sequences; the leaf holds HMAC in its engine
+reset through every pulse; the CSRNG and EDN windows answer an unmapped offset
+with DECERR before the register bridge (``docs/SEP_FCOV.adoc``
+``periph_bus_err_csrng``). These bits read 0 before and after each pulse
+sequence, so the line shows nothing about their retention, and that question
+stays open. The DBG lines of CHK-BANK
 and CHK-CPU-RST-DBG take credit only after CHK-DBG-SYNC passes.
 
 Environment choices (logged): the placement of each pulse in clocks from the
@@ -325,8 +327,9 @@ PERIPH_PARTIAL = {
 SEQ_LATCHED = ("aes", "kmac", "otbn", "wdt")
 SEQ_SET = sum(PERIPH_BIT[n] for n in SEQ_LATCHED)
 SEQ_CLR = sum(PERIPH_CLR[n] for n in SEQ_LATCHED)
-# Status bits no access of this leaf latches before a CPU-only pulse; their value
-# across the pulses is logged (OBS-AGG-UNLATCHED).
+# Status bits no access of this leaf latches before a CPU-only pulse. Their
+# retention is not observable in this bench; INFO-AGG-UNLATCHED records the
+# reason per bit.
 SEQ_UNLATCHED = {
     "host_path_err": "needs_a_dma_bus_fault_the_leaf_dma_range_is_locked_to_sram",
     "hmac": "hmac_held_in_its_engine_reset_through_every_pulse",
@@ -1171,7 +1174,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         dst = await self._rd(DMA_STATUS_ADDR)
         pst = await self._rd(PERIPH_STATUS_ADDR)
         self.logger.info(
-            "OBS-AGG-UNLATCHED LOG event=%s before_pulses=%s after_pulses=%s reason=%s",
+            "INFO-AGG-UNLATCHED event=%s observable=0 before_pulses=%s after_pulses=%s reason=%s",
             cls,
             self.unlatched_pre,
             self._unlatched(dst, pst),
