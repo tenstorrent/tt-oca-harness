@@ -170,6 +170,16 @@ write, and an atomic that expects read data never receives it, so the requester
 waits indefinitely. If the system fabric can issue atomics towards the SMU,
 filter them in front of `smu_axi_in`.
 
+Burst encodings::
+Every request must be a legal AXI4 burst. The crossbar routes a burst by its
+start address and does not inspect `AxBURST`, `AxLEN` or the end address, so a
+WRAP burst with `AxLEN` 0, the reserved `AxBURST` encoding 2'b11 and an INCR
+burst that crosses a 4 KiB boundary are forwarded unchanged and their effect is
+set by the target. The SEP SRAM refuses a multi-beat burst that is not INCR,
+and the SMC scratchpad accepts all three with `OKAY`. The inbound traffic
+filters decide a burst by its start address, so a burst that crosses a 4 KiB
+boundary also escapes the filter entries of the page it enters.
+
 [[smu-firmware-programming-order]]
 === Firmware programming order
 
