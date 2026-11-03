@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: TC_M4 ANCHOR: smc_axi_fabric_burst_type_islands_test
-# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: 10094ee2f95d2add78ee4898da997b9c7e8528d9a17b77110dc0a834c9cf0c4b
+# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 482cb86f57d30af67376129315243b8266f246f5c232aa895678f34496aa2262
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_AXI_FAB_VPLAN_DETAIL.md @ artifact_revision 3 ENV: cocotb
 """FIXED, WRAP and INCR bursts from SEP_IN, SYS_IN and JTAG_IN at the SMC register islands.
 

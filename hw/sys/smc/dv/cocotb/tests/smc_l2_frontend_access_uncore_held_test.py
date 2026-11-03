@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: TC_M1 ANCHOR: smc_l2_frontend_access_uncore_held_test
-# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: c45ae3d0306faa1b61075685c5b947133c2c51903ac8cbed5075a72edc21ecb3
+# DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: cace4d476c9292638a8e626e9e36e90fe43393d6b34dde3847fcd5adfe25b342
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_AXI_FAB_VPLAN_DETAIL.md @ artifact_revision 3 ENV: cocotb
 """L2-frontend requests from SYS_IN, SEP_IN and JTAG_IN while a software uncore reset holds the cluster.
 

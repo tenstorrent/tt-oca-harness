@@ -513,13 +513,14 @@ seed = 1
 timeout_sec = 3600
 tags = ["ci", "cpu"]
 run_modes = ["smoke"]
-# +smc_rom_hex overrides the smoke-mode zero image so the boot-ROM words the blocked reads
-# return are non-zero.
+# Both ROM loaders take smc_rom_reconnect.hex in place of the smoke-mode zero image, so the
+# boot-ROM words the blocked reads return are non-zero.
 args = [
     "+axi_sva_need_sep_in",
     "+axi_sva_need_sys_in",
     "+axi_sva_need_jtag_in",
     "+smc_rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_reconnect.hex",
+    "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_reconnect.hex",
 ]
 
 [[tests]]

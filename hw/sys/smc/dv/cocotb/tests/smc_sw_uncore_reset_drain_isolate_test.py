@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_003 ANCHOR: smc_sw_uncore_reset_drain_isolate_test
-# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: 5f510c164e672349855dda85b6c985e428a2efcce774768756405e2d1f93d81a
+# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: dad8bdc4a6b76fe6540aa647e658892722f8daa0672ae85f6af08f676edf09a2
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Software core reset, core reset pulse and software uncore reset with the L2 frontend isolate.
 

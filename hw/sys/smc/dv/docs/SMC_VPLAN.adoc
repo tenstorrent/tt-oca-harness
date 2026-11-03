@@ -1391,7 +1391,7 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_cpu_firmware_boot_test` |2 |ROM boot to the PASS magic with exact CHK evidence.
 |`smc_cpu_l2_read_wedge_test` |2 |Force-mode timeout flush recovers an L2 read drain while SEP_IN holds R.
 |`smc_cpu_l2_write_wedge_test` |3 |Force-mode timeout flush recovers an L2 write drain and absorbs late W beats.
-|`smc_l2_frontend_access_uncore_held_test` |3 |L2-frontend requests blocked and completed across a drained uncore reset, CPU_CTRL reachable and cluster VALIDs low during the hold.
+|`smc_l2_frontend_access_uncore_held_test` |3 |L2-frontend requests presented and blocked during a drained uncore reset and completed after the release, CPU_CTRL reachable during the hold; the cluster VALIDs are recorded, not graded (SF-019).
 |`smc_cpu_mmio_read_wedge_test` |3 |Force-mode timeout flush absorbs a withheld SYS_OUT R and firmware repeats the read.
 |`smc_cpu_mmio_write_wedge_test` |3 |Force-mode timeout flush absorbs a withheld SYS_OUT B and firmware repeats the write.
 |`smc_cpu_sanity_test` |1 |Run CPU-control CSR map coverage and optional firmware boot contract.
@@ -12008,10 +12008,13 @@ IHI 0022 burst footprint unchanged.
   first CLA word read before and after, an INCR read (AxLEN=7) ending on the last word of the CPU
   control aperture, and INCR read and write (AxLEN=15) ending on the last word below
   `BASE + REGION_SIZE` (SYS_IN at the global base).
-* Last leg: core-0 watchdog registers read, `REGION_SIZE` written 0x400, INCR read and write
-  (AxLEN=3) from `BASE + 0x3F0` across the window end on each port, a SEP_IN `REGION_SIZE` restore
-  write, the watchdog registers re-read, a primary reset through `rst_cool_ni`, inbound entry 0
-  re-programmed, `REGION_SIZE` read and a `LOCAL_BASE` read per port.
+* Last leg: core-0 watchdog registers read, `REGION_SIZE` written 0x400 and its value taken from
+  the DUT output `smc_region_size_o` before and after the write (0x0100_0000, then 0x400, printed
+  as `CTRL-BT-REGION-SIZE-1K`; once the window is 1 KiB the CSR lies beyond it and no inbound port
+  can read it back), INCR read and write (AxLEN=3) from `BASE + 0x3F0` across the window end on
+  each port, a SEP_IN `REGION_SIZE` restore write, the watchdog registers re-read, a primary reset
+  through `rst_cool_ni`, inbound entry 0 re-programmed, `REGION_SIZE` read and a `LOCAL_BASE` read
+  per port.
 * A fresh 64-bit read of `LOCAL_BASE` on the same port after each island, the GPIO, scratchpad,
   slot-edge and extent-edge families, after the rule ends and after the recovery.
 * Observation only, never compared, each line naming its findings: `OBS-BT-ISLAND64` (SF-007),
@@ -12045,8 +12048,10 @@ IHI 0022 burst footprint unchanged.
 |===
 |Checker |Description
 |`CHK-BT-ISLAND64` |For each burst shape, 64-bit island and port: every W beat accepted with WLAST
-on beat AxLEN and one B with BID=AWID and no EXOKAY; AxLEN+1 R beats with RID=ARID, RLAST on the
-last beat only and no EXOKAY; every writable island register and neighbour outside the burst
+on beat AxLEN and one B with BID=AWID: OKAY when every byte of every beat lands on an island
+register (`memmap.adoc`: a write burst to a register unit answers as its single-beat writes, and a
+register write answers OKAY), otherwise any code but EXOKAY (SF-007, SF-010); AxLEN+1 R beats
+with RID=ARID, RLAST on the last beat only and no EXOKAY; every writable island register and neighbour outside the burst
 footprint reads its seeded reference, which no beat carries; liveness OKAY
 |`CHK-BT-ISLAND32` |The same through the 64-to-32-bit downsizer on the misc scratch words and the
 reset-unit FLR counters
@@ -12067,8 +12072,9 @@ reports the number of compares that can fail; the read-only `NDMRESET_REQUEST` a
 `ISOLATE_REQ_VIS` are printed as `INFO-PROTOCOL-ONLY`
 |`CHK-BT-RULEEDGE` |The scratchpad-end burst answers OKAY with the written data and the first CLA
 word is unchanged; the CPU-control-end read returns AxLEN+1 beats with RLAST on the last only
-|`CHK-BT-REGIONEDGE` |Window-end burst protocol at the reset `REGION_SIZE` and at 0x400, the core-0
-watchdog registers unchanged, `REGION_SIZE` reads 0x0100_0000 after the primary reset and the
+|`CHK-BT-REGIONEDGE` |Window-end burst protocol at the reset `REGION_SIZE` and at 0x400 (the 1 KiB
+legs run only once `smc_region_size_o` reads 0x400 after the write and read 0x0100_0000 before
+it), the core-0 watchdog registers unchanged, `REGION_SIZE` reads 0x0100_0000 after the primary reset and the
 `LOCAL_BASE` read on each port answers OKAY
 |`CHK-NONVAC` |Ordered fence ADMIT < ISLAND64 < ISLAND32 < STROBES < GPIO < SPM < SLOT_EDGE <
 EXTENT_EDGE < RULE_ENDS < LIVENESS < WINDOW_1K, each term with its time and a count no lower than
@@ -17403,12 +17409,12 @@ reported as the precondition.
 
 *Test Coverage*:
 
-* Contract `SMC_SEP_SCN_001` revision 2 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). Three entries: `rst_cool_ni` low for 40 `clk_ref_i` samples, `tb_jtag_reset_ctrl` cool override enable with value 0 written in one packed store, and `tb_cfg_flr_pf_active` raised with `ISOLATE_REQ_FLR_COUNTER_VALUE` 0x20 and `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` 0x40.
+* Contract `SMC_SEP_SCN_001` revision 5 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). Three entries: `rst_cool_ni` low for 40 `clk_ref_i` samples, `tb_jtag_reset_ctrl` cool override enable with value 0 written in one packed store, and `tb_cfg_flr_pf_active` raised with `ISOLATE_REQ_FLR_COUNTER_VALUE` 0x20 and `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` 0x40.
 * Pending set armed before every entry: two SEP_IN reads and a UART0 read held by `tb_sep_axi_r_hold`, a SEP_IN write whose W beat trails its AW, three SYS_IN reads held by `tb_sys_axi_r_hold`, two JTAG_IN reads and an eFuse JTAG read whose response is not accepted, a JTAG_IN read of 0xB000_0000 held at the SYS_OUT responder, and a SYS_IN read of the DTP CSR window that no responder answers. The leaf requires each response pending, the SEP_IN write's AW accepted with no W handshake, the SYS_OUT AR accepted and the DTP link active, before the source is driven.
 * SYS_IN and SEP_IN answer an address outside the SMC window with DECERR (`fabric.adoc`, input fabric), so the SYS_OUT leg is driven from JTAG_IN: the pending read of 0xB000_0000 and the fresh write and read of 0xB000_0008 go JTAG_IN to SYS_OUT, which is why JTAG_IN carries two planned pending items. The SYS_IN read of 0xB000_0000 is a pending SYS_IN item whose DECERR response is held at the SYS_IN response channel.
 * A 31-sample pulse on `rst_cool_ni`, one sample under the 32-sample de-glitcher, leaves `rst_primary_smc_clk_no`, `rst_primary_ref_clk_no` and `rst_cold_n_o` at 1 on all 95 `clk_ref_i` edges from the fall to 64 edges after the rise.
 * The primary-reset effects: `tb_cpu_core_reset_n` reads 0 at every sample of the window with `rst_cold_n_o` at 1, `CPU_CTRL.SCRATCH[0]` goes from 0xC001_0001 to its reset and `HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD` from 0x2345 to its reset 0x1000; the FLR entry sets `ISOLATE_REQ_SMC_REG` and a written 1 clears it.
-* After each release a fresh write and read complete OKAY on SEP_IN, SYS_IN, JTAG_IN and SYS_OUT (the SYS_OUT write and read counters each advance by one), the eFuse JTAG read returns its pre-reset word, the UART0 register reads its reset, and a fresh read of the DTP window reaches the link again. The sampler counts AR, AW and B handshakes and R completions (RLAST, or the SYS_OUT read counter) per link from the assertion and requires R not above AR and B not above AW at every edge; the fresh phase adds AR/R/AW/B 1/1/1/1 on SYS_IN, JTAG_IN, SEP_IN and SYS_OUT and 1/1/0/0 on the eFuse JTAG link, whose fresh access is a read only. `CHK-NO-ORPHAN-RESPONSE` prints the measured deltas per link and entry. The cores boot from the bench ROM after each release, so SYS_OUT also carries instruction fetch bursts outside the fresh windows.
+* After each release a fresh write and read complete OKAY on SEP_IN, SYS_IN, JTAG_IN and SYS_OUT (the SYS_OUT write and read counters each advance by one), each read returning the word written on that entry: every entry writes its own word (the entry number in bits 15:12 of the base word), so a write that does not land cannot read back a word an earlier entry left, the eFuse JTAG read returns its pre-reset word, the UART0 register reads its reset, and a fresh read of the DTP window reaches the link again. The sampler counts AR, AW and B handshakes and R completions (RLAST, or the SYS_OUT read counter) per link from the assertion and requires R not above AR and B not above AW at every edge; the fresh phase adds AR/R/AW/B 1/1/1/1 on SYS_IN, JTAG_IN, SEP_IN and SYS_OUT and 1/1/0/0 on the eFuse JTAG link, whose fresh access is a read only. `CHK-NO-ORPHAN-RESPONSE` prints the measured deltas per link and entry. The cores boot from the bench ROM after each release, so SYS_OUT also carries instruction fetch bursts outside the fresh windows.
 * The DTP read left pending by one entry's fresh phase is the next entry's pending DTP item, and the FLR counters are re-armed before it: a SEP_IN read of `ISOLATE_REQ_SMC_REG` issued while a DTP read was pending was not answered within the bench timeout.
 * VALID low while the reset is asserted: B and R of SYS_IN, JTAG_IN, SEP_IN and the eFuse JTAG link and of the L2 frontend link from the first sample; AW, W and AR of SYS_OUT, the peripheral crossbar link and the DTP link from the second sample, because a synchronous-reset master may clear its request on the first edge. The CPU MMIO link is sampled and printed but not graded: its rows are not driven in this revision (see Known Limitations).
 * Observation only, waiting on the spec findings the contract names: the fate of every pending phase (completed, abandoned, answered with a response code, or never answered) per link and entry (SF-001, SF-031), the `clk_smc_i` cycles from the release to the first fresh SEP_IN AR and R (SF-008), the `clk_ref_i` samples from the override write to the fall of the primary reset and from the value-1 write to its release (SF-024), and the VALIDs high at the first sampled edge of each window (SF-003). Every `OBS-*` line ends with the `sf=` of the finding it waits on. None is compared.
@@ -17428,20 +17434,20 @@ reported as the precondition.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-COOL-GLITCH-NO-ASSERT` |After a 31-sample low pulse the primary resets and `rst_cold_n_o` read 1 at all 95 sampled `clk_ref_i` edges, and `SCRATCH[0]` then still reads the reference value written before the pulse
-|`CHK-COOL-PIN-PRIMARY-EFFECTS` |After the 40-sample pin the primary reset is asserted with `rst_cold_n_o` at 1, the cores are held at every sample, `SCRATCH[0]` reads 0x0 (was 0xC001_0001) and the threshold reads 0x1000 (was 0x2345)
-|`CHK-JTAG-COOL-OVERRIDE-ENTRY` |With the pin and FLR idle the override value 0 asserts the primary reset with the same effects as the pin
+|`CHK-COOL-GLITCH-NO-ASSERT` |After a 31-sample low pulse the primary resets and `rst_cold_n_o` read 1 at all 95 sampled `clk_ref_i` edges, and `SCRATCH[0]` reads the reference value both before the pulse (the read-back of its write) and after it
+|`CHK-COOL-PIN-PRIMARY-EFFECTS` |After the 40-sample pin the primary reset is asserted with `rst_cold_n_o` at 1, the cores are held at every sample, `SCRATCH[0]` reads 0x0 (was 0xC001_0001) and the threshold reads 0x1000 (was 0x2345); the "was" values are the pre-reset read-backs, graded on the line
+|`CHK-JTAG-COOL-OVERRIDE-ENTRY` |With the pin and FLR idle the override value 0 asserts the primary reset with the same effects as the pin, the pre-reset read-backs graded on the line
 |`CHK-FLR-ENTRY-PRIMARY` |The FLR edge drives `tb_rst_cool_from_flr` low then high with the primary reset asserted; `ISOLATE_REQ_SMC_REG` reads 0x1 after the edge and 0x0 after a written 1
-|`CHK-FRESH-ACCESS-SYS-IN` |After each entry a fresh SYS_IN write completes OKAY and the read returns the written word
+|`CHK-FRESH-ACCESS-SYS-IN` |After each entry a fresh SYS_IN write completes OKAY and the read returns the word written on that entry, a different word per entry
 |`CHK-FRESH-ACCESS-JTAG-IN` |The same on JTAG_IN
 |`CHK-FRESH-ACCESS-SEP-IN` |The same on SEP_IN, with `tb_cpu_l2_pending_ar` and `tb_cpu_l2_pending_aw` at 0 once the read returns
-|`CHK-FRESH-ACCESS-SYS-OUT` |Driven from JTAG_IN: a fresh JTAG_IN write and read of 0xB000_0008 reach the SYS_OUT responder: each counter advances by exactly 1, both OKAY, and the read returns the written word
+|`CHK-FRESH-ACCESS-SYS-OUT` |Driven from JTAG_IN: a fresh JTAG_IN write and read of 0xB000_0008 reach the SYS_OUT responder: each counter advances by exactly 1, both OKAY, and the read returns the word written on that entry, a different word per entry
 |`CHK-FRESH-ACCESS-EFUSE-JTAG` |A fresh eFuse JTAG read of `LOCKS` (a read only: fresh AR/R/AW/B delta 1/1/0/0) returns the non-zero word the bench eFuse image `smc_efuse_default.hex` holds for it, located through the generated eFuse register map; the pre-reset read of the same word must match it as well (stability leg). If the image held no non-zero word there, the leaf would print `OBS-EFUSE-FRESH-WORD: word=<v> sf=SF-021` and grade completion only
 |`CHK-FRESH-ACCESS-PERIPH` |A fresh SEP_IN read of the UART0 register completes OKAY and reads its reset value
 |`CHK-NO-ORPHAN-RESPONSE` |On the five links the cumulative R never exceeds AR and B never exceeds AW at any sampled edge, and the fresh phase adds exactly one AR, R, AW and B on SYS_IN, JTAG_IN, SEP_IN and SYS_OUT and one AR and R on the read-only eFuse JTAG access (R is counted at RLAST, and on SYS_OUT from the read counter)
 |`CHK-VALID-LOW-INBOUND` |BVALID and RVALID of SYS_IN, JTAG_IN, SEP_IN and the eFuse JTAG link read 0 at every sampled edge of each window
 |`CHK-VALID-LOW-SYS-OUT` |AWVALID, WVALID and ARVALID of SYS_OUT and the peripheral crossbar link read 0 from the second sampled edge of each window
-|`CHK-VALID-LOW-CLUSTER` |BVALID and RVALID of the L2 frontend link read 0 at every sampled edge of each window; the line also prints the L2 frontend RVALID at the sample before the assertion, which the contract names as the positive control; the pending set holds the SEP_IN and SYS_IN responses at the input ports rather than at the L2 frontend, so that value is reported, not required. The CPU MMIO leg is not driven (c-fw image deferred): its nets are sampled and printed, not graded, and the leaf prints `INFO-CELL-NOT-DRIVABLE: MMIO rows (c-fw image not staged)`
+|`CHK-VALID-LOW-CLUSTER` |BVALID and RVALID of the L2 frontend link read 0 at every sampled edge of each window; the live control is graded on the same line: per entry the L2 frontend carries at least one R handshake between the arm and the assertion and at least one B and one R handshake after the release, so a VALID stuck at 0 fails. The line also prints the L2 frontend RVALID at the sample before the assertion; the pending set holds the SEP_IN and SYS_IN responses at the input ports rather than at the L2 frontend, so that value is reported, not required. The CPU MMIO leg is not driven (c-fw image deferred): its nets are sampled and printed, not graded, and the leaf prints `INFO-CELL-NOT-DRIVABLE: MMIO rows (c-fw image not staged)`
 |`CHK-DTP-LINK-REQUEST-PHASE` |The DTP link's request phase is active before each reset, inactive from the second sampled edge of the window, and active again after the fresh request; the response vector is tied to 0 in the bench, so it is printed once as `INFO-DTP-RESP-TIEOFF` and not graded
 |`CHK-VALID-LOW-DTP` |The DTP link's AWVALID, WVALID and ARVALID read 0 from the second sampled edge of each window, having read 1 before it
 |`CHK-INFLIGHT-AT-ASSERT` |At the edge the primary reset falls the three holds read 1, every pending item is outstanding (SEP_IN 4, SYS_IN 4 with the DTP read, JTAG_IN 2, eFuse JTAG 1), sampled at the last edge before the reset reads low, the SEP_IN write has its AW accepted and no W handshake, and each master reports `reset_aborted` for exactly the outstanding items
@@ -17562,7 +17568,7 @@ reported as the precondition.
 
 *Test Coverage*:
 
-* Contract `SMC_SEP_SCN_003` revision 4 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). The cores boot from the bench ROM; no firmware image is staged and the leaf runs without `+smc_hold_cpu_boot`.
+* Contract `SMC_SEP_SCN_003` revision 5 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). The cores boot from the bench ROM; no firmware image is staged and the leaf runs without `+smc_hold_cpu_boot`.
 * Core hold: `RESET_CTRL.core3_reset_n` cleared for 512 sampled edges with SEP_IN and SYS_IN scratchpad write-read pairs, a SEP_IN read and write of the core-3 bus error unit, the core-3 watchdog compare read, and `RESET_TIMEOUT` read at the start, middle and end; no isolate request, isolate or timeout flag.
 * Core pulse: the start bit with the reset pulse counts at their reset values (17 samples at 0), a read-modify-write that starts no second assertion in 128 edges, `post_reset_count` 0x00FF (256 samples) polled over SEP_IN through `core_resets_done`, a start bit with `core3_reset_n` 0, and a start bit written twice.
 * Timer-off: `RESET_TIMEOUT` 0, `tb_sep_axi_r_hold` set and four SEP_IN reads parked in the L2 frontend; the uncore bit cleared and the reset withheld for 1024 sampled edges; a fifth read (`FIFTH_ID`) issued after the isolate request. `tb_cpu_l2_pending_ar` must never exceed 4 and the fifth read must complete after the reconnect with its reference data; the front IDs of the four parked reads bind the SEP_IN ID to its front-port ID, and the fifth read's front-port AR sample relative to the isolate request, the apply and the reconnect is `OBS-L2F-FIFTH-READ` (SF-005), never compared. Once more with a core 3 pulse started just before the bit is cleared.
@@ -17597,11 +17603,11 @@ reported as the precondition.
 |`CHK-CORE3-WDT-CONFIG` |The core-3 watchdog compare written 0x0234 still reads it after the core 3 hold and release and reads 0x1000 after the software uncore reset
 |`CHK-CORE-RESET-N-TERM` |The core 3 probe equals the inverse of `core3_reset_n` at every sample of the hold, of the 64 samples after the release and of the pulse with the bit at 0
 |`CHK-TIMER-OFF-WAITS` |With `timeout_value` 0 and four reads parked the uncore reset stays 1 and `reset_applied`, `tb_cpu_drained` and `tb_cpu_reset_timeout` stay 0 at all 1024 edges, and the reset applies after the holds clear
-|`CHK-L2F-FOUR-OUTSTANDING` |`tb_cpu_l2_pending_ar` never exceeds 4 and the fifth read completes after the reconnect with its reference data; its front-port AR sample relative to the isolate request, the apply and the reconnect is `OBS-L2F-FIFTH-READ: front_ar_sample=<s> isolate_req=<a> applied=<b> reconnect=<r> sf=SF-005`, never compared
+|`CHK-L2F-FOUR-OUTSTANDING` |`tb_cpu_l2_pending_ar` never exceeds 4, the fifth read is presented while isolated (SEP_IN ARVALID sampled high on its address with `tb_cpu_isolate_req` at 1 before the reconnect; the line prints the sample) and completes after the reconnect with its reference data; its front-port AR sample relative to the isolate request, the apply and the reconnect is `OBS-L2F-FIFTH-READ: front_ar_sample=<s> isolate_req=<a> applied=<b> reconnect=<r> sf=SF-005`, never compared
 |`CHK-DRAIN-HANDSHAKE-ORDER` |The isolate request rises with the uncore reset still 1, `tb_cpu_drained` rises after the front-port RLAST of every isolate-pending read the bench had released, the uncore and core resets assert in the same sample no earlier than drained, the isolate request stays until the bit is set, `tb_cpu_reset_applied` reads 1 from the apply until the bit is set, and the boundary reconnects
 |`CHK-GIVEUP-REPORT-AND-WAIT` |After the timer expired the probes read `reset_timeout` 1 and `reset_applied` 0 with the uncore reset still 1; after the drain the probes read both 1 until the bit is set
 |`CHK-DRAIN-PENDING-READS-COMPLETE` |Every isolate-pending parked read delivers its front-port RLAST before the uncore reset applies, counting only reads the bench had released; all four parked reads reach the front port; a read the front port accepted that the isolate never counted (`OBS-DRAIN-FRONTPORT-ACCEPTED-NOT-PENDING`, SF-005, SF-006) completes after the reconnect with its reference data; a read still bench-held is `OBS-DRAIN-BENCH-HELD`
-|`CHK-BLOCKED-NOT-TERMINATED-THEN-RECONNECT` |The three reads presented while isolated get no R, error or B in 256 edges, the isolation holds while the uncore bit is 0, and after the reconnect the three reads complete with their reference data and a fresh SEP_IN read completes
+|`CHK-BLOCKED-NOT-TERMINATED-THEN-RECONNECT` |The three reads are presented while isolated (each port's ARVALID, JTAG_IN included, sampled high on the read address with `tb_cpu_l2_isolated` at 1 inside the 256-edge window; the line prints each sample), get no R, error or B in 256 edges, the isolation holds while the uncore bit is 0, and after the reconnect the three reads complete with their reference data and a fresh SEP_IN read completes
 |`CHK-STATUS-READABLE-FROM-SEP` |The graded `RESET_TIMEOUT` and `CORE_RESET_PULSE_COUNT` reads (S6 while applied and isolated before the blocked reads, and after each reconnect) are issued only when no request of any manager is stalled at the front port and no bench hold is active, complete OKAY with the written timeout fields and the pulse counts, and read `reset_applied` 1 while applied and 0 after the reconnect; every other status read is `OBS-STATUS-READ-UNDER-STALL: port=<p> completed=<sample|never> stalled_request=<reads|none> sf=SF-026` with a bounded observation wait, never graded
 |`CHK-OBS-VALID-UNCORE-SW` |One `OBS-VALID-UNCORE-SW: edges=<n> high=<list|none> xz=<n> sf=SF-019` line over the drained software uncore resets (L2 frontend BVALID / RVALID, CPU MMIO AWVALID / WVALID / ARVALID); observation only, SF-003 and SF-019
 |`CHK-COLD-ISOLATION-RELEASE` |`tb_cpu_l2_isolated` reads 1 until the later of the uncore reset release and `smc_init_mem_done_o`, falls within the bound after it, and a SEP_IN scratchpad read completes after the release; the edge count is `OBS-COLD-ISOLATION-RELEASE: later=<event> edges=<n> stated=4 ruling=#3425-item-6`, never compared
@@ -24949,8 +24955,9 @@ generated SMC address map (`smc_addr.h`).
 
 *Run mode*: one testlist entry in `testlists/cpu.toml`; group `all`; `run_modes` `smoke`;
 `timeout_sec` 3600; tags `ci`, `cpu`; seed 1; args `+axi_sva_need_sep_in` `+axi_sva_need_sys_in`
-`+axi_sva_need_jtag_in`; tool VCS (cocotb). The ten `ocah_axi_sva` instances stay on; no
-assertion-off plusarg is passed.
+`+axi_sva_need_jtag_in`, and `+smc_rom_hex` and `+rom_hex` both pointing at `assets/smc_rom_reconnect.hex`, the
+smoke-mode zero image with non-zero words at ROM offsets 0x100 and 0x140; tool VCS (cocotb). The
+ten `ocah_axi_sva` instances stay on; no assertion-off plusarg is passed.
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
 drawn from the seed.
@@ -24972,9 +24979,12 @@ the cluster-side VALIDs during the hold are recorded, not graded.
 * Blocked requests: episode A, 64-bit scratchpad reads of W0 on SYS_IN and JTAG_IN and a boot-ROM
   read on SEP_IN; episode B, the scratchpad read on SEP_IN and boot-ROM reads on SYS_IN and
   JTAG_IN; episode C, 64-bit scratchpad writes on the three ports. Each is presented while
-  `reset_applied` is 1 and watched for 2048 `clk_smc_i` edges.
+  `reset_applied` is 1 and watched for 2048 `clk_smc_i` edges; the leaf requires the port's
+  ARVALID or AWVALID (address and ID of the request, and WVALID for a write), which the bench
+  drives, sampled high in the window and prints one `CTRL-ISO-BLOCK-PRESENTED` line per request.
 * Release, episodes A and B: each blocked read completes with one R beat, OKAY, after the SEP_IN
-  release write; a boot-ROM read returns the word the setup read of the same address returned.
+  release write; a boot-ROM read returns the word the setup read of the same address returned,
+  and the setup read must return the non-zero word of the `+smc_rom_hex` image.
 * Release, episode C: the SEP_IN `RESET_CTRL` release write is attempted while the three
   scratchpad writes are blocked and given a bounded observation wait. If it completes, each
   write's B and the readback of W1'..W3' are recorded; if it does not, the episode-C completion
@@ -25036,11 +25046,15 @@ the cluster-side VALIDs during the hold are recorded, not graded.
 |`CHK-ISO-DRAIN-APPLIED` |In every episode the `RESET_CTRL` write answers OKAY, `reset_applied`
 reads 1 within 64 reads with `reset_timeout` 0, `RESET_CTRL` reads back with bit 8 0 and the core
 fields as written, and `reset_applied` reads 0 after the graded releases of episodes A and B
-|`CHK-ISO-BLOCK-NO-RESPONSE` |No R beat or B for any request presented while `reset_applied` is
-1 during its 2048-edge window, and every blocked read of episodes A and B completes after the
-release
+|`CHK-ISO-BLOCK-NO-RESPONSE` |Every request is presented while `reset_applied` is 1 (its AR or AW
+VALID, with its address and ID, and W VALID for a write, sampled high in the window), gets no R
+beat or B during its 2048-edge window, every blocked read of episodes A and B completes after the
+release, and on the cold-recovery path each episode-C write gets no B until the cold reset
+asserts (`CTRL-ISO-C-WRITE-HELD`); what happens to those writes afterwards is
+`OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE` (SF-026)
 |`CHK-ISO-RECONNECT` |Each blocked read of episodes A and B completes with one R beat OKAY and
-RLAST, a boot-ROM read with the word its setup read returned; the fresh AxLEN 7 bursts after the
+RLAST, a boot-ROM read with the word its setup read returned, which is the non-zero word of the
+`+smc_rom_hex` image; the fresh AxLEN 7 bursts after the
 recovery answer OKAY with eight W beats, one B, eight R beats, RLAST on the last only and the
 written data, and `reset_applied` reads 0 after each graded release
 |`CHK-FRONTPORT-CTRL` |On each port, running and held, the `SCRATCH[0]` write and read and the
@@ -51181,7 +51195,7 @@ in <<smc-deferred-disposition>>.
 |A scratchpad write blocked at the isolated L2 frontend during a software uncore reset can hold the SEP_IN `RESET_CTRL` write that releases the uncore: on one AXI4 interface W beats follow AW order, so the release's W waits behind the blocked write's |`smc_l2_frontend_access_uncore_held_test` cannot release the uncore under blocked writes without a cold reset; it records the attempt in `OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE`, prints `INFO-CELL-NOT-DRIVABLE` for the episode-C completion cells and recovers with the reset agent's cold reset. The completion of a blocked write is observed, never graded |Hazard question for the designer (SF-026): state whether CPU-control accesses, the uncore release included, stay reachable while an L2-frontend request is blocked; grade the episode-C release and write completion once that is stated
 |A unit whose aperture straddles `BASE + REGION_SIZE` stays reachable below the limit:
  at `REGION_SIZE` 0x10_0000 the scratchpad answers OKAY at `BASE + 0x6_0000` and the write lands, while three texts (`memmap.adoc`, the `REGION_SIZE` description and the integrator guide) promise DECERR for such a unit |`smc_err_slv_response_content_test` grades S9 per address (DECERR at `BASE + 0x10_0000`, at the limit) and records the accesses below the limit as `OBS-ERRC-REGIONSIZE-STRADDLE` without comparing them |SPEC issue #3551: the owner either rewords the three texts to the per-address rule or adds a unit-extent check; the OBS line becomes a graded check once that ruling lands
-|The L2 frontend VALID-low leg of the primary reset has no live positive control under the leaf's stimulus: the pending reads finish at the L2 frontend before the reset and are held only at SEP_IN, so the L2 frontend RVALID sampled before the assertion reads 0 |`smc_primary_reset_inflight_links_test` grades `CHK-VALID-LOW-CLUSTER` on the L2 frontend B and R VALIDs and prints the pre-assertion RVALID sample, but a stuck-at-0 RVALID would pass the leg |Hold an L2 frontend R beat at the assertion, which makes the pre-assertion sample a live control
+|The L2 frontend VALID-low leg of the primary reset has no positive control at the assertion itself: the pending reads finish at the L2 frontend before the reset and are held only at SEP_IN, so the L2 frontend RVALID sampled before the assertion reads 0 |`smc_primary_reset_inflight_links_test` grades `CHK-VALID-LOW-CLUSTER` on the L2 frontend B and R VALIDs with a live control outside the window (R handshakes between the arm and the assertion, B and R handshakes after the release), but no L2 frontend VALID is high at the edge the reset falls |Hold an L2 frontend R beat at the assertion, which makes the pre-assertion sample a live control
 |With the contract stimulus of the watchdog-chain second run (compare 0x10 with `wdogenalways`) the core-3 watchdog re-reaches compare right after the FEED resets the count, so a first-timeout request the FEED leaves latched cannot be told from a fresh re-fire |`smc_warm_reset_inflight_links_test` grades in `CHK-WDT-LATCH-NOT-WITHDRAWN` only that the FEED lands (`tb_wdt_first_timeout` falls after the FEED write with the warm reset high), that the warm reset asserts after the FEED within the bound and does not assert again without a new arm within 200000 `clk_smc_i` edges, and records the edges from the FEED to the fresh first-timeout rise (or `none`) and to the warm assertion as `OBS-WDT-FEED-REFIRE: refire_edge=<n\|none> warm_edge=<b> open-question=wdt-feed-rearm`, never compared |An answer to the open spec question whether a FEED, or a second-stage cycle-count reset, after the first timeout re-arms the first-timeout event, and a contract stimulus that stops the count after the first fire, so that the latch can be graded
 |===
 

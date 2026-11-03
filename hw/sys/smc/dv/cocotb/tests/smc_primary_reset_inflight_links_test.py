@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_001 ANCHOR: smc_primary_reset_inflight_links_test
-# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: a3ebb5f53ef47852ea4afd96be75082ca46a9d0dc171866c6545e7cd563ab832
+# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 97e75a36398267c45e740fb2003cfcd146c9d47ae0d5c37fbb90b6a17c9ddf70
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Primary reset with accesses pending on every steerable AXI link, entered three ways.
 
