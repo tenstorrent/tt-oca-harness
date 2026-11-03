@@ -448,6 +448,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self.findings: dict[str, list[str]] = {
             k: [] for k in ("DRAIN", "BLOCK", "RECONNECT", "VALIDS", "CTRL", "OTHER")
         }
+        self.min_release_latency = 1 << 30
         self.counts = {
             "drain": 0,
             "cleared": 0,
@@ -858,14 +859,21 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
             seen["w"] = edge
 
     async def _complete_blocked(self, reqs: list[_Req], tag: str, release_ps: int) -> None:
-        """Episodes A and B: each blocked read completes with one R beat, OKAY; a boot-ROM read
-        returns the word the S1 read of the same address returned. The scratchpad word W0 a
-        blocked read returns is recorded only (SF-018)."""
+        """Episodes A and B: each blocked read completes with one R beat, OKAY, after the release
+        B; a boot-ROM read returns the word the S1 read of the same address returned. The
+        scratchpad word W0 a blocked read returns is recorded only (SF-018)."""
         period_ps = self.period_ps
         for req in reqs:
             await self._wait(req, RELEASE_BOUND, "release")
             hs = self._grade(req, "RECONNECT")
             latency = "none" if not hs else str((hs[0].time_ps - release_ps) // period_ps)
+            if hs and hs[0].time_ps <= release_ps:
+                self.findings["BLOCK"].append(
+                    f"{tag} {req.port} {req.label}: R at {hs[0].time_ps} ps, not after the "
+                    f"release B at {release_ps} ps"
+                )
+            elif hs:
+                self.min_release_latency = min(self.min_release_latency, int(latency))
             data = None if not hs else hs[0].data
             if req.addr != W_ADDR[0]:
                 want = self.rom_ref.get(f"{req.port}@{req.addr:x}")
@@ -1298,12 +1306,14 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 "CHK-ISO-BLOCK-NO-RESPONSE: %d requests presented while reset_applied is 1 "
                 "(AR/AW VALID with the request's address and ID, and W VALID for writes, sampled "
                 "high in the window; CTRL-ISO-BLOCK-PRESENTED), 0 responses during %d-edge "
-                "windows; the %d blocked reads of episodes A and B answered after release; %d "
+                "windows; the %d blocked reads of episodes A and B answered after the release B "
+                "(R latency > 0, shortest %d clk_smc_i edges); %d "
                 "episode-C writes without a B until the cold reset (CTRL-ISO-C-WRITE-HELD), "
                 "their completion is OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE (recovery=%s)",
                 self.counts["blocked"],
                 WINDOW_N,
                 self.counts["blocked_rd"],
+                self.min_release_latency,
                 self.counts["c_held"],
                 self.recovery,
             )

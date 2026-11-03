@@ -1423,10 +1423,28 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         upto = res if res is not None else self.n
         pend_vals = [self._c("l2par", x) for x in range(since, upto)]
         pend_peak = max(pend_vals, default=-1)
+        pend_drained = None if b is None else self._c("l2par", b)
         accepted = sorted((p for p in per if p.far is not None), key=lambda p: p.far)
-        n_counted = max(0, min(pend_peak, len(accepted)))
-        counted = accepted[:n_counted]
-        not_pending = accepted[n_counted:]
+        rel0 = self._first("sh", 0, hrel)
+        # The reads that delivered their front-port RLAST before drained are the ones the
+        # isolate drained; the pending tap grades that set (zero at drained, peak = its size).
+        counted = [p for p in accepted if b is not None and p.frl is not None and p.frl < b]
+        rest = [p for p in accepted if p not in counted]
+        held = [] if b is None or rel0 is None else self._held(rel0, b)
+        bench_held = rest if held else []
+        not_pending = [p for p in rest if p not in bench_held]
+        if pend_drained != 0:
+            bp.append(f"tb_cpu_l2_pending_ar reads {pend_drained} at drained@{b}, want 0")
+        if pend_peak != len(counted):
+            bp.append(
+                f"tb_cpu_l2_pending_ar peaks at {pend_peak}, but {len(counted)} parked reads "
+                f"delivered their front-port RLAST before drained@{b}"
+            )
+        self.obs_lines.extend(
+            f"OBS-DRAIN-BENCH-HELD: read={p.k} rlast={self._opt(p.frl)} hold_release={hrel} "
+            f"drained={b} held_samples={held[:3]}"
+            for p in bench_held
+        )
         if self.front_prefix is None:
             bp.append("the front-port IDs of the parked reads are not bound; no read attributed")
         elif len(accepted) != 4:
@@ -1446,42 +1464,13 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                 bh.append(f"order isolate_req@{a} drained@{b} uncore@{res}")
             if cc != res:
                 bh.append(f"core reset@{cc} not in the sample of the uncore reset@{res}")
-        # drain claims count only the isolate-pending reads the bench had released
-        rel0 = self._first("sh", 0, hrel)
-        bench_held = []
-        late_d, late_a = [], []
-        for edge, late in ((b, late_d), (res, late_a)):
-            if edge is None or rel0 is None:
-                continue
-            held = self._held(rel0, edge)
-            for p in counted:
-                if p.frl is not None and p.frl < edge:
-                    continue
-                if held:
-                    bench_held.append(
-                        f"OBS-DRAIN-BENCH-HELD: read={p.k} rlast={self._opt(p.frl)} "
-                        f"hold_release={hrel} drained={b} held_samples={held[:3]}"
-                    )
-                else:
-                    late.append((p.k, p.frl))
         if rel0 is None:
             bp.append(f"tb_sep_axi_r_hold never read 0 after the release at sample {hrel}")
-        self.obs_lines.extend(dict.fromkeys(bench_held))
-        if late_d:
-            bh.append(
-                f"drained@{b} before the front-port RLAST of isolate-pending released reads "
-                f"{late_d} (read, RLAST sample); holds 0 from sample {rel0}"
-            )
-        if late_a:
-            bp.append(
-                f"uncore reset applied@{res} before the front-port RLAST of isolate-pending "
-                f"released reads {late_a} (read, RLAST sample); holds 0 from sample {rel0}"
-            )
         r_n = sum(1 for p in counted if p.frl is not None and res is not None and p.frl < res)
         cocotb.log.info(
             "S5: parked reads (read, front AR, front RLAST, SEP_IN RLAST) %s; isolate-pending "
             "%s, front-port-accepted-not-pending %s; isolate_req@%s drained@%s applied@%s "
-            "uncore@%s; hold release@%s (holds 0 from %s); pending peak %s",
+            "uncore@%s; hold release@%s (holds 0 from %s); pending peak %s, at drained %s",
             [(p.k, p.far, p.frl, p.srl) for p in per],
             [p.k for p in counted],
             [p.k for p in not_pending],
@@ -1492,6 +1481,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             hrel,
             rel0,
             pend_peak,
+            pend_drained,
         )
         # status after the drain: graded only with no stalled request, else an observation
         link = "SEP" if all(r.event.is_set() for r in reads) else "JTAG"
@@ -1568,7 +1558,8 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             bp,
             f"isolate-pending reads AR {len(counted)} R {r_n} before reset applied (front-port "
             f"RLAST {[p.frl for p in counted]}, SEP_IN RLAST {[p.srl for p in counted]}, uncore "
-            f"reset@{res}, holds 0 from sample {rel0}, pending peak {pend_peak}); "
+            f"reset@{res}, holds 0 from sample {rel0}); tb_cpu_l2_pending_ar {pend_drained} at "
+            f"drained@{b}, peak {pend_peak} = reads with front-port RLAST before drained; "
             f"front-port-accepted-not-pending {len(not_pending)} completed after reconnect",
         )
         if rise is not None:
@@ -1789,6 +1780,11 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                         bad.append(
                             f"tb_cpu_l2_isolated drops at sample {first_bad} before the release"
                         )
+                else:
+                    bad.append(
+                        f"tb_cpu_l2_isolated first reads 1 at sample {iso_hi}, not before the "
+                        f"later event {later}"
+                    )
                 if fall is None:
                     bad.append("tb_cpu_l2_isolated never fell after the release")
                 elif fall < later:
@@ -1820,7 +1816,9 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         self._grade(
             T,
             bad,
-            "isolated until later event; released (edges in OBS); SEP_IN read completed",
+            "isolated until later event; released (edges in OBS); SEP_IN read completed "
+            f"(uncore reset@{low}, isolated from {iso_hi} to the later event@{later}, "
+            f"released@{fall})",
         )
         self._stamp("COLD_ENTRY", 0 if fall is None or low is None else fall - low)
 

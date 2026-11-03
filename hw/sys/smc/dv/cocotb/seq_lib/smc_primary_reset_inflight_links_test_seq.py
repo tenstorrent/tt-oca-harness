@@ -268,6 +268,7 @@ class _LinkMonitor:
         self.cold_low = 0
         self.dtp_resp_nonzero = 0
         self.valid_edges = {link: 0 for link in (*VALID_RULES, "DTP")}
+        self.live = {link: set() for link in VALID_RULES}
         self.valid_violations = {link: [] for link in (*VALID_RULES, "DTP")}
         self.first_edge = {}
         self.cnt = {link: dict.fromkeys(CHANNELS, 0) for link in LINKS}
@@ -355,6 +356,9 @@ class _LinkMonitor:
                 self.release_state = self._pending_counts(g)
             else:
                 self._window(now, links, dtp, g)
+        if self.phase != "window":
+            for link, (chans, _first) in VALID_RULES.items():
+                self.live[link].update(ch for ch in chans if links[link][ch][0])
         if self.phase in ("window", "post"):
             self._count(hs)
             self.hist[self.n] = {link: dict(self.cnt[link]) for link in LINKS}
@@ -792,9 +796,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         rec.ref_write = self.ref_n
         dut.tb_jtag_reset_ctrl.value = _pack(cool_ovrd=1, cool_val=0)
         await self._wait_assert(rec, mon, "override val 0")
-        assert self._v("rst_cool_ni") == 1 and self._v("tb_cfg_flr_pf_active") == 0, (
-            "the pin or FLR source is not idle at the assertion"
-        )
+        rec.sources_at_assert = (self._v("rst_cool_ni"), self._v("tb_cfg_flr_pf_active"))
         held = 0
 
         def _held_enough() -> bool:
@@ -1101,6 +1103,19 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             )
         )
 
+        cool, flr_req = recs["jtag"].sources_at_assert
+        if (cool, flr_req) != (1, 0):
+            fails.append(
+                f"CTRL-JTAG-ENTRY-SOURCES-IDLE/CHK-JTAG-COOL-OVERRIDE-ENTRY: rst_cool_ni={cool} "
+                f"tb_cfg_flr_pf_active={flr_req} at the assertion, want 1/0"
+            )
+        lines.append(
+            (
+                "CTRL-JTAG-ENTRY-SOURCES-IDLE",
+                f"rst_cool_ni={cool} tb_cfg_flr_pf_active={flr_req} at the override assertion "
+                "(pin and FLR idle)",
+            )
+        )
         for name, token, head in (
             ("pin", "CHK-COOL-PIN-PRIMARY-EFFECTS", ""),
             ("jtag", "CHK-JTAG-COOL-OVERRIDE-ENTRY", "override val=0 -> "),
@@ -1285,9 +1300,32 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                     per_entry.setdefault(link, []).append(edges)
                     if edges == 0 or r.mon.valid_violations[link]:
                         bad.append(f"{n} {link}: {edges} edges {r.mon.valid_violations[link][:3]}")
+                    if not r.mon.live[link]:
+                        bad.append(f"{n} {link}: no graded VALID high outside the reset window")
             if bad:
                 fails.append(f"{token}: {bad}")
             return per_entry, violations(links)
+
+        def live_text(links):
+            """Live control: the graded VALIDs each link raised outside the reset window per
+            entry, and the channels that never did, whose VALID-low result is not claimed."""
+            live = "; ".join(
+                f"{link} " + "|".join(",".join(sorted(recs[n].mon.live[link])) for n in ENTRIES)
+                for link in links
+            )
+            idle = sorted(
+                {
+                    f"{link} {ch}"
+                    for link in links
+                    for r in recs.values()
+                    for ch in VALID_RULES[link][0]
+                    if ch not in r.mon.live[link]
+                }
+            )
+            return (
+                f"live control: VALIDs high outside the window pin|jtag|flr {live}; no traffic "
+                f"outside the window, not claimed: {', '.join(idle) or 'none'}"
+            )
 
         def violations(links):
             return sum(len(r.mon.valid_violations[link]) for r in recs.values() for link in links)
@@ -1300,7 +1338,8 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             (
                 "CHK-VALID-LOW-INBOUND",
                 f"B/R VALID low at {sum(edges)} edges x 4 links x 3 entries (per entry "
-                f"{self._joined(edges)}); {nviol} violations",
+                f"{self._joined(edges)}); {nviol} violations; "
+                f"{live_text(('SYS_IN', 'JTAG_IN', 'SEP_IN', 'EFUSE_JTAG'))}",
             )
         )
         per, nviol = valid_check("CHK-VALID-LOW-SYS-OUT", ("SYS_OUT", "PERIPH"))
@@ -1309,7 +1348,8 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             (
                 "CHK-VALID-LOW-SYS-OUT",
                 f"AW/W/AR VALID low from edge 2 at {sum(edges)} edges x 2 links x 3 entries "
-                f"(per entry {self._joined(edges)}); {nviol} violations",
+                f"(per entry {self._joined(edges)}); {nviol} violations; "
+                f"{live_text(('SYS_OUT', 'PERIPH'))}",
             )
         )
         per, nviol = valid_check("CHK-VALID-LOW-CLUSTER", ("CPU_FRONT",))
