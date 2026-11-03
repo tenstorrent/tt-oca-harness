@@ -622,6 +622,12 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         pic_pre = self._pic40()
         await RisingEdge(dut.clk_i)
         exp_words = token_words(self.last_token[ch])
+        if not all(exp_words):
+            raise AssertionError(
+                f"{label}: the token last written to {_CH_NAME[ch]} has a zero word at "
+                f"{[k for k, w in enumerate(exp_words) if not w]}, so CHK-FAULT-RESET-WORDS "
+                "cannot tell a kept word from a cleared one; use a token with no zero word"
+            )
         tag = await self._open_step(_STEP_RESET)
         await self.pulse_rst_ni()
         flags_z = await self._faults()
@@ -641,7 +647,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         words = [await self.fd.rd(a) for a in TOKEN_ARRAY_ADDR[ch]]
         self._grade(
             "FAULT-RESET-WORDS",
-            words == exp_words and all(exp_words),
+            words == exp_words,
             contract=_RESET_WORDS_CONTRACT,
             ch=_CH_NAME[ch],
             words_sha=word_digest(words),

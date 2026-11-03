@@ -123,18 +123,21 @@ carry (a time-0 bench plusarg, a different target, a firmware image), never to
 pin a cell. The existing exception is the fixed-cell variant modules: the
 clock-cell families of `smc_ref_reset_cycles_test`,
 `smc_periph_floor_roundtrip_test`, `smc_octs_clk_rate_test` and
-`smc_clk_relation_regxbar_test` (fourteen variant modules, each pinned by a
+`smc_clk_relation_regxbar_test` (eighteen variant modules, each pinned by a
 `+smc_cell` entry) and the image-kind family of
-`smc_efuse_map_sense_image_test` (five variant modules, each pinned by a
-`+smc_efuse_image` entry), nineteen modules in all, plus the sixteen
+`smc_efuse_map_sense_image_test` (six variant modules, each pinned by a
+`+smc_efuse_image` entry), twenty-four modules in all, plus the sixteen
 `smc_clk_*` modules that pin the three clock periods as module constants:
 fifteen Phase 3 cells and the owning leaf of the family,
-`smc_clk_smc_slower_than_ref_test`, which is Phase 2. Thirty-four of these
-thirty-five modules are directed (`RAND-NONE`) cells, and their entries say so.
+`smc_clk_smc_slower_than_ref_test`, which is Phase 2. Thirty-nine of these
+forty modules are directed (`RAND-NONE`) cells, and their entries say so.
 The one exception is `smc_efuse_map_sense_image_random_test`, `RANDCFG` in its
 entry: the cell pins the image kind, and the module draws the image words and
 the write-lock bits of that kind from the seed
-(`cocotb/tests/smc_efuse_map_sense_image_test.py`).
+(`cocotb/tests/smc_efuse_map_sense_image_test.py`). The twenty-four variant
+modules pin every cell of the five families, so each cell is graded in every
+regression, and the five owning leaves draw one cell from the seed whenever no
+run argument or class attribute pins one.
 
 [[smc-vplan-audit]]
 Checker contracts in this plan are written against these known ways a check
@@ -489,7 +492,8 @@ module, DMA and zeroer gates have no canonical scenario
 |F05
 |Function-level reset
 |`clk_rst.adoc` Function Level Reset and Isolation
-|`smc_flr_sanity_test`, `smc_flr_isolation_sources_test`, `smc_cool_reset_pin_flr_overlap_test`
+|`smc_flr_sanity_test`, `smc_flr_isolation_sources_test`, `smc_cool_reset_pin_flr_overlap_test`,
+`smc_isolate_pinen_cold_test`, `smc_flr_sequencer_single_pulse_test`
 |`smc_iso_fcov` (`c_flr_isolate_enabled`, `c_flr_isolate_disabled`); `smc_reset_fcov`
 (`c_reset_op_flr_pf_active`, `c_reset_op_cool_from_flr`)
 |`YES`: `smc_flr_sanity_test`
@@ -1257,6 +1261,9 @@ asserted at a drawn cycle of a drawn in-flight operation after programming non-z
 every seed at least one inside an SPM burst (issued into the cluster, response not returned),
 reset exactly the registers of that reset's domain, keep every other programmed value, hold warm
 reset low whenever primary reset is low, and leave the bench answering OKAY once the resets release.
+|`smc_isolate_pinen_cold_test` |2 |`ISOLATE_REQ_PINEN_REG` and the pin request hold across a cold pulse with the isolation pin high and the register clears across one with the pin low.
+|`smc_flr_sequencer_single_pulse_test` |2 |The `BP_COOL_RESET_N_O` pad follows the FLR cool reset open-drain on every sample; `ISOLATE_REQ_VIS` follows the pin with no isolation request.
+|`smc_flr_hold_edge_requeue_test` |3, held out |FLR edges inside the pre-reset count and the hold must give one cool pulse of the single-request width; the hold edge restarts the count and a second pulse follows (issue to follow).
 |===
 
 ==== CLOCK
@@ -1331,6 +1338,9 @@ clk_periph_i = 10 / 10 / 10 ns).
 |`smc_clk_relation_regxbar_smc_slower_test` |3 |The hang-detector threshold and AVS_CFG_0 hold written
 values at each single-axis clock relation of the run, in the smc_slower cell (clk_ref_i / clk_smc_i
 / clk_periph_i = 10 / 12 / 8 ns).
+|`smc_clk_relation_regxbar_default_test` |3 |The hang-detector threshold and AVS_CFG_0 hold written
+values at each single-axis clock relation of the run, in the default cell (clk_ref_i / clk_smc_i /
+clk_periph_i = 10 / 1.25 / 5 ns).
 |`smc_octs_clk_rate_test` |3 |The OCTS counter advances at the clk_smc_i rate in every clock cell and
 restarts from its preset on a START after the preset is latched.
 |`smc_octs_timer_rate_test` |2 |The OCTS TIMER_COUNT delta over one window lies within the bench's
@@ -1350,6 +1360,9 @@ cell and restarts from its preset on a START after the preset is latched, in the
 |`smc_octs_clk_rate_smc_slower_test` |3 |The OCTS counter advances at the clk_smc_i rate in every clock
 cell and restarts from its preset on a START after the preset is latched, in the smc_slower cell
 (clk_ref_i / clk_smc_i / clk_periph_i = 10 / 12 / 5 ns).
+|`smc_octs_clk_rate_default_test` |3 |The OCTS counter advances at the clk_smc_i rate in every clock
+cell and restarts from its preset on a START after the preset is latched, in the default cell
+(clk_ref_i / clk_smc_i / clk_periph_i = 10 / 1.25 / 5 ns).
 |`smc_periph_cg_window_extent_test` |3 |With one peripheral clock-gate enable set, that window answers
 SLVERR with the error pattern while the other windows stay
 reachable.
@@ -1361,14 +1374,21 @@ clk_periph_i = 10 / 1.25 / 5 ns).
 |`smc_periph_floor_roundtrip_periph3_test` |3 |AVS_CFG_0 round-trips a written value through the AVSBus
 bridge at peripheral clock periods of 10, 5 and 3 ns, in the periph3 cell (clk_ref_i / clk_smc_i /
 clk_periph_i = 10 / 1.25 / 3 ns).
+|`smc_periph_floor_roundtrip_periph10_test` |3 |AVS_CFG_0 round-trips a written value through the
+AVSBus bridge at peripheral clock periods of 10, 5 and 3 ns, in the periph10 cell (clk_ref_i /
+clk_smc_i / clk_periph_i = 10 / 1.25 / 10 ns).
 |`smc_ref_reset_cycles_test` |3 |The cold-reset release hold and assertion de-glitch are counted in
 clk_ref_i cycles at two reference periods.
 |`smc_ref_reset_cycles_ref4_test` |3 |The cold-reset release hold and assertion de-glitch are counted
 in clk_ref_i cycles at two reference periods, in the ref4 cell (clk_ref_i / clk_smc_i / clk_periph_i
 = 4 / 1.25 / 5 ns).
+|`smc_ref_reset_cycles_ref10_test` |3 |The cold-reset release hold and assertion de-glitch are
+counted in clk_ref_i cycles at two reference periods, in the ref10 cell (clk_ref_i / clk_smc_i /
+clk_periph_i = 10 / 1.25 / 5 ns).
 |`smc_clk_ratio_rand_test` |3 |Seeded `clk_smc_i`, `clk_ref_i` and `clk_periph_i` periods
 inside the stated bounds leave the register traffic of the clock-cell family completing with its
 generated reset words and written patterns, with each measured period equal to the drawn one.
+|`smc_clock_gate_inflight_completes_test` |3, held out |A read the I2C peripheral accepted before `I2C_CG_EN` is set must complete once with its own word; a response handed over as the gate closes is duplicated and later reads receive the previous word (issue to follow).
 |===
 
 ==== CPU
@@ -1508,6 +1528,8 @@ in the walking eFuse image.
 the ones eFuse image.
 |`smc_efuse_map_sense_image_zero_test` |3 |Sensed image words match the loaded file on every path, in
 the zero eFuse image.
+|`smc_efuse_map_sense_image_default_test` |3 |Sensed image words match the loaded file on every
+path, in the default eFuse image.
 |`smc_efuse_map_sep_write_test` |3 |Unlocked SEP_IN map writes read back and reach the shadow port.
 |`smc_efuse_sense_sequence_test` |2 |Sense request, 256 strobes and hand-over follow the interface.
 |`smc_efuse_security_disable_bypass_test` |3 |With the security-disable input held at 1 from time 0
@@ -17776,6 +17798,171 @@ printed; only the deltas, equalities and orderings between them are compared.
 
 '''''
 
+[[sec-571-smc_isolate_pinen_cold_test]]
+===== 571 `smc_isolate_pinen_cold_test`
+
+*Phase*: 2
+
+*Area*: RESET
+
+*Source Module*: `smc_isolate_pinen_cold_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 4-byte reads and writes); reset
+unit registers ISOLATE_REQ_REG and ISOLATE_REQ_PINEN_REG (bit 3 used); bench drives `rst_cold_ni`
+and the isolate-request pad through `tb_top.tb_gpio_ext_drive_value` and
+`tb_top.tb_gpio_ext_drive_en` (the pad bit is the Isolate Request index of the integrator GPIO pad
+table); bench probes `tb_top.tb_isolate_req_o` (bit 3), `tb_top.tb_skip_mem_repair_o`,
+`tb_top.tb_rst_warm_smc_clk_n`, `tb_top.tb_fuse_sense_done`; `clk_smc_i` and `clk_ref_i`.
+
+*Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `hosted`, `reset`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`, `flr`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: `ISOLATE_REQ_PINEN_REG` holds across a cold reset while the isolation pin is high and
+clears across one while the pin is low.
+
+*Test Coverage*:
+
+* `ISOLATE_REQ_PINEN_REG` has a conditional synchronous clear: it clears on cold reset only while
+  the synchronized isolation pin is low (`clk_rst.adoc` "Isolation Controls").
+* `ISOLATE_REQ_PINEN_REG` is not reset by the cold reset while the pin is high, so the isolation
+  holds across it (`clk_rst.adoc` "Isolation Connections").
+* The rises for the pin to reach `tb_skip_mem_repair_o` and for `tb_isolate_req_o[3]` to follow
+  are measured and printed.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done`; hold the FLR input low, `rst_cool_ni` high and the pin low; read
+  ISOLATE_REQ_REG and ISOLATE_REQ_PINEN_REG expecting 0; require `tb_isolate_req_o[3]` 0 on 32
+  consecutive `clk_smc_i` rises.
+. Write ISOLATE_REQ_PINEN_REG = bit 3 and read it back; drive the pin high; wait for
+  `tb_skip_mem_repair_o` = 1 and `tb_isolate_req_o[3]` = 1 (bound 128 rises); require it to hold
+  on 32 rises.
+. Sample `tb_isolate_req_o[3]` and the falls of `tb_rst_warm_smc_clk_n` on every `clk_smc_i`
+  rise while `rst_cold_ni` is held low for 128 `clk_ref_i` cycles, released, the warm smc-clock
+  reset comes back (bound 50000 rises) and `tb_fuse_sense_done` is seen again; require at least
+  512 samples, the warm reset to have fallen, `tb_isolate_req_o[3]` 1 on every sample and on 32
+  further rises, and ISOLATE_REQ_PINEN_REG to read back bit 3.
+. Drop the pin; wait for `tb_skip_mem_repair_o` = 0 and `tb_isolate_req_o[3]` = 0; read
+  ISOLATE_REQ_PINEN_REG expecting bit 3; repeat the cold pulse of step 3 with the pin low; require
+  the warm reset to have fallen and ISOLATE_REQ_PINEN_REG to read back 0; drive the pin high, wait
+  for `tb_skip_mem_repair_o` = 1 and require `tb_isolate_req_o[3]` 0 on 32 consecutive rises.
+. Drop and release the pin; write ISOLATE_REQ_PINEN_REG = 0 and read it back.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PINEN-SURVIVES-COLD-PIN-HIGH` |With PINEN[3] set and the pin high, a 128-reference-cycle cold
+  pulse that drops the warm smc-clock reset must leave `tb_isolate_req_o[3]` at 1 on every
+  `clk_smc_i` sample from the assert until the fuse sense completes (at least 512 samples) and
+  ISOLATE_REQ_PINEN_REG must read back bit 3 afterwards.
+|`CHK-PINEN-CLEARS-COLD-PIN-LOW` |With PINEN[3] set and the pin low, the same cold pulse must leave
+  ISOLATE_REQ_PINEN_REG reading 0, and the pin raised afterwards must leave `tb_isolate_req_o[3]`
+  at 0 on 32 consecutive rises.
+|===
+
+*Pass Criteria*: Both checkers are emitted and the sequence asserts hold: the enable and the
+request survive the cold pulse with the pin high, and the enable clears across the cold pulse
+with the pin low so the pin no longer asserts the request.
+
+*Scope limit*: The rises for the pin to reach `tb_skip_mem_repair_o` and for `tb_isolate_req_o[3]`
+to follow are measured and printed and not compared. The 128-cycle cold pulse is the bench's
+length, above the pin de-glitch filter; the chapter states no minimum.
+
+'''''
+
+[[sec-572-smc_flr_sequencer_single_pulse_test]]
+===== 572 `smc_flr_sequencer_single_pulse_test`
+
+*Phase*: 2
+
+*Area*: RESET
+
+*Source Module*: `smc_flr_sequencer_single_pulse_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 4-byte reads and writes); reset
+unit registers ISOLATE_REQ_PINEN_REG, ISOLATE_REQ_SMC_REG, ISOLATE_REQ_VIS,
+ISOLATE_REQ_FLR_COUNTER_VALUE and ISOLATE_REQ_FLR_RESET_COUNTER_VALUE; bench drives
+`tb_top.tb_cfg_flr_pf_active` (the FLR input) and the isolate-request pad through
+`tb_top.tb_gpio_ext_drive_value` and `tb_top.tb_gpio_ext_drive_en`; bench probes
+`tb_top.tb_rst_cool_from_flr` (`rst_cool_no`), `tb_top.tb_core2pad_en_o` and
+`tb_top.tb_core2pad_o` at the Cool Reset Out index of the integrator GPIO pad table,
+`tb_top.tb_flr_posedge_ref`, `tb_top.tb_flr_counter_state`, `tb_top.tb_rst_warm_smc_clk_n`,
+`tb_top.tb_isolate_req_o`, `tb_top.tb_skip_mem_repair_o`; sampled on `clk_ref_i`.
+
+*Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `hosted`, `reset`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`, `flr`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The FLR cool reset drives the `BP_COOL_RESET_N_O` pad open-drain, and
+`ISOLATE_REQ_VIS` reports the live synchronized pin level.
+
+*Test Coverage*:
+
+* The FLR cool reset drives the open-drain `BP_COOL_RESET_N_O` pad, GPIO 62, which pulls the line
+  low while the reset is asserted and leaves it undriven otherwise (`clk_rst.adoc` "Isolation
+  Connections"): on every `clk_ref_i` sample of two FLR legs the pad output enable equals the
+  inverted `rst_cool_no` and the pad data is 0 whenever the enable is 1.
+* `ISOLATE_REQ_VIS` reports synchronized pin and cool-reset levels; it is not an
+  isolation-completion handshake (`clk_rst.adoc` "Timing and Recovery"): the pin bit follows the
+  pad with ISOLATE_REQ_PINEN_REG at 0 and no isolation request, and the cool-reset bits read 1 at
+  their released level.
+* The pre-reset and hold lengths of both legs are measured in `clk_ref_i` edges and printed.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done`; hold the FLR input low, `rst_cool_ni` high and the pin low; read
+  ISOLATE_REQ_PINEN_REG and ISOLATE_REQ_SMC_REG expecting 0; require `tb_rst_cool_from_flr` = 1.
+. Read ISOLATE_REQ_VIS expecting `cool_reset_n_i` and `cool_reset_n_o` set and `isolate_req_pin`
+  clear; drive the pin high, wait for `tb_skip_mem_repair_o` = 1 and read ISOLATE_REQ_VIS
+  expecting all three bits set; require `tb_isolate_req_o` 0 on 32 consecutive `clk_smc_i` rises;
+  drop the pin, wait for `tb_skip_mem_repair_o` = 0 and read ISOLATE_REQ_VIS expecting the pin bit
+  clear again.
+. Start the `clk_ref_i` sampler of `tb_rst_cool_from_flr`, `tb_core2pad_en_o` and `tb_core2pad_o`
+  bit 62. Program the counters 64 and 64, raise the FLR input, wait for the cool fall and rise
+  (bounds 64 + 64 edges each), require one fall and one rise, drop the FLR input, wait for the
+  warm smc-clock reset to fall and come back, clear ISOLATE_REQ_SMC_REG.
+. Program the counters 4 and 2000, raise the FLR input, wait for the cool fall, make one bounded
+  read of ISOLATE_REQ_VIS (5000 ns, timeout and error tolerated, result recorded), wait for the
+  cool rise, require one fall and one rise, and recover as in step 3.
+. Read ISOLATE_REQ_VIS expecting the pin bit clear and both cool-reset bits set; write both
+  counters to 0 and read them back; release the pin.
+. Over both legs require at least 2064 samples with the pad enable 1 and at least 64 with it 0,
+  the enable equal to the inverted `rst_cool_no` on every sample and the pad data 0 on every
+  enabled sample.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-COOL-RESET-PAD62-OPEN-DRAIN` |On every `clk_ref_i` sample of the two FLR legs
+  `tb_core2pad_en_o[62]` must equal the inverted `tb_rst_cool_from_flr` and `tb_core2pad_o[62]`
+  must be 0 whenever the enable is 1; at least 2064 enabled and 64 released samples must be taken.
+|`CHK-ISOLATE-VIS-LIVE-LEVELS` |ISOLATE_REQ_VIS must read the pin bit 0 with the pin low and 1 with
+  it high while ISOLATE_REQ_PINEN_REG is 0 and `tb_isolate_req_o` stays 0 on 32 rises, and must
+  read both cool-reset bits 1 before and after the FLR legs; the bounded read during the long hold
+  is recorded without comparison.
+|===
+
+*Pass Criteria*: Both checkers are emitted and the sequence asserts hold: the pad follows the cool
+reset open-drain on every sample, each leg gives exactly one cool pulse, and `ISOLATE_REQ_VIS`
+follows the pin without asserting any isolation request.
+
+*Scope limit*: The pre-reset and hold lengths are measured and printed, not compared. The reset
+unit's register block is on the primary reset, so the `ISOLATE_REQ_VIS` cool-reset bits cannot be
+read at their asserted level; the bounded read made during the 2000-cycle hold is recorded only.
+
+'''''
+
 [[sec-534-smc_cool_reset_recovery_test]]
 ===== 534 `smc_cool_reset_recovery_test`
 
@@ -20350,24 +20537,32 @@ compared.
 *BFM / Model*: SEP_IN AXI driver (`SmcSysAxiItem` 4-byte reads and writes and `SmcSysAxiGroupItem`
 for the outstanding case, 50 us access bound) to `HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD`
 (`smc_base_config`, clock domain `clk_smc_i`) and to `AVS_CFG_0` (AVSBus controller window, crossing
-the AVSBus CDC bridge into `clk_periph_i`); the run argument `+smc_cell` pins the `clk_ref_i` /
-`clk_smc_i` / `clk_periph_i` triple in `build_phase`; input clocks timestamped on
+the AVSBus CDC bridge into `clk_periph_i`); `build_phase` sets the `clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` triple of the run's cell (drawn from the seed, or pinned by `+smc_cell` or a
+variant's `CELL`); input clocks timestamped on
 `tb_top.clk_ref_i`, `clk_smc_i` and `clk_periph_i` (1 us edge bound); in the slowest-peripheral cell
 `tb_top.s_axi_arvalid`, `s_axi_arready`, `s_axi_rvalid`, `s_axi_rready`, `s_axi_rid`, `s_axi_rdata`,
 `s_axi_bvalid` and `s_axi_bready` sampled on `clk_smc_i`; fuse-sense-done wait bounded at 200000
 `clk_smc_i` cycles
 
-*Run mode*: one testlist entry per cell: `smc_clk_relation_regxbar_test` (`+smc_cell=default`, this
-module) and the variant entries `smc_clk_relation_regxbar_smc_slower_test` (`+smc_cell=smc_slower`),
-`smc_clk_relation_regxbar_smc_equal_test` (`+smc_cell=smc_equal`),
+*Run mode*: `smc_clk_relation_regxbar_test` (this module, no cell argument: the cell is drawn from
+the seed) and the variant entries `smc_clk_relation_regxbar_default_test` (`+smc_cell=default`),
+`smc_clk_relation_regxbar_smc_slower_test`
+(`+smc_cell=smc_slower`), `smc_clk_relation_regxbar_smc_equal_test` (`+smc_cell=smc_equal`),
 `smc_clk_relation_regxbar_periph_slower_test` (`+smc_cell=periph_slower`),
 `smc_clk_relation_regxbar_periph3_test` (`+smc_cell=periph3`), `smc_clk_relation_regxbar_ref8_test`
 (`+smc_cell=ref8`), `smc_clk_relation_regxbar_slowest_periph_test` (`+smc_cell=slowest_periph`),
-each a module of its own in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
-`timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=default`; tool Verilator (cocotb).
+each a module of its own pinning one cell, in `testlists/clock.toml`; groups `all`, `hosted`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the cell of this entry is pinned by its testlist entry; the
-other cells run as fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_cell` nor the module's `CELL` pins a cell,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the seven cells (ref / smc
+/ periph ns): default 10 / 1.25 / 5, smc_slower 10 / 12 / 8, smc_equal 10 / 10 / 10, periph_slower 8
+/ 1.25 / 10, periph3 10 / 1.25 / 3, ref8 8 / 1.25 / 5 and slowest_periph 8 / 12 / 10. The
+`RAND-SEED` line names the cell and whether it was drawn or pinned; 3 seeds per regression. The
+seven variant modules pin default, smc_slower, smc_equal, periph_slower, periph3, ref8 and
+slowest_periph, so every cell is graded in every regression; this module adds the cell its seed
+draws. A run grades only its cell's checkers.
 
 *Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at
 each single-axis clock relation of the run.
@@ -20427,31 +20622,33 @@ each single-axis clock relation of the run.
 |Checker |Description
 |`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
 reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
-words; the cell name and measured periods are printed.
+words; the line carries `cell=<name>` and the measured periods.
 |`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
 SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
 cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
-each after its term.
+each after its term; the line carries `cell=<name>`.
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
-50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare;
+the line carries `cell=<name>`.
 |`CHK-REGXBAR-RESET-RT` |Default cell: the threshold reads 0x1000 after reset, 0xA5A5A after the
-write and 0x1000 after the restore, each with OKAY.
+write and 0x1000 after the restore, each with OKAY; the line carries `cell=default`.
 |`CHK-REGXBAR-PERIODS` |periph3 and ref8 cells: the threshold reads 0xA5A5A after the write and
-0x1000 after the restore, as in the default cell; the measured periods are printed.
+0x1000 after the restore, as in the default cell; the line carries `cell=<name>` and the measured
+periods.
 |`CHK-CLK-RELATION-BACKPRESSURE` |slowest_periph cell: the ten outstanding accesses complete OKAY
 within 50 us, the sampler sees eight AR, eight R and two B handshakes and no further R or B beat in
 the 256-cycle quiet window, and each read returns its own expected word in issue order with the
-issued ID.
+issued ID; the line carries `cell=slowest_periph` and the measured periods.
 |===
 
 *Pass Criteria*: `CHK-CLK-RELATION-ROUNDTRIP` holds in every cell, with `CHK-NONVAC` and
-`CHK-TIMEOUT-PATHS` printed at the end. The extra row depends on the cell: the table above lists the
-default cell with `CHK-REGXBAR-RESET-RT`; the smc_slower, smc_equal and periph_slower cells have no
+`CHK-TIMEOUT-PATHS` printed at the end. A run grades the extra row of its cell: the default cell has
+`CHK-REGXBAR-RESET-RT`; the smc_slower, smc_equal and periph_slower cells have no
 extra row; the periph3 and ref8 cells have `CHK-REGXBAR-PERIODS` (the threshold reads 0xA5A5A after
 the write and 0x1000 after the restore, as in the default cell); the slowest_periph cell has
 `CHK-CLK-RELATION-BACKPRESSURE` (the ten outstanding accesses complete OKAY within 50 us, each read
 returning its own expected word in issue order, with no response lost or duplicated). Enrolled in:
-`all`.
+`all`, `hosted`.
 
 *Scope limit*: In the slowest_periph cell the drain time of the outstanding group is measured and
 printed and not compared, because the specification gives no bound for the bridge latency. The
@@ -20820,6 +21017,67 @@ compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
+[[sec-571-smc_clk_relation_regxbar_default_test]]
+===== 571 `smc_clk_relation_regxbar_default_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Source Module*: `smc_clk_relation_regxbar_default_test`
+
+*BFM / Model*: as `smc_clk_relation_regxbar_test`; the module fixes the clock cell;
+`+smc_cell=default` in the testlist entry names the same cell.
+
+*Run mode*: one testlist entry, `smc_clk_relation_regxbar_default_test` (`+smc_cell=default`), a
+fixed-cell variant entry of `smc_clk_relation_regxbar_test` in `testlists/clock.toml`; groups `all`,
+`hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=default`;
+tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the clock cell is pinned by the module
+and its testlist entry.
+
+*Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at each single-axis clock
+relation of the run, in the default cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 / 1.25 / 5
+ns).
+Extends `smc_clk_relation_regxbar_test` in the default cell.
+
+*Test Coverage*:
+
+* The `smc_clk_relation_regxbar_test` procedure runs at the default cell (`clk_ref_i` / `clk_smc_i`
+/ `clk_periph_i` = 10 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks are those of
+the `smc_clk_relation_regxbar_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_clk_relation_regxbar_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
+reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
+words; the cell name and measured periods are printed.
+|`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
+SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
+cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
+each after its term.
+|`CHK-REGXBAR-RESET-RT` |Default cell: the threshold reads 0x1000 after reset, 0xA5A5A after the
+write and 0x1000 after the restore, each with OKAY.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-CLK-RELATION-ROUNDTRIP`, `CHK-NONVAC`, `CHK-REGXBAR-RESET-RT`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The bounded waits are recorded, not compared.
+
+'''''
+
 
 [[sec-418-smc_octs_clk_rate_test]]
 ===== 418 `smc_octs_clk_rate_test`
@@ -20834,19 +21092,26 @@ compares. Enrolled in: `all`, `hosted`.
 (`system_timer_octs`) `CTRL`, `TIMER_START`, `STATUS`, `TIMER_COUNT_LO`, `TIMER_COUNT_HI`,
 `TIMER_PRESET_LO` and `TIMER_PRESET_HI` registers at their generated addresses; bench rising-edge
 counters on `tb_top.clk_smc_i`, `clk_ref_i` and `clk_periph_i` (100 us edge bound for the period
-measurement); `tb_top.tb_chiplet_is_primary` required 1; the run argument `+smc_cell` pins the
-`clk_ref_i` / `clk_smc_i` / `clk_periph_i` triple in `build_phase`; no protocol VIP
+measurement); `tb_top.tb_chiplet_is_primary` required 1; `build_phase` sets the `clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` triple of the run's cell (drawn from the seed, or pinned by
+`+smc_cell` or a variant's `CELL`); no protocol VIP
 
-*Run mode*: one testlist entry per cell: `smc_octs_clk_rate_test` (`+smc_cell=default`, this module)
-and the variant entries `smc_octs_clk_rate_smc_slower_test` (`+smc_cell=smc_slower`),
+*Run mode*: `smc_octs_clk_rate_test` (this module, no cell argument: the cell is drawn from the
+seed) and the variant entries `smc_octs_clk_rate_default_test` (`+smc_cell=default`),
+`smc_octs_clk_rate_smc_slower_test` (`+smc_cell=smc_slower`),
 `smc_octs_clk_rate_smc_equal_test` (`+smc_cell=smc_equal`), `smc_octs_clk_rate_smc_fast_test`
 (`+smc_cell=smc_fast`), `smc_octs_clk_rate_ref8_test` (`+smc_cell=ref8`),
-`smc_octs_clk_rate_periph3_test` (`+smc_cell=periph3`), each a module of its own in
-`testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags
-`clock`; seed 1; args `+smc_cell=default`; tool Verilator (cocotb).
+`smc_octs_clk_rate_periph3_test` (`+smc_cell=periph3`), each a module of its own pinning one cell,
+in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags
+`clock`; seed 1; `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the cell of this entry is pinned by its testlist entry; the
-other cells run as fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_cell` nor the module's `CELL` pins a cell,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the six cells (ref / smc /
+periph ns): default 10 / 1.25 / 5, smc_slower 10 / 12 / 5, smc_equal 10 / 10 / 5, smc_fast 10 / 1 /
+5, ref8 8 / 1.25 / 5 and periph3 10 / 1.25 / 3. The `RAND-SEED` line names the cell and whether it
+was drawn or pinned; 3 seeds per regression. The six variant modules pin default, smc_slower,
+smc_equal, smc_fast, ref8 and periph3, so every cell is graded in every regression; this module adds
+the cell its seed draws. A run grades only its cell's rate checker.
 
 *Objective*: The OCTS counter advances at the clk_smc_i rate in every clock cell and
 restarts from its preset on a START after the preset is latched.
@@ -20906,29 +21171,36 @@ restarts from its preset on a START after the preset is latched.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-OCTS-RATE-DEFAULT` |The `TIMER_COUNT` delta of each of the two windows lies within the
-`clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity, and the reference and peripheral
-edge counts of the window lie outside it; the periods are printed.
+|`CHK-OCTS-RATE-DEFAULT` |Default cell: the `TIMER_COUNT` delta of each of the two windows lies
+within the `clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity, and the reference and
+peripheral edge counts of the window lie outside it; the line carries `cell=default` and the
+periods.
+|`CHK-OCTS-RATE-SMC-PERIOD` |smc_slower, smc_equal and smc_fast cells: the delta of each window lies
+within the interval computed from that cell's `clk_smc_i` edges widened by the granularity, and the
+reference and peripheral counts lie outside it where their periods differ from `clk_smc_i`; the line
+carries `cell=<name>` and the periods.
+|`CHK-OCTS-RATE-OTHER-CLOCKS` |ref8 and periph3 cells: with `clk_smc_i` at 1.25 ns and only the
+reference or the peripheral period changed, the delta of each window stays within the `clk_smc_i`
+interval and the reference and peripheral counts lie outside it; the line carries `cell=<name>` and
+the periods.
 |`CHK-OCTS-START-RELOAD` |After the third `TIMER_START` write the first count sample is at least the preset and
 at most the preset plus the `clk_smc_i` edges since the write plus the granularity, `STATUS.RUNNING`
-reads 1, and the following window delta lies within the `clk_smc_i` interval.
+reads 1, and the following window delta lies within the `clk_smc_i` interval; the line carries
+`cell=<name>`.
 |`CHK-NONVAC` |The fence terms FIRST_START_RUNNING, COUNT_PAIR_0, WINDOW_EDGES_COUNTED,
 COUNT_PAIR_1, CELL_REWINDOW, PRESET_WRITTEN, THIRD_START and RELOAD_SAMPLE occur in order with
 strictly increasing stamps, and the rate line prints after CELL_REWINDOW and before the reload line,
-which prints after RELOAD_SAMPLE.
+which prints after RELOAD_SAMPLE; the line carries `cell=<name>`.
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 32-read `RUNNING` poll,
 4000-edge window, 100 us input clock edge) and that expiry raises an assertion; the line is a
-record, not a compare.
+record, not a compare; the line carries `cell=<name>`.
 |===
 
-*Pass Criteria*: The rate row varies with the cell: the table lists the default cell
-(`CHK-OCTS-RATE-DEFAULT`); the smc_slower, smc_equal and smc_fast cells carry
-`CHK-OCTS-RATE-SMC-PERIOD` instead (the delta lies within the interval computed from that cell's
-`clk_smc_i` edges and the ref and periph counts lie outside it where their periods differ); the ref8
-and periph3 cells carry `CHK-OCTS-RATE-OTHER-CLOCKS` (with `clk_smc_i` at 1.25 ns and only one other
-period changed, the delta stays within the `clk_smc_i` interval). In every cell the rate row,
+*Pass Criteria*: A run grades the rate row of its cell: `CHK-OCTS-RATE-DEFAULT` in the default cell,
+`CHK-OCTS-RATE-SMC-PERIOD` in the smc_slower, smc_equal and smc_fast cells and
+`CHK-OCTS-RATE-OTHER-CLOCKS` in the ref8 and periph3 cells. In every cell the rate row,
 `CHK-OCTS-START-RELOAD`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold or print as described. Enrolled
-in: `all`.
+in: `all`, `hosted`.
 
 *Scope limit*: Where the reference or peripheral clock period equals the `clk_smc_i` period, that
 clock's edge count over the window is printed and is not discriminating. The specification does not
@@ -21257,6 +21529,70 @@ window printed and not compared. The bounded waits are recorded, not compared.
 
 '''''
 
+[[sec-572-smc_octs_clk_rate_default_test]]
+===== 572 `smc_octs_clk_rate_default_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Source Module*: `smc_octs_clk_rate_default_test`
+
+*BFM / Model*: as `smc_octs_clk_rate_test`; the module fixes the clock cell; `+smc_cell=default` in
+the testlist entry names the same cell.
+
+*Run mode*: one testlist entry, `smc_octs_clk_rate_default_test` (`+smc_cell=default`), a fixed-cell
+variant entry of `smc_octs_clk_rate_test` in `testlists/clock.toml`; groups `all`, `hosted`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=default`; tool
+Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the clock cell is pinned by the module
+and its testlist entry.
+
+*Objective*: The OCTS counter advances at the clk_smc_i rate in every clock cell and restarts from
+its preset on a START after the preset is latched, in the default cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1.25 / 5 ns).
+Extends `smc_octs_clk_rate_test` in the default cell.
+
+*Test Coverage*:
+
+* The `smc_octs_clk_rate_test` procedure runs at the default cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks are those of
+the `smc_octs_clk_rate_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_octs_clk_rate_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms FIRST_START_RUNNING, COUNT_PAIR_0, WINDOW_EDGES_COUNTED,
+COUNT_PAIR_1, CELL_REWINDOW, PRESET_WRITTEN, THIRD_START and RELOAD_SAMPLE occur in order with
+strictly increasing stamps, and the rate line prints after CELL_REWINDOW and before the reload line,
+which prints after RELOAD_SAMPLE.
+|`CHK-OCTS-RATE-DEFAULT` |In this cell the `TIMER_COUNT` delta of each of the two windows lies
+within the `clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity, and the reference and
+peripheral edge counts of the window lie outside it; the periods are printed.
+|`CHK-OCTS-START-RELOAD` |After the third `TIMER_START` write the first count sample is at least the
+preset and at most the preset plus the `clk_smc_i` edges since the write plus the granularity,
+`STATUS.RUNNING` reads 1, and the following window delta lies within the `clk_smc_i` interval.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 32-read `RUNNING` poll,
+4000-edge window, 100 us input clock edge) and that expiry raises an assertion; the line is a
+record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-OCTS-RATE-DEFAULT`, `CHK-OCTS-START-RELOAD`, `CHK-TIMEOUT-PATHS`
+hold after their compares. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The specification does not state the rule for the count latch, so the delta tolerance
+is only the `CREDIT_VAL` granularity. The bounded waits are recorded, not compared.
+
+'''''
+
 
 [[sec-569-smc_octs_timer_rate_test]]
 ===== 569 `smc_octs_timer_rate_test`
@@ -21462,19 +21798,25 @@ the specification does not state them.
 
 *BFM / Model*: SEP_IN AXI driver (`SmcSysAxiItem` 4-byte read and write of `AVS_CFG_0`, 50 us access
 bound) through the AVSBus AXI-Lite CDC bridge into the `clk_periph_i` domain; bench input clocks
-timestamped on `tb_top.clk_ref_i`, `clk_smc_i` and `clk_periph_i` (100 us edge bound); the run
-argument `+smc_cell` selects the peripheral period (periph10, periph5 or periph3) in `build_phase`
-while `clk_ref_i` stays 10 ns and `clk_smc_i` 1.25 ns; AVS register fields `MAX_RETRIES` and
+timestamped on `tb_top.clk_ref_i`, `clk_smc_i` and `clk_periph_i` (100 us edge bound);
+`build_phase` sets the peripheral period of the run's cell (periph10, periph5 or periph3; drawn from
+the seed, or pinned by `+smc_cell` or a variant's `CELL`) while `clk_ref_i` stays 10 ns and
+`clk_smc_i` 1.25 ns; AVS register fields `MAX_RETRIES` and
 `RESYNC_INTERVAL` of `AVS_CFG_0`; no protocol VIP
 
-*Run mode*: one testlist entry per cell: `smc_periph_floor_roundtrip_test` (`+smc_cell=periph10`,
-this module) and the variant entries `smc_periph_floor_roundtrip_periph5_test`
-(`+smc_cell=periph5`), `smc_periph_floor_roundtrip_periph3_test` (`+smc_cell=periph3`), each a
-module of its own in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
-`timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=periph10`; tool Verilator (cocotb).
+*Run mode*: `smc_periph_floor_roundtrip_test` (this module, no cell argument: the cell is drawn from
+the seed) and the variant entries `smc_periph_floor_roundtrip_periph10_test` (`+smc_cell=periph10`),
+`smc_periph_floor_roundtrip_periph5_test` (`+smc_cell=periph5`),
+`smc_periph_floor_roundtrip_periph3_test` (`+smc_cell=periph3`), each a module of its own pinning
+one cell, in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec`
+1800; tags `clock`; seed 1; `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the cell of this entry is pinned by its testlist entry; the
-other cells run as fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_cell` nor the module's `CELL` pins a cell,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the three cells (ref / smc
+/ periph ns): periph10 10 / 1.25 / 10, periph5 10 / 1.25 / 5 and periph3 10 / 1.25 / 3. The
+`RAND-SEED` line names the cell and whether it was drawn or pinned; 3 seeds per regression. The
+three variant modules pin periph10, periph5 and periph3, so every cell is graded in every
+regression; this module adds the cell its seed draws.
 
 *Objective*: AVS_CFG_0 round-trips a written value through the AVSBus bridge
 at peripheral clock periods of 10, 5 and 3 ns.
@@ -21514,12 +21856,14 @@ at peripheral clock periods of 10, 5 and 3 ns.
 |Checker |Description
 |`CHK-PERIPH-FLOOR-ROUNDTRIP` |In the run's peripheral cell (periods measured as the cell's)
 `AVS_CFG_0` reads back the written word with `MAX_RETRIES` 0x2A and `RESYNC_INTERVAL` equal to its
-pre-write value, every response OKAY, and the restore write reads back the saved word.
+pre-write value, every response OKAY, and the restore write reads back the saved word; the line
+carries `cell=<name>` and the measured periods.
 |`CHK-NONVAC` |The fence terms CELL_PERIODS_MEASURED, AVS_CFG_0_SAVED, AVS_CFG_0_WRITTEN,
 AVS_CFG_0_READ_BACK and AVS_CFG_0_RESTORED occur in order with strictly increasing stamps and the
-checker line prints after the restore.
+checker line prints after the restore; the line carries `cell=<name>`.
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 100 us input clock edge) and
-that expiry raises an assertion; the line is a record, not a compare.
+that expiry raises an assertion; the line is a record, not a compare; the line carries
+`cell=<name>`.
 |===
 
 *Pass Criteria*: `CHK-PERIPH-FLOOR-ROUNDTRIP` holds in the run's cell after its compares, with
@@ -21645,6 +21989,64 @@ compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
+[[sec-573-smc_periph_floor_roundtrip_periph10_test]]
+===== 573 `smc_periph_floor_roundtrip_periph10_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Source Module*: `smc_periph_floor_roundtrip_periph10_test`
+
+*BFM / Model*: as `smc_periph_floor_roundtrip_test`; the module fixes the clock cell;
+`+smc_cell=periph10` in the testlist entry names the same cell.
+
+*Run mode*: one testlist entry, `smc_periph_floor_roundtrip_periph10_test` (`+smc_cell=periph10`), a
+fixed-cell variant entry of `smc_periph_floor_roundtrip_test` in `testlists/clock.toml`; groups
+`all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; args
+`+smc_cell=periph10`; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the clock cell is pinned by the module
+and its testlist entry.
+
+*Objective*: AVS_CFG_0 round-trips a written value through the AVSBus bridge at peripheral clock
+periods of 10, 5 and 3 ns, in the periph10 cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 /
+1.25 / 10 ns).
+Extends `smc_periph_floor_roundtrip_test` in the periph10 cell.
+
+*Test Coverage*:
+
+* The `smc_periph_floor_roundtrip_test` procedure runs at the periph10 cell (`clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` = 10 / 1.25 / 10 ns), so a scheduled run reaches this cell; its checks
+are those of the `smc_periph_floor_roundtrip_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_periph_floor_roundtrip_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms CELL_PERIODS_MEASURED, AVS_CFG_0_SAVED, AVS_CFG_0_WRITTEN,
+AVS_CFG_0_READ_BACK and AVS_CFG_0_RESTORED occur in order with strictly increasing stamps and the
+checker line prints after the restore.
+|`CHK-PERIPH-FLOOR-ROUNDTRIP` |In the run's peripheral cell (periods measured as the cell's)
+`AVS_CFG_0` reads back the written word with `MAX_RETRIES` 0x2A and `RESYNC_INTERVAL` equal to its
+pre-write value, every response OKAY, and the restore write reads back the saved word.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 100 us input clock edge) and
+that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-PERIPH-FLOOR-ROUNDTRIP`, `CHK-TIMEOUT-PATHS` hold after their
+compares. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The bounded waits are recorded, not compared.
+
+'''''
+
 
 [[sec-428-smc_ref_reset_cycles_test]]
 ===== 428 `smc_ref_reset_cycles_test`
@@ -21658,17 +22060,22 @@ compares. Enrolled in: `all`, `hosted`.
 *BFM / Model*: Reset agent sequencer (`SmcResetOp` `SAMPLE`, `COLD_RST_LO` and `COLD_RST_HI` driving
 the `rst_cold_ni` pin, reset-chain release wait with a 600 `clk_ref_i` cycle bound);
 `tb_top.rst_primary_ref_clk_no` read on `clk_ref_i` rising edges; `tb_top.clk_ref_i` rising edges
-logged in ps; the run argument `+smc_cell` selects the reference period (ref10 = 10 ns or ref4 = 4
-ns) in `build_phase` with `clk_smc_i` at 1.25 ns and `clk_periph_i` at 5 ns; pin changes are placed
+logged in ps; `build_phase` sets the reference period of the run's cell (ref10 = 10 ns or ref4 =
+4 ns; drawn from the seed, or pinned by `+smc_cell` or a variant's `CELL`) with `clk_smc_i` at 1.25
+ns and `clk_periph_i` at 5 ns; pin changes are placed
 a third of a reference period after a `clk_ref_i` edge; no CSR access and no protocol VIP
 
-*Run mode*: one testlist entry per cell: `smc_ref_reset_cycles_test` (`+smc_cell=ref10`, this
-module) and the variant entries `smc_ref_reset_cycles_ref4_test` (`+smc_cell=ref4`), each a module
-of its own in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec`
-1800; tags `clock`; seed 1; args `+smc_cell=ref10`; tool Verilator (cocotb).
+*Run mode*: `smc_ref_reset_cycles_test` (this module, no cell argument: the cell is drawn from the
+seed) and the variant entries `smc_ref_reset_cycles_ref10_test` (`+smc_cell=ref10`),
+`smc_ref_reset_cycles_ref4_test` (`+smc_cell=ref4`), each a module of its own pinning one cell, in
+`testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `clock`; seed 1; `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the cell of this entry is pinned by its testlist entry; the
-other cells run as fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_cell` nor the module's `CELL` pins a cell,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the two cells (ref / smc /
+periph ns): ref10 10 / 1.25 / 5 and ref4 4 / 1.25 / 5. The `RAND-SEED` line names the cell and
+whether it was drawn or pinned; 3 seeds per regression. The two variant modules pin ref10 and ref4,
+so every cell is graded in every regression; this module adds the cell its seed draws.
 
 *Objective*: The cold-reset release hold and assertion de-glitch are counted in
 clk_ref_i cycles at two reference periods.
@@ -21719,16 +22126,18 @@ clk_ref_i cycles at two reference periods.
 |Checker |Description
 |`CHK-REF-RESET-RELEASE-CYCLES` |The release-to-high count in `clk_ref_i` cycles is at least 255
 after the 64-cycle cold-reset low, and `rst_primary_ref_clk_no` still reads 1 after the reset chain
-release; the exact count is printed without a compare, the specification not stating the value.
+release; the exact count is printed without a compare, the specification not stating the value;
+the line carries `cell=<name>` and the reference period.
 |`CHK-REF-RESET-DEGLITCH` |A 31-cycle low pulse on `rst_cold_ni` leaves `rst_primary_ref_clk_no`
 high at every sample and a 32-cycle pulse drives it to 0; the cycle count of the assertion is
-printed without a compare, the specification not stating the value.
+printed without a compare, the specification not stating the value; the line carries `cell=<name>`
+and the reference period.
 |`CHK-NONVAC` |The fence terms BRINGUP_DONE, COLD_LOW_64, RELEASE_COUNTED, GLITCH_31_IGNORED,
 PULSE_32_ASSERTED and CHAIN_RELEASED occur in order with strictly increasing stamps and the two
-checker lines print in order, each after its step.
+checker lines print in order, each after its step; the line carries `cell=<name>`.
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits (600 `clk_ref_i` cycles for the release count, the
 assertion count and each chain release, and the glitch-hold sample count) and that expiry raises an
-assertion; the line is a record, not a compare.
+assertion; the line is a record, not a compare; the line carries `cell=<name>`.
 |===
 
 *Pass Criteria*: `CHK-REF-RESET-RELEASE-CYCLES` and `CHK-REF-RESET-DEGLITCH` hold after their
@@ -21805,6 +22214,70 @@ assertion; the line is a record, not a compare.
 *Scope limit*: The exact release-to-high count and the cycle count of the assertion are printed
 and not compared, because the specification does not state the values. The bounded waits are
 recorded, not compared.
+
+'''''
+
+[[sec-574-smc_ref_reset_cycles_ref10_test]]
+===== 574 `smc_ref_reset_cycles_ref10_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Source Module*: `smc_ref_reset_cycles_ref10_test`
+
+*BFM / Model*: as `smc_ref_reset_cycles_test`; the module fixes the clock cell; `+smc_cell=ref10` in
+the testlist entry names the same cell.
+
+*Run mode*: one testlist entry, `smc_ref_reset_cycles_ref10_test` (`+smc_cell=ref10`), a fixed-cell
+variant entry of `smc_ref_reset_cycles_test` in `testlists/clock.toml`; groups `all`, `hosted`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=ref10`; tool
+Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the clock cell is pinned by the module
+and its testlist entry.
+
+*Objective*: The cold-reset release hold and assertion de-glitch are counted in clk_ref_i cycles at
+two reference periods, in the ref10 cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 / 1.25 / 5
+ns).
+Extends `smc_ref_reset_cycles_test` in the ref10 cell.
+
+*Test Coverage*:
+
+* The `smc_ref_reset_cycles_test` procedure runs at the ref10 cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks are those of
+the `smc_ref_reset_cycles_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_ref_reset_cycles_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms BRINGUP_DONE, COLD_LOW_64, RELEASE_COUNTED, GLITCH_31_IGNORED,
+PULSE_32_ASSERTED and CHAIN_RELEASED occur in order with strictly increasing stamps and the two
+checker lines print in order, each after its step.
+|`CHK-REF-RESET-DEGLITCH` |A 31-cycle low pulse on `rst_cold_ni` leaves `rst_primary_ref_clk_no`
+high at every sample and a 32-cycle pulse drives it to 0; the cycle count of the assertion is
+printed without a compare, the specification not stating the value.
+|`CHK-REF-RESET-RELEASE-CYCLES` |The release-to-high count in `clk_ref_i` cycles is at least 255
+after the 64-cycle cold-reset low, and `rst_primary_ref_clk_no` still reads 1 after the reset chain
+release; the exact count is printed without a compare, the specification not stating the value.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (600 `clk_ref_i` cycles for the release count, the
+assertion count and each chain release, and the glitch-hold sample count) and that expiry raises an
+assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-REF-RESET-DEGLITCH`, `CHK-REF-RESET-RELEASE-CYCLES`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The exact release-to-high count and the cycle count of the assertion are printed and
+not compared, because the specification does not state the values. The bounded waits are recorded,
+not compared.
 
 '''''
 
@@ -28886,22 +29359,33 @@ handling of a request withdrawn mid-command is outside this test.
 assert and release); a passive sampler on every `clk_smc_i` edge of `rst_primary_smc_clk_no` and
 `tb_fuse_sense_done` that captures `efuse_shadow_probe_o` (256 words of 32 bits) on each 0 to 1
 edge of sense done; the shadow-register output port `shadow_regs` (`shadow_regs_o`) read as one
-8192-bit integer; the eFuse bank is the DV model, loaded from the image file the run senses (the
-bench default asset by default, or an image the leaf writes into the run directory under
-`+smc_efuse_hex` when `+smc_efuse_image` names the zero, ones, walking, random or unique pattern);
-an EFUSE protocol-VIP record is booked at the end
+8192-bit integer; the eFuse bank is the DV model, loaded from the image file the run senses at the
+run-directory `+smc_efuse_hex` path: the leaf copies the bench default asset there for the default
+kind, or writes the zero, ones, walking, random or unique pattern there (a run with no relative
+`+smc_efuse_hex` and the default kind senses the asset in place); an EFUSE protocol-VIP record is
+booked at the end
 
-*Run mode*: one testlist entry per cell: `smc_efuse_map_sense_image_test` (this module, the default
-cell) and the variant entries `smc_efuse_map_sense_image_zero_test` (`+smc_efuse_image=zero`),
+*Run mode*: `smc_efuse_map_sense_image_test` (this module, no image argument: the kind is drawn from
+the seed) and the variant entries `smc_efuse_map_sense_image_default_test`
+(`+smc_efuse_image=default`), `smc_efuse_map_sense_image_zero_test` (`+smc_efuse_image=zero`),
 `smc_efuse_map_sense_image_ones_test` (`+smc_efuse_image=ones`),
 `smc_efuse_map_sense_image_walking_test` (`+smc_efuse_image=walking`),
 `smc_efuse_map_sense_image_random_test` (`+smc_efuse_image=random`),
-`smc_efuse_map_sense_image_unique_test` (`+smc_efuse_image=unique`), each a module of its own in
-`testlists/efuse.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`,
-`efuse`; seed 1; tool Verilator (cocotb).
+`smc_efuse_map_sense_image_unique_test` (`+smc_efuse_image=unique`), each a module of its own
+pinning one kind, in `testlists/efuse.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`, `efuse`; seed 1; `reseed` 3; args
+`+smc_efuse_hex=smc_efuse_map_sense_image_test.hex`; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the default eFuse image; the other image kinds run as
-fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_efuse_image` nor the module's `KIND` pins a kind,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the six kinds: default (the
+bench asset `assets/smc_efuse_default.hex`, copied byte for byte to the run-directory file, so the
+`FW-PROVENANCE` sha256 is the asset's), zero, ones, walking, random and unique. The words and
+write-lock bits of the random kind come from a separate stream, `random.Random(RANDOM_SEED ^
+0x9E3779B9)`, so the kind and the words are independent. The `RAND-SEED` line names the kind,
+whether it was drawn or pinned, and the words seed (marked unused for every kind but random);
+3 seeds per regression. The six variant modules pin default, zero, ones, walking, random and
+unique, so every kind is graded in every regression; this module adds the kind its seed draws. A
+run grades only its kind's sense checker.
 
 *Objective*: Sensed image words match the loaded file on every path.
 
@@ -28930,9 +29414,10 @@ fixed-cell variant modules.
 [arabic]
 . Require the image to hold 256 words (pairwise distinct for the unique kind), wait for
   `tb_fuse_sense_done` within 200000 clocks, start the sampler and let it take 4 samples.
-. Print the image name, kind, seed and `LOCKS`; send the cold reset assertion, check the reset
-  state, wait for `rst_primary_smc_clk_no` low, require 8 samples with the reset low and sense done
-  0, release the reset and wait for the release.
+. Print the image name, kind, image words seed (random kind; marked unused for the others) and
+  `LOCKS`; send the cold reset assertion, check the reset state, wait for `rst_primary_smc_clk_no`
+  low, require 8 samples with the reset low and sense done 0, release the reset and wait for the
+  release.
 . Wait for the first rise of `tb_fuse_sense_done` (bounded at 200000 edges), require sense done 0
   on every sample from the reset to that rise and the 256 captured probe words to equal the image;
   then wait for the warm domain to be released.
@@ -28955,28 +29440,36 @@ fixed-cell variant modules.
 |Checker |Description
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
 edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
-captured on that rise equal the image.
-|`CHK-EMAP-SENSE-DEFAULT` |For the default image, every SEP_IN read of a non-read-locked word
-equals the image word with words 0 and 255 included, and all 256 probe words equal the image again
-after the sweep. The id varies with the configuration: `CHK-EMAP-SENSE-UNIQUE` for the unique kind
-and `CHK-EMAP-SENSE-PATTERNS` for the zero, ones, walking and random kinds.
+captured on that rise equal the image; the line carries `cell=<kind>`.
+|`CHK-EMAP-SENSE-DEFAULT` |Default kind: every SEP_IN read of a non-read-locked word equals the
+image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+sweep; the line carries `cell=default`.
+|`CHK-EMAP-SENSE-PATTERNS` |Zero, ones, walking and random kinds: every SEP_IN read equals the
+image word with words 0 and 255 and the `LOCKS` words included, and all 256 probe words equal the
+image again after the sweep; the line carries `cell=<kind>`.
+|`CHK-EMAP-SENSE-UNIQUE` |Unique kind: the image is pairwise distinct over its 256 words before
+sensing, and one edge after the sweep probe word i equals image word i for all 256 i, `LOCKS` words
+included; the line carries `cell=unique`.
 |`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
 reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
-release.
+release; the line carries `cell=<kind>`.
 |`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
 that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
-without a compare.
+without a compare; the line carries `cell=<kind>`.
 |`CHK-NONVAC` |The ordered fence (image name, first done, sense image, done once, shadow output)
-with increasing time stamps and each checker line printed after its step completed.
+with increasing time stamps and each checker line printed after its step completed; the line
+carries `cell=<kind>`.
 |`CHK-TIMEOUT-PATHS` |Every reset wait, sense wait, window wait and SEP_IN read is bounded and
-fails with an assertion on expiry; the bounds and last samples are logged.
+fails with an assertion on expiry; the bounds and last samples are logged; the line carries
+`cell=<kind>`.
 |===
 
-*Pass Criteria*: with the default image the six listed checkers hold (the sense-image checker is
-`CHK-EMAP-SENSE-DEFAULT`; the unique kind replaces it with `CHK-EMAP-SENSE-UNIQUE` and an extra
-probe compare, and the other pattern kinds with `CHK-EMAP-SENSE-PATTERNS`): the probe, every SEP_IN
-read and the `shadow_regs` port equal the image, and sense done rises once and never drops.
-Enrolled in: `all`, `hosted`.
+*Pass Criteria*: A run grades the sense row of its kind: `CHK-EMAP-SENSE-DEFAULT` for the default
+asset, `CHK-EMAP-SENSE-UNIQUE` with its extra probe compare for the unique kind and
+`CHK-EMAP-SENSE-PATTERNS` for the zero, ones, walking and random kinds; with it
+`CHK-EMAP-SENSE-FIRST-DONE`, `CHK-EMAP-SENSE-DONE-ONCE` and `CHK-EMAP-SHADOW-OUT-SENSED` hold and
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` print: the probe, every SEP_IN read and the `shadow_regs` port
+equal the image, and sense done rises once and never drops. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: What the shadow-register output port is specified to show for read-locked words is
 not specified; those words are printed and not compared.
@@ -29304,6 +29797,75 @@ with an assertion on expiry; the bounds and last samples are logged.
 |===
 
 *Pass Criteria*: `CHK-EMAP-SENSE-DONE-ONCE`, `CHK-EMAP-SENSE-FIRST-DONE`, `CHK-EMAP-SENSE-PATTERNS`,
+`CHK-EMAP-SHADOW-OUT-SENSED`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled
+in: `all`, `hosted`.
+
+*Scope limit*: Read-locked words on the `shadow_regs` port are printed without a compare, as in
+`smc_efuse_map_sense_image_test`.
+
+'''''
+
+[[sec-575-smc_efuse_map_sense_image_default_test]]
+===== 575 `smc_efuse_map_sense_image_default_test`
+
+*Phase*: 3
+
+*Area*: EFUSE
+
+*Source Module*: `smc_efuse_map_sense_image_default_test`
+
+*BFM / Model*: as `smc_efuse_map_sense_image_test`; the module fixes the image kind;
+`+smc_efuse_image=default` and `+smc_efuse_hex` in the testlist entry name the image and its file:
+the leaf copies the bench default asset `assets/smc_efuse_default.hex` byte for byte to the
+run-directory file, asserts the copy's sha256 equal to the asset's, and the `FW-PROVENANCE` line
+names that sha256.
+
+*Run mode*: one testlist entry, `smc_efuse_map_sense_image_default_test`
+(`+smc_efuse_image=default`), a fixed-cell variant entry of `smc_efuse_map_sense_image_test` in
+`testlists/efuse.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`,
+`efuse`; seed 1; args `+smc_efuse_image=default`,
+`+smc_efuse_hex=smc_efuse_map_sense_image_default_test.hex`; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the eFuse image kind is pinned by the
+module and its testlist entry.
+
+*Objective*: Sensed image words match the loaded file on every path, in the default eFuse image. Extends `smc_efuse_map_sense_image_test` with the default image kind.
+
+*Test Coverage*:
+
+* The `smc_efuse_map_sense_image_test` procedure runs at the default eFuse image, so a scheduled run
+reaches this cell; its checks are those of the `smc_efuse_map_sense_image_test` card with this
+cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_efuse_map_sense_image_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EMAP-SENSE-DEFAULT` |For the default asset every SEP_IN read of a non-read-locked word
+equals the image word with words 0 and 255 included, and all 256 probe words equal the image again
+after the sweep.
+|`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
+reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
+release.
+|`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
+edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+captured on that rise equal the image.
+|`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
+that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
+without a compare.
+|`CHK-NONVAC` |The ordered fence (image name, first done, sense image, done once, shadow output)
+with increasing time stamps and each checker line printed after its step completed.
+|`CHK-TIMEOUT-PATHS` |Every reset wait, sense wait, window wait and SEP_IN read is bounded and fails
+with an assertion on expiry; the bounds and last samples are logged.
+|===
+
+*Pass Criteria*: `CHK-EMAP-SENSE-DEFAULT`, `CHK-EMAP-SENSE-DONE-ONCE`, `CHK-EMAP-SENSE-FIRST-DONE`,
 `CHK-EMAP-SHADOW-OUT-SENSED`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled
 in: `all`, `hosted`.
 
@@ -47875,8 +48437,8 @@ inside its area.
 |43, 44, 47, 51, 55, 183, 189, 191, 326, 398 to 400, 532 to 534, 556
 |Reset interactions and corners: cool-versus-cold, core reset sources, an interrupt during a power-good glitch, mixed boot stall, the recovery matrix, cold-boot chain order, primary reset scope, synchronizer edges, the override-mux walk, process extra bits, pin de-glitch, asynchronous assertion, the cool-reset de-glitch window, the pin-versus-FLR overlap and the collision recovery. Seeded reset kinds asserted mid-operation, retention by domain.
 |<<smc-vplan-area-clock,CLOCK>>
-|67, 305 to 319, 403, 404, 406 to 429, 558, 569
-|Zeroer clock-gate independence, the AVS configuration crossing, AVS clock select, base-configuration registers, handshake stalls, per-ID order and single responses across the clock domains, scratch storage at a pinned triple, and the fixed-cell families: the fifteen pinned-period ratio modules (the owning leaf of the family, `smc_clk_smc_slower_than_ref_test`, is Phase 2), the register-crossbar relation cells, the OCTS rate cells, the peripheral-floor round trips and the reference-period reset-cycle counts. Seeded clock period triples, register traffic completes.
+|67, 305 to 319, 403, 404, 406 to 429, 558, 569, 571 to 574
+|Zeroer clock-gate independence, the AVS configuration crossing, AVS clock select, base-configuration registers, handshake stalls, per-ID order and single responses across the clock domains, scratch storage at a pinned triple, and the fixed-cell families: the fifteen pinned-period ratio modules (the owning leaf of the family, `smc_clk_smc_slower_than_ref_test`, is Phase 2), the register-crossbar relation cells, the OCTS rate cells, the peripheral-floor round trips and the reference-period reset-cycle counts, whose owning tests draw the cell from the seed. Seeded clock period triples, register traffic completes.
 |<<smc-vplan-area-cpu,CPU>>
 |70, 72, 78, 82, 430, 433, 435, 437 to 442, 445, 544
 |CPU-control map depth, the ECC diagnostic depth and the ECC fault-inject hook, SPM boundaries and aperture, BEU access at the reset aperture, boot-time register reads, access rules, the MUTEX, SCRATCH and WDT register walks, write-back PC decode, the external-window aperture limit and the SPM region-size reach, and the scratchpad bank walk.
@@ -47884,8 +48446,8 @@ inside its area.
 |85, 210 to 219, 222 to 224, 253, 301 to 303, 323, 446 to 452, 537, 566
 |DFX sticky abort bits through pulses and resets, Debug Module command replacement under a held error, the DFD register sweeps (CLA MMR, node event-action pairs, counters and edges, sink and funnel MMRs, read-only writes, byte lanes), trace accumulator fill, sink windows, concurrent sink readout, debug-bus mode lock, flush corners, trace reset and write-out phase, the dfx_ctrl aperture, storage and no-effect fields, fixed Debug Module capabilities and the abstract-command lifecycle. Drawn DFD register order, pattern and lane against RDL contracts.
 |<<smc-vplan-area-efuse,EFUSE>>
-|88, 91, 95, 98, 99, 101, 320 to 322, 453 to 456, 459 to 466, 557
-|Boundary signals under a held external boot, the PROD deny paths, OTP clock and timing depth, read and program timeouts and their status, the fault-injected state encodings, the three image patterns, the bank-control window, map concurrency, layout decode, reset persistence, the six sensed-image variants and the SEP-side map writes. Security-disable bypass leaves shadow registers zero.
+|88, 91, 95, 98, 99, 101, 320 to 322, 453 to 456, 459 to 466, 557, 575
+|Boundary signals under a held external boot, the PROD deny paths, OTP clock and timing depth, read and program timeouts and their status, the fault-injected state encodings, the three image patterns, the bank-control window, map concurrency, layout decode, reset persistence, the six sensed-image kinds (the owning test draws one from the seed, six variants pin one each) and the SEP-side map writes. Security-disable bypass leaves shadow registers zero.
 |<<smc-vplan-area-gpio,GPIO>>
 |102, 104, 111, 163, 186, 468 to 474, 476, 562
 |Control and interface sweeps over all 65 instances, the interface-enable competitor, interrupt-enable de-assertion, the external-window extra blocks and per-pad control decode, DATA_CTRL enable fields, read-only status and reset write-back, interface decode without aliasing, and primary-reset clearing with an in-flight access. Drawn per-pad direction and interrupt type outcomes.
@@ -48219,6 +48781,22 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-fabric,FABRIC>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_isolate_pinen_cold_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_flr_sequencer_single_pulse_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_flr_hold_edge_requeue_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_clock_gate_inflight_completes_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_cpuif_ro_wo_edge_test`
 |<<smc-vplan-area-fabric,FABRIC>>
 |RAND-NONE
@@ -48437,8 +49015,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_clk_relation_regxbar_test`
 |<<smc-vplan-area-clock,CLOCK>>
-|RAND-NONE
-|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|RANDCFG
+|the seed draws one of seven cells (ref / smc / periph ns): default 10 / 1.25 / 5, smc_slower 10 / 12 / 8, smc_equal 10 / 10 / 10, periph_slower 8 / 1.25 / 10, periph3 10 / 1.25 / 3, ref8 8 / 1.25 / 5, slowest_periph 8 / 12 / 10, unless `+smc_cell` or a variant's `CELL` pins it; the run grades that cell's checkers; 3 seeds per regression.
 |`smc_clk_relation_regxbar_slowest_periph_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
@@ -48463,10 +49041,14 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
-|`smc_octs_clk_rate_test`
+|`smc_clk_relation_regxbar_default_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
-|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_octs_clk_rate_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RANDCFG
+|the seed draws one of six cells (ref / smc / periph ns): default 10 / 1.25 / 5, smc_slower 10 / 12 / 5, smc_equal 10 / 10 / 5, smc_fast 10 / 1 / 5, ref8 8 / 1.25 / 5, periph3 10 / 1.25 / 3, unless `+smc_cell` or a variant's `CELL` pins it; the run grades that cell's rate checker; 3 seeds per regression.
 |`smc_octs_timer_rate_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
@@ -48491,14 +49073,18 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_octs_clk_rate_default_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
 |`smc_periph_cg_window_extent_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_periph_floor_roundtrip_test`
 |<<smc-vplan-area-clock,CLOCK>>
-|RAND-NONE
-|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|RANDCFG
+|the seed draws one of three cells (ref / smc / periph ns): periph10 10 / 1.25 / 10, periph5 10 / 1.25 / 5, periph3 10 / 1.25 / 3, unless `+smc_cell` or a variant's `CELL` pins it; 3 seeds per regression.
 |`smc_periph_floor_roundtrip_periph5_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
@@ -48507,11 +49093,19 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
-|`smc_ref_reset_cycles_test`
+|`smc_periph_floor_roundtrip_periph10_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
-|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_ref_reset_cycles_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RANDCFG
+|the seed draws one of two cells (ref / smc / periph ns): ref10 10 / 1.25 / 5, ref4 4 / 1.25 / 5, unless `+smc_cell` or a variant's `CELL` pins it; 3 seeds per regression.
 |`smc_ref_reset_cycles_ref4_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_ref_reset_cycles_ref10_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
@@ -48749,8 +49343,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_efuse_map_sense_image_test`
 |<<smc-vplan-area-efuse,EFUSE>>
-|RAND-NONE
-|none; directed, the default eFuse image; the other image kinds run as fixed-cell variant modules.
+|RANDCFG
+|the seed draws one of six image kinds (the default asset, copied to the run-directory file, zero, ones, walking, random, unique), unless `+smc_efuse_image` or a variant's `KIND` pins it; the random kind's words and write-lock bits come from `random.Random(RANDOM_SEED ^ 0x9E3779B9)`, apart from the kind draw; the run grades that kind's sense checker; 3 seeds per regression.
 |`smc_efuse_map_sense_image_unique_test`
 |<<smc-vplan-area-efuse,EFUSE>>
 |RAND-NONE
@@ -48768,6 +49362,10 @@ entry's `*Randomization*` field.
 |RAND-NONE
 |none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
 |`smc_efuse_map_sense_image_zero_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
+|`smc_efuse_map_sense_image_default_test`
 |<<smc-vplan-area-efuse,EFUSE>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
@@ -50039,7 +50637,7 @@ top-port drive and the point of an error inject.
 |Existing bench hook
 |Drives a GPIO pad from outside the DUT, including the cool-reset and FLR pads and the SMBus alert pads.
 |The pad inputs of `smc_wrapper`
-|`smc_gpio_pad_input_readback_test`, `smc_gpio_irq_or_test`, `smc_gpio_rst_primary_test`, `smc_gpio_irq_mask_deassert_test`, `smc_gpio_data_ctrl_ro_status_test`, `smc_gpio_intf_data_ctrl_write_sweep_test`, `smc_cool_reset_deglitch_window_test`, `smc_cool_reset_pin_flr_overlap_test`, `smc_cool_reset_recovery_test`, `smc_flr_isolation_sources_test`, `smc_smbus_alert_instance_isolation_test`
+|`smc_gpio_pad_input_readback_test`, `smc_gpio_irq_or_test`, `smc_gpio_rst_primary_test`, `smc_gpio_irq_mask_deassert_test`, `smc_gpio_data_ctrl_ro_status_test`, `smc_gpio_intf_data_ctrl_write_sweep_test`, `smc_cool_reset_deglitch_window_test`, `smc_cool_reset_pin_flr_overlap_test`, `smc_cool_reset_recovery_test`, `smc_flr_isolation_sources_test`, `smc_isolate_pinen_cold_test`, `smc_flr_sequencer_single_pulse_test`, `smc_smbus_alert_instance_isolation_test`
 |<<smc-vplan-area-uart,UART>>
 |`tb_uart0_rx_ext_drive`, `+smc_uart_cross_3to0`
 |Existing bench hook
@@ -50500,6 +51098,8 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
 |#3510 |`smc_spm_write_cut_by_warm_reset_test` |`rtl_issue` |An SPM write burst from SEP_IN cut by the watchdog warm reset after its AW handshake receives no B after the release, and later SPM and `CPU_CTRL` writes with its AXI ID bits [2:0] never complete; the leaf arms the path, cuts one burst, and asserts the cut write's B and the two later writes completing OKAY
 |to follow |`smc_i2c_tbuf_bus_free_test` |`rtl_issue` |With `THD_DAT` 25 to 32 the bus-free time after a STOP is `T_R` plus `TSU_STA` plus 7 cycles whatever `TIMING4.T_BUF` holds, below it in some samples, where `i2c.rdl` gives `T_BUF` as the time between a STOP and START condition; the leaf runs the `smc_i2c_timing_set_rand_test` draw and asserts every bus-free time of the `T_BUF` pair at least the programmed `T_BUF` and moving with it (the issue number follows once filed)
+|to follow |`smc_flr_hold_edge_requeue_test` |`rtl_issue` |An FLR edge met while the cool-reset hold counter runs restarts the pre-reset count, and when that count outlasts the hold `rst_cool_no` pulses a second time, where `clk_rst.adoc` states the sequencer is not a queue of overlapping requests; the leaf arms with one request and asserts one pulse of that width for edges inside the count and inside the hold (the issue number follows once filed)
+|to follow |`smc_clock_gate_inflight_completes_test` |`rtl_issue` |The I2C register block runs on the gated peripheral clock and the peripheral side of its AXI-Lite CDC on the ungated one, so a response handed over as `I2C_CG_EN` closes the gate is taken more than once and every later read of the leg receives the previous read's word, where `clk_rst.adoc` states an accepted access finishes there; the leaf arms with an open and a closed read and asserts every swept read completes once with the leg idle after it (the issue number follows once filed)
 |#3422 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |A `CTRL_STATUS` trigger while the zeroer is busy has no stated rule; the `OBS-ZEROER-BUSY` lines record the issue and drain windows, the CHK line grades liveness only
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
 |#3426 |`smc_bresp_evidence_obs_test` |`held_out` |The merged BRESP of a split write burst has no stated rule; the `OBS-BRESP` lines record every past-extent and gap write beside its #3294 declaration and the `OBS-BURST` lines the merged response, the CHK lines grade the table counts and unchanged live words
@@ -50604,6 +51204,174 @@ above are all printed. Enrolled in: `rtl_issue` only.
 `smc_i2c_wire_timing_test` set A covers `THD_DAT` 1. The bus-free time is compared with the
 programmed `T_BUF` as a lower bound and in direction, not with a formula. The issue number follows
 once filed, appended to `expect_fail` as "(#NNNN)" and named in the held-out table.
+
+'''''
+
+[[sec-573-smc_flr_hold_edge_requeue_test]]
+===== 573 `smc_flr_hold_edge_requeue_test`
+
+*Phase*: 3
+
+*Area*: RESET
+
+*Status*: held out (`rtl_issue`, expected to fail)
+
+*Source Module*: `smc_flr_hold_edge_requeue_test`
+
+*BFM / Model*: the bench of entry 572 (<<sec-572-smc_flr_sequencer_single_pulse_test>>):
+ocah_axi_vip (AXI) on SEP_IN for the reset unit counters and ISOLATE_REQ_SMC_REG; bench drives
+`tb_top.tb_cfg_flr_pf_active`; bench probes `tb_top.tb_rst_cool_from_flr`,
+`tb_top.tb_flr_posedge_ref`, `tb_top.tb_flr_counter_state` and `tb_top.tb_rst_warm_smc_clk_n`,
+sampled on `clk_ref_i`.
+
+*Run mode*: one testlist entry in `testlists/holdout.toml`; group `rtl_issue` (the weekly tier's
+own `regress.yml` row), not in `all`, `hosted` or `smoke`; `run_modes` `smoke`; `timeout_sec`
+1800; tag `rtl_issue`, no `ci`; seed 1; `expect_fail` "an FLR edge inside the cool-reset hold
+starts a second cool pulse after the first" and `expect_fail_match`
+`CHK-FLR-NO-REQUEUE FAIL: .*a second fall [0-9]+ edges after the third edge`; tool Verilator
+(cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: FLR edges raised inside a running cool-reset sequence give one cool pulse of the
+single-request width and nothing after it.
+
+*Test Coverage*:
+
+* The sequencer is not a queue of overlapping FLR requests (`clk_rst.adoc` "Timing and
+  Recovery"): with the pre-reset count 64 and the hold count 64, a second edge inside the
+  pre-reset count and a third inside the hold must leave exactly one fall and one rise of
+  `rst_cool_no`, of the arm leg's hold, with no further fall in twice the sequence length after
+  the release.
+* Arm leg: one request with the same counters, held high through the same 320-edge watch after
+  the release, gives one pulse and no later fall; its pre-reset count and hold are the reference
+  the overlap leg is held to.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done`; hold the FLR input low, `rst_cool_ni` high and the pin low; read
+  ISOLATE_REQ_PINEN_REG and ISOLATE_REQ_SMC_REG expecting 0; require `tb_rst_cool_from_flr` = 1.
+. Arm: program the counters 64 and 64, raise the FLR input, wait for the cool fall and rise,
+  watch 320 more edges, require one fall and one rise and record the pre-reset count and the
+  hold; drop the FLR input, wait for the warm smc-clock reset to fall and come back, clear
+  ISOLATE_REQ_SMC_REG.
+. Overlap: raise the FLR input; wait for `tb_flr_counter_state` = COUNT_DOWN; 24 edges later drop
+  the input for 8 edges and raise it (second edge, cool still 1); wait for the cool fall; 24
+  edges later drop the input for 8 edges and raise it (third edge, cool still 0); wait for the
+  cool rise; watch 320 more edges; require the three request edges seen by `tb_flr_posedge_ref`,
+  the second met with `tb_flr_counter_state` COUNT_DOWN and the third met with it IDLE before the
+  rise; a second fall fails with its distance from the third edge beside the arm leg's pre-reset
+  count; require exactly one fall and one rise with the arm leg's hold; recover as in step 2;
+  write both counters to 0 and read them back.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FLR-NO-REQUEUE` |After the arm leg's single pulse, the overlap leg must show its three
+  request edges on `tb_flr_posedge_ref`, the second met in COUNT_DOWN and the third in IDLE, then
+  exactly one fall and one rise of `tb_rst_cool_from_flr`, the hold equal to the arm leg's, and no
+  fall in the 320 `clk_ref_i` edges watched after the release.
+|===
+
+*Pass Criteria*: Recorded as an expected failure: the third edge, met with `tb_flr_counter_state`
+IDLE during the hold, restarts the pre-reset count and `rst_cool_no` falls a second time after the
+first release. The row grades the FAIL line; an observed PASS is the signal to move the leaf to
+`reset.toml`.
+
+*Scope limit*: One counter pair; the coincidence of the restarted pre-reset expiry with the hold
+expiry is not swept.
+
+'''''
+
+[[sec-574-smc_clock_gate_inflight_completes_test]]
+===== 574 `smc_clock_gate_inflight_completes_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Status*: held out (`rtl_issue`, expected to fail)
+
+*Source Module*: `smc_clock_gate_inflight_completes_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`) for `CLOCK_GATE_CONTROL`, the
+I2C_CTRL window polls and the I2C0 `STATUS` read, and on JTAG AXI (`env.jtag_axi_agent`) for the
+I2C_CTRL read of each trial; bench probes `tb_top.tb_periph_cdc_arvalid`,
+`tb_top.tb_periph_cdc_arready` and `tb_top.tb_periph_cdc_rvalid` (the I2C leg on the peripheral
+side of the AXI-Lite CDC) and `tb_top.tb_i2c_cg_en`, sampled on `clk_periph_i`; `clk_smc_i` for
+the launch offsets.
+
+*Run mode*: one testlist entry in `testlists/holdout.toml`; group `rtl_issue` (the weekly tier's
+own `regress.yml` row), not in `all`, `hosted` or `smoke`; `run_modes` `smoke`; `timeout_sec`
+1800; tag `rtl_issue`, no `ci`; seed 1; `expect_fail` "a response handed over as the I2C clock
+gate closes is duplicated and later reads of the leg receive the previous read's word" and
+`expect_fail_match`
+`CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE FAIL: .*timed_out=False .*a completed read left r_valid still presented`;
+tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: An I2C register read accepted by the peripheral before its clock-gate enable is set
+completes once with its own word; a read not accepted there answers SLVERR with 0xBADCAB1E.
+
+*Test Coverage*:
+
+* The leg is redirected as soon as the `CLOCK_GATE_CONTROL` write completes; an access the
+  peripheral has already accepted finishes there, since its clock stops only after the enable has
+  crossed into its domain (`clk_rst.adoc` "Subsystem Controls and Clock Gating"): the JTAG read
+  launch is swept from 64 cycles before to 64 cycles after the SEP_IN enable write in steps of 4
+  `clk_smc_i` cycles; a read with an AR handshake at the peripheral must answer OKAY with the reset
+  word, a read without one must answer SLVERR with 0xBADCAB1E, no read may time out, and after
+  every read the peripheral side of the leg must idle for 16 `clk_periph_i` rises within 512.
+* Arm leg: with the gate open one read handshakes one AR at the peripheral, shows `rvalid` there,
+  answers OKAY and leaves the leg idle; with the gate closed one read handshakes nothing and shows
+  no `rvalid` there, answers SLVERR and leaves the leg idle.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done`; read `CLOCK_GATE_CONTROL`, clear `I2C_CG_EN` if set, read
+  I2C_CTRL expecting its reset word.
+. Arm: JTAG read of I2C_CTRL with the gate open, then set `I2C_CG_EN`, poll the window to SLVERR,
+  JTAG read with the gate closed, clear the enable and poll the window to its reset word.
+. For each offset from -64 to +64 in steps of 4: start the JTAG read and the SEP_IN
+  `CLOCK_GATE_CONTROL` write so the read launches that many `clk_smc_i` cycles after the write
+  (before it for negative offsets); wait for the read (bound 20000 ns); wait for the leg to idle;
+  if it does not, clear the enable, read I2C0 `STATUS` and fail with the levels seen and the
+  `STATUS` word; otherwise poll the window to SLVERR (bound 400 cycles), clear the enable and poll
+  it to its reset word.
+. Restore `CLOCK_GATE_CONTROL`; require every trial to meet its rule and both outcomes to occur.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CG-INFLIGHT-ARM` |With the gate open the JTAG read must answer OKAY with the reset word after
+  exactly one AR handshake and at least one `rvalid` rise at the peripheral and the leg must idle;
+  with the gate closed it must answer SLVERR with 0xBADCAB1E after no AR handshake and no `rvalid`
+  there and the leg must idle.
+|`CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE` |Every trial read must answer OKAY with the reset word
+  when the peripheral handshook its AR and SLVERR with 0xBADCAB1E when it did not, none may time
+  out, the leg must idle after each, and both outcomes must occur in the sweep; the first trial
+  after which the leg stays busy fails the run naming whether a completed read left `r_valid`
+  presented or a request is still pending, with the levels seen and the I2C0 `STATUS` word read
+  once the enable is cleared.
+|===
+
+*Pass Criteria*: Recorded as an expected failure: a read accepted at the peripheral as the gate
+closes answers OKAY, after which `r_valid` on the peripheral side of the I2C CDC stays high with
+the gate closed and, with the enable cleared, I2C0 `STATUS` reads the previous read's word instead
+of its reset value. The row grades the FAIL line; an observed PASS is the signal to move the leaf
+to `clock.toml`.
+
+*Scope limit*: The I2C leg only: it is the one with peripheral-side CDC probes. The UART, AVSBus,
+telemetry and I3C legs share the gating structure and are not swept.
 
 '''''
 
@@ -52654,7 +53422,8 @@ and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
 Members: `smc_warm_domain_access_during_reset_test` (#3408),
 `smc_dfd_cla_irq_w2c_release_test` (#3389), `smc_dfd_cla_clock_halt_release_test` (#3390),
-`smc_spm_write_cut_by_warm_reset_test` (#3510) and `smc_i2c_tbuf_bus_free_test` (issue to
+`smc_spm_write_cut_by_warm_reset_test` (#3510), `smc_i2c_tbuf_bus_free_test`,
+`smc_flr_hold_edge_requeue_test` and `smc_clock_gate_inflight_completes_test` (issues to
 follow).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
