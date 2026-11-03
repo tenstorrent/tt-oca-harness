@@ -62,9 +62,10 @@ except Exception:  # noqa: BLE001 - optional at import time
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
-# FIFO depths: the I2C block's CONTROLLER_TX_FIFO_DEPTH and TARGET_TX_FIFO_DEPTH
-# parameters are both 64 entries (hw/ip/i2c/rtl/i2c.sv). The controller-mode TX
-# FIFO is the FMT FIFO written through FDATA.
+# FIFO depths: the SMC peripheral chapter (hw/sys/smc/doc/periphs.adoc) states
+# the controller TX (FMT) and target TX FIFOs of the SMC I2C instances at 64
+# entries each. The controller-mode TX FIFO is the FMT FIFO written through
+# FDATA.
 _FMT_DEPTH = 64
 _TX_DEPTH = 64
 _TARGET_ADDR = 0x10
