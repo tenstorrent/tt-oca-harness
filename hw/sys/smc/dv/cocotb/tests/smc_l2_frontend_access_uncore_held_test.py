@@ -13,7 +13,7 @@ recovery when it does not complete), the cluster-side VALIDs of both isolation b
 edge of the hold, and fresh INCR bursts afterwards. Graded from a passive per-port handshake
 sampler; open values (SF-016, SF-017, SF-018, SF-019, SF-026) are OBS lines.
 
-Run (VCS: the ocah_axi_sva rules grade on VCS only):
+Run (VCS: the X-hygiene and data-known rules of the AXI checkers grade on VCS only):
     python3 tools/dv/run_dv.py --dut smc --items smc_l2_frontend_access_uncore_held_test --tool vcs
 """
 

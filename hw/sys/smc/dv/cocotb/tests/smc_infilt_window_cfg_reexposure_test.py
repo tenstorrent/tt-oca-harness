@@ -13,7 +13,7 @@ exercises allow_burst and the address granule; the last leg shrinks REGION_SIZE 
 with the primary reset. Every answer is graded from a passive per-port handshake sampler, and
 decode expectations come from the entry configuration read back from SEP_IN.
 
-Run (VCS: the ocah_axi_sva rules grade on VCS only):
+Run (VCS: the X-hygiene and data-known rules of the AXI checkers grade on VCS only):
     python3 tools/dv/run_dv.py --dut smc --items smc_infilt_window_cfg_reexposure_test --tool vcs
 """
 

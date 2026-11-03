@@ -15,7 +15,7 @@ primary reset through the cool pin. Protocol, out-of-footprint registers, strobe
 LOCAL_BASE liveness read are graded from a passive per-port handshake sampler; responses and
 landings the specification leaves open are OBS lines.
 
-Run (VCS: the ocah_axi_sva rules grade on VCS only):
+Run (VCS: the X-hygiene and data-known rules of the AXI checkers grade on VCS only):
     python3 tools/dv/run_dv.py --dut smc --items smc_axi_fabric_burst_type_islands_test --tool vcs
 """
 

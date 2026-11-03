@@ -14,7 +14,7 @@ count, RLAST, IDs, one B per write burst, the stated 0xBADCAB1E word, bystander 
 SYS_OUT responder counts and a LOCAL_BASE liveness read are graded from a passive
 per-port handshake sampler; values the specification leaves open are OBS lines.
 
-Run (VCS: the ocah_axi_sva rules grade on VCS only):
+Run (VCS: the X-hygiene and data-known rules of the AXI checkers grade on VCS only):
     python3 tools/dv/run_dv.py --dut smc --items smc_err_slv_response_content_test --tool vcs
 """
 

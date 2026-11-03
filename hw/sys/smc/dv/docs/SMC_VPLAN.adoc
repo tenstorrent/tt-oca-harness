@@ -11856,8 +11856,7 @@ apertures.
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; group `all`; `run_modes` `smoke`;
 `timeout_sec` 3600; tags `ci`, `fabric`; seed 1; args `+axi_sva_need_sep_in`
-`+axi_sva_need_sys_in` `+axi_sva_need_jtag_in`; tool VCS (cocotb). The ten `ocah_axi_sva`
-instances stay on; no assertion-off plusarg is passed.
+`+axi_sva_need_sys_in` `+axi_sva_need_jtag_in`; tool VCS (cocotb). Every `ocah_axi_sva` instance of the bench stays on; no assertion-off plusarg is passed.
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
 drawn from the seed.
@@ -12024,8 +12023,7 @@ from the generated register headers.
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; group `all`; `run_modes` `smoke`;
 `timeout_sec` 3600; tags `ci`, `fabric`; seed 1; args `+axi_sva_need_sep_in`
-`+axi_sva_need_sys_in` `+axi_sva_need_jtag_in`; tool VCS (cocotb). The ten `ocah_axi_sva`
-instances stay on; no assertion-off plusarg is passed.
+`+axi_sva_need_sys_in` `+axi_sva_need_jtag_in`; tool VCS (cocotb). Every `ocah_axi_sva` instance of the bench stays on; no assertion-off plusarg is passed.
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
 drawn from the seed.
@@ -12240,7 +12238,7 @@ from the generated register headers (`filter_ctrl.h`, `smc_base_config.h`, `cpu_
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; group `all`; `run_modes` `smoke`;
 `timeout_sec` 3600; tags `ci`, `fabric`; seed 1; args `+axi_sva_need_sep_in`
-`+axi_sva_need_sys_in`; tool VCS (cocotb). The ten `ocah_axi_sva` instances stay on; no
+`+axi_sva_need_sys_in`; tool VCS (cocotb). Every `ocah_axi_sva` instance of the bench stays on; no
 assertion-off plusarg is passed.
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
@@ -17515,7 +17513,7 @@ reported as the precondition.
 
 *BFM / Model*: ocah_axi_vip masters on SEP_IN, SYS_IN and JTAG_IN driven through the SMC AXI agents with `allow_reset_abort`, the `ej_axi` AXI-Lite master of the eFuse JTAG port, the SYS_OUT responder with `tb_output_axi_resp_hold`, the TB response holds `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`, the reset agent for the cool pin, `tb_jtag_reset_ctrl` and `tb_cfg_flr_pf_active` for the other two entries; a passive per-`clk_smc_i` sampler of the AR, R, AW, B, VALID and READY nets of SYS_IN, JTAG_IN, SEP_IN, SYS_OUT, the eFuse JTAG link, `tb_periph_axil_valid` / `_ready`, `tb_cpu_front_valid` / `_ready`, `tb_cpu_mmio_valid` / `_ready` and `tb_axil_dtp_csr_active`
 
-*Run mode*: one testlist entry in `testlists/reset.toml` with the `+axi_sva_need_*` plusargs of the seven graded links; group `all`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`; seed 1; tool Verilator (cocotb), with one VCS run for the `ocah_axi_sva` rules.
+*Run mode*: one testlist entry in `testlists/reset.toml` with the `+axi_sva_need_*` plusargs of the seven graded links; group `all`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`; seed 1; tool Verilator (cocotb), with one VCS run for the X-hygiene and data-known rules of the AXI checkers.
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the contract and the sequence draws nothing from the seed.
 
@@ -17532,7 +17530,7 @@ reported as the precondition.
 * The DTP read left pending by one entry's fresh phase is the next entry's pending DTP item, and the FLR counters are re-armed before it: a SEP_IN read of `ISOLATE_REQ_SMC_REG` issued while a DTP read was pending was not answered within the bench timeout.
 * VALID low while the reset is asserted: B and R of SYS_IN, JTAG_IN, SEP_IN and the eFuse JTAG link and of the L2 frontend link from the first sample; AW, W and AR of SYS_OUT, the peripheral crossbar link and the DTP link from the second sample, because a synchronous-reset master may clear its request on the first edge. The CPU MMIO link is sampled and printed but not graded: its rows are not driven in this revision (see Known Limitations).
 * Observation only, waiting on the spec findings the contract names: the fate of every pending phase (completed, abandoned, answered with a response code, or never answered) per link and entry (SF-001, SF-031), the `clk_smc_i` cycles from the release to the first fresh SEP_IN AR and R (SF-008), the `clk_ref_i` samples from the override write to the fall of the primary reset and from the value-1 write to its release (SF-024), and the VALIDs high at the first sampled edge of each window (SF-003). Every `OBS-*` line ends with the `sf=` of the finding it waits on. None is compared.
-* The `+axi_sva_need_*` plusargs name the seven links whose `ocah_axi_sva` instance must grade a handshake on VCS.
+* The `+axi_sva_need_*` plusargs name the seven links whose `ocah_axi_sva` instance must grade a handshake.
 
 *Test Procedure*:
 
@@ -17590,7 +17588,7 @@ reported as the precondition.
 
 *BFM / Model*: ocah_axi_vip masters on SEP_IN, SYS_IN and JTAG_IN started as raw transactions so that the fate of each pending access is observed, the `ej_axi` AXI-Lite master of the eFuse JTAG port, the SYS_OUT responder with `tb_output_axi_resp_hold`, the TB response holds `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`, `tb_sep_wdt_reset_n` and `tb_jtag_reset_ctrl` for the two warm entries, the reset agent for the cold recovery after the watchdog-input entry; a passive per-`clk_smc_i` sampler of the AR, R, AW, B, VALID and READY nets of SYS_IN, JTAG_IN, SEP_IN, SYS_OUT, the eFuse JTAG link, `tb_periph_axil_valid` / `_ready`, `tb_cpu_front_valid` / `_ready` and `tb_cpu_mmio_valid` / `_ready`, of `tb_rst_warm_smc_clk_n`, `rst_primary_smc_clk_no`, `tb_cpu_core_resets_n`, `tb_cpu_uncore_reset_n` and `tb_cpu_isolate_req`
 
-*Run mode*: one testlist entry in `testlists/reset.toml` with the `+axi_sva_need_*` plusargs of the seven graded links and `+smc_hold_cpu_boot`; group `all`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`; seed 1; tool Verilator (cocotb), with one VCS run for the `ocah_axi_sva` rules.
+*Run mode*: one testlist entry in `testlists/reset.toml` with the `+axi_sva_need_*` plusargs of the seven graded links and `+smc_hold_cpu_boot`; group `all`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`; seed 1; tool Verilator (cocotb), with one VCS run for the X-hygiene and data-known rules of the AXI checkers.
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the contract and the sequence draws nothing from the seed.
 
@@ -17598,7 +17596,7 @@ reported as the precondition.
 
 *Test Coverage*:
 
-* Contract `SMC_SEP_SCN_002` revision 5 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). Entries: the fuse reset alone, held by the boot stall of `+smc_hold_cpu_boot` after fuse sense, then `tb_sep_wdt_reset_n` low with the pending set armed, then the cold reset through the reset agent (`COLD_RST_LO` / `COLD_RST_HI`) with the bring-up repeated, `tb_jtag_reset_ctrl` warm override enable with value 0 written in one packed store, the core-3 watchdog armed with `wdogrsten` and `wdogenalways` and a compare of 0x10, and a final watchdog-input reset after `RESET_VECTOR[3]` is set to the scratchpad base. `RESET_CTRL.core3_reset_n` is 0 at every warm assertion.
+* Contract `SMC_SEP_SCN_002` revision 6 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). Entries: the fuse reset alone, held by the boot stall of `+smc_hold_cpu_boot` after fuse sense, then `tb_sep_wdt_reset_n` low with the pending set armed, then the cold reset through the reset agent (`COLD_RST_LO` / `COLD_RST_HI`) with the bring-up repeated, `tb_jtag_reset_ctrl` warm override enable with value 0 written in one packed store, the core-3 watchdog armed with `wdogrsten` and `wdogenalways` and a compare of 0x10, and a final watchdog-input reset after `RESET_VECTOR[3]` is set to the scratchpad base. `RESET_CTRL.core3_reset_n` is 0 at every warm assertion.
 * Fuse-alone window: with `+smc_hold_cpu_boot` the boot stall keeps `tb_fuse_reset_n` low after fuse sense, so the fuse reset alone holds the warm reset. The leaf fails if `tb_fuse_reset_n` does not read 0 at the start of the window; it samples the warm reset low and the primary reset high at every `clk_smc_i` edge, presents over SEP_IN a read and a write of an eFuse shadow word, a read of the eFuse interface status register and a read of a scratchpad word, and one eFuse JTAG read, reads `HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD` back (0x2345), then releases the boot stall (pad 57) and waits, bounded, for `tb_fuse_reset_n` to read 1. The window closes at the release, since `tb_fuse_reset_n` is the 16-stage delayed fuse reset (`smc_fuse_reset_n_delayed_o`). The scratchpad read, which the zero-fill sequencer held by the fuse reset does not answer in the window, is joined with a bounded wait across the release and its line records when it completed. The shadow word is restored after the window.
 * Pending set armed before the watchdog-input entry: two SEP_IN reads and a UART0 read held by `tb_sep_axi_r_hold`, a SEP_IN write whose W beat trails its AW, two SYS_IN reads and a read of 0xB000_0000 held by `tb_sys_axi_r_hold` (DECERR, `fabric.adoc`), a JTAG_IN scratchpad read and a JTAG_IN read of 0xB000_0000 held at the SYS_OUT responder, and an eFuse JTAG read whose response is not accepted. The leaf requires each response pending, the SEP_IN write's AW accepted with no W handshake and the SYS_OUT AR accepted before the source is driven.
 * In-window accesses over SEP_IN once the warm and uncore resets both read 0: a read and a write-back of `RESET_CTRL`, a read and write of `scratch_cold` `SCRATCH[0]`, a read of the core-3 watchdog `CTRL` and a read of a scratchpad word. `SCRATCH_COLD_WARM` is never accessed inside a warm window.
@@ -17607,7 +17605,7 @@ reported as the precondition.
 * Cores and uncore held, the primary reset high and `tb_cpu_isolate_req` low at every sampled edge of the watchdog-input warm window; the L2 frontend B and R VALID and CPU MMIO AW, W and AR VALID are recorded at every sampled edge of the uncore hold (the MMIO nets are sampled with no MMIO traffic); the port's primary reset stays high there, so the AXI reset rule does not apply (ruling #3170, SF-003).
 * The core-3 watchdog: the warm reset reads 1 where `tb_wdt_first_timeout_seen` first reads 1 and 0 after the second stage; in a second run `WDT_TIMEOUT_RESET.reset_cycle_count_3` and a FEED are written after the first timeout, `tb_wdt_first_timeout` falls after the FEED write with the warm reset high (the FEED reset the count), the warm reset still asserts and does not assert again within 200000 `clk_smc_i` edges; the edge of a fresh first-timeout rise after the FEED is recorded, not compared.
 * Observation only, waiting on the spec findings or rulings the contract names: the fate of every pending phase per link (SF-002, SF-007, SF-031; ruling #3341), the post-release fresh accesses after the watchdog-input entry (ruling #3341), the cluster-side VALIDs under the uncore hold (SF-003, ruling #3170), the isolate and flush state over the window (SF-007), the in-window accesses (SF-002, SF-007, SF-033), the fuse-alone window accesses (SF-021), the `SMC_ATTRIBUTES` fields before and after (SF-032) and the ROM fetch count over 20000 edges after a reset with `RESET_VECTOR[3]` at the scratchpad base (SF-025). None is compared.
-* The `+axi_sva_need_*` plusargs name the seven links whose `ocah_axi_sva` instance must grade a handshake on VCS.
+* The `+axi_sva_need_*` plusargs name the seven links whose `ocah_axi_sva` instance must grade a handshake.
 
 *Test Procedure*:
 
@@ -17674,7 +17672,7 @@ reported as the precondition.
 
 *BFM / Model*: ocah_axi_vip masters on SEP_IN, SYS_IN and JTAG_IN started as raw transactions, the SYS_OUT responder with `tb_output_axi_resp_hold`, the TB response holds `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`, the reset agent for the cold reset at the end; a passive per-`clk_smc_i` sampler of `tb_cpu_core_resets_n`, `tb_cpu_uncore_reset_n`, `tb_cpu_isolate_req`, `tb_cpu_drained`, `tb_cpu_reset_timeout`, `tb_cpu_reset_applied`, `tb_cpu_l2_isolated`, `tb_cpu_mmio_isolated`, `tb_cpu_l2_pending_ar`, `tb_cpu_front_valid` / `_ready`, `tb_cpu_front_arid`, `tb_cpu_front_rid` and `tb_cpu_front_rlast` (the front-port AR ID, R ID and RLAST), `tb_cpu_mmio_valid` / `_ready`, the two bench R holds, `smc_init_mem_done_o` and the SEP_IN, SYS_IN and JTAG_IN R and B VALIDs
 
-*Run mode*: one testlist entry in `testlists/cpu.toml` with the `+axi_sva_need_sep_in`, `+axi_sva_need_sys_in` and `+axi_sva_need_cpu_front` plusargs; group `all`; `run_modes` `smoke`; `timeout_sec` 1800; tags `cpu`, `isolate_flush`, `pyuvm`; seed 1; tool VCS for the run of record (the `ocah_axi_sva` rules and the assertions), Verilator (cocotb) also runs it.
+*Run mode*: one testlist entry in `testlists/cpu.toml` with the `+axi_sva_need_sep_in`, `+axi_sva_need_sys_in` and `+axi_sva_need_cpu_front` plusargs; group `all`; `run_modes` `smoke`; `timeout_sec` 1800; tags `cpu`, `isolate_flush`, `pyuvm`; seed 1; tool VCS for the run of record (the X-hygiene and data-known rules of the AXI checkers), Verilator (cocotb) also runs it and grades the two-state `ocah_axi_sva` rules.
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the contract and the sequence draws nothing from the seed.
 
@@ -17735,7 +17733,7 @@ reported as the precondition.
 |`CHK-TIMEOUT-PATHS` |Every fail-on-expiry wait logs its bound and last observed state and none expires; the observation waits (the status reads under a hold or a stall) are counted apart and their expiry is recorded, not graded
 |===
 
-*Pass Criteria*: every graded checker holds after its compares and no assertion fires on VCS. Enrolled in: `all`.
+*Pass Criteria*: every graded checker holds after its compares and no assertion fires. Enrolled in: `all`.
 
 *Scope limit*: The CPU MMIO episodes need the `mmio_wedge` firmware image and are not driven. A status read issued behind a bench R hold or while a request of any manager is stalled at the isolated front port is recorded only. A read the front port accepted before the drain request that the isolate never counted is not drained and completes after the reconnect; it is recorded, not graded against the drain (SF-005, SF-006). The force episode is not driven: its flush presents a stale R beat with ID 0 on SYS_IN, the behaviour ruling #2449 accepts, and this leaf keeps every inbound and CPU-port protocol checker on; the pinned wedge leaves cover the force-mode flush, its request status and its stale response. The CPU front port also carries the `CPU_CTRL` register accesses, so the B and R VALID samples that answer an outstanding `CPU_CTRL` access of the leaf are listed in `OBS-VALID-UNCORE-SW` with every other high sample. The expiry cycle, the isolation delay and cold release count, the drained give-up responses, the held-core access and the pulse interaction are recorded, not graded.
 
@@ -25171,8 +25169,7 @@ generated SMC address map (`smc_addr.h`).
 *Run mode*: one testlist entry in `testlists/cpu.toml`; group `all`; `run_modes` `smoke`;
 `timeout_sec` 3600; tags `ci`, `cpu`; seed 1; args `+axi_sva_need_sep_in` `+axi_sva_need_sys_in`
 `+axi_sva_need_jtag_in`, and `+smc_rom_hex` and `+rom_hex` both pointing at `assets/smc_rom_reconnect.hex`, the
-smoke-mode zero image with non-zero words at ROM offsets 0x100 and 0x140; tool VCS (cocotb). The
-ten `ocah_axi_sva` instances stay on; no assertion-off plusarg is passed.
+smoke-mode zero image with non-zero words at ROM offsets 0x100 and 0x140; tool VCS (cocotb). Every `ocah_axi_sva` instance of the bench stays on; no assertion-off plusarg is passed.
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
 drawn from the seed.
@@ -43755,7 +43752,7 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 * The zeroer clears 64 bytes of the scratchpad on a full-width start, narrow and INT_EN starts are observed, and a start towards the unbacked address 0xC000_1900 completes.
 * ISOLATE_REQ_SMC_REG after an FLR edge with a zero hold count keeps 1 on a write of 0 and on writes of 1 without strobed byte 0, and clears on a byte 0 write of 1; RESET_CTRL byte 0 with the core 3 start bit pulses core 3 once; SEMA[0] reads 5 then 3; SS_CONFIG_LOCK and SS_COLD_RESET_LOCK bit 0 mask SS_CONFIG and SS_COLD_RESET_N bit 0.
 * Observation only, waiting on the spec findings the contract names: plain and zero-strobe byte-lane effects (SF-012, SF-034), mailbox access effects (SF-013), narrow zeroer starts (SF-014), narrow mutex releases (SF-015), SEMA, WDT_TIMEOUT_RESET and lock-register strobes (SF-016) and RESET_CTRL strobes (SF-017).
-* The `+axi_sva_need_sep_in` plusarg names the link whose `ocah_axi_sva` instance must grade a handshake on VCS.
+* The `+axi_sva_need_sep_in` plusarg names the link whose `ocah_axi_sva` instance must grade a handshake.
 
 *Test Procedure*:
 
