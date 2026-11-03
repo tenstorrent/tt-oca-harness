@@ -1323,6 +1323,62 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "target is refused with SLVERR",
         ),
     ],
+    "smu_axi_concurrent_initiators_stall_test": [
+        (
+            "CHK-G4-CONC-EXTOUT",
+            "CHK-G4-CONC-EXTOUT",
+            "with the ext_out responder withholding READY and delaying B and R, every iDMA burst at "
+            "ext_out is INCR and answered once per ID, the destination equals the source and DONE "
+            "reports the launch id; a JTAG2AXI write and read of ext_out complete once with the "
+            "word written; each ext_in request to neither aperture is answered once with DECERR "
+            "and its ID, none reaches ext_out and no target port moves",
+        ),
+        (
+            "CHK-G4-IWC-ID",
+            "CHK-G4-IWC-ID",
+            "interleaved ext_in reads and writes under distinct IDs to the SEP SRAM and the SMC "
+            "scratchpad each get one response with the issued ID and the reference data, no "
+            "response carries an ID ext_in did not issue, the iDMA copy from the SEP SRAM lands "
+            "at ext_out unchanged, and an ext_in read under the iDMA's ID value is outstanding "
+            "toward the SEP SRAM while an iDMA read reaches sep_in",
+        ),
+        (
+            "CHK-G4-ROUTE-FWD",
+            "CHK-G4-ROUTE-FWD",
+            "each single-beat and 32-byte INCR read and write of the four forwarding cells "
+            "(smc_out SEP, smc_out neither, ext_in SEP, ext_in SMC) moves only the target port "
+            "its cell names and returns once with the issued ID and the data written",
+        ),
+        (
+            "CHK-G4-ROUTE-DECERR",
+            "CHK-G4-ROUTE-DECERR",
+            "a JTAG2AXI read and write in the SMC aperture end with the DECERR status and one "
+            "response on the DTP link, an ext_in read and write to neither aperture get one R "
+            "with DECERR and RLAST=1 and one B with DECERR under the issued IDs, and no target "
+            "port sees an AW or AR",
+        ),
+        (
+            "CHK-G4-APERTURE",
+            "CHK-G4-APERTURE",
+            "at the reset sizes base+0x00FF_FFFF of each aperture decodes inside and "
+            "base+0x0100_0000 outside, routed per the routing table for smc_out and ext_in; with "
+            "base+size above 2^56 0xFF_FFFF_FFFF_FFFF decodes inside; the decoded SEP size is the "
+            "low 32 bits of SEP_REGION_SIZE; every aperture register reads back its reset value",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < STALLED_EXT_OUT < INTERLEAVE < ROUTE_FWD < DECERR_CELLS < "
+            "APERTURE_RESET_SIZES < APERTURE_PROGRAMMING with sim time and a non-zero count at "
+            "least the plan per term",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every access, handshake, port and DONE wait is bounded in clk_smu_i edges or polls, "
+            "fails on expiry with the last handshakes and the reset-net sample, none expired",
+        ),
+    ],
     "smu_axi_smc_cool_reset_in_flight_test": [
         (
             "CHK-G2A-VALID-LOW",
