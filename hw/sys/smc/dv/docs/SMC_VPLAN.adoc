@@ -33392,7 +33392,7 @@ outcomes that the GPIO register descriptions state, with the reset words logged 
   instance's GPIO_CTRL entry is a logged control, its response and data printed and not compared
   here; the Scope limit of this entry holds the three values.
 * Direction (`gpio_intf.rdl`, `enable_rx_tx`): the field selects 00 neither, 01 TX, 10 RX or 11
-  both, so with `interface_enable` set and the bench drive released, for the TX codes 01 and 11
+  both, so with `interface_enable` set and the bench holding the pad at 0, for the TX codes 01 and 11
   exactly the drawn instance's `core2pad_en_o` bit rises within 64 `clk_smc_i` rises and releases
   within 64 when the field is cleared, and for the other codes the bit reads 0 on each of 64 rises
   after the write and after the clear; no other bit of `tb_core2pad_en_o` moves on any sampled rise.
@@ -33429,7 +33429,7 @@ response is printed and not compared here, because the window is adopter-owned a
 (AXI-Lite External Window) describes the supplementary region only; `smc_gpio_ctrl_full_sweep_test`
 (`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP`) grades the error response of the window today; print
 `CHK-PADCFG-RESET` as the control line of steps 2 and 3.
-. For each drawn instance, with the bench drive released, write `DATA_CTRL` with the drawn
+. For each drawn instance, with the bench holding its pad at 0, write `DATA_CTRL` with the drawn
 `enable_rx_tx` and `interface_enable`, read `DATA_CTRL` back and require `enable_rx_tx` equal to the
 written code and `interface_enable` 1; for the TX codes require exactly the drawn bit of
 `tb_core2pad_en_o` to rise within 64 rises, clear the field and require it to release within 64;
@@ -33513,8 +33513,9 @@ no block answers behind the per-pad GPIO controls of the adopter window in this 
 response of the supplementary region only, and `smc_gpio_ctrl_full_sweep_test`
 (`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP`) grades the error response of the window on every address; the
 response of a drawn GPIO_CTRL `CONTROL` address is a logged control, printed and not compared here.
-An instance with `enable_rx_tx` 11 takes its pad levels from its own `core2pad`, since its pad
-output and the bench drive would both drive the pad; an instance with RX disabled (00 or 01) enters
+An instance with `enable_rx_tx` 11 takes its pad levels from the bench drive and writes the same
+level to its own `core2pad`, since the pad shim drives at pull strength against the bench pull-up
+and a pad left to its own output resolves to X; an instance with RX disabled (00 or 01) enters
 the direction leg only. The direction leg writes `interface_enable` and `enable_rx_tx` alone; the
 interrupt after an RX-disabled code, the level at which an edge interrupt clears, the strap patterns
 and the `ACCESS_FILTER` allow and deny legs stay with the directed entries and the Phase 2 leaves;
