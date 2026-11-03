@@ -123,18 +123,21 @@ carry (a time-0 bench plusarg, a different target, a firmware image), never to
 pin a cell. The existing exception is the fixed-cell variant modules: the
 clock-cell families of `smc_ref_reset_cycles_test`,
 `smc_periph_floor_roundtrip_test`, `smc_octs_clk_rate_test` and
-`smc_clk_relation_regxbar_test` (fourteen variant modules, each pinned by a
+`smc_clk_relation_regxbar_test` (eighteen variant modules, each pinned by a
 `+smc_cell` entry) and the image-kind family of
-`smc_efuse_map_sense_image_test` (five variant modules, each pinned by a
-`+smc_efuse_image` entry), nineteen modules in all, plus the sixteen
+`smc_efuse_map_sense_image_test` (six variant modules, each pinned by a
+`+smc_efuse_image` entry), twenty-four modules in all, plus the sixteen
 `smc_clk_*` modules that pin the three clock periods as module constants:
 fifteen Phase 3 cells and the owning leaf of the family,
-`smc_clk_smc_slower_than_ref_test`, which is Phase 2. Thirty-four of these
-thirty-five modules are directed (`RAND-NONE`) cells, and their entries say so.
+`smc_clk_smc_slower_than_ref_test`, which is Phase 2. Thirty-nine of these
+forty modules are directed (`RAND-NONE`) cells, and their entries say so.
 The one exception is `smc_efuse_map_sense_image_random_test`, `RANDCFG` in its
 entry: the cell pins the image kind, and the module draws the image words and
 the write-lock bits of that kind from the seed
-(`cocotb/tests/smc_efuse_map_sense_image_test.py`).
+(`cocotb/tests/smc_efuse_map_sense_image_test.py`). The twenty-four variant
+modules pin every cell of the five families, so each cell is graded in every
+regression, and the five owning leaves draw one cell from the seed whenever no
+run argument or class attribute pins one.
 
 [[smc-vplan-audit]]
 Checker contracts in this plan are written against these known ways a check
@@ -1069,6 +1072,7 @@ while `CPU_CTRL.WDT_TIMEOUT` keeps its programmed value.
 |`smc_remap_cla_test` |2 |ALIAS_REMAP address translation, remap-table reset sweep, CLA window.
 |`smc_sep_in_axi_flow_control_test` |3 |SEP_IN keeps writes and reads outstanding while the manager holds BREADY and RREADY low; every access still returns its own address's word.
 |`smc_sep_in_axi_shape_test` |2 |Narrow AxSIZE with byte strobes, a multi-beat INCR burst, and the FIXED and WRAP bursts the data-width converter rejects.
+|`smc_axi_illegal_encoding_inject_test` |3 |WRAP AxLEN 0, reserved-burst and 4 KiB-crossing writes and reads on SEP_IN and SYS_IN are each answered, leave registers outside their footprint unchanged and leave the port answering; the crossing write's BRESP is recorded as an observation under SF-012 and never compared; the two inbound checkers see a legal view through `+smc_axi_wrap_len1_inject`.
 |`smc_sys_axi_in_port_test` |2 |With inbound filter entry 0 admitting, `sys_axi_in` carries a read of a non-zero generated reset and a write both ports read back.
 |`smc_sys_out_aw_w_split_test` |3 |Discriminate a SYS_OUT write hang: AW vs W at both ends.
 |`smc_xvisor_remap_test` |2 |Hypervisor remap table (0xC001_4000) sweep.
@@ -1223,6 +1227,7 @@ of 1 to bit 0 and sets with a zero hold count.
 |`smc_cool_reset_x_cold_reset_test` |3 |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
 |`smc_cpu_reset_pulse_test` |3 |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, a core level reset that applies without a drain, and a withheld uncore reset whose timeout fires in give-up mode; pulses on cores 0, 2 and 3, level reset and release of cores 2 and 3 without a drain, debug-module reset release and re-assertion, and the `RESET_VECTOR[1..3]` reset value and bit-17 storage.
 |`smc_cpu_reset_source_test` |3 |SW core0 level reset reaches core 0's cluster reset without a drain; no FLR isolate_req_o.
+|`smc_axi_partial_reset_open_txn_test` |3 |AXI transactions open across a core-only reset and a watchdog-entered warm reset: the held-core boundary keeps carrying traffic, the warm reset holds for 32 reference clock cycles after the watchdog input releases, every link answers after each release, and every `ocah_axi_sva` instance of the bench stays silent, two of them on the link's own partial reset.
 |`smc_spm_access_core_reset_test` |3 |Scratchpad reads and writes over SEP_IN complete while each core, then every core, is held in reset.
 |`smc_beu_access_core_reset_test` |3 |A core's BEU answers SEP_IN with SLVERR, not a hang, while that core is held in reset; the other cores' BEUs still answer.
 |`smc_flr_sanity_test` |1 |Run the SMC OSS FLR post-release sanity scenario.
@@ -1329,6 +1334,9 @@ clk_periph_i = 10 / 10 / 10 ns).
 |`smc_clk_relation_regxbar_smc_slower_test` |3 |The hang-detector threshold and AVS_CFG_0 hold written
 values at each single-axis clock relation of the run, in the smc_slower cell (clk_ref_i / clk_smc_i
 / clk_periph_i = 10 / 12 / 8 ns).
+|`smc_clk_relation_regxbar_default_test` |3 |The hang-detector threshold and AVS_CFG_0 hold written
+values at each single-axis clock relation of the run, in the default cell (clk_ref_i / clk_smc_i /
+clk_periph_i = 10 / 1.25 / 5 ns).
 |`smc_octs_clk_rate_test` |3 |The OCTS counter advances at the clk_smc_i rate in every clock cell and
 restarts from its preset on a START after the preset is latched.
 |`smc_octs_timer_rate_test` |2 |The OCTS TIMER_COUNT delta over one window lies within the bench's
@@ -1348,6 +1356,9 @@ cell and restarts from its preset on a START after the preset is latched, in the
 |`smc_octs_clk_rate_smc_slower_test` |3 |The OCTS counter advances at the clk_smc_i rate in every clock
 cell and restarts from its preset on a START after the preset is latched, in the smc_slower cell
 (clk_ref_i / clk_smc_i / clk_periph_i = 10 / 12 / 5 ns).
+|`smc_octs_clk_rate_default_test` |3 |The OCTS counter advances at the clk_smc_i rate in every clock
+cell and restarts from its preset on a START after the preset is latched, in the default cell
+(clk_ref_i / clk_smc_i / clk_periph_i = 10 / 1.25 / 5 ns).
 |`smc_periph_cg_window_extent_test` |3 |With one peripheral clock-gate enable set, that window answers
 SLVERR with the error pattern while the other windows stay
 reachable.
@@ -1359,11 +1370,17 @@ clk_periph_i = 10 / 1.25 / 5 ns).
 |`smc_periph_floor_roundtrip_periph3_test` |3 |AVS_CFG_0 round-trips a written value through the AVSBus
 bridge at peripheral clock periods of 10, 5 and 3 ns, in the periph3 cell (clk_ref_i / clk_smc_i /
 clk_periph_i = 10 / 1.25 / 3 ns).
+|`smc_periph_floor_roundtrip_periph10_test` |3 |AVS_CFG_0 round-trips a written value through the
+AVSBus bridge at peripheral clock periods of 10, 5 and 3 ns, in the periph10 cell (clk_ref_i /
+clk_smc_i / clk_periph_i = 10 / 1.25 / 10 ns).
 |`smc_ref_reset_cycles_test` |3 |The cold-reset release hold and assertion de-glitch are counted in
 clk_ref_i cycles at two reference periods.
 |`smc_ref_reset_cycles_ref4_test` |3 |The cold-reset release hold and assertion de-glitch are counted
 in clk_ref_i cycles at two reference periods, in the ref4 cell (clk_ref_i / clk_smc_i / clk_periph_i
 = 4 / 1.25 / 5 ns).
+|`smc_ref_reset_cycles_ref10_test` |3 |The cold-reset release hold and assertion de-glitch are
+counted in clk_ref_i cycles at two reference periods, in the ref10 cell (clk_ref_i / clk_smc_i /
+clk_periph_i = 10 / 1.25 / 5 ns).
 |`smc_clk_ratio_rand_test` |3 |Seeded `clk_smc_i`, `clk_ref_i` and `clk_periph_i` periods
 inside the stated bounds leave the register traffic of the clock-cell family completing with its
 generated reset words and written patterns, with each measured period equal to the drawn one.
@@ -1506,6 +1523,8 @@ in the walking eFuse image.
 the ones eFuse image.
 |`smc_efuse_map_sense_image_zero_test` |3 |Sensed image words match the loaded file on every path, in
 the zero eFuse image.
+|`smc_efuse_map_sense_image_default_test` |3 |Sensed image words match the loaded file on every
+path, in the default eFuse image.
 |`smc_efuse_map_sep_write_test` |3 |Unlocked SEP_IN map writes read back and reach the shadow port.
 |`smc_efuse_sense_sequence_test` |2 |Sense request, 256 strobes and hand-over follow the interface.
 |`smc_efuse_security_disable_bypass_test` |3 |With the security-disable input held at 1 from time 0
@@ -7013,8 +7032,8 @@ results of the no-data commands are measured.
   the zero-length commands. The leaf requires the low word of every `NEXT_ID_0` read of its six
   submits to be non-zero and prints the six IDs. `DONE_0` before and after, `STATUS_0[9:0]` before
   and after and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command are
-  measured, not compared: `dma.adoc` and `dma_ctrl.rdl` differ on `DONE_0` (the most recently
-  retired ID in `dma.adoc`, a cumulative count in the RDL).
+  measured, not compared; the retirement count a no-data command adds to `DONE_0` (`dma.adoc`,
+  Retirement Counting) is graded by `smc_dma_transfer_matrix_rand_test` (`CHK-DXM-ZERO-LENGTH-DONE`).
 * A length-0 command moves no data (`dma.adoc`, Linear and Two-Dimensional Copies, the DMA register
   storage table): a linear command (`NUM_REPETITIONS_LO` 1) and a 2D command (`NUM_REPETITIONS_LO`
   4, source stride 0x30, destination stride 0x28) with `LENGTH` 0 must leave 16 and 136 destination
@@ -7109,8 +7128,8 @@ Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `DONE_0` before and after, `STATUS_0[9:0]` before and after and the bit 322 pulse
 count and widths of the `ENABLED_ND`-cleared command, and the `DONE_0` change, `STATUS_0[9:0]` and
-bit 322 pulse count of both zero-length commands, are measured and not compared until the open
-issue above is resolved.
+bit 322 pulse count of both zero-length commands, are measured and not compared; the retirement
+count of a no-data command is graded by `smc_dma_transfer_matrix_rand_test`.
 
 [[sec-559-smc_dma_transfer_matrix_rand_test]]
 ===== 559 `smc_dma_transfer_matrix_rand_test`
@@ -7139,7 +7158,8 @@ bytes), the row count (`NUM_REPETITIONS`, 1 to 16), the source and destination s
 width plus 0 to 256 bytes), the source and destination start offsets within a 64-bit word (0 to 7),
 `DECOUPLE_AW`, `SRC_REDUCE_LEN`, `SRC_MAX_LLEN` (0 to 7), `DST_REDUCE_LEN` and `DST_MAX_LLEN` (0 to
 7), and the drawn transfer whose geometry and `CONFIG` the `ENABLED_ND`-clear launch and the
-zero-length launch each reuse; every drawn point has a stated outcome. Filters, each asserted in the
+zero-length launch each reuse, the latter among the transfers with `NUM_REPETITIONS` 2 or more so
+that its retirement count differs from one; every drawn point has a stated outcome. Filters, each asserted in the
 sequence: `ENABLED_ND` is set, `DECOUPLE_RW` is clear (it can deadlock), every stride is at least
 the row width so no row overlaps another, source and destination spans (with a 16-byte guard
 either side) do not overlap, and every address is below 2^40, far below 2^56; the 12 transfers are
@@ -7175,25 +7195,25 @@ with `ENABLED_ND` clear moves no data and still retires its ID.
   `DST_MAX_LLEN` alike (`dma_ctrl.rdl`, `SRC_REDUCE_LEN` and `DST_REDUCE_LEN` for the reduce-clear
   bound, `SRC_MAX_LLEN` and `DST_MAX_LLEN` for the reduce-set length and boundary). A burst is
   attributed to a transfer by its address lying in that transfer's source or destination span.
-* Completion: one `NEXT_ID_0` read launches a transfer and returns its ID, `DONE_0` carries the most
-  recently retired ID, and frontend readiness or a zero `STATUS_0` does not mean completion, so the
+* Completion: one `NEXT_ID_0` read launches a transfer and returns its ID, `DONE_0` counts
+  retirements, and frontend readiness or a zero `STATUS_0` does not mean completion, so the
   leaf polls `DONE_0` and prints `STATUS_0` (`dma.adoc`, Submission and Completion); consecutive IDs
-  advance by one (`dma_ctrl.rdl`, `NEXT_ID`: the read returns the transfer's ID; `DONE`: the
-  cumulative number of completed transfers; the compare takes the RDL reading, as
-  `CHK-DMA-2D-SINGLE-ID` of `smc_dma_2d_copy_test` (348) does, because `dma.adoc` and the RDL
-  disagree on the meaning of `DONE`, the Blocked legs row on the `NEXT_ID` and `DONE` values),
-  starting at 2 with `DONE_0` reset to 1 and skipping zero on wrap, so no launch returns 0
-  (`dma_ctrl.rdl`, `NEXT_ID`; `dma.adoc`, Transfer Configuration and Submission and Completion;
-  `doc/programmer/src/smc-programming.adoc`, DMA Engine).
-* The frontend does not validate the command: two commands move no data and still retire a
-  transfer ID, a command with zero repetitions, which clearing `ENABLED_ND` forces, and a command
-  with `LENGTH` 0; the midend or the backend answers it with an error response the control aperture
-  does not expose (`dma.adoc`, Transfer Configuration; `dma_ctrl.rdl`, `NEXT_ID` and `ENABLED_ND`).
-  For each the leaf compares that the launch returns the non-zero ID `DONE_0` plus one and that no
-  destination byte changes, and prints `STATUS_0` after it; after the `ENABLED_ND`-clear command it
-  also compares that `DONE_0` reaches that ID, while after the zero-length command `DONE_0` is
-  printed beside the drawn `NUM_REPETITIONS` and not compared (Scope limit).
-* Measured and logged only: `DONE_0` after the zero-length launch (Scope limit); `STATUS_0` after
+  advance by one and a copy retires once, so `DONE_0` reaches the returned ID (`dma_ctrl.rdl`,
+  `NEXT_ID` and `DONE`; `dma.adoc`, Retirement Counting), starting at 2 with `DONE_0` reset to 1
+  and never reading 0, so no launch returns 0 (`dma_ctrl.rdl`, `NEXT_ID`; `dma.adoc`, Transfer
+  Configuration and Submission and Completion; `doc/programmer/src/smc-programming.adoc`, DMA
+  Engine).
+* The frontend does not validate the command: two commands move no data and still retire, a
+  command with zero repetitions, which clearing `ENABLED_ND` forces, and a command with `LENGTH` 0;
+  the midend or the backend answers it with an error response the control aperture does not expose
+  (`dma.adoc`, Transfer Configuration; `dma_ctrl.rdl`, `NEXT_ID` and `ENABLED_ND`). For each the
+  leaf compares that the launch returns the non-zero ID `DONE_0` plus one and that no destination
+  byte changes, and prints `STATUS_0` after it; after the `ENABLED_ND`-clear command it also
+  compares that `DONE_0` reaches that ID, and after the zero-length command that `DONE_0` advanced
+  by the drawn `NUM_REPETITIONS`: the backend answers each zero-length row with an error response
+  marked as the command's last, so the command retires once per repetition (`dma.adoc`, Retirement
+  Counting; `dma_ctrl.rdl`, `DONE`).
+* Measured and logged only: `STATUS_0` after
   either no-data launch and the place its error response is reported, which neither document
   states (the question is in <<smc-vplan-phase3-blocked-legs>>, the row on the `NEXT_ID` and `DONE`
   values and the meaning of `DONE_0` after a command); that place is why
@@ -7224,16 +7244,19 @@ non-zero ID `DONE_0` plus one, no destination byte changes and `DONE_0` reaches 
 `NEXT_ID_0` value, `STATUS_0` and the response code of the launch read are printed, not compared,
 as the place the error response the field description names may appear.
 . Error injection. Point: `LENGTH` 0 with `ENABLED_ND` set on the geometry and `CONFIG` of a drawn
-copy, in a fresh slot. Kind: launch with one `NEXT_ID_0` read. Expected response: the launch
-returns the non-zero ID `DONE_0` plus one and no destination byte changes (`dma.adoc`, Transfer
-Configuration, Linear and Two-Dimensional Copies: a command with a length of 0 moves no data and
-still retires a transfer ID, the backend answering it with an error response the control aperture
-does not expose), the cells `CHK-DXM-ZERO-LENGTH` compares. The leaf polls `DONE_0` until it has
-moved from its pre-launch value and two consecutive reads agree with `tb_dma_busy` low, within 3000
-reads 50 `clk_smc_i` cycles apart, and fails when the poll ends without `DONE_0` moved and
-`tb_dma_busy` low (a liveness bound, no compare of the `DONE_0` value), then prints the returned ID,
-`DONE_0` before and after the launch and the drawn `NUM_REPETITIONS` without comparing them (Scope
-limit); the `NEXT_ID_0` value,
+copy, in a fresh slot. Kind: `NUM_REPETITIONS_LO` read back equal to the drawn count, then a launch
+with one `NEXT_ID_0` read. Expected response: the launch returns the non-zero ID `DONE_0` plus one
+and no destination byte changes (`dma.adoc`, Linear and Two-Dimensional Copies: a command with a
+length of 0 and one or more repetitions moves no data; the backend answers each row with an error
+response the control aperture does not expose, marked as the command's last, so the command retires
+once per repetition), the cells `CHK-DXM-ZERO-LENGTH` compares. The leaf polls `DONE_0` until two
+reads 50 `clk_smc_i` cycles apart both return its pre-launch value plus the drawn `NUM_REPETITIONS`
+with `tb_dma_busy` low after each, within 3000 reads, and fails when the poll ends without that
+pair (a liveness bound), then requires `DONE_0` after the launch to equal `DONE_0`
+before it plus the drawn `NUM_REPETITIONS`, the counter cycling through 2^32 - 2 counts and never
+reading 0 (`dma.adoc`, Retirement Counting: a command with `ENABLED_ND` set, `LENGTH` 0 and N
+repetitions retires N times; `dma_ctrl.rdl`, `DONE`), the cells `CHK-DXM-ZERO-LENGTH-DONE`
+compares; the `NEXT_ID_0` value,
 `STATUS_0` and the response code of the launch read are printed, not compared, as the place that
 error response may appear.
 . Require 14 launches; print `CHK-TIMEOUT-PATHS`, then run the fence that prints `CHK-NONVAC`,
@@ -7263,13 +7286,19 @@ moves no destination byte and `DONE_0` reaches that ID; `STATUS_0` after it and 
 response code are printed, not asserted, because no document states where the error response is
 reported.
 |`CHK-DXM-ZERO-LENGTH` |With `LENGTH` 0 the launch returns the non-zero ID `DONE_0` plus one and no
-destination byte changes, compared after the `DONE_0` poll ended with `DONE_0` moved from its
-pre-launch value and `tb_dma_busy` low (a liveness bound; the poll fails at its bound otherwise);
-`DONE_0` before and after the launch, with the drawn `NUM_REPETITIONS`, and `STATUS_0` after it are
-printed, not compared (Scope limit, #3509); `smc_dma_zero_length_done_id_test` (`rtl_issue`,
-`testlists/holdout.toml`) runs the same draw and asserts `DONE_0` equal to the returned ID under
-`expect_fail` against #3509.
-|`CHK-NONVAC` |The step stamps S1 to S6 are in increasing time order, the 5 checker lines above
+destination byte changes, compared after two `DONE_0` reads 50 `clk_smc_i` cycles apart both
+returned its pre-launch value plus the drawn `NUM_REPETITIONS` with `tb_dma_busy` low after each (a
+liveness bound; the poll fails at its bound otherwise);
+`STATUS_0` after it is printed, not compared.
+|`CHK-DXM-ZERO-LENGTH-DONE` |`NUM_REPETITIONS_LO` reads back the drawn N before the `LENGTH` 0
+launch with `ENABLED_ND` set, so the count the compare expects is the one in the register and not
+the ND leg's leftover; after the launch, two `DONE_0` reads 50 `clk_smc_i` cycles apart both equal
+its pre-launch value plus N with `tb_dma_busy` low after each, taken on the counter's cycle of
+2^32 - 2 counts that never reads 0; the line carries the returned ID, the `DONE_0` reads of the
+poll and the drawn cells (`dma.adoc`, Retirement Counting: the backend answers each zero-length row
+with an error response marked as the command's last, so the command retires once per repetition;
+`dma_ctrl.rdl`, `DONE`).
+|`CHK-NONVAC` |The step stamps S1 to S6 are in increasing time order, the 6 checker lines above
 were printed in step order each after its own step, and 14 launches were issued with at least one
 of the 12 drawn transfers a copy of two or more rows (`NUM_REPETITIONS` 2 or more), each row at its
 stride, and at least one binding reduce-set transfer per side with its bursts observed (an AR
@@ -7285,23 +7314,15 @@ is a printed report with no compare, each wait raising its own failure when its 
 |===
 
 *Pass Criteria*: `CHK-DXM-BYTE-EXACT`, `CHK-DXM-DONE-ID`, `CHK-DXM-BURST-BOUND`, `CHK-DXM-ND-CLEAR`,
-`CHK-DXM-ZERO-LENGTH`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every drawn copy is
-byte-exact with its sentinel intact and retires its ID, every burst stays inside its configured
-bound, and the `ENABLED_ND` clear and zero-length launches move no data; `DONE_0` after the
-zero-length launch is printed, not graded (#3509). Enrolled in: `all`, `hosted`.
+`CHK-DXM-ZERO-LENGTH`, `CHK-DXM-ZERO-LENGTH-DONE`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all
+printed; every drawn copy is byte-exact with its sentinel intact and retires its ID, every burst
+stays inside its configured bound, the `ENABLED_ND` clear and zero-length launches move no data,
+and `DONE_0` after the zero-length launch advanced by the drawn `NUM_REPETITIONS`. Enrolled in:
+`all`, `hosted`.
 
 *Scope limit*: `STATUS_0` after every launch, the place the no-data launches' error response is
 reported (<<smc-vplan-phase3-blocked-legs>>) are printed, not compared; the order in which the rows
 are issued is neither printed nor compared.
-`DONE_0` after the zero-length launch is printed, not compared: `dma.adoc` gives `DONE_0` as the
-"Most recently retired transfer ID" and says "A command with a length of 0 ... still retire[s] a
-transfer ID", and the `dma_ctrl.rdl` `NEXT_ID` description says such a command "still retires an
-ID without copying any data", which reads as `DONE_0` reaching the one returned ID; on this bench
-`DONE_0` advances by the drawn `NUM_REPETITIONS` after a length-0 launch, and by one after every
-other launch of this entry; #3509 holds the question. The leaf prints the returned ID, `DONE_0`
-before and after and the drawn `NUM_REPETITIONS`; `smc_dma_zero_length_done_id_test` (`rtl_issue`)
-runs the same draw and asserts the compare the documents state, expected to fail until #3509
-closes (<<smc-vplan-phase3-blocked-legs>>).
 Zero or overlapping strides, `DECOUPLE_RW` 1, addresses near 2^56 and the backpressure and abort
 cells are not drawn, because the DMA chapter states no order or outcome for them. This entry
 consolidates the cells of `smc_dma_2d_copy_test` and `smc_dma_burst_shaping_test`, which stay
@@ -8814,6 +8835,97 @@ have reached its floor.
 
 '''''
 
+[[sec-571-smc_axi_illegal_encoding_inject_test]]
+===== 571 `smc_axi_illegal_encoding_inject_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smc_axi_illegal_encoding_inject_test`
+
+*BFM / Model*: the SEP_IN and SYS_IN AXI masters (`ocah_axi_vip` AXI4 master); each illegal request
+is a raw AW/W or AR on the master's own channels with its response registered in the master's tag
+context, as `SmcSysAxiDriver._start_strobed_write` issues a strobed write; the bench's illegal-encoding
+inject (`+smc_axi_wrap_len1_inject`, `SMC_TB_ARCH.adoc`)
+
+*Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; args `+smc_axi_wrap_len1_inject`,
+`+axi_sva_need_sep_in`, `+axi_sva_need_sys_in`; graded on VCS.
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
+drawn from the seed.
+
+*Objective*: A request with an encoding AXI4 does not allow -- AxBURST WRAP with AxLEN 0, the
+reserved AxBURST `2'b11`, an INCR burst across a 4 KiB boundary -- arriving on SEP_IN or SYS_IN is
+answered, touches nothing outside its footprint and leaves the port answering.
+
+*Test Coverage*:
+
+* Per port, a write and a read with AxBURST WRAP, AxLEN 0 and AxSIZE 3 at a `SCRATCH_COLD` pair, and
+  the same with the reserved AxBURST `2'b11`.
+* Per port, single-beat writes to every beat address of the planned crossing burst (the reference
+  codes), then an INCR write and read of 254 full-width beats from `SCRATCH_COLD` `SCRATCH[6]` across
+  the next 4 KiB boundary. The local crossbar routes a burst by its start address and splits a write
+  burst to a register unit into single-beat writes whose combined response follows
+  `memmap.adoc` 63-67.
+* After every request, the reference set (`SCRATCH_COLD` `SCRATCH[0..7]` and `SMC_BASE_CONFIG`
+  `HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD`) is read back: only registers inside the request's footprint
+  may differ (`memmap.adoc` 155-176). A fresh legal 64-bit read of the `SMC_BASE_CONFIG` register on
+  the same port then answers OKAY with its seeded value.
+* With `+smc_axi_wrap_len1_inject` the SEP_IN and SYS_IN checkers, and the SEP ID remap and SYS
+  inbound filter output checkers the fabric forwards the requests to, see each request at an
+  encoding their WRAP-length, burst-legal and 4 KiB rules accept and grade every other rule on it;
+  the DUT sees the real encoding, sampled at the port. The encoding forwarded on each fabric link is
+  logged as `OBS-G11-FORWARDED` (SF-015).
+
+*Test Procedure*:
+
+[arabic]
+. Program inbound entry 0 to pass everything; seed `SCRATCH[0..7]` and the `SMC_BASE_CONFIG`
+  register with distinct values and read them back; print the planned shapes as INFO.
+. WRAP AxLEN 0 on SEP_IN, then SYS_IN: a write, a footprint read-back and a liveness read, then a
+  read, a footprint read-back and a liveness read.
+. The reserved AxBURST the same way.
+. Per port: the single-beat reference writes, a re-seed, the crossing write, its footprint read-back
+  and liveness read, the crossing read, its footprint read-back and liveness read.
+. Grade the footprint and liveness results over all twelve requests and the inject view.
+
+Every request carries AxPROT 0 and AxCACHE `0b0011` (the pass-all entry's `allow_ns` is 0). Every
+wait is a bounded count of `clk_smc_i` edges; an expiry records the request unanswered with the
+port's last AW/W/AR/B/R handshake and the reset sample on an INFO-CLASSIFY line and fails the leaf.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-G11-WRAP-LEN0-ANSWERED` |Per port, the WRAP AxLEN 0 write gets exactly one B and the read exactly AxLEN+1 R beats with RID=ARID and RLAST on the last beat only, never EXOKAY, within the bound; the codes are `OBS-G11-WRAP-LEN0`
+|`CHK-G11-RSVD-BURST-ANSWERED` |The same for the reserved-burst write and read; the codes are `OBS-G11-RSVD-BURST`
+|`CHK-G11-4KB-ANSWERED` |The same for the crossing write and read; the per-beat codes are `OBS-G11-4KB`
+|`OBS-G11-SPLIT-BRESP` |Per port, the crossing write's BRESP and the write-split rule (`memmap.adoc` 64-67) applied to the design's own single-beat codes, recorded and never compared: the burst's past-extent beats have no stated response code (SF-012)
+|`CHK-G11-FOOTPRINT` |After each of the twelve requests every reference register outside the request's footprint keeps its seeded value
+|`CHK-G11-LIVENESS` |After each of the twelve requests the fresh legal read on the same port answers OKAY with the seeded value
+|`CHK-G11-INJECT-MASK` |Twelve CTRL-INJECT lines; at every address handshake the port carries the real encoding, the view of the port checker and of the fabric-link checker trips none of the WRAP-length, burst-legal and 4 KiB rules, and no forwarded request has an unresolved fabric-link probe
+|`CHK-TIMEOUT-PATHS` |Every bounded wait has an expiry path and none expired
+|`CHK-NONVAC` |The stage stamps setup, wrap_len0, reserved_burst, crossing, footprint and liveness are present and in order, with per-stage counts
+|===
+
+*Pass Criteria*: every checker above is emitted, the bench's final block prints
+`CHK-AXI-SVA-SEP-IN` and `CHK-AXI-SVA-SYS-IN` with a non-zero handshake count (both
+`+axi_sva_need_<port>` of the entry are satisfied), and the log carries no `OCAH_AXI_*` fire. The
+same leaf without `+smc_axi_wrap_len1_inject` (CTRL-G11-NO-INJECT) fails on the WRAP-length,
+burst-legal and 4 KiB rules of `u_sep_in_axi_sva`, `u_sys_in_axi_sva`, `u_sep_remap_axi_sva` and
+`u_filtered_sys_axi_sva`. Enrolled in: `all`,
+`hosted`.
+
+*Scope limit*: The response codes of the illegal requests and whether a write stored its data are
+observation lines (`OBS-G11-WRAP-LEN0`, `OBS-G11-RSVD-BURST`, `OBS-G11-4KB`, `OBS-G11-FORWARDED`; SF-015, and SF-012 for
+the past-extent beats of the crossing burst); the crossing write's BRESP is recorded beside the
+write-split rule over the measured reference codes as an observation under SF-012, never compared.
+
+'''''
+
 [[sec-195-smc_sep_in_axi_flow_control_test]]
 ===== 195 `smc_sep_in_axi_flow_control_test`
 
@@ -8836,7 +8948,7 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * AMBA IHI 0022 A3.2.1: a transfer completes only when VALID and READY are both asserted, VALID may not be withdrawn before that, and the channel's payload stays stable across the wait. B and R are driven by the design, so their stability under the manager's backpressure is the design's obligation and is sampled every cycle the manager holds READY low.
-* Three write passes over the eight scratch registers go out as one outstanding group with BREADY held, each pass carrying its own word, so the individual readbacks also show that writes to one address took effect in the order they were issued.
+* Three write passes over the eight scratch registers go out as one outstanding group with BREADY held, each pass carrying its own word, so the individual readbacks show which pass landed last on each address.
 * Four read passes over the same registers go out as one outstanding group with RREADY held, each compared against that address's word, so an access that was dropped, merged, reordered or mis-routed returns the wrong word.
 * The stalled-cycle counts are asserted non-zero for all four channels. They are the measurement that the backpressure happened, not the claim: a run whose timing profile stopped reaching the bus fails rather than passing on traffic that never stalled.
 
@@ -15499,8 +15611,9 @@ completing byte-exact, and leave the recovery access answering OKAY.
   have arrived, and no software-visible AXI error is reported, so a job with a SLVERR or DECERR
   burst finishes with `STATUS` 0 and `CTRL_STATUS` outside `STATUS` equal to `INT_EN` alone
   (`zeroer.adoc`, Outstanding Transaction Management and Status Features).
-* DMA: `DONE_0` holds the most recently retired transfer ID and no byte-progress or classified error
-  register exists (`dma.adoc`, Submission and Completion, the "DMA status and notification" table),
+* DMA: `DONE_0` counts retirements, one for a command whose bursts receive an AXI error response
+  (`dma.adoc`, Retirement Counting), and no byte-progress or classified error register exists
+  (`dma.adoc`, Submission and Completion, the "DMA status and notification" table),
   and the recovery copy issued after the injection, with no error armed, completes byte-exact at the
   responder (`dma.adoc`, Submission and Completion); its source pattern differs from the errored
   copy's in every byte, so a late write of the errored copy cannot pass for it.
@@ -18116,6 +18229,107 @@ reset so the bench is left idle; the grade is the sample taken while the registe
 
 '''''
 
+[[sec-570-smc_axi_partial_reset_open_txn_test]]
+===== 570 `smc_axi_partial_reset_open_txn_test`
+
+*Phase*: 3
+
+*Area*: RESET
+
+*Source Module*: `smc_axi_partial_reset_open_txn_test`
+
+*BFM / Model*: the SMC C image `fw/tests/hello_world`, executed by the CPU cluster; the SEP_IN,
+SYS_IN and JTAG_IN AXI masters through their event API; the SYS_OUT responder; the bench R and
+response holds (`tb_sep_axi_r_hold`, `tb_sys_axi_r_hold`, `tb_output_axi_resp_hold`) and the SEP
+watchdog reset input `tb_sep_wdt_reset_n`
+
+*Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `fw`; not in `hosted`
+(needs the RISC-V toolchain of the `c_compile` stage); `run_modes` `smoke`; `timeout_sec` 3600;
+tags `firmware`, `cpu`, `reset`, `axi`; seed 1; args `+smc_hold_cpu_boot`,
+`+smc_scratch_ram_hex=hello_world.ecc.hex` and `+axi_sva_need_<cpu_mmio_uncore_rst|misc_warm|sep_in|sys_in|sys_out|jtag_in|cpu_front|cpu_mmio>`;
+firmware image `hello_world`; graded on VCS.
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
+drawn from the seed.
+
+*Objective*: AXI transactions open across a core-only reset and a watchdog-entered warm reset are
+completed or recorded, every link answers after each release, and every protocol checker stays on
+and silent.
+
+*Test Coverage*:
+
+* Leg A, core 0 reset through CPU_CTRL `RESET_CTRL`: a core held in reset does not isolate the
+  cluster boundary and the other cores' MMIO and L2 frontend traffic continue (`cpu.adoc`
+  256-258), so cluster-memory reads parked on SEP_IN and SYS_IN before the reset complete with
+  OKAY and RLAST and `SMC_BASE_CONFIG` answers on both ports while the core is held. The MMIO port
+  stays connected and its uncore reset stays high on every edge of the hold, so the uncore-domain
+  MMIO checker keeps grading the port and no own-domain reset edge occurs in this leg.
+* Leg B, warm reset entered through `tb_sep_wdt_reset_n`: the warm reset asserts while the input is
+  low and stays low for 32 reference clock cycles after it releases (`clk_rst.adoc`
+  213-216). SEP_IN reads of `SCRATCH_COLD` and SYS_OUT writes stay open across the edge; no
+  `SCRATCH_COLD_WARM` access is open across it. Their outcome is measured, not compared (SF-003).
+* After each release one fresh access on SEP_IN, SYS_IN, JTAG_IN, SYS_OUT, the CPU front port (a
+  cluster-memory write and read) and the CPU MMIO port (the firmware's PASS store after the core
+  restarts), and a read on the misc warm leg.
+* The own-domain checkers `u_cpu_mmio_uncore_rst_axi_sva` (the cluster uncore reset,
+  `MASTER_SYNC_RESET`) and `u_misc_warm_axil_sva` (the misc wrapper's warm reset) grade the reset
+  rules and flush their tracking on those resets, which leg B takes low; the ten primary-reset
+  checkers keep the open transactions tracked.
+
+*Test Procedure*:
+
+[arabic]
+. Boot `hello_world` as `smc_fw_hello_world_test` does, program the inbound and outbound filters to
+  pass everything, read `RESET_CTRL` (core 0 `reset_n` 1), preload three cluster-memory words and
+  access `SCRATCH_COLD_WARM` once.
+. Set the MSIP bits of harts 1-3 so the restarted core 0 crosses its start-up barrier, clear
+  SCRATCH_0, raise the SEP_IN and SYS_IN R holds and open one cluster-memory read on each port.
+. Write core 0 `reset_n` 0; sample the reset nets, the isolate request and the open reads.
+. Release the holds: the parked reads complete OKAY with their words; read `SMC_BASE_CONFIG` on
+  SEP_IN and SYS_IN while core 0 is held.
+. Write core 0 `reset_n` 1 and make one fresh access per link and on the misc warm leg.
+. Raise the SEP_IN R hold and the SYS_OUT response hold; open two `SCRATCH_COLD` reads on SEP_IN and
+  two SYS_OUT writes from JTAG_IN.
+. Drive `tb_sep_wdt_reset_n` low until the warm reset and the misc wrapper's warm reset are low,
+  release it and count reference clock edges until the warm reset releases.
+. Release the holds, wait for the open transactions, then make one fresh access per link and on the
+  misc warm leg.
+. Reconcile every transaction opened at either edge; read the bench's own-domain shadow counters
+  and every checker's enable.
+
+Every wait is a bounded count of `clk_smc_i` or reference clock edges; an expiry fails the leaf
+with the last AW/W/AR/B/R handshake of the link and the reset samples.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-G2-CORE-HELD-TRAFFIC` |While core 0 is held the isolate request and the MMIO isolated status stay low and the uncore reset stays high, the SEP_IN and SYS_IN reads opened before the reset complete with OKAY, RLAST and their words, and `SMC_BASE_CONFIG` answers OKAY on both ports
+|`CHK-G2-WARM-ENTRY` |The warm reset asserts while `tb_sep_wdt_reset_n` is low and releases 32 reference clock cycles after it releases
+|`CHK-G2-LIVENESS` |After leg A every one of the six links answers a fresh access OKAY; after leg B every link's fresh access is answered (codes logged as `OBS-G2-WARM-OPEN-TXN`)
+|`CHK-G2-TRACK-CLEARED` |After each release the first fresh access on the CPU front port, the CPU MMIO port and the misc warm leg answers OKAY
+|`CHK-G2-PRIMARY-RECONCILED` |Every transaction open at either edge is completed or recorded unanswered with its samples; an unanswered one fails the leaf
+|`CHK-G2-RESET-VALID-LOW` |Leg A sampled no own-domain reset edge, leg B sampled own-domain reset edges, and the bench's shadow of the own-domain `*_VALID_RESET_LOW` conditions counted none
+|`CHK-G2-ALL-SILENT` |Every `ocah_axi_sva` instance of the bench has `en_i` 1 and the own-domain VALID-in-reset shadow is 0
+|`CHK-TIMEOUT-PATHS` |Every bounded wait has an expiry path and none expired
+|`CHK-NONVAC` |The stage stamps setup, legA_open, legA_assert, legA_hold, legA_release, legB_open, legB_enter, legB_release and reconcile are present, in order and strictly increasing
+|===
+
+*Pass Criteria*: every checker above is emitted, the bench's final block prints
+`CHK-AXI-SVA-CPU-MMIO-UNCORE-RST` and `CHK-AXI-SVA-MISC-WARM` with a non-zero handshake count (each
+`+axi_sva_need_<port>` of the entry is satisfied), and the log carries no `OCAH_AXI_*` or
+`OCAH_AXIL_*` fire. Enrolled in: `all`, `fw`.
+
+*Scope limit*: The outcome of a transaction open at the watchdog-entered warm edge and the
+post-release response codes are observation lines (SF-003, ruling #3341); so are the reset nets the
+CPU boundary follows (SF-001), the misc warm leg's reset (SF-002), the MMIO valids on the first
+uncore-reset edge (ruling #3170) and the held core's own MMIO transaction (SF-005). The CPU front port
+has no core-reset checker: it carries CPU_CTRL traffic while a core is held, and
+`OBS-G2-FRONT-PORT-DOMAIN` counts that traffic.
+
+'''''
+
 
 [[smc-vplan-area-clock]]
 ==== CLOCK
@@ -20153,24 +20367,32 @@ compared.
 *BFM / Model*: SEP_IN AXI driver (`SmcSysAxiItem` 4-byte reads and writes and `SmcSysAxiGroupItem`
 for the outstanding case, 50 us access bound) to `HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD`
 (`smc_base_config`, clock domain `clk_smc_i`) and to `AVS_CFG_0` (AVSBus controller window, crossing
-the AVSBus CDC bridge into `clk_periph_i`); the run argument `+smc_cell` pins the `clk_ref_i` /
-`clk_smc_i` / `clk_periph_i` triple in `build_phase`; input clocks timestamped on
+the AVSBus CDC bridge into `clk_periph_i`); `build_phase` sets the `clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` triple of the run's cell (drawn from the seed, or pinned by `+smc_cell` or a
+variant's `CELL`); input clocks timestamped on
 `tb_top.clk_ref_i`, `clk_smc_i` and `clk_periph_i` (1 us edge bound); in the slowest-peripheral cell
 `tb_top.s_axi_arvalid`, `s_axi_arready`, `s_axi_rvalid`, `s_axi_rready`, `s_axi_rid`, `s_axi_rdata`,
 `s_axi_bvalid` and `s_axi_bready` sampled on `clk_smc_i`; fuse-sense-done wait bounded at 200000
 `clk_smc_i` cycles
 
-*Run mode*: one testlist entry per cell: `smc_clk_relation_regxbar_test` (`+smc_cell=default`, this
-module) and the variant entries `smc_clk_relation_regxbar_smc_slower_test` (`+smc_cell=smc_slower`),
-`smc_clk_relation_regxbar_smc_equal_test` (`+smc_cell=smc_equal`),
+*Run mode*: `smc_clk_relation_regxbar_test` (this module, no cell argument: the cell is drawn from
+the seed) and the variant entries `smc_clk_relation_regxbar_default_test` (`+smc_cell=default`),
+`smc_clk_relation_regxbar_smc_slower_test`
+(`+smc_cell=smc_slower`), `smc_clk_relation_regxbar_smc_equal_test` (`+smc_cell=smc_equal`),
 `smc_clk_relation_regxbar_periph_slower_test` (`+smc_cell=periph_slower`),
 `smc_clk_relation_regxbar_periph3_test` (`+smc_cell=periph3`), `smc_clk_relation_regxbar_ref8_test`
 (`+smc_cell=ref8`), `smc_clk_relation_regxbar_slowest_periph_test` (`+smc_cell=slowest_periph`),
-each a module of its own in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
-`timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=default`; tool Verilator (cocotb).
+each a module of its own pinning one cell, in `testlists/clock.toml`; groups `all`, `hosted`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the cell of this entry is pinned by its testlist entry; the
-other cells run as fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_cell` nor the module's `CELL` pins a cell,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the seven cells (ref / smc
+/ periph ns): default 10 / 1.25 / 5, smc_slower 10 / 12 / 8, smc_equal 10 / 10 / 10, periph_slower 8
+/ 1.25 / 10, periph3 10 / 1.25 / 3, ref8 8 / 1.25 / 5 and slowest_periph 8 / 12 / 10. The
+`RAND-SEED` line names the cell and whether it was drawn or pinned; 3 seeds per regression. The
+seven variant modules pin default, smc_slower, smc_equal, periph_slower, periph3, ref8 and
+slowest_periph, so every cell is graded in every regression; this module adds the cell its seed
+draws. A run grades only its cell's checkers.
 
 *Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at
 each single-axis clock relation of the run.
@@ -20230,31 +20452,33 @@ each single-axis clock relation of the run.
 |Checker |Description
 |`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
 reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
-words; the cell name and measured periods are printed.
+words; the line carries `cell=<name>` and the measured periods.
 |`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
 SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
 cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
-each after its term.
+each after its term; the line carries `cell=<name>`.
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
-50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare;
+the line carries `cell=<name>`.
 |`CHK-REGXBAR-RESET-RT` |Default cell: the threshold reads 0x1000 after reset, 0xA5A5A after the
-write and 0x1000 after the restore, each with OKAY.
+write and 0x1000 after the restore, each with OKAY; the line carries `cell=default`.
 |`CHK-REGXBAR-PERIODS` |periph3 and ref8 cells: the threshold reads 0xA5A5A after the write and
-0x1000 after the restore, as in the default cell; the measured periods are printed.
+0x1000 after the restore, as in the default cell; the line carries `cell=<name>` and the measured
+periods.
 |`CHK-CLK-RELATION-BACKPRESSURE` |slowest_periph cell: the ten outstanding accesses complete OKAY
 within 50 us, the sampler sees eight AR, eight R and two B handshakes and no further R or B beat in
 the 256-cycle quiet window, and each read returns its own expected word in issue order with the
-issued ID.
+issued ID; the line carries `cell=slowest_periph` and the measured periods.
 |===
 
 *Pass Criteria*: `CHK-CLK-RELATION-ROUNDTRIP` holds in every cell, with `CHK-NONVAC` and
-`CHK-TIMEOUT-PATHS` printed at the end. The extra row depends on the cell: the table above lists the
-default cell with `CHK-REGXBAR-RESET-RT`; the smc_slower, smc_equal and periph_slower cells have no
+`CHK-TIMEOUT-PATHS` printed at the end. A run grades the extra row of its cell: the default cell has
+`CHK-REGXBAR-RESET-RT`; the smc_slower, smc_equal and periph_slower cells have no
 extra row; the periph3 and ref8 cells have `CHK-REGXBAR-PERIODS` (the threshold reads 0xA5A5A after
 the write and 0x1000 after the restore, as in the default cell); the slowest_periph cell has
 `CHK-CLK-RELATION-BACKPRESSURE` (the ten outstanding accesses complete OKAY within 50 us, each read
 returning its own expected word in issue order, with no response lost or duplicated). Enrolled in:
-`all`.
+`all`, `hosted`.
 
 *Scope limit*: In the slowest_periph cell the drain time of the outstanding group is measured and
 printed and not compared, because the specification gives no bound for the bridge latency. The
@@ -20623,6 +20847,67 @@ compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
+[[sec-571-smc_clk_relation_regxbar_default_test]]
+===== 571 `smc_clk_relation_regxbar_default_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Source Module*: `smc_clk_relation_regxbar_default_test`
+
+*BFM / Model*: as `smc_clk_relation_regxbar_test`; the module fixes the clock cell;
+`+smc_cell=default` in the testlist entry names the same cell.
+
+*Run mode*: one testlist entry, `smc_clk_relation_regxbar_default_test` (`+smc_cell=default`), a
+fixed-cell variant entry of `smc_clk_relation_regxbar_test` in `testlists/clock.toml`; groups `all`,
+`hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=default`;
+tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the clock cell is pinned by the module
+and its testlist entry.
+
+*Objective*: The hang-detector threshold and AVS_CFG_0 hold written values at each single-axis clock
+relation of the run, in the default cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 / 1.25 / 5
+ns).
+Extends `smc_clk_relation_regxbar_test` in the default cell.
+
+*Test Coverage*:
+
+* The `smc_clk_relation_regxbar_test` procedure runs at the default cell (`clk_ref_i` / `clk_smc_i`
+/ `clk_periph_i` = 10 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks are those of
+the `smc_clk_relation_regxbar_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_clk_relation_regxbar_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLK-RELATION-ROUNDTRIP` |In the run's cell the threshold reads back 0xA5A5A and `AVS_CFG_0`
+reads back the word written with `MAX_RETRIES` 0x2A, both OKAY, and the restores read back the saved
+words; the cell name and measured periods are printed.
+|`CHK-NONVAC` |The fence terms of the run's cell (CELL_PERIODS_MEASURED, then RESET_ROUND_TRIPPED,
+SMC_SIDE_WRITTEN, AVS_SIDE_WRITTEN, BOTH_READ_BACK, SMC_SIDE_REPEATED, OUTSTANDING_DRAINED as the
+cell applies) occur in order with strictly increasing stamps and the checker lines print in order,
+each after its term.
+|`CHK-REGXBAR-RESET-RT` |Default cell: the threshold reads 0x1000 after reset, 0xA5A5A after the
+write and 0x1000 after the restore, each with OKAY.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (fuse sense, 50 us SEP_IN access, 1 us clock edge,
+50 us outstanding drain) and that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-CLK-RELATION-ROUNDTRIP`, `CHK-NONVAC`, `CHK-REGXBAR-RESET-RT`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The bounded waits are recorded, not compared.
+
+'''''
+
 
 [[sec-418-smc_octs_clk_rate_test]]
 ===== 418 `smc_octs_clk_rate_test`
@@ -20637,19 +20922,26 @@ compares. Enrolled in: `all`, `hosted`.
 (`system_timer_octs`) `CTRL`, `TIMER_START`, `STATUS`, `TIMER_COUNT_LO`, `TIMER_COUNT_HI`,
 `TIMER_PRESET_LO` and `TIMER_PRESET_HI` registers at their generated addresses; bench rising-edge
 counters on `tb_top.clk_smc_i`, `clk_ref_i` and `clk_periph_i` (100 us edge bound for the period
-measurement); `tb_top.tb_chiplet_is_primary` required 1; the run argument `+smc_cell` pins the
-`clk_ref_i` / `clk_smc_i` / `clk_periph_i` triple in `build_phase`; no protocol VIP
+measurement); `tb_top.tb_chiplet_is_primary` required 1; `build_phase` sets the `clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` triple of the run's cell (drawn from the seed, or pinned by
+`+smc_cell` or a variant's `CELL`); no protocol VIP
 
-*Run mode*: one testlist entry per cell: `smc_octs_clk_rate_test` (`+smc_cell=default`, this module)
-and the variant entries `smc_octs_clk_rate_smc_slower_test` (`+smc_cell=smc_slower`),
+*Run mode*: `smc_octs_clk_rate_test` (this module, no cell argument: the cell is drawn from the
+seed) and the variant entries `smc_octs_clk_rate_default_test` (`+smc_cell=default`),
+`smc_octs_clk_rate_smc_slower_test` (`+smc_cell=smc_slower`),
 `smc_octs_clk_rate_smc_equal_test` (`+smc_cell=smc_equal`), `smc_octs_clk_rate_smc_fast_test`
 (`+smc_cell=smc_fast`), `smc_octs_clk_rate_ref8_test` (`+smc_cell=ref8`),
-`smc_octs_clk_rate_periph3_test` (`+smc_cell=periph3`), each a module of its own in
-`testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags
-`clock`; seed 1; args `+smc_cell=default`; tool Verilator (cocotb).
+`smc_octs_clk_rate_periph3_test` (`+smc_cell=periph3`), each a module of its own pinning one cell,
+in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags
+`clock`; seed 1; `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the cell of this entry is pinned by its testlist entry; the
-other cells run as fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_cell` nor the module's `CELL` pins a cell,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the six cells (ref / smc /
+periph ns): default 10 / 1.25 / 5, smc_slower 10 / 12 / 5, smc_equal 10 / 10 / 5, smc_fast 10 / 1 /
+5, ref8 8 / 1.25 / 5 and periph3 10 / 1.25 / 3. The `RAND-SEED` line names the cell and whether it
+was drawn or pinned; 3 seeds per regression. The six variant modules pin default, smc_slower,
+smc_equal, smc_fast, ref8 and periph3, so every cell is graded in every regression; this module adds
+the cell its seed draws. A run grades only its cell's rate checker.
 
 *Objective*: The OCTS counter advances at the clk_smc_i rate in every clock cell and
 restarts from its preset on a START after the preset is latched.
@@ -20709,29 +21001,36 @@ restarts from its preset on a START after the preset is latched.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-OCTS-RATE-DEFAULT` |The `TIMER_COUNT` delta of each of the two windows lies within the
-`clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity, and the reference and peripheral
-edge counts of the window lie outside it; the periods are printed.
+|`CHK-OCTS-RATE-DEFAULT` |Default cell: the `TIMER_COUNT` delta of each of the two windows lies
+within the `clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity, and the reference and
+peripheral edge counts of the window lie outside it; the line carries `cell=default` and the
+periods.
+|`CHK-OCTS-RATE-SMC-PERIOD` |smc_slower, smc_equal and smc_fast cells: the delta of each window lies
+within the interval computed from that cell's `clk_smc_i` edges widened by the granularity, and the
+reference and peripheral counts lie outside it where their periods differ from `clk_smc_i`; the line
+carries `cell=<name>` and the periods.
+|`CHK-OCTS-RATE-OTHER-CLOCKS` |ref8 and periph3 cells: with `clk_smc_i` at 1.25 ns and only the
+reference or the peripheral period changed, the delta of each window stays within the `clk_smc_i`
+interval and the reference and peripheral counts lie outside it; the line carries `cell=<name>` and
+the periods.
 |`CHK-OCTS-START-RELOAD` |After the third `TIMER_START` write the first count sample is at least the preset and
 at most the preset plus the `clk_smc_i` edges since the write plus the granularity, `STATUS.RUNNING`
-reads 1, and the following window delta lies within the `clk_smc_i` interval.
+reads 1, and the following window delta lies within the `clk_smc_i` interval; the line carries
+`cell=<name>`.
 |`CHK-NONVAC` |The fence terms FIRST_START_RUNNING, COUNT_PAIR_0, WINDOW_EDGES_COUNTED,
 COUNT_PAIR_1, CELL_REWINDOW, PRESET_WRITTEN, THIRD_START and RELOAD_SAMPLE occur in order with
 strictly increasing stamps, and the rate line prints after CELL_REWINDOW and before the reload line,
-which prints after RELOAD_SAMPLE.
+which prints after RELOAD_SAMPLE; the line carries `cell=<name>`.
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 32-read `RUNNING` poll,
 4000-edge window, 100 us input clock edge) and that expiry raises an assertion; the line is a
-record, not a compare.
+record, not a compare; the line carries `cell=<name>`.
 |===
 
-*Pass Criteria*: The rate row varies with the cell: the table lists the default cell
-(`CHK-OCTS-RATE-DEFAULT`); the smc_slower, smc_equal and smc_fast cells carry
-`CHK-OCTS-RATE-SMC-PERIOD` instead (the delta lies within the interval computed from that cell's
-`clk_smc_i` edges and the ref and periph counts lie outside it where their periods differ); the ref8
-and periph3 cells carry `CHK-OCTS-RATE-OTHER-CLOCKS` (with `clk_smc_i` at 1.25 ns and only one other
-period changed, the delta stays within the `clk_smc_i` interval). In every cell the rate row,
+*Pass Criteria*: A run grades the rate row of its cell: `CHK-OCTS-RATE-DEFAULT` in the default cell,
+`CHK-OCTS-RATE-SMC-PERIOD` in the smc_slower, smc_equal and smc_fast cells and
+`CHK-OCTS-RATE-OTHER-CLOCKS` in the ref8 and periph3 cells. In every cell the rate row,
 `CHK-OCTS-START-RELOAD`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold or print as described. Enrolled
-in: `all`.
+in: `all`, `hosted`.
 
 *Scope limit*: Where the reference or peripheral clock period equals the `clk_smc_i` period, that
 clock's edge count over the window is printed and is not discriminating. The specification does not
@@ -21060,6 +21359,70 @@ window printed and not compared. The bounded waits are recorded, not compared.
 
 '''''
 
+[[sec-572-smc_octs_clk_rate_default_test]]
+===== 572 `smc_octs_clk_rate_default_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Source Module*: `smc_octs_clk_rate_default_test`
+
+*BFM / Model*: as `smc_octs_clk_rate_test`; the module fixes the clock cell; `+smc_cell=default` in
+the testlist entry names the same cell.
+
+*Run mode*: one testlist entry, `smc_octs_clk_rate_default_test` (`+smc_cell=default`), a fixed-cell
+variant entry of `smc_octs_clk_rate_test` in `testlists/clock.toml`; groups `all`, `hosted`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=default`; tool
+Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the clock cell is pinned by the module
+and its testlist entry.
+
+*Objective*: The OCTS counter advances at the clk_smc_i rate in every clock cell and restarts from
+its preset on a START after the preset is latched, in the default cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1.25 / 5 ns).
+Extends `smc_octs_clk_rate_test` in the default cell.
+
+*Test Coverage*:
+
+* The `smc_octs_clk_rate_test` procedure runs at the default cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks are those of
+the `smc_octs_clk_rate_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_octs_clk_rate_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms FIRST_START_RUNNING, COUNT_PAIR_0, WINDOW_EDGES_COUNTED,
+COUNT_PAIR_1, CELL_REWINDOW, PRESET_WRITTEN, THIRD_START and RELOAD_SAMPLE occur in order with
+strictly increasing stamps, and the rate line prints after CELL_REWINDOW and before the reload line,
+which prints after RELOAD_SAMPLE.
+|`CHK-OCTS-RATE-DEFAULT` |In this cell the `TIMER_COUNT` delta of each of the two windows lies
+within the `clk_smc_i` edge interval widened by the `CREDIT_VAL` granularity, and the reference and
+peripheral edge counts of the window lie outside it; the periods are printed.
+|`CHK-OCTS-START-RELOAD` |After the third `TIMER_START` write the first count sample is at least the
+preset and at most the preset plus the `clk_smc_i` edges since the write plus the granularity,
+`STATUS.RUNNING` reads 1, and the following window delta lies within the `clk_smc_i` interval.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 32-read `RUNNING` poll,
+4000-edge window, 100 us input clock edge) and that expiry raises an assertion; the line is a
+record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-OCTS-RATE-DEFAULT`, `CHK-OCTS-START-RELOAD`, `CHK-TIMEOUT-PATHS`
+hold after their compares. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The specification does not state the rule for the count latch, so the delta tolerance
+is only the `CREDIT_VAL` granularity. The bounded waits are recorded, not compared.
+
+'''''
+
 
 [[sec-569-smc_octs_timer_rate_test]]
 ===== 569 `smc_octs_timer_rate_test`
@@ -21265,19 +21628,25 @@ the specification does not state them.
 
 *BFM / Model*: SEP_IN AXI driver (`SmcSysAxiItem` 4-byte read and write of `AVS_CFG_0`, 50 us access
 bound) through the AVSBus AXI-Lite CDC bridge into the `clk_periph_i` domain; bench input clocks
-timestamped on `tb_top.clk_ref_i`, `clk_smc_i` and `clk_periph_i` (100 us edge bound); the run
-argument `+smc_cell` selects the peripheral period (periph10, periph5 or periph3) in `build_phase`
-while `clk_ref_i` stays 10 ns and `clk_smc_i` 1.25 ns; AVS register fields `MAX_RETRIES` and
+timestamped on `tb_top.clk_ref_i`, `clk_smc_i` and `clk_periph_i` (100 us edge bound);
+`build_phase` sets the peripheral period of the run's cell (periph10, periph5 or periph3; drawn from
+the seed, or pinned by `+smc_cell` or a variant's `CELL`) while `clk_ref_i` stays 10 ns and
+`clk_smc_i` 1.25 ns; AVS register fields `MAX_RETRIES` and
 `RESYNC_INTERVAL` of `AVS_CFG_0`; no protocol VIP
 
-*Run mode*: one testlist entry per cell: `smc_periph_floor_roundtrip_test` (`+smc_cell=periph10`,
-this module) and the variant entries `smc_periph_floor_roundtrip_periph5_test`
-(`+smc_cell=periph5`), `smc_periph_floor_roundtrip_periph3_test` (`+smc_cell=periph3`), each a
-module of its own in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
-`timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=periph10`; tool Verilator (cocotb).
+*Run mode*: `smc_periph_floor_roundtrip_test` (this module, no cell argument: the cell is drawn from
+the seed) and the variant entries `smc_periph_floor_roundtrip_periph10_test` (`+smc_cell=periph10`),
+`smc_periph_floor_roundtrip_periph5_test` (`+smc_cell=periph5`),
+`smc_periph_floor_roundtrip_periph3_test` (`+smc_cell=periph3`), each a module of its own pinning
+one cell, in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec`
+1800; tags `clock`; seed 1; `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the cell of this entry is pinned by its testlist entry; the
-other cells run as fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_cell` nor the module's `CELL` pins a cell,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the three cells (ref / smc
+/ periph ns): periph10 10 / 1.25 / 10, periph5 10 / 1.25 / 5 and periph3 10 / 1.25 / 3. The
+`RAND-SEED` line names the cell and whether it was drawn or pinned; 3 seeds per regression. The
+three variant modules pin periph10, periph5 and periph3, so every cell is graded in every
+regression; this module adds the cell its seed draws.
 
 *Objective*: AVS_CFG_0 round-trips a written value through the AVSBus bridge
 at peripheral clock periods of 10, 5 and 3 ns.
@@ -21317,12 +21686,14 @@ at peripheral clock periods of 10, 5 and 3 ns.
 |Checker |Description
 |`CHK-PERIPH-FLOOR-ROUNDTRIP` |In the run's peripheral cell (periods measured as the cell's)
 `AVS_CFG_0` reads back the written word with `MAX_RETRIES` 0x2A and `RESYNC_INTERVAL` equal to its
-pre-write value, every response OKAY, and the restore write reads back the saved word.
+pre-write value, every response OKAY, and the restore write reads back the saved word; the line
+carries `cell=<name>` and the measured periods.
 |`CHK-NONVAC` |The fence terms CELL_PERIODS_MEASURED, AVS_CFG_0_SAVED, AVS_CFG_0_WRITTEN,
 AVS_CFG_0_READ_BACK and AVS_CFG_0_RESTORED occur in order with strictly increasing stamps and the
-checker line prints after the restore.
+checker line prints after the restore; the line carries `cell=<name>`.
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 100 us input clock edge) and
-that expiry raises an assertion; the line is a record, not a compare.
+that expiry raises an assertion; the line is a record, not a compare; the line carries
+`cell=<name>`.
 |===
 
 *Pass Criteria*: `CHK-PERIPH-FLOOR-ROUNDTRIP` holds in the run's cell after its compares, with
@@ -21448,6 +21819,64 @@ compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
+[[sec-573-smc_periph_floor_roundtrip_periph10_test]]
+===== 573 `smc_periph_floor_roundtrip_periph10_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Source Module*: `smc_periph_floor_roundtrip_periph10_test`
+
+*BFM / Model*: as `smc_periph_floor_roundtrip_test`; the module fixes the clock cell;
+`+smc_cell=periph10` in the testlist entry names the same cell.
+
+*Run mode*: one testlist entry, `smc_periph_floor_roundtrip_periph10_test` (`+smc_cell=periph10`), a
+fixed-cell variant entry of `smc_periph_floor_roundtrip_test` in `testlists/clock.toml`; groups
+`all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; args
+`+smc_cell=periph10`; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the clock cell is pinned by the module
+and its testlist entry.
+
+*Objective*: AVS_CFG_0 round-trips a written value through the AVSBus bridge at peripheral clock
+periods of 10, 5 and 3 ns, in the periph10 cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 /
+1.25 / 10 ns).
+Extends `smc_periph_floor_roundtrip_test` in the periph10 cell.
+
+*Test Coverage*:
+
+* The `smc_periph_floor_roundtrip_test` procedure runs at the periph10 cell (`clk_ref_i` /
+`clk_smc_i` / `clk_periph_i` = 10 / 1.25 / 10 ns), so a scheduled run reaches this cell; its checks
+are those of the `smc_periph_floor_roundtrip_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_periph_floor_roundtrip_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms CELL_PERIODS_MEASURED, AVS_CFG_0_SAVED, AVS_CFG_0_WRITTEN,
+AVS_CFG_0_READ_BACK and AVS_CFG_0_RESTORED occur in order with strictly increasing stamps and the
+checker line prints after the restore.
+|`CHK-PERIPH-FLOOR-ROUNDTRIP` |In the run's peripheral cell (periods measured as the cell's)
+`AVS_CFG_0` reads back the written word with `MAX_RETRIES` 0x2A and `RESYNC_INTERVAL` equal to its
+pre-write value, every response OKAY, and the restore write reads back the saved word.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (50 us SEP_IN access, 100 us input clock edge) and
+that expiry raises an assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-PERIPH-FLOOR-ROUNDTRIP`, `CHK-TIMEOUT-PATHS` hold after their
+compares. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The bounded waits are recorded, not compared.
+
+'''''
+
 
 [[sec-428-smc_ref_reset_cycles_test]]
 ===== 428 `smc_ref_reset_cycles_test`
@@ -21461,17 +21890,22 @@ compares. Enrolled in: `all`, `hosted`.
 *BFM / Model*: Reset agent sequencer (`SmcResetOp` `SAMPLE`, `COLD_RST_LO` and `COLD_RST_HI` driving
 the `rst_cold_ni` pin, reset-chain release wait with a 600 `clk_ref_i` cycle bound);
 `tb_top.rst_primary_ref_clk_no` read on `clk_ref_i` rising edges; `tb_top.clk_ref_i` rising edges
-logged in ps; the run argument `+smc_cell` selects the reference period (ref10 = 10 ns or ref4 = 4
-ns) in `build_phase` with `clk_smc_i` at 1.25 ns and `clk_periph_i` at 5 ns; pin changes are placed
+logged in ps; `build_phase` sets the reference period of the run's cell (ref10 = 10 ns or ref4 =
+4 ns; drawn from the seed, or pinned by `+smc_cell` or a variant's `CELL`) with `clk_smc_i` at 1.25
+ns and `clk_periph_i` at 5 ns; pin changes are placed
 a third of a reference period after a `clk_ref_i` edge; no CSR access and no protocol VIP
 
-*Run mode*: one testlist entry per cell: `smc_ref_reset_cycles_test` (`+smc_cell=ref10`, this
-module) and the variant entries `smc_ref_reset_cycles_ref4_test` (`+smc_cell=ref4`), each a module
-of its own in `testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec`
-1800; tags `clock`; seed 1; args `+smc_cell=ref10`; tool Verilator (cocotb).
+*Run mode*: `smc_ref_reset_cycles_test` (this module, no cell argument: the cell is drawn from the
+seed) and the variant entries `smc_ref_reset_cycles_ref10_test` (`+smc_cell=ref10`),
+`smc_ref_reset_cycles_ref4_test` (`+smc_cell=ref4`), each a module of its own pinning one cell, in
+`testlists/clock.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `clock`; seed 1; `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the cell of this entry is pinned by its testlist entry; the
-other cells run as fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_cell` nor the module's `CELL` pins a cell,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the two cells (ref / smc /
+periph ns): ref10 10 / 1.25 / 5 and ref4 4 / 1.25 / 5. The `RAND-SEED` line names the cell and
+whether it was drawn or pinned; 3 seeds per regression. The two variant modules pin ref10 and ref4,
+so every cell is graded in every regression; this module adds the cell its seed draws.
 
 *Objective*: The cold-reset release hold and assertion de-glitch are counted in
 clk_ref_i cycles at two reference periods.
@@ -21522,16 +21956,18 @@ clk_ref_i cycles at two reference periods.
 |Checker |Description
 |`CHK-REF-RESET-RELEASE-CYCLES` |The release-to-high count in `clk_ref_i` cycles is at least 255
 after the 64-cycle cold-reset low, and `rst_primary_ref_clk_no` still reads 1 after the reset chain
-release; the exact count is printed without a compare, the specification not stating the value.
+release; the exact count is printed without a compare, the specification not stating the value;
+the line carries `cell=<name>` and the reference period.
 |`CHK-REF-RESET-DEGLITCH` |A 31-cycle low pulse on `rst_cold_ni` leaves `rst_primary_ref_clk_no`
 high at every sample and a 32-cycle pulse drives it to 0; the cycle count of the assertion is
-printed without a compare, the specification not stating the value.
+printed without a compare, the specification not stating the value; the line carries `cell=<name>`
+and the reference period.
 |`CHK-NONVAC` |The fence terms BRINGUP_DONE, COLD_LOW_64, RELEASE_COUNTED, GLITCH_31_IGNORED,
 PULSE_32_ASSERTED and CHAIN_RELEASED occur in order with strictly increasing stamps and the two
-checker lines print in order, each after its step.
+checker lines print in order, each after its step; the line carries `cell=<name>`.
 |`CHK-TIMEOUT-PATHS` |Records the bounded waits (600 `clk_ref_i` cycles for the release count, the
 assertion count and each chain release, and the glitch-hold sample count) and that expiry raises an
-assertion; the line is a record, not a compare.
+assertion; the line is a record, not a compare; the line carries `cell=<name>`.
 |===
 
 *Pass Criteria*: `CHK-REF-RESET-RELEASE-CYCLES` and `CHK-REF-RESET-DEGLITCH` hold after their
@@ -21608,6 +22044,70 @@ assertion; the line is a record, not a compare.
 *Scope limit*: The exact release-to-high count and the cycle count of the assertion are printed
 and not compared, because the specification does not state the values. The bounded waits are
 recorded, not compared.
+
+'''''
+
+[[sec-574-smc_ref_reset_cycles_ref10_test]]
+===== 574 `smc_ref_reset_cycles_ref10_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Source Module*: `smc_ref_reset_cycles_ref10_test`
+
+*BFM / Model*: as `smc_ref_reset_cycles_test`; the module fixes the clock cell; `+smc_cell=ref10` in
+the testlist entry names the same cell.
+
+*Run mode*: one testlist entry, `smc_ref_reset_cycles_ref10_test` (`+smc_cell=ref10`), a fixed-cell
+variant entry of `smc_ref_reset_cycles_test` in `testlists/clock.toml`; groups `all`, `hosted`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `clock`; seed 1; args `+smc_cell=ref10`; tool
+Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the clock cell is pinned by the module
+and its testlist entry.
+
+*Objective*: The cold-reset release hold and assertion de-glitch are counted in clk_ref_i cycles at
+two reference periods, in the ref10 cell (`clk_ref_i` / `clk_smc_i` / `clk_periph_i` = 10 / 1.25 / 5
+ns).
+Extends `smc_ref_reset_cycles_test` in the ref10 cell.
+
+*Test Coverage*:
+
+* The `smc_ref_reset_cycles_test` procedure runs at the ref10 cell (`clk_ref_i` / `clk_smc_i` /
+`clk_periph_i` = 10 / 1.25 / 5 ns), so a scheduled run reaches this cell; its checks are those of
+the `smc_ref_reset_cycles_test` card with this cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_ref_reset_cycles_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-NONVAC` |The fence terms BRINGUP_DONE, COLD_LOW_64, RELEASE_COUNTED, GLITCH_31_IGNORED,
+PULSE_32_ASSERTED and CHAIN_RELEASED occur in order with strictly increasing stamps and the two
+checker lines print in order, each after its step.
+|`CHK-REF-RESET-DEGLITCH` |A 31-cycle low pulse on `rst_cold_ni` leaves `rst_primary_ref_clk_no`
+high at every sample and a 32-cycle pulse drives it to 0; the cycle count of the assertion is
+printed without a compare, the specification not stating the value.
+|`CHK-REF-RESET-RELEASE-CYCLES` |The release-to-high count in `clk_ref_i` cycles is at least 255
+after the 64-cycle cold-reset low, and `rst_primary_ref_clk_no` still reads 1 after the reset chain
+release; the exact count is printed without a compare, the specification not stating the value.
+|`CHK-TIMEOUT-PATHS` |Records the bounded waits (600 `clk_ref_i` cycles for the release count, the
+assertion count and each chain release, and the glitch-hold sample count) and that expiry raises an
+assertion; the line is a record, not a compare.
+|===
+
+*Pass Criteria*: `CHK-NONVAC`, `CHK-REF-RESET-DEGLITCH`, `CHK-REF-RESET-RELEASE-CYCLES`,
+`CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The exact release-to-high count and the cycle count of the assertion are printed and
+not compared, because the specification does not state the values. The bounded waits are recorded,
+not compared.
 
 '''''
 
@@ -28689,22 +29189,33 @@ handling of a request withdrawn mid-command is outside this test.
 assert and release); a passive sampler on every `clk_smc_i` edge of `rst_primary_smc_clk_no` and
 `tb_fuse_sense_done` that captures `efuse_shadow_probe_o` (256 words of 32 bits) on each 0 to 1
 edge of sense done; the shadow-register output port `shadow_regs` (`shadow_regs_o`) read as one
-8192-bit integer; the eFuse bank is the DV model, loaded from the image file the run senses (the
-bench default asset by default, or an image the leaf writes into the run directory under
-`+smc_efuse_hex` when `+smc_efuse_image` names the zero, ones, walking, random or unique pattern);
-an EFUSE protocol-VIP record is booked at the end
+8192-bit integer; the eFuse bank is the DV model, loaded from the image file the run senses at the
+run-directory `+smc_efuse_hex` path: the leaf copies the bench default asset there for the default
+kind, or writes the zero, ones, walking, random or unique pattern there (a run with no relative
+`+smc_efuse_hex` and the default kind senses the asset in place); an EFUSE protocol-VIP record is
+booked at the end
 
-*Run mode*: one testlist entry per cell: `smc_efuse_map_sense_image_test` (this module, the default
-cell) and the variant entries `smc_efuse_map_sense_image_zero_test` (`+smc_efuse_image=zero`),
+*Run mode*: `smc_efuse_map_sense_image_test` (this module, no image argument: the kind is drawn from
+the seed) and the variant entries `smc_efuse_map_sense_image_default_test`
+(`+smc_efuse_image=default`), `smc_efuse_map_sense_image_zero_test` (`+smc_efuse_image=zero`),
 `smc_efuse_map_sense_image_ones_test` (`+smc_efuse_image=ones`),
 `smc_efuse_map_sense_image_walking_test` (`+smc_efuse_image=walking`),
 `smc_efuse_map_sense_image_random_test` (`+smc_efuse_image=random`),
-`smc_efuse_map_sense_image_unique_test` (`+smc_efuse_image=unique`), each a module of its own in
-`testlists/efuse.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`,
-`efuse`; seed 1; tool Verilator (cocotb).
+`smc_efuse_map_sense_image_unique_test` (`+smc_efuse_image=unique`), each a module of its own
+pinning one kind, in `testlists/efuse.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`, `efuse`; seed 1; `reseed` 3; args
+`+smc_efuse_hex=smc_efuse_map_sense_image_test.hex`; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the default eFuse image; the other image kinds run as
-fixed-cell variant modules.
+*Randomization*: RANDCFG: when neither `+smc_efuse_image` nor the module's `KIND` pins a kind,
+`build_phase` draws one uniformly from `random.Random(RANDOM_SEED)` over the six kinds: default (the
+bench asset `assets/smc_efuse_default.hex`, copied byte for byte to the run-directory file, so the
+`FW-PROVENANCE` sha256 is the asset's), zero, ones, walking, random and unique. The words and
+write-lock bits of the random kind come from a separate stream, `random.Random(RANDOM_SEED ^
+0x9E3779B9)`, so the kind and the words are independent. The `RAND-SEED` line names the kind,
+whether it was drawn or pinned, and the words seed (marked unused for every kind but random);
+3 seeds per regression. The six variant modules pin default, zero, ones, walking, random and
+unique, so every kind is graded in every regression; this module adds the kind its seed draws. A
+run grades only its kind's sense checker.
 
 *Objective*: Sensed image words match the loaded file on every path.
 
@@ -28733,9 +29244,10 @@ fixed-cell variant modules.
 [arabic]
 . Require the image to hold 256 words (pairwise distinct for the unique kind), wait for
   `tb_fuse_sense_done` within 200000 clocks, start the sampler and let it take 4 samples.
-. Print the image name, kind, seed and `LOCKS`; send the cold reset assertion, check the reset
-  state, wait for `rst_primary_smc_clk_no` low, require 8 samples with the reset low and sense done
-  0, release the reset and wait for the release.
+. Print the image name, kind, image words seed (random kind; marked unused for the others) and
+  `LOCKS`; send the cold reset assertion, check the reset state, wait for `rst_primary_smc_clk_no`
+  low, require 8 samples with the reset low and sense done 0, release the reset and wait for the
+  release.
 . Wait for the first rise of `tb_fuse_sense_done` (bounded at 200000 edges), require sense done 0
   on every sample from the reset to that rise and the 256 captured probe words to equal the image;
   then wait for the warm domain to be released.
@@ -28758,28 +29270,36 @@ fixed-cell variant modules.
 |Checker |Description
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
 edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
-captured on that rise equal the image.
-|`CHK-EMAP-SENSE-DEFAULT` |For the default image, every SEP_IN read of a non-read-locked word
-equals the image word with words 0 and 255 included, and all 256 probe words equal the image again
-after the sweep. The id varies with the configuration: `CHK-EMAP-SENSE-UNIQUE` for the unique kind
-and `CHK-EMAP-SENSE-PATTERNS` for the zero, ones, walking and random kinds.
+captured on that rise equal the image; the line carries `cell=<kind>`.
+|`CHK-EMAP-SENSE-DEFAULT` |Default kind: every SEP_IN read of a non-read-locked word equals the
+image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+sweep; the line carries `cell=default`.
+|`CHK-EMAP-SENSE-PATTERNS` |Zero, ones, walking and random kinds: every SEP_IN read equals the
+image word with words 0 and 255 and the `LOCKS` words included, and all 256 probe words equal the
+image again after the sweep; the line carries `cell=<kind>`.
+|`CHK-EMAP-SENSE-UNIQUE` |Unique kind: the image is pairwise distinct over its 256 words before
+sensing, and one edge after the sweep probe word i equals image word i for all 256 i, `LOCKS` words
+included; the line carries `cell=unique`.
 |`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
 reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
-release.
+release; the line carries `cell=<kind>`.
 |`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
 that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
-without a compare.
+without a compare; the line carries `cell=<kind>`.
 |`CHK-NONVAC` |The ordered fence (image name, first done, sense image, done once, shadow output)
-with increasing time stamps and each checker line printed after its step completed.
+with increasing time stamps and each checker line printed after its step completed; the line
+carries `cell=<kind>`.
 |`CHK-TIMEOUT-PATHS` |Every reset wait, sense wait, window wait and SEP_IN read is bounded and
-fails with an assertion on expiry; the bounds and last samples are logged.
+fails with an assertion on expiry; the bounds and last samples are logged; the line carries
+`cell=<kind>`.
 |===
 
-*Pass Criteria*: with the default image the six listed checkers hold (the sense-image checker is
-`CHK-EMAP-SENSE-DEFAULT`; the unique kind replaces it with `CHK-EMAP-SENSE-UNIQUE` and an extra
-probe compare, and the other pattern kinds with `CHK-EMAP-SENSE-PATTERNS`): the probe, every SEP_IN
-read and the `shadow_regs` port equal the image, and sense done rises once and never drops.
-Enrolled in: `all`, `hosted`.
+*Pass Criteria*: A run grades the sense row of its kind: `CHK-EMAP-SENSE-DEFAULT` for the default
+asset, `CHK-EMAP-SENSE-UNIQUE` with its extra probe compare for the unique kind and
+`CHK-EMAP-SENSE-PATTERNS` for the zero, ones, walking and random kinds; with it
+`CHK-EMAP-SENSE-FIRST-DONE`, `CHK-EMAP-SENSE-DONE-ONCE` and `CHK-EMAP-SHADOW-OUT-SENSED` hold and
+`CHK-NONVAC` and `CHK-TIMEOUT-PATHS` print: the probe, every SEP_IN read and the `shadow_regs` port
+equal the image, and sense done rises once and never drops. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: What the shadow-register output port is specified to show for read-locked words is
 not specified; those words are printed and not compared.
@@ -29107,6 +29627,75 @@ with an assertion on expiry; the bounds and last samples are logged.
 |===
 
 *Pass Criteria*: `CHK-EMAP-SENSE-DONE-ONCE`, `CHK-EMAP-SENSE-FIRST-DONE`, `CHK-EMAP-SENSE-PATTERNS`,
+`CHK-EMAP-SHADOW-OUT-SENSED`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled
+in: `all`, `hosted`.
+
+*Scope limit*: Read-locked words on the `shadow_regs` port are printed without a compare, as in
+`smc_efuse_map_sense_image_test`.
+
+'''''
+
+[[sec-575-smc_efuse_map_sense_image_default_test]]
+===== 575 `smc_efuse_map_sense_image_default_test`
+
+*Phase*: 3
+
+*Area*: EFUSE
+
+*Source Module*: `smc_efuse_map_sense_image_default_test`
+
+*BFM / Model*: as `smc_efuse_map_sense_image_test`; the module fixes the image kind;
+`+smc_efuse_image=default` and `+smc_efuse_hex` in the testlist entry name the image and its file:
+the leaf copies the bench default asset `assets/smc_efuse_default.hex` byte for byte to the
+run-directory file, asserts the copy's sha256 equal to the asset's, and the `FW-PROVENANCE` line
+names that sha256.
+
+*Run mode*: one testlist entry, `smc_efuse_map_sense_image_default_test`
+(`+smc_efuse_image=default`), a fixed-cell variant entry of `smc_efuse_map_sense_image_test` in
+`testlists/efuse.toml`; groups `all`, `hosted`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`,
+`efuse`; seed 1; args `+smc_efuse_image=default`,
+`+smc_efuse_hex=smc_efuse_map_sense_image_default_test.hex`; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, a fixed-cell variant; the eFuse image kind is pinned by the
+module and its testlist entry.
+
+*Objective*: Sensed image words match the loaded file on every path, in the default eFuse image. Extends `smc_efuse_map_sense_image_test` with the default image kind.
+
+*Test Coverage*:
+
+* The `smc_efuse_map_sense_image_test` procedure runs at the default eFuse image, so a scheduled run
+reaches this cell; its checks are those of the `smc_efuse_map_sense_image_test` card with this
+cell's own checker ids.
+
+*Test Procedure*:
+
+[arabic]
+. As `smc_efuse_map_sense_image_test`, with the cell fixed by the module.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EMAP-SENSE-DEFAULT` |For the default asset every SEP_IN read of a non-read-locked word
+equals the image word with words 0 and 255 included, and all 256 probe words equal the image again
+after the sweep.
+|`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
+reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
+release.
+|`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
+edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+captured on that rise equal the image.
+|`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
+that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
+without a compare.
+|`CHK-NONVAC` |The ordered fence (image name, first done, sense image, done once, shadow output)
+with increasing time stamps and each checker line printed after its step completed.
+|`CHK-TIMEOUT-PATHS` |Every reset wait, sense wait, window wait and SEP_IN read is bounded and fails
+with an assertion on expiry; the bounds and last samples are logged.
+|===
+
+*Pass Criteria*: `CHK-EMAP-SENSE-DEFAULT`, `CHK-EMAP-SENSE-DONE-ONCE`, `CHK-EMAP-SENSE-FIRST-DONE`,
 `CHK-EMAP-SHADOW-OUT-SENSED`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled
 in: `all`, `hosted`.
 
@@ -42687,7 +43276,8 @@ protocol checkers of `tb_top` (`u_cpu_front_axi_sva`, `u_cpu_mmio_axi_sva`) for
 this leaf only; the withdrawal they would report is recorded under
 <<smc-known-limitations,Known Limitations>>. `u_sys_in_axi_sva` stays on: the
 stale R the isolate flush leaves on SYS_IN fires `OCAH_AXI_R_NOT_BEFORE_AR` and
-`OCAH_AXI_R_ID_OUTSTANDING`, so on VCS the leaf is RED. That R is the beat the
+`OCAH_AXI_R_ID_OUTSTANDING`, so the leaf is RED on both simulators (on Verilator the fire
+stops the simulation before the leaf's later checks run). That R is the beat the
 front-port demux drives toward the fabric after the flush, reported in #2318 and
 closed as a duplicate of #2449; the owner's ruling in #2449 records the
 withdrawal at the front port as a force-mode limitation and does not rule on the
@@ -43909,7 +44499,7 @@ draws nothing from the seed.
 * Every other DMA leaf leaves `CONFIG.DECOUPLE_RW` at its reset and runs the backend legalizer's coupled arm, where the read and the write machine advance together. This leaf runs the decoupled arm, where either may advance alone, and is the only leaf that queues a second descriptor while the legalizer is busy.
 * The golden for the field is the generated header, not the RTL: `dma_ctrl.h` gives `DMA_CTRL__CONFIG__DECOUPLE_RW_bm` the value `0x2` and its reset `0x0`, and `dma_ctrl.rdl` makes it `sw = rw`. The leaf reads `CONFIG` first and fails if the field is already set, writes it, and requires it to read back before running anything through it.
 * **Two transfers whose channels have different work to do.** Decoupling only shows if the two sides are not in step, so each transfer is two-dimensional with a stride on one side only: a scatter, where the source rows are contiguous and the destination rows are a stride apart, so the read side issues one long run and the write side many short ones; and a gather, the other way round, so the fragmented side is the read. Both move the same four distinct rows and every row is compared against its source at the stride that should have placed it, so a transfer that dropped, duplicated or misplaced a row fails rather than passing quietly.
-* **Two descriptors back to back.** `dma_ctrl.rdl` says of `NEXT_ID` that "Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap", and of `DONE` that it "Holds the cumulative number of completed transfers". The second descriptor is therefore programmed and submitted without waiting for the first, and the leaf requires both ids to be non-zero and rising, `DONE` to have advanced by two, and each destination to hold its own payload rather than the other's or the sentinel.
+* **Two descriptors back to back.** `dma_ctrl.rdl` says of `NEXT_ID` that "Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0", and of `DONE` that it is the "Retirement counter for the stream" which "adds 1 per retirement" and that "A command retires once" unless it has `CONFIG.ENABLED_ND` set with a `LENGTH` of 0, which neither descriptor here has. The second descriptor is therefore programmed and submitted without waiting for the first, and the leaf requires both ids to be non-zero and rising, `DONE` to have advanced by two, and each destination to hold its own payload rather than the other's or the sentinel.
 * Every destination is seeded with a sentinel that is none of the payload rows, so a transfer that never ran reads as the sentinel and fails.
 * **Transfers into a stalled SYS_OUT.** The legalizer issues a read or write request only while the backend's request ready for that side is high. Those readies come back from SYS_OUT through the AR register, the coupler's AW store, the write last-flag FIFO and the data FIFOs, and an always-ready responder never drops them. The leaf turns on the SYS_OUT responder's `enable_backpressure`, which holds READY low for 64 cycles out of every 65, and runs six 128-row 2D transfers of single-beat rows: the read side stalled (`ar`), the write side (`aw`, `w`), and both, first coupled and then decoupled. `CONFIG.ENABLE_ND` is set, so each row is a burst of its own; with it clear, the midend rejects every request as zero-length.
 * The bench counts cycles at the SYS_OUT boundary with VALID high and READY low, and requires a count on every stalled channel. The rows are seeded and compared in the responder's memory directly, each transfer with rows of its own, and every row must match its source.
@@ -47677,8 +48267,8 @@ inside its area.
 |43, 44, 47, 51, 55, 183, 189, 191, 326, 398 to 400, 532 to 534, 556
 |Reset interactions and corners: cool-versus-cold, core reset sources, an interrupt during a power-good glitch, mixed boot stall, the recovery matrix, cold-boot chain order, primary reset scope, synchronizer edges, the override-mux walk, process extra bits, pin de-glitch, asynchronous assertion, the cool-reset de-glitch window, the pin-versus-FLR overlap and the collision recovery. Seeded reset kinds asserted mid-operation, retention by domain.
 |<<smc-vplan-area-clock,CLOCK>>
-|67, 305 to 319, 403, 404, 406 to 429, 558, 569
-|Zeroer clock-gate independence, the AVS configuration crossing, AVS clock select, base-configuration registers, handshake stalls, per-ID order and single responses across the clock domains, scratch storage at a pinned triple, and the fixed-cell families: the fifteen pinned-period ratio modules (the owning leaf of the family, `smc_clk_smc_slower_than_ref_test`, is Phase 2), the register-crossbar relation cells, the OCTS rate cells, the peripheral-floor round trips and the reference-period reset-cycle counts. Seeded clock period triples, register traffic completes.
+|67, 305 to 319, 403, 404, 406 to 429, 558, 569, 571 to 574
+|Zeroer clock-gate independence, the AVS configuration crossing, AVS clock select, base-configuration registers, handshake stalls, per-ID order and single responses across the clock domains, scratch storage at a pinned triple, and the fixed-cell families: the fifteen pinned-period ratio modules (the owning leaf of the family, `smc_clk_smc_slower_than_ref_test`, is Phase 2), the register-crossbar relation cells, the OCTS rate cells, the peripheral-floor round trips and the reference-period reset-cycle counts, whose owning tests draw the cell from the seed. Seeded clock period triples, register traffic completes.
 |<<smc-vplan-area-cpu,CPU>>
 |70, 72, 78, 82, 430, 433, 435, 437 to 442, 445, 544
 |CPU-control map depth, the ECC diagnostic depth and the ECC fault-inject hook, SPM boundaries and aperture, BEU access at the reset aperture, boot-time register reads, access rules, the MUTEX, SCRATCH and WDT register walks, write-back PC decode, the external-window aperture limit and the SPM region-size reach, and the scratchpad bank walk.
@@ -47686,8 +48276,8 @@ inside its area.
 |85, 210 to 219, 222 to 224, 253, 301 to 303, 323, 446 to 452, 537, 566
 |DFX sticky abort bits through pulses and resets, Debug Module command replacement under a held error, the DFD register sweeps (CLA MMR, node event-action pairs, counters and edges, sink and funnel MMRs, read-only writes, byte lanes), trace accumulator fill, sink windows, concurrent sink readout, debug-bus mode lock, flush corners, trace reset and write-out phase, the dfx_ctrl aperture, storage and no-effect fields, fixed Debug Module capabilities and the abstract-command lifecycle. Drawn DFD register order, pattern and lane against RDL contracts.
 |<<smc-vplan-area-efuse,EFUSE>>
-|88, 91, 95, 98, 99, 101, 320 to 322, 453 to 456, 459 to 466, 557
-|Boundary signals under a held external boot, the PROD deny paths, OTP clock and timing depth, read and program timeouts and their status, the fault-injected state encodings, the three image patterns, the bank-control window, map concurrency, layout decode, reset persistence, the six sensed-image variants and the SEP-side map writes. Security-disable bypass leaves shadow registers zero.
+|88, 91, 95, 98, 99, 101, 320 to 322, 453 to 456, 459 to 466, 557, 575
+|Boundary signals under a held external boot, the PROD deny paths, OTP clock and timing depth, read and program timeouts and their status, the fault-injected state encodings, the three image patterns, the bank-control window, map concurrency, layout decode, reset persistence, the six sensed-image kinds (the owning test draws one from the seed, six variants pin one each) and the SEP-side map writes. Security-disable bypass leaves shadow registers zero.
 |<<smc-vplan-area-gpio,GPIO>>
 |102, 104, 111, 163, 186, 468 to 474, 476, 562
 |Control and interface sweeps over all 65 instances, the interface-enable competitor, interrupt-enable de-assertion, the external-window extra blocks and per-pad control decode, DATA_CTRL enable fields, read-only status and reset write-back, interface decode without aliasing, and primary-reset clearing with an in-flight access. Drawn per-pad direction and interrupt type outcomes.
@@ -48239,8 +48829,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_clk_relation_regxbar_test`
 |<<smc-vplan-area-clock,CLOCK>>
-|RAND-NONE
-|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|RANDCFG
+|the seed draws one of seven cells (ref / smc / periph ns): default 10 / 1.25 / 5, smc_slower 10 / 12 / 8, smc_equal 10 / 10 / 10, periph_slower 8 / 1.25 / 10, periph3 10 / 1.25 / 3, ref8 8 / 1.25 / 5, slowest_periph 8 / 12 / 10, unless `+smc_cell` or a variant's `CELL` pins it; the run grades that cell's checkers; 3 seeds per regression.
 |`smc_clk_relation_regxbar_slowest_periph_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
@@ -48265,10 +48855,14 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
-|`smc_octs_clk_rate_test`
+|`smc_clk_relation_regxbar_default_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
-|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_octs_clk_rate_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RANDCFG
+|the seed draws one of six cells (ref / smc / periph ns): default 10 / 1.25 / 5, smc_slower 10 / 12 / 5, smc_equal 10 / 10 / 5, smc_fast 10 / 1 / 5, ref8 8 / 1.25 / 5, periph3 10 / 1.25 / 3, unless `+smc_cell` or a variant's `CELL` pins it; the run grades that cell's rate checker; 3 seeds per regression.
 |`smc_octs_timer_rate_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
@@ -48293,14 +48887,18 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_octs_clk_rate_default_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
 |`smc_periph_cg_window_extent_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_periph_floor_roundtrip_test`
 |<<smc-vplan-area-clock,CLOCK>>
-|RAND-NONE
-|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|RANDCFG
+|the seed draws one of three cells (ref / smc / periph ns): periph10 10 / 1.25 / 10, periph5 10 / 1.25 / 5, periph3 10 / 1.25 / 3, unless `+smc_cell` or a variant's `CELL` pins it; 3 seeds per regression.
 |`smc_periph_floor_roundtrip_periph5_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
@@ -48309,11 +48907,19 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
-|`smc_ref_reset_cycles_test`
+|`smc_periph_floor_roundtrip_periph10_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
-|none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_ref_reset_cycles_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RANDCFG
+|the seed draws one of two cells (ref / smc / periph ns): ref10 10 / 1.25 / 5, ref4 4 / 1.25 / 5, unless `+smc_cell` or a variant's `CELL` pins it; 3 seeds per regression.
 |`smc_ref_reset_cycles_ref4_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
+|`smc_ref_reset_cycles_ref10_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the clock cell is pinned by the module and its testlist entry.
@@ -48551,8 +49157,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_efuse_map_sense_image_test`
 |<<smc-vplan-area-efuse,EFUSE>>
-|RAND-NONE
-|none; directed, the default eFuse image; the other image kinds run as fixed-cell variant modules.
+|RANDCFG
+|the seed draws one of six image kinds (the default asset, copied to the run-directory file, zero, ones, walking, random, unique), unless `+smc_efuse_image` or a variant's `KIND` pins it; the random kind's words and write-lock bits come from `random.Random(RANDOM_SEED ^ 0x9E3779B9)`, apart from the kind draw; the run grades that kind's sense checker; 3 seeds per regression.
 |`smc_efuse_map_sense_image_unique_test`
 |<<smc-vplan-area-efuse,EFUSE>>
 |RAND-NONE
@@ -48570,6 +49176,10 @@ entry's `*Randomization*` field.
 |RAND-NONE
 |none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
 |`smc_efuse_map_sense_image_zero_test`
+|<<smc-vplan-area-efuse,EFUSE>>
+|RAND-NONE
+|none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
+|`smc_efuse_map_sense_image_default_test`
 |<<smc-vplan-area-efuse,EFUSE>>
 |RAND-NONE
 |none; directed, a fixed-cell variant; the eFuse image kind is pinned by the module and its testlist entry.
@@ -49268,9 +49878,9 @@ ordered by area.
 |When bit 8 reads 1, and for how long: during the copy, until retirement, or never once the midend has handed the transfer to the backend. Source: `hw/sys/smc/doc/dma.adoc` (Submission and Completion; "bit 8 indicates midend activity").
 |`smc_dma_completion_status_test` grades `DONE_0` and `STATUS_0` at reset, idle, no-data and held, samples bit 8 on every poll and logs the samples without grading them; `smc_dma_backpressure_breadth_test` logs it under a held transfer.
 |<<smc-vplan-area-power,POWER>>
-|The `NEXT_ID` and `DONE` reset values and the meaning of `DONE_0` after a command.
-|`hw/sys/smc/doc/dma.adoc` and the register description `integration/rdl/smc/dma_ctrl.rdl` state different reset values for `NEXT_ID` and `DONE` and a different meaning for `DONE` (the last retired id versus a cumulative count); which one is normative. Source: `hw/sys/smc/doc/dma.adoc` (Stream and Register Ownership); `integration/rdl/smc/dma_ctrl.rdl` (`NEXT_ID`, `DONE`); GitHub issue tenstorrent/tt-oca-harness#2455.
-|`smc_dma_invalid_descriptor_test` grades every `NEXT_ID_0` read non-zero and logs `DONE_0` and `STATUS_0[9:0]` for the `ENABLED_ND`-cleared and zero-length commands without comparing them until the issue is resolved; `smc_dma_completion_status_test` grades the values the chapter states. `smc_dma_transfer_matrix_rand_test` prints `DONE_0` before and after its zero-length launch with the drawn `NUM_REPETITIONS`, without comparing it, and grades the returned ID and the untouched destination; `smc_dma_zero_length_done_id_test` (`rtl_issue`) asserts `DONE_0` equal to the returned ID against #3509.
+|The `NEXT_ID` and `DONE` reset values.
+|The register description `integration/rdl/smc/dma_ctrl.rdl` gives `NEXT_ID` and `DONE` the reset value 0x0 where `hw/sys/smc/doc/dma.adoc` (Retirement Counting) and the RTL reset them to 2 and 1; which one is normative. Source: `hw/sys/smc/doc/dma.adoc` (Stream and Register Ownership); `integration/rdl/smc/dma_ctrl.rdl` (`NEXT_ID`, `DONE`); GitHub issue tenstorrent/tt-oca-harness#2455.
+|`smc_dma_invalid_descriptor_test` grades every `NEXT_ID_0` read non-zero and logs `DONE_0` and `STATUS_0[9:0]` for the `ENABLED_ND`-cleared and zero-length commands without comparing them until the issue is resolved; `smc_dma_completion_status_test` grades the values the chapter states. `smc_dma_transfer_matrix_rand_test` grades the returned ID, the untouched destination and `DONE_0` after its zero-length launch as its pre-launch value plus the drawn `NUM_REPETITIONS` (`dma.adoc`, Retirement Counting).
 |<<smc-vplan-area-power,POWER>>
 |A DMA row address that steps past 2^56 wraps within 56 bits.
 |Whether the effective address wraps at bit 56, saturates or errors. Source: `hw/sys/smc/doc/dma.adoc` (Transfer Configuration; the register storage and effective field widths).
@@ -49726,23 +50336,73 @@ names them for their Phase 3 users.
 |<<smc-vplan-area-fabric,FABRIC>>
 |Inbound AXI protocol checkers (`u_sys_in_axi_sva`, `u_jtag_in_axi_sva`, `u_sep_in_axi_sva`)
 |Monitor (`ocah_axi_sva`)
-|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the SYS_IN, JTAG_IN and SEP_IN links between the TB masters and `smc`. Each checker arms on the first edge where its master's valids and readies are known, since the bench master lines stay X or Z until a cocotb agent drives them, and tracks up to 32 outstanding writes. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. VCS only: the SMC Verilator targets pass no `--assert`.
+|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the SYS_IN, JTAG_IN and SEP_IN links between the TB masters and `smc`. Each checker arms on the first edge where its master's valids and readies are known, since the bench master lines stay X or Z until a cocotb agent drives them, and tracks up to 32 outstanding writes. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. The two-state rules grade on both simulators (the SMC Verilator targets pass `--assert`); the X-hygiene rules grade on VCS only.
 |Every test; SYS_IN is driven by `smc_sys_axi_in_port_test` (`+axi_sva_need_sys_in`), JTAG_IN by `smc_jtag_axi_shape_test` (`+axi_sva_need_jtag_in`), SEP_IN by `smc_sep_in_axi_flow_control_test` (`+axi_sva_need_sep_in`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|Inbound AXI Python monitors (`axi_monitor`, `sys_in_axi_monitor`, `jtag_in_axi_monitor`)
+|Monitor (`SmcAxiMonitor`, cocotb)
+|Python `SmcAxiMonitor` per inbound port: `axi_monitor` (SEP_IN, `s_axi`, alias `sep_in_axi_monitor`), `sys_in_axi_monitor` (SYS_IN, `sys_axi`) and `jtag_in_axi_monitor` (JTAG_IN, `jtag_axi`), each on the port's top-level bus prefix and `clk_smc`, cleared by `rst_primary_smc_clk_no`. An ARID-keyed AR table (address, ARLEN, ARSIZE, ARBURST, beats seen) joins each R beat to its read: an OKAY or EXOKAY beat fails on an X/Z bit in the byte lanes the beat accesses, taken from the beat address and ARSIZE; a beat without a recorded AR keeps the whole-bus rule (every data bit X/Z fails), which SEP_IN also applies to error beats. AW, W and AR fail when VALID is held with READY low for the agent timeout budget (`cfg.axi_timeout_ns` in `clk_smc` cycles). DECERR outside deadspace and `expected_decerr_addrs` fails on SEP_IN; SYS_IN, whose inbound filter answers blocked accesses with DECERR, and JTAG_IN tally it. `open_unknown_rdata_window` / `close_unknown_rdata_window` exempt reads that legitimately return unknown data; no enrolled leaf opens one. A failure fails the leaf at `check_phase`, which prints `CHK-AXI-MON-<SEP-IN|SYS-IN|JTAG-IN>: ar=<n> r_beats=<n> b=<n> lanes_checked=<n> max_ready_wait=<n>` and `OBS-AXI-MON-BUDGET: port=<port> aw=<max> w=<max> ar=<max> budget=<cycles>`. Live on both simulators; the Verilator build is two-state, so the lane rule grades X/Z on VCS only.
+|Every cocotb test; SYS_IN is driven by `smc_sys_axi_in_port_test` (`CHK-AXI-MON-SYS-IN`), JTAG_IN by `smc_jtag_axi_shape_test` (`CHK-AXI-MON-JTAG-IN`), SEP_IN by `smc_sep_in_axi_flow_control_test` (`CHK-AXI-MON-SEP-IN`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|Illegal-encoding inject (`+smc_axi_wrap_len1_inject`; `sva_sep_in_req`, `sva_sys_in_req`, `sva_sep_remap_req`, `sva_filtered_sys_req`)
+|Error inject (checker view)
+|With the plusarg, `u_sep_in_axi_sva`, `u_sys_in_axi_sva`, and `u_sep_remap_axi_sva` and `u_filtered_sys_axi_sva` on the fabric links the requests are forwarded on unchanged, see AxBURST = INCR on an AW or AR with the reserved encoding `2'b11` or with WRAP and AxLEN = 0, and see an INCR that crosses a 4 KiB boundary at its 4 KiB-aligned base, so they track each such request with its real length and grade every other rule on it. The DUT, the handshake and stall counters, the data-known and the coverage instances see the real requests. Without the plusarg the copies equal the real requests.
+|`smc_axi_illegal_encoding_inject_test` (`+smc_axi_wrap_len1_inject`, `+axi_sva_need_sep_in`, `+axi_sva_need_sys_in`)
 |<<smc-vplan-area-fabric,FABRIC>>
 |SYS_OUT egress AXI protocol checker (`u_sys_out_axi_sva`)
 |Monitor (`ocah_axi_sva`)
-|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the `smc` egress master. The TB responder answers B and R, so the checker also grades the responder. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. VCS only: the SMC Verilator targets pass no `--assert`.
+|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the `smc` egress master. The TB responder answers B and R, so the checker also grades the responder. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. The two-state rules grade on both simulators (the SMC Verilator targets pass `--assert`); the X-hygiene rules grade on VCS only.
 |Every test; the egress is driven by `smc_sys_out_aw_w_split_test` (`+axi_sva_need_sys_out`)
 |<<smc-vplan-area-cpu,CPU>>
 |CPU port AXI protocol checkers (`u_cpu_front_axi_sva`, `u_cpu_mmio_axi_sva`)
 |Monitor (`ocah_axi_sva`)
-|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the fabric master into the CPU front port and on the CPU MMIO master into the fabric, both read hierarchically inside `smc`. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. VCS only: the SMC Verilator targets pass no `--assert`.
+|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the fabric master into the CPU front port and on the CPU MMIO master into the fabric, both read hierarchically inside `smc`. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. The two-state rules grade on both simulators (the SMC Verilator targets pass `--assert`); the X-hygiene rules grade on VCS only.
 |Every test; both ports are driven by `smc_fw_hello_world_test` (`+axi_sva_need_cpu_front`, `+axi_sva_need_cpu_mmio`)
 |<<smc-vplan-area-fabric,FABRIC>>
 |AXI-Lite protocol checkers (`u_otp_jtag_axil_sva`, `u_dtp_csr_axil_sva`, `u_log_engine_axil_sva`, `u_periph_axil_sva`)
 |Monitor (`ocah_axi_sva`)
-|The AXI4-Lite rules of `ocah_axi_sva` (reset, handshake, X and response rules) on the JTAG-side OTP link (TB master, armed like the inbound ports), the DTP CSR link (no responder on `smc_wrapper`, so no AW or AR handshake occurs) and, inside `smc`, the log-engine and peripherals links. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. VCS only: the SMC Verilator targets pass no `--assert`.
+|The AXI4-Lite rules of `ocah_axi_sva` (reset, handshake, X and response rules) on the JTAG-side OTP link (TB master, armed like the inbound ports), the DTP CSR link (no responder on `smc_wrapper`, so no AW or AR handshake occurs) and, inside `smc`, the log-engine and peripherals links. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. The two-state rules grade on both simulators (the SMC Verilator targets pass `--assert`); the X-hygiene rules grade on VCS only.
 |Every test; the OTP link is driven by `smc_efuse_jtag_otp_data_walk_test` (`+axi_sva_need_otp_jtag`), the log-engine link by `smc_fw_uart_log_engine_single_entry_test` (`+axi_sva_need_log_engine`), the peripherals link by `smc_canonical_smoke_test` (`+axi_sva_need_periph`); no test carries `+axi_sva_need_dtp_csr`
+|<<smc-vplan-area-reset,RESET>>
+|Own-domain AXI protocol checkers (`u_cpu_mmio_uncore_rst_axi_sva`, `u_misc_warm_axil_sva`)
+|Monitor (`ocah_axi_sva`)
+|The rules of `ocah_axi_sva` on the CPU MMIO link with `aresetn` the cluster uncore reset `tb_cpu_uncore_reset_n` and `MASTER_SYNC_RESET` (AWVALID, WVALID and ARVALID may stay high on the first edge that samples the reset low), and the AXI4-Lite rules on the `SCRATCH_COLD_WARM` leg of the misc wrapper's demux with `aresetn` the wrapper's warm reset. Their reset rules grade VALID in that reset and their tracking flushes on it. The MMIO port is shared by the four cores behind the uncore bridge: the uncore reset isolates it, and a core reset or core reset pulse leaves it connected, so the other cores' MMIO traffic is graded while a core is held. The CPU front port has no core-reset instance: it carries CPU_CTRL traffic while a core is held, so its domain is the primary reset. Each is on once its reset is known; the MMIO instance also follows the CPU-port hold-off. The final block prints `CHK-AXI-SVA-CPU-MMIO-UNCORE-RST` and `CHK-AXI-SVA-MISC-WARM`; `+axi_sva_need_<cpu_mmio_uncore_rst|misc_warm>` fails a test whose checker graded no AW or AR handshake. Protocol, not data.
+|Every test; both are driven across their own resets by `smc_axi_partial_reset_open_txn_test` (`+axi_sva_need_cpu_mmio_uncore_rst`, `+axi_sva_need_misc_warm`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|Data accelerator AXI protocol checkers (`u_dma_axi_sva`, `u_dma_ctrl_axi_sva`)
+|Monitor (`ocah_axi_sva`)
+|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the iDMA master into the input fabric and on the local crossbar into the iDMA control port, both read hierarchically inside `smc`. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. The two-state rules grade on both simulators (the SMC Verilator targets pass `--assert`); the X-hygiene rules grade on VCS only.
+|Every test; both links are driven by `smc_dma_backpressure_test` (`+axi_sva_need_dma`, `+axi_sva_need_dma_ctrl`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|Internal CSR AXI-Lite protocol checkers (`u_dfx_csr_axil_sva`, `u_ar_ctrl_axil_sva`, `u_mr_ctrl_axil_sva`, `u_xr_ctrl_axil_sva`, `u_infilt_ctrl_axil_sva`, `u_outfilt_ctrl_axil_sva`, `u_mailbox_axil_sva`, `u_base_config_axil_sva`)
+|Monitor (`ocah_axi_sva`)
+|The AXI4-Lite rules of `ocah_axi_sva` (reset, handshake, X and response rules) on the eight 32/64 AXI-Lite links of `u_smc_base` into the DFX CSR, alias, M-mode and Xvisor remap control, inbound and outbound filter control, AXI-Lite mailbox and base config blocks. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. The two-state rules grade on both simulators (the SMC Verilator targets pass `--assert`); the X-hygiene rules grade on VCS only.
+|Every test; the DFX CSR and the three remap control links are driven by `smc_unit_base_register_port_matrix_test` (`+axi_sva_need_dfx_csr`, `+axi_sva_need_ar_ctrl`, `+axi_sva_need_mr_ctrl`, `+axi_sva_need_xr_ctrl`), the inbound filter control by `smc_filter_lock_window_test` (`+axi_sva_need_infilt_ctrl`), the outbound filter control by `smc_outfilt_addr_match_test` (`+axi_sva_need_outfilt_ctrl`), the mailbox by `smc_mailbox_inbound_test` (`+axi_sva_need_mailbox`), the base config by `smc_canonical_smoke_test` (`+axi_sva_need_base_config`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|Fabric-internal AXI protocol checkers (`u_local_out_axi_sva`, `u_to_output_axi_sva`, `u_filtered_sys_axi_sva`, `u_sep_remap_axi_sva`)
+|Monitor (`ocah_axi_sva`)
+|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the input fabric's local and output-fabric outputs, the filtered SYS path and the SEP ID remap path inside `u_smc_fabric`. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. The two-state rules grade on both simulators (the SMC Verilator targets pass `--assert`); the X-hygiene rules grade on VCS only.
+|Every test; the local output is driven by `smc_dma_backpressure_test` (`+axi_sva_need_local_out`), the output-fabric output by `smc_sys_out_aw_w_split_test` (`+axi_sva_need_to_output`), the filtered SYS path by `smc_sys_axi_in_port_test` (`+axi_sva_need_filtered_sys`), the SEP ID remap path by `smc_sep_in_axi_flow_control_test` (`+axi_sva_need_sep_remap`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|Boundary AXI-Lite protocol checkers (`u_external_axil_sva`, `u_efuse_bank_axil_sva`)
+|Monitor (`ocah_axi_sva`)
+|The AXI4-Lite rules of `ocah_axi_sva` (reset, handshake, X and response rules) on the two 32/32 AXI-Lite links `smc` drives into `smc_ip_integration`: the adopter external window and the eFuse shim CSRs. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. The two-state rules grade on both simulators (the SMC Verilator targets pass `--assert`); the X-hygiene rules grade on VCS only.
+|Every test; both links are driven by `smc_ext_window_routing_test` (`+axi_sva_need_external`, `+axi_sva_need_efuse_bank`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|AXI data known-ness checkers (`smc_axi_data_known_sva`, one `u_<port>_data_sva` beside every `ocah_axi_sva` instance)
+|Monitor (four-state SVA, VCS only)
+|`SMC_AXI_W_STROBED_DATA_KNOWN` (every WDATA byte whose WSTRB bit is 1 is known while WVALID) on the links where `smc` is the manager, and `SMC_AXI_R_DATA_KNOWN` (RDATA known while RVALID on an OKAY or EXOKAY beat) on the links where `smc` is the subordinate, with the paired checker's enable and reset. The rules need `OCAH_INC_ASSERT`, so Verilator never grades them. The final block prints `CHK-AXI-DATA-KNOWN-W` and `CHK-AXI-DATA-KNOWN-R` (instances and summed judged beats) and an `INFO-AXI-DATA-KNOWN-<PORT>` line per instance.
+|Every VCS test; the W rule is driven by `smc_dma_backpressure_test`, the R rule by `smc_sep_in_axi_flow_control_test`, with `smc_spm_bank_walk_test` and `smc_cpuif_handshake_test` adding SEP_IN, CPU front, peripheral and CSR-link beats
+|<<smc-vplan-area-fabric,FABRIC>>
+|AXI READY-stall counters (one set of five per `ocah_axi_sva` instance)
+|Monitor (counters in `tb_top`)
+|AW, W and AR count VALID && !READY with the subordinate's READY; B and R count VALID && !READY with the manager's READY; counted only while the instance is enabled. The final block prints `CHK-AXI-STALL-<PORT>: aw= w= b= ar= r= instance=<name>`; `+axi_sva_need_stall_<port>` fails the test when all five counts of that instance are 0.
+|Every test; `smc_sep_in_axi_flow_control_test` (`+axi_sva_need_stall_sep_in`), `smc_jtag_axi_shape_test` (`+axi_sva_need_stall_jtag_in`), `smc_axi_channel_timing_ports_test` (`+axi_sva_need_stall_sys_in`), `smc_dma_backpressure_test` (`+axi_sva_need_stall_sys_out`, `+axi_sva_need_stall_dma`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|AWATOP-zero assertions (`gen_<port>_atop_sva`: CPU MMIO, CPU front, iDMA, iDMA control, local output, output-fabric output, filtered SYS, SEP remap, SYS_OUT)
+|Monitor (`OCAH_SVA_ASSERT`)
+|`SMC_AXI_AWATOP_ZERO_<PORT>`: `aw.atop` is 0 whenever `aw_valid` on each SMC-internal AXI4 manager, disabled while the primary reset is low; two-state and live on both simulators. The final block prints `CHK-AXI-ATOP-ZERO-<PORT>: aw_evaluated=<n>`.
+|Every test; CPU MMIO and CPU front by `smc_fw_hello_world_test`, iDMA, iDMA control and the local output by `smc_dma_backpressure_test`, the filtered SYS path by `smc_sys_axi_in_port_test`, the output-fabric output and SYS_OUT by `smc_sys_out_aw_w_split_test`, the SEP remap path by `smc_sep_in_axi_flow_control_test`
 |===
 
 [[smc-vplan-phase3-added-hooks]]
@@ -49915,22 +50575,78 @@ item it rests on.
 
 === Formal Verification Plan
 
-Formal property checking is not part of the SMC DV package. Every row of this plan is credited by simulation alone, and
-`hw/sys/smc/dv/` carries no formal collateral: no `smc_formal_cfg.toml`
-beside `smc_sim_cfg.toml`, no `testlists/formal.toml`, and no `formal/`
-directory holding a property set, a bind file, a task file or a reset
-environment. `python3 tools/dv/run_dv.py --validate-configs` lists no
-`smc (formal)` view, `--list` shows no `fv` row for `smc`, and
-`python3 tools/dv/run_dv.py --dut smc --mode formal` stops with
-`formal config not found`. Hosted CI runs no formal job for any DUT
-(`tools/dv/doc/run-dv.adoc`, Formal verification), so the PR gate and the
-nightly and weekly tiers under Regression Groups are complete without one.
-Formal verification is outside this package's scope and has no Known
-Limitations row.
+One formal item covers the lock of the outbound filter-control entries. Every
+other row of this plan is credited by simulation alone. The collateral follows
+`tools/dv/doc/run-dv.adoc` (Configuring a formal view) and
+`hw/common/dv/docs/formal-property-style.adoc`, in the shape of `hw/sys/dtp/dv/`:
 
-Adding a formal view follows `tools/dv/doc/run-dv.adoc` (Configuring a
-formal view) and `hw/common/dv/docs/formal-property-style.adoc`;
-`hw/sys/dtp/dv/` is the runner's reference implementation.
+* `smc_formal_cfg.toml`: the `smc (formal)` view, profile `native-formal`, with
+  `smc_internal_regs` as the formal top. It is the smallest SMC module that
+  holds the filter-control register blocks together with their lock steering.
+  The `flist` stage writes `formal/build/smc.f` from the Bender target `smc`
+  and adds `ocah_axi_fv.sv`.
+* `testlists/formal.toml`: the item `smc_filter_lock_fpv`, which launches the
+  `[formal.apps.smc_filter_lock_fpv.sby]` table.
+* `formal/props/smc_filter_lock_props.sv` and `smc_filter_lock_props_bind.sv`:
+  the lock properties, bound to `smc_internal_regs` on the outbound
+  filter-control AXI-Lite port, with entry 0 standing for the sixteen entries.
+* `formal/props/smc_filter_axi_fv_bind.sv`: the shared `ocah_axi_fv` checker on
+  the same port (`IS_LITE` 1, `ASSUME_MASTER_RULES` 1, `ASSUME_SLAVE_RULES` 0).
+  The crossbar's handshake rules are assumed and the filter-control side's
+  responses are asserted.
+* `formal/fpv/sby/smc.sby`: the tasks `smc_filter_lock_bmc`,
+  `smc_filter_lock_cover` (depth 40) and `smc_filter_lock_prove` (`abc pdr`),
+  all under `multiclock on`.
+
+The expected values come from `hw/ip/axi_filter/regs/filter_ctrl.rdl` only.
+The lock write is a write to the entry's `FILTER_CONFIG` with `locked` (bit 63)
+set that receives OKAY.
+
+[cols="1,4",options="header"]
+|===
+|Property |Claim
+
+|P1 `ast_filter_lock_write_decerr`, `ast_filter_lock_write_no_change`
+|A write whose AW is accepted after the lock write's B and that is addressed to
+the entry's `FILTER_CONFIG`, `START_ADDR` or `END_ADDR` receives BRESP DECERR.
+The software-writable `FILTER_CONFIG` fields still hold the locked
+configuration when it completes.
+
+|P2 `ast_filter_lock_read_data`
+|A read of the entry's `FILTER_CONFIG` accepted after the lock write's B
+returns the locked configuration on the software-writable fields. Only the
+data is asserted.
+|===
+
+Each claim has a paired cover: `cov_filter_lock_write`,
+`cov_filter_lock_write_refused` and `cov_filter_lock_read`. The properties state
+no per-ID, per-beat, WLAST, strobe-lane or exclusive rule. Two questions stay
+open:
+
+* SF-008: the outcome of a write queued behind the lock write before its B.
+  The `asm_env_one_write_aw` and `asm_env_one_write_w` assumptions exclude that
+  write, so P1 claims only writes accepted after the B.
+* SF-009: the response code of a read of a locked entry. P2 does not assert
+  RRESP.
+
+`START_ADDR` and `END_ADDR` are hardware-writable, and on this top they follow
+the filter status input, which is free. For those two registers only the DECERR
+response is claimed, not the value.
+
+The item is validated by `python3 tools/dv/run_dv.py --validate-configs`, which
+lists `smc (formal)` as OK, and by `--dut smc --mode formal --list`, which
+shows `smc_filter_lock_fpv`. The two property files and the checker bind also
+parse together with the design filelist under slang with 0 errors. Hosted CI
+runs no formal job (`tools/dv/doc/run-dv.adoc`, Formal verification), so the
+PR gate and the nightly and weekly tiers under Regression Groups do not run
+this item.
+
+Known limitation: the item is NOT-RUN. SymbiYosys and Yosys were absent from
+the environment in which the collateral was written and validated, so no
+property, cover or proof has a verdict, and this plan claims no PASS for any of
+them. The cover depth of 40 is copied from `dtp_jtag2axi.sby`. A first run must
+show that every cover is reached within that depth before a bmc or prove result
+counts as evidence.
 
 === Regression Groups
 
@@ -50161,8 +50877,9 @@ in <<smc-deferred-disposition>>.
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
 |UART0 transmits two stop bits for a 5-bit word with `LCR.STB` set, where `uart_16550_main.rdl` describes 1.5 |`smc_uart_baud_word_parity_format_test` measures the frame length on the TX pad for every format; for the two 5-bit `STB = 1` formats it admits either 1.5 or 2 stop bits, records which one was measured, and so does not claim the RDL count for them (one stop bit still fails). Every other format is held to the RDL count |Fix the transmitter or the RDL description, then drop the admitted alternative so the two formats are held to one count
 |`INTR_STATUS.LOG_WRITE_ERR` has no firmware-reachable stimulus in this wrap |The log-write AXI-Lite master targets the wrapper's own `uart_16550` block, which ties write-error to 0 and answers every write OKAY. `smc_fw_uart_log_engine_boundary_backpressure_test` covers length and TX backpressure only; `INTR_TEST.LOG_WRITE_ERR` proves the interrupt plumbing, not error detection |A bench-side fault injector on the log-write AXI-Lite B channel
-|A force-mode CPU reset withdraws the R beat the CPU is presenting to the front-port demux without `ready` (`cocotb/seq_lib/README_cpu_isolate_flush.md`) |`smc_cpu_l2_read_wedge_test` reaches that state on purpose, and the front-port R arbiter's request-stability assertions (`rr_arb_tree` `req1` and `lock_req`) report the withdrawal on the reset cycle. The leaf passes `+smc_front_port_r_arb_assertoff` and `tb_top` holds off that one arbiter instance's assertions for that leaf only; every other leaf keeps them, the leaf's five checkers are unchanged, and the two CPU-port AXI protocol checkers of `tb_top` are held off with the same plusarg; the SYS_IN protocol checker is not, and on VCS it reports the stale R the isolate flush leaves on SYS_IN (next row) |A CPU reset cannot preserve a beat the fabric side has stopped accepting, and the design owner records this as a limitation of force mode rather than a defect (#2449, closed as not planned). Re-arm the checks if force mode ever holds or flushes the beat under `ready`
-|After the force-mode CPU reset the isolate flush discards the CPU's stale read response above the demux, and an R with no open AR appears on SYS_IN |`smc_cpu_l2_read_wedge_test` is RED on VCS on `u_sys_in_axi_sva` `OCAH_AXI_R_NOT_BEFORE_AR` / `OCAH_AXI_R_ID_OUTSTANDING`; the leaf's own `CHK-CPU-ISO-FLUSH-STALE-RESP-ABSORBED` records that the bench absorbs the beat |Design-owner ruling on whether a discarded response may reach SYS_IN. #2318 reports that beat (the demux forwards the R the flush cleared) and is closed as a duplicate of #2449, whose ruling covers the withdrawal at the front port and not the beat on SYS_IN; until that ruling is extended or the beat is held, the leaf stays RED and is not masked
+|A force-mode CPU reset withdraws the R beat the CPU is presenting to the front-port demux without `ready` (`cocotb/seq_lib/README_cpu_isolate_flush.md`) |`smc_cpu_l2_read_wedge_test` reaches that state on purpose, and the front-port R arbiter's request-stability assertions (`rr_arb_tree` `req1` and `lock_req`) report the withdrawal on the reset cycle. The leaf passes `+smc_front_port_r_arb_assertoff` and `tb_top` holds off that one arbiter instance's assertions for that leaf only; every other leaf keeps them, the leaf's five checkers are unchanged, and the two CPU-port AXI protocol checkers of `tb_top` are held off with the same plusarg; the SYS_IN protocol checker is not, and on both simulators it reports the stale R the isolate flush leaves on SYS_IN (next row) |A CPU reset cannot preserve a beat the fabric side has stopped accepting, and the design owner records this as a limitation of force mode rather than a defect (#2449, closed as not planned). Re-arm the checks if force mode ever holds or flushes the beat under `ready`
+|The zeroer asserts WLAST only in the cycle WREADY rises, so the last beat of every zeroer burst changes its payload while WVALID is high and WREADY is low |`u_dma_axi_sva` `OCAH_AXI_W_PAYLOAD_STABLE` fires in every leaf whose zeroer burst stalls on its last beat: nine `smc_zeroer_*` leaves, `smc_cg_zeroer_activity_bringup_test` and `smc_state_fault_inject_test` on Verilator, `smc_zeroer_unaligned_test` also on VCS; those leaves fail and are not masked |Issue #3571 (RTL, `hw/ip/zeroer/rtl/zeroer.sv`); the leaves pass once the zeroer holds WLAST for the whole last beat
+|After the force-mode CPU reset the isolate flush discards the CPU's stale read response above the demux, and an R with no open AR appears on SYS_IN |`smc_cpu_l2_read_wedge_test` fires `u_sys_in_axi_sva` and `u_filtered_sys_axi_sva` `OCAH_AXI_R_NOT_BEFORE_AR` / `OCAH_AXI_R_ID_OUTSTANDING` on both simulators; on Verilator the first fire stops the simulation before the leaf's later checks run, on VCS the leaf's own `CHK-CPU-ISO-FLUSH-STALE-R-DISCARDED` records that the bench absorbs the beat |Design-owner ruling on whether a discarded response may reach SYS_IN. #2318 reports that beat (the demux forwards the R the flush cleared) and is closed as a duplicate of #2449, whose ruling covers the withdrawal at the front port and not the beat on SYS_IN; until that ruling is extended or the beat is held, the leaf stays RED and is not masked
 |The cocotb AXI master drives the write strobes of a narrow FIXED burst on rotating byte lanes |`smc_sep_in_axi_shape_test` and `smc_axi_random_stress_test` are RED on VCS on `OCAH_AXI_W_STRB_IN_LANES` from the inbound and CPU front-port checkers; the defect is in the bench master, not in the SMC |Pull request #3448 fixes the master; both leaves are GREEN with it, and neither is masked
 |===
 
@@ -50193,7 +50910,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and hangs the peripheral crossbar after the release; the leaf records the in-reset response and asserts every post-release read completes
 |#3389 |`smc_dfd_cla_irq_w2c_release_test` |`rtl_issue` |`cla_interrupt` stays asserted after the single `CDbgEapStatus` W2C write; the leaf asserts the line drops with the status
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
-|#3509 |`smc_dma_zero_length_done_id_test` |`rtl_issue` |`DONE_0` after a `LENGTH` 0 launch advances by the drawn `NUM_REPETITIONS` where `dma.adoc` and the `NEXT_ID` description retire one ID; the leaf runs the `smc_dma_transfer_matrix_rand_test` draw and asserts `DONE_0` equal to the returned ID
 |#3510 |`smc_spm_write_cut_by_warm_reset_test` |`rtl_issue` |An SPM write burst from SEP_IN cut by the watchdog warm reset after its AW handshake receives no B after the release, and later SPM and `CPU_CTRL` writes with its AXI ID bits [2:0] never complete; the leaf arms the path, cuts one burst, and asserts the cut write's B and the two later writes completing OKAY
 |to follow |`smc_i2c_tbuf_bus_free_test` |`rtl_issue` |With `THD_DAT` 25 to 32 the bus-free time after a STOP is `T_R` plus `TSU_STA` plus 7 cycles whatever `TIMING4.T_BUF` holds, below it in some samples, where `i2c.rdl` gives `T_BUF` as the time between a STOP and START condition; the leaf runs the `smc_i2c_timing_set_rand_test` draw and asserts every bus-free time of the `T_BUF` pair at least the programmed `T_BUF` and moving with it (the issue number follows once filed)
 |#3422 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |A `CTRL_STATUS` trigger while the zeroer is busy has no stated rule; the `OBS-ZEROER-BUSY` lines record the issue and drain windows, the CHK line grades liveness only
@@ -52429,8 +53145,8 @@ and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
 Members: `smc_warm_domain_access_during_reset_test` (#3408),
 `smc_dfd_cla_irq_w2c_release_test` (#3389), `smc_dfd_cla_clock_halt_release_test` (#3390),
-`smc_dma_zero_length_done_id_test` (#3509), `smc_spm_write_cut_by_warm_reset_test` (#3510) and
-`smc_i2c_tbuf_bus_free_test` (issue to follow).
+`smc_spm_write_cut_by_warm_reset_test` (#3510) and `smc_i2c_tbuf_bus_free_test` (issue to
+follow).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in
