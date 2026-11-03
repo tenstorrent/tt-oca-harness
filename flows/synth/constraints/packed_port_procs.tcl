@@ -11,17 +11,17 @@
 # port `port`. Matches `${port}*${field}` while field names survive; otherwise
 # takes the MSB of each element, so the clock must be the first struct member.
 # Empty when the port does not exist or its width is not a multiple of `count`.
-proc packed_clk_ports {port count {field clk}} {
+proc packed_clk_ports { port count { field clk } } {
     set named [get_object_name [get_ports -quiet "${port}*${field}"]]
-    if {[llength $named]} {
+    if { [llength $named] } {
         return [lsort -dictionary $named]
     }
     set total [sizeof_collection [get_ports -quiet "${port}*"]]
-    set width [expr {$total / $count}]
+    set width [expr { $total / $count }]
     set bits {}
-    if {$width && $width * $count == $total} {
-        for {set i 1} {$i <= $count} {incr i} {
-            lappend bits "${port}\[[expr {$i * $width - 1}]\]"
+    if { $width && $width * $count == $total } {
+        for { set i 1 } { $i <= $count } { incr i } {
+            lappend bits "${port}\[[expr { $i * $width - 1 }]\]"
         }
     }
     return $bits
