@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Formal items for `--dut smc --mode formal` (smc_formal_cfg.toml). `module` names the app table
+# the item launches, [formal.apps.<module>.<tool>]; one item is one sby invocation that runs every
+# task of that app, and the runner grades it from the per-task status files and JUnit reports.
+# The plan section is SMC_VPLAN.adoc, Formal Verification Plan.
+
+[[tests]]
+name = "smc_filter_lock_fpv"
+module = "smc_filter_lock_fpv"
+tags = ["formal"]

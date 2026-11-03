@@ -102,6 +102,7 @@ _TB_SIGNALS = (
     "tb_output_axi_awaddr",
     "tb_output_axi_resp_hold",
     "tb_dma_busy",
+    "tb_fcov_gate",
 )
 _IF_SIGNALS = ("arlen", "arsize", "awlen", "awsize")
 
@@ -499,6 +500,8 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
         self.last_done = await self.csr_read("DONE_BASE", DMA_CTRL_DONE_0)
         cocotb.log.info("DONE_0 baseline %d before the first launch", self.last_done)
         self._draw()
+        # smc_dma_geometry_cg samples the launches of S2 to S5 only.
+        dut.tb_fcov_gate.value = 1
         await ClockCycles(dut.clk_smc_i, 2)
         self._mark("S1")
 
@@ -660,11 +663,14 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
         ]
 
     async def body(self) -> None:
-        await self._s1()
-        await self._s2()
-        for step, fn in (("S3", self._s3), ("S4", self._s4), ("S5", self._s5)):
-            for chk, text in await fn():
-                self._chk(step, chk, text)
+        try:
+            await self._s1()
+            await self._s2()
+            for step, fn in (("S3", self._s3), ("S4", self._s4), ("S5", self._s5)):
+                for chk, text in await fn():
+                    self._chk(step, chk, text)
+        finally:
+            cocotb.top.tb_fcov_gate.value = 0
         assert self.launches == N_LAUNCHES, f"{self.launches} launches, want {N_LAUNCHES}"
         await ClockCycles(cocotb.top.clk_smc_i, 2)
         self._mark("S6")

@@ -70,9 +70,12 @@ An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers `DECERR`.
 
-The inbound port reaches a unit only while its whole aperture lies below
-`BASE + REGION_SIZE`. At the reset value the PLIC, CLINT and bus-error units lie
-beyond it and answer `DECERR`. The SMC harts reach the PLIC and CLINT inside the
+An inbound access at or above `BASE + REGION_SIZE` answers `DECERR`; the limit
+applies per address, not per unit. A unit that extends past the limit stays
+reachable below it: at a `REGION_SIZE` of 1 MiB the scratchpad RAM answers
+below `BASE + 0x10_0000` and `DECERR` above it. Firmware should pick a
+`REGION_SIZE` that no unit straddles. At the reset value the PLIC, CLINT and
+bus-error units lie wholly beyond the limit and answer `DECERR`. The SMC harts reach the PLIC and CLINT inside the
 CPU cluster regardless of `REGION_SIZE`.
 
 The I2C, UART, I3C, AVSBus and Telemetry Receiver windows answer `SLVERR`, with

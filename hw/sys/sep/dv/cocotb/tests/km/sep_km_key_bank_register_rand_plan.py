@@ -139,6 +139,7 @@ IDLE_OPS_MAX = 8
 # (``architecture.adoc``, "Key Delivery") and one 4-word block.
 AES_BANK = BANKS[1]
 assert AES_BANK.engine == "aes" and AES_BANK.words == 8
+AES_KEY_CTRL_RSVD = _field_mask(_ENG["aes"].AES_WRAPPER_KEY_KEY_CTRL_REG_reg_t, "rsvd")
 AES_PT_WORDS = 4
 
 

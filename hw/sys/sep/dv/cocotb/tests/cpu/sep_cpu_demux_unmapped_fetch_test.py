@@ -42,6 +42,26 @@ Checks:
                        store, read by a DMA copy to the SRAM (rom.adoc, ROM
                        Architecture: the load/store unit cannot access ICCM).
                        Control: the DCCM pair reads K, writes V2 and reads V2.
+  CHK-IFU-TRAP       : each fetch at U traps once, with mcause 0x1 (instruction
+                       access fault) and mtval U (VeeR EL2 PRM at
+                       tt-Cores-VeeR-EL2@07a51d817, ``docs/source/memory-map.md``
+                       "Unmapped Addresses" ``:273-276``: a fetch with a bus
+                       error is a precise instruction access fault; "Exception
+                       Handling" ``:199``: a precise exception captures the
+                       faulting address in mtval;
+                       ``physical-memory-protection.md`` "Exceptions"
+                       ``:99-101``: code 1).
+                       Control: the IFU request at U is in the window.
+  CHK-LSU-ICCM-CAUSE : the LSU load at the ICCM word traps once with mcause 0x5
+                       (load access fault) and the LSU store once with mcause
+                       0x7 (store access fault) (PRM at the same revision,
+                       ``memory-map.md`` "Unmapped Addresses" ``:281``,
+                       ``:300`` with footnote 4 ``:330``: loads and stores to
+                       the ICCM range in the DCCM region fault; codes
+                       ``physical-memory-protection.md`` "Exceptions"
+                       ``:102-107``; ICCM and DCCM
+                       share region 12, ``hw/sys/sep/doc/memory_map.adoc:41-43``).
+                       Control: the DCCM pair reads K, writes V2 and reads V2.
   CHK-LSU-ICCM-WE    : no ICCM write enable on PR-TCM during the LSU store.
                        Control: the DMA copy of an SRAM word to another ICCM
                        word shows the ICCM write enable.
@@ -59,8 +79,9 @@ register write reaches a register block with its own strobe and no zero-strobe
 neighbour beat. ``OBS-DMA-CSR-WRITE`` logs the shape and BRESP of every LSU
 write to the secure DMA registers; ``OBS-EXT-READ`` logs every NMI.
 
-The core reaction to an unmapped fetch and the response to an ICCM data access
-are not scored; their records are logged (``OBS-``). Every expected value comes
+The trap cause and value of an unmapped fetch and the cause of an ICCM data
+access are graded; ``OBS-IFU-TRAP`` and ``OBS-LSU-ICCM`` still log every trap
+record, the load value and the DMA status. Every expected value comes
 from the drawn plan and the staged images; no expected value is read from the
 DUT.
 
@@ -225,6 +246,12 @@ def _crt0_mrac(path: Path) -> tuple[int, int]:
 
 # VeeR EL2 mrac (region access control) as fw/startup/crt0.s writes it.
 CSR_MRAC, MRAC_SEP = _crt0_mrac(CRT0)
+
+# mcause exception codes (VeeR EL2 PRM at tt-Cores-VeeR-EL2@07a51d817,
+# docs/source/physical-memory-protection.md "Exceptions" :99-107).
+MCAUSE_FETCH_FAULT = 0x1
+MCAUSE_LOAD_FAULT = 0x5
+MCAUSE_STORE_FAULT = 0x7
 
 # Environment choices (logged).
 DMA_POLL = 4_000  # STATUS reads per DMA copy
@@ -488,6 +515,8 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         "CHK-CORE-PATH-XBAR",
         "CHK-LSU-ICCM",
         "CHK-LSU-ICCM-WE",
+        "CHK-IFU-TRAP",
+        "CHK-LSU-ICCM-CAUSE",
     )
 
     def _grade(self, chk: str, ok: bool, text: str) -> None:
@@ -497,6 +526,10 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         else:
             self.logger.error("%s FAIL: %s", chk, text)
             self.failures.append(f"{chk}: {text}")
+
+    def _ctrl_missing(self, chk: str, why: str) -> None:
+        self.logger.error("CTRL-MISSING %s: %s", chk, why)
+        self.failures.append(f"CTRL-MISSING {chk}: {why}")
 
     # ---------------------------------------------------------------- set-up
     def _draw(self) -> None:
@@ -775,6 +808,19 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
                 ",".join(f"0x{r.val:x}" for r in causes) or "-",
                 ",".join(f"0x{r.val:08x}" for r in tvals) or "-",
             )
+            mc = ",".join(f"0x{r.val:x}" for r in causes) or "-"
+            mt = ",".join(f"0x{r.val:08x}" for r in tvals) or "-"
+            if not ars:
+                self._ctrl_missing("CHK-IFU-TRAP", f"k={k} fetch=0x{u:08x}: no IFU request at U")
+            else:
+                self._grade(
+                    "CHK-IFU-TRAP",
+                    [r.val for r in causes] == [MCAUSE_FETCH_FAULT]
+                    and [r.val for r in tvals] == [u],
+                    f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Unmapped Addresses' :273-276 "
+                    f"'Exception Handling' :199 k={k} fetch=0x{u:08x} mcause={mc} "
+                    f"mtval={mt} expect_mcause=0x{MCAUSE_FETCH_FAULT:x} expect_mtval=0x{u:08x}",
+                )
             resp = None
             rom_n = sram_n = -1
             if ars:
@@ -959,6 +1005,19 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             "X" if load_val is None else f"0x{load_val:08x}",
             ",".join(f"0x{v:08x}" for v in dma_st),
         )
+        lc = ",".join(f"0x{r.val:x}" for r in traps) or "-"
+        sc = ",".join(f"0x{r.val:x}" for r in straps) or "-"
+        if not dccm_rw:
+            self._ctrl_missing("CHK-LSU-ICCM-CAUSE", "the DCCM pair control did not pass")
+        else:
+            self._grade(
+                "CHK-LSU-ICCM-CAUSE",
+                [r.val for r in traps] == [MCAUSE_LOAD_FAULT]
+                and [r.val for r in straps] == [MCAUSE_STORE_FAULT],
+                f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Unmapped Addresses' :281,300,330 "
+                f"load_mcause={lc} store_mcause={sc} "
+                f"expect=0x{MCAUSE_LOAD_FAULT:x}/0x{MCAUSE_STORE_FAULT:x}",
+            )
         self._grade(
             "CHK-LSU-ICCM",
             load_ne_w == 1 and macro == p.w_val and dccm_rw == 1,

@@ -131,7 +131,9 @@ CAPABILITIES
 * Runtime SMC and SEP aperture base/size rules select the target for each access
 * Unmatched SMC/SEP outbound traffic uses the external output; unmatched
   external inbound traffic receives a decode error
-* AXI ID-width conversion at SMC/SEP targets; atomic operations disabled
+* AXI ID-width conversion at SMC/SEP targets
+* No AXI atomic transactions: the external input must hold `AWATOP` at 0, and
+  the SMU neither refuses nor answers an atomic request
 * The checked-in RTL fixes a 1 GiB window that aliases SEP accesses to the SMC
   local address region
 
@@ -202,7 +204,7 @@ The OCAH https://docs.tenstorrent.com/tt-oca-harness/ocah-home/latest/dashboard.
 publishes the current verification and maturity status.
 Hosted cocotb/PyUVM smoke and regression exercise the no-SEP configuration,
 covering SMC/DTP composition, direct external AXI, filters, ID conversion,
-atomic rejection, JTAG-to-AXI/OTP, reset, mailbox, cross-trigger, and
+JTAG-to-AXI/OTP, reset, mailbox, cross-trigger, and
 clock-stop scenarios. The SEP-present configuration is also verified, spanning
 no-SEP and real-SEP profiles including firmware and SEP boot-readiness
 observations.

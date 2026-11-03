@@ -302,6 +302,14 @@ tags = ["ci", "wdt"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_wdt_count_across_core_reset_test"
+module = "smc_wdt_count_across_core_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_octs_primary_count_test"
 module = "smc_octs_primary_count_test"
 seed = 1
