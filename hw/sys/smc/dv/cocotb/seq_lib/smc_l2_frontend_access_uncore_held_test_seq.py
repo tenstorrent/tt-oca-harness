@@ -24,6 +24,7 @@ each printed inside its ``CHK-OBS-*`` line where the contract names one and on i
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles, First, ReadOnly, RisingEdge
@@ -86,6 +87,7 @@ W_PRIME = {
 }
 ROM_A = ROM_BASE + 0x100
 ROM_B = ROM_BASE + 0x140
+ROM_HEX_PLUSARG = "smc_rom_hex"
 FRESH_BEATS = 8
 FRESH_ADDR = {p: SPM_MEMORY_BASE + 0x3_0000 + 0x1000 * i for i, p in enumerate(PORTS)}
 SCRATCH_RUNNING = {
@@ -179,6 +181,24 @@ PROBES = (
 
 def _rname(code: int | None) -> str:
     return _RESP.get(code, str(code))
+
+
+def _rom_image_word(addr: int) -> int | None:
+    """The 64-bit word the ``+smc_rom_hex`` image ($readmemh form) gives ROM address ``addr``."""
+    path = cocotb.plusargs.get(ROM_HEX_PLUSARG)
+    if not path:
+        return None
+    index, words = 0, {}
+    for line in Path(str(path)).read_text(encoding="utf-8").splitlines():
+        token = line.split("//", 1)[0].strip()
+        if not token:
+            continue
+        if token.startswith("@"):
+            index = int(token[1:], 16)
+            continue
+        words[index] = int(token, 16)
+        index += 1
+    return words.get((addr - ROM_BASE) // BEAT, 0)
 
 
 def _hx(value: int | None) -> str:
@@ -436,7 +456,9 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "reconnect": 0,
             "fresh": 0,
             "ctrl": 0,
+            "c_held": 0,
         }
+        self.c_reqs: list[_Req] = []
         self.waits = 0
         self.expired = 0
         self.wait_log: list[str] = []
@@ -743,12 +765,16 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         dut = cocotb.top
         ctrl = None
         applied_low = 0
+        presented: dict[int, dict[str, int]] = {id(req): {} for req in reqs}
         t_start = int(get_sim_time("ps"))
         for edge in range(1, WINDOW_N + 1):
             await RisingEdge(dut.clk_smc_i)
             level = dut.tb_cpu_reset_applied.value
             if not level.is_resolvable or int(level) != 1:
                 applied_low += 1
+            else:
+                for req in reqs:
+                    self._sample_presented(req, presented[id(req)], edge)
             if ctrl_read and edge == CTRL_ISSUE_EDGE:
                 ctrl = self._start(
                     "SEP_IN", f"{tag}_SCRATCH0_IN_WINDOW", SCRATCH0, write=False, ident=SEP_CTRL_ID
@@ -769,6 +795,24 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
                     f"{WINDOW_N}-edge window ({[_rname(e.resp) for e in early]})"
                 )
             addr_chan = "aw" if req.write else "ar"
+            seen = presented[id(req)]
+            want = (addr_chan, "w") if req.write else (addr_chan,)
+            missing = [c for c in want if c not in seen]
+            if missing:
+                self.findings["BLOCK"].append(
+                    f"{tag} {req.port} {req.label}: {'/'.join(c.upper() for c in missing)}VALID "
+                    f"never sampled high for 0x{req.addr:x} id {req.ident} with reset_applied 1"
+                )
+            cocotb.log.info(
+                "CTRL-ISO-BLOCK-PRESENTED: episode=%s port=%s kind=%s addr=0x%x id=%d %s "
+                "(window edge with reset_applied 1)",
+                tag,
+                req.port,
+                "wr" if req.write else "rd",
+                req.addr,
+                req.ident,
+                " ".join(f"{c}valid_edge={seen.get(c, 'none')}" for c in want),
+            )
             acc = self.sampler.since(req.port, req.t0, addr_chan, req.ident)
             w = self.sampler.since(req.port, req.t0, "w") if req.write else []
             period_ps = self.period_ps
@@ -796,6 +840,22 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 "CHK-OBS-FRONTPORT-WHILE-BLOCKED",
             )
         return ctrl
+
+    def _sample_presented(self, req: _Req, seen: dict[str, int], edge: int) -> None:
+        """Record the first edge the bench drives the request's AW/AR (address and ID) and W."""
+        assert self.sampler is not None
+        h = self.sampler.handles[req.port]
+        chan = "aw" if req.write else "ar"
+        if chan not in seen:
+            valid = self.sampler._int(h[f"{chan}valid"])
+            if (
+                valid == 1
+                and self.sampler._int(h[f"{chan}addr"]) == req.addr
+                and self.sampler._int(h[f"{chan}id"]) == req.ident
+            ):
+                seen[chan] = edge
+        if req.write and "w" not in seen and self.sampler._int(h["wvalid"]) == 1:
+            seen["w"] = edge
 
     async def _complete_blocked(self, reqs: list[_Req], tag: str, release_ps: int) -> None:
         """Episodes A and B: each blocked read completes with one R beat, OKAY; a boot-ROM read
@@ -896,18 +956,29 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
             if rb != value:
                 self.findings["OTHER"].append(f"W{i} seed read back {_hx(rb)}, want {_hx(value)}")
         for port, addr in (("SEP_IN", ROM_A), ("SYS_IN", ROM_B), ("JTAG_IN", ROM_B)):
-            self.rom_ref[f"{port}@{addr:x}"] = await self._do(port, "ROM_REF", addr)
+            got = await self._do(port, "ROM_REF", addr)
+            self.rom_ref[f"{port}@{addr:x}"] = got
+            image = _rom_image_word(addr)
+            if not image or got != image:
+                self.findings["RECONNECT"].append(
+                    f"{tag} {port} boot-ROM reference 0x{addr:x} read {_hx(got)}, the "
+                    f"+{ROM_HEX_PLUSARG} image word is {_hx(image)} (must be non-zero)"
+                )
         seen = dict(self.valids.running_seen)
         cocotb.log.info(
             "CTRL-M1-VALID-MAP: %s running uncore, decoded L2 ar_valid high on %d edges and "
             "r_valid high on %d edges of the scratchpad and ROM traffic so far; RESET_CTRL %s "
-            "RESET_TIMEOUT %s; ROM %s",
+            "RESET_TIMEOUT %s; ROM %s (image words 0x%x=%s 0x%x=%s)",
             tag,
             seen["l2_req.ar_valid"],
             seen["l2_resp.r_valid"],
             _hx(ctrl),
             _hx(timeout),
             {p: _hx(v) for p, v in self.rom_ref.items()},
+            ROM_A,
+            _hx(_rom_image_word(ROM_A)),
+            ROM_B,
+            _hx(_rom_image_word(ROM_B)),
         )
         if not (seen["l2_req.ar_valid"] and seen["l2_resp.r_valid"]):
             self.findings["VALIDS"].append(
@@ -1037,6 +1108,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 )
         written = [r for r in reqs if self.sampler.since(r.port, r.t0, "b", r.ident)]
         cold = not done or len(written) < len(reqs)
+        self.c_reqs = reqs
         self.recovery = "cold" if cold else "none"
         self._obs(
             f"OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE: release_completed={'y' if done else 'n'} "
@@ -1073,8 +1145,32 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
         self._mark("RECOVERY", await self._cold_recovery())
 
+    def _grade_c_held(self) -> None:
+        """Each episode-C write stays without a B from its AW until the cold reset asserts."""
+        assert self.sampler is not None
+        t_cold = int(get_sim_time("ps"))
+        for req in self.c_reqs:
+            since = self.sampler.since(req.port, req.t0, "b", req.ident)
+            b = [e for e in since if e.time_ps < t_cold]
+            if b:
+                self.findings["BLOCK"].append(
+                    f"C {req.port} {req.label}: {len(b)} B before the cold reset "
+                    f"({[_rname(e.resp) for e in b]}) with the release unanswered"
+                )
+            cocotb.log.info(
+                "CTRL-ISO-C-WRITE-HELD: port=%s addr=0x%x id=%d B before the cold reset %d "
+                "(%d edges from the request)",
+                req.port,
+                req.addr,
+                req.ident,
+                len(b),
+                (t_cold - req.t0) // self.period_ps,
+            )
+            self.counts["c_held"] += 1
+
     async def _cold_recovery(self) -> int:
         """The reset agent's cold reset and the bring-up, then the S1 setup again."""
+        self._grade_c_held()
         await self._send(SmcResetOp.COLD_RST_LO)
         await self._wait_state(
             "C recovery cold assert",
@@ -1199,18 +1295,23 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
         if not f["BLOCK"] and not f["RECONNECT"]:
             cocotb.log.info(
-                "CHK-ISO-BLOCK-NO-RESPONSE: %d requests, 0 responses during %d-edge windows; the "
-                "%d blocked reads of episodes A and B answered after release; the completion of "
-                "the 3 episode-C writes is OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE (recovery=%s)",
+                "CHK-ISO-BLOCK-NO-RESPONSE: %d requests presented while reset_applied is 1 "
+                "(AR/AW VALID with the request's address and ID, and W VALID for writes, sampled "
+                "high in the window; CTRL-ISO-BLOCK-PRESENTED), 0 responses during %d-edge "
+                "windows; the %d blocked reads of episodes A and B answered after release; %d "
+                "episode-C writes without a B until the cold reset (CTRL-ISO-C-WRITE-HELD), "
+                "their completion is OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE (recovery=%s)",
                 self.counts["blocked"],
                 WINDOW_N,
                 self.counts["blocked_rd"],
+                self.counts["c_held"],
                 self.recovery,
             )
         if not f["RECONNECT"]:
             cocotb.log.info(
                 "CHK-ISO-RECONNECT: %d blocked reads completed OKAY (episodes A, B; one R beat "
-                "each, RLAST, boot-ROM words equal to their S1 reads), fresh bursts OKAY with "
+                "each, RLAST, boot-ROM words equal to their S1 reads and to the non-zero "
+                "+smc_rom_hex image words), fresh bursts OKAY with "
                 "data (%d AxLEN=%d accesses after recovery=%s, every W beat accepted, one B, "
                 "AxLEN+1 R beats, RLAST last only), reset_applied 0 after each graded release",
                 self.counts["blocked_rd"],

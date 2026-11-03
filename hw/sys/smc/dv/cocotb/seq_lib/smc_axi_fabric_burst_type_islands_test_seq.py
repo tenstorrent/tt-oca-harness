@@ -826,6 +826,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         self.serial = 0
         self.ref: dict[Reg, int] = {}
         self.live_reads = 0
+        self.rs_1k: tuple[int | None, int | None] = (None, None)
         self.setup_compares = 0
         self.last_access = "none"
         self.expired = 0
@@ -1198,6 +1199,20 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         tag = (pidx << 24) | (iidx << 20) | (sidx << 16) | (beat << 12) | BEAT_TAG
         return ((0x5000_0000 | tag) << 32) | (0x4000_0000 | tag)
 
+    @staticmethod
+    def _stated_bresp(isl: Island, start: int, beats: int, burst: int) -> int | None:
+        """OKAY when every byte of every beat lands on a named register of the island.
+
+        memmap.adoc gives a write burst to a register unit the response of its single-beat
+        writes, and a write to a register answers OKAY. A beat that touches a byte no named
+        register holds has a code SF-007 and SF-010 leave open, so the burst gets ``None``.
+        """
+        live = {a for reg in isl.regs for a in range(reg.addr, reg.addr + reg.width)}
+        words = footprint(start, beats, burst)
+        if all(a in live for word in words for a in range(word, word + BEAT)):
+            return OKAY
+        return None
+
     def _shape_start(self, isl: Island, burst: int) -> int:
         if burst == FIXED:
             return isl.base + isl.fixed_off
@@ -1223,7 +1238,8 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     beats=beats,
                     wdata=_pack(data),
                 )
-                bresp = self._check_write(fam, ctx, port, item, hs)
+                stated = self._stated_bresp(isl, start, beats, burst)
+                bresp = self._check_write(fam, ctx, port, item, hs, stated)
                 after = await self._readback(isl, fam, shape)
                 words = set(footprint(start, beats, burst))
                 inside = []
@@ -1244,6 +1260,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     island=isl.key,
                     shape=shape,
                     bresp=_rname(bresp),
+                    stated_bresp="open" if stated is None else _rname(stated),
                     rresp="-",
                     wdata=",".join(_hl(d) for d in data),
                     footprint=";".join(inside) or "none",
@@ -2041,6 +2058,15 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             )
         return item
 
+    @staticmethod
+    def _region_size_out() -> int | None:
+        """The REGION_SIZE CSR value on the DUT output ``smc_region_size_o``.
+
+        Once the window is 1 KiB the CSR lies beyond it, so no inbound port can read it back.
+        """
+        value = cocotb.top.smc_region_size.value
+        return int(value) if value.is_resolvable else None
+
     async def _window_1k(self) -> int:
         fam = self.fams["REGIONEDGE"]
         n = 0
@@ -2048,7 +2074,28 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             name: await self._rd(fam, "SEP_IN", f"WDT_PRE_{name}", addr, 4)
             for name, addr in WDT_REGS
         }
+        before = self._region_size_out()
         await self._wr(fam, "SEP_IN", "REGION_SIZE_1K", REGION_SIZE_REG, REGION_SIZE_1K)
+        after = self._region_size_out()
+        self.rs_1k = (before, after)
+        fam.compares += 2
+        if before != REGION_SIZE_RESET or after != REGION_SIZE_1K:
+            fam.findings.append(
+                f"REGIONEDGE smc_region_size_o reads {_hx(before)} before and {_hx(after)} after "
+                f"the REGION_SIZE write, want 0x{REGION_SIZE_RESET:x} then 0x{REGION_SIZE_1K:x}"
+            )
+        cocotb.log.info(
+            "CTRL-BT-REGION-SIZE-1K: smc_region_size_o %s before, %s after the REGION_SIZE write "
+            "(want 0x%x then 0x%x)",
+            _hx(before),
+            _hx(after),
+            REGION_SIZE_RESET,
+            REGION_SIZE_1K,
+        )
+        assert after == REGION_SIZE_1K, (
+            f"REGION_SIZE output reads {_hx(after)} after the 0x{REGION_SIZE_1K:x} write: the 1 KiB "
+            f"window legs would run at the reset size"
+        )
         rows = []
         for pidx, port in enumerate(PORTS):
             base = GLOBAL_BASE_RESET if port == "SYS_IN" else LOCAL_BASE_RESET
@@ -2354,9 +2401,11 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             return
         text = {
             "ISLAND64": f"{fam.bursts} bursts on 3 islands x 3 ports, protocol held, "
-            f"out-of-footprint registers unchanged, liveness OKAY",
+            f"BRESP OKAY where every beat lands on a register, out-of-footprint registers "
+            f"unchanged, liveness OKAY",
             "ISLAND32": f"{fam.bursts} bursts on 3 islands x 3 ports, protocol held, "
-            f"out-of-footprint registers unchanged, liveness OKAY",
+            f"BRESP OKAY where every beat lands on a register, out-of-footprint registers "
+            f"unchanged, liveness OKAY",
             "STRB": f"{fam.bursts} strobed writes and pair reads, only strobed lanes changed, "
             f"64-bit pair assembly as stated",
             "GPIO": f"{fam.bursts} GPIO bursts x 3 ports, protocol held, seeded slots "
@@ -2367,8 +2416,9 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             f"out-of-footprint slots unchanged, liveness OKAY",
             "RULEEDGE": "scratchpad-end burst OKAY with data, CLA word unchanged, CPU-control-end "
             "read protocol held",
-            "REGIONEDGE": f"window-end bursts protocol held, watchdog unchanged, REGION_SIZE "
-            f"0x{REGION_SIZE_RESET:08X} and liveness after recovery",
+            "REGIONEDGE": f"window-end bursts protocol held, 1 KiB legs run with "
+            f"smc_region_size_o {_hx(self.rs_1k[1])} (was {_hx(self.rs_1k[0])}), watchdog "
+            f"unchanged, REGION_SIZE 0x{REGION_SIZE_RESET:08X} and liveness after recovery",
         }[fam.key]
         cocotb.log.info(
             "%s: %s (%d cells of %d planned, %d graded accesses, %d reference compares)",

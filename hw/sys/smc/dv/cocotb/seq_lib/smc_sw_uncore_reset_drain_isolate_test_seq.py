@@ -47,7 +47,7 @@ from env.smc_reset_item import SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiDriver, SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import cpu_ctrl_u32, smc_addr, smc_indexed_addr
+from .smc_addr_map import cpu_ctrl_u32, smc_addr, smc_indexed_addr, wdt_u32
 from .smc_base_test_seq import wait_fuse_sense_done
 from .smc_output_fabric_vip_utils import output_fabric_pass_all_cfg_seq
 from .smc_reset_seq_base import SmcResetSeqBase
@@ -91,10 +91,10 @@ RESETS_DONE_RESET = cpu_ctrl_u32("CPU_CTRL__CORE_RESET_PULSE_COUNT__CORE_RESETS_
 RESETS_DONE_BP = cpu_ctrl_u32("CPU_CTRL__CORE_RESET_PULSE_COUNT__CORE_RESETS_DONE_bp")
 RESETS_DONE_CORE3 = 1 << (RESETS_DONE_BP + 3)
 
-# wdt.adoc: the KEY write that unlocks the next write, and the compare register reset.
+# wdt.adoc: the KEY write that unlocks the next write.
 WDT_MAGIC_KEY = 0x51F15E
 WDT_CMP_REF = 0x0234
-WDT_CMP_RESET = 0x1000
+WDT_CMP_RESET = wdt_u32("WDT__CMP__WDOGCMP0_reset")
 
 SCRATCH_REF_BASE = SPM_BASE + 0x20_000
 PAIR_SEP_ADDR = SPM_BASE + 0x20_100
@@ -217,6 +217,9 @@ SAMPLED = (
     ("yarv", "sys_axi_arvalid"),
     ("yarr", "sys_axi_arready"),
     ("yara", "sys_axi_araddr"),
+    ("jarv", "jtag_axi_arvalid"),
+    ("jarr", "jtag_axi_arready"),
+    ("jara", "jtag_axi_araddr"),
     ("srv", "s_axi_rvalid"),
     ("srr", "s_axi_rready"),
     ("srl", "s_axi_rlast"),
@@ -239,6 +242,7 @@ SAMPLED = (
     ("orr", "tb_output_axi_rready"),
 )
 IDX = {key: n for n, (key, _name) in enumerate(SAMPLED)}
+AR_NETS = {"SEP": ("sarv", "sara"), "SYS": ("yarv", "yara"), "JTAG": ("jarv", "jara")}
 FRONT_BIT = {"aw": 0, "w": 1, "b": 2, "ar": 3, "r": 4}
 NO_RESPONSE = None
 BURST_BEATS = 8
@@ -573,6 +577,14 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         )
         cocotb.start_soon(self._mark_done(raw))
         return raw
+
+    def _ar_presented(self, raw, a: int, b: int, gate: str) -> int | None:
+        """First sample in [a, b) with the port's ARVALID at 1 on ``raw.addr`` and ``gate`` at 1."""
+        valid, addr = AR_NETS[raw.port]
+        for i in range(max(a, raw.issued), min(b, self.n)):
+            if self._c(valid, i) == 1 and self._c(addr, i) == raw.addr and self._c(gate, i) == 1:
+                return i
+        return None
 
     async def _mark_done(self, raw) -> None:
         """Record the sample at which a presented access is answered."""
@@ -1267,6 +1279,12 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                 f"fifth read answered at sample {fifth.done_at}, not after the reconnect@{recon}"
             )
         a0 = a_idx if a_idx is not None else iss
+        fifth_ar = self._ar_presented(fifth, a0, recon or self.n, "isoreq")
+        if fifth_ar is None:
+            bad2.append(
+                f"fifth read ARVALID not sampled high on 0x{fifth.addr:x} with isolate_req 1 "
+                f"between isolate_req@{a_idx} and the reconnect@{recon}"
+            )
         front_after = self._front_ar(a0, self.n)
         fifth_front = self._front_id(FIFTH_ID)
         if fifth_front is None:
@@ -1290,9 +1308,10 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         )
         self.obs_lines.append(obs5)
         text2 = (
-            f"max pending AR {pend_max} <= 4; fifth read (FIFTH_ID) completed after reconnect "
-            f"(answered at sample {fifth.done_at}, reconnect@{recon}) with its reference data "
-            f"| {obs5}"
+            f"max pending AR {pend_max} <= 4; fifth read (FIFTH_ID) presented while isolated "
+            f"(SEP_IN ARVALID on its address at sample {fifth_ar}, isolate_req 1, reconnect@"
+            f"{recon}) and completed after reconnect (answered at sample {fifth.done_at}) with "
+            f"its reference data | {obs5}"
         )
         released = self._first("unc", 0, iss)
         self._window("S4a", iss, (recon or self.n) + 1)
@@ -1627,6 +1646,13 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         good, total, first_bad = self._all("l2iso", 1, w0, end)
         if good != total:
             bad.append(f"l2_isolated drops inside the window at sample {first_bad}")
+        presented = {raw.port: self._ar_presented(raw, w0, end, "l2iso") for raw in blocked}
+        for raw in blocked:
+            if presented[raw.port] is None:
+                bad.append(
+                    f"{raw.port} blocked read ARVALID not sampled high on 0x{raw.addr:x} with "
+                    f"l2_isolated 1 in samples {w0}..{end}"
+                )
         good, total, first_bad = self._all("l2par", 0, w0, end)
         if good != total:
             bad.append(f"tb_cpu_l2_pending_ar leaves 0 at sample {first_bad}: a read was accepted")
@@ -1664,8 +1690,10 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         self._grade(
             T,
             bad,
-            f"3 managers blocked {BLOCK_EDGES} edges, 0 responses; after reconnect 3/3 completed "
-            f"with reference data; fresh read OK",
+            f"3 managers presented while isolated (ARVALID on the read address with l2_isolated "
+            f"1 at sample SEP {presented['SEP']} SYS {presented['SYS']} JTAG "
+            f"{presented['JTAG']}, window {w0}..{end}), blocked {BLOCK_EDGES} edges, 0 "
+            f"responses; after reconnect 3/3 completed with reference data; fresh read OK",
         )
         self._stamp("BLOCKED", len(blocked))
 

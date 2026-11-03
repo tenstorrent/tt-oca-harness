@@ -139,6 +139,12 @@ PLANNED_ITEMS = {"SEP_IN": 4, "SYS_IN": 4, "JTAG_IN": 2, "EFUSE_JTAG": 1}
 EXPECTED_ABORTED_SEQUENCER_ITEMS = 3 * (4 + 3 + 2)
 
 ENTRIES = ("pin", "jtag", "flr")
+FRESH_BASE = {
+    "SEP_IN": FRESH_SEP_DATA,
+    "SYS_IN": FRESH_SYS_DATA,
+    "JTAG_IN": FRESH_JTAG_DATA,
+    "SYS_OUT": FRESH_EXT_DATA,
+}
 CHANNELS = ("aw", "w", "b", "ar", "r")
 VECTOR_BIT = {"aw": 0, "w": 1, "b": 2, "ar": 3, "r": 4}
 LINKS = (
@@ -204,6 +210,15 @@ def _pack(*, cool_ovrd: int, cool_val: int) -> int:
     if cool_val:
         word |= 1 << jtag_smc_reset_ctrl_bit("cool_reset_n_val")
     return word
+
+
+def _entry_word(base: int, name: str) -> int:
+    """Return ``base`` with the entry number in bits 15:12.
+
+    Each entry writes a word that no earlier entry left at the address, so a fresh write
+    that does not land fails its read-back compare.
+    """
+    return base | ((ENTRIES.index(name) + 1) << 12)
 
 
 def _signal_names() -> tuple[str, ...]:
@@ -479,6 +494,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         self.fence: list[tuple[str, int, int]] = []
         self.records: dict[str, SimpleNamespace] = {}
         self.glitch = SimpleNamespace()
+        self.ref_rb: dict[str, tuple[int, int]] = {}
         self.ej = None
         self.ej_pre_value = None
         self.dtp_event = None
@@ -585,11 +601,10 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
     # --- setup and per-entry preparation ----------------------------------------------
     async def _ref_words(self, label: str) -> None:
         await self.csr_write(f"{label}_SCRATCH_REF", SCRATCH0, SCRATCH_REF, length=8)
-        got = await self.csr_read(f"{label}_SCRATCH_RB", SCRATCH0, length=8)
-        assert got & 0xFFFF_FFFF == SCRATCH_REF, f"{label}: SCRATCH[0] reads 0x{got:x}"
+        scratch = await self.csr_read(f"{label}_SCRATCH_RB", SCRATCH0, length=8)
         await self.csr_write(f"{label}_THRESHOLD_REF", THRESHOLD, THRESHOLD_REF)
-        got = await self.csr_read(f"{label}_THRESHOLD_RB", THRESHOLD)
-        assert got == THRESHOLD_REF, f"{label}: hang threshold reads 0x{got:x}"
+        threshold = await self.csr_read(f"{label}_THRESHOLD_RB", THRESHOLD)
+        self.ref_rb[label] = (scratch & 0xFFFF_FFFF, threshold)
 
     async def _flr_counters(self, label: str) -> None:
         delay = await self.csr_read(f"{label}_FLR_DELAY_BEFORE", FLR_DELAY_REG)
@@ -879,8 +894,12 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         rec.fresh = {}
         rec.fresh_idx = {}
         rec.resp = {}
+        rec.words = {link: _entry_word(base, name) for link, base in FRESH_BASE.items()}
+        words = rec.words
         start_sep_in = mon.n
-        wr = await self._okay("SEP", SmcSysAxiOp.WRITE, f"{name}_sep_wr", FRESH_SEP, FRESH_SEP_DATA)
+        wr = await self._okay(
+            "SEP", SmcSysAxiOp.WRITE, f"{name}_sep_wr", FRESH_SEP, words["SEP_IN"]
+        )
         read = await self._okay("SEP", SmcSysAxiOp.READ, f"{name}_sep_rd", FRESH_SEP)
         rec.fresh_idx["SEP_IN"] = (start_sep_in, mon.n)
         rec.resp["SEP_IN"] = (wr.resp_code, read.resp_code)
@@ -891,7 +910,9 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         await self.program_outbound_pass_all()
 
         start_sys_in = mon.n
-        wr = await self._okay("SYS", SmcSysAxiOp.WRITE, f"{name}_sys_wr", FRESH_SYS, FRESH_SYS_DATA)
+        wr = await self._okay(
+            "SYS", SmcSysAxiOp.WRITE, f"{name}_sys_wr", FRESH_SYS, words["SYS_IN"]
+        )
         read = await self._okay("SYS", SmcSysAxiOp.READ, f"{name}_sys_rd", FRESH_SYS)
         rec.fresh_idx["SYS_IN"] = (start_sys_in, mon.n)
         rec.resp["SYS_IN"] = (wr.resp_code, read.resp_code)
@@ -899,7 +920,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
 
         start_jtag_in = mon.n
         wr = await self._okay(
-            "JTAG", SmcSysAxiOp.WRITE, f"{name}_jtag_wr", FRESH_JTAG, FRESH_JTAG_DATA
+            "JTAG", SmcSysAxiOp.WRITE, f"{name}_jtag_wr", FRESH_JTAG, words["JTAG_IN"]
         )
         read = await self._okay("JTAG", SmcSysAxiOp.READ, f"{name}_jtag_rd", FRESH_JTAG)
         rec.fresh_idx["JTAG_IN"] = (start_jtag_in, mon.n)
@@ -909,7 +930,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         start_sys_out = mon.n
         writes0, reads0 = self._v("tb_output_axi_write_count"), self._v("tb_output_axi_read_count")
         wr = await self._okay(
-            "JTAG", SmcSysAxiOp.WRITE, f"{name}_ext_wr", EXT_FRESH, FRESH_EXT_DATA
+            "JTAG", SmcSysAxiOp.WRITE, f"{name}_ext_wr", EXT_FRESH, words["SYS_OUT"]
         )
         writes1 = self._v("tb_output_axi_write_count")
         read = await self._okay("JTAG", SmcSysAxiOp.READ, f"{name}_ext_rd", EXT_FRESH)
@@ -1065,17 +1086,18 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         glitch = self.glitch
         if glitch.stable != glitch.total or glitch.total != 95 or glitch.low_driven != 31:
             fails.append(f"CHK-COOL-GLITCH-NO-ASSERT: {glitch.bad[:3]}")
-        if glitch.scratch != SCRATCH_REF:
+        setup_scratch, setup_threshold = self.ref_rb["SETUP"]
+        if setup_scratch != SCRATCH_REF or glitch.scratch != SCRATCH_REF:
             fails.append(
-                f"CHK-COOL-GLITCH-NO-ASSERT: SCRATCH[0] reads 0x{glitch.scratch:x} after the pulse, "
-                f"want 0x{SCRATCH_REF:x}"
+                f"CHK-COOL-GLITCH-NO-ASSERT: SCRATCH[0] reads 0x{setup_scratch:x} before and "
+                f"0x{glitch.scratch:x} after the pulse, want 0x{SCRATCH_REF:x}"
             )
         lines.append(
             (
                 "CHK-COOL-GLITCH-NO-ASSERT",
                 f"{glitch.low_driven}-sample low pulse; primary_smc/primary_ref/cold stayed 1 at "
-                f"{glitch.stable}/{glitch.total} edges; SCRATCH[0] 0x{glitch.scratch:X} "
-                f"(want 0x{SCRATCH_REF:X})",
+                f"{glitch.stable}/{glitch.total} edges; SCRATCH[0] read 0x{setup_scratch:X} "
+                f"before and 0x{glitch.scratch:X} after the pulse (want 0x{SCRATCH_REF:X})",
             )
         )
 
@@ -1085,18 +1107,21 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         ):
             rec = recs[name]
             n, cores = self._window_effects(rec, token, fails)
-            if name == "pin":
-                text = (
-                    f"primary low={n} edges, cores held {cores}/{n}, SCRATCH[0] "
-                    f"0x{SCRATCH_REF:X} -> 0x{rec.scratch_after:x}, threshold "
-                    f"0x{THRESHOLD_REF:x} -> 0x{rec.threshold_after:x}"
+            scratch_before, threshold_before = self.ref_rb[name]
+            if (scratch_before, threshold_before) != (SCRATCH_REF, THRESHOLD_REF):
+                fails.append(
+                    f"{token}: pre-reset readback SCRATCH[0] 0x{scratch_before:x} threshold "
+                    f"0x{threshold_before:x}, want 0x{SCRATCH_REF:x}/0x{THRESHOLD_REF:x}"
                 )
-            else:
-                text = (
-                    f"{head}primary low={n} edges, cores held {cores}/{n}, SCRATCH[0] -> "
-                    f"0x{rec.scratch_after:x}, threshold -> 0x{rec.threshold_after:x}"
+            lines.append(
+                (
+                    token,
+                    f"{head}primary low={n} edges, cores held {cores}/{n}, SCRATCH[0] "
+                    f"0x{scratch_before:X} -> 0x{rec.scratch_after:x}, threshold "
+                    f"0x{threshold_before:x} -> 0x{rec.threshold_after:x} (pre-reset values read "
+                    f"back after writing 0x{SCRATCH_REF:X}/0x{THRESHOLD_REF:x})",
                 )
-            lines.append((token, text))
+            )
 
         flr = recs["flr"]
         if (
@@ -1118,18 +1143,21 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             )
         )
         cocotb.log.info(
-            "FLR entry: SCRATCH[0] 0x%x and threshold 0x%x after the release",
+            "FLR entry: SCRATCH[0] 0x%x -> 0x%x and threshold 0x%x -> 0x%x across the reset",
+            self.ref_rb["flr"][0],
             flr.scratch_after,
+            self.ref_rb["flr"][1],
             flr.threshold_after,
         )
 
-        def fresh(token, attr, want, label):
+        def fresh(token, attr, link):
             bad = [
-                f"{n}: 0x{getattr(r, attr):x}" for n, r in recs.items() if getattr(r, attr) != want
+                f"{n}: 0x{getattr(r, attr):x} want 0x{r.words[link]:x}"
+                for n, r in recs.items()
+                if getattr(r, attr) != r.words[link]
             ]
             if bad:
-                fails.append(f"{token}: {label} wrong {bad}")
-            return want
+                fails.append(f"{token}: {link} read wrong {bad}")
 
         def resp(link, idx):
             return self._joined(recs[n].resp[link][idx] for n in ENTRIES)
@@ -1137,23 +1165,26 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         def words(attr, width=16):
             return self._joined(f"0x{getattr(recs[n], attr):0{width}x}" for n in ENTRIES)
 
-        fresh("CHK-FRESH-ACCESS-SYS-IN", "sys_read", FRESH_SYS_DATA, "SYS_IN read")
+        def written(link, width=16):
+            return self._joined(f"0x{recs[n].words[link]:0{width}x}" for n in ENTRIES)
+
+        fresh("CHK-FRESH-ACCESS-SYS-IN", "sys_read", "SYS_IN")
         lines.append(
             (
                 "CHK-FRESH-ACCESS-SYS-IN",
                 f"pin/jtag/flr: BRESP {resp('SYS_IN', 0)}, RRESP {resp('SYS_IN', 1)}, read "
-                f"{words('sys_read')} (expected 0x{FRESH_SYS_DATA:016x})",
+                f"{words('sys_read')} (written this entry {written('SYS_IN')})",
             )
         )
-        fresh("CHK-FRESH-ACCESS-JTAG-IN", "jtag_read", FRESH_JTAG_DATA, "JTAG_IN read")
+        fresh("CHK-FRESH-ACCESS-JTAG-IN", "jtag_read", "JTAG_IN")
         lines.append(
             (
                 "CHK-FRESH-ACCESS-JTAG-IN",
                 f"pin/jtag/flr: BRESP {resp('JTAG_IN', 0)}, RRESP {resp('JTAG_IN', 1)}, read "
-                f"{words('jtag_read')} (expected 0x{FRESH_JTAG_DATA:016x})",
+                f"{words('jtag_read')} (written this entry {written('JTAG_IN')})",
             )
         )
-        fresh("CHK-FRESH-ACCESS-SEP-IN", "sep_read", FRESH_SEP_DATA, "SEP_IN read")
+        fresh("CHK-FRESH-ACCESS-SEP-IN", "sep_read", "SEP_IN")
         l2 = {n: r.l2_pending for n, r in recs.items()}
         if any(p != (0, 0) for p in l2.values()):
             fails.append(f"CHK-FRESH-ACCESS-SEP-IN: L2 pending AR/AW {l2}")
@@ -1161,12 +1192,12 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             (
                 "CHK-FRESH-ACCESS-SEP-IN",
                 f"pin/jtag/flr: BRESP {resp('SEP_IN', 0)}, RRESP {resp('SEP_IN', 1)}, read "
-                f"{words('sep_read')} (expected 0x{FRESH_SEP_DATA:016x}), L2 pending AR/AW "
+                f"{words('sep_read')} (written this entry {written('SEP_IN')}), L2 pending AR/AW "
                 f"{self._joined(f'{ar}/{aw}' for ar, aw in (l2[n] for n in ENTRIES))}",
             )
         )
         ext = {n: r.ext for n, r in recs.items()}
-        if any(e != (1, 1, FRESH_EXT_DATA) for e in ext.values()):
+        if any(e != (1, 1, recs[n].words["SYS_OUT"]) for n, e in ext.items()):
             fails.append(f"CHK-FRESH-ACCESS-SYS-OUT: write/read count deltas and data {ext}")
         lines.append(
             (
@@ -1176,7 +1207,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                 f"{self._joined(f'+{ext[n][1]}' for n in ENTRIES)}, BRESP {resp('SYS_OUT', 0)}, "
                 f"RRESP {resp('SYS_OUT', 1)}, read "
                 f"{self._joined(f'0x{ext[n][2]:08x}' for n in ENTRIES)} "
-                f"(expected 0x{FRESH_EXT_DATA:08x})",
+                f"(written this entry {written('SYS_OUT', 8)})",
             )
         )
         efuse = {n: r.efuse_value for n, r in recs.items()}
@@ -1283,13 +1314,26 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         )
         per, nviol = valid_check("CHK-VALID-LOW-CLUSTER", ("CPU_FRONT",))
         l2f_before = self._joined(recs[n].mon.assert_state["prev"].get("l2f_r") for n in ENTRIES)
+        live = {
+            n: (
+                r.mon.pre_cnt["CPU_FRONT"]["r"],
+                r.mon.cnt["CPU_FRONT"]["b"],
+                r.mon.cnt["CPU_FRONT"]["r"],
+            )
+            for n, r in recs.items()
+        }
+        dead = [f"{n}: pre R/post B/post R {v}" for n, v in live.items() if 0 in v]
+        if dead:
+            fails.append(f"CHK-VALID-LOW-CLUSTER: L2F B/R VALID never seen high outside {dead}")
         lines.append(
             (
                 "CHK-VALID-LOW-CLUSTER",
                 f"L2F B/R VALID low at {sum(per['CPU_FRONT'])} edges x 3 entries (per entry "
                 f"{self._joined(per['CPU_FRONT'])}; L2F R VALID at the sample before the "
-                f"assertion {l2f_before}); {nviol} violations; MMIO leg not driven "
-                f"(c-fw image deferred)",
+                f"assertion {l2f_before}); {nviol} violations; live control: L2F R handshakes "
+                f"between arm and assertion / B and R handshakes after the release "
+                f"{self._joined('/'.join(str(x) for x in live[n]) for n in ENTRIES)} (each > 0); "
+                f"MMIO leg not driven (c-fw image deferred)",
             )
         )
         mmio_edges = [r.mon.valid_edges["CPU_MMIO"] for r in recs.values()]
