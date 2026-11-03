@@ -85,7 +85,7 @@ set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset
 set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_rst_cool_no_sync_smc SMCCLK
 set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_reset_unit/u_smc_subsystem_resets/u_reset_complete_sync SMCCLK
 
-# ---- prim_sync3r (166 instances) ----
+# ---- prim_sync3r (168 instances) ----
 set_cdc_max_delay_prim_sync3 u_smc_base/u_internal_regs/u_smc_dfd_wrap/ref_clk_sync SMCCLK
 set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[0].u_gpio_interface/u_pad2core_sync} SMCCLK
 set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[10].u_gpio_interface/u_pad2core_sync} SMCCLK
@@ -148,6 +148,8 @@ set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[61].
 set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[62].u_gpio_interface/u_pad2core_sync} SMCCLK
 set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[63].u_gpio_interface/u_pad2core_sync} SMCCLK
 set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[64].u_gpio_interface/u_pad2core_sync} SMCCLK
+set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[65].u_gpio_interface/u_pad2core_sync} SMCCLK
+set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[66].u_gpio_interface/u_pad2core_sync} SMCCLK
 set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[6].u_gpio_interface/u_pad2core_sync} SMCCLK
 set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[7].u_gpio_interface/u_pad2core_sync} SMCCLK
 set_cdc_max_delay_prim_sync3 {u_smc_peripherals/u_smc_padring/gen_gpio_intf[8].u_gpio_interface/u_pad2core_sync} SMCCLK
