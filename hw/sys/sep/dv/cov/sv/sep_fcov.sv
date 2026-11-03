@@ -809,6 +809,7 @@ module sep_fcov (
   input wire [1:0]                          lockstep_ctrl_i,  // {disable_corruption_detection, err_injection_en}
   input wire                                lockstep_status_i, // lockstep_status_o.corruption_detected
   input wire [31:0]                         dbg_in_araddr_i,  // PR-DBG-IN ar.addr, before the debug alias remap
+  input wire [$bits(sep_pkg::sep_ras_t)-1:0] sep_ras_i,  // sep_ras_probe_o, the DUT sep_ras_o
   // Key Manager taps of the feature points (docs/SEP_FCOV.adoc, Key Manager
   // groups, Sampled signals): read-only, no force.
   input wire                                km_unrec_port_i,  // km_unrecoverable_err_o
@@ -44476,6 +44477,115 @@ module sep_fcov (
     ov_pass_q <= (open_value_leg_pass != 0);
     if (graded_owner != FcovOwnNone) ov_owner_q <= graded_owner;
     if (ov_rise && ov_own) u_sep_open_value_leg_cg.sample(5'(open_value_leg_pass));
+  end
+
+  // sep_ras_cg (docs/SEP_FCOV.adoc): the rise of each sep_ras_o field inside
+  // the window of the test that raises its source. A packed struct puts its
+  // first declared field at the MSB, so each bit position below follows from
+  // the sep_pkg::sep_ras_t declaration order and the widths of the fields
+  // after it; RasW checks the total.
+  localparam int unsigned RasTokenMatchFault = 0;
+  localparam int unsigned RasEntropyPoolErr = RasTokenMatchFault + 1;
+  localparam int unsigned RasEntropyFillStall = RasEntropyPoolErr + 1;
+  localparam int unsigned RasCryptoAlert = RasEntropyFillStall + 1;
+  localparam int unsigned RasEdnFatal = RasCryptoAlert + 1;
+  localparam int unsigned RasCsrngFatal = RasEdnFatal + 1;
+  localparam int unsigned RasPeriphBusErr = RasCsrngFatal + 1;
+  localparam int unsigned RasDmaHostIntgErr = RasPeriphBusErr + sep_pkg::NUM_PERIPH_BUS_ERRS;
+  localparam int unsigned RasDmaRegBusErr = RasDmaHostIntgErr + 1;
+  localparam int unsigned RasDmaAlert = RasDmaRegBusErr + 1;
+  localparam int unsigned RasKmCorrectable = RasDmaAlert + 1;
+  localparam int unsigned RasKmUncorrectable = RasKmCorrectable + 1;
+  localparam int unsigned RasDccmEccUe = RasKmUncorrectable + 1;
+  localparam int unsigned RasDccmEccCe = RasDccmEccUe + 1;
+  localparam int unsigned RasIccmEccUe = RasDccmEccCe + 1;
+  localparam int unsigned RasIccmEccCe = RasIccmEccUe + 1;
+  localparam int unsigned RasWdtBite = RasIccmEccCe + 1;
+  localparam int unsigned RasWdtBark = RasWdtBite + 1;
+  localparam int unsigned RasLockstepErr = RasWdtBark + 1;
+  localparam int unsigned RasLcSigintErr = RasLockstepErr + 1;
+  localparam int unsigned RasW = $bits(sep_pkg::sep_ras_t);
+  localparam int unsigned RasPbeAes = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_AES;
+  localparam int unsigned RasPbeHmac = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_HMAC;
+  localparam int unsigned RasPbeKmac = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_KMAC;
+  localparam int unsigned RasPbeOtbn = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_OTBN;
+  localparam int unsigned RasPbeCsrng = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_CSRNG;
+  localparam int unsigned RasPbeEdn = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_EDN;
+  localparam int unsigned RasPbeWdt = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_WDT;
+  if (RasW != RasLcSigintErr + 1) begin : g_ras_width_check
+    $fatal(1, "sep_ras_t is %0d bits, the sep_ras_cg map has %0d", RasW, RasLcSigintErr + 1);
+  end
+
+  covergroup sep_ras_cg with function sample (logic [4:0] ras_bit);
+    option.per_instance = 1;
+    option.name = "sep_ras_cg";
+    cp_ras_rise: coverpoint ras_bit {
+      bins lc_sigint_err = {RasLcSigintErr};
+      bins wdt_bark = {RasWdtBark};
+      bins wdt_bite = {RasWdtBite};
+      bins iccm_ecc_ce = {RasIccmEccCe};
+      bins iccm_ecc_ue = {RasIccmEccUe};
+      bins dccm_ecc_ce = {RasDccmEccCe};
+      bins dccm_ecc_ue = {RasDccmEccUe};
+      bins km_uncorrectable = {RasKmUncorrectable};
+      bins km_correctable = {RasKmCorrectable};
+      bins dma_alert = {RasDmaAlert};
+      bins dma_reg_bus_err = {RasDmaRegBusErr};
+      bins dma_host_intg_err = {RasDmaHostIntgErr};
+      bins periph_bus_err_aes = {RasPbeAes};
+      bins periph_bus_err_hmac = {RasPbeHmac};
+      bins periph_bus_err_kmac = {RasPbeKmac};
+      bins periph_bus_err_otbn = {RasPbeOtbn};
+      bins periph_bus_err_wdt = {RasPbeWdt};
+      bins csrng_fatal = {RasCsrngFatal};
+      bins edn_fatal = {RasEdnFatal};
+      bins crypto_alert = {RasCryptoAlert};
+      bins entropy_fill_stall = {RasEntropyFillStall};
+      bins token_match_fault = {RasTokenMatchFault};
+      // Constant 0 in this build: hw/sys/sep/doc/port_table.adoc
+      // (lockstep_status_o) and the sep_ras_t comment of entropy_pool_err.
+      ignore_bins tied0 = {RasLockstepErr, RasEntropyPoolErr};
+      // The CSRNG and EDN windows of the crypto demux answer an unmapped
+      // offset with DECERR before the register bridge, so no access raises
+      // these two bits.
+      ignore_bins demux_decerr = {RasPbeCsrng, RasPbeEdn};
+    }
+  endgroup
+
+  sep_ras_cg u_sep_ras_cg = new();
+
+  // The owner of each field: the test that raises its source. csrng_fatal and
+  // edn_fatal have two, the fatal-error leaf and the ALERT_TEST walk.
+  function automatic logic ras_own(input int unsigned k);
+    case (k)
+      RasLcSigintErr: return graded_owner == FcovOwnSepLccStateCodewordRandTest;
+      RasWdtBark, RasWdtBite: return graded_owner == FcovOwnSepResetWdtSanityTest;
+      RasIccmEccCe, RasIccmEccUe, RasDccmEccCe, RasDccmEccUe:
+      return graded_owner == FcovOwnSepTcmEccCpuTrapTest;
+      RasKmUncorrectable: return graded_owner == FcovOwnSepKmCpuProtectRandTest;
+      RasKmCorrectable: return graded_owner == FcovOwnSepKmCommandProtocolRandTest;
+      RasDmaAlert, RasCryptoAlert: return graded_owner == FcovOwnSepPicPendingMapWalkRandTest;
+      RasDmaRegBusErr, RasPbeAes, RasPbeHmac, RasPbeKmac, RasPbeOtbn, RasPbeWdt:
+      return graded_owner == FcovOwnSepCpuBridgeFaultMatrixRandTest;
+      RasDmaHostIntgErr: return graded_owner == FcovOwnSepDmaBasicTest;
+      RasCsrngFatal, RasEdnFatal:
+      return (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest) ||
+          (graded_owner == FcovOwnSepPicPendingMapWalkRandTest);
+      RasEntropyFillStall: return graded_owner == FcovOwnSepEntropyPoolApertureTest;
+      RasTokenMatchFault: return graded_owner == FcovOwnSepEfuseTokenMatchFaultPicTest;
+      default: return 1'b0;
+    endcase
+  endfunction
+
+  logic [RasW-1:0] ras_q;
+  wire  [RasW-1:0] ras_rise = sep_ras_i & ~ras_q;
+  always @(posedge clk_i) begin
+    ras_q <= sep_ras_i;
+    if (!in_reset && !$isunknown({sep_ras_i, ras_q})) begin
+      for (int k = 0; k < RasW; k++) begin
+        if (ras_rise[k] && ras_own(k)) u_sep_ras_cg.sample(5'(k));
+      end
+    end
   end
 
 endmodule : sep_fcov

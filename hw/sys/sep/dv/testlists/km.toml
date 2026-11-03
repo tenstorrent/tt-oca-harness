@@ -513,7 +513,7 @@ firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 1
 timeout_sec = 10800
-tags = ["km", "mailbox", "recovery", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
+tags = ["km", "mailbox", "recovery", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner", "sep_ras"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
