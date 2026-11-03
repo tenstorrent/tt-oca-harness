@@ -128,6 +128,22 @@ GO value during a transfer is not graded.
                       after each later start shows the OPCODE and DIGEST_SWAP
                       that start wrote, both other than the first start; the
                       digest registers before the GO differ from the golden.
+  CHK-DMA-CTRL-BUSY   on a seed that draws GO=1 for the CONTROL write at BUSY=1
+                      during the 4096-byte single-chunk copy: after DONE and a
+                      16-clock settle, the DMA master shows exactly the AR and
+                      AW counts of that one copy (n_txn each). Control: BUSY
+                      stays 1 through the write (else CTRL-MISSING). A seed
+                      that draws GO=0 logs ``INFO-DMA-CTRL-BUSY-SKIP``; seed 1
+                      draws GO=1. ``OBS-DMA-CTRL-BUSY`` logs the CONTROL value
+                      read right after the write and after DONE, STATUS,
+                      ERROR_CODE and the destination compare.
+
+Busy write contract (CHK-DMA-CTRL-BUSY): "A start is a write of `CONTROL.GO`
+while `STATUS.BUSY` is clear" (``hw/sys/sep/doc/dma.adoc:79-80``), so a GO=1
+write at BUSY=1 is not a start; the engine takes its configuration at a start
+(``:80-86``), so the copy moves only its own beats. What the write does to
+CONTROL, and what a GO=0 write at BUSY=1 does to the copy, are not stated and
+stay logged.
 
 Continuation contract (CHK-DMA-CONT-CFG): "The engine takes `OPCODE` and
 `DIGEST_SWAP` at the first start of a transfer and keeps them for its later
@@ -249,6 +265,8 @@ CTRL_CFG_MASK = CTRL_OPCODE_MASK | CTRL_SWAP_MASK
 # clocked FCOV cells (one bin per clock, at most eight).
 LABEL_CLKS = 2
 LABEL_REPLAY_CLKS = 16
+# Clocks after DONE before the DMA master tap is read for the busy-write copy.
+BUSY_SETTLE_CLKS = 16
 # Range registers (secure_dma.rdl:118-122 BASE, :125-130 LIMIT, :133-137
 # RANGE_VALID, all ``sw = rw``; :141-153 RANGE_REGWEN, True = 6 at :142,
 # "Unlocked at reset" at :151; dma.hjson:289, :304, :318 put the three under
@@ -1372,19 +1390,23 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         m_wr = self.busy.mark()
         await ops.wr(CONTROL, value)
         busy_through = int(self.busy.level() == 1 and not self.busy.fall_clks_since(m_wr))
+        ctrl_wr = await ops.rd(CONTROL)
         st = None
         for _ in range(ops.done_bound(poll_size(x.total))):
             st = await ops.read_status()
             if (st.done and not st.busy) or st.error or st.aborted:
                 break
+        await ClockCycles(cocotb.top.clk_i, BUSY_SETTLE_CLKS)
         err = await ops.rd(ERROR_CODE)
+        ctrl_done = await ops.rd(CONTROL)
         ev = self.tap.since(m_tap)
         got = await self.mem.read(c.dst_region, c.dst_region_words)
         exp = c.expected_dst()
         mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
         self.logger.info(
             "OBS-DMA-CTRL-BUSY seed=%d go=%d control=0x%08x busy_through_write=%d ar=%d aw=%d "
-            "n_txn=%d %s error_code=0x%x dst_mismatch=%d",
+            "n_txn=%d %s error_code=0x%x dst_mismatch=%d control_after_write=0x%08x "
+            "control_after_done=0x%08x",
             self.seed,
             plan.busy_go,
             value,
@@ -1395,7 +1417,20 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             st.fmt(),
             err,
             mism,
+            ctrl_wr,
+            ctrl_done,
         )
+        if not plan.busy_go:
+            self.logger.info("INFO-DMA-CTRL-BUSY-SKIP seed=%d go=0", self.seed)
+        elif not busy_through:
+            self._ctrl_missing("CHK-DMA-CTRL-BUSY", "BUSY fell during the CONTROL write")
+        else:
+            self._pass(
+                "CHK-DMA-CTRL-BUSY",
+                len(ev.ar) == x.n_txn and len(ev.aw) == x.n_txn,
+                f"contract=hw/sys/sep/doc/dma.adoc:79-86 go=1 ar={len(ev.ar)} aw={len(ev.aw)} "
+                f"expect={x.n_txn}",
+            )
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE | ST_ERROR)
 
     # ---- Leg C ------------------------------------------------------------
