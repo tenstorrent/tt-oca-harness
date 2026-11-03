@@ -139,6 +139,8 @@ package smc_efuse_pkg;
   localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256 words --- word == access granularity.
   localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 1024 bytes.
 
+  // ADOPTER FUSE INFO:
+
   // The adopter fuse region follows the harness map in the fuse address space and is capped
   // by its window in smc_external, so fuse commands must address and count both.
   localparam int unsigned MaxAdopterFuseWords =
@@ -149,8 +151,8 @@ package smc_efuse_pkg;
       MaxSenseWords * NumFuseWordWidth
   );  // 16 bits to encode the harness bank and the largest adopter region
   localparam int unsigned NumFuseByteWidth = $clog2(
-      NumFuseBytes
-  );  // 10 bits to encode 1024 bytes <- used to create byte address type for bank
+      MaxSenseWords * 4
+  );  // 13 bits to encode the harness bank and the largest adopter region in bytes
   // NOTE: $clog2(N) can only represent 0 to N-1, but a full-length read counts N words
   localparam int unsigned NumFuseWordsWidth = $clog2(MaxSenseWords + 1);
   localparam int unsigned ShadowRegBits = NumEfuseBits;
@@ -180,8 +182,9 @@ package smc_efuse_pkg;
   localparam logic ReadLock = 1'b1;
 
   // Physical OTP bits covered by HARNESS_LOCKS and ADOPTER_LOCKS
-  localparam int unsigned LockFieldBits = $bits(smc_efuse_map_harness_locks_reg_t);
-  localparam int unsigned AdopterLockFieldBits = $bits(smc_efuse_map_adopter_locks_reg_t);
+
+  localparam int unsigned LockFieldBits = 64;
+  localparam int unsigned AdopterLockFieldBits = 64;
 
   typedef struct packed {
     logic [NumEfuseBits-LockFieldBits-AdopterLockFieldBits-1:0] reserved;
@@ -278,29 +281,39 @@ package smc_efuse_pkg;
   localparam efuse_pkg::rule_t [NumEfuseFields-1:0] EfuseFieldMap = build_efuse_field_map();
 
   // One adopter lock region per ADOPTER_LOCKS pair.
-  localparam int unsigned AdopterLockRegions = AdopterLockFieldBits / 2;
+  localparam int unsigned AdopterLockRegions = AdopterLockFieldBits / 2; // 32
   typedef logic [AdopterLockRegions-1:0][15:0] adopter_lock_region_end_t;
 
-  // Region n covers adopter words [region_end[n-1], region_end[n]), with region_end[-1] = 0,
-  // as byte offsets in the adopter window. An entry of 0 marks an unused region: it matches no
-  // address and carries the never-locked sentinel idx.
-  function automatic efuse_pkg::rule_t [AdopterLockRegions-1:0] build_adopter_field_map(
-      adopter_lock_region_end_t region_end);
+  // Rule n covers adopter lock region n, words [region_end[n-1], region_end[n]) with
+  // region_end[-1] = 0, as a byte range in the adopter window locked by ADOPTER_LOCKS pair n.
+  //
+  // For example, region_end = '{0: 64, 1: 96, 2: 128, default: 0} gives:
+  //   n      idx   start_addr    end_addr      covers
+  //   0      0     0x000         0x0FF         words   0-63
+  //   1      1     0x100         0x17F         words  64-95
+  //   2      2     0x180         0x1FF         words 96-127
+  //   3-31   '1    0xFFFF_FFFF   0x0000_0000   nothing, never locked
+  function automatic efuse_pkg::rule_t [AdopterLockRegions-1:0] build_adopter_field_map(adopter_lock_region_end_t region_end);
     efuse_pkg::rule_t [AdopterLockRegions-1:0] map;
-    int unsigned start_word;
+    int unsigned region_start;
 
-    start_word = 0;
+    region_start = 0;
+    // Loop 32 times for the 32 adopter lock regions
     for (int unsigned n = 0; n < AdopterLockRegions; n++) begin
-      if (region_end[n] != '0) begin
+
+      if (region_end[n] == '0) begin
+        // Unused region: start above end so no address matches, and never locked.
+        map[n] = '{idx: LocksMetaIdx, lock: '0, start_addr: '1, end_addr: '0};
+      end else begin
         map[n] = '{
             idx: efuse_pkg::EfuseFieldMapIdxWidth'(n),
             lock: {WriteUnlock, ReadUnlock},
-            start_addr: 4 * start_word,
+            start_addr: 4 * region_start,
             end_addr: 4 * int'(region_end[n]) - 1
         };
-        start_word = int'(region_end[n]);
-      end else begin
-        map[n] = '{idx: LocksMetaIdx, lock: '0, start_addr: '1, end_addr: '0};
+
+        // Assign the next region start to the end of the current region
+        region_start = int'(region_end[n]);
       end
     end
     return map;

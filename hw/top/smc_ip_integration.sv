@@ -151,7 +151,7 @@ module smc_ip_integration (
     );
 
     efuse_bank_model #(
-        .NUM_FUSE_BYTE_WIDTH (smc_efuse_pkg::NumFuseByteWidth),
+        .NUM_FUSE_BYTE_WIDTH ($clog2(efuse_bank_addrmap_pkg::EFUSE_BANK_SIZE)),
         .IS_SMC_INSTANCE     (1'b1),
         .efuse_apb_req_t     (smc_pkg::smc_efuse_apb_req_t),
         .efuse_apb_resp_t    (smc_pkg::smc_efuse_apb_resp_t)

@@ -13,9 +13,26 @@
 // The Chipyard CPU ROM/scratch/L1$ macros sit inside smc_ip_integration.sv
 // alongside the rest of the technology-specific IP, so smu_wrapper.sv picks
 // them up from the same module.
+//
+// The adopter fuse region defaults to the example map in smc_adopter_fuse_example_pkg.
 //-----------------------------------------------------------------------------
 
-module smc_wrapper (
+module smc_wrapper #(
+  parameter int unsigned ADOPTER_FUSE_BASE = 'h44,  // Byte offset of the adopter fuse window in
+                                                    // smc_external, directly after smc's default
+                                                    // eFuse shim block.
+  parameter int unsigned ADOPTER_FUSE_WORDS =  // Adopter fuse region size in 32-bit words;
+                                               // 0 omits the region.
+      smc_adopter_fuse_example_pkg::FuseWords,
+  parameter smc_efuse_pkg::adopter_lock_region_end_t ADOPTER_LOCK_REGION_END =  // Word offset one
+                                                                                // past the end of
+                                                                                // each adopter lock
+                                                                                // region; 0 marks
+                                                                                // an unused region.
+      smc_adopter_fuse_example_pkg::LockRegionEnd,
+  localparam int unsigned AdopterPortWords =  // Adopter shadow port width in words.
+      ADOPTER_FUSE_WORDS > 0 ? ADOPTER_FUSE_WORDS : 1
+) (
   input  logic powergood_i,
   output logic powergood_stable_o,
 
@@ -46,6 +63,7 @@ module smc_wrapper (
   input  smc_pkg::smc_axil_32_32_resp_t axil_dtp_csr_resp_i,
 
   output smc_efuse_pkg::efuse_map_t shadow_regs_o,
+  output logic [AdopterPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0] adopter_shadow_regs_o,
 
   // GPIO control (lsio select passed through; per-pin pad I/O replaced by
   // gpio_pad_io below)
@@ -239,7 +257,11 @@ module smc_wrapper (
   // SMC core        //
   /////////////////////
 
-  smc u_smc (
+  smc #(
+    .ADOPTER_FUSE_BASE      (ADOPTER_FUSE_BASE),
+    .ADOPTER_FUSE_WORDS     (ADOPTER_FUSE_WORDS),
+    .ADOPTER_LOCK_REGION_END(ADOPTER_LOCK_REGION_END)
+  ) u_smc (
     .clk_smc_i    (clk_sys),
     .clk_ref_i    (clk_ref),
     .clk_periph_i (clk_periph),
@@ -265,6 +287,7 @@ module smc_wrapper (
     .axil_dtp_csr_req_o,
     .axil_dtp_csr_resp_i,
     .shadow_regs_o,
+    .adopter_shadow_regs_o,
     .lsio_interface_select_o,
     .rst_cool_n_from_pin_i,
     .spi_enable_i,

@@ -10,13 +10,12 @@
 // locks: the 32 write/read pairs that govern it are ADOPTER_LOCKS in smc_efuse_map.
 //
 // Lock pair n governs lock region n, which ends at word CFG.SMC_ADOPTER_LOCK_REGION_END[n]. This
-// example makes each top-level register instance a region, with each array element counted
-// separately, and defines all 32:
-//   regions  0-15  MEM_REPAIR[16]   one repair entry per region, ends 4, 8, ... 64
-//   regions 16-23  SENSOR_TRIM[8]   one sensor per region, ends 68, ... 96
-//   regions 24-31  ADOPTER_SPARE[8] adopter-reserved, ends 100, ... 128
-// with CFG.SMC_ADOPTER_FUSE_WORDS = 128. Once parts carry burned lock bits, grow the map only by
-// appending regions.
+// example makes each top-level register array one region and uses three of the 32:
+//   region 0  MEM_REPAIR[16]    all repair entries, ends at word 64
+//   region 1  SENSOR_TRIM[8]    all sensor trims, ends at word 96
+//   region 2  ADOPTER_SPARE[8]  adopter-reserved, ends at word 128
+// with CFG.SMC_ADOPTER_FUSE_WORDS = 128 and entries 3-31 set to 0. Once parts carry burned lock
+// bits, grow the map only by appending regions.
 //
 // Contents must not be secret: the region has no secure-test masking or scan protection.
 
