@@ -225,6 +225,29 @@ timeout_sec = 3600
 tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
 
+[[tests]]
+# ISOLATE_REQ_PINEN_REG clears on a cold reset only while the synchronized
+# isolation pin is low; with the pin high the enable and the request hold
+# across the cold pulse.
+name = "smc_isolate_pinen_cold_test"
+module = "smc_isolate_pinen_cold_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+# BP_COOL_RESET_N_O (pad 62) is driven low while the FLR cool reset is
+# asserted and released otherwise, on every sample of a short and a long
+# FLR leg; ISOLATE_REQ_VIS follows the isolation pin with no isolation
+# request and reads its cool-reset bits at the released level.
+name = "smc_flr_sequencer_single_pulse_test"
+module = "smc_flr_sequencer_single_pulse_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "reset"
 tests = [
@@ -249,6 +272,8 @@ tests = [
     "smc_jtag_reset_ovrd_walk_test",
     "smc_cool_reset_x_cold_reset_test",
     "smc_reset_mid_transaction_rand_test",
+    "smc_isolate_pinen_cold_test",
+    "smc_flr_sequencer_single_pulse_test",
 ]
 
 [[tests]]
