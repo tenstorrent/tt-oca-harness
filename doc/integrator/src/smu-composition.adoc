@@ -181,8 +181,9 @@ outbound path drives on `smu_axi_out`.
 |===
 
 AxUSER[11:4] are reserved: the harness drives them as 0 on `smu_axi_out` and
-the filters ignore them on `smu_axi_in`. WUSER carries the same value as
-AWUSER. BUSER and RUSER carry no defined attribute.
+the filters ignore them on `smu_axi_in`. WUSER, BUSER and RUSER carry no
+defined attribute: the filters check only AWUSER and ARUSER, so the system
+fabric need not drive WUSER on `smu_axi_in`.
 
 Inbound attributes::
 The system fabric must drive AxPROT[1] of each `smu_axi_in` request from the
