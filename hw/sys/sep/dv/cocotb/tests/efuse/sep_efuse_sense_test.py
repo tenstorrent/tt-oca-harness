@@ -21,13 +21,14 @@ logical ``LC_STATE`` output remains ``4'b1111`` until fuse sensing completes. On
 from the ``rst_ni`` release until the ``sep_fuse_sense_done_o`` rise, the port ``lc_state_o``
 (tap ``lc_state_probe_o``, ``{~raw, raw}`` by ``doc/integrator/src/smu-sep.adoc``) must equal
 the ``LC_STATE`` RDL reset value 0x0F, the INVALID encoding, with ``security_disable_o`` at 0.
-The check also requires that the sensed ``LC_STATE`` byte at ``efuse_shadow_probe_o`` differs
-from 0x0F on at least one of those clocks, so the hold is graded while the sensed value is
-already present. The staged ``LC_STATE`` must not encode INVALID.
+The check also requires that the sensed ``LC_STATE`` byte at ``efuse_shadow_probe_o`` equals
+the staged encoding on at least one of those clocks, so the hold is graded while the sensed value
+is already present. The staged ``LC_STATE`` must not encode INVALID.
 
-``CHK-LC-STATE-RELEASE`` grades the other half of the same sentence: on the clock of the
-``sep_fuse_sense_done_o`` rise, ``lc_state_o`` equals the sensed ``LC_STATE`` byte and the
-encoding of the staged raw state.
+``CHK-LC-STATE-RELEASE`` grades the other half of the same sentence. The sentence names no
+clock; this test takes the first clock with ``sep_fuse_sense_done_o`` = 1 as the point where
+sensing has completed, and requires ``lc_state_o`` on that clock to equal the sensed
+``LC_STATE`` byte and the encoding of the staged raw state.
 
 Log-only: ``OBS-SENSE-FIELD-ORDER`` gives, per field, the first clock on which one of its
 words changed and the clock of the ``sep_fuse_sense_done_o`` rise, counted from the start of
@@ -94,7 +95,7 @@ async def _sense_order(rec: dict) -> None:
                 lc["clocks"] += 1
                 if port != lc["want"] and lc["bad"] is None:
                     lc["bad"] = (clk, port, sensed)
-                if sensed != lc["want"]:
+                if sensed == lc["staged"]:
                     lc["loaded"] += 1
                     if lc["first_loaded"] is None:
                         lc["first_loaded"] = clk
@@ -145,6 +146,7 @@ class sep_efuse_sense_test(sep_base_test):
         )
         lc = {
             "want": invalid,
+            "staged": staged_lc,
             "clocks": 0,
             "bad": None,
             "loaded": 0,

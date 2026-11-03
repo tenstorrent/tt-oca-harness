@@ -38405,8 +38405,9 @@ module sep_fcov (
     }
     // The pre-sense window of a sense with SEC_DIS 0, sampled once at the
     // sense-done rise: {lc_state_o left the LC_STATE reset value on a clock of
-    // the window, the sensed LC_STATE byte differed from that value on a clock
-    // of the window}. A window in which the byte never loaded fills no bin.
+    // the window, the sensed LC_STATE byte was known and differed from that
+    // value on a clock of the window}. A window in which no such byte loaded
+    // fills no bin.
     cp_presense_hold: coverpoint s.ph iff (s.ph_v) {
       bins held_over_loaded_byte = {2'b01}; illegal_bins port_left_reset_value = {2'b10, 2'b11};
     }
@@ -38494,6 +38495,7 @@ module sep_fcov (
   // cp_presense_hold: from the reset-release clock to the sense-done rise.
   wire  ef_own_sense = (graded_owner == FcovOwnSepEfuseSenseTest);
   wire  ef_ph_open = (fuse_sense_done_i !== 1'b1);
+  wire  ef_ph_byte = !$isunknown(ef_lc_word[7:0]) && (ef_lc_word[7:0] != EfLcReset);
   logic ef_ph_win = 1'b0;
   logic ef_ph_leak = 1'b0;
   logic ef_ph_load = 1'b0;
@@ -38505,11 +38507,11 @@ module sep_fcov (
     end else if (ef_rel) begin
       ef_ph_win  <= !skip_fuse_sense_q && ef_ph_open;
       ef_ph_leak <= (lc_state_i !== EfLcReset);
-      ef_ph_load <= (ef_lc_word[7:0] !== EfLcReset);
+      ef_ph_load <= ef_ph_byte;
       ef_ph_sd   <= (sec_dis_i !== 1'b0);
     end else if (ef_ph_win && ef_ph_open) begin
       ef_ph_leak <= ef_ph_leak || (lc_state_i !== EfLcReset);
-      ef_ph_load <= ef_ph_load || (ef_lc_word[7:0] !== EfLcReset);
+      ef_ph_load <= ef_ph_load || ef_ph_byte;
       ef_ph_sd   <= ef_ph_sd || (sec_dis_i !== 1'b0);
     end else if (ef_ph_win) begin
       ef_ph_win <= 1'b0;
