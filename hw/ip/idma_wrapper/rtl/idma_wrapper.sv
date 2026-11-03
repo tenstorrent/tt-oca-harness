@@ -234,7 +234,7 @@ module idma_wrapper #(
     .rst_ni(rst_ni),
     .busy_i(dma_busy),      // when dma busy, enable the clock
     .enable_i(1'b1),
-    .kick_i(~cg_enable_i),  // when cg is not enable, always kick to always keep the clock on
+    .kick_i(~cg_enable_i | dma_busy),  // ungate at once on work; always on when cg is not enabled
     .test_clk_en_i(test_en_i),
     .hysteresis_i(cg_hysteresis_i),
     .clk_active_o(clk_active),

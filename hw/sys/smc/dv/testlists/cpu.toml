@@ -133,6 +133,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_wdt_timeout_zero_idle_test"
+module = "smc_wdt_timeout_zero_idle_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_cpu_ctrl_dummy_rom_test"
 module = "smc_cpu_ctrl_dummy_rom_test"
 seed = 1
@@ -488,6 +496,10 @@ run_modes = ["smoke"]
 # `ready` (README_cpu_isolate_flush.md); the front-port R arbiter's
 # request-stability assertions report that withdrawal, and this leaf alone asks
 # tb_top to hold off that one arbiter instance's checks.
+# The isolate flush then discards the CPU's stale read response above the
+# demux, and the SYS_IN path presents an R beat with no open AR; the bound AXI
+# checkers report it on every simulator and the leaf fails on that fire. On
+# Verilator the fire stops the simulation before the leaf's later checks run.
 args = ["+smc_front_port_r_arb_assertoff"]
 
 [[tests]]
@@ -553,3 +565,12 @@ tests = [
     "smc_mutex_semaphore_test",
     "smc_spm_mem_boundary_test",
 ]
+
+[[tests]]
+name = "smc_dfd_mmr_rand_test"
+module = "smc_dfd_mmr_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

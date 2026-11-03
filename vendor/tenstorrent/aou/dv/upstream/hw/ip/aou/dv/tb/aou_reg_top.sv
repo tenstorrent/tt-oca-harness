@@ -6,14 +6,11 @@
 // Register-only bench: AOU_CORE_TOP with its APB port driven by the APB agent and
 // every other input held idle (no AXI traffic, FDI link in Reset). Built with
 // make TB=reg until the T1 top hosts the register tests. The DUT parameters a
-// target sets through defines (AOU_PEER_MAX_W, AOU_TX_NXT_PACKING; aou_reg_sim_cfg.toml)
+// target sets through defines (AOU_TX_NXT_PACKING; aou_reg_sim_cfg.toml)
 // reach the DUT here as in tb_top, so a target's register runs are built on
 // the DUT configuration they are labelled with.
 `timescale 1ns/1ps
 
-`ifndef AOU_PEER_MAX_W
-`define AOU_PEER_MAX_W 1024
-`endif
 `ifndef AOU_TX_NXT_PACKING
 `define AOU_TX_NXT_PACKING 0
 `endif
@@ -26,7 +23,6 @@ module aou_reg_top;
   localparam int RP_COUNT = `AOU_RP_COUNT;
   localparam int AXI_W = 8 * `AOU_AXI_DATA_BYTES;
   localparam int FDI_W = `AOU_FDI_DATA_W;
-  localparam int PEER_W = `AOU_PEER_MAX_W;
   localparam int NXT_PACK = `AOU_TX_NXT_PACKING;
 
   logic clk;
@@ -71,8 +67,8 @@ module aou_reg_top;
   wire [RP_COUNT-1:0][AXI_W/8-1:0] m_wstrb;
   wire [FDI_W-1:0]                lp_data;
   wire                            lp_valid, lp_irdy, lp_stallack;
-  wire [6:0]                      irq;
-  wire                            st_disabled, st_enabled, req_linkreset;
+  wire [7:0]                      irq;
+  wire                            st_disabled, st_enabled, req_linkreset, sw_reset;
 
   AOU_CORE_TOP #(
       .RP_COUNT       (RP_COUNT),
@@ -81,7 +77,6 @@ module aou_reg_top;
       .RP1_AXI_DATA_WD(AXI_W),
       .RP2_AXI_DATA_WD(AXI_W),
       .RP3_AXI_DATA_WD(AXI_W),
-      .AXI_PEER_DIE_MAX_DATA_WD(PEER_W),
       .TX_NXT_PACKING_EN(NXT_PACK)
   ) u_dut (
       .I_CLK    (clk),
@@ -192,11 +187,13 @@ module aou_reg_top;
       .INT_EARLY_WDT_ERR   (irq[6]),
       .INT_ACTIVATE_START  (irq[4]),
       .INT_DEACTIVATE_START(irq[5]),
+      .INT_FDI_LINK_DOWN   (irq[7]),
 
       .I_INT_FSM_IN_ACTIVE      (1'b0),
       .O_AOU_ACTIVATE_ST_DISABLED(st_disabled),
       .O_AOU_ACTIVATE_ST_ENABLED (st_enabled),
       .O_AOU_REQ_LINKRESET       (req_linkreset),
+      .O_SW_RESET                (sw_reset),
 
       .TIEL_DFT_MODESCAN(1'b0)
   );

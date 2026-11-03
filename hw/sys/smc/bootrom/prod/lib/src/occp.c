@@ -24,6 +24,7 @@
 #include "smc_status.h"
 #include "smc_scratchpad.h"
 #include "smc_occp_status.h"
+#include "smc_park.h"
 #include "smc_occp_error_codes.h"
 #include "smc_post_code.h"
 #include "virt_console.h"
@@ -475,6 +476,8 @@ static int smc_occp_poll_channels(void) {
     static uint32_t timeout_counter = 0;
 
     while (1) {
+        if (smc_park_requested()) smc_park_hart0();
+
         if (g_interface_latching_active && g_latched_interface_index >= 0) {
             /* Interface already latched - only check the latched interface */
             if (smc_occp_interface_has_data(g_latched_interface_index)) {
@@ -1660,9 +1663,7 @@ static int smc_occp_handle_validate_boot(interface_driver_t drv, driver_type_t d
         /* Set manifest address in scratch register (function converts to offset internally) */
         smc_scratchpad_set_manifest_offset(address);
         smc_scratchpad_signal_manifest_ready();
-        while (true) {
-            __asm__("wfi");
-        }
+        smc_park_hart0();
     }
     return ret;
 }

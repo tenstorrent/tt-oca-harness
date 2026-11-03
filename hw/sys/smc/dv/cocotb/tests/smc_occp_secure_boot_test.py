@@ -51,11 +51,12 @@ from smc_occp_dual_defs import (
     payload_entry_offset,
     required_plusarg,
 )
+from smc_rom_park_defs import expect_parked
 
 POLL_CYCLES = 2000
 DEFAULT_POLL_ITERS = 4000
 PROGRESS_EVERY = 200
-REQUIRED_EVIDENCE = ("CHK-OCCP-SECURE-BOOT",)
+REQUIRED_EVIDENCE = ("CHK-OCCP-SECURE-BOOT", "CHK-OCCP-PARK-ON-AUTH")
 
 SEP_PROCESSING_MIN_CYCLES = 1_000
 SEP_PROCESSING_MAX_CYCLES = 20_000
@@ -221,6 +222,12 @@ async def smc_occp_secure_boot_test(harness: SmcDualHarness) -> None:
         )
     cocotb.log.info(
         "manifest published: scratch 8 offset %#010x -> %#010x", manifest_offset, manifest_addr
+    )
+
+    # The SEP may reset hart 0 only once it is parked with its D-cache written back.
+    scratch_9 = await expect_parked(dut, harness, dut_csr, "smc_occp_secure_boot_test")
+    cocotb.log.info(
+        "CHK-OCCP-PARK-ON-AUTH: hart 0 parked after AuthenticateImage; scratch 9 %#010x", scratch_9
     )
 
     # Act as SEP: write the image back so the restarted cores fetch it from SRAM, not cache.

@@ -265,36 +265,56 @@ module reset_unit_reg (
         automatic logic is_valid_rw;
         automatic logic is_external;
         is_external = '0;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.SS_CONFIG = cpuif_req_masked & (cpuif_addr == 8'h20);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h20);
         decoded_reg_strb.SS_CONFIG_LOCK = cpuif_req_masked & (cpuif_addr == 8'h24);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h24);
         decoded_reg_strb.SS_COLD_RESET_N = cpuif_req_masked & (cpuif_addr == 8'h40);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'h40);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h40);
         decoded_reg_strb.SS_WARM_RESET_N = cpuif_req_masked & (cpuif_addr == 8'h44);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h44);
         decoded_reg_strb.SS_CONFIG_HOLD = cpuif_req_masked & (cpuif_addr == 8'h48);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h48);
         decoded_reg_strb.SS_SRAM_HOLD = cpuif_req_masked & (cpuif_addr == 8'h4c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h4c);
         decoded_reg_strb.SS_CRITICAL_HOLD = cpuif_req_masked & (cpuif_addr == 8'h50);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h50);
         decoded_reg_strb.SS_DEBUG_HOLD = cpuif_req_masked & (cpuif_addr == 8'h54);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h54);
         decoded_reg_strb.SS_RESET_COMPLETE = cpuif_req_masked & (cpuif_addr == 8'h60) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h60);
         decoded_reg_strb.SS_COLD_RESET_LOCK = cpuif_req_masked & (cpuif_addr == 8'h70);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h70);
         decoded_reg_strb.SS_FORCE_TO_REF_CLK = cpuif_req_masked & (cpuif_addr == 8'h80);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h80);
         decoded_reg_strb.SYNC_REG = cpuif_req_masked & (cpuif_addr == 8'ha8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'ha8);
         decoded_reg_strb.ISOLATE_REQ_REG = cpuif_req_masked & (cpuif_addr == 8'hb0);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'hb0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hb0);
         decoded_reg_strb.ISOLATE_REQ_PINEN_REG = cpuif_req_masked & (cpuif_addr == 8'hb4);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'hb4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hb4);
         decoded_reg_strb.ISOLATE_REQ_SMC_REG = cpuif_req_masked & (cpuif_addr == 8'hb8);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'hb8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hb8);
         decoded_reg_strb.ISOLATE_REQ_SMCEN_REG = cpuif_req_masked & (cpuif_addr == 8'hbc);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'hbc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hbc);
         decoded_reg_strb.ISOLATE_REQ_VIS = cpuif_req_masked & (cpuif_addr == 8'hc0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc0);
         decoded_reg_strb.ISOLATE_REQ_FLR_COUNTER_VALUE = cpuif_req_masked & (cpuif_addr == 8'hc4);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'hc4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc4);
         decoded_reg_strb.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE = cpuif_req_masked & (cpuif_addr == 8'hc8);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'hc8);
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc8);
+        is_valid_addr = cpuif_addr < 8'hcc;
+        decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
     logic external_wr_ack;
@@ -697,7 +717,7 @@ module reset_unit_reg (
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -800,7 +820,7 @@ module reset_unit_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign external_rd_ack = readback_external_rd_ack;

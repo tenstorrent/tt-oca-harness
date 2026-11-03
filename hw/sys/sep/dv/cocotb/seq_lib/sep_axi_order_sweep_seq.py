@@ -81,7 +81,7 @@ BLOCK_EXCLUDE: dict[str, str] = {
 # Blocks kept out of the sweep when it is driven from the SMN inbound master,
 # for a reason that belongs to that path. Each entry names the RTL fact.
 BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
-    # Every INBOUND_FILTER_CTRL_<n>_ block IS the rule set that gates this bus.
+    # Every INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_<n>_ block IS the rule set that gates this bus.
     # hw/sys/sep/doc/fabric.adoc (Filtering and Protection) states the inbound
     # filter has 16 entries and that each entry is one filter_ctrl register
     # triple -- FILTER_CONFIG, START_ADDR, END_ADDR -- so the swept registers are
@@ -91,7 +91,7 @@ BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
     # need an allow window over the filter CSR bank, which is the software hole
     # sep_fabric_inbound_filter_rule_matrix_test asserts must stay shut. The CPU-LSU
     # sweep covers these registers; that path has no inbound filter.
-    f"INBOUND_FILTER_CTRL_{n}_": "inbound-filter rule bank: the entry's own address window gates this "
+    f"INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{n}_": "inbound-filter rule bank: the entry's own address window gates this "
     "bus, so a sweep write reprograms the path under the walk"
     for n in range(16)
 }
@@ -109,7 +109,7 @@ BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
 #
 # Five windows out of the sixteen filter entries, coarse so the walk needs no
 # reprogramming mid-sweep. None of them covers the filter CSR bank at
-# INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR: the external master must not be able
+# INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR: the external master must not be able
 # to rewrite the rules that gate it.
 #
 # Both bounds come from the generated register map. START is the
@@ -663,7 +663,7 @@ def _selftest() -> None:
             f"m_axi but no inbound-filter allow window covers it; every cell "
             f"there would be refused and counted as a drop"
         )
-    infilt_base = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
+    infilt_base = sym("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
     for name, lo, hi in M_AXI_ALLOW_WINDOWS:
         assert not (lo <= infilt_base <= hi), (
             f"allow window {name} 0x{lo:08x}..0x{hi:08x} covers the inbound "

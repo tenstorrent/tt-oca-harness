@@ -469,6 +469,9 @@
 // stays outstanding. DATA hang detector snoops data_accel (DMA/zeroer
 // master), which stalls when SYS_OUT never completes. Idle 0.
 `SMC_TB_IN(logic, tb_output_axi_resp_hold)
+// FCOV graded-window gate. The owning leaf of a cov/sv covergroup that
+// samples only inside a graded window holds it 1 over that window. Idle 0.
+`SMC_TB_IN(logic, tb_fcov_gate)
 
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
@@ -599,6 +602,9 @@
 `SMC_TB_IN(logic, tb_efuse_bank_stall_en)
 `SMC_TB_IN(logic [15:0], tb_efuse_bank_stall_rd)
 `SMC_TB_IN(logic [15:0], tb_efuse_bank_stall_wr)
+// Drive of smc_wrapper.sep_security_disable_i (eFuse sense bypass): 0 unless the run carries
+// +smc_sep_security_disable, then 1 from time 0 for the whole run (tb_top.sv drives it).
+`SMC_TB_OUT(logic, tb_sep_security_disable)
 `SMC_TB_OUT(logic [smc_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
 
 // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /

@@ -52,7 +52,7 @@ A second leg then traces the CLA debug-bus mux in toggle mode
   from its start. A read that returns unread data advances the read pointer by
   one word, and from ``Trdstramlimitlow`` it wraps to ``Trdstramstartlow``, so
   every pointer sample has to equal the segment start plus one word per
-  data-returning read, and once a read returns nothing the pointer stays put.
+  pointer-advancing read, and once a read leaves the pointer in place it stays put.
   How many reads return data and which bits the words carry are logged, not
   compared: the RAM address map, the unread-data accounting after a wrap and
   the toggle payload format are not documented.
@@ -454,7 +454,7 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             )
 
     def _rp_expected(self, start: int, reads: int) -> int:
-        """Read-pointer byte address after ``reads`` data-returning reads from ``start``."""
+        """Read-pointer byte address after ``reads`` pointer-advancing reads from ``start``."""
         return (start + 4 * reads) % _TOGGLE_WINDOW_BYTES
 
     async def _toggle_leg(self) -> None:
@@ -651,8 +651,8 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         self.value_checks += 1
         cocotb.log.info(
             "CHK-DST-TOGGLE-RP-ADVANCE: segment 0..7 words returned=%s rp==start+n at %d "
-            "samples (%d per segment, after reads %s), one word per data-returning read and "
-            "no move after a read that returned none (count of data-returning reads "
+            "samples (%d per segment, after reads %s), one word per pointer-advancing read and "
+            "no move after a read that returned none (count of pointer-advancing reads "
             "LINKED-ISSUE SF-022)",
             ",".join(str(n) for n in self.segment_words),
             sample_total,

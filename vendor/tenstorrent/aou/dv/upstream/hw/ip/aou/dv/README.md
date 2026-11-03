@@ -28,9 +28,10 @@ Trieu and Quang Le (VNCHIPLabs); see [Acknowledgements](#acknowledgements).
 
 | Need | Why | Notes |
 | --- | --- | --- |
-| Python 3.9 or later | every script | `tomllib` (3.11) is used when present; a subset TOML reader covers older interpreters |
+| Python 3.9 or later | every script | `tomllib` (3.11) is used when present; a subset TOML reader covers older interpreters; `scripts/bugs/*` also need PyYAML (`pip install -r requirements.txt` at the repository root) |
 | GNU Make, Git, a C++ compiler | the standalone flow | |
 | Verilator 5.052 | `SIM=verilator` | What CI builds (`.github/workflows/uvm-smoke.yml`); `--timing` and `randomize()` through z3 |
+| Verible (`verible-verilog-lint`) | `make lint` | The version CI pins in `.github/tool-versions.env` (`VERIBLE_VERSION`) |
 | VCS | `SIM=vcs` | The default when `vcs` is on `PATH`; the full regressions and coverage run here |
 | LSF (`bsub`) | builds and runs at scale | Optional: `LSF=0` runs on the current host; site options in the git-ignored `site/site.mk` |
 | `make setup` | fetches the pinned uvm-core, the OCAH library, z3, PeakRDL and pywellen into the git-ignored `.deps/` | No network after it; the pins are in `scripts/get_*.sh` |
@@ -47,7 +48,7 @@ make run TEST=aou_dp_random_test SEED=3 PLUSARGS='+dp_dir=both'
 python3 scripts/run_list.py --items smoke    # the bring-up gate (4 scenarios)
 python3 scripts/run_list.py --items functional -j 16 --rid nightly
 python3 scripts/run_list.py --target 4x512-sp64 -j 16   # every scenario on one target
-make check-config                            # sim configs, testlists, rules, RAL and docs freshness (what CI runs before building)
+make check-config                            # sim configs, testlists, rules, RAL, plan items and docs freshness (what CI runs before building)
 make lint                                    # check-config, Verible and Verilator lint, FDI checker guards
 ```
 
@@ -116,10 +117,9 @@ into one book with Asciidoctor.
 | `uvm/seq_lib/` | Every virtual sequence, by area |
 | `uvm/tests/` | `aou_tests.sv` (included by `tb_top.sv` under `UVM`), the test classes by area; `reg/`, `l3_unit/`, `axi_selftest/` for the other tops |
 | `cov/` | `sv/`: the coverage service, the AXI4 coverage monitors and binds; `config/vcs/`: coverage scope, exclusion and FSM reset filter files |
-| `testlists/` | TOML testlists (`all.toml` and the per-area lists, `registers.toml`, `l3_unit.toml`, `axi_selftest.toml`, `escape.toml`), `plan_ids.yaml` |
+| `testlists/` | TOML testlists (`all.toml` and the per-area lists, `registers.toml`, `l3_unit.toml`, `axi_selftest.toml`), `plan_ids.yaml` |
 | `docs/` | The documents above; `gen/` is generated |
 | `scripts/` | `run_list.py`, `check_run.py`, `sim_cfg.py`, `testlist.py`, the lint and report scripts, the harness-leg scripts; `bugs/`: the bug-report template and the tools that validate staged drafts, file them as GitHub issues and rewrite the bench's citations |
-| `escape/` | The bug-escape patches |
 | `aou_sim_cfg.toml`, `aou_reg_sim_cfg.toml`, `aou_l3_unit_sim_cfg.toml`, `aou_axi_selftest_sim_cfg.toml` | One sim config per top: sources, include directories, `[targets.<CONFIG>]` defines, run modes, testlist |
 | `expected_fail.yaml` | Known DUT-bug failures the grader accepts as XFAIL, each tied to its GitHub issue (`tenstorrent/tt-oca-harness-aou#<n>`; `BUGS/<NNN>` for a draft staged but not yet filed) |
 | `site/` | Git-ignored site settings (`site.mk`, `env.sh`, `public_patterns.txt`) |
@@ -127,8 +127,8 @@ into one book with Asciidoctor.
 ## Build configurations
 
 `CONFIG` selects the build parameters of the T1 bench (`TB=t1`) and the register
-bench (`TB=reg`): RP count, AXI data width per RP, `FDI_CONFIG` and, in `-p<W>`
-and `-nxt` configurations, `AXI_PEER_DIE_MAX_DATA_WD` and `TX_NXT_PACKING_EN`. Build and
+bench (`TB=reg`): RP count, AXI data width per RP, `FDI_CONFIG` and, in `-nxt`
+configurations, `TX_NXT_PACKING_EN`. Build and
 output directories are named after it (`build/vcs-t1-1x512-sp64`,
 `out/vcs-t1-1x512-sp64`). `make configs` prints this table.
 
@@ -142,10 +142,7 @@ output directories are named after it (`build/vcs-t1-1x512-sp64`,
 | `1x256-sp32` | 1 | 256 | FDI_CFG_SP_32B | 1 | Narrowest RP and FDI (the RTL's default FDI_CONFIG) |
 | `2xmix-tp64_128` | 2 | 512, 1024 | FDI_CFG_TP_64B_128B | 2 | Two-PHY FDI, two RPs, mixed widths |
 | `2x512-tp32_64` | 2 | 512 each | FDI_CFG_TP_32B_64B | 2 | Two-PHY FDI with a 32-byte PHY0, two RPs at one width |
-| `1x512-sp64-p512` | 1 | 512 | FDI_CFG_SP_64B | 1 | `AXI_PEER_DIE_MAX_DATA_WD` 512 (plan 14.17) |
 | `1x512-sp64-nxt` | 1 | 512 | FDI_CFG_SP_64B | 1 | `TX_NXT_PACKING_EN` 1: the registered TX packer output stage |
-| `4xmix4211-sp128-p512` | 4 | 1024, 512, 256, 256 | FDI_CFG_SP_128B | 1 | `AXI_PEER_DIE_MAX_DATA_WD` 512 below a 1024-bit RP (plan 14.17) |
-| `4xmix4211-sp128-p256` | 4 | 1024, 512, 256, 256 | FDI_CFG_SP_128B | 1 | `AXI_PEER_DIE_MAX_DATA_WD` 256 below 1024- and 512-bit RPs (plan 14.17) |
 | `2xmix-sp64-rxf` | 2 | 1024, 256 | FDI_CFG_SP_64B | 1 | Non-default RX FIFO depth per RP and class, RX FIFO register slices off (plan 3.25) |
 
 Reading a name:
@@ -157,8 +154,6 @@ Reading a name:
 - `sp<B>`: a single PHY with a B-byte FDI data path (`FDI_CFG_SP_<B>B`).
 - `tp<B1>_<B2>`: two PHYs with B1- and B2-byte FDI data paths
   (`FDI_CFG_TP_<B1>B_<B2>B`, built with `TWO_PHY`).
-- `-p<W>`: `AXI_PEER_DIE_MAX_DATA_WD` of W bits (1024, the RTL default,
-  without it). A `+remote_bytes` above W/8 is limited to W/8.
 - `-nxt`: `TX_NXT_PACKING_EN` 1 (`AOU_TX_NXT_PACKING=1`): the TX flit packer
   computes each chunk from its look-ahead state and registers it before the FDI
   output; the default (0) drives the chunk combinationally from the granule ring.
@@ -200,17 +195,20 @@ reuse one build. A run passes when its log reaches the UVM report summary with
 no `UVM_ERROR` or `UVM_FATAL`.
 
 Run-time plusargs go in `PLUSARGS` (for example
-`make run TEST=aou_fdi_t1_linkdown_spec_test FDI_ENC=SPEC PLUSARGS=+train_trigger=0`).
-`+train_trigger=0|1` sets how the L2 Adapter model trains again after
-LinkError, LinkReset or Disabled -> Reset. With 1, the default, it waits for a
-NOP->Active transition on `lp_state_req` (UCIe r1.1 §8.3.3.8), and with
-`FDI_ENC=SPEC` FDI-R51 fails the run if the DUT doesn't give one. After a
-deliberate teardown (the DUT's own LinkReset request, or Disabled) the DUT gives
-it only after an activation request; if the test gives none, the model's
-software pulses `I_SW_ACTIVATE_START` after `sw_restart_delay` cycles
-(`+sw_restart_delay=N`, 0 never; random in [50:1500] by default). With 0 it
-trains again by itself, like an Adapter or remote die that restarts the link
-without the trigger.
+`make run TEST=aou_fdi_t1_linkdown_spec_test PLUSARGS=+sw_restart_delay=0`).
+After LinkError, LinkReset or Disabled -> Reset the link is restarted by
+software on the UCIe controller, never by the DUT (integration guide §6.6.2):
+the L2 Adapter model stays in Reset for `sw_restart_delay` cycles
+(`+sw_restart_delay=N`, 0 trains at once; random in [50:1500] by default) and
+then trains again by itself, and the bringup model checks that the DUT requests
+nothing meanwhile (FDI-M01/M02). An AoU deactivation leaves the link Active
+(FDI-M06).
+
+After a LinkError the DUT holds the link down until software has written
+`AOU_CON0.AOU_SW_RESET` (integration guide §6.6.3). In the FDI T1 tests that
+write comes from the test itself, a random number of cycles after
+`O_FDI_FSM_STATE` reports LinkError; `+sw_reset_delay_max=N` bounds the delay
+(default 300). The lifecycle tests reset through `recover()` as before.
 
 `+pclk_ps=<period in ps>` sets the APB clock of the T1 and register benches
 (default 10000, 100 MHz; the core clock stays 1 GHz). The APB bridge is
@@ -314,8 +312,9 @@ are tuned from.
 `scripts/run_list.py` runs every scenario and seed of a testlist
 (`testlists/*.toml`; default: the bench's aggregate, `testlists/all.toml` for
 T1) through `make run`, at most `-j` at a time, and writes
-`out/<build>/results.csv` (one `results_<list>.csv` per included list with
-`--per-list`). `--items <group|scenario>...` picks groups (`smoke`, `ci`, `g1a`,
+`out/<build>/results_rid.<rid>.csv` (one `results_<list>.rid.<rid>.csv` per
+included list with `--per-list`); the RID in the name means a later regression
+of the same lists never overwrites an earlier one's results. `--items <group|scenario>...` picks groups (`smoke`, `ci`, `g1a`,
 `functional`, ...) or scenario names; `--target <CONFIG>` picks the build and
 skips scenarios pinned to another target; `--reseed N` caps the seeds per
 scenario. `python3 scripts/check_testlists.py` validates the lists against the
@@ -334,9 +333,8 @@ python3 scripts/run_list.py --sim vcs --target 1x512-sp64 --rid nightly -j 8 \
   --per-list --items g1a link
 ```
 
-`--fdi-enc SPEC|RTL` passes `FDI_ENC` to every run (the FDI state encoding,
-`+FDI_ENC`); `--escape`, `--rtl-patch` and `--cov` pick the build as the make
-variables of the same names do.
+`--rtl-patch` and `--cov` pick the build as the make variables of the same
+names do.
 
 Your own bsub options go in `LSF_EXTRA_OPTS`. Every build and run appends it
 after the site's options (`LSF_SITE_OPTS` in `site/site.mk`), for example to keep
@@ -346,11 +344,9 @@ jobs off a host:
 export LSF_EXTRA_OPTS='-R "select[hname!=hostA]"'
 make build SIM=verilator                # or LSF_EXTRA_OPTS=... on the command line
 python3 scripts/run_list.py ...         # --lsf-extra-opts; default $LSF_EXTRA_OPTS
-make escape LSF_EXTRA_OPTS='-R "select[hname!=hostA]"'
 ```
 
-`run_list.py` and `escape.py` hand it to each `make` they start as a command-line
-variable, so it survives `escape.py` clearing the parent's `MAKEFLAGS`. A site can
+`run_list.py` hands it to each `make` it starts as a command-line variable. A site can
 also set `LSF_VERILATOR_BUILD_OPTS` for Verilator compiles only (hosts that can't
 build them), next to `LSF_VCS_BUILD_OPTS` for VCS compiles.
 
@@ -422,10 +418,10 @@ errors in those cycles are still reported), so the waves of a `WAVES=1` rerun sh
 what followed. `check_run.py` judges the run by the errors before the fatal.
 
 Each checker's reset (`tb/aou_axi4pc_gate.sv`) is its port's reset: the DUT core
-reset (`I_RESETN` and `AOU_SW_RESET`), or `I_RESETN` alone with the BUGS/021 guard.
-After an `AOU_SW_RESET`, which the bench's agents don't see and which leaves the
-DUT's RX FIFOs alone, the checker leaves reset only once the port has no VALID up
-and nothing in flight. When the FDI
+reset (`I_RESETN` and `AOU_SW_RESET`), which the bench's AXI agents are on as well
+(the SoC resets the AXI peers with AOU_CORE, MAS 7.3.6). After an `AOU_SW_RESET`
+the checker leaves reset only once the port has no VALID up and nothing in
+flight, so a handshake the reset cut is never judged. When the FDI
 link is lost while AoU isn't DISABLED, the transactions in flight can't complete, so
 `uvm/env/aou_t1_axi4pc_ctl.svh` holds every checker in reset from that event until its
 port's next reset (then as above), or to the end of the test; each hold and release
@@ -452,11 +448,14 @@ make cov_report COV=1
 
 Only runs whose verdict is PASS count: `make run` writes each verdict to
 `<run>/verdict.txt`, and `cov_report` skips FAIL, XFAIL and unjudged runs,
-printing how many it merged and excluded.
+printing how many it merged and excluded. It merges every passing run under
+`out/<build>/`; `COV_RID=<rid>` (`make cov_report COV=1 COV_RID=cov4`) takes only
+the runs of that RID, for the T1 and the folded-in register runs alike, so a
+report never mixes two regressions.
 
 The register bench takes the same `CONFIG` as T1, so it builds the same DUT
 parameters, and `make cov_report TB=t1` folds in its passing runs from the same
-SIM, CONFIG and `ESCAPE`/`RTL_PATCH` (VCS maps them onto `AOU_CORE_TOP` with `urg -map`;
+SIM, CONFIG and `RTL_PATCH` (VCS maps them onto `AOU_CORE_TOP` with `urg -map`;
 Verilator and Questa merge the files directly). The report stops if that register
 build has no runs; `COV_WITH=` leaves them out.
 
@@ -500,10 +499,6 @@ ignored (`IGN`, no target) or illegal (`ILL`, out of the denominator; a hit is
 reported under the rule that owns it), and a cross cell is ignored or made
 illegal by pattern (`XIGN`, `XILL`; see `aou_fc_point::mark`). The service's
 count is the number; the simulators' covergroup scores are not used.
-`cg_link_state.cp_fdi_enc` records the FDI state encoding each run used (`rtl`,
-the DUT's private codes, or `spec`, UCIe r1.1 Table 8-2). It is informational:
-it shows whether the merged coverage includes SPEC-encoded runs. The `rtl` bin
-goes when BUGS/001 is fixed and SPEC becomes the default.
 
 With `COV=1` each run writes `<run>/fc.json`: every group, coverpoint and
 cross, every declared bin with its hit count (zero-hit bins included, so holes
@@ -557,8 +552,12 @@ still X after reset is released.
 verification branch's `dv/doc/AOU_RTL_TEST_PLAN.md`, sections 2.1-2.22) with the
 corrections in `docs/test_plan_corrections.yaml` applied: reworded items,
 duplicates merged into one surviving ID, and items dropped as untestable on this
-RTL. `scripts/gen_plan_items.py <old plan>` regenerates it; change the
-corrections, never the output.
+RTL. Change the corrections, never the output, and run
+`scripts/gen_plan_items.py` to regenerate it: the file keeps what it took from
+the old plan with a digest, so the old plan itself is needed only when that
+changes (`scripts/gen_plan_items.py <old plan>`). `make check-config` runs
+`gen_plan_items.py --check`, which fails when the file is stale or was edited by
+hand.
 
 `testlists/plan_ids.yaml` names the items each scenario covers. `make plan_status`
 matches every run under `out/` to its scenario by test class, plusargs (from
@@ -569,7 +568,11 @@ runs, with their bugs), failing, blocked (only `blocked:` entries list it) or no
 covered, followed by per-section and total counts. As for coverage, only PASS
 counts. `make compare BASELINE=<dir>` compares the `results*.csv` under `out/`
 with a kept baseline and reports every run whose verdict got worse
-(`scripts/compare_results.py`). It reads files only, so it needs no LSF. `PLAN_OUT=<dir>` reads another
+(`scripts/compare_results.py`). A run is matched by build (a `-cov` in the build
+name is ignored, so a coverage build compares with a plain one), test, plusargs
+and seed; a run that occurs twice on a side (two lists running the same test and
+seed) is a separate run, paired by occurrence. `COMPARE_OPTS='--base-rid <b>
+--after-rid <a>'` (or `--rid` for both) compares only those regressions' runs. It reads files only, so it needs no LSF. `PLAN_OUT=<dir>` reads another
 `out/`, and `PLAN_STATUS_OPTS=--judge` also judges runs that have no
 `verdict.txt` (`scripts/plan_status.py --format csv` gives CSV).
 
@@ -624,8 +627,7 @@ Every checker counts its evaluations and violations in a rule ledger
 collects them from the runs under `out/` and writes `docs/checker_inventory.md`.
 For the AoU specification's 45 checkable rules and UCIe r1.1's 41 FDI handshake
 rules, it gives the primary checker, the test that exercises it most, and the
-evidence: fires in a negative test, in an escape or mutation run
-(`make escape`), and checks in passing runs. The summary lists the rules with no
+evidence: fires in a negative test, and checks in passing runs. The summary lists the rules with no
 checker, two primaries, a checker that never runs, or one that never fired.
 
 ## RTL assertions
@@ -643,51 +645,14 @@ its entries pass `+rtl_asserts=1`, which is fatal on a build without the
 assertions, so they cannot pass on an ordinary build. The assertions use SVA
 ranges (`##[0:500]`), so the build is VCS-only for now.
 
-## Bug-escape suite
+## Building against a candidate RTL fix
 
-Every real bug fixed on main must make the testbench fail when it comes back.
-`escape/<id>.patch` re-introduces one fix in reverse (`pr28` is main #28,
-and so on). `make build ESCAPE=<id>` copies `RTL/` into the build directory
-(`build/<sim>-...-esc-<id>/rtl/`), applies the patch there and compiles that
-copy, so the source tree is never modified. Runs of an escape build go to
-`out/<build>-esc-<id>/`, and `make plan_status` ignores them.
-
-`testlists/escape.toml` names, for each escape, the test that catches it
-and the failure signature (a regex over the `UVM_ERROR`/`UVM_FATAL` lines).
-`make escape` builds the clean and escape variants, runs every entry on both and
-reports each bug as CAUGHT (the clean run passes and the escape run fails with
-the signature), ESCAPED or CLEAN-FAILS. It writes `out/escape/escape_report.md`.
-`ESCAPE_OPTS="--escape pr49 --no-build"` narrows a rerun.
-
-| Escape | Fix on main | Caught by | Signature |
-|---|---|---|---|
-| pr28 | 951d93f: `*_TR_COMPLETE` AND of the RPs, not OR | `aou_link_act_deact_test`, `aou_lp_mode_traffic_test` | `T1-V05`: the DUT never sends DeactivateReq |
-| pr46 | 24c0364: `best_index_*` multi-driver | a Questa build only (`vopt-7033`) | no behavioural change: VCS, Xcelium and Verilator accept it |
-| pr49 | 37b480f: TX credit/LP timing | `aou_lp_mode_test +lp_mode=1 +lp_thr=0` | `AOU-R31`: a header credit is never returned |
-| pr75 | a168d1e: MAX_AxBURSTLEN clamp | `aou_reg_access_test` (TB=reg), `aou_split_test +split_aw=illegal` | `REG-R02`, `FEAT-R01` |
-| pr76 | b8b9060: RP1-RP3 RID/BID aggregates crossed | `aou_slv_id_mismatch_test` (CONFIG=4x512-sp64) | `T1-E18` (white-box; the DUT's pins OR both aggregates) |
-| pr77 | 800f5e1: QoS threshold resets and `>=` | `aou_reg_hw_reset_test` (TB=reg) | `REG-R01` on `PRIOR_RP_AXI` |
-| split_awvalid_drop | pre-release bug, fixed before the initial commit: AW/W register slices on the splitter's M port | `aou_split_test`, `aou_stress_test +st_bp=aw` | `T1-V08`: the dropped sub-burst AW strands its W (split test also `FEAT-R02`) |
-
-The same mechanism shows that new checkers fire: `mut_*` patches are RTL
-mutations, not main fixes, that break one rule (`mut_fdi_r16`: `lp_wake_req` low
-when `lp_state_req` leaves Reset, caught by FDI-R16 in `aou_fdi_t1_bringup_test`).
-
-split_awvalid_drop is the closest faithful mutation, not a literal reversal: the 1xN
-switch added since then holds the pin AWVALID in its own skid buffer, and the
-old combinational AWVALID (which waited for WREADY) deadlocks against the
-switch's WREADY (which waits for AWVALID). The patch removes the splitter's and
-the switch's AW slices. The drop then happens while the switch masks the
-splitter's AWVALID, so AXI-R01 on the pins never sees it; the lost write does.
-
-pr77 is caught through its reset values. Its other half, the `>` to `>=`
-classification, would escape on its own: nothing checks the TX arbitration
-order yet (FEAT-R11 in `uvm/env/checkers/rules.csv`).
-
-GitHub issues #14, #15 and #16 are still open, and #35 (pytest collection)
-has no fix. #27, #30 and #56 were closed without a behavioural RTL fix: #27 went
-away with the FDI_CONFIG refactor, #30 was the import-scoping chore in #31, and
-#56 was a stimulus bug. None of them has a fix to re-introduce.
+`make build RTL_PATCH=<absolute path>` copies `RTL/` into the build directory
+(`build/<sim>-...-fix-<name>/rtl/`, `<name>` being the patch's file name without its
+extension), applies the patch there and compiles that copy, so the source tree is
+never modified. Runs of that build go to `out/<build>-fix-<name>/`, and
+`run_list.py --rtl-patch <path>` runs a list on it. The patch stays outside the
+repository; this is how a proposed RTL fix is tested before it is published.
 
 ## Register tests
 

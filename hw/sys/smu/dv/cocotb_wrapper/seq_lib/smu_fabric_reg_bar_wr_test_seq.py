@@ -39,17 +39,23 @@ FABCFG_DESTS = (
     ),
     (
         "alias_remap",
-        smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0),
+        smc_indexed_addr(
+            "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0
+        ),
         8,
     ),
     (
         "mmode_remap",
-        smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0),
+        smc_indexed_addr(
+            "SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0
+        ),
         8,
     ),
     (
         "xvisor_remap",
-        smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0),
+        smc_indexed_addr(
+            "SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0
+        ),
         8,
     ),
     (

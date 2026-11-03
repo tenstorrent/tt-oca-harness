@@ -236,7 +236,7 @@ static void rom_smc_coordination_probe(void) {
         return;
     }
 
-    if (manifest_off == 0xFFFFFFFFu) {
+    if (manifest_off == SMC_MANIFEST_OFFSET_INVALID) {
         simputs("SMC_MANIFEST_OFF_INVALID\n");
         return;
     }

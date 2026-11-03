@@ -42,9 +42,8 @@ Verilator the open one it must also pass on. Every check reports under a rule
 ID traced to a specification section. Every run gets a verdict (PASS, XFAIL,
 FAIL, XPASS) against a list of known DUT bugs, so regressions stay green on
 known bugs while anything new fails. Coverage, code and functional, counts only
-passing runs, and the test plan and the fixed-bug history are each tied to the
-testlists by scripts, so that coverage of the plan and the ability to catch real
-bugs are measured rather than asserted.
+passing runs, and the test plan is tied to the testlists by scripts, so that
+coverage of the plan is measured rather than asserted.
 
 ## D0. Starting point: the PR 80 smoke flow
 
@@ -129,7 +128,7 @@ third-party AXI agent could be plugged in later behind one adapter.
 or Arm material.
 
 **Consequences.** We own the agents and their bugs. Every checker therefore
-needs evidence that it can fire (D4, D14), because no vendor stands behind it.
+needs evidence that it can fire (D4), because no vendor stands behind it.
 Arm's free `Axi4PC` assertions can be enabled as an optional extra (D13).
 
 **Measured effect on simulation speed.** Dropping the VIP also made the bench
@@ -287,8 +286,9 @@ demotes exactly those, and any other error still fails.
   `rule_inventory` shows rules with no checker, two primaries, a checker that
   never runs, or one that never fired.
 - Evidence matters more than the existence of a checker. The inventory says, per
-  rule, whether it fired in a negative test, an escape or mutation run (D14), or
-  was only ever evaluated in passing runs.
+  rule, whether it fired in a negative test or was only ever evaluated in
+  passing runs. (Escape and mutation runs also counted while the suite of D14
+  existed.)
 
 **Rejected.**
 
@@ -340,13 +340,24 @@ the inventory rather than forgotten.
   takes an explicit interim expectation, implements it, files a bug draft that
   records the choice (D7), and ties any failure it causes to that draft
   (D6).
-- **FDI state encodings.** The RTL uses private FDI state encodings on
-  `pl_state_sts` and `lp_state_req` instead of UCIe's (a known DUT bug). L2 can
-  model either through `fdi_enc` (`RTL` or `SPEC`). `SPEC` is the target;
-  `RTL` is the default only until the DUT is fixed, so that every other test can
-  run meanwhile. Specific tests (`*_spec_test`, testlist `g1b`) always use
-  `SPEC` and are expected failures until then. A run-wide override (make
-  `FDI_ENC`, plusarg `+FDI_ENC`) lets a whole regression run against a fixed DUT.
+- **FDI state encodings.** RTL from before the UCIe encoding fix uses private FDI
+  state encodings on `pl_state_sts` and `lp_state_req` instead of UCIe's. L2
+  can model either through `fdi_enc` (`RTL` or `SPEC`). `SPEC` is the default,
+  and no test forces `RTL`; the `*_spec_test` tests (testlist `g1b`) select
+  `SPEC` themselves because they check UCIe-only behaviour. A run-wide override
+  (make `FDI_ENC`, plusarg `+FDI_ENC`) runs a whole regression with `RTL`
+  against RTL from before the fix. (Retired; see the amendment below.)
+
+**Amendment (2026-10-26): one FDI encoding.** The DUT on `main` uses UCIe's
+encodings since its encoding fix, and the owner has ruled (2026-10-24) that the
+bench does not stay compatible with RTL that lacks a fix that is on `main`. So
+the `RTL` map is gone: L2 encodes and decodes UCIe r1.1 Table 8-2 only, with no
+selector (`fdi_enc`, `aou_fdi_enc_e`, make `FDI_ENC`, `+FDI_ENC`,
+`run_list.py --fdi-enc` and the informational coverpoint `cp_fdi_enc` were
+removed), and every check that ran only under `SPEC` (FDI-R47, R48, R49, the
+Retrain NOP/Active rule of FDI-M01, the Adapter's LinkReset and Disabled) now
+always runs. A DUT whose state codes disagree with UCIe is a DUT bug, not a
+bench mode. The `*_spec_test` names stay: they name the UCIe-only scenarios.
 
 **Why.** v0.7 is what the DUT claims, so checking it against v0.8 would report
 intended behaviour as bugs, while v0.8 support keeps the bench useful when the
@@ -361,8 +372,8 @@ bench. *Hard-coding UCIe encodings*: every FDI test fails until the DUT is fixed
 hiding all other findings. *Waiting for clarification before writing the
 check*: stalls the work and leaves the behaviour unchecked meanwhile.
 
-**Where.** `env/aou_t1_env_cfg.svh` and `l3/aou_l3_cfg.svh` (`spec_rev`,
-`fdi_enc`), `fdi/aou_lsm_pkg.sv` (encoding maps), `l3/aou_link_ctrl.svh`
+**Where.** `env/aou_t1_env_cfg.svh` and `l3/aou_l3_cfg.svh` (`spec_rev`),
+`fdi/aou_lsm_pkg.sv` (UCIe encodings), `l3/aou_link_ctrl.svh`
 (v0.8 ERROR state), CODING_GUIDELINES.md "Oracles", AGENTS.md "Boundaries".
 
 **Consequences.** Some checks encode an interim expectation, not a settled
@@ -479,8 +490,8 @@ mixes verification and design changes in one history. *Filing into a tracker
 from the bench*: ties the public bench to one organisation's tools. *One agent
 investigating, fixing and judging*: prone to accepting its own hypothesis.
 
-**Where.** `RTL_PATCH` and `ESCAPE` in the Makefile (shared copy-and-patch
-mechanism), `run_list.py --rtl-patch`, `expected_fail.yaml`, AGENTS.md
+**Where.** `RTL_PATCH` in the Makefile (copy-and-patch of `RTL/` into the
+build directory), `run_list.py --rtl-patch`, `expected_fail.yaml`, AGENTS.md
 "Boundaries", CODING_GUIDELINES.md "Oracles"; the bug-draft location in the
 git-ignored `site/SITE.md`.
 
@@ -517,7 +528,7 @@ fresh plan*: loses the existing IDs and intent. *Test names as the link between
 plan and runs*: one test covers different items with different plusargs and
 configs, so the testlist scenario is the unit. *A test-by-test mapping to the
 VIP-based testbench*: kept for a while, then removed; this bench stands on the
-plan, its coverage and the escape suite, not on resemblance to another bench.
+plan, its coverage and its checkers, not on resemblance to another bench.
 
 **Where.** `docs/test_plan_items.yaml`, `docs/test_plan_corrections.yaml`,
 `testlists/*.toml`, `testlists/plan_ids.yaml`, `scripts/plan_status.py`,
@@ -532,9 +543,11 @@ yet carries the `blocked` tag and its reason in the sidecar; `run_list.py` and
 ## D9. Build configurations
 
 **Decision.** `CONFIG` selects the T1 (and register bench) build parameters: RP
-count, data width per RP, `FDI_CONFIG` and, where it is not the default 1024,
-`AXI_PEER_DIE_MAX_DATA_WD`, `TX_NXT_PACKING_EN` (and, in `-rxf`, the RX FIFO
-parameters). Thirteen configurations exist:
+count, data width per RP, `FDI_CONFIG`, `TX_NXT_PACKING_EN` (and, in `-rxf`, the RX FIFO
+parameters). Ten configurations exist (three more, `1x512-sp64-p512`,
+`4xmix4211-sp128-p512` and `4xmix4211-sp128-p256`, built
+`AXI_PEER_DIE_MAX_DATA_WD` below 1024 until that parameter became a localparam
+fixed at the AoU maximum; see the amendment below):
 
 | CONFIG | RPs | RP widths | FDI_CONFIG | Purpose |
 |---|---|---|---|---|
@@ -546,10 +559,7 @@ parameters). Thirteen configurations exist:
 | 1x256-sp32 | 1 | 256 | 0 (SP_32B) | Narrowest RP and FDI |
 | 2xmix-tp64_128 | 2 | 512, 1024 | 4 (TP_64B_128B) | Two-PHY FDI, two RPs, mixed widths |
 | 2x512-tp32_64 | 2 | 512 each | 3 (TP_32B_64B) | Two-PHY FDI with a 256-bit PHY0, two RPs at one width |
-| 1x512-sp64-p512 | 1 | 512 | 1 (SP_64B) | `AXI_PEER_DIE_MAX_DATA_WD` 512 (plan 14.17) |
 | 1x512-sp64-nxt | 1 | 512 | 1 (SP_64B) | `TX_NXT_PACKING_EN` 1: the registered TX packer output stage |
-| 4xmix4211-sp128-p512 | 4 | 1024, 512, 256, 256 | 2 (SP_128B) | `AXI_PEER_DIE_MAX_DATA_WD` 512 below a 1024-bit RP (plan 14.17) |
-| 4xmix4211-sp128-p256 | 4 | 1024, 512, 256, 256 | 2 (SP_128B) | `AXI_PEER_DIE_MAX_DATA_WD` 256 below 1024- and 512-bit RPs (plan 14.17) |
 | 2xmix-sp64-rxf | 2 | 1024, 256 | 1 (SP_64B) | Non-default RX FIFO depths, RX FIFO register slices off |
 
 Names describe the configuration and refer to nothing else:
@@ -560,9 +570,6 @@ Names describe the configuration and refer to nothing else:
 - `sp<B>`: single PHY with a B-byte FDI data path (`FDI_CFG_SP_<B>B`).
 - `tp<B1>_<B2>`: two PHYs with B1- and B2-byte FDI (`FDI_CFG_TP_<B1>B_<B2>B`,
   built with `TWO_PHY`).
-- `-p<W>`: `AXI_PEER_DIE_MAX_DATA_WD` of W bits (`CONFIG_PEER_W`); without it
-  the RTL default, 1024. The remote die is then never wider than W bits
-  (`aou_t1_env_cfg::finalize()` limits `+remote_bytes`).
 - `-nxt`: `TX_NXT_PACKING_EN` 1 (`AOU_TX_NXT_PACKING=1`): the other value of the
   AOU_TX_CORE output-stage parameter, a registered flit chunk computed from the
   packer's look-ahead state. Every other build takes the RTL default, 0.
@@ -593,13 +600,21 @@ gain. The integration guide puts no constraint on RP widths per `FDI_CONFIG`, so
 pair alone. Every pairing of a local RP width and a remote RP width (256, 512,
 1024) is legal, and the remote's width is not known when the DUT is built, so
 the remote width is a run-time knob (`+remote_bytes`, per RP) and the mixed
-builds cover all nine pairings. `AXI_PEER_DIE_MAX_DATA_WD` is the integrator's
+builds cover all nine pairings. `AXI_PEER_DIE_MAX_DATA_WD` was the integrator's
 promise that the remote die sends no WriteData wider than it; the default 1024
-allows every pairing. It gets three restricted builds (the bench limits the
+allows every pairing. It got three restricted builds (the bench limited the
 remote die to the parameter): `1x512-sp64-p512`; `4xmix4211-sp128-p512`, where
-a 1024-bit RP is wider than the parameter and its own reads still get
+a 1024-bit RP was wider than the parameter and its own reads still got
 ReadData1024 (AoU 5.7: ReadData follows ARSIZE); and `4xmix4211-sp128-p256`,
 the largest ratio (a 1024-bit ReadData path over a 256-bit WriteData path).
+
+**Amendment (2026-10-20).** `AXI_PEER_DIE_MAX_DATA_WD` is a localparam fixed at
+1024, the widest AoU data message: a receiver cannot know the remote die's AXI
+width, so the RX data path is sized for the maximum and there is no promise for
+an integrator to make. The three restricted builds, their matrix scenarios and
+plan item 14.17 are retired; the remote die model stays bounded at 128 bytes
+(`AOU_T1_PEER_MAX_BYTES`), and the nine width pairings remain covered by the
+mixed builds through `+remote_bytes`.
 
 **Rejected.** *One configuration* (misses the converters and the other FDI
 widths). *A full cross product* (cost). *Names after a purpose or another bench*
@@ -611,7 +626,7 @@ the per-RP widths, and the FDI scheme breaks when two share an FDI.
 **Where.** `[targets.<CONFIG>]` in `aou_sim_cfg.toml` and `aou_reg_sim_cfg.toml`
 (`make configs`); README
 "Build configurations"; ARCHITECTURE.md "Build configuration"; `target` in
-testlist and escape entries.
+testlist entries.
 
 A configuration is a sim-config *target*: its defines (`RP_COUNT`,
 `AXI_DATA_WD_RP*`, `FDI_CONFIG`, `TWO_PHY`, `AXI_PEER_DIE_MAX_DATA_WD`,
@@ -671,10 +686,6 @@ twice.
 - **Closure.** Closure is measured on the union of every configuration. The
   plan, the gap analysis and the owner's decisions on it are in
   [COVERAGE_CLOSURE.md](COVERAGE_CLOSURE.md).
-- **Encoding coverpoint.** `l2.cg_link_state.cp_fdi_enc` records the run's FDI
-  state encoding (`rtl` or `spec`). It is informational, showing that the merge
-  includes SPEC-encoded runs; the `rtl` bin exists only while BUGS/001 (the
-  private encodings) is open and is dropped when the fix makes SPEC the default.
 
 **Why.**
 
@@ -844,7 +855,15 @@ AXI4 protocol assertions", CODING_GUIDELINES.md "Licensing".
 Earlier history on the integration branch carried internal references, which
 the planned squash removes (Open items).
 
-## D14. Bug-escape suite
+## D14. Bug-escape suite (retired)
+
+**Amendment, 2026-10-21: retired.** The escape patches, `testlists/escape.toml`,
+`scripts/escape.py`, `ESCAPE=` and `make escape` were removed. The suite did its
+job: it proved that every checker could fire and that the bench caught the bugs
+fixed on `main` so far. Keeping thirteen RTL patches applying against moving RTL
+had come to cost more than that evidence was still worth. `RTL_PATCH` (D7),
+which shared its copy-and-patch mechanism, stays. Rule fire evidence now comes
+from negative tests only (D4). The text below is the decision as it stood.
 
 **Decision.** Every real bug fixed on `main` must make the bench fail when it
 comes back. `escape/<id>.patch` reverses one fix; `make build ESCAPE=<id>`
@@ -932,7 +951,7 @@ change, not a local workaround.
   nothing (directory names, sim-config and testlist keys, `expect_fail`,
   `tags`, SPDX headers), and the bench's own mechanism is kept where the
   harness has none or a weaker one: the grader and `expected_fail.yaml` (D6),
-  the plan sidecar (D8), the escape suite (D14), the enumerated run directories
+  the plan sidecar (D8), the enumerated run directories
   and the control file (D12). Each such choice is a line in `OPEN_ITEMS.md`
   until it is either adopted by the harness or revisited here.
 
@@ -1026,12 +1045,15 @@ have reached `hw/ip/aou`.
 **Decision.**
 
 - When the FDI link goes down (LinkReset, LinkError or Disabled, started by
-  the DUT, the Adapter or the remote die, including the DUT's own teardown
-  after a deactivation), the bench's software and system model resets both
+  the Adapter or the remote die, or the LinkError the DUT raises on
+  `lp_linkerror`; a deactivation never takes the link down, and the DUT
+  never restarts it), the bench's software and system model resets both
   dies while the link is down: AOU_SW_RESET on the DUT (the bring-up
   controller, outside AOU_CORE, keeps its state) and the remote die's reset
-  of its AoU state (`reset_flush()`). Software then reprograms the last
-  `program_cfg()` and the dies activate again from DISABLED.
+  of its AoU state (`reset_flush()`). Software then restarts the link on the
+  UCIe controller (the Adapter model's `sw_restart_delay` in Reset before it
+  trains again), reprograms the last `program_cfg()`, and the dies activate
+  again from DISABLED.
 - It applies unless both dies are cleanly DISABLED with no activation message
   pending or in flight in either direction (`aou_quiet()`: the DUT and the
   remote DISABLED, the remote's activation queue empty). A received
@@ -1076,8 +1098,58 @@ have reached `hw/ip/aou`.
 - *An RTL change that clears the activation FSM on link-down.* It is neither
   sufficient (the queued TX flit survives) nor documented.
 
-The owner question is open (038/011): who resets AOU_CORE after a link-down it
-did not request, and must a flit already in its TX path be dropped?
+The owner has since decided (2026-10-22) that a routine deactivation
+leaves the FDI link up, that only an error takes it down from the IP, and that
+restarting the link after a reset or error is software's job on the UCIe
+controller, never the IP's. This decision's "software resets both dies,
+restarts the link, reprograms and re-activates" is therefore the documented
+flow. Still open (011): who resets AOU_CORE after a link-down it did not
+request, and must a flit already in its TX path be dropped?
+
+## D19. The local AXI agents are reset with AOU_CORE
+
+**Decision.**
+
+- The bench's local AXI managers and subordinates on the DUT's S and M ports,
+  and the Axi4PC checkers on them, are on the DUT's AXI-port reset
+  (`tb_top.axi_port_rst_n`: the core reset read from the DUT, I_RESETN and
+  AOU_SW_RESET together). `sw_reset_core()` flushes the environment with
+  `bus_reset = 1` once the core reset is sampled, so the software reset is a
+  bus reset to the agents: queued and in-flight transactions end as aborted,
+  the drivers idle their outputs and restart once the reset is over.
+- The scoreboard treats a write on the bus at the AOU_SW_RESET request
+  (`reset_outstanding`) as lost or landed whatever its response; a read in the
+  same window may end with SLVERR (BUGS/015 interim).
+- No check judges the AXI protocol across the software reset on the DUT's
+  ports: T1-L28 (S-port handshakes inside the reset pulse) and T1-L26 (an M-port
+  response presented before the reset and not accepted after it) are retired,
+  with every expected-fail entry that rested on them, and so is the bench's
+  support for an RTL-side guard that would have kept the ports AXI-clean.
+
+**Why.** The owner's decision (2026-10-25): an error that needs AOU_SW_RESET or
+I_RESETN loses every AXI transaction in flight or queued in the block, and the
+rest of the AXI logic attached to it is reset as well or has its own recovery
+mechanism. That is now what the MAS (7.3.6) and the integration guide (3.1.1,
+6.5.3) say. A bench whose agents kept driving the ports across the reset, and
+checkers that expected the DUT to keep the AXI protocol through it, were testing
+a contract the IP does not offer; the stalls, shifted W-to-AW pairing and
+orphan responses they reported were the bench's own doing. Modelling the reset
+peers the integration guide requires makes those scenarios pass and leaves
+T1-L29 (the RX FIFOs are empty at the release of AOU_SW_RESET, and no beat held
+across it reaches an M port) as the one DUT-side check of the software reset.
+
+**Where.** `tb/tb_top.sv`, `tb/aou_axi4pc_gate.sv`, `uvm/env/aou_t1_env.svh`
+(`reset_flush`, `sw_reset_window`), `uvm/env/aou_base_test_seq.svh`
+(`sw_reset_core`), `uvm/env/axi/aou_axi_monitor.svh`, `uvm/env/aou_scoreboard.svh`,
+`uvm/env/aou_t1_sw_reset_chk.svh`, `expected_fail.yaml`, `checkers/rules.csv`;
+[ARCHITECTURE.md](ARCHITECTURE.md) "Reset contract as implemented".
+
+**Consequences.** A test that wants the DUT's ports to stay protocol-clean across
+AOU_SW_RESET has no such expectation to lean on. The RX FIFOs (AOU_FIFO_RP) are
+on the core reset together with AOU_CORE, so nothing the reset lost is presented
+on a port afterwards; the managers' stale window and the Axi4PC gate stay as
+defensive measures only, and `aou_sw_reset` is write-only and self-clearing in
+the RDL (a write of 1 resets the bit with every other SFR).
 
 ## Open items
 
@@ -1096,7 +1168,3 @@ did not request, and must a flit already in its TX path be dropped?
   than the testbench or RTL sources it was built from (D12).
 - **Xcelium coverage.** Xcelium builds and runs but has no coverage flow and no
   full-regression matching (D2). Questa's run and coverage are also untested.
-- **Run-wide FDI encoding.** The make knob `FDI_ENC` and the expected-fail entries
-  limited to `fdi_enc=SPEC` arrive with the FDI encoding fix work; when the DUT
-  uses UCIe encodings, `SPEC` becomes the default and the `RTL` encoding map
-  can be retired (D5).

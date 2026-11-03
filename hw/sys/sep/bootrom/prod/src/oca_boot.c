@@ -437,7 +437,14 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
             uint32_t status = smc_scratch_read(SMC_SCRATCH_STATUS_TO_SEP_IDX);
             if (status & SMC_SEP_STATUS_MANIFEST_READY) break;
         }
-        offsets[0] = smc_scratch_read(SMC_SCRATCH_MANIFEST_ADDR_IDX);
+        uint32_t manifest_offset = smc_scratch_read(SMC_SCRATCH_MANIFEST_ADDR_IDX);
+        // READY announces the publication, not a usable offset.
+        if (manifest_offset == SMC_MANIFEST_OFFSET_INVALID) {
+            report_status(STATUS_TYPE_ERROR, SEP_MSG_MANIFEST_LOAD_FAILED);
+            simputs("MANIFEST_OFFSET_INVALID\n");
+            return OCA_BOOT_ERR_MANIFEST_OFFSET_INVALID;
+        }
+        offsets[0] = manifest_offset;
         offsets[1] = offsets[0];
         num_retries = 0; // single attempt
         region_base = (int64_t)sep_get_smc_sram_base();

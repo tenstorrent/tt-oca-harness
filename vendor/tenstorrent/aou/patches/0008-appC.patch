@@ -1,8 +1,8 @@
 diff --git a/DOC/MAS/software-operation.adoc b/DOC/MAS/software-operation.adoc
-index 5811c2d..e3343a5 100644
+index 5148783..259cfd2 100644
 --- a/DOC/MAS/software-operation.adoc
 +++ b/DOC/MAS/software-operation.adoc
-@@ -13,7 +13,7 @@ ifndef::aou-integration-xref[]
+@@ -16,7 +16,7 @@ ifndef::aou-errors-xref[]
  endif::[]
  
  [[aou-software-operation-guide]]

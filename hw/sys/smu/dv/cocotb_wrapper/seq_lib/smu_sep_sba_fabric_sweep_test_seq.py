@@ -50,9 +50,16 @@ S8: the external aperture. No adopter peripheral is attached to the SEP
     an access back below the walk's base, and every address bit and byte
     offset of the TRNG window, returns ``sberror`` 2, "a bad address was
     accessed", for both reads and writes.
+
+The order in which the free address bits of the SMU aperture (S4), the SMC SPM
+window (S7) and the external aperture and TRNG window (S8) are walked, and the
+order of the alias offsets 2^32 to 2^55 (S5), are drawn from the seed; every
+bit and offset of each list is walked in every run.
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -101,15 +108,21 @@ ADDR_MASK = (1 << c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__END_ADDR__END_ADDR_
 # traffic, which the SMU path sends for an address with bit 55 set.
 SECURE_ENTRY = 2
 SECURE_FILTER_CONFIG = _indexed_addr(
-    "SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", SECURE_ENTRY
+    "SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", SECURE_ENTRY
 )
-SECURE_START_ADDR = _indexed_addr("SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", SECURE_ENTRY)
-SECURE_END_ADDR = _indexed_addr("SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", SECURE_ENTRY)
+SECURE_START_ADDR = _indexed_addr(
+    "SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR", SECURE_ENTRY
+)
+SECURE_END_ADDR = _indexed_addr(
+    "SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR", SECURE_ENTRY
+)
 OUTBOUND_CFG_SECURE = OUTBOUND_CFG_OPEN & ~c_header_u32(
     _FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm"
 )
 
-REMAP_REGION = _indexed_addr("SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_BASE_ADDR", 0)
+REMAP_REGION = _indexed_addr(
+    "SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_BASE_ADDR", 0
+)
 REMAP_START = REMAP_REGION + c_header_u32(
     _ALIAS_REMAP_ADDR_H, "ALIAS_REMAP_REGION_REGION_START_BASE_ADDR"
 )
@@ -132,8 +145,8 @@ EFUSE_SHIM_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTR
 EFUSE_SHIM_SIZE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_SIZE")
 AP_REGION_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_AP_REGION_BASE_ADDR")
 STEE_REGION_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_STEE_REGION_BASE_ADDR")
-AP_REMAP_0 = _indexed_addr("SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_BASE_ADDR", 0)
-STEE_REMAP_0 = _indexed_addr("SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_BASE_ADDR", 0)
+AP_REMAP_0 = _indexed_addr("SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR", 0)
+STEE_REMAP_0 = _indexed_addr("SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR", 0)
 _OUTPUT_REMAP_H = _REPO_ROOT / "hw/ip/output_remap/regs/gen/c/output_remap.h"
 OUTPUT_REMAP_VALID = c_header_u32(
     _OUTPUT_REMAP_H, "OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bm"
@@ -156,6 +169,10 @@ SMU_PROBE = SMU_BASE + 0x1000_0100
 # in the SMC window nor in the SMU aperture, so only the alias remap moves it.
 REMAP_LOCAL = 0x7000_0000
 REMAP_BITS = range(32, 56)
+SMU_WALK_BITS = range(3, (SMU_SIZE - 1).bit_length())
+SMC_WALK_BITS = range(3, SMC_SPM_SIZE.bit_length())
+EXT_WALK_BITS = range(3, SEP_EXTERNAL_SIZE.bit_length() - 1)
+TRNG_WALK_BITS = range(2, TRNG_SIZE.bit_length() - 1)
 
 SB_BUS_ERROR = 0b010
 POLL_CYCLES = 4000
@@ -208,6 +225,24 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
             "s7": False,
             "s8": False,
         }
+
+    def _draw_orders(self) -> None:
+        """Draw the walk order of every bit and offset list; every element is kept."""
+        self.seed = self.test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.order: dict[str, list[int]] = {}
+        for name, bits in (
+            ("smu_bits", SMU_WALK_BITS),
+            ("remap_offsets", REMAP_BITS),
+            ("smc_bits", SMC_WALK_BITS),
+            ("ext_bits", EXT_WALK_BITS),
+            ("trng_bits", TRNG_WALK_BITS),
+        ):
+            order = list(bits)
+            self.rng.shuffle(order)
+            self.order[name] = order
+        drawn = " ".join(f"{k}={v}" for k, v in self.order.items())
+        self._log(f"SEED: RANDOM_SEED={self.seed} drawn {drawn}")
 
     async def _post(self, jtag, addr: int, data: int) -> None:
         """One DMI write scan; the next scan collects its status."""
@@ -282,15 +317,14 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         await self._sb_ok(jtag, SECURE_END_ADDR, 3, ADDR_MASK)
         await self._sb_ok(jtag, SECURE_FILTER_CONFIG, 2, OUTBOUND_CFG_SECURE)
         cells = self._size_cells(SMU_PROBE, 0)
-        top = (SMU_SIZE - 1).bit_length()
-        for bit in range(3, top):
+        for bit in self.order["smu_bits"]:
             addr = SMU_PROBE | (1 << bit)
             if addr != SMU_PROBE:
                 cells.append((addr, 2, 100 + bit, addr))
         observed, want = await self._round_trips(jtag, cells, backdoor=True)
         self._log(f"CHK-SEP-SBA-OUT-SWEEP {len(observed)} cells {observed}")
         sb.expect_eq(
-            "CHK-SEP-SBA-OUT-SWEEP",
+            f"CHK-SEP-SBA-OUT-SWEEP drawn smu_bits={self.order['smu_bits']}",
             observed,
             want,
             evidence="CHK-SEP-SBA-OUT-SWEEP",
@@ -301,7 +335,7 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         await self._sb_ok(jtag, REMAP_START, 3, REMAP_LOCAL)
         await self._sb_ok(jtag, REMAP_END, 3, REMAP_LOCAL + REMAP_PAGE)
         observed, want = {}, {}
-        for bit in REMAP_BITS:
+        for bit in self.order["remap_offsets"]:
             offset = (1 << bit) & REMAP_OFFSET_BM
             await self._sb_ok(jtag, REMAP_ATTRS, 3, REMAP_VALID | offset)
             addr = REMAP_LOCAL + 8 * (bit - REMAP_BITS.start)
@@ -312,7 +346,7 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
             want.update({f"2^{bit} {k}": v for k, v in exp.items()})
         self._log(f"CHK-SEP-SBA-REMAP-HIGH {observed}")
         sb.expect_eq(
-            "CHK-SEP-SBA-REMAP-HIGH",
+            f"CHK-SEP-SBA-REMAP-HIGH drawn remap_offsets={self.order['remap_offsets']}",
             observed,
             want,
             evidence="CHK-SEP-SBA-REMAP-HIGH",
@@ -418,7 +452,7 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         self.smc_base = int(self.dut.smc_global_base_o.value)
         spm = self._smc_view(SMC_SPM_BASE)
         cells = self._size_cells(spm + 0x100, 500)
-        for bit in range(3, SMC_SPM_SIZE.bit_length()):
+        for bit in self.order["smc_bits"]:
             addr = spm | (1 << bit)
             if addr == spm or addr >= spm + SMC_SPM_SIZE:
                 # The next 2**bit boundary flips the bit from its value in spm.
@@ -428,7 +462,7 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         observed, want = await self._round_trips(jtag, cells, backdoor=False)
         self._log(f"CHK-SEP-SBA-SMC-WINDOW {observed}")
         sb.expect_eq(
-            "CHK-SEP-SBA-SMC-WINDOW",
+            f"CHK-SEP-SBA-SMC-WINDOW drawn smc_bits={self.order['smc_bits']}",
             observed,
             want,
             evidence="CHK-SEP-SBA-SMC-WINDOW",
@@ -438,13 +472,13 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
     async def _external_decerr(self, jtag, sb) -> None:
         probe = SEP_EXTERNAL_BASE + 0x100
         cells = [(a, s) for a, s, _, _ in self._size_cells(probe, 0)]
-        for bit in range(3, SEP_EXTERNAL_SIZE.bit_length() - 1):
+        for bit in self.order["ext_bits"]:
             addr = probe | (1 << bit)
             if addr != probe and not EFUSE_SHIM_BASE <= addr < EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE:
                 cells.append((addr, 2))
         # Back below the probe, so every walked bit and the region nibble fall.
         cells.append((SEP_EXTERNAL_BASE + 0x10, 2))
-        for bit in range(2, TRNG_SIZE.bit_length() - 1):
+        for bit in self.order["trng_bits"]:
             cells.append((TRNG_BASE | (1 << bit), 2))
         cells += [(TRNG_BASE + off, size) for size, off in ((0, 1), (1, 2), (0, 3), (2, 0))]
         observed, want = {}, {}
@@ -456,7 +490,8 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
             want[key] = (SB_BUS_ERROR, SB_BUS_ERROR)
         self._log(f"CHK-SEP-SBA-EXTERNAL-DECERR {observed}")
         sb.expect_eq(
-            "CHK-SEP-SBA-EXTERNAL-DECERR",
+            "CHK-SEP-SBA-EXTERNAL-DECERR drawn "
+            f"ext_bits={self.order['ext_bits']} trng_bits={self.order['trng_bits']}",
             observed,
             want,
             evidence="CHK-SEP-SBA-EXTERNAL-DECERR",
@@ -464,6 +499,7 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         self.steps["s8"] = True
 
     async def run(self) -> None:
+        self._draw_orders()
         await smu_dtp_sep_dm_dmi_test_seq.run(self)
         sb = self.test.env.scoreboard
         jtag = self.jtag

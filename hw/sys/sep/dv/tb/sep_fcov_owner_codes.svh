@@ -143,6 +143,8 @@ localparam int unsigned FcovOwnSepWdtAonTimerInternalsTest = 766;
 localparam int unsigned FcovOwnSepClockGateControlTest = 772;
 localparam int unsigned FcovOwnSepTestEnPinReachTest = 773;
 localparam int unsigned FcovOwnSepAxiPartialLaneReadTest = 774;
+localparam int unsigned FcovOwnSepSramInboundBurstAttrTest = 782;
+localparam int unsigned FcovOwnSepResetWdtSanityTest = 784;
 
 // eFuse, lifecycle and SEC_DIS.
 localparam int unsigned FcovOwnSepEfuseWindowDecodeResetTest = 618;
@@ -163,6 +165,7 @@ localparam int unsigned FcovOwnSepEfuseImageTest = 768;
 localparam int unsigned FcovOwnSepLccDemoteFeatCtrlMatrixTest = 769;
 localparam int unsigned FcovOwnSepSecDisOverrideTest = 770;
 localparam int unsigned FcovOwnSepEfuseLccLcStateStitchTest = 771;
+localparam int unsigned FcovOwnSepEfuseTokenMatchFaultPicTest = 785;
 
 // Key Manager.
 localparam int unsigned FcovOwnSepKmCommandProtocolRandTest = 722;
@@ -179,6 +182,7 @@ localparam int unsigned FcovOwnSepKmMailboxKmSideRandTest = 733;
 localparam int unsigned FcovOwnSepKmDrbgSamplerRandTest = 734;
 localparam int unsigned FcovOwnSepKmOtpInterfaceRandTest = 735;
 localparam int unsigned FcovOwnSepKmKeyBankRegisterRandTest = 736;
+localparam int unsigned FcovOwnSepKmSideloadShareWalkTest = 783;
 localparam int unsigned FcovOwnSepKmSramScramblerKeyRandTest = 737;
 localparam int unsigned FcovOwnSepKmDrbgSamplerTimeoutResetTest = 775;
 localparam int unsigned FcovOwnSepKmHandoverTest = 776;

@@ -349,8 +349,7 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         ver0 = await abr.rd32(ABR_VERSION0)
         ver1 = await abr.rd32(ABR_VERSION1)
         self.logger.info(
-            "ABR ML-DSA identity words (information only): NAME0=0x%08x NAME1=0x%08x "
-            "VERSION0=0x%08x VERSION1=0x%08x",
+            "OBS-ABR-MLDSA-ID: NAME0=0x%08x NAME1=0x%08x VERSION0=0x%08x VERSION1=0x%08x",
             name0,
             name1,
             ver0,

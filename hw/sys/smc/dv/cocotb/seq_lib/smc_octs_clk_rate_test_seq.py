@@ -334,7 +334,7 @@ class smc_octs_clk_rate_test_seq(SmcCsrSeq):
         win3 = await self._window("W3", c2, c2_issue, c2_done, gran)
         self._emit(
             "CHK-OCTS-START-RELOAD",
-            f"preset P=0x{PRESET:x}; c2=0x{c2:x} in [P, P+{since}+{gran}] "
+            f"cell={self.cell} preset P=0x{PRESET:x}; c2=0x{c2:x} in [P, P+{since}+{gran}] "
             f"({gap} clk_smc_i cycles after the third START write); "
             f"STATUS before=0x{status_mid:x} after=0x{status_end:x} RUNNING=1; "
             f"window c2=0x{c2:x} c3=0x{win3['c1']:x} "
@@ -352,7 +352,12 @@ class smc_octs_clk_rate_test_seq(SmcCsrSeq):
             f"input_clock_edge={EDGE_TIMEOUT_NS}ns last={self.last_edge_state} "
             f"fail=AssertionError(no edge) edge_waits={self.edge_waits}",
         )
-        cocotb.log.info("CHK-TIMEOUT-PATHS: %d bounded waits: %s", len(waits), " ".join(waits))
+        cocotb.log.info(
+            "CHK-TIMEOUT-PATHS: cell=%s: %d bounded waits: %s",
+            self.cell,
+            len(waits),
+            " ".join(waits),
+        )
         self._finish_fence()
 
     def _finish_fence(self) -> None:
@@ -369,7 +374,9 @@ class smc_octs_clk_rate_test_seq(SmcCsrSeq):
         )
         assert ev.index(self.rate_id) < ev.index("CHK-OCTS-START-RELOAD"), "checker order"
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence %s; checker lines %s, CHK-OCTS-START-RELOAD; stamps %s",
+            "CHK-NONVAC: cell=%s: ordered fence %s; checker lines %s, CHK-OCTS-START-RELOAD; "
+            "stamps %s",
+            self.cell,
             " < ".join(terms),
             self.rate_id,
             ", ".join(f"{t}@{s}" for t, s in self.fence),

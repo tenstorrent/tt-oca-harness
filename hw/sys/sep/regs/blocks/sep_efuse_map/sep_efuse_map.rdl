@@ -578,7 +578,7 @@ addrmap sep_efuse_map {
         field {
             sw = r;
             hw = rw;
-            desc = "Unused";
+            desc = "Reserved; hardware ignores these bits. A read returns whatever the fuse word or the last write left in them, so software masks reads to lc_state.";
         } rsvd [31:8] = 0x0;
     };
 

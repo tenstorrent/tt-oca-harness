@@ -51,9 +51,11 @@ xref:figure-3[] shows the simplified block diagram of single RP AOU_TX_CORE. The
 [[figure-4]]
 image::image4.png[Figure 4. TX_CORE QoS Scheme]
 
-When multiple RP requests are issued from the TX core, a QoS scheme is applied. The TX core supports three QoS schemes: *Round-Robin*, *Port QoS*, and *AXI QoS*. Each transaction supports three QoS level: *High, Normal, Low.*
+When multiple RP requests are issued from the TX core, a QoS scheme is applied. The TX core supports three QoS schemes: *Round-Robin*, *Port QoS*, and *AXI QoS*, selected by PRIOR_RP_AXI.ARB_MODE. Each transaction has one of three QoS levels: *High, Normal, Low.*
 
-*Round-Robin (ARB_MODE = 2pass:[']b00)* : Round-robin arbitration between valid RP. When a handshake occurs, the RP that will receive the next grant is determined.
+The scheme arbitrates the AW and AR channels between RPs. W data is sent in the order of the granted AWs, and B and R responses are arbitrated round-robin whatever the scheme. The arbitration SFRs (PRIOR_RP_AXI and PRIOR_TIMER) are intended to be programmed before the link is activated. They may be written in mission mode, but the arbitration of requests already accepted or in flight is then not guaranteed.
+
+*Round-Robin (ARB_MODE = 2pass:[']b00)* : Round-robin arbitration between valid RP. When a handshake occurs, the RP that will receive the next grant is determined. ARB_MODE = 2pass:[']b11 is reserved and behaves as Round-Robin.
 
 <<figure-5>> illustrates grant rotation among valid resource-plane requests.
 
@@ -62,11 +64,11 @@ When multiple RP requests are issued from the TX core, a QoS scheme is applied. 
 [[figure-5]]
 image::image5.png[Figure 5. Round-Robin arbitration example]
 
-*Port QoS (ARB_MODE = 2pass:[']b01):* For each RP, the QoS level is configured by an SFR. Arbitration is performed based on the QoS value is the SFR. The AXI QoS field is not used for arbitration.
+*Port QoS (ARB_MODE = 2pass:[']b01):* For each RP, the QoS level is configured by an SFR. Arbitration is performed based on the QoS value in the SFR. The AXI QoS field is not used for arbitration.
 
-The port QoS is divided into three levels: High, Normal, and Low priority. Port QoS can be configured by setting PRIOR_RP_AXI.PRx_PRIOR. A 2-bit field is used for QoS and supports values from 1 to 3. If the field is set to 0, it is treated as 1.
+The port QoS is divided into three levels: High, Normal, and Low priority. Port QoS can be configured by setting PRIOR_RP_AXI.RPx_PRIOR. A 2-bit field is used for QoS: 3 is High, 2 is Normal and 1 is Low. If the field is set to 0, it is treated as 1 (Low). At reset RP0 and RP1 are Low, RP2 is Normal and RP3 is High.
 
-By default, arbitration is performed in the order *High → Normal → Low*. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority. Timeout value can be configured by setting PRIOR_TIMER.TIMER_THRESHOLD. The resolution used for timeout determination can be configured through PRIOR_TIMER.TIMER_RESOLUTION.
+By default, arbitration is performed in the order *High → Normal → Low*. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority. The timeout is configured by PRIOR_TIMER (see <<aou-starvation-prevention-timer,starvation-prevention timer>>).
 
 If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.
 
@@ -77,7 +79,7 @@ If multiple RPs have the same priority, arbitration among them is performed in a
 [[figure-6]]
 image::image6.png[Figure 6. Port QoS arbitration example]
 
-*AXI QoS (ARB_MODE = 2pass:[']b10):* For each RP, the QoS level is determined by the value of the AXI QoS field. Arbitration is performed based on the AXI QoS value. For the 4-bit AXI QoS field, the High and Normal boundaries are the SFR fields [.monospaced]#++AXI_QOS_TO_HP++# and [.monospaced]#++AXI_QOS_TO_NP++#. A QoS value at or above [.monospaced]#++AXI_QOS_TO_HP++# is High, a value at or above [.monospaced]#++AXI_QOS_TO_NP++# and below [.monospaced]#++AXI_QOS_TO_HP++# is Normal, and a value below [.monospaced]#++AXI_QOS_TO_NP++# is Low. [.monospaced]#++AXI_QOS_TO_HP++# must be greater than [.monospaced]#++AXI_QOS_TO_NP++#; otherwise the Normal tier is empty. The reset pair is High [.monospaced]#++0xA++# and Normal [.monospaced]#++0x5++#, so QoS 10–15 is High, 5–9 is Normal, and 0–4 is Low. By default, arbitration is performed in the order *High → Normal → Low*. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority. If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.
+*AXI QoS (ARB_MODE = 2pass:[']b10):* For each RP, the QoS level is determined by the value of the AXI QoS field. Arbitration is performed based on the AXI QoS value. For the 4-bit AXI QoS field, the High and Normal boundaries are the SFR fields [.monospaced]#++AXI_QOS_TO_HP++# and [.monospaced]#++AXI_QOS_TO_NP++#. The classifier tests [.monospaced]#++AXI_QOS_TO_HP++# first: a QoS value at or above [.monospaced]#++AXI_QOS_TO_HP++# is High. Otherwise a value at or above [.monospaced]#++AXI_QOS_TO_NP++# is Normal, and a value below [.monospaced]#++AXI_QOS_TO_NP++# is Low. [.monospaced]#++AXI_QOS_TO_HP++# must be greater than [.monospaced]#++AXI_QOS_TO_NP++#. If it is not, the Normal tier is empty: every value at or above [.monospaced]#++AXI_QOS_TO_HP++# is High, including values that are also at or above [.monospaced]#++AXI_QOS_TO_NP++#, and every value below [.monospaced]#++AXI_QOS_TO_HP++# is Low. The reset pair is High [.monospaced]#++0xA++# and Normal [.monospaced]#++0x5++#, so QoS 10–15 is High, 5–9 is Normal, and 0–4 is Low. By default, arbitration is performed in the order *High → Normal → Low*. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority (see <<aou-starvation-prevention-timer,starvation-prevention timer>>). If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.
 
 <<figure-7>> illustrates arbitration using the AXI QoS fields.
 
@@ -85,6 +87,13 @@ image::image6.png[Figure 6. Port QoS arbitration example]
 .Figure 7. AXI QoS arbitration example
 [[figure-7]]
 image::image7.png[Figure 7. AXI QoS arbitration example]
+
+[[aou-starvation-prevention-timer]]
+*Starvation-prevention timer (Port QoS and AXI QoS):* PRIOR_TIMER bounds how long a Normal or Low request can wait behind higher-priority traffic. Each RP has one TX request buffer for AW and one for AR. Each buffer has a 16-bit prescaler that advances every clock cycle while the buffer holds at least one request, holds its count while the buffer is empty, and ticks when it reaches PRIOR_TIMER.TIMER_RESOLUTION, that is once every TIMER_RESOLUTION + 1 cycles. TIMER_RESOLUTION = 0 ticks every cycle; 0xFFFF ticks every 65536 cycles.
+
+Every Normal or Low request in the buffer counts ticks from the cycle it is accepted, not from the time it reaches the head of its buffer. When its count reaches PRIOR_TIMER.TIMER_THRESHOLD, the request is arbitrated as High; the count saturates at TIMER_THRESHOLD. The prescaler is shared by all requests in a buffer and is not restarted when a request arrives, so the first tick a request sees comes 1 to TIMER_RESOLUTION + 1 cycles after acceptance. TIMER_THRESHOLD = 0 promotes every Normal and Low request at once, so all requests arbitrate as High and the result is round-robin. At the reset values (TIMER_RESOLUTION = TIMER_THRESHOLD = 0xF) a request is promoted about 225 to 240 cycles after acceptance.
+
+The timer runs in the Round-Robin scheme too but has no effect there.
 
 [[aou-rx_core]]
 === RX_CORE
@@ -243,14 +252,16 @@ and resulting beat counts.
 |255 |256 (no split)
 |=======================================
 
-*ID width:* The splitter reserves 2 bits from the AXI ID for internal sub-burst tracking. Master-side IDs are therefore [.monospaced]#++ID_WD - 2++# bits wide. The 2 extra bits allow the splitter to correlate responses from up to 4 outstanding sub-bursts per original transaction.
+*ID width:* The 3:1 mux in front of the splitter appends 2 bits to the AXI ID that name the width path a request took (upsizer, direct or downsizer), so that its responses return to the right path. The splitter carries them and strips them from the manager-side ID, which is therefore [.monospaced]#++ID_WD - 2++# bits wide. The sub-bursts of one request share one manager-side ID; their responses return in order, as AXI requires for one ID, and the pending-ID table counts them. The sub-bursts of a request are issued back to back, and nothing limits how many of them are outstanding other than the manager port's readiness.
+
+*Outstanding requests:* The pending-ID tables ([.monospaced]#++AOU_SPLIT_RD_PENDING_INFO++#, [.monospaced]#++AOU_SPLIT_WR_PENDING_INFO++#) hold one entry per request, not per sub-burst, and are sized by [.monospaced]#++M_RD_MO_CNT++# / [.monospaced]#++M_WR_MO_CNT++# (default 32). An RP therefore keeps at most that many remote requests in service, while its manager port may have up to [.monospaced]#++M_RD_MO_CNT x ceil(beats / (MAX_ARBURSTLEN + 1))++# read bursts (and likewise writes) outstanding, with [.monospaced]#++beats++# the request's length at the manager port's data width. See xref:{aou-software-xref}#aou-axi-id-mismatch-error[AXI ID Mismatch Error] for the back-pressure when a table is full.
 
 [[aou-response-reassembly]]
 ==== Response Reassembly
 
 *Read path:* The [.monospaced]#++aou_split_tr_arch++# reorder buffer tracks the sub-burst sequence for each outstanding read. Slave-side [.monospaced]#++RLAST++# is asserted only when the final beat of the last sub-burst is received, reconstructing the original burst boundary. Intermediate [.monospaced]#++RLAST++# signals from the master side are consumed internally.
 
-*Write path:* B responses from sub-bursts are merged. The splitter tracks outstanding write sub-bursts with [.monospaced]#++r_wr_pending_cnt++# and returns a single B response to the slave side once all sub-bursts have completed. If any sub-burst returns an error ([.monospaced]#++|I_M_BRESP_RS++#), the merged [.monospaced]#++BRESP_ERR++# flag is set, propagating the error to the slave-side response.
+*Write path:* B responses from sub-bursts are merged. The request's pending-ID table entry ([.monospaced]#++AOU_SPLIT_WR_PENDING_INFO++#) counts the sub-bursts still to be answered, and the splitter returns a single B response to the slave side once all sub-bursts have completed. If any sub-burst returns an error ([.monospaced]#++|I_M_BRESP_RS++#), the merged [.monospaced]#++BRESP_ERR++# flag is set, propagating the error to the slave-side response.
 
 *ID mismatch detection:* The splitter exports [.monospaced]#++DEST_TABLE_RID_ERR++# and [.monospaced]#++DEST_TABLE_BID_ERR++# signals that flag responses with IDs not matching any outstanding transaction. These feed the xref:aou-4-interrupt[INT_MI0_ID_MISMATCH] interrupt source via [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#.
 
@@ -476,6 +487,7 @@ Write aggregation is activated when *all* of the following conditions are met:
 1.  [.monospaced]#++AWSIZE++# is narrower than the full bus width ([.monospaced]#++AXSIZE < $clog2(DATA_WD/8)++#).
 2.  [.monospaced]#++AWLEN++# is non-zero (multi-beat burst).
 3.  The write is *modifiable* ([.monospaced]#++AWCACHE[1] = 1++#) and not exclusive ([.monospaced]#++AWLOCK = 0++#). Non-modifiable and exclusive writes must reach the manager port with their original size and length (AXI4 A4.3.1), so they bypass aggregation.
+4.  The write is not an access to the R/B response error debug address (xref:{aou-software-xref}#aou-rb-response-error-debug-fifo[R/B Response Error Debug FIFO]). Such a write is not split either, so its length is not bounded by [.monospaced]#++MAX_AWBURSTLEN++# and the W FIFO could not be relied on to hold it; the debug window ignores the write data.
 
 When activated, the aggregator:
 
@@ -498,7 +510,7 @@ image::write-aggregation.svg[Figure 13. Write Aggregation -- Narrow-to-Wide Beat
 
 Read aggregation follows the same size-promotion logic as writes. [.monospaced]#++ARSIZE++# and [.monospaced]#++ARLEN++# are promoted to the full bus width, and [.monospaced]#++ARBURST++# is passed through (the aggregator does not restrict burst type to INCR). Unlike the write side, read aggregation is not gated on [.monospaced]#++ARCACHE[1]++# or [.monospaced]#++ARLOCK++#; non-modifiable and exclusive reads are promoted like any other read.
 
-The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR transactions. For each issued AR, it records the original burst geometry (size, length) so that when wide R data returns from the manager side, the module can regenerate the correct slave-side [.monospaced]#++RLAST++# at the original burst boundaries. Wide R beats are presented to the slave side multiple times (once per original narrow beat) with the appropriate byte-lane selection.
+The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR transactions. For each issued AR, it records the original burst geometry (size, length) so that when wide R data returns from the manager side, the module can regenerate the correct slave-side [.monospaced]#++RLAST++# at the original burst boundaries. Wide R beats are presented to the slave side multiple times (once per original narrow beat) with the appropriate byte-lane selection and the wide beat's RRESP on each; a failing wide beat therefore pushes one xref:{aou-software-xref}#aou-rb-response-error-debug-fifo[error debug FIFO] entry per narrow beat.
 
 [[aou-axi-aggregator-sfr-fields]]
 ==== SFR Fields

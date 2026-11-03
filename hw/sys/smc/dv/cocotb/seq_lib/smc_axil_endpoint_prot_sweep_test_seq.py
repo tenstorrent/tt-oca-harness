@@ -200,28 +200,36 @@ def check_set() -> tuple[Endpoint, ...]:
         _probe("i3c", "periph-ctrl", "oca_i3c_wrap/i3c_csr[0]/I3CBase/DEV_CTX_BASE_LO", seed=RW),
         _probe("efuse_map", "efuse", "smc_efuse_map/I2C_I3C_ID[0]", efuse=True, seed=RW),
         _probe("efuse_intf", "efuse", "efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT", efuse=True),
-        _probe("gpio", "internal-regs", "gpio_intf[0]/ACCESS_FILTER"),
+        _probe("gpio", "internal-regs", "gpio_intf_wrap/gpio_intf[0]/ACCESS_FILTER"),
         _probe("dfx", "internal-regs", "dfx_ctrl/DEBUG_BUS_MUX", seed=0xFF00),
         _probe(
             "base_config", "internal-regs", "smc_base_config/HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD"
         ),
         _probe("cpu_ctrl", "internal-regs", "smc_cpu_ctrl/SCRATCH[15]", seed=RW),
-        _probe("alias_remap", "remap-ctrl", "smc_alias_remap[0]/REGION/region_start", seed=RW),
+        _probe(
+            "alias_remap",
+            "remap-ctrl",
+            "smc_alias_remap_wrap/alias_remap[0]/REGION/region_start",
+            seed=RW,
+        ),
         _probe(
             "mmode_remap",
             "remap-ctrl",
-            "smc_mmode_remap[0]/REGION/region_attrs",
+            "smc_mmode_remap_wrap/output_remap[0]/REGION/region_attrs",
             seed=REMAP_OFFSET,
         ),
         _probe(
             "xvisor_remap",
             "remap-ctrl",
-            "smc_xvisor_remap[0]/REGION/region_attrs",
+            "smc_xvisor_remap_wrap/output_remap[0]/REGION/region_attrs",
             seed=REMAP_OFFSET,
         ),
         *(
             _probe(
-                f"in_filter{i}", "filter-entry", f"smc_inbound_filter_ctrl[{i}]/START_ADDR", seed=RW
+                f"in_filter{i}",
+                "filter-entry",
+                f"smc_inbound_filter_ctrl_wrap/filter_ctrl[{i}]/START_ADDR",
+                seed=RW,
             )
             for i in range(16)
         ),
@@ -229,7 +237,7 @@ def check_set() -> tuple[Endpoint, ...]:
             _probe(
                 f"out_filter{i}",
                 "filter-entry",
-                f"smc_outbound_filter_ctrl[{i}]/START_ADDR",
+                f"smc_outbound_filter_ctrl_wrap/filter_ctrl[{i}]/START_ADDR",
                 seed=RW,
             )
             for i in range(16)
@@ -304,7 +312,7 @@ BURST_SET = (
     *(
         Burst(
             f"out-remap-mmode len{n - 1}",
-            tuple(f"smc_mmode_remap[{i}]/REGION/region_attrs" for i in range(n)),
+            tuple(f"smc_mmode_remap_wrap/output_remap[{i}]/REGION/region_attrs" for i in range(n)),
             n,
         )
         for n in (2, 4, 8)
@@ -312,14 +320,17 @@ BURST_SET = (
     *(
         Burst(
             f"out-remap-xvisor len{n - 1}",
-            tuple(f"smc_xvisor_remap[{i}]/REGION/region_attrs" for i in range(n)),
+            tuple(f"smc_xvisor_remap_wrap/output_remap[{i}]/REGION/region_attrs" for i in range(n)),
             n,
         )
         for n in (2, 4, 8)
     ),
     Burst(
         "alias-remap len1",
-        ("smc_alias_remap[0]/REGION/region_start", "smc_alias_remap[0]/REGION/region_end"),
+        (
+            "smc_alias_remap_wrap/alias_remap[0]/REGION/region_start",
+            "smc_alias_remap_wrap/alias_remap[0]/REGION/region_end",
+        ),
         2,
     ),
     Burst(

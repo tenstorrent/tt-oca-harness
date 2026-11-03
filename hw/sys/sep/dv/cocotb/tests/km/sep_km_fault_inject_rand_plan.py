@@ -27,6 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env import sep_km_img_h as imgh
+from env.sep_chk_log import word_digest
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import CHeaderRegBlock, ip_c_header
 
@@ -398,7 +399,7 @@ def draw_lines(p: Plan) -> list[str]:
     ]
     for i, key in enumerate(p.keys):
         lines.append(
-            f"DRAW key{i} size={len(key.words)} dest=0x{key.dest:02x} words={hx(key.words)}"
+            f"DRAW key{i} size={len(key.words)} dest=0x{key.dest:02x} key_sha={word_digest(key.words)}"
         )
     lines.append("DRAW singles=" + ",".join(p.singles))
     for i, m in enumerate(p.multis):
@@ -406,12 +407,12 @@ def draw_lines(p: Plan) -> list[str]:
     for i, (m, lane, n) in enumerate(p.parity):
         lines.append(f"DRAW parity{i} mem={MEM_NAME[m]} lane={lane} n={n}")
     lines += [
-        f"DRAW key_b size=4 words={hx(p.key_b)}",
+        f"DRAW key_b size=4 key_sha={word_digest(p.key_b)}",
         f"DRAW key_a size={len(p.key_a)} dest=0x{p.dest_a:02x} outside=0x{p.outside_a:02x} "
-        f"words={hx(p.key_a)}",
+        f"key_sha={word_digest(p.key_a)}",
         f"DRAW key_crc word_class={p.word_class} word={p.flip_word} bit={p.flip_bit}",
         f"DRAW key_c size={len(p.key_c)} residue_j={p.residue_j} bit={p.residue_bit} "
-        f"words={hx(p.key_c)}",
+        f"key_sha={word_digest(p.key_c)}",
         f"DRAW cpu_src={p.cpu_src}",
         f"DRAW main n={len(p.main_image)} w={p.main_w} bit={p.main_bit} image={hx(p.main_image)}",
     ]

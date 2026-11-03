@@ -1,0 +1,48 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-alias_remap_wrap">AXI Alias Remap Wrapper Address Map</h2>
+<p>Wrapper address map instantiating one alias remap register block per remap region.</p>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>alias_remap[8].REGION.region_start</strong>: 8 registers, base 0x0, stride 0x20</li>
+<li><strong>alias_remap[8].REGION.region_end</strong>: 8 registers, base 0x8, stride 0x20</li>
+<li><strong>alias_remap[8].REGION.region_attrs</strong>: 8 registers, base 0x10, stride 0x20</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xE0</td><td><a href="#alias_remap_8_.REGION.region_start">alias_remap[8].REGION.region_start</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8 - 0xE8</td><td><a href="#alias_remap_8_.REGION.region_end">alias_remap[8].REGION.region_end</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10 - 0xF0</td><td><a href="#alias_remap_8_.REGION.region_attrs">alias_remap[8].REGION.region_attrs</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="alias_remap_8_.REGION.region_start">alias_remap[8].REGION.region_start</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:12</td><td>start_addr</td><td>RW</td><td>0x0</td><td>Start of remap region</td></tr>
+<tr><td>11:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="alias_remap_8_.REGION.region_end">alias_remap[8].REGION.region_end</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:12</td><td>end_addr</td><td>RW</td><td>0x0</td><td>End of remap region (non-inclusive). A region whose end is at or below its start contains no address and never remaps.</td></tr>
+<tr><td>11:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="alias_remap_8_.REGION.region_attrs">alias_remap[8].REGION.region_attrs</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63</td><td>valid</td><td>RW</td><td>0x0</td><td>If set, this remap will be active</td></tr>
+<tr><td>62:60</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>59:56</td><td>cacheable</td><td>RW</td><td>0x0</td><td>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</td></tr>
+<tr><td>55:12</td><td>offset</td><td>RW</td><td>0x0</td><td>The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The addition is modulo 2^44, so a carry out of bit 55 is discarded. The lower 12 bits of the address are preserved unchanged. When more than one valid region contains the address, the lowest-numbered region applies.</td></tr>
+<tr><td>11:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+</div>

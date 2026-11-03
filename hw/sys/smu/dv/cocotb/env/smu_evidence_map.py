@@ -1238,27 +1238,36 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-SIGINT-RAISED",
             "CHK-LC-SIGINT-RAISED",
-            "with the n rail of LC_STATE bit 0 inverted at the SMC's LC_STATE input, "
-            "lc_sigint_err_o is 1",
+            "in the pinned window (the n rail of LC_STATE bit 0, a drive of 1, hold 0, on every "
+            "seed) and with the seed-drawn rail of the seed-drawn LC_STATE bit inverted at the "
+            "SMC's LC_STATE input, lc_sigint_err_o is 1 when the inject takes, and in the drawn "
+            "window still 1 at the end of the seed-drawn hold",
         ),
         (
             "CHK-LC-SIGINT-SMC-OTP-CLOSED",
             "CHK-LC-SIGINT-SMC-OTP-CLOSED",
-            "under the broken pair the SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, "
-            "the write is refused, and the JTAG_PUBLIC_IDENTITY read is refused",
+            "in the pinned window (the n rail of LC_STATE bit 0, hold 0, on every seed) and under "
+            "the drawn broken pair the SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, the "
+            "write is refused, and the JTAG_PUBLIC_IDENTITY read is refused; the three refusals "
+            "are the integrity error's under an n-rail flip and under a p-rail flip of bit 2 or 3 "
+            "(a nibble outside the state table, PROD_END: Other States, all three accesses "
+            "allowed), and the identity read's refusal is the integrity error's under a p-rail "
+            "flip of bit 0 or 1 (PROD, RMA_SIP_0)",
         ),
         (
             "CHK-LC-SIGINT-SEP-OTP-OPEN",
             "CHK-LC-SIGINT-SEP-OTP-OPEN",
-            "under the broken pair a SEP OTP read of SPARE0 returns SUCCESS with the "
-            "pattern written in S1 while lc_sigint_err_o is still 1",
+            "in the pinned window (the n rail of LC_STATE bit 0, hold 0, on every seed) and under "
+            "the drawn broken pair a SEP OTP read of SPARE0 returns SUCCESS with the pattern "
+            "written in S1 while lc_sigint_err_o is still 1",
         ),
         (
             "CHK-LC-SIGINT-RELEASED",
             "CHK-LC-SIGINT-RELEASED",
-            "with the legal pair restored lc_sigint_err_o is 0, SPARE[0] reads back the "
-            "pattern written before the fault, JTAG_PUBLIC_IDENTITY returns SUCCESS, and "
-            "SEP SPARE0 still reads the S1 pattern",
+            "with the legal pair restored after the pinned window (hold 0) and after the "
+            "seed-drawn hold, lc_sigint_err_o is 0, SPARE[0] reads back the pattern written before "
+            "the fault, JTAG_PUBLIC_IDENTITY returns SUCCESS, and SEP SPARE0 still reads the S1 "
+            "pattern",
         ),
     ],
     "smu_smc_fabric_test": [
@@ -1312,6 +1321,141 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-AXIIN-BURST-FIXED",
             "an inbound FIXED burst write of the seed-drawn two or four beats at a register "
             "target is refused with SLVERR",
+        ),
+    ],
+    "smu_axi_smc_cool_reset_in_flight_test": [
+        (
+            "CHK-G2A-VALID-LOW",
+            "CHK-G2A-VALID-LOW",
+            "on every clk_smu_i edge with rst_primary_smc_clk_n_o low after the cool-reset pin, "
+            "AWVALID, WVALID, ARVALID, BVALID and RVALID of all 13 checked links are 0, and "
+            "every link has sampled reset edges",
+        ),
+        (
+            "CHK-G2A-XKNOWN",
+            "CHK-G2A-XKNOWN",
+            "from release, the ten VALID and READY signals of every checked link are resolved on "
+            "every sampled edge",
+        ),
+        (
+            "CHK-G2A-NO-STALE-RESP",
+            "CHK-G2A-NO-STALE-RESP",
+            "after the cool-reset release no B or R (RLAST) on smu_in answers an ID that had a "
+            "request outstanding at the reset with no AW or AR accepted for it after release, "
+            "and no B or R on smu_in or dtp_dbg outnumbers the AW or AR accepted after release "
+            "for its ID; the held B of the last leg is OBS-G2A-HELD-RESP, not this check",
+        ),
+        (
+            "CHK-G2A-LIVENESS",
+            "CHK-G2A-LIVENESS",
+            "after the cool-reset release a fresh write and read on each route that answered "
+            "OKAY before the reset (ext_in to the SMC window, JTAG2AXI to the SMC window and to "
+            "ext_out) is OKAY with one response per request and reads back the word written; "
+            "the SEP-aperture route is OBS-G2A-SEP-ROUTE-LIVENESS",
+        ),
+        (
+            "CHK-G2A-FLR",
+            "CHK-G2A-FLR",
+            "the FLR cool reset drives rst_primary_smc_clk_n_o low with every VALID 0, no stale "
+            "or phantom response after release, and every graded route answers as in liveness",
+        ),
+        (
+            "CHK-G2A-DTP-LINK",
+            "CHK-G2A-DTP-LINK",
+            "dtp_dbg VALIDs are 0 on every sampled reset edge of both legs and a fresh JTAG2AXI "
+            "write and read after each release get one response with the issued ID",
+        ),
+        (
+            "CHK-G2A-JTAG2AXI",
+            "CHK-G2A-JTAG2AXI",
+            "JTAG2AXI SMC-window write and read return the word written; out-of-window requests "
+            "appear at sep_in or ext_out per the routing table with AxUSER[3:0]=0x3 and "
+            "AxUSER[11:4]=0 at smc_out, and each response returns with its ID",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < JTAG2AXI < LOAD < COOL_RESET < RELEASE_WATCH < LIVENESS < "
+            "FLR_LOAD < FLR_RESET < FLR_RELEASE_WATCH < FLR_LIVENESS < FLR_LEG with sim time and "
+            "a non-zero count at least the plan per term; reset terms plan the edges sampled "
+            "with the primary reset low, watch terms the edges sampled since release",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every access, handshake and reset-net wait is bounded in clk_smu_i, clk_ref_i edges, "
+            "polls or ns, raises on expiry with the last handshake and reset-net sample, none "
+            "expired",
+        ),
+    ],
+    "smu_axi_ext_in_illegal_encoding_test": [
+        (
+            "CHK-G11-WRAP0",
+            "CHK-G11-WRAP0",
+            "a WRAP read and write with AxLEN 0 toward the SEP aperture, the SMC aperture and "
+            "neither get at most one response sequence each and no response with another ID, "
+            "and a fresh single-beat write and read to the S1 word after each are OKAY with the "
+            "word written and no response with another ID",
+        ),
+        (
+            "CHK-G11-RSVD",
+            "CHK-G11-RSVD",
+            "an AxBURST=2'b11 read and write toward the SEP aperture, the SMC aperture and "
+            "neither get at most one response sequence each and no response with another ID, "
+            "and a fresh single-beat write and read to the S1 word after each are OKAY with the "
+            "word written and no response with another ID",
+        ),
+        (
+            "CHK-G11-4K",
+            "CHK-G11-4K",
+            "a 4 KiB-crossing INCR read and write toward the SEP aperture, the SMC aperture and "
+            "neither get at most one response sequence each and no response with another ID, "
+            "and a fresh single-beat write and read to the S1 word after each are OKAY with the "
+            "word written and no response with another ID",
+        ),
+        (
+            "CHK-G11-SEPSRAM",
+            "CHK-G11-SEPSRAM",
+            "multi-beat FIXED and WRAP writes to the SEP SRAM answer SLVERR and leave the "
+            "addressed bytes unchanged, their reads return AxLEN+1 SLVERR beats closed by RLAST, "
+            "and INCR AxLEN 0, 1, 15, 255 and single-beat FIXED and INCR are OKAY with the data",
+        ),
+        (
+            "CHK-G11-BEAT",
+            "CHK-G11-BEAT",
+            "on ext_in every legal read's RLAST is on beat ARLEN+1",
+        ),
+        (
+            "CHK-G11-BURSTLEGAL",
+            "CHK-G11-BURSTLEGAL",
+            "every AW and AR at xbar_sep_in, xbar_smc_in and both converter outputs has a legal "
+            "burst, size, FIXED or WRAP length and WRAP alignment and no INCR crosses 4 KiB, "
+            "including while the illegal ext_in requests are presented",
+        ),
+        (
+            "CHK-G11-WKNOWN",
+            "CHK-G11-WKNOWN",
+            "a write with X only in its unstrobed lanes carries known strobed lanes on every "
+            "sampled link and changes only the strobed bytes",
+        ),
+        (
+            "CHK-G11-RULES-LIVE",
+            "CHK-G11-RULES-LIVE",
+            "the run is four-state VCS with OCAH_INC_ASSERT and SIMULATION live on the seven "
+            "checker instances, so all nine rule families of the checker header compile live",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < LEGAL_INCR < NARROW_STROBES < FIXED_WRAP < WRAP0 < RSVD < "
+            "CROSS_4K < FRESH_ACCESS < DECODE_RULES with sim time and a count at or above the "
+            "plan per term",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every handshake, response and observation wait is bounded in clk_smu_i edges, "
+            "raises on expiry with the last handshake and reset-net sample, none expired",
         ),
     ],
     "smu_axi_in_random_id_stress_test": [
@@ -2222,12 +2366,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SBA-OUT-SWEEP",
             "CHK-SEP-SBA-OUT-SWEEP",
-            "every size, offset and free SMU-aperture address bit is held by the responder and reads back",
+            "every size, offset and free SMU-aperture address bit, the bits walked in the "
+            "seed-drawn order, is held by the responder and reads back",
         ),
         (
             "CHK-SEP-SBA-REMAP-HIGH",
             "CHK-SEP-SBA-REMAP-HIGH",
-            "an alias region offset of each power of two from 2^32 to 2^55 reaches the responder there",
+            "an alias region offset of each power of two from 2^32 to 2^55, walked in the "
+            "seed-drawn order, reaches the responder there",
         ),
         (
             "CHK-SEP-SBA-REMAP-CACHEABLE",
@@ -2252,12 +2398,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SBA-SMC-WINDOW",
             "CHK-SEP-SBA-SMC-WINDOW",
-            "every size, offset and SPM address bit reads back through the SEP view of the SMC window",
+            "every size, offset and SPM address bit, the bits walked in the seed-drawn order, "
+            "reads back through the SEP view of the SMC window",
         ),
         (
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "CHK-SEP-SBA-EXTERNAL-DECERR",
-            "every external-aperture and TRNG-window access returns a system-bus error",
+            "every external-aperture and TRNG-window access, the address bits walked in the "
+            "seed-drawn order, returns a system-bus error",
         ),
     ],
     "smu_sep_external_irq_pins_test": [
@@ -2425,7 +2573,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-RMA-START",
             "CHK-SEP-RMA-START",
             "the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read "
-            "right after TOKEN_EOP 0x100 is 0x15, each lane starting its own hash only",
+            "right after TOKEN_EOP 0x100, with the SIP words rewritten one bit off, is 0x15, each "
+            "lane starting its own hash only",
         ),
         (
             "CHK-SEP-RMA-SIP-MATCH",
@@ -2436,32 +2585,36 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-RMA-CHIP-MISMATCH",
             "CHK-SEP-RMA-CHIP-MISMATCH",
-            "the chiplet token one bit off, written and started, reads 0x2a, having read 0x00 "
-            "before",
+            "the chiplet token with bit 0 flipped (pinned, every seed), written and started first, "
+            "reads 0x2a, having read 0x00 before it; the chiplet token with the seed-drawn bit 1 "
+            "to 255 flipped, written and started after the correct token, reads 0x2a, having read "
+            "0x15 in the leg before",
         ),
         (
             "CHK-SEP-RMA-CHIP-MATCH",
             "CHK-SEP-RMA-CHIP-MATCH",
-            "the correct chiplet token written and started reads 0x15, having read 0x2a in the "
-            "leg before",
+            "the correct chiplet token written and started after the pinned mismatch leg reads "
+            "0x15, having read 0x2a in the leg before",
         ),
         (
             "CHK-SEP-RMA-INDEP",
             "CHK-SEP-RMA-INDEP",
-            "the SIP result reads 0x15 again after the chiplet mismatch and match legs while the "
-            "chiplet result changed",
+            "the SIP result reads 0x15 again after the chiplet mismatch, match and mismatch legs "
+            "while the chiplet result changed",
         ),
         (
             "CHK-NONVAC",
             "CHK-NONVAC",
-            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10; the PASS stamp is two "
-            "clk_smu_i cycles after S9",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11 (S6 the pinned "
+            "mismatch leg, S7 the correct-token leg, S8 the drawn mismatch leg); the PASS stamp is "
+            "two clk_smu_i cycles after S10",
         ),
         (
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS",
-            "three bounded result polls, one each for the SIP match, the chiplet mismatch and the "
-            "chiplet match, none expired, with the poll bound, polls used and last value recorded",
+            "four bounded result polls, one for the SIP match and, in leg order, one for the "
+            "pinned chiplet mismatch, one for the chiplet match and one for the drawn chiplet "
+            "mismatch, none expired, with the poll bound, polls used and last value recorded",
         ),
     ],
     "smu_sep_sba_peripheral_test": [
@@ -3470,15 +3623,19 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-COOL-PIN-DEGLITCH",
             "CHK-SMU-COOL-PIN-DEGLITCH",
-            "a 28-clk_ref rst_cool_n_from_pin_i pulse leaves the SMC primary reset "
-            "released, during the pulse and after it",
+            "a pinned 31 clk_ref rst_cool_n_from_pin_i pulse driven right after a clk_ref edge, as "
+            "the hold is, on every seed (31 low samples, so a 31-sample de-glitcher fails), and a "
+            "seed-drawn 1 to 31 clk_ref pulse each leave the SMC primary reset released, during "
+            "the pulse and the 128 clk_ref after it",
         ),
         (
             "CHK-SMU-COOL-PIN-RESET",
             "CHK-SMU-COOL-PIN-RESET",
-            "rst_cool_n_from_pin_i held past that pulse asserts the SMC primary reset no "
-            "earlier than 28 clk_ref, holds it while low, and the SMC leaves reset after "
-            "the pin releases",
+            "rst_cool_n_from_pin_i, held low until a seed-drawn 32 to 94 clk_ref past the "
+            "observed assertion, asserts the SMC primary reset no earlier than 32 and no later "
+            "than 33 clk_ref, the de-glitcher's 32 samples plus the "
+            "obs_smc_rst_n_o observation, holds it on every clk_ref sample through the hold, is "
+            "still asserted when the pin releases, and the SMC leaves reset after the pin releases",
         ),
         (
             "CHK-SMU-DFT-DONE-STATUS",
@@ -3613,12 +3770,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-MBX-STATUS-LEVELS",
             "MBX_STATUS_LEVELS",
-            "STATUS reads 0x5 after one push and 0x7 after two (depth 2)",
+            "STATUS reads 0x5 after the first and 0x7 after the second seed-drawn push word "
+            "(depth 2), STATUS read after each of the first two pushes; the two words read "
+            "back through the pair-0 inbound aperture's READ_DATA equal the drawn words, a "
+            "third inbound READ_DATA read is SLVERR with 0xFEEDDEAD, and the refill completes "
+            "with SUCCESS with STATUS 0x7 again",
         ),
         (
             "CHK-MBX-ERR-WRITE-FULL",
             "MBX_ERR_WRITE_FULL",
-            "write to the full FIFO is SLVERR, ERROR_FLAGS 0x2, IRQS bit 2 set, STATUS 0x7",
+            "the seed-drawn third word written to the full FIFO is SLVERR, ERROR_FLAGS 0x2, "
+            "IRQS bit 2 set, STATUS 0x7",
         ),
         (
             "CHK-MBX-ERR-CLEAR-ON-READ",
@@ -3985,20 +4147,24 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-WDT-RELEASE",
             "CHK-SMU-WDT-RELEASE",
-            "the warm reset clears the first watchdog timeout",
+            "after the warm reset at the seed-drawn compare, smc_ras_o.wdt_first_timeout falls",
         ),
         (
             "CHK-SMU-WDT-FIRST",
             "CHK-SMU-WDT-FIRST",
-            "CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP "
-            "raises smc_ras_o.wdt_first_timeout, with WDOGIP0 set at the same time "
-            "and both clear beforehand",
+            "CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP, its "
+            "CMP.wdogcmp0 the seed-drawn 1 to 0xFFFF written after the KEY unlock and read "
+            "back, raises smc_ras_o.wdt_first_timeout between cmp and cmp + 16 clk_smu (the "
+            "measured path of 11 with a margin of 5) after the arming write's AW handshake on "
+            "the DTP SMC debug port, with WDOGIP0 set at the same time and both clear "
+            "beforehand",
         ),
         (
             "CHK-SMU-WDT-SECOND",
             "CHK-SMU-WDT-SECOND",
-            "the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out "
-            "to smc_ras_o.wdt_second_timeout, and the SMC warm reset drops",
+            "the held first timeout at the seed-drawn compare runs the CPU_CTRL.WDT_TIMEOUT "
+            "counter out to smc_ras_o.wdt_second_timeout, and the SMC warm reset, released "
+            "before, drops within the same window",
         ),
     ],
     "smu_smc_wdt_sanity_test": [
@@ -4446,9 +4612,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-SHADOW-SAMPLES",
             "BOOT_SHADOW_SAMPLES",
-            "sampled SMC eFuse map words read over JTAG2AXI and the stream words of the same "
-            "index equal the words of the eFuse image the run loads, and the map words equal "
-            "the stream words",
+            "the sixteen sampled SMC eFuse map words (the six named element words and word 255, "
+            "the last word of the bank, pinned, nine drawn from the seed), read over JTAG2AXI in "
+            "the drawn order, and the stream words of the same indices equal the words of the "
+            "eFuse image the run loads, and the map words equal the stream words",
         ),
         (
             "CHK-BOOT-SHADOW-ELEMENTS",
@@ -5080,22 +5247,23 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DBG-RATIO-COMPLETE-4P0",
             "CHK-DBG-RATIO-COMPLETE-4P0",
-            "at TCK 40 ns the four-word series write raises the AW and B counters by 4 and the "
-            "four single-load series reads return the four words with op 0 after every load; "
-            "the AR delta is measured and logged only",
+            "at the seed-drawn TCK period of 40 to 47 ns the four-word series write raises the "
+            "AW and B counters by 4 and the four single-load series reads return the four "
+            "words with op 0 after every load; the AR delta is measured and logged only",
         ),
         (
             "CHK-DBG-RATIO-COMPLETE-4P8",
             "CHK-DBG-RATIO-COMPLETE-4P8",
-            "at TCK 48 ns the four-word series write raises the AW and B counters by 4 and the "
-            "four single-load series reads return the four words with op 0 after every load",
+            "at the seed-drawn TCK periods of 48 to 69 ns and of 70 to 100 ns the four-word "
+            "series write raises the AW and B counters by 4 and the four single-load series "
+            "reads return the four words with op 0 after every load",
         ),
         (
             "CHK-DBG-RATIO-OP3-RULE",
             "CHK-DBG-RATIO-OP3-RULE",
-            "every SERIES_CTRL.op capture of the 3.2 and 2.0 legs is 0 or 3 and never 1 or 2, "
-            "and the integration legs read 0; a leg that never reads 3 is reported as "
-            "NOT-EXERCISED for that branch",
+            "every SERIES_CTRL.op capture of the seed-drawn 20 to 39 ns leg and of the 20 ns leg "
+            "run in every seed is 0 or 3 and never 1 or 2, and the graded legs read 0; a leg that "
+            "never reads 3 is reported as NOT-EXERCISED for that branch",
         ),
         (
             "CHK-DBG-RATIO-RECOVERY",
@@ -5107,14 +5275,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-NONVAC",
             "CHK-NONVAC",
-            "ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last "
-            "step and every scanning step has a nonzero access count",
+            "ordered sim-time fence S1<...<S9<PASS, the pass point is stamped after the last step, "
+            "every scanning step has a nonzero access count, and each checker token registered its "
+            "stated number of compares (the 48 to 69 and 70 to 100 ns legs two under one token, "
+            "the op code rule over the two logged legs one)",
         ),
         (
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS",
-            "the gate wait, the op polls, the B counter waits and the two retry loops finish "
-            "inside their bounds with a recorded last state and the stated site count per kind",
+            "the gate wait, the op polls, the B counter waits and the retry loops of the two "
+            "logged legs finish inside their bounds with a recorded last state and the stated site "
+            "count per kind",
         ),
     ],
     "smu_dtp_smc_dm_dmi_test": [

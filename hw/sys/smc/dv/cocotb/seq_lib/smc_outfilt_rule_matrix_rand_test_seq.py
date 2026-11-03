@@ -88,7 +88,9 @@ _KINDS = (
 
 
 def _outbound(reg: str, entry: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_{reg}_BASE_ADDR", entry)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", entry
+    )
 
 
 def _seed_word(addr: int) -> int:

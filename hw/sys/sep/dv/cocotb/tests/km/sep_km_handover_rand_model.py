@@ -27,6 +27,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from env import sep_km_img_h as imgh
+from env.sep_chk_log import word_digest
+from env.sep_efuse_plan import SECRET_FIELDS
 from env.sep_seeded_rng import SepSeededRng
 
 TEST = "sep_km_handover_rand_test"
@@ -251,12 +253,13 @@ class Plan:
             "DRAW bad_image=" + ",".join(f"0x{w:08x}" for w in self.bad_image),
         ]
         for name, words in self.fuse.items():
-            lines.append(f"DRAW fuse {name}=" + ",".join(f"0x{w:08x}" for w in words))
+            if name in SECRET_FIELDS:
+                lines.append(f"DRAW fuse {name} words={len(words)} sha={word_digest(words)}")
+            else:
+                lines.append(f"DRAW fuse {name}=" + ",".join(f"0x{w:08x}" for w in words))
         for p, keys in ((1, self.keys1), (2, self.keys2)):
             for i, k in enumerate(keys):
-                lines.append(
-                    f"DRAW pass{p} key{i} words={len(k)} " + ",".join(f"0x{w:08x}" for w in k)
-                )
+                lines.append(f"DRAW pass{p} key{i} words={len(k)} key_sha={word_digest(k)}")
         lines.append("DRAW junk=" + ",".join(f"0x{w:08x}" for w in self.junk))
         return lines
 
@@ -473,7 +476,8 @@ def grade_sk_words(words: list[int], exp: PassExp) -> tuple[bool, Fields]:
         "pass": exp.no,
         "words_before_nonzero": sum(1 for w in exp.sk_words_before if w),
         "words_nonzero": sum(1 for w in words if w),
-        "words": ",".join(_h(w) for w in words),
+        "nonzero_at": [i for i, w in enumerate(words) if w],
+        "words_sha": word_digest(words),
     }
 
 

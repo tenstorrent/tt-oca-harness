@@ -68,7 +68,9 @@
 `SMU_TB_OUT(logic, lcc_dbg_disable_smc_jtag2axi_o)
 `SMU_TB_OUT(logic [7:0], smc_lc_state_in_o)  // as SMC receives it
 // LC_STATE pair fault inject; inert unless +lc_sigint_inject is present.
-`SMU_TB_IN(logic, lc_sigint_inject_i)
+// Bit 0 arms it, bits [2:1] select the LC_STATE bit and bit 3 the rail
+// (0 = n rail, 1 = p rail); a drive of 1 is the n rail of bit 0.
+`SMU_TB_IN(logic [3:0], lc_sigint_inject_i)
 // DTP JTAG2AXI traffic into the SMC. dbg_disable.smc_jtag2axi stops the
 // bridge from launching a transaction at all (jtag2axi.sv: the update is
 // gated by `!security_disable_i`), so counting AW/AR here is how a test

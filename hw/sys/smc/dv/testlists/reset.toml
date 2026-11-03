@@ -133,6 +133,30 @@ timeout_sec = 1800
 tags = ["ci", "reset", "cpu"]
 run_modes = ["smoke"]
 
+# AXI checking across the core-only and the watchdog warm reset with
+# transactions open. Boots hello_world, so it is a firmware leaf: in `fw` and
+# `all`, not in `hosted`.
+[[tests]]
+name = "smc_axi_partial_reset_open_txn_test"
+module = "smc_axi_partial_reset_open_txn_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "reset", "axi"]
+run_modes = ["smoke"]
+firmware = "hello_world"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=hello_world.ecc.hex",
+    "+axi_sva_need_cpu_mmio_uncore_rst",
+    "+axi_sva_need_misc_warm",
+    "+axi_sva_need_sep_in",
+    "+axi_sva_need_sys_in",
+    "+axi_sva_need_sys_out",
+    "+axi_sva_need_jtag_in",
+    "+axi_sva_need_cpu_front",
+    "+axi_sva_need_cpu_mmio",
+]
+
 # BFM: product cfg_flr_pf_active_i (not rst_cool_ni / smc_flr_sanity proxy).
 [[tests]]
 name = "smc_cool_reset_from_pcie_test"
@@ -225,6 +249,29 @@ timeout_sec = 3600
 tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
 
+[[tests]]
+# ISOLATE_REQ_PINEN_REG clears on a cold reset only while the synchronized
+# isolation pin is low; with the pin high the enable and the request hold
+# across the cold pulse.
+name = "smc_isolate_pinen_cold_test"
+module = "smc_isolate_pinen_cold_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+# BP_COOL_RESET_N_O (pad 62) is driven low while the FLR cool reset is
+# asserted and released otherwise, on every sample of a short and a long
+# FLR leg; ISOLATE_REQ_VIS follows the isolation pin with no isolation
+# request and reads its cool-reset bits at the released level.
+name = "smc_flr_sequencer_single_pulse_test"
+module = "smc_flr_sequencer_single_pulse_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "reset"
 tests = [
@@ -249,6 +296,8 @@ tests = [
     "smc_jtag_reset_ovrd_walk_test",
     "smc_cool_reset_x_cold_reset_test",
     "smc_reset_mid_transaction_rand_test",
+    "smc_isolate_pinen_cold_test",
+    "smc_flr_sequencer_single_pulse_test",
 ]
 
 [[tests]]

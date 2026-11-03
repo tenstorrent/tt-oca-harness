@@ -49,15 +49,32 @@ Legs:
 
 Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTRL-FILTER-RAND (stimulus
 completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-ARMED,
-CHK-RESET-DENY-CONTROL, CHK-GRANULE. CTRL-FILTER-ACTIVE is the bring-up
+CHK-RESET-DENY-CONTROL, CHK-RESET-DENY-SI, CHK-GRANULE, CHK-FILT-GROUP.
+CHK-RESET-DENY-SI: in the reset and the armed state, the System Interface
+reads of the extension window and of ``0x4000_0100`` answer DECERR, because
+no enabled entry matches and a blocked transaction ends in DECERR
+(``hw/ip/axi_filter/doc/index.adoc``, Blocked Transactions). CHK-GRANULE
+also grades the START_ADDR / END_ADDR read-back after the entry write: the
+rounded values when both ends land in one granule, otherwise the programmed
+values (``filter_ctrl.rdl``, ``START_ADDR``). CHK-FILT-GROUP: one
+inbound entry that covers a staged SRAM word with a drawn non-zero
+``src_id``, read with AxUSER[3:0] = ``src_id`` and AxUSER[11:4] equal to and
+different from the entry ``group_id``, admits both reads (OKAY, a target
+handshake and the staged data): group ID matching is disabled on every
+filter instance, so ``group_id`` has no effect
+(``hw/ip/axi_filter/doc/index.adoc``, Instances). The ``differ`` group is
+never 0, which matches any ``group_id``. CTRL-FILT-USER shows the issued
+AxUSER, bits 11:4 included, on PR-INFLT at the filter output for the
+``equal``, ``differ`` and ``upper_bits`` probes. CTRL-FILTER-ACTIVE is the bring-up
 precondition. The inbound cells that open tests grade run as controls and log
 CTRL-FILTER-CELL / CTRL-RESET-DENY lines. Every admitted outbound probe must
-show PR-OUT handshakes only at its predicted outbound address.
+show PR-OUT handshakes only at its predicted outbound address
+(CTRL-PR-OUT-ADDR).
 
-Not graded here: ``group_id`` (random value, logged), the ``locked`` bit, the
-filter register storage, the SEP debug bypass, the response of the
-extension-window and ``0x4000_0100`` reset-state probes (logged), and the
-START_ADDR / END_ADDR read-back after a write (logged).
+Not graded here: the ``locked`` bit, the
+filter register storage, the SEP debug bypass, and the response of the
+extension-window read that the wide control entry admits, which the bench
+responder on ``axi_extension_axi`` gives (INFO-WIDE-CTRL).
 
 Run mode: no_cpu, real PROD fuse sense with SEC_DIS 0 and fixed SIP_DIS and
 SYS_DIS whose DBG_1 bit 0 is clear, so the inbound filter is active.
@@ -69,7 +86,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+import cocotb
 import pyuvm
+from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_common import (
     RESP_DECERR,
@@ -104,6 +123,9 @@ TEST = "sep_fabric_filter_match_priority_rand_test"
 AXI_BURST_INCR = 1
 M32 = 0xFFFF_FFFF
 M64 = (1 << 64) - 1
+# ext_debug_bus_o[191:160]: outbound filter hit lane [191:176] and inbound
+# filter hit lane [175:160] (hw/sys/sep/rtl/sep.sv, debug bus assembly).
+DBG_FILTER_LSB = 160
 
 # Pinned image: PROD, SEC_DIS 0, DBG_1 bit 0 clear in both disable vectors.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0E
@@ -196,6 +218,7 @@ class Result:
     readback: int | None
     verdict: FilterVerdict
     perm: int
+    inflt_user: tuple = ()  # AxUSER of each PR-INFLT beat of an inbound probe
 
 
 @pyuvm.test()
@@ -209,6 +232,8 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         "CHK-RESET-DENY-ARMED",
         "CHK-RESET-DENY-CONTROL",
         "CHK-GRANULE",
+        "CHK-FILT-GROUP",
+        "CHK-RESET-DENY-SI",
     )
 
     # ------------------------------------------------------------------
@@ -332,8 +357,48 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         out = self.taps["PR-OUT"].count(mark[2], ch)
         return xe + cs, out
 
+    async def _dbg_sampler(self) -> None:
+        """Record each change of ext_debug_bus_o[191:160]; None when X or Z."""
+        sig = cocotb.top.ext_debug_bus_o
+        last: int | None = -1
+        while self._dbg_on:
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            try:
+                v: int | None = (int(sig.value) >> DBG_FILTER_LSB) & M32
+            except ValueError:
+                v = None
+            if v != last:
+                self._dbg_hist.append(v)
+                last = v
+
+    def _dbg_mark(self) -> int:
+        return len(self._dbg_hist)
+
+    def _dbg_since(self, m: int) -> str:
+        """The lane value at mark ``m`` and every change after it."""
+        vals = self._dbg_hist[max(0, m - 1) :]
+        return ",".join("X" if x is None else f"0x{x:08x}" for x in vals) or "none"
+
+    def _obs_dbg(self, p: Probe, m: int, resp: int | None) -> None:
+        self.logger.info(
+            "OBS-DBG-FILTER-HIT inst=%s cls=%s dir=%s addr=0x%08x resp=%s lane_191_160=%s",
+            p.inst,
+            p.cls,
+            p.dir,
+            p.addr,
+            _RESP.get(resp),
+            self._dbg_since(m),
+        )
+
     async def _run(self, p: Probe) -> Result:
         """Run one probe and grade it against the model. Returns the evidence."""
+        dm = self._dbg_mark()
+        r = await self._run_graded(p)
+        self._obs_dbg(p, dm, r.resp)
+        return r
+
+    async def _run_graded(self, p: Probe) -> Result:
         v = self._verdict(p)
         perm = int(
             v.winner is not None and self._bank(p.inst).model.entries[v.winner].permits(p.write)
@@ -341,6 +406,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         mark = self._target_mark()
         data = None
         readback = None
+        inflt_user: tuple = ()
         if p.inst == "in":
             nb = p.nbytes * (p.axlen + 1)
             mem_ok = p.cls in ("sram", "scratch")
@@ -350,7 +416,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             seq = await self._si(p, wdata)
             resp = seq.resp_code
             target_seen, out_seen = self._seen(mark, p)
-            inflt = self.taps["PR-INFLT"].count(mf, "aw" if p.write else "ar")
+            inflt_beats = self.taps["PR-INFLT"].since(mf, "aw" if p.write else "ar")
+            inflt = len(inflt_beats)
+            inflt_user = tuple(b.user for b in inflt_beats)
             if not p.write:
                 data = seq.rdata
             if mem_ok:
@@ -424,12 +492,14 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     f"{self._chk} FAIL: probe {tag}: PR-OUT addr={shown}, expected the remap "
                     f"target 0x{p.faddr:x}"
                 )
-                self.logger.info("probe %s PR-OUT addr=%s target=0x%x", tag, shown, p.faddr)
+                self.logger.info(
+                    "CTRL-PR-OUT-ADDR: probe %s PR-OUT addr=%s target=0x%x", tag, shown, p.faddr
+                )
             else:
                 assert out_seen == 0, (
                     f"{self._chk} FAIL: probe {tag}: refused but {out_seen} PR-OUT handshake(s)"
                 )
-        return Result(resp, data, target_seen, out_seen, readback, v, perm)
+        return Result(resp, data, target_seen, out_seen, readback, v, perm, inflt_user)
 
     # ------------------------------------------------------------------
     # Entry programming
@@ -708,16 +778,17 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 m = self.taps["PR-EXT"].mark()
                 seq = await self._si(p, allow_timeout=True)
                 ext = self.taps["PR-EXT"].count(m, "ar")
-                self.logger.info(
-                    "%s LOG: si_read cls=%s addr=0x%08x prot1=%d resp=%s timed_out=%s pr_ext=%d",
-                    label,
-                    cls,
-                    p.addr,
-                    prot1,
-                    _RESP.get(seq.resp_code),
-                    seq.timed_out,
-                    ext,
+                # No entry is enabled, so the inbound filter blocks the read: DECERR
+                # (hw/ip/axi_filter/doc/index.adoc, Blocked Transactions).
+                line = (
+                    f"round={label} si_read cls={cls} addr=0x{p.addr:08x} prot1={prot1} "
+                    f"resp={_RESP.get(seq.resp_code)} timed_out={seq.timed_out} pr_ext={ext} "
+                    "expect=DECERR"
                 )
+                assert not seq.timed_out and seq.resp_code == RESP_DECERR, (
+                    f"CHK-RESET-DENY-SI FAIL: {line}"
+                )
+                self.logger.info("CHK-RESET-DENY-SI PASS: %s", line)
                 if cls == "ext":
                     st["ext_seen"] += ext
         return st
@@ -823,7 +894,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     seq = await self._si(p, allow_timeout=True)
                     addrs = self.taps["PR-EXT"].addrs(m, "ar")
                     self.logger.info(
-                        "INFO-WIDE-CTRL LOG: ext read addr=0x%08x prot1=%d resp=%s pr_ext=%s",
+                        "INFO-WIDE-CTRL: ext read addr=0x%08x prot1=%d resp=%s pr_ext=%s",
                         p.addr,
                         prot1,
                         _RESP.get(seq.resp_code),
@@ -1161,10 +1232,27 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
     # ------------------------------------------------------------------
     # Leg 2: source ID
     # ------------------------------------------------------------------
+    def _ctrl_user(self, p: Probe, r: Result, kind: str) -> None:
+        """CTRL-FILT-USER: the issued AxUSER, upper bits included, reaches the inbound filter.
+
+        The filter passes an admitted request unchanged, so AxUSER on PR-INFLT is
+        the AxUSER the filter decoded.
+        """
+        line = (
+            f"kind={kind} dir={p.dir} issued=0x{p.user:03x} "
+            f"pr_inflt_user={['X' if u is None else hex(u) for u in r.inflt_user]}"
+        )
+        if not r.inflt_user or any(u != p.user for u in r.inflt_user):
+            self.logger.error("CTRL-MISSING FILT-USER: %s", line)
+            raise AssertionError(f"CTRL-MISSING FILT-USER: {line}")
+        self.logger.info("CTRL-FILT-USER: %s", line)
+
     async def _src_pair(self, inst, p_cell, p_ctl, entries, ctl_entries, cls_name, src_cfg) -> None:
         self._gate(True)
         await self._load(inst, entries)
         r1 = await self._run(p_cell)
+        if cls_name == "upper_bits":
+            self._ctrl_user(p_cell, r1, cls_name)
         if ctl_entries is not entries:
             await self._load(inst, ctl_entries)
         r2 = await self._run(p_ctl)
@@ -1369,9 +1457,17 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     f"CHK-GRANULE FAIL: word 0x{a:08x} read 0x{got:08x} != 0x{self.mem[a]:08x}"
                 )
         assert allow == 6 and block == 4, f"CHK-GRANULE FAIL: allow={allow} block={block}"
+        # filter_ctrl.rdl, START_ADDR: the rounded values are written back only when
+        # START and END land in one granule; otherwise the programmed values read back.
+        exp_s, exp_e = (wb, wt) if start // gran == end // gran else (start, end)
+        assert (rb_s, rb_e) == (exp_s, exp_e), (
+            f"CHK-GRANULE FAIL: inst={inst} gran={gran} shape={shape} rb_start=0x{rb_s:x} "
+            f"rb_end=0x{rb_e:x} expect=0x{exp_s:x},0x{exp_e:x}"
+        )
         self.logger.info(
             "CHK-GRANULE PASS: inst=%s gran=%d shape=%s start=0x%x end=0x%x rb_start=0x%x rb_end=0x%x "
-            "admitted=[0x%x,0x%x] probes=%d allow=%d block=%d refused_seen=0 control_seen=%d",
+            "expect_rb=0x%x,0x%x admitted=[0x%x,0x%x] probes=%d allow=%d block=%d refused_seen=0 "
+            "control_seen=%d",
             inst,
             gran,
             shape,
@@ -1379,6 +1475,8 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             end,
             rb_s,
             rb_e,
+            exp_s,
+            exp_e,
             wb,
             wt,
             allow + block,
@@ -1400,6 +1498,99 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         for inst, gran, shape in cells:
             await self._granule_cell(inst, gran, shape)
         await self._clear("in")
+        await self._clear("out")
+
+    # ------------------------------------------------------------------
+    # Legs after the graded window: group_id against AxUSER[11:4], first probe
+    # after the entry write
+    # ------------------------------------------------------------------
+    async def _obs_si_read(self, p: Probe) -> tuple[int, int, int]:
+        """One SI read of ``p``: (resp, PR-INFLT AR count, PR-XEXT/PR-CSR AR count)."""
+        mark = self._target_mark()
+        mf = self.taps["PR-INFLT"].mark()
+        dm = self._dbg_mark()
+        seq = await self._si(p)
+        self._obs_dbg(p, dm, seq.resp_code)
+        return seq.resp_code, self.taps["PR-INFLT"].count(mf, "ar"), self._seen(mark, p)[0]
+
+    async def _group_leg(self) -> None:
+        """CHK-FILT-GROUP: the transaction group bits never change the verdict."""
+        idx = self.rng.randrange(self.inb.n)
+        s = self.rng.randrange(1, 16)
+        p = self._p_in("sram", False, self.rng.getrandbits(1), user=s)
+        e = self._entry(p, self._cover(p, False), src=s)
+        await self._load("in", {idx: e})
+        other = self.rng.choice([g for g in range(256) if g != e.group_id])
+        if other == 0:
+            # A transaction group of 0 matches any group_id (filter_ctrl.adoc, group_id).
+            other = 0xFF if e.group_id != 0xFF else 0xFE
+        self._chk = "CHK-FILT-GROUP"
+        for kind, g in (("equal", e.group_id), ("differ", other)):
+            q = replace(p, user=(g << 4) | s, fuser=s)
+            r = await self._run(q)
+            self._ctrl_user(q, r, kind)
+            self.logger.info(
+                "CHK-FILT-GROUP PASS: entry=%d group_id=%d src_id=%d axuser=0x%03x kind=%s "
+                "expect=OKAY got=%s target_ar=%d",
+                idx,
+                e.group_id,
+                s,
+                q.user,
+                kind,
+                _RESP.get(r.resp),
+                r.target_seen,
+            )
+        await self._clear("in")
+
+    async def _obs_write_to_use(self) -> None:
+        """Program one entry without the read-back and probe right after its last B."""
+        await self._clear("in")
+        idx = self.rng.randrange(self.inb.n)
+        p = self._p_in("sram", False, self.rng.getrandbits(1))
+        await self.inb.program(idx, self._entry(p, self._cover(p, False)), check=False)
+        self.used["in"] = {idx}
+        resp, inflt, seen = await self._obs_si_read(p)
+        self.logger.info(
+            "OBS-FILT-WRITE-TO-USE inst=in entry=%d addr=0x%08x resp=%s pr_inflt_ar=%d target_ar=%d",
+            idx,
+            p.addr,
+            _RESP.get(resp),
+            inflt,
+            seen,
+        )
+        await self.inb.check_entry(idx, "write_to_use")
+        await self._clear("in")
+
+        await self._clear("out")
+        idx = self.rng.randrange(self.outb.n)
+        p = self._p_out("smu", False, self.rng.getrandbits(1))
+        await self.outb.program(idx, self._entry(p, self._cover(p, False)), check=False)
+        self.used["out"] = {idx}
+        mark = self.taps["PR-OUT"].mark()
+        dm = self._dbg_mark()
+        mon = self.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        seq = SepAxiAccessSeq(
+            "fmp_lsu_w2u",
+            op=SepAxiOp.READ,
+            addr=p.addr,
+            length=4,
+            size=2,
+            prot=p.prot1 << 1,
+            allow_ungraded_read_resp=True,
+        )
+        await self.start_seq(seq)
+        if seq.resp_code != RESP_DECERR:
+            mon.release_expected_decerr(1)
+        self._obs_dbg(p, dm, seq.resp_code)
+        self.logger.info(
+            "OBS-FILT-WRITE-TO-USE inst=out entry=%d addr=0x%08x resp=%s pr_out_ar=%d",
+            idx,
+            p.addr,
+            _RESP.get(seq.resp_code),
+            self.taps["PR-OUT"].count(mark, "ar"),
+        )
+        await self.outb.check_entry(idx, "write_to_use")
         await self._clear("out")
 
     # ------------------------------------------------------------------
@@ -1429,6 +1620,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         self.inb = SepFilterBank(self, "in")
         self.outb = SepFilterBank(self, "out")
         self.taps = start_taps("PR-XEXT", "PR-CSR", "PR-OUT", "PR-EXT", "PR-SRAM", "PR-INFLT")
+        self._dbg_hist: list[int | None] = []
+        self._dbg_on = True
+        cocotb.start_soon(self._dbg_sampler())
 
         # Step 2: stage the SRAM pair and the cold scratch word.
         self.s0 = SRAM_BASE + 0x1000 + 16 * self.rng.randrange(0, (SRAM_SIZE - 0x2000) // 16)
@@ -1459,6 +1653,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self._leg1()
         await self._leg2()
         await self._leg4()
+        close_graded_window(self.logger)
+        await self._group_leg()
+        await self._obs_write_to_use()
 
         for inst in ("in", "out"):
             s = self.stats[inst]
@@ -1475,4 +1672,5 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         close_graded_window(self.logger)
         await self._remap(AP_BASE, 0, False)
         await self._remap(STEE_BASE, 0, False)
+        self._dbg_on = False
         await stop_taps(self.taps)

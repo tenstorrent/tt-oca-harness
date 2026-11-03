@@ -392,6 +392,7 @@ class SmcDualHarness:
         reset_vector: int,
         *,
         seed_firmware_rng: bool = True,
+        preload: tuple[tuple[int, int], ...] = (),
     ) -> None:
         from smc_occp_dual_defs import (
             CPU_CTRL_RESET_CTRL,
@@ -421,6 +422,14 @@ class SmcDualHarness:
             await self._seed_firmware_rng(csr, instance, SCRATCH_FW_SEED)
             await self._publish_i2c_target_ids(csr, instance)
             await self._check_boot_interface_strap(csr, instance)
+        # Values the firmware must find on its first instruction, written after the seed and
+        # straps so that they override them.
+        for addr, value in preload:
+            await csr.write("PRELOAD", addr, value, length=8)
+            readback = await csr.read("PRELOAD_RDBK", addr, length=8)
+            assert readback == value, (
+                f"{instance}: preload {addr:#010x} reads back {readback:#x}, not {value:#x}"
+            )
 
         getattr(dut, f"{instance}_boot_stall_hold").value = 0
         await ClockCycles(dut.clk_smc_i, 256)

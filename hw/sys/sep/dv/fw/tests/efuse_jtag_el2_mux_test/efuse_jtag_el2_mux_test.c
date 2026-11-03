@@ -34,7 +34,7 @@ int main(void) {
 
     // Real fuse sense must complete before the eFuse host path is usable.
     if (sep_efuse_wait_sense_done(SENSE_TIMEOUT) != 0) {
-        sep_mbx_puts("FAIL: eFuse sense never completed\n");
+        sep_mbx_puts("CHK-SENSE FAIL: eFuse sense never completed\n");
         return 1;
     }
     sep_mbx_puts("CHK-SENSE PASS: eFuse sense-done\n");
@@ -43,7 +43,7 @@ int main(void) {
     // using it as the corruption sentinel for the mux window.
     sep_efuse_wr(SEP_EFUSE_MMR0, CPU_TOKEN_SEED);
     if (sep_efuse_rd(SEP_EFUSE_MMR0) != CPU_TOKEN_SEED) {
-        sep_mbx_puts("FAIL: CPU token seed did not read back\n");
+        sep_mbx_puts("CHK-CPU-SEED FAIL: CPU token seed did not read back\n");
         return 1;
     }
     sep_mbx_puts("CHK-CPU-SEED PASS: CPU token seed read back\n");

@@ -101,15 +101,27 @@ CORE_PULSE = tuple(
 )
 ALL_CORES_N = CORE_N[0] | CORE_N[1] | CORE_N[2] | CORE_N[3]
 ALL_PULSES = CORE_PULSE[0] | CORE_PULSE[1] | CORE_PULSE[2] | CORE_PULSE[3]
+
+
+def _ctrl_reset(field: str) -> int:
+    return cpu_ctrl_u32(f"CPU_CTRL__RESET_CTRL__{field}_reset") << cpu_ctrl_u32(
+        f"CPU_CTRL__RESET_CTRL__{field}_bp"
+    )
+
+
+DEBUG_N_RESET = cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__DEBUG_RESET_N_N0_SCAN_reset")
+UNCORE_N_RESET = cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_reset")
+ALL_CORES_N_RESET = sum(_ctrl_reset(f"CORE{n}_RESET_N_N0_SCAN") for n in range(4))
+ALL_PULSES_RESET = sum(_ctrl_reset(f"CORE{n}_RESET_PULSE_START_N0_SCAN") for n in range(4))
 PRE_BM = cpu_ctrl_u32("CPU_CTRL__CORE_RESET_PULSE_COUNT__PRE_RESET_COUNT_bm")
 POST_BM = cpu_ctrl_u32("CPU_CTRL__CORE_RESET_PULSE_COUNT__POST_RESET_COUNT_bm")
 
 # cpu_ctrl.adoc reset values and the S4/S7 stimulus words of the contract.
-VECTOR_RESET = 0xC004_0000
+VECTOR_RESET = cpu_ctrl_u32("CPU_CTRL__RESET_VECTOR__VECTOR_reset")
 VECTOR_BIT17 = 0xC006_0000
-VECTOR_FIELD = (1 << 56) - 1
-PULSE_PRE_RESET = 0x8
-PULSE_POST_RESET = 0x10
+VECTOR_FIELD = cpu_ctrl_u32("CPU_CTRL__RESET_VECTOR__VECTOR_bm")
+PULSE_PRE_RESET = cpu_ctrl_u32("CPU_CTRL__CORE_RESET_PULSE_COUNT__PRE_RESET_COUNT_reset")
+PULSE_POST_RESET = cpu_ctrl_u32("CPU_CTRL__CORE_RESET_PULSE_COUNT__POST_RESET_COUNT_reset")
 FORCE_AFTER_0X40 = (0x40 << VALUE_BP) | MODE_BM
 PULSED_CORES = (0, 2, 3)
 LEVEL_CORES = (2, 3)
@@ -357,10 +369,12 @@ class smc_cpu_reset_pulse_test_seq(SmcCsrSeq):
 
     def _check_ctrl(self, word: int, want_debug: int, when: str) -> None:
         debug, uncore, cores, pulses = self._ctrl_fields(word)
-        assert (debug, uncore, cores, pulses) == (want_debug, 1, ALL_CORES_N, 0), (
+        want = (want_debug, UNCORE_N_RESET, ALL_CORES_N_RESET, ALL_PULSES_RESET)
+        assert (debug, uncore, cores, pulses) == want, (
             f"RESET_CTRL 0x{word:x} {when}: debug_reset_n={debug} (want {want_debug}), "
-            f"uncore_reset_n={uncore} (want 1), core reset_n=0x{cores:x} (want 0x{ALL_CORES_N:x}), "
-            f"pulse starts=0x{pulses:x} (want 0)"
+            f"uncore_reset_n={uncore} (want {UNCORE_N_RESET}), "
+            f"core reset_n=0x{cores:x} (want 0x{ALL_CORES_N_RESET:x}), "
+            f"pulse starts=0x{pulses:x} (want {ALL_PULSES_RESET})"
         )
 
     async def _done_bits(self, tag: str) -> int:
@@ -496,7 +510,7 @@ class smc_cpu_reset_pulse_test_seq(SmcCsrSeq):
     async def _reset_values(self) -> int:
         ctrl0 = await self._rd("S2_RESET_CTRL", RESET_CTRL)
         vectors = [await self._rd(f"S2_RESET_VECTOR_{n}", RESET_VECTOR[n]) for n in (1, 2, 3)]
-        self._check_ctrl(ctrl0, 0, "after the cold reset")
+        self._check_ctrl(ctrl0, DEBUG_N_RESET, "after the cold reset")
         for n, word in zip((1, 2, 3), vectors):
             assert word & VECTOR_FIELD == VECTOR_RESET, (
                 f"RESET_VECTOR[{n}] = 0x{word:x}; bits 55:0 must reset to 0x{VECTOR_RESET:x}"

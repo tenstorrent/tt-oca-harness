@@ -16,6 +16,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
+from env.sep_chk_log import word_digest
 from env.sep_seeded_rng import SepSeededRng
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -76,7 +77,8 @@ class SepKpvScramblerCfg:
 
     def summary(self) -> str:
         return (
-            f"seed={self.seed} key_a=0x{self.key_a:08x} key_b=0x{self.key_b:08x} "
+            f"seed={self.seed} key_a_sha={word_digest(self.key_a)} "
+            f"key_b_sha={word_digest(self.key_b)} "
             f"indices={list(self.indices)} packed=0x{self.packed_indices:08x}"
         )
 

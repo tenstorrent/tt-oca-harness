@@ -14,13 +14,16 @@ lists define). A scenario carries seeds seed..seed+reseed-1 (--reseed N caps
 that at N). A scenario whose target differs from --target is skipped (TB=t1 and
 reg), as is one tagged `blocked` (its reason is in testlists/plan_ids.yaml).
 Each run is judged by scripts/check_run.py (make run calls it); results go to
-out/<build>/results.csv with the scenario name, its test class and plan IDs.
+out/<build>/results_rid.<rid>.csv with the scenario name, its test class and
+plan IDs. The RID in the name keeps a later regression of the same lists from
+overwriting them; the results*.csv readers (compare_results.py, --order
+failed-first, the CI artifacts) take every such file.
 The build must exist (make build ... first); it is never rebuilt here, but a
 build older than its sources or compile defines is reported once, loudly, at
 the start (make stale-check).
 Several testlists share one pool of -j runs; with --per-list each list a
 scenario is defined in (an area of all.toml, say) gets its own
-results_<list>.csv and summary line.
+results_<list>.rid.<rid>.csv and summary line.
 Exit status 0 when every run is PASS or XFAIL and drain left none out.
 """
 
@@ -100,8 +103,6 @@ def build_vars(args):
     out = [f"TB={args.tb}", f"SIM={args.sim}", f"CONFIG={args.config}", f"COV={args.cov}"]
     if args.rtl_assert:
         out.append("RTL_ASSERT=1")
-    if args.escape:
-        out.append(f"ESCAPE={args.escape}")
     if args.rtl_patch:
         out.append(f"RTL_PATCH={args.rtl_patch}")
     if args.axi4pc:
@@ -125,8 +126,6 @@ def make_cmd(args, run, priority, queue_name):
            f"RID={args.rid}", "STALE_CHECK=0"]
     if args.out_dir:
         cmd.append(f"OUT_DIR={args.out_dir}")
-    if args.fdi_enc:
-        cmd.append(f"FDI_ENC={args.fdi_enc}")
     if args.lsf_extra_opts:
         cmd.append(f"LSF_EXTRA_OPTS={args.lsf_extra_opts}")
     if priority:
@@ -355,9 +354,15 @@ def modify_pending(ctl, hooks, running, key, value):
         ctl.log(f"ctl: {' '.join(cmd)}: {msg}")
 
 
-def write_results(log, out_dir, name, group):
+def results_name(name, rid):
+    """results_<list>.rid.<rid>.csv, or results_rid.<rid>.csv for all lists in one: one
+    file per RID, never overwritten by another regression's run of the same list."""
+    return f"results_{name}.rid.{rid}.csv" if name else f"results_rid.{rid}.csv"
+
+
+def write_results(log, out_dir, name, rid, group):
     rows = sorted((r.result() for r in group), key=lambda r: (r[0], r[2], int(r[1]) if r[1].isdigit() else r[1]))
-    csv_path = os.path.join(out_dir, f"results_{name}.csv" if name else "results.csv")
+    csv_path = os.path.join(out_dir, results_name(name, rid))
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(["test", "seed", "plusargs", "status", "plan_ids", "run_dir", "name"])
@@ -430,10 +435,7 @@ def main():
                     help="run at most N seeds of each scenario (default: its reseed)")
     ap.add_argument("--axi4pc", default="", choices=["", "0", "1"],
                     help="make AXI4PC for the build (default: make's, on when .deps/BP063/ is there)")
-    ap.add_argument("--escape", default="", help="run on the ESCAPE=<id> build (escape/)")
     ap.add_argument("--rtl-patch", default="", help="run on the RTL_PATCH=<absolute path> build")
-    ap.add_argument("--fdi-enc", default="", choices=["", "SPEC", "RTL"],
-                    help="FDI state encoding of every run (make FDI_ENC, +FDI_ENC)")
     ap.add_argument("--lsf-extra-opts", default=os.environ.get("LSF_EXTRA_OPTS", ""),
                     help="extra bsub options for every run (make LSF_EXTRA_OPTS; default: "
                          "$LSF_EXTRA_OPTS)")
@@ -543,9 +545,9 @@ def main():
     bad = bool(notrun)
     if args.per_list:
         for i, name in enumerate(names):
-            bad |= write_results(log, out_dir, name, [r for r in results if r.lst == i])
+            bad |= write_results(log, out_dir, name, args.rid, [r for r in results if r.lst == i])
     else:
-        bad |= write_results(log, out_dir, None, results)
+        bad |= write_results(log, out_dir, None, args.rid, results)
     return 1 if bad else 0
 
 

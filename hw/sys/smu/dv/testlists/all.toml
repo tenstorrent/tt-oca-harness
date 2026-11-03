@@ -1173,6 +1173,7 @@ args = [
   "+axi_sva_need_xbar_smc_out",
   "+axi_sva_need_xbar_sep_in",
   "+axi_sva_need_xbar_ext_out",
+  "+axi_sva_need_iwc_sep",
 ]
 
 [[tests]]
@@ -1826,6 +1827,7 @@ module = "smu_smc_mailbox_status_error_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["mailbox", "no_sep", "smc"]
 run_modes = ["sep_rtl"]
@@ -2766,6 +2768,7 @@ module = "smu_sep_sba_fabric_sweep_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 23100
 tags = ["depth", "dtp", "sep", "dmi", "sba", "fabric", "outbound"]
 run_modes = ["sep_rtl"]
@@ -2983,6 +2986,7 @@ module = "smu_dtp_jtag2axi_ratio_floor_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 3000
 tags = ["depth", "dtp", "jtag2axi"]
 run_modes = ["sep_rtl"]
@@ -3377,6 +3381,7 @@ module = "smu_lc_sigint_fail_closed_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["dtp", "jtag2axi", "otp", "sep", "real_rtl", "lifecycle", "security"]
 run_modes = ["sep_rtl"]
@@ -4049,6 +4054,7 @@ module = "smu_smc_efuse_shadow_map_readback_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["efuse", "smc", "boot", "sep", "real_rtl"]
 run_modes = ["sep_rtl_fuse_sense"]
@@ -4349,6 +4355,26 @@ tests = [
 ]
 expected_count = 160
 
+# The VCS run of record of the AXI protocol checkers in tb_wrapper_top.sv: the
+# leaves that drive the checked links, all but one of which name a checker with a
+# +axi_sva_need_* plusarg while smu_axi_out_outstanding_test drives smu_out. Run it as
+# `--dut smu --items axi_sva --tool vcs`; the Verilator targets evaluate only the
+# two-state rules and none of the X, data-known, count or need checks.
+[[groups]]
+name = "axi_sva"
+tests = [
+  "smu_sep_bidirect_test",
+  "smu_wrapper_jtag_ptap_test",
+  "smu_axi_out_addr_len_size_test",
+  "smu_axi_out_outstanding_test",
+  "smu_dtp_jtag2axi_smc_rw_matrix_test",
+  "smu_smc_inbound_window_sweep_test",
+  "smu_axi_in_burst_outstanding_test",
+  "smu_xtrig_ctp_pad_test",
+  "smu_axi_smc_cool_reset_in_flight_test",
+  "smu_axi_ext_in_illegal_encoding_test",
+]
+
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
 # `--items all` keeps meaning "all of it". Scenarios that cannot run or cannot
@@ -4553,8 +4579,10 @@ tests = [
   "smu_out_filter_rule_matrix_test",
   "smu_sep_out_filter_rule_matrix_test",
   "smu_sep_output_remap_region_matrix_test",
+  "smu_axi_smc_cool_reset_in_flight_test",
+  "smu_axi_ext_in_illegal_encoding_test",
 ]
-expected_count = 196
+expected_count = 198
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -4665,6 +4693,8 @@ args = [
   "+axi_sva_need_smu_in",
   "+axi_sva_need_xbar_ext_in",
   "+axi_sva_need_xbar_smc_in",
+  "+axi_sva_need_incut",
+  "+axi_sva_need_iwc_smc",
 ]
 
 [[tests]]
@@ -4688,6 +4718,93 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_stall_smu_in",
+]
+
+# ext_in and JTAG2AXI requests left in flight across the SMC primary reset, from
+# the cool-reset pin and then from an FLR request: VALIDs low in reset, no stale
+# response after release, and a fresh access on every drivable route. VCS only:
+# the X, data-known, count and need checks of the bench checkers grade there.
+[[tests]]
+name = "smu_axi_smc_cool_reset_in_flight_test"
+module = "smu_axi_smc_cool_reset_in_flight_test"
+target = "compile_smu_chiplet"
+tools = ["vcs"]
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3600
+tags = ["fabric", "reset", "axi_sva"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the paths are opened over CSRs, no eFuse word is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades. The leaf
+  # drives no SEP-originated traffic, so xbar_sep_out and sep_to_smc have none.
+  "+axi_sva_need_smu_in",
+  "+axi_sva_need_xbar_ext_in",
+  "+axi_sva_need_incut",
+  "+axi_sva_need_xbar_sep_in",
+  "+axi_sva_need_iwc_sep",
+  "+axi_sva_need_xbar_smc_in",
+  "+axi_sva_need_iwc_smc",
+  "+axi_sva_need_dtp_dbg",
+  "+axi_sva_need_xbar_smc_out",
+  "+axi_sva_need_xbar_ext_out",
+  "+axi_sva_need_smu_out",
+]
+
+# Illegal encodings on the external inbound port (WRAP with AxLEN 0, the
+# reserved burst encoding, a 4 KiB-crossing INCR) toward each aperture and
+# neither, each followed by a fresh access, and legal INCR, FIXED, WRAP and
+# narrow bursts into the SEP SRAM and the SMC scratchpad. The SMC aperture
+# alias and inbound filter are programmed over JTAG2AXI and the SEP aperture
+# over the SEP debug module's system bus. VCS only: the X, data-known, count
+# and need checks grade there.
+[[tests]]
+name = "smu_axi_ext_in_illegal_encoding_test"
+module = "smu_axi_ext_in_illegal_encoding_test"
+target = "compile_smu_chiplet"
+tools = ["vcs"]
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 2700
+tags = ["fabric", "axi_sva", "illegal"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the paths are opened over JTAG2AXI and the SEP system bus, no eFuse word is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: every SEP debug path open, so the debug module's system bus can
+  # open the SEP aperture.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  # +smu_axi_illegal_inject: for the whole run, the checkers on smu_in, the
+  # inbound cut and the crossbar ext_in port see INCR for a WRAP with AxLEN 0
+  # or the reserved burst encoding, and the 4 KiB-page start for a 4 KiB-crossing
+  # INCR; the DUT receives the request unchanged and no other checker is masked.
+  "+smu_axi_illegal_inject",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_smu_in",
+  "+axi_sva_need_xbar_ext_in",
+  "+axi_sva_need_incut",
+  "+axi_sva_need_xbar_sep_in",
+  "+axi_sva_need_iwc_sep",
+  "+axi_sva_need_xbar_smc_in",
+  "+axi_sva_need_iwc_smc",
 ]
 
 # SMC-facing boundary signals against the SMC registers that own them.
@@ -4873,6 +4990,7 @@ module = "smu_smc_cool_reset_pin_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 3600
 tags = ["smc", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
@@ -5017,6 +5135,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_dtp_csr",
 ]
 
 [[tests]]
@@ -5157,6 +5277,7 @@ module = "smu_smc_wdt_boundary_timeout_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 3600
 tags = ["smc", "wdt", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
@@ -5315,6 +5436,7 @@ module = "smu_sep_rma_token_match_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 3000
 tags = ["depth", "dtp", "sep", "sba", "efuse"]
 run_modes = ["sep_rtl"]

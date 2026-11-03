@@ -51,14 +51,17 @@ module axi_hang_detector #(
                                                             // snoop.
 
   output logic           timeout_o,                         // Hang level, independent of irq_en_i
-                                                            // and irq_test_i. High while enabled
-                                                            // and the stall counter sits at zero.
+                                                            // and irq_test_i. Rises in the cycle
+                                                            // after threshold_i consecutive
+                                                            // stalled cycles, if the threshold
+                                                            // loaded at the last restart was
+                                                            // non-zero. Drops on the next restart.
 
   output logic           irq_o                              // Hang interrupt as a direct
                                                             // combinational level. Asserts when
                                                             // enable_i and irq_en_i are set and
-                                                            // either the stall counter reaches
-                                                            // threshold_i or irq_test_i is set.
+                                                            // either timeout_o or irq_test_i is
+                                                            // set.
 );
 
   /////////////////////////////

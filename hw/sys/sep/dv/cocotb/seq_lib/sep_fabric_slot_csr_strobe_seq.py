@@ -86,13 +86,17 @@ FILTER_BURST_GRANULE_LOG2 = 12
 BANKS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     (
         "alias",
-        "LOCAL_MASTER_ALIAS_REMAP_CTRL",
+        "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP",
         ("REGION_REGION_START", "REGION_REGION_END", "REGION_REGION_ATTRS"),
     ),
-    ("ap", "AP_OUTPUT_REMAP_CTRL", ("REGION_REGION_ATTRS",)),
-    ("stee", "STEE_OUTPUT_REMAP_CTRL", ("REGION_REGION_ATTRS",)),
-    ("outfilt", "OUTBOUND_FILTER_CTRL", ("FILTER_CONFIG", "START_ADDR", "END_ADDR")),
-    ("infilt", "INBOUND_FILTER_CTRL", ("FILTER_CONFIG", "START_ADDR", "END_ADDR")),
+    ("ap", "AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ("REGION_REGION_ATTRS",)),
+    ("stee", "STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ("REGION_REGION_ATTRS",)),
+    (
+        "outfilt",
+        "OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL",
+        ("FILTER_CONFIG", "START_ADDR", "END_ADDR"),
+    ),
+    ("infilt", "INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", ("FILTER_CONFIG", "START_ADDR", "END_ADDR")),
 )
 FILTER_BANKS = ("outfilt", "infilt")
 # Filter range registers: one refused write to each per locked entry is
