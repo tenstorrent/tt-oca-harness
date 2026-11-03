@@ -583,16 +583,56 @@ tags = ["ci"]
 run_modes = ["smoke"]
 args = ["+smc_hold_ext_boot"]
 
+# cpu.adoc probes: the drain timer at zero, the uncore reset's scope over the
+# cores and the isolate request, the L2 isolate's depth and blocking, and the
+# scratchpad bank/entry formula. SEP_IN R is held at the boundary in the first
+# and the third; neither forces a flush, so the front-port assertions stay on.
+[[tests]]
+name = "smc_cpu_reset_timeout_zero_test"
+module = "smc_cpu_reset_timeout_zero_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_uncore_reset_scope_test"
+module = "smc_cpu_uncore_reset_scope_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_l2_isolate_depth_and_block_test"
+module = "smc_cpu_l2_isolate_depth_and_block_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_spm_bank_formula_test"
+module = "smc_spm_bank_formula_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "cpu"
 tests = [
     "smc_cpu_ctrl_map_depth_test",
     "smc_cpu_ctrl_scratch_window_test",
+    "smc_cpu_l2_isolate_depth_and_block_test",
     "smc_cpu_l2_read_wedge_test",
     "smc_cpu_l2_write_wedge_test",
     "smc_cpu_mmio_read_wedge_test",
     "smc_cpu_mmio_write_wedge_test",
+    "smc_cpu_reset_timeout_zero_test",
+    "smc_cpu_uncore_reset_scope_test",
     "smc_mutex_semaphore_test",
+    "smc_spm_bank_formula_test",
     "smc_spm_mem_boundary_test",
 ]
 
