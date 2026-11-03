@@ -99,6 +99,38 @@ args = [
 ]
 
 [[tests]]
+# An FLR edge that lands while the cool-reset hold counter is running restarts
+# the pre-reset counter (smc_cool_reset_wrap.sv: flr_counter_state is IDLE
+# during the hold), and when that count outlasts the hold rst_cool_no pulses a
+# second time; clk_rst.adoc states the sequencer is not a queue of overlapping
+# FLR requests. The arm leg measures the single-request pulse first.
+name = "smc_flr_hold_edge_requeue_test"
+module = "smc_flr_hold_edge_requeue_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "an FLR edge inside the cool-reset hold starts a second cool pulse after the first"
+expect_fail_match = "CHK-FLR-NO-REQUEUE FAIL: .*a second fall [0-9]+ edges after the third edge"
+
+[[tests]]
+# The I2C register block runs on the gated peripheral clock while the
+# peripheral side of the AXI-Lite CDC runs on the ungated one, so a response
+# handed over as the gate closes is taken more than once and a response no
+# read asked for stays queued; every later read of the leg receives the
+# previous read's word. clk_rst.adoc states that an access the peripheral
+# has accepted finishes there. The arm leg proves the open and closed gate
+# answer once each before the sweep.
+name = "smc_clock_gate_inflight_completes_test"
+module = "smc_clock_gate_inflight_completes_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "a response handed over as the I2C clock gate closes is duplicated and later reads of the leg receive the previous read's word"
+expect_fail_match = "CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE FAIL: .*timed_out=False .*a completed read left r_valid still presented"
+
+[[tests]]
 # Observation leaf: a CTRL_STATUS trigger while the zeroer is busy
 # is dropped during issue and accepted while responses drain, with one
 # completion interrupt for two jobs; zeroer.adoc and zeroer_ctrl.rdl state
@@ -297,13 +329,15 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 5
+expected_count = 7
 tests = [
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
     "smc_spm_write_cut_by_warm_reset_test",
     "smc_i2c_tbuf_bus_free_test",
+    "smc_flr_hold_edge_requeue_test",
+    "smc_clock_gate_inflight_completes_test",
 ]
 
 [[groups]]
