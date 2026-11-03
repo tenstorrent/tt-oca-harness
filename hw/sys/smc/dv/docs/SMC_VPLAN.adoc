@@ -739,7 +739,7 @@ sources)
 |`smc_gpio_irq_active_test`, `smc_gpio_ctrl_full_sweep_test`, `smc_gpio_irq_type_matrix_test`,
 `smc_gpio_pad_input_readback_test`, `smc_gpio_output_driveback_test`, `smc_gpio_boot_stall_test`
 |`smc_gpio_fcov` (`c_pad_output_low`, `c_per_instance_default_matches_map`,
-`c_default_input_count_62`); `smc_periph_fcov` (`c_irq_gpio`, `c_gpio_core2pad_active`,
+`c_default_input_count`); `smc_periph_fcov` (`c_irq_gpio`, `c_gpio_core2pad_active`,
 `c_gpio_pad2core_en_active`, `c_gpio_boot_stall_pad_high`); `smc_map_fcov` (`c_gpio_instance_0`,
 `c_gpio_instance_64`)
 |`YES`: `smc_gpio_irq_active_test`
