@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMU_SEP_SCN_012 ANCHOR: smu_smc_reset_inflight_test
-# DV-TESTCASE-CONTRACT-REVISION: 8 RECORD-SHA256: da58600cd645a978704a315eb895c0e44227293a161e2eceaf7590757fa8023b
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_SEP_SCN_VPLAN_DETAIL_RESET.md @ artifact_revision 10 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 9 RECORD-SHA256: 226ef1b275ecc7000c72ff4359e28212e392d704cc90a7d4f0dcd90d6f3b16f5
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_SEP_SCN_VPLAN_DETAIL_RESET.md @ artifact_revision 11 ENV: cocotb
 """SMC-side resets with crossbar traffic in flight, on the SEP=1 wrapper.
 
 Bring-up is ``smu_dtp_sep_dm_dmi_test`` (TEST_DEV posture, SEP STAP, dmactive). With the SEP STAP
@@ -1707,10 +1707,10 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         self._verdict(
             "CHK-SMC-SW-CORE",
             "CHK-SMC-SW-CORE: 4/4 cores hold/release; resets_done 0xF, low seen (programmed); "
-            "default pulse low at the tap; core0 wdt kept",
+            "pulse low at the tap for the RDL default and the programmed counts; core0 wdt kept",
             (
                 {c: (h[1] == h[0], h[3] > h[2]) for c, h in holds.items()},
-                (at_reset, default_done, prog_done, low_seen, default_low > 0),
+                (at_reset, default_done, prog_done, low_seen, default_low, prog_low),
                 (
                     wdt0_before[:2],
                     wdt0_after[:2],
@@ -1720,7 +1720,14 @@ class smu_smc_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             ),
             (
                 {c: (True, True) for c in range(4)},
-                (DONE_RESET, DONE_MASK, DONE_MASK, True, True),
+                (
+                    DONE_RESET,
+                    DONE_MASK,
+                    DONE_MASK,
+                    True,
+                    PULSE_DEFAULT_LOW,
+                    PULSE_PRE + 1 + PULSE_POST + 1,
+                ),
                 ((WDT_COREAWAKE, WDT_CMP_KEPT), (WDT_COREAWAKE, WDT_CMP_KEPT), True, True),
             ),
         )

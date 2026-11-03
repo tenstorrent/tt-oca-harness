@@ -10,8 +10,8 @@ a release and a cold reset: hold A leaves a read and a write orphaned at
 sep_in and measures their fate, different-ID reads to smc_in with nothing
 queued ahead and fresh SEP accesses during and after the hold; hold B a later
 same-ID read to smc_in and a JTAG2AXI read from the other initiator; holds C
-and D the same-ID and distinct-ID acceptance counts behind the orphan. The AXI
-rules grade on VCS only; the bench's sep_in override expectation window covers
+and D the same-ID and distinct-ID acceptance counts behind the orphan. The leaf
+runs on VCS only; the bench's sep_in override expectation window covers
 the rules the withdrawn R beat at sep_in trips, and the leaf grades it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\

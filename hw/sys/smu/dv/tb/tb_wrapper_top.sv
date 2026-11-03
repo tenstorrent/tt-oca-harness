@@ -732,15 +732,20 @@ module smu_wrapper_uvm_top
 
   // The JTAG IC_RESET sep_reset_n override resets the SEP side of sep_in with
   // no isolation sequence, so an R beat presented there is withdrawn at the
-  // fall: the R_VALID_HELD and R_PAYLOAD_STABLE rules of u_xbar_sep_in_axi_sva,
-  // and the req1 assertion and lock_req assumption of the R-channel arbiter in
-  // the SEP SRAM burst demultiplexer fire.
+  // fall: the R_VALID_HELD and R_PAYLOAD_STABLE rules of u_xbar_sep_in_axi_sva
+  // and of u_iwc_sep_axi_sva on the same R path, and the req1 assertion and
+  // lock_req assumption of the R-channel arbiter in the SEP SRAM burst
+  // demultiplexer fire. The crossbar, on the primary reset, keeps presenting
+  // AW, W and AR to the held SEP, so the AW, W and AR VALID_RESET_LOW rules of
+  // u_xbar_sep_in_sep_rst_axi_sva fire while sep_reset_n is low.
   // With +axi_sva_expect_sep_in_override, and only from a fall of sep_reset_n
-  // under that override with the SMC primary reset high until
+  // under that override with the SMC primary reset high, until
   // SepInOverrideMarginClks clk_smu_i edges after its rise, those rules are
   // killed; every other rule, including the rest of that demultiplexer, every
-  // instance and every other leaf is unaffected. The obs_ signals
-  // let the leaf grade the window.
+  // instance and every other leaf is unaffected. A fall of the primary reset
+  // while the window is open prints a line that fails the run, so the primary
+  // reset is high on every cycle the rules are off. The obs_ signals let the
+  // leaf grade the window.
   logic       obs_sep_in_expect_window_open = 1'b0;
   logic [7:0] obs_sep_in_expect_window_count = '0;
 `ifndef VERILATOR
@@ -756,6 +761,14 @@ module smu_wrapper_uvm_top
       $asserton(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
       $asserton(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE
           .OCAH_AXI_R_PAYLOAD_STABLE);
+      $asserton(0, u_iwc_sep_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
+      $asserton(0, u_iwc_sep_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE.OCAH_AXI_R_PAYLOAD_STABLE);
+      $asserton(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_AW_VALID_RESET_LOW
+          .OCAH_AXI_AW_VALID_RESET_LOW);
+      $asserton(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_W_VALID_RESET_LOW
+          .OCAH_AXI_W_VALID_RESET_LOW);
+      $asserton(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_AR_VALID_RESET_LOW
+          .OCAH_AXI_AR_VALID_RESET_LOW);
       $asserton(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
           .gen_arbiter.req1);
       $asserton(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
@@ -764,6 +777,14 @@ module smu_wrapper_uvm_top
       $assertkill(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
       $assertkill(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE
           .OCAH_AXI_R_PAYLOAD_STABLE);
+      $assertkill(0, u_iwc_sep_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
+      $assertkill(0, u_iwc_sep_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE.OCAH_AXI_R_PAYLOAD_STABLE);
+      $assertkill(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_AW_VALID_RESET_LOW
+          .OCAH_AXI_AW_VALID_RESET_LOW);
+      $assertkill(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_W_VALID_RESET_LOW
+          .OCAH_AXI_W_VALID_RESET_LOW);
+      $assertkill(0, u_xbar_sep_in_sep_rst_axi_sva.gen_OCAH_AXI_AR_VALID_RESET_LOW
+          .OCAH_AXI_AR_VALID_RESET_LOW);
       $assertkill(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
           .gen_arbiter.req1);
       $assertkill(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
@@ -785,6 +806,13 @@ module smu_wrapper_uvm_top
           $display({"[tb] sep_in override expectation window open at %0t: ",
                     "sep_reset_n fell under the JTAG override, window %0d"},
                    $time, obs_sep_in_expect_window_count);
+          fork
+            begin : primary_held_through_window
+              @(negedge rst_primary_smc_clk_n);
+              $display({"[tb] sep_in override expectation window: primary reset fell ",
+                        "inside the window at %0t"}, $time);
+            end
+          join_none
           wait (sep_reset_n === 1'b1);
           rose_at = $time;
           margin  = 0;
@@ -792,6 +820,7 @@ module smu_wrapper_uvm_top
             @(posedge clk_smu_i);
             margin++;
           end
+          disable fork;
           sep_in_override_checks(1'b1);
           obs_sep_in_expect_window_open = 1'b0;
           $display({"[tb] sep_in override expectation window closed at %0t: ",

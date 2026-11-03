@@ -3,8 +3,8 @@
 """Sequence for smu_xbar_reset_held_target_test (SMU_AXI_FAB_019).
 
 DV-TESTCASE-CONTRACT: SMU_AXI_FAB_019 ANCHOR: smu_xbar_reset_held_target_test
-DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: b553961199b073e5d38d9dee104657566726fffaaf6e4df6bb3d9769f73357cb
-DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_FAB_VPLAN_DETAIL.md @ artifact_revision 4 ENV: cocotb
+DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 09d0c9ce2c5e849a63446fc481462807730e9fe8a601a345c682aa36da6346bd
+DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_FAB_VPLAN_DETAIL.md @ artifact_revision 5 ENV: cocotb
 
 The JTAG IC_RESET SEP slice drives the SEP's sep_reset_n low while the SMU
 crossbar keeps running. ``sep_reset_no`` resets the SEP system peripherals

@@ -85,7 +85,9 @@ extra_ignore_patterns = [
 # prints `crypto EDN request-hold window still open at end` from a `final`
 # block when the run ends inside the window, so a window that never closes
 # fails the run. Its sep_in override expectation window prints
-# `sep_in override expectation window still open at end` the same way.
+# `sep_in override expectation window still open at end` the same way, and
+# `sep_in override expectation window: primary reset fell` when the SMC
+# primary reset falls while the window is open.
 extra_hard_fail_patterns = [
   'assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_io\.u_sep_ot_spi_wrap\.u_spi_host\..*: at time \d{10,}',
@@ -93,6 +95,7 @@ extra_hard_fail_patterns = [
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_dma_wrap\.(u_secure_dma|gen_alert_receivers)\b.*(: at time|failed at) \d{10,}',
   'crypto EDN request-hold window still open at end',
   'sep_in override expectation window still open at end',
+  'sep_in override expectation window: primary reset fell',
 ]
 
 [native.stages.clean]

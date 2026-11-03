@@ -9,8 +9,8 @@ built with compile_smu_chiplet the ext_in master issues single-beat and burst
 INCR, WRAP and FIXED reads and writes outside both apertures and at the bit-55
 alias of the SMC window, and the leaf grades the beat count, RLAST, write-beat
 acceptance, the single write response, the ID echo, the absence of a side
-effect and the responder's recovery from held read data. The AXI rules grade
-on VCS only.
+effect and the responder's recovery from held read data. The four-state AXI
+rules and the need gates grade on VCS only.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_xbar_decerr_burst_response_test --target compile_smu_chiplet --tool vcs

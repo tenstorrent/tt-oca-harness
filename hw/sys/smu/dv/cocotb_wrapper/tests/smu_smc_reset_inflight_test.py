@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMU_SEP_SCN_012 ANCHOR: smu_smc_reset_inflight_test
-# DV-TESTCASE-CONTRACT-REVISION: 8 RECORD-SHA256: da58600cd645a978704a315eb895c0e44227293a161e2eceaf7590757fa8023b
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_SEP_SCN_VPLAN_DETAIL_RESET.md @ artifact_revision 10 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 9 RECORD-SHA256: 226ef1b275ecc7000c72ff4359e28212e392d704cc90a7d4f0dcd90d6f3b16f5
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_SEP_SCN_VPLAN_DETAIL_RESET.md @ artifact_revision 11 ENV: cocotb
 """smu_smc_reset_inflight_test - SMC-side resets with crossbar traffic in flight.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
