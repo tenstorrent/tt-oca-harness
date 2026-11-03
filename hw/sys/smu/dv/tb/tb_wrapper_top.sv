@@ -18,6 +18,8 @@
 // memory macros come with smc_ip_integration inside it, following the same OSS
 // composition pattern as smc_wrapper / sep_wrapper.
 
+`include "ocah_sva_macros.svh"
+
 `timescale 1ps / 1fs
 
 // Shape selection for smu_tb_signal_list.svh: the same list expands as the
@@ -1892,12 +1894,13 @@ module smu_wrapper_uvm_top
   // grade the bench master (smu_axi_in) and the bench responder behind
   // u_axi_out_cut (smu_axi_out).
   //
-  // aresetn is the primary SMC-clock reset rst_primary_smc_clk_n_o on every
-  // link: the reset of the crossbar, the DTP and the SEP system logic. The
-  // SMC watchdog and reset-unit domains, the SEP watchdog and sep_reset_n,
-  // and the DTP power-on reset are outside aresetn: no reset rule grades
-  // them, and a transaction open at one of them stays in the checker's
-  // outstanding tracking until the next primary reset. Held off while
+  // aresetn is the primary SMC-clock reset rst_primary_smc_clk_n_o on these
+  // ten links: the reset of the crossbar, the DTP and the SEP system logic.
+  // The SMC watchdog and reset-unit domains, the SEP watchdog and
+  // sep_reset_n, and the DTP power-on reset are outside that aresetn: no
+  // reset rule of these ten grades them, and a transaction open at one of
+  // them stays in the checker's outstanding tracking until the next primary
+  // reset. Held off while
   // aresetn is X, before the first reset drive, and until the first clk_ref
   // edge that samples the DTP power-on reset (powergood_stable) low: aresetn
   // is already low before that edge, but the SEP reset passes through the
@@ -1911,13 +1914,59 @@ module smu_wrapper_uvm_top
   // external inbound port, and the SEP aperture leaf up to 36 on the
   // crossbar SEP port.
   //
-  // The rules grade on VCS only: both Verilator targets pass ASSERTS_OFF and
-  // no --assert. The handshake counters below count the AW and AR handshakes
-  // each checker graded; a test that names a port with
-  // +axi_sva_need_<port> fails when that count is zero.
+  // The two-state rules grade on VCS and on Verilator, whose targets turn
+  // the assertion switch on; the X-hygiene and data-known rules, the count
+  // lines and the need checks below are VCS only. The handshake
+  // counters below count the AW and AR handshakes each checker graded; a
+  // test that names a port with +axi_sva_need_<port> fails when that count
+  // is zero.
+  //
+  // The READY-stall counters axi_stall_<port>_{aw,w,ar} count, per instance,
+  // the clk_smu_i cycles in which the channel's VALID is 1 and its READY is 0
+  // while the instance's enable is true: the antecedent of the checker's
+  // VALID_HELD and PAYLOAD_STABLE rules. At final each instance prints
+  // CHK-AXI-STALL-<PORT> beside its CHK-AXI-SVA-<PORT> line, and a test that
+  // names a port with +axi_sva_need_stall_<port> fails when all three counts
+  // of that port are zero.
+  //
+  // Illegal-encoding inject (+smu_axi_illegal_inject; error inject,
+  // docs/SMU_TB_ARCH.adoc). With the plusarg, the checkers on the external
+  // inbound path (u_smu_in_axi_sva, u_incut_axi_sva, u_xbar_ext_in_axi_sva)
+  // see AxBURST = INCR on an AW or AR that carries a WRAP burst with
+  // AxLEN = 0 or the reserved burst encoding, and see the 4 KiB-page start
+  // address on an INCR burst that crosses a 4 KiB boundary. They track such a
+  // request as a legal single-beat or page-aligned burst and grade every
+  // other rule on it, so AW/AR_LEN_WRAP_LEGAL, AW/AR_BURST_LEGAL and
+  // AW/AR_4KB_BOUNDARY cannot fire on those three instances while the
+  // plusarg is set. The DUT receives the illegal request unchanged, and no
+  // other instance sees the substitution.
   //
   // This checks PROTOCOL, not data: a read that returns wrong data breaks no
   // rule here.
+  //
+  // Reset-domain instances grade the links whose far side resets on a
+  // narrower reset, with MASTER_SYNC_RESET set: u_xbar_sep_in_sep_rst_axi_sva
+  // and u_sep_to_smc_sep_rst_axi_sva take aresetn = sep_reset_n, the
+  // boot-qualified SEP reset, and are held off while sep_reset_n or the
+  // link's AW and AR valids are X; u_xbar_smc_in_warm_rst_axi_sva takes
+  // aresetn = the SMC warm reset rst_warm_smc_clk_n. The SMC cool reset feeds
+  // the primary reset, so the ten instances above already grade it.
+  //
+  // Six further links carry their own checker on the primary reset: the two
+  // ID-width converter outputs toward the SEP (u_iwc_sep_axi_sva) and the SMC
+  // (u_iwc_smc_axi_sva), the inbound boundary cut output (u_incut_axi_sva),
+  // and, as AXI-Lite, the DTP OTP JTAG ports into the SMC
+  // (u_otp_smc_axil_sva) and the SEP (u_otp_sep_axil_sva) and the SMC port
+  // into the DTP CSRs (u_dtp_csr_axil_sva).
+  //
+  // Beside every ocah_axi_sva instance a smu_axi_data_known_sva instance,
+  // <link>_data_sva, on the same clock, aresetn and enable, judges that the
+  // strobed WDATA lanes are known while WVALID is high and RDATA is known
+  // while RVALID is high; those two rules are four-state and grade on VCS
+  // only. The SMU_AXI_<PORT>_AWATOP_ZERO rules require AWATOP zero on every
+  // AW request of the SEP and SMC crossbar initiator ports, the DTP debug
+  // port and the inbound cut output, on the primary reset; the external
+  // inbound AWATOP is tied to zero at the boundary.
 
 `define SMU_AXI_SVA_PORTS(REQ, RSP)                                         \
     .aclk    (clk_smu_i),                                                   \
@@ -1959,6 +2008,24 @@ module smu_wrapper_uvm_top
 `define SMU_AXI_HS(REQ, RSP) \
     (((REQ.aw_valid && RSP.aw_ready) || (REQ.ar_valid && RSP.ar_ready)) === 1'b1)
 
+`define SMU_AXI_STALL(PORT, EN, REQ, RSP)                                     \
+  int unsigned axi_stall_``PORT``_aw, axi_stall_``PORT``_w, axi_stall_``PORT``_ar; \
+  always_ff @(posedge clk_smu_i) begin                                        \
+    if ((EN) && ((REQ.aw_valid && !RSP.aw_ready) === 1'b1))                   \
+      axi_stall_``PORT``_aw <= axi_stall_``PORT``_aw + 1;                     \
+    if ((EN) && ((REQ.w_valid && !RSP.w_ready) === 1'b1))                     \
+      axi_stall_``PORT``_w <= axi_stall_``PORT``_w + 1;                       \
+    if ((EN) && ((REQ.ar_valid && !RSP.ar_ready) === 1'b1))                   \
+      axi_stall_``PORT``_ar <= axi_stall_``PORT``_ar + 1;                     \
+  end
+
+`define SMU_AXI_STALL_REPORT(PORT, CHK, INST, NEED)                           \
+    $display("%s: aw=%0d w=%0d ar=%0d instance=%s", CHK, axi_stall_``PORT``_aw, \
+             axi_stall_``PORT``_w, axi_stall_``PORT``_ar, INST);              \
+    if ($test$plusargs(NEED) && axi_stall_``PORT``_aw == 0                    \
+        && axi_stall_``PORT``_w == 0 && axi_stall_``PORT``_ar == 0)           \
+      $error("%s: +%s, but no VALID-high READY-low cycle was counted", INST, NEED);
+
 `define SMU_AXI_XBAR u_dut.u_smu.gen_sep.u_smu_axi_xbar
 
 `ifdef UVM
@@ -1968,6 +2035,148 @@ module smu_wrapper_uvm_top
 `define SMU_AXI_SVA_ON (obs_powergood_stable_low_seen_q && !$isunknown(rst_primary_smc_clk_n_o))
 `endif
 
+`define SMU_AXI_SVA_RST_PORTS(REQ, RSP, RST)                                \
+    .aclk    (clk_smu_i),                                                   \
+    .aresetn (RST),                                                         \
+    .awid    (REQ.aw.id),                                                   \
+    .awaddr  (REQ.aw.addr),                                                 \
+    .awlen   (REQ.aw.len),                                                  \
+    .awsize  (REQ.aw.size),                                                 \
+    .awburst (REQ.aw.burst),                                                \
+    .awlock  (REQ.aw.lock),                                                 \
+    .awprot  (REQ.aw.prot),                                                 \
+    .awvalid (REQ.aw_valid),                                                \
+    .awready (RSP.aw_ready),                                                \
+    .wdata   (REQ.w.data),                                                  \
+    .wstrb   (REQ.w.strb),                                                  \
+    .wlast   (REQ.w.last),                                                  \
+    .wvalid  (REQ.w_valid),                                                 \
+    .wready  (RSP.w_ready),                                                 \
+    .bid     (RSP.b.id),                                                    \
+    .bresp   (RSP.b.resp),                                                  \
+    .bvalid  (RSP.b_valid),                                                 \
+    .bready  (REQ.b_ready),                                                 \
+    .arid    (REQ.ar.id),                                                   \
+    .araddr  (REQ.ar.addr),                                                 \
+    .arlen   (REQ.ar.len),                                                  \
+    .arsize  (REQ.ar.size),                                                 \
+    .arburst (REQ.ar.burst),                                                \
+    .arlock  (REQ.ar.lock),                                                 \
+    .arprot  (REQ.ar.prot),                                                 \
+    .arvalid (REQ.ar_valid),                                                \
+    .arready (RSP.ar_ready),                                                \
+    .rid     (RSP.r.id),                                                    \
+    .rdata   (RSP.r.data),                                                  \
+    .rresp   (RSP.r.resp),                                                  \
+    .rlast   (RSP.r.last),                                                  \
+    .rvalid  (RSP.r_valid),                                                 \
+    .rready  (REQ.r_ready)
+
+  // AXI-Lite carries no ID, length, burst, lock or last: each is tied to its
+  // single-beat value, and SIZE is log2 of the data bytes.
+`define SMU_AXIL_SVA_PORTS(REQ, RSP, SIZE)                                  \
+    .aclk    (clk_smu_i),                                                   \
+    .aresetn (rst_primary_smc_clk_n_o),                                     \
+    .awid    (1'b0),                                                        \
+    .awaddr  (REQ.aw.addr),                                                 \
+    .awlen   (8'd0),                                                        \
+    .awsize  (SIZE),                                                        \
+    .awburst (2'b01),                                                       \
+    .awlock  (1'b0),                                                        \
+    .awprot  (REQ.aw.prot),                                                 \
+    .awvalid (REQ.aw_valid),                                                \
+    .awready (RSP.aw_ready),                                                \
+    .wdata   (REQ.w.data),                                                  \
+    .wstrb   (REQ.w.strb),                                                  \
+    .wlast   (1'b1),                                                        \
+    .wvalid  (REQ.w_valid),                                                 \
+    .wready  (RSP.w_ready),                                                 \
+    .bid     (1'b0),                                                        \
+    .bresp   (RSP.b.resp),                                                  \
+    .bvalid  (RSP.b_valid),                                                 \
+    .bready  (REQ.b_ready),                                                 \
+    .arid    (1'b0),                                                        \
+    .araddr  (REQ.ar.addr),                                                 \
+    .arlen   (8'd0),                                                        \
+    .arsize  (SIZE),                                                        \
+    .arburst (2'b01),                                                       \
+    .arlock  (1'b0),                                                        \
+    .arprot  (REQ.ar.prot),                                                 \
+    .arvalid (REQ.ar_valid),                                                \
+    .arready (RSP.ar_ready),                                                \
+    .rid     (1'b0),                                                        \
+    .rdata   (RSP.r.data),                                                  \
+    .rresp   (RSP.r.resp),                                                  \
+    .rlast   (1'b1),                                                        \
+    .rvalid  (RSP.r_valid),                                                 \
+    .rready  (REQ.r_ready)
+
+`define SMU_AXI_DATA_PORTS(REQ, RSP) \
+    .wdata  (REQ.w.data),           \
+    .wstrb  (REQ.w.strb),           \
+    .wvalid (REQ.w_valid),          \
+    .rdata  (RSP.r.data),           \
+    .rvalid (RSP.r_valid)
+
+`define SMU_AXI_SEP_RST_ON(REQ)                                        \
+    (`SMU_AXI_SVA_ON && !$isunknown(sep_reset_n) && !$isunknown(REQ.aw_valid) \
+     && !$isunknown(REQ.ar_valid))
+
+`define SMU_AXI_SMC_WARM_RST u_dut.u_smu.u_smc.rst_warm_smc_clk_n
+
+`define SMU_AXI_SVA_INJ_PORTS(REQ, RSP)                                     \
+    .aclk    (clk_smu_i),                                                   \
+    .aresetn (rst_primary_smc_clk_n_o),                                     \
+    .awid    (REQ.aw.id),                                                   \
+    .awaddr  (sva_addr(REQ.aw.addr, REQ.aw.len, REQ.aw.size, REQ.aw.burst)),   \
+    .awlen   (REQ.aw.len),                                                  \
+    .awsize  (REQ.aw.size),                                                 \
+    .awburst (sva_burst(REQ.aw.burst, REQ.aw.len)),                         \
+    .awlock  (REQ.aw.lock),                                                 \
+    .awprot  (REQ.aw.prot),                                                 \
+    .awvalid (REQ.aw_valid),                                                \
+    .awready (RSP.aw_ready),                                                \
+    .wdata   (REQ.w.data),                                                  \
+    .wstrb   (REQ.w.strb),                                                  \
+    .wlast   (REQ.w.last),                                                  \
+    .wvalid  (REQ.w_valid),                                                 \
+    .wready  (RSP.w_ready),                                                 \
+    .bid     (RSP.b.id),                                                    \
+    .bresp   (RSP.b.resp),                                                  \
+    .bvalid  (RSP.b_valid),                                                 \
+    .bready  (REQ.b_ready),                                                 \
+    .arid    (REQ.ar.id),                                                   \
+    .araddr  (sva_addr(REQ.ar.addr, REQ.ar.len, REQ.ar.size, REQ.ar.burst)),   \
+    .arlen   (REQ.ar.len),                                                  \
+    .arsize  (REQ.ar.size),                                                 \
+    .arburst (sva_burst(REQ.ar.burst, REQ.ar.len)),                         \
+    .arlock  (REQ.ar.lock),                                                 \
+    .arprot  (REQ.ar.prot),                                                 \
+    .arvalid (REQ.ar_valid),                                                \
+    .arready (RSP.ar_ready),                                                \
+    .rid     (RSP.r.id),                                                    \
+    .rdata   (RSP.r.data),                                                  \
+    .rresp   (RSP.r.resp),                                                  \
+    .rlast   (RSP.r.last),                                                  \
+    .rvalid  (RSP.r_valid),                                                 \
+    .rready  (REQ.r_ready)
+
+  // AxBURST and the start address the external-inbound checkers see under
+  // +smu_axi_illegal_inject: INCR for a WRAP burst with AxLEN = 0 or the
+  // reserved burst encoding, and the 4 KiB-page start for an INCR burst whose
+  // size-aligned span crosses a 4 KiB boundary; the request otherwise.
+  bit axi_illegal_inject = $test$plusargs("smu_axi_illegal_inject");
+  function automatic logic [1:0] sva_burst(input logic [1:0] burst, input logic [7:0] len);
+    return (axi_illegal_inject && ((burst == 2'b10 && len == 8'd0) || burst == 2'b11))
+        ? 2'b01 : burst;
+  endfunction
+  function automatic logic [55:0] sva_addr(input logic [55:0] addr, input logic [7:0] len,
+                                           input logic [2:0] size, input logic [1:0] burst);
+    return (axi_illegal_inject && sva_burst(burst, len) == 2'b01
+            && (((16'(addr[11:0]) >> size) << size) + ((16'(len) + 16'd1) << size))
+               > 16'h1000) ? (addr & ~56'hFFF) : addr;
+  endfunction
+
   ocah_axi_sva #(
     .IS_LITE         (1'b0),
     .ADDR_WIDTH      (56),
@@ -1976,8 +2185,8 @@ module smu_wrapper_uvm_top
     .ID_WIDTH        (8)
   ) u_smu_in_axi_sva (                // SMU inbound boundary, bench master into the SMU
     .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_PORTS(smu_axi_in_req,
-                       smu_axi_in_resp)
+    `SMU_AXI_SVA_INJ_PORTS(smu_axi_in_req,
+                           smu_axi_in_resp)
   );
 
   ocah_axi_sva #(
@@ -2021,8 +2230,8 @@ module smu_wrapper_uvm_top
     .ID_WIDTH        (8)
   ) u_xbar_ext_in_axi_sva (           // crossbar initiator port: external inbound
     .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.ext_in_req_i,
-                       `SMU_AXI_XBAR.ext_in_resp_o)
+    `SMU_AXI_SVA_INJ_PORTS(`SMU_AXI_XBAR.ext_in_req_i,
+                           `SMU_AXI_XBAR.ext_in_resp_o)
   );
 
   ocah_axi_sva #(
@@ -2118,6 +2327,26 @@ module smu_wrapper_uvm_top
                                        u_dut.u_smu.dtp_axi_smc_dbg_resp))
       axi_hs_dtp_dbg <= axi_hs_dtp_dbg + 1;
   end
+  `SMU_AXI_STALL(smu_in, `SMU_AXI_SVA_ON,
+                smu_axi_in_req, smu_axi_in_resp)
+  `SMU_AXI_STALL(smu_out, `SMU_AXI_SVA_ON,
+                smu_axi_out_req, smu_axi_out_resp)
+  `SMU_AXI_STALL(xbar_sep_out, `SMU_AXI_SVA_ON,
+                `SMU_AXI_XBAR.sep_out_req_i, `SMU_AXI_XBAR.sep_out_resp_o)
+  `SMU_AXI_STALL(xbar_smc_out, `SMU_AXI_SVA_ON,
+                `SMU_AXI_XBAR.smc_out_req_i, `SMU_AXI_XBAR.smc_out_resp_o)
+  `SMU_AXI_STALL(xbar_ext_in, `SMU_AXI_SVA_ON,
+                `SMU_AXI_XBAR.ext_in_req_i, `SMU_AXI_XBAR.ext_in_resp_o)
+  `SMU_AXI_STALL(xbar_sep_in, `SMU_AXI_SVA_ON,
+                `SMU_AXI_XBAR.sep_in_req_o, `SMU_AXI_XBAR.sep_in_resp_i)
+  `SMU_AXI_STALL(xbar_smc_in, `SMU_AXI_SVA_ON,
+                `SMU_AXI_XBAR.smc_in_req_o, `SMU_AXI_XBAR.smc_in_resp_i)
+  `SMU_AXI_STALL(xbar_ext_out, `SMU_AXI_SVA_ON,
+                `SMU_AXI_XBAR.ext_out_req_o, `SMU_AXI_XBAR.ext_out_resp_i)
+  `SMU_AXI_STALL(sep_to_smc, `SMU_AXI_SVA_ON,
+                u_dut.u_smu.sep_ext_to_smc_axi_req, u_dut.u_smu.sep_ext_to_smc_axi_resp)
+  `SMU_AXI_STALL(dtp_dbg, `SMU_AXI_SVA_ON,
+                u_dut.u_smu.dtp_axi_smc_dbg_req, u_dut.u_smu.dtp_axi_smc_dbg_resp)
 `ifndef VERILATOR
   final begin
     $display("CHK-AXI-SVA-SMU-IN: aw_ar_handshakes=%0d instance=u_smu_in_axi_sva",
@@ -2170,11 +2399,516 @@ module smu_wrapper_uvm_top
     if ($test$plusargs("axi_sva_need_dtp_dbg") && axi_hs_dtp_dbg == 0)
       $error("u_dtp_smc_dbg_axi_sva: +axi_sva_need_dtp_dbg, ",
              "but no AW or AR handshake was graded");
+    `SMU_AXI_STALL_REPORT(smu_in, "CHK-AXI-STALL-SMU-IN",
+                          "u_smu_in_axi_sva",
+                          "axi_sva_need_stall_smu_in")
+    `SMU_AXI_STALL_REPORT(smu_out, "CHK-AXI-STALL-SMU-OUT",
+                          "u_smu_out_axi_sva",
+                          "axi_sva_need_stall_smu_out")
+    `SMU_AXI_STALL_REPORT(xbar_sep_out, "CHK-AXI-STALL-XBAR-SEP-OUT",
+                          "u_xbar_sep_out_axi_sva",
+                          "axi_sva_need_stall_xbar_sep_out")
+    `SMU_AXI_STALL_REPORT(xbar_smc_out, "CHK-AXI-STALL-XBAR-SMC-OUT",
+                          "u_xbar_smc_out_axi_sva",
+                          "axi_sva_need_stall_xbar_smc_out")
+    `SMU_AXI_STALL_REPORT(xbar_ext_in, "CHK-AXI-STALL-XBAR-EXT-IN",
+                          "u_xbar_ext_in_axi_sva",
+                          "axi_sva_need_stall_xbar_ext_in")
+    `SMU_AXI_STALL_REPORT(xbar_sep_in, "CHK-AXI-STALL-XBAR-SEP-IN",
+                          "u_xbar_sep_in_axi_sva",
+                          "axi_sva_need_stall_xbar_sep_in")
+    `SMU_AXI_STALL_REPORT(xbar_smc_in, "CHK-AXI-STALL-XBAR-SMC-IN",
+                          "u_xbar_smc_in_axi_sva",
+                          "axi_sva_need_stall_xbar_smc_in")
+    `SMU_AXI_STALL_REPORT(xbar_ext_out, "CHK-AXI-STALL-XBAR-EXT-OUT",
+                          "u_xbar_ext_out_axi_sva",
+                          "axi_sva_need_stall_xbar_ext_out")
+    `SMU_AXI_STALL_REPORT(sep_to_smc, "CHK-AXI-STALL-SEP-TO-SMC",
+                          "u_sep_to_smc_axi_sva",
+                          "axi_sva_need_stall_sep_to_smc")
+    `SMU_AXI_STALL_REPORT(dtp_dbg, "CHK-AXI-STALL-DTP-DBG",
+                          "u_dtp_smc_dbg_axi_sva",
+                          "axi_sva_need_stall_dtp_dbg")
   end
 `endif
 
+  ocah_axi_sva #(
+    .IS_LITE           (1'b0),
+    .ADDR_WIDTH        (56),
+    .DATA_WIDTH        (64),
+    .MAX_OUTSTANDING   (32),
+    .ID_WIDTH          (10),
+    .MASTER_SYNC_RESET (1'b1)
+  ) u_xbar_sep_in_sep_rst_axi_sva (   // crossbar target port: SEP, on sep_reset_n
+    .en_i (`SMU_AXI_SEP_RST_ON(`SMU_AXI_XBAR.sep_in_req_o)),
+    `SMU_AXI_SVA_RST_PORTS(`SMU_AXI_XBAR.sep_in_req_o,
+                           `SMU_AXI_XBAR.sep_in_resp_i, sep_reset_n)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE           (1'b0),
+    .ADDR_WIDTH        (56),
+    .DATA_WIDTH        (64),
+    .ID_WIDTH          (6),
+    .MASTER_SYNC_RESET (1'b1)
+  ) u_sep_to_smc_sep_rst_axi_sva (    // SEP dedicated SMC port, on sep_reset_n
+    .en_i (`SMU_AXI_SEP_RST_ON(u_dut.u_smu.sep_ext_to_smc_axi_req)),
+    `SMU_AXI_SVA_RST_PORTS(u_dut.u_smu.sep_ext_to_smc_axi_req,
+                           u_dut.u_smu.sep_ext_to_smc_axi_resp, sep_reset_n)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE           (1'b0),
+    .ADDR_WIDTH        (56),
+    .DATA_WIDTH        (64),
+    .MAX_OUTSTANDING   (16),
+    .ID_WIDTH          (10),
+    .MASTER_SYNC_RESET (1'b1)
+  ) u_xbar_smc_in_warm_rst_axi_sva (  // crossbar target port: SMC, on the SMC warm reset
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_RST_PORTS(`SMU_AXI_XBAR.smc_in_req_o,
+                           `SMU_AXI_XBAR.smc_in_resp_i, `SMU_AXI_SMC_WARM_RST)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE         (1'b0),
+    .ADDR_WIDTH      (56),
+    .DATA_WIDTH      (64),
+    .MAX_OUTSTANDING (32),
+    .ID_WIDTH        (6)
+  ) u_iwc_sep_axi_sva (               // ID-width converter output toward the SEP
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(u_dut.u_smu.sep_smn_inbound_axi_req,
+                       u_dut.u_smu.sep_smn_inbound_axi_resp)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE         (1'b0),
+    .ADDR_WIDTH      (56),
+    .DATA_WIDTH      (64),
+    .MAX_OUTSTANDING (16),
+    .ID_WIDTH        (6)
+  ) u_iwc_smc_axi_sva (               // ID-width converter output toward the SMC
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(u_dut.u_smu.smc_sys_axi_in_req,
+                       u_dut.u_smu.smc_sys_axi_in_resp)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE         (1'b0),
+    .ADDR_WIDTH      (56),
+    .DATA_WIDTH      (64),
+    .MAX_OUTSTANDING (32),
+    .ID_WIDTH        (8)
+  ) u_incut_axi_sva (                 // SMU inbound boundary cut output into the crossbar
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_INJ_PORTS(u_dut.u_smu.smu_axi_in_cut_req,
+                           u_dut.u_smu.smu_axi_in_cut_resp)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b1),
+    .ADDR_WIDTH (32),
+    .DATA_WIDTH (32),
+    .ID_WIDTH   (1)
+  ) u_otp_smc_axil_sva (              // DTP OTP JTAG AXI-Lite into the SMC
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXIL_SVA_PORTS(u_dut.u_smu.dtp_axil_smc_otp_jtag_req,
+                        u_dut.u_smu.dtp_axil_smc_otp_jtag_resp, 3'd2)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b1),
+    .ADDR_WIDTH (32),
+    .DATA_WIDTH (32),
+    .ID_WIDTH   (1)
+  ) u_otp_sep_axil_sva (              // DTP OTP JTAG AXI-Lite into the SEP
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXIL_SVA_PORTS(u_dut.u_smu.dtp_axil_sep_otp_jtag_req,
+                        u_dut.u_smu.dtp_axil_sep_otp_jtag_resp, 3'd2)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b1),
+    .ADDR_WIDTH (32),
+    .DATA_WIDTH (32),
+    .ID_WIDTH   (1)
+  ) u_dtp_csr_axil_sva (              // SMC AXI-Lite into the DTP CSRs
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXIL_SVA_PORTS(u_dut.u_smu.smc_axil_dtp_csr_req,
+                        u_dut.u_smu.smc_axil_dtp_csr_resp, 3'd2)
+  );
+
+  // Four-state WDATA/RDATA known rules, one beside each ocah_axi_sva instance
+  // on its clock, aresetn and enable.
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_smu_in_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(smu_axi_in_req, smu_axi_in_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_smu_out_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(smu_axi_out_req, smu_axi_out_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_xbar_sep_out_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.sep_out_req_i, `SMU_AXI_XBAR.sep_out_resp_o)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_xbar_smc_out_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.smc_out_req_i, `SMU_AXI_XBAR.smc_out_resp_o)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_xbar_ext_in_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.ext_in_req_i, `SMU_AXI_XBAR.ext_in_resp_o)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_xbar_sep_in_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.sep_in_req_o, `SMU_AXI_XBAR.sep_in_resp_i)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_xbar_smc_in_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.smc_in_req_o, `SMU_AXI_XBAR.smc_in_resp_i)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_xbar_ext_out_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.ext_out_req_o, `SMU_AXI_XBAR.ext_out_resp_i)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_sep_to_smc_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(u_dut.u_smu.sep_ext_to_smc_axi_req,
+                        u_dut.u_smu.sep_ext_to_smc_axi_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_dtp_smc_dbg_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(u_dut.u_smu.dtp_axi_smc_dbg_req, u_dut.u_smu.dtp_axi_smc_dbg_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_xbar_sep_in_sep_rst_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (sep_reset_n),
+    .en_i    (`SMU_AXI_SEP_RST_ON(`SMU_AXI_XBAR.sep_in_req_o)),
+    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.sep_in_req_o, `SMU_AXI_XBAR.sep_in_resp_i)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_sep_to_smc_sep_rst_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (sep_reset_n),
+    .en_i    (`SMU_AXI_SEP_RST_ON(u_dut.u_smu.sep_ext_to_smc_axi_req)),
+    `SMU_AXI_DATA_PORTS(u_dut.u_smu.sep_ext_to_smc_axi_req,
+                        u_dut.u_smu.sep_ext_to_smc_axi_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_xbar_smc_in_warm_rst_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (`SMU_AXI_SMC_WARM_RST),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.smc_in_req_o, `SMU_AXI_XBAR.smc_in_resp_i)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_iwc_sep_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(u_dut.u_smu.sep_smn_inbound_axi_req,
+                        u_dut.u_smu.sep_smn_inbound_axi_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_iwc_smc_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(u_dut.u_smu.smc_sys_axi_in_req, u_dut.u_smu.smc_sys_axi_in_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_incut_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(u_dut.u_smu.smu_axi_in_cut_req, u_dut.u_smu.smu_axi_in_cut_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .DATA_WIDTH     (32),
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_otp_smc_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(u_dut.u_smu.dtp_axil_smc_otp_jtag_req,
+                        u_dut.u_smu.dtp_axil_smc_otp_jtag_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .DATA_WIDTH     (32),
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_otp_sep_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(u_dut.u_smu.dtp_axil_sep_otp_jtag_req,
+                        u_dut.u_smu.dtp_axil_sep_otp_jtag_resp)
+  );
+
+  smu_axi_data_known_sva #(
+    .DATA_WIDTH     (32),
+    .EN_W_DATA_RULE (1'b1),
+    .EN_R_DATA_RULE (1'b1)
+  ) u_dtp_csr_data_sva (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_primary_smc_clk_n_o),
+    .en_i    (`SMU_AXI_SVA_ON),
+    `SMU_AXI_DATA_PORTS(u_dut.u_smu.smc_axil_dtp_csr_req, u_dut.u_smu.smc_axil_dtp_csr_resp)
+  );
+
+  // The internal AXI masters issue no atomic transaction: AWATOP is zero on
+  // every AW request of the SEP and SMC crossbar initiator ports, the DTP
+  // debug port and the inbound cut output.
+  if (1) begin : gen_xbar_sep_out_atop_sva
+    `OCAH_SVA_ASSERT(SMU_AXI_XBAR_SEP_OUT_AWATOP_ZERO,
+                     (`SMU_AXI_SVA_ON && `SMU_AXI_XBAR.sep_out_req_i.aw_valid)
+                     |-> (`SMU_AXI_XBAR.sep_out_req_i.aw.atop == '0), clk_smu_i,
+                     !rst_primary_smc_clk_n_o)
+  end
+
+  if (1) begin : gen_xbar_smc_out_atop_sva
+    `OCAH_SVA_ASSERT(SMU_AXI_XBAR_SMC_OUT_AWATOP_ZERO,
+                     (`SMU_AXI_SVA_ON && `SMU_AXI_XBAR.smc_out_req_i.aw_valid)
+                     |-> (`SMU_AXI_XBAR.smc_out_req_i.aw.atop == '0), clk_smu_i,
+                     !rst_primary_smc_clk_n_o)
+  end
+
+  if (1) begin : gen_dtp_dbg_atop_sva
+    `OCAH_SVA_ASSERT(SMU_AXI_DTP_DBG_AWATOP_ZERO,
+                     (`SMU_AXI_SVA_ON && u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid)
+                     |-> (u_dut.u_smu.dtp_axi_smc_dbg_req.aw.atop == '0), clk_smu_i,
+                     !rst_primary_smc_clk_n_o)
+  end
+
+  if (1) begin : gen_incut_atop_sva
+    `OCAH_SVA_ASSERT(SMU_AXI_INCUT_AWATOP_ZERO,
+                     (`SMU_AXI_SVA_ON && u_dut.u_smu.smu_axi_in_cut_req.aw_valid)
+                     |-> (u_dut.u_smu.smu_axi_in_cut_req.aw.atop == '0), clk_smu_i,
+                     !rst_primary_smc_clk_n_o)
+  end
+
+  int unsigned axi_hs_xbar_sep_in_sep_rst, axi_hs_sep_to_smc_sep_rst;
+  int unsigned axi_hs_xbar_smc_in_warm_rst;
+  int unsigned axi_hs_iwc_sep, axi_hs_iwc_smc, axi_hs_incut;
+  int unsigned axi_hs_otp_smc, axi_hs_otp_sep, axi_hs_dtp_csr;
+  always_ff @(posedge clk_smu_i) begin
+    if (`SMU_AXI_SEP_RST_ON(`SMU_AXI_XBAR.sep_in_req_o)
+        && `SMU_AXI_HS(`SMU_AXI_XBAR.sep_in_req_o, `SMU_AXI_XBAR.sep_in_resp_i))
+      axi_hs_xbar_sep_in_sep_rst <= axi_hs_xbar_sep_in_sep_rst + 1;
+    if (`SMU_AXI_SEP_RST_ON(u_dut.u_smu.sep_ext_to_smc_axi_req)
+        && `SMU_AXI_HS(u_dut.u_smu.sep_ext_to_smc_axi_req,
+                       u_dut.u_smu.sep_ext_to_smc_axi_resp))
+      axi_hs_sep_to_smc_sep_rst <= axi_hs_sep_to_smc_sep_rst + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(`SMU_AXI_XBAR.smc_in_req_o,
+                                       `SMU_AXI_XBAR.smc_in_resp_i))
+      axi_hs_xbar_smc_in_warm_rst <= axi_hs_xbar_smc_in_warm_rst + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.sep_smn_inbound_axi_req,
+                                       u_dut.u_smu.sep_smn_inbound_axi_resp))
+      axi_hs_iwc_sep <= axi_hs_iwc_sep + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.smc_sys_axi_in_req,
+                                       u_dut.u_smu.smc_sys_axi_in_resp))
+      axi_hs_iwc_smc <= axi_hs_iwc_smc + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.smu_axi_in_cut_req,
+                                       u_dut.u_smu.smu_axi_in_cut_resp))
+      axi_hs_incut <= axi_hs_incut + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.dtp_axil_smc_otp_jtag_req,
+                                       u_dut.u_smu.dtp_axil_smc_otp_jtag_resp))
+      axi_hs_otp_smc <= axi_hs_otp_smc + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.dtp_axil_sep_otp_jtag_req,
+                                       u_dut.u_smu.dtp_axil_sep_otp_jtag_resp))
+      axi_hs_otp_sep <= axi_hs_otp_sep + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.smc_axil_dtp_csr_req,
+                                       u_dut.u_smu.smc_axil_dtp_csr_resp))
+      axi_hs_dtp_csr <= axi_hs_dtp_csr + 1;
+  end
+  `SMU_AXI_STALL(xbar_sep_in_sep_rst, `SMU_AXI_SEP_RST_ON(`SMU_AXI_XBAR.sep_in_req_o),
+                `SMU_AXI_XBAR.sep_in_req_o, `SMU_AXI_XBAR.sep_in_resp_i)
+  `SMU_AXI_STALL(sep_to_smc_sep_rst, `SMU_AXI_SEP_RST_ON(u_dut.u_smu.sep_ext_to_smc_axi_req),
+                u_dut.u_smu.sep_ext_to_smc_axi_req, u_dut.u_smu.sep_ext_to_smc_axi_resp)
+  `SMU_AXI_STALL(xbar_smc_in_warm_rst, `SMU_AXI_SVA_ON,
+                `SMU_AXI_XBAR.smc_in_req_o, `SMU_AXI_XBAR.smc_in_resp_i)
+  `SMU_AXI_STALL(iwc_sep, `SMU_AXI_SVA_ON,
+                u_dut.u_smu.sep_smn_inbound_axi_req, u_dut.u_smu.sep_smn_inbound_axi_resp)
+  `SMU_AXI_STALL(iwc_smc, `SMU_AXI_SVA_ON,
+                u_dut.u_smu.smc_sys_axi_in_req, u_dut.u_smu.smc_sys_axi_in_resp)
+  `SMU_AXI_STALL(incut, `SMU_AXI_SVA_ON,
+                u_dut.u_smu.smu_axi_in_cut_req, u_dut.u_smu.smu_axi_in_cut_resp)
+  `SMU_AXI_STALL(otp_smc, `SMU_AXI_SVA_ON,
+                u_dut.u_smu.dtp_axil_smc_otp_jtag_req, u_dut.u_smu.dtp_axil_smc_otp_jtag_resp)
+  `SMU_AXI_STALL(otp_sep, `SMU_AXI_SVA_ON,
+                u_dut.u_smu.dtp_axil_sep_otp_jtag_req, u_dut.u_smu.dtp_axil_sep_otp_jtag_resp)
+  `SMU_AXI_STALL(dtp_csr, `SMU_AXI_SVA_ON,
+                u_dut.u_smu.smc_axil_dtp_csr_req, u_dut.u_smu.smc_axil_dtp_csr_resp)
+`ifndef VERILATOR
+  final begin
+    $display("CHK-AXI-SVA-XBAR-SEP-IN-SEP-RST: aw_ar_handshakes=%0d instance=%s",
+             axi_hs_xbar_sep_in_sep_rst, "u_xbar_sep_in_sep_rst_axi_sva");
+    $display("CHK-AXI-SVA-SEP-TO-SMC-SEP-RST: aw_ar_handshakes=%0d instance=%s",
+             axi_hs_sep_to_smc_sep_rst, "u_sep_to_smc_sep_rst_axi_sva");
+    $display("CHK-AXI-SVA-XBAR-SMC-IN-WARM-RST: aw_ar_handshakes=%0d instance=%s",
+             axi_hs_xbar_smc_in_warm_rst, "u_xbar_smc_in_warm_rst_axi_sva");
+    $display("CHK-AXI-SVA-IWC-SEP: aw_ar_handshakes=%0d instance=u_iwc_sep_axi_sva",
+             axi_hs_iwc_sep);
+    $display("CHK-AXI-SVA-IWC-SMC: aw_ar_handshakes=%0d instance=u_iwc_smc_axi_sva",
+             axi_hs_iwc_smc);
+    $display("CHK-AXI-SVA-INCUT: aw_ar_handshakes=%0d instance=u_incut_axi_sva",
+             axi_hs_incut);
+    $display("CHK-AXI-SVA-OTP-SMC: aw_ar_handshakes=%0d instance=u_otp_smc_axil_sva",
+             axi_hs_otp_smc);
+    $display("CHK-AXI-SVA-OTP-SEP: aw_ar_handshakes=%0d instance=u_otp_sep_axil_sva",
+             axi_hs_otp_sep);
+    $display("CHK-AXI-SVA-DTP-CSR: aw_ar_handshakes=%0d instance=u_dtp_csr_axil_sva",
+             axi_hs_dtp_csr);
+    if ($test$plusargs("axi_sva_need_xbar_sep_in_sep_rst") && axi_hs_xbar_sep_in_sep_rst == 0)
+      $error("u_xbar_sep_in_sep_rst_axi_sva: +axi_sva_need_xbar_sep_in_sep_rst, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_sep_to_smc_sep_rst") && axi_hs_sep_to_smc_sep_rst == 0)
+      $error("u_sep_to_smc_sep_rst_axi_sva: +axi_sva_need_sep_to_smc_sep_rst, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_xbar_smc_in_warm_rst") && axi_hs_xbar_smc_in_warm_rst == 0)
+      $error("u_xbar_smc_in_warm_rst_axi_sva: +axi_sva_need_xbar_smc_in_warm_rst, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_iwc_sep") && axi_hs_iwc_sep == 0)
+      $error("u_iwc_sep_axi_sva: +axi_sva_need_iwc_sep, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_iwc_smc") && axi_hs_iwc_smc == 0)
+      $error("u_iwc_smc_axi_sva: +axi_sva_need_iwc_smc, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_incut") && axi_hs_incut == 0)
+      $error("u_incut_axi_sva: +axi_sva_need_incut, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_otp_smc") && axi_hs_otp_smc == 0)
+      $error("u_otp_smc_axil_sva: +axi_sva_need_otp_smc, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_otp_sep") && axi_hs_otp_sep == 0)
+      $error("u_otp_sep_axil_sva: +axi_sva_need_otp_sep, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_dtp_csr") && axi_hs_dtp_csr == 0)
+      $error("u_dtp_csr_axil_sva: +axi_sva_need_dtp_csr, ",
+             "but no AW or AR handshake was graded");
+    `SMU_AXI_STALL_REPORT(xbar_sep_in_sep_rst, "CHK-AXI-STALL-XBAR-SEP-IN-SEP-RST",
+                          "u_xbar_sep_in_sep_rst_axi_sva",
+                          "axi_sva_need_stall_xbar_sep_in_sep_rst")
+    `SMU_AXI_STALL_REPORT(sep_to_smc_sep_rst, "CHK-AXI-STALL-SEP-TO-SMC-SEP-RST",
+                          "u_sep_to_smc_sep_rst_axi_sva",
+                          "axi_sva_need_stall_sep_to_smc_sep_rst")
+    `SMU_AXI_STALL_REPORT(xbar_smc_in_warm_rst, "CHK-AXI-STALL-XBAR-SMC-IN-WARM-RST",
+                          "u_xbar_smc_in_warm_rst_axi_sva",
+                          "axi_sva_need_stall_xbar_smc_in_warm_rst")
+    `SMU_AXI_STALL_REPORT(iwc_sep, "CHK-AXI-STALL-IWC-SEP",
+                          "u_iwc_sep_axi_sva",
+                          "axi_sva_need_stall_iwc_sep")
+    `SMU_AXI_STALL_REPORT(iwc_smc, "CHK-AXI-STALL-IWC-SMC",
+                          "u_iwc_smc_axi_sva",
+                          "axi_sva_need_stall_iwc_smc")
+    `SMU_AXI_STALL_REPORT(incut, "CHK-AXI-STALL-INCUT",
+                          "u_incut_axi_sva",
+                          "axi_sva_need_stall_incut")
+    `SMU_AXI_STALL_REPORT(otp_smc, "CHK-AXI-STALL-OTP-SMC",
+                          "u_otp_smc_axil_sva",
+                          "axi_sva_need_stall_otp_smc")
+    `SMU_AXI_STALL_REPORT(otp_sep, "CHK-AXI-STALL-OTP-SEP",
+                          "u_otp_sep_axil_sva",
+                          "axi_sva_need_stall_otp_sep")
+    `SMU_AXI_STALL_REPORT(dtp_csr, "CHK-AXI-STALL-DTP-CSR",
+                          "u_dtp_csr_axil_sva",
+                          "axi_sva_need_stall_dtp_csr")
+  end
+`endif
+
+`undef SMU_AXI_SVA_INJ_PORTS
+`undef SMU_AXI_SMC_WARM_RST
+`undef SMU_AXI_SEP_RST_ON
+`undef SMU_AXI_DATA_PORTS
+`undef SMU_AXIL_SVA_PORTS
+`undef SMU_AXI_SVA_RST_PORTS
 `undef SMU_AXI_XBAR
 `undef SMU_AXI_SVA_ON
+`undef SMU_AXI_STALL_REPORT
+`undef SMU_AXI_STALL
 `undef SMU_AXI_HS
 `undef SMU_AXI_SVA_PORTS
 
