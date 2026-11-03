@@ -466,7 +466,8 @@ Credit values:
 |`clk_rst.adoc` Subsystem Controls and Clock Gating; `dma.adoc` Architecture and Configuration;
 `zeroer.adoc` Clock Gating
 |`smc_cg_ctrl_reg_access_test`, `smc_cg_dft_reset_bringup_test`, `smc_cg_test_mode_bypass_test`,
-`smc_dma_cg_activity_test`, `smc_zeroer_axiclk_cg_test`, `smc_zeroer_regclk_cg_test`
+`smc_dma_cg_activity_test`, `smc_zeroer_axiclk_cg_test`, `smc_zeroer_regclk_cg_test`,
+`smc_sys_in_filter_idle_clock_gate_test`
 |`smc_clk_fcov` (`c_module_gate_enabled`, `c_module_gate_disabled`, `c_cg_test_en_override`,
 `c_dma_gate_open_on_busy`, `c_zeroer_cg_closed`); `smc_zeroer_fcov` (`c_axi_clk_gated_when_idle`,
 `c_reg_clk_on_activity`)
@@ -616,7 +617,8 @@ remap tables have no canonical scenario
 |Traffic managers (SEP_IN, SYS_IN, JTAG2AXI) and the SYS_OUT path
 |`fabric.adoc` Traffic Managers and Subordinates, Outbound Traffic Flow
 |`smc_sep_in_axi_shape_test`, `smc_sep_in_axi_flow_control_test`, `smc_sys_axi_in_port_test`,
-`smc_sys_out_aw_w_split_test`, `smc_sys_out_path_responder_control_test`, `smc_jtag_axi_shape_test`
+`smc_sys_out_aw_w_split_test`, `smc_sys_out_path_responder_control_test`, `smc_jtag_axi_shape_test`,
+`smc_fabric_errslv_axil_limits_test`
 |`smc_fabric_fcov` (`c_sep_in_awburst_incr`, `c_sep_in_wstrb_partial`, `c_sys_out_aw_accept`,
 `c_sys_out_write_count_advanced`, `c_response_id_matches_request_port`); `smc_map_fcov`
 (`c_sys_axi_in_read`)
@@ -1140,6 +1142,15 @@ never reverses.
 |`smc_region_gated_units_decode_test` |3 |DECERR until REGION_SIZE covers PLIC, CLINT and BEU units.
 |`smc_region_zero_reset_recovery_test` |3 |REGION_SIZE zero collapse and cold reset recovery.
 |`smc_xbar_outstanding_limits_test` |3 |Outstanding read groups over the AXI-Lite and local crossbars.
+|`smc_fabric_errslv_axil_limits_test` |3 |With SEP_IN RREADY held the SEP region error subordinate
+admits exactly 32 reads and the internal CSR crossbar's manager demux exactly 4, each withholding
+the next AR until a read retires.
+|`smc_sys_in_filter_idle_clock_gate_test` |3 |The inbound filter clock stops after SYS_IN goes idle,
+stays stopped over an idle window, runs again before the filter accepts the next SYS_IN read, and
+stops again after it.
+|`smc_fabric_demux_bucket_limits_test` |3, held out |The fabric demultiplexers must admit 32 same-ID
+reads per ID bucket and the local crossbar 8 per manager; the vendored `axi_demux` counter admits
+`MaxTrans - 1`, 31 and 7, and withholds the next AR (issue to follow).
 |`smc_axi_channel_timing_ports_test` |3 |On SEP_IN, SYS_IN and JTAG the AW and W channels are skewed
 in both orders, BREADY and RREADY are held and AW, W and AR are randomly delayed, and every access
 still completes OKAY with the word of its own address.
@@ -31172,6 +31183,179 @@ in: `all`, `hosted`.
 
 '''''
 
+[[sec-576-smc_fabric_errslv_axil_limits_test]]
+===== 576 `smc_fabric_errslv_axil_limits_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smc_fabric_errslv_axil_limits_test`
+
+*BFM / Model*: SEP_IN `ocah_axi_vip` (AXI) master (`s_axi_*`, `env.sys_axi_agent`) issuing
+outstanding read groups on distinct AXI IDs, with its R-channel sink paused so RREADY stays low
+until the sequence releases it; bench probes at the handshake points the limiters count at:
+`tb_top.tb_sep_errslv_arvalid` / `arready` / `rvalid` / `rready` / `rlast` (the SEP region error
+subordinate's port) with `tb_top.tb_sep_errslv_rfifo_full` (its read FIFO's own full flag),
+`tb_top.tb_lite_demux_arvalid` / `arready` / `rvalid` / `rready` (the internal CSR AXI-Lite
+crossbar demux's read-FIFO push and pop handshakes) with `tb_top.tb_lite_demux_rfifo_full`, and
+`tb_top.tb_lite_cfg_arvalid` / `arready` / `rvalid` / `rready` (the crossbar's SMC_BASE_CONFIG
+port); `env.axi_monitor.expected_decerr_addrs` for the DECERR reads; `tb_fuse_sense_done`,
+`tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` for the bring-up wait; registers inbound filter
+entry 0 (pass-all during the run, restored after), `REGION_SIZE` of `SMC_BASE_CONFIG` and the
+inbound filter entry 0 `FILTER_CONFIG`; the outside-window page at 0x8000_0000.
+
+*Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The FIFO-bounded limits of the fabric admit exactly the number of reads the chapter
+states and withhold the next AR until a read retires.
+
+*Test Coverage*:
+
+* `smc_pkg::ErrSlvMaxTrans` is 32, the maximum outstanding transactions for each error
+  subordinate across all IDs (`fabric.adoc`, SMC Fabric Transaction Limits): 40 DECERR reads on
+  40 distinct IDs with RREADY held leave exactly 32 outstanding at the SEP region error
+  subordinate's port, the next AR presented and withheld with the subordinate's read FIFO full
+  for 64 consecutive cycles, and once RREADY is released the first AR accepted follows the
+  first R-last handshake.
+* `smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans` is 4, the maximum outstanding
+  transactions each manager of the local fabric AXI4-Lite crossbar can have in flight (same
+  table): 24 reads on distinct IDs alternating two subordinates (`REGION_SIZE` and the inbound
+  filter entry 0 configuration) leave exactly 4 outstanding at the crossbar's demux, the next
+  AR withheld with its read FIFO full for 64 consecutive cycles, the SMC_BASE_CONFIG port
+  holding fewer, and the first AR accepted after the release follows the first R.
+* Every group is also run with RREADY free as the positive control: every member completes,
+  DECERR for the outside-window page and the reset word for the registers.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for the fuse sense; program inbound filter entry 0 to pass all; start the probes.
+. Issue 40 DECERR reads of the outside-window page on IDs 0 to 39 with RREADY free; require all
+  40 DECERR. Pause the R sink, issue the same 40, wait (bound 4000 rises) until the error
+  subordinate's probe has withheld an AR for 64 consecutive cycles at its peak count, release
+  the R sink, await the group (bound 100000 ns), require all 40 DECERR.
+. Issue 24 8-byte reads on IDs 0 to 23 alternating `REGION_SIZE` and the inbound filter entry 0
+  `FILTER_CONFIG` with RREADY free; require every reset word. Pause the R sink, issue the same
+  24, wait until the crossbar demux's probe has withheld an AR for 64 consecutive cycles, release,
+  await, require every reset word.
+. Restore inbound filter entry 0 and read it back; stop the probes.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ERRSLV-33RD-WAITS-FOR-RETIRE` |With RREADY held, the error subordinate's peak outstanding
+  count must be exactly 32, the next AR must have been withheld on at least one cycle with the
+  read FIFO full on every withheld cycle, the first AR accepted after the release must follow
+  the first R-last handshake, and all 40 reads must have been accepted; the line carries the
+  counts at the hold and after the release and the positive control's handshake count.
+|`CHK-AXIL-XBAR-5TH-WAITS` |With RREADY held, the AXI-Lite crossbar demux's peak outstanding
+  count must be exactly 4, the next AR withheld with the read FIFO full on every withheld cycle,
+  the first AR accepted after the release must follow the first R, and all 24 reads must have
+  been accepted; the line also carries the SMC_BASE_CONFIG port's peak.
+|`CHK-TIMEOUT-PATHS` |Every wait is bounded and the line records each bound and its last
+  observed state, the access count, and the PASS or FAIL of each checker in order.
+|===
+
+*Pass Criteria*: Both limit checkers are emitted as PASS, every read of every group completes
+with its expected response, and the sequence raises nothing at its end.
+
+*Scope limit*: The subordinate-side limits of the same table are not graded:
+`XbarCfg.MaxSlvTrans` 4 of the AXI-Lite crossbar has no counter of its own with one manager
+port (`axi_lite_xbar` instantiates its multiplexers as pass-through), so the demux bound of 4
+graded here is the only read bound a subordinate port sees, and the SMC_BASE_CONFIG port's
+count is printed on the line; `XbarCfg.MaxSlvTrans` 8 of the local crossbar bounds the
+multiplexer's queue of accepted writes whose W data is still to come (`axi_mux` `MaxWTrans`),
+not its reads, and is not graded here. The per-ID demultiplexer limits are
+<<sec-578-smc_fabric_demux_bucket_limits_test>>.
+
+'''''
+
+[[sec-577-smc_sys_in_filter_idle_clock_gate_test]]
+===== 577 `smc_sys_in_filter_idle_clock_gate_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smc_sys_in_filter_idle_clock_gate_test`
+
+*BFM / Model*: SEP_IN `ocah_axi_vip` (AXI) master (`env.sys_axi_agent`) for the CSR writes and
+reads; SYS_IN `ocah_axi_vip` (AXI) master (`sys_axi_*`, `env.sys_in_axi_agent`) for the two
+reads that cross the filter; bench probes `tb_top.tb_sys_in_filter_clk_active` (the inbound
+filter clock gate's `clk_active_o`), `tb_top.tb_sys_in_filter_bus_active`,
+`tb_top.tb_sys_in_filter_arvalid` / `arready` (the AR handshake into the filter, behind the
+port's register slice), `sys_axi_arvalid` / `arready` / `rvalid` / `rready`; `tb_fuse_sense_done`,
+`tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` for the bring-up wait; registers
+`CLOCK_GATE_CONTROL` (`FILTER_IB_AXI_CG_EN`, `CG_HYSTERESIS`), `REGION_SIZE` of
+`SMC_BASE_CONFIG`, inbound filter entry 0 (pass-all during the run, restored after); sampled on
+`clk_smc_i`.
+
+*Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The system inbound filter's clock is gated while the SYS_IN port is idle and runs
+for SYS_IN traffic.
+
+*Test Coverage*:
+
+* The system AXI input passes the inbound traffic filter, whose clock can be gated while the
+  port is idle (`fabric.adoc`, Fabric Topology): with `FILTER_IB_AXI_CG_EN` set and
+  `CG_HYSTERESIS` 8, after an admitted SYS_IN read `tb_sys_in_filter_clk_active` falls within
+  128 rises and reads 0 on every one of 256 idle samples with `tb_sys_in_filter_bus_active` 0;
+  a SYS_IN read then raises ARVALID, `clk_active` rises after it and no later than the filter's
+  own AR handshake, the read answers `REGION_SIZE`, and the gate closes again over a second
+  256-sample idle window.
+* The AR handshake at the port itself precedes the clock's rise: the port's register slice is
+  on the free-running clock and holds the request while the filter wakes; both cycles are
+  printed.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for the fuse sense; program inbound filter entry 0 to pass all; read `CLOCK_GATE_CONTROL`
+  expecting its reset word; write it with `FILTER_IB_AXI_CG_EN` set and `CG_HYSTERESIS` 8 and read
+  it back.
+. Issue one SYS_IN 8-byte read of `REGION_SIZE` (bound 100000 ns) expecting the reset word; wait
+  (bound 128 rises) for `tb_sys_in_filter_clk_active` 0; sample 256 rises of `clk_active` and
+  `bus_active`.
+. Start a second SYS_IN read; on every rise (bound 256) record the first cycle of
+  `sys_axi_arvalid`, of the port AR handshake, of `clk_active` 1, of the filter AR handshake and
+  of the R handshake; await the read and require the reset word.
+. Wait for `clk_active` 0 again (bound 128 rises); sample another 256 rises.
+. Restore `CLOCK_GATE_CONTROL` and read it back; restore inbound filter entry 0.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SYS-IN-FILTER-CLK-IDLE-GATED` |Both idle windows must show `clk_active` 0 and `bus_active`
+  0 on all 256 samples, and the wake read must show ARVALID before the `clk_active` rise, the
+  rise no later than the filter's AR handshake, and an R handshake with the reset word; the line
+  carries the programmed word, the gate-off latencies, the sample counts and the five cycles.
+|`CHK-TIMEOUT-PATHS` |Every wait is bounded and the line records each bound and its last
+  observed state, the access count, and the PASS or FAIL of each checker in order.
+|===
+
+*Pass Criteria*: The checker is emitted as PASS, both SYS_IN reads return the reset word, and
+the sequence raises nothing at its end.
+
+*Scope limit*: One hysteresis value (8) and one admitted read; the gate-off latency after the
+last handshake is printed and not compared, and the `ib_filter` register clock gate of the same
+`CLOCK_GATE_CONTROL` word is graded by `smc_fabric_reg_clock_gate_test` (SV-UVM shape only).
+
+'''''
+
 
 [[sec-466-smc_efuse_map_sep_write_test]]
 ===== 466 `smc_efuse_map_sep_write_test`
@@ -50111,6 +50295,18 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-fabric,FABRIC>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_fabric_errslv_axil_limits_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_sys_in_filter_idle_clock_gate_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_fabric_demux_bucket_limits_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_inbound_outside_window_decerr_test`
 |<<smc-vplan-area-fabric,FABRIC>>
 |RAND-NONE
@@ -52531,6 +52727,7 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |to follow |`smc_i2c_tbuf_bus_free_test` |`rtl_issue` |With `THD_DAT` 25 to 32 the bus-free time after a STOP is `T_R` plus `TSU_STA` plus 7 cycles whatever `TIMING4.T_BUF` holds, below it in some samples, where `i2c.rdl` gives `T_BUF` as the time between a STOP and START condition; the leaf runs the `smc_i2c_timing_set_rand_test` draw and asserts every bus-free time of the `T_BUF` pair at least the programmed `T_BUF` and moving with it (the issue number follows once filed)
 |to follow |`smc_flr_hold_edge_requeue_test` |`rtl_issue` |An FLR edge met while the cool-reset hold counter runs restarts the pre-reset count, and when that count outlasts the hold `rst_cool_no` pulses a second time, where `clk_rst.adoc` states the sequencer is not a queue of overlapping requests; the leaf arms with one request and asserts one pulse of that width for edges inside the count and inside the hold (the issue number follows once filed)
 |to follow |`smc_clock_gate_inflight_completes_test` |`rtl_issue` |The I2C register block runs on the gated peripheral clock and the peripheral side of its AXI-Lite CDC on the ungated one, so a response handed over as `I2C_CG_EN` closes the gate is taken more than once and every later read of the leg receives the previous read's word, where `clk_rst.adoc` states an accepted access finishes there; the leaf arms with an open and a closed read and asserts every swept read completes once with the leg idle after it (the issue number follows once filed)
+|to follow |`smc_fabric_demux_bucket_limits_test` |`rtl_issue` |The vendored `axi_demux` sizes its per-ID-bucket in-flight counter to `clog2(MaxTrans)` bits and reports the bucket full when it is all ones, so the fabric demultiplexers admit 31 same-ID reads per ID bucket and the local crossbar's demux 7 per manager, where the module's parameter contract and `fabric.adoc` give `FabricMaxTrans` 32 and `MaxMstTrans` 8; the leaf holds RREADY, probes at the counters' own handshake points, requires the port behind each demux to withhold nothing, and asserts the chapter's numbers (the issue number follows once filed)
 |#3422 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |A `CTRL_STATUS` trigger while the zeroer is busy has no stated rule; the `OBS-ZEROER-BUSY` lines record the issue and drain windows, the CHK line grades liveness only
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
 |#3426 |`smc_bresp_evidence_obs_test` |`held_out` |The merged BRESP of a split write burst has no stated rule; the `OBS-BRESP` lines record every past-extent and gap write beside its #3294 declaration and the `OBS-BURST` lines the merged response, the CHK lines grade the table counts and unchanged live words
@@ -52803,6 +53000,110 @@ to `clock.toml`.
 
 *Scope limit*: The I2C leg only: it is the one with peripheral-side CDC probes. The UART, AVSBus,
 telemetry and I3C legs share the gating structure and are not swept.
+
+'''''
+
+[[sec-578-smc_fabric_demux_bucket_limits_test]]
+===== 578 `smc_fabric_demux_bucket_limits_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Status*: held out (`rtl_issue`, expected to fail)
+
+*Source Module*: `smc_fabric_demux_bucket_limits_test`
+
+*BFM / Model*: the bench of entry 576 (<<sec-576-smc_fabric_errslv_axil_limits_test>>): SEP_IN
+`ocah_axi_vip` (AXI) master with its R-channel sink paused; bench probes
+`tb_top.tb_sep_demux_arvalid` / `arready` / `arid` / `rvalid` / `rready` / `rlast` (the SEP region
+demux's slave port, which has no spill registers and is the point its ID counters push and pop
+at), `tb_top.tb_sep_errslv_*` with `tb_sep_errslv_rfifo_full`, `tb_top.tb_lxbar_sep_arvalid` /
+`arready` / `rvalid` / `rready` / `rlast` (the local crossbar's SEP_IN demux, probed inside its
+spill registers at the simple demux that owns the counters) and `tb_top.tb_lxbar_lreg_*` (the
+crossbar's internal CSR port, whose AXI to AXI-Lite converter admits 8 reads); registers inbound
+filter entry 0 and `REGION_SIZE` of `SMC_BASE_CONFIG`; the outside-window page at 0x8000_0000.
+
+*Run mode*: one testlist entry in `testlists/holdout.toml`; group `rtl_issue` (the weekly tier's
+own `regress.yml` row), not in `all`, `hosted` or `smoke`; `run_modes` `smoke`; `timeout_sec`
+1800; tag `rtl_issue`, no `ci`; seed 1; `expect_fail` "the fabric demultiplexers admit one fewer
+same-ID read per bucket than the chapter states" and `expect_fail_match` `(?s)CHK-FABRIC-33RD-WAITS-FOR-RETIRE FAIL: .*admitted
+31 on that ID bucket.*CHK-LOCAL-XBAR-9TH-WAITS FAIL: .*admitted 7 on that ID bucket`, which pins
+both measured numbers; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The fabric demultiplexers admit the number of same-ID reads per ID bucket the
+chapter states and withhold the next AR until one retires. The vendored `axi_demux` sizes its
+per-ID-bucket counter to `clog2(MaxTrans)` bits and reports the bucket full when it is all ones,
+so it admits `MaxTrans - 1`; this leaf is the reproducer.
+
+*Test Coverage*:
+
+* `smc_pkg::FabricMaxTrans` is 32, the maximum outstanding transactions per AXI ID bucket in
+  the fabric demultiplexers and traffic filters (`fabric.adoc`, SMC Fabric Transaction Limits):
+  40 DECERR reads on one AXI ID with RREADY held must leave 32 outstanding at the SEP region
+  demux's port, the next AR withheld; measured 31, with the error subordinate behind it holding
+  31 and its read FIFO not full, so the demux's own bucket counter withheld it.
+* `smc_local_xbar_pkg::XbarCfg.MaxMstTrans` is 8, the maximum outstanding transactions each
+  manager of the local crossbar can have in flight (same table): 12 `REGION_SIZE` reads on one
+  AXI ID with RREADY held must leave 8 outstanding at the local crossbar's SEP_IN demux, the
+  next AR withheld; measured 7, with the internal CSR port behind it withholding nothing.
+* In both legs every AR carries the one ID, the port behind the demux withholds nothing (so the
+  demux's own counter is what withheld), the first AR accepted after the release follows the
+  first R-last handshake, every read is accepted, and the positive control with RREADY free
+  completes every read. These invariants fail at once, with a message the expected-fail match
+  does not cover; only the two peak counts are graded against the chapter's numbers.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for the fuse sense; program inbound filter entry 0 to pass all; start the probes.
+. Issue 40 DECERR reads of the outside-window page on AXI ID 5 with RREADY free; require all 40
+  DECERR. Pause the R sink, issue the same 40, wait (bound 4000 rises) until the SEP region
+  demux's probe has withheld an AR for 64 consecutive cycles at its peak count, release the R
+  sink, await the group (bound 100000 ns), require all 40 DECERR.
+. Issue 12 8-byte `REGION_SIZE` reads on AXI ID 5 with RREADY free; require the reset word.
+  Pause the R sink, issue the same 12, wait until the local crossbar SEP_IN demux's probe has
+  withheld an AR for 64 consecutive cycles, release, await, require the reset word.
+. Restore inbound filter entry 0 and read it back; stop the probes; raise the collected
+  failures.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FABRIC-33RD-WAITS-FOR-RETIRE` |Invariants, each failing at once: every AR carries the one
+  ID, the next AR was withheld on at least one cycle at the peak, the first AR accepted after
+  the release follows the first R-last handshake, all 40 reads are accepted, and the error
+  subordinate behind the demux withheld nothing with its read FIFO never full. Then, with RREADY
+  held, the SEP region demux's peak outstanding count on the one ID must be exactly 32; the line
+  carries the measured peak, the error subordinate's count and the positive control's count. It
+  fails today with the measured peak 31.
+|`CHK-LOCAL-XBAR-9TH-WAITS` |Invariants, each failing at once: the next AR was withheld at the
+  peak, the first AR accepted after the release follows the first R-last handshake, all 12 reads
+  are accepted, and the internal CSR port behind the demux withheld nothing. Then the local
+  crossbar SEP_IN demux's peak outstanding count must be exactly 8; the line carries that port's
+  count. It fails today with the measured peak 7.
+|`CHK-TIMEOUT-PATHS` |Every wait is bounded and the line records each bound and its last
+  observed state, the access count, and the PASS or FAIL of each checker in order.
+|===
+
+*Pass Criteria*: Expected to fail: the runner grades the recorded failure as PASS while it
+matches `expect_fail_match`, which names both measured peaks; a broken invariant, or either leg
+measuring another number, fails for another reason and grades FAIL; an observed PASS grades
+`expected_fail_passed`, the signal that the counter admits `MaxTrans` and the leaf moves to
+`fabric` without the `expect_fail` pair. Both legs run to the end in one run, so the collected
+failure carries both numbers.
+
+*Scope limit*: One ID per leg; the same counter sizing applies to every `axi_demux` of the
+fabric (the traffic filters, the output fabric, the CPU front port) and is measured on these
+two. The bucket limit on the SYS_IN region demux is not measured: with one ID the inbound filter's
+own demux saturates with the same number. The local leg reads through the internal CSR port,
+whose AXI to AXI-Lite converter admits 8 reads (`smc_local_xbar.sv`, `AxiMaxReadTxns`), so the
+port behind the demux can hold more than the demux admits and its own stall is graded absent.
 
 '''''
 
@@ -55145,6 +55446,7 @@ which runs a `c_compile` stage, is run on demand with the toolchain image
 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records what a `CTRL_STATUS` trigger does while the zeroer is busy and grades nothing about it; #3422 asks the zeroer chapter and `zeroer_ctrl.rdl` for the rule |#3422 is ruled: the `OBS-ZEROER-BUSY` line becomes a `CHK-ZEROER-BUSY-TRIGGER` grade and the leaf joins its feature testlist
 |`smc_flr_counter_timing_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It measures the FLR pre-delay and hold on `clk_ref_i` and grades nothing about them; #3423 asks `reset_unit.rdl` to name the clock and the offset |#3423 is ruled: the `OBS-FLR` lines become `CHK-FLR-PRE-DELAY-CYCLES` and `CHK-FLR-HOLD-CYCLES` grades and the leaf joins `reset`
 |`smc_bresp_evidence_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records the write response of every declared past-extent and gap address and the merged BRESP of split two-beat writes, and grades nothing about them; #3426 asks for the merge rule |#3426 is ruled: the `OBS-BURST` lines become a `CHK-BURST-MERGE-RESP` grade and the leaf joins `fabric`
+|`smc_fabric_demux_bucket_limits_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It grades `FabricMaxTrans` 32 per ID bucket at the SEP region demux and `MaxMstTrans` 8 at the local crossbar's SEP_IN demux with RREADY held and measures 31 and 7, the `axi_demux` counter sizing; `expect_fail` grades the recorded failure as PASS |The chapter or the parameters settle the number: the leaf grades it and joins `fabric`
 |===
 
 `smc_rom.toml` is in the toolchain bucket: every leaf in it declares

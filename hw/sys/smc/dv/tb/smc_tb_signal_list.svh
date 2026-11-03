@@ -771,6 +771,49 @@
 `SMC_TB_OUT(logic [2:0], tb_remap_jtag_aw_hit)
 `SMC_TB_OUT(logic [2:0], tb_remap_jtag_ar_hit)
 
+// Fabric outstanding-read limits, each at the handshake point its counter
+// pushes (AR) and pops (R last) at: the SEP region demux and its error
+// subordinate in the input fabric, the SEP_IN demux and the internal CSR port
+// of the local crossbar, and the demux and the SMC_BASE_CONFIG port of the
+// internal CSR AXI-Lite crossbar. The two `rfifo_full` nets are the FIFO-based
+// limiters' own full flags.
+`SMC_TB_OUT(logic, tb_sep_demux_arvalid)
+`SMC_TB_OUT(logic, tb_sep_demux_arready)
+`SMC_TB_OUT(logic [5:0], tb_sep_demux_arid)
+`SMC_TB_OUT(logic, tb_sep_demux_rvalid)
+`SMC_TB_OUT(logic, tb_sep_demux_rready)
+`SMC_TB_OUT(logic, tb_sep_demux_rlast)
+`SMC_TB_OUT(logic, tb_sep_errslv_arvalid)
+`SMC_TB_OUT(logic, tb_sep_errslv_arready)
+`SMC_TB_OUT(logic, tb_sep_errslv_rvalid)
+`SMC_TB_OUT(logic, tb_sep_errslv_rready)
+`SMC_TB_OUT(logic, tb_sep_errslv_rlast)
+`SMC_TB_OUT(logic, tb_sep_errslv_rfifo_full)
+`SMC_TB_OUT(logic, tb_lxbar_sep_arvalid)
+`SMC_TB_OUT(logic, tb_lxbar_sep_arready)
+`SMC_TB_OUT(logic, tb_lxbar_sep_rvalid)
+`SMC_TB_OUT(logic, tb_lxbar_sep_rready)
+`SMC_TB_OUT(logic, tb_lxbar_sep_rlast)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_arvalid)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_arready)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_rvalid)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_rready)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_rlast)
+`SMC_TB_OUT(logic, tb_lite_demux_arvalid)
+`SMC_TB_OUT(logic, tb_lite_demux_arready)
+`SMC_TB_OUT(logic, tb_lite_demux_rvalid)
+`SMC_TB_OUT(logic, tb_lite_demux_rready)
+`SMC_TB_OUT(logic, tb_lite_demux_rfifo_full)
+`SMC_TB_OUT(logic, tb_lite_cfg_arvalid)
+`SMC_TB_OUT(logic, tb_lite_cfg_arready)
+`SMC_TB_OUT(logic, tb_lite_cfg_rvalid)
+`SMC_TB_OUT(logic, tb_lite_cfg_rready)
+// System inbound filter clock gate, and the AR handshake into the filter.
+`SMC_TB_OUT(logic, tb_sys_in_filter_clk_active)
+`SMC_TB_OUT(logic, tb_sys_in_filter_bus_active)
+`SMC_TB_OUT(logic, tb_sys_in_filter_arvalid)
+`SMC_TB_OUT(logic, tb_sys_in_filter_arready)
+
 // Isolation / FLR sequencing state.
 `SMC_TB_OUT(logic [31:0], tb_isolate_req_reg)
 `SMC_TB_OUT(logic [31:0], tb_isolate_req_smcen_reg)

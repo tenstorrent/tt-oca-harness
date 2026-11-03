@@ -262,6 +262,26 @@ run_modes = ["smoke"]
 expect_fail = "the I2C bus-free time after a STOP ignores TIMING4.T_BUF when THD_DAT is long"
 expect_fail_match = "CHK-ITS-TBUF-BUS-FREE FAIL"
 
+[[tests]]
+# The vendored axi_demux sizes its per-ID-bucket in-flight counter to
+# clog2(MaxTrans) bits and reports the bucket full when the counter is all
+# ones (axi_demux_simple.sv, axi_demux_id_counters.sv), so a power-of-two
+# MaxTrans admits MaxTrans - 1 where the module's parameter contract and
+# fabric.adoc give MaxTrans: the SEP region demux admits 31 on one ID bucket
+# where FabricMaxTrans is 32 and the local crossbar's SEP_IN demux 7 where
+# MaxMstTrans is 8. Each leg's invariants (one ID, an AR withheld, retire
+# before the next accept, every AR accepted, the port behind the demux not
+# withholding) fail at once with a message the match does not cover; the two
+# peaks are graded last and the match pins both measured numbers.
+name = "smc_fabric_demux_bucket_limits_test"
+module = "smc_fabric_demux_bucket_limits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "the fabric demultiplexers admit one fewer same-ID read per bucket than the chapter states"
+expect_fail_match = "(?s)CHK-FABRIC-33RD-WAITS-FOR-RETIRE FAIL: .*admitted 31 on that ID bucket.*CHK-LOCAL-XBAR-9TH-WAITS FAIL: .*admitted 7 on that ID bucket"
+
 [[groups]]
 # Register-clock gate mapping, traffic-bearing wakes and closure.
 name = "cg_uvm_extended"
@@ -346,7 +366,7 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 7
+expected_count = 8
 tests = [
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_irq_w2c_release_test",
@@ -355,6 +375,7 @@ tests = [
     "smc_i2c_tbuf_bus_free_test",
     "smc_flr_hold_edge_requeue_test",
     "smc_clock_gate_inflight_completes_test",
+    "smc_fabric_demux_bucket_limits_test",
 ]
 
 [[groups]]

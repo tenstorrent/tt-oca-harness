@@ -763,3 +763,21 @@ reseed = 3
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+
+[[tests]]
+# RREADY-held read groups past ErrSlvMaxTrans and the internal CSR AXI-Lite crossbar limit.
+name = "smc_fabric_errslv_axil_limits_test"
+module = "smc_fabric_errslv_axil_limits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+# The system inbound filter clock stops while SYS_IN is idle and runs for a SYS_IN read.
+name = "smc_sys_in_filter_idle_clock_gate_test"
+module = "smc_sys_in_filter_idle_clock_gate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]

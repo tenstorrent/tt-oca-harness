@@ -1966,6 +1966,69 @@ module smc_uvm_top
         `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.aw_remap_hit_debug;
     assign tb_remap_jtag_ar_hit =
         `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.ar_remap_hit_debug;
+
+    // Outstanding-read limit probes of the input fabric. The SEP region demux
+    // has no spill registers, so its own slave port is the point its ID
+    // counters push and pop at; the error subordinate's FIFO pushes and pops at
+    // its port.
+    assign tb_sep_demux_arvalid     = `SMC_INB.sep_axi_cut_req.ar_valid;
+    assign tb_sep_demux_arready     = `SMC_INB.sep_axi_cut_resp.ar_ready;
+    assign tb_sep_demux_arid        = `SMC_INB.sep_axi_cut_req.ar.id;
+    assign tb_sep_demux_rvalid      = `SMC_INB.sep_axi_cut_resp.r_valid;
+    assign tb_sep_demux_rready      = `SMC_INB.sep_axi_cut_req.r_ready;
+    assign tb_sep_demux_rlast       = `SMC_INB.sep_axi_cut_resp.r.last;
+    assign tb_sep_errslv_arvalid    = `SMC_INB.sep_err_slv_req.ar_valid;
+    assign tb_sep_errslv_arready    = `SMC_INB.sep_err_slv_resp.ar_ready;
+    assign tb_sep_errslv_rvalid     = `SMC_INB.sep_err_slv_resp.r_valid;
+    assign tb_sep_errslv_rready     = `SMC_INB.sep_err_slv_req.r_ready;
+    assign tb_sep_errslv_rlast      = `SMC_INB.sep_err_slv_resp.r.last;
+    assign tb_sep_errslv_rfifo_full = `SMC_INB.u_sep_region_err_slv.r_fifo_full;
+    `undef SMC_INB
+
+    // Outstanding-read limit probes of the local fabric. The local crossbar
+    // cuts every port, so the SEP_IN demux is probed inside its spill
+    // registers, at the ports of the simple demux that owns the ID counters;
+    // the internal CSR port is the crossbar's own master port. The internal CSR
+    // crossbar's demux is probed at the handshakes that push and pop its read
+    // FIFO; its SMC_BASE_CONFIG port is the crossbar's own master port.
+    `define SMC_LFAB u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_local_fabric
+    `define SMC_LXBAR `SMC_LFAB.u_smc_local_xbar
+    `define SMC_LXBAR_SEP_DEMUX \
+        `SMC_LXBAR.u_axi_xbar.i_xbar_unmuxed.gen_slv_port_demux[1].i_axi_demux.i_demux_simple
+    `define SMC_LITE_XBAR `SMC_LFAB.u_smc_internal_axi_lite_xbar
+    `define SMC_LITE_DEMUX \
+        `SMC_LITE_XBAR.u_axi_lite_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux
+    assign tb_lxbar_sep_arvalid     = `SMC_LXBAR_SEP_DEMUX.slv_req_i.ar_valid;
+    assign tb_lxbar_sep_arready     = `SMC_LXBAR_SEP_DEMUX.slv_resp_o.ar_ready;
+    assign tb_lxbar_sep_rvalid      = `SMC_LXBAR_SEP_DEMUX.slv_resp_o.r_valid;
+    assign tb_lxbar_sep_rready      = `SMC_LXBAR_SEP_DEMUX.slv_req_i.r_ready;
+    assign tb_lxbar_sep_rlast       = `SMC_LXBAR_SEP_DEMUX.slv_resp_o.r.last;
+    assign tb_lxbar_lreg_arvalid    = `SMC_LXBAR.xbar_mst_req[2].ar_valid;
+    assign tb_lxbar_lreg_arready    = `SMC_LXBAR.xbar_mst_resp[2].ar_ready;
+    assign tb_lxbar_lreg_rvalid     = `SMC_LXBAR.xbar_mst_resp[2].r_valid;
+    assign tb_lxbar_lreg_rready     = `SMC_LXBAR.xbar_mst_req[2].r_ready;
+    assign tb_lxbar_lreg_rlast      = `SMC_LXBAR.xbar_mst_resp[2].r.last;
+    assign tb_lite_demux_arvalid    = `SMC_LITE_DEMUX.slv_ar_valid;
+    assign tb_lite_demux_arready    = `SMC_LITE_DEMUX.slv_ar_ready;
+    assign tb_lite_demux_rvalid     = `SMC_LITE_DEMUX.slv_r_valid;
+    assign tb_lite_demux_rready     = `SMC_LITE_DEMUX.slv_r_ready;
+    assign tb_lite_demux_rfifo_full = `SMC_LITE_DEMUX.r_fifo_full;
+    assign tb_lite_cfg_arvalid      = `SMC_LITE_XBAR.xbar_mst_req[0].ar_valid;
+    assign tb_lite_cfg_arready      = `SMC_LITE_XBAR.xbar_mst_resp[0].ar_ready;
+    assign tb_lite_cfg_rvalid       = `SMC_LITE_XBAR.xbar_mst_resp[0].r_valid;
+    assign tb_lite_cfg_rready       = `SMC_LITE_XBAR.xbar_mst_req[0].r_ready;
+    `undef SMC_LITE_DEMUX
+    `undef SMC_LITE_XBAR
+    `undef SMC_LXBAR_SEP_DEMUX
+    `undef SMC_LXBAR
+    `undef SMC_LFAB
+
+    // System inbound filter clock gate (axi_cg_snoop in the input fabric).
+    assign tb_sys_in_filter_clk_active = u_dut.u_smc.u_smc_base.sys_in_filter_clk_active;
+    assign tb_sys_in_filter_bus_active = u_dut.u_smc.u_smc_base.sys_in_filter_bus_active;
+    `define SMC_INB u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric
+    assign tb_sys_in_filter_arvalid = `SMC_INB.sys_axi_cut_req.ar_valid;
+    assign tb_sys_in_filter_arready = `SMC_INB.sys_axi_cut_resp.ar_ready;
     `undef SMC_INB
 
     // Isolation / FLR sequencing state. The two watchdog timeout pins are
