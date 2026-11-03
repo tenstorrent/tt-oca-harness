@@ -12354,9 +12354,10 @@ A tested feature can have one blocked leg. The test grades the rest of the featu
 |The discarded-operation status. `hw/ip/jtag/jtag_ptap/doc/architecture.adoc` (`AXI_SINGLE_OP`,
 "System Reset Recovery") gives op 2 for an operation a system reset discards, so the contract is
 stated and no specification question is open. The leaf issues its drawn operation 1 to 32
-`clk_smu_i` cycles before the pin and completes it before the reset reaches the SMC, and reopens
-the frontdoor with a TAP reset after the reset, so no cell of this entry holds an operation in
-flight. The leg is deferred, not dropped: the in-flight bins of `cp_inflight_resetval` in
+`clk_smu_i` cycles before the pin (where its effect is visible it completes before the reset
+reaches the SMC: a cool-kind write to the kept FLR counter reads its written value after the
+reset) and reopens the frontdoor with a TAP reset after the reset, so no cell of this entry
+rests on an operation in flight. The leg is deferred, not dropped: the in-flight bins of `cp_inflight_resetval` in
 `SMU_FCOV.adoc` stay planned with no owner draw until a leaf holds the operation in flight and
 grades op 2 on the `SMC_AXI_SINGLE_OP` capture.
 |`smu_reset_retention_matrix_rand_test` logs the `SMC_AXI_SINGLE_OP` capture after each reset,
