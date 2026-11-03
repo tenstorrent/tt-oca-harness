@@ -23,7 +23,10 @@ this order, over the CPU-LSU master on ``s_axi``:
   status without a bite (``hw/sys/sep/doc/watchdog.adoc``, Bark Interrupt and
   Bite Reset; ``aon_timer.adoc``). A write of 1 to ``ALERT_TEST`` gets a write
   response within the bounded wait (CTRL-WDT-ALERT-RESP, CTRL-MISSING
-  otherwise). OBS-WDT-ALERT-RESP logs the response code, not graded: no
+  otherwise), and the watchdog alert (tap ``wdt_alert_probe_o``) reads 0 before
+  the write and rises within ``SRC13_WINDOW`` ``clk_i`` cycles after it
+  (CTRL-WDT-ALERT-REACH, CTRL-MISSING otherwise), so a refused write fails the
+  leaf. OBS-WDT-ALERT-RESP logs the response code, not graded: no
   specification states the response code of a legal register write. With
   ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, OBS-WDT-PAUSE-RUN logs the
   count advance over ``WDT_WAIT`` ``clk_wdt_i`` periods against the
@@ -330,7 +333,8 @@ counted): CTRL-WDT-ENABLE, CTRL-WDT-INTRTEST-EN, CTRL-WDT-THOLD, CTRL-WDT-PAUSE,
 CTRL-WKUP-SMALL, CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
 CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
 CTRL-WDT-THOLD-ZERO, CTRL-WDT-THOLD-BELOW, CTRL-WKUP-THOLD-ZERO, CTRL-WKUP-CARRY,
-CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED, CTRL-WDT-PAUSE-RUN, CTRL-WDT-ALERT-RESP.
+CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED, CTRL-WDT-PAUSE-RUN, CTRL-WDT-ALERT-RESP,
+CTRL-WDT-ALERT-REACH.
 Observations (not graded): OBS-WDT-CLKSTOP, OBS-BITE-CLEAR-EDGE,
 OBS-REFCNT-SPACED-LAT, OBS-WDT-PAUSE-RUN, OBS-WDT-BITE-FIRST, OBS-WDT-BITE-EQ,
 OBS-WDT-ALERT-RESP.
@@ -1728,6 +1732,19 @@ class sep_timer_clock_contract_test(sep_base_test):
             cocotb.top.sep_internal_interrupts_probe_o, {"src13": 12}, name="src13"
         ).start()
         m13 = src13.mark()
+        seed = self.tcfg.seed
+        alert = SepBitWatch(cocotb.top.wdt_alert_probe_o, name="wdt_alert").start()
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        alert_pre = self.rd(cocotb.top.wdt_alert_probe_o)
+        await RisingEdge(cocotb.top.clk_i)
+        if alert_pre != 0:
+            msg = (
+                f"CTRL-MISSING WDT-ALERT-REACH: seed={seed} wdt_alert=1 before the ALERT_TEST write"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        ma = alert.mark()
         seq = SepAxiAccessSeq(
             "alert_test",
             op=SepAxiOp.WRITE,
@@ -1738,7 +1755,6 @@ class sep_timer_clock_contract_test(sep_base_test):
             allow_unverified_write_resp=True,
         )
         await self.start_seq(seq)
-        seed = self.tcfg.seed
         if seq.timed_out:
             msg = f"CTRL-MISSING WDT-ALERT-RESP: seed={seed} no write response (timed out)"
             self.logger.error(msg)
@@ -1747,6 +1763,21 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.logger.info("OBS-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
         # No line states the shape of PIC source 13 after an ALERT_TEST write.
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
+        alert_rises = alert.rises_since(ma)
+        await alert.stop()
+        if alert_rises == 0:
+            msg = (
+                f"CTRL-MISSING WDT-ALERT-REACH: seed={seed} no rise of wdt_alert in "
+                f"{SRC13_WINDOW} clk_i cycles after the ALERT_TEST write"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-WDT-ALERT-REACH seen: seed=%d wdt_alert rises=%d in %d clk_i cycles",
+            seed,
+            alert_rises,
+            SRC13_WINDOW,
+        )
         self.logger.info(
             "OBS-SRC-SHAPE src=13 kind=wdt_alert_test rises=%d high_clk=%d window_clk=%d",
             src13.rises_since(m13),

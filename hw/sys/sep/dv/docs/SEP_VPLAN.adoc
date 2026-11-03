@@ -3138,7 +3138,7 @@ the test does.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Watchdog alert aggregate
 |What does PIC source 13 ("WDT alert") aggregate, and does an `ALERT_TEST` write change any status or output? (`hw/sys/sep/doc/watchdog.adoc` leaves the alert outputs unconnected; `aon_timer.adoc` says the write triggers one alert event.)
-|`sep_timer_clock_contract_test` requires a write response (`CTRL-WDT-ALERT-RESP`) and logs its response code as `OBS-WDT-ALERT-RESP` and the shape of source 13 after it as `OBS-SRC-SHAPE`, with no verdict.
+|`sep_timer_clock_contract_test` requires a write response (`CTRL-WDT-ALERT-RESP`) and a rise of the watchdog alert tap after it (`CTRL-WDT-ALERT-REACH`), and logs its response code as `OBS-WDT-ALERT-RESP` and the shape of source 13 after it as `OBS-SRC-SHAPE`, with no verdict.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>; <<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>; <<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Hang timeout
 |The `TIMEOUT_*` registers are stated as reserved and not yet implemented (`hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc`). Open: what bounds a stalled fabric request, and does a hardware hang timeout exist in a later generation?
