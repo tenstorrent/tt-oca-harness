@@ -17,7 +17,10 @@ each in `tb/tb_wrapper_top.sv`. Each module has two layers: labelled
 `cover property` points declared through `OCAH_FCOV_COVER`, which every
 simulator compiles and which land in the runner's `user` family, and SV
 covergroups, which every simulator compiles too and which land in the
-`functional` family of a Verilator run and in urg's GROUP score on VCS.
+`functional` family of a Verilator run and in urg's GROUP score on VCS. The
+three crossbar-port covergroups of `smu_xbar_fcov` are the exception: they
+sit under `ifndef VERILATOR`, so they land in urg's GROUP score only, and
+their `OCAH_FCOV_COVER` points carry the same bins on Verilator.
 
 Feature checkers stay on the VPLAN scorecard. A hit here says the wrapper
 presented the event at its boundary; it is not the checker's claim, which
@@ -70,7 +73,7 @@ bring it back are recorded there.
 [cols="2,1,1,1,3",options="header",]
 |===
 |Module |Phase 1 points |Phase 2 points |SEP=0 only |Covergroups
-|`smu_xbar_fcov` |22 |3 |0 |`cg_sep_window`, `cg_axi_in_resp` (`u_cg_bresp`, `u_cg_rresp`), `cg_map_window`
+|`smu_xbar_fcov` |112 |3 |0 |`cg_sep_window`, `cg_axi_in_resp` (`u_cg_bresp`, `u_cg_rresp`), `cg_map_window`; VCS only: `cg_xbar_route` (`u_cg_route_wr`, `u_cg_route_rd`), `cg_xbar_depth` (`u_cg_depth_wr`, `u_cg_depth_rd`), `cg_xbar_id_return` (`u_cg_id_return_wr`, `u_cg_id_return_rd`)
 |`smu_boot_fcov` |21 |0 |0 |`cg_boot_stall`, `cg_lifecycle`
 |`smu_rst_fcov` |17 |0 |0 |`cg_block_release`
 |`smu_dbg_fcov` |13 |0 |0 |`cg_dbg_disable_slice`
@@ -80,14 +83,15 @@ bring it back are recorded there.
 |`smu_lc_fcov` |3 |0 |3 |`cg_lc_at_release`, `cg_lc_state_at_release` (SEP=0 only)
 |`smu_clk_fcov` |3 |0 |0 |`cg_tel_rate`, `cg_wdt_rate`
 |`smu_clkstop_fcov` |3 |0 |0 |`cg_clk_stop_sources`
-|Total |102 |3 |4 |15 covergroups, 16 instances
+|Total |192 |3 |4 |18 covergroups, 22 instances
 |===
 
 The counts are the `OCAH_FCOV_COVER` invocations in each file. The three
 Phase 2 points sit behind `ifdef SMU_FCOV_PHASE2`, which no configuration
 defines. The four SEP=0 points and `cg_lc_state_at_release` sit in `g_nosep`
-generate blocks, which the wrapper's single target does not elaborate, so 102
-points and 15 covergroup instances enter the database.
+generate blocks, which the wrapper's single target does not elaborate, so 192
+points enter the database, with 15 covergroup instances on Verilator and 21
+in urg.
 
 === Collection
 
@@ -111,8 +115,8 @@ are the wrapper's own file plus the `cov/sv` modules, `user` is the
 cover-property layer and `functional` the covergroup layer. Toggle is not
 collected on Verilator.
 
-Verilator and VCS build the same goal bins for each covergroup because no
-covergroup uses a construct Verilator drops: a cross select expression
+Verilator and VCS build the same goal bins for each covergroup both of them
+compile because no covergroup uses a construct Verilator drops: a cross select expression
 (`binsof`, an explicit cross bin) or a `with` filter on a bin, which Verilator
 ignores with only a `COVERIGN` warning that `smu_sim_cfg.toml` makes an error.
 `cg_alias_path` pairs the egress port with the window through `cp_path`, a
@@ -202,8 +206,11 @@ the `g_sep` block; urg prints them with that prefix and Verilator with
 ==== `smu_xbar_fcov`
 
 *Description*: The SMC and SEP address windows are programmed, the inbound
-AXI port handshakes and answers with every legal response code, and inbound
-traffic is never forwarded outbound.
+AXI port handshakes and answers with every legal response code, inbound
+traffic is never forwarded outbound, and the six crossbar ports walk every
+cell of the crossbar routing table (`hw/sys/smu/doc/index.adoc`, "SMU AXI
+crossbar routing by initiator and decoded aperture"), each outstanding-depth
+bucket and both ID return orders.
 
 [cols="2,5",options="header",]
 |===
@@ -222,9 +229,35 @@ traffic is never forwarded outbound.
 |`cg_sep_window` |The SEP window unprogrammed, programmed, and programmed to zero
 |`cg_axi_in_resp` |OKAY, SLVERR and DECERR on the inbound B and R channels. EXOKAY is ignored: no subordinate behind the crossbar has an exclusive monitor
 |`cg_map_window` |The SMC window unprogrammed and programmed. The zero window is ignored: `smc_base_config` requires a non-zero power of two
+|`g_sep.c_route_sep_out_to_smc_in_{wr,rd}`, `g_sep.c_route_sep_out_to_ext_out_{wr,rd}`, `g_sep.c_route_smc_out_to_sep_in_{wr,rd}`, `g_sep.c_route_smc_out_to_ext_out_{wr,rd}`, `g_sep.c_route_ext_in_to_sep_in_{wr,rd}`, `g_sep.c_route_ext_in_to_smc_in_{wr,rd}` |A write or read address phase accepted on the initiator port, whose address and initiator the routing table send to the named target port, followed, after the arming cycle, by an address phase of the same channel on that target port and by the B or RLAST carrying the same ID back on the initiator port. The address phase arms the cell only when, on that channel, nothing is outstanding on the initiator port or on the target port, the other two initiator ports have nothing outstanding and no address phase in that cycle; an address phase on either of them before the target handshake disqualifies the cell. Outstanding is AW (AR) handshakes minus B (RLAST) handshakes on the port
+|`g_sep.c_route_decerr_sep_out_sep_{wr,rd}`, `g_sep.c_route_decerr_smc_out_smc_{wr,rd}`, `g_sep.c_route_decerr_ext_in_neither_{wr,rd}` |A write or read address phase the routing table answers with DECERR (`sep_out` in the SEP aperture, `smc_out` in the SMC aperture, `ext_in` in neither) answered on the initiator port with BRESP DECERR, or RRESP DECERR on the RLAST beat. Each aperture is [base, base + size) in a 57-bit sum and a zero size disables it; an address in both apertures arms no cell
+|`g_sep.c_depth_<port>_{wr,rd}_{1,2_4,5_8,gt8}`, for `sep_out`, `smc_out`, `ext_in`, `sep_in`, `smc_in` and `ext_out` |An AW (AR) handshake on the port with 1, 2 to 4, 5 to 8 or more than 8 writes (reads) outstanding on it, itself included: AW (AR) handshakes minus B (RLAST) handshakes on that port
+|`g_sep.c_id_return_inorder_<port>_{wr,rd}`, `g_sep.c_id_return_ooo_<port>_{wr,rd}`, for the same six ports |A B (RLAST) on the port whose ID is the oldest open ID of that channel while an entry with another ID is open, and one whose ID was accepted after another ID that is still open. A response with one distinct ID open is not sampled. Up to eight open IDs are tracked per port and channel in acceptance order; an address phase that finds the eight in use stops the sampling of that port and channel until nothing is outstanding on it
+|`cg_xbar_route` |The nine routing cells, one instance per channel, sampled when a cell's point is credited. VCS only
+|`cg_xbar_depth` |The six ports crossed with the four depth buckets, one instance per channel, sampled on the address handshake. VCS only
+|`cg_xbar_id_return` |The six ports crossed with the in-order and out-of-order return, one instance per channel, sampled on the B or RLAST handshake. VCS only
 |===
 
 `smu_dtp_sep_dm_sba_test` is the leaf that programs `sep_global_base_o`.
+
+The bench reads the crossbar-port signals at the ports of
+`u_smu.gen_sep.u_smu_axi_xbar`. The crossbar-port trackers and points reset
+and are disabled on the cold reset and on the primary SMC-clock reset
+(`rst_primary_smc_clk_n_o`, the crossbar's reset), which can fall while the
+cold reset stays high; the window-programming points follow the cold reset
+only. The leaf assigned to each crossbar-port
+point, by the traffic its scenario issues:
+
+* `smu_axi_in_burst_outstanding_test` (`hosted`): `c_route_ext_in_to_smc_in_{wr,rd}`, the `ext_in` and `smc_in` depth points and their read in-order ID-return points, with read and write trains held back on `ext_in`; its write train carries one AWID, so it opens no second write ID.
+* `smu_axi_in_sep_aperture_test` (`hosted`): `c_route_ext_in_to_sep_in_{wr,rd}` and the `sep_in` depth points. Its accesses run one at a time, so they open no second ID on `sep_in`.
+* `smu_axi_out_outstanding_test` (`hosted`): `c_route_smc_out_to_ext_out_{wr,rd}` and the `smc_out` and `ext_out` depth and ID-return points, through the SMC iDMA copy with every response delayed.
+* `smu_xbar_decerr_burst_response_test` (`all`): `c_route_decerr_ext_in_neither_{wr,rd}`.
+* `smu_axi_concurrent_initiators_stall_test` (`all`, not `hosted`): `c_route_smc_out_to_sep_in_{wr,rd}` and `c_route_decerr_smc_out_smc_{wr,rd}`, and the `ext_in` out-of-order returns of its interleaved reads and writes under distinct IDs. No `hosted` leaf is assigned these points, so the `hosted` group is not claimed to reach them.
+* The `sep_out` cells, `c_route_sep_out_to_smc_in_{wr,rd}`, `c_route_sep_out_to_ext_out_{wr,rd}` and `c_route_decerr_sep_out_sep_{wr,rd}`, and the `sep_out` depth and ID-return points belong to `smu_axi_sep_lsu_initiator_stall_test`, which is planned and not in `all`. No enrolled leaf is assigned them, so `all` is not claimed to reach them.
+
+Which leaf hits each point is measured, not assigned: <<smu-fcov-owners>>
+carries the measurement. `cov/config/verilator/smu_wrapper_coverage_policy.toml`
+carries no hole entry, and none names these points.
 
 ==== `smu_boot_fcov`
 
@@ -675,7 +708,7 @@ which leaf lights each point is a property of a run and is measured in
 [cols=",",options="header",]
 |===
 |VPLAN group |Coverage
-|FABRIC |`smu_xbar_fcov` window programming and reprogramming, the inbound AXI handshake, all four response encodings, and inbound traffic not forwarded outbound; `smu_alias_fcov` the SEP-to-SMC dedicated port; `smu_ext_fcov` the external AXI boundary
+|FABRIC |`smu_xbar_fcov` window programming and reprogramming, the inbound AXI handshake, all four response encodings, inbound traffic not forwarded outbound, and the crossbar routing cells, outstanding depth and ID return order on its six ports; `smu_alias_fcov` the SEP-to-SMC dedicated port; `smu_ext_fcov` the external AXI boundary
 |RESET |`smu_rst_fcov` cold-reset assertion and release, per-domain order and powergood; `smu_boot_fcov` reset-release edges, boot-stall sources and release, and SRAM auto-init; `smu_ext_fcov` the external boot-sequence gate; `smu_dtp_fcov` on the DFT boot-stall leaves
 |MISC |`smu_clkstop_fcov` clock-stop request and grant; `smu_clk_fcov` the clock mirrors `tb/tb_wrapper_top.sv` exposes; `smu_dtp_fcov` XTRIG mode and the CTM path; `smu_dbg_fcov` the debug bridges a race leaf drives
 |JTAG |`smu_dbg_fcov` JTAG2AXI debug paths, security-disable and TAP state; `smu_dtp_fcov` the scan and STAP ports; `smu_boot_fcov` the JTAG boot-stall source
