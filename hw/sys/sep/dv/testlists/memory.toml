@@ -220,7 +220,7 @@ args = ["+skip_fuse_sense", "+sep_require_full_cpu"]
 
 [[tests]]
 # Every boot ROM word reads the loaded image for 1, 2 and 4-byte reads, a store does not
-# reach the macro, a stored-bit flip returns OKAY, and a cold reset during an access
+# reach the macro, a stored-bit flip returns the stored data, and a cold reset during an access
 # leaves the interface usable. A wdt_rst_ni reset during an access is logged only.
 # Real fuse sense of a PROD image whose ROM_CTL is 0.
 name = "sep_boot_rom_aperture_sweep_test"
