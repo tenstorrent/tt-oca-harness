@@ -743,16 +743,19 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
         self._count(SYS_IN, admitted)
         return observed, expected
 
-    def _cross_check_polarity(self, table: str, ns: int, tapped: dict[int, list[int]]) -> None:
-        """The probe's AxPROT[1] at the egress tap agrees with the allow_ns the filter paired it
-        with: the probe that left the filter carries AxPROT[1] == ns, the other left nothing
-        (hw/ip/axi_filter/doc/index.adoc, the ``prot[1] == allow_ns`` match term)."""
+    def _cross_check_polarity(
+        self, table: str, ns: int, let_out: int, tapped: dict[int, list[int]]
+    ) -> None:
+        """The probe the filter let out (the one programmed with ``allow_ns == let_out``) carries
+        AxPROT[1] == ns at the egress tap and the refused probe left nothing, so the ``ns`` the
+        probes settled on is the initiator's AxPROT[1] and not an inverted ``prot[1] ==
+        allow_ns`` term (hw/ip/axi_filter/doc/index.adoc)."""
         got = {k: tapped[k] for k in (0, 1)}
-        want = {ns: [ns], 1 - ns: []}
+        want = {let_out: [ns], 1 - let_out: []}
         self.sb.expect_eq(
-            f"CHK-FMATCH-TERMS {table} polarity probe: the probe the filter let out carries "
-            f"AxPROT[1]={ns} at the egress tap and the probe it refused reached the tap with "
-            f"nothing, so allow_ns={ns} is the initiator's AxPROT[1] and not an inverted term",
+            f"CHK-FMATCH-TERMS {table} polarity probe: the probe programmed with "
+            f"allow_ns={let_out} left the filter with AxPROT[1]={ns} at the egress tap and the "
+            f"probe programmed with allow_ns={1 - let_out} reached the tap with nothing",
             got,
             want,
             evidence="CHK-FMATCH-TERMS",
@@ -1212,7 +1215,7 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
         if sum(refused.values()) != 1:
             raise AssertionError(f"SMC_OUT polarity probe: refused={refused}, want exactly one")
         self.ns[SMC_OUT] = 0 if refused[0] else 1
-        self._cross_check_polarity(SMC_OUT, self.ns[SMC_OUT], tapped)
+        self._cross_check_polarity(SMC_OUT, self.ns[SMC_OUT], 1 - self.ns[SMC_OUT], tapped)
         await self._disable(SMC_OUT, cell["lo"])
 
     async def _smc_idma(self, sb) -> None:
@@ -1306,7 +1309,7 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
         if sum(admitted.values()) != 1:
             raise AssertionError(f"SEP_OUT polarity probe: admitted={admitted}, want exactly one")
         self.ns[SEP_OUT] = 0 if admitted[0] else 1
-        self._cross_check_polarity(SEP_OUT, self.ns[SEP_OUT], tapped)
+        self._cross_check_polarity(SEP_OUT, self.ns[SEP_OUT], self.ns[SEP_OUT], tapped)
         await self._disable(SEP_OUT, cell["lo"])
 
     def _timeout_paths(self, sb) -> None:
