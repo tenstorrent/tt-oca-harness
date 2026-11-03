@@ -739,6 +739,8 @@ incdirs = [
 sources = [
   # ocah_open_drain_bus.sv must precede tb/tb_wrapper_top.sv, which instantiates it.
   "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
+  # Four-state WDATA/RDATA known rules, one beside each ocah_axi_sva instance.
+  "hw/sys/smu/dv/tb/smu_axi_data_known_sva.sv",
   # The cocotb [build].sources list also carries axi_cut with its spill registers and
   # the picorv32 files: the Bender `smu_wrapper` layer already names each of them
   # (smu_uvm_bender.f), and VCS rejects a module declared by two files it is handed
