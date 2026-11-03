@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_003 ANCHOR: smc_sw_uncore_reset_drain_isolate_test
-# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: dad8bdc4a6b76fe6540aa647e658892722f8daa0672ae85f6af08f676edf09a2
+# DV-TESTCASE-CONTRACT-REVISION: 6 RECORD-SHA256: 6029c2ebeba8287042201a9f25d4e81d80832fb61563c28c7105db0cc4d6d50f
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Software core reset, core reset pulse and software uncore reset with the L2 frontend isolate.
 
@@ -24,7 +24,9 @@ order) and time their RLAST at the front port, the isolate boundary; a read the 
 accepted that the isolate never counted is an observation that must complete after the
 reconnect. A status read is graded only when no request of any manager is stalled at the front
 port and no bench hold is active; any other status read is an observation whose bounded
-wait is counted apart, and the fact it would have carried comes from the probes.
+wait is counted apart, and the fact it would have carried comes from the probes. The S6
+applied point and both reconnect points must be graded: a request still stalled at one of
+them fails the status checker.
 
 Probes: ``tb_cpu_core_resets_n`` (core 3 is bit 3), ``tb_cpu_uncore_reset_n``,
 ``tb_cpu_isolate_req``, ``tb_cpu_drained``, ``tb_cpu_reset_timeout``, ``tb_cpu_reset_applied``,
@@ -137,6 +139,8 @@ PEND_ID = 0x30
 FIFTH_ID = 0x34
 STALL_ID_BASE = 0x01
 TOKEN_STATUS = "CHK-STATUS-READABLE-FROM-SEP"
+# Status points CHK-STATUS-READABLE-FROM-SEP must grade; a stall at any of them fails it.
+STATUS_POINTS = ("s5_reconnected", "s6_applied", "s6_reconnected")
 BLOCK_ID = (0x3A, 0x3B, 1)
 WB_ID = 0x08
 
@@ -1891,10 +1895,17 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                     f"{label} over {names[port]}: CORE_RESET_PULSE_COUNT reads {pc}, want counts "
                     f"0x{want_pc:x}"
                 )
-        if "s6_applied" not in [g[0] for g in self.graded_status]:
-            bad.append(
-                "the S6 status point (applied and isolated, nothing presented) is not graded"
-            )
+        graded = {g[0] for g in self.graded_status}
+        for point in STATUS_POINTS:
+            if point not in graded:
+                why = [
+                    f"stalled {'+'.join(stalled) or 'none'} hold {'+'.join(holds) or 'none'}"
+                    for raw, stalled, holds in self.stall_reads
+                    if raw.label.startswith(point)
+                ]
+                bad.append(
+                    f"the {point} status point is not graded: {'; '.join(why) or 'not reached'}"
+                )
         self._grade(
             T,
             bad,

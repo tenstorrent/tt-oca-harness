@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_006 ANCHOR: smc_axil_narrow_zero_strobe_write_test
-# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: a0f0dec2d7f1e904e581164cc537956b2bbf3ae31b06cb4a0e604929fc377dcc
+# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: b32eaa21a08f9bf4474335e824b910f1c8842a360b9ef27e7fc7cdff28aaa092
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Narrow and zero-strobe writes over SEP_IN to the 64-bit AXI-Lite register links.
 

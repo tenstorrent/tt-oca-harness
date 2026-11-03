@@ -11,7 +11,8 @@ the AXI rules transcribed in the ocah_axi_sva header.
 Every burst is graded from a passive per-port sampler of the tb_top AR, AW, W, R and B
 handshakes, because the bench item carries one merged response code. Registers outside a
 burst footprint (IHI 0022: FIXED AxADDR only, WRAP the aligned window, INCR the incrementing
-range) are compared with reference values the leaf wrote or read before the burst. Response
+range) are compared with reference values the leaf wrote or read before the burst. An INCR
+write that answers OKAY must land each beat on the registers of its footprint. Response
 codes and in-footprint landings the pinned sources leave open are OBS lines naming their SF or issue.
 """
 
@@ -703,6 +704,21 @@ def _gpio_seeds(j: int) -> tuple[int, int, int]:
     )[j]
     access = _fv(GPIO_AWPROT_REQ, j + 2) | _fv(GPIO_ARPROT_REQ, j + 3)
     return data_ctrl, enable, access
+
+
+def _gpio_landing() -> dict[str, int]:
+    """Values the slot-cross INCR write carries for the registers of its footprint. Each differs
+    from that register's seed and no field equals a seeded field outside the footprint, so both
+    the landing and the unchanged compares can fail; the enables keep the _gpio_seeds pad rule."""
+    k = GPIO_K
+    return {
+        f"GPIO{k}.ACCESS_FILTER": _fv(GPIO_AWPROT_REQ, 2) | _fv(GPIO_ARPROT_REQ, 7),
+        f"GPIO{k + 1}.DATA_CTRL": 0,
+        f"GPIO{k + 1}.DATA_CTRL_ENABLE": 0,
+        f"GPIO{k + 1}.ACCESS_FILTER": _fv(GPIO_AWPROT_REQ, 6) | _fv(GPIO_ARPROT_REQ, 3),
+        f"GPIO{k + 2}.DATA_CTRL": _fv(GPIO_INTERRUPT_TYPE, 1),
+        f"GPIO{k + 2}.DATA_CTRL_ENABLE": GPIO_USE_REG_RX,
+    }
 
 
 def _fams() -> dict[str, Fam]:
@@ -1477,6 +1493,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         isl = self.gpio_isl
         regs = [*isl.neighbours[:3], *isl.regs, *isl.neighbours[3:]]
         by_addr = {reg.addr: reg for reg in regs}
+        landing = {reg.addr: v for reg in regs if (v := _gpio_landing().get(reg.name)) is not None}
 
         async def read_all(tag: str) -> dict[int, int | None]:
             return {
@@ -1524,7 +1541,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             ctx = f"GPIO {port}/{shape} {_BURST[burst]} 0x{start:x}"
             words = footprint(start, beats, burst)
             if write:
-                data = [word(before, w) for w in words]
+                data = [word({**before, **landing} if burst == INCR else before, w) for w in words]
                 item, hs = await self._issue(
                     port,
                     f"GPIO_{shape}",
@@ -1539,12 +1556,23 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                 after = await read_all(shape.replace("/", "_"))
                 inside = []
                 for reg in regs:
+                    value = after[reg.addr]
                     if reg.word in set(words):
-                        inside.append(f"{reg.name}:{_hx(after[reg.addr])}")
+                        inside.append(f"{reg.name}:{_hx(value)}")
+                        if burst == INCR and bresp == OKAY:
+                            want, mask = landing[reg.addr], reg.seed_mask
+                            fam.data_compares += 1
+                            if not (want ^ seed_ref[reg.addr]) & mask:
+                                fam.findings.append(f"{ctx}: {reg.name} already holds 0x{want:x}")
+                            if value is None or (value ^ want) & mask:
+                                fam.findings.append(
+                                    f"{ctx}: {reg.name} @ 0x{reg.addr:x} reads {_hx(value)}, "
+                                    f"its INCR beat wrote 0x{want:x} under 0x{mask:x}"
+                                )
+                        if value is not None:
+                            seed_ref[reg.addr] = value
                         continue
-                    self._unchanged(
-                        fam, isl.key, ctx, reg, after[reg.addr], seed_ref[reg.addr], data
-                    )
+                    self._unchanged(fam, isl.key, ctx, reg, value, seed_ref[reg.addr], data)
                 self._obs(
                     fam,
                     port=port,
@@ -1787,7 +1815,8 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         n = 0
         for sidx, (shape, scen, burst, write, start, beats) in enumerate(shapes):
             ctx = f"SLOTEDGE {port}/{shape} {_BURST[burst]} 0x{start:x}"
-            words = set(footprint(start, beats, burst))
+            order = footprint(start, beats, burst)
+            words = set(order)
             if write:
                 await self._reseed(isl, fam)
                 data = [self._beat_word(pidx, 7, sidx, b) & isl.data_mask for b in range(beats)]
@@ -1810,6 +1839,15 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                         k1.append(f"{reg.name}:{_hx(value)}")
                     if reg.word in words:
                         self.dirty.add(reg)
+                        mask = self._mask(reg)
+                        if burst == INCR and bresp == OKAY and mask and not reg.ro:
+                            want = self._lane(reg, data[order.index(reg.word)])
+                            fam.data_compares += 1
+                            if value is None or (value ^ want) & mask:
+                                fam.findings.append(
+                                    f"{ctx}: {reg.name} @ 0x{reg.addr:x} reads {_hx(value)}, "
+                                    f"its INCR beat wrote 0x{want:x} under 0x{mask:x}"
+                                )
                         continue
                     self._unchanged(fam, isl.key, ctx, reg, value, self.ref[reg], data)
                 self._obs(
@@ -2486,11 +2524,13 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             f"(OBS-BT-ISLAND32), out-of-footprint registers unchanged, liveness OKAY",
             "STRB": f"{fam.bursts} strobed writes and pair reads, only strobed lanes changed, "
             f"64-bit pair assembly as stated",
-            "GPIO": f"{fam.bursts} GPIO bursts x 3 ports, protocol held, seeded slots "
+            "GPIO": f"{fam.bursts} GPIO bursts x 3 ports, protocol held, INCR data landed where "
+            f"the write answers OKAY ({fam.data_compares} register compares), seeded slots "
             f"GPIO{GPIO_K - 1}..GPIO{GPIO_K + 3} unchanged outside each footprint, liveness OKAY",
             "SPM": "INCR data match, WRAP/FIXED protocol held, strobes exact, ROM write SLVERR "
             "unchanged, liveness OKAY",
-            "SLOTEDGE": f"{fam.bursts} slot-edge bursts x 3 ports, protocol held, "
+            "SLOTEDGE": f"{fam.bursts} slot-edge bursts x 3 ports, protocol held, INCR data "
+            f"landed where the write answers OKAY ({fam.data_compares} register compares), "
             f"out-of-footprint slots unchanged, liveness OKAY",
             "RULEEDGE": "scratchpad-end burst OKAY with data, CLA word unchanged, CPU-control-end "
             "read protocol held",

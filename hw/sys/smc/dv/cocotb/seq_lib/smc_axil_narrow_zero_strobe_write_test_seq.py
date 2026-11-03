@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_006 ANCHOR: smc_axil_narrow_zero_strobe_write_test
-# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: a0f0dec2d7f1e904e581164cc537956b2bbf3ae31b06cb4a0e604929fc377dcc
+# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: b32eaa21a08f9bf4474335e824b910f1c8842a360b9ef27e7fc7cdff28aaa092
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Narrow and zero-strobe writes over SEP_IN to the 64-bit AXI-Lite register links.
 
@@ -234,6 +234,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         self.narrow_resps: list[tuple[int, int]] = []
         self.narrow_regs: set[str] = set()
         self.restored = 0
+        self.held: list[str] = []
         self.obs: dict[str, int] = {k: 0 for k in PLANNED_OBS}
         self.base_writes = 0
         self.zero_polls: list[int] = []
@@ -341,14 +342,39 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         self.narrow_resps.append((self.writes, resp))
         self.narrow_regs.add(reg)
 
-    async def _restore_check(self, name: str, addr: int, saved: int, length: int, compare: bool):
+    def _restore_word(self, name: str, pre: int, got: int, saved: int, mask: int | None) -> None:
+        """Grade one full-width restore of `saved`.
+
+        With `mask`, the strobed writes must have left the register differing from `saved` in
+        those writable bits, and only then does the restore count for CHK-FULL-WIDTH-RESTORE.
+        Without it the register already holds `saved`, so the restore cannot fail on a dropped
+        write and is listed apart.
+        """
+        cocotb.log.info(
+            "INFO-RESTORE-WORD: reg=%s pre=%s post=%s saved=%s counted=%s",
+            name,
+            _hx(pre),
+            _hx(got),
+            _hx(saved),
+            "no" if mask is None else "yes",
+        )
+        assert got == saved, f"{name}: full-width restore of 0x{saved:x} reads 0x{got:x}"
+        if mask is None:
+            self.held.append(name)
+            return
+        assert (pre ^ saved) & mask, (
+            f"{name}: reads 0x{pre:x} before the restore, equal to the saved 0x{saved:x} in the "
+            f"writable bits 0x{mask:x}, so the strobed writes changed nothing"
+        )
+        self.restored += 1
+
+    async def _restore_check(
+        self, name: str, addr: int, saved: int, length: int, mask: int | None
+    ) -> None:
+        pre = await self._rd(f"{name}_RESTORE_PRE", addr, length)
         await self._wr(f"{name}_RESTORE", addr, saved, length)
         got = await self._rd(f"{name}_RESTORE_RB", addr, length)
-        if compare:
-            assert got == saved, (
-                f"{name} at 0x{addr:x}: full-width restore of 0x{saved:x} reads 0x{got:x}"
-            )
-            self.restored += 1
+        self._restore_word(name, pre, got, saved, mask)
 
     # ---- body ---------------------------------------------------------------------------
     async def body(self) -> None:
@@ -503,7 +529,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         assert pre & upper != saved & upper, (
             f"{name}: lanes 1..7 read 0x{pre:x} before the restore, equal to the saved 0x{saved:x}"
         )
-        await self._restore_check(name, reg.addr, saved, 8, False)
+        await self._wr(f"{name}_RESTORE", reg.addr, saved, 8)
         await self._refcnt_poll(f"{name}_RESTORE", reg.addr, saved, list(range(1, 8)))
         await self._refcnt_write(name, reg.addr, 0x00)
 
@@ -523,7 +549,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                     f"reg={name} wstrb=0x{s:02x} bresp={RESP_NAME[resp]} "
                     f"wrote={_hx(PATTERN)} readback={_hx(rb)}",
                 )
-            await self._restore_check(name, reg.addr, self._pre(reg), 8, True)
+            await self._restore_check(name, reg.addr, self._pre(reg), 8, reg.rw_mask)
         self._mark("PLAIN")
 
     async def _reset_unit(self) -> None:
@@ -556,12 +582,17 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                         f"reg={reg.path.split('/')[-1]} wstrb=0x{s:02x} bresp={RESP_NAME[resp]} "
                         f"wrote={_hx(wrote)} readback={_hx(rb)}",
                     )
+            lo_pre = await self._rd(f"{lo.symbol}_RESTORE_PRE", lo.addr, 4)
+            hi_pre = await self._rd(f"{hi.symbol}_RESTORE_PRE", hi.addr, 4)
             await self._wr(f"{lo.symbol}_RESTORE", lo.addr, (hi_s << 32) | lo_s, 8)
             lo_rb = await self._rd(f"{lo.symbol}_RESTORE_RB", lo.addr, 4)
             hi_rb = await self._rd(f"{hi.symbol}_RESTORE_RB", hi.addr, 4)
-            assert lo_rb == lo_s, f"{lo.path} restore reads 0x{lo_rb:x}, saved 0x{lo_s:x}"
-            assert hi_rb == hi_s, f"{hi.path} restore reads 0x{hi_rb:x}, saved 0x{hi_s:x}"
-            self.restored += 1 if locked else 2
+            self._restore_word(lo.path.split("/")[-1], lo_pre, lo_rb, lo_s, lo.rw_mask)
+            if locked:
+                # The lock lane is written 0 at every step, so only the configuration counts.
+                assert hi_rb == hi_s, f"{hi.path} restore reads 0x{hi_rb:x}, saved 0x{hi_s:x}"
+            else:
+                self._restore_word(hi.path.split("/")[-1], hi_pre, hi_rb, hi_s, hi.rw_mask)
         self._mark("RESET_UNIT")
 
     async def _base_config(self) -> None:
@@ -598,7 +629,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                     f"reg={name} wstrb=0x{s:02x} bresp={RESP_NAME[resp]} "
                     f"wrote={_hx(cur)} readback={_hx(rb)}",
                 )
-            await self._restore_check(name, reg.addr, cur, 8, True)
+            await self._restore_check(name, reg.addr, cur, 8, None)
         self.base_writes = legal
         self._chk(
             "CHK-BASE-CONFIG-LEGAL",
@@ -624,6 +655,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                 f"reg={name} bresp={RESP_NAME[resp]} before={_hx(before)} after={_hx(after)}",
             )
             if reg is self.ss_cfg:
+                pre = await self._rd("SS_CONFIG_RESTORE_PRE", reg.addr, 4)
                 await self._wr(
                     "SS_CONFIG_RESTORE",
                     reg.addr,
@@ -631,10 +663,9 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                     8,
                 )
                 got = await self._rd("SS_CONFIG_RESTORE_RB", reg.addr, 4)
-                assert got == self._pre(reg), f"SS_CONFIG restore reads 0x{got:x}"
-                self.restored += 1
+                self._restore_word(name, pre, got, self._pre(reg), None)
             else:
-                await self._restore_check(name, reg.addr, self._pre(reg), 8, True)
+                await self._restore_check(name, reg.addr, self._pre(reg), 8, None)
         m = len(self.narrow_regs)
         n = len(self.narrow_resps)
         assert n == PLANNED_NARROW, f"{n} narrow writes, the plan has {PLANNED_NARROW}"
@@ -643,9 +674,16 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             f"{n}/{PLANNED_NARROW} planned writes over {m} registers each with one legal B "
             f"response; the plan excludes the not-driven REFERENCE_COUNTER WSTRB 0x01",
         )
-        assert self.restored == 20, f"{self.restored} registers restored, the plan has 20"
+        assert self.restored == 15, (
+            f"{self.restored} restores of a register its strobed writes changed, the plan has 15"
+        )
+        assert len(self.held) == 5, f"{len(self.held)} restores of a held value, the plan has 5"
         self._chk(
-            "CHK-FULL-WIDTH-RESTORE", f"{self.restored} registers restored and read back equal"
+            "CHK-FULL-WIDTH-RESTORE",
+            f"{self.restored} registers restored and read back equal, each read before its "
+            f"restore differing from the saved value in its writable bits; {len(self.held)} "
+            f"restores rewrite the value the register already holds and are not counted "
+            f"({' '.join(self.held)})",
         )
         self._chk_obs("CHK-OBS-PLAIN-STROBE", "OBS-PLAIN-STROBE")
         self._chk_obs("CHK-OBS-ZERO-STROBE", "OBS-ZERO-STROBE")

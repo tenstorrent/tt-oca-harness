@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_001 ANCHOR: smc_primary_reset_inflight_links_test
-# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 97e75a36398267c45e740fb2003cfcd146c9d47ae0d5c37fbb90b6a17c9ddf70
+# DV-TESTCASE-CONTRACT-REVISION: 6 RECORD-SHA256: 0a97ea48eab93d459baedd49eb405d5525d712830957b6d13e49c9e69853e4e3
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Primary reset entered three ways while accesses are pending on every steerable AXI link.
 
@@ -19,7 +19,8 @@ fabric), so the accesses that reach SYS_OUT go through JTAG_IN. The SYS_IN read 
 is a pending item whose DECERR response is held at the SYS_IN response channel.
 
 Graded: the 31-sample pulse leaves every reset released; the primary reset effects on
-``CPU_CTRL.SCRATCH[0]`` and the hang-detector threshold; one fresh write and read per link
+``CPU_CTRL.SCRATCH[0]`` and the hang-detector threshold after each of the three entries (the
+FLR cool reset feeds the primary reset, clk_rst.adoc); one fresh write and read per link
 after each release; no response without a request; DUT-driven VALIDs low while
 ``rst_primary_smc_clk_no`` is low; the pending set armed at the assertion. Pending-phase
 fates, the release latency, the override order and the VALIDs at the first reset edge are
@@ -1139,30 +1140,32 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             )
 
         flr = recs["flr"]
+        scratch_before, threshold_before = self.ref_rb["flr"]
         if (
             flr.cool_low_ref <= 0
             or flr.mon.window_samples == 0
             or flr.isolate_after != ISOLATE_SMC_BIT
             or flr.isolate_cleared != 0
+            or (scratch_before, threshold_before) != (SCRATCH_REF, THRESHOLD_REF)
+            or (flr.scratch_after, flr.threshold_after) != (SCRATCH_RESET, THRESHOLD_RESET)
         ):
             fails.append(
                 f"CHK-FLR-ENTRY-PRIMARY: cool low {flr.cool_low_ref} ref, primary low "
                 f"{flr.mon.window_samples}, ISOLATE_REQ_SMC 0x{flr.isolate_after:x} -> "
-                f"0x{flr.isolate_cleared:x}"
+                f"0x{flr.isolate_cleared:x}, SCRATCH[0] 0x{scratch_before:x} -> "
+                f"0x{flr.scratch_after:x} (want 0x{SCRATCH_REF:x} -> 0x{SCRATCH_RESET:x}), "
+                f"threshold 0x{threshold_before:x} -> 0x{flr.threshold_after:x} (want "
+                f"0x{THRESHOLD_REF:x} -> 0x{THRESHOLD_RESET:x})"
             )
         lines.append(
             (
                 "CHK-FLR-ENTRY-PRIMARY",
                 f"cool_from_flr low {flr.cool_low_ref} ref cycles, primary low, ISOLATE_REQ_SMC "
-                f"0x{flr.isolate_after:x} -> 0x{flr.isolate_cleared:x}",
+                f"0x{flr.isolate_after:x} -> 0x{flr.isolate_cleared:x}, SCRATCH[0] "
+                f"0x{scratch_before:X} -> 0x{flr.scratch_after:x}, threshold "
+                f"0x{threshold_before:x} -> 0x{flr.threshold_after:x} (pre-reset values read "
+                f"back after writing 0x{SCRATCH_REF:X}/0x{THRESHOLD_REF:x})",
             )
-        )
-        cocotb.log.info(
-            "FLR entry: SCRATCH[0] 0x%x -> 0x%x and threshold 0x%x -> 0x%x across the reset",
-            self.ref_rb["flr"][0],
-            flr.scratch_after,
-            self.ref_rb["flr"][1],
-            flr.threshold_after,
         )
 
         def fresh(token, attr, link):

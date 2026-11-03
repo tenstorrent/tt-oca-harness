@@ -11972,15 +11972,17 @@ IHI 0022 burst footprint unchanged.
   `ISOLATE_REQ_VIS`/`ISOLATE_REQ_FLR_COUNTER_VALUE`, WSTRB=0x0F to the misc pairs, WSTRB=0x30 to
   the cold pair, WSTRB=0xF0 all-ones to `CPU_CTRL.SCRATCH[12]`, and a 64-bit read of each misc pair.
 * GPIO burst slots 20..22 (k = 20) with AxPROT privileged: INCR write and read from slot 20 + 0x8,
-  FIXED write and read of the slot 21 word, WRAP write and read (AxLEN=1) from slot 21 + 0x8. Every
-  write carries the values read before it. The burst slots 20..22 and the neighbour slots 19 and 23
+  FIXED write and read of the slot 21 word, WRAP write and read (AxLEN=1) from slot 21 + 0x8. The
+  INCR write carries, for each register of its footprint, a value that differs from that register's
+  seed and from every seeded value outside the footprint and keeps `use_reg_tx` set whenever
+  `use_reg_core2pad` is; the FIXED and WRAP writes carry the values read before them. The burst slots 20..22 and the neighbour slots 19 and 23
   are seeded from SEP_IN before the bursts with distinct non-zero values of the writable fields the
   generated header names, `DATA_CTRL` (`core2pad`, `interrupt_type`), `DATA_CTRL_ENABLE`
   (`use_reg_*`, `use_reg_tx` set whenever `use_reg_core2pad` is) and `ACCESS_FILTER`
   (`awprot_requirement`, `arprot_requirement`), with `interface_enable`, `enable_rx_tx` and both
   filter enables 0, each differing in its seeded fields from both halves of every beat, and
-  restored afterwards. Every slot register outside a write footprint is compared with its seed
-  read-back. `DATA_CTRL` `pad2core` and `lsio_enable` are read-only fields
+  restored afterwards. Every slot register outside a write footprint is compared with its
+  reference: the seed read-back, or the value an earlier write of the same port left in it. `DATA_CTRL` `pad2core` and `lsio_enable` are read-only fields
   that the pad and LSIO hardware drive, so every unchanged `DATA_CTRL` compare (bank and slot 64)
   excludes them.
 * Scratchpad: INCR write and read with AxLEN 0, 7 and 255 crossing 64-byte stripes in one page,
@@ -12069,14 +12071,16 @@ register, and the protocol, out-of-footprint and liveness terms are graded for e
 |`CHK-BT-STRB-UPPER` |WSTRB=0xF0: OKAY, +4 takes D[63:32], +0 keeps its value (`ISOLATE_REQ_VIS`
 its reset value); WSTRB=0x0F: +0 takes D[31:0], +4 kept; WSTRB=0x30: +0 kept; CPU-control
 `SCRATCH` reads bits [63:32]=0 and its value in [31:0]; the 64-bit pair read assembles +0 and +4
-|`CHK-BT-GPIO` |GPIO burst protocol as above, and every register of the seeded slots k-1..k+3
-(19..23) outside a write footprint keeps its seed, which no beat carries; liveness OKAY
+|`CHK-BT-GPIO` |GPIO burst protocol as above; an INCR write that answers OKAY leaves each footprint
+register holding its beat's value in its seeded fields; every register of the seeded slots k-1..k+3
+(19..23) outside a write footprint keeps its reference, which no beat carries; liveness OKAY
 |`CHK-BT-SPM` |INCR: OKAY and every beat reads the data written; WRAP and FIXED: protocol held and
 the guard words outside the window or the neighbouring words kept; narrow and strobed writes change
 only the strobed bytes with OKAY; the ROM write answers one B with SLVERR and the ROM words are
 unchanged; liveness OKAY
-|`CHK-BT-SLOTEDGE` |Slot-edge burst protocol, every register of slots k-1..k+2 outside the
-footprint keeps its reference, liveness OKAY
+|`CHK-BT-SLOTEDGE` |Slot-edge burst protocol; an INCR write that answers OKAY leaves each writable
+footprint register holding its beat's lane in its seeded fields; every register of slots k-1..k+2
+outside the footprint keeps its reference, liveness OKAY
 |`CHK-BT-EXTENTEDGE` |Extent-edge burst protocol, every writable register below the burst start
 reads back the seed it held before the burst (a value no beat carries), liveness OKAY; the line
 reports the number of compares that can fail; the read-only `NDMRESET_REQUEST` and
@@ -17423,11 +17427,11 @@ reported as the precondition.
 
 *Test Coverage*:
 
-* Contract `SMC_SEP_SCN_001` revision 5 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). Three entries: `rst_cool_ni` low for 40 `clk_ref_i` samples, `tb_jtag_reset_ctrl` cool override enable with value 0 written in one packed store, and `tb_cfg_flr_pf_active` raised with `ISOLATE_REQ_FLR_COUNTER_VALUE` 0x20 and `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` 0x40.
+* Contract `SMC_SEP_SCN_001` revision 6 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). Three entries: `rst_cool_ni` low for 40 `clk_ref_i` samples, `tb_jtag_reset_ctrl` cool override enable with value 0 written in one packed store, and `tb_cfg_flr_pf_active` raised with `ISOLATE_REQ_FLR_COUNTER_VALUE` 0x20 and `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` 0x40.
 * Pending set armed before every entry: two SEP_IN reads and a UART0 read held by `tb_sep_axi_r_hold`, a SEP_IN write whose W beat trails its AW, three SYS_IN reads held by `tb_sys_axi_r_hold`, two JTAG_IN reads and an eFuse JTAG read whose response is not accepted, a JTAG_IN read of 0xB000_0000 held at the SYS_OUT responder, and a SYS_IN read of the DTP CSR window that no responder answers. The leaf requires each response pending, the SEP_IN write's AW accepted with no W handshake, the SYS_OUT AR accepted and the DTP link active, before the source is driven.
 * SYS_IN and SEP_IN answer an address outside the SMC window with DECERR (`fabric.adoc`, input fabric), so the SYS_OUT leg is driven from JTAG_IN: the pending read of 0xB000_0000 and the fresh write and read of 0xB000_0008 go JTAG_IN to SYS_OUT, which is why JTAG_IN carries two planned pending items. The SYS_IN read of 0xB000_0000 is a pending SYS_IN item whose DECERR response is held at the SYS_IN response channel.
 * A 31-sample pulse on `rst_cool_ni`, one sample under the 32-sample de-glitcher, leaves `rst_primary_smc_clk_no`, `rst_primary_ref_clk_no` and `rst_cold_n_o` at 1 on all 95 `clk_ref_i` edges from the fall to 64 edges after the rise.
-* The primary-reset effects: `tb_cpu_core_reset_n` reads 0 at every sample of the window with `rst_cold_n_o` at 1, `CPU_CTRL.SCRATCH[0]` goes from 0xC001_0001 to its reset and `HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD` from 0x2345 to its reset 0x1000; the FLR entry sets `ISOLATE_REQ_SMC_REG` and a written 1 clears it.
+* The primary-reset effects, after each of the three entries (the FLR cool reset feeds the primary reset, `clk_rst.adoc`): `tb_cpu_core_reset_n` reads 0 at every sample of the window with `rst_cold_n_o` at 1, `CPU_CTRL.SCRATCH[0]` goes from 0xC001_0001 to its reset and `HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD` from 0x2345 to its reset 0x1000; the FLR entry sets `ISOLATE_REQ_SMC_REG` and a written 1 clears it.
 * After each release a fresh write and read complete OKAY on SEP_IN, SYS_IN, JTAG_IN and SYS_OUT (the SYS_OUT write and read counters each advance by one), each read returning the word written on that entry: every entry writes its own word (the entry number in bits 15:12 of the base word), so a write that does not land cannot read back a word an earlier entry left, the eFuse JTAG read returns its pre-reset word, the UART0 register reads its reset, and a fresh read of the DTP window reaches the link again. The sampler counts AR, AW and B handshakes and R completions (RLAST, or the SYS_OUT read counter) per link from the assertion and requires R not above AR and B not above AW at every edge; the fresh phase adds AR/R/AW/B 1/1/1/1 on SYS_IN, JTAG_IN, SEP_IN and SYS_OUT and 1/1/0/0 on the eFuse JTAG link, whose fresh access is a read only. `CHK-NO-ORPHAN-RESPONSE` prints the measured deltas per link and entry. The cores boot from the bench ROM after each release, so SYS_OUT also carries instruction fetch bursts outside the fresh windows.
 * The DTP read left pending by one entry's fresh phase is the next entry's pending DTP item, and the FLR counters are re-armed before it: a SEP_IN read of `ISOLATE_REQ_SMC_REG` issued while a DTP read was pending was not answered within the bench timeout.
 * VALID low while the reset is asserted: B and R of SYS_IN, JTAG_IN, SEP_IN and the eFuse JTAG link and of the L2 frontend link from the first sample; AW, W and AR of SYS_OUT, the peripheral crossbar link and the DTP link from the second sample, because a synchronous-reset master may clear its request on the first edge. The CPU MMIO link is sampled and printed but not graded: its rows are not driven in this revision (see Known Limitations).
@@ -17451,7 +17455,7 @@ reported as the precondition.
 |`CHK-COOL-GLITCH-NO-ASSERT` |After a 31-sample low pulse the primary resets and `rst_cold_n_o` read 1 at all 95 sampled `clk_ref_i` edges, and `SCRATCH[0]` reads the reference value both before the pulse (the read-back of its write) and after it
 |`CHK-COOL-PIN-PRIMARY-EFFECTS` |After the 40-sample pin the primary reset is asserted with `rst_cold_n_o` at 1, the cores are held at every sample, `SCRATCH[0]` reads 0x0 (was 0xC001_0001) and the threshold reads 0x1000 (was 0x2345); the "was" values are the pre-reset read-backs, graded on the line
 |`CHK-JTAG-COOL-OVERRIDE-ENTRY` |With the pin and FLR idle the override value 0 asserts the primary reset with the same effects as the pin, the pre-reset read-backs graded on the line; `rst_cool_ni` 1 and `tb_cfg_flr_pf_active` 0 sampled at the assertion are graded and printed as `CTRL-JTAG-ENTRY-SOURCES-IDLE`
-|`CHK-FLR-ENTRY-PRIMARY` |The FLR edge drives `tb_rst_cool_from_flr` low then high with the primary reset asserted; `ISOLATE_REQ_SMC_REG` reads 0x1 after the edge and 0x0 after a written 1
+|`CHK-FLR-ENTRY-PRIMARY` |The FLR edge drives `tb_rst_cool_from_flr` low then high with the primary reset asserted; `ISOLATE_REQ_SMC_REG` reads 0x1 after the edge and 0x0 after a written 1; because the FLR cool reset feeds the primary reset (`clk_rst.adoc`), `SCRATCH[0]` reads 0x0 (was 0xC001_0001) and the threshold reads 0x1000 (was 0x2345) after the release, as for the pin; the "was" values are the pre-reset read-backs, graded on the line
 |`CHK-FRESH-ACCESS-SYS-IN` |After each entry a fresh SYS_IN write completes OKAY and the read returns the word written on that entry, a different word per entry
 |`CHK-FRESH-ACCESS-JTAG-IN` |The same on JTAG_IN
 |`CHK-FRESH-ACCESS-SEP-IN` |The same on SEP_IN, with `tb_cpu_l2_pending_ar` and `tb_cpu_l2_pending_aw` at 0 once the read returns
@@ -17582,7 +17586,7 @@ reported as the precondition.
 
 *Test Coverage*:
 
-* Contract `SMC_SEP_SCN_003` revision 5 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). The cores boot from the bench ROM; no firmware image is staged and the leaf runs without `+smc_hold_cpu_boot`.
+* Contract `SMC_SEP_SCN_003` revision 6 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). The cores boot from the bench ROM; no firmware image is staged and the leaf runs without `+smc_hold_cpu_boot`.
 * Core hold: `RESET_CTRL.core3_reset_n` cleared for 512 sampled edges with SEP_IN and SYS_IN scratchpad write-read pairs, a SEP_IN read and write of the core-3 bus error unit, the core-3 watchdog compare read, and `RESET_TIMEOUT` read at the start, middle and end; no isolate request, isolate or timeout flag.
 * Core pulse: the start bit with the reset pulse counts at their reset values (17 samples at 0), a read-modify-write that starts no second assertion in 128 edges, `post_reset_count` 0x00FF (256 samples) polled over SEP_IN through `core_resets_done`, a start bit with `core3_reset_n` 0, and a start bit written twice.
 * Timer-off: `RESET_TIMEOUT` 0, `tb_sep_axi_r_hold` set and four SEP_IN reads parked in the L2 frontend; the uncore bit cleared and the reset withheld for 1024 sampled edges; a fifth read (`FIFTH_ID`) issued after the isolate request. `tb_cpu_l2_pending_ar` must never exceed 4 and the fifth read must complete after the reconnect with its reference data; the front IDs of the four parked reads bind the SEP_IN ID to its front-port ID, and the fifth read's front-port AR sample relative to the isolate request, the apply and the reconnect is `OBS-L2F-FIFTH-READ` (SF-005), never compared. Once more with a core 3 pulse started just before the bit is cleared.
@@ -17622,7 +17626,7 @@ reported as the precondition.
 |`CHK-GIVEUP-REPORT-AND-WAIT` |After the timer expired the probes read `reset_timeout` 1 and `reset_applied` 0 with the uncore reset still 1; after the drain the probes read both 1 until the bit is set
 |`CHK-DRAIN-PENDING-READS-COMPLETE` |Every isolate-pending parked read delivers its front-port RLAST before the uncore reset applies, counting only reads the bench had released; `tb_cpu_l2_pending_ar` reads 0 at the drained sample and its peak equals the number of parked reads whose front-port RLAST precedes drained; all four parked reads reach the front port; a read the front port accepted that the isolate never counted (`OBS-DRAIN-FRONTPORT-ACCEPTED-NOT-PENDING`, SF-005, SF-006) completes after the reconnect with its reference data; a read still bench-held is `OBS-DRAIN-BENCH-HELD`
 |`CHK-BLOCKED-NOT-TERMINATED-THEN-RECONNECT` |The three reads are presented while isolated (each port's ARVALID, JTAG_IN included, sampled high on the read address with `tb_cpu_l2_isolated` at 1 inside the 256-edge window; the line prints each sample), get no R, error or B in 256 edges, the isolation holds while the uncore bit is 0, and after the reconnect the three reads complete with their reference data and a fresh SEP_IN read completes
-|`CHK-STATUS-READABLE-FROM-SEP` |The graded `RESET_TIMEOUT` and `CORE_RESET_PULSE_COUNT` reads (S6 while applied and isolated before the blocked reads, and after each reconnect) are issued only when no request of any manager is stalled at the front port and no bench hold is active, complete OKAY with the written timeout fields and the pulse counts, and read `reset_applied` 1 while applied and 0 after the reconnect; every other status read is `OBS-STATUS-READ-UNDER-STALL: port=<p> completed=<sample|never> stalled_request=<reads|none> sf=SF-026` with a bounded observation wait, never graded
+|`CHK-STATUS-READABLE-FROM-SEP` |The graded `RESET_TIMEOUT` and `CORE_RESET_PULSE_COUNT` reads (S6 while applied and isolated before the blocked reads, and after each reconnect) are issued only when no request of any manager is stalled at the front port and no bench hold is active, and all three must be graded: a front-port request still stalled or a bench hold still active at any of them fails the checker, with the stalled request named on the line; the graded reads complete OKAY with the written timeout fields and the pulse counts, and read `reset_applied` 1 while applied and 0 after the reconnect; the read issued at a stalled point is still printed as `OBS-STATUS-READ-UNDER-STALL: port=<p> completed=<sample|never> stalled_request=<reads|none> sf=SF-026` after a bounded observation wait, never graded
 |`CHK-OBS-VALID-UNCORE-SW` |One `OBS-VALID-UNCORE-SW: edges=<n> high=<list|none> xz=<n> sf=SF-019` line over the drained software uncore resets (L2 frontend BVALID / RVALID, CPU MMIO AWVALID / WVALID / ARVALID); observation only, SF-003 and SF-019
 |`CHK-COLD-ISOLATION-RELEASE` |`tb_cpu_l2_isolated` reads 1 from its first isolated sample, which must precede the later of the uncore reset release and `smc_init_mem_done_o`, until that later event, falls within the bound after it (the line prints the uncore reset sample, the first isolated sample, the later event and the release), and a SEP_IN scratchpad read completes after the release; the edge count is `OBS-COLD-ISOLATION-RELEASE: later=<event> edges=<n> stated=4 ruling=#3425-item-6`, never compared
 |`CHK-OBS-TIMEOUT-EXPIRY` |One `OBS-RESET-TIMEOUT-EXPIRY` line; observation only, SF-028
@@ -43545,7 +43549,7 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 
 *Test Coverage*:
 
-* Contract `SMC_SEP_SCN_006` revision 1 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`).
+* Contract `SMC_SEP_SCN_006` revision 2 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`).
 * RESET_VECTOR[0..3], SCRATCH[0..3], REFERENCE_COUNTER and DUMMY_ROM_NULL[0..3] take 0xA1B2_C3D4_E5F6_0718 with WSTRB 0x0F, 0xF0, the eight single bytes and 0x00, each followed by a read and a full-width restore of the saved value; REFERENCE_COUNTER takes bytes that differ from its pre-write lanes above lane 0, polled until they read back, without WSTRB 0x01 and with WSTRB 0x00 last.
 * SS_CONFIG, ISOLATE_REQ_REG and ISOLATE_REQ_PINEN_REG take lane 0 and lane 1 writes on the 64-bit link (the lock lane always 0) and a full 64-bit write at SS_CONFIG; GLOBAL_BASE and REGION_SIZE take their own value under four half-word strobes, eight byte strobes and 0x00, with REGION_SIZE a power of two and GLOBAL_BASE aligned after each; SCRATCH[0], SS_CONFIG and inbound filter entry 15 START_ADDR take 0x5A5A_5A5A_5A5A_5A5A with WSTRB 0x00.
 * Core 3 watchdog (`wdt.adoc`): KEY then COUNT with all strobes; COUNT strobes 0x07, 0x03, 0x01 change nothing and keep the unlock; CMP and SCALED_COUNT bytes 0 and 1 are effective, byte 0 only and bytes 2 and 3 are not; CTRL takes byte 0 and byte 1 on their own; a 64-bit write at 0x18 leaves the watchdog locked; WSTRB 0x00 changes none of the seven registers and keeps the unlock; a locked write changes nothing.
@@ -43572,7 +43576,7 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 |===
 |Checker |Description
 |`CHK-NARROW-WRITE-ACCEPTED` |Every write of the plain-register steps, WSTRB 0x00 included, receives one B response of OKAY, SLVERR or DECERR (never EXOKAY) within the bound; the code is logged
-|`CHK-FULL-WIDTH-RESTORE` |After the full-width restore 20 registers read exactly their saved value (REFERENCE_COUNTER excluded)
+|`CHK-FULL-WIDTH-RESTORE` |15 registers changed by their strobed writes read, before the full-width restore, a value that differs from the saved value in their writable bits, and read exactly the saved value after it: RESET_VECTOR[0..3], SCRATCH[0..3], DUMMY_ROM_NULL[0..3], SS_CONFIG, ISOLATE_REQ_REG and ISOLATE_REQ_PINEN_REG. The restores of GLOBAL_BASE and REGION_SIZE (each written with its own value under every strobe) and of SCRATCH[0], SS_CONFIG and filter entry 15 START_ADDR after their WSTRB 0x00 write rewrite a value the register already holds by construction, so they prove nothing about a write landing: their readback is still compared and printed, but they are listed apart and not counted. Each restore prints `INFO-RESTORE-WORD: reg=<r> pre=<v> post=<v> saved=<v> counted=<yes|no>`; REFERENCE_COUNTER is excluded
 |`CHK-BASE-CONFIG-LEGAL` |After each of the 26 base-configuration writes REGION_SIZE is a non-zero power of two and GLOBAL_BASE is aligned with it
 |`CHK-WDT-KEY-UNLOCK-COUNT` |KEY 0x51F15E reads 1, COUNT 0x1234 reads back and KEY then reads 0
 |`CHK-WDT-PARTIAL-COUNT-IGNORED` |COUNT strobes 0x07, 0x03 and 0x01 answer OKAY, keep COUNT 0x1234 and keep KEY 1
