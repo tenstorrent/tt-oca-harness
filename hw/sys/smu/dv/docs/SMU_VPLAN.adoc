@@ -40,7 +40,7 @@ external SMN fabric is driven by the shared AXI VIP. Four surfaces are covered
 on the wrapper, plus the SEP firmware set:
 
 . *Fabric and address decode* — external SMN AXI into SMC, ID-width conversion,
-  crossbar error handling, ATOP rejection, alias remap and the inbound and
+  crossbar error handling, alias remap and the inbound and
   outbound filters, driven both from the external port and through JTAG2AXI.
 . *SMC under SMU* — bring-up, reset control, mailbox, watchdog, GPIO straps and
   the security demote path, reached through the SMU rather than at the SMC
@@ -107,7 +107,7 @@ Checker contracts in this plan are written against these known ways a check can 
 
 *A guard whose own constructor makes it unfalsifiable.* Non-vacuity must not rest on a relation the configuration builder already guarantees: a value required to differ from a pattern the builder constructs so that it always differs, or a non-zero check on a field the builder never sets to zero. `smu_filter_cfg_register_map_test` and `smu_remap_cfg_register_map_test` write a value unique to each register and require it back at its own address only, so a register stuck at another register's value fails rather than passes.
 
-*A stimulus with no fan-out.* Driving a pin that is unread in the configuration under test and asserting that two observables did not move is a DV-invented scenario, not a specification claim. `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package has no ATOP driver, so the Matrix carries F4 ATOP reject as NO credit instead of a check that "ATOP is refused"; and `smu_otp_vs_fabric_map_race_test` states that the concurrency its name suggests has no stimulus on this bench and grades only the last-writer contract it can produce.
+*A stimulus with no fan-out.* Driving a pin that is unread in the configuration under test and asserting that two observables did not move is a DV-invented scenario, not a specification claim. `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` as the `smu_axi_in` boundary contract (`doc/integrator/src/smu-composition.adoc`, AXI boundary contract) requires: `AWATOP` must be 0, and the SMU neither refuses nor answers an atomic, since `hw/sys/smu/rtl/smu_axi_xbar.sv` builds the crossbar with `ATOPs(1'b0)` and an atomic is forwarded as an ordinary write whose read data never returns. The Matrix therefore carries F4 ATOP as OUT by contract instead of a check that "ATOP is refused"; and `smu_otp_vs_fabric_map_race_test` states that the concurrency its name suggests has no stimulus on this bench and grades only the last-writer contract it can produce.
 
 *A tolerance wider than the signal.* A post-event bound above the count the window actually reaches passes when the event is ignored. A wait bound is a termination bound, not a tolerance: `smu_dtp_sysreset_stop_clks_test` grades the return of `dtp_stop_clks_o` on the third `clk_smu_i` edge the documented request latency gives, not "within a bound", and the `CHK-TIMEOUT-PATHS` rows of the depth entries require every wait to finish inside its bound with the last state recorded.
 
@@ -335,7 +335,7 @@ Signoff Package; this table is the credit decision.
 |F2 Real SEP under SMU |`smu_sep_smoke_test` |`fw_boot`, `all` |none |`SEP_BOOT_ROM_OK` (F1 observe / F6 export on the wrapper) |NO. OUT of `hosted` credit: the leaf boots SEP firmware, so its `c_build` stage needs the RISC-V toolchain and it sits in `fw_boot` / `all`, which no workflow schedules; `regress.yml` schedules `hosted` alone
 |F3 DTP debug and test access |PTAP / STAP / BSR / JTAG2AXI / OTP / boot-stall / IC_RESET cluster |`hosted` |`smu_dbg_fcov` (`c_jtag2axi_write_reaches_smc_csr`, `c_jtag2axi_read_returns_csr_value`, `c_smc_otp_read_response_returned`, `g_sep.c_sep_otp_read_response_returned`), `smu_dtp_fcov` override slice (`c_ovrd_field_present`, `c_val_field_active_low`), `smu_boot_fcov` (`c_boot_stall_jtag_applied`, `c_boot_stall_jtag_released`, `g_sep.c_lc_sigint_err`) |`CHK-DTP-JTAG-PTAP-S1`, `STALL_COLD_STICKY`, `CHK-OTP-SMC-MAP-RW`, `CHK-LC-SIGINT-SMC-OTP-CLOSED`, `J2A_*` |YES
 |F4 AXI fabric |ID convert, filters, alias remap, fabric BAR |`hosted` |`smu_xbar_fcov` (`c_map_smc_base_programmed`, `c_axi_in_aw_accept`, `c_axi_in_rresp_okay`, `c_axi_in_bresp_decerr`, `c_no_route_ext_in_to_ext_out`), `smu_alias_fcov` (`g_sep.c_alias_path_bypasses_xbar`, `g_sep.c_sep_access_outside_window_observed_at_xbar`), `smu_ext_fcov` `c_inbound_id_width_8` |`AXI_ID_WIDTH_OK`, `AXI_NON_ATOP_OK` (non-ATOP path completes), `AXI_FILTER_OKAY` |YES for the SEP=1 fabric. The SEP=0 shape (`smu_axi_xbar` absent, direct ID converters) is OUT: no target elaborates it
-|F4 ATOP reject — no stimulus path |`smu_axi_atomic_operation_test` covers the non-ATOP path only |`hosted` |none |none — `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package has no ATOP driver |NO
+|F4 ATOP — OUT by contract |`smu_axi_atomic_operation_test` covers the non-ATOP path only |`hosted` |none |none — the `smu_axi_in` boundary contract (`doc/integrator/src/smu-composition.adoc`, AXI boundary contract) requires `AWATOP` = 0, and the SMU neither refuses nor answers an atomic (`hw/sys/smu/rtl/smu_axi_xbar.sv` builds the crossbar with `ATOPs(1'b0)`: an atomic is forwarded as an ordinary write and its read data never returns); `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` as the contract requires |OUT by contract: the SMU has no rejection to grade
 |AXI4 protocol on the SMU crossbar and boundary links |<<sec-113-smu_axi_out_addr_len_size_test,`smu_axi_out_addr_len_size_test`>>, <<sec-122-smu_smc_inbound_window_sweep_test,`smu_smc_inbound_window_sweep_test`>>, <<sec-050-smu_dtp_jtag2axi_smc_rw_matrix_test,`smu_dtp_jtag2axi_smc_rw_matrix_test`>>, <<sec-079-smu_wrapper_jtag_ptap_test,`smu_wrapper_jtag_ptap_test`>>, <<sec-093-smu_sep_bidirect_test,`smu_sep_bidirect_test`>> |`fabric`, `dtp_under_smu`, `sep_probe`, `sep_real_fw`, `hosted`, `all` |none (protocol checker, no coverage point) |`CHK-AXI-SVA-SMU-IN`, `CHK-AXI-SVA-SMU-OUT`, `CHK-AXI-SVA-XBAR-SEP-OUT`, `CHK-AXI-SVA-XBAR-SMC-OUT`, `CHK-AXI-SVA-XBAR-EXT-IN`, `CHK-AXI-SVA-XBAR-SEP-IN`, `CHK-AXI-SVA-XBAR-SMC-IN`, `CHK-AXI-SVA-XBAR-EXT-OUT`, `CHK-AXI-SVA-SEP-TO-SMC`, `CHK-AXI-SVA-DTP-DBG` |YES on VCS only, for all ten ports, from the VCS `all` run of record (`--dut smu --tool vcs --items all`, <<smu-dv-functional-coverage-plan>>): the rules and the `+axi_sva_need_*` gates exist only on VCS, the `hosted` workflow runs on Verilator and grades none of them, and the `smu_wrapper_jtag_ptap_test` and `smu_sep_bidirect_test` drivers sit in `sep_probe` / `sep_real_fw`, OUT of `hosted` credit
 |F5 SMC↔SEP interop |`smu_sep_bidirect_test`, `smu_sep_smc_notify_test` |`sep_real_fw`, `all` |none |none in `TEST_EVIDENCE`; the verdict is the firmware's terminal loop |NO. OUT of `hosted` credit: both leaves run SEP DV firmware, so they need the RISC-V toolchain and sit in `sep_real_fw` / `all`, which no workflow schedules
 |F6 Cross-trigger and clock-stop |`smu_clock_stop_coordination_test`, `smu_xtrig_ctm_illegal_phase_test`, `smu_xtrig_ctm_remap_test` |`hosted` |`smu_clkstop_fcov` (`c_clk_stop_req_delivered`, `c_stop_clks_from_debug_control`, `c_stop_clks_released`), `smu_dtp_fcov` CTP points (`c_ctp_req_out_width_16`, `c_ctp_ack_in_width_16`, `c_ctp_unused_input_tied_zero_inert`) |`CHK-DTP-BOOT-STALL-S1`, `XT_ILLEGAL_PHASE`, `XT_CTM_REMAP` |YES
@@ -653,7 +653,7 @@ row's EXPECT sentence is worth, read the check.
 * `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0`, the flat `s_axi` port list carries no ATOP pin, and the package has no ATOP driver, so no ATOP transaction reaches the DUT.
 * This test makes no claim about ATOP rejection; a green run here is not ATOP non-support credit.
 * What it proves: with the SMC aperture and an INBOUND0 window programmed over JTAG, a plain 32-bit read of `VERSION_LO` on the SMN path is answered OKAY with the register's reset value, and the RID sampled off the live R channel mirrors the ARID issued.
-* DECERR / err_slv poison deny semantics stay OUT for this leaf: no ATOP can be driven to provoke them.
+* DECERR / err_slv poison deny semantics stay OUT for this leaf: the `smu_axi_in` boundary contract requires `AWATOP` = 0 and the SMU neither refuses nor answers an atomic, so no deny path exists to provoke.
 
 *Test Procedure*:
 
@@ -12132,9 +12132,9 @@ A disposition says what is done about the missing observation. `ADD-PORT`: a tes
 |PERMANENT-HOLE on the hosted set
 |The `DEMOTE_1` and `DEMOTE_2` registers are reachable only over the SEP debug system bus, and the SEP STAP is closed in PROD; without SEP firmware no master reaches them. `smu_sep_lcc_flow_test` (`sep_real_fw`, outside `hosted`) proves the DEMOTE lock from firmware; `smu_lc_demote_test_dev_test` proves the demotion in TEST_DEV, where the STAP is open.
 |FABRIC
-|ATOP rejection on `smu_axi_in`.
-|ADD-PORT
-|No ATOP driver exists and `aw.atop` is tied to `'0` in `tb/tb_wrapper_top.sv`. A driver of `aw.atop` on the external VIP is the hook that would give the observation; the Matrix carries the feature as NO credit until then.
+|ATOP on `smu_axi_in`.
+|PERMANENT-HOLE
+|The `smu_axi_in` boundary contract (`doc/integrator/src/smu-composition.adoc`, AXI boundary contract) requires `AWATOP` = 0, and the SMU neither refuses nor answers an atomic (`hw/sys/smu/rtl/smu_axi_xbar.sv` builds the crossbar with `ATOPs(1'b0)`: an atomic is forwarded as an ordinary write and its read data never returns), so no rejection exists at the SMU boundary to observe. `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` as the contract requires; a driver of `aw.atop` would exercise a contract violation, not a design feature, and the Matrix carries F4 ATOP as OUT by contract.
 |FABRIC
 |Overlapping OTP and fabric JTAG2AXI writes to one map word.
 |PERMANENT-HOLE
@@ -12391,7 +12391,7 @@ disposition record.
 |F1 |SMC boot and firmware execution |IN (observe) |Bring-up, reset release, mailbox CSR, WDT, GPIO strap, OCTS free-run |SMC CPU firmware boot, ROM regression
 |F2 |Real SEP RTL under the SMU |OUT |— |SEP boot and firmware execution as credit: `smu_sep_smoke_test` retires SEP instructions on the wrapper, but it boots SEP firmware, so it needs the RISC-V toolchain and sits in `fw_boot` / `all`, outside `hosted`; observe-only
 |F3 |DTP debug and test access |IN |PTAP IDCODE/BYPASS, JTAG2AXI, OTP MAP, STAP, BSR select, boot-stall, IC_RESET, SEP DMI `IR=5'h11` |iJTAG model depth
-|F4 |AXI crossbar fabric |IN |External-port ID conversion through the crossbar, filters, ATOP reject, alias remap, fabric BAR |The crossbar routing matrix beyond the SMC aperture; the SEP=0 shape (direct ID converters, `smu_axi_xbar` absent), which needs `smu #(.CFG(smu_pkg::NoSepCfg))`, an elaboration this package does not build
+|F4 |AXI crossbar fabric |IN |External-port ID conversion through the crossbar, filters, alias remap, fabric BAR |ATOP: the `smu_axi_in` boundary contract (`doc/integrator/src/smu-composition.adoc`, AXI boundary contract) requires `AWATOP` = 0 and the SMU has no rejection to grade; the crossbar routing matrix beyond the SMC aperture; the SEP=0 shape (direct ID converters, `smu_axi_xbar` absent), which needs `smu #(.CFG(smu_pkg::NoSepCfg))`, an elaboration this package does not build
 |F5 |SMC↔SEP interoperability |OUT |— |Mailbox challenge-response and SEP→SMC notify (`smu_sep_bidirect_test`, `smu_sep_smc_notify_test`): SEP DV firmware leaves, which need the RISC-V toolchain and sit in `sep_real_fw` / `all`, outside `hosted`; observe-only
 |F6 |Cross-trigger and clock-stop |IN (pin-level) |Clock-stop coordination, product-pin CTM remap, illegal-phase corners |Four-phase CTM handshake / CLA loop (no product pin or frontdoor for CLA feedback or the CTM handshake)
 |F7 |Lifecycle and security |IN (eFuse-image stimulus) |LC_STATE export for TEST_DEV, PROD, PROD_END, RMA_SIP and RMA_CHIPLET; SIP_DIS / SYS_DIS single-bit images and their applicability per state; DEMOTE_1 / DEMOTE_2 over the SEP system bus; the SEC_DIS token over the SEP OTP bridge; the SECURE_TM strap (cards 171-182, `CHK-LC-*` tokens) |The SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`, needs `smu #(.CFG(smu_pkg::NoSepCfg))`, which this package does not build); the SEP-firmware lifecycle flow (`smu_sep_lcc_flow_test`, the `sep_lifecycle` and `sep_chain` groups), which needs the RISC-V toolchain and sits outside `hosted`
@@ -12600,7 +12600,7 @@ OTP error slave); both need `smu #(.CFG(smu_pkg::NoSepCfg))`, which this package
 build.
 
 [[smu-signoff-atop-reject-filter-allow]]
-==== ATOP reject and filter-allow
+==== ATOP contract and filter-allow
 
 Filter-allow positive control is enrolled:
 `smu_axi_filter_allow_ns_test` emits `CHK-SMU-ALLOW-NS-S1/S2/S3`;
@@ -12608,10 +12608,11 @@ the SYS_IN program / window / shrink leaves emit `AXI_FILTER_OKAY`
 via `CHK-AXI-FILTER-OKAY`.
 
 `smu_axi_atomic_operation_test` proves the supported class only
-(`AXI_NON_ATOP_OK`, RID==ARID). The TB ties
-`smu_axi_in_req.aw.atop = 0`; there is no legal ATOP driver on this
-DUT. ATOP reject / err_slv poison is **OUT** for the hosted set: a negative check
-needs a positive control, and no legal ATOP stimulus exists on this DUT.
+(`AXI_NON_ATOP_OK`, RID==ARID). ATOP is **OUT** by contract for the hosted set:
+the `smu_axi_in` boundary contract (`doc/integrator/src/smu-composition.adoc`, AXI boundary contract)
+requires `AWATOP` = 0, and the SMU neither refuses nor answers an atomic (`hw/sys/smu/rtl/smu_axi_xbar.sv` builds the crossbar with `ATOPs(1'b0)`: an atomic is forwarded as an ordinary write and its read data never returns),
+so there is no rejection or err_slv poison to grade. The TB ties
+`smu_axi_in_req.aw.atop = 0` as the contract requires.
 A green atomic test is not ATOP non-support credit.
 
 [[smu-signoff-smc-under-smu]]
@@ -12654,7 +12655,7 @@ DTP-under-SMU set in `hosted`. Block-level DTP signoff is the DTP package.
 
 ID-width, crossbar error, prot decode, alias remap, and fabric BAR are
 checked through `ocah_axi_vip`
-(`cocotb/seq_lib/smu_axi_helpers.py`). Filter-allow and ATOP reject are
+(`cocotb/seq_lib/smu_axi_helpers.py`). Filter-allow and the ATOP contract are
 covered above. SEP=1 3×3 xbar receives no release credit.
 
 [[smu-known-limitations]]
