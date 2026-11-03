@@ -516,6 +516,11 @@ Observation probe groups:
   `sep_dma_irq_error_lock_rand_test`, `sep_dma_abort_recovery_rand_test`,
   `sep_spi_dma_handshake_rand_test` and the FCOV sampler (`u_sep_fcov`,
   which reads `spi_tx_qd_probe_o` and `dma_busy_probe_o`).
+* SPI host alert tap (`spi_alert_tx_probe_o[1:0]`): the `fatal_fault` alert
+  sender output of the OpenTitan SPI host (`u_spi_host.alert_tx_o[0]`), bit 1
+  `alert_p` and bit 0 `alert_n`. `sep_ot_spi_wrap` leaves the alert port open,
+  so no CSR or port shows the alert. Monitor only: it drives nothing and adds
+  no force. Owner: `sep_spi_ot_host_csr_irq_rand_test` (CTRL-SPI-ALERT-REACH).
 * Secure DMA master tap (`dma_axi_req_probe_o`): the DMA master request after
   the DMA local-alias remap (net `dma_axi_req`, response `dma_axi_resp`): AR
   and AW VALID, READY, address, AxLEN and AxSIZE; W VALID, READY, WSTRB and

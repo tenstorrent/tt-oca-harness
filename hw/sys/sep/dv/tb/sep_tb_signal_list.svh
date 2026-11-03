@@ -1067,6 +1067,11 @@
 `SEP_TB_OUT(logic [7:0], spi_tx_qd_probe_o)
 `SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
 `SEP_TB_OUT(logic, dma_busy_probe_o)
+// OpenTitan SPI host fatal_fault alert sender output, observation-only:
+// [1] alert_p, [0] alert_n of u_spi_host.alert_tx_o[0]. sep_ot_spi_wrap leaves
+// the port open, so no CSR or port shows the alert that ALERT_TEST raises
+// (owner `sep_spi_ot_host_csr_irq_rand_test`).
+`SEP_TB_OUT(logic [1:0], spi_alert_tx_probe_o)
 // Secure DMA master request after the DMA local-alias remap (net
 // u_sep.dma_axi_req, response u_sep.dma_axi_resp), observation-only. Bit
 // layout, LSB first: [0] ar_valid, [1] ar_ready, [33:2] ar.addr, [41:34]

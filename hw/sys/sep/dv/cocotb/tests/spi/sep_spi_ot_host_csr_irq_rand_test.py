@@ -56,6 +56,9 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   (vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/
                   registers.md, ALERT_TEST). Controls: the ALERT_TEST write
                   gets a write response (CTRL-SPI-ALERT-RESP, else
+                  CTRL-MISSING); the fatal_fault alert pair of the SPI host
+                  (tap spi_alert_tx_probe_o) reads idle before the write and
+                  fired inside the window (CTRL-SPI-ALERT-REACH, else
                   CTRL-MISSING); INTR_TEST.ERROR at the same enable raises the
                   line inside the same window. The response code is logged
                   (OBS-SPI-ALERT-RESP): no specification states the response
@@ -105,7 +108,8 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       RXWM in two passes over five FIFO states; the
                       TXEMPTY-only, RXFULL-only, IDLE and READY sequences), and
                       0 after the mask step. STATUS must show the levels the
-                      stimulus names, else CTRL-MISSING.
+                      stimulus names, and every EVENT_ENABLE write must read
+                      back under the field mask, else CTRL-MISSING.
   L1 CHK-SPI-EVENT-SRC : five source steps each grade SPI_EVENT (the OR of
                       the STATUS levels of the selected sources), INTR_STATE.ERROR
                       0 and PIC source 14 before and after one level change:
@@ -371,6 +375,10 @@ _SPI_AGG = agg_from_pic("SPI IRQ")
 # clk_i cycles sampled after the ALERT_TEST write; the INTR_TEST control must
 # raise the SPI line inside the same window.
 _ALERT_WIN = 64
+# spi_alert_tx_probe_o encoding {alert_p, alert_n} of prim_alert_pkg::alert_tx_t:
+# idle is the sender reset value, an alert drives the pair to the opposite levels.
+_ALERT_TX_IDLE = 0b01
+_ALERT_TX_FIRED = 0b10
 
 # ---- Legs L1 to L4 -----------------------------------------------------------
 TEST = "sep_spi_ot_host_csr_irq_rand_test"
@@ -439,6 +447,7 @@ _CTRL_TX_WM_LSB = _R.field_lsb("CONTROL", "tx_watermark")
 _CTRL_RX_WM_LSB = _R.field_lsb("CONTROL", "rx_watermark")
 _CTRL_RX_WM_RESET = (CTRL_RESET & _R.field_mask("CONTROL", "rx_watermark")) >> _CTRL_RX_WM_LSB
 _ERR_EN_ALL = _R.reset32("ERROR_ENABLE")
+_EV_EN_MASK = _R.mask32("EVENT_ENABLE")
 _ST_TXQD_LSB = _R.field_lsb("STATUS", "txqd")
 
 
@@ -839,11 +848,13 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             _SPI_AGG,
         )
 
-    async def _line_window(self) -> tuple[int, int, int]:
+    async def _line_window(self) -> tuple[int, int, int, int]:
         """(high cycles of the SPI line, first high cycle or -1, OR of the known
-        changed bits of the whole vector) over _ALERT_WIN clk_i cycles."""
+        changed bits of the whole vector, first cycle at which the SPI host alert
+        tap reads the fired pair or -1) over _ALERT_WIN clk_i cycles."""
         sig = cocotb.top.sep_internal_interrupts_probe_o
-        high, first, base, diff = 0, -1, None, 0
+        tap = cocotb.top.spi_alert_tx_probe_o
+        high, first, base, diff, alert = 0, -1, None, 0, -1
         for i in range(_ALERT_WIN):
             await RisingEdge(cocotb.top.clk_i)
             await ReadOnly()
@@ -855,8 +866,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             if v.is_resolvable:
                 base = int(v) if base is None else base
                 diff |= int(v) ^ base
+            if alert < 0 and self.rd_known(tap) == _ALERT_TX_FIRED:
+                alert = i
         await NextTimeStep()
-        return high, first, diff
+        return high, first, diff, alert
 
     async def _chk_alert_test(self) -> None:
         await self._clear_error_status()
@@ -865,6 +878,18 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(INTR_STATE, INTR_STATE_MASK)
         pre = await self.spi.rd(INTR_STATE)
         await self.poll_internal_irq(_SPI_AGG, 0)
+        seed = self.random_seed()
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        alert_pre = self.rd_known(cocotb.top.spi_alert_tx_probe_o)
+        await NextTimeStep()
+        if alert_pre != _ALERT_TX_IDLE:
+            msg = (
+                f"CTRL-MISSING SPI-ALERT-REACH seed={seed} alert tap 0b{alert_pre:02b} before "
+                f"the ALERT_TEST write (idle 0b{_ALERT_TX_IDLE:02b})"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
         alert_wr = SepAxiAccessSeq(
             "spi_alert_test_wr",
             op=SepAxiOp.WRITE,
@@ -874,7 +899,6 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             allow_unverified_write_resp=True,
         )
         await self.start_seq(alert_wr)
-        seed = self.random_seed()
         if alert_wr.timed_out:
             msg = (
                 f"CTRL-MISSING SPI-ALERT-RESP seed={seed} no ALERT_TEST write response (timed out)"
@@ -885,7 +909,15 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             "CTRL-SPI-ALERT-RESP seed=%d reg=ALERT_TEST data=0x1 write response received", seed
         )
         self.logger.info("OBS-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
-        high, _first, diff = await self._line_window()
+        high, _first, diff, alert_clk = await self._line_window()
+        if alert_clk < 0:
+            msg = (
+                f"CTRL-MISSING SPI-ALERT-REACH seed={seed} no fatal_fault alert on the SPI host "
+                f"alert tap in {_ALERT_WIN} clk_i cycles after the ALERT_TEST write"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-SPI-ALERT-REACH seed=%d alert seen at clk=%d", seed, alert_clk)
         st = await self.spi.rd(INTR_STATE)
         self.logger.info(
             "OBS-SPI-ALERT-TEST vec_diff=0x%x (bit %d excluded)", diff & ~(1 << _SPI_AGG), _SPI_AGG
@@ -893,13 +925,13 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         # Control: an interrupt source at the same enable raises the line in
         # the same window.
         await self.spi.wr(INTR_TEST, INTR_ERROR)
-        ctl_high, ctl_first, _ = await self._line_window()
+        ctl_high, ctl_first, _, _ = await self._line_window()
         await self.spi.wr(INTR_TEST, 0)
         await self.spi.wr(INTR_STATE, INTR_ERROR)
         await self.poll_internal_irq(_SPI_AGG, 0)
         await self.spi.wr(INTR_ENABLE, 0)
         text = (
-            f"seed={self.random_seed()} intr_state_pre=0x{pre:08x} intr_state=0x{st:08x} "
+            f"seed={seed} intr_state_pre=0x{pre:08x} intr_state=0x{st:08x} "
             f"line_high_clk={high} window={_ALERT_WIN} control_intr_test_rise_clk={ctl_first} "
             f"control_high_clk={ctl_high}"
         )
@@ -1423,8 +1455,15 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         return (vec >> _SPI_AGG) & 1
 
     async def _set_ev(self, value: int) -> None:
+        """Write EVENT_ENABLE and read it back; a readback that differs under the field mask fails."""
         await self.ops.wr(EVENT_ENABLE, value)
-        self.ev_en = value
+        rb = await self.ops.rd(EVENT_ENABLE) & _EV_EN_MASK
+        if rb != value & _EV_EN_MASK:
+            self._ctrl_missing(
+                "SPI-EVENT-ENABLE",
+                f"EVENT_ENABLE wrote=0x{value:02x} readback=0x{rb:02x} mask=0x{_EV_EN_MASK:02x}",
+            )
+        self.ev_en = rb
 
     async def _poll_reg(self, addr: int, mask: int, what: str) -> int:
         """Read ``addr`` until every ``mask`` bit reads 1, at most _POLL_READS reads."""
@@ -1489,7 +1528,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         self._grade(
             "CHK-SPI-EVENT",
             event == expect_ev,
-            f"state={tag} ev_en=0x{self.ev_en:02x} src={src} level={lvl} event={event} "
+            f"state={tag} ev_en_rb=0x{self.ev_en:02x} src={src} level={lvl} event={event} "
             f"expect={expect_ev} mask_step={mask_step}",
         )
         i = self.intr_en
@@ -1670,11 +1709,6 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self._set_ev(EVT_RXWM | EVT_TXEMPTY)
             steps.append(await self._src_sample("both", "RXWM"))
             await self._set_ev(EVT_RXWM)
-        ev_rb = await self.ops.rd(EVENT_ENABLE)
-        if int(bool(ev_rb & EVT_RXWM)) != en:
-            self._ctrl_missing(
-                "CTRL-SPI-EVENT-SRC", f"{tag}: EVENT_ENABLE=0x{ev_rb:02x} before the drain"
-            )
         steps.append(await self._src_sample("before", "RXWM"))
         st = steps[-1][1]
         if st.rxwm != 1 or st.txempty != 1:
@@ -1718,11 +1752,6 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._clean()
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self._set_ev(0)
-        ev_rb = await self.ops.rd(EVENT_ENABLE)
-        if ev_rb & _R.mask32("EVENT_ENABLE"):
-            self._ctrl_missing(
-                "CTRL-SPI-EVENT-SRC", f"{tag}: EVENT_ENABLE=0x{ev_rb:02x} before the step"
-            )
         self._window(True)
         steps = [await self._src_sample("ready", "READY")]
         accepted = await self._l1_ready_low()
@@ -1763,11 +1792,6 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self.ops.push_tx(0x6600_0000 | w)
         self._window(True)
         await self._set_ev(ev)
-        ev_rb = await self.ops.rd(EVENT_ENABLE)
-        if (ev_rb & _R.mask32("EVENT_ENABLE")) != ev:
-            self._ctrl_missing(
-                "CTRL-SPI-EVENT-SRC", f"{tag}: EVENT_ENABLE=0x{ev_rb:02x} before the step"
-            )
         steps = [await self._src_sample("before", "TXWM")]
         await self.ops.wr(CONTROL, ctrl | (tx_wm << _CTRL_TX_WM_LSB))
         steps.append(await self._src_sample("after", "TXWM"))
