@@ -37,6 +37,12 @@ records, the trace events, the pulse counts and the field record:
 * CHK-TCM-DBG     each access pulses its own debug-bus bit (ICCM single 367,
                   DCCM single 365, DCCM double 364) inside its markers, one
                   clock wide, and no other of the three bits.
+* CHK-TCM-DBG366  inside the ``iccm_ue`` window (the fetch of the ICCM word
+                  with the double-bit flip) bit 366 pulses at least once and
+                  every bit-366 pulse there is one clock wide
+                  (``hw/sys/sep/doc/interrupts.adoc:413-415``: bit 366 is the
+                  ICCM double-bit lane, driven as single-cycle pulses). Control:
+                  ``sep_ras_o.iccm_ecc_ue`` rises in the same window.
 * CHK-TCM-NO-PIC  the meip words equal their baseline and MICECT reads 0 after
                   the correctable leg and after each uncorrectable trap; the PIC
                   vector does not move around a correctable pulse.
@@ -51,7 +57,8 @@ records, the trace events, the pulse counts and the field record:
                   release is one clock wide. Each logs PASS or FAIL; the leaf
                   fails once after its other checks if any of them failed.
 
-Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366``,
+Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366`` (the
+bit-366 pulse count and widths over the whole run),
 ``OBS-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
 each window), ``OBS-RAS-<FIELD>-COUNT`` (rises per window) and
 ``OBS-RAS-ICCM_ECC_UE-TRAP`` (the trap or NMI of the uncorrectable fetch,
@@ -339,6 +346,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         "CHK-TCM-UE",
         "CHK-TCM-NMI",
         "CHK-TCM-DBG",
+        "CHK-TCM-DBG366",
         "CHK-TCM-NO-PIC",
         *(
             f"CHK-RAS-{fld.upper()}-{half}"
@@ -902,6 +910,24 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         self.logger.info("CHK-TCM-DBG PASS: %s", body)
         return 1
 
+    def _chk_dbg366(self) -> int:
+        win = self._window("iccm_ue")
+        lo, hi = self._clk_win(win)
+        rises = [r for r in self.ras.rise_clks_since(self.ras_rel, "iccm_ecc_ue") if lo < r <= hi]
+        if not rises:
+            msg = "CTRL-MISSING CHK-TCM-DBG366: sep_ras_o.iccm_ecc_ue did not rise in iccm_ue"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        widths = [p.width for p in self._pulses_in(win)[BIT_I_DB]]
+        body = (
+            f"contract=hw/sys/sep/doc/interrupts.adoc:413-415 window=iccm_ue "
+            f"pulses={len(widths)} widths={widths[:8]} expect_width=1 ras_ue_rises={len(rises)}"
+        )
+        if not widths or any(w != 1 for w in widths):
+            raise AssertionError(f"CHK-TCM-DBG366 FAIL: {body}")
+        self.logger.info("CHK-TCM-DBG366 PASS: %s", body)
+        return 1
+
     def _chk_no_pic(self) -> int:
         meip = {r.kv["when"]: r.kv for r in self._recs("MEIP")}
         keys = [f"w{i}" for i in range(8)]
@@ -1191,6 +1217,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         n += self._chk_ue()
         n += self._chk_nmi(sy)
         n += self._chk_dbg()
+        n += self._chk_dbg366()
         n += self._chk_no_pic()
         if self.ras_chk.fails:
             raise AssertionError(
