@@ -551,7 +551,7 @@ software sources have no canonical scenario
 |Per-core watchdog timers
 |`watchdog.adoc` Operation; `cpu.adoc` Watchdog Interface
 |`smc_wdt_key_csr_test`, `smc_wdt_count_feed_test`, `smc_wdt_ip0_clear_test`,
-`smc_wdt_scale_zerocmp_test`, `smc_wdt_timeout_pin_test`
+`smc_wdt_scale_zerocmp_test`, `smc_wdt_timeout_pin_test`, `smc_wdt_count_across_core_reset_test`
 |`smc_map_fcov` (`c_wdt0_decode`, `c_wdt3_decode`, `c_wdt_instance_3`, `c_wdt_region`);
 `smc_reset_fcov` (`c_reset_op_wdt_asserted`); `smc_iso_fcov` (`c_warm_from_internal_wdt`)
 |`REGRESSION`: the warm-reset leg is credited on the multi-reset row; the timer, feed and interrupt
@@ -1033,6 +1033,11 @@ releases, with its transfer ID retired.
 and the second timeout asserts the warm reset through the terms of `rst_warm_n`, for any drawn core
 and timeout values, and after the reset the drawn core's watchdog registers read their reset values
 while `CPU_CTRL.WDT_TIMEOUT` keeps its programmed value.
+|`smc_wdt_count_across_core_reset_test` |3 |With `wdogcoreawake` set and `wdogenalways` clear,
+watchdog 1's `COUNT` reads the same value at three points inside a core 1 reset held through
+`RESET_CTRL`, counts on from it with `CTRL` unchanged after the release, keeps counting inside the
+hold once `wdogenalways` is also set, and returns with `CTRL` to the `wdt.rdl` reset words after an
+uncore reset pulse.
 |===
 
 ==== FABRIC
@@ -1269,6 +1274,20 @@ asserted at a drawn cycle of a drawn in-flight operation after programming non-z
 every seed at least one inside an SPM burst (issued into the cluster, response not returned),
 reset exactly the registers of that reset's domain, keep every other programmed value, hold warm
 reset low whenever primary reset is low, and leave the bench answering OKAY once the resets release.
+|`smc_uncore_warm_reset_clears_timers_test` |3 |An uncore reset pulse through `RESET_CTRL` and a
+warm reset through the SEP watchdog reset input each return `MSIP[0]`, `MTIME` and watchdog 0's
+`CTRL`, `CMP` and `COUNT` from programmed values to their reset state; `MTIMECMP[0]` and
+`PRIORITY[1]` are recorded, and the PLIC is not graded.
+|`smc_reset_ctrl_survives_warm_test` |3 |`RESET_CTRL` with core 2 held reads the same word after a
+SEP watchdog warm reset, every core and the uncore are in reset while the warm reset is asserted,
+and after it releases cores 0, 1 and 3 and the uncore come back while core 2 stays held until the
+release write.
+|`smc_reset_timing_bounds_test` |3 |The cold pin's release-to-`rst_primary_ref_clk_no` count exceeds
+the cool pin's by exactly 255 `clk_ref_i` cycles, `powergood_stable_o` rises 32 `clk_ref_i`
+edges after `powergood_i`, every `core2pad_en_o` bit reads 0 on every `clk_smc_i` edge of the
+cold hold after GPIO wrap 0 had its output enabled, and `ss_reset_ctrl_o[5]` follows its register
+with the latency of the combinational `isolate_req_o` path and the JTAG override within one
+`clk_smc_i`.
 |`smc_isolate_pinen_cold_test` |2 |`ISOLATE_REQ_PINEN_REG` and the pin request hold across a cold pulse with the isolation pin high and the register clears across one with the pin low.
 |`smc_flr_sequencer_single_pulse_test` |2 |The `BP_COOL_RESET_N_O` pad follows the FLR cool reset open-drain on every sample; `ISOLATE_REQ_VIS` follows the pin with no isolation request.
 |`smc_flr_hold_edge_requeue_test` |3, held out |FLR edges inside the pre-reset count and the hold must give one cool pulse of the single-request width; the hold edge restarts the count and a second pulse follows (issue to follow).
@@ -7714,6 +7733,80 @@ four-state simulator only, and the scheduled runs have none (<<smc-vplan-phase3-
 This entry consolidates the cells of the SV-UVM hold-outs
 `smc_wdt_second_stage_reset_test`, `smc_wdt_feed_zerocmp_test` and `smc_wdt_core_awake_gate_test`
 that read state after the warm reset, which stay enrolled.
+
+'''''
+
+
+[[sec-574-smc_wdt_count_across_core_reset_test]]
+===== 574 `smc_wdt_count_across_core_reset_test`
+
+*Phase*: 3
+
+*Area*: POWER
+
+*Source Module*: `smc_wdt_count_across_core_reset_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN) on watchdog 1 (`KEY`, `CTRL`, `COUNT`) and the CPU control
+registers `RESET_CTRL` and `RESET_TIMEOUT` (8-byte accesses); observation on
+`tb_cpu_core_resets_n` bit 1 sampled on `clk_smc_i`
+
+*Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `wdt`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: With `wdogcoreawake` set and `wdogenalways` clear, watchdog 1's `COUNT` stops while
+core 1 is held in reset through `RESET_CTRL`, keeps its value and configuration across the hold,
+and is cleared by the uncore reset only.
+
+*Test Coverage*:
+
+* `hw/sys/smc/doc/clk_rst.adoc` (SMC Reset Distribution, NOTE): "The watchdog synchronises it and,
+  while `wdogcoreawake` is set and `wdogenalways` is clear, stops counting while the core is in
+  reset." With `CTRL` = `wdogcoreawake` and `COUNT` written 0x0010_0000, three reads with core 1
+  released are strictly increasing. `RESET_TIMEOUT` is in force mode after 32 cycles and core 1's
+  level reset is written 0; once `tb_cpu_core_resets_n[1]` reads 0, `CTRL` is read and `COUNT` is
+  read twice, then once more after 256 `clk_smc_i` cycles: the three in-hold reads must be equal
+  and `CTRL` unchanged. With `wdogenalways` also set, the three in-hold reads of a second hold must
+  be strictly increasing.
+* "Resetting a core therefore does not clear its watchdog's `COUNT` or configuration registers.
+  Only the uncore reset clears them". After the release `CTRL` must read `wdogcoreawake`, three
+  reads must be strictly increasing with the first at or above the last in-hold value and within
+  four released-read steps of it. An uncore reset pulse through `RESET_CTRL` then returns `COUNT`
+  and `CTRL`, both read away from their reset words just before it, to the `wdt.rdl` reset words.
+* The SV-UVM hold-out `smc_wdt_core_awake_gate_test` grades the same retention through a
+  calibrated rate; this entry grades it on the Verilator bench with direct reads.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, read `RESET_CTRL` and `RESET_TIMEOUT` idle, program force mode.
+. Write `CTRL` = `wdogcoreawake`, `COUNT` = 0x0010_0000; read `COUNT` three times.
+. Hold core 1; read `CTRL`, `COUNT` twice, wait 256 cycles, `COUNT` again; release core 1; read
+  `CTRL` and `COUNT` three times.
+. Write `CTRL` = `wdogcoreawake` | `wdogenalways`; hold core 1 and take the same three reads;
+  release.
+. Read `COUNT` and `CTRL`, pulse the uncore reset, read both again; restore `RESET_TIMEOUT`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-WDT-COUNT-FROZEN-IN-CORE-RESET` |The three in-hold `COUNT` reads with `wdogcoreawake` alone
+  are equal while the released reads before them increase, `CTRL` reads `wdogcoreawake` inside the
+  hold, and with `wdogenalways` also set the in-hold reads increase
+|`CHK-WDT-COUNT-SURVIVES-CORE-RESET` |After the release `CTRL` is unchanged and `COUNT` counts on
+  from the in-hold value; the uncore reset pulse takes `COUNT` and `CTRL` from non-reset values to
+  their `wdt.rdl` reset words
+|===
+
+*Pass Criteria*: both checkers are emitted after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
+
+*Scope limit*: Core 1 and watchdog 1 only; the other cores share the generated watchdog instance.
+The hold is a level reset through `RESET_CTRL`; a core pulse and a debug hart reset are not driven.
 
 '''''
 
@@ -19286,6 +19379,257 @@ CPU boundary follows (SF-001), the misc warm leg's reset (SF-002), the MMIO vali
 uncore-reset edge (ruling #3170) and the held core's own MMIO transaction (SF-005). The CPU front port
 has no core-reset checker: it carries CPU_CTRL traffic while a core is held, and
 `OBS-G2-FRONT-PORT-DOMAIN` counts that traffic.
+
+'''''
+
+
+[[sec-573-smc_uncore_warm_reset_clears_timers_test]]
+===== 573 `smc_uncore_warm_reset_clears_timers_test`
+
+*Phase*: 3
+
+*Area*: RESET
+
+*Source Module*: `smc_uncore_warm_reset_clears_timers_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN) on the CLINT (`MSIP[0]`, `MTIME`, `MTIMECMP[0]`), the PLIC
+(`PRIORITY[1]`), watchdog 0 (`KEY`, `CTRL`, `CMP`, `COUNT`), the CPU control registers `RESET_CTRL`
+and `RESET_TIMEOUT` (8-byte accesses) and `SMC_BASE_CONFIG.REGION_SIZE`; `tb_sep_wdt_reset_n`
+driven; observation on `tb_cpu_uncore_reset_n`, `tb_cpu_core_resets_n` and `tb_rst_warm_smc_clk_n`
+sampled on `clk_smc_i`
+
+*Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `hosted`, `reset`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`, `cpu`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: An uncore reset pulse requested through `RESET_CTRL` and a warm reset entered through
+the SEP watchdog reset input each return the CLINT and watchdog 0 from programmed values to their
+reset state.
+
+*Test Coverage*:
+
+* `hw/sys/smc/doc/clk_rst.adoc` (SMC Reset Distribution): "`cluster_uncore_reset_n` resets the
+  uncore of the generated cluster: its buses, coherence manager, CLINT, PLIC, boot ROM interface,
+  the bus side of the debug module and the four watchdogs." With `REGION_SIZE` widened so the
+  CLINT and PLIC windows decode, `MSIP[0]` is written 1, `MTIME` 0x1000_0000_0000, `MTIMECMP[0]` and
+  `PRIORITY[1]` non-reset patterns, and watchdog 0's `CTRL`, `CMP` and `COUNT` values that differ
+  from their `wdt.rdl` reset words; each is read back, so every path is live before the reset.
+  `RESET_TIMEOUT` is in force mode after 32 cycles and every core is held through `RESET_CTRL`
+  from before the first programming until after the last readback, so no core runs ROM code
+  between a reset and the reads that grade it. `RESET_CTRL.uncore_reset_n_n0_scan` is written 0
+  and `tb_cpu_uncore_reset_n` must read 0, then the bit is written 1 and the probe must read 1 with
+  every core still held. After that `MSIP[0]` must read its `clint.rdl` reset word, `MTIME` its
+  reset word plus at most the ticks the `clk_smc_i` cycles since the release allow (one every 1000
+  cbus cycles), and `CTRL`, `CMP` and `COUNT` their reset words.
+* `clk_rst.adoc` (Reset Domains): "Warm reset drives CPU core/uncore reset control, including the
+  cluster's interrupt and timer logic". The same values are programmed again, `tb_sep_wdt_reset_n`
+  is driven low, `tb_rst_warm_smc_clk_n` must read 0 within 300 `clk_smc_i` rises and
+  `tb_cpu_uncore_reset_n` 0 within 8 more, the input is held low 64 cycles and released, the warm
+  reset must read 1 within 20000 rises, the uncore must read released with every core still held,
+  `RESET_CTRL` must read the held word, and the same post-reset compares hold.
+* `MTIMECMP[0]` and `PRIORITY[1]` are read after each reset and printed: the generated CLINT and
+  PLIC carry no reset on those registers, so the values are recorded and not compared. The PLIC
+  has no software-visible register with a reset, so the PLIC half of the sentence is not graded.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, read `RESET_CTRL` and `RESET_TIMEOUT` idle, program force mode, widen
+  `REGION_SIZE`, hold every core.
+. Program and read back the seven registers; pulse the uncore reset through `RESET_CTRL`; read the
+  seven registers back and compare the five with a reset.
+. Program and read back the seven registers again; pulse the warm reset through the SEP watchdog
+  reset input; read `RESET_CTRL` and the seven registers back and compare the same five.
+. Release every core, restore `RESET_TIMEOUT` and `REGION_SIZE` and read them back.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UNCORE-RESET-CLEARS-CLINT-WDT` |After the uncore reset pulse, with every core held,
+  `MSIP[0]` and `MTIME` read their `clint.rdl` reset words (`MTIME` plus the ticks the elapsed
+  cycles allow) and watchdog 0's `CTRL`, `CMP` and `COUNT` read their `wdt.rdl` reset words, each
+  having read its programmed value before the pulse; `MTIMECMP[0]` and `PRIORITY[1]` are printed
+|`CHK-WARM-RESET-CLEARS-CLINT-WDT` |The same compares after the warm reset entered through the
+  SEP watchdog reset input, with `tb_rst_warm_smc_clk_n` and `tb_cpu_uncore_reset_n` read 0 while
+  the input is low and released afterwards, every core still held
+|===
+
+*Pass Criteria*: both checkers are emitted after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`, `reset`.
+
+*Scope limit*: `MTIMECMP` and `PRIORITY` are registers without a reset in the generated CLINT and
+PLIC; their post-reset values are recorded, not graded, and the PLIC is not graded. The four
+watchdogs are represented by watchdog 0; the uncore reset reaches all four through the same
+`rst_uncore_ni`.
+
+'''''
+
+[[sec-575-smc_reset_ctrl_survives_warm_test]]
+===== 575 `smc_reset_ctrl_survives_warm_test`
+
+*Phase*: 3
+
+*Area*: RESET
+
+*Source Module*: `smc_reset_ctrl_survives_warm_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN) on the CPU control registers `RESET_CTRL` and
+`RESET_TIMEOUT` (8-byte accesses); `tb_sep_wdt_reset_n` driven; observation on
+`tb_cpu_core_resets_n`, `tb_cpu_uncore_reset_n` and `tb_rst_warm_smc_clk_n` sampled on `clk_smc_i`
+
+*Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `hosted`, `reset`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`, `cpu`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: `RESET_CTRL` keeps a held core across a watchdog warm reset, the warm reset holds every
+core and the uncore while it is asserted, and the resets follow `RESET_CTRL` again after it
+releases.
+
+*Test Coverage*:
+
+* `hw/sys/smc/doc/clk_rst.adoc` (SMC Reset Distribution): "The CPU control registers, including
+  `RESET_CTRL`, `RESET_VECTOR` and `WDT_TIMEOUT`, are on the primary reset and keep their values
+  across a warm reset. These flops register the core and uncore reset requests from `RESET_CTRL`,
+  so a warm reset holds the cores and uncore in reset, and once it releases they follow
+  `RESET_CTRL` again." `RESET_TIMEOUT` is in force mode after 32 cycles and core 2's level reset is
+  written 0 and read back; `tb_cpu_core_resets_n` must read 0b1011. `tb_sep_wdt_reset_n` is driven
+  low: `tb_rst_warm_smc_clk_n` must read 0 within 300 `clk_smc_i` rises, every core and the uncore
+  0 within 8 more, and the cores stay 0 for 64 sampled cycles. After the input is released the warm
+  reset must read 1 within 20000 rises, the cores must return to 0b1011 and the uncore to 1,
+  `RESET_CTRL` must read the held word and `RESET_TIMEOUT` its programmed field values, the cores
+  must hold 0b1011 for 64 sampled cycles, and the release write must bring every core out.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, read `RESET_CTRL` and `RESET_TIMEOUT` idle, program force mode, hold core 2
+  and confirm the level.
+. Drive the SEP watchdog reset input low, confirm the warm reset and every core and uncore reset
+  asserted, hold 64 cycles, release the input.
+. Confirm the warm release, the cores and uncore back at the held pattern, read `RESET_CTRL` and
+  `RESET_TIMEOUT`, hold the pattern 64 cycles, write the idle word and confirm every core released.
+. Restore `RESET_TIMEOUT` and read it back.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-RESET-CTRL-SURVIVES-WARM` |`RESET_CTRL` reads the held word after the warm reset and
+  `tb_cpu_core_resets_n` reads 0b1011, after every core and the uncore read 0 while the warm reset
+  was asserted; the release write brings every core out
+|===
+
+*Pass Criteria*: the checker is emitted after its compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`, `reset`.
+
+*Scope limit*: `RESET_VECTOR` and `WDT_TIMEOUT` retention are graded by
+`smc_reset_mid_transaction_rand_test` and `smc_wdt_warm_reset_rand_test`; this entry grades
+`RESET_CTRL` and the core resets that follow it.
+
+'''''
+
+[[sec-576-smc_reset_timing_bounds_test]]
+===== 576 `smc_reset_timing_bounds_test`
+
+*Phase*: 3
+
+*Area*: RESET
+
+*Source Module*: `smc_reset_timing_bounds_test`
+
+*BFM / Model*: SmcResetAgent (`rst_cold_ni`, `rst_cool_ni`, `powergood_i`) dispatched from the
+SEP_IN sequence; ocah_axi_vip (AXI, SEP_IN) on GPIO wrap 0 `DATA_CTRL`, `SS_WARM_RESET_N` and
+`ISOLATE_REQ_REG`; `tb_jtag_reset_ctrl` driven; observation on `rst_primary_ref_clk_no`,
+`rst_primary_smc_clk_no`, `rst_cold_stable_ref_clk_no`, `powergood_stable_o`, `tb_core2pad_en_o`,
+`tb_ss_warm_reset_n`, `tb_ss_cold_reset_n`, `tb_isolate_req_o` and the SEP_IN W and B handshakes
+
+*Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `hosted`, `reset`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The 255-cycle cold extension and the 32-cycle powergood stretch are counted in
+`clk_ref_i` cycles, every GPIO output enable is low throughout a cold hold, and the per-subsystem
+reset pins follow their register and JTAG override without a synchroniser.
+
+*Test Coverage*:
+
+* `hw/sys/smc/doc/clk_rst.adoc` (SMC Reset Unit, Power-Good and Cold Reset): "its release is
+  extended by 255 cycles"; "Incoming cool reset has the same low-sample filter but no cold-reset
+  extension." The cold pin and then the cool pin are each driven low a third of a period after a
+  `clk_ref_i` edge, held 64 edges with `rst_primary_ref_clk_no` read 0 at the end, and released at
+  the same phase; one loop counts the edges to `rst_primary_ref_clk_no` reading 1. The two pins
+  share the de-glitcher, the primary AND and the release synchroniser, so the difference of the
+  two counts must be exactly 255. Each count is printed with the reference period.
+* (SMC Reset Unit): "`powergood_i` is stretched by 32 reference clock cycles into
+  `powergood_stable`". `powergood_i` is driven low, `powergood_stable_o` must read 0 within 64
+  edges and stay 0 with the cold-stable and primary resets asserted for 40 checked edges; it is
+  then driven high a third of a period after an edge, and `powergood_stable_o`, sampled after
+  each edge has settled, must read 1 at the 32nd edge and not before.
+* (SMC Reset Distribution): "`rst_cold_stable_smc_clk_no` ... disables the GPIO outputs while it is
+  low." GPIO wrap 0 is programmed as an output and exactly one `core2pad_en_o` bit must newly
+  assert; it must still read 1 at the first `clk_ref_i` edge after the cold pin falls. A sampler
+  on `clk_smc_i` requires every `core2pad_en_o` bit to read 0 on every edge on which
+  `rst_primary_smc_clk_no` reads 0, which releases on the same edge as the SMC-clock cold-stable
+  reset after a cold pulse, through the pin's low window, the release and the extension, at least
+  64 samples; after the chain releases and fuse sense completes the same write must enable the
+  same pad again.
+* (SMC Reset Unit): "The per-subsystem cold and warm resets leave `ss_reset_ctrl_o`
+  unsynchronised". A monitor on `clk_smc_i` records the SEP_IN W and B handshake cycles and every
+  change of `tb_ss_warm_reset_n[5]`, `tb_ss_cold_reset_n[5]` and `tb_isolate_req_o[3]`.
+  `ISOLATE_REQ_REG` bit 3 is set and cleared, then `SS_WARM_RESET_N` bit 5 cleared and set: the
+  subsystem pin must change the same number of cycles after its write's W handshake as
+  `isolate_req_o[3]`, whose path from its register `clk_rst.adoc` (Isolation and FLR) gives as
+  direct. The JTAG cold override for subsystem 5 is driven and cleared after a `clk_smc_i` edge,
+  and `tb_ss_cold_reset_n[5]` must change within one edge each time.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, sample the released chain, enable GPIO wrap 0's output and identify its pad.
+. Cold pin low 64 edges with the pad sampler running, release, count to the primary release; wait
+  for the chain and fuse sense; enable the pad again and disable it.
+. Cool pin low 64 edges, release, count; wait for the chain and fuse sense; compare the difference.
+. Powergood low, hold, high; count to `powergood_stable_o`; wait for the chain and fuse sense.
+. Start the `clk_smc_i` monitor; write `ISOLATE_REQ_REG` and `SS_WARM_RESET_N` each way; drive and
+  clear the JTAG cold override; compare the latencies.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-COLD-EXTENSION-255` |The cold pin's release count minus the cool pin's release count is 255
+  `clk_ref_i` cycles
+|`CHK-POWERGOOD-STRETCH-32` |`powergood_stable_o` reads 1 at the 32nd settled `clk_ref_i` edge
+  after `powergood_i` rises, after reading 0 for 40 checked edges while it was low
+|`CHK-GPIO-OUT-DISABLED-IN-COLD` |`core2pad_en_o` reads 0 at every checked `clk_smc_i` edge with
+  `rst_primary_smc_clk_no` 0, at least 64, after the pad read 1 at the first edge of the cold pin
+  low window, and the same write enables the same pad after the chain releases
+|`CHK-SS-RESET-PIN-UNSYNC-LATENCY` |`tb_ss_warm_reset_n[5]` changes the same number of `clk_smc_i`
+  after the W handshake as `isolate_req_o[3]` for the set and the clear, and
+  `tb_ss_cold_reset_n[5]` changes within one `clk_smc_i` of the JTAG override and of its removal
+|===
+
+*Pass Criteria*: the four checkers are emitted after their compares and every sequence assert
+holds, and the scoreboard booked at least 40 checked powergood-low samples. Enrolled in: `all`,
+`hosted`, `reset`.
+
+*Scope limit*: Counts are taken at the default ref10 cell. The GPIO wraps' `DATA_CTRL` registers
+are on the primary reset, which is asserted throughout the cold window, so the leaf grades the
+level the sentence names at the SMC boundary and cannot separate the cold gate in `gpio.sv` from
+the register reset; an IP-level test with the cold reset asserted alone would. The de-glitch latency and the four-stage
+release synchroniser are not separated from each other; only the extension is isolated, by the
+difference. Subsystem 5 represents the 32 subsystems; the hold, force and configuration fields of
+`ss_reset_ctrl_o` are not exported by `tb_top`.
 
 '''''
 
@@ -49462,13 +49806,13 @@ inside its area.
 |8, 327
 |Register-boundary depth and the 24-island decode, extent and past-extent response sweep.
 |<<smc-vplan-area-power,POWER>>
-|10, 12, 184, 320, 328 to 331, 333, 334, 336 to 338, 341 to 343, 345 to 347, 349, 351 to 353, 355 to 359, 528, 559 to 561
+|10, 12, 184, 320, 328 to 331, 333, 334, 336 to 338, 341 to 343, 345 to 347, 349, 351 to 353, 355 to 359, 528, 559 to 561, 574
 |AVSBus clock-gate response, pad enable, forced and timed resync, clock divider and status decode; OCTS register decode; telemetry address map, control access, receiver isolation and the two flush paths; watchdog interrupt source ids, key relock, register map and write width; DMA and zeroer egress attributes and window decode, DMA back-pressure, completion status, descriptor and configuration storage, field widths and invalid descriptors; zeroer busy and outstanding limits, completion interrupt, job breadth, unchecked responses and SRAM initialisation. Seeded DMA copy geometry, byte-exact and ID retired; DMA backpressure under drawn SYS_OUT hold patterns; watchdog second-timeout warm reset and the watchdog state after it.
 |<<smc-vplan-area-fabric,FABRIC>>
 |32, 36, 180, 181, 185, 195, 196, 360, 362 to 370, 375 to 397, 540 to 542, 551 to 555
 |SYS_OUT error-response injection and the AW-versus-W split, window-top and spare-block decode, dual-base addressing, SEP_IN flow control and downstream concurrency, filter lock scope, reset words, inbound and outbound address, attribute, priority and default-liveness matches, outbound deny concurrency, port bursts, external-window routing, gap and outside-window responses, inbound concurrency limits, instance storage isolation, probe recovery, outbound stage order, region-gated and region-zero recovery, crossbar outstanding limits, channel timing and contested ports, write-side idle, clock-gated windows, read-only and write-only edges, DMA traffic shape, past-extent response classes, unit base and extent decode, and the seeded AXI stress. Seeded inbound filter rule tables, lowest match decides; seeded outbound filter rule tables, deny entry priority; seeded probes of every map row's gap, past-extent and outside cells; seeded alias remap regions, offset and AxCACHE override; seeded SYS_OUT responder errors per manager and direction.
 |<<smc-vplan-area-reset,RESET>>
-|43, 44, 47, 51, 55, 183, 189, 191, 326, 398 to 400, 532 to 534, 556
+|43, 44, 47, 51, 55, 183, 189, 191, 326, 398 to 400, 532 to 534, 556, 573, 575, 576
 |Reset interactions and corners: cool-versus-cold, core reset sources, an interrupt during a power-good glitch, mixed boot stall, the recovery matrix, cold-boot chain order, primary reset scope, synchronizer edges, the override-mux walk, process extra bits, pin de-glitch, asynchronous assertion, the cool-reset de-glitch window, the pin-versus-FLR overlap and the collision recovery. Seeded reset kinds asserted mid-operation, retention by domain.
 |<<smc-vplan-area-clock,CLOCK>>
 |67, 305 to 319, 403, 404, 406 to 429, 558, 569, 571 to 574
@@ -51041,6 +51385,22 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_filter_lock_window_test`
 |<<smc-vplan-area-firmware,FIRMWARE>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uncore_warm_reset_clears_timers_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_wdt_count_across_core_reset_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_reset_ctrl_survives_warm_test`
+|<<smc-vplan-area-reset,RESET>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_reset_timing_bounds_test`
+|<<smc-vplan-area-reset,RESET>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |===
