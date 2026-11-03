@@ -63,6 +63,7 @@ import random
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+from env.smu_axi_monitor import expected_decerr
 
 from seq_lib.smu_addr_map import c_header_u32
 from seq_lib.smu_boundary_regs import smc_base_config_u32
@@ -507,7 +508,9 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         try:
             await self._smu_aperture(jtag, sb)
             await self._remap(jtag, sb, tap)
-            await self._responder_errors(jtag, sb)
+            # AXI monitor decode rule: the injected DECERR read and write are two DECERR beats.
+            with expected_decerr("ext_out", 2):
+                await self._responder_errors(jtag, sb)
             await self._smc_window(jtag, sb)
             await self._external_decerr(jtag, sb)
         finally:
