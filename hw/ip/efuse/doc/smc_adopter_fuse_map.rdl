@@ -54,28 +54,15 @@ addrmap smc_adopter_fuse_map {
     };
 
     reg SENSOR_TRIM {
-        desc = "Calibration for one adopter sensor. Trial values may be written to the shadow before the
-                chosen value is burned.";
+        desc = "Calibration for one adopter sensor.";
 
         field {
-            desc = "When set, the sensor uses these trims instead of its defaults.";
-        } trim_valid[0:0] = 0x0;
+            desc = "Calibration value applied to the sensor.";
+        } sensor_calibration_value[31:0] = 0x0;
 
         field {
-            desc = "Reference voltage trim.";
-        } vref_trim[8:1] = 0x0;
-
-        field {
-            desc = "Gain trim.";
-        } gain_trim[16:9] = 0x0;
-
-        field {
-            desc = "Offset trim, two's complement.";
-        } offset_trim[28:17] = 0x0;
-
-        field {
-            desc = "Reserved for the adopter's trim encoding.";
-        } rsvd[127:29] = 0x0;
+            desc = "Reserved.";
+        } rsvd[127:32] = 0x0;
     };
 
     reg ADOPTER_SPARE {

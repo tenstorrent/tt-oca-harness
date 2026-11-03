@@ -281,7 +281,7 @@ package smc_efuse_pkg;
   localparam efuse_pkg::rule_t [NumEfuseFields-1:0] EfuseFieldMap = build_efuse_field_map();
 
   // One adopter lock region per ADOPTER_LOCKS pair.
-  localparam int unsigned AdopterLockRegions = AdopterLockFieldBits / 2; // 32
+  localparam int unsigned AdopterLockRegions = 32;
   typedef logic [AdopterLockRegions-1:0][15:0] adopter_lock_region_end_t;
 
   // Rule n covers adopter lock region n, words [region_end[n-1], region_end[n]) with

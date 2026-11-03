@@ -25,7 +25,6 @@ module efuse_guard #(
   parameter int unsigned ADOPTER_FIELDS = 0,  // Adopter field-map entry count; 0 disables the
                                               // adopter lookup.
   parameter int unsigned ADOPTER_BIT_BASE = 0,  // Fuse bit address of the first adopter fuse.
-  parameter int unsigned ADOPTER_LOCK_VECTOR_BITS = 64,  // Adopter lock bits on adopter_locks_i.
 
   parameter bit HAS_LC_STATE = 1'b0,    // Set for SEP: exempts harness index 0 from locks and gates
                                         // the RMA token bits on token matches; clear for SMC.
@@ -71,8 +70,7 @@ module efuse_guard #(
 
   input logic [LOCK_VECTOR_BITS-1:0] locks_i,  // Harness lock bits: write lock at 2n, read lock
                                                // at 2n+1 for lock index n.
-  input logic [ADOPTER_LOCK_VECTOR_BITS-1:0] adopter_locks_i,  // Adopter lock bits, in the same
-                                                               // layout as locks_i.
+  input logic [63:0] adopter_locks_i,   // ADOPTER_LOCKS, in the same layout as locks_i.
   input efuse_addr_t program_target_addr_i,  // Fuse bit address a program start would target.
   input efuse_addr_t read_target_addr_i,  // Fuse bit address a read start would target.
   input logic program_blocked_i,        // One-cycle pulse: a lock refused a program start.

@@ -265,7 +265,6 @@ module smc_efuse_wrapper #(
 
     .ADOPTER_FUSE_WORDS          (ADOPTER_FUSE_WORDS),
     .ADOPTER_REG_MAP_BASE_ADDR   (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR + ADOPTER_FUSE_BASE)),
-    .ADOPTER_LOCK_REGIONS        (smc_efuse_pkg::AdopterLockRegions),
 
     .efuse_map_t                 (smc_efuse_pkg::efuse_map_t)
   ) u_efuse_interface_controller (
