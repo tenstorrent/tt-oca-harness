@@ -1323,6 +1323,141 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "target is refused with SLVERR",
         ),
     ],
+    "smu_axi_smc_cool_reset_in_flight_test": [
+        (
+            "CHK-G2A-VALID-LOW",
+            "CHK-G2A-VALID-LOW",
+            "on every clk_smu_i edge with rst_primary_smc_clk_n_o low after the cool-reset pin, "
+            "AWVALID, WVALID, ARVALID, BVALID and RVALID of all 13 checked links are 0, and "
+            "every link has sampled reset edges",
+        ),
+        (
+            "CHK-G2A-XKNOWN",
+            "CHK-G2A-XKNOWN",
+            "from release, the ten VALID and READY signals of every checked link are resolved on "
+            "every sampled edge",
+        ),
+        (
+            "CHK-G2A-NO-STALE-RESP",
+            "CHK-G2A-NO-STALE-RESP",
+            "after the cool-reset release no B or R (RLAST) on smu_in answers an ID that had a "
+            "request outstanding at the reset with no AW or AR accepted for it after release, "
+            "and no B or R on smu_in or dtp_dbg outnumbers the AW or AR accepted after release "
+            "for its ID; the held B of the last leg is OBS-G2A-HELD-RESP, not this check",
+        ),
+        (
+            "CHK-G2A-LIVENESS",
+            "CHK-G2A-LIVENESS",
+            "after the cool-reset release a fresh write and read on each route that answered "
+            "OKAY before the reset (ext_in to the SMC window, JTAG2AXI to the SMC window and to "
+            "ext_out) is OKAY with one response per request and reads back the word written; "
+            "the SEP-aperture route is OBS-G2A-SEP-ROUTE-LIVENESS",
+        ),
+        (
+            "CHK-G2A-FLR",
+            "CHK-G2A-FLR",
+            "the FLR cool reset drives rst_primary_smc_clk_n_o low with every VALID 0, no stale "
+            "or phantom response after release, and every graded route answers as in liveness",
+        ),
+        (
+            "CHK-G2A-DTP-LINK",
+            "CHK-G2A-DTP-LINK",
+            "dtp_dbg VALIDs are 0 on every sampled reset edge of both legs and a fresh JTAG2AXI "
+            "write and read after each release get one response with the issued ID",
+        ),
+        (
+            "CHK-G2A-JTAG2AXI",
+            "CHK-G2A-JTAG2AXI",
+            "JTAG2AXI SMC-window write and read return the word written; out-of-window requests "
+            "appear at sep_in or ext_out per the routing table with AxUSER[3:0]=0x3 and "
+            "AxUSER[11:4]=0 at smc_out, and each response returns with its ID",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < JTAG2AXI < LOAD < COOL_RESET < RELEASE_WATCH < LIVENESS < "
+            "FLR_LOAD < FLR_RESET < FLR_RELEASE_WATCH < FLR_LIVENESS < FLR_LEG with sim time and "
+            "a non-zero count at least the plan per term; reset terms plan the edges sampled "
+            "with the primary reset low, watch terms the edges sampled since release",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every access, handshake and reset-net wait is bounded in clk_smu_i, clk_ref_i edges, "
+            "polls or ns, raises on expiry with the last handshake and reset-net sample, none "
+            "expired",
+        ),
+    ],
+    "smu_axi_ext_in_illegal_encoding_test": [
+        (
+            "CHK-G11-WRAP0",
+            "CHK-G11-WRAP0",
+            "a WRAP read and write with AxLEN 0 toward the SEP aperture, the SMC aperture and "
+            "neither get at most one response sequence each and no response with another ID, "
+            "and a fresh single-beat write and read to the S1 word after each are OKAY with the "
+            "word written and no response with another ID",
+        ),
+        (
+            "CHK-G11-RSVD",
+            "CHK-G11-RSVD",
+            "an AxBURST=2'b11 read and write toward the SEP aperture, the SMC aperture and "
+            "neither get at most one response sequence each and no response with another ID, "
+            "and a fresh single-beat write and read to the S1 word after each are OKAY with the "
+            "word written and no response with another ID",
+        ),
+        (
+            "CHK-G11-4K",
+            "CHK-G11-4K",
+            "a 4 KiB-crossing INCR read and write toward the SEP aperture, the SMC aperture and "
+            "neither get at most one response sequence each and no response with another ID, "
+            "and a fresh single-beat write and read to the S1 word after each are OKAY with the "
+            "word written and no response with another ID",
+        ),
+        (
+            "CHK-G11-SEPSRAM",
+            "CHK-G11-SEPSRAM",
+            "multi-beat FIXED and WRAP writes to the SEP SRAM answer SLVERR and leave the "
+            "addressed bytes unchanged, their reads return AxLEN+1 SLVERR beats closed by RLAST, "
+            "and INCR AxLEN 0, 1, 15, 255 and single-beat FIXED and INCR are OKAY with the data",
+        ),
+        (
+            "CHK-G11-BEAT",
+            "CHK-G11-BEAT",
+            "on ext_in every legal read's RLAST is on beat ARLEN+1",
+        ),
+        (
+            "CHK-G11-BURSTLEGAL",
+            "CHK-G11-BURSTLEGAL",
+            "every AW and AR at xbar_sep_in, xbar_smc_in and both converter outputs has a legal "
+            "burst, size, FIXED or WRAP length and WRAP alignment and no INCR crosses 4 KiB, "
+            "including while the illegal ext_in requests are presented",
+        ),
+        (
+            "CHK-G11-WKNOWN",
+            "CHK-G11-WKNOWN",
+            "a write with X only in its unstrobed lanes carries known strobed lanes on every "
+            "sampled link and changes only the strobed bytes",
+        ),
+        (
+            "CHK-G11-RULES-LIVE",
+            "CHK-G11-RULES-LIVE",
+            "the run is four-state VCS with OCAH_INC_ASSERT and SIMULATION live on the seven "
+            "checker instances, so all nine rule families of the checker header compile live",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < LEGAL_INCR < NARROW_STROBES < FIXED_WRAP < WRAP0 < RSVD < "
+            "CROSS_4K < FRESH_ACCESS < DECODE_RULES with sim time and a count at or above the "
+            "plan per term",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every handshake, response and observation wait is bounded in clk_smu_i edges, "
+            "raises on expiry with the last handshake and reset-net sample, none expired",
+        ),
+    ],
     "smu_axi_in_random_id_stress_test": [
         (
             "CHK-RANDID-ECHO",
@@ -2438,7 +2573,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-RMA-START",
             "CHK-SEP-RMA-START",
             "the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read "
-            "right after TOKEN_EOP 0x100 is 0x15, each lane starting its own hash only",
+            "right after TOKEN_EOP 0x100, with the SIP words rewritten one bit off, is 0x15, each "
+            "lane starting its own hash only",
         ),
         (
             "CHK-SEP-RMA-SIP-MATCH",

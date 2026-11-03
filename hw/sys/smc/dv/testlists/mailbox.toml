@@ -26,6 +26,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_mailbox"]
 
 [[tests]]
 name = "smc_mailbox_multi_instance_test"
@@ -105,6 +106,15 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_mailbox_register_map_reset_test"
 module = "smc_mailbox_register_map_reset_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mailbox_fifo_model_rand_test"
+module = "smc_mailbox_fifo_model_rand_test"
 seed = 1
 reseed = 3
 timeout_sec = 1800

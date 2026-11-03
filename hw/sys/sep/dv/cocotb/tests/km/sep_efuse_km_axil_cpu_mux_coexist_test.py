@@ -37,6 +37,7 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_chk_log import word_digest
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
@@ -96,12 +97,13 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
         image = self.select_efuse_image(lc_raw=_LC_PROD, fixed={"CHIPLET_UID": _CHIPLET_UID_GOLDEN})
         chiplet_uid_addr, chiplet_uid_word0 = image.expected_field("CHIPLET_UID")[0]
         self.logger.info(
-            "coexist eFuse image: CHIPLET_UID[0] @ 0x%08x = 0x%08x",
+            "coexist eFuse image: CHIPLET_UID[0] @ 0x%08x word_sha=%s",
             chiplet_uid_addr,
-            chiplet_uid_word0,
+            word_digest(chiplet_uid_word0),
         )
         assert chiplet_uid_word0 == _CHIPLET_UID_GOLDEN, (
-            f"staged CHIPLET_UID[0]=0x{chiplet_uid_word0:08x}, expected 0x{_CHIPLET_UID_GOLDEN:08x}"
+            f"staged CHIPLET_UID[0] word_sha={word_digest(chiplet_uid_word0)}, "
+            f"expected word_sha={word_digest(_CHIPLET_UID_GOLDEN)}"
         )
         self.write_efuse_image(image)
 

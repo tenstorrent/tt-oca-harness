@@ -36,7 +36,10 @@ from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_addr_symbols
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Same generated header the sibling `smc_mailbox_irq_test_seq.py` reads.
+# Same generated headers the sibling `smc_mailbox_irq_test_seq.py` reads.
+_SMC_BASE_CFG_H = (
+    _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "smc_base_config.h"
+)
 _AXIL_MAILBOX_H = (
     _REPO / "hw" / "ip" / "axi_lite_mailbox_unit" / "regs" / "gen" / "c" / "axil_mailbox_smc_wrap.h"
 )
@@ -47,12 +50,13 @@ _AXIL_MAILBOX_H = (
 MAILBOX_STATUS_IDLE = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__EMPTY_bm")
 
 _CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
-_MAILBOX_CG_EN = 1 << 1
+_MAILBOX_CG_EN = _field_mask(
+    _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__MAILBOX_CG_EN_bm"
+)
 
-_OUTBOUND_MAILBOX_BASE = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR")
-_INBOUND_MAILBOX_BASE = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR")
-_MAILBOX_STRIDE = 0x1000
-_STATUS_OFFSET = 0x010
+# Generated-map prefix of one instance; `_reg` appends the register name.
+_OUTBOUND_PFX = "SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_{}"
+_INBOUND_PFX = "SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_{}"
 
 # Instance count from the generated map, one symbol per instance and direction.
 # `periphs.adoc` ("Peripheral parameter overrides") gives NumMailboxes = 32 at
@@ -83,8 +87,11 @@ if _MAILBOX_COUNT != _SPEC_NUM_MAILBOXES or len(_INBOUND_SYMBOLS) != _SPEC_NUM_M
 #     bit of information
 #   * `STATUS`/`READ_DATA`/`ERROR` are declared `sw = r; hw = r`: unwritable
 #     from either side.
-_IRQEN_OFFSET = 0x038
-_IRQEN_MASK = 0x7
+_IRQEN_MASK = (
+    _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQEN__EIRQ_bm")
+    | _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQEN__RTIRQ_bm")
+    | _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQEN__WTIRQ_bm")
+)
 
 # Interrupt leg on one channel above the low byte. The SMC interrupt-vector map
 # (`interrupts.adoc`, "SMC CPU Interrupt Vector Map") gives `mailbox_interrupts`
@@ -92,10 +99,6 @@ _IRQEN_MASK = 0x7
 # instance decodes. The last instance sits at the far end of that vector, so
 # raising its bit shows the vector is wired to full width.
 _IRQ_CHANNEL = _MAILBOX_COUNT - 1
-_WRITE_DATA_OFFSET = 0x000
-_IRQS_OFFSET = 0x030
-_IRQP_OFFSET = 0x040
-_CTRL_OFFSET = 0x048
 _IRQEN_WTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQEN__WTIRQ_bm")
 _IRQS_WTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__WTIRQ_bm")
 _IRQP_WTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQP__WTIRQ_bm")
@@ -244,7 +247,7 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         together, or that offsets the index fails on the equality rather than
         passing a per-bit test that another channel also satisfies.
         """
-        base = _INBOUND_MAILBOX_BASE + _IRQ_CHANNEL * _MAILBOX_STRIDE
+        pfx = _INBOUND_PFX.format(_IRQ_CHANNEL)
         expected = 1 << _IRQ_CHANNEL
         # STATUS with one word in this port's write FIFO: EMPTY still 1 (nothing
         # was pushed the other way, so this port's READ FIFO is empty),
@@ -270,13 +273,13 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         )
         await self.csr_write(
             f"MBOX_IN_{_IRQ_CHANNEL}_IRQEN_WTIRQ",
-            base + _IRQEN_OFFSET,
+            _reg(pfx, "IRQEN"),
             _IRQEN_WTIRQ,
             length=8,
         )
         await self.csr_read(
             f"MBOX_IN_{_IRQ_CHANNEL}_IRQEN_WTIRQ_RB",
-            base + _IRQEN_OFFSET,
+            _reg(pfx, "IRQEN"),
             expected=_IRQEN_WTIRQ,
             length=8,
         )
@@ -289,7 +292,7 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         )
         await self.csr_write(
             f"MBOX_IN_{_IRQ_CHANNEL}_WRITE_DATA",
-            base + _WRITE_DATA_OFFSET,
+            _reg(pfx, "WRITE_DATA"),
             _IRQ_PATTERN,
             length=8,
         )
@@ -297,13 +300,13 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         self.irq_vector_asserted = expected
         await self.csr_read(
             f"MBOX_IN_{_IRQ_CHANNEL}_STATUS_ABOVE_THRESH",
-            base + _STATUS_OFFSET,
+            _reg(pfx, "STATUS"),
             expected=status_one_pushed,
             length=8,
         )
         await self.csr_read(
             f"MBOX_IN_{_IRQ_CHANNEL}_IRQP",
-            base + _IRQP_OFFSET,
+            _reg(pfx, "IRQP"),
             expected=_IRQP_WTIRQ,
             length=8,
         )
@@ -313,17 +316,17 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         # FIFO is still above threshold -- the RDL describes the threshold IRQ
         # as raised whenever the usage pointer exceeds WIRQT, a level condition
         # an IRQS acknowledge cannot hold down while the word is still queued.
-        await self.csr_write(f"MBOX_IN_{_IRQ_CHANNEL}_IRQEN_OFF", base + _IRQEN_OFFSET, 0, length=8)
+        await self.csr_write(f"MBOX_IN_{_IRQ_CHANNEL}_IRQEN_OFF", _reg(pfx, "IRQEN"), 0, length=8)
         await self._await_interrupt_vector(0, f"MBOX_IN_{_IRQ_CHANNEL}_DISARM")
         await self.csr_write(
-            f"MBOX_IN_{_IRQ_CHANNEL}_CTRL_WFLUSH", base + _CTRL_OFFSET, _CTRL_WFLUSH, length=8
+            f"MBOX_IN_{_IRQ_CHANNEL}_CTRL_WFLUSH", _reg(pfx, "CTRL"), _CTRL_WFLUSH, length=8
         )
         await self.csr_write(
-            f"MBOX_IN_{_IRQ_CHANNEL}_IRQS_CLEAR", base + _IRQS_OFFSET, _IRQS_WTIRQ, length=8
+            f"MBOX_IN_{_IRQ_CHANNEL}_IRQS_CLEAR", _reg(pfx, "IRQS"), _IRQS_WTIRQ, length=8
         )
         await self.csr_read(
             f"MBOX_IN_{_IRQ_CHANNEL}_STATUS_RESTORED",
-            base + _STATUS_OFFSET,
+            _reg(pfx, "STATUS"),
             expected=MAILBOX_STATUS_IDLE,
             length=8,
         )
@@ -705,20 +708,20 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         # non-idle word fails the test. STATUS is `sw = r; hw = r` in the RDL,
         # so the idle value comes from the generated field mask.
         for i in range(_MAILBOX_COUNT):
-            addr = _OUTBOUND_MAILBOX_BASE + i * _MAILBOX_STRIDE + _STATUS_OFFSET
+            addr = _reg(_OUTBOUND_PFX.format(i), "STATUS")
             await self.csr_read(f"MBOX_OUT_{i}_STATUS", addr, expected=MAILBOX_STATUS_IDLE)
             self._stamp("IDLE-SWEEP", f"OUT{i}")
         for i in range(_MAILBOX_COUNT):
-            addr = _INBOUND_MAILBOX_BASE + i * _MAILBOX_STRIDE + _STATUS_OFFSET
+            addr = _reg(_INBOUND_PFX.format(i), "STATUS")
             await self.csr_read(f"MBOX_IN_{i}_STATUS", addr, expected=MAILBOX_STATUS_IDLE)
             self._stamp("IDLE-SWEEP", f"IN{i}")
         # IRQEN write/read-back/restore on mailbox 0 of each direction; each
         # compare is enforced by the scoreboard and fails on a wrong word.
-        for label, base in (
-            ("MBOX_OUT_0", _OUTBOUND_MAILBOX_BASE),
-            ("MBOX_IN_0", _INBOUND_MAILBOX_BASE),
+        for label, pfx in (
+            ("MBOX_OUT_0", _OUTBOUND_PFX.format(0)),
+            ("MBOX_IN_0", _INBOUND_PFX.format(0)),
         ):
-            addr = base + _IRQEN_OFFSET
+            addr = _reg(pfx, "IRQEN")
             await self.csr_read(f"{label}_IRQEN_RESET", addr, expected=0)
             await self.csr_write(f"{label}_IRQEN_WR", addr, _IRQEN_MASK)
             await self.csr_read(f"{label}_IRQEN_RB", addr, expected=_IRQEN_MASK)

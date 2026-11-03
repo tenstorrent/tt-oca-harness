@@ -35,8 +35,23 @@ Checkers:
   CHK-REGWEN-RESET    after a TRNG reset ``REGWEN`` reads 1, the target reads its
                       RDL reset value with no X on the bus, and a write of B
                       lands. Control: ``REGWEN`` reads 0 before the reset.
+  CHK-REGWEN-ERRTEST  with the CSRNG ``REGWEN`` cleared, a write of the
+                      ``SFIFO_GENBITS_ERR`` bit number to ``ERR_CODE_TEST`` leaves
+                      ``ERR_CODE_TEST`` at its RDL reset value. ``ERR_CODE_TEST`` is
+                      bound to ``REGWEN`` (``csrng.hjson`` :793), and "When false,
+                      they become read-only." (``csrng.adoc`` :97-98). Control
+                      ``CTRL-REGWEN-ERRTEST``: after the TRNG reset (``REGWEN`` 1)
+                      the same write reads back the written value. CSRNG targets
+                      only.
+Each refused write (B under the lock, ``ERR_CODE_TEST`` under the lock, each
+write of 1 to ``REGWEN``) carries its B response on the check line
+(``wr_resp``); a response other than OKAY fails the leaf at the write.
 ``INT_STATE_READ_ENABLE`` under the CSRNG ``REGWEN`` is logged only
-(``OBS-REGWEN-OWN``).
+(``OBS-REGWEN-OWN``), and so are ``RESEED_INTERVAL`` and ``INT_STATE_NUM``
+under it (``OBS-REGWEN-OTHER``): the ``csrng.rdl`` ``REGWEN`` text ("all
+writeable registers ... become read-only") names no register, and the upstream
+``regwen`` binding locks only ``CTRL``, ``FIPS_FORCE`` and ``ERR_CODE_TEST``.
+The two texts differ for these two registers, so no golden is stated.
 """
 
 from __future__ import annotations
@@ -66,6 +81,12 @@ MUBI = (MUBI_TRUE, MUBI_FALSE)
 CSRNG_REGWEN = sym("CSRNG_REGWEN_REG_ADDR")
 EDN_REGWEN = sym("EDN_REGWEN_REG_ADDR")
 CSRNG_INT_STATE_READ_ENABLE = sym("CSRNG_INT_STATE_READ_ENABLE_REG_ADDR")
+# Writeable CSRNG registers with no ``regwen`` binding: the REGWEN text says "all
+# writeable registers" become read-only, the register map binds neither. Logged only.
+CSRNG_OTHER = (
+    ("RESEED_INTERVAL", sym("CSRNG_RESEED_INTERVAL_REG_ADDR")),
+    ("INT_STATE_NUM", sym("CSRNG_INT_STATE_NUM_REG_ADDR")),
+)
 
 
 @dataclass(frozen=True)
@@ -114,6 +135,10 @@ TARGETS = {
 REGWEN_RESET = {"csrng": CSRNG.reset("REGWEN"), "edn": EDN.reset("REGWEN")}
 ISRE_MASK = CSRNG.mask("INT_STATE_READ_ENABLE")
 ISRE_RESET = CSRNG.reset("INT_STATE_READ_ENABLE")
+# ERR_CODE_TEST under the CSRNG REGWEN: the written source bit number.
+CSRNG_ERR_CODE_TEST = sym("CSRNG_ERR_CODE_TEST_REG_ADDR")
+ERRTEST_BIT = CSRNG.fields("ERR_CODE")["SFIFO_GENBITS_ERR"]["bm"].bit_length() - 1
+ERRTEST_VALUE = CSRNG.value("ERR_CODE_TEST", ERR_CODE_TEST=ERRTEST_BIT)
 
 # Outer cap of the TRNG reset waits (design rule: 20 x the clean value of the logs).
 TRNG_RESET_CAP = 4_000
@@ -272,15 +297,16 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
         "CHK-REGWEN-LOCK",
         "CHK-REGWEN-NOREARM",
         "CHK-REGWEN-RESET",
+        "CHK-REGWEN-ERRTEST",
     )
 
     async def run_scenario(self) -> None:
         # Baseline 0x20: TRNG released, the Key Manager and every engine held.
         await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac", "abr"))
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.chk = SepChkLog(self, TEST, seed)
         self._fill: int | None = None
         self._arm_w_channel()
@@ -324,8 +350,9 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
         if "send" in vars(self._w_channel):
             del self._w_channel.send
 
-    async def _wr(self, addr: int, data: int, fill: int) -> None:
-        """One 32-bit write (AxSIZE 2) with ``fill`` on the inactive lane."""
+    async def _wr(self, addr: int, data: int, fill: int) -> int:
+        """One 32-bit write (AxSIZE 2) with ``fill`` on the inactive lane; return its B
+        response."""
         self._fill = fill
         try:
             seq = SepAxiAccessSeq(
@@ -336,7 +363,8 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
             self._fill = None
         if not seq.resp_ok:
             raise AssertionError(f"write @0x{addr:08x} not OKAY (resp={seq.resp_code})")
-        self.logger.info("WR 0x%08x data=0x%08x inactive_lane=0x%08x", addr, data, fill)
+        self.logger.info("INFO-WR 0x%08x data=0x%08x inactive_lane=0x%08x", addr, data, fill)
+        return seq.resp_code
 
     async def _rd(self, addr: int) -> int:
         seq = SepAxiAccessSeq("regwen_rd", op=SepAxiOp.READ, addr=addr, length=4, size=2)
@@ -372,7 +400,7 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
         iso = await self._wait_probe(dut.trng_axi_isolated_probe_o, True, "trng isolation end")
         await ClockCycles(dut.clk_i, 2)
         self.logger.info(
-            "TRNG reset: rise_clk=%d fall_clk=%d isolation_end_clk=%d cap=%d",
+            "INFO-TRNG-RESET: rise_clk=%d fall_clk=%d isolation_end_clk=%d cap=%d",
             rise,
             fall,
             iso,
@@ -414,7 +442,7 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
         await self._wr(t.regwen, 0, fills.pop(0))
         regwen_locked = await self._rd(t.regwen)
         # Step 6: the write of B under the lock.
-        await self._wr(t.addr, tp.b, fills.pop(0))
+        b_resp = await self._wr(t.addr, tp.b, fills.pop(0))
         kept = await self._rd(t.addr)
         fc_lock = field_compare(kept, tp.a, t.mask)
         self.chk.ok(
@@ -425,6 +453,7 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
             regwen=regwen_locked & rw_mask,
             kept=f"0x{tp.a:x}",
             tried=f"0x{tp.b:x}",
+            wr_resp=b_resp,
             read=f"0x{kept & t.mask:x}",
             rsvd=f"0x{fc_lock.rsvd:x}",
         )
@@ -440,11 +469,39 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
                 wrote=f"0x{tp.isre:x}",
                 read=f"0x{isre & ISRE_MASK:x}",
             )
+            # The complement of the readback, so a landed write always reads back
+            # changed.
+            for name, addr in CSRNG_OTHER:
+                mask = CSRNG.mask(name)
+                before = await self._rd(addr) & mask
+                wrote = ~before & mask
+                await self._wr(addr, wrote, isre_fill)
+                read = await self._rd(addr) & mask
+                self.chk.obs(
+                    "REGWEN-OTHER",
+                    reg=name,
+                    regwen=regwen_locked & rw_mask,
+                    before=f"0x{before:x}",
+                    wrote=f"0x{wrote:x}",
+                    read=f"0x{read:x}",
+                )
+            test_resp, test_rb = await self._err_code_test(isre_fill)
+            self.chk.ok(
+                "REGWEN-ERRTEST",
+                regwen_locked & rw_mask == 0 and test_rb == CSRNG.reset("ERR_CODE_TEST"),
+                unit=unit,
+                reg=reg,
+                regwen=regwen_locked & rw_mask,
+                wrote=f"0x{ERRTEST_VALUE:x}",
+                wr_resp=test_resp,
+                errtest_read=f"0x{test_rb:x}",
+            )
 
         # Step 8: r writes of 1 to the cleared REGWEN.
         after: list[int] = []
+        rearm_resp: list[int] = []
         for _ in range(tp.rearm):
-            await self._wr(t.regwen, rw_mask, fills.pop(0))
+            rearm_resp.append(await self._wr(t.regwen, rw_mask, fills.pop(0)))
             after.append(await self._rd(t.regwen) & rw_mask)
         self.chk.ctrl(
             "REGWEN-NOREARM",
@@ -459,6 +516,7 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
             writes=tp.rearm,
             after_write1=max(after),
             reads=after,
+            wr_resp=rearm_resp,
         )
         pre_reset_regwen = after[-1]
 
@@ -496,3 +554,21 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
             x_free=x_free,
             x_lanes=tap.lanes or "none",
         )
+        if unit == "csrng":
+            regwen_open = await self._rd(t.regwen) & rw_mask
+            _, test_rb = await self._err_code_test(post_fill)
+            self.chk.ctrl(
+                "REGWEN-ERRTEST",
+                regwen_open == REGWEN_RESET[unit] and test_rb == ERRTEST_VALUE,
+                unit=unit,
+                reg=reg,
+                regwen=regwen_open,
+                wrote=f"0x{ERRTEST_VALUE:x}",
+                errtest_read=f"0x{test_rb:x}",
+            )
+
+    async def _err_code_test(self, fill: int) -> tuple[int, int]:
+        """Write the source bit number to CSRNG ``ERR_CODE_TEST``; return the B response
+        and the readback."""
+        resp = await self._wr(CSRNG_ERR_CODE_TEST, ERRTEST_VALUE, fill)
+        return resp, await self._rd(CSRNG_ERR_CODE_TEST) & CSRNG.mask("ERR_CODE_TEST")

@@ -11,9 +11,10 @@ port (``axil_sep_otp_jtag``, ``j_axi_*`` in tb_top). Both masters arbitrate at t
 interface controller's AXI-Lite mux.
 
 The OTP image is real-sensed at LC_STATE=PROD, which restricts the JTAG path: MMR token accesses
-are allowed, and shadow-map and interface-CSR accesses get the error response and data that
-``hw/ip/efuse/doc/architecture.adoc`` specifies. One PROD image covers both the allowed
-coexistence and the LC-gated deny without forcing lc_state.
+are allowed, and shadow-map and interface-CSR accesses get the error response that
+``hw/ip/efuse/doc/architecture.adoc`` (JTAG Access Control Based on LC_STATE) states for SEP.
+One PROD image covers both the allowed coexistence and the LC-gated deny without forcing
+lc_state.
 
 Checkers (each logged):
   * CHK-CPU-MMR: the CPU published CPU_READY, its MMR read error count was zero before the
@@ -21,12 +22,18 @@ Checkers (each logged):
   * CHK-JTAG-MMR: every JTAG MMR op returns OKAY (token1 seed write, per-round token1 reads of
     the seeded word, token3 writes + readbacks). TOKEN_I is an ``external`` sw=rw word with no
     reset, so it is seeded before any read.
-  * CHK-JTAG-DENY: a JTAG shadow-map read at PROD gets SLVERR or DECERR with data 0xbadcab1e.
+  * CHK-JTAG-DENY: a JTAG shadow-map read at PROD gets SLVERR or DECERR. No SEP text states
+    the read data, so ``OBS-JTAG-DENY-RDATA`` logs it and grades nothing.
   * CHK-JTAG-ALLOW: a JTAG MMR read right after the deny still returns OKAY.
-  * CHK-JTAG-TOKEN-BLOCK: JTAG reads of a seeded ``SEC_DISABLE_TOKEN_I[0]``, ``TOKEN_EOP`` and
-    ``SEC_DISABLE_TOKEN_MATCH`` return OKAY. No ``TOKEN_EOP`` write is issued, since that starts
-    a compare. This samples the allow class; it does not walk every token word.
-  * CHK-JTAG-IFACE-DENY: a JTAG read of ``EFUSE_PROGRAM_CTRL`` gets the same deny as shadow.
+  * CHK-JTAG-TOKEN-BLOCK: JTAG reads of a seeded ``SEC_DISABLE_TOKEN_I[0]`` and of
+    ``SEC_DISABLE_TOKEN_MATCH`` return OKAY, and the token word reads back its seed. This
+    samples the allow class; it does not walk every token word.
+  * OBS-JTAG-TOKEN-EOP-READ: the response and data of a JTAG read of ``TOKEN_EOP``. Every
+    field of that register is ``sw = w`` in ``efuse_mmr.rdl``, and no text states the response
+    of a read of it, so the line grades nothing. No ``TOKEN_EOP`` write is issued, since that
+    starts a compare.
+  * CHK-JTAG-IFACE-DENY: a JTAG read of ``EFUSE_PROGRAM_CTRL`` gets the same deny as shadow;
+    ``OBS-JTAG-DENY-RDATA`` logs its read data.
   * CHK-COEXIST: the CPU loop counter (scratch-cold[2], via scratch_cold_probe_o) advances across
     the JTAG burst, and the CPU loop checks its token0 seed every iteration while JTAG uses
     token1 and token3, so a stall or cross-port corruption fails.
@@ -41,7 +48,6 @@ import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_lcc_golden import LC_PROD
-from env.sep_spec_tables import EFUSE_ERR_SLV_RDATA
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_inbound_filter_rule_seq import RESP_DECERR, RESP_SLVERR
@@ -66,9 +72,10 @@ _EFUSE_MMR_SEC_DIS_MATCH = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 # Seeded into SEC_DISABLE_TOKEN_I[0] before the token-block sample reads it.
 _SEC_DIS_I0_SEED = 0x5A5A_4001
 # Interface control sits outside the token block and is blocked in PROD.
-# architecture.adoc (eFuse lifecycle-based JTAG permissions) specifies "an error
-# response with data value 0xbadcab1e" and does not name the response code, so
-# SLVERR and DECERR both satisfy it; OKAY or a timeout does not.
+# For SEP, architecture.adoc (JTAG Access Control Based on LC_STATE) states that
+# accesses outside the MMR space "are blocked with an error response". It names
+# neither the response code nor the read data, so SLVERR and DECERR both satisfy
+# it; OKAY or a timeout does not.
 _JTAG_DENY_RESPS = (RESP_SLVERR, RESP_DECERR)
 _EFUSE_IFACE_PROGRAM = sym("EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR")
 
@@ -195,19 +202,19 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             "CHK-JTAG-MMR PASS: %d JTAG MMR rounds all OKAY (mux reached eFuse)", rounds
         )
 
-        # --- LC-gated: shadow read DENIED at PROD. An error response with the
-        # error-slave data architecture.adoc specifies. ---
+        # --- LC-gated: shadow read DENIED at PROD with an error response. ---
         code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_SHADOW_BASE)
         assert code in _JTAG_DENY_RESPS, (
-            f"JTAG shadow read at PROD must be DENIED with an error response "
+            f"CHK-JTAG-DENY FAIL: JTAG shadow read at PROD must be DENIED with an error response "
             f"(SLVERR or DECERR), got resp={code} rdata=0x{rdata:08x}"
         )
-        assert rdata == EFUSE_ERR_SLV_RDATA, (
-            f"JTAG denied-read data 0x{rdata:08x} != 0x{EFUSE_ERR_SLV_RDATA:08x} "
-            "(architecture.adoc error-slave data)"
+        self.logger.info(
+            "CHK-JTAG-DENY PASS: JTAG shadow read @0x%08x denied (resp=%d)",
+            _EFUSE_SHADOW_BASE,
+            code,
         )
         self.logger.info(
-            "CHK-JTAG-DENY PASS: JTAG shadow read @0x%08x denied (resp=%d, rdata=0x%08x)",
+            "OBS-JTAG-DENY-RDATA window=shadow addr=0x%08x resp=%d rdata=0x%08x",
             _EFUSE_SHADOW_BASE,
             code,
             rdata,
@@ -247,7 +254,6 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         # CHK-JTAG-MMR already walks RMA TOKEN_I.
         for label, addr in (
             ("SEC_DISABLE_TOKEN_I[0]", _EFUSE_MMR_SEC_DIS_I0),
-            ("TOKEN_EOP", _EFUSE_MMR_TOKEN_EOP),
             ("SEC_DISABLE_TOKEN_MATCH", _EFUSE_MMR_SEC_DIS_MATCH),
         ):
             code, rdata = await self.jtag_axil_op(write=False, addr=addr)
@@ -261,8 +267,17 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
                     f"0x{rdata:08x}, expected the seeded 0x{_SEC_DIS_I0_SEED:08x}"
                 )
         self.logger.info(
-            "CHK-JTAG-TOKEN-BLOCK PASS: JTAG SEC_DISABLE_TOKEN_I / TOKEN_EOP / "
-            "SEC_DISABLE_TOKEN_MATCH all OKAY in PROD"
+            "CHK-JTAG-TOKEN-BLOCK PASS: JTAG reads of SEC_DISABLE_TOKEN_I[0] (seed 0x%08x "
+            "read back) and SEC_DISABLE_TOKEN_MATCH OKAY in PROD",
+            _SEC_DIS_I0_SEED,
+        )
+        # TOKEN_EOP is write-only (efuse_mmr.rdl): no text states the response of a read.
+        code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_TOKEN_EOP)
+        self.logger.info(
+            "OBS-JTAG-TOKEN-EOP-READ addr=0x%08x resp=%d rdata=0x%08x",
+            _EFUSE_MMR_TOKEN_EOP,
+            code,
+            rdata,
         )
 
         code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_IFACE_PROGRAM)
@@ -270,16 +285,16 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             f"CHK-JTAG-IFACE-DENY FAIL: JTAG EFUSE_PROGRAM_CTRL @0x{_EFUSE_IFACE_PROGRAM:08x} "
             f"in PROD must return an error response; got resp={code} rdata=0x{rdata:08x}"
         )
-        assert rdata == EFUSE_ERR_SLV_RDATA, (
-            f"CHK-JTAG-IFACE-DENY FAIL: denied-read data 0x{rdata:08x} != "
-            f"0x{EFUSE_ERR_SLV_RDATA:08x} (architecture.adoc error-slave data)"
+        self.logger.info(
+            "CHK-JTAG-IFACE-DENY PASS: JTAG program-interface read @0x%08x denied (resp=%d)",
+            _EFUSE_IFACE_PROGRAM,
+            code,
         )
         self.logger.info(
-            "CHK-JTAG-IFACE-DENY PASS: JTAG program-interface read @0x%08x denied "
-            "(resp=%d, rdata=0x%08x)",
+            "OBS-JTAG-DENY-RDATA window=program_ctrl addr=0x%08x resp=%d rdata=0x%08x",
             _EFUSE_IFACE_PROGRAM,
             code,
             rdata,
         )
 
-        self.logger.info("SEP eFuse JTAG/EL2 mux test PASS")
+        self.logger.info("INFO-JTAG-EL2-MUX done: every check of the leaf passed")

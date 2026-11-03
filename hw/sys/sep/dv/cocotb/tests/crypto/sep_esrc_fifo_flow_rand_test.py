@@ -35,7 +35,9 @@ of the pointer trial.
 Checkers:
   CHK-FIFO-FILL          LEVEL rises to 64 and stays, FIFO_OVERFLOW = 1,
                          (WPTR - RPTR) mod 64 == LEVEL mod 64 at every sample.
-  CHK-FIFO-POP           each pop with the producer stopped: LEVEL - 1, RPTR + 1, WPTR kept.
+  CHK-FIFO-POP           each pop with the producer stopped: LEVEL - 1, RPTR + 1, WPTR kept;
+                         LEVEL and WPTR still kept after the stream port offers a word;
+                         control: CTRL-FIFO-POP offered >= 1 stream word in the window.
   CHK-FIFO-RESUME        LEVEL rises from 0 after ENABLE = 1.
   CHK-FIFO-ORDER         64 popped words == 64 consecutive stream words at one d in 0..8.
   CHK-FIFO-CHURN         w_k XOR w_(k-32) == C for k = 32..63; control: churn off, every word == C.
@@ -43,8 +45,20 @@ Checkers:
   CHK-FIFO-INTEG-PARITY  0 after the intact pop, 1 after the pop of the corrupted entry.
   CHK-FIFO-INTEG-PTR     1 within 16 x the clean pop time after a pointer-copy error.
   CHK-FIFO-INTEG-W1C     the parity trial bit reads 1, then 0 after the write-one clear.
-Logged only: ``OBS-FIFO-STREAM-FULL`` (whether a discarded word reaches the stream is
-not stated), ``OBS-FIFO-FLAGS-CLEAR``, ``OBS-FIFO-PTR-W1C``.
+  CHK-FIFO-FLAGS-CLEAR   FIFO_OVERFLOW and FIFO_UNDERFLOW read 0 after their write-one
+                         clear (entropy_source.rdl FIFO_OVERFLOW, FIFO_UNDERFLOW);
+                         control: CTRL-FIFO-FLAGS sees both at 1 before the clear.
+  CHK-FIFO-STREAM-FULL   with LEVEL held at 64, the stream port (``esrc_compress_vld_o``)
+                         carries at least one word in a window of 2 x the longest gap
+                         between stream words of the fill, and LEVEL reads 64 after it
+                         (``hw/ip/entropy_source/regs/entropy_source.rdl``:269 "Words
+                         offered to the FIFO are also the DRBG seed stream";
+                         ``hw/ip/entropy_source/doc/architecture.adoc``:177-178 "The same
+                         words leave on ``entropy_stream_data_o`` whatever the FIFO does.");
+                         control: CTRL-FIFO-STREAM-FULL, the fill offered at least two words.
+Logged only: ``OBS-FIFO-PTR-W1C``,
+``OBS-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
+names no partner for them).
 """
 
 from __future__ import annotations
@@ -94,7 +108,7 @@ PARK = ("otbn", "aes", "hmac", "kmac", "abr")
 WINDOW = 2048
 DEPTH = 64  # architecture.adoc:146
 PTR_MOD = 64
-STREAM_WINDOW_READS = 16
+STREAM_WINDOW_GAPS = 2  # the full-FIFO stream window spans this many fill word gaps
 ORDER_MAX_OFFSET = 8
 CHURN_DISTANCE = 32  # entropy_source.adoc:219
 CHURN_SETTLE_WORDS = 6
@@ -183,6 +197,8 @@ class _StreamTap:
         self.test = test
         self.dut = cocotb.top
         self.words = 0
+        self.max_gap = 0
+        self._prev_clk: int | None = None
         self.recording = False
         self.record: list[int] = []
         self._on = False
@@ -199,6 +215,11 @@ class _StreamTap:
             await self._task
             self._task = None
 
+    def mark_gaps(self) -> None:
+        """Restart the longest-gap measure; the next word starts it."""
+        self.max_gap = 0
+        self._prev_clk = None
+
     def last(self, n: int) -> list[int]:
         return self.record[-n:]
 
@@ -209,6 +230,10 @@ class _StreamTap:
             await ReadOnly()
             if rd(self.dut.esrc_compress_vld_o):
                 self.words += 1
+                now = self.test._now()
+                if self._prev_clk is not None:
+                    self.max_gap = max(self.max_gap, now - self._prev_clk)
+                self._prev_clk = now
                 if self.recording:
                     self.record.append(rd(self.dut.esrc_compress_data_o))
 
@@ -227,20 +252,22 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         "CHK-FIFO-INTEG-PARITY",
         "CHK-FIFO-INTEG-PTR",
         "CHK-FIFO-INTEG-W1C",
+        "CHK-FIFO-FLAGS-CLEAR",
+        "CHK-FIFO-STREAM-FULL",
     )
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _EsrcRegs(self)
         self.p: int | None = None
         self.fill_clk: int | None = None
         self.noerr_legs = 0
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self._release_injects()
         self.noise = SepEsrcPatternNoise(logger=self.logger)
         self.noise.start(plan.balanced)
@@ -345,18 +372,12 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         self.p = await self.setup.measure_period(self.chk)
         await self.setup.wait_boot_done(self.esrc, WINDOW)
 
-    async def _stream_window(self) -> int:
-        """Stream words over STREAM_WINDOW_READS consecutive FIFO_STATUS reads."""
-        w0 = self.tap.words
-        for _ in range(STREAM_WINDOW_READS):
-            await self._rd(ESRC_FIFO_STATUS)
-        return self.tap.words - w0
-
     # --- fill leg (steps 2-7) -------------------------------------------------------
     async def _fill_leg(self) -> bool:
         plan = self.plan
-        before_fill = await self._stream_window()
         bound = self._fill_bound()
+        fill_w0 = self.tap.words
+        self.tap.mark_gaps()
         t0 = self._now()
         samples: list[tuple[int, int, int]] = []
         ptr_bad = 0
@@ -371,6 +392,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             for _ in range(plan.idle_reads):
                 await self._rd(ESRC_MAIN_SM_STATUS)
         fill = self._now() - t0
+        fill_words, fill_gap = self.tap.words - fill_w0, self.tap.max_gap
         if not full:
             self.chk.ok(
                 "FIFO-FILL",
@@ -380,7 +402,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             )
             return False
         self.fill_clk = max(1, fill)
-        self.logger.info("FIFO fill clean=%d bound=%d", self.fill_clk, LAT_FACTOR * self.fill_clk)
+        self.chk.info("FIFO-FILL-REF", clean=self.fill_clk, bound=LAT_FACTOR * self.fill_clk)
         ok, intr, _ = await self._poll(
             ESRC_INTR_STATUS, lambda v: v & INTR_FIFO_OVERFLOW, bool, self._fill_bound()
         )
@@ -392,9 +414,24 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             samples.append((lvl, wp, rp))
             plateau_bad += lvl != DEPTH
             ptr_bad += ((wp - rp) % PTR_MOD) != (lvl % PTR_MOD)
-        full_window = await self._stream_window()
-        self.chk.obs(
-            "FIFO-STREAM-FULL", full_window_words=full_window, before_fill_window_words=before_fill
+        # Stream words in a window of STREAM_WINDOW_GAPS x the longest gap between stream
+        # words of the fill, with LEVEL held at 64. Control: the fill offered at least two
+        # words, so every window of that length inside the fill held at least one word.
+        window_clk = STREAM_WINDOW_GAPS * fill_gap
+        self.chk.ctrl(
+            "FIFO-STREAM-FULL", fill_words >= 2, fill_words=fill_words, fill_max_gap_clk=fill_gap
+        )
+        w0 = self.tap.words
+        await ClockCycles(cocotb.top.clk_i, max(1, window_clk))
+        full_window = self.tap.words - w0
+        level_after = _status(await self._rd(ESRC_FIFO_STATUS))[0]
+        self.chk.ok(
+            "FIFO-STREAM-FULL",
+            full_window >= 1 and level_after == DEPTH,
+            full_window_words=full_window,
+            window_clk=window_clk,
+            fill_max_gap_clk=fill_gap,
+            level_after=level_after,
         )
         first = samples[0][0]
         self.chk.ctrl("FIFO-FILL", first < DEPTH, level_first=first)
@@ -419,6 +456,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         plan = self.plan
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         l0, w0, r0 = _status(await self._rd(ESRC_FIFO_STATUS))
+        tap0 = self.tap.words
         prev = (l0, w0, r0)
         bad = 0
         for _ in range(plan.k):
@@ -426,6 +464,17 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             cur = _status(await self._rd(ESRC_FIFO_STATUS))
             bad += cur != (prev[0] - 1, prev[1], (prev[2] + 1) % PTR_MOD)
             prev = cur
+        # The stream port offers words whatever FIFO_CTRL.ENABLE is (architecture.adoc:150):
+        # the window stays open until one word is offered, and then LEVEL and WPTR must hold.
+        bound = self._word_bound()
+        t0 = self._now()
+        while self.tap.words == tap0 and self._now() - t0 <= bound:
+            await self._rd(ESRC_FIFO_STATUS)
+        offered = self.tap.words - tap0
+        cur = _status(await self._rd(ESRC_FIFO_STATUS))
+        bad += cur != prev
+        prev = cur
+        self.chk.ctrl("FIFO-POP", offered >= 1, offered=offered, wait_bound=bound)
         l1, w1, r1 = prev
         self.chk.ok(
             "FIFO-POP",
@@ -446,10 +495,13 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         await self._noerr("pop")
         await self._wr(ESRC_INTR_STATUS, INTR_FIFO_OVERFLOW | INTR_FIFO_UNDERFLOW)
         after = await self._rd(ESRC_INTR_STATUS)
-        self.chk.obs(
+        ovf_after = _get(after, "INTR_STATUS", "FIFO_OVERFLOW")
+        udf_after = _get(after, "INTR_STATUS", "FIFO_UNDERFLOW")
+        self.chk.ok(
             "FIFO-FLAGS-CLEAR",
-            overflow=_get(after, "INTR_STATUS", "FIFO_OVERFLOW"),
-            underflow=_get(after, "INTR_STATUS", "FIFO_UNDERFLOW"),
+            ovf_after == 0 and udf_after == 0,
+            overflow=ovf_after,
+            underflow=udf_after,
         )
 
     # --- resume leg (step 12) ---------------------------------------------------------
@@ -543,6 +595,11 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             for k in range(CHURN_DISTANCE, DEPTH):
                 pairs += 1
                 bad += (on[k] ^ on[k - CHURN_DISTANCE]) != c
+            self.chk.obs(
+                "FIFO-CHURN-FIRST32",
+                c=f"0x{c:08x}",
+                words_xor_c=",".join(f"0x{on[k] ^ c:08x}" for k in range(CHURN_DISTANCE)),
+            )
         ctrl_ok = off is not None and all(w == c for w in off)
         self.chk.ctrl("FIFO-CHURN", ctrl_ok, ctrl_churn_off_words_equal_c=ctrl_ok)
         fields = {

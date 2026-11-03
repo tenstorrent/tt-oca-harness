@@ -183,7 +183,8 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         s0_pub, s1_pub, ctl_pub = await self.kmac.read_public_key_shares()
         assert all(w == 0 for w in s0_pub + s1_pub), (
             "KMAC public KEY_SHARE0/1 not all zero after sideload (key leak): "
-            f"s0={[hex(w) for w in s0_pub if w]} s1={[hex(w) for w in s1_pub if w]}"
+            f"s0 nonzero at {[i for i, w in enumerate(s0_pub) if w]}, "
+            f"s1 nonzero at {[i for i, w in enumerate(s1_pub) if w]}"
         )
         assert ctl_pub != 0, (
             "PUB-OBSERVATION positive control failed: KMAC STATUS read back 0 over the same "

@@ -198,20 +198,36 @@ tags = ["uvm", "clock"]
 run_modes = ["smoke"]
 
 [[tests]]
-# A launch with LENGTH 0 and ENABLED_ND set advances DONE_0 by the drawn
-# NUM_REPETITIONS, where dma.adoc ("still retire[s] a transfer ID") and the
-# dma_ctrl.rdl NEXT_ID description ("still retires an ID without copying any
-# data") retire one; every other launch advances it by one. The leaf runs the
-# smc_dma_transfer_matrix_rand_test draw (its twelve copies and the ENABLED_ND
-# clear are the arm leg) and asserts DONE_0 equal to the returned ID.
-name = "smc_dma_zero_length_done_id_test"
-module = "smc_dma_zero_length_done_id_test"
+# A watchdog warm reset asserted while an SPM write burst from SEP_IN is inside
+# the CPU cluster boundary (AW handshake done, B not returned, the L2-frontend
+# isolate's pending write count above 0) leaves the boundary unanswering until
+# a primary reset: the cut write gets no B, and later SPM and CPU_CTRL writes
+# with the same AXI ID bits [2:0] never complete. cpu.adoc (CPU AXI Isolation)
+# says each cluster port is drained before the reset takes effect.
+name = "smc_spm_write_cut_by_warm_reset_test"
+module = "smc_spm_write_cut_by_warm_reset_test"
 seed = 1
 timeout_sec = 1800
 tags = ["rtl_issue"]
 run_modes = ["smoke"]
-expect_fail = "DONE_0 after a LENGTH 0 launch advances by NUM_REPETITIONS, not to the one returned ID (#3509)"
-expect_fail_match = "CHK-DXM-ZERO-LENGTH-DONE FAIL"
+expect_fail = "an SPM write cut by a watchdog warm reset receives no B after the release and later writes with its AXI ID bits [2:0] never complete"
+expect_fail_match = "CHK-SPM-WRITE-CUT-BY-WARM-RESET FAIL"
+
+[[tests]]
+# With THD_DAT 25 to 32 the I2C controller starts the transfer queued behind
+# a STOP T_R + TSU_STA + 7 cycles after it whatever TIMING4.T_BUF holds, below
+# T_BUF in some samples, where i2c.rdl gives T_BUF as the time between a STOP
+# and START condition. The leaf runs the smc_i2c_timing_set_rand_test draw (its
+# six graded pairs are the arm leg) and asserts every bus-free time of the
+# T_BUF pair at least the programmed T_BUF and moving with it.
+name = "smc_i2c_tbuf_bus_free_test"
+module = "smc_i2c_tbuf_bus_free_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "the I2C bus-free time after a STOP ignores TIMING4.T_BUF when THD_DAT is long"
+expect_fail_match = "CHK-ITS-TBUF-BUS-FREE FAIL"
 
 [[groups]]
 # Register-clock gate mapping, traffic-bearing wakes and closure.
@@ -247,14 +263,25 @@ tools = ["vcs"]
 tags = ["uvm", "csr", "reset"]
 run_modes = ["smoke"]
 
+[[tests]]
+# Narrow FIFO/acquire reads and null-write side effects; licensed on-demand leaf.
+name = "smc_narrow_access_side_effect_test"
+module = { uvm = "smc_narrow_access_side_effect_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "csr", "mailbox"]
+run_modes = ["smoke"]
+
 [[groups]]
-# Register-block CSR, pipelined lock and external-register lane scenarios.
+# Register-block CSR, lock ordering, lanes and narrow-access side effects.
 name = "csr_uvm_extended"
-expected_count = 3
+expected_count = 4
 tests = [
     "smc_regblock_sparse_strobe_test",
     "smc_lock_pipelined_write_test",
     "smc_external_reg_lane_test",
+    "smc_narrow_access_side_effect_test",
 ]
 
 [[groups]]
@@ -270,12 +297,13 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 4
+expected_count = 5
 tests = [
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
-    "smc_dma_zero_length_done_id_test",
+    "smc_spm_write_cut_by_warm_reset_test",
+    "smc_i2c_tbuf_bus_free_test",
 ]
 
 [[groups]]

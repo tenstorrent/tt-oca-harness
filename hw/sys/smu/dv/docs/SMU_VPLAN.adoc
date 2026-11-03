@@ -336,7 +336,7 @@ Signoff Package; this table is the credit decision.
 |F3 DTP debug and test access |PTAP / STAP / BSR / JTAG2AXI / OTP / boot-stall / IC_RESET cluster |`hosted` |`smu_dbg_fcov` (`c_jtag2axi_write_reaches_smc_csr`, `c_jtag2axi_read_returns_csr_value`, `c_smc_otp_read_response_returned`, `g_sep.c_sep_otp_read_response_returned`), `smu_dtp_fcov` override slice (`c_ovrd_field_present`, `c_val_field_active_low`), `smu_boot_fcov` (`c_boot_stall_jtag_applied`, `c_boot_stall_jtag_released`, `g_sep.c_lc_sigint_err`) |`CHK-DTP-JTAG-PTAP-S1`, `STALL_COLD_STICKY`, `CHK-OTP-SMC-MAP-RW`, `CHK-LC-SIGINT-SMC-OTP-CLOSED`, `J2A_*` |YES
 |F4 AXI fabric |ID convert, filters, alias remap, fabric BAR |`hosted` |`smu_xbar_fcov` (`c_map_smc_base_programmed`, `c_axi_in_aw_accept`, `c_axi_in_rresp_okay`, `c_axi_in_bresp_decerr`, `c_no_route_ext_in_to_ext_out`), `smu_alias_fcov` (`g_sep.c_alias_path_bypasses_xbar`, `g_sep.c_sep_access_outside_window_observed_at_xbar`), `smu_ext_fcov` `c_inbound_id_width_8` |`AXI_ID_WIDTH_OK`, `AXI_NON_ATOP_OK` (non-ATOP path completes), `AXI_FILTER_OKAY` |YES for the SEP=1 fabric. The SEP=0 shape (`smu_axi_xbar` absent, direct ID converters) is OUT: no target elaborates it
 |F4 ATOP reject — no stimulus path |`smu_axi_atomic_operation_test` covers the non-ATOP path only |`hosted` |none |none — `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package has no ATOP driver |NO
-|AXI4 protocol on the SMU crossbar and boundary links |<<sec-113-smu_axi_out_addr_len_size_test,`smu_axi_out_addr_len_size_test`>>, <<sec-122-smu_smc_inbound_window_sweep_test,`smu_smc_inbound_window_sweep_test`>>, <<sec-050-smu_dtp_jtag2axi_smc_rw_matrix_test,`smu_dtp_jtag2axi_smc_rw_matrix_test`>>, <<sec-079-smu_wrapper_jtag_ptap_test,`smu_wrapper_jtag_ptap_test`>>, <<sec-093-smu_sep_bidirect_test,`smu_sep_bidirect_test`>> |`fabric`, `dtp_under_smu`, `sep_probe`, `sep_real_fw`, `hosted`, `all` |none (protocol checker, no coverage point) |`CHK-AXI-SVA-SMU-IN`, `CHK-AXI-SVA-SMU-OUT`, `CHK-AXI-SVA-XBAR-SEP-OUT`, `CHK-AXI-SVA-XBAR-SMC-OUT`, `CHK-AXI-SVA-XBAR-EXT-IN`, `CHK-AXI-SVA-XBAR-SEP-IN`, `CHK-AXI-SVA-XBAR-SMC-IN`, `CHK-AXI-SVA-XBAR-EXT-OUT`, `CHK-AXI-SVA-SEP-TO-SMC`, `CHK-AXI-SVA-DTP-DBG` |YES on VCS only, for all ten ports, from the VCS `all` run of record (`--dut smu --tool vcs --items all`, <<smu-dv-functional-coverage-plan>>): the rules and the `+axi_sva_need_*` gates exist only on VCS, the `hosted` workflow runs on Verilator and grades none of them, and the `smu_wrapper_jtag_ptap_test` and `smu_sep_bidirect_test` drivers sit in `sep_probe` / `sep_real_fw`, OUT of `hosted` credit
+|AXI4 protocol on the SMU crossbar and boundary links |<<sec-113-smu_axi_out_addr_len_size_test,`smu_axi_out_addr_len_size_test`>>, <<sec-122-smu_smc_inbound_window_sweep_test,`smu_smc_inbound_window_sweep_test`>>, <<sec-050-smu_dtp_jtag2axi_smc_rw_matrix_test,`smu_dtp_jtag2axi_smc_rw_matrix_test`>>, <<sec-079-smu_wrapper_jtag_ptap_test,`smu_wrapper_jtag_ptap_test`>>, <<sec-093-smu_sep_bidirect_test,`smu_sep_bidirect_test`>> |`axi_sva`, `fabric`, `dtp_under_smu`, `sep_probe`, `sep_real_fw`, `hosted`, `all` |none (protocol checker, no coverage point) |`CHK-AXI-SVA-SMU-IN`, `CHK-AXI-SVA-SMU-OUT`, `CHK-AXI-SVA-XBAR-SEP-OUT`, `CHK-AXI-SVA-XBAR-SMC-OUT`, `CHK-AXI-SVA-XBAR-EXT-IN`, `CHK-AXI-SVA-XBAR-SEP-IN`, `CHK-AXI-SVA-XBAR-SMC-IN`, `CHK-AXI-SVA-XBAR-EXT-OUT`, `CHK-AXI-SVA-SEP-TO-SMC`, `CHK-AXI-SVA-DTP-DBG` |YES on VCS only, for all ten ports, from the VCS run of record of the `axi_sva` group (`--dut smu --tool vcs --items axi_sva`; the VCS `all` run includes it, <<smu-dv-functional-coverage-plan>>): the X rules and the `+axi_sva_need_*` gates exist only on VCS, the `hosted` workflow runs on Verilator and grades the two-state rules only, and the `smu_wrapper_jtag_ptap_test` and `smu_sep_bidirect_test` drivers sit in `sep_probe` / `sep_real_fw`, OUT of `hosted` credit
 |F5 SMC↔SEP interop |`smu_sep_bidirect_test`, `smu_sep_smc_notify_test` |`sep_real_fw`, `all` |none |none in `TEST_EVIDENCE`; the verdict is the firmware's terminal loop |NO. OUT of `hosted` credit: both leaves run SEP DV firmware, so they need the RISC-V toolchain and sit in `sep_real_fw` / `all`, which no workflow schedules
 |F6 Cross-trigger and clock-stop |`smu_clock_stop_coordination_test`, `smu_xtrig_ctm_illegal_phase_test`, `smu_xtrig_ctm_remap_test` |`hosted` |`smu_clkstop_fcov` (`c_clk_stop_req_delivered`, `c_stop_clks_from_debug_control`, `c_stop_clks_released`), `smu_dtp_fcov` CTP points (`c_ctp_req_out_width_16`, `c_ctp_ack_in_width_16`, `c_ctp_unused_input_tied_zero_inert`) |`CHK-DTP-BOOT-STALL-S1`, `XT_ILLEGAL_PHASE`, `XT_CTM_REMAP` |YES
 |F7 Lifecycle and security |twelve eFuse-image lifecycle leaves, cards 171-182 (`smu_lc_export_test_dev_test`, `smu_lc_export_prod_test`, `smu_lc_export_prod_end_test`, `smu_lc_export_rma_sip_0_test`, `smu_lc_export_rma_chiplet_0_test`, `smu_lc_sec_dis_over_sigint_prod_test`, `smu_lc_demote_test_dev_test`, `smu_lc_dis_sys_chiplet_dbg_test_dev_test`, `smu_lc_dis_sip_sep_dbg_test_dev_test`, `smu_lc_dis_sys_not_binding_rma_sip_test`, `smu_lc_dis_sip_sep_dbg_rma_sip_test`, `smu_lc_secure_tm_scope_prod_test`) |`hosted` |`smu_lc_fcov` (`c_lc_state_width_8`, `c_demote_1_width_2`, `c_demote_2_width_2`), `smu_boot_fcov` (`c_lc_state_changed`, `g_sep.c_lcc_demote_state_1`, `g_sep.c_lcc_demote_state_2`, `g_sep.c_lcc_demote_both`), `smu_dbg_fcov` (`g_sep.c_dbg_disable_blocks_smc_fabric_bridge`) |the `CHK-LC-*` tokens of cards 171-182 (LC_STATE export per state, feature-control word, SMC fabric launch or refusal, STAP and SIB posture, DEMOTE_1 / DEMOTE_2, SEC_DIS token match, SECURE_TM strap) |YES for the eFuse-image stimulus of cards 171-182. Still OUT: the SEP-firmware lifecycle flow (`smu_sep_lcc_flow_test` in `sep_real_fw`, the `sep_lifecycle` and `sep_chain` groups), which needs the RISC-V toolchain and sits outside `hosted`, the one group `regress.yml` schedules; the SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`) needs `smu #(.CFG(smu_pkg::NoSepCfg))`, which this package does not build, and is `not-runnable` in the disposition record
@@ -10812,7 +10812,8 @@ sequence's own raise, outside the scoreboard
 
 *Test Coverage*:
 
-* Submission: index 0 of an input array holds `token[31:0]`, a write of 1 to `TOKEN_EOP` bit 0 starts the SIP lane and bit 8 the chiplet lane, and writing the words alone does not launch a comparison (`hw/sys/sep/doc/token_processing.adoc`, "Token Submission"; `hw/ip/efuse/regs/efuse_mmr.rdl`, `TOKEN_EOP`). The SIP result reads 0x00 with eight SIP words written and no `TOKEN_EOP`, and the chiplet result reads 0x00 while the SIP result holds its match (`CHK-SEP-RMA-IDLE`); the chiplet result read right after the `TOKEN_EOP` 0x1 write is 0x00 and the SIP result read right after the `TOKEN_EOP` 0x100 write is 0x15, each bit starting its own lane only (`CHK-SEP-RMA-START`).
+* Submission: index 0 of an input array holds `token[31:0]`, a write of 1 to `TOKEN_EOP` bit 0 starts the SIP lane and bit 8 the chiplet lane, and writing the words alone does not launch a comparison (`hw/sys/sep/doc/token_processing.adoc`, "Token Submission"; `hw/ip/efuse/regs/efuse_mmr.rdl`, `TOKEN_EOP`). The SIP result reads 0x00 with eight SIP words written and no `TOKEN_EOP`, and the chiplet result reads 0x00 while the SIP result holds its match (`CHK-SEP-RMA-IDLE`); the chiplet result read right after the `TOKEN_EOP` 0x1 write is 0x00 and the SIP result read right after the `TOKEN_EOP` 0x100 write, with the SIP words rewritten one bit
+  off, is 0x15, each bit starting its own lane only (`CHK-SEP-RMA-START`).
 * Results: the encodings are idle 0x00, match 0x15 and mismatch 0x2a, the six-bit `TOKEN_MATCH_STATUS` field (`token_processing.adoc`, "Token result encodings"; `efuse_mmr.rdl`, `TOKEN_MATCH`). The SIP token reads 0x15 (`CHK-SEP-RMA-SIP-MATCH`); the chiplet legs run in an order where each expected result differs from the one the leg before left, so a leftover result cannot satisfy a compare: the chiplet token with bit 0 flipped (pinned, every seed) reads 0x2a after idle (`CHK-SEP-RMA-CHIP-MISMATCH`), the correct chiplet token reads 0x15 after it (`CHK-SEP-RMA-CHIP-MATCH`), and the chiplet token with a seed-drawn bit 1 to 255 flipped reads 0x2a after the match (`CHK-SEP-RMA-CHIP-MISMATCH`); the matches are the positive controls of the mismatch and the idle reads are the controls of the matches.
 * Independence: the SIP result still reads 0x15 after the chiplet lane changed from idle to mismatch to match to mismatch (`CHK-SEP-RMA-INDEP`; `efuse_mmr.rdl`, `RMA_SIP_TOKEN_MATCH` and `RMA_CHIPLET_TOKEN_MATCH`).
 * Settling: in each of the four started legs the result leaves 0x00 within a bounded poll count, each poll a recorded wait site (`CHK-TIMEOUT-PATHS`); the polls used are logged and no cycle count is compared.
@@ -10827,7 +10828,10 @@ sequence's own raise, outside the scoreboard
 . Write the eight SIP token words and read the SIP result before any `TOKEN_EOP` write.
 . Write `TOKEN_EOP` 0x1, read the chiplet result once, then poll the SIP result, within a bound, until it leaves 0x00.
 . Read the chiplet result while the SIP result holds its match.
-. Error injection. Point: the chiplet token lane, eight words written over the SEP debug system bus and started with `TOKEN_EOP` 0x100. Kind: a deliberately mismatching token, the fused chiplet token with bit 0 flipped (pinned, every seed). Expected response: the chiplet result, polled within a bound until it leaves 0x00, reads mismatch (0x2a), and the SIP result read once right after the `TOKEN_EOP` 0x100 write is 0x15.
+. Rewrite the eight SIP token words with the SIP token bit 0 flipped, without a `TOKEN_EOP`
+  write. Error injection. Point: the chiplet token lane, eight words written over the SEP debug
+  system bus and started with `TOKEN_EOP` 0x100. Kind: a deliberately mismatching token, the fused chiplet token with bit 0 flipped (pinned, every seed). Expected response: the chiplet result, polled within a bound until it leaves 0x00, reads mismatch (0x2a), and the SIP result read once right after the `TOKEN_EOP` 0x100 write is 0x15, where a SIP hash
+  started by that write would read 0x00 or 0x2a.
 . Write the eight chiplet words of the correct token, write `TOKEN_EOP` 0x100 and poll the chiplet result, within a bound, until it leaves 0x00; it reads match (0x15) after the mismatch (0x2a) the leg before left.
 . Error injection. Point: the same chiplet token lane. Kind: the fused chiplet token with the drawn bit flipped. Expected response: the chiplet result, polled within a bound until it leaves 0x00, reads mismatch (0x2a) after the match (0x15) the leg before left.
 . Re-read the SIP result.
@@ -10840,7 +10844,8 @@ sequence's own raise, outside the scoreboard
 |===
 |Checker |Description
 |`CHK-SEP-RMA-IDLE` |the SIP result reads 0x00 with eight words written and no TOKEN_EOP, and the chiplet result reads 0x00 while the SIP result holds its match
-|`CHK-SEP-RMA-START` |the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read right after TOKEN_EOP 0x100 is 0x15, each lane starting its own hash only
+|`CHK-SEP-RMA-START` |the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read right after TOKEN_EOP 0x100, with the SIP words rewritten one bit off, is
+0x15, each lane starting its own hash only
 |`CHK-SEP-RMA-SIP-MATCH` |after the eight words of the SIP token and TOKEN_EOP 0x1 the SIP result reads 0x15, having read 0x00 before TOKEN_EOP
 |`CHK-SEP-RMA-CHIP-MISMATCH` |the chiplet token with bit 0 flipped (pinned, every seed), written and started first, reads 0x2a, having read 0x00 before it; the chiplet token with the seed-drawn bit 1 to 255 flipped, written and started after the correct token, reads 0x2a, having read 0x15 in the leg before
 |`CHK-SEP-RMA-CHIP-MATCH` |the correct chiplet token written and started after the pinned mismatch leg reads 0x15, having read 0x2a in the leg before
@@ -11805,6 +11810,132 @@ grade.
 
 '''''
 
+[[sec-209-smu_axi_smc_cool_reset_in_flight_test]]
+===== 209 `smu_axi_smc_cool_reset_in_flight_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smu_axi_smc_cool_reset_in_flight_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins; the `ocah_axi_vip` responder on `u_axi_out_if` with `axi_out_max_outstanding` 4, and a one-shot response hold in the last leg only; `ocah_jtag_vip` for the JTAG2AXI accesses; the bench pins `tb_cool_reset_pin` and `tb_cfg_flr_pf_active`; `elaboration` firmware mode
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `axi_sva`, `all`; `timeout_sec` 3600; tags `fabric`, `reset`, `axi_sva`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1; tool VCS on `target = "compile_smu_chiplet"`, with the `+axi_sva_need_*` plusargs of the eleven links the leaf drives (`xbar_sep_out` and `sep_to_smc` carry no traffic in this leaf, so theirs are not set). Legs run in the order S1 to S9.
+
+*Randomization*: RAND-NONE: directed; the planned request set, the IDs, the addresses and the reset sources are fixed, and the seed draws only the bench bring-up timing.
+
+*Objective*: Every SMU AXI link the bench checks behaves across the SMC primary reset with requests in flight: VALIDs low while the reset is asserted, handshakes resolved from release, no response after release for a request issued before it or never issued, and a fresh access on every drivable route afterwards, for the cool-reset pin and for the FLR cool reset.
+
+*Test Coverage*:
+
+* The SMC primary reset is the AND of the stable cold reset, the de-glitched cool-reset pin and the FLR cool reset, and it is the aresetn of every checked link (`hw/sys/smc/doc/clk_rst.adoc`, "Primary and Warm Reset"). The cool-reset pin is held past its 32-sample de-glitcher; the FLR leg programs a nonzero cool-reset hold count and raises `cfg_flr_pf_active_i` until the primary reset falls.
+* Before each reset the ext_in master has eight requests accepted and unanswered (single-beat and INCR AxLEN 3 reads and writes under distinct IDs toward the SMC and SEP apertures, BREADY and RREADY withheld), and one JTAG2AXI access toward `ext_out` is issued, which the responder answers without a hold; the per-port, per-ID count is logged before the reset, and what completes or is withdrawn is logged per port and ID afterwards.
+* Every checked link is sampled on every `clk_smu_i` edge of each reset window and of the 2048 edges after each release, and on handshake activity elsewhere: its five VALIDs while `rst_primary_smc_clk_n_o` is low, its ten VALID and READY signals from release, and every handshake with its ID, address, length, burst, user and response.
+* What completes and what the reset withdraws are measured, not compared (SF-003). The last leg holds one B on the responder, which resets on `rst_cold_n_o`, across a cool reset; the primary reset is the link's aresetn and withdraws the request, so the responder drops the held B on its falling edge, and what the DUT presents after release is measured, not compared (SF-003). The verdict covers only what the DUT presents: a held response is the bench's act. The SEP-originated routes and the OKAY cells of the SEP-aperture routes are not driven (Known limitations).
+
+*Test Procedure*:
+
+[arabic]
+. S1: open the SMC aperture alias, the INBOUND0 window and the OUTBOUND0 filter over JTAG2AXI; a write then read on ext_in to the SMC aperture is the OKAY reference, and the ext_in SEP-aperture route is answered once per request.
+. S2: a JTAG2AXI write and read of an SPM word, and toward the SEP aperture and an address in neither aperture, sampled at `xbar_smc_out` and at the target port.
+. S3: issue the ext_in load and one JTAG2AXI write toward `ext_out` with no response held; wait, bounded, for every address handshake and log the outstanding counts.
+. S4: hold the cool-reset pin, sample every link on every reset edge, release it and wait, bounded, for `rst_primary_smc_clk_n_o`, `obs_smc_rst_n_o` and `obs_xbar_rst_n_o`.
+. S5: poll the JTAG2AXI status, bounded; log each B and R on `smu_in` and `dtp_dbg` against the requests accepted after release.
+. S6: reopen the paths and run one fresh write and read on every route; the routes that answered OKAY in S1 and S2 are graded, the SEP-aperture route is logged as `OBS-G2A-SEP-ROUTE-LIVENESS`.
+. S7: program the FLR counters, repeat S3 to S6 with a JTAG2AXI read, no response held, and the FLR request as the reset source, and clear the FLR isolation latch after release.
+. S8: every wait is bounded in `clk_smu_i` or `clk_ref_i` edges, polls or nanoseconds and raises with the last handshake and reset-net sample; every `CHK-G2A-*` line, the ordered `CHK-NONVAC` fence and `CHK-TIMEOUT-PATHS` print here.
+. S9 HELD_RESP: arm the responder's one-shot B hold, issue one JTAG2AXI write toward `ext_out` and wait, bounded, until the written word is in the responder memory with the B held; assert and release the cool reset, with the responder dropping the held B on the primary reset's falling edge; poll the JTAG2AXI status, bounded, and watch past the original hold, then print `OBS-G2A-HELD-RESP` (writes held at the reset, the drop time, the B count after release on `smu_out`, `xbar_ext_out`, `xbar_smc_out` and `dtp_dbg`, the JTAG2AXI status, the five reset nets).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-G2A-VALID-LOW` |on every sampled `clk_smu_i` edge with `rst_primary_smc_clk_n_o` low after the cool-reset pin, AWVALID, WVALID and ARVALID (manager side) and BVALID and RVALID (subordinate side) of all thirteen checked links are 0, and every link has sampled reset edges
+|`CHK-G2A-XKNOWN` |from release, the ten VALID and READY signals of every checked link are resolved on every sampled edge
+|`CHK-G2A-NO-STALE-RESP` |after the cool-reset release no B or R (RLAST) on `smu_in` answers an ID that had a request outstanding at the reset with no AW or AR accepted for it after release, and no B or R on `smu_in` or `dtp_dbg` outnumbers the AW or AR accepted after release for its ID; the held B of S9 is `OBS-G2A-HELD-RESP`, not this check
+|`CHK-G2A-LIVENESS` |on each route that answered OKAY in S1 and S2 (ext_in to the SMC window, JTAG2AXI to the SMC window and to `ext_out`) a fresh write and read are OKAY with one response per request and read back the word written; the line states the number of routes graded
+|`CHK-G2A-FLR` |the FLR cool reset drives `rst_primary_smc_clk_n_o` low, with the VALID-low, no-stale and liveness rules above holding for that source
+|`CHK-G2A-DTP-LINK` |`dtp_dbg` VALIDs are 0 on every sampled reset edge of both legs, and a fresh JTAG2AXI write and read after each release receive one response with the issued ID
+|`CHK-G2A-JTAG2AXI` |the SMC-window write and read return the word written; each out-of-window request appears at `sep_in` or `ext_out` as the routing table states and at no other target, with AxUSER[3:0] = 0x3 and AxUSER[11:4] = 0 at `smc_out`, and its response returns on `dtp_dbg` with its ID
+|`CHK-NONVAC` |ordered fence SETUP < JTAG2AXI < LOAD < COOL_RESET < RELEASE_WATCH < LIVENESS < FLR_LOAD < FLR_RESET < FLR_RELEASE_WATCH < FLR_LIVENESS < FLR_LEG, each term with its sim time and a non-zero count at least its plan; the reset terms plan the edges sampled with the primary reset low and the watch terms the edges sampled since release
+|`CHK-TIMEOUT-PATHS` |every bounded wait logs its bound and last state, raises on expiry, and none expires
+|`CHK-AXI-SVA-<PORT>` (bench, at final) |for `SMU-IN`, `XBAR-EXT-IN`, `INCUT`, `XBAR-SEP-IN`, `IWC-SEP`, `XBAR-SMC-IN`, `IWC-SMC`, `DTP-DBG`, `XBAR-SMC-OUT`, `XBAR-EXT-OUT` and `SMU-OUT`: a nonzero handshake count under `+axi_sva_need_<port>`, and no rule of the instance fires, the reset rules among them
+|===
+
+*Observations* (measured, never compared): `OBS-G2A-RESET-DOMAIN` (SF-001, SF-002, SF-010), `OBS-G2A-OUTCOME`, `OBS-G2A-HELD-RESP` (SF-003), `OBS-G2A-SEP-ROUTE-LIVENESS`, `OBS-G2A-FLR-OUTCOME` (SF-001, SF-003), `OBS-G2A-DTP-RESET` (SF-028, SF-003), `OBS-G2A-ATOP-DTP` (SF-017), `OBS-G2A-ADDR` (SF-023).
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `axi_sva`, `all`.
+
+*Known limitations*: the SEP debug-module LSU probe is not armed, so `xbar_sep_out` and `sep_to_smc` carry no traffic, their `+axi_sva_need_*` plusargs are left out, and their CHK-AXI-SVA lines print a zero count; the SEP aperture at its reset window maps no SEP resource and widening it needs the SEP debug module, so the ext_in and JTAG2AXI SEP-aperture routes are graded on routing and response IDs only; the JTAG2AXI bridge carries one access at a time, so each leg issues one access; the held-response leg holds one B, so a held R is not exercised; a response presented after release would answer a request the link's reset withdrew, a protocol violation by the bench, so what the SMU does with one is not driven and waits on SF-003. Each of these prints `INFO-CELL-NOT-DRIVABLE`. A response without a request on `smu_in`, `dtp_dbg` or `smu_out` prints `INFO-CLASSIFY` with its class, the last request handshake and the reset nets.
+
+*Scope limit*: the SEP boot-qualified and SMC warm resets are other leaves.
+
+'''''
+
+[[sec-210-smu_axi_ext_in_illegal_encoding_test]]
+===== 210 `smu_axi_ext_in_illegal_encoding_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smu_axi_ext_in_illegal_encoding_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: a raw-channel driver on the flat `ext_in_*` pins (the `ocah_axi_vip` master cannot present AxBURST = 2'b11 and splits every burst at a 4 KiB boundary); `ocah_jtag_vip` for JTAG2AXI and the SEP debug module's system bus; the bench hook `+smu_axi_illegal_inject`; `elaboration` firmware mode
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `axi_sva`, `all`; `timeout_sec` 2700; tags `fabric`, `axi_sva`, `illegal`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads, the TEST_DEV SEP image so the SEP debug module answers); firmware `elaboration` (mode `elaboration`); seed 1; tool VCS on `target = "compile_smu_chiplet"`, with `+smu_axi_illegal_inject` and the `+axi_sva_need_*` plusargs of the seven inbound-path links the leaf drives.
+
+*Randomization*: RAND-NONE: directed; the request set, the IDs and the addresses are fixed, and the seed draws only the bench bring-up timing.
+
+*Objective*: The SMU external inbound port answers each illegal encoding (WRAP with AxLEN 0, the reserved burst encoding, an INCR that crosses a 4 KiB boundary) with at most one response sequence carrying the request's ID and stays usable afterwards, toward the SEP aperture, the SMC aperture and neither aperture; the SEP SRAM refuses multi-beat FIXED and WRAP bursts from ext_in and serves INCR; and nothing illegal reaches the crossbar targets.
+
+*Test Coverage*:
+
+* The SMC aperture local alias and SMC inbound filter entry 0 are opened over JTAG2AXI and the SEP aperture over the SEP debug module's system bus, so ext_in reaches the SEP SRAM through `sep_in` and the SMC scratchpad through `smc_in`, and an address in neither aperture returns the crossbar's own DECERR (`hw/sys/smu/doc/index.adoc`, routing table).
+* The SEP SRAM serves INCR bursts of every length and single-beat bursts of every type, and refuses a multi-beat FIXED or WRAP burst: the write is SLVERR and leaves SRAM unchanged, and every read beat is SLVERR (`hw/sys/sep/doc/fabric.adoc`, "SRAM").
+* With `+smu_axi_illegal_inject` the checkers on `smu_in`, the inbound cut and the crossbar ext_in port see the three illegal encodings as legal for the whole run, keyed on the encoding and not on the request ID, and every other rule of those instances still grades the request; the crossbar target and converter checkers are not masked, so what the SMU forwards is graded as it is.
+* What each illegal request is answered with, whether target memory changed, the hook's inputs per request, the WRAP strobes, the RDATA of SLVERR beats, the `aw.atop` field of the inbound request type and the admitting addresses are measured, not compared (SF-017 to SF-021, SF-023, SF-030).
+
+*Test Procedure*:
+
+[arabic]
+. S1: open the SMC aperture local alias and SMC inbound filter entry 0 over JTAG2AXI, then the SEP aperture to [0x0400_0000, 0x1500_0000) over the system bus; a write then read of one SEP SRAM word and one scratchpad word is the OKAY reference.
+. S2: INCR AxLEN 0, 1, 15 and 255 inside one 4 KiB page to both targets, single-beat FIXED and INCR, two-beat writes with W after, with and before AW, and four reads under distinct IDs in flight together; the AW and AR at both crossbar target ports and both converter outputs are sampled.
+. S3: INCR writes at AxSIZE 0, 1 and 2 with an unaligned first beat and partial strobes, and one full-width write whose unstrobed lanes carry X; each read back against the bytes the leaf wrote.
+. S4: full-width FIXED AxLEN 1, 3, 15 and WRAP AxLEN 1, 3, 7, 15 from an aligned start into the SEP SRAM, each written and read, and the addressed words read back with single-beat INCR reads.
+. S5 to S7: the SEP SRAM and scratchpad words the illegal requests address are written first; then a read and a write with WRAP AxLEN 0, with AxBURST 2'b11 and as a 4 KiB-crossing INCR toward the SEP aperture, the SMC aperture and neither aperture, one at a time, each observed for 1024 `clk_smu_i` edges.
+. S8: after each illegal request a fresh single-beat write and read to the S1 word of its target.
+. S9: the hook inputs per illegal request, the `aw.atop` field, and the rule families live in the run.
+. S10: every handshake and response wait is bounded in `clk_smu_i` edges and raises with the last handshake sample and `rst_primary_smc_clk_n_o`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-G11-WRAP0` |the WRAP AxLEN 0 read and write toward each aperture and neither get at most one response sequence each, and no B or R with any other ID arrives in the observation window; the fresh write and read after each are OKAY with one response each, no response with another ID, and the word written
+|`CHK-G11-RSVD` |the same for AxBURST 2'b11
+|`CHK-G11-4K` |the same for the 4 KiB-crossing INCR
+|`CHK-G11-SEPSRAM` |each multi-beat FIXED or WRAP write to the SEP SRAM is SLVERR and the addressed bytes keep their prior values; each such read returns AxLEN+1 SLVERR beats with RLAST on the last; INCR AxLEN 0, 1, 15, 255 and single-beat FIXED and INCR are OKAY on every beat and B and read back the data written
+|`CHK-G11-BEAT` |on ext_in every legal read's RLAST is on beat ARLEN+1; the WLAST and WSTRB of the bench's own W stream are printed as `INFO-G11-DRIVER`, not graded
+|`CHK-G11-BURSTLEGAL` |every AW and AR at `xbar_sep_in`, `xbar_smc_in` and both converter outputs has a legal burst, AxSIZE at most 3, FIXED AxLEN at most 15, WRAP AxLEN in {1, 3, 7, 15} with an aligned address, and no INCR crossing 4 KiB, including while the illegal requests are presented
+|`CHK-G11-WKNOWN` |the write with X only in unstrobed lanes carries known strobed lanes on every sampled link and changes only the strobed bytes
+|`CHK-G11-RULES-LIVE` |the run is four-state VCS with `OCAH_INC_ASSERT` and `SIMULATION` live on the seven checker instances the leaf names, so every rule family of the checker header compiles live
+|`CHK-NONVAC` |ordered fence SETUP < LEGAL_INCR < NARROW_STROBES < FIXED_WRAP < WRAP0 < RSVD < CROSS_4K < FRESH_ACCESS < DECODE_RULES, each term with its sim time and a count at or above the plan
+|`CHK-TIMEOUT-PATHS` |every bounded wait logs its bound and last state, raises on expiry, and none expires
+|`CHK-AXI-SVA-<PORT>` (bench, at final) |for `SMU-IN`, `XBAR-EXT-IN`, `INCUT`, `XBAR-SEP-IN`, `IWC-SEP`, `XBAR-SMC-IN` and `IWC-SMC`: a nonzero handshake count under `+axi_sva_need_<port>`, and no rule of the instance fires
+|===
+
+*Observations* (measured, never compared): `OBS-G11-WRAP0-RESP`, `OBS-G11-RSVD-RESP` and `OBS-G11-4K-RESP` (SF-018, SF-020), `OBS-G11-HOOK` (SF-019), `OBS-G11-ATOP-FIELD` (SF-017), `OBS-G11-WRAP-STRB` (SF-030), `OBS-G11-SLVERR-RDATA` (SF-021), `OBS-G11-ADDR` (SF-023, SF-018).
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. The leaf is red on `CHK-G11-BURSTLEGAL` and on the target-side checker reports it provokes until issue #3573 states what the SMU does with an illegal encoding on `smu_axi_in`; it is enrolled in `axi_sva` and `all`, not in a scheduled group, and is not masked.
+
+*Scope limit*: the response code, beat count and memory effect of each illegal request are measured only, and the illegal requests run only under the bench hook, which masks the three encodings on the three external-inbound checker instances (`u_smu_in_axi_sva`, `u_incut_axi_sva`, `u_xbar_ext_in_axi_sva`) for the whole run and nothing else; no verdict reads `BURST_LEGAL`, `LEN_WRAP_LEGAL` or `4KB_BOUNDARY` on those instances.
+
+'''''
+
 [[smu-vplan-phase3]]
 === Phase 3 Tests
 
@@ -12585,13 +12716,52 @@ This section lists features outside Phase 3 credit. Each reason names the open t
 
 === Formal Verification Plan
 
-No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
-`testlists/formal.toml` and no `formal/` directory under `hw/sys/smu/dv/`, and
-`run_dv.py --validate-configs` lists no `smu (formal)` view. The only formal
-target in the tree is the DTP primary-TAP controller
-(`hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`, "Formal Verification Plan"); it proves
-`jtag_tap_ctrlr` with `dtp` as the formal top and is DTP block-level evidence,
-not SMU integration evidence. Every row of this plan is simulation credit.
+The SMU formal view is `smu_formal_cfg.toml`, selected by
+`run_dv.py --dut smu --mode formal`, in the layout of
+`hw/common/dv/docs/formal-property-style.adoc`. Its one top is the AXI crossbar
+`smu_axi_xbar`, elaborated from the crossbar package and module, the vendored
+AXI and common-cells sources and the shared `ocah_axi_fv` checker. The one item
+of `testlists/formal.toml`, `smu_axi_xbar_fpv`, runs the `xbar_bmc` and
+`xbar_cover` tasks of `formal/fpv/sby/smu.sby` at depth 20 on `smtbmc` with
+yices and `xbar_prove` on `abc pdr` in one `sby` invocation.
+
+[cols="2,3,2",options="header",]
+|===
+|Check |Statement |Source
+|`ast_xbar_zero_sep_aperture_routes_nothing`, `ast_xbar_zero_smc_aperture_routes_nothing`
+|With the region size 0 at every edge since reset, the SEP (SMC) target port
+raises neither AW nor AR valid; `cov_xbar_zero_*_aperture_request` reach a
+request from an initiator that could otherwise reach that target.
+|SMU chapter, aperture decode ("A region size of 0 disables its aperture") and
+the routing table
+|`ast_xbar_one_response_per_request`, one per port
+|A B handshake needs an accepted AW without its B and an R-last handshake an
+accepted AR without its last beat, the same-cycle address handshake included;
+neither count exceeds eight. `cov_xbar_b_after_aw` and
+`cov_xbar_rlast_after_ar` are the liveness half.
+|AXI A3.3.1, as the `ocah_axi_fv` header reads it
+|`cov_xbar_route_<initiator>_to_<target>`
+|A request reaches each of the six legal pairs while one initiator alone has
+had an address accepted.
+|SMU chapter, crossbar ports table
+|`cov_xbar_decerr_<initiator>_<cell>_{write,read}`
+|Each DECERR cell answers writes and reads with DECERR while no target has
+seen a request.
+|SMU chapter, routing table and "The crossbar generates each `DECERR`
+response itself"
+|`ocah_axi_fv` on six ports
+|The crossbar's AXI handshake, reset and burst rules on every port, with the
+environment's side assumed.
+|`ocah_axi_fv` header (IHI 0022)
+|===
+
+The view needs Yosys with the yosys-slang plugin and SymbiYosys on `PATH`
+(`formal-property-style.adoc`, Open-path toolchain); without them
+`run_dv.py --doctor --dut smu --mode formal` reports `sby` missing. No formal
+result has been recorded for this view, so every row of this plan remains
+simulation credit. The DTP formal targets
+(`hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`, "Formal Verification Plan") are DTP
+block-level evidence, not SMU integration evidence.
 
 === Regression Groups
 
@@ -12607,7 +12777,7 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |`dtp_under_smu` |40 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
 |`hosted` |175 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |211 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`all` |213 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
@@ -12935,6 +13105,7 @@ covered above. SEP=1 3×3 xbar receives no release credit.
 [[smu-known-limitations]]
 === Known Limitations
 
+* *Illegal AXI encodings pass through the crossbar.* `smu_axi_ext_in_illegal_encoding_test` shows WRAP with AxLEN 0, the reserved burst encoding and a 4 KiB-crossing INCR forwarded unchanged from `smu_axi_in` to the SEP and SMC target ports, where the bound `ocah_axi_sva` instances fire and some writes land with OKAY; no document states the response. The leaf is red on `CHK-G11-BURSTLEGAL` until issue #3573 is answered, and runs only where `all` or `axi_sva` is selected on VCS.
 * *`all` is not a scheduled group.* `.github/workflows/regress.yml` runs
   `hosted` nightly and weekly: the rest of `all` is the SEP firmware set,
   whose `c_build` stages need the RISC-V toolchain container, which the
@@ -12964,11 +13135,14 @@ covered above. SEP=1 3×3 xbar receives no release credit.
   `hw/sys/smc/dv/tb/verilator_stubs/`.* VCS drops it. Xcelium receives
   both files; which of the pair it elaborates is not established. The
   leaves that observe a crossing are named in <<smu-vplan-bench-standins>>.
-* *The AXI protocol checkers grade on VCS only.* On Verilator the
-  `ocah_axi_sva` instances of `tb/tb_wrapper_top.sv` compile with the rules
-  off (define `ASSERTS_OFF`, no `--assert`), and the handshake count lines
-  are not printed. The credit the traceability matrix takes for them comes
-  from the VCS `all` run of record, not from a workflow run.
+* *The AXI protocol checkers grade in full on VCS only.* On Verilator the
+  `ocah_axi_sva` instances of `tb/tb_wrapper_top.sv` grade their two-state
+  rules (the Verilator assertion switch is on), but their four-state X rules,
+  the data-known rules and the `+axi_sva_need_*` checks are off, and the
+  handshake and stall count lines are not printed. The credit the
+  traceability matrix takes for them comes from the `axi_sva` group run on
+  VCS (`--dut smu --items axi_sva --tool vcs`), the run of record of the
+  checkers, not from a workflow run.
 * *Two leaves are RED on VCS until the cocotb AXI master keeps FIXED-burst
   byte lanes fixed.* `smu_axi_in_attribute_sweep_test` and
   `smu_axi_in_burst_outstanding_test` drive narrow FIXED bursts; the
