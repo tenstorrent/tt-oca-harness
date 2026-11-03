@@ -231,13 +231,13 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
         else:
             raise AssertionError("FMTFULL never set while filling FDATA")
 
-        # Depth compare: CONTROLLER_TX_FIFO_DEPTH is 64 for the controller-mode
-        # (FMT) FIFO, so FULL must assert on the 64th entry, not merely
-        # eventually.
+        # Depth compare: the SMC peripheral chapter states the controller TX
+        # (FMT) FIFO at 64 entries, so FULL must assert on the 64th entry, not
+        # merely eventually.
         assert self.fmt_full_at == _FMT_DEPTH, (
-            f"FMTFULL asserted after {self.fmt_full_at} FDATA pushes, SPEC "
-            f"CTRL_TX_FIFO_DEPTH is {_FMT_DEPTH} "
-            f"(hw/ip/i2c/doc/interface.adoc:16)"
+            f"FMTFULL asserted after {self.fmt_full_at} FDATA pushes, the "
+            f"documented controller TX FIFO depth is {_FMT_DEPTH} "
+            f"(hw/sys/smc/doc/periphs.adoc)"
         )
 
         await self._await_status("FMT_FULL", status_a, want_set=I2C_STATUS_FMTFULL)
@@ -357,11 +357,12 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
         else:
             raise AssertionError("TXFULL never set while filling TXDATA")
 
-        # Depth compare: TARGET_TX_FIFO_DEPTH is 64 for the target-mode TX FIFO.
+        # Depth compare: the SMC peripheral chapter states the target TX FIFO
+        # at 64 entries.
         assert self.tx_full_at == _TX_DEPTH, (
-            f"TXFULL asserted after {self.tx_full_at} TXDATA pushes, SPEC "
-            f"TGT_TX_FIFO_DEPTH is {_TX_DEPTH} "
-            f"(hw/ip/i2c/doc/interface.adoc:18)"
+            f"TXFULL asserted after {self.tx_full_at} TXDATA pushes, the "
+            f"documented target TX FIFO depth is {_TX_DEPTH} "
+            f"(hw/sys/smc/doc/periphs.adoc)"
         )
 
         await self._await_status("TX_FULL", status_a, want_set=I2C_STATUS_TXFULL)
