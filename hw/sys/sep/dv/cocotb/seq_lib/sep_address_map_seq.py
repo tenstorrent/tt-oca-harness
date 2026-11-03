@@ -25,16 +25,17 @@ of one readable CSR per LSU-reachable block — Secure DMA,
 WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
 source, Adams Bridge, entropy pool, lifecycle ctrl, KM mailbox, eFuse shadow,
 AXI-lite mailbox, inbound filter, alias-remap, output-remap, and the
-OpenTitan SPI host — confirming every block decodes.
+OpenTitan SPI host. A row that reads a register with a non-zero RDL reset
+shows that its block answers; a row with no such register shows only that the
+address answers OKAY inside SEP (see FABRIC_BLOCKS).
 
 Expected values are SOURCE-DERIVED, never hardcoded. Offsets,
 reset values, and implemented-field masks all come from `env/sep_reg_meta.py`,
 which reads the generated `hw/sys/sep/regs/gen/py/sep_reg.py` export of the
-SystemRDL. Only the write PATTERNS and the fabric-walk block addresses are
-literals here: the patterns are chosen stimulus, and the walk's
-addresses encode a per-block editorial choice of "one safe, readable CSR" that no
-generated symbol expresses. Blocks whose reset value IS exported
-(reset_ctrl/OTBN/HMAC/KMAC) take it from the header.
+SystemRDL. Only the write PATTERNS are literals here: they are chosen
+stimulus. Each fabric-walk row names its register by generated symbol, and a
+row that reads a register with a non-zero RDL reset takes that value from the
+header.
 
 CLOCK_GATE_CTRL has one implemented bit (`pka_cg_enable[0:0]`, reset 0).
 This sequence writes that implemented mask, reads it back, restores reset
@@ -60,6 +61,8 @@ from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_fabric_tap import SepFabricTap, TapBeat
 from pyuvm import uvm_sequence
 from sep_reg_meta import (
+    AES,
+    AXIL_MAILBOX_OUTBOUND_0,
     CSRNG,
     EDN,
     HMAC,
@@ -67,6 +70,8 @@ from sep_reg_meta import (
     OTBN,
     SEP_CPU_CTRL,
     SEP_RESET_CTRL,
+    SPI_CONTROLLER,
+    WDT_TIMER,
     RegBlock,
     iter_registers,
     sym,
@@ -77,6 +82,7 @@ from seq_lib.sep_entropy_pool_seq import POOL_STATUS
 
 BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 ENTROPY_SRC = RegBlock("ENTROPY_SOURCE")
+SECURE_DMA = RegBlock("SECURE_DMA")
 
 # Interior reserved span in sep_cpu_ctrl. SEP_FUSE_SENSE_STATUS is 64-bit
 # (sep_cpu_ctrl.rdl), so the hole starts at the next 8-byte offset and runs
@@ -170,7 +176,11 @@ WRITE_ONLY = [
 ]
 
 # SEP-local fabric walk: one defined, readable CSR per LSU-reachable block.
-# expected=None => accessibility only (OKAY; value hw-driven/state-dependent).
+# A row with an expected value reads a register whose RDL reset is non-zero and
+# that nothing in this test writes, so a read that lands in a local hole (OKAY,
+# data 0) fails the compare. expected=None => the block has no such register
+# (every reset is 0, or the read value is hardware-driven); the row proves only
+# that the address answers OKAY inside SEP.
 # Memory-backed ranges (SRAM/ROM/TCM, OTBN/KMAC mem, KM mem) and OTP-triggering
 # eFuse interface regs (0x1093_04xx+) are NOT probed — they would hang.
 # Pool pop (0x1095_0010) is destructive — only STATUS is walked.
@@ -196,8 +206,12 @@ if _INFILT0_CFG_RESET is None:
         "check; update FABRIC_BLOCKS to the block's name in the export"
     )
 FABRIC_BLOCKS = [
-    ("SECURE_DMA", sym("SECURE_DMA_REG_MAP_BASE_ADDR"), None),
-    ("WDT_TIMER", sym("WDT_TIMER_REG_MAP_BASE_ADDR"), None),
+    (
+        "SECURE_DMA",
+        SECURE_DMA.addr("HANDSHAKE_INTR_ENABLE"),
+        SECURE_DMA.reset32("HANDSHAKE_INTR_ENABLE"),
+    ),
+    ("WDT_TIMER", WDT_TIMER.addr("WDOG_REGWEN"), WDT_TIMER.reset32("WDOG_REGWEN")),
     ("SEP_SCRATCH_COLD", sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"), None),
     ("SEP_SCRATCH_WARM", sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR"), None),
     # SW_RESET_N resets with KM[0]=0 and OTBN/AES/HMAC/KMAC/TRNG/ABR[6:1]=1. An external
@@ -207,12 +221,14 @@ FABRIC_BLOCKS = [
         SEP_RESET_CTRL.addr("SW_RESET_N"),
         SEP_RESET_CTRL.reset32("SW_RESET_N"),
     ),
+    # OTBN STATUS resets non-zero but moves when the initial secure wipe ends;
+    # HMAC CFG has fields with no RDL reset. Both rows read INTR_STATE (reset 0).
     ("OTBN", OTBN.addr("INTR_STATE"), OTBN.reset32("INTR_STATE")),
-    ("AES", sym("AES_REG_MAP_BASE_ADDR"), None),
+    ("AES", AES.addr("CTRL_AUX_REGWEN"), AES.reset32("CTRL_AUX_REGWEN")),
     ("HMAC", HMAC.addr("INTR_STATE"), HMAC.reset32("INTR_STATE")),
-    ("KMAC", KMAC.addr("INTR_STATE"), KMAC.reset32("INTR_STATE")),
-    ("DRBG_CSRNG", sym("CSRNG_INTR_STATE_REG_ADDR"), CSRNG.reset("INTR_STATE")),
-    ("DRBG_EDN", sym("EDN_INTR_STATE_REG_ADDR"), EDN.reset("INTR_STATE")),
+    ("KMAC", KMAC.addr("CFG_SHADOWED"), KMAC.reset32("CFG_SHADOWED")),
+    ("DRBG_CSRNG", sym("CSRNG_REGWEN_REG_ADDR"), CSRNG.reset("REGWEN")),
+    ("DRBG_EDN", sym("EDN_REGWEN_REG_ADDR"), EDN.reset("REGWEN")),
     # COMPONENT_ID: every field sw=r with a constant RDL reset.
     (
         "ENTROPY_SRC",
@@ -228,7 +244,12 @@ FABRIC_BLOCKS = [
     # mailbox after boot, so its RDL reset is not the read value.
     ("KM_MAILBOX", sym("KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR"), None),
     ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),
-    ("AXIL_MAILBOX", sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR"), None),
+    # STATUS resets to the empty flag; nothing in this test writes the mailbox.
+    (
+        "AXIL_MAILBOX",
+        AXIL_MAILBOX_OUTBOUND_0.addr("STATUS"),
+        AXIL_MAILBOX_OUTBOUND_0.reset32("STATUS"),
+    ),
     ("INBOUND_FILTER", _INFILT0, _INFILT0_CFG_RESET),
     (
         "ALIAS_REMAP",
@@ -236,7 +257,7 @@ FABRIC_BLOCKS = [
         None,
     ),
     ("AP_OUTPUT_REMAP", sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR"), None),
-    ("OT_SPI_HOST", sym("SPI_CONTROLLER_INTR_STATE_REG_ADDR"), None),
+    ("OT_SPI_HOST", SPI_CONTROLLER.addr("CONTROL"), SPI_CONTROLLER.reset32("CONTROL")),
 ]
 
 

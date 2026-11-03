@@ -716,6 +716,30 @@ class sep_timer_clock_contract_test(sep_base_test):
     async def _wr(self, addr: int, value: int) -> None:
         await self.wdt.write(addr, value & M32)
 
+    async def _wr_logged(self, tag: str, addr: int, value: int, what: str) -> None:
+        """Write one timer register and log its B handshake as ``CTRL-<tag>``.
+
+        For a write whose graded readback equals the value before it, this line
+        shows that the write reached the DUT. A write with no B, or with a
+        response other than OKAY, fails the leaf as ``CTRL-MISSING <tag>``.
+        """
+        wseq = SepAxiAccessSeq(
+            f"{tag.lower()}_wr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=value & M32,
+            length=4,
+            size=self.wdt._AXI_SIZE,
+        )
+        await self.start_seq(wseq)
+        b_line = (
+            f"{what} write=0x{value & M32:x} timed_out={int(wseq.timed_out)} "
+            f"bresp={wseq.resp_code} expect={RESP_OKAY}"
+        )
+        if wseq.timed_out or wseq.resp_code != RESP_OKAY:
+            raise AssertionError(f"CTRL-MISSING {tag}: {b_line}")
+        self.logger.info("CTRL-%s: %s", tag, b_line)
+
     async def _poll_eq(self, name: str, addr: int, want: int, mask: int, chk: str) -> int:
         """Poll a timer register until its field bits equal ``want``. Returns the read."""
         got = 0
@@ -2094,7 +2118,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             # cause is read back-to-back from the write response to the end of that
             # window, and every read is graded.
             pat = cfg.patterns("WKUP_CAUSE")[pi]
-            await self._wr(WKUP_CAUSE, pat)
+            await self._wr_logged("WKUP-CAUSE-WRITE", WKUP_CAUSE, pat, "reg=WKUP_CAUSE")
             t_wr = self._now()
             reads = []
             while True:
@@ -2546,7 +2570,9 @@ class sep_timer_clock_contract_test(sep_base_test):
             await self._poll_eq(name, AON[name][0], val, AON[name][1], "CHK-REGWEN-HOLD")
         await self._wr(WDOG_REGWEN, 0)
         await self._poll_eq("WDOG_REGWEN", WDOG_REGWEN, 0, REGWEN_FIELD, "CHK-REGWEN-STICKY")
-        await self._wr(WDOG_REGWEN, 1)
+        await self._wr_logged(
+            "REGWEN-STICKY-WRITE", WDOG_REGWEN, 1, "reg=WDOG_REGWEN after_clear=1"
+        )
         await self._wait_wdt(WDT_WAIT)
         r1 = await self._rd(WDOG_REGWEN)
         fc = field_compare(r1, 0, REGWEN_FIELD)

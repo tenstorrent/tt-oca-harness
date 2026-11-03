@@ -189,9 +189,12 @@ class sep_address_map_test(sep_base_test):
         )
         self.logger.info(
             "CHK-FABRIC-WALK PASS: rows=%d of %d, each LSU-reachable block CSR read and "
-            "answered OKAY",
+            "answered OKAY; value-checked against a non-zero RDL reset: %s; "
+            "OKAY only: %s",
             len(walked),
             FABRIC_WALK_ROWS,
+            ",".join(name for name, _addr, exp in FABRIC_BLOCKS if exp),
+            ",".join(name for name, _addr, exp in FABRIC_BLOCKS if not exp),
         )
 
         # 0x158-0x177 owns no register: sep_cpu_ctrl.rdl places

@@ -591,7 +591,11 @@ access class of each `sep_cpu_ctrl` register, transcribed from
 response of each sweep access. Adds `+SEP_RANDOM_COUNT`
 seeded random patterns per storage register, a readback after each restore,
 and a read of `0x10A3_0170` after the hole write that must return zero. The
-scoreboard check CHK-SB-CPU-CTRL-CSR is required.
+scoreboard check CHK-SB-CPU-CTRL-CSR is required. The PR-EXT and PR-OUT tap
+checks (CTRL-EXT-DEMUX-PORT, CTRL-EXT-DEMUX-SHIM, CTRL-FABRIC-WALK-LOCAL) and
+the `SEP_TEST_CTRL` write check (CHK-SEP-TEST-CTRL-RO) run on cocotb only. The
+SV sequence grades the response class of the eFuse-shim boundary words and of
+each walked read only, and reads `SEP_TEST_CTRL` with a response check only.
 
 |<<sep_periph_bus_err_misaligned_test,`sep_periph_bus_err_misaligned_test`>>
 |Same as the cocotb procedure, over sixteen seeded passes by default
