@@ -2974,7 +2974,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Uncorrectable ICCM fetch error
 |Is an uncorrectable ICCM fetch error an instruction access fault (`hw/sys/sep/doc/interrupts.adoc`, "Uncorrectable (double-bit) errors") or does it re-raise the NMI (`sep_cpu_ctrl.adoc`, `SEP_NMI_VEC`)?
-|No test logs it.
+|`sep_tcm_ecc_cpu_trap_test` logs the trap kind as `OBS-RAS-ICCM_ECC_UE-TRAP`; it is not graded.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |The response to a write of the read-only `meip` register is not stated, and the behaviour of the reserved bits of the PIC registers is stated as read 0 only.
 |What response does a write to the read-only `meip` register get, and how do the reserved bits of the PIC registers take a write of 1 outside the cases below? Source: `hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc` (`meip`, access types).
