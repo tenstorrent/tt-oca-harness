@@ -30,6 +30,15 @@ clock; this test takes the first clock with ``sep_fuse_sense_done_o`` = 1 as the
 sensing has completed, and requires ``lc_state_o`` on that clock to equal the sensed
 ``LC_STATE`` byte and the encoding of the staged raw state.
 
+Log-only: ``OBS-SHADOW-PRESENSE-WITHHELD`` records, for the three public identity fields
+``SEP_CHIPLET_ID``, ``SEP_SIP_ID`` and ``SEP_SYS_ID``, the first clock on which the field at
+``efuse_shadow_probe_o`` holds its sensed value, the first clock on which the Key Manager OTP
+input (taps ``km_otp_sep_*_id_o``, ``{~value, value}``) carries that value, and the clock of the
+``sep_fuse_sense_done_o`` rise. ``hw/sys/sep/doc/otp_fuse_controller.adoc`` (Fuse Sensing and
+Boot Sequencing) makes every field other than LOCKS and LC_STATE available downstream as soon as
+it is ready; the description of ``assets/sep-token-processing.svg`` has the shadow map withheld
+until sensing completes. The two texts disagree, so the record grades nothing.
+
 Log-only: ``OBS-SENSE-FIELD-ORDER`` gives, per field, the first clock on which one of its
 words changed and the clock of the ``sep_fuse_sense_done_o`` rise, counted from the start of
 the leaf.
@@ -72,6 +81,29 @@ def _bits_int(sig) -> int | None:
     return int(s, 2) if set(s) <= {"0", "1"} else None
 
 
+_ID_TAPS = (
+    ("SEP_CHIPLET_ID", "km_otp_sep_chiplet_id_o"),
+    ("SEP_SIP_ID", "km_otp_sep_sip_id_o"),
+    ("SEP_SYS_ID", "km_otp_sep_sys_id_o"),
+)
+
+
+def _field_bits(shadow: str, name: str) -> str:
+    """The packed bits of field ``name`` in a shadow-probe value, MSB first."""
+    lo = len(shadow) - 32 * (field_word(name) + field_n_words(name))
+    return shadow[lo : lo + 32 * field_n_words(name)]
+
+
+def _dual_rail_value(tap: str) -> str | None:
+    """The value half of a ``{~value, value}`` tap, or None when the rails disagree or carry
+    X or Z."""
+    half = len(tap) // 2
+    hi, lo = tap[:half], tap[half:]
+    if not set(tap) <= {"0", "1"} or any(a == b for a, b in zip(hi, lo)):
+        return None
+    return lo
+
+
 async def _sense_order(rec: dict) -> None:
     """Per shadow word, the first clock it differs from the previous clock; stops at the
     ``sep_fuse_sense_done_o`` rise. From the ``rst_ni`` release it also records, per clock
@@ -93,6 +125,13 @@ async def _sense_order(rec: dict) -> None:
         elif seen_low:
             port = _bits_int(dut.lc_state_probe_o)
             sensed = _lc_byte(cur)
+            rec["ids"].append(
+                (
+                    clk,
+                    [_field_bits(cur, name) for name, _ in _ID_TAPS],
+                    [_dual_rail_value(_bits(getattr(dut, tap))) for _, tap in _ID_TAPS],
+                )
+            )
             if _bits(dut.sep_fuse_sense_done_o) == "1":
                 lc["rel"] = (clk, port, sensed)
             else:
@@ -136,6 +175,27 @@ class sep_efuse_sense_test(sep_base_test):
         "CHK-LC-STATE-RELEASE",
     )
 
+    def _log_id_withhold(self, rec: dict) -> None:
+        """OBS-SHADOW-PRESENSE-WITHHELD: when each identity field lands in the sensed shadow,
+        and when the Key Manager OTP input first carries it."""
+        rows = rec["ids"]
+        parts = [] if rows else ["none"]
+        for i, (name, _) in enumerate(_ID_TAPS if rows else ()):
+            final = rows[-1][1][i]
+            landed = next((c for c, s, _ in rows if s[i] == final), None)
+            down = next((c for c, _, d in rows if d[i] == final), None)
+            withheld = sum(1 for c, s, d in rows if s[i] == final and d[i] != final)
+            zero = set(final) == {"0"}
+            parts.append(
+                f"{name}:landed={landed},downstream={down},"
+                f"withheld_clocks={withheld},sensed_zero={int(zero)}"
+            )
+        self.logger.info(
+            "OBS-SHADOW-PRESENSE-WITHHELD %s sense_done_cycle=%s",
+            " ".join(parts),
+            "none" if rec["done"] is None else rec["done"],
+        )
+
     async def run_scenario(self) -> None:
         img = self.select_efuse_image()
         self.write_efuse_image(img)
@@ -158,7 +218,7 @@ class sep_efuse_sense_test(sep_base_test):
             "sdis": 0,
             "rel": None,
         }
-        rec: dict = {"first": {}, "done": None, "lc": lc}
+        rec: dict = {"first": {}, "done": None, "lc": lc, "ids": []}
         open_graded_window("sep_efuse_sense_test", self.logger)
         sampler = cocotb.start_soon(_sense_order(rec))
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
@@ -183,6 +243,7 @@ class sep_efuse_sense_test(sep_base_test):
             ",".join([f"{f}:{c}" for c, f in seen] + [f"{f}:none" for f in unseen]),
             "none" if rec["done"] is None else rec["done"],
         )
+        self._log_id_withhold(rec)
         assert rec["done"] is not None, "CHK-SENSE-DONE FAIL: no sep_fuse_sense_done_o rise seen"
         self.logger.info("CHK-SENSE-DONE PASS: sep_fuse_sense_done_o rose at clock %d", rec["done"])
         words = sorted(rec["first"].items())
