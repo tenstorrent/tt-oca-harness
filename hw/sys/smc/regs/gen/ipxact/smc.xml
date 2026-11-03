@@ -4385,7 +4385,7 @@ greater than this setting.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>FMTLVL</ipxact:name>
-              <ipxact:description>Controller TX FIFO fill level.</ipxact:description>
+              <ipxact:description>Controller TX FIFO fill level, from 0 to the FIFO depth when full.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>12</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
@@ -4393,7 +4393,7 @@ greater than this setting.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>RXLVL</ipxact:name>
-              <ipxact:description>Controller RX FIFO fill level.</ipxact:description>
+              <ipxact:description>Controller RX FIFO fill level, from 0 to the FIFO depth when full.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:bitWidth>12</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
@@ -4407,7 +4407,7 @@ greater than this setting.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>TXLVL</ipxact:name>
-              <ipxact:description>Target TX FIFO fill level.</ipxact:description>
+              <ipxact:description>Target TX FIFO fill level, from 0 to the FIFO depth when full.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4420,7 +4420,7 @@ greater than this setting.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ACQLVL</ipxact:name>
-              <ipxact:description>Target RX FIFO fill level.</ipxact:description>
+              <ipxact:description>Target RX FIFO fill level, from 0 to the FIFO depth when full.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8630,7 +8630,7 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>size</ipxact:name>
-            <ipxact:description>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</ipxact:description>
+            <ipxact:description>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. An inbound access at or above BASE + this size answers DECERR; a unit that extends past the limit stays reachable below it. Pick a size that no unit straddles. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
