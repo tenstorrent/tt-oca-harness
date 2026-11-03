@@ -44350,7 +44350,7 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 |`CHK-ZEROER-FULL-START` |A full-width write of 0 starts the zeroer, STATUS bit 32 clears within the bound and 64 of 64 bytes read 0x00
 |`CHK-ZEROER-COMPLETION-NOT-SUCCESS` |With the destination at 0xC000_1900 the start completes within the bound
 |`CHK-ISOLATE-SMC-W1C-STROBE` |ISOLATE_REQ_SMC_REG is set by the FLR edge without a timed cool reset, keeps 1 on a write of 0 and on writes of 1 with strobes 0x02, 0x04, 0x08 and 0x00, and clears on a byte 0 write of 1
-|`CHK-RESET-CTRL-START-BIT` |A byte 0 write with the core 3 start bit pulses the core 3 probe within 400 edges with no second fall or rise in the 128 edges after it, the byte 1, byte 3 and WSTRB 0x00 writes and the final read are followed by no pulse within 128 edges, the start bits read 0 and the uncore bit reads 1 after every write
+|`CHK-RESET-CTRL-START-BIT` |A byte 0 write with the core 3 start bit pulses the core 3 probe within 400 edges with no second fall or rise in the 128 edges after it, the byte 1, byte 3 and WSTRB 0x00 writes, each carrying the core 3 start bit (0x80) in the unstrobed byte 0, and the final read are followed by no pulse within 128 edges, one fall and one rise are counted over the whole RESET_CTRL step, the start bits read 0 and the uncore bit reads 1 after every write
 |`CHK-SEMA-FULL-WRITE` |SEMA[0] reads 5 after a full write of 5 and 3 after a full write of 0xFFFE
 |`CHK-LOCK-BIT0-MASKS-WRITES` |SS_CONFIG bit 0 and SS_COLD_RESET_N bit 0 stay 0 after their lock bit 0 is set
 |`CHK-OBS-PLAIN-STROBE` |One observation line per register and strobe pattern of the plain, reset-unit and base-configuration steps (LINKED-ISSUE SF-012, SF-034), never compared

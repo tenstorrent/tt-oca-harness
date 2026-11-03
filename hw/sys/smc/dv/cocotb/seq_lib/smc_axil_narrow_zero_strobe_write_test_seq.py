@@ -1145,6 +1145,9 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                     data = (cur & ~0xFF00) | (lane_value << 8)
                 else:
                     data = cur
+                # The core 3 start bit rides in the unstrobed byte 0, so a DUT that ignores the
+                # byte-0 strobe pulses core 3 and fails the no-pulse assert below.
+                data |= 0x80
                 falls0, rises0 = mon.falls, mon.rises
                 resp = await self._wr(f"RESET_CTRL_{tag}", rc, data, 8, s)
                 await ClockCycles(clk, PROBE_EDGES)
@@ -1170,12 +1173,22 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                 f"a second core 3 pulse appeared within {PROBE_EDGES} edges of the RESET_CTRL read"
             )
             self._bounded.append(("core3_quiet", f"{PROBE_EDGES} edges", f"falls={mon.falls}"))
+            assert (mon.falls, mon.rises) == (1, 1), (
+                f"core 3 reset probe fell {mon.falls} times and rose {mon.rises} times over the "
+                f"RESET_CTRL section: exactly one pulse is expected"
+            )
+            cocotb.log.info(
+                "RESET_CTRL core 3 probe over the section: falls=%d rises=%d (want 1, 1)",
+                mon.falls,
+                mon.rises,
+            )
         finally:
             mon.stop()
         self._chk(
             "CHK-RESET-CTRL-START-BIT",
-            "byte-0 start write -> exactly one pulse in 128 edges; B1/B3/WSTRB-0 writes and the final "
-            "read -> no pulse in 128 edges; start bits read 0; uncore bit 1",
+            "byte-0 start write -> exactly one pulse in 128 edges; B1/B3/WSTRB-0 writes with the "
+            "start bit in the unstrobed byte 0 and the final read -> no pulse in 128 edges; one "
+            "fall and one rise over the section; start bits read 0; uncore bit 1",
         )
 
         # (S4) WDT_TIMEOUT_RESET.
