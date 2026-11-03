@@ -48,7 +48,8 @@ exception is the SEP local/global base/size triplet: it is written, read back
 and restored before the fabric walk runs, so the remap CSRs still get write-path
 coverage. SMU base/size remain reset-checked only. woset LOCK regs are never written
 because they would latch permanently. The scoreboard checks the AXI response on
-every access and the value on every checked read.
+every access except the SEP_TEST_CTRL complement write, whose response is
+logged, and the value on every checked read.
 
 SW_RESET_N is reachable on the CPU LSU; this sequence value-checks its reset.
 """
@@ -77,7 +78,6 @@ from sep_reg_meta import (
     sym,
 )
 
-from seq_lib.sep_abr_keygen_seq import ABR_NAME0
 from seq_lib.sep_entropy_pool_seq import POOL_STATUS
 
 BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
@@ -176,11 +176,11 @@ WRITE_ONLY = [
 ]
 
 # SEP-local fabric walk: one defined, readable CSR per LSU-reachable block.
-# A row with an expected value reads a register whose RDL reset is non-zero and
-# that nothing in this test writes, so a read that lands in a local hole (OKAY,
-# data 0) fails the compare. expected=None => the block has no such register
-# (every reset is 0, or the read value is hardware-driven); the row proves only
-# that the address answers OKAY inside SEP.
+# A row with a non-zero expected value reads a register whose RDL reset is
+# non-zero and that nothing in this test writes, so a read that lands in a local
+# hole (OKAY, data 0) fails the compare. A row with expected 0 or None is for a
+# block with no such register (every reset is 0, or the read value is
+# hardware-driven); the row proves only that the address answers OKAY inside SEP.
 # Memory-backed ranges (SRAM/ROM/TCM, OTBN/KMAC mem, KM mem) and OTP-triggering
 # eFuse interface regs (0x1093_04xx+) are NOT probed — they would hang.
 # Pool pop (0x1095_0010) is destructive — only STATUS is walked.
@@ -237,7 +237,7 @@ FABRIC_BLOCKS = [
     ),
     # MLDSA_NAME[0]. abr_reg.rdl declares it sw=r with no reset, and no SEP
     # document gives its value, so the row checks accessibility only.
-    ("ADAMS_BRIDGE", ABR_NAME0, None),
+    ("ADAMS_BRIDGE", sym("ABR_MLDSA_NAME_0__REG_ADDR"), None),
     ("ENTROPY_POOL", POOL_STATUS, None),  # status only: DATA pop is destructive
     ("SEP_LIFECYCLE", sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"), None),
     # SEP_STATUS holds hw=w FIFO flags that move once the Key Manager uses the
