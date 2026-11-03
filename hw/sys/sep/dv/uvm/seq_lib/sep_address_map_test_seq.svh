@@ -253,12 +253,10 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     rows.push_back('{"SEP_SCRATCH_WARM", 64'(SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
     rows.push_back('{"SEP_RESET_CTRL", 64'(SEP_RESET_CTRL_SW_RESET_N_REG_ADDR), 1'b1,
                    32'(SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT)});
-    rows.push_back('{"OTBN", 64'(OTBN_INTR_STATE_REG_ADDR), 1'b1, 32'(OTBN_INTR_STATE_REG_DEFAULT)
-                   });
+    rows.push_back('{"OTBN", 64'(OTBN_INTR_STATE_REG_ADDR), 1'b0, 32'h0});
     rows.push_back('{"AES", 64'(AES_CTRL_AUX_REGWEN_REG_ADDR), 1'b1,
                    32'(AES_CTRL_AUX_REGWEN_REG_DEFAULT)});
-    rows.push_back('{"HMAC", 64'(HMAC_INTR_STATE_REG_ADDR), 1'b1, 32'(HMAC_INTR_STATE_REG_DEFAULT)
-                   });
+    rows.push_back('{"HMAC", 64'(HMAC_INTR_STATE_REG_ADDR), 1'b0, 32'h0});
     rows.push_back('{"KMAC", 64'(KMAC_CFG_SHADOWED_REG_ADDR), 1'b1,
                    32'(KMAC_CFG_SHADOWED_REG_DEFAULT)});
     rows.push_back('{"DRBG_CSRNG", 64'(CSRNG_REGWEN_REG_ADDR), 1'b1,
@@ -291,9 +289,9 @@ class sep_address_map_test_seq extends sep_base_test_seq;
   // nothing between. The three words are the first word after
   // SEP_FUSE_SENSE_STATUS (0x158), the word the alias check writes (0x170),
   // and the last word before SEP_SW_DEBUG (0x174).
-  // hw/sys/sep/doc/memory_map.adoc states the contract for an offset inside
-  // a unit's extent that owns no register: reads return zero and writes are
-  // discarded, both OKAY.
+  // doc/trm/src/memory_map.adoc states the contract for an offset between the
+  // registers of a generated register block: it answers OKAY, a read returns 0
+  // and a write has no effect.
   // ------------------------------------------------------------------
   localparam int unsigned FuseSenseStatusBytes = 8;  // regwidth = 64
 

@@ -17,9 +17,9 @@ Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bu
 
 The reserved span after the 64-bit ``SEP_FUSE_SENSE_STATUS`` and before
 ``SEP_SW_DEBUG`` is not a live register. ``CPU_CTRL_INTERIOR_HOLES`` names
-three words in that span. ``hw/sys/sep/doc/memory_map.adoc`` states the
-contract for an offset inside a unit's allocated extent that owns no register:
-the unit accepts it, reads return zero and writes are discarded, both OKAY. The test grades that,
+three words in that span. ``doc/trm/src/memory_map.adoc`` states the
+contract for an offset between the registers of a generated register block:
+it answers OKAY, a read returns zero and a write has no effect. The test grades that,
 and that the offset does not alias a live register. Then a walk
 of one readable CSR per LSU-reachable block — Secure DMA,
 WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
@@ -87,9 +87,9 @@ SECURE_DMA = RegBlock("SECURE_DMA")
 # Interior reserved span in sep_cpu_ctrl. SEP_FUSE_SENSE_STATUS is 64-bit
 # (sep_cpu_ctrl.rdl), so the hole starts at the next 8-byte offset and runs
 # up to SEP_SW_DEBUG. The xbar still claims the window, and
-# `hw/sys/sep/doc/memory_map.adoc` says a unit accepts an offset inside its
-# extent that owns no register: reads return zero and writes are discarded,
-# both OKAY.
+# `doc/trm/src/memory_map.adoc` says an offset between the registers of a
+# generated register block answers OKAY: a read returns zero and a write has
+# no effect.
 _FUSE_OFF = SEP_CPU_CTRL.offset("SEP_FUSE_SENSE_STATUS")
 _SW_DEBUG_OFF = SEP_CPU_CTRL.offset("SEP_SW_DEBUG")
 _HOLE_LO = _FUSE_OFF + 8
