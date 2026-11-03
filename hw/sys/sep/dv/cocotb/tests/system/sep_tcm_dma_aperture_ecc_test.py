@@ -35,13 +35,14 @@ Checkers:
                  on the PR-TCM response differs from the written word (PR-TCM
                  request) in bit k only.
   CHK-TCM-SBE-WB after each CHK-TCM-SBE read, the PR-TCM tap shows a write of
-                 the flipped word with data bits 31:0 equal to the written data
+                 the flipped word whose 39-bit word (data and ECC bits) equals
+                 the word of the original write
                  (VeeR EL2 PRM at tt-Cores-VeeR-EL2@07a51d817,
                  ``docs/source/memory-map.md``, "Correctable Ecc/Parity Errors"
                  ``:638-639`` ICCM, ``:646-647`` DCCM: a DMA read error is
                  corrected in line and
                  the corrected data is written back). No write, or another
-                 data value, fails; the written ECC bits are logged.
+                 data or ECC value, fails.
   CHK-TCM-DBE    for 16 drawn bit pairs of each memory (at least 4 each of
                  data-data, data-ECC and ECC-ECC), the read of the flipped word
                  is one AR at its 8-byte word on PR-XBAR-TCM, every R beat with

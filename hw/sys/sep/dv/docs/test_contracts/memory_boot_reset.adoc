@@ -1885,7 +1885,7 @@ A drawn overlap run of the band between can place the pulse while the `SW_RESET_
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope limit*: The CPU trap half of the contract, and the debug-bus pulses on a CPU access, are graded in `sep_tcm_ecc_cpu_trap_test`. This test does not claim the response code of a corrected DMA read, the ECC bits of the corrected write-back, the word value after a refused sub-word write or the result of a sub-word DMA read, or the data that the DMA writes to its destination after a double-bit error (see <<sep-vplan-phase3-blocked,Blocked features>>). The firmware run from the ICCM stays with `sep_hello_world_test`.
+*Scope limit*: The CPU trap half of the contract, and the debug-bus pulses on a CPU access, are graded in `sep_tcm_ecc_cpu_trap_test`. This test does not claim the response code of a corrected DMA read, the word value after a refused sub-word write or the result of a sub-word DMA read, or the data that the DMA writes to its destination after a double-bit error (see <<sep-vplan-phase3-blocked,Blocked features>>). The firmware run from the ICCM stays with `sep_hello_world_test`.
 
 '''''
 

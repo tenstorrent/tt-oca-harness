@@ -131,7 +131,8 @@ GO value during a transfer is not graded.
   CHK-DMA-CTRL-BUSY   on a seed that draws GO=1 for the CONTROL write at BUSY=1
                       during the 4096-byte single-chunk copy: after DONE and a
                       16-clock settle, the DMA master shows exactly the AR and
-                      AW counts of that one copy (n_txn each). Control
+                      AW counts of that one copy (n_txn each), and exactly
+                      one STATUS.BUSY rise since the GO. Control
                       (``CTRL-DMA-CTRL-BUSY``, else CTRL-MISSING): the write
                       answers OKAY, BUSY stays 1 through the write, and on the
                       tap STATUS.BUSY rose before the write and STATUS.DONE
