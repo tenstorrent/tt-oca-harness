@@ -792,13 +792,13 @@ addrmap i2c {
         field {
             sw = r;
             hw = w;
-            desc = "Controller TX FIFO fill level.";
+            desc = "Controller TX FIFO fill level, from 0 to the FIFO depth when full.";
         } FMTLVL[11:0];
 
         field {
             sw = r;
             hw = w;
-            desc = "Controller RX FIFO fill level.";
+            desc = "Controller RX FIFO fill level, from 0 to the FIFO depth when full.";
         } RXLVL[27:16];
     };
 
@@ -808,13 +808,13 @@ addrmap i2c {
         field {
             sw = r;
             hw = w;
-            desc = "Target TX FIFO fill level.";
+            desc = "Target TX FIFO fill level, from 0 to the FIFO depth when full.";
         } TXLVL[11:0] = 0x0;
 
         field {
             sw = r;
             hw = w;
-            desc = "Target RX FIFO fill level.";
+            desc = "Target RX FIFO fill level, from 0 to the FIFO depth when full.";
         } ACQLVL[27:16] = 0x0;
     };
 

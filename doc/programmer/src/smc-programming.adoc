@@ -1498,6 +1498,14 @@ hardware request remains asserted. In the SMC this includes the pads with
 permanently selected hardware functions: the I3C pads, and the isolate-request,
 boot-stall and cool-reset-out signals.
 
+In the SMC, `CTRL.UART_EN` of UART _u_ is the hardware LSIO request of pads
+11+4__u__ to 14+4__u__: RX, TX, RTS and CTS. While it is clear, the UART keeps
+running, but those pads take the first applicable lower row of the GPIO data
+and direction selection: register data and direction if `interface_enable` or
+a `use_reg_*` bit is set, software-forced LSIO if `lsio_select` is set,
+otherwise output 0 with the transmitter disabled. A frame the UART shifts out
+in that state does not reach the TX pin.
+
 Software should not change a pad's owner while the current owner is active, or
 the pad output can glitch. This applies to `interface_enable`, `lsio_select`, `lsio_disable`,
 the `DATA_CTRL_ENABLE.use_reg_*` bits, `TIMER_GPIO_ENABLE.GPIO_ENABLE` and

@@ -1841,7 +1841,7 @@ states.
 |`smc_uart_log_engine_field_sweep_test` |3 |UART, divisor-latch and log-engine registers cycled on all four wrapper instances, including the 16 LOG_CTRL elements read back co-resident.
 |`smc_uart_log_engine_reg_rw_test` |3 |Run UART/log-engine register write/readback/restore checks.
 |`smc_uart_loopback_test` |2 |AXI-program UART0 THR and capture the byte on pad12 TX.
-|`smc_uart_pad_mux_enable_test` |3 |UART0 THR frame on pad 12 with CTRL.UART_EN set, cleared (pad measured) and set again.
+|`smc_uart_pad_mux_enable_test` |3 |UART0 THR frame on pad 12 with CTRL.UART_EN set, held at 0 with it cleared, and the frame again after it is set.
 |`smc_uart_sanity_test` |1 |UART pad-cross byte exchange on pairs 0→3 and 1→2.
 |`smc_uart_spi_log_engine_test` |1 |Run the UART/log-engine representative CSR precheck.
 |`smc_uart_fifo_control_depth_test` |3 |UART0 FIFO enable change, depth, trigger fields and read order.
@@ -1884,7 +1884,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`smc_fw_i2c_acq_fifo_stretch_reset_test` |2 |The target's ACQ FIFO stretches SCL automatically when full, and ACQ reset releases the stretch, observed on the target's own SCL driver.
 |`smc_fw_i2c_p1_fifo_depth_xfer_test` |3 |A full-FIFO-depth 64-byte transfer with the controller pushing while the target drains; length and every byte compared, NACKed entries excluded from the payload.
 |`smc_fw_i2c_tx_stretch_timeout_recovery_test` |3 |The controller's stretch timeout fires on a read the empty target TX FIFO stretches; the recovery -- target disable releases SCL, controller disable drives the automatic STOP, both re-initialised -- ends in a clean 16-byte write.
-|`smc_fw_i2c_fifo_full_test` |3 |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores until full, with the depth measured (no specification states it), RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
+|`smc_fw_i2c_fifo_full_test` |3 |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores until full at the documented depth of 64 entries, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
 |`smc_fw_uart_log_engine_single_entry_test` |2 |Log-engine golden path: one 16-byte SRAM entry fetched and written to UART0, returned through MCR.LOOP and read back from RBR in order; LOG_CTRL[0] hwclr; INTR_STATUS 0.
 |`smc_fw_uart_log_engine_boundary_backpressure_test` |3 |Log-engine effective-length boundaries -- request shorter than the slot, request clamped to the slot, non-word-aligned slot rounded to one beat -- and a log write under UART TX backpressure.
 |`smc_fw_uart_log_engine_disable_during_xfer_test` |3 |CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on a second abort landed a short spin after the trigger; replica 1 runs an entry.
@@ -5625,8 +5625,8 @@ draws nothing from the seed.
 * `REGION_SIZE`: with the size reduced to 0x2_0000, below the end of both apertures, both windows
   must answer DECERR on reads and writes (the read data is measured and printed, not compared),
   and with the reset value restored both must again return the patterns written before the
-  reduction, so the writes during the reduction did not land (`memmap.adoc`: a unit is reached only
-  while its whole aperture lies below `BASE + REGION_SIZE`).
+  reduction, so the writes during the reduction did not land (`memmap.adoc`: an inbound access at or
+  above `BASE + REGION_SIZE` answers DECERR, and both windows lie wholly above 0x2_0000).
 * Writes to the read-only `STATUS_0`, `NEXT_ID_0`, `DONE_0` and `CTRL_STATUS.STATUS` are issued and
   their response and the register value before and after are measured and printed without comparing
   them; `NEXT_ID_0` is written and never read.
@@ -13044,8 +13044,8 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* The inbound port reaches a unit only while its whole aperture lies below `BASE + REGION_SIZE`; at
-  the reset value 0x0100_0000 the PLIC, CLINT and bus-error units lie beyond it and answer DECERR
+* An inbound access at or above `BASE + REGION_SIZE` answers DECERR; at the reset value
+  0x0100_0000 the PLIC, CLINT and bus-error units lie wholly beyond it and answer DECERR
   (`memmap.adoc`, Address Space Organization; `smu-smc.adoc`, Address Map and Aperture): a read and
   a write at the base of the PLIC, the CLINT and the four bus-error units answer DECERR from SEP_IN
   and SYS_IN. The read data is printed and not compared.
@@ -13225,9 +13225,10 @@ consequence, and cold reset recovery.
   PLIC, CLINT and BEU0 to BEU3 answer DECERR to a read and a write (`memmap.adoc`). The
   Debug Module Hart Interface and cluster error device (reached only by the harts) and the
   forwarded `dtp_ctrl_reg`, M-mode and Xvisor regions are never probed.
-* A unit whose first word lies below BASE+2^k but whose aperture extends past it is documented to
-  answer DECERR: the mailbox at k = 17 and the scratch RAM at k = 19 and k = 20. The answer is
-  recorded without an expected value (LINKED-ISSUE SF-040).
+* A unit whose aperture straddles BASE+2^k stays reachable below the limit and answers DECERR at
+  and above it (`memmap.adoc`): at k = 17 the mailbox `STATUS` of pair 0 and at k = 19 and k = 20
+  the first scratch RAM word read OKAY; the mailbox `STATUS` of pair 8 (at BASE+0x2_0010) and the
+  scratch RAM word at BASE+2^k answer DECERR to a read and a write.
 * At each k from 10 the highest probe-eligible unit wholly below BASE+2^k answers a read of its
   first word with OKAY; for DFX, the outbound filter and the CLA the fields the register
   description does not mark volatile read their reset values, and hardware-driven fields are
@@ -13276,14 +13277,14 @@ consequence, and cold reset recovery.
 . For k = 0 to 31: write `REGION_SIZE` 1<<k (BRESP OKAY required for k up to 30) and read it
   back (DECERR for k up to 16, 1<<k for k = 17 to 30, recorded for k = 31); read and write the
   first word of the first unit wholly beyond BASE+2^k requiring DECERR (at k = 24 the PLIC, CLINT
-  and BEU0 to BEU3); at k = 17, 19 and 20 read the straddling mailbox or scratch RAM and record
-  its response and data; at k from 10 read the highest unit wholly below BASE+2^k requiring OKAY (and the reset
+  and BEU0 to BEU3); at k = 17, 19 and 20 read the straddling mailbox or scratch RAM below
+  BASE+2^k requiring OKAY and read and write its word at BASE+2^k requiring DECERR; at k from 10 read the highest unit wholly below BASE+2^k requiring OKAY (and the reset
   value of the non-volatile fields where pinned); apply a cold reset, wait for the fuse sense and read `REGION_SIZE`,
   `GLOBAL_BASE` and `LOCAL_BASE` requiring their reset values. Each probe address is registered
   with the AXI monitor as an expected DECERR address until that step's reset. Log the bounded
   waits and require the nine step stamps in increasing order, the per-k terms in order for all
   32 steps with every term issuing at least one access over the sweep, the twelve checker lines in
-  order and at least 295 SEP_IN accesses.
+  order and at least 301 SEP_IN accesses.
 
 *Checkers*:
 
@@ -13320,9 +13321,9 @@ readback answers DECERR; the read data is recorded (SF-011)
 |`CHK-REGION-SIZE-BEYOND` |At every k with a unit wholly beyond BASE+2^k, a read and a write of
 its first word answer DECERR; at k = 24 the PLIC, CLINT and BEU0 to BEU3 reads and writes answer
 DECERR; read data recorded
-|`CHK-REGION-SIZE-STRADDLE` |The mailbox read at k = 17 and the scratch RAM reads at k = 19 and
-k = 20 each complete with a resolved response; the response code and data are recorded beside the
-documented DECERR (LINKED-ISSUE SF-040)
+|`CHK-REGION-SIZE-STRADDLE` |At k = 17 the mailbox and at k = 19 and k = 20 the scratch RAM answer
+a read below BASE+2^k with OKAY and a read and a write of a readable word at or above BASE+2^k
+with DECERR; the read data is recorded
 |`CHK-REGION-SIZE-BELOW` |At each k from 10 to 30 the highest unit wholly below BASE+2^k answers
 OKAY, and the non-volatile fields of DFX, the outbound filter and the CLA read their reset values
 (a unit whose fields are all volatile is recorded); the cluster unit answers at `REGION_SIZE`
@@ -13348,9 +13349,9 @@ not a compare
 responder with the exact address, the registers and filter read their reset words after each cold
 reset, no read response or response without a request appears after the resets, every
 `REGION_SIZE` up to 1<<30 reads back or answers DECERR as its aperture requires, every beyond
-unit answers DECERR, every straddling probe completes with a resolved response, every wholly-below unit outside the cluster answers OKAY, and at
-least 295 SEP_IN accesses are issued. The fates of accesses interrupted by a reset, the hit probe
-levels, the re-issued address, the k = 31 responses, the straddling answers and the cluster unit answers at `REGION_SIZE` 0x1000_0000 and above are
+unit answers DECERR, every straddling unit answers OKAY below the limit and DECERR at it, every wholly-below unit outside the cluster answers OKAY, and at
+least 301 SEP_IN accesses are issued. The fates of accesses interrupted by a reset, the hit probe
+levels, the re-issued address, the k = 31 responses and the cluster unit answers at `REGION_SIZE` 0x1000_0000 and above are
 recorded without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The inbound filter hit probe levels, the fates of the accesses outstanding when each
@@ -25926,8 +25927,8 @@ draws nothing from the seed.
   window reaches the same register as one for the local window; `memmap.adoc`).
 * The word is reachable at `REGION_SIZE` = `0x0100_0000` (reset, `fabric.adoc`) and at `0x20_0000`,
   and unreachable at `0x10_0000`, where the window lies beyond the aperture and reads and writes
-  answer DECERR (`memmap.adoc`: a unit is reached only while its whole aperture lies below
-  `BASE + REGION_SIZE`; an address outside the window answers DECERR); the refused write stores
+  answer DECERR (`memmap.adoc`: an inbound access at or above `BASE + REGION_SIZE` answers DECERR,
+  and the word lies above the 1 MiB limit; an address outside the window answers DECERR); the refused write stores
   nothing.
 * Two `REGION_SIZE` writes with no access between them: the second governs the next access, in
   both orders.
@@ -43330,10 +43331,11 @@ not compared, because the document does not state it (SF-012).
 
 *BFM / Model*: SEP_IN AXI sequencer writing and reading `CTRL.UART_EN` of wrapper 0, the UART0
 `THR`, `LSR.THRE` and `LSR.TEMT`, the pad-12 GPIO `DATA_CTRL` fields `interface_enable`,
-`enable_rx_tx` and `core2pad`, and `CLOCK_GATE_CONTROL` (`UART_CG_EN`); the UART0 pad VIP sink on
-`tb_uart0_tx_from_dut` (pad 12) decodes 8N1 frames at 115200 baud, and the same signal is also
-sampled on every `clk_smc_i` rise; `tb_uart0_rx_ext_drive` (pad 11) is bound by the VIP and left
-idle
+`enable_rx_tx` and `core2pad`, and `CLOCK_GATE_CONTROL` (`UART_CG_EN`), and reading pad-12
+`DATA_CTRL.lsio_select`, `DATA_CTRL.lsio_enable` and `DATA_CTRL_ENABLE` (`use_reg_*`); the UART0 pad
+VIP sink on `tb_uart0_tx_from_dut` (pad 12) decodes 8N1 frames at 115200 baud, and the same signal
+and bit 12 of `tb_core2pad_en_o` (the pad's output enable) are also sampled on every `clk_smc_i`
+rise; `tb_uart0_rx_ext_drive` (pad 11) is bound by the VIP and left idle
 
 *Run mode*: one testlist entry in `testlists/uart.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `uart`; seed 1; tool Verilator (cocotb).
@@ -43342,7 +43344,9 @@ idle
 draws nothing from the seed.
 
 *Objective*: `THR` 0xA5 reaches pad 12 as one frame with `UART_EN` set, again after `UART_EN` is
-cleared and set, and the UART transmits with `UART_EN` clear while the pad is only measured.
+cleared and set, and with `UART_EN` clear the UART transmits while pad 12, with no select set and
+the register row's own data at 1, carries no frame and stays at output data 0 with its output
+enable 0.
 
 *Test Coverage*:
 
@@ -43352,13 +43356,17 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
 * `UART_EN` cleared while idle: `LSR.TEMT` reads 0 after the `THR` write and `LSR.THRE` and
   `LSR.TEMT` read 1 together after the byte is shifted out (`uart_16550_main.rdl` `LSR`), so the
   UART itself transmitted.
-* The frames the pad VIP decodes on pad 12 within a window of 3 frame times and the minimum and
-  maximum pad level on every `clk_smc_i` rise are measured, not compared; the document does not
-  state the pad behaviour with `UART_EN` clear.
+* `UART_EN` cleared with pad-12 `DATA_CTRL.core2pad` and `enable_rx_tx[0]` written 1 and
+  `DATA_CTRL.interface_enable`, `lsio_select`, `lsio_enable` and the `DATA_CTRL_ENABLE.use_reg_*`
+  bits read back 0: the pad VIP decodes no frame on pad 12 within a window of 3 frame times, and
+  the pad output and its output enable read 0 on every `clk_smc_i` rise of that window (compared;
+  `uart_log_engine_ctrl.rdl` `CTRL.UART_EN`, the hardware LSIO request of the UART pads, and the
+  GPIO data and direction selection: no request and no select gives output data 0 with the
+  transmitter disabled, and the register row's 1 is not taken).
 * Pad-12 `DATA_CTRL` with `interface_enable` 1, `enable_rx_tx` 1 and `core2pad` 1 then 0: the
   fields read back the written values (compared, `gpio_intf.rdl`); the pad level equals core2pad
-  after each write and after its read-back, within 64 clk_smc_i cycles (compared, gpio_intf.rdl
-  DATA_CTRL.interface_enable).
+  within 64 clk_smc_i cycles after each write and on the first clk_smc_i rise after its read-back
+  (compared, gpio_intf.rdl DATA_CTRL.interface_enable).
 * `UART_EN` set again: the same `THR` write produces exactly one frame decoded as 0xA5, the
   positive control that the stimulus and the pad decoder still work after the clear leg.
 
@@ -43373,15 +43381,19 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
   `CHK-UART-PADMUX-FRAME-ON`.
 . Error injection. Point: wrapper 0 `CTRL.UART_EN` and UART0 `THR`. Kind: a `THR` write of 0xA5 with
   `UART_EN` cleared (read back 0), the pad function off. Expected response: `LSR.TEMT` reads 0 after
-  the write and `TEMT` and `THRE` read 1 together within 5000 us (the UART itself transmitted); the
-  frames decoded on pad 12 and the minimum and maximum pad level over the 3-frame-time window are
-  measured, not compared. Before the write, read `LSR` (both bits 1), write `UART_EN` 0 and read it
-  back, read `LSR` again and start the `clk_smc_i` level sampler; after the idle reads complete the
-  3-frame-time window; stamp S3, print `CHK-UART-PADMUX-OFF-TX-SHIFTED` after its compare and the
-  measured `CHK-UART-PADMUX-OFF-PAD-MEASURED`.
+  the write and `TEMT` and `THRE` read 1 together within 5000 us (the UART itself transmitted); no
+  frame is decoded on pad 12 and the pad output and its output enable read 0 at every sample of the
+  3-frame-time window. Before the write, read `LSR` (both bits 1), write `UART_EN` 0 and read it
+  back, write pad-12 `DATA_CTRL` with `core2pad` and `enable_rx_tx[0]` 1 over the saved value, read
+  `DATA_CTRL` and `DATA_CTRL_ENABLE` requiring those two bits 1 and `interface_enable`,
+  `lsio_select`, `lsio_enable` and `use_reg_*` 0, read `LSR` again and start the `clk_smc_i`
+  sampler; after the idle reads complete the 3-frame-time window, write the saved `DATA_CTRL` back;
+  stamp S3, print `CHK-UART-PADMUX-OFF-TX-SHIFTED` and `CHK-UART-PADMUX-OFF-PAD-HELD` after their
+  compares.
 . With `UART_EN` still 0 write pad-12 `DATA_CTRL` with `interface_enable`, `enable_rx_tx` 1 and
   `core2pad` 1, require the pad to equal `core2pad` within 64 `clk_smc_i` cycles after the write and
-  again after the read-back, repeat with `core2pad` 0, then write the saved `DATA_CTRL` back and
+  on the first `clk_smc_i` rise after the read-back, repeat with `core2pad` 0, then write the saved
+  `DATA_CTRL` back and
   read it; stamp S4 and print `CHK-UART-PADMUX-GPIO-LEVEL-MEASURED`.
 . Write `UART_EN` 1 and read it back; write `THR` 0xA5; capture the frame, poll `LSR` to idle and
   wait one frame time; require one frame decoded as 0xA5; stamp S5 and print
@@ -43400,25 +43412,24 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
 |`CHK-UART-PADMUX-OFF-TX-SHIFTED` |With `UART_EN` read back 0, `LSR.TEMT` reads 0 after the `THR`
   write and `TEMT` and `THRE` read 1 together before 5000 us, after idle reads of 1 and 1 before
   the write; a `TEMT` that never reads 0 or an idle that never returns fails
-|`CHK-UART-PADMUX-OFF-PAD-MEASURED` |Measured, not compared: frames decoded, their bytes and the
-  minimum and maximum pad-12 level over the 3-frame-time window; an X/Z sample or no sample fails
+|`CHK-UART-PADMUX-OFF-PAD-HELD` |With `UART_EN` read back 0, pad-12 `core2pad` and
+  `enable_rx_tx[0]` read back 1 and `interface_enable`, `lsio_select`, `lsio_enable` and `use_reg_*`
+  read back 0, the frames decoded on pad 12 over the 3-frame-time window compare equal to 0 and the
+  pad output and its output enable compare equal to 0 at every `clk_smc_i` sample; a decoded frame,
+  a data or output-enable sample of 1, an X/Z sample, no sample, a set select bit or a row-data bit
+  that reads 0 fails
 |`CHK-UART-PADMUX-GPIO-LEVEL-MEASURED` |Pad-12 `DATA_CTRL` `interface_enable`, `enable_rx_tx` and
   `core2pad` read back the written values (compared) and the saved value after the restore; the pad
-  level equals `core2pad` within 64 `clk_smc_i` cycles after each write and after its read-back
-  (compared, `gpio_intf.rdl` `DATA_CTRL.interface_enable`), and an X/Z sample fails
+  level equals `core2pad` within 64 `clk_smc_i` cycles after each write and on the first `clk_smc_i`
+  rise after its read-back (compared, `gpio_intf.rdl` `DATA_CTRL.interface_enable`), and an X/Z
+  sample fails
 |`CHK-UART-PADMUX-FRAME-RECOVER` |With `UART_EN` read back 1 again the same `THR` write yields
   exactly one frame decoded as 0xA5 within 5000 us
 |`CHK-NONVAC` |Steps S1 to S6 ran in order with strictly increasing simulation-time stamps and the
   five checker lines printed in order, each after its own step
 |===
 
-*Pass Criteria*: all checkers hold after their compares. The pad behaviour with `UART_EN` clear
-is observed and is not part of the claim. Enrolled in: `all`, `hosted`.
-
-*Scope limit*: With `UART_EN` clear, the frames the pad VIP decodes on pad 12 within the
-3-frame-time window and the minimum and maximum pad level on every `clk_smc_i` rise are measured,
-not compared, because the document does not state the pad behaviour with `UART_EN` clear. The
-pad level after each pad-12 `DATA_CTRL` write is measured, not compared, for the same reason.
+*Pass Criteria*: all checkers hold after their compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -44451,11 +44462,11 @@ tool Verilator (cocotb).
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores until full, with the depth measured (no specification states it), RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
+*Objective*: Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores until full at the documented depth of 64 entries, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
 
 *Test Coverage*:
 
-* FMT and TX filled by software stores until STATUS.FMTFULL / TXFULL asserts, then reset. No specification states their depth, so the firmware measures it. FMTLVL / TXLVL must equal the store count before every store. Full must assert at a non-zero level within the range of the RDL level field (`HOST_FIFO_STATUS.FMTLVL`, `TARGET_FIFO_STATUS.TXLVL`), with EMPTY clear. One more store into the full FIFO must leave the level and the full flag unchanged. RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
+* FMT and TX filled by software stores until STATUS.FMTFULL / TXFULL asserts, then reset. The SMC peripheral chapter states both depths as 64 entries and the I2C chapter states that the level field reads the depth when its FIFO is full, so the firmware compares against them. FMTLVL / TXLVL must equal the store count before every store. Full must assert after exactly 64 stores, with the level field (`HOST_FIFO_STATUS.FMTLVL`, `TARGET_FIFO_STATUS.TXLVL`) reading 64 and EMPTY clear. One more store into the full FIFO must leave the level and the full flag unchanged. RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
 * The cocotb `smc_i2c_fifo_full_test` covers the CSR-level full/empty flags only; this leaf is the one that fills RX and ACQ by transfers.
 * The wire, graded by the bench as on card 169.
 
@@ -51662,10 +51673,6 @@ Where a test uses part of a blocked feature, the note says what the test does.
 |The mailbox clock gate closes during an idle gap while `CLOCK_GATE_CONTROL.mailbox_cg_en` is set.
 |Blocked: the specification does not state whether the gate closes on an idle gap with the enable set, nor after how many idle cycles. Source: `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`CLOCK_GATE_CONTROL.mailbox_cg_en`, "Clockgate enable for the mailbox"); `hw/sys/smc/doc/clk_rst.adoc` (Subsystem Controls and Clock Gating).
 |`smc_mailbox_register_map_reset_test` sets the enable and grades that every aperture still answers, and logs the completion latency of the first write after the idle gap; `smc_mailbox_irq_ack_output_test` holds the gate enabled through its 512-cycle idle window. The bench has no gated-clock observation for the mailbox, so no entry grades the gate itself.
-|<<smc-vplan-area-uart,UART>>
-|The effect of `CTRL.UART_EN` = 0 on the UART0 transmit pad.
-|Blocked: the specification does not state what the TX pad carries while `UART_EN` is clear (held idle, held at its last level, or released to the GPIO wrap). Source: `hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl.rdl` (`CTRL.UART_EN`); no chapter states the pad level.
-|`smc_uart_pad_mux_enable_test` grades the frame with `UART_EN` set, again after a clear and set, and logs the pad level and the decoded frames with `UART_EN` clear without grading them.
 |<<smc-vplan-area-reset,RESET>>
 |The reset domain of `SCRATCH_COLD_WARM` of the misc wrap across a watchdog warm reset.
 |Blocked: the specification does not state whether `SCRATCH_COLD_WARM` is the register it calls the warm scratch register. Source: `hw/sys/smc/doc/clk_rst.adoc` ("Reset Architecture": `rst_warm_smc_clk_no` resets "the warm scratch register" without naming which register it is); `hw/sys/smc/regs/blocks/misc_wrap/misc_wrap.rdl` (`scratch_cold_warm`).
@@ -51953,7 +51960,6 @@ that records the value.
 
 <<smc-vplan-area-fabric,FABRIC>>:
 
-* A unit whose aperture crosses `BASE + REGION_SIZE`: `hw/sys/smc/doc/memmap.adoc` states that the inbound port reaches a unit only while its whole aperture lies below the boundary, and no enrolled test places the boundary inside an aperture. `smc_region_gated_units_decode_test` and `smc_region_zero_reset_recovery_test` grade units wholly below or wholly above it.
 * The reset state of the sixteen inbound filter entries: `hw/sys/smc/doc/fabric.adoc` (Inbound Filtering) leaves the default to the chiplet integration and `hw/ip/axi_filter/regs/filter_ctrl.rdl` resets every entry disabled. `smc_sys_axi_in_port_test` issues its pre-admit SYS_IN read with the error response tolerated and logs the response.
 
 <<smc-vplan-area-efuse,EFUSE>>:
