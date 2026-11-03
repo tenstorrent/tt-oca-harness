@@ -204,10 +204,15 @@ Checkers:
                   write on bus 0 never reaches the host port. Control:
                   CHK-HS-CLR (bus 1, same tap and word),
                   ``CTRL-DMA-CLR-RANGE`` and ``CTRL-DMA-CLR-BUS0``: in the same
-                  run, after the trigger rose, STATUS.BUSY and CONTROL.GO
-                  (both reset to 0) read 1, or the tap shows at least one AR
-                  (the source read follows the clear stage), so the engine
-                  took the trigger; else ``CTRL-MISSING CHK-DMA-CLR-BUS0``.
+                  run, STATUS.BUSY rises on the DMA status tap at or after the
+                  first rise of the trigger probe (both clocks counted from
+                  marks taken together before GO; BUSY "may be set as long as
+                  hardware handshake mode is active and triggered",
+                  ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
+                  dma.hjson:615-617``), or the tap shows at least one AR (the
+                  source read follows the clear stage), so the engine took the
+                  trigger; else ``CTRL-MISSING CHK-DMA-CLR-BUS0``. BUSY and GO
+                  levels are logged.
   OBS-DMA-CLR-RANGE clear-range and clear-bus runs (``variant=``): the AWs
                   of the DMA master tap at INTR_SRC_ADDR_0 and their B
                   responses, that SRAM word after the run, the chunks moved,
@@ -1039,14 +1044,20 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             self._ctrl_missing("CTRL-DMA-CLR-RANGE", line)
         self.logger.info("CTRL-DMA-CLR-RANGE PASS seed=%d %s", cfg.seed, line)
         if variant == "bus0":
-            # Reach control: after the trigger the engine is still in the
-            # handshake copy (STATUS.BUSY and CONTROL.GO both reset to 0), or
-            # it has read source data, which follows the clear stage.
+            # Reach control: the engine took the trigger. STATUS.BUSY rose on
+            # the status tap at or after the first trigger rise (both clocks
+            # counted from marks taken together before GO), or the tap shows a
+            # source read, which follows the clear stage.
+            trig_rise = [c - m_trig.clk for c in self.trig.rise_clks_since(m_trig, "trig")]
+            busy_rise = [c - m_tap.clk for c in ev.rises("busy")]
+            took = bool(trig_rise) and any(b >= trig_rise[0] for b in busy_rise)
             reach = (
-                f"variant={variant} busy={int(bool(st.busy))} go={go} ar_total={len(ev.ar)} "
-                f"expect=busy_go_1_or_ar_ge_1 trigger_high_clk={trig_high}"
+                f"variant={variant} trig_rise_clk={trig_rise[0] if trig_rise else '-'} "
+                f"busy_rise_clks={','.join(map(str, busy_rise)) or '-'} "
+                f"ar_total={len(ev.ar)} expect=busy_rise_ge_trig_rise_or_ar_ge_1 "
+                f"busy={int(bool(st.busy))} go={go} trigger_high_clk={trig_high}"
             )
-            if not ((st.busy and go) or ev.ar):
+            if not (took or ev.ar):
                 self._ctrl_missing("CHK-DMA-CLR-BUS0", reach)
             self.logger.info("CTRL-DMA-CLR-BUS0 PASS seed=%d %s", cfg.seed, reach)
             line = (

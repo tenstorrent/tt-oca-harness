@@ -46,8 +46,9 @@ Checkers:
                  data-data, data-ECC and ECC-ECC), the read of the flipped word
                  is one AR at its 8-byte word on PR-XBAR-TCM, every R beat with
                  the ID of that AR answers SLVERR or DECERR, the DMA transfer
-                 ends with STATUS.error at 1 and STATUS.done at 0, and
-                 ``host_path_err`` is set. Control: the clean read of the same
+                 ends with STATUS.error at 1, and ``host_path_err`` is set.
+                 No text states STATUS.done on an error, so done is logged
+                 (OBS-TCM-DBE-DONE) and not graded. Control: the clean read of the same
                  word is one AR on PR-XBAR-TCM answered OKAY, the flag reads 0
                  after the clear and after that clean read, and the stored word
                  differs from the written word in the two flipped bits.
@@ -74,11 +75,19 @@ Checkers:
                  Accesses" ``:422-427``). The spec states no other bit of
                  ERROR_CODE, so the whole code is logged (OBS-TCM-SUBWORD-CODE)
                  and not graded. Control: the ICCM and DCCM copies are both
-                 graded (count 2).
+                 graded (count 2), and before each GO, after the STATUS and
+                 ``DMA_BUS_ERR_CLEAR`` clears, ERROR_CODE and
+                 ``DMA_BUS_ERR_STATUS`` read 0 (CTRL-TCM-SUBWORD-PRE; ERROR_CODE
+                 "is cleared by writing the RW1C STATUS.error register",
+                 ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
+                 dma.hjson:669-670``; the faults are "cleared through
+                 ``DMA_BUS_ERR_CLEAR``", ``hw/sys/sep/doc/dma.adoc:66-68``), so
+                 a stale code or flag cannot pass the check.
 Observations (not graded): OBS-TCM-EXCL (whether the other memory's clock-enable
 tap rose), OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read),
 OBS-TCM-SUBWORD-CODE (the whole ERROR_CODE after the sub-word copy into a word,
-and its bits other than BUS_ERROR),
+and its bits other than BUS_ERROR), OBS-TCM-DBE-DONE (STATUS.done and
+STATUS.error after each double-bit read),
 OBS-TCM-SUBWORD (done, staging word and the word read back after the 1- or
 2-byte copy into one drawn word of each memory, and every field of the copy out
 of it; the word is not a flip target of the single- or double-bit legs, so it
@@ -683,7 +692,16 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         cf = int(bool((flag | clean_flag) & DMA_HOST_PATH_BIT))
         err_resp = int(bool(resp) and all(r in RESP_ERR for r in resp))
         clean_okay = int(bool(clean_resp) and all(r == RESP_OKAY for r in clean_resp))
-        dma_err = int(bool(st.error) and not st.done)
+        dma_err = int(bool(st.error))
+        self.logger.info(
+            "OBS-TCM-DBE-DONE: mem=%s addr=0x%08x k1=%d k2=%d done=%d error=%d",
+            mem,
+            addr,
+            a,
+            b,
+            st.done,
+            st.error,
+        )
         line = (
             f"mem={mem} addr=0x{addr:08x} k1={a} k2={b} class={pair_class(a, b)} "
             f"rresp_err={err_resp} clean_rresp_okay={clean_okay} dma_error={dma_err} "
@@ -703,7 +721,18 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
     async def _sub_copy(self, src: int, dst: int, nbytes: int, enc: int) -> tuple:
         """One DMA copy of ``nbytes`` at TRANSFER_WIDTH ``enc``; returns (STATUS, ERROR_CODE, bus err)."""
         await self.dma.clean_state()
-        await self._clear_bus_err()
+        pre_berr = await self._clear_bus_err()
+        pre_ecode = await self.dma.rd(_D.addr("ERROR_CODE")) & EC_MASK
+        pre = (
+            f"contract=dma.hjson:669-670,hw/sys/sep/doc/dma.adoc:66-68 src=0x{src:08x} "
+            f"dst=0x{dst:08x} bytes={nbytes} error_code=0x{pre_ecode:x} "
+            f"dma_bus_err_status=0x{pre_berr:x} expect=0x0/0x0"
+        )
+        if pre_ecode or pre_berr:
+            msg = f"CTRL-MISSING CTRL-TCM-SUBWORD-PRE: {pre}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-TCM-SUBWORD-PRE PASS: %s", pre)
         await self.dma.program_transfer(src=src, dst=dst, total=nbytes, chunk=nbytes, width_enc=enc)
         await self.dma.go()
         st = await self.dma.poll_status(
