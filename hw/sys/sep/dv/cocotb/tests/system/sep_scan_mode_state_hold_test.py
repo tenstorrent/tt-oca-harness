@@ -40,6 +40,11 @@ Contract:
   ``hw/sys/sep/doc/otp_fuse_controller.adoc``: while ``SECURE_TM`` = 1 the
   secret shadow outputs ``CHIPLET_UID``, ``SIP_UID``, ``SYS_UID`` and
   ``CLASS_KEY`` read zero downstream.
+* ``hw/sys/sep/doc/otp_fuse_controller.adoc:176-178`` (Shadow Register Updates
+  and Test-Mode Protection) and ``hw/sys/sep/doc/test_mode.adoc:54-55``
+  (Protection While Active): while ``SECURE_TM`` = 1 the shadows of ``LOCKS``,
+  ``LOCKS_SPARE``, ``LC_STATE``, ``SIP_DIS`` and ``SYS_DIS`` take no update from
+  any source. Of that set the leaf writes ``SIP_DIS`` word 0 only.
 * ``hw/sys/sep/doc/attack_countermeasures.adoc`` (a nested ``_n0_scan`` name
   remains Class 1) and ``hw/sys/sep/doc/lifecycle_controller.adoc`` (scan
   classes 1a and 1b): every word of the ``shadow_efuse_values_n0_scan`` storage
@@ -75,6 +80,16 @@ Checkers:
                         the token whose digest tb_top binds.
   CHK-SCAN-SECDIS-HOLD  security_disable_o, the SEC_DIS digest and its valid
                         bit keep their values on every sample of the session.
+  CHK-SCAN-SHADOW-WR    strap-1 leg, after the boot, secure_tm_o = 1: with
+                        test_en_i = 0 and then with test_en_i = 1, a
+                        frontdoor write of SIP_DIS word 0 with its lowest 0
+                        bit set leaves the word: the read before equals the
+                        staged word and the read after equals the read
+                        before. The line names the source of the blocked set
+                        and the one graded member. Control
+                        (CTRL-SCAN-SHADOW-WR-LIVE, strap-0 leg, test_en_i =
+                        0, no write-lock staged): the same write sets the
+                        bit (``sep_efuse_map.rdl`` ``LC_DISABLE``, woset).
   CTRL-SCAN-N0-STAGED    after the first sense, the two shadow storage arrays
                         (shadow_efuse_values and shadow_efuse_values_n0_scan)
                         together hold the 256 staged shadow words, as a
@@ -95,7 +110,7 @@ OBS-SCAN-FEAT-HOLD (``FEAT_CTRL``, the DEMOTE state and lock bits and the
 shadow words whose value is not in ``shadow_efuse_values_n0_scan``; the
 specification does not state that every Class-1 word carries the name),
 OBS-SCAN-SHADOW-WR (a ``SIP_DIS``
-shadow write with ``test_en_i`` = 1 at strap 0), OBS-SCAN-SECRET0 (per strap-0
+shadow write with ``test_en_i`` = 1 at strap 0, after the control write), OBS-SCAN-SECRET0 (per strap-0
 session, the samples on which the secret shadow outputs equal the staged words),
 OBS-SCAN-KM-COPY (the three Key Manager OTP copy signals through each session)
 and OBS-SCAN-SECDIS-GO (a mismatch SEC_DIS go with ``test_en_i`` = 1, after the
@@ -180,6 +195,14 @@ N_NETS = len(NETS)
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 M32 = 0xFFFF_FFFF
+_SIP_DIS_W0 = _SIP_DIS & M32
+_SIP_DIS_ADDR = shadow_addr("SIP_DIS")
+# The shadows that SECURE_TM = 1 blocks from every update: LOCKS, LOCKS_SPARE,
+# LC_STATE, SIP_DIS and SYS_DIS. The leaf writes SIP_DIS word 0 only.
+_SHADOW_WR_CONTRACT = (
+    "set=otp_fuse_controller.adoc:176-178(Shadow_Register_Updates_and_Test-Mode_Protection),"
+    "test_mode.adoc:54-55(Protection_While_Active) graded_member=SIP_DIS.word0"
+)
 
 H = 32  # hold of each session step, clk_i cycles (test parameter)
 PRE = 8  # samples before the test_en_i rise
@@ -302,6 +325,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         "CHK-SCAN-SECRET-ZERO",
         "CHK-SCAN-SECDIS-HOLD",
         "CHK-SCAN-N0-CLASS1",
+        "CHK-SCAN-SHADOW-WR",
     )
 
     # -- sampler ---------------------------------------------------------------
@@ -410,32 +434,85 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             raise AssertionError(f"CTRL-MISSING SCAN-PRE: {line}")
         self.logger.info("CTRL-SCAN-PRE seen: %s", line)
 
-    async def _shadow_write_obs(self) -> None:
-        """OBS-SCAN-SHADOW-WR: a SIP_DIS shadow write with test_en_i = 1 at strap 0."""
+    async def _shadow_write(self, test_en: int) -> dict[str, int]:
+        """Read, set the lowest 0 bit of, and read back SIP_DIS word 0 with ``test_en_i``."""
         dut: Any = cocotb.top
-        addr = shadow_addr("SIP_DIS")
         await RisingEdge(dut.clk_i)
-        dut.test_en_i.value = 1
+        dut.test_en_i.value = test_en
         await ClockCycles(dut.clk_i, PIN_BOUND)
-        r0, before = await self.fd.rd_graded_by_data(addr)
+        await ReadOnly()
+        stm = _bit(sig_bits(dut.secure_tm_o))
+        await RisingEdge(dut.clk_i)
+        r0, before = await self.fd.rd_graded_by_data(_SIP_DIS_ADDR)
         bit = next(i for i in range(32) if not (before >> i) & 1) if before != M32 else 0
         new = before | (1 << bit)
-        wresp = await self.fd.wr_graded_by_readback(addr, new)
-        r1, after = await self.fd.rd_graded_by_data(addr)
+        wresp = await self.fd.wr_graded_by_readback(_SIP_DIS_ADDR, new)
+        r1, after = await self.fd.rd_graded_by_data(_SIP_DIS_ADDR)
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = 0
         await ClockCycles(dut.clk_i, H)
-        self.logger.info(
-            "OBS-SCAN-SHADOW-WR: strap=0 test_en_i=1 field=SIP_DIS word=0 before=0x%08x "
-            "wrote=0x%08x after=0x%08x landed=%d rresp=%d,%d wresp=%d",
-            before,
-            new,
-            after,
-            int(after == new),
-            r0,
-            r1,
-            wresp,
+        return {
+            "before": before,
+            "new": new,
+            "after": after,
+            "r0": r0,
+            "r1": r1,
+            "wresp": wresp,
+            "stm": stm,
+        }
+
+    @staticmethod
+    def _wr_line(strap: int, test_en: int, r: dict[str, int]) -> str:
+        return (
+            f"strap={strap} test_en_i={test_en} secure_tm_o={r['stm']} field=SIP_DIS word=0 "
+            f"staged=0x{_SIP_DIS_W0:08x} "
+            f"before=0x{r['before']:08x} wrote=0x{r['new']:08x} after=0x{r['after']:08x} "
+            f"rresp={r['r0']},{r['r1']} wresp={r['wresp']}"
         )
+
+    async def _shadow_write_strap0(self) -> None:
+        """CTRL-SCAN-SHADOW-WR-LIVE (test_en_i = 0), then OBS-SCAN-SHADOW-WR (test_en_i = 1)."""
+        ctl = await self._shadow_write(0)
+        line = self._wr_line(0, 0, ctl)
+        # Same text as SepChkLog.ctrl(): CHK-SCAN-SHADOW-WR at strap 1 needs a write
+        # that lands on the same word at SECURE_TM = 0 with no write-lock.
+        if not (
+            ctl["before"] == _SIP_DIS_W0
+            and ctl["after"] == ctl["new"]
+            and ctl["r0"] == ctl["r1"] == 0
+        ):
+            self.logger.error("CTRL-MISSING SCAN-SHADOW-WR-LIVE: %s", line)
+            raise AssertionError(f"CTRL-MISSING SCAN-SHADOW-WR-LIVE: {line}")
+        self.shadow_wr_ctl = line
+        self.logger.info("CTRL-SCAN-SHADOW-WR-LIVE seen: %s", line)
+        r = await self._shadow_write(1)
+        self.logger.info(
+            "OBS-SCAN-SHADOW-WR: %s landed=%d", self._wr_line(0, 1, r), int(r["after"] == r["new"])
+        )
+
+    async def _shadow_write_strap1(self) -> None:
+        """CHK-SCAN-SHADOW-WR: at SECURE_TM = 1 a SIP_DIS shadow write leaves the word.
+
+        The write runs with test_en_i = 0 and then with test_en_i = 1. The
+        test_en_i = 0 write differs from CTRL-SCAN-SHADOW-WR-LIVE only in SECURE_TM.
+        """
+        lines = []
+        for test_en in (0, 1):
+            r = await self._shadow_write(test_en)
+            line = self._wr_line(1, test_en, r)
+            assert (
+                r["stm"] == 1
+                and r["r0"] == r["r1"] == 0
+                and r["before"] == _SIP_DIS_W0
+                and r["after"] == r["before"]
+            ), (
+                f"CHK-SCAN-SHADOW-WR FAIL: secure_tm_o=1 SIP_DIS shadow word changed, did not "
+                f"read its staged value or a read was not OKAY (exp rresp=0,0 "
+                f"after=before=0x{_SIP_DIS_W0:08x}; "
+                f"{_SHADOW_WR_CONTRACT}): {line}"
+            )
+            lines.append(line)
+        self.shadow_wr_chk = "; ".join(lines)
 
     async def _hold_flip(self, leg: str, at: dict[int, int], where: str) -> None:
         """Hold H clk_i cycles and drive the strap to ``at[n]`` after cycle ``n``."""
@@ -743,7 +820,9 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         if first:
             await self._n0_scan_check()
         if strap == 0:
-            await self._shadow_write_obs()
+            await self._shadow_write_strap0()
+        else:
+            await self._shadow_write_strap1()
         await self._demote_and_lock()
         await self._release_km()
         s = await self._session(leg, strap)
@@ -943,6 +1022,8 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         self.strap_flips: list[str] = []
         self.secret1 = 0
         self.secret0 = (0, 0, 0)
+        self.shadow_wr_chk = ""
+        self.shadow_wr_ctl = ""
         orient = {
             d: feat_ctrl_profile(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=d, demote_2=d).value
             for d in (0, 1)
@@ -979,5 +1060,14 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             ok0,
             n0,
             word_digest(w0),
+        )
+        assert self.shadow_wr_chk and self.shadow_wr_ctl, (
+            "CHK-SCAN-SHADOW-WR FAIL: control: the strap-1 write or the strap-0 control did not run"
+        )
+        self.logger.info(
+            "CHK-SCAN-SHADOW-WR PASS: %s %s exp_after=before; control %s",
+            _SHADOW_WR_CONTRACT,
+            self.shadow_wr_chk,
+            self.shadow_wr_ctl,
         )
         self.result_pass(TEST, seed, len(self.required_evidence))

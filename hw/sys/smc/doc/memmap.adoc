@@ -97,9 +97,17 @@ the split is purely organizational:
   the adopter wants to expose, such as peripheral controllers, extra pad
   controls and the PVT wrapper.
 
-The generated SMC map reports this as one opaque adopter-owned aperture.
-Concrete placements inside it are integration-specific and are documented by
-the adopter. The strap registers are read-only values consumed by boot firmware;
+The generated SMC map sizes the window to the blocks `smc_external.rdl`
+allocates. The crossbars route a fixed 4 MiB, `BASE + 0x040_0000` to
+`BASE + 0x07F_FFFF`, to the window whatever that size, so an access past the
+allocated blocks still leaves on the external port and the adopter's logic
+decides its response. The `DECERR` rule for addresses between unit apertures
+does not apply anywhere in those 4 MiB.
+
+The mandatory blocks sit at fixed offsets: the eFuse SHIM at `0x0`, the GPIO
+controls at `0x1000`, the PLL wrapper at `0x2000` and the straps at `0x3000`.
+Placements in the supplementary region are integration-specific and are
+documented by the adopter. The strap registers are read-only values consumed by boot firmware;
 how the adopter captures them is implementation-defined. Both boot ROMs read them at
 `BASE + 0x040_3000`, so an integration places them there.
 
@@ -111,12 +119,13 @@ which forwards it unchanged on `efuse_bank_ctrl` to the adopter's SHIM. It
 never appears on the external port. The adopter defines the SHIM's control
 registers at offset `0x0` of its own `smc_external` map.
 
-The supplementary (optional) region of the window is passed through to the SMU's
-`smc_external_req_o` / `smc_external_resp_i` ports for adopter integration. The
-adopter may implement any memory-mapped functions there, or may instead
-terminate the region with an error response. The reference integration
+Every other access in the window leaves on `smc`'s `smc_external_req_o` /
+`smc_external_resp_i` ports, which the SMU re-exports. That includes the
+mandatory GPIO, PLL and strap blocks as well as the supplementary region. The
+adopter may implement any memory-mapped functions in the window, or may instead
+terminate unclaimed accesses with an error response. The reference integration
 (`hw/top/smc_ip_integration.sv`) terminates
-unclaimed accesses in this region with a DECERR response via the
+unclaimed accesses in the window with a DECERR response via the
 `prim_axi_lite_err_slv` helper; this is one integration choice, not a
 requirement.
 
