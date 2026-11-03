@@ -10,10 +10,12 @@ CTRL.UART_EN is the hardware LSIO request of the UART0 pads (uart_log_engine_ctr
 the SMC programmer's guide, "LSIO" of the GPIO section). With it clear and pad 12 holding no register
 override (DATA_CTRL.interface_enable, DATA_CTRL.lsio_select and the DATA_CTRL_ENABLE.use_reg_* bits
 all 0) the pad takes the last row of the GPIO data and direction selection: output data 0 with the
-transmitter disabled, so a frame the UART shifts out does not reach the pad. S3 grades that: zero
-frames decoded and the pad output held at 0 across the window while LSR.TEMT goes 0 then 1. The
-frames of the two UART_EN = 1 legs are the positive controls of the clear leg: they prove the THR
-write, the transmitter and the pad decoder work.
+transmitter disabled, so a frame the UART shifts out does not reach the pad. S3 grades that with the
+register row's own data set to 1 (DATA_CTRL.core2pad and enable_rx_tx[0] written 1 while the selects
+stay 0, so a pad that takes the register row shows 1): zero frames decoded, the pad output held at 0
+and its output enable held at 0 across the window while LSR.TEMT goes 0 then 1. The frames of the two
+UART_EN = 1 legs are the positive controls of the clear leg: they prove the THR write, the
+transmitter and the pad decoder work.
 
 With UART_EN clear and DATA_CTRL.interface_enable set, gpio_intf.rdl (DATA_CTRL.interface_enable:
 "Setting this chooses register values to drive the PAD") makes core2pad the pad level, so S4
@@ -68,6 +70,9 @@ DC_ENABLE_RX_TX = gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bm")
 DC_ENABLE_RX_TX_LSB = 1 << gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
 DC_INTERFACE_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
 DC_LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")
+DC_LSIO_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
+DC_SELECTS = DC_INTERFACE_ENABLE | DC_LSIO_SELECT | DC_LSIO_ENABLE
+DC_ROW_DATA = DC_CORE2PAD | DC_ENABLE_RX_TX_LSB
 DCE_USE_REG = (
     gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_bm")
     | gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_bm")
@@ -107,6 +112,7 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
         self.divisor = 0
         self.vip: SmcUartVip | None = None
         self.levels: list[int] = []
+        self.oe_levels: list[int] = []
         self.unresolved = 0
         self.cg_saved = 0
         self.ctrl_saved = 0
@@ -122,12 +128,17 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
 
     async def _sample_levels(self) -> None:
         pad = cocotb.top.tb_uart0_tx_from_dut
+        oe = cocotb.top.tb_core2pad_en_o
         while True:
             await RisingEdge(cocotb.top.clk_smc_i)
             try:
-                self.levels.append(int(pad.value) & 1)
+                level = int(pad.value) & 1
+                oe_level = (int(oe.value) >> TX_PAD) & 1
             except ValueError:
                 self.unresolved += 1
+                continue
+            self.levels.append(level)
+            self.oe_levels.append(oe_level)
 
     def _pad_level(self) -> int:
         try:
@@ -223,17 +234,23 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
         assert (temt, thre) == (1, 1), f"LSR before the toggle TEMT={temt} THRE={thre}"
         readback = await self._set_uart_en("B_UART_EN", 0)
         assert readback == 0, f"CTRL.UART_EN reads {readback} after writing 0"
-        dc = await self.csr_read("DATA_CTRL_NO_OVERRIDE", GPIO_DATA_CTRL)
-        dce = await self.csr_read("DATA_CTRL_ENABLE_NO_OVERRIDE", GPIO_DATA_CTRL_ENABLE)
-        assert dc & (DC_INTERFACE_ENABLE | DC_LSIO_SELECT) == 0 and dce & DCE_USE_REG == 0, (
+        await self.csr_write("DATA_CTRL_ROW_DATA", GPIO_DATA_CTRL, self.dc_saved | DC_ROW_DATA)
+        dc = await self.csr_read("DATA_CTRL_NO_SELECT", GPIO_DATA_CTRL)
+        dce = await self.csr_read("DATA_CTRL_ENABLE_NO_SELECT", GPIO_DATA_CTRL_ENABLE)
+        assert dc & DC_SELECTS == 0 and dce & DCE_USE_REG == 0, (
             f"pad {TX_PAD} DATA_CTRL 0x{dc:x} DATA_CTRL_ENABLE 0x{dce:x}: interface_enable, "
-            "lsio_select and use_reg_* must all be 0 for the no-request row of the selection"
+            "lsio_select, lsio_enable and use_reg_* must all be 0 for the no-request row"
+        )
+        assert dc & DC_ROW_DATA == DC_ROW_DATA, (
+            f"pad {TX_PAD} DATA_CTRL 0x{dc:x}: core2pad and enable_rx_tx[0] read back 0 after "
+            "writing 1"
         )
         idle = await self._lsr("LSR_IDLE_BEFORE_THR")
         assert idle == (1, 1), f"LSR before the THR write TEMT={idle[0]} THRE={idle[1]}"
         vip.sink.clear()
         vip.sink.clear_history()
         self.levels = []
+        self.oe_levels = []
         self.unresolved = 0
         sampler = cocotb.start_soon(self._sample_levels())
         t0_us = _now_us()
@@ -244,6 +261,7 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
         if left_ns > 0:
             await Timer(left_ns, "ns")
         sampler.cancel()
+        await self.csr_write("DATA_CTRL_ROW_RESTORE", GPIO_DATA_CTRL, self.dc_saved)
         self._mark("S3")
         temt_seen = [i for i, (t, _) in enumerate(reads) if t == 0]
         assert temt_seen, f"TEMT never read 0 in {len(reads)} LSR reads after the THR write"
@@ -268,15 +286,22 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
         )
         assert max(self.levels) == 0, (
             f"pad {TX_PAD} output rose to 1 in {sum(self.levels)} of {len(self.levels)} samples "
-            "with UART_EN=0 and no register override; the pad takes output data 0 without a "
+            "with UART_EN=0, core2pad=1 and no select set; the pad takes output data 0 without a "
             "hardware LSIO request"
+        )
+        assert max(self.oe_levels) == 0, (
+            f"pad {TX_PAD} output enable rose to 1 in {sum(self.oe_levels)} of "
+            f"{len(self.oe_levels)} samples with UART_EN=0, enable_rx_tx[0]=1 and no select set; "
+            "the transmitter is disabled without a hardware LSIO request"
         )
         self._chk(
             "S3",
             "CHK-UART-PADMUX-OFF-PAD-HELD",
-            f"UART_EN={readback} with pad {TX_PAD} interface_enable=0 lsio_select=0 use_reg=0: "
-            f"frames decoded compared equal to 0 and the pad output compared equal to 0 in all "
-            f"{len(self.levels)} samples of the {window_ns} ns window while the transmitter shifted",
+            f"UART_EN={readback} with pad {TX_PAD} DATA_CTRL=0x{dc:x} (core2pad=1 enable_rx_tx[0]=1, "
+            f"interface_enable=0 lsio_select=0 lsio_enable=0) DATA_CTRL_ENABLE=0x{dce:x} (use_reg=0): "
+            f"frames decoded compared equal to 0, the pad output compared equal to 0 and its output "
+            f"enable compared equal to 0 in all {len(self.levels)} samples of the {window_ns} ns "
+            f"window while the transmitter shifted",
         )
 
     async def _await_pad(self, label: str, want: int) -> int:

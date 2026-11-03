@@ -41067,11 +41067,11 @@ not compared, because the document does not state it (SF-012).
 
 *BFM / Model*: SEP_IN AXI sequencer writing and reading `CTRL.UART_EN` of wrapper 0, the UART0
 `THR`, `LSR.THRE` and `LSR.TEMT`, the pad-12 GPIO `DATA_CTRL` fields `interface_enable`,
-`lsio_select`, `enable_rx_tx` and `core2pad`, `DATA_CTRL_ENABLE` (`use_reg_*`), and
-`CLOCK_GATE_CONTROL` (`UART_CG_EN`); the UART0 pad VIP sink on
-`tb_uart0_tx_from_dut` (pad 12) decodes 8N1 frames at 115200 baud, and the same signal is also
-sampled on every `clk_smc_i` rise; `tb_uart0_rx_ext_drive` (pad 11) is bound by the VIP and left
-idle
+`enable_rx_tx` and `core2pad`, and `CLOCK_GATE_CONTROL` (`UART_CG_EN`), and reading pad-12
+`DATA_CTRL.lsio_select`, `DATA_CTRL.lsio_enable` and `DATA_CTRL_ENABLE` (`use_reg_*`); the UART0 pad
+VIP sink on `tb_uart0_tx_from_dut` (pad 12) decodes 8N1 frames at 115200 baud, and the same signal
+and bit 12 of `tb_core2pad_en_o` (the pad's output enable) are also sampled on every `clk_smc_i`
+rise; `tb_uart0_rx_ext_drive` (pad 11) is bound by the VIP and left idle
 
 *Run mode*: one testlist entry in `testlists/uart.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `uart`; seed 1; tool Verilator (cocotb).
@@ -41080,8 +41080,9 @@ idle
 draws nothing from the seed.
 
 *Objective*: `THR` 0xA5 reaches pad 12 as one frame with `UART_EN` set, again after `UART_EN` is
-cleared and set, and with `UART_EN` clear the UART transmits while pad 12, holding no register
-override, carries no frame and stays at output data 0.
+cleared and set, and with `UART_EN` clear the UART transmits while pad 12, with no select set and
+the register row's own data at 1, carries no frame and stays at output data 0 with its output
+enable 0.
 
 *Test Coverage*:
 
@@ -41091,15 +41092,17 @@ override, carries no frame and stays at output data 0.
 * `UART_EN` cleared while idle: `LSR.TEMT` reads 0 after the `THR` write and `LSR.THRE` and
   `LSR.TEMT` read 1 together after the byte is shifted out (`uart_16550_main.rdl` `LSR`), so the
   UART itself transmitted.
-* `UART_EN` cleared with pad-12 `DATA_CTRL.interface_enable`, `DATA_CTRL.lsio_select` and the
-  `DATA_CTRL_ENABLE.use_reg_*` bits read back 0: the pad VIP decodes no frame on pad 12 within a
-  window of 3 frame times and the pad output reads 0 on every `clk_smc_i` rise of that window
-  (compared; `uart_log_engine_ctrl.rdl` `CTRL.UART_EN`, the hardware LSIO request of the UART pads,
-  and the GPIO data and direction selection: no request and no override gives output data 0).
+* `UART_EN` cleared with pad-12 `DATA_CTRL.core2pad` and `enable_rx_tx[0]` written 1 and
+  `DATA_CTRL.interface_enable`, `lsio_select`, `lsio_enable` and the `DATA_CTRL_ENABLE.use_reg_*`
+  bits read back 0: the pad VIP decodes no frame on pad 12 within a window of 3 frame times, and
+  the pad output and its output enable read 0 on every `clk_smc_i` rise of that window (compared;
+  `uart_log_engine_ctrl.rdl` `CTRL.UART_EN`, the hardware LSIO request of the UART pads, and the
+  GPIO data and direction selection: no request and no select gives output data 0 with the
+  transmitter disabled, and the register row's 1 is not taken).
 * Pad-12 `DATA_CTRL` with `interface_enable` 1, `enable_rx_tx` 1 and `core2pad` 1 then 0: the
   fields read back the written values (compared, `gpio_intf.rdl`); the pad level equals core2pad
-  after each write and after its read-back, within 64 clk_smc_i cycles (compared, gpio_intf.rdl
-  DATA_CTRL.interface_enable).
+  within 64 clk_smc_i cycles after each write and on the first clk_smc_i rise after its read-back
+  (compared, gpio_intf.rdl DATA_CTRL.interface_enable).
 * `UART_EN` set again: the same `THR` write produces exactly one frame decoded as 0xA5, the
   positive control that the stimulus and the pad decoder still work after the clear leg.
 
@@ -41115,15 +41118,18 @@ override, carries no frame and stays at output data 0.
 . Error injection. Point: wrapper 0 `CTRL.UART_EN` and UART0 `THR`. Kind: a `THR` write of 0xA5 with
   `UART_EN` cleared (read back 0), the pad function off. Expected response: `LSR.TEMT` reads 0 after
   the write and `TEMT` and `THRE` read 1 together within 5000 us (the UART itself transmitted); no
-  frame is decoded on pad 12 and the pad output reads 0 at every sample of the 3-frame-time window.
-  Before the write, read `LSR` (both bits 1), write `UART_EN` 0 and read it back, read pad-12
-  `DATA_CTRL` and `DATA_CTRL_ENABLE` requiring `interface_enable`, `lsio_select` and `use_reg_*` 0,
-  read `LSR` again and start the `clk_smc_i` level sampler; after the idle reads complete the
-  3-frame-time window; stamp S3, print `CHK-UART-PADMUX-OFF-TX-SHIFTED` and
-  `CHK-UART-PADMUX-OFF-PAD-HELD` after their compares.
+  frame is decoded on pad 12 and the pad output and its output enable read 0 at every sample of the
+  3-frame-time window. Before the write, read `LSR` (both bits 1), write `UART_EN` 0 and read it
+  back, write pad-12 `DATA_CTRL` with `core2pad` and `enable_rx_tx[0]` 1 over the saved value, read
+  `DATA_CTRL` and `DATA_CTRL_ENABLE` requiring those two bits 1 and `interface_enable`,
+  `lsio_select`, `lsio_enable` and `use_reg_*` 0, read `LSR` again and start the `clk_smc_i`
+  sampler; after the idle reads complete the 3-frame-time window, write the saved `DATA_CTRL` back;
+  stamp S3, print `CHK-UART-PADMUX-OFF-TX-SHIFTED` and `CHK-UART-PADMUX-OFF-PAD-HELD` after their
+  compares.
 . With `UART_EN` still 0 write pad-12 `DATA_CTRL` with `interface_enable`, `enable_rx_tx` 1 and
   `core2pad` 1, require the pad to equal `core2pad` within 64 `clk_smc_i` cycles after the write and
-  again after the read-back, repeat with `core2pad` 0, then write the saved `DATA_CTRL` back and
+  on the first `clk_smc_i` rise after the read-back, repeat with `core2pad` 0, then write the saved
+  `DATA_CTRL` back and
   read it; stamp S4 and print `CHK-UART-PADMUX-GPIO-LEVEL-MEASURED`.
 . Write `UART_EN` 1 and read it back; write `THR` 0xA5; capture the frame, poll `LSR` to idle and
   wait one frame time; require one frame decoded as 0xA5; stamp S5 and print
@@ -41142,14 +41148,17 @@ override, carries no frame and stays at output data 0.
 |`CHK-UART-PADMUX-OFF-TX-SHIFTED` |With `UART_EN` read back 0, `LSR.TEMT` reads 0 after the `THR`
   write and `TEMT` and `THRE` read 1 together before 5000 us, after idle reads of 1 and 1 before
   the write; a `TEMT` that never reads 0 or an idle that never returns fails
-|`CHK-UART-PADMUX-OFF-PAD-HELD` |With `UART_EN` read back 0 and pad-12 `interface_enable`,
-  `lsio_select` and `use_reg_*` read back 0, the frames decoded on pad 12 over the 3-frame-time
-  window compare equal to 0 and the pad output compares equal to 0 at every `clk_smc_i` sample; a
-  decoded frame, a sample of 1, an X/Z sample, no sample or a set override bit fails
+|`CHK-UART-PADMUX-OFF-PAD-HELD` |With `UART_EN` read back 0, pad-12 `core2pad` and
+  `enable_rx_tx[0]` read back 1 and `interface_enable`, `lsio_select`, `lsio_enable` and `use_reg_*`
+  read back 0, the frames decoded on pad 12 over the 3-frame-time window compare equal to 0 and the
+  pad output and its output enable compare equal to 0 at every `clk_smc_i` sample; a decoded frame,
+  a data or output-enable sample of 1, an X/Z sample, no sample, a set select bit or a row-data bit
+  that reads 0 fails
 |`CHK-UART-PADMUX-GPIO-LEVEL-MEASURED` |Pad-12 `DATA_CTRL` `interface_enable`, `enable_rx_tx` and
   `core2pad` read back the written values (compared) and the saved value after the restore; the pad
-  level equals `core2pad` within 64 `clk_smc_i` cycles after each write and after its read-back
-  (compared, `gpio_intf.rdl` `DATA_CTRL.interface_enable`), and an X/Z sample fails
+  level equals `core2pad` within 64 `clk_smc_i` cycles after each write and on the first `clk_smc_i`
+  rise after its read-back (compared, `gpio_intf.rdl` `DATA_CTRL.interface_enable`), and an X/Z
+  sample fails
 |`CHK-UART-PADMUX-FRAME-RECOVER` |With `UART_EN` read back 1 again the same `THR` write yields
   exactly one frame decoded as 0xA5 within 5000 us
 |`CHK-NONVAC` |Steps S1 to S6 ran in order with strictly increasing simulation-time stamps and the
