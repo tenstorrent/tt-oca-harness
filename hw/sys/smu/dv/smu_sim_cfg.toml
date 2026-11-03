@@ -84,13 +84,18 @@ extra_ignore_patterns = [
 # The wrapper bench's crypto EDN request-hold window (tb_wrapper_top.sv)
 # prints `crypto EDN request-hold window still open at end` from a `final`
 # block when the run ends inside the window, so a window that never closes
-# fails the run.
+# fails the run. Its sep_in override expectation window prints
+# `sep_in override expectation window still open at end` the same way, and
+# `sep_in override expectation window: primary reset fell` when the SMC
+# primary reset falls while the window is open.
 extra_hard_fail_patterns = [
   'assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_io\.u_sep_ot_spi_wrap\.u_spi_host\..*: at time \d{10,}',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_key_manager_s3c_scan\..*(: at time|failed at) \d{10,}',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_dma_wrap\.(u_secure_dma|gen_alert_receivers)\b.*(: at time|failed at) \d{10,}',
   'crypto EDN request-hold window still open at end',
+  'sep_in override expectation window still open at end',
+  'sep_in override expectation window: primary reset fell',
 ]
 
 [native.stages.clean]
@@ -161,9 +166,12 @@ sources = [
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Clean-room AXI4 protocol checker, instantiated on the SMU crossbar and
-  # boundary links in tb_wrapper_top.sv. Both Verilator targets define
-  # ASSERTS_OFF and pass no --assert, so the rules grade on VCS.
+  # boundary links in tb_wrapper_top.sv. Both Verilator targets turn the
+  # Verilator assertion switch on, so its two-state rules grade on Verilator
+  # and VCS; its four-state X rules grade on VCS.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  # Four-state WDATA/RDATA known rules, one beside each ocah_axi_sva instance.
+  "hw/sys/smu/dv/tb/smu_axi_data_known_sva.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register.sv",
   "vendor/pulp-platform/axi/upstream/src/axi_cut.sv",
@@ -650,13 +658,16 @@ defines = [
 
 # COVERIGN is an error: Verilator drops a covergroup construct it does not
 # support with only that warning, and then builds other bins than the
-# commercial simulators.
+# commercial simulators. The Verilator assertion switch makes the two-state
+# OCAH checker rules of tb_wrapper_top.sv grade on Verilator; ASSERTS_OFF keeps
+# the vendor and DUT assertions off.
 [targets.default.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
   "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
+  "--assert",
 ]
 
 [targets.compile_smu_chiplet]
@@ -665,12 +676,14 @@ build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
 ]
 
+# Same flags as the default target, for the same reasons.
 [targets.compile_smu_chiplet.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
   "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
+  "--assert",
 ]
 
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native

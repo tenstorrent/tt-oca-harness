@@ -212,7 +212,7 @@ module = "system.sep_tcm_dma_aperture_ecc_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["tcm", "ecc", "dma", "memory", "subsystem", "sep_spec_log"]
+tags = ["tcm", "ecc", "dma", "memory", "subsystem", "sep_spec_log", "sep_spec_value"]
 tools = ["vcs"]
 run_modes = ["no_cpu"]
 target = "default"
@@ -242,7 +242,7 @@ module = "cpu.sep_cpu_demux_unmapped_fetch_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["cpu", "fabric", "decode", "memory", "subsystem"]
+tags = ["cpu", "fabric", "decode", "memory", "subsystem", "sep_spec_value"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -256,6 +256,6 @@ firmware = "tcm_ecc_cpu_trap_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["tcm", "ecc", "cpu", "trap", "memory", "subsystem"]
+tags = ["tcm", "ecc", "cpu", "trap", "memory", "subsystem", "sep_ras", "sep_spec_value"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+sep_tcm_flip_list=sep_tcm_ecc_flips.txt"]

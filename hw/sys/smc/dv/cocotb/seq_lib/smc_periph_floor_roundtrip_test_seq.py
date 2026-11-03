@@ -156,7 +156,12 @@ class smc_periph_floor_roundtrip_test_seq(SmcCsrSeq):
             f"input_clock_edge={EDGE_TIMEOUT_NS}ns last={self.last_edge_state} "
             f"fail=AssertionError(no edge) edge_waits={self.edge_waits}",
         )
-        cocotb.log.info("CHK-TIMEOUT-PATHS: %d bounded waits: %s", len(waits), " ".join(waits))
+        cocotb.log.info(
+            "CHK-TIMEOUT-PATHS: cell=%s: %d bounded waits: %s",
+            self.cell,
+            len(waits),
+            " ".join(waits),
+        )
 
         order = [t for t, _ in self.fence]
         assert order == list(FENCE_TERMS), f"fence order {order} != {list(FENCE_TERMS)}"
@@ -165,7 +170,8 @@ class smc_periph_floor_roundtrip_test_seq(SmcCsrSeq):
             assert cur > prev, f"step {term} stamp {cur} ps is not after {prev} ps"
         assert chk_stamp >= times[-1], f"{CHECKER_TERM} printed at {chk_stamp} ps before restore"
         cocotb.log.info(
-            "CHK-NONVAC: ordered fence %s; checker lines %s; stamps %s",
+            "CHK-NONVAC: cell=%s: ordered fence %s; checker lines %s; stamps %s",
+            self.cell,
             " < ".join(FENCE_TERMS),
             CHECKER_TERM,
             ", ".join(f"{t}@{s}" for t, s in self.fence),
