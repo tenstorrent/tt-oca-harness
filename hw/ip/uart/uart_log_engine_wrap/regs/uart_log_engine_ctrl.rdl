@@ -18,8 +18,11 @@ addrmap uart_log_engine_ctrl {
         field {
             sw = rw;
             hw = r;
-            desc = "UART Enable. When set, the pad-mux downstream will be forced to accept UART
-                    traffic.";
+            desc = "UART Enable. The hardware LSIO request of the UART's RX, TX, RTS and CTS
+                    pads: while set, the UART owns their data and direction. While clear, the UART
+                    keeps running, but its pads follow the GPIO data and direction selection like
+                    any pad without a hardware request, so TX and RTS do not reach the pins unless
+                    software forces LSIO selection.";
         } UART_EN[0:0] = 0x0;
     };
 
