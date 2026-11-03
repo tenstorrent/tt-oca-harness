@@ -25,11 +25,10 @@ cipher or the pad. Each testlist entry takes one exit, chosen by +sep_rom_decryp
 * success: no fault.
 * kdf_fail: the HMAC message FIFO (the PRF of the KDF) stops draining from the stage entry to its
   return.
-* aes_init_fail: the entropy complex (ESRC, CSRNG, EDN) is held in reset from the stage entry, and
-  a short AES reset pulse follows, so the AES must reseed its masking PRNG from an EDN that never
-  answers before it reports idle; the cipher never starts.
-* aes_dec_fail: the entropy complex is held in reset from the stage entry; the AES is idle then,
-  and stalls at the key load, which reseeds its PRNG.
+* aes_init_fail: from the stage entry, the AES bit of SW_RESET_N reads back 0 (tb input
+  aes_sw_rst_readback_inject_i), so the AES does not appear released and the cipher never starts.
+* aes_dec_fail: from the stage entry, the AES reports a recoverable CTRL update error (tb input
+  aes_ctrl_update_err_inject_i), so the cipher configuration is rejected before the key load.
 
 All faults are released when the stage returns. The backup slot carries a broken magic.
 
@@ -57,8 +56,9 @@ material.
 * CTRL-EXIT-TAKEN: the intended exit, by the status words DECRYPTION_START and DECRYPTION_END or
   DECRYPTION_FAILED (registry names; when and at which severity the ROM emits them is ROM
   behaviour) and by the ROM console marker of the failure kind.
-* CTRL-FAULT-APPLIED: the fault was in force over the stage (the gated reset probes, the WARN
-  HMAC_FIFO_TIMEOUT word, the ROM's AES idle-timeout line), or no fault pin moved (success).
+* CTRL-FAULT-APPLIED: the fault was in force over the stage (the WARN HMAC_FIFO_TIMEOUT word; the
+  ROM console marker AES_RST_FAIL or AES_CTRL_REJECTED with no AES idle timeout and no AES reset),
+  or no fault pin moved (success).
 * CTRL-KEY-WAS-PRESENT: during the stage, a snapshot searched with the grading search shows each
   material that must exist before that exit: all three (success, aes_dec_fail), the class key and
   KDF input (kdf_fail), the class key (aes_init_fail). It shows that the rebuilt DCCM and the
@@ -71,6 +71,7 @@ material.
 Partial coverage. Not graded: the all-zero class key exit (an all-zero key leaves no searchable
 residue), the malformed-pad exit, copies outside DCCM (AES and HMAC key registers, SRAM, CPU
 registers), a copy of fewer than 16 contiguous bytes of a material, and the CLASS_KEY read lock.
+The AES idle-timeout failures are not executed; they return through the same two AES exits.
 """
 
 from __future__ import annotations
@@ -109,11 +110,17 @@ _EFUSE_PRELOAD = (
 _EXITS = ("success", "aes_init_fail", "kdf_fail", "aes_dec_fail")
 _MARKERS = {
     "success": "DECRYPT_OK",
-    "aes_init_fail": "AES_INIT_BUSY",
+    "aes_init_fail": "AES_RST_FAIL",
     "kdf_fail": "KDF_FAIL",
     "aes_dec_fail": "AES_DEC_FAIL",
 }
 _AES_TIMEOUT_LINE = "AES_IDLE_TIMEOUT="
+_AES_ALERT_LINE = "AES_ALERT_STATUS="
+# Console line that shows the injected fault, not an idle timeout, ended each AES exit.
+_FAULT_MARKERS = {"aes_init_fail": "AES_RST_FAIL", "aes_dec_fail": "AES_CTRL_REJECTED"}
+# AES STATUS bits ALERT_RECOV_CTRL_UPDATE_ERR and ALERT_FATAL_FAULT.
+_AES_RECOV_ERR = 1 << 5
+_AES_FATAL = 1 << 6
 _DECRYPT_FN = "plat_decrypt_payload"
 
 _BL0 = 1 << 16
@@ -124,14 +131,16 @@ _MSG_DECRYPTION_FAILED = 0x001A
 _MSG_HMAC_FIFO_TIMEOUT = 0x022A
 _VERDICT_FAIL = 0xDEADBEEF
 
-_TRNG_HOLD = "jtag_trng_rst_hold_i"
-_AES_HOLD = "jtag_aes_rst_hold_i"
+_AES_RST_RDBK = "aes_sw_rst_readback_inject_i"
+_AES_CTRL_ERR = "aes_ctrl_update_err_inject_i"
 _HMAC_STALL = "hmac_fifo_drain_stall_i"
-_TRNG_RST = "trng_gated_rst_n_probe_o"
 _AES_RST = "aes_gated_rst_n_probe_o"
-_PINS = (_TRNG_HOLD, _AES_HOLD, _HMAC_STALL)
-# Clocks of the AES reset pulse; the override crosses a 2-flop synchronizer each way.
-_AES_PULSE_CYCLES = 8
+_PINS = (_AES_RST_RDBK, _AES_CTRL_ERR, _HMAC_STALL)
+_FAULT_PIN = {
+    "kdf_fail": _HMAC_STALL,
+    "aes_init_fail": _AES_RST_RDBK,
+    "aes_dec_fail": _AES_CTRL_ERR,
+}
 # Stimulus polling step in clocks.
 _STIM_STEP = 16
 _PROGRESS_STEP = 2_000_000
@@ -157,8 +166,7 @@ _MUST_EXIST = {
     "aes_dec_fail": ("class_key", "derived_key", "kdf_input"),
 }
 
-_RUN_CYCLES = {"success": 8_000_000, "kdf_fail": 8_000_000}
-_RUN_CYCLES_AES = 48_000_000
+_RUN_CYCLES = 8_000_000
 # Clocks without a retirement inside the stage that mean the CPU waits on a bus read for ever.
 _STALL_CYCLES = 100_000
 
@@ -372,15 +380,7 @@ class sep_rom_decrypt_exit_zeroize_test(sep_rom_observe_base):
         if self.exit_kind == "success":
             return
         call = obs.calls[0]
-        if self.exit_kind == "kdf_fail":
-            self._set_pin(dut, _HMAC_STALL, 1)
-        else:
-            self._set_pin(dut, _TRNG_HOLD, 1)
-        if self.exit_kind == "aes_init_fail":
-            await ClockCycles(dut.clk_i, _AES_PULSE_CYCLES)
-            self._set_pin(dut, _AES_HOLD, 1)
-            await ClockCycles(dut.clk_i, _AES_PULSE_CYCLES)
-            self._set_pin(dut, _AES_HOLD, 0)
+        self._set_pin(dut, _FAULT_PIN[self.exit_kind], 1)
         next_log = obs.cycle + _PROGRESS_STEP
         while call["ret_t"] is None:
             await ClockCycles(dut.clk_i, _STIM_STEP)
@@ -399,7 +399,7 @@ class sep_rom_decrypt_exit_zeroize_test(sep_rom_observe_base):
         assert self.exit_kind in _EXITS, (
             f"+sep_rom_decrypt_exit={self.exit_kind!r} is not one of {_EXITS}; set it in the testlist entry"
         )
-        self.max_run_cycles = _RUN_CYCLES.get(self.exit_kind, _RUN_CYCLES_AES)
+        self.max_run_cycles = _RUN_CYCLES
         self.released_ps: int | None = None
         self.stalled = False
         self.chk = SepChkLog(self, self.get_type_name(), self.random_seed())
@@ -420,7 +420,7 @@ class sep_rom_decrypt_exit_zeroize_test(sep_rom_observe_base):
         await flash.start()
         self.tap_start_ps = int(get_sim_time("ps"))
         self.tcm = SepFabricTap("PR-TCM").start()
-        self.obs = _Observer(self, entry, self.fn[1], (_TRNG_RST, _AES_RST) + _PINS).start()
+        self.obs = _Observer(self, entry, self.fn[1], (_AES_RST,) + _PINS).start()
         stim = cocotb.start_soon(self.stimulus(self.obs))
         try:
             await self.bring_up_cpu_boot(ROM_BASE >> 1, run_pulse_cycles=RUN_PULSE_CYCLES)
@@ -718,55 +718,62 @@ class sep_rom_decrypt_exit_zeroize_test(sep_rom_observe_base):
                 v = val
             return v
 
-        def changes(name: str, lo: int, hi: int) -> list[tuple[int, int]]:
-            return [(t, v) for t, v in w[name] if lo < t <= hi]
-
-        moved = {p: [v for _, v in w[p] if v] for p in _PINS}
-        aes_line = next((line for _, line in lines if _AES_TIMEOUT_LINE in line), None)
-        aes_status = None
-        if aes_line is not None:
-            tail = aes_line.split(_AES_TIMEOUT_LINE, 1)[1].split()
+        def console_hex(tag: str) -> int | None:
+            line = next((ln for _, ln in lines if tag in ln), None)
+            tail = [] if line is None else line.split(tag, 1)[1].split()
             try:
-                aes_status = int(tail[0], 16) if tail else None
+                return int(tail[0], 16) if tail else None
             except ValueError:
-                aes_status = None
+                return None
+
+        moved = {p: [t for t, v in w[p] if v] for p in _PINS}
+        idle_timeout = any(_AES_TIMEOUT_LINE in ln for _, ln in lines)
+        alert_status = console_hex(_AES_ALERT_LINE)
         fields = {
             "released_ps": _ps(self.released_ps),
-            "aes_idle_timeout_status": _hex(aes_status),
+            "aes_idle_timeout": int(idle_timeout),
+            "aes_alert_status": _hex(alert_status),
             **{f"{p}_high": len(v) for p, v in moved.items()},
         }
         if None in (t_in, t_out):
             self.chk.ctrl("FAULT-APPLIED", False, stage="no stage record", **fields)
             return
-        mid = (t_in + t_out) // 2
-        trng_low = level(_TRNG_RST, mid) == 0 and level(_TRNG_RST, t_out) == 0
-        aes_moves = changes(_AES_RST, t_in, t_out)
+        pin = _FAULT_PIN.get(self.exit_kind)
+        others_quiet = not any(moved[p] for p in _PINS if p != pin)
+        rise = moved[pin][0] if pin and moved[pin] else None
+        held = rise is not None and t_in <= rise <= t_out and level(pin, t_out) == 1
+        aes_moves = [(t, v) for t, v in w[_AES_RST] if t_in < t <= t_out]
         hmac_timeout = [
             t
             for t, wd in _code_words(obs.status, _MSG_HMAC_FIFO_TIMEOUT)
             if t_in <= t <= t_out + STORE_LAG_MAX_CYCLES * clk_ps and wd >> 24 == _WARN
         ]
+        marker = _FAULT_MARKERS.get(self.exit_kind)
+        fault_t = next((t for t, ln in lines if marker and marker in ln), None)
         if self.exit_kind == "success":
             ok = not any(moved.values())
         elif self.exit_kind == "kdf_fail":
-            ok = (
-                level(_HMAC_STALL, t_out) == 1
-                and bool(hmac_timeout)
-                and not moved[_TRNG_HOLD]
-                and not moved[_AES_HOLD]
-            )
-        elif self.exit_kind == "aes_init_fail":
-            ok = (
-                trng_low
-                and [v for _, v in aes_moves] == [0, 1]
-                and aes_line is not None
-                and not moved[_HMAC_STALL]
-            )
+            ok = held and bool(hmac_timeout) and others_quiet
         else:
-            ok = trng_low and not aes_moves and aes_line is not None and not moved[_HMAC_STALL]
+            ok = (
+                held
+                and others_quiet
+                and fault_t is not None
+                and rise < fault_t
+                and not idle_timeout
+                and not aes_moves
+            )
+            if self.exit_kind == "aes_dec_fail":
+                ok = (
+                    ok
+                    and alert_status is not None
+                    and bool(alert_status & _AES_RECOV_ERR)
+                    and not alert_status & _AES_FATAL
+                )
         fields.update(
-            trng_rst_mid=level(_TRNG_RST, mid),
-            trng_rst_at_return=level(_TRNG_RST, t_out),
+            fault_pin=pin or "none",
+            fault_rise_ps=_ps(rise),
+            fault_marker_ps=_ps(fault_t),
             aes_rst_changes=[f"{v}@{t}" for t, v in aes_moves] or "none",
             hmac_fifo_timeout_words=len(hmac_timeout),
         )

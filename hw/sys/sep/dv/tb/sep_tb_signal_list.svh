@@ -149,6 +149,12 @@
 // read and write resp is forced to SLVERR. A release can keep SLVERR until the response
 // driver changes, so a DMA transfer after the drop can still fail. See tb_top.sv.
 `SEP_TB_IN(logic, dma_host_rsp_err_inject_i)
+// AES software-reset readback inject. Default 0. While 1, reads of sep_reset_ctrl return bit 2
+// (SW_RESET_N.aes_sw_rst_n) as 0; the register and the AES reset are not forced. See tb_top.sv.
+`SEP_TB_IN(logic, aes_sw_rst_readback_inject_i)
+// AES CTRL update error inject. Default 0. While 1, the AES core's shadowed-register update error
+// input is 1, so STATUS.ALERT_RECOV_CTRL_UPDATE_ERR sets and a recoverable alert is sent.
+`SEP_TB_IN(logic, aes_ctrl_update_err_inject_i)
 // HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
 // side idle and the core's message valid toward the SHA-2 engine low, so the
 // hash engine takes no word and the FIFO fills. A port rather

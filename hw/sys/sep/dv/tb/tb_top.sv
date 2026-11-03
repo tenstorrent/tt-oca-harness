@@ -3135,6 +3135,37 @@ module sep_uvm_top
     end
 `undef DMA_HOST_AXIL_RSP
 
+    // Fast aes_init() failure: SW_RESET_N reads back its AES bit as 0 while the AES itself stays
+    // out of reset; no force or release until the input rises.
+`define AES_SW_RST_RDATA `SEP_CORE.u_sep_reset_ctrl.u_reg.cpuif_rd_data
+    logic aes_sw_rst_readback_forced;
+    always @(posedge clk_i) begin
+        if (aes_sw_rst_readback_inject_i === 1'b1) begin
+            force `AES_SW_RST_RDATA[2] = 1'b0;
+            aes_sw_rst_readback_forced <= 1'b1;
+        end else if (aes_sw_rst_readback_forced === 1'b1) begin
+            release `AES_SW_RST_RDATA[2];
+            aes_sw_rst_readback_forced <= 1'b0;
+        end
+    end
+`undef AES_SW_RST_RDATA
+
+    // Fast aes_cbc_decrypt() failure: AES reports a recoverable CTRL update error; no force or
+    // release until the input rises.
+`define AES_SHADOWED_UPD_ERR \
+    `SEP_CORE.u_sep_crypto.u_aes_wrapper_s3c_scan.u_tt_aes.u_aes_core.shadowed_update_err_i
+    logic aes_ctrl_update_err_forced;
+    always @(posedge clk_i) begin
+        if (aes_ctrl_update_err_inject_i === 1'b1) begin
+            force `AES_SHADOWED_UPD_ERR = 1'b1;
+            aes_ctrl_update_err_forced <= 1'b1;
+        end else if (aes_ctrl_update_err_forced === 1'b1) begin
+            release `AES_SHADOWED_UPD_ERR;
+            aes_ctrl_update_err_forced <= 1'b0;
+        end
+    end
+`undef AES_SHADOWED_UPD_ERR
+
     // ------------------------------------------------------------------
     // Mailbox WRITE_DATA unstrobed-lane inject.
     // ------------------------------------------------------------------
@@ -5951,6 +5982,8 @@ module sep_uvm_top
     assign mbox_lane_inject_mbx_i   = '0;
     assign mbox_lane_inject_data_i  = '0;
     assign dma_host_rsp_err_inject_i = 1'b0;
+    assign aes_sw_rst_readback_inject_i = 1'b0;
+    assign aes_ctrl_update_err_inject_i = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
     assign kmac_fifo_drain_stall_i  = 1'b0;
     assign crypto_alert_inject_i    = 1'b0;
