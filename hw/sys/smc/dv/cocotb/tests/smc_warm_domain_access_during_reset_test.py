@@ -6,6 +6,13 @@ Reproducer for #3408: the response of a read of `SCRATCH_COLD_WARM` while
 `rst_warm_smc_clk_n` is low is recorded, and every read of `SCRATCH_COLD_WARM`,
 `SCRATCH_COLD`, `CHIP_CONFIG.CHIP_ID` and `RESET_UNIT.SS_CONFIG` after the
 release must complete.
+
+The leaf presents the in-reset AR on purpose, so its testlist entry passes
+`+smc_misc_warm_in_reset_assertoff`: `tb_top` holds the own-domain AXI-Lite
+checker of the `SCRATCH_COLD_WARM` leg (`u_misc_warm_axil_sva`) off on the
+warm-reset cycles where that AR is presented, so its VALID-low-in-reset rule
+does not report the read, and that checker grades the leg in full once the
+reset releases.
 """
 
 from __future__ import annotations

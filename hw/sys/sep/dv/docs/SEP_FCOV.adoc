@@ -87,6 +87,7 @@ legal cells a named `all`-group test already walks.
 |Lifecycle |`sep_lc_state_cg`, `sep_feat_ctrl_cg`, `sep_sec_dis_boot_cg`
 |Mailbox / PIC |`sep_mailbox_pic_cg`, `sep_mailbox_channel_cg`
 |WDT |`sep_wdt_bark_cg`
+|`sep_ras_o` rise |`sep_ras_cg` (<<sep-fcov-p2-ras>>)
 |CPU store bus error |`sep_store_bus_error_cg`
 |Warm / cold scratch |`sep_scratch_reset_cg`
 |eFuse program / lock |`sep_efuse_program_lock_cg`
@@ -4452,6 +4453,7 @@ records it or the reason it has none.
 |`sep_dma_transfer_matrix_rand_test` |Algorithm order, message lengths, split (2 to 4 equal chunks of one transfer), swap value of a drawn message, algorithm, length and swap value of the long message |`sep_dma_hash_cg.cp_msg_len_class`, graded on a merge of regressions. `sep_dma_copy_hash_cg.cp_hash_opcode` (`sha512`) and `sep_dma_hash_cg.cp_digest_swap_x_word` fill on every run: every algorithm runs, and the published vectors run at both swap values
 |`sep_dma_transfer_matrix_rand_test` |Region order of each edge cell |`sep_dma_range_config_cg.cp_inrange_pos_x_side`, graded on a merge of regressions
 |`sep_dma_transfer_matrix_rand_test` |Configuration write order, offsets, guards, data |None: values inside a fixed contract
+|`sep_dma_transfer_matrix_rand_test` |GO bit of the `CONTROL` write at `BUSY` 1 in the logged runs |None: no bin. A GO=1 draw is graded by CHK-DMA-CTRL-BUSY and a GO=0 draw logs `INFO-DMA-CTRL-BUSY-SKIP`; seed 1 draws GO=1
 |`sep_dma_irq_error_lock_rand_test` |Two `INTR_ENABLE` values per event (the bit of the event clear, and set) and the trial order |`sep_dma_rand_cg.cp_irq_x_enable`, graded on a merge of regressions
 |`sep_dma_irq_error_lock_rand_test` |Outside case of leg L3 |`sep_dma_release_scope_cg.cp_out_of_range`, graded on a merge of regressions
 |`sep_dma_irq_error_lock_rand_test` |Regions, guards, distance, unlock order, and for the configuration-error kinds the sizes, the invalid opcode and the reserved ASID with its side |None: every seed walks the lock cells and the unlock list, and the four configuration-error kinds run on every seed and sample no bin. The distance is a value. Both hash width encodings 0 and 1 run on every seed as error injection (`sep_dma_config_fault_cg.cp_hash_width_fault`)
@@ -5032,7 +5034,7 @@ samples as before.
 |`cp_dma_ecc_response` |an externally initiated read {single-bit error: corrected data; double-bit error: not OKAY} = 2 bins. The response code of the single-bit read is not a bin (the spec does not state it for the DMA path). The same sample feeds `cp_tcm_ecc`. Spec: `doc/interrupts.adoc`, Correctable (single-bit) errors and Uncorrectable (double-bit) errors |None |`SEP_CORE.cpu_tcm_axi_resp` |`sep_tcm_dma_aperture_ecc_test` |executable. CHK-TCM-SBE fills the single-bit bin and CHK-TCM-DBE the double-bit bin
 |`cp_tcm_trap_cause` |access {DCCM load, DCCM store} x `tlu.mcause` {5, 7} x `tlu.mscause` {1} = 2 cells. The ICCM fetch cell is blocked (see the VPLAN Blocked features). Spec: `doc/interrupts.adoc`, Uncorrectable (double-bit) errors |Either of these two traps with `mscause` other than 1 |`SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.dec.tlu.{mcause, mscause}` |`sep_tcm_ecc_cpu_trap_test` |executable. CHK-TCM-UE fills both cells
 |`cp_nmi_fast_path` |`tlu.mcause` = 0xF000_1000 taken, and the next fetch address equals `SEP_CORE.nmi_vec` (the `SEP_NMI_VEC` value) = 1 bin. Spec: `doc/interrupts.adoc`, Uncorrectable (double-bit) errors |None |`SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.dec.tlu.mcause`, `SEP_CORE.nmi_vec`, `cpu_trace_addr_o` |`sep_tcm_ecc_cpu_trap_test` |executable. CHK-TCM-NMI fills the bin
-|`cp_ecc_dbg_pulse` |`ext_debug_bus_o` bit {367 ICCM single, 365 DCCM single, 364 DCCM double} pulse seen on a CPU access = 3 bins. Bit 366 (ICCM double) is not a bin: no test drives an uncorrectable ICCM error on the CPU path. Pulses on a DMA-path access are not bins: `sep_tcm_dma_aperture_ecc_test` grades them (CHK-TCM-DMA-DBG, `doc/interrupts.adoc:413-415`). Spec: `doc/interrupts.adoc`, Debug bus mirror |A pulse wider than one `clk_i`. A double-bit event with a single-bit pulse. A single-bit event with a double-bit pulse |`ext_debug_bus_o[367:364]` |`sep_tcm_ecc_cpu_trap_test` |executable. CHK-TCM-DBG fills the three bins. `ext_debug_bus_o` is approved; it is 384 bits wide in the build and 512 bits in the port table, and the coverpoint indexes bits 367:364 only
+|`cp_ecc_dbg_pulse` |`ext_debug_bus_o` bit {367 ICCM single, 365 DCCM single, 364 DCCM double} pulse seen on a CPU access = 3 bins. Bit 366 (ICCM double) is not a bin: `sep_tcm_ecc_cpu_trap_test` grades its pulse in the `iccm_ue` window (CHK-TCM-DBG366, `doc/interrupts.adoc:413-415`). Pulses on a DMA-path access are not bins: `sep_tcm_dma_aperture_ecc_test` grades them (CHK-TCM-DMA-DBG, `doc/interrupts.adoc:413-415`). Spec: `doc/interrupts.adoc`, Debug bus mirror |A pulse wider than one `clk_i`. A double-bit event with a single-bit pulse. A single-bit event with a double-bit pulse |`ext_debug_bus_o[367:364]` |`sep_tcm_ecc_cpu_trap_test` |executable. CHK-TCM-DBG fills the three bins. `ext_debug_bus_o` is approved; it is 384 bits wide in the build and 512 bits in the port table, and the coverpoint indexes bits 367:364 only
 |`cp_ecc_no_pic` |a corrected-error event (a pulse on bit 365 or 367) with `sep_internal_interrupts_probe_o` unchanged in the 4 clocks around the pulse (a window that is a choice of the environment) = 1 bin. Spec: `doc/interrupts.adoc`, Timer and Software Interrupts and Memory ECC Errors |Any bit of the vector changes because of the event |`ext_debug_bus_o[367:364]`, `sep_internal_interrupts_probe_o` |`sep_tcm_ecc_cpu_trap_test` |executable. The vector clause of CHK-TCM-NO-PIC fills the bin
 |`cp_micect_zero` |a retired `csrr` of `MICECT` (0x7F0) while `tlu.micect` is 0, {after the correctable leg (a `mdccmect` or `miccmect` increment since the last sample), after a DCCM load or store trap (`mcause` 5 or 7)} = 2 bins. Spec: `hw/sys/sep/doc/interrupts.adoc:309-310` (`MICECT` never increments) |None |`SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.dec.tlu.{micect, mdccmect, miccmect}`, `cpu_trace_insn_o`, `dbg_cpu_trace_exc_o`, `cpu_trace_ecause_o`, `cpu_trace_tval_o` |`sep_tcm_ecc_cpu_trap_test` (`FcovOwnSepTcmEccCpuTrapTest`) |executable. The `MICECT` clause of CHK-TCM-NO-PIC fills both bins
 |===
@@ -5143,7 +5145,7 @@ owner reaches them.
 |The owning test writes unique non-zero random values.
 |`sep_cpu_ecc_irq_cg`
 |The ICCM double-bit pulse (bit 366) of `cp_ecc_dbg_pulse`; mirror pulses on a DMA-path access
-|The register text and the interrupt chapter differ for an uncorrectable ICCM error. The specification does not state that DMA-path errors drive the mirror.
+|The register text and the interrupt chapter differ for the trap of an uncorrectable ICCM error, so its leg holds no bin; CHK-TCM-DBG366 grades the bit-366 pulse with no bin. The DMA-path pulses are graded by CHK-TCM-DMA-DBG with no bin.
 |`sep_debug_trace_cg`
 |Undefined TAP opcode, IDCODE opcode, DMI access path by lifecycle state, `dmi_active_o` (the specification states only "DMI active indicator"), the hazard classes (back-to-back dependency, load-use) and branch mispredict (`cp_hazard`), Zbf, Zbp, Zbr
 |The specification states no value, defines no hazard class, no observation point exists, or no encodings are given.
@@ -5435,7 +5437,7 @@ that closed set (<<sep-fcov-parked>>); it blocks no cell. Each absent input is l
 |`cmp_match_p_i[2:0]`, `cmp_match_n_i[2:0]` |`TOKEN_PROC.u_triple_redundant_comparator_{rma_sip, rma_chiplet, sec_disable}_token.match_p`, `match_n` |per-copy collapse and dissent per channel |Added tap. The nets are after the injection point, so the sampler sees the forced value
 |`latch_sticky_i[2:0]`, `latch_valid_i[2:0]`, `latch_test_en_i[2:0]` |`TOKEN_PROC.u_sha256_{rma_sip, rma_chiplet, sec_disable}_token` sticky digest, valid bit and test enable |retained digest latch of each channel |RMA_SIP: approved probes `token_digest_*`. RMA_CHIPLET and SEC_DIS: added taps
 |`jtag_filt_sigint_i` |`jtag_filter_lc_sigint_err_probe_o`, the integrity-error flag at the decoder output of the JTAG lifecycle filter |integrity-error state of the JTAG policy |Added tap. `sep_ras_o.lc_sigint_err` stays 0 under a filter-side injection, so `lc_sigint_i` is not the sample of the JTAG integrity-error state
-|`lc_state_i` |`lc_state_probe_o` (the `sep` output `lc_state_o`) |differentially encoded lifecycle state at the port |Approved probe. The sampler input of `x_port_raw16` and `cp_presense_port`
+|`lc_state_i` |`lc_state_probe_o` (the `sep` output `lc_state_o`) |differentially encoded lifecycle state at the port |Approved probe. The sampler input of `x_port_raw16`, `cp_presense_port` and `cp_presense_hold`
 |`lc_dec_data_i` |`lc_dec_data_probe_o`: `u_lc_state_dec.data_i` of `u_sep_lifecycle_ctrl`, the lifecycle decoder input after the LC differential-integrity inject |broken pairs (equal rails) and their rail value |Added tap. The sampler input of `x_mask_value_demote`, read at the `clk_i` fall: the bench forces and releases the decoder input at a `clk_i` rise. It shows the pairs the decoder receives, not the bench request
 |`wdt_rst_n_i`, `dbg_rstb_i`, `jtag_trst_n_i`, `ip_rst_n_i[6:0]` |`wdt_rst_ni_i`, `dbg_rstb_i`, the core TAP TRST after the pin select of `tb_top`, `sep_crypto_gated_rst_n` |narrow reset falls |In the sampler (memory, boot and reset taps). The sampler input of `x_reset_kind_held`
 |`token_cmp_fault_inject_i`, `token_cmp_fault_sel_i`, `lc_sigint_inject_i`, `lc_sigint_pair_mask_i`, `lc_sigint_bad_value_i`, `token_digest_test_en_inject_i`, `jtag_ic_reset_*` |bench hooks |stimulus |Approved bench inputs. They are never a coverpoint input
@@ -6282,7 +6284,8 @@ active-high); `port_table.adoc` (rows `lc_state_o`, `sep_fuse_dft_disable_o`,
 Gates (SEC_DIS)", "Debug and Test Port Path Gating"); `security_disable.adoc`.
 
 *Sample event*: feature change with `lc_sigint_i` low (`x_port_raw16`); the
-first clock after a cold reset (`cp_presense_port`); a condition held for
+first clock after a cold reset (`cp_presense_port`); the sense-done rise that
+ends a pre-sense window with SEC_DIS 0 on every clock (`cp_presense_hold`); a condition held for
 `EfFeatSettle` clocks, one sample per port (`x_cond_gate`).
 
 [cols="2,5,3",options="header"]
@@ -6290,6 +6293,7 @@ first clock after a cold reset (`cp_presense_port`); a condition held for
 |Coverpoint |Bins |Class
 |`x_port_raw16` |Sensed `LC_STATE` byte `{~r, r}` with r in 0 to 15 (16 bins); legal when `lc_state_i` equals the byte. Another port value is an `illegal_bins` entry |executable; seed-dependent
 |`cp_presense_port` |`lc_state_i` at the first clock after a cold reset equals the `LC_STATE` reset value 0x0F (`SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT`), the INVALID encoding. Another value is an `illegal_bins` entry. 1 legal bin |executable
+|`cp_presense_hold` |One sample per pre-sense window, from the first clock after the `rst_ni` release to the sense-done rise, on a run without `+skip_fuse_sense`: {`lc_state_i` left 0x0F on a clock of the window, the sensed `LC_STATE` byte of `efuse_shadow_i` was known (no X or Z) and differed from 0x0F on a clock of the window}. Legal bin `held_over_loaded_byte`: the port held 0x0F while the sensed byte was present (`otp_fuse_controller.adoc`, section "Fuse Sensing and Boot Sequencing": the logical `LC_STATE` output remains `4'b1111` until fuse sensing completes). A port that left 0x0F is an `illegal_bins` entry. A window in which no such byte loaded fills no bin. 1 legal bin |executable
 |`x_cond_gate` |Condition {before sense with SEC_DIS 0, SEC_DIS 1, integrity error with SEC_DIS 0} x port {`dbg_disable`, `sep_fuse_dft_disable`, `smc_fuse_dft_disable`}. 9 legal cells. `dbg_disable` has a stated level: every gated path (Case 1, 2 or 3 of the DTP path table) at 1 before sense and under the error, every path at 0 under SEC_DIS; another level is an `illegal_bins` entry. The fuse DFT cells record the condition only |executable
 |===
 
@@ -6302,13 +6306,17 @@ every `CHK-FEAT-CELL` read of legs A and C, one raw code per leaf; the SEC_DIS
 cells of `x_cond_gate`); `sep_sec_dis_override_test`
 (`cp_presense_port`, the before-sense and SEC_DIS cells of `x_cond_gate`);
 `sep_sec_dis_timing_rand_test` (`cp_presense_port`);
+`sep_efuse_sense_test` (`cp_presense_hold`, owner window from before the
+`rst_ni` release to after the sense-done rise);
 `sep_lcc_state_codeword_rand_test` (the integrity-error cells of `x_cond_gate`).
 
 *Tool*: VCS.
 
 *Status*: Seed-dependent for `x_port_raw16`: every leaf of
 `sep_lcc_feat_ctrl_state_matrix_rand_test` senses one drawn raw code, so the 16
-cells close over merged regressions, as `x_raw16_sigint` does. `cp_presense_port`
+cells close over merged regressions, as `x_raw16_sigint` does. `cp_presense_hold`
+fills in every leaf of `sep_efuse_sense_test`: its preload stages `LC_STATE`
+word 3 as 0x96, which loads early in the sense. `cp_presense_port`
 and `x_cond_gate` fill in one regression: every leaf of the owners holds the
 conditions, except that the integrity-error cells fill only in a leaf of
 `sep_lcc_state_codeword_rand_test` that does not draw the nibble `0111`. In
@@ -6418,7 +6426,7 @@ seeds: 2 and 3, both in the 9-seed testlist run).
 |`sep_efuse_if_status_cg` |`sep_efuse_interface_status_rand_test`, `sep_efuse_shim_response_fault_test` (`cp_sense_status_word`, `x_prog_lifecycle`, `cp_sense_shape`)
 |`sep_efuse_secure_tm_cg` |`sep_efuse_secure_tm_matrix_rand_test`
 |`sep_efuse_jtag_policy_cg` |`sep_efuse_jtag_access_rand_test`, `sep_lcc_state_codeword_rand_test` (integrity-error cells), `sep_efuse_secure_tm_matrix_rand_test` (`cp_state` bins `prod_end` and `rma_chiplet`), `sep_efuse_lock_slot_matrix_rand_test` (`x_jtag_rlock`), `sep_efuse_interface_status_rand_test` (`x_jtag_presense`)
-|`sep_lc_port_gate_cg` |`sep_lcc_feat_ctrl_state_matrix_rand_test` (`x_port_raw16`, SEC_DIS cells of `x_cond_gate`), `sep_sec_dis_override_test` (`cp_presense_port`, before-sense and SEC_DIS cells of `x_cond_gate`), `sep_sec_dis_timing_rand_test` (`cp_presense_port`), `sep_lcc_state_codeword_rand_test` (integrity-error cells of `x_cond_gate`)
+|`sep_lc_port_gate_cg` |`sep_lcc_feat_ctrl_state_matrix_rand_test` (`x_port_raw16`, SEC_DIS cells of `x_cond_gate`), `sep_sec_dis_override_test` (`cp_presense_port`, before-sense and SEC_DIS cells of `x_cond_gate`), `sep_sec_dis_timing_rand_test` (`cp_presense_port`), `sep_efuse_sense_test` (`cp_presense_hold`), `sep_lcc_state_codeword_rand_test` (integrity-error cells of `x_cond_gate`)
 |`sep_lc_sigint_inject_cg` |`sep_lcc_state_codeword_rand_test`
 |`sep_lc_demote_hold_cg` |`sep_cpu_reset_retention_test` (`x_reset_kind_held`), `sep_lcc_feat_ctrl_state_matrix_rand_test` (`cp_sdis_demote_set`), `sep_efuse_secure_tm_matrix_rand_test` (`cp_prod_strap1_demote`)
 |===
@@ -7172,7 +7180,8 @@ leg code to `open_value_leg_pass` after that CTRL line passed (setter
 belongs to the owner of the leg. A CTRL line that fails writes no code, so its
 bin stays empty. The bin samples no DUT signal: the CTRL line grades the DUT
 value that shows the leg reached its state. A bin is a reach record, not a
-golden comparison.
+golden comparison. Where a leg also grades a stated part with a `CHK-`
+line, that line is its reach line and the bin samples after it passes (row 27).
 
 *Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>). Not seed-dependent:
 each leg runs on every seed of its owner.
@@ -7182,7 +7191,7 @@ each leg runs on every seed of its owner.
 |Code |Bin |Owning test |Leg reached (CTRL reach line)
 |1 |`dma_align_mismatch` |`sep_dma_irq_error_lock_rand_test` |A width-1 transfer with source address 0 mod 4 and destination address 1, 2 or 3 mod 4, `TRANSFER_WIDTH` and `DST_ADDR_LO` read back as written: after the GO write a STATUS read shows DONE or ERROR, or the DMA master tap shows an AR beat (CTRL-DMA-ALIGN-GO).
 |2 |`dma_clr_outside_range` |`sep_spi_dma_handshake_rand_test` |A handshake run with `INTR_SRC_ADDR_0` below the enabled memory range: `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`, `INTR_SRC_ADDR_0`, `RANGE_BASE` and `HANDSHAKE_INTR_ENABLE` read back as written, `CONTROL.HARDWARE_HANDSHAKE_ENABLE` reads 1 and the trigger probe is high in the window (CTRL-DMA-CLR-RANGE).
-|3 |`dma_clr_bus0` |`sep_spi_dma_handshake_rand_test` |A handshake run with `CLEAR_INTR_BUS` bit 0 at 0: `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`, `INTR_SRC_ADDR_0`, `RANGE_BASE` and `HANDSHAKE_INTR_ENABLE` read back as written, `CONTROL.HARDWARE_HANDSHAKE_ENABLE` reads 1 and the trigger probe is high in the window (CTRL-DMA-CLR-RANGE).
+|3 |`dma_clr_bus0` |`sep_spi_dma_handshake_rand_test` |A handshake run with `CLEAR_INTR_BUS` bit 0 at 0: `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`, `INTR_SRC_ADDR_0`, `RANGE_BASE` and `HANDSHAKE_INTR_ENABLE` read back as written, `CONTROL.HARDWARE_HANDSHAKE_ENABLE` reads 1 and the trigger probe is high in the window (CTRL-DMA-CLR-RANGE). The leg grades the bus-0 route with CHK-DMA-CLR-BUS0 (no clear write at `INTR_SRC_ADDR_0`, the clear word keeps its sentinel; its control CTRL-DMA-CLR-BUS0 shows STATUS.BUSY rising on the status tap at or after the first trigger rise, or an AR), which passes before the bin samples.
 |4 |`dma_alert_pair_force` |`sep_pic_pending_map_walk_rand_test` |The DMA alert pair reads the drawn value on both wires on `dma_alert_rx_probe_o` for at least one clock while the inject input is 1 (DMA alert sender inject, `docs/SEP_TB_ARCH.adoc`; CTRL-DMA-ALERT-INJ).
 |5 |`smc_aperture_change_quiet` |`sep_fabric_smc_route_test` |The SMC aperture inputs moved to the other configuration after reset with no LSU access in flight, and held the new pair on every clock of the two probe reads (CTRL-SMC-APERTURE-CHANGE).
 |6 |`smu_moved_irregular` |`sep_fabric_outbound_route_attr_test` |A moved SMU aperture whose size is not a power of two or whose base is not size-aligned, both registers read back as written (CTRL-SMU-MOVED).
@@ -7206,10 +7215,43 @@ each leg runs on every seed of its owner.
 |24 |`csrng_bus_cmp_replay` |`sep_drbg_cmd_sequence_rand_test` |A second software-port Instantiate and Generate with the seed of the first: both 4-word blocks equal each other and the golden block, and `RECOV_ALERT_STS` bit 12 reads 0 after the clear before the second Generate (CTRL-CSRNG-BUS-CMP).
 |25 |`csrng_vctr_wrap` |`sep_drbg_cmd_sequence_rand_test` |A software-port Generate of two blocks from an Instantiate that sets V[31:0] to `0xfffffffe`: block 1 equals the golden block and the Generate acknowledges with status 0 (CTRL-CSRNG-VCTR-WRAP).
 |26 |`esrc_ht_bypass_zero` |`sep_esrc_health_pattern_rand_test` |A constant-zero noise window with `BYPASS_ENTROPY_COMPRESSOR` read back 1 before the window (CTRL-ESRC-HT-BYPASS).
-|27 |`km_xfer_short_key` |`sep_km_sideload_share_walk_test` |A key transfer of fewer than 12 words: words 0 to n-1 of the OTBN key dump equal the key and `ERR_BITS` reads 0 (CTRL-XFER-SHORT-KEY).
+|27 |`km_xfer_short_key` |`sep_km_sideload_share_walk_test` |A key transfer of fewer than 12 words: words 0 to n-1 of the OTBN key dump equal the key, `ERR_BITS` reads 0 and each of the 24 OTBN share-word offsets is written once (CHK-XFER-SHORT-KEY); the pad words are the open value (`OBS-XFER-PAD`).
 |28 |`km_bank_subword_byte` |`sep_km_key_bank_register_rand_test` |A KM CPU byte store to an AES key-share word, seen with one strobe bit set on the KM AXI-adapter write capture (CTRL-BANK-SUBWORD).
 |29 |`km_bank_subword_half` |`sep_km_key_bank_register_rand_test` |A KM CPU halfword store to an AES key-share word, seen with two adjacent strobe bits set on the KM AXI-adapter write capture (CTRL-BANK-SUBWORD).
 |30 |`km_mbox_flush_race` |`sep_km_mailbox_km_side_rand_test` |A KM write to KM_WRITE_DATA inside the SEP flush write (from its start to its response), with flushed_by_sep seen by the image, in one attempt (CTRL-KMBOX-FLUSH-RACE).
+|===
+
+[[sep-fcov-p2-ras]]
+==== `sep_ras_o` rise group
+
+`sep_ras_cg` (`cov/sv/sep_fcov.sv`) has one coverpoint, `cp_ras_rise`, with one
+bin per `sep_ras_o` field and, for `periph_bus_err`, one bin per bit. A bin
+samples on the rise of its bit of the monitor tap `sep_ras_probe_o`
+(`docs/SEP_TB_ARCH.adoc`) while the last window opened in the run belongs to
+the owner of that field, with no X or Z on the sample. The bit positions follow
+the declaration order of `sep_pkg::sep_ras_t`, and the sampler stops the
+compile when the width of that type differs from the map. A bin is a reach
+record on the DUT output; the `CHK-RAS-*` lines of the host leaves
+(<<sep-vplan-sep-ras>>) grade the shape of the field.
+
+*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>). Not seed-dependent.
+
+[cols="3,5,5",options="header"]
+|===
+|Bin |Owning test |Note
+|`lc_sigint_err` |`sep_lcc_state_codeword_rand_test` |
+|`wdt_bark`, `wdt_bite` |`sep_reset_wdt_sanity_test` |
+|`iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue` |`sep_tcm_ecc_cpu_trap_test` |
+|`km_uncorrectable` |`sep_km_cpu_protect_rand_test` |
+|`km_correctable` |`sep_km_command_protocol_rand_test` |
+|`dma_alert`, `crypto_alert` |`sep_pic_pending_map_walk_rand_test` |
+|`dma_reg_bus_err`, `periph_bus_err_aes`, `periph_bus_err_hmac`, `periph_bus_err_kmac`, `periph_bus_err_otbn`, `periph_bus_err_wdt` |`sep_cpu_bridge_fault_matrix_rand_test` |
+|`dma_host_intg_err` |`sep_dma_basic_test` |
+|`csrng_fatal`, `edn_fatal` |`sep_drbg_fatal_err_inject_rand_test`, `sep_pic_pending_map_walk_rand_test` |Either owner fills the bin.
+|`entropy_fill_stall` |`sep_entropy_pool_aperture_test` |
+|`token_match_fault` |`sep_efuse_token_match_fault_pic_test` |
+|`lockstep_err`, `entropy_pool_err` |None |`ignore_bins`: constant 0 in this build (`hw/sys/sep/doc/port_table.adoc` row `lockstep_status_o`; the `sep_ras_t` comment of `entropy_pool_err`).
+|`periph_bus_err_csrng`, `periph_bus_err_edn` |None |`ignore_bins`: the CSRNG and EDN windows of the crypto demux answer an unmapped offset with DECERR before the register bridge, so no access raises these bits.
 |===
 
 [[sep-fcov-p2-dropped]]

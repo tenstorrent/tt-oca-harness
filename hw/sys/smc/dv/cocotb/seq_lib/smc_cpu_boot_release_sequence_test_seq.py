@@ -26,6 +26,7 @@ _CHK_ORDER = (
     "CHK-INIT-MEM-DONE-BYPASS",
     "CHK-COLD-SELF-ISOLATE-HELD",
     "CHK-COLD-SELF-ISOLATE-RELEASE",
+    "CHK-COLD-SELF-ISOLATE-FOUR-CYCLES",
     "CHK-FUSE-EXT-BOOT-MID-SENSE",
 )
 _CHK_STEP = {
@@ -36,6 +37,7 @@ _CHK_STEP = {
     "CHK-INIT-MEM-DONE-BYPASS": "S5",
     "CHK-COLD-SELF-ISOLATE-HELD": "S6",
     "CHK-COLD-SELF-ISOLATE-RELEASE": "S6",
+    "CHK-COLD-SELF-ISOLATE-FOUR-CYCLES": "S6",
 }
 _WINDOW_EDGES = 64
 _SENSE_BOUND_CYCLES = 200_000
@@ -45,6 +47,10 @@ _BOOT_RISE_BOUND_CYCLES = 16
 _CPU_RELEASE_BOUND_CYCLES = 20_000
 _INIT_BOUND_CYCLES = 20_000
 _ISOLATE_BOUND_CYCLES = 2_000
+# cpu.adoc, "CPU AXI Isolation": the boundary self-isolates on cold boot, "releasing four
+# cycles after SRAM initialization completes and the uncore is out of reset". The probes
+# of the terms and the isolate are sampled on the same rise, so the count is the four.
+_ISOLATE_RELEASE_RISES = 4
 (_RST, _SENSE, _FRST, _WARM, _EXT, _CORES, _UNC, _INIT, _ISO, _REQ) = range(10)
 _PROBES = (
     "rst_primary_smc_clk_no",
@@ -324,14 +330,25 @@ class smc_cpu_boot_release_sequence_test_seq(SmcResetSeqBase):
         self._stash(
             "CHK-COLD-SELF-ISOLATE-RELEASE",
             "tb_cpu_cluster_isolate fell at edge %d, %d clk_smc_i rises after the latest of "
-            "init-done (edge %d), core release (edge %d) and uncore release (edge %d); the spec "
-            "gives four cycles, clock and counting rule not specified (measured, "
-            "not compared)",
+            "init-done (edge %d), core release (edge %d) and uncore release (edge %d)",
             fall,
             fall - latest,
             init_first,
             core_rel,
             unc_rel,
+        )
+        assert fall - latest == _ISOLATE_RELEASE_RISES, (
+            f"tb_cpu_cluster_isolate fell {fall - latest} clk_smc_i rises after the latest of "
+            f"init-done (edge {init_first}), core release (edge {core_rel}) and uncore release "
+            f"(edge {unc_rel}), not the documented {_ISOLATE_RELEASE_RISES}"
+        )
+        self._stash(
+            "CHK-COLD-SELF-ISOLATE-FOUR-CYCLES",
+            "the self-isolate release came %d clk_smc_i rises after the latest of init-done, "
+            "core release and uncore release (edge %d), the documented %d",
+            fall - latest,
+            latest,
+            _ISOLATE_RELEASE_RISES,
         )
 
         # S7
