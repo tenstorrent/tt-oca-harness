@@ -36,8 +36,10 @@ Checkers:
                  request) in bit k only.
   CHK-TCM-SBE-WB after each CHK-TCM-SBE read, the PR-TCM tap shows a write of
                  the flipped word with data bits 31:0 equal to the written data
-                 (VeeR EL2 PRM ``docs/source/memory-map.md:638-639`` ICCM,
-                 ``:646-647`` DCCM: a DMA read error is corrected in line and
+                 (VeeR EL2 PRM at tt-Cores-VeeR-EL2@07a51d817,
+                 ``docs/source/memory-map.md``, "Correctable Ecc/Parity Errors"
+                 ``:638-639`` ICCM, ``:646-647`` DCCM: a DMA read error is
+                 corrected in line and
                  the corrected data is written back). No write, or another
                  data value, fails; the written ECC bits are logged.
   CHK-TCM-DBE    for 16 drawn bit pairs of each memory (at least 4 each of
@@ -61,16 +63,22 @@ Checkers:
                  core is held off, so no CPU access drives the lanes. Control:
                  CHK-TCM-SBE and CHK-TCM-DBE show the stored bits flipped.
   CHK-TCM-SUBWORD-WR a 1- or 2-byte DMA copy into one drawn word of each
-                 memory ends with STATUS.error at 1, ERROR_CODE equal to the
-                 BUS_ERROR bit alone and ``host_path_err`` set
+                 memory ends with STATUS.error at 1, the BUS_ERROR bit of
+                 ERROR_CODE set and ``host_path_err`` set
                  (``hw/sys/sep/doc/dma.adoc:118-121``: ICCM and DCCM take only
                  whole 32-bit words from the DMA, any other write ends in
                  BUS_ERROR and sets the host-path fault; ``:95-96``: error
-                 reporting is the same for a copy; VeeR EL2 PRM
-                 ``docs/source/memory-map.md:1203-1204`` and ``:422-427``).
-                 Control: the ICCM and DCCM copies are both graded (count 2).
+                 reporting is the same for a copy; VeeR EL2 PRM at
+                 tt-Cores-VeeR-EL2@07a51d817, ``docs/source/memory-map.md``,
+                 "Write Alignment Rules" ``:1203-1204`` and "Misaligned
+                 Accesses" ``:422-427``). The spec states no other bit of
+                 ERROR_CODE, so the whole code is logged (OBS-TCM-SUBWORD-CODE)
+                 and not graded. Control: the ICCM and DCCM copies are both
+                 graded (count 2).
 Observations (not graded): OBS-TCM-EXCL (whether the other memory's clock-enable
 tap rose), OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read),
+OBS-TCM-SUBWORD-CODE (the whole ERROR_CODE after the sub-word copy into a word,
+and its bits other than BUS_ERROR),
 OBS-TCM-SUBWORD (done, staging word and the word read back after the 1- or
 2-byte copy into one drawn word of each memory, and every field of the copy out
 of it; the word is not a flip target of the single- or double-bit legs, so it
@@ -631,7 +639,8 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         self.n_checks += 1
         wb = self._written_word(mem, addr, mark)
         line = (
-            f"contract=PRM memory-map.md:638-639,646-647 mem={mem} addr=0x{addr:08x} k={k} "
+            f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Correctable Ecc/Parity Errors' "
+            f":638-639,646-647 mem={mem} addr=0x{addr:08x} k={k} "
             f"written_data={'X' if wb is None else hex(wb & M32)} "
             f"written_ecc={'X' if wb is None else hex(wb >> DATA_BITS)} expect=0x{data:08x}"
         )
@@ -704,15 +713,24 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         return st, ecode, await self._bus_err()
 
     def _chk_subword_wr(self, mem: str, addr: int, nbytes: int, st, ecode: int, berr: int) -> None:
-        """CHK-TCM-SUBWORD-WR: a sub-word DMA write into a TCM word ends in BUS_ERROR."""
+        """CHK-TCM-SUBWORD-WR: a sub-word DMA write into a TCM word sets ERROR_CODE.BUS_ERROR."""
         hpe = int(bool(berr & DMA_HOST_PATH_BIT))
         code = ecode & EC_MASK
+        bus_error = int(bool(code & EC_BUS_ERROR))
+        self.logger.info(
+            "OBS-TCM-SUBWORD-CODE: mem=%s addr=0x%08x bytes=%d error_code=0x%x other_bits=0x%x",
+            mem,
+            addr,
+            nbytes,
+            code,
+            code & ~EC_BUS_ERROR & EC_MASK,
+        )
         line = (
             f"contract=hw/sys/sep/doc/dma.adoc:118-121 mem={mem} dir=write addr=0x{addr:08x} bytes={nbytes} "
-            f"error={st.error} error_code=0x{code:x} expect=0x{EC_BUS_ERROR:x} "
+            f"error={st.error} bus_error={bus_error} bus_error_mask=0x{EC_BUS_ERROR:x} "
             f"host_path_err={hpe}"
         )
-        if not st.error or code != EC_BUS_ERROR or not hpe:
+        if not st.error or not bus_error or not hpe:
             self._fail("CHK-TCM-SUBWORD-WR", line)
         self.logger.info("CHK-TCM-SUBWORD-WR PASS: %s", line)
         self.n_checks += 1

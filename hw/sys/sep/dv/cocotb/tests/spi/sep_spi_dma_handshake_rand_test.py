@@ -202,8 +202,12 @@ Checkers:
                   this wrapper. The upstream SoC control and system ports are
                   tied off" (``hw/sys/sep/doc/dma.adoc:61-62``), so a clear
                   write on bus 0 never reaches the host port. Control:
-                  CHK-HS-CLR (bus 1, same tap and word) and
-                  ``CTRL-DMA-CLR-RANGE``.
+                  CHK-HS-CLR (bus 1, same tap and word),
+                  ``CTRL-DMA-CLR-RANGE`` and ``CTRL-DMA-CLR-BUS0``: in the same
+                  run, after the trigger rose, STATUS.BUSY and CONTROL.GO
+                  (both reset to 0) read 1, or the tap shows at least one AR
+                  (the source read follows the clear stage), so the engine
+                  took the trigger; else ``CTRL-MISSING CHK-DMA-CLR-BUS0``.
   OBS-DMA-CLR-RANGE clear-range and clear-bus runs (``variant=``): the AWs
                   of the DMA master tap at INTR_SRC_ADDR_0 and their B
                   responses, that SRAM word after the run, the chunks moved,
@@ -1035,6 +1039,16 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             self._ctrl_missing("CTRL-DMA-CLR-RANGE", line)
         self.logger.info("CTRL-DMA-CLR-RANGE PASS seed=%d %s", cfg.seed, line)
         if variant == "bus0":
+            # Reach control: after the trigger the engine is still in the
+            # handshake copy (STATUS.BUSY and CONTROL.GO both reset to 0), or
+            # it has read source data, which follows the clear stage.
+            reach = (
+                f"variant={variant} busy={int(bool(st.busy))} go={go} ar_total={len(ev.ar)} "
+                f"expect=busy_go_1_or_ar_ge_1 trigger_high_clk={trig_high}"
+            )
+            if not ((st.busy and go) or ev.ar):
+                self._ctrl_missing("CHK-DMA-CLR-BUS0", reach)
+            self.logger.info("CTRL-DMA-CLR-BUS0 PASS seed=%d %s", cfg.seed, reach)
             line = (
                 f"contract=dma.hjson:771-773,hw/sys/sep/doc/dma.adoc:61-62 variant={variant} "
                 f"clear_aw={len(clr_idx)} expect_aw=0 clear_word=0x{clr_rb:08x} "

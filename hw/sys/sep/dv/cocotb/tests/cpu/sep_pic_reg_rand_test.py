@@ -62,8 +62,10 @@ follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
                ``meigwclr`` after the all-ones write, ``meigwclr`` in each
                CHK-GWCLR0 read, and the reset reads of the ``meipl``, ``meie``,
                ``meigwctrl`` and ``meigwclr`` groups and of ``mpiccfg`` (VeeR
-               EL2 PRM ``docs/source/interrupts.md:415``: reserved bits are
-               hardwired to 0; the Reserved rows of ``mpiccfg`` ``:443-447``,
+               EL2 PRM at tt-Cores-VeeR-EL2@07a51d817,
+               ``docs/source/interrupts.md`` "PIC Control/Status Registers"
+               ``:415``: reserved bits are hardwired to 0; the Reserved rows
+               of each register section, ``mpiccfg`` ``:443-447``,
                ``meipl`` ``:479-483``, ``meie`` ``:563-567``, ``meigwctrl``
                ``:816-820`` and ``meigwclr`` ``:863-867``). The firmware prints
                the reserved bits of each read; the record count is 4 + entries
@@ -660,7 +662,8 @@ class sep_pic_reg_rand_test(sep_base_test):
                     )
             x_part = "x_free=1"
         self.logger.info(
-            "CHK-PIC-RSVD PASS: contract=PRM interrupts.md:415 seed=%d regs=%d rsvd=0 %s",
+            "CHK-PIC-RSVD PASS: contract=PRM tt-Cores-VeeR-EL2@07a51d817 interrupts.md "
+            "'PIC Control/Status Registers' :415 seed=%d regs=%d rsvd=0 %s",
             self.tcfg.seed,
             len(regs),
             x_part,

@@ -131,9 +131,15 @@ GO value during a transfer is not graded.
   CHK-DMA-CTRL-BUSY   on a seed that draws GO=1 for the CONTROL write at BUSY=1
                       during the 4096-byte single-chunk copy: after DONE and a
                       16-clock settle, the DMA master shows exactly the AR and
-                      AW counts of that one copy (n_txn each). Control: BUSY
-                      stays 1 through the write (else CTRL-MISSING). A seed
-                      that draws GO=0 logs ``INFO-DMA-CTRL-BUSY-SKIP``; seed 1
+                      AW counts of that one copy (n_txn each). Control
+                      (``CTRL-DMA-CTRL-BUSY``, else CTRL-MISSING): the write
+                      answers OKAY, BUSY stays 1 through the write, and on the
+                      tap STATUS.BUSY rose before the write and STATUS.DONE
+                      rises after it; the line logs the write response, the
+                      write clocks and their offsets from the BUSY rise and the
+                      DONE rise. A
+                      seed that draws GO=0 logs ``INFO-DMA-CTRL-BUSY-SKIP``
+                      with the same fields; seed 1
                       draws GO=1. ``OBS-DMA-CTRL-BUSY`` logs the CONTROL value
                       read right after the write and after DONE, STATUS,
                       ERROR_CODE and the destination compare.
@@ -186,6 +192,7 @@ from dataclasses import dataclass, field, replace
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import (
     DmaXfer,
@@ -1388,7 +1395,10 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         await self.busy.wait_rise(m_busy, BUSY_RISE_BOUND)
         value = (ops.last_control & ~GO_MASK) | (GO_MASK if plan.busy_go else 0)
         m_wr = self.busy.mark()
-        await ops.wr(CONTROL, value)
+        wr_c0 = self.tap.clk
+        wseq = await ops.access(SepAxiOp.WRITE, CONTROL, value)
+        wr_c1 = self.tap.clk
+        ops.writes.append((wr_c0, wr_c1, CONTROL, value))
         busy_through = int(self.busy.level() == 1 and not self.busy.fall_clks_since(m_wr))
         ctrl_wr = await ops.rd(CONTROL)
         st = None
@@ -1420,11 +1430,29 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             ctrl_wr,
             ctrl_done,
         )
+        # Tap clocks: the STATUS.BUSY rise of this copy, the write, and the
+        # first STATUS.DONE rise after the write.
+        busy_rise = next(iter(ev.rises("busy")), None)
+        done_rise = next((c for c in ev.rises("done") if c >= wr_c1), None)
+        ctrl = (
+            f"go={plan.busy_go} write_resp={wseq.resp_code} busy_through_write={busy_through} "
+            f"write_clk={wr_c0}-{wr_c1} busy_rise_clk={'-' if busy_rise is None else busy_rise} "
+            f"done_clk={'-' if done_rise is None else done_rise} "
+            f"write_after_busy={'-' if busy_rise is None else wr_c0 - busy_rise} "
+            f"done_after_write={'-' if done_rise is None else done_rise - wr_c1}"
+        )
         if not plan.busy_go:
-            self.logger.info("INFO-DMA-CTRL-BUSY-SKIP seed=%d go=0", self.seed)
-        elif not busy_through:
-            self._ctrl_missing("CHK-DMA-CTRL-BUSY", "BUSY fell during the CONTROL write")
+            self.logger.info("INFO-DMA-CTRL-BUSY-SKIP seed=%d %s", self.seed, ctrl)
+        elif not (
+            wseq.resp_ok
+            and busy_through
+            and busy_rise is not None
+            and done_rise is not None
+            and busy_rise <= wr_c0
+        ):
+            self._ctrl_missing("CHK-DMA-CTRL-BUSY", ctrl)
         else:
+            self.logger.info("CTRL-DMA-CTRL-BUSY PASS seed=%d %s", self.seed, ctrl)
             self._pass(
                 "CHK-DMA-CTRL-BUSY",
                 len(ev.ar) == x.n_txn and len(ev.aw) == x.n_txn,

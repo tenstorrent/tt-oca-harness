@@ -43,18 +43,23 @@ Checks:
                        Architecture: the load/store unit cannot access ICCM).
                        Control: the DCCM pair reads K, writes V2 and reads V2.
   CHK-IFU-TRAP       : each fetch at U traps once, with mcause 0x1 (instruction
-                       access fault) and mtval U (VeeR EL2 PRM
-                       ``docs/source/memory-map.md:273-276``: a fetch with a bus
-                       error is a precise instruction access fault; ``:199``: a
-                       precise exception captures the faulting address in
-                       mtval; ``physical-memory-protection.md:99-101``: code 1).
+                       access fault) and mtval U (VeeR EL2 PRM at
+                       tt-Cores-VeeR-EL2@07a51d817, ``docs/source/memory-map.md``
+                       "Unmapped Addresses" ``:273-276``: a fetch with a bus
+                       error is a precise instruction access fault; "Exception
+                       Handling" ``:199``: a precise exception captures the
+                       faulting address in mtval;
+                       ``physical-memory-protection.md`` "Exceptions"
+                       ``:99-101``: code 1).
                        Control: the IFU request at U is in the window.
   CHK-LSU-ICCM-CAUSE : the LSU load at the ICCM word traps once with mcause 0x5
                        (load access fault) and the LSU store once with mcause
-                       0x7 (store access fault) (PRM ``memory-map.md:281``,
+                       0x7 (store access fault) (PRM at the same revision,
+                       ``memory-map.md`` "Unmapped Addresses" ``:281``,
                        ``:300`` with footnote 4 ``:330``: loads and stores to
                        the ICCM range in the DCCM region fault; codes
-                       ``physical-memory-protection.md:102-107``; ICCM and DCCM
+                       ``physical-memory-protection.md`` "Exceptions"
+                       ``:102-107``; ICCM and DCCM
                        share region 12, ``hw/sys/sep/doc/memory_map.adoc:41-43``).
                        Control: the DCCM pair reads K, writes V2 and reads V2.
   CHK-LSU-ICCM-WE    : no ICCM write enable on PR-TCM during the LSU store.
@@ -242,7 +247,8 @@ def _crt0_mrac(path: Path) -> tuple[int, int]:
 # VeeR EL2 mrac (region access control) as fw/startup/crt0.s writes it.
 CSR_MRAC, MRAC_SEP = _crt0_mrac(CRT0)
 
-# mcause exception codes (VeeR EL2 PRM docs/source/physical-memory-protection.md:99-107).
+# mcause exception codes (VeeR EL2 PRM at tt-Cores-VeeR-EL2@07a51d817,
+# docs/source/physical-memory-protection.md "Exceptions" :99-107).
 MCAUSE_FETCH_FAULT = 0x1
 MCAUSE_LOAD_FAULT = 0x5
 MCAUSE_STORE_FAULT = 0x7
@@ -811,7 +817,8 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
                     "CHK-IFU-TRAP",
                     [r.val for r in causes] == [MCAUSE_FETCH_FAULT]
                     and [r.val for r in tvals] == [u],
-                    f"contract=PRM memory-map.md:273-276,199 k={k} fetch=0x{u:08x} mcause={mc} "
+                    f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Unmapped Addresses' :273-276 "
+                    f"'Exception Handling' :199 k={k} fetch=0x{u:08x} mcause={mc} "
                     f"mtval={mt} expect_mcause=0x{MCAUSE_FETCH_FAULT:x} expect_mtval=0x{u:08x}",
                 )
             resp = None
@@ -1007,7 +1014,8 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
                 "CHK-LSU-ICCM-CAUSE",
                 [r.val for r in traps] == [MCAUSE_LOAD_FAULT]
                 and [r.val for r in straps] == [MCAUSE_STORE_FAULT],
-                f"contract=PRM memory-map.md:281,300,330 load_mcause={lc} store_mcause={sc} "
+                f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Unmapped Addresses' :281,300,330 "
+                f"load_mcause={lc} store_mcause={sc} "
                 f"expect=0x{MCAUSE_LOAD_FAULT:x}/0x{MCAUSE_STORE_FAULT:x}",
             )
         self._grade(
