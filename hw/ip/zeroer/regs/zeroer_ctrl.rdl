@@ -18,7 +18,7 @@ addrmap zeroer_ctrl {
         field {
             sw = rw;
             hw = r;
-            desc = "Byte address to write zeros to";
+            desc = "Byte address to write zeros to. Bits at and above the master address width, 56 in the SMC, are ignored: a clear starts at the address truncated to that width. Program them as zero; the zeroer truncates an out-of-range value rather than rejecting it.";
         } DEST_ADDR[63:0] = 0x0;
     };
 
