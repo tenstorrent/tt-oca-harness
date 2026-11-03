@@ -66,8 +66,16 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           ``0x1501A7ED``. Control: the cold leg returns every
                           armed register to its RDL default.
   CHK-AGG-SURVIVE         per sequence: bits 40 and 42 stay 1 through every
-                          pulse with no new fault, both latches read 1 before
-                          the clear and the bits read 0 after the clear writes.
+                          pulse with no new fault; after the pulses
+                          ``DMA_BUS_ERR_STATUS`` reads ``reg_path_err`` alone
+                          and ``PERIPH_BUS_ERR_STATUS`` reads the aes, kmac,
+                          otbn and wdt bits that the leaf latched before the
+                          pulses, and no other bit (``sep_cpu_ctrl.rdl:346-347``
+                          "Neither bit is cleared by a CPU-only reset",
+                          ``:398-399`` "No bit is cleared by a CPU-only
+                          reset"); the bits read 0 after the clear writes.
+                          Reach control CTRL-LATCH: each of those bits reads 1
+                          before the first pulse.
   CHK-DBG-SYNC            full-CPU build: ``mpc_run_sync`` is constant while
                           ``dbg_rstb_i`` is low although ``mpc_reset_run_req``
                           toggles, and follows within 2 + 2 clocks after the
@@ -174,8 +182,15 @@ at the end of the demotion-hold leg returns ``DEMOTE_1`` and ``DEMOTE_2`` to
 their RDL reset value, so the readback of CHK-DEMOTE-HELD is live);
 ``CTRL-JTAG-TRST-EDGE`` (``jtag_trst_probe_o`` falls and then rises in the
 ``jtag_trst_ni`` pulse). Observations: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC`` and
-``REFERENCE_COUNTER`` after each event). The DBG lines of CHK-BANK and
-CHK-CPU-RST-DBG take credit only after CHK-DBG-SYNC passes.
+``REFERENCE_COUNTER`` after each event) and ``OBS-AGG-UNLATCHED``
+(``host_path_err`` and the hmac, csrng and edn bits of
+``PERIPH_BUS_ERR_STATUS`` before and after each pulse sequence, with the reason
+no access of the leaf latches them: a host-path fault needs a DMA bus fault,
+and the leaf locks the DMA range to the SRAM before the sequences; the leaf
+holds HMAC in its engine reset through every pulse; the CSRNG and EDN windows
+answer an unmapped offset with DECERR before the register bridge,
+``docs/SEP_FCOV.adoc`` ``periph_bus_err_csrng``). The DBG lines of CHK-BANK
+and CHK-CPU-RST-DBG take credit only after CHK-DBG-SYNC passes.
 
 Environment choices (logged): the placement of each pulse in clocks from the
 calibrated latencies, the allowance of CHK-DBG-SYNC (2 clocks), and the bound
@@ -207,10 +222,12 @@ from env.sep_reset_taps import SepResetTaps, iso_name
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import (
+    AES,
     HMAC,
     SEP_CPU_CTRL,
     SEP_LIFECYCLE_CTRL,
     SEP_RESET_CTRL,
+    WDT_TIMER,
     iter_registers,
     register_fields,
     sym,
@@ -228,6 +245,7 @@ from seq_lib.sep_dma_ops import (
 from seq_lib.sep_irq_aggregator_seq import (
     DMA_CLEAR_ADDR,
     DMA_CLR_BIT,
+    DMA_HOST_PATH_BIT,
     DMA_REG_PATH_BIT,
     DMA_STATUS_ADDR,
     IRQ_DMA_HOST_PATH,
@@ -284,9 +302,37 @@ _BY_NAME = {p.name: p for p in PROBES}
 HOST_X = {"otbn": 0, "aes": 1, "hmac": 2, "kmac": 3, "abr": 4}
 KEY_X = {"otbn": 8, "aes": 9, "hmac": 10, "kmac": 11, "abr": 12}
 
-PERIPH_BIT = {n: SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", n) for n in ("kmac", "otbn")}
-PERIPH_CLR = {n: SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_CLEAR", n) for n in ("kmac", "otbn")}
+PERIPH_BLOCKS = ("aes", "hmac", "kmac", "otbn", "csrng", "edn", "wdt")
+PERIPH_BIT = {n: SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", n) for n in PERIPH_BLOCKS}
+PERIPH_CLR = {n: SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_CLEAR", n) for n in PERIPH_BLOCKS}
 PERIPH_HOLE = {"kmac": kmac_reg_unmapped_addr(), "otbn": otbn_reg_unmapped_addr()}
+
+
+def _partial_byte_addr(block, reg: str) -> int:
+    """Byte 1 of a register that owns byte 0: a 1-byte write there misses an owned byte."""
+    if not block.mask32(reg) & 0xFF:
+        raise RuntimeError(f"{reg} owns no bit in byte 0")
+    return block.addr(reg) + 1
+
+
+# Bridge faults latched before each CPU-only pulse sequence: the two in-extent
+# holes and a 1-byte write that misses an owned byte (a partial write) of an AES
+# and a watchdog register (sep_cpu_ctrl.rdl:387-391). Each access answers SLVERR.
+PERIPH_PARTIAL = {
+    "aes": _partial_byte_addr(AES, "CTRL_AUX_REGWEN"),
+    "wdt": _partial_byte_addr(WDT_TIMER, "WDOG_BARK_THOLD"),
+}
+SEQ_LATCHED = ("aes", "kmac", "otbn", "wdt")
+SEQ_SET = sum(PERIPH_BIT[n] for n in SEQ_LATCHED)
+SEQ_CLR = sum(PERIPH_CLR[n] for n in SEQ_LATCHED)
+# Status bits no access of this leaf latches before a CPU-only pulse; their value
+# across the pulses is logged (OBS-AGG-UNLATCHED).
+SEQ_UNLATCHED = {
+    "host_path_err": "needs_a_dma_bus_fault_the_leaf_dma_range_is_locked_to_sram",
+    "hmac": "hmac_held_in_its_engine_reset_through_every_pulse",
+    "csrng": "csrng_window_decerrs_an_unmapped_offset_before_the_bridge",
+    "edn": "edn_window_decerrs_an_unmapped_offset_before_the_bridge",
+}
 DMA_HOLE = dma_reg_unmapped_addr()
 PERIPH_MASK = SEP_CPU_CTRL.mask32("PERIPH_BUS_ERR_STATUS")
 DMA_ST_MASK = SEP_CPU_CTRL.mask32("DMA_BUS_ERR_STATUS")
@@ -668,7 +714,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             await self._calibrate()
             await self._arm_state()
             for cls in self.classes:
-                await self._latch_faults(f"{cls} sequence")
+                await self._latch_faults(f"{cls} sequence", every=True)
                 await self._sequence(cls)
                 await self._retention_reads(cls)
                 await self._cpurst_state(cls)
@@ -973,7 +1019,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
         await self._open()
 
     # ---- step 4: fault latches ----------------------------------------------
-    async def _latch_faults(self, what: str) -> None:
+    async def _latch_faults(self, what: str, every: bool = False) -> None:
+        """Latch ``reg_path_err`` and the bit of L; with ``every``, also each SEQ_LATCHED bit."""
         lat = self.plan.latch
         seq = await self._acc(SepAxiOp.READ, DMA_HOLE)
         if seq.resp_code != RESP_SLVERR:
@@ -982,18 +1029,54 @@ class sep_cpu_reset_retention_test(sep_base_test):
         seq = await self._acc(SepAxiOp.READ, PERIPH_HOLE[lat])
         if seq.resp_code != RESP_SLVERR:
             raise AssertionError(f"{what}: {lat} hole read resp={RESP_NAME[seq.resp_code]}")
+        if every:
+            await self._latch_rest(what)
+        want = SEQ_SET if every else PERIPH_BIT[lat]
         pst = await self._rd(PERIPH_STATUS_ADDR)
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
         b40, b42 = self._irq(IRQ_DMA_REG_PATH), self._irq(IRQ_PERIPH_OR)
         await FallingEdge(cocotb.top.clk_i)
-        ok = (dst & DMA_REG_PATH_BIT) and (pst & PERIPH_BIT[lat]) and b40 and b42
+        ok = (dst & DMA_REG_PATH_BIT) and (pst & want) == want and b40 and b42
         self._ctl(
             "CTRL-LATCH",
             bool(ok),
             f"{what}: DMA_BUS_ERR_STATUS=0x{dst:x} PERIPH_BUS_ERR_STATUS=0x{pst:x} "
-            f"latch={lat} src41={b40} src43={b42}",
+            f"latch={lat} want=0x{want:x} src41={b40} src43={b42}",
         )
+        if every:
+            self.unlatched_pre = self._unlatched(dst, pst)
+
+    async def _latch_rest(self, what: str) -> None:
+        """The other hole and the two partial writes, with the graded window closed."""
+        await self._close()
+        for n in SEQ_LATCHED:
+            if n == self.plan.latch:
+                continue
+            if n in PERIPH_HOLE:
+                seq = await self._acc(SepAxiOp.READ, PERIPH_HOLE[n])
+            else:
+                seq = SepAxiAccessSeq(
+                    f"ret_partial_{n}",
+                    op=SepAxiOp.WRITE,
+                    addr=PERIPH_PARTIAL[n],
+                    wdata=0,
+                    length=1,
+                    size=2,
+                    allow_unverified_write_resp=True,
+                )
+                await self.start_seq(seq)
+                if seq.timed_out:
+                    raise AssertionError(f"{what}: {n} partial write got no response")
+            if seq.resp_code != RESP_SLVERR:
+                raise AssertionError(f"{what}: {n} fault access resp={RESP_NAME[seq.resp_code]}")
+        await self._open()
+
+    @staticmethod
+    def _unlatched(dst: int, pst: int) -> str:
+        bits = {"host_path_err": int(bool(dst & DMA_HOST_PATH_BIT))}
+        bits.update({n: int(bool(pst & PERIPH_BIT[n])) for n in SEQ_UNLATCHED if n in PERIPH_BIT})
+        return ",".join(f"{n}={bits[n]}" for n in SEQ_UNLATCHED)
 
     # ---- step 5: the pulse sequence -------------------------------------------
     async def _sequence(self, cls: str) -> None:
@@ -1087,8 +1170,15 @@ class sep_cpu_reset_retention_test(sep_base_test):
         lat = self.plan.latch
         dst = await self._rd(DMA_STATUS_ADDR)
         pst = await self._rd(PERIPH_STATUS_ADDR)
+        self.logger.info(
+            "OBS-AGG-UNLATCHED LOG event=%s before_pulses=%s after_pulses=%s reason=%s",
+            cls,
+            self.unlatched_pre,
+            self._unlatched(dst, pst),
+            ",".join(f"{n}:{r}" for n, r in SEQ_UNLATCHED.items()),
+        )
         await self._wr(DMA_CLEAR_ADDR, DMA_CLR_BIT)
-        await self._wr(PERIPH_CLEAR_ADDR, PERIPH_CLR[lat])
+        await self._wr(PERIPH_CLEAR_ADDR, SEQ_CLR)
         await self._cycles(2)
         await ReadOnly()
         a40, a42 = self._irq(IRQ_DMA_REG_PATH), self._irq(IRQ_PERIPH_OR)
@@ -1101,7 +1191,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             and r["falls"] == 0
             and r["new"] == 0
             and (dst & DMA_ST_MASK) == DMA_REG_PATH_BIT
-            and (pst & PERIPH_MASK) == PERIPH_BIT[lat]
+            and (pst & PERIPH_MASK) == SEQ_SET
             and a40 == 0
             and a42 == 0
             and (dst2 & DMA_ST_MASK) == 0
@@ -1110,8 +1200,10 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.agg[cls] = (
             f"event={cls} latch={lat} src41={r['src41']} src43={r['src43']} new_faults={r['new']} "
             f"falls_during_pulses={r['falls']} pulses={r['events']} "
-            f"DMA_BUS_ERR_STATUS=0x{dst:x} PERIPH_BUS_ERR_STATUS=0x{pst:x} "
-            f"after_clear={a40 | a42} status_after_clear=0x{dst2:x},0x{pst2:x}"
+            f"DMA_BUS_ERR_STATUS=0x{dst:x} expect=0x{DMA_REG_PATH_BIT:x} "
+            f"PERIPH_BUS_ERR_STATUS=0x{pst:x} expect=0x{SEQ_SET:x}({','.join(SEQ_LATCHED)}) "
+            f"after_clear={a40 | a42} status_after_clear=0x{dst2:x},0x{pst2:x} "
+            f"golden=sep_cpu_ctrl.rdl:346-347,398-399"
         )
         if not ok:
             self.logger.error("CHK-AGG-SURVIVE FAIL: %s", self.agg[cls])
