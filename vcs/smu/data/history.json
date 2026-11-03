@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-03T13:30:35+00:00",
+  "generated_at": "2026-11-03T19:26:20+00:00",
   "points": [
     {
       "failed_tests": 2,
@@ -385,6 +385,163 @@
         }
       ],
       "test_pass_rate": 96.24
+    },
+    {
+      "failed_tests": 6,
+      "flaky_tests": 0,
+      "flow_pass_rate": 33.33,
+      "generated_at": "2026-11-03T19:26:20+00:00",
+      "id": "5c89417caaaa6756",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-7c9f90960060a201",
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 88.28,
+            "branch": 75.95,
+            "condition": 71.43,
+            "functional": 100.0,
+            "line": 94.31,
+            "toggle": 97.98,
+            "user": 91.9872
+          },
+          "flow": "smu",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 25
+            },
+            "by_disposition": {
+              "cover": 25
+            },
+            "by_metric": {
+              "user": 25
+            },
+            "by_status": {
+              "open": 25
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 25,
+            "observations_complete": false,
+            "open": 25,
+            "unclassified": 25
+          },
+          "raw_metrics": {
+            "assertion": 88.28,
+            "branch": 75.95,
+            "condition": 71.43,
+            "functional": 70.0,
+            "line": 94.31,
+            "toggle": 72.15,
+            "user": 91.9872
+          },
+          "status": "FAIL",
+          "target": "compile_smu_chiplet",
+          "threshold_met": false,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": "COVCMP-dbf6b843897ce961",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 34.84,
+            "branch": 30.1,
+            "condition": 5.41,
+            "functional": 58.89,
+            "line": 35.33,
+            "toggle": 6.54,
+            "user": 26.0188
+          },
+          "flow": "smu",
+          "framework": "uvm",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 236
+            },
+            "by_disposition": {
+              "cover": 236
+            },
+            "by_metric": {
+              "user": 236
+            },
+            "by_status": {
+              "open": 236
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 236,
+            "observations_complete": false,
+            "open": 236,
+            "unclassified": 236
+          },
+          "raw_metrics": {
+            "assertion": 34.84,
+            "branch": 30.1,
+            "condition": 5.41,
+            "functional": 41.22,
+            "line": 35.33,
+            "toggle": 3.78,
+            "user": 26.0188
+          },
+          "status": "PASS",
+          "target": "compile_smu_chiplet",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": "COVCMP-2f09118c6b425838",
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 88.12,
+            "branch": 75.95,
+            "condition": 71.43,
+            "functional": 100.0,
+            "line": 94.31,
+            "toggle": 97.98,
+            "user": 91.2226
+          },
+          "flow": "smu",
+          "framework": "",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 28
+            },
+            "by_disposition": {
+              "cover": 28
+            },
+            "by_metric": {
+              "user": 28
+            },
+            "by_status": {
+              "open": 28
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 28,
+            "observations_complete": false,
+            "open": 28,
+            "unclassified": 28
+          },
+          "raw_metrics": {
+            "assertion": 88.12,
+            "branch": 75.95,
+            "condition": 71.43,
+            "functional": 70.0,
+            "line": 94.31,
+            "toggle": 72.15,
+            "user": 91.2226
+          },
+          "status": "FAIL",
+          "target": "compile_smu_chiplet",
+          "threshold_met": false,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 97.74
     }
   ],
   "schema_version": "0.2"

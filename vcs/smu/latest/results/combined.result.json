@@ -1,29 +1,98 @@
 {
   "artifacts": {
-    "console": "vcs/smu/runs/combined.log",
+    "coverage_manifest": "artifacts/smu/coverage/coverage.json",
+    "coverage_policy_application": "artifacts/smu/coverage/report/policy-application.json",
+    "coverage_report": "artifacts/smu/coverage/report",
+    "coverage_summary": "artifacts/smu/coverage/report/summary.json",
+    "result_json": "vcs/smu/runs/combined/result.json",
     "run_dir": "vcs/smu/runs/combined"
   },
   "coverage": {
-    "status": "ERROR",
-    "total_percent": null
+    "comparison_key": "COVCMP-2f09118c6b425838",
+    "details_available": true,
+    "effective_metrics": {
+      "assertion": 88.12,
+      "branch": 75.95,
+      "condition": 71.43,
+      "functional": 100.0,
+      "line": 94.31,
+      "toggle": 97.98,
+      "user": 91.2226
+    },
+    "holes_summary": {
+      "accepted": 0,
+      "by_category": {
+        "user": 28
+      },
+      "by_disposition": {
+        "cover": 28
+      },
+      "by_metric": {
+        "user": 28
+      },
+      "by_status": {
+        "open": 28
+      },
+      "details_available": true,
+      "hole_group_count": 0,
+      "native_point_count": 28,
+      "observations_complete": false,
+      "open": 28,
+      "unclassified": 28
+    },
+    "manifest": "artifacts/smu/coverage/coverage.json",
+    "policy_application": "artifacts/smu/coverage/report/policy-application.json",
+    "policy_thresholds": [
+      {
+        "actual_percent": 91.2226,
+        "id": "user",
+        "max_unclassified_points": null,
+        "met": false,
+        "metric_family": "user",
+        "minimum_percent": 100.0,
+        "population": "effective",
+        "scope": "*",
+        "unclassified_points": 28
+      }
+    ],
+    "raw_metrics": {
+      "assertion": 88.12,
+      "branch": 75.95,
+      "condition": 71.43,
+      "functional": 70.0,
+      "line": 94.31,
+      "toggle": 72.15,
+      "user": 91.2226
+    },
+    "report": "artifacts/smu/coverage/report",
+    "source_manifest": "vcs/smu/runs/combined/cov/coverage.json",
+    "source_policy_application": "vcs/smu/runs/combined/cov/report/policy-application.json",
+    "source_report": "vcs/smu/runs/combined/cov/report",
+    "source_summary": "vcs/smu/runs/combined/cov/report/summary.json",
+    "status": "FAIL",
+    "summary": "artifacts/smu/coverage/report/summary.json",
+    "target": "compile_smu_chiplet",
+    "threshold": 0.0,
+    "threshold_met": false,
+    "total_percent": 87.97
   },
   "failure_buckets": [
     {
       "count": 1,
       "examples": [
-        "vcs/smu/runs/combined.log"
+        "vcs/smu/runs/combined/stages/cov_report/logs/cov_report.log"
       ],
-      "kind": "tool_error",
-      "signature": "--cov-combine: vcs/smu/runs/uvm has no coverage manifest (cov/coverage.json)"
+      "kind": "coverage_threshold",
+      "signature": "coverage threshold not met"
     }
   ],
   "flow": "smu",
   "framework": "",
-  "generated_at": "2026-11-03T13:30:34+00:00",
+  "generated_at": "2026-11-03T19:26:19+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
-    "short_sha": "871dea3"
+    "sha": "a6348e7e0d81102b5f439ab5a477278980ba455c",
+    "short_sha": "a6348e7"
   },
   "junit_xml": {
     "missing": 0,
@@ -31,38 +100,38 @@
   },
   "kind": "dv",
   "run_metadata": {
+    "executor": "local",
+    "generated_at": "2026-11-03T19:26:16.788656+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
+      "commit": "a6348e7e0d81102b5f439ab5a477278980ba455c",
       "dirty": "false"
     },
     "label": "combine",
+    "result_json": "vcs/smu/runs/combined/result.json",
     "run_dir": "vcs/smu/runs/combined",
     "tool": "vcs",
-    "views": [
-      "cocotb",
-      "uvm"
-    ]
+    "tool_version": "vcs script version : X-2025.06"
   },
   "schema_version": "0.2",
   "source": {
-    "collector": "views",
+    "collector": "run_dv-result",
     "label": "combine",
-    "native_status": "MISSING"
+    "native_status": "FAIL"
   },
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 10,
-    "pass_rate": 96.24,
-    "passing": 256,
+    "failing": 6,
+    "pass_rate": 97.74,
+    "passing": 260,
     "total": 266
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 11952.069,
-    "end_time": "2026-11-03T13:30:30.156699+00:00",
-    "start_time": "2026-11-03T10:11:18.087690+00:00"
+    "duration_sec": 10.029,
+    "end_time": "2026-11-03T19:26:16.420997+00:00",
+    "start_time": "2026-11-03T19:26:06.387938+00:00"
   },
   "tool": "vcs"
 }
