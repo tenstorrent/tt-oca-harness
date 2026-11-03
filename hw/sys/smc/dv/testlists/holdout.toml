@@ -54,6 +54,12 @@ tags = ["rtl_issue"]
 run_modes = ["smoke"]
 expect_fail = "a SCRATCH_COLD_WARM read during the warm reset hangs the peripheral crossbar after the release"
 expect_fail_match = "CHK-WARM-DOMAIN-ACCESS-IN-RESET FAIL"
+# The in-reset read is the point of the leaf, and the primary-reset demux
+# presents its AR on the SCRATCH_COLD_WARM leg while that leg's warm reset is
+# low; this leaf alone asks tb_top to hold the leg's own-domain AXI-Lite
+# checker off on the warm-reset cycles where that AR is presented, so its
+# VALID-low-in-reset rule does not report the read the leaf makes on purpose.
+args = ["+smc_misc_warm_in_reset_assertoff"]
 
 [[tests]]
 # The CLA debug interrupt stays asserted after the CDbgEapStatus W2C write

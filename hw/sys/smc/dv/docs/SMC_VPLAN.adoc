@@ -283,7 +283,7 @@ for bench items, with these meanings:
   `tb_plic_threshold0`, `tb_hold_cpu_boot`, `tb_hold_ext_boot`) and the plusargs
   (`+smc_hold_cpu_boot`, `+smc_hold_ext_boot`, `+smc_i2c_shared_bus`,
   `+smc_i2c1_pads`, `+smc_uart_cross_3to0`, `+smc_front_port_r_arb_assertoff`,
-  `+bfm_rom_hex`, `+bfm_rom_bin64`). It is existing DV infrastructure and is
+  `+smc_misc_warm_in_reset_assertoff`, `+bfm_rom_hex`, `+bfm_rom_bin64`). It is existing DV infrastructure and is
   approved, whatever net it drives and whatever its purpose: it is not
   PROPOSED, it is not an added hook, and it blocks no check or leg. When
   `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` does not list it, the test that uses it
@@ -1266,7 +1266,7 @@ of 1 to bit 0 and sets with a zero hold count.
 |`smc_sync_reg_irq_test` |2 |SYNC_REG.sync drives sync_irq_o and only bit 0 is implemented.
 |`smc_isolate_req_smc_lane_test` |3 |A write of 1 to `ISOLATE_REQ_SMC_REG` bit 0 clears the FLR-latched request; a write of 0, or one that does not strobe byte 0, leaves it set.
 |`smc_wdt_timeout_zero_idle_test` |2 |`WDT_TIMEOUT` written to 0 with no first-stage timeout leaves `smc_ras_o.wdt_second_timeout` low and the warm reset released.
-|`smc_warm_domain_access_during_reset_test` |2, held out |After a `SCRATCH_COLD_WARM` read during the warm reset, every read on the peripheral crossbar after the release must complete; the in-reset response is recorded (#3408).
+|`smc_warm_domain_access_during_reset_test` |2, held out |After a `SCRATCH_COLD_WARM` read during the warm reset, every read on the peripheral crossbar after the release must complete; the in-reset response is recorded (#3408). The leaf presents that AR in the reset on purpose, so `+smc_misc_warm_in_reset_assertoff` holds `u_misc_warm_axil_sva` off on the warm-reset cycles where that AR is presented; it grades the leg in full after the release.
 |`smc_spm_write_cut_by_warm_reset_test` |2, held out |An SPM write burst cut by the watchdog warm reset after its AW handshake must receive a B after the release, and a fresh SPM write and a `CPU_CTRL` write with its AXI ID bits [2:0] must complete OKAY (#3510).
 |`smc_flr_counter_timing_obs_test` |3, held out |FLR pre-delay and hold measured on `clk_ref_i` for several counter values, recorded for #3423.
 |`smc_reset_mid_transaction_rand_test` |3 |Seeded cool-pin, FLR, cold and watchdog resets,
@@ -52517,7 +52517,7 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 [cols="1,3,1,5",options="header",]
 |===
 |Issue |Leaf |Kind |Reason
-|#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and hangs the peripheral crossbar after the release; the leaf records the in-reset response and asserts every post-release read completes
+|#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and hangs the peripheral crossbar after the release; the leaf records the in-reset response and asserts every post-release read completes. Its `+smc_misc_warm_in_reset_assertoff` holds the leg's own-domain AXI-Lite checker off on the warm-reset cycles where the AR it presents on purpose would fire `OCAH_AXI_AR_VALID_RESET_LOW`; every other cycle and every other leaf keep the rule
 |#3389 |`smc_dfd_cla_irq_w2c_release_test` |`rtl_issue` |`cla_interrupt` stays asserted after the single `CDbgEapStatus` W2C write; the leaf asserts the line drops with the status
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
 |#3510 |`smc_spm_write_cut_by_warm_reset_test` |`rtl_issue` |An SPM write burst from SEP_IN cut by the watchdog warm reset after its AW handshake receives no B after the release, and later SPM and `CPU_CTRL` writes with its AXI ID bits [2:0] never complete; the leaf arms the path, cuts one burst, and asserts the cut write's B and the two later writes completing OKAY
