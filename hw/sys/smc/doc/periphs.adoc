@@ -198,6 +198,11 @@ GPIOs, output on the remaining 3
 |UART 16550 |`smc_config_pkg::UartRxFifoDepth` |16 |32
 |=======================================================================
 
+The SMC I2C instances keep the IP default of 64 entries for the controller TX
+(FMT), controller RX and target TX FIFOs, so with the target RX override all
+four FIFOs of each instance hold 64 entries, and `FMTLVL`, `RXLVL`, `TXLVL`
+and `ACQLVL` read 64 when their FIFO is full.
+
 The System Timer OCTS takes no parameters. The eFuse overrides only bus
 widths and interface types. The Log Engine, AVSBus Controller, and Telemetry
 Receiver are configured explicitly through `smc_config_pkg`, but at values
