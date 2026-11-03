@@ -30,6 +30,9 @@ class smc_test_cfg extends ocah_test_cfg;
   // cocotb 50 us AXI timeout at the 1.25 ns default smc clock.
   int unsigned axi_timeout_cycles = 40_000;
 
+  // Scenario-specific passive phase monitor, disabled for other leaves.
+  bit enable_sep_in_reset_monitor;
+
   // --- negative-validation switches (must FAIL the run when set) ---------
   bit csr_scoreboard_negative;   // +SMC_CSR_SCOREBOARD_NEGATIVE
   bit default_reg_scoreboard_negative;  // +SMC_DEFAULT_REG_SCOREBOARD_NEGATIVE
@@ -48,6 +51,7 @@ class smc_test_cfg extends ocah_test_cfg;
   bit mailbox_reset_sequence_negative;  // +SMC_MAILBOX_RESET_SEQUENCE_NEGATIVE
   bit extreg_lane_sequence_negative;  // +SMC_EXTREG_LANE_SEQUENCE_NEGATIVE
   bit narrow_side_effect_sequence_negative;  // +SMC_NARROW_SIDE_EFFECT_SEQUENCE_NEGATIVE
+  bit ingress_reset_sequence_negative;  // +SMC_INGRESS_RESET_SEQUENCE_NEGATIVE
   bit mailbox_fifo_scoreboard_negative;  // +SMC_MAILBOX_FIFO_SCOREBOARD_NEGATIVE
 
   function new(string name = "smc_test_cfg");
@@ -81,6 +85,7 @@ class smc_test_cfg extends ocah_test_cfg;
     extreg_lane_sequence_negative = ocah_knobs::is_set("SMC_EXTREG_LANE_SEQUENCE_NEGATIVE");
     narrow_side_effect_sequence_negative =
             ocah_knobs::is_set("SMC_NARROW_SIDE_EFFECT_SEQUENCE_NEGATIVE");
+    ingress_reset_sequence_negative = ocah_knobs::is_set("SMC_INGRESS_RESET_SEQUENCE_NEGATIVE");
     mailbox_fifo_scoreboard_negative = ocah_knobs::is_set("SMC_MAILBOX_FIFO_SCOREBOARD_NEGATIVE");
   endfunction
 

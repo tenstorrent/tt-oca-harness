@@ -1997,7 +1997,40 @@ module smc_uvm_top
         .fuse_reset_ni               (tb_fuse_reset_n),
         .ss0_warm_reset_ni           (tb_ss0_warm_reset_n),
         .ndmreset_process_i          (tb_ndmreset_process),
-        .ndmreset_irq_i              (tb_ndmreset_irq)
+        .ndmreset_irq_i              (tb_ndmreset_irq),
+        .sep_awvalid_i               (s_axi_awvalid),
+        .sep_awready_i               (s_axi_awready),
+        .sep_awaddr_i                (s_axi_awaddr),
+        .sep_wvalid_i                (s_axi_wvalid),
+        .sep_wready_i                (s_axi_wready),
+        .sep_wlast_i                 (s_axi_wlast),
+        .sep_wdata_i                 (s_axi_wdata),
+        .sep_bvalid_i                (s_axi_bvalid),
+        .sep_bready_i                (s_axi_bready),
+        .sep_bresp_i                 (s_axi_bresp),
+        .sep_arvalid_i               (s_axi_arvalid),
+        .sep_arready_i               (s_axi_arready),
+        .sep_araddr_i                (s_axi_araddr),
+        .sep_rvalid_i                (s_axi_rvalid),
+        .sep_rready_i                (s_axi_rready),
+        .sep_rlast_i                 (s_axi_rlast),
+        .sep_rresp_i                 (s_axi_rresp),
+        .sep_rdata_i                 (s_axi_rdata),
+        .dma_busy_i                  (tb_dma_busy),
+        .zeroer_busy_i               (tb_zeroer_busy),
+        .out_awvalid_i               (u_output_axi_if.awvalid),
+        .out_awready_i               (u_output_axi_if.awready),
+        .out_wvalid_i                (u_output_axi_if.wvalid),
+        .out_wready_i                (u_output_axi_if.wready),
+        .out_wlast_i                 (u_output_axi_if.wlast),
+        .out_bvalid_i                (u_output_axi_if.bvalid),
+        .out_bready_i                (u_output_axi_if.bready),
+        .out_arvalid_i               (u_output_axi_if.arvalid),
+        .out_arready_i               (u_output_axi_if.arready),
+        .out_rvalid_i                (u_output_axi_if.rvalid),
+        .out_rready_i                (u_output_axi_if.rready),
+        .out_rlast_i                 (u_output_axi_if.rlast),
+        .fcov_gate_i                 (tb_fcov_gate)
     );
 
     smc_clk_fcov u_smc_clk_fcov (
@@ -2121,6 +2154,18 @@ module smc_uvm_top
         .src_addr_i            (tb_dma_src_addr),
         .dst_addr_i            (tb_dma_dst_addr),
         .length_i              (tb_dma_length),
+        .reps_i                (tb_dma_reps),
+        .sep_awvalid_i         (s_axi_awvalid),
+        .sep_awready_i         (s_axi_awready),
+        .sep_awaddr_i          (s_axi_awaddr),
+        .sep_wvalid_i          (s_axi_wvalid),
+        .sep_wready_i          (s_axi_wready),
+        .sep_wlast_i           (s_axi_wlast),
+        .sep_wdata_i           (s_axi_wdata),
+        .sep_bvalid_i          (s_axi_bvalid),
+        .sep_bready_i          (s_axi_bready),
+        .sep_bresp_i           (s_axi_bresp),
+        .fcov_gate_i           (tb_fcov_gate),
         .fe_req_valid_i        (tb_dma_fe_req_valid),
         .fe_req_ready_i        (tb_dma_fe_req_ready),
         .trans_complete_i      (tb_dma_trans_complete),
@@ -5593,6 +5638,9 @@ module smc_uvm_top
 
     // SYS_OUT responder control: no response hold.
     assign tb_output_axi_resp_hold = 1'b0;
+
+    // FCOV graded-window gate: no covergroup that needs it is sampled here.
+    assign tb_fcov_gate = 1'b0;
 
     // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP
     // parked (TMS high, reset asserted); UART0 RX idle-high.

@@ -34,7 +34,8 @@ schema_version = 1
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`,
-#     `wdt_uvm_extended`, `cg_uvm_extended`, `mailbox_uvm_extended`) and runs on demand.
+#     `wdt_uvm_extended`, `cg_uvm_extended`, `mailbox_uvm_extended`,
+#     `reset_uvm_extended`) and runs on demand.
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
@@ -97,6 +98,38 @@ args = [
     "+rom_bin64=prod_rom.bin64",
     "+smc_hold_cpu_boot",
 ]
+
+[[tests]]
+# An FLR edge that lands while the cool-reset hold counter is running restarts
+# the pre-reset counter (smc_cool_reset_wrap.sv: flr_counter_state is IDLE
+# during the hold), and when that count outlasts the hold rst_cool_no pulses a
+# second time; clk_rst.adoc states the sequencer is not a queue of overlapping
+# FLR requests. The arm leg measures the single-request pulse first.
+name = "smc_flr_hold_edge_requeue_test"
+module = "smc_flr_hold_edge_requeue_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "an FLR edge inside the cool-reset hold starts a second cool pulse after the first"
+expect_fail_match = "CHK-FLR-NO-REQUEUE FAIL: .*a second fall [0-9]+ edges after the third edge"
+
+[[tests]]
+# The I2C register block runs on the gated peripheral clock while the
+# peripheral side of the AXI-Lite CDC runs on the ungated one, so a response
+# handed over as the gate closes is taken more than once and a response no
+# read asked for stays queued; every later read of the leg receives the
+# previous read's word. clk_rst.adoc states that an access the peripheral
+# has accepted finishes there. The arm leg proves the open and closed gate
+# answer once each before the sweep.
+name = "smc_clock_gate_inflight_completes_test"
+module = "smc_clock_gate_inflight_completes_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "a response handed over as the I2C clock gate closes is duplicated and later reads of the leg receive the previous read's word"
+expect_fail_match = "CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE FAIL: .*timed_out=False .*a completed read left r_valid still presented"
 
 [[tests]]
 # Observation leaf: a CTRL_STATUS trigger while the zeroer is busy
@@ -273,6 +306,22 @@ tools = ["vcs"]
 tags = ["uvm", "csr", "mailbox"]
 run_modes = ["smoke"]
 
+[[tests]]
+# Checks cool reset with held SEP_IN responses and same-ID SPM recovery.
+name = "smc_ingress_reset_inflight_test"
+module = { uvm = "smc_ingress_reset_inflight_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "reset"]
+run_modes = ["smoke"]
+
+[[groups]]
+# SEP_IN held-response reset and fresh-traffic recovery; run on demand.
+name = "reset_uvm_extended"
+expected_count = 1
+tests = ["smc_ingress_reset_inflight_test"]
+
 [[groups]]
 # Register-block CSR, lock ordering, lanes and narrow-access side effects.
 name = "csr_uvm_extended"
@@ -297,13 +346,15 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 5
+expected_count = 7
 tests = [
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
     "smc_spm_write_cut_by_warm_reset_test",
     "smc_i2c_tbuf_bus_free_test",
+    "smc_flr_hold_edge_requeue_test",
+    "smc_clock_gate_inflight_completes_test",
 ]
 
 [[groups]]
