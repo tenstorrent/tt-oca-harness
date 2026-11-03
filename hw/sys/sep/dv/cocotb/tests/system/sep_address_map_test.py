@@ -63,8 +63,9 @@ class sep_address_map_test(sep_base_test):
         "CHK-FABRIC-WALK",
         "CHK-CPU-CTRL-HOLE",
         "CHK-EXT-DEMUX-BOUND",
+        "CHK-SEP-TEST-CTRL-RO",
     )
-    min_evidence = 7
+    min_evidence = 8
 
     async def _access(
         self,
@@ -117,6 +118,23 @@ class sep_address_map_test(sep_base_test):
             "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable and advancing, last read 0x%08x_%08x",
             seq.ref_counter_high,
             seq.ref_counter_low,
+        )
+        assert seq.test_ctrl_reads is not None, (
+            "CHK-SEP-TEST-CTRL-RO FAIL: the SEP_TEST_CTRL write check did not run"
+        )
+        tc_mask = SEP_CPU_CTRL.mask32("SEP_TEST_CTRL")
+        tc_v0, _, tc_v1 = seq.test_ctrl_reads
+        assert (tc_v0 ^ tc_v1) & tc_mask == 0, (
+            f"CHK-SEP-TEST-CTRL-RO FAIL: fields before=0x{tc_v0 & tc_mask:08x} "
+            f"after=0x{tc_v1 & tc_mask:08x} (mask 0x{tc_mask:08x})"
+        )
+        self.logger.info(
+            "CHK-SEP-TEST-CTRL-RO PASS: fields before=0x%08x after=0x%08x (mask 0x%08x) "
+            "equal across a write of the complement, write resp=%d",
+            tc_v0 & tc_mask,
+            tc_v1 & tc_mask,
+            tc_mask,
+            seq.test_ctrl_wr_resp,
         )
         self.logger.info(
             "CHK-BASEADDR-RW PASS: %d SEP base/size CSR(s) write->readback->restore",

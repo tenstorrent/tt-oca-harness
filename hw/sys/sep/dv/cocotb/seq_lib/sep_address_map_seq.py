@@ -4,7 +4,9 @@
 
 Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bus:
   * READ_CHECK  — read each register, verify its reset value (decode + reset cov).
-  * READ_ONLY   — read hw-driven / non-deterministic registers (resp-check only).
+  * READ_ONLY   — read hw-driven / non-deterministic registers (resp-check only);
+                  SEP_TEST_CTRL also gets a write of its complement and a
+                  re-read that must leave its sw=r field bits unchanged.
   * REF_COUNTER — read both REFERENCE_COUNTER words and log the observed value.
   * BASE_ADDR_RW — write/read/restore SEP base/size CSRs used by the local remap.
   * WRITE_READBACK — write a pattern to pure-RW scratch/threshold regs, read it
@@ -124,6 +126,8 @@ READ_CHECK = [
 
 # (name, why) — value is hw-driven / non-deterministic, so the RDL reset is not
 # what the DUT presents. Check the AXI response (decode reachable) only.
+# SEP_TEST_CTRL also gets the complement-write check: its sw=r field bits must
+# read the same after a software write of their complement.
 READ_ONLY = [
     ("REFERENCE_COUNTER", "free-running counter on clk_ref_i"),
     ("SEP_TEST_CTRL", "hw-driven straps (e.g. sep_standalone)"),
@@ -259,6 +263,10 @@ class sep_address_map_seq(uvm_sequence):
         # storage rather than an implemented-field readback -- noted so the
         # evidence line can say so.
         self.write_readback_storage_only: list[str] = []
+        # SEP_TEST_CTRL: (first read, second read, re-read after the write),
+        # and the write response code.
+        self.test_ctrl_reads: tuple[int, int, int] | None = None
+        self.test_ctrl_wr_resp: int | None = None
 
     async def _read_item(self, addr: int, expected: int | None, name: str) -> SepAxiItem:
         item = SepAxiItem(f"rd_{name}")
@@ -273,14 +281,64 @@ class sep_address_map_seq(uvm_sequence):
     async def _read(self, addr: int, expected: int | None, name: str) -> int:
         return (await self._read_item(addr, expected, name)).rdata
 
-    async def _write(self, addr: int, data: int, name: str) -> None:
+    async def _write(
+        self, addr: int, data: int, name: str, *, allow_unverified_resp: bool = False
+    ) -> SepAxiItem:
         item = SepAxiItem(f"wr_{name}")
         item.op = SepAxiOp.WRITE
         item.addr = addr
         item.length = 4
         item.wdata = data
+        item.allow_unverified_write_resp = allow_unverified_resp
         await self.start_item(item)
         await self.finish_item(item)
+        return item
+
+    async def _test_ctrl_write_check(self, addr: int, v0: int) -> None:
+        """Write the complement of SEP_TEST_CTRL and require its fields unchanged.
+
+        Every RDL field of SEP_TEST_CTRL is ``sw=r; hw=w``
+        (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl``), so a
+        software write leaves the field bits as they were. The fields are
+        hardware driven, so a second read before the write must agree with
+        the first on those bits; otherwise a hardware change could read as a
+        write effect. Bits outside the fields have no stated value, and no
+        line states the response to a write of an ``sw=r`` register: both are
+        logged, not graded.
+        """
+        mask = SEP_CPU_CTRL.mask32("SEP_TEST_CTRL")
+        v0b = await self._read(addr, expected=None, name="SEP_TEST_CTRL_again")
+        if (v0 ^ v0b) & mask:
+            raise AssertionError(
+                f"CTRL-SEP-TEST-CTRL-STABLE FAIL: field bits changed between two reads "
+                f"with no write (0x{v0:08x} -> 0x{v0b:08x}, mask 0x{mask:08x}), so the "
+                f"write check cannot separate a write effect from a hardware change"
+            )
+        cocotb.log.info(
+            "CTRL-SEP-TEST-CTRL-STABLE fields=0x%08x equal on both reads before the write",
+            v0 & mask,
+        )
+        wdata = ~v0 & 0xFFFF_FFFF
+        wr = await self._write(addr, wdata, name="SEP_TEST_CTRL", allow_unverified_resp=True)
+        v1 = await self._read(addr, expected=None, name="SEP_TEST_CTRL_after_write")
+        self.test_ctrl_reads = (v0, v0b, v1)
+        self.test_ctrl_wr_resp = wr.resp_code
+        cocotb.log.info(
+            "OBS-SEP-TEST-CTRL-WR wdata=0x%08x resp=%d resp_ok=%d unfielded_before=0x%07x "
+            "unfielded_after=0x%07x",
+            wdata,
+            wr.resp_code,
+            int(wr.resp_ok),
+            v0 & ~mask & 0xFFFF_FFFF,
+            v1 & ~mask & 0xFFFF_FFFF,
+        )
+        changed = (v0 ^ v1) & mask
+        if changed:
+            bits = [b for b in range(32) if (changed >> b) & 1]
+            raise AssertionError(
+                f"CHK-SEP-TEST-CTRL-RO FAIL: a write of 0x{wdata:08x} changed sw=r field "
+                f"bit(s) {bits} (0x{v0:08x} -> 0x{v1:08x}, mask 0x{mask:08x})"
+            )
 
     async def body(self) -> None:
         for name in READ_CHECK:
@@ -289,7 +347,8 @@ class sep_address_map_seq(uvm_sequence):
             self.reset_reads.append((name, exp, got & 0xFFFF_FFFF))
 
         for name, _why in READ_ONLY:
-            value = await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=None, name=name)
+            addr = BASE + SEP_CPU_CTRL.offset(name)
+            value = await self._read(addr, expected=None, name=name)
             if name == "SEP_TEST_CTRL":
                 # No spec states the strap values this bench presents, so the
                 # fields are logged.
@@ -304,6 +363,7 @@ class sep_address_map_seq(uvm_sequence):
                     (value >> 27) & 1,
                     (value >> 26) & 1,
                 )
+                await self._test_ctrl_write_check(addr, value)
 
         # The 64-bit REFERENCE_COUNTER is frontdoor readable and LIVE: it counts
         # on clk_ref_i, which the testbench drives, so no pinned value can be

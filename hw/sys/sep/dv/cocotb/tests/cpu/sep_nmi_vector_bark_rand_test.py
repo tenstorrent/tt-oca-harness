@@ -17,8 +17,10 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   on ``cpu_trace_addr_o``, equal the programmed vector. Bark 1 runs with
   mstatus.MIE 0, bark 2 with mstatus.MIE 1: the firmware reads mstatus back
   before each bark (``CTRL-MIE-AT-BARK``), and the check needs that read equal
-  to the value of the leg. ``wdt_timer_rst_req_o`` at the handler entry is
-  logged (``OBS-BITE-REQ``).
+  to the value of the leg.
+* CHK-NMI-BITE-LOW (host) at the first retired PC after the wait loop of each
+  of the two barks, ``wdt_timer_rst_req_o`` is a resolvable 0: the bark that
+  enters the handler raises no bite request. A 1, X/Z or no sample fails.
 * CHK-NMI-STUB (firmware) the reset-vector bark runs the stub at the
   SEP_NMI_VEC reset value once. CHK-NMI-ENTRY (firmware) each locked-copy bark
   enters the drawn copy once, with the ``CTRL-MIE-AT-BARK`` read equal to the
@@ -277,6 +279,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         "CHK-NMI-IN-EXT",
         "CHK-NMI-ENTRY",
         "CHK-NMI-STUB",
+        "CHK-NMI-BITE-LOW",
     )
 
     def build_phase(self) -> None:
@@ -468,7 +471,6 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             t = self._first_trans(leg)
             pc = t[1] if t else None
             bite = t[2] if t else "na"
-            self.logger.info("OBS-BITE-REQ LOG bark=%d wdt_timer_rst_req_o=%s", bark, bite)
             kv = rec.kv
             ok = (
                 kv.get("entry") == vec
@@ -487,9 +489,13 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             if not ok:
                 raise AssertionError(f"CHK-NMI-TAKEN FAIL {body} exc={self.exc_events[-4:]}")
             self.logger.info("CHK-NMI-TAKEN PASS %s", body)
+            bite_body = f"seed={cfg.seed} bark={bark} wdt_timer_rst_req_o={bite}"
+            if bite != "0":
+                raise AssertionError(f"CHK-NMI-BITE-LOW FAIL {bite_body}")
+            self.logger.info("CHK-NMI-BITE-LOW PASS %s leg=%s", bite_body, leg)
         for r in self.con.records("OBS-NMI-MPIE"):
             self.logger.info("%s (firmware, not graded)", r.text)
-        return 2
+        return 4
 
     def _chk_bark_vec(self, sy: dict[str, int], boot2_clk: int) -> int:
         cfg = self.tcfg

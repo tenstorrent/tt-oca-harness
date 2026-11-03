@@ -25,6 +25,9 @@
 // field masks), from the written stimulus, and from the access-class table
 // below. The cocotb twin is cocotb/tests/system/sep_address_map_test.py with
 // cocotb/seq_lib/sep_address_map_seq.py.
+// One check is cocotb only: the twin writes the complement of SEP_TEST_CTRL
+// and requires its sw=r field bits unchanged (CHK-SEP-TEST-CTRL-RO). This
+// sequence reads SEP_TEST_CTRL with a response check only and never writes it.
 
 class sep_address_map_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_address_map_test_seq)
