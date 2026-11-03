@@ -267,9 +267,10 @@ class sep_address_map_seq(uvm_sequence):
         # A word that routes to the outbound port, read after the walk inside the
         # same PR-OUT window.
         self.out_probe = out_probe
+        self.ref_counter_first_low = 0
         self.ref_counter_low = 0
         self.ref_counter_high = 0
-        self.base_addr_rw_checks = 0
+        self.base_addr_rw: list[tuple[str, int, int, int, int]] = []
         self.reset_reads: list[tuple[str, int, int]] = []
         self.write_readback_checks = 0
         # Registers of the write->readback->restore->readback check, in order.
@@ -397,6 +398,7 @@ class sep_address_map_seq(uvm_sequence):
         # Every other read in this sweep keeps its pinned expectation.
         ref_off = SEP_CPU_CTRL.offset("REFERENCE_COUNTER")
         first_low = await self._read(BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo")
+        self.ref_counter_first_low = first_low
         self.ref_counter_high = await self._read(
             BASE + ref_off + 4, expected=None, name="REFERENCE_COUNTER_hi"
         )
@@ -422,10 +424,10 @@ class sep_address_map_seq(uvm_sequence):
             reset = SEP_CPU_CTRL.reset32(name)
             mask = SEP_CPU_CTRL.mask32(name)
             await self._write(addr, pattern, name=name)
-            await self._read(addr, expected=pattern & mask, name=f"{name}_pattern")
+            got = await self._read(addr, expected=pattern & mask, name=f"{name}_pattern")
             await self._write(addr, reset, name=f"{name}_restore")
-            await self._read(addr, expected=reset, name=f"{name}_restored")
-            self.base_addr_rw_checks += 1
+            restored = await self._read(addr, expected=reset, name=f"{name}_restored")
+            self.base_addr_rw.append((name, pattern & mask, got, reset, restored))
 
         for name, pattern in WRITE_READBACK:
             addr = BASE + SEP_CPU_CTRL.offset(name)

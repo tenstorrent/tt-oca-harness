@@ -115,9 +115,11 @@ class sep_address_map_test(sep_base_test):
             len(seq.reset_reads),
         )
         self.logger.info(
-            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable and advancing, last read 0x%08x_%08x",
-            seq.ref_counter_high,
+            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER low half advanced 0x%08x -> 0x%08x "
+            "(high 0x%08x)",
+            seq.ref_counter_first_low,
             seq.ref_counter_low,
+            seq.ref_counter_high,
         )
         assert seq.test_ctrl_reads is not None, (
             "CHK-SEP-TEST-CTRL-RO FAIL: the SEP_TEST_CTRL write check did not run"
@@ -136,9 +138,17 @@ class sep_address_map_test(sep_base_test):
             tc_mask,
             seq.test_ctrl_wr_resp,
         )
+        rw_bad = [r for r in seq.base_addr_rw if r[2] != r[1] or r[4] != r[3]]
+        assert seq.base_addr_rw and not rw_bad, (
+            f"CHK-BASEADDR-RW FAIL: (name, expect, readback, reset, restored) {rw_bad or 'none run'}"
+        )
         self.logger.info(
-            "CHK-BASEADDR-RW PASS: %d SEP base/size CSR(s) write->readback->restore",
-            seq.base_addr_rw_checks,
+            "CHK-BASEADDR-RW PASS: %d SEP base/size CSR(s) write->readback->restore: %s",
+            len(seq.base_addr_rw),
+            ", ".join(
+                f"{n} wr=0x{e:08x} rd=0x{g:08x} reset=0x{r:08x} restored=0x{s:08x}"
+                for n, e, g, r, s in seq.base_addr_rw
+            ),
         )
         planned_rw = [name for name, _pattern in WRITE_READBACK] + ["CLOCK_GATE_CTRL"]
         assert seq.write_readback_regs == planned_rw, (
