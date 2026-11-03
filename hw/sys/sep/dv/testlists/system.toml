@@ -757,7 +757,7 @@ seed = 1
 # only the pulse width, its phase, the strap-leg order and the three strap-flip
 # cycles.
 timeout_sec = 3600
-tags = ["reset", "dft", "scan", "efuse", "system", "subsystem", "scan_secure_tm", "harness_dv_holes", "sep_spec_log"]
+tags = ["reset", "dft", "scan", "efuse", "system", "subsystem", "scan_secure_tm", "harness_dv_holes", "sep_spec_log", "grades_spec_km_efuse_scan"]
 tools = ["vcs"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"

@@ -65,6 +65,14 @@ Checks (HOST-UNREC unless marked):
   CHK-SK-AFTER-BOOT  (both) after a wipe, CMD_ABR_SK_TRANSFER of the pending
                      shared key returns failure with no argument.
   CHK-SK-READY-FRAME (both) RESP_ABR_SHARED_KEY_READY carries no payload.
+  CHK-SK-READY-ORDER (HOST) at each encapsulation with the shared key written
+                     back to the KM: the outbound FIFO is empty before the
+                     ENCAPS command; after VALID the next frame is
+                     RESP_ABR_SHARED_KEY_READY at the next response sequence
+                     number, and the shared-key KEY_VALID (``KM-SK``) reads 1
+                     when it is read (``firmware.adoc``, "0x56 -
+                     RESP_ABR_SHARED_KEY_READY" and "Main Event Loop"). In a
+                     HOST-UNREC leaf that frame is a precondition.
   CHK-WIPE-STATUS    (both) the real wipe sets IRQ_STATUS.WIPE_STATE (control:
                      0 before the KM_WIPE_CTRL write).
   CHK-TRAP-HELD      (both) bit 30 stays high and a CMD_STAT gets no answer.
@@ -206,6 +214,7 @@ EVIDENCE_HOST = (
     "CHK-SHRED-FIRST-HOST",
     "CHK-SK-AFTER-BOOT",
     "CHK-SK-READY-FRAME",
+    "CHK-SK-READY-ORDER",
     "CHK-WIPE-STATUS",
     "CHK-TRAP-HELD",
     "CHK-RESTORE",
@@ -1231,7 +1240,9 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         written back to the KM; then read RESP_ABR_SHARED_KEY_READY.
 
         The VALID of an earlier operation is cleared first, so the VALID wait
-        below belongs to this encapsulation.
+        below belongs to this encapsulation. The HOST entry grades the frame
+        order (CHK-SK-READY-ORDER); the HOST-UNREC entry takes the frame as a
+        precondition.
         """
         if await self.kem.rd32(MLKEM_STATUS) & KEM_ST_VALID:
             await self.kem.wr32(MLKEM_CTRL, KEM_CTRL_ZEROIZE)
@@ -1240,9 +1251,13 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self.kem.wr32(MLKEM_KV_MSG_RD_CTRL, KV_READ_EN)
         await self.kem.wr32(MLKEM_KV_SK_WR_CTRL, KV_WRITE_EN)
         await self.kem.write_words(MLKEM_ENCAPS_KEY, list(ek))
+        if not self.unrec:
+            empty_pre = (await self._status() >> KM_STATUS_OUTBOUND_EMPTY) & 1
         await self.kem.wr32(MLKEM_CTRL, KEM_CMD_ENCAPS)
         await self._kem_wait(KEM_ST_VALID, KEM_ST_VALID, "encaps VALID")
         fr = await self._read_frame(FRAME_POLLS)
+        if not self.unrec:
+            self._sk_ready_order(fr, empty_pre)
         if fr is None or fr.bad or fr.resp_id != KM_RESP_ABR_SHARED_KEY_READY:
             raise AssertionError(
                 "precondition: no RESP_ABR_SHARED_KEY_READY after the encapsulation "
@@ -1254,6 +1269,42 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.sk_pending = True
         self.sk_valid_pending = self._sk()
         self._sk_ready_frame(fr, "encaps")
+
+    def _sk_ready_order(self, fr: _Frame | None, empty_pre: int) -> None:
+        """CHK-SK-READY-ORDER: the encapsulation is followed by the notification.
+
+        firmware.adoc, "0x56 - RESP_ABR_SHARED_KEY_READY": the KM emits it from
+        its main loop after the shared-key interrupt fires; "Main Event Loop":
+        the loop samples the pending-notify flag and sends the message. With
+        the outbound FIFO empty before the ENCAPS command, the next frame is
+        that message at the next response sequence number.
+        """
+        sk = self._sk()
+        ok = (
+            empty_pre == 1
+            and fr is not None
+            and not fr.bad
+            and fr.resp_id == KM_RESP_ABR_SHARED_KEY_READY
+            and fr.seq == self.resp_next
+            and sk == 1
+        )
+        self.chk.ok(
+            "SK-READY-ORDER",
+            ok,
+            contract=(
+                "key_manager/doc/firmware.adoc:940-942(0x56_RESP_ABR_SHARED_KEY_READY),"
+                ":1956-1959(Main_Event_Loop)"
+            ),
+            outbound_empty_pre=empty_pre,
+            exp_outbound_empty_pre=1,
+            resp_id="none" if fr is None else _h2(fr.resp_id),
+            exp_resp_id=_h2(KM_RESP_ABR_SHARED_KEY_READY),
+            seq="none" if fr is None else fr.seq,
+            exp_seq=self.resp_next,
+            bad="none" if fr is None else int(fr.bad),
+            sk_valid=sk,
+            exp_sk_valid=1,
+        )
 
     # ================================================================ fatal plumbing
     async def _wipe_write(self, value: int) -> None:

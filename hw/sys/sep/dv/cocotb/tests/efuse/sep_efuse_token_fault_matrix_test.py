@@ -18,7 +18,10 @@ that verdict while the flag and the request stay set; a write of 1 to each flag
 clears nothing; a cold reset clears both (``hw/sys/sep/doc/token_processing.adoc``,
 sections Matching Logic Countermeasures and Token Submission;
 ``hw/ip/efuse/regs/gen/adoc/efuse_mmr.adoc``, ``TOKEN_MATCH_FAULT``;
-``hw/sys/sep/doc/interrupts.adoc``, row Token match fault). The comparator rail
+``hw/sys/sep/doc/interrupts.adoc``, row Token match fault). The same reset leaves
+the eight token words of the channel array equal to the token the leaf last wrote
+to that array before the reset (``token_processing.adoc:12-13``: the arrays have
+no reset; ``:124-125``: reset does not erase the input arrays). The comparator rail
 taps show the injected kind on the copy of the cell only (hook control).
 
 Common-mode cells (RMA_CHIPLET, held Match and held Mismatch): a unanimous legal
@@ -40,7 +43,11 @@ The token fault raises no other source, so no bit is exempt for the same clock. 
 cell with no rise of bit 39 fails.
 
 Checkers: CHK-BIND, CHK-FAULT-CELL, CHK-SRC40-EXCL, CHK-FAULT-STICKY,
-CHK-FAULT-NO-W1C, CHK-FAULT-RESET, CHK-LATCH-FREEZE. Controls: CTRL-SEC-DIS-MATCH
+CHK-FAULT-NO-W1C, CHK-FAULT-RESET, CHK-FAULT-RESET-WORDS, CHK-LATCH-FREEZE.
+CHK-FAULT-RESET-WORDS reads the eight array words after the reset of each fault
+cell and prints their digest beside the digest of the expected token (the words
+are secret); it also fails when an expected word is 0, since a cleared word would
+read the same. Controls: CTRL-SEC-DIS-MATCH
 (code ``0x15`` and ``security_disable_o`` 1) and CTRL-SEC-DIS-DROP (code ``0x2a``
 and ``security_disable_o`` 0), before each cell that uses the SEC_DIS channel. A
 common-mode cell logs the N/A line of the three fault-only checkers. A failing hook control logs
@@ -51,7 +58,8 @@ step to its last check: the inject of a fault or common-mode cell to CHK-FAULT-C
 and CHK-SRC40-EXCL; the retry to CHK-FAULT-STICKY; the write of ones to
 CHK-FAULT-NO-W1C; the cold reset to CHK-FAULT-RESET; the test-enable inject of a
 freeze cell to CHK-LATCH-FREEZE. Held phases, the SEC_DIS control, inject release,
-the Match clean-up and the token array log read run with the window closed. Every
+the Match clean-up and the token array read of CHK-FAULT-RESET-WORDS run with the
+window closed. Every
 legal sample of ``sep_token_fault_cg`` and the error sample of
 ``sep_token_channel_cg.cp_code`` is held with the tag of its step
 (``set_ef_hold_tag``) and samples only when the leaf writes that tag to the pass
@@ -69,7 +77,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepVecWatch, VecMark, VecWatchNoRiseError, pic_vector_watch
-from env.sep_chk_log import SepChkLog, word_digest
+from env.sep_chk_log import SepChkLog, diff_words, word_digest
 from env.sep_efuse_plan import (
     CH_CHIPLET,
     CH_SEC_DIS,
@@ -125,6 +133,11 @@ _FREEZE_MIN = 64
 # Clocks after a TOKEN_MATCH_FAULT write before the next access (the write-effect
 # settle of the coverage sampler is 8 clocks).
 _WR_SETTLE = 16
+# Token arrays have no reset: a reset clears the registered result and the sticky
+# fault flags but leaves the input array words.
+_RESET_WORDS_CONTRACT = (
+    "sep/doc/token_processing.adoc:12-13(Token_Processing),124-125(Token_Submission)"
+)
 # Vector bit of PIC source 40, Token match fault (hw/sys/sep/doc/interrupts.adoc:22-23,
 # :219-220).
 _PIC40 = agg_from_pic("Token match fault")
@@ -226,6 +239,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         "CHK-FAULT-STICKY",
         "CHK-FAULT-NO-W1C",
         "CHK-FAULT-RESET",
+        "CHK-FAULT-RESET-WORDS",
         "CHK-LATCH-FREEZE",
     )
 
@@ -343,6 +357,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         """
         order = self.plan.draw.word_order(label)
         await write_token(self.fd.wr, ch, token, order)
+        self.last_token[ch] = token
         watch = cocotb.start_soon(self._watch_hash(ch))
         await token_go(self.fd.wr, ch)
         clocks = await watch
@@ -360,6 +375,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         """
         order = self.plan.draw.word_order(label)
         await write_token(self.fd.wr, ch, token, order)
+        self.last_token[ch] = token
         pre = await self.fd.match(ch)
         if pre == until:
             hook_fail(
@@ -601,6 +617,11 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         await self._close_step(tag, ok)
 
         await self._end_match(ch, f"{label}.end")
+        flags_pre = await self._faults()
+        await ReadOnly()
+        pic_pre = self._pic40()
+        await RisingEdge(dut.clk_i)
+        exp_words = token_words(self.last_token[ch])
         tag = await self._open_step(_STEP_RESET)
         await self.pulse_rst_ni()
         flags_z = await self._faults()
@@ -609,20 +630,24 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         ok = self._grade(
             "FAULT-RESET",
-            flags_z == 0 and pic_z == 0 and flags_w == _FAULT_BIT[ch] and pic_w == 1,
+            flags_z == 0 and pic_z == 0 and flags_pre == _FAULT_BIT[ch] and pic_pre == 1,
             flags=f"0x{flags_z:x}",
             pic40=pic_z,
             words_logged=1,
-            pre_reset_flags=f"0x{flags_w:x}",
-            pre_reset_pic40=pic_w,
+            pre_reset_flags=f"0x{flags_pre:x}",
+            pre_reset_pic40=pic_pre,
         )
         await self._close_step(tag, ok)
         words = [await self.fd.rd(a) for a in TOKEN_ARRAY_ADDR[ch]]
-        self.chk.obs(
+        self._grade(
             "FAULT-RESET-WORDS",
+            words == exp_words and all(exp_words),
+            contract=_RESET_WORDS_CONTRACT,
             ch=_CH_NAME[ch],
-            nonzero_at=[k for k, w in enumerate(words) if w],
             words_sha=word_digest(words),
+            exp_words_sha=word_digest(exp_words),
+            diff_at=diff_words(words, exp_words),
+            exp_zero_at=[k for k, w in enumerate(exp_words) if not w],
         )
 
     async def _freeze_cell(self, ch: str) -> None:
@@ -674,6 +699,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         ):
             seq = await self.fd.access(SepAxiOp.WRITE, addr, word)
             resp_ok &= bool(seq.resp_ok)
+        self.last_token[ch] = tok_b
         go = await self.fd.access(SepAxiOp.WRITE, *token_go_op(ch))
         resp_ok &= bool(go.resp_ok)
         changed = 0
@@ -747,6 +773,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         self.sdis_ctl_seen = False
         self.graded_fail = False
         self.cell_idx = 0
+        self.last_token: dict[str, int] = {}
 
         self.write_efuse_image(p.image)
         await self.bring_up_no_cpu()

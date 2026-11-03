@@ -429,7 +429,7 @@ Observation probe groups:
    `OTP_CHANGE_STATUS`, the `SCRAMBLER_KEY` register value, the count of KM
    writes to `SCRAMBLER_KEY` and `SCRAMBLER_CTRL`, on every clock. Users:
    `sep_km_cpu_protect_rand_test`, `sep_km_boot_reset_rand_test`,
-   `sep_km_fault_inject_rand_test`.
+   `sep_km_fault_inject_rand_test`, `sep_km_sram_scrambler_key_rand_test`.
 ** KM-SRAM (`km_sram_peek_o`): the word of the 8192-word KM SRAM array at
    `km_sram_peek_addr_i`, in stored form `{parity, data}`. The address input
    is a select of the tap and drives nothing in the DUT; it is 0 by default.
@@ -444,9 +444,13 @@ Observation probe groups:
    ahead of the isolation stages, read at `<engine>_key_axil_req_i` and
    `<engine>_key_axil_resp_o`. Index i, address at `[32*i +: 32]`, is bench
    isolate stage 8 + i: 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 Adams Bridge. Users:
-   `sep_km_key_transfer_rand_test` (CHK-ENG-ORDER),
+   `sep_km_key_transfer_rand_test` (CHK-ENG-ORDER, CHK-KM-BUS-PERM,
+   CHK-DELIV-COUNT, CHK-REFUSE),
    `sep_km_handover_rand_test` (CHK-HO-SIDELOAD-BUS),
-   `sep_km_fault_inject_rand_test` (CHK-KEYCRC, CHK-XFER-STOP).
+   `sep_km_fault_inject_rand_test` (CHK-KEYCRC, CHK-XFER-STOP),
+   `sep_km_sideload_share_walk_test` (CHK-XFER-SHORT-KEY),
+   `sep_km_abr_mlkem_sideload_test` (CHK-KEM-KEY-OFFSETS),
+   `sep_km_crossbar_efuse_window_rand_test` (CHK-XBAR-SHARE-ZERO).
 ** KM-OUTFIFO (`km_outfifo_depth_o[8:0]`): the fill level of the outbound
    FIFO of the Key Manager mailbox, on every clock. User:
    `sep_km_fault_inject_rand_test` (CHK-SHRED-FIRST).
