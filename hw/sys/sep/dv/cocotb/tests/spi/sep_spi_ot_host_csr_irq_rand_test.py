@@ -54,9 +54,13 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   SPI-event interrupts (hw/sys/sep/doc/spi.adoc, Interrupts),
                   and ALERT_TEST triggers an alert event, not an interrupt
                   (vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/
-                  registers.md, ALERT_TEST). Control: INTR_TEST.ERROR at the same
-                  enable raises the line inside the same window. The other
-                  vector bits are logged (OBS-SPI-ALERT-TEST).
+                  registers.md, ALERT_TEST). Controls: the ALERT_TEST write
+                  gets a write response (CTRL-SPI-ALERT-RESP, else
+                  CTRL-MISSING); INTR_TEST.ERROR at the same enable raises the
+                  line inside the same window. The response code is logged
+                  (OBS-SPI-ALERT-RESP): no specification states the response
+                  code of a legal register write. The other vector bits are
+                  logged (OBS-SPI-ALERT-TEST).
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (COMMAND
                   SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
@@ -862,18 +866,25 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         pre = await self.spi.rd(INTR_STATE)
         await self.poll_internal_irq(_SPI_AGG, 0)
         alert_wr = SepAxiAccessSeq(
-            "spi_alert_test_wr", op=SepAxiOp.WRITE, addr=ALERT_TEST, wdata=1, length=4
+            "spi_alert_test_wr",
+            op=SepAxiOp.WRITE,
+            addr=ALERT_TEST,
+            wdata=1,
+            length=4,
+            allow_unverified_write_resp=True,
         )
         await self.start_seq(alert_wr)
-        if not alert_wr.resp_ok:
-            raise AssertionError(
-                f"CTRL-MISSING CTRL-ALERT-WR seed={self.random_seed()} ALERT_TEST write resp={alert_wr.resp_code}"
+        seed = self.random_seed()
+        if alert_wr.timed_out:
+            msg = (
+                f"CTRL-MISSING SPI-ALERT-RESP seed={seed} no ALERT_TEST write response (timed out)"
             )
+            self.logger.error(msg)
+            raise AssertionError(msg)
         self.logger.info(
-            "CTRL-ALERT-WR seed=%d reg=ALERT_TEST data=0x1 bresp=%d",
-            self.random_seed(),
-            alert_wr.resp_code,
+            "CTRL-SPI-ALERT-RESP seed=%d reg=ALERT_TEST data=0x1 write response received", seed
         )
+        self.logger.info("OBS-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
         high, _first, diff = await self._line_window()
         st = await self.spi.rd(INTR_STATE)
         self.logger.info(

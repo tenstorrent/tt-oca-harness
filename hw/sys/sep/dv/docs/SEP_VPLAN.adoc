@@ -1168,7 +1168,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, `sep_internal_interrupts_probe_o` (approved; bit 13 is PIC source 14), the SPI host pad ports and taps `spi_cs_n_o`, `spi_sck_o`, `spi_mosi_o`, `spi_sd_oe_o`, `spi_cs_oe_o` and `spi_sck_oe_o` read by `env/sep_spi_pad_sampler.py` (approved, read-only), and the FCOV pass label `spi_csr_irq_pass`
-|OpenTitan SPI host CSR reset, R/W, interrupt test, and error-status W1C. Also proves that STATUS reads TXSTALL, RXSTALL, TXWM and RXWM 0 at reset (CHK-SPI-STATUS-RESET), and that a write of 1 to `ALERT_TEST.fatal_fault` raises no `INTR_STATE` bit and no line on PIC source 14 (CHK-SPI-ALERT-TEST). Logs the response of a read of each write-only register and of a write to each read-only register (`OBS-SPI-WO-RO-ACCESS`) and READY, TXEMPTY, RXEMPTY and BYTEORDER at reset (`OBS-SPI-STATUS-RESET`).
+|OpenTitan SPI host CSR reset, R/W, interrupt test, and error-status W1C. Also proves that STATUS reads TXSTALL, RXSTALL, TXWM and RXWM 0 at reset (CHK-SPI-STATUS-RESET), and that a write of 1 to `ALERT_TEST.fatal_fault` raises no `INTR_STATE` bit and no line on PIC source 14 (CHK-SPI-ALERT-TEST). Logs the response of a read of each write-only register and of a write to each read-only register (`OBS-SPI-WO-RO-ACCESS`), the response code of the `ALERT_TEST` write (`OBS-SPI-ALERT-RESP`) and READY, TXEMPTY, RXEMPTY and BYTEORDER at reset (`OBS-SPI-STATUS-RESET`).
 |<<sep_locked_field_access_irq_path_test,`sep_locked_field_access_irq_path_test`>>
 |2
 |no_cpu, real fuse sense
@@ -3061,8 +3061,8 @@ the test does.
 |Graded leg: Lane data at x1, x2 and x4 against `ByteOrder = 1` (the SPI tests of <<sep-spi-lane-coverage>>). The lane map, the bit order and the output enables come from `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment") and are graded. A `STATUS.BYTEORDER` readback is never the golden. The FULLCYC sampling point is graded at CPHA=0 and at CPHA=1 (entry 4.8) No test logs it.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI ALERT_TEST
-|Where does SPI ALERT_TEST go (`spi_controller.adoc`, ALERT_TEST)?
-|Graded leg: a write of 1 to `ALERT_TEST.fatal_fault` leaves `INTR_STATE` and PIC source 14 at 0 (`sep_spi_ot_host_csr_irq_rand_test`, CHK-SPI-ALERT-TEST; `hw/sys/sep/doc/spi.adoc:69-72`). `sep_spi_ot_host_csr_irq_rand_test` logs `OBS-SPI-ALERT-TEST` as an open question.
+|Where does SPI ALERT_TEST go (`spi_controller.adoc`, ALERT_TEST), and which response code does the write return?
+|Graded leg: a write of 1 to `ALERT_TEST.fatal_fault` leaves `INTR_STATE` and PIC source 14 at 0 (`sep_spi_ot_host_csr_irq_rand_test`, CHK-SPI-ALERT-TEST; `hw/sys/sep/doc/spi.adoc:69-72`). `sep_spi_ot_host_csr_irq_rand_test` requires a write response (`CTRL-SPI-ALERT-RESP`) and logs `OBS-SPI-ALERT-TEST` and the response code (`OBS-SPI-ALERT-RESP`) as open questions.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |AxSIZE of a narrow DMA transaction
 |Does the TL-UL to AXI4 path set AxSIZE to the TL-UL size (1, 2 or 4 bytes) or to the bus width with narrow strobes, and which AxADDR[1:0] does a 1-byte or 2-byte transaction carry (`dma.adoc`, overview; `fabric.adoc`, Top Level AXI4)?
