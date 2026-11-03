@@ -47035,7 +47035,7 @@ draws nothing from the seed.
 * The zeroer master carries a 56-bit address (`zeroer.adoc`). An eight-byte job at each `1 << k`, k = 3..55, issues its first AW at SYS_OUT at that address and zeroes exactly its eight bytes; the k = 20 job is 64 KiB, and `STATUS` reads 1 while write responses are still outstanding and 0 after the last one. The destinations must lie outside the local and global SMC windows and the M-mode and Xvisor windows above them (`memmap.adoc`, `fabric.adoc`). `GLOBAL_BASE` resets to `1 << 30`, so the leaf moves it to 0x6000_0000 for these legs, reads the three base registers and guards the destinations, then restores it.
 * Starts at 1, 2 and 4 bytes with `SIZE` 8 strobe and zero exactly the eight bytes from the start.
 * A start is ignored while `SIZE` is 0 (`zeroer_ctrl.adoc`): no AW, `STATUS` 0, and the following eight-byte job books exactly one AW.
-* A start at `DEST_ADDR` bit 56, above the data address range, returns `STATUS` to 0; its AW address, BRESP and the `DEST_ADDR` readback are logged, not compared (SF-019, SF-020).
+* `DEST_ADDR` bits [63:56] are ignored by the 56-bit master and a clear starts at `DEST_ADDR[55:0]` (`zeroer_ctrl.adoc`, `zeroer.adoc`). A start with all eight upper-byte bits set over a low address the walk reaches reads back all 64 bits as written, issues exactly one AW at the low address with BRESP OKAY, zeroes the eight bytes there with the words either side poisoned, and returns `STATUS` to 0.
 
 *Test Procedure*:
 
@@ -47045,11 +47045,11 @@ draws nothing from the seed.
 . Poison the three words around a page boundary and a guard word either side, run the sixteen-byte job from `page - 4`, and compare each word against its poison with the job's bytes cleared.
 . Clear `SIZE` and `DEST_ADDR`. Save `GLOBAL_BASE`, write it to 0x6000_0000 and require the readback over [55:0].
 . Write `DEST_ADDR` with all ones, 0 and the 64 walking-one words, reading back after each; leave it 0.
-. Read `LOCAL_BASE`, `GLOBAL_BASE` and `REGION_SIZE` and fail if any destination `1 << k` (k = 0..55) or `1 << 56` lies in an SMC window.
+. Read `LOCAL_BASE`, `GLOBAL_BASE` and `REGION_SIZE` and fail if any destination `1 << k` (k = 0..55) or the above-range landing `(1 << 40) + 0x100` lies in an SMC window.
 . For k = 3..55 poison the job bytes and the words either side in the responder, run the job at `1 << k` (`SIZE` 8, 64 KiB at k = 20 with every `STATUS` sample recorded against the responder's write-response count) and poll `STATUS` to 0 within 40000 `clk_smc_i`.
 . For k = 0..2 poison bytes 0x0..0x17 with 0xA5, run an eight-byte job at `1 << k`, and compare the bytes and the strobed byte set.
 . Start with `SIZE` 0 at `1 << 12`, read `CTRL_STATUS`, then run an eight-byte job at `1 << 13` and count the AWs across both.
-. Run an eight-byte job at `DEST_ADDR` bit 56 and log its AW, BRESP and the `DEST_ADDR` readback.
+. Poison the landing word `(1 << 40) + 0x100` and the words either side, run an eight-byte job with `DEST_ADDR` = `(0xFF << 56) | ((1 << 40) + 0x100)`, require the 64-bit readback, the single AW at the landing, BRESP OKAY and the bytes.
 . Write `DEST_ADDR` and `SIZE` to 0 and read both back; write the saved `GLOBAL_BASE` back and read it back.
 
 *Checkers*:
@@ -47064,7 +47064,7 @@ draws nothing from the seed.
 |`CHK-ZEROER-BUSY` |On the 64 KiB k = 20 job every `STATUS` sample taken with fewer write responses returned than the job's bursts reads 1, at least one exists, and the first sample after the last response reads 0
 |`CHK-ZEROER-UNALIGNED` |For starts 1, 2 and 4 exactly the eight bytes from the start read 0x00 and are the only strobed bytes, the other 16 keep 0xA5; the AW address is logged (SF-020)
 |`CHK-ZEROER-SIZE0` |A start with `SIZE` 0 reads `STATUS` 0 and issues no AW; the following eight-byte job books exactly one AW, at `1 << 13`
-|`CHK-ZEROER-ABOVE-RANGE` |The start at `DEST_ADDR` bit 56 returns `STATUS` to 0 within the bound; AW address, BRESP and `DEST_ADDR` readback are logged (LINKED-ISSUE SF-019)
+|`CHK-ZEROER-ABOVE-RANGE` |With `DEST_ADDR` bits [63:56] all set over `(1 << 40) + 0x100`, the register reads back all 64 bits as written, the only SYS_OUT AW carries `DEST_ADDR[55:0]` with BRESP OKAY, the eight bytes there read 0x00 with the neighbouring words poisoned, and `STATUS` reads 0 within the bound
 |`CHK-NONVAC` |Ordered fence EXISTING-JOBS < DEST-PATTERNS < WINDOW-GUARD < BIT-WALK < UNALIGNED < SIZE-ZERO < ABOVE-RANGE < RESTORED, each term with its own sim time and a non-zero access count
 |`CHK-TIMEOUT-PATHS` |Every `STATUS` poll and SEP_IN access logs its finite bound, its fail-on-expiry path and the last observed state; none expires
 |===
