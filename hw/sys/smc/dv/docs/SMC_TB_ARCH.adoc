@@ -584,6 +584,7 @@ run_modes = ["smoke"]
 |===
 |Check Type |Component |Description
 |Scratch CSR readback (SV-UVM) |`smc_scratch_csr_ref_model` into `smc_scoreboard`, feature `scratch_csr` |Always on: the reference model rebuilds a strobed write shadow, cleared on cold reset, and publishes the expected value of every OKAY `SCRATCH_COLD*` read; the scoreboard pairs it with the SEP_IN monitor's observed read; a required feature with zero comparisons fails; `+SMC_CSR_SCOREBOARD_NEGATIVE` corrupts the prediction so the run must FAIL
+|Ingress reset in flight (SV-UVM) |`smc_sep_in_reset_monitor` in `smc_env`, built only when `enable_sep_in_reset_monitor` is set |While armed, samples SEP_IN each SMC cycle and counts requests, responses, held-response samples and stale or orphan traffic per direction across one reset epoch; skips traffic samples while `aresetn` is low; the scenario grades its counts under `CHK-RIF-*`
 |Scenario evidence (SV-UVM) |`smc_base_test_seq` over `ocah_checker` |Named `CHK-*` lines with required IDs per scenario, finalized once per pass (`CHECKER_SUMMARY name=smc_csr`)
 |Inbound AXI4 protocol (SYS_IN, JTAG_IN, SEP_IN) |`ocah_axi_sva` in `tb_top`: `u_sys_in_axi_sva`, `u_jtag_in_axi_sva`, `u_sep_in_axi_sva` |AXI4 reset, handshake, X, burst, ID and response rules on the packed `sys_axi_in_req` / `_resp`, `jtag_axi_in_req` / `_resp` and `sep_axi_in_req` / `_resp` links between the TB masters and `smc`. The bench master lines are top-level inputs that stay X or Z until a cocotb agent drives them, so each checker arms on the first edge where its master's AW, W and AR valids and B and R readies are known and stays armed. Each tracks up to 32 outstanding writes (`MAX_OUTSTANDING` 16), above the 24 writes the backpressure sequences hold open. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once that reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM; the two-state rules grade on both simulators (the Verilator targets pass `--assert`) and the X-hygiene rules on VCS only. On both simulators a test with `+axi_sva_need_<sys_in|jtag_in|sep_in>` fails when that checker graded no AW or AR handshake, and the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` for each instance. Protocol only, not data.
 |SYS_OUT egress AXI4 protocol |`ocah_axi_sva` in `tb_top`: `u_sys_out_axi_sva` |AXI4 reset, handshake, X, burst, ID and response rules on `output_axi_req` / `output_axi_resp`, the `smc` egress master. The TB responder answers B and R, so the checker also grades the responder. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once that reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM; the two-state rules grade on both simulators (the Verilator targets pass `--assert`) and the X-hygiene rules on VCS only. On both simulators a test with `+axi_sva_need_<sys_out>` fails when that checker graded no AW or AR handshake, and the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` for each instance. Protocol only, not data.
@@ -886,6 +887,36 @@ The environment-owned `smc_sep_in_history` subscribes to SEP_IN `item_ap`
 and counts completed reads and writes without publishing or checking items.
 The base test passes it to scenario sequences through `plumb_scenario_seq`
 for observed transaction accounting.
+
+`smc_sep_in_reset_monitor` is an env component, enabled only by the ingress
+reset leaf. The env supplies its SEP_IN VIP interface and `smc_tb_if`; the
+thin test passes the component handle to the scenario. The scenario queries
+sampled state and calls `arm`, `clear_counts` and `disarm`, without accessing
+the VIP virtual interface. The monitor samples through `mon_cb`, counts
+AW/W/AR and B/R handshakes and tracks pending work separately by direction.
+Response predicates use pending state from before the current sample.
+
+Before arm and after disarm it updates phase levels without counting traffic
+or recording resets. Arm clears all cell evidence and requires reset high;
+the scenario waits for a new sample before baseline traffic. The first
+armed primary-reset edge snapshots the held-response phase and abandons
+pending work. Further reset edges are counted and fail the epoch prerequisite.
+Post-reset counters detect response VALID without pending work, including
+cycles with READY low. Recovery provides controls for both response directions.
+Orphan handshakes do not underflow pending counters. The scenario waits with
+a bound for sampled request-idle and both response READY levels low before
+recovery. A seeded delay of up to half the response hold varies reset assertion;
+its elapsed monitor samples are checked before assertion. Each old operation
+is graded under NO-STALE as timed out without a response. The scenario checks
+for further reset edges before disarming after grading the cell's evidence.
+
+The ingress-reset scenario uses two accepted, single-beat requests awaiting
+responses. The AXI master driver does not guarantee reset cancellation;
+the scenario requires request VALID low at reset and the old pipeline to
+terminate through its bounded timeout before issuing new work. Both SEP_IN
+interfaces share SMC primary reset in this bench. Interrupted SPM writes
+are overwritten by fresh monitored writes before readback, so the passive
+SPM model does not impose an undefined retention or commit expectation.
 
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
