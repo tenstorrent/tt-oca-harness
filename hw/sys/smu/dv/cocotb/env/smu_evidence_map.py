@@ -5928,7 +5928,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-EXTERR-RESP",
             "a responder SLVERR or DECERR on the single beat of a JTAG2AXI read or write at the "
             "cell's address reads op 1 or op 2 at the bridge, and on a SEP system-bus read or "
-            "write reads sbcs.sberror 2, on each pinned and drawn bridge and SEP cell",
+            "write reads a non-zero sbcs.sberror, on each pinned and drawn bridge and SEP cell",
         ),
         (
             "CHK-EXTERR-BEAT",

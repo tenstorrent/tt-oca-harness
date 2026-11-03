@@ -35,16 +35,21 @@ the write lands inside the responder's bounded hold of the CPU's load.
 
 S1  SETUP: aperture, egress filter, system-bus SW_RESET_N precondition read.
 S2  DRAIN: five domains x two cells: four held reads, the system-bus 0 write, RREADY released
-    before (cell a) or after (cell b) the write reports complete.
+    before (cell a) or after (cell b) the write reports complete; SW_RESET_N is read back after
+    the 0 write and after the 1 write.
 S3  ISOLATED: new 64/32-bit reads and a write during the drain and with the reset held.
 S4  RELEASE: the 1 write, a fresh read and write.
 S5  TRNG: the S2 cells on ESRC with bit 5, then ESRC/CSRNG/EDN, the pool, release.
 S6  KM: the mailbox status word (offset 0xC) with bit 0 held from power-up, released and
-    held again.
-S7  ALL_DOMAINS: a CPU egress load held across a system-bus SW_RESET_N = 0x00, a CPU load
-    into the SMC window, never-isolated targets with every domain held.
-S8  EARLY: 0 then 1 at gaps of 0 and 8 debug-bus operations for OTBN, AES and TRNG.
-S9  JTAG: the IC_RESET sep_reset_n override with ext_in and a CPU egress load outstanding;
+    held again; SW_RESET_N is read back after each of the three writes.
+S7  ALL_DOMAINS: a CPU egress load held across a system-bus SW_RESET_N = 0x00, read back as
+    0x00, a CPU load into the SMC window, never-isolated targets with every domain held.
+S8  EARLY: 0 then 1 at gaps of 0 and 8 debug-bus operations for OTBN, AES and TRNG; the SEP
+    crypto isolation request is sampled each cycle of every pair and must leave its value
+    from before the 0 write (``reset_controller.adoc``: a 0 bit makes the domain's sequencer
+    request isolation, the 1 write releases it).
+S9  JTAG: SW_RESET_N = 0x7F read back, then the IC_RESET sep_reset_n override with ext_in
+    and a CPU egress load outstanding;
     the debug-module bring-up is repeated when the first system-bus access reports busy.
 S10 BITE: the SEP watchdog bite with ext_in and a CPU egress load outstanding; the same
     conditional bring-up after the bite; the status readback, the watchdog registers and the
@@ -157,7 +162,6 @@ def _swrst(field: str, suffix: str) -> int:
 # sep_reset_ctrl.h: the SW_RESET_N power-on value, assembled from the field reset values.
 SWRST_POR = sum(_swrst(f, "reset") << _swrst(f, "bp") for f in _SWRST_FIELDS)
 SWRST_ALL_HELD = 0x00
-SWRST_KM_BIT = _swrst("KM", "bp")
 SWRST_TRNG_BIT = _swrst("TRNG", "bp")
 SWRST_FIELD_MASK = sum(_swrst(f, "bm") for f in _SWRST_FIELDS)
 SWRST_ALL_RELEASED = SWRST_FIELD_MASK
@@ -316,6 +320,10 @@ FENCE = (
 )
 FENCE_GAP = 2
 
+# The reset controller's per-path isolation request to the crypto interconnect, sampled
+# passively under smu_scope; S8 grades that it moves within each 0-then-1 pair.
+ISO_REQ_PATH = "gen_sep.u_sep.u_sep_reset_ctrl.sep_crypto_isolate_req_o"
+
 DRAIN_IDS = (0x10, 0x11, 0x12, 0x13)
 EARLY_IDS = (0x14, 0x15)
 CELL_IDS = {"rd64": 0x20, "rd32": 0x21, "wr": 0x22}
@@ -357,7 +365,7 @@ def _site_plan() -> dict[str, Counter]:
     data-dependent and observation windows are counted against WINDOW_PLAN."""
     n_dom = len(DOMAINS)
     n_cells = len(CELLS)
-    cell = Counter(handshake=1, sba_busy=2, ext_in=len(DRAIN_IDS))
+    cell = Counter(handshake=1, sba_busy=4, ext_in=len(DRAIN_IDS))
     plan = {
         "S1": Counter(sba_busy=2 + 3 + 1, port_settle=2),
         "S2": Counter({k: v * n_dom * n_cells for k, v in cell.items()}),
@@ -366,14 +374,14 @@ def _site_plan() -> dict[str, Counter]:
         "S4": Counter(sba_busy=n_dom, ext_in=n_dom * 2),
         "S5": Counter({k: v * n_cells for k, v in cell.items()})
         + Counter(sba_busy=2, ext_in=2 * len(TRNG_PATHS) + 1 + 2 + len(TRNG_PATHS)),
-        "S6": Counter(sba_busy=4, ext_in=3),
+        "S6": Counter(sba_busy=6, ext_in=3),
         # Halt, two ebreak waits; stub 4 + dcsr, a0/dpc twice, t0 once; never-isolated 8.
         "S7": Counter(
             dm_status=3,
             abstract=len(STUB) + 1 + 2 + 1 + 2,
             egress_ar=1,
             responder_hold=1,
-            sba_busy=2,
+            sba_busy=3,
             ext_in=2 + len(EFUSE_LOCALS) + 1 + 2,
         ),
         "S8": Counter(
@@ -381,7 +389,7 @@ def _site_plan() -> dict[str, Counter]:
             ext_in=len(EARLY_DOMAINS) * len(GAPS) * (len(EARLY_IDS) + 1),
         ),
         "S9": Counter(
-            sba_busy=1 + 2 + 3 + 1 + 2,
+            sba_busy=1 + 1 + 2 + 3 + 1 + 2,
             abstract=2,
             ext_in=2,
             egress_ar=1,
@@ -1067,8 +1075,14 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
 
     # ---- S2..S5 --------------------------------------------------------------------------
 
+    async def _swrst_rd(self, jtag, label: str) -> tuple[int, int]:
+        """SW_RESET_N over the system bus: (sberror, value under the field mask)."""
+        err, value = await self._sbr(jtag, SWRST_LOCAL, label, strict=False)
+        return err, value & SWRST_FIELD_MASK
+
     async def _drain_cell(self, jtag, dom: str, bit: int, local: int, cell: str) -> dict:
-        """Four reads held by RREADY, the system-bus 0 write, RREADY released before / after."""
+        """Four reads held by RREADY, the system-bus 0 write, RREADY released before / after;
+        SW_RESET_N is read back after the 0 write and after the 1 write."""
         zero = SWRST_POR & ~(1 << bit)
         await self._sb_target(jtag, "w", SWRST_LOCAL)
         mark = self.cyc
@@ -1113,17 +1127,29 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                 f"offset_last_ar_to_wr={write_cyc - last_ar} cyc_from_0wr={r_cyc - write_cyc} "
                 f"wr_reported_at={reported - write_cyc}"
             )
+        held = await self._swrst_rd(jtag, f"drain_{dom}_{cell}_rd0")
         await self._swrst(jtag, SWRST_POR, f"drain_{dom}_{cell}_wr1")
-        return {"accepted": accepted, "done": done}
+        released = await self._swrst_rd(jtag, f"drain_{dom}_{cell}_rd1")
+        self._log(
+            f"OBSERVATION S2 {dom} {cell} SW_RESET_N after the 0 write=0x{held[1]:02x} "
+            f"sberror={held[0]}, after the 1 write=0x{released[1]:02x} sberror={released[0]}"
+        )
+        return {"accepted": accepted, "done": done, "swrst": [held, released]}
 
     async def _cells(self, jtag, dom: str, bit: int, local: int) -> dict:
-        totals = {"accepted": 0, "done": 0, "cells": 0}
+        totals = {"accepted": 0, "done": 0, "cells": 0, "swrst": []}
         for cell in CELLS:
             got = await self._drain_cell(jtag, dom, bit, local, cell)
             totals["accepted"] += got["accepted"]
             totals["done"] += got["done"]
             totals["cells"] += 1
+            totals["swrst"] += got["swrst"]
         return totals
+
+    @staticmethod
+    def _cells_swrst_want(bit: int) -> list[tuple[int, int]]:
+        """Each drain cell reads SW_RESET_N back as the 0 write, then as the 1 write."""
+        return [(0, SWRST_POR & ~(1 << bit)), (0, SWRST_POR)] * len(CELLS)
 
     async def _new_cell(self, dom: str, local: int, cell: str) -> dict:
         recs = {
@@ -1222,9 +1248,10 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             c = cells[dom]
             chk = f"CHK-SEPRST-{dom.upper()}-ISOLATE"
             line = (
-                f"{chk}: drained={c['done']}/{c['accepted']} across the write; new rd SLVERR "
-                "0x1501A7ED1501A7ED (drain, held); new wr SLVERR (drain, held); released rd "
-                "OKAY wr OKAY"
+                f"{chk}: drained={c['done']}/{c['accepted']} across the write; SW_RESET_N read "
+                f"back 0x{SWRST_POR & ~(1 << bit):02X}/0x{SWRST_POR:02X} after each drain 0/1 "
+                "write; new rd SLVERR 0x1501A7ED1501A7ED (drain, held); new wr SLVERR (drain, "
+                "held); released rd OKAY wr OKAY"
             )
             self._verdict(
                 chk,
@@ -1232,10 +1259,17 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                 (
                     c["accepted"] == len(CELLS) * len(DRAIN_IDS),
                     c["done"] == c["accepted"],
+                    c["swrst"],
                     self._cell_view(new),
                     rel,
                 ),
-                (True, True, self._cell_want(), (RESP_OKAY, RESP_OKAY)),
+                (
+                    True,
+                    True,
+                    self._cells_swrst_want(bit),
+                    self._cell_want(),
+                    (RESP_OKAY, RESP_OKAY),
+                ),
             )
         self.steps["S3"] = self.steps["S4"] = True
 
@@ -1265,7 +1299,9 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             resp, _ = await self._rd(local, f"trng_{name}_fresh")
             fresh.append(resp)
         line = (
-            "CHK-SEPRST-TRNG-ISOLATE: esrc/csrng/edn rd SLVERR 0x1501A7ED x2, wr SLVERR; "
+            "CHK-SEPRST-TRNG-ISOLATE: SW_RESET_N read back "
+            f"0x{SWRST_POR & ~(1 << bit):02X}/0x{SWRST_POR:02X} after each drain 0/1 write; "
+            "esrc/csrng/edn rd SLVERR 0x1501A7ED x2, wr SLVERR; "
             f"pool answers (not iso); released {fresh.count(RESP_OKAY)}/3 OKAY"
         )
         self._verdict(
@@ -1274,6 +1310,7 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             (
                 cells["accepted"] == len(CELLS) * len(DRAIN_IDS),
                 cells["done"] == cells["accepted"],
+                cells["swrst"],
                 paths,
                 _iso_seen(pool_resp, pool_lanes),
                 fresh,
@@ -1281,6 +1318,7 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             (
                 True,
                 True,
+                self._cells_swrst_want(bit),
                 {
                     name: ((RESP_SLVERR, (ISO_WORD, ISO_WORD)), RESP_SLVERR)
                     for name, _ in TRNG_PATHS
@@ -1298,24 +1336,36 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         self._enter("KM", "S6", "KM mailbox status word with bit 0 held, released and held")
         reads = {}
         reads["por-held"] = await self._rd(KM_STATUS_LOCAL, "km_por_rd", nbytes=4, size=2)
+        sw = {}
         await self._swrst(jtag, SWRST_ALL_RELEASED, "km_wr1")
-        _, sw = await self._sbr(jtag, SWRST_LOCAL, "km_swrst_rd")
+        sw["released"] = await self._swrst_rd(jtag, "km_swrst_rd")
         reads["released"] = await self._rd(KM_STATUS_LOCAL, "km_rel_rd", nbytes=4, size=2)
         await self._swrst(jtag, SWRST_POR, "km_wr0")
+        sw["held"] = await self._swrst_rd(jtag, "km_swrst_rd0")
         reads["held"] = await self._rd(KM_STATUS_LOCAL, "km_held_rd", nbytes=4, size=2)
         await self._swrst(jtag, SWRST_ALL_RELEASED, "km_wr1_final")
+        sw["final"] = await self._swrst_rd(jtag, "km_swrst_rd_final")
         self._log(
             f"OBSERVATION S6 mailbox@0xC (0x{KM_STATUS_LOCAL:08x}; status value logged, not "
             "compared) "
             + " ".join(f"{k}={resp_name(v[0])}/{_hex_lanes(v[1])}" for k, v in reads.items())
-            + f" SW_RESET_N after the 1 write=0x{sw:x}"
+            + " SW_RESET_N "
+            + " ".join(f"{k}=0x{v[1]:02x}/sberror={v[0]}" for k, v in sw.items())
         )
         self._verdict(
             "CHK-SEPRST-KM-MAILBOX",
-            "CHK-SEPRST-KM-MAILBOX: mailbox@0xC OKAY (por-held, released, held); bit0 1 after "
-            "release",
-            ({k: (v[0], ISO_WORD in v[1]) for k, v in reads.items()}, (sw >> SWRST_KM_BIT) & 1),
-            ({k: (RESP_OKAY, False) for k in reads}, 1),
+            "CHK-SEPRST-KM-MAILBOX: mailbox@0xC OKAY (por-held, released, held); SW_RESET_N "
+            f"read back 0x{SWRST_ALL_RELEASED:02X}/0x{SWRST_POR:02X}/0x{SWRST_ALL_RELEASED:02X} "
+            "after the 1/0/1 writes (bit0 1/0/1)",
+            ({k: (v[0], ISO_WORD in v[1]) for k, v in reads.items()}, sw),
+            (
+                {k: (RESP_OKAY, False) for k in reads},
+                {
+                    "released": (0, SWRST_ALL_RELEASED),
+                    "held": (0, SWRST_POR),
+                    "final": (0, SWRST_ALL_RELEASED),
+                },
+            ),
         )
         self.steps["S6"] = True
 
@@ -1373,9 +1423,11 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         )
         stopped = await self._stopped(jtag, "s7_load")
         t0 = await self._reg_read(jtag, REG_T0)
+        s7_sw = await self._swrst_rd(jtag, "s7_swrst_rd")
         self._log(
             f"OBSERVATION S7 egress load arvalid@{got['ar_valid']} SW_RESET_N=0x00 "
-            f"written@{got['write']} sberror={got['sberr']} held_across={got['held_across']} "
+            f"written@{got['write']} sberror={got['sberr']} read back=0x{s7_sw[1]:02x} "
+            f"(sberror={s7_sw[0]}) held_across={got['held_across']} "
             f"hold_used={got['hold_used']} ebreak={int(stopped)} t0=0x{t0:08x} "
             f"responder word=0x{word:08x}"
         )
@@ -1416,9 +1468,11 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
 
         self._verdict(
             "CHK-SEPRST-NEVER-ISO",
-            "CHK-SEPRST-NEVER-ISO: km mailbox@0xC rd OKAY, mailbox@0x0 wr OKAY; efuse 3/3 OKAY; "
-            "lc OKAY; ext_trng rd DECERR 0xBADCAB1E wr DECERR",
+            "CHK-SEPRST-NEVER-ISO: SW_RESET_N read back 0x00; km mailbox@0xC rd OKAY, "
+            "mailbox@0x0 wr OKAY; efuse 3/3 OKAY; lc OKAY; ext_trng rd DECERR 0xBADCAB1E wr "
+            "DECERR",
             (
+                s7_sw,
                 okay_no_iso(km_r),
                 km_w,
                 [okay_no_iso(e) for e in efuse],
@@ -1427,6 +1481,7 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                 trng_w,
             ),
             (
+                (0, SWRST_ALL_HELD),
                 (RESP_OKAY, False),
                 RESP_OKAY,
                 [(RESP_OKAY, False)] * 3,
@@ -1439,17 +1494,18 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         self._verdict(
             "CHK-SEPRST-DOMAIN-INDEP",
             f"CHK-SEPRST-DOMAIN-INDEP: otbn->aes OKAY; aes->hmac OKAY; sram rw OKAY "
-            f"x{len(sram_rw)}; cpu egress load OKAY data==responder",
+            f"x{len(sram_rw)}; cpu egress load OKAY data==responder across SW_RESET_N read "
+            "back 0x00",
             (
                 self.r.get("cross", {}),
                 [rw for _, rw in sram_rw],
-                (got["held_across"], got["sberr"]),
+                (got["held_across"], got["sberr"], s7_sw),
                 (stopped, t0),
             ),
             (
                 {"otbn->aes": RESP_OKAY, "aes->hmac": RESP_OKAY},
                 [(RESP_OKAY, RESP_OKAY, True)] * (len(DOMAINS) + 1),
-                (True, 0),
+                (True, 0, (0, SWRST_ALL_HELD)),
                 (True, word),
             ),
         )
@@ -1462,6 +1518,8 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         completed = 0
         issued = 0
         lines = []
+        iso_req = hier(smu_scope(self.dut), ISO_REQ_PATH)
+        moved = []
         for dom, bit in EARLY_DOMAINS:
             local = TRNG_PATHS[0][1] if dom == "trng" else DOMAIN_BY_NAME[dom][1]
             zero = SWRST_POR & ~(1 << bit)
@@ -1473,6 +1531,17 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                 ]
                 issued += len(reads)
                 busy = []
+                iso_base = sample(iso_req, ISO_REQ_PATH)
+                iso_seen: list[int] = []
+
+                async def iso_watch(base=iso_base, seen_vals=iso_seen) -> None:
+                    while True:
+                        await RisingEdge(self.dut.clk_smu_i)
+                        value = sample(iso_req, ISO_REQ_PATH)
+                        if value != base and value not in seen_vals:
+                            seen_vals.append(value)
+
+                iso_task = cocotb.start_soon(iso_watch())
                 if g == 0:
                     self._slow_op()
                     self._slow_op()
@@ -1496,6 +1565,12 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                         )
                     await self._sb_launch(jtag, SWRST_POR)
                 err = await self._sb_status(jtag, await self._sb_poll(jtag, f"early_{dom}_g{g}"))
+                iso_task.cancel()
+                moved.append(bool(iso_seen))
+                self._log(
+                    f"OBSERVATION S8 {dom} g={g} isolation request before the 0 write="
+                    f"0x{iso_base:x} other values in the pair={[hex(v) for v in iso_seen]}"
+                )
                 if err:
                     raise AssertionError(f"S8 {dom} g={g} system-bus sberror={err}")
                 seen = False
@@ -1518,10 +1593,11 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             )
         self._verdict(
             "CHK-SEPRST-EARLY-RELEASE",
-            f"CHK-SEPRST-EARLY-RELEASE: {len(lines)} pairs; all accesses completed; SW_RESET_N "
+            f"CHK-SEPRST-EARLY-RELEASE: {len(lines)} pairs; isolation request moved in "
+            f"{sum(moved)}/{len(moved)} pairs; all accesses completed; SW_RESET_N "
             f"0x{sw & SWRST_FIELD_MASK:02X}",
-            (completed, sw & SWRST_FIELD_MASK),
-            (issued, SWRST_POR),
+            (moved, completed, sw & SWRST_FIELD_MASK),
+            ([True] * len(EARLY_DOMAINS) * len(GAPS), issued, SWRST_POR),
         )
         self.steps["S8"] = True
 
@@ -1531,6 +1607,10 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         self._enter("JTAG", "S9", "IC_RESET sep_reset_n override with traffic outstanding")
         dut = self.dut
         await self._swrst(jtag, SWRST_ALL_RELEASED, "s9_swrst_7f")
+        pre_sw = await self._swrst_rd(jtag, "s9_swrst_7f_rd")
+        self._log(
+            f"OBSERVATION S9 SW_RESET_N before the engage=0x{pre_sw[1]:02x} sberror={pre_sw[0]}"
+        )
         word = 0x5EB0_90C9
         load_addr = EGRESS_ADDR + 0x10
         self.mem.write32(load_addr, word)
@@ -1699,11 +1779,12 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             "CHK-SEPRST-JTAG-INFLIGHT",
             f"CHK-SEPRST-JTAG-INFLIGHT: held window ok; aperture while held "
             f"base=0x{aperture[0]:x} size=0x{aperture[1]:x}; cpu restart pc=0x{pc:08x}; "
-            f"SW_RESET_N 0x7F->0x{sw & SWRST_FIELD_MASK:02X}; egress rw ok",
+            f"SW_RESET_N 0x{pre_sw[1]:02X}->0x{sw & SWRST_FIELD_MASK:02X}; egress rw ok",
             (
                 len(held_levels) > 0 and sum(held_levels) == 0 and rise_at >= window_end,
                 aperture,
                 BOOT_ROM_LOCAL <= pc < BOOT_ROM_END,
+                pre_sw,
                 (sw_err, sw & SWRST_FIELD_MASK),
                 (werr, rerr, rb, held_word),
             ),
@@ -1711,6 +1792,7 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                 True,
                 APERTURE_RESET,
                 True,
+                (0, SWRST_ALL_RELEASED),
                 (0, SWRST_POR),
                 (0, 0, egress_word, egress_word),
             ),

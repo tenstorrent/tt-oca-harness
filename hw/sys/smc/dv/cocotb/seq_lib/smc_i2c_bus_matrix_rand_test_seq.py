@@ -83,6 +83,8 @@ MASK_CELLS = ((FULL_MASK, FULL_MASK), (FULL_MASK, 0), (0, FULL_MASK), (0, 0))
 CTRL_TARGET = I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN
 CTRL_ACK_CONTROL = CTRL_TARGET | I2C_CTRL_ACK_CTRL_EN
 ROLE_CELLS = (("CTRL 0", 0, 1), ("ENABLEHOST", I2C_CTRL_ENABLEHOST, 1), ("ENABLETARGET", None, 0))
+# i2c.rdl CTRL: ENABLEHOST and ENABLETARGET are sw=rw and select the operating mode.
+CTRL_ROLE = I2C_CTRL_ENABLEHOST | I2C_CTRL_ENABLETARGET
 # Bench write target of the NACK leg; the drawn addresses exclude it.
 BENCH_NACK_ADDR = 0x12
 # 7-bit addresses outside the reserved 0x00-0x07 and 0x78-0x7F groups.
@@ -506,17 +508,26 @@ class smc_i2c_bus_matrix_rand_test_seq(SmcCsrSeq):
         parts = []
         for name, ctrl, want_nack in ROLE_CELLS:
             value = CTRL_TARGET if ctrl is None else ctrl
-            await self.csr_write(f"S3_{name}_CTRL", _reg("CTRL", tgt), value)
-            text = await self._probe_addr(
-                f"S3_{name.replace(' ', '_')}", tgt, d["a0"], not want_nack
+            label = f"S3_{name.replace(' ', '_')}"
+            await self.csr_write(f"{label}_CTRL", _reg("CTRL", tgt), value)
+            ctrl_rb = await self.csr_read(f"{label}_CTRL_RB", _reg("CTRL", tgt))
+            assert ctrl_rb & CTRL_ROLE == value & CTRL_ROLE, (
+                f"{label}: I2C{tgt} CTRL readback 0x{ctrl_rb:08x}, role bits "
+                f"0x{ctrl_rb & CTRL_ROLE:x} != written 0x{value & CTRL_ROLE:x}"
             )
-            parts.append(f"CTRL=0x{value:x} ({name}): {text}")
+            text = await self._probe_addr(label, tgt, d["a0"], not want_nack)
+            parts.append(
+                f"CTRL=0x{value:x} ({name}) readback 0x{ctrl_rb:08x} role bits "
+                f"0x{ctrl_rb & CTRL_ROLE:x}: {text}"
+            )
         await self._disable(tgt, "S3_END")
         self._mark("S3")
         self._chk(
             "S3",
             "CHK-IBM-ROLE",
-            f"{'; '.join(parts)}; the address acknowledged only with ENABLETARGET set; "
+            f"{'; '.join(parts)}; each CTRL readback held the written ENABLEHOST and "
+            f"ENABLETARGET bits before its probe; the address acknowledged only with "
+            f"ENABLETARGET set; "
             f"drawn=target I2C{tgt} address 0x{d['a0']:02x}",
         )
 

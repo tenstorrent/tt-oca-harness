@@ -3,8 +3,9 @@
 """Seeded per-pad GPIO direction and interrupt configurations against a drawn pad level sequence.
 
 Specs: hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL: enable_rx_tx, interface_enable, core2pad,
-interrupt_enable, interrupt_type; ACCESS_FILTER), hw/ip/gpio/doc/architecture.adoc (Data and
-Direction Ownership, Interrupts), hw/ip/gpio/doc/memmap.adoc (ACCESS_FILTER) and
+pad2core, interrupt_enable, interrupt_type; ACCESS_FILTER), hw/ip/gpio/doc/architecture.adoc
+(Data and Direction Ownership, Input Readback, Interrupts), hw/ip/gpio/doc/memmap.adoc
+(ACCESS_FILTER) and
 hw/sys/smc/doc/memmap.adoc (AXI-Lite External Window) for the GPIO_CTRL `CONTROL` read.
 
 The seed draws 8 configurations on 8 distinct GPIO interface instances, each a pad and a pad level
@@ -22,9 +23,14 @@ reserves, the isolate-request pad and the input pads the SMC acts on (boot stall
 OCCP interface, thermal emergency), and among those the pads with no hardware LSIO selection and
 their `core2pad_en_o` bit clear before the pass.
 
-Code 10 takes its levels on the bench drive; code 11 drives its own pad, so its levels are written
-to `DATA_CTRL.core2pad` with the bench drive released. Every `clk_smc_i` rise of the interrupt leg
-samples `tb_gpio_irq_any`; each level's window is graded from those samples.
+Both RX codes take their levels on the bench drive, which is the only defined pad level source: the
+open pad shim drives `core2pad` at pull strength against the bench's per-pad pull-up, so a code 11
+pad driving 0 on its own resolves to X. Code 11 also writes each level to `DATA_CTRL.core2pad`, so
+its own output never opposes the bench once the write lands, and its `core2pad_en_o` bit must stay
+set over every window while the receiver takes the level. Every `clk_smc_i` rise of the interrupt
+leg samples `tb_gpio_irq_any`; each level's window is graded from those samples, and
+`DATA_CTRL.pad2core` read after the window must equal the level (architecture.adoc, Input
+Readback: the synchronized input while `interface_enable` is set).
 """
 
 from __future__ import annotations
@@ -52,6 +58,8 @@ from .smc_probe_positive_control import _pad_vec
 _IF_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
 _IRQ_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_ENABLE_bm")
 _CORE2PAD = gpio_intf_u32("GPIO_INTF__DATA_CTRL__CORE2PAD_bm")
+_PAD2CORE_BP = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bp")
+_PAD2CORE_BM = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")
 _RXTX_BP = gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
 _RXTX_BM = gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bm")
 _TYPE_BP = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERRUPT_TYPE_bp")
@@ -198,6 +206,7 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
         self.edge_log: list[str] = []
         self.windows = 0
         self.window_samples = 0
+        self.pad2core_reads = 0
         self.pads_moved: set[int] = set()
         self.done = False
 
@@ -388,38 +397,46 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
             f"any sampled rise: {'; '.join(self.dir_log)}; {self._drawn()}",
         )
 
-    async def _level(self, c: dict, level: int) -> tuple[int, int]:
-        """Applies `level` on the pad and returns the sample window of its settle."""
+    async def _level(self, c: dict, level: int) -> tuple[int, int, int]:
+        """Applies `level` on the pad; returns the sample window of its settle and `pad2core`."""
         dut = cocotb.top
         start = len(self.sampler.samples)
-        pad = c["pad"]
-        if c["code"] == 3:
+        pad, code = c["pad"], c["code"]
+        drive_gpio_pad(dut, pad, level)
+        if code == 3:
             word = self._word(3, c["type"], c["en"], level)
             await self.csr_write(f"GPIO{pad}_CORE2PAD_{level}", self._data_ctrl(pad), word)
-        else:
-            drive_gpio_pad(dut, pad, level)
         await ClockCycles(dut.clk_smc_i, SETTLE)
         await ReadOnly()
         end = len(self.sampler.samples)
+        oe = (_pad_vec(dut, "tb_core2pad_en_o") >> pad) & 1
         await RisingEdge(dut.clk_smc_i)
+        assert oe == (1 if code in TX_CODES else 0), (
+            f"pad {pad}: core2pad_en_o[{pad}] read {oe} at the end of level {level}; "
+            f"{self._cfg_str(c)}"
+        )
+        rb = await self.csr_read(f"GPIO{pad}_PAD2CORE_{level}", self._data_ctrl(pad))
+        p2c = (rb & _PAD2CORE_BM) >> _PAD2CORE_BP
+        assert p2c == level, (
+            f"pad {pad}: DATA_CTRL.pad2core read {p2c} (DATA_CTRL 0x{rb:08x}) with the pad at "
+            f"{level}; {self._cfg_str(c)}"
+        )
         self.windows += 1
         self.window_samples += end - start
+        self.pad2core_reads += 1
         self.pads_moved.add(pad)
-        return start, end
+        return start, end, p2c
 
     async def _irq_cfg(self, c: dict) -> None:
         dut = cocotb.top
         pad, code, itype, en = c["pad"], c["code"], c["type"], c["en"]
         idle = IDLE_LEVEL[itype]
         addr = self._data_ctrl(pad)
-        if code == 2:
-            drive_gpio_pad(dut, pad, idle)
-        else:
-            drive_gpio_pad(dut, pad, None)
+        drive_gpio_pad(dut, pad, idle)
         await self.csr_write(f"GPIO{pad}_IRQ_CFG", addr, self._word(code, itype, 0, idle))
         await ClockCycles(dut.clk_smc_i, SETTLE)
         await self.csr_write(f"GPIO{pad}_IRQ_EN{en}", addr, self._word(code, itype, en, idle))
-        s0, e0 = await self._level(c, idle)
+        s0, e0, _ = await self._level(c, idle)
         idle_s = self.sampler.samples[s0:e0]
         assert not any(idle_s), (
             f"pad {pad}: tb_gpio_irq_any high at the idle level {idle}: {idle_s}; "
@@ -428,7 +445,7 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
         cells = []
         c["graded"] = []
         for prev, lvl in transitions(itype, c["levels"]):
-            s, e = await self._level(c, lvl)
+            s, e, p2c = await self._level(c, lvl)
             win = self.sampler.samples[s:e]
             if itype in LEVEL_TYPES:
                 active = lvl == (1 if itype == 0 else 0)
@@ -440,7 +457,7 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
                 )
                 if not en:
                     assert not any(win), f"pad {pad}: interrupt with enable clear: {win}"
-                cells.append(f"{prev}->{lvl}:{tail[-1]}")
+                cells.append(f"{prev}->{lvl}:{tail[-1]}/p{p2c}")
             else:
                 named = (prev, lvl) == ((0, 1) if itype == 2 else (1, 0))
                 want = 1 if (named and en) else 0
@@ -449,7 +466,7 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
                     f"pad {pad}: edge {prev}->{lvl}, {got} high samples of tb_gpio_irq_any, "
                     f"want {want}; window {win}; {self._cfg_str(c)}"
                 )
-                cells.append(f"{prev}->{lvl}:{got}")
+                cells.append(f"{prev}->{lvl}:{got}/p{p2c}")
             c["graded"].append((prev, lvl))
         log = self.level_log if itype in LEVEL_TYPES else self.edge_log
         log.append(f"pad {pad} code {code:02b} type {itype} enable {en}: {' '.join(cells)}")
@@ -483,17 +500,20 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
         self._chk(
             "S5",
             "CHK-PADCFG-LEVEL",
-            f"per level 'prev->level:expected', the last {HOLD} of {SETTLE} samples equal: "
-            f"type 0 high while the pad is high, type 1 high while low, 0 at the idle level and "
-            f"throughout with interrupt_enable clear: {'; '.join(self.level_log)}; "
+            f"per level 'prev->level:expected/p<pad2core>', the last {HOLD} of {SETTLE} samples "
+            f"equal: type 0 high while the pad is high, type 1 high while low, 0 at the idle level "
+            f"and throughout with interrupt_enable clear; DATA_CTRL.pad2core read equal to the "
+            f"level after every window, core2pad_en_o set for code 11 and clear for code 10 at "
+            f"every window end: {'; '.join(self.level_log)}; "
             f"{self._drawn()}",
         )
         self._chk(
             "S5",
             "CHK-PADCFG-EDGE",
-            f"per transition 'prev->level:high samples' over {SETTLE} rises: exactly one "
-            f"one-clock pulse on the named edge with interrupt_enable set, none on the "
-            f"opposite edge, an unchanged level, or with the enable clear: "
+            f"per transition 'prev->level:high samples/p<pad2core>' over {SETTLE} rises: exactly "
+            f"one one-clock pulse on the named edge with interrupt_enable set, none on the "
+            f"opposite edge, an unchanged level, or with the enable clear; DATA_CTRL.pad2core "
+            f"read equal to the level after every window: "
             f"{'; '.join(self.edge_log)}; {self._drawn()}",
         )
 
@@ -526,6 +546,9 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
         irq = [c for c in self.cfgs if c["code"] in RX_CODES]
         want_windows = sum(len(c["levels"]) + 1 for c in irq)
         assert self.windows == want_windows, f"{self.windows} windows, want {want_windows}"
+        assert self.pad2core_reads == want_windows, (
+            f"{self.pad2core_reads} pad2core reads, want {want_windows}"
+        )
         assert self.window_samples >= self.windows * (SETTLE - 1), (
             f"{self.window_samples} samples over {self.windows} windows of {SETTLE} rises"
         )
@@ -535,13 +558,15 @@ class smc_gpio_pad_config_rand_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; stamps %s; checker lines %s; %d pads moved; "
-            "%d level windows, %d samples of tb_gpio_irq_any (every rise); %d accesses; %s",
+            "%d level windows, %d samples of tb_gpio_irq_any (every rise), %d pad2core reads; "
+            "%d accesses; %s",
             " < ".join(STEPS),
             ",".join(str(ps) for ps in stamps),
             ",".join(cid for cid, _ in self.chk_lines),
             len(self.pads_moved),
             self.windows,
             self.window_samples,
+            self.pad2core_reads,
             self.accesses,
             self._drawn(),
         )

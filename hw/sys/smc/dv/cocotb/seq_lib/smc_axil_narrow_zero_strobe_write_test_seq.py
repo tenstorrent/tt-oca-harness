@@ -1038,12 +1038,33 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             f"0x{UNBACKED_LOCAL:x} is mapped"
         )
         await self._zeroer_prepare("ERR", UNBACKED_LOCAL, 8)
-        await self._wr("ZEROER_START_ERR", self.zr_status.addr, 0, 8)
-        polls, _first = await self._zeroer_poll("ERR")
+        dest = await self._rd("ZEROER_DEST_ERR_RB", self.zr_dest.addr, 8)
+        size = await self._rd("ZEROER_SIZE_ERR_RB", self.zr_size.addr, 8)
+        assert (dest, size) == (UNBACKED_LOCAL, 8), (
+            f"error destination: DEST_ADDR/SIZE read 0x{dest:x}/0x{size:x}, "
+            f"programmed 0x{UNBACKED_LOCAL:x}/0x8"
+        )
+        idle = await self._rd("ZEROER_PRE_ERR", self.zr_status.addr, 8)
+        assert not idle & ZEROER_STATUS, "error destination: STATUS[32] set before the start"
+        # zeroer_ctrl.rdl CTRL_STATUS: a write with SIZE non-zero starts a clear, and STATUS
+        # reads 1 while the zeroer is active or has pending work.
+        mon = _ZeroerMonitor()
+        mon.start()
+        try:
+            await self._wr("ZEROER_START_ERR", self.zr_status.addr, 0, 8)
+            polls, first = await self._zeroer_poll("ERR")
+        finally:
+            mon.stop()
+        assert first & ZEROER_STATUS or mon.busy_seen, (
+            "error destination: neither STATUS[32] nor the zeroer busy probe rose after the "
+            "start write, so no clear started"
+        )
         await self._rd("ZEROER_ERR_LATER_ACCESS", self.zr_status.addr, 8)
         self._chk(
             "CHK-ZEROER-COMPLETION-NOT-SUCCESS",
-            f"error destination: STATUS[32] unset within bound ({polls} polls of {ZEROER_POLL_BOUND})",
+            f"error destination: DEST_ADDR=0x{dest:x} SIZE={size} read back; busy rose "
+            f"(first STATUS[32]={1 if first & ZEROER_STATUS else 0} probe={mon.busy_seen}); "
+            f"STATUS[32] unset within bound ({polls} polls of {ZEROER_POLL_BOUND})",
         )
         self._mark("ZEROER")
 
