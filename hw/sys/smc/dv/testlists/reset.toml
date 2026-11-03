@@ -133,6 +133,30 @@ timeout_sec = 1800
 tags = ["ci", "reset", "cpu"]
 run_modes = ["smoke"]
 
+# AXI checking across the core-only and the watchdog warm reset with
+# transactions open. Boots hello_world, so it is a firmware leaf: in `fw` and
+# `all`, not in `hosted`.
+[[tests]]
+name = "smc_axi_partial_reset_open_txn_test"
+module = "smc_axi_partial_reset_open_txn_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "reset", "axi"]
+run_modes = ["smoke"]
+firmware = "hello_world"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=hello_world.ecc.hex",
+    "+axi_sva_need_cpu_mmio_uncore_rst",
+    "+axi_sva_need_misc_warm",
+    "+axi_sva_need_sep_in",
+    "+axi_sva_need_sys_in",
+    "+axi_sva_need_sys_out",
+    "+axi_sva_need_jtag_in",
+    "+axi_sva_need_cpu_front",
+    "+axi_sva_need_cpu_mmio",
+]
+
 # BFM: product cfg_flr_pf_active_i (not rst_cool_ni / smc_flr_sanity proxy).
 [[tests]]
 name = "smc_cool_reset_from_pcie_test"

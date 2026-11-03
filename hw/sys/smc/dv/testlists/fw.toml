@@ -301,6 +301,7 @@ args = [
 [[groups]]
 name = "fw"
 tests = [
+    "smc_axi_partial_reset_open_txn_test",
     "smc_fw_hello_world_multicore_test",
     "smc_fw_hello_world_test",
     "smc_fw_i2c_acq_fifo_stretch_reset_test",
@@ -318,4 +319,4 @@ tests = [
     "smc_fw_uart_log_engine_fetch_err_test",
     "smc_fw_uart_log_engine_single_entry_test",
 ]
-expected_count = 16
+expected_count = 17

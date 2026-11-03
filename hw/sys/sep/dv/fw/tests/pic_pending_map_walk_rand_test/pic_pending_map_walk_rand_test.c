@@ -33,6 +33,7 @@
 //   DINJ under=.. held=.. after_clr=..  meip bit 12 around the malformed DMA alert pair
 //   HOLD src=.. ...           the level hold
 //   CLRIDLE src=.. ...        the idle clear
+//   GWCLR-WR src=.. n=..      the meigwclr write count of one source (end of run)
 //   CTRL-AES-STATUS status=.. cfg_ok=.. valid=.. out0..3=..  the slotless encryption
 //   CTRL-MAP-STATE p=.. src=.. state=..  INTR_STATE of an event source after a map pass
 //   CTRL-PICIO mcgc=.. picio=..          mcgc read before the masked report
@@ -237,7 +238,15 @@ static const uint8_t k_gw_map[N_GW] = {0, 1, 2, 3, 4, 5, 6, 7, 10, 13, 16, 20}; 
 #define MCGC_PICIO (1u << 9)
 
 static int g_err;
-static uint32_t g_ip_en[6]; // INTR_ENABLE values the map pass wrote
+static uint32_t g_ip_en[6];               // INTR_ENABLE values the map pass wrote
+static uint16_t g_gwclr_n[LAST_SRC + 1u]; // meigwclr writes per source
+
+// Every meigwclr write of the leaf goes through here, so the host can match
+// the count per source with the writes it sees on the PIC write strobe.
+static void gwclr_wr(uint32_t id, uint32_t v) {
+    g_gwclr_n[id]++;
+    pic_write_meigwclr(id, v);
+}
 
 static inline uint32_t rd(uint32_t a) {
     return *(volatile uint32_t *)a;
@@ -370,10 +379,10 @@ static void release_src(const struct src *s) {
         wr(s->en, rd(s->en) & ~s->bit);
         break;
     case K_DMA_ALERT:
-        pic_write_meigwclr(s->id, 0u);
+        gwclr_wr(s->id, 0u);
         break;
     default:
-        pic_write_meigwclr(s->id, 0u);
+        gwclr_wr(s->id, 0u);
         break;
     }
 }
@@ -622,7 +631,7 @@ static void alert_kind(uint32_t k) {
     rec_num("k", k);
     rec_hex("meip1", pic_read_meip(1));
     rec_end();
-    pic_write_meigwclr(33u, 0u);
+    gwclr_wr(33u, 0u);
 }
 
 static void native_leg(uint32_t n) {
@@ -639,7 +648,7 @@ static void native_leg(uint32_t n) {
     wr(s->tst, 0u);
     wr(s->st, s->bit);
     wr(s->en, rd(s->en) & ~s->bit);
-    pic_write_meigwclr(33u, 0u);
+    gwclr_wr(33u, 0u);
 }
 
 // ---- OTBN program: a counted loop that outlasts the hold window ----
@@ -711,20 +720,20 @@ static void gw_cell(uint32_t g) {
         // Control for the level clear: the same meigwclr write on this source
         // drops an edge latched in active-high edge mode.
         pic_set_gateway(id, 1u, 0u);
-        pic_write_meigwclr(id, clr);
+        gwclr_wr(id, clr);
         gw_assert(s);
         wait_clk(g_p[P_SETTLE]);
         gw_deassert(s);
         wait_clk(g_p[P_SETTLE]);
         ectl_latched = meip_bit(id);
-        pic_write_meigwclr(id, clr);
+        gwclr_wr(id, clr);
         ectl_clr = meip_bit(id);
     }
     pic_set_gateway(id, cell >> 1, cell & 1u);
     if (cell >> 1) {
         // The edge latch holds any earlier assertion of the source (the map
         // passes assert it in level mode); clear it with the input deasserted.
-        pic_write_meigwclr(id, clr);
+        gwclr_wr(id, clr);
     }
     wait_clk(g_p[P_SETTLE]);
     uint32_t idle = meip_bit(id);
@@ -735,7 +744,7 @@ static void gw_cell(uint32_t g) {
     if (!(cell >> 1)) {
         // A level cell takes a meigwclr write with its input asserted; the
         // pending bit after it is logged.
-        pic_write_meigwclr(id, clr);
+        gwclr_wr(id, clr);
         lclr = meip_bit(id);
     }
     gw_deassert(s);
@@ -743,13 +752,13 @@ static void gw_cell(uint32_t g) {
     uint32_t d1 = meip_bit(id);
     uint32_t c1 = 0u, a2 = 0u, c2 = 0u;
     if (cell == CELL_EH) {
-        pic_write_meigwclr(id, clr);
+        gwclr_wr(id, clr);
         c1 = meip_bit(id);
     } else if (cell == CELL_EL) {
         gw_assert(s);
         wait_clk(g_p[P_SETTLE]);
         a2 = meip_bit(id);
-        pic_write_meigwclr(id, clr);
+        gwclr_wr(id, clr);
         c2 = meip_bit(id);
         gw_deassert(s);
         wait_clk(g_p[P_SETTLE]);
@@ -794,7 +803,7 @@ static void gw_level_to_edge(uint32_t g) {
     pic_set_priority(id, 1u);
     pic_enable_source(id);
     pic_set_gateway(id, 0u, 0u);
-    pic_write_meigwclr(id, 0u);
+    gwclr_wr(id, 0u);
     gw_assert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t before = meip_bit(id);
@@ -807,7 +816,7 @@ static void gw_level_to_edge(uint32_t g) {
     gw_deassert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t released = meip_bit(id);
-    pic_write_meigwclr(id, 0u);
+    gwclr_wr(id, 0u);
     uint32_t after_clr = meip_bit(id);
     sep_mbx_puts("GWL2E");
     rec_num("src", id);
@@ -835,7 +844,7 @@ static void gwclr_corner(uint32_t g) {
         gw_deassert(s);
         wait_clk(g_p[P_SETTLE]);
         uint32_t held = meip_bit(s->id);
-        pic_write_meigwclr(s->id, v);
+        gwclr_wr(s->id, v);
         uint32_t after = meip_bit(s->id);
         sep_mbx_puts("GWCLR");
         rec_num("src", s->id);
@@ -846,7 +855,7 @@ static void gwclr_corner(uint32_t g) {
     }
     // Idle clear on the same EH source: input deasserted, pending bit 0.
     uint32_t before = meip_bit(s->id);
-    pic_write_meigwclr(s->id, g_p[P_CLRX]);
+    gwclr_wr(s->id, g_p[P_CLRX]);
     uint32_t after = meip_bit(s->id);
     sep_mbx_puts("CLRIDLE");
     rec_num("src", s->id);
@@ -976,7 +985,7 @@ static void gwclr_race(void) {
         return;
     }
     pic_set_gateway(id, 1u, 0u);
-    pic_write_meigwclr(id, 0u);
+    gwclr_wr(id, 0u);
     for (uint32_t i = 0; i < N_RACE; i++) {
         wait_clk(g_p[P_SETTLE]);
         uint32_t before = meip_bit(id);
@@ -985,7 +994,7 @@ static void gwclr_race(void) {
         rec_num("src", id);
         rec_end();
         rec_spin(REQ_SPIN);
-        pic_write_meigwclr(id, 0u);
+        gwclr_wr(id, 0u);
         wait_clk(g_p[P_SETTLE]);
         uint32_t after = meip_bit(id);
         sep_mbx_puts("GWRACE");
@@ -994,10 +1003,10 @@ static void gwclr_race(void) {
         rec_num("before", before);
         rec_num("after", after);
         rec_end();
-        pic_write_meigwclr(id, 0u);
+        gwclr_wr(id, 0u);
     }
     pic_set_gateway(id, 0u, 0u);
-    pic_write_meigwclr(id, 0u);
+    gwclr_wr(id, 0u);
 }
 
 // Idle window: HMAC and KMAC hold an open message, OTBN runs a loop longer than
@@ -1174,7 +1183,7 @@ int main(void) {
     wr(k_alert_reg[k2], k_alert_bit[k2]);
     wait_clk(g_p[P_SETTLE]);
     req_tag("m", "pr1");
-    pic_write_meigwclr(33u, 0u);
+    gwclr_wr(33u, 0u);
 
     // Native errors and the OTBN done interrupt, each with an alert control.
     rec_mark(1, "native");
@@ -1190,7 +1199,7 @@ int main(void) {
     wr(SEP_TOP_SECURE_DMA_ALERT_TEST_BASE_ADDR, SECURE_DMA__ALERT_TEST__FATAL_FAULT_bm);
     wait_clk(g_p[P_SETTLE]);
     req_tag("m", "d2");
-    pic_write_meigwclr(12u, 0u);
+    gwclr_wr(12u, 0u);
 
     // Malformed DMA alert pair: the host forces both wires of the DMA alert
     // receiver to one value between the "on" and "off" requests.
@@ -1201,7 +1210,7 @@ int main(void) {
     wait_clk(g_p[P_SETTLE]);
     req_tag("m", "di2");
     uint32_t dinj_held = meip_bit(12u);
-    pic_write_meigwclr(12u, 0u);
+    gwclr_wr(12u, 0u);
     uint32_t dinj_clr = meip_bit(12u);
     sep_mbx_puts("DINJ");
     rec_num("under", dinj_under);
@@ -1240,8 +1249,8 @@ int main(void) {
     pic_rec_arm();
     rec_end();
     dump_meip("masked_set");
-    pic_write_meigwclr(12u, 0u);
-    pic_write_meigwclr(33u, 0u);
+    gwclr_wr(12u, 0u);
+    gwclr_wr(33u, 0u);
     dump_meip("masked_clr");
 
     // Control window: source 17 and the band above 43 armed.
@@ -1341,8 +1350,8 @@ int main(void) {
     rec_mark(1, "final");
     ctrl_off();
     wr(CS(ENABLE), 0u);
-    pic_write_meigwclr(12u, 0u);
-    pic_write_meigwclr(33u, 0u);
+    gwclr_wr(12u, 0u);
+    gwclr_wr(33u, 0u);
     for (uint32_t i = 0; i < N_MAP; i++) {
         uint32_t id = k_map[i].id;
         pic_disable_source(id);
@@ -1362,6 +1371,14 @@ int main(void) {
     wait_clk(g_p[P_SETTLE]);
     req_tag("vec", "final");
     dump_meip("final");
+    for (uint32_t s = 1u; s <= LAST_SRC; s++) {
+        if (g_gwclr_n[s] != 0u) {
+            sep_mbx_puts("GWCLR-WR");
+            rec_num("src", s);
+            rec_num("n", g_gwclr_n[s]);
+            rec_end();
+        }
+    }
     rec_mark(0, "end");
     sep_mbx_puts("DONE\n");
     return g_err;
