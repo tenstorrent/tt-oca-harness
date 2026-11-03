@@ -12505,8 +12505,8 @@ every decode agrees with the read-back configuration, every liveness read answer
 `LOCAL_BASE` reset, every planned cell is driven and no access goes unanswered. A FAIL on a stated
 value is a finding. Enrolled in: `all`.
 
-*Scope limit*: The landing of the SYS_IN writes to unlocked entry j and the pre-lock write to L
-(accepted behaviour under SF-021), the address the inbound filter compares (SF-012), the response
+*Scope limit*: The landing of the S3 SYS_IN writes to unlocked entry j and the pre-lock write to L
+(accepted behaviour under SF-021; the S4 deny writes are graded under `KEY-FWIN-LANDED`), the address the inbound filter compares (SF-012), the response
 code and timing of a write that changes the admitting entry (SF-014), a burst spanning a locked and
 an unlocked entry
 (SF-015), when a `GLOBAL_BASE` write applies (SF-023), the `REGION_SIZE` recovery path (SF-025) and
