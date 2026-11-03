@@ -5558,8 +5558,8 @@ draws nothing from the seed.
 * `REGION_SIZE`: with the size reduced to 0x2_0000, below the end of both apertures, both windows
   must answer DECERR on reads and writes (the read data is measured and printed, not compared),
   and with the reset value restored both must again return the patterns written before the
-  reduction, so the writes during the reduction did not land (`memmap.adoc`: a unit is reached only
-  while its whole aperture lies below `BASE + REGION_SIZE`).
+  reduction, so the writes during the reduction did not land (`memmap.adoc`: an inbound access at or
+  above `BASE + REGION_SIZE` answers DECERR, and both windows lie wholly above 0x2_0000).
 * Writes to the read-only `STATUS_0`, `NEXT_ID_0`, `DONE_0` and `CTRL_STATUS.STATUS` are issued and
   their response and the register value before and after are measured and printed without comparing
   them; `NEXT_ID_0` is written and never read.
@@ -12265,8 +12265,8 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* The inbound port reaches a unit only while its whole aperture lies below `BASE + REGION_SIZE`; at
-  the reset value 0x0100_0000 the PLIC, CLINT and bus-error units lie beyond it and answer DECERR
+* An inbound access at or above `BASE + REGION_SIZE` answers DECERR; at the reset value
+  0x0100_0000 the PLIC, CLINT and bus-error units lie wholly beyond it and answer DECERR
   (`memmap.adoc`, Address Space Organization; `smu-smc.adoc`, Address Map and Aperture): a read and
   a write at the base of the PLIC, the CLINT and the four bus-error units answer DECERR from SEP_IN
   and SYS_IN. The read data is printed and not compared.
@@ -12446,9 +12446,10 @@ consequence, and cold reset recovery.
   PLIC, CLINT and BEU0 to BEU3 answer DECERR to a read and a write (`memmap.adoc`). The
   Debug Module Hart Interface and cluster error device (reached only by the harts) and the
   forwarded `dtp_ctrl_reg`, M-mode and Xvisor regions are never probed.
-* A unit whose first word lies below BASE+2^k but whose aperture extends past it is documented to
-  answer DECERR: the mailbox at k = 17 and the scratch RAM at k = 19 and k = 20. The answer is
-  recorded without an expected value (LINKED-ISSUE SF-040).
+* A unit whose aperture straddles BASE+2^k stays reachable below the limit and answers DECERR at
+  and above it (`memmap.adoc`): at k = 17 the mailbox `STATUS` of pair 0 and at k = 19 and k = 20
+  the first scratch RAM word read OKAY; the mailbox `STATUS` of pair 8 (at BASE+0x2_0010) and the
+  scratch RAM word at BASE+2^k answer DECERR to a read and a write.
 * At each k from 10 the highest probe-eligible unit wholly below BASE+2^k answers a read of its
   first word with OKAY; for DFX, the outbound filter and the CLA the fields the register
   description does not mark volatile read their reset values, and hardware-driven fields are
@@ -12497,14 +12498,14 @@ consequence, and cold reset recovery.
 . For k = 0 to 31: write `REGION_SIZE` 1<<k (BRESP OKAY required for k up to 30) and read it
   back (DECERR for k up to 16, 1<<k for k = 17 to 30, recorded for k = 31); read and write the
   first word of the first unit wholly beyond BASE+2^k requiring DECERR (at k = 24 the PLIC, CLINT
-  and BEU0 to BEU3); at k = 17, 19 and 20 read the straddling mailbox or scratch RAM and record
-  its response and data; at k from 10 read the highest unit wholly below BASE+2^k requiring OKAY (and the reset
+  and BEU0 to BEU3); at k = 17, 19 and 20 read the straddling mailbox or scratch RAM below
+  BASE+2^k requiring OKAY and read and write its word at BASE+2^k requiring DECERR; at k from 10 read the highest unit wholly below BASE+2^k requiring OKAY (and the reset
   value of the non-volatile fields where pinned); apply a cold reset, wait for the fuse sense and read `REGION_SIZE`,
   `GLOBAL_BASE` and `LOCAL_BASE` requiring their reset values. Each probe address is registered
   with the AXI monitor as an expected DECERR address until that step's reset. Log the bounded
   waits and require the nine step stamps in increasing order, the per-k terms in order for all
   32 steps with every term issuing at least one access over the sweep, the twelve checker lines in
-  order and at least 295 SEP_IN accesses.
+  order and at least 301 SEP_IN accesses.
 
 *Checkers*:
 
@@ -12541,9 +12542,9 @@ readback answers DECERR; the read data is recorded (SF-011)
 |`CHK-REGION-SIZE-BEYOND` |At every k with a unit wholly beyond BASE+2^k, a read and a write of
 its first word answer DECERR; at k = 24 the PLIC, CLINT and BEU0 to BEU3 reads and writes answer
 DECERR; read data recorded
-|`CHK-REGION-SIZE-STRADDLE` |The mailbox read at k = 17 and the scratch RAM reads at k = 19 and
-k = 20 each complete with a resolved response; the response code and data are recorded beside the
-documented DECERR (LINKED-ISSUE SF-040)
+|`CHK-REGION-SIZE-STRADDLE` |At k = 17 the mailbox and at k = 19 and k = 20 the scratch RAM answer
+a read below BASE+2^k with OKAY and a read and a write of a readable word at or above BASE+2^k
+with DECERR; the read data is recorded
 |`CHK-REGION-SIZE-BELOW` |At each k from 10 to 30 the highest unit wholly below BASE+2^k answers
 OKAY, and the non-volatile fields of DFX, the outbound filter and the CLA read their reset values
 (a unit whose fields are all volatile is recorded); the cluster unit answers at `REGION_SIZE`
@@ -12569,9 +12570,9 @@ not a compare
 responder with the exact address, the registers and filter read their reset words after each cold
 reset, no read response or response without a request appears after the resets, every
 `REGION_SIZE` up to 1<<30 reads back or answers DECERR as its aperture requires, every beyond
-unit answers DECERR, every straddling probe completes with a resolved response, every wholly-below unit outside the cluster answers OKAY, and at
-least 295 SEP_IN accesses are issued. The fates of accesses interrupted by a reset, the hit probe
-levels, the re-issued address, the k = 31 responses, the straddling answers and the cluster unit answers at `REGION_SIZE` 0x1000_0000 and above are
+unit answers DECERR, every straddling unit answers OKAY below the limit and DECERR at it, every wholly-below unit outside the cluster answers OKAY, and at
+least 301 SEP_IN accesses are issued. The fates of accesses interrupted by a reset, the hit probe
+levels, the re-issued address, the k = 31 responses and the cluster unit answers at `REGION_SIZE` 0x1000_0000 and above are
 recorded without an expected value. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The inbound filter hit probe levels, the fates of the accesses outstanding when each
@@ -24087,8 +24088,8 @@ draws nothing from the seed.
   window reaches the same register as one for the local window; `memmap.adoc`).
 * The word is reachable at `REGION_SIZE` = `0x0100_0000` (reset, `fabric.adoc`) and at `0x20_0000`,
   and unreachable at `0x10_0000`, where the window lies beyond the aperture and reads and writes
-  answer DECERR (`memmap.adoc`: a unit is reached only while its whole aperture lies below
-  `BASE + REGION_SIZE`; an address outside the window answers DECERR); the refused write stores
+  answer DECERR (`memmap.adoc`: an inbound access at or above `BASE + REGION_SIZE` answers DECERR,
+  and the word lies above the 1 MiB limit; an address outside the window answers DECERR); the refused write stores
   nothing.
 * Two `REGION_SIZE` writes with no access between them: the second governs the next access, in
   both orders.
@@ -49545,7 +49546,6 @@ that records the value.
 
 <<smc-vplan-area-fabric,FABRIC>>:
 
-* A unit whose aperture crosses `BASE + REGION_SIZE`: `hw/sys/smc/doc/memmap.adoc` states that the inbound port reaches a unit only while its whole aperture lies below the boundary, and no enrolled test places the boundary inside an aperture. `smc_region_gated_units_decode_test` and `smc_region_zero_reset_recovery_test` grade units wholly below or wholly above it.
 * The reset state of the sixteen inbound filter entries: `hw/sys/smc/doc/fabric.adoc` (Inbound Filtering) leaves the default to the chiplet integration and `hw/ip/axi_filter/regs/filter_ctrl.rdl` resets every entry disabled. `smc_sys_axi_in_port_test` issues its pre-admit SYS_IN read with the error response tolerated and logs the response.
 * The AxUSER bits above [3:0] of a SYS_IN access: `hw/sys/smc/doc/fabric.adoc` (Inbound Filtering)
   names no lane for the source ID, and the asset of the filter figure `smc-traffic-filter-diagram`

@@ -4,7 +4,8 @@
 
 Spec sources: fabric.adoc Local and Remote Resource Access, Fabric Topology, Outbound Traffic
 Flow; smc-programming.adoc Address Map; smc_base_config.rdl GLOBAL_BASE, REGION_SIZE;
-memmap.adoc (a unit is reached only while its whole aperture lies below BASE + REGION_SIZE);
+memmap.adoc (an inbound access at or above BASE + REGION_SIZE answers DECERR; a unit that
+straddles the limit stays reachable below it);
 memory_map.adoc SMC Component Address Map (unit apertures).
 """
 
@@ -70,9 +71,9 @@ _OUTSTANDING_READS = 8
 _OUTSTANDING_WRITES = 4
 
 # Sequential SEP_IN accesses the stimulus issues (outstanding groups excluded): 44 in the
-# REGION_SIZE 0 and reset legs, 251 in the size sweep (32 writes, 32 readbacks, 66 beyond,
-# 3 straddle, 22 below, 96 post-reset reads).
-MIN_SEP_IN_ACCESSES = 295
+# REGION_SIZE 0 and reset legs, 257 in the size sweep (32 writes, 32 readbacks, 66 beyond,
+# 9 straddle, 22 below, 96 post-reset reads).
+MIN_SEP_IN_ACCESSES = 301
 
 # Contract steps: S2 is the six existing legs (S2a..S2f); the per-k terms are S3..S7, S3 closes
 # with k = 30 and S8 is the k = 31 top step.
@@ -206,8 +207,19 @@ _SF035_MIN_SIZE = 0x1000_0000
 # Units probed in addition to the first unit beyond at the reset size, k = 24.
 _K_RESET = 24
 _RESET_SIZE_BEYOND = ("PLIC", "CLINT", "BEU0", "BEU1", "BEU2", "BEU3")
-# Straddle probes: (k, unit), the unit's first word below BASE + 2^k, its last word above.
-_STRADDLE = ((17, "MAILBOX"), (19, "SPM_RAM"), (20, "SPM_RAM"))
+# Straddle probes: (k, unit, readable register below BASE + 2^k, readable register at or above
+# it); None names the unit's first word and the word at BASE + 2^k. A readable register at the
+# limit separates the fabric's DECERR from the unit's own answer.
+_STRADDLE = (
+    (
+        17,
+        "MAILBOX",
+        "smc_mailbox/outbound_mailbox_0/STATUS",
+        "smc_mailbox/outbound_mailbox_8/STATUS",
+    ),
+    (19, "SPM_RAM", None, None),
+    (20, "SPM_RAM", None, None),
+)
 _BELOW_MIN_K = 10
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", None: "none"}
 
@@ -809,20 +821,26 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
         self._term(k, "BEYOND", 2 * len(units))
 
-        # STRADDLE: the unit's first word lies below BASE + 2^k, its aperture past it; the
-        # response is recorded beside the documented DECERR (SF-040).
-        straddle = [name for sk, name in _STRADDLE if sk == k]
-        for name in straddle:
+        # STRADDLE: the unit's aperture crosses BASE + 2^k; the limit applies per address, so a
+        # word below it answers OKAY and the word at BASE + 2^k inside the unit answers DECERR.
+        straddle = [(name, lo, hi) for sk, name, lo, hi in _STRADDLE if sk == k]
+        for name, lo, hi in straddle:
             _, first, last, _ = _UNIT_BY_NAME[name]
             assert first < size <= last, f"{name} does not straddle 0x{size:x}"
-            addr = local_base + first
-            self._excuse(excused, addr)
-            rd = await self._measure(SmcSysAxiOp.READ, addr)
-            self._sweep["straddle"].append(
-                f"k={k} unit={name}@0x{addr:x} rresp={_RESP_NAME[rd.resp_code]} "
-                f"rdata=0x{rd.rdata:x}"
+            below = local_base + first if lo is None else rdl_contract(lo).addr
+            limit = local_base + size if hi is None else rdl_contract(hi).addr
+            assert local_base + first <= below < local_base + size <= limit <= local_base + last, (
+                f"{name}: probes 0x{below:x} and 0x{limit:x} do not bracket BASE + 0x{size:x}"
             )
-        self._term(k, "STRADDLE", len(straddle))
+            self._excuse(excused, limit)
+            rdata = await self._rd("sep", f"STRADDLE_K{k}_{name}_BELOW", below)
+            refused = await self._rd("sep", f"STRADDLE_K{k}_{name}_LIMIT", limit, resp=RESP_DECERR)
+            await self._wr("sep", limit, 0, resp=RESP_DECERR)
+            self._sweep["straddle"].append(
+                f"k={k} unit={name} below@0x{below:x} rresp=OKAY rdata=0x{rdata:x}; "
+                f"limit@0x{limit:x} rresp=DECERR bresp=DECERR rdata=0x{refused:x}"
+            )
+        self._term(k, "STRADDLE", 3 * len(straddle))
 
         # BELOW: the highest unit wholly below BASE + 2^k is reached.
         name = self._below_unit(k)
@@ -889,8 +907,9 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
         self._log_chk(
             "CHK-REGION-SIZE-STRADDLE",
-            f"{len(sw['straddle'])} probes, each answered with a resolved response code "
-            f"(measured, documented DECERR, LINKED-ISSUE SF-040): {'; '.join(sw['straddle'])}",
+            f"{len(sw['straddle'])} straddling units read OKAY below BASE+2^k and answered "
+            f"DECERR to a read and a write at BASE+2^k (exact; rdata logged): "
+            f"{'; '.join(sw['straddle'])}",
         )
         self._log_chk(
             "CHK-REGION-SIZE-BELOW",
