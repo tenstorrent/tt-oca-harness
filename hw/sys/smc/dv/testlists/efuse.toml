@@ -267,9 +267,20 @@ args = ["+smc_hold_ext_boot"]
 name = "smc_efuse_map_sense_image_test"
 module = "smc_efuse_map_sense_image_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "efuse"]
 run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_map_sense_image_test.hex"]
+
+[[tests]]
+name = "smc_efuse_map_sense_image_default_test"
+module = "smc_efuse_map_sense_image_default_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_image=default", "+smc_efuse_hex=smc_efuse_map_sense_image_default_test.hex"]
 
 [[tests]]
 name = "smc_efuse_map_sense_image_zero_test"

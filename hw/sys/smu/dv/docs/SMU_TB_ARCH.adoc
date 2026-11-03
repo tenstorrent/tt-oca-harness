@@ -179,16 +179,18 @@ handshake. Protocol, not data.
   transaction open at one of them stays in the checker's outstanding
   tracking until the next primary reset.
 * *Reset-domain AXI SVA* -- second instances on the links whose far side
-  resets on a narrower reset, with `MASTER_SYNC_RESET` set:
-  `u_xbar_sep_in_sep_rst_axi_sva` on the crossbar SEP target port and
-  `u_sep_to_smc_sep_rst_axi_sva` on the SEP-to-SMC port take `aresetn` =
-  `sep_reset_n`, the boot-qualified SEP reset, and are held off while
-  `sep_reset_n` or the link's AW and AR valids are X;
-  `u_xbar_smc_in_warm_rst_axi_sva` on the crossbar SMC target port takes
-  `aresetn` = the SMC warm reset `u_smc.rst_warm_smc_clk_n`. The SMC cool
-  reset feeds the primary reset, so the primary-reset instances already
-  grade it. Their counters print as `CHK-AXI-SVA-XBAR-SEP-IN-SEP-RST`,
-  `CHK-AXI-SVA-SEP-TO-SMC-SEP-RST` and `CHK-AXI-SVA-XBAR-SMC-IN-WARM-RST`.
+  resets on a narrower reset, the SEP side under `sep_reset_n`, with
+  `MASTER_SYNC_RESET` set: `u_xbar_sep_in_sep_rst_axi_sva` on the crossbar
+  SEP target port and `u_sep_to_smc_sep_rst_axi_sva` on the SEP-to-SMC port
+  take `aresetn` = `sep_reset_n`, the boot-qualified SEP reset, and are held
+  off while `sep_reset_n` or the link's AW and AR valids are X. No SMC-side
+  link has such a far side: the SMC warm reset `u_smc.rst_warm_smc_clk_n`
+  resets only the CPU cluster and the warm scratch register, and the
+  crossbar SMC target link resets on the primary reset at both ends, so
+  `u_xbar_smc_in_axi_sva` grades every window in which that link is in
+  reset. The SMC cool reset feeds the primary reset, so the primary-reset
+  instances already grade it. Their counters print as
+  `CHK-AXI-SVA-XBAR-SEP-IN-SEP-RST` and `CHK-AXI-SVA-SEP-TO-SMC-SEP-RST`.
 * *Converter, cut, OTP and DTP CSR AXI SVA* -- on the primary reset:
   `u_iwc_sep_axi_sva` and `u_iwc_smc_axi_sva` on the ID-width converter
   outputs toward the SEP (`sep_smn_inbound_axi_req` / `_resp`) and the SMC

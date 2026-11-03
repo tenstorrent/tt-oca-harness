@@ -84,13 +84,18 @@ extra_ignore_patterns = [
 # The wrapper bench's crypto EDN request-hold window (tb_wrapper_top.sv)
 # prints `crypto EDN request-hold window still open at end` from a `final`
 # block when the run ends inside the window, so a window that never closes
-# fails the run.
+# fails the run. Its sep_in override expectation window prints
+# `sep_in override expectation window still open at end` the same way, and
+# `sep_in override expectation window: primary reset fell` when the SMC
+# primary reset falls while the window is open.
 extra_hard_fail_patterns = [
   'assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_io\.u_sep_ot_spi_wrap\.u_spi_host\..*: at time \d{10,}',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_key_manager_s3c_scan\..*(: at time|failed at) \d{10,}',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_dma_wrap\.(u_secure_dma|gen_alert_receivers)\b.*(: at time|failed at) \d{10,}',
   'crypto EDN request-hold window still open at end',
+  'sep_in override expectation window still open at end',
+  'sep_in override expectation window: primary reset fell',
 ]
 
 [native.stages.clean]
@@ -734,6 +739,8 @@ incdirs = [
 sources = [
   # ocah_open_drain_bus.sv must precede tb/tb_wrapper_top.sv, which instantiates it.
   "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
+  # Four-state WDATA/RDATA known rules, one beside each ocah_axi_sva instance.
+  "hw/sys/smu/dv/tb/smu_axi_data_known_sva.sv",
   # The cocotb [build].sources list also carries axi_cut with its spill registers and
   # the picorv32 files: the Bender `smu_wrapper` layer already names each of them
   # (smu_uvm_bender.f), and VCS rejects a module declared by two files it is handed

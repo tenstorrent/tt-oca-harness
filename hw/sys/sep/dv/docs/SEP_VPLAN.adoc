@@ -567,7 +567,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, real fuse sense
 |OTP bank model with its image preload and the sensed-shadow probe `efuse_shadow_probe_o` (no AXI master)
-|Proves the eFuse sense sequence runs to completion at reset and that what landed in the shadow registers matches the programmed image word for word. `CHK-SENSE-WORD-ORDER` grades the load order stated in `otp_fuse_controller.adoc` (eFuse sensing): the first clock on which each changed shadow word changes at `efuse_shadow_probe_o` rises strictly with the word index, and the sense-done rise comes one clock after the change of word 255. The first clock per field, with the clock of the sense-done rise, is logged as `OBS-SENSE-FIELD-ORDER` and not graded.
+|Proves the eFuse sense sequence runs to completion at reset and that what landed in the shadow registers matches the programmed image word for word. `CHK-SENSE-WORD-ORDER` grades the load order stated in `otp_fuse_controller.adoc` (eFuse sensing): the first clock on which each changed shadow word changes at `efuse_shadow_probe_o` rises strictly with the word index, and the sense-done rise comes one clock after the change of word 255. The first clock per field, with the clock of the sense-done rise, is logged as `OBS-SENSE-FIELD-ORDER` and not graded. For `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID`, the first clock on which the sensed field holds its value and the first clock on which the Key Manager OTP input carries it are logged as `OBS-SHADOW-PRESENSE-WITHHELD` and not graded. `CHK-LC-STATE-PRESENSE-HOLD` grades that `lc_state_o` holds the INVALID encoding 0x0F on every clock from the `rst_ni` release to the sense-done rise while the sensed `LC_STATE` byte already equals the staged encoding, and `CHK-LC-STATE-RELEASE` grades that `lc_state_o` equals the sensed byte on the first clock with sense done high, which the test takes as the point where sensing has completed (`otp_fuse_controller.adoc`, Fuse Sensing and Boot Sequencing, names no clock).
 |<<sep_spi_flash_jedec_smoke_test,`sep_spi_flash_jedec_smoke_test`>>
 |1
 |no_cpu, +skip_fuse_sense
@@ -1213,7 +1213,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, +skip_fuse_sense
 |CPU FW, PIC register golden
-|Proves the PIC register map: reset to 0, read-back, entry 0 and holes read 0 and discard writes, and source 0 never takes an interrupt. Also proves that a write of 0 and of all ones to `meip[0]` with a held pending bit changes no bit (CHK-MEIP-WR) and that each store reaches the PIC as one write at the `meip[0]` offset on `pic_wr_probe_o` (CHK-MEIP-WR-STORE); the response of the write is logged (`OBS-PIC-MEIP-WR`). The hole, entry-0, `meigwclr` and source-0 writes, which those checks grade by an unchanged or 0 read, are counted on the same strobe (CHK-PIC-STORE). The reset X check samples `pic_rd_data_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list.
+|Proves the PIC register map: reset to 0, read-back, entry 0 and holes read 0 and discard writes, and source 0 never takes an interrupt. Also proves that a write of 0 and of all ones to `meip[0]` with a held pending bit changes no bit (CHK-MEIP-WR) and that each store reaches the PIC as one write at the `meip[0]` offset on `pic_wr_probe_o` (CHK-MEIP-WR-STORE); the response of the write is logged (`OBS-PIC-MEIP-WR`). The hole, entry-0, `meigwclr` and source-0 writes, which those checks grade by an unchanged or 0 read, are counted on the same strobe (CHK-PIC-STORE). The reserved bits of `meipl`, `meie`, `meigwctrl`, `meigwclr` and `mpiccfg` read 0 at reset, of entry 0 after the all-ones write and of each `meigwclr` read, with no X on VCS (CHK-PIC-RSVD). The reset X check samples `pic_rd_data_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list.
 |<<sep_pic_external_access_refuse_test,`sep_pic_external_access_refuse_test`>>
 |3
 |cpu with external SMN master, real PROD fuse sense
@@ -1321,7 +1321,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, `dma_busy_probe_o` and `sep_internal_interrupts_probe_o` (approved); `dma_axi_req_probe_o`, `dma_status_probe_o` (observation taps)
-|Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses (the full AxADDR at width 4; at widths 1 and 2 AxADDR[31:2] and the WSTRB byte lanes of each write beat, with AxADDR[1:0] logged only), the CHUNK_DONE rises and their hardware clear, the stop after each non-final chunk until the next GO, and the DONE rise after the last B response, and that CFG_REGWEN reads kMultiBitBool4False (0x9) while the DMA is busy and kMultiBitBool4True (0x6) at idle. Also proves that OPCODE and DIGEST_SWAP are taken at the first start of a hash and kept for its later chunks, also when a later start writes another SHA-2 OPCODE and the inverted DIGEST_SWAP (CHK-DMA-CONT-CFG, `hw/sys/sep/doc/dma.adoc:81-82`), and that the range registers take unlocked writes (CHK-DMA-RANGE-WR). After the graded legs the test logs the STATUS edge clocks of Leg B and of the split Leg D transfers (`OBS-DMA-EDGE-ORDER`), the unused `SHA2_DIGEST` words (`OBS-DMA-DIGEST-UNUSED`), the `CHUNK_DONE` count of each transfer (`OBS-DMA-LAST-CHUNKDONE`), a two-chunk copy from a fixed source (`OBS-DMA-FIXED-CHUNK`) and a `CONTROL` write while `BUSY` is 1 (`OBS-DMA-CTRL-BUSY`), with no verdict.
+|Proves that all 16 source and destination address-mode cells, each at a drawn width, give the stated destination image, that sizes up to 16 KB complete with DONE and GO auto-clear, that a transfer exactly on the range edges completes, and that SHA-256, SHA-384 and SHA-512 digests, SHA2_DIGEST_VALID and DIGEST_SWAP follow the register text. It also proves single-beat DMA transactions, the beat addresses (the full AxADDR at width 4; at widths 1 and 2 AxADDR[31:2] and the WSTRB byte lanes of each write beat, with AxADDR[1:0] logged only), the CHUNK_DONE rises and their hardware clear, the stop after each non-final chunk until the next GO, and the DONE rise after the last B response, and that CFG_REGWEN reads kMultiBitBool4False (0x9) while the DMA is busy and kMultiBitBool4True (0x6) at idle. Also proves that OPCODE and DIGEST_SWAP are taken at the first start of a hash and kept for its later chunks, also when a later start writes another SHA-2 OPCODE and the inverted DIGEST_SWAP (CHK-DMA-CONT-CFG, `hw/sys/sep/doc/dma.adoc:81-82`), and that the range registers take unlocked writes (CHK-DMA-RANGE-WR). After the graded legs the test logs the STATUS edge clocks of Leg B and of the split Leg D transfers (`OBS-DMA-EDGE-ORDER`), the unused `SHA2_DIGEST` words (`OBS-DMA-DIGEST-UNUSED`), the `CHUNK_DONE` count of each transfer (`OBS-DMA-LAST-CHUNKDONE`), a two-chunk copy from a fixed source (`OBS-DMA-FIXED-CHUNK`) and a `CONTROL` write while `BUSY` is 1 (`OBS-DMA-CTRL-BUSY`). These logs carry no verdict, except that on a seed that draws GO=1 for that write (seed 1 does) it proves that the write starts nothing: the copy shows only its own AR and AW count and one BUSY rise (CHK-DMA-CTRL-BUSY, `hw/sys/sep/doc/dma.adoc:79-86`), with the write answering OKAY at BUSY 1 and DONE rising after it as its control (CTRL-DMA-CTRL-BUSY); the CONTROL value after the write and a GO=0 write stay logged.
 |<<sep_dma_irq_error_lock_rand_test,`sep_dma_irq_error_lock_rand_test`>>
 |3
 |no_cpu, real fuse sense
@@ -1351,7 +1351,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, real fuse sense
 |ocah_axi_vip, ocah_spi_vip, `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`, `spi_tx_qd_probe_o`, `sep_internal_interrupts_probe_o` (approved); `dma_axi_req_probe_o` (observation tap)
-|Proves that the DMA moves the RX words of n chunks in order, moves no word and keeps GO set while mask bit 0 is clear, keeps GO set between chunks and clears it, with DONE set and the DMA done interrupt raised once after the last write, after TOTAL_DATA_SIZE bytes, raises no CHUNK_DONE, moves the next chunk with GO set when the trigger rises again after a low phase, and stops when firmware clears GO, after which GO reads 0. Both masked classes (MASK 0, and bit 0 clear with an upper bit set) run on every seed. Also proves that the trigger rises at RXQD equal to RX_WATERMARK, that with the RX term false it is `TXQD < TX_WATERMARK` at TXQD below and equal to a drawn TX_WATERMARK (CHK-HS-TRIG-TX), and that flash reads at x1, x2 and x4 deliver the flash bytes, and that with CLEAR_INTR_SRC bit 0 = 1 and CLEAR_INTR_BUS bit 0 = 1 the interrupt clear write reaches INTR_SRC_ADDR_0 on the DMA master and writes INTR_SRC_WR_VAL_0. `STATUS.BUSY`, `CFG_REGWEN` and the DMA busy output while `GO` is 1 and the trigger is low (`OBS-DMA-HS-WAIT`), the chunks moved after a re-trigger (`OBS-STOP-RETRIG`), and the clear write with INTR_SRC_ADDR_0 outside the enabled memory range or with CLEAR_INTR_BUS bit 0 = 0 (`OBS-DMA-CLR-RANGE`) are logged only.
+|Proves that the DMA moves the RX words of n chunks in order, moves no word and keeps GO set while mask bit 0 is clear, keeps GO set between chunks and clears it, with DONE set and the DMA done interrupt raised once after the last write, after TOTAL_DATA_SIZE bytes, raises no CHUNK_DONE, moves the next chunk with GO set when the trigger rises again after a low phase, and stops when firmware clears GO, after which GO reads 0. Both masked classes (MASK 0, and bit 0 clear with an upper bit set) run on every seed. Also proves that the trigger rises at RXQD equal to RX_WATERMARK, that with the RX term false it is `TXQD < TX_WATERMARK` at TXQD below and equal to a drawn TX_WATERMARK (CHK-HS-TRIG-TX), and that flash reads at x1, x2 and x4 deliver the flash bytes, and that with CLEAR_INTR_SRC bit 0 = 1 and CLEAR_INTR_BUS bit 0 = 1 the interrupt clear write reaches INTR_SRC_ADDR_0 on the DMA master and writes INTR_SRC_WR_VAL_0. `STATUS.BUSY`, `CFG_REGWEN` and the DMA busy output while `GO` is 1 and the trigger is low (`OBS-DMA-HS-WAIT`), the chunks moved after a re-trigger (`OBS-STOP-RETRIG`), and the clear write with INTR_SRC_ADDR_0 outside the enabled memory range (`OBS-DMA-CLR-RANGE`) are logged only. With CLEAR_INTR_BUS bit 0 = 0 it proves that no clear write reaches INTR_SRC_ADDR_0 and the clear word keeps its sentinel (CHK-DMA-CLR-BUS0), with the engine shown to take the trigger in the same run (STATUS.BUSY rises on the status tap at or after the first trigger rise, or an AR on the tap, CTRL-DMA-CLR-BUS0); the end of that run stays logged.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_ot_host_csr_irq_rand_test>> covers the SPI host CSR and interrupt surface. It is graded there so each test has one owning bucket.
@@ -1510,19 +1510,19 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |no_cpu, VCS only
 |DMA-path master, ICCM and DCCM word model, TCM bit-flip hook (added hook)
-|Proves that a DMA copy between SRAM and each ICCM and DCCM word lands its data, that ICCM and DCCM do not alias, that a single-bit error on a DMA-path read returns the corrected data and that a two-bit error returns an error response, and that each DMA-path read drives the `ext_debug_bus_o[367:364]` lane of the error it meets (CHK-TCM-DMA-DBG). After the clean reads the test logs 1-byte and 2-byte DMA copies into and out of one word of each memory (`OBS-TCM-SUBWORD`) with no verdict.
+|Proves that a DMA copy between SRAM and each ICCM and DCCM word lands its data, that ICCM and DCCM do not alias, that a single-bit error on a DMA-path read returns the corrected data and writes the corrected word back (CHK-TCM-SBE-WB) and that a two-bit error returns an error response, and that each DMA-path read drives the `ext_debug_bus_o[367:364]` lane of the error it meets (CHK-TCM-DMA-DBG). After the clean reads it proves that a 1-byte or 2-byte DMA copy into one word of each memory ends with the `ERROR_CODE.BUS_ERROR` bit set and `host_path_err` set (CHK-TCM-SUBWORD-WR, with `ERROR_CODE` and `DMA_BUS_ERR_STATUS` read 0 before each GO, CTRL-TCM-SUBWORD-PRE), logs `STATUS.done` after a two-bit error read (`OBS-TCM-DBE-DONE`, no text states it), logs the whole `ERROR_CODE` of that copy (`OBS-TCM-SUBWORD-CODE`), and logs the word after it and the sub-word copy out of the word (`OBS-TCM-SUBWORD`) with no verdict.
 
 |<<sep_tcm_ecc_cpu_trap_test,`sep_tcm_ecc_cpu_trap_test`>>
 |3
 |cpu
 |CPU firmware, ECC counter CSR reads, `ext_debug_bus_o` tap, TCM bit-flip hook (added hook)
-|Proves that a corrected CPU-side TCM error counts silently until the counter reaches its threshold and then raises `mip.MCEIP`, that an uncorrectable DCCM error traps with the stated cause, that an uncorrectable error on the fast-interrupt path is an NMI through `SEP_NMI_VEC`, and that no PIC source is involved.
+|Proves that a corrected CPU-side TCM error counts silently until the counter reaches its threshold and then raises `mip.MCEIP`, that an uncorrectable DCCM error traps with the stated cause, that an uncorrectable error on the fast-interrupt path is an NMI through `SEP_NMI_VEC`, that the uncorrectable ICCM fetch pulses `ext_debug_bus_o[366]` one clock wide (CHK-TCM-DBG366), and that no PIC source is involved.
 
 |<<sep_cpu_demux_unmapped_fetch_test,`sep_cpu_demux_unmapped_fetch_test`>>
 |3
 |cpu
 |CPU firmware, CPU master port observation taps
-|Proves that a fetch outside ROM and SRAM gets DECERR and never reaches another port, that load and store routing follows the demux table, and that ICCM and DCCM are reached through the core wiring only. Extends the open ROM and register-reach tests with those cells only.
+|Proves that a fetch outside ROM and SRAM gets DECERR, never reaches another port and traps once as an instruction access fault with the fetch address in `mtval` (CHK-IFU-TRAP), that load and store routing follows the demux table, that ICCM and DCCM are reached through the core wiring only, and that an LSU load and store at an ICCM word trap with `mcause` 5 and 7 (CHK-LSU-ICCM-CAUSE). Extends the open ROM and register-reach tests with those cells only.
 
 |<<sep_debug_master_target_matrix_test,`sep_debug_master_target_matrix_test`>>
 |3
@@ -2972,13 +2972,17 @@ the test does.
 |What response does a DMA-master access get at a reserved window or past the mailbox wrapper extent? `hw/sys/sep/doc/memory_map.adoc` states the codes only as seen at the inbound AXI port.
 |never driven; `sep_cpu_bridge_fault_matrix_rand_test` grades the source-read side with a non-OKAY response from the testbench. No test logs it.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
+|`STATUS.done` of a Secure DMA transfer that ends in an error
+|Does `STATUS.done` set when a transfer ends with `STATUS.error` set? The `STATUS.done` text in `dma.hjson`, the DMA documents and `hw/sys/sep/doc/dma.adoc` do not state it.
+|`sep_tcm_dma_aperture_ecc_test` grades the error of each double-bit DMA read (CHK-TCM-DBE) and logs `STATUS.done` and `STATUS.error` as `OBS-TCM-DBE-DONE`; `STATUS.done` is not graded.
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Uncorrectable ICCM fetch error
 |Is an uncorrectable ICCM fetch error an instruction access fault (`hw/sys/sep/doc/interrupts.adoc`, "Uncorrectable (double-bit) errors") or does it re-raise the NMI (`sep_cpu_ctrl.adoc`, `SEP_NMI_VEC`)?
-|No test logs it.
+|`sep_tcm_ecc_cpu_trap_test` logs the trap kind as `OBS-RAS-ICCM_ECC_UE-TRAP`; it is not graded.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
-|The response to a write of the read-only `meip` register is not stated, and the read and write behaviour of the reserved bits of the PIC registers is not stated.
-|What response does a write to the read-only `meip` register get, and what do the reserved bits of the PIC registers read and write as? Source: `hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc` (`meip`, access types).
-|`sep_pic_reg_rand_test` writes 0 and all ones to `meip[0]` with a held pending bit and grades that no bit changes (CHK-MEIP-WR; `meip` is read-only, `el2_pic.adoc`) and that each store reaches the PIC (CHK-MEIP-WR-STORE, one write at the `meip[0]` offset on `pic_wr_probe_o`); the response of the write is logged (`OBS-PIC-MEIP-WR`). It does not write the reserved bits: the specification does not state the reserved-bit behaviour.
+|The response to a write of the read-only `meip` register is not stated, and the behaviour of the reserved bits of the PIC registers is stated as read 0 only.
+|What response does a write to the read-only `meip` register get, and how do the reserved bits of the PIC registers take a write of 1 outside the cases below? Source: `hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc` (`meip`, access types).
+|`sep_pic_reg_rand_test` writes 0 and all ones to `meip[0]` with a held pending bit and grades that no bit changes (CHK-MEIP-WR; `meip` is read-only, `el2_pic.adoc`) and that each store reaches the PIC (CHK-MEIP-WR-STORE, one write at the `meip[0]` offset on `pic_wr_probe_o`); the response of the write is logged (`OBS-PIC-MEIP-WR`). The reserved bits read 0 on `meipl`, `meie`, `meigwctrl`, `meigwclr` and `mpiccfg` (VeeR EL2 PRM `docs/source/interrupts.md:415` and the Reserved rows `:443-447`, `:479-483`, `:563-567`, `:816-820`, `:863-867`): graded at reset, at entry 0 after an all-ones write and at each `meigwclr` read after a write (CHK-PIC-RSVD). The reserved bits of the live-entry read-backs are logged only; no other leg writes 1 to a reserved bit.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |An external access to a Secure DMA, OTBN, HMAC or KMAC hole may or may not latch the `PERIPH_BUS_ERR_STATUS` or `reg_path_err` bit.
 |Do the interrupts and `sep_cpu_ctrl` documents cover external accesses, or CPU accesses only? Source: `hw/sys/sep/doc/interrupts.adoc`; `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc` (`PERIPH_BUS_ERR_STATUS`).
@@ -3194,7 +3198,7 @@ the test does.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Corrections and debug-bus pulses per corrected TCM access
 |How many counter increments and how many `ext_debug_bus_o[367:364]` pulses does one corrected TCM access give, given that the access is retried? Source: `hw/sys/sep/doc/interrupts.adoc` (memory ECC); `hw/sys/sep/doc/cpu.adoc`.
-|`sep_tcm_ecc_cpu_trap_test` grades `MCEIP` against the counter read-back and at least one pulse per word, and logs the increments as `OBS-TCM-INCR`. `sep_tcm_ecc_cpu_trap_test` logs `OBS-TCM-DBG366` as an open question.
+|`sep_tcm_ecc_cpu_trap_test` grades `MCEIP` against the counter read-back and at least one pulse per word, and logs the increments as `OBS-TCM-INCR`. `sep_tcm_ecc_cpu_trap_test` grades the bit-366 pulse of the uncorrectable ICCM fetch, at least one pulse and each one clock wide (CHK-TCM-DBG366, `hw/sys/sep/doc/interrupts.adoc:413-415`), and logs the count over the run as `OBS-TCM-DBG366`.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |ROM store response code
 |What response code does a byte or halfword store to the ROM aperture return? `rom.adoc` says only that stores receive a response. Source: `hw/sys/sep/doc/rom.adoc`.
@@ -3321,8 +3325,12 @@ the test does.
 |`sep_efuse_token_channel_rand_test` logs `OBS-TOKEN-DIGEST-LAYOUT` as an open question.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Pre-sense upper nibble of `lc_state_o`
-|The register description and the specification agree that the `LC_STATE` shadow holds the INVALID state `4'b1111` (word `0x0F`) before sense. `sep_reset_mid_transfer_recovery_test` grades that word with `rst_ni` low (`CHK-SHADOW-CLEAR`), and `sep_sec_dis_timing_rand_test` (`CHK-SDIS-RESET-VALUES`, `CHK-SDIS-HOLD`) and `sep_sec_dis_override_test` (`CHK-RETAIN-LC-RESET`) grade it after a cold reset under SEC_DIS. `sep_sec_dis_override_test` (`CHK-LC-STATE-PORT`) grades `lc_state_o` at the first clock after reset release as 0x0F, and `sep_sec_dis_timing_rand_test` (`CHK-LC-STATE-PORT`) grades it after a cold reset under SEC_DIS.
+|The register description and the specification agree that the `LC_STATE` shadow holds the INVALID state `4'b1111` (word `0x0F`) before sense. `sep_reset_mid_transfer_recovery_test` grades that word with `rst_ni` low (`CHK-SHADOW-CLEAR`), and `sep_sec_dis_timing_rand_test` (`CHK-SDIS-RESET-VALUES`, `CHK-SDIS-HOLD`) and `sep_sec_dis_override_test` (`CHK-RETAIN-LC-RESET`) grade it after a cold reset under SEC_DIS. `sep_sec_dis_override_test` (`CHK-LC-STATE-PORT`) grades `lc_state_o` at the first clock after reset release as 0x0F, `sep_sec_dis_timing_rand_test` (`CHK-LC-STATE-PORT`) grades it after a cold reset under SEC_DIS, and `sep_efuse_sense_test` (`CHK-LC-STATE-PRESENSE-HOLD`) grades it on every clock of the pre-sense window with SEC_DIS 0.
 |`sep_sec_dis_override_test` grades that a JTAG write to the pre-sense `LC_STATE` word under SEC_DIS leaves it at `0x0000000f` (`CHK-SECDIS-LC-WR`) and logs the write response (`OBS-SECDIS-LC-WR`).
+|<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
+|Shadow fields downstream before sense done
+|Does a fuse field other than LOCKS and LC_STATE reach downstream logic as soon as it is sensed, or only when sensing completes? `hw/sys/sep/doc/otp_fuse_controller.adoc` (section Fuse Sensing and Boot Sequencing) says as soon as it is ready; the description of `hw/sys/sep/doc/assets/sep-token-processing.svg` says the shadow map is driven as zero until sense done or SEC_DIS.
+|`sep_efuse_sense_test` logs `OBS-SHADOW-PRESENSE-WITHHELD` as an open question: for the three public identity fields, the clock each lands in the sensed shadow, the clock the Key Manager OTP input first carries it, and the sense-done clock.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`LC_STATE` write with a wrong upper nibble
 |The specification does not state the effect of an `LC_STATE` shadow write with a wrong upper nibble. `sep_lcc_lc_state_transition_matrix_test` writes bits [7:4] of the data at 0 in every write cell and logs those bits beside the same bits of the readback.
@@ -3557,7 +3565,7 @@ feature, and the note says how the test treats the blocked leg.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |DMA interrupt clear write timing
 |When does the clear write of CLEAR_INTR_SRC land relative to the trigger and the chunk, and how many clear writes does one trigger give (`secure_dma.adoc`, CLEAR_INTR_SRC, INTR_SRC_ADDR_0)?
-|Effect: The clock and the count of the clear writes are logged only (`OBS-HS-CLR`, `sep_spi_dma_handshake_rand_test`). The bus encoding is graded: with CLEAR_INTR_BUS bit 0 = 1 the clear write reaches INTR_SRC_ADDR_0 on the DMA master (`sep-programming.adoc:800-803`, CHK-HS-CLR) With INTR_SRC_ADDR_0 below the enabled memory range, and with CLEAR_INTR_BUS bit 0 = 0, the clear writes on the DMA master, the clear word and the run's end are logged only (`OBS-DMA-CLR-RANGE`): no text states a range check of the clear write or the result of bus 0 in SEP.
+|Effect: The clock and the count of the clear writes are logged only (`OBS-HS-CLR`, `sep_spi_dma_handshake_rand_test`). The bus encoding is graded: with CLEAR_INTR_BUS bit 0 = 1 the clear write reaches INTR_SRC_ADDR_0 on the DMA master (`sep-programming.adoc:800-803`, CHK-HS-CLR) With CLEAR_INTR_BUS bit 0 = 0 the clear write never reaches INTR_SRC_ADDR_0 and the clear word keeps its sentinel (CHK-DMA-CLR-BUS0: `dma.hjson:771-773` names bus 0 the CTN/System fabric, and `hw/sys/sep/doc/dma.adoc:61-62` ties those ports off). With INTR_SRC_ADDR_0 below the enabled memory range the clear writes on the DMA master and the clear word are logged only, and the end of both runs is logged only (`OBS-DMA-CLR-RANGE`): no text states a range check of the clear write.
 |===
 
 [[sep-vplan-phase3-unstated]]
@@ -3884,7 +3892,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |CPU TCM request at `sep_cpu_tcm_req_o`
 |`clken`, `wren`, the address, the write data and the ECC fields of the CPU TCM request, and its response `sep_cpu_tcm_rsp_i`
 |ACCEPT-PROBE
-|PR-TCM is an observation tap. The testbench taps give the ICCM and DCCM active flags and the ICCM bank 0 address only. Checks that use it: the coverpoint `cp_tcm_dma_dir_range` (owned by `sep_tcm_dma_aperture_ecc_test`), the controls of CHK-TCM-SBE and CHK-TCM-DBE of `sep_tcm_dma_aperture_ecc_test`, and CHK-LSU-ICCM-WE of `sep_cpu_demux_unmapped_fetch_test`.
+|PR-TCM is an observation tap. The testbench taps give the ICCM and DCCM active flags; PR-TCM gives every bank of the ICCM and DCCM macro request (clock enable, write enable, row address, write data and write ECC) and response (read data and ECC), bank 0 in the low bits (SEP_TB_ARCH PR-TCM). Checks that use it: the coverpoint `cp_tcm_dma_dir_range` (owned by `sep_tcm_dma_aperture_ecc_test`), the controls of CHK-TCM-SBE and CHK-TCM-DBE and the corrected write-back of CHK-TCM-SBE-WB of `sep_tcm_dma_aperture_ecc_test`, and CHK-LSU-ICCM-WE of `sep_cpu_demux_unmapped_fetch_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |SMC outbound request at `sep_ext_to_smc_axi_req_o`
 |The request to the SMC outbound port
@@ -3954,7 +3962,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |PIC register read data at reset, with X on the unreset read data
 |A read-only copy of the PIC register read data (`picm_rd_data`) at each PIC register read, four-state on VCS
 |ACCEPT-PROBE
-|`pic_rd_data_probe_o` is an observation tap the test adds to the SEP_TB_ARCH observation-probe list. It anchors CHK-RESET-X of `sep_pic_reg_rand_test` and the `meip` X part of CHK-BASE in `sep_pic_pending_map_walk_rand_test`.
+|`pic_rd_data_probe_o` is an observation tap the test adds to the SEP_TB_ARCH observation-probe list. It anchors CHK-RESET-X and the X part of CHK-PIC-RSVD of `sep_pic_reg_rand_test` and the `meip` X part of CHK-BASE in `sep_pic_pending_map_walk_rand_test`.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |A CPU store to the read-only `meip[0]` that reaches the PIC
 |A read-only copy of the PIC register write strobe and offset (`picm_wren_ff`, `picm_waddr_ff[14:0]`) on each clock
@@ -4004,7 +4012,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |DMA master beat fields, DMA STATUS level bits and the DMA_BUS_ERR_STATUS host-path latch
 |AxLEN, WSTRB, the read address step and the beat addresses of the DMA master; the level of `STATUS.DONE`, `CHUNK_DONE`, `ERROR`, `ABORTED` and `SHA2_DIGEST_VALID` on each clock; the fault input and the clear pulse of the host-path latch
 |ACCEPT-PROBE
-|No existing probe shows them. `dma_axi_req_probe_o`, `dma_status_probe_o` and `dma_bus_err_latch_probe_o` are observation taps the test adds to the SEP_TB_ARCH observation-probe list. Checks on them: CHK-DMA-BEAT, CHK-DMA-ADDR, CHK-DMA-CHUNKRISE, CHK-DMA-DONE-ORDER and CHK-DMA-GO-CHUNKS of `sep_dma_transfer_matrix_rand_test`, CHK-DMA-ABORT-BEATS of `sep_dma_abort_recovery_rand_test`, CHK-HS-CLR of `sep_spi_dma_handshake_rand_test`. CHK-RACE of `sep_cpu_bridge_fault_matrix_rand_test` grades the DMA fault-versus-clear race on `sep_cpu_ctrl_err_pulse_probe_o`, which gives the same observation as `dma_bus_err_latch_probe_o` (see the same-cycle row above).
+|No existing probe shows them. `dma_axi_req_probe_o`, `dma_status_probe_o` and `dma_bus_err_latch_probe_o` are observation taps the test adds to the SEP_TB_ARCH observation-probe list. Checks on them: CHK-DMA-BEAT, CHK-DMA-ADDR, CHK-DMA-CHUNKRISE, CHK-DMA-DONE-ORDER and CHK-DMA-GO-CHUNKS of `sep_dma_transfer_matrix_rand_test`, CHK-DMA-CTRL-BUSY of `sep_dma_transfer_matrix_rand_test`, CHK-DMA-ABORT-BEATS of `sep_dma_abort_recovery_rand_test`, CHK-HS-CLR and CHK-DMA-CLR-BUS0 of `sep_spi_dma_handshake_rand_test`. CHK-RACE of `sep_cpu_bridge_fault_matrix_rand_test` grades the DMA fault-versus-clear race on `sep_cpu_ctrl_err_pulse_probe_o`, which gives the same observation as `dma_bus_err_latch_probe_o` (see the same-cycle row above).
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Clock of every flop
 |-
@@ -4512,7 +4520,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |PR-TCM
 |Read-only probe
 |`clken`, `wren`, the address, the write data and the ECC fields of `sep_cpu_tcm_req_o`, and the response `sep_cpu_tcm_rsp_i`.
-|`sep_tcm_dma_aperture_ecc_test` (`cp_tcm_dma_dir_range`, controls of CHK-TCM-SBE and CHK-TCM-DBE), `sep_cpu_demux_unmapped_fetch_test` (CHK-LSU-ICCM-WE)
+|`sep_tcm_dma_aperture_ecc_test` (`cp_tcm_dma_dir_range`, controls of CHK-TCM-SBE and CHK-TCM-DBE, CHK-TCM-SBE-WB), `sep_cpu_demux_unmapped_fetch_test` (CHK-LSU-ICCM-WE)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-SMC
 |Read-only probe
@@ -4537,7 +4545,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`pic_rd_data_probe_o`
 |Read-only probe
 |A copy of the PIC register read data (`picm_rd_data`) at each PIC register read, four-state on VCS.
-|`sep_pic_reg_rand_test` (CHK-RESET-X), `sep_pic_pending_map_walk_rand_test` (the `meip` X part of CHK-BASE)
+|`sep_pic_reg_rand_test` (CHK-RESET-X, the X part of CHK-PIC-RSVD), `sep_pic_pending_map_walk_rand_test` (the `meip` X part of CHK-BASE)
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |`pic_wr_probe_o`
 |Read-only probe
@@ -4557,7 +4565,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`dma_axi_req_probe_o`
 |Read-only probe
 |The AR, AW, W and B channel fields (address, AxLEN, write strobes, handshakes) of the DMA master after the alias remap.
-|`sep_dma_transfer_matrix_rand_test` (CHK-DMA-BEAT, CHK-DMA-ADDR, CHK-DMA-DONE-ORDER, CHK-DMA-GO-CHUNKS), `sep_dma_abort_recovery_rand_test` (CHK-DMA-ABORT-BEATS), `sep_spi_dma_handshake_rand_test` (CHK-HS-CLR)
+|`sep_dma_transfer_matrix_rand_test` (CHK-DMA-BEAT, CHK-DMA-ADDR, CHK-DMA-DONE-ORDER, CHK-DMA-GO-CHUNKS, CHK-DMA-CTRL-BUSY), `sep_dma_abort_recovery_rand_test` (CHK-DMA-ABORT-BEATS), `sep_spi_dma_handshake_rand_test` (CHK-HS-CLR, CHK-DMA-CLR-BUS0)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |`dma_status_probe_o`
 |Read-only probe
@@ -4657,7 +4665,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`lc_state_probe_o`
 |Read-only tap
 |The `sep` output `lc_state_o`, the differentially encoded lifecycle state, which is open in the DUT instance without the tap.
-|`sep_lcc_lc_state_transition_matrix_test` (CHK-LC-STATE-PORT)
+|`sep_lcc_lc_state_transition_matrix_test` (CHK-LC-STATE-PORT), `sep_efuse_sense_test` (CHK-LC-STATE-PRESENSE-HOLD, CHK-LC-STATE-RELEASE)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Clock-gater test pins and AXI cell test inputs
 |Read-only tap
@@ -5346,7 +5354,7 @@ test that owns the feature, or states why no pass or fail value exists.
 |One register slave serves every master (`dma.adoc`, overview). No contract differs by master.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |ICCM and DCCM sub-word access rule
-|Not stated (`cpu.adoc`). `sep_tcm_dma_aperture_ecc_test` logs 1-byte and 2-byte DMA copies into and out of one word of each memory as `OBS-TCM-SUBWORD`.
+|A sub-word DMA write is stated: ICCM and DCCM take only whole 32-bit words from the DMA, and any other write ends in `ERROR_CODE.BUS_ERROR` with the host-path fault set (`hw/sys/sep/doc/dma.adoc:118-121`, `:95-96`; VeeR EL2 PRM at `tt-Cores-VeeR-EL2@07a51d817`, `docs/source/memory-map.md`, "Write Alignment Rules", `:1203-1204`). `sep_tcm_dma_aperture_ecc_test` grades the `BUS_ERROR` bit and the host-path fault on a 1-byte or 2-byte copy into one word of each memory (CHK-TCM-SUBWORD-WR), after `ERROR_CODE` and `DMA_BUS_ERR_STATUS` read 0 before the GO (CTRL-TCM-SUBWORD-PRE). No sentence states the other bits of `ERROR_CODE`; the test logs the whole code as `OBS-TCM-SUBWORD-CODE`. The word value after that write and a sub-word DMA read are not stated; the test logs them as `OBS-TCM-SUBWORD`.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |SPI and DMA aperture walk, local SPI without extension traffic, flash data only through COMMAND and RXDATA
 |Graded in `sep_fabric_row_response_matrix_test` (silence sequence, DMA past extent), `sep_unmapped_access_policy_test` (SPI past extent) and `sep_irq_ip_to_aggregator_test` (DMA hole).

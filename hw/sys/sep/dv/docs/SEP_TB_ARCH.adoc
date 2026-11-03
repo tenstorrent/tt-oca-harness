@@ -602,8 +602,8 @@ Observation probe groups:
   EL2 PIC with the registered read strobe and read address
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), four-state on VCS;
   tied to 0 on the CPU stub build. Owners: `sep_pic_reg_rand_test`
-  (CHK-RESET-X), `sep_pic_pending_map_walk_rand_test` (the `meip` X part of
-  CHK-BASE).
+  (CHK-RESET-X, the X part of CHK-PIC-RSVD),
+  `sep_pic_pending_map_walk_rand_test` (the `meip` X part of CHK-BASE).
 * PIC write-strobe probe (`pic_wr_probe_o`): `picm_wren_ff` and
   `picm_waddr_ff[14:0]` of the VeeR EL2 PIC
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), one bit and the
@@ -1760,7 +1760,9 @@ test uses the AXI front door, and either readout can run any source:
 
 `sep_efuse_sense_test`:: *Backdoor* shadow compare (the default), reading the
   sensed array directly from the top-level `efuse_shadow_probe_o` port. Enrolled
-  with `+sep_efuse_preload` (committed default preload).
+  with `+sep_efuse_preload` (committed default preload). It also reads the
+  `km_otp_sep_*_id_o` ports on every clock of the pre-sense window and logs when
+  each identity field reaches them (OBS-SHADOW-PRESENSE-WITHHELD).
 `sep_efuse_image_test`:: The *one* test that reads the shadow over the *AXI front
   door* (exercising the real software read datapath), plus a resense cycle with a
   fresh image. Runs the default (random) source.
