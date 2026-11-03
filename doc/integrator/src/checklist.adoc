@@ -45,8 +45,8 @@ xref:smu.adoc#sep-integration[SEP Integration]
 xref:smu.adoc#sep-integration[SEP Integration]
 
 |[ ]
-|Confirm that the system fabric drives only legal AXI4 bursts into `smu_axi_in`
-|Fabric configuration or protocol-checker evidence that every burst is legal at `smu_axi_in`
+|Confirm that the system fabric meets the `smu_axi_in` boundary contract: no atomic transactions and only legal AXI4 bursts
+|Fabric configuration or protocol-checker evidence that `AWATOP` is 0 and every burst is legal at `smu_axi_in`
 |xref:smu.adoc#smu-axi-boundary-contract[AXI boundary contract]
 
 |[ ]
@@ -96,8 +96,8 @@ ifdef::backend-pdf[]
 |<<smc-integration,SMC Integration>>, <<sep-integration,SEP Integration>>
 
 |[ ]
-|Confirm that the system fabric drives only legal AXI4 bursts into `smu_axi_in`
-|Fabric configuration or protocol-checker evidence that every burst is legal at `smu_axi_in`
+|Confirm that the system fabric meets the `smu_axi_in` boundary contract: no atomic transactions and only legal AXI4 bursts
+|Fabric configuration or protocol-checker evidence that `AWATOP` is 0 and every burst is legal at `smu_axi_in`
 |<<smu-axi-boundary-contract,AXI boundary contract>>
 
 |[ ]

@@ -103,8 +103,9 @@ aperture rules below do not apply. The `smu_axi_in` / `smu_axi_out` port types
 are the same in both configurations.
 
 The SMU AXI ports and crossbar carry 12-bit user fields on all five channels.
-The crossbar presents 6-bit transaction IDs to the SEP and SMC inbound
-subordinates.
+`smu_axi_in` accepts 8-bit transaction IDs and `smu_axi_out` presents 10-bit
+transaction IDs, in both `CFG.SEP` configurations. The crossbar presents 6-bit
+transaction IDs to the SEP and SMC inbound subordinates.
 
 ifdef::backend-html5[]
 Connectivity is described in
@@ -161,6 +162,13 @@ endif::backend-pdf[]
 The SMU does not check that requests on `smu_axi_in` are legal for it. The
 system fabric that drives the port must meet the following rules in both
 `CFG.SEP` configurations.
+
+Atomic transactions::
+The SMU does not support AXI atomic transactions: `AWATOP` must be 0. Nothing
+in the SMU refuses or answers an atomic request. It is forwarded as an ordinary
+write, and an atomic that expects read data never receives it, so the requester
+waits indefinitely. If the system fabric can issue atomics towards the SMU,
+filter them in front of `smu_axi_in`.
 
 Burst encodings::
 Every request must be a legal AXI4 burst. The crossbar routes a burst by its

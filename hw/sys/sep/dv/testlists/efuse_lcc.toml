@@ -326,7 +326,7 @@ module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
 # No reseed: every run runs all four events; the seed selects only the flip offset and their order.
 timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log", "lcc_gate_checks"]
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log", "lcc_gate_checks", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive"]
@@ -339,7 +339,7 @@ module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
 # No reseed: the dbg_rstb_i event is directed; the main entry carries the drawn offset and order.
 timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log", "lcc_gate_checks"]
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log", "lcc_gate_checks", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 tools = ["vcs"]
 target = "default"
@@ -429,7 +429,7 @@ module = "efuse.sep_efuse_token_fault_matrix_test"
 seed = 1
 reseed = 3
 timeout_sec = 3600
-tags = ["efuse", "token", "fault", "rand_rep", "subsystem"]
+tags = ["efuse", "token", "fault", "rand_rep", "subsystem", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -453,7 +453,7 @@ module = "efuse.sep_efuse_lock_slot_matrix_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["efuse", "lock", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner"]
+tags = ["efuse", "lock", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 

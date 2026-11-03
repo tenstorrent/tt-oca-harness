@@ -19,10 +19,9 @@
 //     Local SRAM/Scratchpad: 1 MiB (32 banks), SECDED ECC.
 //
 // The interleave -- how an offset inside that 1 MiB picks one of the 32 banks
-// and an entry within it -- is not fixed by either document. It is carried
-// here as a DV-owned table with two assumptions: consecutive 64-byte stripes
-// rotate across the FOUR banks of a group, and the eight 128 KiB groups are
-// contiguous. Bank and entry are then
+// and an entry within it -- is the scratchpad paragraph of cpu.adoc:
+// consecutive 64-byte stripes rotate across the FOUR banks of a group, and
+// the eight 128 KiB groups are contiguous. Bank and entry are then
 //
 //     bank  = 4 * (offset / 128 KiB) + (offset / 64) % 4
 //     entry = ((offset % 128 KiB) / 256) * 8 + (offset % 64) / 8

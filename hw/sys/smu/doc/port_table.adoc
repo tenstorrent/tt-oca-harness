@@ -81,9 +81,9 @@
 |`rst_primary_ref_clk_no` |`logic` |Output |1 |Primary reset synchronized to reference clock domain (active low). |Downstream subsystems |N/A
 |`rst_primary_smc_clk_no` |`logic` |Output |1 |Primary reset synchronized to SMC clock domain (active low). |Downstream subsystems |N/A
 
-|`smu_axi_in_req_i` |`smu_axi_xbar_pkg::axi_56_64_req_t` |Input |- |SMU AXI crossbar inbound request (from SMN). Bursts must be legal AXI4 bursts; the SMU does not check them. |SMN fabric |Tie to '0 if unused
+|`smu_axi_in_req_i` |`smu_axi_xbar_pkg::axi_56_64_req_t` |Input |- |SMU AXI crossbar inbound request (from SMN): AXI4, 56-bit address, 64-bit data, 8-bit ID, 12-bit user. No atomic transactions: `aw.atop` must be 0. Bursts must be legal AXI4 bursts; the SMU does not check them. |SMN fabric |Tie to '0 if unused
 |`smu_axi_in_resp_o` |`smu_axi_xbar_pkg::axi_56_64_resp_t` |Output |- |SMU AXI crossbar inbound response. |SMN fabric |N/A
-|`smu_axi_out_req_o` |`smu_axi_xbar_pkg::axi_out_req_t` |Output |- |SMU AXI crossbar outbound request (to SMN). |SMN fabric |N/A
+|`smu_axi_out_req_o` |`smu_axi_xbar_pkg::axi_out_req_t` |Output |- |SMU AXI crossbar outbound request (to SMN): AXI4, 56-bit address, 64-bit data, 10-bit ID, 12-bit user. |SMN fabric |N/A
 |`smu_axi_out_resp_i` |`smu_axi_xbar_pkg::axi_out_resp_t` |Input |- |SMU AXI crossbar outbound response. |SMN fabric |Tie to '0 if unused
 
 |`smc_external_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |SMC AXI-Lite external port request for adopter peripheral expansion. |Adopter peripherals |N/A
