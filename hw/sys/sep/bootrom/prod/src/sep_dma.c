@@ -106,7 +106,8 @@ static inline int dest_is_iccm(uint32_t dest, uint32_t n) {
 static uint32_t dma_claim(void) {
     dma_write(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, DMA_STATUS_W1C);
     const uint32_t status = dma_read(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
-    if (status & (DMA_STATUS_BUSY | DMA_STATUS_DONE | DMA_STATUS_ERROR)) {
+    const uint32_t held = DMA_STATUS_BUSY | DMA_STATUS_DONE | DMA_STATUS_ERROR;
+    if ((status & held) != 0u || (harden_u32(status) & held) != 0u) {
         report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_ERROR);
         simputshex32("DMA_STS=", status);
         return SEP_DMA_ERR_TRANSFER;
@@ -213,8 +214,8 @@ uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
     }
 
     const uint32_t err = dma_claim();
-    if (err != 0u) {
-        return err;
+    if (err != 0u || harden_u32(err) != 0u) {
+        return err != 0u ? err : SEP_DMA_ERR_TRANSFER;
     }
     dma_program(dest, src, n, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
     return dma_go_and_wait(0u, dest, src, n);
@@ -287,8 +288,8 @@ uint32_t sep_dma_zero(uint32_t dest, size_t len) {
     }
 
     const uint32_t err = dma_claim();
-    if (err != 0u) {
-        return err;
+    if (err != 0u || harden_u32(err) != 0u) {
+        return err != 0u ? err : SEP_DMA_ERR_TRANSFER;
     }
 
     // Every write of a zero fill is checked against the enabled range.

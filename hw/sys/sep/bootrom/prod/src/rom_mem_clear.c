@@ -58,9 +58,9 @@ uint32_t rom_clear_ext_sram(void) {
 
     simputshex32("SRAM_SCRUB_LEN=", scrub);
     const uint32_t err = sram_zero(scrub);
-    if (err != 0u) {
+    if (err != 0u || harden_u32(err) != 0u) {
         simputs("SRAM_CLR_FAIL\n");
-        return err;
+        return err != 0u ? err : SEP_DMA_ERR_TRANSFER;
     }
     simputs("SRAM_CLR_OK\n");
 #else
@@ -72,7 +72,8 @@ uint32_t rom_clear_ext_sram(void) {
 }
 
 uint32_t rom_clear_sram_for_retry(void) {
-    if (sram_zero(SRAM_SIZE) != 0u) {
+    const uint32_t err = sram_zero(SRAM_SIZE);
+    if (err != 0u || harden_u32(err) != 0u) {
         simputs("SRAM_RETRY_CLR_FAIL\n");
         return OCA_BOOT_ERR_DMA;
     }

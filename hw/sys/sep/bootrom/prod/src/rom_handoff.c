@@ -264,8 +264,8 @@ uint32_t rom_handoff_bl1(void) {
     simputshex32("COPY_DST=", load_addr);
     simputshex32("COPY_LEN=", img_length);
 
-    uint32_t dma_err = sep_dma_copy(load_addr, (uint32_t)(uintptr_t)bl1.bytes, img_length);
-    if (dma_err) {
+    const uint32_t dma_err = sep_dma_copy(load_addr, (uint32_t)(uintptr_t)bl1.bytes, img_length);
+    if (dma_err != 0u || harden_u32(dma_err) != 0u) {
         simputs("BL1_COPY_FAIL\n");
         report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_BAD_ADDR);
         return OCA_BOOT_ERR_BL1_BAD_ADDR;
