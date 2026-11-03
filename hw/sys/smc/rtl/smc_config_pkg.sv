@@ -53,7 +53,9 @@ package smc_config_pkg;
   // PWM Parameters //
   ////////////////////
 
-  localparam int unsigned NumPwmOutputs = 4;
+  // PWM channel count, from the generated register map's PWM_PARAM array length.
+  localparam int unsigned NumPwmOutputs =
+      32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_PWM_PWM_PARAM_NUM);
 
   ///////////////////////
   // AVSBus Parameters //

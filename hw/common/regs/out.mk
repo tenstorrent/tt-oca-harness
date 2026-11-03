@@ -17,9 +17,10 @@ ocah_reg_cpu_if      = $(or $(OCAH_REG_CPU_IF_$(call ocah_reg_key,$(1))),$(OCAH_
 # Decode-error responses (--err-if-bad-addr / --err-if-bad-rw). Off by default
 # because a block behind a decoder that already filters its window has nothing
 # to report, and the checks cost a comparator per register. On where the DV env
-# expects the block itself to answer a bad access with an error.
+# expects the block itself to answer a bad access with an error. A block can add
+# further regblock options through OCAH_REG_REGBLOCK_OPTS_<name>.
 ocah_reg_err_checks  = $(filter $(call ocah_reg_name,$(1)),$(OCAH_REG_ERR_CHECK_BLOCKS))
-ocah_reg_regblock_opts = $(if $(call ocah_reg_err_checks,$(1)),--err-if-bad-addr --err-if-bad-rw)
+ocah_reg_regblock_opts = $(if $(call ocah_reg_err_checks,$(1)),--err-if-bad-addr --err-if-bad-rw) $(OCAH_REG_REGBLOCK_OPTS_$(call ocah_reg_name,$(1)))
 # PeakRDL addrmap parameter overrides (`-P NAME=VALUE`). Keyed by the RDL stem.
 ocah_reg_rdl_params = $(foreach p,$(OCAH_REG_RDL_PARAMS_$(call ocah_reg_name,$(1))),-P $(p))
 # Non-empty when the block's register RTL is sourced outside regblock.

@@ -288,7 +288,7 @@ module straps_reg (
             readback_data_var[31:0] = hwif_in.STRAPS_LO.straps.next;
         end
         if(rd_mux_addr == 3'h4) begin
-            readback_data_var[28:0] = hwif_in.STRAPS_HI.straps.next;
+            readback_data_var[30:0] = hwif_in.STRAPS_HI.straps.next;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

@@ -171,17 +171,25 @@ endif::backend-pdf[]
 
 == PWM Registers
 
-The pulse-width modulator has one output per channel; the count is `smc_config_pkg::NumPwmOutputs`. Offsets are relative to
-the PWM base address.
+The pulse-width modulator has one output per channel; the count is `smc_config_pkg::NumPwmOutputs`.
+The PWM wrapper map places the OpenTitan PWM registers at offset 0x000 and the
+pad-control register `CTRL` at offset 0x800. `CTRL.PAD_EN` holds one bit per
+channel: while bit _i_ is set, channel _i_ drives its pad. It does not start the
+channel; `PWM_EN` does. Other offsets in the wrapper answer DECERR. Offsets are
+relative to the PWM base address.
 
 ifdef::backend-html5[]
 ++++
+include::ip:partial$pwm/regs/gen/html/pwm_wrap.html[]
 include::ip:partial$pwm/regs/gen/html/pwm.html[]
+include::ip:partial$pwm/regs/gen/html/pwm_ctrl.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
+include::../../../ip/pwm/regs/gen/adoc/pwm_wrap.adoc[leveloffset=+1]
 include::../../../../vendor/lowRISC/opentitan/overlay/regs/pwm/regs/gen/adoc/pwm.adoc[leveloffset=+1]
+include::../../../ip/pwm/regs/gen/adoc/pwm_ctrl.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
 == Peripheral Parameter Settings

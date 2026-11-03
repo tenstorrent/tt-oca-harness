@@ -912,6 +912,8 @@ feature rows.
 |`smc_ext_interrupts_pin_test` |2 |ext_interrupts_i[0] after prim_sync3.
 |`smc_fw_plic_claim_test` |2 |Firmware programs the cluster PLIC and claims ext_interrupts_i[0] through it.
 |`smc_periph_regblock_sweep_test` |3 |The peripheral register blocks no other leaf writes -- AVSBus, telemetry, system timer, eFuse interface, DMA configuration and the log-engine region registers -- cycled against their RDL contract and restored.
+|`smc_pwm_pad_test` |2 |PWM channel i claims GPIO pad 59+i while `PWM_CTRL.CTRL.PAD_EN[i]` is set: waveform, `INVERT` idle level, software veto and release; Cool Reset In and Out sit on pads 63 and 64.
+|`smc_pwm_sanity_test` |2 |PWM register reset, read/write, partial-strobe refusal, `REGWEN` lock and decoded extent.
 |`smc_rdl_field_sweep_test` |3 |Every software-owned field of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, plus the adopter strap capture registers, driven against its generated RDL contract and restored.
 |`smc_regblock_subword_strobe_sweep_test` |3 |One reference register of each of the 133 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
 |`smc_register_boundary_depth_test` |3, planned upgrade |Run a compact safe register-boundary sweep.
@@ -2516,6 +2518,147 @@ first and last words are read only, and their reason column reads not specified 
 
 '''''
 
+
+[[sec-569-smc_pwm_sanity_test]]
+===== 569 `smc_pwm_sanity_test`
+
+*Phase*: 2
+
+*Area*: MISC
+
+*Source Module*: `smc_pwm_sanity_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 4-byte accesses) to the PWM
+registers at `SMC_TOP_SMC_PWM_PWM_BASE_ADDR`, and the first word past `SMC_TOP_SMC_PWM_PWM_SIZE`; bench
+signal `tb_fuse_sense_done`.
+
+*Run mode*: one testlist entry in `testlists/register.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `axil`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The PWM register block decodes at its generated addresses, resets, stores, refuses a
+partial-strobe write, locks under `REGWEN` and ends at its decoded extent.
+
+*Test Coverage*:
+
+* Every register of the block, with the channel count taken from the generated
+  `SMC_TOP_SMC_PWM_PWM_*_NUM`, reads the reset word composed from the generated `pwm.h` fields.
+* `CFG`, `PWM_EN`, `INVERT` and every `PWM_PARAM`, `DUTY_CYCLE` and `BLINK_PARAM` instance hold a
+  distinct pattern masked to the fields `smc_reg.py` marks `rw`, and then the same pattern with
+  every writable bit flipped, so each writable bit is written and read back as 1 and as 0. In each
+  pass all patterns are written before any is read back, so two addresses that decode to one
+  register fail the compare. Each register is restored to its reset word.
+* A write to `PWM_PARAM_0` with only byte lane 0 strobed answers SLVERR, because the register
+  takes full-word writes only, and the register keeps its earlier value.
+* Writing 0 to `REGWEN` clears it. Later writes of every writable bit inverted from reset to
+  `CFG`, `PWM_EN`, `INVERT` and the last `DUTY_CYCLE` instance leave their reset words in place,
+  and `REGWEN` still reads 0.
+* A read of the first word past the decoded extent answers an error with the generated
+  past-extent data word.
+
+*Test Procedure*:
+
+Drive `smc_pwm_sanity_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PWM-RESET` |Every register reads its generated reset word; any other word or a non-OKAY
+response fails it
+|`CHK-PWM-RW` |Every writable register reads back its distinct pattern and its flipped pattern,
+then its reset word after each restore; a mismatch fails it
+|`CHK-PWM-STROBE` |The one-lane write to `PWM_PARAM_0` answers SLVERR and the register still reads
+the pattern written before it; another response or a changed value fails it
+|`CHK-PWM-REGWEN` |`REGWEN` reads 0 after the clear and after the locked writes, and `CFG`,
+`PWM_EN`, `INVERT` and the last `DUTY_CYCLE` instance still read their reset words; any other value
+fails it
+|`CHK-PWM-PAST-END` |The read at `SMC_TOP_SMC_PWM_PWM_BASE_ADDR` plus `SMC_TOP_SMC_PWM_PWM_SIZE` answers
+an error with the generated past-extent data word; an OKAY response or other data fails it
+|===
+
+*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The PWM outputs are not connected at the SMC boundary, so the test checks the
+register interface only; `ALERT_TEST` is read for its reset word and never written.
+
+'''''
+
+[[sec-570-smc_pwm_pad_test]]
+===== 570 `smc_pwm_pad_test`
+
+*Phase*: 2
+
+*Area*: MISC
+
+*Source Module*: `smc_pwm_pad_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 4-byte accesses) to the PWM
+registers at `SMC_TOP_SMC_PWM_PWM_BASE_ADDR`, `PWM_CTRL.CTRL` at
+`SMC_TOP_SMC_PWM_PWM_CTRL_CTRL_BASE_ADDR` and `GPIO_INTF[59..62].DATA_CTRL`; bench signals
+`tb_lsio_interface_select`, `tb_core2pad_o`, `tb_core2pad_en_o`, `tb_rst_cool_from_flr` and
+`tb_fuse_sense_done`.
+
+*Run mode*: one testlist entry in `testlists/register.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `axil`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: PWM channel i drives GPIO pad 59+i exactly while `PAD_EN[i]` is set, the pad's own
+`lsio_disable` vetoes the claim, and the cool-reset pads sit at 63 (in) and 64 (out).
+
+*Test Coverage*:
+
+* After reset `PAD_EN` reads 0 and pads 59-62 have LSIO select 0 and output enable 0.
+* With `PAD_EN` 0, `GPIO_INTF[60]` drives pad 60 from its registers, 1 then 0.
+* With `CFG.CNTR_EN` 1, `CLK_DIV` 1, `DC_RESN` 3 (a 32-cycle period), every `DUTY_CYCLE.A` at half
+  and `PAD_EN` and `PWM_EN` all ones, pads 59-62 have select 1, output enable 1,
+  `DATA_CTRL.lsio_enable` 1, and each pad's data takes both 0 and 1 within one period.
+* With `PWM_EN[0]` 0 and `PAD_EN[0]` 1, pad 59 stays an output at 0 for a period, and at 1 with
+  `INVERT[0]` 1.
+* `GPIO_INTF[61].DATA_CTRL.lsio_disable` 1 makes pad 61 follow its registers, 1 then 0 for a
+  period each, with `lsio_enable` reading 0; once cleared, the pad carries the waveform again.
+* `PAD_EN` 0 returns pads 59-62 to select 0 and output enable 0 with the channels still running.
+* Pad 64 has select 1, data 0 and output enable equal to the inverted cool reset; pad 63 has
+  select 0.
+
+*Test Procedure*:
+
+Drive `smc_pwm_pad_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PWM-PAD-RESET` |`PAD_EN` reads 0 and pads 59-62 have select 0 and output enable 0; any other
+value fails it
+|`CHK-PWM-PAD-SW` |With `PAD_EN` 0, pad 60 shows output enable 1 and data 1, then data 0, from its
+`GPIO_INTF` registers with select 0; a bounded wait that expires fails it
+|`CHK-PWM-PAD-CLAIM` |Pads 59-62 have select 1, output enable 1, `lsio_enable` 1, and data both 0
+and 1 within one period; a missing level or a dropped enable fails it
+|`CHK-PWM-PAD-IDLE` |Pad 59 holds output enable 1 and data 0 for a period with `PWM_EN[0]` 0, and
+data 1 with `INVERT[0]` 1; a change within the period fails it
+|`CHK-PWM-PAD-VETO` |Pad 61 holds its register data, 1 then 0, for a period each while
+`lsio_disable` is set, `lsio_enable` reads 0, and the waveform returns once cleared; any toggle
+under the veto fails it
+|`CHK-PWM-PAD-RELEASE` |`PAD_EN` 0 brings pads 59-62 to select 0 and output enable 0; a bounded
+wait that expires fails it
+|`CHK-PAD-MOVED` |Pad 64 has select 1, data 0 and output enable the inverse of the cool reset, and
+pad 63 select 0, at every cycle of one period; any other value fails it
+|===
+
+*Pass Criteria*: all seven checkers hold after their compares, in order, and every sequence assert
+holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The cool reset is not asserted, so pad 64 is seen only with its output enable at 0.
+
+'''''
 
 [[smc-vplan-area-power]]
 ==== POWER

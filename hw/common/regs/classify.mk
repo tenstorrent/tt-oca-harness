@@ -37,7 +37,8 @@ ocah_reg_is_composite = $(wildcard $(dir $(OCAH_REG_RDL_$(call ocah_reg_key,$(1)
 # oca_i3c_wrap describes the same map as the SMC top sees it (HCI fields
 # expanded), while its register RTL comes from the vendored i3c-core.
 # The axil_mailbox maps describe the register interface implemented by the
-# vendored PULP mailbox RTL.
+# vendored PULP mailbox RTL. pwm_wrap composes the vendored OpenTitan PWM map,
+# whose register RTL is upstream's; its pwm_ctrl sub-block is a regblock leaf.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
@@ -45,7 +46,7 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic sep_entropy_pool aon_timer dfd smc_cla dma_ctrl \
   pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager \
-  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm
+  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm pwm_wrap
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
@@ -179,6 +180,7 @@ OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   oca_i3c_wrap \
   otbn \
   pwm \
+  pwm_wrap \
   secure_dma \
   sep_external \
   smc \
@@ -195,6 +197,21 @@ OCAH_REG_INCDIR_BLOCKS ?= $(sort $(OCAH_REG_CATALOG_SEARCH_BLOCKS) $(foreach b,$
 # registers.rdl of its own).
 OCAH_REG_EXTRA_SEARCH_hw_ip_i3ccore_wrap_regs_oca_i3c_wrap += \
   $(OCAH_ROOT)/vendor/chipsalliance/i3c-core/upstream/src/rdl
+
+# pwm_ctrl takes N_OUTPUTS from the elaborated pwm_wrap.rdl, so its PAD_EN width
+# follows the wrapper's channel count. The value is read when a pwm_ctrl recipe
+# runs ($$ defers it past rule evaluation), and pwm_wrap.rdl is a prerequisite
+# of pwm_ctrl's outputs (OCAH_REG_PARAM_DEPS_<name>, consumed in rules.mk).
+OCAH_REG_PWM_WRAP_ID := hw/ip/pwm/regs/pwm_wrap
+ocah_reg_pwm_wrap_n_outputs = $(shell "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlparam.py" \
+  -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(OCAH_REG_PWM_WRAP_ID)) -t pwm_wrap -p N_OUTPUTS \
+  "$(call ocah_reg_rdl,$(OCAH_REG_PWM_WRAP_ID))")
+OCAH_REG_RDL_PARAMS_pwm_ctrl ?= $$(ocah_reg_pwm_wrap_n_outputs)
+OCAH_REG_PARAM_DEPS_pwm_ctrl ?= $(OCAH_ROOT)/$(OCAH_REG_PWM_WRAP_ID).rdl \
+  $(OCAH_ROOT)/tools/regs/rdlparam.py
+# Hierarchical HWIF type names do not carry the parameter value, so pwm_wrap
+# names the same pwm_ctrl_reg_pkg types at any channel count.
+OCAH_REG_REGBLOCK_OPTS_pwm_ctrl ?= --type-style hier
 
 # Blocks in scope: TARGET=<name> selects one, else all.
 ocah_reg_block_by_name = $(strip $(foreach block,$(OCAH_REG_BLOCKS),$(if $(filter $(1),$(notdir $(block))),$(block))))

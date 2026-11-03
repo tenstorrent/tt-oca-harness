@@ -57,6 +57,7 @@ from smc_reg import (  # noqa: E402
     FILTER_CTRL_END_ADDR_REG_DEFAULT,
     GPIO_INTF_ACCESS_FILTER_REG_DEFAULT,
     I2C_STATUS_REG_DEFAULT,
+    PWM_CTRL_CTRL_REG_DEFAULT,
     PWM_DUTY_CYCLE_REG_DEFAULT,
     RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_DEFAULT,
     RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT,
@@ -146,11 +147,14 @@ TELEMETRY0_STATUS = smc_indexed_addr(
 OCTS_CTRL = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR")
 DFX_STATUS_SMU = smc_addr("SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR")
 DFX_DEBUG_BUS_MUX = smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR")
-PWM_NUM = smc_addr("SMC_TOP_SMC_PWM_BLINK_PARAM_NUM")
-PWM_DUTY_CYCLE_0 = smc_indexed_addr("SMC_TOP_SMC_PWM_DUTY_CYCLE_BASE_ADDR", 0)
-PWM_BLINK_PARAM_0 = smc_indexed_addr("SMC_TOP_SMC_PWM_BLINK_PARAM_BASE_ADDR", 0)
+PWM_NUM = smc_addr("SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_NUM")
+PWM_DUTY_CYCLE_0 = smc_indexed_addr("SMC_TOP_SMC_PWM_PWM_DUTY_CYCLE_BASE_ADDR", 0)
+PWM_BLINK_PARAM_0 = smc_indexed_addr("SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_BASE_ADDR", 0)
 # BLINK_PARAM is the last array in the PWM block and resets to 0.
-PWM_BLINK_PARAM_LAST = smc_indexed_addr("SMC_TOP_SMC_PWM_BLINK_PARAM_BASE_ADDR", PWM_NUM - 1)
+PWM_BLINK_PARAM_LAST = smc_indexed_addr("SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_BASE_ADDR", PWM_NUM - 1)
+# CTRL.PAD_EN has one bit per channel; every other CTRL bit reads 0.
+PWM_CTRL = smc_addr("SMC_TOP_SMC_PWM_PWM_CTRL_CTRL_BASE_ADDR")
+PWM_PAD_EN_ALL = (1 << PWM_NUM) - 1
 # The PWM block is the last one the generated map declares below the fabric
 # control registers at 0xC001_0000. The first address past the aperture the
 # RDL reserves for it (ocah_aperture_size, 4 KiB) belongs to no block.
@@ -217,7 +221,7 @@ _SPM_PATTERN_HI = 0x5A5A_A5A5_FFFF_FFF8
 # Exact-value compares this body issues (reads carrying ``expected=``). A
 # literal, so a table edit that silently dropped an expectation fails here
 # rather than shrinking the floor with it.
-EXPECTED_VALUE_CHECKS = 61
+EXPECTED_VALUE_CHECKS = 64
 EXPECTED_DECERR_CHECKS = 4
 
 
@@ -370,16 +374,21 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             [
                 ("SECDFT_PWM_BLINK_PARAM_0", PWM_BLINK_PARAM_0, _PATTERN_A, 0),
                 (f"SECDFT_PWM_BLINK_PARAM_{PWM_NUM - 1}", PWM_BLINK_PARAM_LAST, _PATTERN_B, 0),
+                ("SECDFT_PWM_CTRL", PWM_CTRL, PWM_PAD_EN_ALL, PWM_CTRL_CTRL_REG_DEFAULT),
             ]
         )
+        await self.csr_write("SECDFT_PWM_CTRL_ONES", PWM_CTRL, 0xFFFF_FFFF)
+        await self.csr_read("SECDFT_PWM_CTRL_ONES_RB", PWM_CTRL, expected=PWM_PAD_EN_ALL)
+        await self.csr_write("SECDFT_PWM_CTRL_CLEAR", PWM_CTRL, PWM_CTRL_CTRL_REG_DEFAULT)
         await self.read_decerr("SECDFT_REGION_BEYOND", SECDFT_REGION_BEYOND)
         self.close_cell(
             "security-timing-dft-region",
             f"eFuse READ_REQ_TIMEOUT=0x{EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT:x}, "
             f"telemetry STATUS=0x{TELEMETRY_RECEIVER_STATUS_REG_DEFAULT:x}, OCTS "
             f"CTRL=0x{SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT:x}, DFX STATUS_SMU=0x{DFX_STATUS_IDLE:x}, "
-            f"PWM DUTY_CYCLE_0=0x{PWM_DUTY_CYCLE_REG_DEFAULT:x}, PWM BLINK_PARAM_0 and "
-            f"BLINK_PARAM_{PWM_NUM - 1} held distinct co-resident patterns; "
+            f"PWM DUTY_CYCLE_0=0x{PWM_DUTY_CYCLE_REG_DEFAULT:x}, PWM BLINK_PARAM_0, "
+            f"BLINK_PARAM_{PWM_NUM - 1} and CTRL held distinct co-resident patterns; "
+            f"CTRL read 0x{PWM_PAD_EN_ALL:x} after an all-ones write; "
             f"0x{SECDFT_REGION_BEYOND:08x} answered DECERR",
         )
 

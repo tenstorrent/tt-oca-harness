@@ -73,10 +73,10 @@ PAST_LAST_ADDR = DFX_BASE + DFX_APERTURE - 4
 # The PWM block starts where the dfx_ctrl aperture ends; its first register is ALERT_TEST.
 NEXT_BLOCK_ADDR = DFX_BASE + DFX_APERTURE
 assert generated_unit_at(_DFX_LAST + 1) == _component_row("smc_pwm")["label"]
-assert NEXT_BLOCK_ADDR == smc_addr("SMC_TOP_SMC_PWM_ALERT_TEST_BASE_ADDR")
+assert NEXT_BLOCK_ADDR == smc_addr("SMC_TOP_SMC_PWM_PWM_ALERT_TEST_BASE_ADDR")
 NEXT_BLOCK_RDATA = pwm_reset_word("ALERT_TEST")
 # ALERT_TEST reads 0, as a hole would; DUTY_CYCLE_0's non-zero reset names the block.
-NEXT_BLOCK_ID_ADDR = smc_indexed_addr("SMC_TOP_SMC_PWM_DUTY_CYCLE_BASE_ADDR", 0)
+NEXT_BLOCK_ID_ADDR = smc_indexed_addr("SMC_TOP_SMC_PWM_PWM_DUTY_CYCLE_BASE_ADDR", 0)
 NEXT_BLOCK_ID_RDATA = pwm_reset_word("DUTY_CYCLE")
 assert NEXT_BLOCK_ID_RDATA != 0
 

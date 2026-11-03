@@ -17,11 +17,11 @@
 `include "ocah_fcov_macros.svh"
 
 module smc_gpio_fcov #(
-  parameter int unsigned GPIO_WIDTH = 65,
-  // Bonded pads carrying straps: STRAPS_LO/HI cover [60:0].
-  parameter int unsigned STRAP_WIDTH = 61,
+  parameter int unsigned GPIO_WIDTH = 67,
+  // Bonded pads carrying straps: STRAPS_LO/HI cover [62:0].
+  parameter int unsigned STRAP_WIDTH = 63,
   parameter int unsigned DEFAULT_OUTPUT_COUNT = 3,
-  parameter int unsigned DEFAULT_INPUT_COUNT = 62,
+  parameter int unsigned DEFAULT_INPUT_COUNT = 64,
   // smc_padring_pkg::DefaultDirectionMap, passed in by tb_top: bit i is 1 when
   // pad i is an input by default. The direction map reaches the boundary on
   // pad2core_en_o, so the same vector is the expected value of that bus.

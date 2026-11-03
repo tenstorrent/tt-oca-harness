@@ -560,6 +560,9 @@ sources:
   - target: any(sep, smc)
     files:
       - hw/ip/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
+  - target: smc
+    files:
+      - hw/ip/pwm/regs/gen/sv/pwm_ctrl_reg_pkg.sv
   - target: any(sep, key_manager, scrambler)
     files:
       - hw/ip/scrambler/rtl/scrambler_pkg.sv
@@ -967,6 +970,7 @@ sources:
       - hw/ip/output_remap/rtl/output_remap.sv
   - target: smc
     files:
+      - hw/ip/pwm/regs/gen/sv/pwm_ctrl_reg.sv
       - hw/ip/pwm/rtl/pwm_wrap.sv
   - target: any(sep, key_manager, scrambler)
     files:
