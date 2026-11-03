@@ -18,7 +18,9 @@ Manager RDL (``hw/ip/key_manager/regs/gen/py/key_manager_reg.py``,
 ``hw/ip/key_manager/regs/gen/adoc/abr_wrapper_key.adoc``). Every key block sits
 at a 4 KiB boundary and is smaller than 4 KiB, so the low 12 address bits are
 the offset inside the block whether the port carries the KM address or the
-block offset; the module checks this at import.
+block offset; the module checks this at import. ``bank_offset`` gives the
+offset of a write inside its bank, and ``SHARE_OFFSETS`` the offsets of the
+``KEY_SHARE0`` and ``KEY_SHARE1`` words of each bank, from the same header.
 
 Seed plan. ``draw_plan`` turns one ``SepSeededRng`` into every value the leaf
 draws, and ``draw_lines`` gives the ``INFO-DRAW`` lines that the leaf logs.
@@ -107,6 +109,32 @@ if _ABR_BASE % _BLOCK_SPAN or _a("ABR_WRAPPER_KEY_REG_MAP_SIZE") > _BLOCK_SPAN:
     raise AssertionError("ABR_WRAPPER_KEY: not a 4 KiB-aligned block below 4 KiB")
 
 
+_BANK_PREFIX = {
+    OTBN: "OTBN_WRAPPER_KEY",
+    AES: "AES_WRAPPER_KEY",
+    HMAC: "HMAC_WRAPPER_KEY",
+    KMAC: "KMAC_WRAPPER_KEY",
+    MLDSA: "ABR_WRAPPER_KEY_MLDSA_SEED",
+    SEED_D: "ABR_WRAPPER_KEY_MLKEM_SEED_D",
+    SEED_Z: "ABR_WRAPPER_KEY_MLKEM_SEED_Z",
+    MSG: "ABR_WRAPPER_KEY_MLKEM_MSG",
+}
+_BANK_BASE = {bit: _a(f"{blk}_BASE_ADDR") for blk, bit in _PORT_BLOCK.values()} | {
+    bit: _a(f"{rf}_BASE_ADDR") for bit, rf in _ABR_RF.items()
+}
+SHARE_OFFSETS = {
+    bit: frozenset(
+        _a(f"{pre}_KEY_SHARE{s}_{i}__REG_ADDR") - _BANK_BASE[bit]
+        for s in (0, 1)
+        for i in range(WIDTH[bit])
+    )
+    for bit, pre in _BANK_PREFIX.items()
+}
+for _bit, _offs in SHARE_OFFSETS.items():
+    if len(_offs) != 2 * WIDTH[_bit]:
+        raise AssertionError(f"{BANK_NAME[_bit]}: share offsets are not 2 x width distinct words")
+
+
 def bank_of(port: int, addr: int) -> int | None:
     """The bank of one key-path write, or None for an address outside every bank."""
     off = addr % _BLOCK_SPAN
@@ -117,6 +145,46 @@ def bank_of(port: int, addr: int) -> int | None:
             if lo <= off < lo + size:
                 return bit
     return None
+
+
+def bank_offset(port: int, addr: int) -> int | None:
+    """The offset of one key-path write inside its bank, or None outside every bank."""
+    bank = bank_of(port, addr)
+    if bank is None:
+        return None
+    off = addr % _BLOCK_SPAN
+    return off - _ABR_WIN[bank][0] if port == ABR_PORT else off
+
+
+@dataclass(frozen=True)
+class PermResult:
+    ok: bool
+    banks: int
+    share_writes: int
+    repeated: tuple[str, ...]
+    missing: tuple[str, ...]
+
+
+def grade_perm(writes: list[tuple[int, int]], mask: int) -> PermResult:
+    """CHK-KM-BUS-PERM over the (port, address) AW handshakes of one transfer.
+
+    For each bank of ``mask`` the share-word writes must cover each of the
+    bank's ``SHARE_OFFSETS`` exactly once. Writes to other offsets of the bank
+    (KEY_CTRL) and to banks outside ``mask`` are not counted here.
+    """
+    seen: dict[int, list[int]] = {b: [] for b in range(len(BANK_NAME)) if (mask >> b) & 1}
+    for port, addr in writes:
+        bank = bank_of(port, addr)
+        if bank in seen and (off := bank_offset(port, addr)) in SHARE_OFFSETS[bank]:
+            seen[bank].append(off)
+    repeated, missing = [], []
+    for bank, offs in seen.items():
+        name = BANK_NAME[bank]
+        repeated += [f"{name}+0x{o:03x}" for o in sorted(set(offs)) if offs.count(o) > 1]
+        missing += [f"{name}+0x{o:03x}" for o in sorted(SHARE_OFFSETS[bank] - set(offs))]
+    ok = bool(seen) and not repeated and not missing
+    share_writes = sum(len(offs) for offs in seen.values())
+    return PermResult(ok, len(seen), share_writes, tuple(repeated), tuple(missing))
 
 
 @dataclass(frozen=True)
@@ -329,6 +397,7 @@ SHARD_EVIDENCE = {
         "CHK-ENG-ORDER",
         "CHK-AES-NOKEY",
         "CHK-DELIV-COUNT",
+        "CHK-KM-BUS-PERM",
     ),
 }
 POLICY_SHARD = 4

@@ -570,6 +570,7 @@ module sep_uvm_top
     assign lcc_sigint_err_probe_o = sep_ras_w.lc_sigint_err;
     assign km_unrecoverable_err_o = sep_ras_w.km_uncorrectable;
     assign km_recoverable_err_o   = sep_ras_w.km_correctable;
+    assign sep_ras_probe_o        = sep_ras_w;
 
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
@@ -7440,6 +7441,7 @@ module sep_uvm_top
         .lockstep_ctrl_i       (lockstep_ctrl_i),
         .lockstep_status_i     (lockstep_status_o.corruption_detected),
         .dbg_in_araddr_i       (pr_dbg_in_araddr_o),
+        .sep_ras_i             (sep_ras_probe_o),
         // Key Manager taps of the feature points (docs/SEP_FCOV.adoc, Key
         // Manager groups, Sampled signals): read-only, no force.
         .km_unrec_port_i       (km_unrecoverable_err_o),
