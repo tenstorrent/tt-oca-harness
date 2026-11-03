@@ -13316,7 +13316,7 @@ block-level evidence, not SMU integration evidence.
 |`dtp_under_smu` |40 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
 |`hosted` |175 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |213 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`all` |219 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
