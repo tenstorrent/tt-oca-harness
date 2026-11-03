@@ -12447,9 +12447,10 @@ consequence, and cold reset recovery.
   Debug Module Hart Interface and cluster error device (reached only by the harts) and the
   forwarded `dtp_ctrl_reg`, M-mode and Xvisor regions are never probed.
 * A unit whose aperture straddles BASE+2^k stays reachable below the limit and answers DECERR at
-  and above it (`memmap.adoc`): at k = 17 the mailbox `STATUS` of pair 0 and at k = 19 and k = 20
-  the first scratch RAM word read OKAY; the mailbox `STATUS` of pair 8 (at BASE+0x2_0010) and the
-  scratch RAM word at BASE+2^k answer DECERR to a read and a write.
+  and above it (`memmap.adoc`): at k = 17 the mailbox `STATUS` of pair 0 reads OKAY with its
+  non-volatile fields at reset, and at k = 19 and k = 20 a pattern written to the first scratch RAM
+  word reads back; the mailbox `STATUS` of pair 8 (at BASE+0x2_0010) and the scratch RAM word at
+  BASE+2^k answer DECERR to a read and a write.
 * At each k from 10 the highest probe-eligible unit wholly below BASE+2^k answers a read of its
   first word with OKAY; for DFX, the outbound filter and the CLA the fields the register
   description does not mark volatile read their reset values, and hardware-driven fields are
@@ -12498,14 +12499,15 @@ consequence, and cold reset recovery.
 . For k = 0 to 31: write `REGION_SIZE` 1<<k (BRESP OKAY required for k up to 30) and read it
   back (DECERR for k up to 16, 1<<k for k = 17 to 30, recorded for k = 31); read and write the
   first word of the first unit wholly beyond BASE+2^k requiring DECERR (at k = 24 the PLIC, CLINT
-  and BEU0 to BEU3); at k = 17, 19 and 20 read the straddling mailbox or scratch RAM below
-  BASE+2^k requiring OKAY and read and write its word at BASE+2^k requiring DECERR; at k from 10 read the highest unit wholly below BASE+2^k requiring OKAY (and the reset
+  and BEU0 to BEU3); at k = 17 read the mailbox `STATUS` of pair 0 requiring OKAY, at k = 19 and 20
+  write a pattern to the first scratch RAM word and read it back, then read and write a readable word
+  of the same unit at or above BASE+2^k requiring DECERR; at k from 10 read the highest unit wholly below BASE+2^k requiring OKAY (and the reset
   value of the non-volatile fields where pinned); apply a cold reset, wait for the fuse sense and read `REGION_SIZE`,
   `GLOBAL_BASE` and `LOCAL_BASE` requiring their reset values. Each probe address is registered
   with the AXI monitor as an expected DECERR address until that step's reset. Log the bounded
   waits and require the nine step stamps in increasing order, the per-k terms in order for all
   32 steps with every term issuing at least one access over the sweep, the twelve checker lines in
-  order and at least 301 SEP_IN accesses.
+  order and at least 303 SEP_IN accesses.
 
 *Checkers*:
 
@@ -12543,8 +12545,9 @@ readback answers DECERR; the read data is recorded (SF-011)
 its first word answer DECERR; at k = 24 the PLIC, CLINT and BEU0 to BEU3 reads and writes answer
 DECERR; read data recorded
 |`CHK-REGION-SIZE-STRADDLE` |At k = 17 the mailbox and at k = 19 and k = 20 the scratch RAM answer
-a read below BASE+2^k with OKAY and a read and a write of a readable word at or above BASE+2^k
-with DECERR; the read data is recorded
+a read below BASE+2^k with OKAY (the mailbox `STATUS` non-volatile fields at reset, the scratch RAM
+word returning the pattern written) and a read and a write of a readable word at or above BASE+2^k
+with DECERR; the sweep issues exactly 11 straddle accesses
 |`CHK-REGION-SIZE-BELOW` |At each k from 10 to 30 the highest unit wholly below BASE+2^k answers
 OKAY, and the non-volatile fields of DFX, the outbound filter and the CLA read their reset values
 (a unit whose fields are all volatile is recorded); the cluster unit answers at `REGION_SIZE`
@@ -12571,7 +12574,7 @@ responder with the exact address, the registers and filter read their reset word
 reset, no read response or response without a request appears after the resets, every
 `REGION_SIZE` up to 1<<30 reads back or answers DECERR as its aperture requires, every beyond
 unit answers DECERR, every straddling unit answers OKAY below the limit and DECERR at it, every wholly-below unit outside the cluster answers OKAY, and at
-least 301 SEP_IN accesses are issued. The fates of accesses interrupted by a reset, the hit probe
+least 303 SEP_IN accesses are issued. The fates of accesses interrupted by a reset, the hit probe
 levels, the re-issued address, the k = 31 responses and the cluster unit answers at `REGION_SIZE` 0x1000_0000 and above are
 recorded without an expected value. Enrolled in: `all`, `hosted`.
 

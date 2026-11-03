@@ -71,9 +71,9 @@ _OUTSTANDING_READS = 8
 _OUTSTANDING_WRITES = 4
 
 # Sequential SEP_IN accesses the stimulus issues (outstanding groups excluded): 44 in the
-# REGION_SIZE 0 and reset legs, 257 in the size sweep (32 writes, 32 readbacks, 66 beyond,
-# 9 straddle, 22 below, 96 post-reset reads).
-MIN_SEP_IN_ACCESSES = 301
+# REGION_SIZE 0 and reset legs, 259 in the size sweep (32 writes, 32 readbacks, 66 beyond,
+# 11 straddle, 22 below, 96 post-reset reads).
+MIN_SEP_IN_ACCESSES = 303
 
 # Contract steps: S2 is the six existing legs (S2a..S2f); the per-k terms are S3..S7, S3 closes
 # with k = 30 and S8 is the k = 31 top step.
@@ -220,6 +220,9 @@ _STRADDLE = (
     (19, "SPM_RAM", None, None),
     (20, "SPM_RAM", None, None),
 )
+# A register below the limit is read once; a memory word is written and read back.
+_STRADDLE_ACCESSES = sum(3 if lo else 4 for _, _, lo, _ in _STRADDLE)
+_STRADDLE_PATTERN = 0x5A5A_C3C3_0F0F_F0F0
 _BELOW_MIN_K = 10
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", None: "none"}
 
@@ -824,6 +827,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         # STRADDLE: the unit's aperture crosses BASE + 2^k; the limit applies per address, so a
         # word below it answers OKAY and the word at BASE + 2^k inside the unit answers DECERR.
         straddle = [(name, lo, hi) for sk, name, lo, hi in _STRADDLE if sk == k]
+        issued = 0
         for name, lo, hi in straddle:
             _, first, last, _ = _UNIT_BY_NAME[name]
             assert first < size <= last, f"{name} does not straddle 0x{size:x}"
@@ -833,14 +837,29 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 f"{name}: probes 0x{below:x} and 0x{limit:x} do not bracket BASE + 0x{size:x}"
             )
             self._excuse(excused, limit)
-            rdata = await self._rd("sep", f"STRADDLE_K{k}_{name}_BELOW", below)
+            label = f"STRADDLE_K{k}_{name}_BELOW"
+            if lo is None:
+                await self._wr("sep", below, _STRADDLE_PATTERN)
+                rdata = await self._rd("sep", label, below, expected=_STRADDLE_PATTERN)
+                note = "pattern written and read back"
+                issued += 4
+            else:
+                contract = rdl_contract(lo)
+                static = contract.static_mask
+                rdata = await self._rd("sep", label, below)
+                assert rdata & static == contract.reset_word & static, (
+                    f"{label}: static fields 0x{rdata & static:x} under mask 0x{static:x}, "
+                    f"want reset 0x{contract.reset_word & static:x}"
+                )
+                note = f"static fields == reset under mask 0x{static:x}"
+                issued += 3
             refused = await self._rd("sep", f"STRADDLE_K{k}_{name}_LIMIT", limit, resp=RESP_DECERR)
             await self._wr("sep", limit, 0, resp=RESP_DECERR)
             self._sweep["straddle"].append(
-                f"k={k} unit={name} below@0x{below:x} rresp=OKAY rdata=0x{rdata:x}; "
+                f"k={k} unit={name} below@0x{below:x} rresp=OKAY rdata=0x{rdata:x} ({note}); "
                 f"limit@0x{limit:x} rresp=DECERR bresp=DECERR rdata=0x{refused:x}"
             )
-        self._term(k, "STRADDLE", 3 * len(straddle))
+        self._term(k, "STRADDLE", issued)
 
         # BELOW: the highest unit wholly below BASE + 2^k is reached.
         name = self._below_unit(k)
@@ -907,7 +926,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
         self._log_chk(
             "CHK-REGION-SIZE-STRADDLE",
-            f"{len(sw['straddle'])} straddling units read OKAY below BASE+2^k and answered "
+            f"{len(sw['straddle'])} straddling units answered OKAY below BASE+2^k and "
             f"DECERR to a read and a write at BASE+2^k (exact; rdata logged): "
             f"{'; '.join(sw['straddle'])}",
         )
@@ -941,6 +960,10 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
         for t in _K_TERMS:
             total = sum(c for _, term, _, c in self._k_terms if term == t)
             assert total > 0, f"term {t} issued no access over the sweep"
+        straddled = sum(c for _, term, _, c in self._k_terms if term == "STRADDLE")
+        assert straddled == _STRADDLE_ACCESSES, (
+            f"STRADDLE issued {straddled} accesses over the sweep, want {_STRADDLE_ACCESSES}"
+        )
 
     def _sig_bit(self, name: str, bit: int) -> int:
         return (self._sig(name) >> bit) & 1
