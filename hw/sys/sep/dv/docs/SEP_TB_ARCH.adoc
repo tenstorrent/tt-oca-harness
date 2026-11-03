@@ -521,6 +521,12 @@ Observation probe groups:
   `alert_p` and bit 0 `alert_n`. `sep_ot_spi_wrap` leaves the alert port open,
   so no CSR or port shows the alert. Monitor only: it drives nothing and adds
   no force. Owner: `sep_spi_ot_host_csr_irq_rand_test` (CTRL-SPI-ALERT-REACH).
+* `SEP_TEST_CTRL` read decode tap (`sep_test_ctrl_rd_probe_o`): the read
+  strobe of `SEP_TEST_CTRL` in the CPU control register block
+  (`u_sep_cpu_ctrl_reg.decoded_reg_strb.SEP_TEST_CTRL`). It is 1 while a read
+  at that offset is presented to the register, so it separates the register
+  from a hole that also reads 0. Monitor only: it drives nothing and adds no
+  force. Owner: `sep_address_map_test` (CTRL-SEP-TEST-CTRL-DECODE).
 * Secure DMA master tap (`dma_axi_req_probe_o`): the DMA master request after
   the DMA local-alias remap (net `dma_axi_req`, response `dma_axi_resp`): AR
   and AW VALID, READY, address, AxLEN and AxSIZE; W VALID, READY, WSTRB and

@@ -62,6 +62,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_bit_watch import SepBitWatch
 from env.sep_fabric_common import RESP_DECERR
 from env.sep_fabric_tap import SepFabricTap, TapBeat
 from pyuvm import uvm_sequence
@@ -333,7 +334,10 @@ class sep_address_map_seq(uvm_sequence):
         logged, not graded. The write must reach ``sep_cpu_ctrl``: its B
         response is not DECERR and no AW leaves SEP on PR-OUT or PR-EXT while it
         is in flight (CTRL-SEP-TEST-CTRL-WRITE-REACH), since a refused write
-        would also leave the fields unchanged.
+        would also leave the fields unchanged. The read after the write must
+        raise the register's read strobe (tap ``sep_test_ctrl_rd_probe_o``,
+        CTRL-SEP-TEST-CTRL-DECODE): every field reads 0 on this bench, so
+        without it an in-extent hole that answers OKAY with data 0 would pass.
         """
         mask = SEP_CPU_CTRL.mask32("SEP_TEST_CTRL")
         v0b = await self._read(addr, expected=None, name="SEP_TEST_CTRL_again")
@@ -364,7 +368,20 @@ class sep_address_map_seq(uvm_sequence):
         if wr.resp_code == RESP_DECERR or left:
             raise AssertionError(f"CTRL-MISSING SEP-TEST-CTRL-WRITE-REACH: {reach}")
         cocotb.log.info("CTRL-SEP-TEST-CTRL-WRITE-REACH: %s expect resp!=3 aw=0", reach)
+        strb = SepBitWatch(cocotb.top.sep_test_ctrl_rd_probe_o, name="test_ctrl_rd").start()
+        ms = strb.mark()
         v1 = await self._read(addr, expected=None, name="SEP_TEST_CTRL_after_write")
+        await ClockCycles(cocotb.top.clk_i, 1)
+        strb_clk = strb.high_clocks_since(ms)
+        await strb.stop()
+        if strb_clk == 0:
+            raise AssertionError(
+                f"CTRL-MISSING SEP-TEST-CTRL-DECODE: addr=0x{addr:08x} read returned "
+                f"0x{v1:08x} with no SEP_TEST_CTRL read strobe"
+            )
+        cocotb.log.info(
+            "CTRL-SEP-TEST-CTRL-DECODE: addr=0x%08x read strobe high %d clk", addr, strb_clk
+        )
         self.test_ctrl_reads = (v0, v0b, v1)
         self.test_ctrl_wr_resp = wr.resp_code
         cocotb.log.info(

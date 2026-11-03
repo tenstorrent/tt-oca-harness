@@ -1072,6 +1072,10 @@
 // the port open, so no CSR or port shows the alert that ALERT_TEST raises
 // (owner `sep_spi_ot_host_csr_irq_rand_test`).
 `SEP_TB_OUT(logic [1:0], spi_alert_tx_probe_o)
+// SEP_TEST_CTRL read strobe of the CPU control register block,
+// observation-only: 1 while a read at the SEP_TEST_CTRL offset is presented to
+// the register (owner `sep_address_map_test`).
+`SEP_TB_OUT(logic, sep_test_ctrl_rd_probe_o)
 // Secure DMA master request after the DMA local-alias remap (net
 // u_sep.dma_axi_req, response u_sep.dma_axi_resp), observation-only. Bit
 // layout, LSB first: [0] ar_valid, [1] ar_ready, [33:2] ar.addr, [41:34]
