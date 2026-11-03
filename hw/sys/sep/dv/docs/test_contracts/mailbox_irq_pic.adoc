@@ -164,7 +164,7 @@ Each access must be one beat. A four-byte access at a word offset + 2 crosses th
 |CHK-MISALIGN-RD, CHK-MISALIGN-DMA-RD
 |The narrow read at offset + 2 completes as exactly one OKAY beat and leaves both registers unchanged. A refused narrow read, a burst, or a latched bit fails here.
 |CHK-MISALIGN-LATCH, CHK-MISALIGN-DMA-LATCH
-|The partial write's response is SLVERR, and both registers read exactly the expected value (the owning block's bit latched, the other register unchanged).
+|The partial write's response is SLVERR, and both registers read exactly the expected value (the owning block's bit latched, the other register unchanged). Golden: `hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:389-393`, `:353-357`; `hw/sys/sep/doc/interrupts.adoc:227-231`.
 |OBS-MISALIGN-REG-KEPT
 |(Logged, not graded.) The read-back of the probed register after the refused partial write, with its value from the control read. No specification sentence states the register value after a refused partial write (`sep_cpu_ctrl.rdl:354-357`, `:389-393` and `interrupts.adoc:227-231` state SLVERR, the latch and a narrow read OKAY only); open specification question.
 |===
