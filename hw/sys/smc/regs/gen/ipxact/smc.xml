@@ -34112,7 +34112,7 @@ is discarded.</ipxact:description>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>DEST_ADDR</ipxact:name>
-            <ipxact:description>Byte address to write zeros to</ipxact:description>
+            <ipxact:description>Byte address to write zeros to. Bits at and above the master address width, 56 in the SMC, are ignored: a clear starts at the address truncated to that width. Program them as zero; the zeroer truncates an out-of-range value rather than rejecting it.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
