@@ -11,8 +11,8 @@ over the SEP debug system bus at an unaligned base and size, at the carry edge
 of the address space, wider than the SEP inbound space and adjacent to the SMC
 window; the ext_in master issues single beats and INCR, WRAP and FIXED bursts
 at each edge, and the leaf grades the port each one is counted at, the beat
-count, RLAST, the write beats and the single write response. The four-state AXI
-rules and the need gates grade on VCS only.
+count, RLAST, the write beats and the single write response. The leaf runs on
+VCS only: it reads the crossbar target-port checker inputs by hierarchy.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_xbar_aperture_edge_burst_test --target compile_smu_chiplet --tool vcs

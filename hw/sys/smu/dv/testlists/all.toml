@@ -3138,6 +3138,9 @@ firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3600
 tags = ["fabric", "smc", "sep", "reset", "wdt", "isolation", "axi"]
+# The leaf reads the SMC core-pulse done vector and the u_xbar_smc_in_axi_sva
+# inputs by hierarchy, which the Verilator build does not expose.
+tools = ["vcs"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -4125,6 +4128,9 @@ firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3600
 tags = ["fabric", "sep", "axi", "burst", "aperture"]
+# The leaf reads the u_xbar_sep_in_axi_sva and u_xbar_smc_in_axi_sva inputs by
+# hierarchy, which the Verilator build does not expose.
+tools = ["vcs"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smc_rom_default.hex",
