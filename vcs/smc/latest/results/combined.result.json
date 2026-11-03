@@ -8,51 +8,51 @@
     "run_dir": "vcs/smc/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-556e9a964387fa57",
+    "comparison_key": "COVCMP-a86a69b0dc9b9fd6",
     "details_available": true,
     "effective_metrics": {
-      "assertion": 96.9,
+      "assertion": 92.97,
       "branch": 98.56,
-      "condition": 99.27,
+      "condition": 99.02,
       "fsm_state": 100.0,
-      "functional": 98.23,
-      "line": 99.83,
-      "toggle": 99.39,
-      "user": 98.2283
+      "functional": 95.78,
+      "line": 99.85,
+      "toggle": 99.2,
+      "user": 93.9645
     },
     "holes_summary": {
       "accepted": 0,
       "by_category": {
-        "user": 9
+        "user": 51
       },
       "by_disposition": {
-        "cover": 9
+        "cover": 51
       },
       "by_metric": {
-        "user": 9
+        "user": 51
       },
       "by_status": {
-        "open": 9
+        "open": 51
       },
       "details_available": true,
       "hole_group_count": 0,
-      "native_point_count": 9,
+      "native_point_count": 51,
       "observations_complete": false,
-      "open": 9,
-      "unclassified": 9
+      "open": 51,
+      "unclassified": 51
     },
     "manifest": "artifacts/smc/coverage/coverage.json",
     "policy_application": "artifacts/smc/coverage/report/policy-application.json",
     "policy_thresholds": [],
     "raw_metrics": {
-      "assertion": 93.17,
-      "branch": 94.48,
-      "condition": 85.51,
-      "fsm_state": 58.33,
-      "functional": 79.22,
-      "line": 98.46,
-      "toggle": 77.74,
-      "user": 98.2283
+      "assertion": 91.51,
+      "branch": 94.59,
+      "condition": 85.92,
+      "fsm_state": 58.62,
+      "functional": 78.37,
+      "line": 98.55,
+      "toggle": 78.44,
+      "user": 93.9645
     },
     "report": "artifacts/smc/coverage/report",
     "source_manifest": "vcs/smc/runs/combined/cov/coverage.json",
@@ -64,16 +64,16 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 98.88
+    "total_percent": 97.91
   },
   "failure_buckets": [],
   "flow": "smc",
   "framework": "",
-  "generated_at": "2026-10-24T19:19:35+00:00",
+  "generated_at": "2026-11-03T12:29:34+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "b2b225a6d4e6e21b61532f6ad3daa9fea7e4b88a",
-    "short_sha": "b2b225a"
+    "sha": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
+    "short_sha": "871dea3"
   },
   "junit_xml": {
     "missing": 0,
@@ -82,10 +82,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-24T19:19:33.275555+00:00",
+    "generated_at": "2026-11-03T12:29:30.113268+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "b2b225a6d4e6e21b61532f6ad3daa9fea7e4b88a",
+      "commit": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
       "dirty": "false"
     },
     "label": "combine",
@@ -103,16 +103,16 @@
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 7,
-    "pass_rate": 98.73,
-    "passing": 543,
-    "total": 550
+    "failing": 22,
+    "pass_rate": 96.76,
+    "passing": 657,
+    "total": 679
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 36.339,
-    "end_time": "2026-10-24T19:19:33.009697+00:00",
-    "start_time": "2026-10-24T19:18:56.664527+00:00"
+    "duration_sec": 44.541,
+    "end_time": "2026-11-03T12:29:29.702466+00:00",
+    "start_time": "2026-11-03T12:28:45.156435+00:00"
   },
   "tool": "vcs"
 }
