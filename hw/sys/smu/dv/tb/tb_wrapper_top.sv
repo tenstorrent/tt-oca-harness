@@ -2066,12 +2066,14 @@ module smu_wrapper_uvm_top
   // rule here.
   //
   // Reset-domain instances grade the links whose far side resets on a
-  // narrower reset, with MASTER_SYNC_RESET set: u_xbar_sep_in_sep_rst_axi_sva
-  // and u_sep_to_smc_sep_rst_axi_sva take aresetn = sep_reset_n, the
-  // boot-qualified SEP reset, and are held off while sep_reset_n or the
-  // link's AW and AR valids are X; u_xbar_smc_in_warm_rst_axi_sva takes
-  // aresetn = the SMC warm reset rst_warm_smc_clk_n. The SMC cool reset feeds
-  // the primary reset, so the ten instances above already grade it.
+  // narrower reset, the SEP side under sep_reset_n, with MASTER_SYNC_RESET
+  // set: u_xbar_sep_in_sep_rst_axi_sva and u_sep_to_smc_sep_rst_axi_sva take
+  // aresetn = sep_reset_n, the boot-qualified SEP reset, and are held off
+  // while sep_reset_n or the link's AW and AR valids are X. No SMC-side link
+  // has such a far side: the SMC warm reset rst_warm_smc_clk_n resets only
+  // the CPU cluster and the warm scratch register, and the crossbar SMC
+  // target link resets on the primary reset at both ends. The SMC cool reset
+  // feeds the primary reset, so the ten instances above already grade it.
   //
   // Six further links carry their own checker on the primary reset: the two
   // ID-width converter outputs toward the SEP (u_iwc_sep_axi_sva) and the SMC
@@ -2242,8 +2244,6 @@ module smu_wrapper_uvm_top
 `define SMU_AXI_SEP_RST_ON(REQ)                                        \
     (`SMU_AXI_SVA_ON && !$isunknown(sep_reset_n) && !$isunknown(REQ.aw_valid) \
      && !$isunknown(REQ.ar_valid))
-
-`define SMU_AXI_SMC_WARM_RST u_dut.u_smu.u_smc.rst_warm_smc_clk_n
 
 `define SMU_AXI_SVA_INJ_PORTS(REQ, RSP)                                     \
     .aclk    (clk_smu_i),                                                   \
@@ -2579,19 +2579,6 @@ module smu_wrapper_uvm_top
   );
 
   ocah_axi_sva #(
-    .IS_LITE           (1'b0),
-    .ADDR_WIDTH        (56),
-    .DATA_WIDTH        (64),
-    .MAX_OUTSTANDING   (16),
-    .ID_WIDTH          (10),
-    .MASTER_SYNC_RESET (1'b1)
-  ) u_xbar_smc_in_warm_rst_axi_sva (  // crossbar target port: SMC, on the SMC warm reset
-    .en_i (`SMU_AXI_SVA_ON),
-    `SMU_AXI_SVA_RST_PORTS(`SMU_AXI_XBAR.smc_in_req_o,
-                           `SMU_AXI_XBAR.smc_in_resp_i, `SMU_AXI_SMC_WARM_RST)
-  );
-
-  ocah_axi_sva #(
     .IS_LITE         (1'b0),
     .ADDR_WIDTH      (56),
     .DATA_WIDTH      (64),
@@ -2787,16 +2774,6 @@ module smu_wrapper_uvm_top
   smu_axi_data_known_sva #(
     .EN_W_DATA_RULE (1'b1),
     .EN_R_DATA_RULE (1'b1)
-  ) u_xbar_smc_in_warm_rst_data_sva (
-    .aclk    (clk_smu_i),
-    .aresetn (`SMU_AXI_SMC_WARM_RST),
-    .en_i    (`SMU_AXI_SVA_ON),
-    `SMU_AXI_DATA_PORTS(`SMU_AXI_XBAR.smc_in_req_o, `SMU_AXI_XBAR.smc_in_resp_i)
-  );
-
-  smu_axi_data_known_sva #(
-    .EN_W_DATA_RULE (1'b1),
-    .EN_R_DATA_RULE (1'b1)
   ) u_iwc_sep_data_sva (
     .aclk    (clk_smu_i),
     .aresetn (rst_primary_smc_clk_n_o),
@@ -2892,7 +2869,6 @@ module smu_wrapper_uvm_top
   end
 
   int unsigned axi_hs_xbar_sep_in_sep_rst, axi_hs_sep_to_smc_sep_rst;
-  int unsigned axi_hs_xbar_smc_in_warm_rst;
   int unsigned axi_hs_iwc_sep, axi_hs_iwc_smc, axi_hs_incut;
   int unsigned axi_hs_otp_smc, axi_hs_otp_sep, axi_hs_dtp_csr;
   always_ff @(posedge clk_smu_i) begin
@@ -2903,9 +2879,6 @@ module smu_wrapper_uvm_top
         && `SMU_AXI_HS(u_dut.u_smu.sep_ext_to_smc_axi_req,
                        u_dut.u_smu.sep_ext_to_smc_axi_resp))
       axi_hs_sep_to_smc_sep_rst <= axi_hs_sep_to_smc_sep_rst + 1;
-    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(`SMU_AXI_XBAR.smc_in_req_o,
-                                       `SMU_AXI_XBAR.smc_in_resp_i))
-      axi_hs_xbar_smc_in_warm_rst <= axi_hs_xbar_smc_in_warm_rst + 1;
     if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.sep_smn_inbound_axi_req,
                                        u_dut.u_smu.sep_smn_inbound_axi_resp))
       axi_hs_iwc_sep <= axi_hs_iwc_sep + 1;
@@ -2929,8 +2902,6 @@ module smu_wrapper_uvm_top
                 `SMU_AXI_XBAR.sep_in_req_o, `SMU_AXI_XBAR.sep_in_resp_i)
   `SMU_AXI_STALL(sep_to_smc_sep_rst, `SMU_AXI_SEP_RST_ON(u_dut.u_smu.sep_ext_to_smc_axi_req),
                 u_dut.u_smu.sep_ext_to_smc_axi_req, u_dut.u_smu.sep_ext_to_smc_axi_resp)
-  `SMU_AXI_STALL(xbar_smc_in_warm_rst, `SMU_AXI_SVA_ON,
-                `SMU_AXI_XBAR.smc_in_req_o, `SMU_AXI_XBAR.smc_in_resp_i)
   `SMU_AXI_STALL(iwc_sep, `SMU_AXI_SVA_ON,
                 u_dut.u_smu.sep_smn_inbound_axi_req, u_dut.u_smu.sep_smn_inbound_axi_resp)
   `SMU_AXI_STALL(iwc_smc, `SMU_AXI_SVA_ON,
@@ -2949,8 +2920,6 @@ module smu_wrapper_uvm_top
              axi_hs_xbar_sep_in_sep_rst, "u_xbar_sep_in_sep_rst_axi_sva");
     $display("CHK-AXI-SVA-SEP-TO-SMC-SEP-RST: aw_ar_handshakes=%0d instance=%s",
              axi_hs_sep_to_smc_sep_rst, "u_sep_to_smc_sep_rst_axi_sva");
-    $display("CHK-AXI-SVA-XBAR-SMC-IN-WARM-RST: aw_ar_handshakes=%0d instance=%s",
-             axi_hs_xbar_smc_in_warm_rst, "u_xbar_smc_in_warm_rst_axi_sva");
     $display("CHK-AXI-SVA-IWC-SEP: aw_ar_handshakes=%0d instance=u_iwc_sep_axi_sva",
              axi_hs_iwc_sep);
     $display("CHK-AXI-SVA-IWC-SMC: aw_ar_handshakes=%0d instance=u_iwc_smc_axi_sva",
@@ -2968,9 +2937,6 @@ module smu_wrapper_uvm_top
              "but no AW or AR handshake was graded");
     if ($test$plusargs("axi_sva_need_sep_to_smc_sep_rst") && axi_hs_sep_to_smc_sep_rst == 0)
       $error("u_sep_to_smc_sep_rst_axi_sva: +axi_sva_need_sep_to_smc_sep_rst, ",
-             "but no AW or AR handshake was graded");
-    if ($test$plusargs("axi_sva_need_xbar_smc_in_warm_rst") && axi_hs_xbar_smc_in_warm_rst == 0)
-      $error("u_xbar_smc_in_warm_rst_axi_sva: +axi_sva_need_xbar_smc_in_warm_rst, ",
              "but no AW or AR handshake was graded");
     if ($test$plusargs("axi_sva_need_iwc_sep") && axi_hs_iwc_sep == 0)
       $error("u_iwc_sep_axi_sva: +axi_sva_need_iwc_sep, ",
@@ -2996,9 +2962,6 @@ module smu_wrapper_uvm_top
     `SMU_AXI_STALL_REPORT(sep_to_smc_sep_rst, "CHK-AXI-STALL-SEP-TO-SMC-SEP-RST",
                           "u_sep_to_smc_sep_rst_axi_sva",
                           "axi_sva_need_stall_sep_to_smc_sep_rst")
-    `SMU_AXI_STALL_REPORT(xbar_smc_in_warm_rst, "CHK-AXI-STALL-XBAR-SMC-IN-WARM-RST",
-                          "u_xbar_smc_in_warm_rst_axi_sva",
-                          "axi_sva_need_stall_xbar_smc_in_warm_rst")
     `SMU_AXI_STALL_REPORT(iwc_sep, "CHK-AXI-STALL-IWC-SEP",
                           "u_iwc_sep_axi_sva",
                           "axi_sva_need_stall_iwc_sep")
@@ -3021,7 +2984,6 @@ module smu_wrapper_uvm_top
 `endif
 
 `undef SMU_AXI_SVA_INJ_PORTS
-`undef SMU_AXI_SMC_WARM_RST
 `undef SMU_AXI_SEP_RST_ON
 `undef SMU_AXI_DATA_PORTS
 `undef SMU_AXIL_SVA_PORTS
