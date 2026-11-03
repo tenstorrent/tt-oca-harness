@@ -46,6 +46,13 @@ Checkers:
                     blocked under a write-lock and ORs the new bit without one.
                     ``OBS-LOCK-CELL-WR-RESP`` logs the response code of each shadow
                     write: no TT text states it.
+  CHK-LOCK-READ-DONE lock leg and the single-bit image with a read-lock, one line per
+                    read-interface request on a read-locked field: after the full W
+                    the request reads ``read_done`` 1 and ``read_status`` 1 (Error)
+                    (``hw/ip/efuse/doc/architecture.adoc:247-249``: a locked target
+                    completes the operation with an error;
+                    ``efuse_interface_ctrl.rdl:143`` ``read_done``, ``:149``
+                    ``read_status``). The line prints both values and the expected 1.
   CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
                     read-interface request on a read-locked field, a program on a
                     write-locked field): from the go write to the disable write, the
@@ -243,6 +250,13 @@ _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_status")
 _RD_BUSY = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_busy")
 _RD_DONE = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_done")
 _RD_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_status")
+
+# A locked target completes the operation with an error: ``read_done`` 1 and
+# ``read_status`` 1 (Error).
+_READ_DONE_CONTRACT = (
+    "efuse/doc/architecture.adoc:247-249(Hardware_vs_Software_Locks),"
+    "efuse_interface_ctrl.rdl:143,149(EFUSE_READ_CTRL.read_done,read_status)"
+)
 
 _KIND_W = ("write", "write_read")
 _KIND_R = ("read", "write_read")
@@ -558,6 +572,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         self.required_evidence = _EVIDENCE[kind]
+        if kind == "lock_leg" or (kind == "single_bit" and p.leg["lock_kind"] == "read"):
+            self.required_evidence += ("CHK-LOCK-READ-DONE",)
         self.logger.info(
             "INFO-EVIDENCE seed=%d kind=%s required=%s",
             seed,
@@ -668,6 +684,18 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                     and r["req_err"] == 1
                     and r["clr_req_err"] == 0
                     and r["busy"] == 0
+                )
+                self._grade(
+                    "LOCK-READ-DONE",
+                    r["done"] == 1 and r["status"] == 1,
+                    contract=_READ_DONE_CONTRACT,
+                    slot=slot,
+                    field=name,
+                    bit_addr=read_bit["addr"],
+                    read_done=r["done"],
+                    exp_read_done=1,
+                    read_status=r["status"],
+                    exp_read_status=1,
                 )
             else:
                 ok &= r["busy"] == 0 and r["done"] == 1 and r["status"] == 0 and r["req_err"] == 0

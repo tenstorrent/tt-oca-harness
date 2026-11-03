@@ -89,8 +89,7 @@ MAX_READY_HOLD_CYCLES = 24
 IDLE_CYCLES = 4
 
 # The width of ext_in_awid on the bench top bounds the IDs the port accepts;
-# hw/sys/smu/doc/port_table.adoc names the port type without a width and the integrator chapter
-# gives none.
+# hw/sys/smu/doc/port_table.adoc states an 8-bit ID on smu_axi_in.
 ID_SIGNALS = ("awid", "arid", "bid", "rid")
 
 # hw/sys/smu/doc/index.adoc "AXI Crossbar": an SMC address outside both apertures leaves on

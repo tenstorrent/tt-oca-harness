@@ -128,6 +128,29 @@ GO value during a transfer is not graded.
                       after each later start shows the OPCODE and DIGEST_SWAP
                       that start wrote, both other than the first start; the
                       digest registers before the GO differ from the golden.
+  CHK-DMA-CTRL-BUSY   on a seed that draws GO=1 for the CONTROL write at BUSY=1
+                      during the 4096-byte single-chunk copy: after DONE and a
+                      16-clock settle, the DMA master shows exactly the AR and
+                      AW counts of that one copy (n_txn each), and exactly
+                      one STATUS.BUSY rise since the GO. Control
+                      (``CTRL-DMA-CTRL-BUSY``, else CTRL-MISSING): the write
+                      answers OKAY, BUSY stays 1 through the write, and on the
+                      tap STATUS.BUSY rose before the write and STATUS.DONE
+                      rises after it; the line logs the write response, the
+                      write clocks and their offsets from the BUSY rise and the
+                      DONE rise. A
+                      seed that draws GO=0 logs ``INFO-DMA-CTRL-BUSY-SKIP``
+                      with the same fields; seed 1
+                      draws GO=1. ``OBS-DMA-CTRL-BUSY`` logs the CONTROL value
+                      read right after the write and after DONE, STATUS,
+                      ERROR_CODE and the destination compare.
+
+Busy write contract (CHK-DMA-CTRL-BUSY): "A start is a write of `CONTROL.GO`
+while `STATUS.BUSY` is clear" (``hw/sys/sep/doc/dma.adoc:79-80``), so a GO=1
+write at BUSY=1 is not a start; the engine takes its configuration at a start
+(``:80-86``), so the copy moves only its own beats. What the write does to
+CONTROL, and what a GO=0 write at BUSY=1 does to the copy, are not stated and
+stay logged.
 
 Continuation contract (CHK-DMA-CONT-CFG): "The engine takes `OPCODE` and
 `DIGEST_SWAP` at the first start of a transfer and keeps them for its later
@@ -170,6 +193,7 @@ from dataclasses import dataclass, field, replace
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import (
     DmaXfer,
@@ -249,6 +273,8 @@ CTRL_CFG_MASK = CTRL_OPCODE_MASK | CTRL_SWAP_MASK
 # clocked FCOV cells (one bin per clock, at most eight).
 LABEL_CLKS = 2
 LABEL_REPLAY_CLKS = 16
+# Clocks after DONE before the DMA master tap is read for the busy-write copy.
+BUSY_SETTLE_CLKS = 16
 # Range registers (secure_dma.rdl:118-122 BASE, :125-130 LIMIT, :133-137
 # RANGE_VALID, all ``sw = rw``; :141-153 RANGE_REGWEN, True = 6 at :142,
 # "Unlocked at reset" at :151; dma.hjson:289, :304, :318 put the three under
@@ -1370,21 +1396,28 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         await self.busy.wait_rise(m_busy, BUSY_RISE_BOUND)
         value = (ops.last_control & ~GO_MASK) | (GO_MASK if plan.busy_go else 0)
         m_wr = self.busy.mark()
-        await ops.wr(CONTROL, value)
+        wr_c0 = self.tap.clk
+        wseq = await ops.access(SepAxiOp.WRITE, CONTROL, value)
+        wr_c1 = self.tap.clk
+        ops.writes.append((wr_c0, wr_c1, CONTROL, value))
         busy_through = int(self.busy.level() == 1 and not self.busy.fall_clks_since(m_wr))
+        ctrl_wr = await ops.rd(CONTROL)
         st = None
         for _ in range(ops.done_bound(poll_size(x.total))):
             st = await ops.read_status()
             if (st.done and not st.busy) or st.error or st.aborted:
                 break
+        await ClockCycles(cocotb.top.clk_i, BUSY_SETTLE_CLKS)
         err = await ops.rd(ERROR_CODE)
+        ctrl_done = await ops.rd(CONTROL)
         ev = self.tap.since(m_tap)
         got = await self.mem.read(c.dst_region, c.dst_region_words)
         exp = c.expected_dst()
         mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
         self.logger.info(
             "OBS-DMA-CTRL-BUSY seed=%d go=%d control=0x%08x busy_through_write=%d ar=%d aw=%d "
-            "n_txn=%d %s error_code=0x%x dst_mismatch=%d",
+            "n_txn=%d %s error_code=0x%x dst_mismatch=%d control_after_write=0x%08x "
+            "control_after_done=0x%08x",
             self.seed,
             plan.busy_go,
             value,
@@ -1395,7 +1428,39 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             st.fmt(),
             err,
             mism,
+            ctrl_wr,
+            ctrl_done,
         )
+        # Tap clocks: the STATUS.BUSY rise of this copy, the write, and the
+        # first STATUS.DONE rise after the write.
+        busy_rise = next(iter(ev.rises("busy")), None)
+        busy_rises = len(list(ev.rises("busy")))
+        done_rise = next((c for c in ev.rises("done") if c >= wr_c1), None)
+        ctrl = (
+            f"go={plan.busy_go} write_resp={wseq.resp_code} busy_through_write={busy_through} "
+            f"write_clk={wr_c0}-{wr_c1} busy_rise_clk={'-' if busy_rise is None else busy_rise} "
+            f"done_clk={'-' if done_rise is None else done_rise} "
+            f"write_after_busy={'-' if busy_rise is None else wr_c0 - busy_rise} "
+            f"done_after_write={'-' if done_rise is None else done_rise - wr_c1}"
+        )
+        if not plan.busy_go:
+            self.logger.info("INFO-DMA-CTRL-BUSY-SKIP seed=%d %s", self.seed, ctrl)
+        elif not (
+            wseq.resp_ok
+            and busy_through
+            and busy_rise is not None
+            and done_rise is not None
+            and busy_rise <= wr_c0
+        ):
+            self._ctrl_missing("CHK-DMA-CTRL-BUSY", ctrl)
+        else:
+            self.logger.info("CTRL-DMA-CTRL-BUSY PASS seed=%d %s", self.seed, ctrl)
+            self._pass(
+                "CHK-DMA-CTRL-BUSY",
+                len(ev.ar) == x.n_txn and len(ev.aw) == x.n_txn and busy_rises == 1,
+                f"contract=hw/sys/sep/doc/dma.adoc:79-86 go=1 ar={len(ev.ar)} aw={len(ev.aw)} "
+                f"expect={x.n_txn} busy_rises={busy_rises} expect_busy_rises=1",
+            )
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE | ST_ERROR)
 
     # ---- Leg C ------------------------------------------------------------

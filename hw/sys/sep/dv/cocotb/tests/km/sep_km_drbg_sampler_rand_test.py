@@ -70,7 +70,10 @@ Checkers:
                   and the next prefetched word (PREFETCH_DATA and DATA) is the
                   second live beat, with no byte of the partial beat
                   (architecture.adoc:851-855, 816-820, 825; trng.adoc:118 for
-                  the full live beats). Control: the same partial beat with no
+                  the full live beats). The check does not show whether the
+                  withdrawal or the start of the DATA read drops the partial
+                  byte; ``OBS-SMP-PARTIAL-NOWD`` logs PREFETCHED after the same
+                  partial beat with no withdrawal. Control: the same partial beat with no
                   withdrawal (a TVALID drop after a completed handshake) leaves
                   STREAM_ERR 0, COUNT_BAD and DRBG_ERR unchanged.
   CHK-SMP-PRE-ACTIVE
@@ -80,8 +83,8 @@ Checkers:
                   KM-ENTROPY, COUNT_GOOD + 1 (architecture.adoc:881-882, 873-876,
                   840). Controls: CFG reads PREFETCH 1 and timeout 0, STATUS reads
                   PREFETCHED 0 before the read, TREADY is high before the read
-                  and the read start shows one TREADY-low clock before the
-                  entropy initialization starts.
+                  and the read start shows a TREADY-low stretch (length logged,
+                  OBS-SMP-READ-DIP) before the entropy initialization starts.
   CHK-SMP-WR     writes to DATA and PREFETCH_DATA answer SLVERR and leave STATUS
                   and PREFETCH_DATA unchanged, on the stalled stream and again
                   with a prefetched word held (a known PREFETCH_DATA value).
@@ -98,8 +101,14 @@ Checkers:
   CHK-SMP-STRM    a withdrawal sets STREAM_ERR and DRBG_ERR (0 before the
                   withdrawal, 1 after it) with no read active
                   (COUNT_BAD + 1) and in the first active cycle of a read at
-                  timeout 256, 1 and 2 (SLVERR, data 0, TIMEOUT_ERR 0 before the
-                  read, COUNT_BAD + 1 plus TIMEOUT_ERR after the read);
+                  timeout 256, 1 and 2 (the DATA read completes SLVERR with
+                  data 0, TIMEOUT_ERR 0 before the read, COUNT_BAD + 1 plus
+                  TIMEOUT_ERR after the read): ``ST_STREAM_ERR`` completes with
+                  SLVERR and zero data (``architecture.adoc`` "Errors and
+                  reset" and the state table). These values hold whichever
+                  event ends the read, so the stated priority of a stream error
+                  over a timeout is not graded; ``OBS-SMP-STRM`` logs
+                  TIMEOUT_ERR after the read;
                   a write of 0 keeps STREAM_ERR and a write of 1 clears it.
                   Controls: the stalled timeouts and the first read after the
                   TRNG reset leave STREAM_ERR 0; the sink TREADY is low in the
@@ -466,8 +475,9 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
 
         Before the read the prefetch path requests (TREADY 1). A DATA read that
         starts stops the prefetch path, and the read path enters its request
-        state one clock later (architecture.adoc:873, 881-882), so the read start
-        shows one TREADY-low clock and then TREADY high with the read waiting.
+        state (architecture.adoc:873, 881-882), so the read start shows a
+        TREADY-low stretch and then TREADY high with the read waiting. The text
+        gives no length for the stretch, so its length is logged.
         The entropy initialization starts after that clock. A handshake is a
         clock with ``km_entropy_tvalid_o`` and ``km_entropy_tready_o`` both 1;
         its word is ``km_entropy_tdata_o``.
@@ -476,15 +486,16 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         out["tready_at_start"] = self.rd_known(dut.km_entropy_tready_o)
-        low = False
+        low = 0
         for n in range(_DIP_BOUND):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             ready = self.rd_known(dut.km_entropy_tready_o)
-            if not low and ready == 0:
-                low = True
-            elif low and ready == 1:
+            if ready == 0:
+                low += 1
+            elif low:
                 out["read_start_clk"] = n
+                out["dip_clks"] = low
                 break
         else:
             raise AssertionError(
@@ -919,6 +930,11 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
 
         # Control: the partial beat alone is a completed handshake, not a withdrawal.
         tw0, tw1 = stv("tw_before"), stv("tw_after")
+        self.chk.obs(
+            "SMP-PARTIAL-NOWD",
+            prefetched=pl.st(tw1, "PREFETCHED"),
+            stream_err=pl.st(tw1, "STREAM_ERR"),
+        )
         tw_irq = self._irq(res[at["tw_irq"]].value)
         twin_ok = (
             hook.get("twin_fired") == 0
@@ -974,6 +990,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             tready_before_read=rel.get("tready_at_start"),
             read_start_clk=rel.get("read_start_clk", "none"),
         )
+        self.chk.obs("SMP-READ-DIP", dip_clks=rel.get("dip_clks", "none"))
         self.chk.ctrl(
             "SMP-PRE-DISCRIM",
             b1 is not None and b2 is not None and b1 != b2 and partial_word != b2,
@@ -1359,7 +1376,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 kp.rd(pl.A_STATUS),
                 kp.rdloop(pl.A_DATA, pl.GOOD_LOOP_READS, stride=0),
                 kp.rd(pl.A_STATUS),
-                kp.rdloop(pl.A_DATA, pl.EXTRA_READS, stride=0),
+                *[kp.rd(pl.A_DATA) for _ in range(pl.EXTRA_READS)],
                 kp.rd(pl.A_STATUS),
                 kp.wr(pl.A_STATUS, 0),
                 kp.rd(pl.A_STATUS),
@@ -1368,8 +1385,14 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)),
             ]
             res = await self._run(ops, timeout_cycles=_GOOD_LOOP_CYCLES)
-            g = [pl.st(self._status(res[i].value), "COUNT_GOOD") for i in (2, 4, 6, 8, 10)]
+            ne = pl.EXTRA_READS
+            g = [
+                pl.st(self._status(res[i].value), "COUNT_GOOD")
+                for i in (2, 4, 5 + ne, 7 + ne, 9 + ne)
+            ]
+            extra_ok = sum(1 for r in res[5 : 5 + ne] if r.flags_known and (r.slv, r.dec) == (0, 0))
             good = {
+                "extra_reads_ok": extra_ok,
                 "start": g[0],
                 "sat": g[1],
                 "extra": g[2],
@@ -1400,6 +1423,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             good["start"] == 0
             and good["sat"] == pl.COUNT_GOOD_MAX
             and good["extra"] == pl.COUNT_GOOD_MAX
+            and good["extra_reads_ok"] == pl.EXTRA_READS
             and good["zero_write"] == pl.COUNT_GOOD_MAX
             and good["clear"] == 0
             and not good["acc"]
@@ -1412,6 +1436,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             bad_after_extra=f"0x{bd['extra']:x}",
             good_sat=f"0x{good['sat']:x}" if good else "skipped",
             good_after_extra=f"0x{good['extra']:x}" if good else "skipped",
+            good_extra_reads_ok=f"{good['extra_reads_ok']}/{pl.EXTRA_READS}" if good else "skipped",
             zero_write="kept"
             if bd["zero_write"] == pl.COUNT_BAD_MAX
             and gl["zero_write"] == gl["before"]
@@ -1515,13 +1540,21 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 bad_want = _withdraw_bad_want(st_pre, st)
                 cond = (
                     cond
+                    and r.slv == 1
+                    and r.dec == 0
                     and r.value == 0
                     and pl.st(st_pre, "TIMEOUT_ERR") == 0
                     and delta == bad_want
                 )
                 fields.update(
+                    contract=(
+                        "key_manager/doc/architecture.adoc:878-879,883-885(Errors_and_reset)"
+                    ),
                     slv=r.slv,
+                    dec=r.dec,
+                    exp_resp="SLVERR(slv=1,dec=0)",
                     data=_h(r.value),
+                    exp_data=_h(0),
                     count_bad_delta_want=bad_want,
                     timeout_err=[pl.st(st_pre, "TIMEOUT_ERR"), pl.st(st, "TIMEOUT_ERR")],
                 )

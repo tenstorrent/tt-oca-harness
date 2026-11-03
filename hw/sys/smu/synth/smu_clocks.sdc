@@ -18,6 +18,15 @@ if {[info procs cdc_is_block_top] eq ""} {
         ../../../../flows/synth/constraints/hier_reuse_procs.tcl]]
 }
 
+if {[info procs packed_clk_ports] eq ""} {
+    source [file normalize [file join [file dirname [info script]] \
+        ../../../../flows/synth/constraints/packed_port_procs.tcl]]
+}
+
+# tn_pkg::TRC_RAM_INSTANCES and smc_config_pkg::NumI3c
+set smu_num_trace_mem 8
+set smu_num_i3c 6
+
 if {![array exists ::clock_periods]} {
     error "smu_clocks.sdc: clock_periods() is empty; source the flow's clock-period definitions first"
 }
@@ -160,7 +169,7 @@ create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o?1*clk]  -name SM
 create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o?2*clk]  -name SMUCLK_DCACHE_DATA2  -master_clock SMUCLK -divide_by 1 -source [get_ports "clk_smu_i"] -combinational
 create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o?3*clk]  -name SMUCLK_DCACHE_DATA3  -master_clock SMUCLK -divide_by 1 -source [get_ports "clk_smu_i"] -combinational
 
-set trace_mem_clk_ports [lsort -dictionary [get_object_name [get_ports {trace_mem_req_o*mem_clk}]]]
+set trace_mem_clk_ports [packed_clk_ports trace_mem_req_o $smu_num_trace_mem mem_clk]
 set trace_mem_clk_idx 0
 foreach trace_mem_clk_port $trace_mem_clk_ports {
     create_generated_clock [get_ports $trace_mem_clk_port] -name SMUCLK_TRACE_MEM${trace_mem_clk_idx} -master_clock SMUCLK -divide_by 1 -source [get_ports "clk_smu_i"] -combinational
@@ -169,7 +178,7 @@ foreach trace_mem_clk_port $trace_mem_clk_ports {
 
 # I3C DAT/DCT/RLT table memory clocks (the gated I3C peripheral clock)
 foreach mem {dat dct rlt} {
-    set i3c_mem_clk_ports [lsort -dictionary [get_object_name [get_ports -quiet "i3c_${mem}_mem_sink_o*clk"]]]
+    set i3c_mem_clk_ports [packed_clk_ports i3c_${mem}_mem_sink_o $smu_num_i3c]
     set i3c_mem_clk_idx 0
     foreach i3c_mem_clk_port $i3c_mem_clk_ports {
         create_generated_clock [get_ports $i3c_mem_clk_port] -name PERIPHERALCLK_I3C_[string toupper $mem]${i3c_mem_clk_idx} -master_clock PERIPHERALCLK -divide_by 1 -source [get_ports "clk_periph_i"] -combinational
