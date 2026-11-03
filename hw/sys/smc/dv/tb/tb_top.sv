@@ -1652,6 +1652,60 @@ module smc_uvm_top
                                        u_dut.u_smc.efuse_bank_ctrl_req_o.ar_valid;
     assign tb_axil_any_master_active = tb_axil_dtp_csr_active | tb_axil_external_active | tb_axil_efuse_bank_active;
 
+    // Handshake observability of three fabric links: each vector carries the
+    // five AXI channel valids (or readies) of one link, bit order [4:0] =
+    // {r, ar, b, w, aw}. The periph link is AXI-Lite, the CPU front and CPU
+    // MMIO links are full AXI; a valid or ready is taken from whichever of
+    // the request or response struct drives it. The CPU front link also
+    // exposes its AR ID, R ID and RLAST.
+    assign tb_periph_axil_valid = {u_dut.u_smc.axil_peripherals_resp.r_valid,
+                                   u_dut.u_smc.axil_peripherals_req.ar_valid,
+                                   u_dut.u_smc.axil_peripherals_resp.b_valid,
+                                   u_dut.u_smc.axil_peripherals_req.w_valid,
+                                   u_dut.u_smc.axil_peripherals_req.aw_valid};
+    assign tb_periph_axil_ready = {u_dut.u_smc.axil_peripherals_req.r_ready,
+                                   u_dut.u_smc.axil_peripherals_resp.ar_ready,
+                                   u_dut.u_smc.axil_peripherals_req.b_ready,
+                                   u_dut.u_smc.axil_peripherals_resp.w_ready,
+                                   u_dut.u_smc.axil_peripherals_resp.aw_ready};
+    assign tb_cpu_front_valid = {u_dut.u_smc.cpu_axi_front_port_resp.r_valid,
+                                 u_dut.u_smc.cpu_axi_front_port_req.ar_valid,
+                                 u_dut.u_smc.cpu_axi_front_port_resp.b_valid,
+                                 u_dut.u_smc.cpu_axi_front_port_req.w_valid,
+                                 u_dut.u_smc.cpu_axi_front_port_req.aw_valid};
+    assign tb_cpu_front_arid  = u_dut.u_smc.cpu_axi_front_port_req.ar.id;
+    assign tb_cpu_front_rid   = u_dut.u_smc.cpu_axi_front_port_resp.r.id;
+    assign tb_cpu_front_rlast = u_dut.u_smc.cpu_axi_front_port_resp.r.last;
+    assign tb_cpu_front_ready = {u_dut.u_smc.cpu_axi_front_port_req.r_ready,
+                                 u_dut.u_smc.cpu_axi_front_port_resp.ar_ready,
+                                 u_dut.u_smc.cpu_axi_front_port_req.b_ready,
+                                 u_dut.u_smc.cpu_axi_front_port_resp.w_ready,
+                                 u_dut.u_smc.cpu_axi_front_port_resp.aw_ready};
+    assign tb_cpu_mmio_valid = {u_dut.u_smc.cpu_axi_mmio_port_resp.r_valid,
+                                u_dut.u_smc.cpu_axi_mmio_port_req.ar_valid,
+                                u_dut.u_smc.cpu_axi_mmio_port_resp.b_valid,
+                                u_dut.u_smc.cpu_axi_mmio_port_req.w_valid,
+                                u_dut.u_smc.cpu_axi_mmio_port_req.aw_valid};
+    assign tb_cpu_mmio_ready = {u_dut.u_smc.cpu_axi_mmio_port_req.r_ready,
+                                u_dut.u_smc.cpu_axi_mmio_port_resp.ar_ready,
+                                u_dut.u_smc.cpu_axi_mmio_port_req.b_ready,
+                                u_dut.u_smc.cpu_axi_mmio_port_resp.w_ready,
+                                u_dut.u_smc.cpu_axi_mmio_port_resp.aw_ready};
+    // The cluster side of the two CPU isolation blocks, same bit order: the
+    // L2 frontend isolate's master port and the MMIO isolate's slave port.
+    assign tb_cpu_l2_iso_valid =
+        {u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_resp.r_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_req.ar_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_resp.b_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_req.w_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_req.aw_valid};
+    assign tb_cpu_mmio_cpu_valid =
+        {u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_resp.r_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_req.ar_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_resp.b_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_req.w_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_req.aw_valid};
+
     // Hierarchical CPU debug (pre-isolate-clamp PC + boundary isolate).
     assign tb_cpu_wb_pc0 =
         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wb_reg_pc_raw[0];
