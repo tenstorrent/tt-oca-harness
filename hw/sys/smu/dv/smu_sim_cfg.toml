@@ -163,9 +163,12 @@ sources = [
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Clean-room AXI4 protocol checker, instantiated on the SMU crossbar and
-  # boundary links in tb_wrapper_top.sv. Both Verilator targets define
-  # ASSERTS_OFF and pass no --assert, so the rules grade on VCS.
+  # boundary links in tb_wrapper_top.sv. Both Verilator targets turn the
+  # Verilator assertion switch on, so its two-state rules grade on Verilator
+  # and VCS; its four-state X rules grade on VCS.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  # Four-state WDATA/RDATA known rules, one beside each ocah_axi_sva instance.
+  "hw/sys/smu/dv/tb/smu_axi_data_known_sva.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register.sv",
   "vendor/pulp-platform/axi/upstream/src/axi_cut.sv",
@@ -652,13 +655,16 @@ defines = [
 
 # COVERIGN is an error: Verilator drops a covergroup construct it does not
 # support with only that warning, and then builds other bins than the
-# commercial simulators.
+# commercial simulators. The Verilator assertion switch makes the two-state
+# OCAH checker rules of tb_wrapper_top.sv grade on Verilator; ASSERTS_OFF keeps
+# the vendor and DUT assertions off.
 [targets.default.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
   "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
+  "--assert",
 ]
 
 [targets.compile_smu_chiplet]
@@ -667,12 +673,14 @@ build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
 ]
 
+# Same flags as the default target, for the same reasons.
 [targets.compile_smu_chiplet.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
   "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
+  "--assert",
 ]
 
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native

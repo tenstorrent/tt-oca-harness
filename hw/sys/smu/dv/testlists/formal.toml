@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Formal items for `--dut smu --mode formal` (smu_formal_cfg.toml). `module` names the app table
+# the item launches, [formal.apps.<module>.<tool>]; one item is one sby invocation that runs every
+# task of that app, and the runner grades it from the per-task status files and JUnit reports.
+# One item per described block of the plan section (SMU_VPLAN.adoc, Formal Verification Plan).
+
+[[tests]]
+name = "smu_axi_xbar_fpv"
+module = "xbar_fpv"
+tags = ["formal"]
+
+# `fpv` is every formal item of the plan section.
+[[groups]]
+name = "fpv"
+tests = ["smu_axi_xbar_fpv"]

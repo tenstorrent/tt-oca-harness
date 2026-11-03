@@ -16,11 +16,11 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 | 0x10 | <<reg-{regmap-instance}-smc_base_config-REGION_SIZE,REGION_SIZE>> | RW a| -
 | 0x18 | <<reg-{regmap-instance}-smc_base_config-CLOCK_GATE_CONTROL,CLOCK_GATE_CONTROL>> | RW a| -
 | 0x20 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_CTRL,HANG_DET_SYS_AXI_CTRL>> | RW a| AXI hang detector control and interrupt status.
-| 0x28 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD,HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
+| 0x28 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD,HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.
 | 0x30 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_CTRL,HANG_DET_SEP_AXI_CTRL>> | RW a| AXI hang detector control and interrupt status.
-| 0x38 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD,HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
+| 0x38 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD,HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.
 | 0x40 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_CTRL,HANG_DET_DATA_ACCEL_CTRL>> | RW a| AXI hang detector control and interrupt status.
-| 0x48 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD,HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
+| 0x48 | <<reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD,HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD>> | RW a| Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.
 |===
 
 [#reg-{regmap-instance}-smc_base_config-GLOBAL_BASE]
@@ -101,7 +101,7 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 |===
 | Bits | Field | Access | Reset | Description
 | 31:20 | `Reserved` | - | - a| Reserved
-| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
 |===
 
 [#reg-{regmap-instance}-smc_base_config-HANG_DET_SEP_AXI_CTRL]
@@ -127,7 +127,7 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 |===
 | Bits | Field | Access | Reset | Description
 | 31:20 | `Reserved` | - | - a| Reserved
-| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
 |===
 
 [#reg-{regmap-instance}-smc_base_config-HANG_DET_DATA_ACCEL_CTRL]
@@ -153,5 +153,5 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 |===
 | Bits | Field | Access | Reset | Description
 | 31:20 | `Reserved` | - | - a| Reserved
-| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+| 19:0 | `value` | RW | 0x1000 a| Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
 |===
