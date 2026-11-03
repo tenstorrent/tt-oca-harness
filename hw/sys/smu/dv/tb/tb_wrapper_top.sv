@@ -728,6 +728,88 @@ module smu_wrapper_uvm_top
 `endif
 `endif
 
+  // The JTAG IC_RESET sep_reset_n override resets the SEP side of sep_in with
+  // no isolation sequence, so an R beat presented there is withdrawn at the
+  // fall: the R_VALID_HELD and R_PAYLOAD_STABLE rules of u_xbar_sep_in_axi_sva,
+  // and the req1 assertion and lock_req assumption of the R-channel arbiter in
+  // the SEP SRAM burst demultiplexer fire.
+  // With +axi_sva_expect_sep_in_override, and only from a fall of sep_reset_n
+  // under that override with the SMC primary reset high until
+  // SepInOverrideMarginClks clk_smu_i edges after its rise, those rules are
+  // killed; every other rule, including the rest of that demultiplexer, every
+  // instance and every other leaf is unaffected. The obs_ signals
+  // let the leaf grade the window.
+  logic       obs_sep_in_expect_window_open = 1'b0;
+  logic [7:0] obs_sep_in_expect_window_count = '0;
+`ifndef VERILATOR
+`ifndef UVM
+  localparam int unsigned SepInOverrideMarginClks = 8;
+  wire sep_in_override_held =
+      (u_dut.u_smu.jtag_sep_reset_ctrl.ovrd.sep_reset_n_ovrd === 1'b1) &&
+      (u_dut.u_smu.jtag_sep_reset_ctrl.val.sep_reset_n_val === 1'b0);
+  time sep_in_override_opened_at = 0;
+
+  task automatic sep_in_override_checks(input bit enable);
+    if (enable) begin
+      $asserton(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
+      $asserton(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE
+          .OCAH_AXI_R_PAYLOAD_STABLE);
+      $asserton(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
+          .gen_arbiter.req1);
+      $asserton(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
+          .gen_arbiter.gen_int_rr.gen_lock.lock_req);
+    end else begin
+      $assertkill(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_VALID_HELD.OCAH_AXI_R_VALID_HELD);
+      $assertkill(0, u_xbar_sep_in_axi_sva.gen_OCAH_AXI_R_PAYLOAD_STABLE
+          .OCAH_AXI_R_PAYLOAD_STABLE);
+      $assertkill(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
+          .gen_arbiter.req1);
+      $assertkill(0, u_dut.u_smu.gen_sep.u_sep.u_sram_burst_demux.i_demux_simple.genblk1.i_r_mux
+          .gen_arbiter.gen_int_rr.gen_lock.lock_req);
+    end
+  endtask
+
+  initial begin : sep_in_override_expect_window
+    time rose_at;
+    int unsigned margin;
+    if ($test$plusargs("axi_sva_expect_sep_in_override")) begin
+      forever begin
+        @(negedge sep_reset_n);
+        if (rst_primary_smc_clk_n === 1'b1 && sep_in_override_held) begin
+          sep_in_override_checks(1'b0);
+          sep_in_override_opened_at = $time;
+          obs_sep_in_expect_window_open = 1'b1;
+          obs_sep_in_expect_window_count++;
+          $display({"[tb] sep_in override expectation window open at %0t: ",
+                    "sep_reset_n fell under the JTAG override, window %0d"},
+                   $time, obs_sep_in_expect_window_count);
+          wait (sep_reset_n === 1'b1);
+          rose_at = $time;
+          margin  = 0;
+          while (margin < SepInOverrideMarginClks) begin
+            @(posedge clk_smu_i);
+            margin++;
+          end
+          sep_in_override_checks(1'b1);
+          obs_sep_in_expect_window_open = 1'b0;
+          $display({"[tb] sep_in override expectation window closed at %0t: ",
+                    "sep_reset_n rose at %0t, margin %0d clk_smu_i cycles"},
+                   $time, rose_at, margin);
+        end
+      end
+    end
+  end
+
+  final begin
+    if (obs_sep_in_expect_window_open) begin
+      $display({"[tb] sep_in override expectation window still open at end: ",
+                "opened at %0t, sep_reset_n=%b"},
+               sep_in_override_opened_at, sep_reset_n);
+    end
+  end
+`endif
+`endif
+
   // powergood_stable is the SMC reset controller's stretched and synchronized
   // view of powergood_i (smc_reset_ctrl.sv), so it rises only once the DUT's own
   // synchronizer chain has clocked it through. The sticky low record carries no
@@ -1100,12 +1182,18 @@ module smu_wrapper_uvm_top
   assign sep_xbar_global_base_o = u_dut.u_smu.sep_global_base_o;
   assign sep_xbar_region_size_o = u_dut.u_smu.sep_region_size_o[31:0];
 
+  // Crossbar -> SEP inbound AR, the read side of the sep_xbar_in_aw_* tap.
+  logic [31:0] sep_xbar_in_ar_count_o;
+  logic [55:0] sep_xbar_in_ar_addr_o;
+
   always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_smn_out_aw_count_o <= '0;
       sep_xbar_in_aw_count_o <= '0;
       sep_xbar_in_aw_user_o  <= '0;
       sep_xbar_in_aw_addr_o  <= '0;
+      sep_xbar_in_ar_count_o <= '0;
+      sep_xbar_in_ar_addr_o  <= '0;
       smc_xbar_in_ar_count_o <= '0;
       smc_xbar_in_aw_count_o <= '0;
     end else begin
@@ -1123,6 +1211,10 @@ module smu_wrapper_uvm_top
         sep_xbar_in_aw_count_o <= sep_xbar_in_aw_count_o + 32'd1;
         sep_xbar_in_aw_user_o  <= 12'(u_dut.u_smu.xbar_to_sep_req.aw.user);
         sep_xbar_in_aw_addr_o  <= 56'(u_dut.u_smu.xbar_to_sep_req.aw.addr);
+      end
+      if (u_dut.u_smu.xbar_to_sep_req.ar_valid && u_dut.u_smu.xbar_to_sep_resp.ar_ready) begin
+        sep_xbar_in_ar_count_o <= sep_xbar_in_ar_count_o + 32'd1;
+        sep_xbar_in_ar_addr_o  <= 56'(u_dut.u_smu.xbar_to_sep_req.ar.addr);
       end
     end
   end

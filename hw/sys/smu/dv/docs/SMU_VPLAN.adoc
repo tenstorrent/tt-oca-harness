@@ -383,6 +383,12 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_aperture_map_walk_test` |fabric |3 |The SMU crossbar decodes the SMC aperture at every base and size BASE_CONFIG admits and JTAG2AXI can follow.
 |`smu_xbar_connectivity_matrix_test` |fabric |3 |An `ext_in` access that matches neither programmed aperture is answered DECERR by the crossbar and never reaches `ext_out`.
 |`smu_xbar_zero_aperture_test` |fabric |3 |A zero-size SEP or SMC aperture, and both at once, matches no address whatever its base: `ext_in` traffic to it is DECERR and never reaches the port, `sep_out` traffic to the disabled SEP window leaves on `ext_out`, the other aperture keeps its route, and a cold reset restores both.
+|`smu_xbar_decerr_burst_response_test` |fabric |3 |An `ext_in` read or write that matches neither aperture, single-beat or burst, at the miss address or at the bit-55 alias of the SMC window, is answered by the crossbar alone with the AXI4 response shape of the request and changes nothing behind it.
+|`smu_xbar_reset_held_target_test` |fabric |3 |With the SEP held by the IC_RESET SEP slice, one hold per measurement and a cold reset between holds, a later same-ID response never overtakes a read orphaned at `sep_in`, `ext_in` reads under other IDs with no same-ID request queued ahead complete to the SMC within their bound, and a cold reset clears the state; the orphan's fate, the responses around the hold, the acceptance counts and the R-beat withdrawal at the fall (#2891) are recorded.
+|`smu_xbar_aperture_edge_burst_test` |fabric |3 |A single beat or a burst at a SEP or SMC aperture edge, at the 2^56 carry edge, into an adjacent aperture or into a SEP aperture wider than the SEP inbound space is routed whole to the one subordinate its first address selects.
+|`smu_sep_reset_inflight_test` |fabric |3 |A SW_RESET_N domain reset drains the `ext_in` reads accepted before it and answers new accesses to the held domain SLVERR with 0x1501A7ED in each 32-bit word until the release, never isolates the Key Manager mailbox, eFuse, lifecycle and external TRNG ports, and leaves the other domains live; the JTAG `sep_reset_n` override and the SEP watchdog bite restart the SEP CPU with traffic outstanding, and the accesses PR #3341 leaves hung after the bite are recorded.
+|`smu_smc_reset_inflight_test` |fabric |3 |Primary-domain reads outstanding across an SMC warm reset complete with their data, the SMC registers keep or reset their values across the warm, pin cool and FLR-timed cool resets as the reset equations state, the warm reset follows every primary reset, the isolation latch sets and clears, and the RESET_CTRL core and uncore controls hold and release as specified, the uncore reset applying once a held read train drains; the accesses outstanding at a primary or warm reset and the read train are recorded. RED by design on the kept run at `CHK-SMC-SW-UNCORE` until issue #3594 is answered (SF-009).
+|`smu_dtp_jtag2axi_smc_reset_inflight_test` |fabric |3 |JTAG2AXI accesses into the SMC fabric are launched inside a pin cool, FLR-timed cool and warm reset and across the pin release, and after the resets SS_CONFIG reads its reset value, ISOLATE_REQ_REG keeps its pattern and a fresh access completes; the captures inside the resets are recorded.
 |`smu_periph_ext_window_test` |fabric |2 |The SMC peripheral crossbar's macro AXI-Lite window is reachable over JTAG2AXI, decodes its sub-windows, and shrinks with the SMC aperture.
 |`smu_alias_cache_reset_test` |fabric |3 |An alias hit carries the programmed cacheable value as AxCACHE on both channels, the AxCACHE of a miss is measured, and the alias remap is transparent after reset.
 |`smu_filter_cfg_register_map_test` |fabric |3 |The filter control registers of all entries of both filter instances reset, store, read back and address as the RDL specifies.
@@ -11547,6 +11553,481 @@ sequence's own raise, outside the scoreboard
 
 '''''
 
+[[sec-209-smu_xbar_decerr_burst_response_test]]
+===== 209 `smu_xbar_decerr_burst_response_test`
+
+*Phase*: 3
+
+*Area*: SMU_WRAPPER
+
+*Source Module*: `smu_xbar_decerr_burst_response_test` (`cocotb_wrapper/tests/`; the sequence `smu_xbar_decerr_burst_response_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins, with a passive monitor that samples every `ext_in` handshake on the pins each `clk_smu_i` cycle; `ocah_jtag_vip` for the one JTAG2AXI bring-up that opens SMC inbound filter entry 0; the bench counters `sep_xbar_in_aw_count_o`, `sep_xbar_in_ar_count_o` (the `sep_in` AR tap), `smc_xbar_in_ar_count_o`, `smc_xbar_in_aw_count_o`, `smu_axi_out_write_count_o` and `smu_axi_out_read_count_o` and the four aperture ports; `elaboration` firmware mode; the default SMC and SEP eFuse shadow preloads
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `all`; `timeout_sec` 1800; tags `fabric`, `sep`, `axi`, `decerr`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`, and VCS for the AXI protocol checkers; plusargs the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` default images, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload`, `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload`, `+axi_sva_need_smu_in`, `+axi_sva_need_xbar_ext_in`, `+axi_sva_need_xbar_smc_in`, `+axi_sva_need_dtp_dbg`.
+
+*Known limitation*: the `ocah_axi_sva` rules and the `+axi_sva_need_*` gates grade on VCS only; on Verilator the checker instances compile with the rules off (`ASSERTS_OFF`) and the leaf grades its checkers alone. The kept run is VCS, seed 1, and is GREEN. The read data word of a DECERR beat, the code of each later beat of a multi-beat DECERR read and the number of reads the DECERR responder accepts while RREADY is held are measured and logged only, because SF-003, SF-004 and SF-011 of the SMU AXI fabric specification review are open.
+
+*Randomization*: RAND-REP: the seed draws the WVALID gap of 0 to 8 cycles before each of the sixteen beats of the S7 AWLEN 15 write, logged with the seed; every drawn gap has the same stated outcome, sixteen W handshakes each after its gap and then one DECERR B. The addresses, IDs, burst types and lengths of S2 to S9 are a fixed list walked whole in every run; one seed per regression (`reseed` 1).
+
+*Objective*: an `ext_in` request that matches neither aperture is answered DECERR by the crossbar itself, reaches no subordinate, and keeps the AXI4 response shape of the request: ARLEN + 1 read beats with RLAST on the last only (IHI 0022 A3.4.1), every write beat accepted and exactly one write response after WLAST (IHI 0022 A3.3), and the issued ID echoed (`hw/sys/smu/doc/index.adoc`, "SMU aperture decode and routing": the 57-bit zero-extended compare, the `ext_in` miss column and the DECERR the crossbar generates). Extends `smu_xbar_connectivity_matrix_test`, which keeps the single-beat `ext_in` read and writes outside both apertures, and adds only these cells: the bit-55 alias of the SMC window, INCR, WRAP and FIXED bursts, a write whose W beat precedes its AW, write beats with gaps, the absence of a side effect behind the alias, and the responder's recovery from held read data.
+
+*Test Coverage*:
+
+* S1: after the bench reset the four aperture ports are sampled, and the miss address M = 0x0000_0000_8000_0000 and the bit-55 alias A55 = SMC base + 2^55 must lie in neither aperture. SMC inbound filter entry 0 is opened over the whole space over JTAG2AXI, for the S8 readback only; nothing else on the proof path uses JTAG2AXI.
+* S2: a single-beat read (ARID 0x2D) and write (AWID 0xD2) at A55, then a read at the SMC base as the positive control that moves `smc_xbar_in_ar_count_o` by one.
+* S3 and S4: INCR reads at M of ARLEN 1, 7, 15 and 255 under ARIDs 0x01, 0x7E, 0x80 and 0xFF; WRAP reads of ARLEN 1, 3, 7 and 15 and FIXED reads of ARLEN 3 and 15 under ARIDs 0x10 to 0x15. Every beat's RID, RRESP, RLAST and RDATA is captured.
+* S5: a single-beat write at M (AWID 0x5A) whose W beat is handshaken before AW is driven.
+* S6 and S7: INCR writes at M of AWLEN 1, 7, 15 and 255 under AWIDs 0x02, 0x7D, 0x81 and 0xFE with WVALID continuous, then the AWLEN 15 write again (AWID 0x3F) with the seeded WVALID gaps.
+* S8: SCRATCH_COLD written with Q through the SMC window, P written to its bit-55 alias, SCRATCH_COLD read back.
+* S9: thirty-two single-beat reads at M under ARIDs 0x00 to 0x1F with RREADY held low for 2000 `clk_smu_i` cycles, then released; the RREADY and RVALID levels are sampled on the pins every cycle of the hold.
+* Measured and logged only: the RDATA of every DECERR beat (SF-003), the code of each later beat of a multi-beat DECERR read (SF-004) and the AR handshakes accepted before ARREADY stays low in S9 (SF-011).
+* Out of scope: the `sep_out` and `smc_out` self-route miss cells, which need SEP or SMC firmware traffic this leaf does not drive.
+
+*Test Procedure*:
+
+[arabic]
+. Sample the aperture ports, check that M and A55 lie in neither aperture, open SMC inbound filter entry 0 over JTAG2AXI and snapshot every crossbar subordinate counter and the `sep_in` AR tap.
+. Read and write A55, then read the SMC base.
+. Issue the S3 INCR reads and the S4 WRAP and FIXED reads at M and capture every beat.
+. Issue the W-first single-beat write, the S6 INCR writes and the S7 write with the seeded gaps, recording every W and B handshake cycle.
+. Error injection. Point: `ext_in`, at the bit-55 alias of SCRATCH_COLD. Kind: a write of P to an address that matches neither aperture, between a routed write of Q and a routed read of the same register. Expected response: DECERR from the crossbar, no subordinate counter moving, and SCRATCH_COLD still Q.
+. Launch the thirty-two S9 reads with RREADY low, release RREADY after 2000 cycles and collect every response.
+. Check the ordered fence and that every wait finished inside its bound.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-BIT55-MISS` |the A55 read is answered by the crossbar with one DECERR beat, RLAST 1 and RID 0x2D, and the A55 write with one DECERR B and BID 0xD2; neither moves `smc_xbar_in_ar_count_o` or `smc_xbar_in_aw_count_o`, and the SMC-base read moves `smc_xbar_in_ar_count_o` by one
+|`CHK-RDATA-SINGLE-OBS` |the RDATA of the A55 DECERR beat is captured and logged as `OBS-DECERR-RDATA-SINGLE` with no verdict (SF-003); the checker fails when the beat is not captured or the line is missing
+|`CHK-RD-BURST` |INCR reads of ARLEN 1, 7, 15 and 255 at M return ARLEN + 1 beats with RLAST on the last only, RID equal to ARID on every beat and DECERR on the first; no subordinate counter and no `sep_in` AR tap count moves; `OBS-RD-BURST-RESP` logs the code of every later beat (SF-004)
+|`CHK-RD-WRAP-FIXED` |WRAP reads of ARLEN 1, 3, 7 and 15 and FIXED reads of ARLEN 3 and 15 at M return ARLEN + 1 beats with RLAST on the last only, RID echoed and DECERR on the first; `OBS-RD-WRAP-FIXED-RESP` logs the later-beat codes (SF-004)
+|`CHK-RDATA-BURST-OBS` |one RDATA capture and one `OBS-DECERR-RDATA-BURST` line per counted DECERR beat of S3 and S4, with no verdict on the data (SF-003)
+|`CHK-WR-W-FIRST` |a single-beat write at M whose W beat is accepted before AW gets exactly one B, DECERR with BID 0x5A, and no second B within 2000 cycles
+|`CHK-WR-BURST` |INCR writes of AWLEN 1, 7, 15 and 255 at M have every W beat accepted, no B before WLAST, and exactly one DECERR B with BID equal to AWID; no subordinate counter moves
+|`CHK-WR-GAPS` |the AWLEN 15 write with a seeded WVALID gap before each beat has sixteen W handshakes, each after its logged gap, then one DECERR B with BID 0x3F
+|`CHK-NO-SIDE-EFFECT` |SCRATCH_COLD written with Q through the SMC window answers OKAY and is counted at `smc_in`, the bit-55 alias write of P is DECERR and counted nowhere, and SCRATCH_COLD reads back Q with OKAY
+|`CHK-ERR-CAPACITY` |the hold is graded from the pin samples: RREADY is low on every cycle from its fall to the release, for at least 2000 cycles, and RVALID stays high from its first assertion to the release with no R handshake before it (`CTRL-ERR-HOLD` prints both counts); the thirty-two reads at M under ARIDs 0x00 to 0x1F then all complete within 4000 cycles of the release, each one DECERR beat with RLAST, every RID once; `OBS-ERR-ACCEPTED` logs the accepted count (SF-011)
+|`CHK-NONVAC` |ordered cycle fence APERTURES_SAMPLED < BIT55_DONE < RD_BURST_DONE < WRAP_FIXED_DONE < WR_SINGLE_DONE < WR_BURST_DONE < SIDE_EFFECT_DONE < ERR_CAPACITY_DONE with S1 to S9 complete
+|`CHK-TIMEOUT-PATHS` |every handshake, JTAG2AXI and release wait carries a finite bound and fails the test on expiry with the last channel state; none expired
+|===
+
+*Observations*:
+
+[cols="1,1,2",options="header",]
+|===
+|OBS line |Required by |Open question
+|`OBS-DECERR-RDATA-SINGLE`, `OBS-DECERR-RDATA-BURST` |`CHK-RDATA-SINGLE-OBS`, `CHK-RDATA-BURST-OBS` |SF-003: the read data word of a crossbar DECERR beat
+|`OBS-RD-BURST-RESP`, `OBS-RD-WRAP-FIXED-RESP` |`CHK-RD-BURST`, `CHK-RD-WRAP-FIXED` |SF-004: the code of each later beat of a multi-beat DECERR read
+|`OBS-ERR-ACCEPTED` |`CHK-ERR-CAPACITY` |SF-011: the outstanding limit of the DECERR responder
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
+
+*Scope limit*: the positive controls (the SMC-base read and the routed SCRATCH_COLD write and read) are counted at `smc_in` in the same run, so a crossbar that routed the misses, or that stopped routing the SMC window, fails a checker. Measured and logged only: the DECERR data words, the later-beat codes and the responder's accepted count (SF-003, SF-004, SF-011). Out of scope: the `sep_out` and `smc_out` self-route miss cells.
+
+'''''
+
+[[sec-210-smu_xbar_reset_held_target_test]]
+===== 210 `smu_xbar_reset_held_target_test`
+
+*Phase*: 3
+
+*Area*: SMU_WRAPPER
+
+*Source Module*: `smu_xbar_reset_held_target_test` (`cocotb_wrapper/tests/`; the sequence `smu_xbar_reset_held_target_test_seq` in `cocotb_wrapper/seq_lib/`, which reuses the SEP debug system-bus helpers of `smu_dtp_sep_dm_sba_test_seq`, the IC_RESET SEP-slice scan of `smu_dtp_sep_ic_reset_effect_test_seq` and the `rst_cold_ni` sequence of `smu_xbar_zero_aperture_test_seq`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins, with a passive monitor of every `ext_in` handshake each `clk_smu_i` cycle; `ocah_jtag_vip` for the SEP debug module's system bus, the IC_RESET SEP slice and one JTAG2AXI read; the bench counters `sep_xbar_in_aw_count_o`, `sep_xbar_in_ar_count_o` (the `sep_in` AR tap), `smc_xbar_in_ar_count_o` and `smu_axi_out_read_count_o`; passive reads of `sep_reset_n_o`, `obs_sep_rst_n_o`, `obs_xbar_rst_n_o`, the `sep_in` channel levels at `u_xbar_sep_in_axi_sva` and the SEP aperture ports; the bench expectation window of `tb/tb_wrapper_top.sv`, through its open and close lines and the bench-level signals `obs_sep_in_expect_window_open` and `obs_sep_in_expect_window_count` (internal variables of the bench top, read over VPI, not `obs_*_o` ports); `rst_cold_ni` driven between holds; `elaboration` firmware mode; the default SMC shadow preload and the TEST_DEV SEP shadow preload
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `all`; `timeout_sec` 4800; tags `fabric`, `sep`, `axi`, `reset`, `held`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool VCS (`tools = ["vcs"]`) on `target = "compile_smu_chiplet"`, because the bench expectation window that `CHK-HELD-REACH` grades is compiled on four-state simulators only; plusargs the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` default images, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload`, `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`, `+axi_sva_need_smu_in`, `+axi_sva_need_xbar_ext_in`, `+axi_sva_need_xbar_sep_in`, `+axi_sva_need_xbar_smc_in`, `+axi_sva_need_dtp_dbg`, `+axi_sva_need_xbar_smc_out`, `+axi_sva_need_xbar_ext_out`, `+axi_sva_need_smu_out`, and the leaf-scoped bench expectation window `+axi_sva_expect_sep_in_override`.
+
+*Known limitation*: the JTAG IC_RESET `sep_reset_n` override performs no isolation (#2891, `hw/sys/sep/doc/clk_rst.adoc`). An accepted `sep_in` read loses its R beat at the fall without a handshake, so the `ocah_axi_sva` R rules of `u_xbar_sep_in_axi_sva` (`R_VALID_HELD`, `R_PAYLOAD_STABLE`) and the SEP SRAM burst-demux arbiter checks (the `req1` assertion and the `lock_req` assumption) fire. #2891 rules a dropped handshake under the override an expected debug event, owned by the SEP. The leaf records the `sep_in` R samples across the fall of hold A as `OBS-SEPIN-WITHDRAWN` and never grades them. The bench expectation window (`+axi_sva_expect_sep_in_override`, this leaf only) takes exactly those rules off with `$assertkill` at a hold's `sep_reset_n` fall under the JTAG override and puts them back with `$asserton` 8 `clk_smu_i` cycles after its release, and prints its open and close lines; a window still open at the end prints a line that the hard-fail patterns of `smu_sim_cfg.toml` fail the run on. `CHK-HELD-REACH` grades that the window opened at every fall, closed after every release and is not open at the end. Every other rule, instance and leaf is unaffected; a cold reset clears the state (<<smu-known-limitations>>). The orphan's fate, the responses around the hold and the acceptance counts are measured and logged only, because SF-011, SF-012, SF-013, SF-018 and SF-023 of the SMU AXI fabric specification review are open. The leaf runs on VCS only (`tools = ["vcs"]`): the expectation window and the `ocah_axi_sva` rules with their `+axi_sva_need_*` gates are not compiled on Verilator. The kept run is VCS, seed 1, and is GREEN on all 12 checkers; the leaf takes contract credit with `CHK-DIFFID-LIVE`.
+
+*Randomization*: RAND-NONE: directed, the four holds, the orphans, the probe IDs and addresses, the observation windows and the cold resets between the holds are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+
+*Objective*: the crossbar's handling of `ext_in` traffic to the SEP and the SMC while the JTAG IC_RESET SEP slice holds `sep_reset_n` low. That reset takes the SEP system peripherals in front of the SEP local crossbar while the SEP `rst_ni` domain keeps running, with no isolation sequence (`hw/sys/sep/doc/reset_controller.adoc`, `hw/sys/sep/doc/clk_rst.adoc`). The crossbar `ext_in` demultiplexer and the SMU-side SEP ID-width converter sit on the crossbar reset net, which this reset does not take; only the SEP-side ID truncation is behind `sep_reset_no` (`hw/sys/sep/doc/fabric.adoc`). Each measurement takes its own hold, with a cold reset on `rst_cold_ni` and the S1 programming between holds, so no measurement inherits the state another one left. The leaf grades that every hold reaches the SEP and not its `rst_ni`, that a later same-ID response never overtakes the orphaned read (IHI 0022 A5.3), that different-ID reads to `smc_in` complete within their bound when no same-ID request is queued ahead of them (`hw/sys/smu/doc/index.adoc`, the `ext_in` route to `smc_in`), and that a cold reset clears the state (`doc/trm/src/reset.adoc`); the orphan's fate, the responses during and after the hold, the acceptance counts and the withdrawal of the orphan's R beat at the fall (#2891) are recorded. Extends `smu_dtp_sep_ic_reset_effect_test`, which keeps the reset effect of the slice on the SEP, and adds only the crossbar traffic across the hold.
+
+*Test Coverage*:
+
+* S1: over the SEP debug module's system bus SEP_GLOBAL_BASE_ADDR 0x0 and SEP_REGION_SIZE 0x1100_0000, which covers the reset window [0, 16 MiB) and SEP SRAM at 0x1000_0000; SMC inbound filter entry 0 opened over the whole space over JTAG2AXI. Baseline: an `ext_in` read of SEP SRAM and of SMC VERSION_LO answer OKAY. The same programming follows every cold reset.
+* Hold A, S2 to S8: ARID 0x11 reads 256 INCR beats of SEP SRAM with RREADY dropped after 4 beats, and AWID 0x12 writes 256 INCR beats with WVALID stopped after 4 beats; the `sep_in` AR tap and `sep_xbar_in_aw_count_o` each move by one. The IC_RESET SEP slice is scanned until `sep_reset_n` falls; the reset nets and the SEP aperture ports are sampled, the `sep_in` AR and R levels are traced per cycle from 8 cycles before to 8 cycles after the fall (`INFO-SEPIN-TRACE`), and the bench expectation window opens at the fall. During the hold: RREADY rises and the 252 remaining W beats resume (20000-cycle window); ARIDs 0x21 to 0x24 read VERSION_LO one after another, each bounded by 2000 cycles, with no ARID 0x11 request and no `sep_in`-bound request issued since the orphan's AR was accepted; an ARID 0x31 read and an AWID 0x32 write at SEP global 0x0000_1000 (20000-cycle window). The slice is scanned back, the aperture re-programmed if the hold reset it, a 20000-cycle window, then a fresh SEP SRAM write and read; then `rst_cold_ni`, the S1 programming, a fresh SEP SRAM write and read and a VERSION_LO read.
+* Hold B, S9 to S12: the ARID 0x11 read orphan alone, then the hold; an ARID 0x11 read of VERSION_LO (20000-cycle window); while that read is held (its R not yet returned), one JTAG2AXI read outside both apertures with the `ext_in` ARVALID and ARREADY levels recorded at its issue; release and cold reset as in hold A.
+* Hold C, S13 to S15: the read orphan and the hold; sixteen ARID 0x41 reads at SEP global 0x0000_1000 + 8k, counting the AR handshakes accepted before ARREADY stays low for 4096 cycles and the `sep_in` AR tap delta; release and cold reset.
+* Hold D, S16 to S18: the read orphan and the hold; twenty-four reads under distinct ARIDs 0x50 to 0x67 at SEP global 0x0000_1000 + 8k, counted the same way; release and cold reset.
+* S19: every setup, JTAG, system-bus and liveness wait is bounded; the observation windows end at their stated length and log their outcome; the bench expectation window is open only from a hold's fall to just after its release.
+* Measured and logged only: the orphan's remaining beats, RLAST, B and codes (SF-013), whether the later same-ID read reached `smc_in` (SF-012), the responses during and after the hold (SF-013), the crossbar and converter reset levels during the hold (SF-018), the acceptance counts behind the orphan (SF-011), the counts that reached `sep_in` through the SEP ID-width converter (SF-023), the JTAG2AXI read's status and `smu_axi_out_read_count_o` delta (SF-011), whether the release alone restores OKAY (SF-013), and the `sep_in` R samples across the fall of hold A (#2891).
+
+*Test Procedure*:
+
+[arabic]
+. Program the SEP aperture over the system bus, open SMC inbound filter entry 0 over JTAG2AXI, take the baseline reads and sample every counter.
+. Launch the hold A orphaned read and write and confirm each was counted at `sep_in`.
+. Error injection. Point: the SEP's `sep_reset_n`, driven through the IC_RESET SEP slice of the primary TAP. Kind: a reset of the SEP system peripherals that the crossbar does not take, with a read and a write outstanding at `sep_in`. Expected response: `sep_reset_n_o` 0 and the SEP `rst_ni` 1 for the whole hold, the bench expectation window open from the fall to just after the release, different-ID reads to `smc_in` answered OKAY within their bound with no same-ID request queued ahead, no same-ID overtaking; the rest recorded.
+. Run the hold A probes and windows, release the slice, run the fresh accesses, then drive the cold reset, re-program and run the clear accesses.
+. Repeat the orphan, the hold, the probes of that hold, the release and the cold reset for holds B, C and D.
+. Check the ordered fence, that every proof-path wait finished inside its bound, that every observation window logged its length and outcome and that the bench expectation window is closed at the end.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-HELD-REACH` |in every hold `sep_reset_n_o` reads 0 after the IC_RESET SEP-slice update and stays 0 until the release while the SEP `rst_ni` stays 1; the bench expectation window (`+axi_sva_expect_sep_in_override`) opened at every fall and closed after every release, with the time on its open and close lines, and is never open outside a hold or at the end; `OBS-HELD-XBAR-RESET`, `OBS-HELD-APERTURE` and `OBS-SEPIN-WITHDRAWN` are logged (#2891, SF-013, SF-018)
+|`CHK-ORPHAN-OBS` |the `sep_in` AR tap and `sep_xbar_in_aw_count_o` each moved by one and exactly 4 R and 4 W beats were handshaken before `sep_reset_n` fell; the orphan's fate is `OBS-ORPHAN-RD` and `OBS-ORPHAN-WR` only (SF-013)
+|`CHK-SAMEID-NO-OVERTAKE` |in hold B the S10 ARID 0x11 AR is handshaken once on the `ext_in` pins, no ARID 0x11 beat with RLAST is handshaken up to that cycle (the orphan is still open), and the later ARID 0x11 VERSION_LO beat is never handshaken before the orphaned read's RLAST (IHI 0022 A5.3); both samples are printed and `OBS-SAMEID-HELD` is logged (SF-012)
+|`CHK-DIFFID-LIVE` |since the orphan's AR was accepted no ARID 0x11 request and no `sep_in`-bound request was issued on `ext_in`; each of ARID 0x21 to 0x24 then completes within 2000 `clk_smu_i` cycles OKAY with RID equal to ARID and the VERSION_LO RDL reset value, and `smc_xbar_in_ar_count_o` moves by four
+|`CHK-FRESH-OBS` |`OBS-FRESH-DURING` and `OBS-FRESH-AFTER` are logged with `sep_reset_n` 0 for the during-access and 1 for the after-access (SF-013)
+|`CHK-ACCEPT-PER-ID-OBS` |`OBS-ACCEPT-SAME-ID`: the ARID 0x41 AR handshakes accepted before ARREADY stayed low for 4096 cycles, issued during hold C with no other `ext_in` request queued ahead, are logged (SF-011)
+|`CHK-ACCEPT-SEP-OBS` |`OBS-ACCEPT-SEP-SUB`: the distinct-ID AR handshakes toward `sep_in` accepted before ARREADY stayed low for 4096 cycles, issued during hold D with no other `ext_in` request queued ahead, are logged (SF-011)
+|`CHK-IDW-SEP-LIMIT-OBS` |`OBS-IDW-SEP-UNIQUE` and `OBS-IDW-SEP-PER-ID`: the `sep_in` AR tap counts are logged beside the `ext_in` counts (SF-023)
+|`CHK-OTHER-INIT-OBS` |the JTAG2AXI `smc_out` read of hold B is issued, at an address outside both apertures, while the S10 same-ID read is held (its R not yet returned); `OBS-OTHER-INITIATOR` logs its status, the `smu_axi_out_read_count_o` delta and the `ext_in` ARVALID and ARREADY levels at its issue (SF-011)
+|`CHK-CLEAR` |after every `rst_cold_ni` and re-programming (S8, S12, S15, S18), the SEP SRAM write of that hold's own word (0xC01D_0073_C01D_0073 XOR the hold index 0 to 3) is OKAY, its read returns that word OKAY and VERSION_LO returns OKAY with its RDL reset value; `OBS-CLEARED-BY` is logged for every hold (SF-013)
+|`CHK-NONVAC` |ordered cycle fence BASELINE_OK < ORPHAN_A < HOLD_A < ORPHAN_OBSERVED < DIFFID_DONE < FRESH_DURING < RELEASED_A < COLD_A < HOLD_B < SAMEID_OBSERVED < OTHER_INIT < COLD_B < HOLD_C < LIMITS_SAMEID < COLD_C < HOLD_D < LIMITS_DISTINCT < COLD_D, each a logged marker with its cycle
+|`CHK-TIMEOUT-PATHS` |every proof-path wait carries a finite bound, a fail-on-expiry path and a last state and none expired; every observation window logged its length and outcome and none counts as a pass; the bench expectation window is not open at the end of the run
+|===
+
+*Observations*:
+
+[cols="1,1,2",options="header",]
+|===
+|OBS line |Required by |Open question
+|`OBS-HELD-XBAR-RESET`, `OBS-HELD-APERTURE` |`CHK-HELD-REACH` |SF-018: which reset clears the crossbar and its boundary links (the SMU-side SEP ID-width converter is on the crossbar reset net); SF-013
+|`OBS-SEPIN-WITHDRAWN` |`CHK-HELD-REACH` |Ruled by #2891 (`hw/sys/sep/doc/clk_rst.adoc`): the debug override performs no isolation and a dropped `sep_in` handshake under it is an expected debug event, owned by the SEP; recorded, never graded
+|`OBS-ORPHAN-RD`, `OBS-ORPHAN-WR` |`CHK-ORPHAN-OBS` |SF-013: the fate of a transaction outstanding at `sep_in` when `sep_reset_n` is held
+|`OBS-SAMEID-HELD` |`CHK-SAMEID-NO-OVERTAKE` |SF-012: whether the crossbar holds a same-ID request to another subordinate behind an outstanding one, and with what bound
+|`OBS-FRESH-DURING`, `OBS-FRESH-AFTER`, `OBS-CLEARED-BY` |`CHK-FRESH-OBS`, `CHK-CLEAR` |SF-013: the response to new `sep_in` traffic during and after the hold, and whether the release alone clears the state
+|`OBS-ACCEPT-SAME-ID`, `OBS-ACCEPT-SEP-SUB`, `OBS-OTHER-INITIATOR` |`CHK-ACCEPT-PER-ID-OBS`, `CHK-ACCEPT-SEP-OBS`, `CHK-OTHER-INIT-OBS` |SF-011: the crossbar's per-ID and per-subordinate outstanding limits
+|`OBS-IDW-SEP-UNIQUE`, `OBS-IDW-SEP-PER-ID` |`CHK-IDW-SEP-LIMIT-OBS` |SF-023: the unique-ID and per-ID limits of the SEP ID-width converter
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
+
+*Scope limit*: the reach of every hold, same-ID non-overtaking, different-ID liveness to `smc_in` with no same-ID request queued ahead and the cold-reset clear are graded; nothing in this entry closes SF-011, SF-012, SF-013, SF-018 or SF-023. Measured and logged only: the orphan's fate, the same-ID hold, the responses during and after the hold, the reset levels of the crossbar and the converters, the acceptance counts, the converter counts, the other initiator's read, what the release alone clears and the R-beat withdrawal at the fall, which #2891 rules an expected debug event owned by the SEP. Out of scope: holds of the SMC domains (<<sec-213-smu_smc_reset_inflight_test>>) and the SEP watchdog reset (<<sec-212-smu_sep_reset_inflight_test>>), and every request the SEP or the SMC issues itself.
+
+'''''
+
+[[sec-211-smu_xbar_aperture_edge_burst_test]]
+===== 211 `smu_xbar_aperture_edge_burst_test`
+
+*Phase*: 3
+
+*Area*: SMU_WRAPPER
+
+*Source Module*: `smu_xbar_aperture_edge_burst_test` (`cocotb_wrapper/tests/`; the sequence `smu_xbar_aperture_edge_burst_test_seq` in `cocotb_wrapper/seq_lib/`, which reuses the SEP debug system-bus helpers of `smu_dtp_sep_dm_sba_test_seq`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins, with a passive monitor of every `ext_in` handshake each `clk_smu_i` cycle; `ocah_jtag_vip` for the SEP debug module's system bus (every SEP aperture placement and the SEP-local SRAM read) and for JTAG2AXI (SMC inbound filter entry 0 and the SMC aperture); the bench counters `sep_xbar_in_aw_count_o`, `sep_xbar_in_aw_addr_o`, `sep_xbar_in_ar_count_o` and `sep_xbar_in_ar_addr_o` (the `sep_in` taps), `smc_xbar_in_ar_count_o`, `smc_xbar_in_aw_count_o`, `smu_axi_out_read_count_o` and `smu_axi_out_write_count_o`; the `sep_in` and `smc_in` channel levels read passively at `u_xbar_sep_in_axi_sva` and `u_xbar_smc_in_axi_sva`; the four aperture ports; `elaboration` firmware mode; the default SMC shadow preload and the TEST_DEV SEP shadow preload
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `all`; `timeout_sec` 3600; tags `fabric`, `sep`, `axi`, `burst`, `aperture`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`, and VCS for the AXI protocol checkers; plusargs the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` default images, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload`, `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`, `+axi_sva_need_smu_in`, `+axi_sva_need_xbar_ext_in`, `+axi_sva_need_xbar_sep_in`, `+axi_sva_need_xbar_smc_in`, `+axi_sva_need_dtp_dbg`.
+
+*Known limitation*: the `ocah_axi_sva` rules and the `+axi_sva_need_*` gates grade on VCS only; on Verilator the checker instances compile with the rules off (`ASSERTS_OFF`) and the leaf grades its checkers alone. The kept run is VCS, seed 1, and is GREEN. The response code of each beat that leaves the window, the SEP inbound DECERR data word and the legality of the unaligned SEP aperture values are measured and logged only, because SF-005, SF-006, SF-007, SF-008 and SF-029 of the SMU AXI fabric specification review are open.
+
+*Randomization*: RAND-NONE: directed, the aperture placements, the edge addresses and the burst shapes are the cells the testcase contract states and are walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+
+*Objective*: the SMU crossbar decodes an inbound transaction on its first address against [base, base + size) in a 57-bit sum, base included and base + size excluded (`hw/sys/smu/doc/index.adoc`, "SMU aperture decode and routing"), and a burst is one transaction with one address and ARLEN + 1 beats (IHI 0022 A3.4.1), so a burst whose later beats leave the window goes whole to the subordinate its first address selects. Extends `smu_aperture_map_walk_test`, which keeps the SMC aperture at every base and size BASE_CONFIG admits, and `smu_xbar_zero_aperture_test`, which keeps the zero-size aperture, and adds only these cells: single beats at both ends of the SEP and SMC windows, INCR, WRAP and FIXED bursts that run past the window end or into an adjacent aperture, the 2^56 carry edge, an unaligned SEP base and size, and a SEP aperture wider than the SEP inbound space.
+
+*Test Coverage*:
+
+* S1: SMC inbound filter entry 0 opened over the whole space over JTAG2AXI and the SEP debug module active; every crossbar subordinate counter is sampled.
+* S2 and S3: SEP aperture B = 0x0400_0000 with SEP_REGION_SIZE 0x1000_0840, end E = 0x1400_0840, read back; single beats at E - 8 and at E. With the base moved to 0x0400_1000, a write at base + 0x1000_0000 over `ext_in` is read back at SEP-local SRAM 0x1000_0000 over the system bus.
+* S4 and S5: at the S2 placement an INCR read and write of 8 beats from E - 16; a WRAP read of ARLEN 15 from E - 16, whose 128-byte container straddles E; a FIXED read and write of ARLEN and AWLEN 3 at E - 8.
+* S6: SEP aperture at 0xFF_FFFF_FF00_0000 with size 0x0100_0000, so base + size = 2^56: an INCR read and write of 8 beats from 0xFF_FFFF_FFFF_FFC0.
+* S7: SEP aperture 0x1_0000_0000 with size 0x8000_0000: reads at B + 0x4000_0008 (ARID 0x5C) and B + 0x4000_0000 (ARID 0x3A) and a write at B + 0x4000_0008 (AWID 0xA3), which reach `sep_in` and are answered by the SEP inbound decode (`hw/sys/sep/doc/fabric.adoc`).
+* S8 to S10: the SEP aperture back at the S2 placement, SMC GLOBAL_BASE 0x4000_0400 and REGION_SIZE 0x400 as the last BASE_CONFIG access JTAG2AXI makes; with the SEP end at the SMC base, and then with the SEP base at the SMC end, single beats at each edge and 8-beat INCR bursts that run into the adjacent aperture, the SMC word at 0x4000_0400 read before and after; then, as its live control, the CORE0 watchdog KEY written again, CTRL written with WDOGCOREAWAKE and read back.
+* S11: the SEP back at 0x0400_0000; single beats at 0x4000_07F8 and 0x4000_0800 and 8-beat INCR bursts from 0x4000_07F0 past the SMC end; then `rst_cold_ni` and one `ext_in` read into each reset window.
+* Measured and logged only: the per-beat RRESP and BRESP of every burst that leaves its window or enters the adjacent one (SF-005, SF-006), the SEP inbound DECERR data words (SF-007, SF-008) and the legality of the unaligned SEP base and size (SF-029).
+
+*Test Procedure*:
+
+[arabic]
+. Open SMC inbound filter entry 0 over JTAG2AXI, bring the SEP debug module up and sample every counter and tap.
+. Place the SEP aperture at each S2 to S7 placement over the system bus, read it back, and issue the single beats and bursts of each step.
+. Program the SMC aperture over JTAG2AXI, place the SEP aperture below and then above it, and issue the edge singles and the bursts into the adjacent aperture, reading the SMC word before and after, with the CORE0 watchdog KEY written before the write burst so that a leaked beat would change it; then write KEY and CTRL = WDOGCOREAWAKE and read CTRL back.
+. Error injection. Point: `ext_in`, at the end address of the SEP and of the SMC window. Kind: a single read and write at base + size, the first address the window excludes. Expected response: DECERR from the crossbar with no subordinate counter moving.
+. Issue the S11 bursts past the SMC end, drive the cold reset and read once into each reset window.
+. Check the ordered fence and that every wait finished inside its bound.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-END-EXCL` |E - 8 and 0x4000_07F8 are counted once at the SEP and SMC port and E - 8 reads back OKAY; E and 0x4000_0800 answer DECERR with no counter moving
+|`CHK-SEP-NOALIGN` |SEP_REGION_SIZE and `sep_xbar_region_size_o` read 0x1000_0840, the edges route as [B, B + size), and the word written at base + 0x1000_0000 is at SEP-local SRAM 0x1000_0000; `OBS-SEP-NOALIGN-LEGAL` is logged (SF-029)
+|`CHK-SEP-PAST-END` |the INCR read and write of 8 beats from E - 16 give one AR and one AW at `sep_in`, 8 R beats with RLAST on the last, 8 W handshakes and one B, IDs echoed, and no other counter moves; `OBS-PAST-END-SEP-RESP` logs the per-beat codes (SF-005)
+|`CHK-WRAP-FIXED` |the WRAP read of ARLEN 15 and the FIXED read and write of ARLEN and AWLEN 3 at the SEP end give one AR or AW at `sep_in`, ARLEN + 1 beats with RLAST on the last and one B; `OBS-WRAP-FIXED-RESP` logs the codes (SF-005)
+|`CHK-CARRY-BURST` |with base + size = 2^56 the 8-beat INCR read and write from 0xFF_FFFF_FFFF_FFC0 reach `sep_in` with RLAST on the last and one B; `OBS-CARRY-RESP` logs the codes
+|`CHK-WIDE-SEP` |a SEP aperture of 0x8000_0000 routes B + 0x4000_0008 and B + 0x4000_0000 to `sep_in`, and the SEP answers DECERR with the ID echoed; `OBS-WIDE-SEP-RDATA` logs the data words (SF-007, SF-008)
+|`CHK-ADJACENT-SINGLES` |with adjacent SEP and SMC apertures each edge single is counted at exactly the port the arithmetic selects
+|`CHK-ADJACENT-BURST` |a burst running into the adjacent aperture is counted only at its first address's port with 8 beats and RLAST on the last, and with the CORE0 watchdog KEY written OKAY before the write burst, so that a beat leaking into the SMC would change it, the CORE0 watchdog CTRL word at 0x4000_0400 reads OKAY both times and is unchanged; the live control, a KEY write and a CTRL write of WDOGCOREAWAKE, answers OKAY and CTRL reads back WDOGCOREAWAKE in its configuration bits, so a write that reaches CTRL after KEY changes it; `OBS-ADJ-RESP` logs the codes (SF-005)
+|`CHK-SMC-PAST-END` |the INCR read and write of 8 beats from 0x4000_07F0 past the SMC end give one AR and one AW at `smc_in`, 8 R beats with RLAST on the last, 8 W handshakes and one B, IDs echoed; `OBS-PAST-END-SMC-RESP` logs the codes (SF-005, SF-006)
+|`CHK-NONVAC` |ordered cycle fence SETUP_OK < SEP_EDGES < SEP_REBASE < SEP_PAST_END < WRAP_FIXED < CARRY < WIDE_SEP < SMC_PHASE_SET < SEP_BELOW < SMC_BELOW < SMC_PAST_END < COLD_RESET_BASELINE with S1 to S11 complete
+|`CHK-TIMEOUT-PATHS` |every handshake, system-bus, JTAG2AXI, port and reset wait carries a finite bound, a fail-on-expiry path and a last state, and none expired
+|===
+
+*Observations*:
+
+[cols="1,1,2",options="header",]
+|===
+|OBS line |Required by |Open question
+|`OBS-PAST-END-SEP-RESP`, `OBS-WRAP-FIXED-RESP`, `OBS-ADJ-RESP` |`CHK-SEP-PAST-END`, `CHK-WRAP-FIXED`, `CHK-ADJACENT-BURST` |SF-005: the code and data of each beat of a burst that leaves its window or enters the adjacent one, and whether completion is bounded
+|`OBS-PAST-END-SMC-RESP` |`CHK-SMC-PAST-END` |SF-005; SF-006: whether an SMC REGION_SIZE below 4 KiB is a supported configuration
+|`OBS-CARRY-RESP` |`CHK-CARRY-BURST` |SF-006: the legal stimulus for a burst at the 57-bit carry edge
+|`OBS-WIDE-SEP-RDATA` |`CHK-WIDE-SEP` |SF-007: whether SEP-local offset 0x4000_0000 is answered DECERR; SF-008: the read data word of the SEP inbound DECERR
+|`OBS-SEP-NOALIGN-LEGAL` |`CHK-SEP-NOALIGN` |SF-029: whether SEP_GLOBAL_BASE_ADDR and SEP_REGION_SIZE take the SMC alignment and power-of-two rules
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
+
+*Scope limit*: each edge single and each burst is counted at one port and the other ports are required unchanged, so a crossbar that split a burst, routed it by a later beat or took the end address fails a checker. Measured and logged only: the per-beat codes of bursts that leave their window, the SEP inbound DECERR data words and the legality of the unaligned SEP values (SF-005, SF-006, SF-007, SF-008, SF-029). Out of scope: a burst across the carry edge itself and SEP or SMC traffic that the SEP or the SMC issues.
+
+'''''
+
+[[sec-212-smu_sep_reset_inflight_test]]
+===== 212 `smu_sep_reset_inflight_test`
+
+*Phase*: 3
+
+*Area*: SMU_WRAPPER
+
+*Source Module*: `smu_sep_reset_inflight_test` (`cocotb_wrapper/tests/`; the sequence `smu_sep_reset_inflight_test_seq` in `cocotb_wrapper/seq_lib/`, which reuses the SEP STAP and debug-module bring-up of `smu_dtp_sep_dm_dmi_test_seq`, the SEP debug system-bus helpers of `smu_dtp_sep_dm_sba_test_seq`, the IC_RESET SEP-slice scan of `smu_dtp_sep_ic_reset_effect_test_seq` and the SEP aperture placement of `smu_axi_in_sep_aperture_test_seq`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins, with a passive sample of every `ext_in` handshake each `clk_smu_i` cycle; `ocah_jtag_vip` for the SEP STAP, the DMI and the SEP debug module's system bus (every SW_RESET_N write and read, the SEP aperture, the SEP DMA, the watchdog registers and the abstract memory writes that place a CPU load or store stub in the ICCM) and for the IC_RESET SEP slice; the `ocah_axi_vip` responder on `smu_axi_out` (`u_axi_out_if`), which holds ARREADY and RVALID for a bounded time; passive reads of `sep_reset_n_o`, `sep_pc_o`, `sep_trace_valid_o`, the SEP aperture ports, `smc_xbar_in_ar_count_o` and the SEP watchdog reset request in the SMU scope; `elaboration` firmware mode; the default SMC shadow preload, the TEST_DEV SEP shadow preload and the SEP Key Manager smoke ROM
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `all`; `timeout_sec` 5400; tags `fabric`, `sep`, `sba`, `reset`, `axi`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` default images, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload`, `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`, `+pll_sys_period_ns=10` and `+km_rom_hex=hw/sys/sep/dv/cocotb/tests/km_rom.parhex`, the SEP Key Manager smoke ROM image, because the leaf releases the Key Manager out of its software reset and an empty ROM raises `noXOnCsI` on a four-state simulator (#2456); no `+axi_sva_need_*` gate.
+
+*Known limitation*: the SEP watchdog bite with an inbound warm-scratch read outstanding leaves the SEP system-CSR leg hung until the cold reset: the watchdog reset drains no transaction, and an access hung across it stays hung until `rst_cold_ni` (PR #3341, `doc/trm/src/reset.adoc`, `doc/programmer/src/sep-programming.adoc`). The DMA_BUS_ERR_STATUS and PERIPH_BUS_ERR_STATUS readback and the egress write and read over the system bus after the bite are therefore bounded observation windows recorded as `OBS-SEPRST-BITE-ORPHAN` and never compared; `CHK-SEPRST-BITE-INFLIGHT` grades only the terms the ruling leaves intact. The behaviour is owned by the SEP and nothing in this entry is a closure (<<smu-known-limitations>>). With an egress load outstanding at the bite, some seeds end the run at the `axi_demux_id_counters` underflow `$fatal` of `u_sep_cpu.u_lsu_axi_demux`, an ID counter that underflows on the load orphaned at the bite; seed 1, the testlist seed, passes, and a regression that draws fresh seeds can fail the leaf there. That is the #3341 class (the watchdog reset does not drain; a cold reset follows), recorded for the SEP owner. The drain response codes, the isolation lanes, the early-release outcome, the inbound accesses across the JTAG override, the CPU load orphaned at a reset, the warm-scratch outcomes and the watchdog registers after the bite are measured and logged only, because SF-005, SF-011, SF-012, SF-013, SF-014, SF-024, SF-025 and SF-026 of the SMU SEP scenario specification review are open. The kept run is VCS, seed 1, and is GREEN.
+
+*Randomization*: RAND-NONE: directed, every allocated scenario is a fixed cell (five crypto domains x two drain cells, the isolation, TRNG, Key Manager, never-isolated and early-release cells, the JTAG override and the bite) walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+
+*Objective*: SEP-side resets with crossbar traffic in flight: the SW_RESET_N software domain resets, the JTAG IC_RESET `sep_reset_n` override and the SEP watchdog bite, each with `ext_in` to `sep_in` and `sep_out` transactions outstanding or newly issued. A domain reset drains the accepted transactions and isolates the domain, so a new access to it completes SLVERR with read data 0x1501A7ED in each 32-bit word until the domain is released, and the Key Manager mailbox, eFuse, lifecycle and external TRNG ports are never isolated (`hw/sys/sep/doc/reset_controller.adoc`); the external TRNG window of the reference integration answers DECERR with 0xBADCAB1E in each 32-bit lane (`hw/sys/sep/regs/gen/adoc/memory_map.adoc`); `sep_reset_n` resets the reset controller and the system peripherals, so SW_RESET_N and the SEP aperture registers read their reset values (`hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc`, `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc`; the leaf takes the reset values and field positions from the generated headers `hw/sys/sep/regs/gen/c/blocks/sep_reset_ctrl.h` and `hw/sys/sep/regs/gen/c/blocks/sep_cpu_ctrl.h`); the bite resets the CPU. The SEP fabric connects the reset controller register block to the load-store, debug and DMA initiators only (`hw/sys/sep/doc/fabric.adoc`), so every SW_RESET_N access is a debug-module system-bus access. Extends `smu_dtp_sep_ic_reset_effect_test`, which keeps the reset effect of the IC_RESET SEP slice, and `smu_sep_wdt_bite_to_smc_reset_test`, which keeps the bite-to-SMC reset chain, and adds the crossbar traffic across the three resets and the per-domain software resets.
+
+*Test Coverage*:
+
+* S1: SEP STAP, `dmactive` and the TEST_DEV preload; SEP_GLOBAL_BASE_ADDR 0x0400_0000 and SEP_REGION_SIZE 0x1100_0000 over the system bus (global = 0x0400_0000 + SEP-local); SEP outbound filter entry over an egress page; the `smu_axi_out` responder able to hold a request for a bounded 4000 cycles; a system-bus read of SW_RESET_N.
+* S2 to S4, for OTBN (bit 1, SEP-local 0x10900000), AES (bit 2, 0x10910000), HMAC (bit 3, 0x10911000), KMAC (bit 4, 0x10913000) and Adams Bridge (bit 6, 0x10940000): two drain cells with four `ext_in` reads accepted under distinct ARIDs and RREADY held low across the system-bus 0 write, released before (cell a) or after (cell b) the write reports complete; new 64-bit and 32-bit reads and a write issued during the drain and 2000 `clk_smu_i` later with the reset held; with OTBN held an AES read, with AES held an HMAC read, and under each held domain a SEP SRAM write and read; the 1 write and a fresh read and write.
+* S5: the drain cells on ESRC (0x10916000) with bit 5; reads and writes on ESRC, CSRNG (0x10915000) and EDN (0x10915800) and an entropy-pool read (0x10950000) with bit 5 held; release and a fresh read on each of the three.
+* S6: the Key Manager mailbox status word (offset 0xC, SEP-local 0x1092000C) read with bit 0 held from power-up, released and held again.
+* S7: a CPU-issued egress load held by the responder across a system-bus SW_RESET_N = 0x00, a CPU-issued load into the SMC window (its route logged), and with every domain held reads of the mailbox status word, the three eFuse words (0x10930000, 0x10930400, 0x10930500), the lifecycle controller (0x10918000) and the external TRNG (0x10917000), writes of the mailbox inbound data register (0x10920000) and the external TRNG window; then SW_RESET_N = 0x7E.
+* S8: for OTBN, AES and TRNG, the 0 and 1 writes 0 and 8 debug-bus operations apart (six pairs) with reads under distinct ARIDs, an `ext_in` probe after each pair and a SW_RESET_N read.
+* S9: SW_RESET_N = 0x7F; the two SEP SRAM words of the in-flight and held reads written before the engage (`CTRL-SEPRST-S9-PRELOAD`); a CPU egress load held by the responder, an `ext_in` SEP SRAM write and read and an `ext_in` SW_RESET_N read with RREADY and BREADY held; IC_RESET update 2 (bits 13 and 14 = 0) engages `sep_reset_n`; while held, the SEP aperture ports are read and new SEP SRAM, SW_RESET_N and lifecycle accesses are issued; the override is released (bit 13, then bit 14); the debug-module bring-up is repeated when the first system-bus access reports busy; the aperture is re-programmed; SW_RESET_N is read and the egress page written and read over the system bus.
+* S10: DMA_BUS_ERR_STATUS set by a SEP DMA read of the reserved SEP-local 0x10050000 and PERIPH_BUS_ERR_STATUS.aes by a CPU byte store to an AES register; an `ext_in` pattern into the warm-scratch bank (0x10802080) and SEP SRAM; a CPU egress load started before WDOG_CTRL.enable; the watchdog armed over the system bus; `ext_in` warm-scratch and SEP SRAM reads timed onto the bite request rise with RREADY held, and a new warm-scratch read while the CPU reset is held; after the request falls the first retired PC, the conditional bring-up, the status, watchdog and egress observation windows and a fresh `ext_in` SEP SRAM write and read.
+* S11: every `ext_in` response (4000 `clk_smu_i`), responder hold, system-bus and DMI poll, IC_RESET scan wait, `sep_reset_n_o` wait, bite request wait and retire wait is bounded, in about 135 slow operations.
+* Measured and logged only: drained-read codes and data (SF-025), the isolation response lanes (SF-024), the early-release outcome (SF-026), the inbound accesses across the JTAG override (SF-011), the CPU load orphaned at a reset (SF-012), the warm-scratch outcomes (SF-013), the watchdog registers after the bite (SF-014), the SMC-window load route (SF-005), whether a bring-up is repeated after the override or the bite (SF-011, SF-013), and the status and egress accesses after the bite (PR #3341).
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the SEP STAP and the debug module, program the SEP aperture and the egress filter entry over the system bus and read SW_RESET_N.
+. Error injection. Point: SW_RESET_N, written over the SEP debug system bus. Kind: a software reset of one crypto domain with `ext_in` reads accepted and outstanding. Expected response: every accepted read completes within its bound; a new access completes SLVERR with 0x1501A7ED in each 32-bit word while the domain is held; a fresh access after the 1 write is OKAY.
+. Run the drain, isolation and release cells of S2 to S5 for every domain and the TRNG paths, then the Key Manager cells of S6.
+. Run the all-domains cells of S7 and the early-release pairs of S8.
+. Error injection. Point: the SEP's `sep_reset_n`, driven through the IC_RESET SEP slice of the primary TAP. Kind: a reset of the SEP system peripherals with `ext_in` accesses and a CPU egress load outstanding. Expected response: `sep_reset_n_o` 0 from the engage to the release, the SEP aperture ports at their reset values while held, a boot ROM retire after the release, SW_RESET_N 0x7E where 0x7F was written and the egress write and read completing with `sberror` 0.
+. Error injection. Point: the SEP watchdog, armed over the system bus. Kind: a bite with `ext_in` SEP SRAM and warm-scratch reads and a CPU egress load outstanding. Expected response: the bite request falls with no software write, the first retired PC is in the boot ROM, the SEP SRAM read outstanding at the bite returns OKAY with the written word and a fresh SEP SRAM write and read are OKAY; the status readback and the egress accesses after the bite are recorded (PR #3341).
+. Check the ordered fence, that every proof-path wait finished inside its bound and that every observation window is listed with its bound, the cycles used and its outcome.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEPRST-OTBN-ISOLATE` |SW_RESET_N bit 1 (SEP-local 0x10900000): every read accepted before the system-bus 0 write completes within its bound across the write; new 64-bit and 32-bit reads during the drain and with the reset held are SLVERR with 0x1501A7ED in each 32-bit word and the new write is SLVERR; after the 1 write a fresh read and write are OKAY (`hw/sys/sep/doc/reset_controller.adoc`); drained codes and data are `OBS-SEPRST-DRAIN` (SF-025)
+|`CHK-SEPRST-AES-ISOLATE` |the same cells for SW_RESET_N bit 2 (SEP-local 0x10910000)
+|`CHK-SEPRST-HMAC-ISOLATE` |the same cells for SW_RESET_N bit 3 (SEP-local 0x10911000)
+|`CHK-SEPRST-KMAC-ISOLATE` |the same cells for SW_RESET_N bit 4 (SEP-local 0x10913000)
+|`CHK-SEPRST-ABR-ISOLATE` |the same cells for SW_RESET_N bit 6 (SEP-local 0x10940000)
+|`CHK-SEPRST-TRNG-ISOLATE` |the ESRC reads accepted before the bit 5 = 0 write complete; ESRC, CSRNG and EDN reads are SLVERR with 0x1501A7ED in each 32-bit word and their writes SLVERR; the entropy-pool read answers within its bound without the isolation response; after bit 5 = 1 a fresh read on each of the three paths is OKAY
+|`CHK-SEPRST-KM-MAILBOX` |the Key Manager mailbox status word (offset 0xC) reads OKAY with no 32-bit lane at 0x1501A7ED with bit 0 held from power-up, released and held again (the value is logged, not compared), and SW_RESET_N bit 0 reads 1 after the 1 write
+|`CHK-SEPRST-NEVER-ISO` |with SW_RESET_N = 0x00 the mailbox status read is OKAY with no lane at 0x1501A7ED and the mailbox write at offset 0x0 is OKAY; the three eFuse reads and the lifecycle read are OKAY with no lane at 0x1501A7ED; the external TRNG read is DECERR with 0xBADCAB1E in each 32-bit lane and its write DECERR
+|`CHK-SEPRST-DOMAIN-INDEP` |with OTBN held the AES read and with AES held the HMAC read are OKAY; the SEP SRAM write and read-back are OKAY with the written word under every held domain; the CPU egress load outstanding across SW_RESET_N = 0x00 completes OKAY with the responder word
+|`CHK-SEPRST-EARLY-RELEASE` |for every domain and gap every issued read and probe completes within its bound and SW_RESET_N reads 0x7E at the end; which of isolation or reset happened is `OBS-SEPRST-EARLY` (SF-026)
+|`CHK-SEPRST-JTAG-INFLIGHT` |`sep_reset_n_o` reads 0 from the IC_RESET engage to the release; while held the aperture ports read SEP_GLOBAL_BASE_ADDR 0x0 and SEP_REGION_SIZE 0x100_0000; after the release the first retired PC is in the boot ROM window 0x10040000 to 0x1004FFFF, SW_RESET_N reads 0x7E where 0x7F was written, and the system-bus egress write and read complete with `sberror` 0 and the responder word
+|`CHK-SEPRST-BITE-INFLIGHT` |the bite request falls with no software write; the first retired PC after the bite is in the boot ROM window; the SEP SRAM read outstanding at the bite returns OKAY with the written word; the fresh SEP SRAM write and read after the release are OKAY with their data; the DMA / PERIPH bus-error status readback and the system-bus egress write and read after the bite are `OBS-SEPRST-BITE-ORPHAN` lines for all four legs, never compared (PR #3341)
+|`CHK-NONVAC` |ordered simulation-time fence SETUP < DRAIN < ISOLATED < RELEASE < TRNG < KM < ALL_DOMAINS < EARLY < JTAG < BITE < PASS, every term with its own time and a non-zero access count and 2 drain cells x 5 domains
+|`CHK-TIMEOUT-PATHS` |every bounded proof-path wait logs its bound, the cycles used and its last state, none expires, and the sites per kind match the literal counts of the step list; every observation window (`OBS-SEPRST-DRAIN`, `OBS-SEPRST-JTAG-INFLIGHT`, `OBS-SEPRST-WSCRATCH`, `OBS-SEPRST-BITE-ORPHAN`, `OBS-SEPRST-WDOG-POST`, `OBS-SEPRST-REBRINGUP`) is listed as an `OBS-WINDOW` line with its bound, the cycles used and `expired` 0 or 1, the windows per OBS line match the step list, and none counts as a passed wait
+|===
+
+*Observations*:
+
+[cols="1,1,2",options="header",]
+|===
+|OBS line |Required by |Open question
+|`OBS-SEPRST-DRAIN` |the five `CHK-SEPRST-*-ISOLATE` checkers and `CHK-SEPRST-TRNG-ISOLATE` |SF-025: whether a drained transaction completes with the engine's own response, and whether the drain is bounded
+|`OBS-SEPRST-ISO-LANE` |the five `CHK-SEPRST-*-ISOLATE` checkers and `CHK-SEPRST-TRNG-ISOLATE` |SF-024: the isolation response of a 64-bit and a 32-bit read on `smu_axi_in`
+|`OBS-SEPRST-EARLY` |`CHK-SEPRST-EARLY-RELEASE` |SF-026: whether a 1 written before the domain reset asserts aborts, completes or is ignored
+|`OBS-SEPRST-JTAG-INFLIGHT` |`CHK-SEPRST-JTAG-INFLIGHT` |SF-011: the fate of inbound accesses outstanding at, or issued during, the `sep_reset_n` hold
+|`OBS-SEPRST-CPU-ORPHAN` |`CHK-SEPRST-JTAG-INFLIGHT`, `CHK-SEPRST-BITE-INFLIGHT` |SF-012: whether a `sep_out` response outstanding at a CPU reset is absorbed and `sep_out` stays usable
+|`OBS-SEPRST-WSCRATCH` |`CHK-SEPRST-BITE-INFLIGHT` |SF-013: the response of a warm-scratch access outstanding at, or issued during, a bite, and the bank contents after
+|`OBS-SEPRST-WDOG-POST` |`CHK-SEPRST-BITE-INFLIGHT` |SF-014: which watchdog registers return to their reset values after a bite
+|`OBS-SEPRST-SMCWIN-ROUTE` |`CHK-SEPRST-DOMAIN-INDEP` |SF-005: whether a SEP load into the SMC window takes a dedicated SEP-to-SMC port
+|`OBS-SEPRST-REBRINGUP` |`CHK-SEPRST-JTAG-INFLIGHT`, `CHK-SEPRST-BITE-INFLIGHT` |SF-011 (leg s9) and SF-013 (leg s10): whether the debug path needs a bring-up after the override or the bite
+|`OBS-SEPRST-BITE-ORPHAN` |`CHK-SEPRST-BITE-INFLIGHT` |Ruled by PR #3341 (`doc/trm/src/reset.adoc`, `doc/programmer/src/sep-programming.adoc`): the watchdog reset drains nothing and an access hung across it stays hung until the cold reset, owned by the SEP (SF-013); one line per leg (`status_dma`, `status_periph`, `egress_wr`, `egress_rd`) carrying `ruling=#3341` and `expired` 0 or 1; recorded, never compared
+|`OBS-WINDOW` |`CHK-TIMEOUT-PATHS` |None: the listing of every observation window with its bound, the cycles used and `expired` 0 or 1
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
+
+*Scope limit*: drain completion, the isolation response and its release, the Key Manager and never-isolated ports, domain independence, the early-release completion, the JTAG override window and the four bite terms that PR #3341 leaves intact are graded. Measured and logged only: drained codes and data, isolation lanes, the early-release outcome, inbound and CPU accesses across the override and the bite, warm-scratch outcomes, the watchdog registers after the bite, the SMC-window route and the status and egress accesses after the bite (SF-005, SF-011, SF-012, SF-013, SF-014, SF-024, SF-025, SF-026; PR #3341, owned by the SEP). Nothing in this entry is a closure of a SEP-owned behaviour. Out of scope: the SEP's internal crypto behaviour, the eFuse sensing path of `sep_reset_n`, and the SMC-side resets (<<sec-213-smu_smc_reset_inflight_test>>).
+
+'''''
+
+[[sec-213-smu_smc_reset_inflight_test]]
+===== 213 `smu_smc_reset_inflight_test`
+
+*Phase*: 3
+
+*Area*: SMU_WRAPPER
+
+*Source Module*: `smu_smc_reset_inflight_test` (`cocotb_wrapper/tests/`; the sequence `smu_smc_reset_inflight_test_seq` in `cocotb_wrapper/seq_lib/`, which reuses the SEP STAP and debug-module bring-up of `smu_dtp_sep_dm_dmi_test_seq`, the SEP debug system-bus helpers of `smu_dtp_sep_dm_sba_test_seq` and the SEP aperture placement of `smu_axi_in_sep_aperture_test_seq`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins, which drops VALID and issues nothing while the SMC primary reset holds the inbound link; `ocah_jtag_vip` for the SEP STAP, the SEP debug module's system bus (accesses in the SMC window on the SEP-to-SMC port and the SEP bite) and the DTP JTAG2AXI port (SMC filter entries, `smc_out` reads of the egress page and of SEP SRAM, and the ISOLATE_REQ_SMC_REG reads and clearing write), every JTAG2AXI capture 8-byte (AXSIZE 8) and, after a failed SEP re-attach, framed by the IDCODE chain-pad probe `CTRL-SMCRST-CHAIN`; the `ocah_axi_vip` responder on `smu_axi_out` with a bounded hold; the top-port drives `rst_cool_n_from_pin_i` and `cfg_flr_pf_active_i` (bench pins `tb_cool_reset_pin` and `tb_cfg_flr_pf_active`); passive reads of `rst_primary_smc_clk_n_o`, the warm probe `u_smc.rst_warm_smc_clk_n`, the `ext_in` AWVALID, ARVALID and R handshake levels, the R handshake levels of the crossbar `smc_in` port at the inputs of the `u_xbar_smc_in_axi_sva` checker instance and the SEP and SMC aperture ports, sampled every `clk_smu_i`, and `obs_smc_clk_o` counted for the `clk_smc` gaps; `elaboration` firmware mode; the default SMC shadow preload and the TEST_DEV SEP shadow preload
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `all`; `timeout_sec` 3600; tags `fabric`, `smc`, `sep`, `reset`, `wdt`, `isolation`, `axi`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` default images, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload`, `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload` and `+pll_sys_period_ns=10`; no `+axi_sva_need_*` gate.
+
+*Known limitation*: the leaf is RED by design on its kept run (VCS, seed 1) at `CHK-SMC-SW-UNCORE`, on the terms `hw/sys/smc/regs/gen/adoc/blocks/cpu_ctrl.adoc` and the RDL state: in the held mode-0 trial of S9, after RREADY is released RESET_TIMEOUT read over `ext_in` never shows `reset_applied` 1 after the drain, the RESET_CTRL release write gets no response, RESET_CTRL cannot be read back at the written value and `reset_applied` is never read 0, because every `ext_in` access into the SMC after the release gets no response. How many of the 24 held train reads are answered is not stated (SF-009) and is recorded only (`OBS-SMCRST-UNCORE-TRAIN`: 16 of 24 on the kept run, ARIDs 0x9a to 0xa1 unanswered within their 4000-cycle windows). Each post-release wait on a stated term is a graded bounded wait whose expiry fails `CHK-SMC-SW-UNCORE`, never an abort, so the leaf reaches its end-of-leaf verdicts. The specification does not state which cluster transactions complete or drop on a forced uncore reset (SF-009 of the SMU SEP scenario specification review), and the RESET_TIMEOUT value during the quiesce is not observable from the external port (`rt_held=unobservable` in `OBS-SMCRST-UNCORE-TRAIN`). Issue #3594 asks that CPU_CTRL stay reachable when a software uncore reset blocks an inbound read to the SMC cluster: the L2-frontend isolate drains only the reads already past it, a cluster read accepted upstream of it is blocked and holds the shared front-port AR channel, and on the SMU the AXI ID converter holds the RESET_CTRL release write behind that read; S9 is one of its reproducers. The leaf stays RED at `CHK-SMC-SW-UNCORE`, unmasked and in `all` only, until #3594 is answered; it carries no `expect_fail`, and nothing in this entry is a closure. The mode-1 and timeout-0 held trials are out of this milestone (SF-009). With some seeds the SEP bite produces no warm-net fall within the 200000-cycle bound; the run then records `OBS-SMCRST-BITE-NO-WARM` with the seed, the bite-source cells of the warm step are recorded and never compared, and the watchdog-source cells carry the verdict. The outcomes of accesses outstanding at, or issued during, a primary or warm reset are measured and logged only, because SF-005, SF-006, SF-007, SF-008, SF-009, SF-020 and SF-029 of the SMU SEP scenario specification review are open.
+
+*Randomization*: RAND-NONE: directed, the two warm sources, the two pin trials, the FLR-timed trial, the four core resets, the idle uncore reset and the one held uncore trial are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point. The seed decides whether the SEP bite reaches the warm net inside its bound, which the run records as an observation.
+
+*Objective*: SMC-side resets with crossbar traffic in flight: the warm reset from the CORE0 watchdog second timeout and from the SEP bite, the cool reset from `rst_cool_n_from_pin_i`, the FLR-timed cool reset and the software core and uncore resets of RESET_CTRL, each with `ext_in` to `smc_in`, `smc_out` and SEP-to-SMC port transactions outstanding or newly issued, and the register reset and retention effects of those resets. The cool-reset pin and the FLR cool reset feed the SMC primary reset, the warm reset follows every primary reset, the CPU control registers, SS_CONFIG and SS_COLD_RESET_N are on the primary reset and kept across warm, the isolation registers are on the stable cold reset, and a core reset keeps its watchdog while the uncore reset clears it (`hw/sys/smc/doc/clk_rst.adoc`, `hw/sys/smc/regs/gen/adoc/blocks/cpu_ctrl.adoc`, `hw/sys/smc/regs/gen/adoc/blocks/reset_unit.adoc`, `hw/sys/smc/regs/gen/adoc/blocks/wdt.adoc`, `hw/sys/smc/regs/gen/adoc/blocks/smc_base_config.adoc`). Extends `smu_smc_warm_reset_register_retention_test`, which keeps warm retention without traffic, `smu_smc_cool_reset_pin_test`, which keeps the cool-reset pin, and `smu_sep_wdt_bite_to_smc_reset_test`, which keeps the bite-to-SMC reset chain, and adds the traffic across each reset, the FLR-timed cool reset with the latched isolation leg and the software core and uncore resets.
+
+*Test Coverage*:
+
+* S1: SEP STAP under the TEST_DEV preload; SEP aperture 0x1100_0000 at 0x0400_0000; SMC inbound filter entry 0 opened over the whole space and outbound filter entry 0 pass-all over JTAG2AXI; the `smu_axi_out` responder with a bounded hold.
+* S2: over `ext_in` SS_CONFIG, SS_COLD_RESET_N, RESET_VECTOR[0..3], WDT_TIMEOUT 0x2000, RESET_TIMEOUT 0x0001_0100, RESET_CTRL 0x0100_010D, ISOLATE_REQ_REG and REGION_SIZE 0x0200_0000 written and read back, then GLOBAL_BASE 0x6000_0000 and the rest at the new base.
+* S3 and S4: the CORE0 watchdog with `wdogrsten` (second timeout) and a SEP bite in turn, each with `ext_in` SS_CONFIG reads held across the warm-net fall and a system-bus SS_CONFIG read completed as close before the fall as the debug bus allows; an `ext_in` RESET_CTRL read in warm; after the release the retained registers, and the CORE0 and CORE1 watchdog COUNT read twice 512 `clk_smc` apart with `wdogcoreawake`; then a fresh SCRATCH[0] write and read and JTAG2AXI reads of the egress page and of SEP SRAM at global 0x1400_0000.
+* S5 and S6: two pin trials, each with a JTAG2AXI read completed before the pin is driven, an `ext_in` read and a system-bus read outstanding across the primary-reset fall, only system-bus accesses during the hold (none, and the trial's during-hold term reads `not run`, when the SEP debug path did not survive the previous reset), before trial 2 SS_CONFIG and RESET_VECTOR[0] written to their patterns and read back (`CTRL-SMCRST-REWRITE`), the inbound link's AWVALID and ARVALID counted while the primary reset reads 0 and the primary and warm probes sampled every `clk_smu_i`; after the release SMC inbound filter entry 0 reopened over JTAG2AXI and the reset-value reads at 0x4000_0000.
+* S7: SS_CONFIG and RESET_VECTOR[0] written to their patterns and read back (`CTRL-SMCRST-REWRITE`), then an FLR-timed cool reset (counters 16 and 512) with the same outstanding reads, the filter reopened and the S6 reads repeated; with ISOLATE_REQ_SMC_REG latched a new `ext_in` read and a JTAG2AXI egress read, then the latch cleared with a byte-0 strobed write of 1; ISOLATE_REQ_SMC_REG is read at the issue and after the clear with 8-byte JTAG2AXI captures, framed by the `CTRL-SMCRST-CHAIN` probe when the SEP re-attach failed, and the preconditions are logged in `CTRL-SMCRST-ISO-PRE`.
+* S8: for each core N the CORE N watchdog COUNT read twice 512 `clk_smc` apart with core N reset_n at 0 and at 1; CORE_RESET_PULSE_COUNT at its reset value and programmed 0x0100 / 0x0400, a pulse each, `core_resets_done` polled and its bit 0 counted low every `clk_smc` at the bench tap on the per-core pulse-done vector (`CTRL-SMCRST-PULSE-LOW`); CORE0 CTRL and CMP before and after its core reset.
+* S9, every access over `ext_in` and 8-byte: the idle uncore reset (RESET_CTRL uncore bit 0, `reset_applied` polled to 1, bit 1, `reset_applied` polled to 0) with CORE0 CTRL, CMP and COUNT read before and after it; then one held trial, mode 0 with timeout 0x100: RESET_TIMEOUT written, a train of 24 single reads of CORE0 WDT COUNT into the CPU cluster issued with RREADY held low, the uncore request written on the write channels while the train is held, `CTRL-SMCRST-UNDRAINED` logged from the R handshakes counted at the crossbar `smc_in` port at the request and before the release, and no read issued while the train is held; then RREADY released, the 24 train reads awaited (4000 cycles each) as `OBS-SMCRST-UNCORE-TRAIN` windows, then `reset_applied` polled to 1 over `ext_in`, the release write, the RESET_CTRL read-back and `reset_applied` polled to 0, each a graded bounded wait that records its expiry and lets the leaf go on to S10. The mode-1 and timeout-0 held trials are not run (out of this milestone, SF-009).
+* S10: every `ext_in` response (4000 `clk_smu_i`), JTAG2AXI capture, system-bus poll, responder hold, reset wait and register poll is bounded; 31 slow accesses under `timeout_sec` 3600; the graded waits of S9 after the release are listed as graded, and an expired one fails `CHK-SMC-SW-UNCORE`.
+* Measured and logged only: accesses outstanding at the cool and FLR primary-reset fall (SF-007) and on the SEP-to-SMC port (SF-005), new accesses during the hold and the non-SMC paths (SF-007, SF-029), the inbound link levels in reset and accesses across the warm fall (SF-006), the `smc_out` read before the pin (SF-008), accesses with the isolation latch set (SF-020), the read-train outcome and the held-phase RESET_TIMEOUT value, which is not observable from the external port (SF-009), and the seed-dependent bite that does not reach the warm net (SF-006).
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the SEP STAP and the debug module, program the SEP aperture, open the SMC filter entries over JTAG2AXI and write the S2 images over `ext_in`.
+. Error injection. Point: the SMC warm reset, from the CORE0 watchdog second timeout and then from the SEP bite. Kind: a warm reset with `ext_in` reads of a primary-domain register outstanding. Expected response: the outstanding reads complete OKAY with the written pattern, RESET_CTRL reads 0x0100_010D during and after warm, the retained registers keep their values, core 0 counts and core 1 does not; the fresh accesses after the release are OKAY.
+. Error injection. Point: `rst_cool_n_from_pin_i`, then `cfg_flr_pf_active_i`. Kind: an SMC primary reset with an `ext_in` read and a system-bus read outstanding. Expected response: every during-hold system-bus access issued inside the reset, the warm probe 0 at every sample where the primary reset reads 0, and after each release RESET_VECTOR[0] 0xC0040000, SS_CONFIG 0x0, ISOLATE_REQ_REG at its pattern and every primary-domain register at its reset value.
+. Run the latched isolation leg of S7: ISOLATE_REQ_SMC_REG, read with 8-byte framed captures, reads 1 at the issue of the two accesses and 0 after the clearing write.
+. Run the core resets of S8, then the idle uncore reset and the held mode-0 trial of S9. Expected response after the RREADY release: `reset_applied` 1 over `ext_in` once the drain completes, and after the release write RESET_CTRL at the written value with `reset_applied` 0; the number of train reads answered is recorded.
+. Check the ordered fence, that every proof-path wait finished inside its bound, that the site count per step and kind equals the step list, that every observation window is listed separately and that the graded S9 waits are listed with their expiry.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMC-WARM-TRAFFIC` |for both warm sources the `ext_in` SS_CONFIG reads outstanding at the warm fall return OKAY with the written pattern and the `ext_in` RESET_CTRL read during warm returns OKAY with 0x0100_010D; after the release the fresh SCRATCH[0] write and read return OKAY with the word and the JTAG2AXI reads of the egress page and of SEP SRAM capture OKAY with the responder and SRAM words; when `OBS-SMCRST-BITE-NO-WARM` is logged the bite-source cells are recorded and the watchdog-source cells carry the verdict
+|`CHK-SMC-COOL-TRAFFIC` |pin trial 1 issues at least one during-hold system-bus access, and so does trial 2 unless the SEP debug path was lost at the previous reset, when its term reads `not run` (SF-029); the primary-reset probe reads 0 at the issue of every during-hold system-bus access; the SS_CONFIG and RESET_VECTOR[0] rewrites before trial 2 and before the FLR read back 0x5A5A_5A5A and 0x0000_3000 with OKAY; the held `ext_in` read's AR is accepted before each pin and FLR primary-reset fall (its outcome `OBS-SMCRST-COOL-INFLIGHT`); after each release the `ext_in` reads at 0x4000_0000 return OKAY with RESET_VECTOR[0] 0xC0040000, SS_CONFIG 0x0 and ISOLATE_REQ_REG at its written pattern
+|`CHK-SMC-PRIMARY-RETAIN` |the S2 images read back as written and read the same again after both warm resets, just before the pin reset (`CTRL-SMCRST-PRE-COOL`); after the pin cool reset SS_CONFIG and SS_COLD_RESET_N read 0x0, RESET_VECTOR[0..3] 0xC0040000, RESET_CTRL 0x10F, WDT_TIMEOUT 0x4000, RESET_TIMEOUT 0x0, GLOBAL_BASE 0x4000_0000 and REGION_SIZE 0x100_0000, each written to another value before
+|`CHK-SMC-WARM-RETAIN` |after each warm reset RESET_CTRL reads 0x0100_010D, RESET_VECTOR[0] and WDT_TIMEOUT their written values and GLOBAL_BASE / REGION_SIZE 0x6000_0000 / 0x0200_0000; the CORE0 watchdog COUNT advances between its two reads and the CORE1 COUNT does not; with `OBS-SMCRST-BITE-NO-WARM` logged the watchdog-source cells alone carry the verdict
+|`CHK-SMC-PRIMARY-WARM-EQ` |at every `clk_smu_i` sample where `rst_primary_smc_clk_n_o` reads 0 the warm probe also reads 0, and the primary and warm probes each read 0 at least once, in each of the two pin trials and the FLR trial
+|`CHK-SMC-ISO-LATCH-ACCESS` |the FLR edge was applied and, where the SEP re-attach failed, the `CTRL-SMCRST-CHAIN` framing probe ran before the reads; ISOLATE_REQ_SMC_REG, read with 8-byte (AXSIZE 8) correctly framed JTAG2AXI captures, reads 1 when the latched `ext_in` and `smc_out` accesses are issued and 0 after the byte-0 strobed clearing write, which completes with SUCCESS (`hw/sys/smc/doc/clk_rst.adoc`, `hw/sys/smc/regs/gen/adoc/blocks/reset_unit.adoc`); both values are `OBS-SMCRST-ISO-LATCH` lines and the preconditions the `CTRL-SMCRST-ISO-PRE` line; the accesses' outcomes are `OBS-SMCRST-ISO-ACCESS` (SF-020)
+|`CHK-SMC-SW-CORE` |for each core N the CORE N watchdog COUNT does not advance while core N reset_n is 0 and advances after it is written 1; `core_resets_done` reads 0xF at reset and after each pulse, bit 0 reads 0 on a poll inside the programmed pulse, and the bench tap sees bit 0 low for at least one `clk_smc` during the default-count pulse (`CTRL-SMCRST-PULSE-LOW` prints both counts beside the RDL-derived lengths); CORE0 CTRL and CMP read the same values after its core reset and COUNT is not reset to 0
+|`CHK-SMC-SW-UNCORE` |idle, over `ext_in`: `reset_applied` 1 while the uncore bit is 0 and 0 after it is written 1, and CORE0 CTRL 0x0, CMP 0x1000 and COUNT 0x0 after the idle uncore reset; held mode-0 trial: all 24 train reads are accepted on AR before the request, the uncore request write is OKAY and `CTRL-SMCRST-UNDRAINED` shows `undrained=1` at the request, with no unresolved R level sampled while the train is held (the held-phase value is `rt_held=unobservable` in `OBS-SMCRST-UNCORE-TRAIN`, SF-009); after RREADY is released the train reads answered are recorded in `OBS-SMCRST-UNCORE-TRAIN` and not compared (SF-009), and RESET_TIMEOUT read over `ext_in` shows `reset_applied` 1 within the poll bound (`hw/sys/smc/regs/gen/adoc/blocks/cpu_ctrl.adoc`: applied after the drain completes); after the release write RESET_CTRL reads back the written value and `reset_applied` reads 0; one `OBS-SMCRST-UNCORE-TRAIN` line and two `CTRL-SMCRST-UNDRAINED` lines are logged; every wait after the release on those stated terms is a graded bounded wait whose expiry fails this checker
+|`CHK-NONVAC` |ordered simulation-time fence SETUP < IMAGES < WARM < WARM_POST < COOL < COOL_POST < FLR < SW_CORE < SW_UNCORE < PASS, each term with its own time and a non-zero access count, two warm sources and two cool trials
+|`CHK-TIMEOUT-PATHS` |every bounded proof-path wait logs its bound, the cycles used and its last state, none expires, every site carries a finite bound and the site count per step and kind equals the literal of the step list; every observation window is an `INFO-OBS-WINDOW` line with its OBS name, bound, cycles used and `expired` 0 or 1, the windows include `OBS-SMCRST-COOL-INFLIGHT`, `OBS-SMCRST-UNCORE-TRAIN` and exactly one `OBS-SMCRST-BITE-NO-WARM`, and none counts as a passed wait; the graded waits are those of S9 alone, listed with their expiry, and an expired one fails `CHK-SMC-SW-UNCORE`, not this checker
+|===
+
+*Observations*:
+
+[cols="1,1,2",options="header",]
+|===
+|OBS line |Required by |Open question
+|`OBS-SMCRST-COOL-INFLIGHT` |`CHK-SMC-COOL-TRAFFIC` |SF-007: whether `smc_in` transactions outstanding at the primary-reset fall complete, error or drop
+|`OBS-SMCRST-COOL-NEW` |`CHK-SMC-COOL-TRAFFIC` |SF-007: the answer to a new SEP-to-SMC access while the primary reset is held
+|`OBS-SMCRST-LINK-IN-RESET` |`CHK-SMC-COOL-TRAFFIC` |SF-006: which reset resets the crossbar and its boundary links
+|`OBS-SMCRST-SMCOUT-ORPHAN` |`CHK-SMC-COOL-TRAFFIC` |SF-008: the fate of an `smc_out` request when the issuing side resets
+|`OBS-SMCRST-SEP2SMC` |`CHK-SMC-WARM-TRAFFIC`, `CHK-SMC-COOL-TRAFFIC` |SF-005: whether a dedicated SEP-to-SMC port exists and what happens to its transactions across an SMC reset
+|`OBS-SMCRST-NONSMC-PATHS` |`CHK-SMC-COOL-TRAFFIC` |SF-029: whether an SMC primary or warm reset resets the SEP debug path or the crossbar
+|`OBS-SMCRST-WARM-INFLIGHT` |`CHK-SMC-WARM-TRAFFIC` |SF-006: whether the crossbar completes transactions whose subordinate takes a warm reset
+|`OBS-SMCRST-ISO-ACCESS` |`CHK-SMC-ISO-LATCH-ACCESS` |SF-020: whether ISOLATE_REQ_SMC_REG affects `smc_in`, `smc_out` or the crossbar, and the response while it is set
+|`OBS-SMCRST-ISO-LATCH` |`CHK-SMC-ISO-LATCH-ACCESS` |None: the measured record of the latch value at the issue and after the clearing write (`path=j2a8`), graded by `CHK-SMC-ISO-LATCH-ACCESS` (`hw/sys/smc/doc/clk_rst.adoc` states the latch)
+|`OBS-SMCRST-UNCORE-TRAIN` |`CHK-SMC-SW-UNCORE` |SF-009: which cluster transactions complete or drop on a forced uncore reset; the line carries `rt_held=unobservable` (the RESET_TIMEOUT value during the quiesce is not observable from the external port), the reads answered after the release, the unanswered IDs and `applied_after_release`
+|`OBS-SMCRST-BITE-NO-WARM` |`CHK-SMC-WARM-TRAFFIC`, `CHK-SMC-WARM-RETAIN` |SF-006: a seed-dependent case in which the SEP bite produces no warm-net fall within the 200000-cycle bound; logged with the seed
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
+
+*Scope limit*: RED by design on the kept run at `CHK-SMC-SW-UNCORE` until issue #3594 is answered; nothing in this entry is a closure and it takes no contract credit while RED. Graded: the primary-domain reads across warm, the during-hold access window, the post-release reset values, primary and warm retention, the primary-to-warm equivalence, the isolation latch at the issue and after the clear, and the core and uncore controls. Measured and logged only: every access outstanding at, or issued during, a primary or warm reset, the SEP-to-SMC port, the non-SMC paths, the `smc_out` read before the pin, accesses with the isolation latch set, the read-train outcome and the held-phase RESET_TIMEOUT value (SF-005, SF-006, SF-007, SF-008, SF-009, SF-020, SF-029), and the seed-dependent bite without a warm-net fall. Out of scope: the mode-1 and timeout-0 held uncore trials (out of this milestone, SF-009), the eFuse warm-reset source (eFuse sensing is outside this plan), the SEP-side resets (<<sec-212-smu_sep_reset_inflight_test>>) and JTAG2AXI accesses launched inside an SMC reset (<<sec-214-smu_dtp_jtag2axi_smc_reset_inflight_test>>).
+
+'''''
+
+[[sec-214-smu_dtp_jtag2axi_smc_reset_inflight_test]]
+===== 214 `smu_dtp_jtag2axi_smc_reset_inflight_test`
+
+*Phase*: 3
+
+*Area*: SMU_WRAPPER
+
+*Source Module*: `smu_dtp_jtag2axi_smc_reset_inflight_test` (`cocotb_wrapper/tests/`; the sequence `smu_dtp_jtag2axi_smc_reset_inflight_test_seq` in `cocotb_wrapper/seq_lib/`, which reuses the primary-TAP and SMC_AXI_SINGLE_OP helpers of `smu_jtag_helpers`)
+
+*BFM / Model*: `ocah_jtag_vip` on the primary TAP for IDCODE, the SMC JTAG2AXI capability word and every SMC_AXI_SINGLE_OP access; a launch is the TCK falling edge in Update-DR of the SINGLE_OP scan, and the warm-reset read is shifted in and held in Pause-DR until the warm probe reads 0; the top-port drives `rst_cool_n_from_pin_i` and `cfg_flr_pf_active_i` (bench pins `tb_cool_reset_pin` and `tb_cfg_flr_pf_active`); passive reads of `obs_smc_rst_n_o`, the warm probe `u_smc.rst_warm_smc_clk_n` and the bridge gate `tb_smc_jtag2axi_security_disable`, sampled every `clk_smu_i`; `elaboration` firmware mode; the default SMC and SEP eFuse shadow preloads
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `all`; `timeout_sec` 1800; tags `depth`, `dtp`, `jtag2axi`, `smc`, `reset`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` default images, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload` and `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload`; no `+axi_sva_need_*` gate.
+
+*Known limitation*: no document states the response a JTAG2AXI access receives during an SMC cool, FLR-timed cool or warm reset or across its release, whether the bridge is guaranteed not to hang (SF-019), or where the bridge enters the SMC fabric and which reset domain holds it (SF-018) of the SMU SEP scenario specification review. The leaf grades that every such access is launched inside its reset window and records the capture as an observation; the post-reset values and the fresh access are graded.
+
+*Randomization*: RAND-NONE: directed, the baseline, the pin and FLR trials, the three release offsets (0, 8 and 32 TCK), the post-reset reads, the fresh access and the warm trial are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+
+*Objective*: DTP JTAG2AXI accesses into the SMC fabric issued during, or spanning the release of, an SMC cool, FLR-timed cool or warm reset, and the values read and the fresh access after the release. The cool-reset pin and the FLR cool reset feed the SMC primary reset, SS_CONFIG is on the primary reset and ISOLATE_REQ_REG on the stable cold reset, and the watchdog second timeout asserts the warm reset and not the primary reset (`hw/sys/smc/doc/clk_rst.adoc`, `hw/sys/smc/regs/gen/adoc/blocks/reset_unit.adoc`); RESET_VECTOR[0] resets to 0xC0040000 (`hw/sys/smc/regs/gen/adoc/blocks/cpu_ctrl.adoc`) at LOCAL_BASE plus the CPU control offset (`hw/sys/smc/regs/gen/adoc/memory_map.adoc`). Extends `smu_dtp_jtag2axi_smc_error_path_test`, which keeps the JTAG2AXI error path outside a reset, and adds only the accesses launched inside and across the SMC resets.
+
+*Test Coverage*:
+
+* S1: TAP reset, IDCODE, the JTAG2AXI gate open and the capability word; primary and warm sampled every `clk_smu_i`.
+* S2: a JTAG2AXI read of RESET_VECTOR[0]; ISOLATE_REQ_REG and SS_CONFIG patterns written and read back.
+* S3: `rst_cool_n_from_pin_i` held low; once `obs_smc_rst_n_o` reads 0, a JTAG2AXI read of RESET_VECTOR[0] and a write of SCRATCH[0]; the pin released 20000 `clk_ref` after the hold started whatever the capture shows; the same with an FLR-timed cool reset (counters 0 and 4096).
+* S4: with the pin held a JTAG2AXI read launched and the pin released 0, 8 and 32 TCK after the Update-DR that launches it.
+* S5: JTAG2AXI reads of SS_CONFIG and ISOLATE_REQ_REG.
+* S6: a JTAG2AXI write and read of SCRATCH[0] and a read of RESET_VECTOR[0].
+* S7: an SS_CONFIG pattern written, the CORE0 watchdog armed over JTAG2AXI with `wdogrsten`, and a JTAG2AXI read of SS_CONFIG launched when the warm probe reads 0.
+* S8: every SINGLE_OP capture poll, reset assert and release wait and warm wait is bounded; about 24 JTAG2AXI accesses against the 1800 s timeout.
+* Measured and logged only: the capture of every access launched inside a cool, FLR-timed cool or warm reset and across the pin release (SF-019), the entry address view of the bridge (SF-018), and whether the TAP or the bridge needs a bring-up after a reset.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, read IDCODE and the capability word, start the reset sampling and run the baseline accesses.
+. Error injection. Point: `rst_cool_n_from_pin_i`, then `cfg_flr_pf_active_i`. Kind: an SMC primary reset held while a JTAG2AXI read and write are launched. Expected response: `obs_smc_rst_n_o` 0 at each launching Update-DR and at every sample until the scheduled release; the capture recorded.
+. Error injection. Point: `rst_cool_n_from_pin_i`. Kind: the pin released 0, 8 and 32 TCK after a JTAG2AXI read is launched. Expected response: the primary reset 0 at the launch and released before the capture poll ends; the capture recorded.
+. Read SS_CONFIG and ISOLATE_REQ_REG, then run the fresh SCRATCH[0] and RESET_VECTOR[0] accesses.
+. Arm the CORE0 watchdog and launch the SS_CONFIG read inside the warm reset.
+. Check the ordered fence and that every wait finished inside its bound with the site count of the step list.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-J2A-RV-BASELINE` |the JTAG2AXI read of RESET_VECTOR[0] out of reset captures OKAY with 0xC0040000, and the ISOLATE_REQ_REG and SS_CONFIG pattern writes read back their patterns
+|`CHK-J2A-DURING-COOL` |`obs_smc_rst_n_o` reads 0 at the Update-DR of each access and at every sample until the scheduled release, for the pin and the FLR source; the outcomes are `OBS-J2A-DURING-COOL` (SF-019)
+|`CHK-J2A-MID-RELEASE` |for each of the 0, 8 and 32 TCK offsets the primary reset reads 0 at the launching Update-DR and rises before the capture poll ends; the outcomes are `OBS-J2A-MID-RELEASE` (SF-019)
+|`CHK-J2A-POST-RESET-VALUES` |after the release SS_CONFIG captures OKAY with 0x0 and ISOLATE_REQ_REG captures OKAY with its written pattern
+|`CHK-J2A-FRESH-ACCESS` |the fresh SCRATCH[0] write captures OKAY, its read-back captures OKAY with the written word and RESET_VECTOR[0] reads 0xC0040000
+|`CHK-J2A-DURING-WARM` |the warm probe reads 0 and the primary reset reads 1 at the launching Update-DR; an OKAY capture carries the SS_CONFIG pattern, and a missing or error capture is `OBS-J2A-DURING-WARM` (SF-019)
+|`CHK-NONVAC` |ordered simulation-time fence SETUP < BASELINE < DURING_COOL < MID_RELEASE < POST < FRESH < DURING_WARM < PASS, each term with its own time and at least one JTAG2AXI access
+|`CHK-TIMEOUT-PATHS` |every bounded wait (SINGLE_OP capture polls, reset and warm waits) logs its bound, the cycles used and its last state, none expires, and the site count per kind matches the step list
+|===
+
+*Observations*:
+
+[cols="1,1,2",options="header",]
+|===
+|OBS line |Required by |Open question
+|`OBS-J2A-DURING-COOL` |`CHK-J2A-DURING-COOL` |SF-019: the response to a JTAG2AXI access during an SMC cool or FLR-timed cool reset
+|`OBS-J2A-MID-RELEASE` |`CHK-J2A-MID-RELEASE` |SF-019: the response to a JTAG2AXI access across the release of the cool reset
+|`OBS-J2A-DURING-WARM` |`CHK-J2A-DURING-WARM` |SF-019: the response to a JTAG2AXI access during an SMC warm reset
+|`OBS-J2A-ENTRY` |`CHK-J2A-RV-BASELINE` |SF-018: where the JTAG2AXI port enters the SMC fabric and with which address view
+|`OBS-J2A-REBRINGUP` |`CHK-J2A-POST-RESET-VALUES`, `CHK-J2A-FRESH-ACCESS` |SF-018: which reset domain holds the bridge, so whether the TAP and the bridge need a bring-up after a reset
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
+
+*Scope limit*: the launch of every access inside its reset window, the release inside the access at each offset, the post-reset values and the fresh access are graded. Measured and logged only: the capture of every access launched inside or across an SMC reset, the bridge entry view and the bring-up after a reset (SF-018, SF-019). Out of scope: the JTAG2AXI bridge internals beyond the SINGLE_OP capture (the DTP plan), the eFuse warm-reset source, and `ext_in` and SEP traffic across the SMC resets (<<sec-213-smu_smc_reset_inflight_test>>).
+
+'''''
+
 [[smu-vplan-phase3]]
 === Phase 3 Tests
 
@@ -11579,8 +12060,8 @@ An entry whose test does not exist yet carries `*Status*: planned (no test yet)`
 |156 to 164
 |Reset states of the base configuration, CPU control, reset unit and mailbox apertures; cold-boot release order and stretch; the sensed shadow map at every offset; mailbox error responses, sticky flags and the threshold lane; the SRAM initialisation order against the first fetch.
 |SMU_WRAPPER
-|103 to 107, 112, 113, 115 to 123, 125, 127, 128, 167, 168, 183 to 202; planned: 203, 204, 208
-|Cool-reset pulse filter and strap pairing; the `ss_reset_ctrl` lane sweep and lock; the shadow image under cold reset; lane, attribute, aperture, address-bit, size and ID sweeps of every port that leaves the SMU; the PTAP instruction and state walk; SEP egress without firmware; lifecycle refusal cells of the OTP bridges; outstanding responses on the outbound port; the broken LC_STATE pair; burst routing on the first address; STAP hold and reset corners; the JTAG2AXI series, status, capability, error and ratio contracts; the IC_RESET SEP slice; the SMC debug module under reset; every external SEP interrupt pin; the watchdog bite to SMC reset chain; the self-selected cross-trigger lane; RMA token match; warm-reset retention; the inbound filter rule terms; base-configuration corners; the seeded ID stress; alias priority, overflow and DMA translation; the outbound filter rule matrices; the output remap region matrix. Planned: filter match terms, priority and permission on all three filter instances; alias and output remap windows, offsets and cache attributes; lifecycle image and disable-vector posture of the debug paths.
+|103 to 107, 112, 113, 115 to 123, 125, 127, 128, 167, 168, 183 to 202, 209 to 214; planned: 203, 204, 208
+|Cool-reset pulse filter and strap pairing; the `ss_reset_ctrl` lane sweep and lock; the shadow image under cold reset; lane, attribute, aperture, address-bit, size and ID sweeps of every port that leaves the SMU; the PTAP instruction and state walk; SEP egress without firmware; lifecycle refusal cells of the OTP bridges; outstanding responses on the outbound port; the broken LC_STATE pair; burst routing on the first address; STAP hold and reset corners; the JTAG2AXI series, status, capability, error and ratio contracts; the IC_RESET SEP slice; the SMC debug module under reset; every external SEP interrupt pin; the watchdog bite to SMC reset chain; the self-selected cross-trigger lane; RMA token match; warm-reset retention; the inbound filter rule terms; base-configuration corners; the seeded ID stress; alias priority, overflow and DMA translation; the outbound filter rule matrices; the output remap region matrix; the response shape of a multi-beat `ext_in` decode error; `ext_in` traffic across a SEP held by the IC_RESET SEP slice; bursts at the aperture edges; SEP-side and SMC-side resets with crossbar traffic in flight; JTAG2AXI accesses across SMC resets. Planned: filter match terms, priority and permission on all three filter instances; alias and output remap windows, offsets and cache attributes; lifecycle image and disable-vector posture of the debug paths.
 |===
 
 [[smu-vplan-phase3-parked]]
@@ -11854,6 +12335,30 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |SMU_WRAPPER
 |RAND-NONE
 |none; directed: the four aperture states, the two SEP bases, the four probes and the cold reset are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+|`smu_xbar_decerr_burst_response_test` (209)
+|SMU_WRAPPER
+|RAND-REP
+|the WVALID gap of 0 to 8 cycles before each of the sixteen beats of the S7 AWLEN 15 write, logged with the seed; every drawn gap has the same stated outcome, sixteen W handshakes and then one DECERR B. The addresses, IDs, burst types and lengths of S2 to S9 are a fixed list walked whole in every run; one seed per regression.
+|`smu_xbar_reset_held_target_test` (210)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the four holds, the orphans, the probe IDs and addresses, the observation windows and the cold resets between the holds are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+|`smu_xbar_aperture_edge_burst_test` (211)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the aperture placements, the edge addresses and the burst shapes are the cells the testcase contract states and are walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+|`smu_sep_reset_inflight_test` (212)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the five crypto domains x two drain cells, the isolation, TRNG, Key Manager, never-isolated and early-release cells, the JTAG override and the bite are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
+|`smu_smc_reset_inflight_test` (213)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the two warm sources, the two pin trials, the FLR-timed trial, the four core resets, the idle uncore reset and the one held uncore trial are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point, and whether the SEP bite reaches the warm net inside its bound is recorded with the seed.
+|`smu_dtp_jtag2axi_smc_reset_inflight_test` (214)
+|SMU_WRAPPER
+|RAND-NONE
+|none; directed: the pin and FLR trials, the three release offsets (0, 8 and 32 TCK), the post-reset reads, the fresh access and the warm trial are a fixed sequence walked whole in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects no point.
 |`smu_dtp_jtag2axi_address_walk_test` (117)
 |SMU_WRAPPER
 |RAND-NONE
@@ -12087,6 +12592,30 @@ A tested feature can have one blocked leg. The test grades the rest of the featu
 |The early-capture edge of `secure_tm_o`.
 |Whether the strap is captured on the second rising clock edge after the wrapper cold-reset release (`hw/sys/sep/doc/test_mode.adoc`) or one cycle after it (`hw/sys/sep/doc/security_disable.adoc`). Which edge captures the strap?
 |`smu_sep_secure_tm_test` and `smu_secure_tm_real_sense_window_test` grade the latch at the fuse-sense completion and its clearing under a second cold reset, and do not distinguish the two edges.
+|SMU_WRAPPER
+|An `ext_in` request that matches neither aperture is answered DECERR by the crossbar with the beat count, RLAST, write-beat acceptance, single write response and ID of the request.
+|The response content beyond that shape. `hw/sys/smu/doc/index.adoc` ("SMU aperture decode and routing") states that the crossbar generates DECERR itself and states neither the read data word of a DECERR beat (SF-003), nor the code of each later beat of a multi-beat DECERR read (SF-004), nor the number of erroring reads the responder accepts (SF-011). What does each R beat carry, and what is the responder's limit?
+|`smu_xbar_decerr_burst_response_test` grades the shape, the first-beat code, the ID echo and the absence of a side effect, and records `OBS-DECERR-RDATA-SINGLE`, `OBS-DECERR-RDATA-BURST`, `OBS-RD-BURST-RESP`, `OBS-RD-WRAP-FIXED-RESP` and `OBS-ERR-ACCEPTED` without grading them.
+|SMU_WRAPPER
+|`ext_in` traffic while the IC_RESET SEP slice holds `sep_reset_n` low with a read and a write outstanding at `sep_in`.
+|The crossbar's behaviour across the hold. No document states the fate of the orphaned transactions or the response to new `sep_in` traffic during and after the hold (SF-013), whether a same-ID request to another subordinate is held behind the orphan (SF-012), which reset clears the crossbar and the ID-width converters (SF-018), or the acceptance limits of the crossbar and the SEP converter (SF-011, SF-023). Does the hold block traffic to `smc_in`, and what clears it?
+|`smu_xbar_reset_held_target_test` takes one hold per measurement with a cold reset between holds, grades the reach of every hold, same-ID non-overtaking, different-ID liveness to `smc_in` with no same-ID request queued ahead and the cold-reset clear, and records the rest without grading it. The R beat an accepted `sep_in` read loses at the fall is `OBS-SEPIN-WITHDRAWN`, ruled an expected debug event by #2891 (`hw/sys/sep/doc/clk_rst.adoc`).
+|SMU_WRAPPER
+|A burst whose first address is inside an aperture goes whole to the subordinate that address selects, at the window end, at the carry edge, into an adjacent aperture and in an over-wide SEP aperture.
+|The response of the beats that leave the window. No document states the code and data of an out-of-window beat or that such a burst completes (SF-005), which SMC REGION_SIZE values below 4 KiB and SEP apertures with non-4 KiB-aligned ends are supported (SF-006, SF-029), whether SEP-local offset 0x4000_0000 is answered DECERR (SF-007), or the SEP inbound DECERR data word (SF-008). What must each out-of-window beat return?
+|`smu_xbar_aperture_edge_burst_test` grades the port each transaction is counted at, the beat count, RLAST, the write beats and the single write response, and records `OBS-PAST-END-SEP-RESP`, `OBS-PAST-END-SMC-RESP`, `OBS-WRAP-FIXED-RESP`, `OBS-ADJ-RESP`, `OBS-CARRY-RESP`, `OBS-WIDE-SEP-RDATA` and `OBS-SEP-NOALIGN-LEGAL` without grading them.
+|SMU_WRAPPER
+|A SW_RESET_N domain reset, the JTAG `sep_reset_n` override and the SEP watchdog bite with `ext_in` and `sep_out` traffic outstanding: drain, isolation response, never-isolated ports, domain independence and the CPU restart.
+|The response content and the fate of the traffic across the resets. `hw/sys/sep/doc/reset_controller.adoc` states the isolation response but not the drained responses or the drain bound (SF-025), the 32-bit lane of the isolation response on `smu_axi_in` (SF-024), the early-release outcome (SF-026), the fate of inbound accesses across `sep_reset_n` (SF-011), of a `sep_out` response at a CPU reset (SF-012) or of a warm-scratch access at a bite (SF-013), the watchdog registers after a bite (SF-014) or the SEP-to-SMC route (SF-005); PR #3341 (`doc/trm/src/reset.adoc`) rules that the bite drains nothing, so an access hung across it stays hung until the cold reset. What does each of these return?
+|`smu_sep_reset_inflight_test` grades the drain completion, the isolation response and its release, the never-isolated ports, domain independence, the early-release completion, the JTAG override window and the four bite terms PR #3341 leaves intact, and records `OBS-SEPRST-DRAIN`, `OBS-SEPRST-ISO-LANE`, `OBS-SEPRST-EARLY`, `OBS-SEPRST-JTAG-INFLIGHT`, `OBS-SEPRST-CPU-ORPHAN`, `OBS-SEPRST-WSCRATCH`, `OBS-SEPRST-WDOG-POST`, `OBS-SEPRST-SMCWIN-ROUTE`, `OBS-SEPRST-REBRINGUP` and `OBS-SEPRST-BITE-ORPHAN` without grading them.
+|SMU_WRAPPER
+|SMC warm, pin cool, FLR-timed cool, core and uncore resets with `ext_in`, `smc_out` and SEP-to-SMC traffic outstanding: primary-domain reads across warm, register reset and retention, and the RESET_CTRL controls.
+|The fate of the traffic across the resets. `hw/sys/smc/doc/clk_rst.adoc` states the reset equations but not what happens to `smc_in` traffic at a primary reset (SF-007), which reset takes the crossbar and its links (SF-006), the fate of an `smc_out` request (SF-008), the SEP-to-SMC port (SF-005), the effect of the isolation latch on traffic (SF-020), the uncore boundary (SF-009) or whether an SMC reset reaches the SEP (SF-029). What does each access receive?
+|`smu_smc_reset_inflight_test` grades the primary-domain reads across warm, the during-hold access window, the reset and retained values, the primary-to-warm equivalence, the isolation latch and the core and uncore controls, and records the outstanding and new accesses, the read train with the held-phase RESET_TIMEOUT value, which is not observable from the external port (`OBS-SMCRST-UNCORE-TRAIN`, SF-009), and the seed-dependent bite without a warm-net fall without grading them. It is RED by design on its kept run at `CHK-SMC-SW-UNCORE` until issue #3594 is answered; the mode-1 and timeout-0 held trials are out of this milestone.
+|SMU_WRAPPER
+|DTP JTAG2AXI accesses into the SMC fabric launched inside an SMC cool, FLR-timed cool or warm reset and across the pin release, and the values and fresh access after it.
+|The capture of an access inside or across a reset. No document states the response a JTAG2AXI access receives during an SMC reset or across its release, or that the bridge cannot hang (SF-019), nor where the bridge enters the SMC fabric and which reset holds it (SF-018). What does the capture report?
+|`smu_dtp_jtag2axi_smc_reset_inflight_test` grades the launch inside each reset window, the release inside the access, the post-reset values and the fresh access, and records `OBS-J2A-DURING-COOL`, `OBS-J2A-MID-RELEASE`, `OBS-J2A-DURING-WARM`, `OBS-J2A-ENTRY` and `OBS-J2A-REBRINGUP` without grading them.
 |===
 
 [[smu-vplan-phase3-unstated]]
@@ -12195,6 +12724,16 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Existing bench observation outputs (`tb_stap_sep_tms`, `tb_stap_smc_tms`, the TDO-enable lanes)
 |The parked or following level of a secondary TAP's host TMS and its TDO enable while the primary TAP toggles.
 |`smu_sep_stap_hold_reset_test`, `smu_dtp_smc_dm_dmi_test`, the lifecycle leaves
+|SMU_WRAPPER
+|AR handshake tap on the crossbar SEP target port
+|Read-only tap (`sep_xbar_in_ar_count_o`, `sep_xbar_in_ar_addr_o`, `tb/tb_wrapper_top.sv`)
+|Every AR handshake the crossbar presents to `sep_in` and the address of the last one, the read side of the `sep_xbar_in_aw_*` tap, so a read routed to the SEP is told apart from one the crossbar answers itself.
+|`smu_xbar_decerr_burst_response_test`, `smu_xbar_reset_held_target_test`, `smu_xbar_aperture_edge_burst_test`
+|SMU_WRAPPER
+|Channel levels of the crossbar `sep_in` and `smc_in` target ports
+|Hierarchical read of the inputs of the `u_xbar_sep_in_axi_sva` and `u_xbar_smc_in_axi_sva` checker instances of `tb/tb_wrapper_top.sv`
+|The valid, ready, address, length, burst and response levels of each target port on every `clk_smu_i` edge, so a burst is counted at the one port its first address selects and its beats are counted there, and the R handshakes a held read train has received at `smc_in` are counted.
+|`smu_xbar_aperture_edge_burst_test`, `smu_xbar_reset_held_target_test`, `smu_smc_reset_inflight_test`
 |===
 
 [[smu-vplan-phase3-added-hooks]]
@@ -12255,6 +12794,11 @@ Each item is an added hook (an error inject or a top-port drive the bench did no
 |Added hook (the input is 4 bits: bit 0 arms, bits [2:1] select the bit, bit 3 the rail)
 |The exported LC_STATE pair at the SMU input, any bit and either rail, for a seed-drawn hold length; a drive of 1 keeps the n rail of bit 0 for `smu_lc_sec_dis_over_sigint_prod_test` and for the pinned window of `smu_lc_sigint_fail_closed_test`.
 |`smu_lc_sigint_fail_closed_test`
+|SMU_WRAPPER
+|`+axi_sva_expect_sep_in_override` bench expectation window
+|Added hook (leaf-scoped time-0 plusarg)
+|The `ocah_axi_sva` `R_VALID_HELD` and `R_PAYLOAD_STABLE` rules of `u_xbar_sep_in_axi_sva` and the SEP SRAM burst-demux arbiter checks (the `req1` assertion and the `lock_req` assumption), taken off with `$assertkill` at a hold's `sep_reset_n` fall under the JTAG override and put back with `$asserton` 8 `clk_smu_i` cycles after its release, only when the plusarg is given; the window prints its open and close lines and sets the bench-level signals `obs_sep_in_expect_window_open` and `obs_sep_in_expect_window_count` (internal variables of the bench top, read over VPI), a window still open at the end fails the run through the hard-fail patterns of `smu_sim_cfg.toml`, and every other rule, instance and leaf is unaffected (#2891).
+|`smu_xbar_reset_held_target_test`
 |===
 
 [[smu-vplan-phase3-proposed-drives]]
@@ -12427,6 +12971,12 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_jtag2axi_address_walk_test` |F3 |dtp_under_smu, hosted |`CHK-J2A-WALK-SMC-OTP`
 |`smu_axi_in_sep_aperture_test` |F4 |fabric, hosted |`CHK-AXIIN-SEP-ROUND-TRIP`
 |`smu_xbar_zero_aperture_test` |F4 |fabric, hosted |`CHK-XBAR-ZERO-SEP`
+|`smu_xbar_decerr_burst_response_test` |F4 |all |no feature credit: a Phase 3 test in `all` only takes contract credit (<<smu-credit-rules>>); contract evidence `CHK-RD-BURST`
+|`smu_xbar_reset_held_target_test` |F4 |all |no feature credit: a Phase 3 test in `all` only takes contract credit (<<smu-credit-rules>>); contract evidence `CHK-DIFFID-LIVE`
+|`smu_xbar_aperture_edge_burst_test` |F4 |all |no feature credit: a Phase 3 test in `all` only takes contract credit (<<smu-credit-rules>>); contract evidence `CHK-SEP-PAST-END`
+|`smu_sep_reset_inflight_test` |F4 |all |no feature credit: a Phase 3 test in `all` only takes contract credit (<<smu-credit-rules>>); contract evidence `CHK-SEPRST-OTBN-ISOLATE`
+|`smu_smc_reset_inflight_test` |F4 |all |no feature credit: a Phase 3 test in `all` only; RED by design on its kept run at `CHK-SMC-SW-UNCORE`, so it takes no contract credit either
+|`smu_dtp_jtag2axi_smc_reset_inflight_test` |F3 |all |no feature credit: a Phase 3 test in `all` only takes contract credit (<<smu-credit-rules>>); contract evidence `CHK-J2A-DURING-COOL`
 |`smu_xtrig_ctm_remap_test` |F6 |dtp_under_smu, hosted |`XT_CTM_REMAP`
 |`smu_sep_smoke_test` |F1 observe / F6 |fw_boot, all |`SEP_BOOT_ROM_OK` (SEP=1 wrapper; not F2 credit)
 |`smu_axi_id_width_conversion_test` |F4 |fabric, hosted |`AXI_ID_WIDTH_OK`
@@ -12702,6 +13252,48 @@ covered above. SEP=1 3×3 xbar receives no release credit.
   fire `OCAH_AXI_W_STRB_IN_LANES` on every such beat. The defect is in the
   bench master, not in the SMU; pull request #3448 fixes the master, and
   both leaves are GREEN with it. Neither leaf is masked.
+* *The SEP watchdog bite hangs the SEP system-CSR leg when an inbound
+  warm-scratch read is outstanding.* The watchdog reset drains no
+  transaction, so with the warm-scratch read orphaned at the bite every later
+  access on that leg stays hung until the cold reset (PR #3341,
+  `doc/trm/src/reset.adoc`, `doc/programmer/src/sep-programming.adoc`).
+  `smu_sep_reset_inflight_test` records the status readback and the egress
+  accesses after the bite as `OBS-SEPRST-BITE-ORPHAN` and grades only the
+  terms the ruling leaves intact. The behaviour is owned by the SEP; nothing
+  here is a closure.
+* *`smu_sep_reset_inflight_test` can stop on a SEP vendor `$fatal` after the
+  watchdog bite.* With an egress load outstanding at the bite, some seeds end
+  the run at the `axi_demux_id_counters` underflow `$fatal` of
+  `u_sep_cpu.u_lsu_axi_demux`, an ID counter that underflows on the load
+  orphaned at the bite. Seed 1, the testlist seed, passes; a regression that draws fresh
+  seeds can fail the leaf there. The behaviour is the one #3341 rules on (the
+  watchdog reset does not drain; a cold reset follows) and is owned by the
+  SEP; nothing here is a closure.
+* *The JTAG IC_RESET `sep_reset_n` override performs no isolation* (#2891,
+  `hw/sys/sep/doc/clk_rst.adoc`). An accepted `sep_in` read loses its R beat
+  without a handshake, and the `ocah_axi_sva` R rules of
+  `u_xbar_sep_in_axi_sva` and the SEP SRAM burst-demux arbiter checks (the
+  `req1` assertion and the `lock_req` assumption) fire at the fall. `smu_xbar_reset_held_target_test` records it as
+  `OBS-SEPIN-WITHDRAWN`, and the bench suppresses exactly those rules only for
+  that leaf, from the fall to just after the release
+  (`+axi_sva_expect_sep_in_override`). A cold reset clears the state. The
+  behaviour is owned by the SEP.
+* *The SMC stops answering `ext_in` after a held uncore read train is
+  released.* In the held mode-0 trial of `smu_smc_reset_inflight_test`
+  (RESET_TIMEOUT 0x100, 24 reads into the CPU cluster held by RREADY low
+  across the uncore request), every `ext_in` access into the SMC after the
+  release gets no response, so RESET_TIMEOUT never shows `reset_applied` 1
+  after the drain, the RESET_CTRL release write gets no response and
+  RESET_CTRL cannot be read back at the written value with `reset_applied`
+  0, the terms `cpu_ctrl.adoc` and the RDL state. How many train reads
+  answer is not stated (SF-009) and is recorded only: 16 of 24 on the kept
+  run, ARIDs 0x9a to 0xa1 unanswered. Issue #3594 records the cause: the
+  L2-frontend isolate drains only the reads already past it, a cluster read
+  accepted upstream of it holds the shared front-port AR channel, and the
+  SMU's AXI ID converter holds the RESET_CTRL release write behind that read.
+  The leaf grades the waits on the stated terms and stays RED at `CHK-SMC-SW-UNCORE`, unmasked
+  and in `all` only, until #3594 is answered. The mode-1 and timeout-0 held
+  trials are out of this milestone, and nothing here is a closure.
 
 [[smu-vplan-bench-standins]]
 ==== Bench stand-ins
