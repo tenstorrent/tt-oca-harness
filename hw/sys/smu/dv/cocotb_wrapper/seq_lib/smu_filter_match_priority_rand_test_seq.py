@@ -752,7 +752,7 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
         allow_ns`` term (hw/ip/axi_filter/doc/index.adoc)."""
         got = {k: tapped[k] for k in (0, 1)}
         want = {let_out: [ns], 1 - let_out: []}
-        self.sb.expect_eq(
+        self.test.env.scoreboard.expect_eq(
             f"CHK-FMATCH-TERMS {table} polarity probe: the probe programmed with "
             f"allow_ns={let_out} left the filter with AxPROT[1]={ns} at the egress tap and the "
             f"probe programmed with allow_ns={1 - let_out} reached the tap with nothing",
