@@ -12,7 +12,7 @@ Every burst is graded from a passive per-port sampler of the tb_top AR, AW, W, R
 handshakes, because the bench item carries one merged response code. Registers outside a
 burst footprint (IHI 0022: FIXED AxADDR only, WRAP the aligned window, INCR the incrementing
 range) are compared with reference values the leaf wrote or read before the burst. Response
-codes and in-footprint landings the pinned sources leave open are OBS lines naming their SF.
+codes and in-footprint landings the pinned sources leave open are OBS lines naming their SF or issue.
 """
 
 from __future__ import annotations
@@ -267,6 +267,7 @@ class Island:
     neighbours: tuple[Reg, ...]
     data_mask: int
     fixed_off: int
+    downsized: bool = False
 
 
 @dataclass
@@ -281,6 +282,7 @@ class Fam:
     graded: int = 0
     compares: int = 0
     failable: int = 0
+    data_compares: int = 0
     bursts: int = 0
     per_island: dict[str, list] = field(default_factory=dict)
 
@@ -603,6 +605,7 @@ def _islands32() -> tuple[Island, ...]:
             (flr[2], warm[0]),
             ALL64,
             0x8,
+            downsized=True,
         ),
         Island(
             "misc-scratch_cold_warm",
@@ -613,6 +616,7 @@ def _islands32() -> tuple[Island, ...]:
             (cold[7], version_lo),
             ALL64,
             0x8,
+            downsized=True,
         ),
         Island(
             "reset_unit-flr",
@@ -623,6 +627,7 @@ def _islands32() -> tuple[Island, ...]:
             (smcen, cold[0]),
             ALL64,
             0x0,
+            downsized=True,
         ),
     )
 
@@ -1080,6 +1085,13 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         assert value, f"seed of {reg.name} is zero under mask 0x{reg.seed_mask:x}"
         return value
 
+    @staticmethod
+    def _stated_fields(stated: int | None) -> dict[str, str]:
+        """OBS fields of a write whose response is graded, or left open under #3598."""
+        if stated is None:
+            return {"stated_bresp": "open", "issue": "#3598"}
+        return {"stated_bresp": _rname(stated)}
+
     def _obs(self, fam: Fam, **kv: str) -> None:
         cocotb.log.info(
             "%s: %s sf=%s", fam.obs, " ".join(f"{k}={v}" for k, v in kv.items()), fam.sfs
@@ -1201,17 +1213,49 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
 
     @staticmethod
     def _stated_bresp(isl: Island, start: int, beats: int, burst: int) -> int | None:
-        """OKAY when every byte of every beat lands on a named register of the island.
+        """OKAY where memmap.adoc:63-67 states the response of an island write burst, else None.
 
-        memmap.adoc gives a write burst to a register unit the response of its single-beat
-        writes, and a write to a register answers OKAY. A beat that touches a byte no named
-        register holds has a code SF-007 and SF-010 leave open, so the burst gets ``None``.
+        memmap.adoc:63-67 gives a write burst that a register unit splits into single-beat writes
+        the response of those writes, and a write to a register answers OKAY. Whether a
+        multi-beat FIXED or WRAP burst reaches that split behind the 64-to-32-bit downsizer is
+        not stated (issue #3598), so such a burst into a 32-bit island gets ``None``. A beat that
+        touches a byte no named register holds has a code SF-007 and SF-010 leave open, so that
+        burst gets ``None`` too.
         """
+        if isl.downsized and burst != INCR and beats > 1:
+            return None
         live = {a for reg in isl.regs for a in range(reg.addr, reg.addr + reg.width)}
         words = footprint(start, beats, burst)
         if all(a in live for word in words for a in range(word, word + BEAT)):
             return OKAY
         return None
+
+    @staticmethod
+    def _lane(reg: Reg, beat: int) -> int:
+        return (beat >> (8 * (reg.addr % BEAT))) & ((1 << (8 * reg.width)) - 1)
+
+    def _landing(self, reg: Reg, value: int | None, data: list[int]) -> str:
+        """Which beat's lane a written register holds in its seeded fields: ``b<i>`` (several
+        joined by ``/``), ``seed``, ``ambiguous`` (a beat lane and the seed agree there) or
+        ``other``."""
+        if value is None:
+            return "X"
+        mask = self._mask(reg)
+        hits = [i for i, d in enumerate(data) if not (value ^ self._lane(reg, d)) & mask]
+        seed = not (value ^ self.ref[reg]) & mask
+        if hits and seed:
+            return "ambiguous"
+        if hits:
+            return "/".join(f"b{i}" for i in hits)
+        return "seed" if seed else "other"
+
+    @staticmethod
+    def _landed(labels: list[str]) -> str:
+        if not labels:
+            return "n/a"
+        if all(lab.startswith("b") for lab in labels):
+            return "all"
+        return "none" if all(lab == "seed" for lab in labels) else "some"
 
     def _shape_start(self, isl: Island, burst: int) -> int:
         if burst == FIXED:
@@ -1241,8 +1285,10 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                 stated = self._stated_bresp(isl, start, beats, burst)
                 bresp = self._check_write(fam, ctx, port, item, hs, stated)
                 after = await self._readback(isl, fam, shape)
-                words = set(footprint(start, beats, burst))
+                order = footprint(start, beats, burst)
+                words = set(order)
                 inside = []
+                landing = []
                 for reg in isl.regs + isl.neighbours:
                     value = after[reg]
                     if reg.ro:
@@ -1251,7 +1297,17 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                         continue
                     if reg.word in words:
                         inside.append(f"{reg.name}:{_hx(value)}")
+                        landing.append((reg, self._landing(reg, value, data)))
                         self.dirty.add(reg)
+                        if stated == OKAY and burst == INCR:
+                            want = self._lane(reg, data[order.index(reg.word)])
+                            mask = self._mask(reg)
+                            fam.data_compares += 1
+                            if value is None or (value ^ want) & mask:
+                                fam.findings.append(
+                                    f"{ctx}: {reg.name} @ 0x{reg.addr:x} reads {_hx(value)}, "
+                                    f"its INCR beat wrote 0x{want:x} under 0x{mask:x}"
+                                )
                         continue
                     self._unchanged(fam, isl.key, ctx, reg, value, self.ref[reg], data)
                 self._obs(
@@ -1260,11 +1316,28 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     island=isl.key,
                     shape=shape,
                     bresp=_rname(bresp),
-                    stated_bresp="open" if stated is None else _rname(stated),
+                    **self._stated_fields(stated),
+                    landed=self._landed([lab for _r, lab in landing]),
                     rresp="-",
                     wdata=",".join(_hl(d) for d in data),
                     footprint=";".join(inside) or "none",
                 )
+                if burst == WRAP and not isl.downsized:
+                    last = f"b{beats - 1}"
+                    at_start = all(
+                        lab == (last if reg.word == start else "seed") for reg, lab in landing
+                    )
+                    cocotb.log.info(
+                        "OBS-BT-WRAP-LANDING: port=%s island=%s start=0x%x beat_addrs=%s "
+                        "landing=%s all_at_start=%s sf=%s issue=#3598",
+                        port,
+                        isl.key,
+                        start,
+                        ",".join(hex(w) for w in order),
+                        ";".join(f"{reg.name}:{lab}" for reg, lab in landing),
+                        "y" if at_start else "n",
+                        fam.sfs,
+                    )
             else:
                 item, hs = await self._issue(
                     port, f"{isl.key}_{shape}", start, write=False, burst=burst, beats=beats
@@ -1477,6 +1550,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     port=port,
                     shape=shape,
                     bresp=_rname(bresp),
+                    **({} if burst == INCR else self._stated_fields(None)),
                     rresp="-",
                     slots=";".join(inside),
                 )
@@ -1726,7 +1800,8 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     beats=beats,
                     wdata=_pack(data),
                 )
-                bresp = self._check_write(fam, ctx, port, item, hs)
+                stated = self._stated_bresp(isl, start, beats, burst)
+                bresp = self._check_write(fam, ctx, port, item, hs, stated)
                 after = await self._readback(isl, fam, shape.replace("/", "_"))
                 k1 = []
                 for reg in isl.regs + isl.neighbours:
@@ -1742,6 +1817,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     port=port,
                     shape=shape,
                     bresp=_rname(bresp),
+                    **self._stated_fields(stated),
                     rresp="-",
                     slot_k1=";".join(k1),
                     footprint=";".join(
@@ -2401,11 +2477,13 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             return
         text = {
             "ISLAND64": f"{fam.bursts} bursts on 3 islands x 3 ports, protocol held, "
-            f"BRESP OKAY where every beat lands on a register, out-of-footprint registers "
-            f"unchanged, liveness OKAY",
+            f"BRESP OKAY where every beat lands on a register, INCR data landed "
+            f"({fam.data_compares} register compares), out-of-footprint registers unchanged, "
+            f"liveness OKAY",
             "ISLAND32": f"{fam.bursts} bursts on 3 islands x 3 ports, protocol held, "
-            f"BRESP OKAY where every beat lands on a register, out-of-footprint registers "
-            f"unchanged, liveness OKAY",
+            f"INCR BRESP OKAY with data landed ({fam.data_compares} register compares) where "
+            f"every beat lands on a register, multi-beat FIXED/WRAP BRESP open under #3598 "
+            f"(OBS-BT-ISLAND32), out-of-footprint registers unchanged, liveness OKAY",
             "STRB": f"{fam.bursts} strobed writes and pair reads, only strobed lanes changed, "
             f"64-bit pair assembly as stated",
             "GPIO": f"{fam.bursts} GPIO bursts x 3 ports, protocol held, seeded slots "

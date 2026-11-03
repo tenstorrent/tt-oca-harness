@@ -12022,7 +12022,12 @@ IHI 0022 burst footprint unchanged.
   SF-024), `OBS-BT-SPM` (SF-022), `OBS-BT-SLOTEDGE` (SF-007, SF-008), `OBS-BT-EXTENTEDGE` (SF-005,
   SF-008), `OBS-BT-RULEEDGE` (SF-005) and `OBS-BT-REGIONEDGE` (SF-005, SF-008, SF-025): response
   codes, per-beat read data and beat addresses, the values in the footprint, the scratchpad
-  landing of each WRAP and FIXED beat and the response of the restore write at 1 KiB.
+  landing of each WRAP and FIXED beat and the response of the restore write at 1 KiB. Every island
+  write line carries `landed=all|none|some|n/a` (whether the footprint registers took a beat), and
+  every write whose response is left open, at an island, a GPIO FIXED or WRAP slot or the slot
+  edge, carries `stated_bresp=open issue=#3598`. `OBS-BT-WRAP-LANDING` (SF-007, #3598) records,
+  for each WRAP write at a 64-bit island, the IHI 0022 beat addresses, which beat each footprint
+  register holds and whether every beat landed on the start address.
 
 *Test Procedure*:
 
@@ -12050,11 +12055,17 @@ IHI 0022 burst footprint unchanged.
 |`CHK-BT-ISLAND64` |For each burst shape, 64-bit island and port: every W beat accepted with WLAST
 on beat AxLEN and one B with BID=AWID: OKAY when every byte of every beat lands on an island
 register (`memmap.adoc`: a write burst to a register unit answers as its single-beat writes, and a
-register write answers OKAY), otherwise any code but EXOKAY (SF-007, SF-010); AxLEN+1 R beats
-with RID=ARID, RLAST on the last beat only and no EXOKAY; every writable island register and neighbour outside the burst
-footprint reads its seeded reference, which no beat carries; liveness OKAY
+register write answers OKAY), FIXED and WRAP included, otherwise any code but EXOKAY recorded as
+`OBS-BT-ISLAND64 ... stated_bresp=open issue=#3598` (SF-007, SF-010); an INCR write so graded
+leaves each footprint register holding its beat's lane in its seeded fields; AxLEN+1 R beats with
+RID=ARID, RLAST on the last beat only and no EXOKAY; every writable island register and neighbour
+outside the burst footprint reads its seeded reference, which no beat carries; liveness OKAY
 |`CHK-BT-ISLAND32` |The same through the 64-to-32-bit downsizer on the misc scratch words and the
-reset-unit FLR counters
+reset-unit FLR counters, except that a multi-beat FIXED or WRAP write is not graded on its
+response: `memmap.adoc` does not state which burst types reach the single-beat split behind the
+downsizer (#3598), so its BRESP and whether it landed are `OBS-BT-ISLAND32 ... stated_bresp=open
+issue=#3598`; INCR writes are graded OKAY with their data landed where every byte lands on a
+register, and the protocol, out-of-footprint and liveness terms are graded for every shape
 |`CHK-BT-STRB-UPPER` |WSTRB=0xF0: OKAY, +4 takes D[63:32], +0 keeps its value (`ISOLATE_REQ_VIS`
 its reset value); WSTRB=0x0F: +0 takes D[31:0], +4 kept; WSTRB=0x30: +0 kept; CPU-control
 `SCRATCH` reads bits [63:32]=0 and its value in [31:0]; the 64-bit pair read assembles +0 and +4
@@ -12098,6 +12109,9 @@ the decoded extent of the reset unit, so its WRAP first beat and the upper words
 address the past-extent region. `ISOLATE_REQ_VIS`, `CHIP_CONFIG.VERSION_LO` and
 `NDMRESET_REQUEST` are read-only in the RDL, so a stray beat cannot change them: their reads are
 protocol graded and printed as `INFO-PROTOCOL-ONLY`, and no integrity claim is made for them.
+The response of a multi-beat FIXED or WRAP write into a 32-bit island and the beat landing of a
+WRAP write at a 64-bit island wait on issue #3598 and are OBS lines (Known Limitations); FIXED and
+WRAP writes at the 64-bit islands stay graded OKAY where every byte lands on a register.
 `ocah_axi_sva` fires are
 read from the kept log.
 
@@ -51192,6 +51206,7 @@ in <<smc-deferred-disposition>>.
 |A read whose AR the front port accepted before the drain request but that the isolate never counted as pending is not drained before the uncore reset applies and completes only after the reconnect; status reads from every manager stall behind it meanwhile |`smc_sw_uncore_reset_drain_isolate_test` counts only the isolate-pending reads in `CHK-DRAIN-HANDSHAKE-ORDER` and `CHK-DRAIN-PENDING-READS-COMPLETE`, records the other read as `OBS-DRAIN-FRONTPORT-ACCEPTED-NOT-PENDING ... sf=SF-005,SF-006` and grades only its completion after the reconnect; the status reads issued meanwhile are `OBS-STATUS-READ-UNDER-STALL` |Issue #3594 (RTL): the drain covers only the reads already past the isolate, the blocked read holds the shared front-port AR channel, and on the SMU the ID converter holds the release write behind it; the observation is graded against the drain once #3594 is answered
 |The force-mode flush of the software uncore reset presents a stale R beat with ID 0 and no open AR on SYS_IN as the forced reset applies, the behaviour issue #2449 accepts as a known limitation of force-mode reset (#2318 and #2323 are folded into #2449) |`smc_sw_uncore_reset_drain_isolate_test` keeps the SYS_IN protocol checker (`u_sys_in_axi_sva`) and every other inbound and CPU-port checker on, and therefore does not drive the force episode: it prints `INFO-CELL-NOT-DRIVABLE: force episode S7 (ruling #2449, covered by the pinned wedge leaves)` and `OBS-DRAIN-FLUSH-RESPONSES: episode=not-driven ruling=#2449`; the force-mode flush, its request status and its stale response are covered by the pinned wedge leaves (`smc_cpu_l2_read_wedge_test` family) |Ruling #2449 (known limitation of force-mode reset, with #2318 folded in)
 |The partial-strobe semantics of a 64-bit AXI-Lite write to `CPU_CTRL.REFERENCE_COUNTER` are unstated: which byte lanes load the reference counter, and whether a partial-strobe or WSTRB 0x00 write counts as a write for the register's write-once-then-poll rule (SF-012, #3425 item 5) |`smc_axil_narrow_zero_strobe_write_test` observes them: it records the readback of every driven strobe as an `OBS-PLAIN-STROBE` line and never compares it, polls only the strobed lanes above lane 0 until they read the written byte, issues the WSTRB 0x00 write last and does not poll it, and does not drive the lane-0-only strobe WSTRB 0x01 on REFERENCE_COUNTER (`INFO-CELL-NOT-DRIVABLE`), which has no lane the write-then-poll protocol can observe |Grade the lanes and drive WSTRB 0x01 once SF-012 states the partial-strobe rule
+|No SMC document states which AXI burst types a register unit accepts: on the 32-bit peripheral path a multi-beat FIXED or WRAP write answers `SLVERR` and lands no beat, while on the 64-bit path it answers `OKAY` and every WRAP beat lands on the start address; `memmap.adoc` gives only the response of a burst split into single-beat writes |`smc_axi_fabric_burst_type_islands_test` records the 15 multi-beat FIXED and WRAP writes into `misc` `SCRATCH_COLD`, `SCRATCH_COLD_WARM` and the reset-unit FLR counters (SEP_IN, SYS_IN, JTAG_IN) as `OBS-BT-ISLAND32 ... stated_bresp=open issue=#3598` with the measured BRESP and `landed=`, grades INCR into those islands OKAY with data, and records the 64-bit WRAP landing as `OBS-BT-WRAP-LANDING ... issue=#3598`, never compared |Issue #3598 (SPEC); grade the 32-bit FIXED and WRAP responses and the 64-bit WRAP landing once the burst rule for register units is stated
 |A scratchpad write blocked at the isolated L2 frontend during a software uncore reset can hold the SEP_IN `RESET_CTRL` write that releases the uncore: on one AXI4 interface W beats follow AW order, so the release's W waits behind the blocked write's |`smc_l2_frontend_access_uncore_held_test` cannot release the uncore under blocked writes without a cold reset; it records the attempt in `OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE`, prints `INFO-CELL-NOT-DRIVABLE` for the episode-C completion cells and recovers with the reset agent's cold reset. The completion of a blocked write is observed, never graded |Hazard question for the designer (SF-026): state whether CPU-control accesses, the uncore release included, stay reachable while an L2-frontend request is blocked; grade the episode-C release and write completion once that is stated
 |A unit whose aperture straddles `BASE + REGION_SIZE` stays reachable below the limit:
  at `REGION_SIZE` 0x10_0000 the scratchpad answers OKAY at `BASE + 0x6_0000` and the write lands, while three texts (`memmap.adoc`, the `REGION_SIZE` description and the integrator guide) promise DECERR for such a unit |`smc_err_slv_response_content_test` grades S9 per address (DECERR at `BASE + 0x10_0000`, at the limit) and records the accesses below the limit as `OBS-ERRC-REGIONSIZE-STRADDLE` without comparing them |SPEC issue #3551: the owner either rewords the three texts to the per-address rule or adds a unit-extent check; the OBS line becomes a graded check once that ruling lands
