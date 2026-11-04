@@ -8464,6 +8464,8 @@ level-3 muxes.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>Rsvd158</ipxact:name>
+            <ipxact:description>No effect in the SMC: the field stores and reads back, but no debug-bus mux uses
+it. Write 0.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
