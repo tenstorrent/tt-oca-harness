@@ -27,7 +27,13 @@ The SEP_IN master converts every read beat to an int and cannot represent X, so
 the reads of unwritten entries -- the DAT before its write, and the DCT -- are
 taken from `_RawReadTap`, which records each beat's RRESP and
 data as sampled on the bus. The master is handed a copy with any unresolvable
-data zeroed, and its return value is not used.
+data zeroed, and its return value is not used. Each of those reads is declared
+to the AXI monitor, which exempts its beats from the X rules; every other read
+of the leaf is judged. The leaf counts the reads it declares and fails when the
+monitor's exempt AR and exempt beat tallies are not exactly that count, so an
+exemption that covered any undeclared beat is caught. On VCS every DCT bit reads
+X, so the two DCT passes agree on zero bits and CHK-I3C-DCT-TABLE-READ grades
+only the RRESP of each read there.
 """
 
 from __future__ import annotations
@@ -138,6 +144,7 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
         self.dat_checked = 0
         self.dct_checked = 0
         self.dct_known_bits = 0
+        self.declared_reads = 0
 
     async def _entry(self, tag: str, addr_of, instance: int, words: int) -> int:
         value = 0
@@ -154,7 +161,9 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
         for word in range(words_in_entry):
             addr = addr_of(instance, word)
             tap.beats.clear()
-            await self.csr_read(f"{tag}{instance}_W{word}", addr)
+            with self.env.axi_monitor.declared_unknown_rdata():
+                await self.csr_read(f"{tag}{instance}_W{word}", addr)
+            self.declared_reads += 1
             assert len(tap.beats) == 1, (
                 f"I3C{instance} {tag} word {word} @ 0x{addr:08x}: {len(tap.beats)} read beats "
                 f"recorded for a single-beat read"
@@ -226,12 +235,27 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
             DAT_BITS,
             DAT_MASK,
         )
+        monitor = self.env.axi_monitor
+        assert monitor.ar_exempt == self.declared_reads, (
+            f"the AXI monitor exempted {monitor.ar_exempt} ARs but the leaf declared "
+            f"{self.declared_reads} reads as observed-only"
+        )
+        assert monitor.r_beats_exempt == self.declared_reads, (
+            f"the AXI monitor exempted {monitor.r_beats_exempt} R beats but the leaf declared "
+            f"{self.declared_reads} single-beat reads as observed-only"
+        )
         cocotb.log.info(
             "CHK-I3C-DCT-TABLE-READ: DCT entry 0 of each of the %d I3C instances was read "
             "twice as %d words through the I3C CSR window, every read completing with RRESP "
-            "OKAY, and the two passes agreed on all %d bits known in both (of %d read)",
+            "OKAY, and the two passes agreed on all %d bits known in both (of %d read); "
+            "%d single-beat raw reads (DAT before its write, and both DCT passes) were declared "
+            "to the AXI monitor as observed-only and it exempted exactly %d ARs and %d R beats, "
+            "one per declared read; every other beat was judged",
             self.dct_checked,
             DCT_WORDS,
             self.dct_known_bits,
             self.dct_checked * DCT_BITS,
+            self.declared_reads,
+            monitor.ar_exempt,
+            monitor.r_beats_exempt,
         )
