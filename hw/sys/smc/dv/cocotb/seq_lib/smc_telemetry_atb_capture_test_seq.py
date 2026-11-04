@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Telemetry receiver 0: capture one ATB message, then both flush paths.
+"""Telemetry receiver 0: capture ATB messages, decode them, then both flush paths.
 
 The Programmer's Guide Telemetry Receiver section
 (``doc/programmer/src/smc-programming.adoc``) gives the three software
@@ -17,17 +17,27 @@ procedure names:
   until it automatically clears (flush complete)", whose pin-side handshake is
   ``afvalid_o`` / ``afready_i`` in ``doc/interface.adoc``.
 
-The ATB beat framing is the DV-owned table already in
-``smc_telemetry_receiver_csr_test_seq``; it is imported rather than restated so
-the two leaves cannot drift apart. Which 9-bit block of a packet a given
-counter byte lands in has no documented source, so the message here fills every
-block below the header with an all-ones valid block. ``doc/index.adoc`` states
-the rest: "block |9 bits |Seven per packet: 1-bit valid + 8-bit data",
-"counter |32 bits |Four consecutive blocks" and "a counter is valid only when
-all four of its blocks are valid". One packet therefore offers six blocks below
-its header block, which completes exactly one counter, and that counter reads
-0xFFFFFFFF whichever six blocks the receiver consumed. Both expectations follow
-from the document rather than from where this bench decided to put a byte.
+The message layout is the one ``doc/index.adoc`` "Telemetry packet fields"
+states: ``last_packet`` at bit 63 of each packet, block i of a packet at bits
+[9i+8:9i] with its valid bit at 9i+8 and its data byte below, ``probe_id`` at
+bits [60:56] of the first packet, which are data bits [6:2] of that packet's
+block 6, and a counter being four consecutive blocks most-significant byte
+first. "Block 0 of the first packet is not decoded; counter 0 begins at block 1
+of the first packet, and later packets contribute all seven blocks", and "a
+counter is valid only when all four of its blocks are valid" --
+``architecture.adoc`` adds "otherwise its decoded value is zero". The four
+configured counters therefore span 16 blocks: one packet's six blocks below the
+header, a whole second packet and three blocks of a third. ``_decode`` is that
+map written down; every message here carries a different byte in every block,
+so a receiver that skipped a different block, assembled bytes in the other
+order or crossed packets elsewhere reads a different counter.
+
+``architecture.adoc`` also states the receiver's data hazard: "Every configured
+counter position is decoded, including positions beyond the last packet
+received. A short message following a longer one can therefore inherit trailing
+values and validity bits." The validity leg sends a one-packet message after a
+three-packet one and expects the counters the short message did not cover to
+read the earlier message's.
 """
 
 from __future__ import annotations
@@ -45,15 +55,8 @@ from .smc_addr_map import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# The framing table and the beat driver this leaf shares with the CSR leaf.
-from .smc_telemetry_receiver_csr_test_seq import (
-    _ATB_BLOCK_BITS,
-    _ATB_LAST_PACKET_BIT,
-    _ATB_NEXT_BLOCK_LSB,
-    _ATB_PROBE_ID_BITS,
-    _ATB_PROBE_ID_LSB,
-    _send_telemetry_packet,
-)
+# The beat driver this leaf shares with the CSR leaf.
+from .smc_telemetry_receiver_csr_test_seq import _send_telemetry_packet
 
 _TELEMETRY_H = (
     _REPO / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
@@ -103,45 +106,103 @@ TX_FLUSH_BM = _tel("TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bm")
 BUFFER_EMPTY_BM = _tel("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm")
 PROBE_ID_BM = _tel("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm")
 
-MESSAGE_PROBE_ID = 0x1D
+# Telemetry packet fields, index.adoc "Telemetry packet fields".
+LAST_PACKET_BIT = 63
+BLOCK_BITS = 9
+BLOCKS_PER_PACKET = 7
+BLOCK_DATA_MASK = 0xFF
+PROBE_ID_LSB = 56
+PROBE_ID_BITS = 5
+PROBE_ID_BLOCK = 6
+PROBE_ID_DATA_LSB = 2
+COUNTERS_PER_MESSAGE = 4
+BLOCKS_PER_COUNTER = 4
+# One header block plus four blocks per counter, over seven blocks per packet.
+PACKETS_PER_MESSAGE = -(-(1 + COUNTERS_PER_MESSAGE * BLOCKS_PER_COUNTER) // BLOCKS_PER_PACKET)
+# The first counter register past the configured count; it reads 0 with its
+# validity bit clear (architecture.adoc "Message Queue and Readout").
+BEYOND_COUNTER = COUNTERS_PER_MESSAGE
+
 MESSAGE_ATID = 0x33
-# Every block below the header carries the valid flag and an all-ones data
-# byte, so the one counter the packet completes reads all-ones.
-ATB_BLOCK_ALL_ONES = (1 << _ATB_BLOCK_BITS) - 1
-EXPECTED_VLDS = 0x1
-EXPECTED_COUNTER = 0xFFFFFFFF
-# The next counter register up. Only six blocks are available below the header
-# and a counter needs four, so this one stays at its generated RDL reset --
-# which separates "the receiver reassembled what was sent" from "every counter
-# register reads all-ones".
-UNFILLED_COUNTER = 1
-UNFILLED_COUNTER_RESET = _tel("TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_reset")
-
-
-def _frame_all_ones_message(probe_id: int) -> int:
-    """One last-flagged packet: ``probe_id`` in the header block, every other block valid."""
-    packet = 1 << _ATB_LAST_PACKET_BIT
-    packet |= (probe_id & ((1 << _ATB_PROBE_ID_BITS) - 1)) << _ATB_PROBE_ID_LSB
-    for block_lsb in range(0, _ATB_NEXT_BLOCK_LSB, _ATB_BLOCK_BITS):
-        packet |= ATB_BLOCK_ALL_ONES << block_lsb
-    return packet
-
-
-MESSAGE_PACKET = _frame_all_ones_message(MESSAGE_PROBE_ID)
+# Probe IDs and the byte seed of each message; every block of a message carries
+# seed + 7 x packet + block, so no two blocks of a message share a byte.
+FIRST_PROBE_ID, FIRST_SEED = 0x1D, 0x10
+INVALID_PROBE_ID, INVALID_SEED = 0x0A, 0x40
+INVALID_BLOCK = (0, 3)
+LONG_PROBE_ID, LONG_SEED = 0x15, 0x70
+SHORT_PROBE_ID, SHORT_SEED = 0x07, 0xA0
 
 # Bounds on the DUT-side observations. Expiry is a failure, never a pass.
 BUFFER_POLL_BOUND = 200
 FLUSH_POLL_BOUND = 64
 
 
+def _packet(blocks: list[tuple[int, int]], last: bool) -> int:
+    word = int(last) << LAST_PACKET_BIT
+    for index, (valid, data) in enumerate(blocks):
+        word |= ((valid << (BLOCK_BITS - 1)) | (data & BLOCK_DATA_MASK)) << (BLOCK_BITS * index)
+    return word
+
+
+def _message(
+    probe_id: int, seed: int, packets: int = PACKETS_PER_MESSAGE, invalid: tuple = ()
+) -> list[int]:
+    """A message of ``packets`` packets, the last one flagged, distinct bytes per block.
+
+    Block (0, 6) carries ``probe_id`` in data bits [6:2]; ``invalid`` names the
+    (packet, block) pairs whose valid bit is clear.
+    """
+    words = []
+    for packet in range(packets):
+        blocks = []
+        for block in range(BLOCKS_PER_PACKET):
+            data = (seed + BLOCKS_PER_PACKET * packet + block) & BLOCK_DATA_MASK
+            if (packet, block) == (0, PROBE_ID_BLOCK):
+                data &= ~(((1 << PROBE_ID_BITS) - 1) << PROBE_ID_DATA_LSB)
+                data |= probe_id << PROBE_ID_DATA_LSB
+            blocks.append((int((packet, block) not in invalid), data))
+        words.append(_packet(blocks, packet == packets - 1))
+    return words
+
+
+def _frame_all_ones_message(probe_id: int) -> int:
+    """One last-flagged packet: six valid all-ones blocks, ``probe_id`` in an invalid block 6."""
+    blocks = [(1, BLOCK_DATA_MASK)] * (BLOCKS_PER_PACKET - 1)
+    blocks.append((0, probe_id << PROBE_ID_DATA_LSB))
+    return _packet(blocks, last=True)
+
+
+def _decode(words: list[int]) -> tuple[int, int, list[int]]:
+    """Probe ID, COUNTER_VLDS and the four counters the index.adoc map gives ``words``."""
+    blocks: list[tuple[int, int]] = []
+    for packet, word in enumerate(words):
+        for block in range(1 if packet == 0 else 0, BLOCKS_PER_PACKET):
+            field = (word >> (BLOCK_BITS * block)) & ((1 << BLOCK_BITS) - 1)
+            blocks.append((field >> (BLOCK_BITS - 1), field & BLOCK_DATA_MASK))
+    probe_id = (words[0] >> PROBE_ID_LSB) & ((1 << PROBE_ID_BITS) - 1)
+    vlds, counters = 0, []
+    for index in range(COUNTERS_PER_MESSAGE):
+        four = blocks[BLOCKS_PER_COUNTER * index : BLOCKS_PER_COUNTER * (index + 1)]
+        valid = len(four) == BLOCKS_PER_COUNTER and all(v for v, _ in four)
+        vlds |= int(valid) << index
+        counters.append(int.from_bytes(bytes(d for _, d in four), "big") if valid else 0)
+    return probe_id, vlds, counters
+
+
+FIRST_MESSAGE = _message(FIRST_PROBE_ID, FIRST_SEED)
+INVALID_MESSAGE = _message(INVALID_PROBE_ID, INVALID_SEED, invalid=(INVALID_BLOCK,))
+LONG_MESSAGE = _message(LONG_PROBE_ID, LONG_SEED)
+SHORT_MESSAGE = _message(SHORT_PROBE_ID, SHORT_SEED, packets=1)
+
+
 class smc_telemetry_atb_capture_test_seq(SmcCsrSeq):
-    """Drive one ATB message into receiver 0, read it back, then flush both ways."""
+    """Drive ATB messages into receiver 0, decode them, then flush both ways."""
 
     def __init__(self, name: str = "smc_telemetry_atb_capture_test_seq") -> None:
         super().__init__(name)
         self.captured_probe_id: int | None = None
         self.captured_vlds: int | None = None
-        self.captured_counter: int | None = None
+        self.captured_counters: list[int] = []
         self.rx_flush_polls = 0
         self.tx_flush_rise_cycles = 0
         self.tx_flush_fall_cycles = 0
@@ -156,6 +217,7 @@ class smc_telemetry_atb_capture_test_seq(SmcCsrSeq):
         await self.csr_read("TELEMETRY_STATUS_ENTRY", STATUS, expected=BUFFER_EMPTY_BM)
 
         await self._capture_message(dut)
+        await self._counter_validity(dut)
         await self._receiver_flush(dut)
         await self._transmitter_flush(dut)
 
@@ -177,56 +239,99 @@ class smc_telemetry_atb_capture_test_seq(SmcCsrSeq):
             f"{BUFFER_POLL_BOUND} polls (last STATUS=0x{status:08x})"
         )
 
+    async def _send_message(self, dut, label: str, words: list[int]) -> None:
+        for word in words:
+            await _send_telemetry_packet(dut, word, rx=RX, atid=MESSAGE_ATID)
+        await self._wait_buffer(False, label)
+
+    async def _read_message(self, label: str, expected: list[int]) -> tuple[int, int, list[int]]:
+        """Read the oldest message and compare it with ``_decode(expected)``."""
+        want_probe, want_vlds, want_counters = _decode(expected)
+        probe = await self.csr_read(f"{label}_PROBE_ID", PROBE_ID) & PROBE_ID_BM
+        assert probe == want_probe, (
+            f"{label}: TELEMETRY_PROBE_ID reads 0x{probe:02x}, expected the 0x{want_probe:02x} "
+            f"framed at bits [60:56] of the first packet"
+        )
+        vlds = await self.csr_read(f"{label}_COUNTER_VLDS", COUNTER_VLDS)
+        assert vlds == want_vlds, (
+            f"{label}: TELEMETRY_COUNTER_VLDS reads 0x{vlds:08x}, expected 0x{want_vlds:08x} "
+            f"from the valid bits of the four blocks of each counter"
+        )
+        counters = []
+        for index, want in enumerate(want_counters):
+            counter = await self.csr_read(f"{label}_COUNTER_{index}", _counter_addr(index))
+            assert counter == want, (
+                f"{label}: TELEMETRY_COUNTER[{index}] reads 0x{counter:08x}, expected "
+                f"0x{want:08x}: blocks {BLOCKS_PER_COUNTER * index + 1} to "
+                f"{BLOCKS_PER_COUNTER * (index + 1)} of the message counted from block 1 of the "
+                f"first packet, most-significant byte first, zero unless all four are valid"
+            )
+            counters.append(counter)
+        return probe, vlds, counters
+
+    async def _pop(self, label: str) -> None:
+        await self.csr_write(f"{label}_POP", CTRL, BUFFER_POP_BM)
+        await self._wait_buffer(True, f"{label}_POPPED")
+
     async def _capture_message(self, dut) -> None:
-        await _send_telemetry_packet(dut, MESSAGE_PACKET, rx=RX, atid=MESSAGE_ATID)
-        await self._wait_buffer(False, "CAPTURE")
-
-        probe = await self.csr_read("TELEMETRY_PROBE_ID_CAPTURE", PROBE_ID)
-        self.captured_probe_id = probe & PROBE_ID_BM
-        assert self.captured_probe_id == MESSAGE_PROBE_ID, (
-            f"TELEMETRY_PROBE_ID reads 0x{self.captured_probe_id:02x}, expected the "
-            f"0x{MESSAGE_PROBE_ID:02x} framed into the message header"
+        await self._send_message(dut, "CAPTURE", FIRST_MESSAGE)
+        probe, vlds, counters = await self._read_message("CAPTURE", FIRST_MESSAGE)
+        beyond = await self.csr_read("CAPTURE_COUNTER_BEYOND", _counter_addr(BEYOND_COUNTER))
+        assert beyond == 0, (
+            f"TELEMETRY_COUNTER[{BEYOND_COUNTER}] reads 0x{beyond:08x} past the "
+            f"{COUNTERS_PER_MESSAGE} configured counters; it must read 0"
         )
-
-        vlds = await self.csr_read("TELEMETRY_COUNTER_VLDS_CAPTURE", COUNTER_VLDS)
-        self.captured_vlds = vlds
-        assert vlds == EXPECTED_VLDS, (
-            f"TELEMETRY_COUNTER_VLDS reads 0x{vlds:08x}, expected 0x{EXPECTED_VLDS:08x}: one "
-            f"packet offers six valid blocks below its header block and a counter needs four"
-        )
-
-        counter = await self.csr_read("TELEMETRY_COUNTER_0_CAPTURE", _counter_addr(0))
-        self.captured_counter = counter
-        assert counter == EXPECTED_COUNTER, (
-            f"TELEMETRY_COUNTER[0] reads 0x{counter:08x}, expected 0x{EXPECTED_COUNTER:08x} "
-            f"reassembled from four all-ones blocks"
-        )
-        unfilled = await self.csr_read(
-            "TELEMETRY_COUNTER_UNFILLED", _counter_addr(UNFILLED_COUNTER)
-        )
-        assert unfilled == UNFILLED_COUNTER_RESET, (
-            f"TELEMETRY_COUNTER[{UNFILLED_COUNTER}] reads 0x{unfilled:08x} though the message "
-            f"carried no blocks for it; its generated reset is 0x{UNFILLED_COUNTER_RESET:08x}"
-        )
-
-        await self.csr_write("TELEMETRY_CTRL_POP", CTRL, BUFFER_POP_BM)
-        await self._wait_buffer(True, "POP")
+        self.captured_probe_id, self.captured_vlds, self.captured_counters = probe, vlds, counters
+        await self._pop("CAPTURE")
         cocotb.log.info(
-            "CHK-TELEMETRY-ATB-MESSAGE-CAPTURE: one last-flagged ATB message on receiver %d "
-            "cleared STATUS.BUFFER_EMPTY, read back PROBE_ID=0x%02x, COUNTER_VLDS=0x%08x and "
-            "COUNTER[0]=0x%08x with COUNTER[%d] still at its reset 0x%08x, and CTRL.BUFFER_POP "
-            "returned the buffer to empty",
+            "CHK-TELEMETRY-ATB-MESSAGE-CAPTURE: a %d-packet last-flagged ATB message on receiver "
+            "%d cleared STATUS.BUFFER_EMPTY, read back PROBE_ID=0x%02x and COUNTER_VLDS=0x%08x "
+            "with COUNTER[%d] at 0 past the configured counters, and CTRL.BUFFER_POP returned "
+            "the buffer to empty",
+            len(FIRST_MESSAGE),
             RX,
-            self.captured_probe_id,
-            self.captured_vlds,
-            self.captured_counter,
-            UNFILLED_COUNTER,
-            UNFILLED_COUNTER_RESET,
+            probe,
+            vlds,
+            BEYOND_COUNTER,
+        )
+        cocotb.log.info(
+            "CHK-TELEMETRY-COUNTER-BYTE-MAP: packets %s with a distinct byte in every block read "
+            "back COUNTER[0..3] = %s: counter 0 from blocks 1-4 of the first packet (block 0 "
+            "skipped), counter 1 from its blocks 5-6 and blocks 0-1 of the second, counters 2 and "
+            "3 across the second and third packets, most-significant byte first, with the probe "
+            "ID inside block 6's data byte",
+            ", ".join(f"0x{w:016x}" for w in FIRST_MESSAGE),
+            ", ".join(f"0x{c:08x}" for c in counters),
+        )
+
+    async def _counter_validity(self, dut) -> None:
+        await self._send_message(dut, "INVALID", INVALID_MESSAGE)
+        _, invalid_vlds, invalid_counters = await self._read_message("INVALID", INVALID_MESSAGE)
+        await self._pop("INVALID")
+
+        await self._send_message(dut, "LONG", LONG_MESSAGE)
+        await self._read_message("LONG", LONG_MESSAGE)
+        await self._pop("LONG")
+        inherited = SHORT_MESSAGE + LONG_MESSAGE[1:]
+        await self._send_message(dut, "SHORT", SHORT_MESSAGE)
+        _, short_vlds, short_counters = await self._read_message("SHORT", inherited)
+        await self._pop("SHORT")
+        cocotb.log.info(
+            "CHK-TELEMETRY-COUNTER-VALIDITY: with block %d of packet %d invalid COUNTER_VLDS read "
+            "0x%08x and COUNTER[0..3] = %s (counter 0 zero, the others intact); a one-packet "
+            "message after a three-packet one read COUNTER_VLDS 0x%08x and COUNTER[0..3] = %s, "
+            "counter 1's lower half and counters 2 and 3 inherited from the earlier message's "
+            "trailing packets",
+            INVALID_BLOCK[1],
+            INVALID_BLOCK[0],
+            invalid_vlds,
+            ", ".join(f"0x{c:08x}" for c in invalid_counters),
+            short_vlds,
+            ", ".join(f"0x{c:08x}" for c in short_counters),
         )
 
     async def _receiver_flush(self, dut) -> None:
-        await _send_telemetry_packet(dut, MESSAGE_PACKET, rx=RX, atid=MESSAGE_ATID)
-        await self._wait_buffer(False, "FLUSH_FILL")
+        await self._send_message(dut, "FLUSH_FILL", FIRST_MESSAGE)
         await self.csr_write("TELEMETRY_CTRL_RX_FLUSH", CTRL, RX_FLUSH_BM)
         self.rx_flush_polls = await self._wait_buffer(True, "RX_FLUSH")
         await self.csr_write("TELEMETRY_CTRL_RX_FLUSH_CLEAR", CTRL, 0)

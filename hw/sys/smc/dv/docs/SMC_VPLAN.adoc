@@ -41552,7 +41552,8 @@ Drive `smc_mailbox_multi_instance_test_seq` (contract `SMC_COV_B1_006`, steps S1
 |`CHK-MBX-RO-WRITE-STATUS` |On all 64 apertures the `READ_DATA` and `STATUS` writes answer `SLVERR` (128 of 128) and `STATUS` reads 0x1 before and after
 |`CHK-MBX-RO-WRITE-FLAGS` |On all 64 apertures the `ERROR_FLAGS` and `IRQP` writes answer `SLVERR` (128 of 128) and `IRQP` reads 0x0 before and after; the `ERROR_FLAGS` value read after is printed (SF-030)
 |`CHK-MBX-RO-WRITE-EFFECT` |The `ERROR_FLAGS` and `IRQS` values observed after the read-only writes are printed and must be the same on every aperture (SF-030)
-|`CHK-MBX-EMPTY-READ` |On all 64 apertures an empty `READ_DATA` read answers `SLVERR` with data[31:0] = 0xFEEDDEAD; data[63:32] is printed (SF-032)
+|`CHK-MBX-EMPTY-READ` |On all 64 apertures an empty `READ_DATA` read answers `SLVERR` with data[31:0] = 0xFEEDDEAD
+|`CHK-EMPTY-READ-UPPER-ZERO` |On all 64 apertures the empty `READ_DATA` read returns the whole word 0x0000_0000_FEED_DEAD, data[63:32] = 0 (`interface.adoc` Access Results)
 |`CHK-MBX-EMPTY-FLAGS` |After each empty read `IRQS[2]` and `ERROR_FLAGS[0]` read 1, the next aperture reads `IRQS` 0x0 and `ERROR_FLAGS` 0x0, and `IRQS` reads 0x0 after 0x4 is written to it
 |`CHK-MBX-ERRFLAGS-RC` |On all 64 apertures the first `ERROR_FLAGS` read after the empty read returns 0x1 and the second 0x0, both `OKAY`
 |`CHK-MBX-EMPTY-B2B` |On outbound and inbound aperture 31, 2 back-to-back and 4 pipelined empty reads all answer `SLVERR` 0xFEEDDEAD and `STATUS` reads 0x1 after
@@ -41562,7 +41563,7 @@ Drive `smc_mailbox_multi_instance_test_seq` (contract `SMC_COV_B1_006`, steps S1
 |===
 
 
-*Pass Criteria*: `CHK-MAILBOX-CHANNEL-VECTOR`, `CHK-MBX-EMPTY-B2B`, `CHK-MBX-EMPTY-FLAGS`, `CHK-MBX-EMPTY-READ`, `CHK-MBX-ERRFLAGS-RC`, `CHK-MBX-ERRFLAGS-RETAIN`, `CHK-MBX-RO-WRITE-EFFECT`, `CHK-MBX-RO-WRITE-FLAGS`, `CHK-MBX-RO-WRITE-STATUS`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-EMPTY-READ-UPPER-ZERO`, `CHK-MAILBOX-CHANNEL-VECTOR`, `CHK-MBX-EMPTY-B2B`, `CHK-MBX-EMPTY-FLAGS`, `CHK-MBX-EMPTY-READ`, `CHK-MBX-ERRFLAGS-RC`, `CHK-MBX-ERRFLAGS-RETAIN`, `CHK-MBX-RO-WRITE-EFFECT`, `CHK-MBX-RO-WRITE-FLAGS`, `CHK-MBX-RO-WRITE-STATUS`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Only `IRQEN` is swept as write/read-back storage; the other registers of the block are not swept here because of their RDL access attributes.
 '''''
@@ -41626,7 +41627,7 @@ draws nothing from the seed.
 . Wait for `smc_fuse_sense_done_o`; read `CLOCK_GATE_CONTROL`, write it with `MAILBOX_CG_EN` set and
   read it back; stamp step S1.
 . Error injection. Point: `READ_DATA` of aperture A and of aperture B. Kind: a read while the FIFO
-  is empty. Expected response: `SLVERR` with low word 0xFEEDDEAD on each; stamp S2 and print the
+  is empty. Expected response: `SLVERR` with 0x0000_0000_FEED_DEAD on each; stamp S2 and print the
   line with the upper halves.
 . Read `ERROR_FLAGS` and `IRQS` of A and B and require 0b01 and 0b100 on both; write 0x4 to `IRQS`
   of both and require `IRQS` 0. Stamp S3 and print the line.
@@ -41666,8 +41667,17 @@ draws nothing from the seed.
 . B writes a word, issue the group `WRITE_DATA` write with `READ_DATA` read (read expected to
   return B's word), then B pops the written word; stamp S15 and print the line.
 . Issue the group `CTRL` flush write with `IRQS` read; stamp S16 and print its line, then require
-  all six members to have a response and print the completion line. Restore `CLOCK_GATE_CONTROL`.
-. Check the ordered fence: steps S1 to S16 with strictly increasing stamps and the seventeen
+  all six members to have a response and print the completion line.
+. Narrow pops. Point: `READ_DATA` of B. Kind: A queues two words; B reads `READ_DATA[31:0]` with a
+  32-bit access, then `READ_DATA[63:32]` with a 32-bit access, then `READ_DATA` with a 64-bit
+  access. Expected response: the first word's low half, the second word's upper half, then the
+  empty error; read and acknowledge B's flags. Stamp S17 and print the line.
+. Upper-half clear. Point: `ERROR_FLAGS` of A. Kind: an empty read and a full write on A twice;
+  after the first pair a 64-bit `ERROR_FLAGS` read, after the second a 32-bit read of
+  `ERROR_FLAGS[63:32]` then a 64-bit read. Expected response: 0b11, then 0 and 0b00; B pops the
+  queued words each time and `IRQS` is acknowledged. Stamp S18 and print the line. Restore
+  `CLOCK_GATE_CONTROL`.
+. Check the ordered fence: steps S1 to S18 with strictly increasing stamps and the nineteen
   checker lines printed in order at their steps, print the non-vacuity line, then print the
   bounded-wait line.
 
@@ -41676,8 +41686,8 @@ draws nothing from the seed.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EMPTY-READ-SLVERR-DATA` |`READ_DATA` of A and of B answers `SLVERR` with low data word
-  0xFEEDDEAD while empty; the upper half is recorded without comparing
+|`CHK-EMPTY-READ-SLVERR-DATA` |`READ_DATA` of A and of B answers `SLVERR` with the whole word
+  0x0000_0000_FEED_DEAD while empty (`interface.adoc`, Access Results)
 |`CHK-EMPTY-READ-FLAGS` |After the empty read `ERROR_FLAGS` reads 0b01 and `IRQS` reads 0b100 on A
   and on B, and `IRQS` reads 0 after 0x4 is written
 |`CHK-EMPTY-READ-NO-SIDE-EFFECT` |`STATUS[3:2]` reads 0 before and after the empty read, and the
@@ -41695,8 +41705,8 @@ draws nothing from the seed.
   0b11 and the next returns 0
 |`CHK-ERRFLAGS-PER-APERTURE` |`ERROR_FLAGS` of B reads 0b00 on two reads although A's flags were
   set and cleared several times
-|`CHK-WRITE-DATA-READ-EMPTY` |A `WRITE_DATA` read answers `OKAY` with low word 0xFEEDC0DE; the upper
-  half is recorded without comparing
+|`CHK-WRITE-DATA-READ-EMPTY` |A `WRITE_DATA` read answers `OKAY` with the whole word
+  0x0000_0000_FEED_C0DE (`interface.adoc`, Access Results)
 |`CHK-WRITE-DATA-READ-NO-EFFECT` |`WRITE_DATA` reads with one word queued and with a full FIFO
   answer `OKAY`, `ERROR_FLAGS` stays 0, `IRQS` is identical before and after each read with
   `IRQS[2]` clear after each read (`IRQS` is acknowledged before the first write), and B pops the
@@ -41714,22 +41724,29 @@ draws nothing from the seed.
   `IRQS` value is recorded without comparing
 |`CHK-CHANNELS-COMPLETE-BOUNDED` |All six grouped members complete with a response under the
   driver limit, with no cycle count assumed
-|`CHK-NONVAC` |The ordered fence holds: steps S1 to S16 in order with strictly increasing
-  simulation-time stamps, and the seventeen checker lines printed in order, each after its step
+|`CHK-MBOX-NARROW-READ-POPS` |With two words queued, a 32-bit read of `READ_DATA[31:0]` returns
+the first word's low half, a 32-bit read of `READ_DATA[63:32]` returns the second word's upper
+half, and the next 64-bit read answers the empty error: each narrow read popped one whole entry
+(`axil_mailbox.rdl` `READ_DATA`)
+|`CHK-MBOX-ERRFLAGS-UPPER-HALF-CLEARS` |After an empty read and a full write a 64-bit `ERROR_FLAGS`
+read returns 0b11 (control); after the same two errors a 32-bit read of `ERROR_FLAGS[63:32]`
+returns 0 and the next 64-bit read returns 0b00 (`axil_mailbox.rdl` `ERROR`)
+|`CHK-NONVAC` |The ordered fence holds: steps S1 to S18 in order with strictly increasing
+  simulation-time stamps, and the nineteen checker lines printed in order, each after its step
 |`CHK-TIMEOUT-PATHS` |Lists the bounded waits of the run: the three bring-up net waits with their
   200000-rise bound and the SEP_IN access limit; the compare is each wait's own assertion, which
   fails the leaf on expiry, and the line is the record
 |===
 
-*Pass Criteria*: all nineteen checkers hold after their compares; the leaf issues at least 80
-SEP_IN accesses and the scoreboard checks at least that many. The upper data halves, `STATUS[1:0]`,
-the ignored-write side effects and the grouped `STATUS` and `IRQS` values are recorded and are not
-part of the claim. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all twenty-one checkers hold after their compares; the leaf issues at least 80
+SEP_IN accesses and the scoreboard checks at least that many. `STATUS[1:0]`, the ignored-write
+side effects and the grouped `STATUS` and `IRQS` values are recorded and are not part of the claim.
+Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The upper data half of an empty `READ_DATA` read and of a `WRITE_DATA` read,
-`STATUS[1:0]`, whether the ignored writes to the read-only registers touch `ERROR_FLAGS[1]` or
-`IRQS`, and the `STATUS` and `IRQS` values returned inside the grouped accesses are recorded and not
-compared; the upper half of an empty read is not specified. No cycle alignment of the grouped
+*Scope limit*: `STATUS[1:0]`, whether the ignored writes to the read-only registers touch
+`ERROR_FLAGS[1]` or `IRQS`, and the `STATUS` and `IRQS` values returned inside the grouped accesses
+are recorded and not compared. Of the sub-word accesses only 32-bit reads of `READ_DATA` and of the
+upper half of `ERROR_FLAGS` are run. No cycle alignment of the grouped
 accesses is claimed. `CHK-TIMEOUT-PATHS` lists the bounded waits as a record; the compare is each
 wait's own assertion.
 
@@ -41775,10 +41792,10 @@ draws nothing from the seed.
   printed.
 * Write flush: a flush of A's write FIFO discards words its peer B would read
   (`architecture.adoc`, Paired FIFOs): after queuing two words and a flush, B's read answers
-  `SLVERR` with low word 0xFEEDDEAD; the next write to the formerly full FIFO answers `OKAY` and B
+  `SLVERR` with 0x0000_0000_FEED_DEAD; the next write to the formerly full FIFO answers `OKAY` and B
   pops it; A's own read FIFO is untouched (A pops the word B sent); a flush of an empty write
   FIFO leaves `ERROR_FLAGS` and `IRQS` 0.
-* Read flush: a flush of A's read FIFO empties it (A's read answers `SLVERR` with low word
+* Read flush: a flush of A's read FIFO empties it (A's read answers `SLVERR` with
   0xFEEDDEAD although B had sent a word); the peer's write to a formerly full FIFO answers `OKAY`
   and A pops it; A's own write FIFO is untouched (B pops the word A queued); a flush of an empty
   read FIFO leaves `ERROR_FLAGS` and `IRQS` 0.
@@ -41810,12 +41827,12 @@ draws nothing from the seed.
 . Queue two words in each direction, write `CTRL` 0x3 on A recording the response, and drain both
   `READ_DATA` registers until the empty error, recording each word; stamp S6 and print the line.
 . Clear the error state, A writes two words (full), write wflush, B's `READ_DATA` must answer
-  `SLVERR` with low word 0xFEEDDEAD, read `STATUS` of both, A writes a third word with `OKAY` and
+  `SLVERR` with 0x0000_0000_FEED_DEAD, read `STATUS` of both, A writes a third word with `OKAY` and
   B pops it. Stamp S7 and print the two lines.
 . B writes a word, write wflush on A, A pops the word; stamp S8 and print the line.
 . Establish a zero `ERROR_FLAGS` and `IRQS` baseline, write wflush on A with its write FIFO empty,
   and require both still 0; stamp S9 and print the line.
-. B writes a word, write rflush on A, A's `READ_DATA` must answer `SLVERR` with low word
+. B writes a word, write rflush on A, A's `READ_DATA` must answer `SLVERR` with
   0xFEEDDEAD, read `STATUS` of A; stamp S10 and print the line.
 . B writes two words (A's read FIFO full), write rflush on A, B writes a third word with `OKAY`,
   A pops it, read `STATUS` of B; stamp S11 and print the line.
@@ -41854,26 +41871,31 @@ draws nothing from the seed.
 |`CHK-CTRL-BOTH-BITS-OBSERVED` |Measures and prints the response to a `CTRL` write of 0x3 and the
   words drained from each side, requiring only that both drains end in the empty error
 |`CHK-WFLUSH-DISCARDS-PEER-WORDS` |After a write flush on A, B's `READ_DATA` answers `SLVERR` with
-  low word 0xFEEDDEAD although two words had been queued; `STATUS` is recorded without comparing
-|`CHK-WFLUSH-CLEARS-FULL` |After a flush of the full write FIFO the next write answers `OKAY` and B
-  pops it; the `STATUS` full bit is recorded without comparing
+  0x0000_0000_FEED_DEAD although two words had been queued; `STATUS` is recorded without comparing
+|`CHK-WFLUSH-CLEARS-FULL` |`STATUS` of A reads the full bit set after two pushes; after a flush of
+  the full write FIFO the next write answers `OKAY` and B pops it; the full bit after the flush is
+  recorded without comparing
 |`CHK-WFLUSH-KEEPS-OWN-READ-FIFO` |A's `READ_DATA` returns the word B had sent after a write flush
   on A
 |`CHK-WFLUSH-EMPTY-HARMLESS` |`ERROR_FLAGS` and `IRQS` read 0 before and after a write flush of an
   empty write FIFO
 |`CHK-RFLUSH-EMPTIES-OWN-READ-FIFO` |After a read flush on A, A's `READ_DATA` answers `SLVERR` with
-  low word 0xFEEDDEAD although B had sent a word; `STATUS` is recorded without comparing
-|`CHK-RFLUSH-FREES-PEER` |After a flush of A's full read FIFO the peer's next write answers `OKAY`
-  and A pops it; the `STATUS` full bit of B is recorded without comparing
+  0x0000_0000_FEED_DEAD although B had sent a word; `STATUS` is recorded without comparing
+|`CHK-RFLUSH-FREES-PEER` |`STATUS` of B reads the full bit set after two pushes; after a flush of
+  A's full read FIFO the peer's next write answers `OKAY` and A pops it; the full bit of B after the
+  flush is recorded without comparing
 |`CHK-RFLUSH-KEEPS-OWN-WRITE-FIFO` |B pops the word A had queued after a read flush on A
 |`CHK-RFLUSH-EMPTY-HARMLESS` |`ERROR_FLAGS` and `IRQS` read 0 before and after a read flush of an
   empty read FIFO
-|`CHK-WFLUSH-VS-PUSH-CONSISTENT` |Both grouped members answer `OKAY`, the word queued before the
-  flush is never popped, at most the grouped word is popped, the FIFO ends in the empty error and a
-  later word round-trips; whether the grouped word survives is recorded without comparing
-|`CHK-RFLUSH-VS-PUSH-CONSISTENT` |Both grouped members answer `OKAY`, the word queued before the
-  flush is never popped, at most the grouped word is popped, the FIFO ends in the empty error and a
-  later word round-trips; whether the grouped word survives is recorded without comparing
+|`CHK-WFLUSH-SAME-CYCLE-DISCARDS` |A write flush on A grouped with a push into FIFO A, in both
+member orders: the SEP_IN AW handshake cycles of the `CTRL` and `WRITE_DATA` writes are stamped,
+the grouped word is kept when its AW handshake is later than the flush's and discarded when
+earlier, the word pushed before each group is discarded, and one order of each outcome occurred
+(`interface.adoc` Access Results: a push accepted in the flush cycle or earlier is discarded, a
+later one is kept)
+|`CHK-RFLUSH-SAME-CYCLE-DISCARDS` |A read flush on A grouped with B's push into A's read FIFO, in
+both member orders, graded by the same AW-handshake rule; the word pushed before each group is
+discarded and the word pushed after the groups round-trips
 |`CHK-FLUSH-VS-POP-NO-STALE-NO-STUCK` |Both grouped members complete, A's `READ_DATA` then answers
   `SLVERR` (no stale word) and a later word round-trips; the grouped read's result is recorded
   without comparing
@@ -41886,14 +41908,16 @@ draws nothing from the seed.
 
 *Pass Criteria*: all twenty checkers hold after their compares; the leaf issues at least 100 SEP_IN
 accesses and the scoreboard checks at least that many. The `CTRL` 0x3 outcome, the `STATUS` empty
-and full bits, the fate of the grouped words and the grouped read result are recorded and are not
-part of the claim. Enrolled in: `all`, `hosted`.
+and full bits and the grouped read result are recorded and are not part of the claim. Enrolled
+in: `all`, `hosted`.
 
 *Scope limit*: What a write of `CTRL` 0x3 does is not specified; its response and which FIFOs
 drained are printed without a compare. `STATUS[1:0]` and the empty and full bits are printed, and
 the `STATUS` words after the flushes are recorded without comparing. The grouped read is measured
-only, and whether the word written in the same group as a flush is kept or discarded is printed,
-because the specification does not state which; no cycle alignment is claimed. The zero reset value
+only. The flush-against-push rule is graded at one-cycle resolution from the SEP_IN AW handshake
+order: one slave port accepts one write per cycle, so a push accepted in the flush cycle itself is
+not reachable from SEP_IN and only the accepted-earlier and accepted-later halves are graded. The
+zero reset value
 of `CTRL` cannot fail on a missing reset under the 2-state build (bench limit). `CHK-TIMEOUT-PATHS`
 lists the bounded waits as a record; the compare is each wait's own assertion.
 
@@ -42118,7 +42142,7 @@ bring-up wait; the driver's own 50 microsecond access limit
   unchanged from the peer aperture on pairs 0, 1, 15, 16 and 31, outbound to inbound and then
   inbound to outbound.
 * A writer does not read its own word: after a write to outbound pair 15 its own `READ_DATA`
-  answers `SLVERR` with low word 0xFEEDDEAD (empty read, `interface.adoc`, Access Results), and all
+  answers `SLVERR` with 0x0000_0000_FEED_DEAD (empty read, `interface.adoc`, Access Results), and all
   eight `READ_DATA` registers of pairs 0, 1, 16 and 31 answer the same while the word sits in
   pair 15; the peer then returns the word. Writer `STATUS` is printed without a compare.
 * With four words queued on pair 1 the outbound read returns the two inbound-written words in
@@ -42184,10 +42208,11 @@ bring-up wait; the driver's own 50 microsecond access limit
   outbound aperture reads back unchanged, 64 bits, from the inbound aperture of the same pair
 |`CHK-PAIR-REVERSE-PAIRS` |For the same five pairs the word written with `OKAY` to the inbound
   aperture reads back unchanged from the outbound aperture
-|`CHK-PAIR-OWN-READ-FIFO-EMPTY` |The writer's own `READ_DATA` of pair 15 answers `SLVERR` with low
-  word 0xFEEDDEAD, and the peer then returns the word; `STATUS` is recorded without comparing
+|`CHK-PAIR-OWN-READ-FIFO-EMPTY` |The writer's own `READ_DATA` of pair 15 answers `SLVERR` with the
+  whole word 0x0000_0000_FEED_DEAD, and the peer then returns the word; `STATUS` is recorded without
+  comparing
 |`CHK-PAIR-ISOLATION` |All eight `READ_DATA` reads of pairs 0, 1, 16 and 31 answer `SLVERR` with
-  low word 0xFEEDDEAD while the word sits in pair 15, and pair 15's inbound read returns it
+  0x0000_0000_FEED_DEAD while the word sits in pair 15, and pair 15's inbound read returns it
 |`CHK-PAIR-BOTH-DIRECTIONS` |With four words queued on pair 1 the outbound `READ_DATA` returns the
   two inbound-written words in order and the inbound `READ_DATA` returns the two
   outbound-written words in order
@@ -42196,9 +42221,9 @@ bring-up wait; the driver's own 50 microsecond access limit
   are intact
 |`CHK-PARTIAL-NO-MERGE` |A full word pops intact, the 0x0F-strobed word pops separately as
   0x0000000099AABBCC, and the third read is the empty error
-|`CHK-PARTIAL-ZERO-STROBE-OBSERVED` |Measures and prints the response to a write with strobe 0x00,
-  the peer's following read and any further words, requiring only a response to each access and
-  that the drain ends in the empty error
+|`CHK-PARTIAL-ZERO-STROBE-PUSHES` |A write with strobe 0x00 answers `OKAY`, the peer pops one
+zero entry with `OKAY`, and the next read is the empty error (`axil_mailbox.rdl` `WRITE_DATA`: any
+write pushes one entry irrespective of WSTRB, lanes whose strobe is 0 pushed as 0)
 |`CHK-PARTIAL-FILLS-FIFO` |A full word and a partial word fill the two entries, the third write
   answers `SLVERR`, and the peer pops the full word then 0x0000000055AA55AA and then the empty
   error
@@ -42218,12 +42243,11 @@ bring-up wait; the driver's own 50 microsecond access limit
 |===
 
 *Pass Criteria*: all fourteen checkers hold after their compares; the leaf issues at least 80
-SEP_IN accesses and the scoreboard checks at least that many. The writer `STATUS`, the strobe-0x00
-outcome, and the full-FIFO and empty-FIFO push-with-pop outcomes are recorded and are not part of
-the claim. Enrolled in: `all`, `hosted`.
+SEP_IN accesses and the scoreboard checks at least that many. The writer `STATUS` and the
+full-FIFO and empty-FIFO push-with-pop outcomes are recorded and are not part of the claim.
+Enrolled in: `all`, `hosted`.
 
-*Scope limit*: Writer `STATUS` is printed without a compare. A write with strobe 0x00 is not
-specified, so its response, the peer's following read and any further words are printed. With the
+*Scope limit*: Writer `STATUS` is printed without a compare. With the
 FIFO full, the push response and the drained words of the grouped write-with-read are printed, and
 with the FIFO empty the responses and data of both members are printed, since the specification does
 not state the outcome; no cycle alignment is claimed. `CHK-TIMEOUT-PATHS` lists the bounded waits as
@@ -47180,7 +47204,7 @@ draws nothing from the seed.
 * The sdata pad is held low, which `interface.adoc` "AVSBus Slave Subframe" makes a valid frame with slave acknowledgment 0, so the controller takes the accept path rather than the retry path.
 * The single-cycle end-of-subframe and post-resync launch states are not directly observable: `cur_state_debug_o` reaches the bench through two handshake data synchronizers, which forward the value they hold when a transfer opens. Their effect is checked instead.
 * The slave response word is not compared: the readback register reads 0 both for the all-zero subframe and for an empty FIFO.
-* With the reply driver on sdata and `AVS_CFG_0.MAX_RETRIES` at 0, AVS_CMD 0x08052E18 and 0x18052E18 (CmdGroup 1, commit then hold write, CMD_DATA 0xA5C3) and 0x0002D1E0 (CmdGroup 0, CMD_DATA 0x5A3C) are captured on `avs_mdata_o`; the CRC-3 bits of the three subframes and the shift order are logged and not compared against the x^3 + x + 1 polynomial `interface.adoc` (AVSBus Frame Format) gives (SF-030).
+* With the reply driver on sdata and `AVS_CFG_0.MAX_RETRIES` at 0, AVS_CMD 0x08052E18 and 0x18052E18 (CmdGroup 1, commit then hold write, CMD_DATA 0xA5C3) and 0x0002D1E0 (CmdGroup 0, CMD_DATA 0x5A3C) are captured on `avs_mdata_o`; the CRC-3 bits [2:0] of each subframe must equal the remainder of its bits [31:3] times x^3 over x^3 + x + 1 (`architecture.adoc`, CRC Verification Engine), and the most-significant-first shift order is logged.
 * A reply with slave acknowledgment 0, StatusResponse 0b00010 and data 0xFFFF is sent once with each of the eight CRC-3 codes against a broadcast commit write; `architecture.adoc` "CRC Verification Engine" lets exactly one pass the check and update `AVS_LATEST_SLAVE_SUBFRAME` and `AVS_SLAVE_STATUS`. `AVS_SLAVE_ISSUED_INTERRUPT` is logged after that reply and after `AVS_INTERRUPT_CLEAR` = 0x1, not compared (SF-028).
 * A StatusResponse-0 reply is swept over the codes until one is accepted, which clears `AVS_SLAVE_STATUS` bit 1.
 * With `MAX_RETRIES` at 1 a rejected code followed by the accepted one costs one retry of the same subframe, and only the retry reply updates the status latch.
@@ -47196,29 +47220,33 @@ Drive `smc_avsbus_frame_transaction_test_seq`. Each checker below is a named com
 |===
 |Checker |Description
 |`CHK-AVS-FRAME-FSM-MAIN-PATH` |`tb_avsbus_cur_state_debug` held each of AVS_IDLE, AVS_SLAVE_RESYNC, AVS_SHIFT_1ST_SUBFRAME, AVS_SHIFT_MID_SUBFRAME and AVS_SHIFT_LAST_SUBFRAME over two consecutive `clk_periph_i` samples; the one-hot bit order is transcribed from `architecture.adoc` "Protocol State Machine"
-|`CHK-AVS-MASTER-SUBFRAME` |Every master subframe captured on `avs_mdata_o` over the DUT's own AVS clock equals the queued AVS_CMD word in wire order -- `2'b01` preamble in [31:30] and the generated-header AVS_CMD fields in [29:3]; the hardware CRC-3 is excluded from the compare and logged (`interface.adoc` gives the polynomial, x^3 + x + 1 over bits [31:3]; no CRC model is computed)
+|`CHK-AVS-MASTER-SUBFRAME` |Every master subframe captured on `avs_mdata_o` over the DUT's own AVS clock equals the queued AVS_CMD word in wire order -- `2'b01` preamble in [31:30] and the generated-header AVS_CMD fields in [29:3]; the hardware CRC-3 is excluded from this compare and graded by `CHK-AVS-CRC3-POLY`
 |`CHK-AVS-CMD-FIFO-DRAIN` |After all three responses, AVS_FIFOS_STATUS reports the command FIFO at 0 occupied and the full generated depth vacant, with AVS_NORMAL_STATUS CMD_FIFO_EMPTY and AVS_BUS_IS_IDLE set
 |`CHK-AVS-READBACK-FIFO-FILL` |AVS_FIFOS_STATUS reports exactly one readback entry per command and the matching vacant count, with AVS_NORMAL_STATUS READBACK_HAS_DATA set
-|`CHK-AVS-READBACK-POP` |Each AVS_READBACK read returned OKAY on a non-empty FIFO and advanced the occupancy by exactly one, ending at 0 with READBACK_HAS_DATA clear
+|`CHK-AVS-READBACK-POP` |Each AVS_READBACK read, one 1-byte and two 4-byte, returned OKAY on a non-empty FIFO and advanced the occupancy by exactly one, ending at 0 with READBACK_HAS_DATA clear
 |`CHK-AVS-VALID-ACK-NO-RETRY` |TOTAL_RETRIES is 0, AVS_MASTER_IS_RETRYING is clear, and neither SLAVE_UNRESPONSIVE_INT nor MAX_RETRIES_ATTEMPTED_INT is raised; `smc_avsbus_retry_exhaust_test` drives all three to 1 on the same registers
 |`CHK-AVS-GRP1-SUBFRAME` |Both CmdGroup 1 master subframes carry `2'b01` in [31:30], bit 27 = 1, CMD_DATA 0xA5C3 in [18:3], command type 0 then 1 in [29:28], and [29:3] equal to the written AVS_CMD[29:3]; the most-significant-first shift order is logged (SF-030)
 |`CHK-AVS-GRP0-SUBFRAME` |The CmdGroup 0 master subframe carries `2'b01` in [31:30], bit 27 = 0, CMD_DATA 0x5A3C in [18:3] and [29:3] equal to AVS_CMD[29:3]
-|`CHK-AVS-SUBFRAME-CRC-OBS` |The CRC-3 bits [2:0] of the three captured 32-bit subframes are logged, not compared (SF-030)
+|`CHK-AVS-CRC3-POLY` |The CRC-3 bits [2:0] of each of the three captured 32-bit master subframes equal the remainder of its bits [31:3] times x^3 over x^3 + x + 1, zero initial value, no final XOR, bit 31 first (`architecture.adoc` "CRC Verification Engine")
+|`CHK-AVS-CMD-STROBE-IGNORED` |An AVS_CMD write with only byte lane 0 strobed goes out as a master subframe carrying the whole written word in [29:3], bits [29:8] included, and lands one readback entry (`memmap.adoc`: the window ignores write strobes and pushes the whole 32-bit write data word)
+|`CHK-AVS-CRC3-ACCEPT` |The one CRC code of eight the controller accepts for the StatusResponse-bit-1 reply, and the first code it accepts for the status-0 reply, each equal the model's remainder for that reply; the seven other codes of the first reply were rejected
+|`CHK-AVS-IDLE-CLOCK-STOPS` |With STOP_AVS_CLOCK_ON_IDLE set, RESYNC_INTERVAL at its maximum and `tb_avsbus_cur_state_debug` in AVS_IDLE, `tb_avs_clk_from_dut` shows zero edges over 2048 clk_smc_i cycles while AVS_NORMAL_STATUS still answers AVS_BUS_IS_IDLE; with the bit cleared the same window shows at least 8 edges (`architecture.adoc` "Clock Generation and Management")
+|`CHK-AVS-READBACK-NARROW-POPS` |A 1-byte read of AVS_READBACK pops one entry, occupancy 3 to 2 (`memmap.adoc`: the FIFO pops on any read, whatever the access width)
 |`CHK-AVS-SLAVE-STATUS-BIT1` |Exactly one of the eight CRC-3 codes latches the StatusResponse-bit-1 reply into AVS_LATEST_SLAVE_SUBFRAME (bit 25 = 1), with AVS_SLAVE_STATUS 0x00000002 and AVS_READBACK [28:24] = 0b00010; the next accepted StatusResponse-0 reply leaves AVS_SLAVE_STATUS bit 1 at 0
 |`CHK-AVS-SLAVE-BAD-CRC` |Every rejected code leaves AVS_LATEST_SLAVE_SUBFRAME and AVS_SLAVE_STATUS at their prior values; with MAX_RETRIES = 1 a rejected reply costs one retry (TOTAL_RETRIES + 1, two identical master subframes) and the accepted retry reply updates LATEST
 |`CHK-AVS-SLAVE-INT-OBS` |AVS_INTERRUPT.AVS_SLAVE_ISSUED_INTERRUPT after the accepted StatusResponse-bit-1 reply and after AVS_INTERRUPT_CLEAR = 0x1 is logged, not compared (SF-028)
 |`CHK-TIMEOUT-PATHS` |Every bounded wait of the subframe and status legs is listed with its bound in `clk_smc_i` cycles and its last observed state; each fails the test on expiry
-|`CHK-NONVAC` |The fence BRINGUP < AVS_GRP1_SUBFRAME < AVS_GRP0_SUBFRAME < AVS_SLAVE_BIT1 < AVS_SLAVE_BIT1_CLEAR < AVS_SLAVE_BAD_CRC follows the three-command legs, with strictly increasing stamps and each checker line inside its own step
+|`CHK-NONVAC` |The fence BRINGUP < AVS_GRP1_SUBFRAME < AVS_GRP0_SUBFRAME < AVS_CMD_STROBE < AVS_SLAVE_BIT1 < AVS_SLAVE_BIT1_CLEAR < AVS_SLAVE_BAD_CRC follows the three-command legs, with strictly increasing stamps and each checker line inside its own step
 |===
 
-*Pass Criteria*: all fourteen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all eighteen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The single-cycle end-of-subframe and post-resync launch states are not directly
 observable, because the debug state reaches the bench through two handshake data synchronizers;
 their effect is checked instead. The slave response word is not compared, because the readback
 register reads 0 both for the all-zero subframe and for an empty FIFO. The hardware CRC-3 of the
-master subframe is excluded from the compare; `interface.adoc` gives the polynomial, x^3 + x + 1
-over bits [31:3], and no CRC model is computed.
+master subframe is excluded from the frame compare and graded on its own against the x^3 + x + 1
+model. The restart of a gated clock through a slave resync is graded by the main-path checker.
 
 '''''
 
@@ -47305,7 +47333,7 @@ draws nothing from the seed.
 
 * Follows the three Telemetry Receiver procedures in the Programmer's Guide (`doc/programmer/src/smc-programming.adoc`): reading a message, receiver flush and transmitter flush.
 * Each ATB beat requires the `atready_o` handshake; expiry is a failure, because a truncated frame can still clear STATUS.BUFFER_EMPTY and still match the probe id.
-* Which 9-bit block a counter byte lands in has no documented source, so every block below the header is filled valid and all-ones. `doc/index.adoc` supplies the rest: seven blocks per packet, four consecutive blocks per counter, and a counter valid only when all four of its blocks are.
+* `doc/index.adoc` "Telemetry packet fields" fixes the layout: block i at bits [9i+8:9i] with its valid bit at 9i+8, the probe ID at [60:56] of the first packet inside block 6's data byte, counter 0 from block 1 of the first packet and later packets contributing all seven blocks, four consecutive blocks per counter most-significant byte first, and a counter valid only when all four of its blocks are. Every message carries a distinct byte per block so the decoded counters grade that map.
 * The flush-acknowledge pins exist for receiver 0 only, so the transmitter-flush leg is not repeated on receivers 1 and 2.
 
 *Test Procedure*:
@@ -47317,17 +47345,18 @@ Drive `smc_telemetry_atb_capture_test_seq`. Each checker below is a named compar
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-TELEMETRY-ATB-MESSAGE-CAPTURE` |A complete last-flagged message cleared STATUS.BUFFER_EMPTY, TELEMETRY_PROBE_ID read back the framed probe id, TELEMETRY_COUNTER_VLDS read exactly one valid counter, TELEMETRY_COUNTER[0] read the all-ones value reassembled from four valid blocks while TELEMETRY_COUNTER[1] stayed at its generated reset, and CTRL.BUFFER_POP returned the buffer to empty
+|`CHK-TELEMETRY-ATB-MESSAGE-CAPTURE` |A three-packet last-flagged message cleared STATUS.BUFFER_EMPTY, TELEMETRY_PROBE_ID read back the framed probe id, TELEMETRY_COUNTER_VLDS read all four counters valid, TELEMETRY_COUNTER[4] read 0 past the configured counters, and CTRL.BUFFER_POP returned the buffer to empty
+|`CHK-TELEMETRY-COUNTER-BYTE-MAP` |With a distinct byte in every block, TELEMETRY_COUNTER[0..3] read the values the `index.adoc` "Telemetry packet fields" map gives: counter 0 from blocks 1-4 of the first packet (block 0 skipped), counter 1 from its blocks 5-6 and blocks 0-1 of the second packet, counters 2 and 3 across the second and third packets, most-significant byte first, with the probe ID inside block 6's data byte
+|`CHK-TELEMETRY-COUNTER-VALIDITY` |With one block of counter 0 invalid, TELEMETRY_COUNTER[0] read 0 with its COUNTER_VLDS bit clear and the other counters intact; a one-packet message after a three-packet one read counter 1's lower half and counters 2 and 3 from the earlier message's trailing packets (`architecture.adoc` "Message Assembly and Decoding")
 |`CHK-TELEMETRY-RX-FLUSH` |With a message buffered, CTRL.TELEMETRY_RX_FLUSH returned STATUS.BUFFER_EMPTY to 1 within the poll bound and clearing the request read CTRL back at 0
 |`CHK-TELEMETRY-TX-FLUSH-HANDSHAKE` |`afvalid_o` idled at 0 with `afready_i` low, rose after CTRL.TELEMETRY_TX_FLUSH was written and stayed asserted while `afready_i` was low, then retired once `afready_i` went high with CTRL.TELEMETRY_TX_FLUSH self-cleared
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: Which 9-bit block a counter byte lands in has no documented source, so every block
-below the header is filled valid and all-ones rather than a placed byte being compared. The
-flush-acknowledge pins exist for receiver 0 only, so the transmitter-flush leg is not repeated on
-receivers 1 and 2.
+*Scope limit*: The inherited counters are read after the short message without a reset in between;
+that only reset clears the assembly storage is not graded here. The flush-acknowledge pins exist
+for receiver 0 only, so the transmitter-flush leg is not repeated on receivers 1 and 2.
 
 '''''
 
@@ -47809,11 +47838,13 @@ draws nothing from the seed.
 |Checker |Description
 |`CHK-AVS-CLKDIV-PERIOD` |Each written divisor scaled the measured AVS clock period against the reset measurement
 |`CHK-AVS-CLKDIV-DUTY` |A numerator change on its own moved the high fraction to what the numerator asks for, at an unchanged period
+|`CHK-AVS-DIVIDER-ALONE-PULSE` |Each divisor written with the numerator field left at its reset 0 gave an AVS clock high for one source-clock cycle per period (`architecture.adoc` "Clock Generation and Management": a numerator of 0 is treated as 1 and gives a high pulse of one source-clock cycle)
+|`CHK-AVS-ODD-DIVIDER-DUTY` |Divisor 5 with the 50% numerator gave a period of five source cycles high for a whole 2 or 3 of them, not the half period an even divisor reaches (`interface.adoc`: a 50% duty cycle is only reachable with an even divider)
 |`CHK-AVS-CLKDIV-MINIMUM` |A written divisor of 0 was taken as the minimum of 2, not as the reset behaviour
 |`CHK-AVS-CLKDIV-RESTORE` |The hardware-default divisor and numerator returned the clock to its reset period and high fraction
 |===
 
-*Pass Criteria*: all four checkers hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all six checkers hold after their compares. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -49089,6 +49120,7 @@ draws nothing from the seed.
 |Checker |Description
 |`CHK-TELEMETRY-POP-EMPTY` |A pop on an empty buffer left it empty and not full, and the next message read back its own probe ID
 |`CHK-TELEMETRY-THRESHOLD-INTR` |`INTR_STATUS.BUFFER_THRESHOLD` was set exactly while more messages than the threshold were buffered, filling and draining
+|`CHK-TELEMETRY-THRESHOLD-ALIAS` |With one message queued `CTRL.BUFFER_THRESHOLD` 0x000 and 0x010 set `INTR_STATUS.BUFFER_THRESHOLD` and 0x001 and 0x011 do not; with the queue full 0x007 and 0x017 set it and 0x008 and 0xFF8 do not; each 12-bit value reads back unchanged (`telemetry_receiver.rdl`: only the low log2(depth)+1 bits are compared, values alias modulo twice the depth, only values below the depth can assert)
 |`CHK-TELEMETRY-BUFFER-OVERFLOW` |`BUFFER_FULL` set and stayed set through two more messages, and the drain returned exactly the depth's worth of messages as an in-order run of the IDs sent
 |`CHK-TELEMETRY-MISSING-LAST` |`MISSING_LAST` sets at a measured packet count N (2..16) sent without
 the last-packet flag and stays clear on the N−1 before it; N is measured, not compared with a
@@ -49108,7 +49140,7 @@ parameter's default of 4, but neither gives a packet count
 |`CHK-NONVAC` |The receiver 1 and 2 steps ran in order with strictly increasing time stamps, each checker line inside its own step
 |===
 
-*Pass Criteria*: all fourteen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all fifteen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Which end of the run of probe IDs survived the overflow is recorded, not asserted,
 because no document states it. The buffer depth is read off `STATUS.BUFFER_FULL` rather than

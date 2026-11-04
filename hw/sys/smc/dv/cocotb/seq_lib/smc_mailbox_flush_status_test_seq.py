@@ -8,6 +8,7 @@ Sources: axi_lite_mailbox_unit interface.adoc, architecture.adoc, axil_mailbox.r
 from __future__ import annotations
 
 import cocotb
+from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
@@ -29,6 +30,7 @@ RTIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__RTIRQ_bm")
 EIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__EIRQ_bm")
 READ_ERROR = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__ERROR__READ_ERROR_bm")
 WRITE_ERROR = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__ERROR__WRITE_ERROR_bm")
+FULL = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__STATUS__FULL_bm")
 WFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__WFLUSH_bm")
 RFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__RFLUSH_bm")
 IRQ_ALL = WTIRQ | RTIRQ | EIRQ
@@ -36,11 +38,12 @@ CTRL_BITS = WFLUSH | RFLUSH
 
 FUSE_SENSE_RISES = 200_000
 AXI_SLVERR = 2
-EMPTY_ERROR_LOW = 0xFEEDDEAD
+EMPTY_ERROR_WORD = 0x0000_0000_FEED_DEAD
 DRAIN_LIMIT = 6
 PAIR = 4
 SIDE = {"A": "OUTBOUND", "B": "INBOUND"}
 OKAY, ERROR, OBSERVE = "okay", "error", "observe"
+_ORDERS = ("flush_first", "push_first")
 _STEPS = tuple(f"S{n}" for n in range(1, 17))
 _CHECKERS = (
     ("CHK-CTRL-ZERO-AT-RESET", "S2"),
@@ -58,8 +61,8 @@ _CHECKERS = (
     ("CHK-RFLUSH-FREES-PEER", "S11"),
     ("CHK-RFLUSH-KEEPS-OWN-WRITE-FIFO", "S12"),
     ("CHK-RFLUSH-EMPTY-HARMLESS", "S13"),
-    ("CHK-WFLUSH-VS-PUSH-CONSISTENT", "S14"),
-    ("CHK-RFLUSH-VS-PUSH-CONSISTENT", "S15"),
+    ("CHK-WFLUSH-SAME-CYCLE-DISCARDS", "S14"),
+    ("CHK-RFLUSH-SAME-CYCLE-DISCARDS", "S15"),
     ("CHK-FLUSH-VS-POP-NO-STALE-NO-STUCK", "S16"),
 )
 
@@ -70,6 +73,47 @@ def _addr(side: str, reg: str) -> int:
 
 def _hex(value) -> str:
     return "None" if value is None else f"0x{value:016x}"
+
+
+def _fate(kept: bool) -> str:
+    return "kept" if kept else "discarded"
+
+
+class _AwHandshakes:
+    """The clk_smc_i cycle of every SEP_IN AW handshake, keyed by address.
+
+    The SEP_IN port, the fabric and the mailbox demultiplexer keep writes from
+    one manager in AW order, so the order of two AW handshakes here is the
+    order in which the mailbox accepts the two writes.
+    """
+
+    def __init__(self) -> None:
+        self.stamps: list[tuple[int, int]] = []
+        self._task = None
+
+    def start(self) -> None:
+        self.stamps = []
+        self._task = cocotb.start_soon(self._run())
+
+    def stop(self) -> None:
+        if self._task is not None:
+            self._task.kill()
+            self._task = None
+
+    async def _run(self) -> None:
+        dut = cocotb.top
+        cycle = 0
+        while True:
+            await RisingEdge(dut.clk_smc_i)
+            cycle += 1
+            valid, ready = dut.s_axi_awvalid.value, dut.s_axi_awready.value
+            if valid.is_resolvable and ready.is_resolvable and int(valid) and int(ready):
+                self.stamps.append((int(dut.s_axi_awaddr.value), cycle))
+
+    def cycle_of(self, label: str, addr: int) -> int:
+        cycles = [c for a, c in self.stamps if a == addr]
+        assert len(cycles) == 1, f"{label}: {len(cycles)} AW handshakes at 0x{addr:x}: {cycles}"
+        return cycles[0]
 
 
 class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
@@ -107,9 +151,8 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         if item.op is SmcSysAxiOp.READ:
             assert isinstance(item.rdata, int), f"{item.name}: unresolved read data"
             if mode == ERROR:
-                assert item.rdata & 0xFFFF_FFFF == EMPTY_ERROR_LOW, (
-                    f"{item.name}: error rdata 0x{item.rdata:x}, want low word "
-                    f"0x{EMPTY_ERROR_LOW:x}"
+                assert item.rdata == EMPTY_ERROR_WORD, (
+                    f"{item.name}: error rdata 0x{item.rdata:016x}, want 0x{EMPTY_ERROR_WORD:016x}"
                 )
             if item.expected is not None:
                 assert item.rdata == item.expected, (
@@ -148,7 +191,7 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         for n in range(DRAIN_LIMIT):
             item = await self._rd(f"{name}_{n}", side, "READ_DATA", mode=OBSERVE)
             if item.resp_code == AXI_SLVERR:
-                assert item.rdata & 0xFFFF_FFFF == EMPTY_ERROR_LOW, f"{name}: bad empty data"
+                assert item.rdata == EMPTY_ERROR_WORD, f"{name}: bad empty data 0x{item.rdata:x}"
                 return words
             assert item.resp_code == 0, f"{name}_{n}: resp {item.resp_code}"
             words.append(item.rdata)
@@ -179,6 +222,27 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         for member, mode in members:
             self._check(member, mode)
         return group
+
+    @staticmethod
+    def _flush_fate(label, aw, flush_side, push_side, words, earlier, grouped):
+        """Grade the flush rule of interface.adoc "Access Results" on one grouped pair.
+
+        A push accepted in the flush cycle or earlier is discarded, a later one
+        is kept; the AW handshake order at SEP_IN is the acceptance order.
+        """
+        flush_at = aw.cycle_of(label, _addr(flush_side, "CTRL"))
+        push_at = aw.cycle_of(label, _addr(push_side, "WRITE_DATA"))
+        assert earlier not in words, f"{label}: the word pushed before the flush survived: {words}"
+        assert all(x == grouped for x in words) and len(words) <= 1, (
+            f"{label}: drained {[_hex(x) for x in words]}, at most one copy of {_hex(grouped)}"
+        )
+        kept = bool(words)
+        assert kept == (push_at > flush_at), (
+            f"{label}: the grouped push's AW handshake at clk_smc_i cycle {push_at} against the "
+            f"flush's at {flush_at}: the word was {_fate(kept)}, the rule says "
+            f"{_fate(push_at > flush_at)}"
+        )
+        return flush_at, push_at, kept
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done(max_cycles=FUSE_SENSE_RISES)
@@ -289,6 +353,8 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         await self._wr("S7_ACK_B", "B", "IRQS", IRQ_ALL)
         await self._push("S7_W0", "A", w[9])
         await self._push("S7_W1", "A", w[10])
+        full7 = await self._val("S7_STATUS_FULL", "A", "STATUS")
+        assert full7 & FULL, f"S7: STATUS 0x{full7:x} after two pushes, full bit clear"
         await self._wr("S7_WFLUSH", "A", "CTRL", WFLUSH)
         peer = await self._empty_read("S7_PEER", "B")
         sb = await self._val("S7_STATUS_B", "B", "STATUS")
@@ -305,9 +371,9 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         )
         self._log_chk(
             "CHK-WFLUSH-CLEARS-FULL",
-            f"after wflush of the full write FIFO the next write answered resp {wr2.resp_code} "
-            f"and B popped {_hex(w[11])}; STATUS full bit A={sa >> 1 & 1} B={sb >> 1 & 1} "
-            "(not specified, measured)",
+            f"STATUS full bit A=1 after two pushes; after wflush of the full write FIFO the next "
+            f"write answered resp {wr2.resp_code} and B popped {_hex(w[11])}; STATUS full bit "
+            f"A={sa >> 1 & 1} B={sb >> 1 & 1} after the flush (not specified, measured)",
         )
 
         await self._push("S8_X", "B", w[12])
@@ -346,6 +412,8 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
 
         await self._push("S11_Y0", "B", w[0])
         await self._push("S11_Y1", "B", w[1])
+        full11 = await self._val("S11_STATUS_FULL", "B", "STATUS")
+        assert full11 & FULL, f"S11: B STATUS 0x{full11:x} after two pushes, full bit clear"
         await self._wr("S11_RFLUSH", "A", "CTRL", RFLUSH)
         wr11 = await self._push("S11_Y2", "B", w[14])
         await self._pop("S11_P2", "A", w[14])
@@ -353,9 +421,9 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
         self._mark_step("S11")
         self._log_chk(
             "CHK-RFLUSH-FREES-PEER",
-            f"after rflush of A's full read FIFO the peer write answered resp {wr11.resp_code} "
-            f"and A popped {_hex(w[14])}; STATUS full bit B={s11 >> 1 & 1} "
-            "(not specified, measured)",
+            f"B STATUS full bit 1 after two pushes; after rflush of A's full read FIFO the peer "
+            f"write answered resp {wr11.resp_code} and A popped {_hex(w[14])}; STATUS full bit "
+            f"B={s11 >> 1 & 1} after the flush (not specified, measured)",
         )
 
         await self._push("S12_W", "A", w[15])
@@ -380,40 +448,68 @@ class smc_mailbox_flush_status_test_seq(SmcCsrSeq):
             f"IRQS=0b{i13:03b} after rflush of an empty read FIFO",
         )
 
-        v = [0x4000_0000_0000_0000 + n for n in range(3)]
-        await self._push("S14_V0", "A", v[0])
-        g_ctrl = self._item("G14_CTRL", SmcSysAxiOp.WRITE, "A", "CTRL", WFLUSH)
-        g_wr = self._item("G14_V1", SmcSysAxiOp.WRITE, "A", "WRITE_DATA", v[1])
-        await self._group("wflush_with_push", [(g_ctrl, OKAY), (g_wr, OKAY)])
-        words = await self._drain("S14_DRAIN", "B")
-        assert all(x == v[1] for x in words) and len(words) <= 1, f"S14 words {words}"
-        await self._push("S14_V2", "A", v[2])
-        await self._pop("S14_P2", "B", v[2])
+        aw = _AwHandshakes()
+        v = [0x4000_0000_0000_0000 + n for n in range(5)]
+        w_fates = {}
+        for n, order in enumerate(_ORDERS):
+            v0, v1 = v[2 * n], v[2 * n + 1]
+            await self._push(f"S14_{order}_V0", "A", v0)
+            g_ctrl = self._item(f"G14_{order}_CTRL", SmcSysAxiOp.WRITE, "A", "CTRL", WFLUSH)
+            g_wr = self._item(f"G14_{order}_V1", SmcSysAxiOp.WRITE, "A", "WRITE_DATA", v1)
+            members = [(g_ctrl, OKAY), (g_wr, OKAY)]
+            aw.start()
+            await self._group(f"wflush_with_push_{order}", members[:: 1 if n == 0 else -1])
+            aw.stop()
+            words = await self._drain(f"S14_{order}_DRAIN", "B")
+            w_fates[order] = self._flush_fate(f"S14_{order}", aw, "A", "A", words, v0, v1)
+        await self._push("S14_V2", "A", v[4])
+        await self._pop("S14_P2", "B", v[4])
+        assert {kept for _, _, kept in w_fates.values()} == {True, False}, (
+            f"S14: the two member orders did not produce one kept and one discarded push: {w_fates}"
+        )
         self._mark_step("S14")
         self._log_chk(
-            "CHK-WFLUSH-VS-PUSH-CONSISTENT",
-            f"group resp CTRL={g_ctrl.resp_code} WRITE_DATA={g_wr.resp_code}; V0 not popped; "
-            f"V1 {'kept' if words else 'discarded'} (not specified, measured); drain words "
-            f"{[_hex(x) for x in words]} ended in the empty error; V2 round trip "
-            f"{_hex(v[2])}; no same-cycle claim (not specified, measured)",
+            "CHK-WFLUSH-SAME-CYCLE-DISCARDS",
+            "wflush on A grouped with a push into FIFO A, AW handshakes in clk_smc_i cycles: "
+            + "; ".join(
+                f"{order}: CTRL at {f}, WRITE_DATA at {p}, the grouped word {_fate(k)}"
+                for order, (f, p, k) in w_fates.items()
+            )
+            + f"; the word pushed before each group was discarded, {_hex(v[4])} pushed after the "
+            "second group popped on B; one slave port accepts one write per cycle, so the "
+            "accepted-earlier and accepted-later halves of the rule are graded one cycle apart and "
+            "a push accepted in the flush cycle itself is not reachable from SEP_IN",
         )
 
-        u = [0x5000_0000_0000_0000 + n for n in range(3)]
-        await self._push("S15_U0", "B", u[0])
-        g_ctrl = self._item("G15_CTRL", SmcSysAxiOp.WRITE, "A", "CTRL", RFLUSH)
-        g_wr = self._item("G15_U1", SmcSysAxiOp.WRITE, "B", "WRITE_DATA", u[1])
-        await self._group("rflush_with_push", [(g_ctrl, OKAY), (g_wr, OKAY)])
-        words = await self._drain("S15_DRAIN", "A")
-        assert all(x == u[1] for x in words) and len(words) <= 1, f"S15 words {words}"
-        await self._push("S15_U2", "B", u[2])
-        await self._pop("S15_P2", "A", u[2])
+        u = [0x5000_0000_0000_0000 + n for n in range(5)]
+        r_fates = {}
+        for n, order in enumerate(_ORDERS):
+            u0, u1 = u[2 * n], u[2 * n + 1]
+            await self._push(f"S15_{order}_U0", "B", u0)
+            g_ctrl = self._item(f"G15_{order}_CTRL", SmcSysAxiOp.WRITE, "A", "CTRL", RFLUSH)
+            g_wr = self._item(f"G15_{order}_U1", SmcSysAxiOp.WRITE, "B", "WRITE_DATA", u1)
+            members = [(g_ctrl, OKAY), (g_wr, OKAY)]
+            aw.start()
+            await self._group(f"rflush_with_push_{order}", members[:: 1 if n == 0 else -1])
+            aw.stop()
+            words = await self._drain(f"S15_{order}_DRAIN", "A")
+            r_fates[order] = self._flush_fate(f"S15_{order}", aw, "A", "B", words, u0, u1)
+        await self._push("S15_U2", "B", u[4])
+        await self._pop("S15_P2", "A", u[4])
+        assert {kept for _, _, kept in r_fates.values()} == {True, False}, (
+            f"S15: the two member orders did not produce one kept and one discarded push: {r_fates}"
+        )
         self._mark_step("S15")
         self._log_chk(
-            "CHK-RFLUSH-VS-PUSH-CONSISTENT",
-            f"group resp CTRL={g_ctrl.resp_code} WRITE_DATA={g_wr.resp_code}; U0 not popped; "
-            f"U1 {'kept' if words else 'discarded'} (not specified, measured); drain words "
-            f"{[_hex(x) for x in words]} ended in the empty error; U2 round trip "
-            f"{_hex(u[2])}",
+            "CHK-RFLUSH-SAME-CYCLE-DISCARDS",
+            "rflush on A grouped with B's push into A's read FIFO, AW handshakes in clk_smc_i "
+            "cycles: "
+            + "; ".join(
+                f"{order}: A.CTRL at {f}, B.WRITE_DATA at {p}, the grouped word {_fate(k)}"
+                for order, (f, p, k) in r_fates.items()
+            )
+            + f"; the word pushed before each group was discarded, {_hex(u[4])} pushed after the "
+            "second group popped on A",
         )
 
         z = [0x6000_0000_0000_0000 + n for n in range(2)]
