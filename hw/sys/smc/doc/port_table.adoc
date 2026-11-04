@@ -64,7 +64,7 @@ endif::backend-html5[]
 |`smc_region_size_o` |`logic` |Output |`[31:0]` |SMC address region size output. |SMC Internal Registers → External systems |N/A
 |`smc_ext_interrupts_i` |`logic` |Input |`[NumExtInterrupts-1:0]` |External interrupt inputs. Width is 256. Active-high level or a pulse long enough to be sampled on `clk_smc`. Synchronized to `clk_smc` (3-stage) in `smc_base`; a short asynchronous pulse can be lost. |External sources → Interrupt aggregator |N/A, tie to '0 if unused
 |`sep_mailbox_interrupts_i` |`logic` |Input |`[7:0]` |SEP → SMC mailbox interrupt inputs (8 channels). Routed to internal interrupts to the SMC CPU. |SEP → Interrupt aggregator |N/A, tie to '0 if unused
-|`sep_wdt_reset_n_i` |`logic` |Input |1 |SEP watchdog reset (active low). Active-low polarity is inverted before routing to internal interrupts to the SMC CPU. |SEP → Interrupt aggregator |N/A
+|`sep_wdt_reset_n_i` |`logic` |Input |1 |SEP watchdog reset, active low. A low asserts the SMC watchdog reset, and so the warm reset, which is held for 32 reference clock cycles after the pin and the SMC second watchdog timeout both release. The inverted pin is also synchronized to `clk_smc` and raises SMC CPU interrupt 282. |SEP → Reset unit and interrupt aggregator |N/A, tie to 1'b1 if unused; a low holds the SMC warm reset asserted
 |`smc_fuse_sense_done_o` |`logic` |Output |1 |Fuse sense completion output. |eFuse controller → Memory repair logic |N/A
 |`smc_fuse_reset_n_delayed_o` |`logic` |Output |1 |Delayed fuse reset output (after 16 pipeline stages). |eFuse controller → External systems |N/A
 |`skip_mem_repair_o` |`logic` |Output |1 |Skip memory repair output. |Reset Unit → Memory repair logic |N/A

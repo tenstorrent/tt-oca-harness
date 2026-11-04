@@ -915,13 +915,20 @@ class smc_infilt_rule_matrix_rand_test_seq(SmcCsrSeq):
         )
 
         # S2: per rule set program, read back and run its probes against the golden.
-        for set_no, s in enumerate(sets):
-            for e in s["table"]:
-                await self._program(e)
-            for n, p in enumerate(s["probes"]):
-                await self._run_probe(set_no, n, p)
-            for e in s["table"]:
-                await self._restore(e["idx"], f"T{set_no}")
+        # smc_infilt_rule_cg samples the S2 probes only.
+        top.tb_fcov_gate.value = 1
+        cocotb.log.info("CTRL-FCOV-GATE: rise %d ps", get_sim_time("ps"))
+        try:
+            for set_no, s in enumerate(sets):
+                for e in s["table"]:
+                    await self._program(e)
+                for n, p in enumerate(s["probes"]):
+                    await self._run_probe(set_no, n, p)
+                for e in s["table"]:
+                    await self._restore(e["idx"], f"T{set_no}")
+        finally:
+            top.tb_fcov_gate.value = 0
+            cocotb.log.info("CTRL-FCOV-GATE: fall %d ps", get_sim_time("ps"))
         self._mark_step("S2")
 
         # Step 3, on the step 2 probes: no matching entry blocks.

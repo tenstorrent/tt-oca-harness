@@ -1996,6 +1996,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_dtp_smc_stap_smoke_test": [
         (
+            "CHK-DTP-SMC-STAP-TRST-POLARITY",
+            "CHK-DTP-SMC-STAP-TRST-POLARITY",
+            "on every clk_ref_i sample of the run the SMC's smc_cpu_jtag_reset_i reads the "
+            "complement of tb_stap_smc_trst_n, with at least TRST_CYCLES samples on each side "
+            "of the S1 and S3 TRST asserts",
+        ),
+        (
             "CHK-DTP-SMC-STAP-JTAG-READY",
             "CHK-DTP-SMC-STAP-JTAG-READY",
             "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
@@ -2930,6 +2937,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "ext_boot_seq_done_i low across a cold reset holds the fuse reset until it rises",
         ),
         ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),
+        (
+            "CHK-BOOT-SEQ-GATE-SEP",
+            "CHK-BOOT-SEQ-GATE-SEP",
+            "with ext_boot_seq_done_i low sep_reset_n_o reads 0 on every gated sample and first "
+            "rises only after the pin, in S4 and again across the S6 cold reset; the sense-done "
+            "level in the gated window is logged",
+        ),
         ("CHK-PRIMARY-NOT-GATED", "CHK-PRIMARY-NOT-GATED", "primary still releases while gated"),
         (
             "CHK-TIMEOUT-PATHS",
@@ -3002,6 +3016,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_smc_unmapped_response_test": [
+        (
+            "CHK-UNMAP-RESET-SIZE-PLIC-CLINT",
+            "CHK-UNMAP-RESET-SIZE-PLIC-CLINT",
+            "ext_in reads at the PLIC and CLINT bases answer DECERR and reach no smc_in request "
+            "under the reset REGION_SIZE (the crossbar's read data is logged), and answer OKAY, "
+            "each counted at smc_in, under 2^28",
+        ),
         (
             "CHK-UNMAP-BETWEEN",
             "CHK-UNMAP-BETWEEN",
@@ -3572,6 +3593,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "including the all-ones write that pins the port width to the reported count",
         ),
         (
+            "CHK-SMU-EXT-IRQ-PULSE",
+            "CHK-SMU-EXT-IRQ-PULSE",
+            "a lane-0 pulse that spans no clk_smu_i rising edge never appears on "
+            "cpu_interrupts_o[0]; a pulse sampled by four edges appears 3 to 4 edges after the "
+            "pin rose as one contiguous run of four and clears with the pin",
+        ),
+        (
             "CHK-SMU-EXT-IRQ",
             "CHK-SMU-EXT-IRQ",
             "smc_ext_interrupts_i lanes appear bit for bit on cpu_interrupts_o[31:0], the "
@@ -3827,6 +3855,29 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "each primary reset rises within its bounded wait and reads 1 at the end of each boot",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded reset-pin waits with last state"),
+    ],
+    "smu_cold_reset_pin_timing_test": [
+        (
+            "CHK-SMU-COLD-PIN-DEGLITCH",
+            "CHK-SMU-COLD-PIN-DEGLITCH",
+            "a pinned 31 clk_ref rst_cold_ni low pulse driven right after a clk_ref edge and a "
+            "seed-drawn 1 to 31 clk_ref pulse, each read back low on the pin for exactly its "
+            "width, leave the stable cold reset and the SMC "
+            "primary reset at 1 on every clk_ref sample during the pulse and the 128 after it; "
+            "a hold of a seed-drawn 32 to 94 clk_ref past the assertion asserts the stable cold "
+            "reset 32 to 33 clk_ref after the pin fell and the primary reset on that sample or "
+            "the next, keeps the stable reset low through the hold, and both return after the "
+            "release",
+        ),
+        (
+            "CHK-SMU-COLD-NO-PROPAGATE-CLKSTOP",
+            "CHK-SMU-COLD-NO-PROPAGATE-CLKSTOP",
+            "with clk_ref_i held and rst_cold_ni read low on every one of more clk_smu_i cycles "
+            "than four de-glitch windows, the stable cold reset and the SMC primary reset read 1 "
+            "on every "
+            "clk_smu_i sample with no clk_ref edge seen; after the clock restarts the stable "
+            "cold reset falls 32 to 33 clk_ref later and both return after the release",
+        ),
     ],
     "smu_smc_cool_reset_pin_test": [
         (
@@ -4715,6 +4766,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     # its own zero-check refusal covers the same ground.
     "smu_boundary_port_composition_test": [
         (
+            "CHK-SMU-BOUNDARY-ID-USER-WIDTH",
+            "CHK-SMU-BOUNDARY-ID-USER-WIDTH",
+            "$bits of every ID and user field of the smu AXI boundary ports: smu_axi_in IDs 8 "
+            "on AW, B, R and AR, smu_axi_out IDs 10, user 12 on all five channels of both",
+        ),
+        (
             "CHK-SMU-EXT-SMN-S4",
             "CHK-SMU-EXT-SMN-S4",
             "the SMC-side ID-width converter presents the specified 6-bit subsystem ID",
@@ -4815,6 +4872,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-FUSE-SENSE-S2",
             "CHK-SMU-FUSE-SENSE-S2",
             "sep_fuse_sense_done_o rises once, after reset release and after SEP eFuse traffic",
+        ),
+        (
+            "CHK-SMU-SMC-SENSE-TO-SEP",
+            "CHK-SMU-SMC-SENSE-TO-SEP",
+            "the SEP's smc_fuse_sense_done_i equals smc_fuse_sense_done_o on every clk_smu_i "
+            "sample with the wire seen low and high; after the cold release "
+            "smc_fuse_sense_done_o rises once and every sep_reset_n_o rise comes after it",
         ),
     ],
     "smu_smc_efuse_shadow_map_readback_test": [
@@ -5150,6 +5214,30 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "every proof-path wait carries a finite bound, a fail-on-expiry path and a last "
             "state and none expired; every observation window logged its length and outcome; "
             "the bench expectation window is closed at the end",
+        ),
+    ],
+    "smu_xbar_self_route_smc_test": [
+        (
+            "CHK-XBAR-SELF-SMC-LOCAL",
+            "CHK-XBAR-SELF-SMC-LOCAL",
+            "a JTAG2AXI SINGLE_OP write and read at GLOBAL_BASE plus the VERSION_LO offset, the "
+            "SMC's own global window at its reset values, answer SUCCESS, the read returns the "
+            "VERSION_LO reset value, and neither reaches the crossbar's smc_out port nor the "
+            "smc_in, sep_in and ext_out taps; the local-alias VERSION_LO read answers SUCCESS "
+            "with its reset value before and after, and a write and read outside both apertures "
+            "each cross the crossbar's smc_out port and smu_axi_out once",
+        ),
+    ],
+    "smu_xbar_self_route_sep_test": [
+        (
+            "CHK-XBAR-SELF-SEP-DECERR",
+            "CHK-XBAR-SELF-SEP-DECERR",
+            "a SEP debug system-bus write and read of a word of the admitted page with "
+            "SEP_GLOBAL_BASE_ADDR moved onto it each report a non-zero sberror (code logged), "
+            "the crossbar accepts both on sep_out, and the sep_in, smc_in and ext_out taps do "
+            "not move; with the base at its "
+            "reset value the same write and read each cross smu_axi_out once and return the "
+            "written word, before and after",
         ),
     ],
     "smu_xbar_zero_aperture_test": [
@@ -5823,6 +5911,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_smc_warm_reset_register_retention_test": [
         (
+            "CHK-WARM-RET-NO-RESENSE",
+            "CHK-WARM-RET-NO-RESENSE",
+            "the real cold-boot sense rose once over one eFuse shim read command before S1; "
+            "smc_fuse_sense_done_o reads 1 at every clk_smu_i sample from S2 to S10 while the "
+            "warm reset reads 0 inside the window, and no shim read command is issued there",
+        ),
+        (
             "CHK-WARM-RET-SSCFG",
             "CHK-WARM-RET-SSCFG",
             "SS_CONFIG reads its non-zero pattern before and after the CORE0 watchdog "
@@ -5876,8 +5971,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS",
-            "four bounded waits in two kinds (event 2, release 2), none expired, with the "
-            "bound, cycles used and last state recorded, no unresolved probe sample",
+            "five bounded waits in three kinds (sense 1, event 2, release 2), none expired, "
+            "with the bound, cycles used and last state recorded, no unresolved probe sample",
         ),
     ],
     "smu_dtp_jtag2axi_smc_reset_inflight_test": [

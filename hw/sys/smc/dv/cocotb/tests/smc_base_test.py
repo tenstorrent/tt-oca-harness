@@ -1333,6 +1333,7 @@ class smc_base_test(uvm_test):
             "tb_zeroer_state_inject_en",
             "tb_efuse_program_state_inject_en",
             "tb_efuse_read_state_inject_en",
+            "tb_rdata_known_hold",
         ):
             if hasattr(dut, name):
                 getattr(dut, name).value = 0

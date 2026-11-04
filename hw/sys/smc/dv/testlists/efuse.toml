@@ -348,3 +348,13 @@ args = [
     "+smc_sep_security_disable",
     "+smc_efuse_hex=smc_efuse_security_disable_bypass.hex",
 ]
+
+# Command-path ownership: a read under program_enable reaches no bank command;
+# a write lock set while a program is in flight leaves that program alone.
+[[tests]]
+name = "smc_efuse_command_path_test"
+module = "smc_efuse_command_path_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]

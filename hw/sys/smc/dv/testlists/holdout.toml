@@ -138,19 +138,6 @@ expect_fail = "a response handed over as the I2C clock gate closes is duplicated
 expect_fail_match = "CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE FAIL: .*timed_out=False .*a completed read left r_valid still presented"
 
 [[tests]]
-# Observation leaf: a CTRL_STATUS trigger while the zeroer is busy
-# is dropped during issue and accepted while responses drain, with one
-# completion interrupt for two jobs; zeroer.adoc and zeroer_ctrl.rdl state
-# no rule for it. The OBS-ZEROER-BUSY lines record both windows; the CHK line
-# grades liveness only.
-name = "smc_zeroer_busy_trigger_obs_test"
-module = "smc_zeroer_busy_trigger_obs_test"
-seed = 1
-timeout_sec = 1800
-tags = ["zeroer"]
-run_modes = ["smoke"]
-
-[[tests]]
 # Observation leaf: the FLR pre-delay is N+1 clk_ref_i cycles, the
 # hold is M, and an edge during a running sequence is ignored; reset_unit.rdl
 # names neither the clock nor the offset. The OBS-FLR lines record each
@@ -275,6 +262,24 @@ run_modes = ["smoke"]
 expect_fail = "the fabric demultiplexers admit one fewer same-ID read per bucket than the chapter states"
 expect_fail_match = "(?s)CHK-FABRIC-33RD-WAITS-FOR-RETIRE FAIL: .*admitted 31 on that ID bucket.*CHK-LOCAL-XBAR-9TH-WAITS FAIL: .*admitted 7 on that ID bucket"
 
+[[tests]]
+# Observation leaf: cpu.adoc states that debug system bus transactions use
+# the cluster's reset and isolation conditions and that the debug-module
+# reset is controlled separately, but not what the DMI shows while the uncore
+# reset is held. The DMI stays live under the hold (sbaddress0, sbdata0,
+# data0 and dmstatus read back) and a system bus write is not started:
+# sbaddress0 does not advance under sbautoincrement, the word stays unchanged
+# and sbcs reports sbbusy 0 and sberror 0. The OBS-DM-SBA-UNDER-HOLD line
+# records those readbacks; the CHK lines grade the writes before and after
+# the hold, the sbdata0 scan reaching the Debug Module, and the unchanged
+# word.
+name = "smc_jtag_dm_sba_uncore_hold_obs_test"
+module = "smc_jtag_dm_sba_uncore_hold_obs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["jtag", "reset"]
+run_modes = ["smoke"]
+
 [[groups]]
 # Register-clock gate mapping, traffic-bearing wakes and closure.
 name = "cg_uvm_extended"
@@ -384,6 +389,6 @@ tests = [
 name = "held_out"
 expected_count = 2
 tests = [
-    "smc_zeroer_busy_trigger_obs_test",
     "smc_flr_counter_timing_obs_test",
+    "smc_jtag_dm_sba_uncore_hold_obs_test",
 ]

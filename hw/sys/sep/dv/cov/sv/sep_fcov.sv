@@ -38754,7 +38754,7 @@ module sep_fcov (
   localparam logic [31:0] KmHmacBase =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR);
   localparam logic [31:0] KmAbrBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_BASE_ADDR);
-  // VROM window base (hw/ip/key_manager/doc/architecture.adoc:663).
+  // VROM window base (hw/ip/key_manager/doc/architecture.adoc:682-683).
   localparam logic [31:0] KmVromBase = 32'h1000_0000;
   // KMCSR registers.
   localparam logic [31:0] KmCsrVersion =
@@ -42358,7 +42358,7 @@ module sep_fcov (
         if ((km_wp_in_d != 5'd0) && (km_mbx_in_depth_i === km_wp_in_d))
           u_sep_km_vault_wipe_cg.sample(5'd3, 16'd2);
         // The pulse clears KEY_VALID of every accelerator sideload register
-        // block (hw/ip/key_manager/doc/architecture.adoc:506-510): at least
+        // block (hw/ip/key_manager/doc/architecture.adoc:514-518): at least
         // one KEY_VALID bit set before the wipe, and every bit 0 after it.
         if ((km_wp_valid != 8'h00) && !$isunknown(km_wp_valid) && (km_key_valid_i === 8'h00))
           u_sep_km_vault_wipe_cg.sample(5'd3, 16'd3);
