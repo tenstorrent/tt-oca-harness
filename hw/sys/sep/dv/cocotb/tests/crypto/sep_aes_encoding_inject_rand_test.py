@@ -40,7 +40,8 @@ Checkers:
                       AES_ENC and the other fields as written; the written
                       OPERATION is an invalid code.
   CHK-AES-INV-MODE    after START, OUTPUT_VALID reads 0 at every sample of the
-                      window and DATA_OUT keeps its base words. Control:
+                      window and DATA_OUT keeps its base words. The START
+                      write returns OKAY (``CTRL-AES-INV-MODE-START``). Control:
                       MODE = ECB with a new key load sets OUTPUT_VALID in a
                       bounded wait.
   CHK-AES-INV-MODE-RB after the invalid pair, CTRL_SHADOWED reads MODE =
@@ -62,6 +63,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_aes_golden import aes_decrypt_block, aes_encrypt_words
+from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import AES_KEY_ROWS, KMAC_SAMPLE_KEY_ROW
@@ -85,6 +87,7 @@ from seq_lib.sep_aes_seq import (
     SepAes,
     build_aes_ctrl,
 )
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 TEST = "sep_aes_encoding_inject_rand_test"
 
@@ -470,7 +473,13 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
             rb = await self.aes._rd(AES_CTRL_SHADOWED)
             base = await self._read_out()
             await self._write_block(pt)
-            await self.aes._wr(AES_TRIGGER, start)
+            start_wr = SepAxiAccessSeq(
+                "aes_wr", op=SepAxiOp.WRITE, addr=AES_TRIGGER, wdata=start, length=4, size=2
+            )
+            await self.start_seq(start_wr)
+            self.chk.ctrl(
+                "AES-INV-MODE-START", start_wr.resp_ok, cell=cell, bresp=start_wr.resp_code
+            )
             # The poll reads back to back for the whole window and stops early
             # only at an OUTPUT_VALID sample.
             _, samples = await self._poll(ST_OV, ST_OV, window)
