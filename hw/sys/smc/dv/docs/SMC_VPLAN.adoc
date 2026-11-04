@@ -943,6 +943,7 @@ extent and its declared error response past it.
 |`smc_dma_sanity_test` |1 |Run DMA copy over output-fabric payload bytes and check the model.
 |`smc_octs_dual_sync_test` |2 |SECONDARY pad inject + PRIMARY sync/credit pad edges.
 |`smc_octs_sanity_test` |1 |AVSBus status-CSR decode plus the sideband observability probe, a recorded SUBSTITUTE for a pad-level OCTS checker; touches no OCTS register or pad.
+|`smc_wdt_plic_source_ids_test` |3 |Each core's first-stage watchdog timeout pends and claims as PLIC source 329 + core.
 |`smc_periph_cg_access_error_test` |3 |Each CLOCK_GATE_CONTROL peripheral enable (AVSBus, I2C, UART, telemetry, I3C) set in turn: the gated window answers SLVERR with 0xBADCAB1E on read and SLVERR on write, and its recorded word again once ungated.
 |`smc_sideband_protocol_smoke_test` |1 |Run the AVSBus sideband CSR representative precheck.
 |`smc_telemetry_atb_capture_test` |3 |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
@@ -1476,6 +1477,7 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_cpu_uncore_reset_scope_test` |3 |A software uncore reset holds all four cores on its own edge, and `isolate_req` stays up on every edge until the bit is set again.
 |`smc_cpu_l2_isolate_depth_and_block_test` |3 |The L2 frontend isolate holds four outstanding reads and makes a fifth wait; isolated, it blocks a new read until release and then answers it OKAY.
 |`smc_spm_bank_formula_test` |3 |Scratchpad bank `4 * offset[19:17] + offset[7:6]` at the bank read counters and entry `{offset[16:8], offset[5:3]}` in the macro word, over SEP_IN.
+|`smc_clint_plic_reset_retention_test` |3 |MTIME ticks once per 1000 cluster clock rises and resets to 0; MTIMECMP and the PLIC priority, enable and threshold words survive a cool reset.
 |===
 
 ==== JTAG
@@ -1643,7 +1645,7 @@ release.
 |`smc_irq_csr_readback_test` |3 |Read back hang detector registers; check isolation; log counts.
 |`smc_irq_reserved_idle_zero_test` |3 |Sample the idle raw vector; reserved bits read 0.
 |`smc_irq_vector_assembly_test` |2 |Assert sources in every vector region; compare to baseline.
-|`smc_mbx_inbound_irq_vector_test` |2 |Push inbound mailboxes; print observed raw bits 319:288.
+|`smc_mbx_inbound_irq_vector_test` |2 |Push inbound mailboxes; raw bit 288 + m and PLIC source 289 + m rise.
 |`smc_ndm_irq_or_test` |2 |Drive NDM request bits alone, in OR and held; compare vector.
 |`smc_sep_mbx_irq_vector_test` |3 |Walk, hold and group SEP mailbox inputs; compare vector.
 |`smc_sep_wdt_irq_level_test` |2 |Drive the SEP watchdog reset pin; check raw bit 282.
@@ -1651,6 +1653,7 @@ release.
 |`smc_hang_detector_window_rand_test` |3 |A hold on a drawn port that is shorter than the drawn hang
 threshold does not raise the interrupt and a hold longer than it does, the interrupt dropping when
 the stall ends, a zero threshold never raising it and a cleared `enable` dropping it.
+|`smc_plic_gateway_claim_test` |3 |A PLIC gateway holds one request until completion, pends again while the source stays high, and leaves the mailbox sticky status to its own write-one-to-clear.
 |===
 
 ==== I2C
@@ -7818,6 +7821,84 @@ Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Core 1 and watchdog 1 only; the other cores share the generated watchdog instance.
 The hold is a level reset through `RESET_CTRL`; a core pulse and a debug hart reset are not driven.
+
+'''''
+
+
+[[sec-580-smc_wdt_plic_source_ids_test]]
+===== 580 `smc_wdt_plic_source_ids_test`
+
+*Phase*: 3
+
+*Area*: POWER
+
+*Source Module*: `smc_wdt_plic_source_ids_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (the four watchdog blocks
+`SMC_TOP_SMC_CLUSTER_CORE{0..3}_WDT_*`: `KEY`, `CMP`, `CTRL`, `COUNT`; PLIC `PRIORITY[329..332]`,
+`CORE0_MEIP_ENABLE[10]`, `CORE0_MEIP_THRESHOLD`, `CORE0_MEIP_CLAIM_COMPLETE`; `REGION_SIZE` widened
+to `0x1000_0000`); bench probes `tb_top.tb_plic_pending_329`, `tb_plic_pending_330`,
+`tb_plic_pending_331` and `tb_plic_pending_332` (PLIC pending bits of sources 329 to 332),
+`tb_cpu_interrupts` (328 bits) and `tb_fuse_sense_done`, all sampled on `clk_smc_i`; no bench pin is
+driven.
+
+*Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `wdt`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: Each core's first-stage watchdog timeout pends and claims as PLIC source 329 + core.
+
+*Test Coverage*:
+
+* Cluster watchdogs 0 to 3 are PLIC sources 329 to 332, added by the cluster interrupt crossbar
+  (`hw/sys/smc/doc/interrupts.adoc`, PLIC Sources and Contexts, PLIC input groups): arming core N's
+  watchdog so `CTRL.wdogip0` sets raises `tb_plic_pending_{329 + N}` within 64 rises while the
+  other three probes keep their entry level and no bit of the 328-bit raw vector moves.
+* The claim word of context 0 is the stated ID: with `PRIORITY[329 + N]` 1, threshold 0 and only
+  source 329 + N enabled, `CLAIM_COMPLETE` reads 329 + N, and after the completion the pending probe
+  reads 0 and stays 0 for 16 rises (`plic.rdl`, `CLAIM_COMPLETE` and `PENDING`).
+* The watchdog clear (`CMP` 0x100, `COUNT` 0, `CTRL` 0) after each arming lowers `CTRL.wdogip0`,
+  read back 0 (`wdt.rdl`); the four cores are processed in order 0 to 3.
+
+*Test Procedure*:
+
+[arabic]
+. Check the four pending probes exist, wait for `tb_fuse_sense_done`, require the raw vector 328
+  bits wide and all four probes 0.
+. Write `REGION_SIZE` `0x1000_0000` and read it back; save `PRIORITY[329..332]`, context 0
+  `ENABLE[10]` and `THRESHOLD`; write `PRIORITY[329..332]` 1 and `THRESHOLD` 0; require the idle
+  claim 0.
+. For each core N in 0 to 3: snapshot the four probes and the raw vector, require probe 329 + N at
+  0, write `KEY` then `CMP` 0x40, `KEY` then `CTRL` 0x0008, `KEY` then `COUNT` 0x4400; sample 64
+  rises requiring the other three probes unchanged and the raw vector constant, and probe 329 + N
+  at 1 at some rise; clear and disarm the watchdog, read `CTRL` and require `wdogip0` 0; enable
+  only source 329 + N on context 0, read `CLAIM_COMPLETE` and require 329 + N, write it back as the
+  completion, require probe 329 + N at 0 and at 0 on each of 16 rises, and disable the source.
+. Restore `PRIORITY[329..332]`, `ENABLE[10]`, `THRESHOLD` and `REGION_SIZE` with read-backs; require
+  the step stamps and checker lines in order and print the ordered fence.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-WDT-PLIC-ID-329-332` |For each core N the first-stage timeout must set `tb_plic_pending_{329 +
+  N}` within 64 rises with the other three probes and the raw vector unchanged, `wdogip0` must read
+  0 after the clear, the context 0 claim must read 329 + N and the probe must read 0 after the
+  completion and for 16 rises; the rise and the claim word are printed per core
+|`CHK-NONVAC` |Ordered fence: step stamps S1 to S4 strictly increasing and the two checker lines
+  printed in step order, each after its step
+|`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense done, the four pending-rise windows,
+  the four quiet windows and the SEP_IN access bound); an expiry fails the run
+|===
+
+*Pass Criteria*: all three checkers hold and every sequence assert holds, four cores claimed.
+Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The second-stage reset of the watchdog (`wdogrsten`) is not armed; the core-side
+`mip.meip` delivery of the claim is not observed, since the claim is read over SEP_IN.
 
 '''''
 
@@ -26169,6 +26250,115 @@ episode-C writes is not graded; see <<smc-known-limitations>>.
 '''''
 
 
+[[sec-581-smc_clint_plic_reset_retention_test]]
+===== 581 `smc_clint_plic_reset_retention_test`
+
+*Phase*: 3
+
+*Area*: CPU
+
+*Source Module*: `smc_clint_plic_reset_retention_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (4-byte MSIP, PLIC `PRIORITY[1]`, `PRIORITY[336]`,
+`CORE0_MEIP_ENABLE[0]`, `CORE3_SEIP_ENABLE[10]`, `CORE0_MEIP_THRESHOLD`, `CORE3_SEIP_THRESHOLD`
+and `REGION_SIZE` accesses, 8-byte MTIMECMP and MTIME accesses); the reset agent
+(`env.reset_agent`, `rst_cool_ni` low then high); bench probes `tb_top.tb_clint_mtime`,
+`tb_clint_mtimecmp0`, `tb_clint_mtimecmp1`, `tb_clint_msip`, `tb_plic_priority_low`,
+`tb_plic_enables0_w0`, `tb_plic_threshold0`, `tb_plic_pending_low` (bit 0, PLIC source 1),
+`tb_rst_warm_smc_clk_n`, `rst_primary_smc_clk_no` and `tb_fuse_sense_done`; bench input
+`tb_ext_interrupt_0_i` (raw bit 0, PLIC source 1); `clk_smc_i` rises counted by the sequence.
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: MTIME ticks once per 1000 cluster clock rises and resets to 0; MTIMECMP and the PLIC
+priority, enable and threshold words survive a cool reset.
+
+*Test Coverage*:
+
+* The timer advances on the cluster's periodic tick, once per 1000 CPU-cluster `cbus` cycles
+  (`hw/sys/smc/doc/interrupts.adoc`, CLINT; `clint.rdl`, MTIME): the cluster runs on `clk_smc_i`,
+  and `tb_clint_mtime` increments by one every 1000 rises of it over four consecutive ticks; two
+  MTIME reads bracketed by the sequence's own rise count differ by the rise count over 1000 within
+  one tick plus the measured read latency.
+* The timer resets to 0 (`interrupts.adoc`, CLINT; `clint.rdl`): after MTIME is loaded with
+  `0x0000_0001_0000_0000`, `tb_clint_mtime` reads 0 at every sampled rise while the warm reset the
+  cool reset causes is low, and MTIME read over SEP_IN after the release is at most the rises since
+  the release over 1000 plus one.
+* The compare registers have no reset (`interrupts.adoc`, CLINT; `clint.rdl`, MTIMECMP): four
+  distinct 64-bit words written to MTIMECMP[0..3] read back unchanged after the cool reset, and the
+  probes of cores 0 and 1 hold them while the warm reset is low.
+* The PLIC priority, enable and threshold registers are not reset by hardware (`interrupts.adoc`,
+  Interrupt Control): `PRIORITY[1]` 5, `PRIORITY[336]` 3, `ENABLE` context 0 word 0 `0x5A5A_5A5A`,
+  context 7 word 10 `0x0001_2345`, `THRESHOLD` context 0 6 and context 7 2 read back unchanged after
+  the cool reset, and `tb_plic_threshold0`, `tb_plic_enables0_w0` and `tb_plic_priority_low` hold
+  them while the warm reset is low.
+* Positive controls: MSIP[0], written 1, and MTIME, loaded, read 0 under the same reset
+  (`clint.rdl` gives both a reset), and the PLIC pending bit of source 1, set by input 0 before the
+  reset, reads 0 under it and after the release with the input dropped (`plic.rdl` `PENDING` is
+  cleared by reset), so the reset reached both the CLINT and the PLIC that kept the other words.
+
+*Test Procedure*:
+
+[arabic]
+. Check the probes exist, start the `clk_smc_i` rise counter, wait for `tb_fuse_sense_done`.
+. Write `REGION_SIZE` `0x1000_0000` and read it back; save MSIP[0..3], MTIMECMP[0..3], the two
+  PRIORITY words, the two ENABLE words and the two THRESHOLD words.
+. Sample `tb_clint_mtime` on every rise until it has changed five times (bound 6000 rises), require
+  each change to be +1 and each of the four periods to be 1000 rises; read MTIME, wait 2500 rises,
+  read MTIME again, and require the read difference times 1000 to be within 1000 plus the read
+  latency of the rise difference between the two read completions.
+. Write MSIP[0] 1, the four MTIMECMP words, the PLIC words and MTIME `0x0000_0001_0000_0000`, each
+  with a read-back; drive input 0 high and wait up to 64 rises for the pending bit of source 1.
+. Drive `rst_cool_ni` low; wait (bound 400 `clk_ref_i` edges) for `rst_primary_smc_clk_no` 0 and
+  `tb_rst_warm_smc_clk_n` 0; sample the probes at 4 rises and require `tb_clint_mtime` 0,
+  `tb_clint_msip` 0 and the source 1 pending bit 0 with the MTIMECMP and PLIC probes holding their
+  written words; drop input 0; drive `rst_cool_ni` high; wait (bound 4000 edges) for both reset
+  observables at 1, require the source 1 pending bit 0, wait for the fuse sense, widen
+  `REGION_SIZE` again and read MTIME, requiring it at most the rises since the release over 1000
+  plus one.
+. Read MSIP[0] and require 0; read MTIMECMP[0..3] and require the written words.
+. Read the PLIC words and require the written values.
+. Restore MSIP, MTIMECMP, the PLIC words and `REGION_SIZE` with read-backs, stop the counter, print
+  the bounded waits and require the steps and checker lines in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLINT-MTIME-TICK-1000` |`tb_clint_mtime` must increment by one every 1000 `clk_smc_i` rises
+  over four consecutive ticks, and two MTIME reads must differ by the bracketing rise count over
+  1000 within one tick plus the measured read latency
+|`CHK-CLINT-MTIME-RESET-ZERO` |With MTIME loaded and MSIP[0] set, `tb_clint_mtime` and
+  `tb_clint_msip` must read 0 at every sampled rise under the warm reset, and MTIME after the
+  release must be at most the rises since the release over 1000 plus one
+|`CHK-CLINT-MTIMECMP-RETAIN` |MTIMECMP[0..3] must read the words written before the cool reset,
+  with the probes of cores 0 and 1 holding them under the reset, while MSIP[0] reads 0
+|`CHK-PLIC-REGS-RETAIN-WARM` |The two PRIORITY, two ENABLE and two THRESHOLD words must read the
+  values written before the cool reset, with the context 0 probes holding them under the reset,
+  while the source 1 pending bit, MSIP[0] and MTIME reset beside them
+|`CHK-NONVAC` |The eight steps must stamp in order with strictly increasing time and the five
+  checker lines must print in step order
+|`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense done twice, the tick window, the
+  source 1 pending wait, the four reset handshakes and the SEP_IN access bound); an expiry fails
+  the run
+|===
+
+*Pass Criteria*: Every checker above is emitted and the sequence asserts hold. Enrolled in: `all`,
+`hosted`.
+
+*Scope limit*: The cool reset is the only reset driven; under 2-state Verilator a register without
+a reset keeps its value across a cold reset too, so the retention is graded against the reset the
+cluster's uncore reset follows and MSIP and MTIME are the positive control. The machine timer
+interrupt output is not observed.
+
+'''''
+
+
 [[smc-vplan-area-jtag]]
 ==== JTAG
 
@@ -35128,9 +35318,9 @@ draws nothing from the seed.
 * Region edges stay clean: raw bit 255 reads 0 while raw bit 256 is high, raw bit 287 reads 0 while
   raw bit 286 is high, and raw bit 320 stays at its baseline while inbound mailbox 31 is pushed.
 * The zeroer completion appears as a pulse on raw bit 323 (`interrupts.adoc`, row 323).
-* Raw bits 319 to 288 are excluded from the compare; the levels of raw bits 288 and 319 after the
-  mailbox 0 and mailbox 31 pushes are printed, because the table places those mailbox channels there
-  and the leaf does not compare them; the specification does not state the value.
+* Inbound mailbox 0 and mailbox 31 appear at raw bits 288 and 319 (`interrupts.adoc`, row
+  `[319:288]`): both bits enter the cumulative mask with the other six sources, and after the
+  mailbox 0 push raw 288 reads 1 with raw 319 at 0, after the mailbox 31 push the reverse.
 
 *Test Procedure*:
 
@@ -35140,16 +35330,15 @@ draws nothing from the seed.
   program the inbound and outbound filters to pass all.
 . Assert the sources one at a time in the order ext0, ext16, sep0, sep7, ndm, hang, inbound mailbox
   0 and inbound mailbox 31; after each, wait up to 64 rises (128 for a mailbox) for the vector XOR
-  the baseline, with raw bits 319 to 288 masked, to equal the cumulative mask and the mailbox output
-  bit to be set.
-. Hold all sources and require the masked XOR to equal the full mask and `tb_peripheral_interrupts`
-  to stay constant at each of 256 consecutive rises.
-. Drop the sources in reverse order and wait after each for the masked XOR to equal the remaining
-  mask, ending at 0.
+  the baseline to equal the cumulative mask and the mailbox output bit to be set.
+. Hold all sources and require the XOR to equal the full mask and `tb_peripheral_interrupts` to
+  stay constant at each of 256 consecutive rises.
+. Drop the sources in reverse order and wait after each for the XOR to equal the remaining mask,
+  ending at 0.
 . With the edge checks on, clear both inbound mailboxes, raise and drop `tb_sep_mailbox_interrupts`
   bit 0 (XOR `1 << 256`), fire the SYS hang detector (XOR `1 << 286`), push inbound mailbox 0 on top
-  of it and print raw bits 288 and 319, drop both, then push inbound mailbox 31 (masked XOR 0),
-  print raw bits 288 and 319, drop it and clear it.
+  of it (XOR `1 << 286 | 1 << 288`) and require raw 288 = 1 and raw 319 = 0, drop both, then push
+  inbound mailbox 31 (XOR `1 << 319`) and require raw 319 = 1 and raw 288 = 0, drop it and clear it.
 . Program one zeroer job (destination 0x0200_3000, 256 bytes, interrupt enabled) and sample every
   rise until raw bit 323 has pulsed and fallen, within 4096 rises.
 . Disable and clear both mailboxes, write 0 to `HANG_DET_SYS_AXI_CTRL`, restore
@@ -35163,29 +35352,26 @@ draws nothing from the seed.
 |Checker |Description
 |`CHK-VECASM-ALL-REGIONS` |Each source asserted adds exactly its own raw bit; final mask is set
 |`CHK-VECASM-DROP-EACH` |Dropping sources in reverse order removes one bit each, ending at baseline
-|`CHK-VECASM-HOLD` |Masked XOR and tb_peripheral_interrupts stay constant for 256 rises
+|`CHK-VECASM-HOLD` |XOR and tb_peripheral_interrupts stay constant for 256 rises
 |`CHK-VECASM-RSVD-287` |Raw bit 287 reads 0 at every sampled rise, including with bit 286 high
 |`CHK-VECASM-TAIL-ZERO` |Raw bits 327 to 324 read 0 at every sampled rise; raw 323 pulses and falls
 |`CHK-VECASM-EDGES` |Raw 255, 287 and 320 stay quiet beside raw 256, 286 and a mailbox 31 push
-|`CHK-VECASM-INBOUND-LOG` |Records raw 288 and 319 after mailbox pushes; no compare
+|`CHK-VECASM-INBOUND` |Mailbox 0 raises raw 288 and mailbox 31 raises raw 319, each alone of the two
 |`CHK-NONVAC` |Stamps S1 to S7 increase; seven checker lines print once each after their stamp
 |`CHK-TIMEOUT-PATHS` |Logs the bounded waits taken; no compare of its own, the waits raise on expiry
 |===
 
 *Pass Criteria*: `CHK-VECASM-ALL-REGIONS`, `CHK-VECASM-DROP-EACH`, `CHK-VECASM-HOLD`,
-`CHK-VECASM-RSVD-287`, `CHK-VECASM-TAIL-ZERO` and `CHK-VECASM-EDGES` hold: the masked vector XOR the
-baseline equals the cumulative mask after each assertion and each drop, stays at the full mask for
-256 rises, raw bits 287 and 327 to 324 read 0 at every sampled rise, raw bit 255 reads 0 while raw
-bit 256 is high and raw bit 320 stays at its baseline, and raw bit 323 pulses and falls within 4096
-rises of the zeroer job. `CHK-VECASM-INBOUND-LOG` records the mailbox raw bits and is not compared
-with an expected value. `CHK-NONVAC` holds when the seven step stamps increase and the seven
-checker lines each print once, after their step stamp; `CHK-TIMEOUT-PATHS` only logs the bounded
-waits. At least 27 SEP_IN accesses are issued. Enrolled in: `all`, `hosted`.
+`CHK-VECASM-RSVD-287`, `CHK-VECASM-TAIL-ZERO`, `CHK-VECASM-EDGES` and `CHK-VECASM-INBOUND` hold:
+the vector XOR the baseline equals the cumulative mask after each assertion and each drop, stays
+at the full mask for 256 rises, raw bits 287 and 327 to 324 read 0 at every sampled rise, raw bit
+255 reads 0 while raw bit 256 is high and raw bit 320 stays at its baseline, raw 288 and 319 each
+read 1 alone after their mailbox push, and raw bit 323 pulses and falls within 4096 rises of the
+zeroer job. `CHK-NONVAC` holds when the seven step stamps increase and the seven checker lines each
+print once, after their step stamp; `CHK-TIMEOUT-PATHS` only logs the bounded waits. At least 27
+SEP_IN accesses are issued. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: Raw bits 319 to 288 are excluded from the compare; the levels of raw bits 288 and 319
-after the mailbox 0 and mailbox 31 pushes are printed without a compare, because the specification
-does not state the value. `CHK-TIMEOUT-PATHS` only logs the bounded waits taken and has no compare
-of its own.
+*Scope limit*: `CHK-TIMEOUT-PATHS` only logs the bounded waits taken and has no compare of its own.
 
 '''''
 
@@ -35200,9 +35386,12 @@ of its own.
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP), 8-byte accesses to the 32 inbound mailbox
 instances (`IRQEN` bit `wtirq`, `WRITE_DATA`, `CTRL` bits `wflush` and `rflush`, `IRQS` bits
-`wtirq`, `rtirq` and `eirq`) and `CLOCK_GATE_CONTROL` (`mailbox_cg_en`); observed raw bits 319 to
-288 of `tb_top.tb_cpu_interrupts` and `tb_top.tb_mailbox_interrupts` on `clk_smc_i`; fuse sense
-signals `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`; no bench pin is driven.
+`wtirq`, `rtirq` and `eirq`), `CLOCK_GATE_CONTROL` (`mailbox_cg_en`), `REGION_SIZE` widened to
+`0x1000_0000`, PLIC `PRIORITY[289..320]`, `CORE0_MEIP_THRESHOLD`, `CORE0_MEIP_ENABLE[9..10]`,
+`CORE0_MEIP_CLAIM_COMPLETE` and 4-byte reads of PLIC `PENDING` words 9 and 10; observed raw bits
+319 to 288 of
+`tb_top.tb_cpu_interrupts` and `tb_top.tb_mailbox_interrupts` on `clk_smc_i`; fuse sense signals
+`tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`; no bench pin is driven.
 
 *Run mode*: one testlist entry in `testlists/irq.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
 `timeout_sec` 1800; tags `ci`, `irq`; seed 1; tool Verilator (cocotb).
@@ -35210,64 +35399,76 @@ signals `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`; no 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Push inbound mailboxes; print observed raw bits 319:288.
+*Objective*: Push inbound mailboxes; raw bit 288 + m and PLIC source 289 + m rise.
 
 *Test Coverage*:
 
 * Inbound SMC mailbox interrupt channels 31 to 0 appear at raw bits 319 to 288 of the CPU interrupt
   vector (`interrupts.adoc`, SMC CPU Interrupt Vector Map and SMC indexed interrupt map table, row
   `[319:288]`).
-* A push with `IRQEN.wtirq` set raises the channel's interrupt; the leaf measures which raw bits
-  rise for mailboxes 0, 1, 15, 16, 30 and 31 alone, the pairs (0, 1) and (0, 31) and all 32
-  together, and prints expected against observed bits and any extra bits without comparing them
-  because the specification does not state the value; only the bounded wait for the expected bits
-  can fail.
-* Clearing `IRQEN.wtirq` on mailbox 5 while all 32 are asserted is observed for which bit falls, and
-  flushing and acknowledging all 32 returns raw bits 319 to 288 and `tb_mailbox_interrupts` to 0
-  (`axil_mailbox.rdl`, `IRQS` and `CTRL`).
+* A push with `IRQEN.wtirq` set raises exactly the channel's raw bit 288 + m and
+  `tb_mailbox_interrupts` bit m, no other bit of 319 to 288, for mailboxes 0, 1, 15, 16, 30 and 31
+  alone, the pairs (0, 1) and (0, 31) and all 32 together.
+* The PLIC source that newly pends after each push is exactly 289 + m (`interrupts.adoc`, PLIC
+  Sources and Contexts: raw bit N is source N + 1; `plic.rdl` `PENDING`): no member source pends
+  before the push, exactly the members' sources pend after it, and after the mailbox clear
+  context 0 claims each member's source once (priority 1, threshold 0) until the claim reads 0,
+  so every group starts from a PLIC with none of its sources latched.
+* Clearing `IRQEN.wtirq` on mailbox 5 while all 32 are asserted drops exactly raw bit 293 and
+  mailbox bit 5, and flushing and acknowledging all 32 returns raw bits 319 to 288 and
+  `tb_mailbox_interrupts` to 0 (`axil_mailbox.rdl`, `IRQS` and `CTRL`).
 * The baseline reads 0 on raw bits 319 to 288 and on `tb_mailbox_interrupts`.
 
 *Test Procedure*:
 
 [arabic]
 . Wait for the fuse sense to finish, require raw bits 319 to 288 and `tb_mailbox_interrupts` to read
-  0, read `CLOCK_GATE_CONTROL`, set the mailbox clock enable and read it back.
-. For each of mailboxes 0, 1, 15, 16, 30 and 31 write `IRQEN.wtirq`, write `WRITE_DATA`, wait up to
-  128 rises for the expected raw bit, print expected and observed bits, then write `IRQEN` 0, flush
-  both FIFOs, acknowledge `IRQS` and wait up to 128 rises for raw bits 319 to 288 and
-  `tb_mailbox_interrupts` to return to 0.
-. Repeat for the pairs (0, 1) and (0, 31), then arm and push all 32 mailboxes and wait up to 128
-  rises for all 32 raw bits; print expected and observed bits for each group.
+  0, read `CLOCK_GATE_CONTROL`, set the mailbox clock enable and read it back, write `REGION_SIZE`
+  `0x1000_0000` and read it back.
+. For each of mailboxes 0, 1, 15, 16, 30 and 31 read `PENDING` words 9 and 10 and require source
+  289 + m clear, write `IRQEN.wtirq`, write `WRITE_DATA`, wait up to 128 rises for the expected raw
+  bit, require raw bits 319 to 288 and `tb_mailbox_interrupts` to equal exactly `1 << m`, read
+  `PENDING` again and require the newly set bit to be exactly source 289 + m, then write `IRQEN` 0,
+  flush both FIFOs, acknowledge `IRQS`, wait up to 128 rises for raw bits 319 to 288 and
+  `tb_mailbox_interrupts` to return to 0, enable source 289 + m on context 0, read
+  `CLAIM_COMPLETE` and require 289 + m, complete it, require the next claim 0 and disable it.
+. Repeat for the pairs (0, 1) and (0, 31), then arm and push all 32 mailboxes, wait up to 128 rises
+  for all 32 raw bits, require both vectors to equal `0xFFFF_FFFF` and the `PENDING` bits of sources
+  289 to 320 to be the ones newly set.
 . Write `IRQEN` 0 on mailbox 5, watch up to 128 rises for the first change of raw bits 319 to 288
-  and print whether only raw bit 293 fell, flush and acknowledge all 32 mailboxes, and wait up to
-  128 rises for raw bits 319 to 288 and `tb_mailbox_interrupts` to read 0.
-. Restore `CLOCK_GATE_CONTROL` and read it back, check the ordered step stamps S1 to S5 and the
-  three checker lines, then log the bounded waits.
+  and require both vectors to read all ones but bit 5, flush and acknowledge all 32 mailboxes, wait
+  up to 128 rises for raw bits 319 to 288 and `tb_mailbox_interrupts` to read 0, then claim and
+  complete sources 289 to 320 on context 0 once each until the claim reads 0.
+. Restore `PRIORITY[289..320]`, `THRESHOLD`, `REGION_SIZE` and `CLOCK_GATE_CONTROL` with
+  read-backs, check the ordered step stamps S1 to S5 and the three checker lines, then log the
+  bounded waits.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-MBXIN-POSITION-LOG` |Prints expected vs observed raw bits per push; only the wait fails
-|`CHK-MBXIN-MULTI-LOG` |Prints expected vs observed bits for pairs and all 32; wait can fail
-|`CHK-MBXIN-CLEAR-LOG` |Prints which bit fell when mailbox 5 IRQEN cleared; final 0 is waited
+|`CHK-MBXIN-POSITION` |Each single push must raise exactly raw bit 288 + m and mailbox bit m, the
+  PLIC source that newly pends must be exactly 289 + m, and context 0 must claim it as that ID
+|`CHK-MBXIN-MULTI` |The pairs and all 32 together must raise exactly their own raw bits, mailbox
+  bits and PLIC sources, none of them pending before the push; the pairs' sources are claimed as
+  their IDs
+|`CHK-MBXIN-CLEAR` |Clearing mailbox 5 `IRQEN` must drop exactly raw bit 293 and mailbox bit 5; the
+  clear and flush of all 32 must return both vectors to 0 within 128 rises, and context 0 must then
+  claim sources 289 to 320 once each
 |`CHK-NONVAC` |Ordered step stamps and all three checker lines occurred, in order
-|`CHK-TIMEOUT-PATHS` |Logs the bounded waits; they raise on expiry except the clear window
+|`CHK-TIMEOUT-PATHS` |Logs the bounded waits; they raise on expiry
 |===
 
 *Pass Criteria*: Every bounded wait completes: the expected raw bits rise within 128 rises of each
-push, the vector returns to 0 within 128 rises after each clear, and the clock-gate readbacks match.
-`CHK-MBXIN-POSITION-LOG`, `CHK-MBXIN-MULTI-LOG` and `CHK-MBXIN-CLEAR-LOG` record observed bits and
-are not compared with expected bit positions. `CHK-NONVAC` holds when all five step stamps and the
-three checker lines appear in order; `CHK-TIMEOUT-PATHS` only logs the bounded waits. At least 200
-SEP_IN accesses are issued. Enrolled in: `all`, `hosted`.
+push, the vector returns to 0 within 128 rises after each clear, and the clock-gate and
+`REGION_SIZE` readbacks match. `CHK-MBXIN-POSITION`, `CHK-MBXIN-MULTI` and `CHK-MBXIN-CLEAR` hold:
+raw bits 319 to 288, `tb_mailbox_interrupts` and the newly pending PLIC sources equal exactly the
+pushed mailboxes' positions. `CHK-NONVAC` holds when all five step stamps and the three checker
+lines appear in order; `CHK-TIMEOUT-PATHS` only logs the bounded waits. At least 200 SEP_IN accesses
+are issued. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The raw bits that rise for each push, for the pairs and for all 32 mailboxes, and
-which bit falls when `IRQEN.wtirq` of mailbox 5 is cleared, are printed against the expected bits
-without comparing them, because the specification does not state the value; only the bounded waits
-for the expected bits can fail. `CHK-TIMEOUT-PATHS` only logs the bounded waits, which raise on
-expiry except the clear window.
+*Scope limit*: `CHK-TIMEOUT-PATHS` only logs the bounded waits, which raise on expiry.
 
 '''''
 
@@ -35774,6 +35975,101 @@ the four consolidated entries are not repeated.
 This entry consolidates the cells of `smc_hang_sep_threshold_test`,
 `smc_hang_sep_timeout_window_test`, `smc_hang_sys_timeout_window_test` and
 `smc_hang_data_timeout_window_test`, which stay enrolled.
+
+'''''
+
+
+[[sec-582-smc_plic_gateway_claim_test]]
+===== 582 `smc_plic_gateway_claim_test`
+
+*Phase*: 3
+
+*Area*: IRQ
+
+*Source Module*: `smc_plic_gateway_claim_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP): PLIC `PRIORITY[1]`, `PRIORITY[289]`,
+`CORE0_MEIP_ENABLE[0]`, `CORE0_MEIP_ENABLE[9]`, `CORE0_MEIP_THRESHOLD`, `CORE0_MEIP_CLAIM_COMPLETE`
+and `PENDING[9]`, inbound mailbox 0 (`IRQEN`, `WRITE_DATA`, `CTRL`, `IRQS`, 8-byte),
+`CLOCK_GATE_CONTROL` and `REGION_SIZE` widened to `0x1000_0000`; bench input
+`tb_top.tb_ext_interrupt_0_i` (raw bit 0, PLIC source 1); observed `tb_plic_pending_low` bit 0,
+`tb_plic_meip` bit 0 and `tb_cpu_interrupts` bits 0 and 288 on `clk_smc_i`; `tb_fuse_sense_done`.
+
+*Run mode*: one testlist entry in `testlists/irq.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`, `irq`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: A PLIC gateway holds one request until completion, pends again while the source stays
+high, and leaves the mailbox sticky status to its own write-one-to-clear.
+
+*Test Coverage*:
+
+* A gateway admits one request and waits for completion before accepting another; it does not count
+  repeated pulses while one request is in flight (`hw/sys/smc/doc/interrupts.adoc`, PLIC Sources and
+  Contexts): with input 0 high and claimed on context 0, eight low/high pulses of the input (8 rises
+  each level) and 64 held rises leave the pending bit of source 1 at 0 at every rise while raw bit 0
+  rises eight times; after a second claim, eight more pulses ending low and the completion leave the
+  pending bit at 0 for 128 rises and the claim reads 0.
+* Completion releases the source's gateway, so a still-asserted source pends again
+  (`interrupts.adoc`, Interrupt Control): after the first completion with input 0 still high the
+  pending bit rises again within 64 rises, context 0 MEIP rises with it, and the claim reads 1
+  again; MEIP rises with the first pend and falls after the first claim.
+* Claim and complete do not clear a peripheral's own sticky status (`interrupts.adoc`, Interrupt
+  Control; `axil_mailbox.rdl` `IRQS`): a mailbox 0 push sets `IRQS.wtirq`, raw bit 288 and the
+  `PENDING` bit of source 289; after the claim of 289 and its completion `IRQS.wtirq` is still set,
+  the source pends again and claims again; only the write-one-to-clear of `IRQS` with the flush
+  drops raw bit 288, after which the completion leaves nothing pending and the claim reads 0.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done`, drive input 0 low, require the pending bit of source 1 and raw bit 0
+  at 0.
+. Write `REGION_SIZE` `0x1000_0000` and read it back, set the mailbox clock enable, save the PLIC
+  words, write `PRIORITY[1]` 7, `PRIORITY[289]` 7, enable only source 1 on context 0, `THRESHOLD`
+  0, and require the idle claim 0.
+. Drive input 0 high; wait up to 64 rises for the pending bit and up to 64 for MEIP, read the claim
+  and require 1, require the pending bit 0 and wait up to 64 rises for MEIP 0; pulse input 0
+  low/high eight times holding each level 8 rises, then hold it high 64 rises, requiring the
+  pending bit 0 at every rise and exactly eight rising edges of raw bit 0; write the completion 1,
+  wait up to 64 rises for the pending bit and for MEIP, read the claim and require 1.
+. Pulse eight more times ending low, write the completion, require the pending bit 0 for 128 rises
+  and the claim 0.
+. Enable source 289; write mailbox 0 `IRQEN.wtirq` and push `WRITE_DATA`; wait up to 128 rises for
+  raw bit 288; require `PENDING[9]` bit 1 set and `IRQS.wtirq` set; read the claim and require 289,
+  write the completion 289; require `IRQS.wtirq` still set and `PENDING[9]` bit 1 set again; read
+  the claim and require 289; flush and acknowledge `IRQS`; wait up to 128 rises for raw bit 288 at
+  0; write the completion 289; require `IRQS.wtirq` and `PENDING[9]` bit 1 clear and the claim 0;
+  write `IRQEN` 0.
+. Restore the PLIC words, `CLOCK_GATE_CONTROL` and `REGION_SIZE` with read-backs; print the bounded
+  waits and require the steps and checker lines in order.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PLIC-REPEND-AFTER-COMPLETE` |With input 0 held high, source 1 must pend within 64 rises with
+  MEIP rising, claim as 1 with MEIP falling, stay unpending through the pulses, and after the
+  completion pend again within 64 rises with MEIP rising and claim as 1 again
+|`CHK-PLIC-GATEWAY-ONE-IN-FLIGHT` |While a claim of source 1 is open, sixteen rising edges of raw
+  bit 0 must leave the pending bit at 0 at every rise; after the completion with the input low the
+  pending bit must stay 0 for 128 rises and the claim must read 0
+|`CHK-PLIC-STICKY-STATUS` |After the claim and completion of source 289 mailbox 0 `IRQS.wtirq` must
+  still be set and the source must pend and claim again; only the write-one-to-clear must clear it
+|`CHK-NONVAC` |The six steps must stamp in order with strictly increasing time and the four
+  checker lines must print in step order
+|`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense done, the pending and raw-bit waits
+  and the SEP_IN access bound); an expiry fails the run
+|===
+
+*Pass Criteria*: Every checker above is emitted and the sequence asserts hold. Enrolled in: `all`,
+`hosted`.
+
+*Scope limit*: Context 0 only, claimed over SEP_IN; no firmware takes the interrupt, so delivery
+ends at the PLIC's context 0 MEIP output.
 
 '''''
 
