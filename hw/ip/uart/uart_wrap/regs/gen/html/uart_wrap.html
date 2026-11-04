@@ -58,7 +58,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>UART_EN</td><td>RW</td><td>0x0</td><td>UART Enable. When set, the pad-mux downstream will be forced to accept UART<br>traffic.</td></tr>
+<tr><td>0</td><td>UART_EN</td><td>RW</td><td>0x0</td><td>UART Enable. The hardware LSIO request of the UART&#x27;s RX, TX, RTS and CTS<br>pads: while set, the UART owns their data and direction. While clear, the UART<br>keeps running, but its pads follow the GPIO data and direction selection like<br>any pad without a hardware request, so TX and RTS do not reach the pins unless<br>software forces LSIO selection.</td></tr>
 </table>
 <h3 id="uart_log_engine_wrap_4_.uart.RBR">uart_log_engine_wrap[4].uart.RBR</h3>
 <table>
