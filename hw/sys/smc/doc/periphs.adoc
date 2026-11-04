@@ -179,8 +179,10 @@ for four channels), with the pad output enabled and its input disabled; while it
 clear the pad is ordinary software GPIO. `PAD_EN` resets to 0. It does not start the
 channel; `PWM_EN` does. A claimed pad whose channel is off (`PWM_EN[_i_]` 0) drives the
 idle level selected by `INVERT`. The pad's own `DATA_CTRL.lsio_disable` vetoes the
-claim, so the pad stays under register control. Other offsets in the wrapper answer
-DECERR. Offsets are relative to the PWM base address.
+claim, so the pad stays under register control. Setting the pad's
+`DATA_CTRL.lsio_select` also routes channel _i_ to the pad, as it does for the other
+LSIO pads. Other offsets in the wrapper answer DECERR. Offsets are relative to the PWM
+base address.
 
 ifdef::backend-html5[]
 ++++

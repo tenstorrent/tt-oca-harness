@@ -292,7 +292,10 @@ class smc_instance_storage_isolation_test_seq(SmcCsrSeq):
             for i in range(GPIO_INTF_NUM):
                 await self._wr(f"GPIO{r}_{i}", addrs[i], words[i], 4)
             observed.append(
-                [await self._rd(f"GPIO{r}_{i}_RB", addrs[i], words[i], 4) for i in range(65)]
+                [
+                    await self._rd(f"GPIO{r}_{i}_RB", addrs[i], words[i], 4)
+                    for i in range(GPIO_INTF_NUM)
+                ]
             )
         for i in range(GPIO_INTF_NUM):
             await self._wr(f"GPIO_{i}_RESTORE", addrs[i], _GPIO_FILTER_RESET, 4)

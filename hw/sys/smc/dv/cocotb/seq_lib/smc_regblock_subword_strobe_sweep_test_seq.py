@@ -8,7 +8,7 @@
 Every access goes through SEP_IN, one at a time except the pipelined sub-word
 and window read groups.
 
-* One reference register of each of the 133 register-block instances (13
+* One reference register of each of the 135 register-block instances (13
   families, counts from the generated address map) takes a full-width read,
   1-byte reads at every byte offset, 2-byte reads at every offset that stays in
   the register, and a second full-width read. The second read must equal the
@@ -78,7 +78,7 @@ FAMILIES = (
     ("xvisor_remap", "smc_xvisor_remap[{}]/REGION/region_attrs", 8),
     ("inbound_filter", "smc_inbound_filter_ctrl[{}]/END_ADDR", 16),
     ("outbound_filter", "smc_outbound_filter_ctrl[{}]/END_ADDR", 16),
-    ("gpio_intf", "gpio_intf[{}]/ACCESS_FILTER", 65),
+    ("gpio_intf", "gpio_intf[{}]/ACCESS_FILTER", 67),
     ("cpu_ctrl", "smc_cpu_ctrl/RESET_VECTOR[0]", 1),
     ("telemetry", "smc_telemetry_receiver_wrap/telemetry_receiver[{}]/STATUS", 3),
     ("timer", "smc_system_timer_octs/CTRL", 1),
@@ -87,8 +87,8 @@ FAMILIES = (
     ("efuse_ctrl", "efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT", 1),
     ("cla", "smc_cla/dst[{}]/Trdstcontrol", 1),
 )
-INSTANCES = 133
-RESET_COMPARED = 117
+INSTANCES = 135
+RESET_COMPARED = 119
 
 # alias_remap.adoc:47, :49, :50; output_remap.adoc:23, :25.
 ALIAS_ATTRS_FIELDS = (1 << 63) | (0xF << 56) | (((1 << 56) - 1) & ~((1 << 12) - 1))

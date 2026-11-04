@@ -5,7 +5,7 @@
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md @ artifact_revision 2 ENV: cocotb
 """Sub-word reads, byte-lane and strobed writes, and window sweeps of the generated register blocks.
 
-One reference register of each of the 133 register-block instances takes 1- and
+One reference register of each of the 135 register-block instances takes 1- and
 2-byte reads between two full-width reads; five registers take 1-byte writes;
 three remap entries take all ones; the system-timer and telemetry windows are
 read word by word to the end of their apertures; and FILTER_CONFIG of all 32
@@ -38,11 +38,11 @@ REQUIRED = (
     "CHK-SWEEP-TIMER-WINDOW",
     "CHK-TIMEOUT-PATHS",
 )
-# S1 3; S2 58 64-bit instances x 17 and 75 32-bit instances x 9; S3 53; S4 12;
+# S1 3; S2 58 64-bit instances x 17 and 77 32-bit instances x 9; S3 53; S4 12;
 # S5 1024; S6 1026; S7 32 x 58; S8 32 x 2; S9 5; S10 31 x 4; S11 32 x 8. The
 # S8 restores and S10 full-width fallbacks add two accesses each.
 SEP_IN_FIXED = (
-    3 + (58 * 17 + 75 * 9) + 53 + 12 + 1024 + 1026 + 32 * 58 + 32 * 2 + 5 + 31 * 4 + 32 * 8
+    3 + (58 * 17 + 77 * 9) + 53 + 12 + 1024 + 1026 + 32 * 58 + 32 * 2 + 5 + 31 * 4 + 32 * 8
 )
 
 

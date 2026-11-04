@@ -91,7 +91,7 @@ MISC_LAST = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BAS
 MISC_WRAP_BASE = smc_addr("SMC_TOP_SMC_MISC_WRAP_BASE_ADDR")
 MISC_WRAP_SIZE = smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE")
 
-# --- GPIO: 65 interface instances ----------------------------------------------------
+# --- GPIO: 67 interface instances ----------------------------------------------------
 GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_NUM")
 GPIO0_ACCESS_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0)
 GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(

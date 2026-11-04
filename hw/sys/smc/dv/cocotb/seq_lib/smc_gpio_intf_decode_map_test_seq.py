@@ -33,12 +33,12 @@ _DATA_CTRL = (
     "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 
-_INSTANCES = 65
+_INSTANCES = 67
 _LAST = _INSTANCES - 1
 _ACCESS_FILTER_RESET_WORD = 0x00010100
 _PG_BASE = 0xC000_3000
 _PG_STRIDE = 0x10
-_PG_PINS = (0, 32, 64)
+_PG_PINS = (0, 32, 66)
 _DISTINCT_INSTANCE = 60
 _EVENTS = (
     "SNAPSHOT_TAKEN",
@@ -58,7 +58,7 @@ _CHK_ORDER = (
 
 
 class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
-    """Decode and alias checks over the 65 GPIO_INTF instances."""
+    """Decode and alias checks over the 67 GPIO_INTF instances."""
 
     def __init__(self, name: str = "smc_gpio_intf_decode_map_test_seq") -> None:
         super().__init__(name)
@@ -156,8 +156,8 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
         self._chk(
             "ENDPOINT_PATTERNS",
             "CHK-GPIO-DECODE-ENDPOINTS",
-            "instances 0 and 64 answered OKAY at offsets 0x0, 0x4, 0x8 and each pattern read back "
-            "at its own offset; " + "; ".join(s2_ends),
+            f"instances 0 and {_LAST} answered OKAY at offsets 0x0, 0x4, 0x8 and each pattern "
+            "read back at its own offset; " + "; ".join(s2_ends),
         )
 
         sb_before = self.env.scoreboard.sys_axi_value_checks_seen

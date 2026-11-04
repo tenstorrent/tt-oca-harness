@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PWM channel i claims GPIO pad 59+i while PWM_CTRL.CTRL.PAD_EN[i] is set.
 
-Sources: docs/superpowers/specs/2026-11-02-pwm-pad-wiring-design.md ("Pad map",
-"Decisions"), hw/ip/pwm/regs/pwm_ctrl.rdl, hw/ip/gpio/rtl/gpio.sv (LSIO select is
-vetoed by DATA_CTRL.lsio_disable), vendor/lowRISC/opentitan/overlay/regs/pwm/regs/gen/c/pwm.h.
+Sources: doc/integrator/meta/ocah_gpio_table.csv, hw/ip/pwm/regs/pwm_ctrl.rdl,
+hw/ip/gpio/rtl/gpio.sv (LSIO select is vetoed by DATA_CTRL.lsio_disable),
+vendor/lowRISC/opentitan/overlay/regs/pwm/regs/gen/c/pwm.h.
 
 A claimed pad is an output driven by the channel: the waveform while PWM_EN[i] is
 set, and the INVERT[i] idle level while it is clear. An unclaimed pad is software
@@ -14,16 +14,19 @@ GPIO. Cool Reset Out sits on pad 64 and claims it from reset; Cool Reset In on p
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import cocotb
 from cocotb.triggers import RisingEdge
 
-from .smc_addr_map import gpio_intf_u32, reg_field_encode, smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _PWM_H,
+    _REPO,
+    gpio_intf_u32,
+    reg_field_encode,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 
-_REPO = Path(__file__).resolve().parents[6]
-_PWM_H = _REPO / "vendor/lowRISC/opentitan/overlay/regs/pwm/regs/gen/c/pwm.h"
 _PWM_CTRL_H = _REPO / "hw/ip/pwm/regs/gen/c/pwm_ctrl.h"
 
 PWM_PAD_BASE = 59
@@ -45,7 +48,7 @@ PERIOD_CYCLES = (CLK_DIV + 1) << (DC_RESN + 1)
 HALF_DUTY = 0x8000
 
 FUSE_SENSE_MAX_CYCLES = 200_000
-SETTLE_BOUND = 4 * PERIOD_CYCLES
+WAIT_BOUND = 4 * PERIOD_CYCLES
 
 DATA_CTRL_CORE2PAD = gpio_intf_u32("GPIO_INTF__DATA_CTRL__CORE2PAD_bm")
 DATA_CTRL_TX = 1 << gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
@@ -98,12 +101,12 @@ class smc_pwm_pad_test_seq(SmcCsrSeq):
         )
 
     async def _await(self, label: str, cond) -> int:
-        for edge in range(SETTLE_BOUND):
+        for edge in range(WAIT_BOUND):
             if cond():
                 return edge
             await RisingEdge(cocotb.top.clk_smc_i)
         raise AssertionError(
-            f"{label}: not reached within {SETTLE_BOUND} clk_smc_i edges; pads "
+            f"{label}: not reached within {WAIT_BOUND} clk_smc_i edges; pads "
             + " ".join(f"{p}(sel,oe,d)={self._pad(p)}" for p in (*PWM_PADS, COOL_RESET_OUT_PAD))
         )
 
