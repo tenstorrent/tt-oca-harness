@@ -65,6 +65,14 @@ Checks (HOST-UNREC unless marked):
   CHK-SK-AFTER-BOOT  (both) after a wipe, CMD_ABR_SK_TRANSFER of the pending
                      shared key returns failure with no argument.
   CHK-SK-READY-FRAME (both) RESP_ABR_SHARED_KEY_READY carries no payload.
+  CHK-SK-READY-ORDER (HOST) at each encapsulation with the shared key written
+                     back to the KM: the outbound FIFO is empty before the
+                     ENCAPS command; after VALID the next frame is
+                     RESP_ABR_SHARED_KEY_READY at the next response sequence
+                     number, and the shared-key KEY_VALID (``KM-SK``) reads 1
+                     when it is read (``firmware.adoc``, "0x56 -
+                     RESP_ABR_SHARED_KEY_READY" and "Main Event Loop"). In a
+                     HOST-UNREC leaf that frame is a precondition.
   CHK-WIPE-STATUS    (both) the real wipe sets IRQ_STATUS.WIPE_STATE (control:
                      0 before the KM_WIPE_CTRL write).
   CHK-TRAP-HELD      (both) bit 30 stays high and a CMD_STAT gets no answer.
@@ -206,6 +214,7 @@ EVIDENCE_HOST = (
     "CHK-SHRED-FIRST-HOST",
     "CHK-SK-AFTER-BOOT",
     "CHK-SK-READY-FRAME",
+    "CHK-SK-READY-ORDER",
     "CHK-WIPE-STATUS",
     "CHK-TRAP-HELD",
     "CHK-RESTORE",
@@ -1231,7 +1240,9 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         written back to the KM; then read RESP_ABR_SHARED_KEY_READY.
 
         The VALID of an earlier operation is cleared first, so the VALID wait
-        below belongs to this encapsulation.
+        below belongs to this encapsulation. The HOST entry grades the frame
+        order (CHK-SK-READY-ORDER); the HOST-UNREC entry takes the frame as a
+        precondition.
         """
         if await self.kem.rd32(MLKEM_STATUS) & KEM_ST_VALID:
             await self.kem.wr32(MLKEM_CTRL, KEM_CTRL_ZEROIZE)
@@ -1240,9 +1251,13 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self.kem.wr32(MLKEM_KV_MSG_RD_CTRL, KV_READ_EN)
         await self.kem.wr32(MLKEM_KV_SK_WR_CTRL, KV_WRITE_EN)
         await self.kem.write_words(MLKEM_ENCAPS_KEY, list(ek))
+        if not self.unrec:
+            empty_pre = (await self._status() >> KM_STATUS_OUTBOUND_EMPTY) & 1
         await self.kem.wr32(MLKEM_CTRL, KEM_CMD_ENCAPS)
         await self._kem_wait(KEM_ST_VALID, KEM_ST_VALID, "encaps VALID")
         fr = await self._read_frame(FRAME_POLLS)
+        if not self.unrec:
+            self._sk_ready_order(fr, empty_pre)
         if fr is None or fr.bad or fr.resp_id != KM_RESP_ABR_SHARED_KEY_READY:
             raise AssertionError(
                 "precondition: no RESP_ABR_SHARED_KEY_READY after the encapsulation "
@@ -1254,6 +1269,42 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.sk_pending = True
         self.sk_valid_pending = self._sk()
         self._sk_ready_frame(fr, "encaps")
+
+    def _sk_ready_order(self, fr: _Frame | None, empty_pre: int) -> None:
+        """CHK-SK-READY-ORDER: the encapsulation is followed by the notification.
+
+        firmware.adoc, "0x56 - RESP_ABR_SHARED_KEY_READY": the KM emits it from
+        its main loop after the shared-key interrupt fires; "Main Event Loop":
+        the loop samples the pending-notify flag and sends the message. With
+        the outbound FIFO empty before the ENCAPS command, the next frame is
+        that message at the next response sequence number.
+        """
+        sk = self._sk()
+        ok = (
+            empty_pre == 1
+            and fr is not None
+            and not fr.bad
+            and fr.resp_id == KM_RESP_ABR_SHARED_KEY_READY
+            and fr.seq == self.resp_next
+            and sk == 1
+        )
+        self.chk.ok(
+            "SK-READY-ORDER",
+            ok,
+            contract=(
+                "key_manager/doc/firmware.adoc:940-942(0x56_RESP_ABR_SHARED_KEY_READY),"
+                ":1956-1959(Main_Event_Loop)"
+            ),
+            outbound_empty_pre=empty_pre,
+            exp_outbound_empty_pre=1,
+            resp_id="none" if fr is None else _h2(fr.resp_id),
+            exp_resp_id=_h2(KM_RESP_ABR_SHARED_KEY_READY),
+            seq="none" if fr is None else fr.seq,
+            exp_seq=self.resp_next,
+            bad="none" if fr is None else int(fr.bad),
+            sk_valid=sk,
+            exp_sk_valid=1,
+        )
 
     # ================================================================ fatal plumbing
     async def _wipe_write(self, value: int) -> None:
@@ -1316,7 +1367,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.logger.info("INFO-SETTLE outbound depth did not settle; the quiet control decides")
 
     # ================================================================ precondition
-    async def _precondition(self, witness: bool) -> _Pre:
+    async def _precondition(self, witness: bool, point: str) -> _Pre:
         """Steps 3 and 4: keys in V, a pending shared key, r unread responses, quiet."""
         p = self.plan
         for key in p.transfer_order():
@@ -1372,16 +1423,27 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await RisingEdge(cocotb.top.clk_i)
         pre.wr_end = self._wr_count()
         pre.depth = await self._out_depth()
-        self.logger.info(
-            "OBS-QUIET-WINDOW w_clk=%d ctrl_stat_clk=%d pic30_high=%d sram_writes=%d->%d "
-            "out_depth=%d",
-            pre.w_clk,
-            stat_clk,
-            pre.quiet_high,
-            pre.wr_start,
-            pre.wr_end,
-            pre.depth,
+        state = {"out_depth": pre.depth, "sram_writes": f"{pre.wr_start}->{pre.wr_end}"}
+        graded = {}
+        if point == "real_wipe":
+            graded_by = ["CHK-FATAL-WIPE", "CHK-TRAP-HELD", "CHK-FLUSH-FIRST"]
+            graded["out_depth"] = state.pop("out_depth")
+            if self.unrec:
+                graded_by.append("CHK-SRAM-SHRED")
+                graded["sram_writes"] = state.pop("sram_writes")
+        else:
+            graded_by = ["CHK-FATAL-SET"]
+        self.chk.info(
+            "QUIET-WINDOW",
+            point=point,
+            w_clk=pre.w_clk,
+            ctrl_stat_clk=stat_clk,
+            pic30_high=pre.quiet_high,
+            **graded,
+            graded_by=graded_by,
         )
+        if state:
+            self.chk.obs("QUIET-WINDOW-STATE", point=point, **state)
         return pre
 
     def _shred_first(self, pre: _Pre, watch: _FatalWatch, point: str) -> None:
@@ -1478,7 +1540,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
     async def _real_wipe_point(self) -> None:
         p = self.plan
         self.fresh = False
-        pre = await self._precondition(witness=True)
+        pre = await self._precondition(witness=True, point="real_wipe")
         status_before = self._csr_status()
         wr_base = self._wr_count()  # step 5
         depth_before = pre.depth
@@ -1629,12 +1691,13 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             status=f"0x{status:03x}",
             err_o=int(rose),
         )
-        self.logger.info(
-            "OBS-REAL-WIPE W=%d status=0x%03x err_o_end=%d rise_cyc=%s",
-            p.wipe_w,
-            status,
-            b_end,
-            watch.rise,
+        self.chk.info("REAL-WIPE", W=p.wipe_w)
+        self.chk.obs(
+            "REAL-WIPE-STATUS",
+            W=p.wipe_w,
+            err_o_end=b_end,
+            rise_cyc=watch.rise,
+            irq_status_other=f"0x{status & ~wipe_bit:03x}",
         )
         await self._boot("real wipe")  # step 9
 
@@ -1643,7 +1706,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         top = cocotb.top
         await self._fresh(f"before {'+'.join(names)}")
         mask = pl.set_mask(names)
-        pre = await self._precondition(witness=False)
+        pre = await self._precondition(witness=False, point="irqset_" + "+".join(names))
         watch = _FatalWatch(self)
         watch.start()
         await RisingEdge(top.clk_i)
@@ -2365,7 +2428,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         # does not shred the sideload banks; the report and the trap are
         # outside that gate (firmware.adoc, "Error Recovery", lines 1131-1133).
         # The trap wipe clears the keys one edge after the bit-30 rise
-        # (architecture.adoc, "Wipe State", lines 504-507 and 524-525), so the
+        # (architecture.adoc, "Wipe State", lines 512-515 and 532-533), so the
         # rise sample holds the vector of the key transfer.
         kv_rise = watch.kv_at_rise
         self.chk.ok(

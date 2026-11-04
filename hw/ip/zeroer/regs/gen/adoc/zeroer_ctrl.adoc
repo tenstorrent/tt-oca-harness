@@ -30,7 +30,7 @@ Wait for STATUS to read 0 before writing this register again.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `DEST_ADDR` | RW | 0x0 a| Byte address to write zeros to
+| 63:0 | `DEST_ADDR` | RW | 0x0 a| Byte address to write zeros to. Bits at and above the master address width, 56 in the SMC, are ignored: a clear starts at the address truncated to that width. Program them as zero; the zeroer truncates an out-of-range value rather than rejecting it.
 |===
 
 [#reg-{regmap-instance}-zeroer_ctrl-SIZE]

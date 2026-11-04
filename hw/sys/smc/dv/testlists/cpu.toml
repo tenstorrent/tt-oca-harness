@@ -496,6 +496,10 @@ run_modes = ["smoke"]
 # `ready` (README_cpu_isolate_flush.md); the front-port R arbiter's
 # request-stability assertions report that withdrawal, and this leaf alone asks
 # tb_top to hold off that one arbiter instance's checks.
+# The isolate flush then discards the CPU's stale read response above the
+# demux, and the SYS_IN path presents an R beat with no open AR; the bound AXI
+# checkers report it on every simulator and the leaf fails on that fire. On
+# Verilator the fire stops the simulation before the leaf's later checks run.
 args = ["+smc_front_port_r_arb_assertoff"]
 
 [[tests]]
@@ -505,6 +509,23 @@ seed = 1
 timeout_sec = 1800
 tags = ["cpu", "isolate_flush", "pyuvm"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_l2_frontend_access_uncore_held_test"
+module = "smc_l2_frontend_access_uncore_held_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "cpu"]
+run_modes = ["smoke"]
+# Both ROM loaders take smc_rom_reconnect.hex in place of the smoke-mode zero image, so the
+# boot-ROM words the blocked reads return are non-zero.
+args = [
+    "+axi_sva_need_sep_in",
+    "+axi_sva_need_sys_in",
+    "+axi_sva_need_jtag_in",
+    "+smc_rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_reconnect.hex",
+    "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_reconnect.hex",
+]
 
 [[tests]]
 name = "smc_cpu_mmio_read_wedge_test"
@@ -533,6 +554,19 @@ args = [
 ]
 
 [[tests]]
+name = "smc_sw_uncore_reset_drain_isolate_test"
+module = "smc_sw_uncore_reset_drain_isolate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cpu", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
+args = [
+    "+axi_sva_need_sep_in",
+    "+axi_sva_need_sys_in",
+    "+axi_sva_need_cpu_front",
+]
+
+[[tests]]
 name = "smc_flr_isolation_sources_test"
 module = "smc_flr_isolation_sources_test"
 seed = 1
@@ -549,16 +583,56 @@ tags = ["ci"]
 run_modes = ["smoke"]
 args = ["+smc_hold_ext_boot"]
 
+# cpu.adoc probes: the drain timer at zero, the uncore reset's scope over the
+# cores and the isolate request, the L2 isolate's depth and blocking, and the
+# scratchpad bank/entry formula. SEP_IN R is held at the boundary in the first
+# and the third; neither forces a flush, so the front-port assertions stay on.
+[[tests]]
+name = "smc_cpu_reset_timeout_zero_test"
+module = "smc_cpu_reset_timeout_zero_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_uncore_reset_scope_test"
+module = "smc_cpu_uncore_reset_scope_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_l2_isolate_depth_and_block_test"
+module = "smc_cpu_l2_isolate_depth_and_block_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_spm_bank_formula_test"
+module = "smc_spm_bank_formula_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "cpu"
 tests = [
     "smc_cpu_ctrl_map_depth_test",
     "smc_cpu_ctrl_scratch_window_test",
+    "smc_cpu_l2_isolate_depth_and_block_test",
     "smc_cpu_l2_read_wedge_test",
     "smc_cpu_l2_write_wedge_test",
     "smc_cpu_mmio_read_wedge_test",
     "smc_cpu_mmio_write_wedge_test",
+    "smc_cpu_reset_timeout_zero_test",
+    "smc_cpu_uncore_reset_scope_test",
     "smc_mutex_semaphore_test",
+    "smc_spm_bank_formula_test",
     "smc_spm_mem_boundary_test",
 ]
 
@@ -567,6 +641,38 @@ name = "smc_dfd_mmr_rand_test"
 module = "smc_dfd_mmr_rand_test"
 seed = 1
 reseed = 3
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clint_plic_reset_retention_test"
+module = "smc_clint_plic_reset_retention_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_clock_gate_access_test"
+module = "smc_dfd_clock_gate_access_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_match_event_rules_test"
+module = "smc_dfd_cla_match_event_rules_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_irq_plic_source_test"
+module = "smc_dfd_cla_irq_plic_source_test"
+seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]

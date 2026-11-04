@@ -52,14 +52,16 @@ of the two is not graded. The second status write shows that the path reaches th
 register.
 
 Log-only: the response and read data past the extent and in the reserved span
-(``OBS-WIN-RESP LOG``), the two read-data registers (``OBS-CSR-DATA LOG``), the timeout
-write and readback (``OBS-CSR-RW LOG``), ``TOKEN_MATCH_FAULT`` and the match registers
+(``OBS-WIN-RESP LOG``), the two read-data registers (``OBS-CSR-DATA LOG``),
+``TOKEN_MATCH_FAULT`` and the match registers
 (``OBS-TOKEN-FAULT LOG``), the response of the ``FEAT_CTRL`` write
 (``OBS-LCC-WR-RESP LOG``), the five interface-control reset reads repeated with a
 seeded AxPROT and AxCACHE (``OBS-EFUSE-AXATTR LOG``; AxLOCK, AxUSER and AxATOP keep
 the bench default), and, after the last graded step, a byte write, a halfword write
 and an unaligned halfword read on ``EFUSE_PROGRAM_CTRL`` and on one ``SYS_DIS``
 shadow word (``OBS-EFUSE-SUBWORD LOG``: response, data, the word before and after).
+The timeout write and readback is re-logged as ``INFO-CSR-RW LOG``; ``CHK-UNMAPPED-LIVE`` of
+``sep_unmapped_access_policy_test`` grades it.
 The FCOV graded window is closed around these controls.
 """
 
@@ -509,7 +511,14 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             wr = int(p.draws[key])
             await self._wr(_IC.addr(name), wr)
             got, _ok, _c = await self._rd(_IC.addr(name))
-            self._log("OBS-CSR-RW", reg=name, wr=f"0x{wr:08x}", got=f"0x{got:08x}")
+            self._log(
+                "INFO-CSR-RW",
+                reg=name,
+                wr=f"0x{wr:08x}",
+                got=f"0x{got:08x}",
+                graded_by="CHK-UNMAPPED-LIVE",
+                graded_in="sep_unmapped_access_policy_test",
+            )
 
         # Step 8: control-register patterns (go and enable bits 0).
         open_graded_window(TEST, self.logger)

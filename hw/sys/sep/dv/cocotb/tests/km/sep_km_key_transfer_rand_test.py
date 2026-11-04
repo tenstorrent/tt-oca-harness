@@ -71,6 +71,16 @@ Checks:
                     (``hw/sys/sep/doc/crypto.adoc``, words per share;
                     ``hw/ip/key_manager/doc/firmware.adoc``, "Crypto Engine
                     Drivers": the two shares, then set key_valid).
+  CHK-KM-BUS-PERM   in the transfer of K1 to M and of K3 to 0xFF, the
+                    ``KM-BUS`` share-word writes of each selected bank cover each
+                    of its 2 x width ``KEY_SHARE0``/``KEY_SHARE1`` offsets exactly
+                    once: "must use the Fisher-Yates shuffle to generate the
+                    access order. The crypto-engine drivers use this for
+                    key-share writes and shredding." and "produces a uniformly
+                    random permutation." (``hw/ip/key_manager/doc/firmware.adoc``
+                    :1471-1475). The offsets come from the generated Key Manager
+                    register header. The order inside a bank is not graded:
+                    whether the shuffle is uniform is a probability.
 
 Controls: CTRL-GOLD (the 8, 9 and 16 word rounds equal the golden of the
 leading 8 words), CTRL-REFUSE-Z (the mask Z outside P1 returns -1 with no
@@ -80,7 +90,7 @@ and key_valid reads 0xFF and then 0x00).
 
 The rounds below the share width, the short-key repeat, the four repeated
 transfers, the share-write records of a single-engine transfer and shred, and
-the revoke leg serve only planned checks and do not run.
+the revoke leg serve only non-claimed checks and do not run.
 
 The regression runs the leaf as four shards (``+sep_shard``, ``env/sep_shard.py``),
 each from its own seed and its own boot: shard 1 the AES rounds and shard 2 the
@@ -170,12 +180,14 @@ class _BusWatch:
         self.addr = top.km_key_aw_addr_o
         self.writes: list[tuple[int, int]] = []
         self.same_clock = 0
+        self.xz = 0
         self._on = False
         self._task = None
 
     def start(self) -> None:
         self.writes = []
         self.same_clock = 0
+        self.xz = 0
         self._on = True
         self._task = cocotb.start_soon(self._run())
 
@@ -190,9 +202,13 @@ class _BusWatch:
             await ReadOnly()
             if not self._on:
                 return
-            hs = self.test.rd(self.valid, allow_unknown=True) & self.test.rd(
-                self.ready, allow_unknown=True
-            )
+            try:
+                hs = self.test.rd(self.valid) & self.test.rd(self.ready)
+            except AssertionError:
+                # An unknown VALID or READY bit is no handshake; the checks
+                # that read this watch require a count of 0.
+                self.xz += 1
+                continue
             if not hs:
                 continue
             addrs = self.test.rd_known(self.addr)
@@ -216,6 +232,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         "CHK-ENG-ORDER",
         "CHK-AES-NOKEY",
         "CHK-DELIV-COUNT",
+        "CHK-KM-BUS-PERM",
     )
 
     # ------------------------------------------------------------------ main
@@ -639,15 +656,23 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         # Negative stimulus differs from the legal value.
         assert p.x & ~p.p1 & pl.ALL_BANKS, f"X {_h(p.x)} holds no bit outside P1 {_h(p.p1)}"
         assert p.z and not p.z & p.p1, f"Z {_h(p.z)} is not outside P1 {_h(p.p1)}"
+        self.bus.start()
         code_x, arg_x = await self._transfer(h1, p.x)
+        writes_x = len(await self.bus.stop())
+        xz_x = self.bus.xz
+        self.bus.start()
         code_z, arg_z = await self._transfer(h1, p.z)
+        writes_z = len(await self.bus.stop())
+        xz_z = self.bus.xz
         self.chk.ctrl(
             "REFUSE-Z",
-            code_z == KM_RC_FAILURE and arg_z is None,
+            code_z == KM_RC_FAILURE and arg_z is None and writes_z == 0 and xz_z == 0,
             p1=_h(p.p1),
             z=_h(p.z),
             code=code_z,
             arg="none" if arg_z is None else f"0x{arg_z:08x}",
+            writes=writes_z,
+            xz_cycles=xz_z,
         )
         hmac = await self._hmac_read(p.k1)
         aes_in = bool((p.x | p.z) & (1 << pl.AES))
@@ -657,11 +682,18 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         self.chk.ctrl("REFUSE-ALLOW", permitted_ok, m=_h(p.m))
         self.chk.ok(
             "REFUSE",
-            code_x == KM_RC_FAILURE and arg_x is None and hmac == "nokey" and aes != "key",
+            code_x == KM_RC_FAILURE
+            and arg_x is None
+            and writes_x == 0
+            and xz_x == 0
+            and hmac == "nokey"
+            and aes != "key",
             p1=_h(p.p1),
             x=_h(p.x),
             code=code_x,
             arg="none" if arg_x is None else f"0x{arg_x:08x}",
+            writes=writes_x,
+            xz_cycles=xz_x,
             witness_hmac=hmac,
             aes_key=int(aes == "key"),
             keyvalid=_h(kv),
@@ -778,6 +810,20 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         )
 
     def _grade_order(self, writes: list[tuple[int, int]], mask: int, leg: str) -> None:
+        perm = pl.grade_perm(writes, mask)
+        self.chk.ok(
+            "KM-BUS-PERM",
+            perm.ok and self.bus.xz == 0,
+            contract="key_manager/doc/firmware.adoc:1471-1475",
+            leg=leg,
+            mask=_h(mask),
+            banks=perm.banks,
+            share_writes=perm.share_writes,
+            expect_share_writes=sum(2 * pl.WIDTH[b] for b in pl.WIDTH if (mask >> b) & 1),
+            repeated=",".join(perm.repeated) or "-",
+            missing=",".join(perm.missing) or "-",
+            xz_cycles=self.bus.xz,
+        )
         # Single KM master: its key-path stores issue one at a time, so the AW
         # handshake order is the write order.
         res = pl.grade_order(writes, mask)

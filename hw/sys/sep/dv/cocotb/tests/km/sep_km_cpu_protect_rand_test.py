@@ -1187,7 +1187,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
     async def _plain_reset_kpv_control(self, kind: str) -> None:
         """Control of CHK-TRAP-WIPE: a reset with no trap keeps the KPV words.
 
-        architecture.adoc:466 ("Key and Policy Vault (KPV)"): cold or warm reset
+        architecture.adoc:474 ("Key and Policy Vault (KPV)"): cold or warm reset
         alone does not overwrite their contents. One slot per lock kind of the
         trap witnesses (lock_write, lock_use, seal) is written, read back,
         locked, and reset with no trap. A zero after a trap and the same kind of

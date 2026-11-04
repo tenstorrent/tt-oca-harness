@@ -59,8 +59,14 @@ their approvals are recorded.
 **Simulators.** Verilator runs every enrolled group and is the only
 simulator with a build and a coverage section in the sim config; it is
 what CI runs. `smu_sim_cfg.toml`
-lists `vcs` and `xcelium` as selectable tools, but no enrolled group
-runs on them: the cocotb targets on VCS fail the runner on live RTL
+lists `vcs` and `xcelium` as selectable tools. One group is run on VCS:
+`axi_sva` (`--dut smu --items axi_sva --tool vcs`), the leaves that drive
+the links the AXI protocol checkers of `tb/tb_wrapper_top.sv` watch (all but
+`smu_axi_out_outstanding_test`, which drives `smu_out`, name a checker with a
+`+axi_sva_need_*` plusarg), is the run of record of those checkers: the
+Verilator targets evaluate their two-state rules only, and none of their X,
+data-known, count or need checks. No other enrolled group runs
+on VCS or Xcelium: the cocotb targets on VCS fail the runner on live RTL
 assertions while every test passes, and `smu_sim_cfg.toml`
 declares no Xcelium target of its own -- only the shared
 `hw/common/dv/configs/profiles/native.toml` defaults, which no SMU group

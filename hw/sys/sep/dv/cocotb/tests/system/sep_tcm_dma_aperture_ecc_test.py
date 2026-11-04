@@ -34,12 +34,22 @@ Checkers:
                  flipped word returns the written data. Control: the stored word
                  on the PR-TCM response differs from the written word (PR-TCM
                  request) in bit k only.
+  CHK-TCM-SBE-WB after each CHK-TCM-SBE read, the PR-TCM tap shows a write of
+                 the flipped word whose 39-bit word (data and ECC bits) equals
+                 the word of the original write
+                 (VeeR EL2 PRM at tt-Cores-VeeR-EL2@07a51d817,
+                 ``docs/source/memory-map.md``, "Correctable Ecc/Parity Errors"
+                 ``:638-639`` ICCM, ``:646-647`` DCCM: a DMA read error is
+                 corrected in line and
+                 the corrected data is written back). No write, or another
+                 data or ECC value, fails.
   CHK-TCM-DBE    for 16 drawn bit pairs of each memory (at least 4 each of
                  data-data, data-ECC and ECC-ECC), the read of the flipped word
                  is one AR at its 8-byte word on PR-XBAR-TCM, every R beat with
                  the ID of that AR answers SLVERR or DECERR, the DMA transfer
-                 ends with STATUS.error at 1 and STATUS.done at 0, and
-                 ``host_path_err`` is set. Control: the clean read of the same
+                 ends with STATUS.error at 1, and ``host_path_err`` is set.
+                 No text states STATUS.done on an error, so done is logged
+                 (OBS-TCM-DBE-DONE) and not graded. Control: the clean read of the same
                  word is one AR on PR-XBAR-TCM answered OKAY, the flag reads 0
                  after the clear and after that clean read, and the stored word
                  differs from the written word in the two flipped bits.
@@ -54,11 +64,34 @@ Checkers:
                  the same section). An X or Z sample of the nibble fails. The
                  core is held off, so no CPU access drives the lanes. Control:
                  CHK-TCM-SBE and CHK-TCM-DBE show the stored bits flipped.
+  CHK-TCM-SUBWORD-WR a 1- or 2-byte DMA copy into one drawn word of each
+                 memory ends with STATUS.error at 1, the BUS_ERROR bit of
+                 ERROR_CODE set and ``host_path_err`` set
+                 (``hw/sys/sep/doc/dma.adoc:118-121``: ICCM and DCCM take only
+                 whole 32-bit words from the DMA, any other write ends in
+                 BUS_ERROR and sets the host-path fault; ``:95-96``: error
+                 reporting is the same for a copy; VeeR EL2 PRM at
+                 tt-Cores-VeeR-EL2@07a51d817, ``docs/source/memory-map.md``,
+                 "Write Alignment Rules" ``:1203-1204`` and "Misaligned
+                 Accesses" ``:422-427``). The spec states no other bit of
+                 ERROR_CODE, so the whole code is logged (OBS-TCM-SUBWORD-CODE)
+                 and not graded. Control: the ICCM and DCCM copies are both
+                 graded (count 2), and before each GO, after the STATUS and
+                 ``DMA_BUS_ERR_CLEAR`` clears, ERROR_CODE and
+                 ``DMA_BUS_ERR_STATUS`` read 0 (CTRL-TCM-SUBWORD-PRE; ERROR_CODE
+                 "is cleared by writing the RW1C STATUS.error register",
+                 ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
+                 dma.hjson:669-670``; the faults are "cleared through
+                 ``DMA_BUS_ERR_CLEAR``", ``hw/sys/sep/doc/dma.adoc:66-68``), so
+                 a stale code or flag cannot pass the check.
 Observations (not graded): OBS-TCM-EXCL (whether the other memory's clock-enable
 tap rose), OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read),
-OBS-TCM-SUBWORD (STATUS, ERROR_CODE, ``DMA_BUS_ERR_STATUS`` and the word read
-back after a 1- or 2-byte DMA copy into, and out of, one drawn word of each
-memory; the word is not a flip target of the single- or double-bit legs, so it
+OBS-TCM-SUBWORD-CODE (the whole ERROR_CODE after the sub-word copy into a word,
+and its bits other than BUS_ERROR), OBS-TCM-DBE-DONE (STATUS.done and
+STATUS.error after each double-bit read),
+OBS-TCM-SUBWORD (done, staging word and the word read back after the 1- or
+2-byte copy into one drawn word of each memory, and every field of the copy out
+of it; the word is not a flip target of the single- or double-bit legs, so it
 holds a clean code word; it runs after CHK-TCM-CLEAN).
 
 Bench: the TCM bit-flip hook (error inject, ``env/sep_tcm_flip.py``) XORs a mask
@@ -122,6 +155,8 @@ CLASSES = ("data-data", "data-ECC", "ECC-ECC")
 DMA_STATUS_MASK = SEP_CPU_CTRL.mask32("DMA_BUS_ERR_STATUS")
 DMA_STATUS_RESET = SEP_CPU_CTRL.reset("DMA_BUS_ERR_STATUS") & DMA_STATUS_MASK
 DMA_CLR = SEP_CPU_CTRL.field_mask("DMA_BUS_ERR_CLEAR", "clr")
+EC_MASK = _D.mask32("ERROR_CODE")
+EC_BUS_ERROR = _D.field_mask("ERROR_CODE", "bus_error")
 RANGE_REGS = (
     ("ENABLED_MEMORY_RANGE_BASE", 0x0),
     ("ENABLED_MEMORY_RANGE_LIMIT", 0xFFFF_FFFF),
@@ -334,6 +369,8 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         "CHK-TCM-APERT",
         "CHK-TCM-CLEAN",
         "CHK-TCM-SBE",
+        "CHK-TCM-SBE-WB",
+        "CHK-TCM-SUBWORD-WR",
         "CHK-TCM-DBE",
         "CHK-TCM-DMA-DBG",
     )
@@ -612,6 +649,19 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             self._fail("CHK-TCM-SBE", line)
         self.logger.info("CHK-TCM-SBE PASS: %s", line)
         self.n_checks += 1
+        wb = self._written_word(mem, addr, mark)
+        line = (
+            f"contract=PRM tt-Cores-VeeR-EL2@07a51d817 memory-map.md 'Correctable Ecc/Parity Errors' "
+            f":638-639,646-647 mem={mem} addr=0x{addr:08x} k={k} "
+            f"written_data={'X' if wb is None else hex(wb & M32)} "
+            f"written_ecc={'X' if wb is None else hex(wb >> DATA_BITS)} expect=0x{data:08x} "
+            f"expect_ecc={'X' if written is None else hex(written >> DATA_BITS)}"
+        )
+        # The corrected word is the stored word before the flip: data and ECC bits.
+        if wb is None or written is None or wb & M32 != data or wb != written:
+            self._fail("CHK-TCM-SBE-WB", line)
+        self.logger.info("CHK-TCM-SBE-WB PASS: %s", line)
+        self.n_checks += 1
         await self.dma.clean_state()
         await self._clear_bus_err()
 
@@ -647,7 +697,16 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         cf = int(bool((flag | clean_flag) & DMA_HOST_PATH_BIT))
         err_resp = int(bool(resp) and all(r in RESP_ERR for r in resp))
         clean_okay = int(bool(clean_resp) and all(r == RESP_OKAY for r in clean_resp))
-        dma_err = int(bool(st.error) and not st.done)
+        dma_err = int(bool(st.error))
+        self.logger.info(
+            "OBS-TCM-DBE-DONE: mem=%s addr=0x%08x k1=%d k2=%d done=%d error=%d",
+            mem,
+            addr,
+            a,
+            b,
+            st.done,
+            st.error,
+        )
         line = (
             f"mem={mem} addr=0x{addr:08x} k1={a} k2={b} class={pair_class(a, b)} "
             f"rresp_err={err_resp} clean_rresp_okay={clean_okay} dma_error={dma_err} "
@@ -663,11 +722,22 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         await self.dma.clean_state()
         await self._clear_bus_err()
 
-    # ---- logged: sub-word copies ------------------------------------------------------
+    # ---- sub-word copies ----------------------------------------------------------------
     async def _sub_copy(self, src: int, dst: int, nbytes: int, enc: int) -> tuple:
         """One DMA copy of ``nbytes`` at TRANSFER_WIDTH ``enc``; returns (STATUS, ERROR_CODE, bus err)."""
         await self.dma.clean_state()
-        await self._clear_bus_err()
+        pre_berr = await self._clear_bus_err()
+        pre_ecode = await self.dma.rd(_D.addr("ERROR_CODE")) & EC_MASK
+        pre = (
+            f"contract=dma.hjson:669-670,hw/sys/sep/doc/dma.adoc:66-68 src=0x{src:08x} "
+            f"dst=0x{dst:08x} bytes={nbytes} error_code=0x{pre_ecode:x} "
+            f"dma_bus_err_status=0x{pre_berr:x} expect=0x0/0x0"
+        )
+        if pre_ecode or pre_berr:
+            msg = f"CTRL-MISSING CTRL-TCM-SUBWORD-PRE: {pre}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-TCM-SUBWORD-PRE PASS: %s", pre)
         await self.dma.program_transfer(src=src, dst=dst, total=nbytes, chunk=nbytes, width_enc=enc)
         await self.dma.go()
         st = await self.dma.poll_status(
@@ -676,7 +746,32 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         ecode = await self.dma.rd(_D.addr("ERROR_CODE"))
         return st, ecode, await self._bus_err()
 
+    def _chk_subword_wr(self, mem: str, addr: int, nbytes: int, st, ecode: int, berr: int) -> None:
+        """CHK-TCM-SUBWORD-WR: a sub-word DMA write into a TCM word sets ERROR_CODE.BUS_ERROR."""
+        hpe = int(bool(berr & DMA_HOST_PATH_BIT))
+        code = ecode & EC_MASK
+        bus_error = int(bool(code & EC_BUS_ERROR))
+        self.logger.info(
+            "OBS-TCM-SUBWORD-CODE: mem=%s addr=0x%08x bytes=%d error_code=0x%x other_bits=0x%x",
+            mem,
+            addr,
+            nbytes,
+            code,
+            code & ~EC_BUS_ERROR & EC_MASK,
+        )
+        line = (
+            f"contract=hw/sys/sep/doc/dma.adoc:118-121 mem={mem} dir=write addr=0x{addr:08x} bytes={nbytes} "
+            f"error={st.error} bus_error={bus_error} bus_error_mask=0x{EC_BUS_ERROR:x} "
+            f"host_path_err={hpe}"
+        )
+        if not st.error or not bus_error or not hpe:
+            self._fail("CHK-TCM-SUBWORD-WR", line)
+        self.logger.info("CHK-TCM-SUBWORD-WR PASS: %s", line)
+        self.n_checks += 1
+        self.n_sub_wr += 1
+
     async def _subword(self) -> None:
+        self.n_sub_wr = 0
         for mem, (addr, enc, off, data) in self.plan.sub.items():
             nbytes = 1 << enc
             src, rb = SUB_STAGE, SUB_STAGE + 0x10
@@ -684,6 +779,8 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             for direction, s_a, d_a in (("write", src, addr + off), ("read", addr + off, rb)):
                 await self.mem.fill(rb, [~data & M32])
                 st, ecode, berr = await self._sub_copy(s_a, d_a, nbytes, enc)
+                if direction == "write":
+                    self._chk_subword_wr(mem, addr + off, nbytes, st, ecode, berr)
                 rb_sub = (await self.mem.read(rb, 1))[0]
                 wst, _, wberr = await self._sub_copy(addr, rb, WORD_BYTES, 2)
                 word = (await self.mem.read(rb, 1))[0]
@@ -708,6 +805,10 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
                     word,
                     data,
                 )
+        if self.n_sub_wr != len(MEMS):
+            msg = f"CTRL-MISSING CHK-TCM-SUBWORD-WR: graded={self.n_sub_wr} expect={len(MEMS)}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
         await self.dma.clean_state()
         await self._clear_bus_err()
 

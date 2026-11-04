@@ -7,6 +7,13 @@ hw/sys/smc/doc/memmap.adoc (Address Space Organization), doc/integrator/src/smu-
 The BRESP at BASE+0x001_7000 and BASE+0x001_7FFC is logged as CHK-UNMAP-0X17000-WRITE only.
 Past-extent write BRESP of SLVERR-declared blocks is logged as CHK-UNMAP-PAST-EXTENT-WRITE only.
 
+Before the drawn size is programmed, `ext_in` reads at the PLIC and CLINT bases run under the
+reset REGION_SIZE, which the integrator guide (doc/integrator/src/smu-smc.adoc, "Address Map and
+Aperture") places wholly beyond the limit: each answers DECERR without a request at `smc_in` (the
+crossbar's own response, whose read data no document states and which is logged), and after
+REGION_SIZE is widened to 2^28, the smallest power of two that covers both units, each is counted
+at `smc_in` and answers OKAY.
+
 The seed draws REGION_SIZE from the powers of two 2^25 to 2^30 (the smallest keeps every cell
 of the walk inside the aperture; the largest keeps both bases aligned and the SMC aperture clear
 of the SEP aperture), the word probed inside each ranged cell (two words of the between-unit gap
@@ -20,7 +27,7 @@ import random
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from ocah_axi_vip import RESP_DECERR, RESP_SLVERR, resp_name
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY, RESP_SLVERR, resp_name
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -63,6 +70,17 @@ REGION_SIZE_CHOICES = tuple(1 << n for n in range(25, 31))
 REGION_SIZE_RESET = smc_base_config_u32("SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset")
 BAR_START = BASE
 GAP_RDATA = 0xBADCAB1E
+# smu-smc.adoc "Address Map and Aperture": at the reset REGION_SIZE the PLIC and CLINT lie
+# wholly beyond the limit, and firmware widens REGION_SIZE to cover them. 2^28 is the smallest
+# power of two that reaches past the CLINT.
+RESET_SIZE_UNITS = (
+    ("plic", smc_addr("SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR")),
+    ("clint", smc_addr("SMC_TOP_SMC_CLUSTER_CLINT_BASE_ADDR")),
+)
+COVERING_REGION_SIZE = 1 << 28
+assert all(
+    BASE + REGION_SIZE_RESET <= addr < BASE + COVERING_REGION_SIZE for _, addr in RESET_SIZE_UNITS
+), "the PLIC and CLINT bases lie beyond the reset REGION_SIZE and inside the covering one"
 
 # ocah_aperture_size of dfx_ctrl (smc.rdl) ends the last mapped aperture before the unmapped
 # range that runs up to smc_base_config.
@@ -288,6 +306,69 @@ class smu_smc_unmapped_response_test_seq:
             waited += 1
         self._site("region_poll", f"waited={waited} cycles smc_region_size_o=0x{want:08x}")
 
+    def _smc_in_reads(self) -> int:
+        val = self.dut.smc_xbar_in_ar_count_o.value
+        if not val.is_resolvable:
+            raise AssertionError(f"X/Z on smc_xbar_in_ar_count_o: {val}")
+        return int(val)
+
+    async def _reset_size_units(self, sb) -> None:
+        """PLIC and CLINT from ext_in: DECERR beyond the reset REGION_SIZE, OKAY once covered."""
+        st, size = await self._j2a_rd32(SMC_APERTURE_REGION_SIZE_REG)
+        sb.expect_eq(
+            "REGION_SIZE reads its reset value before the PLIC and CLINT probes",
+            (st, size),
+            (J2A_STATUS_SUCCESS, REGION_SIZE_RESET),
+        )
+        for addr, data, name in (
+            (INBOUND0_START, BAR_START, "BAR_START"),
+            (INBOUND0_END, BAR_START + COVERING_REGION_SIZE - 1, "BAR_END"),
+            (INBOUND0_FILTER_CONFIG, PASS_RW_CONFIG, "BAR_CONFIG"),
+        ):
+            st, _ = await self._j2a(True, addr, data)
+            sb.expect_eq(
+                f"JTAG2AXI {name} write for the PLIC and CLINT probes", st, J2A_STATUS_SUCCESS
+            )
+        beyond = {}
+        beyond_data = {}
+        reads_before = self._smc_in_reads()
+        for name, addr in RESET_SIZE_UNITS:
+            resp, data = await self._read_cell(f"{name}.reset_size", addr)
+            beyond[name] = resp
+            beyond_data[name] = data
+        beyond_smc_in = self._smc_in_reads() - reads_before
+        await self._set_region_size(COVERING_REGION_SIZE, "COVER", sb)
+        covered = {}
+        reads_before = self._smc_in_reads()
+        for name, addr in RESET_SIZE_UNITS:
+            resp, _ = await self._read_cell(f"{name}.covered", addr)
+            covered[name] = resp
+        covered_smc_in = self._smc_in_reads() - reads_before
+        self._log(
+            "OBS crossbar DECERR read data beyond the reset REGION_SIZE: "
+            + " ".join(f"{n}=0x{d:08x}" for n, d in beyond_data.items())
+        )
+        self._log(
+            f"CHK-UNMAP-RESET-SIZE-PLIC-CLINT: under REGION_SIZE 0x{REGION_SIZE_RESET:08x} "
+            + " ".join(f"{n}={resp_name(r)}" for n, r in beyond.items())
+            + f" smc_in_reads={beyond_smc_in}; under 0x{COVERING_REGION_SIZE:08x} "
+            + " ".join(f"{n}={resp_name(r)}" for n, r in covered.items())
+            + f" smc_in_reads={covered_smc_in}"
+        )
+        sb.expect_eq(
+            "CHK-UNMAP-RESET-SIZE-PLIC-CLINT ext_in reads at the PLIC and CLINT bases answer DECERR "
+            f"and reach no smc_in request under the reset REGION_SIZE 0x{REGION_SIZE_RESET:08x}, "
+            f"and answer OKAY, each counted at smc_in, under 0x{COVERING_REGION_SIZE:08x}",
+            (beyond, beyond_smc_in, covered, covered_smc_in),
+            (
+                {name: RESP_DECERR for name, _ in RESET_SIZE_UNITS},
+                0,
+                {name: RESP_OKAY for name, _ in RESET_SIZE_UNITS},
+                len(RESET_SIZE_UNITS),
+            ),
+            evidence="CHK-UNMAP-RESET-SIZE-PLIC-CLINT",
+        )
+
     async def _set_region_size(self, size: int, tag: str, sb) -> None:
         st = await self._j2a_wr32(SMC_APERTURE_REGION_SIZE_REG, size)
         sb.expect_eq(f"JTAG2AXI {tag} REGION_SIZE write", st, J2A_STATUS_SUCCESS)
@@ -349,6 +430,9 @@ class smu_smc_unmapped_response_test_seq:
         gate = dut.tb_smc_jtag2axi_security_disable.value
         if not gate.is_resolvable or int(gate) & 1:
             raise AssertionError(f"SMC J2A gated: security_disable={gate}")
+        self.master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
+        self._mark("S1b", "PLIC and CLINT from ext_in beyond the reset REGION_SIZE, then covered")
+        await self._reset_size_units(sb)
         await self._set_region_size(self.region_size, "WIDE", sb)
         bar_end = BAR_START + self.region_size - 1
         for addr, data, name in (
@@ -364,7 +448,6 @@ class smu_smc_unmapped_response_test_seq:
         self._log(
             f"CELL bar addr=0x{BAR_START:08x}..0x{bar_end:08x} config=0x{cfg_rb & 0xFFFFFFFF:08x}"
         )
-        self.master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
 
         self._mark("S2", "between-unit reads and writes")
         gap_obs = {}
