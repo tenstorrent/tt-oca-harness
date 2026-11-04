@@ -3361,8 +3361,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OTP-FABRIC-BLOCKED",
             "CHK-OTP-FABRIC-BLOCKED",
-            "a SINGLE_OP on the primary TAP launches neither AW nor AR on the "
-            "DTP -> SMC debug AXI port while that posture holds",
+            "with the bridge's PTAP disable input at 1 before and after, a SINGLE_OP read "
+            "on the primary TAP moves neither the AW nor the AR handshake count on the "
+            "DTP -> SMC debug AXI port, no AWVALID, WVALID or ARVALID is high or X/Z on "
+            "any clk_smu_i edge of the window, and the bridge's SINGLE_OP capture reads "
+            "op 0 and address 0 (update not latched); the open-posture control is "
+            "smu_sep_dbg_gating_test_dev_test",
         ),
         (
             "CHK-OTP-SMC-RW-WHILE-BLOCKED",

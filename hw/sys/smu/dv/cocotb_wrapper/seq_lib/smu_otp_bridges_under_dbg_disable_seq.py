@@ -28,9 +28,9 @@ observes an OTP bridge completing while the fabric bridge is shut.
 This anchor runs with the PROD_END SEP shadow image, where
 seq_lib.smu_lifecycle_table gives ``smc_jtag2axi`` disabled, and then:
 
-* shows the fabric bridge really is shut -- a SINGLE_OP on the primary TAP
-  launches nothing on the DTP -> SMC debug AXI port, the same observation
-  smu_sep_dbg_gating_test makes;
+* shows the fabric bridge really is shut -- a SINGLE_OP read on the primary
+  TAP launches nothing on the DTP -> SMC debug AXI port, and the bridge's own
+  SINGLE_OP capture shows the update was never latched;
 * drives both OTP bridges to completion over the same TAP in that state, and
   compares what comes back against a value the image or the RDL fixes:
   the SEP eFuse MAP LC_STATE word must read the PROD_END encoding the image
@@ -48,6 +48,32 @@ back through the same bridge.
 
 Both OTP legs check a value, not just a status: a bridge that returned SUCCESS
 with the error slave's 0xbadcab1e, or with a stale capture, fails here.
+
+The fabric deny (CHK-OTP-FABRIC-BLOCKED) grades four observations of one probe:
+
+* the bridge's disable input in the PTAP reads 1 before and after the probe.
+  hw/ip/jtag/jtag_ptap/doc/architecture.adoc:851-852 -- "when it is 1, the
+  corresponding `jtag2axi` instance blocks AXI transaction generation";
+* the AW and AR handshake counters on the DTP -> SMC debug port do not move,
+  sampled with X/Z failing;
+* AWVALID, WVALID and ARVALID on that port are sampled with X/Z failing on
+  every clk_smu_i edge from before the probe to the end of the settle window,
+  and none is ever high, so a counter that is not wired to the port cannot
+  pass;
+* the SINGLE_OP capture taken after the window reads op 0 and address 0.
+  hw/sys/dtp/doc/jtag.adoc:175-176 -- "For a JTAG2AXI bridge, disabling means
+  TDR update registers are not latched"; hw/ip/jtag/jtag_ptap/doc/architecture.adoc
+  :615 gives the address field reset 0 and "On a Capture-DR, this field holds
+  the previous value"; :619 gives op codes 1 and 2 to a completed AXI
+  response and 3 to a request still in progress. A bridge that latched the
+  probe captures its non-zero address instead.
+
+PROD_END leaves no open path onto the DTP -> SMC debug port, so the live
+control is linked, not in this run: smu_sep_dbg_gating_test_dev_test issues
+the same SMC_AXI_SINGLE_OP read with the TEST_DEV image and requires the same
+AW/AR counters to move (CHK-SEP-DBG-OPEN), and
+smu_jtag2axi_access_matrix_rand_test drives this bridge with the gate open and
+waits for the AR and B counters of the same port to move.
 """
 
 from __future__ import annotations
@@ -55,7 +81,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import c_header_u32, smc_indexed_addr
@@ -75,6 +101,7 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
     sep_otp_jtag2axi_single_read,
     unpack_otp_single_op,
+    unpack_single_op,
 )
 from seq_lib.smu_lifecycle_table import (
     LC_STATE_PRESENSE,
@@ -125,6 +152,11 @@ SHIM_INIT_TIME_PATTERN = 0x0000_0040
 
 OTP_POLL = 128
 FABRIC_SETTLE_CYCLES = 4000
+#: SMC_AXI_SINGLE_OP address field: bit 76 up, 56 bits (hw/sys/dtp/doc/jtag.adoc:89-92,
+#: 56-bit address and 64-bit data).
+SINGLE_OP_ADDR_LSB = 76
+SINGLE_OP_ADDR_MASK = (1 << 56) - 1
+FABRIC_VALIDS = ("awvalid", "wvalid", "arvalid")
 POSTURE_TIMEOUT_CYCLES = 60000
 
 
@@ -145,9 +177,26 @@ class SmuOtpBridgesUnderDbgDisableSeq:
 
     def _dbg_counts(self) -> tuple[int, int]:
         return (
-            self._rd("dtp_smc_dbg_aw_count_o", allow_xz=True),
-            self._rd("dtp_smc_dbg_ar_count_o", allow_xz=True),
+            self._rd("dtp_smc_dbg_aw_count_o"),
+            self._rd("dtp_smc_dbg_ar_count_o"),
         )
+
+    def _fabric_valid_pins(self) -> list:
+        port = getattr(self.dut, "u_dtp_smc_dbg_if", None)
+        if port is None:
+            raise AssertionError("u_dtp_smc_dbg_if unobservable on the wrapper tb top")
+        return [getattr(port, name) for name in FABRIC_VALIDS]
+
+    async def _watch_fabric_valids(self, pins: list, tally: dict[str, int]) -> None:
+        """Count clk_smu_i edges, edges with a VALID high, and edges with a VALID at X/Z."""
+        while True:
+            await RisingEdge(self.dut.clk_smu_i)
+            tally["edges"] += 1
+            values = [pin.value for pin in pins]
+            if not all(v.is_resolvable for v in values):
+                tally["xz"] += 1
+            elif any(int(v) for v in values):
+                tally["valid"] += 1
 
     async def _await_posture_settled(self) -> None:
         """Block until the LCC reflects the shadow image rather than its pre-sense word."""
@@ -247,14 +296,10 @@ class SmuOtpBridgesUnderDbgDisableSeq:
             want.lc_state,
             int(want.smc_jtag2axi_disabled),
         )
-        if lc_state != want.lc_state:
-            raise AssertionError(
-                f"lc_state reads 0x{lc_state:02x}, {state} encodes as 0x{want.lc_state:02x}"
-            )
         sb.expect_eq(
-            "SMC fabric JTAG2AXI disabled by the lifecycle posture",
-            fabric_gated,
-            1,
+            f"(lc_state, smc_jtag2axi_disabled) carry the {state} posture",
+            (lc_state, fabric_gated),
+            (want.lc_state, 1),
             evidence="CHK-OTP-DBG-POSTURE",
         )
 
@@ -271,25 +316,59 @@ class SmuOtpBridgesUnderDbgDisableSeq:
 
         # The fabric bridge is shut. Without this the OTP results below would be
         # equally consistent with a posture that never closed anything.
+        if not FABRIC_PROBE_ADDR & SINGLE_OP_ADDR_MASK:
+            raise AssertionError("the fabric probe address must differ from the capture reset 0")
+        gate_before = self._rd("tb_smc_jtag2axi_security_disable")
         before_aw, before_ar = self._dbg_counts()
+        tally = {"edges": 0, "valid": 0, "xz": 0}
+        watcher = cocotb.start_soon(self._watch_fabric_valids(self._fabric_valid_pins(), tally))
         await jtag.write(
             "SMC_AXI_SINGLE_OP",
             pack_single_op(J2A_OP_READ, FABRIC_PROBE_ADDR, size=SMC_DBG_AXSIZE_4B),
         )
+        require_jtag_tdo_resolved("SMC_AXI_SINGLE_OP probe")
         await ClockCycles(self.dut.clk_smu_i, FABRIC_SETTLE_CYCLES)
+        watcher.cancel()
         after_aw, after_ar = self._dbg_counts()
+        capt = int(await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0))
+        require_jtag_tdo_resolved("SMC_AXI_SINGLE_OP capture")
+        gate_after = self._rd("tb_smc_jtag2axi_security_disable")
+        capt_op, capt_data = unpack_single_op(capt)
+        capt_addr = (capt >> SINGLE_OP_ADDR_LSB) & SINGLE_OP_ADDR_MASK
         self.log.info(
-            "DTP->SMC debug AXI after a SINGLE_OP read of 0x%08x: AW %d->%d AR %d->%d",
+            "DTP->SMC debug AXI after a SINGLE_OP read of 0x%08x: gate %d->%d AW %d->%d "
+            "AR %d->%d; %d clk_smu_i edges, %d with a VALID high, %d with a VALID at X/Z; "
+            "capture op=%d addr=0x%x data=0x%x",
             FABRIC_PROBE_ADDR,
+            gate_before,
+            gate_after,
             before_aw,
             after_aw,
             before_ar,
             after_ar,
+            tally["edges"],
+            tally["valid"],
+            tally["xz"],
+            capt_op,
+            capt_addr,
+            capt_data,
         )
         sb.expect_eq(
-            "DTP->SMC debug AXI launches while the posture blocks the bridge",
-            (after_aw - before_aw, after_ar - before_ar),
-            (0, 0),
+            "SMC fabric bridge refuses the SINGLE_OP while the posture blocks it: "
+            "(gate before, gate after, AW delta, AR delta, VALID edges, X/Z edges, "
+            "window covered, capture op, capture addr)",
+            (
+                gate_before,
+                gate_after,
+                after_aw - before_aw,
+                after_ar - before_ar,
+                tally["valid"],
+                tally["xz"],
+                tally["edges"] >= FABRIC_SETTLE_CYCLES,
+                capt_op,
+                capt_addr,
+            ),
+            (1, 1, 0, 0, 0, 0, True, J2A_STATUS_SUCCESS, 0),
             evidence="CHK-OTP-FABRIC-BLOCKED",
         )
 

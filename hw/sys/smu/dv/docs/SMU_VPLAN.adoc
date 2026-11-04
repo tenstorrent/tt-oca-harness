@@ -4912,13 +4912,13 @@ with the completion the bus returned.
 *Test Coverage*:
 
 * The posture is read, not assumed: `lc_state` must carry the preloaded state and `dbg_disable.smc_jtag2axi` must be asserted before and after all OTP traffic, so the completions are attributable to the blocked-fabric state. The lifecycle chapter gates the SMC fabric JTAG2AXI path on Case 2 and leaves both OTP JTAG2AXIL paths ungated (`hw/sys/sep/doc/lifecycle_controller.adoc`, DTP path feature gates), and Case 2 is closed in PROD_END (DBG_1 and DBG_2 are disabled in undemoted PROD and in PROD_END). The OTP wrapper access policy restricts JTAG only in PROD, RMA_SIP and on an integrity error (`hw/sys/sep/doc/otp_fuse_controller.adoc`, access control), so full OTP access in PROD_END rests on that enumeration; the per-field LOCKS slots being clear is a property of the preload, recorded, not stated.
-* A SINGLE_OP on the fabric bridge launches neither AW nor AR on the DTP-to-SMC debug AXI port while that posture holds; the OTP bridges on both subsystems write and read back a spare word with SUCCESS in the same state, the SEP OTP bridge returns the {~raw, raw} LC_STATE word the image programmed, and the SEP shim window's EFUSE_BANK_INIT_TIME takes and returns a written value.
+* With the bridge's PTAP disable input at 1 before and after, a SINGLE_OP read on the fabric bridge moves neither the AW nor the AR handshake count on the DTP-to-SMC debug AXI port (sampled with X/Z failing), no AWVALID, WVALID or ARVALID is high or X/Z on any clk_smu_i edge of the window, and the bridge's SINGLE_OP capture reads op 0 and address 0, since a disabled bridge does not latch its TDR update register (`hw/sys/dtp/doc/jtag.adoc`, debug disable; `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, `*_AXI_SINGLE_OP`). PROD_END leaves no open path onto that port, so the live control is linked: `smu_sep_dbg_gating_test_dev_test` issues the same SINGLE_OP read with the TEST_DEV image and requires the same counters to move (`CHK-SEP-DBG-OPEN`), and `smu_jtag2axi_access_matrix_rand_test` drives the bridge with the gate open; the OTP bridges on both subsystems write and read back a spare word with SUCCESS in the same state, the SEP OTP bridge returns the {~raw, raw} LC_STATE word the image programmed, and the SEP shim window's EFUSE_BANK_INIT_TIME takes and returns a written value.
 
 *Test Procedure*:
 
 [arabic]
 . Read `lc_state` and `dbg_disable.smc_jtag2axi` and require the blocking posture.
-. Error injection. Point: a SINGLE_OP on the SMC fabric JTAG2AXI bridge from the primary TAP. Kind: a fabric access while the lifecycle posture holds `dbg_disable.smc_jtag2axi` asserted (blocked bridge). Expected response: the bridge launches neither AW nor AR on the DTP-to-SMC debug AXI port; AW and AR are counted and must be none.
+. Error injection. Point: a SINGLE_OP on the SMC fabric JTAG2AXI bridge from the primary TAP. Kind: a fabric access while the lifecycle posture holds `dbg_disable.smc_jtag2axi` asserted (blocked bridge). Expected response: the bridge's disable input reads 1 before and after; the AW and AR counts do not move and no VALID is high or X/Z on any clk_smu_i edge of the window; the SINGLE_OP capture read afterwards shows op 0 and address 0 (update not latched).
 . Write and read back SMC eFuse MAP SPARE[0] and SEP eFuse MAP SPARE0 over their OTP bridges; read SEP MAP LC_STATE and compare against the image.
 . Read, write and read back EFUSE_BANK_INIT_TIME through the SEP OTP bridge's shim window.
 . Re-read `dbg_disable.smc_jtag2axi` and require it still asserted.
@@ -4929,7 +4929,7 @@ with the completion the bus returned.
 |===
 |Checker |Description
 |`CHK-OTP-DBG-POSTURE` |the SEP shadow image puts the chiplet in a lifecycle state whose posture disables dbg_disable.smc_jtag2axi, and lc_state carries that state
-|`CHK-OTP-FABRIC-BLOCKED` |a SINGLE_OP on the primary TAP launches neither AW nor AR on the DTP -> SMC debug AXI port while that posture holds
+|`CHK-OTP-FABRIC-BLOCKED` |with the bridge's PTAP disable input at 1 before and after, a SINGLE_OP read on the primary TAP moves neither the AW nor the AR handshake count on the DTP -> SMC debug AXI port, no AWVALID, WVALID or ARVALID is high or X/Z on any clk_smu_i edge of the window, and the bridge's SINGLE_OP capture reads op 0 and address 0 (update not latched); the open-posture control is smu_sep_dbg_gating_test_dev_test
 |`CHK-OTP-SMC-RW-WHILE-BLOCKED` |SMC OTP JTAG2AXI write and readback of SMC eFuse MAP SPARE[0] both complete with SUCCESS in the same blocked-fabric state
 |`CHK-OTP-SEP-LC-READ-WHILE-BLOCKED` |SEP OTP JTAG2AXI read of SEP eFuse MAP LC_STATE returns the {~raw, raw} word the shadow image programmed
 |`CHK-OTP-SEP-RW-WHILE-BLOCKED` |SEP OTP JTAG2AXI write and readback of SEP eFuse MAP SPARE0 both complete with SUCCESS in the same blocked-fabric state
