@@ -5869,8 +5869,9 @@ modulo-2^56 adder from a wider adder whose upper bits the port drops.
 *Source Module*: `smc_dma_backpressure_breadth_test`
 
 *BFM / Model*: SEP_IN AXI sequencer (`env.sys_axi_agent`, no protocol VIP) for the DMA registers;
-the TB SYS_OUT output-fabric responder (`cfg.sys_out_mem`) with its AR, AW and W channel stall
-controls, its read and write response delay controls and its backdoor memory; TB input pin
+the TB SYS_OUT output-fabric responder (`cfg.sys_out_mem`) accepting 64 outstanding requests per
+direction (`sys_out_max_outstanding`), with its AR, AW and W channel stall controls, its read and
+write response delay controls and its backdoor memory; TB input pin
 `tb_top.tb_output_axi_resp_hold` driven 0 and 1 to hold the R and B responses; passive probes
 `tb_output_axi_arvalid`, `tb_output_axi_arready`, `tb_output_axi_awvalid`, `tb_output_axi_awready`,
 `tb_output_axi_wvalid`, `tb_output_axi_wready`, `tb_output_axi_bvalid`, `tb_output_axi_bready` and
@@ -5889,17 +5890,24 @@ SYS_OUT channels and the AR, AW, W and R delays; the copies must land exact what
 *Test Coverage*:
 
 * The backend performs the AXI reads and writes with an in-flight limit of 32 (`dma.adoc`, SMC DMA
-  elaboration settings) and handles alignment and burst splitting (`dma.adoc`, Linear and
-  Two-Dimensional Copies), so a responder that stalls, delays and holds its channels must change the
-  timing of a copy and nothing else.
+  elaboration settings, `DMA_MST_MAX_TXNS`) and handles alignment and burst splitting (`dma.adoc`,
+  Linear and Two-Dimensional Copies), so a responder that stalls, delays and holds its channels must
+  change the timing of a copy and nothing else. The responder accepts 64 outstanding requests per
+  direction, more than the backend can issue, so a plateau in the outstanding counts is the DUT's
+  limit and not the responder's acceptance window.
 * Random stalls: six copies of 8, 40, 96, 200, 512 and 1000 bytes each run with a random AW stall
   and W stall, a random AR hold, and random R and B response delays of one to eight cycles. The seed
   is printed. Every copy must deliver its exact payload with `DONE_0` equal to its id, and every
   stall and delay kind must have been applied at least once.
 * Outstanding cap: with the R and B responses held, a 128-row copy of 8-byte rows must reach an
   outstanding AR count that is stable for 256 rises and no higher than 32, AR issue must resume
-  after the release and the copy must complete exactly. The outstanding AW maximum with only B
-  delayed by 24 cycles is measured and printed, not compared (the specification does not state the value).
+  after the release and the copy must complete exactly. No rise of the plateau window may show
+  ARVALID without ARREADY, so the DUT and not the responder (depth 64) set the plateau; its value
+  is printed as an observation, since no document sentence states it (the output-fabric
+  demultiplexer admits `MaxTrans - 1` per ID bucket, #3619, one below `DMA_MST_MAX_TXNS` = 32).
+  With only B delayed by 24 cycles, the control that the responder's delay landed on the bus is
+  that every B handshake comes at least 24 rises after the AW handshake it answers; the outstanding
+  AW maximum must reach at least 2 and must not exceed 32 (`dma.adoc`, `DMA_MST_MAX_TXNS`).
 * Long stall: with R and B held for 4096 rises after launch, every `DONE_0` read must equal the
   baseline id, so the new id stays unretired, and `STATUS_0` bit 9, which `dma.adoc` (DMA status and
   notification) gives as zero, must read 0; after the release `DONE_0` must reach the new id.
@@ -5922,9 +5930,11 @@ SYS_OUT channels and the AR, AW, W and R delays; the copies must land exact what
   was applied.
 . Hold R and B with `tb_output_axi_resp_hold`, launch the 128-row job, wait for the outstanding AR
   count to stay unchanged for 256 rises, require it and the running maximum not to exceed 32,
-  release the hold, require further ARs to issue, poll `DONE_0` and compare the image. Then delay
-  the B responses by 24 cycles on a second 128-row job, complete it, compare its image and print the
-  outstanding AW maximum.
+  require no ARVALID without ARREADY during the plateau window, release the hold, require further
+  ARs to issue, poll `DONE_0`, compare the image and print the plateau. Then delay the B responses
+  by 24 cycles on a second 128-row job, complete it, require every B handshake at least 24 rises
+  after its AW handshake (the delay landed) and the outstanding AW maximum between 2 and 32, and
+  compare its image.
 . Hold R and B, launch a 64-byte copy and read `DONE_0` and `STATUS_0` repeatedly until 4096
   `clk_smc_i` rises have passed, requiring `DONE_0` to equal the baseline and `STATUS_0` bit 9 to be
   0 on every read; release the hold, poll `DONE_0` to the new id and compare the destination.
@@ -5941,10 +5951,12 @@ SYS_OUT channels and the AR, AW, W and R delays; the copies must land exact what
 |Checker |Description
 |`CHK-DMA-BP-RANDOM` |All six copies deliver their exact payload with `DONE_0` equal to each id, the
   seed is printed, and the AR, AW and W stall counts and the R and B delay counts are each above 0
-|`CHK-DMA-BP-OUTSTANDING-CAP` |With R and B held the outstanding AR count settles at a plateau
-  stable for 256 rises that never exceeds 32, AR issue resumes after the release and the copy
-  completes exactly; the plateau value and the outstanding AW maximum under a B delay are measured
-  and printed without comparing the AW maximum
+|`CHK-DMA-BP-OUTSTANDING-CAP` |With R and B held behind a responder accepting 64 outstanding
+  requests, the outstanding AR count settles at a plateau stable for 256 rises that never exceeds
+  32 with no AR refused by the responder during the window, AR issue resumes after the release and
+  the copy completes exactly; with only B delayed by 24 cycles the delay landed on the bus (every B
+  handshake at least 24 rises after its AW handshake) and the outstanding AW maximum is at least 2
+  and at most 32
 |`CHK-DMA-BP-LONG-STALL` |Throughout the 4096-rise hold every `DONE_0` read equals the baseline and
   `STATUS_0` bit 9 is 0, and after the release `DONE_0` reaches the new id and the destination
   matches
@@ -5956,12 +5968,16 @@ SYS_OUT channels and the AR, AW, W and R delays; the copies must land exact what
 
 *Pass Criteria*: all five checkers hold and every sequence assert holds: every payload matches byte
 for byte, every `DONE_0` poll reaches its id inside the poll bound, the outstanding AR count never
-exceeds 32 and `DONE_0` never advances during the hold. The plateau value and the outstanding AW
-maximum are reported. Enrolled in: `all`, `hosted`.
+exceeds 32 and the responder refuses no AR during the plateau window, every delayed B comes at
+least 24 rises after its AW, the outstanding AW maximum lies between 2 and 32 and `DONE_0` never
+advances during the hold. The plateau value is printed as `OBS-DMA-OUTSTANDING-PLATEAU`. Enrolled
+in: `all`, `hosted`.
 
-*Scope limit*: The outstanding AW maximum with only B delayed by 24 cycles is measured and printed,
-not compared, because the specification does not state the value. The outstanding AR plateau value
-is reported next to its bound of 32.
+*Scope limit*: The plateau value (31 behind a responder depth of 64) is observed, not graded: the
+specification states the backend in-flight limit of 32 and no sentence states the plateau; the
+demultiplexer's `MaxTrans - 1` admission is tracked by #3619, and the plateau becomes a graded 32
+when a document states it and the demultiplexer admits `MaxTrans`. The outstanding AW maximum with
+only B delayed is bounded, not pinned: the specification states only the in-flight limit.
 
 '''''
 
