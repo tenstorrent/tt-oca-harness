@@ -17047,7 +17047,7 @@ module sep_fcov (
     // Access while ip_rst_n of the domain is low: {domain 0 OTBN, 1 AES,
     // 2 KMAC, 3 Adams Bridge, 4 HMAC, 5 TRNG, class 0 read with 0x1501A7ED
     // in every 32-bit lane (and SLVERR for domains 0 to 3), 1 write SLVERR,
-    // 2 another answer}. HMAC and TRNG writes are not sampled.
+    // 2 another answer}.
     cp_isolated_resp: coverpoint s.ir iff (s.ir_v) {
       bins otbn_rd = {5'b000_00};
       bins otbn_wr = {5'b000_01};
@@ -17058,7 +17058,9 @@ module sep_fcov (
       bins abr_rd = {5'b011_00};
       bins abr_wr = {5'b011_01};
       bins hmac_rd = {5'b100_00};
+      bins hmac_wr = {5'b100_01};
       bins trng_rd = {5'b101_00};
+      bins trng_wr = {5'b101_01};
       illegal_bins other_answer = {
         5'b000_10, 5'b001_10, 5'b010_10, 5'b011_10, 5'b100_10, 5'b101_10
       };
@@ -20419,7 +20421,7 @@ module sep_fcov (
     end
     if (mr_own_swiso && b_any) begin
       dom = mr_ir_dom(aw_addr_q);
-      if ((dom >= 0) && (dom < 4) && mr_ir_awlow[dom] && !mr_ip[MrIrIdx[dom]]) begin
+      if ((dom >= 0) && mr_ir_awlow[dom] && !mr_ip[MrIrIdx[dom]]) begin
         mr_scope_t e;
         e      = '0;
         e.ir   = {3'(dom), (lsu_b_resp_i == 2'b10) ? 2'd1 : 2'd2};
