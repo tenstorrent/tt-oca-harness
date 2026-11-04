@@ -254,8 +254,10 @@ module smu_xbar_fcov #(
     // order, sep_out, smc_out, ext_in (the initiators) and sep_in,
     // smc_in, ext_out (the targets); lane l = 2p + d is port p, writes
     // for d = 0 and reads for d = 1. Every point below is sampled on a
-    // handshake and is a stimulus criterion: none compares a response
-    // with an expected value.
+    // handshake and is a stimulus criterion, not a verdict. A route cell
+    // is outcome-qualified: a forwarding cell needs the handshake on the
+    // target the routing table predicts, and a DECERR cell needs BRESP or
+    // RRESP 2'b11. A misroute shows as an unhit cell, not as a failure.
     // ----------------------------------------------------------------
     localparam int unsigned NumPorts = 6;
     localparam int unsigned NumLanes = 2 * NumPorts;
