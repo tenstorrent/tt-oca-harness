@@ -221,7 +221,7 @@ _KEY_PORT = {
     "main:abr_wrapper_key": 4,
 }
 _SHARE_ZERO_CONTRACT = (
-    "key_manager/doc/architecture.adoc:282-283(Key_Delivery),"
+    "key_manager/doc/architecture.adoc:290-291(Key_Delivery),"
     "{aes,otbn,kmac,hmac}_wrapper_key.rdl:37,abr_wrapper_key.rdl:44(KEY_SHARE0)"
 )
 _SRAM_TOP_CONTRACT = (

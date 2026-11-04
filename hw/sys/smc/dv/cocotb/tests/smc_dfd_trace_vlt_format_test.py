@@ -30,7 +30,7 @@ from smc_base_test import smc_base_test
 #   the initial segment-select programming, one write per mux id             64
 #   funnel Trfunnelcontrol write + readback                                   2
 #   sink: off write, 6 window writes, enable write + readback                 9
-#   the first frame-length write + readback                                   2
+#   the first frame-length write + readback on the DST and on the sink        4
 #   Trdstcontrol write + readback                                             2
 #   empty start: the packetizer read and the sink pointer read                2
 #   CLA arm: EAP reset write, control write, 2 for the LogicalOp discovery    4
@@ -39,13 +39,13 @@ from smc_base_test import smc_base_test
 #     snapshot, one probe (write and two-word snapshot)                      69
 #   64 action writes                                                         64
 #   4 segment rotations of the sampled mux (write and two-word snapshot)     12
-#   1 further frame-length write + readback                                   2
+#   1 further frame-length write + readback on the DST and on the sink        4
 #   the quiesce write and the delivered read                                  2
-#   restore: Trdstcontrol, Trdstimpl, EAP, CLA control, CLA mux, funnel,
-#     sink control, DEBUG_BUS_MUX, DEBUG_CTRL                                 9
+#   restore: Trdstcontrol, Trdstimpl, Trdstramimpl, EAP, CLA control, CLA
+#     mux, funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL                   10
 #                                                                         ------
-#                                                                            309
-TRACE_FORMAT_MIN_CSR_ACCESSES = 309
+#                                                                            314
+TRACE_FORMAT_MIN_CSR_ACCESSES = 314
 
 
 @pyuvm.test()

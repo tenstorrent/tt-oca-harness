@@ -42,8 +42,10 @@ Three things have to be true at once for the XOR and VLT compressors behind
   rotation, and at least two different lane states are required.
 * **More than one packet size.** ``Trdstimpl.Trdstvendorframelength`` sets
   the frame length, which the RDL description makes the field value times 64
-  bytes. The run changes it part way through, so the packet path sees two
-  frame lengths.
+  bytes, drawn from the 1, 2, 4 and 8 it names as supported, and the sink's
+  ``Trdstramimpl.Trdstramvendorframelength`` is given the same value, as both
+  descriptions require. The run changes it part way through, so the packet
+  path sees two frame lengths.
 
 ``Trdstsyncmode`` is set to the one encoding the RDL describes as sending a
 timestamp, with ``Trdstsyncmax`` at zero, which the RDL description makes the
@@ -80,8 +82,9 @@ FORMAT_XOR = 1
 FORMAT_XOR_VLT = 3
 
 # dfd_dst.rdl Trdstimpl.Trdstvendorframelength, whose description makes the
-# frame length the field value times 64 bytes, so these are 64 and 192.
-_FRAME_LENGTHS = (1, 3)
+# frame length the field value times 64 bytes and names 1, 2, 4 and 8 as the
+# supported values, so these are 64 and 128.
+_FRAME_LENGTHS = (1, 2)
 
 # dfd_dst.rdl Trdstsyncmode, the one encoding its description names as
 # sending a timestamp.
@@ -187,6 +190,11 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
                 "Trdsttimestampconfig": 0,
             },
             f"framelen{length}",
+        )
+        await self._write_check(
+            sink_register("Trdstramimpl"),
+            {"Trdstramvendorframelength": length},
+            f"sinklen{length}",
         )
         self.frame_lengths.append(length)
 
@@ -374,8 +382,9 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-DST-FORMAT-FRAMELEN: the run changed Trdstvendorframelength through %s "
             "while the trace was live, which its RDL description makes frame lengths of %s "
-            "bytes, each written and read back exactly, so the packet path saw more than "
-            "one frame size",
+            "bytes, each written and read back exactly on the DST and on the sink's "
+            "Trdstramvendorframelength, so the packet path saw more than one supported "
+            "frame size with the two lengths equal",
             sorted(set(self.frame_lengths)),
             sorted(v * 64 for v in set(_FRAME_LENGTHS)),
         )
@@ -383,6 +392,7 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
         for reg in (
             dst_register("Trdstcontrol"),
             dst_register("Trdstimpl"),
+            sink_register("Trdstramimpl"),
             cla_register("CDbgNode0Eap0"),
             cla_register("CDbgClaCtrlStatus"),
             cla_register("CDbgMuxSelLo"),

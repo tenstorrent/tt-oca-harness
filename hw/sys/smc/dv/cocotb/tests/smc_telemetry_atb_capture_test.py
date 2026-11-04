@@ -12,14 +12,16 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_telemetry_atb_capture_test(smc_base_test):
-    """Capture one ATB message on receiver 0 and drive the receiver and transmitter flushes."""
+    """Capture and decode ATB messages on receiver 0, then drive both flushes."""
 
     required_evidence = (
         "CHK-TELEMETRY-ATB-MESSAGE-CAPTURE",
+        "CHK-TELEMETRY-COUNTER-BYTE-MAP",
+        "CHK-TELEMETRY-COUNTER-VALIDITY",
         "CHK-TELEMETRY-RX-FLUSH",
         "CHK-TELEMETRY-TX-FLUSH-HANDSHAKE",
     )
-    min_evidence = 3
+    min_evidence = 5
 
     auto_protocol_vip = False
 

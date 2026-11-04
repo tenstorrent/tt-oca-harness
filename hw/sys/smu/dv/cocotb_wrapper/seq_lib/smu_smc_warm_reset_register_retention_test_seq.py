@@ -14,8 +14,15 @@ Architecture"), so it is retained as well. The CORE0 watchdog timer is covered b
 word sit in no domain a chapter names, so they are measured and logged only.
 
 Every register access is a JTAG2AXI access on the SMC fabric; nothing is forced. A free-running
-monitor samples the watchdog second timeout, the warm reset probe and the primary and stable cold
-reset outputs on every ``clk_smu_i`` edge.
+monitor samples the watchdog second timeout, the warm reset probe, the primary and stable cold
+reset outputs and ``smc_fuse_sense_done_o`` on every ``clk_smu_i`` edge.
+
+``doc/integrator/src/smu-smc.adoc`` ("eFuse Interface") runs the fuse sense once per cold boot,
+as a single read command over the whole bank; CPU and warm resets do not repeat it. The leaf runs
+the real SMC sense: the observers the test arms before bring-up record the cold-boot rise of
+``smc_fuse_sense_done_o`` and the one eFuse shim read command that earned it, the sequence waits
+for that rise before its first access, and across the window that holds the warm reset
+``smc_fuse_sense_done_o`` reads 1 on every sample and the shim command count does not move.
 """
 
 from __future__ import annotations
@@ -112,11 +119,15 @@ WARM_RESET_PATH = "u_smc.rst_warm_smc_clk_n"
 EVENT_RISE_BOUND_NS = 980_000
 EVENT_FALL_BOUND = 4096
 RELEASE_BOUND = 20000
+# The 768-word sense of the default image completes 2280-2330 clk_smu after the primary reset
+# release on this bench; the bound is about twice that.
+SENSE_BOUND = 5000
 STEP_CLOCK_GAP = 2
 
-# Wait sites per kind: the second timeout rise and warm reset fall, and the two releases.
-EXPECTED_SITE_KINDS = {"event": 2, "release": 2}
-EXPECTED_SITES = 4
+# Wait sites per kind: the cold-boot sense, the second timeout rise and warm reset fall, and the
+# two releases.
+EXPECTED_SITE_KINDS = {"sense": 1, "event": 2, "release": 2}
+EXPECTED_SITES = 5
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S7", "S8", "S9", "S10", "S11")
 
@@ -129,6 +140,7 @@ class Sample(NamedTuple):
     warm: int
     primary: int
     cold: int
+    sense: int
 
 
 def _level(signal) -> int:
@@ -200,6 +212,7 @@ class smu_smc_warm_reset_register_retention_test_seq:
             _level(self.warm),
             _level(self.primary),
             _level(self.cold),
+            _level(self.dut.smc_fuse_sense_done_o),
         )
         self.trace.append(entry)
         return entry
@@ -221,7 +234,10 @@ class smu_smc_warm_reset_register_retention_test_seq:
 
     @staticmethod
     def _state(s: Sample) -> str:
-        return f"second={s.second} rst_warm={s.warm} primary={s.primary} cold={s.cold}"
+        return (
+            f"second={s.second} rst_warm={s.warm} primary={s.primary} cold={s.cold} "
+            f"sense_done={s.sense}"
+        )
 
     def _first(self, pred, start: int) -> int:
         for idx in range(start, len(self.trace)):
@@ -268,6 +284,13 @@ class smu_smc_warm_reset_register_retention_test_seq:
         sb = self.sb
         dut = self.dut
         await self.cfg.reset_done.wait()
+        probe = self.test.fuse_probe
+        await self._wait_required(
+            "sense",
+            "cold-boot sense done",
+            lambda: bool(probe.rises["smc_fuse_sense_done_o"]),
+            SENSE_BOUND,
+        )
         self.jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await self.jtag.reset_tap()
         await self.jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
@@ -280,6 +303,8 @@ class smu_smc_warm_reset_register_retention_test_seq:
             raise AssertionError("SMC JTAG2AXI still gated; no CSR leg can run")
         monitor = cocotb.start_soon(self._monitor())
         await self._mark("S1", "TAP reset, IDCODE read, JTAG2AXI open, sampling started")
+        sense_rises = len(probe.rises["smc_fuse_sense_done_o"])
+        commands_at_s1 = probe.req_pulses["smc_efuse_shim"]
 
         retained = (
             ("SS_CONFIG", SS_CONFIG, SS_CONFIG_PATTERN, SS_CONFIG_RESET),
@@ -292,6 +317,7 @@ class smu_smc_warm_reset_register_retention_test_seq:
         for name, addr, pattern, _reset in retained:
             before[name] = await self._write_readback(addr, pattern, name)
         await self._mark("S2", "retained patterns written and read back")
+        commands_at_s2 = probe.req_pulses["smc_efuse_shim"]
 
         measured = (
             ("CPU_CTRL SCRATCH[0]", CPU_CTRL_SCRATCH, CPU_SCRATCH_PATTERN),
@@ -382,15 +408,18 @@ class smu_smc_warm_reset_register_retention_test_seq:
                 measured_before[name],
             )
         await self._mark("S10", "measured-only registers read after the event")
+        commands_at_s10 = probe.req_pulses["smc_efuse_shim"]
         await ClockCycles(self.clk, STEP_CLOCK_GAP)
         self.stamp_ps["S11"] = int(get_sim_time(unit="ps"))
         self.log.info("STEP S11 @%.3fns: PASS stamp", self.stamp_ps["S11"] / 1000)
         monitor.cancel()
+        probe.stop()
 
         self._check_retained(sb, retained, before, after)
         self._check_wdt_return(sb, cmp_before, ctrl_before, cmp_after, ctrl_after)
         self._check_event(sb, at_arm, arm_idx, (met_rise, i_rise), (met_fall, i_fall))
         self._check_primary_stay(sb)
+        self._check_no_resense(sb, sense_rises, commands_at_s1, commands_at_s10 - commands_at_s2)
         self._check_integrity(sb)
         self.done = True
 
@@ -506,6 +535,35 @@ class smu_smc_warm_reset_register_retention_test_seq:
             evidence="CHK-WARM-RET-PRIMARY-STAY",
         )
 
+    def _check_no_resense(
+        self, sb, sense_rises: int, commands_before: int, commands_in_window: int
+    ) -> None:
+        lo, hi = self.stamp_ps["S2"], self.stamp_ps["S10"]
+        window = [s for s in self.trace if lo <= s.t_ps <= hi]
+        sense_bad = sum(1 for s in window if s.sense != 1)
+        warm_low = sum(1 for s in window if s.warm == NET_ASSERTED)
+        self.log.info(
+            "CHK-WARM-RET-NO-RESENSE: the cold-boot sense rose %d time(s) after %d eFuse shim read "
+            "command(s) before S1 (expected 1 and 1); smc_fuse_sense_done_o not 1 in %d of %d "
+            "clk_smu_i samples from S2 to S10 (expected 0); the warm reset read 0 in %d of them; "
+            "%d shim read command(s) from S2 to S10 (expected 0)",
+            sense_rises,
+            commands_before,
+            sense_bad,
+            len(window),
+            warm_low,
+            commands_in_window,
+        )
+        sb.expect_eq(
+            "CHK-WARM-RET-NO-RESENSE the cold-boot sense rose once over one eFuse shim read "
+            "command before S1; smc_fuse_sense_done_o reads 1 at every clk_smu_i sample from S2 "
+            "to S10 while the warm reset reads 0 inside the window, and no shim read command is "
+            "issued there",
+            (sense_rises, commands_before, sense_bad, warm_low > 0, commands_in_window),
+            (1, 1, 0, True, 0),
+            evidence="CHK-WARM-RET-NO-RESENSE",
+        )
+
     def _check_integrity(self, sb) -> None:
         for rec in self.sites:
             self.log.info(
@@ -518,7 +576,9 @@ class smu_smc_warm_reset_register_retention_test_seq:
                 rec["last"],
             )
         expired = sum(r["expired"] for r in self.sites)
-        unresolved = sum(1 for s in self.trace if -1 in (s.second, s.warm, s.primary, s.cold))
+        unresolved = sum(
+            1 for s in self.trace if -1 in (s.second, s.warm, s.primary, s.cold, s.sense)
+        )
         kinds = dict(Counter(rec["kind"] for rec in self.sites))
         self.log.info(
             "CHK-TIMEOUT-PATHS: sites=%d expected=%d kinds=%s expiries=%d expected=0; "

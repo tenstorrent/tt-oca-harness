@@ -2428,7 +2428,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         # does not shred the sideload banks; the report and the trap are
         # outside that gate (firmware.adoc, "Error Recovery", lines 1131-1133).
         # The trap wipe clears the keys one edge after the bit-30 rise
-        # (architecture.adoc, "Wipe State", lines 504-507 and 524-525), so the
+        # (architecture.adoc, "Wipe State", lines 512-515 and 532-533), so the
         # rise sample holds the vector of the key transfer.
         kv_rise = watch.kv_at_rise
         self.chk.ok(

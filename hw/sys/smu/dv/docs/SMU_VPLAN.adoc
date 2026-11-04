@@ -383,6 +383,8 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_aperture_map_walk_test` |fabric |3 |The SMU crossbar decodes the SMC aperture at every base and size BASE_CONFIG admits and JTAG2AXI can follow.
 |`smu_xbar_connectivity_matrix_test` |fabric |3 |An `ext_in` access that matches neither programmed aperture is answered DECERR by the crossbar and never reaches `ext_out`.
 |`smu_xbar_zero_aperture_test` |fabric |3 |A zero-size SEP or SMC aperture, and both at once, matches no address whatever its base: `ext_in` traffic to it is DECERR and never reaches the port, `sep_out` traffic to the disabled SEP window leaves on `ext_out`, the other aperture keeps its route, and a cold reset restores both.
+|`smu_xbar_self_route_smc_test` |fabric |3 |A JTAG2AXI write and read at GLOBAL_BASE plus the VERSION_LO offset, the SMC's own global window, are served locally with SUCCESS and never reach the crossbar's `smc_out` port, so the routing table's `smc_out` DECERR cell is unreachable from the SMC; the local-alias read and an egress round trip are the controls.
+|`smu_xbar_self_route_sep_test` |fabric |3 |A SEP debug system-bus write and read of a page with SEP_GLOBAL_BASE_ADDR moved onto it each report an error from the crossbar's `sep_out` port and reach no subordinate; the same page with the base at reset is the egress control.
 |`smu_xbar_decerr_burst_response_test` |fabric |3 |An `ext_in` read or write that matches neither aperture, single-beat or burst, at the miss address or at the bit-55 alias of the SMC window, is answered by the crossbar alone with the AXI4 response shape of the request and changes nothing behind it.
 |`smu_xbar_reset_held_target_test` |fabric |3 |With the SEP held by the IC_RESET SEP slice, one hold per measurement and a cold reset between holds, a later same-ID response never overtakes a read orphaned at `sep_in`, `ext_in` reads under other IDs with no same-ID request queued ahead complete to the SMC within their bound, and a cold reset clears the state; the orphan's fate, the responses around the hold, the acceptance counts and the R-beat withdrawal at the fall (#2891) are recorded.
 |`smu_xbar_aperture_edge_burst_test` |fabric |3 |A single beat or a burst at a SEP or SMC aperture edge, at the 2^56 carry edge, into an adjacent aperture or into a SEP aperture wider than the SEP inbound space is routed whole to the one subordinate its first address selects.
@@ -394,7 +396,7 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_filter_cfg_register_map_test` |fabric |3 |The filter control registers of all entries of both filter instances reset, store, read back and address as the RDL specifies.
 |`smu_filter_lock_test` |fabric |3 |A locked filter entry answers writes with DECERR, keeps its values and its filtering, and leaves its neighbours writable.
 |`smu_remap_cfg_register_map_test` |fabric |3 |The alias and output remap registers reset to zero, sit at the SMC map placement and store their defined fields.
-|`smu_smc_unmapped_response_test` |fabric |3 |An `ext_in` access between SMC units, past a unit's extent or to the M-mode and Xvisor windows answers DECERR.
+|`smu_smc_unmapped_response_test` |fabric |3 |An `ext_in` access between SMC units, past a unit's extent or to the M-mode and Xvisor windows answers DECERR; the PLIC and CLINT answer DECERR beyond the reset REGION_SIZE and OKAY once it covers them.
 |`smu_ext_in_error_inject_rand_test` |fabric |3 |A SLVERR or DECERR that the `ext_out` responder returns is the response of that request at its initiator, the crossbar adds no DECERR of its own to a request it routes to `ext_out`, and the next access answers OKAY.
 |`smu_boot_stall_jtag_cold_reset_matrix_test` |reset |2 |boot-stall sticky matrix
 |`smu_boot_stall_vs_ic_reset_priority_test` |reset |3 |stall vs IC_RESET priority
@@ -423,10 +425,11 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_jtag2axi_vs_smn_same_csr_race_test` |smu |3 |J2A vs SMN coherent winner
 |`smu_system_timer_octs_test` |smu |1 |SMU Tier C OCTS primary free-run
 |`smu_xtrig_ctm_illegal_phase_test` |smu |2 |pin-only illegal CTM corners
-|`smu_boundary_port_composition_test` |smu |2 |The SEP=1 SMU boundary ports are present at the widths the specifications state, the SMC-side ID-width converter presents the 6-bit subsystem ID the SMC system AXI input specifies, `ss_config_o` and `skip_mem_repair_o` present their specified idle values, and the CTP channels stay inert while their data inputs rest.
+|`smu_boundary_port_composition_test` |smu |2 |The SEP=1 SMU boundary ports are present at the widths the specifications state, the smu AXI ports carry 8-bit IDs in, 10-bit IDs out and 12-bit user fields on every channel, the SMC-side ID-width converter presents the 6-bit subsystem ID the SMC system AXI input specifies, `ss_config_o` and `skip_mem_repair_o` present their specified idle values, and the CTP channels stay inert while their data inputs rest.
 |`smu_composition_parameter_test` |smu |2 |The build parameters the wrapper passes down reach the instances that consume them at the values the specification states.
 |`smu_smc_boundary_io_test` |smu |2 |The SMC-facing wrapper boundary signals that `port_table.adoc` declares are proved through the SMC register map or, for the external interrupts, the SMC CPU interrupt vector `interrupts.adoc` defines, each leg comparing a DUT-produced value against the contract.
 |`smu_smc_cool_reset_pin_test` |smu |3 |A seed-drawn pulse below the 32-sample de-glitcher on `rst_cool_n_from_pin_i` is filtered and a seed-drawn hold above it asserts the SMC primary reset; the four DFT done/pass straps are paired with their set-only DFX_CTRL.STATUS_SMU fields through that reset.
+|`smu_cold_reset_pin_timing_test` |smu |3 |A pinned 31-`clk_ref` pulse and a seed-drawn pulse below the 32-sample de-glitcher on `rst_cold_ni` are filtered, a seed-drawn hold asserts the stable cold reset 32 to 33 `clk_ref` after the pin falls, and with `clk_ref_i` held the pin does not propagate until the clock restarts.
 |`smu_smc_gpio_pad_output_test` |smu |3 |Every GPIO pad driven from its own DATA_CTRL, with a code no other pad shares, follows CORE2PAD and loops it back to its own interrupt lane, and transmit alone drives the pad with its interrupt lane low
 |`smu_smc_boundary_lane_sweep_test` |smu |3 |Every lane of the multi-lane SMC-facing wrapper buses is driven both ways and compared against the SMC register or interrupt vector that owns it, and each aggregate names the lane count it expects.
 |`smu_smc_efuse_shadow_sense_reset_test` |smu |3 |After a real SMC fuse sense, `smc_shadow_regs_o` carries the sensed eFuse image at every register offset `smc_addr.h` gives the map, and it reads the zero every `smc_efuse_map.rdl` field resets to while `rst_cold_ni` is held; the image programs every fuse bit, so both samples are taken on the full width of the port.
@@ -478,7 +481,7 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_jtag_trst_por_reset_test` |dtp |3 |`TRST_n` and the power-on reset each hold the primary TAP in Test-Logic-Reset without TCK, release it to Run-Test/Idle on the first TMS-low TCK, and Test-Logic-Reset loads IDCODE.
 |`smu_jtag2axi_access_matrix_rand_test` |dtp |3 |Extends `smu_dtp_jtag2axi_smc_rw_matrix_test`, `smu_dtp_jtag2axi_address_walk_test` and `smu_dtp_jtag2axi_wstrb_partial_sticky_test` with drawn cells only: a drawn address at any offset, a drawn size field with the effective size on AxSIZE, a drawn strobe subset inside the selected lanes, a drawn 64-bit payload, a drawn series count with the 2^E step at a drawn E, and the sticky-status variant at drawn addresses between unit apertures.
 |`smu_sep_smoke_test` |sep |1 |wrapper SEP RTL boot: ROM fetch, ICCM, 256 retires / 16 PCs, DCCM write
-|`smu_sep_fuse_sense_done_test` |sep |2 |SEP fuse sense completes on the composition and reports on `sep_fuse_sense_done_o` after the cold reset released and after eFuse read traffic appeared.
+|`smu_sep_fuse_sense_done_test` |sep |2 |SEP fuse sense completes on the composition and reports on `sep_fuse_sense_done_o` after the cold reset released and after eFuse read traffic appeared; the SEP's `smc_fuse_sense_done_i` follows `smc_fuse_sense_done_o` and `sep_reset_n_o` rises only after it.
 |`smu_sep_secure_tm_test` |sep |2 |`secure_tm_req_i` is latched into `secure_tm_o` once per cold reset from the value it holds at the SEP fuse-sense-done edge, not the value it held when the reset asserted, and the strap is ignored between sampling windows.
 |`smu_secure_tm_real_sense_window_test` |sep |3 |`secure_tm_o` latches the strap at the SEP fuse-sense completion, clears under a second cold reset and stays 0 across the whole real sense that follows, including while the strap pulses.
 |`smu_sep_cold_reassert_during_sense_test` |sep |3 |Re-asserting the cold reset after the SEP fuse sense and at chosen points inside a later sense resets the SEP, clears the done flag, aborts the partial sense and lets a full sense restart.
@@ -1326,7 +1329,7 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 
 * The rule is the integrator guide's (`doc/integrator/src/smu.adoc`, "SMU AXI Crossbar Address Map": unmatched inbound requests return a decode error and do not reach `ext_out`); the SEP and SMC apertures are read live from the DUT to pick an address outside both.
 * A read and two writes are issued, the second write with every AWID bit set; the crossbar itself must answer DECERR with the issued IDs, and the SMN egress boundary counters must not move.
-* SMU-XBAR-CONN.S5 and S6 (the SEP and SMC self-routes) need SEP or SMC firmware that targets its own aperture and are not claimed here.
+* SMU-XBAR-CONN.S5 (the SEP self-route) is graded by `smu_xbar_self_route_sep_test` (<<sec-218-smu_xbar_self_route_sep_test>>); S6 (the SMC self-route) is unreachable from the built SMC, which serves its global window locally (<<sec-217-smu_xbar_self_route_smc_test>>), and stays proved by `smu_axi_xbar_fpv`.
 
 *Test Procedure*:
 
@@ -1345,7 +1348,7 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
-*Scope limit*: SMU-XBAR-CONN.S5 and S6 (the SEP and SMC self-routes) need SEP or SMC firmware that targets its own aperture and are not claimed here.
+*Scope limit*: SMU-XBAR-CONN.S5 (the SEP self-route) is graded by `smu_xbar_self_route_sep_test`; S6 (the SMC self-route) is unreachable from the built SMC (`smu_xbar_self_route_smc_test`) and stays formal-only.
 
 '''''
 [[sec-019-smu_periph_ext_window_test]]
@@ -1644,7 +1647,7 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `fabric`, `no_sep`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 3, so three seeds per regression); tool Verilator on `target = "compile_smu_chiplet"`.
 
-*Randomization*: RANDCFG: the seed draws the REGION_SIZE value the walk programs before its map cells from the powers of two 2^25 (32 MiB) to 2^30 (1 GiB), the sizes the register's own rule, the memory map and the leaf's address set admit: a power of two because `REGION_SIZE` "Must be a non-zero power of two", and at most 2^30 because "GLOBAL_BASE and LOCAL_BASE must be aligned to this size" (`hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl`, `REGION_SIZE`) while both bases read `0xC000_0000` under the draw (step 1 programs GLOBAL_BASE to LOCAL_BASE; the resets `0x4000_0000` and `0xC000_0000` are aligned to 2^30 and to no higher power), so a 2^31 draw is illegal by the register's rule; at most 2^30 also because the SEP and SMC apertures of the crossbar must not overlap (`hw/sys/smu/doc/index.adoc`, "AXI Crossbar"), and the SMC aperture `[0xC000_0000, 0xC000_0000 + size)` at every admitted size lies above the SEP aperture at its reset `SEP_GLOBAL_BASE_ADDR` 0 and `SEP_REGION_SIZE` 16 MiB (`hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl`); at least 2^25 because the M-mode remap window at `BASE + 0x100_0000` sits at the reset 16 MiB boundary and the Xvisor window at `BASE + 0x180_0000` beyond it (the addresses and the 8 MiB window size: `hw/sys/smc/doc/fabric.adoc`, "Fabric Topology"; the DECERR response from the inbound port: `hw/sys/smc/doc/memmap.adoc`), so 2^25 is the smallest power of two that keeps both windows, the base configuration block at `BASE + 0x001_0000` and inbound filter entry 0 at `BASE + 0x001_5000` reached through the local alias window (`hw/sys/smc/regs/smc.rdl`), the exception addresses `BASE + 0x001_7000` and `BASE + 0x001_7FFC` and the past-extent cells of the units below `BASE + 0x002_0000` (the core 0 watchdog, reset unit, misc wrap, GPIO interface, DFX control, base configuration and alias remap units) inside every drawn aperture, so every seed grades every map cell; the inbound window the leaf opens follows the drawn size. Under it the seed draws the word probed inside each ranged map cell (two distinct 4-byte-aligned words of the unmapped range between the last mapped aperture of the DFX control unit and the base configuration unit, beside the range's first word, which stays pinned into every run, and one word inside each 8 MiB remap window) and the direction of every cell (read first or write first; the reads and the DECERR-declared writes are graded, and the writes at the cells `memmap.adoc` documents as SLVERR are logged, as the Scope limit states), each graded by `CHK-UNMAP-BETWEEN`, `CHK-UNMAP-PAST-EXTENT` and `CHK-UNMAP-MMODE-XVISOR`; the gap's first word, the two exception addresses and the eleven past-extent first words are fixed cells (the decode-edge, base-pattern and port cells of `smu_aperture_map_walk_test` and the LOCAL_BASE and GLOBAL_BASE cells of `smu_base_config_corners_test` stay with those entries, whose compares this entry does not have); no drawn REGION_SIZE places a cell of the walk past the aperture, so the window-close rule of REGION_SIZE (`smc_base_config.rdl`; `memmap.adoc`: an inbound access to a unit whose window extends past the size answers DECERR) is not exercised here, and the units that lie beyond the reset REGION_SIZE stay out of scope, as the Scope limit states. Every drawn cell is logged at the draw and in the PASS line of the checker that grades it; 3 seeds per regression (`reseed = 3`).
+*Randomization*: RANDCFG: the seed draws the REGION_SIZE value the walk programs before its map cells from the powers of two 2^25 (32 MiB) to 2^30 (1 GiB), the sizes the register's own rule, the memory map and the leaf's address set admit: a power of two because `REGION_SIZE` "Must be a non-zero power of two", and at most 2^30 because "GLOBAL_BASE and LOCAL_BASE must be aligned to this size" (`hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl`, `REGION_SIZE`) while both bases read `0xC000_0000` under the draw (step 1 programs GLOBAL_BASE to LOCAL_BASE; the resets `0x4000_0000` and `0xC000_0000` are aligned to 2^30 and to no higher power), so a 2^31 draw is illegal by the register's rule; at most 2^30 also because the SEP and SMC apertures of the crossbar must not overlap (`hw/sys/smu/doc/index.adoc`, "AXI Crossbar"), and the SMC aperture `[0xC000_0000, 0xC000_0000 + size)` at every admitted size lies above the SEP aperture at its reset `SEP_GLOBAL_BASE_ADDR` 0 and `SEP_REGION_SIZE` 16 MiB (`hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl`); at least 2^25 because the M-mode remap window at `BASE + 0x100_0000` sits at the reset 16 MiB boundary and the Xvisor window at `BASE + 0x180_0000` beyond it (the addresses and the 8 MiB window size: `hw/sys/smc/doc/fabric.adoc`, "Fabric Topology"; the DECERR response from the inbound port: `hw/sys/smc/doc/memmap.adoc`), so 2^25 is the smallest power of two that keeps both windows, the base configuration block at `BASE + 0x001_0000` and inbound filter entry 0 at `BASE + 0x001_5000` reached through the local alias window (`hw/sys/smc/regs/smc.rdl`), the exception addresses `BASE + 0x001_7000` and `BASE + 0x001_7FFC` and the past-extent cells of the units below `BASE + 0x002_0000` (the core 0 watchdog, reset unit, misc wrap, GPIO interface, DFX control, base configuration and alias remap units) inside every drawn aperture, so every seed grades every map cell; the inbound window the leaf opens follows the drawn size. Under it the seed draws the word probed inside each ranged map cell (two distinct 4-byte-aligned words of the unmapped range between the last mapped aperture of the DFX control unit and the base configuration unit, beside the range's first word, which stays pinned into every run, and one word inside each 8 MiB remap window) and the direction of every cell (read first or write first; the reads and the DECERR-declared writes are graded, and the writes at the cells `memmap.adoc` documents as SLVERR are logged, as the Scope limit states), each graded by `CHK-UNMAP-BETWEEN`, `CHK-UNMAP-PAST-EXTENT` and `CHK-UNMAP-MMODE-XVISOR`; the gap's first word, the two exception addresses and the eleven past-extent first words are fixed cells (the decode-edge, base-pattern and port cells of `smu_aperture_map_walk_test` and the LOCAL_BASE and GLOBAL_BASE cells of `smu_base_config_corners_test` stay with those entries, whose compares this entry does not have); no drawn REGION_SIZE places a cell of the walk past the aperture, so the window-close rule of REGION_SIZE (`smc_base_config.rdl`; `memmap.adoc`: an inbound access to a unit whose window extends past the size answers DECERR) is not exercised here, and the PLIC and CLINT beyond the reset REGION_SIZE are the fixed cells of `CHK-UNMAP-RESET-SIZE-PLIC-CLINT`, run before the draw. Every drawn cell is logged at the draw and in the PASS line of the checker that grades it; 3 seeds per regression (`reseed = 3`).
 
 *Objective*: an `ext_in` access to an SMC address that reaches no unit, to the first word past a unit's extent, or to the M-mode and Xvisor remap windows answers DECERR, with read data `0xBADCAB1E` where the specification gives it.
 
@@ -1655,12 +1658,13 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 * A read of the first word past the extent of each of eleven units (reset unit, misc wrap, GPIO interface, base configuration, alias remap, DFX control, mailbox, DMA control, zeroer, CPU control and the core 0 watchdog) answers DECERR with `0xBADCAB1E`, as the past-extent response in `hw/sys/smc/regs/smc.rdl` declares.
 * A write past the extent of the DFX control, mailbox, DMA control, zeroer, CPU control and watchdog units answers DECERR, as `smc.rdl` declares; the write past the extent of the reset unit, misc wrap, GPIO interface, base configuration and alias remap units is declared SLVERR there, and its response is logged and not compared. In this run those writes answer DECERR, a mismatch recorded for the owner.
 * A read and a write at a seed-drawn word of the 8 MiB M-mode window at `BASE + 0x100_0000` and of the 8 MiB Xvisor window at `BASE + 0x180_0000` answer DECERR, because those remap regions forward SMC initiator accesses only (`memmap.adoc`).
-* An `ext_in` access to the window beyond the local and global apertures, and the units that lie beyond the reset REGION_SIZE, are out of scope here.
+* The PLIC and CLINT under the reset REGION_SIZE: `doc/integrator/src/smu-smc.adoc` ("Address Map and Aperture") places them wholly beyond the limit at the reset value and has firmware widen REGION_SIZE to cover them. Before the drawn size is programmed, an `ext_in` read at each base answers DECERR and no request is counted at `smc_in` (`smc_xbar_in_ar_count_o`), so the response is the crossbar's; its read data, which no document states, is logged. After REGION_SIZE is widened to 2^28, the smallest power of two past the CLINT, each read is counted at `smc_in` and answers OKAY.
+* An `ext_in` access to the window beyond the local and global apertures is out of scope here.
 
 *Test Procedure*:
 
 [arabic]
-. Draw REGION_SIZE, the probed words and the direction of each cell from the seed and log them; reset the TAP, program SMC GLOBAL_BASE to LOCAL_BASE and REGION_SIZE to the drawn size over JTAG2AXI, wait for `smc_region_size_o` to follow, program inbound entry 0 to admit the local aperture at that size, read it back and create the `smu_axi_in` master.
+. Draw REGION_SIZE, the probed words and the direction of each cell from the seed and log them; reset the TAP, program SMC GLOBAL_BASE to LOCAL_BASE over JTAG2AXI, read REGION_SIZE at its reset value, admit 2^28 of the aperture on inbound entry 0, read the PLIC and CLINT bases from `ext_in`, widen REGION_SIZE to 2^28 and read both again; then program REGION_SIZE to the drawn size, wait for `smc_region_size_o` to follow, program inbound entry 0 to admit the local aperture at that size, read it back and create the `smu_axi_in` master.
 . Error injection. Point: `ext_in` reads and writes at the gap's pinned first word, the two drawn between-unit addresses and `BASE + 0x001_7000` and `BASE + 0x001_7FFC`, each cell in its drawn direction. Kind: SMC addresses that reach no unit. Expected response: every read answers DECERR with data `0xBADCAB1E` and the between-unit writes answer DECERR; the writes at `BASE + 0x001_7000` and `BASE + 0x001_7FFC` are documented SLVERR and their response is logged, not compared (see Scope limit). Compare the read responses and data and the between-unit write responses.
 . Error injection. Point: `ext_in` reads and writes at the first word past the extent of each of the eleven units. Kind: past-extent addresses. Expected response: every read answers DECERR with `0xBADCAB1E`; the writes past the DFX control, mailbox, DMA control, zeroer, CPU control and watchdog units answer DECERR, and the writes past the reset unit, misc wrap, GPIO interface, base configuration and alias remap units are declared SLVERR and are logged, not compared (see Scope limit). Compare the reads and the DECERR-declared writes.
 . Error injection. Point: `ext_in` read and write at the drawn word of the M-mode window at `BASE + 0x100_0000` and of the Xvisor window at `BASE + 0x180_0000`, each in its drawn direction. Kind: accesses to remap windows that forward SMC initiator accesses only. Expected response: DECERR. Compare the responses.
@@ -1672,6 +1676,7 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-UNMAP-RESET-SIZE-PLIC-CLINT` |`ext_in` reads at the PLIC and CLINT bases answer DECERR and reach no `smc_in` request under the reset REGION_SIZE (the crossbar's read data is logged), and answer OKAY, each counted at `smc_in`, under 2^28
 |`CHK-UNMAP-BETWEEN` |under the seed-drawn REGION_SIZE, between-unit `ext_in` reads at the gap's pinned first word and at two drawn words of the gap answer DECERR with `0xBADCAB1E` and between-unit writes there answer DECERR, in the drawn order
 |`CHK-UNMAP-PAST-EXTENT` |under the seed-drawn REGION_SIZE, past-extent reads answer DECERR with `0xBADCAB1E` and DECERR-declared writes answer DECERR, in the drawn order; the writes the RDL and `memmap.adoc` declare SLVERR are logged and answered DECERR in this run, a mismatch recorded for the owner
 |`CHK-UNMAP-MMODE-XVISOR` |reads and writes to a seed-drawn word of the M-mode and of the Xvisor window from `ext_in` answer DECERR, in the drawn order
@@ -1680,7 +1685,7 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
-*Scope limit*: A read at `BASE + 0x001_7000` and `BASE + 0x001_7FFC` answers DECERR with `0xBADCAB1E` and is compared; the write there is documented as SLVERR (`memmap.adoc`), and its response is logged and not compared. A write past the extent of the DFX control, mailbox, DMA control, zeroer, CPU control and watchdog units answers DECERR, as `smc.rdl` declares; the write past the extent of the reset unit, misc wrap, GPIO interface, base configuration and alias remap units is declared SLVERR there, and its response is logged and not compared. An `ext_in` access to the window beyond the local and global apertures, and the units that lie beyond the reset REGION_SIZE, are out of scope here.
+*Scope limit*: the crossbar's DECERR read data beyond the reset REGION_SIZE is logged and not compared. A read at `BASE + 0x001_7000` and `BASE + 0x001_7FFC` answers DECERR with `0xBADCAB1E` and is compared; the write there is documented as SLVERR (`memmap.adoc`), and its response is logged and not compared. A write past the extent of the DFX control, mailbox, DMA control, zeroer, CPU control and watchdog units answers DECERR, as `smc.rdl` declares; the write past the extent of the reset unit, misc wrap, GPIO interface, base configuration and alias remap units is declared SLVERR there, and its response is logged and not compared. An `ext_in` access to the window beyond the local and global apertures, and the units that lie beyond the reset REGION_SIZE other than the PLIC and CLINT bases, are out of scope here.
 
 '''''
 
@@ -2031,6 +2036,7 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 * Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i (port_table: gates reset release).
 * rst_primary_smc_clk_no is NOT gated by this pin (negative control CHK-PRIMARY-NOT-GATED).
 * With the pin lowered again across a cold reset, the gate holds the fuse reset asserted after the new release, and raising the pin releases it.
+* The pin is qualified inside the SMC and fanned to the SEP (`hw/sys/smu/doc/port_table.adoc` `ext_boot_seq_done_i`; `doc/integrator/src/smu-composition.adoc`, "DFT Signals": `ext_boot_seq_done_qual_o` drives the SEP's `ext_boot_seq_done_i`), and the SEP qualifies its reset release with `ext_boot_seq_done_i` asserted (`hw/sys/sep/doc/clk_rst.adoc`, the OTP controller release; `hw/sys/sep/doc/port_table.adoc` `ext_boot_seq_done_i`, "gates reset release"). With the pin low `sep_reset_n_o` reads 0 on every gated sample, and it first rises only after the pin, within the release bound, in S4 and again across the S6 cold reset; the `smc_fuse_sense_done_o` level in the gated window is logged, not compared, because this leaf runs with the sense skipped.
 
 *Test Procedure*:
 
@@ -2059,9 +2065,10 @@ gated window fails the scoreboard as well as the sequence.
 |Checker |Description
 |`CHK-PRIMARY-NOT-GATED` |Evidence token, emitted only after the compares it names have held
 |`CHK-BOOT-SEQ-GATE` |Evidence token, emitted only after the compares it names have held
-|`CHK-TIMEOUT-PATHS` |Both bounded waits (primary release while gated; fuse release after ungate) completed within RELEASE_BOUND clk_smu_i cycles and none expired: the compare is the list of (label, expired, bound) records against the expected list, so a missing, expired or differently bounded wait fails
+|`CHK-TIMEOUT-PATHS` |The three bounded waits (primary release while gated; fuse release after ungate; SEP reset release after ungate) completed within RELEASE_BOUND clk_smu_i cycles and none expired: the compare is the list of (label, expired, bound) records against the expected list, so a missing, expired or differently bounded wait fails
 |`CHK-NONVAC` |Ordered fence from DUT edges, simulation-time stamped: the first rise of `rst_primary_smc_clk_no` precedes the `ext_boot_seq_done_i` drive, and the first rise of `smc_fuse_reset_n_delayed_o` follows both the end of the gated sample window and the ungate drive; a fuse release inside the gated or pre-ungate window fails
 |`CHK-BOOT-SEQ-REGATE` |with `ext_boot_seq_done_i` low across a second cold reset, `smc_fuse_reset_n_delayed_o` stays low for the whole gated sample window after the release and rises within RELEASE_BOUND cycles of raising the pin
+|`CHK-BOOT-SEQ-GATE-SEP` |with `ext_boot_seq_done_i` low `sep_reset_n_o` reads 0 on every gated sample and its first rise, within RELEASE_BOUND, follows the ungate drive; across the second cold reset it reads 0 on every gated sample and rises within RELEASE_BOUND of raising the pin; the sense-done level in the gated window is logged
 |`CHK-BOOT-SEQ-GATE` |SV-UVM shape only (`--framework uvm`): the sense is done before the gated window, the gate reads 0 and the fuse reset reads 0 on every one of the 64 gated samples, and the fuse reset releases within the gate-path bound after the ungate
 |`CHK-PRIMARY-NOT-GATED` |SV-UVM shape only (`--framework uvm`): the primary reset is low under the cold reset, its 0 -> 1 is observed by the tracker with the gate reading 0 in that clock, and it reads 1 within the bound while the gate still reads 0
 |`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): the three bounded waits (the sense done before the gated window, the primary release while gated, the fuse release after the ungate within the gate-path bound) name a finite bound and their last level; none expired
@@ -3101,7 +3108,8 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 
 * Every port read has a row in `hw/sys/smu/doc/port_table.adoc`, which gives presence, direction, type, width expression and, for the CTP channels, the "Tie to '0 if unused" note the inertness legs rest on.
 * Every width compare takes its expected value from a specification: the port table's literal widths (`lcc_demote_state_*_o` `[1:0]`, `ss_reset_ctrl_o` `[31:0]`, `skip_mem_repair_o` 1); `lc_state_o` as 8 bits (port table tie value `8'hf0`; `hw/sys/smc/doc/port_table.adoc` `lc_state_i` "(8 bits)"; `hw/sys/sep/doc/otp_fuse_controller.adoc` life-cycle state width 4); `XTRIG_NUM_CTP` = 16 from `doc/integrator/src/smu.adoc` "SMU Default Parameters"; 256 external interrupts from `hw/sys/smc/doc/port_table.adoc` `smc_ext_interrupts_i`; the 6-bit ID from that table's `sys_axi_in_req_i` row and `doc/integrator/src/smu-smc.adoc` "AXI Interface Configuration"; the `SS_CONFIG` width and reset value from the generated `hw/sys/smc/regs/gen/c/blocks/reset_unit.h`. `cocotb/seq_lib/smu_compose_helpers.py` names the source of each constant.
-* The SMN request/response struct widths, the crossbar-side ID width of both ID-width converters and the SEP-side ID width have no specified value. They are logged as observations and not compared.
+* The ID and user fields of the smu AXI boundary ports: `doc/integrator/src/smu-composition.adoc` ("SMU AXI Crossbar Address Map") gives `smu_axi_in` 8-bit transaction IDs, `smu_axi_out` 10-bit transaction IDs and 12-bit user fields on all five channels. The bench exports `$bits` of every ID and user field of the `smu` ports (`obs_smu_axi_*_widths_o`), and the leaf compares each channel's width with the stated value.
+* The crossbar-side ID width of both ID-width converters and the SEP-side ID width have no specified value. They are logged as observations and not compared.
 * The idle-value compares read an output after bring-up against the value the specification gives for that state: `ss_config_o` equals the `SS_CONFIG` reset value, and `skip_mem_repair_o` is clear while no isolation request is pending (`smu.adoc`, memory repair: a cold reset without isolation executes repair), with the wrapper FLR pin sampled low as the precondition. Each can fail on a wrong idle value; neither distinguishes an undriven output from one driven to that value. Write-through of `SS_CONFIG` to `ss_config_o` and the FLR path onto `skip_mem_repair_o` are proven by `smu_smc_boundary_io_test`.
 * `smc_shadow_regs_o`: `port_table.adoc` types it `smc_efuse_pkg::efuse_map_t` and states no width, so the `smu_wrapper` port and the bench net are compared at width with the `smu` port. After `smc_fuse_sense_done_o` rises for the cold boot, the `smu` port, the `smu_wrapper` port and the bench net each carry the image `+smc_efuse_hex` names, fuse word `i` at shadow bits `32i+31..32i`; the image programs every bit, and the leaf requires it to program at least one, so a disconnected or narrowed wrapper port reads a zero where the image has a one.
 * The CTP data inputs are read at their resting level at the SMU boundary and at the DTP consumer. `smu_wrapper` passes them through; the bench, as the integrator the port table's "Tie to '0 if unused" note addresses, holds `req_in`, `ack_in` and `ack_out` at zero (`tb/tb_wrapper_top.sv` ties `ack_out`, and `req_in` and `ack_in` follow bench nets `smu_base_test` drives to zero; stand-in entry "CTP data-input tie-offs" in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`), and `req_out` sits on the bench's wire-OR board and rests at all ones, the pull-up of the active-low wire the generated header's `CONFIG.INVERT` reset of 0 selects, with no chiplet pulling. Every CTP output and the CTM boundary must then stay static at zero over the inert window; that leg is device-observed. A cross-trigger block held in reset, unclocked or disconnected would also stay static, so `smu_xtrig_ctp_pad_test` (<<sec-063-smu_xtrig_ctp_pad_test>>) is the live control for this leg: on the same bench a request on `xtrig_ctp_req_in_din_i[0]` raises `xtrig_ctp_ack_out_dout_o[0]` at the pads.
@@ -3110,7 +3118,7 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 
 [arabic]
 . Read each named port on the elaborated `smu` instance for its presence and its specified width.
-. Read the subsystem-side ID width of the SMC ID-width converter and compare it with the specified 6-bit SMC system AXI input ID; log the SMN struct widths and the two converters' crossbar-side and SEP-side ID widths without comparing them.
+. Compare `$bits` of every ID and user field of `smu_axi_in` and `smu_axi_out` with the stated 8, 10 and 12 bits; read the subsystem-side ID width of the SMC ID-width converter and compare it with the specified 6-bit SMC system AXI input ID; log the two converters' crossbar-side and SEP-side ID widths without comparing them.
 . Sample the CTP data inputs at the SMU boundary and the DTP consumer and require their resting levels, then require every CTP output and the CTM boundary static at zero over the inert window.
 . Sample `ss_config_o` and `skip_mem_repair_o` after bring-up and compare them with their specified idle values.
 . Compare the widths of the `smu_wrapper` `smc_shadow_regs_o` port and the bench net with the `smu` port, wait for `smc_fuse_sense_done_o` to rise, and compare all three with the image.
@@ -3120,6 +3128,7 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-SMU-BOUNDARY-ID-USER-WIDTH` |`$bits` of every ID and user field of the smu AXI boundary ports: smu_axi_in IDs 8 on AW, B, R and AR, smu_axi_out IDs 10, user 12 on all five channels of both
 |`CHK-SMU-EXT-SMN-S4` |the SMC-side ID-width converter presents the specified 6-bit subsystem ID
 |`CHK-SMU-INT-AGG-S1` |smc_ext_interrupts_i is 256 wide, the SMC external interrupt count
 |`CHK-SMU-XTRIG-CTP-S1` |all four CTP groups are 16 wide, the XTRIG_NUM_CTP default
@@ -3134,7 +3143,7 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
-*Scope limit*: They are logged as observations and not compared.
+*Scope limit*: the crossbar-side and SEP-side ID widths of the two converters are logged as observations and not compared.
 
 '''''
 [[sec-040-smu_composition_parameter_test]]
@@ -3209,12 +3218,14 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 * Every leg compares an SMC CSR read, the boundary output or the SMC CPU interrupt vector against the contract, never against the value the bench drove; the FLR latch is required to hold when the pin drops and to release only on a software write.
 * The NDM lane count comes from NDM_RESET.NDMRESET_CLUSTER_COUNT. The programmer's guide states that this harness reads 4. The RDL bounds the field at 32 clusters and says to mask the request register with the count. The NDM compares use the value the register reports.
 * The PLIC sits on the CPU cluster's local path (`fabric.adoc`) and is not reachable from the bench's JTAG2AXI manager; the external-interrupt leg observes the `cpu_interrupts_o` bits the SMC CPU interrupt vector map assigns to `smc_ext_interrupts_i` and does not claim PLIC pending state.
+* `doc/integrator/src/smu-smc.adoc` ("Interrupt Integration"): the pin is three-flop synchronized with no edge-triggered mode, a pulse has to stay high long enough to be sampled on `clk_smc`, and a short asynchronous pulse can be lost. Lane 0 is driven high between two consecutive `clk_smu_i` rising edges (20 % to 60 % of the period after an edge) and the vector bit must stay clear over 16 edges; then high across four edges, and the bit must first read high 3 to 4 edges after the pin rose, as one contiguous run of four, and clear afterwards.
 
 *Test Procedure*:
 
 [arabic]
 . Read NDM_RESET.NDMRESET_CLUSTER_COUNT and derive the lane mask from it; drive `smc_ndmreset_request_i` through two alternating patterns within that mask and back to zero and read NDM_RESET.NDMRESET_REQUEST after each; write NDMRESET_PROCESS including all-ones and read `smc_ndmreset_process_o`.
 . Drive `smc_ext_interrupts_i` lane 0, the top driven lane and an alternating pattern, sample `cpu_interrupts_o[31:0]` after each, drop the pins and sample it clear.
+. Pulse lane 0 between two `clk_smu_i` rising edges and sample `cpu_interrupts_o[0]` on the next 16 edges; hold lane 0 across four edges and sample the bit on 16 edges.
 . Write and clear RESET_UNIT.SS_CONFIG, SYNC_REG and ISOLATE_REQ_REG and read `ss_config_o`, `sync_irq_o` and `isolate_req_o` after each.
 . Pulse `mem_repair_abort_i` and `mbist_abort_i` and read DFX_CTRL.STATUS_SMU after release.
 . Drive `ss_reset_complete_i` through three patterns and back to all-ones, reading RESET_UNIT.SS_RESET_COMPLETE after each; take `chiplet_is_primary_i` low and back, reading CPU_CTRL.SMC_ATTRIBUTES after each.
@@ -3228,6 +3239,7 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 |`CHK-SMU-NDMRESET-REQ` |NDMRESET_CLUSTER_COUNT reads within the 1..32 clusters `ndm_reset.rdl` allows and NDM_RESET.NDMRESET_REQUEST mirrors smc_ndmreset_request_i over that many lanes for two patterns and follows it back to zero
 |`CHK-SMU-NDMRESET-PROC` |smc_ndmreset_process_o carries NDMRESET_PROCESS[NDMRESET_CLUSTER_COUNT-1:0], including the all-ones write that pins the port width to the reported count
 |`CHK-SMU-EXT-IRQ` |smc_ext_interrupts_i lanes appear bit for bit on cpu_interrupts_o[31:0], the external-interrupt slice of the SMC CPU interrupt vector map (lane 0 is the bit the map assigns to PLIC source 1), and the level inputs release with the pins; PLIC pending state is not observed
+|`CHK-SMU-EXT-IRQ-PULSE` |a lane-0 pulse that spans no clk_smu_i rising edge never appears on cpu_interrupts_o[0] over 16 edges; a pulse sampled by four edges first appears 3 to 4 edges after the pin rose as one contiguous run of four and clears with the pin
 |`CHK-SMU-SS-CONFIG` |ss_config_o carries RESET_UNIT.SS_CONFIG with SS_CONFIG_LOCK open, and clears with it
 |`CHK-SMU-SYNC-IRQ` |sync_irq_o is RESET_UNIT.SYNC_REG.sync, set and cleared
 |`CHK-SMU-ISOLATE-REQ` |isolate_req_o carries the ISOLATE_REQ_REG software term
@@ -4664,6 +4676,7 @@ them with the reconstructed scans.
 * TMS is held low through every TRST assert, so the TAP has no path to Test-Logic-Reset other than the reset, and the 3DCR (held across Test-Logic-Reset by `config_hold`) can be cleared only by the reset.
 * TDI/TCK fan out without `stap_sel`; they are not the select proof.
 * `tb_stap_smc_tdo_oen` is logged when live.
+* The SMC CPU JTAG reset is active-high, so `dtp_smc_stap_tap_ctrl.trst_n` passes through an inverter (`hw/sys/smu/doc/index.adoc`, "Clocks and Resets"): on every `clk_ref_i` sample of the run, across the S1 and S3 TRST asserts and releases, the SMC's `smc_cpu_jtag_reset_i` reads the complement of `tb_stap_smc_trst_n`, with at least TRST_CYCLES samples on each side.
 * Not claimed: SMC DTM abstract commands, STAP slave BFM IDCODE, real LCC.
 
 *Test Procedure*:
@@ -4678,6 +4691,7 @@ them with the reconstructed scans.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-DTP-SMC-STAP-TRST-POLARITY` |on every clk_ref_i sample of the run the SMC's smc_cpu_jtag_reset_i reads the complement of tb_stap_smc_trst_n, with at least TRST_CYCLES samples with TRST asserted and as many released
 |`CHK-DTP-SMC-STAP-JTAG-READY` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-SMC-STAP-TRST` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-SMC-STAP-UNSEL` |Evidence token, emitted only after the compares it names have held
@@ -5439,6 +5453,7 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 * Measured against the `sep_fuse_sense_done_o` row of `port_table.adoc`; the ordering the checks require is a property of the elaborated design, not of that row.
 * `sep_fuse_sense_skipped_o` -- the bench's view of the SEP shadow registers' own skip flag -- must read 0, so the rising edge timed here is a completed sense and not the plusarg path's forced value.
 * eFuse traffic is recognised on the SMU eFuse shim command port by the `valid` bit of `fuse_command_req_t` / `fuse_command_resp_t`, laid out as `hw/ip/efuse/doc/interface.adoc` ("Fuse Command Protocol") gives them; only the ordering is asserted, the sense duration is logged.
+* `doc/integrator/src/smu-sep.adoc` ("eFuse and Lifecycle") has the SMU wire `smc_fuse_sense_done_o` into the SEP's `smc_fuse_sense_done_i`, and ("Bring-Up Considerations") starts the SEP boot sequence after the SMC completes fuse sensing and releases the SEP reset. A monitor armed with the observers compares the SEP input (`obs_sep_smc_fuse_sense_done_i_o`) with `smc_fuse_sense_done_o` on every `clk_smu_i` sample and requires the wire seen low and high; after the cold release `smc_fuse_sense_done_o` rises once and every recorded rise of `sep_reset_n_o` comes after it.
 
 *Test Procedure*:
 
@@ -5446,6 +5461,7 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 . Arm the edge and eFuse-command observers ahead of bring-up.
 . Require `sep_fuse_sense_skipped_o` low and `sep_fuse_sense_done_o` low under cold reset.
 . After release, require SEP eFuse read traffic on the shim command port and then exactly one rising edge of `sep_fuse_sense_done_o`, after both.
+. Wait for `sep_reset_n_o` to rise after the cold release; require the SEP's `smc_fuse_sense_done_i` equal to `smc_fuse_sense_done_o` on every sample so far, one `smc_fuse_sense_done_o` rise after the cold release, and every `sep_reset_n_o` rise after it.
 
 *Checkers*:
 
@@ -5453,11 +5469,12 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 |===
 |Checker |Description
 |`CHK-SMU-FUSE-SENSE-S2` |sep_fuse_sense_done_o rises once, after reset release and after SEP eFuse traffic
+|`CHK-SMU-SMC-SENSE-TO-SEP` |the SEP's smc_fuse_sense_done_i equals smc_fuse_sense_done_o on every clk_smu_i sample with the wire seen low and high; after the cold release smc_fuse_sense_done_o rises once and every sep_reset_n_o rise comes after it
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
-*Scope limit*: None stated.
+*Scope limit*: the order `smc_fuse_sense_done_o` before `sep_reset_n_o` is observed, not gated: the SEP's `smc_fuse_sense_done_i` feeds a SEP system CSR, and the SEP reset releases from the SEP's own sense and `ext_boot_seq_done_i`, so the order rests on the SMC sense of the default image finishing first; an SMC image that senses faster than the SEP's would fail the row on a correct design, and that would be a question for the `smu-sep.adoc` sentence, not an RTL defect.
 
 '''''
 [[sec-068-smu_sep_secure_tm_test]]
@@ -10873,9 +10890,9 @@ sequence's own raise, outside the scoreboard
 
 *Source Module*: `smu_smc_warm_reset_register_retention_test` (`cocotb_wrapper/tests/`; the sequence `smu_smc_warm_reset_register_retention_test_seq` in `cocotb_wrapper/seq_lib/`)
 
-*BFM / Model*: the `ocah_jtag_vip` primary TAP and the SMC fabric JTAG2AXI bridge (`tb_smc_jtag2axi_security_disable` read as open), reaching the registers named in `hw/sys/smc/regs/gen/c/smc_addr.h` through `seq_lib.smu_addr_map`: `SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR`, `_SS_COLD_RESET_N_BASE_ADDR`, `_SS_WARM_RESET_N_BASE_ADDR`, `_ISOLATE_REQ_REG_BASE_ADDR`, `_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR`, `SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR`, `_WDT_CMP_BASE_ADDR`, `_WDT_CTRL_BASE_ADDR`, `SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0)` and `SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR(0)`, with the reset values and masks read from the generated `reset_unit.h` and `wdt.h`; the read pins `tb_smc_wdt_second_timeout`, `rst_primary_smc_clk_n_o` and `rst_cold_n_o` and the clock `clk_smu_i`; the read-only probe `u_smc.rst_warm_smc_clk_n` from the `smu` instance, never forced; default SMC and SEP eFuse shadow preloads with `+skip_fuse_sense`; run mode `sep_rtl`, `elaboration` firmware mode, `+expected_sep=1`, and the `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the SEP debug bus, the RMA registers and the SEP paths are not touched
+*BFM / Model*: the `ocah_jtag_vip` primary TAP and the SMC fabric JTAG2AXI bridge (`tb_smc_jtag2axi_security_disable` read as open), reaching the registers named in `hw/sys/smc/regs/gen/c/smc_addr.h` through `seq_lib.smu_addr_map`: `SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR`, `_SS_COLD_RESET_N_BASE_ADDR`, `_SS_WARM_RESET_N_BASE_ADDR`, `_ISOLATE_REQ_REG_BASE_ADDR`, `_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR`, `SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR`, `_WDT_CMP_BASE_ADDR`, `_WDT_CTRL_BASE_ADDR`, `SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(0)` and `SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR(0)`, with the reset values and masks read from the generated `reset_unit.h` and `wdt.h`; the read pins `tb_smc_wdt_second_timeout`, `rst_primary_smc_clk_n_o` and `rst_cold_n_o` and the clock `clk_smu_i`; the read-only probe `u_smc.rst_warm_smc_clk_n` from the `smu` instance, never forced; the eFuse observers of `smu_fuse_sense_probe.py` armed before bring-up on `smc_fuse_sense_done_o` and the SMC eFuse shim command nets; the real SMC and SEP fuse sense of the `+smc_efuse_hex` and `+sep_efuse_hex` default images (run mode `sep_rtl_fuse_sense`, no `+skip_fuse_sense`); `elaboration` firmware mode, `+expected_sep=1`, and the `+rom_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images; the SEP debug bus, the RMA registers and the SEP paths are not touched
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 3000; tags `depth`, `dtp`, `jtag2axi`, `smc`, `wdt`, `reset`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+expected_sep=1`.
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 3000; tags `depth`, `dtp`, `jtag2axi`, `smc`, `wdt`, `reset`, `efuse`; run mode `sep_rtl_fuse_sense` (real SMC and SEP fuse sense; no `+skip_fuse_sense`); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+expected_sep=1`.
 
 *Randomization*: RAND-NONE: directed, the stimulus is the fixed register patterns and the fixed CORE0 watchdog arming; nothing is drawn from the seed.
 
@@ -10890,12 +10907,13 @@ sequence's own raise, outside the scoreboard
 * Primary and cold stay released: `rst_primary_smc_clk_n_o` and `rst_cold_n_o` read 1 at every `clk_smu_i` sample from the end of the retained-register writes to the last post-event read, with no sampling gap, while the warm reset reads 0 inside that window (`clk_rst.adoc`, reset equations) (`CHK-WARM-RET-PRIMARY-STAY`).
 * Release waits: the return of the warm reset probe to 1 and of the second timeout to 0 are bounded waits, each a recorded wait site whose release cycle is logged; a wait that expires fails the leaf with its bound, cycles used and last state, so the retained and returned registers are read only after the warm reset released (`CHK-TIMEOUT-PATHS`).
 * Measured and logged only: one CPU_CTRL `SCRATCH` word and one `SCRATCH_COLD_WARM` word are logged before and after the event and never compared, because no chapter names the reset domain of `cpu_ctrl.rdl` `SCRATCH` or `misc_wrap.rdl` `SCRATCH_COLD_WARM`; the release cycles, the wait bounds and the pattern values are bench constants or logged values.
+* No re-sense: `doc/integrator/src/smu-smc.adoc` ("eFuse Interface") runs the fuse sense once per cold boot, and CPU and warm resets do not repeat it. The leaf runs the real SMC sense under `sep_rtl_fuse_sense`: the observers armed before bring-up record the cold-boot rise of `smc_fuse_sense_done_o` and the single eFuse shim read command that earned it (`smu-smc.adoc`, "eFuse Interface"), the sequence waits for that rise (a bounded `sense` wait site) before its first access, and across S2 to S10 `smc_fuse_sense_done_o` reads 1 at every `clk_smu_i` sample while the warm reset reads 0 inside the window and the shim command count does not move (`CHK-WARM-RET-NO-RESENSE`).
 * Out of scope: the pin-enable, SMC-enable and reset-counter registers, the PLIC and CLINT registers, the SEP debug bus, the RMA registers and the SEP paths.
 
 *Test Procedure*:
 
 [arabic]
-. Reset the TAP, read the IDCODE, require the JTAG2AXI gate open and start sampling `rst_primary_smc_clk_n_o` and `rst_cold_n_o` on every `clk_smu_i` edge.
+. Wait for the cold-boot rise of `smc_fuse_sense_done_o` the armed observer recorded, then reset the TAP, read the IDCODE, require the JTAG2AXI gate open and start sampling `rst_primary_smc_clk_n_o`, `rst_cold_n_o` and `smc_fuse_sense_done_o` on every `clk_smu_i` edge.
 . Write a non-reset pattern to `SS_CONFIG`, `SS_COLD_RESET_N`, `SS_WARM_RESET_N`, `ISOLATE_REQ_REG` and `ISOLATE_REQ_FLR_COUNTER_VALUE` and read each back.
 . Write the measured-only patterns to one CPU_CTRL `SCRATCH` word and one `SCRATCH_COLD_WARM` word, read each back and log it.
 . Arm CORE0 with the key then `CMP`, read it back, then the key then `CTRL` with `WDOGRSTEN`, `WDOGENALWAYS` and `WDOGZEROCMP`, and read it back.
@@ -10919,8 +10937,9 @@ sequence's own raise, outside the scoreboard
 |`CHK-WARM-RET-WDT-RETURN` |CORE0 CMP reads the armed value and CTRL the WDOGRSTEN, WDOGENALWAYS and WDOGZEROCMP bits before the event; after it CMP reads 0x1000 and CTRL reads 0
 |`CHK-WARM-RET-EVENT` |after arming, the second timeout reads 1 and the warm reset probe reads 0 within their bounded waits, with both at idle just before arming
 |`CHK-WARM-RET-PRIMARY-STAY` |rst_primary_smc_clk_n_o and rst_cold_n_o read 1 at every clk_smu_i sample from S2 to S10 with no sampling gap, while the warm reset reads 0 inside the window
+|`CHK-WARM-RET-NO-RESENSE` |the real cold-boot sense rose once over one eFuse shim read command before S1 (`smu-smc.adoc`, "eFuse Interface": automatic sensing issues a single read over the bank); smc_fuse_sense_done_o reads 1 at every clk_smu_i sample from S2 to S10 while the warm reset reads 0 inside the window, and no shim read command is issued there
 |`CHK-NONVAC` |ordered simulation-time fence S1<S2<S3<S4<S5<S7<S8<S9<S10<S11; the PASS stamp is two clk_smu_i cycles after S10
-|`CHK-TIMEOUT-PATHS` |four bounded waits in two kinds (event 2, release 2), none expired, with the bound, cycles used and last state recorded, no unresolved probe sample
+|`CHK-TIMEOUT-PATHS` |five bounded waits in three kinds (sense 1, event 2, release 2), none expired, with the bound, cycles used and last state recorded, no unresolved probe sample
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
@@ -11970,7 +11989,7 @@ grade.
 * S8: SCRATCH_COLD written with Q through the SMC window, P written to its bit-55 alias, SCRATCH_COLD read back.
 * S9: thirty-two single-beat reads at M under ARIDs 0x00 to 0x1F with RREADY held low for 2000 `clk_smu_i` cycles, then released; the RREADY and RVALID levels are sampled on the pins every cycle of the hold.
 * Measured and logged only: the RDATA of every DECERR beat (SF-003), the code of each later beat of a multi-beat DECERR read (SF-004) and the AR handshakes accepted before ARREADY stays low in S9 (SF-011).
-* Out of scope: the `sep_out` and `smc_out` self-route miss cells, which need SEP or SMC firmware traffic this leaf does not drive.
+* Out of scope: the `sep_out` self-route cell, graded by `smu_xbar_self_route_sep_test`, and the `smc_out` self-route cell, unreachable from the built SMC (`smu_xbar_self_route_smc_test`) and formal-only.
 
 *Test Procedure*:
 
@@ -12014,7 +12033,7 @@ grade.
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
-*Scope limit*: the positive controls (the SMC-base read and the routed SCRATCH_COLD write and read) are counted at `smc_in` in the same run, so a crossbar that routed the misses, or that stopped routing the SMC window, fails a checker. Measured and logged only: the DECERR data words, the later-beat codes and the responder's accepted count (SF-003, SF-004, SF-011). Out of scope: the `sep_out` and `smc_out` self-route miss cells.
+*Scope limit*: the positive controls (the SMC-base read and the routed SCRATCH_COLD write and read) are counted at `smc_in` in the same run, so a crossbar that routed the misses, or that stopped routing the SMC window, fails a checker. Measured and logged only: the DECERR data words, the later-beat codes and the responder's accepted count (SF-003, SF-004, SF-011). Out of scope: the `sep_out` and `smc_out` self-route cells (<<sec-217-smu_xbar_self_route_smc_test>>, <<sec-218-smu_xbar_self_route_sep_test>>).
 
 '''''
 
@@ -12416,6 +12435,146 @@ grade.
 
 '''''
 
+[[sec-217-smu_xbar_self_route_smc_test]]
+===== 217 `smu_xbar_self_route_smc_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smu_xbar_self_route_smc_test` (`cocotb_wrapper/tests/`; the sequence `smu_xbar_self_route_smc_test_seq` in `cocotb_wrapper/seq_lib/`, which reuses the primary-TAP and SMC_AXI_SINGLE_OP helpers of `smu_jtag_helpers` and the outbound-filter helper of `smu_filter_helpers`)
+
+*BFM / Model*: `ocah_jtag_vip` on the primary TAP for IDCODE and every SMC_AXI_SINGLE_OP access (`tb_smc_jtag2axi_security_disable` read as open); the bench SMN responder on `smu_axi_out`; passive reads of the crossbar taps `smc_smn_out_aw_count_o`, `smc_smn_out_ar_count_o`, `smc_xbar_in_aw_count_o`, `smc_xbar_in_ar_count_o`, `sep_xbar_in_aw_count_o`, `sep_xbar_in_ar_count_o`, `smu_axi_out_write_count_o` and `smu_axi_out_read_count_o`; `elaboration` firmware mode; the default SMC and SEP eFuse shadow preloads
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `fabric`, `hosted`, `all`; `timeout_sec` 1800; tags `fabric`, `sep`, `jtag2axi`, `axi`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`.
+
+*Randomization*: RAND-NONE: directed, the self-route address is GLOBAL_BASE plus the VERSION_LO offset with the SMC aperture at its reset values, the egress control word sits at a fixed address outside both apertures, and the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test).
+
+*Objective*: an SMC-internal access into the SMC's own global aperture is served locally and never reaches the crossbar's `smc_out` port (`hw/sys/smc/doc/fabric.adoc`, "SMC input fabric"); the `smc_out` DECERR cell of the crossbar routing table (`hw/sys/smu/doc/index.adoc`, "AXI Crossbar") is unreachable from the built SMC.
+
+*Test Coverage*:
+
+* The SMC master the bench drives without firmware is the JTAG2AXI bridge. The SMC input fabric's demux sends an internal initiator's address inside the SMC window, at either the local or the global base and REGION_SIZE long, to the local fabric rebased onto LOCAL_BASE, so a request for the global window reaches the same register as one for the local window (`fabric.adoc`, "SMC input fabric" and "SMC local fabric"): with GLOBAL_BASE and REGION_SIZE at their reset values, a SINGLE_OP write and read at GLOBAL_BASE plus the VERSION_LO offset answer SUCCESS and the read returns the VERSION_LO reset value.
+* Neither access reaches the crossbar: the AW and AR taps at its `smc_out` port and the `smc_in`, `sep_in` and `ext_out` taps do not move, so the `smc_out`-in-SMC-aperture cell of the routing table cannot be driven by the SMC and stays proved by `smu_axi_xbar_fpv` alone.
+* Controls in the same run: the VERSION_LO read at the local alias answers SUCCESS with its reset value before and after the global-window accesses, and a write and read at a word outside both apertures answer SUCCESS, return the written word and each cross the crossbar's `smc_out` port and `smu_axi_out` once, so the outbound filter is open, the `smc_out` taps count what passes them, and the global-window access stayed local by decode, not by a closed path.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, read the IDCODE, require the JTAG2AXI gate open; read GLOBAL_BASE and REGION_SIZE at their reset values and program outbound entry 0 to pass every address.
+. Read VERSION_LO at the local alias.
+. Write and read a word outside both apertures; wait for the `smu_axi_out` write and read counts to move by one each and require the `smc_out` AW and AR taps up by one each.
+. Write and read GLOBAL_BASE plus the VERSION_LO offset over SINGLE_OP; require SUCCESS on both, the VERSION_LO reset value from the read, and the `smc_out`, `smc_in`, `sep_in` and `ext_out` taps unchanged after 64 `clk_smu_i`.
+. Read VERSION_LO at the local alias again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-XBAR-SELF-SMC-LOCAL` |the SINGLE_OP write and read at GLOBAL_BASE plus the VERSION_LO offset answer SUCCESS, the read returns the VERSION_LO reset value, and neither reaches the crossbar's `smc_out` port nor the `smc_in`, `sep_in` and `ext_out` taps; the local-alias VERSION_LO read answers SUCCESS with its reset value before and after, and the write and read outside both apertures answer SUCCESS, return the written word and each cross the crossbar's `smc_out` port and `smu_axi_out` once
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+*Scope limit*: the crossbar's `smc_out` DECERR cell is not driven by this leaf or any SMC initiator of the built composition (the SMC serves its global window locally); it is proved by `smu_axi_xbar_fpv` alone. The `sep_out` self-route cell is <<sec-218-smu_xbar_self_route_sep_test>>.
+
+'''''
+
+[[sec-218-smu_xbar_self_route_sep_test]]
+===== 218 `smu_xbar_self_route_sep_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smu_xbar_self_route_sep_test` (`cocotb_wrapper/tests/`; the sequence `smu_xbar_self_route_sep_test_seq` in `cocotb_wrapper/seq_lib/`, which reuses the SEP STAP and debug-module bring-up of `smu_dtp_sep_dm_dmi_test_seq` and the system-bus helpers of `smu_dtp_sep_dm_sba_test_seq`)
+
+*BFM / Model*: `ocah_jtag_vip` on the primary TAP, TAP_3DCR selecting the SEP STAP, DMI to the SEP debug module and its system bus (RISC-V Debug Specification 0.13, "System Bus Access"); the bench SMN responder on `smu_axi_out`; passive reads of `sep_global_base_o` and the crossbar taps `sep_smn_out_aw_count_o`, `sep_smn_out_ar_count_o`, `sep_xbar_in_aw_count_o`, `sep_xbar_in_ar_count_o`, `smc_xbar_in_aw_count_o`, `smc_xbar_in_ar_count_o`, `smu_axi_out_write_count_o` and `smu_axi_out_read_count_o`; `elaboration` firmware mode; the default SMC shadow preload and the TEST_DEV SEP shadow preload, which leaves every SEP debug path open
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `fabric`, `hosted`, `all`; `timeout_sec` 3900; tags `fabric`, `sep`, `sba`, `axi`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads, `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`.
+
+*Randomization*: RAND-NONE: directed, the admitted page, the probe word and the SEP base moved onto the page are fixed, and the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test).
+
+*Objective*: a `sep_out` request that matches the SEP aperture answers DECERR, generated by the crossbar, and reaches no subordinate (`hw/sys/smu/doc/index.adoc`, "AXI Crossbar", the routing table by initiator and decoded aperture).
+
+*Test Coverage*:
+
+* The SEP master the bench drives without firmware is the debug module's system bus. The SEP route demux sends an address inside the aperture `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` describe to the outbound filter and `sep_out` (`hw/sys/sep/doc/fabric.adoc`, the output fabric), so with the outbound filter opened over one page that is neither SEP-local nor in the SMC window and `SEP_GLOBAL_BASE_ADDR` moved onto that page, a system-bus write and read of a word of the page decode as the SEP aperture at the crossbar.
+* Both accesses report a non-zero `sbcs.sberror`, the error the crossbar's DECERR raises at the debug module (the code is logged; no document in this tree states the SEP debug module's error encoding), the crossbar accepts both on `sep_out` (the AW and AR taps at its `sep_out` port each move by one), and the `sep_in`, `smc_in` and `ext_out` taps do not move, so the request was answered at the crossbar and not by the SMC's SEP-input region demux.
+* Controls in the same run: with the base at its reset value the same write and read each cross `smu_axi_out` once and the read returns the written word, before the base moves and again after it is restored, so the error is the crossbar's decode and not the outbound filter or a parked debug module.
+
+*Test Procedure*:
+
+[arabic]
+. S0 to S3 of `smu_dtp_sep_dm_dmi_test`: TEST_DEV posture, PTAP IDCODE, SEP STAP selected, debug module active.
+. Open SEP outbound filter entry 1 over the page; read `sep_global_base_o` at its reset value.
+. Write and read the probe word over the system bus; wait for the `smu_axi_out` write and read counts to move by one each and require the read to return the word.
+. Write `SEP_GLOBAL_BASE_ADDR` with the page base and wait for `sep_global_base_o` to follow.
+. Error injection. Point: system-bus write and read of the probe word. Kind: a `sep_out` request inside the SEP's own aperture. Expected response: a non-zero `sberror` on both, the `sep_out` AW and AR taps each up by one, the `sep_in`, `smc_in` and `ext_out` taps unchanged after 64 `clk_smu_i`.
+. Restore `SEP_GLOBAL_BASE_ADDR`, wait for the port, and read the probe word again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-XBAR-SELF-SEP-DECERR` |the system-bus write and read of the probe word with `SEP_GLOBAL_BASE_ADDR` on its page each report a non-zero sberror (code logged), the crossbar accepts both on `sep_out`, and the `sep_in`, `smc_in` and `ext_out` taps do not move; with the base at its reset value the same write and read each cross `smu_axi_out` once and the read returns the written word, before and after
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+*Scope limit*: the `sberror` code and the system-bus data returned with the error are logged and not compared; the `smc_out` self-route cell is <<sec-217-smu_xbar_self_route_smc_test>>.
+
+'''''
+
+[[sec-219-smu_cold_reset_pin_timing_test]]
+===== 219 `smu_cold_reset_pin_timing_test`
+
+*Phase*: 3
+
+*Area*: SMU_WRAPPER
+
+*Source Module*: `smu_cold_reset_pin_timing_test` (`cocotb_wrapper/tests/`; the sequence `smu_cold_reset_pin_timing_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: TB pin drive of `rst_cold_ni` with `powergood_i` held high; the bench `clk_ref_i` clock, stopped and restarted through the base test's clock table; passive reads of `rst_cold_stable_ref_clk_no` and `rst_primary_smc_clk_no`; `elaboration` firmware mode; the default SMC and SEP eFuse shadow preloads
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `hosted`, `all`; `timeout_sec` 3600; tags `smc`, `sep`, `p0`, `real_rtl`, `reset`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 3, so three seeds per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+expected_sep=1`.
+
+*Randomization*: RAND-REP: the seed draws the filtered pulse width (1 to 31 `clk_ref`), run beside a pinned 31-`clk_ref` pulse on every seed, and the time the pin is held past the observed assertion (32 to 94 `clk_ref`, so the whole hold stays below the 128-cycle assert bound); the clock-stop hold is fixed at four de-glitch windows of `clk_ref` expressed in `clk_smu_i` cycles, and at least 256; 3 seeds per regression.
+
+*Objective*: `rst_cold_ni` assertion is de-glitched for 32 `clk_ref_i` cycles and does not propagate while that clock is stopped (`hw/sys/smu/doc/port_table.adoc`, the `rst_cold_ni` row).
+
+*Test Coverage*:
+
+* The de-glitch: a pinned 31-`clk_ref` low pulse, driven right after a `clk_ref` edge so the de-glitcher takes 31 low samples, and a seed-drawn pulse of 1 to 31 `clk_ref`, each read back low on `rst_cold_ni` for exactly its width, leave the stable cold reset and the SMC primary reset at 1 on every `clk_ref` sample during the pulse and the 128 after it; a hold of a seed-drawn 32 to 94 `clk_ref` past the observed assertion asserts the stable cold reset no earlier than 32 `clk_ref` after the pin fell and no later than 33 (the 32 samples plus the observation), the primary reset on that sample or the next, keeps the stable reset low on every `clk_ref` sample through the hold, and both outputs return after the release (`CHK-SMU-COLD-PIN-DEGLITCH`).
+* The clock dependence: with `clk_ref_i` stopped at 0 and `rst_cold_ni` driven low, and read back low, for four de-glitch windows of `clk_smu_i` cycles, no `clk_ref` edge is seen and both outputs read 1 on every `clk_smu_i` sample; once the clock restarts the stable cold reset falls 32 to 33 `clk_ref` later and both outputs return after the release (`CHK-SMU-COLD-NO-PROPAGATE-CLKSTOP`). The hold is longer than the de-glitcher would take with the clock running, so an assertion path on another clock fails the first clause.
+* Measured and logged only: the `clk_ref` from the release to the stable reset's return and to both outputs' return, because the 255-cycle deassertion hold is `CHK-BOOT-COLD-EXT` of `smu_smc_cold_boot_release_order_test`.
+* Out of scope: `powergood_i` (held high), the cool-reset pin and the JTAG overrides; the assertion of the cold reset with every wrapper clock static is catalogued in the disposition record.
+
+*Test Procedure*:
+
+[arabic]
+. Draw the pulse width and the time past the assertion from the seed and log them; require both outputs at 1.
+. Error injection. Point: `rst_cold_ni`. Kind: a low pulse of 31 `clk_ref` driven right after a `clk_ref` edge, then a low pulse of the drawn 1 to 31 `clk_ref`, each below the de-glitcher. Expected response: both outputs read 1 on every `clk_ref` sample during each pulse and the 128 after it.
+. Hold the pin low until the drawn 32 to 94 `clk_ref` after the stable cold reset reads 0; require the fall at 32 or 33 `clk_ref`, the primary reset on that sample or the next, and the stable reset low on every sample through the hold; release and wait for both outputs to return.
+. Stop `clk_ref_i` on a falling edge, drive the pin low for the fixed hold and sample both outputs and the clock on every `clk_smu_i` edge; restart the clock low-first and count the `clk_ref` edges until the stable cold reset reads 0; release and wait for both outputs to return.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMU-COLD-PIN-DEGLITCH` |a pinned 31 clk_ref rst_cold_ni low pulse driven right after a clk_ref edge and a seed-drawn 1 to 31 clk_ref pulse, each read back low on the pin for exactly its width, leave the stable cold reset and the SMC primary reset at 1 on every clk_ref sample during the pulse and the 128 after it; a hold of a seed-drawn 32 to 94 clk_ref past the assertion asserts the stable cold reset 32 to 33 clk_ref after the pin fell and the primary reset on that sample or the next, keeps the stable reset low through the hold, and both return after the release
+|`CHK-SMU-COLD-NO-PROPAGATE-CLKSTOP` |with clk_ref_i held and rst_cold_ni read low on every one of more clk_smu_i cycles than four de-glitch windows, the stable cold reset and the SMC primary reset read 1 on every clk_smu_i sample with no clk_ref edge seen; after the clock restarts the stable cold reset falls 32 to 33 clk_ref later and both return after the release
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
+
+*Scope limit*: the `clk_ref` from each release to the outputs' return is logged and not compared; the 255-cycle deassertion hold is graded by `smu_smc_cold_boot_release_order_test`.
+
+'''''
+
 [[smu-vplan-phase3]]
 === Phase 3 Tests
 
@@ -12430,7 +12589,7 @@ An entry whose test does not exist yet carries `*Status*: planned (no test yet)`
 |===
 |Area |Test numbers |Scope
 |FABRIC
-|12, 17, 18, 129 to 133, 205
+|12, 17, 18, 129 to 133, 205, 217, 218
 |Last writer on one map word over two bridges; several inbound transfers in flight and the refusal of unsupported burst types; DECERR on an address no aperture claims; alias remap transparency after reset and the AxCACHE of a hit and a miss; the filter and remap register sweeps; filter entry lock; past-extent, gap and remap-window responses of the SMC map. Responder error codes returned to the initiator on a pinned or drawn beat.
 |RESET
 |21, 25, 30, 32, 134, 135, 137, 206
@@ -12448,7 +12607,7 @@ An entry whose test does not exist yet carries `*Status*: planned (no test yet)`
 |156 to 164
 |Reset states of the base configuration, CPU control, reset unit and mailbox apertures; cold-boot release order and stretch; the sensed shadow map at every offset; mailbox error responses, sticky flags and the threshold lane; the SRAM initialisation order against the first fetch.
 |SMU_WRAPPER
-|103 to 107, 112, 113, 115 to 123, 125, 127, 128, 167, 168, 183 to 204, 208, 211 to 216
+|103 to 107, 112, 113, 115 to 123, 125, 127, 128, 167, 168, 183 to 204, 208, 211 to 216, 219
 |Cool-reset pulse filter and strap pairing; the `ss_reset_ctrl` lane sweep and lock; the shadow image under cold reset; lane, attribute, aperture, address-bit, size and ID sweeps of every port that leaves the SMU; the PTAP instruction and state walk; SEP egress without firmware; lifecycle refusal cells of the OTP bridges; outstanding responses on the outbound port; the broken LC_STATE pair; burst routing on the first address; STAP hold and reset corners; the JTAG2AXI series, status, capability, error and ratio contracts; the IC_RESET SEP slice; the SMC debug module under reset; every external SEP interrupt pin; the watchdog bite to SMC reset chain; the self-selected cross-trigger lane; RMA token match; warm-reset retention; the inbound filter rule terms; base-configuration corners; the seeded ID stress; alias priority, overflow and DMA translation; the outbound filter rule matrices; the output remap region matrix; filter match terms, priority and permission on all three filter instances; alias and output remap windows, offsets and cache attributes; the lifecycle image and disable-vector posture of the debug paths; the response shape of a multi-beat `ext_in` decode error; `ext_in` traffic across a SEP held by the IC_RESET SEP slice; bursts at the aperture edges; SEP-side and SMC-side resets with crossbar traffic in flight; JTAG2AXI accesses across SMC resets.
 |===
 
@@ -12498,7 +12657,7 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |`smu_smc_unmapped_response_test` (133)
 |FABRIC
 |RANDCFG
-|REGION_SIZE from the powers of two 2^25 to 2^30 (a non-zero power of two to which GLOBAL_BASE and LOCAL_BASE, both `0xC000_0000` under the draw, stay aligned, `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl`, `REGION_SIZE`; at every admitted size the SMC aperture lies above the SEP aperture at its reset 0 to 16 MiB, so the two do not overlap, `hw/sys/smu/doc/index.adoc`, "AXI Crossbar"; and at 2^25 and above every cell of the walk lies inside the aperture, so every seed grades every map cell), and under it the word probed inside each ranged cell (two words of the between-unit gap beside its pinned first word, one word of each 8 MiB remap window) and the direction of every cell (the reads and the DECERR-declared writes graded, the SLVERR-documented writes logged), each graded by `CHK-UNMAP-BETWEEN`, `CHK-UNMAP-PAST-EXTENT` and `CHK-UNMAP-MMODE-XVISOR`; no drawn REGION_SIZE places a cell of the walk past the aperture, so the window-close rule of REGION_SIZE is not exercised here, and the units that lie beyond the reset REGION_SIZE stay out of scope; 3 seeds per regression (`reseed = 3`).
+|REGION_SIZE from the powers of two 2^25 to 2^30 (a non-zero power of two to which GLOBAL_BASE and LOCAL_BASE, both `0xC000_0000` under the draw, stay aligned, `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl`, `REGION_SIZE`; at every admitted size the SMC aperture lies above the SEP aperture at its reset 0 to 16 MiB, so the two do not overlap, `hw/sys/smu/doc/index.adoc`, "AXI Crossbar"; and at 2^25 and above every cell of the walk lies inside the aperture, so every seed grades every map cell), and under it the word probed inside each ranged cell (two words of the between-unit gap beside its pinned first word, one word of each 8 MiB remap window) and the direction of every cell (the reads and the DECERR-declared writes graded, the SLVERR-documented writes logged), each graded by `CHK-UNMAP-BETWEEN`, `CHK-UNMAP-PAST-EXTENT` and `CHK-UNMAP-MMODE-XVISOR`; no drawn REGION_SIZE places a cell of the walk past the aperture, so the window-close rule of REGION_SIZE is not exercised here, and the PLIC and CLINT beyond the reset REGION_SIZE are fixed cells run before the draw; 3 seeds per regression (`reseed = 3`).
 |`smu_ext_in_error_inject_rand_test` (205)
 |FABRIC
 |RAND-REP
@@ -12879,6 +13038,18 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |SMU_WRAPPER
 |RANDCFG
 |every table on every seed, each in its own draw: for the alias table the seed draws the region index (0 to 7), a 4 KB-granule start page (1 to 4077 pages above `0x8100_0000`), a window length (2 to 16 pages), the low address bits of the cells (a doubleword offset 0 to 0xFF8 inside the page), a translated window above 4 GiB (a page from `0x1_0000_0000` to below `0x8_0000_0000`) and the `cacheable` value, chosen from the values that differ from both the AW and the AR AxCACHE of a reference access made with every region at reset; for each of the AP and STEE tables the seed draws the region index (1 to 14), a 512 KiB-aligned offset above 4 GiB (AP from `0x10_0000_0000`, STEE from `0x40_0000_0000`, each below the next range) and a doubleword inside the region's fixed 512 KiB window below its last word; the pinned cells, run on every seed beside the draw: the alias hit at `start_addr`, the hit one granule below `end_addr`, the misses one granule below `start_addr` and at `end_addr`, a hit at the pinned `cacheable` value whose four bits are the complement of the reference AW AxCACHE (or, when that equals the reference AR AxCACHE, the highest value that differs from both), the last word inside each output window and the first word past it, and `valid` cleared after programming on every table; filters: one valid region per table, so the valid regions are disjoint, the alias edge cells lie in no other valid region and the output regions adjacent to a drawn region stay invalid; the output region index is drawn from 1 to 14 (region 0 is the never-programmed control of `smu_sep_output_remap_region_matrix_test` and region 15 has no next region inside the table); a drawn output index of 7 has its valid-cleared cell logged as the region-7 control of `CHK-SEPREMAP-AP-INVALID` or `CHK-SEPREMAP-STEE-INVALID` and not graded, and the output draw is repeated, at most 8 times, while both tables draw 7, so at least one valid-cleared output cell is graded on every seed; every translated page and output target lies above 4 GiB and below 2^40, so each sum stays below bit 55 and every target lies outside the SEP, SMC and SMU apertures, and the alias input pages lie outside the SMC and SEP apertures, the SMC local window and the M-mode and Xvisor windows, which the leaf checks against the sampled `smc_global_base_o`, `smc_region_size_o`, `sep_global_base_o` and `sep_region_size_o` before the first access (`hw/sys/smu/doc/index.adoc`, "AXI Crossbar", routing table), so every alias input address and every translated alias and output address leaves on `u_axi_out_if`; the output pass-through words, not checked against the apertures, are graded at the tap; the write data of every access is a distinct 64-bit value drawn from the seed (redrawn, at most 8 times, until the values differ from each other and from the responder sentinel); the region, window, offset and low bits are graded by `CHK-RMAPA-TRANSLATE`, `CHK-RMAPA-EDGE` and `CHK-RMAPA-OUTPUT`, the `cacheable` value by `CHK-RMAPA-CACHE`, and every programmed register value by `CHK-RMAPA-READBACK`, whose PASS lines carry the drawn cells; the draw replayed offline over seeds 1 to 2000 never reaches either redraw bound; 3 seeds per regression.
+|`smu_xbar_self_route_smc_test` (217)
+|FABRIC
+|RAND-NONE
+|none; directed: the global-window address is GLOBAL_BASE plus the VERSION_LO offset with the aperture at its reset values, the egress control word sits at a fixed address outside both apertures, and the seed sets only the bench clock periods and reset timing
+|`smu_xbar_self_route_sep_test` (218)
+|FABRIC
+|RAND-NONE
+|none; directed: the admitted page, the probe word and the SEP base moved onto the page are fixed, and the seed sets only the bench clock periods and reset timing
+|`smu_cold_reset_pin_timing_test` (219)
+|SMU_WRAPPER
+|RAND-REP
+|the seed draws the filtered pulse width (1 to 31 `clk_ref`) beside the pinned 31-`clk_ref` pulse run on every seed, and the time the pin is held past the observed assertion (32 to 94 `clk_ref`); the clock-stop hold is fixed at four de-glitch windows of `clk_ref` in `clk_smu_i` cycles; 3 seeds per regression
 |`smu_lc_disable_vector_matrix_test` (208)
 |SMU_WRAPPER
 |RAND-NONE
@@ -13026,7 +13197,7 @@ FABRIC:
 
 * The response of a write in the window `BASE + 0x001_7000` to `BASE + 0x001_7FFF`. `hw/sys/smc/doc/memmap.adoc` states SLVERR for a write there; `smu_smc_unmapped_response_test` records the write response and does not compare it (DECERR reads with `0xBADCAB1E` are graded); `smu_dtp_jtag2axi_series_contention_test` records the op field of a `SINGLE_OP` write there and uses a read of the window only as the positive control of its status bit. Neither grades the write.
 * The response of a write past the extent of the reset unit, misc wrap, GPIO interface, base configuration and alias remap units. `hw/sys/smc/regs/smc.rdl` declares SLVERR there and DECERR for the other units; `smu_smc_unmapped_response_test` grades the DECERR-declared writes and records the SLVERR-declared ones without grading them.
-* An `ext_in` access to a unit that lies beyond the programmed `REGION_SIZE`. `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`REGION_SIZE`) and `hw/sys/smc/doc/memmap.adoc` describe the aperture window; whether a unit aperture that extends past `REGION_SIZE` is closed at the window edge is not stated in a way a check can rest on. `smu_smc_unmapped_response_test` states the units beyond the reset `REGION_SIZE` out of scope, and `smu_base_config_corners_test` records that a trial with `REGION_SIZE 0x2_0000` observed OKAY at a mailbox address past it and does not compare it.
+* An `ext_in` access to a unit that lies beyond the programmed `REGION_SIZE`. `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`REGION_SIZE`) and `hw/sys/smc/doc/memmap.adoc` describe the aperture window; whether a unit aperture that extends past `REGION_SIZE` is closed at the window edge is not stated in a way a check can rest on. `smu_smc_unmapped_response_test` grades the PLIC and CLINT bases beyond the reset `REGION_SIZE` (DECERR at the crossbar, OKAY once `REGION_SIZE` covers them) and states the other units out of scope, and `smu_base_config_corners_test` records that a trial with `REGION_SIZE 0x2_0000` observed OKAY at a mailbox address past it and does not compare it.
 * The default inbound filter configuration. `hw/sys/smc/doc/fabric.adoc` ("Inbound Filtering") states that the default varies by chiplet type; `hw/ip/axi_filter/regs/filter_ctrl.rdl` resets every entry disabled. `smu_filter_cfg_register_map_test` grades the RDL reset value.
 * The port `smc_global_base_o`. `hw/sys/smu/doc/port_table.adoc` lists `smc_region_size_o` and not `smc_global_base_o`; `smu_base_config_corners_test` observes `smc_global_base_o` as the port the GLOBAL_BASE field drives.
 
@@ -13076,7 +13247,7 @@ A disposition says what is done about the missing observation. `ADD-PORT`: a tes
 |RESET
 |The assertion of the cold reset with every wrapper clock static.
 |PERMANENT-HOLE
-|`hw/sys/smu/doc/port_table.adoc` states that the assertion of `rst_cold_ni` is synchronous to `clk_ref_i`, de-glitched for 32 cycles, and does not propagate while that clock is stopped, and the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch register, so with the clocks held no output moves and no check can fail. The scenario is catalogued in the disposition record.
+|`hw/sys/smu/doc/port_table.adoc` states that the assertion of `rst_cold_ni` is synchronous to `clk_ref_i`, de-glitched for 32 cycles, and does not propagate while that clock is stopped, and the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch register, so with every wrapper clock held no output moves and no check can fail. The scenario is catalogued in the disposition record. `smu_cold_reset_pin_timing_test` (<<sec-219-smu_cold_reset_pin_timing_test>>) holds `clk_ref_i` alone, with `clk_smu_i` running, and grades that the outputs stay released until the clock restarts.
 |MISC
 |The four-phase cross-trigger matrix handshake, the CLA feedback loop and cross-trigger glue injection.
 |PERMANENT-HOLE
@@ -13174,7 +13345,7 @@ Each item is an added hook (an error inject or a top-port drive the bench did no
 |Cool-reset pin, cold-reset pin and the strap pins
 |Existing bench hook (top-port drives of the signal list)
 |`rst_cool_n_from_pin_i`, `rst_cold_ni`, `secure_tm_req_i`, the DFT done and pass straps and the boot-stall pins.
-|`smu_smc_cool_reset_pin_test`, `smu_sep_cold_reassert_during_sense_test`, `smu_secure_tm_real_sense_window_test`, `smu_isolation_retention_test`, `smu_smc_warm_reset_register_retention_test`, `smu_reset_retention_matrix_rand_test`
+|`smu_smc_cool_reset_pin_test`, `smu_cold_reset_pin_timing_test`, `smu_sep_cold_reassert_during_sense_test`, `smu_secure_tm_real_sense_window_test`, `smu_isolation_retention_test`, `smu_smc_warm_reset_register_retention_test`, `smu_reset_retention_matrix_rand_test`
 |JTAG
 |Scan-chain loopbacks and CTP data-input tie-offs
 |Existing bench hook, listed (loopback and tie-off)
@@ -13315,8 +13486,8 @@ block-level evidence, not SMU integration evidence.
 |`smc_under_smu` |23 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |40 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |175 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |219 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |178 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |222 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
@@ -13411,6 +13582,9 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_jtag2axi_address_walk_test` |F3 |dtp_under_smu, hosted |`CHK-J2A-WALK-SMC-OTP`
 |`smu_axi_in_sep_aperture_test` |F4 |fabric, hosted |`CHK-AXIIN-SEP-ROUND-TRIP`
 |`smu_xbar_zero_aperture_test` |F4 |fabric, hosted |`CHK-XBAR-ZERO-SEP`
+|`smu_xbar_self_route_smc_test` |F4 |fabric, hosted |`CHK-XBAR-SELF-SMC-LOCAL`
+|`smu_xbar_self_route_sep_test` |F4 |fabric, hosted |`CHK-XBAR-SELF-SEP-DECERR`
+|`smu_cold_reset_pin_timing_test` |F1 |smc_under_smu, hosted |`CHK-SMU-COLD-PIN-DEGLITCH`
 |`smu_xbar_decerr_burst_response_test` |F4 |all |no feature credit: a Phase 3 test in `all` only takes contract credit (<<smu-credit-rules>>); contract evidence `CHK-RD-BURST`
 |`smu_xbar_reset_held_target_test` |F4 |all |no feature credit: a Phase 3 test in `all` only takes contract credit (<<smu-credit-rules>>); contract evidence `CHK-DIFFID-LIVE`
 |`smu_xbar_aperture_edge_burst_test` |F4 |all |no feature credit: a Phase 3 test in `all` only takes contract credit (<<smu-credit-rules>>); contract evidence `CHK-SEP-PAST-END`

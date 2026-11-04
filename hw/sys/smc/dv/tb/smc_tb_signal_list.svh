@@ -63,6 +63,16 @@
 `SMC_TB_OUT(logic, tb_zeroer_intp)
 `SMC_TB_OUT(logic, tb_zeroer_awvalid)
 `SMC_TB_OUT(logic, tb_zeroer_wvalid)
+// Held high by cocotb while a read whose data is declared observed-only is in
+// flight (an unwritten I3C table entry, the aperture-end word of a window with
+// no past-extent response): the SEP_IN and peripheral R-data-known rules do not
+// judge its beats. The hold is by time, not per read: it disables the whole
+// u_sep_in_data_sva and u_periph_data_sva instance while high, so any other R
+// beat on those two links in that window is not judged by the SVA either; the
+// declaring sequences issue one read at a time inside the hold. smc_axi_monitor
+// exempts the same read per AR through its unknown-rdata window and counts the
+// exempt ARs and beats for the sequence to compare with its declarations.
+`SMC_TB_IN(logic, tb_rdata_known_hold)
 `SMC_TB_IN(logic, tb_test_en_i)
 `SMC_TB_IN(logic, tb_i2c0_scl_ext_low)
 `SMC_TB_IN(logic, tb_i2c0_sda_ext_low)
@@ -698,6 +708,10 @@
 `SMC_TB_OUT(logic, tb_plic_pending_329)
 `SMC_TB_OUT(logic, tb_plic_pending_330)
 `SMC_TB_OUT(logic, tb_plic_pending_332)
+// Sources 321 and 322 are the CLA clock-stop status (cpu_interrupts[320])
+// and the CLA debug interrupt (cpu_interrupts[321]) at the PLIC.
+`SMC_TB_OUT(logic, tb_plic_pending_321)
+`SMC_TB_OUT(logic, tb_plic_pending_322)
 
 // CLINT. MTIMECMP is `pad`/`pad_N` in the generated cluster.
 `SMC_TB_OUT(logic [63:0], tb_clint_mtime)
@@ -748,6 +762,7 @@
 `SMC_TB_OUT(logic [7:0], tb_zeroer_wstrb)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_wdata)
 `SMC_TB_OUT(logic, tb_zeroer_bvalid)
+`SMC_TB_OUT(logic, tb_zeroer_bready)
 `SMC_TB_OUT(logic [31:0], tb_zeroer_outstanding)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_dest_addr)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_size)
@@ -859,6 +874,13 @@
 `SMC_TB_OUT(logic, tb_efuse_shim_resp_valid)
 `SMC_TB_OUT(logic, tb_efuse_shim_resp_status)
 `SMC_TB_OUT(logic [63:0], tb_efuse_locks)
+
+// OCTS live count and the timer's pulse ports on either side of the padring.
+`SMC_TB_OUT(logic [63:0], tb_octs_timer_count)
+`SMC_TB_OUT(logic, tb_octs_core_sync_load_out)
+`SMC_TB_OUT(logic, tb_octs_core_credit_out)
+`SMC_TB_OUT(logic, tb_octs_core_sync_load_in)
+`SMC_TB_OUT(logic, tb_octs_core_credit_in)
 
 // ------------------------------------------------------------------
 // Elaboration aliases: optional observe ports for the bring-up smoke
