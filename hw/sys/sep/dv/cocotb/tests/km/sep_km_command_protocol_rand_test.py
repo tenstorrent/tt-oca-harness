@@ -57,6 +57,14 @@ response sequence rises by one on every frame except at a reset cause).
 The procedure steps that serve only non-claimed checkers do not run: the single-fault
 legs (steps 4 to 8), the argument legs (11 to 13), the DEST_VALID walk (15), the
 transport leg (33 to 39) and the record of ``inbound_separator`` in step 1.
+
+The regression runs the leaf as two shards (``+sep_shard``, ``env/sep_shard.py``),
+each from its own seed and its own boot, and each draws the whole plan: shard 1 the
+pair leg, CHK-ALIVE, the twins and the wrap leg; shard 2 the transport causes, both
+gate legs, the three handover legs and the overflow-pending leg. Shard 1 has no
+RESP_RECOVERABLE_FAULT frame, so CHK-RAS-KM_CORRECTABLE-RISE, -SHAPE and -CLEAR are
+graded in shard 2 only; CHK-RAS-KM_CORRECTABLE-IDLE and CHK-RESPSEQ are graded in
+both. Without the plusarg the leaf runs every leg, as one boot.
 """
 
 from __future__ import annotations
@@ -71,6 +79,7 @@ from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_ras_map import check_tap_width, ras_bit
+from env.sep_shard import sep_shard
 from env.sep_spec_tables import agg_from_pic
 from km import sep_km_command_protocol_rand_plan as pl
 from sep_base_test import sep_base_test
@@ -127,6 +136,36 @@ _DRAIN_MAX_WORDS = 600  # words the drain reads at most
 
 _FAULT_HDR_WORDS = 3  # header, one sign-extended code word, CRC-32C
 
+_PAIR_SHARD = 1
+_FAULT_SHARD = 2
+SHARD_EVIDENCE = {
+    _PAIR_SHARD: (
+        "CHK-PAIR",
+        "CHK-NOCHG-VAULT",
+        "CHK-ALIVE",
+        "CHK-WRAP-CTRL",
+        "CHK-WRAP",
+        "CHK-RESPSEQ",
+        "CHK-RAS-KM_CORRECTABLE-IDLE",
+    ),
+    _FAULT_SHARD: (
+        "CHK-CNT-RESET",
+        "CHK-RECOVER",
+        "CHK-GATE",
+        "CHK-VALID-FIRST",
+        "CHK-ADMIT",
+        "CHK-PERSIST",
+        "CHK-NOCHG-VAULT",
+        "CHK-RESET-CLR",
+        "CHK-RESPSEQ",
+        "CHK-OFLOW-PEND",
+        "CHK-RAS-KM_CORRECTABLE-IDLE",
+        "CHK-RAS-KM_CORRECTABLE-RISE",
+        "CHK-RAS-KM_CORRECTABLE-SHAPE",
+        "CHK-RAS-KM_CORRECTABLE-CLEAR",
+    ),
+}
+
 
 def _a(value: int | None) -> str:
     return "none" if value is None else f"0x{value:08x}"
@@ -177,6 +216,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
+        self.shard = sep_shard(self, SHARD_EVIDENCE)
         self.plan = pl.CommandProtocolPlan(seed)
         for line in self.plan.draw_lines():
             self.logger.info(line)
@@ -221,14 +261,17 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             raise AssertionError("sep_ras_probe_o watcher took no sample before the graded window")
         self.ras_ev = [("zero", self.ras_m0.clk)]
 
-        await self._pair_leg()
-        await self._alive_and_twins()
-        await self._wrap_leg()
-        await self._cause_loop()
-        for g in self.plan.gates:
-            await self._gate_leg(g)
-        for hd in self.plan.handovers:
-            await self._handover_leg(hd)
+        if self.shard in (None, _PAIR_SHARD):
+            await self._pair_leg()
+            await self._alive_and_twins()
+            await self._wrap_leg()
+        faults = self.shard in (None, _FAULT_SHARD)
+        if faults:
+            await self._cause_loop()
+            for g in self.plan.gates:
+                await self._gate_leg(g)
+            for hd in self.plan.handovers:
+                await self._handover_leg(hd)
 
         # CHK-RESPSEQ covers every frame of the response reader up to here; the
         # drain of the overflow step reads raw words and is graded on its own.
@@ -244,12 +287,13 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         # on a sequence mismatch.
         self.resp_seq_graded = True
 
-        await self._oflow_pend_leg()
+        if faults:
+            await self._oflow_pend_leg()
 
         close_graded_window(self.logger)
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        await self._grade_ras()
+        await self._grade_ras(faults)
         assert self.drbg_sb.report()
         self.chk.finish()
 
@@ -1148,8 +1192,12 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         if self.ras_ev is not None:
             self.ras_ev.append((phase, self.ras.clk))
 
-    async def _grade_ras(self) -> None:
-        """CHK-RAS-KM_CORRECTABLE-<HALF>: the per-clock record of the tap against the model."""
+    async def _grade_ras(self, faults: bool) -> None:
+        """CHK-RAS-KM_CORRECTABLE-<HALF>: the per-clock record of the tap against the model.
+
+        ``faults`` is true when the run has the legs that raise RESP_RECOVERABLE_FAULT;
+        RISE, SHAPE and CLEAR are graded only then.
+        """
         end = self.ras.clk
         rises = self.ras.rise_clks_since(self.ras_m0)
         falls = self.ras.fall_clks_since(self.ras_m0)
@@ -1227,31 +1275,32 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             high=sum(h for _, _, h in idle),
             bad=idle_bad[:4],
         )
-        self.chk.ok(
-            "RAS-KM_CORRECTABLE-RISE",
-            rise_graded > 0 and not rise_bad,
-            faults=rise_graded + rise_open,
-            graded=rise_graded,
-            acked_before_bound=rise_open,
-            bound=_PIC_BOUND,
-            bad=rise_bad[:4],
-        )
-        self.chk.ok(
-            "RAS-KM_CORRECTABLE-SHAPE",
-            hold and not hold_bad,
-            hold_spans=len(hold),
-            clocks=clocks(hold),
-            low=sum(b - a - h for a, b, h in hold),
-            bad=hold_bad[:4],
-        )
-        self.chk.ok(
-            "RAS-KM_CORRECTABLE-CLEAR",
-            clear and not clear_bad,
-            spans=len(clear),
-            clocks=clocks(clear),
-            high=sum(h for _, _, h in clear),
-            bad=clear_bad[:4],
-        )
+        if faults:
+            self.chk.ok(
+                "RAS-KM_CORRECTABLE-RISE",
+                rise_graded > 0 and not rise_bad,
+                faults=rise_graded + rise_open,
+                graded=rise_graded,
+                acked_before_bound=rise_open,
+                bound=_PIC_BOUND,
+                bad=rise_bad[:4],
+            )
+            self.chk.ok(
+                "RAS-KM_CORRECTABLE-SHAPE",
+                hold and not hold_bad,
+                hold_spans=len(hold),
+                clocks=clocks(hold),
+                low=sum(b - a - h for a, b, h in hold),
+                bad=hold_bad[:4],
+            )
+            self.chk.ok(
+                "RAS-KM_CORRECTABLE-CLEAR",
+                clear and not clear_bad,
+                spans=len(clear),
+                clocks=clocks(clear),
+                high=sum(h for _, _, h in clear),
+                bad=clear_bad[:4],
+            )
         self.chk.obs(
             "RAS-KM_CORRECTABLE-DELAY",
             rise_after_frame_clk=rise_delay,

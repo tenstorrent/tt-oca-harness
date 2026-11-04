@@ -75,6 +75,13 @@ Logged only: the response to the mid size (``OBS-SIZE-MID``), the shared-key
 words at the jump of each pass (``INFO-HO-SK-WORDS``), the VAL_0 reads of the OTP fields, the
 SRAM store and violation readbacks, the demotion lock bit and the full CPU IRQ
 mask. CHK-HO-NOIRQ and CHK-HO-SK-WORDS remain graded contracts.
+
+The regression runs the leaf as two shards (``+sep_shard``, ``env/sep_shard.py``),
+each from its own seed and its own boot, and each draws the whole plan: shard 1 the
+good load, the fw_crc leg, the size refusals and the mid size (steps 2 to 9); shard
+2 the warm reset before pass 1 and passes 1 and 2 (steps 10 to 16). Pass 2 runs the
+image that pass 1 loads, so both passes are in one shard. Without the plusarg the
+leaf runs every leg, as one boot.
 """
 
 from __future__ import annotations
@@ -89,6 +96,7 @@ from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_image import LC_PROD, SepEfuseImage
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_km_fuse_plan import OTP_DUAL_RAIL_FIELDS
+from env.sep_shard import sep_shard
 from env.sep_spec_tables import agg_from_pic
 from km import sep_km_handover_rand_model as md
 from sep_base_test import sep_base_test
@@ -326,6 +334,26 @@ class _RiseHold:
             if self.held_samples >= self.hold:
                 self.done.set()
                 return
+
+
+_LOAD_SHARD = 1
+_PASS_SHARD = 2
+SHARD_EVIDENCE = {
+    _LOAD_SHARD: ("CHK-FWCRC", "CHK-SIZE-REJ"),
+    _PASS_SHARD: (
+        "CHK-HO-FIRST",
+        "CHK-HO-REGS",
+        "CHK-HO-NOIRQ",
+        "CHK-HO-ENTRY",
+        "CHK-HO-OTP",
+        "CHK-HO-KPV-LOCK",
+        "CHK-HO-SIDELOAD",
+        "CHK-HO-SK-WORDS",
+        "CHK-HO-SIDELOAD-BUS",
+        "CHK-HO-SRAM",
+        "CHK-HO-MBOX",
+    ),
+}
 
 
 @pyuvm.test()
@@ -942,6 +970,7 @@ class sep_km_handover_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
+        self.shard = sep_shard(self, SHARD_EVIDENCE)
         self.chk = SepChkLog(self, TEST, seed)
         self.plan = md.draw_plan(
             seed, {f: SepEfuseImage.field(f).n_words for f in OTP_DUAL_RAIL_FIELDS}
@@ -984,17 +1013,19 @@ class sep_km_handover_rand_test(sep_base_test):
             hashlib.sha256(imgh.IMAGE_PATH.read_bytes()).hexdigest(),
             len(imgh.read_image()),
         )
-        await self._good_load()  # steps 2 and 3
-        await self._fwcrc_leg()  # steps 5 and 6
-        # Step 7: the warm boot of step 6 serves the first oversize value.
-        oversize = (*md.OVERSIZE_FIXED, self.plan.oversize)
-        for i, w in enumerate(oversize):
-            await self._size_rej(w, zero=False, boot=i > 0)
-        await self._size_rej(0, zero=True, boot=True)  # step 8
-        await self._mid_size()  # step 9
-        await self._warm("pass 1 pre-state")
-        await self._state_pass(1)  # steps 10 to 14
-        await self._state_pass(2)  # steps 15 and 16
+        if self.shard in (None, _LOAD_SHARD):
+            await self._good_load()  # steps 2 and 3
+            await self._fwcrc_leg()  # steps 5 and 6
+            # Step 7: the warm boot of step 6 serves the first oversize value.
+            oversize = (*md.OVERSIZE_FIXED, self.plan.oversize)
+            for i, w in enumerate(oversize):
+                await self._size_rej(w, zero=False, boot=i > 0)
+            await self._size_rej(0, zero=True, boot=True)  # step 8
+            await self._mid_size()  # step 9
+        if self.shard in (None, _PASS_SHARD):
+            await self._warm("pass 1 pre-state")
+            await self._state_pass(1)  # steps 10 to 14
+            await self._state_pass(2)  # steps 15 and 16
 
         # Step 18: leave the leaf with km_sw_rst_n high.
         await self._warm("end of leaf")

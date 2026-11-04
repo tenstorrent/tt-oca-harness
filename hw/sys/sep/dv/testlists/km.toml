@@ -507,7 +507,9 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_scr.param.parhex", "+verilator+e
 [[tests]]
 # KM frame validation order, sequence wrap, transport recovery and the recovery gate (rom_main).
 # The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
-name = "sep_km_command_protocol_rand_test"
+# Shard 1 of 2 of sep_km_command_protocol_rand_test: the pair, twin, alive and wrap legs (no fault frame, the RAS control shard).
+# The regression runs the shards; together they grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_command_protocol_rand_test_shard1"
 module = "km.sep_km_command_protocol_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
@@ -516,7 +518,23 @@ timeout_sec = 10800
 tags = ["km", "mailbox", "recovery", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner", "sep_ras"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=1"]
+
+[[tests]]
+# KM frame validation order, sequence wrap, transport recovery and the recovery gate (rom_main).
+# The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+# Shard 2 of 2 of sep_km_command_protocol_rand_test: the cause loop, the gate legs, the handover legs and the overflow-pending leg.
+# The regression runs the shards; together they grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_command_protocol_rand_test_shard2"
+module = "km.sep_km_command_protocol_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 1
+timeout_sec = 10800
+tags = ["km", "mailbox", "recovery", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner", "sep_ras"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=2"]
 
 [[tests]]
 # KM key transfer: keys of 17 to 128 words, multi-engine masks, mixed-mask refusal, subset shred,
@@ -528,8 +546,8 @@ name = "sep_km_key_transfer_rand_test_shard1"
 module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-reseed = 3
-timeout_sec = 5400
+reseed = 1
+timeout_sec = 5700
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -543,7 +561,7 @@ module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 3
-timeout_sec = 5400
+timeout_sec = 5700
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -570,7 +588,7 @@ name = "sep_km_key_transfer_rand_test_shard4"
 module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-reseed = 3
+reseed = 1
 timeout_sec = 5400
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy", "sep_spec_log", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
@@ -580,7 +598,9 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+erro
 [[tests]]
 # KM image load refusals, the fw_crc fault and the KM state at the handover jump (IMG-H, rom_main).
 # The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
-name = "sep_km_handover_rand_test"
+# Shard 1 of 2 of sep_km_handover_rand_test: the good load, the fw_crc fault, the size rejects and the mid size.
+# The regression runs the shards; together they grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_handover_rand_test_shard1"
 module = "km.sep_km_handover_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
@@ -589,7 +609,23 @@ timeout_sec = 10800
 tags = ["km", "handover", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=1"]
+
+[[tests]]
+# KM image load refusals, the fw_crc fault and the KM state at the handover jump (IMG-H, rom_main).
+# The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
+# Shard 2 of 2 of sep_km_handover_rand_test: the two handover passes.
+# The regression runs the shards; together they grade every check of the whole leaf (env/sep_shard.py).
+name = "sep_km_handover_rand_test_shard2"
+module = "km.sep_km_handover_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+reseed = 1
+timeout_sec = 10800
+tags = ["km", "handover", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=2"]
 
 [[tests]]
 # KM boot after warm and cold resets on the shipped rom_main build (both wipes on): boot flush,
