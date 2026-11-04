@@ -748,6 +748,7 @@
 `SMC_TB_OUT(logic [7:0], tb_zeroer_wstrb)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_wdata)
 `SMC_TB_OUT(logic, tb_zeroer_bvalid)
+`SMC_TB_OUT(logic, tb_zeroer_bready)
 `SMC_TB_OUT(logic [31:0], tb_zeroer_outstanding)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_dest_addr)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_size)

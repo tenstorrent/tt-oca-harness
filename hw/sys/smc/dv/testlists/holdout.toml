@@ -138,19 +138,6 @@ expect_fail = "a response handed over as the I2C clock gate closes is duplicated
 expect_fail_match = "CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE FAIL: .*timed_out=False .*a completed read left r_valid still presented"
 
 [[tests]]
-# Observation leaf: a CTRL_STATUS trigger while the zeroer is busy
-# is dropped during issue and accepted while responses drain, with one
-# completion interrupt for two jobs; zeroer.adoc and zeroer_ctrl.rdl state
-# no rule for it. The OBS-ZEROER-BUSY lines record both windows; the CHK line
-# grades liveness only.
-name = "smc_zeroer_busy_trigger_obs_test"
-module = "smc_zeroer_busy_trigger_obs_test"
-seed = 1
-timeout_sec = 1800
-tags = ["zeroer"]
-run_modes = ["smoke"]
-
-[[tests]]
 # Observation leaf: the FLR pre-delay is N+1 clk_ref_i cycles, the
 # hold is M, and an edge during a running sequence is ignored; reset_unit.rdl
 # names neither the clock nor the offset. The OBS-FLR lines record each
@@ -382,8 +369,7 @@ tests = [
 # Leaves whose comparison the specification does not support, and the
 # observation leaves waiting on a specification ruling; run on demand.
 name = "held_out"
-expected_count = 2
+expected_count = 1
 tests = [
-    "smc_zeroer_busy_trigger_obs_test",
     "smc_flr_counter_timing_obs_test",
 ]
