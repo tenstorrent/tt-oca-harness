@@ -236,6 +236,8 @@ S3_DMA2_LEN = 0x100
 NEITHER_RD_PAGE = NEITHER + 0x4000
 NEITHER_WR_PAGE = NEITHER + 0x5000
 DECERR_LENS = (1, 15, 255)
+# Page offsets of the DECERR_LENS bursts: each 8-byte-beat burst ends inside its 4 KiB page
+DECERR_OFFS = (0x000, 0x800, 0x800)
 
 # --- bounds, clk_smu_i edges unless named ---
 LINK_TAIL = 32
@@ -1691,8 +1693,8 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
         credits = sum(n + 1 for n in DECERR_LENS) + len(DECERR_LENS)
         with expected_decerr("ext_in", credits):
             for k, alen in enumerate(DECERR_LENS):
-                rd_addr = NEITHER_RD_PAGE + (0, 0x800, 0x900)[k]
-                wr_addr = NEITHER_WR_PAGE + (0, 0x800, 0x900)[k]
+                rd_addr = NEITHER_RD_PAGE + DECERR_OFFS[k]
+                wr_addr = NEITHER_WR_PAGE + DECERR_OFFS[k]
                 nbytes = 8 * (alen + 1)
                 cnt0 = self._cnt()
                 omk = self.out.mark()
