@@ -66,13 +66,23 @@ register unit is split into single-beat writes. Its write response is that of
 the last beat when the last beat answers `SLVERR` or `DECERR`; otherwise it is
 `SLVERR` when an earlier beat answered an error, and `OKAY` when none did.
 
+The SMC does not check AXI4 burst encodings on its inbound ports. An illegal
+burst -- a WRAP burst with `AxLEN` 0, the reserved `AxBURST` encoding 2'b11,
+or an INCR burst that crosses a 4 KiB boundary -- is routed by its start
+address like a legal one. The scratchpad RAM answers such a burst `OKAY`, and
+the addresses it then reads or writes are not defined. The initiator must issue
+only legal bursts.
+
 An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers `DECERR`.
 
-The inbound port reaches a unit only while its whole aperture lies below
-`BASE + REGION_SIZE`. At the reset value the PLIC, CLINT and bus-error units lie
-beyond it and answer `DECERR`. The SMC harts reach the PLIC and CLINT inside the
+An inbound access at or above `BASE + REGION_SIZE` answers `DECERR`; the limit
+applies per address, not per unit. A unit that extends past the limit stays
+reachable below it: at a `REGION_SIZE` of 1 MiB the scratchpad RAM answers
+below `BASE + 0x10_0000` and `DECERR` above it. Firmware should pick a
+`REGION_SIZE` that no unit straddles. At the reset value the PLIC, CLINT and
+bus-error units lie wholly beyond the limit and answer `DECERR`. The SMC harts reach the PLIC and CLINT inside the
 CPU cluster regardless of `REGION_SIZE`.
 
 The I2C, UART, I3C, AVSBus and Telemetry Receiver windows answer `SLVERR`, with

@@ -44,14 +44,14 @@ typedef union {
 } smc_base_config__LOCAL_BASE_t;
 
 // reg - smc_base_config::REGION_SIZE
-// Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
+// Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. An inbound access at or above BASE + this size answers DECERR; a unit that extends past the limit stays reachable below it. Pick a size that no unit straddles. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_bm 0xffffffff
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_bp 0
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_bw 32
 #define SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset 0x1000000
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
+        // Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. An inbound access at or above BASE + this size answers DECERR; a unit that extends past the limit stays reachable below it. Pick a size that no unit straddles. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.
         uint64_t size :32;
         uint64_t :32;
     } f;

@@ -31,7 +31,7 @@ Buckets:
 
 Enrolled names outside this catalog:
 
-* The JTAG2AXI / OTP / filter set in `hosted` is recorded in the Component Signoff section of `hw/sys/smu/dv/docs/SMU_VPLAN.adoc`, which also records ATOP reject as OUT.
+* The JTAG2AXI / OTP / filter set in `hosted` is recorded in the Component Signoff section of `hw/sys/smu/dv/docs/SMU_VPLAN.adoc`, which also records ATOP as OUT by the `smu_axi_in` boundary contract.
 * `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are enrolled in `hosted` (`testlists/all.toml`).
 * `smu_ext_axi_global_addr_smoke_test` is in the table below under `not-runnable`.
 
@@ -607,7 +607,7 @@ Enrolled names outside this catalog:
 |No body; `smu_telemetry_atb_capture_test` covers ATB capture at the pins, with the bench as the ATB source for every receiver.
 |smu_axi_atomic_awatop_reject_test
 |waived
-|No body; `smu_axi_in_req.aw.atop` is tied to 0 in `tb/tb_wrapper_top.sv` and the package has no ATOP driver, so no ATOP transaction can reach the DUT (`SMU_VPLAN.adoc`, "F4 ATOP reject" and the `smu_axi_atomic_operation_test` card).
+|No body; the `smu_axi_in` boundary contract (`doc/integrator/src/smu-composition.adoc`, AXI boundary contract) requires `AWATOP` = 0, and the SMU neither refuses nor answers an atomic (`hw/sys/smu/rtl/smu_axi_xbar.sv` builds the crossbar with `ATOPs(1'b0)`: an atomic is forwarded as an ordinary write and its read data never returns), so there is no rejection to grade; `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to 0 as the contract requires (`SMU_VPLAN.adoc`, "F4 ATOP" and the `smu_axi_atomic_operation_test` card).
 |smu_axi_filter_out_rule_matrix_test
 |child-TB-owned
 |No body; outbound filter rule traffic belongs to the SMC TB. `smu_axi_filter_out_instance_matrix_test` proves outbound filter CSR decode only, not egress traffic.
