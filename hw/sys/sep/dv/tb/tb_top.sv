@@ -4493,14 +4493,16 @@ module sep_uvm_top
     // KM-AXIV, slave side: bit i of each port output is master port i of the
     // KM crossbar u_xbar, the AddrMap index of km_axi_lite_xbar (0 KPV, 1 KMCSR,
     // 2 DRBG sampler, 3 mailbox, 4 OTBN, 5 AES, 6 KMAC, 7 HMAC, 8 OTP,
-    // 9 Adams Bridge): the AR and AW handshakes (valid and ready both 1), the
-    // R and B valids and the R and B handshakes, on every clock. Explicit
+    // 9 Adams Bridge): the AR, AW and W handshakes (valid and ready both 1),
+    // the R and B valids and the R and B handshakes, on every clock. Explicit
     // per-index assigns avoid a genvar-indexed XMR.
 `define KM_AXI_PORT_TAP(i) \
     assign km_cpu_axi_port_ar_hs_o[i]  = `KM_TAP.u_xbar.xbar_mst_req[i].ar_valid & \
                                          `KM_TAP.u_xbar.xbar_mst_resp[i].ar_ready; \
     assign km_cpu_axi_port_aw_hs_o[i]  = `KM_TAP.u_xbar.xbar_mst_req[i].aw_valid & \
                                          `KM_TAP.u_xbar.xbar_mst_resp[i].aw_ready; \
+    assign km_cpu_axi_port_w_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_req[i].w_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_resp[i].w_ready; \
     assign km_cpu_axi_port_r_valid_o[i] = `KM_TAP.u_xbar.xbar_mst_resp[i].r_valid; \
     assign km_cpu_axi_port_b_valid_o[i] = `KM_TAP.u_xbar.xbar_mst_resp[i].b_valid; \
     assign km_cpu_axi_port_r_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_resp[i].r_valid & \

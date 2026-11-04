@@ -27,7 +27,7 @@ CPU AXI master valids, ``km_cpu_axi_ready_o``, the readies of the same
 channels, ``km_cpu_rst_n_o``, the KM CPU reset, and the slave side of the KM
 crossbar, one bit per master port: ``km_cpu_axi_port_ar_hs_o`` and
 ``km_cpu_axi_port_aw_hs_o``, the AR and AW handshakes,
-``km_cpu_axi_port_r_valid_o`` and ``km_cpu_axi_port_b_valid_o``, the R and B
+``km_cpu_axi_port_w_hs_o``, the W handshakes, ``km_cpu_axi_port_r_valid_o`` and ``km_cpu_axi_port_b_valid_o``, the R and B
 valids, ``km_cpu_axi_port_r_hs_o`` and ``km_cpu_axi_port_b_hs_o``, the R and B
 handshakes). Injects: none.
 Every reset is a legal host stimulus: ``SW_RESET_N`` bit 0 for a warm reset,
@@ -64,7 +64,7 @@ Checks:
                   only ``km_mailbox_km``; ``km_mailbox_sep.rdl:255-263``)
   CHK-RST-AXI-VALID
                   at each cold AXI reset point (rst_ni driven low in the half clock
-                  of a KM CPU read with its ready at 1, then of a write) the three
+                  of a pending KM CPU read, then of a pending write) the three
                   KM CPU AXI valids read 0 in the sample after the first rising
                   edge with the KM CPU reset at 0, and in every later sample up
                   to the end of the rst_ni pulse and the SEP release, with that
@@ -77,34 +77,46 @@ Checks:
                   AWREADY and WREADY are not constrained during reset
                   (``hw/ip/key_manager/doc/architecture.adoc:189-190``)
   CHK-RST-AXI-NORESP
-                  at each of the four AXI reset points (the two cold points
-                  above, and the warm-read and warm-write points, where
-                  SW_RESET_N bit 0 asserts the KM CPU reset on the clock edge
-                  that completes the first AR, then the first AW, of a KM
-                  boot) a request that completes a handshake on the reset edge
-                  is dropped (``architecture.adoc:185-191``). Graded on the
-                  slave side of the KM crossbar, on the ports the KM warm
-                  reset resets (KPV, KMCSR, DRBG sampler, mailbox, OTP;
-                  ``architecture.adoc:167-176,179-182``): the R and B valids
-                  read 0 in every sample from the first sample with the KM CPU
-                  reset at 0 to the end of that reset (AXI A3.1.2), and from
-                  the next KM CPU release each R valid on a port has an AR
+                  at each of the four AXI reset points a request that the reset
+                  drops gets no response, during the reset or after the release
+                  (``architecture.adoc:185-191``). At the two cold points above
+                  the reset asserts asynchronously, so the check grades that no
+                  response appears during or after the reset; at the warm-read
+                  and warm-write points SW_RESET_N bit 0 asserts the KM CPU reset
+                  on the clock edge that completes the first AR, then the first
+                  AW, of a KM boot, which reaches the request handshaken on the
+                  reset edge. Graded on the slave side of the KM crossbar, on
+                  the ports the KM warm reset resets (KPV, KMCSR, DRBG sampler,
+                  mailbox; ``architecture.adoc:167-176,179-180``): the R and B
+                  valids read 0 in every sample from the first sample with the
+                  KM CPU reset at 0 to the end of that reset (AXI A3.1.2), and
+                  from the next KM CPU release each R valid on a port has an AR
                   handshake on that port, in an earlier sample since the
                   release, that no earlier R handshake answered; the same for
-                  B against AW (AXI A3.3.1). So no response appears before the
-                  port's next request, and no request gets two responses. The
-                  window after the release ends at the next KM CPU reset (that
-                  sample is not graded) or READY_BOUND_CLK samples after the
-                  release. A background watcher per point grades it and logs
-                  the end reason; a watcher whose window has not ended at the
-                  end of the leaf fails it. The check grades the valid level,
-                  so a stale response that is never accepted also fails it.
-                  The KM AXI SVA bind ``u_km_axil_sva`` asserts the R and B
+                  B against AW (AXI A3.3.1); each W handshake on a port has an
+                  AW handshake on that port, in the same or an earlier sample
+                  since the release, that no earlier W handshake used. So no
+                  response appears before the port's next request, no request
+                  gets two responses, and no write data of a dropped AW reaches
+                  a slave. The window after the release ends at the next KM CPU
+                  reset (that sample is not graded) or READY_BOUND_CLK samples
+                  after the release. A background watcher per point grades it
+                  and logs the end reason; a watcher whose window has not ended
+                  at the end of the leaf fails it. The check grades the valid
+                  level, so a stale response that is never accepted also fails
+                  it. The KM AXI SVA bind ``u_km_axil_sva`` asserts the R and B
                   valids low at every edge with the KM CPU reset low, on the
                   CPU side of the crossbar, whose response path is held empty
-                  by the crossbar's own warm reset; this check reads the
-                  slave ports behind it and pairs each response with a request
-                  after the release
+                  by the crossbar's own warm reset; this check reads the slave
+                  ports behind it and pairs each response with a request after
+                  the release
+
+Observations: OBS-RST-AXI-EXT-RSP (per AXI reset point, with its
+CHK-RST-AXI-NORESP line: the same R and B pairing after the release on the
+ports that lead outside the KM, 4-7 and 9 the crypto engines and 8 the eFuse
+controller behind the OTP demux; ``architecture.adoc:180-182`` gives no
+completion or cancellation guarantee for an external transaction, so nothing is
+graded; an unknown tap bit on these ports is logged in ``x_ports``).
 
 Controls: CTRL-RST-AXI-PENDING (cold points: the point's valid reads 1 in the
 sample before the KM CPU reset reads 0); CTRL-RST-AXI-HANDSHAKE (warm points:
@@ -183,12 +195,12 @@ DEPTH_POLLS = 50_000  # polls for a point depth (inbound 0, outbound min(6r, 16)
 FLUSH_POLLS = 50_000  # polls for FLUSHED_BY_KM after the image stream
 POP_MAX_WORDS = 64  # words one pop reads at most
 FRAME_MAX_PLEN = 8  # payload words of the longest frame this leaf reads
-AXI_ARM_BOUND = 200_000  # clocks from the KM release to a request of the point with its ready
+AXI_ARM_BOUND = 200_000  # clocks from the KM release to the request of the point
 AXI_RST_BOUND = 16  # clocks from the rst_ni drive to the KM CPU reset reading 0
 
 # KM-AXIV bits of km_cpu_axi_valid_o and km_cpu_axi_ready_o: 2 ar, 1 aw, 0 w.
-# The AXI reset points: the read point arms on ar_valid with ar_ready, the write
-# point on aw_valid with aw_ready or w_valid with w_ready.
+# The cold AXI reset points: the read point arms on ar_valid, the write point on
+# aw_valid or w_valid.
 AXI_POINTS = (("read", 0b100), ("write", 0b011))
 AXI_AR = 0b100
 AXI_AW = 0b010
@@ -200,10 +212,13 @@ AXI_WARM_TRIES = 3  # warm resets per warm point: one to measure, then aimed one
 # (km_axi_lite_xbar.sv AddrMap). The graded ports are the slaves the KM warm
 # reset resets (architecture.adoc:167-176, 179-180: the KM-internal fabric, the
 # register CPU interfaces of KMCSR and KPV, the DRBG sampler and the KM side of
-# the mailbox): 0 KPV, 1 KMCSR, 2 DRBG sampler, 3 mailbox, 8 OTP (the OTP demux
-# of the KM fabric). Ports 4-7 and 9 are crypto engines outside the KM, which
-# the warm reset gives no guarantee for (architecture.adoc:180-182).
-KM_PORTS_WARM = 0b01_0000_1111
+# the mailbox): 0 KPV, 1 KMCSR, 2 DRBG sampler, 3 mailbox. The other ports lead
+# to slaves outside the KM: 4-7 and 9 the crypto engines, 8 the eFuse
+# controller behind the OTP demux. The warm reset is not a completion or
+# cancellation guarantee for an external transaction (architecture.adoc:180-182),
+# so those ports are logged by OBS-RST-AXI-EXT-RSP and not graded.
+KM_PORTS_WARM = 0b00_0000_1111
+KM_PORTS_EXT = 0b11_1111_0000
 KM_PORTS = 10
 
 # The boots of one leaf: the cold-boot reference, three warm resets of the
@@ -272,19 +287,47 @@ class _Watch:
                 self._armed = False
 
 
+def _tap(sig) -> tuple[int, int]:
+    """KM-AXIV port tap: (value, unknown bits); an unknown bit reads 0 in the value.
+
+    An unknown bit on a graded port (KM_PORTS_WARM) raises: a compare on it could
+    pass for free. Unknown bits on the other ports are returned for the log.
+    """
+    value = sig.value
+    if isinstance(value, int):
+        return int(value), 0
+    bits = (getattr(value, "binstr", None) or str(value)).strip()
+    val = unknown = 0
+    for c in bits:
+        val = (val << 1) | (c in "1hH")
+        unknown = (unknown << 1) | (c not in "01hHlL")
+    if unknown & KM_PORTS_WARM:
+        raise AssertionError(
+            f"{getattr(sig, '_path', sig)} is not fully known on the graded ports "
+            f"0x{KM_PORTS_WARM:03x}: bits={bits!r}"
+        )
+    return val, unknown
+
+
 class _NoResp:
     """CHK-RST-AXI-NORESP watcher of one AXI reset point (KM-AXIV slave side, ReadOnly samples).
 
     Starts at the first sample with the KM CPU reset at 0 and ORs the R and B
     valids of the graded crossbar ports (KM_PORTS_WARM) over every reset sample.
-    From the first sample with the reset at 1 it counts, per graded port, the AR,
-    AW, R and B handshakes of the earlier samples since that release. An R valid
+    From the first sample with the reset at 1 it counts, per port, the AR, AW, W,
+    R and B handshakes of the earlier samples since that release. An R valid
     on a port whose AR count is not above its R count has no request to answer
-    and is unpaired; the same for B against AW. The window ends at the next
-    sample with the reset at 0 (``rst``, not graded) or READY_BOUND_CLK samples
-    after the release (``bound``), and the CHK is logged then. A paired response
-    whose valid and handshake read 1 counts for CTRL-RST-AXI-RSP-LIVE. The
-    watcher reads signals only.
+    and is unpaired; the same for B against AW. A W handshake on a graded port
+    whose AW count, with an AW handshake in the same sample, is not above its W
+    count has no address since the release and is unpaired: it carries the data
+    of a write whose AW the reset dropped. The window ends at the next sample
+    with the reset at 0 (``rst``, not graded) or READY_BOUND_CLK samples after
+    the release (``bound``); the CHK is logged then, with OBS-RST-AXI-EXT-RSP,
+    which logs the same R and B pairing on the external ports (KM_PORTS_EXT) and
+    grades nothing. An unknown bit on an external port is not counted and sets
+    that port in ``x_ports``. A paired response on a graded port whose valid
+    and handshake read 1 counts for CTRL-RST-AXI-RSP-LIVE. The watcher reads
+    signals only.
     """
 
     def __init__(
@@ -300,9 +343,9 @@ class _NoResp:
         self.released = False
         self.post_clks = 0
         self.end: str | None = None
-        self.n = {k: [0] * KM_PORTS for k in ("ar", "aw", "r", "b")}
-        self.r_unpaired = 0
-        self.b_unpaired = 0
+        self.n = {k: [0] * KM_PORTS for k in ("ar", "aw", "w", "r", "b")}
+        self.unpaired = {k: 0 for k in ("r", "b", "w", "ext_r", "ext_b")}
+        self.x_ports = 0
         self.r_live = 0
         self.b_live = 0
         self.logged = False
@@ -321,6 +364,9 @@ class _NoResp:
             else:
                 self._task.kill()
 
+    def _count(self, k: str, ports: int) -> int:
+        return sum(n for i, n in enumerate(self.n[k]) if (ports >> i) & 1)
+
     def fields(self) -> dict:
         return {
             "point": self.point,
@@ -329,24 +375,38 @@ class _NoResp:
             "r_rst": f"0x{self.r_rst:03x}",
             "b_rst": f"0x{self.b_rst:03x}",
             "rst_clks": self.rst_clks,
-            "r_unpaired": f"0x{self.r_unpaired:03x}",
-            "b_unpaired": f"0x{self.b_unpaired:03x}",
-            "ar": sum(self.n["ar"]),
-            "r": sum(self.n["r"]),
-            "aw": sum(self.n["aw"]),
-            "b": sum(self.n["b"]),
+            "r_unpaired": f"0x{self.unpaired['r']:03x}",
+            "b_unpaired": f"0x{self.unpaired['b']:03x}",
+            "w_unpaired": f"0x{self.unpaired['w']:03x}",
+            **{k: self._count(k, KM_PORTS_WARM) for k in ("ar", "r", "aw", "w", "b")},
             "post_clks": self.post_clks,
             "end": self.end or "open",
         }
 
+    def log_ext(self) -> None:
+        """OBS-RST-AXI-EXT-RSP: the R and B pairing on the external ports; grades nothing."""
+        self.test.chk.obs(
+            "RST-AXI-EXT-RSP",
+            point=self.point,
+            ports=f"0x{KM_PORTS_EXT:03x}",
+            r_unpaired=f"0x{self.unpaired['ext_r']:03x}",
+            b_unpaired=f"0x{self.unpaired['ext_b']:03x}",
+            **{k: self._count(k, KM_PORTS_EXT) for k in ("ar", "r", "aw", "b")},
+            x_ports=f"0x{self.x_ports:03x}",
+            post_clks=self.post_clks,
+            end=self.end or "open",
+        )
+
     def _log(self, end: str) -> None:
         self.end = end
         self.logged = True
+        u = self.unpaired
         self.test.chk.ok(
             "RST-AXI-NORESP",
-            self.r_rst == 0 and self.b_rst == 0 and self.r_unpaired == 0 and self.b_unpaired == 0,
+            self.r_rst == 0 and self.b_rst == 0 and u["r"] == 0 and u["b"] == 0 and u["w"] == 0,
             **self.fields(),
         )
+        self.log_ext()
 
     def _pair(self, port: int, valid: int, hs: int, req: str, rsp: str) -> bool:
         """Grade one response valid of ``port``; False when it has no request to answer."""
@@ -354,7 +414,7 @@ class _NoResp:
         if valid & bit:
             if self.n[req][port] <= self.n[rsp][port]:
                 return False
-            if hs & bit:
+            if hs & bit and KM_PORTS_WARM & bit:
                 if rsp == "r":
                     self.r_live += 1
                 else:
@@ -363,41 +423,55 @@ class _NoResp:
 
     async def _run(self) -> None:
         dut = self.test.dut
-        rd = self.test.rd_known
         while not self.logged:
             await FallingEdge(dut.clk_i)
             await ReadOnly()
             if self.stopped:
                 return
-            rst_n = rd(dut.km_cpu_rst_n_o)
-            r_v = rd(dut.km_cpu_axi_port_r_valid_o) & KM_PORTS_WARM
-            b_v = rd(dut.km_cpu_axi_port_b_valid_o) & KM_PORTS_WARM
+            rst_n = self.test.rd_known(dut.km_cpu_rst_n_o)
+            taps = {
+                "r_v": _tap(dut.km_cpu_axi_port_r_valid_o),
+                "b_v": _tap(dut.km_cpu_axi_port_b_valid_o),
+            }
             if not self.released:
                 if rst_n == 0:
-                    self.r_rst |= r_v
-                    self.b_rst |= b_v
+                    self.r_rst |= taps["r_v"][0] & KM_PORTS_WARM
+                    self.b_rst |= taps["b_v"][0] & KM_PORTS_WARM
                     self.rst_clks += 1
                     continue
                 self.released = True
             if rst_n == 0:
                 self._log("rst")
                 return
-            hs = {
-                "ar": rd(dut.km_cpu_axi_port_ar_hs_o) & KM_PORTS_WARM,
-                "aw": rd(dut.km_cpu_axi_port_aw_hs_o) & KM_PORTS_WARM,
-                "r": rd(dut.km_cpu_axi_port_r_hs_o) & KM_PORTS_WARM,
-                "b": rd(dut.km_cpu_axi_port_b_hs_o) & KM_PORTS_WARM,
-            }
-            active = r_v | b_v | hs["ar"] | hs["aw"] | hs["r"] | hs["b"]
+            taps.update(
+                ar=_tap(dut.km_cpu_axi_port_ar_hs_o),
+                aw=_tap(dut.km_cpu_axi_port_aw_hs_o),
+                w=_tap(dut.km_cpu_axi_port_w_hs_o),
+                r=_tap(dut.km_cpu_axi_port_r_hs_o),
+                b=_tap(dut.km_cpu_axi_port_b_hs_o),
+            )
+            unknown = 0
+            for _, x in taps.values():
+                unknown |= x
+            self.x_ports |= unknown
+            v = {k: val & ~unknown for k, (val, _) in taps.items()}
+            active = 0
+            for val in v.values():
+                active |= val
             for port in range(KM_PORTS):
-                if not (active >> port) & 1:
+                bit = 1 << port
+                if not active & bit:
                     continue
-                if not self._pair(port, r_v, hs["r"], "ar", "r"):
-                    self.r_unpaired |= 1 << port
-                if not self._pair(port, b_v, hs["b"], "aw", "b"):
-                    self.b_unpaired |= 1 << port
+                ext = "ext_" if KM_PORTS_EXT & bit else ""
+                if not self._pair(port, v["r_v"], v["r"], "ar", "r"):
+                    self.unpaired[ext + "r"] |= bit
+                if not self._pair(port, v["b_v"], v["b"], "aw", "b"):
+                    self.unpaired[ext + "b"] |= bit
+                aw_now = (v["aw"] >> port) & 1
+                if not ext and v["w"] & bit and self.n["aw"][port] + aw_now <= self.n["w"][port]:
+                    self.unpaired["w"] |= bit
                 for k in self.n:
-                    self.n[k][port] += (hs[k] >> port) & 1
+                    self.n[k][port] += (v[k] >> port) & 1
             self.post_clks += 1
             if self.post_clks >= READY_BOUND_CLK:
                 self._log("bound")
@@ -505,6 +579,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
                 self.chk.ok(
                     "RST-AXI-NORESP", False, stage="post" if w.released else "rst", **w.fields()
                 )
+                w.log_ext()
         r_live = sum(w.r_live for w in self.noresp)
         b_live = sum(w.b_live for w in self.noresp)
         self.chk.ctrl(
@@ -1098,11 +1173,11 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         return await self._cbd()
 
     async def _axi_point(self, point: str, mask: int) -> None:
-        """Step 1, one AXI reset point: rst_ni low in the half clock of a request handshake.
+        """Step 1, one cold AXI reset point: rst_ni low in the half clock of a pending request.
 
         Runs before the entropy source comes up. The KM boots from the release;
-        at the first falling edge with a valid of ``mask`` and its ready at 1
-        the leaf drives rst_ni low. CHK-RST-AXI-VALID grades the three valids
+        at the first falling edge with a valid of ``mask`` at 1 the leaf drives
+        rst_ni low. CHK-RST-AXI-VALID grades the three valids
         in the sample after the first rising edge with the KM CPU reset at 0,
         which is the last edge a synchronous-reset master may keep a valid high
         on, and in every later sample until the cold reset completes with the
@@ -1121,11 +1196,11 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             await FallingEdge(self.clk)
             await ReadOnly()
             pending = self.rd_known(self.dut.km_cpu_axi_valid_o)
-            if pending & self.rd_known(self.dut.km_cpu_axi_ready_o) & mask:
+            if pending & mask:
                 break
         else:
             raise AssertionError(
-                f"[{tag}] no KM CPU request with its ready on mask 0b{mask:03b} within "
+                f"[{tag}] no KM CPU request on valid mask 0b{mask:03b} within "
                 f"{AXI_ARM_BOUND} clocks of the release"
             )
         port = self._port_hs(mask)
@@ -1209,12 +1284,12 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         tap = (
             self.dut.km_cpu_axi_port_ar_hs_o if mask & AXI_AR else self.dut.km_cpu_axi_port_aw_hs_o
         )
-        return self.rd_known(tap) & KM_PORTS_WARM
+        return self.rd_known(tap, KM_PORTS_WARM)
 
     def _noresp_start(self, point: str, port: int, handshake: int) -> None:
         """Start the CHK-RST-AXI-NORESP watcher at the first sample with the KM CPU reset at 0."""
-        r0 = self.rd_known(self.dut.km_cpu_axi_port_r_valid_o) & KM_PORTS_WARM
-        b0 = self.rd_known(self.dut.km_cpu_axi_port_b_valid_o) & KM_PORTS_WARM
+        r0 = self.rd_known(self.dut.km_cpu_axi_port_r_valid_o, KM_PORTS_WARM)
+        b0 = self.rd_known(self.dut.km_cpu_axi_port_b_valid_o, KM_PORTS_WARM)
         self.noresp.append(_NoResp(self, point, r0, b0, port, handshake).start())
 
     async def _warm_axi_point(self, point: str, mask: int) -> None:
