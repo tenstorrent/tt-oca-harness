@@ -35,6 +35,7 @@ class smc_axi_illegal_encoding_inject_test(smc_base_test):
 
     required_evidence = (
         "CHK-G11-4KB-ANSWERED",
+        "CHK-G11-CROSS-BEAT-CODES",
         "CHK-G11-FOOTPRINT",
         "CHK-G11-INJECT-MASK",
         "CHK-G11-LIVENESS",
@@ -43,7 +44,7 @@ class smc_axi_illegal_encoding_inject_test(smc_base_test):
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 8
+    min_evidence = 9
 
     async def run_scenario(self) -> None:
         seq = smc_axi_illegal_encoding_inject_test_seq("axi_illegal_encoding_inject_seq")

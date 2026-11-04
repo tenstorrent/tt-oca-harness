@@ -163,19 +163,6 @@ tags = ["reset", "flr"]
 run_modes = ["smoke"]
 
 [[tests]]
-# Observation leaf: the merged BRESP of a split two-beat write
-# whose beats answer differently has no stated rule. The OBS-BRESP lines
-# record every declared past-extent and gap write beside its DECERR
-# declaration and the OBS-BURST lines the merged response; the CHK lines
-# grade the table counts and that live words are unchanged.
-name = "smc_bresp_evidence_obs_test"
-module = "smc_bresp_evidence_obs_test"
-seed = 1
-timeout_sec = 1800
-tags = ["fabric", "decode"]
-run_modes = ["smoke"]
-
-[[tests]]
 # Checks sparse byte strobes on side-effect-free wide register-block words.
 name = "smc_regblock_sparse_strobe_test"
 module = { uvm = "smc_regblock_sparse_strobe_test" }
@@ -395,9 +382,8 @@ tests = [
 # Leaves whose comparison the specification does not support, and the
 # observation leaves waiting on a specification ruling; run on demand.
 name = "held_out"
-expected_count = 3
+expected_count = 2
 tests = [
     "smc_zeroer_busy_trigger_obs_test",
     "smc_flr_counter_timing_obs_test",
-    "smc_bresp_evidence_obs_test",
 ]
