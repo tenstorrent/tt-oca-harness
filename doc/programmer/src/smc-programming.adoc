@@ -132,6 +132,8 @@ Memory Zeroer is used by the production ROM.
 The same sequence clears any other region the zeroer can reach. Before
 starting, validate the destination address, the length, the access permissions
 of the target and the address arithmetic: the zeroer performs no such checks.
+Program `DEST_ADDR[63:56]` as zero: the zeroer truncates the address to its
+56-bit master rather than rejecting an out-of-range value.
 Set `CTRL_STATUS.INT_EN` in the start write to receive a completion pulse
 instead of polling. Completion means that every write response has arrived,
 not that every write succeeded, because the zeroer does not check `BRESP`.
@@ -158,9 +160,12 @@ MBIST check, otherwise continue.
 assume the MBIST was not required, and return.
 . Check if the MBIST passed (register `STATUS_SMU` bit 8). If set, return -- the
 MBIST has passed.
-. The MBIST has failed, or aborted due to a timeout. If the eFuse
-`SMC_CONFIG.dft_ignore_error` (bit 15) is set, ignore the failure and return.
-. The MBIST has failed -- park the core in a `wfi` loop.
+. Check if the MBIST aborted due to a timeout (register `STATUS_SMU` bit 12). If
+set, record `0xDEADC0DE` in scratch register 15; otherwise the MBIST has failed,
+so record `0xDEADBEEF`.
+. If the eFuse `SMC_CONFIG.dft_ignore_error` (bit 15) is set, ignore the abort or
+failure and return.
+. Park the core in a `wfi` loop.
 
 .SMC Boot ROM `__metal_mbist_early_check`.
 [plantuml,ocah-smc-mbist-early_check,svg,scaledwidth=50.0%,align="center"]
@@ -174,9 +179,14 @@ else (unset)
   else (set)
     if (Check STATUS_SMU bit mbist_pass) then (set)
     else (unset)
+      if (Check STATUS_SMU bit mbist_abort) then (set)
+        : Record abort;
+      else (unset)
+        : Record failure;
+      endif
       if (Check eFuse SMC_CONFIG.dft_ignore_error) then (set)
       else (unset)
-        : Fail;
+        : Halt;
         kill
       endif
     endif
@@ -1490,6 +1500,14 @@ hardware request remains asserted. In the SMC this includes the pads with
 permanently selected hardware functions: the I3C pads, and the isolate-request,
 boot-stall and cool-reset-out signals.
 
+In the SMC, `CTRL.UART_EN` of UART _u_ is the hardware LSIO request of pads
+11+4__u__ to 14+4__u__: RX, TX, RTS and CTS. While it is clear, the UART keeps
+running, but those pads take the first applicable lower row of the GPIO data
+and direction selection: register data and direction if `interface_enable` or
+a `use_reg_*` bit is set, software-forced LSIO if `lsio_select` is set,
+otherwise output 0 with the transmitter disabled. A frame the UART shifts out
+in that state does not reach the TX pin.
+
 Software should not change a pad's owner while the current owner is active, or
 the pad output can glitch. This applies to `interface_enable`, `lsio_select`, `lsio_disable`,
 the `DATA_CTRL_ENABLE.use_reg_*` bits, `TIMER_GPIO_ENABLE.GPIO_ENABLE` and
@@ -1751,9 +1769,17 @@ on wrap, so keep every row inside the permitted range.
 For a linear copy, set `CONFIG.ENABLED_ND`, `NUM_REPETITIONS_LO = 1` and
 `NUM_REPETITIONS_HI = 0`. For a 2D copy, also program the source and destination
 strides and the row count. The length must be nonzero. A command with zero
-repetitions, including one with `ENABLED_ND` clear, retires a transfer ID
-without copying any data, so a retired ID alone does not prove the copy
-happened.
+repetitions, including one with `ENABLED_ND` clear, retires without copying any
+data, so a retirement alone does not prove the copy happened.
+
+`DONE_0` counts retirements: it resets to 1 and adds 1 for each one. Every
+command retires once, except that a command with `ENABLED_ND` set, a length of
+0 and N repetitions (N of 1 or more) retires N times, still without copying
+any data. The counter never reads 0; it reads 1 from the cycle after it reaches
+`0xFFFFFFFF`, so it cycles through 2^32^ - 2 counts. To confirm that a set of
+commands has retired, sum their retirements R and wait for `DONE_0` to read
+((D - 1 + R) mod (2^32^ - 2)) + 1, where D is its value before the first
+submission, accepting `0xFFFFFFFF` where that gives 1.
 
 To run a transfer:
 
@@ -1765,18 +1791,22 @@ To run a transfer:
 . Make the configuration writes visible, then read `NEXT_ID_0` exactly once and
   record the returned transfer ID. The read can be backpressured until the
   frontend accepts the request.
-. Track retirement with `DONE_0`, the most recently retired ID. With a single
-  outstanding command, wait for its ID; with several, keep an ordered software
-  record so a later retirement does not leave an equality test on an earlier
-  ID waiting forever. IDs start at 2 (`DONE_0` resets to 1) and skip zero on
-  wrap, so comparisons must be wrap-aware.
+. Track retirement with `DONE_0`. While every command submitted since reset
+  has retired once, the returned ID is the value `DONE_0` reaches when that
+  command retires. With a single outstanding command, wait for its ID; with
+  several, keep an ordered software record so a later retirement does not
+  leave an equality test on an earlier ID waiting forever. IDs start at 2
+  (`DONE_0` resets to 1) and wrap as `DONE_0` does, so comparisons must be
+  wrap-aware. A zero-length command with N repetitions leaves `DONE_0` N - 1
+  counts ahead of the returned IDs from then on; count retirements instead of
+  comparing IDs once one has been submitted.
 . Apply the platform's completion-ordering and cache rules before consuming the
   destination. Treat a timeout as a recovery decision: there is no abort
   register.
 
 Neither frontend readiness in `STATUS_0` nor a zero `STATUS` value indicates
 completion. `STATUS_0[8]` falls when the backend accepts the last row, which
-can be before `DONE_0` reaches the transfer ID. The DMA interrupt (PLIC ID 323) is a pulse on the falling edge of
+can be before the command retires. The DMA interrupt (PLIC ID 323) is a pulse on the falling edge of
 the engine's busy state, not one interrupt per transfer; use it as a hint to
 poll `DONE_0`.
 

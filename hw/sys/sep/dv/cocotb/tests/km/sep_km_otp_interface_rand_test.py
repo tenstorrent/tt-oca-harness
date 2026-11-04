@@ -111,6 +111,7 @@ TEST = T_OTP_IFACE
 SENSE_BOUND = 20_000  # clocks for sep_fuse_sense_done_o
 RELEASE_BOUND = 20_000  # clocks for dbg_sep_reset_n_o after the sense
 RESET_HOLD = 20  # clocks of rst_ni low, on each side of a strap change
+_ID_VALUE_MASK = (1 << 256) - 1  # value half of a dual-rail KM identity tap
 QUIET = 256  # delay-op iterations of every "quiet window"
 FLIP_CYCLES = 8  # clocks the HK-OTP enable stays 1
 POLL_LOADS = 64  # KM loads of every bounded poll
@@ -329,7 +330,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             vals = [self.rd(t, allow_unknown=True) for t in taps]
-            if first is None and any(vals):
+            if first is None and any(v & _ID_VALUE_MASK for v in vals):
                 first = cycle
             if self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True):
                 return {

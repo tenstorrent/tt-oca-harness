@@ -15,7 +15,12 @@ stores behind the ATB port, and this leaf drives each past its bound:
   asserted; no document states it. `CTRL.BUFFER_THRESHOLD` with its
   interrupt enabled is checked on the way up: `telemetry_receiver.rdl` raises
   `INTR_STATUS.BUFFER_THRESHOLD` while the number of messages is greater than
-  the threshold, and clears it when the level drops back.
+  the threshold, and clears it when the level drops back. The same RDL
+  states that "only the low log2(queue depth)+1 bits are compared, so
+  values alias modulo twice the queue depth, and only values below the queue
+  depth can assert the interrupt": with one message queued a threshold of
+  0x010 asserts and 0x011 does not, and with the queue full 8 and 0xFF8
+  never assert while 7 and 0x017 do.
 * **The assembly buffer.** `INTR_STATUS.MISSING_LAST` is raised "when the
   Telemetry Receiver has not received a Last Packet flag when the maximum
   number of packets a message can consist of has been received"
@@ -123,6 +128,10 @@ EXT_RECEIVERS = (1, 2)
 EXT_ATID = {1: 0x11, 2: 0x22}
 #: Messages the queue holds: `BUFFER_DEPTH` default 8 (interface.adoc).
 QUEUE_DEPTH = 8
+#: Threshold values that alias modulo 2 x QUEUE_DEPTH, with the status each must show
+#: at one queued message and at a full queue (telemetry_receiver.rdl BUFFER_THRESHOLD).
+ALIAS_AT_ONE = ((0x000, True), (0x001, False), (0x010, True), (0x011, False))
+ALIAS_AT_FULL = ((0x007, True), (0x017, True), (0x008, False), (0xFF8, False))
 STATUS_EMPTY = BUFFER_EMPTY_BM
 STATUS_FULL = BUFFER_FULL_BM
 STATUS_NEITHER = 0x0
@@ -282,6 +291,48 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-POP-EMPTY: CTRL.BUFFER_POP on an empty buffer left STATUS empty and "
             "not full, and the next message read back its own probe ID 0x%02x",
             probe_id,
+        )
+
+    async def _threshold_status(self, label: str, threshold: int, want: bool, queued: int) -> int:
+        ctrl = (threshold << THRESHOLD_BP) & THRESHOLD_BM
+        await self.csr_write(f"{label}_CTRL", CTRL, ctrl)
+        await self.csr_read(f"{label}_CTRL_RB", CTRL, expected=ctrl)
+        intr = await self.csr_read(f"{label}_INTR", INTR_STATUS)
+        assert bool(intr & INTR_THRESHOLD) == want, (
+            f"{label}: with {queued} messages queued and CTRL.BUFFER_THRESHOLD=0x{threshold:03x} "
+            f"(low {QUEUE_DEPTH.bit_length()} bits 0x{threshold % (2 * QUEUE_DEPTH):x}), "
+            f"INTR_STATUS.BUFFER_THRESHOLD reads {int(bool(intr & INTR_THRESHOLD))}, want "
+            f"{int(want)}"
+        )
+        return int(bool(intr & INTR_THRESHOLD))
+
+    async def _threshold_alias(self) -> None:
+        """BUFFER_THRESHOLD aliases modulo 2 x depth; only values below the depth assert."""
+        await self._send(_probe(0))
+        await self._wait_status("ALIAS_ONE", BUFFER_EMPTY_BM, False)
+        at_one = [
+            (t, await self._threshold_status(f"ALIAS1_T{t:03X}", t, want, 1))
+            for t, want in ALIAS_AT_ONE
+        ]
+        for index in range(1, QUEUE_DEPTH):
+            await self._send(_probe(index))
+        await self._wait_status("ALIAS_FULL", BUFFER_FULL_BM, True)
+        at_full = [
+            (t, await self._threshold_status(f"ALIAS8_T{t:03X}", t, want, QUEUE_DEPTH))
+            for t, want in ALIAS_AT_FULL
+        ]
+        await self.csr_write("ALIAS_THRESHOLD_ZERO", CTRL, 0)
+        for index in range(QUEUE_DEPTH):
+            await self.csr_write(f"ALIAS_DRAIN_{index}_POP", CTRL, BUFFER_POP_BM)
+        await self._wait_status("ALIAS_DRAINED", BUFFER_EMPTY_BM, True)
+        cocotb.log.info(
+            "CHK-TELEMETRY-THRESHOLD-ALIAS: with 1 message queued INTR_STATUS.BUFFER_THRESHOLD "
+            "read %s; with %d queued it read %s; each 12-bit CTRL.BUFFER_THRESHOLD value read "
+            "back unchanged, and the status followed only the low %d bits of it",
+            ", ".join(f"0x{t:03x}->{v}" for t, v in at_one),
+            QUEUE_DEPTH,
+            ", ".join(f"0x{t:03x}->{v}" for t, v in at_full),
+            QUEUE_DEPTH.bit_length(),
         )
 
     async def _overflow(self) -> None:
@@ -625,6 +676,16 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
     async def _ext_window_trial(self, rx: int, offset: int) -> str:
         """Pop at `offset` clk_periph_i cycles from the last beat of one more message."""
         dut = cocotb.top
+
+        async def periph_cycles(cycles: int) -> None:
+            # The beat and AXI drivers hold a value from one clk_smc_i edge to the next.
+            # A clk_periph_i edge coincides with a clk_smc_i edge on this bench, and a
+            # wait that returns on it resumes in that edge's timestep: a value set there
+            # is lifted on the same edge and the DUT never samples it. Resume on the
+            # clk_smc_i edge instead, so the value spans a full cycle.
+            await ClockCycles(dut.clk_periph_i, cycles)
+            await RisingEdge(dut.clk_smc_i)
+
         label = f"WINDOW_D{offset:+d}"
         await self._ext_fill(rx, WINDOW_FILL_IDS, label)
         packet = _frame_all_ones_message(WINDOW_ID)
@@ -634,13 +695,13 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         last = len(beats) - 1
         if offset < 0:
             pop = cocotb.start_soon(self._ext_pop(label, rx))
-            await ClockCycles(dut.clk_periph_i, -offset)
+            await periph_cycles(-offset)
             await _atb_write_beat(dut, beats[last], beat=last, rx=rx, atid=EXT_ATID[rx])
             await pop
         else:
             await _atb_write_beat(dut, beats[last], beat=last, rx=rx, atid=EXT_ATID[rx])
             if offset:
-                await ClockCycles(dut.clk_periph_i, offset)
+                await periph_cycles(offset)
             await self._ext_pop(label, rx)
 
         # The pop has landed; the push has landed once the queue is full again or
@@ -943,6 +1004,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         await self.csr_read("CLOCK_GATE_CONTROL_TEL_ON_RB", CLOCK_GATE_CONTROL, expected=ungated)
 
         await self._pop_on_empty()
+        await self._threshold_alias()
         await self._overflow()
         await self._missing_last()
         await self._partial_and_flush_leg()

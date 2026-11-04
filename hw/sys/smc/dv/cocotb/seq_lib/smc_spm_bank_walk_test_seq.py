@@ -4,8 +4,9 @@
 
 DV-CARD:          SMC_COV_B2_008   ANCHOR: smc_spm_bank_walk_test
 
-The bank and entry address bits are not documented, so the walk covers every
-power-of-two interleave stride from one 64-bit word to window/32. L0 holds the
+`smc_spm_bank_formula_test` grades the bank and entry address bits cpu.adoc
+states; the walk covers every power-of-two interleave stride from one 64-bit
+word to window/32 without assuming them. L0 holds the
 32 bank bases of every stride and LP the power-of-two entries above them. LX
 adds 13 entry offsets at each of 8 regions x 4 slots of the window.
 """
@@ -226,8 +227,8 @@ class smc_spm_bank_walk_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-SPM-WALK-ENTRY0: |L0 u LX|=%d x %d passes, %d/%d readback==written, resp "
-            "OKAY; which bank and entry each address selects is not stated and is not "
-            "observed at SEP_IN (LINKED-ISSUE SF-016)",
+            "OKAY; the bank and entry each address selects are graded by "
+            "CHK-SPM-BANK-SELECT-FORMULA and CHK-SPM-ENTRY-SELECT-FORMULA",
             len(walk),
             L0_PASSES,
             walk_compares,

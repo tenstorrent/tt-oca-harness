@@ -4,7 +4,8 @@
 
 Spec sources: axi_filter index.adoc (Match, Then Permit; Address Range Granule; Blocked
 Transactions), filter_ctrl.rdl FILTER_CONFIG, START_ADDR and END_ADDR, fabric.adoc (Inbound
-Filtering; the filter figure, whose asset names AxUSER[3:0] as src_id).
+Filtering; Output Remapping: the source ID occupies AxUSER[3:0] and the inbound filter compares
+those four bits).
 
 Four rule tables of 2 to 6 inbound entries (indices 2 to 15) are drawn from the seed, each with
 12 drawn SYS_IN probes and the pinned no-match probes: one granule outside each enabled window
@@ -12,7 +13,9 @@ with a permission bit set whose outside granule matches no entry, inside a disab
 AxPROT[1] failing and AxLEN failing.
 The golden of every probe comes from the drawn table alone: the entries whose match terms all
 hold, the lowest-numbered one and its permission bit for the channel, or the block when none
-matches. Every probe word lives in the SPM span at its base plus 0x4_0000.
+matches. Every probe word lives in the SPM span at its base plus 0x4_0000. A probe whose answer
+turns on a non-zero `src_id` is repeated with a drawn non-zero AxUSER[11:4] above the same
+AxUSER[3:0], seen at the SYS_IN handshake, and must answer as the probe did.
 """
 
 from __future__ import annotations
@@ -68,6 +71,7 @@ _CHECKERS = (
     ("CHK-IFM-NO-MATCH-BLOCK", "S2"),
     ("CHK-IFM-LOWEST-WINS", "S2"),
     ("CHK-IFM-SRC-ID", "S2"),
+    ("CHK-INB-SRCID-UPPER-BITS-IGNORED", "S2"),
     ("CHK-IFM-MATCH-TERMS", "S2"),
     ("CHK-IFM-RESTORE", "S7"),
 )
@@ -610,7 +614,8 @@ def _table_text(table: list[dict]) -> str:
 
 
 class _HitWatch:
-    """Accumulates the inbound hit vectors for each SYS_IN request (printed only)."""
+    """Accumulates the inbound hit vectors for each SYS_IN request (printed only) and records the
+    AxUSER of every accepted SYS_IN AW and AR."""
 
     def __init__(self, dut) -> None:
         self.dut = dut
@@ -620,6 +625,7 @@ class _HitWatch:
         self.read = 0
         self.write = 0
         self.unresolved = 0
+        self.users: list[int] = []
 
     async def run(self) -> None:
         dut = self.dut
@@ -627,9 +633,21 @@ class _HitWatch:
         while True:
             await RisingEdge(dut.clk_smc_i)
             await ReadOnly()
-            for name, valid, hit in (
-                ("read", dut.sys_axi_arvalid, dut.tb_inb_read_hit),
-                ("write", dut.sys_axi_awvalid, dut.tb_inb_write_hit),
+            for name, valid, ready, user, hit in (
+                (
+                    "read",
+                    dut.sys_axi_arvalid,
+                    dut.sys_axi_arready,
+                    dut.sys_axi_aruser,
+                    dut.tb_inb_read_hit,
+                ),
+                (
+                    "write",
+                    dut.sys_axi_awvalid,
+                    dut.sys_axi_awready,
+                    dut.sys_axi_awuser,
+                    dut.tb_inb_write_hit,
+                ),
             ):
                 if not (valid.value.is_resolvable and hit.value.is_resolvable):
                     self.unresolved += 1
@@ -637,6 +655,9 @@ class _HitWatch:
                 if prev[name]:
                     setattr(self, name, getattr(self, name) | int(hit.value))
                 prev[name] = int(valid.value)
+                if int(valid.value) and ready.value.is_resolvable and int(ready.value):
+                    assert user.value.is_resolvable, f"sys_axi_{name} user X/Z at the handshake"
+                    self.users.append(int(user.value))
 
 
 class smc_infilt_rule_matrix_rand_test_seq(SmcCsrSeq):
@@ -650,6 +671,7 @@ class smc_infilt_rule_matrix_rand_test_seq(SmcCsrSeq):
         self.probes = 0
         self.total = 0
         self.repeats = 0
+        self.repeats_admitted = 0
         self.admitted = 0
         self.blocked = 0
         self._stamps: list[tuple[str, int]] = []
@@ -773,7 +795,24 @@ class smc_infilt_rule_matrix_rand_test_seq(SmcCsrSeq):
             same = self._pack(beats) if p["write"] else 0
             rep = await self._sys_in(f"{tag}_HI", p, user, same, graded=False)
             self.repeats += 1
-            rec["repeat"] = f"AxUSER 0x{user:03x} resp {rep.resp_code} rdata 0x{rep.rdata:x}"
+            assert self._watch.users == [user], (
+                f"CHK-INB-SRCID-UPPER-BITS-IGNORED: {tag}_HI SYS_IN AxUSER at the handshake "
+                f"{[hex(u) for u in self._watch.users]}, driven 0x{user:03x} once"
+            )
+            assert rep.resp_code == item.resp_code, (
+                f"CHK-INB-SRCID-UPPER-BITS-IGNORED: {tag}_HI AxUSER 0x{user:03x} resp "
+                f"{rep.resp_code}, the probe with AxUSER 0x{p['user']:03x} answered "
+                f"{item.resp_code} (fabric.adoc: the filter compares AxUSER[3:0] only)"
+            )
+            if admit and not p["write"]:
+                assert rep.rdata == before, (
+                    f"CHK-INB-SRCID-UPPER-BITS-IGNORED: {tag}_HI rdata 0x{rep.rdata:x}, "
+                    f"want 0x{before:x}"
+                )
+            self.repeats_admitted += admit
+            rec["repeat"] = (
+                f"AxUSER 0x{user:03x} at the port resp {rep.resp_code} rdata 0x{rep.rdata:x}"
+            )
             for b in beats:
                 await self.csr_read(f"{tag}_HI_SPM_0x{b:x}", b, expected=self._shadow[b], length=8)
         self._results.append(rec)
@@ -876,13 +915,20 @@ class smc_infilt_rule_matrix_rand_test_seq(SmcCsrSeq):
         )
 
         # S2: per rule set program, read back and run its probes against the golden.
-        for set_no, s in enumerate(sets):
-            for e in s["table"]:
-                await self._program(e)
-            for n, p in enumerate(s["probes"]):
-                await self._run_probe(set_no, n, p)
-            for e in s["table"]:
-                await self._restore(e["idx"], f"T{set_no}")
+        # smc_infilt_rule_cg samples the S2 probes only.
+        top.tb_fcov_gate.value = 1
+        cocotb.log.info("CTRL-FCOV-GATE: rise %d ps", get_sim_time("ps"))
+        try:
+            for set_no, s in enumerate(sets):
+                for e in s["table"]:
+                    await self._program(e)
+                for n, p in enumerate(s["probes"]):
+                    await self._run_probe(set_no, n, p)
+                for e in s["table"]:
+                    await self._restore(e["idx"], f"T{set_no}")
+        finally:
+            top.tb_fcov_gate.value = 0
+            cocotb.log.info("CTRL-FCOV-GATE: fall %d ps", get_sim_time("ps"))
         self._mark_step("S2")
 
         # Step 3, on the step 2 probes: no matching entry blocks.
@@ -953,8 +999,19 @@ class smc_infilt_rule_matrix_rand_test_seq(SmcCsrSeq):
             "CHK-IFM-SRC-ID",
             f"drawn=src_id cells equal {len(self._with('src_equal'))} differ "
             f"{len(self._with('src_differ'))} wildcard {len(self._with('src_wild'))}; every one "
-            f"answered as the golden: {self._list(src)}; repeats with the value above "
-            f"AxUSER[3:0] printed, not compared: {'; '.join(repeats)}",
+            f"answered as the golden: {self._list(src)}",
+        )
+        assert self.repeats >= 1 and len(repeats) == self.repeats, (self.repeats, len(repeats))
+        keyed = [r["tag"] for r in self._with("src_equal") if r["repeat"]]
+        assert keyed, "no repeat of a probe whose answer turns on an equal src_id"
+        self._log_chk(
+            "CHK-INB-SRCID-UPPER-BITS-IGNORED",
+            f"drawn={self.repeats} repeats with AxUSER[11:4] drawn in 1..0xFF above the probe's "
+            f"AxUSER[3:0], each seen at the SYS_IN AW/AR handshake ({self.repeats_admitted} "
+            f"admitted, {self.repeats - self.repeats_admitted} blocked), each answering the "
+            f"same response as its probe and an admitted read returning the same words; "
+            f"{len(keyed)} of them repeat a probe whose answer turns on the equal src_id "
+            f"({', '.join(keyed)}): {'; '.join(repeats)}",
         )
 
         # Step 6, on the step 2 probes: the address granule, entry_enabled, allow_ns and
@@ -1020,7 +1077,7 @@ class smc_infilt_rule_matrix_rand_test_seq(SmcCsrSeq):
         assert self.admitted >= 1 and self.blocked >= 1, (self.admitted, self.blocked)
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; %d SYS_IN probes (%d admitted, %d "
-            "blocked) plus %d printed repeats; %d SEP_IN accesses; stamps %s",
+            "blocked) plus %d compared repeats; %d SEP_IN accesses; stamps %s",
             "<".join(_STEPS),
             ",".join(c for c, _ in self._chk_marks),
             self.probes,

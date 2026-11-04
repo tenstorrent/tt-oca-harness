@@ -423,10 +423,14 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         return ars
 
     def _empty_word(self, label: str, item_or_data) -> int:
+        """Grade the empty-read word of interface.adoc "Access Results": 0x0000_0000_FEED_DEAD."""
         data = item_or_data if isinstance(item_or_data, int) else item_or_data.rdata
         assert data & _LOW_WORD == _EMPTY_READ_LOW, (
             f"{label}: empty READ_DATA returned 0x{data:016x}, low word must be "
             f"0x{_EMPTY_READ_LOW:08x}"
+        )
+        assert data >> 32 == 0, (
+            f"{label}: empty READ_DATA returned 0x{data:016x}, upper word must be 0x00000000"
         )
         return data >> 32
 
@@ -555,11 +559,17 @@ class smc_mailbox_multi_instance_test_seq(SmcCsrSeq):
         n = len(_APERTURES)
         highs = ",".join(f"0x{v:08x}" for v in sorted(set(upper.values())))
         cocotb.log.info(
-            "CHK-MBX-EMPTY-READ: %d/%d RRESP=SLVERR data[31:0]=0x%08X, data[63:32]=%s "
-            "(measured, LINKED-ISSUE SF-032)",
+            "CHK-MBX-EMPTY-READ: %d/%d RRESP=SLVERR data[31:0]=0x%08X, data[63:32]=%s",
             len(upper),
             n,
             _EMPTY_READ_LOW,
+            highs,
+        )
+        cocotb.log.info(
+            "CHK-EMPTY-READ-UPPER-ZERO: %d/%d empty READ_DATA reads returned the whole "
+            "0x0000_0000_FEED_DEAD word, data[63:32]=%s on every aperture",
+            len(upper),
+            n,
             highs,
         )
         cocotb.log.info(

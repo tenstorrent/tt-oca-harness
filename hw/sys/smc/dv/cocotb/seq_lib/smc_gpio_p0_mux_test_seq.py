@@ -20,9 +20,16 @@ The expectations are the GPIO ownership table
 hardware LSIO request outranks everything, the register interface outranks a
 software-forced `lsio_select`, and a software-forced `lsio_select` routes the
 same LSIO inputs to the pad. `DATA_CTRL.lsio_enable` "reports the hardware
-request after the disable gate", so it is read back clear in every leg to
-show the first row is not in play and the routing the LSIO leg measures is
-the software-forced one.
+request after the disable gate", so it is read back clear in every software
+leg to show the first row is not in play and the routing the LSIO leg
+measures is the software-forced one.
+
+Two more rows of the same table close the sequence: `lsio_disable` gates the
+software-forced selection too, leaving the pad with output data 0 and TX
+disabled while the source drives 1; and a hardware LSIO request, raised on the
+SPI pads through the bench's SPI enable pin, outranks the `use_reg_core2pad` /
+`use_reg_tx` overrides, so the pad follows the SPI lane and not the register
+until `lsio_disable` withdraws the request.
 
 No force, no deposit: the LSIO source is driven through the same `tb_spi_*`
 input pins the SPI pad testcases use, and restored afterwards.
@@ -66,6 +73,16 @@ OUT_REG_WITH_LSIO = OUT_REG | _LSIO_SELECT
 # with the register path deselected the pad data must come from the LSIO source,
 # so leaving the register's own data bit clear keeps the two candidates distinct.
 OUT_LSIO_ONLY = _LSIO_SELECT | _TX_ENABLE
+# The software select under lsio_disable: neither LSIO form may own the pad.
+_LSIO_DISABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_DISABLE_bm")
+OUT_LSIO_DISABLED = _LSIO_SELECT | _TX_ENABLE | _LSIO_DISABLE
+# The per-field overrides for the output data and enable.
+GPIO0_DATA_CTRL_ENABLE = smc_indexed_addr(
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", _WRAP
+)
+USE_REG_OUT = gpio_intf_u32("GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_CORE2PAD_bm") | gpio_intf_u32(
+    "GPIO_INTF__DATA_CTRL_ENABLE__USE_REG_TX_bm"
+)
 
 # AXI write handshake already completed; this bound is the fail-closed ceiling
 # until the GPIO wrap-0 flop is visible on tb_core2pad_en_o[0].
@@ -256,6 +273,76 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
             (en_lsio >> _WRAP) & 1,
             self.val_lsio,
             self.val_lsio_flipped,
+        )
+
+        # Software-forced LSIO under lsio_disable: the fourth row of the
+        # ownership table, output data 0 and TX disabled, while the source is
+        # still driving 1 and the LSIO leg above routed it with the same select.
+        self._drive_lsio_source(dut, driving=True, data=1)
+        await self.csr_write("GPIO0_SW_DISABLED", GPIO0_DATA_CTRL, OUT_LSIO_DISABLED)
+        await self._await_en_bit(dut, 0, "SW_DISABLED")
+        await self._check_ctrl_readback("GPIO0_SW_DISABLED_RB", OUT_LSIO_DISABLED)
+        en_sw_disabled = self._known_int(dut.tb_core2pad_en_o, "SW_DISABLED_EN") & mask
+        val_sw_disabled = self._known_int(dut.tb_core2pad_o, "SW_DISABLED_VAL") & mask
+        assert not (en_sw_disabled | val_sw_disabled) & _WRAP0_BIT, (
+            f"wrap{_WRAP} with lsio_select and lsio_disable both set and the source driving 1: "
+            f"core2pad_en={(en_sw_disabled >> _WRAP) & 1} core2pad={(val_sw_disabled >> _WRAP) & 1}; "
+            f"lsio_disable gates the software-forced selection, so no source owns the pad"
+        )
+        cocotb.log.info(
+            "CHK-GPIO-SW-LSIO-DISABLED: lsio_select + lsio_disable with the LSIO source driving 1: "
+            "wrap%d core2pad_en=%d core2pad=%d (lsio_select alone gave en=1 in this run)",
+            _WRAP,
+            (en_sw_disabled >> _WRAP) & 1,
+            (val_sw_disabled >> _WRAP) & 1,
+        )
+
+        # A hardware LSIO request outranks the three use_reg_* overrides. The
+        # bench's SPI enable pin raises the request on the SPI pads; the data
+        # lane drives 0 while the register carries CORE2PAD = 1 under
+        # use_reg_core2pad + use_reg_tx, so the two owners give different data.
+        self._drive_lsio_source(dut, driving=True, data=0)
+        await self.csr_write("GPIO0_USE_REG", GPIO0_DATA_CTRL_ENABLE, USE_REG_OUT)
+        await self.csr_write("GPIO0_REG_OUT_ONLY", GPIO0_DATA_CTRL, _TX_ENABLE | _CORE2PAD)
+        await self._await_pad_val(dut, 1, "USE_REG_ALONE")
+        dut.tb_spi_enable.value = 1
+        hw = await self._await_pad_val(dut, 0, "HW_REQUEST")
+        en_hw = self._known_int(dut.tb_core2pad_en_o, "HW_EN") & mask
+        got = await self.csr_read("GPIO0_HW_RB", GPIO0_DATA_CTRL)
+        assert got & _LSIO_ENABLE, (
+            f"DATA_CTRL.lsio_enable reads clear (0x{got:08x}) with the SPI enable pin high"
+        )
+        assert (en_hw & _WRAP0_BIT) == _WRAP0_BIT, (
+            f"wrap{_WRAP} core2pad_en={(en_hw >> _WRAP) & 1} under the hardware request with the "
+            f"lane output enable on"
+        )
+        self._drive_lsio_source(dut, driving=True, data=1)
+        hw_flipped = await self._await_pad_val(dut, 1, "HW_REQUEST_FLIP")
+        self._drive_lsio_source(dut, driving=True, data=0)
+        await self._await_pad_val(dut, 0, "HW_REQUEST_DROP")
+        await self.csr_write(
+            "GPIO0_HW_DISABLED", GPIO0_DATA_CTRL, _TX_ENABLE | _CORE2PAD | _LSIO_DISABLE
+        )
+        hw_disabled = await self._await_pad_val(dut, 1, "HW_DISABLED")
+        got_disabled = await self.csr_read("GPIO0_HW_DISABLED_RB", GPIO0_DATA_CTRL)
+        assert not got_disabled & _LSIO_ENABLE, (
+            f"DATA_CTRL.lsio_enable reads set (0x{got_disabled:08x}) with lsio_disable set"
+        )
+        dut.tb_spi_enable.value = 0
+        await self.csr_write("GPIO0_USE_REG_OFF", GPIO0_DATA_CTRL_ENABLE, 0)
+        cocotb.log.info(
+            "CHK-GPIO-P0-MUX-HW-OVER-USE-REG: with use_reg_core2pad + use_reg_tx and CORE2PAD=1 "
+            "the pad read 1 until the SPI enable pin raised the hardware request (lsio_enable "
+            "0x%08x): wrap%d core2pad followed the SPI lane %d -> %d -> 0 with core2pad_en=%d; with "
+            "lsio_disable set the request withdrew (lsio_enable 0x%08x) and the register's 1 "
+            "returned (%d) while the lane drove 0",
+            got & _LSIO_ENABLE,
+            _WRAP,
+            (hw >> _WRAP) & 1,
+            (hw_flipped >> _WRAP) & 1,
+            (en_hw >> _WRAP) & 1,
+            got_disabled & _LSIO_ENABLE,
+            (hw_disabled >> _WRAP) & 1,
         )
 
         # Restore: register path off, SPI pads back to the idle-safe parking the
