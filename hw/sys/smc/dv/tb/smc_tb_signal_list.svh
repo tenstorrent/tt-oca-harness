@@ -708,6 +708,10 @@
 `SMC_TB_OUT(logic, tb_plic_pending_329)
 `SMC_TB_OUT(logic, tb_plic_pending_330)
 `SMC_TB_OUT(logic, tb_plic_pending_332)
+// Sources 321 and 322 are the CLA clock-stop status (cpu_interrupts[320])
+// and the CLA debug interrupt (cpu_interrupts[321]) at the PLIC.
+`SMC_TB_OUT(logic, tb_plic_pending_321)
+`SMC_TB_OUT(logic, tb_plic_pending_322)
 
 // CLINT. MTIMECMP is `pad`/`pad_N` in the generated cluster.
 `SMC_TB_OUT(logic [63:0], tb_clint_mtime)

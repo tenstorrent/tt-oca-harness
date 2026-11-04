@@ -824,7 +824,8 @@ has no canonical scenario
 |`dfd.adoc` Debug Bus, Core Logic Analyzer, Actions and Cross-Triggering, Trace
 |`smc_ecc_dfd_dbs_sanity_test`, `smc_dfd_cla_event_type_sweep_test`,
 `smc_dfd_cla_snapshot_capture_test`, `smc_dfd_trace_sink_readout_test`,
-`smc_dfd_trace_writeout_phase_test`, `smc_remap_cla_test`
+`smc_dfd_trace_writeout_phase_test`, `smc_remap_cla_test`, `smc_dfd_clock_gate_access_test`,
+`smc_dfd_cla_match_event_rules_test`, `smc_dfd_cla_irq_plic_source_test`
 |`smc_map_fcov` (`c_cla_decode`, `c_cla_region`, `c_cla_base_decodes`, `c_dfx_status_decode`);
 `smc_cpu_fcov` (`c_custom_action_output_driven`); no trace, trigger or debug-bus point
 |`YES`: `smc_ecc_dfd_dbs_sanity_test`; trace, trigger and debug bus are `DECODE-ONLY`
@@ -1505,11 +1506,14 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_dfd_cla_live_bus_test` |2 |The CLA's signal event generators, counters and actions driven on a debug bus that moves between two measured states.
 |`smc_dfd_trace_flush_corner_test` |3 |The DST's trace control driven through stream lengths, start/stop action loops, timestamp phases and memory-mode sink flushes.
 |`smc_dfd_trace_reset_test` |3 |A cool reset taken while the DST is tracing, with the DFD required back at its RDL reset state.
-|`smc_dfd_trace_writeout_phase_test` |3 |Sink-mode and stop writes walked a cycle at a time across the memory-arm flush and the single memory write-out.
+|`smc_dfd_trace_writeout_phase_test` |3 |Sink-mode and stop writes walked a cycle at a time across the memory-arm flush and the single memory write-out, after a stream parked under each supported frame length with the DST and sink lengths equal.
 |`smc_dfd_dbm_mode_lock_test` |3 |Every debug-bus mux mode programmed on every mux, then the CLA lock latched and held.
 |`smc_dfd_cla_snapshot_capture_test` |3 |Every CLA pair driven over its whole action range on its own node, with the snapshot registers read.
 |`smc_dfd_cla_irq_w2c_release_test` |2, held out |The single `CDbgEapStatus` W2C write must drop `cla_interrupt` with the status (#3389).
 |`smc_dfd_cla_clock_halt_release_test` |2, held out |`halt_clock_global_or_o` must deassert once the clock-halt action drops and `DisableGlobalClockHalt` is set (#3390).
+|`smc_dfd_clock_gate_access_test` |3 |CLA and DST register accesses under the DFD clock gate, the CLA evaluating with the clock unforced, and `EnableCla` gating the CLA before and after `ClaLock`.
+|`smc_dfd_cla_match_event_rules_test` |3 |The positive and negative match codes graded against the two measured bus states, `Muxselseg4` to `Muxselseg7` left without effect, the time match dead under every match value, and the GPIO-toggle action driving no pad.
+|`smc_dfd_cla_irq_plic_source_test` |3 |The CLA debug interrupt raising PLIC pending source 322 with the clock-stop source 321 idle.
 |`smc_dfd_trace_sink_concurrent_test` |3 |The trace sink read out through its MMR port while the trace is still writing it.
 |`smc_dfd_sanity_test` |1 |Run diagnostic CSR reads as the public DFD bounded checker.
 |`smc_dfx_status_abort_test` |3 |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
@@ -27223,7 +27227,7 @@ draws nothing from the seed.
 
 * `Trdstformat` = 0, one of the three values the field's own RDL description names, written into the DST control register and read back.
 * The CLA's own mux (`CDbgMuxSelLo`), the last stage in front of the trace, resets to off and would hold the traced bus at zero, so it is put in normal debug mode. The functional debug signals behind the DEBUG_BUS_MUX array hold still in this bench, so the array is put in its identifier output mode and the identifier whose return to normal mode moves the node 0 pair 0 snapshot is found by measurement. That mux's `Muxselseg0..7` are walked through the segment selects the description names (0, 1, 2, 4) while the trace is live, and the lanes are read through the snapshot after each. Without a changing bus a compressor emits nothing.
-* `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 192 bytes, so the packet path sees more than one frame size.
+* `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 128 bytes, both among the 1, 2, 4 and 8 it names as supported, and the sink's `Trdstramimpl.Trdstramvendorframelength` written the same value each time, as both descriptions require, so the packet path sees more than one supported frame size.
 * `Trdstsyncmode` at the periodic-timestamp value its description names, with the shortest `Trdstsyncmax` period, so the periodic-sync path runs.
 
 *Test Procedure*:
@@ -27239,7 +27243,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 0. Each checker be
 |`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
 |`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer field off 0 to a position inside the 0x4000-byte window, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move, or a word that changed only in the wrap flag, fails it and reports the packetizer and funnel state
 |`CHK-DST-FORMAT-PAYLOAD` |The measured mux was walked through every segment select the `Muxselseg` description names while the trace was running, and the lanes read through the snapshot took at least two different values; a rotation that does not run, no mux that moves the snapshot, or lanes that stay the same fails it
-|`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
+|`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each written and read back exactly on the DST and on the sink; a frame length that does not change or a rejected write fails it
 |===
 
 *Known limitation*: one compression mode per run, one leaf per mode. The packetizer can be emptied from software by clearing `Trdstenable` alone with `Trdstactive` held at 1, which the emptying stop before the odd-offset walk of `smc_dfd_trace_sink_concurrent_test` witnesses (with packets in flight it does not empty at every clock phase; see that card); clearing both together stops the DST clock first and leaves a partial bank behind. Re-running a second mode after that flush is not measured, so the modes keep a leaf each.
@@ -27274,7 +27278,7 @@ draws nothing from the seed.
 
 * `Trdstformat` = 1, one of the three values the field's own RDL description names, written into the DST control register and read back.
 * The CLA's own mux (`CDbgMuxSelLo`), the last stage in front of the trace, resets to off and would hold the traced bus at zero, so it is put in normal debug mode. The functional debug signals behind the DEBUG_BUS_MUX array hold still in this bench, so the array is put in its identifier output mode and the identifier whose return to normal mode moves the node 0 pair 0 snapshot is found by measurement. That mux's `Muxselseg0..7` are walked through the segment selects the description names (0, 1, 2, 4) while the trace is live, and the lanes are read through the snapshot after each. Without a changing bus a compressor emits nothing.
-* `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 192 bytes, so the packet path sees more than one frame size.
+* `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 128 bytes, both among the 1, 2, 4 and 8 it names as supported, and the sink's `Trdstramimpl.Trdstramvendorframelength` written the same value each time, as both descriptions require, so the packet path sees more than one supported frame size.
 * `Trdstsyncmode` at the periodic-timestamp value its description names, with the shortest `Trdstsyncmax` period, so the periodic-sync path runs.
 
 *Test Procedure*:
@@ -27290,7 +27294,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 1. Each checker be
 |`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
 |`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer field off 0 to a position inside the 0x4000-byte window, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move, or a word that changed only in the wrap flag, fails it and reports the packetizer and funnel state
 |`CHK-DST-FORMAT-PAYLOAD` |The measured mux was walked through every segment select the `Muxselseg` description names while the trace was running, and the lanes read through the snapshot took at least two different values; a rotation that does not run, no mux that moves the snapshot, or lanes that stay the same fails it
-|`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
+|`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each written and read back exactly on the DST and on the sink; a frame length that does not change or a rejected write fails it
 |===
 
 
@@ -27322,7 +27326,7 @@ draws nothing from the seed.
 
 * `Trdstformat` = 3, one of the three values the field's own RDL description names, written into the DST control register and read back.
 * The CLA's own mux (`CDbgMuxSelLo`), the last stage in front of the trace, resets to off and would hold the traced bus at zero, so it is put in normal debug mode. The functional debug signals behind the DEBUG_BUS_MUX array hold still in this bench, so the array is put in its identifier output mode and the identifier whose return to normal mode moves the node 0 pair 0 snapshot is found by measurement. That mux's `Muxselseg0..7` are walked through the segment selects the description names (0, 1, 2, 4) while the trace is live, and the lanes are read through the snapshot after each. Without a changing bus a compressor emits nothing.
-* `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 192 bytes, so the packet path sees more than one frame size.
+* `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 128 bytes, both among the 1, 2, 4 and 8 it names as supported, and the sink's `Trdstramimpl.Trdstramvendorframelength` written the same value each time, as both descriptions require, so the packet path sees more than one supported frame size.
 * `Trdstsyncmode` at the periodic-timestamp value its description names, with the shortest `Trdstsyncmax` period, so the periodic-sync path runs.
 
 *Test Procedure*:
@@ -27338,7 +27342,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 3. Each checker be
 |`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
 |`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer field off 0 to a position inside the 0x4000-byte window, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move, or a word that changed only in the wrap flag, fails it and reports the packetizer and funnel state
 |`CHK-DST-FORMAT-PAYLOAD` |The measured mux was walked through every segment select the `Muxselseg` description names while the trace was running, and the lanes read through the snapshot took at least two different values; a rotation that does not run, no mux that moves the snapshot, or lanes that stay the same fails it
-|`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
+|`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each written and read back exactly on the DST and on the sink; a frame length that does not change or a rejected write fails it
 |===
 
 
@@ -28002,8 +28006,10 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * The start, stop and neutral values of the `Action0` field of node 0 pair 0 are measured with the sink write pointer as the witness, as in card 301.
-* With the trace running on the neutral action, the sink is armed in memory mode and the stop action written 1 to 16 cycles later, under frame lengths of 128, 192 and 256 bytes, which move the end of the flush the arm causes.
-* The bench accepts one memory write-out per reset. 64 times, a cool reset is taken, the trace path is programmed afresh with 256-byte frames and started, and 1 to 64 cycles later the sink is switched to memory mode and at once back to RAM mode, so the switch back lands at every cycle of the first frame's fill and read-out.
+* Before the phase walks, each of the four supported frame lengths (`dfd_dst.rdl`: 1, 2, 4 and 8, 64 to 512 bytes) is written to `Trdstimpl.Trdstvendorframelength` and the same value to the sink's `Trdstramimpl.Trdstramvendorframelength`, both read back, the sink is armed in RAM mode over the 16 KiB window, and the start action runs a short uncompressed stream that the stop action parks; the stop action is read back and the parked write pointer is read twice.
+* With the trace running on the neutral action, the sink is armed in memory mode and the stop action written 1 to 16 cycles later, under frame lengths of 128, 256 and 512 bytes with the sink length written the same value, which move the end of the flush the arm causes.
+* Every frame length is read back on the DST and the sink. Before each memory-mode arm the neutral action is read back and the write pointer is read twice and required to move; after each stop the stop action is read back and the sink control is read and required to still show memory mode, so every arm lands on a live trace, every action write landed, and every arm took.
+* The bench accepts one memory write-out per reset. 64 times, a cool reset is taken, the trace path is programmed afresh with 256-byte frames, the armed write pointer read, the trace started, and 1 to 64 cycles later the sink is switched to memory mode, read back in memory mode, and switched back to RAM mode, so the switch back lands at every cycle of the first frame's fill and read-out; the write pointer is read again after the switch back and logged, then the sink is re-armed in RAM mode and the write pointer read twice with the start action still selected.
 
 *Test Procedure*:
 
@@ -28016,12 +28022,13 @@ Drive `smc_dfd_trace_writeout_phase_test_seq`. Each checker below is a named com
 |===
 |Checker |Description
 |`CHK-DST-PHASE-ACTIONS` |At least one `Action0` value starts the trace, at least one stops it, none does both, and one leaves a running trace running; any of these missing fails it
-|`CHK-DST-PHASE-FLUSH` |After the 48 stop attempts the RAM-mode re-arm reads `Trdstrammode` 0; any other mode fails it
-|`CHK-DST-PHASE-WRITEOUT` |After each of the 64 switches `Trdstrammode` reads 0, and at the end `CurrentNode` reads 0 and the start action moves the write pointer; a sink left in memory mode, a chain away from node 0 or a trace that does not restart fails it
+|`CHK-DST-FRAME-LENGTH-MATCH` |With the DST and sink frame lengths equal at each of 1, 2, 4 and 8, each read back, and the stop action read back, the write pointer parked after the stop reads the same twice, lies past the start inside the window, and is a multiple of 64 times the length; a length or action that did not land, a pointer still moving, unmoved, or off a frame boundary fails it
+|`CHK-DST-PHASE-FLUSH` |Each frame length reads back on the DST and the sink; before each of the 48 memory-mode arms the neutral action reads back and the write pointer moves, after each stop the stop action reads back and `Trdstrammode` reads 1, and after the 48 attempts the RAM-mode re-arm reads `Trdstrammode` 0; a length or action that did not land, a dead trace, an arm that did not take, or any other final mode fails it
+|`CHK-DST-PHASE-WRITEOUT` |Between the two switches of each of the 64 attempts `Trdstrammode` reads 1, after the switch back it reads 0 and, once the sink is re-armed in RAM mode, the write pointer moves with the start action still selected; at the end `CurrentNode` reads 0 and the start action moves the write pointer. The pointer read right after each switch back is logged, not compared (`OBS-DST-WRITEOUT-POINTER`): it reads 0 at some delays. A sink left in memory mode, a trace path dead after a switch, a chain away from node 0 or a trace that does not restart fails it
 |===
 
 
-*Pass Criteria*: `CHK-DST-PHASE-ACTIONS`, `CHK-DST-PHASE-FLUSH`, `CHK-DST-PHASE-WRITEOUT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DST-FRAME-LENGTH-MATCH`, `CHK-DST-PHASE-ACTIONS`, `CHK-DST-PHASE-FLUSH`, `CHK-DST-PHASE-WRITEOUT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 '''''
@@ -51614,6 +51621,18 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_clock_gate_access_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_cla_match_event_rules_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_dfd_cla_irq_plic_source_test`
+|<<smc-vplan-area-jtag,JTAG>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_dfd_csr_field_access_test`
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
@@ -54372,6 +54391,152 @@ fail; a token is emitted only after that compare holds. The cold reset is the la
 `hosted`.
 
 '''''
+[[sec-591-smc_dfd_clock_gate_access_test]]
+===== 591 `smc_dfd_clock_gate_access_test`
+
+*Phase*: 3
+
+*Area*: JTAG
+
+*Source Module*: `smc_dfd_clock_gate_access_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN: 4-byte accesses to `DEBUG_CTRL` (`dfx_ctrl`), 8-byte
+accesses to the CLA `Scratch`, `CDbgClaCtrlStatus`, `CDbgNode0Eap0`, `CDbgEapStatus`,
+`CDbgClaTimestamp` and `CDbgClaCounter0Cfg` registers and a 4-byte read of the DST `Trdstimpl`
+register, with the error response and the read word of each access recorded; bench signal
+`tb_fuse_sense_done`
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The DFD clock gate seen through CLA and DST register accesses, the CLA evaluating with the clock unforced, and `EnableCla` gating the CLA before and after `ClaLock`.
+
+*Test Coverage*:
+
+* `dfx_ctrl_status.rdl` `DEBUG_CTRL.cg_en` and `force_clk_en`: with `cg_en` 1 and `force_clk_en` 0 a read of `Scratch` and of `Trdstimpl` completes with SLVERR and 0xBADCAB1E in every 32-bit lane, and a write of `Scratch` completes with SLVERR and leaves the word; with `force_clk_en` 1 the reads return the held words OKAY and a write takes; with `cg_en` 0 the read answers OKAY with that word.
+* With `DEBUG_CTRL` 0 (`cg_en` 0, `force_clk_en` 0), the CLA is armed, a relation value is found that sets `CDbgEapStatus.Node0Eap0`, and `CDbgClaTimestamp` is polled until it changes; `force_clk_en` is then set and the pair is quieted, cleared, fired again and the timestamp polled again.
+* `dfd_cla.rdl` `CDbgClaCtrlStatus.EnableCla` and `ClaLock`: with the pair on its quiet relation and cleared, `EnableCla` is written 0 and the activating relation selected; the status is read eight times. `EnableCla` is written 1 and the status polled. The pair is quieted and cleared, `ClaLock` written 1 with `EnableCla` 1, then `EnableCla` written 0 in a word that also moves `ClaChainLoopDelay` off its reset; the control register is read back and the activating relation selected again.
+
+*Test Procedure*:
+
+Drive `smc_dfd_clock_gate_access_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DFD-CG-EN-GATED-ACCESS` |With `cg_en` 1 and `force_clk_en` 0 the `Scratch` and `Trdstimpl` reads answer SLVERR with 0xBADCAB1E in every lane and the `Scratch` write answers SLVERR; with `force_clk_en` 1 the reads answer OKAY with the words held before the gate, so the refused write took no effect, and a write reads back; with `cg_en` 0 the read answers OKAY with that word. Any other response or word fails it
+|`CHK-DFD-CLOCK-RUNS-UNFORCED` |With `DEBUG_CTRL` 0 a relation value sets `Node0Eap0` and `CDbgClaTimestamp` changes within 64 polls; with `force_clk_en` 1 the quiet relation holds the cleared status at 0 over 8 reads, the activating relation sets it within 4 polls, and the timestamp changes within 64 polls. A pair that never sets, a timestamp that holds, or a status that sets on the quiet relation fails it
+|`CHK-CLA-ENABLE-CLA-GATES` |With `EnableCla` 0 the cleared status stays 0 over 8 reads with the activating relation selected; with `EnableCla` 1 it sets within 4 polls; after `ClaLock` 1 a write of `EnableCla` 0 carrying a moved `ClaChainLoopDelay` reads back that delay with `EnableCla` 1 and `ClaLock` 1, so the write landed and the enable held, and the status sets again within 4 polls. The counter 0 and timestamp words across the gated window are logged, not compared
+|===
+
+
+*Pass Criteria*: `CHK-CLA-ENABLE-CLA-GATES`, `CHK-DFD-CG-EN-GATED-ACCESS`, `CHK-DFD-CLOCK-RUNS-UNFORCED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The clock running while the SMC is in reset is not observed. `ClaLock` latches for the rest of the simulation, so its leg runs last.
+'''''
+
+[[sec-592-smc_dfd_cla_match_event_rules_test]]
+===== 592 `smc_dfd_cla_match_event_rules_test`
+
+*Phase*: 3
+
+*Area*: JTAG
+
+*Source Module*: `smc_dfd_cla_match_event_rules_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 8-byte accesses to the CLA registers and to
+`DEBUG_BUS_MUX`, 4-byte accesses to `DEBUG_CTRL`; bench probes `tb_core2pad_o` and `tb_core2pad_en_o`
+sampled on every `clk_smc_i` rise, and `tb_cla_interrupt`; bench signal `tb_fuse_sense_done`
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The positive and negative match codes graded against the two measured bus states, `Muxselseg4` to `Muxselseg7` left without effect on both mux registers, the time match dead under every match value, and the GPIO-toggle action driving no pad.
+
+*Test Coverage*:
+
+* The CLA mux is put in normal mode and the DEBUG_BUS_MUX identifier that feeds it is found by measurement, as in card 300; its identifier and normal modes are states A and B, read through the node 0 pair 0 snapshot.
+* `dfd_cla.rdl` `CDbgSignalMask<k>Lo` / `CDbgSignalMatch<k>Lo` for k = 0 to 3: mask set to the bits that differ between A and B and match to state A's bits, then to state B's; under each match node 0 pair 1 selects the positive code (0x2, 0x4, 0x1C, 0x1E) on both event selectors and then the negative code (0x3, 0x5, 0x1D, 0x1F), and for each code every relation value is tried with the bus held in A and then in B, the status cleared after each move.
+* `dfx_ctrl_status.rdl` `DEBUG_BUS_MUX.Muxselseg4` to `Muxselseg7` and `dfd_cla.rdl` `CDbgMuxSelLo.Muxselseg4` to `Muxselseg7`: with the bus in state B every value of each field is written on each register and the snapshot read; `Muxselseg0` of each register is walked from 1 until the snapshot moves, then returned to 0.
+* `dfd.adoc` Actions and Cross-Triggering, GPIO toggle: `tb_core2pad_o` and `tb_core2pad_en_o` are sampled on every `clk_smc_i` rise over a 4096-cycle baseline with the pair live on action 0, then every `Action0` value of node 0 pair 0 is fired under the activating relation with the sampler running and `tb_cla_interrupt` read after each; the bits that move in each window are recorded.
+* `dfd.adoc` SMC CLA event types, Time match: with `CDbgClaTimeMatch` at 0, at 1 and at all ones, `EventType0` of node 0 pair 1 is swept over its 64 indices with the bus held in B, the live indices recorded, and `CDbgClaTimestamp` read after each sweep.
+
+*Test Procedure*:
+
+Drive `smc_dfd_cla_match_event_rules_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLA-MATCH-NEGATE` |For each of the four code pairs and each of the two match values a relation value exists under which the positive code sets the pair in the matching state and leaves it clear in the other, and under that relation the negative code leaves it clear in the matching state and sets it in the other; 64 (pair, match state, code, relation) observations are made. No such relation, a negative code off its complement, or a match register the comparator ignores fails it
+|`CHK-DFX-MUXSEL47-NO-EFFECT` |All 64 values of each of `Muxselseg4` to `Muxselseg7` on `DEBUG_BUS_MUX` and on `CDbgMuxSelLo` leave the snapshot at state B, 512 samples, while a value of `Muxselseg0` on each register moves it and 0 brings it back; a moved snapshot under the idle selects, or no moving control, fails it
+|`CHK-CLA-GPIO-ACTION-NO-PAD` |Every `tb_core2pad_o` and `tb_core2pad_en_o` bit that moves across the 64 `Action0` values also moved on its own during the baseline window (the AVSBus clock pad is one), the sweep is sampled on at least 1024 rises, and `tb_cla_interrupt` reads 1 on at least one value; a bit moved only under the sweep, or a sweep that fires no action, fails it
+|`CHK-CLA-TIME-MATCH-DEAD` |The live `EventType0` index set is non-empty, not the whole range, and identical with `CDbgClaTimeMatch` at 0, 1 and all ones, while `CDbgClaTimestamp` reads past 1; a set that changes with the match value fails it
+|===
+
+
+*Pass Criteria*: `CHK-CLA-GPIO-ACTION-NO-PAD`, `CHK-CLA-MATCH-NEGATE`, `CHK-CLA-TIME-MATCH-DEAD`, `CHK-DFX-MUXSEL47-NO-EFFECT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The relation encodings are not stated, so the relation under which a positive code fires is measured and the negative code is held to its complement under that same relation. The event index of the time match is not stated, so the time match is graded as a set comparison over every index.
+'''''
+
+[[sec-593-smc_dfd_cla_irq_plic_source_test]]
+===== 593 `smc_dfd_cla_irq_plic_source_test`
+
+*Phase*: 3
+
+*Area*: JTAG
+
+*Source Module*: `smc_dfd_cla_irq_plic_source_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 8-byte accesses to the CLA registers; bench probes
+`tb_cla_interrupt`, `tb_plic_pending_321` and `tb_plic_pending_322` sampled on every `clk_smc_i`
+rise; bench signal `tb_fuse_sense_done`
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The CLA debug interrupt raising PLIC pending source 322 with the clock-stop source 321 idle: `interrupts.adoc` places the two CLA sources on raw vector bits 320 and 321 and maps raw bits 0 to 327 onto PLIC IDs 1 to 328.
+
+*Test Coverage*:
+
+* The CLA is armed and `Action0` of node 0 pair 0 is walked under an activating relation until `tb_cla_interrupt` rises, as `smc_dfd_cla_irq_w2c_release_test` walks it; `tb_plic_pending_322` is then polled up to four times.
+* `tb_plic_pending_321`, `tb_plic_pending_322` and `tb_cla_interrupt` are sampled on every `clk_smc_i` rise from before the arm to after the last poll.
+
+*Test Procedure*:
+
+Drive `smc_dfd_cla_irq_plic_source_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLA-IRQ-PLIC-322` |`tb_cla_interrupt` rises during the walk, `tb_plic_pending_322` is 0 on every sample before that rise and 1 within four polls after it, and `tb_plic_pending_321` is 0 on every sample; a line that never rises, a pending bit set early or never, or source 321 set fails it
+|===
+
+
+*Pass Criteria*: `CHK-CLA-IRQ-PLIC-322` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The release of the line after the W2C write is the subject of `smc_dfd_cla_irq_w2c_release_test` and is not graded here. Source 321 can only read 0 on this bench, which ties `tdr_dbg_ctrl_clock_stop_en_i` low.
+'''''
+
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
 ===== 161 `smc_occp_dual_unsecure_boot_test`
 
