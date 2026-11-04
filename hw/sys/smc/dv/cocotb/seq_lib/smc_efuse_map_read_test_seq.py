@@ -52,6 +52,8 @@ from .smc_efuse_vip_utils import (
 )
 
 _LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+#: AXI response of a read-locked shadow read (smc_efuse_map.rdl, LOCKS).
+_RESP_SLVERR = 2
 
 
 def _map_expect(addr: int, lock_field: str | None) -> int:
@@ -139,7 +141,12 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
 
         for name, addr, expected in EFUSE_MAP_READS:
-            await self.csr_read(name, addr, expected=expected)
+            if expected == EFUSE_BLOCKED_READ_DATA:
+                # A read-locked row completes with SLVERR and the signature
+                # (smc_efuse_map.rdl, LOCKS); the helper grades both.
+                await self.csr_read_err_signature(name, addr, resp=_RESP_SLVERR)
+            else:
+                await self.csr_read(name, addr, expected=expected)
 
         # Scoreboard cross-check, not a self-count: `accesses` is bumped by
         # `csr_read` regardless of what the DUT returned, so on its own it
@@ -168,7 +175,7 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-EFUSE-MAP-READ: %d content rows compared against "
-            "assets/smc_efuse_default.hex (%s); %d blocked rows compared against "
+            "assets/smc_efuse_default.hex (%s); %d blocked rows answered SLVERR with "
             "the SPEC error-slave signature 0x%08x, which predicts a refusal and "
             "is not a content proof (%s); %d distinct values overall",
             len(content),

@@ -9,7 +9,7 @@ Drives product ports only:
 
 Under PROD (raw 0x1):
 
-  * non-identity read / write → BLOCK (DECERR + 0xBADCAB1E)
+  * non-identity read / write → BLOCK (SLVERR + 0xBADCAB1E)
   * JTAG_PUBLIC_IDENTITY read → ALLOW (resp=OKAY; timeout fails)
 
 Every JTAG-side access waits for fuse sense first: until sense completes the
@@ -43,7 +43,7 @@ LC_PROD = 0x1
 # Non-restricted lifecycle state, the positive control for the PROD block.
 LC_TEST_DEV = 0x0
 RESP_OKAY = 0
-RESP_DECERR = 3
+RESP_SLVERR = 2
 
 
 def pack_lc_state(raw: int) -> int:
@@ -93,10 +93,10 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         await self._check_write("PROD", SMC_EFUSE_MAP_LOCKS, expect_block=True)
 
         # Positive control on the same address, with only the lifecycle state
-        # changed: a DECERR from a wedged JTAG path, or from an address that
-        # answers DECERR unconditionally, satisfies the PROD legs too. Sense has
-        # completed, so the allowed read completes OKAY at the eFuse controller;
-        # SLVERR is the shadow window refusing it.
+        # changed: an SLVERR from a wedged JTAG path, or from an address the
+        # shadow window refuses in every lifecycle state, satisfies the PROD legs
+        # too. Sense has completed, so the allowed read completes OKAY at the eFuse
+        # controller.
         dut.tb_lc_state.value = pack_lc_state(LC_TEST_DEV)
         await ClockCycles(dut.clk_smc_i, 20)
         _, dev_code = await self._read(SMC_EFUSE_MAP_LOCKS)
@@ -135,7 +135,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             csr_accesses=self.checks + lc_seq.accesses,
             proxy=False,
             details=(
-                "PROD JTAG eFuse: NON_ID/write BLOCK (DECERR+0xBADCAB1E); "
+                "PROD JTAG eFuse: NON_ID/write BLOCK (SLVERR+0xBADCAB1E); "
                 "JTAG_PUBLIC_IDENTITY ALLOW via resp=OKAY after fuse sense "
                 "(identity rdata not scored: map content is "
                 "smc_efuse_map_read_test's claim); "
@@ -172,7 +172,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         # Counted once the access came back, so the tally is completions rather
         # than attempts and a run of timeouts cannot report a full count.
         self.checks += 1
-        blocked = code == RESP_DECERR
+        blocked = code == RESP_SLVERR
         self.logger.info(
             "JTAG eFuse read  [%s] %s @0x%08x -> rdata=0x%08x resp=%s blocked=%s (exp_block=%s)",
             label,
@@ -187,7 +187,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             if not blocked:
                 self.errors.append(
                     f"[{label}] {cls} read @0x{addr:08x} expected BLOCK "
-                    f"(DECERR) but got resp={code} rdata=0x{rdata:08x}"
+                    f"(SLVERR) but got resp={code} rdata=0x{rdata:08x}"
                 )
             elif rdata != BLOCK_SIGNATURE:
                 self.errors.append(
@@ -221,7 +221,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             )
             return
         self.checks += 1
-        blocked = code == RESP_DECERR
+        blocked = code == RESP_SLVERR
         self.logger.info(
             "JTAG eFuse write [%s] NON_ID @0x%08x -> resp=%s blocked=%s (exp_block=%s)",
             label,
@@ -232,7 +232,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         )
         if expect_block and not blocked:
             self.errors.append(
-                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but got resp={code}"
+                f"[{label}] write @0x{addr:08x} expected BLOCK (SLVERR) but got resp={code}"
             )
         elif not expect_block and blocked:
             self.errors.append(f"[{label}] write @0x{addr:08x} expected ALLOW but was blocked")

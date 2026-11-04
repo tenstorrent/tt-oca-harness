@@ -26,11 +26,16 @@ from .smc_efuse_image_pattern_test_seq import (
     EfuseImage,
     word_addr,
 )
+from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA
 
 _WORD_MASK = 0xFFFF_FFFF
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 _SENSE_BOUND_CYCLES = 200_000
 #: (region name, write lock bit, read lock bit) the register map names for orientation.
+#: AXI responses of an unlocked and a locked shadow access (smc_efuse_map.rdl, LOCKS).
+_RESP_OKAY = 0
+_RESP_SLVERR = 2
+
 _LOCK_BITS = (
     ("SPARE0", 8, 9),
     ("SPARE1", None, 11),
@@ -166,10 +171,14 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
         sent = []
         for word in words:
             value = self._fresh()
-            await self._write_word(f"{label}_{word}", word, value)
+            resp = await self._write_word(f"{label}_{word}", word, value)
             sent.append(value)
             if lands:
+                assert resp == _RESP_OKAY, f"{label}: word {word} unlocked write resp={resp}"
                 self.shadow[word] = value
+            else:
+                # smc_efuse_map.rdl (LOCKS): a write-locked write completes with SLVERR.
+                assert resp == _RESP_SLVERR, f"{label}: word {word} write-locked write resp={resp}"
         return sent
 
     async def _expect_words(self, label: str, words: range) -> None:
@@ -183,6 +192,11 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
             assert got not in (held, ~held & _WORD_MASK), (
                 f"{label}: word {word} reads 0x{got:08x} with its read lock set; "
                 f"the field holds 0x{held:08x}"
+            )
+            # smc_efuse_map.rdl (LOCKS): a read-locked read returns 0xBADCAB1E.
+            assert got == EFUSE_BLOCKED_READ_DATA, (
+                f"{label}: word {word} reads 0x{got:08x} with its read lock set, "
+                f"expected 0x{EFUSE_BLOCKED_READ_DATA:08x}"
             )
         return len(words)
 

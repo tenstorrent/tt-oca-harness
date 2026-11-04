@@ -8,7 +8,7 @@ Exercises the SMC-OTP JTAG access-control policy through product ports:
   * the ``ej_axi`` AXI-Lite master drives ``axil_smc_otp_jtag_req_i``.
 
 For each lifecycle state the test checks whether a JTAG-side eFuse access is
-routed to the access-control error slave (DECERR) or reaches the eFuse
+routed to the access-control error slave (SLVERR) or reaches the eFuse
 controller and completes there (OKAY); the map content behind an allowed read
 is ``smc_efuse_map_read_test``'s claim. Every access waits for fuse sense first,
 because until sense completes the shadow window answers SLVERR / 0xBADCAB1E to
@@ -115,7 +115,6 @@ LC_IDENTITY_ADDRS = (EFUSE_MAP_JTAG_PUBLIC_IDENTITY,)
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
-RESP_DECERR = 3
 
 # Bound for one JTAG-side AXI-Lite access. Expiry is a FAILURE, never a pass.
 JTAG_ACCESS_TIMEOUT_NS = 400
@@ -352,7 +351,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
                 "(PROD/RMA_SOP block + JTAG_PUBLIC_IDENTITY exception + "
                 "differential-integrity lockdown), expectations derived from "
                 "hw/ip/efuse/doc/architecture.adoc:265-305; after fuse sense, "
-                "blocked = DECERR + 0xBADCAB1E from the error slave, allowed = "
+                "blocked = SLVERR + 0xBADCAB1E from the error slave, allowed = "
                 "OKAY from the eFuse controller, both outcomes observed on the "
                 "same address. No data claim is made on the allowed reads"
             ),
@@ -460,22 +459,22 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         rdata, code = await self._read(addr)
 
         # A timed-out access (code None) must fail before the `blocked` compare:
-        # `code == RESP_DECERR` is False for None, which is the ALLOW pass
+        # `code == RESP_SLVERR` is False for None, which is the ALLOW pass
         # condition.
         if code is None:
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} got NO AXI response within "
                 f"{JTAG_ACCESS_TIMEOUT_NS}ns (expected "
-                f"{'BLOCK (DECERR)' if expect_block else 'ALLOW'}); "
+                f"{'BLOCK (SLVERR)' if expect_block else 'ALLOW'}); "
                 f"bus state: {self._bus_state()}"
             )
             return None
 
-        # A blocked access is the err_slv DECERR. An allowed access reaches the
+        # A blocked access is the err_slv SLVERR. An allowed access reaches the
         # eFuse controller and, with fuse sense complete, completes OKAY; the
         # end-of-run gate requires both codes to have been seen on the same
         # address.
-        blocked = code == RESP_DECERR
+        blocked = code == RESP_SLVERR
         self._read_outcomes.setdefault(addr, set()).add(blocked)
         cocotb.log.info(
             "JTAG eFuse read  [%s] %s @0x%08x -> rdata=0x%08x resp=%s blocked=%s (exp_block=%s)",
@@ -489,12 +488,12 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         )
         if expect_block and not blocked:
             self.errors.append(
-                f"[{label}] {cls} read @0x{addr:08x} expected BLOCK (DECERR) but "
+                f"[{label}] {cls} read @0x{addr:08x} expected BLOCK (SLVERR) but "
                 f"got resp={code} rdata=0x{rdata:08x}"
             )
         elif not expect_block and blocked:
             self.errors.append(
-                f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was blocked (DECERR)"
+                f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was blocked (SLVERR)"
             )
         elif not expect_block and code != RESP_OKAY:
             self.errors.append(
@@ -520,14 +519,14 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             self.errors.append(
                 f"[{label}] write @0x{addr:08x} got NO AXI response within "
                 f"{JTAG_ACCESS_TIMEOUT_NS}ns (expected "
-                f"{'BLOCK (DECERR)' if expect_block else 'ALLOW'}); "
+                f"{'BLOCK (SLVERR)' if expect_block else 'ALLOW'}); "
                 f"bus state: {self._bus_state()}"
             )
             return None
-        # A blocked write is routed to the err_slv -> DECERR. An allowed write
+        # A blocked write is routed to the err_slv -> SLVERR. An allowed write
         # reaches the eFuse controller and, with fuse sense complete, completes
         # OKAY.
-        blocked = code == RESP_DECERR
+        blocked = code == RESP_SLVERR
         self._write_outcomes.add(blocked)
         cocotb.log.info(
             "JTAG eFuse write [%s] NON_ID @0x%08x -> resp=%s blocked=%s (exp_block=%s)",
@@ -539,11 +538,11 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         )
         if expect_block and not blocked:
             self.errors.append(
-                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but got resp={code}"
+                f"[{label}] write @0x{addr:08x} expected BLOCK (SLVERR) but got resp={code}"
             )
         elif not expect_block and blocked:
             self.errors.append(
-                f"[{label}] write @0x{addr:08x} expected ALLOW but was blocked (DECERR)"
+                f"[{label}] write @0x{addr:08x} expected ALLOW but was blocked (SLVERR)"
             )
         elif not expect_block and code != RESP_OKAY:
             self.errors.append(

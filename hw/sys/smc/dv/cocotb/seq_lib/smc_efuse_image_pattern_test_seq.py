@@ -25,11 +25,10 @@ the DUT:
   no lock of its own. Every other region follows its LOCKS bits: the RDL LOCKS
   description says a write-locked field "is not programmable" and a read-locked
   shadow register "is not readable", and ``architecture.adoc`` (eFuse lock-field
-  encoding table) gives ``lock[0] = 1`` as read-locked. Neither states the
-  response code or the word a read-locked read returns, so a read-locked read
-  is held to non-disclosure only: its data must differ from both values the
-  word could hold, and its response
-  code is recorded, not asserted.
+  encoding table) gives ``lock[0] = 1`` as read-locked. The LOCKS description
+  fixes the response of a read-locked read, SLVERR with ``0xBADCAB1E``, so each
+  one is held to that response and that word, and to non-disclosure: its data
+  must differ from both values the word could hold.
 
 **Scenario.** Sense; read all 256 words. Write the complement of every non-LOCKS
 word, then read them all: a write-unlocked word holds the complement, a
@@ -56,6 +55,7 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import (
+    EFUSE_BLOCKED_READ_DATA,
     EFUSE_MAP_BASE,
     EFUSE_MAP_SIZE,
     efuse_preload_words,
@@ -75,6 +75,8 @@ LOCKS_WORDS = range(
 )
 #: Every map word outside LOCKS.
 DATA_WORDS = tuple(w for w in range(EFUSE_MAP_WORDS) if w not in LOCKS_WORDS)
+#: AXI response of a locked shadow access (smc_efuse_map.rdl, LOCKS).
+_RESP_SLVERR = 2
 
 
 @dataclass(frozen=True)
@@ -258,18 +260,26 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
             await self.csr_read(f"{label}_W{word}", word_addr(word), expected=words[word])
 
     async def _read_locked(self, label: str, word: int) -> int:
-        """A read the lock may refuse: data returned, response code not asserted."""
+        """A read the lock refuses: SLVERR with 0xBADCAB1E, both asserted."""
         item = SmcSysAxiItem(f"rd_{label}")
         item.op = SmcSysAxiOp.READ
         item.addr = word_addr(word)
         item.length = 4
         item.allow_error = True
+        item.expect_error = True
+        item.expected_resp = _RESP_SLVERR
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
-        assert item.resp_code is not None, f"{label}: the read-locked read got no response"
+        assert item.resp_code == _RESP_SLVERR, (
+            f"{label}: a read-locked read must complete with SLVERR, got resp={item.resp_code}"
+        )
+        got = item.rdata & _WORD_MASK
+        assert got == EFUSE_BLOCKED_READ_DATA, (
+            f"{label}: a read-locked read returns 0x{EFUSE_BLOCKED_READ_DATA:08x}, got 0x{got:08x}"
+        )
         self.locked_read_resps.add(item.resp_code)
-        return item.rdata & _WORD_MASK
+        return got
 
     async def body(self) -> None:
         image = self.image
@@ -346,7 +356,8 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-EFUSE-IMG-LOCKS-SET-ONLY: LOCKS kept its sensed 0x%016x across a write "
             "of 0, read all-ones after a write of all-ones and kept all-ones across a "
             "second write of 0; all %d other words, read-locked, then returned neither "
-            "their image word nor its complement (response codes seen: %s, not asserted)",
+            "their image word nor its complement, each with SLVERR and 0xBADCAB1E "
+            "(response codes seen: %s)",
             image.locks,
             self.nondisclosure_checks,
             sorted(self.locked_read_resps),
