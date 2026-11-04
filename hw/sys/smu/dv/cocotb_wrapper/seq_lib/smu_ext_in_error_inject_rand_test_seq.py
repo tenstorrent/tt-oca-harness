@@ -8,10 +8,12 @@ answers an ``ext_in`` request outside both apertures with DECERR because ``ext_i
 connected to ``ext_out`` (``hw/sys/smu/doc/index.adoc``, "AXI Crossbar"). A request the bench
 responder answers has therefore reached ``ext_out``, and the code it returns is the response of
 that request at its initiator. The SMC fabric JTAG2AXI bridge reports SLVERR as op 1 and DECERR
-as op 2 (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, ``AXI_SINGLE_OP``); the SEP debug
-module's system bus reports a bus error as ``sbcs.sberror`` 2 (RISC-V Debug Specification 0.13,
-``sbcs``), which maps no AXI code, so both codes read 2 there. The iDMA (``hw/sys/smc/doc/
-dma.adoc``) exposes no error status; its outcome after an errored beat is logged only.
+as op 2 (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, ``AXI_SINGLE_OP``). The SEP debug
+module's system bus reports a failed access as a non-zero ``sbcs.sberror`` (RISC-V Debug
+Specification 0.13, ``sbcs``); neither that specification nor a document or RDL in this tree maps
+an AXI SLVERR or DECERR to a value of the field, so a SEP cell grades ``sberror`` non-zero and logs
+the value it reads as an observation. The iDMA (``hw/sys/smc/doc/dma.adoc``) exposes no error
+status; its outcome after an errored beat is logged only.
 
 Every cell is a control access with the hook disarmed, the same access with a one-shot code
 armed through ``inject_error`` of the responder at the 8-byte word of the chosen beat (the
@@ -153,8 +155,8 @@ SLVERR, DECERR = "SLVERR", "DECERR"
 CODE_RESP = {SLVERR: RESP_SLVERR, DECERR: RESP_DECERR}
 # architecture.adoc AXI_SINGLE_OP op field.
 CODE_J2A = {SLVERR: J2A_STATUS_SLVERR, DECERR: J2A_STATUS_DECERR}
-# RISC-V Debug Specification 0.13, sbcs.sberror 2: a bad address was accessed.
-SB_BUS_ERROR = 2
+# RISC-V Debug Specification 0.13, sbcs.sberror: 0 is no error.
+SB_NO_ERROR = 0
 SB_ACCESS_64 = 3
 
 BRIDGE, IDMA, SEP = "bridge", "idma", "sep"
@@ -551,7 +553,7 @@ class smu_ext_in_error_inject_rand_test_seq(smu_dtp_sep_dm_sba_test_seq):
     async def _cell_single(self, sb, cell: dict) -> None:
         label = cell_label(cell)
         addr, direction = cell["addr"], cell["direction"]
-        okay = J2A_STATUS_SUCCESS if cell["initiator"] == BRIDGE else 0
+        okay = J2A_STATUS_SUCCESS if cell["initiator"] == BRIDGE else SB_NO_ERROR
         if direction == READ:
             self.mem.write_int(addr, cell["ctrl"], WORD_BYTES)
         result, phases = await self._single_access(cell, direction, cell["ctrl"], "ctrl")
@@ -580,18 +582,31 @@ class smu_ext_in_error_inject_rand_test_seq(smu_dtp_sep_dm_sba_test_seq):
         status = result[0] if direction == READ else result
         consumed = self._armed()
         self.injected.append(code)
-        want_status = CODE_J2A[code] if cell["initiator"] == BRIDGE else SB_BUS_ERROR
-        self._log(
-            f"CHK-EXTERR-RESP {label}: initiator={status} want={want_status} tap={phases} "
-            f"armed={armed} after={consumed}"
-        )
-        sb.expect_eq(
-            f"CHK-EXTERR-RESP the responder {code} reaches the {cell['initiator']} as "
-            f"{'op' if cell['initiator'] == BRIDGE else 'sberror'} {want_status} {label}",
-            status,
-            want_status,
-            evidence="CHK-EXTERR-RESP",
-        )
+        if cell["initiator"] == BRIDGE:
+            want_status = CODE_J2A[code]
+            self._log(
+                f"CHK-EXTERR-RESP {label}: initiator={status} want={want_status} tap={phases} "
+                f"armed={armed} after={consumed}"
+            )
+            sb.expect_eq(
+                f"CHK-EXTERR-RESP the responder {code} reaches the bridge as op {want_status} "
+                f"{label}",
+                status,
+                want_status,
+                evidence="CHK-EXTERR-RESP",
+            )
+        else:
+            self._log(
+                f"CHK-EXTERR-RESP {label}: sberror={status} want!={SB_NO_ERROR} tap={phases} "
+                f"armed={armed} after={consumed}"
+            )
+            self._log(f"OBSERVATION sberror code for the responder {code} {label}: {status}")
+            sb.expect_true(
+                f"CHK-EXTERR-RESP the responder {code} reaches the SEP system bus as a "
+                f"non-zero sberror {label}",
+                status != SB_NO_ERROR,
+                evidence="CHK-EXTERR-RESP",
+            )
         sb.expect_eq(
             f"CHK-EXTERR-BEAT the tap shows the one {direction.upper()} beat at the armed word "
             f"carrying {code} and the inject consumed {label}",
@@ -609,7 +624,7 @@ class smu_ext_in_error_inject_rand_test_seq(smu_dtp_sep_dm_sba_test_seq):
         probe = dict(cell, initiator=initiator, addr=word)
         wres, wph = await self._single_access(probe, WRITE, cell["rec"], "rec")
         rres, rph = await self._single_access(probe, READ, 0, "rec")
-        okay = J2A_STATUS_SUCCESS if initiator == BRIDGE else 0
+        okay = J2A_STATUS_SUCCESS if initiator == BRIDGE else SB_NO_ERROR
         got = (wres, rres, wph + rph, self.mem.read_int(word, WORD_BYTES))
         want = (okay, (okay, cell["rec"]), [(word, [RESP_OKAY])] * 2, cell["rec"])
         self._log(f"CHK-EXTERR-RECOVER {label} word=0x{word:x} via {initiator}: got={got}")

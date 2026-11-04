@@ -7,6 +7,13 @@ Sources: smu-smc.adoc (eFuse Interface), port_table.adoc (smc_fuse_sense_done_o,
 A sampler records (rst_primary, sense_done) on every clk_smc_i rising edge and captures
 ``efuse_shadow_probe_o`` on every 0-to-1 edge of sense done; every check is made over that
 record. Every expected word is ``image.words[n]`` of the image file the run senses.
+
+Under the held cold reset the probe must equal the reset word of every SMC_EFUSE_MAP word,
+composed from the generated ``blocks/smc_efuse_map.h`` ``_reset`` fields (smc_efuse_map.rdl
+gives every field a reset of 0). A word whose image value differs from its reset word therefore
+shows the re-sense on the first rise. A word whose image value equals its reset word reads the
+same with or without the re-sense; the checker lines count those words apart and grade them as
+equal to the image only. Every kind senses a non-zero LOCKS word 0, so at least one word changes.
 """
 
 from __future__ import annotations
@@ -16,8 +23,15 @@ from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_reset_item import SmcResetOp
 
+from .smc_addr_map import reg_reset_word, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_efuse_image_pattern_test_seq import EFUSE_MAP_WORDS, EfuseImage, word_addr
+from .smc_efuse_image_pattern_test_seq import (
+    _SMC_EFUSE_MAP_H,
+    EFUSE_MAP_WORDS,
+    EfuseImage,
+    word_addr,
+)
+from .smc_efuse_vip_utils import EFUSE_MAP_BASE, EFUSE_MAP_SIZE
 from .smc_reset_seq_base import SmcResetSeqBase
 
 _MASK32 = 0xFFFF_FFFF
@@ -37,6 +51,43 @@ _TERMS = {
     "S5": "DONE-ONCE",
     "S6": "SHADOW-OUT",
 }
+
+
+def _reset_words() -> tuple[int, ...]:
+    """The reset word of every SMC_EFUSE_MAP word, from the generated register map."""
+    instances = [
+        ("LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")),
+        ("JTAG_PUBLIC_IDENTITY", smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")),
+        ("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")),
+        (
+            "OCCP_TRANSPORT_TIMEOUT",
+            smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
+        ),
+    ]
+    for reg, name in (("I2C_I3C_ID", "I2C_I3C_ID"), ("SPARE_256_BITS", "SPARE")):
+        sym = f"SMC_TOP_SMC_EFUSE_MAP_{name}_BASE_ADDR"
+        for k in range(smc_addr(f"SMC_TOP_SMC_EFUSE_MAP_{name}_NUM")):
+            instances.append((reg, smc_indexed_addr(sym, k)))
+    instances.sort(key=lambda entry: entry[1])
+    assert instances[0][1] == EFUSE_MAP_BASE, f"first register at 0x{instances[0][1]:x}"
+    packed = 0
+    for idx, (reg, addr) in enumerate(instances):
+        end = instances[idx + 1][1] if idx + 1 < len(instances) else EFUSE_MAP_BASE + EFUSE_MAP_SIZE
+        reset = reg_reset_word(_SMC_EFUSE_MAP_H, "SMC_EFUSE_MAP", reg)
+        assert end > addr and reset >> (8 * (end - addr)) == 0, (
+            f"{reg} at 0x{addr:x}: reset 0x{reset:x} does not fit its {end - addr} bytes"
+        )
+        packed |= reset << (8 * (addr - EFUSE_MAP_BASE))
+    return tuple((packed >> (32 * n)) & _MASK32 for n in range(EFUSE_MAP_WORDS))
+
+
+RESET_WORDS = _reset_words()
+
+
+def _word_list(words: list[int]) -> str:
+    """Word indices, the first eight and a count of the rest."""
+    head = ",".join(str(n) for n in words[:8])
+    return f"[{head}{f',+{len(words) - 8}' if len(words) > 8 else ''}]"
 
 
 class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
@@ -131,13 +182,14 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
 
     # --- compares -------------------------------------------------------
-    def _compare_probe(self, label: str, probe: int) -> None:
-        words = self.image.words
+    def _compare_probe(self, label: str, probe: int, words=None, source: str = "") -> None:
+        if words is None:
+            words, source = self.image.words, f"image {self.image.path.name}"
         for n in range(EFUSE_MAP_WORDS):
             got = (probe >> (32 * n)) & _MASK32
             assert got == words[n], (
                 f"{label}: efuse_shadow_probe_o word {n} (0x{4 * n:03x}) is 0x{got:08x}, "
-                f"image {self.image.path.name} 0x{words[n]:08x}"
+                f"{source} 0x{words[n]:08x}"
             )
 
     async def _rd(self, label: str, word: int) -> int:
@@ -201,6 +253,16 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
         assert all(t[0] == 0 and t[1] == 0 for t in held), (
             f"tb_fuse_sense_done or the primary reset moved under the held cold reset: {held}"
         )
+        held_edge = len(rec) - 1
+        assert self._sig("rst_primary_smc_clk_no") == 0, (
+            f"the primary reset released before the reset-state probe read: {self._last()}"
+        )
+        self._compare_probe("S1", self._sig("efuse_shadow_probe_o"), RESET_WORDS, "RDL reset word")
+        changed = [n for n in range(EFUSE_MAP_WORDS) if image.words[n] != RESET_WORDS[n]]
+        assert changed, (
+            f"{image.path.name}: every word equals its RDL reset word, so no compare after the "
+            "cold reset can show a re-sense"
+        )
         await self._send(SmcResetOp.COLD_RST_HI)
         await self._wait_released("cold release")
         rel = await self._wait_find(
@@ -222,14 +284,20 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-EMAP-SENSE-FIRST-DONE",
             "tb_fuse_sense_done 0 on every sample from the cold reset (edge %d) to edge %d, "
             "read 1 on the first edge %d after the release at edge %d (%d clk_smc_i cycles); all "
-            "%d words of efuse_shadow_probe_o captured on that edge equal %s",
+            "%d words of efuse_shadow_probe_o equal the RDL reset words under the held reset "
+            "(edge %d) and %s on that edge: re-sense shown by %d words whose image differs from "
+            "the reset word %s, %d words equal to both (re-sense not distinguishable)",
             low,
             first - 1,
             first,
             rel,
             first - rel,
             EFUSE_MAP_WORDS,
+            held_edge,
             image.path.name,
+            len(changed),
+            _word_list(changed),
+            EFUSE_MAP_WORDS - len(changed),
         )
         await self._sense_wait("warm_domain_released")
 
@@ -242,6 +310,7 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"word 0 or word 255 is read-locked: {skipped}"
         )
         read = EFUSE_MAP_WORDS - len(skipped)
+        read_changed = len([w for w in changed if w not in skipped])
         self._compare_probe("S3", self._sig("efuse_shadow_probe_o"))
         self._done("S3")
         if skipped:
@@ -260,13 +329,14 @@ class smc_efuse_map_sense_image_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
             self._chk(
                 chk_id,
-                "image %s (%s, %s): %d SEP_IN reads equal the image words, word 0 "
-                "0x%08x and word 255 0x%08x included; %s; all %d efuse_shadow_probe_o words equal "
-                "the image again after the sweep",
+                "image %s (%s, %s): %d SEP_IN reads equal the image words (%d differ from "
+                "the RDL reset word), word 0 0x%08x and word 255 0x%08x included; %s; all %d "
+                "efuse_shadow_probe_o words equal the image again after the sweep",
                 image.path.name,
                 self.kind,
                 self._words_note(),
                 read,
+                read_changed,
                 image.words[0],
                 image.words[EFUSE_MAP_WORDS - 1],
                 locked_note,

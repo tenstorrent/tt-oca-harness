@@ -1572,7 +1572,7 @@ the ones eFuse image.
 |`smc_efuse_map_sense_image_zero_test` |3 |Sensed image words match the loaded file on every path, in
 the zero eFuse image.
 |`smc_efuse_map_sense_image_default_test` |3 |Sensed image words match the loaded file on every
-path, in the default eFuse image.
+path, in the default eFuse image; re-sense shown for `LOCKS` word 0.
 |`smc_efuse_map_sep_write_test` |3 |Unlocked SEP_IN map writes read back and reach the shadow port.
 |`smc_efuse_sense_sequence_test` |2 |Sense request, 256 strobes and hand-over follow the interface.
 |`smc_efuse_security_disable_bypass_test` |3 |With the security-disable input held at 1 from time 0
@@ -12309,8 +12309,8 @@ register holding its beat's value in its seeded fields; every register of the se
 (19..23) outside a write footprint keeps its reference, which no beat carries; liveness OKAY
 |`CHK-BT-SPM` |INCR: OKAY and every beat reads the data written; WRAP and FIXED: protocol held and
 the guard words outside the window or the neighbouring words kept; narrow and strobed writes change
-only the strobed bytes with OKAY; the ROM write answers one B with SLVERR and the ROM words are
-unchanged; liveness OKAY
+only the strobed bytes with OKAY; the ROM write answers one B with its ID, not X and not EXOKAY (no SMC document states the code; the observed BRESP is printed in `OBS-BT-SPM`) and the ROM words, which no payload
+word equals, are unchanged; liveness OKAY
 |`CHK-BT-SLOTEDGE` |Slot-edge burst protocol; an INCR write that answers OKAY leaves each writable
 footprint register holding its beat's lane in its seeded fields; every register of slots k-1..k+2
 outside the footprint keeps its reference, liveness OKAY
@@ -12433,10 +12433,10 @@ DECERR, and `allow_burst` selects burst matching and the address granule.
   E re-programmed and a SYS_IN liveness read.
 * A fresh 64-bit SYS_IN read of `LOCAL_BASE` through E ends every family.
 * Observation only, never compared, each line naming its findings: `OBS-FWIN-READ` (the address E
-  compares; SF-012), `OBS-FWIN-WRUNLOCKED` (BRESP and SEP_IN readback of each SYS_IN write to an
-  unlocked entry; SF-021), `OBS-FWIN-WRLOCKED` (BRESP of the burst spanning L and entry 9, entry 9
-  afterwards, BRESP and landing of the pre-lock SYS_IN write; SF-015, SF-021), `OBS-FWIN-SELFDENY`
-  (BRESP and SEP_IN readback of each self-deny write; SF-014), `OBS-FWIN-BASECFG` (BRESP of the
+  compares; SF-012), `OBS-FWIN-WRUNLOCKED` (BRESP of each SYS_IN write to an unlocked entry and the
+  SEP_IN readback of the entry j writes; SF-021), `OBS-FWIN-WRLOCKED` (BRESP of the burst spanning L
+  and entry 9, entry 9 afterwards, BRESP and landing of the pre-lock SYS_IN write; SF-015, SF-021),
+  `OBS-FWIN-SELFDENY` (BRESP of each self-deny write; SF-014), `OBS-FWIN-BASECFG` (BRESP of the
   `GLOBAL_BASE` write, the first poll read that sees the new window, BRESP of the shrink and of the
   SEP_IN restore; SF-023, SF-025) and `OBS-INFILT-BURST` (per-beat RRESP and RDATA, BRESP and the
   scratch landing of each burst; SF-005, SF-007).
@@ -12467,13 +12467,17 @@ fields with `data_bus_width` 0x3, entry 12 returns 0x0000_0000_0000_3000 / 0x0 /
 locked configuration with `locked`=1 and its range, `GLOBAL_BASE` 0x4000_0000, `LOCAL_BASE`
 0xC000_0000, `REGION_SIZE` 0x0100_0000; with E disabled DECERR and re-enabled OKAY
 |`CHK-FWIN-WRUNLOCKED` |The SYS_IN write to the read-only field answers OKAY and `data_bus_width`
-reads 0x3 with the non-field bits 0; the SYS_IN accesses to T and outside the deny range answer as
+reads 0x3 with the non-field bits 0; each SYS_IN deny-entry write reads back from SEP_IN as
+programmed (`KEY-FWIN-LANDED`), T is decided by entry j and then by E (`KEY-FWIN-DECIDER`), and the
+SYS_IN accesses to T and outside the deny range answer as
 the lowest hitting entry of the read-back configuration dictates
 |`CHK-FWIN-WRLOCKED` |The SEP_IN write before the lock answers OKAY and reads back as written;
 every write to locked L (SYS_IN at both gate settings, the lock clear, the AxLEN=2 burst, SEP_IN)
 answers DECERR with every W beat accepted and one B; SYS_IN and SEP_IN reads of L return the locked
 values with `locked`=1, also after the spanning burst; the next SYS_IN read through E answers OKAY
-|`CHK-FWIN-SELFDENY` |After each self-deny write the next SYS_IN accesses answer as the read-back
+|`CHK-FWIN-SELFDENY` |Each self-deny write lands in E as written with its range kept
+(`KEY-FWIN-LANDED`) and moves the decision to E, the default block, then F (`KEY-FWIN-DECIDER`);
+after each the next SYS_IN accesses answer as the read-back
 E dictates: with `write_allowed` 0 the write answers DECERR and T is unchanged while the read
 answers OKAY with T; with E disabled and no other hit both answer DECERR; with F admitting the
 window OKAY; the SEP_IN restores answer OKAY and the next SYS_IN read OKAY
@@ -12501,9 +12505,10 @@ every decode agrees with the read-back configuration, every liveness read answer
 `LOCAL_BASE` reset, every planned cell is driven and no access goes unanswered. A FAIL on a stated
 value is a finding. Enrolled in: `all`.
 
-*Scope limit*: The landing of SYS_IN writes to unlocked filter configuration (accepted behaviour
-under SF-021), the address the inbound filter compares (SF-012), the response and timing of a
-write that changes the admitting entry (SF-014), a burst spanning a locked and an unlocked entry
+*Scope limit*: The landing of the S3 SYS_IN writes to unlocked entry j and the pre-lock write to L
+(accepted behaviour under SF-021; the S4 deny writes are graded under `KEY-FWIN-LANDED`), the address the inbound filter compares (SF-012), the response
+code and timing of a write that changes the admitting entry (SF-014), a burst spanning a locked and
+an unlocked entry
 (SF-015), when a `GLOBAL_BASE` write applies (SF-023), the `REGION_SIZE` recovery path (SF-025) and
 the beat codes and landing of filtered bursts (SF-005, SF-007) are OBS lines. `ocah_axi_sva` fires
 are read from the kept log.
@@ -30727,7 +30732,9 @@ run grades only its kind's sense checker.
 *Test Coverage*:
 
 * After a cold reset, `tb_fuse_sense_done` (`smc_fuse_sense_done_o`) stays 0 until the sense
-  finishes and rises once; on that first rise `efuse_shadow_probe_o` already holds the whole image
+  finishes and rises once; under the held reset `efuse_shadow_probe_o` holds the RDL reset words
+  (every `smc_efuse_map.rdl` field resets to 0), and on that first rise it already holds the whole
+  image, so every word whose image differs from its reset word shows the re-sense
   (`doc/integrator/src/smu-smc.adoc`, eFuse Interface, sensing once per cold boot;
   `hw/sys/smc/doc/port_table.adoc`, `smc_fuse_sense_done_o` row).
 * All 256 words of the SMC_EFUSE_MAP shadow, including the `LOCKS` words, read over SEP_IN as the
@@ -30751,8 +30758,9 @@ run grades only its kind's sense checker.
   `tb_fuse_sense_done` within 200000 clocks, start the sampler and let it take 4 samples.
 . Print the image name, kind, image words seed (random kind; marked unused for the others) and
   `LOCKS`; send the cold reset assertion, check the reset state, wait for `rst_primary_smc_clk_no`
-  low, require 8 samples with the reset low and sense done 0, release the reset and wait for the
-  release.
+  low, require 8 samples with the reset low and sense done 0, require all 256 probe words to equal
+  the RDL reset words and at least one image word to differ from its reset word, release the reset
+  and wait for the release.
 . Wait for the first rise of `tb_fuse_sense_done` (bounded at 200000 edges), require sense done 0
   on every sample from the reset to that rise and the 256 captured probe words to equal the image;
   then wait for the warm domain to be released.
@@ -30775,7 +30783,9 @@ run grades only its kind's sense checker.
 |Checker |Description
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
 edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
-captured on that rise equal the image; the line carries `cell=<kind>`.
+equal the RDL reset words under the held cold reset and the image on that rise; the line counts the
+words whose image differs from the reset word (re-sense shown) apart from the words equal to both
+(re-sense not distinguishable); the line carries `cell=<kind>`.
 |`CHK-EMAP-SENSE-DEFAULT` |Default kind: every SEP_IN read of a non-read-locked word equals the
 image word with words 0 and 255 included, and all 256 probe words equal the image again after the
 sweep; the line carries `cell=default`.
@@ -30854,7 +30864,9 @@ reads issued and on every sample from its first rise, with exactly one 0 to 1 tr
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
 edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
-captured on that rise equal the image.
+equal the RDL reset words under the held cold reset and the image on that rise; the line counts the
+words whose image differs from the reset word (re-sense shown) apart from the words equal to both
+(re-sense not distinguishable).
 |`CHK-EMAP-SENSE-UNIQUE` |For the unique image every SEP_IN read of a non-read-locked word equals
 the image word with words 0 and 255 included, and all 256 probe words equal the image again after
 the sweep.
@@ -30920,7 +30932,9 @@ reads issued and on every sample from its first rise, with exactly one 0 to 1 tr
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
 edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
-captured on that rise equal the image.
+equal the RDL reset words under the held cold reset and the image on that rise; the line counts the
+words whose image differs from the reset word (re-sense shown) apart from the words equal to both
+(re-sense not distinguishable).
 |`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
 image word with words 0 and 255 included, and all 256 probe words equal the image again after the
 sweep.
@@ -30986,7 +31000,9 @@ reads issued and on every sample from its first rise, with exactly one 0 to 1 tr
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
 edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
-captured on that rise equal the image.
+equal the RDL reset words under the held cold reset and the image on that rise; the line counts the
+words whose image differs from the reset word (re-sense shown) apart from the words equal to both
+(re-sense not distinguishable).
 |`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
 image word with words 0 and 255 included, and all 256 probe words equal the image again after the
 sweep.
@@ -31052,7 +31068,9 @@ reads issued and on every sample from its first rise, with exactly one 0 to 1 tr
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
 edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
-captured on that rise equal the image.
+equal the RDL reset words under the held cold reset and the image on that rise; the line counts the
+words whose image differs from the reset word (re-sense shown) apart from the words equal to both
+(re-sense not distinguishable).
 |`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
 image word with words 0 and 255 included, and all 256 probe words equal the image again after the
 sweep.
@@ -31118,7 +31136,9 @@ reads issued and on every sample from its first rise, with exactly one 0 to 1 tr
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
 edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
-captured on that rise equal the image.
+equal the RDL reset words under the held cold reset and the image on that rise; the line counts the
+words whose image differs from the reset word (re-sense shown) apart from the words equal to both
+(re-sense not distinguishable).
 |`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
 image word with words 0 and 255 included, and all 256 probe words equal the image again after the
 sweep.
@@ -31164,7 +31184,7 @@ names that sha256.
 *Randomization*: RAND-NONE: directed, a fixed-cell variant; the eFuse image kind is pinned by the
 module and its testlist entry.
 
-*Objective*: Sensed image words match the loaded file on every path, in the default eFuse image. Extends `smc_efuse_map_sense_image_test` with the default image kind.
+*Objective*: Sensed image words match the loaded file on every path, in the default eFuse image; the re-sense after the cold reset is shown for `LOCKS` word 0, the only word the default asset sets away from its reset value. Extends `smc_efuse_map_sense_image_test` with the default image kind.
 
 *Test Coverage*:
 
@@ -31190,7 +31210,9 @@ reads issued and on every sample from its first rise, with exactly one 0 to 1 tr
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
 edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
-captured on that rise equal the image.
+equal the RDL reset words under the held cold reset and the image on that rise; the line counts the
+words whose image differs from the reset word (re-sense shown) apart from the words equal to both
+(re-sense not distinguishable).
 |`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
 that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
 without a compare.
@@ -31205,7 +31227,9 @@ with an assertion on expiry; the bounds and last samples are logged.
 in: `all`, `hosted`.
 
 *Scope limit*: Read-locked words on the `shadow_regs` port are printed without a compare, as in
-`smc_efuse_map_sense_image_test`.
+`smc_efuse_map_sense_image_test`. The default asset equals the RDL reset value in every word except
+`LOCKS` word 0, so for the other 255 words a match after the cold reset reads the same with or
+without the re-sense; those words are graded as equal to the image only.
 
 '''''
 
@@ -33308,10 +33332,13 @@ reset takes effect are recorded, not asserted.
 *BFM / Model*: SEP_IN AXI driver for the GPIO CSRs (`DATA_CTRL` and `ACCESS_FILTER` of the drawn
 GPIO interface instances and the `CONTROL` address of the GPIO_CTRL entry of each drawn instance;
 32-bit accesses); the existing bench hook, the external-pin path `tb_gpio_ext_drive_en` /
-`tb_gpio_ext_drive_value`, for the pad level sequence of an instance with `enable_rx_tx` 10, and
-`DATA_CTRL.core2pad` for that of an instance with `enable_rx_tx` 11, which drives its own pad;
-observation taps `tb_gpio_irq_any` and `tb_core2pad_en_o` (a mirror of the `core2pad_en_o` port),
-and `tb_lsio_interface_select` read once before the draw, sampled on `clk_smc_i`; a sampler in the
+`tb_gpio_ext_drive_value`, for the pad level sequence of every instance with RX enabled; an instance
+with `enable_rx_tx` 11 also writes each level to `DATA_CTRL.core2pad` (the open pad shim drives at
+pull strength against the bench pull-up, so a pad left to its own 0 resolves to X);
+observation taps `tb_gpio_irq_any`, `tb_core2pad_en_o` (a mirror of the `core2pad_en_o` port) and
+`tb_core2pad_o` (a mirror of `core2pad_o`, the DUT's own pad drive, read for code 11 at every
+window end), and `tb_lsio_interface_select` read once before the draw, sampled on `clk_smc_i`; a
+sampler in the
 sequence that reads `tb_gpio_irq_any` on every `clk_smc_i` rise of the interrupt leg, from which
 each pad level's window is graded, because an edge interrupt is a one-clock pulse that is not
 stretched (`gpio` `architecture.adoc`, Interrupts); every draw from a `random.Random` stream seeded
@@ -33368,7 +33395,7 @@ outcomes that the GPIO register descriptions state, with the reset words logged 
   instance's GPIO_CTRL entry is a logged control, its response and data printed and not compared
   here; the Scope limit of this entry holds the three values.
 * Direction (`gpio_intf.rdl`, `enable_rx_tx`): the field selects 00 neither, 01 TX, 10 RX or 11
-  both, so with `interface_enable` set and the bench drive released, for the TX codes 01 and 11
+  both, so with `interface_enable` set and the bench holding the pad at 0, for the TX codes 01 and 11
   exactly the drawn instance's `core2pad_en_o` bit rises within 64 `clk_smc_i` rises and releases
   within 64 when the field is cleared, and for the other codes the bit reads 0 on each of 64 rises
   after the write and after the clear; no other bit of `tb_core2pad_en_o` moves on any sampled rise.
@@ -33405,8 +33432,9 @@ response is printed and not compared here, because the window is adopter-owned a
 (AXI-Lite External Window) describes the supplementary region only; `smc_gpio_ctrl_full_sweep_test`
 (`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP`) grades the error response of the window today; print
 `CHK-PADCFG-RESET` as the control line of steps 2 and 3.
-. For each drawn instance, with the bench drive released, write `DATA_CTRL` with the drawn
-`enable_rx_tx` and `interface_enable`; for the TX codes require exactly the drawn bit of
+. For each drawn instance, with the bench holding its pad at 0, write `DATA_CTRL` with the drawn
+`enable_rx_tx` and `interface_enable`, read `DATA_CTRL` back and require `enable_rx_tx` equal to the
+written code and `interface_enable` 1; for the TX codes require exactly the drawn bit of
 `tb_core2pad_en_o` to rise within 64 rises, clear the field and require it to release within 64;
 for the other codes require the bit 0 on each of 64 rises after the write and after the clear; on
 every sampled rise require no other bit to differ from the snapshot taken before the write; return
@@ -33415,10 +33443,14 @@ every sampled rise require no other bit to differ from the snapshot taken before
 the other 64 instances at their reset `DATA_CTRL` (each instance is returned to its reset word and
 its pad released before the next is taken, and `tb_gpio_irq_any` must read 0 after that, because it
 is the OR over all 65 interfaces): put the pad at the idle level of the drawn type (the bench drive
-for code 10, `core2pad` for code 11), write `DATA_CTRL` with the drawn code, `interface_enable` and
+for both codes, with `core2pad` set to the same level for code 11), write `DATA_CTRL` with the drawn
+code, `interface_enable` and
 `interrupt_type` with `interrupt_enable` clear, wait 24 rises, write the drawn `interrupt_enable`,
 hold the idle level for a 24-rise window in which `tb_gpio_irq_any` must read 0 on every rise, then
-apply each level of the sequence followed by a 24-rise window; grade each window from the samples:
+apply each level of the sequence followed by a 24-rise window; at the window end require
+`core2pad_en_o` of the instance 1 for code 11 and 0 for code 10 and, for code 11, `core2pad_o` of
+the pad equal to the level written to `core2pad`; read `DATA_CTRL` after each window and require
+`pad2core` equal to the level; grade each window from the samples:
 for types 0 and 1 the last 8 of its samples equal 1 at the type's active level with
 `interrupt_enable` set and 0 otherwise, and every sample is 0 with `interrupt_enable` clear; for
 types 2 and 3 the window holds exactly one high sample after the edge the type names with
@@ -33441,29 +33473,36 @@ and `smc_gpio_intf_reset_writeback_test` (`CHK-GPIO-RESET-WRITEBACK`) grade on a
 the response and data of the GPIO_CTRL `CONTROL` address of every drawn instance are printed, not
 asserted here, beside the error response `smc_gpio_ctrl_full_sweep_test`
 (`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP`) grades.
-|`CHK-PADCFG-DIR` |For every drawn `enable_rx_tx` the `core2pad_en_o` bit of the drawn instance
-rose within 64 `clk_smc_i` rises exactly for the TX codes 01 and 11 and released within 64 when the
-field was cleared, read 0 on each of 64 rises after the write and after the clear for the codes 00
-and 10, and no other bit of `tb_core2pad_en_o` moved on any sampled rise; every seed carries the
-four codes, and the line lists each instance, code and rise count.
+|`CHK-PADCFG-DIR` |For every drawn `enable_rx_tx` the `DATA_CTRL` readback after the write
+returned `enable_rx_tx` equal to the written code and `interface_enable` 1, and the
+`core2pad_en_o` bit of the drawn instance rose within 64 `clk_smc_i` rises exactly for the TX codes
+01 and 11 and released within 64 when the field was cleared, read 0 on each of 64 rises after the
+write and after the clear for the codes 00 and 10, and no other bit of `tb_core2pad_en_o` moved on
+any sampled rise; every seed carries the four codes, and the line lists each instance, code,
+readback and rise count.
 |`CHK-PADCFG-LEVEL` |For every drawn configuration of type 0 or 1 with RX and `interrupt_enable`
 set, `tb_gpio_irq_any` read 0 at the idle level and, at the end of each level's 24-rise window, 1
 on its last 8 rises while the pad was at the type's active level and 0 after the pad returned to
 the idle level; for every drawn configuration of type 0 or 1 with RX enabled and `interrupt_enable`
 clear, at least one on every seed (pinned), `tb_gpio_irq_any` read 0 on every rise through a
-sequence that reached the active level.
+sequence that reached the active level; after every window `DATA_CTRL.pad2core` read equal to the
+pad level, `core2pad_en_o` of the instance read 1 for code 11 and 0 for code 10 at every window
+end, and `core2pad_o` of the pad read the level written to `core2pad` at every code 11 window end
+(the DUT's own drive, graded beside the bench level the receiver takes).
 |`CHK-PADCFG-EDGE` |For every drawn configuration of type 2 or 3 with RX and `interrupt_enable`
 set, the per-rise sampler saw exactly one high rise of `tb_gpio_irq_any` in the window after the
 edge the type names and none in the window after the opposite edge, an unchanged level or the idle
 level; for every drawn configuration of type 2 or 3 with RX enabled and `interrupt_enable` clear,
 at least one on every seed (pinned), the sampler saw no high rise through a sequence that held the
-named edge.
+named edge; after every window `DATA_CTRL.pad2core` read equal to the pad level, and `core2pad_o`
+of the pad read the level written to `core2pad` at every code 11 window end.
 |`CHK-NONVAC` |The step stamps S1 to S6 are in increasing time order, the three graded checker
 lines above (`CHK-PADCFG-DIR`, `CHK-PADCFG-LEVEL`, `CHK-PADCFG-EDGE`) and the control line
 `CHK-PADCFG-RESET` were printed in step order each after its own step, at least one drawn pad
 moved, the interrupt leg graded one window per level plus the idle window of every RX-enabled
-instance, the interrupt tap was sampled on every `clk_smc_i` rise of those windows, and the
-scoreboard checked every access the pass issued; a control-flow invariant, not a DUT compare.
+instance, the interrupt tap was sampled on every `clk_smc_i` rise of those windows, `core2pad_o`
+was read once per window of every code 11 instance (at least one per seed), and the scoreboard
+checked every access the pass issued; a control-flow invariant, not a DUT compare.
 |`CHK-TIMEOUT-PATHS` |Reports every bounded wait with its bound (the fuse-sense wait of 200000
 `clk_smc_i` rises, the 64-rise bound of each output-enable poll, the 24-rise window after each pad
 level and the driver guard per access, printed from the bench configuration); it is a printed
@@ -33482,8 +33521,9 @@ no block answers behind the per-pad GPIO controls of the adopter window in this 
 response of the supplementary region only, and `smc_gpio_ctrl_full_sweep_test`
 (`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP`) grades the error response of the window on every address; the
 response of a drawn GPIO_CTRL `CONTROL` address is a logged control, printed and not compared here.
-An instance with `enable_rx_tx` 11 takes its pad levels from its own `core2pad`, since its pad
-output and the bench drive would both drive the pad; an instance with RX disabled (00 or 01) enters
+An instance with `enable_rx_tx` 11 takes its pad levels from the bench drive and writes the same
+level to its own `core2pad`, since the pad shim drives at pull strength against the bench pull-up
+and a pad left to its own output resolves to X; an instance with RX disabled (00 or 01) enters
 the direction leg only. The direction leg writes `interface_enable` and `enable_rx_tx` alone; the
 interrupt after an RX-disabled code, the level at which an edge interrupt clears, the strap patterns
 and the `ACCESS_FILTER` allow and deny legs stay with the directed entries and the Phase 2 leaves;
@@ -39741,7 +39781,9 @@ target's `ACQDATA` where the address's mask is full, the NACK and an empty ACQ F
 100 rises apart elsewhere, and no entry in the other two instances; print `CHK-IBM-ADDR`.
 . Error injection. Point: `CTRL` of the target instance. Kind: `CTRL` 0, then `ENABLEHOST` alone,
 then `ENABLETARGET` | `ACQ_START_STOP_EN`, with the same one-byte write to the drawn `ADDRESS0`
-(full mask) each time. Expected response: the address is not acknowledged and nothing is acquired
+(full mask) each time, after reading `CTRL` back and requiring its `ENABLEHOST` and `ENABLETARGET`
+bits to equal the written setting. Expected response: the address is not acknowledged and nothing is
+acquired
 for the first two settings, and it is acknowledged and recorded for the third; print
 `CHK-IBM-ROLE`.
 . For each of the three drawn passes make the controller instance a host, the target instance a
@@ -39783,12 +39825,16 @@ FIFOs and read both registers back; print `CHK-TIMEOUT-PATHS`, then run the fenc
 on the wire and recorded in the target's `ACQDATA` exactly when their mask was full, the no-match
 address was not acknowledged and left the ACQ FIFO empty, and the other two instances acquired
 nothing; the drawn addresses and target instance are in the PASS line.
-|`CHK-IBM-ROLE` |With `CTRL` 0 and with `ENABLEHOST` alone the drawn target address was not
+|`CHK-IBM-ROLE` |Each `CTRL` readback held the written `ENABLEHOST` and `ENABLETARGET` bits; with
+`CTRL` 0 and with `ENABLEHOST` alone the drawn target address was not
 acknowledged and nothing was acquired, and with `ENABLETARGET` set it was acknowledged and
 recorded.
-|`CHK-IBM-PAIR` |For every drawn ordered instance pair the transfer was acknowledged on the wire
-and recorded in the target instance's `ACQDATA` only, every written byte was acknowledged with its
-value, every read returned the target's `TXDATA` bytes through `RDATA`, and the controller's
+|`CHK-IBM-PAIR` |For every drawn ordered instance pair the third instance's wrapper `I2C_CTRL`,
+`TARGET_ID` and `CTRL` read back as written (target mode, `ADDRESS0` = the drawn `ADDRESS1` with a
+full mask, `ENABLETARGET` and `ACQ_START_STOP_EN` set, `ENABLEHOST` clear) before the pass; the
+transfer was acknowledged on the wire and recorded in the target instance's `ACQDATA` only, with no
+entry in the third instance, every written byte was acknowledged with its value, every read
+returned the target's `TXDATA` bytes through `RDATA`, and the controller's
 `CONTROLLER_EVENTS.NACK` stayed clear.
 |`CHK-IBM-NAKOK` |A NACK on the pinned non-zero and on the drawn data byte set
 `CONTROLLER_EVENTS.NACK` when `NAKOK` was clear on it, and with `NAKOK` set the transfer completed
@@ -42049,9 +42095,12 @@ empty one set `ERROR_FLAGS.read_error` alone, the two issued as one group set bo
 access answered SLVERR (`interface.adoc`), and no flag was set by an access that found room or
 data (the two reads of each aperture after the fill and drain of step 2).
 |`CHK-MBFM-CLEAR` |The first read of `ERROR_FLAGS` after an injection returned the flags set and the
-repeat read returned 0, for the three injections of every pass; after one more empty read on pass 0
-the 32-bit read at `ERROR_FLAGS` + 4 returned 0 and the 64-bit read after it returned 0, so the
-upper-half read cleared the read error (`axil_mailbox.rdl`, `ERROR`).
+repeat read returned 0, for the three injections of every pass; on pass 0, `IRQS.eirq` read 0 after
+a write of 1 to it and 1 after one more empty read (`interface.adoc`, Mailbox access results), the
+32-bit read at `ERROR_FLAGS` + 4 then returned 0, the 64-bit read after it returned 0 and
+`IRQS.eirq` still read 1 (`architecture.adoc`: reading `ERROR_FLAGS` does not acknowledge
+`IRQS[2]`), so the upper-half read cleared the read error the injection set (`axil_mailbox.rdl`,
+`ERROR`).
 |`CHK-MBFM-FLUSH` |After every flush, each at a model level of 1 or 2, `CTRL` read 0 in the flush
 bits and `STATUS` of both apertures equalled the model with the flushed FIFO at level 0, and two
 words written afterwards popped in order.
@@ -44918,12 +44967,12 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 |`CHK-MUTEX-UPPER-READ-HELD` |The 32-bit read at +4 and the byte read at +3 return 0 and acquire; the mutex stays held until a full write, then reads 1
 |`CHK-MUTEX-RELEASE-AND-INDEPENDENCE` |A full write releases a held mutex; acquiring MUTEX[1] leaves MUTEX[0], [2] and [3] free
 |`CHK-MAILBOX-HOLE-SLVERR` |The hole word reads SLVERR with 0x0 and writes SLVERR; BASE + 0x379D0 reads DECERR with 0xBADCAB1E and writes DECERR
-|`CHK-ZEROER-FULL-START` |A full-width write of 0 starts the zeroer, STATUS bit 32 clears within the bound and 64 of 64 bytes read 0x00
-|`CHK-ZEROER-COMPLETION-NOT-SUCCESS` |With the destination at 0xC000_1900 the start completes within the bound
+|`CHK-ZEROER-FULL-START` |With the 64-byte destination reading back 0xFF in every byte and STATUS bit 32 reading 0 before the start, a full-width write of 0 starts the zeroer (STATUS bit 32 on the first poll or the zeroer busy probe), STATUS bit 32 clears within the bound and 64 of 64 bytes read 0x00
+|`CHK-ZEROER-COMPLETION-NOT-SUCCESS` |With DEST_ADDR and SIZE reading back 0xC000_1900 and 8 and STATUS bit 32 reading 0 before the start, the start raises busy (STATUS bit 32 on the first poll or the zeroer busy probe) and STATUS bit 32 returns to 0 within the bound
 |`CHK-ISOLATE-SMC-W1C-STROBE` |ISOLATE_REQ_SMC_REG is set by the FLR edge without a timed cool reset, keeps 1 on a write of 0 and on writes of 1 with strobes 0x02, 0x04, 0x08 and 0x00, and clears on a byte 0 write of 1
 |`CHK-RESET-CTRL-START-BIT` |A byte 0 write with the core 3 start bit pulses the core 3 probe within 400 edges with no second fall or rise in the 128 edges after it, the byte 1, byte 3 and WSTRB 0x00 writes, each carrying the core 3 start bit (0x80) in the unstrobed byte 0, and the final read are followed by no pulse within 128 edges, one fall and one rise are counted over the whole RESET_CTRL step, the start bits read 0 and the uncore bit reads 1 after every write
 |`CHK-SEMA-FULL-WRITE` |SEMA[0] reads 5 after a full write of 5 and 3 after a full write of 0xFFFE
-|`CHK-LOCK-BIT0-MASKS-WRITES` |SS_CONFIG bit 0 and SS_COLD_RESET_N bit 0 stay 0 after their lock bit 0 is set
+|`CHK-LOCK-BIT0-MASKS-WRITES` |SS_CONFIG bit 0 and SS_COLD_RESET_N bit 0 read 1 then 0 after unlocked writes of 1 and 0, and stay 0 on a write of 1 after their lock bit 0 is set
 |`CHK-OBS-PLAIN-STROBE` |One observation line per register and strobe pattern of the plain, reset-unit and base-configuration steps (LINKED-ISSUE SF-012, SF-034), never compared
 |`CHK-OBS-ZERO-STROBE` |One observation line per WSTRB 0x00 target with the value before and after (LINKED-ISSUE SF-012), never compared
 |`CHK-OBS-MUTEX-NARROW-RELEASE` |One observation line per narrow release strobe 0x01, 0xF0 and 0x00 (LINKED-ISSUE SF-015), never compared
