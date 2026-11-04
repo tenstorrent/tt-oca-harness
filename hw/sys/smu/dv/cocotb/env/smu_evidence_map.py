@@ -2216,7 +2216,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-LSU-SBA-MIX",
             "CHK-SEP-LSU-SBA-MIX",
-            "system-bus accesses on each probe path complete before and after the probe runs",
+            "system-bus accesses on the SMU aperture and the SMC SPM view complete with sberror 0 "
+            "and on the external aperture report a non-zero sberror (code logged), before and "
+            "after the probe runs",
         ),
     ],
     "smu_sep_mailbox_sba_readback_test": [
@@ -2400,7 +2402,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SBA-OUT-ERROR",
             "CHK-SEP-SBA-OUT-ERROR",
-            "responder SLVERR and DECERR on a read and a write each return a system-bus error",
+            "responder SLVERR and DECERR on a read and a write each return a non-zero sberror "
+            "(code logged), and the next write and read complete with sberror 0",
         ),
         (
             "CHK-SEP-SBA-SMC-WINDOW",
@@ -2412,7 +2415,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "every external-aperture and TRNG-window access, the address bits walked in the "
-            "seed-drawn order, returns a system-bus error",
+            "seed-drawn order, returns a non-zero sberror (code logged)",
         ),
     ],
     "smu_sep_external_irq_pins_test": [

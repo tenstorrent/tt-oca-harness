@@ -41,9 +41,13 @@ S6: the security-disable token (``hw/sys/sep/doc/security_disable.adoc``).
     earlier match.
 S7: the SEP watchdog (OpenTitan ``aon_timer``). With WDOG_CTRL.enable set and a
     small bite threshold, the watchdog bites and requests a reset ("A bite
-    triggers a reset", ``aon_timer.hjson``). ``wdt_rst_ni`` clears the bite, so
-    the request falls while the cool-reset pin stays released
-    (``hw/sys/sep/rtl/sep_reset_ctrl.sv``, ``doc/trm/src/reset.adoc``).
+    triggers a reset", ``aon_timer.hjson``). "A bite from the SMC or SEP
+    watchdog asserts the shared watchdog reset (`rst_wdt_n` at the SMU level)"
+    and "Resetting the watchdog clears its bite" (``doc/trm/src/reset.adoc:44-46``);
+    the SEP ``wdt_timer_rst_req_o`` "Holds until `wdt_rst_ni` resets the
+    watchdog" (``hw/sys/sep/doc/port_table.adoc:25-26``). So the request is low
+    before the enable, rises, ``rst_wdt_n`` goes low while it is high, and the
+    request then falls.
 S8: the bench drives GPIO pads 4..7, 10 and 54 high while the chip runs, in
     cold reset and after it, and records what SPI receive lanes 4..7, DQS and
     the rebar loopback read. The GPIO pin table assigns those pads to the SMC
@@ -164,11 +168,19 @@ WDOG_COUNT = _sep("WDT_TIMER_WDOG_COUNT_BASE_ADDR")
 WDOG_ENABLE = c_header_u32(_AON_H, "AON_TIMER__WDOG_CTRL__ENABLE_bm")
 WDOG_THOLD = 0x20
 WDT_REQ_PATH = "sep_wdt_timer_rst_req"
+WDT_RESET_PATH = "rst_wdt_n"
 WDT_BOUND = 200000
 POLL_CYCLES = 200
 
 
-# ``sep_io_pkg::sep_io_spi_req_t`` packed layout, LSB first: (field, width).
+# Packed fields of the SEP ``sep_io_spi_req_o`` port, LSB first: (field, width).
+# The field names are the documented ones (``hw/sys/sep/doc/spi.adoc:71`` irq,
+# ``:96`` lsio_trigger; ``doc/integrator/src/smu-sep.adoc:257-269`` sd, sd_oe,
+# cs_n, cs_oe, sck, sck_oe). No document fixes their packing order, and the bench
+# taps the port as one vector, so this order is the bench's own decode of the
+# DUT port: an observation point, not an expected value. CHK-SEP-SPI-QUAD reads
+# sd, sd_oe and irq through it and holds only while this order is right;
+# lsio_trigger is recorded only.
 _SPI_REQ_FIELDS = (
     ("lsio_trigger", 1),
     ("irq", 1),
@@ -416,17 +428,20 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
 
     async def _watchdog_bite(self, jtag, sb) -> None:
         idle = self._smu(WDT_REQ_PATH)
+        reset_before = self._smu(WDT_RESET_PATH)
         await self._sb_ok(jtag, WDOG_BARK, 2, WDOG_THOLD)
         await self._sb_ok(jtag, WDOG_BITE, 2, WDOG_THOLD)
         await self._sb_ok(jtag, WDOG_COUNT, 2, 0)
         # The bite clears itself a few clk_i after the reset asserts, including
         # while the enable write is still on the debug bus.
-        seen = {"high": 0}
+        seen = {"high": 0, "reset": 0}
 
         async def watch() -> None:
             while True:
                 if self._smu(WDT_REQ_PATH) == 1:
                     seen["high"] = 1
+                if seen["high"] and self._smu(WDT_RESET_PATH) == 0:
+                    seen["reset"] = 1
                 await ClockCycles(self.dut.clk_smu_i, 1)
 
         monitor = cocotb.start_soon(watch())
@@ -438,11 +453,15 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         bitten = seen["high"]
         released = await self._settle(WDT_REQ_PATH, 0, WDT_BOUND)
         monitor.cancel()
-        self._log(f"CHK-SEP-WDT-BITE idle={idle} bitten={bitten} released={released}")
+        wdt_reset = seen["reset"]
+        self._log(
+            f"CHK-SEP-WDT-BITE idle={idle} rst_wdt_n_before={reset_before} "
+            f"bitten={bitten} rst_wdt_n_low_after_bite={wdt_reset} released={released}"
+        )
         sb.expect_eq(
             "CHK-SEP-WDT-BITE",
-            (idle, bitten, released),
-            (0, 1, 0),
+            (idle, reset_before, bitten, wdt_reset, released),
+            (0, 1, 1, 1, 0),
             evidence="CHK-SEP-WDT-BITE",
         )
         self.steps["s7"] = True

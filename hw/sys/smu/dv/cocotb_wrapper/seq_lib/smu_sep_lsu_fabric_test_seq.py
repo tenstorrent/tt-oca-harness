@@ -36,9 +36,11 @@ S8: the external aperture at offset 0x1000, which lies between the eFuse SHIM
     since no unit holds it. The halt address, ``mcause`` and each load of
     every run are recorded.
 S9: before the first probe run and after the last, a system-bus write and read
-    on the SMU aperture and the SMC SPM view complete, and on the external
-    aperture each reports ``sberror`` 2, "a bad address was accessed" (Debug
-    Specification 0.13, ``sbcs``), so both initiators take each path in turn.
+    on the SMU aperture and the SMC SPM view complete with ``sberror`` 0, and
+    on the external aperture each reports a non-zero ``sberror`` (Debug
+    Specification 0.13, ``sbcs``: 0 is no error), so both initiators take each
+    path in turn. No document maps the fabric's error response to a value of
+    the field, so the external value is logged as an observation.
 """
 
 from __future__ import annotations
@@ -61,7 +63,7 @@ from seq_lib.smu_dtp_sep_dm_sba_test_seq import (
 )
 from seq_lib.smu_sep_sba_fabric_sweep_test_seq import (
     ADDR_MASK,
-    SB_BUS_ERROR,
+    SB_NO_ERROR,
     SEP_EXTERNAL_BASE,
     SMC_SPM_BASE,
     SMU_BASE,
@@ -299,18 +301,24 @@ class smu_sep_lsu_fabric_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         """A system-bus write and read on each path the probe uses, between probe runs."""
         self.smc_base = int(self.dut.smc_global_base_o.value)
         cells = (
-            (SMU_BASE + 0x1000_4000, (0, 0)),
-            (self._smc_view(SMC_SPM_BASE) + 0x5000, (0, 0)),
-            (SEP_EXTERNAL_BASE + 0x2000, (SB_BUS_ERROR, SB_BUS_ERROR)),
+            (SMU_BASE + 0x1000_4000, False),
+            (self._smc_view(SMC_SPM_BASE) + 0x5000, False),
+            (SEP_EXTERNAL_BASE + 0x2000, True),
         )
-        observed, want = {}, {}
-        for addr, expect in cells:
+        observed, verdict, want = {}, {}, {}
+        for addr, faults in cells:
             werr, _ = await self._sb(jtag, addr, 3, STORE_WORD)
             rerr, _ = await self._sb(jtag, addr, 3)
             observed[hex(addr)] = (werr, rerr)
-            want[hex(addr)] = expect
+            if faults:
+                self._log(f"OBSERVATION sberror code at 0x{addr:08x} {label}: {(werr, rerr)}")
+                verdict[hex(addr)] = (werr != SB_NO_ERROR, rerr != SB_NO_ERROR)
+                want[hex(addr)] = (True, True)
+            else:
+                verdict[hex(addr)] = (werr, rerr)
+                want[hex(addr)] = (SB_NO_ERROR, SB_NO_ERROR)
         self._log(f"CHK-SEP-LSU-SBA-MIX {label} {observed}")
-        sb.expect_eq(f"CHK-SEP-LSU-SBA-MIX {label}", observed, want, evidence="CHK-SEP-LSU-SBA-MIX")
+        sb.expect_eq(f"CHK-SEP-LSU-SBA-MIX {label}", verdict, want, evidence="CHK-SEP-LSU-SBA-MIX")
 
     async def run(self) -> None:
         await smu_dtp_sep_dm_dmi_test_seq.run(self)

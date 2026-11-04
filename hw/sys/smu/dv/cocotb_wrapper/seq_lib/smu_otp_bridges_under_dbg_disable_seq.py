@@ -2,12 +2,28 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Do the OTP bridges still work when the lifecycle posture has closed the fabric one?
 
-The ``dbg_disable`` derivation in ``sep_lifecycle_ctrl.sv`` takes
-``smc_jtag2axi`` from the Case-2 gating term and hardwires ``smc_otp_jtag2axi``
-and ``sep_otp_jtag2axi`` to 1'b0: the OTP bridges are outside the lifecycle
-debug ladder. The other OTP leaves run with an eFuse image that leaves debug
-open, so this sequence is the one that observes an OTP bridge completing while
-the fabric bridge is shut.
+The SEP lifecycle specification gates the SMC fabric JTAG2AXI path on Case 2
+(``SIP_DBG & CHIPLET_DBG``) and leaves both OTP JTAG2AXIL paths ungated:
+
+* hw/sys/sep/doc/lifecycle_controller.adoc:700 -- "SMC fabric JTAG2AXI path
+  |Case 2";
+* hw/sys/sep/doc/lifecycle_controller.adoc:714-718 -- "SEP OTP JTAG2AXIL path
+  |*Ungated* ... No feature control bit gates it.";
+* hw/sys/sep/doc/lifecycle_controller.adoc:723-724 -- "SMC OTP JTAG2AXIL path
+  |*Ungated* |Reaches the whole SMC eFuse interface on the same terms";
+* hw/sys/sep/doc/lifecycle_controller.adoc:803 -- "DBG_1 and DBG_2 are
+  disabled in undemoted PROD and in PROD_END".
+
+The remaining enforcement on the OTP paths is the wrapper access policy, which
+the same rows (lifecycle_controller.adoc:718-720, 726-728) and
+hw/sys/sep/doc/otp_fuse_controller.adoc:121-125 restrict "in the PROD and
+RMA_SIP states" and on an integrity error. PROD_END is not in that list, so
+this sequence grades full OTP access in PROD_END on the specification's
+enumeration of the restricted states; that the write legs also clear the
+per-field ``LOCKS`` rests on the image leaving those lock slots unset, an
+observation of the preload rather than a stated value. The other OTP leaves run
+with an eFuse image that leaves debug open, so this sequence is the one that
+observes an OTP bridge completing while the fabric bridge is shut.
 
 This anchor runs with the PROD_END SEP shadow image, where
 seq_lib.smu_lifecycle_table gives ``smc_jtag2axi`` disabled, and then:
@@ -20,13 +36,15 @@ seq_lib.smu_lifecycle_table gives ``smc_jtag2axi`` disabled, and then:
   the SEP eFuse MAP LC_STATE word must read the PROD_END encoding the image
   programmed, and the eFuse bank-control shim CSR must read its RDL reset.
 
-The SEP eFuse bank-control leg is the last step. The SEP eFuse interface
-controller (``efuse_interface_controller.sv``) routes every
-address outside the eFuse MAP/MMR window to ``SHIM_SEL``, which leaves the SEP
-on ``efuse_bank_ctrl_req_o`` and therefore crosses the SMU boundary. So a SEP
-OTP JTAG2AXI access to the shim window is the one stimulus on this bench that
-makes the boundary port move without a fuse sense, and its answer comes back
-through the same bridge.
+The SEP eFuse bank-control leg is the last step.
+hw/sys/sep/doc/otp_fuse_controller.adoc:43-45 states that "Addresses from the
+MAP window to the end of the last register window go through the AXI-Lite to
+APB bridge, and all others go to the shim's bank control registers", and
+hw/sys/smu/doc/port_table.adoc:185 lists ``sep_efuse_bank_ctrl_req_o`` as the
+"SEP eFuse bank control AXI-Lite request passthrough" on the SMU boundary. So a
+SEP OTP JTAG2AXI access to the shim window is the one stimulus on this bench
+that makes the boundary port move without a fuse sense, and its answer comes
+back through the same bridge.
 
 Both OTP legs check a value, not just a status: a bridge that returned SUCCESS
 with the error slave's 0xbadcab1e, or with a stale capture, fails here.
@@ -307,9 +325,9 @@ class SmuOtpBridgesUnderDbgDisableSeq:
             evidence="CHK-OTP-SEP-RW-WHILE-BLOCKED",
         )
 
-        # The shim window: outside the eFuse MAP/MMR range, so the SEP eFuse
-        # interface controller sends it out of the SEP on the bank-control
-        # AXI-Lite port that crosses the SMU boundary.
+        # The shim window: past the last register window, so it goes to the
+        # shim's bank control registers (otp_fuse_controller.adoc:43-45) on the
+        # passthrough port that crosses the SMU boundary (port_table.adoc:185).
         shim_reset = await self._sep_otp_rd(jtag, SEP_EFUSE_SHIM_INIT_TIME, "SEP_SHIM_INIT_TIME")
         sb.expect_eq(
             "eFuse bank-control shim CSR reads its RDL reset over the SEP OTP bridge",

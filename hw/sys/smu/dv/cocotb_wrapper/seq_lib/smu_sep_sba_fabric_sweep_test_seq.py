@@ -6,7 +6,10 @@ S0..S3 are ``smu_dtp_sep_dm_dmi_test``: TEST_DEV leaves SEP debug open and the
 debug module comes out of reset. Every later step drives the debug module's
 system bus (RISC-V Debug Specification 0.13, "System Bus Access"), which takes
 8-, 16-, 32- and 64-bit accesses at any address aligned to the access size and
-reports a bus error in ``sbcs.sberror``.
+reports a failed access as a non-zero ``sbcs.sberror``, where 0 is no error.
+Neither that specification nor a document or RDL in this tree maps an AXI
+SLVERR or DECERR to a value of the field, so an errored access is graded
+non-zero and the value read is logged as an observation.
 
 S4: the SMU aperture. A SEP address in ``[SMU_GLOBAL_BASE_ADDR,
     SMU_GLOBAL_BASE_ADDR + SMU_REGION_SIZE)`` (``sep_cpu_ctrl`` reset values)
@@ -31,8 +34,8 @@ S5: the alias remap. A local-master alias region adds its offset to address
     remaps put region 0 of their windows at a programmed 512 KiB target, and a
     write and read there reach the responder at the target.
 S6: responder errors. A one-shot SLVERR and DECERR from the responder on an
-    outbound read and write each come back as a system-bus error, and the
-    next access at that address completes.
+    outbound read and write each come back as a non-zero ``sberror``, and
+    the next access at that address completes.
 S7: the SMC aperture. A SEP address in the SMC window goes straight to the
     SMC's resources (``hw/sys/sep/doc/fabric.adoc``: "Neighboring SMC
     resources are accessed through the SMC global aperture"). Every access
@@ -48,8 +51,8 @@ S8: the external aperture. No adopter peripheral is attached to the SEP
     DECERR slave then (``doc/integrator/src/smu.adoc``, "External TRNG").
     Every access size, offset and free address bit of the external aperture,
     an access back below the walk's base, and every address bit and byte
-    offset of the TRNG window, returns ``sberror`` 2, "a bad address was
-    accessed", for both reads and writes.
+    offset of the TRNG window, returns a non-zero ``sberror`` for both reads
+    and writes.
 
 The order in which the free address bits of the SMU aperture (S4), the SMC SPM
 window (S7) and the external aperture and TRNG window (S8) are walked, and the
@@ -174,7 +177,8 @@ SMC_WALK_BITS = range(3, SMC_SPM_SIZE.bit_length())
 EXT_WALK_BITS = range(3, SEP_EXTERNAL_SIZE.bit_length() - 1)
 TRNG_WALK_BITS = range(2, TRNG_SIZE.bit_length() - 1)
 
-SB_BUS_ERROR = 0b010
+# RISC-V Debug Specification 0.13, sbcs.sberror: 0 is no error.
+SB_NO_ERROR = 0
 POLL_CYCLES = 4000
 
 
@@ -436,12 +440,16 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
             observed[f"{name} write"] = (await self._sb(jtag, addr, 3, _pattern(resp, 8)))[0]
             got, _ = await self._round_trips(jtag, [(addr, 3, 400 + resp, addr)], backdoor=True)
             observed[f"{name} after"] = next(iter(got.values()))[:2]
-            want[f"{name} read"] = SB_BUS_ERROR
-            want[f"{name} write"] = SB_BUS_ERROR
-            want[f"{name} after"] = (0, 0)
+            want[f"{name} read"] = want[f"{name} write"] = True
+            want[f"{name} after"] = (SB_NO_ERROR, SB_NO_ERROR)
         self.mem.clear_errors()
         self._log(f"CHK-SEP-SBA-OUT-ERROR {observed}")
-        sb.expect_eq("CHK-SEP-SBA-OUT-ERROR", observed, want, evidence="CHK-SEP-SBA-OUT-ERROR")
+        self._log(f"OBSERVATION sberror code for the responder SLVERR and DECERR {observed}")
+        verdict = {
+            key: value if key.endswith("after") else value != SB_NO_ERROR
+            for key, value in observed.items()
+        }
+        sb.expect_eq("CHK-SEP-SBA-OUT-ERROR", verdict, want, evidence="CHK-SEP-SBA-OUT-ERROR")
         self.steps["s6"] = True
 
     def _smc_view(self, local: int) -> int:
@@ -481,18 +489,20 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         for bit in self.order["trng_bits"]:
             cells.append((TRNG_BASE | (1 << bit), 2))
         cells += [(TRNG_BASE + off, size) for size, off in ((0, 1), (1, 2), (0, 3), (2, 0))]
-        observed, want = {}, {}
+        observed, verdict, want = {}, {}, {}
         for addr, size in cells:
             key = f"0x{addr:08x}/{1 << size}B"
             werr, _ = await self._sb(jtag, addr, size, _pattern(addr, 1 << size))
             rerr, _ = await self._sb(jtag, addr, size)
             observed[key] = (werr, rerr)
-            want[key] = (SB_BUS_ERROR, SB_BUS_ERROR)
+            verdict[key] = (werr != SB_NO_ERROR, rerr != SB_NO_ERROR)
+            want[key] = (True, True)
         self._log(f"CHK-SEP-SBA-EXTERNAL-DECERR {observed}")
+        self._log(f"OBSERVATION sberror code for the external aperture {observed}")
         sb.expect_eq(
-            "CHK-SEP-SBA-EXTERNAL-DECERR drawn "
+            "CHK-SEP-SBA-EXTERNAL-DECERR non-zero sberror drawn "
             f"ext_bits={self.order['ext_bits']} trng_bits={self.order['trng_bits']}",
-            observed,
+            verdict,
             want,
             evidence="CHK-SEP-SBA-EXTERNAL-DECERR",
         )
