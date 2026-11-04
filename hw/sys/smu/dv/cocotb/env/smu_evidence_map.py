@@ -1477,6 +1477,62 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "sample, none expired",
         ),
     ],
+    "smu_axi_sep_reset_in_flight_test": [
+        (
+            "CHK-G2B-SEP-VALID-LOW",
+            "CHK-G2B-SEP-VALID-LOW",
+            "from the second clk_smu_i edge that samples sep_reset_n low until the release, "
+            "AWVALID, WVALID and ARVALID of the SEP-to-SMC port and sep_out and BVALID and RVALID "
+            "of the converter output toward the SEP are 0 and resolved, with sampled edges on "
+            "every link; the entry edge and the crossbar-driven sep_in VALIDs are observed only",
+        ),
+        (
+            "CHK-G2B-NO-PHANTOM",
+            "CHK-G2B-NO-PHANTOM",
+            "from the IC_RESET override to the end, no B and no R on smu_in or dtp_dbg carries an "
+            "ID for which that initiator has no request outstanding in the issue log, no response "
+            "ID is unresolved, and the log is not empty",
+        ),
+        (
+            "CHK-G2B-LIVENESS",
+            "CHK-G2B-LIVENESS",
+            "after the release alone, with no cold reset before, ext_in to the SEP SRAM and the "
+            "SMC scratchpad, JTAG2AXI to the SEP SRAM and ext_out, and the stub store and load "
+            "to ext_out each complete a fresh write and read: one response with the issued ID "
+            "within the bound, OKAY, and the read returns what was written",
+        ),
+        (
+            "CHK-G2B-SEP2SMC",
+            "CHK-G2B-SEP2SMC",
+            "each of the five stub and system-bus accesses to the SMC aperture (three before the "
+            "hold, two after the release) appears once on a SEP link and gets exactly one "
+            "response with the issued ID within the bound; the link, the response code, AxUSER, "
+            "AxPROT and the address are observed only",
+        ),
+        (
+            "CHK-G2B-WINDOW",
+            "CHK-G2B-WINDOW",
+            "the bench expectation window opens at the one fall of sep_reset_n under the IC_RESET "
+            "override and closes 8 clk_smu_i edges after the release, never opens outside the "
+            "hold, is closed at the end with a window count of 1, sees no primary-reset fall, and "
+            "the SEP rst_ni and the primary reset stay high through the hold",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < SEP2SMC < LOAD < SEP_RESET < NONSEP_DURING_RESET < "
+            "RELEASE_LIVENESS with sim time, a non-zero count at least the plan per term, and the "
+            "JTAG2AXI, debug-module and system-bus, ext_in and IC_RESET accesses equal to the step "
+            "budget",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every DMI, system-bus, abstract-command, JTAG2AXI, handshake, reset-net and window "
+            "wait is bounded in clk_smu_i edges, polls or captures, fails on expiry with the last "
+            "handshakes and the reset-net sample, none expired",
+        ),
+    ],
     "smu_axi_smc_cool_reset_in_flight_test": [
         (
             "CHK-G2A-VALID-LOW",
