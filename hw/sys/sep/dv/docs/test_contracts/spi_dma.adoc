@@ -118,6 +118,13 @@
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
+*Evidence granularity*: The firmware emits one aggregate PASS line after all
+firmware-side checks complete; it does not emit an independent positive line
+for each named checker. The verdict is gated by the firmware pass and fail
+counters and the firmware PASS magic. The host-side checker records above
+attribute the aggregate firmware verdict to the contracts they parse; the
+shared line is not independent evidence for those contracts.
+
 '''''
 
 [[sep_dma_cpu_contention_test]]
@@ -167,6 +174,12 @@
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence granularity*: The firmware emits one aggregate PASS line after all
+firmware-side checks complete; it does not emit an independent positive line
+for each named checker. The verdict is gated by the firmware pass and fail
+counters and the firmware PASS magic. The named checker records split that
+aggregate verdict by contract; they are not independent firmware PASS lines.
 
 '''''
 

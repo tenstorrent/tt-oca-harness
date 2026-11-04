@@ -74,8 +74,7 @@ words are non-zero before the handover. The cells that ``sep_km_handover_test`` 
 Logged only: the response to the mid size (``OBS-SIZE-MID``), the shared-key
 words at the jump of each pass (``INFO-HO-SK-WORDS``), the VAL_0 reads of the OTP fields, the
 SRAM store and violation readbacks, the demotion lock bit and the full CPU IRQ
-mask. CHK-HO-NOIRQ and CHK-HO-SK-WORDS can fail on this DUT (contract, "Known
-limitation").
+mask. CHK-HO-NOIRQ and CHK-HO-SK-WORDS remain graded contracts.
 """
 
 from __future__ import annotations

@@ -5288,7 +5288,6 @@ module sep_uvm_top
     // low and must be low from the next edge on. The cold reset asserts
     // asynchronously and the warm reset on a clock edge
     // (hw/ip/key_manager/doc/architecture.adoc, Reset Conditioning).
-    // Issue: #3170
     bind key_manager ocah_axi_sva #(
         .MASTER_SYNC_RESET (1'b1),
         .IS_LITE    (1'b1),

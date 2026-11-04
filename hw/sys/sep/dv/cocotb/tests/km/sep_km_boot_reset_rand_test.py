@@ -80,7 +80,7 @@ CHK-FWSIZE); the confirmation and the handover flush of the image load
 (``stored`` of CHK-SRAM-VER); the SCRAMBLER_KEY writes of the cold-boot
 reference (``control_n_cold`` of each warm CHK-SCR-KEEP line).
 
-The procedure steps that serve only planned checkers do not run: the witnesses
+The procedure steps that serve only non-claimed checkers do not run: the witnesses
 and the resident state (steps 3 to 6), the witness reads and
 CMD_ABR_SK_TRANSFER of step 12, the ``KM-VALID``, ``KM-KPV`` and ``KM-BUS``
 parts of step 13, the KPV reads of step 2, and the CMD_OTP_READ_LOCK_COLD
