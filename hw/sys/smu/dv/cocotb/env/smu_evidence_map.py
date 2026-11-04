@@ -2534,8 +2534,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEPRST-EARLY-RELEASE",
             "for OTBN, AES and TRNG, six pairs of system-bus 0 and 1 writes 0 and 8 debug-bus "
             "operations apart: the written domain's bits of the SEP crypto isolation request "
-            "(host_otbn, host_aes or the three trng_* bits) leave their value from before the 0 "
-            "write within the pair, every read and probe completes and SW_RESET_N reads 0x7E",
+            "(host_otbn, host_aes or the three trng_* bits) each leave their value from before "
+            "the 0 write within the pair, every read and probe completes and SW_RESET_N reads 0x7E",
         ),
         (
             "CHK-SEPRST-JTAG-INFLIGHT",

@@ -46,9 +46,10 @@ S7  ALL_DOMAINS: a CPU egress load held across a system-bus SW_RESET_N = 0x00, r
     0x00, a CPU load into the SMC window, never-isolated targets with every domain held.
 S8  EARLY: 0 then 1 at gaps of 0 and 8 debug-bus operations for OTBN, AES and TRNG; the
     written domain's bits of the SEP crypto isolation request (``host_otbn``, ``host_aes``, the
-    three ``trng_*`` bits) are sampled each cycle of every pair and must leave their value from
-    before the 0 write (``reset_controller.adoc``: a 0 bit makes the domain's sequencer request
-    isolation, the 1 write releases it); another domain's bit moving does not count.
+    three ``trng_*`` bits) are sampled each cycle of every pair and every one of them must leave
+    its value from before the 0 write (``reset_controller.adoc``: a 0 bit makes the domain's
+    sequencer request isolation, the 1 write releases it); another domain's bit moving does not
+    count.
 S9  JTAG: SW_RESET_N = 0x7F read back, then the IC_RESET sep_reset_n override with ext_in
     and a CPU egress load outstanding;
     the debug-module bring-up is repeated when the first system-bus access reports busy.
@@ -1604,7 +1605,10 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                     await self._sb_launch(jtag, SWRST_POR)
                 err = await self._sb_status(jtag, await self._sb_poll(jtag, f"early_{dom}_g{g}"))
                 iso_task.cancel()
-                moved.append(bool(iso_seen))
+                iso_moved = 0
+                for value in iso_seen:
+                    iso_moved |= value ^ iso_base
+                moved.append(iso_moved == iso_mask)
                 self._log(
                     f"OBSERVATION S8 {dom} g={g} isolation request bits of {dom} (mask "
                     f"0x{iso_mask:x}) before the 0 write=0x{iso_base:x} other values in the "
@@ -1632,8 +1636,8 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             )
         self._verdict(
             "CHK-SEPRST-EARLY-RELEASE",
-            f"CHK-SEPRST-EARLY-RELEASE: {len(lines)} pairs; the written domain's isolation "
-            f"request bits moved in {sum(moved)}/{len(moved)} pairs; all accesses completed; "
+            f"CHK-SEPRST-EARLY-RELEASE: {len(lines)} pairs; every isolation request bit of the "
+            f"written domain moved in {sum(moved)}/{len(moved)} pairs; all accesses completed; "
             f"SW_RESET_N "
             f"0x{sw & SWRST_FIELD_MASK:02X}",
             (moved, completed, sw & SWRST_FIELD_MASK),
