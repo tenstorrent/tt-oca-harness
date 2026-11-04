@@ -35,11 +35,11 @@ class smc_axi_illegal_encoding_inject_test(smc_base_test):
 
     required_evidence = (
         "CHK-G11-4KB-ANSWERED",
+        "CHK-G11-CROSS-BEAT-CODES",
         "CHK-G11-FOOTPRINT",
         "CHK-G11-INJECT-MASK",
         "CHK-G11-LIVENESS",
         "CHK-G11-RSVD-BURST-ANSWERED",
-        "CHK-G11-SPLIT-BRESP",
         "CHK-G11-WRAP-LEN0-ANSWERED",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",

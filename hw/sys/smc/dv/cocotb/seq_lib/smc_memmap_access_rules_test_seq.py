@@ -54,22 +54,21 @@ GAP_BURST_BEATS = (4, 16)
 # Generated blocks whose fabric decode is exact: (unit, register width in bytes). A hole is
 # an aligned slot below the block's decoded extent that no register of the block occupies.
 HOLE_BLOCKS = (("smc_reset_unit", 4), ("smc_cpu_ctrl", 8))
-# Live registers read before and after the hole writes of each block.
-HOLE_WITNESSES = {
-    "smc_reset_unit": (
-        "SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR",
-        "SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_HOLD_BASE_ADDR",
-        "SMC_TOP_SMC_RESET_UNIT_SS_DEBUG_HOLD_BASE_ADDR",
-        "SMC_TOP_SMC_RESET_UNIT_SS_RESET_COMPLETE_BASE_ADDR",
-        "SMC_TOP_SMC_RESET_UNIT_SYNC_REG_BASE_ADDR",
-        "SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_REG_BASE_ADDR",
-    ),
-    "smc_cpu_ctrl": (
-        "SMC_TOP_SMC_CPU_CTRL_RESET_TIMEOUT_BASE_ADDR",
-        "SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_BASE_ADDR",
-        "SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_RESET_BASE_ADDR",
-        "SMC_TOP_SMC_CPU_CTRL_TEST_CTRL_BASE_ADDR",
-        "SMC_TOP_SMC_CPU_CTRL_SMC_ATTRIBUTES_BASE_ADDR",
+# Every register of a hole block is read before and after its hole writes, except these,
+# whose word is not the bench's to hold still (cpu_ctrl.rdl): a read of MUTEX[n] acquires the
+# mutex (rd_swacc), REFERENCE_COUNTER counts on its own (hw=rw) and WB_PC_CORE<n>[m] is
+# written by the hart (hw=w). A hole write that aliased onto one of these would go unseen.
+HOLE_WITNESS_SKIP = {
+    "smc_reset_unit": frozenset(),
+    "smc_cpu_ctrl": frozenset(
+        {
+            "SMC_TOP_SMC_CPU_CTRL_MUTEX",
+            "SMC_TOP_SMC_CPU_CTRL_REFERENCE_COUNTER",
+            "SMC_TOP_SMC_CPU_CTRL_WB_PC_CORE0",
+            "SMC_TOP_SMC_CPU_CTRL_WB_PC_CORE1",
+            "SMC_TOP_SMC_CPU_CTRL_WB_PC_CORE2",
+            "SMC_TOP_SMC_CPU_CTRL_WB_PC_CORE3",
+        }
     ),
 }
 
@@ -104,24 +103,36 @@ def rdl_gap_resp() -> dict:
     return {"rresp": codes[m.group(1)], "rdata": int(m.group(2), 16), "bresp": codes[m.group(3)]}
 
 
-def block_holes(unit: str, width: int) -> list[int]:
-    """Aligned slots below ``unit``'s decoded extent that no generated register occupies."""
+def block_registers(unit: str) -> dict[int, str]:
+    """Address of every generated register of ``unit`` and its ``smc_addr.h`` symbol stem."""
     prefix = f"SMC_TOP_{unit.upper()}_"
     base = smc_addr(prefix + "BASE_ADDR")
     size = generated_decoded_extent(unit)
-    occupied: set[int] = set()
+    suffix = "_BASE_ADDR"
+    occupied: dict[int, str] = {}
     for name, addr in _parse_simple_defines(_SMC_ADDR_H).items():
-        if name.startswith(prefix) and name.endswith("_BASE_ADDR") and name != prefix + "BASE_ADDR":
-            occupied.add(addr)
+        if name.startswith(prefix) and name.endswith(suffix) and name != prefix + "BASE_ADDR":
+            occupied[addr] = name[: -len(suffix)]
     counts = _parse_simple_defines(_SMC_ADDR_H)
     for name, (first, stride) in _parse_indexed_bases(_SMC_ADDR_H).items():
         if not name.startswith(prefix):
             continue
-        count = counts[name[: -len("_BASE_ADDR")] + "_NUM"]
-        occupied.update(first + i * stride for i in range(count))
+        stem = name[: -len(suffix)]
+        occupied.update((first + i * stride, stem) for i in range(counts[stem + "_NUM"]))
     assert occupied, f"{unit}: no register symbol in {_SMC_ADDR_H}"
     assert all(base <= a < base + size for a in occupied), f"{unit}: register outside the extent"
-    return [base + off for off in range(0, size, width) if base + off not in occupied]
+    return occupied
+
+
+def block_holes(unit: str, width: int) -> list[int]:
+    """Aligned slots below ``unit``'s decoded extent that no generated register occupies."""
+    base = smc_addr(f"SMC_TOP_{unit.upper()}_BASE_ADDR")
+    occupied = block_registers(unit)
+    return [
+        base + off
+        for off in range(0, generated_decoded_extent(unit), width)
+        if base + off not in occupied
+    ]
 
 
 class smc_memmap_access_rules_test_seq(SmcCsrSeq):
@@ -321,7 +332,15 @@ class smc_memmap_access_rules_test_seq(SmcCsrSeq):
         for unit, width in HOLE_BLOCKS:
             holes = block_holes(unit, width)
             assert holes, f"{unit}: no unoccupied slot below its decoded extent"
-            witnesses = [smc_addr(sym) for sym in HOLE_WITNESSES[unit]]
+            registers = block_registers(unit)
+            skipped = sorted(
+                {stem for stem in registers.values() if stem in HOLE_WITNESS_SKIP[unit]}
+            )
+            assert len(skipped) == len(HOLE_WITNESS_SKIP[unit]), (
+                f"{unit}: skip list names no register"
+            )
+            witnesses = sorted(a for a, stem in registers.items() if stem not in skipped)
+            assert len(witnesses) + len(skipped) >= 10, f"{unit}: {len(witnesses)} witnesses"
             before = [await self._read_okay(f"HOLE_WITNESS_{unit}", a, width) for a in witnesses]
             ones = ONES32 if width == 4 else ONES64
             for addr in holes:
@@ -350,8 +369,9 @@ class smc_memmap_access_rules_test_seq(SmcCsrSeq):
             assert any(before), f"{unit}: every witness register read 0"
             rows.append(
                 f"{unit} ({width}-byte slots): holes {' '.join(f'0x{a - LOCAL_BASE_RESET:x}' for a in holes)} "
-                f"read OKAY/0 before and after a write of ones answered OKAY; {len(witnesses)} "
-                f"live registers unchanged"
+                f"read OKAY/0 before and after a write of ones answered OKAY; all {len(witnesses)} "
+                f"other registers of the block unchanged"
+                + (f" ({len(skipped)} left out: {' '.join(skipped)})" if skipped else "")
             )
         assert probed >= 10, f"{probed} holes probed"
         self._log_chk("CHK-REGBLOCK-HOLE-OKAY-ZERO", f"{probed} holes: {'; '.join(rows)}")

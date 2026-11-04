@@ -9106,7 +9106,7 @@ port's last AW/W/AR/B/R handshake and the reset sample on an INFO-CLASSIFY line 
 |`CHK-G11-WRAP-LEN0-ANSWERED` |Per port, the WRAP AxLEN 0 write gets exactly one B and the read exactly AxLEN+1 R beats with RID=ARID and RLAST on the last beat only, never EXOKAY, within the bound; the codes are `OBS-G11-WRAP-LEN0`
 |`CHK-G11-RSVD-BURST-ANSWERED` |The same for the reserved-burst write and read; the codes are `OBS-G11-RSVD-BURST`
 |`CHK-G11-4KB-ANSWERED` |The same for the crossing write and read; the per-beat codes are `OBS-G11-4KB`
-|`CHK-G11-SPLIT-BRESP` |Per port, the single-beat write code of every crossing-burst beat equals the declared code of its two words (OKAY inside a misc_wrap sub-block or GPIO, DECERR between sub-blocks and past the extent, merged by the split rule) and the crossing write's BRESP equals the write-split rule (`memmap.adoc` 64-67) over them
+|`CHK-G11-CROSS-BEAT-CODES` |Per port, the single-beat write code of every crossing-burst beat address equals the declared code of its two words (OKAY inside a misc_wrap sub-block or GPIO, DECERR between sub-blocks and past the extent, merged by the split rule); the crossing write's BRESP is recorded beside the write-split rule's value over them (`OBS-G11-SPLIT-BRESP`)
 |`CHK-G11-FOOTPRINT` |After each of the twelve requests every reference register outside the request's footprint keeps its seeded value
 |`CHK-G11-LIVENESS` |After each of the twelve requests the fresh legal read on the same port answers OKAY with the seeded value
 |`CHK-G11-INJECT-MASK` |Twelve CTRL-INJECT lines; at every address handshake the port carries the real encoding, the view of the port checker and of the fabric-link checker trips none of the WRAP-length, burst-legal and 4 KiB rules, and no forwarded request has an unresolved fabric-link probe
@@ -9124,8 +9124,10 @@ burst-legal and 4 KiB rules of `u_sep_in_axi_sva`, `u_sys_in_axi_sva`, `u_sep_re
 
 *Scope limit*: The response codes of the illegal requests and whether a write stored its data are
 observation lines (`OBS-G11-WRAP-LEN0`, `OBS-G11-RSVD-BURST`, `OBS-G11-4KB`, `OBS-G11-FORWARDED`; SF-015, and SF-012 for
-the past-extent beats of the crossing burst); the crossing write's BRESP is graded against the
-write-split rule over the measured reference codes.
+the past-extent beats of the crossing burst). The crossing write's BRESP is recorded beside the
+write-split rule's value over the measured reference codes (`OBS-G11-SPLIT-BRESP`), not graded:
+`memmap.adoc` routes the burst by its start address (misc_wrap) and does not state the codes of
+the beats past that unit, so the rule's input is open with the document owner.
 
 '''''
 
@@ -16520,9 +16522,12 @@ states, and every declared past-extent and gap write is recorded beside its decl
   "Address Space Organization"): a two-beat INCR write from `DUMMY_ROM_NULL[3]`, the last register
   of `smc_cpu_ctrl`, whose second beat the block answers SLVERR; a two-beat 32-bit INCR write
   from `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, the last register of `smc_reset_unit`, whose
-  second beat the crossbar answers DECERR; a two-beat WRAP write starting one word past
-  `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, the last register of `smc_reset_unit`, and wrapping onto
-  it; a two-beat INCR write inside `scratch_cold`.
+  second beat answers the generated row's past-extent DECERR; a two-beat INCR write inside
+  `scratch_cold`. A two-beat WRAP write starting one word past
+  `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` and wrapping onto it is recorded (`OBS-MERGE-WRAP`), not
+  graded: `memmap.adoc` routes a burst by its start address and answers DECERR for every beat of
+  a burst that starts between unit apertures, and whether the word past a unit's last register
+  counts as between apertures is a question for the document owner.
 * Every declared past-extent and hole address of the component rows and the first and last word of
   the six gaps between unit apertures, read and written at 32 and 64 bits, recorded beside the
   declared code (`OBS-BRESP`); ten further two-beat INCR cases at two widths whose beats fall on
@@ -16542,14 +16547,18 @@ states, and every declared past-extent and gap write is recorded beside its decl
   live words are read back unchanged and scratch words restored.
 . Error injection. Point: the beat past the last register of `smc_cpu_ctrl` and the word past
   the last register of `smc_reset_unit`. Kind: a two-beat INCR write burst whose second beat is
-  past the end (cpu_ctrl at 64 bits, reset_unit at 32 bits), a two-beat WRAP write burst whose
-  first beat is past the end (reset_unit), and a two-beat INCR write inside `scratch_cold`.
-  Expected response: the beat answers are taken from the per-beat RRESP of the same two-beat INCR
-  read burst (INCR cases) or from the single-beat writes (WRAP case) and must equal the declared
-  codes; the merged BRESP must equal the stated rule over them: SLVERR (cpu_ctrl), DECERR
-  (reset_unit INCR), SLVERR (reset_unit WRAP), OKAY (scratch_cold). Every beat writes a pattern
-  inside its word's writable field; each beat the
-  block answered OKAY reads the pattern back and is then restored and read again.
+  past the end (cpu_ctrl at 64 bits, reset_unit at 32 bits) and a two-beat INCR write inside
+  `scratch_cold`. Expected response: the beat answers are taken from the per-beat RRESP of the
+  same two-beat INCR read burst and must equal the declared codes; the merged BRESP must equal
+  the stated rule over them: SLVERR (cpu_ctrl), DECERR (reset_unit), OKAY (scratch_cold). Every
+  beat writes a pattern inside its word's writable field; each beat the block answered OKAY
+  reads the pattern back and is then restored and read again.
+. Recorded, not graded: a two-beat WRAP write burst whose first beat is the word past the last
+  register of `smc_reset_unit` and whose last beat is that register. Its beat codes are taken
+  from single-beat writes of the same words; the held words are then put back before the burst,
+  so the readback after it shows only what the burst wrote. The `OBS-MERGE-WRAP` line carries
+  the beat codes, the merged BRESP, the stated rule's value over the beats and whether the
+  register took the burst's word.
 
 *Checkers*:
 
@@ -16560,26 +16569,29 @@ states, and every declared past-extent and gap write is recorded beside its decl
   and observed codes side by side; the probe count equals the generated table.
 |`CHK-OBS-BURST-TABLE` |One `OBS-BURST` line per two-beat case and width, with the merged BRESP
   beside the single-beat codes of its beats.
-|`CHK-BURST-MERGE-RESP` |The beat answers of the four stated two-beat writes equal the declared
-  codes (OKAY for a register, SLVERR past the last register of `smc_cpu_ctrl`, the generated
-  row's past-extent code for `smc_reset_unit`) and the merged BRESP equals the rule of
+|`CHK-BURST-MERGE-RESP` |The beat answers of the three stated two-beat INCR writes equal the
+  declared codes (OKAY for a register, SLVERR past the last register of `smc_cpu_ctrl`, the
+  generated row's past-extent code for `smc_reset_unit`) and the merged BRESP equals the rule of
   `memmap.adoc` over them: SLVERR (cpu_ctrl), DECERR (the 32-bit INCR burst at reset_unit),
-  SLVERR (the WRAP burst at reset_unit), OKAY (scratch_cold); every beat answered OKAY reads
-  its pattern back and restores.
+  OKAY (scratch_cold); every beat answered OKAY reads its pattern back and restores.
 |`CHK-BURST-LIVE-UNCHANGED` |Every live register a beat rewrote reads its earlier word and every
   scratch word a beat wrote is restored and read back.
 |`CHK-TIMEOUT-PATHS` |The fuse-sense sub-waits and every AXI access are bounded; the last probe
   levels and the access count are printed.
 |===
 
-*Pass Criteria*: Every checker above is emitted; the four merged responses equal the stated rule
+*Pass Criteria*: Every checker above is emitted; the three merged responses equal the stated rule
 over the measured beat answers; live words are unchanged; both tables carry one line per probe.
 
-*Scope limit*: The merged response is graded for the four cases whose beat answers the per-beat
-read burst or the single-beat writes establish; the other ten two-beat cases are recorded with
-their single-beat codes, since a beat routed inside a unit may answer differently from the same
-address accessed alone. The per-probe responses of the `OBS-BRESP` table are recorded beside the
-declaration and graded by the past-extent and gap leaves.
+*Scope limit*: The merged response is graded for the three INCR cases whose beat answers the
+per-beat read burst establishes; the other ten two-beat cases are recorded with their single-beat
+codes, since a beat routed inside a unit may answer differently from the same address accessed
+alone. The WRAP burst starting at the word past the last register of `smc_reset_unit` is recorded
+(`OBS-MERGE-WRAP`), not graded: `memmap.adoc` routes a burst by its start address and answers
+DECERR for every beat of a burst that starts between unit apertures, and whether the word past a
+unit's last register counts as between apertures is a question for the document owner. The
+per-probe responses of the `OBS-BRESP` table are recorded beside the declaration and graded by
+the past-extent and gap leaves.
 
 '''''
 
@@ -16646,8 +16658,10 @@ pattern is pinned.
 . For each exclusive target: ordinary read; `AxLOCK` 1 read, graded OKAY with the same word;
   `AxLOCK` 1 write of a pattern, graded OKAY; ordinary read equals the pattern; restore and read
   back.
-. For each hole block: read its witness registers; for each hole, read (OKAY, 0), write ones
-  (OKAY), read (OKAY, 0); read the witness registers again, unchanged.
+. For each hole block: read every register of the block (cpu_ctrl's `MUTEX`, `REFERENCE_COUNTER`
+  and `WB_PC_CORE<n>` left out: a read acquires the mutex, the counter and the PCs move on their
+  own); for each hole, read (OKAY, 0), write ones (OKAY), read (OKAY, 0); read the registers
+  again, unchanged.
 . Read `DUMMY_ROM_NULL[3]` and seed it with a pattern; two-beat INCR read from it, beat 0 OKAY
   with the pattern, beat 1 SLVERR with 0; two-beat INCR write (pattern, second pattern), BRESP
   SLVERR; read `DUMMY_ROM_NULL[3]` unchanged, then restore it. Read the last 32-bit register of
@@ -16668,8 +16682,9 @@ pattern is pinned.
   each crossbar path answer OKAY; the read returns the ordinary word and the written pattern
   reads back.
 |`CHK-REGBLOCK-HOLE-OKAY-ZERO` |Every unoccupied slot of `smc_reset_unit` and `smc_cpu_ctrl`
-  reads OKAY with 0 before and after a write of ones that answers OKAY; the witness registers
-  are unchanged; at least ten holes are probed.
+  reads OKAY with 0 before and after a write of ones that answers OKAY; every other register of
+  the block reads the same word before and after (cpu_ctrl's `MUTEX`, `REFERENCE_COUNTER` and
+  `WB_PC_CORE<n>` excepted); at least ten holes are probed.
 |`CHK-REGBLOCK-PAST-END-SLVERR` |The beat past `DUMMY_ROM_NULL[3]` in a two-beat INCR read
   answers SLVERR with 0 after an OKAY first beat that returns the seeded pattern, the two-beat
   write answers SLVERR and the register keeps the pattern; the 64-bit reads at the last 32-bit
@@ -16683,7 +16698,7 @@ pattern is pinned.
 
 *Pass Criteria*: Every checker above is emitted and every assert holds: all gap beats DECERR, the
 exclusive accesses OKAY with the write landed, holes and padding OKAY with 0 and no effect, the
-cpu_ctrl past-end beat SLVERR, and every witness register unchanged.
+cpu_ctrl past-end beat SLVERR, and every other register of the hole blocks unchanged.
 
 *Scope limit*: The regblock SLVERR past the last register is reachable only through
 `smc_cpu_ctrl`, whose window is selected by the burst's start address. The 64-bit reads at the
@@ -16692,7 +16707,7 @@ last 32-bit register of `smc_reset_unit` (the crossbar answers DECERR first) and
 where the chapter states SLVERR) are printed, not compared; the base_config answer is a
 documentation question for the chapter owner.
 `smc_base_config` and `dfx_ctrl` have no unoccupied slot. One gap, one exclusive target per
-crossbar path and the first entry of each array are driven.
+crossbar path and the first entry of each array are driven. The before-and-after compare of the hole blocks' registers shows an aliased hole write only on a register whose word a write of ones can change; a read-only register, one that resets to all ones, a write-one-to-clear register holding 0 and a single-pulse field read the same word either way, and a side effect of such an alias (a `RESET_CTRL` pulse) would go unseen. The check that a hole takes no write is the OKAY/0 readback of the hole itself.
 
 '''''
 

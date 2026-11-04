@@ -876,7 +876,7 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
             bresp = next(b["resp"] for b in write.resps if b["id"] == write.axi_id)
             declared = declared_cross_codes()
             assert codes == declared, (
-                f"CHK-G11-SPLIT-BRESP FAIL: {port} single-beat codes "
+                f"CHK-G11-CROSS-BEAT-CODES FAIL: {port} single-beat codes "
                 f"{''.join(str(c) for c in codes)} differ from the declared "
                 f"{''.join(str(c) for c in declared)} (0 OKAY inside a misc_wrap sub-block or "
                 f"GPIO, 3 DECERR between sub-blocks and past the extent)"
@@ -911,19 +911,25 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
         )
         for port in PORTS:
             got, want = split[port]
-            assert got == want, (
-                f"CHK-G11-SPLIT-BRESP FAIL: {port} crossing write BRESP {got}, the write-split "
-                f"rule over the single-beat codes gives {want}"
+            cocotb.log.info(
+                "CHK-G11-CROSS-BEAT-CODES: port=%s single_beat_codes=%s equal the declared "
+                "codes of their words (0 OKAY inside a misc_wrap sub-block or GPIO, 3 DECERR "
+                "between sub-blocks and past the extent; %d beat addresses from 0x%x)",
+                port,
+                "".join(str(c) for c in self.ref_codes[port]),
+                CROSS_BEATS,
+                CROSS_START,
             )
             cocotb.log.info(
-                "CHK-G11-SPLIT-BRESP: port=%s bresp=%s split_rule_over_single_beat_codes=%s "
-                "(start 0x%x selects misc_wrap, %d beats; every single-beat code equals the "
-                "declared code of its words)",
+                "OBS-G11-SPLIT-BRESP: port=%s bresp=%s split_rule_over_single_beat_codes=%s "
+                "(observation, never compared: memmap.adoc routes the crossing burst by its "
+                "start address 0x%x, misc_wrap, and does not state the codes of the beats past "
+                "that unit, so the merged BRESP is recorded beside the rule's value until the "
+                "document states them)",
                 port,
                 got,
                 want,
                 CROSS_START,
-                CROSS_BEATS,
             )
         self._stage("crossing", f"reqs={2 * len(PORTS)} ref_writes={len(PORTS) * CROSS_BEATS}")
 
