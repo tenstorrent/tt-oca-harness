@@ -24,7 +24,7 @@ class smc_mailbox_flush_status_test(smc_base_test):
         "CHK-RFLUSH-EMPTY-HARMLESS",
         "CHK-RFLUSH-FREES-PEER",
         "CHK-RFLUSH-KEEPS-OWN-WRITE-FIFO",
-        "CHK-RFLUSH-VS-PUSH-CONSISTENT",
+        "CHK-RFLUSH-SAME-CYCLE-DISCARDS",
         "CHK-STATUS-FOLLOWS-OCCUPANCY-NO-ACK",
         "CHK-THRESHOLD-BITS-FALL-LIVE",
         "CHK-TIMEOUT-PATHS",
@@ -32,7 +32,7 @@ class smc_mailbox_flush_status_test(smc_base_test):
         "CHK-WFLUSH-DISCARDS-PEER-WORDS",
         "CHK-WFLUSH-EMPTY-HARMLESS",
         "CHK-WFLUSH-KEEPS-OWN-READ-FIFO",
-        "CHK-WFLUSH-VS-PUSH-CONSISTENT",
+        "CHK-WFLUSH-SAME-CYCLE-DISCARDS",
         "CHK-WRITE-THRESHOLD-STRICT",
     )
     min_evidence = 20
