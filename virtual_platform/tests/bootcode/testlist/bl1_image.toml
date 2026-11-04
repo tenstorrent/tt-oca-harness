@@ -224,7 +224,7 @@ spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "bac
 markers = [
   "Zero is the only size class a manifest can reach: validate_toc_structure refuses a zero-length entry (0x00030015) and an entry past payload_length before the ROM's own BL1_SIZE and placement arms run, so BL1_SIZE is forbidden.",
   "Not covered: a BL1 larger than ICCM or the spec maximum, which needs a payload above 256 KiB to pass the TOC bound.",
-  "Not covered: the BL1_ADDR_RANGE arm of bl1_locate (a load range past the ICCM top), which the zero-length stimulus never reaches; no VP entry expects it.",
+  "Not covered here: the BL1_ADDR_RANGE arm of bl1_locate, which the zero-length stimulus never reaches; sep_bl1_span_past_sram_end_test expects it for a load range past the SEP SRAM top, and no VP entry reaches it through the ICCM top.",
   "The op reseals the entry hash, chain, payload hash and signature, so the zero length is each slot's only defect; RSA_VERIFY_OK and MANIFEST_OK twice confirm both manifests verify.",
   "NO_BL1_IMAGE is forbidden so a mutation that lost the entry type cannot pass for this one.",
 ]
