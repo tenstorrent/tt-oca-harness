@@ -34198,6 +34198,11 @@ Wait for STATUS to read 0 before writing this register again.</ipxact:descriptio
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>vector</ipxact:name>
+            <ipxact:description>Boot address of core n, one register per core. Core n starts fetching here when
+its reset releases, so a write takes effect at that core's next reset release;
+bit 0 is ignored. While the warm reset is asserted every core takes 0xC004_0000
+instead. The register is on the primary reset and keeps its value across a warm
+reset.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34774,7 +34779,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_0</ipxact:name>
-            <ipxact:description>Word 0 of WFI loop</ipxact:description>
+            <ipxact:description>Word 0 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34791,7 +34796,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_1</ipxact:name>
-            <ipxact:description>Word 1 of WFI loop</ipxact:description>
+            <ipxact:description>Word 1 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34808,7 +34813,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_2</ipxact:name>
-            <ipxact:description>Word 2 of WFI loop</ipxact:description>
+            <ipxact:description>Word 2 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34825,7 +34830,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_3</ipxact:name>
-            <ipxact:description>Word 3 of WFI loop</ipxact:description>
+            <ipxact:description>Word 3 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34843,7 +34848,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_null</ipxact:name>
-            <ipxact:description>Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom</ipxact:description>
+            <ipxact:description>Zero padding that fills the 64-byte cache line holding the park loop, so a line fetch of the loop reads no undefined data.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
