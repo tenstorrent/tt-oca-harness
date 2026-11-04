@@ -2854,7 +2854,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SPI-QUAD",
             "quad-mode transmits drive all four data lanes high and off their pre-command "
             "idle level, and raise their enables, a quad receive "
-            "fills one RX FIFO word and completes with every enable low, and "
+            "fills one RX FIFO word and completes with every enable low, "
+            "INTR_ENABLE.ERROR set and cleared on the same path reads back each value, and "
             "INTR_STATE.SPI_EVENT and the interrupt stay "
             "high across a write to INTR_STATE and fall when EVENT_ENABLE.IDLE is cleared",
         ),
@@ -2872,7 +2873,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the SEP watchdog reset request is low and rst_wdt_n high before the watchdog is "
             "enabled; with the bark and bite thresholds read back as 0x20 it rises when it "
             "bites, one clk_smu_i sample shows the request high and rst_wdt_n low together, "
-            "and the request falls again",
+            "rst_wdt_n first reads low no earlier than the request first reads high, the SMC "
+            "watchdog second timeout stays low, and the request falls again",
         ),
     ],
     "smu_sep_stap_hold_reset_test": [

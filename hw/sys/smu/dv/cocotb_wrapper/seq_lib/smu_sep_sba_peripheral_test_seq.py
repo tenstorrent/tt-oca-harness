@@ -20,8 +20,10 @@ S5: the SEP SPI host (``spi_host.hjson``, ``hw/sys/sep/doc/spi.adoc``). With
     receive of four bytes, which completes with the host idle, leaves the
     enables low and takes STATUS.RXQD from 0 to one word. With
     EVENT_ENABLE.IDLE set, INTR_STATE.SPI_EVENT follows the idle event and
-    the interrupt line is high while INTR_ENABLE.SPI_EVENT is set; a write to
-    INTR_STATE.SPI_EVENT, which the RDL makes read-only, leaves both high,
+    the interrupt line is high while INTR_ENABLE.SPI_EVENT is set. Just before
+    a write to INTR_STATE.SPI_EVENT, which the RDL makes read-only, the same
+    system-bus path sets and then clears INTR_ENABLE.ERROR, which the RDL makes
+    read-write, and each value reads back; the read-only write leaves both high,
     and clearing EVENT_ENABLE.IDLE drops both (``spi.adoc``: SPI_EVENT
     "follows the level of the events selected by EVENT_ENABLE").
     The LSIO trigger level with the TX FIFO empty, and the values GPIO pads
@@ -50,8 +52,10 @@ S7: the SEP watchdog (OpenTitan ``aon_timer``). WDOG_BARK_THOLD and
     watchdog" (``hw/sys/sep/doc/port_table.adoc:25-26``). Sampled at the SMU on
     every clk_smu_i rising edge, ``sep_wdt_timer_rst_req`` reads 0 and
     ``rst_wdt_n`` 1 before the enable, the request reads 1 at some edge, one
-    edge shows the request 1 and ``rst_wdt_n`` 0 in the same sample, and the
-    request then reads 0. The SMC reset unit extends the watchdog reset by 32
+    edge shows the request 1 and ``rst_wdt_n`` 0 in the same sample, the first
+    edge with ``rst_wdt_n`` 0 is no earlier than the first with the request 1,
+    the SMC watchdog second timeout, which is also its reset request
+    (``smc_pkg.sv``), reads 0 on every edge, and the request then reads 0. The SMC reset unit extends the watchdog reset by 32
     reference clock cycles (``doc/trm/src/reset.adoc:46-48``), so ``rst_wdt_n``
     stays low for more than one clk_smu_i period.
 S8: the bench drives GPIO pads 4..7, 10 and 54 high while the chip runs, in
@@ -129,6 +133,8 @@ SPI_RXQD = _spi("STATUS__RXQD_bm")
 SPI_RXQD_SHIFT = _spi("STATUS__RXQD_bp")
 SPI_EVENT_IDLE = _spi("EVENT_ENABLE__IDLE_bm")
 SPI_INTR_EVENT = _spi("INTR_STATE__SPI_EVENT_bm")
+SPI_ENABLE_ERROR = _spi("INTR_ENABLE__ERROR_bm")
+SPI_ENABLE_MASK = SPI_ENABLE_ERROR | _spi("INTR_ENABLE__SPI_EVENT_bm")
 SPI_LEN_SHIFT = _spi("COMMAND__LEN_bp")
 SPI_DIRECTION_SHIFT = _spi("COMMAND__DIRECTION_bp")
 SPI_SPEED_SHIFT = _spi("COMMAND__SPEED_bp")
@@ -177,6 +183,8 @@ WDOG_BITE_MASK = c_header_u32(_AON_H, "AON_TIMER__WDOG_BITE_THOLD__THRESHOLD_bm"
 WDOG_THOLD = 0x20
 WDT_REQ_PATH = "sep_wdt_timer_rst_req"
 WDT_RESET_PATH = "rst_wdt_n"
+# The SMC watchdog second timeout, which is also the SMC watchdog reset request.
+SMC_WDT_BITE = "tb_smc_wdt_second_timeout"
 WDT_BOUND = 200000
 POLL_CYCLES = 200
 
@@ -314,6 +322,13 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         moved_sd = lanes["tx_moved"]
         intr = []
         intr.append((await self._read_ok(jtag, SPI_INTR_STATE), _spi_field(req, "irq")))
+        # INTR_ENABLE.ERROR is software read-write and INTR_STATE.SPI_EVENT does not
+        # depend on it (spi_controller.rdl), so a write that changes it and reads
+        # back shows a write on this path reaches the SPI host's registers.
+        control = [await self._read_ok(jtag, SPI_INTR_ENABLE) & SPI_ENABLE_MASK]
+        for enable in (SPI_INTR_EVENT | SPI_ENABLE_ERROR, SPI_INTR_EVENT):
+            await self._sb_ok(jtag, SPI_INTR_ENABLE, 2, enable)
+            control.append(await self._read_ok(jtag, SPI_INTR_ENABLE) & SPI_ENABLE_MASK)
         await self._sb_ok(jtag, SPI_INTR_STATE, 2, SPI_INTR_EVENT)
         await ClockCycles(self.dut.clk_smu_i, 16)
         intr.append((await self._read_ok(jtag, SPI_INTR_STATE), _spi_field(req, "irq")))
@@ -327,12 +342,14 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         self._log(
             f"CHK-SEP-SPI-QUAD idle_sd=0x{idle_sd:x} sd=0x{seen_sd:x} "
             f"moved_off_idle=0x{moved_sd:x} oe=0x{seen_oe:x} rx_oe=0x{oe_in_rx:x} "
-            f"rxqd={rx_depth} idle={idle} intr_state_irq={intr}"
+            f"rxqd={rx_depth} idle={idle} intr_state_irq={intr} "
+            f"intr_enable_control={[hex(v) for v in control]} "
+            f"intr_state_after_ro_write={intr[1]} before={intr[0]}"
         )
         self._log(f"OBSERVATION SEP SPI trigger_empty={trigger_empty} rx_lanes={rx_lanes}")
         sb.expect_eq(
             "CHK-SEP-SPI-QUAD",
-            (seen_sd, moved_sd, seen_oe, oe_in_rx, rx_depth, idle, intr),
+            (seen_sd, moved_sd, seen_oe, oe_in_rx, rx_depth, idle, control, intr),
             (
                 0xF,
                 0xF,
@@ -340,6 +357,7 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
                 0,
                 [0, SPI_RX_WORDS],
                 [True, True, True],
+                [SPI_INTR_EVENT, SPI_INTR_EVENT | SPI_ENABLE_ERROR, SPI_INTR_EVENT],
                 [(SPI_INTR_EVENT, 1), (SPI_INTR_EVENT, 1), (0, 0)],
             ),
             evidence="CHK-SEP-SPI-QUAD",
@@ -451,15 +469,20 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             )
         # The bite clears itself a few clk_i after the reset asserts, including
         # while the enable write is still on the debug bus. Cycles count
-        # clk_smu_i edges from the monitor's start.
-        seen = {"cycle": 0, "high": None, "reset": None}
+        # clk_smu_i edges from the monitor's start. rst_wdt_n going low before the
+        # request rises, or the SMC watchdog bite rising, is another reset source.
+        seen = {"cycle": 0, "high": None, "reset": None, "low": None, "smc_bite": 0}
 
         async def watch() -> None:
             while True:
                 req = self._smu(WDT_REQ_PATH)
+                low = self._smu(WDT_RESET_PATH) == 0
+                seen["smc_bite"] |= sample(getattr(self.dut, SMC_WDT_BITE), SMC_WDT_BITE)
                 if req == 1 and seen["high"] is None:
                     seen["high"] = seen["cycle"]
-                if req == 1 and seen["reset"] is None and self._smu(WDT_RESET_PATH) == 0:
+                if low and seen["low"] is None:
+                    seen["low"] = seen["cycle"]
+                if req == 1 and seen["reset"] is None and low:
                     seen["reset"] = seen["cycle"]
                 await ClockCycles(self.dut.clk_smu_i, 1)
                 seen["cycle"] += 1
@@ -474,17 +497,22 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         released = await self._settle(WDT_REQ_PATH, 0, WDT_BOUND)
         monitor.cancel()
         wdt_reset = int(seen["reset"] is not None)
+        low_not_before_req = int(
+            seen["low"] is not None and seen["high"] is not None and seen["low"] >= seen["high"]
+        )
         self._log(
             f"CHK-SEP-WDT-BITE idle={idle} rst_wdt_n_before={reset_before} "
             f"thold_bark={thresholds[0]:#x} thold_bite={thresholds[1]:#x} "
             f"bitten={bitten} req_high_cycle={seen['high']} "
             f"rst_wdt_n_low_while_req_high={wdt_reset} at_cycle={seen['reset']} "
-            f"released={released}"
+            f"rst_wdt_n_first_low_cycle={seen['low']} "
+            f"low_not_before_req={low_not_before_req} "
+            f"{SMC_WDT_BITE}_seen={seen['smc_bite']} released={released}"
         )
         sb.expect_eq(
             "CHK-SEP-WDT-BITE",
-            (idle, reset_before, bitten, wdt_reset, released),
-            (0, 1, 1, 1, 0),
+            (idle, reset_before, bitten, wdt_reset, low_not_before_req, seen["smc_bite"], released),
+            (0, 1, 1, 1, 1, 0, 0),
             evidence="CHK-SEP-WDT-BITE",
         )
         self.steps["s7"] = True
