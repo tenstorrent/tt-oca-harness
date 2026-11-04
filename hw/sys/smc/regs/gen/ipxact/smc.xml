@@ -2423,7 +2423,7 @@ general condition of the slave, per AVS spec StatusReponse field: [list]
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CMD_FIFO_VACANT_SLOTS</ipxact:name>
-            <ipxact:description>Number of vacant slots in the command FIFO</ipxact:description>
+            <ipxact:description>Number of vacant slots in the command FIFO. The field has no storage; with the FIFO empty after reset it reads the COMMAND_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2449,7 +2449,7 @@ general condition of the slave, per AVS spec StatusReponse field: [list]
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>READBACK_FIFO_VACANT_SLOTS</ipxact:name>
-            <ipxact:description>Number of vacant slots in the readback FIFO</ipxact:description>
+            <ipxact:description>Number of vacant slots in the readback FIFO. The field has no storage; with the FIFO empty after reset it reads the READBACK_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
