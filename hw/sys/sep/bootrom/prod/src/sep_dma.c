@@ -92,7 +92,7 @@ void sep_dma_init(void) {
     // Secure DMA requires an enabled memory range before operation.
     dma_write(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00000000u);
     dma_write(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
-    dma_write(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x00000001u);
+    dma_write(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, SECURE_DMA__RANGE_VALID__RANGE_VALID_bm);
 }
 
 // Check if destination is in the ICCM region.
@@ -295,7 +295,7 @@ uint32_t sep_dma_zero(uint32_t dest, size_t len) {
     // Every write of a zero fill is checked against the enabled range.
     dma_write(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, base);
     dma_write(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, limit);
-    dma_write(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
+    dma_write(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, SECURE_DMA__RANGE_VALID__RANGE_VALID_bm);
     // The engine validates the source address and space but never reads it.
     dma_program(dest, 0u, n, 0u);
 
