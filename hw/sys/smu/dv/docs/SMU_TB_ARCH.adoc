@@ -305,8 +305,8 @@ passing run logs the same summary at info level in `report_phase`.
 `cocotb/env/smu_axi_monitor.py` holds `SmuAxiMonitor`, a passive
 `uvm_component` that samples one boundary AXI bus on every `clk_smu_i` edge,
 independent of the master and the responder. It carries the rules of the SEP
-bench's `env/sep_axi_monitor.py`, so they hold on Verilator, where the RTL SVA
-checkers do not run.
+bench's `env/sep_axi_monitor.py`, so the READY-wait and decode rules hold on
+Verilator, where the RTL SVA checkers do not run.
 
 Rules::
 * *Read-data lanes*: an accepted OKAY or EXOKAY R beat carries no X/Z bit in a

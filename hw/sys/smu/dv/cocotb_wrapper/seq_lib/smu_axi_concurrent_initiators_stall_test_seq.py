@@ -203,11 +203,11 @@ _CH = {
 NOT_DRIVABLE = (
     (
         "IWC_SEP_OUT_TO_SMC_IN",
-        "this leaf drives no sep_out traffic; no enrolled leaf grades the sep_out cells",
+        "this leaf drives no sep_out traffic",
     ),
     (
         "IWC_SEP_OUT_TO_EXT_OUT",
-        "this leaf drives no sep_out traffic; no enrolled leaf grades the sep_out cells",
+        "this leaf drives no sep_out traffic",
     ),
 )
 SMC_OUT_SMC_NOT_DRIVABLE = (
