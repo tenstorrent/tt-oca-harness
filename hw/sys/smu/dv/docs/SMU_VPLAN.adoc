@@ -8720,7 +8720,7 @@ sequence's own raise, outside the scoreboard
 * S6: the same with the region's side-effect bit set; the AxCACHE and the address of each write phase are recorded.
 * S7: the SEP view of the SMC SPM: the probe completes and each load returns the store word.
 * S8: offset 0x1000 of the external aperture lies between the eFuse SHIM control block and the execute-in-place window (`hw/sys/sep/dv/models/regs/sep_external.rdl`), so the fabric refuses it and the access never reaches a unit (`hw/sys/sep/doc/memory_map.adoc`). A run entered at the loads with the side-effect bit clear, and the full probe with the bit set and then clear, each halt the hart at one of the image's two `ebreak` instructions, and no load of any run returns the store word, since no unit holds it.
-* S9: before the first probe run and after the last, a system-bus write and read on the SMU aperture and the SMC SPM view complete with `sberror` 0, and on the external aperture each reports a non-zero `sberror` (Debug Specification 0.13, `sbcs`: 0 is no error; the value is logged), so the debug module and the load/store unit take each path in turn.
+* S9: before the first probe run and after the last, a system-bus write and read on the SMU aperture and the SMC SPM view complete, and on the external aperture each reports `sberror` 2, "a bad address was accessed" (Debug Specification 0.13, `sbcs`), so the debug module and the load/store unit take each path in turn.
 
 *Test Procedure*:
 
@@ -8729,7 +8729,7 @@ sequence's own raise, outside the scoreboard
 . With responder backpressure on, run the probe in the SMU aperture with `mrac` clear and then with the region's side-effect bit set, recording the boundary address phases; compare the report and the responder's bytes, and record the AxCACHE values and write addresses.
 . Run the probe against the SEP view of the SMC SPM and compare the report.
 . Error injection. Point: the SEP load/store unit at offset 0x1000 of the external aperture, between the eFuse SHIM control block and the execute-in-place window. Kind: the probe's stores and loads at an address the fabric refuses and no unit holds, run from its loads with `mrac` clear, then whole with `mrac` set and clear. Expected response: each run halts the hart at one of the image's two `ebreak` instructions and no load of any run returns the store word (compared for where each run halts and for the first run's loads); every report and `mcause` are recorded, not compared.
-. Before the first probe run and after the last, write and read the SMU aperture and the SMC SPM view over the system bus. Error injection. Point: the system bus into the external aperture, before the first probe run and after the last. Kind: a write and a read of an aperture where no unit answers. Expected response: each reports a non-zero `sberror`, the value logged as an observation.
+. Before the first probe run and after the last, write and read the SMU aperture and the SMC SPM view over the system bus. Error injection. Point: the system bus into the external aperture, before the first probe run and after the last. Kind: a write and a read of an aperture where no unit answers. Expected response: each reports `sberror` 2, "a bad address was accessed".
 
 *Checkers*:
 
@@ -8742,7 +8742,7 @@ sequence's own raise, outside the scoreboard
 |`CHK-SEP-LSU-OUT-SIDE-EFFECT` |with the side-effect bit set the same holds
 |`CHK-SEP-LSU-SMC` |the probe against the SEP view of the SMC SPM halts at its `ebreak`, each load returns the store word and `a2` their sum
 |`CHK-SEP-LSU-EXTERNAL` |each of the three external-aperture runs halts on an `ebreak` at the SEP_NMI_VEC reset value or the probe's `ebreak`, and none of their loads returns the store word
-|`CHK-SEP-LSU-SBA-MIX` |the system-bus write and read on the SMU aperture and the SMC SPM view complete with `sberror` 0, and on the external aperture return a non-zero `sberror` (value logged), before and after the probe runs
+|`CHK-SEP-LSU-SBA-MIX` |the system-bus write and read on the SMU aperture and the SMC SPM view complete, and on the external aperture return `sberror` 2, before and after the probe runs
 |assertion |sep_lsu_fabric incomplete s1..s8=<values>
 |===
 

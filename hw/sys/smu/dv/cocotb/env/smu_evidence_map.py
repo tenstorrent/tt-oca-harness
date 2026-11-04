@@ -2216,9 +2216,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-LSU-SBA-MIX",
             "CHK-SEP-LSU-SBA-MIX",
-            "system-bus accesses on the SMU aperture and the SMC SPM view complete with sberror 0 "
-            "and on the external aperture report a non-zero sberror (code logged), before and "
-            "after the probe runs",
+            "system-bus accesses on each probe path complete before and after the probe runs",
         ),
     ],
     "smu_sep_mailbox_sba_readback_test": [

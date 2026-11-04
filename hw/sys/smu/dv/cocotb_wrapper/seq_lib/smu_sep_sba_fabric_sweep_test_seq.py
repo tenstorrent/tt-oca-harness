@@ -177,8 +177,10 @@ SMC_WALK_BITS = range(3, SMC_SPM_SIZE.bit_length())
 EXT_WALK_BITS = range(3, SEP_EXTERNAL_SIZE.bit_length() - 1)
 TRNG_WALK_BITS = range(2, TRNG_SIZE.bit_length() - 1)
 
-# RISC-V Debug Specification 0.13, sbcs.sberror: 0 is no error.
+# RISC-V Debug Specification 0.13, sbcs.sberror: 0 is no error; 2 is the code the
+# LSU fabric sequence grades for an access to a bad address.
 SB_NO_ERROR = 0
+SB_BUS_ERROR = 0b010
 POLL_CYCLES = 4000
 
 
