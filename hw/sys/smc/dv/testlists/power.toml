@@ -334,3 +334,11 @@ reseed = 3
 timeout_sec = 1800
 tags = ["ci", "wdt"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_plic_source_ids_test"
+module = "smc_wdt_plic_source_ids_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]

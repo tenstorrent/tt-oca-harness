@@ -3097,7 +3097,7 @@ module = "smu_sep_reset_inflight_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 5400
+timeout_sec = 9000
 tags = ["fabric", "sep", "sba", "reset", "axi"]
 run_modes = ["sep_rtl"]
 args = [

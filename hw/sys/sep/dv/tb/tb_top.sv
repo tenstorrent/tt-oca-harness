@@ -1355,6 +1355,12 @@ module sep_uvm_top
     assign spi_lsio_trigger_probe_o = `SEP_CORE.lsio_trigger[0];
     assign dma_busy_probe_o =
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.status.busy.q;
+    // SPI host fatal_fault alert sender output (read-only XMR, no force).
+    assign spi_alert_tx_probe_o =
+        `SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.alert_tx_o[0];
+    // SEP_TEST_CTRL read strobe (read-only XMR, no force).
+    assign sep_test_ctrl_rd_probe_o =
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg.decoded_reg_strb.SEP_TEST_CTRL;
 
     // Secure DMA master taps (read-only XMR, no force). dma_axi_req is the
     // request after u_dma_local_alias_remap; the layout is in the signal list.
@@ -5282,7 +5288,6 @@ module sep_uvm_top
     // low and must be low from the next edge on. The cold reset asserts
     // asynchronously and the warm reset on a clock edge
     // (hw/ip/key_manager/doc/architecture.adoc, Reset Conditioning).
-    // Issue: #3170
     bind key_manager ocah_axi_sva #(
         .MASTER_SYNC_RESET (1'b1),
         .IS_LITE    (1'b1),

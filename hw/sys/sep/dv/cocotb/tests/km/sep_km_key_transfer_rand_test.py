@@ -90,7 +90,7 @@ and key_valid reads 0xFF and then 0x00).
 
 The rounds below the share width, the short-key repeat, the four repeated
 transfers, the share-write records of a single-engine transfer and shred, and
-the revoke leg serve only planned checks and do not run.
+the revoke leg serve only non-claimed checks and do not run.
 
 The regression runs the leaf as four shards (``+sep_shard``, ``env/sep_shard.py``),
 each from its own seed and its own boot: shard 1 the AES rounds and shard 2 the

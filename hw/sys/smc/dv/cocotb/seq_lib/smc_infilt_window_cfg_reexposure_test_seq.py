@@ -145,6 +145,18 @@ def rb(word: int) -> int:
     return (word & FC_RW) | DBW_RESET
 
 
+def range_rb(fc: int, sa: int, ea: int) -> tuple[int, int]:
+    """START_ADDR/END_ADDR readback after a range write under ``fc``.
+
+    filter_ctrl.rdl start_addr: both are written back rounded to the granule (4 KiB with
+    allow_burst, else 2^data_bus_width bytes) only when they land in the same granule.
+    """
+    g = PAGE if fc & AB else 1 << ((fc & DBW) >> DBW_BP)
+    if sa & ~(g - 1) == ea & ~(g - 1):
+        return sa & ~(g - 1), ea | (g - 1)
+    return sa, ea
+
+
 GLOBAL_BASE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 LOCAL_BASE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR")
 REGION_SIZE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
@@ -748,11 +760,28 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
         cocotb.log.info("INFO-MODEL %s: enabled entries %s", tag, " ".join(enabled) or "none")
         return entries
 
-    def _model(self, fam: str, ctx: str, entries, addr: int, write: bool, beats: int = 1) -> int:
+    def _model(
+        self,
+        fam: str,
+        ctx: str,
+        entries,
+        addr: int,
+        write: bool,
+        beats: int = 1,
+        *,
+        by: int | None | str = "any",
+    ) -> int:
+        """Decode of one access; ``by`` names the entry (None: default block) that must decide."""
         code, idx = decode(entries, addr, write, beats)
         if code is None:
             self.findings[fam].append(f"{ctx}: entry {idx} carries a src_id the model cannot match")
             return DECERR
+        if by != "any" and idx != by:
+            self.findings[fam].append(
+                f"KEY-FWIN-DECIDER {ctx}: 0x{addr:x} decided by "
+                f"{'default block' if idx is None else f'entry {idx}'}, want "
+                f"{'default block' if by is None else f'entry {by}'}"
+            )
         cocotb.log.info(
             "INFO-MODEL %s: 0x%x %s decided by %s -> %s",
             ctx,
@@ -762,6 +791,25 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             _rname(code),
         )
         return code
+
+    def _landed(self, fam: str, ctx: str, entries: list[Entry], idx: int, want: tuple) -> None:
+        """KEY-FWIN-LANDED: entry ``idx`` of a snapshot holds the programmed FC/SA/EA."""
+        e = next((x for x in entries if x.idx == idx), None)
+        got = (None, None, None) if e is None else (e.fc, e.sa, e.ea)
+        ok = got == want
+        if not ok:
+            self.findings[fam].append(
+                f"KEY-FWIN-LANDED {ctx}: entry {idx} FC/SA/EA "
+                f"{'/'.join(_hx(v) for v in got)}, want {'/'.join(_hx(v) for v in want)}"
+            )
+        cocotb.log.info(
+            "INFO-KEYSTEP %s: entry %d FC/SA/EA %s, programmed %s, %s",
+            ctx,
+            idx,
+            "/".join(_hx(v) for v in got),
+            "/".join(_hx(v) for v in want),
+            "landed" if ok else "NOT landed",
+        )
 
     async def _live(self, fam: str, tag: str) -> None:
         r = await self._read(fam, "SYS_IN", f"{tag}_LIVE", LOCAL_BASE_REG)
@@ -877,26 +925,61 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
         self._cell("AXIFAB-FWIN-WRUNLOCKED.S2", "SYS_IN/ro-and-reserved")
         self._mark("UNLOCKED", s)
 
-    async def _lowest_hit_leg(self, idx: int, scen: str, cell: str, value: int) -> None:
+    async def _lowest_hit_leg(self, idx: int, scen: str, cell: str, value: int, t_by: int) -> None:
+        """Rewrite entry ``idx`` from SYS_IN as a deny entry over T and grade the decode.
+
+        The fields are sw=rw and only a locked entry steers writes to DECERR
+        (filter_ctrl.rdl:20-35, 80-84), so each SYS_IN write must read back from SEP_IN as
+        programmed (KEY-FWIN-LANDED), and T must be decided by entry ``t_by``
+        (KEY-FWIN-DECIDER) before the exposure is graded.
+        """
         fam = "WRUNLOCKED"
+        pre = await self._read_entry("SEP_IN", idx, f"S4_E{idx}_PRE")
+        if pre is None:
+            self.findings["SETUP"].append(f"S4 entry {idx} readback X before the deny writes")
+            pre = Entry(idx, FC_RESET, SA_RESET, EA_RESET)
+        fc_now, sa_now, ea_now = pre.fc, pre.sa, pre.ea
         for reg, addr, word in (
             ("SA", SA(idx), T_REG),
             ("EA", EA(idx), T_REG + BEAT - 1),
             ("FC", FC(idx), DENY_CFG),
         ):
             bresp = await self._write(fam, "SYS_IN", f"S4_E{idx}_{reg}_DENY", addr, word, code=None)
+            if reg == "FC":
+                fc_now = rb(word)
+                want = (("FC", FC(idx), fc_now),)
+            else:
+                if reg == "SA":
+                    sa_now, ea_now = range_rb(fc_now, word, ea_now)
+                else:
+                    sa_now, ea_now = range_rb(fc_now, sa_now, word)
+                want = (("SA", SA(idx), sa_now), ("EA", EA(idx), ea_now))
+            backs = []
+            for rreg, raddr, rwant in want:
+                back = await self._rd(fam, "SEP_IN", f"S4_E{idx}_{reg}_DENY_{rreg}_RB", raddr)
+                self._expect(
+                    fam,
+                    f"KEY-FWIN-LANDED S4 entry {idx} {rreg} after the SYS_IN {reg} write",
+                    back,
+                    rwant,
+                )
+                backs.append(f"{rreg}={_hx(back)}")
             self._obs(
                 "OBS-FWIN-WRUNLOCKED",
                 reg=f"entry{idx}.{reg}",
                 wrote=_hx(word),
                 bresp=_rname(bresp),
+                readback=",".join(backs),
                 ruling="SF-021",
             )
         entries = await self._snapshot(f"S4_E{idx}")
+        self._landed(fam, f"S4 deny entry {idx}", entries, idx, (fc_now, sa_now, ea_now))
         t_ref = await self._rd("SETUP", "SEP_IN", f"S4_E{idx}_T_REF", T_REG)
-        want_rd = self._model(fam, f"S4 deny entry {idx} T read", entries, T_REG, False)
-        want_wr = self._model(fam, f"S4 deny entry {idx} T write", entries, T_REG, True)
-        want_out = self._model(fam, f"S4 deny entry {idx} outside", entries, LOCAL_BASE_REG, False)
+        want_rd = self._model(fam, f"S4 deny entry {idx} T read", entries, T_REG, False, by=t_by)
+        want_wr = self._model(fam, f"S4 deny entry {idx} T write", entries, T_REG, True, by=t_by)
+        want_out = self._model(
+            fam, f"S4 deny entry {idx} outside", entries, LOCAL_BASE_REG, False, by=E_IDX
+        )
         r = await self._read(fam, "SYS_IN", f"S4_E{idx}_T_RD", T_REG, code=want_rd)
         if want_rd == OKAY and r and t_ref is not None:
             self._expect(fam, f"S4 deny entry {idx} T read data", r[0].data, t_ref, THR_MASK)
@@ -917,11 +1000,11 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
     async def _lowest_hit(self) -> None:
         s = self.sys_count
         await self._lowest_hit_leg(
-            J_IDX, "AXIFAB-FWIN-WRUNLOCKED.S3", "SYS_IN/deny-lower", 0x1_2345
+            J_IDX, "AXIFAB-FWIN-WRUNLOCKED.S3", "SYS_IN/deny-lower", 0x1_2345, J_IDX
         )
         await self._sep_entry("SETUP", J_IDX, J_CFG1, J_SA1, J_EA1, "S4_RESTORE")
         await self._lowest_hit_leg(
-            H_IDX, "AXIFAB-FWIN-WRUNLOCKED.S4", "SYS_IN/deny-higher", 0x2_3456
+            H_IDX, "AXIFAB-FWIN-WRUNLOCKED.S4", "SYS_IN/deny-higher", 0x2_3456, E_IDX
         )
         await self._sep_entry("SETUP", H_IDX, FC_RESET, SA_RESET, EA_RESET, "S4_RESTORE")
         await self._live("WRUNLOCKED", "S4")
@@ -1038,13 +1121,23 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
         got = await self._rd("SELFDENY", "SEP_IN", f"{tag}_E_RESTORE_RB", FC(E_IDX))
         self._expect("SELFDENY", f"{tag} SEP_IN E restore readback", got, rb(E_CFG))
 
+    @staticmethod
+    def _e_want(fc: int) -> tuple[int, int, int]:
+        """E after a SYS_IN FILTER_CONFIG write of ``fc``: the field readback, its range kept."""
+        return rb(fc), E_START, E_END
+
     async def _self_deny(self) -> None:
+        """Self-deny writes through E, each required to land (KEY-FWIN-LANDED) and to move the
+        decision of the next accesses to the stated entry (KEY-FWIN-DECIDER) before they are
+        graded; filter_ctrl.rdl:20-35 states the fields sw=rw.
+        """
         s = self.sys_count
         fam = "SELFDENY"
 
         bresp = await self._write(fam, "SYS_IN", "S7_E_CLR_WA", FC(E_IDX), E_CFG & ~WA, code=None)
         self.selfdeny_writes += 1
         entries = await self._snapshot("S7_CLR_WA")
+        self._landed(fam, "S7 E write_allowed cleared", entries, E_IDX, self._e_want(E_CFG & ~WA))
         e_fc = next((e.fc for e in entries if e.idx == E_IDX), None)
         self._obs(
             "OBS-FWIN-SELFDENY",
@@ -1055,8 +1148,12 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
         )
         self._cell("AXIFAB-FWIN-SELFDENY.S1", "SYS_IN/clear-write")
         t_ref = await self._rd("SETUP", "SEP_IN", "S7_T_REF", T_REG)
-        want_wr = self._model(fam, "S7 write_allowed cleared T write", entries, T_REG, True)
-        want_rd = self._model(fam, "S7 write_allowed cleared T read", entries, T_REG, False)
+        want_wr = self._model(
+            fam, "S7 write_allowed cleared T write", entries, T_REG, True, by=E_IDX
+        )
+        want_rd = self._model(
+            fam, "S7 write_allowed cleared T read", entries, T_REG, False, by=E_IDX
+        )
         await self._write(fam, "SYS_IN", "S7_T_WR", T_REG, 0x3_4567, code=want_wr)
         r = await self._read(fam, "SYS_IN", "S7_T_RD", T_REG, code=want_rd)
         t_now = await self._rd("SETUP", "SEP_IN", "S7_T_POST", T_REG)
@@ -1074,6 +1171,7 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
         bresp = await self._write(fam, "SYS_IN", "S7_E_DISABLE", FC(E_IDX), E_CFG & ~EN, code=None)
         self.selfdeny_writes += 1
         entries = await self._snapshot("S7_DISABLE")
+        self._landed(fam, "S7 E disabled", entries, E_IDX, self._e_want(E_CFG & ~EN))
         e_fc = next((e.fc for e in entries if e.idx == E_IDX), None)
         self._obs(
             "OBS-FWIN-SELFDENY",
@@ -1082,8 +1180,8 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             readback=_hx(e_fc),
             sf="SF-014",
         )
-        want_rd = self._model(fam, "S7 E disabled T read", entries, T_REG, False)
-        want_wr = self._model(fam, "S7 E disabled T write", entries, T_REG, True)
+        want_rd = self._model(fam, "S7 E disabled T read", entries, T_REG, False, by=None)
+        want_wr = self._model(fam, "S7 E disabled T write", entries, T_REG, True, by=None)
         await self._read(fam, "SYS_IN", "S7_DIS_T_RD", T_REG, code=want_rd)
         await self._write(fam, "SYS_IN", "S7_DIS_T_WR", T_REG, 0x4_5678, code=want_wr)
         t_now = await self._rd("SETUP", "SEP_IN", "S7_DIS_T_POST", T_REG)
@@ -1099,6 +1197,7 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
         )
         self.selfdeny_writes += 1
         entries = await self._snapshot("S7_HANDOVER")
+        self._landed(fam, "S7 E disabled under F", entries, E_IDX, self._e_want(E_CFG & ~EN))
         e_fc = next((e.fc for e in entries if e.idx == E_IDX), None)
         self._obs(
             "OBS-FWIN-SELFDENY",
@@ -1107,7 +1206,7 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             readback=_hx(e_fc),
             sf="SF-014",
         )
-        want_rd = self._model(fam, "S7 handover read", entries, LOCAL_BASE_REG, False)
+        want_rd = self._model(fam, "S7 handover read", entries, LOCAL_BASE_REG, False, by=F_IDX)
         r = await self._read(fam, "SYS_IN", "S7_HANDOVER_RD", LOCAL_BASE_REG, code=want_rd)
         if want_rd == OKAY and r:
             self._expect(fam, "S7 handover LOCAL_BASE data", r[0].data, LOCAL_BASE_RESET)
@@ -1443,9 +1542,10 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             "WRUNLOCKED": (
                 "CHK-FWIN-WRUNLOCKED",
                 f"RO field kept (data_bus_width 0x{DBW_RESET >> DBW_BP:x}, non-field bits 0), "
+                f"deny entries {J_IDX} below and {H_IDX} above E={E_IDX} landed as programmed "
+                f"(KEY-FWIN-LANDED), T decided by entry {J_IDX} then by E (KEY-FWIN-DECIDER), "
                 f"lowest-hit decode matches the read-back configuration in "
-                f"{self.lowest_hit_accesses} accesses (deny entries {J_IDX} below and {H_IDX} above "
-                f"E={E_IDX}, outside access OKAY)",
+                f"{self.lowest_hit_accesses} accesses (outside access OKAY)",
             ),
             "WRLOCKED": (
                 "CHK-FWIN-WRLOCKED",
@@ -1455,9 +1555,10 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             ),
             "SELFDENY": (
                 "CHK-FWIN-SELFDENY",
-                f"decode after {self.selfdeny_writes} self-deny writes matches the read-back "
-                f"configuration ({self.model_snapshots} snapshots of {NUM_ENTRIES} entries), "
-                "restore OKAY",
+                f"{self.selfdeny_writes} self-deny writes landed in E (KEY-FWIN-LANDED), next "
+                f"accesses decided by E, the default block, then F={F_IDX} (KEY-FWIN-DECIDER), "
+                f"decode matches the read-back configuration ({self.model_snapshots} snapshots of "
+                f"{NUM_ENTRIES} entries), restore OKAY",
             ),
             "BASECFG": (
                 "CHK-FWIN-BASECFG",

@@ -689,8 +689,15 @@
 // Source index 331 is the fourth cluster-internal watchdog: a PLIC source
 // with no cpu_interrupts bit behind it.
 `SMC_TB_OUT(logic, tb_plic_pending_331)
-// Source 324 is the zeroer completion bit (cpu_interrupts[323]) at the PLIC.
+// Source 323 is the DMA completion bit (cpu_interrupts[322]) and source 324
+// the zeroer completion bit (cpu_interrupts[323]) at the PLIC.
+`SMC_TB_OUT(logic, tb_plic_pending_323)
 `SMC_TB_OUT(logic, tb_plic_pending_324)
+// Sources 329, 330 and 332 are the cluster-internal watchdogs of cores 0, 1
+// and 3 (PLIC ID 329 + core), beside 331 above for core 2.
+`SMC_TB_OUT(logic, tb_plic_pending_329)
+`SMC_TB_OUT(logic, tb_plic_pending_330)
+`SMC_TB_OUT(logic, tb_plic_pending_332)
 
 // CLINT. MTIMECMP is `pad`/`pad_N` in the generated cluster.
 `SMC_TB_OUT(logic [63:0], tb_clint_mtime)
@@ -741,6 +748,7 @@
 `SMC_TB_OUT(logic [7:0], tb_zeroer_wstrb)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_wdata)
 `SMC_TB_OUT(logic, tb_zeroer_bvalid)
+`SMC_TB_OUT(logic, tb_zeroer_bready)
 `SMC_TB_OUT(logic [31:0], tb_zeroer_outstanding)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_dest_addr)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_size)
