@@ -304,9 +304,19 @@ class smc_sys_out_error_inject_rand_test_seq(output_fabric_pass_all_cfg_seq):
         ):
             await self.csr_write(f"{label}_0x{reg & 0xFFF:03x}", reg, value)
 
+    @staticmethod
+    def _gate(level: int) -> None:
+        cocotb.top.tb_fcov_gate.value = level
+        cocotb.log.info("CTRL-FCOV-GATE: %s %d ps", "rise" if level else "fall", get_sim_time("ps"))
+
     async def _dma_launch(self, label: str) -> int:
+        # The NEXT_ID_0 read is the sample event of smc_dma_geometry_cg, whose cells
+        # are the DMA owner's: the gate is low over the launch and up again before the
+        # copy's first burst, which the DMA issues only after the read has returned.
+        self._gate(0)
         await self._dma_program(label)
         ident = await self.csr_read(f"{label}_NEXT_ID", DMA_CTRL_NEXT_ID_0)
+        self._gate(1)
         assert ident != 0, f"{label}: NEXT_ID_0 returned 0"
         return ident
 
@@ -484,12 +494,21 @@ class smc_sys_out_error_inject_rand_test_seq(output_fabric_pass_all_cfg_seq):
         await self.program_inbound_pass_all()
         await self.program_outbound_pass_all()
         cocotb.start_soon(self.sampler.run())
-        await self._zeroer_baseline()
-        await self._dma_baseline()
-        self._mark_step("S1")
+        # smc_sys_out_error_cg samples the errored responses and the recovery pairs
+        # of the passes; the filter windows are programmed before its gate rises.
+        self._gate(1)
+        try:
+            await self._zeroer_baseline()
+            await self._dma_baseline()
+            self._mark_step("S1")
 
-        for p in self.passes:
-            await self._run_pass(p)
+            for p in self.passes:
+                await self._run_pass(p)
+        finally:
+            # A compare that fails inside a read-only phase leaves it with the
+            # exception; the gate is written after the next clock edge.
+            await RisingEdge(cocotb.top.clk_smc_i)
+            self._gate(0)
 
         drawn = {c: "; ".join(lines) for c, lines in self._lines.items()}
         self._log_chk(

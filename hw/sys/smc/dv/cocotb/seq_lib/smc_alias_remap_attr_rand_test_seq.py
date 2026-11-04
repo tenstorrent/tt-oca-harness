@@ -444,132 +444,149 @@ class smc_alias_remap_attr_rand_test_seq(SmcCsrSeq):
             carry_drv,
         )
 
-        # S1: reset words of the eight regions, logged beside the RDL reset words.
-        words = []
-        for i in range(8):
-            got = [
-                await self.csr_read(f"R{i}_{k}_RESET", _reg(k, i), None, _WORD)
-                for k in _REGION_KINDS
-            ]
-            words.append(f"R{i} " + "/".join(f"0x{v:x}" for v in got))
-            assert got == _RESET_WORDS, (
-                f"{words[-1]} before any write, alias_remap.rdl reset words "
-                + "/".join(f"0x{v:x}" for v in _RESET_WORDS)
+        # smc_alias_remap_cg samples the probes of S2 to S6 against its shadow of the
+        # regions, which it keeps from the S1 reads and the S3 to S7 writes.
+        top = cocotb.top
+        top.tb_fcov_gate.value = 1
+        cocotb.log.info("CTRL-FCOV-GATE: rise %d ps", get_sim_time("ps"))
+        try:
+            # S1: reset words of the eight regions, logged beside the RDL reset words.
+            words = []
+            for i in range(8):
+                got = [
+                    await self.csr_read(f"R{i}_{k}_RESET", _reg(k, i), None, _WORD)
+                    for k in _REGION_KINDS
+                ]
+                words.append(f"R{i} " + "/".join(f"0x{v:x}" for v in got))
+                assert got == _RESET_WORDS, (
+                    f"{words[-1]} before any write, alias_remap.rdl reset words "
+                    + "/".join(f"0x{v:x}" for v in _RESET_WORDS)
+                )
+            self._mark_step("S1")
+            self._log_chk(
+                "CHK-ALR-RESET-WORDS",
+                f"REGION_START/END/ATTRS of the eight regions before any write {words} equal the "
+                f"alias_remap.rdl reset words {'/'.join(f'0x{v:x}' for v in _RESET_WORDS)}",
             )
-        self._mark_step("S1")
-        self._log_chk(
-            "CHK-ALR-RESET-WORDS",
-            f"REGION_START/END/ATTRS of the eight regions before any write {words} equal the "
-            f"alias_remap.rdl reset words {'/'.join(f'0x{v:x}' for v in _RESET_WORDS)}",
-        )
 
-        # S2: every region at its reset words.
-        text = await self._pair(
-            _Probe("RESET", reset_addr, reset_addr, _WORD, reset_cache, reset_cache)
-        )
-        self._mark_step("S2")
-        self._log_chk(
-            "CHK-ALR-RESET-TRANSPARENT",
-            f"{text}: write and read reached SYS_OUT at their own address with their own "
-            f"AxCACHE; drawn=address 0x{reset_addr:x} cache 0x{reset_cache:X}",
-        )
+            # S2: every region at its reset words.
+            text = await self._pair(
+                _Probe("RESET", reset_addr, reset_addr, _WORD, reset_cache, reset_cache)
+            )
+            self._mark_step("S2")
+            self._log_chk(
+                "CHK-ALR-RESET-TRANSPARENT",
+                f"{text}: write and read reached SYS_OUT at their own address with their own "
+                f"AxCACHE; drawn=address 0x{reset_addr:x} cache 0x{reset_cache:X}",
+            )
 
-        # S3 to S5 per configuration: program, edge and valid-clear probes, hit probes.
-        miss_lines, hit_lines = [], []
-        previous: set[int] = set()
-        for k, cfg in enumerate(configs):
+            # S3 to S5 per configuration: program, edge and valid-clear probes, hit probes.
+            miss_lines, hit_lines = [], []
+            previous: set[int] = set()
+            for k, cfg in enumerate(configs):
+                await self._clear(previous)
+                for region in cfg.valid:
+                    await self._program(region, True)
+                await self._program(cfg.clear, False)
+                previous = {r.index for r in cfg.valid} | {cfg.clear.index}
+                self._mark_step("S3")
+                misses, hits = await self._probe_config(cfg)
+                miss_lines += misses
+                hit_lines += hits
             await self._clear(previous)
-            for region in cfg.valid:
+            edge = [m for m in miss_lines if "VALID_CLEAR" not in m]
+            vclear = [m for m in miss_lines if "VALID_CLEAR" in m]
+            self._log_chk(
+                "CHK-ALR-EDGE-MISS",
+                f"{len(edge)} pairs passed untranslated with the driven AxCACHE, which differs from "
+                f"every region's cacheable; drawn={edge}",
+            )
+            self._log_chk(
+                "CHK-ALR-VALID-CLEAR",
+                f"{len(vclear)} pairs inside regions written with valid clear passed untranslated "
+                f"with the driven AxCACHE, which differs from every region's cacheable; "
+                f"drawn={vclear}",
+            )
+            self._log_chk(
+                "CHK-ALR-HIT-TRANSLATE",
+                f"{len(hit_lines)} pairs reached SYS_OUT at bits [55:12] plus the drawn offset with "
+                f"bits [11:0] kept, the word landed and returned there; drawn={hit_lines}",
+            )
+            zero_hits = [str(p) for p in self._hit_probes if p.want == 0]
+            self._log_chk(
+                "CHK-ALR-HIT-CACHE",
+                f"{len(hit_lines)} pairs presented the region's cacheable as AxCACHE on AW and AR, "
+                f"the driven AxCACHE differing; {len(zero_hits)} of them on a cacheable 0 region, "
+                f"AxCACHE 0 expected: {zero_hits}; drawn={hit_lines}",
+            )
+
+            # S6: two regions over one page, the lowest-numbered applies; then an offset whose sum
+            # carries out of bit 55.
+            start_page = SRC_BASE_PAGE + 1
+            regions = [
+                _Region(overlap[n], start_page, 1, overlap_dst[n] - start_page, overlap_cache[n])
+                for n in range(2)
+            ]
+            for region in regions:
                 await self._program(region, True)
-            await self._program(cfg.clear, False)
-            previous = {r.index for r in cfg.valid} | {cfg.clear.index}
-            self._mark_step("S3")
-            misses, hits = await self._probe_config(cfg)
-            miss_lines += misses
-            hit_lines += hits
-        await self._clear(previous)
-        edge = [m for m in miss_lines if "VALID_CLEAR" not in m]
-        vclear = [m for m in miss_lines if "VALID_CLEAR" in m]
-        self._log_chk(
-            "CHK-ALR-EDGE-MISS",
-            f"{len(edge)} pairs passed untranslated with the driven AxCACHE, which differs from "
-            f"every region's cacheable; drawn={edge}",
-        )
-        self._log_chk(
-            "CHK-ALR-VALID-CLEAR",
-            f"{len(vclear)} pairs inside regions written with valid clear passed untranslated "
-            f"with the driven AxCACHE, which differs from every region's cacheable; "
-            f"drawn={vclear}",
-        )
-        self._log_chk(
-            "CHK-ALR-HIT-TRANSLATE",
-            f"{len(hit_lines)} pairs reached SYS_OUT at bits [55:12] plus the drawn offset with "
-            f"bits [11:0] kept, the word landed and returned there; drawn={hit_lines}",
-        )
-        zero_hits = [str(p) for p in self._hit_probes if p.want == 0]
-        self._log_chk(
-            "CHK-ALR-HIT-CACHE",
-            f"{len(hit_lines)} pairs presented the region's cacheable as AxCACHE on AW and AR, "
-            f"the driven AxCACHE differing; {len(zero_hits)} of them on a cacheable 0 region, "
-            f"AxCACHE 0 expected: {zero_hits}; drawn={hit_lines}",
-        )
+            winner, loser = sorted(regions, key=lambda r: r.index)
+            over_addr = winner.start + 0x10
+            other = loser.translate(over_addr)
+            self._seed(_WORD, other)
+            over = await self._graded_pair(
+                "CHK-ALR-LOWEST-REGION-WINS",
+                _Probe(
+                    "OVERLAP",
+                    over_addr,
+                    winner.translate(over_addr),
+                    _WORD,
+                    overlap_drv,
+                    winner.cache,
+                ),
+            )
+            held = self._mem(other, _WORD)
+            assert held == _SENTINEL, (
+                f"CHK-ALR-LOWEST-REGION-WINS: region {loser.index}'s landing 0x{other:x} holds "
+                f"0x{held:x} after the pair at 0x{over_addr:x}"
+            )
+            await self._clear(overlap)
+            carry = _Region(
+                carry_index, carry_src, 1, _OFFSET_FIELD_PAGES - carry_src + carry_dst, carry_cache
+            )
+            assert 0 < carry.offset < _OFFSET_FIELD_PAGES and carry_src + carry.offset >= (
+                _OFFSET_FIELD_PAGES
+            )
+            assert carry.translate(carry.start) == carry_dst * _PAGE
+            assert _outside_apertures(carry.start, carry.end), f"{carry}: source in an aperture"
+            await self._program(carry, True)
+            addr = carry.start + 0x10
+            carried = await self._graded_pair(
+                "CHK-ALR-OFFSET-WRAPS-AT-BIT55",
+                _Probe("WRAP", addr, carry.translate(addr), _WORD, carry_drv, carry.cache),
+            )
+            await self._clear({carry_index})
+            self._mark_step("S6")
+            self._log_chk(
+                "CHK-ALR-LOWEST-REGION-WINS",
+                f"{regions[0]} and {regions[1]} both hold 0x{over_addr:x}: "
+                f"the pair landed through region {winner.index} ({over}) and region {loser.index}'s "
+                f"landing 0x{other:x} kept the sentinel",
+            )
+            self._log_chk(
+                "CHK-ALR-OFFSET-WRAPS-AT-BIT55",
+                f"{carry}: page 0x{carry_src:x} + offset = 2^44 + 0x{carry_dst:x}, the pair landed "
+                f"at page 0x{carry_dst:x} with bits [11:0] kept ({carried})",
+            )
 
-        # S6: two regions over one page, the lowest-numbered applies; then an offset whose sum
-        # carries out of bit 55.
-        start_page = SRC_BASE_PAGE + 1
-        regions = [
-            _Region(overlap[n], start_page, 1, overlap_dst[n] - start_page, overlap_cache[n])
-            for n in range(2)
-        ]
-        for region in regions:
-            await self._program(region, True)
-        winner, loser = sorted(regions, key=lambda r: r.index)
-        over_addr = winner.start + 0x10
-        other = loser.translate(over_addr)
-        self._seed(_WORD, other)
-        over = await self._graded_pair(
-            "CHK-ALR-LOWEST-REGION-WINS",
-            _Probe(
-                "OVERLAP", over_addr, winner.translate(over_addr), _WORD, overlap_drv, winner.cache
-            ),
-        )
-        held = self._mem(other, _WORD)
-        assert held == _SENTINEL, (
-            f"CHK-ALR-LOWEST-REGION-WINS: region {loser.index}'s landing 0x{other:x} holds "
-            f"0x{held:x} after the pair at 0x{over_addr:x}"
-        )
-        await self._clear(overlap)
-        carry = _Region(
-            carry_index, carry_src, 1, _OFFSET_FIELD_PAGES - carry_src + carry_dst, carry_cache
-        )
-        assert 0 < carry.offset < _OFFSET_FIELD_PAGES and carry_src + carry.offset >= (
-            _OFFSET_FIELD_PAGES
-        )
-        assert carry.translate(carry.start) == carry_dst * _PAGE
-        assert _outside_apertures(carry.start, carry.end), f"{carry}: source in an aperture"
-        await self._program(carry, True)
-        addr = carry.start + 0x10
-        carried = await self._graded_pair(
-            "CHK-ALR-OFFSET-WRAPS-AT-BIT55",
-            _Probe("WRAP", addr, carry.translate(addr), _WORD, carry_drv, carry.cache),
-        )
-        await self._clear({carry_index})
-        self._mark_step("S6")
-        self._log_chk(
-            "CHK-ALR-LOWEST-REGION-WINS",
-            f"{regions[0]} and {regions[1]} both hold 0x{over_addr:x}: "
-            f"the pair landed through region {winner.index} ({over}) and region {loser.index}'s "
-            f"landing 0x{other:x} kept the sentinel",
-        )
-        self._log_chk(
-            "CHK-ALR-OFFSET-WRAPS-AT-BIT55",
-            f"{carry}: page 0x{carry_src:x} + offset = 2^44 + 0x{carry_dst:x}, the pair landed "
-            f"at page 0x{carry_dst:x} with bits [11:0] kept ({carried})",
-        )
-
-        # S7: every programmed region back to its reset words.
-        await self._clear(self._programmed)
-        self._mark_step("S7")
+            # S7: every programmed region back to its reset words.
+            await self._clear(self._programmed)
+            self._mark_step("S7")
+        finally:
+            # A compare that fails inside a read-only phase leaves it with the
+            # exception; the gate is written after the next clock edge.
+            await RisingEdge(top.clk_smc_i)
+            top.tb_fcov_gate.value = 0
+            cocotb.log.info("CTRL-FCOV-GATE: fall %d ps", get_sim_time("ps"))
         self._watch_stop = True
         await watcher
         self._finish()

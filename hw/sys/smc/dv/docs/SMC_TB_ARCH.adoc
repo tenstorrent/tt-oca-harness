@@ -266,9 +266,10 @@ takes over (see <<sv-uvm-realization>>).
 |Mailbox |DV-only `tb_sep_mailbox_interrupts` + `tb_mailbox_irq_any`
 |eFuse |DV-only `tb_sep_security_disable` on `sep_security_disable_i` of the primary DUT (`+smc_sep_security_disable`, default 0); `tb_efuse_bank_stall_en/rd/wr` force the bank-model stall counts
 |Sideband |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug`
-|FCOV gate |DV-only `tb_fcov_gate` into `smc_dma_fcov`, `smc_reset_fcov` and `smc_filt_fcov`: the
-owning leaf of a live planned covergroup holds it 1 over its graded window, and the one net opens
-every gated group at once; idle 0 from `smc_base_test.py`, tied 0 under SV-UVM
+|FCOV gate |DV-only `tb_fcov_gate` into `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov` and
+`smc_fabric_fcov`: the owning leaf of a live planned covergroup holds it 1 over its graded window
+(the SYS_OUT-error owner low over each DMA launch inside it), and the one net opens every gated
+group at once; idle 0 from `smc_base_test.py`, tied 0 under SV-UVM
 |Clocks / resets |cocotb drives `clk_ref_i`, `clk_smc_i`, `clk_periph_i` into the `pll_wrap`
 oscillators (`+pll_osc_bench`), plus power-good and `rst_cold_ni`; under SV-UVM the model
 free-runs and the harness sequences the resets through `smc_tb_if`
