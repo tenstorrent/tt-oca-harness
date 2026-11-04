@@ -63,6 +63,12 @@
 `SMC_TB_OUT(logic, tb_zeroer_intp)
 `SMC_TB_OUT(logic, tb_zeroer_awvalid)
 `SMC_TB_OUT(logic, tb_zeroer_wvalid)
+// Held high by cocotb while a read whose data is declared observed-only is in
+// flight (an unwritten I3C table entry, the aperture-end word of a window with
+// no past-extent response): the SEP_IN and peripheral R-data-known rules do not
+// judge its beats. smc_axi_monitor exempts the same read through its
+// unknown-rdata window.
+`SMC_TB_IN(logic, tb_rdata_known_hold)
 `SMC_TB_IN(logic, tb_test_en_i)
 `SMC_TB_IN(logic, tb_i2c0_scl_ext_low)
 `SMC_TB_IN(logic, tb_i2c0_sda_ext_low)

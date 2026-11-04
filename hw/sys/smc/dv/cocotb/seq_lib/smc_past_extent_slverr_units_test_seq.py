@@ -546,14 +546,16 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
     async def _observe_aperture_end(self, unit: str, tag: str) -> str:
         """UART and I3C declare no past-extent response: record the codes, compare nothing.
 
-        The read data is never converted; the monitor's R-beat count corroborates that the
-        read answered exactly once.
+        The read data is never converted and the read is declared to the monitor as
+        observed-only, so its beat is exempt from the X rules; the monitor's R-beat count
+        corroborates that the read answered exactly once.
         """
         first, last = generated_window(unit)
         top = self._top_addr(unit)
         self.env.axi_monitor.expected_decerr_addrs.add(top)
         beats_before = self.env.axi_monitor.r_beats
-        rresp, resolvable, bits = await self._read_unconverted(f"{tag}_TOP", top)
+        with self.env.axi_monitor.declared_unknown_rdata():
+            rresp, resolvable, bits = await self._read_unconverted(f"{tag}_TOP", top)
         bresp = await self._write_past(f"{tag}_TOP", top)
         beats = self.env.axi_monitor.r_beats - beats_before
         assert beats == 1, f"{tag}_TOP @ 0x{top:08x}: monitor saw {beats} R beats, want 1"
@@ -565,7 +567,8 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         return (
             f"{tag}_TOP {unit} aperture 0x{LOCAL_BASE_RESET + first:08X}.."
             f"0x{LOCAL_BASE_RESET + last:08X} @0x{top:08x} rresp={rname} bresp={bname} "
-            f"(data not converted; rdata_resolvable={resolvable} rdata_bits={bits}; "
+            f"(data not converted, read declared observed-only to the monitor; "
+            f"rdata_resolvable={resolvable} rdata_bits={bits}; "
             f"monitor R beats={beats}; measured, LINKED-ISSUE SF-003, SF-004)"
         )
 

@@ -28,6 +28,9 @@ accepted beat it checks:
 
 A read that must accept unknown data opens ``open_unknown_rdata_window``
 around its AR handshake; its beats are then exempt from both X rules.
+``declared_unknown_rdata`` does that and, for the length of the read, also
+holds the bench's ``tb_rdata_known_hold``, which keeps the R-data-known SVA
+on this port's links from judging the same beats.
 
 A leaf that names the port with the bench's ``+axi_sva_need_<port>`` plusarg
 (``sep_in``, ``sys_in``, ``jtag_in``) fails unless the monitor saw at least one
@@ -38,6 +41,7 @@ prefix without its response-channel signals fails.
 
 from __future__ import annotations
 
+import contextlib
 from collections import deque
 
 import cocotb
@@ -226,6 +230,24 @@ class SmcAxiMonitor(uvm_component):
 
     def close_unknown_rdata_window(self) -> None:
         self._unknown_rdata_window = max(0, self._unknown_rdata_window - 1)
+
+    @contextlib.contextmanager
+    def declared_unknown_rdata(self):
+        """Exempt the reads issued inside from both X rules, here and in the bench SVA.
+
+        The exemption covers only the ARs that handshake inside the block; the
+        bench hold is released on exit, after the last beat has been sampled.
+        """
+        hold = getattr(cocotb.top, "tb_rdata_known_hold", None)
+        self.open_unknown_rdata_window()
+        if hold is not None:
+            hold.value = 1
+        try:
+            yield
+        finally:
+            if hold is not None:
+                hold.value = 0
+            self.close_unknown_rdata_window()
 
     def _decerr_expected(self, addr: int | None) -> bool:
         if self.allow_decerr:

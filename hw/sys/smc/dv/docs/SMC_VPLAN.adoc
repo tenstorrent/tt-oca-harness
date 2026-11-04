@@ -14619,7 +14619,8 @@ the component map documents for that window, and an OKAY access on the same path
   the first address past their register extent and at the last word of their 0x1000 aperture. The
   UART and I3C windows declare no past-extent response, so only their aperture-end word is read
   and written and the response codes are printed, not compared; the read data of these two reads
-  is never converted, and the monitor counts exactly one R beat for each.
+  is never converted, each read is declared to the AXI monitor as observed-only so its beat is
+  exempt from the X rules, and the monitor counts exactly one R beat for each.
 * In each of the four UART/log-engine wrappers (BASE + 0x6000 + N * 0x400), the first word past
   the 64-byte UART space (+0x140), the first word past the log-engine registers (+0x280) and the
   first word of the gap the generated `uart_log_engine_wrap` map leaves after its control block
@@ -49007,7 +49008,7 @@ draws nothing from the seed.
 * The integration shell keeps each I3C instance's DAT and DCT in a single-port RAM, with a read-valid flop that a read reaching the RAM sets. No other leaf reads either table on any instance. The I3C CSR window maps both tables (`registers.rdl`: `external DAT` at `0x400`, `external DCT` at `0x800`), and `smc_addr.h` gives their per-instance bases and the instance count, six.
 * **DAT.** `DAT_structure.rdl` makes every field of an entry `sw = rw`. The leaf reads entry 0 of every instance, writes each instance a pattern of its own over the fields the RDL declares, and then reads all six back after all six are written. A read answered without reaching the RAM, or from another instance's RAM, returns the wrong pattern. Each entry is then cleared and read back 0. Nothing writes the RAM before the leaf, so a four-state simulator reads the first read as X. That read only has to show that the entry does not already hold the pattern on every declared bit.
 * **DCT.** `DCT_structure.rdl` makes every field `sw = r`. Only dynamic address assignment writes the table, and this bench does not run it, so its content is not specified: X under a four-state simulator, 0 under a two-state one. The leaf reads entry 0 of every instance twice, as four 32-bit words. Every read must complete with RRESP OKAY, and the two passes must agree on every bit known in both; an X matches anything. The read completing is what sets the RAM's read-valid flop.
-* The SEP_IN master converts each read beat to an int and cannot hold X, so the reads of unwritten entries are taken from a tap on its R channel. The tap records each beat's RRESP and data as sampled and hands the master a copy with unresolvable data zeroed; the master's return value is not used for those reads.
+* The SEP_IN master converts each read beat to an int and cannot hold X, so the reads of unwritten entries are taken from a tap on its R channel. The tap records each beat's RRESP and data as sampled and hands the master a copy with unresolvable data zeroed; the master's return value is not used for those reads. Each tapped read is declared to the AXI monitor as observed-only, so its beats are exempt from the monitor's X rules and from the bench's R-data-known assertion; every other read of the leaf is judged.
 * The I3C cores themselves are outside this plan's scope; the leaf credits the shell's table RAMs and the CSR-window path to them, not I3C protocol.
 
 *Test Procedure*:

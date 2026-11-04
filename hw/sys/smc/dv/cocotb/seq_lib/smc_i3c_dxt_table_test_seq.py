@@ -27,7 +27,9 @@ The SEP_IN master converts every read beat to an int and cannot represent X, so
 the reads of unwritten entries -- the DAT before its write, and the DCT -- are
 taken from `_RawReadTap`, which records each beat's RRESP and
 data as sampled on the bus. The master is handed a copy with any unresolvable
-data zeroed, and its return value is not used.
+data zeroed, and its return value is not used. Each of those reads is declared
+to the AXI monitor, which exempts its beats from the X rules; every other read
+of the leaf is judged.
 """
 
 from __future__ import annotations
@@ -154,7 +156,8 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
         for word in range(words_in_entry):
             addr = addr_of(instance, word)
             tap.beats.clear()
-            await self.csr_read(f"{tag}{instance}_W{word}", addr)
+            with self.env.axi_monitor.declared_unknown_rdata():
+                await self.csr_read(f"{tag}{instance}_W{word}", addr)
             assert len(tap.beats) == 1, (
                 f"I3C{instance} {tag} word {word} @ 0x{addr:08x}: {len(tap.beats)} read beats "
                 f"recorded for a single-beat read"
@@ -229,9 +232,12 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-I3C-DCT-TABLE-READ: DCT entry 0 of each of the %d I3C instances was read "
             "twice as %d words through the I3C CSR window, every read completing with RRESP "
-            "OKAY, and the two passes agreed on all %d bits known in both (of %d read)",
+            "OKAY, and the two passes agreed on all %d bits known in both (of %d read); "
+            "%d raw-read beats were declared to the AXI monitor as observed-only and "
+            "exempt from its X rules, every other beat was judged",
             self.dct_checked,
             DCT_WORDS,
             self.dct_known_bits,
             self.dct_checked * DCT_BITS,
+            self.env.axi_monitor.r_beats_exempt,
         )

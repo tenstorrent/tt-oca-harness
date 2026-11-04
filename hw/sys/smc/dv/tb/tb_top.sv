@@ -3623,7 +3623,7 @@ module smc_uvm_top
     ) u_sep_in_data_sva (
         .aclk      (clk_smc),
         .aresetn   (rst_primary_smc_clk_no),
-        .en_i      (`SMC_AXI_SVA_ON && sep_in_axi_sva_armed),
+        .en_i      (`SMC_AXI_SVA_ON && sep_in_axi_sva_armed && (tb_rdata_known_hold !== 1'b1)),
         `SMC_AXI_DK_W_IDLE(64),
         `SMC_AXI_DK_R(sep_axi_in_resp),
         .w_beats_o (axi_dk_w_sep_in),
@@ -3714,7 +3714,7 @@ module smc_uvm_top
     ) u_periph_data_sva (
         .aclk      (clk_smc),
         .aresetn   (rst_primary_smc_clk_no),
-        .en_i      (`SMC_AXI_SVA_ON),
+        .en_i      (`SMC_AXI_SVA_ON && (tb_rdata_known_hold !== 1'b1)),
         `SMC_AXI_DK_W_IDLE(32),
         `SMC_AXI_DK_R(u_dut.u_smc.axil_peripherals_resp),
         .w_beats_o (axi_dk_w_periph),
