@@ -5075,10 +5075,8 @@ args = [
 # smc_out and ext_in forwarding cells, the ext_in DECERR cell, the aperture
 # edges at reset, the 57-bit carry, the 32-bit SEP size edge and a reprogram
 # with a read in flight. The SEP aperture registers are written over the SEP
-# debug module's system bus. Only the VCS run is evidence for this leaf: the
-# need gates, the X rules and the data-known rules grade there and not under
-# Verilator, where the leaf prints INFO-RUN-MODE and runs for the coverage set
-# alone.
+# debug module's system bus. The need gates, the X rules and the data-known
+# rules grade under VCS only.
 # Access budget, JTAG2AXI accesses (about 10 us each) and SEP system-bus
 # accesses (several DMI scans each) per step: S1 12 + 3, S2 18, S3 5, S4 14,
 # S5 2, S6 3 + 1, S7 5 + 8; about 60 JTAG2AXI and 12 system-bus accesses.
@@ -5090,6 +5088,9 @@ firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 5400
 tags = ["fabric", "axi", "axi_sva"]
+# The leaf reads the crossbar smc_out port structs by hierarchy, which the
+# Verilator build does not expose.
+tools = ["vcs"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smc_rom_default.hex",
