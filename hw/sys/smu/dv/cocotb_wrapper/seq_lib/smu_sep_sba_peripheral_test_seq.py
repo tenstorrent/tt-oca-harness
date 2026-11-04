@@ -39,15 +39,21 @@ S6: the security-disable token (``hw/sys/sep/doc/security_disable.adoc``).
     from the SEP into the SMC. The security-disable level after the mismatch
     is recorded: no specification states whether a mismatch withdraws an
     earlier match.
-S7: the SEP watchdog (OpenTitan ``aon_timer``). With WDOG_CTRL.enable set and a
-    small bite threshold, the watchdog bites and requests a reset ("A bite
-    triggers a reset", ``aon_timer.hjson``). "A bite from the SMC or SEP
+S7: the SEP watchdog (OpenTitan ``aon_timer``). WDOG_BARK_THOLD and
+    WDOG_BITE_THOLD, which reset to 0 and are software read-write
+    (``aon_timer.rdl``), are written with 0x20 and must read back 0x20 before
+    WDOG_CTRL.enable is set; the watchdog then bites and requests a reset ("A
+    bite triggers a reset", ``aon_timer.hjson``). "A bite from the SMC or SEP
     watchdog asserts the shared watchdog reset (`rst_wdt_n` at the SMU level)"
     and "Resetting the watchdog clears its bite" (``doc/trm/src/reset.adoc:44-46``);
     the SEP ``wdt_timer_rst_req_o`` "Holds until `wdt_rst_ni` resets the
-    watchdog" (``hw/sys/sep/doc/port_table.adoc:25-26``). So the request is low
-    before the enable, rises, ``rst_wdt_n`` goes low while it is high, and the
-    request then falls.
+    watchdog" (``hw/sys/sep/doc/port_table.adoc:25-26``). Sampled at the SMU on
+    every clk_smu_i rising edge, ``sep_wdt_timer_rst_req`` reads 0 and
+    ``rst_wdt_n`` 1 before the enable, the request reads 1 at some edge, one
+    edge shows the request 1 and ``rst_wdt_n`` 0 in the same sample, and the
+    request then reads 0. The SMC reset unit extends the watchdog reset by 32
+    reference clock cycles (``doc/trm/src/reset.adoc:46-48``), so ``rst_wdt_n``
+    stays low for more than one clk_smu_i period.
 S8: the bench drives GPIO pads 4..7, 10 and 54 high while the chip runs, in
     cold reset and after it, and records what SPI receive lanes 4..7, DQS and
     the rebar loopback read. The GPIO pin table assigns those pads to the SMC
@@ -166,6 +172,8 @@ WDOG_BARK = _sep("WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR")
 WDOG_BITE = _sep("WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR")
 WDOG_COUNT = _sep("WDT_TIMER_WDOG_COUNT_BASE_ADDR")
 WDOG_ENABLE = c_header_u32(_AON_H, "AON_TIMER__WDOG_CTRL__ENABLE_bm")
+WDOG_BARK_MASK = c_header_u32(_AON_H, "AON_TIMER__WDOG_BARK_THOLD__THRESHOLD_bm")
+WDOG_BITE_MASK = c_header_u32(_AON_H, "AON_TIMER__WDOG_BITE_THOLD__THRESHOLD_bm")
 WDOG_THOLD = 0x20
 WDT_REQ_PATH = "sep_wdt_timer_rst_req"
 WDT_RESET_PATH = "rst_wdt_n"
@@ -432,31 +440,46 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         await self._sb_ok(jtag, WDOG_BARK, 2, WDOG_THOLD)
         await self._sb_ok(jtag, WDOG_BITE, 2, WDOG_THOLD)
         await self._sb_ok(jtag, WDOG_COUNT, 2, 0)
+        thresholds = (
+            await self._read_ok(jtag, WDOG_BARK) & WDOG_BARK_MASK,
+            await self._read_ok(jtag, WDOG_BITE) & WDOG_BITE_MASK,
+        )
+        if thresholds != (WDOG_THOLD, WDOG_THOLD):
+            raise AssertionError(
+                f"watchdog thresholds read back (bark, bite)=({thresholds[0]:#x}, "
+                f"{thresholds[1]:#x}), want ({WDOG_THOLD:#x}, {WDOG_THOLD:#x})"
+            )
         # The bite clears itself a few clk_i after the reset asserts, including
-        # while the enable write is still on the debug bus.
-        seen = {"high": 0, "reset": 0}
+        # while the enable write is still on the debug bus. Cycles count
+        # clk_smu_i edges from the monitor's start.
+        seen = {"cycle": 0, "high": None, "reset": None}
 
         async def watch() -> None:
             while True:
-                if self._smu(WDT_REQ_PATH) == 1:
-                    seen["high"] = 1
-                if seen["high"] and self._smu(WDT_RESET_PATH) == 0:
-                    seen["reset"] = 1
+                req = self._smu(WDT_REQ_PATH)
+                if req == 1 and seen["high"] is None:
+                    seen["high"] = seen["cycle"]
+                if req == 1 and seen["reset"] is None and self._smu(WDT_RESET_PATH) == 0:
+                    seen["reset"] = seen["cycle"]
                 await ClockCycles(self.dut.clk_smu_i, 1)
+                seen["cycle"] += 1
 
         monitor = cocotb.start_soon(watch())
         await self._sb_ok(jtag, WDOG_CTRL, 2, WDOG_ENABLE)
         for _ in range(WDT_BOUND):
-            if seen["high"] == 1:
+            if seen["high"] is not None:
                 break
             await ClockCycles(self.dut.clk_smu_i, 1)
-        bitten = seen["high"]
+        bitten = int(seen["high"] is not None)
         released = await self._settle(WDT_REQ_PATH, 0, WDT_BOUND)
         monitor.cancel()
-        wdt_reset = seen["reset"]
+        wdt_reset = int(seen["reset"] is not None)
         self._log(
             f"CHK-SEP-WDT-BITE idle={idle} rst_wdt_n_before={reset_before} "
-            f"bitten={bitten} rst_wdt_n_low_after_bite={wdt_reset} released={released}"
+            f"thold_bark={thresholds[0]:#x} thold_bite={thresholds[1]:#x} "
+            f"bitten={bitten} req_high_cycle={seen['high']} "
+            f"rst_wdt_n_low_while_req_high={wdt_reset} at_cycle={seen['reset']} "
+            f"released={released}"
         )
         sb.expect_eq(
             "CHK-SEP-WDT-BITE",

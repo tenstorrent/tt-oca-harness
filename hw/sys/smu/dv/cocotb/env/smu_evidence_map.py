@@ -2869,8 +2869,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-WDT-BITE",
             "CHK-SEP-WDT-BITE",
-            "the SEP watchdog reset request is low before the watchdog is enabled, rises "
-            "when it bites, and falls without a cool or primary reset",
+            "the SEP watchdog reset request is low and rst_wdt_n high before the watchdog is "
+            "enabled; with the bark and bite thresholds read back as 0x20 it rises when it "
+            "bites, one clk_smu_i sample shows the request high and rst_wdt_n low together, "
+            "and the request falls again",
         ),
     ],
     "smu_sep_stap_hold_reset_test": [
@@ -3361,12 +3363,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OTP-FABRIC-BLOCKED",
             "CHK-OTP-FABRIC-BLOCKED",
-            "with the bridge's PTAP disable input at 1 before and after, a SINGLE_OP read "
-            "on the primary TAP moves neither the AW nor the AR handshake count on the "
-            "DTP -> SMC debug AXI port, no AWVALID, WVALID or ARVALID is high or X/Z on "
-            "any clk_smu_i edge of the window, and the bridge's SINGLE_OP capture reads "
-            "op 0 and address 0 (update not latched); the open-posture control is "
-            "smu_sep_dbg_gating_test_dev_test",
+            "with SMC_AXI_SINGLE_OP selected, a non-zero pattern and its complement "
+            "shifted through the SINGLE_OP register come back after exactly 132 bits; "
+            "then, with the bridge's PTAP disable input at 1 before and after, a "
+            "SINGLE_OP read on the primary TAP moves neither the AW nor the AR handshake "
+            "count on the DTP -> SMC debug AXI port, no AWVALID, WVALID or ARVALID is high "
+            "or X/Z on any clk_smu_i edge of the window, and the bridge's SINGLE_OP "
+            "capture reads op 0 and address 0 (update not latched); the open-posture "
+            "controls are smu_jtag2axi_access_matrix_rand_test (same driver: "
+            "make_smu_jtag_tap and pack_single_op) and smu_sep_dbg_gating_test_dev_test",
         ),
         (
             "CHK-OTP-SMC-RW-WHILE-BLOCKED",
