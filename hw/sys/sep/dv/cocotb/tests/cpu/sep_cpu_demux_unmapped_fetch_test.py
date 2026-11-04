@@ -82,8 +82,8 @@ write to the secure DMA registers; ``OBS-EXT-READ`` logs every NMI.
 The trap cause and value of an unmapped fetch and the cause of an ICCM data
 access are graded. ``INFO-IFU-TRAP`` re-logs every trap record, which
 ``CHK-IFU-TRAP`` grades. ``INFO-LSU-ICCM`` re-logs the two trap causes, which
-``CHK-LSU-ICCM-CAUSE`` grades, and the load value, which holds the bench preset when the
-load traps. ``OBS-LSU-ICCM-DMA-STATUS`` logs the SECURE_DMA ``STATUS`` of each copy, which
+``CHK-LSU-ICCM-CAUSE`` grades, and the load value. When the load traps, the value holds
+the bench preset; when it does not, ``CHK-LSU-ICCM`` grades it and the line names that check. ``OBS-LSU-ICCM-DMA-STATUS`` logs the SECURE_DMA ``STATUS`` of each copy, which
 no check grades. Every expected value comes from the drawn plan and the staged images; no
 expected value is read from the DUT.
 
@@ -1018,10 +1018,11 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         )
         self.logger.info(
             "INFO-LSU-ICCM LOG load_mcause=%s store_mcause=%s load_value=%s "
-            "cause_graded_by=CHK-LSU-ICCM-CAUSE",
+            "cause_graded_by=CHK-LSU-ICCM-CAUSE value_graded_by=%s",
             ",".join(f"0x{r.val:x}" for r in traps) or "-",
             ",".join(f"0x{r.val:x}" for r in straps) or "-",
             "X" if load_val is None else f"0x{load_val:08x}",
+            "-" if traps else "CHK-LSU-ICCM",
         )
         dma = [(f"0x{v:08x}", _dma_status_bits(v)) for v in dma_st[:3]]
         dma += [("-", "-")] * (3 - len(dma))
