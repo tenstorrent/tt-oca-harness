@@ -318,7 +318,9 @@ Observation probe groups:
   `u_otbn.u_prim_edn_rnd_req.u_prim_sync_reqack_data`, 3 OTBN URND
   `u_otbn.u_prim_sync_reqack_data_urnd`): the word the client takes on its
   handshake clock. No register shows that word for KMAC or OTBN URND. Owner:
-  `sep_trng_ext_sink_reset_rand_test`.
+  `sep_trng_ext_sink_reset_rand_test`. These taps can record a clear and an
+  acknowledgement on the same clock. That observation is not a graded
+  checker; the test contract defines the graded adapter-clear behaviour.
 * DRBG seed-packer ready tap (`drbg_seed_word_ready_o`, read-only, no
   force): `csrng_word_ready_o` of the CSRNG seed adapter of the DRBG
   (`u_csrng_seed_adapter`), the ready of the packer that takes each ESRC
@@ -870,6 +872,9 @@ Observation probe groups:
   The DMA master request after the alias remap (`dma_axi_req`) is the
   existing fabric sampler tap. Owners: the owning tests of the SPI and DMA
   groups.
+
+No test forces `sec_dis`. SEC_DISABLE checks retain the token and lifecycle
+path through `feat_ctrl` as an end-to-end DUT stitch.
 
 Exceptions (a closed set):
 
@@ -1949,6 +1954,12 @@ through real sense.
 |Named evidence |Test / sequence logs |`CHK-* PASS` lines required for audit
 |Regression parsing |Global DV parser |Positive cocotb / `results.xml` evidence — exit 0 alone is not enough
 |===
+
+Some firmware tests evaluate several semantic conditions under one positive
+PASS line. Their verdict counters still fail the leaf, but that line does not
+independently prove each checker. This applies to
+`sep_spi_ot_dma_rx_test`, `sep_dma_cpu_contention_test`, and
+`sep_mailbox_plic_test`.
 
 RTL SVA participation depends on the backend. Under Verilator, first-party
 and OpenTitan concurrent macros expand to nothing because those headers test

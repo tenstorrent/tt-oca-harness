@@ -277,8 +277,8 @@ TOTAL_ADDRS = tuple(
 BASELINE_PARK = ("otbn", "aes", "hmac", "kmac", "abr")
 T_DRAWN = (4, 5, 7)
 # Shard 3 runs both of these trip thresholds, in a drawn order, in place of 3 and
-# T_d: the green shard then trips at 5 and at 7 on every seed. The reset leg reads
-# the 4 on every seed, and the alert test grades the trip at 3.
+# T_d. It trips at 5 and at 7 on every seed. The reset leg reads 4 on every
+# seed, and the alert test grades the trip at 3.
 T_SHARD3 = (5, 7)
 WINDOWS = (256, 512)
 GAPS = (2, 3, 4)

@@ -39958,7 +39958,7 @@ module sep_fcov (
     }
     // {DEST_VALID bit (0 HMAC, 1 KMAC, 2 AES, 3 OTBN, 4 ABR ML-DSA seed),
     // size against the share width (0 below, 1 equal, 2 above)}. The below
-    // cells are blocked on a Planned check (docs/SEP_FCOV.adoc) and not declared.
+    // cells are non-claimed (docs/SEP_FCOV.adoc) and not declared.
     cp_km_size_vs_width: coverpoint v[4:0] iff (pt == 5'd3) {
       bins hmac[] = {5'b000_01, 5'b000_10};
       bins kmac[] = {5'b001_01, 5'b001_10};

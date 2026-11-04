@@ -57,6 +57,15 @@
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
+*Evidence granularity*: The firmware emits one aggregate PASS line after all
+firmware-side checks complete; it does not emit an independent positive line
+for each named checker. The verdict is gated by the firmware pass and fail
+counters and the firmware PASS magic. The host counts the eight
+`CHK-DELIVER`, `CHK-RW1C` and `CHK-NOSTORM` records independently and grades
+the probe-based checks separately. Firmware-side checks without a dedicated
+record share the aggregate line, which is not independent evidence for each
+such contract.
+
 '''''
 
 [[sep_irq_ip_to_aggregator_test]]
@@ -237,8 +246,9 @@ each. Both halves are programmed and graded on every seed; `reseed = 3`.
 `STATUS.read_level_above` need the receive FIFO filled from the peer side,
 which this aperture cannot do, so the golden predicts `read_level_above` as
 constant false and no vehicle grades it. Data round-trip readback is not
-claimed for the same reason. Both need the external inbound master — see
-<<known-limitations>>.
+claimed for the same reason. `sep_mailbox_peer_rx_rirqt_test` owns both
+contracts: it fills the receive FIFO through the external inbound master and
+grades the read threshold and payload round trip.
 
 '''''
 

@@ -14,8 +14,8 @@ schema_version = 1
 #
 # Production Boot ROM firmware tests live in rom_fw.toml. They run
 # in the `rom_fw` group only -- not `cpu`, and not `all`; this VPLAN does not
-# grade them (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known
-# Limitations). They are still defined here through `includes` so a caller can
+# grade them (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, Verification Scope).
+# They are still defined here through `includes` so a caller can
 # name them, and so the catalog stays one file set.
 includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml", "rom_fw.toml"]
 
