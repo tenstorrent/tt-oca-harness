@@ -238,7 +238,9 @@ Observation probe groups:
   the watchdog alert (`wdt_alert`) and bark interrupt (`intr_wdog_timer_bark`)
   at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`
   (the bark line, sampled at the AR of each `INTR_STATE` read of a graded
-  watchdog run, is the bark-line clause of CHK-WDT-ORDER and CHK-WDT-MAX);
+  watchdog run, is the bark-line clause of CHK-WDT-ORDER and CHK-WDT-MAX;
+  the alert reads 0 before an `ALERT_TEST` write and rises after it,
+  CTRL-WDT-ALERT-REACH);
   user `sep_nmi_vector_bark_rand_test` (CTRL-NMI-NESTED: the bark clocks
   while the NMI handler runs).
   `jtag_sep_reset_n_ovrd_probe_o`, the
