@@ -676,6 +676,16 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
     async def _ext_window_trial(self, rx: int, offset: int) -> str:
         """Pop at `offset` clk_periph_i cycles from the last beat of one more message."""
         dut = cocotb.top
+
+        async def periph_cycles(cycles: int) -> None:
+            # The beat and AXI drivers hold a value from one clk_smc_i edge to the next.
+            # A clk_periph_i edge coincides with a clk_smc_i edge on this bench, and a
+            # wait that returns on it resumes in that edge's timestep: a value set there
+            # is lifted on the same edge and the DUT never samples it. Resume on the
+            # clk_smc_i edge instead, so the value spans a full cycle.
+            await ClockCycles(dut.clk_periph_i, cycles)
+            await RisingEdge(dut.clk_smc_i)
+
         label = f"WINDOW_D{offset:+d}"
         await self._ext_fill(rx, WINDOW_FILL_IDS, label)
         packet = _frame_all_ones_message(WINDOW_ID)
@@ -685,13 +695,13 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         last = len(beats) - 1
         if offset < 0:
             pop = cocotb.start_soon(self._ext_pop(label, rx))
-            await ClockCycles(dut.clk_periph_i, -offset)
+            await periph_cycles(-offset)
             await _atb_write_beat(dut, beats[last], beat=last, rx=rx, atid=EXT_ATID[rx])
             await pop
         else:
             await _atb_write_beat(dut, beats[last], beat=last, rx=rx, atid=EXT_ATID[rx])
             if offset:
-                await ClockCycles(dut.clk_periph_i, offset)
+                await periph_cycles(offset)
             await self._ext_pop(label, rx)
 
         # The pop has landed; the push has landed once the queue is full again or
