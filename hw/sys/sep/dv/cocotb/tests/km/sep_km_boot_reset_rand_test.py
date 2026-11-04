@@ -91,10 +91,12 @@ Checks:
                   AW, of a KM boot: the slave received that request just before
                   the reset is sampled low, and its response must not reach the
                   master, because the warm reset discards the in-flight state of
-                  the KM fabric (``architecture.adoc:179-180``). The dropped
+                  the KM fabric and register CPU interfaces
+                  (``architecture.adoc:179-180``). The dropped
                   request reaches port 1 (KMCSR) only: the first AR and AW of a
-                  boot go there. Ports 0, 2 and 3 are graded for response
-                  pairing only; port 2 carries no B traffic here. Graded on the slave side of the KM crossbar, on
+                  boot go there. Ports 0, 2 and 3 receive no dropped request and
+                  are graded by the same rules; port 2 carries no B traffic
+                  here. Graded on the slave side of the KM crossbar, on
                   the ports the KM warm reset resets (KPV, KMCSR, DRBG sampler,
                   mailbox; ``architecture.adoc:167-176,179-180``): the R and B
                   valids read 0 in every sample from the first sample with the
@@ -337,8 +339,8 @@ class _NoResp:
     its port is not above its B count. The window ends at the next sample
     with the reset at 0 (``rst``, not graded) or READY_BOUND_CLK samples after
     the release (``bound``). W may lead its AW, so W is graded at the window
-    end only (the graded slaves take a W only after its AW, so a window end
-    between a W and its AW does not occur on this bench): a graded port with more W than AW handshakes since the release
+    end only (the crossbar routes a W to a slave no earlier than its AW, so a
+    window end between a W and its AW does not occur on this bench): a graded port with more W than AW handshakes since the release
     is in ``w_unpaired``, write data with no address since the release. The
     CHK is logged then, with OBS-RST-AXI-EXT-RSP, which logs the same R and B
     pairing on the external ports (KM_PORTS_EXT) and grades nothing. An
