@@ -53640,12 +53640,29 @@ no outbound entry; the outbound filter owner issues no DMA launch, drives no res
 inbound entry; `smc_infilt_rule_cg` samples only while an inbound entry at an index of 2 to 15 has
 been written since the gate rose (a SEP_IN write completed at an entry register) and one is enabled
 in the sampler's shadow table, and `smc_outfilt_rule_cg` samples only while an outbound entry has
-been written since the gate rose; each written flag clears on every rise of the gate. Drives no
+been written since the gate rose; each written flag clears on every rise of the gate.
+`smc_alias_remap_cg` samples only while a region register has been accessed over SEP_IN since the
+gate rose (a write completed OKAY at a region register, or a read of one; the flag clears on every
+rise), which no other owner does under its gate. `smc_sys_out_error_cg` samples only once a zeroer
+`DEST_ADDR` or `SIZE` write completed over SEP_IN while the gate was high, a flag that holds to the
+next cold reset; no other owner writes a zeroer register under its gate (the reset owner writes them
+before its gate), so the SYS_OUT errors the random-stress leaf injects under its own gate open no
+cell. `smc_outstanding_cg` samples only once two of the window's accesses have been outstanding
+together on SEP_IN or SYS_IN since the gate rose, until the gate falls; every other owner issues its
+SEP_IN and SYS_IN accesses one at a time under its gate. The SYS_OUT-error owner launches DMA copies
+inside its window, and the `NEXT_ID_0` read of a launch is the sample event of
+`smc_dma_geometry_cg`, so that owner holds the gate low over each launch (the register writes and
+the read of the baseline copy and of the errored and recovery copies of every DMA pass) and raises
+it again before the copy's first burst, which the DMA issues only after the read has returned; the
+alias-remap, random-stress and timing owners issue no DMA launch and drive no reset, and the
+filter-window writes of the random-stress and timing owners precede their gates. Drives no
 `smc_wrapper` port and changes no stimulus.
-|The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov` and `smc_filt_fcov` in
-`hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
+|The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov` and
+`smc_fabric_fcov` in `hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
 |`smc_dma_transfer_matrix_rand_test`, `smc_reset_mid_transaction_rand_test`,
-`smc_infilt_rule_matrix_rand_test`, `smc_outfilt_rule_matrix_rand_test`
+`smc_infilt_rule_matrix_rand_test`, `smc_outfilt_rule_matrix_rand_test`,
+`smc_alias_remap_attr_rand_test`, `smc_sys_out_error_inject_rand_test`,
+`smc_axi_random_stress_test`, `smc_axi_channel_timing_ports_test`
 |===
 
 [[smc-vplan-phase3-proposed-drives]]
