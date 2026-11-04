@@ -1859,6 +1859,8 @@ module smc_uvm_top
     assign tb_plic_pending_329  = `SMC_PLIC.pending_328;
     assign tb_plic_pending_330  = `SMC_PLIC.pending_329;
     assign tb_plic_pending_332  = `SMC_PLIC.pending_331;
+    assign tb_plic_pending_321  = `SMC_PLIC.pending_320;
+    assign tb_plic_pending_322  = `SMC_PLIC.pending_321;
 
     assign tb_clint_mtime      = `SMC_CLINT.time_0;
     assign tb_clint_mtimecmp0  = `SMC_CLINT.pad;
