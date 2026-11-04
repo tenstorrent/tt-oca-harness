@@ -919,7 +919,7 @@ feature rows.
 |`smc_periph_regblock_sweep_test` |3 |The peripheral register blocks no other leaf writes -- AVSBus, telemetry, system timer, eFuse interface, DMA configuration and the log-engine region registers -- cycled against their RDL contract and restored.
 |`smc_rdl_field_sweep_test` |3 |Every software-owned field of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, plus the adopter strap capture registers, driven against its generated RDL contract and restored.
 |`smc_regblock_subword_strobe_sweep_test` |3 |One reference register of each of the 133 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
-|`smc_axil_narrow_zero_strobe_write_test` |3 |Narrow and zero-strobe writes over SEP_IN to the 64-bit AXI-Lite links: eleven strobe patterns on the plain CPU_CTRL registers with full-width restores, the reset-unit 32-bit registers, the base configuration and WSTRB 0x00 writes, the core 3 watchdog byte-enable rule with its KEY protocol, the mutex acquire-on-read and release-on-write sequence, the mailbox hole answers, the zeroer start, ISOLATE_REQ_SMC_REG, RESET_CTRL start bits, SEMA and the lock registers; every unstated strobe semantics is observed and never compared.
+|`smc_axil_narrow_zero_strobe_write_test` |3 |Narrow and zero-strobe writes over SEP_IN to the 64-bit AXI-Lite links: eleven strobe patterns on the plain CPU_CTRL registers with full-width restores, the reset-unit 32-bit registers, the base configuration and WSTRB 0x00 writes, the core 3 watchdog byte-enable rule with its KEY protocol, the mutex acquire-on-read and release-on-write sequence, the mailbox hole answers, the zeroer start, ISOLATE_REQ_SMC_REG, RESET_CTRL start bits, SEMA and the lock registers; the zeroer start under WSTRB 0x00, 0x0F and 0xF0 is graded by `smc_zeroer_strobe_error_status_test`, and the remaining unstated strobe semantics are observed.
 |`smc_register_boundary_depth_test` |3, planned upgrade |Run a compact safe register-boundary sweep.
 |`smc_register_boundary_depth_test` |3 |Run a compact safe register-boundary sweep.
 |`smc_register_sanity_test` |1 |Run the SMC OSS register-sanity scenario.
@@ -1018,11 +1018,13 @@ single-byte writes.
 |`smc_dma_invalid_descriptor_test` |3 |ENABLED_ND-cleared and zero-length DMA commands move no data against a valid copy; every NEXT_ID_0 read returns a non-zero transfer ID and DONE_0 and STATUS_0 are measured.
 |`smc_dma_linear_copy_test` |2 |Linear DMA copies match byte for byte across offsets and sizes.
 |`smc_zeroer_busy_outstanding_test` |3 |Zeroer stays busy to the last B; over 32 bursts; AW/W in order.
-|`smc_zeroer_busy_trigger_obs_test` |3, held out |A second `CTRL_STATUS` trigger in the issue and drain windows of a running clear, recorded for #3422.
+|`smc_zeroer_busy_trigger_test` |3 |A `CTRL_STATUS` write in ST_ISSUE_* completes OKAY and starts nothing; in ST_IDLE with responses outstanding it starts a new clear at once, STATUS stays 1 and the completion interrupt pulses once.
 |`smc_zeroer_irq_test` |3 |Zeroer completion pulse comes once, after the last B, only with INT_EN.
 |`smc_zeroer_job_breadth_test` |3 |Zeroer jobs clear exactly their range: aligned, high, random.
 |`smc_zeroer_resp_unchecked_test` |3 |Zeroer jobs complete despite SLVERR and DECERR write responses.
 |`smc_zeroer_sram_init_test` |3 |Zeroer clears SRAM and egress ranges; odd local targets are probed.
+|`smc_zeroer_capture_burst_test` |3 |DEST_ADDR and SIZE are captured at the trigger, full bursts carry AWLEN 255, SIZE stores 64 bits, BREADY is constant 1.
+|`smc_zeroer_strobe_error_status_test` |3 |CTRL_STATUS writes with WSTRB 0x00, 0x0F and 0xF0 each start a clear; STATUS reads 1 through the CSR in ST_ERROR and 0 after a cold reset.
 |`smc_dma_transfer_matrix_rand_test` |3 |Seeded DMA copy geometry, with a drawn row width,
 row count, strides, unaligned starts and burst-shaping `CONFIG`, copies the bytes exactly and
 retires the transfer ID, while a transfer with `ENABLED_ND` clear moves no data and still retires
@@ -50895,6 +50897,18 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-power,POWER>>
 |RAND-NONE
 |none; directed, the seed selects only timing: the AW and W stall lengths and the per-beat stalls; the busy and ordering contracts hold whatever the timing.
+|`smc_zeroer_busy_trigger_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_zeroer_capture_burst_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_zeroer_strobe_error_status_test`
+|<<smc-vplan-area-power,POWER>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_zeroer_irq_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-NONE
@@ -52915,13 +52929,13 @@ top-port drive and the point of an error inject.
 |Existing bench hook
 |Forces an unused encoding into the eFuse interface controller or the Zeroer state flop, or an error into the eFuse read path, so the block must fail closed and recover.
 |The state flops of the eFuse interface controller and the Zeroer; the eFuse read response
-|`smc_state_fault_inject_test`
+|`smc_state_fault_inject_test`, `smc_zeroer_strobe_error_status_test`
 |<<smc-vplan-area-fabric,FABRIC>>
 |`tb_output_axi_resp_hold`
 |Existing bench hook
 |Holds or errors the SYS_OUT responder's channels so a transfer stalls, is back-pressured or sees a one-shot `SLVERR` or `DECERR`.
 |The SYS_OUT AXI responder
-|`smc_output_fabric_slverr_inject_test`, `smc_sys_out_path_responder_control_test`, `smc_dma_backpressure_breadth_test`, `smc_dma_backpressure_test`, `smc_dma_burst_shaping_test`, `smc_dma_completion_status_test`, `smc_dma_invalid_descriptor_test`, `smc_zeroer_busy_outstanding_test`, `smc_zeroer_resp_unchecked_test`, `smc_outstage_order_test`, `smc_region_zero_reset_recovery_test`, `smc_hang_data_timeout_window_test`, `smc_hang_detector_data_timeout_test`, `smc_log_engine_fetch_error_test`
+|`smc_output_fabric_slverr_inject_test`, `smc_sys_out_path_responder_control_test`, `smc_dma_backpressure_breadth_test`, `smc_dma_backpressure_test`, `smc_dma_burst_shaping_test`, `smc_dma_completion_status_test`, `smc_dma_invalid_descriptor_test`, `smc_zeroer_busy_outstanding_test`, `smc_zeroer_busy_trigger_test`, `smc_zeroer_capture_burst_test`, `smc_zeroer_resp_unchecked_test`, `smc_outstage_order_test`, `smc_region_zero_reset_recovery_test`, `smc_hang_data_timeout_window_test`, `smc_hang_detector_data_timeout_test`, `smc_log_engine_fetch_error_test`
 |<<smc-vplan-area-fabric,FABRIC>>
 |`tb_sep_axi_r_hold`, `tb_sep_axi_b_hold`, `tb_sys_axi_r_hold`
 |Existing bench hook
@@ -53421,7 +53435,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |to follow |`smc_flr_hold_edge_requeue_test` |`rtl_issue` |An FLR edge met while the cool-reset hold counter runs restarts the pre-reset count, and when that count outlasts the hold `rst_cool_no` pulses a second time, where `clk_rst.adoc` states the sequencer is not a queue of overlapping requests; the leaf arms with one request and asserts one pulse of that width for edges inside the count and inside the hold (the issue number follows once filed)
 |to follow |`smc_clock_gate_inflight_completes_test` |`rtl_issue` |The I2C register block runs on the gated peripheral clock and the peripheral side of its AXI-Lite CDC on the ungated one, so a response handed over as `I2C_CG_EN` closes the gate is taken more than once and every later read of the leg receives the previous read's word, where `clk_rst.adoc` states an accepted access finishes there; the leaf arms with an open and a closed read and asserts every swept read completes once with the leg idle after it (the issue number follows once filed)
 |to follow |`smc_fabric_demux_bucket_limits_test` |`rtl_issue` |The vendored `axi_demux` sizes its per-ID-bucket in-flight counter to `clog2(MaxTrans)` bits and reports the bucket full when it is all ones, so the fabric demultiplexers admit 31 same-ID reads per ID bucket and the local crossbar's demux 7 per manager, where the module's parameter contract and `fabric.adoc` give `FabricMaxTrans` 32 and `MaxMstTrans` 8; the leaf holds RREADY, probes at the counters' own handshake points, requires the port behind each demux to withhold nothing, and asserts the chapter's numbers (the issue number follows once filed)
-|#3422 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |A `CTRL_STATUS` trigger while the zeroer is busy has no stated rule; the `OBS-ZEROER-BUSY` lines record the issue and drain windows, the CHK line grades liveness only
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
 |===
 
@@ -54061,6 +54074,247 @@ in: `all`, `hosted`, `cpu`.
 bits.
 
 '''''
+[[sec-580-smc_zeroer_busy_trigger_test]]
+===== 580 `smc_zeroer_busy_trigger_test`
+
+*Phase*: 3
+
+*Area*: POWER
+
+*Source Module*: `smc_zeroer_busy_trigger_test`
+
+*BFM / Model*: SEP_IN AXI sequencer (`env.sys_axi_agent`, no protocol VIP); a ZEROER_DMA
+protocol-VIP record booked for the run; the TB SYS_OUT output-fabric responder (`cfg.sys_out_mem`)
+with its backdoor memory; TB input pin `tb_top.tb_output_axi_resp_hold` driven 0 and 1 to hold the B
+responses; passive probes sampled at every `clk_smc_i` rise: `tb_zeroer_state`, `tb_zeroer_busy`,
+`tb_zeroer_outstanding`, `tb_zeroer_trigger`, `tb_zeroer_intp`, `tb_zeroer_awvalid`,
+`tb_zeroer_awready`, `tb_zeroer_awaddr`, `tb_zeroer_bvalid`, `tb_zeroer_bready`; zeroer registers
+`DEST_ADDR`, `SIZE` and `CTRL_STATUS` (`INT_EN` bit 0, `STATUS` bit 32)
+
+*Run mode*: one testlist entry in `testlists/dma.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`, `zeroer`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: A `CTRL_STATUS` write in ST_ISSUE_* completes OKAY and starts nothing; in ST_IDLE with
+responses outstanding it starts a new clear at once, STATUS stays 1 and the completion interrupt
+pulses once.
+
+*Test Coverage*:
+
+* A `CTRL_STATUS` write is considered only in `ST_IDLE`: while the machine is in `ST_ISSUE_ADDR` or
+  `ST_ISSUE_DATA` the write completes with OKAY but starts nothing; once the last burst has been
+  issued the machine is back in `ST_IDLE`, so a write while write responses are still outstanding
+  starts a new clear at once; `STATUS` reads 1 in both windows and stays 1 across back-to-back
+  clears, and the completion interrupt pulses once, when `STATUS` falls to 0 (`zeroer.adoc`, the
+  state-machine paragraph; `zeroer_ctrl.rdl`, `CTRL_STATUS`).
+* Issue window: with `DEST_ADDR` and `SIZE` read back as a second poisoned 4 KiB region, a second
+  trigger written while a 64 KiB job is in an issue state must answer OKAY; the 32 AW handshakes
+  of the window (SIZE / 2048) must all lie in the first region, the second region must keep its
+  poison, `STATUS` must read 1 at the polls before it falls, `ST_IDLE` must not be entered before
+  the first job's last AW and must not be left again after it, and exactly one completion pulse
+  must occur.
+* Drain window: with the B responses of a 2 KiB job held after its last AW, `STATUS` must read 1
+  and the trigger of a 4 KiB job must land in `ST_IDLE` with at least one response outstanding; the
+  machine must leave `ST_IDLE` and the first AW of the second region must handshake within 256
+  rises with the responses still held, no B handshake and `tb_zeroer_outstanding` at least the held
+  count; after the release `STATUS` must read 1 at every poll until all B handshakes of both jobs
+  are consumed, both regions must read zero, and `tb_zeroer_intp` must rise exactly once, after the
+  last B handshake.
+
+*Expectation Sources*: `hw/sys/smc/doc/zeroer.adoc` (the paragraph after the "SMC memory zeroer
+state machine and AXI write flow" figure); `hw/ip/zeroer/regs/zeroer_ctrl.rdl` (`CTRL_STATUS`).
+
+*Test Procedure*:
+
+Drive `smc_zeroer_busy_trigger_test_seq`. Each checker below is a named compare the DUT can fail;
+a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ZEROER-BUSY-TRIGGER-ISSUE-IGNORED` |`DEST_ADDR` and `SIZE` read back as the second region; the
+  second `CTRL_STATUS` write landed in `ST_ISSUE_ADDR` or `ST_ISSUE_DATA` and answered OKAY; the 32
+  AW handshakes of the window all lie in the first region, the second region keeps all its poison
+  bytes, `ST_IDLE` is entered once after the first job's last AW and never left again, `STATUS`
+  reads 1 then falls to 0 and one completion pulse occurs
+|`CHK-ZEROER-BUSY-TRIGGER-DRAIN-STARTS` |With the first job's responses held, `STATUS` reads 1 and the
+  second `CTRL_STATUS` write lands in `ST_IDLE` with responses outstanding and answers OKAY; the
+  machine leaves `ST_IDLE` and the first AW of the second region handshakes while they are still
+  held, with `tb_zeroer_outstanding` at least the held count, `STATUS` reads 1 at every poll until
+  all B handshakes are consumed, both regions read zero and `tb_zeroer_intp` rises once, after the
+  last B
+|===
+
+*Pass Criteria*: both checkers hold and every sequence assert holds: each window's trigger lands in
+its state, both first jobs retire with their regions zero and `STATUS` 0. Enrolled in: `all`,
+`hosted`.
+
+'''''
+
+[[sec-581-smc_zeroer_capture_burst_test]]
+===== 581 `smc_zeroer_capture_burst_test`
+
+*Phase*: 3
+
+*Area*: POWER
+
+*Source Module*: `smc_zeroer_capture_burst_test`
+
+*BFM / Model*: SEP_IN AXI sequencer (`env.sys_axi_agent`, no protocol VIP); a ZEROER_DMA
+protocol-VIP record booked for the run; the TB SYS_OUT output-fabric responder (`cfg.sys_out_mem`)
+with its backdoor memory; TB input pin `tb_top.tb_output_axi_resp_hold` driven 0 and 1 to hold the B
+responses; passive probes sampled at every `clk_smc_i` rise: `tb_zeroer_state`, `tb_zeroer_busy`,
+`tb_zeroer_outstanding`, `tb_zeroer_trigger`, `tb_zeroer_awvalid`, `tb_zeroer_awready`,
+`tb_zeroer_awaddr`, `tb_zeroer_awlen`, `tb_zeroer_bvalid`, `tb_zeroer_bready`; zeroer registers
+`DEST_ADDR`, `SIZE` and `CTRL_STATUS` (`INT_EN` bit 0, `STATUS` bit 32)
+
+*Run mode*: one testlist entry in `testlists/dma.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`, `zeroer`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: DEST_ADDR and SIZE are captured at the trigger, full bursts carry AWLEN 255, SIZE
+stores 64 bits, BREADY is constant 1.
+
+*Test Coverage*:
+
+* `SIZE` is a 64-bit RW byte count (`zeroer_ctrl.rdl`): all ones, 0 and the 64 walking-one words
+  must each read back exactly, with no trigger strobe and no AW handshake during the walk, and
+  `SIZE` restored to 0.
+* A write to `CTRL_STATUS` while `SIZE` is non-zero captures `DEST_ADDR` and `SIZE`; later writes
+  to those registers do not affect the clear in progress (`zeroer.adoc`, the state-machine
+  paragraph). With the B responses of a 64 KiB job held, `DEST_ADDR` and `SIZE` are rewritten to a
+  second poisoned 4 KiB region while the machine is in an issue state with at least one AW out and
+  its response held, and before all its AWs are out; after the release every AW handshake must lie
+  in the original range, the second region must
+  keep its poison, and both registers must read back the rewritten values during and after the job.
+* Maximum burst length 256 beats, `AWLEN = 255`, on the 64-bit data path (`zeroer.adoc`, AXI4 master
+  characteristics): an 8 KiB job at a 4 KiB-aligned address must issue exactly SIZE / 2048 bursts,
+  every one with AWLEN 255, and the range must read zero.
+* The write-response channel is always ready (`zeroer.adoc`): `tb_zeroer_bready` must read 1 at
+  every sampled rise of the leaf, which must include rises with a response held (hold set and
+  `tb_zeroer_outstanding` above 0), rises with responses outstanding and no hold, and rises with
+  the zeroer idle, and the B handshakes
+  counted through it must equal the AW handshakes.
+
+*Expectation Sources*: `hw/sys/smc/doc/zeroer.adoc` (state machine, "SMC zeroer AXI4 Master
+Characteristics", "Outstanding Transaction Management"); `hw/ip/zeroer/regs/zeroer_ctrl.rdl`.
+
+*Test Procedure*:
+
+Drive `smc_zeroer_capture_burst_test_seq`. Each checker below is a named compare the DUT can fail;
+a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ZEROER-SIZE-PATTERN` |All ones, 0 and the 64 walking-one words read back exactly over `SIZE`,
+  no trigger strobe and no AW handshake during the walk (every later `CTRL_STATUS` write raises
+  exactly one strobe), `SIZE` restored to 0 and `STATUS` 0
+|`CHK-ZEROER-CAPTURE-AT-START` |`DEST_ADDR` and `SIZE` rewritten in an issue state of the held 64 KiB
+  job with at least one AW out and its response held, before all its AWs are out; every AW
+  handshake lies in the original range, the rewritten
+  range keeps its poison, the original range is zero, and both registers read back the rewritten
+  values during and after the job
+|`CHK-ZEROER-AWLEN-255` |The 8 KiB job at a 4 KiB-aligned address issues exactly SIZE / 2048 bursts,
+  every one with AWLEN 255, and the range is zero
+|`CHK-ZEROER-BREADY-CONSTANT` |`tb_zeroer_bready` reads 1 at every sampled rise, with rises held
+  (a response outstanding under the hold), outstanding-without-hold and idle each present, and the
+  B handshakes equal the AW handshakes
+|`CHK-NONVAC` |The five step stamps are strictly increasing and the four checker lines appear in
+  step order, each after its own compare
+|===
+
+*Pass Criteria*: all five checkers hold and every sequence assert holds: the rewrite lands during
+the clear and every job retires with `STATUS` 0. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-582-smc_zeroer_strobe_error_status_test]]
+===== 582 `smc_zeroer_strobe_error_status_test`
+
+*Phase*: 3
+
+*Area*: POWER
+
+*Source Module*: `smc_zeroer_strobe_error_status_test`
+
+*BFM / Model*: SEP_IN AXI sequencer (`env.sys_axi_agent`, no protocol VIP) with explicit `WSTRB`
+single-beat writes; a ZEROER_DMA protocol-VIP record booked for the run; the TB SYS_OUT
+output-fabric responder (`cfg.sys_out_mem`) with its backdoor memory; TB input pins
+`tb_output_axi_resp_hold` (holds the B response), `tb_zeroer_state_inject` /
+`tb_zeroer_state_inject_en` (force an encoding into the zeroer state flop) and `rst_cold_ni`; passive probes sampled at every `clk_smc_i` rise: `tb_zeroer_state`,
+`tb_zeroer_busy`, `tb_zeroer_trigger`, `tb_zeroer_intp`, `tb_zeroer_awvalid`, `tb_zeroer_awready`;
+zeroer registers `DEST_ADDR`, `SIZE` and `CTRL_STATUS` (`INT_EN` bit 0, `STATUS` bit 32)
+
+*Run mode*: one testlist entry in `testlists/dma.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`, `zeroer`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: CTRL_STATUS writes with WSTRB 0x00, 0x0F and 0xF0 each start a clear; STATUS reads 1
+through the CSR in ST_ERROR and 0 after a cold reset.
+
+*Test Coverage*:
+
+* Any write to `CTRL_STATUS` triggers the start of the zeroer, irrespective of `WSTRB`, including a
+  write with no byte lanes enabled (`zeroer_ctrl.rdl`). After a full-strobe control start that
+  writes `INT_EN` 1, an 8-byte write with `WSTRB` 0x00, 0x0F and 0xF0 over a 64-byte region shown
+  poisoned, with the B response held, must each raise one trigger strobe, issue one AW that stays
+  outstanding with no B handshake while the hold lasts, read `STATUS` 1 in that window, zero the
+  64 bytes once the hold is released, leave `INT_EN` at its value before the write when lane 0 is
+  disabled (a disabled lane carries no write data, AMBA AXI write strobes) or take the written bit
+  when lane 0 is enabled, and raise one completion pulse exactly when `INT_EN` is 1 after the
+  write; every disabled-lane word differs from the `INT_EN` it meets (0x00 writes 0 under
+  `INT_EN` 1, 0xF0 writes 1 under `INT_EN` 0), so a start that honoured a disabled lane is told by
+  `INT_EN`.
+* `STATUS` 1 means the zeroer is active, has pending work, or is in an error state; 0 means idle
+  (`zeroer_ctrl.rdl`); `ST_ERROR` holds the zeroer busy, with no interrupt, until reset
+  (`zeroer.adoc`). With `INT_EN` set beforehand by a `CTRL_STATUS` write while `SIZE` is 0 (no AW,
+  machine still in `ST_IDLE`) and encoding 3'b011 forced into the state flop from `ST_IDLE`, the
+  machine must enter `ST_ERROR`; a `CTRL_STATUS` read must have `STATUS` 1 with `INT_EN` still 1
+  and the other bits unchanged, a second read 64 rises later must still, `DEST_ADDR` and `SIZE`
+  must keep their values, no AW and no interrupt rise may occur and the programmed region must keep
+  its poison; after a cold reset `CTRL_STATUS` must read 0 in `ST_IDLE`.
+
+*Expectation Sources*: `hw/ip/zeroer/regs/zeroer_ctrl.rdl` (`CTRL_STATUS`, `STATUS`);
+`hw/sys/smc/doc/zeroer.adoc` ("SMC zeroer state machine" table).
+
+*Test Procedure*:
+
+Drive `smc_zeroer_strobe_error_status_test_seq`. Each checker below is a named compare the DUT can
+fail; a token is emitted only after that compare holds. The cold reset is the last stimulus.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ZEROER-ZERO-STROBE-START` |The full-strobe control and the `WSTRB` 0x00, 0x0F and 0xF0 writes
+  to `CTRL_STATUS` each raise one trigger strobe, issue one AW that is outstanding with no B while
+  the response is held and `STATUS` reads 1, zero the poisoned 64-byte region, leave `INT_EN`
+  unchanged on a disabled lane 0 or written on an enabled one, and pulse the completion interrupt
+  once exactly when `INT_EN` is 1
+|`CHK-ZEROER-ERROR-STATUS-CSR` |With `INT_EN` set and the state flop forced to 3'b011 the machine
+  enters `ST_ERROR`; two `CTRL_STATUS` reads have `STATUS` 1 with `INT_EN` still 1 and the other
+  bits unchanged, `DEST_ADDR` and `SIZE` are unchanged, no AW and no interrupt rise occur, the
+  region keeps its poison, and after the cold reset `CTRL_STATUS` reads 0 in `ST_IDLE`
+|`CHK-NONVAC` |The three step stamps are strictly increasing and the two checker lines appear in
+  step order, each after its own compare
+|===
+
+*Pass Criteria*: all three checkers hold and every sequence assert holds. Enrolled in: `all`,
+`hosted`.
+
+'''''
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
 ===== 161 `smc_occp_dual_unsecure_boot_test`
 
@@ -54158,11 +54412,10 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_r
 
 '''''
 
-The two observation leaves of `held_out` (`smc_zeroer_busy_trigger_obs_test`,
-`smc_flr_counter_timing_obs_test`) pass today: each logs `OBS-*` lines for the
-value its specification issue (#3422, #3423) has to rule on and grades nothing
-about it. When the ruling lands the `OBS-*` line becomes a `CHK-*` grade and
-the leaf joins its feature testlist.
+The one observation leaf of `held_out` (`smc_flr_counter_timing_obs_test`) passes
+today: it logs `OBS-*` lines for the value its specification issue (#3423) has to
+rule on and grades nothing about it. When the ruling lands the `OBS-*` line
+becomes a `CHK-*` grade and the leaf joins its feature testlist.
 
 ===== SV-UVM held-out scenarios
 
@@ -56135,7 +56388,6 @@ which runs a `c_compile` stage, is run on demand with the toolchain image
 |`smc_occp_dual_unsecure_boot_test` |`occp_rom` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |Toolchain as above and a runner budget that fits the complete 33-case `items: occp_rom` group, including this hours-long member
 |`smc_cpu_mmio_read_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`: the wedge image is built with RISC-V GCC and picolibc, so no hosted-runner tier can run it. The two `smc_cpu_l2_*_wedge_test` leaves beside it in `cpu.toml` need no image and are enrolled in `hosted`; these two are not |Toolchain as above; the leaf then joins `hosted` alongside the L2 pair and this row closes
 |`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |As above
-|`smc_zeroer_busy_trigger_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records what a `CTRL_STATUS` trigger does while the zeroer is busy and grades nothing about it; #3422 asks the zeroer chapter and `zeroer_ctrl.rdl` for the rule |#3422 is ruled: the `OBS-ZEROER-BUSY` line becomes a `CHK-ZEROER-BUSY-TRIGGER` grade and the leaf joins its feature testlist
 |`smc_flr_counter_timing_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It measures the FLR pre-delay and hold on `clk_ref_i` and grades nothing about them; #3423 asks `reset_unit.rdl` to name the clock and the offset |#3423 is ruled: the `OBS-FLR` lines become `CHK-FLR-PRE-DELAY-CYCLES` and `CHK-FLR-HOLD-CYCLES` grades and the leaf joins `reset`
 |`smc_fabric_demux_bucket_limits_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It grades `FabricMaxTrans` 32 per ID bucket at the SEP region demux and `MaxMstTrans` 8 at the local crossbar's SEP_IN demux with RREADY held and measures 31 and 7, the `axi_demux` counter sizing; `expect_fail` grades the recorded failure as PASS |The chapter or the parameters settle the number: the leaf grades it and joins `fabric`
 |===

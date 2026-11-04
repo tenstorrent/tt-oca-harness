@@ -1936,6 +1936,7 @@ module smc_uvm_top
     assign tb_zeroer_wstrb   = `SMC_ZEROER.mst_axi_req_o.w.strb;
     assign tb_zeroer_wdata   = `SMC_ZEROER.mst_axi_req_o.w.data;
     assign tb_zeroer_bvalid  = `SMC_ZEROER.mst_axi_resp_i.b_valid;
+    assign tb_zeroer_bready  = `SMC_ZEROER.mst_axi_req_o.b_ready;
     assign tb_zeroer_outstanding = `SMC_ZEROER.outstanding_reqs;
     assign tb_zeroer_dest_addr   = `SMC_ZEROER.dest_addr;
     assign tb_zeroer_size        = `SMC_ZEROER.size;
