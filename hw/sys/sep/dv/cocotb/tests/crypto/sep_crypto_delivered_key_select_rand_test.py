@@ -65,7 +65,7 @@ Checkers:
                             window of NOKEY_WINDOW_FACTOR x t_side clocks shows
                             OUTPUT_VALID = 0 (``hw/ip/key_manager/doc/firmware.adoc``
                             :1798, Shred: "Clear `key_valid`, then overwrite both
-                            shares"; ``hw/ip/key_manager/doc/architecture.adoc``:283,
+                            shares"; ``hw/ip/key_manager/doc/architecture.adoc``:291,
                             the shares and KEY_CTRL.KEY_VALID drive the engine's
                             sideload port; ``crypto.adoc``:191-192, "while it is 0
                             the destination has no valid key or seed";

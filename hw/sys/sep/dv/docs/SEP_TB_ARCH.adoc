@@ -475,12 +475,24 @@ Observation probe groups:
    took place; stores after that fetch are not in the capture. User:
    `sep_km_handover_rand_test` (CHK-HO-SRAM).
 * Key Manager CPU AXI valid tap (KM-AXIV, `km_cpu_axi_valid_o[2:0]`,
-  `km_cpu_axi_ready_o[2:0]`, `km_cpu_rst_n_o`): the request valids of the KM
-  CPU AXI4-Lite master `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1
-  `aw_valid`, bit 0 `w_valid`, the readies of the same channels from
-  `cpu_axil_resp` in the same bit order, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
-  the PicoRV32 core and the `aresetn` of the KM AXI SVA. Read only, on every
-  clock. User: `sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID).
+  `km_cpu_axi_ready_o[2:0]`, `km_cpu_rst_n_o`, `km_cpu_axi_port_ar_hs_o[9:0]`,
+  `km_cpu_axi_port_aw_hs_o[9:0]`, `km_cpu_axi_port_w_hs_o[9:0]`,
+  `km_cpu_axi_port_r_valid_o[9:0]`,
+  `km_cpu_axi_port_b_valid_o[9:0]`, `km_cpu_axi_port_r_hs_o[9:0]`,
+  `km_cpu_axi_port_b_hs_o[9:0]`): the request valids of the KM CPU AXI4-Lite
+  master `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1 `aw_valid`,
+  bit 0 `w_valid`, the readies of the same channels from `cpu_axil_resp` in
+  the same bit order, and the KM CPU warm reset `rst_warm_sync_n`, which is the
+  reset of the PicoRV32 core and the `aresetn` of the KM AXI SVA. The seven port
+  outputs are the slave side of the KM crossbar `u_xbar`
+  (`xbar_mst_req`/`xbar_mst_resp` of `km_axi_lite_xbar`), bit _i_ = master
+  port _i_ (0 KPV, 1 KMCSR, 2 DRBG sampler, 3 mailbox, 4 OTBN, 5 AES, 6 KMAC,
+  7 HMAC, 8 OTP, 9 Adams Bridge): the AR, AW and W handshakes (valid and
+  ready both 1), the R and B valids, and the R and B handshakes. Read only, on
+  every clock. Users: `sep_km_boot_reset_rand_test` (all outputs:
+  CHK-RST-AXI-VALID, CHK-RST-AXI-NORESP, CTRL-RST-AXI-HANDSHAKE,
+  CTRL-RST-AXI-RSP-LIVE, OBS-RST-AXI-EXT-RSP), `sep_km_fault_inject_rand_test` and
+  `sep_km_kmcsr_reset_rand_test` (`km_cpu_rst_n_o` only).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
   `u_sep_fcov` port list: the KM CPU AXI master and its error
@@ -1389,7 +1401,8 @@ Exceptions (a closed set):
   `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`, with
   `MASTER_SYNC_RESET` = 1: the AR, AW and W valids may be high on the first
   edge that samples the reset low and must be low from the next edge on (AXI
-  A3.1.2 gives no reset-entry timing). No TB master can reach that port.
+  A3.1.2 gives no reset-entry timing; `hw/ip/key_manager/doc/architecture.adoc:185-191`,
+  "Reset Conditioning"). No TB master can reach that port.
   Protocol, not data.
 * *VeeR CPU AXI SVA* — four observation-only `ocah_axi_sva` instances in
   `tb_top.sv` (`u_cpu_lsu_axi_sva`, `u_cpu_ifu_axi_sva`, `u_cpu_sb_axi_sva`,
