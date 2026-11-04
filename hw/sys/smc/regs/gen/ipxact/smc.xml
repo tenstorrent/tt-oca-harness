@@ -6291,7 +6291,7 @@ a log entry. The log entries go through round robin arbitration.</ipxact:descrip
           <ipxact:addressOffset>'hc0007000</ipxact:addressOffset>
           <ipxact:range>'h400</ipxact:range>
           <ipxact:register>
-            <ipxact:name>LOCKS</ipxact:name>
+            <ipxact:name>HARNESS_LOCKS</ipxact:name>
             <ipxact:description>Lock controls for each fuse field. When write locked, the corresponding field is not
 programmable. When read locked, the shadow register is not readable.</ipxact:description>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
@@ -7103,8 +7103,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>spare27_write_lock</ipxact:name>
-              <ipxact:description>Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.</ipxact:description>
+              <ipxact:name>spare_tail_write_lock</ipxact:name>
+              <ipxact:description>Spare tail write lock (slot 31). When set, no SPARE_TAIL element is writable.</ipxact:description>
               <ipxact:bitOffset>62</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7116,8 +7116,848 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>spare27_read_lock</ipxact:name>
-              <ipxact:description>Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.</ipxact:description>
+              <ipxact:name>spare_tail_read_lock</ipxact:name>
+              <ipxact:description>Spare tail read lock (slot 31). When set, no SPARE_TAIL element is readable.</ipxact:description>
+              <ipxact:bitOffset>63</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>SUPPLEMENTARY_LOCKS</ipxact:name>
+            <ipxact:description>Lock controls for the supplementary fuse region. When write locked, the corresponding
+supplementary lock region is not programmable. When read locked, its shadow register is
+not readable.</ipxact:description>
+            <ipxact:addressOffset>'h8</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>region0_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 0 write lock. When set, supplementary lock region 0 is not writable.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region0_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 0 read lock. When set, supplementary lock region 0 is not readable.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region1_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 1 write lock. When set, supplementary lock region 1 is not writable.</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region1_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 1 read lock. When set, supplementary lock region 1 is not readable.</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region2_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 2 write lock. When set, supplementary lock region 2 is not writable.</ipxact:description>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region2_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 2 read lock. When set, supplementary lock region 2 is not readable.</ipxact:description>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region3_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 3 write lock. When set, supplementary lock region 3 is not writable.</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region3_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 3 read lock. When set, supplementary lock region 3 is not readable.</ipxact:description>
+              <ipxact:bitOffset>7</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region4_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 4 write lock. When set, supplementary lock region 4 is not writable.</ipxact:description>
+              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region4_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 4 read lock. When set, supplementary lock region 4 is not readable.</ipxact:description>
+              <ipxact:bitOffset>9</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region5_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 5 write lock. When set, supplementary lock region 5 is not writable.</ipxact:description>
+              <ipxact:bitOffset>10</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region5_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 5 read lock. When set, supplementary lock region 5 is not readable.</ipxact:description>
+              <ipxact:bitOffset>11</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region6_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 6 write lock. When set, supplementary lock region 6 is not writable.</ipxact:description>
+              <ipxact:bitOffset>12</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region6_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 6 read lock. When set, supplementary lock region 6 is not readable.</ipxact:description>
+              <ipxact:bitOffset>13</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region7_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 7 write lock. When set, supplementary lock region 7 is not writable.</ipxact:description>
+              <ipxact:bitOffset>14</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region7_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 7 read lock. When set, supplementary lock region 7 is not readable.</ipxact:description>
+              <ipxact:bitOffset>15</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region8_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 8 write lock. When set, supplementary lock region 8 is not writable.</ipxact:description>
+              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region8_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 8 read lock. When set, supplementary lock region 8 is not readable.</ipxact:description>
+              <ipxact:bitOffset>17</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region9_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 9 write lock. When set, supplementary lock region 9 is not writable.</ipxact:description>
+              <ipxact:bitOffset>18</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region9_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 9 read lock. When set, supplementary lock region 9 is not readable.</ipxact:description>
+              <ipxact:bitOffset>19</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region10_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 10 write lock. When set, supplementary lock region 10 is not writable.</ipxact:description>
+              <ipxact:bitOffset>20</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region10_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 10 read lock. When set, supplementary lock region 10 is not readable.</ipxact:description>
+              <ipxact:bitOffset>21</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region11_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 11 write lock. When set, supplementary lock region 11 is not writable.</ipxact:description>
+              <ipxact:bitOffset>22</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region11_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 11 read lock. When set, supplementary lock region 11 is not readable.</ipxact:description>
+              <ipxact:bitOffset>23</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region12_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 12 write lock. When set, supplementary lock region 12 is not writable.</ipxact:description>
+              <ipxact:bitOffset>24</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region12_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 12 read lock. When set, supplementary lock region 12 is not readable.</ipxact:description>
+              <ipxact:bitOffset>25</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region13_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 13 write lock. When set, supplementary lock region 13 is not writable.</ipxact:description>
+              <ipxact:bitOffset>26</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region13_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 13 read lock. When set, supplementary lock region 13 is not readable.</ipxact:description>
+              <ipxact:bitOffset>27</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region14_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 14 write lock. When set, supplementary lock region 14 is not writable.</ipxact:description>
+              <ipxact:bitOffset>28</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region14_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 14 read lock. When set, supplementary lock region 14 is not readable.</ipxact:description>
+              <ipxact:bitOffset>29</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region15_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 15 write lock. When set, supplementary lock region 15 is not writable.</ipxact:description>
+              <ipxact:bitOffset>30</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region15_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 15 read lock. When set, supplementary lock region 15 is not readable.</ipxact:description>
+              <ipxact:bitOffset>31</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region16_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 16 write lock. When set, supplementary lock region 16 is not writable.</ipxact:description>
+              <ipxact:bitOffset>32</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region16_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 16 read lock. When set, supplementary lock region 16 is not readable.</ipxact:description>
+              <ipxact:bitOffset>33</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region17_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 17 write lock. When set, supplementary lock region 17 is not writable.</ipxact:description>
+              <ipxact:bitOffset>34</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region17_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 17 read lock. When set, supplementary lock region 17 is not readable.</ipxact:description>
+              <ipxact:bitOffset>35</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region18_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 18 write lock. When set, supplementary lock region 18 is not writable.</ipxact:description>
+              <ipxact:bitOffset>36</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region18_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 18 read lock. When set, supplementary lock region 18 is not readable.</ipxact:description>
+              <ipxact:bitOffset>37</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region19_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 19 write lock. When set, supplementary lock region 19 is not writable.</ipxact:description>
+              <ipxact:bitOffset>38</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region19_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 19 read lock. When set, supplementary lock region 19 is not readable.</ipxact:description>
+              <ipxact:bitOffset>39</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region20_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 20 write lock. When set, supplementary lock region 20 is not writable.</ipxact:description>
+              <ipxact:bitOffset>40</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region20_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 20 read lock. When set, supplementary lock region 20 is not readable.</ipxact:description>
+              <ipxact:bitOffset>41</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region21_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 21 write lock. When set, supplementary lock region 21 is not writable.</ipxact:description>
+              <ipxact:bitOffset>42</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region21_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 21 read lock. When set, supplementary lock region 21 is not readable.</ipxact:description>
+              <ipxact:bitOffset>43</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region22_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 22 write lock. When set, supplementary lock region 22 is not writable.</ipxact:description>
+              <ipxact:bitOffset>44</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region22_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 22 read lock. When set, supplementary lock region 22 is not readable.</ipxact:description>
+              <ipxact:bitOffset>45</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region23_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 23 write lock. When set, supplementary lock region 23 is not writable.</ipxact:description>
+              <ipxact:bitOffset>46</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region23_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 23 read lock. When set, supplementary lock region 23 is not readable.</ipxact:description>
+              <ipxact:bitOffset>47</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region24_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 24 write lock. When set, supplementary lock region 24 is not writable.</ipxact:description>
+              <ipxact:bitOffset>48</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region24_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 24 read lock. When set, supplementary lock region 24 is not readable.</ipxact:description>
+              <ipxact:bitOffset>49</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region25_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 25 write lock. When set, supplementary lock region 25 is not writable.</ipxact:description>
+              <ipxact:bitOffset>50</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region25_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 25 read lock. When set, supplementary lock region 25 is not readable.</ipxact:description>
+              <ipxact:bitOffset>51</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region26_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 26 write lock. When set, supplementary lock region 26 is not writable.</ipxact:description>
+              <ipxact:bitOffset>52</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region26_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 26 read lock. When set, supplementary lock region 26 is not readable.</ipxact:description>
+              <ipxact:bitOffset>53</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region27_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 27 write lock. When set, supplementary lock region 27 is not writable.</ipxact:description>
+              <ipxact:bitOffset>54</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region27_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 27 read lock. When set, supplementary lock region 27 is not readable.</ipxact:description>
+              <ipxact:bitOffset>55</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region28_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 28 write lock. When set, supplementary lock region 28 is not writable.</ipxact:description>
+              <ipxact:bitOffset>56</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region28_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 28 read lock. When set, supplementary lock region 28 is not readable.</ipxact:description>
+              <ipxact:bitOffset>57</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region29_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 29 write lock. When set, supplementary lock region 29 is not writable.</ipxact:description>
+              <ipxact:bitOffset>58</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region29_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 29 read lock. When set, supplementary lock region 29 is not readable.</ipxact:description>
+              <ipxact:bitOffset>59</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region30_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 30 write lock. When set, supplementary lock region 30 is not writable.</ipxact:description>
+              <ipxact:bitOffset>60</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region30_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 30 read lock. When set, supplementary lock region 30 is not readable.</ipxact:description>
+              <ipxact:bitOffset>61</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region31_write_lock</ipxact:name>
+              <ipxact:description>Supplementary region 31 write lock. When set, supplementary lock region 31 is not writable.</ipxact:description>
+              <ipxact:bitOffset>62</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>region31_read_lock</ipxact:name>
+              <ipxact:description>Supplementary region 31 read lock. When set, supplementary lock region 31 is not readable.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7135,7 +7975,7 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
 are admitted while JTAG access to every other fuse field is blocked. Encoding
 is adopter-defined; the harness does not interpret or consume the value. The
 slot-0 read lock still hides the bits when set.</ipxact:description>
-            <ipxact:addressOffset>'h8</ipxact:addressOffset>
+            <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
@@ -7155,7 +7995,7 @@ it.</ipxact:description>
             <ipxact:name>I2C_I3C_ID</ipxact:name>
             <ipxact:description>I2C/I3C interface ID</ipxact:description>
             <ipxact:dim>9</ipxact:dim>
-            <ipxact:addressOffset>'h28</ipxact:addressOffset>
+            <ipxact:addressOffset>'h30</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>interface_id</ipxact:name>
@@ -7176,7 +8016,7 @@ it.</ipxact:description>
             <ipxact:name>SMC_CONFIG</ipxact:name>
             <ipxact:description>SMC boot and configuration controls sourced from fuse. Only the low word carries
 assigned bits, so firmware reads it as a single 32-bit access.</ipxact:description>
-            <ipxact:addressOffset>'h70</ipxact:addressOffset>
+            <ipxact:addressOffset>'h78</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>rom_flip_endianness</ipxact:name>
@@ -7254,7 +8094,7 @@ assigned bits, so firmware reads it as a single 32-bit access.</ipxact:descripti
           <ipxact:register>
             <ipxact:name>OCCP_TRANSPORT_TIMEOUT</ipxact:name>
             <ipxact:description>OCCP transport timeout in the low word; upper word reserved.</ipxact:description>
-            <ipxact:addressOffset>'h78</ipxact:addressOffset>
+            <ipxact:addressOffset>'h80</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>timeout</ipxact:name>
@@ -7284,9 +8124,9 @@ assigned bits, so firmware reads it as a single 32-bit access.</ipxact:descripti
           <ipxact:register>
             <ipxact:name>SPARE</ipxact:name>
             <ipxact:description>Individually lockable 256-bit spare region, reserved for fields assigned after the
-RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:description>
-            <ipxact:dim>28</ipxact:dim>
-            <ipxact:addressOffset>'h80</ipxact:addressOffset>
+RTL is frozen. Each element has its own write/read lock pair in HARNESS_LOCKS.</ipxact:description>
+            <ipxact:dim>27</ipxact:dim>
+            <ipxact:addressOffset>'h88</ipxact:addressOffset>
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>rsvd</ipxact:name>
@@ -7301,13 +8141,34 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>SPARE_TAIL</ipxact:name>
+            <ipxact:description>64-bit spare region at the end of the map, reserved for fields assigned after the
+RTL is frozen. All elements share the slot-31 write/read lock pair in
+HARNESS_LOCKS.</ipxact:description>
+            <ipxact:dim>3</ipxact:dim>
+            <ipxact:addressOffset>'h3e8</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>rsvd</ipxact:name>
+              <ipxact:description>Spare fuse bits for future use.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>64</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>efuse_interface_ctrl</ipxact:name>
           <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
           <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
           <ipxact:addressOffset>'hc0008000</ipxact:addressOffset>
-          <ipxact:range>'h1c</ipxact:range>
+          <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
             <ipxact:name>EFUSE_INTERFACE_CTRL_STATUS</ipxact:name>
             <ipxact:description>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</ipxact:description>
@@ -7402,21 +8263,9 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
-            <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</ipxact:description>
+            <ipxact:description>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR (optionally with read-back), and reports program progress and completion status.</ipxact:description>
             <ipxact:addressOffset>'h4</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>efuse_addr</ipxact:name>
-              <ipxact:description>Bit address to program</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>16</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
             <ipxact:field>
               <ipxact:name>efuse_data</ipxact:name>
               <ipxact:description>Data to program to eFuse.  If this bit is 0, the program request will be ignored</ipxact:description>
@@ -7508,21 +8357,9 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>EFUSE_READ_CTRL</ipxact:name>
-            <ipxact:description>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</ipxact:description>
+            <ipxact:description>eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.</ipxact:description>
             <ipxact:addressOffset>'h8</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>efuse_addr</ipxact:name>
-              <ipxact:description>Bit address to read</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>16</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
             <ipxact:field>
               <ipxact:name>efuse_read_go</ipxact:name>
               <ipxact:description>When set, triggers a read to efuse.</ipxact:description>
@@ -7683,6 +8520,42 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>EFUSE_PROGRAM_ADDR</ipxact:name>
+            <ipxact:description>Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.</ipxact:description>
+            <ipxact:addressOffset>'h1c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>efuse_addr</ipxact:name>
+              <ipxact:description>Bit address to program. An address at or beyond the implemented eFuse size sets efuse_program_addr_error.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>EFUSE_READ_ADDR</ipxact:name>
+            <ipxact:description>Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.</ipxact:description>
+            <ipxact:addressOffset>'h20</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>efuse_addr</ipxact:name>
+              <ipxact:description>Bit address of the word to read. An address at or beyond the implemented eFuse size sets efuse_read_addr_error.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
@@ -49526,7 +50399,7 @@ reaches termination value.</ipxact:description>
           <ipxact:displayName>SMC External Window Address Map</ipxact:displayName>
           <ipxact:description>Adopter-provided external register window, split into mandatory and supplementary regions.</ipxact:description>
           <ipxact:addressOffset>'hc0400000</ipxact:addressOffset>
-          <ipxact:range>'h6548</ipxact:range>
+          <ipxact:range>'hb000</ipxact:range>
           <ipxact:registerFile>
             <ipxact:name>mandatory</ipxact:name>
             <ipxact:displayName>SMC External Mandatory Region Address Map</ipxact:displayName>
@@ -49628,7 +50501,7 @@ Strap assignments in this range:
             <ipxact:displayName>SMC External Supplementary Region Address Map</ipxact:displayName>
             <ipxact:description>Supplementary adopter blocks in the external window: extra controllers, extra GPIO registers, and PVT.</ipxact:description>
             <ipxact:addressOffset>'h4000</ipxact:addressOffset>
-            <ipxact:range>'h2548</ipxact:range>
+            <ipxact:range>'h7000</ipxact:range>
           </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>

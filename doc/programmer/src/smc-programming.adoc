@@ -1545,20 +1545,27 @@ Bits of eFuse data are *One-Time Programmable* -- A bit that is set using the
 control interface can *never* be cleared.
 ====
 
-The `LOCKS` register can be used to lock read and/or write access to fields
-containing eFuse data words. Bits of the `LOCKS` register cannot be cleared
-once they are set by software, but are reset at reset.
+The `HARNESS_LOCKS` register can be used to lock read and/or write access to
+fields containing eFuse data words. Bits of the `HARNESS_LOCKS` register cannot
+be cleared once they are set by software, but are reset at reset.
 
 Locks cover whole fields of eFuse data, not necessarily individual 32-bit words.
 For example, all 9 `I2C_I3C_ID` data words are controlled by a single lock in
-the `LOCKS` register. Accesses through both the shadow registers and direct
-word-read/bit-write accesses through the control interface are affected by the
-setting of the `LOCKS` register.
+the `HARNESS_LOCKS` register. Accesses through both the shadow registers and
+direct word-read/bit-write accesses through the control interface are affected
+by the setting of the `HARNESS_LOCKS` register.
 
 Some fields in the shadow registers may be locked by the hardware integrator.
 In that case, access through the shadow registers is forbidden, regardless of
-the setting of `LOCKS` by software. This locking does not affect
+the setting of `HARNESS_LOCKS` by software. This locking does not affect
 word-read/bit-write accesses through the control interface.
+
+An integration may add a supplementary fuse region after the harness fuses. Its
+shadow registers sit in a window of the SMC external region that the
+integrator chooses, and its fuses start at bit 8192 for the control interface.
+`SUPPLEMENTARY_LOCKS` locks the region in the same way, with one write/read pair per
+lock region: bit 2__n__ write-locks region _n_ and bit 2__n__+1 read-locks it.
+The integration defines the regions and their contents.
 
 The assignment of data fields and words within the eFuse data region can be
 found in the
@@ -1581,7 +1588,8 @@ must therefore assert `program_enable` and `EFUSE_READ_CTRL.read_enable`
 exclusively, never together. Treat each enable as a mode-ownership bit rather
 than sticky configuration: after `PROGRAM_DONE`, deassert `program_enable`
 before any later read, and deassert `read_enable` before starting a program.
-Address, data and the other program fields can be left as they are.
+The address registers, data and the other program fields can be left as they
+are.
 
 .eFuse command-path ownership.
 [plantuml,ocah-smc-efuse-command-path,svg,width=60%,align="center"]
@@ -1602,9 +1610,10 @@ Read --> Idle : clear read_enable
 ===== Program Sequence
 
 . Confirm `EFUSE_READ_CTRL.read_enable` is 0.
-. In `EFUSE_PROGRAM_CTRL`, set `program_enable`, write the target bit address
-  to `efuse_addr`, and set `efuse_data` to 1; only ones can be programmed.
-  Optionally set `efuse_program_read_back` to verify the bit.
+. Write the target bit address to `EFUSE_PROGRAM_ADDR`.
+. In `EFUSE_PROGRAM_CTRL`, set `program_enable` and set `efuse_data` to 1;
+  only ones can be programmed. Optionally set `efuse_program_read_back` to
+  verify the bit.
 . Set `efuse_program_go`.
 . Poll until `program_busy` clears and `program_done` is set.
 . Read `program_status`: 0 is success and 1 is an error. The one-bit field does
@@ -1620,8 +1629,8 @@ There is no read-length field: to read several words, issue one command per
 word and advance the bit address by 32 each time.
 
 . Confirm `EFUSE_PROGRAM_CTRL.program_enable` is 0.
-. In `EFUSE_READ_CTRL`, set `read_enable` and write the word's bit address to
-  `efuse_addr`.
+. Write the word's bit address to `EFUSE_READ_ADDR`.
+. In `EFUSE_READ_CTRL`, set `read_enable`.
 . Set `efuse_read_go`.
 . Poll until `read_busy` clears and `read_done` is set.
 . Check `read_status` before consuming data. A read that reaches the
@@ -1640,6 +1649,8 @@ word and advance the bit address by 32 each time.
 #define EFUSE_CTRL_REG_PROGRAM_CTRL (EFUSE_CTRL_BASE + 0x4)
 #define EFUSE_CTRL_REG_READ_CTRL    (EFUSE_CTRL_BASE + 0x8)
 #define EFUSE_CTRL_REG_READ_DATA    (EFUSE_CTRL_BASE + 0x10)
+#define EFUSE_CTRL_REG_PROGRAM_ADDR (EFUSE_CTRL_BASE + 0x1C)
+#define EFUSE_CTRL_REG_READ_ADDR    (EFUSE_CTRL_BASE + 0x20)
 
 // Register constants.
 #define EFUSE_PROGRAM_CTRL_DATA_ONE 0x10000
@@ -1660,14 +1671,14 @@ word and advance the bit address by 32 each time.
 // Program bit `bit_index` of the OTP bank to a 1.
 // Returns whether or not the write succeeded.
 // Note that this operation is irreversible.
-bool efuse_program_bit(uint16_t bit_index) {
+bool efuse_program_bit(uint32_t bit_index) {
 
     uint32_t ctrl = EFUSE_PROGRAM_CTRL_ENABLE
                       | EFUSE_PROGRAM_CTRL_DATA_ONE
-                      | EFUSE_PROGRAM_CTRL_GO
-                      | bit_index;
+                      | EFUSE_PROGRAM_CTRL_GO;
 
     // Perform the operation.
+    write32(EFUSE_CTRL_REG_PROGRAM_ADDR, bit_index);
     write32(EFUSE_CTRL_REG_PROGRAM_CTRL, ctrl);
 
     // Poll for completion.
@@ -1685,19 +1696,19 @@ bool efuse_program_bit(uint16_t bit_index) {
 // Read the value of bit `bit_index` of the OTP bank into
 // `*bit_value`. Returns whether or not the read succeeded.
 // If the operation fails, `*bit_value` remains unmodified.
-bool efuse_read_bit(uint16_t bit_index, bool *bit_value) {
+bool efuse_read_bit(uint32_t bit_index, bool *bit_value) {
 
     // eFuse reads read a whole word (32-bits) at a time.
     // Get the address of the containing word and bit offset
     // within it for the requested bit.
-    uint16_t word = bit_index & ~0x1F;
-    uint16_t word_bit = bit_index & 0x1F;
+    uint32_t word = bit_index & ~0x1Fu;
+    uint32_t word_bit = bit_index & 0x1F;
 
     uint32_t ctrl = EFUSE_READ_CTRL_ENABLE
-                      | EFUSE_READ_CTRL_GO
-                      | word;
+                      | EFUSE_READ_CTRL_GO;
 
     // Perform the operation.
+    write32(EFUSE_CTRL_REG_READ_ADDR, word);
     write32(EFUSE_CTRL_REG_READ_CTRL, ctrl);
 
     // Poll for completion.

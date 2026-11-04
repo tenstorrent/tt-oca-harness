@@ -24,8 +24,8 @@ module smu #(
                                                                     // clauses give each
                                                                     // field's meaning and
                                                                     // limits.
-  localparam int unsigned SmcAdopterPortWords =  // Adopter shadow port width in words.
-      CFG.SMC_ADOPTER_FUSE_WORDS > 0 ? CFG.SMC_ADOPTER_FUSE_WORDS : 1,
+  localparam int unsigned SmcSupplementaryPortWords =  // Supplementary shadow port width in words.
+      efuse_pkg::supplementary_port_words(CFG.SMC_SUPPLEMENTARY_FUSE.WORDS),
 
   parameter  type         smc_rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,  // SMC ROM request type (cannot live in a packed struct).
   parameter  type         smc_rom_rsp_t             = chipyard_4core_mem_pkg::rom_rsp_t,  // SMC ROM response type.
@@ -192,10 +192,10 @@ module smu #(
   output smc_efuse_pkg::fuse_command_req_t    smc_efuse_shim_command_req_o,  // SMC eFuse shim command request.
   input  smc_efuse_pkg::fuse_command_resp_t   smc_efuse_shim_command_resp_i,  // SMC eFuse shim command response.
   output smc_efuse_pkg::efuse_map_t           smc_shadow_regs_o,  // SMC eFuse shadow-register map.
-  output logic [SmcAdopterPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // SMC adopter fuse shadow
+  output logic [SmcSupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // SMC supplementary fuse shadow
                                                                                // registers; one word tied to
                                                                                // zero without a region.
-                                              smc_adopter_shadow_regs_o,
+                                              smc_supplementary_shadow_regs_o,
 
   output logic [smc_pkg::NumGpioWraps-1:0]  lsio_interface_select_o,  // Per-GPIO-wrap LSIO interface select.
   input  logic [smc_pkg::NumGpioWraps-1:0]  pad2core_i,  // GPIO pad-to-core data.
@@ -711,9 +711,7 @@ module smu #(
     .l1_dcache_data_req_t(smc_l1_dcache_data_req_t),
     .l1_dcache_data_rsp_t(smc_l1_dcache_data_rsp_t),
     .EFUSE_SHIM_SIZE(CFG.SMC_EFUSE_SHIM_SIZE),
-    .ADOPTER_FUSE_BASE(CFG.SMC_ADOPTER_FUSE_BASE),
-    .ADOPTER_FUSE_WORDS(CFG.SMC_ADOPTER_FUSE_WORDS),
-    .ADOPTER_LOCK_REGION_END(CFG.SMC_ADOPTER_LOCK_REGION_END)
+    .SUPPLEMENTARY_FUSE(CFG.SMC_SUPPLEMENTARY_FUSE)
   ) u_smc (
     .clk_smc_i                           (clk_smu_i),
     .clk_ref_i                           (clk_ref_i),
@@ -745,7 +743,7 @@ module smu #(
     .efuse_shim_command_req_o            (smc_efuse_shim_command_req_o),
     .efuse_shim_command_resp_i           (smc_efuse_shim_command_resp_i),
     .shadow_regs_o                       (smc_shadow_regs_o),
-    .adopter_shadow_regs_o               (smc_adopter_shadow_regs_o),
+    .supplementary_shadow_regs_o               (smc_supplementary_shadow_regs_o),
     .lsio_interface_select_o             (lsio_interface_select_o),
     .pad2core_i                          (pad2core_i),
     .core2pad_o                          (core2pad_o),
@@ -1410,22 +1408,6 @@ module smu #(
       CFG.SMC_EFUSE_SHIM_SIZE != 0 &&
       CFG.SMC_EFUSE_SHIM_SIZE < smc_pkg::SmcExternalWindowSize,
       "CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than the smc_external window")
-
-  `OCAH_ASSERT_STATIC(
-      SmcAdopterFuseWindow_A,
-      CFG.SMC_ADOPTER_FUSE_WORDS == 0 ||
-      (CFG.SMC_ADOPTER_FUSE_BASE % 4 == 0 &&
-       CFG.SMC_ADOPTER_FUSE_BASE >= CFG.SMC_EFUSE_SHIM_SIZE &&
-       64'(CFG.SMC_ADOPTER_FUSE_BASE) + 4 * CFG.SMC_ADOPTER_FUSE_WORDS <=
-           smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_ADOPTER_FUSE_BASE_ADDR +
-           smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_ADOPTER_FUSE_SIZE -
-           smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
-      "CFG.SMC_ADOPTER_FUSE_BASE must be word aligned, above the eFuse shim, and leave the window inside the adopter_fuse slot")
-
-  `OCAH_ASSERT_STATIC(
-      SmcAdopterLockRegionEnd_A,
-      smu_pkg::smc_adopter_lock_region_end_valid(CFG),
-      "CFG.SMC_ADOPTER_LOCK_REGION_END must strictly increase, then be 0, and end at CFG.SMC_ADOPTER_FUSE_WORDS")
 
   `OCAH_ASSERT_STATIC(
       SepEfuseShimSize_A,

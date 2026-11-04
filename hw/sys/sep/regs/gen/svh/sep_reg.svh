@@ -1125,7 +1125,7 @@ localparam int unsigned SEP_EFUSE_MAP_SPARE8_REG_ADDR                           
 
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR                                                    = 32'h10930400;
-localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_SIZE                                                         = 32'h0000001C;
+localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_SIZE                                                         = 32'h00000024;
 
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET                               = 32'h00000000;
@@ -1142,6 +1142,10 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_OFFSET  
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR                                      = 32'h10930414;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET                                 = 32'h00000018;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR                                   = 32'h10930418;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_OFFSET                                        = 32'h0000001C;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_ADDR                                          = 32'h1093041C;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_OFFSET                                           = 32'h00000020;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_ADDR                                             = 32'h10930420;
 
 
 //==============================================================================
@@ -6691,6 +6695,8 @@ localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DA
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT                       = 32'h00000000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT                               = 32'h00800000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT                            = 32'h00800000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_DEFAULT                                   = 32'h00000000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_DEFAULT                                      = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_RMA_TOKEN_I_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_EOP_REG_DEFAULT                                                       = 32'h00000000;
@@ -8662,9 +8668,6 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_P
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_MASK         = 32'h400;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_SHIFT        = 10;
 
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK                                   = 32'hFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT                                  = 0;
-
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK                                   = 32'h10000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_SHIFT                                  = 16;
 
@@ -8685,9 +8688,6 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_S
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK                               = 32'h8000000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_SHIFT                              = 27;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK                                      = 32'hFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_SHIFT                                     = 0;
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK                                   = 32'h10000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_SHIFT                                  = 16;
@@ -8721,6 +8721,12 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_R
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_MASK            = 32'h10000000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_SHIFT           = 28;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK                                   = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_SHIFT                                  = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_EFUSE_ADDR_MASK                                      = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_EFUSE_ADDR_SHIFT                                     = 0;
 
 localparam int unsigned EFUSE_MMR_RMA_TOKEN_I_TOKEN_MASK                                                          = 32'hFFFFFFFF;
 localparam int unsigned EFUSE_MMR_RMA_TOKEN_I_TOKEN_SHIFT                                                         = 0;
@@ -11755,24 +11761,24 @@ typedef struct packed {
     logic [0:0]   program_status ;
     logic [0:0]   program_done ;
     logic [0:0]   program_busy ;
-    logic [4:0]   rsvd_0 ;
+    logic [4:0]   rsvd_1 ;
     logic [0:0]   efuse_program_read_back ;
     logic [0:0]   efuse_program_go ;
     logic [0:0]   efuse_data ;
-    logic [15:0]   efuse_addr ;
+    logic [15:0]   rsvd_0 ;
 } efuse_interface_ctrl_efuse_program_ctrl_reg_t;
 
 
 
 typedef struct packed {
     logic [0:0]   read_enable ;
-    logic [0:0]   rsvd_1 ;
+    logic [0:0]   rsvd_2 ;
     logic [0:0]   read_status ;
     logic [0:0]   read_done ;
     logic [0:0]   read_busy ;
-    logic [6:0]   rsvd_0 ;
+    logic [6:0]   rsvd_1 ;
     logic [0:0]   efuse_read_go ;
-    logic [15:0]   efuse_addr ;
+    logic [15:0]   rsvd_0 ;
 } efuse_interface_ctrl_efuse_read_ctrl_reg_t;
 
 
@@ -11800,6 +11806,18 @@ typedef struct packed {
     logic [0:0]   program_req_timeout_enable ;
     logic [27:0]   program_req_timeout_cycles ;
 } efuse_interface_ctrl_efuse_program_req_timeout_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   efuse_addr ;
+} efuse_interface_ctrl_efuse_program_addr_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   efuse_addr ;
+} efuse_interface_ctrl_efuse_read_addr_reg_t;
 
 
 

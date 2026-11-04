@@ -73,12 +73,7 @@ typedef union {
 } efuse_interface_ctrl__EFUSE_INTERFACE_CTRL_STATUS_t;
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_CTRL
-// eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.
-// Bit address to program
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bm 0xffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bw 16
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_reset 0x0
+// eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR (optionally with read-back), and reports program progress and completion status.
 // Data to program to eFuse.  If this bit is 0, the program request will be ignored
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bp 16
@@ -116,8 +111,7 @@ typedef union {
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Bit address to program
-        uint32_t efuse_addr :16;
+        uint32_t :16;
         // Data to program to eFuse.  If this bit is 0, the program request will be ignored
         uint32_t efuse_data :1;
         // When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
@@ -139,12 +133,7 @@ typedef union {
 } efuse_interface_ctrl__EFUSE_PROGRAM_CTRL_t;
 
 // reg - efuse_interface_ctrl::EFUSE_READ_CTRL
-// eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.
-// Bit address to read
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bm 0xffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bw 16
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_reset 0x0
+// eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.
 // When set, triggers a read to efuse.
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bp 16
@@ -172,8 +161,7 @@ typedef union {
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Bit address to read
-        uint32_t efuse_addr :16;
+        uint32_t :16;
         // When set, triggers a read to efuse.
         uint32_t efuse_read_go :1;
         uint32_t :7;
@@ -267,6 +255,36 @@ typedef union {
     uint32_t w;
 } efuse_interface_ctrl__EFUSE_PROGRAM_REQ_TIMEOUT_t;
 
+// reg - efuse_interface_ctrl::EFUSE_PROGRAM_ADDR
+// Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.
+// Bit address to program. An address at or beyond the implemented eFuse size sets efuse_program_addr_error.
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_bm 0xffffffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_bw 32
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_ADDR__EFUSE_ADDR_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        // Bit address to program. An address at or beyond the implemented eFuse size sets efuse_program_addr_error.
+        uint32_t efuse_addr :32;
+    } f;
+    uint32_t w;
+} efuse_interface_ctrl__EFUSE_PROGRAM_ADDR_t;
+
+// reg - efuse_interface_ctrl::EFUSE_READ_ADDR
+// Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.
+// Bit address of the word to read. An address at or beyond the implemented eFuse size sets efuse_read_addr_error.
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bm 0xffffffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bw 32
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        // Bit address of the word to read. An address at or beyond the implemented eFuse size sets efuse_read_addr_error.
+        uint32_t efuse_addr :32;
+    } f;
+    uint32_t w;
+} efuse_interface_ctrl__EFUSE_READ_ADDR_t;
+
 // addrmap - efuse_interface_ctrl
 // Program and read command, address, data, status, and timeout registers for the eFuse interface.
 typedef struct __attribute__ ((__packed__)) {
@@ -277,10 +295,12 @@ typedef struct __attribute__ ((__packed__)) {
     efuse_interface_ctrl__EFUSE_READ_INTERFACE_READ_DATA_t EFUSE_READ_INTERFACE_READ_DATA;
     efuse_interface_ctrl__EFUSE_READ_REQ_TIMEOUT_t EFUSE_READ_REQ_TIMEOUT;
     efuse_interface_ctrl__EFUSE_PROGRAM_REQ_TIMEOUT_t EFUSE_PROGRAM_REQ_TIMEOUT;
+    efuse_interface_ctrl__EFUSE_PROGRAM_ADDR_t EFUSE_PROGRAM_ADDR;
+    efuse_interface_ctrl__EFUSE_READ_ADDR_t EFUSE_READ_ADDR;
 } efuse_interface_ctrl_t;
 
 
-static_assert(sizeof(efuse_interface_ctrl_t) == 0x1c, "Packing error");
+static_assert(sizeof(efuse_interface_ctrl_t) == 0x24, "Packing error");
 
 #ifdef __cplusplus
 }

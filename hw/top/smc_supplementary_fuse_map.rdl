@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-`ifndef SMC_ADOPTER_FUSE_MAP_RDL
-`define SMC_ADOPTER_FUSE_MAP_RDL
+`ifndef SMC_SUPPLEMENTARY_FUSE_MAP_RDL
+`define SMC_SUPPLEMENTARY_FUSE_MAP_RDL
 
-// Example adopter-owned payload for the SMC adopter fuse region. The harness RTL does not read this
+// Example adopter-owned payload for the SMC supplementary fuse region. The harness RTL does not read this
 // file; it takes the region from smu_pkg CFG. An adopter's RDL documents the payload and generates
-// its software headers and an SV struct for smc_adopter_shadow_regs_o. The payload carries no
-// locks: the 32 write/read pairs that govern it are ADOPTER_LOCKS in smc_efuse_map.
+// its software headers and an SV struct for smc_supplementary_shadow_regs_o. The payload carries no
+// locks: the 32 write/read pairs that govern it are SUPPLEMENTARY_LOCKS in smc_efuse_map.
 //
-// Lock pair n governs lock region n, which ends at word CFG.SMC_ADOPTER_LOCK_REGION_END[n]. This
+// Lock pair n governs lock region n, which ends at word CFG.SMC_SUPPLEMENTARY_FUSE.LOCK_REGION_END[n]. This
 // example makes each top-level register array one region and uses three of the 32:
 //   region 0  MEM_REPAIR[16]    all repair entries, ends at word 64
 //   region 1  SENSOR_TRIM[8]    all sensor trims, ends at word 96
-//   region 2  ADOPTER_SPARE[8]  adopter-reserved, ends at word 128
-// with CFG.SMC_ADOPTER_FUSE_WORDS = 128 and entries 3-31 set to 0. Once parts carry burned lock
+//   region 2  SUPPLEMENTARY_SPARE[8]  adopter-reserved, ends at word 128
+// with CFG.SMC_SUPPLEMENTARY_FUSE.WORDS = 128 and entries 3-31 set to 0. Once parts carry burned lock
 // bits, grow the map only by appending regions.
 //
 // Contents must not be secret: the region has no secure-test masking or scan protection.
 
-addrmap smc_adopter_fuse_map {
-    name = "Example SMC adopter fuse map";
+addrmap smc_supplementary_fuse_map {
+    name = "Example SMC supplementary fuse map";
     desc = "Memory repair entries and sensor trims for adopter logic outside the harness.";
 
     default regwidth = 128;
@@ -65,7 +65,7 @@ addrmap smc_adopter_fuse_map {
         } rsvd[127:32] = 0x0;
     };
 
-    reg ADOPTER_SPARE {
+    reg SUPPLEMENTARY_SPARE {
         desc = "Adopter-reserved spare region. Separate from the harness spares, which stay reserved for the
                 harness.";
 
@@ -76,7 +76,7 @@ addrmap smc_adopter_fuse_map {
 
     MEM_REPAIR    MEM_REPAIR[16]    @0x000 += 0x10;
     SENSOR_TRIM   SENSOR_TRIM[8]    @0x100 += 0x10;
-    ADOPTER_SPARE ADOPTER_SPARE[8]  @0x180 += 0x10;
+    SUPPLEMENTARY_SPARE SUPPLEMENTARY_SPARE[8]  @0x180 += 0x10;
 };
 
 `endif

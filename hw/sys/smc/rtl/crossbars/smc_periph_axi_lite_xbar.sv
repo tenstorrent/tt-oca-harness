@@ -9,7 +9,7 @@
 // window between the eFuse shim and the external target.
 // EFUSE_SHIM_SIZE is the vendor eFuse shim CSR block carved off the base of the
 // smc_external window and is threaded from smc_peripherals.sv. The shim bytes, and the
-// ADOPTER_FUSE_WORDS-word adopter fuse window at ADOPTER_FUSE_BASE within smc_external, route
+// SUPPLEMENTARY_FUSE_WORDS-word supplementary fuse window at SUPPLEMENTARY_FUSE_BASE within smc_external, route
 // to the efuse target, which also serves the SMC eFuse map and the eFuse interface control
 // registers. Addresses outside every rule receive DECERR.
 
@@ -24,14 +24,14 @@ module smc_periph_axi_lite_xbar
                                                   // the base of the smc_external window, in
                                                   // bytes; those addresses route to the
                                                   // efuse target.
-  parameter int unsigned ADOPTER_FUSE_BASE = 0,  // Byte offset of the adopter fuse window in
+  parameter int unsigned SUPPLEMENTARY_FUSE_BASE = 0,  // Byte offset of the supplementary fuse window in
                                                  // smc_external, at or above EFUSE_SHIM_SIZE.
-  parameter int unsigned ADOPTER_FUSE_WORDS = 0,  // Adopter fuse window size in 32-bit words;
-                                                  // 0 routes no adopter window.
-  localparam int unsigned AdopterStart =  // First adopter window byte.
-      ADOPTER_FUSE_WORDS > 0 ? ADOPTER_FUSE_BASE : EFUSE_SHIM_SIZE,
-  localparam int unsigned AdopterEnd = AdopterStart + 4 * ADOPTER_FUSE_WORDS  // Byte after the
-                                                                              // adopter window.
+  parameter int unsigned SUPPLEMENTARY_FUSE_WORDS = 0,  // Supplementary fuse window size in 32-bit words;
+                                                  // 0 routes no supplementary window.
+  localparam int unsigned SupplementaryStart =  // First supplementary window byte.
+      SUPPLEMENTARY_FUSE_WORDS > 0 ? SUPPLEMENTARY_FUSE_BASE : EFUSE_SHIM_SIZE,
+  localparam int unsigned SupplementaryEnd = SupplementaryStart + 4 * SUPPLEMENTARY_FUSE_WORDS  // Byte after the
+                                                                              // supplementary window.
 )
 (
   input  logic clk_i,                   // SMC core clock.
@@ -90,6 +90,14 @@ module smc_periph_axi_lite_xbar
   // ===========================================================================
   // Every address boundary comes from the generated RDL map. EFUSE_SHIM_SIZE
   // partitions the generated external window without duplicating its bounds.
+  // addr_decode rejects an empty rule, so the supplementary window and the gap below it
+  // repeat a neighbouring rule for the same target when they have no bytes.
+  localparam bit HasSupplementaryRule = SUPPLEMENTARY_FUSE_WORDS > 0;
+  localparam bit HasGapRule = SupplementaryStart > EFUSE_SHIM_SIZE;
+  localparam int unsigned SupplementaryRuleStart = HasSupplementaryRule ? SupplementaryStart : 0;
+  localparam int unsigned SupplementaryRuleEnd = HasSupplementaryRule ? SupplementaryEnd : EFUSE_SHIM_SIZE;
+  localparam int unsigned GapRuleStart = HasGapRule ? EFUSE_SHIM_SIZE : SupplementaryEnd;
+  localparam int unsigned GapRuleEnd = HasGapRule ? SupplementaryStart : smc_pkg::SmcExternalWindowSize;
   localparam smc_periph_axi_lite_xbar_pkg::addr_rule_t [smc_periph_axi_lite_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     // reset_unit: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_{BASE_ADDR,SIZE}
     '{idx: 0,
@@ -153,17 +161,17 @@ module smc_periph_axi_lite_xbar
                     + EFUSE_SHIM_SIZE)},
     '{idx: 11,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + EFUSE_SHIM_SIZE),
+                    + GapRuleStart),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + AdopterStart)},
+                    + GapRuleEnd)},
     '{idx: 6,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + AdopterStart),
+                    + SupplementaryRuleStart),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + AdopterEnd)},
+                    + SupplementaryRuleEnd)},
     '{idx: 11,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + AdopterEnd),
+                    + SupplementaryEnd),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
                     + smc_pkg::SmcExternalWindowSize)}
   };

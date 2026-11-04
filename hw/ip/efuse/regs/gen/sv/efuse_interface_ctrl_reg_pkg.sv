@@ -7,8 +7,8 @@
 package efuse_interface_ctrl_reg_pkg;
 
     localparam EFUSE_INTERFACE_CTRL_REG_DATA_WIDTH = 32;
-    localparam EFUSE_INTERFACE_CTRL_REG_MIN_ADDR_WIDTH = 5;
-    localparam EFUSE_INTERFACE_CTRL_REG_SIZE = 'h1c;
+    localparam EFUSE_INTERFACE_CTRL_REG_MIN_ADDR_WIDTH = 6;
+    localparam EFUSE_INTERFACE_CTRL_REG_SIZE = 'h24;
 
     typedef struct {
         logic next;
@@ -112,10 +112,6 @@ package efuse_interface_ctrl_reg_pkg;
     } efuse_interface_ctrl__EFUSE_INTERFACE_CTRL_STATUS__out_t;
 
     typedef struct {
-        logic [15:0] value;
-    } efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_addr__out_t;
-
-    typedef struct {
         logic value;
     } efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_data__out_t;
 
@@ -132,16 +128,11 @@ package efuse_interface_ctrl_reg_pkg;
     } efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__program_enable__out_t;
 
     typedef struct {
-        efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_addr__out_t efuse_addr;
         efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_data__out_t efuse_data;
         efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_program_go__out_t efuse_program_go;
         efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__efuse_program_read_back__out_t efuse_program_read_back;
         efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__program_enable__out_t program_enable;
     } efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__out_t;
-
-    typedef struct {
-        logic [15:0] value;
-    } efuse_interface_ctrl__EFUSE_READ_CTRL__efuse_addr__out_t;
 
     typedef struct {
         logic value;
@@ -152,7 +143,6 @@ package efuse_interface_ctrl_reg_pkg;
     } efuse_interface_ctrl__EFUSE_READ_CTRL__read_enable__out_t;
 
     typedef struct {
-        efuse_interface_ctrl__EFUSE_READ_CTRL__efuse_addr__out_t efuse_addr;
         efuse_interface_ctrl__EFUSE_READ_CTRL__efuse_read_go__out_t efuse_read_go;
         efuse_interface_ctrl__EFUSE_READ_CTRL__read_enable__out_t read_enable;
     } efuse_interface_ctrl__EFUSE_READ_CTRL__out_t;
@@ -184,10 +174,28 @@ package efuse_interface_ctrl_reg_pkg;
     } efuse_interface_ctrl__EFUSE_PROGRAM_REQ_TIMEOUT__out_t;
 
     typedef struct {
+        logic [31:0] value;
+    } efuse_interface_ctrl__EFUSE_PROGRAM_ADDR__efuse_addr__out_t;
+
+    typedef struct {
+        efuse_interface_ctrl__EFUSE_PROGRAM_ADDR__efuse_addr__out_t efuse_addr;
+    } efuse_interface_ctrl__EFUSE_PROGRAM_ADDR__out_t;
+
+    typedef struct {
+        logic [31:0] value;
+    } efuse_interface_ctrl__EFUSE_READ_ADDR__efuse_addr__out_t;
+
+    typedef struct {
+        efuse_interface_ctrl__EFUSE_READ_ADDR__efuse_addr__out_t efuse_addr;
+    } efuse_interface_ctrl__EFUSE_READ_ADDR__out_t;
+
+    typedef struct {
         efuse_interface_ctrl__EFUSE_INTERFACE_CTRL_STATUS__out_t EFUSE_INTERFACE_CTRL_STATUS;
         efuse_interface_ctrl__EFUSE_PROGRAM_CTRL__out_t EFUSE_PROGRAM_CTRL;
         efuse_interface_ctrl__EFUSE_READ_CTRL__out_t EFUSE_READ_CTRL;
         efuse_interface_ctrl__EFUSE_READ_REQ_TIMEOUT__out_t EFUSE_READ_REQ_TIMEOUT;
         efuse_interface_ctrl__EFUSE_PROGRAM_REQ_TIMEOUT__out_t EFUSE_PROGRAM_REQ_TIMEOUT;
+        efuse_interface_ctrl__EFUSE_PROGRAM_ADDR__out_t EFUSE_PROGRAM_ADDR;
+        efuse_interface_ctrl__EFUSE_READ_ADDR__out_t EFUSE_READ_ADDR;
     } efuse_interface_ctrl__out_t;
 endpackage

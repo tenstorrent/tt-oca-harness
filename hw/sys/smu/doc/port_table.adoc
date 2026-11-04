@@ -94,6 +94,7 @@
 |`smc_efuse_shim_command_req_o` |`smc_efuse_pkg::fuse_command_req_t` |Output |- |SMC eFuse command interface request. |eFuse shim |N/A
 |`smc_efuse_shim_command_resp_i` |`smc_efuse_pkg::fuse_command_resp_t` |Input |- |SMC eFuse command interface response. |eFuse shim |N/A
 |`smc_shadow_regs_o` |`smc_efuse_pkg::efuse_map_t` |Output |- |SMC eFuse shadow register output. |External systems |N/A
+|`smc_supplementary_shadow_regs_o` |`logic [N-1:0][31:0]` |Output |32 × max(1, `CFG.SMC_SUPPLEMENTARY_FUSE.WORDS`) |SMC supplementary fuse shadow registers; one word tied to zero with no supplementary region. |Adopter logic |Leave open if unused
 
 |`pll_clk_obs_i` |`logic` |Input |1 |PLL clock observation input. |PLL shim |N/A
 |`pll_clk_obs_en_i` |`logic` |Input |1 |PLL clock observation enable. |Control logic |N/A

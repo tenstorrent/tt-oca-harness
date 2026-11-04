@@ -6,7 +6,7 @@
 // Sizes the 8192-bit fuse array as 256 32-bit words and defines efuse_map_t, the
 // shadow-register layout of the SMC eFuse map, together with the fuse command types.
 // Builds EfuseFieldMap, the per-field lock rules and address ranges, and the Class 1
-// shadow range that covers the HARNESS_LOCKS and ADOPTER_LOCKS fields. Used by smc_efuse_wrapper and by the SMC
+// shadow range that covers the HARNESS_LOCKS and SUPPLEMENTARY_LOCKS fields. Used by smc_efuse_wrapper and by the SMC
 // ports that carry the shadow registers and fuse commands.
 
 package smc_efuse_pkg;
@@ -86,11 +86,11 @@ package smc_efuse_pkg;
   typedef struct packed {
     logic [0:0]   read_lock ;
     logic [0:0]   write_lock ;
-  } smc_efuse_map_adopter_lock_pair_t;
+  } smc_efuse_map_supplementary_lock_pair_t;
 
   typedef struct packed {
-    smc_efuse_map_adopter_lock_pair_t [31:0] region;
-  } smc_efuse_map_adopter_locks_reg_t;
+    smc_efuse_map_supplementary_lock_pair_t [31:0] region;
+  } smc_efuse_map_supplementary_locks_reg_t;
 
   typedef struct packed {logic [255:0] value;} smc_efuse_map_jtag_public_identity_reg_t;
 
@@ -127,7 +127,7 @@ package smc_efuse_pkg;
     smc_efuse_map_smc_config_reg_t smc_config;
     smc_efuse_map_i2c_i3c_id_reg_t [8:0] i2c_i3c_id;
     smc_efuse_map_jtag_public_identity_reg_t jtag_public_identity;
-    smc_efuse_map_adopter_locks_reg_t adopter_locks;
+    smc_efuse_map_supplementary_locks_reg_t supplementary_locks;
     smc_efuse_map_harness_locks_reg_t harness_locks;
   } smc_efuse_map_regmap_t;
   `include "efuse_typedef.svh"
@@ -139,20 +139,20 @@ package smc_efuse_pkg;
   localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256 words --- word == access granularity.
   localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 1024 bytes.
 
-  // ADOPTER FUSE INFO:
+  // SUPPLEMENTARY FUSE INFO:
 
-  // The adopter fuse region follows the harness map in the fuse address space and is capped
+  // The supplementary fuse region follows the harness map in the fuse address space and is capped
   // by its window in smc_external, so fuse commands must address and count both.
-  localparam int unsigned MaxAdopterFuseWords =
-      int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_ADOPTER_FUSE_SIZE) / 4;
-  localparam int unsigned MaxSenseWords = NumFuseWords + MaxAdopterFuseWords;
+  localparam int unsigned MaxSupplementaryFuseWords =
+      int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_SIZE) / 4;
+  localparam int unsigned MaxSenseWords = NumFuseWords + MaxSupplementaryFuseWords;
 
   localparam int unsigned NumFuseBitsWidth = $clog2(
       MaxSenseWords * NumFuseWordWidth
-  );  // 16 bits to encode the harness bank and the largest adopter region
+  );  // 18 bits to encode the harness bank and the largest supplementary region
   localparam int unsigned NumFuseByteWidth = $clog2(
       MaxSenseWords * 4
-  );  // 13 bits to encode the harness bank and the largest adopter region in bytes
+  );  // 15 bits to encode the harness bank and the largest supplementary region in bytes
   // NOTE: $clog2(N) can only represent 0 to N-1, but a full-length read counts N words
   localparam int unsigned NumFuseWordsWidth = $clog2(MaxSenseWords + 1);
   localparam int unsigned ShadowRegBits = NumEfuseBits;
@@ -181,15 +181,14 @@ package smc_efuse_pkg;
   localparam logic ReadUnlock = 1'b0;
   localparam logic ReadLock = 1'b1;
 
-  // Physical OTP bits covered by HARNESS_LOCKS and ADOPTER_LOCKS
-
-  localparam int unsigned LockFieldBits = 64;
-  localparam int unsigned AdopterLockFieldBits = 64;
+  // Physical OTP bits of the 64-bit HARNESS_LOCKS register; SUPPLEMENTARY_LOCKS is
+  // efuse_pkg::SupplementaryLockBits.
+  localparam int unsigned HarnessLockFieldBits = 64;
 
   typedef struct packed {
-    logic [NumEfuseBits-LockFieldBits-AdopterLockFieldBits-1:0] reserved;
-    logic [AdopterLockFieldBits-1:0]                            adopter_locks;
-    logic [LockFieldBits-1:0]                                   locks;
+    logic [NumEfuseBits-HarnessLockFieldBits-efuse_pkg::SupplementaryLockBits-1:0] reserved;
+    logic [efuse_pkg::SupplementaryLockBits-1:0]                                   supplementary_locks;
+    logic [HarnessLockFieldBits-1:0]                                         harness_locks;
   } efuse_lock_view_t;
 
   typedef union packed {
@@ -208,7 +207,7 @@ package smc_efuse_pkg;
           (
               smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR
           ),
-          LockFieldBits + AdopterLockFieldBits,
+          HarnessLockFieldBits + efuse_pkg::SupplementaryLockBits,
           NumFuseWordWidth
       ),
       default: '0
@@ -220,7 +219,7 @@ package smc_efuse_pkg;
   function automatic efuse_pkg::rule_t [NumEfuseFields-1:0] build_efuse_field_map();
     efuse_pkg::rule_t [NumEfuseFields-1:0] map;
 
-    // HARNESS_LOCKS and ADOPTER_LOCKS; hardware never applies lock bits to this entry.
+    // HARNESS_LOCKS and SUPPLEMENTARY_LOCKS; hardware never applies lock bits to this entry.
     map[0] = '{
         idx: LocksMetaIdx,
         lock: {WriteSetOnly, ReadUnlock},
@@ -280,12 +279,45 @@ package smc_efuse_pkg;
 
   localparam efuse_pkg::rule_t [NumEfuseFields-1:0] EfuseFieldMap = build_efuse_field_map();
 
-  // One adopter lock region per ADOPTER_LOCKS pair.
-  localparam int unsigned AdopterLockRegions = 32;
-  typedef logic [AdopterLockRegions-1:0][15:0] adopter_lock_region_end_t;
+  // One supplementary lock region per SUPPLEMENTARY_LOCKS pair.
+  typedef logic [efuse_pkg::SupplementaryLockRegions-1:0][15:0] supplementary_lock_region_end_t;
 
-  // Rule n covers adopter lock region n, words [region_end[n-1], region_end[n]) with
-  // region_end[-1] = 0, as a byte range in the adopter window locked by ADOPTER_LOCKS pair n.
+  // Supplementary fuse region of an SMC integration. An all-zero value omits the region.
+  typedef struct packed {
+    int unsigned              BASE;             // Byte offset of the supplementary window in
+                                                // smc_external: word aligned, with the window
+                                                // inside the fuse slot of the supplementary
+                                                // region. Unused without a region.
+    int unsigned              WORDS;            // Region size in 32-bit words, sensed after the
+                                                // 8192 harness fuse bits; 0 for no region, at
+                                                // most MaxSupplementaryFuseWords.
+    supplementary_lock_region_end_t LOCK_REGION_END;  // Word offset one past the end of each lock
+                                                // region, region n starting where region n-1
+                                                // ends: strictly increasing, then 0 for unused
+                                                // regions, the last used entry equal to WORDS.
+  } supplementary_fuse_cfg_t;
+
+  // Each used LOCK_REGION_END entry exceeds the one before it, every entry after the first 0 is
+  // 0, and the last used entry equals WORDS; with no region every entry is 0.
+  function automatic bit supplementary_lock_region_end_valid(supplementary_fuse_cfg_t cfg);
+    int unsigned prev_end;
+    bit          ended;
+    prev_end = 0;
+    ended = 1'b0;
+    for (int unsigned n = 0; n < efuse_pkg::SupplementaryLockRegions; n++) begin
+      if (cfg.LOCK_REGION_END[n] == '0) begin
+        ended = 1'b1;
+      end else if (ended || (int'(cfg.LOCK_REGION_END[n]) <= prev_end)) begin
+        return 1'b0;
+      end else begin
+        prev_end = int'(cfg.LOCK_REGION_END[n]);
+      end
+    end
+    return prev_end == cfg.WORDS;
+  endfunction
+
+  // Rule n covers supplementary lock region n, words [region_end[n-1], region_end[n]) with
+  // region_end[-1] = 0, as a byte range in the supplementary window locked by SUPPLEMENTARY_LOCKS pair n.
   //
   // For example, region_end = '{0: 64, 1: 96, 2: 128, default: 0} gives:
   //   n      idx   start_addr    end_addr      covers
@@ -293,13 +325,13 @@ package smc_efuse_pkg;
   //   1      1     0x100         0x17F         words  64-95
   //   2      2     0x180         0x1FF         words 96-127
   //   3-31   '1    0xFFFF_FFFF   0x0000_0000   nothing, never locked
-  function automatic efuse_pkg::rule_t [AdopterLockRegions-1:0] build_adopter_field_map(adopter_lock_region_end_t region_end);
-    efuse_pkg::rule_t [AdopterLockRegions-1:0] map;
+  function automatic efuse_pkg::rule_t [efuse_pkg::SupplementaryLockRegions-1:0] build_supplementary_field_map(supplementary_lock_region_end_t region_end);
+    efuse_pkg::rule_t [efuse_pkg::SupplementaryLockRegions-1:0] map;
     int unsigned region_start;
 
     region_start = 0;
-    // Loop 32 times for the 32 adopter lock regions
-    for (int unsigned n = 0; n < AdopterLockRegions; n++) begin
+    // Loop 32 times for the 32 supplementary lock regions
+    for (int unsigned n = 0; n < efuse_pkg::SupplementaryLockRegions; n++) begin
 
       if (region_end[n] == '0) begin
         // Unused region: start above end so no address matches, and never locked.

@@ -81,7 +81,7 @@ localparam longint unsigned SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR = 64'h10930000;
 localparam longint unsigned SEP_TOP_SEP_EFUSE_MAP_SIZE = 64'h400;
 
 localparam longint unsigned SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR = 64'h10930400;
-localparam longint unsigned SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE = 64'h1C;
+localparam longint unsigned SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE = 64'h24;
 
 localparam longint unsigned SEP_TOP_EFUSE_MMR_BASE_ADDR = 64'h10930500;
 localparam longint unsigned SEP_TOP_EFUSE_MMR_SIZE = 64'h74;
@@ -588,6 +588,8 @@ localparam longint unsigned SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE
 localparam longint unsigned SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR = 64'h10930410;
 localparam longint unsigned SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR = 64'h10930414;
 localparam longint unsigned SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR = 64'h10930418;
+localparam longint unsigned SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR = 64'h1093041C;
+localparam longint unsigned SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR = 64'h10930420;
 function automatic longint unsigned SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(input int unsigned RMA_SIP_TOKEN_I_idx);
     return 64'h10930500 + (RMA_SIP_TOKEN_I_idx * 64'h4);
 endfunction

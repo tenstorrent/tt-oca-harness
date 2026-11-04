@@ -42,7 +42,6 @@
     // reg - efuse_interface_ctrl.EFUSE_PROGRAM_CTRL
     class efuse_interface_ctrl__EFUSE_PROGRAM_CTRL extends uvm_reg;
         `uvm_object_utils(efuse_interface_ctrl__EFUSE_PROGRAM_CTRL)
-        rand uvm_reg_field efuse_addr;
         rand uvm_reg_field efuse_data;
         rand uvm_reg_field efuse_program_go;
         rand uvm_reg_field efuse_program_read_back;
@@ -56,8 +55,6 @@
         endfunction : new
 
         virtual function void build();
-            this.efuse_addr = uvm_reg_field::type_id::create("efuse_addr");
-            this.efuse_addr.configure(this, 16, 0, "RW", 0, 'h0, 1, 1, 0);
             this.efuse_data = uvm_reg_field::type_id::create("efuse_data");
             this.efuse_data.configure(this, 1, 16, "RW", 0, 'h0, 1, 1, 0);
             this.efuse_program_go = uvm_reg_field::type_id::create("efuse_program_go");
@@ -78,7 +75,6 @@
     // reg - efuse_interface_ctrl.EFUSE_READ_CTRL
     class efuse_interface_ctrl__EFUSE_READ_CTRL extends uvm_reg;
         `uvm_object_utils(efuse_interface_ctrl__EFUSE_READ_CTRL)
-        rand uvm_reg_field efuse_addr;
         rand uvm_reg_field efuse_read_go;
         rand uvm_reg_field read_busy;
         rand uvm_reg_field read_done;
@@ -90,8 +86,6 @@
         endfunction : new
 
         virtual function void build();
-            this.efuse_addr = uvm_reg_field::type_id::create("efuse_addr");
-            this.efuse_addr.configure(this, 16, 0, "RW", 0, 'h0, 1, 1, 0);
             this.efuse_read_go = uvm_reg_field::type_id::create("efuse_read_go");
             this.efuse_read_go.configure(this, 1, 16, "RW", 1, 'h0, 1, 1, 0);
             this.read_busy = uvm_reg_field::type_id::create("read_busy");
@@ -171,6 +165,36 @@
         endfunction : build
     endclass : efuse_interface_ctrl__EFUSE_PROGRAM_REQ_TIMEOUT
 
+    // reg - efuse_interface_ctrl.EFUSE_PROGRAM_ADDR
+    class efuse_interface_ctrl__EFUSE_PROGRAM_ADDR extends uvm_reg;
+        `uvm_object_utils(efuse_interface_ctrl__EFUSE_PROGRAM_ADDR)
+        rand uvm_reg_field efuse_addr;
+
+        function new(string name = "efuse_interface_ctrl__EFUSE_PROGRAM_ADDR");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.efuse_addr = uvm_reg_field::type_id::create("efuse_addr");
+            this.efuse_addr.configure(this, 32, 0, "RW", 0, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : efuse_interface_ctrl__EFUSE_PROGRAM_ADDR
+
+    // reg - efuse_interface_ctrl.EFUSE_READ_ADDR
+    class efuse_interface_ctrl__EFUSE_READ_ADDR extends uvm_reg;
+        `uvm_object_utils(efuse_interface_ctrl__EFUSE_READ_ADDR)
+        rand uvm_reg_field efuse_addr;
+
+        function new(string name = "efuse_interface_ctrl__EFUSE_READ_ADDR");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.efuse_addr = uvm_reg_field::type_id::create("efuse_addr");
+            this.efuse_addr.configure(this, 32, 0, "RW", 0, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : efuse_interface_ctrl__EFUSE_READ_ADDR
+
     // addrmap - efuse_interface_ctrl
     class efuse_interface_ctrl extends uvm_reg_block;
         `uvm_object_utils(efuse_interface_ctrl)
@@ -181,6 +205,8 @@
         rand efuse_interface_ctrl__EFUSE_READ_INTERFACE_READ_DATA EFUSE_READ_INTERFACE_READ_DATA;
         rand efuse_interface_ctrl__EFUSE_READ_REQ_TIMEOUT EFUSE_READ_REQ_TIMEOUT;
         rand efuse_interface_ctrl__EFUSE_PROGRAM_REQ_TIMEOUT EFUSE_PROGRAM_REQ_TIMEOUT;
+        rand efuse_interface_ctrl__EFUSE_PROGRAM_ADDR EFUSE_PROGRAM_ADDR;
+        rand efuse_interface_ctrl__EFUSE_READ_ADDR EFUSE_READ_ADDR;
 
         function new(string name = "efuse_interface_ctrl");
             super.new(name);
@@ -223,6 +249,16 @@
 
             this.EFUSE_PROGRAM_REQ_TIMEOUT.build();
             this.default_map.add_reg(this.EFUSE_PROGRAM_REQ_TIMEOUT, 'h18);
+            this.EFUSE_PROGRAM_ADDR = efuse_interface_ctrl__EFUSE_PROGRAM_ADDR::type_id::create("EFUSE_PROGRAM_ADDR");
+            this.EFUSE_PROGRAM_ADDR.configure(this);
+
+            this.EFUSE_PROGRAM_ADDR.build();
+            this.default_map.add_reg(this.EFUSE_PROGRAM_ADDR, 'h1c);
+            this.EFUSE_READ_ADDR = efuse_interface_ctrl__EFUSE_READ_ADDR::type_id::create("EFUSE_READ_ADDR");
+            this.EFUSE_READ_ADDR.configure(this);
+
+            this.EFUSE_READ_ADDR.build();
+            this.default_map.add_reg(this.EFUSE_READ_ADDR, 'h20);
         endfunction : build
     endclass : efuse_interface_ctrl
 

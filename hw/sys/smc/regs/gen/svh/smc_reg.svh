@@ -2279,8 +2279,8 @@ localparam int unsigned SMC_EFUSE_MAP_REG_MAP_SIZE                              
 
 localparam int unsigned SMC_EFUSE_MAP_HARNESS_LOCKS_REG_OFFSET                                                    = 32'h00000000;
 localparam int unsigned SMC_EFUSE_MAP_HARNESS_LOCKS_REG_ADDR                                                      = 32'hC0007000;
-localparam int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REG_ADDR                                                      = 32'hC0007008;
+localparam int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_OFFSET                                              = 32'h00000008;
+localparam int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_ADDR                                                = 32'hC0007008;
 localparam int unsigned SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_OFFSET                                             = 32'h00000010;
 localparam int unsigned SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_ADDR                                               = 32'hC0007010;
 localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_OFFSET                                                    = 32'h00000030;
@@ -2373,7 +2373,7 @@ localparam int unsigned SMC_EFUSE_MAP_SPARE_TAIL_2__REG_ADDR                    
 
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR                                                    = 32'hC0008000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_SIZE                                                         = 32'h0000001C;
+localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_SIZE                                                         = 32'h00000024;
 
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET                               = 32'h00000000;
@@ -2390,6 +2390,10 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_OFFSET  
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR                                      = 32'hC0008014;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET                                 = 32'h00000018;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR                                   = 32'hC0008018;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_OFFSET                                        = 32'h0000001C;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_ADDR                                          = 32'hC000801C;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_OFFSET                                           = 32'h00000020;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_ADDR                                             = 32'hC0008020;
 
 
 //==============================================================================
@@ -9010,7 +9014,7 @@ localparam int unsigned SMC_CLA_DST_0__SCRATCHHI_REG_ADDR                       
 
 
 localparam int unsigned SMC_EXTERNAL_REG_MAP_BASE_ADDR                                                            = 32'hC0400000;
-localparam int unsigned SMC_EXTERNAL_REG_MAP_SIZE                                                                 = 32'h00006548;
+localparam int unsigned SMC_EXTERNAL_REG_MAP_SIZE                                                                 = 32'h0000B000;
 
 
 
@@ -9037,15 +9041,6 @@ localparam int unsigned SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_REG_MAP_SIZE     
 
 localparam int unsigned SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_OFFSET                    = 32'h00000000;
 localparam int unsigned SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_ADDR                      = 32'hC0400000;
-
-
-//==============================================================================
-// Memory: adopter_fuse
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_MANDATORY_ADOPTER_FUSE_MEM_BASE_ADDR                                         = 32'hC0400004;
-localparam int unsigned SMC_EXTERNAL_MANDATORY_ADOPTER_FUSE_MEM_SIZE                                              = 32'h00000FFC;
-
 
 
 //==============================================================================
@@ -9663,7 +9658,7 @@ localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_ADDR        
 
 
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_BASE_ADDR                                              = 32'hC0404000;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE                                                   = 32'h00002548;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE                                                   = 32'h00007000;
 
 
 
@@ -9701,6 +9696,15 @@ localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_SIZE     
 
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_BASE_ADDR                                     = 32'hC0405C00;
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_SIZE                                          = 32'h00000948;
+
+
+
+//==============================================================================
+// Memory: fuse
+//==============================================================================
+
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_FUSE_MEM_BASE_ADDR                                             = 32'hC0407000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_FUSE_MEM_SIZE                                                  = 32'h00004000;
 
 
 
@@ -10886,7 +10890,7 @@ localparam longint unsigned LOG_ENGINE_INTR_ENABLE_REG_DEFAULT                  
 localparam longint unsigned LOG_ENGINE_INTR_TEST_REG_DEFAULT                                                      = 32'h00000000;
 localparam longint unsigned LOG_ENGINE_LOG_CTRL_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned SMC_EFUSE_MAP_HARNESS_LOCKS_REG_DEFAULT                                               = 64'h0000000000000000;
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REG_DEFAULT                                               = 64'h0000000000000000;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REG_DEFAULT                                         = 64'h0000000000000000;
 localparam longint unsigned SMC_EFUSE_MAP_I2C_I3C_ID_REG_DEFAULT                                                  = 64'h0000000000000000;
 localparam longint unsigned SMC_EFUSE_MAP_SMC_CONFIG_REG_DEFAULT                                                  = 64'h0000000000000000;
 localparam longint unsigned SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_DEFAULT                                      = 64'h0000000000000000;
@@ -10898,6 +10902,8 @@ localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DA
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT                       = 32'h00000000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT                               = 32'h00800000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT                            = 32'h00800000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_DEFAULT                                   = 32'h00000000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_DEFAULT                                      = 32'h00000000;
 localparam longint unsigned TELEMETRY_RECEIVER_CTRL_REG_DEFAULT                                                   = 32'h00000000;
 localparam longint unsigned TELEMETRY_RECEIVER_STATUS_REG_DEFAULT                                                 = 32'h00000001;
 localparam longint unsigned TELEMETRY_RECEIVER_INTR_STATUS_REG_DEFAULT                                            = 32'h00000000;
@@ -11276,7 +11282,6 @@ localparam longint unsigned DFD_DST_CDbgDebugTraceCfg_REG_DEFAULT               
 localparam longint unsigned DFD_DST_ScratchLo_REG_DEFAULT                                                         = 32'h00000000;
 localparam longint unsigned DFD_DST_ScratchHi_REG_DEFAULT                                                         = 32'h00000000;
 localparam longint unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT                                      = 32'h00000020;
-localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3FF_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_1_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
 localparam longint unsigned STRAPS_STRAPS_LO_REG_DEFAULT                                                          = 32'h00000000;
@@ -11284,6 +11289,7 @@ localparam longint unsigned STRAPS_STRAPS_HI_REG_DEFAULT                        
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT                                        = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_REG_DEFAULT                                      = 32'h00000000;
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_REG_DEFAULT                                                  = 64'h0000000000000000;
 localparam longint unsigned PLIC_PRIORITY_REG_DEFAULT                                                             = 32'h00000000;
 localparam longint unsigned PLIC_PENDING_REG_DEFAULT                                                              = 32'h00000000;
@@ -12534,197 +12540,197 @@ localparam     int unsigned SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE_TAIL_WRITE_LOCK_SH
 localparam longint unsigned SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE_TAIL_READ_LOCK_MASK                                 = 64'h8000000000000000;
 localparam     int unsigned SMC_EFUSE_MAP_HARNESS_LOCKS_SPARE_TAIL_READ_LOCK_SHIFT                                = 63;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION0_WRITE_LOCK_MASK                                   = 64'h1;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION0_WRITE_LOCK_SHIFT                                  = 0;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION0_WRITE_LOCK_MASK                             = 64'h1;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION0_WRITE_LOCK_SHIFT                            = 0;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION0_READ_LOCK_MASK                                    = 64'h2;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION0_READ_LOCK_SHIFT                                   = 1;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION0_READ_LOCK_MASK                              = 64'h2;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION0_READ_LOCK_SHIFT                             = 1;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION1_WRITE_LOCK_MASK                                   = 64'h4;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION1_WRITE_LOCK_SHIFT                                  = 2;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION1_WRITE_LOCK_MASK                             = 64'h4;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION1_WRITE_LOCK_SHIFT                            = 2;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION1_READ_LOCK_MASK                                    = 64'h8;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION1_READ_LOCK_SHIFT                                   = 3;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION1_READ_LOCK_MASK                              = 64'h8;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION1_READ_LOCK_SHIFT                             = 3;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION2_WRITE_LOCK_MASK                                   = 64'h10;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION2_WRITE_LOCK_SHIFT                                  = 4;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION2_WRITE_LOCK_MASK                             = 64'h10;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION2_WRITE_LOCK_SHIFT                            = 4;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION2_READ_LOCK_MASK                                    = 64'h20;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION2_READ_LOCK_SHIFT                                   = 5;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION2_READ_LOCK_MASK                              = 64'h20;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION2_READ_LOCK_SHIFT                             = 5;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION3_WRITE_LOCK_MASK                                   = 64'h40;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION3_WRITE_LOCK_SHIFT                                  = 6;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION3_WRITE_LOCK_MASK                             = 64'h40;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION3_WRITE_LOCK_SHIFT                            = 6;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION3_READ_LOCK_MASK                                    = 64'h80;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION3_READ_LOCK_SHIFT                                   = 7;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION3_READ_LOCK_MASK                              = 64'h80;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION3_READ_LOCK_SHIFT                             = 7;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION4_WRITE_LOCK_MASK                                   = 64'h100;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION4_WRITE_LOCK_SHIFT                                  = 8;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION4_WRITE_LOCK_MASK                             = 64'h100;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION4_WRITE_LOCK_SHIFT                            = 8;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION4_READ_LOCK_MASK                                    = 64'h200;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION4_READ_LOCK_SHIFT                                   = 9;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION4_READ_LOCK_MASK                              = 64'h200;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION4_READ_LOCK_SHIFT                             = 9;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION5_WRITE_LOCK_MASK                                   = 64'h400;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION5_WRITE_LOCK_SHIFT                                  = 10;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION5_WRITE_LOCK_MASK                             = 64'h400;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION5_WRITE_LOCK_SHIFT                            = 10;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION5_READ_LOCK_MASK                                    = 64'h800;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION5_READ_LOCK_SHIFT                                   = 11;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION5_READ_LOCK_MASK                              = 64'h800;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION5_READ_LOCK_SHIFT                             = 11;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION6_WRITE_LOCK_MASK                                   = 64'h1000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION6_WRITE_LOCK_SHIFT                                  = 12;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION6_WRITE_LOCK_MASK                             = 64'h1000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION6_WRITE_LOCK_SHIFT                            = 12;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION6_READ_LOCK_MASK                                    = 64'h2000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION6_READ_LOCK_SHIFT                                   = 13;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION6_READ_LOCK_MASK                              = 64'h2000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION6_READ_LOCK_SHIFT                             = 13;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION7_WRITE_LOCK_MASK                                   = 64'h4000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION7_WRITE_LOCK_SHIFT                                  = 14;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION7_WRITE_LOCK_MASK                             = 64'h4000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION7_WRITE_LOCK_SHIFT                            = 14;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION7_READ_LOCK_MASK                                    = 64'h8000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION7_READ_LOCK_SHIFT                                   = 15;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION7_READ_LOCK_MASK                              = 64'h8000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION7_READ_LOCK_SHIFT                             = 15;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION8_WRITE_LOCK_MASK                                   = 64'h10000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION8_WRITE_LOCK_SHIFT                                  = 16;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION8_WRITE_LOCK_MASK                             = 64'h10000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION8_WRITE_LOCK_SHIFT                            = 16;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION8_READ_LOCK_MASK                                    = 64'h20000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION8_READ_LOCK_SHIFT                                   = 17;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION8_READ_LOCK_MASK                              = 64'h20000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION8_READ_LOCK_SHIFT                             = 17;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION9_WRITE_LOCK_MASK                                   = 64'h40000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION9_WRITE_LOCK_SHIFT                                  = 18;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION9_WRITE_LOCK_MASK                             = 64'h40000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION9_WRITE_LOCK_SHIFT                            = 18;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION9_READ_LOCK_MASK                                    = 64'h80000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION9_READ_LOCK_SHIFT                                   = 19;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION9_READ_LOCK_MASK                              = 64'h80000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION9_READ_LOCK_SHIFT                             = 19;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION10_WRITE_LOCK_MASK                                  = 64'h100000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION10_WRITE_LOCK_SHIFT                                 = 20;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION10_WRITE_LOCK_MASK                            = 64'h100000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION10_WRITE_LOCK_SHIFT                           = 20;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION10_READ_LOCK_MASK                                   = 64'h200000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION10_READ_LOCK_SHIFT                                  = 21;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION10_READ_LOCK_MASK                             = 64'h200000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION10_READ_LOCK_SHIFT                            = 21;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION11_WRITE_LOCK_MASK                                  = 64'h400000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION11_WRITE_LOCK_SHIFT                                 = 22;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION11_WRITE_LOCK_MASK                            = 64'h400000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION11_WRITE_LOCK_SHIFT                           = 22;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION11_READ_LOCK_MASK                                   = 64'h800000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION11_READ_LOCK_SHIFT                                  = 23;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION11_READ_LOCK_MASK                             = 64'h800000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION11_READ_LOCK_SHIFT                            = 23;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION12_WRITE_LOCK_MASK                                  = 64'h1000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION12_WRITE_LOCK_SHIFT                                 = 24;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION12_WRITE_LOCK_MASK                            = 64'h1000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION12_WRITE_LOCK_SHIFT                           = 24;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION12_READ_LOCK_MASK                                   = 64'h2000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION12_READ_LOCK_SHIFT                                  = 25;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION12_READ_LOCK_MASK                             = 64'h2000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION12_READ_LOCK_SHIFT                            = 25;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION13_WRITE_LOCK_MASK                                  = 64'h4000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION13_WRITE_LOCK_SHIFT                                 = 26;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION13_WRITE_LOCK_MASK                            = 64'h4000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION13_WRITE_LOCK_SHIFT                           = 26;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION13_READ_LOCK_MASK                                   = 64'h8000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION13_READ_LOCK_SHIFT                                  = 27;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION13_READ_LOCK_MASK                             = 64'h8000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION13_READ_LOCK_SHIFT                            = 27;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION14_WRITE_LOCK_MASK                                  = 64'h10000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION14_WRITE_LOCK_SHIFT                                 = 28;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION14_WRITE_LOCK_MASK                            = 64'h10000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION14_WRITE_LOCK_SHIFT                           = 28;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION14_READ_LOCK_MASK                                   = 64'h20000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION14_READ_LOCK_SHIFT                                  = 29;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION14_READ_LOCK_MASK                             = 64'h20000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION14_READ_LOCK_SHIFT                            = 29;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION15_WRITE_LOCK_MASK                                  = 64'h40000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION15_WRITE_LOCK_SHIFT                                 = 30;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION15_WRITE_LOCK_MASK                            = 64'h40000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION15_WRITE_LOCK_SHIFT                           = 30;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION15_READ_LOCK_MASK                                   = 64'h80000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION15_READ_LOCK_SHIFT                                  = 31;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION15_READ_LOCK_MASK                             = 64'h80000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION15_READ_LOCK_SHIFT                            = 31;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION16_WRITE_LOCK_MASK                                  = 64'h100000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION16_WRITE_LOCK_SHIFT                                 = 32;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION16_WRITE_LOCK_MASK                            = 64'h100000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION16_WRITE_LOCK_SHIFT                           = 32;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION16_READ_LOCK_MASK                                   = 64'h200000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION16_READ_LOCK_SHIFT                                  = 33;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION16_READ_LOCK_MASK                             = 64'h200000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION16_READ_LOCK_SHIFT                            = 33;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION17_WRITE_LOCK_MASK                                  = 64'h400000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION17_WRITE_LOCK_SHIFT                                 = 34;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION17_WRITE_LOCK_MASK                            = 64'h400000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION17_WRITE_LOCK_SHIFT                           = 34;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION17_READ_LOCK_MASK                                   = 64'h800000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION17_READ_LOCK_SHIFT                                  = 35;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION17_READ_LOCK_MASK                             = 64'h800000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION17_READ_LOCK_SHIFT                            = 35;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION18_WRITE_LOCK_MASK                                  = 64'h1000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION18_WRITE_LOCK_SHIFT                                 = 36;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION18_WRITE_LOCK_MASK                            = 64'h1000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION18_WRITE_LOCK_SHIFT                           = 36;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION18_READ_LOCK_MASK                                   = 64'h2000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION18_READ_LOCK_SHIFT                                  = 37;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION18_READ_LOCK_MASK                             = 64'h2000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION18_READ_LOCK_SHIFT                            = 37;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION19_WRITE_LOCK_MASK                                  = 64'h4000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION19_WRITE_LOCK_SHIFT                                 = 38;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION19_WRITE_LOCK_MASK                            = 64'h4000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION19_WRITE_LOCK_SHIFT                           = 38;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION19_READ_LOCK_MASK                                   = 64'h8000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION19_READ_LOCK_SHIFT                                  = 39;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION19_READ_LOCK_MASK                             = 64'h8000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION19_READ_LOCK_SHIFT                            = 39;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION20_WRITE_LOCK_MASK                                  = 64'h10000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION20_WRITE_LOCK_SHIFT                                 = 40;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION20_WRITE_LOCK_MASK                            = 64'h10000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION20_WRITE_LOCK_SHIFT                           = 40;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION20_READ_LOCK_MASK                                   = 64'h20000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION20_READ_LOCK_SHIFT                                  = 41;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION20_READ_LOCK_MASK                             = 64'h20000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION20_READ_LOCK_SHIFT                            = 41;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION21_WRITE_LOCK_MASK                                  = 64'h40000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION21_WRITE_LOCK_SHIFT                                 = 42;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION21_WRITE_LOCK_MASK                            = 64'h40000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION21_WRITE_LOCK_SHIFT                           = 42;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION21_READ_LOCK_MASK                                   = 64'h80000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION21_READ_LOCK_SHIFT                                  = 43;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION21_READ_LOCK_MASK                             = 64'h80000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION21_READ_LOCK_SHIFT                            = 43;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION22_WRITE_LOCK_MASK                                  = 64'h100000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION22_WRITE_LOCK_SHIFT                                 = 44;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION22_WRITE_LOCK_MASK                            = 64'h100000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION22_WRITE_LOCK_SHIFT                           = 44;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION22_READ_LOCK_MASK                                   = 64'h200000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION22_READ_LOCK_SHIFT                                  = 45;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION22_READ_LOCK_MASK                             = 64'h200000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION22_READ_LOCK_SHIFT                            = 45;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION23_WRITE_LOCK_MASK                                  = 64'h400000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION23_WRITE_LOCK_SHIFT                                 = 46;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION23_WRITE_LOCK_MASK                            = 64'h400000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION23_WRITE_LOCK_SHIFT                           = 46;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION23_READ_LOCK_MASK                                   = 64'h800000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION23_READ_LOCK_SHIFT                                  = 47;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION23_READ_LOCK_MASK                             = 64'h800000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION23_READ_LOCK_SHIFT                            = 47;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION24_WRITE_LOCK_MASK                                  = 64'h1000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION24_WRITE_LOCK_SHIFT                                 = 48;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION24_WRITE_LOCK_MASK                            = 64'h1000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION24_WRITE_LOCK_SHIFT                           = 48;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION24_READ_LOCK_MASK                                   = 64'h2000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION24_READ_LOCK_SHIFT                                  = 49;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION24_READ_LOCK_MASK                             = 64'h2000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION24_READ_LOCK_SHIFT                            = 49;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION25_WRITE_LOCK_MASK                                  = 64'h4000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION25_WRITE_LOCK_SHIFT                                 = 50;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION25_WRITE_LOCK_MASK                            = 64'h4000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION25_WRITE_LOCK_SHIFT                           = 50;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION25_READ_LOCK_MASK                                   = 64'h8000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION25_READ_LOCK_SHIFT                                  = 51;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION25_READ_LOCK_MASK                             = 64'h8000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION25_READ_LOCK_SHIFT                            = 51;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION26_WRITE_LOCK_MASK                                  = 64'h10000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION26_WRITE_LOCK_SHIFT                                 = 52;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION26_WRITE_LOCK_MASK                            = 64'h10000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION26_WRITE_LOCK_SHIFT                           = 52;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION26_READ_LOCK_MASK                                   = 64'h20000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION26_READ_LOCK_SHIFT                                  = 53;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION26_READ_LOCK_MASK                             = 64'h20000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION26_READ_LOCK_SHIFT                            = 53;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION27_WRITE_LOCK_MASK                                  = 64'h40000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION27_WRITE_LOCK_SHIFT                                 = 54;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION27_WRITE_LOCK_MASK                            = 64'h40000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION27_WRITE_LOCK_SHIFT                           = 54;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION27_READ_LOCK_MASK                                   = 64'h80000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION27_READ_LOCK_SHIFT                                  = 55;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION27_READ_LOCK_MASK                             = 64'h80000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION27_READ_LOCK_SHIFT                            = 55;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION28_WRITE_LOCK_MASK                                  = 64'h100000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION28_WRITE_LOCK_SHIFT                                 = 56;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION28_WRITE_LOCK_MASK                            = 64'h100000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION28_WRITE_LOCK_SHIFT                           = 56;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION28_READ_LOCK_MASK                                   = 64'h200000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION28_READ_LOCK_SHIFT                                  = 57;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION28_READ_LOCK_MASK                             = 64'h200000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION28_READ_LOCK_SHIFT                            = 57;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION29_WRITE_LOCK_MASK                                  = 64'h400000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION29_WRITE_LOCK_SHIFT                                 = 58;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION29_WRITE_LOCK_MASK                            = 64'h400000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION29_WRITE_LOCK_SHIFT                           = 58;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION29_READ_LOCK_MASK                                   = 64'h800000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION29_READ_LOCK_SHIFT                                  = 59;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION29_READ_LOCK_MASK                             = 64'h800000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION29_READ_LOCK_SHIFT                            = 59;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION30_WRITE_LOCK_MASK                                  = 64'h1000000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION30_WRITE_LOCK_SHIFT                                 = 60;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION30_WRITE_LOCK_MASK                            = 64'h1000000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION30_WRITE_LOCK_SHIFT                           = 60;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION30_READ_LOCK_MASK                                   = 64'h2000000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION30_READ_LOCK_SHIFT                                  = 61;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION30_READ_LOCK_MASK                             = 64'h2000000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION30_READ_LOCK_SHIFT                            = 61;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION31_WRITE_LOCK_MASK                                  = 64'h4000000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION31_WRITE_LOCK_SHIFT                                 = 62;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION31_WRITE_LOCK_MASK                            = 64'h4000000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION31_WRITE_LOCK_SHIFT                           = 62;
 
-localparam longint unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION31_READ_LOCK_MASK                                   = 64'h8000000000000000;
-localparam     int unsigned SMC_EFUSE_MAP_ADOPTER_LOCKS_REGION31_READ_LOCK_SHIFT                                  = 63;
+localparam longint unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION31_READ_LOCK_MASK                             = 64'h8000000000000000;
+localparam     int unsigned SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_REGION31_READ_LOCK_SHIFT                            = 63;
 
 localparam  bit [255:0] SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_VALUE_MASK                                             = 256'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 localparam int unsigned SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_VALUE_SHIFT                                            = 0;
@@ -12783,9 +12789,6 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_P
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_MASK         = 32'h400;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_SHIFT        = 10;
 
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK                                   = 32'hFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT                                  = 0;
-
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK                                   = 32'h10000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_SHIFT                                  = 16;
 
@@ -12806,9 +12809,6 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_S
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK                               = 32'h8000000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_SHIFT                              = 27;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK                                      = 32'hFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_SHIFT                                     = 0;
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK                                   = 32'h10000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_SHIFT                                  = 16;
@@ -12842,6 +12842,12 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_R
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_MASK            = 32'h10000000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_SHIFT           = 28;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK                                   = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_SHIFT                                  = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_EFUSE_ADDR_MASK                                      = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_EFUSE_ADDR_SHIFT                                     = 0;
 
 localparam int unsigned TELEMETRY_RECEIVER_CTRL_BUFFER_POP_MASK                                                   = 32'h1;
 localparam int unsigned TELEMETRY_RECEIVER_CTRL_BUFFER_POP_SHIFT                                                  = 0;
@@ -16362,9 +16368,6 @@ localparam int unsigned DFD_DST_ScratchHi_DATA_SHIFT                            
 localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_INIT_TIME_MASK                                       = 32'hFFFFFFFF;
 localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_INIT_TIME_SHIFT                                      = 0;
 
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3FF_MEM_WORD_DATA_MASK                                             = 32'hFFFFFFFF;
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3FF_MEM_WORD_DATA_SHIFT                                            = 0;
-
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_1_MEM_WORD_DATA_MASK                                               = 32'hFFFFFFFF;
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_1_MEM_WORD_DATA_SHIFT                                              = 0;
 
@@ -16385,6 +16388,9 @@ localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_SHIFT            
 
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_MASK                                             = 32'hFFFFFFFF;
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_SHIFT                                            = 0;
+
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_DATA_MASK                                            = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_1000_MEM_WORD_DATA_SHIFT                                           = 0;
 
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_DATA_MASK                                                    = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned REMAPPED_REGION_MEM_WORD_DATA_SHIFT                                                   = 0;
@@ -18375,7 +18381,7 @@ typedef struct packed {
     logic [0:0]   region1_write_lock ;
     logic [0:0]   region0_read_lock ;
     logic [0:0]   region0_write_lock ;
-} smc_efuse_map_adopter_locks_reg_t;
+} smc_efuse_map_supplementary_locks_reg_t;
 
 
 
@@ -18440,24 +18446,24 @@ typedef struct packed {
     logic [0:0]   program_status ;
     logic [0:0]   program_done ;
     logic [0:0]   program_busy ;
-    logic [4:0]   rsvd_0 ;
+    logic [4:0]   rsvd_1 ;
     logic [0:0]   efuse_program_read_back ;
     logic [0:0]   efuse_program_go ;
     logic [0:0]   efuse_data ;
-    logic [15:0]   efuse_addr ;
+    logic [15:0]   rsvd_0 ;
 } efuse_interface_ctrl_efuse_program_ctrl_reg_t;
 
 
 
 typedef struct packed {
     logic [0:0]   read_enable ;
-    logic [0:0]   rsvd_1 ;
+    logic [0:0]   rsvd_2 ;
     logic [0:0]   read_status ;
     logic [0:0]   read_done ;
     logic [0:0]   read_busy ;
-    logic [6:0]   rsvd_0 ;
+    logic [6:0]   rsvd_1 ;
     logic [0:0]   efuse_read_go ;
-    logic [15:0]   efuse_addr ;
+    logic [15:0]   rsvd_0 ;
 } efuse_interface_ctrl_efuse_read_ctrl_reg_t;
 
 
@@ -18485,6 +18491,18 @@ typedef struct packed {
     logic [0:0]   program_req_timeout_enable ;
     logic [27:0]   program_req_timeout_cycles ;
 } efuse_interface_ctrl_efuse_program_req_timeout_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   efuse_addr ;
+} efuse_interface_ctrl_efuse_program_addr_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   efuse_addr ;
+} efuse_interface_ctrl_efuse_read_addr_reg_t;
 
 
 
@@ -21684,12 +21702,6 @@ typedef struct packed {
 
 typedef struct packed {
     logic [31:0]   data ;
-} ext_memory_num_entries_3ff_mem_word_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   data ;
 } ext_memory_num_entries_1_mem_word_reg_t;
 
 
@@ -21727,6 +21739,12 @@ typedef struct packed {
 typedef struct packed {
     logic [31:0]   data ;
 } ext_memory_num_entries_252_mem_word_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} ext_memory_num_entries_1000_mem_word_reg_t;
 
 
 

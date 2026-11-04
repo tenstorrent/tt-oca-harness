@@ -111,6 +111,14 @@ which forwards it unchanged on `efuse_bank_ctrl` to the adopter's SHIM. It
 never appears on the external port. The adopter defines the SHIM's control
 registers at offset `0x0` of its own `smc_external` map.
 
+The optional supplementary fuse window is diverted the same way. When
+`CFG.SMC_SUPPLEMENTARY_FUSE.WORDS` is non-zero, the crossbar routes
+4 × `WORDS` bytes from `CFG.SMC_SUPPLEMENTARY_FUSE.BASE` to the eFuse controller,
+which serves them from the supplementary shadow registers. The window lies inside
+the `fuse` slot of the supplementary region, 16 KB at `BASE + 0x040_7000` in
+the open map; see
+xref:ip:efuse/doc/index.adoc#efuse-supplementary-fuses[Supplementary Fuse Region].
+
 The supplementary (optional) region of the window is passed through to the SMU's
 `smc_external_req_o` / `smc_external_resp_i` ports for adopter integration. The
 adopter may implement any memory-mapped functions there, or may instead
