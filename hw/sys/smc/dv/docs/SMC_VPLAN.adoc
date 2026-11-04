@@ -33334,8 +33334,10 @@ GPIO interface instances and the `CONTROL` address of the GPIO_CTRL entry of eac
 `tb_gpio_ext_drive_value`, for the pad level sequence of every instance with RX enabled; an instance
 with `enable_rx_tx` 11 also writes each level to `DATA_CTRL.core2pad` (the open pad shim drives at
 pull strength against the bench pull-up, so a pad left to its own 0 resolves to X);
-observation taps `tb_gpio_irq_any` and `tb_core2pad_en_o` (a mirror of the `core2pad_en_o` port),
-and `tb_lsio_interface_select` read once before the draw, sampled on `clk_smc_i`; a sampler in the
+observation taps `tb_gpio_irq_any`, `tb_core2pad_en_o` (a mirror of the `core2pad_en_o` port) and
+`tb_core2pad_o` (a mirror of `core2pad_o`, the DUT's own pad drive, read for code 11 at every
+window end), and `tb_lsio_interface_select` read once before the draw, sampled on `clk_smc_i`; a
+sampler in the
 sequence that reads `tb_gpio_irq_any` on every `clk_smc_i` rise of the interrupt leg, from which
 each pad level's window is graded, because an edge interrupt is a one-clock pulse that is not
 stretched (`gpio` `architecture.adoc`, Interrupts); every draw from a `random.Random` stream seeded
@@ -33444,8 +33446,10 @@ for both codes, with `core2pad` set to the same level for code 11), write `DATA_
 code, `interface_enable` and
 `interrupt_type` with `interrupt_enable` clear, wait 24 rises, write the drawn `interrupt_enable`,
 hold the idle level for a 24-rise window in which `tb_gpio_irq_any` must read 0 on every rise, then
-apply each level of the sequence followed by a 24-rise window; read `DATA_CTRL` after each window
-and require `pad2core` equal to the level; grade each window from the samples:
+apply each level of the sequence followed by a 24-rise window; at the window end require
+`core2pad_en_o` of the instance 1 for code 11 and 0 for code 10 and, for code 11, `core2pad_o` of
+the pad equal to the level written to `core2pad`; read `DATA_CTRL` after each window and require
+`pad2core` equal to the level; grade each window from the samples:
 for types 0 and 1 the last 8 of its samples equal 1 at the type's active level with
 `interrupt_enable` set and 0 otherwise, and every sample is 0 with `interrupt_enable` clear; for
 types 2 and 3 the window holds exactly one high sample after the edge the type names with
@@ -33481,20 +33485,23 @@ on its last 8 rises while the pad was at the type's active level and 0 after the
 the idle level; for every drawn configuration of type 0 or 1 with RX enabled and `interrupt_enable`
 clear, at least one on every seed (pinned), `tb_gpio_irq_any` read 0 on every rise through a
 sequence that reached the active level; after every window `DATA_CTRL.pad2core` read equal to the
-pad level, and `core2pad_en_o` of the instance read 1 for code 11 and 0 for code 10 at every window
-end.
+pad level, `core2pad_en_o` of the instance read 1 for code 11 and 0 for code 10 at every window
+end, and `core2pad_o` of the pad read the level written to `core2pad` at every code 11 window end
+(the DUT's own drive, graded beside the bench level the receiver takes).
 |`CHK-PADCFG-EDGE` |For every drawn configuration of type 2 or 3 with RX and `interrupt_enable`
 set, the per-rise sampler saw exactly one high rise of `tb_gpio_irq_any` in the window after the
 edge the type names and none in the window after the opposite edge, an unchanged level or the idle
 level; for every drawn configuration of type 2 or 3 with RX enabled and `interrupt_enable` clear,
 at least one on every seed (pinned), the sampler saw no high rise through a sequence that held the
-named edge; after every window `DATA_CTRL.pad2core` read equal to the pad level.
+named edge; after every window `DATA_CTRL.pad2core` read equal to the pad level, and `core2pad_o`
+of the pad read the level written to `core2pad` at every code 11 window end.
 |`CHK-NONVAC` |The step stamps S1 to S6 are in increasing time order, the three graded checker
 lines above (`CHK-PADCFG-DIR`, `CHK-PADCFG-LEVEL`, `CHK-PADCFG-EDGE`) and the control line
 `CHK-PADCFG-RESET` were printed in step order each after its own step, at least one drawn pad
 moved, the interrupt leg graded one window per level plus the idle window of every RX-enabled
-instance, the interrupt tap was sampled on every `clk_smc_i` rise of those windows, and the
-scoreboard checked every access the pass issued; a control-flow invariant, not a DUT compare.
+instance, the interrupt tap was sampled on every `clk_smc_i` rise of those windows, `core2pad_o`
+was read once per window of every code 11 instance (at least one per seed), and the scoreboard
+checked every access the pass issued; a control-flow invariant, not a DUT compare.
 |`CHK-TIMEOUT-PATHS` |Reports every bounded wait with its bound (the fuse-sense wait of 200000
 `clk_smc_i` rises, the 64-rise bound of each output-enable poll, the 24-rise window after each pad
 level and the driver guard per access, printed from the bench configuration); it is a printed

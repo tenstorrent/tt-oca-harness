@@ -2533,8 +2533,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEPRST-EARLY-RELEASE",
             "CHK-SEPRST-EARLY-RELEASE",
             "for OTBN, AES and TRNG, six pairs of system-bus 0 and 1 writes 0 and 8 debug-bus "
-            "operations apart: the SEP crypto isolation request leaves its value from before the "
-            "0 write within the pair, every read and probe completes and SW_RESET_N reads 0x7E",
+            "operations apart: the written domain's bits of the SEP crypto isolation request "
+            "(host_otbn, host_aes or the three trng_* bits) leave their value from before the 0 "
+            "write within the pair, every read and probe completes and SW_RESET_N reads 0x7E",
         ),
         (
             "CHK-SEPRST-JTAG-INFLIGHT",
@@ -2549,9 +2550,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEPRST-BITE-INFLIGHT",
             "CHK-SEPRST-BITE-INFLIGHT",
             "the bite request falls with no software write; the first retired PC is in the boot "
-            "ROM; the SEP SRAM read issued before the bite, with its ext_in AR handshake before "
-            "rst_wdt_n asserts and RREADY held until after it so its R handshake follows, returns "
-            "OKAY with the written word; "
+            "ROM; the SEP SRAM read issued before the bite returns OKAY with the written word, "
+            "its ext_in AR handshake before rst_wdt_n asserts (the DUT's accept) and its R "
+            "handshake after the reset edge because the bench holds RREADY until then; "
             "a fresh SEP SRAM write and read after the release are OKAY with their data; the "
             "DMA / PERIPH bus-error status readback and the system-bus egress write and read "
             "after the bite are logged as OBS-SEPRST-BITE-ORPHAN lines, never compared",

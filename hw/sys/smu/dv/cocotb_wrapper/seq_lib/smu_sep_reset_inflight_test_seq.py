@@ -44,10 +44,11 @@ S6  KM: the mailbox status word (offset 0xC) with bit 0 held from power-up, rele
     held again; SW_RESET_N is read back after each of the three writes.
 S7  ALL_DOMAINS: a CPU egress load held across a system-bus SW_RESET_N = 0x00, read back as
     0x00, a CPU load into the SMC window, never-isolated targets with every domain held.
-S8  EARLY: 0 then 1 at gaps of 0 and 8 debug-bus operations for OTBN, AES and TRNG; the SEP
-    crypto isolation request is sampled each cycle of every pair and must leave its value
-    from before the 0 write (``reset_controller.adoc``: a 0 bit makes the domain's sequencer
-    request isolation, the 1 write releases it).
+S8  EARLY: 0 then 1 at gaps of 0 and 8 debug-bus operations for OTBN, AES and TRNG; the
+    written domain's bits of the SEP crypto isolation request (``host_otbn``, ``host_aes``, the
+    three ``trng_*`` bits) are sampled each cycle of every pair and must leave their value from
+    before the 0 write (``reset_controller.adoc``: a 0 bit makes the domain's sequencer request
+    isolation, the 1 write releases it); another domain's bit moving does not count.
 S9  JTAG: SW_RESET_N = 0x7F read back, then the IC_RESET sep_reset_n override with ext_in
     and a CPU egress load outstanding;
     the debug-module bring-up is repeated when the first system-bus access reports busy.
@@ -325,8 +326,39 @@ FENCE = (
 FENCE_GAP = 2
 
 # The reset controller's per-path isolation request to the crypto interconnect, sampled
-# passively under smu_scope; S8 grades that it moves within each 0-then-1 pair.
+# passively under smu_scope; S8 grades that the written domain's bits move within each 0-then-1
+# pair. Field order of sep_pkg::sep_crypto_isolate_t (sep_pkg.sv, MSB first); sep_reset_ctrl.sv
+# drives host_<engine> from that engine's isolate request alone, the three trng_* bits from the
+# TRNG request, and km_* from the engine's or the Key Manager's request.
 ISO_REQ_PATH = "gen_sep.u_sep.u_sep_reset_ctrl.sep_crypto_isolate_req_o"
+ISO_REQ_FIELDS = (
+    "trng_entropy_source",
+    "trng_csrng",
+    "trng_edn",
+    "host_otbn",
+    "host_aes",
+    "host_hmac",
+    "host_kmac",
+    "host_abr",
+    "km_otbn",
+    "km_aes",
+    "km_hmac",
+    "km_kmac",
+    "km_abr",
+    "km_efuse",
+)
+
+
+def _iso_mask(*fields: str) -> int:
+    return sum(1 << (len(ISO_REQ_FIELDS) - 1 - ISO_REQ_FIELDS.index(f)) for f in fields)
+
+
+# S8: the bits a domain's own isolate request drives, by the EARLY_DOMAINS name.
+EARLY_ISO_MASK = {
+    "otbn": _iso_mask("host_otbn"),
+    "aes": _iso_mask("host_aes"),
+    "trng": _iso_mask("trng_entropy_source", "trng_csrng", "trng_edn"),
+}
 
 DRAIN_IDS = (0x10, 0x11, 0x12, 0x13)
 EARLY_IDS = (0x14, 0x15)
@@ -1536,13 +1568,14 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                 ]
                 issued += len(reads)
                 busy = []
-                iso_base = sample(iso_req, ISO_REQ_PATH)
+                iso_mask = EARLY_ISO_MASK[dom]
+                iso_base = sample(iso_req, ISO_REQ_PATH) & iso_mask
                 iso_seen: list[int] = []
 
-                async def iso_watch(base=iso_base, seen_vals=iso_seen) -> None:
+                async def iso_watch(base=iso_base, mask=iso_mask, seen_vals=iso_seen) -> None:
                     while True:
                         await RisingEdge(self.dut.clk_smu_i)
-                        value = sample(iso_req, ISO_REQ_PATH)
+                        value = sample(iso_req, ISO_REQ_PATH) & mask
                         if value != base and value not in seen_vals:
                             seen_vals.append(value)
 
@@ -1573,8 +1606,9 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
                 iso_task.cancel()
                 moved.append(bool(iso_seen))
                 self._log(
-                    f"OBSERVATION S8 {dom} g={g} isolation request before the 0 write="
-                    f"0x{iso_base:x} other values in the pair={[hex(v) for v in iso_seen]}"
+                    f"OBSERVATION S8 {dom} g={g} isolation request bits of {dom} (mask "
+                    f"0x{iso_mask:x}) before the 0 write=0x{iso_base:x} other values in the "
+                    f"pair={[hex(v) for v in iso_seen]}"
                 )
                 if err:
                     raise AssertionError(f"S8 {dom} g={g} system-bus sberror={err}")
@@ -1598,8 +1632,9 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
             )
         self._verdict(
             "CHK-SEPRST-EARLY-RELEASE",
-            f"CHK-SEPRST-EARLY-RELEASE: {len(lines)} pairs; isolation request moved in "
-            f"{sum(moved)}/{len(moved)} pairs; all accesses completed; SW_RESET_N "
+            f"CHK-SEPRST-EARLY-RELEASE: {len(lines)} pairs; the written domain's isolation "
+            f"request bits moved in {sum(moved)}/{len(moved)} pairs; all accesses completed; "
+            f"SW_RESET_N "
             f"0x{sw & SWRST_FIELD_MASK:02X}",
             (moved, completed, sw & SWRST_FIELD_MASK),
             ([True] * len(EARLY_DOMAINS) * len(GAPS), issued, SWRST_POR),
@@ -1985,17 +2020,18 @@ class smu_sep_reset_inflight_test_seq(smu_axi_in_sep_aperture_test_seq):
         self._log(
             f"CTRL-SEPRST-BITE-SRAM-OUTSTANDING: arid=0x{sram_id:x} ar_hs@{sram_ar} "
             f"rst_wdt_n_low@{bite['reset']} r_hs@{sram_r} (req rise@{bite['rise']} "
-            f"fall@{bite['fall']}) ar_before_reset={int(0 < sram_ar < bite['reset'])} "
-            f"r_after_reset={int(sram_r > bite['reset'])}"
+            f"fall@{bite['fall']}) ar_before_reset={int(0 < sram_ar < bite['reset'])} (the DUT's "
+            f"AR accept) r_after_reset={int(sram_r > bite['reset'])} (set by the bench: RREADY "
+            f"held until after the reset edge)"
         )
         sram_lanes = _lanes(sram_word.to_bytes(8, "little"), 8)
         fresh_lanes = _lanes(fresh_word.to_bytes(8, "little"), 8)
         self.soft = False
         self._verdict(
             "CHK-SEPRST-BITE-INFLIGHT",
-            "CHK-SEPRST-BITE-INFLIGHT: req self-cleared; cpu restart; sram read AR before and R "
-            "after rst_wdt_n low, OKAY with the written word; fresh sram rw OKAY; status/egress "
-            "OBS (#3341)",
+            "CHK-SEPRST-BITE-INFLIGHT: req self-cleared; cpu restart; sram read accepted (AR) "
+            "before rst_wdt_n low and OKAY with the written word on the R the bench held until "
+            "after it; fresh sram rw OKAY; status/egress OBS (doc/trm/src/reset.adoc)",
             (
                 bite["sba_at_rise"] == bite["sba_at_fall"],
                 BOOT_ROM_LOCAL <= bite["pc"] < BOOT_ROM_END,
