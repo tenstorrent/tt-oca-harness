@@ -2085,6 +2085,12 @@ module smc_uvm_top
     assign tb_mbx0_full  = `SMC_MBX0.mbox_full;
     assign tb_mbx0_empty = `SMC_MBX0.mbox_empty;
     `undef SMC_MBX0
+    // The live OCTS count and the timer's own pulse ports on either side of the padring.
+    assign tb_octs_timer_count = `SMC_PERIPH.u_system_timer_octs.timer_count_o;
+    assign tb_octs_core_sync_load_out = `SMC_PERIPH.timer_sync_load_primary;
+    assign tb_octs_core_credit_out    = `SMC_PERIPH.timer_cnt_credit_primary;
+    assign tb_octs_core_sync_load_in  = `SMC_PERIPH.timer_sync_load_secondary;
+    assign tb_octs_core_credit_in     = `SMC_PERIPH.timer_cnt_credit_secondary;
     `undef SMC_PERIPH
 
     // TB glue: pulse tb_dfd_fault_inject to latch a deterministic token. This

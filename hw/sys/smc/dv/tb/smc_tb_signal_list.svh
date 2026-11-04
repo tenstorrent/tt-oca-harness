@@ -871,6 +871,13 @@
 `SMC_TB_OUT(logic, tb_efuse_shim_resp_status)
 `SMC_TB_OUT(logic [63:0], tb_efuse_locks)
 
+// OCTS live count and the timer's pulse ports on either side of the padring.
+`SMC_TB_OUT(logic [63:0], tb_octs_timer_count)
+`SMC_TB_OUT(logic, tb_octs_core_sync_load_out)
+`SMC_TB_OUT(logic, tb_octs_core_credit_out)
+`SMC_TB_OUT(logic, tb_octs_core_sync_load_in)
+`SMC_TB_OUT(logic, tb_octs_core_credit_in)
+
 // ------------------------------------------------------------------
 // Elaboration aliases: optional observe ports for the bring-up smoke
 // (SmcWrapperElaborationSeq). Bare SmcEnv tests never touch these.
