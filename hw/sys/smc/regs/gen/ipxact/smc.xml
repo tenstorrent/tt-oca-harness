@@ -1623,7 +1623,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>version_lo</ipxact:name>
-              <ipxact:description>SMC version, lower 32 bits</ipxact:description>
+              <ipxact:description>SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1641,7 +1641,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>version_hi</ipxact:name>
-              <ipxact:description>SMC version, upper 32 bits</ipxact:description>
+              <ipxact:description>SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
