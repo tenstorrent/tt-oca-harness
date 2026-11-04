@@ -156,7 +156,7 @@ FABRIC_SETTLE_CYCLES = 4000
 #: 56-bit address and 64-bit data).
 SINGLE_OP_ADDR_LSB = 76
 SINGLE_OP_ADDR_MASK = (1 << 56) - 1
-FABRIC_VALIDS = ("awvalid", "wvalid", "arvalid")
+FABRIC_VALIDS = ("dtp_smc_dbg_aw_valid_o", "dtp_smc_dbg_w_valid_o", "dtp_smc_dbg_ar_valid_o")
 POSTURE_TIMEOUT_CYCLES = 60000
 
 
@@ -182,10 +182,11 @@ class SmuOtpBridgesUnderDbgDisableSeq:
         )
 
     def _fabric_valid_pins(self) -> list:
-        port = getattr(self.dut, "u_dtp_smc_dbg_if", None)
-        if port is None:
-            raise AssertionError("u_dtp_smc_dbg_if unobservable on the wrapper tb top")
-        return [getattr(port, name) for name in FABRIC_VALIDS]
+        pins = [getattr(self.dut, name, None) for name in FABRIC_VALIDS]
+        missing = [name for name, pin in zip(FABRIC_VALIDS, pins) if pin is None]
+        if missing:
+            raise AssertionError(f"{missing} unobservable on the wrapper tb top")
+        return pins
 
     async def _watch_fabric_valids(self, pins: list, tally: dict[str, int]) -> None:
         """Count clk_smu_i edges, edges with a VALID high, and edges with a VALID at X/Z."""
