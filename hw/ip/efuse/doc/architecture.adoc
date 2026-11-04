@@ -315,8 +315,10 @@ For SMC, the internal security disable signal is directly driven by the
 
 === Lifecycle State (LC_STATE) Effects
 
-The eFuse interface controller enforces access restrictions based on the
-chip's lifecycle state.
+The subsystem eFuse wrapper, not the eFuse interface controller, enforces the
+JTAG access restrictions based on the chip's lifecycle state: `smc_efuse_wrapper`
+for SMC and `sep_efuse_wrapper` for SEP. The wrapper decodes the differentially
+encoded lifecycle state and treats a decode integrity error as a restricted state.
 
 *Lifecycle State Encoding:*
 
@@ -347,17 +349,20 @@ accesses outside the MMR space are blocked with an SLVERR response.
 
 *SMC JTAG Policy:*
 
-When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
-to eFuse registers is restricted (<<efuse-lifecycle-based-jtag-permissions-table>>).
+When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG writes to eFuse
+registers are blocked and JTAG reads are blocked except for JTAG_PUBLIC_IDENTITY.
+When the lifecycle state fails its integrity check, every JTAG write and read is
+blocked, JTAG_PUBLIC_IDENTITY included
+(<<efuse-lifecycle-based-jtag-permissions-table>>).
 
 [[efuse-lifecycle-based-jtag-permissions-table]]
-[width="100%",cols="32%,43%,25%",options="header",]
+[width="100%",cols="28%,30%,24%,18%",options="header",]
 .eFuse JTAG permissions (SMC)
 |=====================================================================================
-|Access Type |PROD/RMA_SOP State |Other States
-|JTAG Write |*Blocked* (SLVERR response) |Allowed
-|JTAG Read |*Blocked* except JTAG_PUBLIC_IDENTITY |Allowed
-|JTAG Read JTAG_PUBLIC_IDENTITY |Allowed |Allowed
+|Access Type |PROD/RMA_SOP State |LC_STATE Integrity Error |Other States
+|JTAG Write |*Blocked* (SLVERR response) |*Blocked* (SLVERR response) |Allowed
+|JTAG Read |*Blocked* except JTAG_PUBLIC_IDENTITY |*Blocked* |Allowed
+|JTAG Read JTAG_PUBLIC_IDENTITY |Allowed |*Blocked* |Allowed
 |=====================================================================================
 
 The access control mechanism uses an AXI-Lite demux that routes blocked
@@ -367,7 +372,8 @@ returns an SLVERR response with data value `0xbadcab1e`.
 *SMC exception for JTAG_PUBLIC_IDENTITY:*
 
 Even in PROD or RMA_SOP states, JTAG read access to the JTAG_PUBLIC_IDENTITY
-register is permitted. This allows identification of the chip for manufacturing
+register is permitted. The exception does not apply when the lifecycle state
+fails its integrity check. This allows identification of the chip for manufacturing
 and field returns without exposing sensitive eFuse contents.
 
 === Secure Test Mode (secure_tm_i)
