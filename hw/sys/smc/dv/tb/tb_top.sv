@@ -1854,6 +1854,7 @@ module smc_uvm_top
     assign tb_plic_priority_low = {`SMC_PLIC.priority_2[0], `SMC_PLIC.priority_1[0],
                                    `SMC_PLIC.priority_0[0]};
     assign tb_plic_pending_331  = `SMC_PLIC.pending_330;
+    assign tb_plic_pending_323  = `SMC_PLIC.pending_322;
     assign tb_plic_pending_324  = `SMC_PLIC.pending_323;
     assign tb_plic_pending_329  = `SMC_PLIC.pending_328;
     assign tb_plic_pending_330  = `SMC_PLIC.pending_329;

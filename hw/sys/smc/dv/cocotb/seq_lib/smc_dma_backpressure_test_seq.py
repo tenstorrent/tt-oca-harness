@@ -34,11 +34,15 @@ The queue holds, in order:
   source does not, also with `DECOUPLE_RW` set.
 * **Further 64-byte copies** until the frontend reports it cannot take more.
 
-A last leg reads a 64-byte source from the output-fabric window with the
-responder answering SLVERR on the third beat of the burst. The DMA has no
-error handling configured, so the transfer must still complete; the beats the
-responder answered OKAY must arrive, and the errored beat's destination bytes
-are recorded.
+Three error legs follow. A 64-byte read from the output-fabric window is
+answered SLVERR on the third beat of the burst, then a 64-byte write into the
+window is answered SLVERR on its third beat, then a 64-byte read is answered
+DECERR on its third beat. The DMA has no error handling configured, so each
+transfer must still complete; the beats the responder answered OKAY must
+arrive, and the errored beat's destination bytes are recorded. `dma.adoc`
+(Retirement Counting) states that a command whose bursts receive an AXI error
+response still retires once: `DONE_0` must reach the command's id, hold it on
+six further reads, and the next launch must return that id plus one.
 """
 
 from __future__ import annotations
@@ -91,13 +95,20 @@ DST_POISON = 0xEE
 MAX_LAUNCHES = 16
 POLL_LIMIT = 400
 POLL_CYCLES = 20
+FURTHER_READS = 6
 
-#: The error leg: a source in the output-fabric window, answered SLVERR on its
-#: third beat.
+#: The error legs: a source or destination in the output-fabric window,
+#: answered with the error code on the third beat of a 64-byte burst.
 ERR_SRC = DST_BASE + 0x1C00
 ERR_DST = SRC_BASE + 0x4000
+WERR_SRC = SRC_BASE + 0x5000
+WERR_DST = DST_BASE + 0x1D00
+RDECERR_SRC = DST_BASE + 0x1E00
+RDECERR_DST = SRC_BASE + 0x6000
 ERR_BEAT = 2
 ERR_LEN = 64
+RESP_SLVERR = 2
+RESP_DECERR = 3
 
 
 class _Desc:
@@ -131,8 +142,10 @@ class smc_dma_backpressure_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.launched: list[_Desc] = []
         self.refused_ready = -1
+        self.held_done = -1
         self.checked_bytes = 0
         self.err_beat_bytes = b""
+        self.retire_once: list[str] = []
 
     # -- plumbing ---------------------------------------------------------
 
@@ -270,6 +283,11 @@ class smc_dma_backpressure_test_seq(SmcCsrSeq):
                 f"STATUS.BUSY kept reporting readiness through {len(queue)} launches with the "
                 f"destination's responses held"
             )
+            assert refused.name.startswith("FILL"), (
+                f"CHK-DMA-BACKPRESSURE FAIL: readiness cleared at {refused.name} before every "
+                f"named case was launched ({[d.name for d in self.launched]})"
+            )
+            self.held_done = await self.csr_read("HELD_DONE", DMA_CTRL_DONE_0)
             self.refused_ready = 0
             releaser = cocotb.start_soon(self._release_on_ar())
             await self._launch(refused)
@@ -297,34 +315,58 @@ class smc_dma_backpressure_test_seq(SmcCsrSeq):
             )
             self.checked_bytes += total
 
-    async def _error_leg(self) -> None:
+    async def _error_leg(
+        self, token: str, name: str, src: int, dst: int, code: int, read: bool
+    ) -> bytes:
+        """One 64-byte copy whose third beat on the `read` or write side is answered `code`;
+        returns the errored beat's destination bytes."""
         sys_out = self.cfg.sys_out_mem
         assert sys_out is not None, "SYS_OUT responder not bound"
-        await self._fill(ERR_SRC, ERR_LEN, _pattern)
-        await self._fill(ERR_DST, ERR_LEN, lambda _a: DST_POISON)
+        await self._fill(src, ERR_LEN, _pattern)
+        await self._fill(dst, ERR_LEN, lambda _a: DST_POISON)
         monitor = self.env.output_axi_monitor
-        slverr_before = monitor.snapshot()["r_slverr"]
-        monitor.allow_slverr = True
-        sys_out.inject_error(ERR_SRC + ERR_BEAT * WORD, 2, write=False)
-        base_done = await self.csr_read("ERR_DONE_BASE", DMA_CTRL_DONE_0)
-        d = _Desc("ERRSRC", ERR_SRC, ERR_DST, ERR_LEN)
+        key = f"{'r' if read else 'b'}_{'slverr' if code == RESP_SLVERR else 'decerr'}"
+        before = monitor.snapshot()[key]
+        if code == RESP_SLVERR:
+            monitor.allow_slverr = True
+        else:
+            monitor.allow_decerr = True
+        sys_out.inject_error(
+            (src if read else dst) + ERR_BEAT * WORD, code, read=read, write=not read
+        )
+        base_done = await self.csr_read(f"{name}_DONE_BASE", DMA_CTRL_DONE_0)
+        d = _Desc(name, src, dst, ERR_LEN)
         await self._program(d)
         await self._launch(d)
-        assert d.id == base_done + 1, f"ERRSRC: id {d.id} after DONE {base_done}"
-        await self._await_done(d.id)
-        slverr = monitor.snapshot()["r_slverr"] - slverr_before
-        monitor.allow_slverr = False
-        assert slverr == 1, (
-            f"ERRSRC: the output responder answered {slverr} read beats SLVERR, not the one "
-            f"injected"
+        assert d.id == base_done + 1, f"{token} FAIL: {name}: id {d.id} after DONE {base_done}"
+        done = await self._await_done(d.id)
+        further = []
+        for n in range(FURTHER_READS):
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+            further.append(await self.csr_read(f"{name}_DONE_MORE{n}", DMA_CTRL_DONE_0))
+        assert done == d.id and further == [d.id] * FURTHER_READS, (
+            f"{token} FAIL: {name}: DONE_0 read {done} then {further}, want {d.id} on every read"
         )
-        got = await self._bytes(ERR_DST, ERR_LEN)
-        want = bytes(_pattern(ERR_SRC + i) for i in range(ERR_LEN))
+        errors = monitor.snapshot()[key] - before
+        monitor.allow_slverr = False
+        monitor.allow_decerr = False
+        assert errors == 1, (
+            f"{token} FAIL: {name}: the output responder answered "
+            f"{errors} {key} beats, not the one injected"
+        )
+        got = await self._bytes(dst, ERR_LEN)
+        want = bytes(_pattern(src + i) for i in range(ERR_LEN))
         lo, hi = ERR_BEAT * WORD, (ERR_BEAT + 1) * WORD
         assert got[:lo] == want[:lo] and got[hi:] == want[hi:], (
-            f"ERRSRC: beats answered OKAY did not arrive intact: {got.hex()} vs {want.hex()}"
+            f"{token} FAIL: {name}: beats answered OKAY did not arrive "
+            f"intact: {got.hex()} vs {want.hex()}"
         )
-        self.err_beat_bytes = got[lo:hi]
+        self.retire_once.append(
+            f"{name} ({key} on beat {ERR_BEAT}) id {d.id} = DONE_0 {base_done} + 1, DONE_0 read "
+            f"{d.id} and {further} on {FURTHER_READS} further reads, errored beat holds "
+            f"{got[lo:hi].hex()}"
+        )
+        return got[lo:hi]
 
     async def body(self) -> None:
         await self._pass_all()
@@ -333,15 +375,32 @@ class smc_dma_backpressure_test_seq(SmcCsrSeq):
             "CHK-DMA-BACKPRESSURE: with the output responder's responses held, %d descriptors "
             "were launched before STATUS.BUSY reported no readiness; one more was launched and "
             "the hold released once its read reached SEP_IN; every descriptor completed, DONE "
-            "reached id %d, and %d destination bytes matched their sources",
+            "reached id %d, and %d destination bytes matched their sources; launched %s; DONE_0 "
+            "read %d against the baseline %d with the responses held (measured, not compared)",
             len(self.launched) - 1,
             self.launched[-1].id,
             self.checked_bytes,
+            [d.name for d in self.launched],
+            self.held_done,
+            self.launched[0].id - 1,
         )
-        await self._error_leg()
+        self.err_beat_bytes = await self._error_leg(
+            "CHK-DMA-READ-ERROR-BEAT", "ERRSRC", ERR_SRC, ERR_DST, RESP_SLVERR, read=True
+        )
         cocotb.log.info(
             "CHK-DMA-READ-ERROR-BEAT: a 64-byte read answered SLVERR on beat %d (from 0) still completed; "
             "the other beats arrived intact and the errored beat's destination holds %s",
             ERR_BEAT,
             self.err_beat_bytes.hex(),
+        )
+        token = "CHK-DMA-WRITE-ERROR-RETIRES-ONCE"
+        await self._error_leg(token, "ERRDST", WERR_SRC, WERR_DST, RESP_SLVERR, read=False)
+        await self._error_leg(token, "ERRDEC", RDECERR_SRC, RDECERR_DST, RESP_DECERR, read=True)
+        cocotb.log.info(
+            "%s: a 64-byte write answered SLVERR on beat %d and a 64-byte read answered DECERR "
+            "on beat %d each retired exactly once with the OKAY beats intact: %s",
+            token,
+            ERR_BEAT,
+            ERR_BEAT,
+            "; ".join(self.retire_once[1:]),
         )
