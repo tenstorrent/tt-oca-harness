@@ -12653,7 +12653,7 @@ An entry whose test does not exist yet carries `*Status*: planned (no test yet)`
 |Area |Test numbers |Scope
 |FABRIC
 |12, 17, 18, 129 to 133, 205, 217, 218, 220
-|Last writer on one map word over two bridges; several inbound transfers in flight and the refusal of unsupported burst types; DECERR on an address no aperture claims; alias remap transparency after reset and the AxCACHE of a hit and a miss; the filter and remap register sweeps; filter entry lock; past-extent, gap and remap-window responses of the SMC map. Responder error codes returned to the initiator on a pinned or drawn beat.
+|Last writer on one map word over two bridges; several inbound transfers in flight and the refusal of unsupported burst types; DECERR on an address no aperture claims; alias remap transparency after reset and the AxCACHE of a hit and a miss; the filter and remap register sweeps; filter entry lock; past-extent, gap and remap-window responses of the SMC map. Responder error codes returned to the initiator on a pinned or drawn beat. Three initiators against a stalling `ext_out` with interleaved IDs, the forwarding and DECERR cells, and the aperture edges and programming limits from the crossbar ports.
 |RESET
 |21, 25, 30, 32, 134, 135, 137, 206
 |Boot-stall precedence over IC_RESET; two IC_RESET domains in one data register; reset release on a domain clock edge; SRAM auto-initialisation held off; the clock-stop output under a primary reset; isolation and FLR retention across cool and cold resets; the reset-unit register sweep with random data, read-only and unmapped cells; register retention across cool, cold and warm resets.
