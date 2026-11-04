@@ -322,7 +322,7 @@ depth, telemetry, UART, and OCTS.
 ==== `smc_reset_fcov`, `smc_rst_seq_fcov`, `smc_iso_fcov` and `smc_filt_fcov`
 
 *Description*: each reset source and release edge, the relationships between
-them, isolation and FLR, and the protection and inbound filters.
+them, isolation and FLR, and the protection, inbound and outbound filters.
 
 [cols="3,4",options="header"]
 |===
@@ -334,6 +334,10 @@ them, isolation and FLR, and the protection and inbound filters.
 |`c_powergood_rise_stretched`, `c_cold_reset_*`, `c_async_assert_observed`, `c_sync_deassert_observed`, `c_multi_stage_sync_present`, `c_release_primary_periph`, `c_*_held_in_primary_reset`, `c_warm_cascaded_from_primary`, `c_region_size_reset_16mib`, `c_config_registers_at_reset_value`, `c_ss_config_driven`, `c_reset_*_boot_seq_done`, `c_telemetry_reset_*` |Power-on ordering, what the primary reset holds, the boot-sequence gate
 |`c_sw_isolate_per_subsystem`, `c_flr_isolate_*`, `c_single_sequence_per_rising_edge`, `c_no_sequence_on_level_hold`, `c_warm_from_*_wdt`, `c_cool_reset_from_gpio_pin_61` |Isolation terms, FLR sequencing, warm and cool reset sources
 |`c_awprot_*`, `c_arprot_*`, `c_jtag2axi_remapped`, `c_jtag2axi_filtered`, `c_inbound_filter_*` |Protection filter exact and nearest-miss matches, the JTAG2AXI path, the inbound filter
+|`c_infilt_deny_range`, `c_infilt_deny_ns`, `c_infilt_deny_src_id`, `c_infilt_deny_burst` |Each
+match term that alone keeps a lower inbound entry, whose permission bit answers the other way,
+from deciding a SYS_IN probe inside the graded window of `smc_infilt_rule_matrix_rand_test`, the
+twins of `cp_deny_term` of `smc_infilt_rule_cg`
 |===
 
 [[smc-fcov-groups]]
@@ -401,6 +405,26 @@ operation in flight |The owner draws every pass from the four operations; a
 pass whose operation finished before the assertion (an engine idle at the FLR
 cool-reset fall) or whose SPM address is not yet presented (`AWVALID` or
 `ARVALID` not raised) samples no cell
+|`smc_filt_fcov::smc_infilt_rule_cg` |`cp_rule` decided by entry 0 or 1, 32
+cells |The owner's filter leaves entries 0 and 1 disabled and unchanged
+(`CHK-IFM-RESET`, `CHK-IFM-RESTORE`), so no probe is decided by them; no bin
+lists them
+|`smc_filt_fcov::smc_infilt_rule_cg` |`cp_probe` of a blocked probe |The row
+counts the probe shapes of the owner's admitted-probe step; a blocked probe
+completes DECERR and its shape has no bin
+|`smc_filt_fcov::smc_infilt_rule_cg` |A probe whose hit-vector entry differs
+from the shadow table's lowest match, or whose response is not that entry's
+permission bit |The deciding entry is read from the DUT and cross-checked
+against the match rule of `axi_filter` `index.adoc`; a disagreement is a
+sampler fault or the failing outcome of `CHK-IFM-LOWEST-WINS`, and counts in
+no cell rather than in a wrong one
+|`smc_filt_fcov::smc_outfilt_rule_cg` |`cp_priority` lowest matching entry
+allows with no higher-numbered deny |A `cp_rule` cell alone; the three
+priority bins are the outcomes `CHK-OFM-LOWEST-WINS` and
+`CHK-OFM-UNMATCHED-PASS` name
+|`smc_filt_fcov::smc_outfilt_rule_cg` |A probe whose response is not the
+function of its cell |The failing outcome of `CHK-OFM-LOWEST-WINS` and
+`CHK-OFM-DENY-DECERR`; counts in no cell
 |===
 
 Verilator and VCS build the same goal bins for each covergroup because no
@@ -411,8 +435,12 @@ A cross whose unreachable cells only a select expression could remove is a
 tuple coverpoint, with one bin per reachable cell named for the bins it pairs:
 `cp_gate_contract`, `cp_gaters`, `cp_claim`, `cp_terms`, `cp_region_resp`,
 `cp_transition`, `cp_axi_terms`, `cp_reg_terms`, the four copy coverpoints of
-`smc_dma_geometry_cg` (led by a copy flag that every bin sets) and both
-coverpoints of `smc_reset_kind_inflight_cg`. On Verilator, a value that
+`smc_dma_geometry_cg` (led by a copy flag that every bin sets), both
+coverpoints of `smc_reset_kind_inflight_cg`, and `cp_rule`, `cp_probe` and
+`cp_deny_term` of `smc_infilt_rule_cg` and `cp_rule` and `cp_probe` of
+`smc_outfilt_rule_cg` (each led by a flag or kind code that only a graded
+probe carries, with one `pass:[`define]` macro per entry or channel writing
+the bins of one axis product). On Verilator, a value that
 a bin and an `ignore_bins` both list counts in the bin, without a warning, so
 no goal bin overlaps an `ignore_bins`: `cg_reset_state` lists the four
 partial-release states its ignore bins leave, and `cg_clk_ratio` has no
@@ -526,8 +554,13 @@ the documented values of its row.
 ==== `smc_infilt_rule_cg`
 *Description*: Inbound filter entry terms, probe shape and verdict on SYS_IN, per programmed entry.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_infilt_rule_matrix_rand_test`, the test
-that draws these cells; no sampler exists). Owner's draw: "the seed draws 4 rule sets, each of 2 to
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_filt_fcov::smc_infilt_rule_cg`, handle
+`u_cg_infilt_rule`, one sample per SYS_IN probe at the B or R-last handshake that completes it,
+while the owner `smc_infilt_rule_matrix_rand_test` holds `tb_fcov_gate` high over its step 2, from
+the first table write of its first rule set to the last restore of its last, and while an inbound
+entry at an index of 2 to 15 has been written since the gate rose and the sampler's shadow of the
+inbound table holds one enabled). Owner's draw:
+"the seed draws 4 rule sets, each of 2 to
 6 inbound entries at distinct indices 2 to 15, and 12 SYS_IN probes per set"; the field goes on to
 the terms and the window of each entry (a two-page `allow_burst` 1 window with its edges inside its
 granules), the overlap placement, per probe the cell kind, the address, AxPROT[1], AxUSER[3:0],
@@ -540,23 +573,35 @@ lowest-entry block, the pinned twin of one such probe on the other channel; filt
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_rule` |lowest matching entry, the entry whose permission bit decides the probe (2 to 15: 14) x its `allow_ns` (0, 1: 2) x `src_id` class of the probe against that entry (wildcard `src_id` 0, equal: 2) x its `allow_burst` (0, 1: 2) x verdict of the probe (permit, deny: 2); 224 cells, plus one bin for the no-match block (a probe that matches no entry, decided by no entry); 225 cells; a probe whose `src_id`, AxPROT[1], AxLEN or address fails an entry falls through to a higher-numbered entry or to the block and is binned under the entry that decides it or under the block, with the failing term in `cp_deny_term` (`fabric.adoc`, Inbound Filtering; `filter_ctrl.rdl`, `allow_ns`, `src_id`, `allow_burst`) |`sys_axi_in_req_i` AxADDR, AxPROT[1], AxUSER[3:0], AxLEN; `tb_inb_read_hit`, `tb_inb_write_hit`; `sys_axi_in_resp_o` B and R response |`smc_infilt_rule_matrix_rand_test` |planned
-|`cp_probe` |channel (read, write: 2) x AxLEN (0, 1, 3, 7, 15: 5) x AxPROT[1] (0, 1: 2); 20 cells, the probe shapes of the owner's admitted-probe step (`filter_ctrl.rdl`, `allow_burst`, `allow_ns`) |`sys_axi_in_req_i` AxLEN, AxPROT[1], AW and AR handshakes |`smc_infilt_rule_matrix_rand_test` |planned
-|`cp_deny_term` |deny per term: address window, `allow_ns`, `src_id`, `allow_burst` (4 single-event bins; each also has an `OCAH_FCOV_COVER` twin) (`axi_filter` `index.adoc`, Match, Then Permit) |as above, with the matching entry's permission bit |`smc_infilt_rule_matrix_rand_test` |planned
+|`cp_rule` |lowest matching entry, the entry whose permission bit decides the probe (2 to 15: 14) x its `allow_ns` (0, 1: 2) x `src_id` class of the probe against that entry (wildcard `src_id` 0, equal: 2) x its `allow_burst` (0, 1: 2) x verdict of the probe (permit, deny: 2); 224 cells, plus one bin for the no-match block (a probe that matches no entry, decided by no entry); 225 cells, one tuple coverpoint with one bin per cell; a probe whose `src_id`, AxPROT[1], AxLEN or address fails an entry falls through to a higher-numbered entry or to the block and is binned under the entry that decides it or under the block, with the failing term in `cp_deny_term` (`fabric.adoc`, Inbound Filtering; `filter_ctrl.rdl`, `allow_ns`, `src_id`, `allow_burst`) |`sys_axi_in_req_i` AxADDR, AxPROT[1], AxUSER[3:0], AxLEN at the AW and AR handshakes; `tb_inb_read_hit`, `tb_inb_write_hit` one `clk_smc_i` edge after that handshake, whose lowest set bit is the deciding entry; `sys_axi_in_resp_o` B and R response, the verdict; the entry's `allow_ns`, `src_id` and `allow_burst` from the sampler's shadow of the inbound table, the last SEP_IN write that completed OKAY at `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` of each entry (the decode assumes one SEP_IN write outstanding at a time and all eight strobes of the single 64-bit beat set, which the owner's writes meet); the shadow's lowest match under the rule of `axi_filter` `index.adoc` (Match, Then Permit) is compared with the hit vector's, and the response with that entry's permission bit, and a probe on which either differs samples no cell |`smc_infilt_rule_matrix_rand_test` |live
+|`cp_probe` |channel (read, write: 2) x AxLEN (0, 1, 3, 7, 15: 5) x AxPROT[1] (0, 1: 2); 20 cells, one tuple coverpoint with one bin per cell, the probe shapes of the owner's admitted-probe step: a probe that completes OKAY (`filter_ctrl.rdl`, `allow_burst`, `allow_ns`) |`sys_axi_in_req_i` AxLEN, AxPROT[1] at the AW and AR handshakes; `sys_axi_in_resp_o` B and R response |`smc_infilt_rule_matrix_rand_test` |live
+|`cp_deny_term` |deny per term: address window, `allow_ns`, `src_id`, `allow_burst` (4 single-event bins; each also has an `OCAH_FCOV_COVER` twin, `c_infilt_deny_range`, `c_infilt_deny_ns`, `c_infilt_deny_src_id` and `c_infilt_deny_burst`); a term counts on a probe when it alone keeps a lower-numbered entry, whose permission bit for the channel answers the other way from the probe's verdict, from matching, so that the entry would decide the probe with the term passing (the owner's term cells, `CHK-IFM-MATCH-TERMS` and `CHK-IFM-SRC-ID`) (`axi_filter` `index.adoc`, Match, Then Permit) |as above, with the shadow entries' permission bits |`smc_infilt_rule_matrix_rand_test` |live
 |===
 
-*Ignore bins*: entries 0 and 1 (the owner's filter leaves them at their reset words;
-`CHK-IFM-RESTORE` requires them unchanged, so no probe is decided by them); the repeats with a
-source ID above AxUSER[3:0] (printed, not compared: the chapter prose names no lane, the figure
-names AxUSER[3:0]); the hit-vector values (printed); the 56-bit address leg (the owner's Scope limit
-leaves it with the directed leaves).
+*Ignore bins*: entries 0 and 1 (the owner's filter leaves them disabled and unchanged,
+`CHK-IFM-RESET` and `CHK-IFM-RESTORE`, so no probe is decided by them; no bin lists them); the
+repeats with a source ID above AxUSER[3:0] (the inbound filter compares AxUSER[3:0] alone,
+`fabric.adoc`, Output Remapping; the owner grades each repeat against its probe,
+`CHK-INB-SRCID-UPPER-BITS-IGNORED`, and the repeat presents the probe's own cell, so the sampler
+takes a probe whose AxUSER[11:4] is 0 only); the
+hit-vector values (printed; the sampler reads the lowest set bit alone); a probe outside the
+owner's window, or issued before an inbound entry at an index of 2 to 15 has been written since the
+gate rose or while none is enabled (the gate and the shadow qualifier; the written flag clears on
+every rise of the gate); a probe on which the hit vector and the shadow's match rule name different
+deciding entries, or whose response is not the function of that entry's bit (a sampler fault or
+the failing outcome of `CHK-IFM-LOWEST-WINS`; counts in no cell); the 56-bit address leg (the
+owner's Scope limit leaves it with the directed leaves).
 
 ==== `smc_outfilt_rule_cg`
 *Description*: Outbound filter entry, the permission bit of the probe's direction, deny priority and
 probe shape on SMC-initiated requests.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_outfilt_rule_matrix_rand_test`, the test
-that draws these cells; no sampler exists). Owner's draw: "the seed draws 4 rule sets, each of 2 to
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_filt_fcov::smc_outfilt_rule_cg`, handle
+`u_cg_outfilt_rule`, one sample per JTAG probe at the B or R-last handshake at the JTAG port and
+one per SYS_OUT address handshake of an admitted probe, while the owner
+`smc_outfilt_rule_matrix_rand_test` holds `tb_fcov_gate` high over its step 2, from the first table
+write of its first rule set to the last restore of its last, and while an outbound entry has been
+written since the gate rose). Owner's draw: "the seed draws 4 rule sets, each of 2 to
 6 outbound entries at distinct indices 0 to 15, and 10 JTAG probes per set"; the field goes on to
 the terms and the window of each entry (a two-page `allow_burst` 1 window with its edges inside its
 granules), the overlap placement, per probe the cell kind, the address, AxPROT[1], AxLEN and the
@@ -568,16 +613,24 @@ one such probe in the other direction; filter: every `src_id` is 0.
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_rule` |entry (0 to 15: 16) x `allow_ns` (0, 1: 2) x `allow_burst` (0, 1: 2) x direction of the probe (read, write: 2) x the entry's permission bit for that direction (clear, set: 2); 256 cells; the verdict is the stated function of the cell (a matching lowest entry with the bit clear answers DECERR through the error subordinate, every other probe passes) (`fabric.adoc`, Outbound Filtering; `filter_ctrl.rdl`, read and write permission) |`output_axi_req_o` and `output_axi_resp_i` AW, AR, B and R handshakes; `tb_output_axi_awvalid`, `tb_output_axi_arvalid`; `jtag_axi_in_resp_o` B and R response |`smc_outfilt_rule_matrix_rand_test` |planned
-|`cp_priority` |lowest matching entry is deny, lowest matching entry is allow with a higher-numbered deny, no match: 3 bins, the verdict the stated function (DECERR, pass, pass) (`axi_filter` `index.adoc`, Match, Then Permit; `fabric.adoc`, Outbound Filtering, unmatched requests pass) |as above |`smc_outfilt_rule_matrix_rand_test` |planned
-|`cp_probe` |AxLEN (0, non-zero: 2) x AxPROT[1] (0, 1: 2); 4 cells (`filter_ctrl.rdl`, `allow_burst`, `allow_ns`) |`u_output_axi_if` `awprot`, `arprot` and the lengths at the AW and AR handshakes |`smc_outfilt_rule_matrix_rand_test` |planned
+|`cp_rule` |entry (0 to 15: 16) x `allow_ns` (0, 1: 2) x `allow_burst` (0, 1: 2) x direction of the probe (read, write: 2) x the entry's permission bit for that direction (clear, set: 2); 256 cells, one tuple coverpoint with one bin per cell; the verdict is the stated function of the cell (a matching lowest entry with the bit clear answers DECERR through the error subordinate, every other probe passes) (`fabric.adoc`, Outbound Filtering; `filter_ctrl.rdl`, read and write permission) |`jtag_axi_in_req_i` AxADDR, AxPROT[1], AxUSER[3:0], AxLEN at the AW and AR handshakes, matched by the sampler against its shadow of the outbound table (the last SEP_IN write that completed OKAY at each entry register, decoded as for `smc_infilt_rule_cg`) under the rule of `axi_filter` `index.adoc`, which gives the lowest matching entry and its permission bit for the direction; `jtag_axi_in_resp_o` B and R response at the completing handshake, DECERR for a matching lowest entry with the bit clear and OKAY otherwise, a probe with another response sampling no cell |`smc_outfilt_rule_matrix_rand_test` |live
+|`cp_priority` |lowest matching entry is deny, lowest matching entry is allow with a higher-numbered deny, no match: 3 bins, the verdict the stated function (DECERR, pass, pass) (`axi_filter` `index.adoc`, Match, Then Permit; `fabric.adoc`, Outbound Filtering, unmatched requests pass) |as above |`smc_outfilt_rule_matrix_rand_test` |live
+|`cp_probe` |AxLEN (0, non-zero: 2) x AxPROT[1] (0, 1: 2); 4 cells, one tuple coverpoint with one bin per cell (`filter_ctrl.rdl`, `allow_burst`, `allow_ns`) |`u_output_axi_if` `awprot`, `arprot`, `awlen` and `arlen` at the AW and AR handshakes (`tb_output_axi_awvalid`, `tb_output_axi_awready`, `tb_output_axi_arvalid`, `tb_output_axi_arready`) while a JTAG probe of the owner is outstanding on that channel |`smc_outfilt_rule_matrix_rand_test` |live
 |===
 
 *Ignore bins*: a non-zero `src_id` (the owner's filter sets every `src_id` to 0 and its Scope limit
-leaves the source-ID cells with `smc_outfilt_attr_match_test`); a verdict contrary to the function
-(the failing outcome of `CHK-OFM-LOWEST-WINS` and `CHK-OFM-DENY-DECERR`); the output remaps, the
+leaves the source-ID cells with `smc_outfilt_attr_match_test`; the shadow match applies `src_id`
+to the JTAG request's AxUSER[3:0] as a bench reading, which the JTAG manager drives 0, while the
+output path assigns the outbound source ID the filter compares (`fabric.adoc`, Output Remapping), so
+a non-zero `src_id` cell takes that assigned ID, not AxUSER[3:0]); a verdict contrary to the
+function (the failing outcome of `CHK-OFM-LOWEST-WINS` and `CHK-OFM-DENY-DECERR`; counts in no
+cell); a lowest matching entry that allows with no higher-numbered deny in `cp_priority` (a
+`cp_rule` cell alone); a probe outside the owner's window or issued before an outbound entry has
+been written since the gate rose (the gate and the shadow qualifier: a SEP_IN write completed at an
+outbound entry register, the flag cleared on every rise of the gate, so the DMA and reset owners,
+which program entry 0 before their gates, open no cell); the output remaps, the
 56-bit address leg and the AxCACHE carriage (the owner's Scope limit); the responder's response to
-an admitted request (not graded by the owner).
+an admitted request (not graded by the owner; `cp_rule` takes OKAY as the pass).
 
 ==== `smc_map_row_response_cg`
 *Description*: Memory-map row, gap and outside-window class, direction, size and inbound port
@@ -1630,7 +1683,7 @@ column of <<smc-traceability-matrix>>.
 |VPLAN group |Coverage
 |MISC |`smc_map_fcov` scratch, chip-configuration, captured-strap and misc-wrapper decodes; `smc_int_fcov` raw vector bit against its PLIC source and the `SYNC_REG` bits; `smc_periph_fcov` `c_irq_*`; `smc_cpu_fcov` cluster interrupt range
 |POWER |`smc_map_fcov` AVSBus, telemetry, OCTS, DMA and zeroer apertures; `smc_periph_fcov` AVSBus, telemetry and OCTS transfers; `smc_dma_fcov`; `smc_zeroer_fcov`; `smc_reset_fcov` and `smc_iso_fcov` watchdog warm-reset sources
-|FABRIC |`smc_map_fcov` region, window, alias-remap and filter-entry decodes; `smc_fabric_fcov` with its three `smc_axi_chan_fcov` instances; `smc_filt_fcov` protection and inbound filters
+|FABRIC |`smc_map_fcov` region, window, alias-remap and filter-entry decodes; `smc_fabric_fcov` with its three `smc_axi_chan_fcov` instances; `smc_filt_fcov` protection, inbound and outbound filters
 |RESET |`smc_reset_fcov` sources, releases and reset states; `smc_rst_seq_fcov` power-on ordering and what the primary reset holds; `smc_iso_fcov` isolation and FLR; `smc_int_fcov` NDM request path
 |CLOCK |`smc_clk_fcov` clock ratios and gate terms; `smc_clk_domain_fcov` blocks advancing on their clock; `smc_dma_fcov` and `smc_zeroer_fcov` clock-enable terms
 |CPU |`smc_cpu_fcov` core retire, reset vector, cluster traffic, memory-init and cold-boot order; `smc_fabric_fcov` the CPU external path. The measured owner of these points is a FIRMWARE or JTAG leaf, since a CPU point needs a booted cluster
