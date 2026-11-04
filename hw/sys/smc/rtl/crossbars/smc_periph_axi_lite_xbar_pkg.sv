@@ -4,7 +4,7 @@
 // Declare SMC peripheral AXI-Lite crossbar types and configuration.
 //
 // Defines initiator/target counts and AXI-Lite typedefs for the peripheral CSR xbar: one
-// 32-bit initiator, 12 targets and 14 address rules, with four outstanding transactions
+// 32-bit initiator, 12 targets and 16 address rules, with four outstanding transactions
 // per port, every port cut and full connectivity. The rule type carries a 33-bit end
 // address so a window can end at 2^32; apb_addr_rule_t is declared but unused.
 // Address rules are defined by smc_periph_axi_lite_xbar.
@@ -19,7 +19,7 @@ package smc_periph_axi_lite_xbar_pkg;
   // ===========================================================================
   localparam int unsigned NumInputs     = 1;
   localparam int unsigned NumOutputs    = 12;
-  localparam int unsigned NumAddrRules  = 14;
+  localparam int unsigned NumAddrRules  = 16;
 
   // ===========================================================================
   // Protocol Type Definitions

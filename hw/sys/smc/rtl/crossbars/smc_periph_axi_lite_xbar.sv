@@ -8,8 +8,9 @@
 // Address rules derive from smc_top_addrmap_pkg; EFUSE_SHIM_SIZE partitions the external
 // window between the eFuse shim and the external target.
 // EFUSE_SHIM_SIZE is the vendor eFuse shim CSR block carved off the base of the
-// smc_external window and is threaded from smc_peripherals.sv. The shim bytes route to the
-// efuse target, which also serves the SMC eFuse map and the eFuse interface control
+// smc_external window and is threaded from smc_peripherals.sv. The shim bytes, and the
+// ADOPTER_FUSE_WORDS-word adopter fuse window at ADOPTER_FUSE_BASE within smc_external, route
+// to the efuse target, which also serves the SMC eFuse map and the eFuse interface control
 // registers. Addresses outside every rule receive DECERR.
 
 `include "axi/typedef.svh"
@@ -19,10 +20,18 @@ module smc_periph_axi_lite_xbar
   import smc_periph_axi_lite_xbar_pkg::axi_lite32_req_t;
   import smc_periph_axi_lite_xbar_pkg::axi_lite32_resp_t;
 #(
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h44  // Vendor eFuse shim CSR block carved off
-                                                 // the base of the smc_external window, in
-                                                 // bytes; those addresses route to the
-                                                 // efuse target.
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h44,  // Vendor eFuse shim CSR block carved off
+                                                  // the base of the smc_external window, in
+                                                  // bytes; those addresses route to the
+                                                  // efuse target.
+  parameter int unsigned ADOPTER_FUSE_BASE = 0,  // Byte offset of the adopter fuse window in
+                                                 // smc_external, at or above EFUSE_SHIM_SIZE.
+  parameter int unsigned ADOPTER_FUSE_WORDS = 0,  // Adopter fuse window size in 32-bit words;
+                                                  // 0 routes no adopter window.
+  localparam int unsigned AdopterStart =  // First adopter window byte.
+      ADOPTER_FUSE_WORDS > 0 ? ADOPTER_FUSE_BASE : EFUSE_SHIM_SIZE,
+  localparam int unsigned AdopterEnd = AdopterStart + 4 * ADOPTER_FUSE_WORDS  // Byte after the
+                                                                              // adopter window.
 )
 (
   input  logic clk_i,                   // SMC core clock.
@@ -145,6 +154,16 @@ module smc_periph_axi_lite_xbar
     '{idx: 11,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
                     + EFUSE_SHIM_SIZE),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + AdopterStart)},
+    '{idx: 6,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + AdopterStart),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + AdopterEnd)},
+    '{idx: 11,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + AdopterEnd),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
                     + smc_pkg::SmcExternalWindowSize)}
   };

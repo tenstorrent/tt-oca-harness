@@ -100,6 +100,21 @@ package smu_pkg;
                                        // greater than 0 and smaller than
                                        // smc_pkg::SmcExternalWindowSize; forwarded to the
                                        // SMC EFUSE_SHIM_SIZE.
+    int unsigned SMC_ADOPTER_FUSE_BASE;   // Byte offset of the adopter fuse window in
+                                          // smc_external, word aligned, at or above
+                                          // SMC_EFUSE_SHIM_SIZE, with the window inside the
+                                          // smc_external adopter_fuse slot; forwarded to the
+                                          // SMC ADOPTER_FUSE_BASE and unused without a region.
+    int unsigned SMC_ADOPTER_FUSE_WORDS;  // Adopter fuse region size in 32-bit words, sensed
+                                          // after the 8192 harness fuse bits; 0 for no region,
+                                          // at most the slot size over 4 (1023). Forwarded to
+                                          // the SMC ADOPTER_FUSE_WORDS.
+    smc_efuse_pkg::adopter_lock_region_end_t SMC_ADOPTER_LOCK_REGION_END;  // Word offset one
+                                          // past the end of each adopter lock region, region n
+                                          // starting where region n-1 ends: strictly increasing,
+                                          // then 0 for unused regions, the last used entry
+                                          // equal to SMC_ADOPTER_FUSE_WORDS. Forwarded to the
+                                          // SMC ADOPTER_LOCK_REGION_END.
 
     // SEP
     bit          SEP;                    // 1 includes the Secure Execution Processor and the
@@ -167,6 +182,9 @@ package smu_pkg;
       SMC_WR_PL_DEPTH: 2'h3,
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
+      SMC_ADOPTER_FUSE_BASE: 32'h0,
+      SMC_ADOPTER_FUSE_WORDS: 32'd0,
+      SMC_ADOPTER_LOCK_REGION_END: '0,
       SEP: 1'b1,
       SEP_EFUSE_SHIM_SIZE: 32'h4,
       SEP_SEC_DISABLE_TOKEN: '0,
@@ -204,6 +222,9 @@ package smu_pkg;
       SMC_WR_PL_DEPTH: 2'h3,
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
+      SMC_ADOPTER_FUSE_BASE: 32'h0,
+      SMC_ADOPTER_FUSE_WORDS: 32'd0,
+      SMC_ADOPTER_LOCK_REGION_END: '0,
       SEP: 1'b0,
       SEP_EFUSE_SHIM_SIZE: 32'h4,
       SEP_SEC_DISABLE_TOKEN: '0,
@@ -218,6 +239,28 @@ package smu_pkg;
     NoSepCfg,  // [1] SMC + DTP only.
     DefaultCfg  // [0] Full SMU (SMC + SEP + DTP).
   };
+
+  // Each used SMC_ADOPTER_LOCK_REGION_END entry exceeds the one before it, every entry after
+  // the first 0 is 0, and the last used entry equals SMC_ADOPTER_FUSE_WORDS; with no adopter
+  // region every entry is 0.
+  function automatic bit smc_adopter_lock_region_end_valid(input smu_cfg_t cfg);
+    int unsigned prev_end;
+    int unsigned region_end;
+    bit          ended;
+    prev_end = 0;
+    ended = 1'b0;
+    for (int unsigned n = 0; n < smc_efuse_pkg::AdopterLockRegions; n++) begin
+      region_end = int'(cfg.SMC_ADOPTER_LOCK_REGION_END[n]);
+      if (region_end == 0) begin
+        ended = 1'b1;
+      end else if (ended || (region_end <= prev_end)) begin
+        return 1'b0;
+      end else begin
+        prev_end = region_end;
+      end
+    end
+    return prev_end == cfg.SMC_ADOPTER_FUSE_WORDS;
+  endfunction
 
   // DTP internal CT lane count: the exposed lanes plus the SMC-reserved lanes.
   function automatic int unsigned dtp_xtrig_num_int_ct(input smu_cfg_t cfg);

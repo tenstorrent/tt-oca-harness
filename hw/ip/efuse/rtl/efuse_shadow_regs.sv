@@ -3,8 +3,10 @@
 
 // Mirror sensed fuse bits in a shadow file and serve the MAP APB window under lock controls.
 //
-// After reset it issues one fuse READ command covering the whole shadow file, stores the
-// streamed response words, then serves APB reads/writes through the access control.
+// After reset it issues one fuse READ command of SENSE_WORDS words, or with ISSUE_SENSE clear
+// observes a READ another instance issues on the same response stream. It stores responses
+// LOAD_WORD_OFFSET onwards into the shadow file, then serves APB reads/writes through the
+// access control.
 // CLASS1_SHADOW_RANGES places words in separately named storage for scan exclusion;
 // SECRET_SHADOW_RANGES selects the words that secure_tm_i zeroes on the hardware output.
 // TOKEN_MATCH_CODE and the RMA token match inputs gate lifecycle-state transitions.
@@ -38,6 +40,20 @@ module efuse_shadow_regs
                                                                              // when HAS_LC_STATE is set.
     parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,  // Secret shadow ranges masked under secure_tm.
 
+    parameter int unsigned SENSE_WORDS = SHADOW_REG_BITS / SHADOW_REG_WORD_WIDTH,  // Words in the sense READ; all
+                                                                                   // are counted before sensing
+                                                                                   // completes.
+    parameter int unsigned LOAD_WORD_OFFSET = 0,  // Sense response index stored in shadow word 0; must be 0
+                                                  // when HAS_LC_STATE is set.
+    parameter bit ISSUE_SENSE = 1'b1,  // Set to issue the sense READ on fuse_command_req_o; clear to
+                                       // leave it idle and count a READ issued elsewhere.
+    parameter int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1),  // Hardware lock bits applied to the
+                                                                       // field map.
+    parameter bit EXT_LOCKS = 1'b0,  // Set to take the hardware lock bits from ext_locks_i; clear to
+                                     // take them from the leading shadow words.
+    parameter string PRELOAD_PLUSARG =  // Plusarg naming the simulation preload file.
+        HAS_LC_STATE ? "sep_shadow_reg_preload" : "smc_shadow_reg_preload",
+
     parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,  // Token-match code that permits the RMA
                                                          // lifecycle-state transitions.
 
@@ -54,7 +70,8 @@ module efuse_shadow_regs
     localparam int unsigned LcStateWidth = efuse_pkg::LcStateRawWidth,  // Lifecycle-state field width; fixed by the encoding in efuse_pkg.
 
     localparam int unsigned NumShadowWords = SHADOW_REG_BITS / SHADOW_REG_WORD_WIDTH,  // Shadow file word count.
-    localparam int unsigned ShadowEfuseWidth = $clog2(NumShadowWords)  // Shadow word index width.
+    localparam int unsigned ShadowEfuseWidth =  // Shadow word index width.
+        NumShadowWords > 1 ? $clog2(NumShadowWords) : 1
 ) (
 
     input  logic                                clk_i,  // System clock.
@@ -101,12 +118,18 @@ module efuse_shadow_regs
     input  logic [5:0]                          rma_sip_token_match_i,  // RMA SiP token-match code; a match permits
                                                                         // setting lifecycle-state bit 1.
 
-    output fuse_command_req_t                   fuse_command_req_o,  // Registered sense command: one READ from bit
-                                                                     // address 0 for every shadow word; valid stays
-                                                                     // high once issued.
+    output fuse_command_req_t                   fuse_command_req_o,  // Registered sense command: one READ of
+                                                                     // SENSE_WORDS words from bit address 0; valid
+                                                                     // stays high once issued. Idle when
+                                                                     // ISSUE_SENSE is clear.
     input  fuse_command_resp_t                  fuse_command_resp_i,  // Streamed sense responses; each valid response
-                                                                      // advances the shadow index, and one without
-                                                                      // an error status is stored there.
+                                                                      // advances the sense index, and one without an
+                                                                      // error status is stored in its shadow word.
+
+    input  logic [LOCK_VECTOR_BITS-1:0]         ext_locks_i,  // Hardware lock bits used when EXT_LOCKS is
+                                                              // set: write lock at 2n, read lock at 2n+1.
+    output logic [LOCK_VECTOR_BITS-1:0]         lock_vector_o,  // Hardware lock bits applied to the field
+                                                                // map, from the unmasked shadow file.
 
     output logic                                is_write_locked_o,  // High while an APB write is blocked by a lock.
     output logic                                is_write_setup_only_o,  // High when the APB address falls in a
@@ -205,28 +228,18 @@ module efuse_shadow_regs
 `ifdef SIMULATION
 `ifndef EMULATION
   initial begin
-    string sep_shadow_reg_preload;
-    string smc_shadow_reg_preload;
+    string preload_file;
     logic preload_plusarg_found;
     preload_plusarg_found = 1'b0;
 
-     if (HAS_LC_STATE) begin
-          if ($test$plusargs("skip_fuse_sense") &&
-              $value$plusargs("sep_shadow_reg_preload=%s", sep_shadow_reg_preload)) begin
-            $display("Loading SEP shadow reg preload data from %s", sep_shadow_reg_preload);
-            $readmemh(sep_shadow_reg_preload, shadow_reg_preload, 0, NumShadowWords-1);
-            preload_plusarg_found = 1'b1;
-          end
-     end else begin
-          if (sim_skip_fuse_sense == 1'b1 && $value$plusargs("smc_shadow_reg_preload=%s", smc_shadow_reg_preload)) begin
-            $display("Loading SMC shadow reg preload data from %s", smc_shadow_reg_preload);
-            $readmemh(smc_shadow_reg_preload, shadow_reg_preload, 0, NumShadowWords-1);
-            preload_plusarg_found = 1'b1;
-          end
+    if ($test$plusargs("skip_fuse_sense") &&
+        $value$plusargs({PRELOAD_PLUSARG, "=%s"}, preload_file)) begin
+      $display("Loading shadow reg preload data from %s", preload_file);
+      $readmemh(preload_file, shadow_reg_preload, 0, NumShadowWords-1);
+      preload_plusarg_found = 1'b1;
     end
-    if (sim_skip_fuse_sense == 1'b1 && preload_plusarg_found == 1'b0) begin
-        string expected_plusarg_name = HAS_LC_STATE ? "sep_shadow_reg_preload" : "smc_shadow_reg_preload";
-        $display("[INFO] +skip_fuse_sense provided, but the required shadow register preload plusarg (+%s=filename) was NOT found.", expected_plusarg_name);
+    if ($test$plusargs("skip_fuse_sense") && preload_plusarg_found == 1'b0) begin
+        $display("[INFO] +skip_fuse_sense provided, but the required shadow register preload plusarg (+%s=filename) was NOT found.", PRELOAD_PLUSARG);
 
         $display("[INFO] Initializing shadow_reg_preload array to default pattern (32'h00000000) due to missing preload file.");
         for (int i = 0; i < NumShadowWords; i++) begin : preload_not_found
@@ -250,29 +263,36 @@ module efuse_shadow_regs
 
   // Extract the hardware lock vector from the unmasked shadow register.
   // Two bits per real field slot (write-lock at 2n, read-lock at 2n+1).
-  // The LOCKS meta-field uses the fixed sentinel idx '1 (all-ones = 6'h3F)
+  // The lock meta-field uses the fixed sentinel idx '1 (all-ones = 6'h3F)
   // and is excluded from this vector; its slot always returns 0 (never hw-locked).
   // Taken from the unmasked shadow_efuse view so a Class-1a secure_tm mask cannot
   // clear lock bits and open a field for scanning.
-  localparam int unsigned LockVectorBits = 2 * (EFUSE_FIELDS - 1);
-  // Number of 32-bit shadow words that cover LockVectorBits (ceiling divide).
-  localparam int unsigned LockWords = (LockVectorBits + 31) / 32;
+  // Number of 32-bit shadow words that cover LOCK_VECTOR_BITS (ceiling divide).
+  localparam int unsigned LockWords = (LOCK_VECTOR_BITS + 31) / 32;
 
-  logic [LockWords*32-1:0] lock_words_concat;
-  logic [LockVectorBits-1:0] lock_vector;
+  logic [LOCK_VECTOR_BITS-1:0] lock_vector;
 
-  always_comb begin : gen_lock_vector
-    for (int w = 0; w < int'(LockWords); w++) begin
-      lock_words_concat[w*32 +: 32] = shadow_efuse.values[w];
+  if (EXT_LOCKS) begin : gen_ext_lock_vector
+    assign lock_vector = ext_locks_i;
+  end else begin : gen_shadow_lock_vector
+    logic [LockWords*32-1:0] lock_words_concat;
+
+    always_comb begin
+      for (int w = 0; w < int'(LockWords); w++) begin
+        lock_words_concat[w*32 +: 32] = shadow_efuse.values[w];
+      end
     end
-    lock_vector = lock_words_concat[LockVectorBits-1:0];
+    assign lock_vector = lock_words_concat[LOCK_VECTOR_BITS-1:0];
   end
+
+  assign lock_vector_o = lock_vector;
 
   efuse_shadow_reg_access_control #(
       .EFUSE_ADDR_WIDTH (REG_ADDR_WIDTH),
       .EFUSE_FIELDS     (EFUSE_FIELDS),
       .HAS_LC_STATE     (HAS_LC_STATE),
-      .efuse_addr_t     (efuse_addr_t)
+      .efuse_addr_t     (efuse_addr_t),
+      .LOCK_VECTOR_BITS (LOCK_VECTOR_BITS)
   ) u_efuse_shadow_reg_access_control (
       .secure_tm_i        (secure_tm_i),
       .efuse_field_map_i  (efuse_field_map_i),
@@ -393,6 +413,14 @@ module efuse_shadow_regs
   logic [LcStateWidth-1:0] lc_state_cur;
   logic [LcStateWidth-1:0] lc_state_candidate;
 
+  // Shadow word the current sense response belongs to, if any.
+  logic load_word_in_range;
+  shadow_word_idx_t load_word_idx;
+
+  // A response before LOAD_WORD_OFFSET wraps load_word_idx past NumShadowWords.
+  assign load_word_idx = shadow_word_idx_t'(words_received_q) - LOAD_WORD_OFFSET;
+  assign load_word_in_range = load_word_idx < NumShadowWords;
+
   // Combinationally compute the next raw LC_STATE value for each write path,
   // then feed it through the differential encoder so the always_ff can store
   // the full encoded value atomically.
@@ -408,8 +436,7 @@ module efuse_shadow_regs
           end
           else if (sensing) begin
               if (fuse_command_resp_i.valid && !fuse_command_resp_i.status &&
-                  words_received_q < efuse_word_counter_t'(NumShadowWords) &&
-                  words_received_q == efuse_word_counter_t'(efuse_pkg::ShadowIdxLcState)) begin
+                  load_word_in_range && load_word_idx == efuse_pkg::ShadowIdxLcState) begin
                   lc_state_raw_d = fuse_command_resp_i.data[LcStateWidth-1:0];
               end
           end else begin
@@ -481,13 +508,15 @@ module efuse_shadow_regs
             end
 
             ST_READ: begin
-                // .address is a bit address. current_word_num_q is always 0 here, so it is also
-                // bit 0 of word 0.
-                fuse_command_req_d.address = efuse_addr_t'(current_word_num_q);
-                fuse_command_req_d.access_length_words =
-                    efuse_word_counter_t'(NumShadowWords);
-                fuse_command_req_d.valid = 1'b1;
-                fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
+                if (ISSUE_SENSE) begin
+                    // .address is a bit address. current_word_num_q is always 0 here, so it is
+                    // also bit 0 of word 0.
+                    fuse_command_req_d.address = efuse_addr_t'(current_word_num_q);
+                    fuse_command_req_d.access_length_words =
+                        efuse_word_counter_t'(SENSE_WORDS);
+                    fuse_command_req_d.valid = 1'b1;
+                    fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
+                end
 
                 efuse_sense_state_d = ST_WAIT;
                 words_received_d = '0;
@@ -496,7 +525,7 @@ module efuse_shadow_regs
             ST_WAIT: begin
 
                 if (fuse_command_resp_i.valid) begin
-                    if (words_received_q >= efuse_word_counter_t'(NumShadowWords - 1)) begin
+                    if (words_received_q >= efuse_word_counter_t'(SENSE_WORDS - 1)) begin
                         efuse_sense_state_d = ST_FINISHED;
                     end else begin
                         words_received_d = words_received_q + efuse_word_counter_t'(1);
@@ -586,26 +615,20 @@ module efuse_shadow_regs
       else if (sensing) begin : load_shadow_regs
         if (fuse_command_resp_i.valid && (fuse_command_resp_i.status == 1'b0)) begin
           // Store the data at the current word index (before incrementing words_received)
-          if (words_received_q < efuse_word_counter_t'(NumShadowWords)) begin
-            if (HAS_LC_STATE &&
-                words_received_q ==
-                    efuse_word_counter_t'(efuse_pkg::ShadowIdxLcState)) begin
+          if (load_word_in_range) begin
+            if (HAS_LC_STATE && load_word_idx == efuse_pkg::ShadowIdxLcState) begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
-                  CLASS1_SHADOW_RANGES,
-                  shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))] <=
+                  CLASS1_SHADOW_RANGES, load_word_idx)] <=
                   {fuse_command_resp_i.data[31:2*LcStateWidth], lc_state_diff_d};
             end else begin
               if (efuse_pkg::shadow_range_map_contains_word(
-                  CLASS1_SHADOW_RANGES,
-                  shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))) begin
+                  CLASS1_SHADOW_RANGES, load_word_idx)) begin
                 shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
-                    CLASS1_SHADOW_RANGES,
-                    shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))] <=
+                    CLASS1_SHADOW_RANGES, load_word_idx)] <=
                     fuse_command_resp_i.data;
               end else begin
                 shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
-                    CLASS1_SHADOW_RANGES,
-                    shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))] <=
+                    CLASS1_SHADOW_RANGES, load_word_idx)] <=
                     fuse_command_resp_i.data;
               end
             end
@@ -665,8 +688,14 @@ module efuse_shadow_regs
       ActualNumClass1ShadowWords <= NumShadowWords)
   `OCAH_ASSERT_STATIC(SecretShadowRangesValid_A,
       efuse_pkg::shadow_range_map_is_valid(SECRET_SHADOW_RANGES, NumShadowWords))
-  `OCAH_ASSERT_STATIC(NumShadowWordsFitsWordCounter_A,
-      $clog2(NumShadowWords + 1) <= $bits(efuse_word_counter_t))
+  `OCAH_ASSERT_STATIC(SenseWordsFitWordCounter_A,
+      $clog2(SENSE_WORDS + 1) <= $bits(efuse_word_counter_t))
+  `OCAH_ASSERT_STATIC(ShadowWordsWithinSense_A,
+      LOAD_WORD_OFFSET + NumShadowWords <= SENSE_WORDS)
+  `OCAH_ASSERT_STATIC(LcStateNeedsZeroLoadOffset_A,
+      !HAS_LC_STATE || (LOAD_WORD_OFFSET == 0))
+  `OCAH_ASSERT_STATIC(LockWordsWithinShadow_A,
+      EXT_LOCKS || (LockWords <= NumShadowWords))
 
   for (genvar i = 0; i < NumShadowWords; i++) begin : gen_secret_word_assert
     if (efuse_pkg::shadow_range_map_contains_word(SECRET_SHADOW_RANGES, i)) begin : gen_masked

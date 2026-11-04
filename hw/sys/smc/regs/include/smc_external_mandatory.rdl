@@ -14,6 +14,9 @@
 // EXCEPTION: efuse_shim_ctrl at offset 0x0 is diverted by the periph crossbar to the
 // eFuse target and does not travel through the external port like the other blocks here.
 // eFuse target MUST be at 0x0 for this diversion to work.
+// adopter_fuse is the largest window the adopter fuse region may occupy. The region is
+// CFG-sized and absent by default; the bytes it occupies are diverted to the eFuse target
+// with efuse_shim_ctrl, and the rest of the window is reserved.
 //
 addrmap smc_external_mandatory {
     name = "SMC External Mandatory Region Address Map";
@@ -24,6 +27,8 @@ addrmap smc_external_mandatory {
     /////////////////
 
     efuse_shim_ctrl                efuse_shim_ctrl                 @0x0000;
+
+    external ext_memory #(.NUM_ENTRIES(1023), .WIDTH(32)) adopter_fuse   @0x0004; // Dummy RDL
 
     external ext_memory #(.NUM_ENTRIES(1), .WIDTH(32))   gpio_ctrl[65]   @0x1000 += 0x20; // Dummy RDL
 

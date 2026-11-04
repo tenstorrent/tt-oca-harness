@@ -25,6 +25,19 @@ module smc #(
                                                   // opaque region, so this is a literal
                                                   // here and is overridden by an
                                                   // integration that models the block.
+  parameter int unsigned ADOPTER_FUSE_BASE = 0,  // Byte offset of the adopter fuse window in
+                                                 // smc_external, at or above EFUSE_SHIM_SIZE.
+  parameter int unsigned ADOPTER_FUSE_WORDS = 0,  // Adopter fuse region size in 32-bit words;
+                                                  // 0 omits the region.
+  parameter smc_efuse_pkg::adopter_lock_region_end_t ADOPTER_LOCK_REGION_END = '0,  // Word offset
+                                                                                    // one past the
+                                                                                    // end of each
+                                                                                    // adopter lock
+                                                                                    // region; 0
+                                                                                    // marks an
+                                                                                    // unused region.
+  localparam int unsigned AdopterPortWords =  // Adopter shadow port width in words.
+      ADOPTER_FUSE_WORDS > 0 ? ADOPTER_FUSE_WORDS : 1,
 
   parameter  type         rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,  // Boot ROM request
                                                                                       // type, passed to
@@ -170,6 +183,13 @@ module smc #(
                                                     // all zero until fuse sensing
                                                     // completes unless SEP security
                                                     // disable is set.
+  output logic [AdopterPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Adopter fuse shadow-register
+                                                                            // contents; zero until fuse
+                                                                            // sensing completes unless SEP
+                                                                            // security disable is set, and
+                                                                            // always without the adopter
+                                                                            // region.
+               adopter_shadow_regs_o,
 
   output smc_pkg::smc_axil_32_32_req_t  smc_external_req_o,  // AXI-L interface for
                                                              // adopter peripheral
@@ -766,8 +786,11 @@ module smc #(
   //////////////////////
 
   smc_peripherals #(
-    .MAX_TRANS       (MAX_TRANS),
-    .EFUSE_SHIM_SIZE (EFUSE_SHIM_SIZE)
+    .MAX_TRANS              (MAX_TRANS),
+    .EFUSE_SHIM_SIZE        (EFUSE_SHIM_SIZE),
+    .ADOPTER_FUSE_BASE      (ADOPTER_FUSE_BASE),
+    .ADOPTER_FUSE_WORDS     (ADOPTER_FUSE_WORDS),
+    .ADOPTER_LOCK_REGION_END(ADOPTER_LOCK_REGION_END)
   ) u_smc_peripherals (
     .clk_ref_i                             (clk_ref_i),
     .clk_smc_i                             (clk_smc_i),
@@ -870,6 +893,7 @@ module smc #(
 
     // Efuse Shadow Regs
     .shadow_regs_o                         (shadow_regs_o),
+    .adopter_shadow_regs_o                 (adopter_shadow_regs_o),
 
     .ndmreset_request_i                    (smc_ndmreset_request_i),
     .ndmreset_process_o                    (smc_ndmreset_process_o),

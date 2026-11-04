@@ -31,14 +31,15 @@ NumEndPointsDecode
     SHIM_SEL              = 1'd1
   } efuse_req_decode_select_e;
 
-  localparam int unsigned NumEndPointsReg = 4;
+  localparam int unsigned NumEndPointsReg = 5;
   typedef enum logic [$clog2(
 NumEndPointsReg
 )-1:0] {
-    SHADOW_REG_MAP              = 2'd0,
-    EFUSE_CSR_REG_MAP           = 2'd1,
-    EFUSE_MMR_REG_MAP           = 2'd2,
-    ERR_DECODE                  = 2'd3
+    SHADOW_REG_MAP              = 3'd0,
+    EFUSE_CSR_REG_MAP           = 3'd1,
+    EFUSE_MMR_REG_MAP           = 3'd2,
+    ERR_DECODE                  = 3'd3,
+    ADOPTER_SHADOW_REG_MAP      = 3'd4
   } efuse_reg_map_e;
 
   //////////////////////////////

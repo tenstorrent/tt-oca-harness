@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="696" viewBox="0 0 860 696" role="img" aria-labelledby="title desc">
+<title id="title">SMC adopter fuse region</title>
+<desc id="desc">Above the dashed line is the OCAH SMC eFuse controller. Functional and JTAG register accesses pass through access control and the guard to the harness shadow file and the adopter shadow file. The harness shadow file holds HARNESS_LOCKS, ADOPTER_LOCKS, named fuses and harness spares; ADOPTER_LOCKS supplies the locks for up to 32 adopter-defined lock regions of the adopter shadow file, whose base, word count and region ends come from smu_pkg CFG. The fuse sense FSM reads the harness map and then the adopter map, and signals done when both are sensed. Below the dashed line are the adopter's parts: the adopter logic that receives smc_adopter_shadow_regs_o, the Interface SHIM, and the fuse macros holding the harness map at bits 0 to 8191 and the adopter map from bit 8192.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#5b6670"/></marker>
+<marker id="ne" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#287a45"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.m { font-family: "Courier New", monospace; font-size: 15px; font-weight: bold; fill: #103525; }
+.i { font-size: 15px; font-style: italic; fill: #484848; }
+.g { fill: #287a45; }
+.ctrl { fill: none; stroke: #77736b; stroke-width: 1.5; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.ext { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.new { fill: #ecfdf3; stroke: #287a45; stroke-width: 2; }
+.cell { fill: #ffffff; stroke: #937027; stroke-width: 1.2; }
+.ncell { fill: #ffffff; stroke: #287a45; stroke-width: 1.2; }
+.lcell { fill: #bbf7d0; stroke: #287a45; stroke-width: 1.2; }
+.bus { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.cmd { fill: none; stroke: #5b6670; stroke-width: 2; marker-end: url(#ge); }
+.lock { fill: none; stroke: #287a45; stroke-width: 2; stroke-dasharray: 6 4; marker-end: url(#ne); }
+.out { fill: none; stroke: #287a45; stroke-width: 2.5; marker-end: url(#ne); }
+.bound { fill: none; stroke: #77736b; stroke-width: 1.5; stroke-dasharray: 7 5; }
+.par { fill: none; stroke: #5b6670; stroke-width: 2; stroke-dasharray: 2 4; marker-end: url(#ge); }
+</style>
+</defs>
+<rect width="860" height="696" fill="#ffffff"/>
+
+<!-- Register access in -->
+<path class="bus" d="M430,8 L430,56"/>
+<text x="442" y="30">Functional and JTAG register access</text>
+
+<!-- Controller -->
+<rect class="ctrl" x="20" y="44" width="820" height="366" rx="8"/>
+<text class="b" x="826" y="400" text-anchor="end">SMC eFuse controller</text>
+
+<rect class="core" x="40" y="60" width="780" height="44" rx="6"/>
+<text x="430" y="88" text-anchor="middle">Access control and guard: harness and adopter lock rules</text>
+<path class="bus" d="M400,104 L400,126"/>
+<path class="bus" d="M450,104 L450,315 L434,315"/>
+
+<!-- Harness shadow file -->
+<rect class="core" x="40" y="130" width="390" height="100" rx="6"/>
+<text class="b" x="55" y="154">Harness shadow file</text>
+<rect class="cell" x="55" y="166" width="90" height="48"/>
+<text x="100" y="186" text-anchor="middle">HARNESS</text>
+<text x="100" y="205" text-anchor="middle">LOCKS</text>
+<rect class="lcell" x="145" y="166" width="90" height="48"/>
+<text x="190" y="186" text-anchor="middle">ADOPTER</text>
+<text x="190" y="205" text-anchor="middle">LOCKS</text>
+<rect class="cell" x="235" y="166" width="90" height="48"/>
+<text x="280" y="195" text-anchor="middle">Named</text>
+<rect class="cell" x="325" y="166" width="90" height="48"/>
+<text x="370" y="195" text-anchor="middle">Spares</text>
+
+<!-- ADOPTER_LOCKS into the adopter shadow -->
+<path class="lock" d="M190,214 L190,266"/>
+<text class="g" x="200" y="256">Locks for regions 0-31</text>
+
+<!-- Adopter shadow file -->
+<rect class="new" x="40" y="270" width="390" height="100" rx="6"/>
+<text class="b" x="55" y="294">Adopter shadow file</text>
+<rect class="ncell" x="55" y="306" width="90" height="48"/>
+<text x="100" y="335" text-anchor="middle">Region 0</text>
+<rect class="ncell" x="145" y="306" width="90" height="48"/>
+<text x="190" y="335" text-anchor="middle">Region 1</text>
+<rect class="ncell" x="235" y="306" width="90" height="48"/>
+<text x="280" y="335" text-anchor="middle">&#8230;</text>
+<rect class="ncell" x="325" y="306" width="90" height="48"/>
+<text x="370" y="335" text-anchor="middle">Region 31</text>
+
+<!-- CFG sizes and splits the adopter shadow -->
+<rect class="new" x="470" y="270" width="160" height="100" rx="6"/>
+<text class="b" x="550" y="296" text-anchor="middle">smu_pkg CFG</text>
+<text x="550" y="322" text-anchor="middle">Base, word count,</text>
+<text x="550" y="344" text-anchor="middle">region ends</text>
+<path class="par" d="M470,350 L434,350"/>
+
+<!-- Sense FSM -->
+<rect class="core" x="480" y="130" width="340" height="100" rx="6"/>
+<text class="b" x="650" y="154" text-anchor="middle">Fuse sense FSM</text>
+<text x="650" y="180" text-anchor="middle">One READ: harness, then adopter words</text>
+<text x="650" y="204" text-anchor="middle">Done when both are sensed</text>
+
+<!-- OCAH / adopter boundary -->
+<path class="bound" d="M10,434 L850,434"/>
+<text class="i" x="20" y="428">OCAH</text>
+<text class="i" x="20" y="454">Adopter</text>
+
+<!-- Export to adopter logic -->
+<path class="out" d="M235,370 L235,476"/>
+<text class="m" x="245" y="396">smc_adopter_shadow_regs_o</text>
+<rect class="ext" x="40" y="480" width="390" height="70" rx="6"/>
+<text class="b" x="235" y="508" text-anchor="middle">Adopter logic in the SoC</text>
+<text x="235" y="532" text-anchor="middle">Reads words, or casts to its own struct</text>
+
+<!-- SHIM and macros -->
+<path class="cmd" d="M650,230 L650,476"/>
+<text x="660" y="300">Fuse commands</text>
+<rect class="ext" x="480" y="480" width="340" height="70" rx="6"/>
+<text class="b" x="650" y="508" text-anchor="middle">Interface SHIM</text>
+<text x="650" y="532" text-anchor="middle">16-bit address, 11-bit length</text>
+<path class="cmd" d="M650,550 L650,576"/>
+<rect class="ext" x="480" y="580" width="340" height="86" rx="6"/>
+<text class="b" x="650" y="604" text-anchor="middle">Fuse macros 0..N</text>
+<rect class="cell" x="495" y="616" width="155" height="38"/>
+<text x="572" y="640" text-anchor="middle">Bits 0-8191</text>
+<rect class="ncell" x="650" y="616" width="155" height="38"/>
+<text x="727" y="640" text-anchor="middle">Bits 8192+</text>
+
+<!-- Legend -->
+<rect class="core" x="40" y="584" width="36" height="18" rx="4"/>
+<text x="86" y="598">Existing OCAH logic</text>
+<rect class="new" x="40" y="612" width="36" height="18" rx="4"/>
+<text x="86" y="626">New for adopter fuses</text>
+<rect class="ext" x="40" y="640" width="36" height="18" rx="4"/>
+<text x="86" y="654">Adopter-owned</text>
+<path class="lock" d="M260,593 L296,593"/>
+<text x="306" y="598">Lock vector</text>
+<path class="bus" d="M260,621 L296,621"/>
+<text x="306" y="626">Register access</text>
+<path class="cmd" d="M260,649 L296,649"/>
+<text x="306" y="654">Fuse command</text>
+<path class="par" d="M260,677 L296,677"/>
+<text x="306" y="682">Elaboration parameter</text>
+</svg>

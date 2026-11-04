@@ -397,11 +397,13 @@ module sep_efuse_wrapper #(
     .secure_tm_i                (secure_tm_n0_scan),
     .security_disable_i         (security_disable), // Driven by this controller's own security_disable_o
     .efuse_field_map_i          (sep_efuse_pkg::EfuseFieldMap),
+    .adopter_field_map_i        ('0),
 
     .reset_n_o                  (sep_intermediate_reset_no),
     .fuse_sense_done_o          (fuse_sense_done),
     .security_disable_o         (security_disable),
     .shadow_regs_o              (shadow_regs_o),
+    .adopter_shadow_regs_o      (),
 
     .ext_boot_seq_done_i        (ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication
 
