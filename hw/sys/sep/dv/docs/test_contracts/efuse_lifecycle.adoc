@@ -546,7 +546,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 . Wrong SIP then CHIPLET token: no match code, program `PROGRAM_ERR`, LC unchanged after resense.
 . Legal SIP then CHIPLET token: match code. Then a hash of a wrong token on the same channel gives the mismatch code and a program of the `LC_STATE` bit returns `PROGRAM_ERR`. Then the legal token again and the program that lands: LC advances, shadow and `FEAT_CTRL` match the independent golden after resense.
 . Common-mode invert of all three RMA_SIP comparators on a valid token: legal mismatch code, no sticky bit, IRQ low.
-. Common-mode invert of all three RMA_SIP comparators on a wrong token: legal match code, no sticky bit, IRQ low. `hw/sys/sep/doc/token_processing.adoc` documents this fail-open case; see <<known-limitations>>.
+. Common-mode invert of all three RMA_SIP comparators on a wrong token: legal match code, no sticky bit, IRQ low. `hw/sys/sep/doc/token_processing.adoc` defines the redundant comparison as fault detection, not protection against a common-mode change that leaves all three comparison pairs alike.
 . Collapse instance 0, then two-instance disagree: match status `6'b111111`, SIP sticky bit, `sep_internal_interrupts[39]`. Valid retry plus write-0 leave the bit and IRQ asserted.
 . At `RMA_SIP`, between the SIP and CHIPLET walks, program one zero bit of a spare field whose write lock is clear in the image (drawn from a separate seeded stream); read the bank bit at `otp_bank_probe_o` before and after and read `STATUS` (`OBS-PROG-RMA`). If `efuse_req_error` is set, clear it and read `STATUS` again (`CTRL-PROG-RMA-ERR-CLEAR`). A bit that landed stays in the golden image of the later cold-reset re-sense.
 . A cold-reset re-sense clears `TOKEN_MATCH_FAULT` and releases the interrupt.
@@ -571,7 +571,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-COMMON-MODE-MATCH
 |All three comparators flipping a mismatch to a legal match does not set a sticky bit or raise `sep_internal_interrupts[39]`.
 |CHK-COLLAPSE
-|Inject `3'b001` forces `6'b111111` and the SIP sticky bit. That encoding also makes instance 0 disagree with the others, so this check does not isolate the collapse detector.
+|Inject `3'b001` forces `6'b111111` and the SIP sticky bit. That encoding also makes instance 0 disagree with the others, so this check does not isolate the collapse detector. Isolation requires all three comparison pairs to be alike while `compute_comparison_vld_i` is 1. For SEC_DISABLE, that valid term is available only while the SEC_DISABLE comparison result is valid, so a detector-only stimulus must satisfy that additional validity condition.
 |CHK-DISAGREE
 |Two instances that disagree force `6'b111111` and keep the sticky bit.
 |CHK-ERROR-CODE
@@ -1536,7 +1536,7 @@ hook and blocks no check.
 |CTRL-TRANSIENT-SIMUL-END
 |After the script, the mismatch go on SIP and on CHIPLET each reads `0x2a`, so no match is left before the next reset. A miss logs `CTRL-MISSING TRANSIENT-SIMUL-END` and ends the leaf before that reset, so the leaf verdict carries this control.
 |CHK-TRANSIENT-AFTER-BLOCK
-|Leg S. A lone SIP match right after the simultaneous script, with no reset between, moves the shadow to RMA_SIP after W: the whole `LC_STATE` word, its probe byte, `FEAT_CTRL` and the match code equal the CHK-TRANSIENT golden for RMA_SIP. The transient update follows each token match without a reset (`otp_fuse_controller.adoc:232-238`; `token_processing.adoc:181-184`; `sep-programming.adoc:991-993`), and the block of CHK-TRANSIENT-SIMUL covers only a SIP match made while the CHIPLET match is held. A DUT whose blocked match uses up the SIP update until reset fails. Expected to fail until #3527 is fixed. *Issue*: #3527
+|Leg S. A lone SIP match right after the simultaneous script, with no reset between, moves the shadow to RMA_SIP after W: the whole `LC_STATE` word, its probe byte, `FEAT_CTRL` and the match code equal the CHK-TRANSIENT golden for RMA_SIP. The transient update follows each token match without a reset (`otp_fuse_controller.adoc:232-238`; `token_processing.adoc:181-184`; `sep-programming.adoc:991-993`), and the block of CHK-TRANSIENT-SIMUL covers only a SIP match made while the CHIPLET match is held. A DUT whose blocked match uses up the SIP update until reset fails.
 |CTRL-TRANSIENT-AFTER-BLOCK-END
 |The mismatch go on SIP after the graded lone SIP match reads `0x2a`, so no match is left before the cold reset that precedes the twin SIP match. A miss logs `CTRL-MISSING TRANSIENT-AFTER-BLOCK-END` and ends the leaf before that reset, so the leaf verdict carries this control.
 |CHK-TRANSIENT-NOBURN

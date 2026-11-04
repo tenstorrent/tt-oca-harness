@@ -70,7 +70,7 @@ MAX_KEY_WORDS = 128
 WITNESS = (AES, HMAC)
 NO_WITNESS = (KMAC, OTBN, MLDSA)
 # Witness sizes run on every seed (width 8). The sizes below the width (1, 7)
-# serve only the planned pad check and do not run.
+# serve only non-claimed CHK-PAD and do not run.
 FORCED_SIZES = (1, 7, 8, 9, 16, 17, 128)
 DRAWN_SIZE_RANGE = (18, 127)
 # Sizes whose witness output CHK-GOLD grades: above 16 words.
@@ -209,7 +209,7 @@ def grade_order(writes: list[tuple[int, int]], mask: int) -> OrderResult:
     and the runs must come in ascending DEST_VALID bit order. Every bank of the
     mask must show at least one write (the control). A write to a bank outside
     the mask, or to an address outside every bank, is counted and logged; the
-    address set of a transfer is the planned delivery check, not this one.
+    address set of a transfer belongs to non-claimed CHK-DELIV, not this check.
     """
     seq: list[int] = []
     outside = unknown = 0
@@ -250,7 +250,7 @@ class Round:
 
     @property
     def runs(self) -> bool:
-        """False for a round below the width: it serves only planned checks."""
+        """False for a round below the width: it serves only non-claimed checks."""
         return self.size >= self.width
 
     @property

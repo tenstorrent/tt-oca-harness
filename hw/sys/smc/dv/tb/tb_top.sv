@@ -1854,6 +1854,7 @@ module smc_uvm_top
     assign tb_plic_priority_low = {`SMC_PLIC.priority_2[0], `SMC_PLIC.priority_1[0],
                                    `SMC_PLIC.priority_0[0]};
     assign tb_plic_pending_331  = `SMC_PLIC.pending_330;
+    assign tb_plic_pending_323  = `SMC_PLIC.pending_322;
     assign tb_plic_pending_324  = `SMC_PLIC.pending_323;
     assign tb_plic_pending_329  = `SMC_PLIC.pending_328;
     assign tb_plic_pending_330  = `SMC_PLIC.pending_329;
@@ -1935,6 +1936,7 @@ module smc_uvm_top
     assign tb_zeroer_wstrb   = `SMC_ZEROER.mst_axi_req_o.w.strb;
     assign tb_zeroer_wdata   = `SMC_ZEROER.mst_axi_req_o.w.data;
     assign tb_zeroer_bvalid  = `SMC_ZEROER.mst_axi_resp_i.b_valid;
+    assign tb_zeroer_bready  = `SMC_ZEROER.mst_axi_req_o.b_ready;
     assign tb_zeroer_outstanding = `SMC_ZEROER.outstanding_reqs;
     assign tb_zeroer_dest_addr   = `SMC_ZEROER.dest_addr;
     assign tb_zeroer_size        = `SMC_ZEROER.size;
@@ -2401,7 +2403,63 @@ module smc_uvm_top
         .inb_write_hit_i        (tb_inb_write_hit),
         .inb_read_hit_i         (tb_inb_read_hit),
         .inb_isolate_write_i    (tb_inb_isolate_write),
-        .inb_isolate_read_i     (tb_inb_isolate_read)
+        .inb_isolate_read_i     (tb_inb_isolate_read),
+        .sep_awvalid_i          (s_axi_awvalid),
+        .sep_awready_i          (s_axi_awready),
+        .sep_awaddr_i           (s_axi_awaddr),
+        .sep_wvalid_i           (s_axi_wvalid),
+        .sep_wready_i           (s_axi_wready),
+        .sep_wlast_i            (s_axi_wlast),
+        .sep_wdata_i            (s_axi_wdata),
+        .sep_wstrb_i            (s_axi_wstrb),
+        .sep_bvalid_i           (s_axi_bvalid),
+        .sep_bready_i           (s_axi_bready),
+        .sep_bresp_i            (s_axi_bresp),
+        .sys_awvalid_i          (sys_axi_awvalid),
+        .sys_awready_i          (sys_axi_awready),
+        .sys_awaddr_i           (sys_axi_awaddr),
+        .sys_awlen_i            (sys_axi_awlen),
+        .sys_awprot_i           (sys_axi_awprot),
+        .sys_awuser_i           (sys_axi_awuser),
+        .sys_arvalid_i          (sys_axi_arvalid),
+        .sys_arready_i          (sys_axi_arready),
+        .sys_araddr_i           (sys_axi_araddr),
+        .sys_arlen_i            (sys_axi_arlen),
+        .sys_arprot_i           (sys_axi_arprot),
+        .sys_aruser_i           (sys_axi_aruser),
+        .sys_bvalid_i           (sys_axi_bvalid),
+        .sys_bready_i           (sys_axi_bready),
+        .sys_bresp_i            (sys_axi_bresp),
+        .sys_rvalid_i           (sys_axi_rvalid),
+        .sys_rready_i           (sys_axi_rready),
+        .sys_rlast_i            (sys_axi_rlast),
+        .sys_rresp_i            (sys_axi_rresp),
+        .jtag_awready_i         (jtag_axi_awready),
+        .jtag_awaddr_i          (jtag_axi_awaddr),
+        .jtag_awlen_i           (jtag_axi_awlen),
+        .jtag_awprot_i          (jtag_axi_awprot),
+        .jtag_awuser_i          (jtag_axi_awuser),
+        .jtag_arready_i         (jtag_axi_arready),
+        .jtag_araddr_i          (jtag_axi_araddr),
+        .jtag_arlen_i           (jtag_axi_arlen),
+        .jtag_arprot_i          (jtag_axi_arprot),
+        .jtag_aruser_i          (jtag_axi_aruser),
+        .jtag_bvalid_i          (jtag_axi_bvalid),
+        .jtag_bready_i          (jtag_axi_bready),
+        .jtag_bresp_i           (jtag_axi_bresp),
+        .jtag_rvalid_i          (jtag_axi_rvalid),
+        .jtag_rready_i          (jtag_axi_rready),
+        .jtag_rlast_i           (jtag_axi_rlast),
+        .jtag_rresp_i           (jtag_axi_rresp),
+        .out_awvalid_i          (tb_output_axi_awvalid),
+        .out_awready_i          (tb_output_axi_awready),
+        .out_awlen_i            (u_output_axi_if.awlen),
+        .out_awprot_i           (u_output_axi_if.awprot),
+        .out_arvalid_i          (tb_output_axi_arvalid),
+        .out_arready_i          (tb_output_axi_arready),
+        .out_arlen_i            (u_output_axi_if.arlen),
+        .out_arprot_i           (u_output_axi_if.arprot),
+        .fcov_gate_i            (tb_fcov_gate)
     );
 
     smc_fabric_fcov u_smc_fabric_fcov (

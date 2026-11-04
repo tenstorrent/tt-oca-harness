@@ -15,14 +15,16 @@ class smc_dma_completion_status_test(smc_base_test):
 
     required_evidence = (
         "CHK-DMA-DONE-RESET",
+        "CHK-DMA-FE-QUEUE-DEPTH",
         "CHK-DMA-NO-DATA-ND-CLEAR",
         "CHK-DMA-NO-DATA-REPS-ZERO",
         "CHK-DMA-POLL-IN-FLIGHT",
-        "CHK-DMA-STATUS-BIT8",
+        "CHK-DMA-RESET-STATE-COMMAND",
+        "CHK-DMA-STATUS-BIT8-QUEUED",
         "CHK-DMA-STATUS-IDLE",
         "CHK-NONVAC",
     )
-    min_evidence = 7
+    min_evidence = 9
 
     auto_protocol_vip = False
 

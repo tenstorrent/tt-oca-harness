@@ -23,9 +23,9 @@ The output responder's write-transaction counter is required to advance by at
 least the two bursts the size demands, and `CTRL_STATUS.STATUS` has to leave
 the level it rests at while the zeroer is idle and come back to it.
 
-Which level of `CTRL_STATUS.STATUS` means busy is not asserted here; this
-sequence only requires the field to follow the zeroer's activity, as
-`smc_zeroer_sanity_test` does.
+`smc_zeroer_busy_outstanding_test` grades the level of `CTRL_STATUS.STATUS`
+that means busy; this sequence only requires the field to follow the zeroer's
+activity, as `smc_zeroer_sanity_test` does.
 
 The job is aimed at the output-fabric responder window, never at memory another
 leaf reads, and `SIZE` and `DEST_ADDR` are cleared afterwards so a later write

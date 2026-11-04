@@ -20,9 +20,10 @@ class smc_dma_2d_copy_test(smc_base_test):
         "CHK-DMA-2D-STRIDE-EDGES",
         "CHK-DMA-2D-UNALIGNED-ROWS",
         "CHK-DMA-2D-WRAP-2POW56",
+        "CHK-DMA-HALVES-NOT-ATOMIC",
         "CHK-NONVAC",
     )
-    min_evidence = 7
+    min_evidence = 8
 
     auto_protocol_vip = False
 
