@@ -172,7 +172,7 @@ class SepChkLog:
         self._log.info(self._line(f"OBS-{_name(name)}", fields))
 
     def info(self, name: str, **fields: Any) -> None:
-        """Log one bench record. It grades nothing and never fails the leaf."""
+        """Log one bench record or a re-log of a value a named CHK grades. It never fails the leaf."""
         self._log.info(self._line(f"INFO-{_name(name)}", fields))
 
     def blocked(self, check: str, reason: str) -> None:

@@ -1687,10 +1687,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             status=f"0x{status:03x}",
             err_o=int(rose),
         )
-        self.chk.info("REAL-WIPE", W=p.wipe_w, err_o_end=b_end, graded_by="CHK-TRAP-HELD")
+        self.chk.info("REAL-WIPE", W=p.wipe_w)
         self.chk.obs(
             "REAL-WIPE-STATUS",
             W=p.wipe_w,
+            err_o_end=b_end,
             rise_cyc=watch.rise,
             irq_status_other=f"0x{status & ~wipe_bit:03x}",
         )
