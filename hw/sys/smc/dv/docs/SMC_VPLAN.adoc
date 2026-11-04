@@ -680,8 +680,8 @@ points are Phase 2 in `SMC_FCOV.adoc`
 |System timer OCTS
 |`periphs.adoc` SMC Peripheral Summary, System Timer OCTS; `clk_rst.adoc` Timer and Debug Timebases
 |`smc_fw_octs_p0_primary_test` (`fw`), `smc_octs_primary_count_test`, `smc_octs_primary_start_test`,
-`smc_octs_csr_access_test`, `smc_octs_clk_rate_test`, `smc_octs_timer_rate_test`;
-`smc_octs_dual_sync_test` is `sanity`, outside `all`
+`smc_octs_csr_access_test`, `smc_octs_clk_rate_test`, `smc_octs_timer_rate_test`,
+`smc_octs_pulse_timing_test`; `smc_octs_dual_sync_test` is `sanity`, outside `all`
 |`smc_periph_fcov` (`c_octs_count_advances`, `c_octs_count_monotonic`); `smc_clk_domain_fcov`
 (`c_octs_tick_on_clk_ref`); `smc_map_fcov` (`c_octs_decode`, `c_octs_aperture_decode`)
 |`REGRESSION`: `smc_octs_sanity_test` is an AVS status proxy (<<smc-known-limitations>>); the OCTS
@@ -690,7 +690,7 @@ leaves have no canonical scenario
 |eFuse controller, shim and OTP access
 |`periphs.adoc` SMC Peripheral Summary, eFuse; `doc/integrator/src/smu-smc.adoc` eFuse Interface
 |`smc_efuse_otp_clock_test`, `smc_efuse_jtag_lc_access_matrix_test`, `smc_efuse_lock_guard_test`,
-`smc_efuse_sense_sequence_test`, `smc_efuse_map_read_test`
+`smc_efuse_sense_sequence_test`, `smc_efuse_map_read_test`, `smc_efuse_command_path_test`
 |`smc_efuse_fcov` (`c_bank_ctrl_read`, `c_shim_command_issued`, `c_fuse_sense_done_asserted`,
 `c_shadow_regs_reflect_sensed_values`, `c_jtag_otp_read`); `smc_fabric_fcov`
 (`c_efuse_jtag_bresp_decerr`); `smc_map_fcov` (`c_efuse_shim_decodes`)
@@ -744,7 +744,8 @@ sources)
 |GPIO (65 instances)
 |`periphs.adoc` SMC Peripheral Summary, GPIO; `doc/integrator/src/smu-smc.adoc` GPIO Pad Integration
 |`smc_gpio_irq_active_test`, `smc_gpio_ctrl_full_sweep_test`, `smc_gpio_irq_type_matrix_test`,
-`smc_gpio_pad_input_readback_test`, `smc_gpio_output_driveback_test`, `smc_gpio_boot_stall_test`
+`smc_gpio_pad_input_readback_test`, `smc_gpio_output_driveback_test`, `smc_gpio_boot_stall_test`,
+`smc_gpio_irq_latency_test`, `smc_gpio_default_direction_test`
 |`smc_gpio_fcov` (`c_pad_output_low`, `c_per_instance_default_matches_map`,
 `c_default_input_count_62`); `smc_periph_fcov` (`c_irq_gpio`, `c_gpio_core2pad_active`,
 `c_gpio_pad2core_en_active`, `c_gpio_boot_stall_pad_high`); `smc_map_fcov` (`c_gpio_instance_0`,
@@ -1046,6 +1047,7 @@ watchdog 1's `COUNT` reads the same value at three points inside a core 1 reset 
 `RESET_CTRL`, counts on from it with `CTRL` unchanged after the release, keeps counting inside the
 hold once `wdogenalways` is also set, and returns with `CTRL` to the `wdt.rdl` reset words after an
 uncore reset pulse.
+|`smc_octs_pulse_timing_test` |3 |On pads 55/56 in `clk_smc_i`: every load and credit pulse is `PULSE_WIDTH` high (0 as 1), credits are `CREDIT_VAL` apart and the first one `CREDIT_VAL` after a START, a START inside a credit pulse reloads the count without a load pulse, a PRIMARY ignores injected pulses, a SECONDARY drives neither pad, and `TIMER_GPIO_ENABLE` hands the pads to the timer.
 |===
 
 ==== FABRIC
@@ -1600,6 +1602,7 @@ path, in the default eFuse image; re-sense shown for `LOCKS` word 0.
 and a bank image of non-zero words, the eFuse sense state machine issues no read command to the
 bank, the shadow registers keep their all-zero reset values, and register access to them over SEP_IN
 completes without waiting for sense completion.
+|`smc_efuse_command_path_test` |3 |A read issued while `program_enable` is set reaches no bank command, with `read_enable` clear or set; a write lock set while a program is in flight leaves that program to complete and refuses the next.
 |===
 
 ==== GPIO
@@ -1636,6 +1639,8 @@ recorded.
 |`smc_gpio_pad_config_rand_test` |3 |A drawn per-pad configuration and pad level sequence take the
 direction and interrupt outcomes that the GPIO register descriptions state, with the reset words
 logged as a control.
+|`smc_gpio_irq_latency_test` |3 |A pad edge reaches the pad's own `tb_gpio_interrupt` bit exactly three synchronizer stages plus one register later on eight drawn pads, for the rising, falling and level types; an edge is detected with register readback unselected while `pad2core` reads 0.
+|`smc_gpio_default_direction_test` |3 |`INPUT_BY_DEFAULT` on the pad vectors: RX on 62 pads and off on pads 62-64 with TX off and data 0, forced on all 65 controllers while a cold reset is asserted after two pads were programmed as outputs.
 |===
 
 ==== IRQ
@@ -8044,6 +8049,67 @@ Enrolled in: `all`, `hosted`.
 
 
 [[smc-vplan-area-fabric]]
+[[sec-587-smc_octs_pulse_timing_test]]
+===== 587 `smc_octs_pulse_timing_test`
+
+*Phase*: 3
+
+*Area*: POWER
+
+*Source Module*: `smc_octs_pulse_timing_test`
+
+*BFM / Model*: none; `tb_octs_sync_load_from_dut` (pad 55), `tb_octs_cnt_credit_from_dut` (pad 56), the timer's pulse ports on either side of the padring (`tb_octs_core_*_out`, `tb_octs_core_*_in`) and the live count `tb_octs_timer_count` sampled on every `clk_smc_i` rise; `tb_chiplet_is_primary` and the pad inject pins `tb_octs_*_ext`
+
+*Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: Cycle-exact OCTS pulse widths and credit spacing on pads 55/56, the START rules of the pulse FSM, the PRIMARY and SECONDARY role masks and the pad effect of `TIMER_GPIO_ENABLE`.
+
+*Test Coverage*:
+
+* `interface.adoc` (OCTS Synchronization Interface): a PRIMARY asserts `timer_sync_load_o` for `CTRL.PULSE_WIDTH` cycles on START and `timer_cnt_credit_o` for `CTRL.PULSE_WIDTH` cycles every `CTRL.CREDIT_VAL` cycles; any synchronization input is ignored in PRIMARY mode; in SECONDARY mode the outputs remain inactive. `architecture.adoc` (Pulse Generation and Clock Crossing): `PULSE_WIDTH` zero is treated as one, the FSM accepts triggers only while idle and does not queue them, START reloads the count while an active pulse prevents a new load pulse; (OCTS credit management): START clears the interval counter. `system_timer_octs.rdl`: `TIMER_GPIO_ENABLE` enables the GPIO pad LSIO interface for the timer, which `smc_padring` places on pads 55 and 56.
+* The SECONDARY phase runs first, under `TIMER_GPIO_ENABLE` 1: the pads read select 1, OE 0, IE 1; a pad-injected sync and two credits start the timer with COUNT in [PRESET + CREDIT_VAL, PRESET + 2 CREDIT_VAL + 16]; the timer's own pulse outputs and both pads stay 0 over four credit intervals.
+* PRIMARY with `TIMER_GPIO_ENABLE` 0: the pads read select 0 and DATA_CTRL of wraps 55/56 owns them (OE 1, data 1); a START reloads the count and neither pad moves; with `TIMER_GPIO_ENABLE` 1 the pads read select 1, OE 1, IE 0, pad 56 carries credit pulses and pad 55 stays 0 with DATA_CTRL unchanged.
+* Every START's landing cycle is the cycle the count reloads to the preset in the trace; a START that lands inside a credit pulse is repeated for the width legs and sought for the no-queue leg.
+* PULSE_WIDTH 2, 7 and 0 with CREDIT_VAL 0x10, then 2 with 0xFF: one load pulse of exactly the stated width starts at the reload cycle, every credit pulse in the window is that width, the first credit rise is CREDIT_VAL after the reload and every later one CREDIT_VAL after the previous.
+* CREDIT_VAL 0xFF: a START written a third of an interval after a credit rise moves the next credit to START + CREDIT_VAL, away from the cycle the untouched interval would have pulsed at.
+* CREDIT_VAL 0xFF, PULSE_WIDTH 0xF0: a START written on a credit rise lands inside the 240-cycle credit pulse: the count reloads, pad 55 never rises, the credit pulse runs its full width and the next credit is START + CREDIT_VAL.
+* PRIMARY running: three sync and three credit pulses injected on pads 55/56 leave every count step at exactly 1 and the DUT's own credits CREDIT_VAL apart; the samples on which the pulses reached the timer's input ports are reported (the padring disables a PRIMARY's pad receivers before the timer masks a synchronized edge); the same pins loaded the SECONDARY count earlier in the run.
+* Every trace wait is bounded by 542 `clk_smc_i` rises and every pad wait by the same bound; expiry fails.
+
+*Test Procedure*:
+
+[arabic]
+. Check STATUS idle and PRIMARY, write CTRL, the preset 0x100 and `TIMER_GPIO_ENABLE` 1, strap SECONDARY, read the pad directions, inject sync then two credits, read COUNT and STATUS, watch the pads for four intervals.
+. Strap PRIMARY, clear `TIMER_GPIO_ENABLE`, program DATA_CTRL 55/56 as outputs driving 1, write START, watch the pads; set `TIMER_GPIO_ENABLE`, read the pad directions, watch the pads, restore DATA_CTRL.
+. For each (CREDIT_VAL, PULSE_WIDTH) setting write CTRL, write START outside a credit pulse, and measure the high runs and rises of both pads over three intervals.
+. Write CTRL for the interval and no-queue legs, write START at the stated phase, and measure the rises after it.
+. Inject three sync and three credit pulses while PRIMARY and compare every count step.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OCTS-CREDIT-PERIOD` |In every width window the credit rises on pad 56 are CREDIT_VAL `clk_smc_i` apart and the first one is CREDIT_VAL after the reload cycle, for CREDIT_VAL 0x10 and 0xFF. Fails on any other spacing
+|`CHK-OCTS-GPIO-ENABLE-PADS` |`TIMER_GPIO_ENABLE` 1 under SECONDARY: pads 55/56 select 1, OE 0, IE 1; 0 under PRIMARY: select 0 and DATA_CTRL owns the pads, a START leaves both at 1 with no rise; 1 under PRIMARY: select 1, OE 1, IE 0, pad 56 shows >= 2 credit rises and pad 55 stays 0 with DATA_CTRL still driving 1. Fails on a select, OE or IE off the stated value, a timer pulse reaching a pad with the bit clear, or the register still owning a pad with the bit set
+|`CHK-OCTS-PRIMARY-IGNORES-INPUTS` |Under the PRIMARY strap with three sync and three credit pulses injected on pads 55/56, every count step over the inject is 1, STATUS reads PRIMARY and RUNNING, and the own credit rises stay CREDIT_VAL apart; the samples on which the timer's input ports read 1 are reported. Fails on a reload, a jump, a missing step or a changed spacing
+|`CHK-OCTS-PULSE-NO-QUEUE` |A START that lands inside a 0xF0-cycle credit pulse reloads the count to the preset, pad 55 stays 0 over the window, the credit pulse runs exactly 0xF0 cycles and the next credit rise is START + CREDIT_VAL; the STARTs outside a pulse each gave one load pulse. Fails on a load pulse, a cut or stretched credit pulse, a missing reload or a credit off START + CREDIT_VAL
+|`CHK-OCTS-PULSE-WIDTH` |For PULSE_WIDTH 2, 7 and 0 the single load pulse after the START and every credit pulse in the window are high for exactly 2, 7 and 1 `clk_smc_i`, on both pads. Fails on any other run length or a second load pulse
+|`CHK-OCTS-SECONDARY-OUTPUTS-QUIET` |A SECONDARY started by a pad-injected sync and two credits (RUNNING 1, COUNT in the stated range) holds its sync-load and credit outputs at 0 on every sample, drives neither pad high on any sample over four credit intervals and keeps both output enables 0. Fails on any high sample, rise or output enable
+|`CHK-OCTS-START-CLEARS-INTERVAL` |With CREDIT_VAL 0xFF a START landing a third of an interval after a credit rise gives the next credit at START + CREDIT_VAL, not at the untouched interval's cycle. Fails on a credit at the old phase or anywhere but START + CREDIT_VAL; a START that happens to land on the old phase or inside a pulse fails as inconclusive
+|`CHK-TIMEOUT-PATHS` |Every SEP_IN access is bounded by the AXI driver timeout and every trace and pad wait by 542 rises, each reported with the rises it took
+|===
+
+*Pass Criteria*: `CHK-OCTS-CREDIT-PERIOD`, `CHK-OCTS-GPIO-ENABLE-PADS`, `CHK-OCTS-PRIMARY-IGNORES-INPUTS`, `CHK-OCTS-PULSE-NO-QUEUE`, `CHK-OCTS-PULSE-WIDTH`, `CHK-OCTS-SECONDARY-OUTPUTS-QUIET`, `CHK-OCTS-START-CLEARS-INTERVAL`, `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: None stated.
+
+'''''
+
 ==== FABRIC
 
 [[sec-022-smc_axi_error_response_depth_test]]
@@ -32707,6 +32773,57 @@ for SMC) are not driven.
 
 
 [[smc-vplan-area-gpio]]
+[[sec-588-smc_efuse_command_path_test]]
+===== 588 `smc_efuse_command_path_test`
+
+*Phase*: 3
+
+*Area*: EFUSE
+
+*Source Module*: `smc_efuse_command_path_test`
+
+*BFM / Model*: eFuse bank DV model behind the SHIM, with its write-response stall knob; `tb_efuse_shim_cmd_valid`, `tb_efuse_read_busy` and `tb_efuse_program_busy` sampled on every `clk_smc_i` rise; ocah_axi_vip (AXI)
+
+*Run mode*: one testlist entry in `testlists/efuse.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `efuse`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: A read issued while `program_enable` is set reaches no bank command, with `read_enable` clear or set; a write lock set while a program is in flight leaves that program to complete and refuses the next start.
+
+*Test Coverage*:
+
+* `architecture.adoc` (Command-path ownership): program and read requests share one command path; `program_enable` takes it in preference to `read_enable`, the enables must be asserted exclusively, and a read issued while `program_enable` is set does not reach the bank. (Hardware vs. Software Locks): the guard checks the target when a command is started; a lock set after a command has been issued does not affect that command.
+* `efuse_interface_ctrl.rdl`: `read_status` is set when `read_go` is asserted while the read is not enabled or when the read request times out; `read_done` is set when the read has completed. The leaf grades those words and reports the rest of what the interface returned.
+* Control: with `program_enable` clear a read of word 0 raises one SHIM command, completes without error and returns the preload word; after the legs, clearing `program_enable` lets the held read issue, so the same probe reads 1 in the same run.
+* Exclusive enables: `read_go` with `program_enable` set and `read_enable` clear raises no SHIM command, never shows `read_busy`, reads `read_done` 1 and `read_status` 1 on the first register read, and leaves READ_DATA unchanged.
+* Both enables set with a 64-cycle read timeout: the read is accepted (`read_busy` 1), raises no SHIM command, and ends with `read_done` 1 and `read_status` 1 by the timeout. Both enables set with no timeout: no SHIM command over 256 busy samples, then exactly one once `program_enable` clears, completing without error with the preload word.
+* Lock after issue: a read-back program of SPARE[10] bit 0 with the bank write stalled 512 cycles reads `program_busy` 1; `LOCKS` then sets SPARE[10]'s write lock while the program is still busy; the program completes with `program_status` 0 and no `efuse_req_error`, one SHIM command, and the read interface returns the word with the bit burnt. A program of bit 1 started afterwards raises no SHIM command, ends with `program_status` 1 and sets `efuse_req_error`.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense, start the SHIM command and busy watch, run the control read.
+. Set `program_enable` only; issue `read_go` without `read_enable`, read READ_CTRL and READ_DATA; arm the read timeout and issue `read_go` with `read_enable`, poll to done; restore the timeout, issue the same read, watch 256 busy samples, clear `program_enable`, poll to done and read the data.
+. Stall the bank write, start the read-back program, read `program_busy`, write LOCKS, read it and `program_busy` back, poll to done, read STATUS, read the word through the read interface; start a program of the next bit, poll to done, read STATUS, clear the error.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EFUSE-LOCK-AFTER-ISSUE` |With the bank write stalled, a read-back program of SPARE[10] bit 0 is busy when its write lock lands in LOCKS and still busy after; it completes with `program_status` 0, `efuse_req_error` 0 and one SHIM command, and the word reads with the bit set; a program of bit 1 started after the lock raises no SHIM command, ends with `program_status` 1 and `efuse_req_error` 1. Fails on a program the late lock aborts or errors, a lock that misses the in-flight window, an unburnt bit, or a later program the lock does not refuse
+|`CHK-EFUSE-READ-UNDER-PROGRAM-ENABLE` |With `program_enable` set and no program go: `read_go` without `read_enable` raises 0 SHIM commands and 0 busy samples, reads `read_done` 1 and `read_status` 1 at once and leaves READ_DATA at the preload word; `read_go` with `read_enable` and a 64-cycle timeout raises 0 SHIM commands, shows `read_busy`, and ends with `read_done` 1 and `read_status` 1; `read_go` with `read_enable` and no timeout raises 0 SHIM commands over 256 busy samples and exactly 1 once `program_enable` clears, completing with no error and the preload word; the control read with the path free raises 1. Fails on any SHIM command while `program_enable` is set, a refused read not completing at once, an accepted read not timing out, or a held read that does not issue once the path frees
+|`CHK-TIMEOUT-PATHS` |Every SEP_IN access is bounded by the AXI driver timeout, every register poll by 4096 reads and every watch by 2048 rises, each reported with what it took
+|===
+
+*Pass Criteria*: `CHK-EFUSE-LOCK-AFTER-ISSUE`, `CHK-EFUSE-READ-UNDER-PROGRAM-ENABLE`, `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The eFuse bank is the DV model; the stalled write response is the model's stall knob, not a property of a foundry macro.
+
+'''''
+
 ==== GPIO
 
 [[sec-102-smc_gpio_ctrl_full_sweep_test]]
@@ -33214,6 +33331,8 @@ draws nothing from the seed.
 * `DATA_CTRL.lsio_enable`, which the RDL says reports the hardware LSIO request after the disable gate, is read back clear in every leg, so the first row of the ownership table is shown not to be in play and the routing the LSIO leg measures is the software-forced one.
 * `lsio_select` alone is shown to ROUTE the LSIO function to the pad -- the positive control that separates a live select bit from one tied to 0, since with the source parked both produce `core2pad_en[0] = 0`; and
 * the priority leg runs against a competitor that is actually contributing a different value, so "interface_enable wins" is a distinguishable outcome rather than one both hypotheses satisfy.
+* `lsio_disable` gates the software-forced selection as well as the hardware request (architecture.adoc, "`lsio_disable` gates both forms of LSIO selection"): with `lsio_select` and `lsio_disable` set and the source driving 1, the pad has output data 0 and TX disabled, the table's fourth row.
+* A hardware LSIO request outranks all three `use_reg_*` overrides: the bench's SPI enable pin raises the request on the SPI pads; with `use_reg_core2pad` + `use_reg_tx` set and `CORE2PAD` 1 the pad follows the SPI lane (0, then 1 when the lane flips) and `lsio_enable` reads 1; `lsio_disable` withdraws the request, `lsio_enable` reads 0 and the register's 1 returns while the lane drives 0.
 
 *Test Procedure*:
 
@@ -33225,14 +33344,16 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-GPIO-P0-MUX-HW-OVER-USE-REG` |With the SPI enable pin high and `use_reg_core2pad` + `use_reg_tx` set with `CORE2PAD` 1, wrap 0's `core2pad_o` reads 0 and follows the SPI lane to 1, `core2pad_en_o` is 1 and `lsio_enable` reads 1; with `lsio_disable` set `lsio_enable` reads 0 and `core2pad_o` reads the register's 1 while the lane drives 0. Fails on a pad that follows the register under the request, a lane flip the pad misses, or a `lsio_enable` readback that disagrees with the pin
 |`CHK-GPIO-P0-MUX-LSIO` |Named compare in `smc_gpio_p0_mux_test_seq.py`; the run fails if it mismatches
 |`CHK-GPIO-P0-MUX-PATTERN` |Named compare in `smc_gpio_p0_mux_test.py`; the run fails if it mismatches
 |`CHK-GPIO-P0-MUX-PRIO` |Named compare in `smc_gpio_p0_mux_test_seq.py`; the run fails if it mismatches
 |`CHK-GPIO-P0-MUX-REG` |Named compare in `smc_gpio_p0_mux_test_seq.py`; the run fails if it mismatches
+|`CHK-GPIO-SW-LSIO-DISABLED` |With `lsio_select`, TX enable and `lsio_disable` set and the LSIO source driving 1, wrap 0's `core2pad_en_o` and `core2pad_o` both read 0 and `lsio_enable` reads 0, after `lsio_select` alone gave `core2pad_en_o` 1 in the same run. Fails on an enabled output or a 1 on the pad
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-P0-MUX-LSIO`, `CHK-GPIO-P0-MUX-PATTERN`, `CHK-GPIO-P0-MUX-PRIO`, `CHK-GPIO-P0-MUX-REG` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
+*Pass Criteria*: `CHK-GPIO-P0-MUX-HW-OVER-USE-REG`, `CHK-GPIO-P0-MUX-LSIO`, `CHK-GPIO-P0-MUX-PATTERN`, `CHK-GPIO-P0-MUX-PRIO`, `CHK-GPIO-P0-MUX-REG`, `CHK-GPIO-SW-LSIO-DISABLED` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
 
 *Scope limit*: None stated.
 '''''
@@ -34434,6 +34555,101 @@ This entry consolidates the cells of `smc_gpio_ctrl_full_sweep_test`,
 
 
 [[smc-vplan-area-irq]]
+[[sec-589-smc_gpio_irq_latency_test]]
+===== 589 `smc_gpio_irq_latency_test`
+
+*Phase*: 3
+
+*Area*: GPIO
+
+*Source Module*: `smc_gpio_irq_latency_test`
+
+*BFM / Model*: none; `tb_gpio_ext_drive_*` drives one pad right after a `clk_smc_i` rise and `tb_gpio_interrupt` is sampled on every following rise
+
+*Run mode*: one testlist entry in `testlists/gpio.toml`; groups `all`, `hosted`, `gpio`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `gpio`; seed 1; reseed 3; tool Verilator (cocotb).
+
+*Randomization*: RAND-REP: the seed draws the eight pads from the pool of pads no bench function drives and no
+LSIO function owns at reset (SPI lanes 1-7, SPI.CS, SPI.CLK, SPI.DQS, Thermal Emergency N, the
+reserved pads); every other stimulus value is pinned.
+
+*Objective*: A pad edge reaches the pad's own `tb_gpio_interrupt` bit exactly three synchronizer stages plus one register later, for the rising-edge, falling-edge and active-high level types; an edge is detected with register readback unselected while `pad2core` reads 0.
+
+*Test Coverage*:
+
+* `hw/ip/gpio/doc/architecture.adoc` (Interrupts): the input passes through a three-stage synchronizer before interrupt detection; the selected condition is registered on `clk_i` and gated by `interrupt_enable` at `interrupt_o`; detection uses the synchronized input independently of whether register readback is selected. (Input Readback): `pad2core` returns the synchronized input only when `interface_enable` or `use_reg_rx` selects readback. `interface.adoc` (Interrupt Specifications) gives 2-3 clock cycles; the leaf grades the architecture figure, 4 rises, and reports the measured one.
+* On each drawn pad, with RX enabled through `interface_enable` and the interrupt enabled: a 0 -> 1 edge under the rising type, a 1 -> 0 edge under the falling type and a 0 -> 1 edge under the active-high level type each raise exactly this pad's bit 4 rises after the drive; the edge pulses hold one rise; `pad2core` reads 0 with the pad low and 1 with the pad high.
+* On the first drawn pad with only `interrupt_enable` and the rising type set (no `interface_enable`, no `use_reg_rx`): `pad2core_en` is 1 from `INPUT_BY_DEFAULT`, the edge raises the bit 4 rises later for one rise, and `pad2core` reads 0 with the pad high.
+* Every wait for the interrupt is bounded by 16 rises and its expiry fails; no sample before the interrupt may show any other bit.
+
+*Test Procedure*:
+
+[arabic]
+. For each drawn pad: drive it low, program DATA_CTRL for the type, read it back, drive the edge right after a rise, count rises to the interrupt and rises held; repeat for the three types; restore.
+. On the first pad: program the interrupt without readback, drive the edge, count rises, read `pad2core` with the pad high, restore.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-IRQ-LATENCY` |On eight drawn pads, 24 pad edges (rising, falling and active-high level on each) raise the pad's own `tb_gpio_interrupt` bit exactly 4 `clk_smc_i` rises after the drive (3-stage synchronizer + 1 register) with no other bit set, and the edge pulses hold exactly 1 rise; `pad2core` reads the pad level with readback selected. Fails on any latency other than 4, a stretched or missing pulse, another instance's bit, or a wrong readback
+|`CHK-GPIO-IRQ-WITHOUT-READBACK` |With `interrupt_enable` and the rising type set and neither `interface_enable` nor `use_reg_rx`, the pad's input enable reads 1, a 0 -> 1 edge raises the pad's bit 4 rises later for 1 rise, and `pad2core` reads 0 with the pad high. Fails on no interrupt, another latency, or a `pad2core` of 1
+|===
+
+*Pass Criteria*: `CHK-GPIO-IRQ-LATENCY`, `CHK-GPIO-IRQ-WITHOUT-READBACK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `gpio`.
+
+*Scope limit*: None stated.
+
+'''''
+
+[[sec-590-smc_gpio_default_direction_test]]
+===== 590 `smc_gpio_default_direction_test`
+
+*Phase*: 3
+
+*Area*: GPIO
+
+*Source Module*: `smc_gpio_default_direction_test`
+
+*BFM / Model*: SmcResetAgent (cold reset through `rst_cold_ni`); `tb_pad2core_en_o`, `tb_core2pad_en_o`, `tb_core2pad_o` and `tb_lsio_interface_select` sampled on `clk_smc_i` rises; ocah_axi_vip (AXI)
+
+*Run mode*: one testlist entry in `testlists/gpio.toml`; groups `all`, `hosted`, `gpio`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `gpio`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: `INPUT_BY_DEFAULT` per instance on the pad vectors: RX on 62 pads and off on pads 62-64, TX off and data 0, forced on all 65 controllers while a cold reset is asserted and holding on the free pads in operation.
+
+*Test Coverage*:
+
+* `periphs.adoc` (parameter table): `INPUT_BY_DEFAULT` per instance from `smc_padring_pkg::DefaultDirectionMap`, input on 62 of 65 GPIOs and output on the remaining 3; the package the document delegates to names them as pads 62-64. `gpio` `architecture.adoc` (Data and Direction Ownership, priority 4): with no owner, output data 0, TX disabled, RX set by `INPUT_BY_DEFAULT`; (Reset and Strap Capture): `rst_cold_ni` forces controller outputs to data 0, TX disabled and RX = `INPUT_BY_DEFAULT`.
+* In operation the map is graded on the pads whose `lsio_interface_select` is 0: every one has RX on (all free pads are inputs in the map), TX off and data 0, at entry and again after the cold reset's release.
+* Pads 1 and 2 (SPI lanes 1 and 2, no LSIO owner at reset) are programmed as register-owned outputs driving 1 with RX off before the reset, so the forcing has state to undo: with the cold reset asserted `core2pad_en_o` is 0 on all 65 pads, `core2pad_o` is 0 on all 65 and `pad2core_en_o` equals the map, 62 ones with pads 62-64 off, LSIO-owned pads included.
+* After the release the fuse sense is waited for, the free pads read the map again and the two programmed DATA_CTRL words read 0.
+* The reset agent's WAIT_STATE handshakes bound the cold assertion and release; the pad-vector waits are bounded by 64 rises; expiry fails.
+
+*Test Procedure*:
+
+[arabic]
+. Sample the vectors at entry and grade the free pads; program pads 1 and 2 as outputs and wait for the vectors to show it.
+. Assert the cold reset, wait for the cold-stable and primary resets, wait for the vectors to show the forcing, sample them; release, wait for the released levels and the fuse sense, sample again, read the programmed DATA_CTRL words.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-DEFAULT-DIRECTION-MAP` |With the cold reset asserted after two pads were programmed as outputs driving 1 with RX off: `pad2core_en_o` == `DefaultDirectionMap` (popcount 62, off exactly on pads 62-64), `core2pad_en_o` == 0 and `core2pad_o` == 0 on all 65; at entry and after the release every pad with `lsio_interface_select` 0 has RX on, TX off and data 0, and the programmed DATA_CTRL words read 0 after the release. Fails on any pad off the map under reset, an output enable or data 1 under reset, a free pad off the map in operation, or a register that survived the reset
+|===
+
+*Pass Criteria*: `CHK-GPIO-DEFAULT-DIRECTION-MAP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `gpio`.
+
+*Scope limit*: None stated.
+
+'''''
+
 ==== IRQ
 
 [[sec-112-smc_hang_detector_data_timeout_test]]

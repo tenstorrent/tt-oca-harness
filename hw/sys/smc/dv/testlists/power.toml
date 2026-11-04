@@ -342,3 +342,13 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "wdt"]
 run_modes = ["smoke"]
+
+# OCTS pulse widths and credit spacing on pads 55/56 in clk_smc_i, the START
+# rules of the pulse FSM, the PRIMARY/SECONDARY masks and TIMER_GPIO_ENABLE.
+[[tests]]
+name = "smc_octs_pulse_timing_test"
+module = "smc_octs_pulse_timing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

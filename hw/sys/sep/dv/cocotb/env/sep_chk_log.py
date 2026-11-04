@@ -14,7 +14,10 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
   specification states yet. ``blocked(check, reason)`` logs
   ``OBS-BLOCKED CHK-<NAME> reason=<r>``. ``info(name, **fields)`` logs
   ``INFO-<NAME> ...``: a bench record (set-up value, reference timing, leg
-  marker, bookkeeping). None of the three grades anything.
+  marker, bookkeeping), or a re-log of a DUT value that a named ``CHK-``
+  grades, in the same leaf or in another leaf. That INFO line names its
+  ``CHK-``, and its leaf when the check is in another leaf. None of the three
+  grades anything.
 * ``finish()`` is the verdict. It raises ``AssertionError`` if any check or
   control failed, or if no check passed. Otherwise it hands the
   ``RESULT <leaf> seed=<n> PASS checks=<k>`` line to ``result_pass`` of the
@@ -170,7 +173,7 @@ class SepChkLog:
         self._log.info(self._line(f"OBS-{_name(name)}", fields))
 
     def info(self, name: str, **fields: Any) -> None:
-        """Log one bench record. It grades nothing and never fails the leaf."""
+        """Log one bench record or a re-log of a value a named CHK grades. It never fails the leaf."""
         self._log.info(self._line(f"INFO-{_name(name)}", fields))
 
     def blocked(self, check: str, reason: str) -> None:
