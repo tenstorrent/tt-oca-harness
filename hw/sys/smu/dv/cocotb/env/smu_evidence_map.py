@@ -1339,8 +1339,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "interleaved ext_in reads and writes under distinct IDs to the SEP SRAM and the SMC "
             "scratchpad each get one response with the issued ID and the reference data, no "
             "response carries an ID ext_in did not issue, the iDMA copy from the SEP SRAM lands "
-            "at ext_out unchanged, and an ext_in read under the iDMA's ID value is outstanding "
-            "toward the SEP SRAM while an iDMA read reaches sep_in",
+            "at ext_out unchanged, and an iDMA read of the SEP SRAM under the ext_in train's ARID "
+            "crosses the crossbar smc_out port while a train read is outstanding",
         ),
         (
             "CHK-G4-ROUTE-FWD",
@@ -1362,8 +1362,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-G4-APERTURE",
             "at the reset sizes base+0x00FF_FFFF of each aperture decodes inside and "
             "base+0x0100_0000 outside, routed per the routing table for smc_out and ext_in; with "
-            "base+size above 2^56 0xFF_FFFF_FFFF_FFFF decodes inside; the decoded SEP size is the "
-            "low 32 bits of SEP_REGION_SIZE; every aperture register reads back its reset value",
+            "base+size above 2^56 0xFF_FFFF_FFFF_FFFF decodes inside; with a 32-bit SEP_REGION_SIZE "
+            "the last word below base+size decodes inside and base+size outside; every aperture "
+            "register reads back its reset value",
         ),
         (
             "CHK-NONVAC",

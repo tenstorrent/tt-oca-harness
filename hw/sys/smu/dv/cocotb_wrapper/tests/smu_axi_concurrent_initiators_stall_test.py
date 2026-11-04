@@ -3,18 +3,18 @@
 """smu_axi_concurrent_initiators_stall_test - smc_out and ext_in against a stalling ext_out.
 
 DV-TESTCASE-CONTRACT: TC_G4 ANCHOR: smu_axi_concurrent_initiators_stall_test
-DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 690fd571e40d549a4b1f99627c7b48273d5dc8e2a6f4610ad82d083ba388241b
-DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 3 ENV: cocotb
+DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: 205120674ab25116849f3f6ecfa8ffdf98d735f10914b1503fe1c58e083c638d
+DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 5 ENV: cocotb
 
 The JTAG2AXI-programmed SMC iDMA copies between two ext_out ranges, JTAG2AXI
 reads and writes ext_out, and the ext_in master sends requests to neither
 aperture while the ext_out responder withholds READY and delays B and R. Then
 interleaved IDs through both converters, the smc_out and ext_in forwarding and
 DECERR cells, the aperture edges at the reset sizes, the 57-bit carry, the
-low-32-bit SEP size and a reprogram with a read in flight. The SEP aperture
+32-bit SEP size edge and a reprogram with a read in flight. The SEP aperture
 registers are written over the SEP debug module's system bus; no SEP traffic
-is driven. Observation stays on the bench top. VCS is the run of record; the
-bench checkers print their CHK-AXI-SVA lines at final.
+is driven. Observation is passive. VCS is the run of record; the bench
+checkers print their CHK-AXI-SVA lines at final.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_axi_concurrent_initiators_stall_test --target compile_smu_chiplet --tool vcs
