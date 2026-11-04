@@ -12575,6 +12575,69 @@ grade.
 
 '''''
 
+[[sec-220-smu_axi_concurrent_initiators_stall_test]]
+===== 220 `smu_axi_concurrent_initiators_stall_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smu_axi_concurrent_initiators_stall_test` (`cocotb_wrapper/tests/`; the sequence `smu_axi_concurrent_initiators_stall_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins with seeded AR, W, BREADY and RREADY delays; the `ocah_axi_vip` responder on `u_axi_out_if` with `axi_out_max_outstanding` 4, seeded B and R delays and, in S2, READY withheld on AW, W and AR; `ocah_jtag_vip` for JTAG2AXI, which also programs the SMC iDMA, and for the SEP debug module's system bus, which writes the SEP aperture registers; passive taps on the `ext_in_*` pins, on `u_axi_out_if` and on the AW, AR, B and R handshakes of the crossbar smc_out port (decoded from `u_smu_axi_xbar.smc_out_req_i` and `smc_out_resp_o`), and the bench counters `sep_xbar_in_aw_count_o`, `sep_xbar_in_ar_count_o`, `smc_xbar_in_aw_count_o`, `smc_xbar_in_ar_count_o` and `dtp_smc_dbg_{aw,ar,b}_count_o` with the four aperture ports; `elaboration` firmware mode
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `axi_sva`, `all`; `timeout_sec` 5400; tags `fabric`, `axi`, `axi_sva`; run mode `sep_rtl` (`+skip_fuse_sense`, the default SMC shadow preload and the TEST_DEV SEP shadow preload, so the SEP debug module answers); firmware `elaboration` (mode `elaboration`); tool VCS on `target = "compile_smu_chiplet"` as the run of record, with the `+axi_sva_need_*` plusargs of the eleven links the leaf drives (`xbar_sep_out` and `sep_to_smc` carry no traffic). The entry carries `tools = ["vcs"]`: the leaf reads the crossbar smc_out port structs by hierarchy, which the Verilator build does not expose, so it is not in the Verilator coverage set (`SMU_FCOV.adoc`), and the need gates, the X rules and the `CHK-AXI-SVA` lines grade under VCS alone; on any simulator other than VCS the leaf prints `INFO-RUN-MODE: <simulator>, protocol gates not graded`. Steps run in the order S1 to S8.
+
+*Randomization*: RAND-REP: the seed draws the responder READY stall, the responder B and R delays and the master's AR, W, BREADY and RREADY delays, logged on the `INFO-SEED` line; the request set, IDs, addresses and aperture placements are fixed.
+
+*Objective*: With the smc_out initiators (JTAG2AXI and the iDMA it programs) and the ext_in master in flight against a stalling `ext_out`, every request completes exactly once on the port that issued it with its ID; each forwarding and DECERR cell of the routing table holds for smc_out and ext_in; the aperture decode keeps its 57-bit carry and decodes a 32-bit `SEP_REGION_SIZE` at its edge.
+
+*Test Coverage*:
+
+* The routing table of `hw/sys/smu/doc/index.adoc` sends smc_out to `sep_in` in the SEP aperture, DECERR in the SMC aperture and `ext_out` otherwise, and ext_in to `sep_in`, `smc_in` or DECERR; the crossbar generates every DECERR itself and the request reaches no subordinate.
+* Each aperture covers [base, base + size) in a 57-bit sum; the SEP aperture is widened to [0x0, 0x1100_0000) over the SEP debug module's system bus so both initiators reach the SEP SRAM, and both aperture registers read back their RDL reset at the start and after the restore.
+* Each 32-byte iDMA copy to and from the SEP SRAM is one INCR AxLEN 3 read and one INCR AxLEN 3 write at the crossbar smc_out port and one request at `sep_in`; the longer copies run with INCR bursts whose AxLEN the iDMA chooses.
+* In S3 and S4 every smc_out B and RLAST at the crossbar smc_out port carries the ID of an AW or AR sampled there.
+* An SMC request into the SMC aperture stays inside the SMC, so the smc_out SMC-aperture DECERR cell is not drivable from the SMC (Known limitations; <<sec-217-smu_xbar_self_route_smc_test>> grades that the request never reaches the crossbar).
+* Grant waits, DECERR beat contents, USER fields, ID widths, addresses, the reprogram outcome and AWATOP are measured, not compared (SF-011, SF-014, SF-015, SF-017, SF-021, SF-022, SF-023, SF-024, SF-026).
+
+*Test Procedure*:
+
+[arabic]
+. S1 SETUP: SMC inbound filter entry 0 and outbound entry 0 over JTAG2AXI; the four aperture registers read back; the SEP aperture widened; reference patterns written into the SEP SRAM, the SMC scratchpad and the responder memory; `CTRL-G4-OKAY`: one write then read per permitted cell.
+. S2 STALLED_EXT_OUT: with the responder stalling READY and delaying B and R, a 16 KiB iDMA copy between two `ext_out` ranges, a JTAG2AXI write and read of `ext_out`, and four reads and four writes from ext_in to neither aperture under distinct IDs; `CTRL-G4-STALL`: the iDMA waits for READY at `ext_out` on at least one AW or AR, and at least one ext_in DECERR completes between the first iDMA handshake at `ext_out` and the last `ext_out` B; AWATOP and AWBURST of every smc_out AW are recorded at the crossbar smc_out port.
+. S3 INTERLEAVE: a 1 KiB iDMA copy from the SEP SRAM to `ext_out` while ext_in has reads and writes under distinct IDs to the SEP SRAM and the scratchpad outstanding, and a train of SEP SRAM reads, two in flight, under the ARID the iDMA used at the crossbar smc_out port in S2.
+. S4 ROUTE_FWD: per forwarding cell a single-beat and a 32-byte INCR write and read: ext_in to the SEP SRAM and the scratchpad, JTAG2AXI to the SEP SRAM and to `ext_out`, and two 32-byte iDMA copies, `ext_out` to the SEP SRAM and back.
+. S5 DECERR_CELLS: a JTAG2AXI write and read in the SMC aperture, which must leave the crossbar smc_out port idle and are printed `INFO-CELL-NOT-DRIVABLE SMC_OUT/SMC-aperture-decerr`, and an ext_in read and write in neither aperture.
+. S6 APERTURE_RESET_SIZES: the SEP aperture back at its reset size; single-beat reads at base+0x00FF_FFFF and base+0x0100_0000 of each aperture from smc_out and ext_in, except the smc_out read inside the SMC aperture, which is the S5 cell.
+. S7 APERTURE_PROGRAMMING: SEP base 0xFF_FFFF_FF00_0000 with `SEP_REGION_SIZE` 0x0200_0000 and a read of 0xFF_FFFF_FFFF_FFFF; SEP base 0x1_0000_0000 with `SEP_REGION_SIZE` 0x1000_1000 and reads at the last word below base+0x1000_1000 and at it; `SEP_REGION_SIZE.SIZE` is 32 bits wide (`sep_cpu_ctrl.rdl`, `doc/integrator/src/smu-composition.adoc` lines 131-132), so a boundary value with bits above 31 cannot be programmed and the leaf prints `INFO-CELL-NOT-DRIVABLE SEPAP/size-upper-bits`; a read held in flight while `SEP_REGION_SIZE` returns to reset; the base restored and all four registers read back.
+. S8 TIMEOUT: every access, handshake, port and DONE wait is bounded in `clk_smu_i` edges or polls; an expiry fails the leaf with `INFO-CLASSIFY` (unanswered transaction), the last handshakes of both taps and `rst_primary_smc_clk_n_o`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-G4-CONC-EXTOUT` |every iDMA burst at `ext_out` is INCR and gets one B or one RLAST per ID, the destination equals the source and DONE reports the launch id; the JTAG2AXI write and read of `ext_out` complete once with the word written; each ext_in request to neither aperture gets one DECERR response with its ID, none appears at `ext_out` and no target port moves
+|`CHK-G4-IWC-ID` |every ext_in read and write gets one response with its ID and the reference data; the train reads under the shared ARID return in issue order, one RLAST OKAY beat each with the SEP SRAM word at its address; no response carries an ID ext_in did not issue, the iDMA copy from the SEP SRAM lands at `ext_out` unchanged with one B per AW, an iDMA read of the SEP SRAM under the ext_in train's ARID crosses the crossbar smc_out port while a train read is outstanding, and at that port the B IDs equal the AW IDs and the RLAST IDs equal the AR IDs, all OKAY
+|`CHK-G4-ROUTE-FWD` |each request of the four forwarding cells moves only the target port its cell names (`sep_in`, `ext_out`, `sep_in`, `smc_in`) and returns once with its ID and the data written; each smc_out request appears once at the crossbar smc_out port with its address and its B or RLAST carries its ID there, and each 32-byte iDMA copy is one INCR AxLEN 3 AR and AW at that port and one `sep_in` request
+|`CHK-G4-ROUTE-DECERR` |the ext_in read in neither aperture gets one R with DECERR and RLAST 1 and the write one B with DECERR under their IDs; no target port and not `ext_out` sees an AW or AR; the smc_out SMC-aperture cell is not drivable and is not graded
+|`CHK-G4-APERTURE` |at the reset sizes base+0x00FF_FFFF decodes inside and base+0x0100_0000 outside each aperture, routed per the table for smc_out and ext_in (no smc_out read inside the SMC aperture); with base+size above 2^56 0xFF_FFFF_FFFF_FFFF decodes inside; with a 32-bit `SEP_REGION_SIZE` the last word below base+size decodes inside and base+size outside; the four registers read back their reset values
+|`CHK-NONVAC` |ordered fence SETUP < STALLED_EXT_OUT < INTERLEAVE < ROUTE_FWD < DECERR_CELLS < APERTURE_RESET_SIZES < APERTURE_PROGRAMMING, each term with its sim time and a non-zero count at least its plan
+|`CHK-TIMEOUT-PATHS` |every bounded wait logs its bound and last state, fails on expiry, and none expires
+|`CHK-AXI-SVA-<PORT>` (bench, at final) |for `XBAR-SMC-OUT`, `SMU-IN`, `XBAR-EXT-IN`, `INCUT`, `XBAR-SEP-IN`, `IWC-SEP`, `XBAR-SMC-IN`, `IWC-SMC`, `XBAR-EXT-OUT`, `SMU-OUT` and `DTP-DBG`: a nonzero handshake count under `+axi_sva_need_<port>`, and no rule of the instance fires
+|===
+
+*Observations* (measured, never compared): `OBS-G4-GRANT-WAIT` (SF-022), `OBS-G4-DECERR-CONTENT` (SF-015, SF-021), `OBS-G4-USER` (SF-026, SF-014), `OBS-G4-IWC` (SF-011), `OBS-G4-ADDR` (SF-023), `OBS-G4-APERTURE` (SF-024), `OBS-G4-ATOP-SMC` (SF-017).
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `axi_sva`, `all`.
+
+*Known limitations*: the converter outputs and the `smc_in` USER fields have no observation point, so smc_out IDs are judged at the crossbar smc_out port and at `ext_out`; the SMC input fabric sends every address of the SMC window to its local fabric (`hw/sys/smc/rtl/smc_fabric/smc_input_fabric/rtl/smc_input_fabric.sv` lines 366-369, 395-401 and 417), and the crossbar decodes the SMC aperture from the same `GLOBAL_BASE` and `REGION_SIZE` (`hw/sys/smc/rtl/smc_base.sv` lines 481 and 483, `hw/sys/smu/rtl/smu.sv` lines 1020-1021), so an SMC request into the SMC aperture never reaches the crossbar and the DECERR the JTAG2AXI bridge reports for it is made by `smc_local_xbar` inside the SMC (`hw/sys/smc/rtl/crossbars/smc_local_xbar.sv` lines 9-10): the crossbar's smc_out SMC-aperture DECERR is not drivable from the SMC; `SEP_REGION_SIZE` holds 32 bits, so a boundary value with bits above 31 is not drivable and is printed `INFO-CELL-NOT-DRIVABLE SEPAP/size-upper-bits`; the routing table forbids overlapping apertures and the crossbar asserts it, so no overlapping configuration is programmed; a SEP-aperture probe outside the SEP SRAM may leave the SEP again on its outbound path, so an `ext_out` request after the `sep_in` request is logged, not graded. Each not-drivable cell above prints `INFO-CELL-NOT-DRIVABLE` and each SEP-aperture probe an `INFO-G4-PROBE` line. Two planned cells are neither walked nor printed: the SMC-aperture 57-bit carry (only the SEP aperture is placed across 2^56) and one ID value outstanding from smc_out and ext_in into `smc_in` at once. This leaf drives no sep_out traffic; `smu_xbar_self_route_sep_test` (<<sec-218-smu_xbar_self_route_sep_test>>) grades the sep_out SEP-aperture DECERR cell and its reset-base control crosses the sep_out to `ext_out` cell. The spec findings SF-008, SF-010, SF-015 and SF-017: SF-008 and SF-010 bear only on how a checker fire is classified, and SF-015 and SF-017 only on observation lines, so no check of this leaf grades a value they leave unstated.
+
+*Scope limit*: this leaf grades the smc_out and ext_in cells only; it grades no per-link protocol scenario and no sep_out cell.
+
+'''''
+
 [[smu-vplan-phase3]]
 === Phase 3 Tests
 
@@ -12589,8 +12652,8 @@ An entry whose test does not exist yet carries `*Status*: planned (no test yet)`
 |===
 |Area |Test numbers |Scope
 |FABRIC
-|12, 17, 18, 129 to 133, 205, 217, 218
-|Last writer on one map word over two bridges; several inbound transfers in flight and the refusal of unsupported burst types; DECERR on an address no aperture claims; alias remap transparency after reset and the AxCACHE of a hit and a miss; the filter and remap register sweeps; filter entry lock; past-extent, gap and remap-window responses of the SMC map. Responder error codes returned to the initiator on a pinned or drawn beat.
+|12, 17, 18, 129 to 133, 205, 217, 218, 220
+|Last writer on one map word over two bridges; several inbound transfers in flight and the refusal of unsupported burst types; DECERR on an address no aperture claims; alias remap transparency after reset and the AxCACHE of a hit and a miss; the filter and remap register sweeps; filter entry lock; past-extent, gap and remap-window responses of the SMC map. Responder error codes returned to the initiator on a pinned or drawn beat. Three initiators against a stalling `ext_out` with interleaved IDs, the forwarding and DECERR cells, and the aperture edges and programming limits from the crossbar ports.
 |RESET
 |21, 25, 30, 32, 134, 135, 137, 206
 |Boot-stall precedence over IC_RESET; two IC_RESET domains in one data register; reset release on a domain clock edge; SRAM auto-initialisation held off; the clock-stop output under a primary reset; isolation and FLR retention across cool and cold resets; the reset-unit register sweep with random data, read-only and unmapped cells; register retention across cool, cold and warm resets.
@@ -13487,7 +13550,7 @@ block-level evidence, not SMU integration evidence.
 |`dtp_under_smu` |40 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
 |`hosted` |178 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |222 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`all` |223 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers

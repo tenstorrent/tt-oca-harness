@@ -4665,6 +4665,7 @@ tests = [
   "smu_xtrig_ctp_pad_test",
   "smu_axi_smc_cool_reset_in_flight_test",
   "smu_axi_ext_in_illegal_encoding_test",
+  "smu_axi_concurrent_initiators_stall_test",
 ]
 
 # `--items all`: every test in this file, so this group is the whole SMU
@@ -4897,8 +4898,9 @@ tests = [
   "smu_sep_reset_inflight_test",
   "smu_smc_reset_inflight_test",
   "smu_dtp_jtag2axi_smc_reset_inflight_test",
+  "smu_axi_concurrent_initiators_stall_test",
 ]
-expected_count = 222
+expected_count = 223
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -5121,6 +5123,56 @@ args = [
   "+axi_sva_need_iwc_sep",
   "+axi_sva_need_xbar_smc_in",
   "+axi_sva_need_iwc_smc",
+]
+
+# The SMU crossbar with the smc_out initiators (JTAG2AXI and the iDMA it
+# programs) and the ext_in master against a stalling ext_out responder, then the
+# smc_out and ext_in forwarding cells, the ext_in DECERR cell, the aperture
+# edges at reset, the 57-bit carry, the 32-bit SEP size edge and a reprogram
+# with a read in flight. The SEP aperture registers are written over the SEP
+# debug module's system bus. The need gates, the X rules and the data-known
+# rules grade under VCS only.
+# Access budget, JTAG2AXI accesses (about 10 us each) and SEP system-bus
+# accesses (several DMI scans each) per step: S1 12 + 3, S2 18, S3 5, S4 14,
+# S5 2, S6 3 + 1, S7 5 + 8; about 60 JTAG2AXI and 12 system-bus accesses.
+[[tests]]
+name = "smu_axi_concurrent_initiators_stall_test"
+module = "smu_axi_concurrent_initiators_stall_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 5400
+tags = ["fabric", "axi", "axi_sva"]
+# The leaf reads the crossbar smc_out port structs by hierarchy, which the
+# Verilator build does not expose.
+tools = ["vcs"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the paths are opened over JTAG2AXI and the SEP system bus, no eFuse word is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: every SEP debug path open, so the DTP forwards TMS to the SEP
+  # STAP and the debug module's system bus is reachable.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades. The leaf
+  # drives no SEP-originated traffic, so xbar_sep_out and sep_to_smc have none.
+  "+axi_sva_need_xbar_smc_out",
+  "+axi_sva_need_smu_in",
+  "+axi_sva_need_xbar_ext_in",
+  "+axi_sva_need_incut",
+  "+axi_sva_need_xbar_sep_in",
+  "+axi_sva_need_iwc_sep",
+  "+axi_sva_need_xbar_smc_in",
+  "+axi_sva_need_iwc_smc",
+  "+axi_sva_need_xbar_ext_out",
+  "+axi_sva_need_smu_out",
+  "+axi_sva_need_dtp_dbg",
 ]
 
 # SMC-facing boundary signals against the SMC registers that own them.

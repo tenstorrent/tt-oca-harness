@@ -1323,6 +1323,68 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "target is refused with SLVERR",
         ),
     ],
+    "smu_axi_concurrent_initiators_stall_test": [
+        (
+            "CHK-G4-CONC-EXTOUT",
+            "CHK-G4-CONC-EXTOUT",
+            "with the ext_out responder withholding READY and delaying B and R, every iDMA burst at "
+            "ext_out is INCR and answered once per ID, the destination equals the source and DONE "
+            "reports the launch id; a JTAG2AXI write and read of ext_out complete once with the "
+            "word written; each ext_in request to neither aperture is answered once with DECERR "
+            "and its ID, none reaches ext_out and no target port moves",
+        ),
+        (
+            "CHK-G4-IWC-ID",
+            "CHK-G4-IWC-ID",
+            "interleaved ext_in reads and writes under distinct IDs to the SEP SRAM and the SMC "
+            "scratchpad each get one response with the issued ID and the reference data, no "
+            "response carries an ID ext_in did not issue, the iDMA copy from the SEP SRAM lands "
+            "at ext_out unchanged, an iDMA read of the SEP SRAM under the ext_in train's ARID "
+            "crosses the crossbar smc_out port while a train read is outstanding, the train reads "
+            "return in issue order with the SEP SRAM word at each address, and at the smc_out port "
+            "the B IDs equal the AW IDs and the RLAST IDs equal the AR IDs, all OKAY",
+        ),
+        (
+            "CHK-G4-ROUTE-FWD",
+            "CHK-G4-ROUTE-FWD",
+            "each single-beat and 32-byte INCR read and write of the four forwarding cells "
+            "(smc_out SEP, smc_out neither, ext_in SEP, ext_in SMC) moves only the target port "
+            "its cell names and returns once with the issued ID and the data written; each smc_out "
+            "request appears once at the crossbar smc_out port with its address and its B or RLAST "
+            "carries its ID there, and each 32-byte iDMA copy is one INCR AxLEN 3 AR and AW at "
+            "that port and one sep_in request",
+        ),
+        (
+            "CHK-G4-ROUTE-DECERR",
+            "CHK-G4-ROUTE-DECERR",
+            "an ext_in read and write to neither aperture get one R with DECERR and RLAST=1 and "
+            "one B with DECERR under the issued IDs, and no target port or ext_out sees an AW or "
+            "AR; the smc_out SMC-aperture cell is not drivable from the SMC and is not graded",
+        ),
+        (
+            "CHK-G4-APERTURE",
+            "CHK-G4-APERTURE",
+            "at the reset sizes base+0x00FF_FFFF of each aperture decodes inside and "
+            "base+0x0100_0000 outside, routed per the routing table for smc_out and ext_in (no "
+            "smc_out read inside the SMC aperture, which is not drivable); with "
+            "base+size above 2^56 0xFF_FFFF_FFFF_FFFF decodes inside; with a 32-bit SEP_REGION_SIZE "
+            "the last word below base+size decodes inside and base+size outside; every aperture "
+            "register reads back its reset value",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < STALLED_EXT_OUT < INTERLEAVE < ROUTE_FWD < DECERR_CELLS < "
+            "APERTURE_RESET_SIZES < APERTURE_PROGRAMMING with sim time and a non-zero count at "
+            "least the plan per term",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every access, handshake, port and DONE wait is bounded in clk_smu_i edges or polls, "
+            "fails on expiry with the last handshakes and the reset-net sample, none expired",
+        ),
+    ],
     "smu_axi_smc_cool_reset_in_flight_test": [
         (
             "CHK-G2A-VALID-LOW",
