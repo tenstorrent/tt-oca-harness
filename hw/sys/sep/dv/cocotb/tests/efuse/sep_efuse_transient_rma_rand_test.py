@@ -30,9 +30,7 @@ channels at Match before and after W (``otp_fuse_controller.adoc``, row
 ``TRANSIENT_RMA_EN``). The script ends both matches. A lone SIP match right
 after it lands RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK): the update
 follows each token match (``otp_fuse_controller.adoc:232-238``) and the block
-covers only a SIP match made while the chiplet match is held. The DUT keeps the
-start state, so this check is expected to fail until the RTL ticket on the
-once-per-reset transient update flags is fixed (#3527). A cold reset
+covers only a SIP match made while the chiplet match is held. A cold reset
 follows; the twin then presents the
 SIP match alone from the sensed start state and lands RMA_SIP, and a second
 cold reset restores the sensed state. The lone SIP match and the cold reset

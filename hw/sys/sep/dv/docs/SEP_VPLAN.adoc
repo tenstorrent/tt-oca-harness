@@ -281,7 +281,7 @@ says nothing about them.
 |Entropy-pool drain-under-fill |No test in `all` drives it. `sep_entropy_pool_aperture_test` grades the stall duration (`CHK-STALL-DURATION`)
 |Drain-before-reset on the AES and OTBN isolation domains |No test in `all` drives it. The HMAC, KMAC, Adams Bridge and shared TRNG domains are graded (<<iconic-scorecard>>)
 |Locked-field access interrupt taken by the CPU PIC and its service routine |No test in `all` drives it. `sep_locked_field_access_irq_path_test` grades the interrupt line
-|KMAC sideload recovery after a fail-closed `START` with no valid key (`ErrKeyNotValid`) |No test in `all` grades recovery through `CMD.err_processed`. `sep_km_command_set_rand_test` grades the fail-closed `START`
+|KMAC sideload recovery after a fail-closed `START` with no valid key (`ErrKeyNotValid`) |No test in `all` grades recovery through `CMD.err_processed`. `sep_km_sideload_share_walk_test` grades the fail-closed `START` with CHK-KMAC-CLR
 |===
 
 [[sep-vplan-traceability]]
