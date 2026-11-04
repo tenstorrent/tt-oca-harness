@@ -8,6 +8,87 @@ Releases before 1.0.0 are early-stage: public interfaces (register maps, RTL
 ports) may change between minor versions. A patch stays compatible with the
 minor release it updates.
 
+## [Unreleased]
+
+### Added
+
+- SEP secure DMA zero-fill opcode, `CONTROL.OPCODE` 4 (#3081).
+- SMC cluster MMIO covers I3C instance 5 at `0xC003F000`, which took an access
+  fault (#3362).
+
+### Changed
+
+- SMU top level: the SMC RAS outputs `smc_cluster_ded_o`,
+  `smc_wdt_first_timeout_o` and `smc_wdt_second_timeout_o` are grouped into
+  `smc_ras_o` (`smc_pkg::smc_ras_t`), which adds the AXI hang timeouts, the
+  eFuse lifecycle integrity error and the UART and I2C integrity errors. A new
+  `sep_ras_o` (`sep_pkg::sep_ras_t`) exports the SEP lockstep, watchdog, ICCM
+  and DCCM ECC, Key Manager, DMA, crypto, bus and entropy faults, and is 0 when
+  `CFG.SEP` is 0. `lc_sigint_err_o` is the OR of both structs' `lc_sigint_err`
+  (#3339). `smc_ras_o.cluster_ded` is not held (#3500).
+- SMU memory interfaces answer every read on the next clock and carry the macro
+  clock in the request: the SEP SRAM and boot ROM (now `sep_boot_rom_req_t` and
+  `sep_boot_rom_rsp_t`), Key Manager ROM and SRAM, I3C DAT, DCT and RLT
+  memories and trace sink RAMs gain a `clk` field and drop `gnt`, `rvalid`,
+  `rerror` and `q_valid` where they had them. The SEP SRAM request is
+  `{clk, req, we, addr, wdata, wmask}` (#3360). Each memory clock, including
+  the trace, I3C and Adams Bridge ones on packed-array ports, is constrained as
+  a generated clock (#3360, #3579).
+- SEP outbound traffic sets its security state and source ID per path: the AP
+  output remap forces NS to 1, and the SMU aperture and addresses at or above
+  4 GiB take NS from the inverse of address bit 55. `output_remap` gains
+  `PROT_NS_OVERRIDE_EN`, `PROT_NS_OVERRIDE_VAL` and `PROT_NS_FROM_ADDR_EN`, off
+  by default (#3225).
+- Register blocks answer SLVERR only past their end, and OKAY in gaps and
+  between instances of arrayed blocks (#3514, #3518).
+- SEP watchdog reset clears the bite, and a cold reset must follow every
+  watchdog timeout (#3341). The SMC second-stage watchdog flag is qualified by
+  the first-stage timeout (#3502).
+- SMC fabric demuxes look up the full AXI ID, so IDs sharing their low bits no
+  longer stall each other across ports (#3308).
+- `test_en_i` drives the SEP clock-gater and AXI cell test inputs and the
+  scan-reset bypass of the CDC primitives, which were tied to 0 (#3221).
+- SEP `LC_STATE` resets to `0x0F`, the INVALID hold before fuse sensing (#3450).
+- Configuration checks run at elaboration through `OCAH_ASSERT_STATIC` (#3034).
+- Integrator Guide: `smu_axi_in` carries no AXI atomics (#3591), and the SMU
+  forwards illegal AXI burst encodings unchecked (#3593).
+- AVSBus controller cites PMBus 1.3 Part III (#3394).
+- AoU RTL moves to upstream 080724c. `AOU_TOP` gains `O_LP_LINKERROR` and
+  `INT_FDI_LINK_DOWN` and loses `I_SW_DEACTIVATE_START` and `I_SW_RETRAIN_REQ`;
+  nothing in this tree instantiates it (#3274, #3412).
+
+### RTL bugs
+
+RTL bugs fixed on `main` since v0.5.3, each with the pull request that fixed it.
+
+- SEP Boot ROM set FIPS lock with the entropy FIFO enabled, so later software
+  could read the DRBG seed (#3402).
+- Key Manager wipe left keys already delivered to the crypto engines valid
+  (#3260).
+- Any write with a byte strobe set cleared SMC FLR isolation (#3359).
+- TRNG divider and downsample counters loaded their CSR values asynchronously;
+  they count up to them (#3413).
+- Scratchpad and BEU accesses hung while an SMC core was held in reset (#3319).
+- Zeroer changed WLAST while WVALID was high (#3626).
+- `rr_arb_tree` left its round-robin register undriven with `FairArb=0`
+  (#3398).
+- SEP secure DMA set `STATUS.ABORTED` while granted writes could still land
+  (#3163).
+- Narrow AXI-Lite writes at byte lanes 1-3 reached TL-UL unaligned and were
+  dropped with SLVERR (#3164).
+- Mailbox `WIRQT` and `RIRQT` were declared 8 bits wide, so their generated
+  collateral dropped the upper bytes (#3076).
+- SMC DMA clock gate waited for its busy hysteresis instead of opening as soon
+  as the DMA had work (#3516). iDMA read-write coupler channel fix (#3025).
+- I2C bus timeout mid-byte corrupted the next transaction (#3166).
+- SEP entropy-path counter and FSM faults reached no alert, and simulations with
+  assertions failed at time 0 (#3326).
+- SEP Boot ROM accepted the SMC invalid manifest offset (#3511) and misaligned
+  boot storage addresses (#3261), and could skip the halt on a failed memory
+  check (#3401).
+- SMC firmware let the SEP reset hart 0 with stores still in its D-cache
+  (#3503).
+
 ## [0.5.3] - 2026-10-09 (Beta)
 
 ### Added
@@ -169,6 +250,7 @@ First public release of the Open Chiplet Atlas (OCA) Harness.
 - Lint, format and DV tooling, and a Nix-based reproducible environment with a
   container for the RISC-V firmware toolchain.
 
+[Unreleased]: https://github.com/tenstorrent/tt-oca-harness/compare/v0.5.3...HEAD
 [0.5.3]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.3
 [0.5.2]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.2
 [0.5.1]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.1
