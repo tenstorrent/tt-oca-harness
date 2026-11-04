@@ -548,17 +548,25 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
 
         The read data is never converted and the read is declared to the monitor as
         observed-only, so its beat is exempt from the X rules; the monitor's R-beat count
-        corroborates that the read answered exactly once.
+        corroborates that the read answered exactly once, and its exempt tallies that the
+        declaration covered exactly that one AR and one beat.
         """
         first, last = generated_window(unit)
         top = self._top_addr(unit)
-        self.env.axi_monitor.expected_decerr_addrs.add(top)
-        beats_before = self.env.axi_monitor.r_beats
-        with self.env.axi_monitor.declared_unknown_rdata():
+        monitor = self.env.axi_monitor
+        monitor.expected_decerr_addrs.add(top)
+        beats_before = monitor.r_beats
+        exempt_before = (monitor.ar_exempt, monitor.r_beats_exempt)
+        with monitor.declared_unknown_rdata():
             rresp, resolvable, bits = await self._read_unconverted(f"{tag}_TOP", top)
         bresp = await self._write_past(f"{tag}_TOP", top)
-        beats = self.env.axi_monitor.r_beats - beats_before
+        beats = monitor.r_beats - beats_before
         assert beats == 1, f"{tag}_TOP @ 0x{top:08x}: monitor saw {beats} R beats, want 1"
+        exempt = (monitor.ar_exempt - exempt_before[0], monitor.r_beats_exempt - exempt_before[1])
+        assert exempt == (1, 1), (
+            f"{tag}_TOP @ 0x{top:08x}: the declaration exempted {exempt[0]} ARs and "
+            f"{exempt[1]} R beats, want exactly the one read"
+        )
         rname = _RESP_NAMES.get(rresp, rresp)
         bname = _RESP_NAMES.get(bresp, bresp)
         cocotb.log.info(
@@ -569,7 +577,8 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
             f"0x{LOCAL_BASE_RESET + last:08X} @0x{top:08x} rresp={rname} bresp={bname} "
             f"(data not converted, read declared observed-only to the monitor; "
             f"rdata_resolvable={resolvable} rdata_bits={bits}; "
-            f"monitor R beats={beats}; measured, LINKED-ISSUE SF-003, SF-004)"
+            f"monitor R beats={beats}, exempt ARs/beats={exempt[0]}/{exempt[1]}; "
+            f"measured, LINKED-ISSUE SF-003, SF-004)"
         )
 
     def _uart_wrapper_points(self, n: int) -> tuple[int, int, list[tuple[str, int, int]]]:

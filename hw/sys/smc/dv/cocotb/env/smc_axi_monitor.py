@@ -30,7 +30,11 @@ A read that must accept unknown data opens ``open_unknown_rdata_window``
 around its AR handshake; its beats are then exempt from both X rules.
 ``declared_unknown_rdata`` does that and, for the length of the read, also
 holds the bench's ``tb_rdata_known_hold``, which keeps the R-data-known SVA
-on this port's links from judging the same beats.
+on this port's links from judging the same beats. The monitor's exemption is
+per AR; the bench hold is by time (the SVA instances on the SEP_IN and
+peripheral links are off while it is held), so a declaring sequence issues
+one read at a time inside the block and compares ``ar_exempt`` and
+``r_beats_exempt`` with the number of reads it declared.
 
 A leaf that names the port with the bench's ``+axi_sva_need_<port>`` plusarg
 (``sep_in``, ``sys_in``, ``jtag_in``) fails unless the monitor saw at least one
@@ -187,6 +191,8 @@ class SmcAxiMonitor(uvm_component):
         self.unmatched_resps = 0
         self.lanes_checked = 0
         self.r_beats_exempt = 0
+        self.ar_exempt = 0
+        self.declared_reads = 0
         self.pending_ar: dict[int | None, deque[dict]] = {}
         self.pending_aw: dict[int | None, deque[int | None]] = {}
         self.resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
@@ -235,10 +241,19 @@ class SmcAxiMonitor(uvm_component):
     def declared_unknown_rdata(self):
         """Exempt the reads issued inside from both X rules, here and in the bench SVA.
 
-        The exemption covers only the ARs that handshake inside the block; the
-        bench hold is released on exit, after the last beat has been sampled.
+        The monitor's exemption covers only the ARs that handshake inside the
+        block (``ar_exempt`` counts them, ``r_beats_exempt`` their beats). The
+        bench hold is by time, not per read: ``tb_rdata_known_hold`` disables the
+        whole SEP_IN and peripheral R-data-known SVA instance while the block is
+        open, so any other R beat on those two links inside the block goes
+        unjudged by the SVA (the monitor still judges every SEP_IN beat whose AR
+        handshook outside a block). A sequence therefore issues exactly one read
+        inside each block, awaits it, and asserts that the exempt tallies equal
+        the number of blocks it opened. The hold is released on exit, including
+        on an exception, after the read's last beat has been sampled.
         """
         hold = getattr(cocotb.top, "tb_rdata_known_hold", None)
+        self.declared_reads += 1
         self.open_unknown_rdata_window()
         if hold is not None:
             hold.value = 1
@@ -285,6 +300,8 @@ class SmcAxiMonitor(uvm_component):
         }
         self.pending_ar.setdefault(self._key(sig["arid"]), deque()).append(entry)
         self.ar_count += 1
+        if entry["exempt"]:
+            self.ar_exempt += 1
 
     def _join_r(self, sig) -> dict | None:
         """The AR an R beat belongs to, with its beat index; retired on its last beat."""
@@ -450,11 +467,13 @@ class SmcAxiMonitor(uvm_component):
             max(self.max_ready_wait.values()),
         )
         self.logger.info(
-            "SMC AXI monitor %s: %d R beats (%d exempt), %d B resps, %d without a matching "
-            "request; R-resp tally %s; 0 errors",
+            "SMC AXI monitor %s: %d R beats (%d exempt, from %d exempt ARs in %d declared "
+            "reads), %d B resps, %d without a matching request; R-resp tally %s; 0 errors",
             self.port_name,
             self.r_beats,
             self.r_beats_exempt,
+            self.ar_exempt,
+            self.declared_reads,
             self.b_resps,
             self.unmatched_resps,
             ", ".join(f"{_RESP_NAME[k]}={v}" for k, v in self.resp_tally.items() if v),

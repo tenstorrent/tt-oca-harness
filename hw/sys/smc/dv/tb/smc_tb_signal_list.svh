@@ -66,8 +66,12 @@
 // Held high by cocotb while a read whose data is declared observed-only is in
 // flight (an unwritten I3C table entry, the aperture-end word of a window with
 // no past-extent response): the SEP_IN and peripheral R-data-known rules do not
-// judge its beats. smc_axi_monitor exempts the same read through its
-// unknown-rdata window.
+// judge its beats. The hold is by time, not per read: it disables the whole
+// u_sep_in_data_sva and u_periph_data_sva instance while high, so any other R
+// beat on those two links in that window is not judged by the SVA either; the
+// declaring sequences issue one read at a time inside the hold. smc_axi_monitor
+// exempts the same read per AR through its unknown-rdata window and counts the
+// exempt ARs and beats for the sequence to compare with its declarations.
 `SMC_TB_IN(logic, tb_rdata_known_hold)
 `SMC_TB_IN(logic, tb_test_en_i)
 `SMC_TB_IN(logic, tb_i2c0_scl_ext_low)

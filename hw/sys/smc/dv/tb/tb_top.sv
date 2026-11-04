@@ -3623,6 +3623,8 @@ module smc_uvm_top
     ) u_sep_in_data_sva (
         .aclk      (clk_smc),
         .aresetn   (rst_primary_smc_clk_no),
+        // tb_rdata_known_hold turns the whole instance off for the window of a
+        // declared observed-only read (by time, not per read; see the signal list).
         .en_i      (`SMC_AXI_SVA_ON && sep_in_axi_sva_armed && (tb_rdata_known_hold !== 1'b1)),
         `SMC_AXI_DK_W_IDLE(64),
         `SMC_AXI_DK_R(sep_axi_in_resp),
@@ -3714,6 +3716,8 @@ module smc_uvm_top
     ) u_periph_data_sva (
         .aclk      (clk_smc),
         .aresetn   (rst_primary_smc_clk_no),
+        // tb_rdata_known_hold turns the whole instance off for the window of a
+        // declared observed-only read (by time, not per read; see the signal list).
         .en_i      (`SMC_AXI_SVA_ON && (tb_rdata_known_hold !== 1'b1)),
         `SMC_AXI_DK_W_IDLE(32),
         `SMC_AXI_DK_R(u_dut.u_smc.axil_peripherals_resp),
