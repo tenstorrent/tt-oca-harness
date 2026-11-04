@@ -1423,23 +1423,27 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await RisingEdge(cocotb.top.clk_i)
         pre.wr_end = self._wr_count()
         pre.depth = await self._out_depth()
-        graded_by = (
-            ["CHK-FATAL-WIPE", "CHK-TRAP-HELD"] if point == "real_wipe" else ["CHK-FATAL-SET"]
-        )
+        state = {"out_depth": pre.depth, "sram_writes": f"{pre.wr_start}->{pre.wr_end}"}
+        graded = {}
+        if point == "real_wipe":
+            graded_by = ["CHK-FATAL-WIPE", "CHK-TRAP-HELD", "CHK-FLUSH-FIRST"]
+            graded["out_depth"] = state.pop("out_depth")
+            if self.unrec:
+                graded_by.append("CHK-SRAM-SHRED")
+                graded["sram_writes"] = state.pop("sram_writes")
+        else:
+            graded_by = ["CHK-FATAL-SET"]
         self.chk.info(
             "QUIET-WINDOW",
             point=point,
             w_clk=pre.w_clk,
             ctrl_stat_clk=stat_clk,
             pic30_high=pre.quiet_high,
+            **graded,
             graded_by=graded_by,
         )
-        self.chk.obs(
-            "QUIET-WINDOW-STATE",
-            point=point,
-            out_depth=pre.depth,
-            sram_writes=f"{pre.wr_start}->{pre.wr_end}",
-        )
+        if state:
+            self.chk.obs("QUIET-WINDOW-STATE", point=point, **state)
         return pre
 
     def _shred_first(self, pre: _Pre, watch: _FatalWatch, point: str) -> None:
