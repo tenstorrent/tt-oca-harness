@@ -63,6 +63,16 @@
 `SMC_TB_OUT(logic, tb_zeroer_intp)
 `SMC_TB_OUT(logic, tb_zeroer_awvalid)
 `SMC_TB_OUT(logic, tb_zeroer_wvalid)
+// Held high by cocotb while a read whose data is declared observed-only is in
+// flight (an unwritten I3C table entry, the aperture-end word of a window with
+// no past-extent response): the SEP_IN and peripheral R-data-known rules do not
+// judge its beats. The hold is by time, not per read: it disables the whole
+// u_sep_in_data_sva and u_periph_data_sva instance while high, so any other R
+// beat on those two links in that window is not judged by the SVA either; the
+// declaring sequences issue one read at a time inside the hold. smc_axi_monitor
+// exempts the same read per AR through its unknown-rdata window and counts the
+// exempt ARs and beats for the sequence to compare with its declarations.
+`SMC_TB_IN(logic, tb_rdata_known_hold)
 `SMC_TB_IN(logic, tb_test_en_i)
 `SMC_TB_IN(logic, tb_i2c0_scl_ext_low)
 `SMC_TB_IN(logic, tb_i2c0_sda_ext_low)
@@ -689,8 +699,15 @@
 // Source index 331 is the fourth cluster-internal watchdog: a PLIC source
 // with no cpu_interrupts bit behind it.
 `SMC_TB_OUT(logic, tb_plic_pending_331)
-// Source 324 is the zeroer completion bit (cpu_interrupts[323]) at the PLIC.
+// Source 323 is the DMA completion bit (cpu_interrupts[322]) and source 324
+// the zeroer completion bit (cpu_interrupts[323]) at the PLIC.
+`SMC_TB_OUT(logic, tb_plic_pending_323)
 `SMC_TB_OUT(logic, tb_plic_pending_324)
+// Sources 329, 330 and 332 are the cluster-internal watchdogs of cores 0, 1
+// and 3 (PLIC ID 329 + core), beside 331 above for core 2.
+`SMC_TB_OUT(logic, tb_plic_pending_329)
+`SMC_TB_OUT(logic, tb_plic_pending_330)
+`SMC_TB_OUT(logic, tb_plic_pending_332)
 
 // CLINT. MTIMECMP is `pad`/`pad_N` in the generated cluster.
 `SMC_TB_OUT(logic [63:0], tb_clint_mtime)
@@ -741,6 +758,7 @@
 `SMC_TB_OUT(logic [7:0], tb_zeroer_wstrb)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_wdata)
 `SMC_TB_OUT(logic, tb_zeroer_bvalid)
+`SMC_TB_OUT(logic, tb_zeroer_bready)
 `SMC_TB_OUT(logic [31:0], tb_zeroer_outstanding)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_dest_addr)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_size)

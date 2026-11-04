@@ -993,7 +993,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         self.logger.info(
             "CHK-VAULT-FILL PASS: contract=key_manager/doc/firmware.adoc:1929-1931"
             "(Key_Management_Load),:396-397(0x22_CMD_KEY_GENERATE),"
-            "architecture.adoc:406(KPV) generated=%d exp_generated=%d rc=0 all "
+            "architecture.adoc:414(KPV) generated=%d exp_generated=%d rc=0 all "
             "new_handles=%d",
             free - len(bad),
             free,

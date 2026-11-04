@@ -1071,9 +1071,12 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             pairs = ((lo, deny), (hi, permit))
             for idx, value in pairs if order == "lower first" else pairs[::-1]:
                 await self._program(inst, idx, window, value)
-            obs[order], exp[order] = await self._rw(
+            rb_obs, rb_exp = await self._readback(inst, (lo, hi))
+            access_obs, access_exp = await self._rw(
                 inst, addr, {ch: False, (AW if ch == AR else AR): True}
             )
+            obs[order] = {"registers": rb_obs, "access": access_obs}
+            exp[order] = {"registers": rb_exp, "access": access_exp}
         self._chk(
             sb,
             "CHK-FMATCH-PRIORITY",
@@ -1081,8 +1084,9 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             obs,
             exp,
             f"entry {lo} with the {ch} permission clear over entry {hi} permitting both on one "
-            f"window, programmed in both orders: {ch} is blocked by the lower entry and the other "
-            "channel is admitted",
+            "window, programmed in both orders: START_ADDR, END_ADDR and FILTER_CONFIG of both "
+            f"entries read back the programmed values before the access, {ch} is blocked by the "
+            "lower entry and the other channel is admitted",
             evidence="CHK-FMATCH-PRIORITY",
         )
         await self._disable(inst, hi)
@@ -1220,7 +1224,7 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
 
     async def _smc_idma(self, sb) -> None:
         cell = self.cells[SMC_OUT]
-        lo = cell["lo"]
+        lo, hi = cell["lo"], cell["hi"]
         mem = self.cfg.axi_out_mem
         page = (DMA_DST_PAGE, DMA_DST_PAGE + GRANULE_4K - 1)
         src = bytes(_burst_bytes(0x710, COPY_LENGTH))
@@ -1230,6 +1234,7 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
         for label, ab in (("break allow_burst 0", 0), ("restore allow_burst 1", 1)):
             cfg = _config(read=1, write=0, allow_ns=self.idma_ns, allow_burst=ab)
             await self._program(SMC_OUT, lo, page, cfg)
+            rb_obs, rb_exp = await self._readback(SMC_OUT, (lo, hi))
             mem.write(DMA_DST_PAGE, d1)
             refused = bool(ab)
             # The refused copy is watched over the admitted copy's DONE window before the tap and
@@ -1249,8 +1254,8 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
                 f"delta(aw,w,b,ar,r)={delta} (status and completion measured only)"
             )
             held = mem.read(DMA_DST_PAGE, COPY_LENGTH).hex()
-            obs[label] = (dst_aw > 0, src_ar > 0, held)
-            exp[label] = (not refused, True, (d1 if refused else src).hex())
+            obs[label] = (rb_obs, dst_aw > 0, src_ar > 0, held)
+            exp[label] = (rb_exp, not refused, True, (d1 if refused else src).hex())
             self._count(SMC_OUT, not refused)
         self.wild_refusals["iDMA restore cell"] = (
             obs["restore allow_burst 1"],
@@ -1263,9 +1268,10 @@ class smu_filter_match_priority_rand_test_seq(smu_sep_sba_fabric_sweep_test_seq)
             obs,
             exp,
             f"entry {lo} denying writes over the iDMA destination page with allow_ns "
-            f"{self.idma_ns} (the copy's AxPROT[1]): allow_burst 0 leaves the multi-beat copy "
-            "unmatched and it lands; allow_burst 1 matches it and no AW of the copy reaches the "
-            "destination page, which keeps its bytes",
+            f"{self.idma_ns} (the copy's AxPROT[1]), its registers and those of the disabled "
+            f"entry {hi} read back as programmed before each copy: allow_burst 0 leaves the "
+            "multi-beat copy unmatched and it lands; allow_burst 1 matches it and no AW of the "
+            "copy reaches the destination page, which keeps its bytes",
             evidence="CHK-FMATCH-TERMS",
         )
         self._chk(

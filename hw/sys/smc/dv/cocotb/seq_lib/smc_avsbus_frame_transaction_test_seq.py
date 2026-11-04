@@ -27,7 +27,17 @@ Four DUT-produced observables carry the proof, none of them the stimulus:
 ``architecture.adoc`` "Clock Generation and Management" states that
 "restarting a gated AVS clock always begins with a slave resync", so
 the first command leaves idle through the resync and the post-resync launch
-state instead of racing an unsolicited resync interval.
+state instead of racing an unsolicited resync interval. The same section
+states that the bit "gates the AVS clock whenever the bus is idle" while
+"the FSM keeps running", so once the three responses are in and the FSM sits
+in ``AVS_IDLE`` the pad clock ``tb_avs_clk_from_dut`` must show no edge over
+a window, ``AVS_NORMAL_STATUS`` must still answer, and clearing the bit must
+bring the edges back; ``AVS_CFG_0.RESYNC_INTERVAL`` is held at its maximum
+over that window so the periodic resync does not restart the clock.
+
+``memmap.adoc`` states that ``AVS_READBACK`` "pops the readback FIFO on any
+read, whatever the access width", so the first of the three responses is
+popped with a one-byte read and the occupancy must still fall by one.
 
 The response *word* is not compared. The readback register returns 0 both for
 the all-zero subframe and for an empty FIFO, so a data compare there would not
@@ -41,14 +51,19 @@ bit-by-bit responder of ``smc_avsbus_slave_reply_test``, with
 
 * two CmdGroup 1 writes and one CmdGroup 0 write with non-zero CMD_DATA go out
   and each captured master subframe must carry the ``2'b01`` preamble and the
-  written AVS_CMD bits [29:3]; their CRC-3 bits are logged only, not compared
-  against the x^3 + x + 1 polynomial ``interface.adoc`` gives (SF-030),
+  written AVS_CMD bits [29:3], and its CRC-3 bits [2:0] must equal the
+  remainder of M(x) * x^3 over bits [31:3] under x^3 + x + 1
+  (``architecture.adoc`` "CRC Verification Engine"),
+* an ``AVS_CMD`` write with only byte lane 0 strobed goes out as the whole
+  written word: ``memmap.adoc`` states the window "ignores write strobes and
+  pushes the whole 32-bit write data word",
 * a reply with StatusResponse bit 1 is sent with each of the eight CRC codes:
   ``architecture.adoc`` "CRC Verification Engine" lets exactly one pass the
   check, and only that one may update ``AVS_LATEST_SLAVE_SUBFRAME`` and
-  ``AVS_SLAVE_STATUS``; ``AVS_SLAVE_ISSUED_INTERRUPT`` is logged only (SF-028),
+  ``AVS_SLAVE_STATUS``; that one code must be the model's remainder for the
+  reply; ``AVS_SLAVE_ISSUED_INTERRUPT`` is logged only (SF-028),
 * a StatusResponse-0 reply is swept over the codes until one is accepted, which
-  must clear ``AVS_SLAVE_STATUS`` bit 1,
+  must be the model's code and must clear ``AVS_SLAVE_STATUS`` bit 1,
 * with ``MAX_RETRIES`` at 1 a rejected code is answered by one retry of the
   same subframe, and only the accepted retry reply updates the status latch.
 """
@@ -56,7 +71,7 @@ bit-by-bit responder of ``smc_avsbus_slave_reply_test``, with
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, Edge
 from cocotb.utils import get_sim_time
 
 from .smc_addr_map import smc_addr
@@ -70,6 +85,7 @@ from .smc_avsbus_protocol_utils import (
     AVS_INTERRUPT_CLEAR,
     AVS_NORMAL_STATUS,
     AVS_READBACK,
+    AVS_STATE,
     CMD_FIFO_DEPTH,
     CMD_FIFO_EMPTY_BM,
     CMD_FIFO_OCCUPIED_BM,
@@ -88,6 +104,7 @@ from .smc_avsbus_protocol_utils import (
     RB_FIFO_VACANT_BP,
     READ_CMD_DATA,
     READBACK_HAS_DATA_BM,
+    RESYNC_INTERVAL_BM,
     SLAVE_UNRESPONSIVE_BM,
     STOP_AVS_CLOCK_ON_IDLE_BM,
     TOTAL_RETRIES_BM,
@@ -96,6 +113,7 @@ from .smc_avsbus_protocol_utils import (
     AvsMdataMonitor,
     avs_field,
     build_avs_cmd,
+    crc3,
     expected_master_subframe,
     fifo_field,
     set_avs_sdata,
@@ -142,6 +160,18 @@ MAIN_PATH_STATES = (
 SETTLE_POLL_CYCLES = 200
 SETTLE_POLL_LIMIT = 60
 
+# The pad-clock observation window of the idle-gate leg, in clk_smc_i cycles,
+# and the fewest edges a running AVS clock (clk_ref_i / 4 out of reset) shows
+# in it.
+IDLE_CLOCK_WINDOW = 2048
+IDLE_CLOCK_MIN_EDGES = 8
+RESYNC_INTERVAL_BP = avs_field("AVSBUS_CONTROLLER__AVS_CFG_0__RESYNC_INTERVAL_bp")
+RESYNC_INTERVAL_MAX = RESYNC_INTERVAL_BM >> RESYNC_INTERVAL_BP
+AVS_IDLE_CODE = AVS_STATE["AVS_IDLE"]
+# The byte lane a strobed AVS_CMD write enables, and the byte lanes it leaves
+# unstrobed; the command below carries non-zero bits in every lane.
+CMD_STROBE_LANE0 = 0x1
+
 AVS_LATEST = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_BASE_ADDR")
 AVS_SLAVE_STATUS = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_SLAVE_STATUS_BASE_ADDR")
 SLAVE_ISSUED_BM = avs_field("AVSBUS_CONTROLLER__AVS_INTERRUPT__AVS_SLAVE_ISSUED_INTERRUPT_bm")
@@ -178,6 +208,11 @@ GRP1_COMMANDS = (("GRP1_COMMIT", 0x08052E18), ("GRP1_HOLD", 0x18052E18))
 GRP1_DATA = 0xA5C3
 GRP0_COMMAND = 0x0002D1E0
 GRP0_DATA = 0x5A3C
+# A CmdGroup 1 commit write of CMD_DATA 0xC3A5 to rail 6, written with only
+# byte lane 0 strobed; bits [29:8] of the word are non-zero, so a push that
+# honoured the strobe could not reproduce them on the wire.
+STROBED_DATA = 0xC3A5
+STROBED_COMMAND = build_avs_cmd(0, 1, 0x3, 0x6, STROBED_DATA)
 # The command each slave-reply leg launches: a commit write broadcast to every
 # rail (RAIL_SEL 0xF), with the CmdGroup 0 data.
 REPLY_LEG_COMMAND = build_avs_cmd(0, 0, 0x0, 0xF, GRP0_DATA)
@@ -246,6 +281,7 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
         self._check_readback_filled(status, fifos, occupied)
         await self._check_readback_pops()
         await self._check_no_retry(status)
+        await self._idle_clock_leg(cfg1)
 
         await self.csr_write("AVS_CFG_1_RESTORE", AVS_CFG_1, cfg1)
         await self.csr_read("AVS_CFG_1_RESTORE_RB", AVS_CFG_1, expected=cfg1)
@@ -268,6 +304,78 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
         raise AssertionError(
             f"readback FIFO settled at {occupied} entries, expected {wanted} ({label}), after "
             f"{SETTLE_POLL_LIMIT * SETTLE_POLL_CYCLES} clk_smc_i cycles"
+        )
+
+    async def _wait_idle_state(self, label: str) -> int:
+        """Poll until the FSM debug bus holds AVS_IDLE over two consecutive reads."""
+        bound = SETTLE_POLL_LIMIT * SETTLE_POLL_CYCLES
+        previous = None
+        for _ in range(SETTLE_POLL_LIMIT):
+            await ClockCycles(cocotb.top.clk_smc_i, SETTLE_POLL_CYCLES)
+            raw = cocotb.top.tb_avsbus_cur_state_debug.value
+            code = int(raw) if raw.is_resolvable else None
+            if code == AVS_IDLE_CODE and previous == AVS_IDLE_CODE:
+                self.waits.append((f"idle_state_{label}", bound, f"state=0x{code:05x}"))
+                return code
+            previous = code
+        raise AssertionError(
+            f"{label}: cur_state_debug did not settle in AVS_IDLE (0x{AVS_IDLE_CODE:05x}) within "
+            f"{bound} clk_smc_i cycles; last code {previous}"
+        )
+
+    async def _count_pad_clock_edges(self) -> int:
+        """Edges of the AVS clock at the pad over IDLE_CLOCK_WINDOW clk_smc_i cycles."""
+        dut = cocotb.top
+        edges = 0
+
+        async def count() -> None:
+            nonlocal edges
+            while True:
+                await Edge(dut.tb_avs_clk_from_dut)
+                edges += 1
+
+        task = cocotb.start_soon(count())
+        await ClockCycles(dut.clk_smc_i, IDLE_CLOCK_WINDOW)
+        task.kill()
+        return edges
+
+    async def _idle_clock_leg(self, cfg1: int) -> None:
+        cfg0 = await self.csr_read("IDLE_CFG0_SAVE", AVS_CFG_0)
+        held = (cfg0 & ~RESYNC_INTERVAL_BM) | (RESYNC_INTERVAL_MAX << RESYNC_INTERVAL_BP)
+        await self.csr_write("IDLE_CFG0_INTERVAL_MAX", AVS_CFG_0, held)
+        await self.csr_read("IDLE_CFG0_INTERVAL_MAX_RB", AVS_CFG_0, expected=held)
+        await self._wait_idle_state("GATED")
+        gated = await self._count_pad_clock_edges()
+        status = await self.csr_read("IDLE_NORMAL_STATUS_GATED", AVS_NORMAL_STATUS)
+        assert status & AVS_BUS_IS_IDLE_BM, (
+            f"AVS_NORMAL_STATUS.AVS_BUS_IS_IDLE clear while the FSM holds AVS_IDLE (0x{status:08x})"
+        )
+        assert gated == 0, (
+            f"with STOP_AVS_CLOCK_ON_IDLE set and the FSM in AVS_IDLE, the AVS clock at the pad "
+            f"showed {gated} edges over {IDLE_CLOCK_WINDOW} clk_smc_i cycles; the idle gate must "
+            f"hold it still"
+        )
+        ungated = cfg1 & ~STOP_AVS_CLOCK_ON_IDLE_BM
+        await self.csr_write("AVS_CFG_1_IDLE_UNGATED", AVS_CFG_1, ungated)
+        await self.csr_read("AVS_CFG_1_IDLE_UNGATED_RB", AVS_CFG_1, expected=ungated)
+        running = await self._count_pad_clock_edges()
+        assert running >= IDLE_CLOCK_MIN_EDGES, (
+            f"with STOP_AVS_CLOCK_ON_IDLE clear the AVS clock at the pad showed only {running} "
+            f"edges over {IDLE_CLOCK_WINDOW} clk_smc_i cycles, fewer than the {IDLE_CLOCK_MIN_EDGES} "
+            f"a running clock gives; the positive control of the gated window above is missing"
+        )
+        await self.csr_write("IDLE_CFG0_RESTORE", AVS_CFG_0, cfg0)
+        await self.csr_read("IDLE_CFG0_RESTORE_RB", AVS_CFG_0, expected=cfg0)
+        cocotb.log.info(
+            "CHK-AVS-IDLE-CLOCK-STOPS: with STOP_AVS_CLOCK_ON_IDLE set and cur_state_debug in "
+            "AVS_IDLE the pad clock showed %d edges over %d clk_smc_i cycles while "
+            "AVS_NORMAL_STATUS still answered AVS_BUS_IS_IDLE (0x%08x); with the bit cleared the "
+            "same window showed %d edges (RESYNC_INTERVAL held at 0x%04x during the leg)",
+            gated,
+            IDLE_CLOCK_WINDOW,
+            status,
+            running,
+            RESYNC_INTERVAL_MAX,
         )
 
     def _check_fsm_path(self) -> None:
@@ -368,7 +476,16 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
         )
 
     async def _check_readback_pops(self) -> None:
-        for index in range(COMMAND_COUNT):
+        narrow = await self.csr_read("AVS_READBACK_POP0_BYTE", AVS_READBACK, length=1)
+        after_narrow = await self._wait_readback_occupancy(COMMAND_COUNT - 1, "POP0")
+        cocotb.log.info(
+            "CHK-AVS-READBACK-NARROW-POPS: a 1-byte read of AVS_READBACK (0x%02x) popped one "
+            "entry, occupancy %d -> %d",
+            narrow,
+            COMMAND_COUNT,
+            after_narrow,
+        )
+        for index in range(1, COMMAND_COUNT):
             await self.csr_read(f"AVS_READBACK_POP{index}", AVS_READBACK)
             await self._wait_readback_occupancy(COMMAND_COUNT - index - 1, f"POP{index}")
         status = await self.csr_read("AVS_NORMAL_STATUS_DRAINED", AVS_NORMAL_STATUS)
@@ -377,9 +494,9 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
             f"responses were popped (0x{status:08x})"
         )
         cocotb.log.info(
-            "CHK-AVS-READBACK-POP: %d AVS_READBACK reads each returned OKAY on a non-empty "
-            "FIFO and advanced the occupancy %d -> 0, one entry per read, clearing "
-            "READBACK_HAS_DATA (AVS_NORMAL_STATUS=0x%08x)",
+            "CHK-AVS-READBACK-POP: %d AVS_READBACK reads (one 1-byte, the rest 4-byte) each "
+            "returned OKAY on a non-empty FIFO and advanced the occupancy %d -> 0, one entry per "
+            "read, clearing READBACK_HAS_DATA (AVS_NORMAL_STATUS=0x%08x)",
             COMMAND_COUNT,
             COMMAND_COUNT,
             status,
@@ -477,12 +594,17 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
             f"the controller sent fewer master subframes than commands and retries"
         )
 
-    async def _capture_commands(self, label: str, words: list[tuple[str, int]]) -> list[int]:
+    async def _capture_commands(
+        self, label: str, words: list[tuple[str, int]], wstrb: int | None = None
+    ) -> list[int]:
         """Launch ``words`` against the default reply and return their raw subframes."""
         mon = AvsMdataMonitor()
         mon.start()
         for name, word in words:
-            await self.csr_write(f"{label}_{name}", AVS_CMD, word)
+            if wstrb is None:
+                await self.csr_write(f"{label}_{name}", AVS_CMD, word)
+            else:
+                await self.csr_write_strobed(f"{label}_{name}", AVS_CMD, word, wstrb)
         await self._wait_occupancy(f"{label}_FILL", len(words))
         mon.stop()
         for index in range(len(words)):
@@ -551,7 +673,7 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
         )
         self._stamp("AVS_GRP1_SUBFRAME")
 
-        # S3: CmdGroup 0 commit write; CRC-3 of all three subframes logged.
+        # S3: CmdGroup 0 commit write; CRC-3 of all three subframes against the model.
         (grp0,) = await self._capture_commands("S3", [("GRP0_COMMIT", GRP0_COMMAND)])
         self._check_subframe("S3_GRP0_COMMIT", grp0, GRP0_COMMAND, 0, GRP0_DATA)
         self._chk(
@@ -560,19 +682,38 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
             "subframe 0x%08x for AVS_CMD 0x%08x carries 31:30=01, bit27=0, 18:3=0x%04x and bits "
             "29:3 equal AVS_CMD[29:3], shifted msb first" % (grp0, GRP0_COMMAND, GRP0_DATA),
         )
-        crcs = [
-            (name, frame & CRC3_MASK)
-            for name, frame in zip(
-                [n for n, _ in GRP1_COMMANDS] + ["GRP0_COMMIT"], grp1 + [grp0], strict=True
+        crcs = []
+        for name, frame in zip(
+            [n for n, _ in GRP1_COMMANDS] + ["GRP0_COMMIT"], grp1 + [grp0], strict=True
+        ):
+            want = crc3(frame)
+            assert frame & CRC3_MASK == want, (
+                f"S3_{name}: master subframe 0x{frame:08x} carries CRC-3 0b{frame & CRC3_MASK:03b}; "
+                f"the remainder of its bits [31:3] times x^3 over x^3 + x + 1 is 0b{want:03b}"
             )
-        ]
+            crcs.append((name, frame & CRC3_MASK))
         self._chk(
             "AVS_GRP0_SUBFRAME",
-            "CHK-AVS-SUBFRAME-CRC-OBS",
-            "%s (32 bits captured per subframe; measure and log, no CRC model compared; "
-            "LINKED-ISSUE SF-030)" % ", ".join(f"crc3_{n}=0b{c:03b}" for n, c in crcs),
+            "CHK-AVS-CRC3-POLY",
+            "%s: each captured 32-bit master subframe carries in [2:0] the remainder of its bits "
+            "[31:3] times x^3 over x^3 + x + 1 (zero initial value, no final XOR, bit 31 first)"
+            % ", ".join(f"crc3_{n}=0b{c:03b}" for n, c in crcs),
         )
         self._stamp("AVS_GRP0_SUBFRAME")
+
+        # S3b: an AVS_CMD write with one byte lane strobed pushes the whole word.
+        (strobed,) = await self._capture_commands(
+            "S3B", [("STROBED", STROBED_COMMAND)], wstrb=CMD_STROBE_LANE0
+        )
+        self._check_subframe("S3B_STROBED", strobed, STROBED_COMMAND, 1, STROBED_DATA)
+        self._chk(
+            "AVS_CMD_STROBE",
+            "CHK-AVS-CMD-STROBE-IGNORED",
+            "AVS_CMD 0x%08x written with WSTRB 0x%x went out as subframe 0x%08x: bits 29:3 equal "
+            "the whole written word (bits 29:8 are non-zero and were not strobed), one readback "
+            "entry arrived for it" % (STROBED_COMMAND, CMD_STROBE_LANE0, strobed),
+        )
+        self._stamp("AVS_CMD_STROBE")
 
         # S4: status-bit-1 reply with each CRC code.
         accepted: list[int] = []
@@ -624,6 +765,10 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
             f"AVS_LATEST_SLAVE_SUBFRAME for reply 0x{STATUS_BIT1_REPLY:08x}; exactly one passes"
         )
         good = accepted[0]
+        assert good == crc3(STATUS_BIT1_REPLY), (
+            f"S4: the controller accepted CRC code {good} for reply 0x{STATUS_BIT1_REPLY:08x}; "
+            f"the x^3 + x + 1 remainder over its bits [31:3] is {crc3(STATUS_BIT1_REPLY)}"
+        )
         self._chk(
             "AVS_SLAVE_BIT1",
             "CHK-AVS-SLAVE-INT-OBS",
@@ -662,6 +807,26 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
         assert not cleared_status & SLAVE_STATUS_BIT1, (
             f"S5: AVS_SLAVE_STATUS 0x{cleared_status:08x} keeps bit 1 after the accepted "
             f"status-0 reply 0x{STATUS_ZERO_REPLY | cleared_code:08x}"
+        )
+        assert cleared_code == crc3(STATUS_ZERO_REPLY), (
+            f"S5: the controller accepted CRC code {cleared_code} for reply "
+            f"0x{STATUS_ZERO_REPLY:08x}; the x^3 + x + 1 remainder over its bits [31:3] is "
+            f"{crc3(STATUS_ZERO_REPLY)}"
+        )
+        self._chk(
+            "AVS_SLAVE_BIT1_CLEAR",
+            "CHK-AVS-CRC3-ACCEPT",
+            "reply 0x%08x was accepted with CRC code %d, the model's remainder, and rejected with "
+            "the seven others %s; reply 0x%08x was accepted with code %d, the model's remainder, "
+            "after %d rejected lower codes"
+            % (
+                STATUS_BIT1_REPLY,
+                good,
+                rejected_s4,
+                STATUS_ZERO_REPLY,
+                cleared_code,
+                len(rejected_s5),
+            ),
         )
         self._chk(
             "AVS_SLAVE_BIT1_CLEAR",
@@ -807,6 +972,7 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
             "BRINGUP",
             "AVS_GRP1_SUBFRAME",
             "AVS_GRP0_SUBFRAME",
+            "AVS_CMD_STROBE",
             "AVS_SLAVE_BIT1",
             "AVS_SLAVE_BIT1_CLEAR",
             "AVS_SLAVE_BAD_CRC",

@@ -742,11 +742,20 @@
 `SEP_TB_OUT(logic [31:0], km_sram_wmap_jump_wr_o)
 `SEP_TB_OUT(logic, km_sram_wmap_jump_seen_o)
 // KM-AXIV: the KM CPU AXI4-Lite master valids {ar_valid, aw_valid, w_valid},
-// the readies of the same channels {ar_ready, aw_ready, w_ready} and the KM CPU
-// warm reset rst_warm_sync_n.
+// the readies of the same channels {ar_ready, aw_ready, w_ready} and the KM
+// CPU warm reset rst_warm_sync_n. Slave side, bit i = KM crossbar master port
+// i (km_axi_lite_xbar AddrMap index, 10 ports): the AR, AW and W handshakes, the
+// R and B valids and the R and B handshakes.
 `SEP_TB_OUT(logic [2:0], km_cpu_axi_valid_o)
 `SEP_TB_OUT(logic [2:0], km_cpu_axi_ready_o)
 `SEP_TB_OUT(logic, km_cpu_rst_n_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_ar_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_aw_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_w_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_r_valid_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_b_valid_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_r_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_b_hs_o)
 // HK-OTP and HK-STRM state: the OTP input is held by the inject; the KM OTP
 // input equals the live OTP word; the withdrawal pulse has been driven since
 // the arm, and the sink TREADY in the pulse clock; the sampler sink TVALID
@@ -1067,6 +1076,15 @@
 `SEP_TB_OUT(logic [7:0], spi_tx_qd_probe_o)
 `SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
 `SEP_TB_OUT(logic, dma_busy_probe_o)
+// OpenTitan SPI host fatal_fault alert sender output, observation-only:
+// [1] alert_p, [0] alert_n of u_spi_host.alert_tx_o[0]. sep_ot_spi_wrap leaves
+// the port open, so no CSR or port shows the alert that ALERT_TEST raises
+// (owner `sep_spi_ot_host_csr_irq_rand_test`).
+`SEP_TB_OUT(logic [1:0], spi_alert_tx_probe_o)
+// SEP_TEST_CTRL read strobe of the CPU control register block,
+// observation-only: 1 while a read at the SEP_TEST_CTRL offset is presented to
+// the register (owner `sep_address_map_test`).
+`SEP_TB_OUT(logic, sep_test_ctrl_rd_probe_o)
 // Secure DMA master request after the DMA local-alias remap (net
 // u_sep.dma_axi_req, response u_sep.dma_axi_resp), observation-only. Bit
 // layout, LSB first: [0] ar_valid, [1] ar_ready, [33:2] ar.addr, [41:34]

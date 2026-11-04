@@ -18,21 +18,25 @@ class smc_avsbus_frame_transaction_test(smc_base_test):
 
     required_evidence = (
         "CHK-AVS-CMD-FIFO-DRAIN",
+        "CHK-AVS-CMD-STROBE-IGNORED",
+        "CHK-AVS-CRC3-ACCEPT",
+        "CHK-AVS-CRC3-POLY",
         "CHK-AVS-FRAME-FSM-MAIN-PATH",
         "CHK-AVS-GRP0-SUBFRAME",
         "CHK-AVS-GRP1-SUBFRAME",
+        "CHK-AVS-IDLE-CLOCK-STOPS",
         "CHK-AVS-MASTER-SUBFRAME",
         "CHK-AVS-READBACK-FIFO-FILL",
+        "CHK-AVS-READBACK-NARROW-POPS",
         "CHK-AVS-READBACK-POP",
         "CHK-AVS-SLAVE-BAD-CRC",
         "CHK-AVS-SLAVE-INT-OBS",
         "CHK-AVS-SLAVE-STATUS-BIT1",
-        "CHK-AVS-SUBFRAME-CRC-OBS",
         "CHK-AVS-VALID-ACK-NO-RETRY",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 14
+    min_evidence = 18
 
     auto_protocol_vip = False
 

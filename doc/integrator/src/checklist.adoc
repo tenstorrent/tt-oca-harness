@@ -45,6 +45,11 @@ xref:smu.adoc#sep-integration[SEP Integration]
 xref:smu.adoc#sep-integration[SEP Integration]
 
 |[ ]
+|Confirm that the system fabric meets the `smu_axi_in` boundary contract: no atomic transactions and only legal AXI4 bursts
+|Fabric configuration or protocol-checker evidence that `AWATOP` is 0 and every burst is legal at `smu_axi_in`
+|xref:smu.adoc#smu-axi-boundary-contract[AXI boundary contract]
+
+|[ ]
 |Apply technology-mapping and CDC constraints; run integration-level verification
 |Lint, CDC/RDC, constraint, and integration-test reports archived
 |xref:prim.adoc#prim-cell-replacement[Prim Cell Replacement],
@@ -89,6 +94,11 @@ ifdef::backend-pdf[]
 |Verify boot and reset progression, including fuse sensing, memory repair or bypass, ROM execution, and SEP release when enabled
 |Successful boot and reset log including failure paths
 |<<smc-integration,SMC Integration>>, <<sep-integration,SEP Integration>>
+
+|[ ]
+|Confirm that the system fabric meets the `smu_axi_in` boundary contract: no atomic transactions and only legal AXI4 bursts
+|Fabric configuration or protocol-checker evidence that `AWATOP` is 0 and every burst is legal at `smu_axi_in`
+|<<smu-axi-boundary-contract,AXI boundary contract>>
 
 |[ ]
 |Apply technology-mapping and CDC constraints; run integration-level verification

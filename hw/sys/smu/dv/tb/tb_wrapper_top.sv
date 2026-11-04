@@ -881,6 +881,33 @@ module smu_wrapper_uvm_top
   assign obs_sep_rst_n_o = u_dut.u_smu.gen_sep.u_sep.rst_ni;
   assign obs_xbar_rst_n_o = u_dut.u_smu.gen_sep.u_smu_axi_xbar.rst_ni;
   assign obs_sep_wdt_clk_o = u_dut.u_smu.gen_sep.u_sep.clk_wdt_i;
+  assign obs_sep_smc_fuse_sense_done_i_o = u_dut.u_smu.gen_sep.u_sep.smc_fuse_sense_done_i;
+  assign obs_smu_axi_in_id_widths_o = {
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.ar.id)),
+    8'($bits(u_dut.u_smu.smu_axi_in_resp_o.r.id)),
+    8'($bits(u_dut.u_smu.smu_axi_in_resp_o.b.id)),
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.aw.id))
+  };
+  assign obs_smu_axi_out_id_widths_o = {
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.ar.id)),
+    8'($bits(u_dut.u_smu.smu_axi_out_resp_i.r.id)),
+    8'($bits(u_dut.u_smu.smu_axi_out_resp_i.b.id)),
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.aw.id))
+  };
+  assign obs_smu_axi_in_user_widths_o = {
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.ar.user)),
+    8'($bits(u_dut.u_smu.smu_axi_in_resp_o.r.user)),
+    8'($bits(u_dut.u_smu.smu_axi_in_resp_o.b.user)),
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.w.user)),
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.aw.user))
+  };
+  assign obs_smu_axi_out_user_widths_o = {
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.ar.user)),
+    8'($bits(u_dut.u_smu.smu_axi_out_resp_i.r.user)),
+    8'($bits(u_dut.u_smu.smu_axi_out_resp_i.b.user)),
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.w.user)),
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.aw.user))
+  };
   // Live SEP LCC export — must match lc_state_o for lc_state=from_sep.
   assign obs_sep_lc_state_o = u_dut.u_smu.gen_sep.u_sep.lc_state_o;
   // The SEP efuse shadow registers' own sim_skip_fuse_sense flag: 1 when
@@ -1220,6 +1247,9 @@ module smu_wrapper_uvm_top
   always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_smn_out_aw_count_o <= '0;
+      sep_smn_out_ar_count_o <= '0;
+      smc_smn_out_aw_count_o <= '0;
+      smc_smn_out_ar_count_o <= '0;
       sep_xbar_in_aw_count_o <= '0;
       sep_xbar_in_aw_user_o  <= '0;
       sep_xbar_in_aw_addr_o  <= '0;
@@ -1237,6 +1267,18 @@ module smu_wrapper_uvm_top
       if (u_dut.u_smu.gen_sep.sep_out_xbar_req.aw_valid &&
                 u_dut.u_smu.gen_sep.sep_out_xbar_resp.aw_ready) begin
         sep_smn_out_aw_count_o <= sep_smn_out_aw_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.gen_sep.sep_out_xbar_req.ar_valid &&
+                u_dut.u_smu.gen_sep.sep_out_xbar_resp.ar_ready) begin
+        sep_smn_out_ar_count_o <= sep_smn_out_ar_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.gen_sep.smc_out_xbar_req.aw_valid &&
+                u_dut.u_smu.gen_sep.smc_out_xbar_resp.aw_ready) begin
+        smc_smn_out_aw_count_o <= smc_smn_out_aw_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.gen_sep.smc_out_xbar_req.ar_valid &&
+                u_dut.u_smu.gen_sep.smc_out_xbar_resp.ar_ready) begin
+        smc_smn_out_ar_count_o <= smc_smn_out_ar_count_o + 32'd1;
       end
       if (u_dut.u_smu.xbar_to_sep_req.aw_valid && u_dut.u_smu.xbar_to_sep_resp.aw_ready) begin
         sep_xbar_in_aw_count_o <= sep_xbar_in_aw_count_o + 32'd1;

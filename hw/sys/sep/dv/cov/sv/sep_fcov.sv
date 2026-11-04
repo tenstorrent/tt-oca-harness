@@ -17047,7 +17047,7 @@ module sep_fcov (
     // Access while ip_rst_n of the domain is low: {domain 0 OTBN, 1 AES,
     // 2 KMAC, 3 Adams Bridge, 4 HMAC, 5 TRNG, class 0 read with 0x1501A7ED
     // in every 32-bit lane (and SLVERR for domains 0 to 3), 1 write SLVERR,
-    // 2 another answer}. HMAC and TRNG writes are not sampled.
+    // 2 another answer}.
     cp_isolated_resp: coverpoint s.ir iff (s.ir_v) {
       bins otbn_rd = {5'b000_00};
       bins otbn_wr = {5'b000_01};
@@ -17058,7 +17058,9 @@ module sep_fcov (
       bins abr_rd = {5'b011_00};
       bins abr_wr = {5'b011_01};
       bins hmac_rd = {5'b100_00};
+      bins hmac_wr = {5'b100_01};
       bins trng_rd = {5'b101_00};
+      bins trng_wr = {5'b101_01};
       illegal_bins other_answer = {
         5'b000_10, 5'b001_10, 5'b010_10, 5'b011_10, 5'b100_10, 5'b101_10
       };
@@ -20419,7 +20421,7 @@ module sep_fcov (
     end
     if (mr_own_swiso && b_any) begin
       dom = mr_ir_dom(aw_addr_q);
-      if ((dom >= 0) && (dom < 4) && mr_ir_awlow[dom] && !mr_ip[MrIrIdx[dom]]) begin
+      if ((dom >= 0) && mr_ir_awlow[dom] && !mr_ip[MrIrIdx[dom]]) begin
         mr_scope_t e;
         e      = '0;
         e.ir   = {3'(dom), (lsu_b_resp_i == 2'b10) ? 2'd1 : 2'd2};
@@ -38752,7 +38754,7 @@ module sep_fcov (
   localparam logic [31:0] KmHmacBase =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR);
   localparam logic [31:0] KmAbrBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_BASE_ADDR);
-  // VROM window base (hw/ip/key_manager/doc/architecture.adoc:663).
+  // VROM window base (hw/ip/key_manager/doc/architecture.adoc:682-683).
   localparam logic [31:0] KmVromBase = 32'h1000_0000;
   // KMCSR registers.
   localparam logic [31:0] KmCsrVersion =
@@ -39956,7 +39958,7 @@ module sep_fcov (
     }
     // {DEST_VALID bit (0 HMAC, 1 KMAC, 2 AES, 3 OTBN, 4 ABR ML-DSA seed),
     // size against the share width (0 below, 1 equal, 2 above)}. The below
-    // cells are blocked on a Planned check (docs/SEP_FCOV.adoc) and not declared.
+    // cells are non-claimed (docs/SEP_FCOV.adoc) and not declared.
     cp_km_size_vs_width: coverpoint v[4:0] iff (pt == 5'd3) {
       bins hmac[] = {5'b000_01, 5'b000_10};
       bins kmac[] = {5'b001_01, 5'b001_10};
@@ -42356,7 +42358,7 @@ module sep_fcov (
         if ((km_wp_in_d != 5'd0) && (km_mbx_in_depth_i === km_wp_in_d))
           u_sep_km_vault_wipe_cg.sample(5'd3, 16'd2);
         // The pulse clears KEY_VALID of every accelerator sideload register
-        // block (hw/ip/key_manager/doc/architecture.adoc:506-510): at least
+        // block (hw/ip/key_manager/doc/architecture.adoc:514-518): at least
         // one KEY_VALID bit set before the wipe, and every bit 0 after it.
         if ((km_wp_valid != 8'h00) && !$isunknown(km_wp_valid) && (km_key_valid_i === 8'h00))
           u_sep_km_vault_wipe_cg.sample(5'd3, 16'd3);

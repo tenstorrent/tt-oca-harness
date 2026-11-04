@@ -54,7 +54,7 @@ Controls (``control=1``): CHK-WRAP-CTRL (sequence 0 at e = 1 returns -3 arg 1),
 CHK-ALIVE (CMD_STAT reports recov_fault 0 after the pair leg) and CHK-RESPSEQ (the
 response sequence rises by one on every frame except at a reset cause).
 
-The procedure steps that serve only planned checkers do not run: the single-fault
+The procedure steps that serve only non-claimed checkers do not run: the single-fault
 legs (steps 4 to 8), the argument legs (11 to 13), the DEST_VALID walk (15), the
 transport leg (33 to 39) and the record of ``inbound_separator`` in step 1.
 """

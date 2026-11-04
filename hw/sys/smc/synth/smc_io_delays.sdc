@@ -23,6 +23,11 @@ if {[info procs cdc_is_block_top] eq ""} {
         ../../../../flows/synth/constraints/hier_reuse_procs.tcl]]
 }
 
+if {[info procs packed_clk_ports] eq ""} {
+    source [file normalize [file join [file dirname [info script]] \
+        ../../../../flows/synth/constraints/packed_port_procs.tcl]]
+}
+
 # Block-top only: these delays anchor the block's own ports. Replayed under a parent
 # they are internal nets whose launch and capture domains come from the real fabric.
 if {[cdc_is_block_top]} {
@@ -145,7 +150,7 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]      
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMCCLK] [filter_collection [get_ports {smc_l1_dcache_data_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SMCCLK] [get_ports {smc_l1_dcache_data_intf_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMCCLK] [filter_collection [get_ports {trace_mem_req_o*}] {full_name !~ ".*mem_clk.*"}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMCCLK] [remove_from_collection [get_ports {trace_mem_req_o*}] [get_ports -quiet [packed_clk_ports trace_mem_req_o $smc_num_trace_mem mem_clk]]] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SMCCLK] [get_ports {trace_mem_resp_i*}] -add_delay
 
 # OCTS
@@ -210,7 +215,8 @@ foreach mem {dat dct rlt} {
         set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*$io_budget(default)] -clock [get_clock PERIPHERALCLK] $i3c_mem_src_ports -add_delay
         puts "INFO: set_input_delay PERIPHERALCLK on i3c_${mem}_mem_src_i* ([sizeof_collection $i3c_mem_src_ports] ports)"
     }
-    set i3c_mem_sink_ports [filter_collection [get_ports -quiet "i3c_${mem}_mem_sink_o*"] {full_name !~ ".*clk.*"}]
+    set i3c_mem_sink_ports [remove_from_collection [get_ports -quiet "i3c_${mem}_mem_sink_o*"] \
+        [get_ports -quiet [packed_clk_ports i3c_${mem}_mem_sink_o $smc_num_i3c]]]
     if {[sizeof_collection $i3c_mem_sink_ports] > 0} {
         set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*$io_budget(default)] -clock [get_clock PERIPHERALCLK] $i3c_mem_sink_ports -add_delay
         puts "INFO: set_output_delay PERIPHERALCLK on i3c_${mem}_mem_sink_o* ([sizeof_collection $i3c_mem_sink_ports] ports)"

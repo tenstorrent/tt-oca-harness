@@ -101,6 +101,13 @@ ignored.
 every instance in the <<traffic-filter-instances-table>> -- and address bits [2:0] are
 ignored.
 
+The filter decides a burst by its start address alone. The 4 KB granule
+covers a whole burst only because a legal AXI4 burst never crosses a 4 KB
+boundary; the filter does not check that rule, so an illegal burst that
+crosses one reaches the next page without that page's entries being
+consulted. The initiator, or the fabric in front of the filter, must issue
+legal bursts.
+
 `START_ADDR` consequently widens *down* to the base of its granule and
 `END_ADDR` widens *up* to the top of its granule, so a range is never
 narrower than one granule. Programming `START_ADDR` equal to `END_ADDR`,

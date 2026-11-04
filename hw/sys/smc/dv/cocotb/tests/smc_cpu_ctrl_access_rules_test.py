@@ -19,9 +19,11 @@ class smc_cpu_ctrl_access_rules_test(smc_base_test):
         "CHK-ACCR-RO-RESP",
         "CHK-ACCR-ZERO",
         "CHK-NONVAC",
+        "CHK-RESET-CTRL-RSVD-STORE",
+        "CHK-RO-WRITE-OKAY",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 6
+    min_evidence = 8
 
     auto_protocol_vip = False
 

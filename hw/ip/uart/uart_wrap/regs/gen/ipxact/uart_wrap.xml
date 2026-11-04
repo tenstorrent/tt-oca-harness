@@ -37,8 +37,11 @@
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>UART_EN</ipxact:name>
-                <ipxact:description>UART Enable. When set, the pad-mux downstream will be forced to accept UART
-traffic.</ipxact:description>
+                <ipxact:description>UART Enable. The hardware LSIO request of the UART's RX, TX, RTS and CTS
+pads: while set, the UART owns their data and direction. While clear, the UART
+keeps running, but its pads follow the GPIO data and direction selection like
+any pad without a hardware request, so TX and RTS do not reach the pins unless
+software forces LSIO selection.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
