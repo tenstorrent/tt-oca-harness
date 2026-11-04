@@ -63,7 +63,7 @@ start:
   release. The first release is bounded at ``TRNG_RELEASE_CAP`` clocks, every
   later one at ``LATENCY_FACTOR`` x the first (``TRNG-RESET`` log line).
 * ``measure_period``: the strobe period p, measured once per leaf and logged
-  as ``OBS-ESRC-STROBE``.
+  as ``INFO-ESRC-STROBE``.
 * ``wait_boot_done``: ``MAIN_SM_STATUS.BOOT_PHASE_DONE`` = 1 after a clean
   start, bounded at 2W + 64 strobes (the first window after a TRNG reset can
   be partial) times p.
@@ -213,7 +213,7 @@ class SepEsrcCleanStart(SepAxiRegDriver):
         return int(ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=module_enable, **self.ctrl_fields))
 
     async def run(self, *, release_mark: int | None = None) -> CleanLimits:
-        """Run the clean start; returns the limits it wrote. Logs ``ESRC-CLEAN-START``.
+        """Run the clean start; returns the limits it wrote. Logs ``INFO-ESRC-CLEAN-START``.
 
         Raises if the noise driver is not running, or if more than
         ``MAX_PRE_CLEAN_STROBES`` strobes came after ``release_mark``.
@@ -227,11 +227,11 @@ class SepEsrcCleanStart(SepAxiRegDriver):
         pre = self._pre_check(release_mark)
         lim = await self._clean_writes(window=True)
         await self._wr(ESRC_CTRL, self._ctrl(1))
-        self._log("ESRC-CLEAN-START", pre)
+        self._log("INFO-ESRC-CLEAN-START", pre)
         return lim
 
     async def run_live(self, *, release_mark: int) -> CleanLimits:
-        """The clean start with no ``CTRL`` write (module docstring). Logs ``ESRC-LIVE-START``.
+        """The clean start with no ``CTRL`` write (module docstring). Logs ``INFO-ESRC-LIVE-START``.
 
         The window must be the reset window W0. Raises if the noise driver is not
         running, or if more than ``MAX_PRE_CLEAN_STROBES`` strobes came from
@@ -248,7 +248,7 @@ class SepEsrcCleanStart(SepAxiRegDriver):
             )
         lim = await self._clean_writes(window=False, immediate=False)
         pre = self._pre_check(release_mark)
-        self._log("ESRC-LIVE-START", pre)
+        self._log("INFO-ESRC-LIVE-START", pre)
         return lim
 
     def _pre_check(self, release_mark: int | None) -> int | None:
@@ -343,7 +343,7 @@ class SepEsrcLeafSetup:
         if kind not in self.clean:
             self.clean[kind] = max(1, clocks)
             self.log.info(
-                "CLEAN-TIME %s clean=%d bound=%d",
+                "INFO-CLEAN-TIME %s clean=%d bound=%d",
                 kind,
                 self.clean[kind],
                 LATENCY_FACTOR * self.clean[kind],
@@ -404,7 +404,7 @@ class SepEsrcLeafSetup:
             raise AssertionError(f"TRNG reset release not seen bound={bound}")
         self.learn("trng_release", took)
         self.log.info(
-            "TRNG-RESET sw_reset_n=0x%02x clean=%d bound=%d took=%d",
+            "INFO-TRNG-RESET sw_reset_n=0x%02x clean=%d bound=%d took=%d",
             self.swrst.value,
             self.clean["trng_release"],
             bound,
@@ -413,10 +413,10 @@ class SepEsrcLeafSetup:
         return mark
 
     async def measure_period(self, chk, n: int = 8, **fields) -> int:
-        """Measure p once (``n`` strobes); logs ``OBS-ESRC-STROBE``. Returns p."""
+        """Measure p once (``n`` strobes); logs ``INFO-ESRC-STROBE``. Returns p."""
         if self.p is None:
             self.p = max(1, int(await self.noise.measure_period(n, bound=PERIOD_CAP)))
-            chk.obs("ESRC-STROBE", p=self.p, **fields)
+            chk.info("ESRC-STROBE", p=self.p, **fields)
         return self.p
 
     async def wait_boot_done(self, driver: SepAxiRegDriver, window: int) -> int:
@@ -439,6 +439,6 @@ class SepEsrcLeafSetup:
         self.booted = True
         clocks = (samples[-1][0] if samples else self.now()) - t0
         self.log.info(
-            "BOOT-DONE window=%d clk=%d bound=%d (2W+64 strobes x p)", window, clocks, bound
+            "INFO-BOOT-DONE window=%d clk=%d bound=%d (2W+64 strobes x p)", window, clocks, bound
         )
         return clocks

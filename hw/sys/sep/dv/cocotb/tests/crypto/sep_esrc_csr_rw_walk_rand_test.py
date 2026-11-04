@@ -10,6 +10,9 @@ per check; ``hw/ip/entropy_source/doc/architecture.adoc:220-223``, Reset):
     (``hw/sys/sep/doc/crypto.adoc:174-176``).
   * A TRNG reset is a full-IP reset: every unlocked read-write field outside ``CTRL``
     reads its RDL reset value after it (architecture.adoc:220-223).
+  * The same reset returns the read-write status and alert latches to their RDL reset
+    values: "all entropy-source CSRs and ``FIPS_LOCK`` return to reset values"
+    (architecture.adoc:227).
   * Once ``FIPS_LOCK.LOCK`` is set (:752), a write of ``CTRL.MODULE_ENABLE`` = 0 is
     ignored (:112): ``MAIN_SM_STATUS.IDLE`` (:412) reads 0 and ``FIFO_STATUS.LEVEL``
     (:235) rises after a drain. Without the lock the same write stops the module.
@@ -29,10 +32,11 @@ FIFO data ports; the restore leg takes every stored read-write field (no RDL wri
 read side effect such as ``woclr``, and not written by hardware alone) whose RDL text
 lacks "FIPS_LOCK.LOCK prevents software changes", outside ``CTRL``.
 ``HEALTH_TEST_CTRL.ENABLE`` lacks the phrase and is walked as unlocked
-(``OBS-LOCK-LIST``). The read-write status and alert latches that hardware sets
+(``INFO-LOCK-LIST``). The read-write status and alert latches that hardware sets
 (``INTR_STATUS``, ``*_HEALTH_STATUS``, ``MAIN_SM_STATUS.ALERT``/``ERR``) are not
-stored configuration; the restore leg logs their non-zero fields before and after
-the reset as ``OBS-ESRC-VOLATILE`` and grades none of them.
+stored configuration and are not in the restore set; ``CHK-ESRC-VOLATILE`` grades
+them at the first read after the reset, before startup testing can latch a new
+failure.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first stimulus):
 the ``balanced`` masks and permutation, the order of the read-only leg and of the
@@ -51,6 +55,15 @@ Checkers:
                     VCS: no readback bit of a field is X. Control: the walked restore
                     fields are exactly the 12 the contract names (``CONTRACT_RESTORE``)
                     and each reads its written v1 before the reset.
+  CHK-ESRC-VOLATILE every read-write status and alert latch (``INTR_STATUS``, the
+                    thirteen ``*_HEALTH_STATUS`` fields, ``MAIN_SM_STATUS.ALERT`` and
+                    ``ERR``) reads its RDL reset value at its first read after the TRNG
+                    reset (architecture.adoc:227). Control: an ``INTR_TEST`` write of
+                    the eight defined bits before the reset, and every ``INTR_STATUS``
+                    bit reads 1 before the reset. The health and alert latches read 0
+                    before the reset too, so only the eight ``INTR_STATUS`` bits are
+                    graded from a set value. The walked volatile fields must be
+                    exactly the 23 the contract names (``CONTRACT_VOLATILE``).
   CHK-LOCK-MEN      locked trial: ``IDLE`` = 0 and ``LEVEL`` > 0 within 2 t_ref after a
                     drain and the write of 0. Control: the unlocked trial of the same
                     seed reads ``IDLE`` = 1 and an empty FIFO for 2 t_ref after
@@ -121,6 +134,14 @@ CONTRACT_RESTORE = frozenset(
         ("HT_WATERMARK_NUM", "WATERMARK_NUM"),
         ("NOISE_OBS_CTRL", "LANE_SEL"),
     }
+)
+# The 23 volatile fields the contract names (Checker Table, CHK-ESRC-VOLATILE). The
+# run-time walk must give exactly this set.
+CONTRACT_VOLATILE = frozenset(
+    {("INTR_STATUS", f) for r, f in CONTRACT_RESTORE if r == "INTR_ENABLE"}
+    | {("HEALTH_TEST_STATUS", "HEALTH_STATUS")}
+    | {(f"GENERATOR_{k}_HEALTH_STATUS", "STATUS") for k in range(12)}
+    | {("MAIN_SM_STATUS", "ALERT"), ("MAIN_SM_STATUS", "ERR")}
 )
 # Restore-value draws with a stated legal range (contract, Randomization).
 V1_RANGE = {
@@ -219,7 +240,8 @@ def register_lists() -> tuple[
     does not write it alone (hw is not ``w``), outside the locked list and outside
     ``NOT_WALKED``. A volatile field is an sw = rw field outside ``NOT_WALKED`` that
     hardware updates or software clears by write-one (status and alert latches); the
-    restore leg reads it as ``OBS-ESRC-VOLATILE`` only (contract step 2).
+    restore leg grades it against its RDL reset value after the TRNG reset
+    (``CHK-ESRC-VOLATILE``).
     """
     ro = tuple(sorted(reg_sw_readonly("entropy_source") - DATA_PORTS))
     rdl = _rdl_field_text()
@@ -324,6 +346,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
     required_evidence = (
         "CHK-ESRC-RO",
         "CHK-ESRC-RESTORE",
+        "CHK-ESRC-VOLATILE",
         "CHK-LOCK-MEN",
         "CHK-ESRC-INTR",
     )
@@ -347,8 +370,8 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         self.t_drain: int | None = None
         self.p: int | None = None
 
-        self.chk.obs("LOCK-COUNT", locked_fields=plan.locked_count)
-        self.chk.obs("LOCK-LIST", field="HEALTH_TEST_CTRL.ENABLE", walked="unlocked")
+        self.chk.info("LOCK-COUNT", locked_fields=plan.locked_count)
+        self.chk.info("LOCK-LIST", field="HEALTH_TEST_CTRL.ENABLE", walked="unlocked")
         self.logger.info(
             "WALK ro=%s restore=%s",
             ",".join(sorted(plan.ro_order)),
@@ -484,7 +507,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             r1 = await self._rd(reg)
             r2 = await self._rd(reg)
             if (r1 ^ r2) & mask:
-                self.chk.obs("RO-DYNAMIC", reg=reg, read1=f"0x{r1:08x}", read2=f"0x{r2:08x}")
+                self.chk.info("RO-DYNAMIC", reg=reg, read1=f"0x{r1:08x}", read2=f"0x{r2:08x}")
                 continue
             wrote = ~r1 & 0xFFFF_FFFF
             resp = await self._write_resp(reg, wrote)
@@ -666,15 +689,15 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
                     values[fld.name] = _fget(reg, fld.field, v)
         return values, x_regs
 
-    async def _read_volatile(self) -> str:
-        """The non-zero volatile fields as ``reg.field=0xV`` (logged only, never graded)."""
-        out: list[str] = []
+    async def _read_volatile(self) -> dict[str, int]:
+        """Each volatile field as read, by ``reg.field``."""
+        values: dict[str, int] = {}
         for reg in sorted({r for r, _f in self.plan.volatile}):
             v = await self._rd(reg)
             for r, fld in self.plan.volatile:
-                if r == reg and _fget(reg, fld, v):
-                    out.append(f"{reg}.{fld}=0x{_fget(reg, fld, v):x}")
-        return ",".join(out)
+                if r == reg:
+                    values[f"{reg}.{fld}"] = _fget(reg, fld, v)
+        return values
 
     async def _restore_leg(self) -> None:
         plan = self.plan
@@ -685,21 +708,20 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
                 fld.reg
             )
             await self._wr(fld.reg, new)
+        # Every INTR_STATUS latch set with its enable set (each INTR_ENABLE v1 is 1),
+        # so the volatile grade sees eight latches leave 1. The read precedes the
+        # window, so the sampler takes no INTR_STATUS cell from it.
+        await self._wr("INTR_TEST", INTR_DEF)
+        vol_pre = await self._read_volatile()
         # The arming read: the window stays open through the first read after the reset.
         open_graded_window(TEST, self.logger)
         pre, _ = await self._read_fields()
         pre_bad = [f.name for f in plan.restore if pre[f.name] != f.v1]
-        vol_pre = await self._read_volatile()
         await self._trng_reset()
         post, x_regs = await self._read_fields()
         close_graded_window(self.logger)
         vol_post = await self._read_volatile()
-        self.chk.obs(
-            "ESRC-VOLATILE",
-            fields=len(plan.volatile),
-            pre=vol_pre or "none",
-            post=vol_post or "none",
-        )
+        self._grade_volatile(vol_pre, vol_post)
         post_bad = [
             f"{f.name}=0x{post[f.name]:x}/0x{f.reset:x}"
             for f in plan.restore
@@ -732,6 +754,41 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         # Back to the quiet state for the trials (each trial starts with its own reset).
         await self._quiet_state()
 
+    def _grade_volatile(self, pre: dict[str, int], post: dict[str, int]) -> None:
+        """CHK-ESRC-VOLATILE: every volatile field at its RDL reset value after the reset."""
+        intr = [f"INTR_STATUS.{f}" for f in INTR_FIELDS]
+        intr_unset = [n for n in intr if pre.get(n) != 1]
+        self.chk.ctrl(
+            "ESRC-VOLATILE",
+            not intr_unset,
+            intr_test=f"0x{INTR_DEF:08x}",
+            intr_set_pre=len(intr) - len(intr_unset),
+            intr_fields=len(intr),
+            unset=",".join(intr_unset) or "none",
+        )
+        bad = []
+        for r, fld in self.plan.volatile:
+            name = f"{r}.{fld}"
+            want = _fmeta(r, fld)["reset"]
+            if post[name] != want:
+                bad.append(f"{name}=0x{post[name]:x}/0x{want:x}")
+        nonzero_pre = [f"{n}=0x{v:x}" for n, v in sorted(pre.items()) if v]
+        walked = set(self.plan.volatile)
+        missing = sorted(f"{r}.{f}" for r, f in CONTRACT_VOLATILE - walked)
+        extra = sorted(f"{r}.{f}" for r, f in walked - CONTRACT_VOLATILE)
+        self.chk.ok(
+            "ESRC-VOLATILE",
+            not bad and not missing and not extra,
+            fields=len(self.plan.volatile),
+            expected_fields=len(CONTRACT_VOLATILE),
+            missing=",".join(missing) or "none",
+            extra=",".join(extra) or "none",
+            pre=",".join(nonzero_pre) or "none",
+            post="reset",
+            mismatches=len(bad),
+            field=",".join(bad) or "none",
+        )
+
     # --- MODULE_ENABLE trials -----------------------------------------------------------
     async def _start_trial(self) -> int:
         """Reset, clean start, BOOT_PHASE_DONE, drain, t_ref. Returns t_ref in clocks."""
@@ -755,7 +812,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             if self.stream.high_clocks_since(m) >= T_REF_WORDS:
                 break
         t_ref = max(1, self._now() - t0)
-        self.logger.info("T-REF clk=%d words=%d bound=%d", t_ref, T_REF_WORDS, t_cap)
+        self.logger.info("INFO-T-REF clk=%d words=%d bound=%d", t_ref, T_REF_WORDS, t_cap)
         return t_ref
 
     async def _enable_trials(self) -> None:

@@ -9,6 +9,7 @@ SEP_MSG_STARTING_BL1 alone does not distinguish "verified and booted" from
 "skipped verification and booted".
 """
 
+import dv_env
 import pytest
 import shared
 from sepvp.config import SimConfig
@@ -16,6 +17,8 @@ from sepvp.config import SimConfig
 pytestmark = pytest.mark.bootcode
 
 TIMEOUT = 180
+
+mm = dv_env.load("sep_manifest_mutate")
 
 
 def _cfg(name, elf, image, **kw):
@@ -461,13 +464,13 @@ def test_unsigned_image_refused_on_a_secure_lifecycle(vp, bootcode_elf, oca_imag
         )
     )
     t.spawn()
-    # 0x0003_0024 == OCA_FAIL_SIGNATURE_CLASS_CONTROL. Pinning the code keeps
-    # this honest: refusing for some unrelated reason would also produce an
-    # ERROR, and would pass a test that only looked for one. Match the per-slot
-    # verdict, which precedes the ERROR -- the final MANIFEST_BOOT_FAIL carries
-    # the same code but lands after it, and expect()'s default error pattern
-    # would trip on the ERROR first.
-    t.expect(r"MANIFEST_ERR=0x00030024", timeout=TIMEOUT)
-    match = t.expect_status("SEP_MSG_MANIFEST_SECURE_BOOT", type="ERROR", timeout=TIMEOUT)
+    # Pinning OCA_FAIL_SIGNATURE_CLASS_CONTROL keeps this honest: refusing for some
+    # unrelated reason would also produce an ERROR, and would pass a test that only
+    # looked for one. Match the per-slot verdict, which precedes the ERROR -- the
+    # final MANIFEST_BOOT_FAIL carries the same code but lands after it, and
+    # expect()'s default error pattern would trip on the ERROR first.
+    error = mm.boot_err("OCA_FAIL_SIGNATURE_CLASS_CONTROL")
+    t.expect(rf"MANIFEST_ERR=0x{error:08x}", timeout=TIMEOUT)
+    match = t.expect_status(mm.rom_status_name_for_result(error), type="ERROR", timeout=TIMEOUT)
     assert "ERROR" in match.group(0)
     t.close()

@@ -162,6 +162,8 @@ module sep_uvm_top
             bh_smc_size = '0;
         end
     end
+    assign smc_base_probe_o = u_dut.smc_global_base_addr_i;
+    assign smc_size_probe_o = u_dut.smc_region_size_i;
     // SEP-OTP JTAG AXI-Lite: assembled from the flat j_axi_* master inputs (below).
     sep_efuse_pkg::efuse_axil_req_t   j_axil_req_drive;
     sep_efuse_pkg::efuse_axil_resp_t  j_axil_resp_w;
@@ -564,6 +566,12 @@ module sep_uvm_top
     logic [31:1] jtag_id_drive;
     assign jtag_id_drive = $isunknown(jtag_id_i) ? 31'h0 : jtag_id_i;
 
+    sep_pkg::sep_ras_t sep_ras_w;
+    assign lcc_sigint_err_probe_o = sep_ras_w.lc_sigint_err;
+    assign km_unrecoverable_err_o = sep_ras_w.km_uncorrectable;
+    assign km_recoverable_err_o   = sep_ras_w.km_correctable;
+    assign sep_ras_probe_o        = sep_ras_w;
+
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
         .SEP_SEC_DISABLE_TOKEN (SecDisTbDigest)
@@ -615,17 +623,17 @@ module sep_uvm_top
         .dmi_uncore_addr              (),
         .dmi_uncore_wdata             (),
         .dmi_uncore_rdata             ('0),
-        .dmi_active                   (),
+        .dmi_active                   (dmi_active_probe_o),
 
         .sep_cpu_trace                (cpu_trace_w),
         // Direct reset-vector input.
         .rst_vec                      (rst_vec_i),
         .jtag_id                      (jtag_id_drive),
 
-        // Interrupts. timer_int and soft_int are tied to 0. The boundary PIC
-        // input is the top-port drive sep_ext_interrupts_i (0 unless a leaf
-        // drives it).
-        .timer_int                    (1'b0),
+        // Interrupts. soft_int is tied to 0. timer_int is the top-port drive
+        // timer_int_i and the boundary PIC input is the top-port drive
+        // sep_ext_interrupts_i (0 unless a leaf drives them).
+        .timer_int                    (timer_int_i === 1'b1),
         .soft_int                     (1'b0),
         .sep_ext_interrupts_i         (sep_ext_interrupts_i),
 
@@ -655,15 +663,13 @@ module sep_uvm_top
 
         // Wrapper status/debug outputs. Unconnected ports have no consumer
         // in this TB; the rest are real DUT outputs brought to tb ports.
-        .lc_state_o                   (),
+        .lc_state_o                   (lc_state_probe_o),
         .dbg_disable_o                (dbg_disable_w),
         .sep_fuse_dft_disable_o       (sep_fuse_dft_disable_o),
         .smc_fuse_dft_disable_o       (smc_fuse_dft_disable_o),
-        .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),
-        .km_unrecoverable_err_o       (km_unrecoverable_err_o),
-        .km_recoverable_err_o         (km_recoverable_err_o),
+        .sep_ras_o                    (sep_ras_w),
         .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
@@ -1349,6 +1355,12 @@ module sep_uvm_top
     assign spi_lsio_trigger_probe_o = `SEP_CORE.lsio_trigger[0];
     assign dma_busy_probe_o =
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.status.busy.q;
+    // SPI host fatal_fault alert sender output (read-only XMR, no force).
+    assign spi_alert_tx_probe_o =
+        `SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.alert_tx_o[0];
+    // SEP_TEST_CTRL read strobe (read-only XMR, no force).
+    assign sep_test_ctrl_rd_probe_o =
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg.decoded_reg_strb.SEP_TEST_CTRL;
 
     // Secure DMA master taps (read-only XMR, no force). dma_axi_req is the
     // request after u_dma_local_alias_remap; the layout is in the signal list.
@@ -1370,6 +1382,13 @@ module sep_uvm_top
         `SEP_CORE.dma_axi_req.ar.addr[31:0],
         `SEP_CORE.dma_axi_resp.ar_ready,
         `SEP_CORE.dma_axi_req.ar_valid
+    };
+    assign dma_resp_buser_o = `SEP_CORE.dma_axi_resp.b.user;
+    assign dma_resp_ruser_o = `SEP_CORE.dma_axi_resp.r.user;
+    assign dma_resp_r_hs_o  = {
+        `SEP_CORE.dma_axi_resp.r.last,
+        `SEP_CORE.dma_axi_req.r_ready,
+        `SEP_CORE.dma_axi_resp.r_valid
     };
     assign dma_status_probe_o = {
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_chunk_done_qs,
@@ -1659,6 +1678,7 @@ module sep_uvm_top
                                       `SEP_ISO_IC.inst.slv_resp_o.aw_ready; \
     assign iso_slv_ar_hs_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid & \
                                       `SEP_ISO_IC.inst.slv_resp_o.ar_ready; \
+    assign iso_slv_ar_valid_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid; \
     assign iso_slv_b_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.b_valid & \
                                       `SEP_ISO_IC.inst.slv_req_i.b_ready; \
     assign iso_slv_r_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.r_valid & \
@@ -1695,6 +1715,12 @@ module sep_uvm_top
     // Read-only XMR.
     assign wdt_wdog_count_o =
         `SEP_CORE.u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q;
+    // Wakeup interrupt request of the AON timer core and the low word of the
+    // wakeup count it compares (clk_wdt_i domain). Read-only XMR.
+    assign aon_wkup_probe_o = {
+        `SEP_CORE.u_sep_wdt_wrap.u_wdt_aon_timer.u_core.wkup_intr_o,
+        `SEP_CORE.u_sep_wdt_wrap.u_wdt_aon_timer.u_core.wkup_count[31:0]
+    };
     // sep_reset_n override select on the SEP input port. Read-only XMR.
     assign jtag_sep_reset_n_ovrd_probe_o =
         `SEP_CORE.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd;
@@ -2167,9 +2193,11 @@ module sep_uvm_top
     assign pr_inflt_awvalid_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw_valid;
     assign pr_inflt_awready_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_resp.aw_ready;
     assign pr_inflt_awaddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw.addr[55:0];
+    assign pr_inflt_awuser_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw.user;
     assign pr_inflt_arvalid_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar_valid;
     assign pr_inflt_arready_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_resp.ar_ready;
     assign pr_inflt_araddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.addr[55:0];
+    assign pr_inflt_aruser_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.user;
     // PR-CPU: AxPROT of the raw CPU LSU and IFU requests, before any remap.
 `ifndef SEP_CPU_STUB
     assign pr_cpu_lsu_awvalid_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw_valid;
@@ -2482,6 +2510,58 @@ module sep_uvm_top
     assign abr_zeroize_ready_probe_o = '0;
 `endif
 
+    // Adams Bridge AHB-lite counters on the wrapper bus into abr_top
+    // (sep_crypto_abr_wrapper.sv, single slave: hready is hreadyout).
+    // abr_ahb_xfer_cnt_q counts the accepted address phases (HTRANS NONSEQ or
+    // SEQ with HREADYOUT high), abr_ahb_wait_cnt_q the clocks with HREADYOUT
+    // low, abr_ahb_err_cnt_q the clocks with HRESP high. Monitor-only; 0 in a
+    // build without Adams Bridge.
+`ifdef SEP_ABR_EN
+`define ABR_AHB `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan
+    logic [31:0] abr_ahb_xfer_cnt_q, abr_ahb_wait_cnt_q, abr_ahb_err_cnt_q;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            abr_ahb_xfer_cnt_q <= '0;
+            abr_ahb_wait_cnt_q <= '0;
+            abr_ahb_err_cnt_q  <= '0;
+        end else begin
+            if (`ABR_AHB.ab_htrans[1] && `ABR_AHB.ab_hreadyout)
+                abr_ahb_xfer_cnt_q <= abr_ahb_xfer_cnt_q + 32'd1;
+            if (!`ABR_AHB.ab_hreadyout) abr_ahb_wait_cnt_q <= abr_ahb_wait_cnt_q + 32'd1;
+            if (`ABR_AHB.ab_hresp) abr_ahb_err_cnt_q <= abr_ahb_err_cnt_q + 32'd1;
+        end
+    end
+`undef ABR_AHB
+    assign abr_ahb_xfer_count_o = abr_ahb_xfer_cnt_q;
+    assign abr_ahb_wait_count_o = abr_ahb_wait_cnt_q;
+    assign abr_ahb_err_count_o  = abr_ahb_err_cnt_q;
+`else
+    assign abr_ahb_xfer_count_o = '0;
+    assign abr_ahb_wait_count_o = '0;
+    assign abr_ahb_err_count_o  = '0;
+`endif
+
+    // AES masking parameters of the OpenTitan AES core in aes_wrapper.sv:
+    // {SecAllowForcingMasks, SecMasking}, read as hierarchical parameters. The
+    // VCS build drives the port; the Verilator build ties it to 0, so a reader
+    // runs on VCS.
+`ifndef VERILATOR
+    assign aes_sec_params_o = {
+        1'(`SEP_CORE.u_sep_crypto.u_aes_wrapper_s3c_scan.u_tt_aes.SecAllowForcingMasks),
+        1'(`SEP_CORE.u_sep_crypto.u_aes_wrapper_s3c_scan.u_tt_aes.SecMasking)
+    };
+`else
+    assign aes_sec_params_o = '0;
+`endif
+
+    // CSRNG gate inputs at the DRBG instance in sep_trng.sv: the OTP enable of
+    // the software application read (MuBi8) and the lifecycle hardware-debug
+    // enable (lc_tx_t). Monitor-only.
+    assign csrng_sw_app_read_en_o =
+        8'(`SEP_CORE.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan.otp_en_csrng_sw_app_read_i);
+    assign csrng_lc_hw_debug_en_o =
+        4'(`SEP_CORE.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan.lc_hw_debug_en_i);
+
     // ------------------------------------------------------------------
     // Warm-reset handler seed: +sep_cold_scratch7=<hex32>
     // ------------------------------------------------------------------
@@ -2526,27 +2606,87 @@ module sep_uvm_top
     end
 
     // ------------------------------------------------------------------
+    // KM VUART_STATUS.PRINT_ENABLE drive.
+    // ------------------------------------------------------------------
+    // km_csr.rdl gives PRINT_ENABLE as "Set by testbench" (sw = r, hw = w, no
+    // storage), and km_csr.sv leaves its hwif_in input without an RTL driver.
+    // The bench drives it for the whole run: 1 with +VUART_PRINT, else 0.
+`define KM_PRINT_ENABLE \
+    `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_kmcsr.hwif_in.VUART_STATUS.print_enable.next
+    logic vuart_print_q;
+    initial begin : vuart_print_enable_drive
+        vuart_print_q = $test$plusargs("VUART_PRINT") != 0;
+`ifdef VERILATOR
+        `KM_PRINT_ENABLE = vuart_print_q;
+`else
+        force `KM_PRINT_ENABLE = vuart_print_q;
+`endif
+    end
+`undef KM_PRINT_ENABLE
+
+    // ------------------------------------------------------------------
     // LC differential-integrity error inject.
     // ------------------------------------------------------------------
     // No legal OTP image can present a broken {~raw, raw} LC_STATE pair: the
     // sense FSM regenerates the pair from the raw nibble. The specification's
     // fail-closed feat_ctrl=0 path therefore has no frontdoor stimulus.
-    // When lc_sigint_inject_i=1, force both rails of the LCC decoder input to 0
-    // so prim_diff_decode_multi asserts sigint (XNOR of equal rails). The
-    // software-visible LC_STATE shadow is not touched -- only the decoder
-    // input -- so the stitch test can still value-check the legal pair.
-    // Re-issue every clock (Verilator snapshots a force RHS). Release when the
-    // port drops so the legal pair returns. Default 0; outside AXI cones.
-`define LCC_DEC_DATA \
-    `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i
+    // While lc_sigint_inject_i=1, force the LCC decoder input to its source
+    // value with each pair that lc_sigint_pair_mask_i selects broken: both
+    // rails at lc_sigint_bad_value_i, so prim_diff_decode_multi asserts sigint
+    // (XNOR of equal rails). Pair i is {data_i[LcStateBitWidth+i], data_i[i]}.
+    // A mask of 0, or one with an X or Z bit, selects every pair, and a bad
+    // value other than 1 is 0, so with both inputs at 0 or undriven every rail
+    // is 0. The software-visible LC_STATE shadow is not touched -- only the
+    // decoder input -- so the stitch test can still value-check the legal
+    // pair. Re-issue every clock (Verilator snapshots a force RHS). Release
+    // when the port drops so the legal pair returns. Default 0; outside AXI
+    // cones.
+`define LCC_INST `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl
+    localparam int unsigned LcPairs = sep_pkg::LcStateBitWidth;
+    wire [LcPairs-1:0] lc_sigint_pairs =
+        ($isunknown(lc_sigint_pair_mask_i) || (lc_sigint_pair_mask_i == '0)) ?
+        '1 : lc_sigint_pair_mask_i;
+    wire [2*LcPairs-1:0] lc_sigint_rails = {2{lc_sigint_pairs}};
+    wire [2*LcPairs-1:0] lc_sigint_bad = {(2*LcPairs){lc_sigint_bad_value_i === 1'b1}};
+    wire [2*LcPairs-1:0] lc_sigint_src =
+        `LCC_INST.shadow_regs_i.fields.lc_state.lc_state[2*LcPairs-1:0];
     always @(posedge clk_i) begin
         if (lc_sigint_inject_i === 1'b1) begin
-            force `LCC_DEC_DATA = '0;
+            force `LCC_INST.u_lc_state_dec.data_i =
+                (lc_sigint_src & ~lc_sigint_rails) | (lc_sigint_bad & lc_sigint_rails);
         end else begin
-            release `LCC_DEC_DATA;
+            release `LCC_INST.u_lc_state_dec.data_i;
         end
     end
-`undef LCC_DEC_DATA
+    assign lc_dec_data_probe_o = `LCC_INST.u_lc_state_dec.data_i;
+
+    // ------------------------------------------------------------------
+    // Lifecycle controller register write tap.
+    // ------------------------------------------------------------------
+    // FEAT_CTRL is read-only (sep_lifecycle_ctrl.rdl, sw = r), so no readback
+    // shows that a write to it reached the register block. These taps count
+    // the write-address handshakes at the AXI-Lite port of the register block
+    // and keep the register offset of the last one and the data of the last
+    // write-data handshake. They read the request and ready nets and drive
+    // nothing.
+    logic [15:0] lcc_wr_count_q = '0;
+    logic [4:0]  lcc_wr_addr_q = '0;
+    logic [63:0] lcc_wr_data_q = '0;
+    always @(posedge `LCC_INST.clk_i) begin
+        if ((`LCC_INST.lifecycle_axil_req.aw_valid === 1'b1) &&
+            (`LCC_INST.lifecycle_axil_resp.aw_ready === 1'b1)) begin
+            lcc_wr_count_q <= lcc_wr_count_q + 16'd1;
+            lcc_wr_addr_q  <= `LCC_INST.lifecycle_axil_req.aw.addr[4:0];
+        end
+        if ((`LCC_INST.lifecycle_axil_req.w_valid === 1'b1) &&
+            (`LCC_INST.lifecycle_axil_resp.w_ready === 1'b1)) begin
+            lcc_wr_data_q <= `LCC_INST.lifecycle_axil_req.w.data;
+        end
+    end
+    assign lcc_wr_count_probe_o = lcc_wr_count_q;
+    assign lcc_wr_addr_probe_o  = lcc_wr_addr_q;
+    assign lcc_wr_data_probe_o  = lcc_wr_data_q;
+`undef LCC_INST
 
     // ------------------------------------------------------------------
     // Token-comparator redundancy fault inject.
@@ -2816,6 +2956,8 @@ module sep_uvm_top
     assign jtag_filter_lc_sigint_err_probe_o = `JTAG_LC_DEC.sigint_o;
     // The sep input jtag_id_i as the DUT receives it.
     assign jtag_id_probe_o = `SEP_CORE.jtag_id_i;
+    // The sep input jtag_trst_ni as the DUT receives it.
+    assign jtag_trst_probe_o = `SEP_CORE.jtag_trst_ni;
 
     // ------------------------------------------------------------------
     // JTAG lifecycle filter integrity inject.
@@ -2938,6 +3080,124 @@ module sep_uvm_top
         end
     end
 `undef DMA_HOST_CMD_INTG_DI
+
+    // ------------------------------------------------------------------
+    // Mailbox WRITE_DATA unstrobed-lane inject.
+    // ------------------------------------------------------------------
+    // A 32-bit store of the SEP CPU reaches the mailbox unit as one 64-bit
+    // AXI-Lite W beat with WSTRB 0x0F or 0xF0, and the CPU drives 0 on the
+    // unstrobed lanes, so firmware cannot show that the mailbox pushes the
+    // unstrobed lanes of WRITE_DATA as 0. Non-zero data on unstrobed lanes is
+    // legal AXI. While mbox_lane_inject_arm_i is 1, a W beat at the mailbox unit
+    // port (u_sep_system_peripherals.mailbox_axil_req) whose write address is
+    // the WRITE_DATA register of the outbound port of a mailbox selected in
+    // mbox_lane_inject_mbx_i, and whose WSTRB is 0x0F or 0xF0, carries
+    // mbox_lane_inject_data_i on its unstrobed byte lanes. The strobed lanes,
+    // WSTRB and the other channels keep their values. The write address of the
+    // beat is the one address the port accepted without its W beat, or the
+    // address on the AW channel when none waits (AXI keeps W in AW order); with
+    // more than one address waiting the beat keeps its value.
+    // The value is set on every falling edge (Verilator snapshots a force RHS).
+    // A released net keeps its forced value until its driver changes, so the
+    // bench ends a force by forcing the live W data (the input of the address
+    // fixer that drives the port) and releases the net only in a clock in which
+    // the live value equals the value forced last; one falling edge after the
+    // release the net must equal the live value, else the bench reports an
+    // error. Default 0: no force.
+    // Taps (read-only): mbox_axil_aw_hs_o / mbox_axil_aw_addr_o and
+    // mbox_axil_w_hs_o / mbox_axil_w_strb_o / mbox_axil_w_data_o show the AW
+    // and W handshakes of the same port, with the W data the mailbox unit takes.
+`define MBX_LANE_PORT `SEP_CORE.u_sep_system_peripherals.mailbox_axil_req
+`define MBX_LANE_RSP  `SEP_CORE.u_sep_system_peripherals.mailbox_axil_resp
+`define MBX_LANE_LIVE `SEP_CORE.u_sep_system_peripherals.mailbox_from_csr_axil_req
+    localparam logic [31:0] MbxLaneBase =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    localparam logic [31:0] MbxLaneWdata =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR -
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    // Mailbox stride and the end of the mailbox aperture, both from the
+    // generated address map.
+    localparam logic [31:0] MbxLaneStride =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_BASE_ADDR -
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    localparam logic [31:0] MbxLaneEnd =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_BASE_ADDR +
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_SIZE -
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    wire mbx_lane_aw_hs = (`MBX_LANE_PORT.aw_valid === 1'b1) && (`MBX_LANE_RSP.aw_ready === 1'b1);
+    wire mbx_lane_w_hs  = (`MBX_LANE_PORT.w_valid === 1'b1) && (`MBX_LANE_RSP.w_ready === 1'b1);
+    assign mbox_axil_aw_hs_o   = mbx_lane_aw_hs;
+    assign mbox_axil_aw_addr_o = 32'(`MBX_LANE_PORT.aw.addr);
+    assign mbox_axil_w_hs_o    = mbx_lane_w_hs;
+    assign mbox_axil_w_strb_o  = `MBX_LANE_PORT.w.strb;
+    assign mbox_axil_w_data_o  = `MBX_LANE_PORT.w.data;
+    // Write addresses the port accepted without their W beat, and the address
+    // of the one waiting (valid while exactly one waits and it was recorded).
+    logic [3:0]  mbx_lane_awn_q;
+    logic [31:0] mbx_lane_awa_q;
+    logic        mbx_lane_awa_ok_q;
+    wire  [3:0]  mbx_lane_awn_d = mbx_lane_awn_q + 4'(mbx_lane_aw_hs) -
+        4'(mbx_lane_w_hs && ((mbx_lane_awn_q != 4'd0) || mbx_lane_aw_hs));
+    always @(posedge clk_i) begin
+        if (rst_ni !== 1'b1) begin
+            mbx_lane_awn_q    <= 4'd0;
+            mbx_lane_awa_ok_q <= 1'b0;
+        end else begin
+            mbx_lane_awn_q <= mbx_lane_awn_d;
+            if (mbx_lane_awn_d != 4'd1) begin
+                mbx_lane_awa_ok_q <= 1'b0;
+            end else if (mbx_lane_aw_hs) begin
+                mbx_lane_awa_q    <= 32'(`MBX_LANE_PORT.aw.addr);
+                mbx_lane_awa_ok_q <= 1'b1;
+            end else if (mbx_lane_awn_q != 4'd1) begin
+                mbx_lane_awa_ok_q <= 1'b0;
+            end
+        end
+    end
+    wire        mbx_lane_addr_v = (mbx_lane_awn_q == 4'd0) ? (`MBX_LANE_PORT.aw_valid === 1'b1) :
+                                  ((mbx_lane_awn_q == 4'd1) && mbx_lane_awa_ok_q);
+    wire [31:0] mbx_lane_off = ((mbx_lane_awn_q == 4'd0) ? 32'(`MBX_LANE_PORT.aw.addr) :
+                                                            mbx_lane_awa_q) - MbxLaneBase;
+    wire [31:0] mbx_lane_m = mbx_lane_off / MbxLaneStride;
+    wire        mbx_lane_tgt = mbx_lane_addr_v && (mbx_lane_off < MbxLaneEnd) &&
+        (((mbx_lane_off % MbxLaneStride) >> 3) == (MbxLaneWdata >> 3)) &&
+        (mbox_lane_inject_mbx_i[mbx_lane_m[$clog2($bits(mbox_lane_inject_mbx_i))-1:0]] === 1'b1);
+    function automatic logic [63:0] mbx_lane_mix(input logic [63:0] live, input logic [7:0] strb,
+                                                 input logic [63:0] inj);
+        logic [63:0] v;
+        for (int i = 0; i < 8; i++) v[i*8 +: 8] = strb[i] ? live[i*8 +: 8] : inj[i*8 +: 8];
+        return v;
+    endfunction
+    logic [63:0] mbx_lane_fv;
+    logic        mbx_lane_forced, mbx_lane_rel_chk;
+    initial begin
+        mbx_lane_fv      = '0;
+        mbx_lane_forced  = 1'b0;
+        mbx_lane_rel_chk = 1'b0;
+    end
+    always @(negedge clk_i) begin
+        if (mbx_lane_rel_chk && (`MBX_LANE_PORT.w.data !== `MBX_LANE_LIVE.w.data))
+            $error("[tb] mailbox lane inject: W data differs from the live value after the release");
+        mbx_lane_rel_chk = 1'b0;
+        if ((mbox_lane_inject_arm_i === 1'b1) && (`MBX_LANE_PORT.w_valid === 1'b1) &&
+            mbx_lane_tgt &&
+            ((`MBX_LANE_PORT.w.strb === 8'h0F) || (`MBX_LANE_PORT.w.strb === 8'hF0))) begin
+            mbx_lane_fv     = mbx_lane_mix(`MBX_LANE_LIVE.w.data, `MBX_LANE_PORT.w.strb,
+                                           mbox_lane_inject_data_i);
+            mbx_lane_forced = 1'b1;
+            force `MBX_LANE_PORT.w.data = mbx_lane_fv;
+        end else if (mbx_lane_forced && (mbx_lane_fv !== `MBX_LANE_LIVE.w.data)) begin
+            mbx_lane_fv = `MBX_LANE_LIVE.w.data;
+            force `MBX_LANE_PORT.w.data = mbx_lane_fv;
+        end else if (mbx_lane_forced) begin
+            release `MBX_LANE_PORT.w.data;
+            mbx_lane_forced  = 1'b0;
+            mbx_lane_rel_chk = 1'b1;
+        end
+    end
+`undef MBX_LANE_PORT
+`undef MBX_LANE_RSP
+`undef MBX_LANE_LIVE
 
     // ------------------------------------------------------------------
     // HMAC message-FIFO drain stall.
@@ -3246,6 +3506,27 @@ module sep_uvm_top
 `undef CRYPTO_ALERT_INJ
 `undef CRYPTO_ALERT_RX
 
+    // ------------------------------------------------------------------
+    // DMA alert sender inject.
+    // ------------------------------------------------------------------
+    // While dma_alert_inject_i is 1, the alert pair (alert_p, alert_n) at the
+    // input of the one secure DMA alert receiver
+    // (u_sep_dma_wrap.gen_alert_receivers[0].u_alert_receiver.alert_tx_i) is
+    // forced to {v, v}, v = dma_alert_inject_val_i. Both wires at one value is
+    // not a differential code, so the receiver signals an integrity fail into
+    // dma_alert. The DMA cannot send a malformed pair, so this has no
+    // frontdoor. Re-issued every clock for Verilator, released when the input
+    // drops. Default 0: no force.
+`define DMA_ALERT_RX `SEP_CORE.u_sep_dma_wrap.gen_alert_receivers[0].u_alert_receiver.alert_tx_i
+    always @(negedge clk_i) begin
+        if (dma_alert_inject_i === 1'b1)
+            force `DMA_ALERT_RX = {dma_alert_inject_val_i, dma_alert_inject_val_i};
+        else
+            release `DMA_ALERT_RX;
+    end
+    assign dma_alert_rx_probe_o = `DMA_ALERT_RX;
+`undef DMA_ALERT_RX
+
     // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
     // every command write, leaving the block powered, idle and error-free while
     // no program ever runs.
@@ -3445,6 +3726,7 @@ module sep_uvm_top
     assign esrc_compress_vld_o  = `SEP_ESRC.entropy_stream_vld_o;
     assign esrc_compress_data_o = `SEP_ESRC.entropy_stream_data_o;
     assign drbg_seed_valid_o    = `SEP_DRBG.u_csrng_seed_adapter.seed_queue_valid_o;
+    assign drbg_seed_word_ready_o = `SEP_DRBG.u_csrng_seed_adapter.csrng_word_ready_o;
     assign drbg_es_ack_o        = `SEP_DRBG.u_csrng.entropy_src_hw_if_i.es_ack;
     assign drbg_es_bits_o       = `SEP_DRBG.u_csrng.entropy_src_hw_if_i.es_bits;
     assign drbg_genbits_vld_o   = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
@@ -3461,6 +3743,12 @@ module sep_uvm_top
                                     `SEP_DRBG.edn_axis_endpoint_rsp[1].edn_ack,
                                     `SEP_DRBG.edn_axis_endpoint_rsp[0].edn_ack};
     assign esrc_sample_clk_lane0_o = `SEP_ESRC.u_generator_complex.u_sampler_clocks.sample_clk_o[0];
+    // ESRC FIFO downsample count, the decorrelator stream strobe after the boot
+    // gate, and the divider count of lane 0. Read-only XMR taps.
+    assign esrc_downsample_count_o   = `SEP_ESRC.downsample_count;
+    assign esrc_stream_valid_gated_o = `SEP_ESRC.entropy_stream_valid_gated;
+    assign esrc_decor_div_lane0_o    =
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[0].u_generator.u_decorrelator.clk_divider;
     // drbg_axil64_lane_adapter arbitration, sampled at each DUT adapter's
     // own AXI-Lite-64 port:
     // {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
@@ -3812,6 +4100,78 @@ module sep_uvm_top
     assign otbn_imem_write_count_o = otbn_imem_wr_cnt_q;
     assign otbn_dmem_req_count_o   = otbn_dmem_req_cnt_q;
     assign otbn_dmem_write_count_o = otbn_dmem_wr_cnt_q;
+
+    // OTBN TL-UL port (sep_crypto_otbn_wrapper.sv, tl_i of u_otbn): the count of
+    // accepted A-channel writes into the IMEM window whose byte mask is not
+    // 4'hf. Monitor-only.
+`define OTBN_TL `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan
+    logic [31:0] otbn_imem_tl_partial_wr_cnt_q;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            otbn_imem_tl_partial_wr_cnt_q <= '0;
+        end else if (`OTBN_TL.tl_req.a_valid && `OTBN_TL.tl_resp.a_ready &&
+                     `OTBN_TL.tl_req.a_opcode != tlul_pkg::GET &&
+                     `OTBN_TL.tl_req.a_mask != 4'hf &&
+                     `OTBN_TL.tl_req.a_address[otbn_reg_pkg::BlockAw-1:0] >=
+                         otbn_reg_pkg::OTBN_IMEM_OFFSET &&
+                     `OTBN_TL.tl_req.a_address[otbn_reg_pkg::BlockAw-1:0] <
+                         otbn_reg_pkg::OTBN_IMEM_OFFSET + otbn_reg_pkg::OTBN_IMEM_SIZE) begin
+            otbn_imem_tl_partial_wr_cnt_q <= otbn_imem_tl_partial_wr_cnt_q + 32'd1;
+        end
+    end
+`undef OTBN_TL
+    assign otbn_imem_tl_partial_wr_count_o = otbn_imem_tl_partial_wr_cnt_q;
+
+    // KM CPU ready-mux taps (picorv32_wrapper.sv). Per source (0 ROM, 1 SRAM,
+    // 2 AXI adapter): km_ready_on_q counts the clocks with the source ready
+    // high while the CPU request is valid for that source, km_ready_off_q the
+    // clocks with the source ready high while it is not. The AXI-adapter write
+    // capture holds the address and strobes of the last write handshake of the
+    // adapter; km_axi_subword_wr_cnt_q counts the handshakes whose strobes are
+    // not 4'hf. Monitor-only.
+`define KM_RDY_CPU `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu
+    logic [2:0]       km_src_sel, km_src_rdy;
+    logic [2:0][31:0] km_ready_on_q, km_ready_off_q;
+    logic [31:0]      km_axi_wr_addr_q, km_axi_subword_wr_cnt_q;
+    logic [3:0]       km_axi_wr_strb_q;
+    assign km_src_sel = {`KM_RDY_CPU.is_periph_addr, `KM_RDY_CPU.is_sram_addr,
+                         `KM_RDY_CPU.is_rom_addr} & {3{`KM_RDY_CPU.mem_valid}};
+    assign km_src_rdy = {`KM_RDY_CPU.axi_adapter_mem_ready, `KM_RDY_CPU.sram_mem_ready,
+                         `KM_RDY_CPU.rom_mem_ready};
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_ready_on_q           <= '0;
+            km_ready_off_q          <= '0;
+            km_axi_wr_addr_q        <= '0;
+            km_axi_wr_strb_q        <= '0;
+            km_axi_subword_wr_cnt_q <= '0;
+        end else begin
+            for (int s = 0; s < 3; s++) begin
+                if (km_src_rdy[s] && km_src_sel[s])
+                    km_ready_on_q[s] <= km_ready_on_q[s] + 32'd1;
+                if (km_src_rdy[s] && !km_src_sel[s])
+                    km_ready_off_q[s] <= km_ready_off_q[s] + 32'd1;
+            end
+            if (`KM_RDY_CPU.axi_adapter_mem_valid && `KM_RDY_CPU.axi_adapter_mem_ready &&
+                (|`KM_RDY_CPU.axi_adapter_mem_wstrb)) begin
+                km_axi_wr_addr_q <= `KM_RDY_CPU.axi_adapter_mem_addr;
+                km_axi_wr_strb_q <= `KM_RDY_CPU.axi_adapter_mem_wstrb;
+                if (`KM_RDY_CPU.axi_adapter_mem_wstrb != 4'hf)
+                    km_axi_subword_wr_cnt_q <= km_axi_subword_wr_cnt_q + 32'd1;
+            end
+        end
+    end
+`undef KM_RDY_CPU
+    assign km_rom_ready_on_target_count_o   = km_ready_on_q[0];
+    assign km_sram_ready_on_target_count_o  = km_ready_on_q[1];
+    assign km_axi_ready_on_target_count_o   = km_ready_on_q[2];
+    assign km_rom_ready_off_target_count_o  = km_ready_off_q[0];
+    assign km_sram_ready_off_target_count_o = km_ready_off_q[1];
+    assign km_axi_ready_off_target_count_o  = km_ready_off_q[2];
+    assign km_axi_wr_addr_o                 = km_axi_wr_addr_q;
+    assign km_axi_wr_strb_o                 = km_axi_wr_strb_q;
+    assign km_axi_subword_wr_count_o        = km_axi_subword_wr_cnt_q;
+
     // KM SRAM word 0: peek the real macro array. The KM SRAM is one unscrambled
     // prim_ram_1p_adv (sep_ip_integration.u_km_sram) addressed by word index
     // within the 32 KB SRAM window the Key Manager specification places at
@@ -4129,6 +4489,30 @@ module sep_uvm_top
                                  `KM_TAP.cpu_axil_resp.aw_ready,
                                  `KM_TAP.cpu_axil_resp.w_ready};
     assign km_cpu_rst_n_o     = `KM_TAP.rst_warm_sync_n;
+
+    // KM-AXIV, slave side: bit i of each port output is master port i of the
+    // KM crossbar u_xbar, the AddrMap index of km_axi_lite_xbar (0 KPV, 1 KMCSR,
+    // 2 DRBG sampler, 3 mailbox, 4 OTBN, 5 AES, 6 KMAC, 7 HMAC, 8 OTP,
+    // 9 Adams Bridge): the AR, AW and W handshakes (valid and ready both 1),
+    // the R and B valids and the R and B handshakes, on every clock. Explicit
+    // per-index assigns avoid a genvar-indexed XMR.
+`define KM_AXI_PORT_TAP(i) \
+    assign km_cpu_axi_port_ar_hs_o[i]  = `KM_TAP.u_xbar.xbar_mst_req[i].ar_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_resp[i].ar_ready; \
+    assign km_cpu_axi_port_aw_hs_o[i]  = `KM_TAP.u_xbar.xbar_mst_req[i].aw_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_resp[i].aw_ready; \
+    assign km_cpu_axi_port_w_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_req[i].w_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_resp[i].w_ready; \
+    assign km_cpu_axi_port_r_valid_o[i] = `KM_TAP.u_xbar.xbar_mst_resp[i].r_valid; \
+    assign km_cpu_axi_port_b_valid_o[i] = `KM_TAP.u_xbar.xbar_mst_resp[i].b_valid; \
+    assign km_cpu_axi_port_r_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_resp[i].r_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_req[i].r_ready; \
+    assign km_cpu_axi_port_b_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_resp[i].b_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_req[i].b_ready
+    `KM_AXI_PORT_TAP(0); `KM_AXI_PORT_TAP(1); `KM_AXI_PORT_TAP(2); `KM_AXI_PORT_TAP(3);
+    `KM_AXI_PORT_TAP(4); `KM_AXI_PORT_TAP(5); `KM_AXI_PORT_TAP(6); `KM_AXI_PORT_TAP(7);
+    `KM_AXI_PORT_TAP(8); `KM_AXI_PORT_TAP(9);
+`undef KM_AXI_PORT_TAP
 
     // ------------------------------------------------------------------
     // HK-OTP: KM OTP input rail flip (docs/SEP_TB_ARCH.adoc, inject
@@ -4927,8 +5311,7 @@ module sep_uvm_top
     // the valids may be high on the first edge that samples the KM CPU reset
     // low and must be low from the next edge on. The cold reset asserts
     // asynchronously and the warm reset on a clock edge
-    // (hw/ip/key_manager/doc/architecture.adoc, Reset Conditioning).
-    // Issue: #3170
+    // (hw/ip/key_manager/doc/architecture.adoc:185-191, Reset Conditioning).
     bind key_manager ocah_axi_sva #(
         .MASTER_SYNC_RESET (1'b1),
         .IS_LITE    (1'b1),
@@ -5496,6 +5879,8 @@ module sep_uvm_top
     assign jtag_ic_reset_trst_n_i   = 1'b1;
     assign jtag_ic_reset_tdi_i      = 1'b0;
     assign lc_sigint_inject_i       = 1'b0;
+    assign lc_sigint_pair_mask_i    = '0;
+    assign lc_sigint_bad_value_i    = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
     assign token_cmp_fault_copy_i   = '0;
@@ -5507,11 +5892,16 @@ module sep_uvm_top
     assign efuse_sense_status_word_i = '0;
     assign efuse_shim_resp_hold_i   = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
+    assign mbox_lane_inject_arm_i   = 1'b0;
+    assign mbox_lane_inject_mbx_i   = '0;
+    assign mbox_lane_inject_data_i  = '0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
     assign kmac_fifo_drain_stall_i  = 1'b0;
     assign crypto_alert_inject_i    = 1'b0;
     assign crypto_alert_inject_idx_i = '0;
     assign crypto_alert_inject_val_i = 1'b0;
+    assign dma_alert_inject_i       = 1'b0;
+    assign dma_alert_inject_val_i   = 1'b0;
     assign esrc_fifo_parity_inject_i = 1'b0;
     assign esrc_fifo_parity_bit_i   = '0;
     assign esrc_fifo_ptr_inject_i   = 1'b0;
@@ -5556,6 +5946,7 @@ module sep_uvm_top
     assign otbn_intg_flip_mem_i      = 1'b0;
     assign otbn_intg_flip_bit_i      = '0;
     assign sep_ext_interrupts_i     = '0;
+    assign timer_int_i              = 1'b0;
     assign smn_outbound_resp_hold_i = 1'b0;
     assign smn_outbound_rd_slverr_i = 1'b0;
     assign smn_outbound_ready_stall_i = '0;
@@ -5597,9 +5988,7 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // Functional-coverage sampler (docs/SEP_FCOV.adoc).
     //
-    // Passive: it drives nothing and has no output. VCS only -- Verilator does
-    // not compile `covergroup`, and cov/sv/sep_fcov.sv is `ifndef VERILATOR`,
-    // so there is no module to bind on the Verilator targets.
+    // Passive: it drives nothing and has no output.
     //
     // The response side (`lsu_axi_resp`) is mirrored to the flat s_axi_* outputs
     // above; the REQUEST side (`lsu_axi_req` AW/W/AR and B/R ready) is read only
@@ -5612,7 +6001,6 @@ module sep_uvm_top
     // force-splice (see the CPU-LSU AXI splice above), read-only, with no force
     // and no new hierarchy depth.
     // ------------------------------------------------------------------
-`ifndef VERILATOR
     // Fabric sampler taps (docs/SEP_FCOV.adoc, fabric and remap groups, Sampler
     // taps): read-only copies of the filter, alias and output remap register
     // fields, one explicit assign per index.
@@ -6889,6 +7277,8 @@ module sep_uvm_top
         .latch_test_en_i       ({token_digest_sdis_test_en_o, token_digest_chiplet_test_en_o,
                                  token_digest_test_en_o}),
         .jtag_filt_sigint_i    (jtag_filter_lc_sigint_err_probe_o),
+        .lc_state_i            (lc_state_probe_o),
+        .lc_dec_data_i         (lc_dec_data_probe_o),
         .jtag_id_i             (jtag_id_probe_o),
         .efuse_read_error_i    (efuse_read_error_o),
         .efuse_read_done_i     (efuse_read_done_o),
@@ -7035,14 +7425,18 @@ module sep_uvm_top
         .iso_slv_bresp_i       (iso_slv_bresp_probe_o),
         .iso_slv_rresp_i       (iso_slv_rresp_probe_o),
         // Entropy taps of the EDN auto-mode sequence, the stream-adapter FIFO,
-        // the lane 0 sample-clock divider, the counter-copy inject, the
-        // conditioner output, the seed packer and the CSRNG seed handshake.
+        // the lane 0 sample-clock divider, the ESRC downsample and decorrelator
+        // counts, the counter-copy inject, the conditioner output, the seed
+        // packer and the CSRNG seed handshake.
         .edn_csrng_cmd_valid_i (edn_csrng_cmd_valid_o),
         .edn_csrng_cmd_ready_i (edn_csrng_cmd_ready_o),
         .edn_csrng_cmd_bus_i   (edn_csrng_cmd_bus_o),
         .drbg_adapter_push_i   (drbg_adapter_push_o),
         .esrc_rosc_clk_i       (entropy_rosc_sample_clk_i),
         .esrc_sample_clk0_i    (esrc_sample_clk_lane0_o),
+        .esrc_ds_count_i       (esrc_downsample_count_o),
+        .esrc_stream_gated_i   (esrc_stream_valid_gated_o),
+        .esrc_div0_i           (esrc_decor_div_lane0_o),
         .esrc_cntr_inj_i       (esrc_cntr_inject_i === 1'b1),
         .esrc_compress_data_i  (esrc_compress_data_o),
         .seed_word_ready_i     (`SEP_DRBG.u_csrng_seed_adapter.csrng_word_ready_o),
@@ -7076,6 +7470,7 @@ module sep_uvm_top
         .lockstep_ctrl_i       (lockstep_ctrl_i),
         .lockstep_status_i     (lockstep_status_o.corruption_detected),
         .dbg_in_araddr_i       (pr_dbg_in_araddr_o),
+        .sep_ras_i             (sep_ras_probe_o),
         // Key Manager taps of the feature points (docs/SEP_FCOV.adoc, Key
         // Manager groups, Sampled signals): read-only, no force.
         .km_unrec_port_i       (km_unrecoverable_err_o),
@@ -7100,7 +7495,6 @@ module sep_uvm_top
 `undef FC_AES
 `undef FC_KMAC
 `undef FC_OTBN
-`endif
 
 `undef SEP_ESRC
 `undef SEP_DRBG

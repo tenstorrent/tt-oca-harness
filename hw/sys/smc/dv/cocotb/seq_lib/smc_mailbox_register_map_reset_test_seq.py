@@ -9,6 +9,7 @@ smc clk_rst.adoc, interrupts.adoc, periphs.adoc.
 from __future__ import annotations
 
 import os
+import random
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -40,6 +41,11 @@ IDLE_GAP_CYCLES = 512
 POLL_CAP = 64
 NUM_PAIRS = 32
 REPRESENTATIVE = (0, 1, 15, 16, 31)
+# The SMC mailbox depth (periphs.adoc); WIRQT / RIRQT values at or above it read back depth - 1
+# (axil_mailbox.rdl). Drawn thresholds are taken from [MAILBOX_DEPTH, THRESHOLD_DRAW_MAX] so that
+# every seed grades the reduction; the written-value cell below the depth is the pinned 1.
+MAILBOX_DEPTH = 2
+THRESHOLD_DRAW_MAX = 1 << 16
 SIDE = {"A": "OUTBOUND", "B": "INBOUND"}
 OKAY, ERROR = "okay", "error"
 
@@ -113,6 +119,37 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         self._chk_marks: list[tuple[str, int]] = []
         self._latency = [0, 0]
         self._waits: dict[str, tuple] = {}
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        rng = random.Random(self.seed)
+        # Pair-0 thresholds and enable (S8), written after the pinned 1 / 1 / 5 cells: WIRQT /
+        # RIRQT in [MAILBOX_DEPTH, THRESHOLD_DRAW_MAX], at or above the depth so that the read-back
+        # is the reduction MAILBOX_DEPTH - 1 in every seed; IRQEN in [1, 7], masked to its three
+        # bits.
+        self.wirqt = rng.randint(MAILBOX_DEPTH, THRESHOLD_DRAW_MAX)
+        self.rirqt = rng.randint(MAILBOX_DEPTH, THRESHOLD_DRAW_MAX)
+        self.irqen = rng.randint(1, 7)
+        # Data words of the pair-31 depth leg, the idle-gap legs and the grouped leg: distinct
+        # 64-bit words.
+        words = set()
+        while len(words) < 7:
+            words.add(rng.getrandbits(64))
+        self.words = sorted(words, key=lambda w: rng.random())
+        # Order in which the five representative pairs are read (S4).
+        self.rep_order = rng.sample(REPRESENTATIVE, len(REPRESENTATIVE))
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: WIRQT 0x%x RIRQT 0x%x IRQEN 0x%x; words %s; "
+            "representative pair order %s",
+            self.seed,
+            self.wirqt,
+            self.rirqt,
+            self.irqen,
+            [f"0x{w:016x}" for w in self.words],
+            self.rep_order,
+        )
+
+    @staticmethod
+    def _threshold_readback(value: int) -> int:
+        return value if value < MAILBOX_DEPTH else MAILBOX_DEPTH - 1
 
     def _mark_step(self, step_id: str) -> None:
         self._stamps.append((step_id, int(get_sim_time("ps"))))
@@ -238,7 +275,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         assert first == (0, 0, 0) and second == (0, 0, 0), f"vectors {first} then {second}"
         self._mark_step("S3")
         reads, upper = 0, {}
-        for pair in REPRESENTATIVE:
+        for pair in self.rep_order:
             for side in "AB":
                 for reg, mask, reset in RESET_REGS:
                     val = await self._val(f"RST_{reg}_{pair}{side}", pair, side, reg)
@@ -256,7 +293,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             f"CTRL[1:0]==0; bits outside the defined fields nonzero in {len(upper)} reads "
             f"{upper} (not specified, measured); the zero reset values cannot fail on a missing "
             "reset under the 2-state build (bench limit); STATUS[0]=1 is the discriminating "
-            "reset leg",
+            f"reset leg; drawn=seed {self.seed} pair order {self.rep_order}",
         )
 
         reads = 0
@@ -339,18 +376,31 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             for reg, mask in (("ERROR_FLAGS", 3), ("IRQS", 7), ("IRQP", 7), ("CTRL", 3)):
                 val = await self._val(f"S8_{reg}_{side}", 0, side, reg)
                 assert val & mask == 0, f"pair 0 {side} {reg} 0x{val:x}"
-            for reg, value, mask in (
-                ("WIRQT", 1, WIRQT_MASK),
-                ("RIRQT", 1, RIRQT_MASK),
-                ("IRQEN", 5, 7),
-            ):
-                await self._wr(f"S8_{reg}_{side}", 0, side, reg, value)
-                for other, omask, _ in RESET_REGS:
-                    if other in ("WIRQT", "RIRQT", "IRQEN"):
-                        val = await self._val(f"S8_RB_{reg}_{other}_{side}", 0, side, other)
-                        want = value if other == reg else 0
-                        assert val & omask == want, f"{reg}={value}: {other} read 0x{val:x}"
-                await self._wr(f"S8_{reg}_ZERO_{side}", 0, side, reg, 0)
+            # The pinned 1 / 1 / 5 leg first (the written value read back below the depth), then
+            # the drawn triple (the thresholds read back as the reduction), 0 restored after each.
+            pinned = (("WIRQT", 1, WIRQT_MASK, 1), ("RIRQT", 1, RIRQT_MASK, 1), ("IRQEN", 5, 7, 5))
+            drawn = (
+                ("WIRQT", self.wirqt, WIRQT_MASK, self._threshold_readback(self.wirqt)),
+                ("RIRQT", self.rirqt, RIRQT_MASK, self._threshold_readback(self.rirqt)),
+                ("IRQEN", self.irqen, 7, self.irqen),
+            )
+            for leg, triple in (("", pinned), ("DRAWN_", drawn)):
+                for reg, value, mask, back in triple:
+                    if leg and reg != "IRQEN":
+                        assert value >= MAILBOX_DEPTH, (
+                            f"{reg}=0x{value:x}: below the depth {MAILBOX_DEPTH}, no reduction"
+                        )
+                    await self._wr(f"S8_{leg}{reg}_{side}", 0, side, reg, value)
+                    for other, omask, _ in RESET_REGS:
+                        if other in ("WIRQT", "RIRQT", "IRQEN"):
+                            val = await self._val(
+                                f"S8_{leg}RB_{reg}_{other}_{side}", 0, side, other
+                            )
+                            want = back if other == reg else 0
+                            assert val & omask == want, (
+                                f"{reg}=0x{value:x}: {other} read 0x{val:x}, want 0x{want:x}"
+                            )
+                    await self._wr(f"S8_{leg}{reg}_ZERO_{side}", 0, side, reg, 0)
             seen[side] = await self._empty_read(f"S8_RD_{side}", 0, side)
             await self._val(f"S8_EF_{side}", 0, side, "ERROR_FLAGS")
             await self._wr(f"S8_ACK_{side}", 0, side, "IRQS", EIRQ)
@@ -359,7 +409,11 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             "CHK-REGISTER-OFFSETS-PAIR0",
             f"pair 0 A and B: WRITE_DATA read OKAY 0x{WRITE_DATA_EMPTY_LOW:08x}, READ_DATA read "
             f"SLVERR 0x{seen['A'] & 0xFFFFFFFF:08x}/0x{seen['B'] & 0xFFFFFFFF:08x}, STATUS[3:0]=1, "
-            "ERROR_FLAGS/IRQS/IRQP/CTRL 0, WIRQT/RIRQT/IRQEN each read back only its own value",
+            "ERROR_FLAGS/IRQS/IRQP/CTRL 0, WIRQT/RIRQT/IRQEN each read back only its own value at "
+            "the pinned 1 / 1 / 5 (read back 1 / 1 / 5) and at the drawn values; "
+            f"drawn=seed {self.seed} WIRQT 0x{self.wirqt:x} (read back "
+            f"{self._threshold_readback(self.wirqt)}) RIRQT 0x{self.rirqt:x} (read back "
+            f"{self._threshold_readback(self.rirqt)}) IRQEN 0x{self.irqen:x}",
         )
 
         await self._wr("S9_WIRQT", 15, "A", "WIRQT", 1)
@@ -402,7 +456,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             f"num_mailboxes[45:40]={attrs >> 40 & 0x3F} (raw, no compare; not specified, measured)",
         )
 
-        w0, w1, w2 = 0x3100_0000_0000_0000, 0x3100_0000_0000_0001, 0x3100_0000_0000_0002
+        w0, w1, w2 = self.words[0], self.words[1], self.words[2]
         await self._wr("S12_W0", 31, "A", "WRITE_DATA", w0)
         await self._wr("S12_W1", 31, "A", "WRITE_DATA", w1)
         await self._wr("S12_EN", 31, "A", "IRQEN", EIRQ)
@@ -425,7 +479,8 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-PAIR31-DEPTH-TWO",
             f"pair 31: two writes OKAY popped 0x{w0:016x} then 0x{w1:016x} at the inbound "
-            f"aperture; third write answered SLVERR (resp {third.resp_code})",
+            f"aperture; third write answered SLVERR (resp {third.resp_code}); drawn=seed "
+            f"{self.seed} words 0x{w0:016x} 0x{w1:016x} 0x{w2:016x}",
         )
         self._log_chk(
             "CHK-IRQ-VECTORS-LOW-AT-RESET",
@@ -444,7 +499,7 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             f"after {fall_in} rises (vectors {vec_in_off})",
         )
 
-        word = 0x5000_0000_0000_0005
+        word = self.words[3]
         await self._idle_gap()
         await self._timed_write(5, word)
         await self._pop("S13_POP", 5, "B", word)
@@ -453,10 +508,10 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             "CHK-CG-FIRST-ACCESS-AFTER-IDLE",
             f"idle gap {IDLE_GAP_CYCLES} clk_smc_i cycles (stimulus); write answered OKAY and "
             f"the pop returned 0x{word:016x}; completion latency={self._latency[0]} clk_smc_i "
-            "cycles (not specified, measured)",
+            f"cycles (not specified, measured); drawn=seed {self.seed} word 0x{word:016x}",
         )
 
-        word = 0x6000_0000_0000_0006
+        word = self.words[4]
         await self._wr("S14_PUSH", 6, "A", "WRITE_DATA", word)
         await self._wr("S14_WIRQT", 6, "A", "WIRQT", 1)
         await self._wr("S14_IRQEN", 6, "A", "IRQEN", 5)
@@ -472,10 +527,11 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-CG-RETENTION-ACROSS-IDLE",
             f"after {IDLE_GAP_CYCLES} idle cycles WIRQT={wirqt} IRQEN[2:0]=0x{irqen:x} "
-            f"and the queued word popped unchanged 0x{word:016x}",
+            f"and the queued word popped unchanged 0x{word:016x}; drawn=seed {self.seed} word "
+            f"0x{word:016x}",
         )
 
-        a, b = 0x8000_0000_0000_000A, 0x8000_0000_0000_000B
+        a, b = self.words[5], self.words[6]
         writes = [
             self._item(f"S15_W{n}", SmcSysAxiOp.WRITE, 8, "A", "WRITE_DATA", v)
             for n, v in enumerate((a, b))
@@ -491,7 +547,8 @@ class smc_mailbox_register_map_reset_test_seq(SmcCsrSeq):
             "CHK-CG-BACK-TO-BACK-IN-ORDER",
             f"two grouped writes resp {[m.resp_code for m in writes]} then two grouped reads "
             f"resp {[m.resp_code for m in reads]} returned "
-            f"0x{reads[0].rdata:016x} then 0x{reads[1].rdata:016x}",
+            f"0x{reads[0].rdata:016x} then 0x{reads[1].rdata:016x}; drawn=seed {self.seed} "
+            f"words 0x{a:016x} 0x{b:016x}",
         )
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)

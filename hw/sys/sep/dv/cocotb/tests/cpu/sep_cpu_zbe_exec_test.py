@@ -175,7 +175,7 @@ class sep_cpu_zbe_exec_test(sep_base_test):
         if missing:
             raise AssertionError(f"instruction image lacks the encodings of {missing}")
         self.logger.info(
-            "CTL-ZBE-ENC LOG encodings_in_image=%d/%d (independent encoder) %s",
+            "CTRL-ZBE-ENC LOG encodings_in_image=%d/%d (independent encoder) %s",
             len(OPS),
             len(OPS),
             " ".join(f"{name}=0x{enc:08x}" for name, enc in OPS),

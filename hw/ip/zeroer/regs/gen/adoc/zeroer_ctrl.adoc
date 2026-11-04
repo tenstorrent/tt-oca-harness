@@ -15,6 +15,13 @@ Control and status registers for the AXI memory-zeroing engine.
 | 0x8 | <<reg-{regmap-instance}-zeroer_ctrl-SIZE,SIZE>> | RW a| -
 | 0x10 | <<reg-{regmap-instance}-zeroer_ctrl-CTRL_STATUS,CTRL_STATUS>> | RW a| Any write to this register triggers the start of the zeroer, irrespective of WSTRB,
 including a write with no byte lanes enabled. The start is ignored while SIZE is 0.
+DEST_ADDR and SIZE are captured when a clear starts; later writes to them do not
+affect the clear in progress. While a clear is still issuing write bursts, a write
+to this register completes on the bus but does not start a clear. Once the last
+burst of a clear has been issued, a write starts a new clear even while write
+responses of the previous clear are outstanding; STATUS then reads 1 across both
+clears, and the completion interrupt pulses once, when STATUS returns to 0.
+Wait for STATUS to read 0 before writing this register again.
 |===
 
 [#reg-{regmap-instance}-zeroer_ctrl-DEST_ADDR]
@@ -23,7 +30,7 @@ including a write with no byte lanes enabled. The start is ignored while SIZE is
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `DEST_ADDR` | RW | 0x0 a| Byte address to write zeros to
+| 63:0 | `DEST_ADDR` | RW | 0x0 a| Byte address to write zeros to. Bits at and above the master address width, 56 in the SMC, are ignored: a clear starts at the address truncated to that width. Program them as zero; the zeroer truncates an out-of-range value rather than rejecting it.
 |===
 
 [#reg-{regmap-instance}-zeroer_ctrl-SIZE]

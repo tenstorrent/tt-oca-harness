@@ -35,7 +35,7 @@ Each effective write to a register other than KEY locks the watchdog, and change
 To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.
 | 27:14 | `rsvd2` | R | 0x0 a| Reserved
 | 13 | `wdogcoreawake` | RW | 0x0 a| Enable WDT to only count when the core is not in reset
-| 12 | `wdogenalways` | RW | 0x0 a| Enable WDT to always count. This has priority over wdogcoreawake
+| 12 | `wdogenalways` | RW | 0x0 a| Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.
 | 11:10 | `rsvd1` | R | 0x0 a| Reserved
 | 9 | `wdogzerocmp` | RW | 0x0 a| Enable cycle counter to be reset to 0 when compare value has been reached
 | 8 | `wdogrsten` | RW | 0x0 a| Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt

@@ -1,5 +1,5 @@
 diff --git a/DOC/MAS/architecture.adoc b/DOC/MAS/architecture.adoc
-index fc92a1e..089ea31 100644
+index e817899..0a475b8 100644
 --- a/DOC/MAS/architecture.adoc
 +++ b/DOC/MAS/architecture.adoc
 @@ -25,7 +25,7 @@ This section describes the block diagram of AOU_CORE.
@@ -26,16 +26,16 @@ index fc92a1e..089ea31 100644
  [caption=""]
  .Figure 4. TX_CORE QoS Scheme
  [[figure-4]]
-@@ -53,6 +55,8 @@ When multiple RP requests are issued from the TX core, a QoS scheme is applied.
+@@ -55,6 +57,8 @@ The scheme arbitrates the AW and AR channels between RPs. W data is sent in the
  
- *Round-Robin (ARB_MODE = 2pass:[']b00)* : Round-robin arbitration between valid RP. When a handshake occurs, the RP that will receive the next grant is determined.
+ *Round-Robin (ARB_MODE = 2pass:[']b00)* : Round-robin arbitration between valid RP. When a handshake occurs, the RP that will receive the next grant is determined. ARB_MODE = 2pass:[']b11 is reserved and behaves as Round-Robin.
  
 +<<figure-5>> illustrates grant rotation among valid resource-plane requests.
 +
  [caption=""]
  .Figure 5. Round-Robin arbitration example
  [[figure-5]]
-@@ -66,6 +70,8 @@ By default, arbitration is performed in the order *High → Normal → Low*. If
+@@ -68,6 +72,8 @@ By default, arbitration is performed in the order *High → Normal → Low*. If
  
  If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.
  
@@ -44,16 +44,16 @@ index fc92a1e..089ea31 100644
  [caption=""]
  .Figure 6. Port QoS arbitration example
  [[figure-6]]
-@@ -73,6 +79,8 @@ image::image6.png[Figure 6. Port QoS arbitration example]
+@@ -75,6 +81,8 @@ image::image6.png[Figure 6. Port QoS arbitration example]
  
- *AXI QoS (ARB_MODE = 2pass:[']b10):* For each RP, the QoS level is determined by the value of the AXI QoS field. Arbitration is performed based on the AXI QoS value. For the 4-bit AXI QoS field, the High and Normal boundaries are the SFR fields [.monospaced]#++AXI_QOS_TO_HP++# and [.monospaced]#++AXI_QOS_TO_NP++#. A QoS value at or above [.monospaced]#++AXI_QOS_TO_HP++# is High, a value at or above [.monospaced]#++AXI_QOS_TO_NP++# and below [.monospaced]#++AXI_QOS_TO_HP++# is Normal, and a value below [.monospaced]#++AXI_QOS_TO_NP++# is Low. [.monospaced]#++AXI_QOS_TO_HP++# must be greater than [.monospaced]#++AXI_QOS_TO_NP++#; otherwise the Normal tier is empty. The reset pair is High [.monospaced]#++0xA++# and Normal [.monospaced]#++0x5++#, so QoS 10–15 is High, 5–9 is Normal, and 0–4 is Low. By default, arbitration is performed in the order *High → Normal → Low*. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority. If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.
+ *AXI QoS (ARB_MODE = 2pass:[']b10):* For each RP, the QoS level is determined by the value of the AXI QoS field. Arbitration is performed based on the AXI QoS value. For the 4-bit AXI QoS field, the High and Normal boundaries are the SFR fields [.monospaced]#++AXI_QOS_TO_HP++# and [.monospaced]#++AXI_QOS_TO_NP++#. The classifier tests [.monospaced]#++AXI_QOS_TO_HP++# first: a QoS value at or above [.monospaced]#++AXI_QOS_TO_HP++# is High. Otherwise a value at or above [.monospaced]#++AXI_QOS_TO_NP++# is Normal, and a value below [.monospaced]#++AXI_QOS_TO_NP++# is Low. [.monospaced]#++AXI_QOS_TO_HP++# must be greater than [.monospaced]#++AXI_QOS_TO_NP++#. If it is not, the Normal tier is empty: every value at or above [.monospaced]#++AXI_QOS_TO_HP++# is High, including values that are also at or above [.monospaced]#++AXI_QOS_TO_NP++#, and every value below [.monospaced]#++AXI_QOS_TO_HP++# is Low. The reset pair is High [.monospaced]#++0xA++# and Normal [.monospaced]#++0x5++#, so QoS 10–15 is High, 5–9 is Normal, and 0–4 is Low. By default, arbitration is performed in the order *High → Normal → Low*. If a timeout occurs while a request is at Normal or Low priority, the request is promoted and treated as High priority (see <<aou-321-starvation-prevention-timer>>). If multiple RPs have the same priority, arbitration among them is performed in a round-robin manner.
  
 +<<figure-7>> illustrates arbitration using the AXI QoS fields.
 +
  [caption=""]
  .Figure 7. AXI QoS arbitration example
  [[figure-7]]
-@@ -86,7 +94,7 @@ image::image7.png[Figure 7. AXI QoS arbitration example]
+@@ -95,7 +103,7 @@ The timer runs in the Round-Robin scheme too but has no effect there.
  [[figure-8]]
  image::image8.png[Figure 8. Block Diagram of AOU_RX_CORE]
  
@@ -62,7 +62,7 @@ index fc92a1e..089ea31 100644
  
  To ensure that the local die can support AXI transfers regardless of the AXI data width of the remote die, AOU_RX_CORE integrates both Downsizer and Upsizer modules internally.
  
-@@ -99,18 +107,22 @@ As illustrated in the figure above, the granularity of data transmitted from the
+@@ -108,18 +116,22 @@ As illustrated in the figure above, the granularity of data transmitted from the
  [[figure-9]]
  image::image9.png[Figure 9. Architecture of Chunk Decoder]
  
@@ -86,7 +86,7 @@ index fc92a1e..089ea31 100644
  [caption=""]
  .Figure 11. Req / Resp FIFO
  [[figure-11]]
-@@ -149,14 +161,19 @@ image::image12.png[Figure 12. AXI4MUX_3X1_TOP]
+@@ -158,14 +170,19 @@ image::image12.png[Figure 12. AXI4MUX_3X1_TOP]
  
  According to the AoU specification, even if the data width differs between chips, they must be able to transmit AXI transfers to each other. Because the remote die may issue read or write transactions with data widths of 256, 512, or 1024 bits, the local die is responsible for converting the data to align with its own bus data width. The response must then be reformatted to match the original request size before being returned.
  
@@ -107,7 +107,7 @@ index fc92a1e..089ea31 100644
  |=================================================================================================
  |Local AXI_DATA_WD |Variant instantiated |CH0 (256b remote) |CH1 (512b remote) |CH2 (1024b remote)
  |256 |[.monospaced]#++AOU_AXI4MUX_3X1_256++# |Bypass |Downsizer |Downsizer
-@@ -207,7 +224,12 @@ The address generators recompute address bits [11:0] of each sub-burst; bits [AD
+@@ -216,7 +233,12 @@ The address generators recompute address bits [11:0] of each sub-burst; bits [AD
  
  The [.monospaced]#++MAX_AxBURSTLEN++# value must be of the form 2^n - 1. Legal values are:
  
@@ -120,7 +120,7 @@ index fc92a1e..089ea31 100644
  |=======================================
  |MAX_AxBURSTLEN |Max beats per sub-burst
  |0 |1
-@@ -235,7 +257,12 @@ The [.monospaced]#++MAX_AxBURSTLEN++# value must be of the form 2^n - 1. Legal v
+@@ -246,7 +268,12 @@ The [.monospaced]#++MAX_AxBURSTLEN++# value must be of the form 2^n - 1. Legal v
  [[aou-364-sfr-configuration]]
  ==== 3.6.4. SFR Configuration
  
@@ -133,7 +133,7 @@ index fc92a1e..089ea31 100644
  |======================================================================================
  |SFR |Field |Description
  |[.monospaced]#++AOU_CON0++# |[.monospaced]#++AXI_SPLIT_TR_EN++# |Global enable (reserved, tied inactive in current RTL)
-@@ -265,8 +292,10 @@ Early response applies only to *bufferable* writes ([.monospaced]#++AWCACHE[0] =
+@@ -276,8 +303,10 @@ Early response applies only to *bufferable* writes ([.monospaced]#++AWCACHE[0] =
  [[aou-372-transaction-flow----normal-case]]
  ==== 3.7.2. Transaction Flow \-- Normal Case
  
@@ -145,7 +145,7 @@ index fc92a1e..089ea31 100644
  image::early-response-normal-flow.svg[Message flow for a bufferable write with a successful early response]
  
  When the actual B response arrives from the remote die for a transaction that already received an early response, the controller consumes it internally: [.monospaced]#++O_AXI_S_BVALID++# is held low (the local AXI manager sees no second response) while [.monospaced]#++O_AXI_M_BREADY++# is asserted high (the response is drained from the AOU RX path).
-@@ -276,6 +305,11 @@ When the actual B response arrives from the remote die for a transaction that al
+@@ -287,6 +316,11 @@ When the actual B response arrives from the remote die for a transaction that al
  
  If the actual B response from the remote die carries an error ([.monospaced]#++BRESP[1] = 1++#, indicating SLVERR or DECERR), the error cannot be reported via the AXI B channel because the early OKAY response was already returned to the local AXI manager. Instead, the error is reported via interrupt and SFR capture.
  
@@ -157,7 +157,7 @@ index fc92a1e..089ea31 100644
  image::early-response-error-flow.svg[Message flow for a bufferable write whose consumed response carries an error]
  
  The interrupt fires when the consumed response has [.monospaced]#++BRESP[1] = 1++#. SW must:
-@@ -289,7 +323,12 @@ The interrupt fires when the consumed response has [.monospaced]#++BRESP[1] = 1+
+@@ -300,7 +334,12 @@ The interrupt fires when the consumed response has [.monospaced]#++BRESP[1] = 1+
  
  The [.monospaced]#++AOU_EARLY_TABLE++# inside the controller maintains a tracking table with [.monospaced]#++WR_MO_CNT++# entries (matching the subordinate write outstanding count). Each entry records:
  
@@ -170,7 +170,7 @@ index fc92a1e..089ea31 100644
  |=======================================================================================================================================
  |Field |Purpose
  |[.monospaced]#++id++# |AXI write ID ([.monospaced]#++AWID++#)
-@@ -317,6 +356,11 @@ The pending counter [.monospaced]#++r_aw_cnt++# is [.monospaced]#++PENDING_CNT_W
+@@ -328,6 +367,11 @@ The pending counter [.monospaced]#++r_aw_cnt++# is [.monospaced]#++PENDING_CNT_W
  
  A write-transaction watchdog ([.monospaced]#++AOU_WRITE_TRANS_WDT++#, one per RP inside the controller) serves as the diagnostic for system-hang detection. When [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WDT_EN = 1++#, it counts I_CLK cycles in which the RP has writes outstanding ([.monospaced]#++r_aw_cnt != 0++#) and neither an AW nor a B handshake occurs; either handshake restarts the count. When the count reaches [.monospaced]#++WRITE_EARLY_RESPONSE_WDT_CTL.WDT_THRESHOLD++# (shared by all RPs, reset 0xC3500 = 800000 cycles) the sticky status bit [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WDT_TRANS_TIMEOUT_ERR++# is set and the [.monospaced]#++INT_EARLY_WDT_ERR++# interrupt is raised unless masked by [.monospaced]#++AOU_INTERRUPT_MASK.INT_EARLY_WDT_MASK++#. Software clears the status bit (W1C); the count restarts only on a handshake, so a hung remote die keeps the bit set. See xref:aou-4-interrupt[Section 4].
  
@@ -182,7 +182,7 @@ index fc92a1e..089ea31 100644
  image::write-outstanding-backpressure.svg["Write-outstanding queue filling, stalling, and draining as early-table entries free up"]
  
  [[aou-376-mixed-ordering----bufferable-before-non-bufferable-same-id]]
-@@ -333,6 +377,11 @@ When a bufferable write (TXN0) is followed by a non-bufferable write (TXN1) on t
+@@ -344,6 +388,11 @@ When a bufferable write (TXN0) is followed by a non-bufferable write (TXN1) on t
  
  The local AXI manager sees: early B for TXN0 first, then actual B for TXN1 \-- correct AXI ID ordering is preserved.
  
@@ -194,7 +194,7 @@ index fc92a1e..089ea31 100644
  image::mixed-order-bufferable-first.svg[Mixed-ordering flow with a bufferable write followed by a non-bufferable write on the same AXI ID]
  
  [[aou-377-mixed-ordering----non-bufferable-before-bufferable-same-id]]
-@@ -347,6 +396,11 @@ When a non-bufferable write (TXN0) is followed by a bufferable write (TXN1) on t
+@@ -358,6 +407,11 @@ When a non-bufferable write (TXN0) is followed by a bufferable write (TXN1) on t
  
  This is the key latency impact of mixed-cacheability ordering: the bufferable writepass:[']s early response is delayed until the preceding non-bufferable same-ID write fully completes its round trip through the remote die. The early-response latency benefit is lost for that transaction. Software or interconnect designers should be aware that interleaving non-bufferable writes ahead of bufferable writes on the same ID negates the early-response advantage for those bufferable transactions.
  
@@ -206,7 +206,7 @@ index fc92a1e..089ea31 100644
  image::mixed-order-nonbufferable-first.svg[Mixed-ordering flow with a non-bufferable write followed by a bufferable write on the same AXI ID]
  
  [[aou-378-enabledisable-procedure]]
-@@ -367,7 +421,12 @@ The same rule applies to [.monospaced]#++EARLY_ALWAYS_EN++#: change it only whil
+@@ -378,7 +432,12 @@ The same rule applies to [.monospaced]#++EARLY_ALWAYS_EN++#: change it only whil
  
  The [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++# register (one per RP: RP0 at [.monospaced]#++0x0028++#, RP1 at [.monospaced]#++0x0040++#, RP2 at [.monospaced]#++0x0058++#, RP3 at [.monospaced]#++0x0070++#) contains:
  
@@ -219,7 +219,7 @@ index fc92a1e..089ea31 100644
  |==============================================================================================
  |Field |Bits |Access |Description
  |EARLY_BRESP_EN |[0] |RW |Enable early B response for bufferable, non-exclusive writes on this RP.
-@@ -420,6 +479,8 @@ When activated, the aggregator:
+@@ -432,6 +491,8 @@ When activated, the aggregator:
  
  A synchronous FIFO of [.monospaced]#++RPn_AGG_WCH_FIFO_DEPTH++# entries (default 16; it must exceed the longest write burst the local bus issues) decouples the AW and W channels. The AW is issued on the master side only after confirming that sufficient W FIFO space is available for the recalculated [.monospaced]#++AWLEN++#, preventing deadlocks when the downstream bus back-pressures the W channel.
  
@@ -228,7 +228,7 @@ index fc92a1e..089ea31 100644
  [caption=""]
  .Figure 13. Write Aggregation \-- Narrow-to-Wide Beat Merging
  [[figure-13]]
-@@ -435,7 +496,11 @@ The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR trans
+@@ -447,7 +508,11 @@ The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR trans
  [[aou-384-sfr-fields]]
  ==== 3.8.4. SFR Fields
  
@@ -240,7 +240,7 @@ index fc92a1e..089ea31 100644
  |====================================================================
  |SFR |Field |Bits |Description
  |[.monospaced]#++AOU_CON0++# |[.monospaced]#++RP0_AXI_AGGREGATOR_EN++# |[20] |Enable aggregator for RP0
-@@ -454,7 +519,7 @@ These fields must be configured before activation and must not be changed during
+@@ -466,7 +531,7 @@ These fields must be configured before activation and must not be changed during
  [[figure-14]]
  image::image13.png[Figure 14. Block Diagram of AOU_CRD_CTRL]
  
@@ -249,7 +249,7 @@ index fc92a1e..089ea31 100644
  
  Rx Credit**
  
-@@ -476,7 +541,9 @@ RX AR MAX CREDIT = RX AR FIFO DEPTH x ReadReq Granules
+@@ -488,7 +553,9 @@ RX AR MAX CREDIT = RX AR FIFO DEPTH x ReadReq Granules
  RX B  MAX CREDIT = RX B  FIFO DEPTH x WriteResp Granules
  ....
  
@@ -260,7 +260,7 @@ index fc92a1e..089ea31 100644
  
  [caption=""]
  .Figure 15. Example of WDATA and WSTRB FIFO Operation
-@@ -488,6 +555,7 @@ Occupying Data entry per message = WDATA Width / DATA FIFO Width
+@@ -500,6 +567,7 @@ Occupying Data entry per message = WDATA Width / DATA FIFO Width
  ....
  
  [[table-1]]
@@ -268,7 +268,7 @@ index fc92a1e..089ea31 100644
  
  [width="99%",cols="20%,16%,16%,16%,16%,16%",options="header",]
  |============================================================================================================================================================
-@@ -497,9 +565,9 @@ Occupying Data entry per message = WDATA Width / DATA FIFO Width
+@@ -509,9 +577,9 @@ Occupying Data entry per message = WDATA Width / DATA FIFO Width
  |1024b |30 |4 |7.5 |pass:[-] |7.5
  |============================================================================================================================================================
  
@@ -279,7 +279,7 @@ index fc92a1e..089ea31 100644
  
  [width="99%",cols="20%,16%,16%,16%,16%,16%",options="header",]
  |============================================================================================================================================================
-@@ -509,9 +577,8 @@ _Table 1. WriteData Credit Calculation_
+@@ -521,9 +589,8 @@ _Table 1. WriteData Credit Calculation_
  |1024b |27 |4 |6.75 |pass:[-] |6.75
  |============================================================================================================================================================
  
@@ -290,7 +290,7 @@ index fc92a1e..089ea31 100644
  
  ....
  RX W MAX CREDIT = (RX W FIFO DEPTH / 4) x WriteData Full1024bit Granules
-@@ -519,14 +586,19 @@ RX W MAX CREDIT = (RX W FIFO DEPTH / 4) x WriteData Full1024bit Granules
+@@ -531,14 +598,19 @@ RX W MAX CREDIT = (RX W FIFO DEPTH / 4) x WriteData Full1024bit Granules
  
  *In the case of RDATA,* Receiving RDATA from the remote die implies that the local die has already issued a ReadReq message. The ARSIZE used when sending is determined by the AXI_DATA_WD of the local die. For example, if AXI_DATA_WD is 512, the AR will request RDATA of 512 bits or less, and the received RDATA will therefore be 512 or 256 bits wide.
  
@@ -310,7 +310,7 @@ index fc92a1e..089ea31 100644
  |===============================================================================================================================
  |RDATA Width |Granule size |Occupying entry (RDATA width / FIFO width) |Granules per FIFO entry (Granule size / Occupying entry)
  |256 |8 |1 |8
-@@ -534,7 +606,6 @@ image::image15.png[Figure 16. Example of RDATA FIFO Operation]
+@@ -546,7 +618,6 @@ image::image15.png[Figure 16. Example of RDATA FIFO Operation]
  |1024 |27 |4 |6.75
  |===============================================================================================================================
  
@@ -318,7 +318,7 @@ index fc92a1e..089ea31 100644
  
  Similarly, for RDATA, credits must be advertised conservatively by considering the maximum data width associated with AXI_DATA_WD. As AXI_DATA_WD increases, the maximum credit that can be advertised decreases. Therefore, credit shall always be calculated based on AXI_DATA_WD. For example, if AXI_DATA_WD is 512, the possible RDATA widths are 256, 512, and credit must be determined under the conservative assumption that all RDATA widths are 512bits. Likewise, if AXI_DATA_WD is 1024, the possible RDATA widths are 256, 512, and 1024, and credits must be determined under the conservative assumption that all RDATA are 1024bits.
  
-@@ -573,6 +644,8 @@ This configuration must remain static and must be programmed before activation.
+@@ -585,6 +656,8 @@ This configuration must remain static and must be programmed before activation.
  
  When the local and remote dies have different [.monospaced]#++RP_COUNT++# values, the effective RP count is the smaller of the two. Unused RP slots in the [.monospaced]#++DEST_RP++# register are functionally donpass:[']t-care but should be set to non-overlapping values for clean credit routing (see xref:aou-3103-misconfiguration-behavior[Section 3.10.3]).
  
@@ -327,7 +327,7 @@ index fc92a1e..089ea31 100644
  [caption=""]
  .Figure 17. Resource Plane Remapping
  [[figure-17]]
-@@ -597,16 +670,22 @@ Software is responsible for ensuring uniqueness and symmetry of the [.monospaced
+@@ -609,16 +682,22 @@ Software is responsible for ensuring uniqueness and symmetry of the [.monospaced
  
  AOU_CORE supports all UCIe flit cancel mechanisms. The three cases \-- retransmit, flit partially valid, and full flit cancel \-- are handled by the [.monospaced]#++AOU_RX_FDI_IF++# submodule within RX_CORE.
  
@@ -350,7 +350,7 @@ index fc92a1e..089ea31 100644
  [caption=""]
  .Figure 20. UCIe Flit Cancel - Full Flit Cancel case
  [[figure-20]]
-@@ -617,7 +696,11 @@ image::image19.png[Figure 20. UCIe Flit Cancel - Full Flit Cancel case]
+@@ -629,7 +708,11 @@ image::image19.png[Figure 20. UCIe Flit Cancel - Full Flit Cancel case]
  
  The [.monospaced]#++AOU_RX_FDI_IF++# module uses the FDI [.monospaced]#++pl_valid++# and [.monospaced]#++pl_flit_cancel++# signals to determine how to handle each incoming chunk. Three cases are distinguished:
  
@@ -362,7 +362,7 @@ index fc92a1e..089ea31 100644
  |=============================================================================================================================================================================================================================================
  |[.monospaced]#++pl_valid++# |[.monospaced]#++pl_flit_cancel++# |Action
  |1 |0 |*Normal*: Phase counter increments. Chunk is stored in the staging buffer.
-@@ -649,6 +732,8 @@ ________________________________________________________________________________
+@@ -661,6 +744,8 @@ ________________________________________________________________________________
  
  The figures below illustrate an example of how only valid chunk data is delivered to RX_CORE. Within the design, [.monospaced]#++pl_data++#, [.monospaced]#++pl_valid++#, and [.monospaced]#++pl_flit_cancel++# are defined as part of the FDI interface. In contrast, [.monospaced]#++rx_chunk_data++# and [.monospaced]#++rx_chunk_data_valid++# represent the signals responsible for delivering valid chunks to RX_CORE.
  
@@ -372,7 +372,7 @@ index fc92a1e..089ea31 100644
  .Figure 21. Example of selecting valid chunks for RX_CORE
  [[figure-21]]
 diff --git a/DOC/MAS/interrupts-errors.adoc b/DOC/MAS/interrupts-errors.adoc
-index d16cde7..3d486b8 100644
+index a3253af..9f5ea23 100644
 --- a/DOC/MAS/interrupts-errors.adoc
 +++ b/DOC/MAS/interrupts-errors.adoc
 @@ -15,9 +15,12 @@ endif::[]
@@ -388,8 +388,8 @@ index d16cde7..3d486b8 100644
  |=================================================================================================================================
  |Interrupt Name |Access |Description
  |INT_ACTIVATE_START |W1C |Asserted when activation of the AoU Protocol layer is required.
-@@ -29,7 +32,6 @@ endif::[]
- |INT_REQ_LINKRESET |W1C |Asserted when AOU_CORE encounters AOU SPEC protocol violation. Request link to go LinkReset.
+@@ -30,7 +33,6 @@ endif::[]
+ |INT_FDI_LINK_DOWN |W1C |Asserted when the FDI link is lost (LinkError, LinkReset, Disabled or Reset; not Retrain or L1) while the AoU activation FSM is in ACTIVATE, ENABLED or DEACTIVATE, or in DISABLED with an ActivateReq already sent or received (its entry to ACTIVATE is cancelled). The activation FSM returns to DISABLED.
  |=================================================================================================================================
  
 -_Table 4. Interrupt Sources_
@@ -397,7 +397,7 @@ index d16cde7..3d486b8 100644
  * *INT_ACTIVATE_START*
  
 diff --git a/DOC/MAS/overview.adoc b/DOC/MAS/overview.adoc
-index c63d634..71407a0 100644
+index 7dad138..156d5e4 100644
 --- a/DOC/MAS/overview.adoc
 +++ b/DOC/MAS/overview.adoc
 @@ -43,6 +43,8 @@ The operating frequency of AOU_CORE targets 1 GHz and meets timing requirements
@@ -410,7 +410,7 @@ index c63d634..71407a0 100644
  .Figure 1. Block Diagram of AOU_CORE and function description
  [[figure-1]]
 diff --git a/DOC/MAS/ppa-appendices.adoc b/DOC/MAS/ppa-appendices.adoc
-index 741e775..ef9e207 100644
+index 75772e1..d185cd6 100644
 --- a/DOC/MAS/ppa-appendices.adoc
 +++ b/DOC/MAS/ppa-appendices.adoc
 @@ -14,9 +14,12 @@ endif::[]
@@ -512,8 +512,8 @@ index 741e775..ef9e207 100644
  |======================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
  |Version |Date |Author |Reviewer |Description of Change
  |v0.1 |2025/08/20 |Soyoung Min, Jaeyun Lee, Hojun Lee |Kwanho Kim |Initial version.
-@@ -171,18 +188,19 @@ ifndef::release[]
- | |2026/10/20 |Tenstorrent | |A protocol header whose MsgCredit field advertises no credit carries RP0 in MsgCredit[15:14]; previously the field followed the credit arbiter's parked grant (RP3 out of reset) on builds that do not implement that RP (3.9).
+@@ -173,18 +190,19 @@ ifndef::release[]
+ | |2026/10/23 |Tenstorrent | |New [.monospaced]#++INT_FDI_LINK_DOWN++# interrupt (status [.monospaced]#++AOU_INIT[12]++#, mask [.monospaced]#++AOU_INTERRUPT_MASK[10]++#, pin on [.monospaced]#++AOU_CORE_TOP++# and [.monospaced]#++AOU_TOP++#): the FDI link lost while the activation FSM is in ACTIVATE, ENABLED or DEACTIVATE; the FSM returns to DISABLED. [.monospaced]#++I_INT_FSM_IN_ACTIVE++# now means link established (asserted through Retrain and L1, falls only on a link loss); [.monospaced]#++O_FDI_LINK_UP++# is unchanged (4, 7.3, 7.3.6; integration guide 3.11, 3.12, 5, 8.5).
  |======================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
  
 -_Table 11. Record of Changes_

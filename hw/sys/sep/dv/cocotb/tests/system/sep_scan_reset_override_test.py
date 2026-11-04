@@ -50,9 +50,9 @@ Checkers:
 
 ``sep_test_en_pin_reach_test`` grades the clock-gater and AXI cell test
 inputs that ``test_en_i`` reaches. This leaf runs the same read-only walk
-(``env/sep_test_en_walk.py``, root ``u_dut``) and grades no pin. It logs
-``OBS-TEST-EN-PINS`` (the walk totals, the count of pins that follow
-``test_en_i`` and the path of every pin that does not) and ``OBS-STRAP-PINS``
+(``env/sep_test_en_walk.py``, root ``u_dut``) and grades no pin. It records
+``INFO-TEST-EN-PINS`` (the walk totals, the count of pins that follow
+``test_en_i`` and the path of every pin that does not) and ``INFO-STRAP-PINS``
 (the walked pins that move across the strap toggles).
 
 The graded window (owner code of this test) is open from the first test_en_i
@@ -157,16 +157,16 @@ class sep_scan_reset_override_test(sep_base_test):
         for p in walk.pins:
             found[p.cls].append((f"{p.path} ({p.cell})", p))
         self.logger.info(
-            "TEST-EN-WALK LOG: scopes=%d %s unwalkable=%d",
+            "INFO-TEST-EN-WALK LOG: scopes=%d %s unwalkable=%d",
             walk.scopes,
             " ".join(f"{c}={len(v)}" for c, v in found.items()),
             len(walk.unwalkable),
         )
         for u in walk.unwalkable:
-            self.logger.info("OBS-TEST-EN-UNWALKABLE: %s", u.label())
+            self.logger.info("INFO-TEST-EN-UNWALKABLE: %s", u.label())
         for cls, pins in found.items():
             for path, _pin in pins:
-                self.logger.info("TEST-EN-PIN LOG: class=%s pin=%s", cls, path)
+                self.logger.info("INFO-TEST-EN-PIN LOG: class=%s pin=%s", cls, path)
         return found
 
     def _pins(self) -> list[tuple[str, int | None]]:
@@ -174,7 +174,7 @@ class sep_scan_reset_override_test(sep_base_test):
 
     async def _set_test_en(self, v: int) -> None:
         """Drive test_en_i, wait up to PIN_BOUND cycles for every walked pin to
-        equal it, and record the pins that do not (OBS-TEST-EN-PINS)."""
+        equal it, and record the pins that do not (INFO-TEST-EN-PINS)."""
         dut = cocotb.top
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = v
@@ -224,7 +224,9 @@ class sep_scan_reset_override_test(sep_base_test):
             f"(strap={strap}): {moved[:4]}"
         )
         self.logger.info(
-            "STRAP-INDEP LOG: strap=%d secure_tm_o=%d unchanged across test_en_i 0,1,0", strap, tm0
+            "INFO-STRAP-INDEP LOG: strap=%d secure_tm_o=%d unchanged across test_en_i 0,1,0",
+            strap,
+            tm0,
         )
 
     # -- scan pulse -------------------------------------------------------------------
@@ -330,19 +332,19 @@ class sep_scan_reset_override_test(sep_base_test):
             await self._wait_tap(port, TAP_BOUND)
         await self._wait_tap("secure_tm_o", TAP_BOUND)
         self.tm_expect = 1
-        self.logger.info("CTL-STRAP-INDEP: strap=1 secure_tm_o=1 after sensing")
+        self.logger.info("CTRL-STRAP-INDEP: strap=1 secure_tm_o=1 after sensing")
 
         # Step 3: hierarchy walk.
         self.walk = self._walk()
         for cls, pins in self.walk.items():
-            self.logger.info("OBS-TEST-EN-WALK: class=%s pins=%d", cls, len(pins))
+            self.logger.info("INFO-TEST-EN-WALK: class=%s pins=%d", cls, len(pins))
 
         # Step 4: test_en_i toggles with the strap at 1.
         open_graded_window(TEST, self.logger)
         await self._toggle_test_en(strap=1)
 
         # Step 5: strap toggles with test_en_i = 0. Every walked pin is compared with
-        # its own value before the toggles (OBS-STRAP-PINS).
+        # its own value before the toggles (INFO-STRAP-PINS).
         following = [p for p, _x in self._pins() if p not in self.pin_stuck]
         await ReadOnly()
         before = dict(self._pins())
@@ -358,9 +360,9 @@ class sep_scan_reset_override_test(sep_base_test):
                 moved += [(p, x) for p, x in self._pins() if x != before[p]]
         await RisingEdge(dut.clk_i)
         for p in sorted({p for p, _x in moved}):
-            self.logger.info("OBS-STRAP-PINS: moved=%s", p)
+            self.logger.info("INFO-STRAP-PINS: moved=%s", p)
         self.logger.info(
-            "OBS-STRAP-PINS: strap toggles 1,0,1 with test_en_i=0: pins=%d follow_test_en_i=%d "
+            "INFO-STRAP-PINS: strap toggles 1,0,1 with test_en_i=0: pins=%d follow_test_en_i=%d "
             "moved=%d",
             len(before),
             len(following),
@@ -380,14 +382,14 @@ class sep_scan_reset_override_test(sep_base_test):
         assert tm == 0, f"CHK-STRAP-INDEP FAIL: secure_tm_o={tm} after sensing with the strap at 0"
         await RisingEdge(dut.clk_i)
         self.tm_expect = 0
-        self.logger.info("CTL-STRAP-INDEP: strap=0 secure_tm_o=0 after sensing")
+        self.logger.info("CTRL-STRAP-INDEP: strap=0 secure_tm_o=0 after sensing")
         open_graded_window(TEST, self.logger)
         await self._toggle_test_en(strap=0)
         npins = len(self._pins())
         for path in sorted(self.pin_stuck):
-            self.logger.info("OBS-TEST-EN-PINS: not_following=%s", path)
+            self.logger.info("INFO-TEST-EN-PINS: not_following=%s", path)
         self.logger.info(
-            "OBS-TEST-EN-PINS: pins=%d clock_gater=%d axi_cell=%d follow_test_en_i=%d "
+            "INFO-TEST-EN-PINS: pins=%d clock_gater=%d axi_cell=%d follow_test_en_i=%d "
             "not_following=%d (test_en_i toggled at strap 1 and 0; graded by "
             "sep_test_en_pin_reach_test)",
             npins,
@@ -428,7 +430,7 @@ class sep_scan_reset_override_test(sep_base_test):
             f"precondition FAIL: nets before the scan pulses {dict(zip([n[0] for n in NETS], base))}"
         )
         await RisingEdge(dut.clk_i)
-        self.logger.info("SCAN-BASELINE LOG: nets_high=%d/%d", sum(base), N_NETS)
+        self.logger.info("INFO-SCAN-BASELINE LOG: nets_high=%d/%d", sum(base), N_NETS)
 
         # Step 8: control A, test_en_i = 0.
         open_graded_window(TEST, self.logger)

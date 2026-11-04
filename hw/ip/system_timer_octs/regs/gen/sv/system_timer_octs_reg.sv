@@ -255,19 +255,29 @@ module system_timer_octs_reg (
         automatic logic is_valid_rw;
         automatic logic is_external;
         is_external = '0;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.TIMER_START = cpuif_req_masked & (cpuif_addr == 6'h0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h0);
         decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 6'h4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h4);
         decoded_reg_strb.STATUS = cpuif_req_masked & (cpuif_addr == 6'h8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h8);
         decoded_reg_strb.TIMER_PRESET_LO = cpuif_req_masked & (cpuif_addr == 6'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'hc);
         decoded_reg_strb.TIMER_PRESET_HI = cpuif_req_masked & (cpuif_addr == 6'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h10);
         decoded_reg_strb.TIMER_COUNT_LO = cpuif_req_masked & (cpuif_addr == 6'h14) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h14);
         decoded_reg_strb.TIMER_COUNT_HI = cpuif_req_masked & (cpuif_addr == 6'h18) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h18);
         decoded_reg_strb.CREDIT_EXPIRED = cpuif_req_masked & (cpuif_addr == 6'h1c);
         is_external |= cpuif_req_masked & (cpuif_addr == 6'h1c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h1c);
         decoded_reg_strb.TIMER_GPIO_ENABLE = cpuif_req_masked & (cpuif_addr == 6'h20);
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h20);
+        is_valid_addr = cpuif_addr < 6'h24;
+        decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
     logic external_wr_ack;
@@ -555,7 +565,7 @@ module system_timer_octs_reg (
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -622,7 +632,7 @@ module system_timer_octs_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign external_rd_ack = readback_external_rd_ack;

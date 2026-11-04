@@ -105,7 +105,9 @@ class smu_otp_vs_fabric_map_race_test_seq:
         if lc != LC_STATE_NO_LCC:
             raise AssertionError(f"lc_state_o=0x{lc:02x} want 0x{LC_STATE_NO_LCC:02x}")
         self.s1_ok = True
-        sb.expect_eq("CHK-OTPFAB-GATE-OPEN", (otp_gate, fab_gate), (0, 0))
+        sb.expect_eq(
+            "CHK-OTPFAB-GATE-OPEN", (otp_gate, fab_gate), (0, 0), evidence="CHK-OTPFAB-GATE-OPEN"
+        )
 
         raw_o = pack_otp_single_op(
             J2A_OP_WRITE,
@@ -144,7 +146,10 @@ class smu_otp_vs_fabric_map_race_test_seq:
         if st_f != J2A_STATUS_SUCCESS:
             raise AssertionError(f"back-to-back fabric write status={st_f}")
         sb.expect_eq(
-            "CHK-OTPFAB-B2B-ISSUED", (st_o, st_f), (J2A_STATUS_SUCCESS, J2A_STATUS_SUCCESS)
+            "CHK-OTPFAB-B2B-ISSUED",
+            (st_o, st_f),
+            (J2A_STATUS_SUCCESS, J2A_STATUS_SUCCESS),
+            evidence="CHK-OTPFAB-B2B-ISSUED",
         )
 
         await ClockCycles(dut.clk_smu_i, 32)
@@ -181,8 +186,13 @@ class smu_otp_vs_fabric_map_race_test_seq:
             f"OTPFAB back-to-back last writer=0x{o_val:08x} shadow=0x{shadow:08x} "
             f"spare0=0x{SPARE0:08x} off=0x{MAP_BYTE_OFF:x}"
         )
-        sb.expect_eq("CHK-OTPFAB-B2B-COHERENT", (o_val, f_val), (PAT_F, PAT_F))
-        sb.expect_eq("CHK-OTPFAB-B2B-SHADOW", shadow, o_val)
+        sb.expect_eq(
+            "CHK-OTPFAB-B2B-COHERENT",
+            (o_val, f_val),
+            (PAT_F, PAT_F),
+            evidence="CHK-OTPFAB-B2B-COHERENT",
+        )
+        sb.expect_eq("CHK-OTPFAB-B2B-SHADOW", shadow, o_val, evidence="CHK-OTPFAB-B2B-SHADOW")
 
         last = o_val
         for i in range(PINGPONG):
@@ -243,7 +253,7 @@ class smu_otp_vs_fabric_map_race_test_seq:
             raise AssertionError(f"pingpong shadow=0x{shadow2:08x} != last 0x{last:08x}")
         self.s3_ok = True
         self._log(f"CHK-OTPFAB-PINGPONG last=0x{last:08x} shadow=0x{shadow2:08x}")
-        sb.expect_eq("CHK-OTPFAB-PINGPONG", got, last)
+        sb.expect_eq("CHK-OTPFAB-PINGPONG", got, last, evidence="CHK-OTPFAB-PINGPONG")
         sb.expect_eq(
             "CHK-RACE-OTP-FAB shadow==last-writer",
             shadow2,

@@ -41,19 +41,59 @@ SIGINT row expects the access-control gate to block on that fallback.
 
 from __future__ import annotations
 
+import random
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, SimTimeoutError, with_timeout
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from env.smc_sys_axi_agent import idle_axil_master_inputs
 from ocah_axi_vip import OcahAxiLiteMasterAgent
-from seq_lib.smc_addr_map import smc_addr
+from seq_lib.smc_addr_map import smc_addr, smc_indexed_addr
 from seq_lib.smc_base_test_seq import wait_fuse_sense_done
+from seq_lib.smc_efuse_vip_utils import efuse_map_read_locked
 from smc_base_test import smc_base_test
 
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
 EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
+
+# Non-identity address class (RAND-REP): the seed draws, per lifecycle image, the register the
+# non-identity read probes from the map registers outside JTAG_PUBLIC_IDENTITY whose read lock
+# is clear in the preloaded LOCKS word (a read-locked register answers for the lock, not for
+# the lifecycle gate); LOCKS itself has no lock. Every element of the I2C_I3C_ID array sits
+# under the one I2C_I3C_ID read lock and every SPARE element under its own, so each element is
+# a candidate under its lock. The write probe stays on LOCKS with data 0 (write-set-only, so
+# the map is left as sensed).
+NUM_SPARE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")
+NUM_I2C_I3C_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM")
+
+
+def _non_id_candidates() -> list[tuple[str, int]]:
+    rows = [("LOCKS", EFUSE_MAP_NON_ID)]
+    if not efuse_map_read_locked("SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bm"):
+        for n in range(NUM_I2C_I3C_ID):
+            rows.append(
+                (
+                    f"I2C_I3C_ID{n}",
+                    smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", n),
+                )
+            )
+    for name, symbol, lock in (
+        ("SMC_CONFIG", "SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR", "SMC_CONFIG_READ_LOCK"),
+        (
+            "OCCP_TRANSPORT_TIMEOUT",
+            "SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR",
+            "OCCP_TRANSPORT_TIMEOUT_READ_LOCK",
+        ),
+    ):
+        if not efuse_map_read_locked(f"SMC_EFUSE_MAP__LOCKS__{lock}_bm"):
+            rows.append((name, smc_addr(symbol)))
+    for n in range(NUM_SPARE):
+        if not efuse_map_read_locked(f"SMC_EFUSE_MAP__LOCKS__SPARE{n}_READ_LOCK_bm"):
+            rows.append((f"SPARE{n}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", n)))
+    return rows
+
 
 # architecture.adoc:297-299 -- blocked request -> error slave -> 0xbadcab1e.
 BLOCK_SIGNATURE = 0xBADCAB1E
@@ -132,6 +172,7 @@ READ_CLASSES = (
     ("NON_ID", EFUSE_MAP_NON_ID),
     ("JTAG_PUBLIC_IDENTITY", EFUSE_MAP_JTAG_PUBLIC_IDENTITY),
 )
+OPERATIONS = ("READ_NON_ID", "READ_IDENTITY", "WRITE")
 
 # Hierarchical decode probe. `hw/sys/smc/dv/tb/smc_public_scope.vlt` publishes
 # `lc_state_smc_raw` / `lc_sigint_err` / `is_prod_or_rma_sip` READ-ONLY
@@ -157,11 +198,36 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
 
     auto_protocol_vip = False
 
+    def _draw(self) -> None:
+        """Draw the image order, the operation order per image and the non-identity register."""
+        self.seed = self.random_seed()
+        rng = random.Random(self.seed)
+        candidates = _non_id_candidates()
+        assert candidates, "no read-unlocked non-identity register in the preloaded map"
+        self.image_order = rng.sample(range(len(LC_MATRIX)), len(LC_MATRIX))
+        self.op_order = {
+            idx: rng.sample(OPERATIONS, len(OPERATIONS)) for idx in range(len(LC_MATRIX))
+        }
+        self.non_id = {idx: rng.choice(candidates) for idx in range(len(LC_MATRIX))}
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: image order %s; per image operation order and "
+            "non-identity register: %s; read-unlocked candidates %s",
+            self.seed,
+            [LC_MATRIX[i][2] for i in self.image_order],
+            "; ".join(
+                f"{LC_MATRIX[i][2]}: {'>'.join(self.op_order[i])} on {self.non_id[i][0]}"
+                f"@0x{self.non_id[i][1]:08x}"
+                for i in self.image_order
+            ),
+            [name for name, _ in candidates],
+        )
+
     async def run_scenario(self) -> None:
         dut = cocotb.top
         self.errors: list[str] = []
         self.checks = 0
         self.chk_seen: set[str] = set()
+        self._draw()
         # Per-address-class outcome witness: {addr: set(blocked_bool)}. Filled
         # by every read, and required at the end to contain BOTH outcomes for at
         # least one address, so a build in which the demux never discriminates
@@ -190,29 +256,51 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         await ClockCycles(dut.clk_smc_i, 5)
         await wait_fuse_sense_done()
 
-        for raw, sigint, label in LC_MATRIX:
+        for idx in self.image_order:
+            raw, sigint, label = LC_MATRIX[idx]
             await self._set_lc_state(raw, sigint, label)
             before = len(self.errors)
             observed: list[str] = []
-            for cls, addr in READ_CLASSES:
-                code = await self._check_read(
-                    label, cls, addr, expect_read_blocked(raw, sigint, addr)
-                )
-                observed.append(f"{cls}:resp={code}")
-            code = await self._check_write(
-                label, EFUSE_MAP_NON_ID, expect_write_blocked(raw, sigint)
-            )
-            observed.append(f"WRITE:resp={code}")
+            non_id_name, non_id_addr = self.non_id[idx]
+            for op in self.op_order[idx]:
+                if op == "READ_NON_ID":
+                    # The pinned LOCKS probe and the drawn register are both read, so the
+                    # non-identity class is graded on the cell every seed shares and on the
+                    # drawn one.
+                    for cls, addr in (("NON_ID", EFUSE_MAP_NON_ID), (non_id_name, non_id_addr)):
+                        if addr == EFUSE_MAP_NON_ID and cls != "NON_ID":
+                            continue
+                        code = await self._check_read(
+                            label, cls, addr, expect_read_blocked(raw, sigint, addr)
+                        )
+                        observed.append(f"{cls}:resp={code}")
+                elif op == "READ_IDENTITY":
+                    cls, addr = READ_CLASSES[1]
+                    code = await self._check_read(
+                        label, cls, addr, expect_read_blocked(raw, sigint, addr)
+                    )
+                    observed.append(f"{cls}:resp={code}")
+                else:
+                    code = await self._check_write(
+                        label, EFUSE_MAP_NON_ID, expect_write_blocked(raw, sigint)
+                    )
+                    observed.append(f"WRITE:resp={code}")
             if len(self.errors) == before:
                 token = f"CHK-EFUSE-JTAG-LC-{label}"
                 cocotb.log.info(
-                    "%s: lc_state_i=0x%02x (raw=0x%x sigint=%s) -- all three "
-                    "SPEC-derived block/allow expectations held (%s)",
+                    "%s: lc_state_i=0x%02x (raw=0x%x sigint=%s) -- all SPEC-derived "
+                    "block/allow expectations held (%s); drawn=seed %d image position %d "
+                    "operation order %s non-identity register %s@0x%08x",
                     token,
                     pack_lc_state(raw, sigint=sigint),
                     raw,
                     sigint,
                     " ".join(observed),
+                    self.seed,
+                    self.image_order.index(idx),
+                    ">".join(self.op_order[idx]),
+                    non_id_name,
+                    non_id_addr,
                 )
                 self.chk_seen.add(token)
 

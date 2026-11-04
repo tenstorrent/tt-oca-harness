@@ -3,7 +3,9 @@
 
 schema_version = 1
 
-# UART 16550 IP-level scenarios.
+# UART 16550 IP-level scenarios. `all` is the set the bench grades; leaves
+# outside it live in holdout.toml with the reason recorded there.
+includes = ["holdout.toml"]
 
 [[tests]]
 name = "uart_16550_sanity_test"

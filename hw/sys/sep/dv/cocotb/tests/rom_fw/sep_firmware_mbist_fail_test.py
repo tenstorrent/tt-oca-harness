@@ -15,8 +15,8 @@ mailbox at 0x80000000 is in the external SMU aperture, and a halt path must not 
 so the test ends on the terminal word in cold_scratch[1], not on ``fw_done``;
 ``SepBootScoreboard`` is not used.
 
-The escape from a check that ran and failed is eFuse ``STATUS_RPT`` bit 2, unblown here; it is
-inside ``reserved[31:2]`` in ``sep_efuse_map.rdl``. Two straps skip their arm outright,
+No eFuse lets a check that ran and failed continue; ``sep_mbist_fail_skip_fuse_ignored_test``
+blows reserved ``STATUS_RPT`` bit 2 and expects the same halt. Two straps skip their arm outright,
 ``BYPASS_SRAM_REPAIR`` (``STRAPS_LO[13]``, pin 13) and ``MBIST_BYPASS`` (``STRAPS_HI[22]``, pin
 54), which is their documented purpose.
 """
@@ -55,8 +55,6 @@ _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 #     dft_gate_failed:
 #       sw   t1, (SMC_SCRATCH_MBIST_FAIL)     # publish raw value, scratch 10
 #       sw   0x08010219, (SEP_COLD_SCRATCH_1) # WARN + SEP_MSG_MBIST_FAIL
-#       lw   t3, (SEP_EFUSE_STATUS_RPT)       # bypass fuse
-#       andi t4, t3, STATUS_RPT_SKIP_MEM_CHECK # (1 << 2) blown -> continue
 #     mem_repair_fail_hang:
 #       sw   0x0f01d001, (SEP_COLD_SCRATCH_1) # ERROR + ROM_ERR_DFT_GATE_BLOCKED
 #       wfi, then spin
@@ -261,9 +259,9 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         self.logger.info("CHK-DFT-READ PASS: ROM read DFT_STATUS=0x%08x", self.dft_status_injected)
 
         # CHK-DFT-DETECT: the gate classified it as a failure and said so before
-        # consulting the bypass fuse. Without this, a ROM that skipped straight to
-        # the terminal status would be indistinguishable from one that evaluated
-        # the failure arm properly.
+        # the terminal status. Without this, a ROM that skipped straight to the
+        # terminal status would be indistinguishable from one that evaluated the
+        # failure arm properly.
         assert _STATUS_MBIST_WARN in status_seq, (
             f"cold_scratch[1] never held the WARN word 0x{_STATUS_MBIST_WARN:08x} "
             f"(SEP_MSG_MBIST_FAIL): the gate did not take the failure arm. "
@@ -294,16 +292,13 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         )
         self.logger.info("CHK-DFT-PUBLISH: SMC scratch[10] = 0x%08x", self.dft_status_injected)
 
-        # CHK-DFT-NO-BYPASS: the bypass fuse (STATUS_RPT bit 2) is unblown in this
-        # eFuse image, so the ROM must not have taken the bypass path. Evidence is
-        # the terminal status below plus the quiescence check; the bypass arm would
-        # instead have continued into C and produced console output, which
-        # CHK-DFT-PRE-C already established did not happen.
+        # CHK-DFT-NO-BYPASS: reserved STATUS_RPT bit 2 stays unblown here, so this
+        # run covers a part with no reserved fuse blown;
+        # sep_mbist_fail_skip_fuse_ignored_test covers the blown case.
         bypass_bit = (efuse_img.field_int("STATUS_RPT") >> 2) & 1
         assert bypass_bit == 0, (
-            "STATUS_RPT bit 2 (mem_repair bypass) is set in the eFuse image, so "
-            "the ROM was entitled to continue and this test proves nothing about "
-            "the enforced arm"
+            "STATUS_RPT bit 2 is set in the eFuse image; this test needs a clean image, "
+            "and sep_mbist_fail_skip_fuse_ignored_test covers the blown bit"
         )
         self.logger.info("CHK-DFT-NO-BYPASS: STATUS_RPT bit 2 unblown in the OTP")
 

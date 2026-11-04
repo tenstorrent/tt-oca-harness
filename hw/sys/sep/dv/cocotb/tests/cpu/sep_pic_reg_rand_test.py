@@ -49,6 +49,30 @@ follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
 * CHK-SRC0     (firmware) source 0 never sets and never takes a handler, in the
                all-ones and the level active-low legs; control: the source 1
                handler runs once.
+* CHK-PIC-STORE (host) the writes that CHK-HOLE, CHK-ENTRY0, CHK-GWCLR0 and
+               CHK-SRC0 grade by an unchanged or 0 read reach the PIC: two
+               writes on ``pic_wr_probe_o`` at each drawn hole offset in the
+               ``hole`` leg, one at each entry-0 offset the ``entry0``,
+               ``src0_allones`` and ``src0_lowlevel`` legs write, and one at
+               ``meigwclr[N]`` of each drawn entry in the ``gwclr`` leg, so a
+               store that faults or never reaches the PIC fails. A write with an
+               X or Z bit in the leg fails.
+* CHK-PIC-RSVD (host) the reserved bits (the bits outside the RDL fields) read
+               0: entry 0 of ``meipl``, ``meie``, ``meigwctrl`` and
+               ``meigwclr`` after the all-ones write, ``meigwclr`` in each
+               CHK-GWCLR0 read, and the reset reads of the ``meipl``, ``meie``,
+               ``meigwctrl`` and ``meigwclr`` groups and of ``mpiccfg`` (VeeR
+               EL2 PRM at tt-Cores-VeeR-EL2@07a51d817,
+               ``docs/source/interrupts.md`` "PIC Control/Status Registers"
+               ``:415``: reserved bits are hardwired to 0; the Reserved rows
+               of each register section, ``mpiccfg`` ``:443-447``,
+               ``meipl`` ``:479-483``, ``meie`` ``:563-567``, ``meigwctrl``
+               ``:816-820`` and ``meigwclr`` ``:863-867``). The firmware prints
+               the reserved bits of each read; the record count is 4 + entries
+               + 5. On VCS each entry-0 and ``meigwclr`` read of those legs is
+               sampled once on ``pic_rd_data_probe_o`` with no X or Z bit;
+               Verilator is two-state and grades the values only. The reserved
+               bits of the CHK-RW read-backs are logged, not graded.
 
 Each graded firmware leg (``M G``) holds only accesses that its CHK lines
 grade. The owner-318 access and value cells of ``sep_pic_reg_map_cg`` are held
@@ -62,8 +86,10 @@ samples on the pass of a later leg.
 Expected values are the RDL reset and field layout
 (``hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc``) and the drawn stimulus,
 never a DUT read-back. cpu run mode, ``+skip_fuse_sense``; VCS grades
-CHK-RESET-X, Verilator runs the value checks and logs the probe compare as
-``OBS-RESET-X``.
+CHK-RESET-X. Verilator is two-state, so it logs each group as
+``OBS-BLOCKED CHK-RESET-X reason=two_state`` without grading the group's read
+count or X bits, and grades only the probe compare as the control
+``CTRL-RESET-X``.
 """
 
 from __future__ import annotations
@@ -99,6 +125,15 @@ _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 PIC_BASE = sym("PIC_REG_MAP_BASE_ADDR")
 # meip[0] offset inside the PIC aperture (the pic_wr_probe_o address bits [14:0]).
 MEIP0_OFF = sym("PIC_MEIP_0__REG_OFFSET")
+
+
+def pic_off(name: str, n: int) -> int:
+    """Offset of entry ``n`` of PIC register array ``name``, from the RDL."""
+    lo = sym(f"PIC_{name}_0__REG_OFFSET")
+    return lo + n * (sym(f"PIC_{name}_1__REG_OFFSET") - lo)
+
+
+ENTRY0_ALL = ("MEIPL", "MEIE", "MEIGWCTRL", "MEIGWCLR")
 _MAX_RUN_CYCLES = 8_000_000
 _NO_BOOT_CYCLES = 80_000
 
@@ -277,6 +312,8 @@ class sep_pic_reg_rand_test(sep_base_test):
         "CHK-MEIP-WR",
         "CHK-MEIP-WR-STORE",
         "CHK-SRC0",
+        "CHK-PIC-STORE",
+        "CHK-PIC-RSVD",
     )
 
     def build_phase(self) -> None:
@@ -458,7 +495,7 @@ class sep_pic_reg_rand_test(sep_base_test):
                 f"ctrl_nonzero={ctrl_nonzero}"
             )
             if not four_state:
-                self.logger.info("OBS-RESET-X LOG tool=verilator %s", body)
+                self.logger.info("OBS-BLOCKED CHK-RESET-X reason=two_state %s", body)
                 continue
             if not ok:
                 raise AssertionError(
@@ -466,10 +503,18 @@ class sep_pic_reg_rand_test(sep_base_test):
                 )
             self.logger.info("CHK-RESET-X PASS seed=%d %s", self.tcfg.seed, body)
             n += 1
-        if not four_state and not ctrl_ok:
-            raise AssertionError(
-                f"OBS-RESET-X: probe read-backs do not match the firmware ({ctrl_match}/"
-                f"{ctrl_reads}, sampled {len(arr)}) mism={mism}"
+        if not four_state:
+            if not ctrl_ok:
+                raise AssertionError(
+                    f"CTRL-RESET-X FAIL: probe read-backs do not match the firmware ({ctrl_match}/"
+                    f"{ctrl_reads}, sampled {len(arr)}) mism={mism}"
+                )
+            self.logger.info(
+                "CTRL-RESET-X LOG ctrl_reads=%d ctrl_sampled=%d ctrl_match=%d ctrl_nonzero=%d",
+                ctrl_reads,
+                len(arr),
+                ctrl_match,
+                ctrl_nonzero,
             )
         return n
 
@@ -545,7 +590,85 @@ class sep_pic_reg_rand_test(sep_base_test):
                 self.logger.info("%s", rec.text)
         n_host = self._chk_reset_x(four_state)
         n_host += self._chk_meip_store()
+        n_host += self._chk_pic_store()
+        n_host += self._chk_rsvd(four_state)
         self.result_pass(TEST, seed, n_fw + n_host)
+
+    def _chk_pic_store(self) -> int:
+        """CHK-PIC-STORE: the PIC writes at each graded offset of the zero-result legs."""
+        legs = {
+            "hole": [ha & 0x7FFF for ha in self.tcfg.holes for _ in range(2)],
+            "entry0": [pic_off(r, 0) for r in ENTRY0_ALL],
+            "gwclr": [pic_off("MEIGWCLR", n) for n in self.tcfg.entries],
+            "src0_allones": [pic_off(r, 0) for r in ENTRY0_ALL],
+            "src0_lowlevel": [pic_off(r, 0) for r in ("MEIGWCTRL", "MEIE", "MEIPL")],
+        }
+        for leg, offs in legs.items():
+            lo, hi = self._leg_clk(leg)
+            win = [off for clk, off in self.writes if lo <= clk < hi]
+            uniq = list(dict.fromkeys(offs))
+            got = [win.count(off) for off in uniq]
+            want = [offs.count(off) for off in uniq]
+            body = (
+                f"leg={leg} offsets={','.join(f'0x{o:04x}' for o in uniq)} "
+                f"writes={','.join(str(n) for n in got)} expect={','.join(str(n) for n in want)} "
+                f"xz_writes={win.count(-1)} "
+                f"pic_writes_other={sum(1 for o in win if o not in offs and o >= 0)}(logged)"
+            )
+            if got != want or -1 in win:
+                raise AssertionError(f"CHK-PIC-STORE FAIL seed={self.tcfg.seed} {body}")
+            self.logger.info("CHK-PIC-STORE PASS seed=%d %s", self.tcfg.seed, body)
+        return len(legs)
+
+    def _chk_rsvd(self, four_state: bool) -> int:
+        """CHK-PIC-RSVD: the reserved bits of the entry-0, meigwclr and reset reads are 0."""
+        regs: list[tuple[str, int]] = []
+        for rec in self.con.records("CHK-ENTRY0"):
+            for r in ENTRY0_ALL:
+                regs.append((f"{r.lower()}0", rec.kv.get(f"rsvd_{r.lower()}", -1)))
+        for rec in self.con.records("CHK-GWCLR0"):
+            regs.append((f"meigwclr{int(rec.kv.get('src', -1))}", rec.kv.get("rsvd", -1)))
+        for rec in self.con.records("CHK-RESET"):
+            grp = rec.kv.get("group")
+            if grp != "meip":
+                regs.append((f"reset_{grp}", rec.kv.get("rsvd", -1)))
+        ne = len(self.tcfg.entries)
+        want_n = len(ENTRY0_ALL) + ne + len(ENTRY0_ALL) + 1
+        if len(regs) != want_n:
+            msg = f"CTRL-MISSING CHK-PIC-RSVD: records={len(regs)} expect={want_n}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        for name, rsvd in regs:
+            if not isinstance(rsvd, int) or rsvd != 0:
+                shown = f"0x{rsvd:x}" if isinstance(rsvd, int) and rsvd >= 0 else str(rsvd)
+                raise AssertionError(
+                    f"CHK-PIC-RSVD FAIL: reg={name} rsvd={shown} expect=0 seed={self.tcfg.seed}"
+                )
+        x_part = "two_state"
+        if four_state:
+            legs = {
+                "entry0": [pic_off(r, 0) for r in ENTRY0_ALL],
+                "gwclr": [pic_off("MEIGWCLR", n) for n in self.tcfg.entries],
+            }
+            for leg, offs in legs.items():
+                lo, hi = self._leg_clk(leg)
+                rds = [r for r in self.reads if lo <= r[0] < hi]
+                xz = sum(1 for r in rds if r[1] < 0 or not r[3])
+                got = [sum(1 for r in rds if r[1] == off and r[3]) for off in offs]
+                if xz or got != [1] * len(offs):
+                    raise AssertionError(
+                        f"CHK-PIC-RSVD FAIL: leg={leg} probe_reads={got} expect=1 each "
+                        f"xz_reads={xz} seed={self.tcfg.seed}"
+                    )
+            x_part = "x_free=1"
+        self.logger.info(
+            "CHK-PIC-RSVD PASS: contract=PRM tt-Cores-VeeR-EL2@07a51d817 interrupts.md "
+            "'PIC Control/Status Registers' :415 seed=%d regs=%d rsvd=0 %s",
+            self.tcfg.seed,
+            len(regs),
+            x_part,
+        )
+        return 1
 
     def _chk_meip_store(self) -> int:
         """CHK-MEIP-WR-STORE: one PIC write at ``meip[0]`` per CHK-MEIP-WR instance."""

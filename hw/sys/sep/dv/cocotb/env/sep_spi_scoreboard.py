@@ -207,7 +207,7 @@ class SepSpiScoreboard:
             if not tally.frames:
                 continue
             for line in tally.lines:
-                self.logger.info("SPI-SB %s %s", kind.upper(), line)
+                self.logger.info("INFO-SPI-SB %s %s", kind.upper(), line)
             self.logger.info(
                 "CHK-SPI-SB-%s PASS seed=%d frames=%d bytes=%d",
                 kind.upper(),
@@ -250,7 +250,7 @@ class SepSpiScoreboard:
             )
             if not ok:
                 raise AssertionError(f"CHK-SPI-SB-FRAME FAIL seed={self.seed} {line}")
-            self.logger.info("SPI-SB FRAME %s", line)
+            self.logger.info("INFO-SPI-SB FRAME %s", line)
             total += len(rx_wire) + sum(len(v) for _, k, v in exp.segments if k == "tx")
         self.logger.info(
             "CHK-SPI-SB-FRAME PASS seed=%d frames=%d bytes=%d", self.seed, len(self._frames), total

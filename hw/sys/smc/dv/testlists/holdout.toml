@@ -24,19 +24,70 @@ schema_version = 1
 #   * `occp_boot` -- held out on runtime. The production ROM's whole
 #     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
 #     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
-#   * `held_out` -- leaves whose comparison the RTL and the specification
-#     disagree on, and leaves blocked by a filed RTL defect; each entry's
-#     comment states the disagreement or the defect in words.
-#     smc_ref_clock_timer_rate_test compares the OCTS system timer rate against
-#     clk_rst.adoc, which places the timer in the reference clock domain, while
-#     the RTL clocks it from clk_smc_i.
+#   * `held_out` -- leaves whose comparison the specification does not support,
+#     and leaves blocked by a filed RTL defect; each entry's comment states the
+#     disagreement or the defect in words. An observation leaf waiting on a
+#     specification ruling belongs here too: it passes, logs `OBS-*` lines for
+#     the disputed value and grades nothing about it; its comment states the
+#     open question in words and the VPLAN held-out table names the issue that
+#     holds the ruling.
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`,
-#     `wdt_uvm_extended`, `cg_uvm_extended`, `mailbox_uvm_extended`) and runs on demand.
+#     `wdt_uvm_extended`, `cg_uvm_extended`, `mailbox_uvm_extended`,
+#     `reset_uvm_extended`) and runs on demand.
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
+
+[[tests]]
+# A SCRATCH_COLD_WARM read while the warm reset is asserted is accepted by the
+# primary-domain axi_lite_demux and never answered (smc_misc_wrap.sv has no
+# isolation on the warm-domain leg), so the peripheral crossbar's read channel
+# hangs after the release. The in-reset response is recorded, not graded;
+# cpu.adoc states the isolation rule only for the CPU cluster's own ports.
+name = "smc_warm_domain_access_during_reset_test"
+module = "smc_warm_domain_access_during_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "a SCRATCH_COLD_WARM read during the warm reset hangs the peripheral crossbar after the release"
+expect_fail_match = "CHK-WARM-DOMAIN-ACCESS-IN-RESET FAIL"
+# The in-reset read is the point of the leaf, and the primary-reset demux
+# presents its AR on the SCRATCH_COLD_WARM leg while that leg's warm reset is
+# low; this leaf alone asks tb_top to hold the leg's own-domain AXI-Lite
+# checker off on the warm-reset cycles where that AR is presented, so its
+# VALID-low-in-reset rule does not report the read the leaf makes on purpose.
+args = ["+smc_misc_warm_in_reset_assertoff"]
+
+[[tests]]
+# The CLA debug interrupt stays asserted after the CDbgEapStatus W2C write
+# (cla_node_eap.sv feeds the interrupt flop back without consulting the
+# status; core_logic_analyzer.sv gives the set priority over the clear);
+# dfd_cla.rdl names the W2C as the ISR's acknowledge.
+name = "smc_dfd_cla_irq_w2c_release_test"
+module = "smc_dfd_cla_irq_w2c_release_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "the CLA debug interrupt is not released by the EapStatus W2C write"
+expect_fail_match = "CHK-CLA-IRQ-W2C-RELEASE FAIL"
+
+[[tests]]
+# The CLA global clock-halt request is a set-only flop (cla_action_gen.sv)
+# cleared by the SMC primary reset alone; the W2C, EnableEap and
+# DisableGlobalClockHalt do not reach it, where the wrapper port, dfd.adoc and
+# dfd_cla.rdl describe a level that follows the action.
+name = "smc_dfd_cla_clock_halt_release_test"
+module = "smc_dfd_cla_clock_halt_release_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "the CLA clock-halt request stays asserted after the action drops and DisableGlobalClockHalt is set"
+expect_fail_match = "CHK-CLA-CLOCK-HALT-RELEASE FAIL"
 
 [[tests]]
 name = "smc_prod_rom_occp_ready_test"
@@ -55,11 +106,47 @@ args = [
 ]
 
 [[tests]]
-name = "smc_ref_clock_timer_rate_test"
-module = "smc_ref_clock_timer_rate_test"
+# An FLR edge that lands while the cool-reset hold counter is running restarts
+# the pre-reset counter (smc_cool_reset_wrap.sv: flr_counter_state is IDLE
+# during the hold), and when that count outlasts the hold rst_cool_no pulses a
+# second time; clk_rst.adoc states the sequencer is not a queue of overlapping
+# FLR requests. The arm leg measures the single-request pulse first.
+name = "smc_flr_hold_edge_requeue_test"
+module = "smc_flr_hold_edge_requeue_test"
 seed = 1
 timeout_sec = 1800
-tags = ["clock"]
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "an FLR edge inside the cool-reset hold starts a second cool pulse after the first"
+expect_fail_match = "CHK-FLR-NO-REQUEUE FAIL: .*a second fall [0-9]+ edges after the third edge"
+
+[[tests]]
+# The I2C register block runs on the gated peripheral clock while the
+# peripheral side of the AXI-Lite CDC runs on the ungated one, so a response
+# handed over as the gate closes is taken more than once and a response no
+# read asked for stays queued; every later read of the leg receives the
+# previous read's word. clk_rst.adoc states that an access the peripheral
+# has accepted finishes there. The arm leg proves the open and closed gate
+# answer once each before the sweep.
+name = "smc_clock_gate_inflight_completes_test"
+module = "smc_clock_gate_inflight_completes_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "a response handed over as the I2C clock gate closes is duplicated and later reads of the leg receive the previous read's word"
+expect_fail_match = "CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE FAIL: .*timed_out=False .*a completed read left r_valid still presented"
+
+[[tests]]
+# Observation leaf: the FLR pre-delay is N+1 clk_ref_i cycles, the
+# hold is M, and an edge during a running sequence is ignored; reset_unit.rdl
+# names neither the clock nor the offset. The OBS-FLR lines record each
+# (N, M) leg; the CHK line grades liveness only.
+name = "smc_flr_counter_timing_obs_test"
+module = "smc_flr_counter_timing_obs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "flr"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -123,6 +210,76 @@ tools = ["vcs"]
 tags = ["uvm", "clock"]
 run_modes = ["smoke"]
 
+[[tests]]
+# A watchdog warm reset asserted while an SPM write burst from SEP_IN is inside
+# the CPU cluster boundary (AW handshake done, B not returned, the L2-frontend
+# isolate's pending write count above 0) leaves the boundary unanswering until
+# a primary reset: the cut write gets no B, and later SPM and CPU_CTRL writes
+# with the same AXI ID bits [2:0] never complete. cpu.adoc (CPU AXI Isolation)
+# says each cluster port is drained before the reset takes effect.
+name = "smc_spm_write_cut_by_warm_reset_test"
+module = "smc_spm_write_cut_by_warm_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "an SPM write cut by a watchdog warm reset receives no B after the release and later writes with its AXI ID bits [2:0] never complete"
+expect_fail_match = "CHK-SPM-WRITE-CUT-BY-WARM-RESET FAIL"
+
+[[tests]]
+# With THD_DAT 25 to 32 the I2C controller starts the transfer queued behind
+# a STOP T_R + TSU_STA + 7 cycles after it whatever TIMING4.T_BUF holds, below
+# T_BUF in some samples, where i2c.rdl gives T_BUF as the time between a STOP
+# and START condition. The leaf runs the smc_i2c_timing_set_rand_test draw (its
+# six graded pairs are the arm leg) and asserts every bus-free time of the
+# T_BUF pair at least the programmed T_BUF and moving with it.
+name = "smc_i2c_tbuf_bus_free_test"
+module = "smc_i2c_tbuf_bus_free_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "the I2C bus-free time after a STOP ignores TIMING4.T_BUF when THD_DAT is long"
+expect_fail_match = "CHK-ITS-TBUF-BUS-FREE FAIL"
+
+[[tests]]
+# The vendored axi_demux sizes its per-ID-bucket in-flight counter to
+# clog2(MaxTrans) bits and reports the bucket full when the counter is all
+# ones (axi_demux_simple.sv, axi_demux_id_counters.sv), so a power-of-two
+# MaxTrans admits MaxTrans - 1 where the module's parameter contract and
+# fabric.adoc give MaxTrans: the SEP region demux admits 31 on one ID bucket
+# where FabricMaxTrans is 32 and the local crossbar's SEP_IN demux 7 where
+# MaxMstTrans is 8. Each leg's invariants (one ID, an AR withheld, retire
+# before the next accept, every AR accepted, the port behind the demux not
+# withholding) fail at once with a message the match does not cover; the two
+# peaks are graded last and the match pins both measured numbers.
+name = "smc_fabric_demux_bucket_limits_test"
+module = "smc_fabric_demux_bucket_limits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "the fabric demultiplexers admit one fewer same-ID read per bucket than the chapter states"
+expect_fail_match = "(?s)CHK-FABRIC-33RD-WAITS-FOR-RETIRE FAIL: .*admitted 31 on that ID bucket.*CHK-LOCAL-XBAR-9TH-WAITS FAIL: .*admitted 7 on that ID bucket"
+
+[[tests]]
+# Observation leaf: cpu.adoc states that debug system bus transactions use
+# the cluster's reset and isolation conditions and that the debug-module
+# reset is controlled separately, but not what the DMI shows while the uncore
+# reset is held. The DMI stays live under the hold (sbaddress0, sbdata0,
+# data0 and dmstatus read back) and a system bus write is not started:
+# sbaddress0 does not advance under sbautoincrement, the word stays unchanged
+# and sbcs reports sbbusy 0 and sberror 0. The OBS-DM-SBA-UNDER-HOLD line
+# records those readbacks; the CHK lines grade the writes before and after
+# the hold, the sbdata0 scan reaching the Debug Module, and the unchanged
+# word.
+name = "smc_jtag_dm_sba_uncore_hold_obs_test"
+module = "smc_jtag_dm_sba_uncore_hold_obs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["jtag", "reset"]
+run_modes = ["smoke"]
+
 [[groups]]
 # Register-clock gate mapping, traffic-bearing wakes and closure.
 name = "cg_uvm_extended"
@@ -157,14 +314,41 @@ tools = ["vcs"]
 tags = ["uvm", "csr", "reset"]
 run_modes = ["smoke"]
 
+[[tests]]
+# Narrow FIFO/acquire reads and null-write side effects; licensed on-demand leaf.
+name = "smc_narrow_access_side_effect_test"
+module = { uvm = "smc_narrow_access_side_effect_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "csr", "mailbox"]
+run_modes = ["smoke"]
+
+[[tests]]
+# Checks cool reset with held SEP_IN responses and same-ID SPM recovery.
+name = "smc_ingress_reset_inflight_test"
+module = { uvm = "smc_ingress_reset_inflight_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "reset"]
+run_modes = ["smoke"]
+
 [[groups]]
-# Register-block CSR, pipelined lock and external-register lane scenarios.
+# SEP_IN held-response reset and fresh-traffic recovery; run on demand.
+name = "reset_uvm_extended"
+expected_count = 1
+tests = ["smc_ingress_reset_inflight_test"]
+
+[[groups]]
+# Register-block CSR, lock ordering, lanes and narrow-access side effects.
 name = "csr_uvm_extended"
-expected_count = 3
+expected_count = 4
 tests = [
     "smc_regblock_sparse_strobe_test",
     "smc_lock_pipelined_write_test",
     "smc_external_reg_lane_test",
+    "smc_narrow_access_side_effect_test",
 ]
 
 [[groups]]
@@ -178,11 +362,19 @@ tests = [
 ]
 
 [[groups]]
-# Filed-defect reproducers; the weekly tier's own row. Empty until the next
-# filed defect gets its reproducer.
+# Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 0
-tests = []
+expected_count = 8
+tests = [
+    "smc_warm_domain_access_during_reset_test",
+    "smc_dfd_cla_irq_w2c_release_test",
+    "smc_dfd_cla_clock_halt_release_test",
+    "smc_spm_write_cut_by_warm_reset_test",
+    "smc_i2c_tbuf_bus_free_test",
+    "smc_flr_hold_edge_requeue_test",
+    "smc_clock_gate_inflight_completes_test",
+    "smc_fabric_demux_bucket_limits_test",
+]
 
 [[groups]]
 # Production boot ROM to its OCCP loop; on demand, about one hour.
@@ -192,9 +384,11 @@ tests = [
 ]
 
 [[groups]]
-# Leaves whose comparison the RTL and the specification disagree on; run on demand.
+# Leaves whose comparison the specification does not support, and the
+# observation leaves waiting on a specification ruling; run on demand.
 name = "held_out"
-expected_count = 1
+expected_count = 2
 tests = [
-    "smc_ref_clock_timer_rate_test",
+    "smc_flr_counter_timing_obs_test",
+    "smc_jtag_dm_sba_uncore_hold_obs_test",
 ]

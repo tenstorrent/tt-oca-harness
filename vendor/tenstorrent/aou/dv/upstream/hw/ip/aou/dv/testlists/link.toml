@@ -48,6 +48,19 @@ tags = ["link"]
 run_modes = ["link"]
 args = ["+who=apb", "+deact_who=apb", "+credit_manage=0", "+busy=1"]
 
+# 2.13 with CREDIT_MANAGE=0: both dies deactivate with requests in flight while the FDI
+# throttles the DUT's TX, so a request the DUT accepted before the remote DeactivateReq can
+# still be queued when that DeactivateReq arrives (AOU-R33).
+[[tests]]
+name = "aou_link_act_deact_test.who-both.order-simul.deact_who-both.credit_manage-0.busy-1.fdi_trdy-random.4x512-sp64"
+module = { uvm = "aou_link_act_deact_test" }
+target = "4x512-sp64"
+seed = 1
+reseed = 13
+tags = ["link"]
+run_modes = ["link"]
+args = ["+who=both", "+order=simul", "+deact_who=both", "+credit_manage=0", "+busy=1", "+fdi_trdy=random"]
+
 [[tests]]
 name = "aou_link_force_deact_test"
 module = { uvm = "aou_link_force_deact_test" }
@@ -390,10 +403,9 @@ run_modes = ["link"]
 args = ["+mode=property"]
 
 # The remote die re-activates in the flit after its DeactivateAck (AoU 8.4). The
-# DUT's own FDI teardown after the deactivation splits that exchange
-# across a link reset: the DUT must give the training trigger on the remote's
-# request alone (FDI-R51); the system then resets both dies while the
-# link is down (D18), and they activate again from DISABLED.
+# Req must find the DUT DISABLED, not DEACTIVATE (no INVALID_ACTMSG); the FDI
+# link stays Active across the deactivation (a deactivation never takes it
+# down, T1-L04), and software activates the DUT again on INT_ACTIVATE_START.
 [[tests]]
 name = "aou_remote_react_test"
 module = { uvm = "aou_remote_react_test" }
@@ -426,12 +438,13 @@ args = ["+mode=deact_rsp", "+v0p8"]
 
 [[groups]]
 name = "link"
-expected_count = 42
+expected_count = 43
 tests = [
   "aou_link_act_deact_test",
   "aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-0",
   "aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1",
   "aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1",
+  "aou_link_act_deact_test.who-both.order-simul.deact_who-both.credit_manage-0.busy-1.fdi_trdy-random.4x512-sp64",
   "aou_link_force_deact_test",
   "aou_act_after_deact_test",
   "aou_act_after_deact_test.credit_manage-1.busy-1",

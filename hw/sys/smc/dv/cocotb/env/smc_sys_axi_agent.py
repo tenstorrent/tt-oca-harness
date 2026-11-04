@@ -162,6 +162,8 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.axi_qos: int = 0
         self.axi_region: int = 0
         self.axi_user: int = 0
+        # WUSER of an explicitly strobed write's W beat.
+        self.axi_wuser: int = 0
         # Read the BID / RID of this access off the response channel into `bid` /
         # `rid`. The capture is scoped to one transaction, so it is meaningful
         # only for an access that is the sole one outstanding on its port.
@@ -381,7 +383,7 @@ class SmcSysAxiDriver(uvm_driver):
         w.wdata = (item.wdata & data_mask) << (shift * 8)
         w.wstrb = wstrb << shift
         w.wlast = 1
-        w.wuser = 0
+        w.wuser = int(item.axi_wuser)
         wif.in_flight_operations += 1
         wif._idle.clear()
         wif.active_id[awid] += 1

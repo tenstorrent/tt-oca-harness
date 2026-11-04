@@ -824,7 +824,7 @@ class OutboundLeaf:
     the last port state; each use records the amount it used against its
     limit (``_wait_used``). A fixed window (``_wait_window``) always runs its
     full length, cannot expire and is no timeout path; it is logged as
-    ``OBS-WAIT`` only. ``_emit_timeout_paths`` grades the bounded waits.
+    ``INFO-WAIT`` only. ``_emit_timeout_paths`` grades the bounded waits.
     """
 
     async def bench_start(self) -> None:
@@ -906,6 +906,12 @@ class OutboundLeaf:
     def _obs_row(self, tag: str, line: str) -> None:
         self.logger.info("OBS-%s: %s", tag.removeprefix("CHK-"), line)
 
+    def _info_row(self, tag: str, line: str) -> None:
+        self.logger.info("INFO-%s: %s", tag, line)
+
+    def _blocked_row(self, chk: str, reason: str, line: str) -> None:
+        self.logger.info("OBS-BLOCKED %s reason=%s seed=%d: %s", chk, reason, self.c.seed, line)
+
     def _fail(self, chk: str, line: str) -> None:
         msg = f"{chk} FAIL seed={self.c.seed} {line} last_port_state={self._port_state()}"
         self.logger.error(msg)
@@ -945,7 +951,7 @@ class OutboundLeaf:
             return
         self.windows_logged[kind] = length
         self.logger.info(
-            "OBS-WAIT: wait=%s kind=window length=%s (a fixed window, not a timeout path)",
+            "INFO-WAIT: wait=%s kind=window length=%s (a fixed window, not a timeout path)",
             kind,
             length,
         )
@@ -961,13 +967,14 @@ class OutboundLeaf:
 
         Every bounded wait logged has at least one measured use, and its use
         closest to its limit is within that limit (the wait ended on its
-        condition, not on expiry). A run with no bounded wait logs OBS-TIMEOUT-PATHS and no PASS.
+        condition, not on expiry). A run with no bounded wait logs
+        ``OBS-BLOCKED CHK-TIMEOUT-PATHS reason=no_bounded_wait`` and no PASS.
         """
         chk = "CHK-TIMEOUT-PATHS"
         windows = ",".join(f"{k}:{v}" for k, v in sorted(self.windows_logged.items()))
         if not self.waits_logged:
-            self._obs_row(
-                chk, f"bounded_waits=0 windows={{{windows}}} {extra} (nothing to compare)"
+            self._blocked_row(
+                chk, "no_bounded_wait", f"bounded_waits=0 windows={{{windows}}} {extra}"
             )
             return
         rows = []

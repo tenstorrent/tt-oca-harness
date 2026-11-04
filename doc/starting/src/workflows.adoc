@@ -908,18 +908,21 @@ contributor enables the hook.
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
 `lint-sv-comments`, `lint-sv-enums`, `lint-yaml`, `lint-toml`, `lint-markdown`,
-`lint-make`, `lint-shell`,
-`regen-regs`, and `vendor-diff` on pull requests and pushes to `main`
+`lint-make`, and `lint-shell` on pull requests and pushes to `main`
 (`lint-sv-verible` is temporarily disabled). Setup jobs share `bender`,
 Verilator, and reviewdog artifacts; jobs report through
 `.github/actions/reviewdog-report`. A Checks API HTTP 5xx is retried.
 `lint-sv-verilator` and `lint-python` still pass or fail on the tool exit
 status when that post does not succeed.
 
+`.github/workflows/unit.yml` runs the unit and sanity checks that need no
+simulator on the same events: `dv-unit-tests`, `bl1-host-tests`,
+`rom-host-tests`, `doc-unit-tests`, `regen-regs`, and `vendor-diff`.
+
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
-or a `.md` / `.adoc` / image) skip lint, Verilator smoke, the native VP legs, and
-the nonfree GitLab child; `lint-vale`, which checks documentation prose, runs on
-every diff. The required `verilator-smoke (<dut>)`, `sep-vp (native)`,
+or a `.md` / `.adoc` / image) skip lint, `regen-regs`, `vendor-diff`, Verilator
+smoke, the native VP legs, and the nonfree GitLab child; `lint-vale`, which
+checks documentation prose, runs on every diff. The required `verilator-smoke (<dut>)`, `sep-vp (native)`,
 `smc-vp + smu-vp (native)` and GitLab checks still report success.
 `scripts/ci/diff_class.py --self-test` checks the classifier.
 Scheduled and manually dispatched pipelines always run in full.

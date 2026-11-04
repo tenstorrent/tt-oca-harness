@@ -240,10 +240,12 @@ module efuse_shim_ctrl_reg (
     always_comb begin
         automatic logic is_valid_addr;
         automatic logic is_valid_rw;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.EFUSE_BANK_INIT_TIME = cpuif_req_masked & (cpuif_addr == 3'h0);
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 3'h0);
+        is_valid_addr = cpuif_addr < 3'h4;
+        decoded_err = ~is_valid_addr & decoded_req;
     end
 
     // Pass down signals to next stage
@@ -304,7 +306,7 @@ module efuse_shim_ctrl_reg (
     //--------------------------------------------------------------------------
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -324,7 +326,7 @@ module efuse_shim_ctrl_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign cpuif_rd_ack = readback_done;

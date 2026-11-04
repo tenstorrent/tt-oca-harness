@@ -81,12 +81,15 @@ module dtp_scan_fcov (
   // ------------------------------------------------------------------
   wire in_reset = (tap_rst_ni !== 1'b1);
   logic [15:0] tap_state_q;
-  logic in_reset_q;
-  always_ff @(posedge tck_i) begin
-    tap_state_q <= tap_state_i;
-    in_reset_q  <= in_reset;
-  end
+  always_ff @(posedge tck_i) tap_state_q <= tap_state_i;
   wire [15:0] tap_state_prev = tap_state_q;
+  // High from a TAP reset until the first TCK edge after its release; TCK can
+  // stay idle across the whole reset.
+  logic tap_rst_seen_q;
+  always_ff @(posedge tck_i or negedge tap_rst_ni) begin
+    if (!tap_rst_ni) tap_rst_seen_q <= 1'b1;
+    else tap_rst_seen_q <= 1'b0;
+  end
   wire update_dr = !in_reset && (tap_state_i == jtag_tap_pkg::UPDATE_DR);
   wire update_ir = !in_reset && (tap_state_i == jtag_tap_pkg::UPDATE_IR);
   wire shifting = !in_reset
@@ -186,9 +189,10 @@ module dtp_scan_fcov (
     if (!in_reset) tdcr_snap_q <= tdcr_image;
   end
   wire [3*HoldRegs-1:0] tdcr_before = tdcr_snap_q;
-  wire tlr_reset = !in_reset && (tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET)
+  wire tlr_reset = !in_reset && !tap_rst_seen_q
+      && (tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET)
       && (tap_state_prev == jtag_tap_pkg::SELECT_IR_SCAN);
-  wire trst_reset = !in_reset && in_reset_q;
+  wire trst_reset = !in_reset && tap_rst_seen_q;
   logic [HoldRegs-1:0] hold_loaded, hold_held, hold_ok;
   always_comb begin
     for (int unsigned k = 0; k < HoldRegs; k++) begin

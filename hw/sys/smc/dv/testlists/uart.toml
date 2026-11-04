@@ -32,6 +32,7 @@ run_modes = ["smoke"]
 name = "smc_uart_fifo_control_depth_test"
 module = "smc_uart_fifo_control_depth_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "uart"]
 run_modes = ["smoke"]
@@ -151,6 +152,7 @@ tests = [
     "smc_uart_irq_sources_priority_test",
     "smc_uart_error_conditions_test",
     "smc_uart_baud_word_parity_format_test",
+    "smc_uart_frame_error_inject_rand_test",
     "smc_uart_extremes_misc_test",
     "smc_uart_sanity_test",
     "smc_log_engine_intr_mask_test",
@@ -176,6 +178,7 @@ run_modes = ["smoke"]
 name = "smc_log_engine_region_size_test"
 module = "smc_log_engine_region_size_test"
 seed = 1
+reseed = 3
 timeout_sec = 3600
 tags = ["ci", "uart"]
 run_modes = ["smoke"]
@@ -233,5 +236,14 @@ name = "smc_uart_log_engine_reg_map_test"
 module = "smc_uart_log_engine_reg_map_test"
 seed = 1
 timeout_sec = 3600
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_frame_error_inject_rand_test"
+module = "smc_uart_frame_error_inject_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
 tags = ["ci", "uart"]
 run_modes = ["smoke"]

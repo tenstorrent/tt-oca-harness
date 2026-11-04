@@ -7,9 +7,9 @@ Reads docs/test_plan_items.yaml, every bench's testlist aggregate (the
 [testlist] of its sim config, with testlists/plan_ids.yaml for the plan
 items each scenario covers) and the run directories
 out/<build>/<test>.rid.*/. A run belongs to a scenario when its test class,
-its plusargs (from run.sh, ignoring the seed, wave, coverage and FDI_ENC
-arguments) and its build (TB and CONFIG from the build directory name) match
-the scenario; a scenario without `target` matches every T1 config, as
+its plusargs (from run.sh, ignoring the seed, wave and coverage arguments)
+and its build (TB and CONFIG from the build directory name) match the
+scenario; a scenario without `target` matches every T1 config, as
 scripts/run_list.py runs it on any. Each item is then:
 
   covered      a PASS run of an entry that lists it
@@ -56,8 +56,8 @@ def t1_configs():
 CONFIGS = t1_configs()
 # Plusargs the Makefile adds itself: seed, coverage and wave arguments.
 # Arguments the Makefile and run_list.py add to every run (seed, waves, coverage
-# outputs, FDI_ENC), not part of what a run-list entry asks for.
-INFRA_ARG = re.compile(r"^\+(UVM_TESTNAME=|ntb_random_seed=|verilator\+|AXI4_FC_|aou_fc_json=|aou_config=|FDI_ENC=|waves\b)")
+# outputs), not part of what a run-list entry asks for.
+INFRA_ARG = re.compile(r"^\+(UVM_TESTNAME=|ntb_random_seed=|verilator\+|AXI4_FC_|aou_fc_json=|aou_config=|waves\b)")
 VERDICT_RE = re.compile(r"^(PASS|XFAIL|FAIL)\b")
 
 
@@ -155,8 +155,6 @@ def scan_runs(out_dir, entries, args):
         if not os.path.isdir(run):
             continue
         build = os.path.basename(os.path.dirname(run))
-        if "-esc-" in build:
-            continue
         test = os.path.basename(run).split(".rid.")[0]
         run_sh = os.path.join(run, "run.sh")
         plusargs = run_plusargs(run_sh) if os.path.exists(run_sh) else None
@@ -217,8 +215,6 @@ def evaluate(args):
     items = listyaml.load(args.items)
     known = {i["id"] for i in items}
     aliases = {i["id"]: i["merged_into"] for i in items if i.get("merged_into")}
-    # escape.toml lists bug re-introductions, not plan coverage; escape builds
-    # (-esc-<id>) carry known bugs and are skipped in scan_runs.
     paths = args.runlist or [os.path.join(UVM_ROOT, sim_cfg.load(tb)["testlist"]["path"])
                              for tb in ("t1", "reg", "l3_unit", "axi_selftest")]
     side = testlist.load_plan_ids(args.plan_ids) if args.plan_ids else None

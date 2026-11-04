@@ -329,6 +329,13 @@ def signature_size(buf: bytes, slot: str) -> int:
     return int.from_bytes(bytes(buf[base : base + 2]), "little")
 
 
+def signature(buf: bytes, slot: str) -> bytes:
+    """The whole 512-byte classical signature field."""
+    require_classic(buf, slot)
+    base = slot_base(slot) + OFF_SIGNATURE
+    return bytes(buf[base : base + K.SIGNATURE_CLASSIC_SIZE])
+
+
 def describe(buf: bytes, slot: str) -> str:
     """One-line summary of a slot, for test log lines. Works for either variant.
 
@@ -404,7 +411,12 @@ _STATUS_VALUES_H = _SEP_ROOT / "bootrom" / "prod" / "include" / "status_values.h
 
 
 def rom_status_for_result(boot_error: int) -> int:
-    """The ``SEP_MSG_*`` value the ROM reports for one ``MANIFEST_ERR=`` code.
+    """The ``SEP_MSG_*`` value the ROM reports for one ``MANIFEST_ERR=`` code."""
+    return _c_define(_STATUS_VALUES_H, rom_status_name_for_result(boot_error))
+
+
+def rom_status_name_for_result(boot_error: int) -> str:
+    """The ``SEP_MSG_*`` name the ROM reports for one ``MANIFEST_ERR=`` code.
 
     The console code and the status ring live in DIFFERENT spaces: the console
     carries ``OCA_BOOT_ERR_BASE | oca_result_t`` while the ring carries
@@ -434,7 +446,7 @@ def rom_status_for_result(boot_error: int) -> int:
     # not 0xFFFF: the low BYTE is the oca_result_t, and the byte above it is what
     # separates a library verdict from one of the ROM's own codes.
     if (boot_error & 0xFFFFFF00) != _c_define(_OCA_BOOT_H, "OCA_BOOT_ERR_BASE"):
-        return _c_define(_STATUS_VALUES_H, "SEP_MSG_MANIFEST_LOAD_FAILED")
+        return "SEP_MSG_MANIFEST_LOAD_FAILED"
 
     want = boot_error & 0xFF
     pending: list[str] = []
@@ -447,7 +459,7 @@ def rom_status_for_result(boot_error: int) -> int:
         if ret:
             for name in pending:
                 if oca_result(name) == want:
-                    return _c_define(_STATUS_VALUES_H, ret.group(1))
+                    return ret.group(1)
             pending = []
     raise AssertionError(
         f"status_for_result() maps no OCA_FAIL_* with value {want} "
@@ -694,6 +706,7 @@ _OCA_LAYOUT_H = _OCA_SRC.parent.parent / "validators" / "oca" / "lib" / "oca_lay
 
 
 SECURE_BOOT_ENFORCED_BIT = _c_define(_OCA_LAYOUT_H, "OCA_SECURE_BOOT_ENFORCED_BIT")
+SECURE_BOOT_CLASSIC_BIT = _c_define(_OCA_LAYOUT_H, "OCA_SECURE_BOOT_CLASSIC_BIT")
 
 
 def selector_bits(buf: bytes, slot: str) -> int:
@@ -1227,6 +1240,13 @@ def corrupt_public_key(buf: bytearray, slot: str, *, offset: int = 0) -> int:
 
 
 OFF_PUBLIC_KEY_SIZE = K.OFF_PUBLIC_KEY_SIZE_CLASSIC
+
+
+def public_key_size(buf: bytes, slot: str) -> int:
+    """Encoded byte count within the 532-byte public-key field."""
+    require_classic(buf, slot)
+    base = slot_base(slot) + OFF_PUBLIC_KEY_SIZE
+    return int.from_bytes(bytes(buf[base : base + 2]), "little")
 
 
 def remove_public_key(buf: bytearray, slot: str, *, keep_size: bool) -> None:

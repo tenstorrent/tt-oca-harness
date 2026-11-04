@@ -28,7 +28,7 @@ requests it issues in one hold, so every finite stop it grades at the port is
 the DUT's, not the responder's. The LSU master stops at the same count whether
 or not the port accepts, so at the pins the stop of the outbound chain is not
 separable from a stop upstream of it: the three-initiator hold at that stop is reported
-as OBS-CHAIN-HELD, the stop is the control CTRL-CHAIN-STOP and the drain of the
+as INFO-CHAIN-HELD, the stop is the control CTRL-CHAIN-STOP and the drain of the
 chain is graded by CHK-CHAIN-DRAIN.
 
 The SMN inbound master has no route to the outbound port:
@@ -84,7 +84,7 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-CHAIN-DRAIN   with the DMA and the SMN inbound master issuing
                     alongside, every session at CTRL-CHAIN-STOP drains,
                     including the writes-and-reads hold; in the
-                    three-initiator hold at the stop (OBS-CHAIN-HELD), the
+                    three-initiator hold at the stop (INFO-CHAIN-HELD), the
                     LSU's held request and the DMA's next write are each
                     admitted within the bounded one-beat releases.
   CHK-SAT-B-COUNT, CHK-SAT-R-COUNT
@@ -115,7 +115,11 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     expiry; every one has a measured use and each use is
                     within its bound. Fixed windows (the hold and idle
                     windows, a delayed release) cannot expire and are logged
-                    as OBS-WAIT only.
+                    as INFO-WAIT only.
+
+A row of a checker that the leg cannot grade (a sysif access that never reaches
+the port, the DMA stall at a held crossbar stop) is logged as
+``OBS-BLOCKED CHK-<NAME> reason=<r>`` and earns no credit.
 """
 
 from __future__ import annotations
@@ -388,12 +392,14 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         )
 
     def _delays_line(self, chan, delay, init, op, lat, base, done, total, reached) -> None:
-        emit = self._obs_row if init == "sysif" and not reached else self._line
-        emit(
-            "CHK-DELAYS",
+        line = (
             f"chan={chan} delay_cycles={delay} init={init} latency_ns={lat:.1f} "
-            f"baseline_ns={base:.1f} completed={done}/{total} op={op} reached={int(reached)}",
+            f"baseline_ns={base:.1f} completed={done}/{total} op={op} reached={int(reached)}"
         )
+        if init == "sysif" and not reached:
+            self._blocked_row("CHK-DELAYS", "no_outbound_path", line)
+        else:
+            self._line("CHK-DELAYS", line)
 
     async def _s2_baseline(self) -> None:
         chk = "CHK-DELAYS"
@@ -425,7 +431,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                     )
                 if not grade:
                     self.logger.info(
-                        "OBS-SYSIF-DELAY: chan=%s init=sysif reached=0 no_outbound_path=1", chan
+                        "INFO-SYSIF-DELAY: chan=%s init=sysif reached=0 no_outbound_path=1", chan
                     )
                 self._delays_line(chan, d, init, op, r.lat, base, r.done, 1, r.reached)
         self._fence("CHANNEL_DELAYS")
@@ -657,7 +663,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 )
             sys_resp = snap["mst"]["sysif"]["b"] + snap["mst"]["sysif"]["r"]
             self.logger.info(
-                "OBS-HOLD-SYSIF: session=%s sysif_decerr_in_hold=%d no_outbound_path=1 "
+                "INFO-HOLD-SYSIF: session=%s sysif_decerr_in_hold=%d no_outbound_path=1 "
                 "(the DECERR of the inbound path is not held by the responder)",
                 name,
                 sys_resp,
@@ -724,7 +730,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             acc = snap["port_aw"]
             sys_n = snap["mst"]["sysif"]["aw"]
             self.logger.info(
-                "OBS-SYSIF-REACH: session=%s sysif_port_accepted=%d sysif_master_aw=%d reached=0 "
+                "INFO-SYSIF-REACH: session=%s sysif_port_accepted=%d sysif_master_aw=%d reached=0 "
                 "no_outbound_path=1 (observation only)",
                 name,
                 snap["port"]["sysif"]["aw"],
@@ -770,7 +776,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 self._wait_used("one_release", k, ONE_RELEASE_POLLS)
                 return k, beats
             if not got:
-                self.logger.info("OBS-RELEASE: release=%d no response beat left", k)
+                self.logger.info("INFO-RELEASE: release=%d no response beat left", k)
         self._fail(
             chk,
             f"TIMEOUT wait=one_release {what} not admitted after {ONE_RELEASE_POLLS} releases "
@@ -782,7 +788,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         """One hold at the stop of CTRL-OUT-STOP with one extra request per initiator.
 
         Graded for CHK-XBAR-HELD; the three-initiator session is reported as
-        OBS-CHAIN-HELD, since its stop is the same stop.
+        INFO-CHAIN-HELD, since its stop is the same stop.
         """
         chk = "CHK-XBAR-HELD"
         rel_chk = chk if graded else "CHK-CHAIN-DRAIN"
@@ -817,7 +823,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 f"accepted_now={now['mst']['lsu']['aw']}",
             )
             self.logger.info(
-                "OBS-HELD-STALL: session=%s init=lsu stall_cycles=%d stall_other_cycles=%d",
+                "INFO-HELD-STALL: session=%s init=lsu stall_cycles=%d stall_other_cycles=%d",
                 name,
                 stall,
                 other,
@@ -846,28 +852,35 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         for init, stall, (releases, beats), extra in rows:
             if init == "sysif":
                 self.logger.info(
-                    "OBS-SYSIF-REACH: session=%s reached=0 no_outbound_path=1 (observation only)",
+                    "INFO-SYSIF-REACH: session=%s reached=0 no_outbound_path=1 (observation only)",
                     name,
                 )
                 comp = int(all(t.done for t in extra))
-                note = " reached=0 no_outbound_path=1 not_graded=observation_only"
+                note = " reached=0"
             elif init == "dma":
                 comp = int(s.job.done)
-                note = " stall_src=not_observable_at_a_pin not_graded=observation_only"
+                note = ""
             else:
                 comp = int(all(t.done for t in extra))
                 note = ""
                 if not comp:
                     self._fail(chk, f"session={name} init=lsu held request never completed")
-            emit = self._line if graded and init == "lsu" else self._obs_row
-            emit(
-                chk if graded else "CHAIN-HELD",
+            line = (
                 f"init={init} stall_cycles={stall} earlier_altered={alt_before} "
                 f"releases_to_admit={releases} released_beats={beats} completed={comp} "
-                f"session={name} drained={done}/{total}{note}",
+                f"session={name} drained={done}/{total}{note}"
             )
+            if not graded:
+                self._info_row("CHAIN-HELD", line)
+            elif init == "lsu":
+                self._line(chk, line)
+            else:
+                reason = (
+                    "no_outbound_path" if init == "sysif" else "stall_src_not_observable_at_a_pin"
+                )
+                self._blocked_row(chk, reason, line)
         if not graded:
-            self._obs_row(
+            self._info_row(
                 "CHAIN-HELD",
                 f"session={name} port_accepted_writes={before['port_aw']} "
                 f"responder_wr_limit={self.c.depth} (the chain stop is the LSU master stop; "
@@ -960,7 +973,7 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
             f"stall_other_cycles={other}",
         )
         done, total, to_last = await self._drain(s, chk)
-        self._obs_row(
+        self._info_row(
             "BOTH-LIMITS",
             f"xbar_reached={xbar} lsu_stall_cycles={m['aw_stall'] + m['ar_stall']} "
             f"stall_other_cycles={other} chain_reached=not_separable_from_xbar "
@@ -984,8 +997,8 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 r = await self._lone(init, op, chk)
                 key = f"{init}_{'w' if op == 'wr' else 'r'}"
                 if init == "sysif":
-                    self._obs_row(
-                        chk, f"{key}={r.resp} reached={int(r.reached)} no_outbound_path=1"
+                    self._blocked_row(
+                        chk, "no_outbound_path", f"{key}={r.resp} reached={int(r.reached)}"
                     )
                     continue
                 if r.resp != RESP_OKAY:

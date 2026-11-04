@@ -10,10 +10,10 @@ running on the KM CPU can present a transaction to them.
 
 Contract (hw/sys/sep/doc/crypto.adoc:94-95, hw/sys/sep/doc/reset_controller.adoc):
 
-  * :127-128 new transactions on an isolated path complete with SLVERR;
-  * :131 a domain's reset asserts once all of its paths report isolated;
-  * :132 the release reopens the paths;
-  * :142 the Key Manager domain isolates all five key paths and the eFuse path.
+  * :139-140 new transactions on an isolated path complete with SLVERR;
+  * :143 a domain's reset asserts once all of its paths report isolated;
+  * :144 the release reopens the paths;
+  * :154 the Key Manager domain isolates all five key paths and the eFuse path.
 
 The ROM is a store server: per inbound mailbox word it stores 0 to the KM bus
 address in the word and publishes the IRQ_STATUS AXI error bits read before
@@ -91,7 +91,7 @@ AXI_ERR_BITS = AXI_SLVERR | AXI_DECERR
 _MAX_KM_CYCLES = 60_000
 _MAX_ISO_CYCLES = 2_000
 
-# Bench isolate stages of the Key Manager domain (reset_controller.adoc:142,
+# Bench isolate stages of the Key Manager domain (reset_controller.adoc:154,
 # "All five key paths and the eFuse path").
 KM_DOMAIN_PATHS = ("km_otbn", "km_aes", "km_hmac", "km_kmac", "km_abr", "km_efuse")
 KM_DOMAIN_MASK = sum(1 << ISO_BENCH.index(p) for p in KM_DOMAIN_PATHS)
@@ -309,7 +309,7 @@ class sep_km_isolate_termination_test(sep_base_test):
         pre = (word >> 8) & 0xFF
         post = word & 0xFF
         self.logger.info(
-            "OBS-KM-ISO-LEG: dest=%s leg=%s seq=%d word0=0x%08x pre=0x%02x post=0x%02x b_events=%s",
+            "INFO-KM-ISO-LEG: dest=%s leg=%s seq=%d word0=0x%08x pre=0x%02x post=0x%02x b_events=%s",
             dest.name,
             tag,
             self.leg_no,
@@ -476,7 +476,7 @@ class sep_km_isolate_termination_test(sep_base_test):
         order = list(DESTS)
         SepSeededRng(self.random_seed()).shuffle(order)
         self.logger.info(
-            "OBS-KM-ISO-ORDER: seed=%d order=%s",
+            "INFO-KM-ISO-ORDER: seed=%d order=%s",
             self.random_seed(),
             [d.name for d in order],
         )

@@ -14,6 +14,12 @@ S3: TRST restores the 2-bit PTAP 3DCR: an IDCODE scan after the TRST and
 TMS is held low through every TRST assert here, so the TAP has no path to
 Test-Logic-Reset other than the reset itself.
 
+The SMC CPU JTAG reset is active-high, so ``dtp_smc_stap_tap_ctrl.trst_n``
+passes through an inverter (``hw/sys/smu/doc/index.adoc``, "Clocks and
+Resets"): on every ``clk_ref_i`` sample of the run, across the S1 and S3 TRST
+asserts and releases, the SMC's ``smc_cpu_jtag_reset_i`` reads the complement
+of ``tb_stap_smc_trst_n``.
+
 TDI/TCK fan out without ``stap_sel``; they are not the select proof.
 ``tb_stap_smc_tdo_oen`` is logged when live. IO + SMC + SEP debug + extra0 on the wrapper.
 Not claimed: SMC DTM abstract commands, STAP slave BFM IDCODE, real LCC.
@@ -31,6 +37,7 @@ from seq_lib.smu_boundary_regs import (
     stap_3dcr_scan_word,
     stap_sib_pattern,
 )
+from seq_lib.smu_compose_helpers import hier, sample
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     DTP_IR_IDCODE,
@@ -40,6 +47,7 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
     ptap_3dcr_value,
 )
+from seq_lib.smu_tb_pins import smu_scope
 
 EDGE_SAMPLE_CYCLES = 2000
 DR_WIDTH = 32
@@ -48,6 +56,7 @@ EXPECTED_SHIFT_TCKS = DTP_IR_WIDTH + DR_WIDTH
 MIN_PTAP_TMS_EDGES = DTP_IR_WIDTH
 TRST_CYCLES = 8
 PAYLOAD = 0x35353535
+SMC_CPU_JTAG_RESET_PATH = "u_smc.smc_cpu_jtag_reset_i"
 
 
 class smu_dtp_smc_stap_smoke_test_seq:
@@ -60,6 +69,7 @@ class smu_dtp_smc_stap_smoke_test_seq:
         self.s1_ok = False
         self.s2_ok = False
         self.s3_ok = False
+        self.polarity = {"samples": 0, "asserted": 0, "released": 0, "mismatches": 0}
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -109,6 +119,17 @@ class smu_dtp_smc_stap_smoke_test_seq:
             "smc_edges": smc_edges,
             "oen_tcks": oen_tcks,
         }
+
+    async def _sample_trst_polarity(self) -> None:
+        """Every clk_ref_i sample of the SMC CPU JTAG reset against the STAP trst_n."""
+        reset = hier(smu_scope(self.dut), SMC_CPU_JTAG_RESET_PATH)
+        while True:
+            await RisingEdge(self.dut.clk_ref_i)
+            trst_n = self._sample_bit("tb_stap_smc_trst_n")
+            level = sample(reset, SMC_CPU_JTAG_RESET_PATH) & 1
+            self.polarity["samples"] += 1
+            self.polarity["asserted" if trst_n == 0 else "released"] += 1
+            self.polarity["mismatches"] += level != (1 - trst_n)
 
     def _hier_bit(self, path: str) -> int | None:
         obj = self.dut
@@ -160,7 +181,27 @@ class smu_dtp_smc_stap_smoke_test_seq:
         await jtag.shift_dr(0, DR_WIDTH, back_to_rti=True)
 
     async def run(self) -> None:
-        sb = self.test.env.scoreboard
+        polarity_task = cocotb.start_soon(self._sample_trst_polarity())
+        try:
+            await self._run(self.test.env.scoreboard)
+        finally:
+            polarity_task.cancel()
+        pol = self.polarity
+        self._log(
+            f"CHK-DTP-SMC-STAP-TRST-POLARITY: samples={pol['samples']} "
+            f"trst_asserted={pol['asserted']} trst_released={pol['released']} "
+            f"mismatches={pol['mismatches']}"
+        )
+        self.test.env.scoreboard.expect_eq(
+            "CHK-DTP-SMC-STAP-TRST-POLARITY smc_cpu_jtag_reset_i reads the complement of "
+            f"tb_stap_smc_trst_n on every clk_ref_i sample ({pol['samples']} samples, "
+            f"{pol['asserted']} with TRST asserted, {pol['released']} released)",
+            (pol["mismatches"], pol["asserted"] >= TRST_CYCLES, pol["released"] >= TRST_CYCLES),
+            (0, True, True),
+            evidence="CHK-DTP-SMC-STAP-TRST-POLARITY",
+        )
+
+    async def _run(self, sb) -> None:
         raw = make_smu_jtag_tap(self.dut, self.cfg.jtag_period_ns)
         jtag = OcahJtagMasterSequence(raw)
         await jtag.reset_to_tlr()
@@ -171,7 +212,12 @@ class smu_dtp_smc_stap_smoke_test_seq:
         idcode = await raw.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-DTP-SMC-STAP-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-DTP-SMC-STAP-JTAG-READY",
+        )
 
         # S1: TRST (active-low) reaches SMC STAP host trst_n
         await jtag.assert_trst(tck_cycles=TRST_CYCLES, tms=0)
@@ -189,7 +235,12 @@ class smu_dtp_smc_stap_smoke_test_seq:
             await jtag.step_tms(0)
         self.s1_ok = True
         self._log("CHK-DTP-SMC-STAP-TRST: trst_n 0->1 on tb_stap_smc_trst_n")
-        sb.expect_eq("CHK-DTP-SMC-STAP-TRST", (trst_asserted, trst_released), (0, 1))
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-TRST",
+            (trst_asserted, trst_released),
+            (0, 1),
+            evidence="CHK-DTP-SMC-STAP-TRST",
+        )
 
         # Unselected-scan control: same IDCODE while stap_sel is still 0.
         # Host TMS must stay at tms_hold (0) while PTAP TMS executes the scan.
@@ -216,8 +267,15 @@ class smu_dtp_smc_stap_smoke_test_seq:
             f"ptap_edges={unsel['ptap_edges']} mismatch={unsel['mismatch']} "
             f"oen_tcks={unsel['oen_tcks']}"
         )
-        sb.expect_eq("CHK-DTP-SMC-STAP-UNSEL", unsel["smc_edges"], 0)
-        sb.expect_eq("CHK-DTP-SMC-STAP-UNSEL-OEN", unsel["oen_tcks"], 0)
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-UNSEL", unsel["smc_edges"], 0, evidence="CHK-DTP-SMC-STAP-UNSEL"
+        )
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-UNSEL-OEN",
+            unsel["oen_tcks"],
+            0,
+            evidence="CHK-DTP-SMC-STAP-UNSEL-OEN",
+        )
 
         await self._select_smc_stap(jtag)
 
@@ -263,13 +321,13 @@ class smu_dtp_smc_stap_smoke_test_seq:
             "CHK-DTP-SMC-STAP-IDCODE-OEN",
             sel["oen_tcks"],
             EXPECTED_SHIFT_TCKS,
-            evidence="CHK-DTP-SMC-STAP-IDCODE",
+            evidence="CHK-DTP-SMC-STAP-IDCODE-OEN",
         )
         sb.expect_eq(
             "CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH",
             sel["mismatch"],
             0,
-            evidence="CHK-DTP-SMC-STAP-IDCODE",
+            evidence="CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH",
         )
 
         # S3: TRST restores the 2-bit PTAP 3DCR (config_hold holds it across
@@ -347,10 +405,20 @@ class smu_dtp_smc_stap_smoke_test_seq:
             "CHK-DTP-SMC-STAP-IDCODE-BFM",
             byp["smc_edges"],
             byp["ptap_edges"],
-            evidence="CHK-DTP-SMC-STAP-IDCODE",
+            evidence="CHK-DTP-SMC-STAP-IDCODE-BFM",
         )
-        sb.expect_eq("CHK-DTP-SMC-STAP-PAYLOAD-OEN", byp["oen_tcks"], EXPECTED_SHIFT_TCKS)
-        sb.expect_eq("CHK-DTP-SMC-STAP-PAYLOAD-TMS-MATCH", byp["mismatch"], 0)
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-PAYLOAD-OEN",
+            byp["oen_tcks"],
+            EXPECTED_SHIFT_TCKS,
+            evidence="CHK-DTP-SMC-STAP-PAYLOAD-OEN",
+        )
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-PAYLOAD-TMS-MATCH",
+            byp["mismatch"],
+            0,
+            evidence="CHK-DTP-SMC-STAP-PAYLOAD-TMS-MATCH",
+        )
 
         self._log(
             "PASS DTP-SMC-STAP "

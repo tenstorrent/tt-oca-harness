@@ -273,10 +273,10 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "3268358166 4119665143"
+CHECKSUM: "2117159968 4067590397"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: i2c_core
-Condition 22 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
+Condition 21 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
 Condition 35 "200185853" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
 Condition 36 "3365045754" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
 Condition 39 "2297625995" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr) 1 -1" (2 "10")
@@ -295,19 +295,11 @@ Condition 23 "3333435659" "(field_storage.I2C_CTRL[0].I2C_CONTROLLER_MODE_EN.val
 Condition 24 "4098809404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 27 "1824308135" "(field_storage.I2C_CTRL[0].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
 Condition 28 "434978298" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 30 "2133510649" "((field_storage.I2C_CTRL[1].I2C_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 31 "3006557120" "(field_storage.I2C_CTRL[1].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
 Condition 32 "2343050358" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 34 "2494526992" "((field_storage.I2C_CTRL[1].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 35 "2711602547" "(field_storage.I2C_CTRL[1].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
 Condition 36 "3387182562" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 39 "3947382242" "(field_storage.I2C_CTRL[1].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
 Condition 40 "954291887" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 42 "3422574206" "((field_storage.I2C_CTRL[2].I2C_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 43 "3357802485" "(field_storage.I2C_CTRL[2].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
 Condition 44 "1052023753" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 46 "2417295500" "((field_storage.I2C_CTRL[2].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 47 "1532807786" "(field_storage.I2C_CTRL[2].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
 Condition 48 "4141873636" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 51 "1014715315" "(field_storage.I2C_CTRL[2].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
 Condition 52 "1656240774" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
@@ -493,7 +485,7 @@ Branch 142 "4143980261" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 144 "3094198831" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 206 "163551211" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "3215156436 3938785771"
+CHECKSUM: "2313761690 3938785771"
 ANNOTATION: "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually exclusive, wr_err is gated on reg_we and addrmiss requires that no address hit, so a read that hits an address always sees reg_error low and the crossed term cannot occur."
 MODULE: idma_reg64_2d_reg_top
 Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -1507,15 +1499,6 @@ Condition 486 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3
 Condition 487 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
 Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (2 "0000000000001")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (3 "0000000000010")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (4 "0000000000100")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (5 "0000000001000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (7 "0000000100000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (8 "0000001000000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (10 "0000100000000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (11 "0001000000000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (13 "0100000000000")
 Condition 494 "2985070047" "(((|field_storage.CONTROLLER_EVENTS.NACK.value)) || ((|field_storage.CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.value))) 1 -1" (3 "0010")
 
 CHECKSUM: "274773119 2913940277"
@@ -4128,12 +4111,12 @@ CHECKSUM: "3502264770 1350281502"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_scratch_reg_cold_warm
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
+Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "1251971546 306831124"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_reset_unit_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_awaddr [0] "net s_axil_awaddr[7:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[7:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"

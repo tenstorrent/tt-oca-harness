@@ -29,7 +29,7 @@ Checkers:
   CHK-COLD-DEFAULT  after the cold reset ``WDOG_CTRL``, ``WKUP_CTRL`` and
                     ``INTR_STATE`` read their reset value 0 on the RDL field bits.
 
-Controls and observations: ``CTL-COLD-WDT`` logs ``WDOG_REGWEN``, the two
+Controls and observations: ``INFO-COLD-WDT`` logs ``WDOG_REGWEN``, the two
 watchdog thresholds and ``WKUP_THOLD_HI`` after the reset (graded by
 ``sep_timer_clock_contract_test``). ``OBS-RST-ASSERT`` logs the delay from the
 ``rst_ni`` fall to the ``sep_reset_n`` fall; the specification gives no
@@ -353,7 +353,7 @@ class sep_cold_reset_phase_test(sep_base_test):
                 fc.rsvd,
             )
         self.logger.info(
-            "CTL-COLD-WDT: pass=%s regwen=0x%x bark=0x%x bite=0x%x wkup_hi=0x%x",
+            "INFO-COLD-WDT: pass=%s regwen=0x%x bark=0x%x bite=0x%x wkup_hi=0x%x",
             pass_name,
             got["WDOG_REGWEN"],
             got["WDOG_BARK_THOLD"],

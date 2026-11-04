@@ -179,6 +179,8 @@ skip = """\
 *.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,*.pem,uv.lock,*.lock,\
 *.dis,*.il,*.log\
 """
+# presense: "pre-sense", the eFuse state before the fuse sense completes, as
+# spelled in SEP DV check names and coverpoints.
 # interruptor(s): the RISC-V CLINT spec spells out the acronym as
 # "Core-Local INTerruptor", matching every other occurrence in doc/; not the
 # "interrupter" spelling codespell's dictionary otherwise prefers.
@@ -188,5 +190,6 @@ inout,Inout,ist,wit,dout,oen,chainIn,LockIn,DAA,clen,aack,thi,pres,te,ues,\
 Dum,ND,nd,RUNN,ASSIGNIN,Synopsys,synopsys,unsecure,Unsecure,UNSECURE,\
 interruptor,Interruptor,interruptors,Interruptors,\
 SpecField,specfield,\
+presense,PRESENSE,\
 Tye,tye\
 """

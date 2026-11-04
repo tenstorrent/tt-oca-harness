@@ -91,7 +91,7 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-TIMEOUT-PATHS each bounded wait (a transaction, a DMA DONE wait) logs
                     its bound and raises on expiry; every one has a measured
                     use and each use is within its bound. Fixed windows
-                    cannot expire and are logged as OBS-WAIT only.
+                    cannot expire and are logged as INFO-WAIT only.
 """
 
 from __future__ import annotations
@@ -632,7 +632,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         st = self._account(chk, "sysif_alone", plan, view, marks)
         self._tally(st)
         s = st["sysif"]
-        self._obs_row(
+        self._info_row(
             "SYSIF-SINGLE",
             f"wr_issued={s['wr']} b={s['b_master']} rd_issued={s['rd']} r={s['r_master']} "
             f"rlast={s['rlast']} resp={_setfmt(t.resp for t in plan['sysif'])} "
@@ -664,7 +664,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         st = self._account(chk, "sysif_bursts", plan, view, marks)
         self._tally(st)
         s = st["sysif"]
-        self._obs_row(
+        self._info_row(
             "SYSIF-BURST",
             f"wr_len={_listfmt(t.beats - 1 for t in wr)} b={s['b_master']} "
             f"rd_len={_listfmt(t.beats - 1 for t in rd)} r_beats={s['r_master']} "
@@ -1052,7 +1052,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         await self._s11_attr_idle()
 
         self.logger.info(
-            "DELAYS-MEASURED port_stall=%s resp_stall_clocks=%s hold_clocks=%d",
+            "INFO-DELAYS-MEASURED port_stall=%s resp_stall_clocks=%s hold_clocks=%d",
             self.pstall.snap(),
             self.delay.stall_clocks,
             self.delay.hold_clocks,

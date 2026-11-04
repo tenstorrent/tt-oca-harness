@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The OT SPI host CSRs, interrupts, error bits, watermark and enable follow the spi_host spec.
 
-OCAH provenance: ``spi_ot_reg``, ``tx_fifo``, ``cmd_queue``, ``interrupt``,
-``error_handling``, ``watermark`` and ``enable_disable`` check the SPI-host
-control plane.
-
 A combined-per-group `[RAND-REP]` for the OT SPI host control plane: register R/W,
 TX FIFO, command queue, interrupts, error handling, watermark and enable/disable.
 Not covered, because nothing here checks them: the clock configuration (CFG.CLKDIV
@@ -25,7 +21,14 @@ reset values + RW/W1C/RO field semantics
 block, which reggen derives from upstream spi_host.hjson).
 
 Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DUT):
-  CHK-RESET     : every control/status reg reads its documented reset value.
+  CHK-RESET     : every control reg reads its documented reset value; STATUS
+                  reads ACTIVE, TXFULL, RXFULL, TXQD, RXQD and CMDQD 0.
+  CHK-SPI-STATUS-RESET: STATUS reads TXSTALL, RXSTALL, TXWM and RXWM at their
+                  RDL reset value 0x0 (spi_controller.rdl, STATUS). READY,
+                  TXEMPTY, RXEMPTY and BYTEORDER are logged only
+                  (OBS-SPI-STATUS-RESET): the RDL gives reset 0x0, while the
+                  field text (an empty FIFO, the unmodified IP with ByteOrder
+                  1) gives 1; the open question is in SEP_VPLAN.
   CHK-REG-RW    : each RW reg write->readback exact; bits outside the writable
                   mask (RO/reserved) read 0.
   CHK-INTR      : INTR_STATE.ERROR is an Event latch -- INTR_TEST sets it with
@@ -44,6 +47,23 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   (doc/programmer/src/sep-programming.adoc:819-820).
                   INTR_ENABLE raises and drops sep_internal_interrupts[13]
                   (PIC source 14) for both sources.
+  CHK-SPI-ALERT-TEST: with INTR_ENABLE = both bits, a write of 1 to
+                  ALERT_TEST.fatal_fault leaves INTR_STATE 0 and
+                  sep_internal_interrupts[13] 0 on every clk_i cycle of the
+                  sample window. The SPI line is the OR of the error and
+                  SPI-event interrupts (hw/sys/sep/doc/spi.adoc, Interrupts),
+                  and ALERT_TEST triggers an alert event, not an interrupt
+                  (vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/
+                  registers.md, ALERT_TEST). Controls: the ALERT_TEST write
+                  gets a write response (CTRL-SPI-ALERT-RESP, else
+                  CTRL-MISSING); the fatal_fault alert pair of the SPI host
+                  (tap spi_alert_tx_probe_o) reads idle before the write and
+                  fired inside the window (CTRL-SPI-ALERT-REACH, else
+                  CTRL-MISSING); INTR_TEST.ERROR at the same enable raises the
+                  line inside the same window. The response code is logged
+                  (OBS-SPI-ALERT-RESP): no specification states the response
+                  code of a legal register write. The other vector bits are
+                  logged (OBS-SPI-ALERT-TEST).
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (COMMAND
                   SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
@@ -68,7 +88,11 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
 RXWM is covered by the RX-path tests (`sep_spi_ot_flash_cmd_rand_test` /
 `sep_spi_ot_dma_rx_test`).
 
-The checks above run first, with the graded FCOV window closed. Four legs follow
+The checks above run first, with the graded FCOV window closed except at the
+CONTROL write that sets the TX_WATERMARK of each CHK-WATERMARK pass: the sampler
+holds that value and samples ``sep_spi_host_rand_cg.cp_tx_wm`` when the leaf
+writes the same value to ``spi_tx_wm_pass`` after the CHK-WATERMARK PASS line.
+Four legs follow
 that grade only the cells the checks above do not grade, against
 ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc``,
 ``hw/sys/sep/doc/spi.adoc`` (Features), ``hw/sys/sep/doc/interrupts.adoc`` and
@@ -84,14 +108,27 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       RXWM in two passes over five FIFO states; the
                       TXEMPTY-only, RXFULL-only, IDLE and READY sequences), and
                       0 after the mask step. STATUS must show the levels the
-                      stimulus names, else CTRL-MISSING.
+                      stimulus names, and every EVENT_ENABLE write must read
+                      back under the field mask, else CTRL-MISSING.
+  L1 CHK-SPI-EVENT-SRC : five source steps each grade SPI_EVENT (the OR of
+                      the STATUS levels of the selected sources), INTR_STATE.ERROR
+                      0 and PIC source 14 before and after one level change:
+                      RXWM falls (RXDATA reads below RX_WATERMARK=2) with
+                      EVENT_ENABLE.RXWM 1 (after a write that selects RXWM and
+                      TXEMPTY, both high) and with EVENT_ENABLE 0, READY
+                      falls and rises with EVENT_ENABLE 0, and TXWM rises
+                      (TX_WATERMARK above TXQD=1) with EVENT_ENABLE = TXWM
+                      and with EVENT_ENABLE 0, TXEMPTY 0 in both. STATUS must
+                      show the level change, else CTRL-MISSING.
   L1 CHK-SPI-LINE   : PIC source 14 equals (SPI_EVENT and INTR_ENABLE.SPI_EVENT)
                       or (ERROR and INTR_ENABLE.ERROR) at each state read, with
-                      a twin sample at INTR_ENABLE=3, and on the 16-cell line
+                      a twin sample at INTR_ENABLE=3 where INTR_STATE equals
+                      the read at INTR_ENABLE=I, and on the 16-cell line
                       walk. The five walk cells that the checks above grade log
-                      CTL-SPI-LINE and fail the leaf on a mismatch.
-  L2 CHK-SPI-ERR-KIND : each of the five error kinds sets INTR_STATE.ERROR, which
-                      survives the ERROR_STATUS clear and clears on its own W1C.
+                      CTRL-SPI-LINE and fail the leaf on a mismatch.
+  L2 CHK-SPI-ERR-KIND : each of the five error kinds sets ERROR_STATUS to its own
+                      bit alone and sets INTR_STATE.ERROR, which survives the
+                      ERROR_STATUS clear and clears on its own W1C.
   L2 CHK-SPI-CSID-RANGE : a COMMAND at a drawn CSID from 2 to 0xFFFFFFFE sets
                       ERROR_STATUS to CSIDINVAL alone; CSID=1 is logged only
                       (OBS-SPI-CSID1): at NumCS=1 the OpenTitan SPI_HOST theory
@@ -104,7 +141,8 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
   L2 CHK-SPI-ERR-MASK : accumulated kinds OR into ERROR_STATUS, a drawn W1C mask
                       clears only its bits and a write of 0 clears nothing. A
                       drawn configurable kind injected with its ERROR_ENABLE
-                      bit clear sets its own ERROR_STATUS bit and leaves
+                      bit clear (ERROR_ENABLE read back before the injection)
+                      sets ERROR_STATUS to its own bit alone and leaves
                       INTR_STATE.ERROR at 0 (masked=1 line). Sources:
                       theory_of_operation.md:605 "Clearing the bit
                       corresponding bit in the ERROR_ENABLE register in the
@@ -118,24 +156,101 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       same kind with ERROR_ENABLE set gives INTR_STATE.ERROR=1
                       (CHK-SPI-ERR-KIND), else CTRL-MISSING.
   L2 CHK-SPI-CMDBUSY0 : a COMMAND written while READY=0 and ACTIVE=0 (SPIEN=0)
-                      sets CMDBUSY.
+                      sets ERROR_STATUS to CMDBUSY alone;
+                      STATUS.CMDQD of the READY=0 exit read equals the
+                      accepted COMMAND writes.
   L3 CHK-SPI-STRB   : an 8-byte write with strobe 0x0F, 0xF0 or 0xFF at the
                       pairs 0x00, 0x18, 0x28 and 0x30 returns OKAY, lands the
                       strobed half by its register type and keeps the other
-                      half. ACCESSINVAL is logged only (OBS-SPI-STRB-ACCESSINVAL).
+                      half.
+  L3 CHK-SPI-STRB-ACCESSINVAL : at every cell except the 0x30 pair and the
+                      empty TXDATA half below, ERROR_STATUS.ACCESSINVAL reads 0
+                      after the write. A half with no strobes is completed by
+                      the bridge with no TL-UL request (hw/sys/sep/doc/spi.adoc:54-58),
+                      and only a TXDATA write with no bytes enabled sets the
+                      bit (spi_host.hjson ERROR_STATUS.ACCESSINVAL). Control:
+                      ACCESSINVAL reads 0 before the write, else CTRL-MISSING.
+  L3 CHK-SPI-STRB-EMPTY : the 8-byte write at the TXDATA pair (0x28) with strobe
+                      0xF0 leaves the TXDATA half without strobes. The bridge
+                      completes that half locally with OKAY and sends no
+                      TL-UL request; forwarding it would set
+                      ERROR_STATUS.ACCESSINVAL (hw/sys/sep/doc/spi.adoc:54-58;
+                      hw/sys/sep/regs/gen/ipxact/sep.xml:20352-20353). With
+                      ERROR_STATUS and INTR_STATE 0 before the write, the
+                      ERROR_ENABLE half lands, TXQD stays 0, INTR_STATE reads
+                      0 (no error event, hw/sys/sep/doc/spi.adoc:79; no event
+                      source selected, hw/sys/sep/doc/spi.adoc:84-86) and
+                      ERROR_STATUS.ACCESSINVAL reads 0.
+                      No frontdoor stimulus sets ACCESSINVAL (its only cause
+                      is the forwarded empty write), so CHK-SPI-STRB-EMPTY and
+                      CHK-SPI-STRB-ACCESSINVAL show that the bit is not raised,
+                      not that the core can raise it.
   L3 CHK-SPI-STRB-TX: the TXDATA half queues one word only when strobed.
   L3 CHK-SPI-STRB-CTRL : strobe 0xFF changes both halves of each pair.
   L4 CHK-SPI-SWRST  : SW_RST written at a drawn sck cycle of a Tx segment reads
                       back 1, empties both FIFOs and the core, keeps the
                       registers, and a clean command then runs.
-  L4 CHK-SPI-SPIEN  : SPIEN=0 holds 1 to 3 queued commands off the pads for
-                      4*T clocks; SPIEN=1 runs them in order.
+  L4 CHK-SPI-SPIEN  : SPIEN=0 holds 1 to 3 queued commands (ACTIVE=0) off the pads
+                      for 4*T clocks; SPIEN=1 runs them in order.
+  L4 CHK-SPI-CMDINVAL-SPIEN1 : with SPIEN=1, a COMMAND with the reserved SPEED
+                      sets ERROR_STATUS to CMDINVAL alone, and a legal Tx
+                      COMMAND queued behind it, with its TXDATA word in the
+                      FIFO, drives no sck edge in 4*T clocks before the write
+                      of 1 to ERROR_STATUS.CMDINVAL. Sources:
+                      theory_of_operation.md:596 "Specifying a command segment
+                      with an invalid width (speed) ... will trigger a
+                      ERROR_STATUS.CMDINVAL error event"; :601 "They will also
+                      halt the IP until the corresponding bit is cleared".
+                      Neither depends on SPIEN. T is a reference Dummy segment
+                      of the same sck count, run just before on the same
+                      sampler, so a dead sck tap fails that reference.
+                      Control (CTRL-SPI-CMDINVAL-SPIEN1, else CTRL-MISSING):
+                      CONTROL reads SPIEN=1 and ERROR_STATUS reads 0 before
+                      the reserved COMMAND. Control
+                      (CTRL-SPI-CMDINVAL-QUEUED, else CTRL-MISSING): the
+                      write of the Tx COMMAND raises STATUS.CMDQD by 1 and
+                      STATUS.TXQD reads at least 1 after it, or the window
+                      shows sck edges. Logged only
+                      (OBS-SPI-CMDINVAL-SPIEN1): STATUS (CMDQD, ACTIVE, TXQD)
+                      and the chip select windows while CMDINVAL halts the
+                      IP. SW_RST then empties both queues before the write of
+                      1, because the core assumes a valid speed and no text
+                      states what a popped reserved command does.
 
 Run mode: no_cpu with +skip_fuse_sense. The graded window carries this test's
-code during the four legs only; it is closed during the checks above, the
-control cells, the masked-kind injection and the logged-only injections. RANDCFG and RAND-REP draws of the
-legs come from ``SepSeededRng`` and the run seed and are logged on the PLAN and
-DRAW lines.
+code during the stimulus and checks of the four legs only. It is closed during
+the checks above, the control cells, the logged-only injections and the
+housekeeping steps (the SPI clean state, the SW_RST helper, the injection
+restore and the register set-up of the L2 single kinds, the accumulation, CMDBUSY with ACTIVE low, every
+strobe cell, SW_RST and SPIEN legs). The masked-kind injection opens it at the
+access that raises the kind. The sampler holds every owner-410 sample taken
+inside the window; the leaf releases the held samples (pass label
+``spi_csr_irq_pass``, bit 0) after the last check of each instance has passed:
+each L1 state read and source step, each line-walk cell, each single kind, the
+accumulation, the write of 0, the masked kind, CMDBUSY with ACTIVE low, each
+strobe cell and the SW_RST and SPIEN legs. Each release names the cell
+families that the checks of its instance grade (the ``_FAM_*`` sets below);
+the sampler drops the held cells of every other family, so a source change,
+an SPI_EVENT change or a SPIEN cell inside an error, strobe or SW_RST instance
+fills no cell. A cell that a read keys (a source level at STATUS, an SPI_EVENT
+edge or an INTR_ENABLE x INTR_STATE cell at INTR_STATE, the masked kind, the
+UNDERFLOW, CSID and empty-half cells at ERROR_STATUS, the SW_RST hold at
+CONTROL) is held only at a read that the leaf marks as graded
+(``spi_csr_irq_rd``): the STATUS and INTR_STATE reads of each state read (the
+twin included) and source sample, the INTR_STATE read of each graded line-walk
+cell, the ERROR_STATUS read that CHK-SPI-ERR-KIND and CHK-SPI-CSID-RANGE grade
+after the own-bit poll, the INTR_STATE read of the masked kind, the ERROR_STATUS
+read of CHK-SPI-STRB-EMPTY, the three CONTROL reads of CHK-SPI-SWRST, the
+STATUS reads of the CMDBUSY fill loop and the STATUS read after the SPIEN=0
+queue. The last of those STATUS reads before a release keys READY, ACTIVE and
+the CMDQD class: CHK-SPI-CMDBUSY0 grades the READY=0 ACTIVE=0 exit read of the
+fill loop (``SPI_CSR_IRQ_FAM_QF``: cp_ready_x_active and the CMDQD cell of
+cp_depth_counter) and CHK-SPI-SPIEN grades the CMDQD of the read after the
+queue (``SPI_CSR_IRQ_FAM_QD``: the CMDQD cell of cp_depth_counter). Set-up
+polls, waits and logged reads carry no mark and hold nothing. A FAIL or
+CTRL-MISSING line writes the drop bit (bit 1) and closes the window before the
+leaf stops. RANDCFG and RAND-REP draws of the legs come from ``SepSeededRng``
+and the run seed and are logged on the PLAN and DRAW lines.
 """
 
 from __future__ import annotations
@@ -143,13 +258,43 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_axi_agent import SepAxiOp
+from env.sep_fcov_gate import (
+    SPI_CSR_IRQ_FAM_CBZ,
+    SPI_CSR_IRQ_FAM_CF,
+    SPI_CSR_IRQ_FAM_CV,
+    SPI_CSR_IRQ_FAM_DOM,
+    SPI_CSR_IRQ_FAM_EA,
+    SPI_CSR_IRQ_FAM_IES,
+    SPI_CSR_IRQ_FAM_IL,
+    SPI_CSR_IRQ_FAM_IT,
+    SPI_CSR_IRQ_FAM_MK,
+    SPI_CSR_IRQ_FAM_OF,
+    SPI_CSR_IRQ_FAM_QD,
+    SPI_CSR_IRQ_FAM_QF,
+    SPI_CSR_IRQ_FAM_RC,
+    SPI_CSR_IRQ_FAM_SEC,
+    SPI_CSR_IRQ_FAM_SW,
+    SPI_CSR_IRQ_FAM_SZ,
+    SPI_CSR_IRQ_FAM_TE,
+    SPI_CSR_IRQ_FAM_UF,
+    SPI_CSR_IRQ_FAM_ZS,
+    SPI_CSR_IRQ_PASS_DROP,
+    SPI_CSR_IRQ_PASS_RELEASE,
+    close_graded_window,
+    open_graded_window,
+    set_open_value_leg_pass,
+    set_spi_csr_irq_graded_read,
+    set_spi_csr_irq_pass,
+    set_spi_tx_wm_pass,
+)
 from env.sep_field_compare import field_compare
 from env.sep_reg_meta import SPI_CONTROLLER
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic
 from env.sep_spi_pad_sampler import SepSpiPadSampler
 from sep_base_test import sep_base_test
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_spi_host_csr_seq import (
     CMD_DIR_TX,
     CMD_SPEED_RESERVED,
@@ -227,22 +372,72 @@ _NEG_WINDOW_FLOOR = 32
 _FILL_LIMIT = 512
 _CMD_LIMIT = 64
 _SPI_AGG = agg_from_pic("SPI IRQ")
+# clk_i cycles sampled after the ALERT_TEST write; the INTR_TEST control must
+# raise the SPI line inside the same window.
+_ALERT_WIN = 64
+# spi_alert_tx_probe_o encoding {alert_p, alert_n} of prim_alert_pkg::alert_tx_t:
+# idle is the sender reset value, an alert drives the pair to the opposite levels.
+_ALERT_TX_IDLE = 0b01
+_ALERT_TX_FIRED = 0b10
 
 # ---- Legs L1 to L4 -----------------------------------------------------------
 TEST = "sep_spi_ot_host_csr_irq_rand_test"
+# Cell families each release samples: the families that the checks of that
+# instance grade. The release drops the held cells of every other family.
+# State reads and source steps: CHK-SPI-EVENT / CHK-SPI-EVENT-SRC grade
+# SPI_EVENT against the source levels and CHK-SPI-LINE grades PIC source 14.
+_FAM_EVENT = SPI_CSR_IRQ_FAM_SEC | SPI_CSR_IRQ_FAM_EA | SPI_CSR_IRQ_FAM_IES
+# Line walk: CHK-SPI-LINE grades INTR_STATE (both bits) and PIC source 14.
+_FAM_WALK = _FAM_EVENT | SPI_CSR_IRQ_FAM_IT
+# Error kinds: CHK-SPI-ERR-KIND, CHK-SPI-CSID-RANGE, CHK-SPI-ERR-MASK and
+# CHK-SPI-CMDBUSY0 grade ERROR_STATUS and INTR_STATE.ERROR.
+_FAM_ERR = (
+    SPI_CSR_IRQ_FAM_CF
+    | SPI_CSR_IRQ_FAM_RC
+    | SPI_CSR_IRQ_FAM_IL
+    | SPI_CSR_IRQ_FAM_MK
+    | SPI_CSR_IRQ_FAM_UF
+    | SPI_CSR_IRQ_FAM_OF
+    | SPI_CSR_IRQ_FAM_CV
+    | SPI_CSR_IRQ_FAM_CBZ
+)
+# Strobe cells: CHK-SPI-STRB and CHK-SPI-STRB-EMPTY grade the halves,
+# ERROR_STATUS of the 0x30 pair and ACCESSINVAL of the empty TXDATA half.
+_FAM_STRB = SPI_CSR_IRQ_FAM_ZS | SPI_CSR_IRQ_FAM_TE | SPI_CSR_IRQ_FAM_CF
+# SW_RST leg: CHK-SPI-SWRST grades SW_RST, the FIFOs and the registers.
+_FAM_SWRST = SPI_CSR_IRQ_FAM_SW | SPI_CSR_IRQ_FAM_DOM
+# SPIEN leg: CHK-SPI-SPIEN grades the hold and the run on the pads, and the
+# CMDQD of the STATUS read after the queued commands.
+_FAM_SPIEN = SPI_CSR_IRQ_FAM_SZ | SPI_CSR_IRQ_FAM_QD
 _R = SPI_CONTROLLER
+ALERT_TEST = _R.addr("ALERT_TEST")
+# Write-only registers read, and read-only registers written, by _obs_wo_ro.
+_WO_READS = (
+    ("COMMAND", COMMAND),
+    ("TXDATA", TXDATA),
+    ("INTR_TEST", INTR_TEST),
+    ("ALERT_TEST", ALERT_TEST),
+)
+_RO_WRITES = (("STATUS", STATUS), ("RXDATA", RXDATA))
+_WO_RO_SALT = 0x574F_524F
+# Draws of the SPIEN=1 CMDINVAL leg: the Tx word and its byte count.
+_CMDINVAL_SALT = 0x4349_4E31
 _LEG_CHECKS = (
     "CHK-SPI-EVENT",
+    "CHK-SPI-EVENT-SRC",
     "CHK-SPI-LINE",
     "CHK-SPI-ERR-KIND",
     "CHK-SPI-CSID-RANGE",
     "CHK-SPI-ERR-MASK",
     "CHK-SPI-CMDBUSY0",
     "CHK-SPI-STRB",
+    "CHK-SPI-STRB-EMPTY",
     "CHK-SPI-STRB-TX",
     "CHK-SPI-STRB-CTRL",
+    "CHK-SPI-STRB-ACCESSINVAL",
     "CHK-SPI-SWRST",
     "CHK-SPI-SPIEN",
+    "CHK-SPI-CMDINVAL-SPIEN1",
 )
 _OPEN_CHECKS = 8
 # Separates the leg stream from the SepSpiHostCfg stream of the same seed.
@@ -252,6 +447,7 @@ _CTRL_TX_WM_LSB = _R.field_lsb("CONTROL", "tx_watermark")
 _CTRL_RX_WM_LSB = _R.field_lsb("CONTROL", "rx_watermark")
 _CTRL_RX_WM_RESET = (CTRL_RESET & _R.field_mask("CONTROL", "rx_watermark")) >> _CTRL_RX_WM_LSB
 _ERR_EN_ALL = _R.reset32("ERROR_ENABLE")
+_EV_EN_MASK = _R.mask32("EVENT_ENABLE")
 _ST_TXQD_LSB = _R.field_lsb("STATUS", "txqd")
 
 
@@ -331,6 +527,8 @@ _OFF_INTR = INTR_STATE - _SPI_BASE
 _OFF_TXDATA = TXDATA - _SPI_BASE
 _OFF_ERR_STATUS = ERROR_STATUS - _SPI_BASE
 _STROBES = (0x0F, 0xF0, 0xFF)
+# The strobe that leaves the low (TXDATA) half of the 0x28 pair without strobes.
+_STRB_HIGH_ONLY = 0xF0
 _IE_EVENT = _R.field_mask("INTR_ENABLE", "spi_event")
 _IE_ERROR = _R.field_mask("INTR_ENABLE", "error")
 
@@ -350,10 +548,12 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
     required_evidence = (
         "CHK-RESET",
+        "CHK-SPI-STATUS-RESET",
         "CHK-REG-RW",
         "CHK-NONVAC",
         "CHK-ZERO-STRB",
         "CHK-INTR",
+        "CHK-SPI-ALERT-TEST",
         "CHK-ERR-W1C",
         "CHK-WATERMARK",
         "CHK-ENABLE",
@@ -363,13 +563,15 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.scfg = SepSpiHostCfg(self.random_seed())
         self.spi = SepSpiHost(self)
-        self.logger.info("SPI host CSR config: %s", self.scfg.summary())
+        self.logger.info("INFO-SPI-HOST-CFG: %s", self.scfg.summary())
 
         await self.bring_up_no_cpu()
         close_graded_window(self.logger)
 
         await self._chk_reset()
         await self._chk_reg_rw()
+        await self._obs_wo_ro()
+        await self._chk_alert_test()
         await self._chk_zero_strb()
         await self._chk_intr()
         await self._chk_err_w1c()
@@ -410,23 +612,75 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     async def _chk_reset(self) -> None:
         for name, (addr, exp) in RESET_VALUES.items():
             got = await self.spi.rd(addr)
-            assert got == exp, f"CHK-RESET {name}@0x{addr:08x} 0x{got:08x} != 0x{exp:08x}"
-        # STATUS is RO/hw-driven: check the stable idle bits rather than a constant.
+            assert got == exp, f"CHK-RESET FAIL {name}@0x{addr:08x} 0x{got:08x} != 0x{exp:08x}"
         st = await self.spi.rd(STATUS)
-        assert st & ST_READY, f"CHK-RESET STATUS.READY not set: 0x{st:08x}"
-        assert not (st & ST_ACTIVE), f"CHK-RESET STATUS.ACTIVE set: 0x{st:08x}"
-        assert st & ST_TXEMPTY, f"CHK-RESET STATUS.TXEMPTY not set: 0x{st:08x}"
-        assert st & ST_RXEMPTY, f"CHK-RESET STATUS.RXEMPTY not set: 0x{st:08x}"
-        assert not (st & ST_TXFULL), f"CHK-RESET STATUS.TXFULL set: 0x{st:08x}"
-        assert not (st & ST_RXFULL), f"CHK-RESET STATUS.RXFULL set: 0x{st:08x}"
+        assert not (st & ST_ACTIVE), f"CHK-RESET FAIL STATUS.ACTIVE set: 0x{st:08x}"
+        assert not (st & ST_TXFULL), f"CHK-RESET FAIL STATUS.TXFULL set: 0x{st:08x}"
+        assert not (st & ST_RXFULL), f"CHK-RESET FAIL STATUS.RXFULL set: 0x{st:08x}"
         assert not (st & (ST_TXQD | ST_RXQD | ST_CMDQD)), (
-            f"CHK-RESET STATUS queue depths nonzero: 0x{st:08x}"
+            f"CHK-RESET FAIL STATUS queue depths nonzero: 0x{st:08x}"
         )
         self.logger.info(
             "CHK-RESET PASS: %d control regs at documented reset + STATUS idle (0x%08x)",
             len(RESET_VALUES),
             st,
         )
+
+        def field(f: str) -> int:
+            return (st & _R.field_mask("STATUS", f)) >> _R.field_lsb("STATUS", f)
+
+        graded = {f: field(f) for f in ("txstall", "rxstall", "txwm", "rxwm")}
+        text = " ".join(f"{f}={v}" for f, v in graded.items())
+        assert not any(graded.values()), (
+            f"CHK-SPI-STATUS-RESET FAIL: status=0x{st:08x} {text} expect 0 (RDL reset)"
+        )
+        self.logger.info("CHK-SPI-STATUS-RESET PASS: status=0x%08x %s expect=0", st, text)
+        self.logger.info(
+            "OBS-SPI-STATUS-RESET status=0x%08x ready=%d txempty=%d rxempty=%d byteorder=%d",
+            st,
+            *(field(f) for f in ("ready", "txempty", "rxempty", "byteorder")),
+        )
+
+    # ---- OBS-SPI-WO-RO-ACCESS ---------------------------------------------
+    async def _obs_wo_ro(self) -> None:
+        """Log the response and data of a read of each write-only register and of a
+        write to each read-only register, with ERROR_STATUS after each write."""
+        rng = SepSeededRng(self.random_seed() ^ _WO_RO_SALT)
+        for name, addr in _WO_READS:
+            seq = SepAxiAccessSeq(
+                f"spi_wo_rd_0x{addr:08x}",
+                op=SepAxiOp.READ,
+                addr=addr,
+                length=4,
+                allow_ungraded_read_resp=True,
+            )
+            await self.start_seq(seq)
+            self.logger.info(
+                "OBS-SPI-WO-RO-ACCESS reg=%s dir=R resp=%d data=0x%08x err_status=-",
+                name,
+                seq.resp_code,
+                seq.rdata & 0xFFFF_FFFF,
+            )
+        for name, addr in _RO_WRITES:
+            word = rng.getrandbits(32)
+            seq = SepAxiAccessSeq(
+                f"spi_ro_wr_0x{addr:08x}",
+                op=SepAxiOp.WRITE,
+                addr=addr,
+                wdata=word,
+                length=4,
+                allow_unverified_write_resp=True,
+            )
+            await self.start_seq(seq)
+            es = await self.spi.rd(ERROR_STATUS)
+            self.logger.info(
+                "OBS-SPI-WO-RO-ACCESS reg=%s dir=W resp=%d data=0x%08x err_status=0x%08x",
+                name,
+                seq.resp_code,
+                word,
+                es,
+            )
+        await self._clear_error_status()
 
     # ---- CHK-REG-RW (+ CHK-NONVAC) ---------------------------------------
     async def _chk_reg_rw(self) -> None:
@@ -442,11 +696,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self.spi.wr(addr, target)
             rb = await self.spi.rd(addr)
             assert rb == target, (
-                f"CHK-REG-RW {name}@0x{addr:08x} readback 0x{rb:08x} "
+                f"CHK-REG-RW FAIL {name}@0x{addr:08x} readback 0x{rb:08x} "
                 f"!= written 0x{target:08x} (wmask 0x{wmask:08x})"
             )
             assert rb != pre, (
-                f"CHK-NONVAC {name}@0x{addr:08x} readback 0x{rb:08x} equals the "
+                f"CHK-NONVAC FAIL {name}@0x{addr:08x} readback 0x{rb:08x} equals the "
                 f"observed pre-write value -- the write changed nothing observable"
             )
             # Drive the bits the generated block does not implement and require
@@ -458,10 +712,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 await self.spi.wr(addr, target | probe)
                 rb2 = await self.spi.rd(addr)
                 assert (rb2 & probe) == 0, (
-                    f"CHK-REG-RW {name} unimplemented bits hold storage: 0x{rb2 & probe:08x}"
+                    f"CHK-REG-RW FAIL {name} unimplemented bits hold storage: 0x{rb2 & probe:08x}"
                 )
                 assert (rb2 & wmask) == target, (
-                    f"CHK-REG-RW {name} writable bits disturbed by an "
+                    f"CHK-REG-RW FAIL {name} writable bits disturbed by an "
                     f"unimplemented-bit write: 0x{rb2 & wmask:08x} != 0x{target:08x}"
                 )
         self.logger.info(
@@ -492,12 +746,12 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(CONTROL, written, length=4, size=3)
         got = await self.spi.rd(CONTROL)
         assert got == written, (
-            f"CHK-ZERO-STRB: CONTROL readback 0x{got:08x} != written 0x{written:08x} "
+            f"CHK-ZERO-STRB FAIL: CONTROL readback 0x{got:08x} != written 0x{written:08x} "
             f"-- the enabled half of the 64-bit beat did not land"
         )
         es = await self.spi.rd(ERROR_STATUS)
         assert es == 0, (
-            f"CHK-ZERO-STRB: ERROR_STATUS 0x{es:08x} after the 64-bit beat "
+            f"CHK-ZERO-STRB FAIL: ERROR_STATUS 0x{es:08x} after the 64-bit beat "
             f"(ACCESSINVAL 0x{ERR_ACCESSINVAL:x} must stay clear)"
         )
         await self.spi.wr(CONTROL, CTRL_RESET)
@@ -535,14 +789,14 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(INTR_ENABLE, 0)
         await self.spi.wr(INTR_STATE, INTR_STATE_MASK)  # W1C the event latch
         st = await self.spi.rd(INTR_STATE)
-        assert st == 0, f"CHK-INTR baseline: INTR_STATE 0x{st:08x} with every source clear"
+        assert st == 0, f"CHK-INTR FAIL baseline: INTR_STATE 0x{st:08x} with every source clear"
         await self.poll_internal_irq(_SPI_AGG, 0)
 
         # ERROR: Event latch, set with the enable clear, cleared only by W1C.
         await self.spi.wr(INTR_TEST, INTR_ERROR)
         st = await self.spi.rd(INTR_STATE)
         assert st & INTR_ERROR, (
-            f"CHK-INTR ERROR: INTR_TEST did not set the state latch while "
+            f"CHK-INTR FAIL ERROR: INTR_TEST did not set the state latch while "
             f"INTR_ENABLE is clear -- the enable gates the line, not the state "
             f"(0x{st:08x})"
         )
@@ -551,18 +805,20 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         # Control: the write of 0 landed (a non-OKAY write response raises in
         # spi.wr), so the latch read below grades a write the DUT took.
         self.logger.info(
-            "CTL-ZERO-WR LOG seed=%d reg=INTR_TEST data=0x0 bresp=OKAY", self.random_seed()
+            "CTRL-ZERO-WR LOG seed=%d reg=INTR_TEST data=0x0 bresp=OKAY", self.random_seed()
         )
         st = await self.spi.rd(INTR_STATE)
         assert st & INTR_ERROR, (
-            f"CHK-INTR ERROR: the state latch followed INTR_TEST down instead of "
+            f"CHK-INTR FAIL ERROR: the state latch followed INTR_TEST down instead of "
             f"holding until W1C (0x{st:08x})"
         )
         await self.spi.wr(INTR_ENABLE, INTR_ERROR)
         await self.poll_internal_irq(_SPI_AGG, 1)
         await self.spi.wr(INTR_STATE, INTR_ERROR)
         st = await self.spi.rd(INTR_STATE)
-        assert not (st & INTR_ERROR), f"CHK-INTR ERROR: W1C did not clear the latch (0x{st:08x})"
+        assert not (st & INTR_ERROR), (
+            f"CHK-INTR FAIL ERROR: W1C did not clear the latch (0x{st:08x})"
+        )
         await self.poll_internal_irq(_SPI_AGG, 0)
         await self.spi.wr(INTR_ENABLE, 0)
 
@@ -570,7 +826,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(INTR_TEST, INTR_SPI_EVENT)
         st = await self.spi.rd(INTR_STATE)
         assert st & INTR_SPI_EVENT, (
-            f"CHK-INTR SPI_EVENT: INTR_TEST did not force the status bit (0x{st:08x})"
+            f"CHK-INTR FAIL SPI_EVENT: INTR_TEST did not force the status bit (0x{st:08x})"
         )
         await self.poll_internal_irq(_SPI_AGG, 0)
         await self.spi.wr(INTR_ENABLE, INTR_SPI_EVENT)
@@ -578,7 +834,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(INTR_TEST, 0)
         st = await self.spi.rd(INTR_STATE)
         assert not (st & INTR_SPI_EVENT), (
-            f"CHK-INTR SPI_EVENT: releasing INTR_TEST left the status bit set "
+            f"CHK-INTR FAIL SPI_EVENT: releasing INTR_TEST left the status bit set "
             f"(0x{st:08x}) -- with EVENT_ENABLE = 0 the status follows the event level"
         )
         await self.poll_internal_irq(_SPI_AGG, 0)
@@ -592,24 +848,118 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             _SPI_AGG,
         )
 
+    async def _line_window(self) -> tuple[int, int, int, int]:
+        """(high cycles of the SPI line, first high cycle or -1, OR of the known
+        changed bits of the whole vector, first cycle at which the SPI host alert
+        tap reads the fired pair or -1) over _ALERT_WIN clk_i cycles."""
+        sig = cocotb.top.sep_internal_interrupts_probe_o
+        tap = cocotb.top.spi_alert_tx_probe_o
+        high, first, base, diff, alert = 0, -1, None, 0, -1
+        for i in range(_ALERT_WIN):
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            bit = (self.rd_known(sig, mask=1 << _SPI_AGG) >> _SPI_AGG) & 1
+            high += bit
+            if bit and first < 0:
+                first = i
+            v = sig.value
+            if v.is_resolvable:
+                base = int(v) if base is None else base
+                diff |= int(v) ^ base
+            if alert < 0 and self.rd_known(tap) == _ALERT_TX_FIRED:
+                alert = i
+        await NextTimeStep()
+        return high, first, diff, alert
+
+    async def _chk_alert_test(self) -> None:
+        await self._clear_error_status()
+        await self.spi.wr(INTR_TEST, 0)
+        await self.spi.wr(INTR_ENABLE, INTR_STATE_MASK)
+        await self.spi.wr(INTR_STATE, INTR_STATE_MASK)
+        pre = await self.spi.rd(INTR_STATE)
+        await self.poll_internal_irq(_SPI_AGG, 0)
+        seed = self.random_seed()
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        alert_pre = self.rd_known(cocotb.top.spi_alert_tx_probe_o)
+        await NextTimeStep()
+        if alert_pre != _ALERT_TX_IDLE:
+            msg = (
+                f"CTRL-MISSING SPI-ALERT-REACH seed={seed} alert tap 0b{alert_pre:02b} before "
+                f"the ALERT_TEST write (idle 0b{_ALERT_TX_IDLE:02b})"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        alert_wr = SepAxiAccessSeq(
+            "spi_alert_test_wr",
+            op=SepAxiOp.WRITE,
+            addr=ALERT_TEST,
+            wdata=1,
+            length=4,
+            allow_unverified_write_resp=True,
+        )
+        await self.start_seq(alert_wr)
+        if alert_wr.timed_out:
+            msg = (
+                f"CTRL-MISSING SPI-ALERT-RESP seed={seed} no ALERT_TEST write response (timed out)"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-SPI-ALERT-RESP seed=%d reg=ALERT_TEST data=0x1 write response received", seed
+        )
+        self.logger.info("OBS-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
+        high, _first, diff, alert_clk = await self._line_window()
+        if alert_clk < 0:
+            msg = (
+                f"CTRL-MISSING SPI-ALERT-REACH seed={seed} no fatal_fault alert on the SPI host "
+                f"alert tap in {_ALERT_WIN} clk_i cycles after the ALERT_TEST write"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-SPI-ALERT-REACH seed=%d alert seen at clk=%d", seed, alert_clk)
+        st = await self.spi.rd(INTR_STATE)
+        self.logger.info(
+            "OBS-SPI-ALERT-TEST vec_diff=0x%x (bit %d excluded)", diff & ~(1 << _SPI_AGG), _SPI_AGG
+        )
+        # Control: an interrupt source at the same enable raises the line in
+        # the same window.
+        await self.spi.wr(INTR_TEST, INTR_ERROR)
+        ctl_high, ctl_first, _, _ = await self._line_window()
+        await self.spi.wr(INTR_TEST, 0)
+        await self.spi.wr(INTR_STATE, INTR_ERROR)
+        await self.poll_internal_irq(_SPI_AGG, 0)
+        await self.spi.wr(INTR_ENABLE, 0)
+        text = (
+            f"seed={seed} intr_state_pre=0x{pre:08x} intr_state=0x{st:08x} "
+            f"line_high_clk={high} window={_ALERT_WIN} control_intr_test_rise_clk={ctl_first} "
+            f"control_high_clk={ctl_high}"
+        )
+        assert pre == 0 and st == 0 and high == 0 and ctl_high > 0, (
+            f"CHK-SPI-ALERT-TEST FAIL: {text}"
+        )
+        self.logger.info("CHK-SPI-ALERT-TEST PASS: %s", text)
+
     # ---- CHK-ERR-W1C ------------------------------------------------------
     async def _trigger_err(self, label: str, bit: int, trigger) -> None:
         await self._clear_error_status()
         es = await self.spi.rd(ERROR_STATUS)
-        assert es == 0, f"CHK-ERR-W1C {label}: ERROR_STATUS not clean pre-trigger (0x{es:08x})"
+        assert es == 0, f"CHK-ERR-W1C FAIL {label}: ERROR_STATUS not clean pre-trigger (0x{es:08x})"
         await trigger()
         es = await self.spi.rd(ERROR_STATUS)
-        assert es & bit, f"CHK-ERR-W1C {label}: bit 0x{bit:06x} not set (ERROR_STATUS 0x{es:08x})"
+        assert es & bit, (
+            f"CHK-ERR-W1C FAIL {label}: bit 0x{bit:06x} not set (ERROR_STATUS 0x{es:08x})"
+        )
         # Exclusivity: the baseline above established ERROR_STATUS == 0, so this
         # trigger is the only thing that can have set a bit. Without it a DUT that
         # raises every error bit on any stimulus passes all five sub-checks.
         assert es == bit, (
-            f"CHK-ERR-W1C {label}: trigger also set 0x{es & ~bit & 0xFFFF_FFFF:06x} "
+            f"CHK-ERR-W1C FAIL {label}: trigger also set 0x{es & ~bit & 0xFFFF_FFFF:06x} "
             f"(ERROR_STATUS 0x{es:08x}, expected only 0x{bit:06x})"
         )
         await self.spi.wr(ERROR_STATUS, bit)  # W1C the exact bit
         es = await self.spi.rd(ERROR_STATUS)
-        assert not (es & bit), f"CHK-ERR-W1C {label}: W1C did not clear (0x{es:08x})"
+        assert not (es & bit), f"CHK-ERR-W1C FAIL {label}: W1C did not clear (0x{es:08x})"
 
     async def _chk_err_w1c(self) -> None:
         async def trig_underflow():
@@ -641,7 +991,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 await self.spi.wr(TXDATA, 0x5A5A_5A5A)
             else:
                 raise AssertionError(
-                    f"CHK-ERR-W1C OVERFLOW: STATUS.TXFULL never set after "
+                    f"CHK-ERR-W1C FAIL OVERFLOW: STATUS.TXFULL never set after "
                     f"{_FILL_LIMIT} TXDATA writes with the core disabled"
                 )
             await self.spi.wr(TXDATA, 0x5A5A_5A5A)  # one beat past full
@@ -658,7 +1008,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 await self.spi.wr(COMMAND, CMD_DIR_TX)
             else:
                 raise AssertionError(
-                    f"CHK-ERR-W1C CMDBUSY: STATUS.READY never dropped after "
+                    f"CHK-ERR-W1C FAIL CMDBUSY: STATUS.READY never dropped after "
                     f"{_CMD_LIMIT} queued TX commands"
                 )
             await self.spi.wr(COMMAND, CMD_DIR_TX)  # one command past a full queue
@@ -688,43 +1038,47 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     async def _chk_watermark(self, half: str, wm: int, fill: int) -> None:
         await self._sw_rst_pulse()
         # Program TX_WATERMARK; keep core disabled so the FIFO does not drain.
+        # The graded window is open for this CONTROL write only: the sampler
+        # holds the TX_WATERMARK it writes until the release after the PASS line.
         ctrl = CTRL_RESET | (wm << CTRL_TX_WM_LSB)
+        open_graded_window(TEST, self.logger)
         await self.spi.wr(CONTROL, ctrl)
+        close_graded_window(self.logger)
         st_empty = await self.spi.rd(STATUS)
-        assert _txqd(st_empty) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
+        assert _txqd(st_empty) == 0, f"CHK-WATERMARK FAIL FIFO not empty: 0x{st_empty:08x}"
         # STATUS.TXWM: high while the amount of data in the TX FIFO has fallen
         # below CONTROL.TX_WATERMARK words -- so an empty FIFO sets it. The
         # polarity is the whole of this facet, so it is taken from the register
         # description rather than from the design.
         assert st_empty & ST_TXWM, (
-            f"CHK-WATERMARK STATUS.TXWM clear while TXQD=0 < wm (0x{st_empty:08x})"
+            f"CHK-WATERMARK FAIL STATUS.TXWM clear while TXQD=0 < wm (0x{st_empty:08x})"
         )
         for _ in range(wm - 1):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_below = await self.spi.rd(STATUS)
         assert _txqd(st_below) == wm - 1, (
-            f"CHK-WATERMARK TXQD={_txqd(st_below)} != {wm - 1} below wm={wm} (0x{st_below:08x})"
+            f"CHK-WATERMARK FAIL TXQD={_txqd(st_below)} != {wm - 1} below wm={wm} (0x{st_below:08x})"
         )
         assert st_below & ST_TXWM, (
-            f"CHK-WATERMARK STATUS.TXWM clear at TXQD={_txqd(st_below)} < wm={wm} "
+            f"CHK-WATERMARK FAIL STATUS.TXWM clear at TXQD={_txqd(st_below)} < wm={wm} "
             f"(0x{st_below:08x})"
         )
         await self.spi.wr(TXDATA, 0xA5A5_A5A5)  # the word that reaches the threshold
         st_at = await self.spi.rd(STATUS)
         assert _txqd(st_at) == wm, (
-            f"CHK-WATERMARK TXQD={_txqd(st_at)} != {wm} at wm={wm} (0x{st_at:08x})"
+            f"CHK-WATERMARK FAIL TXQD={_txqd(st_at)} != {wm} at wm={wm} (0x{st_at:08x})"
         )
         assert not (st_at & ST_TXWM), (
-            f"CHK-WATERMARK STATUS.TXWM still set at TXQD={_txqd(st_at)} == wm={wm} (0x{st_at:08x})"
+            f"CHK-WATERMARK FAIL STATUS.TXWM still set at TXQD={_txqd(st_at)} == wm={wm} (0x{st_at:08x})"
         )
         extra = fill - wm
         for _ in range(extra):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_full = await self.spi.rd(STATUS)
         txqd = _txqd(st_full)
-        assert txqd == fill, f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {fill} (wm={wm})"
+        assert txqd == fill, f"CHK-WATERMARK FAIL TXQD 0x{txqd:x} != filled {fill} (wm={wm})"
         assert not (st_full & ST_TXWM), (
-            f"CHK-WATERMARK STATUS.TXWM set after filling past wm={wm} (0x{st_full:08x})"
+            f"CHK-WATERMARK FAIL STATUS.TXWM set after filling past wm={wm} (0x{st_full:08x})"
         )
         self.logger.info(
             "CHK-WATERMARK PASS: %s half wm=%d, observed TXQD/TXWM %d/%d -> %d/%d -> %d/%d "
@@ -740,7 +1094,20 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             txqd,
             int(bool(st_full & ST_TXWM)),
         )
+        await self._release_tx_wm(wm)
         await self._sw_rst_pulse()
+
+    async def _release_tx_wm(self, wm: int) -> None:
+        """Release the held TX_WATERMARK of the CONTROL write that CHK-WATERMARK graded.
+
+        The sampler holds the value of that write and samples ``cp_tx_wm`` when
+        ``spi_tx_wm_pass`` rises to the same value. Call only after the
+        CHK-WATERMARK PASS line of ``wm``.
+        """
+        await RisingEdge(cocotb.top.clk_i)
+        set_spi_tx_wm_pass(wm, self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_spi_tx_wm_pass(0, self.logger)
 
     # ---- CHK-ENABLE -------------------------------------------------------
     async def _queue_one_tx(self) -> None:
@@ -771,7 +1138,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(CONTROL, CTRL_RESET | CTRL_SPIEN | CTRL_OUTPUT_EN)
         calib = await self._poll_drain(_ENABLED_POLLS)
         assert calib, (
-            f"CHK-ENABLE: the queued command did not execute with SPIEN=1 within "
+            f"CHK-ENABLE FAIL: the queued command did not execute with SPIEN=1 within "
             f"{_ENABLED_POLLS} polls -- cannot calibrate the negative window"
         )
         # Floor the window: a 1-poll calibration would otherwise leave a 4-poll
@@ -787,19 +1154,19 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(CONTROL, CTRL_RESET | CTRL_OUTPUT_EN)
         ctrl_hold = await self.spi.rd(CONTROL)
         assert (ctrl_hold & (CTRL_SPIEN | CTRL_OUTPUT_EN)) == CTRL_OUTPUT_EN, (
-            f"CHK-ENABLE: hold-window CONTROL 0x{ctrl_hold:08x} is not SPIEN=0 OUTPUT_EN=1"
+            f"CHK-ENABLE FAIL: hold-window CONTROL 0x{ctrl_hold:08x} is not SPIEN=0 OUTPUT_EN=1"
         )
         assert not await self._poll_drain(window), (
-            f"CHK-ENABLE: command executed while SPIEN=0 (drained within {window} "
+            f"CHK-ENABLE FAIL: command executed while SPIEN=0 (drained within {window} "
             f"polls, at least {_NEG_WINDOW_MARGIN}x the {calib}-poll enabled drain)"
         )
         st_held = await self.spi.rd(STATUS)
         assert _txqd(st_held) == 1, (
-            f"CHK-ENABLE: TXQD={_txqd(st_held)} after the SPIEN=0 window -- the "
+            f"CHK-ENABLE FAIL: TXQD={_txqd(st_held)} after the SPIEN=0 window -- the "
             f"queued command consumed the FIFO without STATUS.TXEMPTY (0x{st_held:08x})"
         )
         assert not (st_held & ST_TXEMPTY), (
-            f"CHK-ENABLE: TXEMPTY set while SPIEN=0 held the command (0x{st_held:08x})"
+            f"CHK-ENABLE FAIL: TXEMPTY set while SPIEN=0 held the command (0x{st_held:08x})"
         )
 
         # Positive leg: setting SPIEN, and changing no other bit, releases that
@@ -807,11 +1174,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(CONTROL, ctrl_hold | CTRL_SPIEN)
         ctrl_rel = await self.spi.rd(CONTROL)
         assert ctrl_rel ^ ctrl_hold == CTRL_SPIEN, (
-            f"CHK-ENABLE: release CONTROL 0x{ctrl_rel:08x} differs from the hold value "
+            f"CHK-ENABLE FAIL: release CONTROL 0x{ctrl_rel:08x} differs from the hold value "
             f"0x{ctrl_hold:08x} in more than SPIEN"
         )
         released = await self._poll_drain(_ENABLED_POLLS)
-        assert released, "CHK-ENABLE: command did not execute after SPIEN=1"
+        assert released, "CHK-ENABLE FAIL: command did not execute after SPIEN=1"
         self.logger.info(
             "CHK-ENABLE PASS: CONTROL=0x%08x (SPIEN=0, OUTPUT_EN=1) held the command for "
             "%d polls (at least %dx the %d-poll enabled drain, TXQD stayed 1); "
@@ -840,6 +1207,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         self.intr_en = self.draw["I"]
         self.ev_en = 0
         self.kind_intr: dict[str, int] = {}
+        self._win = False
         try:
             await self._leg_setup()
             self._window(True)
@@ -847,6 +1215,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self._leg_l2()
             await self._leg_l3()
             await self._leg_l4()
+        except BaseException:
+            set_spi_csr_irq_pass(SPI_CSR_IRQ_PASS_DROP, self.logger)
+            raise
         finally:
             close_graded_window(self.logger)
             await self.pads.stop()
@@ -954,13 +1325,13 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     def _log_plan(self) -> None:
         d = self.draw
         self.logger.info(
-            "PLAN %s seed=%d legs=L1,L2,L3,L4 window_code=410 l1_states=F,T1,T2,T3,T4 "
+            "INFO-PLAN %s seed=%d legs=L1,L2,L3,L4 window_code=410 l1_states=F,T1,T2,T3,T4 "
             "passes=A,B walk_cells=16 kinds=5 strobe_cells=12",
             TEST,
             self.seed,
         )
         self.logger.info(
-            "DRAW seed=%d intr_en=%d state_ev={%s} walk_order=%s state_order=%s kind_order=%s "
+            "INFO-DRAW seed=%d intr_en=%d state_ev={%s} walk_order=%s state_order=%s kind_order=%s "
             "cmd_kind=%s depth=%d ud_order=%s clear_mask=0x%02x masked_kind=%s csid_v=0x%08x "
             "pair_order=%s strobe_order={%s} swrst={%s} spien_lens=%s",
             self.seed,
@@ -985,7 +1356,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
         for (off, strb), words in d["strb_data"].items():
             self.logger.info(
-                "DRAW seed=%d strb_data off=0x%02x strb=0x%02x lo=0x%08x hi=0x%08x",
+                "INFO-DRAW seed=%d strb_data off=0x%02x strb=0x%02x lo=0x%08x hi=0x%08x",
                 self.seed,
                 off,
                 strb,
@@ -995,16 +1366,69 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
     # ---- common helpers ---------------------------------------------------
     def _window(self, graded: bool) -> None:
+        self._win = graded
         if graded:
             open_graded_window(TEST, self.logger)
         else:
             close_graded_window(self.logger)
+
+    async def _release(self, fam: int) -> None:
+        """Release the held owner-410 samples of the instance whose checks all passed.
+
+        The sampler holds every owner-410 sample taken inside the window and,
+        when bit 0 of ``spi_csr_irq_pass`` rises, samples the held cells of the
+        families ``fam`` names (the families that the checks of this instance
+        grade) and drops the others; bit 1 (written by a FAIL) and a reset drop
+        them. A window close keeps them. Call only after every check of the
+        instance has passed.
+        """
+        await RisingEdge(cocotb.top.clk_i)
+        set_spi_csr_irq_pass(SPI_CSR_IRQ_PASS_RELEASE | fam, self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_spi_csr_irq_pass(0, self.logger)
+
+    async def _graded_rd(self, addr: int) -> int:
+        """Read ``addr`` with the graded-read mark: a check of this instance compares the value.
+
+        The sampler holds a cell that a read keys only at a read with the mark;
+        every other read of the window holds none.
+        """
+        set_spi_csr_irq_graded_read(True)
+        try:
+            return await self.ops.rd(addr)
+        finally:
+            set_spi_csr_irq_graded_read(False)
+
+    async def _graded_status(self) -> SpiStatus:
+        """STATUS read with the graded-read mark (see ``_graded_rd``)."""
+        set_spi_csr_irq_graded_read(True)
+        try:
+            return await self.ops.read_status()
+        finally:
+            set_spi_csr_irq_graded_read(False)
+
+    async def _clean(self) -> None:
+        """SPI clean state as housekeeping: the graded window is closed while it runs."""
+        was = self._win
+        self._window(False)
+        await self.ops.clean_state()
+        self._window(was)
+
+    async def _sw_rst(self) -> None:
+        """SW_RST helper as housekeeping: the graded window is closed while it runs."""
+        was = self._win
+        self._window(False)
+        await self.ops.sw_rst()
+        self._window(was)
 
     def _pass(self, chk: str, values: str) -> None:
         self.checks += 1
         self.logger.info("%s PASS seed=%d %s", chk, self.seed, values)
 
     def _fail(self, chk: str, values: str) -> None:
+        """Drop the held samples, close the graded window, log the FAIL line and stop."""
+        set_spi_csr_irq_pass(SPI_CSR_IRQ_PASS_DROP, self.logger)
+        close_graded_window(self.logger)
         line = f"{chk} FAIL seed={self.seed} {values}"
         self.logger.error(line)
         raise AssertionError(line)
@@ -1015,8 +1439,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         else:
             self._fail(chk, values)
 
-    def _ctrl_missing(self, values: str) -> None:
-        line = f"CTRL-MISSING seed={self.seed} {values}"
+    def _ctrl_missing(self, name: str, values: str) -> None:
+        set_spi_csr_irq_pass(SPI_CSR_IRQ_PASS_DROP, self.logger)
+        close_graded_window(self.logger)
+        line = f"CTRL-MISSING {name} seed={self.seed} {values}"
         self.logger.error(line)
         raise AssertionError(line)
 
@@ -1029,8 +1455,15 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         return (vec >> _SPI_AGG) & 1
 
     async def _set_ev(self, value: int) -> None:
+        """Write EVENT_ENABLE and read it back; a readback that differs under the field mask fails."""
         await self.ops.wr(EVENT_ENABLE, value)
-        self.ev_en = value
+        rb = await self.ops.rd(EVENT_ENABLE) & _EV_EN_MASK
+        if rb != value & _EV_EN_MASK:
+            self._ctrl_missing(
+                "SPI-EVENT-ENABLE",
+                f"EVENT_ENABLE wrote=0x{value:02x} readback=0x{rb:02x} mask=0x{_EV_EN_MASK:02x}",
+            )
+        self.ev_en = rb
 
     async def _poll_reg(self, addr: int, mask: int, what: str) -> int:
         """Read ``addr`` until every ``mask`` bit reads 1, at most _POLL_READS reads."""
@@ -1054,15 +1487,18 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
 
     async def _leg_setup(self) -> None:
-        await self.ops.clean_state()
+        await self._clean()
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self.ops.write_configopts(_CFG_BASE)
         await self.ops.wr(CSID, 0)
+        await self.ops.wr(INTR_ENABLE, self.intr_en)
         self.pads.set_idle_level(0)
         ist = await self.ops.rd(INTR_STATE)
         if ist & INTR_ERROR:
-            self._ctrl_missing(f"INTR_STATE.ERROR=1 after the SPI clean state (0x{ist:08x})")
-        self.logger.info("LEG-SETUP LOG seed=%d intr_state=0x%08x", self.seed, ist)
+            self._ctrl_missing(
+                "CTRL-SPI-LEG-SETUP", f"INTR_STATE.ERROR=1 after the SPI clean state (0x{ist:08x})"
+            )
+        self.logger.info("INFO-LEG-SETUP LOG seed=%d intr_state=0x%08x", self.seed, ist)
 
     # ---- L1 ---------------------------------------------------------------
     async def _state_read(self, tag: str, levels: dict[str, int], *, mask_step: int = 0) -> None:
@@ -1071,17 +1507,18 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         unnamed = [s for s in selected if s not in levels]
         if unnamed:
             raise AssertionError(f"{tag}: selected sources {unnamed} have no named level")
-        st = await self.ops.read_status()
+        st = await self._graded_status()
         wrong = {s: _LEVEL[s](st) for s, lvl in levels.items() if _LEVEL[s](st) != lvl}
         if wrong:
             self._ctrl_missing(
-                f"state={tag} named levels {levels} but STATUS shows {wrong} ({st.fmt()})"
+                "CTRL-SPI-EVENT",
+                f"state={tag} named levels {levels} but STATUS shows {wrong} ({st.fmt()})",
             )
         expect_ev = int(any(levels[s] for s in selected))
-        ist = await self.ops.rd(INTR_STATE)
+        ist = await self._graded_rd(INTR_STATE)
         pic = await self._pic14()
         await self.ops.wr(INTR_ENABLE, _IE_EVENT | _IE_ERROR)
-        ist_twin = await self.ops.rd(INTR_STATE)
+        ist_twin = await self._graded_rd(INTR_STATE)
         twin = await self._pic14()
         await self.ops.wr(INTR_ENABLE, self.intr_en)
         event = int(bool(ist & INTR_SPI_EVENT))
@@ -1091,22 +1528,30 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         self._grade(
             "CHK-SPI-EVENT",
             event == expect_ev,
-            f"state={tag} ev_en=0x{self.ev_en:02x} src={src} level={lvl} event={event} "
+            f"state={tag} ev_en_rb=0x{self.ev_en:02x} src={src} level={lvl} event={event} "
             f"expect={expect_ev} mask_step={mask_step}",
         )
         i = self.intr_en
         expect_pic = expect_ev & int(bool(i & _IE_EVENT))
+        # INTR_ENABLE does not gate either state bit (hw/sys/sep/doc/spi.adoc:89-90).
+        twin_state = ist_twin & INTR_STATE_MASK
+        expect_twin_state = (INTR_SPI_EVENT if event else 0) | (INTR_ERROR if error else 0)
         self._grade(
             "CHK-SPI-LINE",
-            pic == expect_pic and twin == expect_ev and error == 0,
+            pic == expect_pic
+            and twin == expect_ev
+            and error == 0
+            and twin_state == expect_twin_state,
             f"state={tag} intr_en={i} pic14={pic} expect={expect_pic} twin_pic14={twin} "
-            f"twin_expect={expect_ev} intr_error={error} twin_intr_state=0x{ist_twin:x}",
+            f"twin_expect={expect_ev} intr_error={error} twin_intr_state=0x{twin_state:x} "
+            f"expect_twin_intr_state=0x{expect_twin_state:x}",
         )
+        await self._release(_FAM_EVENT)
 
     async def _l1_fifo_state(self, name: str, pass_ev: int) -> None:
         tx_wm, rx_wm, words, rx_bytes, lvls = _L1_STATES[name]
         await self._set_ev(pass_ev)
-        await self.ops.clean_state()
+        await self._clean()
         await self._set_ev(pass_ev)
         await self.ops.wr(
             CONTROL,
@@ -1133,7 +1578,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
     async def _l1_rxfull_seq(self, ev: int) -> None:
         await self._set_ev(ev)
-        await self.ops.clean_state()
+        await self._clean()
         await self._set_ev(ev)
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self._state_read("RXFULL-pre", {"RXFULL": 0})
@@ -1142,7 +1587,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         st = await self.ops.poll_status(
             lambda s: s.rxfull == 1 and s.rxstall == 1, 20_000, "RXFULL=1 and RXSTALL=1"
         )
-        self.logger.info("L1-RXFULL LOG seed=%d ev_en=0x%02x %s", self.seed, ev, st.fmt())
+        self.logger.info("INFO-L1-RXFULL LOG seed=%d ev_en=0x%02x %s", self.seed, ev, st.fmt())
         await self._state_read("RXFULL-full", {"RXFULL": 1})
         words = 0
         for _ in range(_RX_DRAIN_READS):
@@ -1154,7 +1599,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 break
         else:
             raise AssertionError(f"RXFULL segment not drained after {_RX_DRAIN_READS} reads")
-        self.logger.info("L1-RXFULL LOG seed=%d drained_words=%d", self.seed, words)
+        self.logger.info("INFO-L1-RXFULL LOG seed=%d drained_words=%d", self.seed, words)
         await self._state_read("RXFULL-drained", {"RXFULL": 0})
 
     async def _stall_head(self, word: int) -> None:
@@ -1179,20 +1624,205 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             if not st.ready:
                 return accepted
             if accepted >= _READY_ACCEPT_LIMIT:
-                self._ctrl_missing(f"READY=1 after {accepted} accepted COMMAND writes ({st.fmt()})")
+                self._ctrl_missing(
+                    "CTRL-SPI-EVENT-SRC",
+                    f"READY=1 after {accepted} accepted COMMAND writes ({st.fmt()})",
+                )
             await self.ops.wr(COMMAND, _CMD_DUMMY)
             accepted += 1
 
+    # ---- L1 source steps (CHK-SPI-EVENT-SRC) -------------------------------
+    def _expect_ev(self, st: SpiStatus) -> int:
+        """SPI_EVENT golden: the OR of the STATUS levels of the selected sources."""
+        return int(any(_LEVEL[s](st) for s in _EVT if self.ev_en & _EVT[s]))
+
+    async def _src_sample(self, name: str, src: str) -> tuple:
+        """STATUS, INTR_STATE and PIC source 14 at one step of a source step."""
+        st = await self._graded_status()
+        ist = await self._graded_rd(INTR_STATE)
+        pic = await self._pic14()
+        return (
+            name,
+            st,
+            _LEVEL[src](st),
+            self.ev_en,
+            int(bool(ist & INTR_SPI_EVENT)),
+            int(bool(ist & INTR_ERROR)),
+            pic,
+            self._expect_ev(st),
+        )
+
+    def _src_grade(self, tag: str, steps: list[tuple], extra: str) -> None:
+        """CHK-SPI-EVENT-SRC over the steps of one source step.
+
+        At each step SPI_EVENT equals the OR of the STATUS levels of the
+        sources that EVENT_ENABLE selects ("Level-sensitive status of the
+        conditions selected by EVENT_ENABLE", hw/sys/sep/doc/spi.adoc:84-86),
+        INTR_STATE.ERROR reads 0, and PIC source 14 equals SPI_EVENT and
+        INTR_ENABLE.SPI_EVENT (hw/sys/sep/doc/spi.adoc:70-72, 89-90).
+        """
+        ie_ev = int(bool(self.intr_en & _IE_EVENT))
+        ok = True
+        parts = []
+        for name, _st, level, ev_en, event, error, pic, exp in steps:
+            exp_pic = exp & ie_ev
+            ok = ok and event == exp and error == 0 and pic == exp_pic
+            parts.append(
+                f"{name}:ev_en=0x{ev_en:02x},level={level},event={event},expect={exp},"
+                f"intr_error={error},pic14={pic},expect_pic14={exp_pic}"
+            )
+        self._grade(
+            "CHK-SPI-EVENT-SRC",
+            ok,
+            f"step={tag} intr_en={self.intr_en} {' '.join(parts)} {extra}",
+        )
+
+    async def _l1_rxwm_fall(self, en: int) -> None:
+        """RXWM falls with EVENT_ENABLE.RXWM at ``en``; CHK-SPI-EVENT-SRC grades every step.
+
+        Set-up with the window closed: the SPI clean state, RX_WATERMARK=2 and
+        an Rx segment of 12 bytes, so STATUS shows RXQD=3 and RXWM=1 with
+        TXEMPTY=1. With ``en`` = 1 the window opens before a write of
+        EVENT_ENABLE = RXWM | TXEMPTY (two selected sources high: SPI_EVENT
+        rises), then EVENT_ENABLE = RXWM. With ``en`` = 0, EVENT_ENABLE stays 0
+        while TXEMPTY and RXWM are high. RXDATA reads drain the FIFO below the
+        watermark, and STATUS must show RXWM=0 (else CTRL-MISSING).
+        """
+        tx_wm, rx_wm, _, rx_bytes, _ = _L1_STATES["T3"]
+        tag = f"RXWM-en{en}"
+        self._window(False)
+        await self._clean()
+        await self._set_ev(0)
+        await self.ops.wr(
+            CONTROL,
+            _CTRL_BASE & ~CTRL_RX_WM
+            | (tx_wm << _CTRL_TX_WM_LSB)
+            | ((rx_wm << _CTRL_RX_WM_LSB) & CTRL_RX_WM),
+        )
+        await self._segment(command_word(rx_bytes - 1, direction=DIR_RX))
+        await self.ops.poll_status(
+            lambda s: s.rxqd == rx_bytes // 4 and s.active == 0, 2_000, f"{tag}: RXQD"
+        )
+        self._window(True)
+        steps = []
+        if en:
+            await self._set_ev(EVT_RXWM | EVT_TXEMPTY)
+            steps.append(await self._src_sample("both", "RXWM"))
+            await self._set_ev(EVT_RXWM)
+        steps.append(await self._src_sample("before", "RXWM"))
+        st = steps[-1][1]
+        if st.rxwm != 1 or st.txempty != 1:
+            self._ctrl_missing(
+                "CTRL-SPI-EVENT-SRC",
+                f"{tag}: RXWM=1 and TXEMPTY=1 needed before the drain ({st.fmt()})",
+            )
+        reads = 0
+        while st.rxqd >= rx_wm:
+            if reads >= _POLL_READS:
+                self._ctrl_missing(
+                    "CTRL-SPI-EVENT-SRC", f"{tag}: RXQD={st.rxqd} after {reads} RXDATA reads"
+                )
+            await self.ops.rd(RXDATA)
+            reads += 1
+            st = await self.ops.read_status()
+        steps.append(await self._src_sample("after", "RXWM"))
+        st1 = steps[-1][1]
+        if st1.rxwm != 0:
+            self._ctrl_missing("CTRL-SPI-EVENT-SRC", f"{tag}: RXWM=1 after the drain ({st1.fmt()})")
+        self._src_grade(
+            tag,
+            steps,
+            f"rx_wm={rx_wm} rxqd_before={steps[-2][1].rxqd} rxqd_after={st1.rxqd} drained={reads}",
+        )
+        await self._release(_FAM_EVENT)
+        self._window(False)
+
+    async def _l1_ready_off(self) -> None:
+        """READY falls and rises with EVENT_ENABLE = 0; CHK-SPI-EVENT-SRC grades every step.
+
+        Set-up with the window closed: the SPI clean state, CONTROL with
+        SPIEN=1, EVENT_ENABLE = 0 (read back, else CTRL-MISSING). The window
+        opens before the Tx head stall and the dummy COMMANDs that drop READY,
+        and stays open through the TXDATA word that lets the queue drain and
+        READY rise. STATUS must show READY=1, 0, 1 at the three steps (else
+        CTRL-MISSING).
+        """
+        tag = "READY-en0"
+        self._window(False)
+        await self._clean()
+        await self.ops.wr(CONTROL, _CTRL_BASE)
+        await self._set_ev(0)
+        self._window(True)
+        steps = [await self._src_sample("ready", "READY")]
+        accepted = await self._l1_ready_low()
+        steps.append(await self._src_sample("low", "READY"))
+        await self.ops.push_tx(0x4400_0002)
+        await self._idle_done(f"{tag} release")
+        steps.append(await self._src_sample("done", "READY"))
+        levels = [step[2] for step in steps]
+        if levels != [1, 0, 1]:
+            self._ctrl_missing(
+                "CTRL-SPI-EVENT-SRC", f"{tag}: READY levels {levels}, expected [1, 0, 1]"
+            )
+        self._src_grade(tag, steps, f"accepted={accepted}")
+        await self._release(_FAM_EVENT)
+        self._window(False)
+
+    async def _l1_txwm_rise(self, en: int) -> None:
+        """TXWM rises with EVENT_ENABLE.TXWM at ``en``; CHK-SPI-EVENT-SRC grades every step.
+
+        Set-up with the window closed: the SPI clean state, CONTROL with
+        TX_WATERMARK=0 and the T2 RX_WATERMARK, and the T2 TXDATA words with no
+        command, so STATUS shows TXEMPTY=0 and TXWM=0. The window opens before
+        a write of EVENT_ENABLE = TXWM with ``en`` = 1, or 0 with ``en`` = 0
+        (read back, else CTRL-MISSING); a CONTROL write then sets the T2
+        TX_WATERMARK, which is above TXQD, so TXWM rises while TXEMPTY stays 0
+        and no other source is selected. STATUS must show TXWM=0 before and
+        TXWM=1 after, both with TXEMPTY=0 (else CTRL-MISSING).
+        """
+        tx_wm, rx_wm, words, _, _ = _L1_STATES["T2"]
+        tag = f"TXWM-en{en}"
+        ev = EVT_TXWM if en else 0
+        ctrl = _CTRL_BASE & ~CTRL_RX_WM | ((rx_wm << _CTRL_RX_WM_LSB) & CTRL_RX_WM)
+        self._window(False)
+        await self._clean()
+        await self._set_ev(0)
+        await self.ops.wr(CONTROL, ctrl)
+        for w in range(words):
+            await self.ops.push_tx(0x6600_0000 | w)
+        self._window(True)
+        await self._set_ev(ev)
+        steps = [await self._src_sample("before", "TXWM")]
+        await self.ops.wr(CONTROL, ctrl | (tx_wm << _CTRL_TX_WM_LSB))
+        steps.append(await self._src_sample("after", "TXWM"))
+        st0, st1 = steps[0][1], steps[1][1]
+        if (st0.txwm, st0.txempty, st1.txwm, st1.txempty) != (0, 0, 1, 0):
+            self._ctrl_missing(
+                "CTRL-SPI-EVENT-SRC",
+                f"{tag}: TXWM=0 then 1 with TXEMPTY=0 needed ({st0.fmt()} then {st1.fmt()})",
+            )
+        self._src_grade(tag, steps, f"tx_wm={tx_wm} txqd={st1.txqd}")
+        await self._release(_FAM_EVENT)
+        self._window(False)
+
+    async def _l1_src_steps(self) -> None:
+        """The source level changes the state reads do not reach, each graded on its own."""
+        await self._l1_rxwm_fall(1)
+        await self._l1_rxwm_fall(0)
+        await self._l1_ready_off()
+        await self._l1_txwm_rise(1)
+        await self._l1_txwm_rise(0)
+        self._window(True)
+
     async def _leg_l1(self) -> None:
-        await self.ops.wr(INTR_ENABLE, self.intr_en)
         for pass_ev in (_EV_FIFO_ALL, 0):
             for name in ["F", *self.draw["state_order"]]:
                 await self._l1_fifo_state(name, pass_ev)
             await self._set_ev(pass_ev)
-            await self.ops.clean_state()
+            await self._clean()
 
         # TXEMPTY only, with the mask step.
-        await self.ops.clean_state()
+        await self._clean()
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self._set_ev(EVT_TXEMPTY)
         await self._state_read("TXEMPTY-only", {"TXEMPTY": 1})
@@ -1209,7 +1839,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._l1_rxfull_seq(0)
 
         # IDLE level.
-        await self.ops.clean_state()
+        await self._clean()
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self._set_ev(EVT_IDLE)
         await self._state_read("IDLE-idle", {"IDLE": 1})
@@ -1221,12 +1851,12 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._state_read("IDLE-done", {"IDLE": 1})
 
         # READY level.
-        await self.ops.clean_state()
+        await self._clean()
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self._set_ev(EVT_READY)
         await self._state_read("READY-ready", {"READY": 1})
         accepted = await self._l1_ready_low()
-        self.logger.info("L1-READY LOG seed=%d accepted=%d", self.seed, accepted)
+        self.logger.info("INFO-L1-READY LOG seed=%d accepted=%d", self.seed, accepted)
         await self._state_read("READY-low", {"READY": 0})
         await self._set_ev(0)
         await self._state_read("READY-low-masked", {"READY": 0})
@@ -1235,13 +1865,14 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._idle_done("READY leg")
         await self._state_read("READY-done", {"READY": 1})
 
+        await self._l1_src_steps()
         await self._l1_line_walk()
 
     async def _l1_line_walk(self) -> None:
         for i in self.draw["walk_order"]:
             first_ctl = i in (0, 1, 2)
             self._window(not first_ctl)
-            await self.ops.clean_state()
+            await self._clean()
             await self._set_ev(0)
             await self.ops.wr(INTR_ENABLE, i)
             for n, (state, ev, err) in enumerate(_WALK):
@@ -1256,7 +1887,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                         await self.ops.wr(INTR_STATE, INTR_ERROR)
                     else:
                         await self._set_ev(0)
-                ist = await self.ops.rd(INTR_STATE)
+                ist = await (self.ops.rd(INTR_STATE) if control else self._graded_rd(INTR_STATE))
                 pic = await self._pic14()
                 expect = (ev & int(bool(i & _IE_EVENT))) | (err & int(bool(i & _IE_ERROR)))
                 got_state = (int(bool(ist & INTR_SPI_EVENT)), int(bool(ist & INTR_ERROR)))
@@ -1266,11 +1897,12 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 )
                 ok = pic == expect and got_state == (ev, err)
                 if control:
-                    self.logger.info("CTL-SPI-LINE LOG seed=%d %s", self.seed, values)
+                    self.logger.info("CTRL-SPI-LINE LOG seed=%d %s", self.seed, values)
                     if not ok:
-                        self._fail("CTL-SPI-LINE", values)
+                        self._ctrl_missing("CTRL-SPI-LINE", values)
                 else:
                     self._grade("CHK-SPI-LINE", ok, f"walk=1 {values}")
+                await self._release(_FAM_WALK)
         self.intr_en = self.draw["I"]
         await self.ops.wr(INTR_ENABLE, self.intr_en)
         self._window(True)
@@ -1278,17 +1910,28 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     # ---- L2 ---------------------------------------------------------------
     async def _inject(self, kind: str, *, csid: int | None = None) -> None:
         """One error injection; every COMMAND write except the CMDBUSY one waits for READY=1."""
+        ctx = await self._inject_setup(kind, csid=csid)
+        await self._inject_step(kind)
+        await self._inject_restore(kind, ctx)
+
+    async def _inject_setup(self, kind: str, *, csid: int | None = None) -> int:
+        """Bring the core to the point where one DUT access raises ``kind``.
+
+        Returns the CONTROL value that the CMDINVAL restore writes back (0 for
+        the other kinds).
+        """
+        ctrl = 0
         if kind == "CSIDINVAL":
             await self.ops.wr(CSID, self.draw["csid_v"] if csid is None else csid)
-            await self.ops.issue_command(_CMD_DUMMY)
-            await self.ops.wr(CSID, 0)
+            await self.ops.wait_ready()
         elif kind == "CMDINVAL":
-            await self._inject_cmdinval()
+            ctrl = await self.ops.rd(CONTROL)
+            await self.ops.wr(CONTROL, ctrl & ~CTRL_SPIEN)
+            await self.ops.wait_ready()
         elif kind == "UNDERFLOW":
             await self.ops.poll_status(
                 lambda s: s.rxempty == 1 and s.active == 0, 2_000, "RXEMPTY=1 and ACTIVE=0"
             )
-            await self.ops.rd(RXDATA)
         elif kind == "OVERFLOW":
             for _ in range(_FILL_LIMIT):
                 st = await self.ops.read_status()
@@ -1296,13 +1939,47 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                     break
                 await self.ops.wr(TXDATA, 0x5500_0000)
             else:
-                self._ctrl_missing(f"TXFULL=0 after {_FILL_LIMIT} TXDATA writes")
-            await self.ops.wr(TXDATA, 0x5500_0000)
+                self._ctrl_missing(
+                    "CTRL-SPI-ERR-KIND", f"TXFULL=0 after {_FILL_LIMIT} TXDATA writes"
+                )
         elif kind == "CMDBUSY":
             await self._l1_ready_low()
+        else:
+            raise ValueError(kind)
+        return ctrl
+
+    async def _inject_step(self, kind: str) -> None:
+        """The one DUT access that raises ``kind`` after ``_inject_setup``."""
+        if kind == "CSIDINVAL":
+            await self.ops.wr(COMMAND, _CMD_DUMMY)
+        elif kind == "CMDINVAL":
+            await self.ops.wr(COMMAND, command_word(0, speed=_SPEED_RESERVED))
+        elif kind == "UNDERFLOW":
+            await self.ops.rd(RXDATA)
+        elif kind == "OVERFLOW":
+            await self.ops.wr(TXDATA, 0x5500_0000)
+        elif kind == "CMDBUSY":
             await self.ops.wr(COMMAND, _CMD_DUMMY)
         else:
             raise ValueError(kind)
+
+    async def _inject_restore(self, kind: str, ctrl: int) -> None:
+        """Undo the set-up of ``kind``: CSID back to 0, or the CMDINVAL flush.
+
+        Housekeeping: the graded window is closed while it runs, so the CONTROL
+        write that restores SPIEN after the CMDINVAL flush arms no SPIEN cell.
+        """
+        was = self._win
+        self._window(False)
+        if kind == "CSIDINVAL":
+            await self.ops.wr(CSID, 0)
+        elif kind == "CMDINVAL":
+            await self.ops.sw_rst()
+            await self.ops.poll_status(
+                lambda s: s.cmdqd == 0 and s.active == 0, 2_000, "CMDINVAL flush: CMDQD=0"
+            )
+            await self.ops.wr(CONTROL, ctrl)
+        self._window(was)
 
     async def _inject_cmdinval(self) -> None:
         """CMDINVAL: a reserved-SPEED COMMAND written with SPIEN=0, then the SW_RST helper.
@@ -1312,34 +1989,31 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         keeps CMDINVAL across SW_RST. CONTROL returns to its value before the
         injection once CMDQD reads 0.
         """
-        ctrl = await self.ops.rd(CONTROL)
-        await self.ops.wr(CONTROL, ctrl & ~CTRL_SPIEN)
-        await self.ops.issue_command(command_word(0, speed=_SPEED_RESERVED))
-        await self.ops.sw_rst()
-        await self.ops.poll_status(
-            lambda s: s.cmdqd == 0 and s.active == 0, 2_000, "CMDINVAL flush: CMDQD=0"
-        )
-        await self.ops.wr(CONTROL, ctrl)
+        await self._inject("CMDINVAL")
 
     async def _kind_entry(self) -> tuple[int, int]:
-        await self.ops.clean_state()
+        await self._clean()
         await self.ops.wr(INTR_ENABLE, 0)
         await self._set_ev(0)
         es = await self.ops.rd(ERROR_STATUS)
         ie = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
         if es or ie:
             self._ctrl_missing(
-                f"ERROR_STATUS=0x{es:02x} INTR_STATE.ERROR={ie} after the clean state"
+                "CTRL-SPI-ERR-KIND",
+                f"ERROR_STATUS=0x{es:02x} INTR_STATE.ERROR={ie} after the clean state",
             )
         return es, ie
 
     async def _l2_single(self, kind: str, csid0_es: int) -> None:
         bit = _KIND_BIT[kind]
+        self._window(False)
         _, ie0 = await self._kind_entry()
+        self._window(True)
         await self._inject(kind)
-        es = await self._poll_reg(ERROR_STATUS, bit, f"{kind}: own ERROR_STATUS bit")
+        await self._poll_reg(ERROR_STATUS, bit, f"{kind}: own ERROR_STATUS bit")
+        es = await self._graded_rd(ERROR_STATUS)
         self.logger.info(
-            "CTL-SPI-ERR-OWN LOG seed=%d kind=%s err_status=0x%02x own_bit=0x%02x",
+            "CTRL-SPI-ERR-OWN LOG seed=%d kind=%s err_status=0x%02x own_bit=0x%02x",
             self.seed,
             kind,
             es,
@@ -1358,19 +2032,26 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.ops.wr(ERROR_STATUS, bit)
         es2 = await self.ops.rd(ERROR_STATUS)
         ie2 = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
-        if es2 & bit:
-            self._fail("CTL-SPI-ERR-W1C", f"kind={kind} err_status=0x{es2:02x} after its W1C")
+        if es2 & ERR_STATUS_MASK:
+            self._ctrl_missing(
+                "CTRL-SPI-ERR-W1C", f"kind={kind} err_status=0x{es2:02x} after its W1C"
+            )
         await self.ops.wr(INTR_STATE, INTR_ERROR)
         ie3 = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
         self._grade(
             "CHK-SPI-ERR-KIND",
-            (ie1, ie2, ie3) == (1, 1, 0),
+            (ie1, ie2, ie3) == (1, 1, 0) and (es & ERR_STATUS_MASK) == bit,
             f"kind={kind} intr_error={ie1} after_status_w1c={ie2} after_intr_w1c={ie3} "
-            f"control_intr_error_before={ie0} err_status=0x{es:02x}",
+            f"control_intr_error_before={ie0} err_status=0x{es & ERR_STATUS_MASK:02x} "
+            f"expect_err_status=0x{bit:02x} err_status_rsvd=0x{es & ~ERR_STATUS_MASK:x} "
+            f"err_status_after_w1c=0x{es2 & ERR_STATUS_MASK:02x}",
         )
+        await self._release(_FAM_ERR)
         if kind == "CMDBUSY":
+            self._window(False)
             await self.ops.push_tx(0x6600_0000)
             await self._idle_done("CMDBUSY release")
+            self._window(True)
 
     async def _l2_csid1(self) -> None:
         self._window(False)
@@ -1393,16 +2074,19 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             st.active,
             st.cmdqd,
         )
-        await self.ops.clean_state()
+        await self._clean()
         self._window(True)
 
     async def _l2_accumulate(self, kinds: list[str]) -> int:
-        """Inject ``kinds`` in order with the SW_RST helper after each; returns the OR of bits."""
-        await self.ops.clean_state()
+        """Inject ``kinds`` in order with the SW_RST helper after each; returns the OR of bits.
+
+        The clean state and the SW_RST helper run with the graded window closed.
+        """
+        await self._clean()
         bits = 0
         for k in kinds:
             await self._inject(k)
-            await self.ops.sw_rst()
+            await self._sw_rst()
             bits |= _KIND_BIT[k]
         return bits
 
@@ -1413,9 +2097,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._kind_entry()
         await self._segment(_CMD_DUMMY)
         csid0_es = await self.ops.rd(ERROR_STATUS)
-        self.logger.info("CTL-SPI-CSID0 LOG seed=%d err_status=0x%02x", self.seed, csid0_es)
+        self.logger.info("CTRL-SPI-CSID0 LOG seed=%d err_status=0x%02x", self.seed, csid0_es)
         if csid0_es:
-            self._ctrl_missing(f"ERROR_STATUS=0x{csid0_es:02x} after a COMMAND with CSID=0")
+            self._ctrl_missing(
+                "CTRL-SPI-CSID0", f"ERROR_STATUS=0x{csid0_es:02x} after a COMMAND with CSID=0"
+            )
         self._window(True)
 
         for kind in d["kind_order"]:
@@ -1430,7 +2116,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         mask = d["clear_mask"]
         hit, kept = mask & expect_old, expect_old & ~mask
         if not (hit and kept):
-            self._ctrl_missing(f"clear mask 0x{mask:02x} hit=0x{hit:02x} kept=0x{kept:02x}")
+            self._ctrl_missing(
+                "CTRL-SPI-ERR-MASK", f"clear mask 0x{mask:02x} hit=0x{hit:02x} kept=0x{kept:02x}"
+            )
         await self.ops.wr(ERROR_STATUS, mask)
         got = await self.ops.rd(ERROR_STATUS)
         self._grade(
@@ -1440,67 +2128,111 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"mask=0x{mask:02x} hit=0x{hit:02x} kept=0x{kept:02x} got=0x{got:02x} "
             f"expect=0x{kept:02x}",
         )
+        await self._release(_FAM_ERR)
 
         # A write of 0 clears no bit.
         expect = await self._l2_accumulate([d["cmd_kind"], "UNDERFLOW", "OVERFLOW"])
         await self.ops.wr(ERROR_STATUS, 0)
         # Control: the write of 0 landed (a non-OKAY write response raises in
         # ops.wr), so the readback below grades a write the DUT took.
-        self.logger.info("CTL-ZERO-WR LOG seed=%d reg=ERROR_STATUS data=0x0 bresp=OKAY", self.seed)
+        self.logger.info("CTRL-ZERO-WR LOG seed=%d reg=ERROR_STATUS data=0x0 bresp=OKAY", self.seed)
         got = await self.ops.rd(ERROR_STATUS)
         self._grade(
             "CHK-SPI-ERR-MASK",
             got == expect,
             f"zero_write=1 cmd_kind={d['cmd_kind']} got=0x{got:02x} expect=0x{expect:02x}",
         )
-        await self.ops.clean_state()
+        await self._release(_FAM_ERR)
+        await self._clean()
 
-        # The masked kind: its ERROR_STATUS bit sets and INTR_STATE.ERROR stays 0.
-        # Control: the bit and INTR_STATE.ERROR read 0 at entry (_kind_entry),
-        # and the unmasked twin of the same kind above set INTR_STATE.ERROR.
+        await self._l2_masked()
+        await self._l2_cmdbusy0()
+
+    async def _l2_masked(self) -> None:
+        """The masked kind: ERROR_STATUS holds its own bit alone and INTR_STATE.ERROR stays 0.
+
+        Control: ERROR_STATUS and INTR_STATE.ERROR read 0 at entry
+        (_kind_entry), ERROR_ENABLE reads back with only the kind's bit clear,
+        and the unmasked twin of the same kind in the single-kind loop set
+        INTR_STATE.ERROR. The graded window is open from the access that
+        raises the kind to the INTR_STATE read and its check; the set-up and
+        the restore run with it closed.
+        """
         self._window(False)
-        kind = d["masked_kind"]
+        kind = self.draw["masked_kind"]
         bit = _KIND_BIT[kind]
         es0, ie0 = await self._kind_entry()
         twin_ie = self.kind_intr.get(kind)
         if twin_ie != 1:
-            self._ctrl_missing(f"masked kind={kind} unmasked twin intr_error={twin_ie}")
-        await self.ops.wr(ERROR_ENABLE, _ERR_EN_ALL & ~bit)
-        await self._inject(kind)
+            self._ctrl_missing(
+                "CTRL-SPI-ERR-MASK", f"masked kind={kind} unmasked twin intr_error={twin_ie}"
+            )
+        een_mask = _R.mask32("ERROR_ENABLE")
+        een_exp = _ERR_EN_ALL & ~bit
+        await self.ops.wr(ERROR_ENABLE, een_exp)
+        een = await self.ops.rd(ERROR_ENABLE)
+        if not field_compare(een, een_exp, een_mask).ok:
+            self._ctrl_missing(
+                "CTRL-SPI-ERR-MASK",
+                f"masked kind={kind} ERROR_ENABLE=0x{een & een_mask:02x} "
+                f"expected 0x{een_exp:02x} before the injection",
+            )
+        ctrl = await self._inject_setup(kind)
+        self._window(True)
+        await self._inject_step(kind)
         es = 0
         for _ in range(_POLL_READS):
             es = await self.ops.rd(ERROR_STATUS)
             if es & bit:
                 break
-        ie = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
+        values = (
+            f"masked=1 kind={kind} error_enable=0x{een & een_mask:02x} "
+            f"expect_error_enable=0x{een_exp:02x} err_status=0x{es & ERR_STATUS_MASK:02x} "
+            f"expect_err_status=0x{bit:02x} err_status_rsvd=0x{es & ~ERR_STATUS_MASK:x}"
+        )
+        if not es & bit:
+            self._fail("CHK-SPI-ERR-MASK", f"{values} own_bit_reads={_POLL_READS} own_bit=0")
+        ie = int(bool(await self._graded_rd(INTR_STATE) & INTR_ERROR))
         self._grade(
             "CHK-SPI-ERR-MASK",
-            bool(es & bit) and ie == 0,
-            f"masked=1 kind={kind} error_enable=0x{_ERR_EN_ALL & ~bit:02x} "
-            f"err_status=0x{es:02x} own_bit=0x{bit:02x} intr_error={ie} expect_intr_error=0 "
+            (es & ERR_STATUS_MASK) == bit and ie == 0,
+            f"{values} intr_error={ie} expect_intr_error=0 "
             f"control_err_status_before=0x{es0:02x} control_intr_error_before={ie0} "
             f"control_twin_intr_error={twin_ie}",
         )
+        await self._release(_FAM_ERR)
+        self._window(False)
+        await self._inject_restore(kind, ctrl)
         await self.ops.wr(ERROR_ENABLE, _ERR_EN_ALL)
-        await self.ops.clean_state()
-        self._window(True)
-
-        await self._l2_cmdbusy0()
+        await self._clean()
 
     async def _l2_cmdbusy0(self) -> None:
-        await self.ops.clean_state()
+        """CHK-SPI-CMDBUSY0; the set-up and the release run with the graded window closed."""
+        self._window(False)
+        await self._clean()
         await self.ops.wr(CONTROL, _CTRL_BASE & ~CTRL_SPIEN)
         await self.ops.wr(ERROR_ENABLE, _ERR_EN_ALL)
+        self._window(True)
         accepted = 0
         control_busy = 0
         while True:
-            st = await self.ops.read_status()
+            st = await self._graded_status()
             if not st.ready and not st.active:
+                if accepted < 1:
+                    self._ctrl_missing(
+                        "CTRL-SPI-CMDBUSY0",
+                        f"READY=0 before any accepted COMMAND write ({st.fmt()})",
+                    )
                 break
             if not st.ready:
-                self._ctrl_missing(f"READY=0 with ACTIVE=1 while SPIEN=0 ({st.fmt()})")
+                self._ctrl_missing(
+                    "CTRL-SPI-CMDBUSY0", f"READY=0 with ACTIVE=1 while SPIEN=0 ({st.fmt()})"
+                )
             if accepted >= _READY_ACCEPT_LIMIT:
-                self._ctrl_missing(f"READY=1 after {accepted} accepted COMMAND writes ({st.fmt()})")
+                self._ctrl_missing(
+                    "CTRL-SPI-CMDBUSY0",
+                    f"READY=1 after {accepted} accepted COMMAND writes ({st.fmt()})",
+                )
             await self.ops.wr(COMMAND, _CMD_DUMMY)
             accepted += 1
             control_busy |= await self.ops.rd(ERROR_STATUS) & ERR_CMDBUSY
@@ -1513,21 +2245,29 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 break
         self._grade(
             "CHK-SPI-CMDBUSY0",
-            bool(es & ERR_CMDBUSY) and not control_busy,
+            (es & ERR_STATUS_MASK) == ERR_CMDBUSY and not control_busy and st.cmdqd == accepted,
             f"writes={accepted} error_enable=0x{_ERR_EN_ALL:02x} ready={st.ready} "
-            f"active={st.active} cmdbusy={int(bool(es & ERR_CMDBUSY))} "
-            f"control_cmdbusy={int(bool(control_busy))} err_status=0x{es:02x}",
+            f"active={st.active} cmdqd={st.cmdqd} accepted={accepted} cmdbusy={int(bool(es & ERR_CMDBUSY))} "
+            f"control_cmdbusy={int(bool(control_busy))} err_status=0x{es & ERR_STATUS_MASK:02x} "
+            f"expect_err_status=0x{ERR_CMDBUSY:02x} err_status_rsvd=0x{es & ~ERR_STATUS_MASK:x}",
         )
+        await self._release(_FAM_ERR | SPI_CSR_IRQ_FAM_QF)
+        self._window(False)
         await self.ops.wr(ERROR_STATUS, ERR_CMDBUSY)
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self.pads.wait_windows(accepted, mark, _SEG_BOUND_CLKS)
         await self._idle_done("CMDBUSY0 release")
-        await self.ops.clean_state()
+        await self._clean()
 
     # ---- L3 ---------------------------------------------------------------
     async def _strobe_cell(self, off: int, strb: int) -> None:
+        """One strobe cell. The set-up and the entry reads run with the graded window
+        closed; it opens before the 8-byte write and closes after the cell's checks
+        (at the TXDATA pair, before the segment that empties the queue).
+        """
         (lo_name, lo_addr, lo_mask, lo_w1c), (hi_name, hi_addr, hi_mask, hi_w1c) = _STRB_PAIRS[off]
-        await self.ops.clean_state()
+        self._window(False)
+        await self._clean()
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self.ops.write_configopts(0)
         await self.ops.wr(CSID, 0)
@@ -1553,23 +2293,42 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             )
             if es != ERR_CMDINVAL:
                 self._ctrl_missing(
+                    "CTRL-SPI-STRB",
                     f"ERROR_STATUS=0x{es:02x} before the strobed write, "
-                    f"expected 0x{ERR_CMDINVAL:02x}"
+                    f"expected 0x{ERR_CMDINVAL:02x}",
                 )
             model["ERROR_STATUS"] = ERR_CMDINVAL
         tx = off == _OFF_TXDATA
         st0 = await self.ops.read_status()
         if tx and (st0.active or st0.txqd or st0.rxqd):
-            self._ctrl_missing(f"pair 0x{off:02x} needs ACTIVE=0 and empty FIFOs ({st0.fmt()})")
+            self._ctrl_missing(
+                "CTRL-SPI-STRB", f"pair 0x{off:02x} needs ACTIVE=0 and empty FIFOs ({st0.fmt()})"
+            )
         lo_old = None if tx else await self.ops.rd(lo_addr)
         hi_old = await self.ops.rd(hi_addr)
         for name, got, mask in ((lo_name, lo_old, lo_mask), (hi_name, hi_old, hi_mask)):
             if got is not None and not field_compare(got, model[name], mask).ok:
                 self._ctrl_missing(
+                    "CTRL-SPI-STRB",
                     f"off=0x{off:02x} {name}=0x{got:08x} before the cell, expected "
-                    f"0x{model[name]:08x} on mask 0x{mask:08x}"
+                    f"0x{model[name]:08x} on mask 0x{mask:08x}",
                 )
         lo_data, hi_data = self.draw["strb_data"][(off, strb)]
+        empty = tx and strb == _STRB_HIGH_ONLY
+        acc_cell = not empty and off != _OFF_ERR_STATUS
+        pre = (0, 0)
+        if empty:
+            pre = await self._strobe_empty_entry()
+        elif acc_cell:
+            es0 = await self.ops.rd(ERROR_STATUS)
+            if es0 & ERR_ACCESSINVAL:
+                self._ctrl_missing(
+                    "CTRL-SPI-STRB",
+                    f"CHK-SPI-STRB-ACCESSINVAL off=0x{off:02x} strb=0x{strb:02x} "
+                    f"ERROR_STATUS=0x{es0 & ERR_STATUS_MASK:02x} before the write, "
+                    "ACCESSINVAL expected 0",
+                )
+        self._window(True)
         resp = await self.ops.wr_strobed64(_SPI_BASE + off, (hi_data << 32) | lo_data, strb)
         lo_new = None if tx else await self.ops.rd(lo_addr)
         hi_new = await self.ops.rd(hi_addr)
@@ -1598,14 +2357,23 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"{lo_txt} hi=0x{hi_new & hi_mask:08x} expect_hi=0x{exp_hi & hi_mask:08x} "
             f"hi_mask=0x{hi_mask:08x} hi_rsvd=0x{fc_hi.rsvd:x} pair={lo_name},{hi_name}",
         )
-        if off != _OFF_ERR_STATUS:
+        if empty:
+            await self._strobe_empty_check(
+                pre,
+                resp == 0 and fc_hi.ok,
+                f"off=0x{off:02x} strb=0x{strb:02x} resp={'OKAY' if resp == 0 else resp} "
+                f"{hi_name.lower()}_landed={int(fc_hi.ok)} {hi_name.lower()}=0x{hi_new & hi_mask:08x} "
+                f"{hi_name.lower()}_before=0x{hi_old & hi_mask:08x}",
+                st0.txqd,
+            )
+        elif acc_cell:
             es = await self.ops.rd(ERROR_STATUS)
-            self.logger.info(
-                "OBS-SPI-STRB-ACCESSINVAL seed=%d off=0x%02x strb=0x%02x accessinval=%d",
-                self.seed,
-                off,
-                strb,
-                int(bool(es & ERR_ACCESSINVAL)),
+            acc = int(bool(es & ERR_ACCESSINVAL))
+            self._grade(
+                "CHK-SPI-STRB-ACCESSINVAL",
+                acc == 0,
+                f"off=0x{off:02x} strb=0x{strb:02x} accessinval={acc} expect_accessinval=0 "
+                f"control_accessinval_before=0 err_status=0x{es & ERR_STATUS_MASK:02x}",
             )
         txqd_after = None
         if tx:
@@ -1618,6 +2386,56 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 bool(hi_changed and lo_changed),
                 f"off=0x{off:02x} strb=0xFF both_changed={int(bool(hi_changed and lo_changed))}",
             )
+        await self._release(_FAM_STRB)
+        self._window(False)
+
+    async def _strobe_empty_entry(self) -> tuple[int, int]:
+        """ERROR_STATUS and INTR_STATE before the empty-half write; returns both reads.
+
+        The SPI clean state at the start of the cell wrote 1 to every
+        ERROR_STATUS bit, ACCESSINVAL included. Both reads run with the graded
+        window closed (cell set-up).
+        """
+        es = await self.ops.rd(ERROR_STATUS)
+        ist = await self.ops.rd(INTR_STATE)
+        if es & ERR_STATUS_MASK or ist & INTR_STATE_MASK:
+            self._ctrl_missing(
+                "CTRL-SPI-STRB",
+                f"off=0x{_OFF_TXDATA:02x} strb=0x{_STRB_HIGH_ONLY:02x} "
+                f"ERROR_STATUS=0x{es & ERR_STATUS_MASK:02x} "
+                f"INTR_STATE=0x{ist & INTR_STATE_MASK:x} before the write, expected 0",
+            )
+        return es, ist
+
+    async def _strobe_empty_check(
+        self, pre: tuple[int, int], live: bool, head: str, txqd_before: int
+    ) -> None:
+        """CHK-SPI-STRB-EMPTY after the 0x28 write with strobe 0xF0.
+
+        ``live`` is the strobed half's result (OKAY and the ERROR_ENABLE half
+        landed), which CHK-SPI-STRB graded. STATUS and INTR_STATE are read and
+        graded before the ERROR_STATUS read, so a FAIL on either stops the
+        leaf before that read. The ERROR_STATUS read comes last: no SPI write
+        runs between the strobed write and it.
+        """
+        st = await self.ops.read_status()
+        ist = await self.ops.rd(INTR_STATE)
+        values = (
+            f"{head} txqd={st.txqd} expect_txqd={txqd_before} txempty={st.txempty} "
+            f"intr_state=0x{ist & INTR_STATE_MASK:x} expect_intr_state=0x0 "
+            f"control_err_status_before=0x{pre[0] & ERR_STATUS_MASK:02x} "
+            f"control_intr_state_before=0x{pre[1] & INTR_STATE_MASK:x}"
+        )
+        if not (live and st.txqd == txqd_before and st.txempty == 1 and not ist & INTR_STATE_MASK):
+            self._fail("CHK-SPI-STRB-EMPTY", f"{values} accessinval=-")
+        es = await self._graded_rd(ERROR_STATUS)
+        acc = int(bool(es & ERR_ACCESSINVAL))
+        self._grade(
+            "CHK-SPI-STRB-EMPTY",
+            acc == 0,
+            f"{values} accessinval={acc} expect_accessinval=0 "
+            f"err_status=0x{es & ERR_STATUS_MASK:02x}",
+        )
 
     async def _strobe_tx(self, strb: int, txqd_before: int) -> int:
         """Grade the TXDATA half by TXQD; return TXQD after the strobed write."""
@@ -1629,6 +2447,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             st = await self.ops.read_status()
         exp_qd = txqd_before + (1 if strb & 0x0F else 0)
         exp_empty = 0 if strb & 0x0F else 1
+        # The segment that empties the queue is housekeeping of the cell: the
+        # graded window closes before it, so its TXDATA write is no strobe cell.
+        self._window(False)
         mark = self.pads.mark()
         await self.ops.issue_command(command_word(3, direction=DIR_TX))
         if not strb & 0x0F:
@@ -1645,14 +2466,14 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"expect_txqd={exp_qd} txempty={st.txempty} "
             f"txempty_after_segment={after.txempty} txqd_after_segment={after.txqd}",
         )
-        await self.ops.sw_rst()
+        await self._sw_rst()
         return st.txqd
 
     async def _leg_l3(self) -> None:
         for off in self.draw["pair_order"]:
             for strb in self.draw["strobe_order"][off]:
                 await self._strobe_cell(off, strb)
-        await self.ops.clean_state()
+        await self._clean()
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self.ops.write_configopts(_CFG_BASE)
 
@@ -1660,6 +2481,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     async def _leg_l4(self) -> None:
         await self._l4_swrst()
         await self._l4_spien()
+        await self._l4_cmdinval_spien1()
 
     async def _l4_swrst(self) -> None:
         sw = self.draw["swrst"]
@@ -1669,7 +2491,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             "EVENT_ENABLE": (EVENT_ENABLE, sw["event_enable"]),
             "CONTROL": (CONTROL, sw["control"]),
         }
-        await self.ops.clean_state()
+        self._window(False)
+        await self._clean()
         await self.ops.write_configopts(sw["configopts"])
         await self.ops.wr(ERROR_ENABLE, sw["error_enable"])
         await self._set_ev(sw["event_enable"])
@@ -1680,7 +2503,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             rst = _R.reset32(name)
             nonreset += int(value != rst)
             self.logger.info(
-                "L4-SWRST-ARM LOG seed=%d reg=%s value=0x%08x read=0x%08x reset=0x%08x",
+                "INFO-L4-SWRST-ARM LOG seed=%d reg=%s value=0x%08x read=0x%08x reset=0x%08x",
                 self.seed,
                 name,
                 value,
@@ -1688,10 +2511,13 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 rst,
             )
         if nonreset != len(armed):
-            self._ctrl_missing(f"{len(armed) - nonreset} armed L4 values equal the reset value")
+            self._ctrl_missing(
+                "CTRL-SPI-SWRST", f"{len(armed) - nonreset} armed L4 values equal the reset value"
+            )
         cpol = (sw["configopts"] >> _R.field_lsb("CONFIGOPTS", "cpol")) & 1
         self.pads.set_idle_level(cpol)
         mark = self.pads.mark()
+        self._window(True)
         await self.ops.issue_command(command_word(4 * _SWRST_SEG_WORDS - 1, direction=DIR_TX))
         for w in range(_SWRST_SEG_WORDS + sw["extra"]):
             await self.ops.push_tx(0x8800_0000 | w)
@@ -1699,7 +2525,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         before = await self.ops.read_status()
         await self.ops.wr(CONTROL, sw["control"] | CTRL_SW_RST)
         self.logger.info(
-            "L4-SWRST-POINT LOG seed=%d t=%d edges=%d cs_low=%d %s",
+            "INFO-L4-SWRST-POINT LOG seed=%d t=%d edges=%d cs_low=%d %s",
             self.seed,
             sw["t"],
             edges,
@@ -1707,8 +2533,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             before.fmt(),
         )
         if not before.active and before.txqd + before.rxqd == 0:
-            self._ctrl_missing(f"no work at the SW_RST point ({before.fmt()})")
-        hold = int(bool(await self.ops.rd(CONTROL) & CTRL_SW_RST))
+            self._ctrl_missing("CTRL-SPI-SWRST", f"no work at the SW_RST point ({before.fmt()})")
+        hold = int(bool(await self._graded_rd(CONTROL) & CTRL_SW_RST))
         empty = await self.ops.poll_status(
             lambda s: s.txempty == 1 and s.rxempty == 1, 2_000, "SW_RST: TXEMPTY=1 and RXEMPTY=1"
         )
@@ -1716,17 +2542,23 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         # FIFOs are empty: the release write below rewrites every CONTROL
         # field, so a read after it cannot show a field that SW_RST cleared.
         fc = field_compare(
-            await self.ops.rd(CONTROL), sw["control"] | CTRL_SW_RST, _R.mask32("CONTROL")
+            await self._graded_rd(CONTROL), sw["control"] | CTRL_SW_RST, _R.mask32("CONTROL")
         )
-        self.logger.info("L4-SWRST-REG LOG seed=%d reg=CONTROL held %s", self.seed, fc.fields())
+        self.logger.info(
+            "INFO-L4-SWRST-REG LOG seed=%d reg=CONTROL held %s", self.seed, fc.fields()
+        )
         kept = [fc.ok]
         await self.ops.wr(CONTROL, sw["control"])
+        # CONTROL.SW_RST is sw = rw (spi_controller.rdl:78-86): the release write of 0 reads back 0.
+        rel_swrst = int(bool(await self._graded_rd(CONTROL) & CTRL_SW_RST))
         rel = await self.ops.read_status()
         for name, (addr, value) in armed.items():
             if name == "CONTROL":
                 continue
             fc = field_compare(await self.ops.rd(addr), value, _R.mask32(name))
-            self.logger.info("L4-SWRST-REG LOG seed=%d reg=%s %s", self.seed, name, fc.fields())
+            self.logger.info(
+                "INFO-L4-SWRST-REG LOG seed=%d reg=%s %s", self.seed, name, fc.fields()
+            )
             kept.append(fc.ok)
         await self.ops.wait_ready()
         wins = await self._segment(command_word(sw["clean_len"], direction=DIR_DUMMY))
@@ -1738,14 +2570,18 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             and empty.txempty == 1
             and empty.rxempty == 1
             and (rel.active, rel.txqd, rel.rxqd) == (0, 0, 0)
+            and rel_swrst == 0
             and all(kept)
             and clean == exp,
             f"t={sw['t']} active_before={before.active} txqd_before={before.txqd} "
-            f"rxqd_before={before.rxqd} hold_read={hold} txempty={empty.txempty} "
+            f"rxqd_before={before.rxqd} hold_read={hold} release_read={rel_swrst} "
+            f"txempty={empty.txempty} "
             f"rxempty={empty.rxempty} active={rel.active} txqd={rel.txqd} rxqd={rel.rxqd} "
             f"regs_kept={int(all(kept))} nonreset={nonreset} clean_cycles={clean}/{exp}",
         )
-        await self.ops.clean_state()
+        await self._release(_FAM_SWRST)
+        self._window(False)
+        await self._clean()
         await self.ops.wr(CONTROL, _CTRL_BASE)
         await self.ops.write_configopts(_CFG_BASE)
         await self.ops.wr(ERROR_ENABLE, _ERR_EN_ALL)
@@ -1754,7 +2590,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
     async def _l4_spien(self) -> None:
         lens = self.draw["spien_lens"]
-        await self.ops.clean_state()
+        await self._clean()
         self._window(False)
         ref = await self._segment(command_word(max(lens), direction=DIR_DUMMY))
         t_seg = ref[0].end - ref[0].start
@@ -1768,16 +2604,16 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self.ops.wr(COMMAND, command_word(ln, direction=DIR_DUMMY))
             accepted += 1
         hold_mark = self.pads.mark()
-        st = await self.ops.read_status()
+        st = await self._graded_status()
         self.logger.info(
-            "L4-SPIEN LOG seed=%d accepted=%d cmdqd=%d t_seg=%d",
+            "INFO-L4-SPIEN LOG seed=%d accepted=%d cmdqd=%d t_seg=%d",
             self.seed,
             accepted,
             st.cmdqd,
             t_seg,
         )
         if accepted < 1:
-            self._ctrl_missing("no COMMAND accepted with SPIEN=0")
+            self._ctrl_missing("CTRL-SPI-SPIEN", "no COMMAND accepted with SPIEN=0")
         window = 4 * t_seg
         await ClockCycles(cocotb.top.clk_i, window)
         quiet_wins = self.pads.windows_since(hold_mark, complete_only=False)
@@ -1789,11 +2625,91 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._idle_done("SPIEN release")
         cycles = [w.leading_edges for w in wins]
         exp = [ln + 1 for ln in lens[:accepted]]
+        # vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:633:
+        # "Before any commands are processed, the block must be enabled by writing
+        # one to the CONTROL.SPIEN register." With SPIEN=0 from
+        # the clean state no command starts, so STATUS.ACTIVE reads 0.
         self._grade(
             "CHK-SPI-SPIEN",
-            st.cmdqd == accepted and pad_activity == 0 and cycles == exp and t_seg < window,
-            f"n={len(lens)} accepted={accepted} cmdqd={st.cmdqd} t_seg={t_seg} "
+            st.cmdqd == accepted
+            and st.active == 0
+            and pad_activity == 0
+            and cycles == exp
+            and t_seg < window,
+            f"n={len(lens)} accepted={accepted} cmdqd={st.cmdqd} active={st.active} t_seg={t_seg} "
             f"window_clk={window} pad_activity={pad_activity} "
             f"released_in_order={int(cycles == exp)} cycles={cycles} expect={exp}",
         )
-        await self.ops.clean_state()
+        await self._release(_FAM_SPIEN)
+        self._window(False)
+        await self._clean()
+
+    async def _l4_cmdinval_spien1(self) -> None:
+        """A reserved-SPEED COMMAND with SPIEN=1 and a legal Tx COMMAND queued behind it."""
+        rng = SepSeededRng(self.seed ^ _CMDINVAL_SALT)
+        word = rng.getrandbits(32)
+        n_bytes = rng.randrange(1, 5)
+        await self._clean()
+        self._window(False)
+        await self.ops.wr(CONTROL, _CTRL_BASE)
+        ref = await self._segment(command_word(8 * n_bytes - 1, direction=DIR_DUMMY))
+        t_seg = ref[0].end - ref[0].start
+        window = 4 * t_seg
+        await self._idle_done("CMDINVAL reference")
+        ctrl = await self.ops.rd(CONTROL)
+        es0 = await self.ops.rd(ERROR_STATUS)
+        ctrl_line = (
+            f"control=0x{ctrl:08x} spien={int(bool(ctrl & CTRL_SPIEN))} error_status=0x{es0:08x}"
+        )
+        if not ctrl & CTRL_SPIEN or es0:
+            self._ctrl_missing("CTRL-SPI-CMDINVAL-SPIEN1", ctrl_line)
+        self.logger.info("CTRL-SPI-CMDINVAL-SPIEN1 PASS seed=%d %s", self.seed, ctrl_line)
+        mark = self.pads.mark()
+        await self.ops.wr(COMMAND, command_word(0, speed=_SPEED_RESERVED))
+        await self.ops.push_tx(word)
+        st_before = await self.ops.issue_command(command_word(n_bytes - 1, direction=DIR_TX))
+        st_after = await self.ops.read_status()
+        await ClockCycles(cocotb.top.clk_i, window)
+        es = await self.ops.rd(ERROR_STATUS)
+        st_pre = await self.ops.read_status()
+        held_edges = len(self.pads.sck_edges_between(mark.clk + 1, self.pads.now() + 1))
+        held_wins = len(self.pads.windows_since(mark, complete_only=False))
+        # A host that runs the Tx command pops it at once; its sck edges show
+        # that it was queued, and the check below fails on them.
+        queued = st_after.cmdqd == st_before.cmdqd + 1 and st_after.txqd >= 1
+        queued_line = (
+            f"cmdqd_before={st_before.cmdqd} cmdqd_after={st_after.cmdqd} "
+            f"txqd_after={st_after.txqd} sck_edges_before_w1c={held_edges}"
+        )
+        if not (queued or held_edges):
+            self._ctrl_missing("CTRL-SPI-CMDINVAL-QUEUED", queued_line)
+        self.logger.info("CTRL-SPI-CMDINVAL-QUEUED PASS seed=%d %s", self.seed, queued_line)
+        self._grade(
+            "CHK-SPI-CMDINVAL-SPIEN1",
+            es == ERR_CMDINVAL and held_edges == 0 and t_seg > 0,
+            f"error_status=0x{es:08x} expect=0x{ERR_CMDINVAL:08x} "
+            f"sck_edges_before_w1c={held_edges} window_clk={window} t_seg={t_seg} "
+            f"tx_bytes={n_bytes}",
+        )
+        set_open_value_leg_pass("spi_cmdinval_spien1", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        self.logger.info(
+            "OBS-SPI-CMDINVAL-SPIEN1 LOG seed=%d tx_word=0x%08x tx_bytes=%d cs_windows_held=%d "
+            "cmdqd_held=%d active_held=%d txqd_held=%d",
+            self.seed,
+            word,
+            n_bytes,
+            held_wins,
+            st_pre.cmdqd,
+            st_pre.active,
+            st_pre.txqd,
+        )
+        # SW_RST empties the command queue while CMDINVAL still halts the core,
+        # so the core never pops the reserved speed; ERROR_STATUS keeps CMDINVAL.
+        await self._sw_rst()
+        await self.ops.poll_status(
+            lambda s: s.cmdqd == 0 and s.active == 0, 2_000, "CMDINVAL flush: CMDQD=0"
+        )
+        await self.ops.wr(ERROR_STATUS, ERR_STATUS_MASK)
+        await self._clean()

@@ -20,8 +20,7 @@ word equal to 0x113, or on a required abort bit. "Any bit set" is ruled out by t
 0xFFFFFFFD must block on repair and 0x12 must block on MBIST.
 
 Not covered: the ``BYPASS_SRAM_REPAIR`` and ``MBIST_BYPASS`` strap arms, the ``mbist_abort``
-branch, the poll timeout, and an MBIST failure followed by a blown ``SKIP_MEM_CHECK`` fuse
-(``sep_mbist_fail_continue_test`` enters the fuse arm from the repair failure). The OT-SPI boot
+branch and the poll timeout. The OT-SPI boot
 gives the run a definite end; the gate is upstream of the transport choice.
 """
 

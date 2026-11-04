@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// SEP Verilator coverage configuration. Passed to Verilator at compile time
+// from [coverage.verilator].build_args in sep_sim_cfg.toml.
+//
+// Every covergroup handle of cov/sv/sep_fcov.sv stays a member of the sampler
+// instance. A handle whose samples are all gated off in a build is otherwise
+// local to static initialization: its object is freed there while its bins
+// stay registered, and coverage.dat reads their counts from freed memory.
+`verilator_config
+public -module "sep_fcov" -var "u_sep_*_cg"
+public -module "sep_fcov" -var "u_sep_*_cp"

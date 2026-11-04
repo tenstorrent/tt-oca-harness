@@ -164,13 +164,16 @@ configuration fields.
 |AVS_CFG_1.AVS_CLOCK_SELECT[1:0] |0x3 |Clock source and divider bypass
 
 |AVS_CFG_1.CLK_DIVIDER_VALUE[23:16] |0x0 |Division ratio. A value below 2 is
-treated as 2. The reset value 0 is a sentinel that leaves the divider at its
-hardware default of 4
+treated as 2. Out of reset the divider runs at its hardware default of 4, not
+the reset value. A change to this field or to the numerator loads both fields
+into the divider, so write them together
 
 |AVS_CFG_1.CLK_DIVIDER_DUTY_CYCLE_NUMERATOR[31:24] |0x0 |High-pulse fraction
 in 1/256 units, so 128 is 50%. A 50% duty cycle is only reachable with an even
-divider. The reset value 0 is a sentinel that leaves the numerator at its
-hardware default of 0x80
+divider. A value of 0 is treated as 1. Out of reset the divider runs at its
+hardware default of 0x80, not the reset value. A change to this field or to
+`CLK_DIVIDER_VALUE` loads both fields into the divider, so writing
+`CLK_DIVIDER_VALUE` alone applies a numerator of 0
 
 |AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE[8] |0x0 |Gate the AVS clock while the bus is
 idle. The master issues a slave resync whenever the clock restarts
@@ -198,8 +201,9 @@ While `test_en_i` is high the source and divider-bypass muxes ignore
 
 |rst_clk_div_ni |The programmable clock divider
 
-|rst_reg_ni |The register file, the protocol FSM and the reset synchronizers
-for the register, pre-divider and AVS clock domains
+|rst_reg_ni |The `clk_reg_i` leg of the anti-glitch source mux, the register
+file, the protocol FSM and the reset synchronizers for the register,
+pre-divider and AVS clock domains
 
 |rst_ref_ni |The `clk_ref_i` leg of the anti-glitch source mux
 |=====================================================================================
@@ -207,6 +211,10 @@ for the register, pre-divider and AVS clock domains
 `rst_clk_div_ni` must be deasserted before `rst_reg_ni`. The divider has to be
 producing a clock before the logic it feeds leaves reset, otherwise the AVS
 clock domain never starts.
+
+`rst_reg_ni` and `rst_ref_ni` reset their legs of the source mux directly, so
+each must assert asynchronously and deassert synchronously to its own clock:
+`clk_reg_i` for `rst_reg_ni` and `clk_ref_i` for `rst_ref_ni`.
 
 === Interrupt Interface
 

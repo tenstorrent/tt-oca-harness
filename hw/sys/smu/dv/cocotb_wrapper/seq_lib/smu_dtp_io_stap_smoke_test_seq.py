@@ -76,7 +76,12 @@ class smu_dtp_io_stap_smoke_test_seq:
         idcode = await raw.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-DTP-IO-STAP-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-DTP-IO-STAP-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-DTP-IO-STAP-JTAG-READY",
+        )
 
         # Idle contrast: RTI with no shift — TCK must stay near-quiet vs scan.
         for _ in range(16):
@@ -89,7 +94,9 @@ class smu_dtp_io_stap_smoke_test_seq:
                 f"(RTI, no scan; sensitivity baseline)"
             )
         self._log(f"CHK-DTP-IO-STAP-IDLE: tck_edges={idle_edges} (max={idle_max} RTI quiet)")
-        sb.expect_true("CHK-DTP-IO-STAP-IDLE", idle_edges <= idle_max)
+        sb.expect_true(
+            "CHK-DTP-IO-STAP-IDLE", idle_edges <= idle_max, evidence="CHK-DTP-IO-STAP-IDLE"
+        )
 
         # S1: IDCODE scan while counting IO STAP TCK edges
         mon = cocotb.start_soon(self._count_tck_edges())
@@ -133,7 +140,7 @@ class smu_dtp_io_stap_smoke_test_seq:
         sb.expect_true(
             "CHK-DTP-IO-STAP-SCAN-PAYLOAD",
             edges2 >= MIN_TCK_EDGES and edges2 > idle_edges,
-            evidence="CHK-DTP-IO-STAP-SCAN",
+            evidence="CHK-DTP-IO-STAP-SCAN-PAYLOAD",
         )
 
         self._log(f"PASS DTP-IO-STAP s1={self.s1_ok} s2={self.s2_ok} edges={edges}/{edges2}")

@@ -116,26 +116,35 @@ module efuse_mmr_reg (
         automatic logic is_valid_rw;
         automatic logic is_external;
         is_external = '0;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.RMA_SIP_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
             is_external |= cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
         end
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.RMA_CHIPLET_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 7'h20 + (7)'(i0) * 7'h4);
             is_external |= cpuif_req_masked & (cpuif_addr == 7'h20 + (7)'(i0) * 7'h4);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h20 + (7)'(i0) * 7'h4);
         end
         for(int i0=0; i0<8; i0++) begin
             decoded_reg_strb.SEC_DISABLE_TOKEN_I[i0] = cpuif_req_masked & (cpuif_addr == 7'h40 + (7)'(i0) * 7'h4);
             is_external |= cpuif_req_masked & (cpuif_addr == 7'h40 + (7)'(i0) * 7'h4);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h40 + (7)'(i0) * 7'h4);
         end
         decoded_reg_strb.TOKEN_EOP = cpuif_req_masked & (cpuif_addr == 7'h60) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h60);
         decoded_reg_strb.RMA_SIP_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h64) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h64);
         decoded_reg_strb.RMA_CHIPLET_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h68) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h68);
         decoded_reg_strb.SEC_DISABLE_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h6c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h6c);
         decoded_reg_strb.TOKEN_MATCH_FAULT = cpuif_req_masked & (cpuif_addr == 7'h70) & !cpuif_req_is_wr;
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h70);
+        is_valid_addr = cpuif_addr < 7'h74;
+        decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
     logic external_wr_ack;
@@ -317,7 +326,7 @@ module efuse_mmr_reg (
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -391,7 +400,7 @@ module efuse_mmr_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign external_rd_ack = readback_external_rd_ack;

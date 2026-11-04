@@ -5,15 +5,18 @@
 Specs hw/sys/smc/doc/dma.adoc, vendor idma dma_ctrl.rdl.
 
 Sources and destinations sit in the SYS_OUT responder memory and are preloaded and read back
-through its backdoor. Every SYS_OUT AR and AW handshake and bit 322 of tb_cpu_interrupts is
-sampled on each clk_smc_i rise. The valid copies of step 5 are the positive control of the
+through its backdoor. Every SYS_OUT AR and AW handshake, bit 322 of tb_cpu_interrupts and the
+PLIC pending bits of sources 323 and 324 are sampled on each clk_smc_i rise; dma.adoc
+(Submission and Completion) routes the DMA interrupt to PLIC ID 323 and the pending bit of that
+source alone must follow the bit 322 pulse. The valid copies of step 5 are the positive control of the
 no-data compares: a four-row 2D copy with the strides of the zero-length 2D command writes the
 whole 136-byte destination span, and a linear 16-byte copy writes its first row.
 
-The NEXT_ID_0 value a submit returns, DONE_0 before and after a no-data command and the bit 322
-pulse count are measured, not compared: tenstorrent/tt-oca-harness#2455 tracks the open
-disagreement between dma.adoc and dma_ctrl.rdl on what NEXT_ID_0 returns when no command is set
-up, and those legs stay measured until it is resolved.
+Every NEXT_ID_0 read of the leaf must return a non-zero transfer ID: dma.adoc (Linear and
+Two-Dimensional Copies) and dma_ctrl.rdl both state that every read returns one, including the
+reads that submit a command with no data to move. DONE_0 before and after a no-data command and
+the bit 322 pulse count are measured, not compared; the retirement count a no-data command adds
+to DONE_0 (dma.adoc, Retirement Counting) is graded by smc_dma_transfer_matrix_rand_test.
 """
 
 from __future__ import annotations
@@ -22,8 +25,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 
-from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_dma_sanity_test_seq import (
+from .smc_addr_map import (
     DMA_CONFIG_ENABLED_ND,
     DMA_CTRL_CONFIG,
     DMA_CTRL_DONE_0,
@@ -41,6 +43,11 @@ from .smc_dma_sanity_test_seq import (
     DMA_CTRL_SRC_STRIDE_HI,
     DMA_CTRL_SRC_STRIDE_LO,
     DMA_CTRL_STATUS_0,
+    DMA_NEXT_ID_MASK,
+    DMA_STATUS_BUSY_MASK,
+)
+from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_dma_sanity_test_seq import (
     INBOUND0_END,
     INBOUND0_FILTER_CONFIG,
     INBOUND0_START,
@@ -58,7 +65,10 @@ POLL_LIMIT = 3000
 POLL_CYCLES = 50
 FURTHER_READS = 6
 IRQ_BIT = 322
-STATUS_MASK = 0x3FF
+STATUS_MASK = DMA_STATUS_BUSY_MASK
+NEXT_ID_MASK = DMA_NEXT_ID_MASK
+# Legs that submit a command: ND_CLEAR, ZERO_LINEAR, ZERO_2D, COPY2D, COPY32, COPY64.
+EXPECTED_SUBMITS = 6
 
 LENGTH = 16
 SRC_STRIDE = 0x30
@@ -76,6 +86,8 @@ _TB_SIGNALS = (
     "tb_output_axi_resp_hold",
     "tb_dma_busy",
     "tb_cpu_interrupts",
+    "tb_plic_pending_323",
+    "tb_plic_pending_324",
 )
 
 
@@ -96,8 +108,8 @@ def _pulse_widths(bits: list[int], lo: int, hi: int) -> list[int]:
 
 
 class _Sampler:
-    """Records every AR and AW handshake address and, per clk_smc_i rise, the interrupt bit
-    and tb_dma_busy."""
+    """Records every AR and AW handshake address and, per clk_smc_i rise, the interrupt bit,
+    tb_dma_busy and the PLIC pending bits of sources 323 and 324."""
 
     def __init__(self, dut) -> None:
         self.dut = dut
@@ -105,6 +117,8 @@ class _Sampler:
         self.aw: list[int] = []
         self.irq: list[int] = []
         self.busy: list[int] = []
+        self.pend323: list[int] = []
+        self.pend324: list[int] = []
 
     @staticmethod
     def _bit(sig, name: str) -> int:
@@ -124,6 +138,8 @@ class _Sampler:
                     store.append(self._bit(getattr(dut, f"tb_output_axi_{ch}addr"), f"{ch}addr"))
             self.irq.append((self._bit(dut.tb_cpu_interrupts, "tb_cpu_interrupts") >> IRQ_BIT) & 1)
             self.busy.append(self._bit(dut.tb_dma_busy, "tb_dma_busy"))
+            self.pend323.append(self._bit(dut.tb_plic_pending_323, "tb_plic_pending_323"))
+            self.pend324.append(self._bit(dut.tb_plic_pending_324, "tb_plic_pending_324"))
 
 
 class _Leg:
@@ -143,6 +159,7 @@ class _Leg:
         self.irq_end = 0
         self.widths: list[int] = []
         self.data = b""
+        self.programmed: dict[str, int] = {}
 
 
 class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
@@ -155,6 +172,7 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         self.chk_ids: list[str] = []
         self.sampler: _Sampler | None = None
         self.legs: dict[str, _Leg] = {}
+        self.next_ids: list[int] = []
 
     # -- plumbing ---------------------------------------------------------
 
@@ -242,6 +260,17 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
             (DMA_CTRL_NUM_REPETITIONS_HI, 0),
         ):
             await self.csr_write(f"{leg.name}_0x{reg & 0xFFF:03x}", reg, value)
+        leg.programmed = {}
+        for label, reg, value in (
+            ("CONFIG", DMA_CTRL_CONFIG, config),
+            ("LENGTH_LO", DMA_CTRL_LENGTH_LO, length),
+            ("NUM_REPETITIONS_LO", DMA_CTRL_NUM_REPETITIONS_LO, reps),
+        ):
+            got = await self.csr_read(f"{leg.name}_{label}_RB", reg)
+            assert got == value, (
+                f"{leg.name}: {label} reads back 0x{got:x} after the write of 0x{value:x}"
+            )
+            leg.programmed[label] = got
 
     async def _submit(self, leg: _Leg, length_bytes: int = 4) -> None:
         """The read of NEXT_ID_0 launches the programmed descriptor."""
@@ -251,9 +280,11 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
             await self.csr_read(f"{leg.name}_STATUS_BEFORE", DMA_CTRL_STATUS_0)
         ) & STATUS_MASK
         leg.ar0, leg.aw0, leg.irq0 = len(s.ar), len(s.aw), len(s.irq)
-        leg.next_id = await self.csr_read(
-            f"{leg.name}_NEXT_ID", DMA_CTRL_NEXT_ID_0, length=length_bytes
-        )
+        leg.next_id = (
+            await self.csr_read(f"{leg.name}_NEXT_ID", DMA_CTRL_NEXT_ID_0, length=length_bytes)
+        ) & NEXT_ID_MASK
+        assert leg.next_id != 0, f"{leg.name}: NEXT_ID_0 read returned transfer ID 0"
+        self.next_ids.append(leg.next_id)
 
     async def _poll(self, leg: _Leg) -> None:
         """Polls DONE_0 until it differs from its pre-command value or POLL_LIMIT reads pass."""
@@ -305,6 +336,10 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         return f"pulses {len(leg.widths)} widths {leg.widths} cycles last_sample_low {last_low}"
 
     @staticmethod
+    def _fmt_programmed(leg: _Leg) -> str:
+        return " ".join(f"{k}=0x{v:x}" for k, v in leg.programmed.items())
+
+    @staticmethod
     def _fmt(leg: _Leg) -> str:
         return (
             f"next_id=0x{leg.next_id:x} done_before={leg.done_before} done_after={leg.done_after} "
@@ -348,13 +383,16 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         irq = self._irq_window(leg)
         self._mark("S2")
         measured = (
-            f"measured {self._fmt(leg)} bit{IRQ_BIT} {irq}; "
-            f"relation of NEXT_ID_0 to DONE_0 and the pulse count are not compared "
-            f"(tenstorrent/tt-oca-harness#2455)"
+            f"measured {self._fmt(leg)} bit{IRQ_BIT} {irq}; the relation of DONE_0 to "
+            f"NEXT_ID_0, STATUS_0 and the pulse count are not compared"
         )
         assert leg.changed, (
             f"ND_CLEAR: DONE_0 still {leg.done_before} after {POLL_LIMIT} reads "
             f"(status 0x{leg.status_after:x})"
+        )
+        assert leg.done_after == leg.done_before + 1, (
+            f"CHK-DMA-ND-CLEAR-DONE-ADVANCES FAIL: DONE_0 {leg.done_before} -> {leg.done_after} "
+            f"after the CONFIG 0 command, want one retirement"
         )
         self._expect_poison("ND_CLEAR", leg.data)
         assert not leg.ar, f"ND_CLEAR: AR handshakes at {[hex(a) for a in leg.ar]}"
@@ -363,15 +401,17 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
             ("CHK-DMA-ND-CLEAR-MEASURED", measured),
             (
                 "CHK-DMA-ND-CLEAR-NO-DATA",
-                f"CONFIG 0 command retired (DONE_0 {leg.done_before} -> {leg.done_after}); "
+                f"CONFIG 0 command (registers read back {self._fmt_programmed(leg)}) retired "
+                f"(DONE_0 {leg.done_before} -> {leg.done_after}); "
                 f"all {LENGTH} destination bytes are 0x{POISON:02x} and the window from the "
                 f"submit to the DONE_0 change holds AR {len(leg.ar)} AW {len(leg.aw)}; "
                 f"positive control: the valid copies of step 5 move data",
             ),
             (
                 "CHK-DMA-ND-CLEAR-DONE-ADVANCES",
-                f"DONE_0 read {leg.done_after} after the CONFIG 0 command, differing from the "
-                f"pre-command {leg.done_before}, after {leg.reads} reads (bound {POLL_LIMIT})",
+                f"DONE_0 read {leg.done_after} after the CONFIG 0 command, one above the "
+                f"pre-command {leg.done_before}, after {leg.reads} reads (bound {POLL_LIMIT}); "
+                f"the next submit's pre-command read is compared to it in step 3",
             ),
         ]
 
@@ -387,6 +427,11 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
 
     async def _s3(self) -> list[tuple[str, str]]:
         leg = await self._zero_leg("ZERO_LINEAR", 1, LENGTH)
+        nd = self.legs["a"]
+        assert leg.done_before == nd.done_after, (
+            f"CHK-DMA-ND-CLEAR-DONE-ADVANCES FAIL: DONE_0 read {leg.done_before} before the next "
+            f"submit, {nd.done_after} at the CONFIG 0 command's retirement"
+        )
         self._irq_window(leg)
         self._mark("S3")
         return []
@@ -404,17 +449,19 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         measured = (
             f"measured linear {self._fmt(lin)} bit{IRQ_BIT} pulses {len(lin.widths)} "
             f"widths {lin.widths} cycles; "
-            f"2d {self._fmt(leg)} bit{IRQ_BIT} {irq}; post-conditions are not compared "
-            f"(tenstorrent/tt-oca-harness#2455)"
+            f"2d {self._fmt(leg)} bit{IRQ_BIT} {irq}; DONE_0, STATUS_0 and the pulse count are "
+            f"not compared"
         )
         return [
             ("CHK-DMA-ZEROLEN-MEASURED", measured),
             (
                 "CHK-DMA-ZEROLEN-NO-DATA",
-                f"zero-length linear command: {LENGTH} destination bytes all 0x{POISON:02x}, "
-                f"AR {len(lin.ar)} AW {len(lin.aw)}; zero-length 2D command (4 rows, strides "
-                f"0x{SRC_STRIDE:x}/0x{DST_STRIDE:x}): {SPAN_2D} destination bytes all "
-                f"0x{POISON:02x}, AR {len(leg.ar)} AW {len(leg.aw)}; DONE_0 change not compared",
+                f"zero-length linear command (registers read back "
+                f"{self._fmt_programmed(lin)}): {LENGTH} destination bytes all 0x{POISON:02x}, "
+                f"AR {len(lin.ar)} AW {len(lin.aw)}; zero-length 2D command (registers read back "
+                f"{self._fmt_programmed(leg)}, strides 0x{SRC_STRIDE:x}/0x{DST_STRIDE:x}): "
+                f"{SPAN_2D} destination bytes all 0x{POISON:02x}, AR {len(leg.ar)} AW "
+                f"{len(leg.aw)}; DONE_0 change not compared",
             ),
         ]
 
@@ -514,7 +561,53 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         await ClockCycles(cocotb.top.clk_smc_i, 2)
         self._mark("S7")
         order.append("S7")
+        submitted = [leg.name for leg in self.legs.values()]
+        assert len(submitted) == EXPECTED_SUBMITS, f"{len(submitted)} legs submitted: {submitted}"
+        assert len(self.next_ids) == len(submitted), (
+            f"{len(self.next_ids)} NEXT_ID_0 reads for {len(submitted)} submitted legs"
+        )
+        assert all(self.next_ids), f"NEXT_ID_0 returned 0: {self.next_ids}"
+        self._chk(
+            "S7",
+            "CHK-DMA-NEXT-ID-NONZERO",
+            f"every NEXT_ID_0 read returned a non-zero transfer ID: "
+            f"{[hex(i) for i in self.next_ids]} for the {len(submitted)} submits {submitted}",
+        )
+        self._chk("S7", "CHK-DMA-IRQ-PLIC-323", self._plic_pending())
         self._nonvac(order)
+
+    def _plic_pending(self) -> str:
+        s = self.sampler
+        irq_rises = [i for i in range(len(s.irq)) if s.irq[i] and (i == 0 or not s.irq[i - 1])]
+        pend_rises = [
+            i for i in range(len(s.pend323)) if s.pend323[i] and (i == 0 or not s.pend323[i - 1])
+        ]
+        assert irq_rises, (
+            f"CHK-DMA-IRQ-PLIC-323 FAIL: bit {IRQ_BIT} never rose in {len(s.irq)} samples"
+        )
+        assert pend_rises, (
+            f"CHK-DMA-IRQ-PLIC-323 FAIL: tb_plic_pending_323 never rose in {len(s.pend323)} "
+            f"samples, bit {IRQ_BIT} rose at {irq_rises}"
+        )
+        assert not any(s.pend323[: irq_rises[0]]), (
+            f"CHK-DMA-IRQ-PLIC-323 FAIL: tb_plic_pending_323 set at sample {pend_rises[0]}, before "
+            f"the first bit {IRQ_BIT} rise at {irq_rises[0]}"
+        )
+        assert s.pend323[-1], (
+            f"CHK-DMA-IRQ-PLIC-323 FAIL: tb_plic_pending_323 clear on the last sample after "
+            f"{len(irq_rises)} bit {IRQ_BIT} pulses"
+        )
+        assert not any(s.pend324), (
+            f"CHK-DMA-IRQ-PLIC-323 FAIL: tb_plic_pending_324 set at sample "
+            f"{s.pend324.index(1)} by a DMA interrupt"
+        )
+        return (
+            f"bit {IRQ_BIT} rose {len(irq_rises)} times, first at sample {irq_rises[0]}; "
+            f"tb_plic_pending_323 was 0 on every sample before that, rose at sample "
+            f"{pend_rises[0]} ({pend_rises[0] - irq_rises[0]} rises after the first pulse, "
+            f"measured) and is set on the last of {len(s.pend323)} samples; tb_plic_pending_324 "
+            f"is 0 on every sample"
+        )
 
     def _nonvac(self, order: list[str]) -> None:
         assert [s for s, _ in self.steps] == order, f"step order {self.steps}"

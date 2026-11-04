@@ -20,11 +20,13 @@ from __future__ import annotations
 
 import pyuvm
 from env import sep_manifest_mutate as mm
-from rom_fw.sep_backup_manifest_fail_base import MANIFEST_ERR_SIG_FAILED
+from env.sep_secure_boot_cases import CASES
 from rom_fw.sep_firmware_cntl_secure_boot_flow_test import (
     _SBOOT_DIS_SET,
     sep_firmware_cntl_secure_boot_flow_test,
 )
+
+_CASE = CASES["signature_zeroed"]
 
 # Each must appear once per slot: the key was authorized and the modexp ran
 # before the verifier refused the signature.
@@ -36,8 +38,8 @@ class sep_firmware_signature_zeroed_refuse_test(sep_firmware_cntl_secure_boot_fl
     """PROD + secure manifest with an all-zero signature -> both slots refused."""
 
     backup_defect_marker = "RSA_INOUT_UNCHANGED"
-    expected_error = MANIFEST_ERR_SIG_FAILED
-    primary_expected_error = MANIFEST_ERR_SIG_FAILED
+    expected_error = _CASE.boot_error
+    primary_expected_error = _CASE.boot_error
     extra_forbidden = (
         "RSA_EXEC_FAIL",
         "RSA_PKCS1_FAIL",
@@ -47,13 +49,10 @@ class sep_firmware_signature_zeroed_refuse_test(sep_firmware_cntl_secure_boot_fl
     )
 
     def mutate_slot(self, buf: bytearray, slot: str) -> None:
-        assert mm.secure_boot_control(buf, slot) & mm.SECURE_BOOT_ENFORCED_BIT, (
-            f"{slot} manifest does not request secure boot"
-        )
         size = mm.signature_size(buf, slot)
-        assert size == 384, f"{slot} signature_size is {size}, expected 384 (RSA-3072)"
-        mm.remove_signature(buf, slot, keep_size=True)
+        _CASE.mutate(buf, slot)
         assert mm.signature_size(buf, slot) == size
+        assert not any(mm.signature(buf, slot)), f"{slot} signature not zeroed"
         mm.verify_layout(buf, slot)
         self.logger.info(
             "CHK-MUTATION: %s signature zeroed, signature_size kept at %d, %s",

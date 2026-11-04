@@ -282,13 +282,13 @@ class SepAxiReadyHold:
         chan.clear_pause_generator()
         chan.pause = True
         self.held.add(ch)
-        self.log.info("AXI-HOLD %s %sready held low", self.prefix, ch)
+        self.log.info("INFO-AXI-HOLD %s %sready held low", self.prefix, ch)
 
     def release(self, ch: str) -> None:
         chan = self._chan(ch)
         chan.pause = False
         self.held.discard(ch)
-        self.log.info("AXI-HOLD %s %sready released", self.prefix, ch)
+        self.log.info("INFO-AXI-HOLD %s %sready released", self.prefix, ch)
 
     def release_all(self) -> None:
         for ch in list(self.held):

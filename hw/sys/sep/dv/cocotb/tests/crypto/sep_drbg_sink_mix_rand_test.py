@@ -42,7 +42,7 @@ Checkers:
                   to last completion) holds a common clock. It restates the
                   construction below and holds whenever CHK-MIX-SINK passes; it
                   does not show that two request probes are high on one clock.
-                  The leaf logs those clocks (``OBS-MIX-REQ-CONCURRENT``: the
+                  The leaf logs those clocks (``INFO-MIX-REQ-CONCURRENT``: the
                   clocks with two or more request probes high, and per pair the
                   clocks with both high) and does not grade them.
 
@@ -614,14 +614,14 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             r_u[unit] = max(0, min(reqs) - t0)
             solo = {f"t_{s}": t_s[s] for s in self._sinks_of(unit)}
             solo.update({k: v for k, v in res.items() if k != "done"})
-            self.chk.obs("MIX-SOLO", unit=unit, r_clk=r_u[unit], **solo)
+            self.chk.info("MIX-SOLO", unit=unit, r_clk=r_u[unit], **solo)
         # Step 4: delays from 0 to half of the shortest clean busy time.
         half = min(t_s.values()) // 2
         delay = {u: plan.delay_frac[u] * half // 1000 for u in units}
         big_r = max(r_u.values())
         start = {u: big_r - r_u[u] + delay[u] for u in units}
         sched = {f"start_{u}": start[u] for u in units}
-        self.chk.obs("MIX-SCHEDULE", half=half, r_max=big_r, **sched)
+        self.chk.info("MIX-SCHEDULE", half=half, r_max=big_r, **sched)
         # Step 5: every unit, each launched at its offset after a common start marker;
         # then a barrier on the request probes of every sink, then one tail operation
         # per unit, so every busy window holds the barrier clock.
@@ -696,7 +696,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 16)
         close_graded_window(self.logger)
         stat = {s: self.acc.stat[s] for s in plan.sinks}
-        self.chk.obs(
+        self.chk.info(
             "MIX-BARRIER",
             barrier_clk=barrier["clk"] if barrier["clk"] is not None else "none",
             bound=barrier_bound,
@@ -714,7 +714,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         for a, b in combinations(plan.sinks, 2):
             key = (a, b) if SINKS.index(a) < SINKS.index(b) else (b, a)
             pairs[f"both_req_{key[0]}_{key[1]}"] = self.acc.pair_req.get(key, 0)
-        self.chk.obs("MIX-REQ-CONCURRENT", clocks_2plus=self.acc.multi_req, **pairs)
+        self.chk.info("MIX-REQ-CONCURRENT", clocks_2plus=self.acc.multi_req, **pairs)
         for s in plan.sinks:
             unit = "otbn" if s.startswith("otbn") else s
             res = results.get(unit, {})
@@ -881,7 +881,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         left = await self._until(lambda: self.ext.pending(0) == 0, BRIDGE_DEPTH * 4)
         if left is None:
             raise AssertionError("external port 0 keeps a beat with bit 0 clear")
-        self.logger.info("EXT-RELEASE sel=0x%x held_beat_clk=%d", sel, left)
+        self.logger.info("INFO-EXT-RELEASE sel=0x%x held_beat_clk=%d", sel, left)
 
     async def _select_external(self) -> dict:
         """Write ``EXT_TRNG_SRC_SEL`` = 0x1 while external port 0 holds tvalid 1 on every clock.
@@ -924,7 +924,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         await task
         held = int(self.ext.pending(0) >= 1)
         self.logger.info(
-            "EXT-SELECT bridge_beats=%d min_pending=%d left=%d",
+            "INFO-EXT-SELECT bridge_beats=%d min_pending=%d left=%d",
             state["offered"],
             state["min_pending"],
             self.ext.pending(0),
@@ -994,5 +994,5 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             await self.ext.source_reset(0)
         reason = task.result()
         if exhausted:
-            self.chk.obs("MIX-EXT-WORDS", exhausted=1, offered=offered)
+            self.chk.info("MIX-EXT-WORDS", exhausted=1, offered=offered)
         return {"done": not reason, "reason": reason, "offered": offered}

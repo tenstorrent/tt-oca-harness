@@ -45,10 +45,16 @@ xref:smu.adoc#sep-integration[SEP Integration]
 xref:smu.adoc#sep-integration[SEP Integration]
 
 |[ ]
+|Confirm that the system fabric meets the `smu_axi_in` boundary contract: no atomic transactions and only legal AXI4 bursts
+|Fabric configuration or protocol-checker evidence that `AWATOP` is 0 and every burst is legal at `smu_axi_in`
+|xref:smu.adoc#smu-axi-boundary-contract[AXI boundary contract]
+
+|[ ]
 |Apply technology-mapping and CDC constraints; run integration-level verification
 |Lint, CDC/RDC, constraint, and integration-test reports archived
 |xref:prim.adoc#prim-cell-replacement[Prim Cell Replacement],
 xref:cdc.adoc#cdc-timing-constraints[CDC Timing Constraints],
+https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smu/dv/README.md[SMU Integration Testbench],
 xref:ocah-home::motivation.adoc[Why Open Chiplet Atlas Harness]
 
 |[ ]
@@ -90,9 +96,15 @@ ifdef::backend-pdf[]
 |<<smc-integration,SMC Integration>>, <<sep-integration,SEP Integration>>
 
 |[ ]
+|Confirm that the system fabric meets the `smu_axi_in` boundary contract: no atomic transactions and only legal AXI4 bursts
+|Fabric configuration or protocol-checker evidence that `AWATOP` is 0 and every burst is legal at `smu_axi_in`
+|<<smu-axi-boundary-contract,AXI boundary contract>>
+
+|[ ]
 |Apply technology-mapping and CDC constraints; run integration-level verification
 |Lint, CDC/RDC, constraint, and integration-test reports archived
 |<<prim-cell-replacement,Prim Cell Replacement>>, <<cdc-timing-constraints,CDC Timing Constraints>>,
+https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smu/dv/README.md[SMU Integration Testbench],
 OCA Standard Compliance (see Home: Why Open Chiplet Atlas Harness)
 
 |[ ]

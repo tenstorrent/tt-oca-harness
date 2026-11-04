@@ -68,7 +68,9 @@
 `SMU_TB_OUT(logic, lcc_dbg_disable_smc_jtag2axi_o)
 `SMU_TB_OUT(logic [7:0], smc_lc_state_in_o)  // as SMC receives it
 // LC_STATE pair fault inject; inert unless +lc_sigint_inject is present.
-`SMU_TB_IN(logic, lc_sigint_inject_i)
+// Bit 0 arms it, bits [2:1] select the LC_STATE bit and bit 3 the rail
+// (0 = n rail, 1 = p rail); a drive of 1 is the n rail of bit 0.
+`SMU_TB_IN(logic [3:0], lc_sigint_inject_i)
 // DTP JTAG2AXI traffic into the SMC. dbg_disable.smc_jtag2axi stops the
 // bridge from launching a transaction at all (jtag2axi.sv: the update is
 // gated by `!security_disable_i`), so counting AW/AR here is how a test
@@ -150,6 +152,10 @@
 // write" from "the SMU crossbar did not route it to ext_out", which are the
 // two ways a firmware mailbox handshake goes silent.
 `SMU_TB_OUT(logic [31:0], sep_smn_out_aw_count_o)
+`SMU_TB_OUT(logic [31:0], sep_smn_out_ar_count_o)
+// SMC -> crossbar (smc_out) AW and AR handshakes at the crossbar's input port.
+`SMU_TB_OUT(logic [31:0], smc_smn_out_aw_count_o)
+`SMU_TB_OUT(logic [31:0], smc_smn_out_ar_count_o)
 `SMU_TB_OUT(logic [55:0], sep_xbar_global_base_o)
 `SMU_TB_OUT(logic [31:0], sep_xbar_region_size_o)
 // Crossbar -> SEP inbound AW. Separates "the crossbar never routed the
@@ -183,6 +189,13 @@
 `SMU_TB_OUT(logic [31:0], sep_csr_errslv_aw_count_o)  // ...or was classified ERR_SLV
 `SMU_TB_OUT(logic [31:0], smu_axi_out_write_count_o)
 `SMU_TB_OUT(logic [31:0], smu_axi_out_read_count_o)
+// $bits of the ID and user fields of the smu AXI boundary ports, one byte per
+// channel. ID: [7:0] AW, [15:8] B, [23:16] R, [31:24] AR. User: [7:0] AW,
+// [15:8] W, [23:16] B, [31:24] R, [39:32] AR.
+`SMU_TB_OUT(logic [31:0], obs_smu_axi_in_id_widths_o)
+`SMU_TB_OUT(logic [31:0], obs_smu_axi_out_id_widths_o)
+`SMU_TB_OUT(logic [39:0], obs_smu_axi_in_user_widths_o)
+`SMU_TB_OUT(logic [39:0], obs_smu_axi_out_user_widths_o)
 // Outbound-boundary handshake split: write_count only moves on B, so it
 // cannot separate a stalled write from one the crossbar never routed here.
 // aw_valid says the beat was presented at the boundary; aw_ready says the
@@ -347,6 +360,8 @@
 `SMU_TB_OUT(logic, obs_xbar_rst_n_o)
 `SMU_TB_OUT(logic, obs_smc_tel_clk_o)
 `SMU_TB_OUT(logic, obs_sep_wdt_clk_o)
+// The SEP's smc_fuse_sense_done_i input, as the SMU wires it.
+`SMU_TB_OUT(logic, obs_sep_smc_fuse_sense_done_i_o)
 // SMC reset-controller power-good synchronizer output, and a sticky record of
 // it having been observed deasserted. Both come from inside u_dut; powergood_o
 // below is the input pin echoed back.

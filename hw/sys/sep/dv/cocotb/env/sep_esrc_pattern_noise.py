@@ -236,7 +236,7 @@ class SepEsrcPatternNoise:
         self.word = 0
         self._whole = False
         self._apply_now()
-        self.log.info("ESRC-PATTERN-NOISE start %s", describe(self.patterns))
+        self.log.info("INFO-ESRC-PATTERN-NOISE start %s", describe(self.patterns))
         if self._task is None:
             self._task = self.life.start(self._run())
         return self
@@ -260,10 +260,10 @@ class SepEsrcPatternNoise:
             self._pending = None
             self._whole = False
             self._apply_now()
-            self.log.info("ESRC-PATTERN-NOISE set now word=%d %s", self.word, describe(new))
+            self.log.info("INFO-ESRC-PATTERN-NOISE set now word=%d %s", self.word, describe(new))
         else:
             self._pending = new
-            self.log.info("ESRC-PATTERN-NOISE set at next strobe %s", describe(new))
+            self.log.info("INFO-ESRC-PATTERN-NOISE set at next strobe %s", describe(new))
 
     def byte_check(self, enabled: bool) -> None:
         """Turn the lane-byte control on or off (on only while BYPASS is set on all lanes)."""

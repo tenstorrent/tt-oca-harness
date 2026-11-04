@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// SMU Verilator coverage configuration. Passed to Verilator at compile time
+// from [coverage.verilator].build_args in smu_sim_cfg.toml.
+//
+// Every covergroup handle of the cov/sv collectors stays a member of its
+// instance. A handle whose samples are all gated off in a build is otherwise
+// local to static initialization: its object is freed there while its bins
+// stay registered, and coverage.dat reads their counts from freed memory.
+`verilator_config
+public -module "smu_*_fcov" -var "u_cg_*"

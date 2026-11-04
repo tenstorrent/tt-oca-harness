@@ -8,6 +8,9 @@ hw/ip/uart/uart_16550/regs/uart_16550_main{,_wo}.rdl, doc/programmer/src/smc-pro
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
@@ -46,8 +49,9 @@ LSR_OE = uart_16550_main_u32("UART_16550_MAIN__LSR__OE_bm")
 ECR_MS2B_SHIFT = uart_16550_main_u32("UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bp")
 FCR_RESETS = FCR_RCVR_FIFO_RESET | FCR_XMIT_FIFO_RESET
 
-# uart_16550_main.rdl IIR.INTERRUPT_ID: 0x2 is Received Data Ready.
+# uart_16550_main.rdl IIR.INTERRUPT_ID: 0x2 is Received Data Ready, 0x6 Reception Timeout.
 ID_RDR = 0x2
+ID_RX_TIMEOUT = 0x6
 DIVISOR_FAST = 1
 DIVISOR_SLOW = 8
 # uart_16550/doc/interface.adoc: 16x oversampling, 8N1 frame = 10 bits.
@@ -55,6 +59,21 @@ OVERSAMPLE = 16
 FRAME_BITS = 10
 FIFO_DEPTH = 32
 
+# Drawn trigger leg (RAND-REP), run inside S7: the trigger level is drawn among the five
+# encodings at or below the 32-deep receive FIFO (smc-programming.adoc, UART Receive FIFO
+# levels: codes 0 to 4 = 1, 4, 8, 14 and 32 characters, code = {ECR.RCVR_TRIGGER_MS2B,
+# FCR.RCVR_TRIGGER}), the fill count in [level + 1, 32] below level 32 so that occupancies
+# below, at and above the level all occur (32 at level 32, the only occupancy at the level,
+# where nothing lies above it), and the read gap (full drain, or a partial drain before the
+# refill). ID 2 is compared absent below the level and pending above it
+# (uart_16550/doc/architecture.adoc, service table: drain RBR below the trigger to clear it);
+# at the level it is printed, because smc-programming.adoc ("more than this amount") and that
+# table differ there by one character and no owner has ruled between them.
+# After a full drain neither ID 2 nor the receive timeout ID 6 can be pending (the same table:
+# the timeout needs data in the FIFO), so that IIR read is compared; after a partial drain the
+# timeout source can preempt ID 2, so that read and the one after the refill are printed.
+TRIGGER_LEVELS = (1, 4, 8, 14, 32)
+GAPS = ("full", "partial")
 POLL_LIMIT_TEMT = 20_000
 POLL_LIMIT_DR = 4_000
 DRAIN_LIMIT = 40
@@ -97,6 +116,11 @@ def rdr_pending(iir: int) -> bool:
     return not iir & IIR_PENDING and (iir & IIR_ID) >> IIR_ID_SHIFT == ID_RDR
 
 
+def rx_pending(iir: int) -> bool:
+    """Is a receive source (ID 2 or the receive timeout ID 6) the pending interrupt?"""
+    return not iir & IIR_PENDING and (iir & IIR_ID) >> IIR_ID_SHIFT in (ID_RDR, ID_RX_TIMEOUT)
+
+
 class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
     """FIFO_ENABLE change, depth, non-FIFO trigger, trigger composition and read order."""
 
@@ -107,6 +131,27 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
         self.waits: dict[str, list] = {}
         self.divisor = DIVISOR_FAST
         self.lsr_seen = 0
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        rng = random.Random(self.seed)
+        self.code = rng.randrange(len(TRIGGER_LEVELS))
+        self.level = TRIGGER_LEVELS[self.code]
+        if self.level < FIFO_DEPTH:
+            self.fill = rng.randint(self.level + 1, FIFO_DEPTH)
+        else:
+            self.fill = FIFO_DEPTH
+        self.gap = rng.choice(GAPS)
+        self.drain_part = rng.randint(1, self.fill - 1) if self.gap == "partial" else self.fill
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: trigger code %d (level %d characters), fill %d, "
+            "read gap %s (drain %d of %d before the refill)",
+            self.seed,
+            self.code,
+            self.level,
+            self.fill,
+            self.gap,
+            self.drain_part,
+            self.fill,
+        )
         base = uart_base(UART)
         self.thr = base + THR_OFFSET
         self.fcr = base + FCR_OFFSET
@@ -410,11 +455,79 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
         await self._drain(f"S7_{label}_DRAIN")
         return onset
 
+    async def _drawn_trigger(self) -> str:
+        """Fill the receive FIFO to the drawn count under the drawn level; compare IIR per char.
+
+        Below the level no received-data interrupt (ID 2) is pending and above it one is
+        (architecture.adoc service table: ID 2 is cleared by draining RBR below the trigger);
+        at the level the pending state is printed, since smc-programming.adoc ("more than this
+        amount") and that table differ there by one character. Then the drawn read gap: a full
+        drain, after which neither ID 2 nor the receive timeout ID 6 may be pending (compared), or
+        a partial one, after which the interrupt is printed; a one-character refill with its
+        interrupt printed, and a final drain.
+        """
+        label = "DRAWN"
+        await self.csr_write(f"S7_{label}_ECR", self.r["ecr"], (self.code >> 2) << ECR_MS2B_SHIFT)
+        await self._fcr(f"S7_{label}_FCR", self.code & 3, True, True)
+        at_level = None
+        below = above = 0
+        for n, ch in enumerate(depth_chars(0x60)[: self.fill], start=1):
+            await self._loop_chars(f"S7_{label}", (ch,))
+            iir = await self._iir(f"S7_{label}_IIR{n}")
+            pending = rdr_pending(iir)
+            if n < self.level:
+                assert not pending, (
+                    f"S7 drawn: ID 2 pending at occupancy {n} below the level {self.level} "
+                    f"(IIR {iir_text(iir)})"
+                )
+                below += 1
+            elif n > self.level:
+                assert pending, (
+                    f"S7 drawn: no ID 2 pending at occupancy {n} above the level {self.level} "
+                    f"(IIR {iir_text(iir)})"
+                )
+                above += 1
+            else:
+                at_level = f"{'pending' if pending else 'not pending'}, IIR {iir_text(iir)}"
+        assert at_level is not None, (
+            f"S7 drawn: fill {self.fill} below the level {self.level}, the level not reached"
+        )
+        # Below level 32 the fill is drawn above the level, so a compare above it ran.
+        assert self.level == FIFO_DEPTH or above > 0, (
+            f"S7 drawn: fill {self.fill} at or below the level {self.level}, no compare above it"
+        )
+        drained = []
+        for i in range(self.drain_part):
+            drained.append(await self._rbr(f"S7_{label}_RBR{i}"))
+        after_gap = await self._iir(f"S7_{label}_IIR_GAP")
+        if self.gap == "full":
+            # Occupancy 0: the service table lets neither ID 2 nor the timeout stay pending.
+            assert not rx_pending(after_gap), (
+                f"S7 drawn: a receive interrupt pending after the full drain of {self.fill} "
+                f"characters (IIR {iir_text(after_gap)})"
+            )
+        await self._loop_chars(f"S7_{label}_REFILL", (0xD5,))
+        after_refill = await self._iir(f"S7_{label}_IIR_REFILL")
+        rest = await self._drain(f"S7_{label}_DRAIN")
+        want = depth_chars(0x60)[: self.fill] + [0xD5]
+        assert drained + rest == want, f"S7 drawn: read {drained + rest}, expected {want} in order"
+        gap_note = "compared: no ID 2 or ID 6" if self.gap == "full" else "printed"
+        return (
+            f"drawn=seed {self.seed} level {self.level} (code {self.code}) fill {self.fill}: "
+            f"ID 2 absent at {below} occupancies below the level and present at {above} above "
+            f"it (compared), {at_level} at the level (printed); "
+            f"read gap "
+            f"{self.gap}: {self.drain_part} of {self.fill} drained, IIR after the gap "
+            f"{iir_text(after_gap)} ({gap_note}), after a one-character refill "
+            f"{iir_text(after_refill)} (printed); every character read back in order"
+        )
+
     async def _s7(self) -> None:
         a = await self._onset("A", 1, 0)
         b = await self._onset("B", 1, 1)
         c = await self._onset("C", 1, 0)
         d = await self._onset("D", 0, 0)
+        drawn = await self._drawn_trigger()
         await self._fcr("S7_FCR_CLR", 0, True, True)
         self._step("S7")
         assert a is not None, "S7 A: no ID 2 within 32 characters at ECR=1 FCR field 0"
@@ -428,11 +541,12 @@ class smc_uart_fifo_control_depth_test_seq(SmcCsrSeq):
             "ID-2 onset occupancy per {ECR, FCR[7:6]} state: A (ECR=1, FCR=0) %s; B (ECR=1, FCR=1) "
             "%s; C (FCR back to 0, ECR=1) %s; D (ECR=0, FCR=0) %s; onset(A)==onset(C), no ID 2 "
             "in B while A has one, onset(D)<onset(A); exact values measured only "
-            "(not specified, measured)",
+            "(not specified, measured); %s",
             text["A"],
             text["B"],
             text["C"],
             text["D"],
+            drawn,
         )
 
     async def _s8(self) -> None:

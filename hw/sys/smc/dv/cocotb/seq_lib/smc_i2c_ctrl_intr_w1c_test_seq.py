@@ -32,11 +32,14 @@ only from the three instances' own outputs.
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import ClockCycles, Timer
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import I2C_CG_EN, smc_indexed_addr
+from .smc_addr_map import I2C_CG_EN, _parse_simple_defines, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_fw_i2c_wire_monitor import SmcFwI2cWireMonitor
 from .smc_i2c_field_masks import (
@@ -68,6 +71,7 @@ from .smc_i2c_field_masks import (
     acq_signal,
 )
 from .smc_i2c_master_target_test_seq import (
+    _I2C_H,
     CLOCK_GATE_CONTROL,
     I2C0_CONTROLLER_EVENTS,
     I2C0_CTRL,
@@ -148,18 +152,56 @@ TX_FILL_BYTE = 0xFF
 ALERT_WRITE_BYTE = 0xC5
 NACK_DATA_BYTE = 0x5A
 
-INTR_TEST_W1P = 0x000FE3E8
-INTR_CLEAR_A = 0x000AA2A0
-INTR_CLEAR_B = 0x00054148
-INTR_TEST_RW_FIELDS = (
-    (0, "FMT_THRESHOLD"),
-    (1, "RX_THRESHOLD"),
-    (2, "ACQ_THRESHOLD"),
-    (4, "CONTROLLER_HALT"),
-    (10, "TX_STRETCH"),
-    (11, "TX_THRESHOLD"),
-    (12, "ACQ_STRETCH"),
+
+def _intr_test(*fields: str) -> int:
+    mask = 0
+    for field in fields:
+        mask |= _i2c_u32(f"I2C__INTR_TEST__{field}_bm")
+    return mask
+
+
+INTR_CLEAR_A = _intr_test(
+    "SCL_INTERFERENCE",
+    "STRETCH_TIMEOUT",
+    "CMD_COMPLETE",
+    "UNEXP_STOP",
+    "SMBALERT",
+    "CONTROLLER_RX_FIFO_ERROR",
+    "TARGET_RX_FIFO_ERROR",
 )
+INTR_CLEAR_B = _intr_test(
+    "RX_OVERFLOW",
+    "SDA_INTERFERENCE",
+    "SDA_UNSTABLE",
+    "HOST_TIMEOUT",
+    "CONTROLLER_TX_FIFO_ERROR",
+    "TARGET_TX_FIFO_ERROR",
+)
+INTR_TEST_W1P = INTR_CLEAR_A | INTR_CLEAR_B
+# Every INTR_STATE field of i2c.rdl, from the generated field masks: the 13 write-one-to-clear
+# event bits (INTR_TEST_W1P) and the 7 read-only level bits that INTR_TEST holds while it is set.
+INTR_STATE_BITS = sum(
+    mask
+    for name, mask in _parse_simple_defines(_I2C_H).items()
+    if name.startswith("I2C__INTR_STATE__") and name.endswith("_bm")
+)
+INTR_LEVEL_BITS = INTR_STATE_BITS & ~INTR_TEST_W1P
+# Drawn mask walk (RAND-REP) on instances 1 and 2: the enable, test and clear masks and the
+# order of the three writes; see _draw_masks.
+MASK_WRITES = ("enable", "test", "clear")
+INTR_TEST_RW_FIELDS = tuple(
+    (_i2c_u32(f"I2C__INTR_TEST__{field}_bp"), field)
+    for field in (
+        "FMT_THRESHOLD",
+        "RX_THRESHOLD",
+        "ACQ_THRESHOLD",
+        "CONTROLLER_HALT",
+        "TX_STRETCH",
+        "TX_THRESHOLD",
+        "ACQ_STRETCH",
+    )
+)
+RDATA_DATA = _i2c_u32("I2C__RDATA__DATA_bm")
 INTR_CONTROLLER_HALT = _i2c_u32("I2C__INTR_STATE__CONTROLLER_HALT_bm")
 INTR_UNEXP_STOP = _i2c_u32("I2C__INTR_STATE__UNEXP_STOP_bm")
 ENABLE_CMD_COMPLETE = _i2c_u32("I2C__INTR_ENABLE__CMD_COMPLETE_bm")
@@ -254,6 +296,42 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
         self.waits: dict[str, tuple[str, str]] = {}
         self.bench: SmcI2cMasterVip | None = None
         self.setup_row = ""
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        self.rng = random.Random(self.seed)
+        self.drawn_masks: dict[int, dict] = {k: self._draw_masks() for k in INSTANCES12}
+        for k in INSTANCES12:
+            d = self.drawn_masks[k]
+            cocotb.log.info(
+                "RAND-SEED: %d; RAND-DRAW: I2C%d enable 0x%05x test 0x%05x clear 0x%05x order %s",
+                self.seed,
+                k,
+                d["enable"],
+                d["test"],
+                d["clear"],
+                ">".join(d["order"]),
+            )
+
+    def _draw_masks(self) -> dict:
+        """Draw the enable, test and clear masks over the 20 INTR_STATE bits and the write order.
+
+        The test mask carries at least one event bit and one level bit, the clear mask at least
+        one event bit and one level bit of the test mask, and the enable mask at least one level
+        bit of the test mask (a level bit survives every clear), so that every seed grades the
+        clear of an event bit, the hold of a level bit and a driven line.
+        """
+        rng = self.rng
+        width = INTR_STATE_BITS.bit_length()
+        bits = lambda mask: [b for b in range(width) if mask >> b & 1]  # noqa: E731
+        test = rng.getrandbits(width) & INTR_STATE_BITS
+        test |= 1 << rng.choice(bits(INTR_TEST_W1P))
+        test |= 1 << rng.choice(bits(INTR_LEVEL_BITS))
+        clear = rng.getrandbits(width) & INTR_STATE_BITS
+        clear |= 1 << rng.choice(bits(test & INTR_TEST_W1P))
+        clear |= 1 << rng.choice(bits(test & INTR_LEVEL_BITS))
+        enable = rng.getrandbits(width) & INTR_STATE_BITS
+        enable |= 1 << rng.choice(bits(test & INTR_LEVEL_BITS))
+        order = rng.sample(MASK_WRITES, len(MASK_WRITES))
+        return {"enable": enable, "test": test, "clear": clear, "order": order}
 
     def _stamp(self, term: str) -> None:
         self.stamps.append((term, int(get_sim_time("ps"))))
@@ -804,6 +882,65 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
         )
         self.setup_row = f"{'; '.join(rows)}; tb_i2c_irq=0b{irq:03b}"
 
+    async def _wait_irq(self, name: str, want: int) -> int:
+        """Bounded poll of tb_i2c_irq until it reads exactly ``want``; returns the polls."""
+
+        async def probe() -> tuple[bool, str]:
+            irq = self._irq()
+            return irq == want, f"tb_i2c_irq=0b{irq:03b}"
+
+        return await self._poll(name, IRQ_POLLS, IRQ_STEP, probe)
+
+    async def _drawn_mask_walk(self) -> None:
+        """Drawn enable, test and clear masks in a drawn order on instances 1 and 2.
+
+        A model follows the writes: a test write sets every written bit (event bits latch, level
+        bits are held while INTR_TEST is set); a clear write drops the written event bits and
+        leaves the level bits held; the line reads 1 exactly when a set bit is enabled. After
+        the drawn order a full clear with INTR_TEST still set and then INTR_TEST 0 run as
+        pinned cells, so every seed grades both bit classes after a clear.
+        """
+        self.drawn_rows: dict[int, list[str]] = {}
+        for k in INSTANCES12:
+            d = self.drawn_masks[k]
+            state = enable = test = 0
+            rows = []
+            await self._wr("DRAW_INTR_TEST_0", "INTR_TEST", k, 0)
+            await self._wr("DRAW_INTR_ENABLE_0", "INTR_ENABLE", k, 0)
+            await self._wr("DRAW_INTR_CLR", "INTR_STATE", k, INTR_STATE_BITS)
+            entry = await self._rd("DRAW_ENTRY", "INTR_STATE", k)
+            assert entry & INTR_STATE_BITS == 0, f"I2C{k}: INTR_STATE=0x{entry:08x} before the walk"
+            steps = [(w, d[w]) for w in d["order"]]
+            # The drawn clear once more, so that it lands on set event bits in every order.
+            steps.append(("clear", d["clear"]))
+            steps += [("clear", INTR_STATE_BITS), ("test", 0), ("clear", INTR_STATE_BITS)]
+            for n, (which, value) in enumerate(steps):
+                if which == "enable":
+                    enable = value
+                    await self._wr(f"DRAW{n}_ENABLE", "INTR_ENABLE", k, value)
+                elif which == "test":
+                    test = value
+                    state = (state & INTR_TEST_W1P) | value
+                    await self._wr(f"DRAW{n}_TEST", "INTR_TEST", k, value)
+                else:
+                    state &= ~(value & INTR_TEST_W1P)
+                    await self._wr(f"DRAW{n}_CLEAR", "INTR_STATE", k, value)
+                got = await self._rd(f"DRAW{n}_STATE", "INTR_STATE", k)
+                assert got & INTR_STATE_BITS == state, (
+                    f"I2C{k} drawn walk step {n} ({which} 0x{value:05x}, order "
+                    f"{'>'.join(d['order'])}): INTR_STATE=0x{got:08x}, model 0x{state:05x} "
+                    f"(test 0x{test:05x})"
+                )
+                want = (1 << k) if state & enable else 0
+                polls = await self._wait_irq(f"DRAW{n}_I{k}_irq", want)
+                rows.append(
+                    f"{which}=0x{value:05x}->state 0x{got & INTR_STATE_BITS:05x} "
+                    f"irq=0b{self._irq():03b} ({polls} polls)"
+                )
+            await self._wr("DRAW_ENABLE_0", "INTR_ENABLE", k, 0)
+            await self._wait_irq(f"DRAW_I{k}_irq_off", 0)
+            self.drawn_rows[k] = rows
+
     async def _s2_intr_test_w1c(self) -> None:
         rows = []
         for k in INSTANCES12:
@@ -837,7 +974,15 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             f"set: INTR_TEST=0x{INTR_TEST_W1P:08x} with INTR_ENABLE=0; observed: INTR_STATE & "
             f"0x{INTR_TEST_W1P:05x} == 0x{INTR_TEST_W1P:05x} and the other instance 0; cleared: "
             f"0x{INTR_CLEAR_A:08x} then 0x{INTR_CLEAR_B:08x}; checked_cleared: masked reads "
-            f"0x{INTR_CLEAR_B:05x} then 0x00000; entry {self.setup_row}; {'; '.join(rows)}",
+            f"0x{INTR_CLEAR_B:05x} then 0x00000; entry {self.setup_row}; {'; '.join(rows)}; "
+            f"drawn=seed {self.seed} "
+            + "; ".join(
+                f"I2C{k} test 0x{self.drawn_masks[k]['test']:05x} clear "
+                f"0x{self.drawn_masks[k]['clear']:05x} order "
+                f"{'>'.join(self.drawn_masks[k]['order'])}: event bits after each write per "
+                f"the model: {' | '.join(self.drawn_rows[k])}"
+                for k in INSTANCES12
+            ),
         )
 
     async def _s3_rw_hold(self) -> None:
@@ -861,7 +1006,15 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C12-INTR-TEST-RW-HOLD",
             f"set: INTR_TEST=1<<f; observed: INTR_STATE bit f reads 1 and still 1 after the "
-            f"written 1<<f; cleared: INTR_TEST=0; checked_cleared: bit f reads 0; {' '.join(rows)}",
+            f"written 1<<f; cleared: INTR_TEST=0; checked_cleared: bit f reads 0; "
+            f"{' '.join(rows)}; "
+            f"drawn=seed {self.seed} "
+            + "; ".join(
+                f"I2C{k} level bits 0x{self.drawn_masks[k]['test'] & INTR_LEVEL_BITS:05x} held "
+                f"through the clear 0x{self.drawn_masks[k]['clear']:05x} and the full clear "
+                f"while INTR_TEST was set, released at INTR_TEST 0"
+                for k in INSTANCES12
+            ),
         )
 
     async def _s4_irq_gate(self) -> None:
@@ -904,7 +1057,14 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             f"set: INTR_TEST=0x{INTR_CMD_COMPLETE:x}; observed: tb_i2c_irq 0b000 at two samples "
             f"{IRQ_SAMPLE_GAP_CYCLES} cycles apart with INTR_ENABLE=0, then exactly 1<<k after "
             f"INTR_ENABLE=0x{ENABLE_CMD_COMPLETE:x}; cleared: INTR_STATE written "
-            f"0x{INTR_CMD_COMPLETE:x}; checked_cleared: 0b000; {'; '.join(rows)}",
+            f"0x{INTR_CMD_COMPLETE:x}; checked_cleared: 0b000; {'; '.join(rows)}; "
+            f"drawn=seed {self.seed} "
+            + "; ".join(
+                f"I2C{k} enable 0x{self.drawn_masks[k]['enable']:05x}: tb_i2c_irq read 1<<{k} "
+                f"exactly while a set bit was enabled and 0b000 otherwise after each of the "
+                f"drawn writes ({'>'.join(self.drawn_masks[k]['order'])}) and the pinned clears"
+                for k in INSTANCES12
+            ),
         )
 
     async def _s5_ctrl_nack(self) -> None:
@@ -1091,7 +1251,7 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
             await self._wait_field(
                 f"{label}_rdata", "STATUS", c, I2C_STATUS_RXEMPTY, 0, RX_POLLS, RX_STEP
             )
-            rdata = (await self._rd(f"{label}_RDATA", "RDATA", c)) & 0xFF
+            rdata = (await self._rd(f"{label}_RDATA", "RDATA", c)) & RDATA_DATA
             assert rdata == TX_BYTE, f"{label}: RDATA=0x{rdata:02x}, expected 0x{TX_BYTE:02x}"
 
             async def stopped(stops=stops) -> tuple[bool, str]:
@@ -1266,7 +1426,7 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
         )
         done = await self._wait_done(c, label, stops)
         await self._wait_field(f"{label}_rdata", "STATUS", c, I2C_STATUS_RXEMPTY, 0, RX_POLLS, 1)
-        rdata = (await self._rd(f"{label}_RDATA", "RDATA", c)) & 0xFF
+        rdata = (await self._rd(f"{label}_RDATA", "RDATA", c)) & RDATA_DATA
         intr = await self._rd(f"{label}_TGT_INTR", "INTR_STATE", k)
         return f"{done} RDATA=0x{rdata:02x} wire {self._frames(base)}", intr
 
@@ -1529,6 +1689,7 @@ class smc_i2c_ctrl_intr_w1c_test_seq(SmcCsrSeq):
         await self._scl_interference_clear()
         await self._scl_interference_gate()
         await self._i2c12_setup()
+        await self._drawn_mask_walk()
         await self._s2_intr_test_w1c()
         await self._s3_rw_hold()
         await self._s4_irq_gate()

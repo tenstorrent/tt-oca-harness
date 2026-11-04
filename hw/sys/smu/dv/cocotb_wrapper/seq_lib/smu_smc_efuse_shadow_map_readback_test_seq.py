@@ -9,12 +9,16 @@ fuse_command_resp_t {data, status, valid}; efuse_interface_ctrl.rdl efuse_sense_
 The stream is captured at the SMU boundary during the shared bring-up. Sixteen map words are
 read back over JTAG2AXI; each map word and the stream word of the same index are compared with
 the word of that index in the +smc_efuse_hex image the run loads, and the map word with the
-stream word. The pre-sense status, multi-word elements and the per-slice smc_shadow_regs values
-are not compared.
+stream word. The sixteen indices and their read order are drawn from the seed, with the first
+word of each of the six named elements pinned into every set because the element compare looks
+each up in the sampled set, and word 255, the last word of the bank and the last store of the
+sense's running count, pinned beside them. The pre-sense status, multi-word elements and the
+per-slice smc_shadow_regs values are not compared.
 """
 
 from __future__ import annotations
 
+import random
 from pathlib import Path
 
 import cocotb
@@ -41,7 +45,7 @@ VALID_BIT = 0
 STATUS_BIT = 1
 DATA_LSB = 2
 WORD_MASK = 0xFFFF_FFFF
-SAMPLED_INDICES = (0, 1, 2, 9, 10, 18, 27, 28, 29, 30, 31, 32, 64, 128, 200, 255)
+SAMPLED_WORDS = 16
 ELEMENT_CELLS = (
     ("locks_0x0", "SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR", None),
     ("jtag_public_identity_0x8", "SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR", None),
@@ -50,6 +54,14 @@ ELEMENT_CELLS = (
     ("occp_timeout_0x78", "SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR", None),
     ("spare_0x80_to_0x3ff", "SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0),
 )
+ELEMENT_INDICES = tuple(
+    ((smc_addr(symbol) if index is None else smc_indexed_addr(symbol, index)) - MAP_BASE) // 4
+    for _, symbol, index in ELEMENT_CELLS
+)
+# The last word of the bank, the last store of the sense's running count (smu-smc.adoc),
+# pinned beside the element words.
+LAST_WORD = STREAM_WORDS - 1
+PINNED_INDICES = (*ELEMENT_INDICES, LAST_WORD)
 CAPTURE_BOUND_EDGES = 400_000
 DONE_BOUND_EDGES = 200_000
 TAIL_EDGES = 64
@@ -163,6 +175,13 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         self.capture = test.efuse_capture
         self.j2a = 0
         self.sites = {**self.capture.sites, "j2a": _site(J2A_POLL_LIMIT)}
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        pool = sorted(set(range(STREAM_WORDS)) - set(PINNED_INDICES))
+        drawn = self.rng.sample(pool, SAMPLED_WORDS - len(PINNED_INDICES))
+        self.sampled = list(PINNED_INDICES) + drawn
+        self.rng.shuffle(self.sampled)
+        self.drawn = f"drawn indices={self.sampled} (pinned {list(PINNED_INDICES)})"
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -205,6 +224,7 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         sb = self.sb
         cap = self.capture
         image = load_efuse_image()
+        self._log(f"SEED: RANDOM_SEED={self.seed} {self.drawn}")
 
         self._mark("S1", "SETUP: stream capture, done rise, TAP reset, IDCODE, J2A gate open")
         await self.cfg.reset_done.wait()
@@ -235,9 +255,9 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         if not gate.is_resolvable or int(gate) & 1:
             raise AssertionError(f"SMC J2A gated: security_disable={gate}")
 
-        self._mark("S2", "read sampled map words and compare with the stream")
+        self._mark("S2", "read the drawn map words in the drawn order and compare with the stream")
         reads: dict[int, int] = {}
-        for idx in SAMPLED_INDICES:
+        for idx in self.sampled:
             addr = MAP_BASE + 4 * idx
             reads[idx] = await self._rd32(addr, f"map word {idx}")
             self._cell(
@@ -246,15 +266,16 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
                 f"image=0x{image[idx]:08x}",
             )
         sb.expect_eq(
-            "sampled eFuse map words and stream words equal the eFuse image word of the same index",
-            [(idx, reads[idx], stream[idx]) for idx in SAMPLED_INDICES],
-            [(idx, image[idx], image[idx]) for idx in SAMPLED_INDICES],
+            "sampled eFuse map words and stream words equal the eFuse image word of the same "
+            f"index {self.drawn}",
+            [(idx, reads[idx], stream[idx]) for idx in self.sampled],
+            [(idx, image[idx], image[idx]) for idx in self.sampled],
             evidence="BOOT_SHADOW_SAMPLES",
         )
         sb.expect_eq(
-            "sampled eFuse map words equal the stream word of the same index",
-            [(idx, reads[idx]) for idx in SAMPLED_INDICES],
-            [(idx, stream[idx]) for idx in SAMPLED_INDICES],
+            f"sampled eFuse map words equal the stream word of the same index {self.drawn}",
+            [(idx, reads[idx]) for idx in self.sampled],
+            [(idx, stream[idx]) for idx in self.sampled],
             evidence="BOOT_SHADOW_SAMPLES",
         )
 
@@ -293,7 +314,7 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
             raise AssertionError(f"X/Z on smc_shadow_regs: {raw}")
         port = int(raw)
         bits = len(dut.smc_shadow_regs)
-        for idx in SAMPLED_INDICES:
+        for idx in self.sampled:
             slc = self._slice(port, 4 * idx, 4)
             self._cell(
                 "shadow_port_slice",

@@ -13,13 +13,13 @@
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#DEST_ADDR">DEST_ADDR</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#SIZE">SIZE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#CTRL_STATUS">CTRL_STATUS</a></td><td>RW</td><td>Any write to this register triggers the start of the zeroer, irrespective of WSTRB,<br>including a write with no byte lanes enabled. The start is ignored while SIZE is 0.</td></tr>
+<tr><td>0x10</td><td><a href="#CTRL_STATUS">CTRL_STATUS</a></td><td>RW</td><td>Any write to this register triggers the start of the zeroer, irrespective of WSTRB,<br>including a write with no byte lanes enabled. The start is ignored while SIZE is 0.<br>DEST_ADDR and SIZE are captured when a clear starts; later writes to them do not<br>affect the clear in progress. While a clear is still issuing write bursts, a write<br>to this register completes on the bus but does not start a clear. Once the last<br>burst of a clear has been issued, a write starts a new clear even while write<br>responses of the previous clear are outstanding; STATUS then reads 1 across both<br>clears, and the completion interrupt pulses once, when STATUS returns to 0.<br>Wait for STATUS to read 0 before writing this register again.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="DEST_ADDR">DEST_ADDR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>DEST_ADDR</td><td>RW</td><td>0x0</td><td>Byte address to write zeros to</td></tr>
+<tr><td>63:0</td><td>DEST_ADDR</td><td>RW</td><td>0x0</td><td>Byte address to write zeros to. Bits at and above the master address width, 56 in the SMC, are ignored: a clear starts at the address truncated to that width. Program them as zero; the zeroer truncates an out-of-range value rather than rejecting it.</td></tr>
 </table>
 <h3 id="SIZE">SIZE</h3>
 <table>

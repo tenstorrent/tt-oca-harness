@@ -35,26 +35,27 @@ typedef union {
 } clint__MSIP_t;
 
 // reg - clint::MTIMECMP
-// Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.
+// Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME. This register has no reset: its value, and therefore the level of the machine timer interrupt, is undefined until software writes it. Write it before enabling the machine timer interrupt.
 #define CLINT__MTIMECMP__COUNT_bm 0xffffffffffffffff
 #define CLINT__MTIMECMP__COUNT_bp 0
 #define CLINT__MTIMECMP__COUNT_bw 64
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.
+        // Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME. This register has no reset: its value, and therefore the level of the machine timer interrupt, is undefined until software writes it. Write it before enabling the machine timer interrupt.
         uint64_t count :64;
     } f;
     uint64_t w;
 } clint__MTIMECMP_t;
 
 // reg - clint::MTIME
-// Cycle count (time) value
+// Machine time. Increments by one every 1000 CPU-cluster cbus clock cycles. A software write takes precedence over an increment in the same cycle.
 #define CLINT__MTIME__COUNT_bm 0xffffffffffffffff
 #define CLINT__MTIME__COUNT_bp 0
 #define CLINT__MTIME__COUNT_bw 64
+#define CLINT__MTIME__COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Cycle count (time) value
+        // Machine time. Increments by one every 1000 CPU-cluster cbus clock cycles. A software write takes precedence over an increment in the same cycle.
         uint64_t count :64;
     } f;
     uint64_t w;

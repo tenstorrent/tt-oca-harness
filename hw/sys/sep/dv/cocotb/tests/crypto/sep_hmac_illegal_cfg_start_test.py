@@ -61,7 +61,8 @@ start and not from the configuration writes). Log-only:
 ``OBS-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
 start; the register text does not state them) and
 ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text does not state its value after a
-blocked start), ``OBS-HMAC-DIGEST-ORDER`` (the byte order inside a DIGEST word).
+blocked start). ``INFO-HMAC-DIGEST-ORDER`` re-logs the byte order inside a DIGEST word, which
+``CHK-HMAC-RECOVER`` grades.
 
 DIGEST byte order: ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
 gives digest[511:0] = {DIGEST0, DIGEST1, ...} for the SHA-2 hash value, which FIPS 180-4
@@ -70,7 +71,7 @@ of digest bytes 4n..4n+3 ("be"). ``digest_swap`` = 1 "reverses the byte-order in
 HMAC or SHA hash" (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:13),
 so each word is the little-endian read ("le").
 Every CFG of the leaf has ``digest_swap`` = 0, so a readback equals its golden only in the
-big-endian read. The order the first readback matches is logged as ``OBS-HMAC-DIGEST-ORDER``.
+big-endian read. The order the first readback matches is logged as ``INFO-HMAC-DIGEST-ORDER``.
 """
 
 from __future__ import annotations
@@ -328,7 +329,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         self.swrst = SepSwReset(self)
         self.swrst.value = SW_RESET_BASELINE
         await self.swrst.release()
-        self.logger.info("CTRL-HMAC-BASELINE seed=%d sw_reset_n=0x%02x", seed, SW_RESET_BASELINE)
+        self.logger.info("INFO-HMAC-BASELINE seed=%d sw_reset_n=0x%02x", seed, SW_RESET_BASELINE)
         self._period_ps = round(self.cfg.sys_clk_period_ns * 1000)
         self._dorder: str | None = None
         await self._reset_hmac(dut)
@@ -392,7 +393,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
                 last = await self._legal_class(step)
 
         close_graded_window(self.logger)
-        self.chk.obs("HMAC-DIGEST-ORDER", dswap0=self._dorder or "-")
+        self.chk.info("HMAC-DIGEST-ORDER", dswap0=self._dorder or "-", graded_by="CHK-HMAC-RECOVER")
         self.chk.finish()
 
     def _eq(self, got: tuple[int, ...], golden: tuple[int, ...]) -> bool:

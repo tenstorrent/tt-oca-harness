@@ -44,9 +44,9 @@ _CFG_CMP_MASK = (
     | filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm")
 )
 
-_OUT_CFG = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR"
-_OUT_START = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR"
-_OUT_END = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR"
+_OUT_CFG = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR"
+_OUT_START = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR"
+_OUT_END = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR"
 
 FILTER_SRC_ID = 1
 
@@ -170,7 +170,7 @@ class smu_axi_filter_out_instance_matrix_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != 0x1:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
-        sb.expect_eq("CHK-FILTER-OUT-J2A-READY", idcode, 0x1)
+        sb.expect_eq("CHK-FILTER-OUT-J2A-READY", idcode, 0x1, evidence="CHK-FILTER-OUT-J2A-READY")
 
         stride = smc_indexed_addr(_OUT_CFG, 1) - smc_indexed_addr(_OUT_CFG, 0)
         if stride != 0x20:

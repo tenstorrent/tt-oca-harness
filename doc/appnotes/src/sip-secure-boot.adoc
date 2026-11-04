@@ -456,11 +456,19 @@ and Aperture_ section (part of the _SMC Integration_ chapter).
 
 The SEP-SMC interface assigns each scratch register a fixed role and a single
 writer; both ROMs are built against the same assignment. The SMC ROM clears
-indices 8, 9, 11, 13 and 14 on reset, before it publishes anything:
+indices 3, 8, 9, 11, 13 and 14 on reset, before it publishes anything:
 
 [cols="1,2,1,4",options="header"]
 |===
 |Index |Name |Writer |Meaning
+
+|3
+|Park request
+|SEP
+|`0x5052_4B31` asks the SMC ROM to park hart 0: between OCCP commands it writes
+back its data cache, sets `HART0_PARKED` and stops. A SEP boot stage writes it
+before resetting hart 0, since a core reset does not drain the hart. The SEP ROM
+does not use it.
 
 |7
 |Probe
@@ -484,7 +492,10 @@ bit 0 `SRAM_INIT`: the status rings and the SEP-safe range in scratch 13 and 14
 are initialized; +
 bit 1 `MANIFEST_READY`: scratch 8 holds a staged manifest's offset; +
 bit 2 `BUFFER_READY`: scratch 11 holds the SEP ring's offset; +
-bit 3 `SRAM_PROTECTED`: SMC SRAM is protected.
+bit 3 `SRAM_PROTECTED`: SMC SRAM is protected; +
+bit 4 `HART0_PARKED`: hart 0 has written back its data cache and stopped in the
+ROM, after `AuthenticateImage`, a boot halt, a trap or a park request. It is not a
+success indication, and the image hart 0 runs next clears it.
 
 |10
 |Memory-health failure
@@ -555,7 +566,7 @@ box "SMC" #FBE6CC
 end box
 
 note over SEP0, SMC1 : SEP and SMC ROMs start together and run concurrently
-SMC0 -> SCR : clear scratch 8, 9, 11, 13, 14
+SMC0 -> SCR : clear scratch 3, 8, 9, 11, 13, 14
 SMC0 -> SCR : scratch 11 = ring offset,\nset BUFFER_READY
 SMC0 -> SCR : scratch 13, 14 = SEP-safe range,\nset SRAM_INIT
 activate SMC0

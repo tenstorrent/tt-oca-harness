@@ -8,7 +8,7 @@ Spec sources: hw/sys/smc/doc/fabric.adoc, hw/sys/smc/doc/memmap.adoc, hw/sys/smc
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from ocah_axi_vip import AxiTimingProfile
@@ -95,7 +95,12 @@ class _Window:
 
 
 class _StallSampler:
-    """Samples the s_axi channels on every clk_smc rising edge into the current window."""
+    """Samples the s_axi channels after every clk_smc rising edge into the current window.
+
+    The sample is taken in the read-only phase of the edge, after the non-blocking
+    updates, so a handshake is counted in the cycle it is asserted whichever
+    coroutine the simulator resumes first on that edge.
+    """
 
     def __init__(self, dut) -> None:
         self.dut = dut
@@ -111,6 +116,7 @@ class _StallSampler:
         dut = self.dut
         while True:
             await RisingEdge(dut.clk_smc)
+            await ReadOnly()
             w = self.win
             w.cycle += 1
             arvalid, awvalid = _bit(dut, "s_axi_arvalid"), _bit(dut, "s_axi_awvalid")

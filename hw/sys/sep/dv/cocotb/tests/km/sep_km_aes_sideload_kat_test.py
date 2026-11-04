@@ -190,12 +190,12 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
         )
         assert all(w == 0 for w in s0_pub) and all(w == 0 for w in s1_pub), (
-            "AES public KEY_SHARE0/1 CSRs not all zero after sideload (key leak):\n"
-            f"  s0={[hex(w) for w in s0_pub if w]}\n"
-            f"  s1={[hex(w) for w in s1_pub if w]}"
+            "AES public KEY_SHARE0/1 CSRs not all zero after sideload (key leak): "
+            f"s0 nonzero at {[i for i, w in enumerate(s0_pub) if w]}, "
+            f"s1 nonzero at {[i for i, w in enumerate(s1_pub) if w]}"
         )
         self.logger.info(
-            "PUB-OBSERVATION AES public KEY_SHARE0/1 frontdoor reads zero after "
+            "INFO-PUB-OBSERVATION AES public KEY_SHARE0/1 frontdoor reads zero after "
             "sideload. Asserted, but aes.hjson declares them swaccess=wo, so this read "
             "alone cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,

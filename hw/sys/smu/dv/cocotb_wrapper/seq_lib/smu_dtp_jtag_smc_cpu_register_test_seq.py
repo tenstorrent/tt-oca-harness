@@ -99,7 +99,9 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-CPU-REG-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-CPU-REG-JTAG-READY", idcode, DTP_DEFAULT_IDCODE, evidence="CHK-CPU-REG-JTAG-READY"
+        )
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
@@ -116,6 +118,7 @@ class smu_dtp_jtag_smc_cpu_register_test_seq:
             "CHK-CPU-REG-GATE-OPEN",
             (gate, caps),
             (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            evidence="CHK-CPU-REG-GATE-OPEN",
         )
 
         stall = pack_debug_control(boot_stall=1, boot_stall_ovrd=1)

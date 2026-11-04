@@ -7,8 +7,9 @@
 //   M G <leg>                 a graded leg starts (the host opens the window)
 //   M C <leg>                 a control, set-up or clean-up leg starts
 //   CHK-<NAME> PASS k=v ...   a check record (FAIL on a failed check)
-//   CTL-<NAME> LOG k=v ...    a control record
-//   OBS-<NAME> LOG k=v ...    a logged value of a blocked check
+//   CTRL-<NAME> LOG k=v ...   a control record
+//   OBS-<NAME> LOG k=v ...    a DUT value whose golden no specification states
+//   INFO-<NAME> LOG k=v ...   a bench record: set-up, draw, reference or bookkeeping
 //   REQ <what> k=v ...        a request to the host
 //
 // A value prints as 0x<8 hex digits> (rec_hex) or in decimal (rec_dec). The
@@ -71,15 +72,22 @@ static inline void rec_chk(const char *name, int pass) {
     sep_mbx_puts(pass ? " PASS" : " FAIL");
 }
 
-// "CTL-<name> LOG" or "OBS-<name> LOG"; the caller adds fields and rec_end().
+// "CTRL-<name> LOG" or "OBS-<name> LOG"; the caller adds fields and rec_end().
 static inline void rec_ctl(const char *name) {
-    sep_mbx_puts("CTL-");
+    sep_mbx_puts("CTRL-");
     sep_mbx_puts(name);
     sep_mbx_puts(" LOG");
 }
 
 static inline void rec_obs(const char *name) {
     sep_mbx_puts("OBS-");
+    sep_mbx_puts(name);
+    sep_mbx_puts(" LOG");
+}
+
+// "INFO-<name> LOG": a bench record; the caller adds fields and rec_end().
+static inline void rec_info(const char *name) {
+    sep_mbx_puts("INFO-");
     sep_mbx_puts(name);
     sep_mbx_puts(" LOG");
 }

@@ -42,15 +42,15 @@
 // Two simulation trees. The TDO-timing and state rules use `OCAH_SVA_RULE /
 // `OCAH_SVA_ASSERT_I (ocah_sva_macros.svh): live on every SIMULATION compile,
 // evaluated by Verilator under --assert, and on every FORMAL elaboration of a
-// licensed backend. The X-hygiene rules and the covers use `OCAH_RULE
-// (ocah_sva_macros.svh) / `OCAH_COVER (ocah_assert.svh): live only where
-// OCAH_INC_ASSERT is defined, i.e. on a four-state simulator or a licensed
-// backend. The open-source
-// formal frontend reads none of the concurrent operators here;
-// ocah_jtag_fv.sv beside this file carries the boolean-subset rules for
-// that path.
+// licensed backend. The X-hygiene rules use `OCAH_RULE (ocah_sva_macros.svh):
+// live only where OCAH_INC_ASSERT is defined, i.e. on a four-state simulator
+// or a licensed backend. The covers use `OCAH_FCOV_COVER
+// (ocah_fcov_macros.svh): live in every view but synthesis, Verilator included,
+// which records them as user coverage points. The open-source formal frontend
+// reads none of the concurrent operators here; ocah_jtag_fv.sv beside this
+// file carries the boolean-subset rules for that path.
 
-`include "ocah_assert.svh"
+`include "ocah_fcov_macros.svh"
 `include "ocah_sva_macros.svh"
 
 module ocah_jtag_sva #(
@@ -107,8 +107,8 @@ module ocah_jtag_sva #(
   `OCAH_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_TDO_KNOWN_WHEN_DRIVEN,
              (en_i && tdo_oen === 1'b1) |-> !$isunknown(tdo), tck, !trst_n)
 
-  `OCAH_COVER(OCAH_JTAG_C_TRST_ASSERTED, en_i && (trst_n === 1'b0), tck, 1'b0)
-  `OCAH_COVER(OCAH_JTAG_C_OEN_ACTIVE, en_i && (tdo_oen === 1'b1), tck, !trst_n)
+  `OCAH_FCOV_COVER(OCAH_JTAG_C_TRST_ASSERTED, en_i && (trst_n === 1'b0), tck, 1'b0)
+  `OCAH_FCOV_COVER(OCAH_JTAG_C_OEN_ACTIVE, en_i && (tdo_oen === 1'b1), tck, !trst_n)
 
 `ifdef SIMULATION
   // ------------------------------------------------------------------
@@ -173,14 +173,14 @@ module ocah_jtag_sva #(
         en_i |-> (tdo_oen == ((tap_state_i == ShiftDrOnehot) || (tap_state_i == ShiftIrOnehot))),
         tck, !trst_n)
 
-    `OCAH_COVER(OCAH_JTAG_C_SHIFT_DR, en_i && (tap_state_i == ShiftDrOnehot), tck, !trst_n)
-    `OCAH_COVER(OCAH_JTAG_C_SHIFT_IR, en_i && (tap_state_i == ShiftIrOnehot), tck, !trst_n)
-    `OCAH_COVER(OCAH_JTAG_C_DR_RESHIFT, en_i && (tap_state_i == ShiftDrOnehot) && ($past(tap_state_i
-                ) == Exit2DrOnehot), tck, !trst_n)
-    `OCAH_COVER(OCAH_JTAG_C_IR_RESHIFT, en_i && (tap_state_i == ShiftIrOnehot) && ($past(tap_state_i
-                ) == Exit2IrOnehot), tck, !trst_n)
-    `OCAH_COVER(OCAH_JTAG_C_TLR_VIA_TMS, en_i && (tap_state_i == TlrOnehot) && ($past(tap_state_i
-                ) != TlrOnehot), tck, !trst_n)
+    `OCAH_FCOV_COVER(OCAH_JTAG_C_SHIFT_DR, en_i && (tap_state_i == ShiftDrOnehot), tck, !trst_n)
+    `OCAH_FCOV_COVER(OCAH_JTAG_C_SHIFT_IR, en_i && (tap_state_i == ShiftIrOnehot), tck, !trst_n)
+    `OCAH_FCOV_COVER(OCAH_JTAG_C_DR_RESHIFT, en_i && (tap_state_i == ShiftDrOnehot) && ($past(
+                     tap_state_i) == Exit2DrOnehot), tck, !trst_n)
+    `OCAH_FCOV_COVER(OCAH_JTAG_C_IR_RESHIFT, en_i && (tap_state_i == ShiftIrOnehot) && ($past(
+                     tap_state_i) == Exit2IrOnehot), tck, !trst_n)
+    `OCAH_FCOV_COVER(OCAH_JTAG_C_TLR_VIA_TMS, en_i && (tap_state_i == TlrOnehot) && ($past(
+                     tap_state_i) != TlrOnehot), tck, !trst_n)
 
   end
 

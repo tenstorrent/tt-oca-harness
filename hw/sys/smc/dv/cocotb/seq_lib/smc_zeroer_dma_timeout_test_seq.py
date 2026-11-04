@@ -56,7 +56,8 @@ ZEROER_CTRL_STATUS_START = reg_field_encode(_ZEROER_CTRL_H, "ZEROER_CTRL", "CTRL
 #                     it rests at while a zeroing is in flight and to RETURN to
 #                     that level once the zeroing completes. That proves the
 #                     field follows the zeroer's activity and is not tied or
-#                     unconnected, without asserting which level means busy.
+#                     unconnected. zeroer_ctrl.rdl defines 1 as busy and 0 as
+#                     idle; the level itself is not compared.
 ZEROER_CTRL_STATUS_ARMED = reg_field_encode(_ZEROER_CTRL_H, "ZEROER_CTRL", "CTRL_STATUS", int_en=1)
 
 OUTPUT_FABRIC_NEIGHBOUR_ADDR = OUTPUT_FABRIC_ADDR + 8
@@ -392,9 +393,9 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             f"{self.status_idle_level} with the operation independently proven "
             "complete (the responder counted the zeroer's AXI write and the "
             "region reads back zeros); that level is recorded as the field's "
-            "idle level and NOT asserted, because the RDL description "
-            "('completed') and the implemented field disagree on which level "
-            "means busy (#1234). S5 proves the field leaves this level while a "
+            "idle level and NOT asserted against the level zeroer_ctrl.rdl defines "
+            "(1 while the zeroer is active or in error, 0 when idle). S5 proves "
+            "the field leaves this level while a "
             "zeroing is in flight and returns to it afterwards. SCOPE: the "
             "INT_EN write is load-bearing (zeroer_ctrl.rdl gives it wr_swacc, "
             "the write strobe that starts an operation), so it cannot be "
@@ -425,9 +426,9 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         through the hwif path passes identically to a working flag -- a constant
         is simultaneously "not busy", "not completed" and "field absent". A
         field that changes level while a zeroing is in flight and changes back
-        when it completes is the only observation that separates those. Which
-        level means busy is not asserted; the idle level is whatever S4
-        recorded.
+        when it completes is the only observation that separates those.
+        `smc_zeroer_busy_outstanding_test` grades which level means busy; here
+        the idle level is whatever S4 recorded.
         """
         # Sampled here rather than inherited from the caller's earlier read, so
         # the idle leg is observed at the point the lifecycle claims it.
@@ -494,5 +495,6 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             f"{idle_level} (idle, {idle_before:#018x}) -> {1 - idle_level} "
             f"({active_word:#018x}) -> {idle_level} ({settled_word:#018x}); the "
             "field follows the zeroer's activity through the hwif path and is "
-            "not a tied bit. Which level means busy is left to #1234."
+            "not a tied bit. The level itself is not compared against the "
+            "zeroer_ctrl.rdl definition (1 = busy, 0 = idle)."
         )

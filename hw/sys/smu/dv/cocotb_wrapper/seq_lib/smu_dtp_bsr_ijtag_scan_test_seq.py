@@ -100,12 +100,17 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
         idcode = await raw.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-DTP-BSR-IJTAG-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-DTP-BSR-IJTAG-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-DTP-BSR-IJTAG-JTAG-READY",
+        )
 
         idle_bsr = self._sample_bit("tb_bsr_select")
         if idle_bsr:
             raise AssertionError(f"idle RTI BSR select not gated bsr={idle_bsr}")
-        sb.expect_eq("CHK-DTP-BSR-IDLE-SELECT", idle_bsr, 0)
+        sb.expect_eq("CHK-DTP-BSR-IDLE-SELECT", idle_bsr, 0, evidence="CHK-DTP-BSR-IDLE-SELECT")
         self._log(f"CHK-DTP-BSR-IDLE-SELECT bsr={idle_bsr}")
 
         unsel = await self._scan_and_observe(jtag, DTP_IR_IDCODE, 0, IDCODE_DR_WIDTH)
@@ -121,7 +126,9 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
             )
         self.s1_ok = True
         self._log(f"CHK-DTP-BSR-UNSEL-IDCODE tck_n={unsel['tck_n']} bsr_tcks={unsel['bsr_tcks']}")
-        sb.expect_eq("CHK-DTP-BSR-UNSEL-IDCODE", unsel["bsr_tcks"], 0)
+        sb.expect_eq(
+            "CHK-DTP-BSR-UNSEL-IDCODE", unsel["bsr_tcks"], 0, evidence="CHK-DTP-BSR-UNSEL-IDCODE"
+        )
 
         extest = await self._scan_and_observe(jtag, DTP_IR_EXTEST, 0xA5, DTP_BSR_MODEL_LEN)
         if extest["bsr_tcks"] != EXPECTED_BSR_SEL_TCK:
@@ -165,6 +172,7 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
             "CHK-DTP-BSR-SAMPLE-PRELOAD-SELECT",
             sample["bsr_tcks"],
             EXPECTED_BSR_SEL_TCK,
+            evidence="CHK-DTP-BSR-SAMPLE-PRELOAD-SELECT",
         )
 
         self._log(

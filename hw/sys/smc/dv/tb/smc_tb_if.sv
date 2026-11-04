@@ -64,7 +64,8 @@ interface smc_tb_if;
   logic [31:0] cold_rst_assert_count;
   logic [31:0] cool_rst_assert_count;
 
-  // Runtime enable for the shared AXI protocol SVA checker.
+  // Runtime enable for the shared AXI protocol SVA checkers; tb_top ANDs it
+  // into the enable of every ocah_axi_sva instance.
   logic axi_sva_en = 1'b1;
 
   // Runtime enable for the shared JTAG protocol SVA checker on the CPU TAP.

@@ -5,7 +5,10 @@
 from __future__ import annotations
 
 import pyuvm
-from seq_lib.smc_dma_backpressure_breadth_test_seq import smc_dma_backpressure_breadth_test_seq
+from seq_lib.smc_dma_backpressure_breadth_test_seq import (
+    SYS_OUT_OUTSTANDING,
+    smc_dma_backpressure_breadth_test_seq,
+)
 from smc_base_test import smc_base_test
 
 
@@ -23,6 +26,7 @@ class smc_dma_backpressure_breadth_test(smc_base_test):
     min_evidence = 5
 
     auto_protocol_vip = False
+    sys_out_max_outstanding = SYS_OUT_OUTSTANDING
 
     async def run_scenario(self) -> None:
         seq = smc_dma_backpressure_breadth_test_seq("smc_dma_backpressure_breadth_test_seq")

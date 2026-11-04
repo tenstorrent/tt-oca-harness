@@ -59,8 +59,14 @@ their approvals are recorded.
 **Simulators.** Verilator runs every enrolled group and is the only
 simulator with a build and a coverage section in the sim config; it is
 what CI runs. `smu_sim_cfg.toml`
-lists `vcs` and `xcelium` as selectable tools, but no enrolled group
-runs on them: the cocotb targets on VCS fail the runner on live RTL
+lists `vcs` and `xcelium` as selectable tools. One group is run on VCS:
+`axi_sva` (`--dut smu --items axi_sva --tool vcs`), the leaves that drive
+the links the AXI protocol checkers of `tb/tb_wrapper_top.sv` watch (all but
+`smu_axi_out_outstanding_test`, which drives `smu_out`, name a checker with a
+`+axi_sva_need_*` plusarg), is the run of record of those checkers: the
+Verilator targets evaluate their two-state rules only, and none of their X,
+data-known, count or need checks. No other enrolled group runs
+on VCS or Xcelium: the cocotb targets on VCS fail the runner on live RTL
 assertions while every test passes, and `smu_sim_cfg.toml`
 declares no Xcelium target of its own -- only the shared
 `hw/common/dv/configs/profiles/native.toml` defaults, which no SMU group
@@ -248,7 +254,7 @@ Every directory and top-level file under `dv/` is listed here.
 | `assets/` | the five SEP eFuse shadow preload images: `default_sep_efuse_shadow_reg.preload` and `sep_efuse_shadow_lc_{test_dev,prod,prod_end,rma_chiplet}.preload`, which set the diff-encoded lifecycle state word. Each carries its SPDX header as `//` comment lines, which the preload readers skip |
 | `cocotb/{env,seq_lib}/` | the shared half of the PyUVM environment: `env/` holds `SmuEnv`, `SmuScoreboard`, the evidence map and `smu_fcov.py`; `seq_lib/` the sequences and helpers written against the SMU's own interfaces (address map, lifecycle table, AXI, JTAG and filter helpers, the PTAP smoke sequence) |
 | `cocotb_wrapper/{env,seq_lib,tests}/` | the `--dut smu` framework tree: `tests/` holds every test body and the base test; `env/` the wrapper env pieces (`smu_boot_scoreboard.py`, `smu_sep_cpu_trace_monitor.py`, `smu_env_cfg.py`); `seq_lib/` the wrapper sequences. `env` and `seq_lib` are namespace packages spanning this tree and `cocotb/`, so an import resolves in either |
-| `cov/` | coverage collateral: `config/verilator/smu_wrapper_cov_scope.vlt` and `smu_wrapper_coverage_policy.toml`, `config/vcs/smu_wrapper_cov_scope.hier` (generated; its README states the rule and how it differs from the Verilator scope), and `sv/` with the ten functional-coverage modules, cover properties and covergroups; intent in `docs/SMU_FCOV.adoc` |
+| `cov/` | coverage collateral: `config/verilator/smu_wrapper_cov_scope.vlt`, `smu_fcov.vlt` and `smu_wrapper_coverage_policy.toml`, `config/vcs/smu_wrapper_cov_scope.hier` (generated; its README states the rule and how it differs from the Verilator scope), and `sv/` with the ten functional-coverage modules, cover properties and covergroups; intent in `docs/SMU_FCOV.adoc` |
 | `docs/` | `index.adoc` and the three chapters: `SMU_TB_ARCH.adoc`, `SMU_VPLAN.adoc`, `SMU_FCOV.adoc` |
 | `fw/` | this root's own firmware: `build_firmware.py`, `common/` (SMC and SEP start-up and linker files), `tests/` (the SMC smoke, the SEP smoke and the two SEP arm images). The `sep_real_fw` images come from `hw/sys/sep/dv/fw/` instead |
 | `tb/` | `tb_wrapper_top.sv` (the HDL top, `smu_wrapper_uvm_top`, one module in two shapes: the cocotb port list and the SV-UVM harness), `smu_tb_signal_list.svh` (the single declaration of its TB signals, expanded as ports or as internal signals), `smu_tb_if.sv` (the SMU-local TB interface of the SV-UVM shape) and `smu_wrapper_public_scope.vlt` (the Verilator public-signal scope `smu_sim_cfg.toml` `[build.verilator].public_scope` names) |

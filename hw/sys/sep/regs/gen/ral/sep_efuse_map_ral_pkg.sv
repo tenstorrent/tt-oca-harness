@@ -291,7 +291,7 @@
 
         virtual function void build();
             this.lc_state = uvm_reg_field::type_id::create("lc_state");
-            this.lc_state.configure(this, 8, 0, "RO", 1, 'hf0, 1, 1, 0);
+            this.lc_state.configure(this, 8, 0, "RO", 1, 'hf, 1, 1, 0);
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
             this.rsvd.configure(this, 24, 8, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build

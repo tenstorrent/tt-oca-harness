@@ -51,7 +51,7 @@ addrmap wdt {
         field {
             sw=rw;
             hw=r;
-            desc="Enable WDT to always count. This has priority over wdogcoreawake";
+            desc="Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.";
         } wdogenalways[12:12] = 0x0;
 
         field {

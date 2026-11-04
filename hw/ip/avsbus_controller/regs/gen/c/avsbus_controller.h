@@ -158,7 +158,7 @@ typedef union {
 #define AVSBUS_CONTROLLER__AVS_READBACK__STATUS_RESPONSE_bp 24
 #define AVSBUS_CONTROLLER__AVS_READBACK__STATUS_RESPONSE_bw 5
 #define AVSBUS_CONTROLLER__AVS_READBACK__STATUS_RESPONSE_reset 0x0
-// Always 0
+// Frame-valid bit of the slave response sub-frame: 0 in a valid frame, 1 when the slave did not respond
 #define AVSBUS_CONTROLLER__AVS_READBACK__CONST0_bm 0x20000000
 #define AVSBUS_CONTROLLER__AVS_READBACK__CONST0_bp 29
 #define AVSBUS_CONTROLLER__AVS_READBACK__CONST0_bw 1
@@ -202,7 +202,7 @@ typedef union {
         // [*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific
         // [/list]
         uint32_t STATUS_RESPONSE :5;
-        // Always 0
+        // Frame-valid bit of the slave response sub-frame: 0 in a valid frame, 1 when the slave did not respond
         uint32_t CONST0 :1;
         // Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]
         // [*]0x0: Action Performed
@@ -240,7 +240,7 @@ typedef union {
 #define AVSBUS_CONTROLLER__AVS_LATEST_SLAVE_SUBFRAME__AVS_SLAVE_SUBFRAME_bm 0xffffffff
 #define AVSBUS_CONTROLLER__AVS_LATEST_SLAVE_SUBFRAME__AVS_SLAVE_SUBFRAME_bp 0
 #define AVSBUS_CONTROLLER__AVS_LATEST_SLAVE_SUBFRAME__AVS_SLAVE_SUBFRAME_bw 32
-#define AVSBUS_CONTROLLER__AVS_LATEST_SLAVE_SUBFRAME__AVS_SLAVE_SUBFRAME_reset 0xffff
+#define AVSBUS_CONTROLLER__AVS_LATEST_SLAVE_SUBFRAME__AVS_SLAVE_SUBFRAME_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         // The most recently received AVS slave response sub-frame
@@ -692,8 +692,8 @@ typedef union {
 // Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).
 // The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%
 // duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of
-// 2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings
-// (divider=0x4) by matching the FF default in the resynced version of the signal.
+// 2 - for lower values, 2 will be assumed. Out of reset the divider uses a ratio of 4, not this field's reset value of 0. A write that
+// changes this field or clk_divider_duty_cycle_numerator loads both fields into the divider, so program both together.
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bm 0xff0000
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bp 16
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bw 8
@@ -701,8 +701,8 @@ typedef union {
 // Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).
 // This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,
 // it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,
-// a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)
-// by matching the FF default in the resynced version of the signal.
+// a value of 1 will be assumed. Out of reset the divider uses a numerator of 0x80 (50%), not this field's reset value of 0. A write that
+// changes this field or clk_divider_value loads both fields into the divider, so program both together.
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_bm 0xff000000
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_bp 24
 #define AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_bw 8
@@ -728,14 +728,14 @@ typedef union {
         // Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).
         // The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%
         // duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of
-        // 2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings
-        // (divider=0x4) by matching the FF default in the resynced version of the signal.
+        // 2 - for lower values, 2 will be assumed. Out of reset the divider uses a ratio of 4, not this field's reset value of 0. A write that
+        // changes this field or clk_divider_duty_cycle_numerator loads both fields into the divider, so program both together.
         uint32_t CLK_DIVIDER_VALUE :8;
         // Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).
         // This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,
         // it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,
-        // a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)
-        // by matching the FF default in the resynced version of the signal.
+        // a value of 1 will be assumed. Out of reset the divider uses a numerator of 0x80 (50%), not this field's reset value of 0. A write that
+        // changes this field or clk_divider_value loads both fields into the divider, so program both together.
         uint32_t CLK_DIVIDER_DUTY_CYCLE_NUMERATOR :8;
     } f;
     uint32_t w;

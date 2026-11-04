@@ -49,6 +49,11 @@ SDA, SMBus SUS and SMBus ALERT inputs to `clk_i` with two-flop synchronizers;
 the synchronizer badge on the edge of `u_i2c_core` marks them. The wrapper
 adds no synchronizers of its own.
 
+The `*_FIFO_DEPTH` parameters default to 64 entries for the controller TX
+(FMT), controller RX and target TX FIFOs, and to 268 entries for the target RX
+(ACQ) FIFO. A FIFO is full when its level field in `HOST_FIFO_STATUS` or
+`TARGET_FIFO_STATUS` (`FMTLVL`, `RXLVL`, `TXLVL`, `ACQLVL`) reads its depth.
+
 The shared block `u_i2c_ctrl_reg`, generated from `i2c_ctrl.rdl`, holds one
 `I2C_CTRL` register per instance. Its `SMBUS_EN` field drives that instance's
 `smbus_en` input, which masks `smbalert_ni` while low. Its `I2C_EN` and
@@ -66,6 +71,12 @@ instance 0 drives. The DMA ready outputs are `controller_tx_ready_o`,
 `controller_rx_ready_o`, `target_tx_ready_o` and `target_rx_ready_o`; the SMC
 leaves them unconnected. It routes `i2c_irq_o` to peripheral interrupts 23 to
 25.
+
+`i2c_fifo_intg_err_o` is the OR of an instance's four FIFO integrity errors: a
+pointer mismatch in a hardened FIFO counter, or a parity mismatch on the entry
+at the head of a FIFO. It is independent of `INTR_ENABLE`. The pointer error
+holds until the FIFO is cleared or reset; the parity error clears once that
+entry is read. The SMC ORs the instances into `smc_ras_o.i2c_intg_err`.
 
 ifdef::backend-html5[]
 include::partial$i2c/doc/memmap.adoc[]

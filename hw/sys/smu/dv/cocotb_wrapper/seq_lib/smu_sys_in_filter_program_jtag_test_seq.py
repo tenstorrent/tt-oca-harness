@@ -86,7 +86,7 @@ class smu_sys_in_filter_program_jtag_test_seq:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
         self._log(f"CHK-FILTER-PROG-GATE-OPEN disable={gate}")
-        sb.expect_eq("CHK-FILTER-PROG-GATE-OPEN", gate, 0)
+        sb.expect_eq("CHK-FILTER-PROG-GATE-OPEN", gate, 0, evidence="CHK-FILTER-PROG-GATE-OPEN")
 
         master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         pre_data, pre_resp = await await_smn_resp(
@@ -98,7 +98,12 @@ class smu_sys_in_filter_program_jtag_test_seq:
         )
         self.s2_ok = True
         self._log(f"CHK-FILTER-PROG-PRE-DECERR data=0x{int(pre_data) & 0xFFFF_FFFF:08x}")
-        sb.expect_eq("CHK-FILTER-PROG-PRE-DECERR", pre_resp, RESP_DECERR)
+        sb.expect_eq(
+            "CHK-FILTER-PROG-PRE-DECERR",
+            pre_resp,
+            RESP_DECERR,
+            evidence="CHK-FILTER-PROG-PRE-DECERR",
+        )
 
         await program_inbound0_window(jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="PROG")
         cfg_rb = await inbound0_config_readback(jtag)
@@ -118,7 +123,12 @@ class smu_sys_in_filter_program_jtag_test_seq:
             raise AssertionError(f"END rb status={st_e} data=0x{int(end_rb):x} want 0x{page_hi:x}")
         self.s3_ok = True
         self._log(f"CHK-FILTER-PROG-WINDOW cfg=0x{cfg_rb:x} page=[0x{page_lo:08x},0x{page_hi:08x}]")
-        sb.expect_eq("CHK-FILTER-PROG-WINDOW", cfg_rb, PASS_RW_CONFIG & 0xFFFF_FFFF)
+        sb.expect_eq(
+            "CHK-FILTER-PROG-WINDOW",
+            cfg_rb,
+            PASS_RW_CONFIG & 0xFFFF_FFFF,
+            evidence="CHK-FILTER-PROG-WINDOW",
+        )
 
         post_data, post_resp = await await_smn_resp(
             master,
@@ -150,4 +160,9 @@ class smu_sys_in_filter_program_jtag_test_seq:
         )
         self.s5_ok = True
         self._log(f"CHK-FILTER-PROG-OUT-DECERR WDT data=0x{int(out_data) & 0xFFFF_FFFF:08x}")
-        sb.expect_eq("CHK-FILTER-PROG-OUT-DECERR", out_resp, RESP_DECERR)
+        sb.expect_eq(
+            "CHK-FILTER-PROG-OUT-DECERR",
+            out_resp,
+            RESP_DECERR,
+            evidence="CHK-FILTER-PROG-OUT-DECERR",
+        )

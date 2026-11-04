@@ -12,7 +12,7 @@
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#outbound_mailbox_0.WRITE_DATA">outbound_mailbox_0.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#outbound_mailbox_0.READ_DATA">outbound_mailbox_0.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x8</td><td><a href="#outbound_mailbox_0.READ_DATA">outbound_mailbox_0.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x10</td><td><a href="#outbound_mailbox_0.STATUS">outbound_mailbox_0.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x18</td><td><a href="#outbound_mailbox_0.ERROR_FLAGS">outbound_mailbox_0.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x20</td><td><a href="#outbound_mailbox_0.WIRQT">outbound_mailbox_0.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -22,7 +22,7 @@
 <tr><td>0x40</td><td><a href="#outbound_mailbox_0.IRQP">outbound_mailbox_0.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x48</td><td><a href="#outbound_mailbox_0.CTRL">outbound_mailbox_0.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x800</td><td><a href="#inbound_mailbox_0.WRITE_DATA">inbound_mailbox_0.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x808</td><td><a href="#inbound_mailbox_0.READ_DATA">inbound_mailbox_0.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x808</td><td><a href="#inbound_mailbox_0.READ_DATA">inbound_mailbox_0.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x810</td><td><a href="#inbound_mailbox_0.STATUS">inbound_mailbox_0.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x818</td><td><a href="#inbound_mailbox_0.ERROR_FLAGS">inbound_mailbox_0.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x820</td><td><a href="#inbound_mailbox_0.WIRQT">inbound_mailbox_0.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -32,7 +32,7 @@
 <tr><td>0x840</td><td><a href="#inbound_mailbox_0.IRQP">inbound_mailbox_0.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x848</td><td><a href="#inbound_mailbox_0.CTRL">inbound_mailbox_0.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x1000</td><td><a href="#outbound_mailbox_1.WRITE_DATA">outbound_mailbox_1.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x1008</td><td><a href="#outbound_mailbox_1.READ_DATA">outbound_mailbox_1.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x1008</td><td><a href="#outbound_mailbox_1.READ_DATA">outbound_mailbox_1.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x1010</td><td><a href="#outbound_mailbox_1.STATUS">outbound_mailbox_1.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x1018</td><td><a href="#outbound_mailbox_1.ERROR_FLAGS">outbound_mailbox_1.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x1020</td><td><a href="#outbound_mailbox_1.WIRQT">outbound_mailbox_1.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -42,7 +42,7 @@
 <tr><td>0x1040</td><td><a href="#outbound_mailbox_1.IRQP">outbound_mailbox_1.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x1048</td><td><a href="#outbound_mailbox_1.CTRL">outbound_mailbox_1.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x1800</td><td><a href="#inbound_mailbox_1.WRITE_DATA">inbound_mailbox_1.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x1808</td><td><a href="#inbound_mailbox_1.READ_DATA">inbound_mailbox_1.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x1808</td><td><a href="#inbound_mailbox_1.READ_DATA">inbound_mailbox_1.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x1810</td><td><a href="#inbound_mailbox_1.STATUS">inbound_mailbox_1.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x1818</td><td><a href="#inbound_mailbox_1.ERROR_FLAGS">inbound_mailbox_1.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x1820</td><td><a href="#inbound_mailbox_1.WIRQT">inbound_mailbox_1.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -52,7 +52,7 @@
 <tr><td>0x1840</td><td><a href="#inbound_mailbox_1.IRQP">inbound_mailbox_1.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x1848</td><td><a href="#inbound_mailbox_1.CTRL">inbound_mailbox_1.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x2000</td><td><a href="#outbound_mailbox_2.WRITE_DATA">outbound_mailbox_2.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x2008</td><td><a href="#outbound_mailbox_2.READ_DATA">outbound_mailbox_2.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x2008</td><td><a href="#outbound_mailbox_2.READ_DATA">outbound_mailbox_2.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x2010</td><td><a href="#outbound_mailbox_2.STATUS">outbound_mailbox_2.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x2018</td><td><a href="#outbound_mailbox_2.ERROR_FLAGS">outbound_mailbox_2.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x2020</td><td><a href="#outbound_mailbox_2.WIRQT">outbound_mailbox_2.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -62,7 +62,7 @@
 <tr><td>0x2040</td><td><a href="#outbound_mailbox_2.IRQP">outbound_mailbox_2.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x2048</td><td><a href="#outbound_mailbox_2.CTRL">outbound_mailbox_2.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x2800</td><td><a href="#inbound_mailbox_2.WRITE_DATA">inbound_mailbox_2.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x2808</td><td><a href="#inbound_mailbox_2.READ_DATA">inbound_mailbox_2.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x2808</td><td><a href="#inbound_mailbox_2.READ_DATA">inbound_mailbox_2.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x2810</td><td><a href="#inbound_mailbox_2.STATUS">inbound_mailbox_2.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x2818</td><td><a href="#inbound_mailbox_2.ERROR_FLAGS">inbound_mailbox_2.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x2820</td><td><a href="#inbound_mailbox_2.WIRQT">inbound_mailbox_2.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -72,7 +72,7 @@
 <tr><td>0x2840</td><td><a href="#inbound_mailbox_2.IRQP">inbound_mailbox_2.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x2848</td><td><a href="#inbound_mailbox_2.CTRL">inbound_mailbox_2.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x3000</td><td><a href="#outbound_mailbox_3.WRITE_DATA">outbound_mailbox_3.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x3008</td><td><a href="#outbound_mailbox_3.READ_DATA">outbound_mailbox_3.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x3008</td><td><a href="#outbound_mailbox_3.READ_DATA">outbound_mailbox_3.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x3010</td><td><a href="#outbound_mailbox_3.STATUS">outbound_mailbox_3.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x3018</td><td><a href="#outbound_mailbox_3.ERROR_FLAGS">outbound_mailbox_3.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x3020</td><td><a href="#outbound_mailbox_3.WIRQT">outbound_mailbox_3.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -82,7 +82,7 @@
 <tr><td>0x3040</td><td><a href="#outbound_mailbox_3.IRQP">outbound_mailbox_3.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x3048</td><td><a href="#outbound_mailbox_3.CTRL">outbound_mailbox_3.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x3800</td><td><a href="#inbound_mailbox_3.WRITE_DATA">inbound_mailbox_3.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x3808</td><td><a href="#inbound_mailbox_3.READ_DATA">inbound_mailbox_3.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x3808</td><td><a href="#inbound_mailbox_3.READ_DATA">inbound_mailbox_3.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x3810</td><td><a href="#inbound_mailbox_3.STATUS">inbound_mailbox_3.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x3818</td><td><a href="#inbound_mailbox_3.ERROR_FLAGS">inbound_mailbox_3.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x3820</td><td><a href="#inbound_mailbox_3.WIRQT">inbound_mailbox_3.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -92,7 +92,7 @@
 <tr><td>0x3840</td><td><a href="#inbound_mailbox_3.IRQP">inbound_mailbox_3.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x3848</td><td><a href="#inbound_mailbox_3.CTRL">inbound_mailbox_3.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x4000</td><td><a href="#outbound_mailbox_4.WRITE_DATA">outbound_mailbox_4.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x4008</td><td><a href="#outbound_mailbox_4.READ_DATA">outbound_mailbox_4.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x4008</td><td><a href="#outbound_mailbox_4.READ_DATA">outbound_mailbox_4.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x4010</td><td><a href="#outbound_mailbox_4.STATUS">outbound_mailbox_4.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x4018</td><td><a href="#outbound_mailbox_4.ERROR_FLAGS">outbound_mailbox_4.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x4020</td><td><a href="#outbound_mailbox_4.WIRQT">outbound_mailbox_4.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -102,7 +102,7 @@
 <tr><td>0x4040</td><td><a href="#outbound_mailbox_4.IRQP">outbound_mailbox_4.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x4048</td><td><a href="#outbound_mailbox_4.CTRL">outbound_mailbox_4.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x4800</td><td><a href="#inbound_mailbox_4.WRITE_DATA">inbound_mailbox_4.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x4808</td><td><a href="#inbound_mailbox_4.READ_DATA">inbound_mailbox_4.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x4808</td><td><a href="#inbound_mailbox_4.READ_DATA">inbound_mailbox_4.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x4810</td><td><a href="#inbound_mailbox_4.STATUS">inbound_mailbox_4.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x4818</td><td><a href="#inbound_mailbox_4.ERROR_FLAGS">inbound_mailbox_4.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x4820</td><td><a href="#inbound_mailbox_4.WIRQT">inbound_mailbox_4.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -112,7 +112,7 @@
 <tr><td>0x4840</td><td><a href="#inbound_mailbox_4.IRQP">inbound_mailbox_4.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x4848</td><td><a href="#inbound_mailbox_4.CTRL">inbound_mailbox_4.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x5000</td><td><a href="#outbound_mailbox_5.WRITE_DATA">outbound_mailbox_5.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x5008</td><td><a href="#outbound_mailbox_5.READ_DATA">outbound_mailbox_5.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x5008</td><td><a href="#outbound_mailbox_5.READ_DATA">outbound_mailbox_5.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x5010</td><td><a href="#outbound_mailbox_5.STATUS">outbound_mailbox_5.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x5018</td><td><a href="#outbound_mailbox_5.ERROR_FLAGS">outbound_mailbox_5.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x5020</td><td><a href="#outbound_mailbox_5.WIRQT">outbound_mailbox_5.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -122,7 +122,7 @@
 <tr><td>0x5040</td><td><a href="#outbound_mailbox_5.IRQP">outbound_mailbox_5.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x5048</td><td><a href="#outbound_mailbox_5.CTRL">outbound_mailbox_5.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x5800</td><td><a href="#inbound_mailbox_5.WRITE_DATA">inbound_mailbox_5.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x5808</td><td><a href="#inbound_mailbox_5.READ_DATA">inbound_mailbox_5.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x5808</td><td><a href="#inbound_mailbox_5.READ_DATA">inbound_mailbox_5.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x5810</td><td><a href="#inbound_mailbox_5.STATUS">inbound_mailbox_5.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x5818</td><td><a href="#inbound_mailbox_5.ERROR_FLAGS">inbound_mailbox_5.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x5820</td><td><a href="#inbound_mailbox_5.WIRQT">inbound_mailbox_5.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -132,7 +132,7 @@
 <tr><td>0x5840</td><td><a href="#inbound_mailbox_5.IRQP">inbound_mailbox_5.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x5848</td><td><a href="#inbound_mailbox_5.CTRL">inbound_mailbox_5.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x6000</td><td><a href="#outbound_mailbox_6.WRITE_DATA">outbound_mailbox_6.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x6008</td><td><a href="#outbound_mailbox_6.READ_DATA">outbound_mailbox_6.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x6008</td><td><a href="#outbound_mailbox_6.READ_DATA">outbound_mailbox_6.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x6010</td><td><a href="#outbound_mailbox_6.STATUS">outbound_mailbox_6.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x6018</td><td><a href="#outbound_mailbox_6.ERROR_FLAGS">outbound_mailbox_6.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x6020</td><td><a href="#outbound_mailbox_6.WIRQT">outbound_mailbox_6.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -142,7 +142,7 @@
 <tr><td>0x6040</td><td><a href="#outbound_mailbox_6.IRQP">outbound_mailbox_6.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x6048</td><td><a href="#outbound_mailbox_6.CTRL">outbound_mailbox_6.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x6800</td><td><a href="#inbound_mailbox_6.WRITE_DATA">inbound_mailbox_6.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x6808</td><td><a href="#inbound_mailbox_6.READ_DATA">inbound_mailbox_6.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x6808</td><td><a href="#inbound_mailbox_6.READ_DATA">inbound_mailbox_6.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x6810</td><td><a href="#inbound_mailbox_6.STATUS">inbound_mailbox_6.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x6818</td><td><a href="#inbound_mailbox_6.ERROR_FLAGS">inbound_mailbox_6.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x6820</td><td><a href="#inbound_mailbox_6.WIRQT">inbound_mailbox_6.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -152,7 +152,7 @@
 <tr><td>0x6840</td><td><a href="#inbound_mailbox_6.IRQP">inbound_mailbox_6.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x6848</td><td><a href="#inbound_mailbox_6.CTRL">inbound_mailbox_6.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x7000</td><td><a href="#outbound_mailbox_7.WRITE_DATA">outbound_mailbox_7.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x7008</td><td><a href="#outbound_mailbox_7.READ_DATA">outbound_mailbox_7.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x7008</td><td><a href="#outbound_mailbox_7.READ_DATA">outbound_mailbox_7.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x7010</td><td><a href="#outbound_mailbox_7.STATUS">outbound_mailbox_7.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x7018</td><td><a href="#outbound_mailbox_7.ERROR_FLAGS">outbound_mailbox_7.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x7020</td><td><a href="#outbound_mailbox_7.WIRQT">outbound_mailbox_7.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -162,7 +162,7 @@
 <tr><td>0x7040</td><td><a href="#outbound_mailbox_7.IRQP">outbound_mailbox_7.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
 <tr><td>0x7048</td><td><a href="#outbound_mailbox_7.CTRL">outbound_mailbox_7.CTRL</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x7800</td><td><a href="#inbound_mailbox_7.WRITE_DATA">inbound_mailbox_7.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x7808</td><td><a href="#inbound_mailbox_7.READ_DATA">inbound_mailbox_7.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses.</td></tr>
+<tr><td>0x7808</td><td><a href="#inbound_mailbox_7.READ_DATA">inbound_mailbox_7.READ_DATA</a></td><td>R</td><td>A read of any size or alignment within this register pops one whole 64-bit entry<br>from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit<br>read of either half therefore discards the other half of the entry; read this<br>register with 64-bit accesses. A read while the fifo is empty returns<br>0x0000_0000_FEED_DEAD with an error response.</td></tr>
 <tr><td>0x7810</td><td><a href="#inbound_mailbox_7.STATUS">inbound_mailbox_7.STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x7818</td><td><a href="#inbound_mailbox_7.ERROR_FLAGS">inbound_mailbox_7.ERROR_FLAGS</a></td><td>R</td><td>A read of any size or alignment within this register clears every flag in it. The<br>flags are only returned in the lower 32 bits, so a 32-bit read of the upper half<br>returns 0 and still clears them; read this register with 64-bit accesses or at its<br>lower half.</td></tr>
 <tr><td>0x7820</td><td><a href="#inbound_mailbox_7.WIRQT">inbound_mailbox_7.WIRQT</a></td><td>RW</td><td>-</td></tr>
@@ -237,8 +237,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="inbound_mailbox_0.WRITE_DATA">inbound_mailbox_0.WRITE_DATA</h3>
 <table>
@@ -304,8 +304,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="outbound_mailbox_1.WRITE_DATA">outbound_mailbox_1.WRITE_DATA</h3>
 <table>
@@ -371,8 +371,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="inbound_mailbox_1.WRITE_DATA">inbound_mailbox_1.WRITE_DATA</h3>
 <table>
@@ -438,8 +438,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="outbound_mailbox_2.WRITE_DATA">outbound_mailbox_2.WRITE_DATA</h3>
 <table>
@@ -505,8 +505,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="inbound_mailbox_2.WRITE_DATA">inbound_mailbox_2.WRITE_DATA</h3>
 <table>
@@ -572,8 +572,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="outbound_mailbox_3.WRITE_DATA">outbound_mailbox_3.WRITE_DATA</h3>
 <table>
@@ -639,8 +639,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="inbound_mailbox_3.WRITE_DATA">inbound_mailbox_3.WRITE_DATA</h3>
 <table>
@@ -706,8 +706,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="outbound_mailbox_4.WRITE_DATA">outbound_mailbox_4.WRITE_DATA</h3>
 <table>
@@ -773,8 +773,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="inbound_mailbox_4.WRITE_DATA">inbound_mailbox_4.WRITE_DATA</h3>
 <table>
@@ -840,8 +840,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="outbound_mailbox_5.WRITE_DATA">outbound_mailbox_5.WRITE_DATA</h3>
 <table>
@@ -907,8 +907,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="inbound_mailbox_5.WRITE_DATA">inbound_mailbox_5.WRITE_DATA</h3>
 <table>
@@ -974,8 +974,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="outbound_mailbox_6.WRITE_DATA">outbound_mailbox_6.WRITE_DATA</h3>
 <table>
@@ -1041,8 +1041,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="inbound_mailbox_6.WRITE_DATA">inbound_mailbox_6.WRITE_DATA</h3>
 <table>
@@ -1108,8 +1108,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="outbound_mailbox_7.WRITE_DATA">outbound_mailbox_7.WRITE_DATA</h3>
 <table>
@@ -1175,8 +1175,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 <h3 id="inbound_mailbox_7.WRITE_DATA">inbound_mailbox_7.WRITE_DATA</h3>
 <table>
@@ -1242,7 +1242,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted; a word the peer pushes in that cycle<br>is discarded.</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port. The FIFO empties at the end of the<br>cycle in which this write is accepted.</td></tr>
 </table>
 </div>

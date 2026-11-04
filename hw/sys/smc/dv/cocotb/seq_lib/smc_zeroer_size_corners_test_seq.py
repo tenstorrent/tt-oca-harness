@@ -43,9 +43,12 @@ sampled passively:
   start are strobed and zeroed.
 * **SIZE 0.** `CTRL_STATUS` ignores the start while `SIZE` is 0, so no AW is
   issued and `STATUS` reads 0; the eight-byte job after it books one AW.
-* **Above range.** A start at bit 56 has to return `STATUS` to 0; its AW
-  address, BRESP and the `DEST_ADDR` readback are logged and not compared,
-  since the response above the mapped range is not documented.
+* **Above range.** `DEST_ADDR` bits [63:56] are ignored by the 56-bit
+  master and a clear starts at `DEST_ADDR[55:0]` (`zeroer_ctrl.adoc`,
+  `zeroer.adoc`). A start with all eight upper-byte bits set over a low
+  address the walk reaches has to read back all 64 bits as written, issue
+  exactly one AW at the low address with BRESP OKAY, zero the eight bytes
+  there and leave the words either side poisoned.
 
 `SIZE` and `DEST_ADDR` are cleared at the end so a later write to
 `CTRL_STATUS` cannot start a job over anything.
@@ -62,6 +65,7 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
+from .smc_addr_map import _REPO, _field_mask
 from .smc_output_fabric_vip_utils import (
     OUTPUT_FABRIC_ADDR,
     OUTPUT_FABRIC_MODEL_BASE,
@@ -114,9 +118,13 @@ _STATUS_CYCLES = 40000
 _BURST_WAIT_CYCLES = 40000
 
 _MASK64 = (1 << 64) - 1
-#: `base` [55:0] of GLOBAL_BASE / LOCAL_BASE and `size` [31:0] of REGION_SIZE.
-_BASE_FIELD = (1 << 56) - 1
-_SIZE_FIELD = (1 << 32) - 1
+_SMC_BASE_CFG_H = (
+    _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "smc_base_config.h"
+)
+#: `base` of GLOBAL_BASE and of LOCAL_BASE, and `size` of REGION_SIZE.
+_BASE_FIELD = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__GLOBAL_BASE__BASE_bm")
+_LOCAL_BASE_FIELD = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__LOCAL_BASE__BASE_bm")
+_SIZE_FIELD = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__REGION_SIZE__SIZE_bm")
 #: GLOBAL_BASE for the start-address legs: REGION_SIZE-aligned, and neither its
 #: window nor the M-mode / Xvisor windows above it hold a power of two.
 _RELOCATED_GLOBAL_BASE = 0x6000_0000
@@ -131,10 +139,12 @@ _UNALIGNED_SPAN = 0x18
 _UNALIGNED_POISON = 0xA5
 _SIZE0_DEST = 1 << 12
 _SIZE0_FOLLOW = 1 << 13
-_ABOVE_DEST = 1 << 56
+#: Where a start with every upper-byte bit set lands: `DEST_ADDR[55:0]`, placed
+#: in the page the k = 40 walk job reaches, off the walked word.
+_ABOVE_LAND = (1 << 40) + 0x100
+_ABOVE_DEST = (0xFF << 56) | _ABOVE_LAND
 _JOB_POISON = 0x5C
 _NEIGHBOUR_POISON = bytes.fromhex("1f2e3d4c5b6a7988")
-_ABOVE_RANGE_SF = "SF-019"
 
 #: Ordered fence of CHK-NONVAC: (term, step stamp).
 _FENCE = (
@@ -330,6 +340,11 @@ class smc_zeroer_size_corners_test_seq(output_fabric_pass_all_cfg_seq):
         await self._await_idle(f"{label}_FOLLOW")
         end_writes, _ = output_responder_counts()
         self.empty_bursts = end_writes - start_writes
+        assert self.empty_bursts == 1, (
+            f"{label}: the output responder booked {self.empty_bursts} write transactions "
+            f"across a SIZE 0 trigger and the eight-byte job after it; only the eight-byte "
+            f"job writes"
+        )
         kept = await self._fabric_read(_EMPTY_DEST)
         assert kept == _EMPTY_POISON, (
             f"{label}: 0x{_EMPTY_DEST:08x} reads 0x{kept:016x} after a job of SIZE 0 aimed "
@@ -497,7 +512,7 @@ class smc_zeroer_size_corners_test_seq(output_fabric_pass_all_cfg_seq):
         local = await self.csr_read("LOCAL_BASE", SMC_BASE_CONFIG_LOCAL_BASE_REG_ADDR, length=8)
         glob = await self.csr_read("GLOBAL_BASE", SMC_BASE_CONFIG_GLOBAL_BASE_REG_ADDR, length=8)
         region = await self.csr_read("REGION_SIZE", SMC_BASE_CONFIG_REGION_SIZE_REG_ADDR, length=8)
-        local &= _BASE_FIELD
+        local &= _LOCAL_BASE_FIELD
         glob &= _BASE_FIELD
         self.global_base_live = glob
         region &= _SIZE_FIELD
@@ -507,7 +522,7 @@ class smc_zeroer_size_corners_test_seq(output_fabric_pass_all_cfg_seq):
             windows.extend(
                 (f"{tag}+{name}", base + off, span) for name, off, span in _REMAP_WINDOWS
             )
-        dests = [1 << k for k in range(56)] + [_ABOVE_DEST]
+        dests = [1 << k for k in range(56)] + [_ABOVE_LAND]
         hits = [
             f"0x{d:x} in {tag} [0x{lo:x}, 0x{lo + span:x})"
             for d in dests
@@ -685,34 +700,54 @@ class smc_zeroer_size_corners_test_seq(output_fabric_pass_all_cfg_seq):
         )
 
     async def _above_range(self) -> None:
-        mon = self.env.output_axi_monitor
-        allow = (mon.allow_slverr, mon.allow_decerr)
-        mon.allow_slverr = mon.allow_decerr = True
-        try:
-            await self.csr_write("ABOVE_DEST_ADDR", ZEROER_DEST_ADDR, _ABOVE_DEST, length=8)
-            await self.csr_write("ABOVE_SIZE", ZEROER_SIZE, _WORD_BYTES, length=8)
-            await self.csr_read("ABOVE_SIZE_RB", ZEROER_SIZE, expected=_WORD_BYTES, length=8)
-            readback = await self.csr_read("ABOVE_DEST_ADDR_RB", ZEROER_DEST_ADDR, length=8)
-            mark = self.watch.mark()
-            await self._trigger("ABOVE")
-            polls = await self._poll_idle("ABOVE")
-        finally:
-            mon.allow_slverr, mon.allow_decerr = allow
+        below, above = _ABOVE_LAND - _WORD_BYTES, _ABOVE_LAND + _WORD_BYTES
+        self._mem_write(below, _NEIGHBOUR_POISON)
+        self._mem_write(_ABOVE_LAND, bytes([_JOB_POISON]) * _WORD_BYTES)
+        self._mem_write(above, _NEIGHBOUR_POISON)
+        await self.csr_write("ABOVE_DEST_ADDR", ZEROER_DEST_ADDR, _ABOVE_DEST, length=8)
+        await self.csr_write("ABOVE_SIZE", ZEROER_SIZE, _WORD_BYTES, length=8)
+        await self.csr_read("ABOVE_SIZE_RB", ZEROER_SIZE, expected=_WORD_BYTES, length=8)
+        readback = await self.csr_read("ABOVE_DEST_ADDR_RB", ZEROER_DEST_ADDR, length=8)
+        assert readback == _ABOVE_DEST, (
+            f"ABOVE: DEST_ADDR reads back 0x{readback:016x}, written 0x{_ABOVE_DEST:016x}: the "
+            f"start is not programmed with bits [63:56] set"
+        )
+        mark = self.watch.mark()
+        await self._trigger("ABOVE")
+        polls = await self._poll_idle("ABOVE")
         aws = self.watch.aw[mark[0] :]
         bresp = self.watch.b_resp[mark[2] :]
+        assert [a[0] for a in aws] == [_ABOVE_LAND], (
+            f"ABOVE: AWs at SYS_OUT for DEST_ADDR 0x{_ABOVE_DEST:016x}: "
+            f"{[hex(a[0]) for a in aws]}, expected one at DEST_ADDR[55:0] = 0x{_ABOVE_LAND:x}"
+        )
+        assert bresp == [0], (
+            f"ABOVE: BRESP {bresp} for the job at 0x{_ABOVE_LAND:x}, expected one OKAY"
+        )
+        head = self.mem.read(_ABOVE_LAND, _WORD_BYTES)
+        assert head == bytes(_WORD_BYTES), (
+            f"ABOVE: the {_WORD_BYTES} bytes at 0x{_ABOVE_LAND:x} read {head.hex()} after the job"
+        )
+        for tag, addr in (("BELOW", below), ("ABOVE", above)):
+            got = self.mem.read(addr, _WORD_BYTES)
+            assert got == _NEIGHBOUR_POISON, (
+                f"ABOVE: the word {tag} the job at 0x{addr:x} reads {got.hex()}, not its poison "
+                f"{_NEIGHBOUR_POISON.hex()}"
+            )
         self._stamp("S7")
         self._chk(
             "CHK-ZEROER-ABOVE-RANGE",
-            "DEST_ADDR 0x%016x (bit 56) with SIZE 8 returned STATUS to 0 in %d polls within %d "
-            "clk_smc_i; measured, not compared (LINKED-ISSUE %s, SF-020): DEST_ADDR readback "
-            "0x%016x, AW %s, BRESP %s",
+            "DEST_ADDR 0x%016x (bits [63:56] all set) with SIZE 8 read back 0x%016x, issued "
+            "SYS_OUT AW %s at DEST_ADDR[55:0] = 0x%x with BRESP %s, zeroed the 8 bytes there "
+            "with both neighbouring words poisoned, and returned STATUS to 0 in %d polls within "
+            "%d clk_smc_i",
             _ABOVE_DEST,
-            polls,
-            _STATUS_CYCLES,
-            _ABOVE_RANGE_SF,
             readback,
             [f"0x{a:x}(len {n})" for a, n, _z in aws],
+            _ABOVE_LAND,
             bresp,
+            polls,
+            _STATUS_CYCLES,
         )
 
     async def _restore(self) -> None:

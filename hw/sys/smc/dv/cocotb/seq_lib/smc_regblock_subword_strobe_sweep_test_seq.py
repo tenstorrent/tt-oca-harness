@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_W2T_008 ANCHOR: smc_regblock_subword_strobe_sweep_test
-# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 6267422078430d380d02f714df24eeee005c62cb6d96000f1dd983845f6c5ecb
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md @ artifact_revision 2 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 889a4ca8791f28218629d8784f7940dff3bb298fea035efeba697671516c4074
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md @ artifact_revision 7 ENV: cocotb
 """Sub-word reads, byte-lane and strobed writes, and window sweeps of the generated register blocks.
 
 Every access goes through SEP_IN, one at a time except the pipelined sub-word
@@ -22,6 +22,15 @@ and window read groups.
 * REGION[7].region_attrs of the alias, M-mode and Xvisor remaps takes all ones
   and then 0; every documented field is compared, reserved bits are logged
   (SF-001).
+* Every one of the 24 remap regions (alias, M-mode and Xvisor REGION[0..7])
+  whose saved valid reads 0 first takes a WSTRB 0x7F write with bit 63 set and
+  lanes 0..6 the complement of the saved bytes. Every region then takes a WSTRB
+  0x80 write setting bit 63 (lanes 0..6 the complement of the saved bytes), a
+  WSTRB 0x7F write of the saved word with bit 63 set, and a full-width restore
+  of the saved word, each read back. Every access must answer OKAY, the alias
+  regions must start with valid 0 (`alias_remap.adoc`) and the restore must
+  read back the saved word; the valid bit and lane fields after the strobed
+  writes are logged (SF-009 is open).
 * The system-timer window answers its 9 registers with their documented resets
   and DECERR 0xBADCAB1E past its 36-byte extent; the telemetry window answers
   OKAY over its 768-byte extent with exactly three words reading 0x1 and DECERR
@@ -53,12 +62,16 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
+    _ALIAS_REMAP_H,
+    _REPO,
     CLOCK_GATE_CONTROL,
     LOCAL_BASE_RESET,
     TELEMETRY_CG_EN,
     UART_CG_EN,
+    _field_mask,
     generated_decoded_extent,
     generated_window,
+    reg_reset_word,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_register
@@ -73,12 +86,12 @@ WINDOW_GROUP = 16
 # S1: family -> (IP-XACT path of the reference register, documented count).
 # A "{}" marks the instance index.
 FAMILIES = (
-    ("alias_remap", "smc_alias_remap[{}]/REGION/region_start", 8),
-    ("mmode_remap", "smc_mmode_remap[{}]/REGION/region_attrs", 8),
-    ("xvisor_remap", "smc_xvisor_remap[{}]/REGION/region_attrs", 8),
-    ("inbound_filter", "smc_inbound_filter_ctrl[{}]/END_ADDR", 16),
-    ("outbound_filter", "smc_outbound_filter_ctrl[{}]/END_ADDR", 16),
-    ("gpio_intf", "gpio_intf[{}]/ACCESS_FILTER", 67),
+    ("alias_remap", "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_start", 8),
+    ("mmode_remap", "smc_mmode_remap_wrap/output_remap[{}]/REGION/region_attrs", 8),
+    ("xvisor_remap", "smc_xvisor_remap_wrap/output_remap[{}]/REGION/region_attrs", 8),
+    ("inbound_filter", "smc_inbound_filter_ctrl_wrap/filter_ctrl[{}]/END_ADDR", 16),
+    ("outbound_filter", "smc_outbound_filter_ctrl_wrap/filter_ctrl[{}]/END_ADDR", 16),
+    ("gpio_intf", "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", 67),
     ("cpu_ctrl", "smc_cpu_ctrl/RESET_VECTOR[0]", 1),
     ("telemetry", "smc_telemetry_receiver_wrap/telemetry_receiver[{}]/STATUS", 3),
     ("timer", "smc_system_timer_octs/CTRL", 1),
@@ -90,21 +103,55 @@ FAMILIES = (
 INSTANCES = 135
 RESET_COMPARED = 119
 
-# alias_remap.adoc:47, :49, :50; output_remap.adoc:23, :25.
-ALIAS_ATTRS_FIELDS = (1 << 63) | (0xF << 56) | (((1 << 56) - 1) & ~((1 << 12) - 1))
-ORMP_FIELDS = (1 << 63) | ((1 << 56) - 1)
+_HW_IP = _REPO / "hw" / "ip"
+_OUTPUT_REMAP_H = _HW_IP / "output_remap" / "regs" / "gen" / "c" / "output_remap.h"
+_FILTER_H = _HW_IP / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+_TIMER_H = _HW_IP / "system_timer_octs" / "regs" / "gen" / "c" / "system_timer_octs.h"
 
-# filter_ctrl.adoc:24-51.
-F_LOCKED = 1 << 63
-F_ALLOW_BURST = 1 << 24
-F_GROUP_ID = 0xF << 20
-F_SRC_ID = 0xF << 16
-F_DBW = 0x7 << 12
-F_ALLOW_NS = 1 << 8
-F_ENTRY_EN = 1 << 4
-F_WRITE = 1 << 1
-F_READ = 1 << 0
-F_DBW_VALUE = 0x3
+
+def _alias_attrs(field: str) -> int:
+    return _field_mask(_ALIAS_REMAP_H, f"ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__{field}_bm")
+
+
+def _ormp_attrs(field: str) -> int:
+    return _field_mask(
+        _OUTPUT_REMAP_H, f"OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__{field}_bm"
+    )
+
+
+def _fcfg(field: str, suffix: str = "bm") -> int:
+    return _field_mask(_FILTER_H, f"FILTER_CTRL__FILTER_CONFIG__{field}_{suffix}")
+
+
+def _timer(reg: str, field: str) -> int:
+    return _field_mask(_TIMER_H, f"SYSTEM_TIMER_OCTS__{reg}__{field}_bm")
+
+
+ALIAS_ATTRS_FIELDS = _alias_attrs("VALID") | _alias_attrs("CACHEABLE") | _alias_attrs("OFFSET")
+ORMP_FIELDS = _ormp_attrs("VALID") | _ormp_attrs("OFFSET")
+
+# S13: (family, IP-XACT path of region_attrs, declared fields).
+VALID_LANE_FAMILIES = (
+    ("alias", "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_attrs", ALIAS_ATTRS_FIELDS),
+    ("mmode", "smc_mmode_remap_wrap/output_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
+    ("xvisor", "smc_xvisor_remap_wrap/output_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
+)
+VALID_LANE_REGIONS = 8
+REGION_VALID = 1 << 63
+LANE7 = 0xFF << 56
+VALID_LANE_ACCESSES = 7
+VALID_ZERO_ACCESSES = 2
+
+F_LOCKED = _fcfg("LOCKED")
+F_ALLOW_BURST = _fcfg("ALLOW_BURST")
+F_GROUP_ID = _fcfg("GROUP_ID")
+F_SRC_ID = _fcfg("SRC_ID")
+F_DBW = _fcfg("DATA_BUS_WIDTH")
+F_ALLOW_NS = _fcfg("ALLOW_NS")
+F_ENTRY_EN = _fcfg("ENTRY_ENABLED")
+F_WRITE = _fcfg("WRITE_ALLOWED")
+F_READ = _fcfg("READ_ALLOWED")
+F_DBW_VALUE = _fcfg("DATA_BUS_WIDTH", "reset")
 F_RW = F_ALLOW_BURST | F_GROUP_ID | F_SRC_ID | F_ALLOW_NS | F_ENTRY_EN | F_WRITE | F_READ
 F_DECLARED = F_LOCKED | F_RW | F_DBW
 # S7: (strobed lane, byte written on it).
@@ -132,19 +179,22 @@ PRELOAD_PRE = -1
 
 # system_timer_octs.adoc:32-116 (word offset -> name, documented reset of the
 # declared fields); STATUS.MODE is NOT(is_primary_i).
-TIMER_REGS = (
-    ("TIMER_START", 0x0),
-    ("CTRL", 0x0001_020A),
-    ("STATUS", None),
-    ("TIMER_PRESET_LO", 0x0),
-    ("TIMER_PRESET_HI", 0x0),
-    ("TIMER_COUNT_LO", 0x0),
-    ("TIMER_COUNT_HI", 0x0),
-    ("CREDIT_EXPIRED", 0x0),
-    ("TIMER_GPIO_ENABLE", 0x0),
+TIMER_REGS = tuple(
+    (name, None if name == "STATUS" else reg_reset_word(_TIMER_H, "SYSTEM_TIMER_OCTS", name))
+    for name in (
+        "TIMER_START",
+        "CTRL",
+        "STATUS",
+        "TIMER_PRESET_LO",
+        "TIMER_PRESET_HI",
+        "TIMER_COUNT_LO",
+        "TIMER_COUNT_HI",
+        "CREDIT_EXPIRED",
+        "TIMER_GPIO_ENABLE",
+    )
 )
-TIMER_STATUS_RUNNING = 1 << 4
-TIMER_STATUS_MODE = 1 << 0
+TIMER_STATUS_RUNNING = _timer("STATUS", "RUNNING")
+TIMER_STATUS_MODE = _timer("STATUS", "MODE")
 TIMER_EXTENT = 36
 TIMER_APERTURE = 0x1000
 # telemetry_receiver.adoc:21-28, :68; memory_map.adoc:44.
@@ -157,6 +207,7 @@ TERMS = (
     "SUBWORD",
     "BYTE-LANE",
     "FULLWIDTH-REMAP",
+    "VALID-LANE",
     "TIMER-WINDOW",
     "TELEM-WINDOW",
     "FILTER-LANES",
@@ -169,6 +220,7 @@ CHECKERS = (
     "CHK-SWEEP-SUBWORD",
     "CHK-SWEEP-BYTE-LANE",
     "CHK-SWEEP-FULLWIDTH-REMAP",
+    "CHK-SWEEP-VALID-LANE",
     "CHK-SWEEP-TIMER-WINDOW",
     "CHK-SWEEP-TELEM-WINDOW",
     "CHK-SWEEP-FCFG-LANES",
@@ -236,7 +288,7 @@ def build_entries() -> tuple[Entry, ...]:
     for bank in ("inbound", "outbound"):
         for i in range(16):
             regs = [
-                rdl_register(f"smc_{bank}_filter_ctrl[{i}]/{r}")
+                rdl_register(f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[{i}]/{r}")
                 for r in ("FILTER_CONFIG", "START_ADDR", "END_ADDR")
             ]
             out.append(Entry(f"{bank}{i}", *(r.addr for r in regs)))
@@ -244,7 +296,7 @@ def build_entries() -> tuple[Entry, ...]:
 
 
 def _cfg_mask_check() -> None:
-    reg = rdl_contract("smc_outbound_filter_ctrl[0]/FILTER_CONFIG")
+    reg = rdl_contract("smc_outbound_filter_ctrl_wrap/filter_ctrl[0]/FILTER_CONFIG")
     assert reg.declared_mask == F_DECLARED, (
         f"FILTER_CONFIG declared fields 0x{reg.declared_mask:016x}, filter_ctrl.adoc gives "
         f"0x{F_DECLARED:016x}"
@@ -387,6 +439,7 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
         await self._subword()
         await self._byte_lane()
         await self._fullwidth_remap()
+        await self._valid_lane()
         await self._timer_window()
         await self._telem_window()
         await self._filter_lanes()
@@ -514,8 +567,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             *(
                 (
                     f"{bank.upper()}15_START",
-                    rdl_register(f"smc_{bank}_filter_ctrl[15]/START_ADDR"),
-                    rdl_register(f"smc_{bank}_filter_ctrl[15]/END_ADDR"),
+                    rdl_register(f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[15]/START_ADDR"),
+                    rdl_register(f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[15]/END_ADDR"),
                     PRELOAD_PRE,
                     (1, 3, 5),
                     0x5A,
@@ -558,9 +611,13 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
     async def _fullwidth_remap(self) -> None:
         # S4.
         legs = (
-            ("ALIAS7", "smc_alias_remap[7]/REGION/region_attrs", ALIAS_ATTRS_FIELDS),
-            ("MMODE7", "smc_mmode_remap[7]/REGION/region_attrs", ORMP_FIELDS),
-            ("XVISOR7", "smc_xvisor_remap[7]/REGION/region_attrs", ORMP_FIELDS),
+            (
+                "ALIAS7",
+                "smc_alias_remap_wrap/alias_remap[7]/REGION/region_attrs",
+                ALIAS_ATTRS_FIELDS,
+            ),
+            ("MMODE7", "smc_mmode_remap_wrap/output_remap[7]/REGION/region_attrs", ORMP_FIELDS),
+            ("XVISOR7", "smc_xvisor_remap_wrap/output_remap[7]/REGION/region_attrs", ORMP_FIELDS),
         )
         ok = []
         zeroed = 0
@@ -585,6 +642,114 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             f"{', '.join(ok)}, zeroed {zeroed}/3, reserved=ones:0x"
             f"{self._reserved.get('remap', 0):016x} zero:0x"
             f"{self._reserved.get('remap-zero', 0):016x} (LINKED-ISSUE SF-001 / SF-002, logged only)",
+        )
+
+    async def _valid_lane(self) -> None:
+        # S13.
+        families: dict[str, int] = {}
+        visited = okay = after_lane7 = kept = restored = lane7_match = lane_0x7f_match = 0
+        zero_saved = zero_kept = zero_match = 0
+        output_valid: list[str] = []
+        accesses = self.accesses
+        for family, template, fields in VALID_LANE_FAMILIES:
+            for n in range(VALID_LANE_REGIONS):
+                name = f"{family.upper()}{n}_VALID"
+                addr = rdl_register(template.format(n)).addr
+                saved = await self._rd(f"{name}_SAVE", addr)
+                if family == "alias":
+                    assert not saved & REGION_VALID, (
+                        f"{name} region_attrs 0x{saved:016x} reads valid 1; alias_remap.adoc "
+                        "gives reset 0 and S4 leaves REGION[7] at 0"
+                    )
+                else:
+                    output_valid.append(str(saved >> 63))
+                self._note_reserved("valid-lane", saved, fields)
+                zero_log = "n/a (saved valid 1)"
+                if not saved & REGION_VALID:
+                    zero_data = (~saved & ~LANE7 & ALL64) | (saved & LANE7) | REGION_VALID
+                    await self._wr(f"{name}_V0_L0_6", addr, zero_data, wstrb=0x7F)
+                    got_zero = await self._rd(f"{name}_V0_L0_6_RB", addr)
+                    zero_image = (saved & LANE7) | (zero_data & ~LANE7)
+                    zero_saved += 1
+                    zero_kept += 1 - (got_zero >> 63)
+                    zero_match += got_zero & fields == zero_image & fields
+                    self._note_reserved("valid-lane", got_zero, fields)
+                    zero_log = (
+                        f"wrote=0x{zero_data:016x} read=0x{got_zero:016x} (img 0x{zero_image:016x})"
+                    )
+                    okay += VALID_ZERO_ACCESSES
+                    if family != "alias":
+                        self.branch_accesses += VALID_ZERO_ACCESSES
+                lane7_data = (~saved & ~LANE7 & ALL64) | (saved & LANE7) | REGION_VALID
+                await self._wr(f"{name}_L7", addr, lane7_data, wstrb=0x80)
+                got_l7 = await self._rd(f"{name}_L7_RB", addr)
+                l7_image = (saved & ~LANE7) | (lane7_data & LANE7)
+                after_lane7 += got_l7 >> 63
+                lane7_match += got_l7 & fields == l7_image & fields
+                low_data = saved | REGION_VALID
+                await self._wr(f"{name}_L0_6", addr, low_data, wstrb=0x7F)
+                got_low = await self._rd(f"{name}_L0_6_RB", addr)
+                low_image = (got_l7 & LANE7) | (low_data & ~LANE7)
+                kept += got_low >> 63
+                lane_0x7f_match += got_low & fields == low_image & fields
+                self._note_reserved("valid-lane", got_l7 | got_low, fields)
+                await self._wr(f"{name}_RESTORE", addr, saved, wstrb=0xFF)
+                back = await self._rd(f"{name}_RESTORE_RB", addr)
+                assert back == saved, (
+                    f"{name}: WSTRB 0xFF restore wrote 0x{saved:016x}, read back 0x{back:016x}"
+                )
+                restored += 1
+                okay += VALID_LANE_ACCESSES
+                visited += 1
+                families[family] = families.get(family, 0) + 1
+                cocotb.log.info(
+                    "S13 %s saved=0x%016x valid-0 0x7F %s lane7 wrote=0x%016x read=0x%016x (img 0x%016x) "
+                    "0x7F wrote=0x%016x read=0x%016x (img 0x%016x) restore=0x%016x "
+                    "(SF-009, logged)",
+                    name,
+                    saved,
+                    zero_log,
+                    lane7_data,
+                    got_l7,
+                    l7_image,
+                    low_data,
+                    got_low,
+                    low_image,
+                    back,
+                )
+        total = len(VALID_LANE_FAMILIES) * VALID_LANE_REGIONS
+        assert all(families.get(f) == VALID_LANE_REGIONS for f, _t, _m in VALID_LANE_FAMILIES), (
+            f"S13 family counts {families}, the contract names 8 each"
+        )
+        assert visited == total and restored == total
+        assert zero_saved >= VALID_LANE_REGIONS, "the 8 alias regions all save valid 0"
+        assert (
+            self.accesses - accesses
+            == okay
+            == total * VALID_LANE_ACCESSES + zero_saved * VALID_ZERO_ACCESSES
+        )
+        self._mark("VALID-LANE", okay)
+        cocotb.log.info(
+            "S13 lane fields match the strobed-lane image: valid-0 WSTRB 0x7F %d/%d, after "
+            "WSTRB 0x80 %d/%d, after WSTRB 0x7F %d/%d; output remap saved valid=%s; reserved OR=0x%016x "
+            "(LINKED-ISSUE SF-009 / SF-001 / SF-002, logged only)",
+            zero_match,
+            zero_saved,
+            lane7_match,
+            total,
+            lane_0x7f_match,
+            total,
+            "".join(output_valid),
+            self._reserved.get("valid-lane", 0),
+        )
+        self._chk(
+            "CHK-SWEEP-VALID-LANE",
+            f"{visited} regions (mmode {families['mmode']}, xvisor {families['xvisor']}, "
+            f"alias {families['alias']}): resp OKAY {okay}/{okay}, "
+            f"valid-after-lane7={after_lane7}, valid-after-0x7F={kept} (bit 63 written 1, "
+            f"no lane-7 strobe evidence), "
+            f"valid-0 lane-7-unstrobed kept 0 {zero_kept}/{zero_saved}, "
+            f"restored {restored}/{total} (SF-009)",
         )
 
     async def _window_reads(

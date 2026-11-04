@@ -47,9 +47,9 @@ _CFG_CMP_MASK = (
     | _F_ALLOW_BURST
 )
 
-_IN_CFG = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR"
-_IN_START = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR"
-_IN_END = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR"
+_IN_CFG = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR"
+_IN_START = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR"
+_IN_END = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR"
 
 AXI_TIMEOUT_NS = 200_000
 FILTER_READY_POLLS = 64
@@ -145,7 +145,7 @@ class smu_axi_prot_encoding_decode_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != 0x1:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
-        sb.expect_eq("CHK-SMU-PROT-J2A-READY", idcode, 0x1)
+        sb.expect_eq("CHK-SMU-PROT-J2A-READY", idcode, 0x1, evidence="CHK-SMU-PROT-J2A-READY")
 
         master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         probe = SMC_CHIP_CONFIG_VERSION_LO

@@ -100,7 +100,7 @@ class smu_smc_wdt_timeout_irq_test_seq:
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
-        sb.expect_eq("CHK-WDT-TO-GATE-OPEN", gate, 0)
+        sb.expect_eq("CHK-WDT-TO-GATE-OPEN", gate, 0, evidence="CHK-WDT-TO-GATE-OPEN")
 
         st_u = await wdt_unlock(jtag)
         if st_u != J2A_STATUS_SUCCESS:
@@ -111,14 +111,16 @@ class smu_smc_wdt_timeout_irq_test_seq:
         st_rb, cmp_rb = await self._rd32(jtag, WDT_CMP)
         if st_rb != J2A_STATUS_SUCCESS or (cmp_rb & CMP_MASK) != CMP_SMALL:
             raise AssertionError(f"WDT_CMP rb st={st_rb} data=0x{cmp_rb:x} want 0x{CMP_SMALL:x}")
-        sb.expect_eq("CHK-WDT-TO-CMP", cmp_rb & CMP_MASK, CMP_SMALL)
+        sb.expect_eq("CHK-WDT-TO-CMP", cmp_rb & CMP_MASK, CMP_SMALL, evidence="CHK-WDT-TO-CMP")
 
         st_pre, ctrl_pre = await self._rd32(jtag, WDT_CTRL)
         if st_pre != J2A_STATUS_SUCCESS:
             raise AssertionError(f"WDT_CTRL pre-enable status={st_pre}")
         if ctrl_pre & WDT_IP0_MASK:
             raise AssertionError(f"WDOGIP0 already set before enable CTRL=0x{ctrl_pre:08x}")
-        sb.expect_eq("CHK-WDT-TO-IP0-PRE", ctrl_pre & WDT_IP0_MASK, 0)
+        sb.expect_eq(
+            "CHK-WDT-TO-IP0-PRE", ctrl_pre & WDT_IP0_MASK, 0, evidence="CHK-WDT-TO-IP0-PRE"
+        )
 
         st_u2 = await wdt_unlock(jtag)
         if st_u2 != J2A_STATUS_SUCCESS:
@@ -136,6 +138,7 @@ class smu_smc_wdt_timeout_irq_test_seq:
             "CHK-WDT-TO-EN",
             bool(ctrl0 & WDT_ALWAYS_MASK) and bool(ctrl0 & WDT_ZEROCMP_MASK),
             True,
+            evidence="CHK-WDT-TO-EN",
         )
 
         await ClockCycles(dut.clk_smu_i, max(CMP_SMALL * 64, 2048))

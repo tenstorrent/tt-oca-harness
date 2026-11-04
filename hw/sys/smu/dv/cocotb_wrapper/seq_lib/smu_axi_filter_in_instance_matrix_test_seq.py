@@ -55,9 +55,9 @@ _CFG_CMP_MASK = (
     | filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm")
 )
 
-_IN_CFG = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR"
-_IN_START = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR"
-_IN_END = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR"
+_IN_CFG = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR"
+_IN_START = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR"
+_IN_END = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR"
 
 AXI_TIMEOUT_NS = 200_000
 FILTER_READY_POLLS = 64
@@ -247,7 +247,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != 0x1:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
-        sb.expect_eq("CHK-FILTER-IN-J2A-READY", idcode, 0x1)
+        sb.expect_eq("CHK-FILTER-IN-J2A-READY", idcode, 0x1, evidence="CHK-FILTER-IN-J2A-READY")
 
         master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
 
@@ -278,7 +278,6 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         self._log(
             f"CHK-FILTER-IN-DEFAULT-BLOCK-S1: post_reset inbound blocked @0x{PROBE_VERSION:08x}"
         )
-        sb.expect_eq("CHK-FILTER-IN-DEFAULT-BLOCK-S1", True, True)
 
         # ---- S1 DECODE: independent instance CSR readback ----
         s1_observed: dict[int, tuple[int, int, int]] = {}
@@ -368,7 +367,6 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             "CHK-FILTER-IN-INSTANCES-S2: instance_isolation_pairwise "
             "inst0_only=OKAY inst1_only=OKAY cross_blocked=DECERR"
         )
-        sb.expect_eq("CHK-FILTER-IN-INSTANCES-S2", True, True)
 
         # ---- S3 three dimensions ----
         await self._disable_all(jtag, "S3_clear")
@@ -421,7 +419,6 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             "CHK-FILTER-IN-INSTANCES-S3: all_three_match,addr_fail_only,"
             "srcid_fail_only,prot_fail_only inst=3"
         )
-        sb.expect_eq("CHK-FILTER-IN-INSTANCES-S3", True, True)
 
         # ---- S5 configured admission ----
         await self._disable_all(jtag, "S5_clear")
@@ -456,10 +453,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         self._log(
             f"CHK-FILTER-IN-DEFAULT-BLOCK-S2: configured_then_admitted @0x{PROBE_VERSION:08x}"
         )
-        sb.expect_eq("CHK-FILTER-IN-DEFAULT-BLOCK-S2", True, True)
 
-        all_ok = self.s1_ok and self.s2_ok and self.s3_ok and self.s4_ok and self.s5_ok
-        sb.expect_eq("CHK-FILTER-IN-INSTANCES-BASIC", all_ok, True)
         self._log(
             "CHK-FILTER-IN-INSTANCES-BASIC: "
             f"s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} "

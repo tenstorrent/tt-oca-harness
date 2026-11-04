@@ -14,8 +14,11 @@ Entropy Source):
   * A ``FLUSH`` write discards the buffered words (entropy_source.adoc:827).
   * A word offered while full is discarded and sets ``NOISE_OBS_OVERFLOW`` or
     ``BIW_OBS_OVERFLOW``, which clear by write-one (entropy_source.adoc:134, :136).
+    The observe FIFOs use the same FIFO as the output FIFO (architecture.adoc:189),
+    whose overflow is a write discarded while full (entropy_source.rdl:129): a full
+    observe FIFO keeps its words and discards the incoming word.
   * ``FIPS_LOCK.LOCK`` prevents changes of both ``RAW_ENABLE`` fields
-    (entropy_source.adoc:752, :792, :828; architecture.adoc:239-241).
+    (entropy_source.adoc:752, :792, :828; architecture.adoc:243-245).
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20. Every set-up selects the
@@ -29,7 +32,9 @@ Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the order of the 16 ``LANE_SEL`` values (every write changes the
 effective lane), z per lane change (both values, z = 1 at least once), the flush
 lane, its z and the words f before the flush, the words k at the lock moment,
-z of each lock pass, and the lane and bits of the sample-clock sequence leg.
+z of each lock pass, the lane and bits of the sample-clock sequence leg, the
+lane-0 ``LANE_SEL`` value 12 to 15 of the same-lane write, and the bits of the
+overflow sequence.
 
 Sample-clock sequence leg (``hw/ip/entropy_source/doc/architecture.adoc:75``: a
 flop on the sampling clock, then a two-stage synchronizer into ``clk_i``). The
@@ -57,14 +62,18 @@ Checkers:
                     with the sample clock stopped across a FLUSH, LEVEL reads 0 right
                     after the FLUSH (entropy_source.adoc:827: it discards the buffered
                     words). A lane change lowers LEVEL.
-  CHK-OBS-OVERFLOW  plateau D, overflow bit 1, LEVEL D after two fill times, W1C clears.
+  CHK-OBS-OVERFLOW  plateau D = 64, overflow bit 1, LEVEL D after two fill times, W1C
+                    clears. D: the observe FIFOs use the same FIFO as the 64-entry
+                    output FIFO (architecture.adoc:189, :146).
                     Control: the overflow bit reads 0 before the leg and 1 after
                     the drain, before the write-one.
   CHK-OBS-LOCK      locked at 1: L + 2 words delivered, last two noise words equal the
                     lane value; a FLUSH with old words of z and words of 1 - z buffered
                     and the sample clock stopped gives LEVEL 0, and every word popped
                     after it equals the word of 1 - z (no kept word); locked at 0:
-                    LEVEL stays 0.
+                    after a write of RAW_ENABLE 1 that the lock refuses, LEVEL
+                    stays 0. That write must get a B response of any code; no text
+                    states the code, so it is logged as ``OBS-LOCK0-RESP``.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
                     both LEVELs read 0 after a hold of 256 strobes and at least 4 x
                     the measured first-word time of each FIFO (entropy_source.adoc:792,
@@ -83,10 +92,31 @@ Checkers:
                     (architecture.adoc:75).
                     Control: every sample edge lies at least 150 ps from each ``clk_i``
                     rising and falling edge, measured.
-Logged only: ``OBS-BLOCKED CHK-OBS-MAIN`` (no stated rule that observe capture leaves
-the main chain rate unchanged); the main-chain leg logs its counts. ``OBS-OBS-FAST``
+  CHK-OBS-MAIN      with ``SHA256_WHITENING_ENABLE`` = 0, the ``esrc_compress_vld_o``
+                    word count over 256 decorrelator strobes with both observe paths
+                    on equals the count over 256 strobes with both off
+                    (entropy_source.rdl ``NOISE_OBS_CTRL``: "Copy-only: the main
+                    datapath is unaffected"; ``BIW_OBS_CTRL``: "without disturbing
+                    the main datapath").
+                    Controls: two windows with capture off give the same non-zero
+                    count, and both observe LEVELs are above 0 after the on window.
+  CHK-OBS-OVF-KEEP  after the sample-clock sequence leg, the same lane takes
+                    FIFO_DEPTH_MAX + 2 words of a seeded sequence with the noise
+                    observe FIFO empty and nothing popped: the edges driven equal the
+                    sequence length, LEVEL is 64, NOISE_OBS_OVERFLOW is 1, 64 words
+                    pop, and popped words 1 to 63 equal written words 1 to 63 (the
+                    two last words are the discarded ones). Words are compared at the
+                    one sample offset, 0 or 1, that matches all 63 of them; the
+                    offset and word 0 are the packing, which CHK-OBS-PACK and
+                    CHK-OBS-SEQ grade. Control: for this sequence the kept words at
+                    each offset differ from popped words 1 to 63 of a FIFO that
+                    discards its two oldest words, at each offset.
+Logged only: ``OBS-FAST``
 logs the lost and repeated samples of a 64-bit sequence at a sample period of
-``2 x clk_i + 2 ps`` (no stated maximum sample rate).
+``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-LANESEL-SAME`` logs
+LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (the ``LANE_SEL`` text
+flushes on a lane change, the ``FLUSH`` text on a ``LANE_SEL`` change; they disagree
+here).
 """
 
 from __future__ import annotations
@@ -98,6 +128,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, Event, First, NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_esrc_pattern_noise import (
     NUM_LANES,
@@ -108,10 +139,12 @@ from env.sep_esrc_pattern_noise import (
     balanced_lanes,
     describe,
 )
+from env.sep_fabric_common import resp_name
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, sym
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
     ESRC_ALERT_THRESHOLD,
@@ -153,7 +186,8 @@ LOCK_EXTRA_POPS = 2
 LOCK_FLUSH_WORDS = 4
 LOCK0_WAIT_FACTOR = 4
 UNGATED_WAIT_FACTOR = 4
-MAIN_WORDS = 256
+# Decorrelator strobes per main-chain window.
+MAIN_STROBES = 256
 # Strobes of the capture-off leg: eight observe words of 32 samples.
 OFF_STROBES = 8 * 32
 # The capture-off hold also spans this many first-word times of each FIFO, measured
@@ -164,6 +198,14 @@ DRAW_TRIES = 16
 # leaf. The RDL LEVEL field is 7 bits (6:0).
 FIFO_DEPTH_MAX = 64
 ALL_ONES = 0xFFFF_FFFF
+# Observe FIFO depth: the observe FIFOs use the same FIFO as the output FIFO
+# (hw/ip/entropy_source/doc/architecture.adoc:189), which holds 64 entries (:146).
+OBS_FIFO_DEPTH = 64
+# Words of the overflow sequence: two more than the drain bound.
+OVF_SEQ_WORDS = FIFO_DEPTH_MAX + 2
+# Sample offsets of a packed observe word against its 32-sample boundary that the
+# keep check accepts; the packing itself is graded by CHK-OBS-PACK and CHK-OBS-SEQ.
+PACK_OFFSETS = (0, 1)
 
 # Sample-clock sequence leg (test parameters).
 SCLK = "entropy_rosc_sample_clk_i"
@@ -242,6 +284,8 @@ class Plan:
     seq_lane: int
     seq: tuple[int, ...]
     fast: tuple[int, ...]
+    same_sel: int
+    ovf_seq: tuple[int, ...]
 
     def describe(self) -> str:
         return (
@@ -249,7 +293,7 @@ class Plan:
             f"flush_z={self.flush_z} f={self.f} k={self.k} z_lock={list(self.z_lock)} "
             f"{describe(self.balanced)} seq_lane={self.seq_lane} "
             f"seq={[f'0x{w:08x}' for w in _words(self.seq)]} "
-            f"fast={[f'0x{w:08x}' for w in _words(self.fast)]}"
+            f"fast={[f'0x{w:08x}' for w in _words(self.fast)]} same_sel={self.same_sel}"
         )
 
 
@@ -271,6 +315,15 @@ def _draw_seq(rng: SepSeededRng, words: int) -> tuple[int, ...]:
         bits += word
     bits[-1] = 1 - bits[-2]
     return tuple(bits)
+
+
+def _offset_words(bits, first: int, count: int, offset: int) -> list[int]:
+    """Words ``first`` to ``first + count - 1`` of ``bits``, 32 samples LSB first, each
+    starting ``offset`` samples before its word boundary (``first`` >= ``offset``)."""
+    return [
+        sum(b << j for j, b in enumerate(bits[32 * w - offset : 32 * w - offset + 32]))
+        for w in range(first, first + count)
+    ]
 
 
 def _indel_align(got: list[int], want: tuple[int, ...]) -> tuple[int, int]:
@@ -333,6 +386,8 @@ def draw_plan(seed: int) -> Plan:
     seq_lane = rng.randrange(NUM_LANES)
     seq = _draw_seq(rng, SEQ_WORDS)
     fast = tuple(rng.getrandbits(1) for _ in range(FAST_BITS))
+    same_sel = rng.choice(LANE_SEL_SAME_AS_0[1:])
+    ovf_seq = _draw_seq(rng, OVF_SEQ_WORDS)
     return Plan(
         seed,
         tuple(order),
@@ -346,11 +401,30 @@ def draw_plan(seed: int) -> Plan:
         seq_lane,
         seq,
         fast,
+        same_sel,
+        ovf_seq,
     )
 
 
 class _EsrcRegs(SepAxiRegDriver):
     _DRIVER_TAG = "ESRC"
+
+    async def wr_locked(self, addr: int, data: int) -> int:
+        """A write that FIPS_LOCK refuses; returns its B code, -1 if none came.
+
+        No text states that code, so the scoreboard does not grade it.
+        """
+        seq = SepAxiAccessSeq(
+            "esrc_wr_locked",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=4,
+            size=self._AXI_SIZE,
+            allow_unverified_write_resp=True,
+        )
+        await self.test.start_seq(seq)
+        return -1 if seq.timed_out else seq.resp_code
 
 
 @pyuvm.test()
@@ -369,13 +443,15 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         "CHK-OBS-OFF",
         "CHK-OBS-SEQ",
         "CHK-SYNC-DEPTH",
+        "CHK-OBS-MAIN",
+        "CHK-OBS-OVF-KEEP",
     )
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _EsrcRegs(self)
@@ -384,7 +460,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         # clean ungated trial, noise from the failing ungated trial.
         self.t_biw_word: int | None = None
         self.t_noise_word: int | None = None
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self._release_stuck()
         self.noise = SepEsrcPatternNoise(logger=self.logger)
         self.noise.start(plan.balanced)
@@ -481,7 +557,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         dut.esrc_noise_stuck_val_i.value = sum(b << j for j, b in enumerate(bits))
         dut.esrc_noise_stuck_en_i.value = ALL_LANES
         self.noise.set_lanes([Stuck(b) for b in bits])
-        self.logger.info("LANE-DRIVE lane=%d z=%d others=%d", lane, z, 1 - z)
+        self.logger.info("INFO-LANE-DRIVE lane=%d z=%d others=%d", lane, z, 1 - z)
 
     # --- set-up -----------------------------------------------------------------
     async def _trng_reset(self) -> int:
@@ -489,7 +565,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             balanced=self.plan.balanced, before_release=self._release_stuck
         )
 
-    async def _setup(self, *, clean: bool = True, extra_writes=()) -> None:
+    async def _setup(self, *, clean: bool = True, extra_writes=(), ctrl_fields=None) -> None:
         close_graded_window(self.logger)
         mark = await self._trng_reset()
         # entropy_source.adoc RING_OSC_CTRL: a clear bit selects the external sample
@@ -502,7 +578,12 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         if not clean:
             return
         await SepEsrcCleanStart(
-            self, self.noise, self.plan.balanced, window=WINDOW, extra_writes=extra_writes
+            self,
+            self.noise,
+            self.plan.balanced,
+            window=WINDOW,
+            ctrl_fields=ctrl_fields,
+            extra_writes=extra_writes,
         ).run(release_mark=mark)
         self.p = await self.setup.measure_period(self.chk)
         await self.setup.wait_boot_done(self.esrc, WINDOW)
@@ -591,6 +672,25 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             cur = v
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, cur))
         close_graded_window(self.logger)
+        await self._lane_same_obs()
+
+    async def _lane_same_obs(self) -> None:
+        """LEVEL around a LANE_SEL write that keeps lane 0 selected."""
+        sel = self.plan.same_sel
+        await self._pop_to_empty("noise")
+        self._drive(0, 0)
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
+        b4 = self._bound("obs_4", WORDS_BEFORE_CHANGE * OBS_WORD_CAP * 20)
+        ok4, _, _ = await self._poll_level("noise", lambda x: x >= WORDS_BEFORE_CHANGE, b4)
+        before = await self._level("noise")
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, sel))
+        after = await self._level("noise")
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, sel))
+        await self._pop_to_empty("noise")
+        fields = {"sel": sel, "level_before": before, "level_after": after}
+        if not ok4:
+            fields["reason"] = f"timeout:level_before bound={b4}"
+        self.chk.obs("LANESEL-SAME", **fields)
 
     def _grade_lane(self, v, cur, z, ok4, ok8, before, after, words, b4, b8) -> None:
         expect = _word(z)
@@ -736,6 +836,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             fields = {
                 "fifo": fifo,
                 "depth": depth[fifo],
+                "expect_depth": OBS_FIFO_DEPTH,
                 "overflow": int(seen[fifo]),
                 "level_after_two_fills": later[fifo],
                 "w1c": w1c[fifo],
@@ -746,24 +847,56 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                 fields["reason"] = "timeout:overflow"
             self.chk.ok(
                 "OBS-OVERFLOW",
-                seen[fifo] and depth[fifo] > 0 and later[fifo] == depth[fifo] and w1c[fifo] == 0,
+                seen[fifo]
+                and depth[fifo] == OBS_FIFO_DEPTH
+                and later[fifo] == depth[fifo]
+                and w1c[fifo] == 0,
                 **fields,
             )
 
-    # --- main-chain leg (logged only) ----------------------------------------------------
+    # --- main-chain leg ------------------------------------------------------------
     async def _main_chain_leg(self) -> None:
-        await self._setup()
+        """CHK-OBS-MAIN: observe capture leaves the main-chain word count unchanged.
+
+        ``SHA256_WHITENING_ENABLE`` = 0 passes each BIW word straight to the FIFO
+        stream (entropy_source.rdl ``CTRL``). Each window starts after a strobe and
+        ends on the MAIN_STROBES-th strobe after it, so every window spans the same
+        number of whole strobe periods; two windows with capture off give the same
+        count (the control) before the window with capture on is graded.
+        """
+        await self._setup(ctrl_fields={"SHA256_WHITENING_ENABLE": 0})
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
-        cap = MAIN_WORDS * 64 * self._period()
-        w_clk = await self._clocks_for_words(MAIN_WORDS, cap)
-        off = await self._words_in(w_clk) if w_clk else 0
+        bound = 2 * (MAIN_STROBES + 1) * self._period()
+        off_a = await self._words_over_strobes(MAIN_STROBES, bound)
+        off_b = await self._words_over_strobes(MAIN_STROBES, bound)
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
-        on = await self._words_in(w_clk) if w_clk else 0
+        on = await self._words_over_strobes(MAIN_STROBES, bound)
+        levels = {fifo: await self._level(fifo) for fifo in FIFOS}
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, 0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
-        self.chk.blocked("OBS-MAIN", "observe_capture_vs_main_chain_unstated")
-        self.chk.obs("OBS-MAIN", words_obs_on=on, words_obs_off=off, window_clk=w_clk or "none")
+        self.chk.ctrl(
+            "OBS-MAIN",
+            off_a is not None and off_a == off_b and off_a > 0,
+            words_off_a=off_a,
+            words_off_b=off_b,
+            strobes=MAIN_STROBES,
+            bound=bound,
+        )
+        self.chk.ctrl(
+            "OBS-MAIN",
+            levels["noise"] > 0 and levels["biw"] > 0,
+            noise_obs_level=levels["noise"],
+            biw_obs_level=levels["biw"],
+        )
+        fields = {
+            "strobes": MAIN_STROBES,
+            "words_obs_on": on,
+            "words_obs_off": off_b,
+        }
+        if on is None or off_b is None:
+            fields["reason"] = f"timeout:strobes bound={bound}"
+        self.chk.ok("OBS-MAIN", on is not None and on == off_b, **fields)
 
     # --- capture-off leg ---------------------------------------------------------------
     async def _off_leg(self) -> None:
@@ -817,28 +950,28 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             **fields,
         )
 
-    async def _clocks_for_words(self, words: int, cap: int) -> int | None:
+    async def _words_over_strobes(self, strobes: int, bound: int) -> int | None:
+        """``esrc_compress_vld_o`` words from the clock after a strobe of
+        ``esrc_decor_valid_o`` to the ``strobes``-th strobe after it, inclusive;
+        None when a strobe is missing after ``bound`` clocks."""
         dut = cocotb.top
-        seen = 0
-        for clk in range(1, cap + 1):
+        seen = None
+        words = 0
+        for _ in range(bound):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            seen += self.rd(dut.esrc_compress_vld_o)
-            if seen >= words:
+            strobe = self.rd(dut.esrc_decor_valid_o)
+            if seen is None:
+                if strobe:
+                    seen = 0
+                continue
+            words += self.rd(dut.esrc_compress_vld_o)
+            seen += strobe
+            if seen == strobes:
                 await NextTimeStep()
-                return clk
+                return words
         await NextTimeStep()
         return None
-
-    async def _words_in(self, clocks: int) -> int:
-        dut = cocotb.top
-        seen = 0
-        for _ in range(clocks):
-            await RisingEdge(dut.clk_i)
-            await ReadOnly()
-            seen += self.rd(dut.esrc_compress_vld_o)
-        await NextTimeStep()
-        return seen
 
     # --- lock leg (steps 19-23) ------------------------------------------------------------
     async def _write_raw(self, fifo: str, raw: int) -> None:
@@ -963,7 +1096,11 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         raw0 = await self._read_raw(fifo)
         open_graded_window(TEST, self.logger)
         lock = await self._lock()
-        await self._write_raw(fifo, 1)
+        if fifo == "noise":
+            resp = await self.esrc.wr_locked(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
+        else:
+            resp = await self.esrc.wr_locked(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
+        self.logger.info("OBS-LOCK0-RESP: fifo=%s B=%s", fifo, resp_name(resp))
         raw_rb = await self._read_raw(fifo)
         wait = LOCK0_WAIT_FACTOR * t_cap if t_cap else 0
         if wait:
@@ -974,12 +1111,13 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         close_graded_window(self.logger)
         self.chk.ctrl(
             "OBS-LOCK",
-            t_cap is not None and raw0 == 0 and lock == 1 and raw_rb == 0,
+            t_cap is not None and raw0 == 0 and lock == 1 and resp >= 0 and raw_rb == 0,
             fifo=fifo,
             locked_at=0,
             ctrl_locked1_capture_clk=t_cap if t_cap is not None else "none",
             raw_before=raw0,
             lock=lock,
+            b_seen=int(resp >= 0),
             post_lock_write_readback=raw_rb,
         )
         self.chk.ok(
@@ -1001,7 +1139,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
 
     async def _seq_leg(self) -> None:
         """CHK-OBS-SEQ and CHK-SYNC-DEPTH at a sample period of 8 x clk_i + 2 ps, then
-        OBS-OBS-FAST at 2 x clk_i + 2 ps."""
+        OBS-FAST at 2 x clk_i + 2 ps, then CHK-OBS-OVF-KEEP at 8 x clk_i + 2 ps."""
         plan = self.plan
         lane = plan.seq_lane
         t = self._clk_ps()
@@ -1030,12 +1168,13 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         self._grade_seq(lane, plan.seq, slow)
         fast = await self._seq_window(lane, plan.fast, FAST_PERIOD_CLK, depth=False)
         close_graded_window(self.logger)
+        await self._ovf_keep_leg(lane)
         self.restart_clock(SCLK, self.cfg.entropy_clk_period_ns)
         self._release_stuck()
         got = [(w >> j) & 1 for w in fast["words"] for j in range(32)]
         lost, rep = _indel_align(got, plan.fast)
         self.chk.obs(
-            "OBS-FAST",
+            "FAST",
             lane=lane,
             period_ps=fast["period_ps"],
             edges=fast["edges"],
@@ -1047,6 +1186,54 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             words=[f"0x{w:08x}" for w in fast["words"]],
             expect=[f"0x{w:08x}" for w in _words(plan.fast)],
             **fast["pre"],
+        )
+
+    async def _ovf_keep_leg(self, lane: int) -> None:
+        """CHK-OBS-OVF-KEEP: a full noise observe FIFO keeps its oldest words."""
+        bits = self.plan.ovf_seq
+        await self._wr(ESRC_INTR_STATUS, NOISE_OVF)
+        res = await self._seq_window(lane, bits, SEQ_PERIOD_CLK, depth=False)
+        ovf = int(bool(await self._rd(ESRC_INTR_STATUS) & NOISE_OVF))
+        await self._wr(ESRC_INTR_STATUS, NOISE_OVF)
+        n = OBS_FIFO_DEPTH - 1
+        dropped = OVF_SEQ_WORDS - OBS_FIFO_DEPTH
+        keep = {o: _offset_words(bits, 1, n, o) for o in PACK_OFFSETS}
+        drop = {o: _offset_words(bits, 1 + dropped, n, o) for o in PACK_OFFSETS}
+        self.chk.ctrl(
+            "OBS-OVF-KEEP",
+            all(keep[a] != drop[b] for a in PACK_OFFSETS for b in PACK_OFFSETS),
+            lane=lane,
+            seq_words=OVF_SEQ_WORDS,
+        )
+        words = res["words"]
+        offset = next((o for o in PACK_OFFSETS if words[1:] == keep[o]), None)
+        ref = keep[0 if offset is None else offset]
+        oldest_dropped = next((o for o in PACK_OFFSETS if words[1:] == drop[o]), None)
+        timeout = res["edges"] != len(bits)
+        bad = [w for w in range(1, min(OBS_FIFO_DEPTH, len(words))) if words[w] != ref[w - 1]]
+        fields = {
+            "lane": lane,
+            "seq_words": OVF_SEQ_WORDS,
+            "edges": res["edges"],
+            "expect_edges": len(bits),
+            "overflow": ovf,
+            "level": res["level"],
+            "expect_level": OBS_FIFO_DEPTH,
+            "popped": len(words),
+            "pack_offset": "none" if offset is None else offset,
+            "matches_oldest_dropped": int(oldest_dropped is not None),
+            "bad_words": bad[:8],
+        }
+        if timeout:
+            fields["reason"] = f"timeout:sample_edges driven={res['edges']}"
+        self.chk.ok(
+            "OBS-OVF-KEEP",
+            not timeout
+            and ovf == 1
+            and res["level"] == OBS_FIFO_DEPTH
+            and len(words) == OBS_FIFO_DEPTH
+            and offset is not None,
+            **fields,
         )
 
     async def _seq_window(self, lane: int, bits, period_clk: int, *, depth: bool) -> dict:
@@ -1149,7 +1336,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         level = await self._level("noise")
         words = [await self._pop("noise") for _ in range(min(level, FIFO_DEPTH_MAX))]
         self.logger.info(
-            "SEQ-WINDOW window=%s lane=%d period_ps=%d t_ref=%d phase_ps=%d edges=%d level=%d",
+            "INFO-SEQ-WINDOW window=%s lane=%d period_ps=%d t_ref=%d phase_ps=%d edges=%d level=%d",
             window,
             lane,
             period,

@@ -97994,6 +97994,8 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -98006,6 +98008,8 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_w.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -98018,6 +98022,8 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_ar.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
@@ -98038,6 +98044,8 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"
@@ -98050,6 +98058,8 @@ CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b
 ANNOTATION: "VC_COV_UNR"
 Condition 3 "350595075" "(receiver_phase_req && receiver_phase_ack) 1 -1" (1 "01")
+ANNOTATION: "VC_COV_UNR"
+Condition 2 "2416646446" "(initiator_phase_transition_ack && clear_ack_i) 1 -1" (3 "11")
 CHECKSUM: "2697825409 1307102318"
 INSTANCE: tb_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a
 ANNOTATION: "VC_COV_UNR"

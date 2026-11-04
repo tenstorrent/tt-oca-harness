@@ -15,17 +15,19 @@ class smc_dma_invalid_descriptor_test(smc_base_test):
 
     required_evidence = (
         "CHK-DMA-COPY-CONTROL",
+        "CHK-DMA-IRQ-PLIC-323",
         "CHK-DMA-IRQ-PULSE-COPY",
         "CHK-DMA-ND-CLEAR-DONE-ADVANCES",
         "CHK-DMA-ND-CLEAR-MEASURED",
         "CHK-DMA-ND-CLEAR-NO-DATA",
+        "CHK-DMA-NEXT-ID-NONZERO",
         "CHK-DMA-SUBMIT-32BIT",
         "CHK-DMA-SUBMIT-64BIT",
         "CHK-DMA-ZEROLEN-MEASURED",
         "CHK-DMA-ZEROLEN-NO-DATA",
         "CHK-NONVAC",
     )
-    min_evidence = 10
+    min_evidence = 12
 
     auto_protocol_vip = False
 

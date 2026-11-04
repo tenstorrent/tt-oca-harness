@@ -182,7 +182,7 @@ evidence where it cannot; neither turns a failed transaction into PASS.
 
 | Realization | Metric | Record |
 |-------------|--------|--------|
-| SystemVerilog collateral (`interface/`, `sva/`, `cov/`) | Verilator line and branch coverage of the package's wire-harness selftests (`--dut ocah_<protocol>_vip --items all --cov`); SVA cover properties and `cov/` covergroups on a four-state simulator through the SV-UVM harness shape (`--framework uvm --cov`) | The package's `dv/cov/config/<tool>/coverage_policy.toml`: one threshold per metric family and one `[[holes]]` entry per uncovered point |
+| SystemVerilog collateral (`interface/`, `sva/`, `cov/`) | Verilator line and branch coverage of the package's wire-harness selftests (`--dut ocah_<protocol>_vip --items all --cov`), with the `sva/` cover properties as user points; `cov/` covergroups on a four-state simulator through the SV-UVM harness shape (`--framework uvm --cov`) | The package's `dv/cov/config/<tool>/coverage_policy.toml`: one threshold per metric family and one `[[holes]]` entry per uncovered point |
 | Python components (drivers, monitors, checkers, reference models) | No simulator metric | The `CHK-*` identifier matrix of the harness selftests and of the simulator-free selftests, with one must-fail path per rule |
 
 A policy file grades hit points over the points that remain after accepted

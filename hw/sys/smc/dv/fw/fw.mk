@@ -104,6 +104,7 @@ FW_TEST_MODE_occp_max_size_transfer_test := rom
 FW_TEST_MODE_occp_mem_boundary_access_test := rom
 FW_TEST_MODE_occp_min_size_transfer_test := rom
 FW_TEST_MODE_occp_oversize_body_test := rom
+FW_TEST_MODE_occp_park_test := rom
 FW_TEST_MODE_occp_random_test := rom
 FW_TEST_MODE_occp_register_access_test := rom
 FW_TEST_MODE_occp_ring_buffer_advanced_test := rom

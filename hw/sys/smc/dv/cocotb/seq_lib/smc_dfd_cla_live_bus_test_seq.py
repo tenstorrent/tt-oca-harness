@@ -166,8 +166,6 @@ _MUXSEL_FIELDS = {
 _TOGGLE_SNAPSHOTS = 16
 # dfd_dst.rdl Trdstformat: 0 is no compression.
 _DST_FORMAT_NONE = 0
-# smc_cla.adoc Trdstcontrol: the read-write image at reset, Trdstformat 3.
-_DST_CONTROL_RESET_RW = 0x0300_0000
 # dfd.adoc: eight trace RAMs of 256 x 64 bits, 16 KiB in total.
 _TRACE_WINDOW_BYTES = 8 * 256 * 8
 _TRACE_WORDS = _TRACE_WINDOW_BYTES // 4
@@ -938,11 +936,12 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         assert mux_rb == 0, f"CDbgMuxSelLo reads 0x{mux_rb:016x} after being written 0"
         dst = dst_register("Trdstcontrol")
         mask = checked_mask(dst, {"Trdstformat": 3})
-        await self._write(dst, _DST_CONTROL_RESET_RW, "trace_restore")
+        reset_rw = dst.reset_word & mask
+        await self._write(dst, reset_rw, "trace_restore")
         dst_rb = await self._read_okay(dst, "trace_restore_rb")
-        assert dst_rb & mask == _DST_CONTROL_RESET_RW, (
+        assert dst_rb & mask == reset_rw, (
             f"Trdstcontrol reads 0x{dst_rb:08x} after being written its reset read-write image "
-            f"0x{_DST_CONTROL_RESET_RW:08x}; read-write bits 0x{dst_rb & mask:08x}"
+            f"0x{reset_rw:08x}; read-write bits 0x{dst_rb & mask:08x}"
         )
         control = sink_register("Trdstramcontrol")
         control_mask = checked_mask(

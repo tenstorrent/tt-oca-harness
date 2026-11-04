@@ -23,8 +23,12 @@ class aou_l3_cov extends uvm_object;
 
   // Sampled values; each covergroup samples the members it names.
   int unsigned s_prev, s_cur, s_op, s_dir, s_kind, s_rp, s_start, s_size, s_nmsgs;
-  int unsigned s_misc0, s_misc1, s_carry, s_ev, s_cls;
-  bit          s_legal, s_span, s_credit_only;
+  int unsigned s_misc0, s_misc1, s_carry, s_ev, s_cls, s_nwresp, s_wf_ahead, s_wf_others;
+  bit          s_legal, s_span, s_credit_only, s_wf_whole;
+  // cg_wr_order, from the messages the model sends: per RP, the WriteData
+  // messages sent and the ones the sent WriteReqs account for.
+  int unsigned wf_sent[AOU_RP_MAX];
+  int unsigned wf_owed[AOU_RP_MAX];
 
   covergroup cg_act_fsm;
     cp_trans: coverpoint (s_prev * 8 + s_cur) {
@@ -75,6 +79,20 @@ class aou_l3_cov extends uvm_object;
     x_size_span: cross cp_size, cp_span;
   endgroup
 
+  // A message spanning flits, by kind and direction: which side's packing
+  // carried which message across a flit boundary. Stimulus quality for the
+  // packing scenarios (aou_pack_test +pk=crossflit), never an error: the DUT
+  // may leave granules empty instead (AoU 4.3 "Message Packing").
+  covergroup cg_span;
+    cp_kind: coverpoint s_kind {
+      `AOU_L3_FC_SPAN_KIND(AOU_FC_CG)
+    }
+    cp_dir: coverpoint s_dir {
+      `AOU_FC_DIR_BINS(AOU_FC_CG)
+    }
+    x_kind_dir: cross cp_kind, cp_dir;
+  endgroup
+
   covergroup cg_flit_occ;
     cp_nmsgs: coverpoint s_nmsgs {
       `AOU_L3_FC_NMSGS(AOU_FC_CG)
@@ -97,6 +115,20 @@ class aou_l3_cov extends uvm_object;
     x_nmsgs_dir: cross cp_nmsgs, cp_dir;
   endgroup
 
+  // WriteResp starting in one flit, by direction: how densely each side's
+  // packing shared a flit between write responses. Sampled only for flits that
+  // carry one. Stimulus quality for the packing scenarios (aou_dp_packing_test
+  // +dp_pack=wresp, aou_pack_test +pk=wresp48), never an error.
+  covergroup cg_wresp_flit;
+    cp_nwresp: coverpoint s_nwresp {
+      `AOU_L3_FC_NWRESP(AOU_FC_CG)
+    }
+    cp_dir: coverpoint s_dir {
+      `AOU_FC_DIR_BINS(AOU_FC_CG)
+    }
+    x_nwresp_dir: cross cp_nwresp, cp_dir;
+  endgroup
+
   covergroup cg_credit;
     cp_ev: coverpoint s_ev {
       `AOU_L3_FC_CREDIT_EV(AOU_FC_CG)
@@ -110,13 +142,37 @@ class aou_l3_cov extends uvm_object;
     x_ev_cls_dir: cross cp_ev, cp_cls, cp_dir;
   endgroup
 
+  // A WriteReq the model sent, by its own WriteData messages sent before it,
+  // whether that was the whole burst, and the other RPs with WriteData ahead
+  // of their WriteReq at the time. Stimulus quality for the WriteData-first
+  // order (aou_packer_policy::wdata_first_pct), never an error.
+  covergroup cg_wr_order;
+    cp_ahead: coverpoint s_wf_ahead {
+      `AOU_L3_FC_WF_AHEAD(AOU_FC_CG)
+    }
+    cp_whole: coverpoint s_wf_whole {
+      `AOU_L3_FC_WF_WHOLE(AOU_FC_CG)
+    }
+    cp_rp: coverpoint s_rp {
+      `AOU_L3_FC_RP(AOU_FC_CG)
+    }
+    cp_others: coverpoint s_wf_others {
+      `AOU_L3_FC_WF_OTHERS(AOU_FC_CG)
+    }
+    x_ahead_whole_others: cross cp_ahead, cp_whole, cp_others;
+    x_ahead_rp: cross cp_ahead, cp_rp;
+  endgroup
+
   // The service's copies of the covergroups above.
   aou_fc_group fc_act_fsm;
   aou_fc_group fc_act_op;
   aou_fc_group fc_msg;
   aou_fc_group fc_flit_layout;
+  aou_fc_group fc_span;
   aou_fc_group fc_flit_occ;
+  aou_fc_group fc_wresp_flit;
   aou_fc_group fc_credit;
+  aou_fc_group fc_wr_order;
 
   function new(string name = "aou_l3_cov");
     super.new(name);
@@ -124,8 +180,11 @@ class aou_l3_cov extends uvm_object;
     cg_act_op = new();
     cg_msg = new();
     cg_flit_layout = new();
+    cg_span = new();
     cg_flit_occ = new();
+    cg_wresp_flit = new();
     cg_credit = new();
+    cg_wr_order = new();
     fc_declare();
   endfunction
 
@@ -164,6 +223,12 @@ class aou_l3_cov extends uvm_object;
       p = fc_flit_layout.add_cross("x_size_span", "cp_size cp_span");
       `AOU_L3_FC_X_SIZE_SPAN(AOU_FC_REG)
     end
+    fc_span = db.group("l3.cg_span", fresh);
+    if (fresh) begin
+      p = fc_span.cp("cp_kind"); `AOU_L3_FC_SPAN_KIND(AOU_FC_REG)
+      p = fc_span.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
+      void'(fc_span.add_cross("x_kind_dir", "cp_kind cp_dir"));
+    end
     fc_flit_occ = db.group("l3.cg_flit_occ", fresh);
     if (fresh) begin
       p = fc_flit_occ.cp("cp_nmsgs"); `AOU_L3_FC_NMSGS(AOU_FC_REG)
@@ -174,6 +239,12 @@ class aou_l3_cov extends uvm_object;
       p = fc_flit_occ.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
       void'(fc_flit_occ.add_cross("x_nmsgs_dir", "cp_nmsgs cp_dir"));
     end
+    fc_wresp_flit = db.group("l3.cg_wresp_flit", fresh);
+    if (fresh) begin
+      p = fc_wresp_flit.cp("cp_nwresp"); `AOU_L3_FC_NWRESP(AOU_FC_REG)
+      p = fc_wresp_flit.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
+      void'(fc_wresp_flit.add_cross("x_nwresp_dir", "cp_nwresp cp_dir"));
+    end
     fc_credit = db.group("l3.cg_credit", fresh);
     if (fresh) begin
       p = fc_credit.cp("cp_ev"); `AOU_L3_FC_CREDIT_EV(AOU_FC_REG)
@@ -181,6 +252,16 @@ class aou_l3_cov extends uvm_object;
       p = fc_credit.cp("cp_dir"); `AOU_FC_DIR_BINS(AOU_FC_REG)
       p = fc_credit.add_cross("x_ev_cls_dir", "cp_ev cp_cls cp_dir");
       `AOU_L3_FC_X_CREDIT(AOU_FC_REG)
+    end
+    fc_wr_order = db.group("l3.cg_wr_order", fresh);
+    if (fresh) begin
+      p = fc_wr_order.cp("cp_ahead"); `AOU_L3_FC_WF_AHEAD(AOU_FC_REG)
+      p = fc_wr_order.cp("cp_whole"); `AOU_L3_FC_WF_WHOLE(AOU_FC_REG)
+      p = fc_wr_order.cp("cp_rp"); `AOU_L3_FC_RP(AOU_FC_REG)
+      p = fc_wr_order.cp("cp_others"); `AOU_L3_FC_WF_OTHERS(AOU_FC_REG)
+      p = fc_wr_order.add_cross("x_ahead_whole_others", "cp_ahead cp_whole cp_others");
+      `AOU_L3_FC_X_WF(AOU_FC_REG)
+      void'(fc_wr_order.add_cross("x_ahead_rp", "cp_ahead cp_rp"));
     end
   endfunction
 
@@ -232,6 +313,10 @@ class aou_l3_cov extends uvm_object;
       s_span = m.span_flits > 1;
       cg_flit_layout.sample();
       fc_flit_layout.sample(int'(s_start), int'(s_size), int'(s_span), int'(s_dir));
+      if (s_span) begin
+        cg_span.sample();
+        fc_span.sample(int'(s_kind), int'(s_dir));
+      end
     end
   endfunction
 
@@ -245,6 +330,46 @@ class aou_l3_cov extends uvm_object;
     cg_flit_occ.sample();
     fc_flit_occ.sample(int'(s_nmsgs), int'(s_misc0), int'(s_misc1), int'(s_carry),
                        int'(s_credit_only), int'(s_dir));
+    s_nwresp = 0;
+    foreach (f.msgs[i])
+      if (f.msgs[i].msg_type == AOU_MT_WRESP && f.msgs[i].start_flit == int'(f.seq)) s_nwresp++;
+    if (s_nwresp != 0) begin
+      cg_wresp_flit.sample();
+      fc_wresp_flit.sample(int'(s_nwresp), int'(s_dir));
+    end
+  endfunction
+
+  // Every credited message the model sent, in order: a WriteReq samples
+  // cg_wr_order with the WriteData of its RP sent beyond what the earlier
+  // WriteReqs account for (AXI4 has no write interleaving, so that data is its
+  // own).
+  function void sample_tx_write(aou_msg m);
+    aou_msg_req r;
+    int unsigned beats;
+    if (m.msg_type inside {AOU_MT_WDATA, AOU_MT_WDATAF}) begin
+      wf_sent[m.rp]++;
+      return;
+    end
+    if (m.msg_type != AOU_MT_WREQ || !$cast(r, m)) return;
+    beats = int'(r.len) + 1;
+    s_wf_ahead = (wf_sent[m.rp] > wf_owed[m.rp]) ? wf_sent[m.rp] - wf_owed[m.rp] : 0;
+    if (s_wf_ahead > beats) s_wf_ahead = beats;
+    s_wf_whole = s_wf_ahead == beats;
+    s_wf_others = 0;
+    foreach (wf_sent[o])
+      if (s_wf_ahead != 0 && o != int'(m.rp) && wf_sent[o] > wf_owed[o]) s_wf_others++;
+    s_rp = int'(m.rp);
+    wf_owed[m.rp] += beats;
+    cg_wr_order.sample();
+    fc_wr_order.sample(int'(s_wf_ahead), int'(s_wf_whole), int'(s_rp), int'(s_wf_others));
+  endfunction
+
+  // The link was lost under the model: what was in flight is gone.
+  function void reset_wr_order();
+    foreach (wf_sent[r]) begin
+      wf_sent[r] = 0;
+      wf_owed[r] = 0;
+    end
   endfunction
 
   function void sample_credit(int unsigned ev, aou_cred_class_e cls, aou_l3_dir_e dir);

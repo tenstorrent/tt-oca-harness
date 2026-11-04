@@ -8,11 +8,19 @@ architecture.adoc and interface.adoc (secondary role, timer_count_o); cpu_ctrl.r
 
 The default-strap reads of SMC_ATTRIBUTES and STATUS.MODE are the control for the strap-low leg,
 and a PRIMARY-mode START that runs the timer is the control for the SECONDARY hold.
+The seed draws the 64-bit preset written before the SECONDARY START (nonzero and below 2^63, so the
+running count of the PRIMARY control never reaches the top of its range); the PRIMARY control
+grades it: the first changed timer_count_o sample equals the preset, and the moved count lies
+between the preset and the preset plus the clk_smu_i edges counted from before the START write (the
+primary loads the preset on START and increments by one per clk_i cycle, architecture.adoc,
+"Counting and Synchronization").
 
 32-bit CSRs at addr[2]=1 use the upper 64-bit J2A lane (wstrb 0xF0).
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -69,7 +77,7 @@ RESET_SAMPLER_BOUND = 4_000_000
 EXPECTED_WAIT_SITES = 5
 HOLD_SAMPLES = 1024
 STRAP_SETTLE_CYCLES = 64
-HOLD_PRESET = 0x0001_0000
+PRESET_BITS = 63
 MASK64 = (1 << 64) - 1
 
 
@@ -88,6 +96,9 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         self.reset_samples = 0
         self.reset_nonzero = 0
         self.reset_first_nonzero = None
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.preset = 0
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -203,6 +214,8 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         sb = self.test.env.scoreboard
         dut = self.dut
 
+        self.preset = self.rng.randrange(1, 1 << PRESET_BITS)
+        self._log(f"SEED: RANDOM_SEED={self.seed} drawn preset=0x{self.preset:016x}")
         self._mark("S1", "SETUP: bring-up, IDCODE, J2A gate open, pin sampler started")
         await self._wait_reset_done()
         sampler = cocotb.start_soon(self._reset_sampler())
@@ -290,9 +303,14 @@ class smu_octs_reset_and_secondary_hold_test_seq:
             evidence="OCTSR_STRAP_LOW",
         )
 
-        self._mark("S5", "strap low: START written, count held at zero")
-        await self._j2a_wr32(ADDR_PRESET_LO, HOLD_PRESET, "TIMER_PRESET_LO")
-        await self._j2a_wr32(ADDR_PRESET_HI, 0, "TIMER_PRESET_HI")
+        self._mark("S5", "strap low: drawn preset and START written, count held at zero")
+        preset_lo = self.preset & 0xFFFF_FFFF
+        preset_hi = self.preset >> 32
+        await self._j2a_wr32(ADDR_PRESET_LO, preset_lo, "TIMER_PRESET_LO")
+        self._cell("TIMER_PRESET_LO", ADDR_PRESET_LO, f"drawn wrote=0x{preset_lo:08x}")
+        await self._j2a_wr32(ADDR_PRESET_HI, preset_hi, "TIMER_PRESET_HI")
+        self._cell("TIMER_PRESET_HI", ADDR_PRESET_HI, f"drawn wrote=0x{preset_hi:08x}")
+        drawn = f"drawn preset=0x{self.preset:016x}"
         self.stop_sampling = True
         await sampler
         self._log(
@@ -309,7 +327,7 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         status = await self._j2a_rd32(ADDR_STATUS, "STATUS")
         self._cell("STATUS.RUNNING", ADDR_STATUS, f"value=0x{status:08x}")
         sb.expect_eq(
-            "CHK-OCTSR-SECONDARY-HOLD STATUS.RUNNING",
+            f"CHK-OCTSR-SECONDARY-HOLD STATUS.RUNNING {drawn}",
             int(bool(status & STATUS_RUNNING_BM)),
             0,
             evidence="OCTSR_SECONDARY_HOLD",
@@ -325,17 +343,17 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         hold_nonzero = sum(1 for v in hold if v)
         self._log(
             f"CHK-OCTSR-SECONDARY-HOLD: samples={len(hold)} nonzero={hold_nonzero} "
-            f"max=0x{max(hold):016x}"
+            f"max=0x{max(hold):016x} {drawn}"
         )
         self._cell("timer_count_o", 0, f"hold samples={len(hold)} nonzero={hold_nonzero}")
         sb.expect_eq(
-            "CHK-OCTSR-SECONDARY-HOLD samples",
+            f"CHK-OCTSR-SECONDARY-HOLD samples {drawn}",
             len(hold),
             HOLD_SAMPLES,
             evidence="OCTSR_SECONDARY_HOLD",
         )
         sb.expect_eq(
-            "CHK-OCTSR-SECONDARY-HOLD nonzero samples",
+            f"CHK-OCTSR-SECONDARY-HOLD nonzero samples {drawn}",
             hold_nonzero,
             0,
             evidence="OCTSR_SECONDARY_HOLD",
@@ -343,8 +361,20 @@ class smu_octs_reset_and_secondary_hold_test_seq:
         dut.tb_chiplet_secondary.value = 0
         self._log("CELL tb_chiplet_secondary restored=0")
 
-        self._mark("S6", "strap high: START in PRIMARY mode runs the timer")
+        self._mark("S6", "strap high: START in PRIMARY mode loads the drawn preset and runs")
         await ClockCycles(dut.clk_smu_i, STRAP_SETTLE_CYCLES)
+        run = {"edges": 0, "loaded": None}
+        before_start = self._pin()
+
+        async def count_edges() -> None:
+            while True:
+                await RisingEdge(dut.clk_smu_i)
+                run["edges"] += 1
+                value = self._pin()
+                if run["loaded"] is None and value != before_start:
+                    run["loaded"] = value
+
+        counter = cocotb.start_soon(count_edges())
         await self._j2a_wr32(ADDR_START, 1, "TIMER_START primary")
         status = await self._j2a_rd32(ADDR_STATUS, "STATUS primary")
         self._cell("STATUS.RUNNING", ADDR_STATUS, f"primary value=0x{status:08x}")
@@ -359,15 +389,38 @@ class smu_octs_reset_and_secondary_hold_test_seq:
             if value != first:
                 moved = value
                 break
+        counter.cancel()
         if moved is None:
             rec["expired"] += 1
             self._log(f"TIMEOUT-PATH run_pin_wait: EXPIRED last={rec['last']}")
         rec["done"] = True
+        edges = run["edges"]
+        loaded = run["loaded"]
+        loaded_text = "none" if loaded is None else f"0x{loaded:016x}"
+        moved_text = "none" if moved is None else f"0x{moved:016x}"
         self._cell("timer_count_o", 0, f"primary run {rec['last']}")
+        self._cell(
+            "timer_count_o",
+            0,
+            f"primary load before=0x{before_start:016x} loaded={loaded_text} "
+            f"moved={moved_text} edges_since_start_write={edges} {drawn}",
+        )
         sb.expect_eq(
-            "CHK-OCTSR-SECONDARY-HOLD control: PRIMARY START sets RUNNING and moves timer_count_o",
+            "CHK-OCTSR-SECONDARY-HOLD control: PRIMARY START sets RUNNING and moves "
+            f"timer_count_o {drawn}",
             (int(bool(status & STATUS_RUNNING_BM)), moved is not None),
             (1, True),
+            evidence="OCTSR_SECONDARY_HOLD",
+        )
+        sb.expect_eq(
+            "CHK-OCTSR-SECONDARY-HOLD control: PRIMARY START loads the drawn preset and the "
+            f"moved count lies within the {edges} clk_smu_i edges since the START write {drawn}",
+            (
+                loaded,
+                moved is not None and moved >= self.preset,
+                moved is not None and moved - self.preset <= edges,
+            ),
+            (self.preset, True, True),
             evidence="OCTSR_SECONDARY_HOLD",
         )
 

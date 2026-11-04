@@ -11,7 +11,10 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_jtag2axi_ratio_floor_test(smu_base_test):
-    """Series write and single-load reads at TCK to clk_smu_i ratios 4.0, 4.8, 3.2, 2.0, 4.0."""
+    """Series write and single-load reads at four seed-drawn TCK periods.
+
+    Also a 20 ns leg, and 40 ns after a reset.
+    """
 
     use_shared_env = True
     # No TCK floor: the sequence sets the TCK period of each leg.

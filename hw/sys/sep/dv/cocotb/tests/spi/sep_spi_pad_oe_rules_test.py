@@ -44,11 +44,11 @@ Checks:
                       the OUTPUT_EN gate keeps the pads undriven).
   CHK-SPI-OE-RESET    VCS only: every sample of the cold-reset window reads all
                       output enables 0, and an X or Z on an output enable fails.
-                      On Verilator (2-state) the leaf logs ``OBS-SPI-OE-RESET``
+                      On Verilator (2-state) the leaf logs ``INFO-SPI-OE-RESET``
                       with the same counts and grades nothing. Controls (both
                       simulators): the last sample before ``rst_ni`` falls reads
                       ``spi_cs_oe_o``, ``spi_sck_oe_o`` and ``spi_sd_oe_o[0]`` = 1
-                      with chip select low (``CTL-SPI-OE-RESET`` line), and the
+                      with chip select low (``CTRL-SPI-OE-RESET`` line), and the
                       SEP reset asserts in the hold.
   CHK-SPI-OE-CS-HIGH  every traffic sample with chip select high, also the
                       clocks right after chip select rises and the gaps between
@@ -476,7 +476,7 @@ class sep_spi_pad_oe_rules_test(sep_base_test):
             f"sep_reset_n_at_hold_end={rst['sep_reset_n_at_hold_end']} "
             f"rst_lag_samples={oe.lag_samples} rst_lag_oe={'|'.join(oe.lag_oe) or '-'}"
         )
-        self.logger.info("CTL-SPI-OE-RESET LOG seed=%d %s", self.seed, ctl)
+        self.logger.info("CTRL-SPI-OE-RESET LOG seed=%d %s", self.seed, ctl)
         live = pre is not None and pre[2] == 0 and pre[3] == 1 and pre[4] == 1 and (pre[5] or 0) & 1
         if not live or rst["sep_reset_n_at_hold_end"] != 0 or win.samples == 0:
             self._ctrl_missing("CHK-SPI-OE-RESET", f"{ctl} {self._win_line(win)}")
@@ -487,7 +487,7 @@ class sep_spi_pad_oe_rules_test(sep_base_test):
             self._pass("CHK-SPI-OE-RESET", line)
             await spi_lane_fcov(TEST, "oe", oe_win=0)
         else:
-            self.logger.info("OBS-SPI-OE-RESET LOG seed=%d %s", self.seed, line)
+            self.logger.info("INFO-SPI-OE-RESET LOG seed=%d %s", self.seed, line)
 
         # Leg 3: OUTPUT_EN = 0 with SPIEN = 1, a TXDATA word and a TX command.
         oe.mode = "off"

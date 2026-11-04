@@ -76,9 +76,8 @@
  * assert completion status", without saying which of done/success it asserts. A
  * bypassed part may therefore present done=1,success=0 (completion asserted,
  * nothing repaired) just as plausibly as done=1,success=1. In the first case,
- * reading success here would brick a legitimately strapped part on a fuse
- * (SKIP_MEM_CHECK) that nobody has any reason to have blown. Skipping the arm is
- * the correct response under either reading, which is why this arm skips
+ * reading success here would halt a legitimately strapped part. Skipping the arm
+ * is the correct response under either reading, which is why this arm skips
  * outright rather than treating some particular value as a failure to excuse. */
 .equ STRAP_BYPASS_SRAM_REPAIR,  (1 << 13)
 /* MBIST_BYPASS, GPIO pin 54 -> STRAPS_HI[22] (54 - 32): "Ignore results of
@@ -86,33 +85,6 @@
  * under this strap, so mbist_done sets normally and only the verdict is
  * discarded, whereas BYPASS_SRAM_REPAIR stops repair happening at all. */
 .equ STRAP_MBIST_BYPASS_HI,     (1 << 22)
-
-/* SKIP_MEM_CHECK fuse: STATUS_RPT bit 2. Applies to a check that RAN and FAILED
- * -- distinct from either bypass strap above, which mean the check did not run
- * or its result is not to be believed. 0 = hang, 1 = warn and continue.
- *
- * Fail-closed: the bit is 0 on an unblown part. Permitting a boot after a check
- * that RAN AND FAILED therefore requires deliberately blowing a fuse; that
- * particular escape cannot be arranged at run time by holding a pin.
- *
- * That covers THIS FUSE ONLY, not the gate as a whole. Both bypass straps skip
- * their arm outright, so anyone able to hold a strap can stop the corresponding
- * check from being evaluated without touching any fuse. That is the straps'
- * documented purpose and a different threat surface.
- *
- * NOTE: bit 2 currently falls inside `reserved[31:2]` in
- * regs/blocks/sep_efuse_map/sep_efuse_map.rdl:806, so this is an undeclared use
- * of a reserved bit. The gate itself is implemented; the fuse allocation is not
- * yet declared in the register map.
- * The name describes the intent: continue booting when MBIST reports a
- * failure. Neither this design's RDL nor the
- * OCAH-MAS fuse table allocates it -- MAS declares STATUS_RPT as 32 bits with 2
- * used, both for status reporting. So this is an unallocated bit borrowed from
- * another chip's map, not an allocated one awaiting a declaration (F23/F25). The register's existing `sw = r` / `hw = rw`
- * access is already correct for this: software cannot assert it, only the fuse can.
- */
-.equ SEP_EFUSE_STATUS_RPT,     SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR
-.equ STATUS_RPT_SKIP_MEM_CHECK, (1 << 2)
 
 /* Bound on the wait for mbist_done. PLACEHOLDER, NOT CALIBRATED -- no expected
  * MBIST duration was available when this was written.
@@ -341,8 +313,8 @@ cold_boot:
      * whether that worked. If it did not, the memories may return wrong data,
      * and the ROM's entire job is comparing digests and deciding what to trust:
      * a single flipped cell can make const_time_eq() agree, or corrupt a derived
-     * key, with nothing reporting an error. So a repair failure is fatal unless a
-     * fuse says otherwise.
+     * key, with nothing reporting an error. So a check that ran and failed is
+     * fatal; only the bypass straps skip a check.
      *
      * WHY IT SITS HERE, IN ASSEMBLY. This runs before the DCCM scrub below, so
      * before anything writes DCCM and before the C runtime exists. The check used
@@ -420,19 +392,13 @@ dft_gate_failed:
 
     /* STATUS_ENCODE(STATUS_TYPE_WARN, SEP_MSG_MBIST_FAIL)
      * = (0x08 << 24) | (0x01 << 16) | 0x219 = 0x08010219
-     * WARN, not ERROR: the SKIP_MEM_CHECK fuse below may still permit the boot. */
+     * The WARN word names the cause; the terminal ERROR word below follows it. */
     li      t0, SEP_COLD_SCRATCH_1
     li      t2, 0x08010219
     sw      t2, 0(t0)
 
-    /* SKIP_MEM_CHECK. Blown -> continue despite the failure; unblown -> hang. */
-    li      t0, SEP_EFUSE_STATUS_RPT
-    lw      t3, 0(t0)
-    andi    t4, t3, STATUS_RPT_SKIP_MEM_CHECK
-    bnez    t4, 4f
-
-    /* No bypass: stop. Do not fall through to the scrub -- writing 128KiB of
-     * memory that just failed repair is exactly what must not happen.
+    /* Stop. Do not fall through to the scrub -- writing 128KiB of memory that
+     * just failed repair is exactly what must not happen.
      *
      * cold_scratch[1] gets STATUS_ENCODE(ERROR, 0xD001) = 0x0f01d001, the same
      * word rom_err_fail(ROM_ERR_DFT_GATE_BLOCKED) leaves, so the observable
@@ -572,7 +538,7 @@ trap_vector_early:
      * reference uses, so one constant covers all three.
      *
      * Only the exception handler does this, not mem_repair_fail_hang: a repair
-     * failure is a gated outcome with a bypass fuse, not an unexpected fault. */
+     * failure is a gated outcome, not an unexpected fault. */
     li      t0, SEP_COLD_SCRATCH_0
     li      t2, 0xDEADBEEF
     sw      t2, 0(t0)

@@ -102,6 +102,11 @@ through `smu_axi_out`, every `smu_axi_in` transaction targets the SMC, and the
 aperture rules below do not apply. The `smu_axi_in` / `smu_axi_out` port types
 are the same in both configurations.
 
+The SMU AXI ports and crossbar carry 12-bit user fields on all five channels.
+`smu_axi_in` accepts 8-bit transaction IDs and `smu_axi_out` presents 10-bit
+transaction IDs, in both `CFG.SEP` configurations. The crossbar presents 6-bit
+transaction IDs to the SEP and SMC inbound subordinates.
+
 ifdef::backend-html5[]
 Connectivity is described in
 xref:ocah-docs:ROOT:architecture.adoc#smu-axi-crossbar[SMU AXI Crossbar];
@@ -150,6 +155,30 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 the SMU AXI Crossbar section of the Technical Reference Manual.
 endif::backend-pdf[]
+
+[[smu-axi-boundary-contract]]
+=== AXI boundary contract
+
+The SMU does not check that requests on `smu_axi_in` are legal for it. The
+system fabric that drives the port must meet the following rules in both
+`CFG.SEP` configurations.
+
+Atomic transactions::
+The SMU does not support AXI atomic transactions: `AWATOP` must be 0. Nothing
+in the SMU refuses or answers an atomic request. It is forwarded as an ordinary
+write, and an atomic that expects read data never receives it, so the requester
+waits indefinitely. If the system fabric can issue atomics towards the SMU,
+filter them in front of `smu_axi_in`.
+
+Burst encodings::
+Every request must be a legal AXI4 burst. The crossbar routes a burst by its
+start address and does not inspect `AxBURST`, `AxLEN` or the end address, so a
+WRAP burst with `AxLEN` 0, the reserved `AxBURST` encoding 2'b11 and an INCR
+burst that crosses a 4 KiB boundary are forwarded unchanged and their effect is
+set by the target. The SEP SRAM refuses a multi-beat burst that is not INCR,
+and the SMC scratchpad accepts all three with `OKAY`. The inbound traffic
+filters decide a burst by its start address, so a burst that crosses a 4 KiB
+boundary also escapes the filter entries of the page it enters.
 
 [[smu-firmware-programming-order]]
 === Firmware programming order
@@ -794,15 +823,13 @@ the SEP-to-SMC dedicated AXI connection.
 |`telemetry_afready_i` |input |[NumTelemetryReceivers-1:0] |SMU external port
 |===
 
-=== DED/WDT
+=== RAS
 
 [cols="<30%,<10%,<15%,<45%",options="header"]
 |===
 |Port |Direction |Width |SMU Connection
 
-|`smc_cluster_ded_o` |output |1 |SMU external port
-|`smc_wdt_first_timeout_o` |output |1 |SMU external port
-|`smc_wdt_second_timeout_o` |output |1 |SMU external port
+|`smc_ras_o` |output |`smc_pkg::smc_ras_t` |SMU external port
 |===
 
 === Region Size
@@ -854,7 +881,7 @@ the SEP-to-SMC dedicated AXI connection.
 |Port |Direction |Width |SMU Connection
 
 |`lc_state_o` |output |[2*LcStateWidth-1:0] |SEP lifecycle state when `CFG.SEP=1`, else `8'hf0`; ported through SMU
-|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when `CFG.SEP=1`) or the SMC efuse interface.
+|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when `CFG.SEP=1`) or the SMC efuse interface: the OR of `sep_ras_o.lc_sigint_err` and `smc_ras_o.lc_sigint_err`.
 |===
 
 === Mailbox Interrupts

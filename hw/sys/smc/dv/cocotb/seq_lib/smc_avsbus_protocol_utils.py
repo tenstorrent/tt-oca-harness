@@ -30,8 +30,12 @@ Two DUT-produced observables are recorded here.
     preamble in [31:30], the AVS_CMD fields in the same bit positions they
     occupy in the register, and a hardware CRC-3 in [2:0]. The line idles
     high, so a frame is the 32 bits starting at the first low bit; the CRC
-    is left out of every compare because no published source in this tree
-    gives the AVSBus CRC-3 polynomial.
+    is left out of the frame compare and graded on its own by ``crc3``.
+
+``crc3``
+    The CRC-3 of ``architecture.adoc`` "CRC Verification Engine": generator
+    x^3 + x + 1, zero initial value, no final XOR, bit 31 first, the
+    remainder of M(x) * x^3 over subframe bits [31:3].
 """
 
 from __future__ import annotations
@@ -173,6 +177,26 @@ def build_avs_cmd(cmd_type: int, cmd_grp: int, cmd_code: int, rail_sel: int, cmd
 def expected_master_subframe(cmd_word: int) -> int:
     """The 32-bit master subframe a given AVS_CMD word produces, CRC-3 zeroed."""
     return (MASTER_PREAMBLE << MASTER_PREAMBLE_BP) | (cmd_word & AVS_CMD_WIRE_MASK)
+
+
+CRC3_POLY = 0b1011
+CRC3_MASK = (1 << CRC3_BITS) - 1
+
+
+def crc3(subframe: int) -> int:
+    """The CRC-3 field a 32-bit AVSBus subframe must carry in bits [2:0].
+
+    The remainder of M(x) * x^3 divided by x^3 + x + 1, where M(x) is bits
+    [31:3] of ``subframe`` with bit 31 as the highest-order coefficient; zero
+    initial value, no final XOR (``architecture.adoc`` "CRC Verification
+    Engine"). A received subframe passes the check when ``crc3`` of it equals
+    its own bits [2:0].
+    """
+    remainder = 0
+    for index in range(SUBFRAME_BITS - 1, CRC3_BITS - 1, -1):
+        feedback = (remainder >> (CRC3_BITS - 1)) ^ ((subframe >> index) & 1)
+        remainder = ((remainder << 1) & CRC3_MASK) ^ (CRC3_POLY & CRC3_MASK if feedback else 0)
+    return remainder
 
 
 def fifo_field(word: int, mask: int, pos: int) -> int:

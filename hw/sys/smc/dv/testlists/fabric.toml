@@ -25,6 +25,7 @@ run_modes = ["smoke"]
 name = "smc_i3c_csr_sweep_core_test"
 module = "smc_i3c_csr_sweep_core_test"
 seed = 1
+reseed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
@@ -116,6 +117,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["diag"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_sys_out", "+axi_sva_need_to_output"]
 
 [[tests]]
 name = "smc_filter_lock_window_test"
@@ -124,6 +126,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_infilt_ctrl"]
 
 [[tests]]
 name = "smc_outremap_prot_srcid_test"
@@ -310,6 +313,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_sys_in", "+axi_sva_need_filtered_sys"]
 
 [[tests]]
 name = "smc_sep_in_axi_flow_control_test"
@@ -318,14 +322,28 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_sep_in", "+axi_sva_need_sep_remap", "+axi_sva_need_stall_sep_in"]
 
 [[tests]]
 name = "smc_sep_in_axi_shape_test"
 module = "smc_sep_in_axi_shape_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+
+[[tests]]
+# WRAP AxLEN 0, reserved-burst and 4 KiB-crossing requests on SEP_IN and SYS_IN, the view of
+# the two port checkers and the two fabric-link checkers masked by the inject hook; answered,
+# footprint and liveness graded.
+name = "smc_axi_illegal_encoding_inject_test"
+module = "smc_axi_illegal_encoding_inject_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+args = ["+smc_axi_wrap_len1_inject", "+axi_sva_need_sep_in", "+axi_sva_need_sys_in"]
 
 [[tests]]
 name = "smc_jtag_axi_shape_test"
@@ -334,6 +352,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_jtag_in", "+axi_sva_need_stall_jtag_in"]
 
 [[tests]]
 name = "smc_dual_base_addressing_test"
@@ -422,6 +441,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric", "decode"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_external", "+axi_sva_need_efuse_bank"]
 
 [[tests]]
 name = "smc_outfilt_addr_match_test"
@@ -430,6 +450,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_outfilt_ctrl"]
 
 [[tests]]
 name = "smc_filter_lock_scope_test"
@@ -470,6 +491,15 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_axi_fabric_burst_type_islands_test"
+module = "smc_axi_fabric_burst_type_islands_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+args = ["+axi_sva_need_sep_in", "+axi_sva_need_sys_in", "+axi_sva_need_jtag_in"]
 
 [[tests]]
 name = "smc_past_extent_slverr_units_test"
@@ -560,6 +590,15 @@ tags = ["ci", "fabric", "decode"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_err_slv_response_content_test"
+module = "smc_err_slv_response_content_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+args = ["+axi_sva_need_sep_in", "+axi_sva_need_sys_in", "+axi_sva_need_jtag_in"]
+
+[[tests]]
 name = "smc_unit_extent_register_decode_test"
 module = "smc_unit_extent_register_decode_test"
 seed = 1
@@ -608,6 +647,15 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_infilt_window_cfg_reexposure_test"
+module = "smc_infilt_window_cfg_reexposure_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+args = ["+axi_sva_need_sep_in", "+axi_sva_need_sys_in"]
+
+[[tests]]
 name = "smc_infilt_priority_deny_test"
 module = "smc_infilt_priority_deny_test"
 seed = 1
@@ -622,6 +670,12 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric", "decode"]
 run_modes = ["smoke"]
+args = [
+    "+axi_sva_need_dfx_csr",
+    "+axi_sva_need_ar_ctrl",
+    "+axi_sva_need_mr_ctrl",
+    "+axi_sva_need_xr_ctrl",
+]
 
 [[tests]]
 name = "smc_inbound_concurrency_limits_test"
@@ -659,6 +713,92 @@ run_modes = ["smoke"]
 name = "smc_axi_channel_timing_ports_test"
 module = "smc_axi_channel_timing_ports_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+args = ["+axi_sva_need_stall_sys_in"]
+
+[[tests]]
+name = "smc_infilt_rule_matrix_rand_test"
+module = "smc_infilt_rule_matrix_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_outfilt_rule_matrix_rand_test"
+module = "smc_outfilt_rule_matrix_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_map_row_response_matrix_test"
+module = "smc_map_row_response_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_alias_remap_attr_rand_test"
+module = "smc_alias_remap_attr_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sys_out_error_inject_rand_test"
+module = "smc_sys_out_error_inject_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+# RREADY-held read groups past ErrSlvMaxTrans and the internal CSR AXI-Lite crossbar limit.
+name = "smc_fabric_errslv_axil_limits_test"
+module = "smc_fabric_errslv_axil_limits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+# The system inbound filter clock stops while SYS_IN is idle and runs for a SYS_IN read.
+name = "smc_sys_in_filter_idle_clock_gate_test"
+module = "smc_sys_in_filter_idle_clock_gate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+# The merged BRESP of a split two-beat write follows the stated rule; every declared
+# past-extent and gap write is recorded beside its declaration.
+name = "smc_bresp_evidence_test"
+module = "smc_bresp_evidence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+# A burst starting in a gap answers DECERR on every beat; exclusive accesses answer OKAY;
+# in-block holes and array padding answer OKAY with 0; the beat past the last register of
+# smc_cpu_ctrl answers SLVERR.
+name = "smc_memmap_access_rules_test"
+module = "smc_memmap_access_rules_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
 run_modes = ["smoke"]

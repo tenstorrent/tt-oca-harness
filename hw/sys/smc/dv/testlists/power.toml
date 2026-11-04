@@ -175,6 +175,7 @@ run_modes = ["smoke"]
 name = "smc_telemetry_address_map_test"
 module = "smc_telemetry_address_map_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
@@ -215,6 +216,7 @@ run_modes = ["smoke"]
 name = "smc_wdt_register_map_test"
 module = "smc_wdt_register_map_test"
 seed = 1
+reseed = 1
 timeout_sec = 1800
 tags = ["ci", "wdt"]
 run_modes = ["smoke"]
@@ -300,6 +302,14 @@ tags = ["ci", "wdt"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_wdt_count_across_core_reset_test"
+module = "smc_wdt_count_across_core_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_octs_primary_count_test"
 module = "smc_octs_primary_count_test"
 seed = 1
@@ -310,6 +320,34 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_avsbus_resync_timing_test"
 module = "smc_avsbus_resync_timing_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_warm_reset_rand_test"
+module = "smc_wdt_warm_reset_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_plic_source_ids_test"
+module = "smc_wdt_plic_source_ids_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]
+
+# OCTS pulse widths and credit spacing on pads 55/56 in clk_smc_i, the START
+# rules of the pulse FSM, the PRIMARY/SECONDARY masks and TIMER_GPIO_ENABLE.
+[[tests]]
+name = "smc_octs_pulse_timing_test"
+module = "smc_octs_pulse_timing_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]

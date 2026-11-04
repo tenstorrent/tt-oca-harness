@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared scenario for the secondary-chiplet boot arm, reached with ``STRAPS_LO[25]`` clear.
 
-The ROM makes one manifest attempt from SMC SRAM at the offset the SMC publishes in scratch[8].
-Members set ``manifest_offset``, ``expect_boot``, ``expected_error`` and ``check_outcome``.
+The ROM makes one manifest attempt from SMC SRAM at the offset the SMC publishes in scratch[8],
+unless that offset is the invalid marker. Members set ``manifest_offset``, ``expect_boot``,
+``expected_error`` and ``check_outcome``.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from sep_reg_meta import sym
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 SMC_SRAM_BASE = 0x4006_0000
 DEFAULT_MANIFEST_OFFSET = 0x1000
+SMC_MANIFEST_OFFSET_INVALID = 0xFFFF_FFFF
 MANIFEST_MAGIC = b"OCAC"
 ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
 
@@ -34,11 +36,14 @@ STRAP_RECOVERY_CLEAR = "recovery=0"
 STRAPS_LO_ECHO = "STRAPS_LO=0x00000000"
 SMC_COORD_NOT_READY = "SMC_COORD_NOT_READY"
 SMC_MANIFEST_OFF_INVALID = "SMC_MANIFEST_OFF_INVALID"
+SMC_MANIFEST_ADDR = "SMC_MANIFEST_ADDR="
 # In emission order on the SMC path.
 WAIT_SMC = "WAIT_SMC_MANIFEST"
 MANIFEST_PRIMARY = "MANIFEST_PRIMARY"
 MANIFEST_BACKUP = "MANIFEST_BACKUP"
+MANIFEST_SRC = "MANIFEST_SRC="
 MANIFEST_OK = "MANIFEST_OK"
+ALIGN_FAIL = "MANIFEST_ALIGN_FAIL"
 ALL_FAILED = "MANIFEST_ALL_FAILED"
 # Would mean the ROM brought up the SPI controller despite the secondary strap.
 SPI_INIT_MARKERS = (">>SPI_INIT", "SPI_INIT_OK")
@@ -61,6 +66,10 @@ class sep_secondary_chiplet_base(sep_base_test):
     image_manifest_offset: int = DEFAULT_MANIFEST_OFFSET
     expect_boot: bool = True
     expected_error: int = 0
+    # False when the ROM must refuse the published offset before any slot attempt.
+    expect_manifest_attempt: bool = True
+    # False when the published offset is not an address in the packed SMC image.
+    published_offset_in_image: bool = True
     extra_required: tuple[str, ...] = ()
     extra_forbidden: tuple[str, ...] = ()
 
@@ -69,7 +78,8 @@ class sep_secondary_chiplet_base(sep_base_test):
         oc.assert_known(
             (STRAPS_LO_ECHO, STRAP_PRIMARY_CLEAR, STRAP_RECOVERY_CLEAR, SECONDARY_MARKER)
             + (SPI_MARKER, RECOVERY_MARKER, SMC_COORD_NOT_READY, SMC_MANIFEST_OFF_INVALID)
-            + (WAIT_SMC, MANIFEST_PRIMARY, MANIFEST_BACKUP)
+            + (SMC_MANIFEST_ADDR, WAIT_SMC, MANIFEST_PRIMARY, MANIFEST_BACKUP, MANIFEST_SRC)
+            + (ALIGN_FAIL, ALL_FAILED)
             + SPI_INIT_MARKERS
             + tuple(cls.extra_required)
             + tuple(cls.extra_forbidden),
@@ -79,31 +89,38 @@ class sep_secondary_chiplet_base(sep_base_test):
     @property
     def _required(self) -> tuple[str, ...]:
         return (
+            (STRAP_PRIMARY_CLEAR, STRAP_RECOVERY_CLEAR) + self._order + tuple(self.extra_required)
+        )
+
+    @property
+    def _order(self) -> tuple[str, ...]:
+        # The console order every member grades, from the strap echo to the first slot.
+        if not self.expect_manifest_attempt:
+            return (STRAPS_LO_ECHO, SECONDARY_MARKER, self.published_off_echo, WAIT_SMC)
+        return (
             STRAPS_LO_ECHO,
-            STRAP_PRIMARY_CLEAR,
-            STRAP_RECOVERY_CLEAR,
             SECONDARY_MARKER,
             self.published_off_echo,
             self.published_addr_echo,
             WAIT_SMC,
             MANIFEST_PRIMARY,
             self.src_echo,
-        ) + tuple(self.extra_required)
+        )
 
     @property
     def _forbidden(self) -> tuple[str, ...]:
-        return (
-            (
-                SPI_MARKER,
-                RECOVERY_MARKER,
-                "STRAP primary=1",
-                MANIFEST_BACKUP,
-                SMC_COORD_NOT_READY,
-                SMC_MANIFEST_OFF_INVALID,
-            )
-            + SPI_INIT_MARKERS
-            + tuple(self.extra_forbidden)
+        common = (
+            SPI_MARKER,
+            RECOVERY_MARKER,
+            "STRAP primary=1",
+            MANIFEST_BACKUP,
+            SMC_COORD_NOT_READY,
         )
+        if self.expect_manifest_attempt:
+            attempt = (SMC_MANIFEST_OFF_INVALID,)
+        else:
+            attempt = (SMC_MANIFEST_ADDR, MANIFEST_PRIMARY, MANIFEST_SRC, ALIGN_FAIL, ALL_FAILED)
+        return common + attempt + SPI_INIT_MARKERS + tuple(self.extra_forbidden)
 
     @property
     def published_off_echo(self) -> str:
@@ -162,6 +179,18 @@ class sep_secondary_chiplet_base(sep_base_test):
             f"image must supply a real manifest before this test can grade the "
             f"published source address"
         )
+        if not self.published_offset_in_image:
+            self.logger.info(
+                "CHK-SMC-IMAGE: %s covers %d bytes from 0x%08x; manifest offset "
+                "0x%x holds %r and the published offset 0x%x is not an image address",
+                path,
+                span,
+                SMC_SRAM_BASE,
+                self.image_manifest_offset,
+                image_manifest,
+                self.manifest_offset,
+            )
+            return
         published = word_at(self.manifest_offset)
         if self.manifest_offset == self.image_manifest_offset:
             assert published == MANIFEST_MAGIC, (
@@ -201,11 +230,9 @@ class sep_secondary_chiplet_base(sep_base_test):
                 f"grades"
             )
         self.logger.info(
-            "CHK-STIMULUS-OFFSET: SMC scratch[8] publishes 0x%x "
-            "(+sep_smc_scratch8=%s), so the ROM loads from 0x%08x",
+            "CHK-STIMULUS-OFFSET: SMC scratch[8] publishes 0x%x (+sep_smc_scratch8=%s)",
             self.manifest_offset,
             arg,
-            SMC_SRAM_BASE + self.manifest_offset,
         )
 
     def prepare_smc_mem(self) -> None:
@@ -361,50 +388,31 @@ class sep_secondary_chiplet_base(sep_base_test):
             )
         log.info("CHK-SECONDARY-FORBIDDEN PASS: none of %s appeared", ", ".join(forbidden))
 
-        src = self.src_echo
-        i_straps = self._index_of(console, STRAPS_LO_ECHO)
-        i_branch = self._index_of(console, SECONDARY_MARKER)
-        i_off = self._index_of(console, self.published_off_echo)
-        i_addr = self._index_of(console, self.published_addr_echo)
-        i_wait = self._index_of(console, WAIT_SMC)
-        i_first = self._index_of(console, MANIFEST_PRIMARY)
-        i_src = self._index_of(console, src)
-        assert i_straps < i_branch < i_off < i_addr < i_wait < i_first < i_src, (
-            f"secondary sequence is out of order: {STRAPS_LO_ECHO}@{i_straps} -> "
-            f"{SECONDARY_MARKER}@{i_branch} -> {self.published_off_echo}@{i_off} -> "
-            f"{self.published_addr_echo}@{i_addr} -> {WAIT_SMC}@{i_wait} -> "
-            f"{MANIFEST_PRIMARY}@{i_first} -> {src}@{i_src}. Console: {console}"
+        order = self._order
+        indices = [self._index_of(console, marker) for marker in order]
+        chain = " -> ".join(f"{m}@{i}" for m, i in zip(order, indices))
+        assert indices == sorted(set(indices)), (
+            f"secondary sequence is out of order: {chain}. Console: {console}"
         )
-        log.info(
-            "CHK-SECONDARY-ORDER PASS: STRAPS_LO@%d -> BOOT_SECONDARY@%d -> %s@%d -> "
-            "%s@%d -> WAIT_SMC_MANIFEST@%d -> MANIFEST_PRIMARY@%d -> %s@%d",
-            i_straps,
-            i_branch,
-            self.published_off_echo,
-            i_off,
-            self.published_addr_echo,
-            i_addr,
-            i_wait,
-            i_first,
-            src,
-            i_src,
-        )
+        log.info("CHK-SECONDARY-ORDER PASS: %s", chain)
 
-        # A repeated read of the same offset prints no MANIFEST_BACKUP, so count the attempts.
-        n_attempts = self._count(console, MANIFEST_PRIMARY)
-        n_src = self._count(console, src)
-        assert n_attempts == 1 and n_src == 1, (
-            f"{MANIFEST_PRIMARY} appeared {n_attempts} times and {src} {n_src} "
-            f"times, expected exactly 1 each: rom_manifest_boot gives the SMC path "
-            f"num_retries = 0, so there is one attempt and no second slot. "
-            f"Console: {console}"
-        )
-        log.info(
-            "CHK-SINGLE-ATTEMPT PASS: one %s and one %s, no %s",
-            MANIFEST_PRIMARY,
-            src,
-            MANIFEST_BACKUP,
-        )
+        if self.expect_manifest_attempt:
+            # A repeated read of the same offset prints no MANIFEST_BACKUP, so count the attempts.
+            src = self.src_echo
+            n_attempts = self._count(console, MANIFEST_PRIMARY)
+            n_src = self._count(console, src)
+            assert n_attempts == 1 and n_src == 1, (
+                f"{MANIFEST_PRIMARY} appeared {n_attempts} times and {src} {n_src} "
+                f"times, expected exactly 1 each: rom_manifest_boot gives the SMC path "
+                f"num_retries = 0, so there is one attempt and no second slot. "
+                f"Console: {console}"
+            )
+            log.info(
+                "CHK-SINGLE-ATTEMPT PASS: one %s and one %s, no %s",
+                MANIFEST_PRIMARY,
+                src,
+                MANIFEST_BACKUP,
+            )
 
         self.check_outcome(console, status_seq, fw_done, fw_pass)
 

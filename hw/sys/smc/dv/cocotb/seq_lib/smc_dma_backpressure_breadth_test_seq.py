@@ -7,7 +7,15 @@ Specs hw/sys/smc/doc/dma.adoc, hw/sys/smc/doc/fabric.adoc, vendor idma overlay d
 Sources and destinations sit in the output-fabric window and are preloaded and read back
 through the responder's backdoor, so no bus traffic other than the DMA's own is added.
 The outstanding AR and AW counts come from the SYS_OUT handshakes: AR minus RLAST
-handshakes, and AW minus B handshakes.
+handshakes, and AW minus B handshakes. The responder accepts SYS_OUT_OUTSTANDING requests per
+direction before it withholds READY, more than the backend can issue, so a plateau in those
+counts is the DUT's own limit and not the responder's acceptance window: during the plateau
+window no rise may show ARVALID without ARREADY, so the DUT stopped issuing on its own. With R
+and B held the outstanding AR count must settle at or below the backend in-flight limit
+DMA_MST_MAX_TXNS 32 (dma.adoc, SMC DMA elaboration settings); the plateau value itself is printed
+as an observation, since no document sentence states it. With only B delayed, every B handshake
+must come at least the delay after the AW handshake it answers, the control that the responder's
+delay landed on the bus.
 
 Every S2 copy holds SYS_OUT AR READY low from before its launch until the egress tally has
 seen an ARVALID without ARREADY and the drawn number of further rises has passed. READY then
@@ -60,6 +68,7 @@ POLL_CYCLES = 20
 WAIT_LIMIT = 40000
 PLATEAU_RISES = 256
 OUTSTANDING_AR_CAP = 32
+SYS_OUT_OUTSTANDING = 64
 LONG_HOLD_RISES = 4096
 ROWS = 128
 ROW_BYTES = 8
@@ -124,6 +133,9 @@ class _EgressTally:
         self.aw_out_max = 0
         self.aw_offset = 0
         self.r_beats = 0
+        self.rise = 0
+        self.b_gap_min = -1
+        self._aw_rises: list[int] = []
         self.stalls = {"ar": 0, "aw": 0, "w": 0}
         self._ar_hs = 0
         self._r_last = 0
@@ -135,6 +147,7 @@ class _EgressTally:
         self.unchanged = 0
         self.plateau_done = False
         self.plateau_value = -1
+        self.plateau_stalls = 0
         self.plateau_issued = -1
         self.plateau_at_ps = 0
 
@@ -149,10 +162,12 @@ class _EgressTally:
         self.last = -1
         self.unchanged = 0
         self.plateau_done = False
+        self.plateau_stalls = 0
 
     def reset_maxima(self) -> None:
         self.ar_out_max = self.ar_out
         self.aw_out_max = self.aw_out
+        self.b_gap_min = -1
 
     async def run(self) -> None:
         dut = self.dut
@@ -160,6 +175,7 @@ class _EgressTally:
         while True:
             await RisingEdge(dut.clk_smc_i)
             await ReadOnly()
+            self.rise += 1
             tb = {n[len("tb_output_axi_") :]: self._bit(getattr(dut, n), n) for n in _TB_SIGNALS}
             rv = {n: self._bit(getattr(ifc, n), f"u_output_axi_if.{n}") for n in _IF_SIGNALS}
             if tb["arvalid"] and tb["arready"]:
@@ -171,7 +187,13 @@ class _EgressTally:
                     self._r_last += 1
             if tb["awvalid"] and tb["awready"]:
                 self._aw_hs += 1
+                self._aw_rises.append(self.rise)
             if tb["bvalid"] and tb["bready"]:
+                # Responses of the single DMA ID leave in AW order, so the n-th B
+                # answers the n-th AW.
+                if self._b_hs < len(self._aw_rises):
+                    gap = self.rise - self._aw_rises[self._b_hs]
+                    self.b_gap_min = gap if self.b_gap_min < 0 else min(self.b_gap_min, gap)
                 self._b_hs += 1
             for chan in ("ar", "aw", "w"):
                 if tb[f"{chan}valid"] and not tb[f"{chan}ready"]:
@@ -185,9 +207,12 @@ class _EgressTally:
             if self.armed and not self.plateau_done and self.ar_issued > self.armed_issued:
                 if self.ar_out == self.last:
                     self.unchanged += 1
+                    if tb["arvalid"] and not tb["arready"]:
+                        self.plateau_stalls += 1
                 else:
                     self.last = self.ar_out
                     self.unchanged = 0
+                    self.plateau_stalls = 0
                 if self.unchanged >= PLATEAU_RISES:
                     self.plateau_done = True
                     self.plateau_value = self.ar_out
@@ -453,6 +478,18 @@ class smc_dma_backpressure_breadth_test_seq(SmcCsrSeq):
         await self._await_done(d)
         self._compare(d, payload)
         resumed = t.ar_issued - issued_at
+        assert t.plateau_stalls == 0, (
+            f"{t.plateau_stalls} rises of the plateau window showed ARVALID without ARREADY: "
+            f"the responder, not the DUT, set the plateau of {plateau}"
+        )
+        cocotb.log.info(
+            "OBS-DMA-OUTSTANDING-PLATEAU: with R and B held behind a responder accepting %d "
+            "outstanding reads the outstanding AR count plateaued at %d; dma.adoc states the "
+            "backend in-flight limit DMA_MST_MAX_TXNS 32 and no document sentence states the "
+            "plateau",
+            SYS_OUT_OUTSTANDING,
+            plateau,
+        )
 
         resp = self._responder
         d2 = _Desc("BDELAY", S3B_SRC, S3B_DST, ROW_BYTES, ROWS)
@@ -465,15 +502,26 @@ class smc_dma_backpressure_breadth_test_seq(SmcCsrSeq):
             await self._await_done(d2)
         finally:
             resp.clear_response_delay()
-        aw_max = t.aw_out_max
+        aw_max, b_gap = t.aw_out_max, t.b_gap_min
+        assert aw_max <= OUTSTANDING_AR_CAP, (
+            f"outstanding AW count reached {aw_max}, above {OUTSTANDING_AR_CAP}"
+        )
+        assert b_gap >= B_DELAY_CYCLES, (
+            f"a B handshake came {b_gap} rises after its AW handshake with B delayed "
+            f"{B_DELAY_CYCLES} cycles"
+        )
+        assert aw_max >= 2, f"outstanding AW count never exceeded {aw_max} with B delayed"
         self._compare(d2, payload2)
         self._mark("S3")
         return (
             f"with R and B held the outstanding AR count plateaued at {plateau} (stable "
-            f"{PLATEAU_RISES} rises, maximum {ar_max}, cap {OUTSTANDING_AR_CAP}; "
-            f"AW maximum under the hold {aw_hold_max}); {resumed} further ARs issued after the "
-            f"release and the {ROWS}-row copy completed; with B delayed {B_DELAY_CYCLES} "
-            f"cycles alone the outstanding AW maximum is {aw_max} (not specified, measured)"
+            f"{PLATEAU_RISES} rises, maximum {ar_max}) <= {OUTSTANDING_AR_CAP} (DMA_MST_MAX_TXNS) "
+            f"with no AR refused by the responder (depth {SYS_OUT_OUTSTANDING}) during the "
+            f"plateau window; AW maximum under the hold {aw_hold_max}; {resumed} further ARs "
+            f"issued after the release and the {ROWS}-row copy completed; with B delayed "
+            f"{B_DELAY_CYCLES} cycles alone the responder's delay landed on the bus (every B "
+            f">= {b_gap} rises after its AW) and the outstanding AW maximum is {aw_max} >= 2 "
+            f"and <= {OUTSTANDING_AR_CAP}"
         )
 
     async def _s4(self) -> str:

@@ -66,7 +66,7 @@ first to pull the published image instead.
 | `oca_image_ops.py` | Whitelist `OPS` of DV mutation helpers a spec may run, with the re-sign rules |
 | `oca_repack.py` | Rebuilds an image from a packer config plus field edits, through the manifest venv |
 | `oca_layout.py` | OCA manifest field offsets (`L.C.OFF_*`), loaded from the manifest submodule's constants |
-| `dv_env.py` | Loads the SEP DV cocotb helper modules (`sep_payload_mutate`, `sep_manifest_mutate`) without importing cocotb |
+| `dv_env.py` | Loads the SEP DV cocotb helper modules (`sep_payload_mutate`, `sep_manifest_mutate`, `sep_secure_boot_cases`) without importing cocotb |
 | `boot_measurement_golden.py` | Computes the expected `BL0S_BOOT_PCR=` token from the boot-state record |
 | `preloaded_test_programs.py`, `warm_handler_stub.S`, `warm_fault_stub.S`, `*_words.py`, `gen_warm_stub.py` | Executable stubs deposited through init writes before the run; `gen_warm_stub.py` regenerates the checked-in words from the `.S` sources |
 | `untrusted_signing_key.py`, `keys/` | RSA-3072 signing key whose modulus digest is in no ROM key slot; generated on first use and git-ignored |

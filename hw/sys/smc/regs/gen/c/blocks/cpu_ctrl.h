@@ -47,26 +47,34 @@ typedef union {
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_N_N0_SCAN_bp 3
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_N_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_N_N0_SCAN_reset 0x1
-// Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
-// A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
+// Writing a 1 starts a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+// The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+// count of its current phase, the pre-reset wait or the hold; it does not queue a
+// second pulse. A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_bm 0x10
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_bp 4
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_reset 0x0
-// Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
-// A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
+// Writing a 1 starts a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+// The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+// count of its current phase, the pre-reset wait or the hold; it does not queue a
+// second pulse. A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_bm 0x20
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_bp 5
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_reset 0x0
-// Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
-// A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
+// Writing a 1 starts a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+// The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+// count of its current phase, the pre-reset wait or the hold; it does not queue a
+// second pulse. A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_bm 0x40
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_bp 6
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_bw 1
 #define CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_reset 0x0
-// Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
-// A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
+// Writing a 1 starts a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+// The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+// count of its current phase, the pre-reset wait or the hold; it does not queue a
+// second pulse. A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bm 0x80
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bp 7
 #define CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bw 1
@@ -93,17 +101,25 @@ typedef union {
         uint64_t core2_reset_n_n0_scan :1;
         // Reset control for the CPU, active low.
         uint64_t core3_reset_n_n0_scan :1;
-        // Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
-        // A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
+        // Writing a 1 starts a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+        // The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+        // count of its current phase, the pre-reset wait or the hold; it does not queue a
+        // second pulse. A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
         uint64_t core0_reset_pulse_start_n0_scan :1;
-        // Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
-        // A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
+        // Writing a 1 starts a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+        // The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+        // count of its current phase, the pre-reset wait or the hold; it does not queue a
+        // second pulse. A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
         uint64_t core1_reset_pulse_start_n0_scan :1;
-        // Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
-        // A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
+        // Writing a 1 starts a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+        // The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+        // count of its current phase, the pre-reset wait or the hold; it does not queue a
+        // second pulse. A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
         uint64_t core2_reset_pulse_start_n0_scan :1;
-        // Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
-        // A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
+        // Writing a 1 starts a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+        // The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+        // count of its current phase, the pre-reset wait or the hold; it does not queue a
+        // second pulse. A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
         uint64_t core3_reset_pulse_start_n0_scan :1;
         // Cluster Uncore Reset, active low. Resets the uncore portion of the chipyard cluster and holds every core in reset
         // with it. The reset waits for the cluster boundary to drain, bounded by RESET_TIMEOUT.
@@ -128,7 +144,9 @@ typedef union {
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__POST_RESET_COUNT_bp 16
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__POST_RESET_COUNT_bw 16
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__POST_RESET_COUNT_reset 0x10
-// Logic low while performing core reset, logic high otherwise.
+// One bit per core, low while that core's reset pulse runs (pre-reset wait and hold),
+// high otherwise. A level reset held through the core's RESET_CTRL reset_n field,
+// or through RESET_CTRL.uncore_reset_n_n0_scan, does not clear it.
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__CORE_RESETS_DONE_bm 0xf00000000
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__CORE_RESETS_DONE_bp 32
 #define CPU_CTRL__CORE_RESET_PULSE_COUNT__CORE_RESETS_DONE_bw 4
@@ -139,7 +157,9 @@ typedef union {
         uint64_t pre_reset_count :16;
         // Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.
         uint64_t post_reset_count :16;
-        // Logic low while performing core reset, logic high otherwise.
+        // One bit per core, low while that core's reset pulse runs (pre-reset wait and hold),
+        // high otherwise. A level reset held through the core's RESET_CTRL reset_n field,
+        // or through RESET_CTRL.uncore_reset_n_n0_scan, does not clear it.
         uint64_t core_resets_done :4;
         uint64_t :28;
     } f;
@@ -213,14 +233,14 @@ typedef union {
 } cpu_ctrl__REFERENCE_COUNTER_t;
 
 // reg - cpu_ctrl::WDT_TIMEOUT
-// Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
+// Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bm 0xffffffff
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bp 0
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bw 32
 #define CPU_CTRL__WDT_TIMEOUT__DATA_reset 0x4000
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
+        // Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles
         uint32_t data :32;
     } f;
     uint32_t w;
@@ -263,14 +283,16 @@ typedef union {
 } cpu_ctrl__WDT_TIMEOUT_RESET_t;
 
 // reg - cpu_ctrl::TEST_CTRL
-// Test control register for the CPU
+// Reads 0 in hardware. A simulation testbench can deposit a value here to hand
+// test control values to firmware.
 #define CPU_CTRL__TEST_CTRL__DATA_bm 0xffffffff
 #define CPU_CTRL__TEST_CTRL__DATA_bp 0
 #define CPU_CTRL__TEST_CTRL__DATA_bw 32
 #define CPU_CTRL__TEST_CTRL__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Test control register for the CPU
+        // Reads 0 in hardware. A simulation testbench can deposit a value here to hand
+        // test control values to firmware.
         uint64_t data :32;
         uint64_t :32;
     } f;

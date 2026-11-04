@@ -26,6 +26,32 @@
 //                         the next GO, DMA_BUS_ERR_STATUS reads 0, STATUS.ERROR
 //                         reads 0 and ERROR_CODE reads 0; a 4-byte-wide fill
 //                         then completes.
+//   CHK-ZERO-ICCM-4N2   : a 4-byte-wide fill of 4n + 2 bytes into ICCM, whose
+//                         last write covers only the remaining 2 bytes, ends in
+//                         ERROR with BUS_ERROR alone and the exclusive
+//                         host-path error; after both clears the error
+//                         registers read 0; the ICCM words past the fill keep
+//                         their pattern (read through a DMA copy to SRAM); a
+//                         4-byte-wide recovery fill then clears ICCM word 0,
+//                         restaged with the pattern and read through a DMA
+//                         copy to SRAM before and after the fill.
+//   CHK-ZERO-DCCM-4N2   : the same 4n + 2 fill into a DCCM buffer, with the
+//                         words past the fill and the restaged word read by
+//                         the core.
+//   CHK-ZERO-DCCM-NARROW: a 2-byte-wide fill into the DCCM buffer, graded as
+//                         CHK-ZERO-DCCM-4N2.
+//   OBS-ZERO-DCCM-MISALIGN: a 4-byte-wide fill of 8 bytes to the DCCM buffer
+//                         2 bytes above a word boundary; STATUS, ERROR_CODE,
+//                         DMA_BUS_ERR_STATUS and the first four buffer words
+//                         are logged, not graded: two TT texts state
+//                         different outcomes. Its control
+//                         CTRL-ZERO-DCCM-MISALIGN requires DMA_BUS_ERR_STATUS
+//                         0 before the fill, the destination inside DCCM, 2
+//                         bytes above a word boundary, and the fill ended
+//                         with DONE or ERROR inside the poll bound.
+// The host draws n for each 4n + 2 fill and patches it into g_zero_params.
+// The words a rejected fill targets have no stated value: they are logged on
+// an OBS-ZERO-TCM-SPAN line and not graded.
 
 #include <stdint.h>
 
@@ -61,6 +87,16 @@ _Static_assert(ICCM_ZERO_OFFSET + ((NWORDS + 2u) * 4u) <= SEP_TOP_SEP_ICCM_SIZE,
 #define BYTE_FILL_LEN 7u
 
 static volatile uint32_t dccm_buf[NWORDS + 2u];
+
+// Parameter block the host patches from the run seed
+// (env/sep_dtcm_param_patch.py): the magic, then n of the ICCM and of the
+// DCCM 4n + 2 fill, each in [1, NWORDS] so one word past the fill stays in the
+// buffer.
+#define ZERO_PARAM_MAGIC 0xDA2E40C5u
+volatile uint32_t g_zero_params[3] = {ZERO_PARAM_MAGIC, 1u, 1u};
+
+// Bytes of the 2-byte-wide DCCM fill: two words.
+#define DCCM_NARROW_BYTES 8u
 
 static inline uint32_t rd(uint32_t a) {
     return *(volatile uint32_t *)a;
@@ -108,8 +144,8 @@ static int expect_clean(const char *chk, const char *what, uint32_t st) {
     if ((st & SECURE_DMA__STATUS__DONE_bm) && !(st & SECURE_DMA__STATUS__ERROR_bm) && err == 0) {
         return 0;
     }
-    sep_mbx_puts("FAIL: ");
     sep_mbx_puts(chk);
+    sep_mbx_puts(" FAIL");
     sep_mbx_puts(" ");
     sep_mbx_puts(what);
     sep_mbx_puts(" STATUS=");
@@ -124,8 +160,8 @@ static int expect_word(const char *chk, uint32_t addr, uint32_t got, uint32_t ex
     if (got == exp) {
         return 0;
     }
-    sep_mbx_puts("FAIL: ");
     sep_mbx_puts(chk);
+    sep_mbx_puts(" FAIL");
     sep_mbx_puts(" value at ");
     sep_mbx_puthex(addr);
     sep_mbx_puts(" got ");
@@ -175,7 +211,7 @@ static int chk_zero_sram(void) {
         e += expect_word("CHK-ZERO-SRAM", SRAM_BYTES_BUF + i, b[i], exp);
     }
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-SRAM words and bytes cleared, neighbours kept\n");
+        sep_mbx_puts("CHK-ZERO-SRAM PASS words and bytes cleared, neighbours kept\n");
     }
     return e;
 }
@@ -192,7 +228,7 @@ static int chk_zero_dccm(void) {
     __asm__ volatile("fence" ::: "memory");
     e += expect_cleared_words("CHK-ZERO-DCCM", base, dccm_buf);
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-DCCM words cleared at ");
+        sep_mbx_puts("CHK-ZERO-DCCM PASS words cleared at ");
         sep_mbx_puthex(base + 4u);
         sep_mbx_puts(", neighbours kept\n");
     }
@@ -219,7 +255,7 @@ static int chk_zero_iccm(void) {
     __asm__ volatile("fence" ::: "memory");
     e += expect_cleared_words("CHK-ZERO-ICCM", ICCM_ZERO_BASE, ret);
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-ICCM words cleared at ");
+        sep_mbx_puts("CHK-ZERO-ICCM PASS words cleared at ");
         sep_mbx_puthex(ICCM_ZERO_BASE + 4u);
         sep_mbx_puts(", neighbours kept\n");
     }
@@ -234,7 +270,7 @@ static int chk_zero_tcm_narrow(void) {
 
     uint32_t bus = rd(status_addr);
     if (bus != 0) {
-        sep_mbx_puts("FAIL: CHK-ZERO-TCM-NARROW DMA_BUS_ERR_STATUS=");
+        sep_mbx_puts("CHK-ZERO-TCM-NARROW FAIL DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(" at baseline, expected 0\n");
         return 1;
@@ -244,7 +280,7 @@ static int chk_zero_tcm_narrow(void) {
     bus = rd(status_addr);
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__BUS_ERROR_bm ||
         bus != host_bit) {
-        sep_mbx_puts("FAIL: CHK-ZERO-TCM-NARROW STATUS=");
+        sep_mbx_puts("CHK-ZERO-TCM-NARROW FAIL STATUS=");
         sep_mbx_puthex(st);
         sep_mbx_puts(" ERROR_CODE=");
         sep_mbx_puthex(err);
@@ -259,7 +295,7 @@ static int chk_zero_tcm_narrow(void) {
     st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (bus != 0 || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
-        sep_mbx_puts("FAIL: CHK-ZERO-TCM-NARROW after CLEAR DMA_BUS_ERR_STATUS=");
+        sep_mbx_puts("CHK-ZERO-TCM-NARROW FAIL after CLEAR DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(" STATUS=");
         sep_mbx_puthex(st);
@@ -271,9 +307,258 @@ static int chk_zero_tcm_narrow(void) {
     st = zero_fill(ICCM_ZERO_BASE, 8u, SEP_DMA_WIDTH_4B);
     e += expect_clean("CHK-ZERO-TCM-NARROW", "4-byte-wide recovery fill", st);
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-TCM-NARROW 2-byte-wide ICCM fill rejected, errors cleared "
+        sep_mbx_puts("CHK-ZERO-TCM-NARROW PASS 2-byte-wide ICCM fill rejected, errors cleared "
                      "before GO, recovery clean\n");
     }
+    return e;
+}
+
+static int expect_bus_err_clear(const char *ctrl, const char *when) {
+    uint32_t bus = rd(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR);
+    if (bus == 0) {
+        return 0;
+    }
+    sep_mbx_puts("CTRL-MISSING ");
+    sep_mbx_puts(ctrl);
+    sep_mbx_puts(" DMA_BUS_ERR_STATUS=");
+    sep_mbx_puthex(bus);
+    sep_mbx_puts(" ");
+    sep_mbx_puts(when);
+    sep_mbx_puts(", expected 0\n");
+    return 1;
+}
+
+// A TCM zero fill the core rejects: ERROR is set, ERROR_CODE is BUS_ERROR alone and
+// DMA_BUS_ERR_STATUS holds the host-path error alone. Both clears then leave
+// DMA_BUS_ERR_STATUS 0, STATUS.ERROR 0 and ERROR_CODE 0 before the next GO.
+static int expect_tcm_reject(const char *chk, uint32_t st, uint32_t *err_out, uint32_t *bus_out) {
+    int e = 0;
+    const uint32_t status_addr = SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR;
+    uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t bus = rd(status_addr);
+    *err_out = err;
+    *bus_out = bus;
+    if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__BUS_ERROR_bm ||
+        bus != SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bm) {
+        sep_mbx_puts(chk);
+        sep_mbx_puts(" FAIL");
+        sep_mbx_puts(" STATUS=");
+        sep_mbx_puthex(st);
+        sep_mbx_puts(" ERROR_CODE=");
+        sep_mbx_puthex(err);
+        sep_mbx_puts(" DMA_BUS_ERR_STATUS=");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(", expected ERROR, BUS_ERROR alone and exclusive host_path_err\n");
+        e++;
+    }
+    wr(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    bus = rd(status_addr);
+    st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (bus != 0 || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
+        sep_mbx_puts(chk);
+        sep_mbx_puts(" FAIL");
+        sep_mbx_puts(" after CLEAR DMA_BUS_ERR_STATUS=");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" STATUS=");
+        sep_mbx_puthex(st);
+        sep_mbx_puts(" ERROR_CODE=");
+        sep_mbx_puthex(err);
+        sep_mbx_puts(", expected 0, ERROR clear and 0\n");
+        e++;
+    }
+    return e;
+}
+
+// One rejected TCM zero fill of `total` bytes at `width` from the start of the
+// ICCM window (iccm != 0) or of dccm_buf. Words [0 .. span - 1] are the words
+// the fill targets; words [span .. NWORDS + 1] and the bytes of word span - 1
+// past TOTAL_DATA_SIZE keep their pattern.
+static int tcm_reject_leg(const char *chk, int iccm, uint32_t total, uint32_t width, uint32_t n) {
+    int e = 0;
+    const uint32_t nwords = NWORDS + 2u;
+    const uint32_t span = (total + 3u) / 4u;
+    const uint32_t base = iccm ? ICCM_ZERO_BASE : (uint32_t)(uintptr_t)dccm_buf;
+    volatile uint32_t *w = iccm ? (volatile uint32_t *)SRAM_RET_BUF : dccm_buf;
+    uint32_t st;
+    uint32_t err = 0;
+    uint32_t bus = 0;
+
+    e += expect_bus_err_clear(chk, "before the fill");
+    if (iccm) {
+        volatile uint32_t *src = (volatile uint32_t *)SRAM_PATTERN_BUF;
+        for (uint32_t i = 0; i < nwords; i++) {
+            src[i] = pattern(i);
+            w[i] = SENTINEL;
+        }
+        __asm__ volatile("fence" ::: "memory");
+        st = dma_run(SEP_DMA_OPCODE_COPY, SRAM_PATTERN_BUF, base, nwords * 4u, SEP_DMA_WIDTH_4B);
+        e += expect_clean(chk, "pattern copy to ICCM", st);
+    } else {
+        for (uint32_t i = 0; i < nwords; i++) {
+            w[i] = pattern(i);
+        }
+        __asm__ volatile("fence" ::: "memory");
+    }
+
+    st = zero_fill(base, total, width);
+    e += expect_tcm_reject(chk, st, &err, &bus);
+
+    if (iccm) {
+        st = dma_run(SEP_DMA_OPCODE_COPY, base, SRAM_RET_BUF, nwords * 4u, SEP_DMA_WIDTH_4B);
+        e += expect_clean(chk, "copy back from ICCM", st);
+    }
+    __asm__ volatile("fence" ::: "memory");
+    for (uint32_t i = span; i < nwords; i++) {
+        e += expect_word(chk, base + 4u * i, w[i], pattern(i));
+    }
+    if (total % 4u) {
+        const uint32_t past = ~0u << (8u * (total % 4u));
+        e += expect_word(chk, base + 4u * (span - 1u), w[span - 1u] & past,
+                         pattern(span - 1u) & past);
+    }
+    uint32_t zeroed = 0;
+    for (uint32_t i = 0; i < span; i++) {
+        zeroed += (w[i] == 0u);
+    }
+    sep_mbx_puts("OBS-ZERO-TCM-SPAN LOG chk=");
+    sep_mbx_puts(chk);
+    sep_mbx_puts(" span_words=");
+    sep_mbx_puthex(span);
+    sep_mbx_puts(" zero_words=");
+    sep_mbx_puthex(zeroed);
+    sep_mbx_puts(" last_span_word=");
+    sep_mbx_puthex(w[span - 1u]);
+    sep_mbx_putc('\n');
+
+    // Restage word 0 with the pattern, read it back, then the recovery fill
+    // must clear it. ICCM: a DMA copy from SRAM restages it and a copy back to
+    // the sentinel-filled return word reads it.
+    if (iccm) {
+        volatile uint32_t *src = (volatile uint32_t *)SRAM_PATTERN_BUF;
+        src[0] = pattern(0);
+        w[0] = SENTINEL;
+        __asm__ volatile("fence" ::: "memory");
+        st = dma_run(SEP_DMA_OPCODE_COPY, SRAM_PATTERN_BUF, base, 4u, SEP_DMA_WIDTH_4B);
+        e += expect_clean(chk, "pattern restage in ICCM", st);
+        st = dma_run(SEP_DMA_OPCODE_COPY, base, SRAM_RET_BUF, 4u, SEP_DMA_WIDTH_4B);
+        e += expect_clean(chk, "copy back of the restaged word", st);
+    } else {
+        dccm_buf[0] = pattern(0);
+    }
+    __asm__ volatile("fence" ::: "memory");
+    const uint32_t restaged = w[0];
+    e += expect_word(chk, base, restaged, pattern(0));
+    st = zero_fill(base, 4u, SEP_DMA_WIDTH_4B);
+    e += expect_clean(chk, "4-byte-wide recovery fill", st);
+    if (iccm) {
+        w[0] = SENTINEL;
+        __asm__ volatile("fence" ::: "memory");
+        st = dma_run(SEP_DMA_OPCODE_COPY, base, SRAM_RET_BUF, 4u, SEP_DMA_WIDTH_4B);
+        e += expect_clean(chk, "copy back after the recovery fill", st);
+    }
+    __asm__ volatile("fence" ::: "memory");
+    const uint32_t recovered = w[0];
+    e += expect_word(chk, base, recovered, 0u);
+    if (e == 0) {
+        sep_mbx_puts(chk);
+        sep_mbx_puts(" PASS n=");
+        sep_mbx_puthex(n);
+        sep_mbx_puts(" total=");
+        sep_mbx_puthex(total);
+        sep_mbx_puts(" ERROR_CODE=");
+        sep_mbx_puthex(err);
+        sep_mbx_puts(" DMA_BUS_ERR_STATUS=");
+        sep_mbx_puthex(bus);
+        sep_mbx_puts(" guard_words=");
+        sep_mbx_puthex(nwords - span);
+        sep_mbx_puts(" kept, errors cleared before GO, recovery clean restaged=");
+        sep_mbx_puthex(restaged);
+        sep_mbx_puts(" recovered=");
+        sep_mbx_puthex(recovered);
+        sep_mbx_putc('\n');
+    }
+    return e;
+}
+
+static int chk_zero_tcm_partial(void) {
+    if (g_zero_params[0] != ZERO_PARAM_MAGIC) {
+        sep_mbx_puts("CHK-ZERO-ICCM-4N2 FAIL bad param magic ");
+        sep_mbx_puthex(g_zero_params[0]);
+        sep_mbx_putc('\n');
+        return 1;
+    }
+    const uint32_t n_iccm = g_zero_params[1];
+    const uint32_t n_dccm = g_zero_params[2];
+    if (n_iccm < 1u || n_iccm > NWORDS || n_dccm < 1u || n_dccm > NWORDS) {
+        sep_mbx_puts("CHK-ZERO-ICCM-4N2 FAIL param n out of range ");
+        sep_mbx_puthex(n_iccm);
+        sep_mbx_puts(" ");
+        sep_mbx_puthex(n_dccm);
+        sep_mbx_putc('\n');
+        return 1;
+    }
+    int e = 0;
+    e += tcm_reject_leg("CHK-ZERO-ICCM-4N2", 1, 4u * n_iccm + 2u, SEP_DMA_WIDTH_4B, n_iccm);
+    e += tcm_reject_leg("CHK-ZERO-DCCM-4N2", 0, 4u * n_dccm + 2u, SEP_DMA_WIDTH_4B, n_dccm);
+    e += tcm_reject_leg("CHK-ZERO-DCCM-NARROW", 0, DCCM_NARROW_BYTES, SEP_DMA_WIDTH_2B, 0u);
+    return e;
+}
+
+// Bytes of the misaligned 4-byte-wide DCCM fill, and its destination offset
+// above the word-aligned dccm_buf.
+#define DCCM_MISALIGN_BYTES 8u
+#define DCCM_MISALIGN_OFFSET 2u
+
+static int obs_zero_dccm_misalign(void) {
+    const uint32_t base = (uint32_t)(uintptr_t)dccm_buf;
+    const uint32_t dst = base + DCCM_MISALIGN_OFFSET;
+    int e = 0;
+
+    e += expect_bus_err_clear("CTRL-ZERO-DCCM-MISALIGN", "before the fill");
+    for (uint32_t i = 0; i < NWORDS + 2u; i++) {
+        dccm_buf[i] = pattern(i);
+    }
+    __asm__ volatile("fence" ::: "memory");
+    const uint32_t st = zero_fill(dst, DCCM_MISALIGN_BYTES, SEP_DMA_WIDTH_4B);
+    const int in_dccm =
+        dst >= SEP_TOP_SEP_DCCM_BASE_ADDR &&
+        dst + DCCM_MISALIGN_BYTES <= SEP_TOP_SEP_DCCM_BASE_ADDR + SEP_TOP_SEP_DCCM_SIZE;
+    const int ctrl_ok = in_dccm && (dst & 3u) == DCCM_MISALIGN_OFFSET && (st & DONE_OR_ERR);
+    sep_mbx_puts(ctrl_ok ? "CTRL-ZERO-DCCM-MISALIGN LOG dst="
+                         : "CTRL-MISSING CTRL-ZERO-DCCM-MISALIGN dst=");
+    sep_mbx_puthex(dst);
+    sep_mbx_puts(" in_dccm=");
+    sep_mbx_puthex((uint32_t)in_dccm);
+    sep_mbx_puts(" total=");
+    sep_mbx_puthex(DCCM_MISALIGN_BYTES);
+    sep_mbx_puts(" STATUS=");
+    sep_mbx_puthex(st);
+    sep_mbx_puts(ctrl_ok ? "\n"
+                         : ", expected a DCCM destination 2 bytes off a word, DONE or ERROR\n");
+    e += !ctrl_ok;
+
+    const uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    const uint32_t bus = rd(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR);
+    __asm__ volatile("fence" ::: "memory");
+    sep_mbx_puts("OBS-ZERO-DCCM-MISALIGN LOG STATUS=");
+    sep_mbx_puthex(st);
+    sep_mbx_puts(" ERROR_CODE=");
+    sep_mbx_puthex(err);
+    sep_mbx_puts(" DMA_BUS_ERR_STATUS=");
+    sep_mbx_puthex(bus);
+    sep_mbx_puts(" span=");
+    for (uint32_t i = 0; i < 4u; i++) {
+        sep_mbx_puthex(dccm_buf[i]);
+        sep_mbx_putc(i < 3u ? ',' : '\n');
+    }
+    // Leave the engine idle: clear both error reports, then a 4-byte-wide fill
+    // of the aligned buffer start.
+    wr(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    (void)zero_fill(base, 4u, SEP_DMA_WIDTH_4B);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     return e;
 }
 
@@ -291,6 +576,8 @@ int main(void) {
     errors += chk_zero_dccm();
     errors += chk_zero_iccm();
     errors += chk_zero_tcm_narrow();
+    errors += chk_zero_tcm_partial();
+    errors += obs_zero_dccm_misalign();
 
     sep_mbx_puts(errors ? "DMA zero fill test FAILED\n" : "DMA zero fill test PASSED\n");
     return errors;

@@ -28,8 +28,11 @@ quietly.
 
 **Two descriptors back to back.** `dma_ctrl.rdl` says of `NEXT_ID` that
 "Reading this register starts the DMA transfer and returns its transfer ID.
-IDs start at 2 and skip zero on wrap", and of `DONE` that it "Holds the
-cumulative number of completed transfers". So the second descriptor is
+IDs start at 2, advance by one per command and never read 0", and of `DONE`
+that it is the "Retirement counter for the stream" which "adds 1 per
+retirement" and that "A command retires once" unless it has
+`CONFIG.ENABLED_ND` set with a `LENGTH` of 0, which neither descriptor here
+has. So the second descriptor is
 programmed and submitted without waiting for the first, and the sequence
 requires both ids non-zero and rising, `DONE` to have advanced by two, and both
 destinations to hold their own payload.
@@ -380,7 +383,7 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
         second = await self._submit("QUEUE1")
         assert second > first, (
             f"the second descriptor was given id {second} and the first {first}; NEXT_ID "
-            f"returns the cumulative number of transfers, so the second has to be higher"
+            f"advances by one per command, so the second has to be higher"
         )
         await self._await_done(baseline + 2, "QUEUE")
         for index, (dst, row) in enumerate(zip(_QUEUE_DST, _ROWS)):

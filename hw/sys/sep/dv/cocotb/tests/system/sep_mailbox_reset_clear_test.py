@@ -40,7 +40,7 @@ of nine), the mailbox, port and offset of the operation, the data words and
 the reuse mailbox.
 
 Checkers:
-  CTL-OP-INFLIGHT   request handshake before the ``rst_ni`` fall, no B or R
+  CTRL-OP-INFLIGHT   request handshake before the ``rst_ni`` fall, no B or R
                     handshake after it; else ``CTRL-MISSING``.
   CHK-PRE-NONZERO   pre-state differs from the reset state (per mailbox).
   CHK-RESET-STATE   16 apertures read the reset values (VCS: no X bit).
@@ -63,7 +63,7 @@ from env.sep_mbox_golden import AXIL_MAILBOX_OUTBOUND_0, IRQ_EIRQ, IRQ_WTIRQ, ST
 from env.sep_mbox_pair_model import MAILBOX_DEPTH, MboxSystem
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import INBOUND_FILTER_CTRL_0
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_NS, F_ENTRY_ENABLED, F_SRC_ID_LSB
 from seq_lib.sep_fabric_filter_bank_seq import SRC_ID_MASK, SepFilterBank
@@ -96,7 +96,7 @@ MASK = {r: _M.mask32(r) for r in REGS_READ}
 RESET = {r: _M.reset32(r) for r in REGS_READ}
 SRC_ID_FIELD = SRC_ID_MASK << F_SRC_ID_LSB
 # RDL reset value of FILTER_CONFIG.src_id (the expected value after the reset).
-SRC_ID_RESET = INBOUND_FILTER_CTRL_0.reset32("FILTER_CONFIG") & SRC_ID_FIELD
+SRC_ID_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset32("FILTER_CONFIG") & SRC_ID_FIELD
 FILTER_ENTRY = 0
 
 
@@ -305,7 +305,7 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         probe, smc = await self._lines()
         self.pre_probe, self.pre_smc = probe, smc
         self.logger.info(
-            "PRE-LINES LOG seed=%d probe=0x%02x smc=0x%02x model_in=0x%02x model_out_count=%d",
+            "INFO-PRE-LINES LOG seed=%d probe=0x%02x smc=0x%02x model_in=0x%02x model_out_count=%d",
             c.seed,
             probe,
             smc,
@@ -416,7 +416,7 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         else:
             hold.release_all()
             self._ctrl_missing(
-                f"CTL-OP-INFLIGHT op={c.op} mbox={c.op_m} port={c.op_port} req_hs=0 "
+                f"CTRL-OP-INFLIGHT op={c.op} mbox={c.op_m} port={c.op_port} req_hs=0 "
                 f"(no request handshake in {HS_BOUND} clocks) seen={seen}"
             )
         pre_resp_valid = mon.waiting_clocks(resp_ch)
@@ -467,8 +467,8 @@ class sep_mailbox_reset_clear_test(sep_base_test):
             f"drawn_offset={c.offset}"
         )
         if resp_hs_total or offset is None or not lo <= offset <= hi:
-            self._ctrl_missing(f"CTL-OP-INFLIGHT {line}")
-        self.logger.info("CTL-OP-INFLIGHT PASS seed=%d %s", c.seed, line)
+            self._ctrl_missing(f"CTRL-OP-INFLIGHT {line}")
+        self.logger.info("CTRL-OP-INFLIGHT PASS seed=%d %s", c.seed, line)
         self.model.reset()
 
     async def _post(self) -> None:

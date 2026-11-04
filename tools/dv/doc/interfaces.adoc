@@ -275,7 +275,7 @@ result, not on the run's conclusion. Verilator is built from a pinned tag on
 a cache miss. Retention: run artifacts 14 days (30 for the weekly tier), the
 dashboard artifact 90 days, history on the branch trimmed to 90 points and
 archives to 90 runs per DUT. Checked by the required `verilator-smoke (<dut>)`
-contexts and by the `dv-unit-tests` job in `lint.yml`, which runs
+contexts and by the `dv-unit-tests` job in `unit.yml`, which runs
 `tools/dv/tests` on DV-scoped changes
 (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
 

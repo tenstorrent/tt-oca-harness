@@ -140,7 +140,12 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-JTAG2AXI-SMOKE-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-JTAG2AXI-SMOKE-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-JTAG2AXI-SMOKE-JTAG-READY",
+        )
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
@@ -157,6 +162,7 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
             "CHK-JTAG2AXI-SMOKE-GATE-OPEN",
             (gate, caps),
             (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            evidence="CHK-JTAG2AXI-SMOKE-GATE-OPEN",
         )
 
         await self._wr32(jtag, SCRATCH_15, SCRATCH_PAT, "SCRATCH_15")
@@ -175,7 +181,7 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
             raise AssertionError(f"SPM want 0x{SPM_PAT:016x} got 0x{got_m:016x}")
         self.s3_ok = True
         self._log(f"CHK-JTAG2AXI-SMOKE-SPM @0x{SPM:08x} data=0x{got_m:016x}")
-        sb.expect_eq("CHK-JTAG2AXI-SMOKE-SPM", got_m, SPM_PAT)
+        sb.expect_eq("CHK-JTAG2AXI-SMOKE-SPM", got_m, SPM_PAT, evidence="CHK-JTAG2AXI-SMOKE-SPM")
 
         mask = smc_series_data_mask(SMC_DBG_AXSIZE_8B)
         want = SERIES_PAT & mask
@@ -202,7 +208,12 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq:
             f"CHK-JTAG2AXI-SMOKE-SERIES-INCR @0x{SERIES_ADDR:08x} "
             f"data=0x{got_ser:016x} status=SUCCESS"
         )
-        sb.expect_eq("CHK-JTAG2AXI-SMOKE-SERIES-INCR", got_ser, want)
+        sb.expect_eq(
+            "CHK-JTAG2AXI-SMOKE-SERIES-INCR",
+            got_ser,
+            want,
+            evidence="CHK-JTAG2AXI-SMOKE-SERIES-INCR",
+        )
 
         self._log(
             f"PASS JTAG2AXI-SMOKE s1={self.s1_ok} s2={self.s2_ok} "

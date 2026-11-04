@@ -63,6 +63,16 @@
 `SMC_TB_OUT(logic, tb_zeroer_intp)
 `SMC_TB_OUT(logic, tb_zeroer_awvalid)
 `SMC_TB_OUT(logic, tb_zeroer_wvalid)
+// Held high by cocotb while a read whose data is declared observed-only is in
+// flight (an unwritten I3C table entry, the aperture-end word of a window with
+// no past-extent response): the SEP_IN and peripheral R-data-known rules do not
+// judge its beats. The hold is by time, not per read: it disables the whole
+// u_sep_in_data_sva and u_periph_data_sva instance while high, so any other R
+// beat on those two links in that window is not judged by the SVA either; the
+// declaring sequences issue one read at a time inside the hold. smc_axi_monitor
+// exempts the same read per AR through its unknown-rdata window and counts the
+// exempt ARs and beats for the sequence to compare with its declarations.
+`SMC_TB_IN(logic, tb_rdata_known_hold)
 `SMC_TB_IN(logic, tb_test_en_i)
 `SMC_TB_IN(logic, tb_i2c0_scl_ext_low)
 `SMC_TB_IN(logic, tb_i2c0_sda_ext_low)
@@ -441,6 +451,17 @@
 `SMC_TB_OUT(logic [smc_pkg::SmcLocalAddrWidth-1:0], tb_axil_external_awaddr)
 `SMC_TB_OUT(logic, tb_axil_efuse_bank_active)
 `SMC_TB_OUT(logic, tb_axil_any_master_active)
+`SMC_TB_OUT(logic [4:0], tb_periph_axil_valid)
+`SMC_TB_OUT(logic [4:0], tb_periph_axil_ready)
+`SMC_TB_OUT(logic [4:0], tb_cpu_front_valid)
+`SMC_TB_OUT(logic [smc_pkg::SmcCpuL2FrontendAxiIdWidth-1:0], tb_cpu_front_arid)
+`SMC_TB_OUT(logic [smc_pkg::SmcCpuL2FrontendAxiIdWidth-1:0], tb_cpu_front_rid)
+`SMC_TB_OUT(logic, tb_cpu_front_rlast)
+`SMC_TB_OUT(logic [4:0], tb_cpu_front_ready)
+`SMC_TB_OUT(logic [4:0], tb_cpu_mmio_valid)
+`SMC_TB_OUT(logic [4:0], tb_cpu_mmio_ready)
+`SMC_TB_OUT(logic [4:0], tb_cpu_l2_iso_valid)
+`SMC_TB_OUT(logic [4:0], tb_cpu_mmio_cpu_valid)
 
 // Output-fabric observability (U6-2). SLVERR on this boundary comes from
 // the SYS_OUT slave agent's fault programming, not a DUT Force / starve knob.
@@ -469,11 +490,18 @@
 // stays outstanding. DATA hang detector snoops data_accel (DMA/zeroer
 // master), which stalls when SYS_OUT never completes. Idle 0.
 `SMC_TB_IN(logic, tb_output_axi_resp_hold)
+// FCOV graded-window gate. The owning leaf of a cov/sv covergroup that
+// samples only inside a graded window holds it 1 over that window. Idle 0.
+`SMC_TB_IN(logic, tb_fcov_gate)
 
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_read_count)
 `SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NumSramBanks*32-1:0], tb_cpu_scratch_bank_read_count)
+// Scratch macro peek: the 64 data bits of the macro word at the bank and entry
+// smc_scratch_map_pkg resolves for a byte offset of the scratch window.
+`SMC_TB_IN(logic [19:0], tb_cpu_scratch_peek_offset)
+`SMC_TB_OUT(logic [63:0], tb_cpu_scratch_peek_data)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_write_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_fw_mailbox)
 `SMC_TB_OUT(logic, tb_cpu_fw_mailbox_valid)
@@ -510,6 +538,10 @@
 `SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_aw)
 `SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_w)
 `SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_ar)
+// The L2 frontend isolate's slave AR handshake: a read refused at the isolate
+// holds valid with ready low here.
+`SMC_TB_OUT(logic, tb_cpu_l2_slv_arvalid)
+`SMC_TB_OUT(logic, tb_cpu_l2_slv_arready)
 `SMC_TB_OUT(logic, tb_cpu_l2_flush_active)
 `SMC_TB_OUT(logic, tb_cpu_mmio_isolated)
 `SMC_TB_OUT(logic [3:0], tb_cpu_mmio_pending_aw)
@@ -594,6 +626,14 @@
 `SMC_TB_OUT(logic [31:0], tb_efuse_readback)
 `SMC_TB_OUT(logic [15:0], tb_efuse_read_addr)
 `SMC_TB_OUT(logic [15:0], tb_efuse_program_addr)
+// eFuse bank-model response stall knob (efuse_bank_reg.sv): while the enable reads 1 the bank
+// holds a read or write request back for the given number of clock cycles before it answers.
+`SMC_TB_IN(logic, tb_efuse_bank_stall_en)
+`SMC_TB_IN(logic [15:0], tb_efuse_bank_stall_rd)
+`SMC_TB_IN(logic [15:0], tb_efuse_bank_stall_wr)
+// Drive of smc_wrapper.sep_security_disable_i (eFuse sense bypass): 0 unless the run carries
+// +smc_sep_security_disable, then 1 from time 0 for the whole run (tb_top.sv drives it).
+`SMC_TB_OUT(logic, tb_sep_security_disable)
 `SMC_TB_OUT(logic [smc_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
 
 // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /
@@ -659,8 +699,19 @@
 // Source index 331 is the fourth cluster-internal watchdog: a PLIC source
 // with no cpu_interrupts bit behind it.
 `SMC_TB_OUT(logic, tb_plic_pending_331)
-// Source 324 is the zeroer completion bit (cpu_interrupts[323]) at the PLIC.
+// Source 323 is the DMA completion bit (cpu_interrupts[322]) and source 324
+// the zeroer completion bit (cpu_interrupts[323]) at the PLIC.
+`SMC_TB_OUT(logic, tb_plic_pending_323)
 `SMC_TB_OUT(logic, tb_plic_pending_324)
+// Sources 329, 330 and 332 are the cluster-internal watchdogs of cores 0, 1
+// and 3 (PLIC ID 329 + core), beside 331 above for core 2.
+`SMC_TB_OUT(logic, tb_plic_pending_329)
+`SMC_TB_OUT(logic, tb_plic_pending_330)
+`SMC_TB_OUT(logic, tb_plic_pending_332)
+// Sources 321 and 322 are the CLA clock-stop status (cpu_interrupts[320])
+// and the CLA debug interrupt (cpu_interrupts[321]) at the PLIC.
+`SMC_TB_OUT(logic, tb_plic_pending_321)
+`SMC_TB_OUT(logic, tb_plic_pending_322)
 
 // CLINT. MTIMECMP is `pad`/`pad_N` in the generated cluster.
 `SMC_TB_OUT(logic [63:0], tb_clint_mtime)
@@ -711,6 +762,7 @@
 `SMC_TB_OUT(logic [7:0], tb_zeroer_wstrb)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_wdata)
 `SMC_TB_OUT(logic, tb_zeroer_bvalid)
+`SMC_TB_OUT(logic, tb_zeroer_bready)
 `SMC_TB_OUT(logic [31:0], tb_zeroer_outstanding)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_dest_addr)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_size)
@@ -740,6 +792,49 @@
 `SMC_TB_OUT(logic, tb_inb_isolate_read)
 `SMC_TB_OUT(logic [2:0], tb_remap_jtag_aw_hit)
 `SMC_TB_OUT(logic [2:0], tb_remap_jtag_ar_hit)
+
+// Fabric outstanding-read limits, each at the handshake point its counter
+// pushes (AR) and pops (R last) at: the SEP region demux and its error
+// subordinate in the input fabric, the SEP_IN demux and the internal CSR port
+// of the local crossbar, and the demux and the SMC_BASE_CONFIG port of the
+// internal CSR AXI-Lite crossbar. The two `rfifo_full` nets are the FIFO-based
+// limiters' own full flags.
+`SMC_TB_OUT(logic, tb_sep_demux_arvalid)
+`SMC_TB_OUT(logic, tb_sep_demux_arready)
+`SMC_TB_OUT(logic [5:0], tb_sep_demux_arid)
+`SMC_TB_OUT(logic, tb_sep_demux_rvalid)
+`SMC_TB_OUT(logic, tb_sep_demux_rready)
+`SMC_TB_OUT(logic, tb_sep_demux_rlast)
+`SMC_TB_OUT(logic, tb_sep_errslv_arvalid)
+`SMC_TB_OUT(logic, tb_sep_errslv_arready)
+`SMC_TB_OUT(logic, tb_sep_errslv_rvalid)
+`SMC_TB_OUT(logic, tb_sep_errslv_rready)
+`SMC_TB_OUT(logic, tb_sep_errslv_rlast)
+`SMC_TB_OUT(logic, tb_sep_errslv_rfifo_full)
+`SMC_TB_OUT(logic, tb_lxbar_sep_arvalid)
+`SMC_TB_OUT(logic, tb_lxbar_sep_arready)
+`SMC_TB_OUT(logic, tb_lxbar_sep_rvalid)
+`SMC_TB_OUT(logic, tb_lxbar_sep_rready)
+`SMC_TB_OUT(logic, tb_lxbar_sep_rlast)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_arvalid)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_arready)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_rvalid)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_rready)
+`SMC_TB_OUT(logic, tb_lxbar_lreg_rlast)
+`SMC_TB_OUT(logic, tb_lite_demux_arvalid)
+`SMC_TB_OUT(logic, tb_lite_demux_arready)
+`SMC_TB_OUT(logic, tb_lite_demux_rvalid)
+`SMC_TB_OUT(logic, tb_lite_demux_rready)
+`SMC_TB_OUT(logic, tb_lite_demux_rfifo_full)
+`SMC_TB_OUT(logic, tb_lite_cfg_arvalid)
+`SMC_TB_OUT(logic, tb_lite_cfg_arready)
+`SMC_TB_OUT(logic, tb_lite_cfg_rvalid)
+`SMC_TB_OUT(logic, tb_lite_cfg_rready)
+// System inbound filter clock gate, and the AR handshake into the filter.
+`SMC_TB_OUT(logic, tb_sys_in_filter_clk_active)
+`SMC_TB_OUT(logic, tb_sys_in_filter_bus_active)
+`SMC_TB_OUT(logic, tb_sys_in_filter_arvalid)
+`SMC_TB_OUT(logic, tb_sys_in_filter_arready)
 
 // Isolation / FLR sequencing state.
 `SMC_TB_OUT(logic [31:0], tb_isolate_req_reg)
@@ -779,6 +874,13 @@
 `SMC_TB_OUT(logic, tb_efuse_shim_resp_valid)
 `SMC_TB_OUT(logic, tb_efuse_shim_resp_status)
 `SMC_TB_OUT(logic [63:0], tb_efuse_locks)
+
+// OCTS live count and the timer's pulse ports on either side of the padring.
+`SMC_TB_OUT(logic [63:0], tb_octs_timer_count)
+`SMC_TB_OUT(logic, tb_octs_core_sync_load_out)
+`SMC_TB_OUT(logic, tb_octs_core_credit_out)
+`SMC_TB_OUT(logic, tb_octs_core_sync_load_in)
+`SMC_TB_OUT(logic, tb_octs_core_credit_in)
 
 // ------------------------------------------------------------------
 // Elaboration aliases: optional observe ports for the bring-up smoke

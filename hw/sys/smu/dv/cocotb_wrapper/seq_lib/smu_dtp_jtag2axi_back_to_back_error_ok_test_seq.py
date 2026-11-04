@@ -89,7 +89,9 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-B2B-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-B2B-JTAG-READY", idcode, DTP_DEFAULT_IDCODE, evidence="CHK-B2B-JTAG-READY"
+        )
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
@@ -106,6 +108,7 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
             "CHK-B2B-GATE-OPEN",
             (gate, caps),
             (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            evidence="CHK-B2B-GATE-OPEN",
         )
 
         st0, d0 = await self._rd32(jtag, VERSION_LO)
@@ -116,7 +119,7 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
             )
         self.s2_ok = True
         self._log(f"CHK-B2B-ALLOW @0x{VERSION_LO:08x} data=0x{d0:08x} status=SUCCESS")
-        sb.expect_eq("CHK-B2B-ALLOW", d0, VERSION_LO_RESET)
+        sb.expect_eq("CHK-B2B-ALLOW", d0, VERSION_LO_RESET, evidence="CHK-B2B-ALLOW")
 
         st_e, hole_data = await self._rd32(jtag, UNMAPPED)
         if st_e != J2A_STATUS_DECERR:
@@ -157,7 +160,12 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
             )
         self.s4_ok = True
         self._log(f"CHK-B2B-WR-DECERR WR status=DECERR then VERSION_LO=0x{d2:08x}")
-        sb.expect_eq("CHK-B2B-WR-DECERR", (st_w, d2), (J2A_STATUS_DECERR, VERSION_LO_RESET))
+        sb.expect_eq(
+            "CHK-B2B-WR-DECERR",
+            (st_w, d2),
+            (J2A_STATUS_DECERR, VERSION_LO_RESET),
+            evidence="CHK-B2B-WR-DECERR",
+        )
 
         capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
         require_jtag_tdo_resolved("SMC SINGLE_OP sticky")
@@ -170,7 +178,7 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
             )
         self.s5_ok = True
         self._log("CHK-B2B-STICKY status=SUCCESS")
-        sb.expect_eq("CHK-B2B-STICKY", sticky, J2A_STATUS_SUCCESS)
+        sb.expect_eq("CHK-B2B-STICKY", sticky, J2A_STATUS_SUCCESS, evidence="CHK-B2B-STICKY")
 
         self._log(
             f"PASS JTAG2AXI-B2B s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} "

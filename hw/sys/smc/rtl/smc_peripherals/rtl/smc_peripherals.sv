@@ -314,6 +314,12 @@ module smc_peripherals #(
                                                                  // the peripheral clock,
                                                                  // without the error and
                                                                  // log-engine sources.
+  output logic                               uart_intg_err_o,    // OR of the UART FIFO and
+                                                                 // holding-register integrity
+                                                                 // errors, on the SMC clock.
+  output logic                               i2c_intg_err_o,     // OR of the I2C FIFO
+                                                                 // integrity errors, on the
+                                                                 // SMC clock.
 
   input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dat_mem_src_i,   // Read data from each
                                                                                    // I3C device address
@@ -509,6 +515,7 @@ module smc_peripherals #(
   logic                                avsbus_irq;
   logic                                avsbus_irq_smc_clk;
   logic [smc_config_pkg::NumI2c-1:0] i2c_irqs_smc_clk, i2c_irqs_periph_clk;
+  logic [smc_config_pkg::NumI2c-1:0] i2c_fifo_intg_err_periph_clk;
   logic                                locked_field_access_interrupt;
   logic [smc_config_pkg::NumUart-1:0]  uart_irq_combined_smc_clk;
   logic [smc_pkg::NumGpioWraps-1:0]    gpio_interrupt;
@@ -814,6 +821,9 @@ module smc_peripherals #(
     .i2c_enable_periph_clk_i           (i2c_enable_periph_clk),
     .i2c_irqs_smc_clk_o                (i2c_irqs_smc_clk),
     .i2c_irqs_periph_clk_i             (i2c_irqs_periph_clk),
+    .i2c_intg_err_periph_clk_i         (i2c_fifo_intg_err_periph_clk),
+    .i2c_intg_err_smc_clk_o            (i2c_intg_err_o),
+    .uart_intg_err_smc_clk_o           (uart_intg_err_o),
 
     .i2c_debug_periph_clk_i            (i2c_debug_periph_clk),
     .i2c_debug_smc_clk_o               (i2c_debug_o),
@@ -878,12 +888,13 @@ module smc_peripherals #(
   logic                                     pwm_fatal_alert;
 
   // Protect against truncation from casts
-  `OCAH_ASSERT_STATIC(PadringGpioBaseFits_A, smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0
-                      ) < (64'd1 << gpio_pkg::AddrWidth))
+  `OCAH_ASSERT_STATIC(
+      PadringGpioBaseFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR < (64'd1 << gpio_pkg::AddrWidth))
 
   smc_padring #(
     .MAX_TRANS                  (MAX_TRANS), // threaded from smc_wrapper (was hardcoded 2)
-    .GPIO_INTF_BASE_ADDR        (gpio_pkg::AddrWidth'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)))
+    .GPIO_INTF_BASE_ADDR        (gpio_pkg::AddrWidth'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR))
   ) u_smc_padring (
     .clk_i                      (clk_smc_i),
     .rst_primary_ni             (rst_primary_smc_clk_no),
@@ -1097,6 +1108,7 @@ module smc_peripherals #(
     .target_rx_ready_o        (/* UNUSED */),
 
     .i2c_irq_o                (i2c_irqs_periph_clk),
+    .i2c_fifo_intg_err_o      (i2c_fifo_intg_err_periph_clk),
     .i2c_debug_o              (i2c_debug_periph_clk)
   );
 

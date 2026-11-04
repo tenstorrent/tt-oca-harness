@@ -32,10 +32,13 @@ Checkers:
   CHK-KPV-CTRLW    CTRL fields are write-one-to-set: a write of 0 sets nothing
                    on an erased slot and keeps a set lock, a write of F sets F
                    only (seal gives 0x9, an erase ends at 0), three more writes of
-                   F keep the value, a second field G adds its bit. Control:
-                   CTRL reads 0 after the erase that starts each sequence.
+                   F keep the value, a second field G adds its bit. Controls:
+                   CTRL reads 0 after the erase that starts each sequence;
+                   CTRL-KPV-CTRLW-ERASE, the KM-KPV tap shows one rise of the
+                   erase bit per erase write of the sequence (1, or 5 in the
+                   erase cell), so an erase write that is lost fails.
   CHK-KPV-STATE    W: read returns the record, no SLVERR. R: write completes
-                   with no SLVERR. WR: write refused with SLVERR and the 16
+                   with no SLVERR and lands (KM-KPV snapshot after the write). WR: write refused with SLVERR and the 16
                    stored words of the slot unchanged (KM-KPV snapshot before
                    and after the write), read 0 with SLVERR. Sealed: write
                    refused with SLVERR, read returns the record. Control: the
@@ -45,7 +48,14 @@ Checkers:
   CHK-KPV-RETIRED  a sealed slot that is erased reads CTRL 0xB and refuses read
                    (0, SLVERR) and write (SLVERR, the 16 stored words of the slot
                    unchanged in the KM-KPV snapshots around the write), before
-                   and after a second erase.
+                   and after a second erase. Control: CTRL-KPV-RETIRED-ERASE,
+                   the KM-KPV tap shows the erase bit rise once for the second
+                   erase.
+  CHK-KPV-RETIRED-REERASE  CTRL of the retired slot after the second erase
+                   still reads RETIRED (lock_write, lock_use and seal set, erase
+                   0): "Erasing a sealed slot is still permitted, and leaves it
+                   *retired* ... repeating the erase changes nothing."
+                   (``architecture.adoc:461-464``; CTRL bits ``:424-436``).
   CHK-KPV-RACE     erase and seal in back-to-back writes retire the slot when
                    the erase bit reads 1 right after the seal write. A try that
                    shows the erase bit at 0 is logged and not graded. Control:
@@ -56,17 +66,40 @@ Checkers:
   CHK-KPV-NEIGH    no op of the CTRL-rule, state-walk, race and trailing-word
                    steps changes CTRL (port read) or any of the 16 stored words
                    (KM-KPV snapshot; the scrambler is off) of the slots next to
-                   its slot. The port read of neighbour word 0 is logged.
-                   Control: CTRL of the slot itself changes in each sequence.
+                   its slot. Control: CTRL of the slot itself changes in each
+                   sequence.
+  CHK-KPV-NEIGH-PORT the KM-port read of word 0 of each watched neighbour, over
+                   every snapshot that overlaps no erase, returns the stored
+                   word of the same snapshot (KM-KPV, the scrambler is off) with
+                   OKAY: "the KM port sees the logical (unscrambled) data on the
+                   bus" (``architecture.adoc:482-484``); on a neighbour whose
+                   CTRL read shows lock_use it returns 0 with SLVERR ("Key-data
+                   reads return zero with SLVERR", ``architecture.adoc:427-428``).
+                   With the scrambler off the port passes the word through
+                   (``km_kpv.rdl:183``). The graded reads must include one
+                   whose stored word is non-zero. A
+                   snapshot overlaps an erase
+                   when the CTRL read of the slot or of a neighbour that the
+                   snapshot takes before the word reads, or the KM-KPV CTRL tap
+                   (``km_kpv_ctrl_o``) at its sync, shows an erase bit set on
+                   any slot: "key-data accesses during an erase are not defined"
+                   (``architecture.adoc:441-443``). The excluded snapshots are
+                   counted in the line, and the graded count must be non-zero.
   CHK-KPV-RESET    CTRL of the 12 drawn slots reads 0 after the power-up cold
                    reset, after a warm reset (SW_RESET_N bit 0) that follows
                    locked, sealed and retired slots, and after a cold reset
                    (rst_ni) that follows CTRL 0x1 on every drawn slot.
   CHK-KPV-NOX      VCS only: no compared KPV read and no KM-KPV snapshot holds
-                   an X or Z bit. On Verilator (two-state) the leaf logs a LOG line.
+                   an X or Z bit. On Verilator (two-state) the leaf logs
+                   ``OBS-BLOCKED CHK-KPV-NOX``.
+  CHK-KPV-RSVD     the reserved bits of CTRL (31:4), KPV_SCRAMBLER_CTRL (31:2) and
+                   IRQ_STATUS (31:12) read 0 in every read of the leaf (RDL
+                   ``rsvd`` R 0x0).
   CHK-KSCR-RST     a warm reset keeps the KPV scrambler enable, lock and key (the
                    24 cells still read D); a cold reset clears KPV_SCRAMBLER_CTRL.
-                   Controls: the enable-0 twin cells and the enable-1 cells read D.
+                   Controls: the enable-0 twin cells and the enable-1 cells read D;
+                   KPV_SCRAMBLER_KEY reads the written key before the enable and
+                   lock writes.
   CHK-WIPE-KPV     a KM_WIPE_CTRL rising edge clears all 1024 KPV words, all 64
                    CTRL, the KPV scrambler key, enable and lock, sets
                    IRQ_STATUS.WIPE_STATE, and the KM CPU runs the next list.
@@ -85,16 +118,19 @@ Checkers:
                    cell change exactly one stored word, and
                    ibox(iplayer(S1)) ^ ibox(iplayer(S2)) == d1 ^ d2 in 32 draws
                    that cover every nibble value in each of the 8 lanes.
+  CHK-KSCR-CIPHER-K2  d1 of the last draw rewritten under a second key k2 stores
+                   one word W2 with ibox(iplayer(W1)) ^ ibox(iplayer(W2)) == k ^ k2
+                   (the tweak uses the logical index, so only the key differs).
   CHK-NONVAC       every control of a "no effect" check above was seen.
 
 Log only: OBS-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
 erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
-(KPV cells after a cold reset are not stated), ``OBS-KPV-RACE-REDRAW`` and
-``OBS-KPV-RACE``, ``LOG err_o`` (PIC vector bit 30 at the wipe) and the
-second-key control of the cipher leg.
+(KPV cells after a cold reset are not stated), ``INFO-KPV-RACE-REDRAW`` and
+``INFO-KPV-RACE``, and ``OBS-KPV-WIPE-ERR-O`` (PIC vector bit 30 at the wipe).
 
-Not sent: a key access during an erase (not defined), a KPV_SCRAMBLER_KEY read
-after the lock (not stated).
+Log only, not stated: ``OBS-KPV-ACCESS``, a word read and write issued right
+after an erase write, each with the erase bit of a CTRL read right after that
+access, and a KPV_SCRAMBLER_KEY read after the lock.
 """
 
 from __future__ import annotations
@@ -106,7 +142,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiOp
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_reg_meta import SEP_CPU_CTRL
 from env.sep_seeded_rng import SepSeededRng
@@ -149,14 +185,18 @@ _REQUIRED = (
     "CHK-KPV-STATE",
     "CHK-KPV-ERASE",
     "CHK-KPV-RETIRED",
+    "CHK-KPV-RETIRED-REERASE",
     "CHK-KPV-TRAIL",
     "CHK-KPV-NEIGH",
+    "CHK-KPV-NEIGH-PORT",
     "CHK-KPV-RESET",
+    "CHK-KPV-RSVD",
     "CHK-KSCR-RST",
     "CHK-WIPE-KPV",
     "CHK-WIPE-SCOPE",
     "CHK-WIPE-EDGE2",
     "CHK-KSCR-CIPHER",
+    "CHK-KSCR-CIPHER-K2",
     "CHK-NONVAC",
 )
 
@@ -165,6 +205,16 @@ _KPV_READ_OPS = (kp.OP_RD, kp.OP_RDBLK, kp.OP_RDLOOP, kp.OP_POLL)
 
 def _h(v: int) -> str:
     return f"0x{v:08x}"
+
+
+def _hk(v: int) -> str:
+    """A scrambler key value: ``_h`` when it is 0, else ``sha:<word_digest>``."""
+    return f"sha:{word_digest(v)}" if v else _h(v)
+
+
+# KM-KPV packs CTRL[s] at [w*s +: w], w the CTRL field width (SEP_TB_ARCH).
+_CTRL_TAP_W = m.CTRL_FIELDS.bit_length()
+_ERASE_TAP_ALL = sum(m.ERASE << (_CTRL_TAP_W * s) for s in range(m.N_SLOTS))
 
 
 def _erase_ops(slot: int) -> list[kp.PokeOp]:
@@ -181,6 +231,7 @@ class _Watch:
     snaps: list[tuple] = field(default_factory=list)
     own: list[int] = field(default_factory=list)
     port: list[tuple] = field(default_factory=list)
+    erase_overlap: list[bool] = field(default_factory=list)
     ops: int = 0
 
     def snap_ops(self) -> list[kp.PokeOp]:
@@ -268,7 +319,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         return v & m.IRQ_WIPE
 
     def _draw(self, name: str, value) -> None:
-        self.logger.info("DRAW %s=%s", name, value)
+        self.logger.info("INFO-DRAW %s=%s", name, value)
 
     async def _watched(self, w: _Watch, groups: list[list[kp.PokeOp]]) -> list[list[kp.PokeResult]]:
         """Run ``groups`` on slot ``w.slot`` with a neighbour snapshot before and after each."""
@@ -302,8 +353,8 @@ class sep_km_kpv_rand_test(sep_base_test):
             w.own.append(self._ctrl(snap[0].value))
             # Graded: neighbour CTRL and the 16 stored words from KM-KPV (the
             # scrambler is off in steps 6 to 9, so slot n is tap words 16 n to
-            # 16 n + 15). Logged: the port read of word 0, which reads 0 with
-            # SLVERR on a read-locked neighbour.
+            # 16 n + 15), and the port read of word 0: the stored word with
+            # OKAY, or 0 with SLVERR on a neighbour with lock_use set.
             w.snaps.append(
                 tuple(
                     (
@@ -313,7 +364,23 @@ class sep_km_kpv_rand_test(sep_base_test):
                     for j, n in enumerate(nbs)
                 )
             )
-            w.port.append(tuple(snap[2 + 2 * j].value for j in range(len(nbs))))
+            w.port.append(
+                tuple(
+                    (
+                        snap[2 + 2 * j].value if snap[2 + 2 * j].known else None,
+                        snap[2 + 2 * j].slv,
+                        (0, 1)
+                        if snap[1 + 2 * j].value & m.LOCK_USE
+                        else (stored[n * m.N_WORDS], 0),
+                    )
+                    for j, n in enumerate(nbs)
+                )
+            )
+            w.erase_overlap.append(
+                bool(snap[0].value & m.ERASE)
+                or any(snap[1 + 2 * j].value & m.ERASE for j in range(len(nbs)))
+                or self.tap_erase[snap_tap[k // 2]]
+            )
         w.ops += len(groups)
         if not any(x is w for x in self.watches):
             self.watches.append(w)
@@ -324,6 +391,8 @@ class sep_km_kpv_rand_test(sep_base_test):
         words, x = self._snapshot()
         self.x_snap_bits += x
         self.taps.append(words)
+        ctrl = self.rd(cocotb.top.km_kpv_ctrl_o, allow_unknown=True)
+        self.tap_erase.append(bool(ctrl & _ERASE_TAP_ALL))
         return None
 
     @staticmethod
@@ -352,6 +421,31 @@ class sep_km_kpv_rand_test(sep_base_test):
             x_bits = sum(1 for c in bits if c not in "01")
         whole = self.rd(sig, allow_unknown=True)
         return [(whole >> (32 * i)) & m.WORD for i in range(m.N_KPV_WORDS)], x_bits
+
+    async def _erase_rises(self, slot: int, groups_coro) -> tuple:
+        """Run ``groups_coro`` and count the rises of CTRL[slot].erase on the KM-KPV tap.
+
+        Each erase write that the slot takes sets the bit until the erase
+        completes (``km_kpv.adoc``, "CTRL[64]": hardware self-clears the bit when
+        the erase completes), so the count equals the number of erase writes.
+        """
+        bit = _CTRL_TAP_W * slot + m.ERASE.bit_length() - 1
+        state = {"run": True, "rises": 0}
+
+        async def watch() -> None:
+            prev = 0
+            while state["run"]:
+                await RisingEdge(cocotb.top.clk_i)
+                cur = (self.rd(cocotb.top.km_kpv_ctrl_o, allow_unknown=True) >> bit) & 1
+                state["rises"] += cur and not prev
+                prev = cur
+
+        task = cocotb.start_soon(watch())
+        res = await groups_coro
+        await RisingEdge(cocotb.top.clk_i)
+        state["run"] = False
+        await task
+        return res, state["rises"]
 
     async def _wipe_ctrl(self, value: int) -> None:
         seq = SepAxiAccessSeq(
@@ -396,7 +490,7 @@ class sep_km_kpv_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.rng = SepSeededRng(seed)
         self.plan = m.draw_plan(self.rng)
         for name, value in self.plan.draws:
@@ -415,6 +509,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         self.watches: list[_Watch] = []
         self.controls: dict[str, bool] = {}
         self.taps: list[list[int]] = []
+        self.tap_erase: list[bool] = []
 
         # Step 1: cold reset, KM release, start marker.
         self._gate(False)
@@ -463,7 +558,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         res = await self._run_groups([_erase_ops(s) for s in slots])
         for s, r in zip(slots, res, strict=True):
             self._erase_done(r, s)
-        self.logger.info("LOG define erased_slots=%d", len(slots))
+        self.chk.info("KPV-DEFINE", erased_slots=len(slots))
 
     # Steps 4 and 5.
     async def _step_addr_walk_and_sweep(self) -> None:
@@ -525,14 +620,18 @@ class sep_km_kpv_rand_test(sep_base_test):
             if lock:
                 groups += [[kp.wr(a, 0)], [kp.rd(a)]]
             groups += [wf, [kp.rd(a)], wf, [kp.rd(a)], wf, [kp.rd(a)], [kp.wr(a, g)], [kp.rd(a)]]
-            res = await self._watched(_Watch(s), groups)
+            res, rises = await self._erase_rises(s, self._watched(_Watch(s), groups))
             self._erase_done(res[0], s)
             vals = []
+            wr_n = wr_ok = 0
             for grp, r in zip(groups, res, strict=True):
                 if grp is wf and f == m.ERASE:
                     self._erase_done(r, s)
                 if grp[0].code == kp.OP_RD:
                     vals.append(self._ctrl(r[0].value))
+                elif grp[0].code == kp.OP_WR:
+                    wr_n += 1
+                    wr_ok += r[0].flags_known and r[0].slv == 0 and r[0].dec == 0
             c_start, c_w0, c_set = vals[0], vals[1], vals[2]
             rest = vals[3:]
             c_keep = rest.pop(0) if lock else None
@@ -546,23 +645,27 @@ class sep_km_kpv_rand_test(sep_base_test):
                 counts["write0_keeps"] += c_keep == exp_set
             counts["triple_same"] += c_r2 == exp_set and c_r3 == exp_set and c_r4 == exp_set
             counts["or_ok"] += c_or == exp_or
-            self.logger.info(
-                "LOG ctrlw slot=%d field=%s g=%s start=%s w0=%s set=%s keep=%s r2=%s r3=%s r4=%s "
-                "or=%s "
-                "exp_set=%s exp_or=%s",
-                s,
-                m.FIELD_NAME[f],
-                m.FIELD_NAME[g],
-                _h(c_start),
-                _h(c_w0),
-                _h(c_set),
-                "-" if c_keep is None else _h(c_keep),
-                _h(c_r2),
-                _h(c_r3),
-                _h(c_r4),
-                _h(c_or),
-                _h(exp_set),
-                _h(exp_or),
+            # The start erase, plus the four erase writes of an erase cell.
+            erase_writes = 1 + (4 if f == m.ERASE else 0)
+            self.chk.ctrl(
+                "KPV-CTRLW-ERASE",
+                rises == erase_writes and wr_ok == wr_n,
+                slot=s,
+                wr_ok=f"{wr_ok}/{wr_n}",
+                field=m.FIELD_NAME[f],
+                g=m.FIELD_NAME[g],
+                erase_writes=erase_writes,
+                erase_rises=rises,
+                start=_h(c_start),
+                w0=_h(c_w0),
+                set=_h(c_set),
+                keep="-" if c_keep is None else _h(c_keep),
+                r2=_h(c_r2),
+                r3=_h(c_r3),
+                r4=_h(c_r4),
+                orv=_h(c_or),
+                exp_set=_h(exp_set),
+                exp_or=_h(exp_or),
             )
         self.controls["ctrlw_start_zero"] = self.chk.ctrl("KPV-CTRLW-START", start_zero)
         self.chk.ok(
@@ -591,12 +694,13 @@ class sep_km_kpv_rand_test(sep_base_test):
             fr = await self._watched(w, [[kp.wr(wa, vf)], [kp.rd(wa)]])
             free_twin = fr[0][0].slv == 0 and fr[1][0].value == vf and fr[1][0].slv == 0
             twin_ok &= free_twin
-            self.logger.info(
-                "LOG state slot=%d state=free wr_slv=%d rd=%s rd_slv=%d control=1",
-                s,
-                fr[0][0].slv,
-                _h(fr[1][0].value),
-                fr[1][0].slv,
+            self.chk.ctrl(
+                "KPV-STATE-FREE",
+                free_twin,
+                slot=s,
+                wr_slv=fr[0][0].slv,
+                rd=_h(fr[1][0].value),
+                rd_slv=fr[1][0].slv,
             )
 
             for st in p.walk_order[s]:
@@ -606,7 +710,7 @@ class sep_km_kpv_rand_test(sep_base_test):
                 groups = [
                     [kp.wrblk(base, rec)],
                     [kp.wr(ca, _STATE_BITS[st])],
-                    self._tapped_wr(wa, vne) if st == "WR" else [kp.wr(wa, vne)],
+                    self._tapped_wr(wa, vne) if st in ("R", "WR") else [kp.wr(wa, vne)],
                     [kp.rd(wa)],
                     [kp.wr(ca, 0)],
                     _erase_ops(s),
@@ -622,13 +726,14 @@ class sep_km_kpv_rand_test(sep_base_test):
                     ]
                 res = await self._watched(w, groups)
                 self._erase_done(res[5], s)
-                wr = res[2][1] if st == "WR" else res[2][0]
+                wr = res[2][1] if st in ("R", "WR") else res[2][0]
                 wr_slv, rd, rd_slv = wr.slv, res[3][0].value, res[3][0].slv
                 if st == "W":
                     graded = rd == rec[wk] and rd_slv == 0
                     self.chk.ctrl("KPV-STATE-W-WRITE", wr_slv == 1, slot=s, wr_slv=wr_slv)
                 elif st == "R":
-                    graded = wr_slv == 0
+                    landed = self.taps[self.group_taps[2][0] + 1][s * m.N_WORDS + wk]
+                    graded = wr_slv == 0 and landed == vne
                     self.chk.ctrl(
                         "KPV-STATE-R-READ",
                         rd == 0 and rd_slv == 1,
@@ -651,6 +756,8 @@ class sep_km_kpv_rand_test(sep_base_test):
                     )
                     graded = wr_slv == 1 and kept and rd == 0 and rd_slv == 1
                 fields = {"wr_slv": wr_slv}
+                if st == "R":
+                    fields["wr_landed"] = int(landed == vne)
                 if st == "WR":
                     fields["wr_dropped"] = kept
                 self.chk.ok(
@@ -727,13 +834,23 @@ class sep_km_kpv_rand_test(sep_base_test):
                 self._tapped_wr(wa, vr),
                 [kp.rd(ca)],
             ]
-            res = await self._watched(w, groups)
+            res, rises = await self._erase_rises(s, self._watched(w, groups))
             self._erase_done(res[2], s)
+            self.chk.ctrl(
+                "KPV-RETIRED-ERASE", rises == 1, slot=s, erase_writes=1, erase_rises=rises
+            )
             r1, w1, r2, w2 = res[0][0], res[1][1], res[3][0], res[4][1]
             kept1 = self._tap_kept(self.group_taps[1][0], s)
             kept2 = self._tap_kept(self.group_taps[4][0], s)
             final = self._ctrl(res[5][0].value)
-            self.chk.ctrl("KPV-RETIRED-REERASE", final == m.RETIRED, slot=s, ctrl=_h(final))
+            self.chk.ok(
+                "KPV-RETIRED-REERASE",
+                final == m.RETIRED,
+                contract="key_manager/doc/architecture.adoc:461-464",
+                slot=s,
+                ctrl=_h(final),
+                expect=_h(m.RETIRED),
+            )
             self.chk.ok(
                 "KPV-RETIRED",
                 retired_ctrl == m.RETIRED
@@ -783,12 +900,12 @@ class sep_km_kpv_rand_test(sep_base_test):
                 graded = (s, after_seal, final)
                 break
             self.logger.info(
-                "OBS-KPV-RACE-REDRAW slot=%d case=finished ctrl_after_seal=%s ctrl_final=%s",
+                "INFO-KPV-RACE-REDRAW slot=%d case=finished ctrl_after_seal=%s ctrl_final=%s",
                 s,
                 _h(after_seal),
                 _h(final),
             )
-        self.logger.info("OBS-KPV-RACE graded=%d tries=%d", int(graded is not None), n)
+        self.logger.info("INFO-KPV-RACE graded=%d tries=%d", int(graded is not None), n)
 
         self._gate(False)
         cs = p.race_extra[4]
@@ -854,36 +971,81 @@ class sep_km_kpv_rand_test(sep_base_test):
         for w in self.watches:
             by_slot.setdefault(w.slot, []).append(w)
         changes = 0
-        port_changes = 0
+        port_bad = port_graded = port_locked = port_nonzero = port_excluded = 0
         ops = 0
         moved = True
         for slot, ws in by_slot.items():
             snaps = [sn for w in ws for sn in w.snaps]
             own = [o for w in ws for o in w.own]
-            port = [pv for w in ws for pv in w.port]
+            port = [
+                rd for w in ws for pv, ov in zip(w.port, w.erase_overlap) if not ov for rd in pv
+            ]
+            port_excluded += sum(1 for w in ws for ov in w.erase_overlap if ov)
+            port_graded += len(port)
+            port_locked += sum(1 for _v, _slv, exp in port if exp == (0, 1))
+            port_nonzero += sum(1 for _v, _slv, exp in port if exp[0] != 0)
+            port_bad += sum(1 for v, slv, exp in port if (v, slv) != exp)
             ops += sum(w.ops for w in ws)
             changes += sum(1 for i in range(1, len(snaps)) if snaps[i] != snaps[0])
-            port_changes += sum(1 for i in range(1, len(port)) if port[i] != port[0])
             slot_moved = any(o != own[0] for o in own)
             moved &= slot_moved
             if not slot_moved:
-                self.logger.info("LOG neigh slot=%d own_ctrl_constant=%s", slot, _h(own[0]))
+                self.chk.info("KPV-NEIGH-OWN-CONSTANT", slot=slot, ctrl=_h(own[0]))
         self.controls["neigh_twin"] = self.chk.ctrl("KPV-NEIGH-TWIN", moved, slots=len(by_slot))
-        self.logger.info("LOG neigh port_word0_changes=%d", port_changes)
+        self.chk.ok(
+            "KPV-NEIGH-PORT",
+            port_bad == 0 and port_nonzero > 0,
+            contract="key_manager/doc/architecture.adoc:482-484,key_manager/regs/km_kpv.rdl:183",
+            slots=len(by_slot),
+            compared=port_graded,
+            lock_use_reads=port_locked,
+            nonzero_compared=port_nonzero,
+            excluded_erase_overlap=port_excluded,
+            port_word0_mismatch=port_bad,
+        )
         self.chk.ok(
             "KPV-NEIGH", changes == 0, ops=ops, slots=len(by_slot), neighbor_changes=changes
         )
 
+    async def _access_obs(self, ops: list[kp.PokeOp]) -> list[kp.PokeResult]:
+        """Logged-only accesses; their data stays out of the stored-word compare count."""
+        return await self.poke.run(ops, allow_unknown=True)
+
     # Step 11.
     async def _step_scrambler(self) -> None:
         p = self.plan
+        # A word read and write issued right after the erase write of a slot
+        # that this step erases again before use. The CTRL read after each
+        # access shows whether the erase was still in flight when it completed.
+        s0 = p.scr_slots[0]
+        ca, wa = m.ctrl_addr(s0), m.word_addr(s0, 0)
+        r = await self._access_obs(
+            [
+                kp.wr(ca, m.ERASE),
+                kp.rd(wa),
+                kp.rd(ca),
+                kp.wr(wa, m.WORD),
+                kp.rd(ca),
+                kp.poll(ca, m.ERASE, 0, _ERASE_POLL),
+            ]
+        )
+        self._erase_done(r, s0)
+        for case, x, c in (("erase_rd", r[1], r[2]), ("erase_wr", r[3], r[4])):
+            self.chk.obs(
+                "KPV-ACCESS",
+                case=case,
+                slot=s0,
+                rdata=_h(x.value) if x.known else "X",
+                axi_slverr=x.slv,
+                erase=int(bool(self._ctrl(c.value) & m.ERASE)) if c.known else "X",
+            )
         cells = p.scr_cells
         d = p.scr_values
         groups = [_erase_ops(s) for s in p.scr_slots]
         groups += [[kp.wr(m.word_addr(s, w), v)] for (s, w), v in zip(cells, d, strict=True)]
         groups += [[kp.rd(m.word_addr(s, w))] for (s, w) in cells]
         groups += [_erase_ops(s) for s in p.scr_slots]
-        groups += [[kp.wr(m.SCR_KEY, p.kk)], [kp.wr(m.SCR_CTRL, m.SCR_ENABLE)]]
+        groups += [[kp.wr(m.SCR_KEY, p.kk)], [kp.rd(m.SCR_KEY)], [kp.wr(m.SCR_CTRL, m.SCR_ENABLE)]]
         if p.lock_before:
             groups.append([kp.wr(m.SCR_CTRL, m.SCR_ENABLE | m.SCR_LOCK)])
         groups += [[kp.wr(m.word_addr(s, w), v)] for (s, w), v in zip(cells, d, strict=True)]
@@ -899,17 +1061,32 @@ class sep_km_kpv_rand_test(sep_base_test):
             self._erase_done(res[ns + 2 * nc + i], s)
         twin = res[ns + nc : ns + 2 * nc]
         self.twin_equal = sum(1 for r, v in zip(twin, d, strict=True) if r[0].value == v)
-        off = 2 * ns + 2 * nc + 2 + (1 if p.lock_before else 0) + nc
+        key_pre = res[2 * ns + 2 * nc + 1][0]
+        self.controls["kscr_key_pre"] = self.chk.ctrl(
+            "KSCR-KEY-PRE",
+            key_pre.known and key_pre.slv == 0 and key_pre.value == p.kk,
+            key=_hk(key_pre.value) if key_pre.known else "X",
+            rd_slv=key_pre.slv,
+        )
+        off = 2 * ns + 2 * nc + 3 + (1 if p.lock_before else 0) + nc
         logical = res[off : off + nc]
         self.logical_ok = sum(1 for r, v in zip(logical, d, strict=True) if r[0].value == v)
         self.scr_pre = self._scr(res[-1 - len(p.drawn)][0].value)
         self.warm_pre = [self._ctrl(r[0].value) for r in res[-len(p.drawn) :]]
-        self.logger.info(
-            "LOG scrambler twin_equal=%d logical_ok=%d scr_ctrl=%s lock_timing=%s",
-            self.twin_equal,
-            self.logical_ok,
-            _h(self.scr_pre),
-            "before" if p.lock_before else "after",
+        self.chk.info(
+            "KSCR-PRE",
+            twin_equal=self.twin_equal,
+            logical_ok=self.logical_ok,
+            scr_ctrl=_h(self.scr_pre),
+            lock_timing="before" if p.lock_before else "after",
+        )
+        key = (await self._access_obs([kp.rd(m.SCR_KEY)]))[0]
+        self.chk.obs(
+            "KPV-ACCESS",
+            case="scr_key_locked",
+            rdata=_hk(key.value) if key.known else "X",
+            axi_slverr=key.slv,
+            erase=0,
         )
 
     # Step 12.
@@ -960,7 +1137,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         await self.pulse_rst_ni(release_bound=_SEP_RESET_BOUND)
         self.swrst.value = SW_RESET_N_RESET_DEFAULT
         swrst = await self.swrst.read_back()
-        self.logger.info("LOG cold sw_reset_n_after_rst_ni=%s", _h(swrst))
+        self.chk.info("KPV-COLD-SWRST", sw_reset_n_after_rst_ni=_h(swrst))
         await self.swrst.release("km")
         await self.poke.wait_boot()
         groups = [[kp.rd(m.ctrl_addr(s))] for s in p.drawn]
@@ -1084,7 +1261,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         await ReadOnly()
         vec = self.rd(cocotb.top.sep_internal_interrupts_probe_o, 1 << _PIC_KM_UNREC)
         await RisingEdge(cocotb.top.clk_i)
-        self.logger.info("LOG err_o=%d", (vec >> _PIC_KM_UNREC) & 1)
+        self.chk.obs("KPV-WIPE-ERR-O", err_o=(vec >> _PIC_KM_UNREC) & 1)
         kv_wipe = self._key_valid()
         depth_post = await self._mbox_depth()
         if not (self.poke.state() == (kp.ST_RUN, ha.tag) and self.poke.progress()[0] == last):
@@ -1094,6 +1271,8 @@ class sep_km_kpv_rand_test(sep_base_test):
 
         await self.poke.post(hb.ops, handle=hb, header_sent=True)
         await self.poke.wait(hb)
+        hb_state = self.poke.state()
+        hb_ops_done = self.poke.progress()[0]
         post = self.poke.results(hb, allow_unknown=True)
         for r in post:
             self._check_result(r)
@@ -1105,6 +1284,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         kv_post = self._key_valid()
 
         both = m.SCR_ENABLE | m.SCR_LOCK
+        self._ctrl(pre[2].value)
         vault_pre = (
             key_pre == p.kk2
             and list(pre[0].data) == va
@@ -1118,7 +1298,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         self.controls["wipe_pre_vault"] = self.chk.ctrl(
             "WIPE-KPV-PRE",
             vault_pre,
-            key=_h(key_pre),
+            key=_hk(key_pre),
             sealed_ctrl=_h(self._ctrl(pre[3].value)),
             retired_ctrl=_h(self._ctrl(pre[4].value)),
             scr=_h(self._scr(pre[5].value)),
@@ -1155,19 +1335,21 @@ class sep_km_kpv_rand_test(sep_base_test):
             and ctrl_nonzero == 0
             and key == 0
             and scr == 0
-            and status,
+            and status
+            and hb_state == (kp.ST_DONE, hb.tag)
+            and hb_ops_done == len(opsb),
             words_nonzero=loop.data[0],
             words_or=_h(loop.data[1]),
             ctrl_nonzero=ctrl_nonzero,
-            kpv_key=_h(key),
+            kpv_key=_hk(key),
             en=int(bool(scr & m.SCR_ENABLE)),
             lock=int(bool(scr & m.SCR_LOCK)),
             status=int(status),
-            cpu_alive=1,
+            cpu_ops_done=f"{hb_ops_done}/{len(opsb)}",
             W=p.wipe_hold,
         )
         sram_same = sum(1 for a, b in zip(sram_post, p.sram_values, strict=True) if a == b)
-        # architecture.adoc:506-508: the wipe pulse clears KEY_VALID of every
+        # architecture.adoc:514-516: the wipe pulse clears KEY_VALID of every
         # accelerator sideload register block.
         bank_set = [b.name for v, b in zip(bank_post, m.KEY_BANKS, strict=True) if v != 0]
         self.chk.ok(
@@ -1299,9 +1481,7 @@ class sep_km_kpv_rand_test(sep_base_test):
                 if m.inverse_diff(sa[pi], sb[pi]) == d1 ^ d2:
                     diff_ok += 1
             else:
-                self.logger.info(
-                    "LOG cipher draw=%d cell=%s changed_words=%d", j, cell, len(changed)
-                )
+                self.chk.info("KSCR-CIPHER-DRAW", draw=j, cell=cell, changed_words=len(changed))
         lanes = {(ln, (d1 >> (4 * ln)) & 0xF) for _c, d1, _d2 in p.cipher for ln in range(8)}
         self.chk.ok(
             "KSCR-CIPHER",
@@ -1312,8 +1492,9 @@ class sep_km_kpv_rand_test(sep_base_test):
             diff_ok=diff_ok,
         )
 
-        # Control (logged): under the second key the same cell and data store
-        # another word. Draw 32 gives the index and the word of d1 under key k.
+        # Under the second key the same cell and data store one word whose
+        # inverse differs from the word under key k by k ^ k2: the tweak uses the
+        # logical index, so only the key changes. Draw 32 gives d1 under key k.
         self._gate(False)
         (s, w), d1, _d2 = p.cipher[-1]
         sa, sb = snaps[-2], snaps[-1]
@@ -1323,14 +1504,23 @@ class sep_km_kpv_rand_test(sep_base_test):
         )
         under_k2 = snaps[-1]
         idx_k2 = [i for i in range(m.N_KPV_WORDS) if under_k2[i] != sb[i]]
-        self.logger.info(
-            "LOG KSCR-CIPHER-K2 control=1 cell=%s d1=%s idx_k=%s word_k=%s idx_k2=%s word_k2=%s",
-            f"{s}.{w}",
-            _h(d1),
-            idx_k,
-            [_h(sa[i]) for i in idx_k],
-            idx_k2,
-            [_h(under_k2[i]) for i in idx_k2],
+        key_diff = p.cipher_key ^ p.cipher_key2
+        got_diff = (
+            m.inverse_diff(sa[idx_k[0]], under_k2[idx_k2[0]])
+            if len(idx_k) == 1 and len(idx_k2) == 1
+            else None
+        )
+        self.chk.ok(
+            "KSCR-CIPHER-K2",
+            got_diff == key_diff,
+            cell=f"{s}.{w}",
+            d1=_h(d1),
+            idx_k=idx_k,
+            word_k=[_h(sa[i]) for i in idx_k],
+            idx_k2=idx_k2,
+            word_k2=[_h(under_k2[i]) for i in idx_k2],
+            inverse_diff="none" if got_diff is None else _hk(got_diff),
+            golden=_hk(key_diff),
         )
         self._gate(True)
 
@@ -1350,13 +1540,10 @@ class sep_km_kpv_rand_test(sep_base_test):
                 snapshot_x_bits=self.x_snap_bits,
             )
         else:
-            self.logger.info(
-                "LOG CHK-KPV-NOX not graded: Verilator is two-state compared_words=%d",
-                self.compared,
-            )
+            self.chk.blocked("KPV-NOX", f"verilator_two_state,compared_words={self.compared}")
         for reg, seen in self.rsvd.items():
-            self.logger.info(
-                "LOG RSVD reg=%s masked=%s seen_or=%s", reg, _h(self.rsvd_mask[reg]), _h(seen)
+            self.chk.ok(
+                "KPV-RSVD", seen == 0, reg=reg, masked=_h(self.rsvd_mask[reg]), seen_or=_h(seen)
             )
         self.chk.ok(
             "NONVAC",

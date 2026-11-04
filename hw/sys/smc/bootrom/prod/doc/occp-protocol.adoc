@@ -204,11 +204,10 @@ value is emitted by the current handlers. In particular, misaligned read,
 write, execute, and authenticate addresses record access violation (`0x02`);
 alignment error (`0x03`) is defined but not emitted.
 
-For a packet-header read that is incomplete or oversized, the wire response
-uses `Incomplete_msg` or `Oversize_msg`, but the internal error field remains
-timeout (`0x07`) because the command-loop return value has not yet been
-replaced. Equivalent failures returned from a command-body handler record
-incomplete (`0x09`) or overflow (`0x0A`).
+For a packet-header or command-body read that is incomplete or oversized, the
+wire response uses `Incomplete_msg` or `Oversize_msg`, and the internal error
+field records incomplete (`0x09`) or overflow (`0x0A`), respectively.
+Only a driver timeout records timeout (`0x07`).
 
 ==== WriteData
 

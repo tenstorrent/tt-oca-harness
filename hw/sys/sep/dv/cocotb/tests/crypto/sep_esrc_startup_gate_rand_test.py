@@ -19,7 +19,8 @@ Contract:
     (``hw/ip/entropy_source/regs/entropy_source.rdl:352``).
   * The five total-failure counters count since the last ``MODULE_ENABLE``
     rising edge (``entropy_source.rdl:821-861``), and the rising edge restarts
-    startup health testing (``architecture.adoc:226-227``).
+    startup health testing (``architecture.adoc:226-227``). A falling edge is not
+    that edge, so it does not clear a counter.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20: the TRNG domain runs, the
@@ -52,6 +53,12 @@ Checkers:
   CHK-BOOT-RESTART  after the rise every counter that read non-zero before the
                     fall reads 0 at once, and BOOT_PHASE_DONE returns to 1.
                     Control: REPCNT_TOTAL_FAILS read non-zero before.
+  CHK-BOOT-FALL-KEEP in the same leg, the five counters read after the
+                    MODULE_ENABLE = 0 write and before the rise are each at least
+                    their value before the fall (no clear at the fall). Control:
+                    CTRL-BOOT-RESTART, REPCNT_TOTAL_FAILS non-zero before. Whether a
+                    counter still counts while MODULE_ENABLE is 0 is not stated: the
+                    values after the fall are also logged as OBS-BOOT-COUNTERS.
   CHK-BOOT-TOGGLE   per drawn moment (boot, after_boot, bad_pattern): IDLE = 1
                     after the fall; after the rise every counter that read
                     non-zero before the fall reads 0 at once, the first
@@ -69,6 +76,8 @@ Checkers:
                     BOOT_PHASE_DONE 0 last; bad_pattern reads REPCNT above 0, and
                     above 0 again after the tester clear.
 Every bound is a multiple of a clean time of the same seed and is logged.
+Logged only: OBS-ESRC-SM-STATE, each new MAIN_SM_STATUS.STATE value a poll reads
+(the state encoding is not stated).
 """
 
 from __future__ import annotations
@@ -219,6 +228,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         "CHK-BOOT-BAD",
         "CHK-BOOT-IDLE",
         "CHK-BOOT-RESTART",
+        "CHK-BOOT-FALL-KEEP",
         "CHK-BOOT-TOGGLE",
     )
 
@@ -231,6 +241,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
         self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self.chk = SepChkLog(self, TEST, seed)
+        self._last_state: int | None = None
         self.esrc = _Esrc(self)
         self.clk = SepBitWatch(dut.rst_ni, {"rst_ni": 0}, name="clk_count").start()
         self.whiten = SepBitWatch(dut.esrc_whiten_push_o, name="esrc_whiten_push_o").start()
@@ -288,6 +299,17 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         biw = await self._rd(ESRC_BIW_OBS_STATUS)
         fifo = await self._rd(ESRC_FIFO_STATUS)
         sm = await self._rd(ESRC_MAIN_SM_STATUS)
+        state = _fld("MAIN_SM_STATUS", "STATE", sm)
+        if state != self._last_state:
+            self._last_state = state
+            self.chk.obs(
+                "ESRC-SM-STATE",
+                state=f"0x{state:03x}",
+                idle=_fld("MAIN_SM_STATUS", "IDLE", sm),
+                boot_phase_done=_fld("MAIN_SM_STATUS", "BOOT_PHASE_DONE", sm),
+                alert=_fld("MAIN_SM_STATUS", "ALERT", sm),
+                clk=self._now(),
+            )
         return Poll(
             _fld("BIW_OBS_STATUS", "LEVEL", biw),
             _fld("FIFO_STATUS", "LEVEL", fifo),
@@ -422,7 +444,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         # MODULE_ENABLE = 0 here, so the immediate change applies stuck0 from the first sample.
         self.noise.set_lanes([Stuck(0)] * NUM_LANES, immediate=True)
         pre = self.noise.words_since(mark)
-        self.logger.info("ESRC-BAD-START %s pre_clean_strobes=%d", lim.describe(), pre)
+        self.logger.info("INFO-ESRC-BAD-START %s pre_clean_strobes=%d", lim.describe(), pre)
         if pre > PRE_CLEAN_MAX:
             raise AssertionError(f"pre_clean_strobes={pre} above {PRE_CLEAN_MAX}")
         wm, vm = self.whiten.mark(), self.vld.mark()
@@ -483,7 +505,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         self.ctrl_vld = self.vld.high_clocks_since(vm)
         self.ctrl_fifo_max, self.ctrl_biw_max = fifo_max, biw_max
         self.logger.info(
-            "CLEAN-START t_boot=%d t_fill=%d polls=%d whiten_push=%d stream_vld=%d",
+            "INFO-CLEAN-START t_boot=%d t_fill=%d polls=%d whiten_push=%d stream_vld=%d",
             self.t_boot,
             self.t_fill,
             polls,
@@ -616,6 +638,15 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         idle_ok, _, idle_bound = await self._wait_idle("restart_leg")
         after_fall = await self._totals()
         self.chk.obs("BOOT-COUNTERS", leg="restart", after_fall=self._fmt_totals(after_fall))
+        cleared = [k for k, _ in TOTALS if after_fall[k] < before[k]]
+        self.chk.ok(
+            "BOOT-FALL-KEEP",
+            not cleared,
+            total_fails_before=self._fmt_totals(before),
+            total_fails_after_fall=self._fmt_totals(after_fall),
+            below_before=cleared,
+            expect="each_after_fall>=before",
+        )
         await self._enable(1)
         after_edge = await self._totals()
         done_ok, done_clk = await self._wait_done(HOLD_FACTOR * self.t_boot)

@@ -27,7 +27,7 @@
 <tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.<br>To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</td></tr>
 <tr><td>27:14</td><td>rsvd2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>13</td><td>wdogcoreawake</td><td>RW</td><td>0x0</td><td>Enable WDT to only count when the core is not in reset</td></tr>
-<tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake</td></tr>
+<tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</td></tr>
 <tr><td>11:10</td><td>rsvd1</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>9</td><td>wdogzerocmp</td><td>RW</td><td>0x0</td><td>Enable cycle counter to be reset to 0 when compare value has been reached</td></tr>
 <tr><td>8</td><td>wdogrsten</td><td>RW</td><td>0x0</td><td>Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt</td></tr>

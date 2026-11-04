@@ -183,7 +183,7 @@ class smu_system_timer_octs_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != 0x1:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
-        sb.expect_eq("CHK-OCTS-J2A-READY", idcode, 0x1)
+        sb.expect_eq("CHK-OCTS-J2A-READY", idcode, 0x1, evidence="CHK-OCTS-J2A-READY")
 
         # S1: primary strap (TB hardwire) ↔ SMC_ATTRIBUTES
         attrs = await self._j2a_rd32(jtag, ADDR_ATTRS, "SMC_ATTRIBUTES")
@@ -278,8 +278,11 @@ class smu_system_timer_octs_test_seq:
         sb.expect_true(
             "CHK-OCTS-PRESET-RELOAD",
             reload_preset <= pin2 <= reload_preset + slack,
+            evidence="CHK-OCTS-PRESET-RELOAD",
         )
-        sb.expect_true("CHK-OCTS-PRESET-RELOAD-ADVANCE", pin3 > pin2)
+        sb.expect_true(
+            "CHK-OCTS-PRESET-RELOAD-ADVANCE", pin3 > pin2, evidence="CHK-OCTS-PRESET-RELOAD-ADVANCE"
+        )
 
         pins = []
         span = 1 << LOW_BITS

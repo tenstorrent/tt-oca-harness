@@ -8,12 +8,17 @@ S1: a train of reads and a train of writes, each launched without waiting for
     before it returns its first response are counted on the ext_in pins: a
     port that serialises accepts one. The reads must all return the RDL reset
     value, and the writes, which share one AWID so the ordering is fixed, must
-    leave the last value they wrote in the register.
+    leave the last value they wrote in the register. The seed draws the read
+    train's distinct ARIDs, with the all-zero and all-ones IDs always in the
+    set, and the write train runs once under each of those two pinned IDs.
 S2: a WRAP burst read and a multi-beat FIXED burst write at the same register
     targets are refused with SLVERR, a different verdict from the DECERR a
     filter or decode miss returns, while an INCR burst read and write of the
     same address, length and size just before each are OKAY, so the refusal
-    follows the burst type and not the length.
+    follows the burst type and not the length. The seed draws the beat count
+    of each INCR control (two or four 32-bit beats, the lengths a WRAP burst
+    admits inside the 16-byte register window) and where this step sits
+    relative to the trains.
 S3: the SMC SPM through the same window. Every AxSIZE, with each of address
     bits [2:0] set and cleared between transfers, and a write and read at every
     address bit the SPM leaves free, read back what was written; an INCR burst
@@ -22,6 +27,8 @@ S3: the SMC SPM through the same window. Every AxSIZE, with each of address
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, with_timeout
@@ -65,19 +72,21 @@ RESP_BACKPRESSURE_CYCLES = 600
 # with several transfers in flight from one that serialises them; the count
 # the port reaches is logged with the check.
 MIN_ACCEPTED_BEFORE_RESPONSE = 2
-# One AWID for the whole write train, so AXI orders them and the last value
-# written is the one the register must hold.
-WRITE_ID = 0x27
+# One AWID for a whole write train, so AXI orders them and the last value
+# written is the one the register must hold; the train runs once under each
+# pinned ID.
 SCRATCH_PATTERN_BASE = 0x51D0_0000
+ID_SIGNALS = ("arid", "awid")
 
-# 4 beats x 4 bytes = a 16-byte wrapping window, and VERSION_LO is 16-byte
-# aligned, so the burst is legal AXI and only its type is unsupported. The same
-# 16 bytes are the four CHIP_CONFIG registers and the first four SCRATCH_COLD
-# words, so the INCR controls touch registers only.
-BURST_BEATS = 4
+# 2 or 4 beats x 4 bytes stay inside a 16-byte wrapping window, and VERSION_LO
+# is 16-byte aligned, so the burst is legal AXI and only its type is
+# unsupported. The same 16 bytes are the four CHIP_CONFIG registers and the
+# first four SCRATCH_COLD words, so the INCR controls touch registers only.
+BURST_BEAT_CHOICES = (2, 4)
 BURST_SIZE = 2
 AXI_BURST_FIXED = 0
 AXI_BURST_WRAP = 2
+BURST_POSITIONS = ("before_reads", "between_trains", "after_writes")
 
 
 class _AcceptedBeforeResponse:
@@ -138,6 +147,14 @@ class smu_axi_in_burst_outstanding_test_seq:
         self.test = test
         self.dut = cocotb.top
         self.cfg = test.cfg
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.id_width = 0
+        self.read_ids: list[int] = []
+        self.write_ids: tuple[int, ...] = ()
+        self.read_beats = 0
+        self.write_beats = 0
+        self.burst_position = ""
         self.s1_ok = False
         self.s2_ok = False
         self.s3_ok = False
@@ -153,6 +170,37 @@ class smu_axi_in_burst_outstanding_test_seq:
         if not val.is_resolvable:
             raise AssertionError(f"X/Z on {name}: {val}")
         return int(val)
+
+    def _draw(self) -> None:
+        """Draw the ID set, the burst beat counts and the burst step position from the seed."""
+        prefix = smu_axi_in_prefix(self.dut)
+        widths = {len(getattr(self.dut, f"{prefix}_{name}")) for name in ID_SIGNALS}
+        if len(widths) != 1:
+            raise AssertionError(f"ext_in ID widths differ: {sorted(widths)}")
+        self.id_width = widths.pop()
+        id_max = (1 << self.id_width) - 1
+        if id_max + 1 < OUTSTANDING:
+            raise AssertionError(f"ID width {self.id_width} cannot carry {OUTSTANDING} IDs")
+        self.write_ids = (0, id_max)
+        free = [i for i in range(id_max + 1) if i not in self.write_ids]
+        ids = list(self.write_ids) + self.rng.sample(free, OUTSTANDING - len(self.write_ids))
+        self.rng.shuffle(ids)
+        self.read_ids = ids
+        self.read_beats = self.rng.choice(BURST_BEAT_CHOICES)
+        self.write_beats = self.rng.choice(BURST_BEAT_CHOICES)
+        self.burst_position = self.rng.choice(BURST_POSITIONS)
+        self._log(
+            f"SEED: RANDOM_SEED={self.seed} id_width={self.id_width} "
+            f"drawn read_ids={self._ids_text()} write_ids={self._write_ids_text()} "
+            f"read_beats={self.read_beats} write_beats={self.write_beats} "
+            f"burst_position={self.burst_position}"
+        )
+
+    def _ids_text(self) -> str:
+        return "[" + ",".join(f"0x{i:x}" for i in self.read_ids) + "]"
+
+    def _write_ids_text(self) -> str:
+        return "[" + ",".join(f"0x{i:x}" for i in self.write_ids) + "]"
 
     async def _open_window(self, sb):
         dut = self.dut
@@ -172,8 +220,8 @@ class smu_axi_in_burst_outstanding_test_seq:
         await program_inbound0_window(jtag, 0, PASS_ALL_END, scoreboard=sb, tag="AXIIN_WIDE")
         return jtag
 
-    async def _step_outstanding(self, master, sb) -> None:
-        """S1: a train of reads and a train of writes, all in flight at once."""
+    async def _step_read_train(self, master, sb) -> None:
+        """S1: a train of reads under the drawn distinct ARIDs, all in flight at once."""
         dut = self.dut
 
         read_depth = _AcceptedBeforeResponse(
@@ -185,13 +233,13 @@ class smu_axi_in_burst_outstanding_test_seq:
                 master.read_bytes_result(
                     VERSION_LO,
                     4,
-                    id=idx,
+                    id=arid,
                     check_response=False,
                     timeout_ns=AXI_TIMEOUT_NS,
                     allow_timeout=True,
                 )
             )
-            for idx in range(OUTSTANDING)
+            for arid in self.read_ids
         ]
         reads = [await task for task in read_tasks]
         reads_accepted = read_depth.finish()
@@ -202,34 +250,47 @@ class smu_axi_in_burst_outstanding_test_seq:
             raise AssertionError("s1 read train completed with no R handshake seen on the pins")
         sb.expect_true(
             f"CHK-AXIIN-DEPTH-RD port accepted {reads_accepted} of {OUTSTANDING} reads before "
-            f"returning the first response (floor {MIN_ACCEPTED_BEFORE_RESPONSE})",
+            f"returning the first response (floor {MIN_ACCEPTED_BEFORE_RESPONSE}) "
+            f"drawn read_ids={self._ids_text()} burst_position={self.burst_position}",
             reads_accepted >= MIN_ACCEPTED_BEFORE_RESPONSE,
             evidence="CHK-AXIIN-DEPTH",
         )
         resps = {resp_name(r.resp) for r in reads}
         words = {int(r.data) & 0xFFFF_FFFF for r in reads}
         sb.expect_eq(
-            "CHK-AXIIN-DEPTH-RD every concurrent read is OKAY",
+            f"CHK-AXIIN-DEPTH-RD every concurrent read is OKAY drawn read_ids={self._ids_text()}",
             resps,
             {resp_name(RESP_OKAY)},
+            evidence="CHK-AXIIN-DEPTH",
         )
         sb.expect_eq(
-            "CHK-AXIIN-DEPTH-RD every concurrent read returns the reset value",
+            "CHK-AXIIN-DEPTH-RD every concurrent read returns the reset value "
+            f"drawn read_ids={self._ids_text()}",
             words,
             {VERSION_LO_RESET},
+            evidence="CHK-AXIIN-DEPTH",
+        )
+        self._log(
+            f"CHK-AXIIN-DEPTH: accepted before first response reads={reads_accepted} "
+            f"of {OUTSTANDING} offered; drawn read_ids={self._ids_text()}"
         )
 
+    async def _step_write_train(self, master, sb, awid: int, run: int) -> None:
+        """S1: a train of writes under one pinned AWID, all in flight at once."""
+        dut = self.dut
         write_depth = _AcceptedBeforeResponse(
             dut, dut.clk_smu_i, addr_channel="aw", resp_channel="b"
         )
         master.driver.set_timing(AxiTimingProfile(b_ready_delay=RESP_BACKPRESSURE_CYCLES))
-        payloads = [(SCRATCH_PATTERN_BASE + idx) & 0xFFFF_FFFF for idx in range(OUTSTANDING)]
+        payloads = [
+            (SCRATCH_PATTERN_BASE + (run << 16) + idx) & 0xFFFF_FFFF for idx in range(OUTSTANDING)
+        ]
         write_tasks = [
             cocotb.start_soon(
                 master.write_bytes_result(
                     SCRATCH_COLD,
                     value.to_bytes(4, byteorder="little"),
-                    id=WRITE_ID,
+                    id=awid,
                     check_response=False,
                     timeout_ns=AXI_TIMEOUT_NS,
                     allow_timeout=True,
@@ -246,14 +307,16 @@ class smu_axi_in_burst_outstanding_test_seq:
             raise AssertionError("s1 write train completed with no B handshake seen on the pins")
         sb.expect_true(
             f"CHK-AXIIN-DEPTH-WR port accepted {writes_accepted} of {OUTSTANDING} writes before "
-            f"returning the first response (floor {MIN_ACCEPTED_BEFORE_RESPONSE})",
+            f"returning the first response (floor {MIN_ACCEPTED_BEFORE_RESPONSE}) "
+            f"drawn awid=0x{awid:x} burst_position={self.burst_position}",
             writes_accepted >= MIN_ACCEPTED_BEFORE_RESPONSE,
             evidence="CHK-AXIIN-DEPTH",
         )
         sb.expect_eq(
-            "CHK-AXIIN-DEPTH-WR every concurrent write is OKAY",
+            f"CHK-AXIIN-DEPTH-WR every concurrent write is OKAY drawn awid=0x{awid:x}",
             {resp_name(w.resp) for w in writes},
             {resp_name(RESP_OKAY)},
+            evidence="CHK-AXIIN-DEPTH",
         )
         master.driver.set_timing(AxiTimingProfile())
         await ClockCycles(dut.clk_smu_i, 32)
@@ -263,29 +326,29 @@ class smu_axi_in_burst_outstanding_test_seq:
         if settled.timed_out:
             raise AssertionError(f"TIMEOUT s1 scratch readback: bound={AXI_TIMEOUT_NS}ns")
         sb.expect_eq(
-            "CHK-AXIIN-DEPTH-WR settled scratch readback is OKAY",
+            f"CHK-AXIIN-DEPTH-WR settled scratch readback is OKAY drawn awid=0x{awid:x}",
             resp_name(settled.resp),
             resp_name(RESP_OKAY),
             evidence="CHK-AXIIN-DEPTH-ORDER",
         )
         sb.expect_eq(
-            "CHK-AXIIN-DEPTH-WR same-ID train leaves the last value written",
+            f"CHK-AXIIN-DEPTH-WR same-ID train leaves the last value written drawn awid=0x{awid:x}",
             int(settled.data) & 0xFFFF_FFFF,
             payloads[-1],
             evidence="CHK-AXIIN-DEPTH-ORDER",
         )
         self._log(
-            f"CHK-AXIIN-DEPTH: accepted before first response reads={reads_accepted} "
-            f"writes={writes_accepted} of {OUTSTANDING} offered; "
+            f"CHK-AXIIN-DEPTH: accepted before first response writes={writes_accepted} "
+            f"of {OUTSTANDING} offered under drawn awid=0x{awid:x}; "
             f"scratch=0x{int(settled.data) & 0xFFFF_FFFF:08x} last_written=0x{payloads[-1]:08x}"
         )
-        self.s1_ok = True
 
     async def _step_burst_type(self, master, sb) -> None:
         """S2: WRAP and multi-beat FIXED at a register target are refused; INCR is not."""
+        drawn = f"drawn read_beats={self.read_beats} write_beats={self.write_beats}"
         incr_read = await master.burst_read_result(
             VERSION_LO,
-            BURST_BEATS,
+            self.read_beats,
             size=BURST_SIZE,
             burst=AXI_BURST_INCR,
             check_response=False,
@@ -294,7 +357,7 @@ class smu_axi_in_burst_outstanding_test_seq:
         )
         incr_write = await master.burst_write_result(
             SCRATCH_COLD,
-            [SCRATCH_PATTERN_BASE ^ (idx + 1) for idx in range(BURST_BEATS)],
+            [SCRATCH_PATTERN_BASE ^ (idx + 1) for idx in range(self.write_beats)],
             size=BURST_SIZE,
             burst=AXI_BURST_INCR,
             check_response=False,
@@ -304,14 +367,14 @@ class smu_axi_in_burst_outstanding_test_seq:
         if incr_read.timed_out or incr_write.timed_out:
             raise AssertionError(f"TIMEOUT s2 INCR control: bound={AXI_TIMEOUT_NS}ns")
         sb.expect_eq(
-            "CHK-AXIIN-BURST INCR read and write of the same length and size are OKAY",
+            f"CHK-AXIIN-BURST INCR read and write of the same length and size are OKAY {drawn}",
             (resp_name(incr_read.resp), resp_name(incr_write.resp)),
             (resp_name(RESP_OKAY), resp_name(RESP_OKAY)),
             evidence="CHK-AXIIN-BURST",
         )
         wrap = await master.burst_read_result(
             VERSION_LO,
-            BURST_BEATS,
+            self.read_beats,
             size=BURST_SIZE,
             burst=AXI_BURST_WRAP,
             check_response=False,
@@ -321,7 +384,7 @@ class smu_axi_in_burst_outstanding_test_seq:
         if wrap.timed_out:
             raise AssertionError(f"TIMEOUT s2 wrap read: bound={AXI_TIMEOUT_NS}ns")
         sb.expect_eq(
-            "CHK-AXIIN-BURST-WRAP read refused with SLVERR",
+            f"CHK-AXIIN-BURST-WRAP read refused with SLVERR drawn read_beats={self.read_beats}",
             resp_name(wrap.resp),
             resp_name(RESP_SLVERR),
             evidence="CHK-AXIIN-BURST",
@@ -329,7 +392,7 @@ class smu_axi_in_burst_outstanding_test_seq:
 
         fixed = await master.burst_write_result(
             SCRATCH_COLD,
-            [SCRATCH_PATTERN_BASE ^ (idx + 1) for idx in range(BURST_BEATS)],
+            [SCRATCH_PATTERN_BASE ^ (idx + 1) for idx in range(self.write_beats)],
             size=BURST_SIZE,
             burst=AXI_BURST_FIXED,
             check_response=False,
@@ -339,7 +402,8 @@ class smu_axi_in_burst_outstanding_test_seq:
         if fixed.timed_out:
             raise AssertionError(f"TIMEOUT s2 fixed write: bound={AXI_TIMEOUT_NS}ns")
         sb.expect_eq(
-            "CHK-AXIIN-BURST-FIXED multi-beat write refused with SLVERR",
+            "CHK-AXIIN-BURST-FIXED multi-beat write refused with SLVERR "
+            f"drawn write_beats={self.write_beats}",
             resp_name(fixed.resp),
             resp_name(RESP_SLVERR),
             evidence="CHK-AXIIN-BURST-FIXED",
@@ -347,7 +411,8 @@ class smu_axi_in_burst_outstanding_test_seq:
         self._log(
             f"CHK-AXIIN-BURST: incr_read={resp_name(incr_read.resp)} "
             f"incr_write={resp_name(incr_write.resp)} wrap_read={resp_name(wrap.resp)} "
-            f"fixed_write={resp_name(fixed.resp)}"
+            f"fixed_write={resp_name(fixed.resp)} {drawn} "
+            f"burst_position={self.burst_position}"
         )
         # The master takes the B beat on the edge after it rises; the cov/sv
         # monitors sample the handshake on the next edge, which the simulation
@@ -427,12 +492,21 @@ class smu_axi_in_burst_outstanding_test_seq:
         await self.cfg.reset_done.wait()
         await ClockCycles(dut.clk_smu_i, 16)
 
+        self._draw()
         await self._open_window(sb)
         master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         await await_smn_resp(
             master, VERSION_LO, RESP_OKAY, clk=dut.clk_smu_i, label="axiin_window_ready"
         )
 
-        await self._step_outstanding(master, sb)
-        await self._step_burst_type(master, sb)
+        if self.burst_position == "before_reads":
+            await self._step_burst_type(master, sb)
+        await self._step_read_train(master, sb)
+        if self.burst_position == "between_trains":
+            await self._step_burst_type(master, sb)
+        for run, awid in enumerate(self.write_ids):
+            await self._step_write_train(master, sb, awid, run)
+        self.s1_ok = True
+        if self.burst_position == "after_writes":
+            await self._step_burst_type(master, sb)
         await self._step_spm(master, sb)

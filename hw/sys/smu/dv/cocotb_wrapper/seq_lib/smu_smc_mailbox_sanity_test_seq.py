@@ -108,7 +108,12 @@ class smu_smc_mailbox_sanity_test_seq:
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
-        sb.expect_eq("CHK-MBX-JTAG-READY", (idcode, gate), (DTP_DEFAULT_IDCODE, 0))
+        sb.expect_eq(
+            "CHK-MBX-JTAG-READY",
+            (idcode, gate),
+            (DTP_DEFAULT_IDCODE, 0),
+            evidence="CHK-MBX-JTAG-READY",
+        )
 
         status = await self._rd32(jtag, STATUS, "STATUS")
         busy = STATUS_FULL | STATUS_WTHRESH | STATUS_RTHRESH
@@ -122,8 +127,8 @@ class smu_smc_mailbox_sanity_test_seq:
             raise AssertionError(f"ERROR_FLAGS want 0 got 0x{err:08x}")
         self.s2_ok = True
         self._log(f"CHK-MBX-STATUS @0x{STATUS:08x} data=0x{status:08x}")
-        sb.expect_eq("CHK-MBX-STATUS", status, IDLE_STATUS)
-        sb.expect_eq("CHK-MBX-ERR-FLAGS", err, 0)
+        sb.expect_eq("CHK-MBX-STATUS", status, IDLE_STATUS, evidence="CHK-MBX-STATUS")
+        sb.expect_eq("CHK-MBX-ERR-FLAGS", err, 0, evidence="CHK-MBX-ERR-FLAGS")
 
         await self._wr32(jtag, IRQEN, IRQEN_PAT, "IRQEN")
         got = await self._rd32(jtag, IRQEN, "IRQEN")
@@ -143,7 +148,7 @@ class smu_smc_mailbox_sanity_test_seq:
                 f"(full/thresh must be 0, mask=0x{busy:x})"
             )
         self.s4_ok = True
-        sb.expect_eq("CHK-MBX-IRQEN-CLR", clr, 0)
+        sb.expect_eq("CHK-MBX-IRQEN-CLR", clr, 0, evidence="CHK-MBX-IRQEN-CLR")
 
         self._log(
             f"PASS MBX-SANITY s1={self.s1_ok} s2={self.s2_ok} "

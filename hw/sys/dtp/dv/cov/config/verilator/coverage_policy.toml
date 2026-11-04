@@ -12,3 +12,33 @@
 schema_version = 1
 dut = "dtp"
 scope_epoch = "dtp-fcov-v2"
+
+[[holes]]
+id = "sva-smc-axi-aw-multi-beat"
+title = "OCAH_AXI_C_AW_MULTI_BEAT on the SMC fabric checker"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "The JTAG2AXI bridge issues every SMC fabric request as one beat, with AWLEN 0, so the multi-beat write cover cannot fire. The VCS waiver of the same cover is in ../vcs/dtp_waivers.el."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "tb_top.u_m_axi_sva.gen_axi4_rules__DOT__OCAH_AXI_C_AW_MULTI_BEAT"
+
+[[holes]]
+id = "sva-smc-axi-ar-multi-beat"
+title = "OCAH_AXI_C_AR_MULTI_BEAT on the SMC fabric checker"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "The JTAG2AXI bridge issues every SMC fabric request as one beat, with ARLEN 0, so the multi-beat read cover cannot fire. The VCS waiver of the same cover is in ../vcs/dtp_waivers.el."
+owner = "ocah-dv"
+reviewer = "ocah-dv"
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "tb_top.u_m_axi_sva.gen_axi4_rules__DOT__OCAH_AXI_C_AR_MULTI_BEAT"

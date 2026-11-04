@@ -18,7 +18,7 @@ The features of this design include:
 
 * An UART 16550
 * An optional Log Engine
-* Configurable APB4 or AXI4-Lite register interface
+* An AXI4-Lite register interface
 
 [#sec-parameters]
 == Parameters and Ports
@@ -37,7 +37,8 @@ ifndef::backend-html5[]
 The parameters and ports of `uart_log_engine_wrap` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-`LOG_ENGINE_FIFO_DEPTH` must be a power of 2 greater than or equal to 16.
+`LOG_ENGINE_FIFO_DEPTH` sets the number of 64-bit words the Log Engine buffers between
+log fetch and UART write. The SMC sets it to 4.
 
 [#sec-registers]
 == Registers — LCR.DLAB=0, Read Direction
@@ -79,7 +80,16 @@ endif::backend-pdf[]
 [#sec-interrupts]
 == Interrupts
 
-TODO
+The wrapper drives three active-high outputs:
+
+* `uart_irq_o`: the UART interrupt request. `IIR` identifies the pending source.
+* `log_engine_irq_o`: the Log Engine error interrupt, masked by its `INTR_ENABLE`.
+  It is low when `GEN_LOG_ENGINE=0`.
+* `uart_err_o`: a data-parity or pointer integrity error in the UART FIFOs or holding
+  registers, unrelated to the parity of received characters.
+
+In the SMC, the three outputs of each instance are ORed into one interrupt, peripheral
+interrupts 18 to 21.
 
 [#sec-shared-thr]
 == Shared Transmit Holding Register

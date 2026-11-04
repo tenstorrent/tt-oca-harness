@@ -131,6 +131,14 @@ timeout_sec = 600
 tags = ["smoke", "ci", "axi_responder"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "ocah_axi_fixed_burst_strobe_test"
+# The SV-UVM master has no FIXED-burst lane path of its own.
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_burst"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "smoke"
 tests = [
@@ -147,6 +155,7 @@ tests = [
     "ocah_axi_geometry_test",
     "ocah_axi_timeout_test",
     "ocah_axi_slave_outstanding_test",
+    "ocah_axi_fixed_burst_strobe_test",
     "ocah_axi_struct_bridge_test",
     "ocah_axi_responder_ops_test",
 ]
@@ -167,6 +176,7 @@ tests = [
     "ocah_axi_geometry_test",
     "ocah_axi_timeout_test",
     "ocah_axi_slave_outstanding_test",
+    "ocah_axi_fixed_burst_strobe_test",
     "ocah_axi_struct_bridge_test",
     "ocah_axi_responder_ops_test",
 ]

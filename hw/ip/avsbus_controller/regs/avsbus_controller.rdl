@@ -102,7 +102,7 @@ addrmap avsbus_controller {
          sw = r;
          hw = w;
          onread = ruser;
-         desc = "Always 0";
+         desc = "Frame-valid bit of the slave response sub-frame: 0 in a valid frame, 1 when the slave did not respond";
       } CONST0[29:29] = 0x0;
 
       field {
@@ -169,7 +169,7 @@ addrmap avsbus_controller {
          sw = r;
          hw = w;
          desc = "The most recently received AVS slave response sub-frame";
-      } AVS_SLAVE_SUBFRAME[31:0] = 0xffff;
+      } AVS_SLAVE_SUBFRAME[31:0] = 0x0;
    };
 
 
@@ -506,8 +506,8 @@ addrmap avsbus_controller {
          desc = "Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).
                   This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,
                   it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,
-                  a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)
-                  by matching the FF default in the resynced version of the signal.";
+                  a value of 1 will be assumed. Out of reset the divider uses a numerator of 0x80 (50%), not this field's reset value of 0. A write that
+                  changes this field or clk_divider_value loads both fields into the divider, so program both together.";
       } CLK_DIVIDER_DUTY_CYCLE_NUMERATOR[31:24] = 0;
 
       field {
@@ -516,8 +516,8 @@ addrmap avsbus_controller {
          desc = "Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).
                   The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%
                   duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of
-                  2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings
-                  (divider=0x4) by matching the FF default in the resynced version of the signal.";
+                  2 - for lower values, 2 will be assumed. Out of reset the divider uses a ratio of 4, not this field's reset value of 0. A write that
+                  changes this field or clk_divider_duty_cycle_numerator loads both fields into the divider, so program both together.";
       } CLK_DIVIDER_VALUE[23:16] = 0;
 
       field {

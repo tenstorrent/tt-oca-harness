@@ -115,6 +115,8 @@ class _EvidenceFilter(logging.Filter):
             "CHK-KM-SRAM",
             "CHK-NOISE-FORCE",
             "CHK-PRE-SENSE-FAIL-CLOSED",
+            "CHK-CHK1-RO-ENABLE",
+            "CHK-SENSE-BACKDOOR",
         }
     )
 
@@ -519,6 +521,9 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "smn_outbound_rd_slverr_i", 0)
         self._set_if_exists(dut, "smn_outbound_ready_stall_i", 0)
         self._set_if_exists(dut, "smn_outbound_rd_addr_data_i", 0)
+        # Mailbox lane inject off (docs/SEP_TB_ARCH.adoc).
+        for pin in ("mbox_lane_inject_arm_i", "mbox_lane_inject_mbx_i", "mbox_lane_inject_data_i"):
+            self._set_if_exists(dut, pin, 0)
         # DFT pins in functional mode, DMI enables off, the core TAP pins on the
         # tb_top registers, and the TCM and ROM bit-flip injects idle
         # (docs/SEP_TB_ARCH.adoc).
@@ -1595,6 +1600,8 @@ class sep_base_test(uvm_test):
         """
         from env.sep_drbg_scoreboard import SepDrbgScoreboard
         from seq_lib.sep_esrc_bringup_seq import (
+            GENERATORS_OFF,
+            GENERATORS_ON,
             SepEntropyCfg,
             SepEsrcConfigSeq,
             SepEsrcEnableEdnSeq,
@@ -1616,10 +1623,12 @@ class sep_base_test(uvm_test):
         self.drbg_sb.start()
         await self.assert_noise_force_active()
         await self.start_seq(SepEsrcConfigSeq("esrc_config", cfg=cfg))
+        await self.drbg_sb.grade_ro_enable(self, GENERATORS_OFF)
         await self.start_seq(SepEsrcEnableGeneratorsSeq("esrc_enable_gens"))
         if not await self.wait_seed_ready():
             await self.report_entropy_stall()
             raise AssertionError("ESRC never produced a seed (drbg_seed_valid_o)")
+        await self.drbg_sb.grade_ro_enable(self, GENERATORS_ON)
         self.drbg_sb.enable_chk5()
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
         return self.drbg_sb

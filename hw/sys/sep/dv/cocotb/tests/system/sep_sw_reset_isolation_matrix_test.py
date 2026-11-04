@@ -52,7 +52,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-SUBSET        each leg A step with two or more domains: the domains of S
                     read their RDL default after the release, every other
                     probe and unrelated register keeps its armed value.
-                    Single-domain steps log ``CTL-SUBSET``.
+                    Single-domain steps log ``CTRL-SUBSET``.
   CHK-SUBSET-COVER  the partition drops every one of the six taps at least once.
   CHK-SWRST-RSVD    after each write with bits 63:7 set a response arrives and
                     the 64-bit readback answers OKAY with bits 6:0 equal to the
@@ -70,8 +70,12 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     EDN, Adams Bridge) gets a read of its high lane on every
                     seed. For OTBN, AES, KMAC and Adams Bridge every write of
                     the size sweep also completes SLVERR (HMAC and TRNG log
-                    their write answers as ``CTL-ISO-RESP``). The written value
+                    their read and write counts as ``INFO-ISO-RESP``; their
+                    writes are graded by CHK-ISO-WR-SLVERR). The written value
                     is absent after the release.
+  CHK-ISO-WR-SLVERR HMAC, TRNG: every write of the isolated window completes
+                    SLVERR while ``ip_rst_n[D]`` is still low; a window
+                    without a write fails.
   CHK-ISO-REL       the isolate-complete bits of D fall within the allowance of
                     the ``ip_rst_n[D]`` rise; the probe reads its RDL default.
   CHK-ISO-NEVER     the drawn never-isolated port answers as in the memory map
@@ -81,14 +85,19 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     and its tap rises only after its own write of 1.
   CHK-ISO-ORDER     OTBN, AES, Key Manager: the tap falls at or after the cycle
                     all isolate-complete bits of D are high (HMAC, KMAC, Adams
-                    Bridge and TRNG log ``CTL-ISO-ORDER``).
+                    Bridge and TRNG log ``CTRL-ISO-ORDER``).
   CHK-ISO-DRAIN     OTBN, AES: at the slave side of the host isolate stage of
                     D a transaction is open when the isolate request rises,
                     and every transaction the stage accepted before the
                     request has its response there before ``ip_rst_n[D]``
-                    falls (the others log ``CTL-ISO-DRAIN``). The ``s_axi``
+                    falls (the others log ``INFO-ISO-DRAIN``). The ``s_axi``
                     arrival of the same responses is logged as
                     ``OBS-ISO-DRAIN-SAXI``.
+  CHK-ISO-ACK-AFTER-DRAIN OTBN, AES: the host isolate-complete bit of D rises
+                    on a later clock than the last slave-side response of
+                    the transactions the stage accepted before the request
+                    (the others log ``INFO-ISO-ACK-AFTER-DRAIN``). The response
+                    code and the ``s_axi`` arrival stay logged only.
   CHK-ISO-PATHS     the isolate requests that rise from the baseline equal the
                     table set of the victims written.
 
@@ -605,7 +614,10 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         "CHK-ISO-ORDER",
         "CHK-ISO-DRAIN",
         "CHK-ISO-PATHS",
+        "CHK-ISO-ACK-AFTER-DRAIN",
+        "CHK-ISO-WR-SLVERR",
     )
+    min_evidence = len(required_evidence)
 
     # ---- log helpers --------------------------------------------------------
     def _chk(self, chk: str, ok: bool, values: str) -> None:
@@ -724,7 +736,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         try:
             sw0 = await self._sw_read64()
             self._ctl(
-                "CTL-SWRST-FIRST",
+                "CTRL-SWRST-FIRST",
                 (sw0 & SW_FIELDS) == SW_DEFAULT,
                 f"SW_RESET_N=0x{sw0:016x} fields=0x{sw0 & SW_FIELDS:02x}",
             )
@@ -734,7 +746,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             self.off = self.chan.clk - self.taps.iso_req.clk
             self.iso_off = self.isolog.clk - self.taps.iso_req.clk
             self.logger.info(
-                "OBS-CLOCKS: chan_mon_clk=%d tap_clk=%d offset=%d iso_stage_offset=%d",
+                "INFO-CLOCKS: chan_mon_clk=%d tap_clk=%d offset=%d iso_stage_offset=%d",
                 self.chan.clk,
                 self.taps.iso_req.clk,
                 self.off,
@@ -1022,7 +1034,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         if len(st.doms) >= 2:
             self._chk("CHK-SUBSET", ok, vals)
         else:
-            self._ctl("CTL-SUBSET", ok, vals)
+            self._ctl("CTRL-SUBSET", ok, vals)
         for d in st.doms:
             await self._arm(PROBE[d], 1)
 
@@ -1098,7 +1110,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                     raise AssertionError(f"drain calibration: no {ch} handshake at the {d} stage")
                 self.lat_stage[(d, op)] = hs[0] - c0
         self.logger.info(
-            "CAL-DRAIN: issue_to_iso_req=%d issue_to_stage=%s",
+            "INFO-CAL-DRAIN: issue_to_iso_req=%d issue_to_stage=%s",
             self.lat_req,
             ",".join(f"{d}/{op}:{v}" for (d, op), v in self.lat_stage.items()),
         )
@@ -1135,7 +1147,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 await self._arm(p, 2)
         req0 = self.taps.iso_req_now()
         self._ctl(
-            "CTL-ISO-BASELINE",
+            "CTRL-ISO-BASELINE",
             req0 == baseline,
             f"pass={pd.name} iso_req=0x{req0 or 0:04x} baseline=0x{baseline:04x}",
         )
@@ -1174,7 +1186,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         if hold_r:
             t_host = self.lat_req - 1 - self.lat_stage[(d, pd.ops[0])]
             self.logger.info(
-                "DRAIN-PLACE: pass=%s first_op=%s host_issue_after_write=%d (drawn delay %d "
+                "INFO-DRAIN-PLACE: pass=%s first_op=%s host_issue_after_write=%d (drawn delay %d "
                 "not used)",
                 pd.name,
                 pd.ops[0],
@@ -1253,7 +1265,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         await self._grade_pass(pd, view, host_evs, fall, rel_marks, win, baseline)
 
     async def _window(self, pd: PassDraw) -> dict:
-        res = {"rd4": [], "slverr": 0, "n": 0, "other": [], "writes": 0, "lanes": []}
+        res = {"rd4": [], "slverr": 0, "n": 0, "other": [], "writes": 0, "lanes": [], "wr": []}
         for size, addr in pd.reads:
             seq = await self._acc(SepAxiOp.READ, addr, size)
             res["n"] += 1
@@ -1270,12 +1282,13 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             res["n"] += 1
             res["writes"] += 1
             res["slverr"] += int(seq.resp_code == RESP_SLVERR)
+            res["wr"].append((size, addr, data, seq.resp_code))
         if pd.victims[0] == "abr":
             # The open owners grade the SLVERR answer of an MLKEM_STATUS read in the
             # isolated window; this leaf logs it.
             seq = await self._acc(SepAxiOp.READ, ABR_MLKEM_STATUS, 4)
             self.logger.info(
-                "CTL-ISO-RESP: dom=abr reg=MLKEM_STATUS resp=%s rdata=0x%08x",
+                "INFO-ISO-RESP: dom=abr reg=MLKEM_STATUS resp=%s rdata=0x%08x",
                 RESP_NAME[seq.resp_code],
                 int(seq.rdata) & 0xFFFF_FFFF,
             )
@@ -1283,7 +1296,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         # TRNG pass also reads the external TRNG window on every seed.
         sib = next(s for s in DOMS if s not in pd.victims and s != "trng")
         ok, desc = await self._expect(PROBE[sib], self.armed[PROBE[sib].name])
-        self._ctl("CTL-ISO-SIBLING", ok, f"pass={pd.name} sibling={sib} {desc}")
+        self._ctl("CTRL-ISO-SIBLING", ok, f"pass={pd.name} sibling={sib} {desc}")
         res["sibling_ok"] = ok
         ports = [pd.never]
         if pd.victims[0] == "trng" and pd.never != "ext_trng":
@@ -1323,7 +1336,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             f"dom={'+'.join(pd.victims)} isolated={self._names(rose)} expected={self._names(want)} "
             f"others_low={int(rose & ~want == 0)} baseline=0x{baseline:04x}",
         )
-        # CHK-ISO-DRAIN / CTL-ISO-DRAIN, from the s_axi handshakes.
+        # CHK-ISO-DRAIN / INFO-ISO-DRAIN, from the s_axi handshakes.
         reqrise = view.req_rise(HOST_MASK[d])
         acc: dict[int, int] = {}
         for c, i, _ in view.beats("ar", HOST_IDS) + view.beats("aw", HOST_IDS):
@@ -1381,10 +1394,33 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 raise AssertionError(f"CHK-ISO-DRAIN precondition: {vals}")
             self._chk("CHK-ISO-DRAIN", completed == accepted, vals)
         else:
-            self.logger.info("CTL-ISO-DRAIN: %s", vals)
-        # CHK-ISO-ORDER / CTL-ISO-ORDER (single-victim passes).
+            self.logger.info("INFO-ISO-DRAIN: %s", vals)
+        # CHK-ISO-ORDER / CTRL-ISO-ORDER (single-victim passes).
         ack_hi = {v: view.ack_rise(TABLE[v] & ~baseline, first_write - 1) for v in pd.victims}
         host_hi = {v: view.ack_rise(HOST_MASK[v], first_write - 1) for v in pd.victims}
+        # CHK-ISO-ACK-AFTER-DRAIN / INFO-ISO-ACK-AFTER-DRAIN: the host isolate stage
+        # of D reports isolated only after the last response of the transactions it
+        # accepted before the request rose (reset_controller.adoc, Isolation and
+        # Reset Sequencing, step 3). Both clocks are tap clocks; a handshake at tap
+        # clock k completes at the edge that ends k, so the rise must be later.
+        last_rsp = max(rsp_r + rsp_w) if rsp_r or rsp_w else None
+        h = host_hi[d]
+        vals = (
+            f"dom={d} pass={name} host_ack_rise_cycle={h} last_stage_resp_cycle={last_rsp} "
+            f"accepted={accepted} responses={len(rsp_r) + len(rsp_w)} "
+            f"ack-last={(h - last_rsp) if h is not None and last_rsp is not None else 'na'}"
+        )
+        if d in ("otbn", "aes"):
+            self._chk(
+                "CHK-ISO-ACK-AFTER-DRAIN",
+                h is not None
+                and last_rsp is not None
+                and len(rsp_r) + len(rsp_w) == accepted
+                and h > last_rsp,
+                vals,
+            )
+        else:
+            self.logger.info("INFO-ISO-ACK-AFTER-DRAIN: %s", vals)
         if len(pd.victims) == 1:
             a, r = ack_hi[d], fall[d]
             ok = a is not None and r is not None and r >= a
@@ -1392,7 +1428,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             if d in ("otbn", "aes"):
                 self._chk("CHK-ISO-ORDER", ok, vals)
             else:
-                self._ctl("CTL-ISO-ORDER", ok, vals)
+                self._ctl("CTRL-ISO-ORDER", ok, vals)
         # Release timing of every victim.
         rel = {}
         aw_all = view.beats("aw", (SW_ID,))
@@ -1449,7 +1485,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 + f" allow={REL_ALLOW} probes_default={int(probe_ok)} "
                 f"sibling_retained={int(win['sibling_ok'])}",
             )
-        # CHK-ISO-RESP / CTL-ISO-RESP.
+        # CHK-ISO-RESP / INFO-ISO-RESP.
         # Every 32-bit lane every isolated read covers carries 0x1501A7ED (the bytes
         # of the lane a 1- or 2-byte read covers carry the matching bytes).
         lanes = win["lanes"]
@@ -1461,7 +1497,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         written_absent = all(ok for ok, _ in post_ok[d])
         if not graded:
             self.logger.info(
-                "CTL-ISO-RESP: dom=%s reads=%d writes=%d slverr=%d",
+                "INFO-ISO-RESP: dom=%s reads=%d writes=%d slverr=%d",
                 d,
                 win["n"] - win["writes"],
                 win["writes"],
@@ -1492,6 +1528,18 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             f"other_size_data=[{';'.join(win['other'])}] control_okay={int(written_absent)} "
             f"written_absent={int(written_absent)} in_window={int(win['still_low'])}",
         )
+        if d in ("hmac", "trng"):
+            # Every window write answers SLVERR (reset_controller.adoc, Isolation and
+            # Reset Sequencing, step 2); a window without a write grades nothing.
+            wr = win["wr"]
+            n_slverr = sum(1 for *_, r in wr if r == RESP_SLVERR)
+            self._chk_late(
+                "CHK-ISO-WR-SLVERR",
+                bool(wr) and n_slverr == len(wr) and win["still_low"],
+                f"dom={d} pass={name} writes={len(wr)} slverr={n_slverr}/{len(wr)} wr="
+                + ",".join(f"{s}B@0x{a:08x}=0x{v:x}/{RESP_NAME[r]}" for s, a, v, r in wr)
+                + f" in_window={int(win['still_low'])}",
+            )
         for port, resp, data, need_okay in win["never"]:
             isolated_answer = resp == RESP_SLVERR and data == ISO_DATA
             ok = (resp == RESP_OKAY) if need_okay else not isolated_answer
@@ -1508,7 +1556,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 ok, _ = await self._expect(PROBE[s], self.armed[PROBE[s].name])
                 kept += int(ok)
             self._ctl(
-                "CTL-INDEP", kept == len(others), f"dom={d} others_retained={kept}/{len(others)}"
+                "CTRL-INDEP", kept == len(others), f"dom={d} others_retained={kept}/{len(others)}"
             )
         for v in pd.victims:
             for p in PROBES_B[v]:
@@ -1522,7 +1570,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         dut = cocotb.top
         req0 = self.taps.iso_req_now()
         self._ctl(
-            "CTL-ISO-BASELINE", req0 == 0, f"pass=km iso_req=0x{req0 or 0:04x} baseline=0x0000"
+            "CTRL-ISO-BASELINE", req0 == 0, f"pass=km iso_req=0x{req0 or 0:04x} baseline=0x0000"
         )
         await RisingEdge(dut.clk_i)
         view = PassView(self.taps, self.chan, self.off)

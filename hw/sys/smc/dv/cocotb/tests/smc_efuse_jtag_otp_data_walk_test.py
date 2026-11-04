@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# DV-TESTCASE-CONTRACT: SMC_COV_W2T_009 ANCHOR: smc_efuse_jtag_otp_data_walk_test
+# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: fa15e5c1ab82cfbf8803edfebd9722e7fff6bb05f0cc3eee49fdb4c95cb77224
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md @ artifact_revision 8 ENV: cocotb
 """eFuse interface control written from the JTAG eFuse port, read back over SEP_IN.
 
-Contract: ``SMC_COV_W2T_009`` revision 1
+Contract: ``SMC_COV_W2T_009`` revision 4
 (``hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md``).
 
 The ``ej_axi`` AXI-Lite manager drives ``axil_smc_otp_jtag_req_i``; the sequence runs on
@@ -23,18 +26,19 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_efuse_jtag_otp_data_walk_test(smc_base_test):
-    """JTAG-port data walk, partial strobe, program, read-back and data-0 program."""
+    """JTAG-port data walk, partial strobe, program, read-back, data-0 program and AxPROT."""
 
     required_evidence = (
         "CHK-EFUSE-JTAG-DATA0",
         "CHK-EFUSE-JTAG-PARTIAL-STRB",
         "CHK-EFUSE-JTAG-PROGRAM",
+        "CHK-EFUSE-JTAG-PROT",
         "CHK-EFUSE-JTAG-READBACK",
         "CHK-EFUSE-JTAG-WALK",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 7
+    min_evidence = 8
 
     auto_protocol_vip = False
 
@@ -60,6 +64,7 @@ class smc_efuse_jtag_otp_data_walk_test(smc_base_test):
             "CHK-EFUSE-JTAG-PROGRAM",
             "CHK-EFUSE-JTAG-READBACK",
             "CHK-EFUSE-JTAG-DATA0",
+            "CHK-EFUSE-JTAG-PROT",
             "CHK-TIMEOUT-PATHS",
             "CHK-NONVAC",
         ], f"checker lines printed {seq.chk_seen}"
@@ -67,15 +72,16 @@ class smc_efuse_jtag_otp_data_walk_test(smc_base_test):
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
             # Directed SEP_IN reads without the polls: 1 status, 104 walk readbacks,
-            # 3 partial-strobe readbacks, 1 program-interface read, 4 dout reads and
+            # 4 partial-strobe readbacks, 1 program-interface read, 4 dout reads and
             # 4 restore readbacks.
-            min_csr_accesses=117,
+            min_csr_accesses=118,
             csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
             proxy=False,
             details=(
                 f"eFuse interface control written through the JTAG eFuse port "
                 f"({seq.jtag_writes} writes, {seq.jtag_reads} reads) and read back over "
-                f"SEP_IN; program and read of one fuse bit and a data-0 program "
+                f"SEP_IN; program and read of one fuse bit, a data-0 program and AxPROT "
+                f"0b101 / 0b000 / 0b010 read and write-back on the JTAG port "
                 f"(eFuse bank is the DV model)"
             ),
         )

@@ -1,8 +1,8 @@
 diff --git a/RTL/AOU_TOP.sv b/RTL/AOU_TOP.sv
-index a37e58d..076c74d 100644
+index c326600..188f0fb 100644
 --- a/RTL/AOU_TOP.sv
 +++ b/RTL/AOU_TOP.sv
-@@ -16,305 +16,296 @@
+@@ -16,310 +16,299 @@
  //  See the License for the specific language governing permissions and
  //  limitations under the License.
  // *****************************************************************************
@@ -13,13 +13,17 @@ index a37e58d..076c74d 100644
 -//               FDI state machine) with AOU_CORE_TOP (AXI-over-UCIe protocol
 -//               engine). The bringup controller manages FDI handshakes
 -//               (wake, clock, state, rx-active) and drives I_INT_FSM_IN_ACTIVE
--//               into the AOU core, replacing the former external UCIE_CORE
--//               connection.
+-//               (link established: Active, Retrain or L1; falls only on a
+-//               link loss, which raises INT_FDI_LINK_DOWN) into the AOU
+-//               core, replacing the former external UCIE_CORE connection.
+-//               O_FDI_LINK_UP is the narrower "FSM in Active".
 +// AOU_TOP is the top-level wrapper around AOU_FDI_BRINGUP_CTRL, the UCIe 3.0 FDI state
 +// machine, and AOU_CORE_TOP, the AXI-over-UCIe protocol engine. The bringup controller
 +// manages the FDI handshakes (wake, clock, state, and rx-active) and drives
 +// I_INT_FSM_IN_ACTIVE into the AOU core, so the core needs no external UCIE_CORE
-+// connection.
++// connection. I_INT_FSM_IN_ACTIVE means the link is established (Active, Retrain, or
++// L1) and falls only on a link loss, which raises INT_FDI_LINK_DOWN. O_FDI_LINK_UP is
++// narrower and is set only while the FSM is in Active.
  //
 -//               FDI data-plane ports mirror AOU_CORE_TOP's _0/_1 naming and
 -//               `+define+TWO_PHY gating: PHY0 is always present, PHY1 and
@@ -137,7 +141,10 @@ index a37e58d..076c74d 100644
 -    parameter   RP2_AXI_DATA_WD             = 512,
 -    parameter   RP3_AXI_DATA_WD             = 512,
 -
--    parameter   AXI_PEER_DIE_MAX_DATA_WD    = 1024,
+-    // The widest data message AoU defines (WriteData1024/ReadData1024). The receiver
+-    // cannot know the remote die's AXI width, so the RX data path is sized for the
+-    // maximum and this is not an integration parameter.
+-    localparam  AXI_PEER_DIE_MAX_DATA_WD    = 1024,
 -
 -    parameter   APB_ADDR_WD                 = 32,
 -    parameter   APB_DATA_WD                 = 32,
@@ -197,8 +204,10 @@ index a37e58d..076c74d 100644
 +    parameter   RP2_AXI_DATA_WD             = 512,  // RP2 AXI data width, in bits.
 +    parameter   RP3_AXI_DATA_WD             = 512,  // RP3 AXI data width, in bits.
 +
-+    parameter   AXI_PEER_DIE_MAX_DATA_WD    = 1024,  // Widest AXI data width on the peer die, in
-+                                                     // bits.
++    localparam  AXI_PEER_DIE_MAX_DATA_WD    = 1024,  // Widest AoU data message (WriteData1024,
++                                                     // ReadData1024). The RX data path is sized
++                                                     // for it because the peer die's AXI width
++                                                     // is unknown.
 +
 +    parameter   APB_ADDR_WD                 = 32,  // APB address width.
 +    parameter   APB_DATA_WD                 = 32,  // APB data width.
@@ -508,13 +517,12 @@ index a37e58d..076c74d 100644
 -    output logic                                        O_LP_WAKE_REQ,
 -    output logic                                        O_LP_CLK_ACK,
 -    output logic                                        O_LP_RX_ACTIVE_STS,
+-    output logic                                        O_LP_LINKERROR,
 -
 -    // ================================================================
 -    // FDI bringup software control
 -    // ================================================================
 -    input  logic                                        I_SW_ACTIVATE_START,
--    input  logic                                        I_SW_DEACTIVATE_START,
--    input  logic                                        I_SW_RETRAIN_REQ,
 -    input  logic                                        I_SW_LINKERROR_INJECT,
 -
 -    // ================================================================
@@ -533,6 +541,7 @@ index a37e58d..076c74d 100644
 -    output logic                                        INT_EARLY_WDT_ERR,
 -    output logic                                        INT_ACTIVATE_START,
 -    output logic                                        INT_DEACTIVATE_START,
+-    output logic                                        INT_FDI_LINK_DOWN,
 -
 -    // ================================================================
 -    // DFT
@@ -547,10 +556,9 @@ index a37e58d..076c74d 100644
 +    output logic                                        O_LP_WAKE_REQ,  // Wake request to the PHY.
 +    output logic                                        O_LP_CLK_ACK,  // Clock acknowledge to the PHY.
 +    output logic                                        O_LP_RX_ACTIVE_STS,  // Rx-active status to the PHY.
++    output logic                                        O_LP_LINKERROR,  // Link error request to the PHY.
 +
 +    input  logic                                        I_SW_ACTIVATE_START,  // Software request to start activation.
-+    input  logic                                        I_SW_DEACTIVATE_START,  // Software request to start deactivation.
-+    input  logic                                        I_SW_RETRAIN_REQ,  // Software request to retrain the link.
 +    input  logic                                        I_SW_LINKERROR_INJECT,  // Software request to inject a link error.
 +
 +    output logic [3:0]                                  O_FDI_FSM_STATE,  // FDI bringup FSM state.
@@ -564,7 +572,7 @@ index a37e58d..076c74d 100644
 +    output logic                                        INT_ACTIVATE_START,  // Activation start interrupt from the AOU core.
 +                                                                             // Also drives the bringup controller.
 +    output logic                                        INT_DEACTIVATE_START,  // Deactivation start interrupt from the AOU core.
-+                                                                               // Also drives the bringup controller.
++    output logic                                        INT_FDI_LINK_DOWN,  // FDI link lost while AoU was in use.
 +
 +    input  logic                                        TIEL_DFT_MODESCAN  // DFT scan mode. Tie low for functional operation.
  );

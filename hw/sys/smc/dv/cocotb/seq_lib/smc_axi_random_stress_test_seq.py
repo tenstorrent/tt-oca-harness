@@ -277,12 +277,7 @@ class smc_axi_random_stress_test_seq(SmcCsrSeq):
     def _span(addr: int, size: int, beats: int, burst: int) -> tuple[int, int]:
         """Word-aligned byte range an access of that shape can touch."""
         total = size * beats
-        if burst == FIXED and size < 8:
-            # The BFM advances its strobe lanes on FIXED bursts, so a narrow FIXED
-            # burst touches every lane of its container word.
-            lo = addr & ~7
-            hi = lo + 8
-        elif burst == FIXED:
+        if burst == FIXED:
             lo = addr - addr % size
             hi = lo + size
         elif burst == WRAP:

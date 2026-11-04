@@ -244,6 +244,7 @@ tests = [
     "smc_i2c_p0_multictrl_test",
     "smc_i2c_p0_fifo_test",
     "smc_i2c_p0_timeout_test",
+    "smc_i2c_timing_set_rand_test",
     "smc_i2c_p0_stretch_test",
     "smc_i2c_p0_cfifo_test",
     "smc_i2c_p0_conti_test",
@@ -251,6 +252,7 @@ tests = [
     "smc_smbus_alert_suspend_test",
     "smc_i2c_target_smbus_test",
     "smc_i2c_intr_mask_test",
+    "smc_i2c_bus_matrix_rand_test",
 ]
 
 [[tests]]
@@ -569,6 +571,7 @@ run_modes = ["smoke"]
 name = "smc_i2c_ctrl_intr_w1c_test"
 module = "smc_i2c_ctrl_intr_w1c_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
@@ -673,3 +676,22 @@ timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_bus_matrix_rand_test"
+module = "smc_i2c_bus_matrix_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_timing_set_rand_test"
+module = "smc_i2c_timing_set_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]

@@ -88,7 +88,9 @@ class smu_jtag_chain_enhanced_test_seq:
             await jtag.step_tms(0)
         id0 = await self._idcode(jtag)
         self.s1_ok = True
-        sb.expect_eq("CHK-JTAG-CHAIN-READY", id0, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-JTAG-CHAIN-READY", id0, DTP_DEFAULT_IDCODE, evidence="CHK-JTAG-CHAIN-READY"
+        )
 
         id_obs: list[int] = []
         byp_obs: list[int] = []

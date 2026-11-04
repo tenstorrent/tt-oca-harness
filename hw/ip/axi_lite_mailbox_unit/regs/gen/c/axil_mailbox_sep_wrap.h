@@ -35,7 +35,8 @@ typedef union {
 // A read of any size or alignment within this register pops one whole 64-bit entry
 // from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 // read of either half therefore discards the other half of the entry; read this
-// register with 64-bit accesses.
+// register with 64-bit accesses. A read while the fifo is empty returns
+// 0x0000_0000_FEED_DEAD with an error response.
 // Read data from mailbox fifo
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bm 0xffffffffffffffff
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bp 0
@@ -271,21 +272,27 @@ typedef union {
 } axil_mailbox__IRQP_t;
 
 // reg - axil_mailbox::CTRL
-// Flush the write FIFO for this port
+// Flush the write FIFO for this port. The FIFO empties at the end of the
+// cycle in which this write is accepted.
 #define AXIL_MAILBOX__CTRL__WFLUSH_bm 0x1
 #define AXIL_MAILBOX__CTRL__WFLUSH_bp 0
 #define AXIL_MAILBOX__CTRL__WFLUSH_bw 1
 #define AXIL_MAILBOX__CTRL__WFLUSH_reset 0x0
-// Flush the read FIFO for this port
+// Flush the read FIFO for this port. The FIFO empties at the end of the
+// cycle in which this write is accepted; a word the peer pushes in that cycle
+// is discarded.
 #define AXIL_MAILBOX__CTRL__RFLUSH_bm 0x2
 #define AXIL_MAILBOX__CTRL__RFLUSH_bp 1
 #define AXIL_MAILBOX__CTRL__RFLUSH_bw 1
 #define AXIL_MAILBOX__CTRL__RFLUSH_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Flush the write FIFO for this port
+        // Flush the write FIFO for this port. The FIFO empties at the end of the
+        // cycle in which this write is accepted.
         uint64_t wflush :1;
-        // Flush the read FIFO for this port
+        // Flush the read FIFO for this port. The FIFO empties at the end of the
+        // cycle in which this write is accepted; a word the peer pushes in that cycle
+        // is discarded.
         uint64_t rflush :1;
         uint64_t :62;
     } f;

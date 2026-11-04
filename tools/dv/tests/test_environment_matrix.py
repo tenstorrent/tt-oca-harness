@@ -4,8 +4,8 @@
 
 The Python range, the locked DV stack, the hosted toolchain pins, the tool registry, and the
 doctor's own checks each state part of the contributor environment; these tests fail when two
-of them disagree. Some of the files are shared with the register and lint flows
-(`pyproject.toml`, `uv.lock`, `.python-version`, `lint.yml`), so a failure here after a change
+of them disagree. Some of the files are shared with the register, lint and unit flows
+(`pyproject.toml`, `uv.lock`, `.python-version`, `unit.yml`), so a failure here after a change
 to one of them means the matrix moved and the runner guide's Supported environments section
 has to follow.
 
@@ -36,7 +36,7 @@ LOCKFILE = REPO_ROOT / "uv.lock"
 PYTHON_VERSION_FILE = REPO_ROOT / ".python-version"
 DV_RUN_ACTION = REPO_ROOT / ".github/actions/dv-run/action.yml"
 DASHBOARD_WORKFLOW = REPO_ROOT / ".github/workflows/dashboard.yml"
-LINT_WORKFLOW = REPO_ROOT / ".github/workflows/lint.yml"
+UNIT_WORKFLOW = REPO_ROOT / ".github/workflows/unit.yml"
 HOSTED_WORKFLOWS = (
     REPO_ROOT / ".github/workflows/sim.yml",
     REPO_ROOT / ".github/workflows/regress.yml",
@@ -118,8 +118,8 @@ class PythonRangeTest(unittest.TestCase):
         pinned = PYTHON_VERSION_FILE.read_text().strip()
         self.assertEqual(action_input_default(DV_RUN_ACTION.read_text(), "python-version"), pinned)
         self.assertEqual(python_versions_in(DASHBOARD_WORKFLOW.read_text()), [pinned])
-        lint = LINT_WORKFLOW.read_text()
-        job = re.search(r"^  dv-unit-tests:\n(.*?)(?=^  [a-z0-9-]+:\n)", lint, re.M | re.S)
+        unit = UNIT_WORKFLOW.read_text()
+        job = re.search(r"^  dv-unit-tests:\n(.*?)(?=^  [a-z0-9-]+:\n)", unit, re.M | re.S)
         assert job, "dv-unit-tests job"
         self.assertEqual(python_versions_in(job.group(1)), [pinned])
 

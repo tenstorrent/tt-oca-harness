@@ -94,8 +94,11 @@ endif::backend-html5[]
 
 CLINT provides a shared 64-bit timer, per-core compare registers and per-core
 software-interrupt state. Timer and software interrupts go directly to the cores
-rather than through PLIC claim/complete. The timer advances on the cluster's
-periodic tick; see the Clocks and Resets chapter for its clock relationship.
+rather than through PLIC claim/complete. The timer resets to 0 and advances on
+the cluster's periodic tick, once per 1000 CPU-cluster `cbus` cycles; see the
+Clocks and Resets chapter for its clock relationship. The compare registers have
+no reset, so the machine timer interrupt level is undefined until software
+writes the core's compare register; write it before enabling that interrupt.
 
 [[smc-interrupts-bus-error-unit-interrupts]]
 === Bus Error Units

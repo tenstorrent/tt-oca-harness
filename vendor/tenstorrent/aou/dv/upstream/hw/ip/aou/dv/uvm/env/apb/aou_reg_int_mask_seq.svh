@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent USA Inc
 
 // Interrupt masks (AOU_INTERRUPT_MASK); 1 masks a source, -1 leaves it unchanged.
+// set_all() leaves the write-watchdog mask (early_wdt) alone.
 class aou_reg_int_mask_seq extends aou_reg_base_seq;
   `uvm_object_utils(aou_reg_int_mask_seq)
 
@@ -12,6 +13,8 @@ class aou_reg_int_mask_seq extends aou_reg_base_seq;
   int invalid_actmsg = -1;
   int deact_ack = -1;
   int act_ack = -1;
+  int fdi_link_down = -1;
+  int early_wdt = -1;
 
   function new(string name = "aou_reg_int_mask_seq");
     super.new(name);
@@ -26,6 +29,7 @@ class aou_reg_int_mask_seq extends aou_reg_base_seq;
     invalid_actmsg = m;
     deact_ack = m;
     act_ack = m;
+    fdi_link_down = m;
   endfunction
 
   task body();
@@ -36,6 +40,8 @@ class aou_reg_int_mask_seq extends aou_reg_base_seq;
     want(rm.aou_interrupt_mask.int_req_linkreset_invalid_actmsg_mask, invalid_actmsg);
     want(rm.aou_interrupt_mask.int_req_linkreset_deact_ack_mask, deact_ack);
     want(rm.aou_interrupt_mask.int_req_linkreset_act_ack_mask, act_ack);
+    want(rm.aou_interrupt_mask.int_fdi_link_down_mask, fdi_link_down);
+    want(rm.aou_interrupt_mask.int_early_wdt_mask, early_wdt);
     commit();
   endtask
 endclass

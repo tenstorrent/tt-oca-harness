@@ -49,10 +49,10 @@ addrmap aou_core {
         field { sw = rw; desc = "Enable AXI aggregator for RP2. When set, narrow read and write data are combined to improve bus utilization."; } rp2_axi_aggregator_en[22:22] = 0;
         field { sw = rw; desc = "Enable AXI aggregator for RP1. When set, narrow read and write data are combined to improve bus utilization."; } rp1_axi_aggregator_en[21:21] = 0;
         field { sw = rw; desc = "Enable AXI aggregator for RP0. When set, narrow read and write data are combined to improve bus utilization."; } rp0_axi_aggregator_en[20:20] = 0;
-        field { sw = rw; desc = "TX low-power mode message transmission frequency. Only meaningful when tx_lp_mode is enabled. When non-zero (legacy behavior), and only activation messages are pending (no AXI traffic), the TX will wait this many cycles before sending a partially-filled heartbeat flit; configures the trade-off between latency and power. When set to 0, the threshold is inert: the TX emits no idle/heartbeat flits and only launches a flit when there is real work to send (AXI traffic, CrdtGrant credit-return messages in the ring buffer, or pending MsgCredit-header credits). Once a flit is started it always finishes; unused granule slots are zero-padded."; } tx_lp_mode_threshold[19:12] = 0x4;
-        field { sw = rw; desc = "TX low-power mode enable. When set to 1, AOU_CORE only sends payload to FDI when there are remaining AXI messages to send. Credit-only flit behavior is gated by tx_lp_mode_threshold: non-zero threshold preserves the legacy heartbeat (a partially-filled flit every threshold+1 cycles while the link is active); a zero threshold disables the heartbeat entirely so the TX only emits flits when AXI traffic is pending or credits need to be returned. When 0 (default), AOU_CORE always sends messages to FDI for lowest latency."; } tx_lp_mode[11:11] = 0;
+        field { sw = rw; desc = "TX low-power mode message transmission frequency. Only meaningful when tx_lp_mode is enabled. When non-zero (legacy behavior), and only activation messages are pending (no AXI traffic), the TX will wait this many cycles before sending a partially-filled heartbeat flit; configures the trade-off between latency and power. When set to 0, the threshold is inert: the TX emits no idle/heartbeat flits and only launches a flit when there is real work to send (AXI traffic, CrdtGrant credit-return messages in the ring buffer, or pending MsgCredit-header credits). Once a flit is started it always finishes; unused granule slots are zero-padded. Static configuration, programmed together with tx_lp_mode and under the same rule: change it only while the activation FSM is DISABLED (ACTIVATE_STATE_DISABLED = 1), never while the link is activating, ENABLED or deactivating."; } tx_lp_mode_threshold[19:12] = 0x4;
+        field { sw = rw; desc = "TX low-power mode enable. When set to 1, AOU_CORE only sends payload to FDI when there are remaining AXI messages to send. Credit-only flit behavior is gated by tx_lp_mode_threshold: non-zero threshold preserves the legacy heartbeat (a partially-filled flit every threshold+1 cycles while the link is active); a zero threshold disables the heartbeat entirely so the TX only emits flits when AXI traffic is pending or credits need to be returned. When 0 (default), AOU_CORE always sends messages to FDI for lowest latency. Static configuration: program it only while the activation FSM is DISABLED (ACTIVATE_STATE_DISABLED = 1), before ACTIVATE_START or after a deactivation has completed. It must not be changed while the link is activating, ENABLED or deactivating: the TX core may be mid-flit, and the flit is not preserved across a change of mode."; } tx_lp_mode[11:11] = 0;
         field { sw = r; } reserved_10_5[10:5] = 0;
-        field { sw = rw; desc = "Software reset for AOU core logic."; } aou_sw_reset[4:4] = 0;
+        field { sw = w; hw = rw; desc = "Software reset of AOU_CORE. Writing 1 resets AOU_CORE the way I_RESETN does: every SFR (this bit included) returns to its reset value, the activation FSM returns to DISABLED, the RX FIFOs of every RP are emptied and the AXI port logic is cleared; a transaction in flight or queued is lost and gets no response. Write-only; reads return 0 (the reset clears the bit itself, so the reset lasts one I_CLK cycle). Use it only as part of the LinkReset handling sequence (MAS 7.3.6), with the FDI link down: in LinkError (the AOU_TOP bringup controller holds the link there until this reset is written), LinkReset, Disabled or Reset, never Active."; } aou_sw_reset[4:4] = 0;
         field { sw = rw; desc = "Credit management type. 0: per AoU v0.5, request and response credits are managed together; credited messages must not be sent after DeactivateReq, and re-activation is required to resolve pending AXI responses. 1 (default): request-related (WREQ/RREQ/WDATA) and response-related (RDATA/WRESP) credits are managed separately during DEACTIVATE state, allowing response messages to be sent after DeactivateReq."; } credit_manage[3:3] = 1;
         field { sw = rw; desc = "Global enable for AXI split transaction feature."; } axi_split_tr_en[2:2] = 0;
         field { sw = r; } reserved_1[1:1] = 0;
@@ -65,14 +65,15 @@ addrmap aou_core {
     reg {
         regwidth = 32;
         name = "AOU Init";
-        desc = "Activate/deactivate control; status from HW. int_deactivate_property, mst_tr_complete, slv_tr_complete, activate_state_disabled, activate_state_enabled are read-only inputs (I_*), driven in AOU_CORE.sv from internal/output signals. Write 1 to clear int_activate_start/int_deactivate_start.";
-        field { sw = r; } reserved_31_12[31:12] = 0;
+        desc = "Activate/deactivate control; status from HW. int_deactivate_property, mst_tr_complete, slv_tr_complete, activate_state_disabled, activate_state_enabled are read-only inputs (I_*), driven in AOU_CORE.sv from internal/output signals. Write 1 to clear int_fdi_link_down/int_activate_start/int_deactivate_start.";
+        field { sw = r; } reserved_31_13[31:13] = 0;
+        field { sw = rw; hw = rw; onwrite = woclr; desc = "FDI link lost with AoU in use. Set by HW on the falling edge of I_INT_FSM_IN_ACTIVE (the FDI bring-up controller left Active for LinkError, LinkReset, Disabled or Reset; Retrain and L1 do not count) while the activation FSM is in ACTIVATE, ENABLED or DEACTIVATE, or in DISABLED with an ActivateReq already sent or received (its entry to ACTIVATE is cancelled). The activation FSM returns to DISABLED. Write 1 to clear. Source of INT_FDI_LINK_DOWN."; } int_fdi_link_down[12:12] = 0;
         field { sw = r; hw = w; desc = "Deactivation property status. Read-only, driven by HW."; } int_deactivate_property[11:11];
         field { sw = r; hw = w; desc = "Master transaction completion status. Read-only, driven by HW."; } mst_tr_complete[10:10];
         field { sw = r; hw = w; desc = "Slave transaction completion status. Read-only, driven by HW."; } slv_tr_complete[9:9];
         field { sw = rw; hw = rw; onwrite = woclr; desc = "Activation start interrupt status. Set by HW, write 1 to clear."; } int_activate_start[8:8] = 0;
         field { sw = rw; hw = rw; onwrite = woclr; desc = "Deactivation start interrupt status. Set by HW, write 1 to clear."; } int_deactivate_start[7:7] = 0;
-        field { sw = rw; desc = "Deactivation timeout value."; } deactivate_time_out_value[6:4] = 0;
+        field { sw = rw; desc = "Quiet window before DeactivateReq, in core clock cycles: 2^(value + 3), so 8, 16, 32, 64, 128, 256, 512 or 1024 (reset 0 is 8). The window runs while the activation FSM is ENABLED or DEACTIVATE and restarts whenever the TX path has a message to send; it is held clear in DISABLED and ACTIVATE. It may already have elapsed when DEACTIVATE_START is written, in which case DeactivateReq follows at once, subject to the other deactivation conditions. See MAS 7.1."; } deactivate_time_out_value[6:4] = 0;
         field { sw = r; hw = w; desc = "Indicates the AoU activation FSM is in the DISABLED state. Read-only, driven by HW."; } activate_state_disabled[3:3];
         field { sw = r; hw = w; desc = "Indicates the AoU activation FSM is in the ENABLED state. Read-only, driven by HW."; } activate_state_enabled[2:2];
         field { sw = rw; hw = rw; desc = "Write 1 to initiate AoU protocol deactivation. Self-clears when activate_state_disabled asserts."; } deactivate_start[1:1] = 0;
@@ -85,8 +86,9 @@ addrmap aou_core {
     reg {
         regwidth = 32;
         name = "AOU Interrupt Mask";
-        desc = "Interrupt mask bits for linkreset and early response errors. Write 1 to mask the corresponding interrupt source.";
-        field { sw = r; } reserved_31_10[31:10] = 0;
+        desc = "Interrupt mask bits for linkreset, early response and FDI link-down interrupts. Write 1 to mask the corresponding interrupt source.";
+        field { sw = r; } reserved_31_11[31:11] = 0;
+        field { sw = rw; desc = "Mask bit for the FDI link-down interrupt (INT_FDI_LINK_DOWN)."; } int_fdi_link_down_mask[10:10] = 0;
         field { sw = rw; desc = "Mask bit for the early-response write-transaction watchdog interrupt (INT_EARLY_WDT_ERR)."; } int_early_wdt_mask[9:9] = 0;
         field { sw = rw; desc = "Mask bit for activation ACK timeout link reset interrupt."; } int_req_linkreset_act_ack_mask[8:8] = 0;
         field { sw = rw; desc = "Mask bit for deactivation ACK timeout link reset interrupt."; } int_req_linkreset_deact_ack_mask[7:7] = 0;
@@ -138,20 +140,20 @@ addrmap aou_core {
     reg {
         regwidth = 32;
         name = "Priority RP AXI";
-        desc = "QoS thresholds, per-RP priority levels, and arbitration mode.";
+        desc = "QoS thresholds, per-RP priority levels, and arbitration mode for the TX AW and AR request arbiters. Program this register before the link is activated. It may be written in mission mode, but the arbitration of requests already accepted or in flight is then not guaranteed.";
         field { sw = r; } reserved_31_28[31:28] = 0;
         field { sw = rw; desc = "AXI QoS to normal priority boundary. In AXI QoS arbitration mode (arb_mode=2) the classifier tests axi_qos_to_hp first: a QoS value at or above axi_qos_to_hp is high priority. Otherwise a value at or above this threshold is normal priority, and a value below it is low priority. axi_qos_to_hp must be greater than this field. If it is not, the normal tier is empty."; } axi_qos_to_np[27:24] = 0x5;
         field { sw = rw; desc = "AXI QoS to high priority boundary. In AXI QoS arbitration mode (arb_mode=2) this threshold is tested before axi_qos_to_np. A QoS value at or above this threshold is high priority, including when it is also at or above axi_qos_to_np. A value at or above axi_qos_to_np and below this threshold is normal priority. This field must be greater than axi_qos_to_np; otherwise the normal tier is empty and every value at or above this threshold is high."; } axi_qos_to_hp[23:20] = 0xA;
         field { sw = r; } reserved_19_18[19:18] = 0;
-        field { sw = rw; desc = "Priority level for Resource Plane 3."; } rp3_prior[17:16] = 0x3;
+        field { sw = rw; desc = "Priority level for Resource Plane 3 in Port QoS arbitration mode (arb_mode=1): 3 = high, 2 = normal, 1 = low; 0 is treated as 1 (low)."; } rp3_prior[17:16] = 0x3;
         field { sw = r; } reserved_15_14[15:14] = 0;
-        field { sw = rw; desc = "Priority level for Resource Plane 2."; } rp2_prior[13:12] = 0x2;
+        field { sw = rw; desc = "Priority level for Resource Plane 2 in Port QoS arbitration mode (arb_mode=1): 3 = high, 2 = normal, 1 = low; 0 is treated as 1 (low)."; } rp2_prior[13:12] = 0x2;
         field { sw = r; } reserved_11_10[11:10] = 0;
-        field { sw = rw; desc = "Priority level for Resource Plane 1."; } rp1_prior[9:8] = 0x1;
+        field { sw = rw; desc = "Priority level for Resource Plane 1 in Port QoS arbitration mode (arb_mode=1): 3 = high, 2 = normal, 1 = low; 0 is treated as 1 (low)."; } rp1_prior[9:8] = 0x1;
         field { sw = r; } reserved_7_6[7:6] = 0;
-        field { sw = rw; desc = "Priority level for Resource Plane 0."; } rp0_prior[5:4] = 0x0;
+        field { sw = rw; desc = "Priority level for Resource Plane 0 in Port QoS arbitration mode (arb_mode=1): 3 = high, 2 = normal, 1 = low; 0 is treated as 1 (low). The reset value 0 makes RP0 low priority."; } rp0_prior[5:4] = 0x0;
         field { sw = r; } reserved_3_2[3:2] = 0;
-        field { sw = rw; desc = "TX arbitration mode for multi-RP scheduling on AW, W, and AR channels. 0: Round-Robin between valid RPs. 1: Port QoS, priority is set per-RP via rp*_prior fields (3 levels: High/Normal/Low). 2: AXI QoS, priority is derived from the AXI QoS field with boundaries set by axi_qos_to_hp and axi_qos_to_np. For Port QoS and AXI QoS modes, a starvation-prevention timeout promotes lower-priority requests to high priority."; } arb_mode[1:0] = 0;
+        field { sw = rw; desc = "TX arbitration mode between RPs on the AW and AR channels. W data is sent in the order of the granted AWs; B and R responses are arbitrated round-robin regardless of this field. 0: Round-Robin between valid RPs. 1: Port QoS, priority is set per-RP via the rp*_prior fields (3 levels: high/normal/low). 2: AXI QoS, priority is derived from the AXI AxQOS value with boundaries set by axi_qos_to_hp and axi_qos_to_np. 3: reserved, behaves as Round-Robin. In Port QoS and AXI QoS modes the highest tier present is served first and RPs at the same tier are served round-robin; the prior_timer starvation-prevention timeout promotes waiting normal and low priority requests to high priority."; } arb_mode[1:0] = 0;
     } prior_rp_axi @ 0x0018;
 
     // -------------------------------------------------------------------------
@@ -160,9 +162,9 @@ addrmap aou_core {
     reg {
         regwidth = 32;
         name = "Priority Timer";
-        desc = "Timer resolution and threshold for priority escalation.";
-        field { sw = rw; desc = "Priority timer resolution. Configures the clock cycle granularity used for the starvation-prevention timeout in Port QoS and AXI QoS arbitration modes."; } timer_resolution[31:16] = 0xF;
-        field { sw = rw; desc = "Priority timer threshold. In Port QoS and AXI QoS arbitration modes, if a normal or low priority request has been waiting longer than this threshold (in units of timer_resolution), it is promoted to high priority to prevent starvation."; } timer_threshold[15:0] = 0xF;
+        desc = "Starvation-prevention timer for the Port QoS and AXI QoS arbitration modes (prior_rp_axi.arb_mode 1 or 2). Each per-RP TX request buffer (one per RP for AW and one per RP for AR) has a 16-bit prescaler that ticks once every timer_resolution + 1 clock cycles while the buffer holds at least one request, and holds its count while the buffer is empty. Every normal or low priority request in the buffer counts ticks from the cycle it is accepted; when its count reaches timer_threshold it is arbitrated as high priority. The prescaler is shared by the requests in a buffer and is not restarted when a request arrives, so the first tick a request sees comes 1 to timer_resolution + 1 cycles after acceptance. At the reset values a request is promoted about 225 to 240 cycles after acceptance. The timer runs in Round-Robin mode but has no effect there. Program this register before the link is activated. It may be written in mission mode, but the promotion of requests already waiting is then not guaranteed.";
+        field { sw = rw; desc = "Priority timer resolution: prescaler period minus one, in clock cycles. The prescaler ticks once every timer_resolution + 1 cycles; 0 ticks every cycle and 0xFFFF every 65536 cycles."; } timer_resolution[31:16] = 0xF;
+        field { sw = rw; desc = "Priority timer threshold: the number of prescaler ticks a normal or low priority request waits before it is arbitrated as high priority. Counted from acceptance into the TX request buffer, not from reaching the head of the buffer; the count saturates at this value. 0 promotes every normal and low priority request at once, so all requests arbitrate as high priority and the result is round-robin."; } timer_threshold[15:0] = 0xF;
     } prior_timer @ 0x001C;
 
     // -------------------------------------------------------------------------
@@ -207,21 +209,23 @@ addrmap aou_core {
         regwidth = 32;
         name = "AXI Error Info0 RP0";
         desc = "Debug address register (upper) for RP0.";
-        field { sw = rw; desc = "Upper 32 bits of the dedicated AXI address used to access R/B response error debug information for RP0. Set this address along with debug_lower_addr and error_info_access_en to enable error information readout by the remote die via AXI read. Up to 4 error entries can be stored and popped by writing 1 to this address."; } debug_upper_addr[31:0] = 0;
+        field { sw = rw; desc = "Upper 32 bits of the dedicated AXI address used to access R/B response error debug information for RP0. Set this address along with debug_lower_addr and error_info_access_en to enable error information readout by the remote die via AXI read. Up to 4 entries are held, one per failing manager-port B or R beat; the remote die reads the head entry with a single-beat read of this address and pops it with a single-beat write of any data to it."; } debug_upper_addr[31:0] = 0;
     } axi_error_info0_rp0 @ 0x002C;
 
     reg {
         regwidth = 32;
         name = "AXI Error Info1 RP0";
         desc = "Debug address register (lower) for RP0.";
-        field { sw = rw; desc = "Lower 32 bits of the dedicated AXI address used to access R/B response error debug information for RP0. Together with debug_upper_addr, defines the target address for error information access."; } debug_lower_addr[31:0] = 0;
+        field { sw = rw; desc = "Bits [31:7] of the dedicated AXI address used to access R/B response error debug information for RP0. Together with debug_upper_addr, defines the target address for error information access. Bits [6:0] of the address are reserved and read as zero, so the address is 128-byte aligned: an access to a debug address not aligned to its AxSIZE would miss the window, and one narrower than the RP not aligned to the RP's width would read zeros."; } debug_lower_addr[31:7] = 0;
+        field { sw = r; } reserved_6_0[6:0] = 0;
     } axi_error_info1_rp0 @ 0x0030;
 
     reg {
         regwidth = 32;
         name = "AXI Slave ID Mismatch Error RP0";
-        desc = "AXI slave BID/RID mismatch info and error flags for RP0.";
-        field { sw = r; } reserved_31_22[31:22] = 0;
+        desc = "AXI slave BID/RID mismatch checker enable, captured ID and error flags for RP0. AXI_SLV_ID_MISMATCH_EN is static configuration: program it only while the activation FSM is DISABLED and this RP has no AXI traffic outstanding.";
+        field { sw = r; } reserved_31_23[31:23] = 0;
+        field { sw = rw; desc = "Enable the subordinate-port AXI ID-mismatch checker on this RP. Reset 0: the checker sees no handshakes, the error bits stay 0 and this RP does not raise INT_SI0_ID_MISMATCH. Set to 1 to report a B or R whose ID matches no outstanding request on this subordinate port. Write this bit only while the activation FSM is DISABLED and no AXI traffic is outstanding on this RP. Do not change it while AXI transactions are in flight: the checker records handshakes only while the enable is set."; } axi_slv_id_mismatch_en[22:22] = 0;
         field { sw = r; hw = rw; desc = "Captured BID when an AXI slave BID mismatch occurs. Clears when error clears."; } axi_slv_bid_mismatch_info[21:12];
         field { sw = r; hw = rw; desc = "Captured RID when an AXI slave RID mismatch occurs. Clears when error clears."; } axi_slv_rid_mismatch_info[11:2];
         field { sw = rw; hw = w; onwrite = woclr; desc = "AXI slave BID mismatch error. Set by HW, write 1 to clear."; } axi_slv_bid_mismatch_err[1:1] = 0;
@@ -270,21 +274,23 @@ addrmap aou_core {
         regwidth = 32;
         name = "AXI Error Info0 RP1";
         desc = "Debug address register (upper) for RP1.";
-        field { sw = rw; desc = "Upper 32 bits of the dedicated AXI address used to access R/B response error debug information for RP1. Set this address along with debug_lower_addr and error_info_access_en to enable error information readout by the remote die via AXI read."; } debug_upper_addr[31:0] = 0;
+        field { sw = rw; desc = "Upper 32 bits of the dedicated AXI address used to access R/B response error debug information for RP1. Set this address along with debug_lower_addr and error_info_access_en to enable error information readout by the remote die via AXI read. Up to 4 entries are held, one per failing manager-port B or R beat; the remote die reads the head entry with a single-beat read of this address and pops it with a single-beat write of any data to it."; } debug_upper_addr[31:0] = 0;
     } axi_error_info0_rp1 @ 0x0044;
 
     reg {
         regwidth = 32;
         name = "AXI Error Info1 RP1";
         desc = "Debug address register (lower) for RP1.";
-        field { sw = rw; desc = "Lower 32 bits of the dedicated AXI address used to access R/B response error debug information for RP1. Together with debug_upper_addr, defines the target address for error information access."; } debug_lower_addr[31:0] = 0;
+        field { sw = rw; desc = "Bits [31:7] of the dedicated AXI address used to access R/B response error debug information for RP1. Together with debug_upper_addr, defines the target address for error information access. Bits [6:0] of the address are reserved and read as zero, so the address is 128-byte aligned: an access to a debug address not aligned to its AxSIZE would miss the window, and one narrower than the RP not aligned to the RP's width would read zeros."; } debug_lower_addr[31:7] = 0;
+        field { sw = r; } reserved_6_0[6:0] = 0;
     } axi_error_info1_rp1 @ 0x0048;
 
     reg {
         regwidth = 32;
         name = "AXI Slave ID Mismatch Error RP1";
-        desc = "AXI slave BID/RID mismatch info and error flags for RP1.";
-        field { sw = r; } reserved_31_22[31:22] = 0;
+        desc = "AXI slave BID/RID mismatch checker enable, captured ID and error flags for RP1. AXI_SLV_ID_MISMATCH_EN is static configuration: program it only while the activation FSM is DISABLED and this RP has no AXI traffic outstanding.";
+        field { sw = r; } reserved_31_23[31:23] = 0;
+        field { sw = rw; desc = "Enable the subordinate-port AXI ID-mismatch checker on this RP. Reset 0: the checker sees no handshakes, the error bits stay 0 and this RP does not raise INT_SI0_ID_MISMATCH. Set to 1 to report a B or R whose ID matches no outstanding request on this subordinate port. Write this bit only while the activation FSM is DISABLED and no AXI traffic is outstanding on this RP. Do not change it while AXI transactions are in flight: the checker records handshakes only while the enable is set."; } axi_slv_id_mismatch_en[22:22] = 0;
         field { sw = r; hw = rw; desc = "Captured BID when an AXI slave BID mismatch occurs. Clears when error clears."; } axi_slv_bid_mismatch_info[21:12];
         field { sw = r; hw = rw; desc = "Captured RID when an AXI slave RID mismatch occurs. Clears when error clears."; } axi_slv_rid_mismatch_info[11:2];
         field { sw = rw; hw = w; onwrite = woclr; desc = "AXI slave BID mismatch error. Set by HW, write 1 to clear."; } axi_slv_bid_mismatch_err[1:1] = 0;
@@ -333,21 +339,23 @@ addrmap aou_core {
         regwidth = 32;
         name = "AXI Error Info0 RP2";
         desc = "Debug address register (upper) for RP2.";
-        field { sw = rw; desc = "Upper 32 bits of the dedicated AXI address used to access R/B response error debug information for RP2. Set this address along with debug_lower_addr and error_info_access_en to enable error information readout by the remote die via AXI read."; } debug_upper_addr[31:0] = 0;
+        field { sw = rw; desc = "Upper 32 bits of the dedicated AXI address used to access R/B response error debug information for RP2. Set this address along with debug_lower_addr and error_info_access_en to enable error information readout by the remote die via AXI read. Up to 4 entries are held, one per failing manager-port B or R beat; the remote die reads the head entry with a single-beat read of this address and pops it with a single-beat write of any data to it."; } debug_upper_addr[31:0] = 0;
     } axi_error_info0_rp2 @ 0x005C;
 
     reg {
         regwidth = 32;
         name = "AXI Error Info1 RP2";
         desc = "Debug address register (lower) for RP2.";
-        field { sw = rw; desc = "Lower 32 bits of the dedicated AXI address used to access R/B response error debug information for RP2. Together with debug_upper_addr, defines the target address for error information access."; } debug_lower_addr[31:0] = 0;
+        field { sw = rw; desc = "Bits [31:7] of the dedicated AXI address used to access R/B response error debug information for RP2. Together with debug_upper_addr, defines the target address for error information access. Bits [6:0] of the address are reserved and read as zero, so the address is 128-byte aligned: an access to a debug address not aligned to its AxSIZE would miss the window, and one narrower than the RP not aligned to the RP's width would read zeros."; } debug_lower_addr[31:7] = 0;
+        field { sw = r; } reserved_6_0[6:0] = 0;
     } axi_error_info1_rp2 @ 0x0060;
 
     reg {
         regwidth = 32;
         name = "AXI Slave ID Mismatch Error RP2";
-        desc = "AXI slave BID/RID mismatch info and error flags for RP2.";
-        field { sw = r; } reserved_31_22[31:22] = 0;
+        desc = "AXI slave BID/RID mismatch checker enable, captured ID and error flags for RP2. AXI_SLV_ID_MISMATCH_EN is static configuration: program it only while the activation FSM is DISABLED and this RP has no AXI traffic outstanding.";
+        field { sw = r; } reserved_31_23[31:23] = 0;
+        field { sw = rw; desc = "Enable the subordinate-port AXI ID-mismatch checker on this RP. Reset 0: the checker sees no handshakes, the error bits stay 0 and this RP does not raise INT_SI0_ID_MISMATCH. Set to 1 to report a B or R whose ID matches no outstanding request on this subordinate port. Write this bit only while the activation FSM is DISABLED and no AXI traffic is outstanding on this RP. Do not change it while AXI transactions are in flight: the checker records handshakes only while the enable is set."; } axi_slv_id_mismatch_en[22:22] = 0;
         field { sw = r; hw = rw; desc = "Captured BID when an AXI slave BID mismatch occurs. Clears when error clears."; } axi_slv_bid_mismatch_info[21:12];
         field { sw = r; hw = rw; desc = "Captured RID when an AXI slave RID mismatch occurs. Clears when error clears."; } axi_slv_rid_mismatch_info[11:2];
         field { sw = rw; hw = w; onwrite = woclr; desc = "AXI slave BID mismatch error. Set by HW, write 1 to clear."; } axi_slv_bid_mismatch_err[1:1] = 0;
@@ -396,21 +404,23 @@ addrmap aou_core {
         regwidth = 32;
         name = "AXI Error Info0 RP3";
         desc = "Debug address register (upper) for RP3.";
-        field { sw = rw; desc = "Upper 32 bits of the dedicated AXI address used to access R/B response error debug information for RP3. Set this address along with debug_lower_addr and error_info_access_en to enable error information readout by the remote die via AXI read."; } debug_upper_addr[31:0] = 0;
+        field { sw = rw; desc = "Upper 32 bits of the dedicated AXI address used to access R/B response error debug information for RP3. Set this address along with debug_lower_addr and error_info_access_en to enable error information readout by the remote die via AXI read. Up to 4 entries are held, one per failing manager-port B or R beat; the remote die reads the head entry with a single-beat read of this address and pops it with a single-beat write of any data to it."; } debug_upper_addr[31:0] = 0;
     } axi_error_info0_rp3 @ 0x0074;
 
     reg {
         regwidth = 32;
         name = "AXI Error Info1 RP3";
         desc = "Debug address register (lower) for RP3.";
-        field { sw = rw; desc = "Lower 32 bits of the dedicated AXI address used to access R/B response error debug information for RP3. Together with debug_upper_addr, defines the target address for error information access."; } debug_lower_addr[31:0] = 0;
+        field { sw = rw; desc = "Bits [31:7] of the dedicated AXI address used to access R/B response error debug information for RP3. Together with debug_upper_addr, defines the target address for error information access. Bits [6:0] of the address are reserved and read as zero, so the address is 128-byte aligned: an access to a debug address not aligned to its AxSIZE would miss the window, and one narrower than the RP not aligned to the RP's width would read zeros."; } debug_lower_addr[31:7] = 0;
+        field { sw = r; } reserved_6_0[6:0] = 0;
     } axi_error_info1_rp3 @ 0x0078;
 
     reg {
         regwidth = 32;
         name = "AXI Slave ID Mismatch Error RP3";
-        desc = "AXI slave BID/RID mismatch info and error flags for RP3.";
-        field { sw = r; } reserved_31_22[31:22] = 0;
+        desc = "AXI slave BID/RID mismatch checker enable, captured ID and error flags for RP3. AXI_SLV_ID_MISMATCH_EN is static configuration: program it only while the activation FSM is DISABLED and this RP has no AXI traffic outstanding.";
+        field { sw = r; } reserved_31_23[31:23] = 0;
+        field { sw = rw; desc = "Enable the subordinate-port AXI ID-mismatch checker on this RP. Reset 0: the checker sees no handshakes, the error bits stay 0 and this RP does not raise INT_SI0_ID_MISMATCH. Set to 1 to report a B or R whose ID matches no outstanding request on this subordinate port. Write this bit only while the activation FSM is DISABLED and no AXI traffic is outstanding on this RP. Do not change it while AXI transactions are in flight: the checker records handshakes only while the enable is set."; } axi_slv_id_mismatch_en[22:22] = 0;
         field { sw = r; hw = rw; desc = "Captured BID when an AXI slave BID mismatch occurs. Clears when error clears."; } axi_slv_bid_mismatch_info[21:12];
         field { sw = r; hw = rw; desc = "Captured RID when an AXI slave RID mismatch occurs. Clears when error clears."; } axi_slv_rid_mismatch_info[11:2];
         field { sw = rw; hw = w; onwrite = woclr; desc = "AXI slave BID mismatch error. Set by HW, write 1 to clear."; } axi_slv_bid_mismatch_err[1:1] = 0;

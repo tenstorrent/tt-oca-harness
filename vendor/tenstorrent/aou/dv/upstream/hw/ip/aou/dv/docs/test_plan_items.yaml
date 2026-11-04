@@ -8,6 +8,8 @@
 # and reports through that ID. dropped: not testable on this RTL. added: an item
 # the old plan lacked, with its source. old_test and old_status are the old
 # plan's Test File and Status columns.
+#
+# Old plan: 337 items, sha256 3fe78db1b0bd8c34ec458d1f5399d7bb2bc389f631fcd066716c6ec167aa402f
 
 - id: '1.1'
   section: '2.1'
@@ -39,7 +41,7 @@
   priority: P2
   old_test: aou_activation_property_test
   dropped: PropertyReq on ActivateReq has no defined effect in v0.7 and is replaced by ProfileID/Rev/Opt in v0.8.
-  note: Coverage-closure decision D9. v0.8 makes PropertyReq RsvdZero; 2.7 keeps the DUT's own DeactivateReq and 2.10 the register with PropertyReq 0 only.
+  note: 'Coverage-closure decision D9. v0.8 makes PropertyReq RsvdZero; 2.7 keeps the DUT''s own DeactivateReq and 2.10 the register with PropertyReq 0 only.'
 
 - id: '1.5'
   section: '2.1'
@@ -111,7 +113,7 @@
   section_title: Link Activation Tests
   title: 'Reserved ACTIVATIONOP (4-15) received: the testbench checkers report it; the DUT reaction is undefined (v0.8 8.3.3) and software recovers'
   priority: P2
-  added: AoU Table 27; BUGS/012
+  added: AoU Table 27; v0.8 8.3.3
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 
 - id: '2.1'
@@ -199,7 +201,7 @@
 - id: '2.12'
   section: '2.2'
   section_title: Link Deactivation Tests
-  title: 'DEACTIVATE_TIME_OUT_VALUE sweep: the DeactivateReq gate delay is 2^(v+3) cycles'
+  title: 'DEACTIVATE_TIME_OUT_VALUE sweep: a quiet window of 2^(v+3) cycles with nothing to transmit'
   priority: P2
   added: MAS 7.1
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
@@ -659,6 +661,14 @@
   priority: P2
   added: AXI4 A3.3.1
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
+
+- id: '4.32'
+  section: '2.4'
+  section_title: Write Transaction Tests
+  title: 'Remote WriteData sent ahead of its WriteReq (one message to the whole burst, on several RPs at once) is held and written once the WriteReq arrives'
+  priority: P1
+  added: AoU v0.8 5.7
+  note: 'The specification leaves the order open; the DUT TX sends the WriteReq first, another die may not. Coverage: l3.cg_wr_order.'
 
 - id: '5.1'
   section: '2.5'
@@ -1294,8 +1304,8 @@
   title: 'Remote RX credit overrun: the remote die sends beyond the credit the DUT advertised (AoU 6.1)'
   priority: P2
   old_test: aou_credit_underflow_test
-  old_title: Internal check for negative credit count
   dropped: 'AoU v0.8 6.1 binds the sender only; the receiver''s reaction to a credit overrun is undefined.'
+  old_title: Internal check for negative credit count
   note: 'Spec v0.8 decision (2026-10-20): aou_credit_violation_test removed. Coverage-closure D9 had retitled it "Remote RX credit overrun".'
 
 - id: '9.6'
@@ -1374,7 +1384,7 @@
   section_title: Error Handling Tests
   title: 'A received message naming an RP at or above RP_COUNT (WriteResp, header MsgCredit, CrdtGrant): the testbench checkers report it; the DUT reaction is undefined (v0.8 8.3.3) and software recovers'
   priority: P2
-  added: AoU 6.4.1; BUGS/012
+  added: AoU 6.4.1; v0.8 8.3.3
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 
 - id: '9.16'
@@ -1382,7 +1392,7 @@
   section_title: Error Handling Tests
   title: 'Reserved MISCOP/DLENGTH, RsvdZero set or a stray MsgStart received: the testbench checkers report it; the DUT reaction is undefined (v0.8 8.3.3) and software recovers'
   priority: P2
-  added: 'AoU Table 15, 4.4; BUGS/012'
+  added: 'AoU Table 15, 4.4; v0.8 8.3.3'
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 
 - id: '9.17'
@@ -1390,7 +1400,7 @@
   section_title: Error Handling Tests
   title: Debug FIFO holds four entries and drops the fifth; B and R pushed in one cycle
   priority: P2
-  added: MAS 7.2.4; BUGS/028
+  added: MAS 7.2.4
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 
 - id: '9.18'
@@ -1406,7 +1416,7 @@
   section_title: Error Handling Tests
   title: Debug FIFO read through an RP narrower than the remote die (two-beat read)
   priority: P2
-  added: BUGS/035
+  added: MAS 7.2.4
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 
 - id: '9.20'
@@ -1423,7 +1433,7 @@
   title: ReadData wider than the remote AXI width (a violation per the MAS; reaction unspecified)
   priority: P2
   added: MAS overview 2.1
-  dropped: 'AoU v0.8 5.7 makes ReadData wider than ARSIZE a peer violation with no defined reaction.'
+  dropped: AoU v0.8 5.7 makes ReadData wider than ARSIZE a peer violation with no defined reaction.
   note: Coverage-closure gap analysis 4.3 (decision D9). Spec v0.8 decision (2026-10-20) removed aou_rdata_wide_test.
 
 - id: '9.22'
@@ -1431,7 +1441,7 @@
   section_title: Error Handling Tests
   title: 'Subordinate ID-check enable bit (AXI_SLV_ID_MISMATCH_ERR_RPn[22]) off and on'
   priority: P2
-  added: MAS 7.2.2; BUGS/003
+  added: MAS 7.2.2
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 
 - id: '10.1'
@@ -1671,7 +1681,7 @@
   section_title: Corner Case Tests
   title: 'I_RESETN and I_PRESETN independent: each alone, in each order'
   priority: P2
-  added: integration guide; BUGS/016
+  added: integration guide 3.1.1
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 
 - id: '11.17'
@@ -1794,7 +1804,7 @@
   priority: P2
   old_test: aou_rp_remap_asym_test
   dropped: 'An asymmetric DEST_RP is a misconfiguration MAS 3.10.1 forbids, with undefined behaviour.'
-  note: Coverage-closure decision D9. aou_dest_rp_asym_test removed (spec v0.8 decision, 2026-10-20).
+  note: 'Coverage-closure decision D9. aou_dest_rp_asym_test removed (spec v0.8 decision, 2026-10-20).'
 
 - id: '12.14'
   section: '2.12'
@@ -2136,7 +2146,8 @@
   title: AXI_PEER_DIE_MAX_DATA_WD below 1024
   priority: P2
   added: integration guide parameters
-  note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
+  dropped: 'AXI_PEER_DIE_MAX_DATA_WD is a localparam fixed at 1024, the widest AoU data message; the RX data path is always sized for a 1024-bit remote die and there is no narrower build to test.'
+  note: 'Coverage-closure gap analysis 4.3 (decision D9) added it when the parameter was configurable; retired with the parameter (DECISIONS D9 amendment, 2026-10-20).'
 
 - id: '15.1'
   section: '2.15'
@@ -2390,10 +2401,58 @@
 - id: '16.17'
   section: '2.16'
   section_title: Write Early Response Tests
-  title: 'Write kept waiting at the early-response limit (O_PENDING_CNT_OVER removed by PR #89; watchdog INT_EARLY_WDT_ERR observed, not checked)'
+  title: 'Write kept waiting at the early-response limit (O_PENDING_CNT_OVER removed by PR #89; the write watchdog that replaced it is 16.18-16.23)'
   priority: P2
-  added: MAS 3.7.5; BUGS/005
-  note: 'Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed. PR #89 replaced the signal with a write-transaction watchdog the MAS does not yet specify.'
+  added: MAS 3.7.5
+  note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed. With +early_over the early-table checker reports the watchdog pin while an AW waits at the limit.
+
+- id: '16.18'
+  section: '2.16'
+  section_title: Write Early Response Tests
+  title: 'Write watchdog expiry: writes outstanding with no AW or B handshake for WDT_THRESHOLD cycles set WDT_TRANS_TIMEOUT_ERR and INT_EARLY_WDT_ERR, with early response on or off'
+  priority: P1
+  added: 'MAS software-operation 7.2.6; RDL WRITE_EARLY_RESPONSE_RPn.WDT_*'
+  note: 'The watchdog PR #89 added in place of O_PENDING_CNT_OVER; aou_t1_wdt_chk (FEAT-R23 to R28).'
+
+- id: '16.19'
+  section: '2.16'
+  section_title: Write Early Response Tests
+  title: 'Write watchdog count restarted by an AW handshake up to the cycle that would have expired: no expiry'
+  priority: P2
+  added: 'MAS software-operation 7.2.6, architecture 3.7.5'
+  note: 'The S-port AW handshake reaches the watchdog in the same cycle, so the edge is placed from the pins.'
+
+- id: '16.20'
+  section: '2.16'
+  section_title: Write Early Response Tests
+  title: 'Write watchdog with WDT_THRESHOLD 0: expiry on the first cycle with a write outstanding and no handshake'
+  priority: P2
+  added: RDL WRITE_EARLY_RESPONSE_WDT_CTL
+  note: Interim expectation inferred from the RTL; the documents do not cover T = 0.
+
+- id: '16.21'
+  section: '2.16'
+  section_title: Write Early Response Tests
+  title: 'INT_EARLY_WDT_MASK gates INT_EARLY_WDT_ERR, not the status; clearing the mask with the status set raises the pin'
+  priority: P2
+  added: MAS interrupts INT_EARLY_WDT_ERR; RDL AOU_INTERRUPT_MASK
+  note: Added with the write-watchdog checker.
+
+- id: '16.22'
+  section: '2.16'
+  section_title: Write Early Response Tests
+  title: 'Write watchdog expires once per reset: the W1C clears status and pin, no second expiry while the RP stays hung, and a software or hard reset re-arms it'
+  priority: P1
+  added: MAS software-operation 7.2.6 step 2-3; RDL WDT_TRANS_TIMEOUT_ERR
+  note: 'MAS architecture 3.7.5 disagrees (a hung remote die keeps the bit set, so it sets again after a W1C); owner question open.'
+
+- id: '16.23'
+  section: '2.16'
+  section_title: Write Early Response Tests
+  title: 'Write watchdog on several RPs: each expires on its own, and the pin stays high while any RP is set'
+  priority: P2
+  added: MAS software-operation 7.2.6; RDL WRITE_EARLY_RESPONSE_RPn
+  note: Added with the write-watchdog checker.
 
 - id: '17.1'
   section: '2.17'
@@ -2594,7 +2653,7 @@
   section_title: UCIe FDI Interface Tests
   title: 'LinkError, Adapter- and DUT-initiated: lp_linkerror raise, hold and recovery'
   priority: P2
-  added: 'UCIe r1.1 8.3.3.7, Table 8-2; BUGS/002, BUGS/037'
+  added: 'UCIe r1.1 8.3.3.7, Table 8-2'
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 
 - id: '18.15'
@@ -2618,7 +2677,7 @@
   section_title: UCIe FDI Interface Tests
   title: 'LinkReset: Adapter state and the DUT''s request, O_AOU_REQ_LINKRESET and its mask'
   priority: P2
-  added: 'UCIe r1.1 8.3.3.5; BUGS/014, BUGS/038'
+  added: UCIe r1.1 8.3.3.5; BUGS/014
   note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
 
 - id: '18.18'
@@ -2958,9 +3017,11 @@
 - id: '21.7'
   section: '2.21'
   section_title: Low Power Mode Tests
-  title: Switch between LP mode enabled/disabled
+  title: Switch between LP mode enabled/disabled across activation sessions (programmed only while DISABLED)
   priority: P2
   old_test: aou_lp_mode_transition_test
+  old_title: Switch between LP mode enabled/disabled
+  note: 'Main #105 - TX_LP_MODE is static configuration, written only while DISABLED.'
 
 - id: '22.1'
   section: '2.22'
@@ -3010,7 +3071,7 @@
 - id: '22.7'
   section: '2.22'
   section_title: FDI Bringup Controller Tests
-  title: Restart after link-down needs NOP to Active on lp_state_req
+  title: 'Restart after link-down is software''s on the UCIe controller: the DUT requests nothing in LinkError, LinkReset, Disabled or Reset'
   priority: P2
-  added: UCIe r1.1 8.3.3.8; BUGS/038
-  note: Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed.
+  added: UCIe r1.1 8.3.3.8 (owner decision 7)
+  note: 'Coverage-closure gap analysis 4.3 (decision D9); priority to be reviewed. Retitled from "Restart after link-down needs NOP to Active on lp_state_req" (not a bug) when the owner assigned the restart to software.'

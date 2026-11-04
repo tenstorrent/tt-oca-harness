@@ -75,11 +75,10 @@ and checks that MBIST passed unless its result was bypassed. A failed, aborted,
 or timed-out check records the raw status in SMC scratch register 10.
 
 The current code uses a fixed `MBIST_DONE_WAIT_ITERS` bound. This value is an
-implementation limit rather than a calibrated silicon duration. If
-`STATUS_RPT.SKIP_MEM_CHECK` is clear, failure is terminal; if it is set, the
-boot continues. That bit is not allocated by the current SEP eFuse RDL and
-must not be treated as a production fuse contract without a corresponding
-register specification.
+implementation limit rather than a calibrated silicon duration. A failed,
+aborted or timed-out check is terminal: the ROM writes the `MBIST_FAIL`
+warning, then `ROM_ERR_DFT_GATE_BLOCKED`, and halts. No eFuse changes this
+outcome.
 
 === Runtime memory initialization
 

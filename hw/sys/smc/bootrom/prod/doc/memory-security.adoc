@@ -21,7 +21,9 @@
 |===
 
 The linker places `.data`, TLS, `.bss`, stacks, and heap upward from the SRAM base.
-The global OCCP request buffer and the large read-response workspace are ordinary `.bss` objects; they do not occupy a separately fixed high-address window.
+The global OCCP request buffer is an ordinary `.bss` object.
+The read-response workspace is an automatic array assembled on the `ReadData`
+handler's stack; neither occupies a separately fixed high-address window.
 
 Two `smc_ring_buffer_t` objects are addressed downward from the exclusive SRAM end, `0xC0160000`.
 The SEP ring buffer is the last object in SRAM, and the SMC ring buffer immediately precedes it:
@@ -32,7 +34,10 @@ SMC_STATUS_BUFFER_ADDR = 0xC0160000 - 2 * sizeof(smc_ring_buffer_t)
 SEP_STATUS_BUFFER_ADDR = 0xC0160000 -     sizeof(smc_ring_buffer_t)
 ----
 
-Each structure contains three 32-bit metadata fields and 512 32-bit entries.
+Each structure contains three 32-bit metadata fields and 512 32-bit storage
+slots.
+The ring-buffer algorithm keeps one slot empty, so at most 511 entries can be
+unread.
 The code also defines `0xC0066400` through `0xC015AFFF` as the SEP-safe region published in scratch registers 13 and 14.
 
 [[memory-access-policy]]

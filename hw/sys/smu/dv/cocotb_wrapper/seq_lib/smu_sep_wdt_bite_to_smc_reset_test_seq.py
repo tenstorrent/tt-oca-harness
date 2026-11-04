@@ -9,11 +9,15 @@ Reset"), which the SMC reset unit takes as the external watchdog input. The watc
 ``rst_ext_wdt_ni AND NOT smc_wdt_second_timeout_i``, released 32 reference clock cycles after
 both requests release, and the warm reset is ``rst_primary_n AND rst_wdt_n AND fuse_reset_ni``.
 The primary reset carries no watchdog term (``hw/sys/smc/doc/clk_rst.adoc``, reset equations).
-``wdt_rst_ni`` resets the SEP CPU directly and the watchdog timer through a 2-flop capture on
-``clk_i``, which clears the bite (``hw/sys/sep/rtl/sep_reset_ctrl.sv``). The request therefore
-falls while the primary and cold resets stay released, and the SMC watchdog-term and warm nets
-follow the stretched watchdog reset. That SMC-domain net is ``rst_wdt_n``, which is the SEP
-``wdt_rst_ni``.
+The shared watchdog reset returns to the SEP on ``wdt_rst_ni``, restarts the SEP CPU and resets
+the watchdog, which clears the bite (``hw/sys/sep/doc/watchdog.adoc``, "Bark Interrupt and Bite
+Reset"; ``hw/sys/sep/doc/reset_controller.adoc``, ``sep_wdt_reset_no``: "A SEP bite asserts
+``wdt_rst_ni``, and this reset clears the bite"; ``hw/sys/sep/doc/clk_rst.adoc``, watchdog
+reset: "so a SEP bite clears itself"). The request therefore falls while the primary and cold
+resets stay released, and the SMC watchdog-term and warm nets follow the stretched watchdog
+reset. That SMC-domain net is ``rst_wdt_n``, which is the SEP ``wdt_rst_ni``. The watchdog
+reset also resets the watchdog registers, and WDOG_CTRL.ENABLE resets to
+``AON_TIMER__WDOG_CTRL__ENABLE_reset`` (disabled), so the request rises exactly once.
 
 Every clk_smu_i sample from the bite to the end of the closing window is recorded by a
 free-running monitor, so the ordering and rise-count checks see every cycle.
@@ -61,9 +65,10 @@ WDT_RESET_PATH = "u_smc.rst_wdt_smc_clk_no"
 WARM_RESET_PATH = "u_smc.rst_warm_smc_clk_n"
 
 # clk_rst.adoc: the watchdog reset is held this many reference clocks after both
-# requests release. smc_reset_sync then releases the SMC-domain copy through
-# WDT_SYNC_STAGES. A release sampled one SMC clock after the pin edge can leave
-# WDT_HOLD_MIN_REF_EDGES edges in (t_fall, t_rise].
+# requests release. smc_reset_sync then releases the SMC-domain copy through its
+# WDT_SYNC_STAGES stages (hw/sys/smc/doc/clk_rst.adoc: "four-stage prim_sync_reset").
+# A release sampled one SMC clock after the pin edge can leave WDT_HOLD_MIN_REF_EDGES
+# edges in (t_fall, t_rise].
 WDT_HOLD_REF_CYCLES = 32
 WDT_HOLD_MIN_REF_EDGES = 31
 WDT_HOLD_PROBE_REF_EDGES = 24

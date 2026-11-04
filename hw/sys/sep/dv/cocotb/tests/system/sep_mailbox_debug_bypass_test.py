@@ -25,13 +25,13 @@ other mailboxes take one write each with directed source IDs and
 
 Checks:
 
-* CTL-PROD-BLOCK (control): before the demote the two writes answer DECERR,
+* CTRL-PROD-BLOCK (control): before the demote the two writes answer DECERR,
   leave the FIFO empty and leave the inbound line low.
 * CHK-DBG-ACCEPT: after the demote FEAT_CTRL reads its DEMOTE_1 golden with
   ``SEP_DBG`` set, and every mailbox answers OKAY, holds one entry, raises
   its inbound line, and the popped word equals the pushed word; on mailbox 3
   the outbound occupancy goes from 0 to 1 across the demote.
-* CTL-NONVAC (control): the same mailbox 3 write answers DECERR before the
+* CTRL-NONVAC (control): the same mailbox 3 write answers DECERR before the
   demote and OKAY after it.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real PROD fuse sense, one seed. The
@@ -146,10 +146,10 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
         feat = await self._feat_ctrl()
         if feat != golden or feat & 1:
             self._fail(
-                "CTL-PROD-BLOCK", f"precondition feat_ctrl=0x{feat:016x} golden=0x{golden:016x}"
+                "CTRL-PROD-BLOCK", f"precondition feat_ctrl=0x{feat:016x} golden=0x{golden:016x}"
             )
         self.logger.info(
-            "CTL-PROD-BLOCK LOG precondition feat_ctrl=0x%016x golden=0x%016x sep_dbg=%d",
+            "CTRL-PROD-BLOCK LOG precondition feat_ctrl=0x%016x golden=0x%016x sep_dbg=%d",
             feat,
             golden,
             feat & 1,
@@ -201,11 +201,13 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
             for reg, val in (("WIRQT", 0), ("IRQEN", IRQ_WTIRQ)):
                 resp, _ = await self._lsu(SepAxiOp.WRITE, o.addr("in", reg), val)
                 if resp != RESP_OKAY:
-                    self._fail("CTL-PROD-BLOCK", f"set-up mbox={m} in {reg} resp={resp_name(resp)}")
+                    self._fail(
+                        "CTRL-PROD-BLOCK", f"set-up mbox={m} in {reg} resp={resp_name(resp)}"
+                    )
             resp, irqen = await self._lsu(SepAxiOp.READ, o.addr("in", "IRQEN"))
             if resp != RESP_OKAY or irqen & IRQEN_FIELDS != IRQ_WTIRQ:
                 self._fail(
-                    "CTL-PROD-BLOCK",
+                    "CTRL-PROD-BLOCK",
                     f"set-up mbox={m} in IRQEN read resp={resp_name(resp)} irqen=0x{irqen & IRQEN_FIELDS:x} exp=0x{IRQ_WTIRQ:x}",
                 )
             self.logger.info(
@@ -228,8 +230,8 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
             prod[m] = (resp, occ, line)
             txt = f"mbox={m} src={src} prot1={prot1} resp={resp_name(resp)} occ={occ} line={line} probe=0x{probe:02x}"
             if resp != RESP_DECERR or occ != 0 or line != 0 or probe != 0:
-                self._fail("CTL-PROD-BLOCK", txt)
-            self.logger.info("CTL-PROD-BLOCK PASS seed=%d %s", self.seed, txt)
+                self._fail("CTRL-PROD-BLOCK", txt)
+            self.logger.info("CTRL-PROD-BLOCK PASS seed=%d %s", self.seed, txt)
 
         # Step 4: DEMOTE_1 (graded stimulus starts here).
         open_graded_window(TEST, self.logger)
@@ -243,7 +245,7 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
         for t in range(1, DEMOTE_TRIES + 1):
             resp = await self._push(ISS_MBOX, WRONG_SRC, 0, words[ISS_MBOX])
             if resp == RESP_OKAY:
-                self.logger.info("DEMOTE-RETRY LOG mbox=3 tries=%d", t)
+                self.logger.info("INFO-DEMOTE-RETRY LOG mbox=3 tries=%d", t)
                 break
             st = await self._out_status(ISS_MBOX)
             if resp != RESP_DECERR or not st & ST_EMPTY:
@@ -280,8 +282,8 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
         )
         nonvac = f"mbox=3 resp_before_demote={resp_name(prod[ISS_MBOX][0])} resp_after_demote={resp_name(resp)}"
         if prod[ISS_MBOX][0] != RESP_DECERR or resp != RESP_OKAY:
-            self._fail("CTL-NONVAC", nonvac)
-        self.logger.info("CTL-NONVAC PASS seed=%d %s", self.seed, nonvac)
+            self._fail("CTRL-NONVAC", nonvac)
+        self.logger.info("CTRL-NONVAC PASS seed=%d %s", self.seed, nonvac)
 
         # Steps 6 and 7: mailbox 6 (no entry) and the six directed writes.
         accepted: dict[int, tuple[int, int, int, int]] = {ISS_MBOX: (WRONG_SRC, 0, resp, probe)}
@@ -302,7 +304,7 @@ class sep_mailbox_debug_bypass_test(sep_base_test):
                 )
             accepted[m] = (src, prot1, resp, probe)
             self.logger.info(
-                "DBG-PROBE LOG mbox=%d src=%d prot1=%d resp=%s probe=0x%02x exp=0x%02x",
+                "INFO-DBG-PROBE LOG mbox=%d src=%d prot1=%d resp=%s probe=0x%02x exp=0x%02x",
                 m,
                 src,
                 prot1,

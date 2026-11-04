@@ -256,7 +256,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             if snap is None:
                 continue
             self.logger.info(
-                "SRAM-SCOREBOARD %-11s t=%sns word[0]=0x%016x word[%d]=0x%016x console_lines=%d%s",
+                "INFO-SRAM-SCOREBOARD %-11s t=%sns word[0]=0x%016x word[%d]=0x%016x console_lines=%d%s",
                 snap["what"],
                 snap["time_ns"],
                 snap["word0"],

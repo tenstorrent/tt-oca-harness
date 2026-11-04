@@ -48,7 +48,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -351,7 +352,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -364,7 +366,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -409,7 +413,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -712,7 +717,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -725,7 +731,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -770,7 +778,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -1073,7 +1082,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1086,7 +1096,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1131,7 +1143,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -1434,7 +1447,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1447,7 +1461,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1492,7 +1508,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -1795,7 +1812,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1808,7 +1826,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1853,7 +1873,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -2156,7 +2177,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2169,7 +2191,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2214,7 +2238,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -2517,7 +2542,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2530,7 +2556,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2575,7 +2603,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -2878,7 +2907,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2891,7 +2921,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2936,7 +2968,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -3239,7 +3272,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3252,7 +3286,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3297,7 +3333,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -3600,7 +3637,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3613,7 +3651,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3658,7 +3698,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -3961,7 +4002,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3974,7 +4016,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4019,7 +4063,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -4322,7 +4367,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4335,7 +4381,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4380,7 +4428,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -4683,7 +4732,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4696,7 +4746,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -4741,7 +4793,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -5044,7 +5097,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -5057,7 +5111,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -5102,7 +5158,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -5405,7 +5462,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -5418,7 +5476,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -5463,7 +5523,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -5766,7 +5827,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -5779,7 +5841,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -5824,7 +5888,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -6127,7 +6192,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6140,7 +6206,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6185,7 +6253,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -6488,7 +6557,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6501,7 +6571,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6546,7 +6618,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -6849,7 +6922,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6862,7 +6936,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6907,7 +6983,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -7210,7 +7287,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7223,7 +7301,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7268,7 +7348,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -7571,7 +7652,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7584,7 +7666,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7629,7 +7713,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -7932,7 +8017,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7945,7 +8031,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7990,7 +8078,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -8293,7 +8382,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -8306,7 +8396,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -8351,7 +8443,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -8654,7 +8747,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -8667,7 +8761,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -8712,7 +8808,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -9015,7 +9112,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -9028,7 +9126,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -9073,7 +9173,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -9376,7 +9477,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -9389,7 +9491,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -9434,7 +9538,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -9737,7 +9842,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -9750,7 +9856,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -9795,7 +9903,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -10098,7 +10207,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -10111,7 +10221,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -10156,7 +10268,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -10459,7 +10572,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -10472,7 +10586,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -10517,7 +10633,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -10820,7 +10937,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -10833,7 +10951,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -10878,7 +10998,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -11181,7 +11302,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -11194,7 +11316,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -11239,7 +11363,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -11542,7 +11667,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -11555,7 +11681,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -11600,7 +11728,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -11903,7 +12032,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -11916,7 +12046,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -11961,7 +12093,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -12264,7 +12397,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -12277,7 +12411,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -12322,7 +12458,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -12625,7 +12762,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -12638,7 +12776,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -12683,7 +12823,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -12986,7 +13127,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -12999,7 +13141,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -13044,7 +13188,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -13347,7 +13492,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -13360,7 +13506,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -13405,7 +13553,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -13708,7 +13857,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -13721,7 +13871,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -13766,7 +13918,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -14069,7 +14222,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -14082,7 +14236,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -14127,7 +14283,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -14430,7 +14587,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -14443,7 +14601,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -14488,7 +14648,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -14791,7 +14952,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -14804,7 +14966,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -14849,7 +15013,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -15152,7 +15317,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -15165,7 +15331,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -15210,7 +15378,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -15513,7 +15682,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -15526,7 +15696,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -15571,7 +15743,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -15874,7 +16047,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -15887,7 +16061,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -15932,7 +16108,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -16235,7 +16412,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -16248,7 +16426,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -16293,7 +16473,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -16596,7 +16777,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -16609,7 +16791,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -16654,7 +16838,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -16957,7 +17142,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -16970,7 +17156,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -17015,7 +17203,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -17318,7 +17507,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -17331,7 +17521,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -17376,7 +17568,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -17679,7 +17872,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -17692,7 +17886,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -17737,7 +17933,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -18040,7 +18237,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -18053,7 +18251,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -18098,7 +18298,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -18401,7 +18602,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -18414,7 +18616,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -18459,7 +18663,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -18762,7 +18967,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -18775,7 +18981,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -18820,7 +19028,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -19123,7 +19332,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -19136,7 +19346,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -19181,7 +19393,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -19484,7 +19697,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -19497,7 +19711,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -19542,7 +19758,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -19845,7 +20062,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -19858,7 +20076,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -19903,7 +20123,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -20206,7 +20427,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -20219,7 +20441,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -20264,7 +20488,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -20567,7 +20792,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -20580,7 +20806,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -20625,7 +20853,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -20928,7 +21157,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -20941,7 +21171,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -20986,7 +21218,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -21289,7 +21522,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -21302,7 +21536,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -21347,7 +21583,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -21650,7 +21887,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -21663,7 +21901,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -21708,7 +21948,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -22011,7 +22252,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -22024,7 +22266,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -22069,7 +22313,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -22372,7 +22617,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -22385,7 +22631,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -22430,7 +22678,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -22733,7 +22982,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -22746,7 +22996,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -22791,7 +23043,8 @@ pushed as 0.</ipxact:description>
           <ipxact:description>A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.</ipxact:description>
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -23094,7 +23347,8 @@ On write:
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>wflush</ipxact:name>
-            <ipxact:description>Flush the write FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -23107,7 +23361,9 @@ On write:
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rflush</ipxact:name>
-            <ipxact:description>Flush the read FIFO for this port</ipxact:description>
+            <ipxact:description>Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

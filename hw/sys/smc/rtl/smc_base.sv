@@ -222,10 +222,16 @@ module smc_base #(
   input  logic mbist_abort_i,           // Memory BIST was aborted; reported in the DFX STATUS_SMU
                                         // register.
 
-  output logic axi_hang_irq_o           // OR of the system AXI, SEP AXI and data-accelerator AXI
+  output logic axi_hang_irq_o,          // OR of the system AXI, SEP AXI and data-accelerator AXI
                                         // hang detector interrupts, configured through the
                                         // HANG_DET registers of the base-config block; in smc it
                                         // becomes peripheral interrupt 30.
+  output logic axi_hang_sys_timeout_o,  // System AXI hang detector timeout, ungated by its
+                                        // interrupt enable.
+  output logic axi_hang_sep_timeout_o,  // SEP AXI hang detector timeout, ungated by its
+                                        // interrupt enable.
+  output logic axi_hang_data_timeout_o  // Data-accelerator AXI hang detector timeout, ungated by
+                                        // its interrupt enable.
 );
 
   /////////////////////////
@@ -755,6 +761,7 @@ module smc_base #(
     .irq_test_i       (hang_det_sys_axi_irq_test),
     .threshold_i      (hang_det_sys_axi_threshold),
     .bus_active_o     (/* UNUSED */),
+    .timeout_o        (axi_hang_sys_timeout_o),
     .irq_o            (hang_irq_sys_axi)
   );
 
@@ -778,6 +785,7 @@ module smc_base #(
     .irq_test_i       (hang_det_sep_axi_irq_test),
     .threshold_i      (hang_det_sep_axi_threshold),
     .bus_active_o     (/* UNUSED */),
+    .timeout_o        (axi_hang_sep_timeout_o),
     .irq_o            (hang_irq_sep_axi)
   );
 
@@ -801,6 +809,7 @@ module smc_base #(
     .irq_test_i       (hang_det_data_accel_irq_test),
     .threshold_i      (hang_det_data_accel_threshold),
     .bus_active_o     (/* UNUSED */),
+    .timeout_o        (axi_hang_data_timeout_o),
     .irq_o            (hang_irq_data_accel)
   );
 

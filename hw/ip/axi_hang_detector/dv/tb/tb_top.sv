@@ -38,6 +38,7 @@ module axi_hang_detector_tb_top #(
 
   // Status / interrupt
   output logic        bus_active_o,
+  output logic        timeout_o,
   output logic        irq_o
 );
 
@@ -64,6 +65,7 @@ module axi_hang_detector_tb_top #(
     .threshold_i     (threshold_i),
 
     .bus_active_o    (bus_active_o),
+    .timeout_o       (timeout_o),
     .irq_o           (irq_o)
   );
 

@@ -5,8 +5,9 @@
 
 Per run it:
   1. makes a clean working dir ``<paths.LOGS_DIR>/<name>/`` (so logs/artifacts don't collide),
-  2. stages the SPI flash image to ``data/flash_memory.bin`` and any SMC SRAM image to
-     ``data/smc_sram_image.bin``, and names each to the platform by absolute path,
+  2. stages the SPI flash image to ``data/flash_memory.bin``, any SMC SRAM image to
+     ``data/smc_sram_image.bin`` and any TOML fuse image to ``data/efuse.hex``, and names
+     each to the platform by absolute path,
   3. writes an overlay ini (``@include base`` + straps + fuses + absolute targets/
      configFile),
   4. ``pexpect.spawn``s ``sep-vp overlay.ini <abs elf>`` from ``<run_dir>`` so main.cpp
@@ -23,8 +24,8 @@ from pathlib import Path
 
 import pexpect
 
-from sepvp import paths
-from sepvp.config import SMC_SRAM_DEFAULT_OFFSET, SMC_SRAM_SIZE_BYTES
+from sepvp import fuses, paths
+from sepvp.config import FUSE_PRELOAD_KEY, SMC_SRAM_DEFAULT_OFFSET, SMC_SRAM_SIZE_BYTES
 from sepvp.harness import Harness, HarnessError
 from sepvp.inifile import render_overlay, stage_base_config
 
@@ -32,6 +33,8 @@ from sepvp.inifile import render_overlay, stage_base_config
 # now that `spiBackdoorFile` names it explicitly; kept for continuity with the model's tests.
 _FLASH_REL = Path("data") / "flash_memory.bin"
 _SMC_SRAM_REL = Path("data") / "smc_sram_image.bin"
+_EFUSE_REL = Path("data") / "efuse.hex"
+_FUSE_PRELOAD_RE = re.compile(rf"(?m)^([ \t]*{re.escape(FUSE_PRELOAD_KEY)}[ \t]*:)")
 _TRACE_REL = Path("veer_trace.log")
 
 
@@ -75,6 +78,9 @@ class SepVpHarness(Harness):
         self.log_path = self.run_dir / "sep-vp.log"
         self.overlay_path = self.run_dir / "overlay.ini"
         self._log_file = None
+        self._efuse_image = (
+            fuses.load_toml_image(config.otp) if config.otp and fuses.is_toml(config.otp) else None
+        )
 
     # -- ini generation --------------------------------------------------------
     def _abs_path_overrides(self):
@@ -129,6 +135,10 @@ class SepVpHarness(Harness):
                     "och_sep_ss1.spiBackdoorFile",
                     str((self.run_dir / _FLASH_REL).resolve()),
                 )
+            )
+        if self._efuse_image is not None:
+            overrides.append(
+                ("string", FUSE_PRELOAD_KEY, str((self.run_dir / _EFUSE_REL).resolve()))
             )
         if self.config.smc_sram_image:
             overrides.append(
@@ -185,9 +195,15 @@ class SepVpHarness(Harness):
             dst = self.run_dir / _SMC_SRAM_REL
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(src, dst)
+        if self._efuse_image is not None:
+            dst = self.run_dir / _EFUSE_REL
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            self._efuse_image.write_hex(dst)
         # Stage the base config + its @includes so the overlay's basename @include resolves.
         stage_base_config(self.base_ini, self.run_dir)
         self._disable_base_spi_preload()
+        if self.config.otp:
+            self._disable_staged_fuse_preload()
         self.overlay_path.write_text(self.render_ini())
 
     def _disable_base_spi_preload(self):
@@ -218,6 +234,28 @@ class SepVpHarness(Harness):
         patched = re.sub(r"(?m)^(\s*och_sep_ss1\.spiPreload\b)", r"#\1", text)
         if patched != text:
             staged.write_text(patched)
+
+    def _disable_staged_fuse_preload(self):
+        """Comment out the base config's eFuse preload so ``otp`` is the only fuse source.
+
+        The model applies ``fuse_preload_file`` instead of every per-field parameter
+        whenever that file loads, and the base names it by a path relative to its own
+        directory, so whether a staged run used it would depend on the run dir's location.
+        A TOML ``otp`` re-adds the key with the staged image; a YAML ``otp`` relies on the
+        per-field parameters alone.
+        """
+        hits = [
+            (ini, match)
+            for ini in sorted(self.run_dir.glob("*.ini"))
+            for match in _FUSE_PRELOAD_RE.finditer(ini.read_text())
+        ]
+        if len(hits) != 1:
+            raise HarnessError(
+                f"expected exactly one active {FUSE_PRELOAD_KEY} in the staged base config, "
+                f"found {len(hits)} in {sorted({ini.name for ini, _ in hits})}"
+            )
+        ini, _ = hits[0]
+        ini.write_text(_FUSE_PRELOAD_RE.sub(r"#\1", ini.read_text()))
 
     def _check_inputs(self):
         if not self.sep_vp_bin.is_file():

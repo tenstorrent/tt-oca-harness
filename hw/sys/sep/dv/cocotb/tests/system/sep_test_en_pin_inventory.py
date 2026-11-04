@@ -12,7 +12,7 @@ The inventory changes only by a reviewed edit; the record of the scope is
 ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``
 (``sep-standin-test-en-inventory``). The leaf grades every entry: an entry
 that the hierarchy walk does not find, or finds with another class, fails
-CTL-PIN-WALK by name. The inventory sets the scope of the "every such input"
+CTRL-PIN-WALK by name. The inventory sets the scope of the "every such input"
 reading of ``hw/sys/sep/doc/port_table.adoc`` (``test_en_i``); the expected
 value of each pin comes from that sentence, not from this file.
 """

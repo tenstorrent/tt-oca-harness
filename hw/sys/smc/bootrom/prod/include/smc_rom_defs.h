@@ -129,6 +129,7 @@
  * Scratchpad Register Definitions. Moved here since they are used in both C and assembly.
  * For SMC/SEP coordination per SMC ROM Boot Architecture Specification
  */
+#define SMC_SCRATCH_PARK_REQ 3 /* SEP request to park hart 0; written only by the SEP */
 #define SMC_SCRATCH_MANIFEST_ADDR \
     8 /* Manifest address handoff to SEP (stored as offset from SMC_SRAM_BASE) */
 #define SMC_SCRATCH_SMC_STATUS_TO_SEP 9 /* SMC Status to SEP coordination */
@@ -156,11 +157,16 @@
 #define SMC_SEP_STATUS_MANIFEST_READY_BIT 1 /* Manifest ready */
 #define SMC_SEP_STATUS_BUFFER_READY_BIT 2   /* Status buffer ready */
 #define SMC_SEP_STATUS_SRAM_PROTECTED_BIT 3 /* SRAM protected */
+#define SMC_SEP_STATUS_HART0_PARKED_BIT 4   /* Hart 0 parked with its D-cache written back */
 
 #define SMC_SEP_STATUS_SRAM_INIT (1U << SMC_SEP_STATUS_SRAM_INIT_BIT)
 #define SMC_SEP_STATUS_MANIFEST_READY (1U << SMC_SEP_STATUS_MANIFEST_READY_BIT)
 #define SMC_SEP_STATUS_BUFFER_READY (1U << SMC_SEP_STATUS_BUFFER_READY_BIT)
 #define SMC_SEP_STATUS_SRAM_PROTECTED (1U << SMC_SEP_STATUS_SRAM_PROTECTED_BIT)
+#define SMC_SEP_STATUS_HART0_PARKED (1U << SMC_SEP_STATUS_HART0_PARKED_BIT)
+
+/* Scratch 3 value that requests a park; any other value is no request. */
+#define SMC_PARK_REQ_VALUE 0x50524B31 /* "PRK1" */
 
 /*
  * AXI Zeroer Control FSM Register Definitions

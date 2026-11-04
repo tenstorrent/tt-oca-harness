@@ -103,7 +103,7 @@ addrmap plic {
     CLAIM_COMPLETE  CORE3_SEIP_CLAIM_COMPLETE   @0x207004;
 
 `ifdef OCAH_DOC_MEMORY_MAP
-    ocah_hole_note = "0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.";
+    ocah_hole_note = "0x544, 0x102C and the word 0x2C past each enable context (0x202C, 0x20AC, ... 0x23AC) are the upper halves of live 64-bit words, so a 64-bit read there returns live data.";
 `endif
 };
 

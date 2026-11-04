@@ -8,7 +8,8 @@ after the first write's request phase, and to report the AW channel's stall
 cycles and stability across the pair. Every
 claim is judged against a per-cycle wire recording of the l_axi nets, and data
 integrity is cross-checked through the lite slave's backdoor so an
-ordering-only pass cannot mask a misrouted beat.
+ordering-only pass cannot mask a misrouted beat. The deferred path is also
+exercised across a non-OKAY write response.
 """
 
 from __future__ import annotations
@@ -29,6 +30,8 @@ from ocah_axi_vip_harness import (
 )
 
 log = logging.getLogger("cocotb.tb.ocah_axi_lite_write_pair_skew_test")
+
+RESP_SLVERR = 0b10
 
 # The launch pipeline (queue -> pause release -> VALID drive) adds at most one
 # cycle of slack on the delayed channel; the skew must never be shorter than
@@ -187,7 +190,7 @@ async def ocah_axi_lite_write_pair_skew_test(dut) -> None:
 
     # Unique word addresses for every pair so a misrouted beat is visible.
     addrs: list[int] = []
-    while len(addrs) < 2 * (n_ops + len(DIRECTED_CORNERS)) + 1:
+    while len(addrs) < 2 * (n_ops + len(DIRECTED_CORNERS) + 1) + 1:
         addr = rng.randrange(0, 2**14) & ~0x3
         if addr not in addrs:
             addrs.append(addr)
@@ -227,9 +230,29 @@ async def ocah_axi_lite_write_pair_skew_test(dut) -> None:
         )
         index += 1
 
-    # A plain write afterwards proves the pair path leaves no pause or
-    # backpressure behind.
     slave.sequence.disable_backpressure()
+
+    # A one-shot SLVERR injected on the first write of a deferred pair must
+    # reach that write's result alone and leave its word unwritten.
+    err_a, err_b = addrs[2 * index], addrs[2 * index + 1]
+    stored = slave.sequence.read32(err_a)
+    data_a, data_b = rng.getrandbits(32), rng.getrandbits(32)
+    slave.sequence.inject_error(err_a, RESP_SLVERR, read=False, write=True)
+    result = await seq.write_pair_skewed_result(
+        err_a, data_a, err_b, data_b, b_ready_delay=3, check_response=False
+    )
+    assert result.first.resp == RESP_SLVERR and result.second.ok, (
+        f"injected SLVERR: resp a=0x{result.first.resp:x} b=0x{result.second.resp:x}"
+    )
+    backdoor = (slave.sequence.read32(err_a), slave.sequence.read32(err_b))
+    assert backdoor == (stored, data_b), (
+        f"injected SLVERR: backdoor 0x{backdoor[0]:08x}/0x{backdoor[1]:08x} != "
+        f"0x{stored:08x}/0x{data_b:08x}"
+    )
+    index += 1
+
+    # A plain write afterwards proves the pair path leaves no pause,
+    # backpressure or injected error behind.
     last = addrs[-1]
     data = rng.getrandbits(32)
     wres = await seq.write_result(last, data)

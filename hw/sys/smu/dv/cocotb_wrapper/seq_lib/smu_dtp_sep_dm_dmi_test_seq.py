@@ -252,7 +252,9 @@ class smu_dtp_sep_dm_dmi_test_seq:
         idcode = await raw.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-SEP-DMI-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-SEP-DMI-JTAG-READY", idcode, DTP_DEFAULT_IDCODE, evidence="CHK-SEP-DMI-JTAG-READY"
+        )
         self.s1_ok = True
 
         unsel_mon = cocotb.start_soon(self._observe_tms(EDGE_SAMPLE_CYCLES))
@@ -297,7 +299,12 @@ class smu_dtp_sep_dm_dmi_test_seq:
                 f"SEP STAP selected TMS not distinguishable from unselected "
                 f"sel={sel['sep_edges']} unsel={unsel['sep_edges']}"
             )
-        sb.expect_eq("CHK-SEP-DMI-STAP-SEL", sel["sep_edges"], sel["ptap_edges"])
+        sb.expect_eq(
+            "CHK-SEP-DMI-STAP-SEL",
+            sel["sep_edges"],
+            sel["ptap_edges"],
+            evidence="CHK-SEP-DMI-STAP-SEL",
+        )
         self.s2_ok = True
         self._log(
             f"CHK-SEP-DMI-STAP-SEL sep_edges={sel['sep_edges']} ptap_edges={sel['ptap_edges']}"

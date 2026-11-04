@@ -296,9 +296,11 @@ and runs the pin rules. Its contents:
   Two trees by simulator capability: the TDO-timing and TAP-state rules use
   `OCAH_SVA_RULE` (`hw/common/assert/ocah_sva_macros.svh`) and run on every
   simulator, Verilator included under `--assert`, and on licensed formal
-  backends under `FORMAL`; the X-hygiene rules and the covers use
-  `OCAH_RULE` / `OCAH_COVER` and run on four-state simulators and licensed
-  backends only. Each rule belongs to the side that drives its signals, the
+  backends under `FORMAL`; the X-hygiene rules use `OCAH_RULE` and run on
+  four-state simulators and licensed backends only. The `OCAH_JTAG_C_*`
+  covers use `OCAH_FCOV_COVER` (`hw/common/assert/ocah_fcov_macros.svh`) and
+  run on every simulator; Verilator records them as user coverage points.
+  Each rule belongs to the side that drives its signals, the
   host (TMS, TDI) or the TAP (TDO, its enable, the state), and
   `ASSUME_MASTER_RULES` / `ASSUME_SLAVE_RULES` emit that side's rules as
   assumptions; both default to assertions.

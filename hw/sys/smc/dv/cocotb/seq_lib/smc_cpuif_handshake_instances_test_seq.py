@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B1_008 ANCHOR: smc_cpuif_handshake_instances_test
-# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 4d68d1879a666d752f86205bbe7816fd6beb72a0287f15da626741cf702c43c4
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 8 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 6 RECORD-SHA256: f165cbf1e38c36bc5b0814ec5d5439e1f9733d3ed543509569a5eb40f6507947
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 9 ENV: cocotb
 """The AXI-Lite front end of every generated register-block instance, pipelined and held.
 
 `smc_cpuif_handshake_test` drives instance 0 of each register block. This
@@ -58,7 +58,8 @@ number of cycles after the response's VALID is first seen; for a W-ahead write
 the AW source is held and released so that AW VALID rises exactly the driven
 number of cycles after W VALID, which the monitor measures.
 
-One instance of each family in ``LONG_HOLD_FAMILIES`` then repeats the held
+Every instance of each family in ``LONG_HOLD_EVERY_INSTANCE`` and the first
+instance of every other family in ``LONG_HOLD_FAMILIES`` then repeat the held
 groups with the ready released 512 cycles after the first response VALID
 instead of 16, and must hold the head response unchanged for all of them.
 """
@@ -76,11 +77,13 @@ from ocah_axi_vip import AxiTimingProfile
 
 from .smc_addr_map import GPIO_INTF_NUM, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_log_engine_utils import DLL_OFFSET, LCR_DLAB, uart_base, uart_reg
+from .smc_log_engine_utils import DLL_OFFSET, DLM_OFFSET, LCR_DLAB, uart_base, uart_reg
 from .smc_mailbox_data_error_test_seq import CLOCK_GATE_CONTROL, MAILBOX_CG_EN
 from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_register
 
 RESP_OKAY = 0
+# The divisor-latch window places DLL and DLM back to back, one register apart.
+DLL_WIDTH = DLM_OFFSET - DLL_OFFSET
 
 # Each group wait is bounded below the driver's own 50 us per-access bound, so
 # an expiry reports the outstanding count before the driver raises.
@@ -97,8 +100,10 @@ WRITEBACK_LEAD = 2
 HOLD_CYCLES = 16
 HELD_DEPTH = 16
 LONG_HOLD_CYCLES = 512
-# One instance of each of these families takes the held groups again behind
-# LONG_HOLD_CYCLES; a family missing from the instance set fails the run.
+# These families take the held groups again behind LONG_HOLD_CYCLES: every
+# instance of a family in LONG_HOLD_EVERY_INSTANCE, the first instance of every
+# other one. A family missing from the instance set, or an every-instance family
+# whose instance count differs from the contract's, fails the run.
 LONG_HOLD_FAMILIES = (
     "inbound_filter",
     "outbound_filter",
@@ -117,6 +122,15 @@ LONG_HOLD_FAMILIES = (
     "straps",
     "i2c_ctrl",
 )
+LONG_HOLD_EVERY_INSTANCE = {
+    "inbound_filter": 16,
+    "outbound_filter": 16,
+    "mmode_remap": 8,
+    "xvisor_remap": 8,
+    "alias_remap": 8,
+    "telemetry_receiver": 3,
+}
+LONG_HOLD_INSTANCES = 69
 # Read-arrival offsets swept behind write-backs of the reference, as in the
 # instance-0 leaf: which offset lines a read accept up with a write's
 # acknowledge depends on the path in front of each instance.
@@ -300,6 +314,10 @@ def _deposit(k: int, mask: int) -> int:
     return out
 
 
+def _lcr_width(wrap: int) -> int:
+    return rdl_contract(f"smc_uart_wrap/uart_log_engine_wrap[{wrap}]/uart/LCR").width_bytes
+
+
 def _indexed(sym: str, path: str, idx: int) -> RdlReg:
     """Instance ``idx`` of ``path`` (a ``{}`` marks the index), held to both maps."""
     reg = rdl_contract(path.format(idx))
@@ -316,14 +334,14 @@ def build_instances() -> tuple[Inst, ...]:
     out: list[Inst] = []
     assert GPIO_INTF_NUM == 67, f"GPIO_INTF_NUM is {GPIO_INTF_NUM}, the contract names 0..66"
     for i in range(GPIO_INTF_NUM):
-        sym = "SMC_TOP_GPIO_INTF_BASE_ADDR"
-        a = _indexed(sym, "gpio_intf[{}]/ACCESS_FILTER", i)
-        b = _indexed(sym, "gpio_intf[{}]/DATA_CTRL", i)
+        sym = "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR"
+        a = _indexed(sym, "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", i)
+        b = _indexed(sym, "gpio_intf_wrap/gpio_intf[{}]/DATA_CTRL", i)
         _check_probe(a, written=True)
         _check_probe(b, written=True)
         out.append(
             Inst(
-                f"gpio_intf[{i}]",
+                f"gpio_intf_wrap/gpio_intf[{i}]",
                 "gpio_intf",
                 a.addr,
                 a.width_bytes,
@@ -338,9 +356,9 @@ def build_instances() -> tuple[Inst, ...]:
             )
         )
     for bank in ("inbound", "outbound"):
-        sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_BASE_ADDR"
+        sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR"
         for i in range(16):
-            path = f"smc_{bank}_filter_ctrl[{{}}]/"
+            path = f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[{{}}]/"
             cfg = _indexed(sym, path + "FILTER_CONFIG", i)
             a = _indexed(sym, path + "START_ADDR", i)
             b = _indexed(sym, path + "END_ADDR", i)
@@ -371,8 +389,11 @@ def build_instances() -> tuple[Inst, ...]:
                 )
             )
     for fam in ("mmode", "xvisor"):
-        sym = f"SMC_TOP_SMC_{fam.upper()}_REMAP_BASE_ADDR"
-        regs = [_indexed(sym, f"smc_{fam}_remap[{{}}]/REGION/region_attrs", i) for i in range(8)]
+        sym = f"SMC_TOP_SMC_{fam.upper()}_REMAP_WRAP_OUTPUT_REMAP_BASE_ADDR"
+        regs = [
+            _indexed(sym, f"smc_{fam}_remap_wrap/output_remap[{{}}]/REGION/region_attrs", i)
+            for i in range(8)
+        ]
         for i, a in enumerate(regs):
             b = regs[(i + 1) % len(regs)]
             _check_probe(a, written=True)
@@ -393,11 +414,11 @@ def build_instances() -> tuple[Inst, ...]:
                     b_zero=_mask(b, "valid"),
                 )
             )
-    sym = "SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR"
+    sym = "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_BASE_ADDR"
     for i in range(8):
-        a = _indexed(sym, "smc_alias_remap[{}]/REGION/region_start", i)
-        b = _indexed(sym, "smc_alias_remap[{}]/REGION/region_end", i)
-        attrs = _indexed(sym, "smc_alias_remap[{}]/REGION/region_attrs", i)
+        a = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_start", i)
+        b = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_end", i)
+        attrs = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_attrs", i)
         for reg in (a, b, attrs):
             _check_probe(reg, written=reg is not attrs)
         out.append(
@@ -443,7 +464,7 @@ def build_instances() -> tuple[Inst, ...]:
                 f"uart_16550_dl[{w}]",
                 "uart_16550_dl",
                 uart_base(w) + DLL_OFFSET,
-                4,
+                DLL_WIDTH,
                 False,
                 dlab_wrap=w,
             )
@@ -496,7 +517,7 @@ def build_instances() -> tuple[Inst, ...]:
             "straps",
             "straps",
             smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR"),
-            4,
+            rdl_register("smc_external/mandatory/straps/STRAPS_LO").width_bytes,
             False,
         )
     )
@@ -586,7 +607,19 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         for fam in LONG_HOLD_FAMILIES:
             names = [x.name for x in self.instances if x.family == fam]
             assert names, f"long-hold family {fam} has no instance in the set"
-            self.long_hold[names[0]] = fam
+            if fam in LONG_HOLD_EVERY_INSTANCE:
+                assert len(names) == LONG_HOLD_EVERY_INSTANCE[fam], (
+                    f"long-hold family {fam} has {len(names)} instances, the contract lists "
+                    f"{LONG_HOLD_EVERY_INSTANCE[fam]}"
+                )
+            else:
+                names = names[:1]
+            for name in names:
+                self.long_hold[name] = fam
+        assert len(self.long_hold) == LONG_HOLD_INSTANCES, (
+            f"the long-hold set holds {len(self.long_hold)} instances, the contract lists "
+            f"{LONG_HOLD_INSTANCES}"
+        )
         self.long_families: list[str] = []
         self.long_waits = 0
         self.waits = 0
@@ -1182,10 +1215,12 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         saved_lcr = None
         if x.dlab_wrap is not None:
             lcr = uart_reg(x.dlab_wrap, "LCR")
-            item = self._rd(x, "lcr_saved", addr=lcr, width=4)
+            item = self._rd(x, "lcr_saved", addr=lcr, width=_lcr_width(x.dlab_wrap))
             await self._run(f"{x.name}_lcr_saved", [item])
             saved_lcr = item.rdata
-            await self._write(x, "lcr_dlab", saved_lcr | LCR_DLAB, addr=lcr, width=4)
+            await self._write(
+                x, "lcr_dlab", saved_lcr | LCR_DLAB, addr=lcr, width=_lcr_width(x.dlab_wrap)
+            )
         values = None
 
         cocotb.log.info("STEP S1: %s reference read of 0x%x", x.name, x.addr)
@@ -1237,8 +1272,9 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
 
         if saved_lcr is not None:
             lcr = uart_reg(x.dlab_wrap, "LCR")
-            await self._write(x, "lcr_restore", saved_lcr, addr=lcr, width=4)
-            got = await self._read(x, "lcr_restore_rb", addr=lcr, width=4, expected=saved_lcr)
+            width = _lcr_width(x.dlab_wrap)
+            await self._write(x, "lcr_restore", saved_lcr, addr=lcr, width=width)
+            got = await self._read(x, "lcr_restore_rb", addr=lcr, width=width, expected=saved_lcr)
             assert got == saved_lcr, f"{x.name}: LCR restore read 0x{got:x}, saved 0x{saved_lcr:x}"
         return times
 
@@ -1262,7 +1298,13 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         mon_task = cocotb.start_soon(self.mon.run())
         try:
             # The mailbox apertures answer only with their clock enabled.
-            cg = Inst("clock_gate_control", "smc_base_config", CLOCK_GATE_CONTROL, 8, False)
+            cg = Inst(
+                "clock_gate_control",
+                "smc_base_config",
+                CLOCK_GATE_CONTROL,
+                rdl_register("smc_base_config/CLOCK_GATE_CONTROL").width_bytes,
+                False,
+            )
             saved_cg = await self._read(cg, "saved")
             await self._write(cg, "mailbox_on", saved_cg | MAILBOX_CG_EN)
             await self._read(cg, "mailbox_on_rb", expected=saved_cg | MAILBOX_CG_EN)
@@ -1288,14 +1330,18 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         n_pin = sum(1 for x in self.instances if x.pinned)
         t = self.tally
         assert t["REFERENCE"].instances == n_all
-        assert sorted(self.long_families) == sorted(LONG_HOLD_FAMILIES), (
-            f"long-hold legs ran on families {self.long_families}, the contract lists "
-            f"{LONG_HOLD_FAMILIES}"
+        assert sorted(self.long_families) == sorted(self.long_hold.values()), (
+            f"long-hold legs ran on families {self.long_families}, the long-hold set lists "
+            f"{sorted(self.long_hold.values())}"
+        )
+        assert set(self.long_families) == set(LONG_HOLD_FAMILIES), (
+            f"long-hold legs ran on families {sorted(set(self.long_families))}, the contract "
+            f"lists {LONG_HOLD_FAMILIES}"
         )
         for term in TERMS:
             want = n_pin if term in PINNED_ONLY_TERMS else n_all
             if term == "LONG-HOLD":
-                want = len(LONG_HOLD_FAMILIES)
+                want = LONG_HOLD_INSTANCES
             if term == "W-AHEAD-WB":
                 assert t[term].instances + len(self.logged_writeback) == n_all
                 continue
@@ -1399,13 +1445,15 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
             hg.inflight,
         )
         cocotb.log.info(
-            "CHK-CPUIF-LONG-HOLD: %d families x %d behind a %d-cycle hold, %d/%d in order, "
+            "CHK-CPUIF-LONG-HOLD: %d instances in %d families x %d behind a %d-cycle hold, "
+            "%d/%d in order, "
             "0 lost, 0 duplicated; reads==reference-or-last-acked-write %d, "
             "reads==overlapping-write %d (SF-010, logged; per match AR/R/AW/B cycles), "
             "reads==no-write-of-group 0; head held cycles RREADY min/max=%d/%d BREADY "
             "min/max=%d/%d, head unchanged while held; distinct-ID groups %d accesses; "
             "instances %s",
             lh.instances,
+            len(set(self.long_families)),
             HELD_DEPTH,
             LONG_HOLD_CYCLES,
             HELD_DEPTH,

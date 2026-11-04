@@ -6,7 +6,7 @@ no_cpu / lsu_stub_all_live / real fuse sense / +esrc_noise_force /
 +km_rom_hex=rom_main.rom.parhex (vehicle HOST). Two random classes:
 RANDCFG for the delivery leg, RAND-REP for the policy leg. ``SepSeededRng``
 draws every value from the leaf seed (``sep_km_key_transfer_rand_plan.py``),
-and the leaf logs each draw as a ``DRAW`` line.
+and the leaf logs each draw as an ``INFO-DRAW`` line.
 
 The testbench LSU master is the SEP host. It reaches the KM only through
 ``km_mailbox_sep``. Every frame is well formed (``SepKmMailbox``), so a
@@ -16,13 +16,17 @@ the evidence that a key arrived:
 
 * AES witness: ECB-256 with ``sideload`` = 1 on one fixed block. ``key`` when
   the output equals the AES-256 golden of the delivered words 0 to 7
-  (``env/sep_aes_golden.py``). Any other output, or no output within the
-  window W, is ``other``. The output of an AES without a key is not stated, so
-  an ``other`` result is logged as ``OBS-AES-NOKEY`` and never counts as the
-  pass of a refusal or a shred. W is 8 times the duration of the first AES
-  output of the leaf, which always has a key. After ``other`` the leaf resets
-  the AES through ``SW_RESET_N`` bit 2, because an AES that waits for a key
-  stays waiting.
+  (``env/sep_aes_golden.py``), ``none`` when no output comes within the
+  window W, and ``other`` for any other output. In automatic mode the AES
+  starts only with a valid sideload key
+  (``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/theory_of_operation.md``,
+  "System Key-Manager Interface"), and KEY_VALID 0 means the bank holds no
+  valid key (``hw/sys/sep/doc/crypto.adoc``, "Key Manager Key Delivery"), so
+  where no key is expected the result is ``none`` (CHK-AES-NOKEY). An
+  unexpected result where a key is expected is a miss diagnostic (``INFO-AES-OTHER``).
+  W is 8 times the duration of the first AES output of the leaf, which always
+  has a key. After a result other than ``key`` the leaf resets the AES through
+  ``SW_RESET_N`` bit 2, because an AES that waits for a key stays waiting.
 * HMAC witness: keyed HMAC-SHA256 of one fixed message with a fixed software
   key in the KEY registers. ``key`` when the digest equals the golden of the
   delivered words 0 to 7, ``nokey`` when it equals the golden of the software
@@ -55,10 +59,38 @@ Checks:
   CHK-ENG-ORDER     in the transfer of K1 to M and of K3 to 0xFF, the writes of
                     each selected bank form one run, the runs come in DEST_VALID
                     bit order, and each selected bank shows a write.
+  CHK-AES-NOKEY     every AES witness read where the bank holds no key (AES
+                    outside M, the refused masks, after the all-bank shred)
+                    gives no output within W. Controls: CTRL-ALL-BANK-XFER, the
+                    AES output equals the golden of K3 before that shred, and
+                    CTRL-AES-NOKEY-INPUT, every STATUS sample of the read shows
+                    INPUT_READY = 0 (the block reached DATA_IN, not loaded).
+  CHK-DELIV-COUNT   in the transfer of K3 to 0xFF, ``KM-BUS`` shows 2 x width
+                    share writes plus one KEY_CTRL write on each bank (17, 25
+                    for OTBN) and no write outside the mask
+                    (``hw/sys/sep/doc/crypto.adoc``, words per share;
+                    ``hw/ip/key_manager/doc/firmware.adoc``, "Crypto Engine
+                    Drivers": the two shares, then set key_valid).
+  CHK-KM-BUS-PERM   in the transfer of K1 to M and of K3 to 0xFF, the
+                    ``KM-BUS`` share-word writes of each selected bank cover each
+                    of its 2 x width ``KEY_SHARE0``/``KEY_SHARE1`` offsets exactly
+                    once: "must use the Fisher-Yates shuffle to generate the
+                    access order. The crypto-engine drivers use this for
+                    key-share writes and shredding." and "produces a uniformly
+                    random permutation." (``hw/ip/key_manager/doc/firmware.adoc``
+                    :1471-1475). The offsets come from the generated Key Manager
+                    register header. The order inside a bank is not graded:
+                    whether the shuffle is uniform is a probability.
+
+Controls: CTRL-GOLD (the 8, 9 and 16 word rounds equal the golden of the
+leading 8 words), CTRL-REFUSE-Z (the mask Z outside P1 returns -1 with no
+argument), CTRL-ALL-BANK-XFER and CTRL-ALL-BANK-SHRED (the all-bank transfer
+and shred echo 0xFF, the witnesses read ``key`` and then ``nokey`` / ``none``,
+and key_valid reads 0xFF and then 0x00).
 
 The rounds below the share width, the short-key repeat, the four repeated
 transfers, the share-write records of a single-engine transfer and shred, and
-the revoke leg serve only planned checks and do not run.
+the revoke leg serve only non-claimed checks and do not run.
 
 The regression runs the leaf as four shards (``+sep_shard``, ``env/sep_shard.py``),
 each from its own seed and its own boot: shard 1 the AES rounds and shard 2 the
@@ -83,7 +115,12 @@ from env.sep_hmac_golden import hmac_sha256_words
 from env.sep_shard import sep_shard
 from km import sep_km_key_transfer_rand_plan as pl
 from sep_base_test import sep_base_test
-from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_OUTPUT_VALID, SepAes
+from seq_lib.sep_aes_seq import (
+    AES_STATUS,
+    AES_STATUS_INPUT_READY,
+    AES_STATUS_OUTPUT_VALID,
+    SepAes,
+)
 from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_km_mailbox_seq import (
     KM_CMD_ENGINE_SHRED,
@@ -143,12 +180,14 @@ class _BusWatch:
         self.addr = top.km_key_aw_addr_o
         self.writes: list[tuple[int, int]] = []
         self.same_clock = 0
+        self.xz = 0
         self._on = False
         self._task = None
 
     def start(self) -> None:
         self.writes = []
         self.same_clock = 0
+        self.xz = 0
         self._on = True
         self._task = cocotb.start_soon(self._run())
 
@@ -163,9 +202,13 @@ class _BusWatch:
             await ReadOnly()
             if not self._on:
                 return
-            hs = self.test.rd(self.valid, allow_unknown=True) & self.test.rd(
-                self.ready, allow_unknown=True
-            )
+            try:
+                hs = self.test.rd(self.valid) & self.test.rd(self.ready)
+            except AssertionError:
+                # An unknown VALID or READY bit is no handshake; the checks
+                # that read this watch require a count of 0.
+                self.xz += 1
+                continue
             if not hs:
                 continue
             addrs = self.test.rd_known(self.addr)
@@ -187,13 +230,16 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         "CHK-SHRED-SUBSET",
         "CHK-BANKS",
         "CHK-ENG-ORDER",
+        "CHK-AES-NOKEY",
+        "CHK-DELIV-COUNT",
+        "CHK-KM-BUS-PERM",
     )
 
     # ------------------------------------------------------------------ main
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.shard = sep_shard(self, pl.SHARD_EVIDENCE)
         self.chk = SepChkLog(self, TEST, seed)
         self.seed = seed
@@ -239,7 +285,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         await self._wait_sep_reset_n()
         await self.swrst.release("km")
         await self.km.wait_km_ready()
-        self.logger.info("STEP precondition: rom_main booted, RESP_KM_READY over the mailbox")
+        self.chk.info("STEP", step="precondition", event="rom_main_booted_resp_km_ready")
 
         open_graded_window(TEST, self.logger)
         await self._delivery_leg()
@@ -277,11 +323,6 @@ class sep_km_key_transfer_rand_test(sep_base_test):
     def _cyc(self) -> int:
         return int(get_sim_time("ps")) // self.period_ps
 
-    def _ctl(self, name: str, **fields) -> None:
-        """A control line. It shows that the scenario ran and grades nothing."""
-        text = " ".join(f"{k}={v}" for k, v in fields.items())
-        self.logger.info("CTL-%s LOG seed=%d control=1 %s", name, self.seed, text)
-
     def _keyvalid(self) -> int:
         return self.rd_known(cocotb.top.km_engine_key_valid_o) & pl.ALL_BANKS
 
@@ -289,9 +330,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         got = self._keyvalid()
         self.banks.append((label, got, expected))
         if got != expected:
-            self.logger.info(
-                "LOG KM-VALID %s: key_valid=%s expected=%s", label, _h(got), _h(expected)
-            )
+            self.chk.info("KM-VALID", label=label, key_valid=_h(got), expected=_h(expected))
         return got
 
     async def _wait_sep_reset_n(self) -> None:
@@ -321,12 +360,12 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         code = raw - 256 if raw >= 128 else raw
         arg = words[4] if plen >= 4 else None
         await self.km.check_outbound_empty(f"POST-CMD-0x{cmd_id:02x}")
-        self.logger.info(
-            "KM cmd 0x%02x payload=%s code=%d arg=%s",
-            cmd_id,
-            [hex(w) for w in payload[:2]],
-            code,
-            "none" if arg is None else f"0x{arg:08x}",
+        self.chk.info(
+            "KM-CMD",
+            cmd=f"0x{cmd_id:02x}",
+            payload=[hex(w) for w in payload[:2]],
+            code=code,
+            arg="none" if arg is None else f"0x{arg:08x}",
         )
         return code, arg
 
@@ -402,8 +441,16 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         await self.swrst.release("aes")
         await self.aes.wait_idle("post-witness-reset")
 
-    async def _aes_read(self, key: tuple[int, ...] | None, step: str) -> str:
-        """AES witness: ``key`` or ``other``. Resets the AES after ``other``."""
+    async def _aes_read(
+        self, key: tuple[int, ...] | None, step: str, expect_key: bool = True
+    ) -> str:
+        """AES witness: ``key``, ``none`` or ``other``. Resets the AES after a non-key result.
+
+        With ``expect_key`` False the bank holds no key, and CHK-AES-NOKEY
+        grades ``none``. Its control CTRL-AES-NOKEY-INPUT requires every
+        STATUS sample after the DATA_IN writes to read INPUT_READY = 0: the
+        block landed in DATA_IN and was not loaded.
+        """
         golden = aes256_ecb_encrypt_words(list(key[:WITNESS_WORDS]), list(AES_PT)) if key else None
         await self.aes.configure_ecb_enc_256(sideload=True)
         await self.aes.trigger_prng_reseed()
@@ -411,8 +458,11 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         t0 = self._cyc()
         first = self.aes_first_clk is None
         dur = None
+        samples = in_ready = 0
         while True:
             st = await self.aes._rd(AES_STATUS)
+            samples += 1
+            in_ready += bool(st & (1 << AES_STATUS_INPUT_READY))
             el = self._cyc() - t0
             if st & (1 << AES_STATUS_OUTPUT_VALID):
                 dur = el
@@ -429,18 +479,31 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         if first:
             self.aes_first_clk = dur
             self.w_clk = W_FACTOR * dur
-            self.logger.info(
-                "LOG aes_first_clk=%d w_clk=%d (step %s)", self.aes_first_clk, self.w_clk, step
+            self.chk.info(
+                "AES-WINDOW", aes_first_clk=self.aes_first_clk, w_clk=self.w_clk, step=step
             )
-        state = "key" if (golden is not None and out == golden) else "other"
-        if state == "other":
-            self.chk.obs(
-                "AES-NOKEY",
+        if out is None:
+            state = "none"
+        else:
+            state = "key" if (golden is not None and out == golden) else "other"
+        fields = {
+            "step": step,
+            "output": "none" if out is None else "0x" + "".join(f"{w:08x}" for w in out),
+            "aes_first_clk": self.aes_first_clk,
+            "w_clk": self.w_clk,
+        }
+        if not expect_key:
+            self.chk.ctrl(
+                "AES-NOKEY-INPUT",
+                samples > 0 and in_ready == 0,
                 step=step,
-                output="none" if out is None else "0x" + "".join(f"{w:08x}" for w in out),
-                aes_first_clk=self.aes_first_clk,
-                w_clk=self.w_clk,
+                samples=samples,
+                input_ready_samples=in_ready,
             )
+            self.chk.ok("AES-NOKEY", state == "none", **fields)
+        elif state != "key":
+            self.chk.info("AES-OTHER", **fields)
+        if state != "key":
             await self._aes_reset()
         return state
 
@@ -461,7 +524,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             return "key"
         if digest == g_sw:
             return "nokey"
-        self.logger.info("LOG hmac digest=%s (neither golden)", [hex(w) for w in digest])
+        self.chk.info("HMAC-DIGEST", digest=[hex(w) for w in digest], match="neither_golden")
         return "other"
 
     # ------------------------------------------------------------ delivery leg
@@ -470,18 +533,10 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         for i, r in enumerate(self.plan.rounds):
             name = pl.BANK_NAME[r.eng]
             if not r.runs:
-                self.logger.info(
-                    "LOG round%d eng=%s size=%d below the width: serves planned checks only, "
-                    "not run",
-                    i,
-                    name,
-                    r.size,
-                )
+                self.chk.info("ROUND-SKIP", round=i, eng=name, size=r.size, reason="below_width")
                 continue
             if not pl.in_shard(self.shard, r):
-                self.logger.info(
-                    "LOG round%d eng=%s size=%d runs in another shard", i, name, r.size
-                )
+                self.chk.info("ROUND-SKIP", round=i, eng=name, size=r.size, reason="other_shard")
                 continue
             # Step 5: shred every bank; every key_valid reads 0.
             await self._shred_pre(pl.ALL_BANKS, f"round{i} pre-shred")
@@ -533,7 +588,9 @@ class sep_km_key_transfer_rand_test(sep_base_test):
                 **{field: match},
             )
         else:
-            self._ctl("GOLD", eng=name, size=r.size, leading=r.width, state=state, match=int(match))
+            self.chk.ctrl(
+                "GOLD", match, eng=name, size=r.size, leading=r.width, state=state, **{field: match}
+            )
 
     # -------------------------------------------------------------- policy leg
 
@@ -547,7 +604,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         await self.swrst.release("km")
         self.km.reset_host_seq()
         await self.km.wait_km_ready()
-        self.logger.info("STEP warm reset: RESP_KM_READY after the KM warm reset")
+        self.chk.info("STEP", step="warm_reset", event="resp_km_ready")
 
     async def _policy_leg(self) -> None:
         p = self.plan
@@ -555,14 +612,11 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         await self._shred_pre(pl.ALL_BANKS, "policy pre-shred")
         h1 = await self._load(p.k1, p.p1)
         h2 = await self._load(p.k2, p.p2)
-        self.logger.info("LOG policy handles k1=0x%02x k2=0x%02x", h1, h2)
+        self.chk.info("POLICY-HANDLES", k1=_h(h1), k2=_h(h2))
 
         permitted_ok = await self._permitted(h1)
         await self._refusal(h1, permitted_ok)
-        self.logger.info(
-            "LOG revoke leg (order %s) serves planned checks only, not run",
-            ",".join(p.leg_order),
-        )
+        self.chk.info("REVOKE-LEG", order=",".join(p.leg_order), run=0)
         await self._shred_leg()
         await self._all_bank_pass()
 
@@ -577,7 +631,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         hmac = await self._hmac_read(p.k1)
         aes_in = bool(p.m & (1 << pl.AES))
         # The AES is read last: outside M it has no key and can stay waiting.
-        aes = await self._aes_read(p.k1, "policy_permitted")
+        aes = await self._aes_read(p.k1, "policy_permitted", expect_key=aes_in)
         echo_ok = self._xfer_echo_ok(code, arg, h1, p.m)
         wit_ok = hmac == "key" and (aes == "key" if aes_in else aes != "key")
         self.chk.ok(
@@ -602,28 +656,44 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         # Negative stimulus differs from the legal value.
         assert p.x & ~p.p1 & pl.ALL_BANKS, f"X {_h(p.x)} holds no bit outside P1 {_h(p.p1)}"
         assert p.z and not p.z & p.p1, f"Z {_h(p.z)} is not outside P1 {_h(p.p1)}"
+        self.bus.start()
         code_x, arg_x = await self._transfer(h1, p.x)
+        writes_x = len(await self.bus.stop())
+        xz_x = self.bus.xz
+        self.bus.start()
         code_z, arg_z = await self._transfer(h1, p.z)
-        self._ctl(
+        writes_z = len(await self.bus.stop())
+        xz_z = self.bus.xz
+        self.chk.ctrl(
             "REFUSE-Z",
+            code_z == KM_RC_FAILURE and arg_z is None and writes_z == 0 and xz_z == 0,
             p1=_h(p.p1),
             z=_h(p.z),
             code=code_z,
             arg="none" if arg_z is None else f"0x{arg_z:08x}",
+            writes=writes_z,
+            xz_cycles=xz_z,
         )
         hmac = await self._hmac_read(p.k1)
         aes_in = bool((p.x | p.z) & (1 << pl.AES))
-        aes = await self._aes_read(p.k1, "refusal") if aes_in else "not_read"
+        aes = await self._aes_read(p.k1, "refusal", expect_key=False) if aes_in else "not_read"
         kv = self._bank("refused", 0)
         # Control: the same handle to the permitted mask M succeeded in step 14.
         self.chk.ctrl("REFUSE-ALLOW", permitted_ok, m=_h(p.m))
         self.chk.ok(
             "REFUSE",
-            code_x == KM_RC_FAILURE and arg_x is None and hmac == "nokey" and aes != "key",
+            code_x == KM_RC_FAILURE
+            and arg_x is None
+            and writes_x == 0
+            and xz_x == 0
+            and hmac == "nokey"
+            and aes != "key",
             p1=_h(p.p1),
             x=_h(p.x),
             code=code_x,
             arg="none" if arg_x is None else f"0x{arg_x:08x}",
+            writes=writes_x,
+            xz_cycles=xz_x,
             witness_hmac=hmac,
             aes_key=int(aes == "key"),
             keyvalid=_h(kv),
@@ -639,7 +709,9 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         self._bank("shred_leg_v", p.v)
         hmac_before = await self._hmac_read(p.k3)
         assert p.s != p.v and not p.s & ~p.v, f"S {_h(p.s)} is not a proper subset of V {_h(p.v)}"
+        self.bus.start()
         code_s, arg_s = await self._shred(p.s)
+        self._bus_obs("shred_subset", await self.bus.stop())
         echo_s = None if arg_s is None else arg_s & 0xFF
         hmac = await self._hmac_read(p.k3)
         aes = await self._aes_read(p.k3, "shred_subset_outside")
@@ -670,11 +742,16 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         self.bus.start()
         code, arg = await self._transfer(self.h3, pl.ALL_BANKS)
         writes = await self.bus.stop()
+        self._grade_deliv_count(writes, pl.ALL_BANKS)
         kv = self._bank("all_bank", pl.ALL_BANKS)
         hmac = await self._hmac_read(p.k3)
         aes = await self._aes_read(p.k3, "all_bank")
-        self._ctl(
+        self.chk.ctrl(
             "ALL-BANK-XFER",
+            self._xfer_echo_ok(code, arg, self.h3, pl.ALL_BANKS)
+            and hmac == "key"
+            and aes == "key"
+            and kv == pl.ALL_BANKS,
             code=code,
             echo=self._echo_mask(arg),
             witness_hmac=hmac,
@@ -685,9 +762,14 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         code_s, arg_s = await self._shred(pl.ALL_BANKS)
         kv_after = self._bank("all_bank_after_shred", 0)
         hmac_after = await self._hmac_read(p.k3)
-        aes_after = await self._aes_read(p.k3, "all_bank_after_shred")
-        self._ctl(
+        aes_after = await self._aes_read(p.k3, "all_bank_after_shred", expect_key=False)
+        self.chk.ctrl(
             "ALL-BANK-SHRED",
+            code_s == KM_RC_SUCCESS
+            and arg_s is not None
+            and arg_s & 0xFF == pl.ALL_BANKS
+            and hmac_after == "nokey"
+            and kv_after == 0,
             code=code_s,
             echo="none" if arg_s is None else _h(arg_s & 0xFF),
             witness_hmac=hmac_after,
@@ -697,7 +779,51 @@ class sep_km_key_transfer_rand_test(sep_base_test):
 
     # ----------------------------------------------------------------- grading
 
+    def _bus_obs(self, leg: str, writes: list[tuple[int, int]]) -> None:
+        """Log the KM-BUS AW handshakes of one leg per bank, in clock order."""
+        banks = [pl.bank_of(port, addr) for port, addr in writes]
+        names = ["unknown" if b is None else pl.BANK_NAME[b] for b in banks]
+        counts = {n: names.count(n) for n in dict.fromkeys(names)}
+        runs = [n for i, n in enumerate(names) if i == 0 or names[i - 1] != n]
+        self.chk.obs(
+            "KM-BUS-AW",
+            leg=leg,
+            bank=",".join(f"{n}:{c}" for n, c in counts.items()) or "-",
+            writes=len(writes),
+            order=",".join(runs) or "-",
+        )
+
+    def _grade_deliv_count(self, writes: list[tuple[int, int]], mask: int) -> None:
+        """Each bank of ``mask`` takes 2 x width share writes and one KEY_CTRL write."""
+        banks = [pl.bank_of(port, addr) for port, addr in writes]
+        got = {b: banks.count(b) for b in range(len(pl.BANK_NAME)) if mask >> b & 1}
+        exp = {b: 2 * pl.WIDTH[b] + 1 for b in got}
+        outside = sum(1 for b in banks if b is None or not mask >> b & 1)
+        self.chk.ok(
+            "DELIV-COUNT",
+            got == exp and outside == 0,
+            mask=_h(mask),
+            bank=",".join(f"{pl.BANK_NAME[b]}:{c}" for b, c in got.items()),
+            expected=",".join(f"{pl.BANK_NAME[b]}:{c}" for b, c in exp.items()),
+            outside_mask=outside,
+            writes=len(writes),
+        )
+
     def _grade_order(self, writes: list[tuple[int, int]], mask: int, leg: str) -> None:
+        perm = pl.grade_perm(writes, mask)
+        self.chk.ok(
+            "KM-BUS-PERM",
+            perm.ok and self.bus.xz == 0,
+            contract="key_manager/doc/firmware.adoc:1471-1475",
+            leg=leg,
+            mask=_h(mask),
+            banks=perm.banks,
+            share_writes=perm.share_writes,
+            expect_share_writes=sum(2 * pl.WIDTH[b] for b in pl.WIDTH if (mask >> b) & 1),
+            repeated=",".join(perm.repeated) or "-",
+            missing=",".join(perm.missing) or "-",
+            xz_cycles=self.bus.xz,
+        )
         # Single KM master: its key-path stores issue one at a time, so the AW
         # handshake order is the write order.
         res = pl.grade_order(writes, mask)

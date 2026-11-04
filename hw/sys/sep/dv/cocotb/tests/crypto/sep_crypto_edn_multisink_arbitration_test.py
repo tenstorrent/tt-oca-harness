@@ -57,7 +57,7 @@ start order with OTBN last. HMAC and KMAC hold their process write, and AES hold
 two blocks with DATA_OUT unread (a stall), until every member is started. A busy
 window runs from the start write response to the last status read that shows busy
 (CTRL-CONC-OVERLAP takes it from DUT status reads only; the process write response of
-HMAC and KMAC is logged as OBS-CONC-PROCESS-WRITE). The PLAN and LEG lines log the
+HMAC and KMAC is logged as INFO-CONC-PROCESS-WRITE). The PLAN and LEG lines log the
 effective start order. In a group
 without an HMAC member, HMAC holds a finished SHA-256 digest (the bystander) and a
 further task reads its DIGEST words while the peers run. The EDN words acked on
@@ -73,7 +73,7 @@ An HMAC DIGEST readback (member and bystander) equals its golden only when every
 the big-endian read of digest bytes 4n..4n+3 (env/sep_hmac_golden.py SepDigestOrder): at
 digest_swap = 0 DIGEST word n is that read (hmac.hjson:465-469, DIGEST, over the FIPS 180-4
 hash value H0 || H1 || ...). The order the first readback matches is logged as
-OBS-HMAC-DIGEST-ORDER.
+INFO-HMAC-DIGEST-ORDER, which names CHK-CONC-RESULT and CHK-CONC-HOLD as its graders.
 The specification implies the independence of the engines (separate host paths,
 hw/sys/sep/doc/crypto.adoc; per-domain resets, hw/sys/sep/doc/reset_controller.adoc)
 and states no direct rule, so both checks grade the implied contract.
@@ -1254,7 +1254,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         for eng in _CFG_ORDER:
             if eng in g.members:
                 readback = await drivers[eng].configure_op(ops[eng])
-                chk.obs("CONC-CFG", group=g.name, engine=eng, readback=f"0x{readback:08x}")
+                chk.info("CONC-CFG", group=g.name, engine=eng, readback=f"0x{readback:08x}")
 
         records: dict[str, list] = {eng: [] for eng in g.members}
         for eng in g.members:
@@ -1332,7 +1332,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
 
         for eng in g.members:
             if results[eng].process_clk >= 0:
-                chk.obs(
+                chk.info(
                     "CONC-PROCESS-WRITE",
                     group=g.name,
                     engine=eng,
@@ -1440,5 +1440,9 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         close_graded_window(self.logger)
         total = self._edn_words()
         chk.ctrl("CONC-BUDGET", total <= _EDN_BUDGET_WORDS, total=total, budget=_EDN_BUDGET_WORDS)
-        chk.obs("HMAC-DIGEST-ORDER", **self._dorder.fields())
+        chk.info(
+            "HMAC-DIGEST-ORDER",
+            **self._dorder.fields(),
+            graded_by=["CHK-CONC-RESULT", "CHK-CONC-HOLD"],
+        )
         chk.finish()

@@ -57,8 +57,8 @@ Checkers:
                   clock of the hold (tap) and after release, the masked
                   vector equal to the baseline on every clock of the hold and
                   after release, and the stated response of the stalled access.
-  CTL-ARMED       reset reads and the three registers the open tests write.
-  CTL-VEC-LIVE    a mailbox push raises vector bit 0 and its release drops it.
+  CTRL-ARMED       reset reads and the three registers the open tests write.
+  CTRL-VEC-LIVE    a mailbox push raises vector bit 0 and its release drops it.
 """
 
 from __future__ import annotations
@@ -76,7 +76,12 @@ from env.sep_mbox_golden import IRQ_WTIRQ
 from env.sep_pic_map import VEC_GRADED, idle_unstated_line
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import LOCAL_MASTER_ALIAS_REMAP_CTRL_0, SEP_CPU_CTRL, RegBlock, sym
+from sep_reg_meta import (
+    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0,
+    SEP_CPU_CTRL,
+    RegBlock,
+    sym,
+)
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_dma_ops import _D, ST_BUSY, ST_DONE, ST_ERROR, SepDmaOps
@@ -120,7 +125,7 @@ ALIAS_TARGET = ALIAS_ACCESS + ALIAS_OFFSET
 ALIAS_REGION = 0
 OUT_PAIR_SMU = (4, 5)
 OUT_PAIR_ALIAS = (6, 7)
-_AM = LOCAL_MASTER_ALIAS_REMAP_CTRL_0
+_AM = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0
 ALIAS_OFFSET_FIELD = _AM.field_mask("REGION_REGION_ATTRS", "offset")
 ALIAS_VALID_FIELD = _AM.field_mask("REGION_REGION_ATTRS", "valid")
 SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
@@ -167,8 +172,8 @@ class _AliasReg(SepAxiRegDriver):
 
     async def program(self) -> None:
         base = ALIAS_BASE + ALIAS_REGION * (
-            sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR")
-            - sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
+            sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_1__REG_MAP_BASE_ADDR")
+            - sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
         )
         attrs = (ALIAS_OFFSET & ALIAS_OFFSET_FIELD) | ALIAS_VALID_FIELD
         for off, v in (
@@ -181,8 +186,8 @@ class _AliasReg(SepAxiRegDriver):
         got = await self._rd(base + ALIAS_ATTRS) | (await self._rd(base + ALIAS_ATTRS + 4) << 32)
         fc = field_compare(got, attrs, ALIAS_OFFSET_FIELD | ALIAS_VALID_FIELD)
         if not fc.ok:
-            raise AssertionError(f"ALIAS-READBACK FAIL: region={ALIAS_REGION} {fc.fields()}")
-        self.log.info("ALIAS-READBACK LOG: region=%d %s", ALIAS_REGION, fc.fields())
+            raise AssertionError(f"CTRL-ALIAS-READBACK FAIL: region={ALIAS_REGION} {fc.fields()}")
+        self.log.info("CTRL-ALIAS-READBACK LOG: region=%d %s", ALIAS_REGION, fc.fields())
 
 
 class _VecWatch:
@@ -361,8 +366,8 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
             f"{r}=0x{v:x}" for r, v in vals.items()
         )
         if bad:
-            self._ctl_fail("CTL-ARMED", line + f" bad={','.join(bad)}")
-        self.logger.info("CTL-ARMED LOG seed=%d %s", self.c.seed, line)
+            self._ctl_fail("CTRL-ARMED", line + f" bad={','.join(bad)}")
+        self.logger.info("CTRL-ARMED LOG seed=%d %s", self.c.seed, line)
         self.reset_vals = vals
 
     async def _arm(self) -> None:
@@ -384,8 +389,8 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
             f"{r}=0x{got[r] & ARM_FIELD[r]:x}" for r in ARM_OPEN
         )
         if not all(fcs[r].ok for r in ARM_OPEN):
-            self._ctl_fail("CTL-ARMED", ctl)
-        self.logger.info("CTL-ARMED LOG seed=%d %s", self.c.seed, ctl)
+            self._ctl_fail("CTRL-ARMED", ctl)
+        self.logger.info("CTRL-ARMED LOG seed=%d %s", self.c.seed, ctl)
 
     # ---- one stall ----------------------------------------------------------------------
     def _target(self, block: str) -> tuple[int, bool, int, int]:
@@ -555,7 +560,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         self._pass("CHK-STALL-REAL", line)
         if block == "entropy_read":
             self.logger.info(
-                "OBS-ENTROPY-STATUS LOG seed=%d fifo_level=%d status=0x%x",
+                "INFO-ENTROPY-STATUS LOG seed=%d fifo_level=%d status=0x%x",
                 self.c.seed,
                 (seq.rdata & POOL_LEVEL_MASK) >> POOL_LEVEL_LSB,
                 seq.rdata,
@@ -695,7 +700,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         for reg, v in (("IRQEN", IRQ_WTIRQ),):
             resp, _ = await self._ext_acc(SepAxiOp.WRITE, port_base(0, "in") + self.reg_off[reg], v)
             if resp != RESP_OKAY:
-                self._ctl_fail("CTL-VEC-LIVE", f"IRQEN write answered {RESP_NAME.get(resp)}")
+                self._ctl_fail("CTRL-VEC-LIVE", f"IRQEN write answered {RESP_NAME.get(resp)}")
         s = self._seq(
             SepAxiOp.WRITE,
             port_base(0, "in") + self.reg_off["WRITE_DATA"],
@@ -720,8 +725,8 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
                 break
         line = f"bit0_base={base0} bit0_after_push={rise} bit0_after_release={0 if fall else 1}"
         if base0 != 0 or not rise or not fall:
-            self._ctl_fail("CTL-VEC-LIVE", line)
-        self.logger.info("CTL-VEC-LIVE PASS seed=%d %s", self.c.seed, line)
+            self._ctl_fail("CTRL-VEC-LIVE", line)
+        self.logger.info("CTRL-VEC-LIVE PASS seed=%d %s", self.c.seed, line)
 
     # ---- scenario ------------------------------------------------------------------------
     async def run_scenario(self) -> None:
@@ -754,7 +759,7 @@ class sep_cpu_ctrl_timeout_inert_rand_test(sep_base_test):
         self.base = raw & VEC_GRADED
         self.logger.info("%s seed=%d baseline", idle_unstated_line(vec=raw), seed)
         self.logger.info(
-            "VEC-BASELINE LOG seed=%d vec=0x%011x masked=0x%011x", seed, raw, self.base
+            "INFO-VEC-BASELINE LOG seed=%d vec=0x%011x masked=0x%011x", seed, raw, self.base
         )
 
         open_graded_window(TEST, self.logger)
