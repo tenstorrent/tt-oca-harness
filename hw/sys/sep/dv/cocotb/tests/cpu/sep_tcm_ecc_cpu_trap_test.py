@@ -58,7 +58,8 @@ records, the trace events, the pulse counts and the field record:
                   fails once after its other checks if any of them failed.
 
 Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366`` (the
-bit-366 pulse count and widths over the whole run),
+bit-366 pulse counts in total, inside the ``iccm_ue`` window and in the other windows, and the
+widths of the pulses outside that window),
 ``OBS-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
 each window), ``OBS-RAS-<FIELD>-COUNT`` (rises per window) and
 ``OBS-RAS-ICCM_ECC_UE-TRAP`` (the trap or NMI of the uncorrectable fetch,
@@ -896,8 +897,16 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 f"{len(wide)} pulses wider than one clock: {[(p.bit, p.width) for p in wide[:6]]}"
             )
         db366 = [p for p in self.pulses if p.bit == BIT_I_DB]
+        ue_lo, ue_hi = self._window("iccm_ue")
+        outside = [p for p in db366 if not ue_lo <= p.nl <= ue_hi]
         self.logger.info(
-            "OBS-TCM-DBG366 LOG pulses=%d widths=%s", len(db366), [p.width for p in db366[:8]]
+            "OBS-TCM-DBG366 LOG seed=%d pulses_total=%d pulses_iccm_ue=%d pulses_other_windows=%d "
+            "widths_outside_iccm_ue=%s",
+            self.random_seed(),
+            len(db366),
+            len(db366) - len(outside),
+            len(outside),
+            [p.width for p in outside[:8]],
         )
         with_pulse = sum(1 for x in per_word if x)
         body = (

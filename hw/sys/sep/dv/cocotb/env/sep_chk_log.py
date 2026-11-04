@@ -14,7 +14,9 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
   specification states yet. ``blocked(check, reason)`` logs
   ``OBS-BLOCKED CHK-<NAME> reason=<r>``. ``info(name, **fields)`` logs
   ``INFO-<NAME> ...``: a bench record (set-up value, reference timing, leg
-  marker, bookkeeping). None of the three grades anything.
+  marker, bookkeeping), or a re-log of a DUT value whose register contract a named
+  ``CHK-`` grades, in the same leaf or in another leaf. That INFO line names its ``CHK-``,
+  and its leaf when the check is in another leaf. None of the three grades anything.
 * ``finish()`` is the verdict. It raises ``AssertionError`` if any check or
   control failed, or if no check passed. Otherwise it hands the
   ``RESULT <leaf> seed=<n> PASS checks=<k>`` line to ``result_pass`` of the

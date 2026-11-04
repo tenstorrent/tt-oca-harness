@@ -1984,7 +1984,7 @@ them.
 |`CTRL-<NAME>`, `CTRL-MISSING <NAME>` |A control: proof that the stimulus of a check reached its case, so that the check can fail. A missing control fails the leaf. |yes
 |`OBS-<NAME>` |A DUT value whose golden no specification states yet. It prints the value and grades nothing; it becomes a `CHK-` when a specification states the value. |no
 |`OBS-BLOCKED CHK-<NAME>` |A check that this run could not grade, with the reason. |no
-|`INFO-<NAME>` |A bench record: a set-up value, a stimulus draw or redraw, a reference timing that sizes a bench window, a leg marker, or bookkeeping. No specification states it. |no
+|`INFO-<NAME>` |A bench record: a set-up value, a stimulus draw or redraw, a reference timing that sizes a bench window, a leg marker, or bookkeeping. No specification states a bench record. `INFO-` also covers a re-log of a DUT value whose register contract a named `CHK-` grades, in the same leaf or in another leaf; that line names its `CHK-`, and its leaf when the check is in another leaf. |no
 |===
 
 A bench wait that runs past its bound before a check can grade fails the

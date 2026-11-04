@@ -80,10 +80,12 @@ neighbour beat. ``OBS-DMA-CSR-WRITE`` logs the shape and BRESP of every LSU
 write to the secure DMA registers; ``OBS-EXT-READ`` logs every NMI.
 
 The trap cause and value of an unmapped fetch and the cause of an ICCM data
-access are graded; ``OBS-IFU-TRAP`` and ``OBS-LSU-ICCM`` still log every trap
-record, the load value and the DMA status. Every expected value comes
-from the drawn plan and the staged images; no expected value is read from the
-DUT.
+access are graded. ``INFO-IFU-TRAP`` re-logs every trap record, which
+``CHK-IFU-TRAP`` grades. ``INFO-LSU-ICCM`` re-logs the two trap causes, which
+``CHK-LSU-ICCM-CAUSE`` grades, and the load value, which ``CHK-LSU-ICCM`` grades only as
+different from W. ``OBS-LSU-ICCM-DMA-STATUS`` logs the SECURE_DMA ``STATUS`` of each copy, which
+no check grades. Every expected value comes from the drawn plan and the staged images; no
+expected value is read from the DUT.
 
 cpu run mode (real core), ``+skip_fuse_sense``; Verilator and VCS.
 """
@@ -146,7 +148,10 @@ from seq_lib.sep_dma_ops import (
     RANGE_VALID,
     SECURE_DMA,
     ST_ABORTED,
+    ST_BUSY,
+    ST_CHUNK_DONE,
     ST_CLEAN_W1C,
+    ST_DIGEST_VALID,
     ST_DONE,
     ST_ERROR,
     STATUS,
@@ -323,6 +328,19 @@ def _fail_if_ne(a: Asm, addr: int, exp: int, mask: int, code: int, tag: str) -> 
     a.op(sw(A1, GP, OFF["FAIL"] + 4))
     a.li(T0, code).op(sw(T0, GP, OFF["FAIL"]), FENCE).j("halt")
     a.label(f"ok_{tag}")
+
+
+def _dma_status_bits(status: int) -> str:
+    """The six SECURE_DMA ``STATUS`` bits of one copy, in register order."""
+    bits = (
+        ("BUSY", ST_BUSY),
+        ("DONE", ST_DONE),
+        ("ABORTED", ST_ABORTED),
+        ("ERROR", ST_ERROR),
+        ("SHA2_DIGEST_VALID", ST_DIGEST_VALID),
+        ("CHUNK_DONE", ST_CHUNK_DONE),
+    )
+    return ",".join(f"{n}={int(bool(status & m))}" for n, m in bits)
 
 
 def _dma_copy(a: Asm, src: int, dst: int, tag: str, code: int) -> None:
@@ -803,7 +821,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             causes = self._recs(f"FB{k}", f"FE{k}", "TRAP_CAUSE")
             tvals = self._recs(f"FB{k}", f"FE{k}", "TRAP_VAL")
             self.logger.info(
-                "OBS-IFU-TRAP LOG fetch=0x%08x mcause=%s mtval=%s",
+                "INFO-IFU-TRAP LOG fetch=0x%08x mcause=%s mtval=%s graded_by=CHK-IFU-TRAP",
                 u,
                 ",".join(f"0x{r.val:x}" for r in causes) or "-",
                 ",".join(f"0x{r.val:08x}" for r in tvals) or "-",
@@ -999,11 +1017,19 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             and pair1[0].val == p.v2_val
         )
         self.logger.info(
-            "OBS-LSU-ICCM LOG load_mcause=%s store_mcause=%s load_value=%s dma_status=%s",
+            "INFO-LSU-ICCM LOG load_mcause=%s store_mcause=%s load_value=%s "
+            "cause_graded_by=CHK-LSU-ICCM-CAUSE value_graded_by=CHK-LSU-ICCM",
             ",".join(f"0x{r.val:x}" for r in traps) or "-",
             ",".join(f"0x{r.val:x}" for r in straps) or "-",
             "X" if load_val is None else f"0x{load_val:08x}",
-            ",".join(f"0x{v:08x}" for v in dma_st),
+        )
+        dma = [(f"0x{v:08x}", _dma_status_bits(v)) for v in dma_st[:3]]
+        dma += [("-", "-")] * (3 - len(dma))
+        self.logger.info(
+            "OBS-LSU-ICCM-DMA-STATUS seed=%d "
+            "dma_d1=%s d1_bits=%s dma_d2=%s d2_bits=%s dma_d3=%s d3_bits=%s",
+            self.random_seed(),
+            *(f for pair in dma for f in pair),
         )
         lc = ",".join(f"0x{r.val:x}" for r in traps) or "-"
         sc = ",".join(f"0x{r.val:x}" for r in straps) or "-"
