@@ -38,7 +38,7 @@ Checks:
   CHK-BOOT-ORDER-WARM
                   at every warm boot COLD_BOOT_DONE reads 1 while the KM is held
                   and after the READY word (``reset_controller.adoc:96,182``;
-                  ``km_csr.rdl:697,701``; ``architecture.adoc:1119``)
+                  ``km_csr.rdl:697,701``; ``architecture.adoc:1127``)
   CHK-BOOT-FLUSH  at each warm reset of the warm-reset leg: the FIFOs keep their
                   words while the KM is held (every stale write OKAY, inbound depth
                   w, outbound depth as before the reset); after the release the
@@ -54,7 +54,7 @@ Checks:
                   first read after the last warm boot, with the bit cleared while
                   the KM was held at that reset (CTRL-BOOT-FLUSHED-CLR): the
                   KM boot flush sets the peer's flushed-by-other status
-                  (``architecture.adoc:232-233``), and the SEP-side IRQ_STATUS
+                  (``architecture.adoc:240-241``), and the SEP-side IRQ_STATUS
                   is not in the KM address map (``key_manager.rdl:107`` maps
                   only ``km_mailbox_km``; ``km_mailbox_sep.rdl:255-263``)
   CHK-RST-AXI-VALID
@@ -618,7 +618,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
 
         ``hw/sys/sep/doc/reset_controller.adoc:96,182``: SW_RESET_N bit 0 drives the
         KM warm reset; ``hw/ip/key_manager/regs/km_csr.rdl:697,701``: the bit stays
-        set until the next cold reset; ``hw/ip/key_manager/doc/architecture.adoc:1119``:
+        set until the next cold reset; ``hw/ip/key_manager/doc/architecture.adoc:1127``:
         on a warm reset ``COLD_BOOT_DONE`` already reads 1. The cold-boot reference
         before every warm reset proves the rise (CHK-BOOT-ORDER).
         """
@@ -829,7 +829,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             "BOOT-FLUSHED-BY-KM",
             flushed_by_km == 1,
             contract=(
-                "key_manager/doc/architecture.adoc:232-233(Mailbox_Transport),"
+                "key_manager/doc/architecture.adoc:240-241(Mailbox_Transport),"
                 "key_manager.rdl:107(mailbox_km),km_mailbox_sep.rdl:255-263(FLUSHED_BY_KM)"
             ),
             boot=tag,
