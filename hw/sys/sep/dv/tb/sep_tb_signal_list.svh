@@ -742,13 +742,19 @@
 `SEP_TB_OUT(logic [31:0], km_sram_wmap_jump_wr_o)
 `SEP_TB_OUT(logic, km_sram_wmap_jump_seen_o)
 // KM-AXIV: the KM CPU AXI4-Lite master valids {ar_valid, aw_valid, w_valid},
-// the readies of the same channels {ar_ready, aw_ready, w_ready}, the response
-// valids the master receives {r_valid, b_valid} and the KM CPU warm reset
-// rst_warm_sync_n.
+// the readies of the same channels {ar_ready, aw_ready, w_ready} and the KM
+// CPU warm reset rst_warm_sync_n. Slave side, bit i = KM crossbar master port
+// i (km_axi_lite_xbar AddrMap index, 10 ports): the AR and AW handshakes, the
+// R and B valids and the R and B handshakes.
 `SEP_TB_OUT(logic [2:0], km_cpu_axi_valid_o)
 `SEP_TB_OUT(logic [2:0], km_cpu_axi_ready_o)
-`SEP_TB_OUT(logic [1:0], km_cpu_axi_rsp_valid_o)
 `SEP_TB_OUT(logic, km_cpu_rst_n_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_ar_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_aw_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_r_valid_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_b_valid_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_r_hs_o)
+`SEP_TB_OUT(logic [9:0], km_cpu_axi_port_b_hs_o)
 // HK-OTP and HK-STRM state: the OTP input is held by the inject; the KM OTP
 // input equals the live OTP word; the withdrawal pulse has been driven since
 // the arm, and the sink TREADY in the pulse clock; the sampler sink TVALID

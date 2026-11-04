@@ -4480,18 +4480,37 @@ module sep_uvm_top
 
     // KM-AXIV: the request valids of the KM CPU AXI4-Lite master (the port the
     // KM AXI SVA binds to), {ar_valid, aw_valid, w_valid}, the readies of the
-    // same channels, the response valids {r_valid, b_valid} the master
-    // receives, and the warm reset of the KM CPU core (rst_warm_sync_n, the
-    // SVA aresetn), on every clock.
+    // same channels, and the warm reset of the KM CPU core (rst_warm_sync_n,
+    // the SVA aresetn), on every clock.
     assign km_cpu_axi_valid_o = {`KM_TAP.cpu_axil_req.ar_valid,
                                  `KM_TAP.cpu_axil_req.aw_valid,
                                  `KM_TAP.cpu_axil_req.w_valid};
     assign km_cpu_axi_ready_o = {`KM_TAP.cpu_axil_resp.ar_ready,
                                  `KM_TAP.cpu_axil_resp.aw_ready,
                                  `KM_TAP.cpu_axil_resp.w_ready};
-    assign km_cpu_axi_rsp_valid_o = {`KM_TAP.cpu_axil_resp.r_valid,
-                                     `KM_TAP.cpu_axil_resp.b_valid};
     assign km_cpu_rst_n_o     = `KM_TAP.rst_warm_sync_n;
+
+    // KM-AXIV, slave side: bit i of each port output is master port i of the
+    // KM crossbar u_xbar, the AddrMap index of km_axi_lite_xbar (0 KPV, 1 KMCSR,
+    // 2 DRBG sampler, 3 mailbox, 4 OTBN, 5 AES, 6 KMAC, 7 HMAC, 8 OTP,
+    // 9 Adams Bridge): the AR and AW handshakes (valid and ready both 1), the
+    // R and B valids and the R and B handshakes, on every clock. Explicit
+    // per-index assigns avoid a genvar-indexed XMR.
+`define KM_AXI_PORT_TAP(i) \
+    assign km_cpu_axi_port_ar_hs_o[i]  = `KM_TAP.u_xbar.xbar_mst_req[i].ar_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_resp[i].ar_ready; \
+    assign km_cpu_axi_port_aw_hs_o[i]  = `KM_TAP.u_xbar.xbar_mst_req[i].aw_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_resp[i].aw_ready; \
+    assign km_cpu_axi_port_r_valid_o[i] = `KM_TAP.u_xbar.xbar_mst_resp[i].r_valid; \
+    assign km_cpu_axi_port_b_valid_o[i] = `KM_TAP.u_xbar.xbar_mst_resp[i].b_valid; \
+    assign km_cpu_axi_port_r_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_resp[i].r_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_req[i].r_ready; \
+    assign km_cpu_axi_port_b_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_resp[i].b_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_req[i].b_ready
+    `KM_AXI_PORT_TAP(0); `KM_AXI_PORT_TAP(1); `KM_AXI_PORT_TAP(2); `KM_AXI_PORT_TAP(3);
+    `KM_AXI_PORT_TAP(4); `KM_AXI_PORT_TAP(5); `KM_AXI_PORT_TAP(6); `KM_AXI_PORT_TAP(7);
+    `KM_AXI_PORT_TAP(8); `KM_AXI_PORT_TAP(9);
+`undef KM_AXI_PORT_TAP
 
     // ------------------------------------------------------------------
     // HK-OTP: KM OTP input rail flip (docs/SEP_TB_ARCH.adoc, inject
