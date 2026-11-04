@@ -260,3 +260,11 @@ reseed = 3
 timeout_sec = 3600
 tags = ["ci", "irq", "hang"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_plic_gateway_claim_test"
+module = "smc_plic_gateway_claim_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq"]
+run_modes = ["smoke"]

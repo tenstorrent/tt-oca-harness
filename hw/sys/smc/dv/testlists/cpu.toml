@@ -644,3 +644,11 @@ reseed = 3
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_clint_plic_reset_retention_test"
+module = "smc_clint_plic_reset_retention_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
