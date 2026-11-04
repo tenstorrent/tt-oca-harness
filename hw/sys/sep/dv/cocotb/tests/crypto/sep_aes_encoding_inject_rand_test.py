@@ -46,6 +46,10 @@ Checkers:
   CHK-AES-INV-MODE-RB after the invalid pair, CTRL_SHADOWED reads MODE =
                       AES_NONE, KEY_LEN = AES_256 and MANUAL_OPERATION = 1;
                       the written MODE is an invalid code.
+  CHK-AES-INV-MODE-CTRL-CT  the control block after each MODE cell equals
+                      the AES-256 golden E_K(P): a write to CTRL_SHADOWED
+                      starts a new message (``aes.hjson``), so no state of the
+                      AES_NONE cell reaches it.
 The readback of an invalid KEY_LEN is logged (``OBS-AES-ENC-RB``) and not
 graded.
 """
@@ -209,6 +213,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
         "CHK-AES-INV-OP-RB",
         "CHK-AES-INV-MODE",
         "CHK-AES-INV-MODE-RB",
+        "CHK-AES-INV-MODE-CTRL-CT",
     )
 
     async def run_scenario(self) -> None:
@@ -477,6 +482,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
         close_graded_window(self.logger)
         self._grade_mapped("AES-INV-MODE-RB", cell, "mode", word, MODE_NONE, rb, reason)
         ctrl_clk = -1
+        ctrl_ct: list[int] | None = None
         try:
             await self._key_load(
                 self._ctrl_word(
@@ -490,9 +496,6 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
             samples = await self._wait(ST_OV, ST_OV, OV_BOUND_FACTOR * t_blk, "ctrl_output_valid")
             ctrl_clk = samples[-1][0] - t0
             ctrl_ct = await self._read_out()
-            self.chk.obs(
-                "AES-INV-MODE-CTRL-CT", **{"ctrl_ct==golden256": int(ctrl_ct == _enc(key, pt))}
-            )
         except TrialTimeout:
             ctrl_clk = -1
         self.chk.ctrl(
@@ -516,3 +519,9 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
         if reason:
             fields["reason"] = reason
         self.chk.ok("AES-INV-MODE", ok, **fields)
+        ct_g = ctrl_ct
+        ct_ok = ct_g == _enc(key, pt)
+        ct_fields = {"cell": f"mode.{kind}", "ctrl_ct==golden256": int(ct_ok)}
+        if not ct_ok:
+            ct_fields["reason"] = "timeout" if ct_g is None else "mismatch"
+        self.chk.ok("AES-INV-MODE-CTRL-CT", ct_ok, **ct_fields)
