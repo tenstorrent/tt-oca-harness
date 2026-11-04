@@ -24,7 +24,9 @@ Probes: ``HOST-MBX`` (``SEP_STATUS``, ``SEP_READ_DATA``, ``SEP_IRQ_STATUS``),
 (``km_csr_cold_boot_done_o``, ``km_csr_scrambler_key_wr_count_o``,
 ``km_csr_scrambler_ctrl_o``), and ``KM-AXIV`` (``km_cpu_axi_valid_o``, the KM
 CPU AXI master valids, ``km_cpu_axi_ready_o``, the readies of the same
-channels, and ``km_cpu_rst_n_o``, the KM CPU reset). Injects: none.
+channels, ``km_cpu_axi_rsp_valid_o``, the response valids ``{r_valid,
+b_valid}`` the master receives, and ``km_cpu_rst_n_o``, the KM CPU reset).
+Injects: none.
 Every reset is a legal host stimulus: ``SW_RESET_N`` bit 0 for a warm reset,
 ``rst_ni`` for the cold resets.
 
@@ -59,7 +61,7 @@ Checks:
                   only ``km_mailbox_km``; ``km_mailbox_sep.rdl:255-263``)
   CHK-RST-AXI-VALID
                   at each AXI reset point (rst_ni driven low in the half clock
-                  of a pending KM CPU read, then of a pending write) the three
+                  of a KM CPU read with its ready at 1, then of a write) the three
                   KM CPU AXI valids read 0 in the sample after the first rising
                   edge with the KM CPU reset at 0, and in every later sample up
                   to the end of the rst_ni pulse and the SEP release, with that
@@ -67,11 +69,39 @@ Checks:
                   timing; a valid may stay high up to that first edge and no
                   later). The check grades the valid level only: a request
                   that completes a handshake on that first edge also meets
-                  it. OBS-RST-AXI-READY logs the readies of the first sample
-                  with the reset at 0
+                  it. INFO-RST-AXI-READY logs the readies of the first sample
+                  with the reset at 0: no value is graded, because ARREADY,
+                  AWREADY and WREADY are not constrained during reset
+                  (``hw/ip/key_manager/doc/architecture.adoc:189-190``)
+  CHK-RST-AXI-NORESP
+                  at each AXI reset point the request that completes a
+                  handshake on the reset edge is dropped: the response valids
+                  r_valid and b_valid read 0 in every sample from the first
+                  sample with the KM CPU reset at 0 to the end of that reset
+                  (AXI A3.1.2; ``architecture.adoc:185-191``), and after the
+                  next KM CPU release (``km_cpu_rst_n_o`` rises) each reads 0
+                  up to and including the first of: the next handshake of its
+                  own request channel (AR for r_valid, AW for b_valid), the
+                  next KM CPU reset assertion (that sample is not graded), or
+                  READY_BOUND_CLK samples after the release
+                  (``architecture.adoc:190-191``). A background watcher per
+                  point grades it and logs the end reason of each window; a
+                  watcher that has not graded both windows at the end of the
+                  leaf fails it. The check grades the valid level, so a stale
+                  response that is never accepted also fails it. At a warm
+                  reset the KM AXI SVA bind ``u_km_axil_sva`` grades only
+                  accepted R and B responses; this leaf does not add a check
+                  there
 
 Controls: CTRL-RST-AXI-PENDING (the point's valid reads 1 in the sample before
-the KM CPU reset reads 0); CTRL-BOOT-FLUSHED-CLR (FLUSHED_BY_KM reads 0 after
+the KM CPU reset reads 0); CTRL-RST-AXI-HANDSHAKE (read point: ar_valid and
+ar_ready both read 1 in the first sample with the KM CPU reset at 0, so the
+dropped-request case of CHK-RST-AXI-NORESP is reached; the write point logs the
+same record as INFO-RST-AXI-HANDSHAKE ``handshake=0/1`` and grades nothing);
+CTRL-RST-AXI-RSP-LIVE (once per leaf: after a window of CHK-RST-AXI-NORESP ends
+on its own handshake, r_valid and b_valid each read 1 in a later sample, before
+the next KM CPU reset and within READY_BOUND_CLK samples, at some point, so the
+tap carries the response valids); CTRL-BOOT-FLUSHED-CLR (FLUSHED_BY_KM reads 0 after
 its W1C while the KM is held at the last warm reset); CHK-SEQ0 (``control=1``: RESP_KM_READY at response sequence 0 and the
 first command at sequence 0 answered with success at response sequence 1, after
 the cold-boot reference and after each warm reset of the warm-reset leg); the
@@ -139,13 +169,18 @@ DEPTH_POLLS = 50_000  # polls for a point depth (inbound 0, outbound min(6r, 16)
 FLUSH_POLLS = 50_000  # polls for FLUSHED_BY_KM after the image stream
 POP_MAX_WORDS = 64  # words one pop reads at most
 FRAME_MAX_PLEN = 8  # payload words of the longest frame this leaf reads
-AXI_ARM_BOUND = 200_000  # clocks from the KM release to a pending request of the point
+AXI_ARM_BOUND = 200_000  # clocks from the KM release to a request of the point with its ready
 AXI_RST_BOUND = 16  # clocks from the rst_ni drive to the KM CPU reset reading 0
 
-# KM-AXIV bits of km_cpu_axi_valid_o: 2 ar_valid, 1 aw_valid, 0 w_valid. The AXI
-# reset points: the read point arms on ar_valid, the write point on aw_valid or
-# w_valid.
+# KM-AXIV bits of km_cpu_axi_valid_o and km_cpu_axi_ready_o: 2 ar, 1 aw, 0 w.
+# The AXI reset points: the read point arms on ar_valid with ar_ready, the write
+# point on aw_valid with aw_ready or w_valid with w_ready.
 AXI_POINTS = (("read", 0b100), ("write", 0b011))
+AXI_AR = 0b100
+AXI_AW = 0b010
+# KM-AXIV bits of km_cpu_axi_rsp_valid_o: 1 r_valid, 0 b_valid.
+AXI_RSP_R = 0b10
+AXI_RSP_B = 0b01
 
 # The boots of one leaf: the cold-boot reference, three warm resets of the
 # warm-reset leg, and the warm, cold and warm boots of the cold-domain leg.
@@ -154,6 +189,10 @@ N_BOOTS = 1 + 3 + 3
 
 def _a(value: int | None) -> str:
     return "none" if value is None else f"0x{value & 0xFFFF_FFFF:08x}"
+
+
+def _live(value: int | None) -> str:
+    return "-" if value is None else str(value)
 
 
 class _Stop(Exception):
@@ -213,6 +252,119 @@ class _Watch:
                 self._armed = False
 
 
+@dataclass
+class _RspWin:
+    """One post-release window of CHK-RST-AXI-NORESP for one response valid."""
+
+    rsp_bit: int
+    hs_bit: int
+    after: int = 0
+    end: str | None = None
+    hs_clk: int | None = None
+    live: int | None = None
+
+
+class _NoResp:
+    """CHK-RST-AXI-NORESP watcher of one AXI reset point (KM-AXIV, ReadOnly samples).
+
+    Starts at the first sample with the KM CPU reset at 0 and ORs the response
+    valids over every reset sample. From the first sample with the reset at 1,
+    each response valid is graded in its own window, which ends at its own
+    channel's handshake (``hs``), at a sample with the reset at 0 (``rst``, not
+    graded) or READY_BOUND_CLK samples after the release (``bound``). The CHK is
+    logged when both windows have ended. A window that ended on its handshake
+    then records whether its response valid reads 1 before the next reset and
+    within READY_BOUND_CLK samples of that handshake (CTRL-RST-AXI-RSP-LIVE).
+    The watcher reads signals only.
+    """
+
+    def __init__(self, test: sep_base_test, point: str, rsp0: int, handshake: int) -> None:
+        self.test = test
+        self.point = point
+        self.handshake = handshake
+        self.rsp_rst = rsp0
+        self.rst_clks = 1
+        self.released = False
+        self.rel = 0
+        self.win = {"r": _RspWin(AXI_RSP_R, AXI_AR), "b": _RspWin(AXI_RSP_B, AXI_AW)}
+        self.logged = False
+        self.stopped = False
+        self._task = None
+
+    def start(self) -> _NoResp:
+        self._task = cocotb.start_soon(self._run())
+        return self
+
+    def stop(self) -> None:
+        self.stopped = True
+        if self._task is not None and not self._task.done():
+            if hasattr(self._task, "cancel"):
+                self._task.cancel()
+            else:
+                self._task.kill()
+
+    def fields(self) -> dict:
+        r, b = self.win["r"], self.win["b"]
+        return {
+            "point": self.point,
+            "rsp_rst": f"0b{self.rsp_rst:02b}",
+            "rst_clks": self.rst_clks,
+            "r_after": r.after,
+            "b_after": b.after,
+            "r_end": r.end or "open",
+            "b_end": b.end or "open",
+            "r_hs_clk": "none" if r.hs_clk is None else r.hs_clk,
+            "b_hs_clk": "none" if b.hs_clk is None else b.hs_clk,
+            "handshake": self.handshake,
+        }
+
+    def _done(self) -> bool:
+        return self.logged and all(w.end != "hs" or w.live is not None for w in self.win.values())
+
+    async def _run(self) -> None:
+        dut = self.test.dut
+        rd = self.test.rd_known
+        while not self._done():
+            await FallingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.stopped:
+                return
+            rst_n = rd(dut.km_cpu_rst_n_o)
+            rsp = rd(dut.km_cpu_axi_rsp_valid_o)
+            if not self.released:
+                if rst_n == 0:
+                    self.rsp_rst |= rsp
+                    self.rst_clks += 1
+                    continue
+                self.released = True
+            hs = rd(dut.km_cpu_axi_valid_o) & rd(dut.km_cpu_axi_ready_o)
+            for w in self.win.values():
+                if w.end is None:
+                    if rst_n == 0:
+                        w.end = "rst"
+                        continue
+                    w.after |= int(bool(rsp & w.rsp_bit))
+                    if hs & w.hs_bit:
+                        w.end = "hs"
+                        w.hs_clk = self.rel
+                    elif self.rel >= READY_BOUND_CLK:
+                        w.end = "bound"
+                elif w.end == "hs" and w.live is None:
+                    if rst_n == 0 or self.rel - w.hs_clk > READY_BOUND_CLK:
+                        w.live = 0
+                    elif rsp & w.rsp_bit:
+                        w.live = 1
+            self.rel += 1
+            if not self.logged and all(w.end is not None for w in self.win.values()):
+                self.logged = True
+                f = self.fields()
+                self.test.chk.ok(
+                    "RST-AXI-NORESP",
+                    self.rsp_rst == 0 and f["r_after"] == 0 and f["b_after"] == 0,
+                    **f,
+                )
+
+
 @pyuvm.test()
 class sep_km_boot_reset_rand_test(sep_base_test):
     """Boot flush, scrambler keep, boot order and stored-image size across KM resets."""
@@ -226,6 +378,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         "CHK-FWSIZE",
         "CHK-SRAM-VER",
         "CHK-RST-AXI-VALID",
+        "CHK-RST-AXI-NORESP",
         "CHK-SEQ0",
         "CHK-BOOT-FLUSHED-BY-KM",
     )
@@ -247,6 +400,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         self.boot_clks: list[int] = []
         self.boot_tries = 0
         self.n_cold_ref: int | None = None
+        self.noresp: list[_NoResp] = []
 
         # Step 1: the preload, a PROD fuse image sensed for real, every engine out
         # of reset (SW_RESET_N reset value 0x7E, KM held), entropy with noise forced.
@@ -287,6 +441,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             self.logger.error("leaf stopped: %s", exc)
             await self._graded(False)
             await self.stop_fifo_drain()
+            self._noresp_end()
             if not self.chk.failures:
                 raise AssertionError(f"leaf stopped without a recorded failure: {exc}") from exc
             self.chk.finish()  # raises: a failure is recorded
@@ -296,7 +451,31 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
+        self._noresp_end()
         self.chk.finish()
+
+    def _noresp_end(self) -> None:
+        """Stop the CHK-RST-AXI-NORESP watchers and log CTRL-RST-AXI-RSP-LIVE.
+
+        A watcher that has not graded both windows fails CHK-RST-AXI-NORESP.
+        """
+        for w in self.noresp:
+            w.stop()
+            if not w.logged:
+                self.chk.ok(
+                    "RST-AXI-NORESP", False, stage="post" if w.released else "rst", **w.fields()
+                )
+        r_live = any(w.win["r"].live == 1 for w in self.noresp)
+        b_live = any(w.win["b"].live == 1 for w in self.noresp)
+        self.chk.ctrl(
+            "RST-AXI-RSP-LIVE",
+            r_live and b_live,
+            r_live=r_live,
+            b_live=b_live,
+            points=[
+                f"{w.point}:r{_live(w.win['r'].live)}b{_live(w.win['b'].live)}" for w in self.noresp
+            ],
+        )
 
     # ------------------------------------------------------------- bring-up
 
@@ -881,17 +1060,20 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         return await self._cbd()
 
     async def _axi_point(self, point: str, mask: int) -> None:
-        """Step 1, one AXI reset point: rst_ni low in the half clock of a pending request.
+        """Step 1, one AXI reset point: rst_ni low in the half clock of a request handshake.
 
         Runs before the entropy source comes up. The KM boots from the release;
-        at the first falling edge with a valid of ``mask`` at 1 the leaf drives
-        rst_ni low. CHK-RST-AXI-VALID grades the three valids in the sample
-        after the first rising edge with the KM CPU reset at 0, which is the
-        last edge a synchronous-reset master may keep a valid high on, and in
-        every later sample until the cold reset completes with the KM held. The
-        sample before the reset must show the request pending. The readies of
-        the first sample with the reset at 0 are logged: the check grades the
-        valid level, which a handshake on that edge also clears.
+        at the first falling edge with a valid of ``mask`` and its ready at 1
+        the leaf drives rst_ni low. CHK-RST-AXI-VALID grades the three valids
+        in the sample after the first rising edge with the KM CPU reset at 0,
+        which is the last edge a synchronous-reset master may keep a valid high
+        on, and in every later sample until the cold reset completes with the
+        KM held. The sample before the reset must show the request pending.
+        The readies of the first sample with the reset at 0 are logged: the
+        check grades the valid level, which a handshake on that edge also
+        clears. At that sample the point starts its CHK-RST-AXI-NORESP watcher,
+        which runs on past the return: the KM stays held until the next
+        release.
         """
         tag = f"axi-{point}"
         await self.swrst.release("km")
@@ -899,11 +1081,11 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             await FallingEdge(self.clk)
             await ReadOnly()
             pending = self.rd_known(self.dut.km_cpu_axi_valid_o)
-            if pending & mask:
+            if pending & self.rd_known(self.dut.km_cpu_axi_ready_o) & mask:
                 break
         else:
             raise AssertionError(
-                f"[{tag}] no KM CPU request on valid mask 0b{mask:03b} within "
+                f"[{tag}] no KM CPU request with its ready on mask 0b{mask:03b} within "
                 f"{AXI_ARM_BOUND} clocks of the release"
             )
         await Timer(1, "step")
@@ -925,6 +1107,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             await FallingEdge(self.clk)
         valid_rst = valid
         ready_rst = self.rd_known(self.dut.km_cpu_axi_ready_o)
+        handshake = int((valid_rst & ready_rst & mask) != 0)
+        rsp0 = self.rd_known(self.dut.km_cpu_axi_rsp_valid_o)
+        self.noresp.append(_NoResp(self, point, rsp0, handshake).start())
         await FallingEdge(self.clk)
         await ReadOnly()
         valid = self.rd_known(self.dut.km_cpu_axi_valid_o)
@@ -949,7 +1134,17 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         self.chk.ctrl(
             "RST-AXI-PENDING", bool(pending & mask), point=point, pending=f"0b{pending:03b}"
         )
-        self.chk.obs(
+        hs_fields = {
+            "point": point,
+            "handshake": handshake,
+            "valid_rst": f"0b{valid_rst:03b}",
+            "ready_rst": f"0b{ready_rst:03b}",
+        }
+        if point == "read":
+            self.chk.ctrl("RST-AXI-HANDSHAKE", handshake == 1, **hs_fields)
+        else:
+            self.chk.info("RST-AXI-HANDSHAKE", **hs_fields)
+        self.chk.info(
             "RST-AXI-READY",
             point=point,
             valid_rst=f"0b{valid_rst:03b}",

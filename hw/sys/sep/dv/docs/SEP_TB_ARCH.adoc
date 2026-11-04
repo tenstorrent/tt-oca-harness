@@ -473,12 +473,16 @@ Observation probe groups:
    took place; stores after that fetch are not in the capture. User:
    `sep_km_handover_rand_test` (CHK-HO-SRAM).
 * Key Manager CPU AXI valid tap (KM-AXIV, `km_cpu_axi_valid_o[2:0]`,
-  `km_cpu_axi_ready_o[2:0]`, `km_cpu_rst_n_o`): the request valids of the KM
-  CPU AXI4-Lite master `cpu_axil_req` in `key_manager`, bit 2 `ar_valid`, bit 1
-  `aw_valid`, bit 0 `w_valid`, the readies of the same channels from
-  `cpu_axil_resp` in the same bit order, and the KM CPU warm reset `rst_warm_sync_n`, which is the reset of
-  the PicoRV32 core and the `aresetn` of the KM AXI SVA. Read only, on every
-  clock. User: `sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID).
+  `km_cpu_axi_ready_o[2:0]`, `km_cpu_axi_rsp_valid_o[1:0]`, `km_cpu_rst_n_o`):
+  the request valids of the KM CPU AXI4-Lite master `cpu_axil_req` in
+  `key_manager`, bit 2 `ar_valid`, bit 1 `aw_valid`, bit 0 `w_valid`, the
+  readies of the same channels from `cpu_axil_resp` in the same bit order, the
+  response valids from `cpu_axil_resp`, bit 1 `r_valid`, bit 0 `b_valid`, and
+  the KM CPU warm reset `rst_warm_sync_n`, which is the reset of the PicoRV32
+  core and the `aresetn` of the KM AXI SVA. Read only, on every clock. Users:
+  `sep_km_boot_reset_rand_test` (all four outputs: CHK-RST-AXI-VALID,
+  CHK-RST-AXI-NORESP), `sep_km_fault_inject_rand_test` and
+  `sep_km_kmcsr_reset_rand_test` (`km_cpu_rst_n_o` only).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
   `u_sep_fcov` port list: the KM CPU AXI master and its error
