@@ -43,7 +43,7 @@ so each word is the little-endian read ("le").
 A readback matches the golden only in the order of its ``digest_swap`` value
 (``DSWAP_ORDER``); ``CHK-HMAC-DSWAP-REL`` also grades that the two values give
 byte-swapped words. The order each value matched first is logged as
-``OBS-HMAC-DIGEST-ORDER``.
+``INFO-HMAC-DIGEST-ORDER``, which names ``CHK-HMAC-SWAP`` and ``CHK-HMAC-DSWAP-REL``.
 
 Checkers:
   CHK-HMAC-SWAP       per (endian_swap, digest_swap, digest size) cell: DIGEST == golden
@@ -332,7 +332,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         self.plan = draw_plan(seed)
         self._event = 0
         self._win = False
-        # The DIGEST byte order seen first at each digest_swap value (OBS-HMAC-DIGEST-ORDER).
+        # The DIGEST byte order seen first at each digest_swap value (INFO-HMAC-DIGEST-ORDER).
         self._dorder: dict[int, str] = {}
         self._log_plan()
 
@@ -357,10 +357,11 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
 
         self._window(False)
         await self.vec.stop()
-        self.chk.obs(
+        self.chk.info(
             "HMAC-DIGEST-ORDER",
             dswap0=self._dorder.get(0, "-"),
             dswap1=self._dorder.get(1, "-"),
+            graded_by=["CHK-HMAC-SWAP", "CHK-HMAC-DSWAP-REL"],
         )
         self.chk.finish()
 

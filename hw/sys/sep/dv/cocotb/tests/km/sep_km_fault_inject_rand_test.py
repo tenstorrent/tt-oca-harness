@@ -1367,7 +1367,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.logger.info("INFO-SETTLE outbound depth did not settle; the quiet control decides")
 
     # ================================================================ precondition
-    async def _precondition(self, witness: bool) -> _Pre:
+    async def _precondition(self, witness: bool, point: str) -> _Pre:
         """Steps 3 and 4: keys in V, a pending shared key, r unread responses, quiet."""
         p = self.plan
         for key in p.transfer_order():
@@ -1423,16 +1423,27 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await RisingEdge(cocotb.top.clk_i)
         pre.wr_end = self._wr_count()
         pre.depth = await self._out_depth()
-        self.logger.info(
-            "OBS-QUIET-WINDOW w_clk=%d ctrl_stat_clk=%d pic30_high=%d sram_writes=%d->%d "
-            "out_depth=%d",
-            pre.w_clk,
-            stat_clk,
-            pre.quiet_high,
-            pre.wr_start,
-            pre.wr_end,
-            pre.depth,
+        state = {"out_depth": pre.depth, "sram_writes": f"{pre.wr_start}->{pre.wr_end}"}
+        graded = {}
+        if point == "real_wipe":
+            graded_by = ["CHK-FATAL-WIPE", "CHK-TRAP-HELD", "CHK-FLUSH-FIRST"]
+            graded["out_depth"] = state.pop("out_depth")
+            if self.unrec:
+                graded_by.append("CHK-SRAM-SHRED")
+                graded["sram_writes"] = state.pop("sram_writes")
+        else:
+            graded_by = ["CHK-FATAL-SET"]
+        self.chk.info(
+            "QUIET-WINDOW",
+            point=point,
+            w_clk=pre.w_clk,
+            ctrl_stat_clk=stat_clk,
+            pic30_high=pre.quiet_high,
+            **graded,
+            graded_by=graded_by,
         )
+        if state:
+            self.chk.obs("QUIET-WINDOW-STATE", point=point, **state)
         return pre
 
     def _shred_first(self, pre: _Pre, watch: _FatalWatch, point: str) -> None:
@@ -1529,7 +1540,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
     async def _real_wipe_point(self) -> None:
         p = self.plan
         self.fresh = False
-        pre = await self._precondition(witness=True)
+        pre = await self._precondition(witness=True, point="real_wipe")
         status_before = self._csr_status()
         wr_base = self._wr_count()  # step 5
         depth_before = pre.depth
@@ -1680,12 +1691,13 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             status=f"0x{status:03x}",
             err_o=int(rose),
         )
-        self.logger.info(
-            "OBS-REAL-WIPE W=%d status=0x%03x err_o_end=%d rise_cyc=%s",
-            p.wipe_w,
-            status,
-            b_end,
-            watch.rise,
+        self.chk.info("REAL-WIPE", W=p.wipe_w)
+        self.chk.obs(
+            "REAL-WIPE-STATUS",
+            W=p.wipe_w,
+            err_o_end=b_end,
+            rise_cyc=watch.rise,
+            irq_status_other=f"0x{status & ~wipe_bit:03x}",
         )
         await self._boot("real wipe")  # step 9
 
@@ -1694,7 +1706,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         top = cocotb.top
         await self._fresh(f"before {'+'.join(names)}")
         mask = pl.set_mask(names)
-        pre = await self._precondition(witness=False)
+        pre = await self._precondition(witness=False, point="irqset_" + "+".join(names))
         watch = _FatalWatch(self)
         watch.start()
         await RisingEdge(top.clk_i)

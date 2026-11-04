@@ -3205,7 +3205,7 @@ the test does.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Corrections and debug-bus pulses per corrected TCM access
 |How many counter increments and how many `ext_debug_bus_o[367:364]` pulses does one corrected TCM access give, given that the access is retried? Source: `hw/sys/sep/doc/interrupts.adoc` (memory ECC); `hw/sys/sep/doc/cpu.adoc`.
-|`sep_tcm_ecc_cpu_trap_test` grades `MCEIP` against the counter read-back and at least one pulse per word, and logs the increments as `OBS-TCM-INCR`. `sep_tcm_ecc_cpu_trap_test` grades the bit-366 pulse of the uncorrectable ICCM fetch, at least one pulse and each one clock wide (CHK-TCM-DBG366, `hw/sys/sep/doc/interrupts.adoc:413-415`), and logs the count over the run as `OBS-TCM-DBG366`.
+|`sep_tcm_ecc_cpu_trap_test` grades `MCEIP` against the counter read-back and at least one pulse per word, and logs the increments as `OBS-TCM-INCR`. `sep_tcm_ecc_cpu_trap_test` grades the bit-366 pulse of the uncorrectable ICCM fetch, at least one pulse and each one clock wide (CHK-TCM-DBG366, `hw/sys/sep/doc/interrupts.adoc:413-415`), and logs the pulse counts and the widths outside the `iccm_ue` window as `OBS-TCM-DBG366`.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |ROM store response code
 |What response code does a byte or halfword store to the ROM aperture return? `rom.adoc` says only that stores receive a response. Source: `hw/sys/sep/doc/rom.adoc`.
