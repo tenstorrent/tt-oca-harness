@@ -80,6 +80,8 @@ Checks:
                   read and one write request at each of 0x50 and 0x7F with the
                   core enable high and again with it low (8 requests at 0x50
                   and above), so an access that never leaves the DTM fails.
+                  The ``dmcontrol`` read of step 9 reaches the tap with the
+                  core enable high and with it low.
                   Control: in the window with the enable at 1
                   ``dmi_uncore_en_o`` rises for a read and a write and
                   ``dmi_uncore_wr_en_o`` for the write.
@@ -1788,6 +1790,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         """
         dut = cocotb.top
         await self._inst_open(axprot=False)
+        self.uncore_mark = len(self.dtm)
         for core_en in (1, 0):
             dut.dmi_core_enable_i.value = core_en
             await ClockCycles(dut.clk_i, 2)
@@ -1827,6 +1830,14 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         never = [r for r in self.dtm if r.never]
         upper = [(r.core_en, r.addr, r.wr) for r in never if r.addr >= UNCORE_FIRST]
         never_uncore_en = sum(r.uncore_en for r in never)
+        low = sorted(
+            {
+                r.core_en
+                for r in self.dtm[self.uncore_mark :]
+                if r.never and r.wr == 0 and r.addr == DM_DMCONTROL
+            }
+        )
+        reach = low == [0, 1]
         want = sorted((c, a, w) for c in (0, 1) for a in UNCORE_ADDRS for w in (0, 1))
         ok = (
             self.never_en == 0
@@ -1837,6 +1848,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             and ctl["rd_en"] >= 1
             and ctl["wr_en"] >= 1
             and ctl["wr_wr"] >= 1
+            and reach
         )
         return self._grade(
             "CHK-DMI-UNCORE",
@@ -1850,7 +1862,8 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             f"control_en_o_rise={ctl['rd_en'] + ctl['wr_en']} "
             f"control_wr_en_o_rise={ctl['wr_wr']} window_cycles={self.never_cycles} "
             f"control_read_en_o_rise={ctl['rd_en']} control_read_wr_en_o_rise={ctl['rd_wr']} "
-            f"control_write_en_o_rise={ctl['wr_en']}",
+            f"control_write_en_o_rise={ctl['wr_en']} "
+            f"dmcontrol_rd_core_en={low}" + ("" if reach else " reason=reach"),
         )
 
     async def _dbg_reset(self) -> dict[str, int]:
