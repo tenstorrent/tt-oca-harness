@@ -25,7 +25,8 @@ records, the trace events, the pulse counts and the field record:
                   sample before the block and the quiescent sample after it);
                   every flipped DCCM load raises MDCCMECT; each arming that finds
                   MCEIP set traps once with mcause 0x8000_001E, an arming below
-                  2^t does not.
+                  2^t does not; the arming at the count 0 reads mie[30] and
+                  mstatus.MIE set.
 * CHK-TCM-SILENT  with mie[30] clear the errors count with no trap and no trace
                   interrupt event, also at a count at or above 2^t.
 * CHK-TCM-CLAMP   the exponent 31 reads back 26 in both counters; t reads back t.
@@ -146,6 +147,7 @@ CNT_MASK = 0x07FF_FFFF
 CLAMP_MAX = 26
 MIP_MCEIP = 1 << 30
 MIE_MCEIE = 1 << 30
+MSTATUS_MIE = 1 << 3
 PIC_SRC = 2  # mailbox interrupt 1; vector bit PIC_SRC - 1
 
 # ext_debug_bus_o[367:364] (hw/sys/sep/doc/interrupts.adoc, Debug bus mirror).
@@ -676,10 +678,13 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             int(zero["traps_after"]) == int(zero["traps_before"])
             and int(zero["dc"]) & CNT_MASK == 0
             and not int(zero["mip"]) & MIP_MCEIP
+            and int(zero["mie"]) & MIE_MCEIE
+            and int(zero["mst"]) & MSTATUS_MIE
             and not self._intr_events(zw)
         )
         zbody = (
             f"mem=DCCM order={order} t={cfg.t} arming=count0 counter={int(zero['dc']) & CNT_MASK} "
+            f"mie30={(int(zero['mie']) & MIE_MCEIE) >> 30} mstatus_mie={(int(zero['mst']) & MSTATUS_MIE) >> 3} "
             f"mceip={(int(zero['mip']) & MIP_MCEIP) >> 30} "
             f"traps={int(zero['traps_after']) - int(zero['traps_before'])} mcause=none"
         )
