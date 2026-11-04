@@ -896,18 +896,6 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             bad.append(
                 f"{len(wide)} pulses wider than one clock: {[(p.bit, p.width) for p in wide[:6]]}"
             )
-        db366 = [p for p in self.pulses if p.bit == BIT_I_DB]
-        ue_lo, ue_hi = self._window("iccm_ue")
-        outside = [p for p in db366 if not ue_lo <= p.nl <= ue_hi]
-        self.logger.info(
-            "OBS-TCM-DBG366 LOG seed=%d pulses_total=%d pulses_iccm_ue=%d pulses_other_windows=%d "
-            "widths_outside_iccm_ue=%s",
-            self.random_seed(),
-            len(db366),
-            len(db366) - len(outside),
-            len(outside),
-            [p.width for p in outside[:8]],
-        )
         with_pulse = sum(1 for x in per_word if x)
         body = (
             f"bit365={cnt[BIT_D_SB]} bit367={cnt[BIT_I_SB]} bit364={cnt[BIT_D_DB]} width_clk=1 "
@@ -921,6 +909,17 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
 
     def _chk_dbg366(self) -> int:
         win = self._window("iccm_ue")
+        db366 = [p for p in self.pulses if p.bit == BIT_I_DB]
+        outside = [p for p in db366 if not win[0] <= p.nl <= win[1]]
+        self.logger.info(
+            "OBS-TCM-DBG366 LOG seed=%d pulses_total=%d pulses_iccm_ue=%d pulses_other_windows=%d "
+            "widths_outside_iccm_ue=%s",
+            self.random_seed(),
+            len(db366),
+            len(db366) - len(outside),
+            len(outside),
+            [p.width for p in outside[:8]],
+        )
         lo, hi = self._clk_win(win)
         rises = [r for r in self.ras.rise_clks_since(self.ras_rel, "iccm_ecc_ue") if lo < r <= hi]
         if not rises:
