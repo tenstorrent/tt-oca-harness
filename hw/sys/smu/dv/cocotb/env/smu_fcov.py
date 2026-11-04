@@ -326,9 +326,8 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
         ("xbar_route_cg", "route_cell", "smc_out_to_ext_out"),
         ("xbar_route_cg", "route_cell", "ext_in_to_sep_in"),
         ("xbar_route_cg", "route_cell", "ext_in_to_smc_in"),
-        ("xbar_route_cg", "route_cell", "decerr_smc_out_smc"),
         ("xbar_route_cg", "route_cell", "decerr_ext_in_neither"),
-        ("xbar_route_cg", "id_return", "ooo"),
+        ("xbar_route_cg", "id_return", "inorder"),
     ],
 }
 

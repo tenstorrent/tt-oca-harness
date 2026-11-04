@@ -5072,15 +5072,16 @@ args = [
 
 # The SMU crossbar with the smc_out initiators (JTAG2AXI and the iDMA it
 # programs) and the ext_in master against a stalling ext_out responder, then the
-# smc_out and ext_in forwarding and DECERR cells, the aperture edges at reset,
-# the 57-bit carry, the 32-bit SEP size edge and a reprogram with a read in
-# flight. The SEP aperture registers are written over the SEP debug module's
-# system bus. Only the VCS run is evidence for this leaf: the need gates, the X
-# rules and the data-known rules grade there and not under Verilator, where the
-# leaf runs for the coverage set alone.
+# smc_out and ext_in forwarding cells, the ext_in DECERR cell, the aperture
+# edges at reset, the 57-bit carry, the 32-bit SEP size edge and a reprogram
+# with a read in flight. The SEP aperture registers are written over the SEP
+# debug module's system bus. Only the VCS run is evidence for this leaf: the
+# need gates, the X rules and the data-known rules grade there and not under
+# Verilator, where the leaf prints INFO-RUN-MODE and runs for the coverage set
+# alone.
 # Access budget, JTAG2AXI accesses (about 10 us each) and SEP system-bus
 # accesses (several DMI scans each) per step: S1 12 + 3, S2 18, S3 5, S4 14,
-# S5 2, S6 4 + 1, S7 5 + 8; about 60 JTAG2AXI and 12 system-bus accesses.
+# S5 2, S6 3 + 1, S7 5 + 8; about 60 JTAG2AXI and 12 system-bus accesses.
 [[tests]]
 name = "smu_axi_concurrent_initiators_stall_test"
 module = "smu_axi_concurrent_initiators_stall_test"

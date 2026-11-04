@@ -11,10 +11,10 @@ to sep_in, smc_in or DECERR. Each aperture covers [base, base + size) in a
 system bus; no SEP-originated traffic is driven.
 
 Observation is passive: every ext_in handshake on the pins, every handshake on
-the ext_out responder interface ``u_axi_out_if``, the AW and AR handshakes of
-the crossbar smc_out port decoded from its request and response structs, the
-crossbar target-port counters (``sep_xbar_in_*``, ``smc_xbar_in_*``), the DTP
-debug-link counters and the aperture ports.
+the ext_out responder interface ``u_axi_out_if``, the AW, AR, B and R
+handshakes of the crossbar smc_out port decoded from its request and response
+structs, the crossbar target-port counters (``sep_xbar_in_*``,
+``smc_xbar_in_*``), the DTP debug-link counters and the aperture ports.
 
 S1 SETUP: SMC inbound filter entry 0 and outbound entry 0 over JTAG2AXI, the
    aperture registers read back at their reset, the SEP aperture widened to
@@ -32,15 +32,25 @@ S3 INTERLEAVE: an iDMA copy from the SEP SRAM to ext_out while ext_in issues
    while a train read is outstanding is graded.
 S4 ROUTE_FWD: per forwarding cell a single-beat and a 32-byte INCR read and
    write; the three target ports are sampled for every request.
-S5 DECERR_CELLS: smc_out into the SMC aperture, ext_in into neither.
+S5 DECERR_CELLS: ext_in into neither aperture. The SMC input fabric sends every
+   address of its GLOBAL_BASE/REGION_SIZE window, the window the crossbar
+   decodes as the SMC aperture, to the SMC local fabric, so no SMC request into
+   the SMC aperture reaches the crossbar. The JTAG2AXI write and read into the
+   SMC aperture must leave the smc_out port idle, and the cell is printed as not
+   drivable.
 S6 APERTURE_RESET_SIZES: base+0x00FF_FFFF and base+0x0100_0000 of each aperture
-   at its reset placement, from smc_out and from ext_in.
+   at its reset placement, from smc_out and from ext_in; the smc_out read inside
+   the SMC aperture is the S5 cell and is not issued.
 S7 APERTURE_PROGRAMMING: a SEP placement whose end passes 2^56, a 32-bit
    SEP_REGION_SIZE probed at its edge, a reprogram with a read in flight, every
    register restored and read back. SEP_REGION_SIZE.SIZE is 32 bits wide, so a
    boundary value with bits above 31 is not drivable.
 S8 TIMEOUT: every wait is a bound counted in clk_smu_i edges or polls; an
    expiry fails the leaf with the last handshakes and the reset-net sample.
+
+The bench protocol checkers and need gates grade under VCS only. On another
+simulator the leaf prints INFO-RUN-MODE and its result is not this leaf's
+evidence.
 """
 
 from __future__ import annotations
@@ -193,12 +203,21 @@ _CH = {
 NOT_DRIVABLE = (
     (
         "IWC_SEP_OUT_TO_SMC_IN",
-        "sep_out carries no traffic in this leaf; TC_G4B owns the sep_out cells",
+        "this leaf drives no sep_out traffic; no enrolled leaf grades the sep_out cells",
     ),
     (
         "IWC_SEP_OUT_TO_EXT_OUT",
-        "sep_out carries no traffic in this leaf; TC_G4B owns the sep_out cells",
+        "this leaf drives no sep_out traffic; no enrolled leaf grades the sep_out cells",
     ),
+)
+SMC_OUT_SMC_NOT_DRIVABLE = (
+    "INFO-CELL-NOT-DRIVABLE SMC_OUT/SMC-aperture-decerr the SMC input fabric sends every address "
+    "in [GLOBAL_BASE, GLOBAL_BASE + REGION_SIZE) to its local fabric "
+    "(hw/sys/smc/rtl/smc_fabric/smc_input_fabric/rtl/smc_input_fabric.sv:366-369,395-401,417) "
+    "and the crossbar decodes the SMC aperture from the same two registers "
+    "(hw/sys/smc/rtl/smc_base.sv:481,483; hw/sys/smu/rtl/smu.sv:1020-1021), so no SMC request "
+    "into the SMC aperture reaches the smc_out port; its DECERR comes from smc_local_xbar "
+    "(hw/sys/smc/rtl/crossbars/smc_local_xbar.sv:9-10)"
 )
 SIZE_UPPER_NOT_DRIVABLE = (
     "INFO-CELL-NOT-DRIVABLE: SEPAP/size-upper-bits SEP_REGION_SIZE.SIZE is a 32-bit field "
@@ -277,22 +296,28 @@ class _Tap:
 
 
 class _XbarTap:
-    """AW and AR handshakes of the crossbar smc_out port, decoded from its structs."""
+    """AW, AR, B and R handshakes of the crossbar smc_out port, decoded from its structs."""
+
+    REQ = (("aw", ("id", "addr", "len", "burst", "atop")), ("ar", ("id", "addr", "len", "burst")))
+    RESP = (("b", ("id", "resp")), ("r", ("id", "resp")))
 
     def __init__(self, dut) -> None:
         self.link = _Link(dut, "xbar_smc_out", f"{XBAR}.smc_out_req_i", f"{XBAR}.smc_out_resp_o")
-        self.ev: dict[str, list[dict]] = {"aw": [], "ar": []}
+        self.ev: dict[str, list[dict]] = {"aw": [], "ar": [], "b": [], "r": []}
 
     def sample(self, cyc: int) -> None:
-        """Take the smc_out AW and AR handshakes of one clk_smu_i edge."""
+        """Take the smc_out AW, AR, B and R handshakes of one clk_smu_i edge."""
         link = self.link
         qs, ps = str(link.req.value), str(link.resp.value)
         hs = link.handshakes(qs, ps)
-        for ch, fields in (("aw", ("id", "addr", "burst", "atop")), ("ar", ("id", "addr"))):
-            if hs[f"{ch}_valid"] == "1" and hs[f"{ch}_ready"] == "1":
-                e = {"cyc": cyc}
-                e.update({f"{ch}{f}": link.field(qs, link.q[f"{ch}_{f}"]) for f in fields})
-                self.ev[ch].append(e)
+        for group, bits, pos in ((self.REQ, qs, link.q), (self.RESP, ps, link.p)):
+            for ch, fields in group:
+                if hs[f"{ch}_valid"] == "1" and hs[f"{ch}_ready"] == "1":
+                    e = {"cyc": cyc}
+                    e.update({f"{ch}{f}": link.field(bits, pos[f"{ch}_{f}"]) for f in fields})
+                    if ch == "r":
+                        e["rlast"] = int(link.bit(ps, link.p["r_last"]) == "1")
+                    self.ev[ch].append(e)
 
     def mark(self) -> dict[str, int]:
         return {ch: len(evs) for ch, evs in self.ev.items()}
@@ -549,6 +574,21 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         ar_ids = Counter(e["arid"] for e in ars)
         rl_ids = Counter(e["rid"] for e in rs if e["rlast"] == 1)
         return {"aw_b_paired": aw_ids == b_ids, "ar_rlast_paired": ar_ids == rl_ids}
+
+    def _xbar_since(self, xmk: dict[str, int]) -> dict[str, list[dict]]:
+        x = {ch: self.xbar.since(xmk, ch) for ch in ("aw", "ar", "b", "r")}
+        x["rl"] = [e for e in x["r"] if e["rlast"] == 1]
+        return x
+
+    @staticmethod
+    def _xbar_pairs(x: dict[str, list[dict]]) -> dict:
+        """One B per AW ID and one RLAST per AR ID at the crossbar smc_out port, and the codes."""
+        return {
+            "b_per_aw": Counter(e["awid"] for e in x["aw"]) == Counter(e["bid"] for e in x["b"]),
+            "rlast_per_ar": Counter(e["arid"] for e in x["ar"])
+            == Counter(e["rid"] for e in x["rl"]),
+            "codes": sorted({_rn(e["bresp"]) for e in x["b"]} | {_rn(e["rresp"]) for e in x["r"]}),
+        }
 
     # ------------------------------------------------------------------ S1
 
@@ -910,7 +950,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         omk = self.out.mark()
         xmk = self.xbar.mark()
         stop = {"flag": False}
-        train = {"n": 0}
+        train: dict = {"n": 0, "addrs": []}
 
         async def same_id_train() -> None:
             """Reads of the SEP SRAM under ``shared``, two in flight, until the copy is done."""
@@ -921,6 +961,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
                 a = SEP_SRAM + 8 * (n % 64)
                 pending.append(self._issue(write=False, addr=a, nbytes=8, xid=shared))
                 train["n"] += 1
+                train["addrs"].append(a)
                 if len(pending) == 2:
                     await self._wait(
                         f"s3_train_{n}", pending[0].is_set, XFER_BOUND, f"R id=0x{shared:x}"
@@ -1000,6 +1041,17 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         # smc_out port while a train read (one beat each, returned in order) is outstanding
         t_rl = [e["cyc"] for e in self.ext.since(mk, "r") if e["rid"] == shared and e["rlast"] == 1]
         spans = list(zip(t_ar, t_rl))
+        # the train's reads, in issue order, against its ARs at the pins and its R beats in order
+        train_bad = []
+        t_ar_addrs = [e["araddr"] for e in self.ext.since(mk, "ar") if e["arid"] == shared]
+        t_beats = [e for e in self.ext.since(mk, "r") if e["rid"] == shared]
+        if t_ar_addrs != train["addrs"] or len(t_beats) != len(train["addrs"]):
+            train_bad.append(("count/order", len(train["addrs"]), len(t_ar_addrs), len(t_beats)))
+        for k, (a, e) in enumerate(zip(train["addrs"], t_beats)):
+            word = (e["rdata"] or 0).to_bytes(8, "little")
+            ref = self.sep_pat[a - SEP_SRAM : a - SEP_SRAM + 8]
+            if word != ref or _rn(e["rresp"]) != "OKAY" or e["rlast"] != 1:
+                train_bad.append((k, hex(a), word.hex(), _rn(e["rresp"]), e["rlast"]))
         same_id_xbar = [
             e["cyc"]
             for e in self.xbar.since(xmk, "ar")
@@ -1022,6 +1074,8 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             overlap = sep_in_ars - ext_sep_ars
         oaws, obs = self.out.since(omk, "aw"), self.out.since(omk, "b")
         pair = self._out_pairing(oaws, [], obs, [])
+        x = self._xbar_since(xmk)
+        x_pairs = self._xbar_pairs(x)
         dst = mem.read(EXT_S3_DST, S3_DMA_LEN)
         src_ref = self.sep_pat[S3_DMA_SRC - SEP_SRAM : S3_DMA_SRC - SEP_SRAM + S3_DMA_LEN]
         observed = {
@@ -1034,8 +1088,11 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             "dma_dst_equals_sep_sram": dst == src_ref,
             "ext_out_pairing": pair["aw_b_paired"],
             "train_reads": train["n"] > 0,
+            "train_data_in_order": train_bad[:4],
             "same_id_overlap": overlap > 0,
             "same_id_at_xbar_smc_out": len(same_id_xbar) > 0,
+            "smc_out_xbar_aw_ar": (len(x["aw"]) > 0, len(x["ar"]) > 0),
+            "smc_out_xbar_resp": x_pairs,
         }
         expected = {
             "read_pairing": True,
@@ -1047,17 +1104,26 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             "dma_dst_equals_sep_sram": True,
             "ext_out_pairing": True,
             "train_reads": True,
+            "train_data_in_order": [],
             "same_id_overlap": True,
             "same_id_at_xbar_smc_out": True,
+            "smc_out_xbar_aw_ar": (True, True),
+            "smc_out_xbar_resp": {"b_per_aw": True, "rlast_per_ar": True, "codes": ["OKAY"]},
         }
         self._info(
             f"G4-S3 observed={observed} shared_id=0x{shared:x} train={train['n']} "
             f"overlap_sep_in_ar={overlap} idma_ar_same_id_at_smc_out_cycles={same_id_xbar[:8]} "
-            f"issued_r={issued_r} issued_w={issued_w}"
+            f"issued_r={issued_r} issued_w={issued_w} smc_out_xbar aw={len(x['aw'])} "
+            f"ar={len(x['ar'])} b={len(x['b'])} rlast={len(x['rl'])}"
         )
         sb.expect_eq("CHK-G4-IWC-ID", observed, expected, evidence="CHK-G4-IWC-ID")
         responses = sum(got_r.values()) + sum(got_w.values()) + len(obs) + 1
-        self._raw(f"CHK-G4-IWC-ID: responses={responses} id_mismatch=0 wrong_initiator=0")
+        self._raw(
+            f"CHK-G4-IWC-ID: responses={responses} id_mismatch=0 wrong_initiator=0 "
+            f"smc_out_xbar_b={len(x['b'])}/aw={len(x['aw'])} "
+            f"smc_out_xbar_rlast={len(x['rl'])}/ar={len(x['ar'])} "
+            f"same_id_train_reads_in_order={len(t_beats)}"
+        )
         self._mark("INTERLEAVE", responses, len(plan) + 2)
 
     # ------------------------------------------------------------------ S4
@@ -1066,6 +1132,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         """One JTAG2AXI access with the target-port counters and the ext_out tap around it."""
         c0 = self._cnt()
         omk = self.out.mark()
+        xmk = self.xbar.mark()
         st, rd = await self._j2a(op, addr, data, size=size, label=label)
         await ClockCycles(self.dut.clk_smu_i, 2)
         c1 = self._cnt()
@@ -1080,6 +1147,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             "out_all": self.out.since(omk, ch),
             "out_b": self.out.since(omk, "b"),
             "out_r": self.out.since(omk, "r"),
+            "x": self._xbar_since(xmk),
         }
 
     @staticmethod
@@ -1093,6 +1161,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         self._info("STEP S4: ROUTE_FWD")
         got, want = {}, {}
         users = []
+        xbar_rows = []
         n_req = 0
         # ext_in SEP and ext_in SMC: single beat and INCR AxLEN 3, write then read
         for cell, base, port in (
@@ -1153,12 +1222,27 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
                 self._route(r["d"], len(r["out_hits"]), False),
                 (w["st"], r["st"], _hx(r["rd"])),
                 (w["d"]["dtp_aw"], w["d"]["dtp_b"], r["d"]["dtp_ar"]),
+                (
+                    [_hx(e["awaddr"]) for e in w["x"]["aw"]],
+                    [_hx(e["araddr"]) for e in r["x"]["ar"]],
+                ),
+                (self._xbar_pairs(w["x"]), self._xbar_pairs(r["x"])),
             )
             want[f"{cell} single"] = (
                 tgt_w,
                 tgt_r,
                 (J2A_STATUS_SUCCESS, J2A_STATUS_SUCCESS, _hx(word)),
                 (1, 1, 1),
+                ([_hx(addr)], [_hx(addr)]),
+                (
+                    {"b_per_aw": True, "rlast_per_ar": True, "codes": ["OKAY"]},
+                    {"b_per_aw": True, "rlast_per_ar": True, "codes": ["OKAY"]},
+                ),
+            )
+            xbar_rows.append(
+                f"{cell}: AW id={[_hx(e['awid']) for e in w['x']['aw']]} B id="
+                f"{[_hx(e['bid']) for e in w['x']['b']]} AR id={[_hx(e['arid']) for e in r['x']['ar']]} "
+                f"RLAST id={[_hx(e['rid']) for e in r['x']['rl']]}"
             )
             if cell == "smc_out SEP":
                 off = addr - SEP_SRAM
@@ -1185,6 +1269,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             )
             c0 = self._cnt()
             omk = self.out.mark()
+            xmk = self.xbar.mark()
             start_id, _ = await self._dma_launch(f"s4_{leg}")
             done = await self._dma_done(f"s4_{leg}", start_id)
             await self._wait(
@@ -1196,43 +1281,40 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             c1 = self._cnt()
             d = self._d(c0, c1)
             oar, oaw = self.out.since(omk, "ar"), self.out.since(omk, "aw")
+            x = self._xbar_since(xmk)
+            x_req = (
+                [(_hx(e["araddr"]), e["arlen"], e["arburst"]) for e in x["ar"]],
+                [(_hx(e["awaddr"]), e["awlen"], e["awburst"]) for e in x["aw"]],
+            )
+            # 32 bytes of 8-byte beats: one INCR burst of AxLEN 3 on each side of the copy
+            x_want = ([(_hx(src), 3, 1)], [(_hx(dst), 3, 1)])
             if leg == "to_sep":
-                got_leg = (
-                    done == start_id,
-                    d["sep_aw"] >= 1,
-                    d["smc_aw"],
-                    [e["araddr"] for e in oar],
-                    len(oaw),
-                )
-                want_leg = (True, True, 0, [src], 0)
+                got_leg = (done == start_id, d["sep_aw"], d["smc_aw"], [e["araddr"] for e in oar])
+                got_leg += (len(oaw),)
+                want_leg = (True, 1, 0, [src], 0)
             else:
-                got_leg = (
-                    done == start_id,
-                    d["sep_ar"] >= 1,
-                    d["smc_ar"],
-                    [e["awaddr"] for e in oaw],
-                    len(oar),
-                )
-                want_leg = (True, True, 0, [dst], 0)
-            got[f"smc_out iDMA {leg}"] = got_leg
-            want[f"smc_out iDMA {leg}"] = want_leg
+                got_leg = (done == start_id, d["sep_ar"], d["smc_ar"], [e["awaddr"] for e in oaw])
+                got_leg += (len(oar),)
+                want_leg = (True, 1, 0, [dst], 0)
+            got[f"smc_out iDMA {leg}"] = got_leg + (x_req, self._xbar_pairs(x))
+            want[f"smc_out iDMA {leg}"] = want_leg + (
+                x_want,
+                {"b_per_aw": True, "rlast_per_ar": True, "codes": ["OKAY"]},
+            )
             n_req += 2
             dma_rows.append(
-                f"{leg}: ext_out AR len/burst={[(e['arlen'], e['arburst']) for e in oar]} AW len/burst="
-                f"{[(e['awlen'], e['awburst']) for e in oaw]} sep_in aw/ar delta={d['sep_aw']}/{d['sep_ar']}"
+                f"{leg}: smc_out AR addr/len/burst={x_req[0]} AW addr/len/burst={x_req[1]} B id="
+                f"{[_hx(e['bid']) for e in x['b']]} RLAST id={[_hx(e['rid']) for e in x['rl']]} "
+                f"sep_in aw/ar delta={d['sep_aw']}/{d['sep_ar']}"
             )
         got["smc_out iDMA round trip data"] = mem.read(EXT_S4_DMA + 0x100, S4_DMA_LEN).hex()
         want["smc_out iDMA round trip data"] = pat.hex()
-        self._info(
-            f"G4-S4 iDMA bursts {dma_rows}; the iDMA chooses AxLEN (dma_ctrl CONFIG unstated)"
-        )
-        self._raw(
-            "INFO-CELL-NOT-DRIVABLE: SMC_OUT_INCR_LEN3_EXACT JTAG2AXI is single-beat and the iDMA "
-            "chooses its AxLEN; the smc_out INCR cells are the 32-byte iDMA copies, AxLEN recorded "
-            f"at ext_out {dma_rows}"
-        )
+        self._info(f"G4-S4 crossbar smc_out port: {xbar_rows} {dma_rows}")
         sb.expect_eq("CHK-G4-ROUTE-FWD", got, want, evidence="CHK-G4-ROUTE-FWD")
-        self._raw(f"CHK-G4-ROUTE-FWD: cells=4 requests={n_req} misrouted=0 id_mismatch=0")
+        self._raw(
+            f"CHK-G4-ROUTE-FWD: cells=4 requests={n_req} misrouted=0 id_mismatch=0 "
+            f"smc_out_incr_len3_at_xbar=2"
+        )
         self._raw(
             f"OBS-G4-USER: {users}; smc_in AxUSER and the SMC port smc_in drives have no "
             f"bench-top observation point; waits on SF-026, SF-014, never compared"
@@ -1251,10 +1333,27 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
     async def _s5_decerr(self) -> None:
         sb = self.sb
         self._info("STEP S5: DECERR_CELLS")
+        xmk = self.xbar.mark()
         w = await self._j2a_cell(
             "s5_smc_out_smc_wr", J2A_OP_WRITE, SMC_DECERR, 0xDEC0_0000_0000_0005
         )
         r = await self._j2a_cell("s5_smc_out_smc_rd", J2A_OP_READ, SMC_DECERR)
+        x = self._xbar_since(xmk)
+        x_counts = tuple(len(x[ch]) for ch in ("aw", "ar", "b", "r"))
+        dtp = (w["d"]["dtp_aw"], w["d"]["dtp_b"], r["d"]["dtp_ar"])
+        sb.expect_eq(
+            "S5 JTAG2AXI write and read in the SMC aperture enter the SMC on the DTP link and "
+            "leave the crossbar smc_out port idle",
+            (dtp, x_counts),
+            ((1, 1, 1), (0, 0, 0, 0)),
+        )
+        self._raw(
+            f"{SMC_OUT_SMC_NOT_DRIVABLE}; the JTAG2AXI write and read at 0x{SMC_DECERR:x} moved the "
+            f"DTP link AW/B/AR by {'/'.join(map(str, dtp))}, put AW/AR/B/R="
+            f"{'/'.join(map(str, x_counts))} on the crossbar smc_out port and ended "
+            f"with JTAG2AXI status {w['st']}/{r['st']}; the S6 smc_out read at SMC+0x00FF_FFFF "
+            f"is the same cell and is not issued"
+        )
         ew = await self._ext(
             "s5_ext_in_neither_wr", write=True, addr=NEITHER + 0x800, nbytes=8, xid=0x50
         )
@@ -1262,36 +1361,30 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             "s5_ext_in_neither_rd", write=False, addr=NEITHER + 0x800, nbytes=8, xid=0x51
         )
 
-        def tgt(t: dict, _write: bool) -> int:
-            d = t["d"]
-            outs = t["out_all"] if "out_all" in t else t["out_aw"] + t["out_ar"]
-            return d["sep_aw"] + d["sep_ar"] + d["smc_aw"] + d["smc_ar"] + len(outs)
+        def tgt(t: dict) -> int:
+            moved = sum(t["d"][k] for k in ("sep_aw", "sep_ar", "smc_aw", "smc_ar"))
+            return moved + len(t["out_aw"]) + len(t["out_ar"])
 
         observed = {
-            "smc_out SMC wr": (w["st"], w["d"]["dtp_aw"], w["d"]["dtp_b"], tgt(w, True)),
-            "smc_out SMC rd": (r["st"], r["d"]["dtp_ar"], tgt(r, False)),
             "ext_in neither wr": (
                 self._codes(ew),
                 [e["bid"] for e in ew["mine"]],
                 self._one_resp(ew),
-                tgt(ew, True),
+                tgt(ew),
             ),
             "ext_in neither rd": (
                 [(_rn(e["rresp"]), e["rlast"], e["rid"]) for e in er["mine"]],
                 self._one_resp(er),
-                tgt(er, False),
+                tgt(er),
             ),
         }
         expected = {
-            "smc_out SMC wr": (J2A_STATUS_DECERR, 1, 1, 0),
-            "smc_out SMC rd": (J2A_STATUS_DECERR, 1, 0),
             "ext_in neither wr": (["DECERR"], [0x50], True, 0),
             "ext_in neither rd": ([("DECERR", 1, 0x51)], True, 0),
         }
         self._info(f"G4-S5 observed={observed}")
         sb.expect_eq("CHK-G4-ROUTE-DECERR", observed, expected, evidence="CHK-G4-ROUTE-DECERR")
-        self._raw("CHK-G4-ROUTE-DECERR: cells=2 requests=4 decerr=4 target_aw_ar=0")
-        self.decerr_beats.append(f"S5 smc_out J2A rdata={_hx(r['rd'])}")
+        self._raw("CHK-G4-ROUTE-DECERR: cells=1 requests=2 decerr=2 target_aw_ar=0")
         for e in er["mine"]:
             self.decerr_beats.append(
                 f"S5 rid=0x{e['rid']:x} rdata={_hx(e['rdata'])} ruser={_hx(e['ruser'])}"
@@ -1352,6 +1445,8 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             for off, where in ((0x00FF_FFFF, "in"), (0x0100_0000, "out")):
                 addr = base + off
                 for init in ("smc_out", "ext_in"):
+                    if (ap, where, init) == ("SMC", "in", "smc_out"):
+                        continue
                     if ap == "SEP":
                         exp = (
                             "sep_in"
@@ -1360,7 +1455,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
                         )
                     else:
                         if where == "in":
-                            exp = "DECERR" if init == "smc_out" else "smc_in"
+                            exp = "smc_in"
                         else:
                             exp = "ext_out" if init == "smc_out" else "DECERR"
                     got = await self._probe(f"s6_{ap}_{where}_{init}", init, addr, 0, exp, 0x60 + n)
@@ -1370,7 +1465,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
             f"reset SEP_GLOBAL_BASE_ADDR={_hx(self.reset_rb[0])} GLOBAL_BASE={_hx(self.reset_rb[2])} "
             f"ports sep=({_hx(sep_b)},{_hx(sep_s)}) smc=({_hx(smc_b)},{_hx(smc_s)})"
         )
-        self._mark("APERTURE_RESET_SIZES", len(rows), 8)
+        self._mark("APERTURE_RESET_SIZES", len(rows), 7)
         return rows
 
     async def _s7_programming(self) -> list:
@@ -1456,6 +1551,9 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
 
     async def run(self) -> None:
         sb = self.sb
+        sim = cocotb.SIM_NAME or "unknown simulator"
+        graded = "graded by the bench at final" if "vcs" in sim.lower() else "not graded"
+        self._raw(f"INFO-RUN-MODE: {sim}, protocol gates {graded}")
         await self._s1_setup()
         await self._s2_stalled()
         await self._s3_interleave()
@@ -1470,7 +1568,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         self._raw(f"OBS-G4-APERTURE: {self.ap_obs}; waits on SF-024, never compared")
         sb.expect_eq("CHK-G4-APERTURE", got, want, evidence="CHK-G4-APERTURE")
         edges = len([r for r in rows if r[0][:4] in ("SEP+", "SMC+", "carr", "size")])
-        self._raw(f"CHK-G4-APERTURE: edges={edges}/14 misdecoded={len(bad)}")
+        self._raw(f"CHK-G4-APERTURE: edges={edges}/13 misdecoded={len(bad)}")
         # ordered fence
         order = [f[0] for f in self.fence]
         times = [f[1] for f in self.fence]
