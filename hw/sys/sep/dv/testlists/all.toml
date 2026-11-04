@@ -896,8 +896,8 @@ tests = [
     "sep_rom_zero_fill_fault_retry_test",
     "sep_rom_zero_fill_fault_scrub_test",
     "sep_rom_zero_fill_fault_iccm_clear_test",
-    # Spec-graded ROM invariants. Omitted: the two AES-exit entries, which each wait about 1M AES status polls (9-13 h per run, ISSUE-024),
-    # and sep_rom_sram_iccm_clear_test, which grades a clear the default ROM build turns off to save sim time (ISSUE-008).
+    # Spec-graded ROM invariants. Omitted: sep_rom_sram_iccm_clear_test, which grades a clear the default ROM build turns off
+    # to save sim time (ISSUE-008).
     "sep_rom_observer_smoke_test",
     "sep_rom_reset_entry_order_test",
     "sep_rom_boot_quiet_invariants_test",
@@ -934,7 +934,9 @@ tests = [
     "sep_rom_rsa_key_direct_otbn_test",
     "sep_rom_encryption_requires_secure_boot_test",
     "sep_rom_decrypt_exit_zeroize_test_success",
+    "sep_rom_decrypt_exit_zeroize_test_aes_init_fail",
     "sep_rom_decrypt_exit_zeroize_test_kdf_fail",
+    "sep_rom_decrypt_exit_zeroize_test_aes_dec_fail",
     "sep_rom_spi_retry_exhaust_test",
 ]
 

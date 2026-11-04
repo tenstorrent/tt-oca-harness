@@ -3,7 +3,8 @@
 schema_version = 1
 
 # ROM firmware boot tests: the production Boot ROM on the `rom_boot` target with the
-# `boot_rom` / `boot_rom_pio` firmware profiles. The `rom_fw` group in all.toml omits the ISSUE-024 and ISSUE-008 entries.
+# `boot_rom` / `boot_rom_pio` firmware profiles. The `rom_fw` group in all.toml omits
+# sep_rom_sram_iccm_clear_test (ISSUE-008).
 
 [[tests]]
 # Non-secure boot of the production Boot ROM with the manifest served from SMC SRAM (SPI stubbed).
@@ -4067,8 +4068,6 @@ args = [
 ]
 
 [[tests]]
-# Fails on the current ROM: ISSUE-024 in docs/superpowers/plans/sep_rom/sep_rom_gap_issue_log.md.
-# Not in the `rom_fw` group in all.toml.
 # PL-080 (partial): SW_RESET_N reads back the AES bit as 0 from the decryption stage entry, so
 # aes_init() fails; no key material in DCCM when the stage returns and at the verdict.
 name = "sep_rom_decrypt_exit_zeroize_test_aes_init_fail"
@@ -4109,7 +4108,6 @@ args = [
 ]
 
 [[tests]]
-# Not in the `rom_fw` group in all.toml.
 # PL-080 (partial): the AES reports a CTRL update error from the decryption stage entry, so the
 # cipher setup fails before the key load; no key material in DCCM when the stage returns and at the verdict.
 name = "sep_rom_decrypt_exit_zeroize_test_aes_dec_fail"

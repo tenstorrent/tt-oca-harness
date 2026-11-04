@@ -3119,7 +3119,7 @@ module sep_uvm_top
     end
 `undef DMA_HOST_CMD_INTG_DI
 
-    // Fast SLVERR end for every secure-DMA host transfer; no force or release until the input rises.
+    // Every secure-DMA host read and write response returns SLVERR while the input is high.
 `define DMA_HOST_AXIL_RSP `SEP_CORE.u_sep_dma_wrap.axi_lite_mst_resp
     logic dma_host_rsp_err_forced;
     always @(posedge clk_i) begin
@@ -3135,8 +3135,7 @@ module sep_uvm_top
     end
 `undef DMA_HOST_AXIL_RSP
 
-    // Fast aes_init() failure: SW_RESET_N reads back its AES bit as 0 while the AES itself stays
-    // out of reset; no force or release until the input rises.
+    // While the input is high, SW_RESET_N reads back its AES bit as 0; the AES stays out of reset.
 `define AES_SW_RST_RDATA `SEP_CORE.u_sep_reset_ctrl.u_reg.cpuif_rd_data
     logic aes_sw_rst_readback_forced;
     always @(posedge clk_i) begin
@@ -3150,8 +3149,7 @@ module sep_uvm_top
     end
 `undef AES_SW_RST_RDATA
 
-    // Fast aes_cbc_decrypt() failure: AES reports a recoverable CTRL update error; no force or
-    // release until the input rises.
+    // While the input is high, the AES core flags a CTRL update error as a recoverable alert.
 `define AES_SHADOWED_UPD_ERR \
     `SEP_CORE.u_sep_crypto.u_aes_wrapper_s3c_scan.u_tt_aes.u_aes_core.shadowed_update_err_i
     logic aes_ctrl_update_err_forced;

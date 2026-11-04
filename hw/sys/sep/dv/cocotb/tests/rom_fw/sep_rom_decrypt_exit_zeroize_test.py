@@ -57,8 +57,9 @@ material.
   DECRYPTION_FAILED (registry names; when and at which severity the ROM emits them is ROM
   behaviour) and by the ROM console marker of the failure kind.
 * CTRL-FAULT-APPLIED: the fault was in force over the stage (the WARN HMAC_FIFO_TIMEOUT word; the
-  ROM console marker AES_RST_FAIL or AES_CTRL_REJECTED with no AES idle timeout and no AES reset),
-  or no fault pin moved (success).
+  ROM console marker AES_RST_FAIL or AES_CTRL_REJECTED with no AES idle timeout and no AES reset;
+  for aes_dec_fail also AES_ALERT_STATUS with bit 5 ALERT_RECOV_CTRL_UPDATE_ERR = 1 and bit 6
+  ALERT_FATAL_FAULT = 0), or no fault pin moved (success).
 * CTRL-KEY-WAS-PRESENT: during the stage, a snapshot searched with the grading search shows each
   material that must exist before that exit: all three (success, aes_dec_fail), the class key and
   KDF input (kdf_fail), the class key (aes_init_fail). It shows that the rebuilt DCCM and the

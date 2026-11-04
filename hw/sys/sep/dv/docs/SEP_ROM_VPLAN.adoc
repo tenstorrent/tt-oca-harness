@@ -21,7 +21,7 @@
 |Register sources |`hw/sys/sep/regs/` (SystemRDL) and the generated export `hw/sys/sep/regs/gen/`
 |Testbench architecture |<<sep-dv-testbench-architecture,SEP_TB_ARCH>>, Boot ROM Firmware Builds (<<_boot_rom_firmware_builds>>)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep --items rom_fw`)
-|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 228 tests. `rom_fw.toml` holds 231 entries; the three outside the group are `sep_rom_decrypt_exit_zeroize_test_aes_init_fail` and `sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` (ISSUE-024, BLOCKED) and `sep_rom_sram_iccm_clear_test` (ISSUE-008, FAIL-B on the default ROM build)
+|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 230 tests. `rom_fw.toml` holds 231 entries; the one outside the group is `sep_rom_sram_iccm_clear_test` (ISSUE-008, FAIL-B on the default ROM build)
 |===
 
 This plan is the technical contract for the Boot ROM firmware tests. It states
@@ -217,7 +217,7 @@ the jump into BL1, as `rom.adoc` defines it, on the `rom_boot` target.
 |Status and error codes |`hw/sys/sep/bootrom/prod/include/status_values.h` |Tests take expected status words from it
 |Manifest and TOC layout |The `tt-oca-manifest` submodule (`oca_layout.h`, `constants.py`) |The mutators resolve offsets from the packer, not from constants in the tests
 |Register layouts |The SystemRDL under `hw/sys/sep/regs/` and `hw/sys/smc/regs/` |`sep_reg_meta.sym()` reads the generated SEP export. `env/sep_smc_mem.py` holds the SMC word addresses that the ROM reads through the SEP->SMC window
-|Which tests exist |`testlists/rom_fw.toml` and the `rom_fw` group in `testlists/all.toml` |The Test Procedures document every member of `rom_fw`. A name in one and not the other is a defect in whichever lacks it, except `sep_rom_decrypt_exit_zeroize_test_aes_init_fail` and `sep_rom_decrypt_exit_zeroize_test_aes_dec_fail`, which stay out of the group while ISSUE-024 blocks them, and `sep_rom_sram_iccm_clear_test`, which stays out while the default ROM build turns the clears off (ISSUE-008)
+|Which tests exist |`testlists/rom_fw.toml` and the `rom_fw` group in `testlists/all.toml` |The Test Procedures document every member of `rom_fw`. A name in one and not the other is a defect in whichever lacks it, except `sep_rom_sram_iccm_clear_test`, which stays out while the default ROM build turns the clears off (ISSUE-008)
 |Regression command |`README.md` in this DV tree |This plan states the intent, not the shell commands
 |===
 
@@ -228,7 +228,7 @@ the jump into BL1, as `rom.adoc` defines it, on the `rom_boot` target.
 |===
 |Group |Role
 |`rom_fw_smoke` |Bring-up of the four boot paths and the hand-off magic: `sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` (`expected_count = 5`)
-|`rom_fw` |The credit denominator of this plan: 228 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
+|`rom_fw` |The credit denominator of this plan: 230 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
 |`all`, `cpu`, `cpu_stub` |Not members. They belong to <<sep-dv-verification-plan>>
 |===
 
@@ -648,10 +648,10 @@ holds the stimulus, the checkers and the requirements.
 |`sep_rom_rsa_key_direct_otbn_test` |<<sep-rom-vplan-spec-graded>> |the CPU writes the whole modulus into OTBN DMEM before EXECUTE; the Key Manager key paths, sideload keys, CPU and mailbox stay idle; BL1 PASS.
 |`sep_rom_encryption_requires_secure_boot_test` |<<sep-rom-vplan-spec-graded>> |both unsigned encrypted slots refused, `bl0_state.error_code` one of the two spec codes (ISSUE-023), no decryption, ERROR 0x0F010213 and 0xDEADBEEF; halt.
 |`sep_rom_decrypt_exit_zeroize_test_success` |<<sep-rom-vplan-spec-graded>> |boots; no 16-byte window of key material in DCCM when the decryption stage returns and at the hand-off mret.
-|`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` |<<sep-rom-vplan-spec-graded>> |AES-init failure exit: no key material in DCCM at the stage return and at the FAIL verdict. Blocked: ISSUE-024; a static reading suspects a B on this exit, not confirmed in simulation.
+|`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` |<<sep-rom-vplan-spec-graded>> |AES-init failure exit: no key material in DCCM at the stage return and at the FAIL verdict.
 |`sep_rom_decrypt_exit_zeroize_test_kdf_fail` |<<sep-rom-vplan-spec-graded>> |key-derivation failure exit: no key material in DCCM at the stage return and at the FAIL verdict.
-|`sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` |<<sep-rom-vplan-spec-graded>> |AES key-load failure exit: no key material in DCCM at the stage return and at the FAIL verdict. Blocked: ISSUE-024.
-|`sep_rom_spi_retry_exhaust_test` |<<sep-rom-vplan-spec-graded>> |each slot's manifest read made 2 to 4 times, the backup tried after the primary, then ERROR MANIFEST_LOAD_FAILED and 0xDEADBEEF; no partial data used; halt.
+|`sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` |<<sep-rom-vplan-spec-graded>> |AES cipher-setup failure exit (CTRL update rejected before the key load): no key material in DCCM at the stage return and at the FAIL verdict.
+|`sep_rom_spi_retry_exhaust_test` |<<sep-rom-vplan-spec-graded>> |each slot's manifest read made 2 to 4 times, the backup tried after the primary, one MANIFEST_LOAD_START per slot attempt, then ERROR MANIFEST_LOAD_FAILED and 0xDEADBEEF; no partial data used; halt.
 |===
 
 [[sep-rom-vplan-procedures]]
@@ -2752,7 +2752,7 @@ PASS record of its own.
 [[sep-rom-vplan-spec-graded]]
 ===== Spec-graded ROM invariants (phase 1)
 
-*Tests:* 41 entries from 26 leaf modules. All are in `rom_fw.toml`; 38 are in the `rom_fw` group, and `sep_rom_decrypt_exit_zeroize_test_aes_init_fail` and `sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` (ISSUE-024) and `sep_rom_sram_iccm_clear_test` (ISSUE-008) are not (<<sep-rom-vplan-known-limitations>>).
+*Tests:* 41 entries from 26 leaf modules. All are in `rom_fw.toml`; 40 are in the `rom_fw` group, and `sep_rom_sram_iccm_clear_test` (ISSUE-008) is not (<<sep-rom-vplan-known-limitations>>).
 
 *Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_observe_base.py` for the leaves that start from the common bring-up. The other leaves extend an existing test, keep all of its checks and add their own; the Stimulus cell names the parent.
 
@@ -2813,10 +2813,10 @@ An issue marked SPEC is a contradiction in the specification; the leaf grades on
 |`sep_rom_rsa_key_direct_otbn_test` |Runs `sep_rom_ot_secure_boot_test` and keeps its checks; tb_top Key Manager probes recorded each clk. DV shortcut: +esrc_noise_force; debug-module system-bus read-back of the OTBN modulus buffer after the run. |CPU writes the modulus into OTBN DMEM before EXECUTE; Key Manager idle through BL0. |`CHK-NO-KM-TO-OTBN`, `CHK-CPU-WRITES-MODULUS` |`SEP-ROM-SB-110`
 |`sep_rom_encryption_requires_secure_boot_test` |Runs `sep_rom_ot_dma_boot_test` (sep_efuse_class_key.toml: TEST_DEV, debug open, SBOOT_DIS 0, golden CLASS_KEY); both slots carry `oca_encrypted_boot.bin` made validly unsigned (`secure_boot_control` 0, signing fields zero, hash resealed). DV shortcut: +esrc_noise_force. |Both slots refused, no decryption, terminal halt. |`CHK-ENCRYPTED-REFUSED`, `CHK-REFUSAL-CAUSE`, `CHK-NO-DECRYPTION`, `CHK-TERMINAL` |`SEP-ROM-PL-050`
 |`sep_rom_decrypt_exit_zeroize_test_success` |Observer base; SPI boot; sep_efuse_class_key.toml; encrypted primary re-encrypted under an IV that shares no 16-byte window with the key material; backup magic broken; +sep_rom_decrypt_exit=success. DV shortcut: +esrc_noise_force. |Boots; no key-material residue in DCCM at the stage return and at the hand-off mret. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
-|`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` |As above with +sep_rom_decrypt_exit=aes_init_fail. DV shortcut: jtag_trng_rst_hold_i holds the entropy complex in reset from the stage entry, and an 8 clk AES reset pulse follows. |No residue at the stage return and at the FAIL verdict. Blocked: ISSUE-024. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
+|`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` |As above with +sep_rom_decrypt_exit=aes_init_fail. DV shortcut: tb input aes_sw_rst_readback_inject_i makes the AES bit of SW_RESET_N read back 0 from the stage entry to its return; the AES itself stays out of reset. |No residue at the stage return and at the FAIL verdict. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
 |`sep_rom_decrypt_exit_zeroize_test_kdf_fail` |As above with +sep_rom_decrypt_exit=kdf_fail. DV shortcut: hmac_fifo_drain_stall_i stops the HMAC message FIFO from the stage entry to its return. |No residue at the stage return and at the FAIL verdict. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
-|`sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` |As above with +sep_rom_decrypt_exit=aes_dec_fail. DV shortcut: jtag_trng_rst_hold_i holds the entropy complex in reset from the stage entry, so the AES stalls at the key load. |No residue at the stage return and at the FAIL verdict. Blocked: ISSUE-024. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
-|`sep_rom_spi_retry_exhaust_test` |Observer base with the SPI boot setup of `sep_rom_ot_dma_boot_test` (+sep_boot_from_spi, OcahSpiFlash, ESRC noise). DV shortcut: tb input dma_host_rsp_err_inject_i makes every secure-DMA host response SLVERR from the first MANIFEST_LOAD_START word to the verdict. |2 to 4 reads per slot, backup after primary, ERROR MANIFEST_LOAD_FAILED and 0xDEADBEEF; halt. |`CHK-READ-RETRIED`, `CHK-ATTEMPTS-BOUNDED`, `CHK-NO-PARTIAL-USE`, `CHK-FALLBACK-OR-TERMINAL` |`SEP-ROM-SPI-030`, `SEP-ROM-RETRY-010`, `SEP-ROM-RETRY-050`
+|`sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` |As above with +sep_rom_decrypt_exit=aes_dec_fail. DV shortcut: tb input aes_ctrl_update_err_inject_i forces the AES core's CTRL update error from the stage entry to its return, so the cipher configuration is rejected before the key load. |No residue at the stage return and at the FAIL verdict. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
+|`sep_rom_spi_retry_exhaust_test` |Observer base with the SPI boot setup of `sep_rom_ot_dma_boot_test` (+sep_boot_from_spi, OcahSpiFlash, ESRC noise). DV shortcut: tb input dma_host_rsp_err_inject_i makes every secure-DMA host response SLVERR from the first MANIFEST_LOAD_START word to the verdict. |2 to 4 reads per slot, backup after primary, one MANIFEST_LOAD_START per slot attempt, ERROR MANIFEST_LOAD_FAILED and 0xDEADBEEF; halt. |`CHK-READ-RETRIED`, `CHK-ATTEMPTS-BOUNDED`, `CHK-NO-PARTIAL-USE`, `CHK-FALLBACK-OR-TERMINAL`, `CHK-LOAD-START-PER-ATTEMPT` |`SEP-ROM-SPI-030`, `SEP-ROM-RETRY-010`, `SEP-ROM-RETRY-050`
 |===
 
 *Added checker contracts:* each contract states what the check grades and the `rom.adoc` sentence it grades.
@@ -2914,12 +2914,13 @@ An issue marked SPEC is a contradiction in the specification; the leaf grades on
 |`sep_rom_encryption_requires_secure_boot_test` |`CHK-REFUSAL-CAUSE` |`bl0_state.error_code` at the verdict is `OCA_BOOT_ERR_BASE` combined with `OCA_FAIL_SECURE_BOOT_INVARIANT` or with `OCA_FAIL_ENCRYPTION_REQUIRES_SECURE_BOOT`. Spec: "(the `secure-boot invariant` check)"; the spec names both codes for this refusal (ISSUE-023, SPEC), so the set both readings accept is graded.
 |`sep_rom_encryption_requires_secure_boot_test` |`CHK-NO-DECRYPTION` |No DECRYPTION_START, DECRYPTION_END or DECRYPTION_FAILED word and no DECRYPT_OK line; in the manifest-attempt span no retirement at the decrypt, KDF or AES entry and no CPU access to the AES aperture. Spec: "Payload encryption shall require secure boot".
 |`sep_rom_encryption_requires_secure_boot_test` |`CHK-TERMINAL` |ERROR MANIFEST_LOAD_FAILED (0x0F010213) after the last SPI chip-select and before the last verdict, 0xDEADBEEF; no retirement leaves the ROM; 20,000 clk halt window. Spec (SEP-ROM-RETRY-030): "A failure anywhere in that chain fails the *slot*, not the boot, until no slot remains."
-|`sep_rom_decrypt_exit_zeroize_test_*` (4 entries) |`CHK-NO-KEY-RESIDUE` |When the decryption stage returns, no 16-byte window of the class key, the derived key or the KDF input, in byte order or word-reversed, is at any DCCM byte offset. Spec: "All key material (class key, derived key, KDF inputs) shall be zeroized (`explicit_memzero`) on every exit path from the decryption stage, success or failure." Graded as material not found, not as bytes written to zero. `_aes_init_fail` and `_aes_dec_fail`: Blocked: ISSUE-024; a static reading suspects a B on the `_aes_init_fail` exit, not confirmed in simulation.
-|`sep_rom_decrypt_exit_zeroize_test_*` (4 entries) |`CHK-NO-KEY-RESIDUE-AT-END` |The same search at the hand-off mret (success) or at the FAIL verdict (failures). Spec: as NO-KEY-RESIDUE. `_aes_init_fail` and `_aes_dec_fail`: Blocked: ISSUE-024; a static reading suspects a B on the `_aes_init_fail` exit, not confirmed in simulation.
+|`sep_rom_decrypt_exit_zeroize_test_*` (4 entries) |`CHK-NO-KEY-RESIDUE` |When the decryption stage returns, no 16-byte window of the class key, the derived key or the KDF input, in byte order or word-reversed, is at any DCCM byte offset. Spec: "All key material (class key, derived key, KDF inputs) shall be zeroized (`explicit_memzero`) on every exit path from the decryption stage, success or failure." Graded as material not found, not as bytes written to zero. ISSUE-024 (the class key stayed in DCCM after an aes_init() failure, found by `_aes_init_fail`) is fixed in the ROM.
+|`sep_rom_decrypt_exit_zeroize_test_*` (4 entries) |`CHK-NO-KEY-RESIDUE-AT-END` |The same search at the hand-off mret (success) or at the FAIL verdict (failures). Spec: as NO-KEY-RESIDUE.
 |`sep_rom_spi_retry_exhaust_test` |`CHK-READ-RETRIED` |At least two read frames at the primary manifest address before the first backup frame, at least two at the backup address, and each slot's WARN SPI_OT_TRANSPORT_ERROR after its last frame. Spec: "A transport-level read fault shall be retried ... before being reported to the loader".
 |`sep_rom_spi_retry_exhaust_test` |`CHK-ATTEMPTS-BOUNDED` |At most four read frames at each slot's manifest address. Spec: "a bounded number of times (OpenTitan driver: 3)".
 |`sep_rom_spi_retry_exhaust_test` |`CHK-NO-PARTIAL-USE` |No MANIFEST_VALIDATED or PAYLOAD_VALIDATED word, no OCA_BODY=, MANIFEST_OK or PAYLOAD_OK line, and no frame returns a byte outside the span of its slot's first frame. Spec: "never by accepting partial data."
-|`sep_rom_spi_retry_exhaust_test` |`CHK-FALLBACK-OR-TERMINAL` |Every frame lies in the primary or backup slot span; a MANIFEST_LOAD_START word between the last primary and the first backup frame; after the last backup frame ERROR MANIFEST_LOAD_FAILED (0x0F010213), then 0xDEADBEEF, no later frame, and a 20,000 clk halt. Spec: "a read that still fails is handled by slot fallback"; SEP-ROM-RETRY-010 "primary (`0x1000`) then backup (`0x41000`)"; SEP-ROM-RETRY-050 (b) to (d). The extra MANIFEST_LOAD_START word is OBS only (ISSUE-026, B suspect, not graded).
+|`sep_rom_spi_retry_exhaust_test` |`CHK-FALLBACK-OR-TERMINAL` |Every frame lies in the primary or backup slot span; a MANIFEST_LOAD_START word between the last primary and the first backup frame; after the last backup frame ERROR MANIFEST_LOAD_FAILED (0x0F010213), then 0xDEADBEEF, no later frame, and a 20,000 clk halt. Spec: "a read that still fails is handled by slot fallback"; SEP-ROM-RETRY-010 "primary (`0x1000`) then backup (`0x41000`)"; SEP-ROM-RETRY-050 (b) to (d).
+|`sep_rom_spi_retry_exhaust_test` |`CHK-LOAD-START-PER-ATTEMPT` |The number of MANIFEST_LOAD_START words equals the number of slots with read frames, and each such slot has exactly one after the previous slot's last frame and before its own first frame. Spec (tbl:stage_trace, [S23]): "`MANIFEST_LOAD_START` (per attempt)". ISSUE-026 (an extra MANIFEST_LOAD_START on [S23] entry) is fixed in the ROM.
 |===
 
 [[sep-rom-vplan-regression-groups]]
@@ -2929,7 +2930,7 @@ An issue marked SPEC is a contradiction in the specification; the leaf grades on
 |===
 |Group |Tests |Purpose
 |`rom_fw_smoke` |`sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` |Bring-up of the SMC-SRAM, OpenTitan SPI DMA and PIO, and signed boot paths, and of the hand-off magic. Run it first after a ROM or toolchain change
-|`rom_fw` |228 of the 231 entries of `testlists/rom_fw.toml`, all but three entries of <<sep-rom-vplan-spec-graded>> (ISSUE-024, ISSUE-008) |The full Boot ROM firmware regression and the credit set of this plan
+|`rom_fw` |230 of the 231 entries of `testlists/rom_fw.toml`, all but `sep_rom_sram_iccm_clear_test` of <<sep-rom-vplan-spec-graded>> (ISSUE-008) |The full Boot ROM firmware regression and the credit set of this plan
 |===
 
 [source,bash]
@@ -2960,8 +2961,8 @@ reset. Test timeouts are 1 to 6 hours of wall time.
 |No CI tier runs `rom_fw` |Boot ROM evidence comes from a local run on a host with the toolchain
 |Cold-path value of `cold_scratch[7]` |`rom.adoc` (Cold Boot Environment Setup, step 1, and Warm-Reset Resume Path, step 2) says the ROM clears the slot on a cold boot. `bl1-handoff.adoc` (Warm-reset return) says the ROM poisons it with `-1`, and `vector.S` writes `0xFFFFFFFF`. `sep_warm_reset_unarmed_cold_boot_test` expects `0xFFFFFFFF`. The two specification chapters disagree, and the ROM owner decides which value is correct
 |Memory-repair gate |`SEP-ROM-SMC-030` names the `mem_repair_bypass` strap (`STRAPS_LO[13]`) as the only escape. `vector.S` also gates on the MBIST result, which `SEP-ROM-SMC-030` does not name; `sep_firmware_mbist_only_fail_test` follows `vector.S` for this behaviour
-|Entries outside the `rom_fw` group |`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` and `sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` (ISSUE-024) and `sep_rom_sram_iccm_clear_test` (ISSUE-008) are in `rom_fw.toml` only, so a `rom_fw` group run does not reach them; each runs by name. The default ROM build sets `SRAM_SCRUB_BYTES=0` and `ROM_ICCM_CLEAR_FULL=0` to save sim time, so `sep_rom_sram_iccm_clear_test` fails there by design of the build, not of the clear code
-|Blocked PL-080 AES exits (ISSUE-024) |`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` and `sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` wait out the ROM's bounded AES idle poll, about 9 h and 12 to 13 h of wall time on Verilator, and have no result. The testlist has no skip field, so a run that names them spends that time
+|Entry outside the `rom_fw` group |`sep_rom_sram_iccm_clear_test` (ISSUE-008) is in `rom_fw.toml` only, so a `rom_fw` group run does not reach it; it runs by name. The default ROM build sets `SRAM_SCRUB_BYTES=0` and `ROM_ICCM_CLEAR_FULL=0` to save sim time, so `sep_rom_sram_iccm_clear_test` fails there by design of the build, not of the clear code
+|PL-080 AES idle-timeout exits |`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` and `sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` reach the AES failure exits through tb hooks at the first driver check. The ROM's bounded AES idle waits, which return through the same exits, are not executed in simulation
 |`SEP-ROM-HOFF-050` has no test (ISSUE-001) |`rom.adoc` says the gate ledger is not implemented and defines no observable output, so no test maps to the requirement
 |===
 
@@ -2977,7 +2978,7 @@ The Boot ROM has no formal flow.
 |===
 |Item |State |Note
 |Every test in the summary has a procedure group |Yes |231 tests in 34 groups
-|Every documented test exists in `rom_fw.toml` and in the `rom_fw` group |Yes |Checked against both, except `sep_rom_decrypt_exit_zeroize_test_aes_init_fail` and `sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` (ISSUE-024) and `sep_rom_sram_iccm_clear_test` (ISSUE-008), which are in `rom_fw.toml` only
+|Every documented test exists in `rom_fw.toml` and in the `rom_fw` group |Yes |Checked against both, except `sep_rom_sram_iccm_clear_test` (ISSUE-008), which is in `rom_fw.toml` only
 |Every test has at least one checker with a PASS record |Yes |Static check of the test source: 0 tests without one
 |`rom_fw` has an `expected_count` |No |`rom_fw_smoke` has one. `rom_fw` does not, so a dropped entry does not fail the testlist load
 |The ROM owner reviewed the requirement mappings |No |Pending owner review

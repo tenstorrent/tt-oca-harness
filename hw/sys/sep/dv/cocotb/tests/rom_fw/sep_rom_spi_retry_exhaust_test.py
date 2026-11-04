@@ -50,13 +50,15 @@ assertion of the same index.
   word (0x0F010213), then the FAIL verdict 0xDEADBEEF, no later read frame, and for 20,000 clk
   after the verdict the retired PCs span at most 64 bytes and cold_scratch[1], cold_scratch[0]
   and the console do not change.
+* CHK-LOAD-START-PER-ATTEMPT ("`MANIFEST_LOAD_START` (per attempt)"): the number of
+  MANIFEST_LOAD_START words equals the number of slots with read frames, and each such slot has
+  exactly one of them after the previous slot's last read frame and before its own first.
 
 Partial coverage. Not graded: a fault that clears after fewer than 4 attempts (the read then
 succeeds); the PIO build, which has no retry; the rotate_update order; the SRAM zeroing and
 transport re-bring-up between slots (RETRY-040); `bl0_state.error_code` and the `wfi` instruction
-itself; the number of MANIFEST_LOAD_START words (logged as OBS-MANIFEST-LOAD-STARTS); the final
-cold_scratch[1] value, which the bench's invalid status ring overwrites with STATUS_REPORTING_INVALID,
-so RETRY-050 (b) is graded from the ERROR word on the status stream.
+itself; the final cold_scratch[1] value, which the bench's invalid status ring overwrites with
+STATUS_REPORTING_INVALID, so RETRY-050 (b) is graded from the ERROR word on the status stream.
 """
 
 from __future__ import annotations
@@ -155,6 +157,7 @@ class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
         "CHK-ATTEMPTS-BOUNDED",
         "CHK-NO-PARTIAL-USE",
         "CHK-FALLBACK-OR-TERMINAL",
+        "CHK-LOAD-START-PER-ATTEMPT",
     )
 
     async def stimulus(self, obs: _HaltObserver) -> None:
@@ -396,7 +399,21 @@ class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
             verdict_changes=v_moved[:4],
             console_after=printed[:4],
         )
-        chk.obs("MANIFEST-LOAD-STARTS", count=len(starts), ps=[_ps(t) for t in starts])
+        attempted = [n for n in _SLOTS if in_slot[n]]
+        per_slot = {
+            n: [_ps(t) for t in starts if (i == 0 or last[attempted[i - 1]] < t) and t < first[n]]
+            for i, n in enumerate(attempted)
+        }
+        chk.ok(
+            "LOAD-START-PER-ATTEMPT",
+            bool(attempted)
+            and len(starts) == len(attempted)
+            and all(len(v) == 1 for v in per_slot.values()),
+            manifest_load_starts=len(starts),
+            slot_attempts=len(attempted),
+            starts_ps=[_ps(t) for t in starts],
+            starts_per_slot=per_slot,
+        )
         chk.obs(
             "STATUS-TAIL",
             words=[f"0x{w:08x}" for t, w in status if starts and t >= starts[0]][:48],
