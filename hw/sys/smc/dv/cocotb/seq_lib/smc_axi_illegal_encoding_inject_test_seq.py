@@ -22,10 +22,9 @@ the requests. The encoding the DUT forwards on each link is an observation
 Grading, per request, from the port pins the leaf samples on every clk_smc_i
 edge: exactly one B for a write and AxLEN+1 R beats with RID=ARID and RLAST on
 the last beat only for a read, never EXOKAY, within a counted bound. The
-response codes themselves are observations (SF-015, SF-012), the crossing
-write's BRESP among them: it is recorded beside the write-split rule of
-memmap.adoc:64-67 over the single-beat reference codes and never compared. After
-each request the reference set (scratch_cold SCRATCH[0..7] and one
+response codes themselves are observations (SF-015, SF-012). The crossing
+write's BRESP is graded against the write-split rule of memmap.adoc:64-67 over
+the single-beat reference codes of its beats. After each request the reference set (scratch_cold SCRATCH[0..7] and one
 SMC_BASE_CONFIG register) is read back, and only registers inside the
 request's footprint may differ (memmap.adoc:63-67, 155-176); a fresh legal
 64-bit read of the SMC_BASE_CONFIG register on the same port must answer OKAY
@@ -76,6 +75,17 @@ CROSS_START = SCRATCH[6]
 CROSS_BOUNDARY = (CROSS_START | 0xFFF) + 1
 CROSS_BEATS = (CROSS_BOUNDARY - CROSS_START) // BEAT_BYTES + 1
 CROSS_BEAT0 = 0x4C4C_0000_0000_0001
+# misc_wrap sub-blocks: a 32-bit word inside one answers OKAY; a word between them or past
+# the unit's decoded extent answers DECERR (the generated map's hole and past-extent rows);
+# the word at the 4 KiB boundary is the first GPIO interface register.
+_MISC_SUBBLOCKS = tuple(
+    (
+        smc_addr(f"SMC_TOP_SMC_MISC_WRAP_{name}_BASE_ADDR"),
+        smc_addr(f"SMC_TOP_SMC_MISC_WRAP_{name}_SIZE"),
+    )
+    for name in ("SCRATCH_COLD", "SCRATCH_COLD_WARM", "CHIP_CONFIG", "NDM_RESET")
+)
+_GPIO_INTF_BASE = smc_addr("SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR")
 # misc_wrap is a generated register block (memmap.adoc, Generated Register Blocks),
 # so the crossing write's start address selects a register unit.
 CROSS_UNIT_IS_REGISTER = True
@@ -154,6 +164,22 @@ def split_bresp(codes: list[int]) -> int:
     if any(code in (AXI_SLVERR, AXI_DECERR) for code in codes[:-1]):
         return AXI_SLVERR
     return 0
+
+
+def declared_cross_codes() -> list[int]:
+    """Declared single-beat write code of every crossing-burst beat: the split rule over its two words."""
+
+    def word(addr: int) -> int:
+        if addr >= _GPIO_INTF_BASE:
+            return 0
+        if any(base <= addr < base + size for base, size in _MISC_SUBBLOCKS):
+            return 0
+        return AXI_DECERR
+
+    return [
+        split_bresp([word(CROSS_START + k * BEAT_BYTES), word(CROSS_START + k * BEAT_BYTES + 4)])
+        for k in range(CROSS_BEATS)
+    ]
 
 
 def rule_trips(addr: int, length: int, size: int, burst: int) -> list[str]:
@@ -848,6 +874,13 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
             await self._after_shape(read)
             rresp = self._grade(read).split(",")
             bresp = next(b["resp"] for b in write.resps if b["id"] == write.axi_id)
+            declared = declared_cross_codes()
+            assert codes == declared, (
+                f"CHK-G11-SPLIT-BRESP FAIL: {port} single-beat codes "
+                f"{''.join(str(c) for c in codes)} differ from the declared "
+                f"{''.join(str(c) for c in declared)} (0 OKAY inside a misc_wrap sub-block or "
+                f"GPIO, 3 DECERR between sub-blocks and past the extent)"
+            )
             expected = split_bresp(codes)
             assert CROSS_UNIT_IS_REGISTER
             split[port] = (RESP_NAMES[bresp], RESP_NAMES[expected])
@@ -878,11 +911,14 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
         )
         for port in PORTS:
             got, want = split[port]
+            assert got == want, (
+                f"CHK-G11-SPLIT-BRESP FAIL: {port} crossing write BRESP {got}, the write-split "
+                f"rule over the single-beat codes gives {want}"
+            )
             cocotb.log.info(
-                "OBS-G11-SPLIT-BRESP: port=%s bresp=%s split_rule_over_single_beat_codes=%s "
-                "(observation, SF-012: the single-beat codes come from the design's own answers "
-                "to beats routed by their own address, so the burst's past-extent beats have no "
-                "stated code to compare against; start 0x%x selects misc_wrap, %d beats)",
+                "CHK-G11-SPLIT-BRESP: port=%s bresp=%s split_rule_over_single_beat_codes=%s "
+                "(start 0x%x selects misc_wrap, %d beats; every single-beat code equals the "
+                "declared code of its words)",
                 port,
                 got,
                 want,

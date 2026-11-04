@@ -1218,7 +1218,8 @@ reset words of the regions logged as a control.
 the SYS_OUT responder, over a drawn manager, direction and burst, return the injected code at the
 JTAG port that issued the access, leave the zeroer finishing with no error report and the recovery
 copy after an errored DMA burst completing byte-exact, and leave the recovery access answering OKAY.
-|`smc_bresp_evidence_obs_test` |3, held out |Every declared past-extent and gap write recorded beside its declaration, and the merged BRESP of split two-beat writes, for #3426.
+|`smc_bresp_evidence_test` |3 |The merged BRESP of a split two-beat write follows the stated rule (the last beat's error code, else SLVERR after an earlier error, else OKAY); every declared past-extent and gap write is recorded beside its declaration.
+|`smc_memmap_access_rules_test` |3 |A burst starting in a gap answers DECERR on every beat; exclusive accesses answer OKAY, never EXOKAY, and land; in-block holes and array padding answer OKAY with 0 and take no write; the beat past the last register of `smc_cpu_ctrl` answers SLVERR.
 |===
 
 ==== RESET
@@ -9105,7 +9106,7 @@ port's last AW/W/AR/B/R handshake and the reset sample on an INFO-CLASSIFY line 
 |`CHK-G11-WRAP-LEN0-ANSWERED` |Per port, the WRAP AxLEN 0 write gets exactly one B and the read exactly AxLEN+1 R beats with RID=ARID and RLAST on the last beat only, never EXOKAY, within the bound; the codes are `OBS-G11-WRAP-LEN0`
 |`CHK-G11-RSVD-BURST-ANSWERED` |The same for the reserved-burst write and read; the codes are `OBS-G11-RSVD-BURST`
 |`CHK-G11-4KB-ANSWERED` |The same for the crossing write and read; the per-beat codes are `OBS-G11-4KB`
-|`OBS-G11-SPLIT-BRESP` |Per port, the crossing write's BRESP and the write-split rule (`memmap.adoc` 64-67) applied to the design's own single-beat codes, recorded and never compared: the burst's past-extent beats have no stated response code (SF-012)
+|`CHK-G11-SPLIT-BRESP` |Per port, the single-beat write code of every crossing-burst beat equals the declared code of its two words (OKAY inside a misc_wrap sub-block or GPIO, DECERR between sub-blocks and past the extent, merged by the split rule) and the crossing write's BRESP equals the write-split rule (`memmap.adoc` 64-67) over them
 |`CHK-G11-FOOTPRINT` |After each of the twelve requests every reference register outside the request's footprint keeps its seeded value
 |`CHK-G11-LIVENESS` |After each of the twelve requests the fresh legal read on the same port answers OKAY with the seeded value
 |`CHK-G11-INJECT-MASK` |Twelve CTRL-INJECT lines; at every address handshake the port carries the real encoding, the view of the port checker and of the fabric-link checker trips none of the WRAP-length, burst-legal and 4 KiB rules, and no forwarded request has an unresolved fabric-link probe
@@ -9123,8 +9124,8 @@ burst-legal and 4 KiB rules of `u_sep_in_axi_sva`, `u_sys_in_axi_sva`, `u_sep_re
 
 *Scope limit*: The response codes of the illegal requests and whether a write stored its data are
 observation lines (`OBS-G11-WRAP-LEN0`, `OBS-G11-RSVD-BURST`, `OBS-G11-4KB`, `OBS-G11-FORWARDED`; SF-015, and SF-012 for
-the past-extent beats of the crossing burst); the crossing write's BRESP is recorded beside the
-write-split rule over the measured reference codes as an observation under SF-012, never compared.
+the past-extent beats of the crossing burst); the crossing write's BRESP is graded against the
+write-split rule over the measured reference codes.
 
 '''''
 
@@ -12117,7 +12118,8 @@ count, IDs and data word, and the port stays live afterwards.
   `BASE + 0x10_0000` (at the limit, scratchpad offset 0xA_0000) on SYS_IN and SEP_IN answer DECERR
   with one beat and one B, and the word seeded there is unchanged after the restore to 0x100_0000;
   after the restore a written word at `BASE + 0x6_0000` reads back with OKAY. The 64-bit read and
-  write at `BASE + 0x6_0000`, below the limit, are observation only (#3551).
+  write at `BASE + 0x6_0000`, below the limit, answer OKAY and the words land (the unit stays
+  reachable below the limit).
 * Gate redirect: for each gated peripheral and port, the first read after the B of the enabling
   `CLOCK_GATE_CONTROL` write answers SLVERR with 0xBADCAB1E and the first read after the B of the
   clearing write answers OKAY.
@@ -12132,9 +12134,8 @@ count, IDs and data word, and the port stays live afterwards.
   `OBS-ERRC-REGIONSIZE`, `OBS-ERRC-GAP`, `OBS-ERRC-DEBUGWIN`, `OBS-ERRC-PASTEXT64`,
   `OBS-ERRC-PASTEXT32`, `OBS-ERRC-MISCHOLE`, `OBS-ERRC-GPIOPAST` and `OBS-ERRC-CLKGATE` (RRESP and
   RDATA of every read beat, run-length per burst, and the lanes of each narrow read; SF-002,
-  SF-003, SF-004, SF-005, SF-006, SF-010, SF-020, SF-027), `OBS-ERRC-REGIONSIZE-STRADDLE` (response,
-  data and whether the access landed, for the read and the write at `BASE + 0x6_0000` below the
-  `REGION_SIZE` 0x10_0000 limit on SYS_IN and SEP_IN; #3551), `OBS-ERRC-SPLITSLOT` (merged code and data of the 64-bit read, the write BRESP and whether +0
+  SF-003, SF-004, SF-005, SF-006, SF-010, SF-020, SF-027; the GAP read-burst beats are also
+  graded), `OBS-ERRC-SPLITSLOT` (merged code and data of the 64-bit read, the write BRESP and whether +0
   took the low word; SF-004, SF-010) and `OBS-ERRC-SPLITSLOT-NDMCOUNT` (the misc wrapper +0 word on
   every port). `INFO-PATH` prints the peripheral AXI-Lite handshake count
   of each gap and 32-bit island read (SF-020, SF-010).
@@ -12154,7 +12155,8 @@ count, IDs and data word, and the port stays live afterwards.
 . STRADDLE: from SEP_IN seed D0 at `BASE + 0x6_0000` and D0' at `BASE + 0x10_0000` and write
   `REGION_SIZE` 0x10_0000 (read back). On SYS_IN and SEP_IN: a 64-bit read and a 64-bit write at
   `BASE + 0x10_0000`, graded DECERR with one beat and one B; a 64-bit read and a 64-bit write of D1
-  at `BASE + 0x6_0000`, printed as `OBS-ERRC-REGIONSIZE-STRADDLE` (#3551) and never compared.
+  at `BASE + 0x6_0000`, graded OKAY with the read returning a word the leaf stored and the write
+  landing (`INFO-STRADDLE-BELOW`).
   Restore `REGION_SIZE` 0x100_0000 (read back), re-read `BASE + 0x10_0000` (graded OKAY, still D0')
   and `BASE + 0x6_0000` (OKAY, word recorded), write D2 at `BASE + 0x6_0000` and read it back
   (graded OKAY, D2), then a `LOCAL_BASE` read on each port.
@@ -12177,12 +12179,11 @@ BID per write, bystanders and responder counters unchanged, liveness OKAY; read 
 |`CHK-ERRC-REGIONSIZE` |PLIC, CLINT and BEU0 at the reset `REGION_SIZE` answer DECERR as stated;
 at `REGION_SIZE` 0x10_0000 the read and write at `BASE + 0x10_0000` answer DECERR with one beat and
 one B on SYS_IN and SEP_IN and the word there keeps D0'; D2 reads back OKAY at 0x100_0000. The
-accesses at `BASE + 0x6_0000` below the limit are `OBS-ERRC-REGIONSIZE-STRADDLE` (#3551)
-|`OBS-ERRC-REGIONSIZE-STRADDLE` |Observation only (#3551): response code, read data and landed
-status of the 64-bit read and write at `BASE + 0x6_0000` on SYS_IN and SEP_IN while the scratchpad
-unit straddles `BASE + REGION_SIZE`; never compared
+read and write at `BASE + 0x6_0000` below the limit answer OKAY, the read returns a stored word
+and the written word lands
 |`CHK-ERRC-GAP` |The six reserved gaps at both bases on the three ports answer DECERR with
-`RDATA[31:0]` = 0xBADCAB1E and the word in the addressed half of each 32-bit read
+`RDATA[31:0]` = 0xBADCAB1E and the word in the addressed half of each 32-bit read; every beat of
+an INCR read burst starting in a gap answers DECERR with 0xBADCAB1E in both halves
 |`CHK-ERRC-DEBUGWIN` |The Debug Module window answers DECERR with 0xBADCAB1E on the three ports
 |`CHK-ERRC-PASTEXT64` |The first slot past the extent and the last slot of the seven 64-bit
 islands answer DECERR with 0xBADCAB1E
@@ -12210,11 +12211,10 @@ bystanders and responder counters are unchanged, every liveness read answers OKA
 printed, and no access goes unanswered. A FAIL on a stated value is a finding. Enrolled in: `all`.
 
 *Scope limit*: The read data that accompanies an outside-aperture or past-`REGION_SIZE` answer, the
-second word of a 64-bit read, the per-beat code and data of a read burst, the lanes of a narrow
-read and the merged answer of a split slot wait on SF-002, SF-003, SF-004, SF-005, SF-006 and
-SF-010 and are OBS lines. `NDMRESET_CLUSTER_COUNT` reports an integration value and is an OBS line.
-Whether a unit that straddles `BASE + REGION_SIZE` answers below the limit is open (#3551, Known
-Limitations): those accesses are OBS lines. Which crossbar answers a gap (SF-020) is attributed only by the
+second word of a 64-bit read, the per-beat code and data of a read burst outside the gap family,
+the lanes of a narrow read and the merged answer of a split slot wait on SF-002, SF-003, SF-004,
+SF-005, SF-006 and SF-010 and are OBS lines. `NDMRESET_CLUSTER_COUNT` reports an integration value
+and is an OBS line. Which crossbar answers a gap (SF-020) is attributed only by the
 peripheral AXI-Lite handshake count. `ocah_axi_sva` fires are read from the kept log.
 
 '''''
@@ -16487,6 +16487,212 @@ SEP_IN pass-through and the log engine are not drawn as managers, the error land
 of the drawn burst only, and the bus-error unit's view of an error response (`cpu.adoc`) is not
 graded. This entry consolidates the cells of `smc_output_fabric_slverr_inject_test` and
 `smc_zeroer_resp_unchecked_test`, which stay enrolled.
+
+'''''
+
+[[sec-580-smc_bresp_evidence_test]]
+===== 580 `smc_bresp_evidence_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smc_bresp_evidence_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 32-bit and 64-bit single
+accesses, two-beat INCR and WRAP write bursts, two-beat INCR read bursts); a passive sampler of the
+`s_axi_r*` and `s_axi_b*` handshakes of `tb_top` for the per-beat RRESP; bench probe
+`tb_top.tb_fuse_sense_done`; the generated memory map (`smc_memory_map.py` component rows,
+`smc_memory_map.rdl` `ocah_gap_resp`) and `smc_addr.h` for every address and declared code.
+
+*Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `fabric`, `decode`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every address and pattern is pinned by the generated map.
+
+*Objective*: The merged write response of a split two-beat burst follows the rule `memmap.adoc`
+states, and every declared past-extent and gap write is recorded beside its declaration.
+
+*Test Coverage*:
+
+* The response of a write burst to a register unit is that of the last beat when that beat answers
+  SLVERR or DECERR, else SLVERR when an earlier beat answered an error, else OKAY (`memmap.adoc`
+  "Address Space Organization"): a two-beat INCR write from `DUMMY_ROM_NULL[3]`, the last register
+  of `smc_cpu_ctrl`, whose second beat the block answers SLVERR; a two-beat 32-bit INCR write
+  from `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, the last register of `smc_reset_unit`, whose
+  second beat the crossbar answers DECERR; a two-beat WRAP write starting one word past
+  `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, the last register of `smc_reset_unit`, and wrapping onto
+  it; a two-beat INCR write inside `scratch_cold`.
+* Every declared past-extent and hole address of the component rows and the first and last word of
+  the six gaps between unit apertures, read and written at 32 and 64 bits, recorded beside the
+  declared code (`OBS-BRESP`); ten further two-beat INCR cases at two widths whose beats fall on
+  either side of a decoded extent, recorded with their single-beat codes (`OBS-BURST`).
+* A live register rewritten by a beat keeps its word; a scratch word a beat wrote is restored.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done` (bound 200000 `clk_smc_i` cycles) and record the fuse and warm-reset
+  probe levels.
+. For every probe of the generated map (past-extent first and top word, hole first and last word,
+  sub-block gap words, unit-gap first and last word; 32 and 64 bits): read, then write the pattern;
+  print the `OBS-BRESP` line with the declared and observed codes.
+. For each of the ten two-beat cases at 64 and at 32 bits: read both words, write each word as a
+  single beat and record its code, write the two-beat INCR burst and print the `OBS-BURST` line;
+  live words are read back unchanged and scratch words restored.
+. Error injection. Point: the beat past the last register of `smc_cpu_ctrl` and the word past
+  the last register of `smc_reset_unit`. Kind: a two-beat INCR write burst whose second beat is
+  past the end (cpu_ctrl at 64 bits, reset_unit at 32 bits), a two-beat WRAP write burst whose
+  first beat is past the end (reset_unit), and a two-beat INCR write inside `scratch_cold`.
+  Expected response: the beat answers are taken from the per-beat RRESP of the same two-beat INCR
+  read burst (INCR cases) or from the single-beat writes (WRAP case) and must equal the declared
+  codes; the merged BRESP must equal the stated rule over them: SLVERR (cpu_ctrl), DECERR
+  (reset_unit INCR), SLVERR (reset_unit WRAP), OKAY (scratch_cold). Every beat writes a pattern
+  inside its word's writable field; each beat the
+  block answered OKAY reads the pattern back and is then restored and read again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OBS-BRESP-TABLE` |One `OBS-BRESP` line per probe of the generated map, with the declared
+  and observed codes side by side; the probe count equals the generated table.
+|`CHK-OBS-BURST-TABLE` |One `OBS-BURST` line per two-beat case and width, with the merged BRESP
+  beside the single-beat codes of its beats.
+|`CHK-BURST-MERGE-RESP` |The beat answers of the four stated two-beat writes equal the declared
+  codes (OKAY for a register, SLVERR past the last register of `smc_cpu_ctrl`, the generated
+  row's past-extent code for `smc_reset_unit`) and the merged BRESP equals the rule of
+  `memmap.adoc` over them: SLVERR (cpu_ctrl), DECERR (the 32-bit INCR burst at reset_unit),
+  SLVERR (the WRAP burst at reset_unit), OKAY (scratch_cold); every beat answered OKAY reads
+  its pattern back and restores.
+|`CHK-BURST-LIVE-UNCHANGED` |Every live register a beat rewrote reads its earlier word and every
+  scratch word a beat wrote is restored and read back.
+|`CHK-TIMEOUT-PATHS` |The fuse-sense sub-waits and every AXI access are bounded; the last probe
+  levels and the access count are printed.
+|===
+
+*Pass Criteria*: Every checker above is emitted; the four merged responses equal the stated rule
+over the measured beat answers; live words are unchanged; both tables carry one line per probe.
+
+*Scope limit*: The merged response is graded for the four cases whose beat answers the per-beat
+read burst or the single-beat writes establish; the other ten two-beat cases are recorded with
+their single-beat codes, since a beat routed inside a unit may answer differently from the same
+address accessed alone. The per-probe responses of the `OBS-BRESP` table are recorded beside the
+declaration and graded by the past-extent and gap leaves.
+
+'''''
+
+[[sec-581-smc_memmap_access_rules_test]]
+===== 581 `smc_memmap_access_rules_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smc_memmap_access_rules_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 32-bit and 64-bit single
+accesses with `AxLOCK` 0 and 1, INCR read and write bursts of 2, 4 and 16 beats); a passive sampler
+of the `s_axi_r*` and `s_axi_b*` handshakes of `tb_top` for the per-beat RRESP, RDATA and BRESP;
+bench probe `tb_top.tb_fuse_sense_done`; `smc_addr.h` (register inventory, block sizes, array
+entry size and stride), `smc_memory_map.py` (decoded extents) and `smc_memory_map.rdl`
+(`ocah_gap_resp`).
+
+*Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `fabric`, `decode`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every address is derived from the generated map and every
+pattern is pinned.
+
+*Objective*: The burst, exclusive, hole, past-end and array-padding rules of `memmap.adoc`
+("Address Space Organization", "Generated Register Blocks").
+
+*Test Coverage*:
+
+* A burst that starts between unit apertures answers DECERR for every beat: INCR read bursts of 4
+  and 16 beats from the gap at `BASE + 0xC000` answer DECERR with 0xBADCAB1E in both halves of
+  every beat and the write bursts answer DECERR; `LOCAL_BASE` reads OKAY afterwards.
+* Exclusive access answers OKAY, never EXOKAY, and is performed as a normal access: an `AxLOCK` 1
+  read and write of `HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD` (`smc_base_config`), `scratch_cold`
+  `SCRATCH[5]` (`smc_misc_wrap`) and `SCRATCH[2]` (`smc_cpu_ctrl`), one block per crossbar path;
+  the read returns the ordinary word, the written pattern reads back, the word is restored.
+* An offset inside a block that no register occupies answers OKAY, reads 0 and takes no write:
+  every unoccupied slot of `smc_reset_unit` (4-byte slots) and `smc_cpu_ctrl` (8-byte slots) below
+  the decoded extent, derived from `smc_addr.h`; the live registers around them read unchanged.
+  `smc_base_config` and `dfx_ctrl` have no unoccupied slot.
+* An offset past the end of the last register answers SLVERR when it reaches the block: the second
+  beat of a two-beat INCR read from `DUMMY_ROM_NULL[3]` (`smc_cpu_ctrl`, selected by the start
+  address) answers SLVERR with data 0 and the two-beat write answers SLVERR with the register
+  unchanged. A 64-bit read at the last 32-bit register of `smc_reset_unit` and of
+  `smc_base_config` is recorded: the peripheral crossbar answers the reset_unit's upper word
+  DECERR before the block, and the 64-bit `smc_base_config` block grants the 8-byte slot of its
+  last 32-bit register and answers OKAY with 0 in the upper word, so the clause "the part of a
+  wider access that runs past that end" has no case this bench can grade.
+* The remap tables and filter controls answer OKAY in the padding between array entries: the
+  slots between `REGION[0]` of the alias remap and `REGION[1]`, and between `FILTER_CTRL[0]` of
+  the inbound filter and `FILTER_CTRL[1]`, read OKAY with 0 before and after a write of ones that
+  answers OKAY; the entry registers read unchanged.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done` (bound 200000 `clk_smc_i` cycles) and start the SEP_IN R and B
+  sampler.
+. Error injection. Point: the gap at `BASE + 0xC000`, every beat address of which lies in no decoded
+  extent. Kind: INCR read bursts of 4 and 16 beats and INCR write bursts of 4 and 16 beats. Expected
+  response: every R beat DECERR with 0xBADCAB1E in both halves, RLAST on the last beat only, one B
+  DECERR per write; `LOCAL_BASE` then reads OKAY with its reset value.
+. For each exclusive target: ordinary read; `AxLOCK` 1 read, graded OKAY with the same word;
+  `AxLOCK` 1 write of a pattern, graded OKAY; ordinary read equals the pattern; restore and read
+  back.
+. For each hole block: read its witness registers; for each hole, read (OKAY, 0), write ones
+  (OKAY), read (OKAY, 0); read the witness registers again, unchanged.
+. Read `DUMMY_ROM_NULL[3]` and seed it with a pattern; two-beat INCR read from it, beat 0 OKAY
+  with the pattern, beat 1 SLVERR with 0; two-beat INCR write (pattern, second pattern), BRESP
+  SLVERR; read `DUMMY_ROM_NULL[3]` unchanged, then restore it. Read the last 32-bit register of
+  `smc_reset_unit` and of `smc_base_config` at 32 bits, then at 64 bits, and print the 64-bit
+  response and data as `INFO-WIDE-READ-PAST-END`.
+. For each array entry: read its registers and the next entry's first register; for each padding
+  slot, read (OKAY, 0), write ones (OKAY), read (OKAY, 0); read those registers again, unchanged.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GAP-BURST-ALL-BEATS-DECERR` |Every beat of the 4- and 16-beat INCR read bursts starting in
+  the gap answers DECERR with 0xBADCAB1E in both halves and the write bursts answer DECERR;
+  `LOCAL_BASE` reads OKAY afterwards.
+|`CHK-EXCL-OKAY-NEVER-EXOKAY` |An `AxLOCK` 1 read and an `AxLOCK` 1 write of a generated block on
+  each crossbar path answer OKAY; the read returns the ordinary word and the written pattern
+  reads back.
+|`CHK-REGBLOCK-HOLE-OKAY-ZERO` |Every unoccupied slot of `smc_reset_unit` and `smc_cpu_ctrl`
+  reads OKAY with 0 before and after a write of ones that answers OKAY; the witness registers
+  are unchanged; at least ten holes are probed.
+|`CHK-REGBLOCK-PAST-END-SLVERR` |The beat past `DUMMY_ROM_NULL[3]` in a two-beat INCR read
+  answers SLVERR with 0 after an OKAY first beat that returns the seeded pattern, the two-beat
+  write answers SLVERR and the register keeps the pattern; the 64-bit reads at the last 32-bit
+  register of `smc_reset_unit` and `smc_base_config` are printed as `INFO-WIDE-READ-PAST-END`.
+|`CHK-ARRAY-PADDING-OKAY` |The padding slots of alias remap `REGION[0]` and inbound
+  `FILTER_CTRL[0]` read OKAY with 0 before and after a write of ones that answers OKAY; the
+  entry registers and the next entry's first register are unchanged.
+|`CHK-TIMEOUT-PATHS` |The fuse-sense sub-waits and every AXI access are bounded; the last probe
+  levels, the access count and the last access are printed; no sampled handshake pin was X.
+|===
+
+*Pass Criteria*: Every checker above is emitted and every assert holds: all gap beats DECERR, the
+exclusive accesses OKAY with the write landed, holes and padding OKAY with 0 and no effect, the
+cpu_ctrl past-end beat SLVERR, and every witness register unchanged.
+
+*Scope limit*: The regblock SLVERR past the last register is reachable only through
+`smc_cpu_ctrl`, whose window is selected by the burst's start address. The 64-bit reads at the
+last 32-bit register of `smc_reset_unit` (the crossbar answers DECERR first) and of
+`smc_base_config` (the 64-bit block grants the slot and answers OKAY with 0 in the upper word,
+where the chapter states SLVERR) are printed, not compared; the base_config answer is a
+documentation question for the chapter owner.
+`smc_base_config` and `dfx_ctrl` have no unoccupied slot. One gap, one exclusive target per
+crossbar path and the first entry of each array are driven.
 
 '''''
 
@@ -21262,9 +21468,9 @@ enables and hysteresis over SEP_IN accesses.
   still 0x1f, 14 of 14 cells in each direction.
 * `cg_hysteresis` values 0x00, 0x01, 0x1f, 0x20 and 0x3f read back as written in bits 29:24 with the
   enables held all clear and then all set.
-* Writes of ones to the reserved bits 23:14 and 63:30 are measured and printed; only that the
-  defined fields keep their held value is compared, since the specification does not state the
-  value reserved bits must show.
+* Writes of ones to the reserved bits 23:14 and 63:30 answer OKAY, the defined fields keep their
+  held value and the reserved bits read 0 (`memmap.adoc` "Generated Register Blocks": bits that
+  belong to no field read 0 and writes to them have no effect).
 * Narrow accesses (32-bit low-word write, 32-bit high-word write, 64-bit write with byte strobe
   0x05) are measured and printed; they must complete, and their responses and resulting values are
   not claimed.
@@ -21287,9 +21493,8 @@ enables and hysteresis over SEP_IN accesses.
 . For both enable patterns (all clear, all set) write each hysteresis value of 0x00, 0x01, 0x1f,
   0x20 and 0x3f, read back and require the hysteresis and the enables to match; restore the base
   value after each pattern.
-. Write the base value with ones in bits 23:14, then in bits 63:30, tolerating any response; read
-  back after each, require the defined fields to equal the base value, print the response and the
-  reserved bits; restore.
+. Write the base value with ones in bits 23:14, then in bits 63:30, requiring OKAY; read back after
+  each, require the defined fields to equal the base value and the reserved bits 0; restore.
 . Issue the 32-bit low-word write of 0x555, the 32-bit high-word write of 0x2A000000 and the 64-bit
   write of 0x1500000000000A0A with strobe 0x05, each tolerating any response; read back after each
   and print; restore after each.
@@ -21312,9 +21517,8 @@ read clear, and `cg_hysteresis` reads 0x1f, with OKAY responses.
 the other thirteen read set, and `cg_hysteresis` reads 0x1f, with OKAY responses.
 |`CHK-CGC-HYST-RANGE` |Each of the five `cg_hysteresis` values reads back as written in both the
 all-clear and all-set enable patterns, and no enable changes from a hysteresis write.
-|`CHK-CGC-RESERVED-BITS` |The writes of ones to bits 23:14 and 63:30 complete and the defined fields
-read back the held base value; the reserved bits' own response and value are measured and printed
-without a compare.
+|`CHK-CGC-RESERVED-BITS` |The writes of ones to bits 23:14 and 63:30 answer OKAY, the defined
+fields read back the held base value and the reserved bits read 0.
 |`CHK-CGC-NARROW-ACCESS` |The narrow writes complete within the bound; their responses and the
 resulting register values are recorded without comparing them.
 |`CHK-CGC-REWRITE` |After the same-value write twice, the 1-0-1 sequence and the successive pair
@@ -21328,11 +21532,9 @@ listed order, each after the step it belongs to.
 `CHK-CGC-HYST-RANGE`, `CHK-CGC-RESERVED-BITS` (defined fields only), `CHK-CGC-REWRITE` hold after
 their compares, with `CHK-NONVAC` printed at the end; `CHK-CGC-NARROW-ACCESS` records the
 narrow-access responses and values without claiming them. The specification does not state the
-reserved-bit and narrow-access values. Enrolled in: `all`, `hosted`.
+narrow-access values. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The response and the read value of the reserved bits 23:14 and 63:30 after the
-writes of ones are measured and printed and not compared, because the specification does not state
-the value reserved bits must show. The responses and resulting register values of the narrow
+*Scope limit*: The responses and resulting register values of the narrow
 accesses (32-bit low-word and high-word writes, strobed 64-bit write) are recorded and not claimed;
 only their completion is required.
 
@@ -25092,12 +25294,13 @@ draws nothing from the seed.
   RESET_TIMEOUT while the read-only core_resets_done keeps 0xF and reset_applied and
   reset_timeout stay 0 (`cpu_ctrl.rdl`).
 * A write of all ones to read-only registers (TEST_CTRL, WB_PC_CORE0[0], SMC_ATTRIBUTES,
-  LOCAL_BASE) and to the read-only core_resets_done field leaves the read value unchanged
-  (`cpu_ctrl.rdl` `sw=r`, `smc_base_config.rdl`); the write response is measured and printed
-  (the specification does not state the value).
-* A write of ones over bits outside any declared field (SCRATCH[1], RESET_VECTOR[1], RESET_CTRL,
-  WDT_TIMEOUT, WB_PC_CORE0[0]) leaves every named field unchanged (`cpu_ctrl.rdl`); the reserved
-  bits as read back are printed (the specification does not state the value).
+  LOCAL_BASE) and to the read-only core_resets_done field answers OKAY, leaves the read value
+  unchanged and raises no interrupt (`cpu_ctrl.rdl` `sw=r`, `smc_base_config.rdl`, `memmap.adoc`
+  "Generated Register Blocks").
+* A write of ones over bits outside any declared field (SCRATCH[1], RESET_VECTOR[1], WDT_TIMEOUT,
+  WB_PC_CORE0[0]) leaves every named field unchanged and the reserved bits read 0; RESET_CTRL
+  stores bits [23:9] and [63:25] as written and returns them on read (`memmap.adoc` "Generated
+  Register Blocks").
 * Secure and non-secure (AxPROT) reads and writes of SCRATCH[1] complete (`memmap.adoc`
   "Protection, Access Control"); the effect of AxPROT on CPU_CTRL is measured and printed
   (the specification does not state the value).
@@ -25113,13 +25316,17 @@ draws nothing from the seed.
 . Error injection. Point: the read-only registers TEST_CTRL, WB_PC_CORE0[0], SMC_ATTRIBUTES and
   LOCAL_BASE, and the read-only core_resets_done field of CORE_RESET_PULSE_COUNT. Kind: a write of
   all ones to each read-only register, and a write of CORE_RESET_PULSE_COUNT with the
-  core_resets_done bits clear. Expected response: each register reads the word it held before the
-  write; the write response of each is printed and not compared. Read each register before its
-  write to take the word compared against.
-. For SCRATCH[1], RESET_VECTOR[1], RESET_CTRL and WDT_TIMEOUT write ones over the bits outside the
-  declared fields with the named fields held at their read values, read back, require the named
-  fields unchanged, print the reserved bits, restore the register and compare the restore read;
-  do the same without a restore for WB_PC_CORE0[0] bits [63:58].
+  core_resets_done bits clear. Expected response: each write answers OKAY, each register reads the
+  word it held before the write, and `tb_cpu_interrupts` and `tb_peripheral_interrupts` hold their
+  earlier values on every `clk_smc_i` edge across the writes. Read each register before its write
+  to take the word compared against.
+. For SCRATCH[1], RESET_VECTOR[1] and WDT_TIMEOUT write ones over the bits outside the declared
+  fields with the lowest named bit flipped and the other named bits at their read values, read
+  back, require the named fields to show the flipped bit and the reserved bits 0, restore the
+  register and compare the restore read; do the same with the named field held and without a
+  restore for the read-only WB_PC_CORE0[0] bits [63:58]. For RESET_CTRL write ones over bits
+  [23:9] and [63:25] with the named fields held, require those bits to read back as ones, restore
+  and compare the restore read.
 . Read SCRATCH[1]; write and read it with AxPROT secure and again with AxPROT non-secure, printing
   data and response of each; restore SCRATCH[1] and compare the restore read; print the bounded
   waits and require the steps and checker lines in order with strictly increasing time stamps.
@@ -25132,26 +25339,31 @@ draws nothing from the seed.
 |`CHK-ACCR-ZERO` |After a full-width 0, the read-write fields of CORE_RESET_PULSE_COUNT and
   RESET_TIMEOUT must read 0 with core_resets_done 0xF and reset_applied and reset_timeout 0.
 |`CHK-ACCR-RO-RESP` |Each read-only register or field must read the word it held before a write of
-  all ones; the write response of each is measured and printed without comparing it.
-|`CHK-ACCR-RESERVED` |After ones over the undeclared bits every named field must read its earlier
-  value; the undeclared bits as read are measured and printed without comparing them.
+  all ones.
+|`CHK-RO-WRITE-OKAY` |Each write to a read-only register or field answers OKAY, and the SMC
+  interrupt lines hold their earlier values on every `clk_smc_i` edge across the writes.
+|`CHK-ACCR-RESERVED` |After ones over the undeclared bits of SCRATCH[1], RESET_VECTOR[1] and
+  WDT_TIMEOUT the named fields read the flipped lowest bit and the undeclared bits read 0; for
+  the read-only WB_PC_CORE0[0] the named field is unchanged and the undeclared bits read 0.
+|`CHK-RESET-CTRL-RSVD-STORE` |After ones over RESET_CTRL bits [23:9] and [63:25] with the named
+  fields held, those bits read back as ones and the register restores.
 |`CHK-ACCR-PROT` |Secure and non-secure SCRATCH[1] accesses must complete and SCRATCH[1] must
   restore; the data and response of each AxPROT access are measured and printed without comparing
   them.
-|`CHK-NONVAC` |The five steps must stamp in order with strictly increasing time and the four
+|`CHK-NONVAC` |The five steps must stamp in order with strictly increasing time and the six
   checker lines must print in step order, so a truncated run fails.
 |`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense done and the SEP_IN access bound)
   with the last access of each; an access that exceeds its bound fails the run.
 |===
 
 *Pass Criteria*: Every checker above is emitted and the sequence asserts hold: zero writes clear
-only the read-write fields, read-only registers keep their read value, named fields survive ones
-over reserved bits, and SCRATCH[1] restores. The read-only write responses, the reserved-bit
-read-back and the AxPROT responses are recorded without comparison.
+only the read-write fields, read-only writes answer OKAY and the registers keep their read value,
+named fields survive ones over reserved bits with the reserved bits reading 0, RESET_CTRL returns
+its stored bits [23:9] and [63:25], and SCRATCH[1] restores. The AxPROT responses are recorded
+without comparison.
 
-*Scope limit*: The write responses of the read-only registers and field, the reserved bits as read
-back after a write of ones, and the data and response of the secure and non-secure AxPROT accesses
-are measured and printed and not compared, because the specification does not state them.
+*Scope limit*: The data and response of the secure and non-secure AxPROT accesses are measured and
+printed and not compared, because the specification does not state them.
 
 '''''
 
@@ -53049,7 +53261,7 @@ in <<smc-deferred-disposition>>.
 |No SMC document states which AXI burst types a register unit accepts: on the 32-bit peripheral path a multi-beat FIXED or WRAP write answers `SLVERR` and lands no beat, while on the 64-bit path it answers `OKAY` and every WRAP beat lands on the start address; `memmap.adoc` gives only the response of a burst split into single-beat writes |`smc_axi_fabric_burst_type_islands_test` records the 15 multi-beat FIXED and WRAP writes into `misc` `SCRATCH_COLD`, `SCRATCH_COLD_WARM` and the reset-unit FLR counters (SEP_IN, SYS_IN, JTAG_IN) as `OBS-BT-ISLAND32 ... stated_bresp=open issue=#3598` with the measured BRESP and `landed=`, grades INCR into those islands OKAY with data, and records the 64-bit WRAP landing as `OBS-BT-WRAP-LANDING ... issue=#3598`, never compared |Issue #3598 (SPEC); grade the 32-bit FIXED and WRAP responses and the 64-bit WRAP landing once the burst rule for register units is stated
 |A scratchpad write blocked at the isolated L2 frontend during a software uncore reset can hold the SEP_IN `RESET_CTRL` write that releases the uncore: on one AXI4 interface W beats follow AW order, so the release's W waits behind the blocked write's |`smc_l2_frontend_access_uncore_held_test` cannot release the uncore under blocked writes without a cold reset; it records the attempt in `OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE`, prints `INFO-CELL-NOT-DRIVABLE` for the episode-C completion cells and recovers with the reset agent's cold reset. The completion of a blocked write is observed, never graded |Hazard question for the designer (SF-026): state whether CPU-control accesses, the uncore release included, stay reachable while an L2-frontend request is blocked; grade the episode-C release and write completion once that is stated
 |A unit whose aperture straddles `BASE + REGION_SIZE` stays reachable below the limit:
- at `REGION_SIZE` 0x10_0000 the scratchpad answers OKAY at `BASE + 0x6_0000` and the write lands, while three texts (`memmap.adoc`, the `REGION_SIZE` description and the integrator guide) promise DECERR for such a unit |`smc_err_slv_response_content_test` grades S9 per address (DECERR at `BASE + 0x10_0000`, at the limit) and records the accesses below the limit as `OBS-ERRC-REGIONSIZE-STRADDLE` without comparing them |SPEC issue #3551: the owner either rewords the three texts to the per-address rule or adds a unit-extent check; the OBS line becomes a graded check once that ruling lands
+ at `REGION_SIZE` 0x10_0000 the scratchpad answers OKAY at `BASE + 0x6_0000` and the write lands, as `memmap.adoc` now states |`smc_err_slv_response_content_test` grades S9 per address (DECERR at `BASE + 0x10_0000`, at the limit; OKAY with the word landed at `BASE + 0x6_0000` below it) and `smc_region_zero_reset_recovery_test` grades the straddle cells |Closed with #3551: the texts state the per-address rule and the accesses below the limit are graded
 |The L2 frontend VALID-low leg of the primary reset has no positive control at the assertion itself: the pending reads finish at the L2 frontend before the reset and are held only at SEP_IN, so the L2 frontend RVALID sampled before the assertion reads 0 |`smc_primary_reset_inflight_links_test` grades `CHK-VALID-LOW-CLUSTER` on the L2 frontend B and R VALIDs with a live control outside the window (R handshakes between the arm and the assertion, B and R handshakes after the release), but no L2 frontend VALID is high at the edge the reset falls |Hold an L2 frontend R beat at the assertion, which makes the pre-assertion sample a live control
 |With the contract stimulus of the watchdog-chain second run (compare 0x10 with `wdogenalways`) the core-3 watchdog re-reaches compare right after the FEED resets the count, so a first-timeout request the FEED leaves latched cannot be told from a fresh re-fire |`smc_warm_reset_inflight_links_test` grades in `CHK-WDT-LATCH-NOT-WITHDRAWN` only that the FEED lands (`tb_wdt_first_timeout` falls after the FEED write with the warm reset high), that the warm reset asserts after the FEED within the bound and does not assert again without a new arm within 200000 `clk_smc_i` edges, and records the edges from the FEED to the fresh first-timeout rise (or `none`) and to the warm assertion as `OBS-WDT-FEED-REFIRE: refire_edge=<n\|none> warm_edge=<b> open-question=wdt-feed-rearm`, never compared |An answer to the open spec question whether a FEED, or a second-stage cycle-count reset, after the first timeout re-arms the first-timeout event, and a contract stimulus that stops the count after the first fire, so that the latch can be graded
 |===
@@ -53088,7 +53300,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |to follow |`smc_fabric_demux_bucket_limits_test` |`rtl_issue` |The vendored `axi_demux` sizes its per-ID-bucket in-flight counter to `clog2(MaxTrans)` bits and reports the bucket full when it is all ones, so the fabric demultiplexers admit 31 same-ID reads per ID bucket and the local crossbar's demux 7 per manager, where the module's parameter contract and `fabric.adoc` give `FabricMaxTrans` 32 and `MaxMstTrans` 8; the leaf holds RREADY, probes at the counters' own handshake points, requires the port behind each demux to withhold nothing, and asserts the chapter's numbers (the issue number follows once filed)
 |#3422 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |A `CTRL_STATUS` trigger while the zeroer is busy has no stated rule; the `OBS-ZEROER-BUSY` lines record the issue and drain windows, the CHK line grades liveness only
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
-|#3426 |`smc_bresp_evidence_obs_test` |`held_out` |The merged BRESP of a split write burst has no stated rule; the `OBS-BRESP` lines record every past-extent and gap write beside its #3294 declaration and the `OBS-BURST` lines the merged response, the CHK lines grade the table counts and unchanged live words
 |===
 
 The reproducers are the `rtl_issue` group:
@@ -53824,11 +54035,11 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_r
 
 '''''
 
-The three observation leaves of `held_out` (`smc_zeroer_busy_trigger_obs_test`,
-`smc_flr_counter_timing_obs_test`, `smc_bresp_evidence_obs_test`) pass today:
-each logs `OBS-*` lines for the value its specification issue (#3422, #3423,
-#3426) has to rule on and grades nothing about it. When the ruling lands the
-`OBS-*` line becomes a `CHK-*` grade and the leaf joins its feature testlist.
+The two observation leaves of `held_out` (`smc_zeroer_busy_trigger_obs_test`,
+`smc_flr_counter_timing_obs_test`) pass today: each logs `OBS-*` lines for the
+value its specification issue (#3422, #3423) has to rule on and grades nothing
+about it. When the ruling lands the `OBS-*` line becomes a `CHK-*` grade and
+the leaf joins its feature testlist.
 
 ===== SV-UVM held-out scenarios
 
@@ -55803,7 +56014,6 @@ which runs a `c_compile` stage, is run on demand with the toolchain image
 |`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |As above
 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records what a `CTRL_STATUS` trigger does while the zeroer is busy and grades nothing about it; #3422 asks the zeroer chapter and `zeroer_ctrl.rdl` for the rule |#3422 is ruled: the `OBS-ZEROER-BUSY` line becomes a `CHK-ZEROER-BUSY-TRIGGER` grade and the leaf joins its feature testlist
 |`smc_flr_counter_timing_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It measures the FLR pre-delay and hold on `clk_ref_i` and grades nothing about them; #3423 asks `reset_unit.rdl` to name the clock and the offset |#3423 is ruled: the `OBS-FLR` lines become `CHK-FLR-PRE-DELAY-CYCLES` and `CHK-FLR-HOLD-CYCLES` grades and the leaf joins `reset`
-|`smc_bresp_evidence_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records the write response of every declared past-extent and gap address and the merged BRESP of split two-beat writes, and grades nothing about them; #3426 asks for the merge rule |#3426 is ruled: the `OBS-BURST` lines become a `CHK-BURST-MERGE-RESP` grade and the leaf joins `fabric`
 |`smc_fabric_demux_bucket_limits_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It grades `FabricMaxTrans` 32 per ID bucket at the SEP region demux and `MaxMstTrans` 8 at the local crossbar's SEP_IN demux with RREADY held and measures 31 and 7, the `axi_demux` counter sizing; `expect_fail` grades the recorded failure as PASS |The chapter or the parameters settle the number: the leaf grades it and joins `fabric`
 |===
 

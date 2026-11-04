@@ -781,3 +781,24 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+
+[[tests]]
+# The merged BRESP of a split two-beat write follows the stated rule; every declared
+# past-extent and gap write is recorded beside its declaration.
+name = "smc_bresp_evidence_test"
+module = "smc_bresp_evidence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+# A burst starting in a gap answers DECERR on every beat; exclusive accesses answer OKAY;
+# in-block holes and array padding answer OKAY with 0; the beat past the last register of
+# smc_cpu_ctrl answers SLVERR.
+name = "smc_memmap_access_rules_test"
+module = "smc_memmap_access_rules_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
