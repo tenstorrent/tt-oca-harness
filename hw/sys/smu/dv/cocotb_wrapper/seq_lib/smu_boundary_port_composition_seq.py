@@ -17,10 +17,12 @@ ack_out at the pads.
 Every width compared is a specification value: `hw/sys/smu/doc/port_table.adoc`
 for the port rows, `doc/integrator/src/smu.adoc` for the parameter defaults,
 `doc/integrator/src/smu-smc.adoc` and the SMC port table for the external
-interrupt count and the system AXI input ID width, and the generated
-`reset_unit` register header for `SS_CONFIG`. The SMN struct widths, the
-crossbar-side ID width of the two ID-width converters and the SEP-side ID
-width have no specified value and are not compared.
+interrupt count and the system AXI input ID width,
+`doc/integrator/src/smu-composition.adoc` ("SMU AXI Crossbar Address Map")
+for the ID and user widths of `smu_axi_in` and `smu_axi_out`, and the
+generated `reset_unit` register header for `SS_CONFIG`. The crossbar-side ID
+width of the two ID-width converters and the SEP-side ID width have no
+specified value and are not compared.
 
 The two "idle value" compares read an output after bring-up and compare it
 with the value the specification gives for that state: `ss_config_o` presents
@@ -49,6 +51,9 @@ from seq_lib.smu_compose_helpers import (
     NUM_INT_TO_SMC,
     NUM_SUBSYSTEMS,
     SMC_SYS_IN_ID_WIDTH,
+    SMU_AXI_IN_ID_WIDTH,
+    SMU_AXI_OUT_ID_WIDTH,
+    SMU_AXI_USER_WIDTH,
     XTRIG_NUM_CTP,
     XTRIG_NUM_INT_CT,
     bit_width,
@@ -59,6 +64,10 @@ from seq_lib.smu_fuse_gate_helpers import wait_fuse_sense_done
 from seq_lib.smu_tb_pins import smu_scope, tb_pin
 
 CTP_GROUPS = ("req_out", "req_in", "ack_in", "ack_out")
+# The bench exports $bits of every ID and user field of the smu AXI boundary
+# ports as one byte per channel, AW in the low byte, in these orders.
+ID_CHANNELS = ("aw", "b", "r", "ar")
+USER_CHANNELS = ("aw", "w", "b", "r", "ar")
 CTP_LEGS = ("dout_o", "dout_en_o", "din_i", "din_en_o")
 INERT_WINDOW_CYCLES = 64
 # CT_Req_out is a wire-OR wire; the generated cross-trigger header's
@@ -75,6 +84,11 @@ SS_CONFIG_RESET = reset_unit_u32("RESET_UNIT__SS_CONFIG__SS_CONFIG_reset")
 # isolation request path, and a cold reset with no isolation request pending
 # executes repair.
 SKIP_MEM_REPAIR_IDLE = 0
+
+
+def channel_widths(packed: int, channels: tuple[str, ...]) -> dict[str, int]:
+    """The per-channel $bits values of one exported width vector."""
+    return {ch: (packed >> (8 * idx)) & 0xFF for idx, ch in enumerate(channels)}
 
 
 def smc_efuse_image(bits: int) -> int:
@@ -139,17 +153,54 @@ class smu_boundary_port_composition_seq:
         # SMU-INT-AGG.S1
         self._width(smu, "smc_ext_interrupts_i", NUM_INT_TO_SMC, "CHK-SMU-INT-AGG-S1")
 
+        # smu-composition.adoc "SMU AXI Crossbar Address Map": smu_axi_in
+        # accepts 8-bit transaction IDs, smu_axi_out presents 10-bit ones, and
+        # the SMU AXI ports carry 12-bit user fields on all five channels.
+        widths = {
+            "smu_axi_in id": (
+                channel_widths(
+                    sample(dut.obs_smu_axi_in_id_widths_o, "obs_smu_axi_in_id_widths_o"),
+                    ID_CHANNELS,
+                ),
+                SMU_AXI_IN_ID_WIDTH,
+            ),
+            "smu_axi_out id": (
+                channel_widths(
+                    sample(dut.obs_smu_axi_out_id_widths_o, "obs_smu_axi_out_id_widths_o"),
+                    ID_CHANNELS,
+                ),
+                SMU_AXI_OUT_ID_WIDTH,
+            ),
+            "smu_axi_in user": (
+                channel_widths(
+                    sample(dut.obs_smu_axi_in_user_widths_o, "obs_smu_axi_in_user_widths_o"),
+                    USER_CHANNELS,
+                ),
+                SMU_AXI_USER_WIDTH,
+            ),
+            "smu_axi_out user": (
+                channel_widths(
+                    sample(dut.obs_smu_axi_out_user_widths_o, "obs_smu_axi_out_user_widths_o"),
+                    USER_CHANNELS,
+                ),
+                SMU_AXI_USER_WIDTH,
+            ),
+        }
+        self.log.info(
+            "CHK-SMU-BOUNDARY-ID-USER-WIDTH $bits per channel: %s",
+            {name: got for name, (got, _want) in widths.items()},
+        )
+        sb.expect_eq(
+            "CHK-SMU-BOUNDARY-ID-USER-WIDTH $bits of every ID and user field of the smu AXI "
+            "boundary ports: smu_axi_in IDs 8, smu_axi_out IDs 10, user 12 on all five channels",
+            {name: got for name, (got, _want) in widths.items()},
+            {name: dict.fromkeys(got, want) for name, (got, want) in widths.items()},
+            evidence="CHK-SMU-BOUNDARY-ID-USER-WIDTH",
+        )
         # SMU-EXT-SMN.S4: the SMC-side converter presents the 6-bit ID the
-        # SMC system AXI input specifies. The SMN port structs, the
-        # crossbar-side ID width of the two converters and the SEP-side ID
-        # width have no specified value and are logged, not compared.
-        for port in (
-            "smu_axi_in_req_i",
-            "smu_axi_in_resp_o",
-            "smu_axi_out_req_o",
-            "smu_axi_out_resp_i",
-        ):
-            self.log.info("OBSERVATION %s width=%d", port, bit_width(hier(smu, port), port))
+        # SMC system AXI input specifies. The crossbar-side ID width of the
+        # two converters and the SEP-side ID width have no specified value
+        # and are logged, not compared.
         for conv in ("u_iw_conv_smc", "u_iw_conv_sep"):
             inst = hier(smu, f"gen_sep.{conv}")
             self.log.info(

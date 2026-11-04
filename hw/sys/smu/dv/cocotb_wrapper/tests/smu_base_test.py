@@ -320,12 +320,15 @@ class smu_base_test(uvm_test):
 
     def start_clocks(self) -> None:
         dut = cocotb.top
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns").start())
-        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, unit="ns").start())
-        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, unit="ns").start())
-        cocotb.start_soon(
-            Clock(dut.clk_sep_wdt_i, self.cfg.sep_wdt_clk_period_ns, unit="ns").start()
-        )
+        # By pin name, so a leaf that holds one bench clock stops and restarts it here.
+        self.clocks = {
+            "clk_ref_i": Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns"),
+            "clk_smu_i": Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, unit="ns"),
+            "clk_periph_i": Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, unit="ns"),
+            "clk_sep_wdt_i": Clock(dut.clk_sep_wdt_i, self.cfg.sep_wdt_clk_period_ns, unit="ns"),
+        }
+        for clock in self.clocks.values():
+            clock.start()
         # ESRC ring-oscillator sample clock, matching hw/sys/sep/dv's 3 ns. The
         # entropy source samples its noise lanes on this clock, so any test that
         # exercises entropy needs it running; with it static the source produces
