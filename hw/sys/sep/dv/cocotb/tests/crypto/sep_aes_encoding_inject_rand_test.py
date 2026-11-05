@@ -48,9 +48,11 @@ Checkers:
                       AES_NONE, KEY_LEN = AES_256 and MANUAL_OPERATION = 1;
                       the written MODE is an invalid code.
   CHK-AES-INV-MODE-CTRL-CT  the control block after each MODE cell equals
-                      the AES-256 golden E_K(P): a write to CTRL_SHADOWED
-                      starts a new message (``aes.hjson``), so no state of the
-                      AES_NONE cell reaches it.
+                      the AES-256 golden E_K(P'), where P' is P with bit 0
+                      flipped: a write to CTRL_SHADOWED starts a new message
+                      (``aes.hjson``), so no state of the AES_NONE cell
+                      reaches it, and E_K(P') differs from every earlier
+                      output E_K(P) of the leaf.
 The readback of an invalid KEY_LEN is logged (``OBS-AES-ENC-RB``) and not
 graded.
 """
@@ -478,7 +480,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
             )
             await self.start_seq(start_wr)
             self.chk.ctrl(
-                "AES-INV-MODE-START", start_wr.resp_ok, cell=cell, bresp=start_wr.resp_code
+                "AES-INV-MODE-START", start_wr.resp_code == 0, cell=cell, bresp=start_wr.resp_code
             )
             # The poll reads back to back for the whole window and stops early
             # only at an OUTPUT_VALID sample.
@@ -492,6 +494,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
         self._grade_mapped("AES-INV-MODE-RB", cell, "mode", word, MODE_NONE, rb, reason)
         ctrl_clk = -1
         ctrl_ct: list[int] | None = None
+        ctrl_pt = [pt[0] ^ 1, *pt[1:]]
         try:
             await self._key_load(
                 self._ctrl_word(
@@ -499,7 +502,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
                 ),
                 key,
             )
-            await self._write_block(pt)
+            await self._write_block(ctrl_pt)
             await self.aes._wr(AES_TRIGGER, start)
             t0 = self.clk.clk
             samples = await self._wait(ST_OV, ST_OV, OV_BOUND_FACTOR * t_blk, "ctrl_output_valid")
@@ -529,7 +532,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
             fields["reason"] = reason
         self.chk.ok("AES-INV-MODE", ok, **fields)
         ct_g = ctrl_ct
-        ct_ok = ct_g == _enc(key, pt)
+        ct_ok = ct_g == _enc(key, ctrl_pt)
         ct_fields = {"cell": f"mode.{kind}", "ctrl_ct==golden256": int(ct_ok)}
         if not ct_ok:
             ct_fields["reason"] = "timeout" if ct_g is None else "mismatch"
