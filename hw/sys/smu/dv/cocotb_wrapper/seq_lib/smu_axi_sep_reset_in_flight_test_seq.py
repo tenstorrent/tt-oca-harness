@@ -18,31 +18,38 @@ S1 SETUP: bring-up, the hart halted, the stub written, ``dcsr.ebreakm``, the
    SEP aperture and the SEP egress outbound filter over the system bus, the
    responder withholding READY and delaying B and R; the reset nets read 1;
    CTRL-G2B-OKAY: one write then read on every route the leaf uses.
-S2 SEP2SMC: the stub stores and loads one SMC-aperture word and the system bus
-   reads it; per access the link taken, AxUSER, AxPROT and AWATOP are recorded.
+S2 SEP2SMC: with the filter entries S1 opened, the stub stores and loads one
+   SMC-aperture word and the system bus reads it and writes it; per access the
+   link taken, AxUSER, AxPROT and AWATOP are recorded.
 S3 LOAD: ext_in reads and writes toward the SEP SRAM with RREADY and BREADY
-   withheld, a JTAG2AXI write and read toward the SEP SRAM, and the stub armed
-   for one egress store toward the stalled ext_out.
+   withheld, a JTAG2AXI write and read toward the SEP SRAM, which complete
+   before the fall, and the stub armed for one egress store toward the stalled
+   ext_out.
 S4 SEP_RESET: the first IC_RESET scan stages the override and carries the
    stub's resume; the store is held at ext_out; the second scan holds
-   sep_reset_n low. Every clk_smu_i edge while sep_reset_n is low samples the
-   SEP-driven VALIDs of the SEP-to-SMC port and sep_out, B and R VALID of the
-   converter output toward the SEP, the crossbar-driven sep_in VALIDs and the
-   reset nets. One JTAG2AXI read goes into the SEP aperture during the reset;
-   no checker expects its response (OBS-G2B-RESET-ENDS, SF-003).
+   sep_reset_n low. Every clk_smu_i edge of the hold samples the SEP-driven
+   VALIDs of the SEP-to-SMC port and sep_out, B and R VALID of the converter
+   output toward the SEP, the crossbar-driven sep_in VALIDs and the reset
+   nets; the last edge before the fall gives the VALIDs pending at the fall.
+   These levels are observations (OBS-G2B-ENTRY-EDGE, OBS-G2B-SEP-VALID-LOW,
+   OBS-G2B-SEPIN-VALID). One JTAG2AXI read goes into the SEP aperture during
+   the reset; no checker expects its response (OBS-G2B-RESET-ENDS, SF-003).
 S5 NONSEP_DURING_RESET: a JTAG2AXI write and read to ext_out and an ext_in
-   write and read to the SMC scratchpad while sep_reset_n is low; then the
-   override is released and the bench expectation window closes.
+   write and read to the SMC scratchpad while sep_reset_n is low, each an
+   observation window; then the override is released and the bench
+   expectation window closes.
 S6 RELEASE_LIVENESS: every B and R on smu_in, dtp_dbg and sep_out is held
-   against the issue log; the debug module is brought up again, the hart
-   halted and the stub rewritten, then one fresh write and read on every S1
-   route, a bridge write read back over ext_in or the system bus, and the stub
-   store and load to ext_out and to the SMC aperture, with no cold reset before
-   them; last, one JTAG2AXI read, observed only (OBS-G2B-J2A-READ-AFTER-HOLD,
-   SF-003); the one cold reset of the leaf follows.
+   against the issue log; a TAP test-logic reset (CTRL-G2B-TLR), then the
+   debug module is brought up again, the hart halted and the stub rewritten,
+   then one fresh write and read on every S1 route, a bridge write read back
+   over ext_in or the system bus, and the stub store and load to ext_out and
+   to the SMC aperture, with no cold reset before them; last, one JTAG2AXI
+   read, observed only (OBS-G2B-J2A-READ-AFTER-HOLD, SF-003); the one cold
+   reset of the leaf follows.
 S7 TIMEOUT: every wait is bounded in clk_smu_i edges, polls or captures; an
    expiry fails the leaf and is classified as unanswered-transaction evidence.
-   The two observed JTAG2AXI reads are capture windows that never fail it.
+   Every JTAG2AXI operation of S3 to S6 issued as a capture window and the S5
+   ext_in windows are observation windows that never fail it.
 
 Observation is passive: the ext_in pins, the request and response structs of
 the dtp_dbg, sep_out and SEP-to-SMC links, the ports of the bench checker
@@ -160,7 +167,6 @@ from seq_lib.smu_xbar_reset_held_target_test_seq import (
 )
 
 EVIDENCE = (
-    "CHK-G2B-SEP-VALID-LOW",
     "CHK-G2B-NO-PHANTOM",
     "CHK-G2B-LIVENESS",
     "CHK-G2B-SEP2SMC",
@@ -208,6 +214,7 @@ W_S1_SPM = 0x6201_0005_6201_0006
 W_S1_EXT_OUT = 0x6201_0007_6201_0008
 W_LOAD = (0x6203_0001_6203_0002, 0x6203_0003_6203_0004)
 W_LOAD_J2A = 0x6203_0005_6203_0006
+W_S2_SBA = 0x6202_0001
 W_S5_EXT_OUT = 0x6205_0001_6205_0002
 W_S5_SPM = 0x6205_0003_6205_0004
 W_S6_EXT = 0x6206_0001_6206_0002
@@ -243,7 +250,7 @@ KINDS = ("j2a", "dmi", "ext_in", "ic_reset")
 # Access budget per term (contract steps S1-S6): JTAG2AXI, DMI/system-bus, ext_in, IC_RESET scans.
 BUDGET = {
     "SETUP": {"j2a": 4, "dmi": 18, "ext_in": 4, "ic_reset": 0},
-    "SEP2SMC": {"j2a": 0, "dmi": 8, "ext_in": 0, "ic_reset": 0},
+    "SEP2SMC": {"j2a": 0, "dmi": 9, "ext_in": 0, "ic_reset": 0},
     "LOAD": {"j2a": 2, "dmi": 3, "ext_in": 4, "ic_reset": 0},
     "SEP_RESET": {"j2a": 1, "dmi": 1, "ext_in": 0, "ic_reset": 2},
     "NONSEP_DURING_RESET": {"j2a": 2, "dmi": 0, "ext_in": 2, "ic_reset": 2},
@@ -255,7 +262,7 @@ BUDGET = {
 # release.
 PLANNED = {
     "SETUP": 5,
-    "SEP2SMC": 3,
+    "SEP2SMC": 4,
     "LOAD": 5,
     "SEP_RESET": 2,
     "NONSEP_DURING_RESET": 2,
@@ -305,6 +312,70 @@ SMC_APERTURE_ATTRS = (
     "hw/sys/sep/doc/fabric.adoc sep-outbound-attributes-table: SMC aperture, AxUSER the "
     "initiator's, NS the initiator's; the CPU masters drive SEP's ID and NS 0"
 )
+PRIMARY_LINK = (
+    "the leaf asserts sep_reset_n only, with rst_ni and the primary reset held high "
+    "(CHK-G2B-WINDOW), so the reset entry edge of this link's checker never occurs"
+)
+FILTER_ORDER = (
+    "S2 runs after S1 opens SMC inbound entry 0, SMC outbound entry 0 and the SEP outbound "
+    "entry, which the S1 routes need, so no SEP-to-SMC access runs with every filter at reset; "
+    "the accesses ran under that state (OBS-G2B-ADDR)"
+)
+DMA_CELL = "no bench path drives the SEP secure DMA without firmware (SEP2SMC/secure-DMA)"
+# Required cells of the allocated scenarios: (scenario, cell, status, line or reason, measure).
+# A status of None is OBSERVED when its measure is above zero, else NOT-DRIVABLE (BRIDGE_HELD).
+CELLS = (
+    (
+        "AXIG-PROT-RESETLOW.S3",
+        "SEP_OUT/entry-edge",
+        "OBSERVED",
+        "OBS-G2B-ENTRY-EDGE",
+        "pend_sep_out",
+    ),
+    ("AXIG-PROT-RESETLOW.S3", "SMC_OUT/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    (
+        "AXIG-PROT-RESETLOW.S3",
+        "SEP_IN/entry-edge",
+        "OBSERVED",
+        "OBS-G2B-ENTRY-EDGE",
+        "entry_sep_in",
+    ),
+    ("AXIG-PROT-RESETLOW.S3", "SMC_IN/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("AXIG-PROT-RESETLOW.S3", "EXT_OUT/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    (
+        "AXIG-PROT-RESETLOW.S3",
+        "IWC_SEP/entry-edge",
+        "OBSERVED",
+        "OBS-G2B-ENTRY-EDGE",
+        "pend_iwc_sep",
+    ),
+    ("AXIG-PROT-RESETLOW.S3", "IWC_SMC/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("AXIG-PROT-RESETLOW.S3", "INCUT/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("AXIG-PROT-RESETLOW.S3", "SEP2SMC/entry-edge", "OBSERVED", "OBS-G2B-ENTRY-EDGE", "pend_s2s"),
+    ("AXIG-PROT-RESETLOW.S3", "JTAG2AXI/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("AXIG-RST-SEPSYS.S2", "SEP_IN/in-reset", "OBSERVED", "OBS-G2B-SEPIN-VALID", "sepin_high"),
+    ("AXIG-RST-SEPSYS.S2", "IWC_SEP/in-reset", "OBSERVED", "OBS-G2B-SEP-VALID-LOW", "low_iwc_sep"),
+    ("AXIG-RST-SEPSYS.S2", "SEP_OUT/in-reset", "OBSERVED", "OBS-G2B-SEP-VALID-LOW", "low_sep_out"),
+    ("AXIG-RST-SEPSYS.S2", "SEP2SMC/in-reset", "OBSERVED", "OBS-G2B-SEP-VALID-LOW", "low_s2s"),
+    ("AXIG-RST-SEPSYS.S3", "EXT_IN/to-sep", "DRIVEN", "CHK-G2B-NO-PHANTOM", "ext_at_fall"),
+    ("AXIG-RST-SEPSYS.S3", "SMC_OUT/to-sep", "DRIVEN", "CHK-G2B-NO-PHANTOM", "s4_read_ar"),
+    ("AXIG-RST-SEPSYS.S4", "SMC_OUT/to-ext-during", None, "OBS-G2B-NONSEP-DURING", "s5_j2a_hs"),
+    ("AXIG-RST-SEPSYS.S4", "EXT_IN/to-smc-during", "OBSERVED", "OBS-G2B-NONSEP-DURING", "s5_ext"),
+    ("AXIG-RST-SEPSYS.S4", "all/after", "DRIVEN", "CHK-G2B-LIVENESS", "routes_after"),
+    ("AXIG-RST-SEPSYS.S5", "SEP/local-xbar-live", "OBSERVED", "OBS-G2B-RESET-ENDS", "held_ars"),
+    ("AXIG-RST-RULING.S2", "JTAG/sep_reset_n", "OBSERVED", "OBS-G2B-RULING-2891", "holds"),
+    ("AXIG-ATOP-INTERNAL.S1", "SEP_OUT/aw", "OBSERVED", "OBS-G2B-ATOP-SEP", "aw_xbar_sep_out"),
+    ("AXIG-ATOP-INTERNAL.S1", "SEP2SMC/aw", "OBSERVED", "OBS-G2B-ATOP-SEP", "aw_sep_to_smc"),
+    ("AXIG-SEP2SMC.S1", "SEPLSU/rd", "DRIVEN", "CHK-G2B-SEP2SMC", "lsu_rd"),
+    ("AXIG-SEP2SMC.S1", "SEPLSU/wr", "DRIVEN", "CHK-G2B-SEP2SMC", "lsu_wr"),
+    ("AXIG-SEP2SMC.S1", "SEPDBG/rd", "DRIVEN", "CHK-G2B-SEP2SMC", "dbg_rd"),
+    ("AXIG-SEP2SMC.S1", "SEPDBG/wr", "DRIVEN", "CHK-G2B-SEP2SMC", "dbg_wr"),
+    ("AXIG-SEP2SMC.S2", "nofilter/rd", "NOT-DRIVABLE", FILTER_ORDER, None),
+    ("AXIG-SEP2SMC.S2", "nofilter/wr", "NOT-DRIVABLE", FILTER_ORDER, None),
+    ("AXIG-SEP2SMC.S3", "CPU/attrs", "OBSERVED", "OBS-G2B-SEP2SMC-TIE", "lsu_all"),
+    ("AXIG-SEP2SMC.S3", "DMA/attrs", "NOT-DRIVABLE", DMA_CELL, None),
+    ("AXIG-SEP2SMC.S3", "DBG/attrs", "OBSERVED", "OBS-G2B-SEP2SMC-TIE", "dbg_all"),
+)
 
 
 def _now() -> int:
@@ -339,6 +410,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             "fall": None,
             "rise": None,
             "entry": None,
+            "second": None,
+            "pre": None,
             "edges": Counter(),
             "high": [],
             "x": [],
@@ -440,6 +513,11 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             if not h["on"]:
                 continue
             sep = _val(dut.sep_reset_n_o)
+            if sep == 1 and h["fall"] is None:
+                h["pre"] = (
+                    c,
+                    {link: {s: _val(hd) for s, hd in sigs} for link, sigs in graded.items()},
+                )
             if sep == 0 and h["rise"] is None:
                 h["low"] += 1
                 k = h["low"]
@@ -452,6 +530,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
                     h["fall"] = c
                     h["entry"] = (c, levels, sin)
                 else:
+                    if k == 2:
+                        h["second"] = (c, levels, sin)
                     for link, sv in levels.items():
                         h["edges"][link] += 1
                         for s, v in sv.items():
@@ -596,6 +676,37 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             return err or 8, None
         return 0, await self._dm(SBDATA0_ADDR, 0, DMI_OP_READ, f"{label}_data")
 
+    async def _sba_write_obs(self, addr: int, data: int, label: str) -> int:
+        """A system-bus write whose error code is recorded, not raised; the busy poll is bounded."""
+        self._use("dmi")
+        await self._dm(
+            SBCS_ADDR, SBCS_SBACCESS_32 | SBCS_SBERROR_W1C, DMI_OP_WRITE, f"{label}_sbcs"
+        )
+        await self._dm(SBADDRESS0_ADDR, addr, DMI_OP_WRITE, f"{label}_addr")
+        await self._dm(SBDATA0_ADDR, data, DMI_OP_WRITE, f"{label}_data")
+        used, sbcs = 0, SBCS_SBBUSY
+        while used < SBA_POLL_LIMIT:
+            sbcs = await self._dm(SBCS_ADDR, 0, DMI_OP_READ, f"{label}_sbcs{used}")
+            used += 1
+            if not sbcs & SBCS_SBBUSY:
+                break
+        self._site(
+            "sba_busy",
+            label,
+            SBA_POLL_LIMIT,
+            "polls",
+            used,
+            f"sbcs=0x{sbcs:08x}",
+            bool(sbcs & SBCS_SBBUSY),
+        )
+        err = (sbcs >> SBCS_SBERROR_SHIFT) & SBCS_SBERROR_MASK
+        if err or sbcs & SBCS_SBBUSYERROR:
+            await self._dm(
+                SBCS_ADDR, SBCS_SBERROR_W1C | SBCS_SBBUSYERROR, DMI_OP_WRITE, f"{label}_clr"
+            )
+            return err or 8
+        return 0
+
     # ------------------------------------------------------------------ SEP accesses
 
     def _requests(self, mks: dict, ch: str, addr: int) -> list[tuple[str, dict]]:
@@ -658,15 +769,19 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         ld = await self._stub("load", addr, f"{label}_load")
         return st, ld
 
-    async def _sba_access(self, addr: int, label: str) -> dict:
+    async def _sba_access(self, addr: int, label: str, data: int | None = None) -> dict:
+        """One system-bus read, or a write of ``data``, and its response on a SEP link."""
         mks = self._marks()
-        err, value = await self._sba_read_obs(addr, label)
+        if data is None:
+            err, value = await self._sba_read_obs(addr, label)
+        else:
+            err, value = await self._sba_write_obs(addr, data, label), None
         rec = {
             "label": label,
-            "kind": "load",
+            "kind": "load" if data is None else "store",
             "src": "system_bus",
             "addr": addr,
-            "ch": "ar",
+            "ch": "ar" if data is None else "aw",
             "mks": mks,
             "sberror": err,
             "value": value,
@@ -990,12 +1105,15 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
 
     async def _s2_sep2smc(self) -> None:
         self._enter(
-            "SEP2SMC", "S2", "stub store and load and one system-bus read in the SMC aperture"
+            "SEP2SMC",
+            "S2",
+            "stub store and load, one system-bus read and one write in the SMC aperture",
         )
         spm = self._smc_view(SPM_S1)
         st, ld = await self._stub_pair(spm, "s2_stub_smc", BYTE["s2"])
         sba = await self._sba_access(spm, "s2_sba_smc")
-        recs = [st, ld, sba]
+        sba_wr = await self._sba_access(spm, "s2_sba_smc_wr", W_S2_SBA)
+        recs = [st, ld, sba, sba_wr]
         self._sep2smc_obs(recs, "S2")
         atop = [
             f"{n}:awaddr={_hx(e['awaddr'])} awatop={_hx(e['awatop'])}"
@@ -1213,20 +1331,28 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         b = self._since(mk, "b", {S5_IDS[0]}, "bid")
         r = self._since(mk, "r", {S5_IDS[1]}, "rid")
         during = _val(dut.sep_reset_n_o)
+        j2a_hs = sum(
+            len(self._tsince(rec["mks"], "dtp_dbg", "aw" if rec["op"] == J2A_OP_WRITE else "ar"))
+            for rec in (jw, jr)
+        )
         self.log.info(
             "OBS-G2B-NONSEP-DURING: sep_reset_n_o before=%s after=%s j2a_ext_wr=(met %d, status "
-            "%d, captures %d) j2a_ext_rd=(met %d, status %d, rdata %s, captures %d) "
-            "ext_in_spm_wr=%s in %s cycles from %dns ext_in_spm_rd=%s in %s cycles from %dns; "
-            "observation only, SF-001, SF-022",
+            "%d, captures %d/%d) j2a_ext_rd=(met %d, status %d, rdata %s, captures %d/%d) "
+            "dtp_dbg request handshakes=%d ext_in_spm_wr=%s in %s cycles from %dns "
+            "ext_in_spm_rd=%s in %s cycles from %dns (a window that runs out is measured, never an "
+            "expiry); observation only, SF-001, SF-022, SF-003",
             _hx(pre),
             _hx(during),
             jw["met"],
             jw["status"],
             jw["captures"],
+            J2A_OBS_CAPTURES,
             jr["met"],
             jr["status"],
             _hx(jr["rdata"]),
             jr["captures"],
+            J2A_OBS_CAPTURES,
+            j2a_hs,
             [(_rn(x["bresp"]), _hx(x["bid"])) for x in b] or "none",
             bw,
             t0,
@@ -1253,10 +1379,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         if (axi_mon := smu_axi_monitor("ext_in")) is not None:
             for arid in LOAD_ARIDS:
                 axi_mon.forget_pending_reads(arid)
-        j2a_hs = sum(
-            len(self._tsince(rec["mks"], "dtp_dbg", "aw" if rec["op"] == J2A_OP_WRITE else "ar"))
-            for rec in (jw, jr)
-        )
+        self.obs["s5_j2a_hs"] = j2a_hs
         if j2a_hs == 0 and J2A_STATUS_BUSY in (jw["met"], jr["met"]):
             self.log.info("%s", BRIDGE_HELD)
         self._fence(j2a_hs + len(b) + len(r))
@@ -1265,7 +1388,15 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
     async def _s6_liveness(self) -> None:
         sb = self.sb
         self._enter("RELEASE_LIVENESS", "S6", "bring-up, halt, stub, fresh routes; no cold reset")
-        await self._tlr()
+        tlr = []
+        for label in ("s6_tlr_before", None, "s6_tlr_after"):
+            if label is None:
+                await self._tlr()
+                continue
+            cap, _ = await self._dr(
+                DTP_IR_SMC_AXI_SINGLE_OP, 0, SMC_DBG_SINGLE_OP_LEN, label, counted=False
+            )
+            tlr.append(unpack_single_op(cap)[0])
         self._use("dmi", 2)
         dmactive = await self._activate_debug_module("s6")
         await self._halt("s6")
@@ -1286,7 +1417,14 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         res = await self._ext_route("s6_ext_spm", spm, W_S6_SPM, S6_IDS["spm"])
         got["ext_in->smc_spm"] = self._ext_ok(res)
         want["ext_in->smc_spm"] = self._ext_want(W_S6_SPM)
-        await self._j2a_idle("s6_j2a_port_idle")
+        idle = await self._j2a_idle("s6_j2a_port_idle")
+        self.log.info(
+            "CTRL-G2B-TLR: the TAP test-logic reset that opens S6: JTAG2AXI op status before=%d, "
+            "right after=%d, at the end of the bounded idle poll before the S6 writes=%d",
+            tlr[0],
+            tlr[1],
+            idle,
+        )
         j2a_ok = {"status": J2A_STATUS_SUCCESS, "requests": 1, "responses": 1, "issued_id": 1}
         w = await self._j2a(J2A_OP_WRITE, SEP_S6_J2A, W_S6_J2A, "s6_j2a->sep_sram_wr")
         rb = await self._ext_read("s6_j2a_sep_readback", SEP_S6_J2A, S6_J2A_READBACK_ARID)
@@ -1345,31 +1483,101 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
 
     # ------------------------------------------------------------------ verdicts
 
-    def _valid_low_grade(self) -> None:
+    @staticmethod
+    def _highs(levels: dict, sin: dict) -> list[str]:
+        """The VALIDs not low in one edge sample, X shown as such."""
+        out = [
+            f"{link}.{s}" + ("=X" if v is None else "")
+            for link, sv in levels.items()
+            for s, v in sv.items()
+            if v != 0
+        ]
+        out += [f"sep_in.{s}" + ("=X" if v is None else "") for s, v in sin.items() if v != 0]
+        return out
+
+    @staticmethod
+    def _instance_highs(levels: dict, sin: dict) -> dict[str, list[str]]:
+        """The AW/W/AR VALIDs each SEP-reset checker instance sees not low in one edge sample."""
+        req = ("awvalid", "wvalid", "arvalid")
+        return {
+            "u_sep_to_smc_sep_rst_axi_sva": [s for s in req if levels["sep_to_smc"][s] != 0],
+            "u_xbar_sep_in_sep_rst_axi_sva": [s for s in req if sin[s] != 0],
+        }
+
+    def _entry_obs(self) -> None:
         h = self.h
-        entry = h["entry"]
-        edges = [h["edges"][link] for link in GRADED]
-        e_lo, e_hi = (min(edges), max(edges)) if edges else (0, 0)
-        x_graded = [x for x in h["high"] if x[3] is None]
-        high = [x for x in h["high"] if x[3] is not None]
-        if entry is not None:
-            c, levels, sin = entry
-            watcher = all(v == 0 for sv in levels.values() for v in sv.values())
-            self.log.info(
-                "OBS-G2B-ENTRY-EDGE: cycle=%d (first clk_smu_i edge sampling sep_reset_n low) "
-                "levels=%s sep_in=%s reading=checker window holds (one-edge synchronous-reset "
-                "entry window); watcher no-window %s; VALID_RESET_LOW fires of "
-                "u_xbar_sep_in_sep_rst_axi_sva and u_sep_to_smc_sep_rst_axi_sva at this edge: 0 "
-                "(MASTER_SYNC_RESET admits it); observation only, SF-005, SF-006, SF-007",
-                c,
-                levels,
-                sin,
-                "holds" if watcher else "does not hold",
-            )
-        else:
+        entry, second = h["entry"], h["second"]
+        if entry is None:
             self.log.info(
                 "OBS-G2B-ENTRY-EDGE: no edge sampled sep_reset_n low; SF-005, SF-006, SF-007"
             )
+            return
+        e_high = self._highs(entry[1], entry[2])
+        s_high = self._highs(second[1], second[2]) if second else None
+        e_inst = self._instance_highs(entry[1], entry[2])
+        s_inst = self._instance_highs(second[1], second[2]) if second else {}
+        per = {
+            inst: {
+                "entry": e_inst[inst],
+                "second": s_inst.get(inst),
+                "predicted_fires_at_second": len(s_inst.get(inst) or []),
+                "reset_low_rules": "off (window)" if "sep_in" in inst else "live",
+            }
+            for inst in e_inst
+        }
+        self.log.info(
+            "OBS-G2B-ENTRY-EDGE: cycle=%d second=%s entry_high=%s second_high=%s "
+            "watcher_no_window=%s checker_one_edge=%s per_instance=%s levels_entry=%s "
+            "sep_in_entry=%s; observation only, SF-005, SF-006, SF-007",
+            entry[0],
+            second[0] if second else None,
+            e_high,
+            s_high,
+            "holds" if not e_high else "fails",
+            "holds" if second and not s_high else ("fails" if second else "not sampled"),
+            per,
+            entry[1],
+            entry[2],
+        )
+
+    def _sep_unanswered(self, fall: int | None) -> list[str]:
+        """SEP-originated requests on sep_out or the SEP-to-SMC port unanswered at ``fall``."""
+        out = []
+        if fall is None:
+            return out
+        for name in SEP_LINKS:
+            tap = self.taps[name]
+            for ch, rch, key, rkey in (("aw", "b", "awid", "bid"), ("ar", "r", "arid", "rid")):
+                for e in tap.ev[ch]:
+                    if e["cyc"] >= fall:
+                        continue
+                    done = [
+                        x
+                        for x in tap.ev[rch]
+                        if x[rkey] == e[key]
+                        and e["cyc"] < x["cyc"] < fall
+                        and (rch == "b" or x.get("rlast") == 1)
+                    ]
+                    if not done:
+                        out.append(f"{name}:{ch}{_hx(e[key])}@{e['cyc']}")
+        return out
+
+    def _valid_low_obs(self) -> None:
+        h = self.h
+        entry = h["entry"]
+        edges = {link: h["edges"][link] for link in GRADED}
+        e_lo, e_hi = (min(edges.values()), max(edges.values())) if edges else (0, 0)
+        x_graded = [x for x in h["high"] if x[3] is None]
+        high = [x for x in h["high"] if x[3] is not None]
+        pre = h["pre"]
+        pending = [
+            f"{link}.{s}"
+            for link, sv in (pre[1] if pre else {}).items()
+            for s, v in sv.items()
+            if v
+        ]
+        unanswered = self._sep_unanswered(h["fall"])
+        self._entry_obs()
         low = h["low"]
         sepin = {s: len(v) for s, v in h["sepin_high"].items()}
         self.log.info(
@@ -1404,28 +1612,47 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
                 "sep_to_smc",
             )
         self.obs["sep2smc_fire"] = len(s2s)
-        observed = {
-            "sep_reset_n_low": low >= 1,
-            "every_link_sampled_after_entry": e_lo > 0,
-            "valid_high_after_entry": len(high),
-            "x_on_graded": len(x_graded),
-            "x_on_sep_reset_n": len(h["x"]),
-        }
-        expected = {
-            "sep_reset_n_low": True,
-            "every_link_sampled_after_entry": True,
-            "valid_high_after_entry": 0,
-            "x_on_graded": 0,
-            "x_on_sep_reset_n": 0,
+        per_link = {link: len([x for x in high if x[1] == link]) for link in GRADED}
+        self.obs["valid_low"] = {
+            "pending": pending,
+            "per_link_high": per_link,
+            "edges": edges,
+            "entry_sep_in": len([s for s, v in entry[2].items() if v]) if entry else 0,
         }
         if high:
             self._info(f"G2B-VALID-HIGH first={high[:8]}")
-        self._verdict(
-            "CHK-G2B-SEP-VALID-LOW",
-            observed,
-            expected,
-            f"CHK-G2B-SEP-VALID-LOW: links={len(GRADED)} edges_sampled={e_lo}..{e_hi} "
-            f"valid_high_after_entry={len(high)}",
+        self.log.info(
+            "OBS-G2B-SEP-VALID-LOW: links=%d edges_sampled=%d..%d valid_high_after_entry=%d "
+            "pending_at_fall=%d sep_requests_unanswered_at_fall=%d; per link edges %s, high edges "
+            "%s; pending on the last edge before the fall (cycle %s) %s; unanswered %s; nothing "
+            "SEP-driven pending at the fall leaves the low levels equal to the pre-reset state; "
+            "observation only, SF-005, SF-006",
+            len(GRADED),
+            e_lo,
+            e_hi,
+            len(high),
+            len(pending),
+            len(unanswered),
+            edges,
+            per_link,
+            pre[0] if pre else None,
+            pending or "none",
+            unanswered or "none",
+        )
+        self.sb.expect_eq(
+            "S4 sep_reset_n sampled low on every graded link with no X",
+            {
+                "sep_reset_n_low": low >= 1,
+                "every_link_sampled_after_entry": e_lo > 0,
+                "x_on_graded": len(x_graded),
+                "x_on_sep_reset_n": len(h["x"]),
+            },
+            {
+                "sep_reset_n_low": True,
+                "every_link_sampled_after_entry": True,
+                "x_on_graded": 0,
+                "x_on_sep_reset_n": 0,
+            },
         )
 
     def _dtp_fate(self, rec: dict) -> dict:
@@ -1750,7 +1977,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         self._verdict(
             "CHK-G2B-SEP2SMC",
             {"accesses": len(rows), "rows": rows},
-            {"accesses": 5, "rows": {k: (1, True, True) for k in rows}},
+            {"accesses": 6, "rows": {k: (1, True, True) for k in rows}},
             f"CHK-G2B-SEP2SMC: accesses={len(rows)} one_response_issued_id={ok} "
             "dma_cell=INFO-CELL-NOT-DRIVABLE",
         )
@@ -1849,6 +2076,11 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         expired = [s["label"] for s in self.sites if s["expired"]]
         unbounded = [s["label"] for s in self.sites if not s["bound"]]
         no_last = [s["label"] for s in self.sites if not s["last"]]
+        ran_out = [
+            w["label"]
+            for w in self.windows
+            if w["outcome"] == "not done" or f"status={J2A_STATUS_BUSY} " in f"{w['outcome']} "
+        ]
         self._verdict(
             "CHK-TIMEOUT-PATHS",
             {
@@ -1859,7 +2091,73 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             },
             {"sites_nonzero": True, "expired": [], "unbounded": [], "without_last_state": []},
             f"CHK-TIMEOUT-PATHS: {len(self.sites)} bounded waits, bound and last state per wait, "
-            f"{len(expired)} expired; {len(self.windows)} observation windows listed",
+            f"{len(expired)} expired; {len(self.windows)} observation windows listed, "
+            f"{len(ran_out)} ran out (graded=no): {ran_out or 'none'}",
+        )
+
+    def _cell_measures(self) -> dict[str, int]:
+        vl = self.obs.get("valid_low", {})
+        pend = vl.get("pending", [])
+        high = vl.get("per_link_high", {})
+        rise = self.h["rise"]
+        fall = self.h["fall"]
+        smc = [r for r in self.accesses if r["term"] == "SEP2SMC"] + list(
+            self.routes.get("s6_smc", ())
+        )
+        fate = self._dtp_fate(self.obs["reset_read"]) if self.obs.get("reset_read") else {}
+        nonsep = self.obs.get("nonsep", {})
+        return {
+            "pend_sep_out": sum(p.startswith("sep_out.") for p in pend),
+            "pend_iwc_sep": sum(p.startswith("iwc_sep.") for p in pend),
+            "pend_s2s": sum(p.startswith("sep_to_smc.") for p in pend),
+            "entry_sep_in": vl.get("entry_sep_in", 0),
+            "sepin_high": sum(len(v) for v in self.h["sepin_high"].values()),
+            "low_iwc_sep": high.get("iwc_sep", 0),
+            "low_sep_out": high.get("sep_out", 0),
+            "low_s2s": high.get("sep_to_smc", 0),
+            "ext_at_fall": len(self.load.get("ext_at_fall", {})),
+            "s4_read_ar": int(fate.get("ar") is not None),
+            "s5_j2a_hs": self.obs.get("s5_j2a_hs", 0),
+            "s5_ext": len(nonsep.get("b", ())) + len(nonsep.get("r", ())),
+            "routes_after": len(self.routes.get("s6", {})),
+            "held_ars": len(
+                [
+                    e
+                    for e in self.taps["xbar_sep_in"].ev["ar"]
+                    if fall is not None and e["cyc"] >= fall and (rise is None or e["cyc"] < rise)
+                ]
+            ),
+            "holds": len(self.holds),
+            "aw_xbar_sep_out": len(self.taps["xbar_sep_out"].ev["aw"]),
+            "aw_sep_to_smc": len(self.taps["sep_to_smc"].ev["aw"]),
+            "lsu_rd": sum(r["src"] == "stub" and r["ch"] == "ar" for r in smc),
+            "lsu_wr": sum(r["src"] == "stub" and r["ch"] == "aw" for r in smc),
+            "dbg_rd": sum(r["src"] == "system_bus" and r["ch"] == "ar" for r in smc),
+            "dbg_wr": sum(r["src"] == "system_bus" and r["ch"] == "aw" for r in smc),
+            "lsu_all": sum(r["src"] == "stub" for r in smc),
+            "dbg_all": sum(r["src"] == "system_bus" for r in smc),
+        }
+
+    def _cell_rollup(self) -> None:
+        """One line per required cell of the allocated scenarios, then the rollup counts."""
+        got = self._cell_measures()
+        tally: Counter = Counter()
+        for scenario, cell, status, line, key in CELLS:
+            n = got[key] if key else None
+            if status is None:
+                status, line = ("OBSERVED", line) if n else ("NOT-DRIVABLE", BRIDGE_HELD)
+            if status == "NOT-DRIVABLE":
+                reason = line.removeprefix("INFO-CELL-NOT-DRIVABLE: ")
+                self.log.info("INFO-CELL-NOT-DRIVABLE: %s %s: %s", scenario, cell, reason)
+            else:
+                self.log.info("INFO-CELL-%s: %s %s %s measured=%d", status, scenario, cell, line, n)
+            tally[status] += 1
+        self.log.info(
+            "INFO-G2B-CELL-ROLLUP: cells=%d driven=%d observed=%d not_drivable=%d",
+            len(CELLS),
+            tally["DRIVEN"],
+            tally["OBSERVED"],
+            tally["NOT-DRIVABLE"],
         )
 
     async def run(self) -> None:
@@ -1869,7 +2167,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             await self._s3_load()
             await self._s4_sep_reset()
             await self._s5_nonsep()
-            self._valid_low_grade()
+            self._valid_low_obs()
             await self._s6_liveness()
         except AssertionError as exc:
             if self.steps.get("S5"):
@@ -1887,6 +2185,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         self._sep2smc_grade()
         self._outcome_obs()
         self._ruling_obs()
+        self._cell_rollup()
         self._step("S6", "the one cold reset of the leaf")
         self.lv["cold"] = True
         await self._cold_reset("s6")

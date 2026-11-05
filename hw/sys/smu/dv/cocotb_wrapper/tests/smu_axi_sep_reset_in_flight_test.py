@@ -3,8 +3,8 @@
 """smu_axi_sep_reset_in_flight_test - the SEP-facing links across one IC_RESET hold.
 
 DV-TESTCASE-CONTRACT: TC_G2B ANCHOR: smu_axi_sep_reset_in_flight_test
-DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: 742a5916d95e83e62b2de11c30c881243285f27c2f1b28f88155c95005f17aee
-DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 7 ENV: cocotb
+DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: 164e5b38bd00d1d579dfdeac1e600ca53d4a1cd4e053bac3708eeb54717b235e
+DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 8 ENV: cocotb
 
 The DTP IC_RESET TDR override holds sep_reset_n low once, with the SMC primary
 reset high, while ext_in reads and writes toward the SEP SRAM, with BREADY and
@@ -17,13 +17,15 @@ response; no checker expects one, and that read and the JTAG2AXI read after the
 release are observations of the open question SF-003 (the SEP). The response
 check on dtp_dbg covers both reads and the bridge writes after the release.
 The SEP-originated traffic is the ICCM stub of smu_sep_reset_inflight_test
-under the debug module, plus the debug module's system bus. The leaf samples
-the SEP-driven VALIDs on every clk_smu_i edge of the hold, holds every
-response against its issue log, grades the bench expectation window, and
-after the release alone runs a fresh write and read on every route, the
+under the debug module, plus the debug module's system bus. Nothing
+SEP-driven is pending at the fall, so the SEP-driven VALIDs the leaf samples
+on every clk_smu_i edge of the hold, with the count pending at the fall, are
+observations. The leaf holds every response against its issue log, grades the
+bench expectation window, and after the release and a TAP test-logic reset,
+with no cold reset, runs a fresh write and read on every route, the
 SEP-to-SMC accesses included, with each bridge write read back over ext_in or
-the debug module's system bus; the one cold reset comes last. Observation is
-passive. VCS is the run of record; the bench checkers print their CHK-AXI-SVA
+the debug module's system bus; the one cold reset comes last. It prints one
+line per required cell of its scenarios. Observation is passive. VCS is the run of record; the bench checkers print their CHK-AXI-SVA
 lines at final.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\

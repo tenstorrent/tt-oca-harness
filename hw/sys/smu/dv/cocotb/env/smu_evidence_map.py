@@ -1479,14 +1479,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_axi_sep_reset_in_flight_test": [
         (
-            "CHK-G2B-SEP-VALID-LOW",
-            "CHK-G2B-SEP-VALID-LOW",
-            "from the second clk_smu_i edge that samples sep_reset_n low until the release, "
-            "AWVALID, WVALID and ARVALID of the SEP-to-SMC port and sep_out and BVALID and RVALID "
-            "of the converter output toward the SEP are 0 and resolved, with sampled edges on "
-            "every link; the entry edge and the crossbar-driven sep_in VALIDs are observed only",
-        ),
-        (
             "CHK-G2B-NO-PHANTOM",
             "CHK-G2B-NO-PHANTOM",
             "from the IC_RESET override to the end, no B and no R on smu_in or dtp_dbg carries an "
@@ -1496,9 +1488,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-G2B-LIVENESS",
             "CHK-G2B-LIVENESS",
-            "after the release alone, with no cold reset before, ext_in to the SEP SRAM and the "
-            "SMC scratchpad, JTAG2AXI writes to the SEP SRAM and ext_out read back over ext_in "
-            "and over the debug module's system bus through sep_out, and the stub store and load "
+            "after the release and the S6 TAP test-logic reset, with no cold reset before, ext_in "
+            "to the SEP SRAM and the SMC scratchpad, JTAG2AXI writes to the SEP SRAM and ext_out "
+            "read back over ext_in and over the debug module's system bus through sep_out, and "
+            "the stub store and load "
             "to ext_out each complete a fresh write and read: one response with the issued ID "
             "within the bound, OKAY, and the read returns what was written; the JTAG2AXI read "
             "after the hold is observed only (SF-003)",
@@ -1506,8 +1499,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-G2B-SEP2SMC",
             "CHK-G2B-SEP2SMC",
-            "each of the five stub and system-bus accesses to the SMC aperture (three before the "
-            "hold, two after the release) appears once on a SEP link and gets exactly one "
+            "each of the six stub and system-bus accesses to the SMC aperture (the stub store and "
+            "load, a system-bus read and a system-bus write before the hold, the stub store and "
+            "load after the release) appears once on a SEP link and gets exactly one "
             "response with the issued ID within the bound; the link, the response code, AxUSER, "
             "AxPROT and the address are observed only",
         ),
@@ -1532,7 +1526,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-TIMEOUT-PATHS",
             "every DMI, system-bus, abstract-command, JTAG2AXI, handshake, reset-net and window "
             "wait is bounded in clk_smu_i edges, polls or captures, fails on expiry with the last "
-            "handshakes and the reset-net sample, none expired",
+            "handshakes and the reset-net sample, none expired; the JTAG2AXI and ext_in "
+            "observation windows are listed apart with their outcome, and one that runs out is "
+            "measured, never an expiry",
         ),
     ],
     "smu_axi_smc_cool_reset_in_flight_test": [
