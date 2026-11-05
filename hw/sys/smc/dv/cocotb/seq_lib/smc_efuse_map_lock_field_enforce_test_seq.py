@@ -155,7 +155,10 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
         await self.finish_item(item)
         self.accesses += 1
         self._calls += 1
-        assert item.resp_code is not None, f"{label}: the read got no response"
+        # smc_efuse_map.rdl (LOCKS): a read-locked read completes with SLVERR.
+        assert item.resp_code == _RESP_SLVERR, (
+            f"{label}: a read-locked read must complete with SLVERR, got resp={item.resp_code}"
+        )
         return item.rdata & _WORD_MASK
 
     def _fresh(self) -> int:

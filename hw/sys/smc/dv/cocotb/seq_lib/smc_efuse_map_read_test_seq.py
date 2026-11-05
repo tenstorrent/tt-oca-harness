@@ -23,11 +23,10 @@ literal and none is locked to an observed read:
   identity.
 * read-locked words -- ``efuse_map_read_locked()`` reads the ``*_READ_LOCK`` bit
   out of the *preloaded* ``LOCKS`` word using the generated bit position from
-  ``regs/gen/c/blocks/smc_efuse_map.h``; SPEC then fixes the data a blocked read
-  returns: "When a request is blocked, the error slave returns an error response
-  with data value `0xbadcab1e`" (``architecture.adoc``, Lifecycle State
-  (LC_STATE) Effects), and ``lock[0] = 1`` is "read-locked"
-  (``architecture.adoc``, Access Permissions and Security).
+  ``regs/gen/c/blocks/smc_efuse_map.h``; the RDL ``LOCKS`` description then fixes
+  the response of a read-locked read, SLVERR with ``0xbadcab1e``, and
+  ``lock[0] = 1`` is "read-locked" (``architecture.adoc``, Access Permissions
+  and Security).
 
 Every row carries an exact, independently sourced expectation: a "map read"
 with ``expected=None`` compares nothing while counting toward the stimulus
@@ -71,8 +70,8 @@ def _map_expect(addr: int, lock_field: str | None) -> int:
     signature fails this compare.
     """
     if lock_field is not None and efuse_map_read_locked(lock_field):
-        return EFUSE_BLOCKED_READ_DATA
-    return efuse_preload_word_at(addr)
+        return EFUSE_BLOCKED_READ_DATA, True
+    return efuse_preload_word_at(addr), False
 
 
 # Every SMC_EFUSE_MAP region that has BOTH a generated base address and a
@@ -109,25 +108,25 @@ _SPARE_PROBE_COUNT = 2
 EFUSE_MAP_READS = [
     # LOCKS itself is not read-locked by any LOCKS bit; it is words 0/1 of the
     # preload asset.
-    ("EFUSE_MAP_LOCKS_LO", _LOCKS, _map_expect(_LOCKS, None)),
-    ("EFUSE_MAP_LOCKS_HI", _LOCKS + 4, _map_expect(_LOCKS + 4, None)),
+    ("EFUSE_MAP_LOCKS_LO", _LOCKS, *_map_expect(_LOCKS, None)),
+    ("EFUSE_MAP_LOCKS_HI", _LOCKS + 4, *_map_expect(_LOCKS + 4, None)),
 ]
 for _rname, _asym, _lsym in _MAP_REGIONS:
     _a = smc_addr(_asym)
-    EFUSE_MAP_READS.append((f"EFUSE_MAP_{_rname}", _a, _map_expect(_a, _lsym)))
+    EFUSE_MAP_READS.append((f"EFUSE_MAP_{_rname}", _a, *_map_expect(_a, _lsym)))
 for _i in range(_I2C_I3C_ID_COUNT):
     _a = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", _i)
     EFUSE_MAP_READS.append(
         (
             f"EFUSE_MAP_I2C_I3C_ID_{_i}",
             _a,
-            _map_expect(_a, "SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bm"),
+            *_map_expect(_a, "SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bm"),
         )
     )
 for _i in range(_SPARE_PROBE_COUNT):
     _a = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", _i)
     _lsym = f"SMC_EFUSE_MAP__LOCKS__SPARE{_i}_READ_LOCK_bm"
-    EFUSE_MAP_READS.append((f"EFUSE_MAP_SPARE_{_i}", _a, _map_expect(_a, _lsym)))
+    EFUSE_MAP_READS.append((f"EFUSE_MAP_SPARE_{_i}", _a, *_map_expect(_a, _lsym)))
 
 
 class smc_efuse_map_read_test_seq(SmcCsrSeq):
@@ -140,8 +139,8 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
         # (SLVERR/0xBADCAB1E). Wait for sense so VCS/Verilator hit the real path.
         await self.wait_fuse_sense_done()
 
-        for name, addr, expected in EFUSE_MAP_READS:
-            if expected == EFUSE_BLOCKED_READ_DATA:
+        for name, addr, expected, locked in EFUSE_MAP_READS:
+            if locked:
                 # A read-locked row completes with SLVERR and the signature
                 # (smc_efuse_map.rdl, LOCKS); the helper grades both.
                 await self.csr_read_err_signature(name, addr, resp=_RESP_SLVERR)
@@ -155,7 +154,7 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
 
         # Non-vacuity of the sweep: the expectations must not all be the same
         # word, or a window stuck at one value would satisfy every row.
-        distinct = {exp for _n, _a, exp in EFUSE_MAP_READS}
+        distinct = {exp for _n, _a, exp, _l in EFUSE_MAP_READS}
         assert len(distinct) >= 3, (
             "EFUSE_MAP_READ: the preload asset makes "
             f"{len(distinct)} distinct expectation(s) across "
@@ -167,8 +166,8 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
         # nothing about fuse content; an unlocked row compares the preload word
         # and is the content proof. Naming both in the token keeps a reader from
         # counting the first kind as the second.
-        blocked = [r for r in EFUSE_MAP_READS if r[2] == EFUSE_BLOCKED_READ_DATA]
-        content = [r for r in EFUSE_MAP_READS if r[2] != EFUSE_BLOCKED_READ_DATA]
+        blocked = [r for r in EFUSE_MAP_READS if r[3]]
+        content = [r for r in EFUSE_MAP_READS if not r[3]]
         assert content, (
             "every SMC_EFUSE_MAP row expects the blocked signature, so no read "
             "in this sweep proves fuse content"
@@ -179,10 +178,10 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
             "the SPEC error-slave signature 0x%08x, which predicts a refusal and "
             "is not a content proof (%s); %d distinct values overall",
             len(content),
-            "; ".join(f"{n}@0x{a:08x}==0x{e:08x}" for n, a, e in content),
+            "; ".join(f"{n}@0x{a:08x}==0x{e:08x}" for n, a, e, _l in content),
             len(blocked),
             EFUSE_BLOCKED_READ_DATA,
-            "; ".join(f"{n}@0x{a:08x}" for n, a, _e in blocked) or "none",
+            "; ".join(f"{n}@0x{a:08x}" for n, a, _e, _l in blocked) or "none",
             len(distinct),
         )
         self.chk_seen.add("CHK-EFUSE-MAP-READ")

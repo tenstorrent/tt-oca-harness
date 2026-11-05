@@ -22,8 +22,9 @@ class smc_efuse_locked_access_interrupt_test(smc_base_test):
         "CHK-EFUSE-LOCK-IRQ-WR",
         "CHK-EFUSE-LOCK-PRE",
         "CHK-EFUSE-LOCK-SCOREBOARD",
+        "CHK-EFUSE-LOCKED-RESP",
     )
-    min_evidence = 5
+    min_evidence = 6
 
     auto_protocol_vip = False
 

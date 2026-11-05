@@ -9,34 +9,46 @@ Exercises the SMC-OTP JTAG access-control policy through product ports:
 
 For each lifecycle state the test checks whether a JTAG-side eFuse access is
 routed to the access-control error slave (SLVERR) or reaches the eFuse
-controller and completes there (OKAY); the map content behind an allowed read
-is ``smc_efuse_map_read_test``'s claim. Every access waits for fuse sense first,
-because until sense completes the shadow window answers SLVERR / 0xBADCAB1E to
-allowed and blocked requests alike.
+controller and completes there (OKAY) with the word the leaf's image holds at
+that address, the identity word for JTAG_PUBLIC_IDENTITY. Every access
+waits for fuse sense first, because until sense completes the shadow window
+answers SLVERR / 0xBADCAB1E to allowed and blocked requests alike.
+
+The leaf senses its own image (``smc_efuse_jtag_lc_image``): every lock clear
+and a known identity word. A read-locked register answers SLVERR with
+0xBADCAB1E for the lock, the same response as the lifecycle gate, so a locked
+identity window could not show the exception and a locked non-identity
+register could not show an allow.
 
 The expected matrix follows ``hw/ip/efuse/doc/architecture.adoc``
 §"Lifecycle State (LC_STATE) Effects":
 
-  * lifecycle encodings, :265-282 --
+  * lifecycle encodings, :328-340 --
     ``TEST_DEV 0x0 | PROD 0x1 | RMA_SOP 0x2, 0x3 | RMA_CHIPLET 0x6-0x7 |
     PROD_END 0x8 | INVALID all others``;
-  * the restricted set, :286 -- "When lifecycle state is PROD (0x1) or RMA_SOP
-    (0x2, 0x3), JTAG access to eFuse registers is restricted";
-  * the access table, :289-295 -- JTAG Write *Blocked* / JTAG Read *Blocked*
-    except Chiplet ID / JTAG Read Chiplet ID Allowed, in both columns;
-  * the Chiplet ID exception, :301-305 -- "Even in PROD or RMA_SOP states, JTAG
-    read access to the chiplet ID and package ID registers is permitted";
-  * the blocked response, :297-299 -- "the error slave returns an error response
-    with data value `0xbadcab1e`".
+  * the restricted set, :352-353 -- "When lifecycle state is PROD (0x1) or
+    RMA_SOP (0x2, 0x3), JTAG writes to eFuse registers are blocked and JTAG
+    reads are blocked except for JTAG_PUBLIC_IDENTITY";
+  * the access table, :358-366 -- JTAG Write *Blocked* (SLVERR response) /
+    JTAG Read *Blocked* except JTAG_PUBLIC_IDENTITY / JTAG Read
+    JTAG_PUBLIC_IDENTITY Allowed in PROD/RMA_SOP, every row *Blocked* in the
+    LC_STATE Integrity Error column, every row Allowed in the other states;
+  * the identity exception, :372-377 -- "Even in PROD or RMA_SOP states, JTAG
+    read access to the JTAG_PUBLIC_IDENTITY register is permitted. The
+    exception does not apply when the lifecycle state fails its integrity
+    check";
+  * the blocked response, :368-370 -- "the error slave returns an SLVERR
+    response with data value `0xbadcab1e`".
 
 The differential encoding of the input is SPEC'd at
-``hw/sys/smc/doc/port_table.adoc:64``: ``lc_state_i`` is
+``hw/sys/smc/doc/port_table.adoc:72``: ``lc_state_i`` is
 ``[2*LC_STATE_WIDTH-1:0]`` (8 bits), "Lifecycle state input, differentially
 encoded", "tie to 8'hf0 if unused (encoded TEST_DEV)" -- i.e. ``{~raw, raw}``,
 which for ``raw = 0x0`` is exactly ``8'hf0``. Equal halves are therefore not a
 legal encoding of any state; that is the differential-integrity (sigint) case,
-which ``architecture.adoc:281`` classes as ``INVALID ... (error fallback)``; the
-SIGINT row expects the access-control gate to block on that fallback.
+which ``architecture.adoc:339`` classes as ``INVALID ... (error fallback)`` and
+:354-356 blocks in full, identity included; the SIGINT row expects every access
+blocked.
 """
 
 from __future__ import annotations
@@ -51,8 +63,9 @@ from env.smc_sys_axi_agent import idle_axil_master_inputs
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 from seq_lib.smc_addr_map import smc_addr, smc_indexed_addr
 from seq_lib.smc_base_test_seq import wait_fuse_sense_done
-from seq_lib.smc_efuse_vip_utils import efuse_map_read_locked
+from seq_lib.smc_efuse_image_pattern_test_seq import EfuseImage
 from smc_base_test import smc_base_test
+from smc_efuse_jtag_lc_image import word_index, write_unlocked_image
 
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
 EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
@@ -60,46 +73,38 @@ EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDE
 
 # Non-identity address class (RAND-REP): the seed draws, per lifecycle image, the register the
 # non-identity read probes from the map registers outside JTAG_PUBLIC_IDENTITY whose read lock
-# is clear in the preloaded LOCKS word (a read-locked register answers for the lock, not for
-# the lifecycle gate); LOCKS itself has no lock. Every element of the I2C_I3C_ID array sits
-# under the one I2C_I3C_ID read lock and every SPARE element under its own, so each element is
-# a candidate under its lock. The write probe stays on LOCKS with data 0 (write-set-only, so
+# is clear in the sensed image (a read-locked register answers for the lock, not for the
+# lifecycle gate); LOCKS itself has no lock. Every element of the I2C_I3C_ID array sits under
+# the one I2C_I3C_ID read lock and every SPARE element under its own, so each element is a
+# candidate under its lock. The write probe stays on LOCKS with data 0 (write-set-only, so
 # the map is left as sensed).
 NUM_SPARE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")
 NUM_I2C_I3C_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM")
 
 
-def _non_id_candidates() -> list[tuple[str, int]]:
+def _non_id_candidates(image: EfuseImage) -> list[tuple[str, int]]:
     rows = [("LOCKS", EFUSE_MAP_NON_ID)]
-    if not efuse_map_read_locked("SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bm"):
-        for n in range(NUM_I2C_I3C_ID):
-            rows.append(
-                (
-                    f"I2C_I3C_ID{n}",
-                    smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", n),
-                )
-            )
-    for name, symbol, lock in (
-        ("SMC_CONFIG", "SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR", "SMC_CONFIG_READ_LOCK"),
+    for n in range(NUM_I2C_I3C_ID):
+        rows.append(
+            (f"I2C_I3C_ID{n}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", n))
+        )
+    rows.append(("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")))
+    rows.append(
         (
             "OCCP_TRANSPORT_TIMEOUT",
-            "SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR",
-            "OCCP_TRANSPORT_TIMEOUT_READ_LOCK",
-        ),
-    ):
-        if not efuse_map_read_locked(f"SMC_EFUSE_MAP__LOCKS__{lock}_bm"):
-            rows.append((name, smc_addr(symbol)))
+            smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
+        )
+    )
     for n in range(NUM_SPARE):
-        if not efuse_map_read_locked(f"SMC_EFUSE_MAP__LOCKS__SPARE{n}_READ_LOCK_bm"):
-            rows.append((f"SPARE{n}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", n)))
-    return rows
+        rows.append((f"SPARE{n}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", n)))
+    return [(name, addr) for name, addr in rows if not image.read_locked(word_index(addr))]
 
 
-# architecture.adoc:297-299 -- blocked request -> error slave -> 0xbadcab1e.
+# architecture.adoc:368-370 -- blocked request -> error slave -> SLVERR, 0xbadcab1e.
 BLOCK_SIGNATURE = 0xBADCAB1E
 
-# architecture.adoc:270-282 "Lifecycle State Encoding". LC_STATE_WIDTH = 4
-# (port_table.adoc:64: lc_state_i is [2*LC_STATE_WIDTH-1:0] = 8 bits).
+# architecture.adoc:328-340 "eFuse lifecycle encodings". LC_STATE_WIDTH = 4
+# (port_table.adoc:72: lc_state_i is [2*LC_STATE_WIDTH-1:0] = 8 bits).
 LC_TEST_DEV = 0x0
 LC_PROD = 0x1
 LC_RMA_SOP = 0x2
@@ -107,10 +112,10 @@ LC_RMA_SOP_ALT = 0x3
 LC_RMA_CHIPLET = 0x6
 LC_PROD_END = 0x8
 
-# architecture.adoc:286 -- the restricted set is exactly PROD and RMA_SOP.
+# architecture.adoc:352-353 -- the restricted set is exactly PROD and RMA_SOP.
 LC_JTAG_RESTRICTED = (LC_PROD, LC_RMA_SOP, LC_RMA_SOP_ALT)
 
-# architecture.adoc:301-305 -- the identity exception is JTAG_PUBLIC_IDENTITY.
+# architecture.adoc:372-377 -- the identity exception is JTAG_PUBLIC_IDENTITY.
 LC_IDENTITY_ADDRS = (EFUSE_MAP_JTAG_PUBLIC_IDENTITY,)
 
 RESP_OKAY = 0
@@ -123,7 +128,7 @@ JTAG_ACCESS_TIMEOUT_NS = 400
 def pack_lc_state(raw: int, *, sigint: bool = False) -> int:
     """Pack product ``lc_state_i = {diff_n, diff_p}`` (WIDTH=4 each).
 
-    SPEC (``hw/sys/smc/doc/port_table.adoc:64``): differentially encoded, and
+    SPEC (``hw/sys/smc/doc/port_table.adoc:72``): differentially encoded, and
     ``8'hf0`` encodes TEST_DEV (raw 0x0), i.e. ``diff_n = ~raw``. Equal halves
     are not a legal encoding of any state and are used here to inject the
     differential-integrity error.
@@ -136,20 +141,21 @@ def pack_lc_state(raw: int, *, sigint: bool = False) -> int:
 def expect_read_blocked(raw: int, sigint: bool, addr: int) -> bool:
     """SPEC-derived expected block outcome for a JTAG-side eFuse read."""
     if sigint:
-        # architecture.adoc:281 -- undecodable => INVALID (error fallback); the
-        # fail-safe fallback of an access-control gate is to block everything,
-        # identity exception included.
+        # architecture.adoc:339 classes an undecodable state as INVALID (error
+        # fallback) and :354-356 blocks every JTAG write and read on an
+        # integrity error, identity exception included.
         return True
     if raw not in LC_JTAG_RESTRICTED:
-        return False  # architecture.adoc:291-295, "Other States" column
-    return addr not in LC_IDENTITY_ADDRS  # :293 + :301-305
+        return False  # architecture.adoc:362-365, "Other States" column
+    return addr not in LC_IDENTITY_ADDRS  # :364-365 + :372-377
 
 
 def expect_write_blocked(raw: int, sigint: bool) -> bool:
     """SPEC-derived expected block outcome for a JTAG-side eFuse write.
 
-    architecture.adoc:292 -- JTAG Write is *Blocked* in PROD/RMA_SOP and Allowed
-    in other states; there is no write exception for the identity registers.
+    architecture.adoc:363 -- JTAG Write is *Blocked* in PROD/RMA_SOP and on an
+    integrity error, Allowed in other states; there is no write exception for
+    the identity registers.
     """
     if sigint:
         return True
@@ -162,6 +168,7 @@ LC_MATRIX = [
     (LC_TEST_DEV, False, "TEST_DEV"),
     (LC_PROD, False, "PROD"),
     (LC_RMA_SOP, False, "RMA_SOP"),
+    (LC_RMA_SOP_ALT, False, "RMA_SOP_ALT"),
     (LC_RMA_CHIPLET, False, "RMA_CHIPLET"),
     (LC_PROD_END, False, "PROD_END"),
     (LC_TEST_DEV, True, "SIGINT"),
@@ -190,19 +197,26 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         "CHK-EFUSE-JTAG-LC-PROD_END",
         "CHK-EFUSE-JTAG-LC-RMA_CHIPLET",
         "CHK-EFUSE-JTAG-LC-RMA_SOP",
+        "CHK-EFUSE-JTAG-LC-RMA_SOP_ALT",
         "CHK-EFUSE-JTAG-LC-SIGINT",
         "CHK-EFUSE-JTAG-LC-TEST_DEV",
     )
-    min_evidence = 6
+    min_evidence = 7
 
     auto_protocol_vip = False
+
+    run_written_file_plusargs = ("smc_efuse_hex",)
+
+    def build_phase(self) -> None:
+        super().build_phase()
+        self.image = write_unlocked_image()
 
     def _draw(self) -> None:
         """Draw the image order, the operation order per image and the non-identity register."""
         self.seed = self.random_seed()
         rng = random.Random(self.seed)
-        candidates = _non_id_candidates()
-        assert candidates, "no read-unlocked non-identity register in the preloaded map"
+        candidates = _non_id_candidates(self.image)
+        assert candidates, "no read-unlocked non-identity register in the sensed image"
         self.image_order = rng.sample(range(len(LC_MATRIX)), len(LC_MATRIX))
         self.op_order = {
             idx: rng.sample(OPERATIONS, len(OPERATIONS)) for idx in range(len(LC_MATRIX))
@@ -318,7 +332,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         # the two stuck behaviours.
         discriminating = [addr for addr, outs in self._read_outcomes.items() if len(outs) == 2]
         assert discriminating, (
-            "no eFuse map address was both blocked and allowed across the six "
+            "no eFuse map address was both blocked and allowed across the seven "
             "lifecycle states: the access-control demux never discriminated, so "
             "the matrix proves nothing "
             f"(per-address outcomes: { {hex(a): sorted(o) for a, o in self._read_outcomes.items()} })"
@@ -326,7 +340,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         assert len(self._write_outcomes) == 2, (
             "JTAG eFuse writes were "
             f"{'always' if True in self._write_outcomes else 'never'} blocked "
-            "across the six lifecycle states: the write half of the matrix "
+            "across the seven lifecycle images: the write half of the matrix "
             "never discriminated"
         )
         missing = [
@@ -339,21 +353,23 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
-            # Directed stimulus floor: the six LC_MATRIX rows, each two reads
-            # (READ_CLASSES) and one write, is 18 lc_state-driven JTAG eFuse
+            # Directed stimulus floor: the seven LC_MATRIX rows, each two reads
+            # (READ_CLASSES) and one write, is 21 lc_state-driven JTAG eFuse
             # access-control checks; a floor taken from `self.checks` would
             # shrink with a run that issued fewer.
-            min_csr_accesses=18,
+            min_csr_accesses=21,
             csr_accesses=self.checks,
             proxy=False,
             details=(
                 "lc_state_i-driven JTAG eFuse access-control ROUTING matrix "
                 "(PROD/RMA_SOP block + JTAG_PUBLIC_IDENTITY exception + "
                 "differential-integrity lockdown), expectations derived from "
-                "hw/ip/efuse/doc/architecture.adoc:265-305; after fuse sense, "
+                "hw/ip/efuse/doc/architecture.adoc:316-377; after fuse sense, "
                 "blocked = SLVERR + 0xBADCAB1E from the error slave, allowed = "
                 "OKAY from the eFuse controller, both outcomes observed on the "
-                "same address. No data claim is made on the allowed reads"
+                "same address; every allowed read returns the word the sensed image "
+                "(every lock clear, a distinct word per JTAG_PUBLIC_IDENTITY, I2C_I3C_ID "
+                "and SPARE address) holds at that address"
             ),
         )
 
@@ -388,7 +404,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         await ClockCycles(dut.clk_smc_i, 20)
 
         # Expected decode: sigint forces raw 0 and prod 0; otherwise prod is set
-        # for the architecture.adoc:286 restricted set (LC_JTAG_RESTRICTED).
+        # for the architecture.adoc:352-353 restricted set (LC_JTAG_RESTRICTED).
         exp_sigint = 1 if sigint else 0
         exp_prod = 0 if sigint else (1 if raw in LC_JTAG_RESTRICTED else 0)
         exp_raw = 0 if sigint else raw
@@ -500,12 +516,20 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
                 f"[{label}] {cls} read @0x{addr:08x} expected ALLOW (resp=OKAY at the eFuse "
                 f"controller) but got resp={code} rdata=0x{rdata:08x}"
             )
+        elif not expect_block and rdata != self.image.words[word_index(addr)]:
+            # The sensed image fixes every word (a distinct word per identity,
+            # I2C_I3C_ID and SPARE address, LOCKS left at 0 by the write of 0);
+            # the lock sentinel and a stuck data path cannot return it.
+            self.errors.append(
+                f"[{label}] {cls} read @0x{addr:08x} completed OKAY but data "
+                f"0x{rdata:08x} != sensed word 0x{self.image.words[word_index(addr)]:08x}"
+            )
         elif expect_block and rdata != BLOCK_SIGNATURE:
-            # architecture.adoc:297-299: the error slave's blocked-read data.
+            # architecture.adoc:368-370: the error slave's blocked-read data.
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} blocked but data "
                 f"0x{rdata:08x} != SPEC err-slv signature "
-                f"0x{BLOCK_SIGNATURE:08x} (architecture.adoc:297-299)"
+                f"0x{BLOCK_SIGNATURE:08x} (architecture.adoc:368-370)"
             )
         return code
 

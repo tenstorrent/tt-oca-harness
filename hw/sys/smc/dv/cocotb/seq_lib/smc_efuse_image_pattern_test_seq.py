@@ -26,13 +26,15 @@ the DUT:
   description says a write-locked field "is not programmable" and a read-locked
   shadow register "is not readable", and ``architecture.adoc`` (eFuse lock-field
   encoding table) gives ``lock[0] = 1`` as read-locked. The LOCKS description
-  fixes the response of a read-locked read, SLVERR with ``0xBADCAB1E``, so each
-  one is held to that response and that word, and to non-disclosure: its data
-  must differ from both values the word could hold.
+  fixes the response of a locked access, SLVERR, with ``0xBADCAB1E`` on a read:
+  a write to a write-locked word is held to SLVERR and no effect, and a
+  read-locked read to SLVERR, that word, and non-disclosure: its data must
+  differ from both values the word could hold.
 
 **Scenario.** Sense; read all 256 words. Write the complement of every non-LOCKS
-word, then read them all: a write-unlocked word holds the complement, a
-write-locked one still holds the image. Every image senses a non-zero LOCKS, so
+word, then read them all: a write-unlocked word accepts the write and holds the
+complement, a write-locked one refuses it with SLVERR and still holds the
+image. Every image senses a non-zero LOCKS, so
 a write of 0 is a real clear attempt: LOCKS must keep its sensed value, read
 all-ones after a write of all-ones, and keep all-ones across a second write of
 0. A sweep of all 256 words then reads LOCKS as all-ones and every other word
@@ -300,7 +302,13 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
         data_words = DATA_WORDS
         for word in data_words:
-            await self.csr_write(f"COMPL_W{word}", word_addr(word), ~image.words[word] & _WORD_MASK)
+            complement = ~image.words[word] & _WORD_MASK
+            if image.write_locked(word):
+                await self.csr_write_expect_error(
+                    f"COMPL_W{word}", word_addr(word), complement, resp=_RESP_SLVERR
+                )
+            else:
+                await self.csr_write(f"COMPL_W{word}", word_addr(word), complement)
         for word in data_words:
             if image.write_locked(word):
                 self.locked_words += 1
@@ -314,9 +322,9 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"{self.unlocked_words} write-unlocked words; it needs at least one of each"
         )
         cocotb.log.info(
-            "CHK-EFUSE-IMG-WRITE: %d write-unlocked words hold their complement and "
-            "%d write-locked words still hold the image after a complement write to "
-            "every non-LOCKS word",
+            "CHK-EFUSE-IMG-WRITE: %d write-unlocked words accepted the complement write "
+            "and hold the complement; %d write-locked words refused it with SLVERR and "
+            "still hold the image",
             self.unlocked_words,
             self.locked_words,
         )

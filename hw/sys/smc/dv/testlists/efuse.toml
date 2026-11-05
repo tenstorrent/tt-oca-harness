@@ -52,6 +52,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_jtag_lc_negative_test.hex"]
 
 [[tests]]
 name = "smc_efuse_jtag_lc_access_matrix_test"
@@ -61,6 +62,7 @@ reseed = 3
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_jtag_lc_access_matrix_test.hex"]
 
 [[tests]]
 name = "smc_efuse_jtag_otp_data_walk_test"

@@ -153,9 +153,9 @@ or `unclassified` when the policy has none.
 |`c_axil_external_active` |12 |`smc_cpuif_handshake_test` (268) |
 |`c_efuse_jtag_ar_accept` |2 |`smc_efuse_jtag_lc_access_matrix_test` (12) |
 |`c_efuse_jtag_aw_accept` |2 |`smc_efuse_jtag_lc_access_matrix_test` (6) |
-|`c_efuse_jtag_bresp_decerr` |2 |`smc_efuse_jtag_lc_access_matrix_test` (3) |
+|`c_efuse_jtag_bresp_slverr` |2 |`smc_efuse_jtag_lc_access_matrix_test` (3) |
 |`c_efuse_jtag_bresp_okay` |1 |`smc_efuse_jtag_lc_access_matrix_test` (3) |single
-|`c_efuse_jtag_rresp_decerr` |2 |`smc_efuse_jtag_lc_access_matrix_test` (4) |
+|`c_efuse_jtag_rresp_slverr` |2 |`smc_efuse_jtag_lc_access_matrix_test` (4) |
 |`c_efuse_jtag_rresp_okay` |2 |`smc_efuse_jtag_lc_access_matrix_test` (8) |
 |`c_efuse_jtag_w_accept` |2 |`smc_efuse_jtag_lc_access_matrix_test` (6) |
 |`c_full_64bit_beat` |99 |`smc_dfd_trace_flush_corner_test` (2145) |
