@@ -3399,12 +3399,6 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
-# sep_lifecycle_ctrl.sv hardwires dbg_disable.smc_otp_jtag2axi and
-# .sep_otp_jtag2axi to 0 while deriving .smc_jtag2axi from the Case-2 gating
-# term, so the OTP bridges sit outside the lifecycle debug ladder. Every other
-# OTP leaf runs with an image that leaves debug open, so that separation is
-# never observed. This entry names the PROD_END SEP shadow image, whose posture
-# closes the fabric bridge, and drives both OTP bridges to completion in it.
 [[tests]]
 name = "smu_dtp_ptap_ir_walk_test"
 module = "smu_dtp_ptap_ir_walk_test"
@@ -3427,12 +3421,12 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
-# sep_lifecycle_ctrl.sv hardwires dbg_disable.smc_otp_jtag2axi and
-# .sep_otp_jtag2axi to 0 while deriving .smc_jtag2axi from the Case-2 gating
-# term, so the OTP bridges sit outside the lifecycle debug ladder. Every other
-# OTP leaf runs with an image that leaves debug open, so that separation is
-# never observed. This entry names the PROD_END SEP shadow image, whose posture
-# closes the fabric bridge, and drives both OTP bridges to completion in it.
+# The lifecycle chapter gates the SMC fabric JTAG2AXI path on Case 2 and leaves
+# both OTP JTAG2AXIL paths ungated (hw/sys/sep/doc/lifecycle_controller.adoc).
+# Every other OTP leaf runs with an image that leaves debug open, so that
+# separation is never observed. This entry names the PROD_END SEP shadow image,
+# whose posture closes the fabric bridge, and drives both OTP bridges to
+# completion in it.
 [[tests]]
 name = "smu_otp_bridges_under_dbg_disable_test"
 module = "smu_otp_bridges_under_dbg_disable_test"

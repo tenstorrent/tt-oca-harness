@@ -118,6 +118,9 @@ module smu_wrapper_uvm_top
         .u_sep_lifecycle_ctrl.feat_ctrl_o);
   assign lcc_dbg_disable_o    = 16'(u_dut.u_smu.sep_dbg_disable);
   assign lcc_dbg_disable_smc_jtag2axi_o = u_dut.u_smu.sep_dbg_disable.smc_jtag2axi;
+  assign dtp_smc_dbg_aw_valid_o = u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid;
+  assign dtp_smc_dbg_w_valid_o  = u_dut.u_smu.dtp_axi_smc_dbg_req.w_valid;
+  assign dtp_smc_dbg_ar_valid_o = u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid;
   assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
 
   always_ff @(posedge clk_smu or negedge rst_cold_ni) begin

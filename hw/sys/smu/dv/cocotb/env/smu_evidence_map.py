@@ -2462,7 +2462,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SBA-OUT-ERROR",
             "CHK-SEP-SBA-OUT-ERROR",
-            "responder SLVERR and DECERR on a read and a write each return a system-bus error",
+            "responder SLVERR and DECERR on a read and a write each return a non-zero sberror "
+            "(code logged), and the next write and read complete with sberror 0",
         ),
         (
             "CHK-SEP-SBA-SMC-WINDOW",
@@ -2474,7 +2475,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "every external-aperture and TRNG-window access, the address bits walked in the "
-            "seed-drawn order, returns a system-bus error",
+            "seed-drawn order, returns a non-zero sberror (code logged)",
         ),
     ],
     "smu_sep_external_irq_pins_test": [
@@ -2913,7 +2914,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SPI-QUAD",
             "quad-mode transmits drive all four data lanes high and off their pre-command "
             "idle level, and raise their enables, a quad receive "
-            "fills one RX FIFO word and completes with every enable low, and "
+            "fills one RX FIFO word and completes with every enable low, "
+            "INTR_ENABLE.ERROR set and cleared on the same path reads back each value, and "
             "INTR_STATE.SPI_EVENT and the interrupt stay "
             "high across a write to INTR_STATE and fall when EVENT_ENABLE.IDLE is cleared",
         ),
@@ -2928,8 +2930,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-WDT-BITE",
             "CHK-SEP-WDT-BITE",
-            "the SEP watchdog reset request is low before the watchdog is enabled, rises "
-            "when it bites, and falls without a cool or primary reset",
+            "the SEP watchdog reset request is low and rst_wdt_n high before the watchdog is "
+            "enabled; with the bark and bite thresholds read back as 0x20 it rises when it "
+            "bites, one clk_smu_i sample shows the request high and rst_wdt_n low together, "
+            "rst_wdt_n first reads low no earlier than the request first reads high, the SMC "
+            "watchdog second timeout stays low, and the request falls again",
         ),
     ],
     "smu_sep_stap_hold_reset_test": [
@@ -3420,8 +3425,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OTP-FABRIC-BLOCKED",
             "CHK-OTP-FABRIC-BLOCKED",
-            "a SINGLE_OP on the primary TAP launches neither AW nor AR on the "
-            "DTP -> SMC debug AXI port while that posture holds",
+            "with SMC_AXI_SINGLE_OP selected, a non-zero pattern and its complement "
+            "shifted through the SINGLE_OP register come back after exactly 132 bits; "
+            "then, with the bridge's PTAP disable input at 1 before and after, a "
+            "SINGLE_OP read on the primary TAP moves neither the AW nor the AR handshake "
+            "count on the DTP -> SMC debug AXI port, no AWVALID, WVALID or ARVALID is high "
+            "or X/Z on any clk_smu_i edge of the window, and the bridge's SINGLE_OP "
+            "capture reads op 0 and address 0 (update not latched); the open-posture "
+            "controls are smu_jtag2axi_access_matrix_rand_test (same driver: "
+            "make_smu_jtag_tap and pack_single_op) and smu_sep_dbg_gating_test_dev_test",
         ),
         (
             "CHK-OTP-SMC-RW-WHILE-BLOCKED",
