@@ -66,15 +66,16 @@ args = ["+skip_fuse_sense"]
 # ML-DSA-87 verify, through the boot ROM's ABR driver, of a blob signed with the test
 # key (committed vectors), and the rejected variants. +abr_case_mask=<hex> runs a subset
 # of the cases from the same image. Two entries of the one module split the cases;
-# their masks together select every case (0x3FFF). This entry runs cases 0 to 6.
+# their masks together select every case (0x3FFF). This entry runs cases 0 to 6 and 13,
+# so each entry ends with a genuine verify after its other cases.
 name = "sep_abr_mldsa87_verify_test_cases_a"
 module = "cpu.sep_abr_mldsa87_verify_test"
 firmware = "abr_mldsa87_verify_test"
 seed = 1
-timeout_sec = 6600
+timeout_sec = 6900
 tags = ["cpu", "crypto", "abr", "mldsa", "subsystem", "abr_mldsa87_dv"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense", "+abr_case_mask=0x007F"]
+args = ["+skip_fuse_sense", "+abr_case_mask=0x207F"]
 
 [[tests]]
 # The second entry of sep_abr_mldsa87_verify_test: cases 7 to 13.
