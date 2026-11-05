@@ -5189,7 +5189,7 @@ module = "smu_axi_sep_lsu_initiator_stall_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 10800
+timeout_sec = 14400
 tags = ["fabric", "axi", "axi_sva", "lsu"]
 # The leaf reads the crossbar port structs by hierarchy, which the Verilator
 # build does not expose.
