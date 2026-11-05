@@ -1660,7 +1660,7 @@ hook and blocks no check.
 |OBS-TOKEN-MULTI-GO
 |A logged line, not a graded check: the go bits written and, per channel of the pair, the clocks from the write to the verdict on the comparator rails. The specification does not state whether the channels of one write hash in parallel or one after the other. Evidence: `OBS-TOKEN-MULTI-GO seed=<n> bits=0x<v> <ch>_cycles=<n\|none>` for each channel of the pair.
 |CTRL-TOKEN-PRESENSE-CLEAR
-|End control of the leaf, not a counted check. Each RMA channel that holds a Match takes a mismatch go and reads Mismatch `0x2a` (`token_processing.adoc`, section Token Submission), and a channel that took no go reads a code other than Match `0x15`, so no RMA match reaches the next cold reset. A miss logs `CTRL-MISSING TOKEN-PRESENSE-CLEAR` and fails the leaf. Evidence: `CTRL-TOKEN-PRESENSE-CLEAR seen: seed=<n> ch=<sip\|chp> mismatch_go=<0\|1> code=0x<v>`.
+|Control before the pre-sense cell and its cold reset, not a counted check. Each RMA channel that holds a Match takes a mismatch go and reads Mismatch `0x2a` (`token_processing.adoc`, section Token Submission), and a channel that took no go reads a code other than Match `0x15`, so no RMA match reaches the next cold reset. A miss logs `CTRL-MISSING TOKEN-PRESENSE-CLEAR` and fails the leaf. Evidence: `CTRL-TOKEN-PRESENSE-CLEAR seen: seed=<n> ch=<sip\|chp> mismatch_go=<0\|1> code=0x<v>`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

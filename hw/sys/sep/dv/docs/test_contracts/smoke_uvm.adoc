@@ -424,7 +424,7 @@ not grade that rejection.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: `CHK-JEDEC-ID PASS` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`) carries the opcode and the RXDATA word; the leaf raises before it when the flash model saw no 0x9F frame or RXDATA differs from the model identifier. The shared scoreboard (`cocotb/env/sep_scoreboard.py`) fails the leaf on any access that does not answer `OKAY`; it prints no named record. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
+*Evidence*: `CHK-JEDEC-ID PASS` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`) carries the opcode and the RXDATA word; the leaf raises before it when the flash model saw no 0x9F frame or RXDATA differs from the model identifier. The shared scoreboard (`cocotb/env/sep_scoreboard.py`) fails the leaf on any access that does not answer `OKAY` and on a run with no AXI transaction; it prints no named record. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
 
 '''''
 
