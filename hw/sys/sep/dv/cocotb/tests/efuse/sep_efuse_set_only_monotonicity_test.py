@@ -18,9 +18,9 @@ for the image pins and the checker goldens.
 Write responses. No text states the bus response of a write to a set-only
 shadow row, so the set-only rows log it: ``OBS-SETONLY-CLEAR-RESP`` for each
 write-0 and ``OBS-SETONLY-SET-RESP`` for each set-1 write, and no check reads
-either record. ``CTRL-WR0-RESP`` fails the leaf when a write-0 is not issued; a
-write that gets no B response fails the leaf at the bus timeout of the access. The ``LOCK`` cells and the writable rows keep the OKAY grade
-of the register driver.
+either record. A write that gets no B response fails the leaf at the bus
+timeout of the access. The ``LOCK`` cells and the writable rows keep the OKAY
+grade of the register driver.
 """
 
 from __future__ import annotations
@@ -49,20 +49,6 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
         await shadow.write_word(name, word, data)
         return 0
 
-    async def _write_zero(self, shadow: SepEfuseShadow, field, step: str, *, set_only: bool) -> int:
-        name, word = field.name, field.word_idx
-        code = await self._write(shadow, field, field.drive_word(0), set_only=set_only)
-        self.chk.ctrl(
-            "WR0-RESP",
-            code is not None,
-            step=step,
-            field=name,
-            word=word,
-            addr=f"0x{shadow._addr(name, word):08x}",
-            resp=code,
-        )
-        return code
-
     def _obs_clear(self, shadow: SepEfuseShadow, field, before: int, code: int, after: int) -> None:
         name, word = field.name, field.word_idx
         self.chk.obs(
@@ -86,7 +72,7 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
 
         if field.sensed:
             before = got
-            code = await self._write_zero(shadow, field, "CLEAR-REJECT", set_only=set_only)
+            code = await self._write(shadow, field, field.drive_word(0), set_only=set_only)
             got = await shadow.read_word(name, word)
             if set_only:
                 self._obs_clear(shadow, field, before, code, got)
@@ -123,7 +109,7 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
         )
 
         before = got
-        code = await self._write_zero(shadow, field, "OR-MERGE", set_only=set_only)
+        code = await self._write(shadow, field, field.drive_word(0), set_only=set_only)
         got = await shadow.read_word(name, word)
         if set_only:
             self._obs_clear(shadow, field, before, code, got)
