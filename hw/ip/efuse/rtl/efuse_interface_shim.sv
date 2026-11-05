@@ -22,7 +22,7 @@ module efuse_interface_shim #(
 
   parameter type efuse_addr_byte_t = logic,  // Fuse byte-address type.
   parameter type efuse_data_t = logic,  // Fuse data-word type.
-  parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+  parameter type efuse_word_counter_t = logic,  // Fuse read word-count type.
   parameter type fuse_command_req_t = logic,  // Fuse-command request type.
   parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
@@ -178,7 +178,7 @@ module efuse_interface_shim #(
     unique case (efuse_read_state_q)
       ST_READ_IDLE: begin
         if (fuse_command_req_i.valid && fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_READ) begin
-          outstanding_accesses_read_d = fuse_command_req_i.access_length_words;
+          outstanding_accesses_read_d = fuse_command_req_i.read_word_count;
           fuse_bank_init_cycles_count_set_en_r = 1'b0;    // Allow counter to start counting
           fuse_bank_init_cycles_count_commit_en_r = 1'b1;
 
