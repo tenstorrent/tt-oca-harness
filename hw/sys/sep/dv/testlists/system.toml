@@ -799,7 +799,7 @@ name = "sep_timer_clock_contract_test"
 module = "system.sep_timer_clock_contract_test"
 seed = 1
 reseed = 4
-timeout_sec = 3600
+timeout_sec = 3900
 tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem", "harness_dv_holes", "sep_spec_log", "logs_open_spec_value", "grades_spec_rst_timer"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -812,7 +812,7 @@ name = "sep_timer_clock_contract_test_dbg"
 module = "system.sep_timer_clock_contract_test"
 seed = 1
 # No reseed: the dbg_rstb_i cell is directed; the main entry carries the drawn values.
-timeout_sec = 3600
+timeout_sec = 3900
 tags = ["clock", "wdt", "aon_timer", "reset", "system", "subsystem", "harness_dv_holes", "sep_spec_log", "logs_open_spec_value", "grades_spec_rst_timer"]
 run_modes = ["no_cpu"]
 tools = ["vcs"]

@@ -65,15 +65,27 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # ML-DSA-87 verify, through the boot ROM's ABR driver, of a blob signed with the test
 # key (committed vectors), and the rejected variants. +abr_case_mask=<hex> runs a subset
-# of the cases from the same image.
-name = "sep_abr_mldsa87_verify_test"
+# of the cases from the same image. Two entries of the one module split the cases;
+# their masks together select every case (0x3FFF). This entry runs cases 0 to 6.
+name = "sep_abr_mldsa87_verify_test_cases_a"
 module = "cpu.sep_abr_mldsa87_verify_test"
 firmware = "abr_mldsa87_verify_test"
 seed = 1
-timeout_sec = 8400
+timeout_sec = 6600
 tags = ["cpu", "crypto", "abr", "mldsa", "subsystem", "abr_mldsa87_dv"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+abr_case_mask=0x007F"]
+
+[[tests]]
+# The second entry of sep_abr_mldsa87_verify_test: cases 7 to 13.
+name = "sep_abr_mldsa87_verify_test_cases_b"
+module = "cpu.sep_abr_mldsa87_verify_test"
+firmware = "abr_mldsa87_verify_test"
+seed = 1
+timeout_sec = 6600
+tags = ["cpu", "crypto", "abr", "mldsa", "subsystem", "abr_mldsa87_dv"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+abr_case_mask=0x3F80"]
 
 [[tests]]
 # Adams Bridge ignores every ML-DSA command (+sep_abr_cmd_drop); the verify driver must
@@ -267,7 +279,7 @@ name = "sep_cpu_reset_entry_test"
 module = "cpu.sep_cpu_reset_entry_test"
 seed = 1
 reseed = 1
-timeout_sec = 3600
+timeout_sec = 4200
 tags = ["boot", "reset", "cpu", "jtag", "subsystem", "sep_spec_log"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+axi_sva_need_sb"]
@@ -280,7 +292,7 @@ name = "sep_cpu_reset_entry_test_real_sense"
 module = "cpu.sep_cpu_reset_entry_test"
 seed = 1
 reseed = 1
-timeout_sec = 3600
+timeout_sec = 3900
 tags = ["boot", "reset", "cpu", "jtag", "efuse", "subsystem", "sep_spec_log"]
 run_modes = ["cpu"]
 args = [

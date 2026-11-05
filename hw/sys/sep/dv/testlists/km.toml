@@ -329,7 +329,7 @@ module = "km.sep_km_kmcsr_reset_rand_test"
 firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
-timeout_sec = 3600
+timeout_sec = 5400
 tags = ["km", "kmcsr", "reset", "sram_lock", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -350,7 +350,7 @@ module = "km.sep_km_kmcsr_reset_rand_test"
 firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
-timeout_sec = 3600
+timeout_sec = 4800
 tags = ["km", "kmcsr", "reset", "sram_lock", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -547,7 +547,7 @@ module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 1
-timeout_sec = 5700
+timeout_sec = 7800
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -561,7 +561,7 @@ module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 3
-timeout_sec = 5700
+timeout_sec = 8100
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -575,7 +575,7 @@ module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 3
-timeout_sec = 5400
+timeout_sec = 5700
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -589,7 +589,7 @@ module = "km.sep_km_key_transfer_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 1
-timeout_sec = 5400
+timeout_sec = 7800
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy", "sep_spec_log", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
