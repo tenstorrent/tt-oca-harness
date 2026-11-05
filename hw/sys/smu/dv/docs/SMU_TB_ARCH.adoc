@@ -61,6 +61,9 @@ sequence (`axi_out_mem`)
 |`smu_evidence_map.py` |Per-testcase `(CHK_ID, TOKEN, EXPECT)` token contracts,
 plus the `UNMAPPED_TESTS` declarations for testcases that run without rows
 |`smu_fcov.py` |Scenario-intent coverage bins, hit per test
+|`SmuAxiMonitor` |Passive protocol and integrity monitor on the `ext_in` and
+`ext_out` boundary buses, built by `smu_base_test` for every leaf; see
+<<smu-axi-monitor,Boundary AXI Monitor>>
 |===
 
 === Clock and Reset Strategy
@@ -295,6 +298,78 @@ stack, trap records, and recent-PC tail at error level ahead of the assertion; a
 passing run logs the same summary at info level in `report_phase`.
 `+sep_trace_log` streams every retirement (cycle, PC, encoding, symbol) to
 `sep_trace.log` in the run directory.
+
+[[smu-axi-monitor]]
+=== Boundary AXI Monitor
+
+`cocotb/env/smu_axi_monitor.py` holds `SmuAxiMonitor`, a passive
+`uvm_component` that samples one boundary AXI bus on every `clk_smu_i` edge,
+independent of the master and the responder. It carries the rules of the SEP
+bench's `env/sep_axi_monitor.py`, so the READY-wait and decode rules hold on
+Verilator, where the RTL SVA checkers do not run.
+
+Rules::
+* *Read-data lanes*: an accepted OKAY or EXOKAY R beat carries no X/Z bit in a
+  byte lane the read accesses. Each R beat joins its AR by ID (ARADDR, ARLEN,
+  ARSIZE, ARBURST; IHI 0022 A3.4.1 lane math); a beat with no recorded AR fails
+  only when the whole data bus is X/Z. `open_unknown_rdata_window` exempts a read
+  that must accept unknown data, `open_error_rdata_window` also grades the data
+  of error beats, and `forget_pending_reads` drops the ARs of a read that timed
+  out.
+* *Decode errors*: a DECERR beat consumes a credit armed through
+  `arm_expected_decerr(n)` (returned through `release_expected_decerr`) or the
+  `expected_decerr(bus, n)` context manager. A DECERR with no credit is counted
+  as unexpected and fails only where `fail_decerr` is set; a credit left
+  standing at the end fails.
+* *Slave READY wait*: a run of consecutive `VALID && !READY` cycles on AW, W
+  or AR fails when it exceeds `SmuEnvCfg.axi_timeout_ns` (default
+  `AXI_TIMEOUT_NS` of `smu_axi_helpers.py`, 200 us), counted in `clk_smu_i`
+  cycles.
+* *VALID known*: every VALID is 0 or 1 out of reset. A VALID that stays X/Z is
+  reported once per signal and its cycles are counted in `valid_unknown`.
+* *Response known*: RRESP and BRESP of an accepted beat carry no X/Z.
+
+While the bus reset is low the monitor drops its recorded ARs, clears the
+READY-wait runs and skips the VALID-known check. On Verilator, a two-state
+simulator, no net is X/Z, so the read-data, VALID-known and response-known rules
+cannot fire on bus data; they grade on a four-state simulator.
+
+The `ext_in` instance samples both buses from one coroutine. Each `clk_smu_i`
+edge reads the five VALIDs first and reads no other net when all of them are 0.
+
+[cols=",,,,",options="header",]
+|===
+|Instance |Signals |Reset |Slave the READY rule grades |`fail_decerr`
+|`ext_in` |flat `ext_in_*` pins of `tb_wrapper_top` |`rst_primary_smc_clk_n_o`
+|the DUT |False: the routing table answers a request to neither aperture with
+DECERR
+|`ext_out` |members of `u_axi_out_if`, read at the `axi_out_geometry` widths
+|`rst_cold_n_o` |the bench responder |False
+|===
+
+Each instance registers in `ConfigDB` as `smu_axi_monitor_<bus>` (`ext_in`,
+`ext_out`), where a sequence finds it to arm a DECERR. The `ext_in` instance
+fails the run when its pins are missing; `ext_out` logs and idles, and also
+idles when the test builds no `ext_out` responder (`cfg.axi_out_mem`), whose
+VALIDs are then undriven.
+
+Opt-outs are class attributes of the leaf: `axi_monitor_enabled = False` builds
+neither instance; `axi_monitor_ready_budget_ext_in = False` turns off the
+READY rule on `ext_in` only, for a leaf whose stimulus withholds the master's
+RREADY / BREADY or holds the target in reset past the budget, so the DUT stops
+taking requests; `axi_monitor_ready_budget_ext_out = False` turns off the READY
+rule on `ext_out` only, for a leaf that withholds the responder's READY beyond
+the budget; `axi_monitor_fail_decerr_ext_in = True` makes an unarmed `ext_in`
+DECERR fail.
+
+At `check_phase` each instance logs one tally line, on a passing run as well as
+a failing one, and then asserts it found no error:
+
+----
+CHK-AXI-MON-EXT-IN: beats=<r> b=<b> x_lane=<n> decerr_unexpected=<n> decerr_expected=<n> ready_wait_max=aw:<n>,w:<n>,ar:<n> bound=<cycles> errors=<n> valid_unknown=<cycles>
+----
+
+A rule that trips logs `AXI MONITOR [<bus>] FAIL: <rule>` at the cycle it trips.
 
 === Coverage Strategy
 

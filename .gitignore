@@ -13,13 +13,15 @@ __pycache__/
 
 # Transient per-block build outputs. build_pio comes from the SEP boot ROM
 # BUILD_DIR override (the CPU-PIO drain variant); build_release is the same
-# ROM's BUILD_TYPE=release tree; build_dual is the dual-SMC DV tree, kept
+# ROM's BUILD_TYPE=release tree; build_clear is the same ROM with its optional
+# memory clears built in; build_dual is the dual-SMC DV tree, kept
 # separate from build/ so concurrent --rebuild runs do not race on bender
 # filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
 **/build/
 **/build_dual/
 **/build_ot/
 **/build_ot_pio/
+**/build_clear/
 **/build_pio/
 **/build_release/
 

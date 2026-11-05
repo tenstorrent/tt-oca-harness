@@ -73,6 +73,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
+from env.smu_axi_monitor import smu_axi_monitor
 from ocah_axi_vip import PROT_NONSECURE, RESP_OKAY, clear_profile
 from ocah_jtag_vip import OcahJtagState
 
@@ -1331,6 +1332,9 @@ class smu_xbar_reset_held_target_test_seq(smu_dtp_sep_ic_reset_effect_test_seq):
         mk = mon.mark()
         self.o["mk_sameid"] = mk
         issue = mon.cyc
+        # AXI monitor lane rule: the S10 read reuses ARID 0x11, so the orphan's AR is not its shape.
+        if (axi_mon := smu_axi_monitor("ext_in")) is not None:
+            axi_mon.forget_pending_reads(ORPHAN_ARID)
         self._issue_read(self._smc_view(SMC_CHIP_CONFIG_VERSION_LO), 4, SIZE_4B, ORPHAN_ARID)
         base_ar = c0["smc_xbar_in_ar_count_o"]
         first = await self._window(

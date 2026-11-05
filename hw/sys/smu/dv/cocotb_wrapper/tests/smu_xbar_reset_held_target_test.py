@@ -33,6 +33,8 @@ class smu_xbar_reset_held_target_test(smu_base_test):
     """Orphan, same-ID hold, different-ID liveness and clearing across four SEP debug holds."""
 
     use_shared_env = True
+    # AXI monitor ext_in READY rule: ext_in ARs wait on the DUT across each SEP reset hold.
+    axi_monitor_ready_budget_ext_in = False
 
     async def run_scenario(self) -> None:
         self.logger.info(

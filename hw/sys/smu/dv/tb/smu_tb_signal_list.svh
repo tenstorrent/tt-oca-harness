@@ -78,6 +78,11 @@
 `SMU_TB_OUT(logic [31:0], dtp_smc_dbg_aw_count_o)
 `SMU_TB_OUT(logic [31:0], dtp_smc_dbg_ar_count_o)
 `SMU_TB_OUT(logic [31:0], dtp_smc_dbg_b_count_o)
+// The same port's request VALIDs, sampled on every clock so a test can tell
+// a closed bridge from a tap that never resolves.
+`SMU_TB_OUT(logic, dtp_smc_dbg_aw_valid_o)
+`SMU_TB_OUT(logic, dtp_smc_dbg_w_valid_o)
+`SMU_TB_OUT(logic, dtp_smc_dbg_ar_valid_o)
 `SMU_TB_IN(logic, clk_ref_i)
 `SMU_TB_IN(logic, clk_periph_i)
 // The clocks pll_wrap delivers to the SMU: the model's own outputs, so a

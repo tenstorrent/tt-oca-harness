@@ -3,8 +3,9 @@
 //
 // SMC filter functional coverage: the AXI-Lite protection filter guarding a
 // GPIO wrap, the JTAG2AXI manager's path through the alias remap and the
-// inbound fabric filter, and the filter-rule covergroups smc_infilt_rule_cg
-// and smc_outfilt_rule_cg of SMC_FCOV.adoc.
+// inbound fabric filter, the filter-rule covergroups smc_infilt_rule_cg and
+// smc_outfilt_rule_cg of SMC_FCOV.adoc, and the alias-remap covergroup
+// smc_alias_remap_cg.
 //
 // The protection filter compares the request's prot against a programmed
 // requirement, so the two points are "equal" and "one bit apart" -- the
@@ -18,6 +19,12 @@
 // cross-checked against the shadow; the outbound deciding entry comes from the
 // shadow alone. A probe on which the DUT and the shadow disagree, on the entry
 // or on the verdict, samples no cell.
+//
+// The alias-remap group keeps a shadow of the eight remap regions the same
+// way and grades each JTAG probe against it: the region and the position of
+// the address against the region bounds come from the shadow, the DUT's remap
+// index and the SYS_OUT address and AxCACHE are cross-checked against it, and
+// a probe on which they disagree samples no cell.
 //
 // One instance in the shared tb_top serves both flows. Every port is a
 // smc_tb_signal_list.svh signal or a member of the u_output_axi_if instance.
@@ -98,6 +105,8 @@ module smc_filt_fcov (
   input wire [7:0] jtag_arlen_i,
   input wire [2:0] jtag_arprot_i,
   input wire [11:0] jtag_aruser_i,
+  input wire [3:0] jtag_awcache_i,
+  input wire [3:0] jtag_arcache_i,
   input wire jtag_bvalid_i,
   input wire jtag_bready_i,
   input wire [1:0] jtag_bresp_i,
@@ -106,15 +115,28 @@ module smc_filt_fcov (
   input wire jtag_rlast_i,
   input wire [1:0] jtag_rresp_i,
 
-  // SYS_OUT address handshakes with their length and prot.
+  // SEP_IN read channels, for the region registers as read back.
+  input wire sep_arvalid_i,
+  input wire sep_arready_i,
+  input wire [55:0] sep_araddr_i,
+  input wire sep_rvalid_i,
+  input wire sep_rready_i,
+  input wire sep_rlast_i,
+  input wire [1:0] sep_rresp_i,
+
+  // SYS_OUT address handshakes with their address, length, prot and cache.
   input wire out_awvalid_i,
   input wire out_awready_i,
+  input wire [55:0] out_awaddr_i,
   input wire [7:0] out_awlen_i,
   input wire [2:0] out_awprot_i,
+  input wire [3:0] out_awcache_i,
   input wire out_arvalid_i,
   input wire out_arready_i,
+  input wire [55:0] out_araddr_i,
   input wire [7:0] out_arlen_i,
   input wire [2:0] out_arprot_i,
+  input wire [3:0] out_arcache_i,
 
   // Graded-window gate (tb_fcov_gate), driven by the owning leaf.
   input wire fcov_gate_i
@@ -129,8 +151,16 @@ module smc_filt_fcov (
   import filter_ctrl_addrmap_pkg::FILTER_CTRL_FILTER_CONFIG_BASE_ADDR;
   import filter_ctrl_addrmap_pkg::FILTER_CTRL_START_ADDR_BASE_ADDR;
   import filter_ctrl_addrmap_pkg::FILTER_CTRL_END_ADDR_BASE_ADDR;
+  import smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR;
+  import smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_TOTAL_SIZE;
+  import smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_STRIDE;
+  import smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR;
+  import smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR;
+  import smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR;
   // The FILTER_CONFIG field positions and the reset words of filter_ctrl.rdl.
   `include "filter_ctrl_reg.svh"
+  // The REGION_ATTRS field positions and the reset words of alias_remap.rdl.
+  `include "alias_remap_reg.svh"
 
   wire in_reset = (rst_cold_ni !== 1'b1);
 
@@ -837,6 +867,318 @@ module smc_filt_fcov (
         u_cg_outfilt_rule.sample(1'b0, 4'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b1, out_probe_len_nz,
                                  out_probe_ns);
       end
+    end
+  end
+
+  // ------------------------------------------------------------------
+  // smc_alias_remap_cg (SMC_FCOV.adoc): the JTAG probes of the alias remap
+  // against a shadow of the eight regions, kept from the SEP_IN writes that
+  // complete OKAY at REGION_START, REGION_END and REGION_ATTRS with every
+  // strobe set (the register is the whole beat; one SEP_IN write is
+  // outstanding at a time). A region contains the addresses from its start
+  // up to, not including, its end while valid is set; the lowest-numbered
+  // region that contains the address applies, adds its offset to bits
+  // [55:12] modulo 2^44 and replaces AxCACHE by cacheable; a miss passes the
+  // pair unchanged (fabric.adoc, Alias Remapping; alias_remap.rdl). The
+  // position of a probe is read against the region it hits (first byte of
+  // the start page, last byte of the last page, interior) or, on a miss,
+  // against the valid region whose edge it sits on (last byte of the page
+  // before the start page, first byte of the end page).
+  // ------------------------------------------------------------------
+  localparam int unsigned NumRegions = 8;
+  localparam logic [55:0] AliasBase = 56'(SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR);
+  localparam logic [55:0] AliasSpan = 56'(SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_TOTAL_SIZE);
+  localparam logic [55:0] AliasStride = 56'(SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_STRIDE);
+  // Register offsets inside a region, from the register addresses of region 0.
+  localparam logic [55:0] OffRegionStart =
+      56'(SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(
+      0
+  )) - AliasBase;
+  localparam logic [55:0] OffRegionEnd =
+      56'(SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(
+      0
+  )) - AliasBase;
+  localparam logic [55:0] OffRegionAttrs =
+      56'(SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
+      0
+  )) - AliasBase;
+  typedef struct packed {
+    logic valid;
+    logic [3:0] cache;
+    logic [43:0] offset;
+    logic [55:0] start;
+    logic [55:0] stop;
+  } region_t;
+  typedef region_t [NumRegions-1:0] regions_t;
+
+  // start_addr, end_addr and offset are the [55:12] fields of their words.
+  function automatic logic [55:0] page_bound(input logic [63:0] word);
+    return {word[55:12], 12'h000};
+  endfunction
+
+  localparam logic [63:0] StartReset = 64'(REMAP_REGION_REGION_START_REG_DEFAULT);
+  localparam logic [63:0] EndReset = 64'(REMAP_REGION_REGION_END_REG_DEFAULT);
+  localparam logic [63:0] AttrsReset = 64'(REMAP_REGION_REGION_ATTRS_REG_DEFAULT);
+  localparam region_t RegionReset = '{
+      valid: AttrsReset[REMAP_REGION_REGION_ATTRS_VALID_SHIFT],
+      cache: AttrsReset[REMAP_REGION_REGION_ATTRS_CACHEABLE_SHIFT+:4],
+      offset: AttrsReset[REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT+:44],
+      start: {StartReset[55:12], 12'h000},
+      stop: {EndReset[55:12], 12'h000}
+  };
+
+  function automatic region_t region_from_attrs(input region_t r, input logic [63:0] word);
+    region_from_attrs = r;
+    region_from_attrs.valid = word[REMAP_REGION_REGION_ATTRS_VALID_SHIFT];
+    region_from_attrs.cache = word[REMAP_REGION_REGION_ATTRS_CACHEABLE_SHIFT+:4];
+    region_from_attrs.offset = word[REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT+:44];
+  endfunction
+
+  wire [55:0] alias_off = sep_waddr_q - AliasBase;
+  wire alias_reg_w = sep_b_okay && sep_wfull_q && (alias_off < AliasSpan);
+  wire [2:0] alias_idx = 3'(alias_off / AliasStride);
+  wire [55:0] alias_reg_off = alias_off % AliasStride;
+  regions_t regions_q;
+
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      for (int unsigned i = 0; i < NumRegions; i++) regions_q[i] <= RegionReset;
+    end else if (alias_reg_w) begin
+      case (alias_reg_off)
+        OffRegionStart: regions_q[alias_idx].start <= page_bound(sep_wdata_q);
+        OffRegionEnd: regions_q[alias_idx].stop <= page_bound(sep_wdata_q);
+        OffRegionAttrs: regions_q[alias_idx] <= region_from_attrs(regions_q[alias_idx], sep_wdata_q);
+        default: ;
+      endcase
+    end
+  end
+
+  // A region register read back over SEP_IN (one read outstanding at a time).
+  wire sep_ar_acc = (sep_arvalid_i === 1'b1) && (sep_arready_i === 1'b1);
+  wire sep_r_last_okay = (sep_rvalid_i === 1'b1) && (sep_rready_i === 1'b1)
+      && (sep_rlast_i === 1'b1) && (sep_rresp_i === 2'b00);
+  logic [55:0] sep_raddr_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) sep_raddr_q <= '0;
+    else if (sep_ar_acc) sep_raddr_q <= sep_araddr_i;
+  end
+  wire alias_reg_r = sep_r_last_okay && ((sep_raddr_q - AliasBase) < AliasSpan);
+
+  // Owner-specific qualifier beside the gate: the group samples while a
+  // region register has been accessed over SEP_IN since the gate rose, a
+  // write that completed OKAY at a region register or a read of one (the
+  // owner reads the reset words of every region before its transparent probe
+  // and writes the regions before every other probe); the flag clears on
+  // every rise of the gate. No other owner accesses a region register under
+  // its gate, so their JTAG traffic counts nothing here.
+  logic alias_written_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) alias_written_q <= 1'b0;
+    else if (gate_rise) alias_written_q <= 1'b0;
+    else if (alias_reg_w || alias_reg_r) alias_written_q <= 1'b1;
+  end
+  wire alias_live = alias_written_q;
+
+  localparam logic [2:0] PosInterior = 3'd0;
+  localparam logic [2:0] PosFirst = 3'd1;
+  localparam logic [2:0] PosLast = 3'd2;
+  localparam logic [2:0] PosBelowStart = 3'd3;
+  localparam logic [2:0] PosEndPage = 3'd4;
+  localparam logic [2:0] PosNone = 3'd7;
+  localparam logic [1:0] PassNone = 2'd0;
+  localparam logic [1:0] PassReset = 2'd1;
+  localparam logic [1:0] PassValidClear = 2'd2;
+
+  typedef struct packed {
+    logic hit;
+    logic [2:0] region;
+    logic cache_nz;
+    logic [2:0] pos;
+    logic [55:0] taddr;
+    logic [3:0] tcache;
+    logic [1:0] pass_kind;
+  } alias_dec_t;
+
+  function automatic alias_dec_t alias_decode(input regions_t tbl, input logic [55:0] addr,
+                                              input logic [3:0] cache);
+    logic all_reset, in_clear, contained;
+    alias_decode = '0;
+    alias_decode.pos = PosNone;
+    alias_decode.taddr = addr;
+    alias_decode.tcache = cache;
+    all_reset = 1'b1;
+    in_clear = 1'b0;
+    for (int unsigned i = 0; i < NumRegions; i++) begin
+      contained = (addr >= tbl[i].start) && (addr < tbl[i].stop);
+      if (tbl[i] != RegionReset) all_reset = 1'b0;
+      if (tbl[i].valid && contained && !alias_decode.hit) begin
+        alias_decode.hit = 1'b1;
+        alias_decode.region = 3'(i);
+        alias_decode.cache_nz = (tbl[i].cache != 4'd0);
+        alias_decode.taddr = {44'(addr[55:12] + tbl[i].offset), addr[11:0]};
+        alias_decode.tcache = tbl[i].cache;
+        alias_decode.pos = (addr == tbl[i].start) ? PosFirst
+                         : (addr == tbl[i].stop - 56'd1) ? PosLast : PosInterior;
+      end
+      if (!tbl[i].valid && contained) in_clear = 1'b1;
+    end
+    if (!alias_decode.hit) begin
+      for (int unsigned i = 0; i < NumRegions; i++) begin
+        if (tbl[i].valid && (alias_decode.pos == PosNone)) begin
+          if (addr == tbl[i].start - 56'd1) begin
+            alias_decode.pos = PosBelowStart;
+            alias_decode.region = 3'(i);
+            alias_decode.cache_nz = (tbl[i].cache != 4'd0);
+          end else if (addr == tbl[i].stop) begin
+            alias_decode.pos = PosEndPage;
+            alias_decode.region = 3'(i);
+            alias_decode.cache_nz = (tbl[i].cache != 4'd0);
+          end
+        end
+      end
+      alias_decode.pass_kind = all_reset ? PassReset : (in_clear ? PassValidClear : PassNone);
+    end
+  endfunction
+
+  // One probe outstanding per channel. At the JTAG AW or AR handshake the
+  // shadow decode of the probe is kept; one edge later the DUT's remap index
+  // is read, when the request has crossed the port's axi_cut and the remap
+  // presents its lowest-hit region (on a miss the index reads as the highest
+  // region, so it is compared on a hit only); the first SYS_OUT address
+  // handshake of that channel while the probe is outstanding carries the
+  // translated pair. The sample is the B or R-last handshake at the JTAG
+  // port, and the probe counts only when it completes OKAY, the index equals
+  // the shadow's region on a hit, and the SYS_OUT address and AxCACHE equal
+  // the pair the shadow derives.
+  typedef struct packed {
+    logic pending;
+    logic idx_pending;
+    logic cap;
+    logic [55:0] addr;
+    alias_dec_t dec;
+    logic [2:0] idx;
+    logic [55:0] oaddr;
+    logic [3:0] ocache;
+  } alias_probe_t;
+
+  alias_probe_t al_wr_q, al_rd_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      al_wr_q <= '0;
+      al_rd_q <= '0;
+    end else begin
+      if (jtag_aw_acc) begin
+        al_wr_q.pending <= 1'b1;
+        al_wr_q.idx_pending <= 1'b1;
+        al_wr_q.cap <= 1'b0;
+        al_wr_q.addr <= jtag_awaddr_i;
+        al_wr_q.dec <= alias_decode(regions_q, jtag_awaddr_i, jtag_awcache_i);
+      end else begin
+        if (jtag_b_acc) al_wr_q.pending <= 1'b0;
+        if (al_wr_q.idx_pending) begin
+          al_wr_q.idx <= remap_jtag_aw_hit_i;
+          al_wr_q.idx_pending <= 1'b0;
+        end
+        if (out_aw_acc && al_wr_q.pending && !al_wr_q.cap) begin
+          al_wr_q.cap <= 1'b1;
+          al_wr_q.oaddr <= out_awaddr_i;
+          al_wr_q.ocache <= out_awcache_i;
+        end
+      end
+      if (jtag_ar_acc) begin
+        al_rd_q.pending <= 1'b1;
+        al_rd_q.idx_pending <= 1'b1;
+        al_rd_q.cap <= 1'b0;
+        al_rd_q.addr <= jtag_araddr_i;
+        al_rd_q.dec <= alias_decode(regions_q, jtag_araddr_i, jtag_arcache_i);
+      end else begin
+        if (jtag_r_last_acc) al_rd_q.pending <= 1'b0;
+        if (al_rd_q.idx_pending) begin
+          al_rd_q.idx <= remap_jtag_ar_hit_i;
+          al_rd_q.idx_pending <= 1'b0;
+        end
+        if (out_ar_acc && al_rd_q.pending && !al_rd_q.cap) begin
+          al_rd_q.cap <= 1'b1;
+          al_rd_q.oaddr <= out_araddr_i;
+          al_rd_q.ocache <= out_arcache_i;
+        end
+      end
+    end
+  end
+
+  wire al_wr_done = jtag_b_acc && al_wr_q.pending;
+  wire al_rd_done = jtag_r_last_acc && al_rd_q.pending;
+  wire alias_sample_e = gate_on && alias_live && (al_wr_done || al_rd_done);
+  // A read and a write completing in the same cycle sample the write only;
+  // the owner keeps one probe outstanding.
+  alias_probe_t al_p;
+  assign al_p = al_wr_done ? al_wr_q : al_rd_q;
+  wire [1:0] al_resp = al_wr_done ? jtag_bresp_i : jtag_rresp_i;
+  wire al_pair_ok = al_p.cap && (al_p.oaddr == al_p.dec.taddr) && (al_p.ocache == al_p.dec.tcache);
+  wire al_idx_ok = !al_p.dec.hit || (al_p.idx == al_p.dec.region);
+  wire al_graded = alias_sample_e && (al_resp === 2'b00) && al_pair_ok && al_idx_ok;
+  wire al_region_e = al_graded && (al_p.dec.pos != PosNone);
+  wire al_low_nz = (al_p.addr[11:0] != 12'd0);
+
+  // The 10 {cacheable class, position} bins of one region; every bin leads
+  // with the graded flag.
+  `define SMC_ALIAS_REGION_BINS(name, idx) \
+      bins name``_c0_interior = {{1'b1, idx, 1'b0, PosInterior}}; \
+      bins name``_c0_first = {{1'b1, idx, 1'b0, PosFirst}}; \
+      bins name``_c0_last = {{1'b1, idx, 1'b0, PosLast}}; \
+      bins name``_c0_below_start = {{1'b1, idx, 1'b0, PosBelowStart}}; \
+      bins name``_c0_end_page = {{1'b1, idx, 1'b0, PosEndPage}}; \
+      bins name``_cnz_interior = {{1'b1, idx, 1'b1, PosInterior}}; \
+      bins name``_cnz_first = {{1'b1, idx, 1'b1, PosFirst}}; \
+      bins name``_cnz_last = {{1'b1, idx, 1'b1, PosLast}}; \
+      bins name``_cnz_below_start = {{1'b1, idx, 1'b1, PosBelowStart}}; \
+      bins name``_cnz_end_page = {{1'b1, idx, 1'b1, PosEndPage}};
+
+  covergroup smc_alias_remap_cg with function sample (
+      logic graded,
+      logic [2:0] region,
+      logic cache_nz,
+      logic [2:0] pos,
+      logic low_graded,
+      logic low_nz,
+      logic [1:0] pass_kind
+  );
+    option.per_instance = 1;
+    // {graded, region, cacheable class, position}: 80 cells.
+    cp_region_hit: coverpoint {
+      graded, region, cache_nz, pos
+    } {
+      `SMC_ALIAS_REGION_BINS(r0, 3'd0)
+      `SMC_ALIAS_REGION_BINS(r1, 3'd1)
+      `SMC_ALIAS_REGION_BINS(r2, 3'd2)
+      `SMC_ALIAS_REGION_BINS(r3, 3'd3)
+      `SMC_ALIAS_REGION_BINS(r4, 3'd4)
+      `SMC_ALIAS_REGION_BINS(r5, 3'd5)
+      `SMC_ALIAS_REGION_BINS(r6, 3'd6)
+      `SMC_ALIAS_REGION_BINS(r7, 3'd7)
+    }
+    // {graded, AxADDR[11:0] non-zero}: 2 cells, the low bits kept on a hit.
+    cp_low_bits: coverpoint {
+      low_graded, low_nz
+    } {
+      bins zero = {2'b10}; bins nonzero = {2'b11};
+    }
+    // Every region at its reset word; a region with valid clear over the
+    // address: 2 cells, the pair passing unchanged.
+    cp_pass: coverpoint pass_kind {
+      bins reset = {PassReset}; bins valid_clear = {PassValidClear};
+    }
+  endgroup
+  `undef SMC_ALIAS_REGION_BINS
+
+  smc_alias_remap_cg u_cg_alias_remap = new();
+
+  always_ff @(posedge clk_smc_i) begin
+    if (!in_reset && alias_sample_e) begin
+      u_cg_alias_remap.sample(al_region_e, al_region_e ? al_p.dec.region : 3'd0,
+                              al_region_e && al_p.dec.cache_nz,
+                              al_region_e ? al_p.dec.pos : PosNone, al_graded,
+                              al_graded && al_low_nz, al_graded ? al_p.dec.pass_kind : PassNone);
     end
   end
 
