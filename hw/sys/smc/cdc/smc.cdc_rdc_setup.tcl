@@ -36,7 +36,7 @@ puts "INFO: Loading SMC-specific CDC/RDC constraints"
 # GLITCH-FREE CELL CONFIGURATION
 ################################################################################
 
-configure_glitch_free_cells -ignore_modules {prim_ag_clk_mux}
+configure_glitch_free_cells -ignore_modules [cdc_mod {prim_ag_clk_mux}]
 
 # prim_ag_clk_mux (e.g. avsbus_controller u_refclk_apbclk_mux): inner flops can sit under
 # different clock roots until exclusive clock modeling is complete in hw/sys/smc/synth/smc_clocks.sdc.
@@ -44,7 +44,7 @@ configure_glitch_free_cells -ignore_modules {prim_ag_clk_mux}
 # methodology; treat residual inner-cell flop crossings as structural/library-contained
 # analysis, not pad-boundary CDC.
 
-define_glitch_free_mux -module prim_ag_clk_mux \
+define_glitch_free_mux -module ${::MODPREFIX}prim_ag_clk_mux \
     -clock {clk0_i clk1_i} \
     -select {sel_i}
 
@@ -52,11 +52,11 @@ define_glitch_free_mux -module prim_ag_clk_mux \
 # ASYNC-RESET SYNCHRONIZERS (SMC CPU CLUSTER)
 ################################################################################
 # SMC-CPU-complex (Chipyard/Rocket) async-reset synchronizer modules.
-configure_cdc_asyncrst_nff_sync -uds_modules {
+configure_cdc_asyncrst_nff_sync -uds_modules [cdc_mod {
     OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0
     OCAH4CORECluster_AsyncResetSynchronizerShiftReg_w1_d3_i0
     OCAH4CORECluster_ResetCatchAndSync_d3
-}
+}]
 
 ################################################################################
 # GRAY SIGNAL CONFIGURATION
@@ -110,7 +110,7 @@ if { [sizeof_collection $gray_avs_signals] > 0 } {
 #   - cmd_async_fifo_inst    (clk_reg_i → avs_clk)
 #   - readasync_back_fifo_inst (avs_clk → clk_reg_i)
 
-set avs_fifo_cells [get_cells -hier -filter "ref_name =~ avsbus_async_fifo*" -quiet]
+set avs_fifo_cells [get_cells -hier -filter "ref_name =~ ${::MODPREFIX}avsbus_async_fifo*" -quiet]
 
 if { [sizeof_collection $avs_fifo_cells] > 0 } {
     set avs_fifo_conv_signals [list]
@@ -213,7 +213,7 @@ proc smc_prim_fifo_sync_ptr_pins { cell_hier ptr_inst } {
 # Try wildcard ref_name match first (handles parameterized elaborated names);
 # fall back to instance-name pattern for the known instantiation
 # (telemetry at_req_fifo_async).
-set prim_fifo_async_cells [get_cells -hier -filter "ref_name =~ prim_fifo_async*" -quiet]
+set prim_fifo_async_cells [get_cells -hier -filter "ref_name =~ ${::MODPREFIX}prim_fifo_async*" -quiet]
 if { [sizeof_collection $prim_fifo_async_cells] == 0 } {
     set prim_fifo_async_cells [get_cells -hier *u_at_req_fifo_async -quiet]
 }

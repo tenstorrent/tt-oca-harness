@@ -7141,7 +7141,7 @@ These cells are not bins of any point. No stimulus of an owning test drives them
 
 ===== Points per owning test
 
-Each Key Manager test owns at least one point of a Phase 2 group. The Phase 1 groups of <<sep-fcov-km-phase1-hits>> are not repeated.
+Each Key Manager test owns at least one point of a Phase 2 group. The Phase 1 groups of <<sep-fcov-km-phase1-hits>> are not repeated. `sep_km_command_protocol_rand_test` and `sep_km_handover_rand_test` each run as two `+sep_shard` entries (`_shard1`, `_shard2`) and `sep_km_key_transfer_rand_test` as four (`_shard1` to `_shard4`; shards 1 and 4 run one seed, shards 2 and 3 three seeds). Each entry runs the legs of its shard from its own seed, so the points of a test are filled by the union of its entries.
 
 [cols="3,6",options="header"]
 |===
@@ -7246,7 +7246,7 @@ record on the DUT output; the `CHK-RAS-*` lines of the host leaves
 |`wdt_bark`, `wdt_bite` |`sep_reset_wdt_sanity_test` |
 |`iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue` |`sep_tcm_ecc_cpu_trap_test` |
 |`km_uncorrectable` |`sep_km_cpu_protect_rand_test` |
-|`km_correctable` |`sep_km_command_protocol_rand_test` |
+|`km_correctable` |`sep_km_command_protocol_rand_test` |The field rises only in the fault legs, which run in `sep_km_command_protocol_rand_test_shard2`; the idle level is graded in both shards.
 |`dma_alert`, `crypto_alert` |`sep_pic_pending_map_walk_rand_test` |
 |`dma_reg_bus_err`, `periph_bus_err_aes`, `periph_bus_err_hmac`, `periph_bus_err_kmac`, `periph_bus_err_otbn`, `periph_bus_err_wdt` |`sep_cpu_bridge_fault_matrix_rand_test` |
 |`dma_host_intg_err` |`sep_dma_basic_test` |

@@ -270,20 +270,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric
 ANNOTATION: "SMC-AXI-SIDEBAND-CONST: smc_data_accelerator_wrap.sv:234-263 mux the two ports onto mst_axi_req_o, so a field both hold at one literal carries only that literal: AW, AR and W user are '0 on both (zeroer.sv:441-442,456; idma_generated.sv:3995,4024; idma_axi_write.sv:279) and AW size is 3 on both (zeroer.sv:71,433 with AXI_DATA_WIDTH 64 from smc_data_accelerator_wrap.sv:206; idma_generated.sv:4017). smc_base.sv:480,707 and smc_fabric.sv:268 carry mst_axi_req_o to the input fabric's axi_in_data_accel_req_i unchanged, and axi_alias_remap.sv:128-165 pass size and user through to axi_to_input_mux_req.data_accel. NOT waived: addr, id and data, every field the source does not tie, the data accelerator control path, every response user, the mailbox and log request prot, the local crossbar and the mux output's AR size. Retired by a source that drives the field, or a stage that no longer passes it through."
 Toggle axi_to_input_mux_req.data_accel.aw.size [2] "logic axi_to_input_mux_req.data_accel.aw.size[2:0]"
 
-CHECKSUM: "882638569 2933134181"
-ANNOTATION: "ModuleName: smc_output_fabric"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric
-ANNOTATION: "SMC-AXI-SIDEBAND-CONST: smc_output_fabric.sv:265-274 pass the filter path through prim_axi_user_override_struct with AXI_USER_OVERRIDE SmcSrcId, and :281-314 elaborate the mmode and xvisor output_remap with USER_OVERRIDE_EN and MmodeSrcId and OthersSrcId (output_remap.sv:113-126), so each path's AW, AR and W user carry that constant (prim_axi_user_override.sv:4-7; smc_pkg.sv:301-303: 'hC, 3 and 0); the output mux (smc_output_fabric.sv:327-350) carries one of the three on axi_remapped_to_filter_req, whose user bits [11:4] are zero in all of them. NOT waived: addr, id and data, every field the source does not tie, the data accelerator control path, every response user, the mailbox and log request prot, the local crossbar and the mux output's AR size. Retired by a source that drives the field, or a stage that no longer passes it through."
-Toggle gen_remap.axi_remap_out_req.filter.ar.user "logic gen_remap.axi_remap_out_req.filter.ar.user[11:0]"
-Toggle gen_remap.axi_remap_out_req.filter.w.user "logic gen_remap.axi_remap_out_req.filter.w.user[11:0]"
-Toggle gen_remap.axi_remap_out_req.filter.aw.user "logic gen_remap.axi_remap_out_req.filter.aw.user[11:0]"
-Toggle gen_remap.axi_remap_out_req.mmode.ar.user "logic gen_remap.axi_remap_out_req.mmode.ar.user[11:0]"
-Toggle gen_remap.axi_remap_out_req.mmode.w.user "logic gen_remap.axi_remap_out_req.mmode.w.user[11:0]"
-Toggle gen_remap.axi_remap_out_req.mmode.aw.user "logic gen_remap.axi_remap_out_req.mmode.aw.user[11:0]"
-Toggle gen_remap.axi_remap_out_req.xvisor.ar.user "logic gen_remap.axi_remap_out_req.xvisor.ar.user[11:0]"
-Toggle gen_remap.axi_remap_out_req.xvisor.w.user "logic gen_remap.axi_remap_out_req.xvisor.w.user[11:0]"
-Toggle gen_remap.axi_remap_out_req.xvisor.aw.user "logic gen_remap.axi_remap_out_req.xvisor.aw.user[11:0]"
-
 CHECKSUM: "329116683 3607915769"
 ANNOTATION: "ModuleName: smc_peripherals"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals
