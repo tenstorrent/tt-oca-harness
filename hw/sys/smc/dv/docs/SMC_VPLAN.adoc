@@ -1221,7 +1221,7 @@ answer a denied request DECERR, with the reset words of the entries logged as a 
 every row of the SMC component address map answer DECERR on every drawn access, with read data
 0xBADCAB1E on the 4-byte reads, in each of the 6 gaps between unit apertures inside the window,
 DECERR with read data 0xBADCAB1E on the drawn 4-byte accesses past the decoded extent of each of the
-24 rows inside the window whose Past Extent cell states a response (the other sizes printed), DECERR
+25 rows inside the window whose Past Extent cell states a response (the other sizes printed), DECERR
 alone at the 6 rows and the gap beyond `BASE + REGION_SIZE` at its reset value, and DECERR outside
 both inbound apertures.
 |`smc_alias_remap_attr_rand_test` |3 |Seeded alias remap regions, with a drawn region
@@ -12652,7 +12652,7 @@ IHI 0022 burst footprint unchanged.
   filter enables 0, each differing in its seeded fields from both halves of every beat, and
   restored afterwards. Every slot register outside a write footprint is compared with its
   reference: the seed read-back, or the value an earlier write of the same port left in it. `DATA_CTRL` `pad2core` and `lsio_enable` are read-only fields
-  that the pad and LSIO hardware drive, so every unchanged `DATA_CTRL` compare (bank and slot 64)
+  that the pad and LSIO hardware drive, so every unchanged `DATA_CTRL` compare (bank and slot 66)
   excludes them.
 * Scratchpad: INCR write and read with AxLEN 0, 7 and 255 crossing 64-byte stripes in one page,
   WRAP write and read with AxLEN 1, 3, 7 and 15 starting mid-window, FIXED write and read
@@ -51914,7 +51914,7 @@ entry's `*Randomization*` field.
 |`smc_map_row_response_matrix_test`
 |<<smc-vplan-area-fabric,FABRIC>>
 |RAND-REP
-|every seed walks the 30 past-extent rows, the 7 gaps and 8 outside classes; the seed draws per row and gap a 4-byte point and a point of drawn AxSIZE (1, 2, 4 or 8) at aligned offsets inside the cell, the inbound port, the read/write order of each point, the address of four outside classes and the walk order; DECERR compared on every 4-byte point and on every size in the gaps, beyond `BASE + REGION_SIZE` and outside the apertures, 0xBADCAB1E compared on 4-byte reads inside the window, the response code and read data of 1-, 2- or 8-byte points on the 24 inside rows printed
+|every seed walks the 31 past-extent rows, the 7 gaps and 8 outside classes; the seed draws per row and gap a 4-byte point and a point of drawn AxSIZE (1, 2, 4 or 8) at aligned offsets inside the cell, the inbound port, the read/write order of each point, the address of four outside classes and the walk order; DECERR compared on every 4-byte point and on every size in the gaps, beyond `BASE + REGION_SIZE` and outside the apertures, 0xBADCAB1E compared on 4-byte reads inside the window, the response code and read data of 1-, 2- or 8-byte points on the 24 inside rows printed
 |`smc_alias_remap_attr_rand_test`
 |<<smc-vplan-area-fabric,FABRIC>>
 |RANDCFG

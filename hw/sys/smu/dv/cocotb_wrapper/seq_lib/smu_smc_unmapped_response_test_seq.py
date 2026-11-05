@@ -82,7 +82,7 @@ assert all(
     BASE + REGION_SIZE_RESET <= addr < BASE + COVERING_REGION_SIZE for _, addr in RESET_SIZE_UNITS
 ), "the PLIC and CLINT bases lie beyond the reset REGION_SIZE and inside the covering one"
 
-# ocah_aperture_size of smc_pwm (smc.rdl) ends the last mapped aperture before the unmapped
+# ocah_aperture_size of smc_pwm (include/smc_memory_map.rdl) ends the last mapped aperture before the unmapped
 # range that runs up to smc_base_config.
 _GAP_START = smc_addr("SMC_TOP_SMC_PWM_BASE_ADDR") + 0x1000
 _GAP_END = smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
