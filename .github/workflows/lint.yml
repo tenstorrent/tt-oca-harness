@@ -369,6 +369,31 @@ jobs:
           echo "::error::make ocah-lint-bender-sources exited with status ${{ steps.lint.outputs.exit_code }}"
           exit 1
 
+  lint-constraint-module-names:
+    needs: [diff-class]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check constraint module names
+        id: lint
+        shell: bash
+        run: |
+          set +e
+          make ocah-lint-constraint-module-names 2>&1 | tee lint_constraint_module_names.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+      - uses: ./.github/actions/reviewdog-report
+        continue-on-error: true
+        with: { log-file: lint_constraint_module_names.log, efm: '%f:%l: %m', level: error, name: lint-constraint-module-names }
+      - name: Gate on the constraint module-name check's exit status
+        if: always() && steps.lint.outputs.exit_code != '0'
+        run: |
+          echo "::error::make ocah-lint-constraint-module-names exited with status ${{ steps.lint.outputs.exit_code }}"
+          exit 1
+
   # Vale is a Go binary with no PyPI wheel; fetched here from a pinned
   # release the same way lint-make (checkmake) does (see flows/lint/vale.mk).
   lint-vale:
