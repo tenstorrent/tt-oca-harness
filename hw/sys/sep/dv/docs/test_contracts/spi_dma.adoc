@@ -105,7 +105,7 @@
 |CHK-RW1C
 |The DMA done status bit still reads set on a second read after the poll, so a read does not clear it and it does not drop by itself; it then clears on write-one-to-clear and reads back clear. Both status values are logged. `ERROR` and `CHUNK_DONE` are never set in hardware-handshake mode, so their clear is not exercised.
 |CHK-NOERR
-|The DMA reports no error and the SPI controller reaches idle with clean error status.
+|The DMA reports no error and the SPI controller reaches idle with clean error status. A failed part prints a `FAIL:` line and counts an error that fails the test. The firmware prints a value line with no PASS word: `CHK-NOERR: dma_status=0x<s> dma_err_code=0x<e> spi_idle=<0\|1> spi_err_status=0x<v>`.
 |CHK-SPI-WIRE
 |The shared SPI monitor `OcahSpiMonitor` (`ocah_spi_vip`, attached through `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py`) grades the pad ports `spi_cs_n_o`, `spi_sck_o` and `spi_mosi_o` in SPI Mode 0 on every frame: SCK is at the CPOL level at each chip-select edge and moves only to that level while chip select is high; while chip select is low, MOSI does not change on a sample edge, nor after a sample edge and before the next shift edge; while chip select is low, chip select, SCK and MOSI resolve to 0 or 1. The monitor also grades the monitor-only taps `spi_sd_o`, `spi_sd_oe_o`, `spi_cs_oe_o` and `spi_sck_oe_o` against the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment": lane n drives `sd[n]` with output enable `sd_oe[n]`, chip select and clock have `cs_oe` and `sck_oe`, and the host drives a data lane only while chip select is asserted): no data lane output enable rises, or is on at an SCK edge, while chip select is high (`oe_idle`); at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 (`oe_lanes`); and the chip-select and clock output enables are on at each sample edge (`oe_ctrl`). The MOSI edge and X/Z rules apply to every data lane whose output enable is on. A host that drives a data lane while chip select is high, enables another lane pattern, or turns off the chip-select or clock output enable in a frame fails. At least one Mode 0 frame is graded. Evidence: `CHK-SPI-WIRE PASS seed=<n> frames=<n> per_mode=00:<frames> wire_errors=0`.
 |CHK-SPI-FRAME-SHAPE
@@ -1518,7 +1518,7 @@ The bytes a rejected TCM fill targets, the low two bytes of the partial word inc
 
 *Pass Criteria*: Every named checker PASSes on every leg and every control holds (a control that does not hold fails with CTRL-MISSING). UVM_ERROR == 0.
 
-*Scope limit*: Not claimed: the outcome of the continuation in Leg E other than the range bound. `hw/sys/sep/doc/dma.adoc` (Zero Fill) states that a start with no bytes left ends in `ERROR_CODE.SIZE_ERROR` without a write; the leaf logs `ERROR_CODE` for that continuation and does not grade it. Copies continued by GO=1 with INITIAL_TRANSFER=0 are not claimed.
+*Scope limit*: Copies continued by GO=1 with INITIAL_TRANSFER=0 are not claimed.
 
 '''''
 

@@ -314,7 +314,7 @@ The `KM-SRAM-RD` log line is a measurement, not a checker: the count of KM SRAM 
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`.
+*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`: an assert that fails the leaf on `LOCKED` or an executing state, and logs an untagged `OTBN memory-access precondition OK: STATUS=0x<v>` line. It prints no CHK-PRECOND record.
 
 *Scope limit*: OTBN sits in `StatusBusySecWipeInt` (`0x04`) for the whole of this
 test — leaving that state needs EDN entropy to reseed URND, and the `no_cpu`
@@ -353,7 +353,7 @@ not grade that rejection.
 
 [arabic]
 . Stage an eFuse image and bring up with real fuse sense — no skip plusarg.
-. Wait for sense-done.
+. Wait for sense-done. While waiting, record on every clock the first clock at which each shadow word changes at `efuse_shadow_probe_o`, and the clock of the `sep_fuse_sense_done_o` rise (CHK-SENSE-WORD-ORDER).
 . Compare all shadow words against the staged image.
 . From the `rst_ni` release to the sense-done rise, sample `lc_state_o`, the sensed `LC_STATE` byte and `security_disable_o` on every clock, and on the rise clock sample `lc_state_o` and the sensed byte.
 
