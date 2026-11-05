@@ -23,10 +23,13 @@ Checks:
                    argument of the earlier check; the twin with only the later fault
                    returns the later code
   CHK-NOCHG-VAULT  KM-KPV CTRL and KM-VALID key_valid read 0 after every rejection of
-                   the pair leg; each gated command leaves KM-KPV CTRL, KM-VALID and
-                   KM-CSR OTP_READ_LOCK_COLD unchanged, and the taps just before
-                   CMD_RECOV_ACK equal those at the start of the gate matrix, from a pre-state in which the
-                   handler of each key and OTP command would change one of them
+                   the pair leg; KM-VALID key_valid reads 0 after a CMD_KEY_TRANSFER of a
+                   loaded handle to HMAC with one drawn frame fault, and HMAC key_valid
+                   reads 1 after the same transfer with no fault (control); each gated
+                   command leaves KM-KPV CTRL, KM-VALID and KM-CSR OTP_READ_LOCK_COLD
+                   unchanged, and the taps just before CMD_RECOV_ACK equal those at the
+                   start of the gate matrix, from a pre-state in which the handler of
+                   each key and OTP command would change one of them
   CHK-WRAP         both 8-bit counters roll over from 255 to 0
   CHK-CNT-RESET    rx_buff_oflow, a SEP flush and a warm reset restart both counters:
                    first response sequence 0, the old sequence refused with -3 arg 0,
@@ -653,7 +656,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         )
 
     async def _alive_and_twins(self) -> None:
-        """Steps 10 and 14: CMD_STAT after the pair leg, then the positive twins."""
+        """Steps 10 and 14: CMD_STAT after the pair leg, the positive twins and the rejected transfer."""
         await self._alive("after-pair-leg")
 
         # CHK-NOCHG-VAULT control: a generate write-locks every slot of its span
@@ -676,12 +679,32 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         )
         self.logger.info("LOG twin cmd=0x27 code=%d arg=%s control=1", abr.code, _a(abr.arg))
 
+        # A rejected CMD_KEY_TRANSFER of a valid handle to HMAC, whose key_valid
+        # reads 0, then the same transfer with no fault: a KM that ran the
+        # handler of the rejected frame sets HMAC key_valid in the first sample.
+        x = self.plan.xfer
+        xl = await self._cmd(
+            pl.CMD_KEY_LOAD, (len(x.key) - 1, x.dest_valid, *x.key), "xfer CMD_KEY_LOAD"
+        )
+        if xl.code != 0 or xl.arg is None or not xl.arg & 0xFF:
+            raise AssertionError(f"[xfer] CMD_KEY_LOAD returned {xl.code} {_a(xl.arg)}")
+        xf = pl.build_xfer_frame(x, xl.arg, self.e)
+        xr = await self._send_words(xf.words, xf.sent_cmd, xf.sent_seq, f"xfer {xf.kind}")
+        self.e = xf.e_after
+        _, xfer_kv = await self._vault()
+        xt = await self._cmd(pl.CMD_KEY_TRANSFER, xf.payload, "xfer twin")
+        _, twin_kv = await self._vault()
+
         self.chk.ok(
             "NOCHG-VAULT",
             not self._pair_nonzero
             and not self._pair_vault_bad
             and gen.code == 0
-            and lock_write == 1,
+            and lock_write == 1
+            and xr.code == xf.code
+            and xfer_kv == 0
+            and xt.code == 0
+            and bool(twin_kv & pl.DEST_HMAC),
             leg="pair",
             rejected=self._pair_rejected,
             vault_frames=len(self.plan.vault),
@@ -691,6 +714,12 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             samples_nonzero=self._pair_nonzero[:4],
             control_gen_code=gen.code,
             control_ctrl_lock_write=lock_write,
+            xfer_kind=xf.kind,
+            xfer_code=xr.code,
+            xfer_golden=xf.code,
+            xfer_key_valid=f"0x{xfer_kv:03x}",
+            control_xfer_code=xt.code,
+            control_xfer_key_valid=f"0x{twin_kv:03x}",
         )
 
     async def _invalid_cmd_ctrl(self) -> None:
