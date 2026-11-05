@@ -13,7 +13,7 @@ name = "sep_km_mem_smoke_test"
 module = { cocotb = "km.sep_km_mem_smoke_test", uvm = "sep_km_mem_smoke_test" }
 firmware = { name = "km_rom", mode = "km_rom_blob" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["smoke", "km", "memory"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -32,7 +32,7 @@ name = "sep_efuse_km_axil_cpu_mux_coexist_test"
 module = "km.sep_efuse_km_axil_cpu_mux_coexist_test"
 firmware = { name = "km_efuse_coexist", mode = "el2_km_rom_coexist" }
 seed = 1
-timeout_sec = 5400
+timeout_sec = 900
 tags = ["km", "efuse", "subsystem", "cpu"]
 run_modes = ["cpu"]
 args = ["+km_rom_hex=km_rom_coexist.parhex"]
@@ -45,7 +45,7 @@ name = "sep_km_otbn_sideload_kat_test"
 module = "km.sep_km_otbn_sideload_kat_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-timeout_sec = 7200
+timeout_sec = 1500
 tags = ["km", "otbn", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -57,7 +57,7 @@ name = "sep_km_aes_sideload_kat_test"
 module = "km.sep_km_aes_sideload_kat_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-timeout_sec = 7200
+timeout_sec = 1200
 tags = ["km", "aes", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -69,7 +69,7 @@ name = "sep_km_hmac_sideload_kat_test"
 module = "km.sep_km_hmac_sideload_kat_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-timeout_sec = 7200
+timeout_sec = 1200
 tags = ["km", "hmac", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -82,7 +82,7 @@ name = "sep_km_kmac_sideload_kat_test"
 module = "km.sep_km_kmac_sideload_kat_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-timeout_sec = 7200
+timeout_sec = 1200
 tags = ["km", "kmac", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -96,7 +96,7 @@ module = "km.sep_km_key_policy_vault_test"
 firmware = { name = "km_rom_vault", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["km", "kpv", "sram_lock", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -109,7 +109,7 @@ name = "sep_km_isolate_termination_test"
 module = "km.sep_km_isolate_termination_test"
 firmware = { name = "km_rom_iso", mode = "km_rom_blob" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["km", "isolate", "reset", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -138,7 +138,7 @@ name = "sep_km_wipe_reset_test"
 module = "km.sep_km_wipe_reset_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-timeout_sec = 7200
+timeout_sec = 1800
 tags = ["km", "wipe", "reset", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -151,7 +151,7 @@ name = "sep_km_handover_test"
 module = "km.sep_km_handover_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-timeout_sec = 7200
+timeout_sec = 3000
 tags = ["km", "handover", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -164,7 +164,7 @@ name = "sep_km_abr_seed_sideload_test"
 module = "km.sep_km_abr_seed_sideload_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-timeout_sec = 10800
+timeout_sec = 3000
 tags = ["km", "abr", "sideload", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -177,7 +177,7 @@ name = "sep_km_abr_mlkem_sideload_test"
 module = "km.sep_km_abr_mlkem_sideload_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-timeout_sec = 10800
+timeout_sec = 5100
 tags = ["km", "abr", "sideload", "subsystem", "entropy", "sep_spec_log", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -190,7 +190,7 @@ name = "sep_km_abr_mldsa_kat_test"
 module = "km.sep_km_abr_mldsa_kat_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
-timeout_sec = 7200
+timeout_sec = 1800
 tags = ["km", "abr", "sideload", "mldsa", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -218,7 +218,7 @@ name = "sep_km_mailbox_protocol_rand_test"
 module = "km.sep_km_mailbox_protocol_rand_test"
 seed = 1
 # No reseed: the FIFO walk is fixed; the seed selects only the fill words.
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["km", "mailbox", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -232,7 +232,7 @@ module = "km.sep_km_crc_pcpi_kat_test"
 firmware = { name = "km_rom_crc", mode = "km_rom_blob" }
 seed = 1
 # No reseed: every run walks all three modes; the seed selects only operand values.
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["km", "crc", "pcpi", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -247,7 +247,7 @@ module = "km.sep_km_kpv_scrambler_test"
 firmware = { name = "km_rom_kpv_scrambler", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
-timeout_sec = 1800
+timeout_sec = 1500
 tags = ["km", "kpv", "scrambler", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -260,7 +260,7 @@ name = "sep_km_rom_write_err_test"
 module = "km.sep_km_rom_write_err_test"
 firmware = { name = "km_rom_bus_err", mode = "km_rom_blob" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["km", "rom", "bus_error", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -274,7 +274,7 @@ module = "km.sep_km_otp_shim_unreachable_test"
 firmware = { name = "km_rom_bus_err", mode = "km_rom_blob" }
 seed = 1
 # No reseed: the KM ROM accesses are fixed; the seed selects only the host shim value.
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["km", "otp", "efuse", "bus_error", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -287,7 +287,7 @@ name = "sep_km_vrom_decerr_test"
 module = "km.sep_km_vrom_decerr_test"
 firmware = { name = "km_rom_bus_err", mode = "km_rom_blob" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["km", "vrom", "bus_error", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -300,7 +300,7 @@ name = "sep_km_ic_reset_release_test"
 module = "km.sep_km_ic_reset_release_test"
 firmware = { name = "km_rom", mode = "km_rom_blob" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["km", "reset", "jtag", "subsystem"]
 tools = ["vcs"]
 run_modes = ["no_cpu"]
@@ -314,7 +314,7 @@ name = "sep_km_drbg_sampler_timeout_reset_test"
 module = "km.sep_km_drbg_sampler_timeout_reset_test"
 firmware = { name = "km_rom_drbg_sampler", mode = "km_rom_blob" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 900
 tags = ["km", "drbg", "entropy", "reset", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -402,7 +402,7 @@ module = "km.sep_km_crossbar_efuse_window_rand_test"
 firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
-timeout_sec = 5400
+timeout_sec = 3000
 tags = ["km", "efuse", "crossbar", "subsystem", "fcov_gate_owner", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -420,7 +420,7 @@ module = "km.sep_km_mailbox_km_side_rand_test"
 firmware = { name = "km_rom_mbox_km", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
-timeout_sec = 3600
+timeout_sec = 900
 tags = ["km", "mailbox", "irq", "subsystem", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -498,7 +498,7 @@ module = "km.sep_km_sram_scrambler_key_rand_test"
 firmware = { name = "km_rom_scr", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
-timeout_sec = 3600
+timeout_sec = 900
 tags = ["km", "scrambler", "sram", "reset", "subsystem", "grades_spec_km_efuse_scan"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -605,7 +605,7 @@ module = "km.sep_km_handover_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 1
-timeout_sec = 10800
+timeout_sec = 7200
 tags = ["km", "handover", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -662,7 +662,7 @@ name = "sep_km_otp_change_irq_test"
 module = "km.sep_km_otp_change_irq_test"
 firmware = { name = "rom_main", mode = "km_rom_main_otp_change" }
 seed = 1
-timeout_sec = 7200
+timeout_sec = 1200
 tags = ["km", "irq", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
