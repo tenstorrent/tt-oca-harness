@@ -29888,6 +29888,7 @@ Drive `smc_efuse_jtag_lc_access_matrix_test_seq`. Each checker below is a named 
 |`CHK-EFUSE-JTAG-LC-PROD_END` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py` at the drawn image position, operation order and non-identity register; the run fails if it mismatches
 |`CHK-EFUSE-JTAG-LC-RMA_CHIPLET` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py` at the drawn image position, operation order and non-identity register; the run fails if it mismatches
 |`CHK-EFUSE-JTAG-LC-RMA_SOP` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py` at the drawn image position, operation order and non-identity register; the run fails if it mismatches
+|`CHK-EFUSE-JTAG-LC-RMA_SOP_ALT` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py` at the drawn image position, operation order and non-identity register; the run fails if it mismatches
 |`CHK-EFUSE-JTAG-LC-SIGINT` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py` at the drawn image position, operation order and non-identity register; the run fails if it mismatches
 |`CHK-EFUSE-JTAG-LC-TEST_DEV` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py` at the drawn image position, operation order and non-identity register; the run fails if it mismatches
 |===
