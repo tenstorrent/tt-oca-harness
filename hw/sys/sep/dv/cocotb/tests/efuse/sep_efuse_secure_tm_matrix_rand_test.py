@@ -30,6 +30,12 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     the profile row and the strap-0 baseline; at strap 0 each
                     frontdoor write lands; the SEC_DIS match gives
                     ``security_disable_o`` = 1 and an all-ones ``FEAT_CTRL``.
+  CHK-STM-BLOCK-RESP  each strap-1 frontdoor target write completes with SLVERR:
+                    secure test mode adds a shadow write lock on the four targets
+                    (``hw/ip/efuse/doc/architecture.adoc:240``, ``:402-403``;
+                    ``otp_fuse_controller.adoc:178-180``), and a shadow write that a
+                    lock blocks completes with SLVERR
+                    (``otp_fuse_controller.adoc:110-112``).
   CHK-STM-PROG      no strap-1 program changes its bank bit (direct read in the strap-0
                     epoch before any program of that epoch) and no ``PROGRAM`` or
                     ``PROGRAM_READ_BACK`` command reaches ``efuse_shim_command_req_o``
@@ -42,6 +48,8 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     words.
   CHK-STM-JTAG      TEST_DEV, PROD_END and RMA_CHIPLET: a strap-1 JTAG write of a new
                     bit leaves each target unchanged.
+  CHK-STM-JTAG-BLOCK-RESP  TEST_DEV, PROD_END and RMA_CHIPLET: each strap-1 JTAG
+                    target write completes with SLVERR, as in CHK-STM-BLOCK-RESP.
   CHK-STM-JTAG-CTL  TEST_DEV, PROD_END and RMA_CHIPLET: the strap-0 JTAG write of a
                     new bit to each target lands (``after == before | bit``); JTAG
                     reaches the shadow registers outside PROD and RMA_SIP, and the
@@ -79,7 +87,8 @@ its positive probe on the word that the strap-1 write addressed (the plan draws
 each strap-1 bit and its strap-0 twin in one word). The first failed check or a
 missing control closes the graded window for the rest of the leaf. A cell of
 ``x_shadow_wr_block`` is credited through ``set_stm_shadow_wr_pass`` only after its
-check passed. Every other sample of the leaf (``x_prog_block``,
+check passed and, for a strap-1 cell, after its CHK-STM-BLOCK-RESP or
+CHK-STM-JTAG-BLOCK-RESP line passed. Every other sample of the leaf (``x_prog_block``,
 ``x_secret_probe``, ``x_secret_read_kept`` and ``sep_efuse_jtag_policy_cg``
 ``cp_state``) is held with the tag of its graded step (``set_ef_hold_tag``) and
 samples only when the leaf writes that tag to the pass label
@@ -89,7 +98,7 @@ secret reads after CHK-STM-SECRET and its strap-0 control, the JTAG writes of
 both straps after every CHK-STM-JTAG and CHK-STM-JTAG-CTL line.
 
 The status value of each program (``OBS-STM-PROG-STATUS``) and the response code of
-a blocked write are logged and not graded. Log-only: ``OBS-STM-RMA-DIGEST-PROBE`` (the two RMA token digest
+a strap-0 target write are logged and not graded. Log-only: ``OBS-STM-RMA-DIGEST-PROBE`` (the two RMA token digest
 fields at ``efuse_shadow_probe_o`` at strap 1 and strap 0, against the staged words;
 the specification does not state whether secure test mode masks them) and
 ``OBS-DIGEST-PROG-STATE`` (a strap-0 program of a 0 bit of a drawn digest field: the
@@ -145,7 +154,7 @@ from env.sep_efuse_test_lib import (
     shadow_word,
     wait_bit,
 )
-from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, RESP_SLVERR
+from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, RESP_SLVERR, resp_name
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -202,6 +211,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
     required_evidence = (
         "CHK-BIND",
         "CHK-STM-CTL",
+        "CHK-STM-BLOCK-RESP",
         "CHK-STM-PROG",
         "CHK-STM-PROG-CTL",
         "CHK-STM-SECRET",
@@ -355,6 +365,17 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             addr=f"0x{r['addr']:08x}",
             resp=r["resp"],
         )
+        if strap:
+            r["resp_ok"] = self._grade(
+                "STM-BLOCK-RESP" if src == "fd" else "STM-JTAG-BLOCK-RESP",
+                r["resp"] == RESP_SLVERR,
+                src=src,
+                strap=1,
+                target=r["target"],
+                addr=f"0x{r['addr']:08x}",
+                resp=resp_name(r["resp"]),
+                exp_resp="SLVERR",
+            )
         if strap and not (self._strap1_kept(r) and (src == "jtag" or self._epoch_ok(e, 1))):
             r["graded"] = True
             self._grade(
@@ -535,7 +556,12 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         jtag_leg = bool(p.leg["jtag_leg"])
         self.logger.info("INFO-STM-STATE seed=%d state=%s jtag_leg=%d", seed, state, int(jtag_leg))
         if jtag_leg:
-            self.required_evidence = (*self.required_evidence, "CHK-STM-JTAG", "CHK-STM-JTAG-CTL")
+            self.required_evidence = (
+                *self.required_evidence,
+                "CHK-STM-JTAG",
+                "CHK-STM-JTAG-CTL",
+                "CHK-STM-JTAG-BLOCK-RESP",
+            )
         self.logger.info(
             "INFO-EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
         )
@@ -621,7 +647,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             feat_ok1 = feat1 == row.value and feat0 == feat1 and feat1_after == feat1
             # The strap-0 frontdoor twin of the same target word is the positive probe.
             same = c["addr"] == r["addr"]
-            if self._grade(
+            ok1 = self._grade(
                 "STM-CTL",
                 self._epoch_ok(e1, 1)
                 and self._strap1_kept(r)
@@ -646,7 +672,8 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 ctl_landed=int(c["landed"]),
                 ctl_addr=f"0x{c['addr']:08x}",
                 twin_same_word=int(same),
-            ):
+            )
+            if ok1 and r["resp_ok"]:
                 await self._credit(r, 1)
 
         if jtag_leg:
@@ -692,8 +719,8 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                     ctl_addr=f"0x{c['addr']:08x}",
                     twin_same_word=int(same),
                 )
-                jtag_ok &= ok
-                if ok:
+                jtag_ok &= ok and r["resp_ok"]
+                if ok and r["resp_ok"]:
                     await self._credit(r, 1)
             await self._release(_TAG_JTAG, jtag_ok)
         else:
