@@ -335,7 +335,8 @@ contract, not the macro-side signaling.
 The SMC and the SEP each contain their own eFuse controller, so the `smu.sv`
 boundary carries two independent copies of the interface, one with an `smc_`
 prefix and one with a `sep_` prefix. The adopter places *two separate SHIM and
-macro instances*, one per controller, each fronting its own 8 Kbit bank. The
+macro instances*, one per controller, each fronting its own bank: 2 Kbit for
+the SMC and 8 Kbit for the SEP. The
 banks are never shared. Each controller also drives its own sense-done output
 to the `smu.sv` boundary, `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o`,
 and holds the sensed bank in its own shadow registers.
@@ -466,9 +467,10 @@ Fuse sensing happens *once per cold boot*, when the eFuse controller's primary
 reset is released. It runs in *both* eFuse controller instances, SMC and SEP,
 each against its own bank. CPU and warm resets do not repeat it.
 
-The adopter must provide *8 Kbit of fuses (8192 bits, 256 32-bit words) for
-each instance*: one bank behind the SMC SHIM and a second, separate bank
-behind the SEP SHIM. For both, `NumShadowWords` is 256. An SMC supplementary fuse
+The adopter must provide *2 Kbit of fuses (2048 bits, 64 32-bit words) behind
+the SMC SHIM* and a second, separate bank of *8 Kbit (8192 bits, 256 32-bit
+words) behind the SEP SHIM*. `NumShadowWords` is 64 for the SMC and 256 for
+the SEP. An SMC supplementary fuse
 region adds 32 × `CFG.SMC_SUPPLEMENTARY_FUSE.WORDS` bits after them
 (<<smc-supplementary-fuses>>).
 ====
@@ -482,7 +484,7 @@ drives the read `data` onto `efuse_shim_command_resp_i.data` and asserts
 `valid` for *exactly one cycle*. The controller consumes one word per cycle
 that `valid` is high, advancing to the next eFuse word on each assertion.
 
-<<efuse-sense-timing-fig>> shows the stream for the 256-word bank. The sense FSM
+<<efuse-sense-timing-fig>> shows the stream for the SEP's 256-word bank. The sense FSM
 leaves `ST_READ` after one cycle and waits in `ST_WAIT`. Each `valid` strobe
 stores `data` into shadow word `words_received_q` and increments the count one
 cycle later. Gaps between strobes are allowed, as between cycles 2 and 4, and
@@ -541,14 +543,14 @@ inside the slot, the size `WORDS` and the lock region ends
 default, removes the region. The reference `smu_wrapper` and `smc_wrapper`
 enable the example in `smc_supplementary_fuse_example_pkg`; `smu_wrapper` turns it
 off with `SUPPLEMENTARY_FUSE_EXAMPLE = 0`.
-* *Provide the fuses.* The SMC bank grows to 8192 + 32 × `WORDS` bits, with the
-supplementary fuses at bit 8192 onward. They may sit in further macros behind the
+* *Provide the fuses.* The SMC bank grows to 2048 + 32 × `WORDS` bits, with the
+supplementary fuses at bit 2048 onward. They may sit in further macros behind the
 same SMC SHIM.
 * *Size the SHIM for the slot.* `address` and `access_length_words` are
-sized for 256 harness words plus a region that fills the slot. With the
+sized for 64 harness words plus a region that fills the slot. With the
 16 KB open slot they are 18 and 13 bits wide in every SMC configuration.
 * *Return the boot READ in linear order.* Fuse sensing is still one READ of
-256 + `WORDS` words from bit 0. When the bank spans several macros, the SHIM
+64 + `WORDS` words from bit 0. When the bank spans several macros, the SHIM
 must cross each macro boundary inside that one command and return every word
 in ascending address order, one `valid` strobe per word. The controller assigns
 words to the harness and supplementary shadow files by count alone.

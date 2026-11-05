@@ -74,7 +74,7 @@ access features.
 .eFuse shadow-register features
 |=====================================================================================
 |Feature |Description
-|Capacity |Configurable (default: 8192 bits / 1KB, 256 × 32-bit words), set via the `SHADOW_REG_BITS` parameter
+|Capacity |Configurable via the `SHADOW_REG_BITS` parameter: 2048 bits (64 × 32-bit words) in the SMC and 8192 bits (256 × 32-bit words) in the SEP
 |Initialization |Automatic boot-time loading via Fuse Sense FSM
 |Access Control |Multi-tier hardware and software lock mechanisms
 |Data Consistency |Maintains synchronization with underlying OTP storage upon each power-on reset
@@ -425,7 +425,7 @@ the SMC controller.
 
 [[efuse-supplementary-fuses-fig]]
 .SMC supplementary fuse region
-image::efuse_supplementary_architecture.svg[alt="Inside the SMC eFuse controller, register access passes through access control and the guard to the harness shadow file, which holds HARNESS_LOCKS, SUPPLEMENTARY_LOCKS, named fuses and spares, and to the supplementary shadow file of up to 32 lock regions, whose locks come from SUPPLEMENTARY_LOCKS; the fuse sense FSM reads the harness map and the supplementary map in one command; on the adopter side, smc_supplementary_shadow_regs_o feeds the adopter logic, and fuse commands go through the Interface SHIM to fuse macros holding bits 0 to 8191 and bits from 8192",width=100%,pdfwidth=100%]
+image::efuse_supplementary_architecture.svg[alt="Inside the SMC eFuse controller, register access passes through access control and the guard to the harness shadow file, which holds HARNESS_LOCKS, SUPPLEMENTARY_LOCKS, named fuses and spares, and to the supplementary shadow file of up to 32 lock regions, whose locks come from SUPPLEMENTARY_LOCKS; the fuse sense FSM reads the harness map and the supplementary map in one command; on the adopter side, smc_supplementary_shadow_regs_o feeds the adopter logic, and fuse commands go through the Interface SHIM to fuse macros holding bits 0 to 2047 and bits from 2048",width=100%,pdfwidth=100%]
 
 ==== Configuration
 
@@ -466,10 +466,10 @@ sense, so a large region trades area and boot time for fuses.
 
 ==== Sensing and Export
 
-The supplementary fuses start at bit 8192, directly after the 8 Kbit harness map, so
+The supplementary fuses start at bit 2048, directly after the 2 Kbit harness map, so
 harness fuse addresses do not depend on the region size. At cold reset release
-the controller issues one READ of 256 + `WORDS` words from bit 0. The harness
-shadow file stores the first 256 words and the supplementary shadow file the rest.
+the controller issues one READ of 64 + `WORDS` words from bit 0. The harness
+shadow file stores the first 64 words and the supplementary shadow file the rest.
 `fuse_sense_done` waits for both, so `smc_fuse_sense_done_o`, the
 `efuse_sense_done` status bit and the fuse-released SMC reset all include the
 supplementary region.
@@ -513,6 +513,6 @@ window from either port.
 * Until fuse sense completes, accesses to the window receive an error response.
 * An access to a locked region returns `0xBADCAB1E` without an error response
 and raises `locked_field_access_interrupt_o`.
-* `efuse_guard` checks firmware program and read commands at or above bit 8192
+* `efuse_guard` checks firmware program and read commands at or above bit 2048
 against the `SUPPLEMENTARY_LOCKS` pair of the target's region. Commands at or above
-bit 8192 + 32 × `WORDS` set the address error status and never reach the SHIM.
+bit 2048 + 32 × `WORDS` set the address error status and never reach the SHIM.

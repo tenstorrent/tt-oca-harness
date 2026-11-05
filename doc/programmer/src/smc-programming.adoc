@@ -1562,7 +1562,7 @@ word-read/bit-write accesses through the control interface.
 
 An integration may add a supplementary fuse region after the harness fuses. Its
 shadow registers sit in a window of the SMC external region that the
-integrator chooses, and its fuses start at bit 8192 for the control interface.
+integrator chooses, and its fuses start at bit 2048 for the control interface.
 `SUPPLEMENTARY_LOCKS` locks the region in the same way, with one write/read pair per
 lock region: bit 2__n__ write-locks region _n_ and bit 2__n__+1 read-locks it.
 The integration defines the regions and their contents.

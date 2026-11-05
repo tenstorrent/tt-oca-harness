@@ -165,9 +165,9 @@ module efuse_guard #(
   //
   // address is a fuse BIT address and the supplementary field map holds BYTE offsets from
   // SUPPLEMENTARY_BIT_BASE, hence the subtraction and >> 3. For example, with the SMC's
-  // SUPPLEMENTARY_BIT_BASE of 8192 and the reference tops' regions ending at words 64, 96 and 128,
-  // a command to fuse bit 10242:
-  //   bit address                  10242
+  // SUPPLEMENTARY_BIT_BASE of 2048 and the reference tops' regions ending at words 64, 96 and 128,
+  // a command to fuse bit 4098:
+  //   bit address                  4098
   //   minus SUPPLEMENTARY_BIT_BASE       bit offset 2050
   //   >> 3                         byte offset 256 (0x100)
   //   rule lookup                  region 1, bytes 0x100-0x17F (sensor trims)

@@ -1932,7 +1932,7 @@ SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_15__REG_OFFSET = 0x000
 SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_15__REG_ADDR = 0xC0006E7C
 SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_15__REG_TYPE = 'LOG_ENGINE_LOG_CTRL'
 SMC_EFUSE_MAP_REG_MAP_BASE_ADDR = 0xC0007000
-SMC_EFUSE_MAP_REG_MAP_SIZE = 0x00000400
+SMC_EFUSE_MAP_REG_MAP_SIZE = 0x00000100
 SMC_EFUSE_MAP_HARNESS_LOCKS_REG_OFFSET = 0x00000000
 SMC_EFUSE_MAP_HARNESS_LOCKS_REG_ADDR = 0xC0007000
 SMC_EFUSE_MAP_HARNESS_LOCKS_REG_TYPE = 'SMC_EFUSE_MAP_HARNESS_LOCKS'
@@ -1984,86 +1984,14 @@ SMC_EFUSE_MAP_SPARE_1__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
 SMC_EFUSE_MAP_SPARE_2__REG_OFFSET = 0x000000C8
 SMC_EFUSE_MAP_SPARE_2__REG_ADDR = 0xC00070C8
 SMC_EFUSE_MAP_SPARE_2__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_3__REG_OFFSET = 0x000000E8
-SMC_EFUSE_MAP_SPARE_3__REG_ADDR = 0xC00070E8
-SMC_EFUSE_MAP_SPARE_3__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_4__REG_OFFSET = 0x00000108
-SMC_EFUSE_MAP_SPARE_4__REG_ADDR = 0xC0007108
-SMC_EFUSE_MAP_SPARE_4__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_5__REG_OFFSET = 0x00000128
-SMC_EFUSE_MAP_SPARE_5__REG_ADDR = 0xC0007128
-SMC_EFUSE_MAP_SPARE_5__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_6__REG_OFFSET = 0x00000148
-SMC_EFUSE_MAP_SPARE_6__REG_ADDR = 0xC0007148
-SMC_EFUSE_MAP_SPARE_6__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_7__REG_OFFSET = 0x00000168
-SMC_EFUSE_MAP_SPARE_7__REG_ADDR = 0xC0007168
-SMC_EFUSE_MAP_SPARE_7__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_8__REG_OFFSET = 0x00000188
-SMC_EFUSE_MAP_SPARE_8__REG_ADDR = 0xC0007188
-SMC_EFUSE_MAP_SPARE_8__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_9__REG_OFFSET = 0x000001A8
-SMC_EFUSE_MAP_SPARE_9__REG_ADDR = 0xC00071A8
-SMC_EFUSE_MAP_SPARE_9__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_10__REG_OFFSET = 0x000001C8
-SMC_EFUSE_MAP_SPARE_10__REG_ADDR = 0xC00071C8
-SMC_EFUSE_MAP_SPARE_10__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_11__REG_OFFSET = 0x000001E8
-SMC_EFUSE_MAP_SPARE_11__REG_ADDR = 0xC00071E8
-SMC_EFUSE_MAP_SPARE_11__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_12__REG_OFFSET = 0x00000208
-SMC_EFUSE_MAP_SPARE_12__REG_ADDR = 0xC0007208
-SMC_EFUSE_MAP_SPARE_12__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_13__REG_OFFSET = 0x00000228
-SMC_EFUSE_MAP_SPARE_13__REG_ADDR = 0xC0007228
-SMC_EFUSE_MAP_SPARE_13__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_14__REG_OFFSET = 0x00000248
-SMC_EFUSE_MAP_SPARE_14__REG_ADDR = 0xC0007248
-SMC_EFUSE_MAP_SPARE_14__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_15__REG_OFFSET = 0x00000268
-SMC_EFUSE_MAP_SPARE_15__REG_ADDR = 0xC0007268
-SMC_EFUSE_MAP_SPARE_15__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_16__REG_OFFSET = 0x00000288
-SMC_EFUSE_MAP_SPARE_16__REG_ADDR = 0xC0007288
-SMC_EFUSE_MAP_SPARE_16__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_17__REG_OFFSET = 0x000002A8
-SMC_EFUSE_MAP_SPARE_17__REG_ADDR = 0xC00072A8
-SMC_EFUSE_MAP_SPARE_17__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_18__REG_OFFSET = 0x000002C8
-SMC_EFUSE_MAP_SPARE_18__REG_ADDR = 0xC00072C8
-SMC_EFUSE_MAP_SPARE_18__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_19__REG_OFFSET = 0x000002E8
-SMC_EFUSE_MAP_SPARE_19__REG_ADDR = 0xC00072E8
-SMC_EFUSE_MAP_SPARE_19__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_20__REG_OFFSET = 0x00000308
-SMC_EFUSE_MAP_SPARE_20__REG_ADDR = 0xC0007308
-SMC_EFUSE_MAP_SPARE_20__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_21__REG_OFFSET = 0x00000328
-SMC_EFUSE_MAP_SPARE_21__REG_ADDR = 0xC0007328
-SMC_EFUSE_MAP_SPARE_21__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_22__REG_OFFSET = 0x00000348
-SMC_EFUSE_MAP_SPARE_22__REG_ADDR = 0xC0007348
-SMC_EFUSE_MAP_SPARE_22__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_23__REG_OFFSET = 0x00000368
-SMC_EFUSE_MAP_SPARE_23__REG_ADDR = 0xC0007368
-SMC_EFUSE_MAP_SPARE_23__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_24__REG_OFFSET = 0x00000388
-SMC_EFUSE_MAP_SPARE_24__REG_ADDR = 0xC0007388
-SMC_EFUSE_MAP_SPARE_24__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_25__REG_OFFSET = 0x000003A8
-SMC_EFUSE_MAP_SPARE_25__REG_ADDR = 0xC00073A8
-SMC_EFUSE_MAP_SPARE_25__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_26__REG_OFFSET = 0x000003C8
-SMC_EFUSE_MAP_SPARE_26__REG_ADDR = 0xC00073C8
-SMC_EFUSE_MAP_SPARE_26__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_TAIL_0__REG_OFFSET = 0x000003E8
-SMC_EFUSE_MAP_SPARE_TAIL_0__REG_ADDR = 0xC00073E8
+SMC_EFUSE_MAP_SPARE_TAIL_0__REG_OFFSET = 0x000000E8
+SMC_EFUSE_MAP_SPARE_TAIL_0__REG_ADDR = 0xC00070E8
 SMC_EFUSE_MAP_SPARE_TAIL_0__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_64_BITS'
-SMC_EFUSE_MAP_SPARE_TAIL_1__REG_OFFSET = 0x000003F0
-SMC_EFUSE_MAP_SPARE_TAIL_1__REG_ADDR = 0xC00073F0
+SMC_EFUSE_MAP_SPARE_TAIL_1__REG_OFFSET = 0x000000F0
+SMC_EFUSE_MAP_SPARE_TAIL_1__REG_ADDR = 0xC00070F0
 SMC_EFUSE_MAP_SPARE_TAIL_1__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_64_BITS'
-SMC_EFUSE_MAP_SPARE_TAIL_2__REG_OFFSET = 0x000003F8
-SMC_EFUSE_MAP_SPARE_TAIL_2__REG_ADDR = 0xC00073F8
+SMC_EFUSE_MAP_SPARE_TAIL_2__REG_OFFSET = 0x000000F8
+SMC_EFUSE_MAP_SPARE_TAIL_2__REG_ADDR = 0xC00070F8
 SMC_EFUSE_MAP_SPARE_TAIL_2__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_64_BITS'
 EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR = 0xC0008000
 EFUSE_INTERFACE_CTRL_REG_MAP_SIZE = 0x00000024
@@ -15535,54 +15463,6 @@ SMC_EFUSE_MAP_HARNESS_LOCKS_REG_FIELD_ACCESS = (
     ('spare1_read_lock', 'rw', 'woset', '', False),
     ('spare2_write_lock', 'rw', 'woset', '', False),
     ('spare2_read_lock', 'rw', 'woset', '', False),
-    ('spare3_write_lock', 'rw', 'woset', '', False),
-    ('spare3_read_lock', 'rw', 'woset', '', False),
-    ('spare4_write_lock', 'rw', 'woset', '', False),
-    ('spare4_read_lock', 'rw', 'woset', '', False),
-    ('spare5_write_lock', 'rw', 'woset', '', False),
-    ('spare5_read_lock', 'rw', 'woset', '', False),
-    ('spare6_write_lock', 'rw', 'woset', '', False),
-    ('spare6_read_lock', 'rw', 'woset', '', False),
-    ('spare7_write_lock', 'rw', 'woset', '', False),
-    ('spare7_read_lock', 'rw', 'woset', '', False),
-    ('spare8_write_lock', 'rw', 'woset', '', False),
-    ('spare8_read_lock', 'rw', 'woset', '', False),
-    ('spare9_write_lock', 'rw', 'woset', '', False),
-    ('spare9_read_lock', 'rw', 'woset', '', False),
-    ('spare10_write_lock', 'rw', 'woset', '', False),
-    ('spare10_read_lock', 'rw', 'woset', '', False),
-    ('spare11_write_lock', 'rw', 'woset', '', False),
-    ('spare11_read_lock', 'rw', 'woset', '', False),
-    ('spare12_write_lock', 'rw', 'woset', '', False),
-    ('spare12_read_lock', 'rw', 'woset', '', False),
-    ('spare13_write_lock', 'rw', 'woset', '', False),
-    ('spare13_read_lock', 'rw', 'woset', '', False),
-    ('spare14_write_lock', 'rw', 'woset', '', False),
-    ('spare14_read_lock', 'rw', 'woset', '', False),
-    ('spare15_write_lock', 'rw', 'woset', '', False),
-    ('spare15_read_lock', 'rw', 'woset', '', False),
-    ('spare16_write_lock', 'rw', 'woset', '', False),
-    ('spare16_read_lock', 'rw', 'woset', '', False),
-    ('spare17_write_lock', 'rw', 'woset', '', False),
-    ('spare17_read_lock', 'rw', 'woset', '', False),
-    ('spare18_write_lock', 'rw', 'woset', '', False),
-    ('spare18_read_lock', 'rw', 'woset', '', False),
-    ('spare19_write_lock', 'rw', 'woset', '', False),
-    ('spare19_read_lock', 'rw', 'woset', '', False),
-    ('spare20_write_lock', 'rw', 'woset', '', False),
-    ('spare20_read_lock', 'rw', 'woset', '', False),
-    ('spare21_write_lock', 'rw', 'woset', '', False),
-    ('spare21_read_lock', 'rw', 'woset', '', False),
-    ('spare22_write_lock', 'rw', 'woset', '', False),
-    ('spare22_read_lock', 'rw', 'woset', '', False),
-    ('spare23_write_lock', 'rw', 'woset', '', False),
-    ('spare23_read_lock', 'rw', 'woset', '', False),
-    ('spare24_write_lock', 'rw', 'woset', '', False),
-    ('spare24_read_lock', 'rw', 'woset', '', False),
-    ('spare25_write_lock', 'rw', 'woset', '', False),
-    ('spare25_read_lock', 'rw', 'woset', '', False),
-    ('spare26_write_lock', 'rw', 'woset', '', False),
-    ('spare26_read_lock', 'rw', 'woset', '', False),
     ('spare_tail_write_lock', 'rw', 'woset', '', False),
     ('spare_tail_read_lock', 'rw', 'woset', '', False),
 )
@@ -15603,124 +15483,28 @@ SMC_EFUSE_MAP_HARNESS_LOCKS_REG_FIELDS = (
     ('spare1_read_lock', 11, 11, 'rw', 'r', 'woset', '', False, False, 0),
     ('spare2_write_lock', 12, 12, 'rw', 'r', 'woset', '', False, False, 0),
     ('spare2_read_lock', 13, 13, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare3_write_lock', 14, 14, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare3_read_lock', 15, 15, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare4_write_lock', 16, 16, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare4_read_lock', 17, 17, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare5_write_lock', 18, 18, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare5_read_lock', 19, 19, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare6_write_lock', 20, 20, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare6_read_lock', 21, 21, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare7_write_lock', 22, 22, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare7_read_lock', 23, 23, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare8_write_lock', 24, 24, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare8_read_lock', 25, 25, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare9_write_lock', 26, 26, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare9_read_lock', 27, 27, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare10_write_lock', 28, 28, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare10_read_lock', 29, 29, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare11_write_lock', 30, 30, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare11_read_lock', 31, 31, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare12_write_lock', 32, 32, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare12_read_lock', 33, 33, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare13_write_lock', 34, 34, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare13_read_lock', 35, 35, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare14_write_lock', 36, 36, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare14_read_lock', 37, 37, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare15_write_lock', 38, 38, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare15_read_lock', 39, 39, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare16_write_lock', 40, 40, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare16_read_lock', 41, 41, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare17_write_lock', 42, 42, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare17_read_lock', 43, 43, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare18_write_lock', 44, 44, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare18_read_lock', 45, 45, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare19_write_lock', 46, 46, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare19_read_lock', 47, 47, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare20_write_lock', 48, 48, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare20_read_lock', 49, 49, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare21_write_lock', 50, 50, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare21_read_lock', 51, 51, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare22_write_lock', 52, 52, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare22_read_lock', 53, 53, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare23_write_lock', 54, 54, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare23_read_lock', 55, 55, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare24_write_lock', 56, 56, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare24_read_lock', 57, 57, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare25_write_lock', 58, 58, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare25_read_lock', 59, 59, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare26_write_lock', 60, 60, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare26_read_lock', 61, 61, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare_tail_write_lock', 62, 62, 'rw', 'r', 'woset', '', False, False, 0),
-    ('spare_tail_read_lock', 63, 63, 'rw', 'r', 'woset', '', False, False, 0),
+    ('spare_tail_write_lock', 14, 14, 'rw', 'r', 'woset', '', False, False, 0),
+    ('spare_tail_read_lock', 15, 15, 'rw', 'r', 'woset', '', False, False, 0),
 )
 
 class SMC_EFUSE_MAP_HARNESS_LOCKS_reg_t(Structure):
     _fields_ = [
-        ('jtag_public_identity_write_lock', c_uint64, 1),
-        ('jtag_public_identity_read_lock', c_uint64, 1),
-        ('i2c_i3c_id_write_lock', c_uint64, 1),
-        ('i2c_i3c_id_read_lock', c_uint64, 1),
-        ('smc_config_write_lock', c_uint64, 1),
-        ('smc_config_read_lock', c_uint64, 1),
-        ('occp_transport_timeout_write_lock', c_uint64, 1),
-        ('occp_transport_timeout_read_lock', c_uint64, 1),
-        ('spare0_write_lock', c_uint64, 1),
-        ('spare0_read_lock', c_uint64, 1),
-        ('spare1_write_lock', c_uint64, 1),
-        ('spare1_read_lock', c_uint64, 1),
-        ('spare2_write_lock', c_uint64, 1),
-        ('spare2_read_lock', c_uint64, 1),
-        ('spare3_write_lock', c_uint64, 1),
-        ('spare3_read_lock', c_uint64, 1),
-        ('spare4_write_lock', c_uint64, 1),
-        ('spare4_read_lock', c_uint64, 1),
-        ('spare5_write_lock', c_uint64, 1),
-        ('spare5_read_lock', c_uint64, 1),
-        ('spare6_write_lock', c_uint64, 1),
-        ('spare6_read_lock', c_uint64, 1),
-        ('spare7_write_lock', c_uint64, 1),
-        ('spare7_read_lock', c_uint64, 1),
-        ('spare8_write_lock', c_uint64, 1),
-        ('spare8_read_lock', c_uint64, 1),
-        ('spare9_write_lock', c_uint64, 1),
-        ('spare9_read_lock', c_uint64, 1),
-        ('spare10_write_lock', c_uint64, 1),
-        ('spare10_read_lock', c_uint64, 1),
-        ('spare11_write_lock', c_uint64, 1),
-        ('spare11_read_lock', c_uint64, 1),
-        ('spare12_write_lock', c_uint64, 1),
-        ('spare12_read_lock', c_uint64, 1),
-        ('spare13_write_lock', c_uint64, 1),
-        ('spare13_read_lock', c_uint64, 1),
-        ('spare14_write_lock', c_uint64, 1),
-        ('spare14_read_lock', c_uint64, 1),
-        ('spare15_write_lock', c_uint64, 1),
-        ('spare15_read_lock', c_uint64, 1),
-        ('spare16_write_lock', c_uint64, 1),
-        ('spare16_read_lock', c_uint64, 1),
-        ('spare17_write_lock', c_uint64, 1),
-        ('spare17_read_lock', c_uint64, 1),
-        ('spare18_write_lock', c_uint64, 1),
-        ('spare18_read_lock', c_uint64, 1),
-        ('spare19_write_lock', c_uint64, 1),
-        ('spare19_read_lock', c_uint64, 1),
-        ('spare20_write_lock', c_uint64, 1),
-        ('spare20_read_lock', c_uint64, 1),
-        ('spare21_write_lock', c_uint64, 1),
-        ('spare21_read_lock', c_uint64, 1),
-        ('spare22_write_lock', c_uint64, 1),
-        ('spare22_read_lock', c_uint64, 1),
-        ('spare23_write_lock', c_uint64, 1),
-        ('spare23_read_lock', c_uint64, 1),
-        ('spare24_write_lock', c_uint64, 1),
-        ('spare24_read_lock', c_uint64, 1),
-        ('spare25_write_lock', c_uint64, 1),
-        ('spare25_read_lock', c_uint64, 1),
-        ('spare26_write_lock', c_uint64, 1),
-        ('spare26_read_lock', c_uint64, 1),
-        ('spare_tail_write_lock', c_uint64, 1),
-        ('spare_tail_read_lock', c_uint64, 1),
+        ('jtag_public_identity_write_lock', c_uint16, 1),
+        ('jtag_public_identity_read_lock', c_uint16, 1),
+        ('i2c_i3c_id_write_lock', c_uint16, 1),
+        ('i2c_i3c_id_read_lock', c_uint16, 1),
+        ('smc_config_write_lock', c_uint16, 1),
+        ('smc_config_read_lock', c_uint16, 1),
+        ('occp_transport_timeout_write_lock', c_uint16, 1),
+        ('occp_transport_timeout_read_lock', c_uint16, 1),
+        ('spare0_write_lock', c_uint16, 1),
+        ('spare0_read_lock', c_uint16, 1),
+        ('spare1_write_lock', c_uint16, 1),
+        ('spare1_read_lock', c_uint16, 1),
+        ('spare2_write_lock', c_uint16, 1),
+        ('spare2_read_lock', c_uint16, 1),
+        ('spare_tail_write_lock', c_uint16, 1),
+        ('spare_tail_read_lock', c_uint16, 1),
     ]
 
 SMC_EFUSE_MAP_HARNESS_LOCKS_REG_DEFAULT = 0x0000000000000000

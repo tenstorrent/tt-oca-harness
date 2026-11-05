@@ -3,7 +3,7 @@
 
 // Declare types and constants for the SMC eFuse map.
 //
-// Sizes the 8192-bit fuse array as 256 32-bit words and defines efuse_map_t, the
+// Sizes the 2048-bit fuse array as 64 32-bit words and defines efuse_map_t, the
 // shadow-register layout of the SMC eFuse map, together with the fuse command types.
 // Builds EfuseFieldMap, the per-field lock rules and address ranges, and the Class 1
 // shadow range that covers the HARNESS_LOCKS and SUPPLEMENTARY_LOCKS fields. Used by smc_efuse_wrapper and by the SMC
@@ -17,56 +17,9 @@ package smc_efuse_pkg;
 
   // Shadow register layout preserved from the legacy generated sub-block header.
   typedef struct packed {
+    logic [47:0]  reserved ;
     logic [0:0]   spare_tail_read_lock ;
     logic [0:0]   spare_tail_write_lock ;
-    logic [0:0]   spare26_read_lock ;
-    logic [0:0]   spare26_write_lock ;
-    logic [0:0]   spare25_read_lock ;
-    logic [0:0]   spare25_write_lock ;
-    logic [0:0]   spare24_read_lock ;
-    logic [0:0]   spare24_write_lock ;
-    logic [0:0]   spare23_read_lock ;
-    logic [0:0]   spare23_write_lock ;
-    logic [0:0]   spare22_read_lock ;
-    logic [0:0]   spare22_write_lock ;
-    logic [0:0]   spare21_read_lock ;
-    logic [0:0]   spare21_write_lock ;
-    logic [0:0]   spare20_read_lock ;
-    logic [0:0]   spare20_write_lock ;
-    logic [0:0]   spare19_read_lock ;
-    logic [0:0]   spare19_write_lock ;
-    logic [0:0]   spare18_read_lock ;
-    logic [0:0]   spare18_write_lock ;
-    logic [0:0]   spare17_read_lock ;
-    logic [0:0]   spare17_write_lock ;
-    logic [0:0]   spare16_read_lock ;
-    logic [0:0]   spare16_write_lock ;
-    logic [0:0]   spare15_read_lock ;
-    logic [0:0]   spare15_write_lock ;
-    logic [0:0]   spare14_read_lock ;
-    logic [0:0]   spare14_write_lock ;
-    logic [0:0]   spare13_read_lock ;
-    logic [0:0]   spare13_write_lock ;
-    logic [0:0]   spare12_read_lock ;
-    logic [0:0]   spare12_write_lock ;
-    logic [0:0]   spare11_read_lock ;
-    logic [0:0]   spare11_write_lock ;
-    logic [0:0]   spare10_read_lock ;
-    logic [0:0]   spare10_write_lock ;
-    logic [0:0]   spare9_read_lock ;
-    logic [0:0]   spare9_write_lock ;
-    logic [0:0]   spare8_read_lock ;
-    logic [0:0]   spare8_write_lock ;
-    logic [0:0]   spare7_read_lock ;
-    logic [0:0]   spare7_write_lock ;
-    logic [0:0]   spare6_read_lock ;
-    logic [0:0]   spare6_write_lock ;
-    logic [0:0]   spare5_read_lock ;
-    logic [0:0]   spare5_write_lock ;
-    logic [0:0]   spare4_read_lock ;
-    logic [0:0]   spare4_write_lock ;
-    logic [0:0]   spare3_read_lock ;
-    logic [0:0]   spare3_write_lock ;
     logic [0:0]   spare2_read_lock ;
     logic [0:0]   spare2_write_lock ;
     logic [0:0]   spare1_read_lock ;
@@ -122,7 +75,7 @@ package smc_efuse_pkg;
 
   typedef struct packed {
     smc_efuse_map_spare_tail_reg_t [2:0] spare_tail;
-    smc_efuse_map_spare_reg_t [26:0] spare;
+    smc_efuse_map_spare_reg_t [2:0] spare;
     smc_efuse_map_occp_transport_timeout_reg_t occp_transport_timeout;
     smc_efuse_map_smc_config_reg_t smc_config;
     smc_efuse_map_i2c_i3c_id_reg_t [8:0] i2c_i3c_id;
@@ -133,11 +86,11 @@ package smc_efuse_pkg;
   `include "efuse_typedef.svh"
 
   // NumFuseWordWidth MAX is 32 bits
-  localparam int unsigned NumEfuseBits = 8 * 1024;  // 8192 bits.
+  localparam int unsigned NumEfuseBits = 2 * 1024;  // 2048 bits.
   localparam int unsigned NumFuseWordWidth = 32;
 
-  localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256 words --- word == access granularity.
-  localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 1024 bytes.
+  localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 64 words --- word == access granularity.
+  localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 256 bytes.
 
   // SUPPLEMENTARY FUSE INFO:
 
@@ -172,7 +125,7 @@ package smc_efuse_pkg;
   localparam int unsigned NumSpareRegions = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
 
   // Lock meta-field + 4 functional fields + NumSpareRegions spare regions + SPARE_TAIL
-  // (idx 0-31).
+  // (idx 0 to 4 + NumSpareRegions).
   localparam int unsigned NumEfuseFields = 6 + NumSpareRegions;
   localparam logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] LocksMetaIdx = '1;
   localparam logic [1:0] WriteUnlock = 2'b00;
@@ -289,7 +242,7 @@ package smc_efuse_pkg;
                                                 // inside the fuse slot of the supplementary
                                                 // region. Unused without a region.
     int unsigned              WORDS;            // Region size in 32-bit words, sensed after the
-                                                // 8192 harness fuse bits; 0 for no region, at
+                                                // 2048 harness fuse bits; 0 for no region, at
                                                 // most MaxSupplementaryFuseWords.
     supplementary_lock_region_end_t LOCK_REGION_END;  // Word offset one past the end of each lock
                                                 // region, region n starting where region n-1
