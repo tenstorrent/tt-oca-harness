@@ -18174,11 +18174,20 @@ Drive `smc_ss_reset_complete_test_seq`. Each checker below is a named compare th
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: UART0 loopback FIFO trigger levels + RX/TX FIFO reset.
+*Objective*: UART0 loopback FIFO trigger levels + RX/TX FIFO reset, and FCR reachable under `LCR.DLAB`.
 
 *Test Coverage*:
 
 * UART0 MCR.LOOP: RCVR trigger then RX/TX FIFO reset clears LSR.DR / THRE.
+* Every receive trigger level the 32-entry FIFO can reach: 1, 4, 8 and 14 characters from
+  `FCR.RCVR_TRIGGER` (`uart_16550_main_wo.rdl`) and 32 from the `ECR.RCVR_TRIGGER_MS2B` extension
+  (`uart_16550_main.rdl`), each proven at its boundary (no RECEIVED_DATA_READY one below, the id at
+  the level, cleared one below again within two quarter-character IIR samples of the pop; the
+  Reception Timeout outranks RECEIVED_DATA_READY in IIR and fires four character times after the
+  pop, so a sample showing it is refused rather than taken as the level cleared).
+* `uart_16550_main.rdl` (`LCR.DLAB`) and `memmap.adoc`: FCR at 0x08 is writable, and IIR and LSR
+  readable, for either DLAB value. With DLAB set FCR is written off and on and `IIR.FIFOS_ENABLED`
+  follows each write; LSR reads the idle transmitter; the FIFOs stay on after DLAB is cleared.
 
 *Test Procedure*:
 
@@ -18190,16 +18199,19 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-UART-FCR-UNDER-DLAB` |With `LCR.DLAB` set and read back, an FCR write of 0 leaves `IIR.FIFOS_ENABLED` 0x0 and a write of `FIFO_ENABLE` leaves it 0x3, LSR reads THRE and TEMT, and after DLAB is cleared and read back IIR still reports the FIFOs on; every trigger cell also requires `IIR.FIFOS_ENABLED` 0x3 before its compare (`smc_uart_fifo_basic_trigger_reset_test_seq.py`)
 |`CHK-UART-FIFO-RST-RX` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-FIFO-RST-TX` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-FIFO-TRIG-14B` |`FCR.RCVR_TRIGGER` 0x3: no RECEIVED_DATA_READY with 13 characters queued over four IIR samples, the id with the 14th, and cleared within two quarter-character IIR samples of one pop, the Reception Timeout id (which outranks it and fires four character times after the pop) refused in its place (`smc_uart_fifo_basic_trigger_reset_test_seq.py`)
 |`CHK-UART-FIFO-TRIG-1B` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-FIFO-TRIG-32B` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-FIFO-TRIG-4B` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-FIFO-TRIG-ABOVE-DEPTH` |With the RX FIFO filled to its 32-entry depth through loopback (LSR.DR set, no overrun), each unsupported encoding 64 through 4096 is programmed in turn, the level is re-evaluated by popping one character and looping one back so the 32nd arrival is compared against that encoding, and RECEIVED_DATA_READY is absent across the IIR samples taken right after the arrival (before a Reception Timeout can replace it); the same refill raises RECEIVED_DATA_READY at the 32-character encoding immediately before and again immediately after the sweep, so the level compare is proven live in the same run (`smc_uart_fifo_basic_trigger_reset_test_seq.py`)
+|`CHK-UART-FIFO-TRIG-8B` |`FCR.RCVR_TRIGGER` 0x2: no RECEIVED_DATA_READY with 7 characters queued over four IIR samples, the id with the 8th, and cleared within two quarter-character IIR samples of one pop, the Reception Timeout id refused in its place (`smc_uart_fifo_basic_trigger_reset_test_seq.py`)
+|`CHK-UART-FIFO-TRIG-ABOVE-DEPTH` |With the RX FIFO filled to its 32-entry depth through loopback (LSR.DR set, no overrun), each unsupported encoding 64 through 4096 is programmed in turn, the level is re-evaluated by popping one character and looping one back so the 32nd arrival is compared against that encoding, and RECEIVED_DATA_READY is absent across the IIR samples taken right after the arrival (before a Reception Timeout can replace it); the same refill raises RECEIVED_DATA_READY at the 32-character encoding re-armed immediately before each encoding and again after the sweep, and every `ECR.RCVR_TRIGGER_MS2B` write is read back, so the level compare is proven live for each encoding in the same run (`smc_uart_fifo_basic_trigger_reset_test_seq.py`)
 |===
 
 
-*Pass Criteria*: `CHK-UART-FIFO-RST-RX`, `CHK-UART-FIFO-RST-TX`, `CHK-UART-FIFO-TRIG-1B`, `CHK-UART-FIFO-TRIG-32B`, `CHK-UART-FIFO-TRIG-4B`, `CHK-UART-FIFO-TRIG-ABOVE-DEPTH` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: `CHK-UART-FCR-UNDER-DLAB`, `CHK-UART-FIFO-RST-RX`, `CHK-UART-FIFO-RST-TX`, `CHK-UART-FIFO-TRIG-14B`, `CHK-UART-FIFO-TRIG-1B`, `CHK-UART-FIFO-TRIG-32B`, `CHK-UART-FIFO-TRIG-4B`, `CHK-UART-FIFO-TRIG-8B`, `CHK-UART-FIFO-TRIG-ABOVE-DEPTH` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 
 *Scope limit*: None stated.
 '''''
@@ -32617,6 +32629,105 @@ last handshake is printed and not compared, and the `ib_filter` register clock g
 '''''
 
 
+[[sec-594-smc_log_engine_port_limits_test]]
+===== 594 `smc_log_engine_port_limits_test`
+
+*Phase*: 3
+
+*Area*: FIRMWARE
+
+*Source Module*: `smc_log_engine_port_limits_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; the SYS_OUT responder memory for the window legs, with
+a passive capture of AR and R handshakes on `u_output_axi_if`; wrapper 0's UART in `MCR.LOOP`;
+`tb_uart0_tx_ready` and `tb_uart0_log_write_stalled` for the stalled write side.
+
+*Run mode*: one testlist entry in `testlists/uart.toml`; groups `all`, `hosted`, `uart`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `uart`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: The log engine's write port shared with the CPU, its four-word read-data FIFO and the
+512 KiB region clamp, on wrapper 0.
+
+*Test Coverage*:
+
+* `hw/ip/uart/uart_log_engine_wrap/doc/uart_log_engine_wrap.adoc` (transmit holding register
+  sharing) and `hw/ip/uart/log_engine/doc/index.adoc`: the CPU's register path and the engine's
+  write path reach THR through one 2:1 AXI-Lite arbiter that serialises them, with no hardware lock.
+  A 64-byte log (bytes 0x80 to 0xBF) in slot 0 of a 0x400-byte SPM region is started with the UART
+  in `MCR.LOOP`; after each of the first eight log bytes received the CPU reads `LOG_CTRL[0]`
+  (required 64, the log still pending) and writes one byte of its own (0x01 to 0x08) into THR. The
+  72 characters the receiver returns are required to be exactly those 72 bytes, the log bytes in
+  their order and the CPU bytes in theirs, and the last CPU byte before the last log byte (a lock
+  that holds the CPU's writes until the log ends fails), with no OE/PE/FE/BI on any LSR read;
+  `LOG_CTRL[0]` clears and `INTR_STATUS` reads 0.
+* `hw/sys/smc/doc/periphs.adoc` (the log engine at the IP default `FIFO_DEPTH` 4),
+  `hw/ip/uart/log_engine/doc/interface.adoc` and `uart_log_engine_wrap.adoc`
+  (`LOG_ENGINE_FIFO_DEPTH` words buffered between fetch and write). The divisor is written 0, which
+  disables the transmitter (`uart_16550_dl.rdl`), and two characters are parked in THR so
+  `tb_uart0_tx_ready` reads 0 and the engine's write side cannot advance. A 64-byte log in the
+  output-fabric window is submitted and the fetches on the SYS_OUT port are counted: at least four
+  within the poll bound, and exactly four 2000 `clk_smc_i` cycles later, with
+  `tb_uart0_log_write_stalled` 1. The divisor is restored to 1: the remaining four words are fetched
+  (eight in all) and the parked characters followed by the 64 log bytes arrive in order.
+* `hw/ip/uart/log_engine/doc/architecture.adoc` and `log_engine.rdl` (`LOG_REGION_SIZE`: larger
+  values clamp to 512 KiB). With `LOG_REGION_SIZE` written and read back at its 20-bit maximum
+  0xFFFFF and the region at the window base, slot 1 lies 512 KiB / 16 = 0x8000 bytes into the
+  region: an eight-byte log from slot 1 is required to issue exactly one fetch in the window, at
+  base + 0x8000, and the word placed there is required back through the UART.
+
+*Test Procedure*:
+
+[arabic]
+. Ungate the UART clock and put wrapper 0's UART in loopback (`arm_uart`). Load the 64-byte log into
+  the SPM region and read it back; program the region, size 0x400, `LOG_WRITE_ADDR` at THR, clear
+  `INTR_STATUS`, enable the engine and write 64 into `LOG_CTRL[0]`; drain 72 characters, writing
+  one CPU byte after each of the first eight after reading `LOG_CTRL[0]`; compare the multiset,
+  both orders and the last CPU byte's position against the last log byte's; wait for the hardware
+  clear; print `CHK-LE-THR-ARBITER-MERGE`.
+. Save and open the outbound filter 0 (start 0, end 2^56 - 1, pass all). Seed the depth log in
+  the responder memory; write the divisor 0 and park 0xEE and 0xED in THR; require `tb_uart0_tx_ready` 0
+  within 400 cycles; start the AR capture, program the window region and submit 64 bytes; poll the
+  in-region AR count to at least 4 (400 x 50 cycles), wait 2000 cycles and require exactly 4 and
+  `tb_uart0_log_write_stalled` 1; restore the divisor to 1, drain 66 characters and compare; wait
+  for the clear; require 8 fetches in all; print `CHK-LOGENG-RDATA-FIFO-DEPTH-4`.
+. Seed the clamp word at base + 0x8000; program the region at the window base with size 0xFFFFF
+  (read back); submit 8 bytes in `LOG_CTRL[1]`; drain 8 characters and compare with the word; wait
+  for the clear; require the in-window ARs to be exactly [base + 0x8000]; print
+  `CHK-LOGENG-REGION-CLAMP-512K`. Restore the filter, clear the engine's configuration and the
+  UART, and regate the clock.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LE-THR-ARBITER-MERGE` |With a 64-byte log running and eight CPU THR writes issued while
+  `LOG_CTRL[0]` read 64, the receiver returned exactly the 72 bytes, the log bytes in order and the
+  CPU bytes in order, the last CPU byte before the last log byte, with no OE/PE/FE/BI on any LSR
+  read; `LOG_CTRL[0]` cleared and `INTR_STATUS` read 0
+|`CHK-LOGENG-RDATA-FIFO-DEPTH-4` |With the transmitter disabled and two characters parked
+  (`tb_uart0_tx_ready` 0), a 64-byte window log fetched exactly four words and held there for 2000
+  cycles with `tb_uart0_log_write_stalled` 1; with the divisor restored eight words were fetched in
+  all and the parked characters plus the 64 log bytes arrived in order
+|`CHK-LOGENG-REGION-CLAMP-512K` |With `LOG_REGION_SIZE` read back 0xFFFFF, slot 1's one fetch went
+  to base + 0x8000 and its word came back through the UART; `LOG_CTRL[1]` cleared and
+  `INTR_STATUS` read 0
+|===
+
+*Pass Criteria*: `CHK-LE-THR-ARBITER-MERGE`, `CHK-LOGENG-RDATA-FIFO-DEPTH-4`,
+`CHK-LOGENG-REGION-CLAMP-512K` hold after their compares and every sequence assert holds. Enrolled
+in: `all`, `hosted`, `uart`.
+
+*Scope limit*: Wrapper 0 only. The arbiter leg interleaves the CPU writes at the receiver's pace;
+a CPU write issued in the same cycle as an engine write is not forced. The clamp leg fetches one
+slot; the slots above the responder's 64 KiB memory are not fetched.
+
+'''''
+
+
 [[sec-466-smc_efuse_map_sep_write_test]]
 ===== 466 `smc_efuse_map_sep_write_test`
 
@@ -43698,9 +43809,11 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * Divisors 1 and 8 x the 16 WLS/STB/PEN/EPS combinations (stick parity excluded), 32 in all, with `MCR.LOOP` clear so the frames leave on pad 12 and enter on pad 11. Under `MCR.LOOP` the transmitter and receiver share one setting and every combination deframes the same byte, so the divisor, stop-bit and parity axes would be unfalsifiable there.
-* TX pad: three queued bytes are decoded at simulation-time resolution on `tb_uart0_tx_from_dut` -- start bit, every data bit, parity bit and stop bit sampled at their bit centres -- and the shortest interval between consecutive start bits is compared with `(1 + data + parity + stop) x 16 x (DLL + 1)` `clk_periph_i` periods, with the stop count 1, 2 or 1.5 per `LCR.STB` and the word length and parity polarity per `LCR.WLS`/`LCR.PEN`/`LCR.EPS` (`uart_16550_main.rdl`). Each axis moves that measurement, so a DUT ignoring `DLL`, `STB`, `PEN` or `EPS` fails.
+* TX pad: three queued bytes are decoded at simulation-time resolution on `tb_uart0_tx_from_dut` -- start bit, every data bit, parity bit and stop bit sampled at their bit centres -- and the shortest interval between consecutive start bits is compared with `(1 + data + parity + stop) x 16 x (DLL + 1)` `clk_periph_i` periods, with the stop count 1 or 2 per `LCR.STB` (`uart_16550_main.rdl`: "The transmitter always sends 2 stop bits", 5-bit words included, so the two 5-bit `STB` = 1 formats are pinned to 2 and a 1.5-stop-bit frame, half a bit shorter, fails) and the word length and parity polarity per `LCR.WLS`/`LCR.PEN`/`LCR.EPS`. Each axis moves that measurement, so a DUT ignoring `DLL`, `STB`, `PEN` or `EPS` fails.
 * RX pad: one frame in the same format is driven on `tb_uart0_rx_ext_drive` and read back through `RBR` with `LSR` clear of OE/PE/FE/BI.
 * Error detectors: at each divisor a frame with the wrong parity bit raises `LSR.PE` and a frame with a low stop bit raises `LSR.FE`, both cleared again after the character is popped, so the no-error compares rest on detectors shown to fire in the same run.
+* The second stop bit of a 5-bit word (`uart_16550_main.rdl` `LCR.STB`: "with 5-bit words the receiver checks only the first"): at each divisor a 5-bit `STB` = 1 frame driven with its first stop bit high and its second low is received with `LSR.FE` clear and the right byte, and the same frame as an 8-bit word raises `FE`. Characters the receiver starts on that low bit afterwards are logged, not compared.
+* Glitch rejection (`architecture.adoc`: the receiver "takes a majority of three consecutive samples, rejecting single-cycle glitches"): at divisor 1 (32 `clk_periph_i` per bit) a low pulse of one `clk_periph_i` is driven at each of the 32 offsets of data bit 3 of 0x5A, one frame per offset, and every frame reads back 0x5A with no LSR error. A pulse over the middle half of the same bit reads back with the bit cleared, which places the sample point inside the swept offsets, and a one-clock pulse on the idle line leaves `LSR` with no character and no error after two frame times.
 
 *Test Procedure*:
 
@@ -43716,13 +43829,17 @@ Drive `smc_uart_baud_word_parity_format_test_seq`: ungate the UART clock and ena
 |`CHK-UART-BAUD-FMT` |One per combination: the three TX pad frames decoded to the queued bytes masked to the word length with the parity bit matching `EPS`, the shortest start-to-start interval equals one frame of the programmed format within two baud ticks, no interval is shorter than a frame, and the RX pad frame read back exactly through `RBR` with no LSR error (`smc_uart_baud_word_parity_format_test_seq.py`)
 |`CHK-UART-FMT-FE-ASSERTS` |At each divisor a frame with a low stop bit sets `LSR.FE` with `DR`, and `FE` is clear after the pop (`smc_uart_baud_word_parity_format_test_seq.py`)
 |`CHK-UART-FMT-PE-ASSERTS` |At each divisor an 8E1 frame with the parity bit inverted sets `LSR.PE` with `DR`, and `PE` is clear after the pop (`smc_uart_baud_word_parity_format_test_seq.py`)
+|`CHK-UART-RX-GLITCH-REJECT` |32 frames at divisor 1, each with a one-`clk_periph_i` low pulse at a different offset of a data bit carrying a 1, all read back intact with no LSR error; the half-bit control pulse clears the bit; a one-clock pulse on the idle line starts nothing (`smc_uart_baud_word_parity_format_test_seq.py`)
+|`CHK-UART-STB5-SECOND-STOP-IGNORED` |At each divisor a 5-bit `STB` = 1 frame with a low second stop bit reads back with `DR` set, no PE/FE/BI and the driven byte; the 8-bit control raises `FE` (`smc_uart_baud_word_parity_format_test_seq.py`)
+|`CHK-UART-STB5-TX-STOP-LENGTH` |For the two 5-bit `STB` = 1 formats at each divisor the start-to-start interval equals `(1 + 5 + parity + 2) x 16 x (DLL + 1)` `clk_periph_i` within two baud ticks; 1.5 stop bits, 8 ticks shorter, is outside the tolerance (`smc_uart_baud_word_parity_format_test_seq.py`)
 |===
 
 
-*Pass Criteria*: `CHK-UART-BAUD-BASIC`, `CHK-UART-BAUD-FMT`, `CHK-UART-FMT-FE-ASSERTS`, `CHK-UART-FMT-PE-ASSERTS` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: `CHK-UART-BAUD-BASIC`, `CHK-UART-BAUD-FMT`, `CHK-UART-FMT-FE-ASSERTS`, `CHK-UART-FMT-PE-ASSERTS`, `CHK-UART-RX-GLITCH-REJECT`, `CHK-UART-STB5-SECOND-STOP-IGNORED`, `CHK-UART-STB5-TX-STOP-LENGTH` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 
 *Scope limit*: Stick parity is excluded from the format sweep; the 32 combinations cover divisors 1
-and 8 with the 16 WLS/STB/PEN/EPS settings only.
+and 8 with the 16 WLS/STB/PEN/EPS settings only. The glitch sweep runs at divisor 1 on one data
+bit; pulses two clocks wide are not driven.
 '''''
 
 [[sec-150-smc_uart_error_conditions_test]]
@@ -43894,7 +44011,7 @@ Drive `smc_uart_irq_sources_priority_test_seq`. Each checker below is a named co
 |`CHK-UART-IRQ-MAP-TIMEOUT` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-IRQ-PRI-FIFO_vs_LSR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-IRQ-PRI-LSR_vs_RDR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-IRQ-PRI-LSR_vs_TO` |Receiver Line Status and Reception Timeout forced together (with `IER.ERBFI`, the timeout's only enable); IIR reports the line-status id, the higher of the two in the RDL ranking
+|`CHK-UART-IRQ-PRI-LSR_vs_TO` |Receiver Line Status and Reception Timeout forced together through `ITR`, with `IER.ELSI` and `IER.ERBFI` set; the timeout has no `IER` enable (`uart_core.sv` requests it without one, and `IER` lists none), so `ERBFI` is written only to match the other cells; IIR reports the line-status id, the higher of the two in the RDL ranking
 |`CHK-UART-IRQ-PRI-RDR_vs_THRE` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-IRQ-PRI-THRE_vs_MODEM` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-IRQ-PRI-TO_vs_RDR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
@@ -44163,7 +44280,7 @@ draws nothing from the seed.
 * The IRQ is observed on `tb_uart_irq_combined[0]`, the slice of `peripheral_interrupts[21:18]` that `hw/sys/smc/doc/interrupts.adoc` (PLIC sources 274-277) gives the combined UART IRQ, UART error and log-engine interrupt of each instance.
 * Log engines 1-3 (UART1-3, addresses from the generated SMC map): `INTR_TEST` forcing of `LOG_FETCH_ERR` and `LOG_WRITE_ERR` with `INTR_ENABLE=0`, the written-1 clear and a 64-cycle re-read, with the two other engines required to stay 0x0.
 * On engines 1-3, each bit enabled, forced, masked and cleared: `INTR_STATUS` holds the bit while masked and clears on the written 1; the level of `tb_uart_irq_combined[N]` in each state is logged, not compared (LINKED-ISSUE SF-001, the combining function of the instance line is not in the pinned sources).
-* A real erroring fetch per engine 1-3 (`LOG_REGION_ADDR` at the I2C0 past-`SIZE` address `smc_log_engine_fetch_error_test` uses, UART in loopback so the write side drains) latches `LOG_FETCH_ERR` alone with `INTR_ENABLE=0`; `LOG_WRITE_ERR` is set through `INTR_TEST=0x10` because a real write-port error is not reachable on this bench (SF-039), and the two bits clear one written 1 at a time.
+* A real erroring fetch per engine 1-3 (`LOG_REGION_ADDR` at the I2C0 past-`SIZE` address `smc_log_engine_fetch_error_test` uses, UART in loopback so the write side drains) latches `LOG_FETCH_ERR` alone with `INTR_ENABLE=0`; `LOG_WRITE_ERR` is set through `INTR_TEST=0x10` here (the real write-port error is graded by `smc_log_engine_fetch_error_test`, `CHK-LOGENG-WRITE-ERR-REAL`), and the two bits clear one written 1 at a time.
 * One more erroring fetch per engine with only `INTR_ENABLE.LOG_FETCH_ERR` set on that engine: `INTR_STATUS` reads 0x01 there and 0x0 on the other two; `tb_uart_irq_combined[3:0]` before submission, latched and after the clear is logged (LINKED-ISSUE SF-001).
 * Coverage target (stimulus only): the log-engine register, wrapper and interrupt rows of engines 1-3.
 
@@ -44192,7 +44309,7 @@ draws nothing from the seed.
 |`CHK-LOGENG13-TEST-FORCE` |On engines 1-3 INTR_STATUS reads 0x01 after INTR_TEST=0x01 and 0x11 after INTR_TEST=0x10 with INTR_ENABLE=0x0, the other engines read 0x0, a written 0x11 clears it and it still reads 0x0 after 64 cycles
 |`CHK-LOGENG13-LINE-MASK` |INTR_STATUS keeps the bit with the enable cleared and reads 0x0 after the written bit; the line level in the enabled, masked and cleared states is logged (LINKED-ISSUE SF-001)
 |`CHK-LOGENG13-FETCH-ERR` |A fetch from the refusing address returns LOG_LEN to 0 and latches INTR_STATUS=0x01 on that engine only, with INTR_ENABLE=0x0
-|`CHK-LOGENG13-WRITE-ERR-TEST` |INTR_TEST=0x10 sets LOG_WRITE_ERR with INTR_ENABLE=0x0 and the written 0x10 clears it; a real write-port error is not reachable here (SF-039)
+|`CHK-LOGENG13-WRITE-ERR-TEST` |INTR_TEST=0x10 sets LOG_WRITE_ERR with INTR_ENABLE=0x0 and the written 0x10 clears it; the real write-port error is graded by `CHK-LOGENG-WRITE-ERR-REAL` (`smc_log_engine_fetch_error_test`)
 |`CHK-LOGENG13-PARTIAL-W1C` |With the fetch-latched bit 0 and the test-forced bit 4, INTR_STATUS reads 0x11, then 0x01 after the written 0x10, then 0x0 after the written 0x01
 |`CHK-LOGENG13-LINE-REAL` |After an erroring fetch with INTR_ENABLE=0x01, INTR_STATUS reads 0x01 on that engine and 0x0 on the others; `tb_uart_irq_combined[3:0]` before and after the clear is logged (LINKED-ISSUE SF-001)
 |`CHK-TIMEOUT-PATHS` |Every bounded wait of the engines 1-3 legs with its bound and last observed state; expiry fails the test
@@ -44886,7 +45003,9 @@ draws nothing from the seed.
 *Objective*: `THR` 0xA5 reaches pad 12 as one frame with `UART_EN` set, again after `UART_EN` is
 cleared and set, and with `UART_EN` clear the UART transmits while pad 12, with no select set and
 the register row's own data at 1, carries no frame and stays at output data 0 with its output
-enable 0.
+enable 0; with
+`UART_EN` clear the RTS, CTS and RX pads (13, 14, 11) are released from the UART and with it set
+they carry it.
 
 *Test Coverage*:
 
@@ -44907,8 +45026,29 @@ enable 0.
   fields read back the written values (compared, `gpio_intf.rdl`); the pad level equals core2pad
   within 64 clk_smc_i cycles after each write and on the first clk_smc_i rise after its read-back
   (compared, gpio_intf.rdl DATA_CTRL.interface_enable).
+* `uart_log_engine_ctrl.rdl` (`CTRL.UART_EN`: the LSIO request of the RX, TX, RTS and CTS pads;
+  while clear the UART keeps running and the pads follow the GPIO selection, so TX and RTS do not
+  reach the pins), `hw/ip/uart/log_engine/doc/index.adoc` (the control block drives `uart_en_o`
+  from `CTRL.UART_EN`) and `hw/ip/gpio/doc/architecture.adoc` (GPIO data and direction
+  selection: a hardware LSIO request outranks the register sources; with no request the pad has
+  output data 0, TX disabled and RX by `INPUT_BY_DEFAULT`): with `UART_EN` clear and `MCR.RTS` set,
+  `tb_core2pad_en_o[13]` and `tb_lsio_interface_select[13]` read 0 on every one of 64 `clk_smc_i`
+  cycles; with `UART_EN` set the pad-13 driver enables and carries the inverted bit (0 with
+  `MCR.RTS` 1, 1 with it 0), and clearing `UART_EN` releases it again. With `UART_EN` clear,
+  `MSR.CTS` reads the same with pad 14 driven low and high; with it set `MSR.CTS` follows the pad in
+  opposite polarity. With `UART_EN` clear a frame driven on pad 11 does not reach `RBR`; with it
+  set the same frame reads back with `LSR` clear of errors.
+* The level the UART's receiver and CTS input see while `UART_EN` is clear is not stated by the
+  documents: the `MSR.CTS` level and every character the receiver reports in that state are logged
+  as `OBS-UART-PADMUX-INPUT-LEVEL`, not compared.
 * `UART_EN` set again: the same `THR` write produces exactly one frame decoded as 0xA5, the
-  positive control that the stimulus and the pad decoder still work after the clear leg.
+  positive control that the stimulus and the pad decoder still work after the clear leg. Pad 12 is
+  held at 1 by the register row (`interface_enable`, `enable_rx_tx` and `core2pad` 1) from the start
+  of S5 until `UART_EN` is set again, and reads 1 at every `clk_smc_i` sample until the saved
+  `DATA_CTRL` is written back with `UART_EN` set (`hw/ip/gpio/doc/architecture.adoc`: the hardware
+  LSIO request outranks the register sources), so no fall of the line reaches the pad VIP before
+  the `THR` write: a receiver takes a fall as a start bit and folds a `THR` write within one frame
+  time of it into that frame.
 
 *Test Procedure*:
 
@@ -44935,10 +45075,28 @@ enable 0.
   on the first `clk_smc_i` rise after the read-back, repeat with `core2pad` 0, then write the saved
   `DATA_CTRL` back and
   read it; stamp S4 and print `CHK-UART-PADMUX-GPIO-LEVEL-MEASURED`.
-. Write `UART_EN` 1 and read it back; write `THR` 0xA5; capture the frame, poll `LSR` to idle and
-  wait one frame time; require one frame decoded as 0xA5; stamp S5 and print
+. With `UART_EN` still 0: write pad-12 `DATA_CTRL` with `interface_enable`, `enable_rx_tx` 1 and
+  `core2pad` 1, require the pad to read 1 within 64 `clk_smc_i` cycles and start the `clk_smc_i`
+  sampler of the pad, so the line stays at mark through the `UART_EN` toggles that follow (a fall
+  of the pad opens a frame in the pad VIP). Write `MCR.RTS` 1 and require `tb_core2pad_en_o[13]` and
+  `tb_lsio_interface_select[13]` 0 on 64 `clk_smc_i` cycles; write `UART_EN` 1, require
+  `tb_core2pad_en_o[13]` 1, `tb_core2pad_o[13]` 0 and the select 1 within 64 cycles, write
+  `MCR.RTS` 0 and require `tb_core2pad_o[13]` 1, write `UART_EN` 0 and require the driver off.
+  Drive pad 14 low and, 64 cycles later, read `MSR` twice; drive it high and read again; require
+  the same `CTS`; write `UART_EN` 1 and require `MSR.CTS` 1 with the pad low and 0 with it high
+  within 64 reads each; release the pad and write `UART_EN` 0. Reset the receive FIFO, drive one
+  8N1 frame of 0x3C on pad 11, wait one frame time and drain `RBR` (at most 40 reads), requiring
+  0x3C absent; write `UART_EN` 1, wait one frame time, reset the receive FIFO, drive the same frame
+  and require exactly one character 0x3C with `LSR` 0x61; write `UART_EN` 0. Stamp S5 and print
+  `CHK-UART-PADMUX-RTS`, `CHK-UART-PADMUX-CTS`, `CHK-UART-PADMUX-RX` and the measured
+  `OBS-UART-PADMUX-INPUT-LEVEL`.
+. Write `UART_EN` 1 and read it back, then write the saved pad-12 `DATA_CTRL` back and read it,
+  requiring `interface_enable`, `enable_rx_tx` and `core2pad` equal to the saved value; stop the
+  sampler and require every pad-12 sample since the S5 hold equal to 1 with no X/Z sample. Write
+  `UART_EN` 1 and read it back; write `THR` 0xA5; capture the frame, poll `LSR` to idle and wait
+  one frame time; require one frame decoded as 0xA5; stamp S6 and print
   `CHK-UART-PADMUX-FRAME-RECOVER`.
-. Write the saved `CTRL` and `CLOCK_GATE_CONTROL`, wait two `clk_smc_i` cycles, stamp S6, check
+. Write the saved `CTRL` and `CLOCK_GATE_CONTROL`, wait two `clk_smc_i` cycles, stamp S7, check
   the ordered fence and print `CHK-NONVAC`.
 
 *Checkers*:
@@ -44963,13 +45121,31 @@ enable 0.
   level equals `core2pad` within 64 `clk_smc_i` cycles after each write and on the first `clk_smc_i`
   rise after its read-back (compared, `gpio_intf.rdl` `DATA_CTRL.interface_enable`), and an X/Z
   sample fails
-|`CHK-UART-PADMUX-FRAME-RECOVER` |With `UART_EN` read back 1 again the same `THR` write yields
-  exactly one frame decoded as 0xA5 within 5000 us
-|`CHK-NONVAC` |Steps S1 to S6 ran in order with strictly increasing simulation-time stamps and the
-  five checker lines printed in order, each after its own step
+|`CHK-UART-PADMUX-RTS` |With `UART_EN` 0 and `MCR.RTS` 1, `tb_core2pad_en_o[13]` and
+  `tb_lsio_interface_select[13]` read 0 on all 64 cycles; with `UART_EN` 1 the pad-13 driver
+  enables and reads 0 with `MCR.RTS` 1 and 1 with it 0 within 64 cycles; with `UART_EN` 0 again
+  the driver is off within 64 cycles
+|`CHK-UART-PADMUX-CTS` |With `UART_EN` 0, `MSR.CTS` reads the same with pad 14 low and high; with
+  `UART_EN` 1 it reads 1 with the pad low and 0 with it high within 64 reads each
+|`CHK-UART-PADMUX-RX` |With `UART_EN` 0 a frame of 0x3C on pad 11 is absent from everything the
+  receiver reports; with `UART_EN` 1 the same frame reads back as exactly one character 0x3C with
+  `LSR` 0x61
+|`OBS-UART-PADMUX-INPUT-LEVEL` |Measured, not compared: the `MSR.CTS` level with `UART_EN` 0 and
+  the characters the receiver reported with `UART_EN` 0 (#3694)
+|`CHK-UART-PADMUX-FRAME-RECOVER` |Pad 12 reads 1 at every `clk_smc_i` sample from the S5
+  register hold through the `UART_EN` toggles, the `UART_EN` write and the `DATA_CTRL` restore
+  (compared; the saved `DATA_CTRL` reads back), and with `UART_EN` read back 1 again the same `THR`
+  write yields exactly one frame decoded as 0xA5 within 5000 us; a pad sample of 0 or X/Z, no
+  sample, another byte, no frame or a second frame fails
+|`CHK-NONVAC` |Steps S1 to S7 ran in order with strictly increasing simulation-time stamps and the
+  nine checker lines printed in order, each after its own step
 |===
 
-*Pass Criteria*: all checkers hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all checkers hold after their compares. The level the UART's inputs see with
+`UART_EN` clear is observed and is not part of the claim. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The level the UART's receiver and CTS input see with `UART_EN` clear is measured, not
+compared, because the documents do not state it (#3694).
 
 '''''
 
@@ -47531,10 +47707,12 @@ draws nothing from the seed.
 
 * Every other UART leaf in the package configures the UART the same way -- the FIFOs enabled, DMA mode 0, the receive trigger at one character and `MCR.LOOP` for the loopback -- so this leaf is the only one that moves three of the core's mode selectors: `FCR.FIFO_ENABLE` cleared, `FCR.DMA_MODE_SELECT` set, and `MCR.LINE_LOOPBACK` set.
 * `hw/ip/uart/uart_16550/doc/architecture.adoc` describes the two receive paths the 16550 has -- software reads "from RBR or FIFO" -- and `FCR.FIFO_ENABLE` resets clear. A character is left unread in the receive FIFO and the FIFOs are then turned off: `IIR.FIFOS_ENABLED` has to report `0x0`, the encoding `uart_16550_main.rdl` gives that state, and `LSR.DR` has to read clear, because the character parked in the FIFO is no longer on the path software reads. Two further characters are then sent one at a time and compared, which is the only traffic in the package that goes through the receiver buffer register rather than the FIFO.
-* The Programmer's Guide UART FIFO section (`doc/programmer/src/smc-programming.adoc`) says "Set `FCR.DMA_MODE_SELECT` only to use mode-1 DMA service indications" and `uart_16550_main_wo.rdl` gives FCR a `DMA_MODE_SELECT` bit. With DMA mode 1 selected and `FCR.RCVR_TRIGGER` at `0x1`, which that RDL names as four characters, one character is sent and left unread. Its trigger level is not reached, so the only interrupt that can arise is the reception timeout `architecture.adoc` fixes at four character times and `uart_16550_main.rdl` names id `0x6`; IIR has to report exactly that, and none pending once the character is read out. Four characters are then sent and read back in order, which is the same mode with the trigger level reached instead of timed out.
+* The Programmer's Guide UART FIFO section (`doc/programmer/src/smc-programming.adoc`) says "Set `FCR.DMA_MODE_SELECT` only to use mode-1 DMA service indications" and `uart_16550_main_wo.rdl` gives FCR a `DMA_MODE_SELECT` bit. With DMA mode 1 selected and `FCR.RCVR_TRIGGER` at `0x1`, which that RDL names as four characters, one character is sent and left unread. Its trigger level is not reached, so the only interrupt that can arise is the reception timeout `architecture.adoc` fixes at four character times and `uart_16550_main.rdl` names id `0x6`; IIR has to report exactly that, and none pending once the character is read out. Four characters are then sent and read back in order, which is the same mode with the trigger level reached instead of timed out, and IIR has to report the Received Data Ready id for that. On wrapper 0 two characters are queued in each mode: `hw/ip/uart/uart_16550/doc/interface.adoc` (DMA Interface) has `txrdy_o` "configurable through FIFO control modes", so `tb_uart0_tx_ready` has to read one level on every LSR read with THRE clear in mode 1 and a different level in mode 0; the levels themselves are logged (the meaning of `txrdy_o` is the open question of #3647).
 * The Programmer's Guide UART section (`doc/programmer/src/smc-programming.adoc`): "With `MCR.LINE_LOOPBACK` set, the modem inputs are routed straight back out to the modem outputs and all four `MSR` level bits read 0." The leaf sets it and requires those four bits to read 0. The receiver input is held idle in that mode, so a character written into THR has to be transmitted without ever being received: the leaf polls until `LSR.TEMT` reports the transmitter drained and requires `LSR.DR` clear on every read up to that point, which is a bound the DUT sets rather than a fixed wait.
 * Still in line loopback, the divisor is slowed and a burst longer than the SMC UARTs' 32-entry transmit FIFO (`hw/sys/smc/doc/periphs.adoc`, peripheral parameter table; `hw/ip/uart/uart_16550/doc/index.adoc`) is written into THR without polling, so the transmit FIFO reaches its full condition while the transmitter is still draining. What the leaf checks is what the register map exposes: `LSR.THRE` clear straight after the burst, so the FIFO is holding characters, and `LSR.TEMT` and `LSR.THRE` both set once it has drained. The full flag is not a register field and is not claimed.
 * Line loopback runs on wrapper 0 only. That mode substitutes the receive pin onto the transmit pin, and `hw/sys/smc/dv/tb/tb_top.sv` drives only UART0's receive pad -- idle high -- unless `+smc_uart_cross_3to0` shorts the pairs, so wrapper 0 is the only one where the substituted pin has a defined value. The other two modes use `MCR.LOOP`, which keeps every character inside the UART, and run on all four wrappers.
+* With the FIFOs still off, a character is sent and seen in the receiver (`LSR.DR`) but left unread, then a second is sent: `architecture.adoc` ("an unread character can be overwritten in RBR") and `uart_16550_main.rdl` (`LSR.OE` "set only in FIFO mode") have the second replace the first with `OE` clear, so `LSR` reports data with `OE` clear on every read of the wait, `RBR` returns the second character and `LSR.DR` is clear afterwards.
+* The reception timeout, timed on the raw interrupt line. `architecture.adoc` puts it at "roughly four character times" of unchanged occupancy and "not gated by IER"; `uart_16550_main.rdl` lists no `IER` enable for it. With the FIFOs on, `IER` written 0 and the trigger at four characters, one character is sent in loopback at divisor 15 and `tb_uart_irq_raw[N]` is sampled every `clk_smc_i`: it rises four character times after the character arrived (the THR write plus one frame), within two and a half bit times; at that moment `IER` reads 0 and `IIR` reports the timeout id pending; the `RBR` read drops the line and `IIR` reports none pending.
 * Every character the legs send is distinct and the sequence fails if they are not, so a character one leg left behind cannot be read as the character another leg sent. The UART is returned to its reset configuration on each wrapper afterwards.
 
 *Test Procedure*:
@@ -47547,15 +47725,20 @@ Drive `smc_uart_core_mode_select_test_seq`. Each checker below is a named compar
 |===
 |Checker |Description
 |`CHK-UART-RBR-PATH` |On every wrapper FCR.FIFO_ENABLE was written clear with a character unread in the receive FIFO, IIR reported the FIFOs off and LSR stopped reporting received data, and the characters sent with the FIFOs off came back out of the receiver buffer register unchanged before the FIFOs were enabled again and IIR reported them on
-|`CHK-UART-DMA-MODE-1` |On every wrapper FCR selected DMA mode 1 with the receive trigger at four characters, and every character sent in that mode came back in order, both below the trigger level and with it reached
+|`CHK-UART-DMA-MODE-1` |On every wrapper FCR selected DMA mode 1 with the receive trigger at four characters, and every character sent in that mode came back in order, below the trigger level with the timeout id and with it reached with the Received Data Ready id; on wrapper 0 `tb_uart0_tx_ready` (`uart_txrdy_o`) read one level on every LSR read with THRE clear while two characters were queued in mode 1 and a different level in mode 0
 |`CHK-UART-RX-TIMEOUT` |On every wrapper a single character left unread below the trigger level made IIR report an interrupt pending with the Reception Timeout id, the only source that can be pending below the trigger, and none pending once that character was read out
-|`CHK-UART-LINE-LOOPBACK` |With MCR.LINE_LOOPBACK set on wrapper 0 all four MSR level bits read 0 as the programming guide requires, a character written into THR was transmitted to completion without the receiver ever reporting data, and a burst longer than the transmit FIFO left LSR reporting the holding register non-empty and then drained to both TEMT and THRE set
+|`CHK-UART-RBR-OVERWRITE-NO-OE` |On every wrapper with the FIFOs off the first character was seen in the receiver (LSR.DR) and left unread, then the second was sent: LSR reported data with OE clear on every read, RBR returned the second character and LSR reported no data afterwards
+|`CHK-UART-RX-TIMEOUT-4CHAR` |On every wrapper with IER 0 the raw interrupt line rose four character times after the character arrived (THR write plus one frame at divisor 15), within 2.5 bit times
+|`CHK-UART-RX-TIMEOUT-IER-INDEPENDENT` |On every wrapper, with the raw line high, IER read 0 and IIR reported the Reception Timeout id pending; the RBR read dropped the line and left IIR with none pending
+|`CHK-UART-LINE-LOOPBACK` |On wrapper 0 all four MSR level bits read 1 under MCR.LOOP with DTR, RTS, OUT1 and OUT2 set, and with MCR.LINE_LOOPBACK set and the same outputs all four read 0 as the programming guide requires, a character written into THR was transmitted to completion without the receiver ever reporting data, and a burst longer than the transmit FIFO left LSR reporting the holding register non-empty and then drained to both TEMT and THRE set
 |===
 
-*Pass Criteria*: `CHK-UART-RBR-PATH`, `CHK-UART-DMA-MODE-1`, `CHK-UART-RX-TIMEOUT`, `CHK-UART-LINE-LOOPBACK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-UART-RBR-PATH`, `CHK-UART-DMA-MODE-1`, `CHK-UART-RX-TIMEOUT`, `CHK-UART-LINE-LOOPBACK`, `CHK-UART-RBR-OVERWRITE-NO-OE`, `CHK-UART-RX-TIMEOUT-4CHAR`, `CHK-UART-RX-TIMEOUT-IER-INDEPENDENT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The transmit-FIFO full flag is not a register field and is not claimed; only
-`LSR.THRE` clear after the burst and `TEMT` and `THRE` set after the drain are checked. Line
+`LSR.THRE` clear after the burst and `TEMT` and `THRE` set after the drain are checked. The
+transmit-ready indication is observed on wrapper 0 only (`tb_uart0_tx_ready`); `rxrdy_o` is
+unconnected in the SMC and not probed. Line
 loopback runs on wrapper 0 only, the one wrapper whose receive pad the bench drives to a defined
 value.
 
@@ -50472,7 +50655,7 @@ character arrives after the divisor goes to 0 are recorded.
 
 *Source Module*: `smc_log_engine_fetch_error_test`
 
-*BFM / Model*: output-fabric responder with `tb_output_axi_resp_hold` for the starved leg; the log engine on UART wrapper 0 fetches from an address inside the I2C0 instance's stride but past its `SIZE`, which the I2C wrapper refuses (the decode `smc_deadspace_decode_test` holds it to); observation on `INTR_STATUS` and `tb_uart_irq_combined[0]`
+*BFM / Model*: output-fabric responder with `tb_output_axi_resp_hold` for the starved leg; the log engine on UART wrapper 0 fetches from an address inside the I2C0 instance's stride but past its `SIZE`, which the I2C wrapper refuses (the decode `smc_deadspace_decode_test` holds it to), and writes to the last word of its own UART window, above the last register, which the UART's main register block refuses; observation on `INTR_STATUS` and `tb_uart_irq_combined[0]`
 
 *Run mode*: one testlist entry in `testlists/uart.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `uart`; seed 1; tool Verilator (cocotb).
@@ -50480,7 +50663,7 @@ character arrives after the divisor goes to 0 are recorded.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Make a log fetch come back with an error. The other log-engine leaves raise `LOG_FETCH_ERR` only through `INTR_TEST`.
+*Objective*: Make a log fetch, and then a log write, come back with an error. The other log-engine leaves raise `LOG_FETCH_ERR` and `LOG_WRITE_ERR` only through `INTR_TEST`.
 
 *Test Coverage*:
 
@@ -50488,7 +50671,8 @@ draws nothing from the seed.
 * `INTR_ENABLE.LOG_FETCH_ERR` is set. The wrapper's interrupt line must be low before the error and high after it. The status bit must then clear on its written one, and the line must drop. The line also carries the 16550's interrupt, so the UART is set up with its interrupts disabled.
 * The error does not stop the engine: the fetched word is still handed to the write side and the log runs to its end, and only then does the engine clear the element's `LOG_CTRL` length, which retires its arbiter request. The leaf waits for that hardware clear, reads all eight bytes of the log back from the looped-back UART (`LSR.TEMT` reports the transmitter empty before the receiver has the last byte, so the drain runs on the count and then requires the transmitter idle), and only then disables the engine. Disabling the engine or zeroing the length first withdraws a request the arbiter has not granted, which the vendored `prim_arbiter_tree` forbids (`ReqStaysHighUntilGranted0_M` and `LockArbDecision_A`, `prim_arbiter_tree.sv`); a simulator that evaluates those assertions fails the run.
 * A starved write side. The engine fetches one word at a time into a FIFO that runs ahead of the UART, so from local memory the next word is always waiting when a word's last byte leaves. A sixteen-byte log is placed in the output-fabric window, and the output responder's R channel is held once the first fetch has returned. The engine writes that word's eight bytes and then waits for a word its FIFO does not have. When all eight bytes have come back through the loopback, exactly one fetch may have returned. The hold is then released, and all sixteen bytes must arrive in order with no error status.
-* `LOG_WRITE_ERR` has no bus to come from. The engine's write port reaches only its own wrapper's UART register blocks (`uart_log_engine_wrap.sv`), which answer every address without error. Its status is set instead through `INTR_TEST` (`sw = w`, `singlepulse`), with only `INTR_ENABLE.LOG_WRITE_ERR` set. The status must set alone, the interrupt line must rise, and the written one must clear the status and drop the line.
+* A refused write. The engine's write port reaches its own wrapper's UART register port (`uart_log_engine_wrap.sv`), whose main register block answers an offset above its last register, `ITR` at 0x24 (`uart_16550_main.rdl`), with an error response. `LOG_WRITE_ADDR` is pointed at the last word of the 64-byte UART window and one slot of a readable SPM region is submitted: `INTR_STATUS.LOG_WRITE_ERR` must set alone, the line must rise with only its enable set, the engine must still run the log to its end and clear `LOG_CTRL[0]` (`architecture.adoc`: the FSMs advance on error responses), the looped-back UART must receive nothing, and the written one must clear the status and drop the line.
+* `INTR_TEST` sets the same write status without a bus error (`sw = w`, `singlepulse`), with only `INTR_ENABLE.LOG_WRITE_ERR` set. The status must set alone, the interrupt line must rise, and the written one must clear the status and drop the line.
 
 *Test Procedure*:
 
@@ -50496,8 +50680,9 @@ draws nothing from the seed.
 . Set up UART0 as the transfer leaf does, and point the engine's region at the refusing address.
 . Error injection. Point: the log engine's fetch port, with `LOG_REGION_ADDR` at the refusing address of step 1. Kind: one `LOG_CTRL` element asking for a log from an address the I2C wrapper refuses. Expected response: `INTR_STATUS.LOG_FETCH_ERR` set, `LOG_WRITE_ERR` not set, and the wrapper's interrupt line low before the error and high after it.
 . Wait for `LOG_CTRL[0]` to clear, read the eight bytes back from the UART, stop the engine, and clear the status.
+. Error injection. Point: the log engine's write port, with `LOG_WRITE_ADDR` at UART window offset 0x3C and `INTR_ENABLE.LOG_WRITE_ERR` set. Kind: one `LOG_CTRL` element asking for an eight-byte log from a readable SPM word, every write of which the UART's main register block refuses. Expected response: `INTR_STATUS.LOG_WRITE_ERR` set alone, the line high, `LOG_CTRL[0]` cleared by hardware, `LSR.DR` clear, and the written one clearing the status and dropping the line.
 . Error injection. Point: the output-fabric responder's R channel (`tb_output_axi_resp_hold`). Kind: the R channel held once the first fetch of a sixteen-byte log from the output-fabric window has returned, starving the engine's write side. Expected response: the first word's eight bytes come back through the loopback with exactly one fetch returned, and after the release all sixteen bytes arrive in order with no error status. Open the outbound filter and preload two words in the window first; read eight bytes from the UART and check that one fetch returned, release the hold, read the other eight, and compare all sixteen.
-. Error injection. Point: `INTR_TEST.LOG_WRITE_ERR`, with only `INTR_ENABLE.LOG_WRITE_ERR` set. Kind: the write-error status forced through `INTR_TEST`; the engine's write port has no bus that can refuse it. Expected response: the status sets alone, the line rises, and the written one clears the status and drops the line.
+. Error injection. Point: `INTR_TEST.LOG_WRITE_ERR`, with only `INTR_ENABLE.LOG_WRITE_ERR` set. Kind: the write-error status forced through `INTR_TEST`, with no bus error. Expected response: the status sets alone, the line rises, and the written one clears the status and drops the line.
 
 *Checkers*:
 
@@ -50507,14 +50692,14 @@ draws nothing from the seed.
 |`CHK-LOG-ENGINE-FETCH-ERR` |A refused fetch set `LOG_FETCH_ERR` alone and raised the interrupt line with the interrupt enabled; the engine still finished the log, all eight bytes of the errored word reaching the looped-back UART, and cleared `LOG_CTRL[0]`, and the status cleared on its written one with the line dropping
 |`CHK-LOG-ENGINE-STARVED-FETCH` |With the second fetch held until the first word's bytes had left, a sixteen-byte log from the output-fabric window still reached the UART complete and in order, with no error status
 |`CHK-LOG-ENGINE-WRITE-ERR-TEST` |`INTR_TEST.LOG_WRITE_ERR` set the write status alone, which raised the line with only its interrupt enabled; its written one cleared it and the line dropped
+|`CHK-LOGENG-WRITE-ERR-REAL` |With `LOG_WRITE_ADDR` at UART window offset 0x3C, an eight-byte log from a readable region set `LOG_WRITE_ERR` alone and raised the line with only its enable; `LOG_CTRL[0]` cleared, the looped-back UART received nothing, and the written one cleared the status and dropped the line
 |===
 
 *Pass Criteria*: every checker holds after their compares and every sequence assert holds.
 Enrolled in: `all`, `hosted`.
 
-*Scope limit*: `LOG_WRITE_ERR` has no bus to come from, since the engine's write port reaches only
-its own wrapper's UART register blocks, which answer every address without error; its status is set
-through `INTR_TEST` instead.
+*Scope limit*: The refused write is an unmapped offset of the UART's main register block; a write
+refused at a mapped register is not driven, since none refuses.
 
 '''''
 
@@ -54347,8 +54532,6 @@ in <<smc-deferred-disposition>>.
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
 |`smc_octs_sanity_test` carries an OCTS name but drives the AVSBus status CSR path and the sideband observability probe |Its PASS is evidence for the AVS status window decode and the bench sideband probes, not for any OCTS register or pad; its protocol-VIP record is booked as a proxy. OCTS is covered by `smc_octs_dual_sync_test` (`dual`) and `smc_fw_octs_p0_primary_test` (`fw`) |Rename the leaf to what it drives, or give it OCTS stimulus and re-review the card
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
-|UART0 transmits two stop bits for a 5-bit word with `LCR.STB` set, where `uart_16550_main.rdl` describes 1.5 |`smc_uart_baud_word_parity_format_test` measures the frame length on the TX pad for every format; for the two 5-bit `STB = 1` formats it admits either 1.5 or 2 stop bits, records which one was measured, and so does not claim the RDL count for them (one stop bit still fails). Every other format is held to the RDL count |Fix the transmitter or the RDL description, then drop the admitted alternative so the two formats are held to one count
-|`INTR_STATUS.LOG_WRITE_ERR` has no firmware-reachable stimulus in this wrap |The log-write AXI-Lite master targets the wrapper's own `uart_16550` block, which ties write-error to 0 and answers every write OKAY. `smc_fw_uart_log_engine_boundary_backpressure_test` covers length and TX backpressure only; `INTR_TEST.LOG_WRITE_ERR` proves the interrupt plumbing, not error detection |A bench-side fault injector on the log-write AXI-Lite B channel
 |A force-mode CPU reset withdraws the R beat the CPU is presenting to the front-port demux without `ready` (`cocotb/seq_lib/README_cpu_isolate_flush.md`) |`smc_cpu_l2_read_wedge_test` reaches that state on purpose, and the front-port R arbiter's request-stability assertions (`rr_arb_tree` `req1` and `lock_req`) report the withdrawal on the reset cycle. The leaf passes `+smc_front_port_r_arb_assertoff` and `tb_top` holds off that one arbiter instance's assertions for that leaf only; every other leaf keeps them, the leaf's five checkers are unchanged, and the two CPU-port AXI protocol checkers of `tb_top` are held off with the same plusarg; the SYS_IN protocol checker is not, and on both simulators it reports the stale R the isolate flush leaves on SYS_IN (next row) |A CPU reset cannot preserve a beat the fabric side has stopped accepting, and the design owner records this as a limitation of force mode rather than a defect (#2449, closed as not planned). Re-arm the checks if force mode ever holds or flushes the beat under `ready`
 |After the force-mode CPU reset the isolate flush discards the CPU's stale read response above the demux, and an R with no open AR appears on SYS_IN |`smc_cpu_l2_read_wedge_test` fires `u_sys_in_axi_sva` and `u_filtered_sys_axi_sva` `OCAH_AXI_R_NOT_BEFORE_AR` / `OCAH_AXI_R_ID_OUTSTANDING` on both simulators; on Verilator the first fire stops the simulation before the leaf's later checks run, on VCS the leaf's own `CHK-CPU-ISO-FLUSH-STALE-R-DISCARDED` records that the bench absorbs the beat |Design-owner ruling on whether a discarded response may reach SYS_IN. #2318 reports that beat (the demux forwards the R the flush cleared) and is closed as a duplicate of #2449, whose ruling covers the withdrawal at the front port and not the beat on SYS_IN; until that ruling is extended or the beat is held, the leaf stays RED and is not masked
 |The cocotb AXI master drives the write strobes of a narrow FIXED burst on rotating byte lanes |`smc_sep_in_axi_shape_test` and `smc_axi_random_stress_test` are RED on VCS on `OCAH_AXI_W_STRB_IN_LANES` from the inbound and CPU front-port checkers; the defect is in the bench master, not in the SMC |Pull request #3448 fixes the master; both leaves are GREEN with it, and neither is masked

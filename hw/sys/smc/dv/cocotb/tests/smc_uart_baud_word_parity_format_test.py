@@ -21,8 +21,11 @@ class smc_uart_baud_word_parity_format_test(smc_base_test):
         "CHK-UART-BAUD-FMT",
         "CHK-UART-FMT-FE-ASSERTS",
         "CHK-UART-FMT-PE-ASSERTS",
+        "CHK-UART-RX-GLITCH-REJECT",
+        "CHK-UART-STB5-SECOND-STOP-IGNORED",
+        "CHK-UART-STB5-TX-STOP-LENGTH",
     )
-    min_evidence = 4
+    min_evidence = 7
 
     auto_protocol_vip = False
 
@@ -32,6 +35,9 @@ class smc_uart_baud_word_parity_format_test(smc_base_test):
         assert seq.combos_ok == 32, f"expected 32 combos got {seq.combos_ok}"
         assert len(seq.frame_lengths_ps) == 32, "not every combo measured its frame length"
         assert seq.pe_asserted and seq.fe_asserted, "PE/FE error controls did not assert"
+        assert seq.stb5_tx_cells == 4, f"expected 4 5-bit STB=1 TX cells got {seq.stb5_tx_cells}"
+        assert seq.stb5_rx_legs == 2, f"expected 2 second-stop-bit legs got {seq.stb5_rx_legs}"
+        assert seq.glitch_frames == 32, f"expected 32 glitch frames got {seq.glitch_frames}"
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
@@ -43,6 +49,8 @@ class smc_uart_baud_word_parity_format_test(smc_base_test):
             proxy=False,
             details=(
                 f"baud/format combos={seq.combos_ok} decoded on the TX pad and read back from "
-                f"the RX pad; PE/FE asserted at both divisors"
+                f"the RX pad; PE/FE asserted at both divisors; 5-bit STB=1 TX frames pinned to "
+                f"2 stop bits and the low second stop bit ignored on receive; "
+                f"{seq.glitch_frames} single-clock glitch frames read back intact"
             ),
         )
