@@ -18,8 +18,8 @@ for the image pins and the checker goldens.
 Write responses. No text states the bus response of a write to a set-only
 shadow row, so the set-only rows log it: ``OBS-SETONLY-CLEAR-RESP`` for each
 write-0 and ``OBS-SETONLY-SET-RESP`` for each set-1 write, and no check reads
-either record. ``CTRL-WR0-RESP`` fails the leaf when a write-0 is not issued or
-gets no response. The ``LOCK`` cells and the writable rows keep the OKAY grade
+either record. ``CTRL-WR0-RESP`` fails the leaf when a write-0 is not issued; a
+write that gets no B response fails the leaf at the bus timeout of the access. The ``LOCK`` cells and the writable rows keep the OKAY grade
 of the register driver.
 """
 
@@ -54,7 +54,7 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
         code = await self._write(shadow, field, field.drive_word(0), set_only=set_only)
         self.chk.ctrl(
             "WR0-RESP",
-            code is not None and code != -1,
+            code is not None,
             step=step,
             field=name,
             word=word,

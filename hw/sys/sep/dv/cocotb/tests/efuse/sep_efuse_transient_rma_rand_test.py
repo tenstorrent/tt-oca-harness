@@ -54,7 +54,7 @@ matched is refused (a control of the open refusal, ``role=control``); with
 RMA_CHIPLET matched it lands. The bus response of the go write of each refused
 program is not graded: no specification text states the response of a go write
 that the token gate refuses. OBS-IF-RMA-REQ-ERR logs, after each refused program,
-the response code (``go_resp``, -1 for no response), the interface status word
+the response code (``go_resp``), the interface status word
 with ``efuse_req_error``, ``efuse_program_addr_error`` and
 ``efuse_read_addr_error``, and ``EFUSE_PROGRAM_CTRL`` with its busy, done and
 status bits, as the refused program leaves them W clocks after the go and
@@ -442,8 +442,9 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         returned (logged, not graded) and cleared before the direct read.
 
         With ``go_by_readback`` the go write does not grade its response, and
-        ``go_resp`` returns its code (-1 for no response); otherwise a go write
-        that is not OKAY fails the leaf and ``go_resp`` is None.
+        ``go_resp`` returns its code; otherwise a go write that is not OKAY fails
+        the leaf and ``go_resp`` is None. A go write that gets no B response
+        fails the leaf at the bus timeout of the access.
         """
         await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, data=0, go=0))
         mark = self.shim.mark()
@@ -894,7 +895,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         ref1 = await self._program(_LC_BIT1, go_by_readback=True)
         go1 = self._go_issued(1, _LC_BIT1, ref1)
         self._obs_refused(1, ref1)
-        self.refused_programs += ref1["go_resp"] != -1
+        self.refused_programs += 1
         shadow_ref1 = await self.fd.rd(shadow_addr("LC_STATE"))
         self._leg_b_code(
             "b1.chp_end", await self._mismatch(CH_CHIPLET, "b1.chp_end"), CODE_MISMATCH
@@ -981,7 +982,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         self._reopen_window()
         go2 = self._go_issued(2, _LC_BIT2, ref2)
         self._obs_refused(2, ref2)
-        self.refused_programs += ref2["go_resp"] != -1
+        self.refused_programs += 1
         shadow_ref2 = await self.fd.rd(shadow_addr("LC_STATE"))
 
         # Bit 2 with RMA_CHIPLET matched: lands.
