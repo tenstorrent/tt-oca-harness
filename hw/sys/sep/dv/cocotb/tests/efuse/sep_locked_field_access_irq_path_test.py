@@ -60,10 +60,11 @@ readback equals the read before the write, and the sensed shadow word
 CTRL-SECTM-LATCH logs ``secure_tm_o`` after each sense and requires 0 before
 the control half and 1 before the deny half. A refused write is a write that a
 lock blocks: secure test mode adds a shadow write lock
-(hw/ip/efuse/doc/architecture.adoc:240, :402-403) on the fields that
+(hw/ip/efuse/doc/architecture.adoc:402-403) on the fields that
 otp_fuse_controller.adoc:178-180 lists. So otp_fuse_controller.adoc:110-112
 applies: CHK-LOCK-WR-RESP (``case=sectm``) grades its BRESP as SLVERR, and
-CHK-SECTM-IRQ grades that [33] rises during the refused write. No
+CHK-SECTM-IRQ grades a rise of [33]: low at the clock edge before each refused
+write and high at a clock edge during it. No
 specification sentence states the [33] level after the access, so that level
 is logged as OBS-SECTM-IRQ ``low_after`` and not graded. The [33] level during
 the contrast write that follows the refused writes is logged the same way.
@@ -174,9 +175,16 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         the staged word is the stored value. The probe does not use the bus
         read path, so a read path that returns 0 at secure_tm=1 cannot hide a
         refused write that landed in the shadow.
+
+        CHK-SECTM-IRQ grades a rise of [33]: the bit is low at the clock edge
+        before the refused write and high at a clock edge during it. The
+        refused writes run back to back, so a level that an earlier refused
+        write left high fails the check: the rise of this write cannot be told
+        from it.
         """
         word, payload = cfg.sectm_payload[name]
         before = (await drv.access(name, word_idx=word)).rdata
+        low_before = await self._irq_low()
         wr, irq = await self._access_watching(
             drv, name, word_idx=word, write=True, wdata=payload, locked=blocked
         )
@@ -218,11 +226,16 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
                 word,
                 resp_name(wr.resp_code),
             )
-            assert irq, (
-                f"CHK-SECTM-IRQ FAIL: {name}[{word}] refused write: [33] did not rise "
-                "during the write"
+            assert low_before and irq, (
+                f"CHK-SECTM-IRQ FAIL: {name}[{word}] refused write: [33] "
+                f"low_before={int(low_before)} high_during={int(irq)}, expected a rise "
+                "(low_before=1 high_during=1)"
             )
-            self.logger.info("CHK-SECTM-IRQ PASS: %s[%d] refused write: [33] pulsed=1", name, word)
+            self.logger.info(
+                "CHK-SECTM-IRQ PASS: %s[%d] refused write: [33] low_before=1 high_during=1",
+                name,
+                word,
+            )
             self.logger.info(
                 "OBS-SECTM-IRQ: %s[%d] refused write: [33] low_after=%d "
                 "(not graded: the level after the access is not stated)",

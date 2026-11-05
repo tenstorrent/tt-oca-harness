@@ -57,10 +57,10 @@ class SepAxiItem(uvm_sequence_item):
         # Some target windows acknowledge writes in a way cocotbext-axi cannot
         # classify, while a following readback still proves the write landed.
         self.allow_unverified_write_resp: bool = False
-        # Read-side counterpart, for a read whose error response the caller
-        # grades itself (a read-locked eFuse shadow). The scoreboard does not
-        # grade a non-OKAY response on such a read; the caller grades the
-        # response, the returned data and side effects. A timed-out read still fails
+        # Read-side counterpart, for a read whose outcome the caller grades
+        # itself (for example a read-locked eFuse shadow). The scoreboard does
+        # not grade a non-OKAY response on such a read; the caller grades the
+        # response or the data, and any side effects. A timed-out read still fails
         # unless allow_timeout is also set; the sequence then grades the wedge.
         self.allow_ungraded_read_resp: bool = False
         # When True a non-completing access (no response within the timeout) is

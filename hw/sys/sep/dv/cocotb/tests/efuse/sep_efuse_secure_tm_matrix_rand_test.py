@@ -32,7 +32,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     ``security_disable_o`` = 1 and an all-ones ``FEAT_CTRL``.
   CHK-STM-BLOCK-RESP  each strap-1 frontdoor target write completes with SLVERR:
                     secure test mode adds a shadow write lock on the four targets
-                    (``hw/ip/efuse/doc/architecture.adoc:240``, ``:402-403``;
+                    (``hw/ip/efuse/doc/architecture.adoc:402-403``;
                     ``otp_fuse_controller.adoc:178-180``), and a shadow write that a
                     lock blocks completes with SLVERR
                     (``otp_fuse_controller.adoc:110-112``).
