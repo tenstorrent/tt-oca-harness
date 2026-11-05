@@ -3,8 +3,8 @@
 """smu_axi_sep_lsu_initiator_stall_test - the SEP debug-module initiator on sep_out.
 
 DV-TESTCASE-CONTRACT: TC_G4B ANCHOR: smu_axi_sep_lsu_initiator_stall_test
-DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: d0773233ea122fa669324358a11984a38df6d41ec8ebedd389accff7dead3435
-DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 5 ENV: cocotb
+DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 6746d57a0dd59dc4bcb8de00e01509380a828ad3913daab88fc00210f720731b
+DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 6 ENV: cocotb
 
 The SEP hart runs the ICCM probe under the debug module and the debug module's
 system bus issues single accesses, both on sep_out, while the JTAG2AXI-programmed
