@@ -5231,7 +5231,7 @@ args = [
 # four-instruction ICCM stub the debug module writes, the debug module's system
 # bus reads the SMC aperture, and after the release alone every route takes a
 # fresh write and read before the one cold reset at the end. Access budget:
-# 12 JTAG2AXI, 58 debug-module and system-bus, 15 ext_in, 4 IC_RESET scans
+# 12 JTAG2AXI, 59 debug-module and system-bus, 15 ext_in, 4 IC_RESET scans
 # and one hold.
 [[tests]]
 name = "smu_axi_sep_reset_in_flight_test"
