@@ -7,8 +7,13 @@ DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 095844da013017357b99a6012cecc23f
 DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 5 ENV: cocotb
 
 The DTP IC_RESET TDR override holds sep_reset_n low once, with the SMC primary
-reset high, while ext_in reads and writes and a JTAG2AXI operation toward the
-SEP SRAM and a SEP CPU egress store toward a stalled ext_out are outstanding.
+reset high, while ext_in reads and writes toward the SEP SRAM, with BREADY and
+RREADY withheld, and a SEP CPU egress store toward a stalled ext_out are
+outstanding. The JTAG2AXI write and read toward the SEP SRAM issued before the
+hold complete before the fall: the bridge holds one operation and drives its
+own BREADY and RREADY, so the leaf prints INFO-CELL-NOT-DRIVABLE for that cell,
+and the response check on dtp_dbg covers the JTAG2AXI read issued during the
+hold and the operations after the release.
 The SEP-originated traffic is the ICCM stub of smu_sep_reset_inflight_test
 under the debug module, plus the debug module's system bus. The leaf samples
 the SEP-driven VALIDs on every clk_smu_i edge of the hold, holds every
