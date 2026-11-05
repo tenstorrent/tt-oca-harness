@@ -81,7 +81,8 @@ tests = ["sep_axi_smoke_test"]
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
 expected_count = 286
-# Listed longest first by the last full run. Place a new test by its runtime.
+# Listed longest first by measured leaf time. An entry with no measured time is
+# placed by its estimated time. Place a new test by its runtime.
 tests = [
     "sep_abr_absent_decerr_test",
     "sep_abr_mldsa87_verify_test",

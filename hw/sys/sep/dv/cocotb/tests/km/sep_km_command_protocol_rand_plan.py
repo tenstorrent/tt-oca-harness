@@ -116,9 +116,14 @@ REQUIRED_PLEN = {CMD_HW_VER: 0, CMD_ROM_VER: 0, CMD_SRAM_VER: 0, CMD_STAT: 0, CM
 # ROM always returns failure to CMD_SRAM_VER ("0x02 - CMD_SRAM_VER").
 CARRIER_CODE = {CMD_HW_VER: RC_SUCCESS, CMD_ROM_VER: RC_SUCCESS, CMD_SRAM_VER: RC_FAILURE}
 
+DEST_HMAC = 0x01  # DEST_VALID bit 0 ("0x24 - CMD_KEY_TRANSFER", requested engines)
 DEST_AES = 0x04  # DEST_VALID bit 2 ("0x22 - CMD_KEY_GENERATE", destination policy)
 SHRED_MASK = 0x80  # contract carrier: CMD_ENGINE_SHRED with mask 0x80
 OTP_LOCK_MASK = 0x001  # contract: CMD_OTP_READ_LOCK_COLD with mask 0x001
+# The lock bit D that the gate matrix requests ("0x28 - CMD_OTP_READ_LOCK_COLD",
+# bit encoding). No command that succeeds in this test sets it, so a gated
+# handler that ran shows it in OTP_READ_LOCK_COLD.
+OTP_GATED_MASK = 0x002
 
 # "Message Buffers": the receive buffer holds 257 words. 257 words with no
 # separator fill it without a complete frame (rx_buff_oflow).
@@ -526,7 +531,7 @@ class CommandProtocolPlan:
         load_key = _key(rng, rng.randrange(8, 17))
         load_dest = _dest_with(rng, DEST_AES)
         h_key = _key(rng, 8)
-        h_dest = _dest_with(rng, DEST_AES)
+        h_dest = _dest_with(rng, DEST_AES | DEST_HMAC)
         abr_dest = rng.randrange(1, 0x100)
         order = list(ADMITTED + GATED)
         rng.shuffle(order)

@@ -23,7 +23,9 @@ Checks:
                    argument of the earlier check; the twin with only the later fault
                    returns the later code
   CHK-NOCHG-VAULT  KM-KPV CTRL and KM-VALID key_valid read 0 after every rejection of
-                   the pair leg; each gated command leaves both taps unchanged
+                   the pair leg; each gated command leaves KM-KPV CTRL, KM-VALID and
+                   KM-CSR OTP_READ_LOCK_COLD unchanged, from a pre-state in which the
+                   handler of each key and OTP command would change one of them
   CHK-WRAP         both 8-bit counters roll over from 255 to 0
   CHK-CNT-RESET    rx_buff_oflow, a SEP flush and a warm reset restart both counters:
                    first response sequence 0, the old sequence refused with -3 arg 0,
@@ -335,6 +337,17 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         kv |= self.rd_known(self.dut.km_abr_sk_valid_o) << 8
         await RisingEdge(self.clk)
         return ctrl, kv
+
+    async def _otp_lock_cold(self) -> int:
+        """KM-CSR OTP_READ_LOCK_COLD[8:0], in the bit order of the CMD_OTP_READ_LOCK_COLD mask."""
+        await RisingEdge(self.clk)
+        await ReadOnly()
+        v = self.rd_known(self.dut.km_csr_otp_read_lock_cold_o)
+        await RisingEdge(self.clk)
+        return v
+
+    async def _gate_taps(self) -> tuple[int, int, int]:
+        return (*await self._vault(), await self._otp_lock_cold())
 
     async def _pic31(self) -> int:
         await RisingEdge(self.clk)
@@ -770,9 +783,9 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             pl.CMD_KEY_GENERATE: (g.gen_words - 1, g.gen_dest),
             pl.CMD_KEY_LOAD: (len(g.load_key) - 1, g.load_dest, *g.load_key),
             pl.CMD_KEY_REVOKE: (h,),
-            pl.CMD_KEY_TRANSFER: (h, pl.DEST_AES),
-            pl.CMD_ENGINE_SHRED: (pl.SHRED_MASK,),
-            pl.CMD_OTP_READ_LOCK_COLD: (pl.OTP_LOCK_MASK,),
+            pl.CMD_KEY_TRANSFER: (h, pl.DEST_HMAC),
+            pl.CMD_ENGINE_SHRED: (pl.DEST_AES,),
+            pl.CMD_OTP_READ_LOCK_COLD: (pl.OTP_GATED_MASK,),
             pl.CMD_ABR_SK_TRANSFER: (g.abr_dest,),
             pl.CMD_EXEC_ROM: (),
             pl.CMD_SRAM_LOAD_EXEC: (0,),  # FW_WORDS 0
@@ -799,11 +812,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         pre[pl.CMD_KEY_REVOKE] = rev.code
         xfer = await self._cmd(pl.CMD_KEY_TRANSFER, (load_h, pl.DEST_AES), f"{tag} pre transfer")
         pre[pl.CMD_KEY_TRANSFER] = xfer.code
-        # CHK-NOCHG-VAULT control: the AES key_valid bit (DEST_VALID bit 2) is set
-        # after a transfer to AES, so an unchanged tap in the matrix is not a dead tap.
-        _, kv_ctrl = await self._vault()
-        aes_valid = (kv_ctrl >> 2) & 1
-        shred = await self._cmd(pl.CMD_ENGINE_SHRED, (pl.SHRED_MASK,), f"{tag} pre shred")
+        shred = await self._cmd(pl.CMD_ENGINE_SHRED, (pl.DEST_HMAC,), f"{tag} pre shred")
         pre[pl.CMD_ENGINE_SHRED] = shred.code
         otp = await self._cmd(pl.CMD_OTP_READ_LOCK_COLD, (pl.OTP_LOCK_MASK,), f"{tag} pre otp")
         pre[pl.CMD_OTP_READ_LOCK_COLD] = otp.code
@@ -814,13 +823,12 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             raise AssertionError(f"[{tag}] the load of key h returned {hl.code} {_a(hl.arg)}")
         h = hl.arg & 0xFF
         self.logger.info(
-            "LOG %s pre-fault codes=%s gen_h=%d load_h=%d h=%d aes_key_valid=%d",
+            "LOG %s pre-fault codes=%s gen_h=%d load_h=%d h=%d",
             tag,
             {f"0x{c:02x}": v for c, v in pre.items()},
             gen_h,
             load_h,
             h,
-            aes_valid,
         )
 
         # Steps 24 and 25: the fault, then the old sequence and sequence 0.
@@ -854,6 +862,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
 
         # Step 26: the gate matrix.
         pays = self._gate_payloads(g, h)
+        _, kv_matrix, otp_matrix = await self._gate_taps()
         res: dict[int, _Resp] = {}
         changed: list[str] = []
         for c in g.order:
@@ -861,12 +870,13 @@ class sep_km_command_protocol_rand_test(sep_base_test):
                 res[c] = await self._cmd(c, pays[c], f"{tag} matrix 0x{c:02x}")
                 persist.append(await self._pic31())
                 continue
-            before = await self._vault()
+            before = await self._gate_taps()
             res[c] = await self._cmd(c, pays[c], f"{tag} matrix 0x{c:02x}")
-            after = await self._vault()
+            after = await self._gate_taps()
             if before != after:
                 changed.append(
                     f"0x{c:02x}:ctrl={before[0] ^ after[0]:#x}:kv={before[1]:#x}->{after[1]:#x}"
+                    f":otp_cold={before[2]:#x}->{after[2]:#x}"
                 )
 
         # Step 27: frame validation runs before the gate.
@@ -901,7 +911,10 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         st2 = await self._cmd(pl.CMD_STAT, (), f"{tag} CMD_STAT after ack")
         pic_after = await self._pic31()
 
-        # Step 29: the gate-clear twins, transfer before revoke.
+        # Step 29: the gate-clear twins, transfer before revoke. The OTP twin
+        # requests the lock bit of the pre-fault window, so OTP_GATED_MASK stays
+        # clear for the next gate leg.
+        clear_pays = {**pays, pl.CMD_OTP_READ_LOCK_COLD: (pl.OTP_LOCK_MASK,)}
         clear: dict[int, _Resp] = {}
         for c in (
             pl.CMD_KEY_GENERATE,
@@ -912,7 +925,8 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             pl.CMD_OTP_READ_LOCK_COLD,
             pl.CMD_ABR_SK_TRANSFER,
         ):
-            clear[c] = await self._cmd(c, pays[c], f"{tag} clear 0x{c:02x}")
+            clear[c] = await self._cmd(c, clear_pays[c], f"{tag} clear 0x{c:02x}")
+        _, kv_clear = await self._vault()
 
         # CHK-GATE: each key and OTP command returns -1 with no argument under the
         # gate; its success before the fault and after the acknowledge shows that
@@ -996,15 +1010,28 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             delay_clk=g.ack_delay,
         )
 
-        # CHK-NOCHG-VAULT: each gated command leaves KM-KPV CTRL and KM-VALID as they were.
+        # CHK-NOCHG-VAULT: each gated command leaves KM-KPV CTRL, KM-VALID and
+        # OTP_READ_LOCK_COLD as they were. At the matrix the AES key is valid (a
+        # shred of AES clears it), the HMAC key is not (a transfer of h to HMAC
+        # sets it) and OTP_GATED_MASK is clear (the lock sets it); the twins after
+        # the acknowledge set HMAC and clear AES on the same tap.
+        visible = (
+            kv_matrix & pl.DEST_AES
+            and not kv_matrix & pl.DEST_HMAC
+            and otp_matrix & pl.OTP_LOCK_MASK
+            and not otp_matrix & pl.OTP_GATED_MASK
+        )
+        live = kv_clear & pl.DEST_HMAC and not kv_clear & pl.DEST_AES
         self.chk.ok(
             "NOCHG-VAULT",
-            not changed and aes_valid == 1,
+            not changed and bool(visible) and bool(live),
             leg="gate",
             source=src,
             gated=len(pl.GATED),
             changed=changed[:4],
-            control_aes_key_valid=aes_valid,
+            matrix_key_valid=f"0x{kv_matrix:03x}",
+            matrix_otp_lock_cold=f"0x{otp_matrix:03x}",
+            control_clear_key_valid=f"0x{kv_clear:03x}",
         )
 
         # CHK-RECOVER.

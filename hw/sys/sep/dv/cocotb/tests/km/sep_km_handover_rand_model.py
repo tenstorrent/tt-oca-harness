@@ -511,6 +511,7 @@ def grade_sram(
     wmap: list[int],
     jump_seen: int,
     wmap_end: list[int],
+    clear_seen: int,
 ) -> tuple[bool, Fields]:
     """CHK-HO-SRAM. The store and violation readbacks are logged with control=1.
 
@@ -518,15 +519,17 @@ def grade_sram(
     region from the handover command to the first fetch at the image entry, so
     no store of the image counts. The scramble writes every word of every
     unlocked region, so each unlocked region reads REGION_WORDS. No capture
-    (``jump_seen`` 0) fails the check. Locked regions are logged only;
-    ``wmap_end``, KM-WMAP at the end of the report, is logged as a control.
+    (``jump_seen`` 0) fails the check, and so does a capture flag that reads 1
+    after the clear at the baseline of the pass (``clear_seen``), because the
+    capture of an earlier pass would then be graded. Locked regions are logged
+    only; ``wmap_end``, KM-WMAP at the end of the report, is logged as a control.
     """
     locked_regions = bin(exp.sram_lock).count("1")
     min_unlocked = SRAM_WORDS - REGION_WORDS * locked_regions
     unlocked = [r for r in range(N_REGIONS) if not (exp.sram_lock >> r) & 1]
     short = [r for r in unlocked if wmap[r] != REGION_WORDS]
     words_unlocked = sum(wmap[r] for r in unlocked)
-    ok = rep.sram_lock == exp.sram_lock and jump_seen == 1 and not short
+    ok = rep.sram_lock == exp.sram_lock and clear_seen == 0 and jump_seen == 1 and not short
     own_bit = 1 << rep.own_region
     r31_bit = 1 << rep.r31_region
     return ok, {
@@ -545,16 +548,21 @@ def grade_sram(
         "regions_short": len(short),
         "first_short": f"{short[0]}:{wmap[short[0]]}" if short else "-",
         "locked_regions": locked_regions,
+        "clear_seen": clear_seen,
         "jump_seen": jump_seen,
         "control_end_words": sum(wmap_end),
     }
 
 
-def grade_mbox(rep: imgh.ImgHReport, exp: PassExp) -> tuple[bool, Fields]:
-    """CHK-HO-MBOX: no junk inbound word survives the handover."""
-    return rep.inbound_empty == 1, {
+def grade_mbox(rep: imgh.ImgHReport, exp: PassExp, junk_head: int) -> tuple[bool, Fields]:
+    """CHK-HO-MBOX: the junk inbound words reach the inbound FIFO and none
+    survives the handover. ``junk_head`` is 1 when KM-INFIFO showed the first
+    junk word at the head of the FIFO after the post."""
+    landed = junk_head == 1 or not exp.junk
+    return rep.inbound_empty == 1 and landed, {
         "pass": exp.no,
         "inbound_empty": rep.inbound_empty,
         "km_status": _h(rep.km_status),
         "junk": exp.junk,
+        "junk_at_head": junk_head,
     }

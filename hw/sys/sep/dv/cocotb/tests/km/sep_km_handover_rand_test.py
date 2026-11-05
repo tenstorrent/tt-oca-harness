@@ -23,8 +23,9 @@ Key Manager register map.
 Probes: ``HOST-MBX`` (``SEP_STATUS``, ``SEP_READ_DATA``, ``SEP_IRQ_STATUS``),
 ``PIC-IRQ`` bit 30 (``sep_ras_o.km_uncorrectable``), ``KM-COUNT``
 (``km_sram_write_count_o``), and the read-only taps ``KM-BUS``
-(``km_key_aw_*``) and ``KM-VALID`` (``km_engine_key_valid_o``,
-``km_abr_sk_valid_o``, ``km_abr_sk_key_o``). No inject: the flipped image bit
+(``km_key_aw_*``), ``KM-VALID`` (``km_engine_key_valid_o``,
+``km_abr_sk_valid_o``, ``km_abr_sk_key_o``), ``KM-WMAP`` and ``KM-INFIFO``
+(``km_infifo_head_o``). No inject: the flipped image bit
 and the refused FW_WORDS values are legal host stimulus.
 
 Plan (``SepSeededRng`` from the run seed). RAND-REP for the load legs: the good
@@ -60,8 +61,10 @@ Checks:
   CHK-HO-SIDELOAD-BUS every (share, word) address of the eight bank windows is
                       written after the handover command, also in empty banks.
   CHK-HO-SRAM         SRAM_LOCK = 0x80000001 and every word of every unlocked
-                      region is written before the jump (KM-WMAP-JUMP).
-  CHK-HO-MBOX         KM_STATUS.inbound_empty = 1 at the jump.
+                      region is written before the jump (KM-WMAP-JUMP, read back
+                      cleared at the baseline of the pass).
+  CHK-HO-MBOX         KM_STATUS.inbound_empty = 1 at the jump; in pass 1 the first
+                      junk word reached the head of the inbound FIFO (KM-INFIFO).
 
 Controls: PIC bit 30 reads 0 in a quiet window before the corrupted load and
 after the good load; the good size n1 gets the confirmation; the read path of
@@ -282,6 +285,31 @@ class _KeyBusWatch:
                     self.count += 1
 
 
+class _HeadWatch:
+    """KM-INFIFO: whether ``word``, without the separator, is at the head of the
+    inbound FIFO on any clock between start and stop."""
+
+    def __init__(self, test: sep_base_test, word: int) -> None:
+        if not word:
+            raise AssertionError("the watched inbound word is 0, the head value of an empty FIFO")
+        self.test = test
+        self.word = word
+        self.seen = 0
+        self._on = True
+        cocotb.start_soon(self._run())
+
+    async def stop(self) -> int:
+        self._on = False
+        await ClockCycles(cocotb.top.clk_i, 2)
+        return self.seen
+
+    async def _run(self) -> None:
+        while self._on and not self.seen:
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            self.seen = int(self.test.rd_known(cocotb.top.km_infifo_head_o) == self.word)
+
+
 class _RiseHold:
     """PIC bit 30 on every clock: the rise after the trailer, then the hold window."""
 
@@ -384,13 +412,16 @@ class sep_km_handover_rand_test(sep_base_test):
     def _sram_writes(self) -> int:
         return self.rd_known(cocotb.top.km_sram_write_count_o)
 
-    async def _wmap_clear(self) -> None:
-        """KM-WMAP: clear the distinct-word counts. The clear is held to the
-        falling edge, so the rising edge that the model evaluates samples it."""
+    async def _wmap_clear(self) -> int:
+        """KM-WMAP: clear the distinct-word counts and the jump capture, and
+        return the capture flag read back after the clear. The clear is held to
+        the falling edge, so the rising edge that the model evaluates samples it."""
         cocotb.top.km_sram_wmap_clr_i.value = 1
         await RisingEdge(cocotb.top.clk_i)
         await FallingEdge(cocotb.top.clk_i)
+        seen = self.rd_known(cocotb.top.km_sram_wmap_jump_seen_o)
         cocotb.top.km_sram_wmap_clr_i.value = 0
+        return seen
 
     def _wmap_regions(self) -> list[int]:
         """KM-WMAP: the distinct words written in each SRAM write-lock region."""
@@ -803,19 +834,21 @@ class sep_km_handover_rand_test(sep_base_test):
         image = imgh.read_image()
         bus = _KeyBusWatch(self)
         await self._graded(True)
+        head = None
         if via_load:
             seq = await self.km.send_command(KM_CMD_SRAM_LOAD_EXEC, [len(image)])
             rc, arg = await self.km.recv_resp_cmd(KM_CMD_SRAM_LOAD_EXEC, seq)
-            await self._wmap_clear()
+            clear_seen = await self._wmap_clear()
             base = self._sram_writes()
             bus.start()
             await self._post(imgh.stream_words(image))
             if junk:
+                head = _HeadWatch(self, junk[0])
                 await self._post(junk)
         else:
             # The handover begins when the ROM sends the confirmation, so the
             # baseline and the bus record start before the command.
-            await self._wmap_clear()
+            clear_seen = await self._wmap_clear()
             base = self._sram_writes()
             bus.start()
             seq = await self.km.send_command(KM_CMD_SRAM_EXEC, [])
@@ -872,6 +905,7 @@ class sep_km_handover_rand_test(sep_base_test):
         delta = (writes_end - base) & md.WORD
         wmap_end = self._wmap_regions()
         jump_seen, jump_wr, wmap = self._wmap_jump()
+        junk_head = await head.stop() if head else 0
         self.logger.info(
             "LOG pass=%d KM-WMAP-JUMP seen=%d r30_jump=%d r30_end=%d writes_after_jump=%d",
             exp.no,
@@ -914,8 +948,8 @@ class sep_km_handover_rand_test(sep_base_test):
             ("HO-KPV-LOCK", md.grade_kpv_lock, (rep, exp)),
             ("HO-SIDELOAD", md.grade_sideload, (rep, exp)),
             ("HO-SIDELOAD-BUS", md.grade_sideload_bus, (bus.writes, exp)),
-            ("HO-SRAM", md.grade_sram, (rep, exp, delta, wmap, jump_seen, wmap_end)),
-            ("HO-MBOX", md.grade_mbox, (rep, exp)),
+            ("HO-SRAM", md.grade_sram, (rep, exp, delta, wmap, jump_seen, wmap_end, clear_seen)),
+            ("HO-MBOX", md.grade_mbox, (rep, exp, junk_head)),
         ):
             ok, f = grade(*args)
             self.chk.ok(name, ok, **f)
