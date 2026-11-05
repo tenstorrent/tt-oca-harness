@@ -192,12 +192,35 @@ Checkers:
                   writes and the WSTRB of the paired W beat are logged
                   (``OBS-HS-CLR``): the text says only "when ... lsio_trigger
                   becomes set".
+  CHK-DMA-CLR-BUS0 clear-bus run (``variant=bus0``, CLEAR_INTR_BUS = 0): no
+                  AW at INTR_SRC_ADDR_0 on the DMA master tap and that SRAM
+                  word still holds its sentinel after the run. Contract:
+                  CLEAR_INTR_BUS "0: CTN/System fabric 1: OT-internal
+                  crossbar" (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/
+                  data/dma.hjson:771-773``) and "Address-space ID ``0x7``
+                  selects the core's internal host port, the only route in
+                  this wrapper. The upstream SoC control and system ports are
+                  tied off" (``hw/sys/sep/doc/dma.adoc:61-62``), so a clear
+                  write on bus 0 never reaches the host port. Control:
+                  CHK-HS-CLR (bus 1, same tap and word),
+                  ``CTRL-DMA-CLR-RANGE`` and ``CTRL-DMA-CLR-BUS0``: in the same
+                  run, STATUS.BUSY rises on the DMA status tap at or after the
+                  first rise of the trigger probe (both clocks counted from
+                  marks taken together before GO; BUSY "may be set as long as
+                  hardware handshake mode is active and triggered",
+                  ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
+                  dma.hjson:615-617``), or the tap shows at least one AR (the
+                  source read follows the clear stage), so the engine took the
+                  trigger; else ``CTRL-MISSING CHK-DMA-CLR-BUS0``. BUSY and GO
+                  levels are logged.
   OBS-DMA-CLR-RANGE clear-range and clear-bus runs (``variant=``): the AWs
                   of the DMA master tap at INTR_SRC_ADDR_0 and their B
                   responses, that SRAM word after the run, the chunks moved,
-                  STATUS, ERROR_CODE and CONTROL.GO, logged. No text states a
-                  range check of the clear write or the route of bus 0 in
-                  SEP. Control (``CTRL-DMA-CLR-RANGE``, else CTRL-MISSING):
+                  STATUS, ERROR_CODE and CONTROL.GO, logged. The range check
+                  of the clear write stays logged; the bus 0 route is graded
+                  (dma.hjson CLEAR_INTR_BUS, dma.adoc host-port-only route).
+                  The run's STATUS, ERROR_CODE and GO stay logged. Control
+                  (``CTRL-DMA-CLR-RANGE``, else CTRL-MISSING):
                   CLEAR_INTR_SRC, CLEAR_INTR_BUS, INTR_SRC_ADDR_0, RANGE_BASE
                   and HANDSHAKE_INTR_ENABLE read back as written before GO,
                   and the trigger probe is high in the window.
@@ -488,6 +511,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         "CHK-HS-TRIG-TX",
         "CHK-HS-LANE-RX",
         "CHK-HS-CLR",
+        "CHK-DMA-CLR-BUS0",
         "CHK-SPI-SESSION-FRAMES",
         "CHK-SPI-SB-RX",
         "CHK-SPI-WIRE",
@@ -1019,6 +1043,31 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         if rb != want or trig_high < 1 or not hs_enable:
             self._ctrl_missing("CTRL-DMA-CLR-RANGE", line)
         self.logger.info("CTRL-DMA-CLR-RANGE PASS seed=%d %s", cfg.seed, line)
+        if variant == "bus0":
+            # Reach control: the engine took the trigger. STATUS.BUSY rose on
+            # the status tap at or after the first trigger rise (both clocks
+            # counted from marks taken together before GO), or the tap shows a
+            # source read, which follows the clear stage.
+            trig_rise = [c - m_trig.clk for c in self.trig.rise_clks_since(m_trig, "trig")]
+            busy_rise = [c - m_tap.clk for c in ev.rises("busy")]
+            took = bool(trig_rise) and any(b >= trig_rise[0] for b in busy_rise)
+            reach = (
+                f"variant={variant} trig_rise_clk={trig_rise[0] if trig_rise else '-'} "
+                f"busy_rise_clks={','.join(map(str, busy_rise)) or '-'} "
+                f"ar_total={len(ev.ar)} expect=busy_rise_ge_trig_rise_or_ar_ge_1 "
+                f"busy={int(bool(st.busy))} go={go} trigger_high_clk={trig_high}"
+            )
+            if not (took or ev.ar):
+                self._ctrl_missing("CHK-DMA-CLR-BUS0", reach)
+            self.logger.info("CTRL-DMA-CLR-BUS0 PASS seed=%d %s", cfg.seed, reach)
+            line = (
+                f"contract=dma.hjson:771-773,hw/sys/sep/doc/dma.adoc:61-62 variant={variant} "
+                f"clear_aw={len(clr_idx)} expect_aw=0 clear_word=0x{clr_rb:08x} "
+                f"expect=0x{self.sentinel:08x}"
+            )
+            if clr_idx or clr_rb != self.sentinel:
+                self._fail("CHK-DMA-CLR-BUS0", line)
+            self._pass("CHK-DMA-CLR-BUS0", line)
         set_open_value_leg_pass(leg, self.logger)
         await ClockCycles(cocotb.top.clk_i, LABEL_CLKS)
         set_open_value_leg_pass(None, self.logger)
@@ -1207,7 +1256,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             "INFO-PLAN seed=%d runs=depth,reference,trigger,lanes,normal,handshake,masked,stop,clear,"
             "masked_alt,tx_term,clear_outside_range,clear_bus0 graded=trigger,lanes,handshake,masked,stop,clear,"
             "masked_alt,tx_term checks=CHK-HS-MASKED,CHK-HS-GO,CHK-HS-STOP,CHK-HS-NOCHUNK,"
-            "CHK-HS-DATA,CHK-HS-TRIG-EQ,CHK-HS-TRIG-TX,CHK-HS-LANE-RX,CHK-HS-CLR,"
+            "CHK-HS-DATA,CHK-HS-TRIG-EQ,CHK-HS-TRIG-TX,CHK-HS-LANE-RX,CHK-HS-CLR,CHK-DMA-CLR-BUS0,"
             "CHK-SPI-SESSION-FRAMES,CHK-SPI-SB-RX,CHK-SPI-WIRE",
             cfg.seed,
         )

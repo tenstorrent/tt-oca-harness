@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Alias remap translation: reset identity, offsets, region edges, carry and open-rule legs.
+"""Alias remap translation: reset identity, offsets, region edges, carry, overlap and empty regions.
 
-Spec sources: alias_remap.rdl REGION_START/END/ATTRS; fabric.adoc Alias Remapping.
+Spec sources: alias_remap.rdl REGION_START/END/ATTRS; fabric.adoc Alias Remapping: a region holds
+`REGION_START` up to but not including `REGION_END`, so a region whose `REGION_END` is at or below
+its `REGION_START` never remaps; the lowest-numbered region applies when several contain an
+address; the offset is added to address bits [55:12] modulo 2^44, a carry out of bit 55 discarded.
 """
 
 from __future__ import annotations
@@ -35,10 +38,20 @@ _R3_NEW = 0x8300_0000_0030_0000
 _R0 = (0x0200_8000, 0x0200_9000, 0x8300_0000_0010_0000)
 _R7 = (0x0200_C000, 0x0200_D000, 0x8300_0000_0030_0000)
 _R5 = (0x0000_FFFF_F000, 0x0001_0000_0000, 0x8300_0000_0000_1000)
+# Region 5 again, with an offset whose sum with the source's bits [55:12] carries out of bit 55:
+# 0x03000 + 0xFF_FFFF_F800 = 2^44 + 0x2800, so the write at 0x0300_07A8 lands at 0x0280_07A8.
+_OFFSET_PAGES = 1 << 44
+_R5_WRAP_OFFSET = _OFFSET_PAGES - 0x3000 + 0x2800
+_R5_WRAP = (0x0300_0000, 0x0300_1000, 0x8300_0000_0000_0000 | (_R5_WRAP_OFFSET << 12))
+_WRAP_SRC = 0x0300_07A8
+assert (_WRAP_SRC >> 12) + _R5_WRAP_OFFSET >= _OFFSET_PAGES
 _R1 = (0x0200_E000, 0x0200_F000, 0x8300_0000_0040_0000)
 _R2 = (0x0200_E000, 0x0200_F000, 0x8300_0000_0050_0000)
+_OVERLAP_SRC = 0x0200_E010
+_OVERLAP_SRC_SWAPPED = 0x0200_E020
 _R4 = (0x0201_0000, 0x0201_0000, 0x8300_0000_0060_0000)
 _R6 = (0x0201_2000, 0x0201_1000, 0x8300_0000_0070_0000)
+_EMPTY_SRCS = (0x0201_0000, 0x0201_0010, 0x0201_1010, 0x0201_2010)
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")
 _TERMS = (
     "RESET_IDENTITY",
@@ -58,18 +71,26 @@ _CHECKERS = (
     ("CHK-ALIAS-RD-WR", "S4"),
     ("CHK-ALIAS-RANGE-EDGES", "S5"),
     ("CHK-ALIAS-CARRY", "S6"),
-    ("CHK-ALIAS-OVERLAP-OBSERVE", "S7"),
-    ("CHK-ALIAS-EMPTY-REGION-OBSERVE", "S8"),
+    ("CHK-ALIAS-OFFSET-WRAPS-AT-BIT55", "S6"),
+    ("CHK-ALIAS-LOWEST-REGION-WINS", "S7"),
+    ("CHK-ALIAS-EMPTY-REGION-IDENTITY", "S8"),
     ("CHK-ALIAS-REPROGRAM-OUTSTANDING", "S9"),
 )
-JTAG_ACCESSES = 30
-ACCESS_FLOOR = 123
+JTAG_ACCESSES = 33
+ACCESS_FLOOR = 136
 
 
 def _reg(kind: str, region: int) -> int:
     return smc_indexed_addr(
         f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_{kind}_BASE_ADDR", region
     )
+
+
+def _translate(addr: int, offset_pages: int) -> int:
+    """Landing of ``addr`` through a region with ``offset_pages``: bits [55:12] plus the offset
+    modulo 2^44, bits [11:0] kept (fabric.adoc Alias Remapping)."""
+    pages = ((addr >> 12) + offset_pages) & (_OFFSET_PAGES - 1)
+    return (pages << 12) | (addr & 0xFFF)
 
 
 class smc_alias_remap_translate_test_seq(SmcCsrSeq):
@@ -187,23 +208,6 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
             assert ars[0][1] == cache, f"[{label}] arcache 0x{ars[0][1]:X}, want 0x{cache:X}"
         return ars[0][1]
 
-    async def _observe_write(self, label: str, addr: int, candidates: tuple[int, ...]):
-        """JTAG write whose landing is printed; it must be one of ``candidates``."""
-        word = self._word(0xC0DE_0000_0000_0000, addr)
-        self._seed(*candidates)
-        writes, _ = output_responder_counts()
-        mark = len(self._events)
-        item = await jtag_axi_write(self, addr, word)
-        self.jtag_accesses += 1
-        await self._wait_writes(writes + 1, label)
-        aws = [a for ch, a, _ in self._events[mark:] if ch == "aw"]
-        landed = [a for a in candidates if self.cfg.sys_out_mem.read_int(a, _WORD) == word]
-        assert len(landed) == 1 and aws == landed, (
-            f"[{label}] write 0x{addr:x}: AW {[hex(a) for a in aws]}, "
-            f"landed {[hex(a) for a in landed]}"
-        )
-        return item.resp_code, landed[0]
-
     async def body(self) -> None:
         await self.wait_fuse_sense_done(FUSE_BOUND)
         self._fuse_last = {}
@@ -277,47 +281,90 @@ class smc_alias_remap_translate_test_seq(SmcCsrSeq):
             f"{', '.join(f'0x{s:08X}->0x{d:08X}' for s, d in edges)}; one AW per write, no AR",
         )
 
-        # S6: carry into bit 32.
+        # S6: carry into bit 32, then a carry out of bit 55 discarded.
         await self._program(5, _R5)
         self._seed(0x0000_0000_07A8)
         await self._write("CARRY", 0x0000_FFFF_F7A8, 0x0001_0000_07A8)
         low = mem.read_int(0x0000_0000_07A8, _WORD)
         assert low == _SENTINEL, f"no-carry address 0x7A8 holds 0x{low:016x}"
+        wrap_land = _translate(_WRAP_SRC, _R5_WRAP_OFFSET)
+        assert wrap_land == 0x0280_07A8
+        await self._program(5, _R5_WRAP)
+        await self._write("CHK-ALIAS-OFFSET-WRAPS-AT-BIT55 WRAP", _WRAP_SRC, wrap_land)
         self._mark_step("S6")
         self._log_chk(
             "CHK-ALIAS-CARRY",
             "write 0x0000FFFFF7A8 landed at 0x0001000007A8 (carry into bit 32) and the no-carry "
             "address 0x7A8 kept the sentinel",
         )
+        self._log_chk(
+            "CHK-ALIAS-OFFSET-WRAPS-AT-BIT55",
+            f"region 5 offset 0x{_R5_WRAP_OFFSET:X} pages: 0x{_WRAP_SRC >> 12:X} + offset = "
+            f"2^44 + 0x{((_WRAP_SRC >> 12) + _R5_WRAP_OFFSET) - _OFFSET_PAGES:X}, write "
+            f"0x{_WRAP_SRC:08X} landed at 0x{wrap_land:08X} with AW there, source kept the "
+            "sentinel, OKAY (carry out of bit 55 discarded)",
+        )
 
-        # S7: overlapping regions 1 and 2; the specification does not state the value.
+        # S7: regions 1 and 2 both contain the address; the lowest-numbered region applies.
         await self._program(1, _R1)
         await self._program(2, _R2)
         self._hits = [0, 0]
-        resp, land = await self._observe_write(
-            "OVERLAP", 0x0200_E010, (0x0240_E010, 0x0250_E010, 0x0290_E010)
+        r1_land = _translate(_OVERLAP_SRC, _R1[2] >> 12 & (_OFFSET_PAGES - 1))
+        r2_land = _translate(_OVERLAP_SRC, _R2[2] >> 12 & (_OFFSET_PAGES - 1))
+        assert (r1_land, r2_land) == (0x0240_E010, 0x0250_E010)
+        self._seed(r2_land)
+        await self._write("CHK-ALIAS-LOWEST-REGION-WINS OVERLAP", _OVERLAP_SRC, r1_land)
+        other = mem.read_int(r2_land, _WORD)
+        assert other == _SENTINEL, (
+            f"[CHK-ALIAS-LOWEST-REGION-WINS OVERLAP] region 2's landing 0x{r2_land:x} holds "
+            f"0x{other:016x}"
+        )
+        # The same two offsets swapped between the regions: region 1 still applies.
+        await self._set_attrs(1, _R2[2])
+        await self._set_attrs(2, _R1[2])
+        swap_land = _translate(_OVERLAP_SRC_SWAPPED, _R2[2] >> 12 & (_OFFSET_PAGES - 1))
+        swap_other = _translate(_OVERLAP_SRC_SWAPPED, _R1[2] >> 12 & (_OFFSET_PAGES - 1))
+        self._seed(swap_other)
+        await self._write(
+            "CHK-ALIAS-LOWEST-REGION-WINS OVERLAP_SWAPPED", _OVERLAP_SRC_SWAPPED, swap_land
+        )
+        other = mem.read_int(swap_other, _WORD)
+        assert other == _SENTINEL, (
+            f"[CHK-ALIAS-LOWEST-REGION-WINS OVERLAP_SWAPPED] region 2's landing 0x{swap_other:x} "
+            f"holds 0x{other:016x}"
         )
         self._mark_step("S7")
         self._log_chk(
-            "CHK-ALIAS-OVERLAP-OBSERVE",
-            f"write 0x0200E010 over regions 1 and 2: resp={resp} landed_at=0x{land:08X} "
-            f"tb_remap_jtag_aw_hit_seen=0x{self._hits[0]:X} (not specified, measured)",
+            "CHK-ALIAS-LOWEST-REGION-WINS",
+            f"regions 1 and 2 over 0x{_R1[0]:08X}..0x{_R1[1]:08X}: write 0x{_OVERLAP_SRC:08X} "
+            f"landed at 0x{r1_land:08X} (region 1, offset 0x{_R1[2] & 0xFF_FFFF_F000:X}) and "
+            f"0x{r2_land:08X} kept the sentinel; offsets swapped, write "
+            f"0x{_OVERLAP_SRC_SWAPPED:08X} landed at 0x{swap_land:08X} (region 1 again) and "
+            f"0x{swap_other:08X} kept the sentinel; tb_remap_jtag_aw_hit OR 0x{self._hits[0]:X}",
         )
 
-        # S8: empty and inverted regions (observe-only, the specification does not state the value).
+        # S8: a region with REGION_END at or below REGION_START contains no address.
         await self._program(4, _R4)
         await self._program(6, _R6)
         shown = []
-        for k, src in enumerate((0x0201_0010, 0x0201_1010, 0x0201_2010)):
-            cand = (src, src + 0x0060_0000, src + 0x0070_0000)
-            resp, land = await self._observe_write(f"EMPTY{k}", src, cand)
-            assert resp == 0, f"[EMPTY{k}] write 0x{src:x} resp {resp}"
-            shown.append(f"0x{src:08X}->0x{land:08X} (offset 0x{land - src:X})")
+        for k, src in enumerate(_EMPTY_SRCS):
+            cand = tuple(_translate(src, w[2] >> 12 & (_OFFSET_PAGES - 1)) for w in (_R4, _R6))
+            self._seed(*cand)
+            await self._write(f"CHK-ALIAS-EMPTY-REGION-IDENTITY EMPTY{k}", src, src)
+            for c in cand:
+                held = mem.read_int(c, _WORD)
+                assert held == _SENTINEL, (
+                    f"[CHK-ALIAS-EMPTY-REGION-IDENTITY EMPTY{k}] 0x{c:x} holds 0x{held:016x}"
+                )
+            shown.append(f"0x{src:08X}->0x{src:08X}")
         self._mark_step("S8")
         self._log_chk(
-            "CHK-ALIAS-EMPTY-REGION-OBSERVE",
-            f"region 4 START=END, region 6 START above END: {', '.join(shown)}, all OKAY "
-            "(not specified, measured, landing printed)",
+            "CHK-ALIAS-EMPTY-REGION-IDENTITY",
+            f"region 4 START=END=0x{_R4[0]:08X} (its START word included), region 6 START "
+            f"0x{_R6[0]:08X} above END 0x{_R6[1]:08X}: {', '.join(shown)} with AW at the "
+            f"source, all OKAY, and the "
+            f"offset landings (+0x{_R4[2] & 0xFF_FFFF_F000:X}, +0x{_R6[2] & 0xFF_FFFF_F000:X}) "
+            "kept the sentinel",
         )
 
         # S9: offset of region 3 changes while a JTAG group is outstanding; the specification

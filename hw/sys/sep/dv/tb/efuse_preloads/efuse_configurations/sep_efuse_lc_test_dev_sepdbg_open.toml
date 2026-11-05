@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# TEST_DEV with SIP_DBG and CHIPLET_DBG open (SIP_DIS clear,
+# SYS_DIS.chiplet_dbg clear). SEP debug open: SYS_DIS.sep_debug clear.
+#
+# Only SYS_DIS.sep_debug differs between the _sepdbg_open and _sepdbg_closed
+# images.
+#
+# Used by sep_debug_master_target_matrix_test_sba_sepdbg_open.
+
+[LC_STATE]
+  # Differentially encoded {~raw[3:0], raw[3:0]}: raw 0x0 (TEST_DEV) stores as
+  # 0xF0. See the directory README.
+  [LC_STATE.fields.lc_state]
+  value = 0xF0
+
+[SYS_DIS]
+  [SYS_DIS.fields.sep_debug]
+  value = 0
+  [SYS_DIS.fields.chiplet_dbg]
+  value = 0

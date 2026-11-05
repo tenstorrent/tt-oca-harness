@@ -48,8 +48,10 @@ reaches the Lite port as one single at its address, so the watch is live
 when the denied burst shows none. WRAP/FIXED/AxLEN>1 are
 not walked. The denied 2-beat read also grades its R beats on the m_axi
 pins: an error response still returns every beat of the burst with RLAST
-on the last beat only, each beat with RID equal to the ARID (AMBA AXI
-IHI 0022), and the filter answers DECERR on RRESP
+on the last beat only, each beat with RID equal to the ARID (Arm IHI 0022
+Issue L, AMBA AXI Protocol Specification, A3.1.2, A3.2.2 and A5.1.1; the
+fabric is AXI4, ``hw/sys/sep/doc/fabric.adoc:20-23``), and the filter answers
+DECERR on RRESP
 (``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions"). The ARID is
 drawn from 1 to 62 (ARID 63 is the pre-sense read), so an RID that drops
 to 0 fails.

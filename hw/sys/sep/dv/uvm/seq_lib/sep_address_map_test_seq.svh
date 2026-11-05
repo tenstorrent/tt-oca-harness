@@ -12,8 +12,8 @@
 //     registers (CHK-BASEADDR-RW) and of the pure read/write storage
 //     registers plus CLOCK_GATE_CTRL (CHK-RW-READBACK), and a write to each
 //     write-only register;
-//   * walk one readable CSR per LSU-reachable block: OKAY, and the reset value
-//     where the generated header exports it (CHK-FABRIC-WALK);
+//   * walk one readable CSR per LSU-reachable block: OKAY, and the non-zero
+//     reset value where the block has such a register (CHK-FABRIC-WALK);
 //   * read the interior hole of sep_cpu_ctrl, require OKAY with zero data,
 //     prove SEP_SW_DEBUG writable, then require a hole write to retire OKAY
 //     and leave SEP_SW_DEBUG unchanged (CHK-CPU-CTRL-HOLE);
@@ -25,6 +25,14 @@
 // field masks), from the written stimulus, and from the access-class table
 // below. The cocotb twin is cocotb/tests/system/sep_address_map_test.py with
 // cocotb/seq_lib/sep_address_map_seq.py.
+// Some checks are cocotb only. The twin writes the complement of SEP_TEST_CTRL
+// and requires its sw=r field bits unchanged (CHK-SEP-TEST-CTRL-RO); this
+// sequence reads SEP_TEST_CTRL with a response check only and never writes it.
+// The twin also observes the PR-EXT and PR-OUT taps (CTRL-EXT-DEMUX-PORT,
+// CTRL-EXT-DEMUX-SHIM, CTRL-FABRIC-WALK-LOCAL, CTRL-CPU-CTRL-HOLE-LOCAL); this
+// sequence grades the response class of the boundary words, the response of
+// each walked read and the hole accesses, and the value of the walked rows
+// whose register has a non-zero RDL reset.
 
 class sep_address_map_test_seq extends sep_base_test_seq;
   `uvm_object_utils(sep_address_map_test_seq)
@@ -227,33 +235,35 @@ class sep_address_map_test_seq extends sep_base_test_seq;
 
   // ------------------------------------------------------------------
   // Fabric walk: one readable CSR per LSU-reachable block, every address a
-  // sep_reg.svh symbol. A row value-checks only where the header exports a
-  // reset value with every field reset; the others are accessibility checks
-  // (OKAY), because the value is set by hardware or state, or the RDL gives
-  // no reset (ABR MLDSA_NAME is sw=r with no reset in abr_reg.rdl). The block
-  // list and the register chosen per block are the cocotb FABRIC_BLOCKS
-  // list. Memory-backed ranges, the OTP-triggering eFuse interface registers
+  // sep_reg.svh symbol. Where a block has a register with a non-zero RDL
+  // reset that this sequence does not write, the row reads it and compares
+  // the reset value, which a local hole (OKAY, data 0) cannot return. The
+  // other rows prove only an OKAY answer inside SEP: their registers reset to
+  // 0, or the value is set by hardware, or the RDL gives no reset (ABR
+  // MLDSA_NAME is sw=r with no reset in abr_reg.rdl). The block list and the
+  // register chosen per block are the cocotb FABRIC_BLOCKS list.
+  // Memory-backed ranges, the OTP-triggering eFuse interface registers
   // and the destructive entropy-pool pop are not read.
   // ------------------------------------------------------------------
   function void fabric_rows(ref fabric_row_t rows[$]);
     rows.delete();
-    rows.push_back('{"SECURE_DMA", 64'(SECURE_DMA_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
-    rows.push_back('{"WDT_TIMER", 64'(WDT_TIMER_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
+    rows.push_back('{"SECURE_DMA", 64'(SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR), 1'b1,
+                   32'(SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_DEFAULT)});
+    rows.push_back('{"WDT_TIMER", 64'(WDT_TIMER_WDOG_REGWEN_REG_ADDR), 1'b1,
+                   32'(AON_TIMER_WDOG_REGWEN_REG_DEFAULT)});
     rows.push_back('{"SEP_SCRATCH_COLD", 64'(SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
     rows.push_back('{"SEP_SCRATCH_WARM", 64'(SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
     rows.push_back('{"SEP_RESET_CTRL", 64'(SEP_RESET_CTRL_SW_RESET_N_REG_ADDR), 1'b1,
                    32'(SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT)});
-    rows.push_back('{"OTBN", 64'(OTBN_INTR_STATE_REG_ADDR), 1'b1, 32'(OTBN_INTR_STATE_REG_DEFAULT)
+    rows.push_back('{"OTBN", 64'(OTBN_INTR_STATE_REG_ADDR), 1'b0, 32'h0});
+    rows.push_back('{"AES", 64'(AES_CTRL_AUX_REGWEN_REG_ADDR), 1'b1,
+                   32'(AES_CTRL_AUX_REGWEN_REG_DEFAULT)});
+    rows.push_back('{"HMAC", 64'(HMAC_INTR_STATE_REG_ADDR), 1'b0, 32'h0});
+    rows.push_back('{"KMAC", 64'(KMAC_CFG_SHADOWED_REG_ADDR), 1'b1,
+                   32'(KMAC_CFG_SHADOWED_REG_DEFAULT)});
+    rows.push_back('{"DRBG_CSRNG", 64'(CSRNG_REGWEN_REG_ADDR), 1'b1, 32'(CSRNG_REGWEN_REG_DEFAULT)
                    });
-    rows.push_back('{"AES", 64'(AES_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
-    rows.push_back('{"HMAC", 64'(HMAC_INTR_STATE_REG_ADDR), 1'b1, 32'(HMAC_INTR_STATE_REG_DEFAULT)
-                   });
-    rows.push_back('{"KMAC", 64'(KMAC_INTR_STATE_REG_ADDR), 1'b1, 32'(KMAC_INTR_STATE_REG_DEFAULT)
-                   });
-    rows.push_back('{"DRBG_CSRNG", 64'(CSRNG_INTR_STATE_REG_ADDR), 1'b1,
-                   32'(CSRNG_INTR_STATE_REG_DEFAULT)});
-    rows.push_back('{"DRBG_EDN", 64'(EDN_INTR_STATE_REG_ADDR), 1'b1, 32'(EDN_INTR_STATE_REG_DEFAULT)
-                   });
+    rows.push_back('{"DRBG_EDN", 64'(EDN_REGWEN_REG_ADDR), 1'b1, 32'(EDN_REGWEN_REG_DEFAULT)});
     rows.push_back('{"ENTROPY_SRC", 64'(ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR), 1'b1,
                    32'(ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT)});
     rows.push_back('{"ADAMS_BRIDGE", 64'(ABR_MLDSA_NAME_0__REG_ADDR), 1'b0, 32'h0});
@@ -261,8 +271,8 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     rows.push_back('{"SEP_LIFECYCLE", 64'(SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
     rows.push_back('{"KM_MAILBOX", 64'(KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR), 1'b0, 32'h0});
     rows.push_back('{"SEP_EFUSE_SHADOW", 64'(SEP_EFUSE_MAP_LC_STATE_REG_ADDR), 1'b0, 32'h0});
-    rows.push_back('{"AXIL_MAILBOX", 64'(AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR), 1'b0,
-                   32'h0});
+    rows.push_back('{"AXIL_MAILBOX", 64'(AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_REG_ADDR), 1'b1,
+                   32'(AXIL_MAILBOX_STATUS_REG_DEFAULT)});
     rows.push_back('{"INBOUND_FILTER",
                    64'(INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR), 1'b1,
                    32'(FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT)});
@@ -271,7 +281,8 @@ class sep_address_map_test_seq extends sep_base_test_seq;
                    32'h0});
     rows.push_back('{"AP_OUTPUT_REMAP",
                    64'(AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR), 1'b0, 32'h0});
-    rows.push_back('{"OT_SPI_HOST", 64'(SPI_CONTROLLER_INTR_STATE_REG_ADDR), 1'b0, 32'h0});
+    rows.push_back('{"OT_SPI_HOST", 64'(SPI_CONTROLLER_CONTROL_REG_ADDR), 1'b1,
+                   32'(SPI_CONTROLLER_CONTROL_REG_DEFAULT)});
   endfunction
 
   // ------------------------------------------------------------------
@@ -280,9 +291,9 @@ class sep_address_map_test_seq extends sep_base_test_seq;
   // nothing between. The three words are the first word after
   // SEP_FUSE_SENSE_STATUS (0x158), the word the alias check writes (0x170),
   // and the last word before SEP_SW_DEBUG (0x174).
-  // hw/sys/sep/doc/memory_map.adoc states the contract for an offset inside
-  // a unit's extent that owns no register: reads return zero and writes are
-  // discarded, both OKAY.
+  // doc/trm/src/memory_map.adoc states the contract for an offset between the
+  // registers of a generated register block: it answers OKAY, a read returns 0
+  // and a write has no effect.
   // ------------------------------------------------------------------
   localparam int unsigned FuseSenseStatusBytes = 8;  // regwidth = 64
 

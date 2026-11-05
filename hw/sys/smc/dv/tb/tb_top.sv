@@ -1277,6 +1277,31 @@ module smc_uvm_top
     assign cpu_scratch0_inject_fire   = `CPU_MEM_DV.scratch0_inject_fire_q;
     `undef CPU_MEM_DV
 
+    // Scratch macro peek. The bank selector is a mux over constant generate
+    // indices, because a hierarchical reference into a generate block needs a
+    // constant index.
+    logic [$clog2(chipyard_4core_mem_pkg::NumSramBanks)-1:0]       cpu_scratch_peek_bank;
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamAddrWidth-1:0] cpu_scratch_peek_entry;
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamDataWidth-1:0]
+        cpu_scratch_peek_bank_data [chipyard_4core_mem_pkg::NumSramBanks];
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamDataWidth-1:0] cpu_scratch_peek_word;
+
+    always_comb begin
+        cpu_scratch_peek_bank  = smc_scratch_map_pkg::smc_scratch_bank(
+                                     32'(tb_cpu_scratch_peek_offset));
+        cpu_scratch_peek_entry = smc_scratch_map_pkg::smc_scratch_entry(
+                                     32'(tb_cpu_scratch_peek_offset));
+    end
+
+    for (genvar b = 0; b < chipyard_4core_mem_pkg::NumSramBanks; b++) begin : gen_cpu_scratch_peek
+        assign cpu_scratch_peek_bank_data[b] =
+            u_dut.u_smc_ip_integration.u_mems.gen_scratch_rams[b].u_mem.u_mem
+                .mem[cpu_scratch_peek_entry];
+    end
+
+    assign cpu_scratch_peek_word    = cpu_scratch_peek_bank_data[cpu_scratch_peek_bank];
+    assign tb_cpu_scratch_peek_data = cpu_scratch_peek_word[63:0];
+
     // Probe pin on the cocotb init surface; do not OR into the score.
     logic unused_ecc_probe;
     assign unused_ecc_probe = tb_cpu_ecc_inject_probe;
@@ -1750,6 +1775,8 @@ module smc_uvm_top
     assign tb_cpu_l2_pending_aw    = `SMC_L2_ISO.i_axi_isolate.pending_aw_q;
     assign tb_cpu_l2_pending_w     = `SMC_L2_ISO.i_axi_isolate.pending_w_q;
     assign tb_cpu_l2_pending_ar    = `SMC_L2_ISO.i_axi_isolate.pending_ar_q;
+    assign tb_cpu_l2_slv_arvalid   = `SMC_L2_ISO.slv_req_i.ar_valid;
+    assign tb_cpu_l2_slv_arready   = `SMC_L2_ISO.slv_resp_o.ar_ready;
     assign tb_cpu_l2_flush_active  = `SMC_L2_ISO.flush_active_q;
     assign tb_cpu_mmio_isolated    = `SMC_CPU.mmio_isolated;
     assign tb_cpu_mmio_pending_aw  = `SMC_MMIO_ISO.i_axi_isolate.pending_aw_q;
@@ -1827,7 +1854,13 @@ module smc_uvm_top
     assign tb_plic_priority_low = {`SMC_PLIC.priority_2[0], `SMC_PLIC.priority_1[0],
                                    `SMC_PLIC.priority_0[0]};
     assign tb_plic_pending_331  = `SMC_PLIC.pending_330;
+    assign tb_plic_pending_323  = `SMC_PLIC.pending_322;
     assign tb_plic_pending_324  = `SMC_PLIC.pending_323;
+    assign tb_plic_pending_329  = `SMC_PLIC.pending_328;
+    assign tb_plic_pending_330  = `SMC_PLIC.pending_329;
+    assign tb_plic_pending_332  = `SMC_PLIC.pending_331;
+    assign tb_plic_pending_321  = `SMC_PLIC.pending_320;
+    assign tb_plic_pending_322  = `SMC_PLIC.pending_321;
 
     assign tb_clint_mtime      = `SMC_CLINT.time_0;
     assign tb_clint_mtimecmp0  = `SMC_CLINT.pad;
@@ -1905,6 +1938,7 @@ module smc_uvm_top
     assign tb_zeroer_wstrb   = `SMC_ZEROER.mst_axi_req_o.w.strb;
     assign tb_zeroer_wdata   = `SMC_ZEROER.mst_axi_req_o.w.data;
     assign tb_zeroer_bvalid  = `SMC_ZEROER.mst_axi_resp_i.b_valid;
+    assign tb_zeroer_bready  = `SMC_ZEROER.mst_axi_req_o.b_ready;
     assign tb_zeroer_outstanding = `SMC_ZEROER.outstanding_reqs;
     assign tb_zeroer_dest_addr   = `SMC_ZEROER.dest_addr;
     assign tb_zeroer_size        = `SMC_ZEROER.size;
@@ -1939,6 +1973,69 @@ module smc_uvm_top
         `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.aw_remap_hit_debug;
     assign tb_remap_jtag_ar_hit =
         `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.ar_remap_hit_debug;
+
+    // Outstanding-read limit probes of the input fabric. The SEP region demux
+    // has no spill registers, so its own slave port is the point its ID
+    // counters push and pop at; the error subordinate's FIFO pushes and pops at
+    // its port.
+    assign tb_sep_demux_arvalid     = `SMC_INB.sep_axi_cut_req.ar_valid;
+    assign tb_sep_demux_arready     = `SMC_INB.sep_axi_cut_resp.ar_ready;
+    assign tb_sep_demux_arid        = `SMC_INB.sep_axi_cut_req.ar.id;
+    assign tb_sep_demux_rvalid      = `SMC_INB.sep_axi_cut_resp.r_valid;
+    assign tb_sep_demux_rready      = `SMC_INB.sep_axi_cut_req.r_ready;
+    assign tb_sep_demux_rlast       = `SMC_INB.sep_axi_cut_resp.r.last;
+    assign tb_sep_errslv_arvalid    = `SMC_INB.sep_err_slv_req.ar_valid;
+    assign tb_sep_errslv_arready    = `SMC_INB.sep_err_slv_resp.ar_ready;
+    assign tb_sep_errslv_rvalid     = `SMC_INB.sep_err_slv_resp.r_valid;
+    assign tb_sep_errslv_rready     = `SMC_INB.sep_err_slv_req.r_ready;
+    assign tb_sep_errslv_rlast      = `SMC_INB.sep_err_slv_resp.r.last;
+    assign tb_sep_errslv_rfifo_full = `SMC_INB.u_sep_region_err_slv.r_fifo_full;
+    `undef SMC_INB
+
+    // Outstanding-read limit probes of the local fabric. The local crossbar
+    // cuts every port, so the SEP_IN demux is probed inside its spill
+    // registers, at the ports of the simple demux that owns the ID counters;
+    // the internal CSR port is the crossbar's own master port. The internal CSR
+    // crossbar's demux is probed at the handshakes that push and pop its read
+    // FIFO; its SMC_BASE_CONFIG port is the crossbar's own master port.
+    `define SMC_LFAB u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_local_fabric
+    `define SMC_LXBAR `SMC_LFAB.u_smc_local_xbar
+    `define SMC_LXBAR_SEP_DEMUX \
+        `SMC_LXBAR.u_axi_xbar.i_xbar_unmuxed.gen_slv_port_demux[1].i_axi_demux.i_demux_simple
+    `define SMC_LITE_XBAR `SMC_LFAB.u_smc_internal_axi_lite_xbar
+    `define SMC_LITE_DEMUX \
+        `SMC_LITE_XBAR.u_axi_lite_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux
+    assign tb_lxbar_sep_arvalid     = `SMC_LXBAR_SEP_DEMUX.slv_req_i.ar_valid;
+    assign tb_lxbar_sep_arready     = `SMC_LXBAR_SEP_DEMUX.slv_resp_o.ar_ready;
+    assign tb_lxbar_sep_rvalid      = `SMC_LXBAR_SEP_DEMUX.slv_resp_o.r_valid;
+    assign tb_lxbar_sep_rready      = `SMC_LXBAR_SEP_DEMUX.slv_req_i.r_ready;
+    assign tb_lxbar_sep_rlast       = `SMC_LXBAR_SEP_DEMUX.slv_resp_o.r.last;
+    assign tb_lxbar_lreg_arvalid    = `SMC_LXBAR.xbar_mst_req[2].ar_valid;
+    assign tb_lxbar_lreg_arready    = `SMC_LXBAR.xbar_mst_resp[2].ar_ready;
+    assign tb_lxbar_lreg_rvalid     = `SMC_LXBAR.xbar_mst_resp[2].r_valid;
+    assign tb_lxbar_lreg_rready     = `SMC_LXBAR.xbar_mst_req[2].r_ready;
+    assign tb_lxbar_lreg_rlast      = `SMC_LXBAR.xbar_mst_resp[2].r.last;
+    assign tb_lite_demux_arvalid    = `SMC_LITE_DEMUX.slv_ar_valid;
+    assign tb_lite_demux_arready    = `SMC_LITE_DEMUX.slv_ar_ready;
+    assign tb_lite_demux_rvalid     = `SMC_LITE_DEMUX.slv_r_valid;
+    assign tb_lite_demux_rready     = `SMC_LITE_DEMUX.slv_r_ready;
+    assign tb_lite_demux_rfifo_full = `SMC_LITE_DEMUX.r_fifo_full;
+    assign tb_lite_cfg_arvalid      = `SMC_LITE_XBAR.xbar_mst_req[0].ar_valid;
+    assign tb_lite_cfg_arready      = `SMC_LITE_XBAR.xbar_mst_resp[0].ar_ready;
+    assign tb_lite_cfg_rvalid       = `SMC_LITE_XBAR.xbar_mst_resp[0].r_valid;
+    assign tb_lite_cfg_rready       = `SMC_LITE_XBAR.xbar_mst_req[0].r_ready;
+    `undef SMC_LITE_DEMUX
+    `undef SMC_LITE_XBAR
+    `undef SMC_LXBAR_SEP_DEMUX
+    `undef SMC_LXBAR
+    `undef SMC_LFAB
+
+    // System inbound filter clock gate (axi_cg_snoop in the input fabric).
+    assign tb_sys_in_filter_clk_active = u_dut.u_smc.u_smc_base.sys_in_filter_clk_active;
+    assign tb_sys_in_filter_bus_active = u_dut.u_smc.u_smc_base.sys_in_filter_bus_active;
+    `define SMC_INB u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric
+    assign tb_sys_in_filter_arvalid = `SMC_INB.sys_axi_cut_req.ar_valid;
+    assign tb_sys_in_filter_arready = `SMC_INB.sys_axi_cut_resp.ar_ready;
     `undef SMC_INB
 
     // Isolation / FLR sequencing state. The two watchdog timeout pins are
@@ -1990,6 +2087,12 @@ module smc_uvm_top
     assign tb_mbx0_full  = `SMC_MBX0.mbox_full;
     assign tb_mbx0_empty = `SMC_MBX0.mbox_empty;
     `undef SMC_MBX0
+    // The live OCTS count and the timer's own pulse ports on either side of the padring.
+    assign tb_octs_timer_count = `SMC_PERIPH.u_system_timer_octs.timer_count_o;
+    assign tb_octs_core_sync_load_out = `SMC_PERIPH.timer_sync_load_primary;
+    assign tb_octs_core_credit_out    = `SMC_PERIPH.timer_cnt_credit_primary;
+    assign tb_octs_core_sync_load_in  = `SMC_PERIPH.timer_sync_load_secondary;
+    assign tb_octs_core_credit_in     = `SMC_PERIPH.timer_cnt_credit_secondary;
     `undef SMC_PERIPH
 
     // TB glue: pulse tb_dfd_fault_inject to latch a deterministic token. This
@@ -2308,7 +2411,76 @@ module smc_uvm_top
         .inb_write_hit_i        (tb_inb_write_hit),
         .inb_read_hit_i         (tb_inb_read_hit),
         .inb_isolate_write_i    (tb_inb_isolate_write),
-        .inb_isolate_read_i     (tb_inb_isolate_read)
+        .inb_isolate_read_i     (tb_inb_isolate_read),
+        .sep_awvalid_i          (s_axi_awvalid),
+        .sep_awready_i          (s_axi_awready),
+        .sep_awaddr_i           (s_axi_awaddr),
+        .sep_wvalid_i           (s_axi_wvalid),
+        .sep_wready_i           (s_axi_wready),
+        .sep_wlast_i            (s_axi_wlast),
+        .sep_wdata_i            (s_axi_wdata),
+        .sep_wstrb_i            (s_axi_wstrb),
+        .sep_bvalid_i           (s_axi_bvalid),
+        .sep_bready_i           (s_axi_bready),
+        .sep_bresp_i            (s_axi_bresp),
+        .sys_awvalid_i          (sys_axi_awvalid),
+        .sys_awready_i          (sys_axi_awready),
+        .sys_awaddr_i           (sys_axi_awaddr),
+        .sys_awlen_i            (sys_axi_awlen),
+        .sys_awprot_i           (sys_axi_awprot),
+        .sys_awuser_i           (sys_axi_awuser),
+        .sys_arvalid_i          (sys_axi_arvalid),
+        .sys_arready_i          (sys_axi_arready),
+        .sys_araddr_i           (sys_axi_araddr),
+        .sys_arlen_i            (sys_axi_arlen),
+        .sys_arprot_i           (sys_axi_arprot),
+        .sys_aruser_i           (sys_axi_aruser),
+        .sys_bvalid_i           (sys_axi_bvalid),
+        .sys_bready_i           (sys_axi_bready),
+        .sys_bresp_i            (sys_axi_bresp),
+        .sys_rvalid_i           (sys_axi_rvalid),
+        .sys_rready_i           (sys_axi_rready),
+        .sys_rlast_i            (sys_axi_rlast),
+        .sys_rresp_i            (sys_axi_rresp),
+        .jtag_awready_i         (jtag_axi_awready),
+        .jtag_awaddr_i          (jtag_axi_awaddr),
+        .jtag_awlen_i           (jtag_axi_awlen),
+        .jtag_awprot_i          (jtag_axi_awprot),
+        .jtag_awuser_i          (jtag_axi_awuser),
+        .jtag_arready_i         (jtag_axi_arready),
+        .jtag_araddr_i          (jtag_axi_araddr),
+        .jtag_arlen_i           (jtag_axi_arlen),
+        .jtag_arprot_i          (jtag_axi_arprot),
+        .jtag_aruser_i          (jtag_axi_aruser),
+        .jtag_bvalid_i          (jtag_axi_bvalid),
+        .jtag_bready_i          (jtag_axi_bready),
+        .jtag_bresp_i           (jtag_axi_bresp),
+        .jtag_rvalid_i          (jtag_axi_rvalid),
+        .jtag_rready_i          (jtag_axi_rready),
+        .jtag_rlast_i           (jtag_axi_rlast),
+        .jtag_rresp_i           (jtag_axi_rresp),
+        .jtag_awcache_i         (jtag_axi_awcache),
+        .jtag_arcache_i         (jtag_axi_arcache),
+        .sep_arvalid_i          (s_axi_arvalid),
+        .sep_arready_i          (s_axi_arready),
+        .sep_araddr_i           (s_axi_araddr),
+        .sep_rvalid_i           (s_axi_rvalid),
+        .sep_rready_i           (s_axi_rready),
+        .sep_rlast_i            (s_axi_rlast),
+        .sep_rresp_i            (s_axi_rresp),
+        .out_awvalid_i          (tb_output_axi_awvalid),
+        .out_awready_i          (tb_output_axi_awready),
+        .out_awaddr_i           (tb_output_axi_awaddr),
+        .out_awlen_i            (u_output_axi_if.awlen),
+        .out_awprot_i           (u_output_axi_if.awprot),
+        .out_awcache_i          (u_output_axi_if.awcache),
+        .out_arvalid_i          (tb_output_axi_arvalid),
+        .out_arready_i          (tb_output_axi_arready),
+        .out_araddr_i           (tb_output_axi_araddr),
+        .out_arlen_i            (u_output_axi_if.arlen),
+        .out_arprot_i           (u_output_axi_if.arprot),
+        .out_arcache_i          (u_output_axi_if.arcache),
+        .fcov_gate_i            (tb_fcov_gate)
     );
 
     smc_fabric_fcov u_smc_fabric_fcov (
@@ -2329,6 +2501,7 @@ module smc_uvm_top
         .sep_wready_i               (s_axi_wready),
         .sep_wlast_i                (s_axi_wlast),
         .sep_wstrb_i                (s_axi_wstrb),
+        .sep_wdata_i                (s_axi_wdata),
         .sep_bvalid_i               (s_axi_bvalid),
         .sep_bready_i               (s_axi_bready),
         .sep_bresp_i                (s_axi_bresp),
@@ -2341,6 +2514,7 @@ module smc_uvm_top
         .sep_rlast_i                (s_axi_rlast),
         .sep_rresp_i                (s_axi_rresp),
         .sep_r_hold_i               (tb_sep_axi_r_hold),
+        .sep_r_raw_valid_i          (tb_sep_axi_r_raw_valid),
         .sep_awaddr_i               (s_axi_awaddr),
         .sep_araddr_i               (s_axi_araddr),
         .sep_awid_i                 (s_axi_awid),
@@ -2365,6 +2539,7 @@ module smc_uvm_top
         .sys_rlast_i                (sys_axi_rlast),
         .sys_rresp_i                (sys_axi_rresp),
         .sys_r_hold_i               (tb_sys_axi_r_hold),
+        .sys_r_raw_valid_i          (tb_sys_axi_r_raw_valid),
 
         .jtag_awvalid_i             (jtag_axi_awvalid),
         .jtag_awready_i             (jtag_axi_awready),
@@ -2382,6 +2557,12 @@ module smc_uvm_top
         .jtag_rready_i              (jtag_axi_rready),
         .jtag_rlast_i               (jtag_axi_rlast),
         .jtag_rresp_i               (jtag_axi_rresp),
+        .jtag_awaddr_i              (jtag_axi_awaddr),
+        .jtag_araddr_i              (jtag_axi_araddr),
+        .jtag_awid_i                (jtag_axi_awid),
+        .jtag_arid_i                (jtag_axi_arid),
+        .jtag_bid_i                 (jtag_axi_bid),
+        .jtag_rid_i                 (jtag_axi_rid),
 
         .ej_awvalid_i               (ej_axi_awvalid),
         .ej_awready_i               (ej_axi_awready),
@@ -2410,7 +2591,22 @@ module smc_uvm_top
         .out_rresp_i                (tb_output_axi_rresp),
         .out_resp_hold_i            (tb_output_axi_resp_hold),
         .out_write_count_i          (tb_output_axi_write_count),
-        .out_read_count_i           (tb_output_axi_read_count)
+        .out_read_count_i           (tb_output_axi_read_count),
+        .out_awaddr_i               (tb_output_axi_awaddr),
+        .out_araddr_i               (tb_output_axi_araddr),
+        .out_awid_i                 (u_output_axi_if.awid),
+        .out_arid_i                 (u_output_axi_if.arid),
+        .out_bid_i                  (u_output_axi_if.bid),
+        .out_rid_i                  (u_output_axi_if.rid),
+        .out_awlen_i                (u_output_axi_if.awlen),
+        .out_awsize_i               (u_output_axi_if.awsize),
+        .out_arlen_i                (u_output_axi_if.arlen),
+        .out_arsize_i               (u_output_axi_if.arsize),
+        .out_rlast_i                (u_output_axi_if.rlast),
+        .dma_busy_i                 (tb_dma_busy),
+        .zeroer_busy_i              (tb_zeroer_busy),
+        .rst_primary_ni             (rst_primary_smc_clk_no),
+        .fcov_gate_i                (tb_fcov_gate)
     );
 
     // Spec-derived P0 coverage: address map over SEP_IN, reset sequencing,
@@ -2458,6 +2654,54 @@ module smc_uvm_top
         .lc_state_i     (tb_lc_state),
         .region_size_i  (smc_region_size),
         .ext_active_i   (tb_axil_external_active)
+    );
+
+    // The memory-map row-response covergroup: SEP_IN and SYS_IN completions
+    // past a unit's decoded extent, between apertures or outside both inbound
+    // apertures, inside the owning leaf's graded window. Same port rule.
+    smc_map_row_fcov u_smc_map_row_fcov (
+        .clk_smc_i      (clk_smc),
+        .rst_cold_ni    (rst_cold_n_int),
+        .sep_awvalid_i  (s_axi_awvalid),
+        .sep_awready_i  (s_axi_awready),
+        .sep_awaddr_i   (s_axi_awaddr),
+        .sep_awsize_i   (s_axi_awsize),
+        .sep_wvalid_i   (s_axi_wvalid),
+        .sep_wready_i   (s_axi_wready),
+        .sep_wlast_i    (s_axi_wlast),
+        .sep_wdata_i    (s_axi_wdata),
+        .sep_wstrb_i    (s_axi_wstrb),
+        .sep_bvalid_i   (s_axi_bvalid),
+        .sep_bready_i   (s_axi_bready),
+        .sep_bresp_i    (s_axi_bresp),
+        .sep_arvalid_i  (s_axi_arvalid),
+        .sep_arready_i  (s_axi_arready),
+        .sep_araddr_i   (s_axi_araddr),
+        .sep_arsize_i   (s_axi_arsize),
+        .sep_rvalid_i   (s_axi_rvalid),
+        .sep_rready_i   (s_axi_rready),
+        .sep_rlast_i    (s_axi_rlast),
+        .sep_rresp_i    (s_axi_rresp),
+        .sep_rdata_i    (s_axi_rdata),
+        .sys_awvalid_i  (sys_axi_awvalid),
+        .sys_awready_i  (sys_axi_awready),
+        .sys_awaddr_i   (sys_axi_awaddr),
+        .sys_awsize_i   (sys_axi_awsize),
+        .sys_bvalid_i   (sys_axi_bvalid),
+        .sys_bready_i   (sys_axi_bready),
+        .sys_bresp_i    (sys_axi_bresp),
+        .sys_arvalid_i  (sys_axi_arvalid),
+        .sys_arready_i  (sys_axi_arready),
+        .sys_araddr_i   (sys_axi_araddr),
+        .sys_arsize_i   (sys_axi_arsize),
+        .sys_rvalid_i   (sys_axi_rvalid),
+        .sys_rready_i   (sys_axi_rready),
+        .sys_rlast_i    (sys_axi_rlast),
+        .sys_rresp_i    (sys_axi_rresp),
+        .sys_rdata_i    (sys_axi_rdata),
+        .region_size_i  (smc_region_size),
+        .i2c_cg_en_i    (tb_i2c_cg_en),
+        .fcov_gate_i    (tb_fcov_gate)
     );
 
     smc_rst_seq_fcov u_smc_rst_seq_fcov (
@@ -2697,7 +2941,10 @@ module smc_uvm_top
     // sets MASTER_SYNC_RESET: AWVALID, WVALID and ARVALID may stay high on the
     // first edge that samples the uncore reset low and must be low from the
     // next edge on. Each is on once its reset is known; the MMIO instance also
-    // follows the CPU-port hold-off below. The CPU front port has no
+    // follows the CPU-port hold-off below, and the misc instance is off on the
+    // warm-reset cycles where its leg carries the AR the one leaf that presents
+    // it on purpose issues (+smc_misc_warm_in_reset_assertoff beside it). The
+    // CPU front port has no
     // core-reset instance: it carries CPU_CTRL traffic while a core is held,
     // so its AXI domain is the primary reset.
     //
@@ -3375,13 +3622,27 @@ module smc_uvm_top
                                u_dut.u_smc.cpu_axi_mmio_port_resp, tb_cpu_uncore_reset_n)
     );
 
+    // The warm-domain reproducer (smc_warm_domain_access_during_reset_test)
+    // reads SCRATCH_COLD_WARM while the warm reset is low on purpose, and the
+    // primary-reset demux presents that AR on this leg in its reset. That leaf
+    // alone asks this instance off on the cycles of that reset where the leg's
+    // ARVALID is high. The reset rules are the only rules live in that reset
+    // (every other rule is disabled by aresetn low and the tracking is in its
+    // flush), so the hold-off reaches those rules on the cycles the leaf's AR
+    // occupies and nothing else: they stay live on every other reset cycle,
+    // the instance grades the leg in full once the reset releases, and the
+    // shadow counters above and below keep counting through the window.
+    bit misc_warm_in_reset_probe = $test$plusargs("smc_misc_warm_in_reset_assertoff");
+
     ocah_axi_sva #(
         .IS_LITE    (1'b1),
         .ADDR_WIDTH (32),
         .DATA_WIDTH (32),
         .ID_WIDTH   (1)
     ) u_misc_warm_axil_sva (              // misc demux SCRATCH_COLD_WARM leg on the warm reset
-        .en_i (`SMC_AXI_MISC_WARM_ON),
+        .en_i (`SMC_AXI_MISC_WARM_ON &&
+               !(misc_warm_in_reset_probe && misc_warm_rst_n === 1'b0 &&
+                 misc_warm_req.ar_valid === 1'b1)),
         `SMC_AXIL_SVA_PORTS_RST(misc_warm_req, misc_warm_resp, 3'd2, misc_warm_rst_n)
     );
 
@@ -3455,7 +3716,9 @@ module smc_uvm_top
     ) u_sep_in_data_sva (
         .aclk      (clk_smc),
         .aresetn   (rst_primary_smc_clk_no),
-        .en_i      (`SMC_AXI_SVA_ON && sep_in_axi_sva_armed),
+        // tb_rdata_known_hold turns the whole instance off for the window of a
+        // declared observed-only read (by time, not per read; see the signal list).
+        .en_i      (`SMC_AXI_SVA_ON && sep_in_axi_sva_armed && (tb_rdata_known_hold !== 1'b1)),
         `SMC_AXI_DK_W_IDLE(64),
         `SMC_AXI_DK_R(sep_axi_in_resp),
         .w_beats_o (axi_dk_w_sep_in),
@@ -3546,7 +3809,9 @@ module smc_uvm_top
     ) u_periph_data_sva (
         .aclk      (clk_smc),
         .aresetn   (rst_primary_smc_clk_no),
-        .en_i      (`SMC_AXI_SVA_ON),
+        // tb_rdata_known_hold turns the whole instance off for the window of a
+        // declared observed-only read (by time, not per read; see the signal list).
+        .en_i      (`SMC_AXI_SVA_ON && (tb_rdata_known_hold !== 1'b1)),
         `SMC_AXI_DK_W_IDLE(32),
         `SMC_AXI_DK_R(u_dut.u_smc.axil_peripherals_resp),
         .w_beats_o (axi_dk_w_periph),
@@ -5772,6 +6037,7 @@ module smc_uvm_top
     assign tb_cpu_ecc_poke_en      = 1'b0;
     assign tb_cpu_ecc_poke_entry   = '0;
     assign tb_cpu_ecc_poke_mask    = '0;
+    assign tb_cpu_scratch_peek_offset = '0;
     assign tb_dfd_fault_inject     = 1'b0;
 
     // Product lifecycle state idle: complementary TEST_DEV ({~0, 0}).

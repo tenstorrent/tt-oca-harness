@@ -285,6 +285,30 @@ tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_uncore_warm_reset_clears_timers_test"
+module = "smc_uncore_warm_reset_clears_timers_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "cpu"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_reset_ctrl_survives_warm_test"
+module = "smc_reset_ctrl_survives_warm_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "cpu"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_reset_timing_bounds_test"
+module = "smc_reset_timing_bounds_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset"]
+run_modes = ["smoke"]
+
+[[tests]]
 # ISOLATE_REQ_PINEN_REG clears on a cold reset only while the synchronized
 # isolation pin is low; with the pin high the enable and the request hold
 # across the cold pulse.
@@ -331,6 +355,9 @@ tests = [
     "smc_jtag_reset_ovrd_walk_test",
     "smc_cool_reset_x_cold_reset_test",
     "smc_reset_mid_transaction_rand_test",
+    "smc_uncore_warm_reset_clears_timers_test",
+    "smc_reset_ctrl_survives_warm_test",
+    "smc_reset_timing_bounds_test",
     "smc_isolate_pinen_cold_test",
     "smc_flr_sequencer_single_pulse_test",
 ]

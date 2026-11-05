@@ -8,16 +8,20 @@ if unused" note the inertness legs rest on. Every width compare that carries
 an evidence token takes its expected value from a specification: the port
 table's literal widths, the parameter defaults in
 `doc/integrator/src/smu.adoc` "SMU Default Parameters", the SMC port table's
-external interrupt count and system AXI input ID width, and the generated
-`reset_unit` register header for `SS_CONFIG`. cocotb/seq_lib/smu_compose_helpers.py
-names the source of each constant. The SMN struct widths and the
-crossbar-side and SEP-side ID widths have no specified value and are logged as
-observations, not compared. The CHK-SMU-* evidence tokens are named after the
+external interrupt count and system AXI input ID width, the integrator
+guide's crossbar address map for the ID and user widths of `smu_axi_in` and
+`smu_axi_out`, and the generated `reset_unit` register header for
+`SS_CONFIG`. cocotb/seq_lib/smu_compose_helpers.py names the source of each
+constant. The crossbar-side and SEP-side ID widths of the two ID-width
+converters have no specified value and are logged as observations, not
+compared. The CHK-SMU-* evidence tokens are named after the
 `SMU-<feature>.S<n>` ids the coverage policies' deferral rationales use.
 
 On the `--dut smu` production wrapper built with compile_smu_chiplet:
 every named port is read on the elaborated `smu` instance for its specified
-width, the SMC-side ID-width converter presents the 6-bit subsystem ID, the
+width, the ID and user fields of the smu AXI boundary ports are 8 bits in, 10
+bits out and 12 bits of user on every channel, the SMC-side ID-width
+converter presents the 6-bit subsystem ID, the
 CTP channels whose data inputs the bench holds at zero stay static at zero at
 the DTP consumer and at the SMU boundary, `ss_config_o` presents the SS_CONFIG
 reset value, `skip_mem_repair_o` is clear with no isolation request

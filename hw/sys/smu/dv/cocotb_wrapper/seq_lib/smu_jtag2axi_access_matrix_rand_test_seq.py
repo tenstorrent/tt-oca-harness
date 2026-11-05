@@ -19,7 +19,9 @@ S3: SCRATCH_COLD cells inside one 32-bit register, restored afterwards.
 S4: cells outside both apertures on ``u_axi_out_if`` (AxADDR, AxSIZE, WSTRB) and the responder.
 S5: adopter window and DTP CSR window cells: a read and a zero-strobe write at the drawn offset,
     the address graded at the far-end link, the responses recorded.
-S6: OTP bridge reads at drawn register words of the generated eFuse headers.
+S6: OTP bridge reads at drawn register words of the generated eFuse headers; the pinned read of
+    each bridge is at an eFuse-map word whose shadow image word is non-zero, so a read that
+    returns no data cannot match it.
 S7: series writes in an unclaimed span of the adopter window and outside both apertures.
 S8: a failing series read at a drawn address between unit apertures, a series read of the SPM
     word the pinned full-strobe cell wrote (its response status and data graded), a second
@@ -395,8 +397,14 @@ def _series_cell(rng, kind: str, tag: str, spans) -> dict:
     return {"kind": kind, "tag": tag, "addr": addr, "size": e, "count": count, "words": words}
 
 
-def draw_plan(seed: int, smc_words, sep_words) -> dict:
-    """Every cell of the run from the seed alone; pinned corners first, drawn cells after."""
+def draw_plan(seed: int, smc_words, sep_words, images: dict[str, dict[int, int]]) -> dict:
+    """Every cell of the run from the seed alone; pinned corners first, drawn cells after.
+
+    The pinned OTP cell of each bridge is drawn among the words whose ``images`` word is
+    non-zero. In the default SMC image that is the low LOCKS word, which holds the
+    JTAG_PUBLIC_IDENTITY read lock (0x2); LOCKS itself is sw = rw and carries no read lock
+    (hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl:28-44).
+    """
     rng = random.Random(seed)
     spans, gaps = adopter_spans(), fabric_gaps()
     cells = [
@@ -409,7 +417,10 @@ def draw_plan(seed: int, smc_words, sep_words) -> dict:
         _single_cell(rng, "dtp", "pinned"),
     ]
     for kind, words in (("smc_otp", smc_words), ("sep_otp", sep_words)):
-        name, addr = rng.choice(words)
+        live = [(n, a) for n, a in words if images[kind].get(a)]
+        if not live:
+            raise AssertionError(f"{kind}: no drawable eFuse-map word has a non-zero image word")
+        name, addr = rng.choice(live)
         cells.append({"kind": kind, "tag": "pinned", "addr": addr, "reg": name})
     cells.append(_series_cell(rng, "series_adopter", "pinned", spans))
     cells.append(_series_cell(rng, "series_outside", "pinned", spans))
@@ -533,6 +544,7 @@ class smu_jtag2axi_access_matrix_rand_test_seq:
         self.obs: dict[str, dict] = {k: {} for k in ("addr", "size", "wstrb", "data", "series")}
         self.want: dict[str, dict] = {k: {} for k in ("addr", "size", "wstrb", "data", "series")}
         self.graded: Counter = Counter()
+        self.otp_nonzero: Counter = Counter()
         self.sizes_on_tap: set[int] = set()
         self.spm_model: dict[int, int] = {}
         self.done = False
@@ -744,13 +756,15 @@ class smu_jtag2axi_access_matrix_rand_test_seq:
             )
         smc_image = str(cocotb.plusargs["smc_shadow_reg_preload"])
         sep_image = str(cocotb.plusargs["sep_shadow_reg_preload"])
-        self.plan = draw_plan(self.seed, smc_otp_words(smc_image), sep_otp_words(sep_image))
         self.otp_image = {
             "smc_otp": image_map(smc_image, _SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_MAP"),
             "sep_otp": image_map(
                 sep_image, _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP", skip=(SEP_LC_STATE_ADDR,)
             ),
         }
+        self.plan = draw_plan(
+            self.seed, smc_otp_words(smc_image), sep_otp_words(sep_image), self.otp_image
+        )
         self._log(f"SEED: RANDOM_SEED={self.seed} {self._draw_text()}")
         apertures = []
         for base, size in (
@@ -978,6 +992,8 @@ class smu_jtag2axi_access_matrix_rand_test_seq:
         else:
             self._log(f"{key} read data 0x{rdata:08x} image word 0x{image_word:08x}")
             self._record("data", key, rdata, image_word)
+            if image_word:
+                self.otp_nonzero[cell["kind"]] += 1
         self._record(
             "addr", key, (status, seen[mark:]), (J2A_STATUS_SUCCESS, [("r", cell["addr"])])
         )
@@ -1154,16 +1170,19 @@ class smu_jtag2axi_access_matrix_rand_test_seq:
         self._log(f"OBSERVATION step fence {fence} (logged, not compared)")
         self._log(
             f"CHK-NONVAC: graded={dict(self.graded)} bridges={bridges} "
+            f"otp_nonzero={dict(self.otp_nonzero)} "
             f"sizes_on_tap={sorted(self.sizes_on_tap)} seed={self.seed}"
         )
         sb.expect_eq(
-            "CHK-NONVAC a graded cell per bridge and window, every size on the tap",
+            "CHK-NONVAC a graded cell per bridge and window, a graded non-zero image word per "
+            "OTP bridge, every size on the tap",
             (
                 min(bridges.values()) >= 1,
                 min(self.graded[k] for k in EXTRA_KINDS) >= 1,
+                min(self.otp_nonzero[k] for k in ("smc_otp", "sep_otp")) >= 1,
                 sorted(self.sizes_on_tap),
             ),
-            (True, True, list(SIZES)),
+            (True, True, True, list(SIZES)),
             evidence="CHK-NONVAC",
         )
 

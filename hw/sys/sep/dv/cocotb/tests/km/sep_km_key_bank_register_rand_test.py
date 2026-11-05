@@ -28,7 +28,7 @@ The last leg is the single-share delivery to AES
 (``hw/sys/sep/doc/crypto.adoc:192-196``: both shares are always consumed, a
 single written share delivers V because the unwritten share reads as zero, and
 a Key Manager wipe clears KEY_VALID and both shares;
-``hw/ip/key_manager/doc/architecture.adoc:503-509``: the wipe pulse clears both
+``hw/ip/key_manager/doc/architecture.adoc:511-517``: the wipe pulse clears both
 shares and KEY_VALID of every sideload block). It brings up the
 entropy stack so AES can run, then for share 0 and share 1 (order drawn): the
 image writes both AES shares non-zero and sets KEY_VALID, the host pulses
@@ -42,7 +42,7 @@ Checks (each anchored on a POKE readback or the POKE handler count):
                    (``hw/ip/key_manager/regs/aes_wrapper_key.rdl:37``, the same
                    in the hmac, kmac, otbn and abr wrapper RDL); "The
                    ``KEY_SHARE0`` and ``KEY_SHARE1`` words are write-only, and
-                   reads return zero." (``architecture.adoc:282-283``). The
+                   reads return zero." (``architecture.adoc:290-291``). The
                    stored value after reset is undefined
                    (``aes_wrapper_key.rdl:38``) and is not observable on the bus
   CHK-BANK-SHARES  all 136 share words read 0 after a non-zero write, key_valid 0

@@ -17047,7 +17047,7 @@ module sep_fcov (
     // Access while ip_rst_n of the domain is low: {domain 0 OTBN, 1 AES,
     // 2 KMAC, 3 Adams Bridge, 4 HMAC, 5 TRNG, class 0 read with 0x1501A7ED
     // in every 32-bit lane (and SLVERR for domains 0 to 3), 1 write SLVERR,
-    // 2 another answer}. HMAC and TRNG writes are not sampled.
+    // 2 another answer}.
     cp_isolated_resp: coverpoint s.ir iff (s.ir_v) {
       bins otbn_rd = {5'b000_00};
       bins otbn_wr = {5'b000_01};
@@ -17058,7 +17058,9 @@ module sep_fcov (
       bins abr_rd = {5'b011_00};
       bins abr_wr = {5'b011_01};
       bins hmac_rd = {5'b100_00};
+      bins hmac_wr = {5'b100_01};
       bins trng_rd = {5'b101_00};
+      bins trng_wr = {5'b101_01};
       illegal_bins other_answer = {
         5'b000_10, 5'b001_10, 5'b010_10, 5'b011_10, 5'b100_10, 5'b101_10
       };
@@ -20419,7 +20421,7 @@ module sep_fcov (
     end
     if (mr_own_swiso && b_any) begin
       dom = mr_ir_dom(aw_addr_q);
-      if ((dom >= 0) && (dom < 4) && mr_ir_awlow[dom] && !mr_ip[MrIrIdx[dom]]) begin
+      if ((dom >= 0) && mr_ir_awlow[dom] && !mr_ip[MrIrIdx[dom]]) begin
         mr_scope_t e;
         e      = '0;
         e.ir   = {3'(dom), (lsu_b_resp_i == 2'b10) ? 2'd1 : 2'd2};
@@ -38386,6 +38388,8 @@ module sep_fcov (
     logic pp_v;  // cp_presense_port: port differs from the LC_STATE reset value
     logic [4:0] cg;
     logic cg_v;  // x_cond_gate: {wrong level, condition, port}
+    logic [1:0] ph;
+    logic ph_v;  // cp_presense_hold: {port left the reset value, sensed byte loaded}
   } ef_pgt_t;
 
   covergroup sep_lc_port_gate_cg with function sample (ef_pgt_t s);
@@ -38400,6 +38404,14 @@ module sep_fcov (
     // value, the INVALID encoding.
     cp_presense_port: coverpoint s.pp iff (s.pp_v) {
       bins invalid_reset_value = {1'b0}; illegal_bins other_value = {1'b1};
+    }
+    // The pre-sense window of a sense with SEC_DIS 0, sampled once at the
+    // sense-done rise: {lc_state_o left the LC_STATE reset value on a clock of
+    // the window, the sensed LC_STATE byte was known and differed from that
+    // value on a clock of the window}. A window in which no such byte loaded
+    // fills no bin.
+    cp_presense_hold: coverpoint s.ph iff (s.ph_v) {
+      bins held_over_loaded_byte = {2'b01}; illegal_bins port_left_reset_value = {2'b10, 2'b11};
     }
     // Condition 0 before sense with SEC_DIS 0, 1 SEC_DIS 1, 2 integrity error
     // with SEC_DIS 0; port 0 dbg_disable, 1 sep_fuse_dft_disable, 2
@@ -38479,6 +38491,38 @@ module sep_fcov (
       e.pp = (lc_state_i !== EfLcReset);
       e.pp_v = 1'b1;
       u_sep_lc_port_gate_cg.sample(e);
+    end
+  end
+
+  // cp_presense_hold: from the reset-release clock to the sense-done rise.
+  wire  ef_own_sense = (graded_owner == FcovOwnSepEfuseSenseTest);
+  wire  ef_ph_open = (fuse_sense_done_i !== 1'b1);
+  wire  ef_ph_byte = !$isunknown(ef_lc_word[7:0]) && (ef_lc_word[7:0] != EfLcReset);
+  logic ef_ph_win = 1'b0;
+  logic ef_ph_leak = 1'b0;
+  logic ef_ph_load = 1'b0;
+  logic ef_ph_sd = 1'b0;
+  always @(posedge clk_i) begin
+    ef_pgt_t e;
+    if (in_reset) begin
+      ef_ph_win <= 1'b0;
+    end else if (ef_rel) begin
+      ef_ph_win  <= !skip_fuse_sense_q && ef_ph_open;
+      ef_ph_leak <= (lc_state_i !== EfLcReset);
+      ef_ph_load <= ef_ph_byte;
+      ef_ph_sd   <= (sec_dis_i !== 1'b0);
+    end else if (ef_ph_win && ef_ph_open) begin
+      ef_ph_leak <= ef_ph_leak || (lc_state_i !== EfLcReset);
+      ef_ph_load <= ef_ph_load || ef_ph_byte;
+      ef_ph_sd   <= ef_ph_sd || (sec_dis_i !== 1'b0);
+    end else if (ef_ph_win) begin
+      ef_ph_win <= 1'b0;
+      if (ef_own_sense && !ef_ph_sd) begin
+        e = '0;
+        e.ph = {ef_ph_leak, ef_ph_load};
+        e.ph_v = 1'b1;
+        u_sep_lc_port_gate_cg.sample(e);
+      end
     end
   end
 
@@ -38710,7 +38754,7 @@ module sep_fcov (
   localparam logic [31:0] KmHmacBase =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR);
   localparam logic [31:0] KmAbrBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_BASE_ADDR);
-  // VROM window base (hw/ip/key_manager/doc/architecture.adoc:663).
+  // VROM window base (hw/ip/key_manager/doc/architecture.adoc:682-683).
   localparam logic [31:0] KmVromBase = 32'h1000_0000;
   // KMCSR registers.
   localparam logic [31:0] KmCsrVersion =
@@ -39914,7 +39958,7 @@ module sep_fcov (
     }
     // {DEST_VALID bit (0 HMAC, 1 KMAC, 2 AES, 3 OTBN, 4 ABR ML-DSA seed),
     // size against the share width (0 below, 1 equal, 2 above)}. The below
-    // cells are blocked on a Planned check (docs/SEP_FCOV.adoc) and not declared.
+    // cells are non-claimed (docs/SEP_FCOV.adoc) and not declared.
     cp_km_size_vs_width: coverpoint v[4:0] iff (pt == 5'd3) {
       bins hmac[] = {5'b000_01, 5'b000_10};
       bins kmac[] = {5'b001_01, 5'b001_10};
@@ -42314,7 +42358,7 @@ module sep_fcov (
         if ((km_wp_in_d != 5'd0) && (km_mbx_in_depth_i === km_wp_in_d))
           u_sep_km_vault_wipe_cg.sample(5'd3, 16'd2);
         // The pulse clears KEY_VALID of every accelerator sideload register
-        // block (hw/ip/key_manager/doc/architecture.adoc:506-510): at least
+        // block (hw/ip/key_manager/doc/architecture.adoc:514-518): at least
         // one KEY_VALID bit set before the wipe, and every bit 0 after it.
         if ((km_wp_valid != 8'h00) && !$isunknown(km_wp_valid) && (km_key_valid_i === 8'h00))
           u_sep_km_vault_wipe_cg.sample(5'd3, 16'd3);

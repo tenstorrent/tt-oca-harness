@@ -25,7 +25,8 @@ records, the trace events, the pulse counts and the field record:
                   sample before the block and the quiescent sample after it);
                   every flipped DCCM load raises MDCCMECT; each arming that finds
                   MCEIP set traps once with mcause 0x8000_001E, an arming below
-                  2^t does not.
+                  2^t does not; the arming at the count 0 reads mie[30] and
+                  mstatus.MIE set.
 * CHK-TCM-SILENT  with mie[30] clear the errors count with no trap and no trace
                   interrupt event, also at a count at or above 2^t.
 * CHK-TCM-CLAMP   the exponent 31 reads back 26 in both counters; t reads back t.
@@ -37,6 +38,12 @@ records, the trace events, the pulse counts and the field record:
 * CHK-TCM-DBG     each access pulses its own debug-bus bit (ICCM single 367,
                   DCCM single 365, DCCM double 364) inside its markers, one
                   clock wide, and no other of the three bits.
+* CHK-TCM-DBG366  inside the ``iccm_ue`` window (the fetch of the ICCM word
+                  with the double-bit flip) bit 366 pulses at least once and
+                  every bit-366 pulse there is one clock wide
+                  (``hw/sys/sep/doc/interrupts.adoc:413-415``: bit 366 is the
+                  ICCM double-bit lane, driven as single-cycle pulses). Control:
+                  ``sep_ras_o.iccm_ecc_ue`` rises in the same window.
 * CHK-TCM-NO-PIC  the meip words equal their baseline and MICECT reads 0 after
                   the correctable leg and after each uncorrectable trap; the PIC
                   vector does not move around a correctable pulse.
@@ -51,7 +58,9 @@ records, the trace events, the pulse counts and the field record:
                   release is one clock wide. Each logs PASS or FAIL; the leaf
                   fails once after its other checks if any of them failed.
 
-Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366``,
+Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366`` (the
+bit-366 pulse counts in total, inside the ``iccm_ue`` window and in the other windows, and the
+widths of the pulses outside that window),
 ``OBS-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
 each window), ``OBS-RAS-<FIELD>-COUNT`` (rises per window) and
 ``OBS-RAS-ICCM_ECC_UE-TRAP`` (the trap or NMI of the uncorrectable fetch,
@@ -138,6 +147,7 @@ CNT_MASK = 0x07FF_FFFF
 CLAMP_MAX = 26
 MIP_MCEIP = 1 << 30
 MIE_MCEIE = 1 << 30
+MSTATUS_MIE = 1 << 3
 PIC_SRC = 2  # mailbox interrupt 1; vector bit PIC_SRC - 1
 
 # ext_debug_bus_o[367:364] (hw/sys/sep/doc/interrupts.adoc, Debug bus mirror).
@@ -339,6 +349,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         "CHK-TCM-UE",
         "CHK-TCM-NMI",
         "CHK-TCM-DBG",
+        "CHK-TCM-DBG366",
         "CHK-TCM-NO-PIC",
         *(
             f"CHK-RAS-{fld.upper()}-{half}"
@@ -667,10 +678,13 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             int(zero["traps_after"]) == int(zero["traps_before"])
             and int(zero["dc"]) & CNT_MASK == 0
             and not int(zero["mip"]) & MIP_MCEIP
+            and int(zero["mie"]) & MIE_MCEIE
+            and int(zero["mst"]) & MSTATUS_MIE
             and not self._intr_events(zw)
         )
         zbody = (
             f"mem=DCCM order={order} t={cfg.t} arming=count0 counter={int(zero['dc']) & CNT_MASK} "
+            f"mie30={(int(zero['mie']) & MIE_MCEIE) >> 30} mstatus_mie={(int(zero['mst']) & MSTATUS_MIE) >> 3} "
             f"mceip={(int(zero['mip']) & MIP_MCEIP) >> 30} "
             f"traps={int(zero['traps_after']) - int(zero['traps_before'])} mcause=none"
         )
@@ -887,10 +901,6 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             bad.append(
                 f"{len(wide)} pulses wider than one clock: {[(p.bit, p.width) for p in wide[:6]]}"
             )
-        db366 = [p for p in self.pulses if p.bit == BIT_I_DB]
-        self.logger.info(
-            "OBS-TCM-DBG366 LOG pulses=%d widths=%s", len(db366), [p.width for p in db366[:8]]
-        )
         with_pulse = sum(1 for x in per_word if x)
         body = (
             f"bit365={cnt[BIT_D_SB]} bit367={cnt[BIT_I_SB]} bit364={cnt[BIT_D_DB]} width_clk=1 "
@@ -900,6 +910,35 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         if bad or len(per_word) != cfg.n:
             raise AssertionError(f"CHK-TCM-DBG FAIL: {body}: {bad[:8]}")
         self.logger.info("CHK-TCM-DBG PASS: %s", body)
+        return 1
+
+    def _chk_dbg366(self) -> int:
+        win = self._window("iccm_ue")
+        db366 = [p for p in self.pulses if p.bit == BIT_I_DB]
+        outside = [p for p in db366 if not win[0] <= p.nl <= win[1]]
+        self.logger.info(
+            "OBS-TCM-DBG366 LOG seed=%d pulses_total=%d pulses_iccm_ue=%d pulses_other_windows=%d "
+            "widths_outside_iccm_ue=%s",
+            self.random_seed(),
+            len(db366),
+            len(db366) - len(outside),
+            len(outside),
+            [p.width for p in outside[:8]],
+        )
+        lo, hi = self._clk_win(win)
+        rises = [r for r in self.ras.rise_clks_since(self.ras_rel, "iccm_ecc_ue") if lo < r <= hi]
+        if not rises:
+            msg = "CTRL-MISSING CHK-TCM-DBG366: sep_ras_o.iccm_ecc_ue did not rise in iccm_ue"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        widths = [p.width for p in self._pulses_in(win)[BIT_I_DB]]
+        body = (
+            f"contract=hw/sys/sep/doc/interrupts.adoc:413-415 window=iccm_ue "
+            f"pulses={len(widths)} widths={widths[:8]} expect_width=1 ras_ue_rises={len(rises)}"
+        )
+        if not widths or any(w != 1 for w in widths):
+            raise AssertionError(f"CHK-TCM-DBG366 FAIL: {body}")
+        self.logger.info("CHK-TCM-DBG366 PASS: %s", body)
         return 1
 
     def _chk_no_pic(self) -> int:
@@ -1191,6 +1230,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         n += self._chk_ue()
         n += self._chk_nmi(sy)
         n += self._chk_dbg()
+        n += self._chk_dbg366()
         n += self._chk_no_pic()
         if self.ras_chk.fails:
             raise AssertionError(

@@ -1,17 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Record the write response of every declared past-extent and gap address of the SMC map.
+"""Write responses of the SMC map's past-extent, gap and split-burst addresses over SEP_IN.
 
-Spec sources: regs/gen/adoc/memory_map.adoc component rows (ocah_past_extent_resp and
-ocah_hole_resp of every unit), memmap.adoc Address Space Organization (addresses between unit
-apertures), smc.rdl ocah_gap_resp. Every response is recorded as an OBS line; none is graded
-against the declaration. The split-burst cases record the merged BRESP of a two-beat INCR
-write whose beats fall on either side of a decoded extent.
+Spec sources: memmap.adoc "Address Space Organization" (a write burst to a register unit is
+split into single-beat writes; its response is the last beat's when that beat answers SLVERR
+or DECERR, else SLVERR when an earlier beat answered an error, else OKAY), the generated
+memory_map.adoc component rows (ocah_past_extent_resp and ocah_hole_resp of every unit) and
+smc_memory_map.rdl ocah_gap_resp.
 
-The single-access declarations are the DECERR past-extent and gap responses of #3294, so the
-OBS-BRESP table records declared and observed side by side. #3426 asks for the merged response
-of a split write burst and the cluster-path statements; the leaf is held out of `all` until that
-ruling lands.
+CHK-BURST-MERGE-RESP grades the merged response of two-beat INCR writes whose beat answers
+are declared: the last beat past the last register of smc_cpu_ctrl (SLVERR, from the block)
+and of smc_reset_unit (DECERR, the generated row's past-extent code), and a burst inside
+scratch_cold. The beat answers are the per-beat RRESP of the same burst read and must equal
+the declared codes. A WRAP burst whose first beat is the word past the last register of
+smc_reset_unit and whose last beat is that register is recorded (OBS-MERGE-WRAP) with its
+single-beat codes, merged BRESP and whether the register took the burst's word, and is not
+graded: memmap.adoc routes a burst by its start address and answers DECERR for every beat of
+a burst that starts between unit apertures, and whether the word past a unit's last register
+counts as between apertures is open with the document owner. The OBS-BRESP and OBS-BURST
+tables record every declared past-extent and gap address and every other two-beat case beside
+the declared codes.
 """
 
 from __future__ import annotations
@@ -21,16 +29,22 @@ from collections import Counter
 from pathlib import Path
 
 import cocotb
+from cocotb.triggers import RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
     _COMPONENT_ROWS,
     LOCAL_BASE_RESET,
     REGION_SIZE_RESET,
+    cpu_ctrl_u32,
+    generated_past_extent_resp,
+    reset_unit_u32,
     smc_addr,
     smc_indexed_addr,
 )
+from .smc_axi_illegal_encoding_inject_test_seq import split_bresp
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_sep_in_resp_sampler import SepInRespSampler
 
 _RESP_NAMES = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 _RESP_CODES = {v: k for k, v in _RESP_NAMES.items()}
@@ -39,6 +53,7 @@ WRITE_PATTERN64 = 0x5A5A_A5A5_A5A5_5A5A
 FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
 AXI_TIMEOUT_NS = 50_000
 BURST_INCR = 1
+BURST_WRAP = 2
 
 _INTERNAL_XBAR = {
     "smc_base_config",
@@ -103,6 +118,7 @@ _SUBBLOCK_GAPS = (
 _CHECKERS = (
     "CHK-OBS-BRESP-TABLE",
     "CHK-OBS-BURST-TABLE",
+    "CHK-BURST-MERGE-RESP",
     "CHK-BURST-LIVE-UNCHANGED",
     "CHK-TIMEOUT-PATHS",
 )
@@ -195,10 +211,10 @@ def build_probes() -> list[_Probe]:
     return probes
 
 
-class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
+class smc_bresp_evidence_test_seq(SmcCsrSeq):
     """Write every declared past-extent and gap address over SEP_IN and record the responses."""
 
-    def __init__(self, name: str = "smc_bresp_evidence_obs_test_seq") -> None:
+    def __init__(self, name: str = "smc_bresp_evidence_test_seq") -> None:
         super().__init__(name)
         self.chk_seen: set[str] = set()
         self.fuse_state = "not waited"
@@ -224,13 +240,15 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         mask = (1 << width) - 1
         return item.resp_code, item.rdata & mask
 
-    async def _wr(self, label: str, addr: int, width: int, data: int, beats: int = 1) -> int:
+    async def _wr(
+        self, label: str, addr: int, width: int, data: int, beats: int = 1, burst: int = BURST_INCR
+    ) -> int:
         item = SmcSysAxiItem(f"wr_{label}")
         item.op = SmcSysAxiOp.WRITE
         item.addr = addr
         item.length = width // 8
         item.beats = beats
-        item.burst = BURST_INCR
+        item.burst = burst
         item.wdata = data
         item.allow_error = True
         await self.start_item(item)
@@ -338,6 +356,193 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
                 )
                 self.live_results.append(f"{label}:0x{addr:08x} restored 0x{orig:x}")
 
+    async def _rd_beats(self, label: str, addr: int, width: int, beats: int) -> list[int]:
+        """Per-beat RRESP of an INCR read burst, from the port's R handshakes."""
+        sampler = SepInRespSampler(cocotb.top)
+        try:
+            item = SmcSysAxiItem(f"rd_{label}")
+            item.op = SmcSysAxiOp.READ
+            item.addr = addr
+            item.length = width // 8
+            item.beats = beats
+            item.burst = BURST_INCR
+            item.allow_error = True
+            await self.start_item(item)
+            await self.finish_item(item)
+            self.accesses += 1
+            await RisingEdge(cocotb.top.clk_smc_i)
+            await RisingEdge(cocotb.top.clk_smc_i)
+        finally:
+            sampler.stop()
+        r, _, _, _ = sampler.take()
+        assert sampler.unresolved == 0 and len(r) == beats, (
+            f"{label} @ 0x{addr:08x}: {len(r)} R beats sampled for {beats}, "
+            f"{sampler.unresolved} unresolved edges"
+        )
+        codes = [resp for resp, _, _ in r]
+        assert None not in codes, f"{label} @ 0x{addr:08x}: RRESP X in {codes}"
+        return codes
+
+    async def _merge_rule(self) -> None:
+        base = LOCAL_BASE_RESET
+        cpu_last = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADDR", 3)
+        ru_last = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
+        scratch_2 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 2)
+        assert cpu_last + 8 == base + 0x3_92C0
+        assert ru_last + 4 == base + 0x20CC and scratch_2 == base + 0x2808
+        rows = []
+        okay = _RESP_CODES["OKAY"]
+        # Declared beat answers: a live register OKAY; the beat past the last register of
+        # smc_cpu_ctrl SLVERR (memmap.adoc, Generated Register Blocks); the word past the
+        # decoded extent of smc_reset_unit the generated row's past_response, answered by
+        # the crossbar.
+        ru_past = _RESP_CODES[generated_past_extent_resp("smc_reset_unit")[1]]
+        assert ru_past == _RESP_CODES[generated_past_extent_resp("smc_reset_unit")[0]]
+        slverr = _RESP_CODES["SLVERR"]
+        # Every beat writes a pattern inside the writable field of its word; a beat the
+        # block answers OKAY is shown landed by reading the pattern back, then restored.
+        full64 = (1 << 64) - 1
+        full32 = (1 << 32) - 1
+        null_bm = cpu_ctrl_u32("CPU_CTRL__DUMMY_ROM_NULL__DUMMY_ROM_NULL_bm")
+        flr_bm = reset_unit_u32(
+            "RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_bm"
+        )
+        # (label, start, width, burst, per-beat field masks, declared beat answers, evidence,
+        # graded). The WRAP case starts at the word past the decoded extent of smc_reset_unit:
+        # memmap.adoc routes a burst by its start address and answers DECERR for every beat of
+        # a burst that starts between unit apertures, and whether that word counts as between
+        # apertures is open with the document owner, so the case is recorded, not graded.
+        cases = (
+            (
+                "MERGE_cpu_ctrl_last_incr",
+                cpu_last,
+                64,
+                BURST_INCR,
+                (null_bm, full64),
+                (okay, slverr),
+                "read",
+                True,
+            ),
+            (
+                "MERGE_reset_unit_last_incr",
+                ru_last,
+                32,
+                BURST_INCR,
+                (flr_bm, full32),
+                (okay, ru_past),
+                "read",
+                True,
+            ),
+            (
+                "MERGE_reset_unit_past_wrap",
+                ru_last + 4,
+                32,
+                BURST_WRAP,
+                (full32, flr_bm),
+                (ru_past, okay),
+                "single",
+                False,
+            ),
+            (
+                "MERGE_scratch_cold_incr",
+                scratch_2,
+                32,
+                BURST_INCR,
+                (full32, full32),
+                (okay, okay),
+                "read",
+                True,
+            ),
+        )
+        for label, start, width, burst, fields, declared, evidence, graded in cases:
+            nbytes = width // 8
+            addrs = (start, start - nbytes) if burst == BURST_WRAP else (start, start + nbytes)
+            self.env.axi_monitor.expected_decerr_addrs.update(addrs)
+            pattern = WRITE_PATTERN64 if width == 64 else WRITE_PATTERN
+            mask = (1 << width) - 1
+            before = [await self._rd(f"{label}_pre{i}", a, width) for i, a in enumerate(addrs)]
+            words = [pattern & field for field in fields]
+            for (_, orig), word, code in zip(before, words, declared):
+                assert code != okay or word != orig, f"{label}: pattern equals the held word"
+            if evidence == "read":
+                codes = await self._rd_beats(label, start, width, 2)
+            else:
+                codes = [
+                    await self._wr(f"{label}_single{i}", a, width, w)
+                    for i, (a, w) in enumerate(zip(addrs, words))
+                ]
+                # The single-beat writes stored the patterns. Put the held words back before
+                # the burst, so a pattern read after it can only have come from the burst's
+                # own beat.
+                for i, (a, (_, orig), code) in enumerate(zip(addrs, before, codes)):
+                    if code != okay:
+                        continue
+                    await self._wr(f"{label}_unseed{i}", a, width, orig)
+                    _, held = await self._rd(f"{label}_unseeded{i}", a, width)
+                    assert held == orig, (
+                        f"{label} 0x{a:08x}: 0x{held:x} after the held word was put back "
+                        f"before the burst, want 0x{orig:x}"
+                    )
+            if graded:
+                assert tuple(codes) == declared, (
+                    f"CHK-BURST-MERGE-RESP FAIL: {label} beats from 0x{start:08x} answer "
+                    f"{[_rname(c) for c in codes]} ({evidence}), declared "
+                    f"{[_rname(c) for c in declared]}"
+                )
+            want = split_bresp(codes)
+            payload = (words[0] & mask) | ((words[1] & mask) << width)
+            got = await self._wr(f"{label}_burst", start, width, payload, beats=2, burst=burst)
+            if graded:
+                assert got == want, (
+                    f"CHK-BURST-MERGE-RESP FAIL: {label} two-beat INCR write from "
+                    f"0x{start:08x} answers {_rname(got)}; the beats answer "
+                    f"{[_rname(c) for c in codes]} so the stated rule gives {_rname(want)}"
+                )
+            landed = []
+            for i, (a, word, code, (_, orig)) in enumerate(zip(addrs, words, codes, before)):
+                if code != okay:
+                    continue
+                _, after = await self._rd(f"{label}_post{i}", a, width)
+                if graded:
+                    assert after == word, (
+                        f"CHK-BURST-MERGE-RESP FAIL: {label} beat {i} at 0x{a:08x} answered "
+                        f"OKAY but reads 0x{after:x} after the burst, want the written "
+                        f"0x{word:x}"
+                    )
+                landed.append(
+                    f"0x{a:08x}=0x{word:x}"
+                    if after == word
+                    else f"0x{a:08x} not written (reads 0x{after:x})"
+                )
+                await self._wr(f"{label}_restore{i}", a, width, orig)
+                _, restored = await self._rd(f"{label}_restored{i}", a, width)
+                assert restored == orig, (
+                    f"{label} 0x{a:08x}: 0x{restored:x} after restore, was 0x{orig:x}"
+                )
+                self.live_results.append(f"{label}:0x{a:08x} restored 0x{orig:x}")
+            row = (
+                f"{label}: beats {[_rname(c) for c in codes]} ({evidence}) -> {_rname(got)}, "
+                f"the stated rule over the beats gives {_rname(want)}, landed "
+                f"{' '.join(landed) or 'none'}"
+            )
+            if graded:
+                rows.append(row)
+            else:
+                cocotb.log.info(
+                    "OBS-MERGE-WRAP: %s (observation, never compared; declared beats %s; the "
+                    "start word is past the decoded extent of smc_reset_unit, and whether "
+                    "memmap.adoc's every-beat DECERR rule for a burst starting between unit "
+                    "apertures or its split rule applies there is open with the document owner)",
+                    row,
+                    [_rname(c) for c in declared],
+                )
+        assert len(rows) == 3, f"{len(rows)} graded merge cases"
+        self._log_chk(
+            "CHK-BURST-MERGE-RESP",
+            f"{len(rows)} two-beat INCR writes whose merged BRESP equals the stated rule over "
+            f"the beat answers: {'; '.join(rows)}",
+        )
+
     async def body(self) -> None:
         await self.wait_fuse_sense_done(FUSE_WAIT_BOUND_SMC_CYCLES)
         dut = cocotb.top
@@ -374,7 +579,8 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         assert gpio_last == base + 0x3408
         outfilt_last = (
             smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 15)
-            + 0x18
+            + smc_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE")
+            - 8
         )
         assert outfilt_last == base + 0x1_61F8
         cpu_last = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADDR", 3)
@@ -440,7 +646,7 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
                 "b",
                 "C2_gap_FFF8_base_config",
                 "local",
-                base + 0x1_0000,
+                smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR"),
                 "P",
                 None,
                 "beats_straddle_a_local_xbar_rule_boundary",
@@ -459,8 +665,9 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
             "CHK-OBS-BURST-TABLE",
             f"{self.obs_burst} OBS-BURST lines recorded, one per case and width: two-beat INCR "
             f"writes over SEP_IN whose beats fall on either side of a decoded extent; merged BRESP "
-            f"measured, not graded",
+            f"recorded beside the single-beat codes",
         )
+        await self._merge_rule()
         self._log_chk(
             "CHK-BURST-LIVE-UNCHANGED",
             f"{len(self.live_results)} live or scratch words read back after the bursts: "
