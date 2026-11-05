@@ -1871,7 +1871,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, HOST
 |Host mailbox master, KM entropy sink probe, `KM-KPV` observation tap
-|Claims no check: the checker set is empty and the test has no testlist entry. The entry plans checks that a key of 1 to 128 words takes the stated number of consecutive slots, that handles come in order and are never reused or wrapped, and that a full vault or a used-up handle space refuses a load with no change. The slot span, revoke and fragmentation checks read the tap.
+|Planned and not in the regression: none of its checks runs. The checker set is empty and the test has no testlist entry. The entry plans checks that a key of 1 to 128 words takes the stated number of consecutive slots, that handles come in order and are never reused or wrapped, and that a full vault or a used-up handle space refuses a load with no change. The slot span, revoke and fragmentation checks read the tap.
 
 |<<sep_km_key_transfer_rand_test,`sep_km_key_transfer_rand_test`>>
 |3
@@ -1883,7 +1883,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, HOST
 |Host mailbox master, `KM-VALID` observation tap
-|Claims no check: the checker set is empty and the test has no testlist entry. The entry plans checks that the ABR shared key is consumed once, that its source is cleared before a slot is allocated, and that one notification is sent for each arrival. The shared-key source check reads the tap, and the shared-key words are logged.
+|Planned and not in the regression: none of its checks runs. The checker set is empty and the test has no testlist entry. The entry plans checks that the ABR shared key is consumed once, that its source is cleared before a slot is allocated, and that one notification is sent for each arrival. The shared-key source check reads the tap, and the shared-key words are logged.
 
 |<<sep_km_boot_reset_rand_test,`sep_km_boot_reset_rand_test`>>
 |3
@@ -2128,8 +2128,10 @@ unstated value (<<sep-vplan-credit-rules>>). Its entry carries the field
 an executable total, and its bins are blocked bins of `SEP_FCOV.adoc`
 (<<sep-fcov-parked,Phase 2 Groups>>).
 
-No Phase 3 entry carries a `*Needs*:` field, so every Phase 3 test is
-executable: at least one of its graded checks is not blocked. An entry names
+No Phase 3 entry carries a `*Needs*:` field. Every Phase 3 test is
+executable (at least one of its graded checks is not blocked), except the
+planned entries that are not in the regression: such an entry has an empty
+checker set and no testlist entry, and none of its checks runs. An entry names
 the PROPOSED item or the unstated value of each of its blocked checks and legs.
 
 
@@ -2165,7 +2167,8 @@ RMA_CHIPLET over merged regressions. An entry whose leaf runs its whole cell set
 the seed selects only orders, values and timing, runs one seed per regression
 (no `reseed`); each regression draws a new seed, so those values still vary.
 
-*Testlist entries.* A Phase 3 test has one testlist entry. Each entry runs on
+*Testlist entries.* A Phase 3 test has one testlist entry, except a planned
+entry that is not in the regression, which has none. Each entry runs on
 its testlist target, so a test that grades some checks on one simulator only
 splits them inside its one entry, and the leaf selects them from the simulator.
 Full-CPU legs of a `no_cpu` test run in a dedicated full-CPU entry
@@ -2512,13 +2515,13 @@ the entry adds. A row marked "parked" names a parked test
 |`sep_km_command_protocol_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |RAND-REP
-|`sep_km_key_vault_alloc_rand_test`
+|`sep_km_key_vault_alloc_rand_test` (planned, not in the regression)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |RAND-REP
 |`sep_km_key_transfer_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |RANDCFG + RAND-REP
-|`sep_km_abr_shared_key_flow_rand_test`
+|`sep_km_abr_shared_key_flow_rand_test` (planned, not in the regression)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |RAND-REP
 |`sep_km_boot_reset_rand_test`
@@ -4759,12 +4762,12 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`KM-VALID`
 |Read-only tap
 |`KEY_CTRL.key_valid` of the eight engine key banks, the ABR shared-key `key_valid` and `KEY[0..7]` words, and the ABR shared-key `IRQ_STATUS.key_valid` and `IRQ_ENABLE.key_valid_en`.
-|`sep_km_command_protocol_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_cpu_protect_rand_test`, `sep_km_kpv_rand_test`
+|`sep_km_command_protocol_rand_test`, `sep_km_key_transfer_rand_test`, `sep_km_abr_shared_key_flow_rand_test` (planned, not in the regression), `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_cpu_protect_rand_test`, `sep_km_kpv_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-KPV`
 |Read-only tap
 |KPV `CTRL[63:0]` and the 1024 stored words.
-|`sep_km_command_protocol_rand_test`, `sep_km_key_vault_alloc_rand_test`, `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_kpv_rand_test`, `sep_km_cpu_protect_rand_test`
+|`sep_km_command_protocol_rand_test`, `sep_km_key_vault_alloc_rand_test` (planned, not in the regression), `sep_km_boot_reset_rand_test`, `sep_km_handover_rand_test`, `sep_km_fault_inject_rand_test`, `sep_km_kpv_rand_test`, `sep_km_cpu_protect_rand_test`
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-CSR`
 |Read-only tap
