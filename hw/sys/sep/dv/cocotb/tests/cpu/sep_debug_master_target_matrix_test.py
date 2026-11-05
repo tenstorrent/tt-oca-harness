@@ -284,6 +284,7 @@ from env.sep_jtag_dmi import (
     IR_WIDTH,
     PIN_MAP,
     SBCS_SBBUSY,
+    SBCS_SBREADONADDR,
     DmiError,
     SepJtagDmi,
 )
@@ -1897,14 +1898,17 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             sbaddr = await self.dmi.dmi_read(DM_SBADDRESS0)
         except DmiError as exc:
             errors.append(f"sbcs:{exc}")
-        # sbaddress0 resets to 0, so reading back the target after each access
-        # shows that its address write reached the debug module.
+        # sbaddress0 resets to 0, so reading back the target after the write
+        # shows that the write reached the debug module. The read leaves
+        # sbaddress0 unchanged; its sbcs set-up, the only one that sets
+        # sbreadonaddr, shows that the read reached the debug module.
         self._ctrl(
             "DBG-SEPDBG-SBA",
             rd_done == 1
             and wr_done == 1
             and sbcs is not None
             and not sbcs & SBCS_SBBUSY
+            and sbcs & SBCS_SBREADONADDR
             and sbaddr_wr == SRAM_WORD
             and sbaddr == SRAM_WORD,
             f"rd_done={rd_done} wr_done={wr_done} sbcs={_h(sbcs, 8)} "
