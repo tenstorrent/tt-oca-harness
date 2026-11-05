@@ -24,7 +24,8 @@ Checks:
                    returns the later code
   CHK-NOCHG-VAULT  KM-KPV CTRL and KM-VALID key_valid read 0 after every rejection of
                    the pair leg; each gated command leaves KM-KPV CTRL, KM-VALID and
-                   KM-CSR OTP_READ_LOCK_COLD unchanged, from a pre-state in which the
+                   KM-CSR OTP_READ_LOCK_COLD unchanged, and the taps at the end of the
+                   gate matrix equal those at its start, from a pre-state in which the
                    handler of each key and OTP command would change one of them
   CHK-WRAP         both 8-bit counters roll over from 255 to 0
   CHK-CNT-RESET    rx_buff_oflow, a SEP flush and a warm reset restart both counters:
@@ -880,7 +881,8 @@ class sep_km_command_protocol_rand_test(sep_base_test):
 
         # Step 26: the gate matrix.
         pays = self._gate_payloads(g, h)
-        _, kv_matrix, otp_matrix = await self._gate_taps()
+        matrix_start = await self._gate_taps()
+        _, kv_matrix, otp_matrix = matrix_start
         res: dict[int, _Resp] = {}
         changed: list[str] = []
         for c in g.order:
@@ -896,6 +898,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
                     f"0x{c:02x}:ctrl={before[0] ^ after[0]:#x}:kv={before[1]:#x}->{after[1]:#x}"
                     f":otp_cold={before[2]:#x}->{after[2]:#x}"
                 )
+        matrix_end = await self._gate_taps()
 
         # Step 27: frame validation runs before the gate.
         right = pl.cmd_frame(pl.CMD_KEY_TRANSFER, self.e, [h, pl.DEST_AES])
@@ -1029,7 +1032,9 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         )
 
         # CHK-NOCHG-VAULT: each gated command leaves KM-KPV CTRL, KM-VALID and
-        # OTP_READ_LOCK_COLD as they were. At the matrix the AES key is valid (a
+        # OTP_READ_LOCK_COLD as they were, and the taps at the end of the matrix
+        # equal those at its start, so a handler effect that lands after its
+        # response frame also shows. At the matrix the AES key is valid (a
         # shred of AES clears it), the HMAC key is not (a transfer of h to HMAC
         # sets it) and DEMOTION is clear (the lock of OTP_GATED_MASK sets it); the
         # twins after the acknowledge set HMAC and clear AES on the same tap.
@@ -1042,11 +1047,14 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         live = kv_clear & pl.DEST_HMAC and not kv_clear & pl.DEST_AES
         self.chk.ok(
             "NOCHG-VAULT",
-            not changed and bool(visible) and bool(live),
+            not changed and matrix_end == matrix_start and bool(visible) and bool(live),
             leg="gate",
             source=src,
             gated=len(pl.GATED),
             changed=changed[:4],
+            matrix_end_equal=int(matrix_end == matrix_start),
+            matrix_end=f"ctrl={matrix_start[0] ^ matrix_end[0]:#x}:kv={matrix_end[1]:#x}"
+            f":otp_cold={matrix_end[2]:#x}",
             matrix_key_valid=f"0x{kv_matrix:03x}",
             matrix_otp_lock_cold=f"0x{otp_matrix:03x}",
             control_clear_key_valid=f"0x{kv_clear:03x}",

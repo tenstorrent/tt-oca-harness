@@ -286,6 +286,8 @@ def draw_plan(seed: int, fuse_words: dict[str, int]) -> Plan:
     keys1 = tuple([_nonzero(rng, taken) for _ in range(n)] for n, _ in PASS1_KEYS)
     keys2 = tuple([_nonzero(rng, taken) for _ in range(n)] for n, _ in PASS2_KEYS)
     junk = [rng.getrandbits(32) for _ in range(JUNK_WORDS)]
+    while not junk[0]:
+        junk[0] = rng.getrandbits(32)
     if n1 + n2 + len(imgh.read_image()) > STREAM_BUDGET:
         raise RuntimeError("the drawn images exceed the stream budget of the leaf")
     return Plan(
