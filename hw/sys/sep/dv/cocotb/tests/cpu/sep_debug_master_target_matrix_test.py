@@ -1861,7 +1861,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             self.logger.info(
                 "OBS-DBG-SEPDBG-GATE seed=%d image=%s sys_dis_sep_debug=%d stap_sep_dis=%d "
                 "feat_ctrl=0x%016x feat_ctrl_sep_debug=%d target=SRAM_WORD addr=0x%08x dir=%s "
-                "sberror=%s data=%s",
+                "sberror=%s data=%s wval=0x%08x sram_before=0x%08x sram_after=0x%08x",
                 self.random_seed(),
                 image,
                 sep_dbg,
@@ -1872,6 +1872,9 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 direction,
                 "X" if sberror is None else str(sberror),
                 _h(data, 8),
+                wval,
+                before,
+                self._probe(4),
             )
 
         # A DmiError leaves the done flag of its access at 0 and its record at X.
