@@ -125,7 +125,8 @@ reach only the eFuse MMR token block. That block is the three token-input arrays
 (RMA_SIP_TOKEN_I, RMA_CHIPLET_TOKEN_I and SEC_DISABLE_TOKEN_I), the TOKEN_EOP
 register that triggers a match, and the three match-status registers. Every
 other JTAG access to the fuse block — the shadow registers, the interface
-control registers and the SHIM — shall complete with an error response.
+control registers and the SHIM — shall complete with SLVERR and read data
+`0xBADCAB1E`.
 
 == Fuse Programming and RMA Authorization
 
