@@ -54,20 +54,27 @@ Checks:
                    OBS-RAS-KM_CORRECTABLE-DELAY logs the rise and fall clocks there.
 
 Controls (``control=1``): CHK-WRAP-CTRL (sequence 0 at e = 1 returns -3 arg 1),
-CHK-ALIVE (CMD_STAT reports recov_fault 0 after the pair leg) and CHK-RESPSEQ (the
-response sequence rises by one on every frame except at a reset cause).
+CHK-ALIVE (CMD_STAT reports recov_fault 0 after the pair leg and after the
+invalid-command control) and CHK-RESPSEQ (the response sequence rises by one on every
+frame except at a reset cause). INFO-INVALID-CMD-ADVANCE records the invalid-command
+control of step 14: one frame whose only fault is a drawn command ID outside the 15
+valid IDs, then CMD_STAT at e plus one (CHK-ALIVE). It logs the code of the rejected
+frame and does not grade it: CHK-ILLEGAL and CHK-ALIVE of
+``sep_km_command_set_rand_test`` grade that behaviour.
 
 The procedure steps that serve only non-claimed checkers do not run: the single-fault
 legs (steps 4 to 8), the argument legs (11 to 13), the DEST_VALID walk (15), the
-transport leg (33 to 39) and the record of ``inbound_separator`` in step 1.
+transport leg (33 to 39) and the record of ``inbound_separator`` in step 1. The one
+kind (c) frame of the invalid-command control runs in step 14.
 
 The regression runs the leaf as two shards (``+sep_shard``, ``env/sep_shard.py``),
 each from its own seed and its own boot, and each draws the whole plan: shard 1 the
-pair leg, CHK-ALIVE, the twins and the wrap leg; shard 2 the transport causes, both
-gate legs, the three handover legs and the overflow-pending leg. Shard 1 has no
-RESP_RECOVERABLE_FAULT frame, so CHK-RAS-KM_CORRECTABLE-RISE, -SHAPE and -CLEAR are
-graded in shard 2 only; CHK-RAS-KM_CORRECTABLE-IDLE and CHK-RESPSEQ are graded in
-both. Without the plusarg the leaf runs every leg, as one boot.
+pair leg, CHK-ALIVE, the twins, the invalid-command control and the wrap leg; shard 2
+the transport causes, both gate legs, the three handover legs and the overflow-pending
+leg. Shard 1 has no RESP_RECOVERABLE_FAULT frame, so CHK-RAS-KM_CORRECTABLE-RISE,
+-SHAPE and -CLEAR are graded in shard 2 only; CHK-RAS-KM_CORRECTABLE-IDLE and
+CHK-RESPSEQ are graded in both. Without the plusarg the leaf runs every leg, as one
+boot.
 """
 
 from __future__ import annotations
@@ -283,6 +290,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         if self.shard in (None, _PAIR_SHARD):
             await self._pair_leg()
             await self._alive_and_twins()
+            await self._invalid_cmd_ctrl()
             await self._wrap_leg()
         faults = self.shard in (None, _FAULT_SHARD)
         if faults:
@@ -630,14 +638,23 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         self._pair_kv = kv_seen
         self._pair_vault_bad = vault_bad
 
-    async def _alive_and_twins(self) -> None:
-        """Steps 10 and 14: CMD_STAT after the pair leg, then the positive twins."""
-        stat = await self._cmd(pl.CMD_STAT, (), "alive CMD_STAT")
+    async def _alive(self, tag: str) -> None:
+        """CHK-ALIVE: CMD_STAT at e succeeds with recov_fault 0."""
+        stat = await self._cmd(pl.CMD_STAT, (), f"alive CMD_STAT {tag}")
         # A rejection that latched RECOVERABLE_ERR would make every later -1 of
         # this leaf ambiguous; recov_fault 0 here shows it did not.
         self.chk.ok(
-            "ALIVE", stat.code == 0 and stat.arg == 0, control=1, code=stat.code, stat=_a(stat.arg)
+            "ALIVE",
+            stat.code == 0 and stat.arg == 0,
+            control=1,
+            tag=tag,
+            code=stat.code,
+            stat=_a(stat.arg),
         )
+
+    async def _alive_and_twins(self) -> None:
+        """Steps 10 and 14: CMD_STAT after the pair leg, then the positive twins."""
+        await self._alive("after-pair-leg")
 
         # CHK-NOCHG-VAULT control: a generate write-locks every slot of its span
         # ("Key Management"), so KM-KPV must show lock_write in one CTRL entry.
@@ -675,6 +692,23 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             control_gen_code=gen.code,
             control_ctrl_lock_write=lock_write,
         )
+
+    async def _invalid_cmd_ctrl(self) -> None:
+        """Step 14: a frame whose only fault is its command ID, then CMD_STAT at e plus one."""
+        bad, e0 = self.plan.invalid_cmd, self.e
+        f = await self._send_frame_raw(pl.cmd_frame(bad, e0, []), f"invalid cmd 0x{bad:02x}")
+        rej = self._parse_cmd(f, bad, e0)
+        self.e = (e0 + pl.E_ADVANCE["cmd_id"]) & 0xFF
+        self.chk.info(
+            "INVALID-CMD-ADVANCE",
+            control=1,
+            bad_cmd=f"0x{bad:02x}",
+            e=e0,
+            code=rej.code if rej else "none",
+            graded_by=["CHK-ILLEGAL", "CHK-ALIVE"],
+            leaf="sep_km_command_set_rand_test",
+        )
+        await self._alive("after-invalid-cmd")
 
     # ------------------------------------------------------------- wrap leg
 

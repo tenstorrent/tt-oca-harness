@@ -158,6 +158,10 @@ KIND_CODE = {
 # Sentinel for an argument that is logged and not graded (kind (d)).
 ARG_LOGGED = "logged"
 
+# Salt of the invalid-command control draw, so the draws of the main stream keep
+# their seed mapping.
+_INVALID_CMD_SALT = 0x4241_4443 << 32
+
 
 def signed8(value: int) -> int:
     v = value & 0xFF
@@ -454,6 +458,10 @@ class CommandProtocolPlan:
         self._log("oflow_pend_words", self.oflow_words)
 
         self.vault = tuple(self._vault(rng, i, d) for i, d in enumerate(self.pairs))
+
+        # Step 14 invalid-command control.
+        self.invalid_cmd = SepSeededRng(seed ^ _INVALID_CMD_SALT).choice(INVALID_CMD_IDS)
+        self._log("invalid_cmd", f"0x{self.invalid_cmd:02x}")
 
     # -- draw helpers ------------------------------------------------------------------
 
