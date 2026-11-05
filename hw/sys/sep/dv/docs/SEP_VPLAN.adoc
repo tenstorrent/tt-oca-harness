@@ -2860,7 +2860,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |CPU debug master gating
 |Does `SEP_DBG` or any other control gate the CPU debug master access to the fabric?
-|No test logs it.
+|`sep_debug_master_target_matrix_test_sba_sepdbg_open` and `_sba_sepdbg_closed` log a debug-master access to SRAM word 0 with only `SYS_DIS.sep_debug` varied (OBS-DBG-SEPDBG-GATE).
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Local-master remap-hit debug lane on `ext_debug_bus_o[207:192]`
 |Which bits of `ext_debug_bus_o` carry the local-master remap hit, and what do they hold for the read channel and the write channel? `port_table.adoc` gives the port only as "External debug observation bus", and no document or RDL assigns this lane.
