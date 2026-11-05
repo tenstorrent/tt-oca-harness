@@ -509,6 +509,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["cpu", "isolate_flush", "pyuvm"]
 run_modes = ["smoke"]
+args = ["+smc_reset_sva_need_flush_rose"]
 
 [[tests]]
 name = "smc_l2_frontend_access_uncore_held_test"
