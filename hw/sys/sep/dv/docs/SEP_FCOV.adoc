@@ -2339,7 +2339,7 @@ message-length classes and delivered-key length. `OT` hmac (`CFG`, `CMD`,
 *Description*: OTBN command, ignored command, status arc, instruction count and done event.
 `OT` otbn (`CMD`, `STATUS`, `INSN_CNT`, `INTR_STATE`); `SPEC` `otbn.adoc`.
 
-*Owning tests*: `sep_otbn_cmd_status_rand_test`, `sep_otbn_compute_rand_test` (`cp_capability`); for the bins of `sep_otbn_cmd_status_rand_test`, its full entry executes the checks that release every bin, and its `sep_otbn_cmd_status_rand_test_shard2` entry also executes the checks that release `cp_sw_err_kind` and `cp_rnd_clean` (<<sep-fcov-rand>>). The Phase 1 coverpoints
+*Owning tests*: `sep_otbn_cmd_status_rand_test`, `sep_otbn_compute_rand_test` (`cp_capability`); for the bins of `sep_otbn_cmd_status_rand_test`, its full entry executes the checks that release every bin (<<sep-fcov-rand>>). The Phase 1 coverpoints
 `cp_cmd` and `cp_done` of `sep_otbn_execute_cg` fill from the same runs.
 *Tool*: VCS. *Class*: executable.
 
