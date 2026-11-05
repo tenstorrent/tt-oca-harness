@@ -19,11 +19,13 @@
 //
 // With SUPPLEMENTARY_FUSE_WORDS non-zero, the fuse words after the shadow register file form a
 // supplementary region: one sense READ covers both, a second shadow file serves it through its own
-// window at SUPPLEMENTARY_REG_MAP_BASE_ADDR, and the lock pairs that follow the harness locks in the
-// shadow register file govern its regions. Sensing completes once both files are loaded.
+// window at SUPPLEMENTARY_REG_MAP_BASE_ADDR, and the 64-bit lock register at shadow bit
+// SUPPLEMENTARY_LOCKS_BIT_OFFSET governs its regions. Sensing completes once both files are loaded.
 //
 // Raise locked_field_access_interrupt_o and token_match_fault_o. Debug outputs expose
 // lock, timeout, and token-match state.
+
+`include "ocah_assert.svh"
 
 module efuse_interface_controller #(
   parameter int unsigned ADDR_WIDTH = 32,  // AXI4-Lite address width at the AXI-Lite to APB bridge.
@@ -96,6 +98,9 @@ module efuse_interface_controller #(
                                                   // bit SHADOW_REG_BITS; 0 omits the region.
   parameter bit [31:0] SUPPLEMENTARY_REG_MAP_BASE_ADDR = 32'h0,  // Base address of the supplementary window; needs only
                                                            // word alignment.
+  parameter int unsigned SUPPLEMENTARY_LOCKS_BIT_OFFSET = 0,  // Shadow bit address of the 64-bit supplementary lock
+                                                             // register; word aligned, at or above the harness
+                                                             // lock pairs. Unused without a supplementary region.
   localparam int unsigned SupplementaryLockRegions = efuse_pkg::SupplementaryLockRegions,  // Supplementary field-map entries.
   localparam bit HasSupplementaryFuses = SUPPLEMENTARY_FUSE_WORDS > 0,  // Supplementary fuse region present.
   localparam int unsigned SupplementaryPortWords = efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE_WORDS),  // Supplementary shadow port width in words.
@@ -206,8 +211,15 @@ module efuse_interface_controller #(
   // Program and read CSR bit addresses at or above this are rejected as out of bounds.
   localparam int unsigned TotalFuseBits = SHADOW_REG_BITS + SUPPLEMENTARY_FUSE_WORDS * EFUSE_MACRO_WORD_WIDTH;
   localparam int unsigned HarnessLockBits = 2 * (EFUSE_FIELDS - 1);
-  localparam int unsigned SupplementaryLockBits = efuse_pkg::SupplementaryLockBits;  // After the harness pairs.
-  localparam int unsigned ShadowLockBits = HarnessLockBits + (HasSupplementaryFuses ? SupplementaryLockBits : 0);
+  localparam int unsigned SupplementaryLockBits = efuse_pkg::SupplementaryLockBits;
+  // The harness shadow file exports its lock bits up to the end of the supplementary lock register.
+  localparam int unsigned ShadowLockBits =
+      HasSupplementaryFuses ? SUPPLEMENTARY_LOCKS_BIT_OFFSET + SupplementaryLockBits : HarnessLockBits;
+
+  `OCAH_ASSERT_STATIC(SupplementaryLocksAboveHarnessPairs_A,
+      !HasSupplementaryFuses || (SUPPLEMENTARY_LOCKS_BIT_OFFSET >= HarnessLockBits))
+  `OCAH_ASSERT_STATIC(SupplementaryLocksWordAligned_A,
+      !HasSupplementaryFuses || (SUPPLEMENTARY_LOCKS_BIT_OFFSET % EFUSE_MACRO_WORD_WIDTH == 0))
 
   localparam bit [31:0] InterfaceEndAddr =
       HAS_LC_STATE ? EfuseMmrRegMapEndAddr : EfuseCtrlRegMapEndAddr;
@@ -822,7 +834,8 @@ module efuse_interface_controller #(
     logic         supplementary_write_locked, supplementary_read_locked, supplementary_locked_access;
     logic [31:0]  supplementary_paddr;
 
-    assign supplementary_lock_vector = shadow_lock_vector[HarnessLockBits +: SupplementaryLockBits];
+    assign supplementary_lock_vector =
+        shadow_lock_vector[SUPPLEMENTARY_LOCKS_BIT_OFFSET +: SupplementaryLockBits];
     assign supplementary_paddr = 32'(apb_endpoint_reqs[efuse_pkg::SUPPLEMENTARY_SHADOW_REG_MAP].paddr) -
         SUPPLEMENTARY_REG_MAP_BASE_ADDR;
 

@@ -12,6 +12,8 @@
 // With SUPPLEMENTARY_FUSE.WORDS non-zero, the controller also serves the supplementary fuse region in its
 // window at SUPPLEMENTARY_FUSE.BASE within smc_external, locked per SUPPLEMENTARY_FUSE.LOCK_REGION_END.
 
+`include "ocah_assert.svh"
+
 module smc_efuse_wrapper #(
   parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region; '0
                                                                   // omits it.
@@ -209,6 +211,10 @@ module smc_efuse_wrapper #(
   localparam efuse_pkg::rule_t [efuse_pkg::SupplementaryLockRegions-1:0] SupplementaryFieldMap =
       smc_efuse_pkg::build_supplementary_field_map(SUPPLEMENTARY_FUSE.LOCK_REGION_END);
 
+  `OCAH_ASSERT_STATIC(SupplementaryLocksFollowHarnessLocks_A,
+      smc_efuse_pkg::SupplementaryLocksBitOffset == smc_efuse_pkg::HarnessLockFieldBits,
+      "efuse_lock_view_t places SUPPLEMENTARY_LOCKS directly after HARNESS_LOCKS; the RDL map must too")
+
   efuse_interface_controller #(
     .ADDR_WIDTH                  (smc_pkg::SmcLocalAddrWidth),
     .DATA_WIDTH                  (smc_pkg::AxiLite32DataWidth),
@@ -256,6 +262,7 @@ module smc_efuse_wrapper #(
 
     .SUPPLEMENTARY_FUSE_WORDS          (SUPPLEMENTARY_FUSE.WORDS),
     .SUPPLEMENTARY_REG_MAP_BASE_ADDR   (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SUPPLEMENTARY_FUSE.BASE)),
+    .SUPPLEMENTARY_LOCKS_BIT_OFFSET    (smc_efuse_pkg::SupplementaryLocksBitOffset),
 
     .efuse_map_t                 (smc_efuse_pkg::efuse_map_t)
   ) u_efuse_interface_controller (

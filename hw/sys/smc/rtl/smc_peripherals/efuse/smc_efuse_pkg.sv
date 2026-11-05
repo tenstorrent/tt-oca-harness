@@ -137,6 +137,10 @@ package smc_efuse_pkg;
   // Physical OTP bits of the 64-bit HARNESS_LOCKS register; SUPPLEMENTARY_LOCKS is
   // efuse_pkg::SupplementaryLockBits.
   localparam int unsigned HarnessLockFieldBits = 64;
+  // Shadow bit address of SUPPLEMENTARY_LOCKS, from the generated map.
+  localparam int unsigned SupplementaryLocksBitOffset =
+      8 * int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR -
+               smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR);
 
   typedef struct packed {
     logic [NumEfuseBits-HarnessLockFieldBits-efuse_pkg::SupplementaryLockBits-1:0] reserved;
