@@ -277,6 +277,7 @@ from env.sep_field_compare import field_compare, lane32
 from env.sep_filter_model import FilterEntry
 from env.sep_jtag_dmi import (
     DM_DMCONTROL,
+    DM_SBADDRESS0,
     DM_SBCS,
     DMCONTROL_DMACTIVE,
     IR_DMI,
@@ -1888,14 +1889,22 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         except DmiError as exc:
             errors.append(f"rd:{exc}")
         obs("rd", rerr, rdata)
+        sbaddr = None
         try:
             sbcs = await self.dmi.dmi_read(DM_SBCS)
+            sbaddr = await self.dmi.dmi_read(DM_SBADDRESS0)
         except DmiError as exc:
             errors.append(f"sbcs:{exc}")
+        # sbaddress0 resets to 0, so reading back the target shows that the
+        # address writes of both accesses reached the debug module.
         self._ctrl(
             "DBG-SEPDBG-SBA",
-            rd_done == 1 and wr_done == 1 and sbcs is not None and not sbcs & SBCS_SBBUSY,
-            f"rd_done={rd_done} wr_done={wr_done} sbcs={_h(sbcs, 8)}"
+            rd_done == 1
+            and wr_done == 1
+            and sbcs is not None
+            and not sbcs & SBCS_SBBUSY
+            and sbaddr == SRAM_WORD,
+            f"rd_done={rd_done} wr_done={wr_done} sbcs={_h(sbcs, 8)} sbaddress0={_h(sbaddr, 8)}"
             + "".join(f" dmi_error={e!r}" for e in errors),
         )
 

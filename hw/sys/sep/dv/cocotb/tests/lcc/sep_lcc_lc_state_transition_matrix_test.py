@@ -533,7 +533,8 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 self._demote_2,
                 lc_state_name(observed),
             )
-        self._cur = int(observed)
+        if grade:
+            self._cur = int(observed)
         return int(observed)
 
     async def _prove_upper_write(self) -> None:
