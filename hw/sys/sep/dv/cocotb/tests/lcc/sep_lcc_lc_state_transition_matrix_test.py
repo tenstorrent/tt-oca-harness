@@ -34,7 +34,7 @@ INVALID". Demotion is not a term: the chapter calls it volatile debug state,
 distinct from RMA "whose state transitions are hardware-ordered", so a demoted
 part must transition exactly like a non-demoted one.
 
-The golden of every write cell is the chapter's: ``otp_fuse_controller.adoc``
+The golden of every graded write cell is the chapter's: ``otp_fuse_controller.adoc``
 (Fuse Fields) gives LC_STATE as SW writable set-only under these rules.
 ``sep_efuse_map.rdl`` (register ``LC_STATE``) gives ``lc_state`` as sw = r; the
 two texts disagree, and the advance cells grade the chapter.
@@ -98,10 +98,10 @@ required checks; it grades nothing). Each walk names its required checks
     * CHK-TRANSIENT-INVALID  the transient path applies the same W1S and token
                              rules with no bus request, INVALID result included.
 
-Every cell grades LC_STATE[7:0] against ``{~raw, raw}`` of the golden state.
-A write that moves the state completes OKAY on the bus (the scoreboard grades
-the response).
-Every cell grades ``CHK-LC-STATE-PORT``: the ``lc_state_o`` port (tap
+Every graded cell grades LC_STATE[7:0] against ``{~raw, raw}`` of the golden
+state. No text states the response of an LC_STATE write, so no check grades it:
+``OBS-LC-WR-NIBBLE`` logs ``resp=`` for every write cell.
+Every graded cell grades ``CHK-LC-STATE-PORT``: the ``lc_state_o`` port (tap
 ``lc_state_probe_o``) equals LC_STATE[7:0] at ``efuse_shadow_probe_o`` and
 ``{~raw, raw}`` of the cell's golden state. ``doc/integrator/src/smu-sep.adoc:202``
 gives ``lc_state_o`` as the differentially encoded LC_STATE shadow, and
@@ -114,7 +114,12 @@ seeded patterns leave LC_STATE[31:24] clear (``_MARK_POOL``), so every write cel
 of every walk has such a bit on every seed.
 Every leaf with a bus-write cell also writes a second seed-derived [31:8]
 pattern that differs from the first in both directions (a CHK-W1S-NO-CLEAR
-cell). ``CTRL-TOKEN-MATCH`` (each token match), ``CTRL-GATE-SIP-FAULT`` (the
+cell), then writes the first pattern again to bytes 1-3 only (WSTRB 0b1110, the
+``LC-B13`` cell). The ``LC-B13`` cell grades nothing: ``CTRL-LC-WR-LANDED``
+requires its bit, its FEAT_CTRL reads are not graded, and its [7:0] and [31:8]
+readback are logged
+(``OBS-LC-WR-NIBBLE word=``, ``OBS-LC-UPPER``).
+``CTRL-TOKEN-MATCH`` (each token match), ``CTRL-GATE-SIP-FAULT`` (the
 collapsed comparator code) and ``CTRL-TOKEN-SIP-HELD`` (the SIP match before
 CHK-INVALID-TERM) record the preconditions of the hold cells.
 ``CTRL-SEC-DIS-OFF`` records that the security-disable override
@@ -127,9 +132,11 @@ the fuse-field table gives LC_STATE as SW writable set-only; the texts disagree)
 every hold cell whose write a token gate or the terminal rule refuses (the
 CHK-GATE-* cells and CHK-INVALID-TERM): ``OBS-LC-WR-REFUSED-RESP`` (the write
 response; no text states the response of a refused write, so the scoreboard
-does not grade it); every write cell: ``OBS-LC-WR-NIBBLE`` (bits
-[7:4] of the write data and of the readback word: the specification does not
-state how a write of the complement nibble acts).
+does not grade it); every write cell: ``OBS-LC-WR-NIBBLE`` (the strobed write
+data and ``wstrb=``, bits [7:4] of the write data and of the readback word, the
+write response ``resp=`` and the readback ``word=``: the specification does not
+state how a write of the complement nibble or of bytes 1-3 acts, nor the
+response of an LC_STATE write).
 
 RANDCFG: the tokens and the LC_STATE[23:8] patterns come from the run seed
 (``SepLcTransitionCfg``, masked with ``_MARK_POOL``). The two PROD_END leaves pin the exit with
@@ -192,7 +199,7 @@ _PROD_END_EXITS = ("bit0", "rma_sip")
 # stream drawn from the same seed.
 _PROD_END_EXIT_SALT = 0x5052_4F44_454E_4400
 # LC_STATE bits kept out of the seeded [31:8] patterns, so CTRL-LC-WR-LANDED has
-# an unused bit for each write cell. Eight bits cover the longest walk (six writes).
+# an unused bit for each write cell. Eight bits cover the longest walk (seven writes).
 _MARK_POOL = 0xFF00_0000
 # Checks each walk emits; a leaf that misses one fails its evidence gate.
 _REQUIRED = {
@@ -364,8 +371,15 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         do_write: bool = True,
         expect: int | None = None,
         upper: int | None = None,
+        wstrb: int = 0xF,
+        grade: bool = True,
     ) -> int:
-        """Run one cell; the expected next state comes from the chapter golden."""
+        """Run one cell; the expected next state comes from the chapter golden.
+
+        ``wstrb`` selects the LC_STATE bytes the write carries. ``grade=False``
+        keeps the reads, ``CTRL-LC-WR-LANDED`` and the OBS lines, and emits no
+        CHK line.
+        """
         prev = self._cur
         # One [31:8] bit no earlier write or sense set: its readback shows that
         # this write reached the shadow (CTRL-LC-WR-LANDED).
@@ -401,7 +415,8 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             demote_1=self._demote_1,
             demote_2=self._demote_2,
             do_write=do_write,
-            refused=refused,
+            wstrb=wstrb,
+            graded=grade,
             name=f"lc_w1s_{tag}",
         )
         await self.start_seq(seq)
@@ -419,41 +434,50 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         dut = cocotb.top
         shadow = self.rd(dut.efuse_shadow_probe_o, allow_unknown=True) >> (32 * LC_WORD_IDX)
         if do_write and seq.observed_word is not None:
+            lanes = int.from_bytes(bytes(0xFF * (wstrb >> i & 1) for i in range(4)), "little")
+            written = full_wdata & lanes
             self.logger.info(
-                "OBS-LC-WR-NIBBLE tag=%s wdata_hi=0x%x observed_hi=0x%x",
+                "OBS-LC-WR-NIBBLE tag=%s wdata=0x%08x wstrb=0x%x wdata_hi=0x%x "
+                "observed_hi=0x%x resp=%s word=0x%08x",
                 tag,
-                (full_wdata >> 4) & 0xF,
+                written,
+                wstrb,
+                (written >> 4) & 0xF,
                 (seq.observed_word >> 4) & 0xF,
+                seq.write_resp,
+                seq.observed_word,
             )
         # lc_state_o is the differentially encoded LC_STATE shadow, {~raw, raw}.
         # It is graded against the shadow probe and against the encoding of the
         # cell's state, so a probe fault cannot mask a port fault.
-        port = self.rd(dut.lc_state_probe_o, 0xFF) & 0xFF
-        assert port == shadow & LC_STATE_BYTE_MASK == lc_encode(expected), (
-            f"CHK-LC-STATE-PORT FAIL: tag={tag} lc_state_o=0x{port:02x} "
-            f"shadow=0x{shadow & 0xFFFF_FFFF:08x} expect=0x{lc_encode(expected):02x}"
-        )
-        self.logger.info(
-            "CHK-LC-STATE-PORT PASS: tag=%s lc_state_o=0x%02x shadow=0x%08x expect=0x%02x",
-            tag,
-            port,
-            shadow & 0xFFFF_FFFF,
-            lc_encode(expected),
-        )
+        if grade:
+            port = self.rd(dut.lc_state_probe_o, 0xFF) & 0xFF
+            assert port == shadow & LC_STATE_BYTE_MASK == lc_encode(expected), (
+                f"CHK-LC-STATE-PORT FAIL: tag={tag} lc_state_o=0x{port:02x} "
+                f"shadow=0x{shadow & 0xFFFF_FFFF:08x} expect=0x{lc_encode(expected):02x}"
+            )
+            self.logger.info(
+                "CHK-LC-STATE-PORT PASS: tag=%s lc_state_o=0x%02x shadow=0x%08x expect=0x%02x",
+                tag,
+                port,
+                shadow & 0xFFFF_FFFF,
+                lc_encode(expected),
+            )
 
         assert seq.observed_word is not None
         word = seq.observed_word
-        # The transition rules again, in observed-code form, against the code the
-        # DUT returned. It overlaps the per-cell value check and fails on a step
-        # that is wrong in a way the expectation shares.
-        assert is_valid_lc_transition(prev, observed), (
-            f"{tag} FAIL: DUT stepped {lc_state_name(prev)} -> {lc_state_name(observed)}, "
-            "which the lifecycle does not permit"
-        )
-        assert word & LC_STATE_BYTE_MASK == lc_encode(expected), (
-            f"{tag} FAIL: LC_STATE[7:0] 0x{word & LC_STATE_BYTE_MASK:02x} != "
-            f"0x{lc_encode(expected):02x}"
-        )
+        if grade:
+            # The transition rules again, in observed-code form, against the code
+            # the DUT returned. It overlaps the per-cell value check and fails on
+            # a step that is wrong in a way the expectation shares.
+            assert is_valid_lc_transition(prev, observed), (
+                f"{tag} FAIL: DUT stepped {lc_state_name(prev)} -> {lc_state_name(observed)}, "
+                "which the lifecycle does not permit"
+            )
+            assert word & LC_STATE_BYTE_MASK == lc_encode(expected), (
+                f"{tag} FAIL: LC_STATE[7:0] 0x{word & LC_STATE_BYTE_MASK:02x} != "
+                f"0x{lc_encode(expected):02x}"
+            )
         got_upper = word & LC_STATE_UPPER_MASK
         if do_write:
             assert got_upper & mark, (
@@ -481,33 +505,34 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             int(do_write and got_upper == (pattern | self._upper)),
         )
         self._upper = got_upper
-        want_feat = feat_ctrl_expected(
-            expected,
-            SIP_DIS,
-            SYS_DIS,
-            demote_1=self._demote_1,
-            demote_2=self._demote_2,
-            sec_dis=0,
-        )
-        assert observed == expected, (
-            f"{tag} FAIL: DUT LC 0x{observed:x} ({lc_state_name(observed)}) != "
-            f"golden 0x{expected:x} ({lc_state_name(expected)})"
-        )
-        assert seq.observed_feat == want_feat, (
-            f"{tag} FAIL: FEAT_CTRL 0x{seq.observed_feat:016x} != golden 0x{want_feat:016x}"
-        )
-        action = f"write 0x{wdata:x}" if do_write else "no write"
-        self.logger.info(
-            "%s PASS: %s + %s (sip_match=%d chiplet_match=%d demote=%d%d) -> %s",
-            tag,
-            lc_state_name(prev),
-            action,
-            int(self._sip_match),
-            int(self._chiplet_match),
-            self._demote_1,
-            self._demote_2,
-            lc_state_name(observed),
-        )
+        if grade:
+            want_feat = feat_ctrl_expected(
+                expected,
+                SIP_DIS,
+                SYS_DIS,
+                demote_1=self._demote_1,
+                demote_2=self._demote_2,
+                sec_dis=0,
+            )
+            assert observed == expected, (
+                f"{tag} FAIL: DUT LC 0x{observed:x} ({lc_state_name(observed)}) != "
+                f"golden 0x{expected:x} ({lc_state_name(expected)})"
+            )
+            assert seq.observed_feat == want_feat, (
+                f"{tag} FAIL: FEAT_CTRL 0x{seq.observed_feat:016x} != golden 0x{want_feat:016x}"
+            )
+            action = f"write 0x{wdata:x}" if do_write else "no write"
+            self.logger.info(
+                "%s PASS: %s + %s (sip_match=%d chiplet_match=%d demote=%d%d) -> %s",
+                tag,
+                lc_state_name(prev),
+                action,
+                int(self._sip_match),
+                int(self._chiplet_match),
+                self._demote_1,
+                self._demote_2,
+                lc_state_name(observed),
+            )
         self._cur = int(observed)
         return int(observed)
 
@@ -516,9 +541,11 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
 
         The two patterns differ in both directions, so the logged readback tells
         an overwrite from an OR-merge. The nibble cell is a write of 0
-        (CHK-W1S-NO-CLEAR).
+        (CHK-W1S-NO-CLEAR). The ``LC-B13`` cell then writes the first pattern to
+        bytes 1-3 only; it grades nothing, and its readback is logged.
         """
         await self._cell(0x0, "CHK-W1S-NO-CLEAR", upper=self._nuisance2)
+        await self._cell(0x0, "LC-B13", upper=self._nuisance, wstrb=0xE, grade=False)
 
     # -- per-leaf walks ------------------------------------------------------
     async def _walk_prod(self) -> None:

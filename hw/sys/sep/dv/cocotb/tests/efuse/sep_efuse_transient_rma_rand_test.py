@@ -9,6 +9,13 @@ disable-vector pair (``env/sep_efuse_plan.py``, ``plan_transient_rma``; the
 pre-sim hook stages the same image). It also draws the token script, the spare
 bit of the window control and every token word-write order.
 
+With ``+sep_rma_require_legb`` the plan seed is the fixed ``_S_B``, whose image
+draws leg B (TEST_DEV, enable 0), in place of the run seed; the entry that sets
+it stages the same image with ``+sep_efuse_preload``. The plan seed draws the
+image and every stimulus choice above; the run seed is the ``seed=`` of every
+check line. INFO-SEED prints the plan seed as ``seed=`` and both seeds as
+``run_seed=`` and ``plan_seed=``.
+
 Leg A (every leaf): each script step presents ``TOKEN_T1`` on RMA_SIP or
 ``TOKEN_T2`` on RMA_CHIPLET, waits for Match ``0x15`` and a window W, and reads the
 ``LC_STATE`` shadow and ``FEAT_CTRL``. With the enable at 1 a SIP match sets bit 1
@@ -44,7 +51,14 @@ Leg B (TEST_DEV image with the enable at 0): a program of ``LC_STATE`` bit 1 wit
 only RMA_CHIPLET matched changes no bank bit and issues no program command; the
 same program with RMA_SIP matched lands. A program of bit 2 with only RMA_SIP
 matched is refused (a control of the open refusal, ``role=control``); with
-RMA_CHIPLET matched it lands.
+RMA_CHIPLET matched it lands. The bus response of the go write of each refused
+program is not graded: no specification text states the response of a go write
+that the token gate refuses. OBS-IF-RMA-REQ-ERR logs, after each refused program,
+the response code (``go_resp``, -1 for no response), the interface status word
+with ``efuse_req_error``, ``efuse_program_addr_error`` and
+``efuse_read_addr_error``, and ``EFUSE_PROGRAM_CTRL`` with its busy, done and
+status bits, as the refused program leaves them W clocks after the go and
+before ``efuse_req_error_clear``. No check reads the record.
 
 Last step, starts PROD and TEST_DEV without leg B: a program of bit 2 with RMA_CHIPLET
 matched (CTRL-PROG-LC-ORDER-MATCH) and bit 1 clear is logged as OBS-PROG-LC-ORDER
@@ -69,7 +83,9 @@ leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). Controls: CTRL-WINDOW-C
 CTRL-TRANSIENT-EN (the sensed ``TRANSIENT_RMA_EN`` shadow equals the staged
 enable, every leaf), CTRL-PROG-LC-ORDER-MATCH, CTRL-PROG-LC-GO (leg B: after each
 refused program, ``efuse_addr``, ``efuse_data`` and ``program_enable`` of
-``EFUSE_PROGRAM_CTRL`` read back as the go wrote them). A failing hook control
+``EFUSE_PROGRAM_CTRL`` read back as the go wrote them), CTRL-RMA-LEGB (with
+``+sep_rma_require_legb`` only: the plan drew leg B and both refused programs
+issued a go write that returned a response). A failing hook control
 logs ``CHK-HOOK FAIL`` and ends the leaf. A match that does not end with its
 Mismatch go before a cold reset ends the leaf at that control or check: the
 next sense would load the transient state, and the graded failure is the
@@ -173,11 +189,15 @@ _PG_REQ = (
 )
 _ST = "EFUSE_INTERFACE_CTRL_STATUS"
 _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error")
+_PROG_ADDR_ERR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_program_addr_error")
+_RD_ADDR_ERR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_read_addr_error")
 _REQ_ERR_CLR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error_clear")
 _CH_NAME = {CH_SIP: "sip", CH_CHIPLET: "chp"}
 _SCRIPT_CH = {"SIP": CH_SIP, "CHIPLET": CH_CHIPLET}
 # Leg S runs from the two start states a SIP match updates with the enable at 1.
 _LEG_S_STARTS = ("TEST_DEV", "PROD")
+# Plan seed of ``+sep_rma_require_legb``: plan(T_TRANSIENT, _S_B) draws leg B.
+_S_B = 8
 
 
 def _hex2(code: int | None) -> str:
@@ -407,7 +427,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def _mismatch(self, ch: str, label: str) -> int | None:
         return await self._present(ch, TOKEN_OTHER, CODE_MISMATCH, label)
 
-    async def _program(self, bit_addr: int) -> dict[str, int]:
+    async def _program(self, bit_addr: int, *, go_by_readback: bool = False) -> dict[str, int]:
         """Program one bit with the full W wait, then read status and the OTP word.
 
         Two writes: enable and address with data 0 and no go, then the same with
@@ -420,10 +440,19 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         later read and program request until software writes
         ``efuse_req_error_clear`` (``efuse_interface_ctrl.adoc``); the flag is
         returned (logged, not graded) and cleared before the direct read.
+
+        With ``go_by_readback`` the go write does not grade its response, and
+        ``go_resp`` returns its code (-1 for no response); otherwise a go write
+        that is not OKAY fails the leaf and ``go_resp`` is None.
         """
         await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, data=0, go=0))
         mark = self.shim.mark()
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, go=1))
+        go_word = program_ctrl_word(bit_addr, go=1)
+        if go_by_readback:
+            go_resp = await self.fd.wr_graded_by_readback(PROGRAM_CTRL_ADDR, go_word)
+        else:
+            await self.fd.wr(PROGRAM_CTRL_ADDR, go_word)
+            go_resp = None
         await ClockCycles(cocotb.top.clk_i, self.w)
         own = len(self.shim.programs_since(mark, address=bit_addr))
         every = len(self.shim.programs_since(mark))
@@ -445,6 +474,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             "req_err": req_err,
             "word": word,
             "bit": (word >> (bit_addr % 32)) & 1,
+            "go_resp": go_resp,
         }
 
     def _go_issued(self, bit: int, bit_addr: int, res: dict) -> bool:
@@ -461,6 +491,25 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             exp_req=f"0x{exp:08x}",
         )
 
+    def _obs_refused(self, bit: int, res: dict) -> None:
+        """OBS-IF-RMA-REQ-ERR: status, program control and go response of a refused program."""
+        st = res["status"]
+        self.chk.obs(
+            "IF-RMA-REQ-ERR",
+            plan_seed=self.plan_seed,
+            bit=bit,
+            match="other_only",
+            status=f"0x{st:08x}",
+            req_error=int(bool(st & _REQ_ERR)),
+            prog_addr_err=int(bool(st & _PROG_ADDR_ERR)),
+            rd_addr_err=int(bool(st & _RD_ADDR_ERR)),
+            pctl=f"0x{res['pctl']:08x}",
+            busy=res["busy"],
+            done=res["done"],
+            program_status=res["pstatus"],
+            go_resp=res["go_resp"],
+        )
+
     def _golden_with(self, otp_word: int) -> None:
         """Make the post-sense golden carry the current OTP LC_STATE word and spare bit."""
         self.golden.words[_LC_WORD] = otp_word
@@ -471,8 +520,12 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         seed = self.random_seed()
-        p = plan(T_TRANSIENT, seed)
+        require_legb = "sep_rma_require_legb" in cocotb.plusargs
+        plan_seed = _S_B if require_legb else seed
+        p = plan(T_TRANSIENT, plan_seed)
         self.plan = p
+        self.plan_seed = plan_seed
+        self.refused_programs = 0
         leg = p.leg
         en = int(leg["enable"])
         start = leg["start"]
@@ -483,6 +536,8 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         self.start = start
         self.window_dead = False
         seed_fields = {
+            "run_seed": seed,
+            "plan_seed": plan_seed,
             "en": en,
             "start": start,
             "script": "_then_".join(leg["script"]),
@@ -631,6 +686,14 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             self.chk.info("TRANSIENT-SIMUL-SKIP", en=en, start=start)
         if leg_b:
             await self._leg_b(seed, staged_word)
+        if require_legb:
+            self._ctrl(
+                "RMA-LEGB",
+                leg_b and self.refused_programs == 2,
+                leg_b=int(leg_b),
+                refused_programs=self.refused_programs,
+                plan_seed=plan_seed,
+            )
         close_graded_window(self.logger)
         await self._prog_order(raw0, staged_word, leg_b)
         await self.shim.stop()
@@ -828,8 +891,10 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
 
         # Bit 1 with only RMA_CHIPLET matched: refused.
         self._leg_b_code("b1.chp", await self._match(CH_CHIPLET, "b1.chp"), CODE_MATCH)
-        ref1 = await self._program(_LC_BIT1)
+        ref1 = await self._program(_LC_BIT1, go_by_readback=True)
         go1 = self._go_issued(1, _LC_BIT1, ref1)
+        self._obs_refused(1, ref1)
+        self.refused_programs += ref1["go_resp"] != -1
         shadow_ref1 = await self.fd.rd(shadow_addr("LC_STATE"))
         self._leg_b_code(
             "b1.chp_end", await self._mismatch(CH_CHIPLET, "b1.chp_end"), CODE_MISMATCH
@@ -912,9 +977,11 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         chp_held = await self.fd.match(CH_CHIPLET)
         self.chk.info("PROG-LC-CHP", chp_code=f"0x{chp_held:02x}")
         close_graded_window(self.logger)
-        ref2 = await self._program(_LC_BIT2)
+        ref2 = await self._program(_LC_BIT2, go_by_readback=True)
         self._reopen_window()
         go2 = self._go_issued(2, _LC_BIT2, ref2)
+        self._obs_refused(2, ref2)
+        self.refused_programs += ref2["go_resp"] != -1
         shadow_ref2 = await self.fd.rd(shadow_addr("LC_STATE"))
 
         # Bit 2 with RMA_CHIPLET matched: lands.

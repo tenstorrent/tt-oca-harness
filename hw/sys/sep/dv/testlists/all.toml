@@ -30,15 +30,18 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold every member except the five
+# (full-CPU target) are disjoint and together hold every member except the seven
 # no_cpu entries on the full-CPU target (sep_cpu_reset_retention_test_dbg,
 # sep_timer_clock_contract_test_dbg, sep_secure_tm_strap_sampling_test_dbg,
-# sep_debug_master_target_matrix_test_sba and sep_tcm_dma_aperture_ecc_test), which are in `all` and
+# sep_debug_master_target_matrix_test_sba,
+# sep_debug_master_target_matrix_test_sba_sepdbg_open,
+# sep_debug_master_target_matrix_test_sba_sepdbg_closed and
+# sep_tcm_dma_aperture_ecc_test), which are in `all` and
 # `phase3_memory_boot_reset` only; `expected_count` pins
 # the size. `rom_fw` is not a member: it runs a third RTL target and states
 # firmware rather than hardware contracts. `all` is the coverage set.
 #
-# Eighteen members are pinned to one simulator, so a single-simulator run of `all`
+# Twenty members are pinned to one simulator, so a single-simulator run of `all`
 # logs the members pinned to the other simulator as skipped_wrong_tool:
 # - sep_crypto_shadow_update_err_rand_test, VCS only (crypto.toml). It grades that the
 #   reads after an AES reset carry no X, which only a four-state simulator shows.
@@ -60,9 +63,11 @@ tests = ["sep_axi_smoke_test"]
 #   sep_secure_tm_strap_sampling_test_dbg (efuse_lcc.toml), VCS only on the
 #   full-CPU `default` target. Their dbg_rstb_i legs need the VeeR debug module
 #   or the run-request synchronizer, which the CPU stub does not have.
-# - sep_debug_master_target_matrix_test (cpu.toml) and
-#   sep_debug_master_target_matrix_test_sba (memory.toml, no_cpu on the full-CPU
-#   `default` target), VCS only. They need the VeeR debug module.
+# - sep_debug_master_target_matrix_test (cpu.toml),
+#   sep_debug_master_target_matrix_test_sba,
+#   sep_debug_master_target_matrix_test_sba_sepdbg_open and
+#   sep_debug_master_target_matrix_test_sba_sepdbg_closed (memory.toml, no_cpu on
+#   the full-CPU `default` target), VCS only. They need the VeeR debug module.
 # - sep_tcm_dma_aperture_ecc_test, VCS only on the full-CPU `default` target
 #   (memory.toml), as its run mode states. It needs the TCM controller of the
 #   full CPU, which the CPU stub does not have.
@@ -75,7 +80,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 282
+expected_count = 285
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -168,6 +173,7 @@ tests = [
     "sep_lcc_state_codeword_rand_test",
     "sep_lcc_feat_ctrl_state_matrix_rand_test",
     "sep_efuse_transient_rma_rand_test",
+    "sep_efuse_transient_rma_rand_test_legb",
     "sep_efuse_token_channel_rand_test",
     "sep_efuse_token_fault_matrix_test",
     "sep_efuse_interface_status_rand_test",
@@ -315,6 +321,8 @@ tests = [
     "sep_secure_tm_strap_sampling_test_dbg",
     "sep_debug_master_target_matrix_test",
     "sep_debug_master_target_matrix_test_sba",
+    "sep_debug_master_target_matrix_test_sba_sepdbg_open",
+    "sep_debug_master_target_matrix_test_sba_sepdbg_closed",
     "sep_sram_axi_shape_matrix_test",
     "sep_tcm_dma_aperture_ecc_test",
     "sep_boot_rom_aperture_sweep_test",
@@ -478,6 +486,7 @@ tests = [
     "sep_lcc_state_codeword_rand_test",
     "sep_lcc_feat_ctrl_state_matrix_rand_test",
     "sep_efuse_transient_rma_rand_test",
+    "sep_efuse_transient_rma_rand_test_legb",
     "sep_efuse_token_channel_rand_test",
     "sep_efuse_token_fault_matrix_test",
     "sep_efuse_interface_status_rand_test",
@@ -942,10 +951,10 @@ tests = [
 # Convenience group of the memory, boot, reset, WDT and clock tests.
 # It is not a VPLAN group: `all` holds the same tests, and `cpu_stub` and `cpu`
 # hold all of them except the no_cpu entries on the full-CPU target (the `_dbg`
-# entries, sep_tcm_dma_aperture_ecc_test and
-# sep_debug_master_target_matrix_test_sba).
+# entries, sep_tcm_dma_aperture_ecc_test and the
+# sep_debug_master_target_matrix_test_sba entries).
 name = "phase3_memory_boot_reset"
-expected_count = 26
+expected_count = 28
 tests = [
     "sep_boot_release_terms_test",
     "sep_boot_release_terms_test_smc_hold",
@@ -966,6 +975,8 @@ tests = [
     "sep_secure_tm_strap_sampling_test_dbg",
     "sep_debug_master_target_matrix_test",
     "sep_debug_master_target_matrix_test_sba",
+    "sep_debug_master_target_matrix_test_sba_sepdbg_open",
+    "sep_debug_master_target_matrix_test_sba_sepdbg_closed",
     "sep_sram_axi_shape_matrix_test",
     "sep_tcm_dma_aperture_ecc_test",
     "sep_boot_rom_aperture_sweep_test",
@@ -1043,13 +1054,14 @@ tests = [
 # Convenience group of the eFuse, lifecycle and SEC_DIS tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_efuse_lifecycle"
-expected_count = 13
+expected_count = 14
 tests = [
     "sep_efuse_window_decode_reset_test",
     "sep_efuse_field_layout_rand_test",
     "sep_lcc_state_codeword_rand_test",
     "sep_lcc_feat_ctrl_state_matrix_rand_test",
     "sep_efuse_transient_rma_rand_test",
+    "sep_efuse_transient_rma_rand_test_legb",
     "sep_efuse_token_channel_rand_test",
     "sep_efuse_token_fault_matrix_test",
     "sep_efuse_interface_status_rand_test",
