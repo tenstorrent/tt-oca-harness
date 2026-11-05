@@ -119,6 +119,10 @@ tags = ["rtl_issue"]
 run_modes = ["smoke"]
 expect_fail = "an FLR edge inside the cool-reset hold starts a second cool pulse after the first"
 expect_fail_match = "CHK-FLR-NO-REQUEUE FAIL: .*a second fall [0-9]+ edges after the third edge"
+# The second cool pulse also fires the bench's one-pulse-per-FLR-edge
+# assertion, which on Verilator would stop the run before this leaf's own
+# check line; the plusarg holds that one assertion off here.
+args = ["+smc_flr_requeue_assertoff"]
 
 [[tests]]
 # The I2C register block runs on the gated peripheral clock while the

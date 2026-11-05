@@ -68,6 +68,9 @@ class smc_cpu_uncore_reset_test_seq(SmcCsrSeq):
         assert not timeout & APPLIED, f"RESET_TIMEOUT 0x{timeout:x}: a reset is already applied"
 
         await self.csr_write("UNCORE_TIMEOUT_FORCE", RESET_TIMEOUT, FORCE_AFTER_32, length=8)
+        await self.csr_read(
+            "UNCORE_TIMEOUT_FORCE_RB", RESET_TIMEOUT, length=8, expected=FORCE_AFTER_32
+        )
         held = ctrl & ~UNCORE_N
         await self.csr_write("UNCORE_HOLD", RESET_CTRL, held, length=8)
         await self.csr_read("UNCORE_HOLD_RB", RESET_CTRL, length=8, expected=held)
@@ -79,9 +82,12 @@ class smc_cpu_uncore_reset_test_seq(SmcCsrSeq):
         )
         self.applied = (during, after)
         cocotb.log.info(
-            "CHK-CPU-UNCORE-RESET: the uncore reset written low with every core released set "
-            "reset_applied (RESET_TIMEOUT 0x%x), and writing it high again cleared "
-            "reset_applied and reset_timeout (RESET_TIMEOUT 0x%x)",
+            "CHK-CPU-UNCORE-RESET: with RESET_TIMEOUT read back as 0x%x and RESET_CTRL idle at "
+            "0x%x, the uncore reset written low with every core released set reset_applied "
+            "(RESET_TIMEOUT 0x%x), and writing it high again cleared reset_applied and "
+            "reset_timeout (RESET_TIMEOUT 0x%x)",
+            FORCE_AFTER_32,
+            ctrl,
             during,
             after,
         )
