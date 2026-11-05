@@ -502,7 +502,7 @@ extern "C" {
 
 // reg - smc_efuse_map::SPARE_64_BITS
 // 64-bit spare region at the end of the map, reserved for fields assigned after the
-// RTL is frozen. All elements share the slot-15 write/read lock pair in
+// RTL is frozen. All elements share the slot-7 write/read lock pair in
 // HARNESS_LOCKS.
 // Spare fuse bits for future use.
 #define SMC_EFUSE_MAP__SPARE_64_BITS__RSVD_bm 0xffffffffffffffff

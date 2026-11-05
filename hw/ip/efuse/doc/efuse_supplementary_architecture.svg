@@ -104,7 +104,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text x="660" y="300">Fuse commands</text>
 <rect class="ext" x="480" y="480" width="340" height="70" rx="6"/>
 <text class="b" x="650" y="508" text-anchor="middle">Interface SHIM</text>
-<text x="650" y="532" text-anchor="middle">16-bit address, 11-bit length</text>
+<text x="650" y="532" text-anchor="middle">18-bit bit address, 13-bit word count</text>
 <path class="cmd" d="M650,550 L650,576"/>
 <rect class="ext" x="480" y="580" width="340" height="86" rx="6"/>
 <text class="b" x="650" y="604" text-anchor="middle">Fuse macros 0..N</text>

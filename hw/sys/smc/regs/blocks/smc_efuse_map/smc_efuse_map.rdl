@@ -701,7 +701,7 @@ addrmap smc_efuse_map {
 
     reg SPARE_64_BITS {
         desc = "64-bit spare region at the end of the map, reserved for fields assigned after the
-                RTL is frozen. All elements share the slot-15 write/read lock pair in
+                RTL is frozen. All elements share the slot-7 write/read lock pair in
                 HARNESS_LOCKS.";
         regwidth = 64;
 
@@ -716,7 +716,7 @@ addrmap smc_efuse_map {
     // Address Map //
     /////////////////
 
-    // Sizes total 8 + 8 + 32 + 72 + 8 + 8 + 352 + 24 = 512 B, ending at 0x1FF.
+    // Sizes total 8 + 8 + 32 + 72 + 8 + 8 + 96 + 24 = 256 B, ending at 0xFF.
     HARNESS_LOCKS           HARNESS_LOCKS           @ 0x0;
     SUPPLEMENTARY_LOCKS     SUPPLEMENTARY_LOCKS     @ 0x8;
     JTAG_PUBLIC_IDENTITY    JTAG_PUBLIC_IDENTITY    @ 0x10;

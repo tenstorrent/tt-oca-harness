@@ -8,12 +8,13 @@
 
 DFT scan test and debug scandump share the scan chain infrastructure. Any flop
 placed on a scan chain can be shifted out, and any flop on a dumpable chain can
-be observed by a debug user. The SMC eFuse shadow registers hold the `LOCKS`
-field, which is the sole enforcement point for read and write access control
-over the entire SMC fuse map. If those flops were scannable, an attacker could
-shift a cleared `LOCKS` value into the shadow array and defeat the access
-controls without touching the fuse macro itself. This section describes how the
-`LOCKS` shadow words are excluded from every scan chain.
+be observed by a debug user. The SMC eFuse shadow registers hold the
+`HARNESS_LOCKS` and `SUPPLEMENTARY_LOCKS` fields, which are the sole enforcement
+point for read and write access control over the harness and supplementary fuse
+maps. If those flops were scannable, an attacker could shift a cleared lock
+value into the shadow array and defeat the access controls without touching the
+fuse macro itself. This section describes how the lock shadow words are excluded
+from every scan chain.
 
 The asset classes referenced here (Class 1 / Class 2 / Class 3) are defined
 authoritatively in the SEP Lifecycle Controller chapter, _Asset and Scan-Chain
@@ -39,7 +40,7 @@ material, and no token registers. Consequently no confidentiality masking is
 required.
 
 |Class 1b (integrity)
-|`LOCKS`
+|`HARNESS_LOCKS`, `SUPPLEMENTARY_LOCKS`
 |Excluded from every scan chain. Never scannable, never dumpable, for any LC
 state or debug grant.
 
@@ -105,13 +106,12 @@ ranges.
 |Class 3 words (`shadow_efuse_values`) |60
 |=================================================================
 
-Three `ASSERT_INIT` checks in `efuse_shadow_regs` verify at elaboration that the
-configured ranges are well formed, non-overlapping, and inside the shadow array,
-so a bad range map is a build failure rather than a silent loss of protection.
+A range map that is malformed, overlapping or outside the shadow array fails
+elaboration rather than silently losing protection.
 
 == Downstream Lock Path
 
-Excluding the `LOCKS` shadow flops is only sufficient if no scannable flop
+Excluding the lock shadow flops is only sufficient if no scannable flop
 downstream of them re-derives the lock decision. In the SMC eFuse controller
 this holds by construction: `efuse_shadow_reg_access_control`, which compares the
 incoming APB address against the field map and produces the `write_locked` /
@@ -122,7 +122,7 @@ paths that they gate.
 The one sequential consumer of that logic is
 `locked_field_access_interrupt_o`, which reports that a locked-field access was
 attempted. It carries an access-violation event, not lock state, so observing it
-does not reveal or alter the `LOCKS` value.
+does not reveal or alter the lock values.
 
 == Notes for DFT
 
@@ -142,6 +142,6 @@ the RDL alone does not confer scan protection.
 == Verification
 
 `smc_efuse_shadow_lock_matrix_test` exercises reads and writes across the
-`LOCKS` matrix and therefore covers the relocated words functionally, confirming
-that moving `LOCKS` into the Class 1 array does not change access-control
-behaviour.
+`HARNESS_LOCKS` matrix and therefore covers the relocated words functionally,
+confirming that moving the lock words into the Class 1 array does not change
+access-control behaviour.

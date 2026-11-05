@@ -257,7 +257,8 @@ a command has been issued does not affect that command.
 |=====================================================================================
 |Property |Hardware Lock |Software Lock
 |Source |Permission bits fused into the eFuse array (the field map reflects
-the programmed values) |Runtime writes to the `LOCKS` CSR (write-1-to-set)
+the programmed values) |Runtime writes to the lock registers (write-1-to-set):
+`LOCKS` on SEP, `HARNESS_LOCKS` and `SUPPLEMENTARY_LOCKS` on SMC
 |Persistence |Permanent — backed by one-time-programmable bits and cannot
 be cleared once set |Volatile — retained only until the next system reset
 |Reversibility |Irreversible by any means |Cleared by reset, allowing the
