@@ -412,10 +412,6 @@ not grade that rejection.
 |Checker |Contract
 |CHK-JEDEC-ID
 |The received identifier equals the flash model's device identifier.
-|CHK-RESP
-|Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
-|CHK-NONVAC
-|The scoreboard performed a non-zero number of checks.
 |CHK-SPI-WIRE
 |The shared SPI monitor grades the pad ports in SPI Mode 0 on every frame: SCK is at the CPOL level at each chip-select edge and moves only to that level while chip select is high; MOSI does not change on a sample edge, nor after a sample edge and before the next shift edge; no graded pin resolves to X or Z. The monitor also grades the monitor-only taps `spi_sd_o`, `spi_sd_oe_o`, `spi_cs_oe_o` and `spi_sck_oe_o` against the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment": lane n drives `sd[n]` with output enable `sd_oe[n]`, chip select and clock have `cs_oe` and `sck_oe`, and the host drives a data lane only while chip select is asserted): no data lane output enable rises, or is on at an SCK edge, while chip select is high (`oe_idle`); at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 (`oe_lanes`); and the chip-select and clock output enables are on at each sample edge (`oe_ctrl`). The MOSI edge and X/Z rules apply to every data lane whose output enable is on. A host that drives a data lane while chip select is high, enables another lane pattern, or turns off the chip-select or clock output enable in a frame fails. At least one Mode 0 frame is graded.
 |CHK-SPI-FRAME-SHAPE
@@ -428,7 +424,7 @@ not grade that rejection.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: `CHK-JEDEC-ID PASS` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`) carries the opcode and the RXDATA word; the leaf raises before it when the flash model saw no 0x9F frame or RXDATA differs from the model identifier. CHK-RESP and CHK-NONVAC are enforced by the shared scoreboard. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
+*Evidence*: `CHK-JEDEC-ID PASS` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`) carries the opcode and the RXDATA word; the leaf raises before it when the flash model saw no 0x9F frame or RXDATA differs from the model identifier. The shared scoreboard (`cocotb/env/sep_scoreboard.py`) fails the leaf on any access that does not answer `OKAY`; it prints no named record. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
 
 '''''
 

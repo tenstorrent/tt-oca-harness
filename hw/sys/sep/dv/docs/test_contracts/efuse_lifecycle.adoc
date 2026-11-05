@@ -51,8 +51,6 @@
 |After cold re-sense the shadow equals the original image plus exactly the burned bits — all twelve, the ten random ones and the two from step 5. The `sep_fuse_sense_done` field and the reserved bits 31:1 of `SEP_FUSE_SENSE_STATUS` have no stated value after the re-sense (`regs/gen/adoc/blocks/sep_cpu_ctrl.adoc`) and are logged as `OBS-SENSE-STATUS-DONE` and `OBS-SENSE-STATUS-RSVD`, not graded.
 |CTRL-RESENSE
 |The re-sense of step 6 ran: `sep_fuse_sense_done_o` reads 0 on the last clock of the `rst_ni` hold and rises again after the release (`hw/sys/sep/doc/otp_fuse_controller.adoc`: at cold reset the controller senses the fuse bank). A done kept from the first sense, or a sense that does not finish, logs `CTRL-MISSING RESENSE` and fails the leaf. Evidence: `CTRL-RESENSE seen: sep_fuse_sense_done_o=0 at the end of the rst_ni hold, rise <k> clocks after the release`.
-|CHK-NONVAC
-|The comparison covered the whole image, not a sample.
 |OBS-SENSE-STATUS-DONE
 |A logged line after each status read (the one of CHK-SENSE-SHADOW and the one of CHK-W1S-PERSIST), not a graded check: the `sep_fuse_sense_done` field and the whole status word. Evidence: `OBS-SENSE-STATUS-DONE: <CHK-SENSE-SHADOW\|CHK-W1S-PERSIST> sep_fuse_sense_done field=0x<f> SEP_FUSE_SENSE_STATUS=0x<v>`.
 |INFO-EFUSE-OTP-PLAIN
@@ -61,7 +59,7 @@
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: CHK-NONVAC is the scope of the compares, not a record of its own: `sep_efuse_shadow_check_seq` walks every word of every field `SepEfuseImage.check_fields()` returns, and the shared scoreboard asserts a non-zero value-comparison count, so a sampled or empty compare fails.
+*Evidence*: the whole-image scope of the compares is part of CHK-SENSE-SHADOW and CHK-W1S-PERSIST and is not a record of its own: `sep_efuse_shadow_check_seq` walks every word of every field `SepEfuseImage.check_fields()` returns, and the shared scoreboard asserts a non-zero value-comparison count, so a sampled or empty compare fails.
 
 *Model honesty*: the OTP array behind the fuse-command interface is a
 simulation-only behavioural bank, not an OTP macro. Two properties this entry
@@ -112,19 +110,13 @@ guard is proven.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-HANDSHAKE
-|Both processors are alive and synchronised over the mailbox.
-|CHK-UID-STABLE
-|The chiplet identifier reads the same known value on every iteration; no bad reads.
-|CHK-TAG-INTACT
-|The Key Manager's ownership tags keep their expected values throughout.
-|CHK-PROGRESS
-|The Key Manager's register payload advances and never moves backwards, so the contention window was real rather than an idle loop.
+|CHK-COEXIST
+|One record for four conditions. Both processors come up and meet over the mailbox: the host reads the ready marker. The CPU completes exactly 512 contended iterations, and the chiplet identifier reads the same known value on every iteration, with no bad reads. The Key Manager's ownership tags keep their expected values throughout. The Key Manager's register payload changes at least 256 times and never moves backwards, so the contention window is real and not an idle loop.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-COEXIST` (`cocotb/tests/km/sep_efuse_km_axil_cpu_mux_coexist_test.py`), covers CHK-HANDSHAKE (the READY marker), CHK-PROGRESS (payload changes under contention), CHK-UID-STABLE (`bad_uid == 0`) and CHK-TAG-INTACT (`bad_tag == 0`).
+*Evidence*: one aggregate record, `CHK-COEXIST` (`cocotb/tests/km/sep_efuse_km_axil_cpu_mux_coexist_test.py`), is printed only after the ready marker, the iteration count (512), the payload-change floor (256), `bad_uid == 0`, `backward == 0` and `bad_tag == 0` all pass.
 
 *Anti-vacuity*: this entry is double-gated and the two gates are independent. The
 Key Manager firmware counts its own errors and converts them into the pass/fail
@@ -266,7 +258,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: the firmware publishes CPU-ready to cold scratch only after real fuse sense completes and the CPU token seed written to the first eFuse MMR word reads back; otherwise it returns without publishing it, and the host fails the leaf at its CPU-ready wait. The firmware console is not in the leaf log, so these preconditions show as that wait; `CHK-CPU-MMR` also fails if the seed is lost.
+*Evidence*: the firmware publishes CPU-ready to cold scratch only after real fuse sense completes and the CPU token seed written to the first eFuse MMR word reads back; otherwise it returns without publishing it, and the host fails the leaf at its CPU-ready wait. The firmware prints these two preconditions on its console as `CHK-SENSE` and `CHK-CPU-SEED`. The console is not in the leaf log, so they show in the leaf log as that wait; `CHK-CPU-MMR` also fails if the seed is lost.
 
 '''''
 
