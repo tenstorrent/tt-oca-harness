@@ -174,10 +174,16 @@ _PERIPH_UNITS = (
         ),
     ),
 )
-# (unit, tag, declared RRESP of the aperture-end word or None). The UART wrapper declares no
-# past-extent response; the I3C wrapper answers OKAY across its 24 KiB (memory_map.adoc, OCA
-# I3C Controller Wrapper row), so its aperture-end read must answer OKAY.
-_APERTURE_ONLY_UNITS = (("smc_uart_wrap", "UART", None), ("oca_i3c_wrap", "I3C", AXI_RESP_OKAY))
+# (unit, tag, declared (rresp, bresp) of the aperture-end word, or None). None derives the UART
+# pair, read data included, from the generated extents of the wrapper the word falls in
+# (uart_wrap.rdl and uart_log_engine_wrap.rdl, ocah_gap_resp). The I3C word is the last word of
+# DCT entry 15 of I3C_CSR[5]: its read answers the OKAY the I3C row of memory_map.adoc gives the
+# whole window, and note [3] of that row drops DCT writes without naming a response code, so the
+# write response is logged, not compared.
+_APERTURE_ONLY_UNITS = (
+    ("smc_uart_wrap", "UART", None),
+    ("oca_i3c_wrap", "I3C", (AXI_RESP_OKAY, None)),
+)
 _CLA_UNIT = "smc_cla"
 
 # UART/log-engine wrappers: uart_log_engine_wrap.adoc places the UART at wrapper +0x100 and
@@ -194,6 +200,11 @@ UARTWRAP_HOLE_PAIR = (AXI_RESP_OKAY, 0x0000_0000)
 UARTWRAP_GAP_PAIR = (AXI_RESP_DECERR, PAST_EXTENT_RDATA)
 # memory_map.adoc UART window row: a hole answers OKAY, a gap between sub-blocks DECERR.
 UARTWRAP_PAIR_BRESP = {UARTWRAP_HOLE_PAIR: AXI_RESP_OKAY, UARTWRAP_GAP_PAIR: AXI_RESP_DECERR}
+# The generated wrapper sub-blocks whose extents separate a hole from a gap between sub-blocks;
+# an offset past the wrapper's own extent lies in the UART window's gap between wrappers.
+_UARTWRAP_SUBBLOCKS = ("UART_LOG_ENGINE_CTRL", "UART", "LOG_ENGINE")
+UARTWRAP_GAP = "gap"
+UARTWRAP_WRAPPER_GAP = "wrapper gap"
 
 # Unimplemented-offset probes. Offsets are from LOCAL_BASE unless named as window or bank
 # offsets. memmap.adoc: the UART, I3C, AVSBus and telemetry windows answer SLVERR with
@@ -553,54 +564,90 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         self._log_chk("CHK-PAST-EXTENT-UARTWRAP", hole_gap)
         self._log_chk("CHK-PAST-EXTENT-UARTWRAP-LIVE", live)
 
-    async def _observe_aperture_end(self, unit: str, tag: str, rresp_declared: int | None) -> str:
+    async def _observe_aperture_end(
+        self, unit: str, tag: str, declared: tuple[int, int | None] | None
+    ) -> str:
         """Read and write the aperture-end word of a unit that declares no past-extent response.
 
-        The write response is recorded, not compared. The read response is compared only
-        when ``rresp_declared`` names the code the component map gives the whole window,
-        as it does for I3C. The read data is never converted and the read is declared to
-        the monitor as observed-only, so its beat is exempt from the X rules; the
-        monitor's R-beat count
-        corroborates that the read answered exactly once, and its exempt tallies that the
-        declaration covered exactly that one AR and one beat.
+        ``None`` derives the read pair and the write code of the UART word from the generated
+        extents of the wrapper it falls in, and the read goes through the driver with the
+        pair and the write code compared exactly. Otherwise ``declared`` names the read code
+        the component map gives the whole I3C window and the write code, ``None`` when the
+        map gives none and the write response is logged; that read is never converted and
+        is declared to the monitor as observed-only, so its beat is exempt from the X rules,
+        and the monitor's exempt tallies corroborate that the declaration covered exactly
+        that one AR and one beat. The monitor's R-beat count corroborates that each read
+        answered exactly once.
         """
         first, last = generated_window(unit)
         top = self._top_addr(unit)
         monitor = self.env.axi_monitor
         monitor.expected_decerr_addrs.add(top)
         beats_before = monitor.r_beats
-        exempt_before = (monitor.ar_exempt, monitor.r_beats_exempt)
-        with monitor.declared_unknown_rdata():
-            rresp, resolvable, bits = await self._read_unconverted(f"{tag}_TOP", top)
+        if declared is None:
+            n = (top - smc_indexed_addr(f"{_UARTWRAP}_BASE_ADDR", 0)) // UARTWRAP_STRIDE
+            region, want_pair, bresp_declared = self._uartwrap_declared(
+                n, top - smc_indexed_addr(f"{_UARTWRAP}_BASE_ADDR", n)
+            )
+            source = f"wrapper {n} {region}"
+            rresp_declared = want_pair[0]
+            rresp, rdata = await self._observe_read(f"{tag}_TOP", top)
+            assert (rresp, rdata) == want_pair, (
+                f"{tag}_TOP @ 0x{top:08x}: rresp {_RESP_NAMES.get(rresp, rresp)} rdata "
+                f"0x{rdata:08x}, the generated wrapper extents place the word in a {region}, "
+                f"which answers ({_RESP_NAMES[want_pair[0]]}, 0x{want_pair[1]:08x})"
+            )
+            read_txt = f"rdata=0x{rdata:08X} (declared for the {source}, exact compare)"
+        else:
+            rresp_declared, bresp_declared = declared
+            source = "window"
+            exempt_before = (monitor.ar_exempt, monitor.r_beats_exempt)
+            with monitor.declared_unknown_rdata():
+                rresp, resolvable, bits = await self._read_unconverted(f"{tag}_TOP", top)
+            exempt = (
+                monitor.ar_exempt - exempt_before[0],
+                monitor.r_beats_exempt - exempt_before[1],
+            )
+            assert exempt == (1, 1), (
+                f"{tag}_TOP @ 0x{top:08x}: the declaration exempted {exempt[0]} ARs and "
+                f"{exempt[1]} R beats, want exactly the one read"
+            )
+            read_txt = (
+                f"(data not converted, read declared observed-only to the monitor; "
+                f"rdata_resolvable={resolvable} rdata_bits={bits}; "
+                f"exempt ARs/beats={exempt[0]}/{exempt[1]}; read data LINKED-ISSUE SF-003, SF-004)"
+            )
         bresp = await self._write_past(f"{tag}_TOP", top)
         beats = monitor.r_beats - beats_before
         assert beats == 1, f"{tag}_TOP @ 0x{top:08x}: monitor saw {beats} R beats, want 1"
-        exempt = (monitor.ar_exempt - exempt_before[0], monitor.r_beats_exempt - exempt_before[1])
-        assert exempt == (1, 1), (
-            f"{tag}_TOP @ 0x{top:08x}: the declaration exempted {exempt[0]} ARs and "
-            f"{exempt[1]} R beats, want exactly the one read"
-        )
         rname = _RESP_NAMES.get(rresp, rresp)
         bname = _RESP_NAMES.get(bresp, bresp)
         cocotb.log.info(
-            "island=%s addr=0x%08x bresp_declared=undeclared bresp_observed=%s", unit, top, bname
+            "island=%s addr=0x%08x bresp_declared=%s bresp_observed=%s",
+            unit,
+            top,
+            "undeclared" if bresp_declared is None else _RESP_NAMES[bresp_declared],
+            bname,
         )
-        if rresp_declared is None:
-            rresp_txt = f"rresp={rname} (undeclared)"
-        else:
-            assert rresp == rresp_declared, (
-                f"{tag}_TOP @ 0x{top:08x}: rresp {rname}, the component map declares "
-                f"{_RESP_NAMES[rresp_declared]} for the window"
+        assert rresp == rresp_declared, (
+            f"{tag}_TOP @ 0x{top:08x}: rresp {rname}, the component map declares "
+            f"{_RESP_NAMES[rresp_declared]} for the {source}"
+        )
+        if bresp_declared is None:
+            bresp_txt = (
+                f"bresp={bname} (logged: the component map drops DCT writes without naming "
+                f"a response code, LINKED-ISSUE SF-004)"
             )
-            rresp_txt = f"rresp={rname} (declared)"
+        else:
+            assert bresp == bresp_declared, (
+                f"{tag}_TOP @ 0x{top:08x}: bresp {bname}, the component map declares "
+                f"{_RESP_NAMES[bresp_declared]} for the {source}"
+            )
+            bresp_txt = f"bresp={bname} (declared for the {source})"
         return (
             f"{tag}_TOP {unit} aperture 0x{LOCAL_BASE_RESET + first:08X}.."
-            f"0x{LOCAL_BASE_RESET + last:08X} @0x{top:08x} {rresp_txt} "
-            f"bresp={bname} (undeclared) "
-            f"(data not converted, read declared observed-only to the monitor; "
-            f"rdata_resolvable={resolvable} rdata_bits={bits}; "
-            f"monitor R beats={beats}, exempt ARs/beats={exempt[0]}/{exempt[1]}; "
-            f"measured, LINKED-ISSUE SF-003, SF-004)"
+            f"0x{LOCAL_BASE_RESET + last:08X} @0x{top:08x} rresp={rname} (declared for the "
+            f"{source}) {read_txt} {bresp_txt}; monitor R beats={beats}"
         )
 
     def _uart_wrapper_points(self, n: int) -> tuple[int, int, list[tuple[str, int, int]]]:
@@ -625,6 +672,29 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         )
         return base, lrs, [(where, off, base + off) for where, off in offsets]
 
+    def _uartwrap_declared(self, n: int, off: int) -> tuple[str, tuple[int, int], int]:
+        """(region, (rresp, rdata), bresp) declared for the word at wrapper ``n`` + ``off``.
+
+        An offset inside one of the wrapper's generated sub-block extents is a hole of that
+        sub-block; an offset inside the wrapper's extent but outside every sub-block lies
+        between sub-blocks (``uart_log_engine_wrap.rdl``, ``ocah_gap_resp``); an offset past
+        the wrapper's extent, within its stride, lies in the UART window's gap between
+        wrappers (``uart_wrap.rdl``, ``ocah_gap_resp``). The UART window row of
+        memory_map.adoc gives the hole pair and the one pair both gaps share.
+        """
+        count = smc_addr(f"{_UARTWRAP}_NUM")
+        stride = smc_addr(f"{_UARTWRAP}_STRIDE")
+        extent = smc_addr(f"{_UARTWRAP}_SIZE")
+        assert 0 <= n < count, f"wrapper {n}: the generated map has {count} wrappers"
+        assert 0 <= off < stride, f"wrapper {n} +0x{off:x}: outside its 0x{stride:x} stride"
+        base = smc_indexed_addr(f"{_UARTWRAP}_BASE_ADDR", n)
+        for sub in _UARTWRAP_SUBBLOCKS:
+            first = smc_indexed_addr(f"{_UARTWRAP}_{sub}_BASE_ADDR", n) - base
+            if first <= off < first + smc_addr(f"{_UARTWRAP}_{sub}_SIZE"):
+                return "hole", UARTWRAP_HOLE_PAIR, UARTWRAP_PAIR_BRESP[UARTWRAP_HOLE_PAIR]
+        region = UARTWRAP_GAP if off < extent else UARTWRAP_WRAPPER_GAP
+        return region, UARTWRAP_GAP_PAIR, UARTWRAP_PAIR_BRESP[UARTWRAP_GAP_PAIR]
+
     async def _probe_uart_wrappers(self) -> tuple[str, str]:
         count = smc_addr(f"{_UARTWRAP}_NUM")
         assert count == UARTWRAP_COUNT, f"generated map has {count} UART wrappers, want 4"
@@ -642,27 +712,28 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
             live_codes.append(f"{_RESP_NAMES[bresp]}/{_RESP_NAMES[AXI_RESP_OKAY]}")
 
         parts = []
-        allowed = {UARTWRAP_HOLE_PAIR: "hole", UARTWRAP_GAP_PAIR: "gap"}
+        regions: list[str] = []
         for n, (_, _, points) in enumerate(wrappers):
             for where, off, addr in points:
+                region, want_pair, want_bresp = self._uartwrap_declared(n, off)
+                regions.append(region)
                 rresp, rdata = await self._observe_read(f"UARTWRAP{n}_{where}", addr)
-                pair = allowed.get((rresp, rdata))
-                assert pair is not None, (
+                assert (rresp, rdata) == want_pair, (
                     f"wrapper {n} +0x{off:x} @ 0x{addr:08x}: rresp "
-                    f"{_RESP_NAMES.get(rresp, rresp)} rdata 0x{rdata:08x} is neither "
-                    f"(OKAY, 0x0) nor (DECERR, 0xBADCAB1E)"
+                    f"{_RESP_NAMES.get(rresp, rresp)} rdata 0x{rdata:08x}, the generated "
+                    f"wrapper extents place the word in a {region}, which answers "
+                    f"({_RESP_NAMES[want_pair[0]]}, 0x{want_pair[1]:08x})"
                 )
                 bresp = await self._write_past(f"UARTWRAP{n}_{where}", addr)
-                want_bresp = UARTWRAP_PAIR_BRESP[(rresp, rdata)]
                 assert bresp == want_bresp, (
                     f"wrapper {n} +0x{off:x} @ 0x{addr:08x}: bresp "
-                    f"{_RESP_NAMES.get(bresp, bresp)}, a {pair} answers "
+                    f"{_RESP_NAMES.get(bresp, bresp)}, a {region} answers "
                     f"{_RESP_NAMES[want_bresp]}"
                 )
                 parts.append(
                     f"wrapper {n} offset 0x{off:03X} {where}@0x{addr:08x} "
-                    f"rresp={_RESP_NAMES[rresp]} rdata=0x{rdata:08X} pair={pair} "
-                    f"bresp={_RESP_NAMES[bresp]} (declared for a {pair})"
+                    f"rresp={_RESP_NAMES[rresp]} rdata=0x{rdata:08X} "
+                    f"bresp={_RESP_NAMES[bresp]} (declared {region})"
                 )
 
         after = []
@@ -673,10 +744,12 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
             after.append(got)
 
         hole_gap = (
-            f"{len(parts)} reads each one of (OKAY, 0x00000000) / (DECERR, 0xBADCAB1E), "
-            f"{len(parts)} writes each answering the documented bresp of its pair, hole=OKAY "
-            f"gap=DECERR; which pair each offset returns is measured, LINKED-ISSUE SF-003; "
-            + "; ".join(parts)
+            f"{len(parts)} reads each answering the pair the generated wrapper extents declare "
+            f"for its offset, hole=(OKAY, 0x00000000), between sub-blocks and past the wrapper "
+            f"extent=(DECERR, 0xBADCAB1E), and {len(parts)} writes each answering the "
+            f"documented bresp of that pair, hole=OKAY gap=DECERR, exact compares; "
+            f"regions: hole={regions.count('hole')} {UARTWRAP_GAP}={regions.count(UARTWRAP_GAP)} "
+            f"{UARTWRAP_WRAPPER_GAP}={regions.count(UARTWRAP_WRAPPER_GAP)}; " + "; ".join(parts)
         )
         live = (
             "wrapper0..3 LOG_REGION_SIZE written="

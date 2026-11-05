@@ -1551,9 +1551,9 @@ not-implemented DMI registers read 0, and a `data0` access re-executes the store
 reaches, `hawindowsel` reads 0, and `setresethaltreq` halts a hart on its `RESET_CTRL` pulse.
 |`smc_jtag_dm_haltgroup_test` |3 |`dmcs2` halt group 1 membership, a member halt halting the other
 member, and a write with `hgselect` set ignored.
-|`smc_jtag_dm_sba_uncore_hold_obs_test` |3, held out |A system bus write under the uncore reset
-hold leaves `CPU_CTRL.SCRATCH` unchanged and a write after the release lands; the DMI readbacks
-under the hold are recorded for #3654.
+|`smc_jtag_dm_sba_uncore_hold_test` |3 |A system bus write requested under the uncore reset hold is
+not started: `sbcs` reads `sbbusy` 0 and `sberror` 0, `sbaddress0` does not advance and
+`CPU_CTRL.SCRATCH` stays unchanged during and after the hold; a write after the release lands.
 |`smc_dfd_mmr_rand_test` |3 |A drawn register order, pattern and lane take the access classes that
 the DFD register descriptions state, with the reset values and the read-only holds logged as
 controls.
@@ -14823,18 +14823,29 @@ the component map documents for that window, and an OKAY access on the same path
 * The GPIO, AVSBus, I2C and telemetry receiver windows answer the same DECERR and 0xBADCAB1E at
   the first address past their register extent and at the last word of their 0x1000 aperture. The
   UART and I3C windows declare no past-extent response, so only their aperture-end word is read
-  and written; the write responses are printed, not compared, the UART read response is printed,
-  not compared, and the I3C read response must be OKAY, the code the component map gives the
-  whole I3C window (`memory_map.adoc`, OCA I3C Controller Wrapper row); the read data of these two reads
-  is never converted, each read is declared to the AXI monitor as observed-only so its beat is
-  exempt from the X rules, and the monitor counts exactly one R beat for each.
+  and written. The UART word, BASE + 0x6FF8, lies past the 0x280 extent of wrapper 3 inside its
+  0x400 stride, in the gap of the UART window between wrappers (`smc_addr.h`, wrapper extent and
+  stride; `uart_wrap.rdl`, `ocah_gap_resp`; `memory_map.adoc`, UART window row), so its read must
+  answer (DECERR, 0xBADCAB1E) and its write DECERR, exact compares through the driver like the
+  twelve wrapper probes. The I3C word, BASE + 0x3FFF8, is the last word of DCT entry 15 of the
+  sixth controller: its read must answer the OKAY the component map gives the whole I3C window
+  (`memory_map.adoc`, OCA I3C Controller Wrapper row), its read data is never converted and the
+  read is declared to the AXI monitor as observed-only so its beat is exempt from the X rules,
+  and its write response is logged, not compared, because note [3] of that row says DCT writes
+  are dropped and names no response code. The monitor counts exactly one R beat for each of the
+  two reads.
 * In each of the four UART/log-engine wrappers (BASE + 0x6000 + N * 0x400), the first word past
   the 64-byte UART space (+0x140), the first word past the log-engine registers (+0x280) and the
   first word of the gap the generated `uart_log_engine_wrap` map leaves after its control block
-  are read once and written once with 0xA5A5_5A5A. Each read answers either (OKAY, 0x0) or
-  (DECERR, 0xBADCAB1E) (`memory_map.adoc`, UART window row); which pair is printed per offset and
-  not compared, and the write response must be the documented code of that pair, OKAY for a
-  hole and DECERR for a gap.
+  are read once and written once with 0xA5A5_5A5A. The generated wrapper extents
+  (`smc_addr.h`: control block, UART and log engine sub-blocks, wrapper extent and stride)
+  decide per offset whether the word is a hole of a sub-block, lies between sub-blocks, or lies
+  past the wrapper's 0x280 extent in the UART window's gap between wrappers, and the read must
+  answer that pair, (OKAY, 0x0) for a hole and (DECERR, 0xBADCAB1E) for either gap
+  (`memory_map.adoc`, UART window row; `uart_log_engine_wrap.rdl` and `uart_wrap.rdl`,
+  `ocah_gap_resp`); the write response must be the documented code of the same pair, OKAY for
+  a hole and DECERR for a gap. The +0x004 and +0x140 words of each wrapper lie between its
+  sub-blocks and the +0x280 word is the first past its extent; no probed offset is a hole.
 * Each wrapper's `LOG_REGION_SIZE` (log-engine bank +0x200, offset 0x04) is written with
   0x1000 + N, reads it back, and still reads 0x1000 + N after all twelve hole and gap writes;
   the write and both reads answer OKAY, exact compares.
@@ -14914,9 +14925,10 @@ at each address. Expected response: as in step 2, with `SCRATCH_COLD(0)` as live
 . Error injection. Point: SEP_IN, the past-extent address and the last aperture word of the GPIO,
 AVSBus, I2C and telemetry receiver windows, and the aperture-end word of the UART and I3C windows.
 Kind: the same read and write pair at each address. Expected response: as in step 2 for the first
-four windows; for UART and I3C the read and write complete, the write responses and the UART read
-response are printed without comparing them, and the I3C read response must be OKAY; print all
-six in `CHK-PAST-EXTENT-PERIPH`.
+four windows; for UART the read answers (DECERR, 0xBADCAB1E) and the write DECERR, the pair the
+RDL declares for the UART window's gap between wrappers; for I3C the read answers the OKAY the
+component map gives the window, and its read data and write response are logged; print all six
+in `CHK-PAST-EXTENT-PERIPH`.
 . Error injection. Point: SEP_IN, the first address past the CLA window. Kind: a read and a write
 past the window. Expected response: the read answers DECERR with 0xBADCAB1E and the write answers
 DECERR. Before it, read the last word of the window requiring OKAY; print
@@ -14941,8 +14953,8 @@ accessed; print `CHK-ERR-I3C`.
 . Telemetry and AVSBus (S8). Read and write BASE + 0x9040 and BASE + 0x9800, read `CTRL`; read and
 write BASE + 0x4800, read BASE + 0x4000; print `CHK-ERR-TELEMETRY` and `CHK-ERR-AVS`.
 . External (S9). Read and write BASE + 0x406548, then BASE + 0x406000; print `CHK-ERR-EXTERNAL`.
-. Require 223 accesses: 221 against the sequence's own count and the scoreboard's checked count
-and the two unconverted reads, print `CHK-TIMEOUT-PATHS` (S10), then run the fence that prints
+. Require 223 accesses: 222 against the sequence's own count and the scoreboard's checked count
+and the one unconverted read, print `CHK-TIMEOUT-PATHS` (S10), then run the fence that prints
 `CHK-NONVAC`.
 
 *Checkers*:
@@ -14976,16 +14988,17 @@ generated map declares.
 |`CHK-PAST-EXTENT-PERIPH` |For GPIO, AVSBus, I2C and telemetry the reads past the extent and at
 the last word of the 0x1000 aperture answer DECERR with 0xBADCAB1E and the live register is
 unchanged after each write and each write response equals the DECERR the generated map declares;
-for UART and I3C the aperture-end read and write complete, each read answers exactly one R beat,
-the read data is never converted, the I3C read answers OKAY, and the UART read response and both
-write responses are measured and printed, not compared.
+for UART and I3C the aperture-end read and write complete and each read answers exactly one R
+beat; the UART read answers (DECERR, 0xBADCAB1E) and the write DECERR, exact compares with the
+gap pair the RDL declares; the I3C read answers OKAY, its data is never converted and is logged,
+and its write response is logged, not compared.
 |`CHK-PAST-EXTENT-CLA` |The last word of the CLA window reads OKAY and the first address past the
 window reads DECERR with 0xBADCAB1E, exact compares; the write past the window answers DECERR.
 |`CHK-PAST-EXTENT-UARTWRAP` |Each of the twelve reads at +0x140, +0x280 and the gap word of the
-four UART/log-engine wrappers answers once with (OKAY, 0x0) or (DECERR, 0xBADCAB1E), an exact set
-compare; which pair each offset returns is measured and printed, not compared, and each of the
-twelve write responses equals the documented code of its pair, OKAY for a hole and DECERR for a
-gap.
+four UART/log-engine wrappers answers once with the pair the generated wrapper extents declare
+for its offset, (DECERR, 0xBADCAB1E) between sub-blocks and past the wrapper's extent, an exact
+compare, and each of the twelve write responses equals the documented code of that pair, OKAY for
+a hole and DECERR for a gap.
 |`CHK-PAST-EXTENT-UARTWRAP-LIVE` |Each wrapper's `LOG_REGION_SIZE` write answers OKAY, the word
 reads back 0x1000 + N with OKAY right after it and still reads 0x1000 + N with OKAY after all
 twelve hole and gap writes, exact compares on every code and value.
@@ -15042,9 +15055,11 @@ component map documents for it, and exactly 223 accesses are issued. Enrolled in
 *Scope limit*: The write responses at every probed address are compared with the DECERR the
 register description declares (`smc.rdl`, `ocah_past_extent_resp`), and the write past the CLA
 window with the DECERR of the map's gap response. The UART and I3C windows declare no past-extent
-response, so only their aperture-end word is read and written; their two write responses and the
-UART read response are logged, not compared, and the I3C read response is compared with the OKAY
-the component map gives that window. The UART and log-engine probe pairs (SF-015), the I3C hole
+response, so only their aperture-end word is read and written; the UART read pair and write code
+are compared with the gap pair the RDL declares, the I3C read code is compared with the OKAY the
+component map gives the window, and the I3C read data and write response are logged, not compared
+(note [3] of the I3C row drops DCT writes without naming a response code). The UART and
+log-engine probe pairs (SF-015), the I3C hole
 read data (SF-014) and the external unclaimed-offset response (SF-016) are printed, not compared.
 
 '''''
@@ -29707,6 +29722,124 @@ every sequence assert holds. Enrolled in: `all`, `hosted`.
 *Scope limit*: Halt group 0 (no group) and group 1 only; the `dmcs2` `dmexttrigger` and
 `grouptype` fields are not driven. The `dmcs2` reset readback is printed and not compared: the
 chapter states no reset value.
+
+'''''
+
+[[sec-586-smc_jtag_dm_sba_uncore_hold_test]]
+===== 586 `smc_jtag_dm_sba_uncore_hold_test`
+
+*Phase*: 3
+
+*Area*: JTAG
+
+*Source Module*: `smc_jtag_dm_sba_uncore_hold_test`
+
+*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
+`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs; DMI
+addresses `sbcs` 0x38 (`sbbusyerror` bit 22, `sbbusy` bit 21, `sbaccess` bits 19:17,
+`sbautoincrement` bit 16, `sberror` bits 14:12, write 1 to clear), `sbaddress0` 0x39,
+`sbaddress1` 0x3A and `sbdata0` 0x3C, with
+`dtmcs` giving `abits` and the idle count; ocah_axi_vip (AXI) on SEP_IN writing and reading
+`CPU_CTRL.RESET_CTRL` (8 bytes, `debug_reset_n` at bit 24, `uncore_reset_n` at bit 8),
+`CPU_CTRL.RESET_TIMEOUT` (`timeout_value` 32, `timeout_mode` set, `reset_applied` read back),
+`CPU_CTRL.SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` (8 bytes, addresses from the generated
+address map); DMI `data0` 0x04 and `dmstatus` 0x11 read under the hold; `clk_smc_i`
+
+*Run mode*: one testlist entry in `testlists/jtag.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tag `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: A system bus write requested while the uncore reset is held is not started: `sbcs`
+reads `sbbusy` 0 and `sberror` 0, `sbaddress0` does not advance under `sbautoincrement`, and the
+`CPU_CTRL.SCRATCH` word stays unchanged during and after the hold; a system bus write after the
+release lands.
+
+*Test Coverage*:
+
+* After the debug reset release and `dmcontrol.dmactive` = 1, `sbcs` reads `sbbusy` 0 and
+  `sberror` 0.
+* With `SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` zeroed over AXI, a 32-bit system bus write to
+  `SCRATCH[4]` with `sbautoincrement` set ends `sbbusy` 0 `sberror` 0, advances `sbaddress0` by 4
+  and the AXI read returns the pattern.
+* With `RESET_TIMEOUT` in force mode and `uncore_reset_n` written 0, `reset_applied` sets; the
+  `sbdata0` scan of a system bus write to `SCRATCH[5]` under the hold reaches the Debug Module
+  (`sbdata0` reads back the pattern) and `SCRATCH[5]` reads 0 over AXI during the hold.
+* Under the hold the `sbcs` of that write reads `sbbusy` 0, `sberror` 0 and `sbbusyerror` 0 within
+  sixteen reads and `sbaddress0` reads the `SCRATCH[5]` address, not advanced under
+  `sbautoincrement`, and `reset_applied` still reads 1 after those scans; a `data0` write and
+  readback and `dmstatus` are printed.
+* After `uncore_reset_n` is written 1 and `reset_applied` clears, `sbcs` reads `sbbusy` 0 and
+  `sberror` 0 once the error bits are cleared, and a system bus write to `SCRATCH[6]` ends
+  `sberror` 0, advances `sbaddress0` by 4 and reads back over AXI; `SCRATCH[5]` still reads 0 after
+  the release and after that write (the write requested under the hold is not replayed).
+
+*Test Procedure*:
+
+[arabic]
+. Read `CPU_CTRL.RESET_TIMEOUT`. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64
+  `clk_smc_i` cycles, read it back and require bit 24 set. Create the TAP, reset it with
+  `tb_cpu_jtag_reset` while TCK steps, read IDCODE, activate the Debug Module (`dmactive` plus a
+  bounded wait on `dmstatus`), read `dtmcs` for `abits` and the idle count, read `sbcs` and
+  `dmstatus`; require `sbbusy` 0 and `sberror` 0.
+. Write 0 to `SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` over AXI. Write `sbcs` with `sbaccess` 2,
+  `sbautoincrement` 1 and `sberror` cleared, `sbaddress1` 0, `sbaddress0` the `SCRATCH[4]` address
+  and `sbdata0` the pattern; read `sbcs` until `sbbusy` is 0 (sixteen reads at most), require
+  `sberror` 0, read `sbaddress0` and require the address plus 4. Read `SCRATCH[4]` and
+  `SCRATCH[5]` over AXI; require the pattern and 0.
+. Write `RESET_TIMEOUT` with `timeout_value` 32 and `timeout_mode` 1; write `RESET_CTRL` with
+  `uncore_reset_n` 0 and `debug_reset_n` 1; read it back; read `RESET_TIMEOUT` until
+  `reset_applied` is 1 (sixty-four reads at most).
+. Start a 32-bit system bus write to `SCRATCH[5]` as in step 2 and read `sbcs` until `sbbusy` is 0
+  or sixteen reads pass; read `sbaddress0` and `sbdata0`, require `sbdata0` to read the pattern,
+  `sbcs` to read `sbbusy` 0, `sberror` 0 and `sbbusyerror` 0, and `sbaddress0` to read the
+  `SCRATCH[5]` address; write `data0` with a pattern and read it; read `dmstatus`; print them on
+  the `CHK-DM-SBA-NOT-STARTED-UNDER-HOLD` line. Read `SCRATCH[5]` over AXI and require 0; read
+  `RESET_TIMEOUT` again and require `reset_applied` 1.
+. Write `RESET_CTRL` with `uncore_reset_n` 1, read `RESET_TIMEOUT` until `reset_applied` is 0, wait
+  64 cycles, read `sbcs` and `dmstatus`, write `sbcs` with `sberror` and `sbbusyerror` cleared and
+  read it; require `sbbusy` 0 and `sberror` 0. Read `SCRATCH[5]` over AXI and require 0. Start a
+  system bus write to `SCRATCH[6]`, require `sbbusy` 0 and `sberror` 0 within the bound, read
+  `SCRATCH[6]` over AXI and require the pattern, then read `SCRATCH[5]` again and require 0.
+. Restore `RESET_TIMEOUT` and read it back. Require the steps in order with increasing stamps and
+  each checker line after its step, print the ordered-fence line and the bounded waits (DMI busy
+  retries, four at most; `dmactive` wait, sixteen reads; `sbbusy` wait, sixteen reads;
+  `reset_applied` wait, sixty-four reads).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DM-SBA-NOT-STARTED-UNDER-HOLD` |With `reset_applied` set, the system bus write to `SCRATCH[5]`
+ends with `sbcs` reading `sbbusy` 0, `sberror` 0 and `sbbusyerror` 0 within sixteen reads and
+`sbaddress0` reading the `SCRATCH[5]` address under `sbautoincrement`, with `reset_applied` still 1
+after the scans; a stuck `sbbusy`, a nonzero `sberror` or `sbbusyerror`, an advanced `sbaddress0`
+or a hold that ended during the scans fails it
+|`CHK-DM-SBA-WORD-UNCHANGED-UNDER-HOLD` |With `reset_applied` set, the `sbdata0` scan of the system
+bus write to `SCRATCH[5]` reaches the Debug Module (`sbdata0` reads back the pattern) and
+`SCRATCH[5]` reads 0 over AXI during the hold, with the `SCRATCH[4]` write before the hold as the
+positive control; a lost scan, a changed `SCRATCH[5]` or a failed control fails it
+|`CHK-DM-SBA-RESUMES-AFTER-RELEASE` |After the release, `sbcs` reads `sbbusy` 0 and `sberror` 0
+once the error bits are cleared, and the system bus write to `SCRATCH[6]` ends `sberror` 0 within
+the bound, advances `sbaddress0` by 4 and reads back over AXI, while `SCRATCH[5]` still reads 0
+before and after that write; a stuck `sbbusy`, a nonzero `sberror`, an unadvanced `sbaddress0`, a
+missing word or a `SCRATCH[5]` changed after the release fails it
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow their steps; a missing or misordered term fails it
+|`CHK-TIMEOUT-PATHS` |The DMI busy retries (four at most), the sixteen-read `dmactive` and
+`sbbusy` waits and the sixty-four-read `reset_applied` wait are bounded and fail on expiry with the
+last `sbcs` and DMI response
+|===
+
+*Pass Criteria*: `CHK-DM-SBA-NOT-STARTED-UNDER-HOLD`, `CHK-DM-SBA-WORD-UNCHANGED-UNDER-HOLD` and
+`CHK-DM-SBA-RESUMES-AFTER-RELEASE` hold after their compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS`
+hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The `data0` write and readback and the `dmstatus` readback under the hold are
+printed and not compared: the chapter states that the DMI registers are not reset with the uncore
+and no value for them under the hold.
 
 '''''
 
@@ -50919,7 +51052,7 @@ draws nothing from the seed.
 
 [arabic]
 . Check that `RESET_CTRL` has the uncore and every core released and that no reset is applied.
-. Program `RESET_TIMEOUT` to force mode after 32 cycles. Write the uncore reset low, read it back, and poll for `reset_applied`.
+. Program `RESET_TIMEOUT` to force mode after 32 cycles and read it back. Write the uncore reset low, read it back, and poll for `reset_applied`.
 . Write the uncore reset high and poll for `reset_applied` clear. Restore `RESET_TIMEOUT` and read back both registers.
 
 *Checkers*:
@@ -50927,7 +51060,7 @@ draws nothing from the seed.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CPU-UNCORE-RESET` |The uncore reset held alone set `reset_applied`, and releasing it cleared `reset_applied` and `reset_timeout`
+|`CHK-CPU-UNCORE-RESET` |With the read-back words of `RESET_TIMEOUT` (force mode) and `RESET_CTRL` (the uncore reset low, every core released) logged, the uncore reset held alone set `reset_applied`, and releasing it cleared `reset_applied` and `reset_timeout`
 |===
 
 *Pass Criteria*: the checker holds after its compares and every sequence assert holds.
@@ -52352,7 +52485,7 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
-|`smc_jtag_dm_sba_uncore_hold_obs_test`
+|`smc_jtag_dm_sba_uncore_hold_test`
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
@@ -53149,7 +53282,7 @@ ordered by area.
 |<<smc-vplan-area-misc,MISC>>
 |A write past the decoded extent of a register island answers the response `hw/sys/smc/regs/smc.rdl` declares for that island (`ocah_past_extent_resp`).
 |Which code a past-extent write inside an island's aperture answers: `hw/sys/smc/regs/smc.rdl` declares `SLVERR` per island for the reset unit, the misc wrap, the GPIO interface, the base configuration, the alias remap, the eFuse map and the peripheral windows, and `hw/sys/smc/doc/memmap.adoc` (Address Space Organization) gives the decode responses of the fabric; the documents do not state which rule wins for a write. Source: `hw/sys/smc/regs/smc.rdl` (`ocah_past_extent_resp`); `hw/sys/smc/doc/memmap.adoc` (Address Space Organization); `hw/ip/i2c/regs/i2c_wrap.rdl` (`ocah_gap_resp`).
-|`smc_reg_island_boundary_sweep_test` grades the read response and data on all 48 words and the write response on the nine `DECERR`-declared islands; on the fifteen `SLVERR`-declared islands it accepts `SLVERR` or `DECERR`, counts the answers per island and logs the count without grading the code. `smc_past_extent_slverr_units_test` compares each past-extent write response with the `DECERR` the RDL declares and logs only the two aperture-end write responses of the UART and I3C windows; `smc_gap_decode_response_test` and `smc_i2c_window_decode_test` log the write response the same way as the sweep.
+|`smc_reg_island_boundary_sweep_test` grades the read response and data on all 48 words and the write response on the nine `DECERR`-declared islands; on the fifteen `SLVERR`-declared islands it accepts `SLVERR` or `DECERR`, counts the answers per island and logs the count without grading the code. `smc_past_extent_slverr_units_test` compares each past-extent write response with the `DECERR` the RDL declares, the UART aperture-end read pair and write code with the gap pair the RDL declares, and the I3C aperture-end read code with the `OKAY` the component map gives the window, logging the I3C read data and write response; `smc_gap_decode_response_test` and `smc_i2c_window_decode_test` log the write response the same way as the sweep.
 |<<smc-vplan-area-power,POWER>>
 |`DMA STATUS_0` bit 8 reports midend activity.
 |When bit 8 reads 1, and for how long: during the copy, until retirement, or never once the midend has handed the transfer to the backend. Source: `hw/sys/smc/doc/dma.adoc` (Submission and Completion; "bit 8 indicates midend activity").
@@ -53600,7 +53733,7 @@ names them for their Phase 3 users.
 |<<smc-vplan-area-fabric,FABRIC>>
 |Inbound AXI Python monitors (`axi_monitor`, `sys_in_axi_monitor`, `jtag_in_axi_monitor`)
 |Monitor (`SmcAxiMonitor`, cocotb)
-|Python `SmcAxiMonitor` per inbound port: `axi_monitor` (SEP_IN, `s_axi`, alias `sep_in_axi_monitor`), `sys_in_axi_monitor` (SYS_IN, `sys_axi`) and `jtag_in_axi_monitor` (JTAG_IN, `jtag_axi`), each on the port's top-level bus prefix and `clk_smc`, cleared by `rst_primary_smc_clk_no`. An ARID-keyed AR table (address, ARLEN, ARSIZE, ARBURST, beats seen) joins each R beat to its read: an OKAY or EXOKAY beat fails on an X/Z bit in the byte lanes the beat accesses, taken from the beat address and ARSIZE; a beat without a recorded AR keeps the whole-bus rule (every data bit X/Z fails), which SEP_IN also applies to error beats. AW, W and AR fail when VALID is held with READY low for the agent timeout budget (`cfg.axi_timeout_ns` in `clk_smc` cycles). DECERR outside deadspace and `expected_decerr_addrs` fails on SEP_IN; SYS_IN, whose inbound filter answers blocked accesses with DECERR, and JTAG_IN tally it. `open_unknown_rdata_window` / `close_unknown_rdata_window` exempt reads that legitimately return unknown data, per AR; `declared_unknown_rdata` wraps one read in that window and, for the same time, holds the bench input `tb_rdata_known_hold` so the SEP_IN and peripheral `smc_axi_data_known_sva` instances do not judge its beats either. Two enrolled leaves open it, for reads the plan treats as observed-only: `smc_i3c_dxt_table_test` (the unwritten DAT and DCT entries, SF-029) and `smc_past_extent_slverr_units_test` (the UART and I3C aperture-end words, SF-003 / SF-004); each counts its declarations and fails when the monitor's exempt AR and exempt beat tallies differ from that count. The summary line prints `<n> R beats (<e> exempt, from <a> exempt ARs in <d> declared reads)`. A failure fails the leaf at `check_phase`, which prints `CHK-AXI-MON-<SEP-IN|SYS-IN|JTAG-IN>: ar=<n> r_beats=<n> b=<n> lanes_checked=<n> max_ready_wait=<n>` and `OBS-AXI-MON-BUDGET: port=<port> aw=<max> w=<max> ar=<max> budget=<cycles>`. Live on both simulators; the Verilator build is two-state, so the lane rule grades X/Z on VCS only.
+|Python `SmcAxiMonitor` per inbound port: `axi_monitor` (SEP_IN, `s_axi`, alias `sep_in_axi_monitor`), `sys_in_axi_monitor` (SYS_IN, `sys_axi`) and `jtag_in_axi_monitor` (JTAG_IN, `jtag_axi`), each on the port's top-level bus prefix and `clk_smc`, cleared by `rst_primary_smc_clk_no`. An ARID-keyed AR table (address, ARLEN, ARSIZE, ARBURST, beats seen) joins each R beat to its read: an OKAY or EXOKAY beat fails on an X/Z bit in the byte lanes the beat accesses, taken from the beat address and ARSIZE; a beat without a recorded AR keeps the whole-bus rule (every data bit X/Z fails), which SEP_IN also applies to error beats. AW, W and AR fail when VALID is held with READY low for the agent timeout budget (`cfg.axi_timeout_ns` in `clk_smc` cycles). DECERR outside deadspace and `expected_decerr_addrs` fails on SEP_IN; SYS_IN, whose inbound filter answers blocked accesses with DECERR, and JTAG_IN tally it. `open_unknown_rdata_window` / `close_unknown_rdata_window` exempt reads that legitimately return unknown data, per AR; `declared_unknown_rdata` wraps one read in that window and, for the same time, holds the bench input `tb_rdata_known_hold` so the SEP_IN and peripheral `smc_axi_data_known_sva` instances do not judge its beats either. Two enrolled leaves open it, for reads the plan treats as observed-only: `smc_i3c_dxt_table_test` (the unwritten DAT and DCT entries, SF-029) and `smc_past_extent_slverr_units_test` (the I3C aperture-end word, SF-003 / SF-004); each counts its declarations and fails when the monitor's exempt AR and exempt beat tallies differ from that count. The summary line prints `<n> R beats (<e> exempt, from <a> exempt ARs in <d> declared reads)`. A failure fails the leaf at `check_phase`, which prints `CHK-AXI-MON-<SEP-IN|SYS-IN|JTAG-IN>: ar=<n> r_beats=<n> b=<n> lanes_checked=<n> max_ready_wait=<n>` and `OBS-AXI-MON-BUDGET: port=<port> aw=<max> w=<max> ar=<max> budget=<cycles>`. Live on both simulators; the Verilator build is two-state, so the lane rule grades X/Z on VCS only.
 |Every cocotb test; SYS_IN is driven by `smc_sys_axi_in_port_test` (`CHK-AXI-MON-SYS-IN`), JTAG_IN by `smc_jtag_axi_shape_test` (`CHK-AXI-MON-JTAG-IN`), SEP_IN by `smc_sep_in_axi_flow_control_test` (`CHK-AXI-MON-SEP-IN`)
 |<<smc-vplan-area-fabric,FABRIC>>
 |Illegal-encoding inject (`+smc_axi_wrap_len1_inject`; `sva_sep_in_req`, `sva_sys_in_req`, `sva_sep_remap_req`, `sva_filtered_sys_req`)
@@ -53662,6 +53795,36 @@ names them for their Phase 3 users.
 |Monitor (`OCAH_SVA_ASSERT`)
 |`SMC_AXI_AWATOP_ZERO_<PORT>`: `aw.atop` is 0 whenever `aw_valid` on each SMC-internal AXI4 manager, disabled while the primary reset is low; two-state and live on both simulators. The final block prints `CHK-AXI-ATOP-ZERO-<PORT>: aw_evaluated=<n>`.
 |Every test; CPU MMIO and CPU front by `smc_fw_hello_world_test`, iDMA, iDMA control and the local output by `smc_dma_backpressure_test`, the filtered SYS path by `smc_sys_axi_in_port_test`, the output-fabric output and SYS_OUT by `smc_sys_out_aw_w_split_test`, the SEP remap path by `smc_sep_in_axi_flow_control_test`
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, uncore reset handshake (`u_smc_reset_sva`: `SMC_RST_UNCORE_NOT_WHILE_WITHHELD`, `SMC_RST_UNCORE_LOW_HAS_CAUSE`, `SMC_RST_APPLIED_TAKES_EFFECT`, `SMC_ISO_DRAINED_MEANS_EMPTY`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|`hw/sys/smc/dv/tb/smc_reset_sva.sv`, one instance in the single-instance body of `tb_top`. On `clk_smc`, disabled while `rst_primary_smc_clk_no` is low, enabled with the AXI checkers' enable: the cluster uncore reset (`tb_cpu_uncore_reset_n`) stays high on the edge after the software request was withheld (`tb_cpu_isolate_req` with `tb_cpu_drained` low and no force-mode timeout) while the warm reset (`tb_rst_warm_smc_clk_n`) is high on both edges; the uncore reset is low only with the warm reset low on this or the previous edge or `tb_cpu_reset_applied` high on the previous edge; and `tb_cpu_reset_applied` on one edge puts the uncore reset low on the next while the warm reset is high; and while `tb_cpu_drained` is high the four open-request counts `tb_cpu_l2_pending_aw`, `tb_cpu_l2_pending_ar`, `tb_cpu_mmio_pending_aw` and `tb_cpu_mmio_pending_ar` are zero. This is the drain handshake of `cpu.adoc` 233-240 and 272-280 and the `reset_applied` status of `cpu.adoc` 293-295, read as the reset contract accepts the asynchronous watchdog warm reset (`cpu.adoc` 328-338): a warm reset is a cause of its own. No knob. The final block prints `CHK-RESET-SVA-uncore_withheld`, `CHK-RESET-SVA-uncore_cause` and `CHK-RESET-SVA-uncore_applied` (antecedent edges); `+smc_reset_sva_need_<group>` fails a run whose count is 0.
+|Every single-instance test; the software uncore request (force mode programmed, applied by the completed drain) is driven by `smc_cpu_uncore_reset_test` (`+smc_reset_sva_need_uncore_cause`, `+smc_reset_sva_need_uncore_applied`), the withheld window by `smc_cpu_reset_pulse_test` (`+smc_reset_sva_need_uncore_withheld`; the count is every withheld edge, not only a timed-out one), the force-mode timeout by `smc_cpu_l2_write_wedge_test`, the watchdog warm reset by `smc_wdt_warm_reset_rand_test` and `smc_axi_partial_reset_open_txn_test`
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, cluster boundary isolate (`SMC_ISO_HELD_WHEN_NOT_READY`, `SMC_ISO_RELEASE_AFTER_FOUR`, `SMC_ISO_RELEASED_WHEN_READY_HELD`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_smc`, disabled while the primary reset is low. With `ready` = `smc_init_mem_done_o` and the uncore reset high and no isolate request: `tb_cpu_cluster_isolate` is high whenever `ready` is low; a fall of `tb_cpu_cluster_isolate` sees `ready` high now and four edges earlier; and `ready` high on five consecutive edges sees `tb_cpu_cluster_isolate` low (`cpu.adoc` 253-258: self-isolation on cold boot released four cycles after SRAM initialization with the uncore out of reset, isolated while the uncore is in reset, a held core does not isolate). The five-edge form holds under either reading of whether a `ready` dip restarts the delay. No knob. `CHK-RESET-SVA-iso_release` counts a fall of `tb_cpu_cluster_isolate` only after `tb_cpu_reset_applied` was high since the last fall, so the cold-boot release of every run is not in it; `CHK-RESET-SVA-iso_ready_held` counts every edge.
+|Every single-instance test (the cold-boot release); the software-request release is driven by `smc_cpu_uncore_reset_test` (`+smc_reset_sva_need_iso_release`, satisfied only by the release that follows its applied uncore request)
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, reset tree (`SMC_RST_UNCORE_HOLDS_CORES`, `SMC_RST_WARM_HOLDS_CLUSTER`, `SMC_RST_PRIMARY_IMPLIES_WARM`, `SMC_RST_WDT_IMPLIES_WARM`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_smc`, disabled while `powergood_stable_o` is low so the cold window is graded: the uncore reset low puts every bit of `tb_cpu_core_resets_n` low on the same edge (`cpu.adoc` 157-158); the warm reset low holds the uncore and every core (`clk_rst.adoc` 299-301); with `tb_jtag_reset_ctrl` all zero, `rst_primary_smc_clk_no` low and `rst_wdt_smc_clk_no` low each imply `tb_rst_warm_smc_clk_n` low (`clk_rst.adoc` 287-291). The JTAG qualifier takes the override leaves out of the two containment rules on the edges they drive an override; the fuse term of the warm equation is not graded, since the lag of the wrapper's delayed fuse reset is not stated. No knob. `CHK-RESET-SVA-uncore_low` counts an uncore-reset-low edge with powergood high only after the uncore reset was first seen high, so the bring-up window of every run is not in it.
+|Every single-instance test; `smc_cold_reset_test` (`+smc_reset_sva_need_uncore_low`, satisfied by the cold reset it asserts after bring-up) drives the cold path, `smc_wdt_warm_reset_rand_test` and `smc_wdt_timeout_pin_test` the watchdog path
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, isolated ports and status crossings (`SMC_ISO_L2_ACCEPTS_NONE`, `SMC_ISO_MMIO_PRESENTS_NONE`, `SMC_ISO_MMIO_B_SLVERR`, `SMC_ISO_MMIO_R_SLVERR`, `SMC_ISO_STATUS_CLAMPED`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_smc`. While `tb_cpu_l2_isolated` is high no AW or AR handshake occurs on the L2 frontend isolate's slave port; while `tb_cpu_mmio_isolated` is high the CPU MMIO port presents no AW or AR to the fabric and every B or R beat the cluster side of the MMIO isolate sees carries SLVERR (`cpu.adoc` 245-249; the response code only, the data word the chapter does not name is not graded); while `tb_cpu_cluster_isolate` is high the cluster's `wb_pc_valid_o`, `wb_reg_pc_o` and `wdt_reset_o` are all zero (`cpu.adoc` 251-253). The port rules are disabled while the primary reset is low, the clamp rule while powergood is low. No knob. `CHK-RESET-SVA-iso_l2_blocked` (an AW or AR presented to the isolated L2 port) and `CHK-RESET-SVA-iso_mmio_resp` (a B or R beat seen while isolated).
+|Every single-instance test (the clamp, on the cold-boot window, and the MMIO presents-none rule on every isolation); a request presented to an isolated port and a response answered while isolated occur only in the firmware leaves `smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test` (MMIO traffic while isolated), so no toolchain-free leaf carries `+smc_reset_sva_need_iso_l2_blocked` or `+smc_reset_sva_need_iso_mmio_resp`
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, force-mode flush (`SMC_FLUSH_IS_FORCE`, `SMC_FLUSH_WINDOW_CLOSES_AT_RECONNECT`, `SMC_FLUSH_ONLY_WHEN_FORCED`, `SMC_MMIO_AW_HELD_UNDER_FLUSH`, `SMC_MMIO_W_HELD_UNDER_FLUSH`, `SMC_MMIO_AR_HELD_UNDER_FLUSH`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_smc`, disabled while the primary reset is low. The control wrapper's flush request equals `tb_cpu_reset_timeout` AND `timeout_mode` on every edge; a latched flush (`tb_cpu_l2_flush_active`, `tb_cpu_mmio_flush_active`) is low on the edge after `tb_cpu_cluster_isolate` is low; and a flush latches only on the edge after the force condition held (`cpu.adoc` 287-291, 297-298). On the CPU MMIO port into the fabric an AW, W or AR presented without READY is still presented on the next edge unless the warm reset fell (`cpu.adoc` 304-306: the flush cannot cancel a presented request; the asynchronous warm reset is outside the rule, `cpu.adoc` 328-338). The request-hold rules stay on in the leaves whose `+smc_front_port_r_arb_assertoff` turns the CPU-port AXI checkers off. No knob. `CHK-RESET-SVA-flush_rose` and `CHK-RESET-SVA-mmio_held`.
+|Every single-instance test; the flush is driven by `smc_cpu_l2_write_wedge_test` (`+smc_reset_sva_need_flush_rose`) and `smc_cpu_l2_read_wedge_test` (whose documented `OCAH_AXI_R_ID_OUTSTANDING` fire stops the Verilator run before the final block); a presented-without-READY MMIO request occurs only in the firmware leaves (`smc_fw_hello_world_test`, the MMIO wedge leaves), so no toolchain-free leaf carries `+smc_reset_sva_need_mmio_held`
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, FLR cool reset (`SMC_FLR_ONE_PULSE_PER_EDGE`, `SMC_FLR_HOLD_ZERO_NO_PULSE`, `SMC_FLR_PAD62_PULLS_LOW`, `SMC_FLR_PAD62_UNDRIVEN`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_ref`, disabled while `rst_cold_stable_ref_clk_no` is low. A fall of the sequencer's cool reset (`u_smc_cool_reset_wrap.rst_cool_no`, before the JTAG override) sees a pending FLR edge, set by a synchronized edge (`tb_flr_posedge_ref`) arriving with the sequencer idle (`tb_flr_counter_state`), the cool reset high and the reference-domain hold count nonzero, and cleared by the fall, so one edge starts at most one pulse and an edge inside the hold starts none (`clk_rst.adoc` 410-414, the sequencer is not a queue); the hold count latched at the edge the sequencer judged was nonzero (`clk_rst.adoc` 413-414, 418-419), so a count rewritten during the flow does not fire the rule. While GPIO 62 is on its LSIO function, `tb_rst_cool_from_flr` low drives `tb_core2pad_en_o[62]` high with `tb_core2pad_o[62]` low, and high leaves the enable low (`clk_rst.adoc` 440-442). Knob: `+smc_flr_requeue_assertoff` holds `SMC_FLR_ONE_PULSE_PER_EDGE` off in `smc_flr_hold_edge_requeue_test`, the `rtl_issue` holdout whose second pulse the rule reports. `CHK-RESET-SVA-flr_fall` and `CHK-RESET-SVA-pad62_low`.
+|Every single-instance test; the pulse is driven by `smc_flr_sequencer_single_pulse_test` (`+smc_reset_sva_need_flr_fall`, `+smc_reset_sva_need_pad62_low`), `smc_cool_reset_from_pcie_test`, `smc_cool_reset_pin_flr_overlap_test` and `smc_cool_reset_zero_delay_test`
 |===
 
 [[smc-vplan-phase3-added-hooks]]
@@ -53767,12 +53930,43 @@ no outbound entry; the outbound filter owner issues no DMA launch, drives no res
 inbound entry; `smc_infilt_rule_cg` samples only while an inbound entry at an index of 2 to 15 has
 been written since the gate rose (a SEP_IN write completed at an entry register) and one is enabled
 in the sampler's shadow table, and `smc_outfilt_rule_cg` samples only while an outbound entry has
-been written since the gate rose; each written flag clears on every rise of the gate. Drives no
-`smc_wrapper` port and changes no stimulus.
-|The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov` and `smc_filt_fcov` in
-`hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
+been written since the gate rose; each written flag clears on every rise of the gate.
+`smc_alias_remap_cg` samples only while a region register has been accessed over SEP_IN since the
+gate rose (a write completed OKAY at a region register, or a read of one; the flag clears on every
+rise), which no other owner does under its gate. `smc_sys_out_error_cg` samples only once a zeroer
+`DEST_ADDR` or `SIZE` write completed over SEP_IN while the gate was high, a flag that holds to the
+next cold reset; no other owner writes a zeroer register under its gate (the reset owner writes them
+before its gate), so the SYS_OUT errors the random-stress leaf injects under its own gate open no
+cell. `smc_outstanding_cg` samples only once two of the window's accesses have been outstanding
+together on SEP_IN or SYS_IN since the gate rose, until the gate falls; every other owner issues its
+SEP_IN and SYS_IN accesses one at a time under its gate. The SYS_OUT-error owner launches DMA copies
+inside its window, and the `NEXT_ID_0` read of a launch is the sample event of
+`smc_dma_geometry_cg`, so that owner holds the gate low over each launch (the register writes and
+the read of the baseline copy and of the errored and recovery copies of every DMA pass) and raises
+it again before the copy's first burst, which the DMA issues only after the read has returned; the
+alias-remap, random-stress and timing owners issue no DMA launch and drive no reset, and the
+filter-window writes of the random-stress and timing owners precede their gates.
+`smc_map_row_response_cg` samples only while inbound entry 0 has been written over SEP_IN since the
+gate rose (a write completed OKAY at `START_ADDR`, `END_ADDR` or `FILTER_CONFIG` of entry 0; the
+flag clears on every rise) and while the sampler's shadow of `CLOCK_GATE_CONTROL` holds the five
+peripheral-window enables clear: the DMA, reset, SYS_OUT-error, random-stress and timing owners
+program entry 0 before their gates (the SYS_OUT-error owner's re-rise after each launch dip clears
+the flag again) and the inbound-filter, outbound-filter and alias-remap owners never write it, so
+the DECERR accesses the random-stress
+owner issues at its output windows (0x0200_0000 and 0x0201_0000, below `GLOBAL_BASE`) over SEP_IN
+and SYS_IN under its own gate, which the address decode alone would class as outside both
+apertures, open no cell. The map-row owner raises the gate before its entry 0 pass-all writes and
+holds it to its last probe; its window holds no sample event of another group: it drives no reset,
+issues no DMA launch, writes entry 0 of the inbound filter alone (below the index 2 the inbound
+filter group needs) and no outbound entry, region or zeroer register, and issues its accesses one
+at a time. Drives no `smc_wrapper` port and changes no stimulus.
+|The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov`, `smc_fabric_fcov`
+and `smc_map_row_fcov` in `hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
 |`smc_dma_transfer_matrix_rand_test`, `smc_reset_mid_transaction_rand_test`,
-`smc_infilt_rule_matrix_rand_test`, `smc_outfilt_rule_matrix_rand_test`
+`smc_infilt_rule_matrix_rand_test`, `smc_outfilt_rule_matrix_rand_test`,
+`smc_alias_remap_attr_rand_test`, `smc_sys_out_error_inject_rand_test`,
+`smc_axi_random_stress_test`, `smc_axi_channel_timing_ports_test`,
+`smc_map_row_response_matrix_test`
 |===
 
 [[smc-vplan-phase3-proposed-drives]]
@@ -54207,7 +54401,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |to follow |`smc_clock_gate_inflight_completes_test` |`rtl_issue` |The I2C register block runs on the gated peripheral clock and the peripheral side of its AXI-Lite CDC on the ungated one, so a response handed over as `I2C_CG_EN` closes the gate is taken more than once and every later read of the leg receives the previous read's word, where `clk_rst.adoc` states an accepted access finishes there; the leaf arms with an open and a closed read and asserts every swept read completes once with the leg idle after it (the issue number follows once filed)
 |to follow |`smc_fabric_demux_bucket_limits_test` |`rtl_issue` |The vendored `axi_demux` sizes its per-ID-bucket in-flight counter to `clog2(MaxTrans)` bits and reports the bucket full when it is all ones, so the fabric demultiplexers admit 31 same-ID reads per ID bucket and the local crossbar's demux 7 per manager, where the module's parameter contract and `fabric.adoc` give `FabricMaxTrans` 32 and `MaxMstTrans` 8; the leaf holds RREADY, probes at the counters' own handshake points, requires the port behind each demux to withhold nothing, and asserts the chapter's numbers (the issue number follows once filed)
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
-|#3654 |`smc_jtag_dm_sba_uncore_hold_obs_test` |`held_out` |`cpu.adoc` does not state what the DMI shows while the uncore reset is held; the DMI stays live under the hold and a system bus write is not started (`sbaddress0` does not advance under `sbautoincrement`) while `sbcs` reports `sbbusy` 0 and `sberror` 0; the `OBS-DM-SBA-UNDER-HOLD` line records the readbacks, the CHK lines grade the writes before and after the hold and the unchanged word
 |===
 
 The reproducers are the `rtl_issue` group:
@@ -55330,122 +55523,10 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_r
 
 '''''
 
-[[sec-586-smc_jtag_dm_sba_uncore_hold_obs_test]]
-===== 586 `smc_jtag_dm_sba_uncore_hold_obs_test`
-
-*Phase*: 3
-
-*Area*: JTAG
-
-*Source Module*: `smc_jtag_dm_sba_uncore_hold_obs_test`
-
-*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
-`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs; DMI
-addresses `sbcs` 0x38 (`sbbusyerror` bit 22, `sbbusy` bit 21, `sbaccess` bits 19:17,
-`sbautoincrement` bit 16, `sberror` bits 14:12, write 1 to clear), `sbaddress0` 0x39,
-`sbaddress1` 0x3A and `sbdata0` 0x3C, with
-`dtmcs` giving `abits` and the idle count; ocah_axi_vip (AXI) on SEP_IN writing and reading
-`CPU_CTRL.RESET_CTRL` (8 bytes, `debug_reset_n` at bit 24, `uncore_reset_n` at bit 8),
-`CPU_CTRL.RESET_TIMEOUT` (`timeout_value` 32, `timeout_mode` set, `reset_applied` read back),
-`CPU_CTRL.SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` (8 bytes, addresses from the generated
-address map); DMI `data0` 0x04 and `dmstatus` 0x11 read under the hold; `clk_smc_i`
-
-*Run mode*: one testlist entry in `testlists/holdout.toml`; group `held_out`, outside `all`, run
-on demand; `run_modes` `smoke`; `timeout_sec` 1800; tags `jtag`, `reset`; seed 1; tool Verilator
-(cocotb).
-
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed.
-
-*Objective*: A system bus write while the uncore reset is held leaves its `CPU_CTRL.SCRATCH`
-word unchanged and a system bus write after the release lands; what the DMI shows under the hold
-(`sbcs`, `sbaddress0`, `data0`, `dmstatus`) is recorded for the ruling the chapter still owes.
-
-*Test Coverage*:
-
-* After the debug reset release and `dmcontrol.dmactive` = 1, `sbcs` reads `sbbusy` 0 and
-  `sberror` 0.
-* With `SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` zeroed over AXI, a 32-bit system bus write to
-  `SCRATCH[4]` with `sbautoincrement` set ends `sbbusy` 0 `sberror` 0, advances `sbaddress0` by 4
-  and the AXI read returns the pattern.
-* With `RESET_TIMEOUT` in force mode and `uncore_reset_n` written 0, `reset_applied` sets; the
-  `sbdata0` scan of a system bus write to `SCRATCH[5]` under the hold reaches the Debug Module
-  (`sbdata0` reads back the pattern) and `SCRATCH[5]` reads 0 over AXI during the hold.
-* Under the hold the `sbcs` of that write, the `sbaddress0` readback (whether it advanced under
-  `sbautoincrement`), a `data0` write and readback and `dmstatus` are printed on the
-  `OBS-DM-SBA-UNDER-HOLD` line and not compared.
-* After `uncore_reset_n` is written 1 and `reset_applied` clears, `sbcs` reads `sbbusy` 0 and
-  `sberror` 0 once the error bits are cleared, and a system bus write to `SCRATCH[6]` ends
-  `sberror` 0, advances `sbaddress0` by 4 and reads back over AXI; `SCRATCH[5]` after the release
-  is printed and not compared.
-
-*Test Procedure*:
-
-[arabic]
-. Read `CPU_CTRL.RESET_TIMEOUT`. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64
-  `clk_smc_i` cycles, read it back and require bit 24 set. Create the TAP, reset it with
-  `tb_cpu_jtag_reset` while TCK steps, read IDCODE, activate the Debug Module (`dmactive` plus a
-  bounded wait on `dmstatus`), read `dtmcs` for `abits` and the idle count, read `sbcs` and
-  `dmstatus`; require `sbbusy` 0 and `sberror` 0.
-. Write 0 to `SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` over AXI. Write `sbcs` with `sbaccess` 2,
-  `sbautoincrement` 1 and `sberror` cleared, `sbaddress1` 0, `sbaddress0` the `SCRATCH[4]` address
-  and `sbdata0` the pattern; read `sbcs` until `sbbusy` is 0 (sixteen reads at most), require
-  `sberror` 0, read `sbaddress0` and require the address plus 4. Read `SCRATCH[4]` and
-  `SCRATCH[5]` over AXI; require the pattern and 0.
-. Write `RESET_TIMEOUT` with `timeout_value` 32 and `timeout_mode` 1; write `RESET_CTRL` with
-  `uncore_reset_n` 0 and `debug_reset_n` 1; read it back; read `RESET_TIMEOUT` until
-  `reset_applied` is 1 (sixty-four reads at most).
-. Start a 32-bit system bus write to `SCRATCH[5]` as in step 2 and read `sbcs` until `sbbusy` is 0
-  or sixteen reads pass; read `sbaddress0` and `sbdata0`, require `sbdata0` to read the pattern;
-  write `data0` with a pattern and read it; read `dmstatus`; print all of them on the
-  `OBS-DM-SBA-UNDER-HOLD` line. Read `SCRATCH[5]` over AXI and require 0.
-. Write `RESET_CTRL` with `uncore_reset_n` 1, read `RESET_TIMEOUT` until `reset_applied` is 0, wait
-  64 cycles, read `sbcs` and `dmstatus`, write `sbcs` with `sberror` and `sbbusyerror` cleared and
-  read it; require `sbbusy` 0 and `sberror` 0. Read `SCRATCH[5]` over AXI (printed). Start a
-  system bus write to `SCRATCH[6]`, require `sbbusy` 0 and `sberror` 0 within the bound, read
-  `SCRATCH[6]` over AXI and require the pattern.
-. Restore `RESET_TIMEOUT` and read it back. Require the steps in order with increasing stamps and
-  each checker line after its step, print the ordered-fence line and the bounded waits (DMI busy
-  retries, four at most; `dmactive` wait, sixteen reads; `sbbusy` wait, sixteen reads;
-  `reset_applied` wait, sixty-four reads).
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-DM-SBA-WORD-UNCHANGED-UNDER-HOLD` |With `reset_applied` set, the `sbdata0` scan of the system
-bus write to `SCRATCH[5]` reaches the Debug Module (`sbdata0` reads back the pattern) and
-`SCRATCH[5]` reads 0 over AXI during the hold, with the `SCRATCH[4]` write before the hold as the
-positive control; a lost scan, a changed `SCRATCH[5]` or a failed control fails it
-|`CHK-DM-SBA-RESUMES-AFTER-RELEASE` |After the release, `sbcs` reads `sbbusy` 0 and `sberror` 0
-once the error bits are cleared, and the system bus write to `SCRATCH[6]` ends `sberror` 0 within
-the bound, advances `sbaddress0` by 4 and reads back over AXI; a stuck `sbbusy`, a nonzero
-`sberror`, an unadvanced `sbaddress0` or a missing word fails it
-|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
-lines follow their steps; a missing or misordered term fails it
-|`CHK-TIMEOUT-PATHS` |The DMI busy retries (four at most), the sixteen-read `dmactive` and
-`sbbusy` waits and the sixty-four-read `reset_applied` wait are bounded and fail on expiry with the
-last `sbcs` and DMI response; the `sbbusy` wait under the hold records its result instead of
-failing
-|===
-
-*Pass Criteria*: `CHK-DM-SBA-WORD-UNCHANGED-UNDER-HOLD` and `CHK-DM-SBA-RESUMES-AFTER-RELEASE`
-hold after their compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert
-holds. Enrolled in: `held_out` only (see <<smc-held-out-testcases>>). This card records what a run
-must show, not a pass.
-
-*Scope limit*: The `sbcs`, `sbaddress0`, `data0` and `dmstatus` readbacks under the hold and
-`SCRATCH[5]` after the release are printed and not compared: the chapter does not state what the
-DMI shows while the uncore reset is held (the Debug Module does not start the access, `sbaddress0`
-does not advance under `sbautoincrement`, and `sbcs` reports `sbbusy` 0 and `sberror` 0).
-
-'''''
-
-The observation leaves of `held_out` (`smc_flr_counter_timing_obs_test`,
-`smc_jtag_dm_sba_uncore_hold_obs_test`) pass today: each logs `OBS-*` lines for the
-value its specification issue (#3423, #3654) has to rule on and grades nothing about it. When the ruling lands
-the `OBS-*` line becomes a `CHK-*` grade and the leaf joins its feature testlist.
+The observation leaf of `held_out` (`smc_flr_counter_timing_obs_test`) passes today: it logs
+`OBS-*` lines for the value its specification issue (#3423) has to rule on and grades nothing
+about it. When the ruling lands the `OBS-*` line becomes a `CHK-*` grade and the leaf joins its
+feature testlist.
 
 ===== SV-UVM held-out scenarios
 
@@ -57420,7 +57501,6 @@ which runs a `c_compile` stage, is run on demand with the toolchain image
 |`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |As above
 |`smc_flr_counter_timing_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It measures the FLR pre-delay and hold on `clk_ref_i` and grades nothing about them; #3423 asks `reset_unit.rdl` to name the clock and the offset |#3423 is ruled: the `OBS-FLR` lines become `CHK-FLR-PRE-DELAY-CYCLES` and `CHK-FLR-HOLD-CYCLES` grades and the leaf joins `reset`
 |`smc_fabric_demux_bucket_limits_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It grades `FabricMaxTrans` 32 per ID bucket at the SEP region demux and `MaxMstTrans` 8 at the local crossbar's SEP_IN demux with RREADY held and measures 31 and 7, the `axi_demux` counter sizing; `expect_fail` grades the recorded failure as PASS |The chapter or the parameters settle the number: the leaf grades it and joins `fabric`
-|`smc_jtag_dm_sba_uncore_hold_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records what the DMI shows while the uncore reset is held and grades the system bus writes before and after the hold and the unchanged `SCRATCH[5]`; the chapter owes the statement that a system bus access under the hold is not started and reports no `sberror` (#3654) |The ruling lands: the `OBS-DM-SBA-UNDER-HOLD` readbacks become `CHK-*` grades and the leaf joins `jtag`
 |===
 
 `smc_rom.toml` is in the toolchain bucket: every leaf in it declares
