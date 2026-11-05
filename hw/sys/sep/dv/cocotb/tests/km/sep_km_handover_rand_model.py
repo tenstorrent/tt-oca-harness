@@ -365,14 +365,22 @@ def grade_regs(rep: imgh.ImgHReport, exp: PassExp) -> tuple[bool, Fields]:
 
 
 def grade_noirq(rep: imgh.ImgHReport, exp: PassExp) -> tuple[bool, Fields]:
-    """CHK-HO-NOIRQ, with its control: a read-locked key read shows AXI_SLVERR."""
+    """CHK-HO-NOIRQ: no IRQ_STATUS bit and no SRAM_WRITE_LOCK_VIOLATION bit at the jump.
+
+    Controls: a read-locked key read shows AXI_SLVERR, and the dropped store to
+    region 31 shows its violation bit, so each read path shows a set bit.
+    """
     sticky = rep.irq_status & IRQ_STATUS_DEFINED
     slverr_seen = any(s.lock_use and s.slv for s in rep.slots)
-    return sticky == 0 and slverr_seen, {
+    viol31_seen = bool(rep.r31_viol >> rep.r31_region & 1)
+    ok = sticky == 0 and rep.viol_at_entry == 0 and slverr_seen and viol31_seen
+    return ok, {
         "pass": exp.no,
         "irq_status": f"0x{sticky:03x}",
         "irq_status_word": _h(rep.irq_status),
+        "viol": _h(rep.viol_at_entry),
         "control_slverr_seen": int(slverr_seen),
+        "control_viol31_seen": int(viol31_seen),
     }
 
 

@@ -1895,7 +1895,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |3
 |no_cpu, HOST, IMG-H
 |Host mailbox master, IMG-H report words, PIC interrupt probe (bit 30), KM SRAM write counter, `KM-VALID`, `KM-BUS`, `KM-WMAP` and `KM-WMAP-JUMP` observation taps
-|Proves that a CRC error is the fatal fw_crc fault, that an oversize or zero size is refused, and that at the jump the ROM has shredded, locked and cleared the stated state, left no sticky status bit set and left the entry address in x5. The sideload bus check reads the tap, the shared-key words are graded zero at the jump (CHK-HO-SK-WORDS), and the SRAM scramble is graded on the per-region distinct-word counts captured at the jump.
+|Proves that a CRC error is the fatal fw_crc fault, that an oversize or zero size is refused, and that at the jump the ROM has shredded, locked and cleared the stated state, left no sticky status or SRAM write-lock violation bit set and left the entry address in x5. The sideload bus check reads the tap, the shared-key words are graded zero at the jump (CHK-HO-SK-WORDS), and the SRAM scramble is graded on the per-region distinct-word counts captured at the jump.
 
 |<<sep_km_fault_inject_rand_test,`sep_km_fault_inject_rand_test`>>
 |3
