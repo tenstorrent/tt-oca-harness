@@ -45,9 +45,11 @@ LCC_FEAT_CTRL_HI = LCC_FEAT_CTRL + _FEAT_CTRL_WIDTH // 16
 class SepLcShadowWriteSeq(uvm_sequence):
     """Write ``wdata`` to the LC_STATE shadow word; require ``expected_raw``.
 
-    ``refused`` marks a write that a token gate or the terminal rule refuses: no
-    text states the response of such a write, so the scoreboard does not grade it
-    and the caller logs ``write_resp``.
+    ``wstrb`` selects the bytes of the word the write carries; it is one
+    contiguous run. A partial run is one 4-byte-size beat at the first strobed
+    byte. ``graded`` False leaves the FEAT_CTRL reads ungraded too.
+    No text states the response of an LC_STATE write, so the scoreboard does not
+    grade it and the caller logs ``write_resp``.
     """
 
     def __init__(
@@ -62,7 +64,8 @@ class SepLcShadowWriteSeq(uvm_sequence):
         demote_2: int = 0,
         sec_dis: int = 0,
         do_write: bool = True,
-        refused: bool = False,
+        wstrb: int = 0xF,
+        graded: bool = True,
         name: str = "sep_lc_shadow_write_seq",
     ) -> None:
         super().__init__(name)
@@ -80,7 +83,8 @@ class SepLcShadowWriteSeq(uvm_sequence):
         # path: there the lifecycle nibble moves on a token match with no bus
         # request at all, so a write would be the wrong stimulus.
         self.do_write = do_write
-        self.refused = refused
+        self.wstrb = wstrb
+        self.graded = graded
         self.write_resp: int | None = None
         self.observed_lc_raw: int | None = None
         self.observed_word: int | None = None
@@ -94,14 +98,17 @@ class SepLcShadowWriteSeq(uvm_sequence):
         data: int = 0,
         expected: int | None = None,
         label: str = "axi",
+        length: int = 4,
+        size: int | None = None,
     ) -> SepAxiItem:
         item = SepAxiItem(f"{label}_0x{addr:08x}")
         item.op = op
         item.addr = addr
-        item.length = 4
+        item.length = length
+        item.size = size
         item.wdata = data
         item.expected = expected
-        item.allow_unverified_write_resp = op is SepAxiOp.WRITE and self.refused
+        item.allow_unverified_write_resp = op is SepAxiOp.WRITE
         await self.start_item(item)
         await self.finish_item(item)
         return item
@@ -122,8 +129,18 @@ class SepLcShadowWriteSeq(uvm_sequence):
         )
 
         if self.do_write:
+            lo = (self.wstrb & -self.wstrb).bit_length() - 1
+            n = self.wstrb.bit_count()
+            assert 0 < self.wstrb <= 0xF and self.wstrb == ((1 << n) - 1) << lo, (
+                f"wstrb 0x{self.wstrb:x} is not one contiguous run of LC_STATE bytes"
+            )
             wr = await self._access(
-                SepAxiOp.WRITE, LC_STATE_SHADOW, data=self.wdata, label="wr_lc_state_shadow"
+                SepAxiOp.WRITE,
+                LC_STATE_SHADOW + lo,
+                data=(self.wdata >> (8 * lo)) & ((1 << (8 * n)) - 1),
+                label="wr_lc_state_shadow",
+                length=n,
+                size=None if n == 4 else 2,
             )
             self.write_resp = wr.resp_code
         rd = await self._access(
@@ -139,7 +156,10 @@ class SepLcShadowWriteSeq(uvm_sequence):
         feat_lo = int(
             (
                 await self._access(
-                    SepAxiOp.READ, LCC_FEAT_CTRL, expected=feat & 0xFFFF_FFFF, label="rd_feat_lo"
+                    SepAxiOp.READ,
+                    LCC_FEAT_CTRL,
+                    expected=feat & 0xFFFF_FFFF if self.graded else None,
+                    label="rd_feat_lo",
                 )
             ).rdata
         )
@@ -148,7 +168,7 @@ class SepLcShadowWriteSeq(uvm_sequence):
                 await self._access(
                     SepAxiOp.READ,
                     LCC_FEAT_CTRL_HI,
-                    expected=(feat >> 32) & 0xFFFF_FFFF,
+                    expected=(feat >> 32) & 0xFFFF_FFFF if self.graded else None,
                     label="rd_feat_hi",
                 )
             ).rdata

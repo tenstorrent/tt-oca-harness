@@ -190,6 +190,46 @@ target = "default"
 args = ["+skip_fuse_sense", "+sep_ext_port_responder"]
 
 [[tests]]
+# Same module with the core held on the full-CPU model and real fuse sense of a TEST_DEV
+# image with SIP_DBG and CHIPLET_DBG open and SYS_DIS.sep_debug = 0. With
+# dmi_core_enable_i = 1 and dmi_uncore_enable_i = 0, the debug module writes and reads
+# SEP SRAM word 0 once. The access result is logged, not graded.
+name = "sep_debug_master_target_matrix_test_sba_sepdbg_open"
+module = "cpu.sep_debug_master_target_matrix_test"
+seed = 1
+# No reseed: one write and one read of one target; the seed selects only the data.
+timeout_sec = 3600
+tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem", "sep_spec_log", "logs_open_spec_value"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "default"
+args = [
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev_sepdbg_open.toml",
+  "+sep_dbg_gate_obs",
+  "+sep_dbg_gate_expect=0",
+]
+
+[[tests]]
+# Same module with the core held on the full-CPU model and real fuse sense of a TEST_DEV
+# image with SIP_DBG and CHIPLET_DBG open and SYS_DIS.sep_debug = 1. With
+# dmi_core_enable_i = 1 and dmi_uncore_enable_i = 0, the debug module writes and reads
+# SEP SRAM word 0 once. The access result is logged, not graded.
+name = "sep_debug_master_target_matrix_test_sba_sepdbg_closed"
+module = "cpu.sep_debug_master_target_matrix_test"
+seed = 1
+# No reseed: one write and one read of one target; the seed selects only the data.
+timeout_sec = 3600
+tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem", "sep_spec_log", "logs_open_spec_value"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "default"
+args = [
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_test_dev_sepdbg_closed.toml",
+  "+sep_dbg_gate_obs",
+  "+sep_dbg_gate_expect=1",
+]
+
+[[tests]]
 # SEP SRAM serves every INCR length and every single-beat burst type. A multi-beat FIXED
 # or WRAP burst from the inbound master answers SLVERR and changes nothing. A cold reset
 # during an access leaves the interface usable.
