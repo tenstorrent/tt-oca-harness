@@ -762,6 +762,11 @@ module smc_uvm_top
                                   !u_dut.u_smc.u_smc_peripherals.i3c_sda_to_pad[0];
     assign tb_i3c0_scl = !(tb_i3c0_scl_dut_low || tb_i3c0_scl_ext_low);
     assign tb_i3c0_sda = !(tb_i3c0_sda_dut_low || tb_i3c0_sda_ext_low);
+    assign tb_i3c0_scl_drive_high = u_dut.u_smc.u_smc_peripherals.i3c_scl_oe_to_pad[0] &&
+                                    u_dut.u_smc.u_smc_peripherals.i3c_scl_to_pad[0];
+    assign tb_i3c0_sda_pp_sel = u_dut.u_smc.u_smc_peripherals.i3c_sel_od_pp_to_pad[0];
+    assign tb_i3c0_sda_oe     = u_dut.u_smc.u_smc_peripherals.i3c_sda_oe_to_pad[0];
+    assign tb_i3c0_sda_out    = u_dut.u_smc.u_smc_peripherals.i3c_sda_to_pad[0];
 
     for (genvar i = 0; i < smc_config_pkg::NumI3c; i++) begin : gen_i3c_csr_count
         logic [31:0] reads_q;
@@ -1636,6 +1641,7 @@ module smc_uvm_top
     assign tb_uart_irq_any    = |uart_interrupt;
     assign tb_uart_irq_combined = u_dut.u_smc.peripheral_interrupts[21:18];
     assign tb_i2c_irq = u_dut.u_smc.peripheral_interrupts[25:23];
+    assign tb_i3c_irq = u_dut.u_smc.peripheral_interrupts[12 +: smc_config_pkg::NumI3c];
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];
     assign tb_avsbus_irq      = u_dut.u_smc.peripheral_interrupts[22];
     assign tb_telemetry_irq_any = |u_dut.u_smc.peripheral_interrupts[10:8];
