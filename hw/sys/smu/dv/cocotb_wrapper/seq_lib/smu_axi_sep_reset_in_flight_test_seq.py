@@ -243,8 +243,9 @@ BUDGET = {
     "NONSEP_DURING_RESET": {"j2a": 2, "dmi": 0, "ext_in": 2, "ic_reset": 2},
     "RELEASE_LIVENESS": {"j2a": 4, "dmi": 27, "ext_in": 4, "ic_reset": 0},
 }
-# Planned count per term: routes, SMC-aperture accesses, requests outstanding, edges with
-# sep_reset_n low, accesses issued during the reset, fresh routes after the release.
+# Planned count per term: routes, SMC-aperture accesses, ext_in requests outstanding plus the armed
+# stub store, edges with sep_reset_n low, accesses issued during the reset, fresh routes after the
+# release.
 PLANNED = {
     "SETUP": 5,
     "SEP2SMC": 3,
@@ -253,9 +254,9 @@ PLANNED = {
     "NONSEP_DURING_RESET": 4,
     "RELEASE_LIVENESS": 6,
 }
-# Requests outstanding at the fall of sep_reset_n per port; the JTAG2AXI port holds one operation
-# (hw/ip/jtag/jtag_ptap/doc/architecture.adoc, *_AXI_SINGLE_OP op field).
-OUTSTANDING_PLAN = {"smu_in": 4, "dtp_dbg": 1, "sep_out": 1}
+# Requests outstanding at the fall of sep_reset_n per port. The dtp_dbg cell is not drivable: see
+# DTP_NOT_DRIVABLE.
+OUTSTANDING_PLAN = {"smu_in": 4, "sep_out": 1}
 
 TAPPED = ("dtp_dbg", "xbar_sep_out", "sep_to_smc", "xbar_sep_in")
 SEP_LINKS = ("xbar_sep_out", "sep_to_smc")
@@ -274,6 +275,17 @@ DMA_NOT_DRIVABLE = (
     "`OTHERS` (AxUSER zero), and every master drive NS 0\"; this leaf's SEP producers are the "
     "CPU LSU (the stub) and the debug module's system bus, and no bench path drives the SEP "
     "secure DMA without firmware"
+)
+DTP_NOT_DRIVABLE = (
+    "INFO-CELL-NOT-DRIVABLE: LOAD/dtp_dbg JTAG2AXI write and read toward the SEP SRAM outstanding "
+    "at the fall; hw/ip/jtag/jtag_ptap/doc/architecture.adoc, *_JTAG2AXI_CAPS rd_pl_depth and "
+    'wr_pl_depth: "0 indicates only a single outstanding transaction allowed at any given time", '
+    'and *_AXI_SINGLE_OP op: "The latest operation was attempted before the previous operation '
+    "completed; the previous AXI request is still in progress. The operation attempted in this "
+    'access will be ignored"; the bridge drives its own BREADY and RREADY, so the bench cannot '
+    "hold its response as it holds the ext_in ones, and the SEP SRAM answers within the S3 "
+    "captures, so the one operation the port takes completes before the two IC_RESET scans that "
+    "lead to the fall"
 )
 SMC_APERTURE_ATTRS = (
     "hw/sys/sep/doc/fabric.adoc sep-outbound-attributes-table: SMC aperture, AxUSER the "
@@ -1014,8 +1026,19 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             jr["met"],
             jr["status"],
         )
+        self.log.info("%s", DTP_NOT_DRIVABLE)
         self._info(f"S3 ext_in valid/ready={mon.levels} rready={_val(dut.ext_in_rready)}")
-        self._fence(len(ext) + dtp)
+        if len(ext) < OUTSTANDING_PLAN["smu_in"]:
+            self._classify(
+                "load-below-plan",
+                "bench-side",
+                f"S3 smu_in outstanding {len(ext)} against the plan {OUTSTANDING_PLAN['smu_in']} "
+                "with RREADY and BREADY withheld by the bench master",
+            )
+            raise AssertionError(
+                f"S3 LOAD below its planned count: smu_in={len(ext)} plan={OUTSTANDING_PLAN}"
+            )
+        self._fence(len(ext) + 1)
         self.steps["S3"] = True
 
     def _unanswered_ext(self, mk: dict, until: int | None) -> dict[int, str]:
@@ -1100,14 +1123,16 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             OUTSTANDING_PLAN,
         )
         self.load.update(at_fall=got, ext_at_fall=ext, dtp_at_fall=dtp_ids)
-        below = {p: n for p, n in got.items() if n < OUTSTANDING_PLAN[p]}
+        below = {p: got[p] for p, n in OUTSTANDING_PLAN.items() if got[p] < n}
         if below:
-            self.failures.append(f"S4 LOAD below its planned count at the fall: {below}")
+            # A missing store AW is the SEP's; a response past a withheld READY is the bench's.
+            cls = "design-side" if "sep_out" in below and not store else "bench-side"
             self._classify(
                 "load-below-plan",
-                "bench-side",
+                cls,
                 f"outstanding at the fall {got} against the plan {OUTSTANDING_PLAN}",
             )
+            raise AssertionError(f"S4 LOAD below its planned count at the fall: {below}")
         self.mem.disable_backpressure()
         self._responder_stall()
         self._ext_readies(False)
