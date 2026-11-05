@@ -24,8 +24,8 @@ Checks:
                    returns the later code
   CHK-NOCHG-VAULT  KM-KPV CTRL and KM-VALID key_valid read 0 after every rejection of
                    the pair leg; each gated command leaves KM-KPV CTRL, KM-VALID and
-                   KM-CSR OTP_READ_LOCK_COLD unchanged, and the taps at the end of the
-                   gate matrix equal those at its start, from a pre-state in which the
+                   KM-CSR OTP_READ_LOCK_COLD unchanged, and the taps just before
+                   CMD_RECOV_ACK equal those at the start of the gate matrix, from a pre-state in which the
                    handler of each key and OTP command would change one of them
   CHK-WRAP         both 8-bit counters roll over from 255 to 0
   CHK-CNT-RESET    rx_buff_oflow, a SEP flush and a warm reset restart both counters:
@@ -898,7 +898,6 @@ class sep_km_command_protocol_rand_test(sep_base_test):
                     f"0x{c:02x}:ctrl={before[0] ^ after[0]:#x}:kv={before[1]:#x}->{after[1]:#x}"
                     f":otp_cold={before[2]:#x}->{after[2]:#x}"
                 )
-        matrix_end = await self._gate_taps()
 
         # Step 27: frame validation runs before the gate.
         right = pl.cmd_frame(pl.CMD_KEY_TRANSFER, self.e, [h, pl.DEST_AES])
@@ -928,6 +927,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         if g.ack_delay:
             await ClockCycles(self.clk, g.ack_delay)
         persist.append(await self._pic31())
+        matrix_end = await self._gate_taps()
         ack = await self._cmd(pl.CMD_RECOV_ACK, (), f"{tag} CMD_RECOV_ACK")
         st2 = await self._cmd(pl.CMD_STAT, (), f"{tag} CMD_STAT after ack")
         pic_after = await self._pic31()
@@ -1032,8 +1032,9 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         )
 
         # CHK-NOCHG-VAULT: each gated command leaves KM-KPV CTRL, KM-VALID and
-        # OTP_READ_LOCK_COLD as they were, and the taps at the end of the matrix
-        # equal those at its start, so a handler effect that lands after its
+        # OTP_READ_LOCK_COLD as they were, and the taps just before CMD_RECOV_ACK
+        # (after the validation-first frames and the host delay) equal those at
+        # the start of the matrix, so a handler effect that lands after its
         # response frame also shows. At the matrix the AES key is valid (a
         # shred of AES clears it), the HMAC key is not (a transfer of h to HMAC
         # sets it) and DEMOTION is clear (the lock of OTP_GATED_MASK sets it); the

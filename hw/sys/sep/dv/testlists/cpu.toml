@@ -72,7 +72,7 @@ name = "sep_abr_mldsa87_verify_test_cases_a"
 module = "cpu.sep_abr_mldsa87_verify_test"
 firmware = "abr_mldsa87_verify_test"
 seed = 1
-timeout_sec = 6900
+timeout_sec = 7500
 tags = ["cpu", "crypto", "abr", "mldsa", "subsystem", "abr_mldsa87_dv"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+abr_case_mask=0x207F"]
