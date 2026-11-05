@@ -39,6 +39,8 @@ ocah_reg_is_composite = $(wildcard $(dir $(OCAH_REG_RDL_$(call ocah_reg_key,$(1)
 # The axil_mailbox maps describe the register interface implemented by the
 # vendored PULP mailbox RTL. pwm_wrap composes the vendored OpenTitan PWM map,
 # whose register RTL is upstream's; its pwm_ctrl sub-block is a regblock leaf.
+# The gpio_intf/alias_remap/output_remap/filter_ctrl wraps array copies of a
+# leaf block; the RTL decodes the copies and instantiates the leaf's regblock.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
@@ -46,7 +48,8 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic sep_entropy_pool aon_timer dfd smc_cla dma_ctrl \
   pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager \
-  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm pwm_wrap
+  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm pwm_wrap \
+  gpio_intf_wrap alias_remap_wrap output_remap_wrap filter_ctrl_wrap
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
