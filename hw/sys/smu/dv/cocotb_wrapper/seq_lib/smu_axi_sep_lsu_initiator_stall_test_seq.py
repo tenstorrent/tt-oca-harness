@@ -898,6 +898,25 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
             "out": seen["xbar_ext_out"],
         }
 
+    def _sep_resp(self, mks: dict, addr: int, *, write: bool) -> tuple[str, list[str]]:
+        """The SEP port that carried the one request at addr and the code of its response."""
+        ch, rch = ("aw", "b") if write else ("ar", "r")
+        idk, rid, key = ("awid", "bid", "bresp") if write else ("arid", "rid", "rresp")
+        for port in ("xbar_sep_out", "sep_to_smc"):
+            reqs = [e for e in self._since(mks, port, ch) if e[f"{ch}addr"] == addr]
+            if len(reqs) == 1:
+                resps = [
+                    e
+                    for e in self._since(mks, port, rch)
+                    if e[rid] == reqs[0][idk] and e["cyc"] > reqs[0]["cyc"]
+                ]
+                return port, [_rn(e[key]) for e in resps[:1]]
+        hits = {
+            port: sum(e[f"{ch}addr"] == addr for e in self._since(mks, port, ch))
+            for port in ("xbar_sep_out", "sep_to_smc")
+        }
+        return f"hits={hits}", []
+
     # ------------------------------------------------------------------ S1
 
     async def _s1_setup(self) -> None:
@@ -1352,6 +1371,10 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
         werr, _ = await self._sb(err_addr, data=0x5BA0_0E44, label="s3_sba_err_wr")
         mem.disable_backpressure()
         sep_ar = self._since(mks, "xbar_sep_out", "ar")
+        sba_resp = {
+            "held_rd": self._sep_resp(mks, held_addr, write=False),
+            "err_wr": self._sep_resp(mks, err_addr, write=True),
+        }
         held = [e for e in sep_ar if e["araddr"] == held_addr]
         held_r = [
             e
@@ -1373,6 +1396,8 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
         rep_spm = await self._probe_finish("s3_spm")
         gw_err, _ = await self._sb(zero_gap, data=0x5BA0_0D0E, label="s3_sba_zero_wr")
         gr_err, _ = await self._sb(zero_gap, label="s3_sba_zero_rd")
+        sba_resp["zero_wr"] = self._sep_resp(mks, zero_gap, write=True)
+        sba_resp["zero_rd"] = self._sep_resp(mks, zero_gap, write=False)
         # smc_out: JTAG2AXI full and partial write then read of sep_in and ext_out, and an error
         j2a_rows = {}
         for cell, addr, size, wd in (
@@ -1506,7 +1531,7 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
             "lsu_spm": rep_spm,
             "lsu_spm_held": spm_held,
             "lsu_with_sba_outstanding_on_sep_out": len(lsu_during) > 0,
-            "sba_errors": (held_err != 0, werr != 0, gw_err != 0, gr_err != 0),
+            "sba_resp": {k: codes for k, (_, codes) in sba_resp.items()},
             "j2a": j2a_rows,
             "j2a_err": (st_ew, st_er),
             "ext_in_data": data_bad,
@@ -1524,7 +1549,14 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
             "lsu_spm": self._completed(),
             "lsu_spm_held": {off: STORE_WORD & ((1 << (8 * w)) - 1) for w, off in PROBE_STORES},
             "lsu_with_sba_outstanding_on_sep_out": True,
-            "sba_errors": (True, True, True, True),
+            # the responder knob inject_error(addr, 2) is SLVERR; hw/sys/smc/doc/zeroer.adoc:
+            # "an access to 0xC003_8218 - 0xC003_82FF receives DECERR"
+            "sba_resp": {
+                "held_rd": ["SLVERR"],
+                "err_wr": ["SLVERR"],
+                "zero_wr": ["DECERR"],
+                "zero_rd": ["DECERR"],
+            },
             "j2a": dict.fromkeys(j2a_rows, (J2A_STATUS_SUCCESS, J2A_STATUS_SUCCESS, True)),
             "j2a_err": (J2A_STATUS_SLVERR, J2A_STATUS_SLVERR),
             "ext_in_data": [],
@@ -1537,7 +1569,9 @@ class smu_axi_sep_lsu_initiator_stall_test_seq(smu_axi_concurrent_initiators_sta
         }
         requests = sum(o["requests"] for o in order.values())
         self._info(
-            f"G4B-S3 observed={observed} order={order} lsu_during_held_read={len(lsu_during)}"
+            f"G4B-S3 observed={observed} order={order} lsu_during_held_read={len(lsu_during)} "
+            f"sba_port={ {k: port for k, (port, _) in sba_resp.items()} } "
+            f"sberror={(held_err, werr, gw_err, gr_err)}"
         )
         sb.expect_eq("CHK-G4B-INTERLEAVE", observed, expected, evidence="CHK-G4B-INTERLEAVE")
         self._raw(
