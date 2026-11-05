@@ -452,6 +452,25 @@ qualifier that keeps the one-access-at-a-time windows of the other owners
 out; the single accesses the owner issues before its first group and the
 co-owner's steps 2 and 4 count nothing, and the same cells recur later in
 both walks
+|`smc_map_row_fcov::smc_map_row_response_cg` |`cp_dir_size` codes of the 1-,
+2- and 8-byte accesses of the 24 past-extent rows inside the window; the read
+words of the 1-, 2- and 8-byte reads of the 30 inside bins |Recorded bins
+(`rec_*`): the Past Extent column and the gap sentence state the answer to a
+32-bit access, so the owner prints these and compares nothing
+|`smc_map_row_fcov::smc_map_row_response_cg` |A completion whose code is not
+DECERR, or whose 4-byte read word inside the window is not 0xBADCAB1E |The
+failing outcome of `CHK-MRR-PAST-EXTENT`, `CHK-MRR-GAP` and
+`CHK-MRR-OUTSIDE-WINDOWS`; counts in no cell
+|`smc_map_row_fcov::smc_map_row_response_cg` |A completion before inbound
+entry 0 was written since the gate rose, with a peripheral-window enable
+set in the sampler's shadow of `CLOCK_GATE_CONTROL`, with `REGION_SIZE` off
+its reset word, or with the I2C enable the DUT drives disagreeing with the
+shadow |The qualifiers that keep the other owners' windows out and the
+decode table at the value it holds for: the random-stress owner's DECERR
+accesses at its output windows over SEP_IN and SYS_IN follow its entry 0
+programming, which precedes its gate, a gated window answers SLVERR, the
+table is written at the reset `REGION_SIZE`, and a shadow the DUT contradicts
+grades nothing
 |===
 
 Verilator and VCS build the same goal bins for each covergroup because no
@@ -467,10 +486,11 @@ coverpoints of `smc_reset_kind_inflight_cg`, and `cp_rule`, `cp_probe` and
 `cp_deny_term` of `smc_infilt_rule_cg`, `cp_rule` and `cp_probe` of
 `smc_outfilt_rule_cg`, `cp_region_hit`, `cp_low_bits` and `cp_pass` of
 `smc_alias_remap_cg`, `cp_mgr_dir`, `cp_job_code_burst`, `cp_jtag_code` and
-`cp_recovery` of `smc_sys_out_error_cg`, and `cp_depth` and `cp_hold` of
-`smc_outstanding_cg` (each led by a flag or kind code that only a graded
-sample carries, with one `pass:[`define]` macro per entry, channel, region or
-port writing the bins of one axis product). On Verilator, a value that
+`cp_recovery` of `smc_sys_out_error_cg`, `cp_depth` and `cp_hold` of
+`smc_outstanding_cg`, and `cp_row_kind`, `cp_dir_size` and `cp_port` of
+`smc_map_row_response_cg` (each led by a flag or kind code that only a graded
+sample carries, with one `pass:[`define]` macro per entry, channel, region,
+port or row kind writing the bins of one axis product). On Verilator, a value that
 a bin and an `ignore_bins` both list counts in the bin, without a warning, so
 no goal bin overlaps an `ignore_bins`: `cg_reset_state` lists the four
 partial-release states its ignore bins leave, and `cg_clk_ratio` has no
@@ -665,18 +685,28 @@ an admitted request (not graded by the owner; `cp_rule` takes OKAY as the pass).
 *Description*: Memory-map row, gap and outside-window class, direction, size and inbound port
 against the DECERR response the map states.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_map_row_response_matrix_test`, the test
-that draws these cells; no sampler exists). Owner's draw: "every seed walks all 30 rows whose Past
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_map_row_fcov::smc_map_row_response_cg`,
+handle `u_cg_map_row_response`, one sample per SEP_IN or SYS_IN access at the B or R-last handshake
+that completes it, while the owner `smc_map_row_response_matrix_test` holds `tb_fcov_gate` high
+from before its S1 inbound entry 0 pass-all writes to the last probe of its S5, and while inbound
+entry 0 has been written over SEP_IN since the gate rose (a write completed OKAY at its
+`START_ADDR`, `END_ADDR` or `FILTER_CONFIG` register with every strobe set; the flag clears on
+every rise) and the sampler's shadow of `CLOCK_GATE_CONTROL` holds the I2C, UART, I3C, AVSBus and
+Telemetry Receiver enables clear, with the I2C enable the DUT drives agreeing). Owner's draw:
+"every seed walks all 30 rows whose Past
 Extent cell states a response, all 7 gaps between consecutive unit apertures (6 inside the window
 and the one after the Xvisor region) and 8 classes of address outside both inbound apertures; the
-seed selects offset, size, direction, port and order only".
+seed selects offset, size, direction, port and order only"; the field goes on to the per-row pair
+(a pinned 4-byte point and a point of drawn AxSIZE on one drawn port), the per-gap pair (each point
+on its own drawn port), one point of drawn AxSIZE per outside class on each port, the four drawn
+and the four pinned classes, and the read and write of every point in a drawn order.
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_row_kind` |past-extent row (the 30 rows whose Past Extent (R / W) cell states a response: 30) + gap (the 7 gaps between consecutive rows of the generated map, after the Debug Module Hart Interface, the DFX block, the second AXI Filter block, the Zeroer block, the DFD MMR aperture, the External Window and the Xvisor region: 7) + outside-window class (below both apertures, between the apertures, above both, a 56-bit address above 4 GiB, `BASE + REGION_SIZE` at the local base and at the global base, which at the reset `REGION_SIZE` is the first word of the M-mode region on that base (`memory_map.adoc`, `mmode_region` at `BASE + 0x1000000`), so the M-mode word is no separate class, and the first word of the Xvisor region: 7); 44 bins; the PLIC, CLINT and four bus-error-unit cells of the past-extent bin and the gap after the Xvisor region lie beyond `BASE + REGION_SIZE` at the reset value, which the owner keeps, and answer under the window rule, which states DECERR alone (`memory_map.adoc`, SMC Component Address Map, Past Extent column; `memmap.adoc`, Address Space Organization, the window rule for the seven cells beyond `BASE + REGION_SIZE`) |`sep_axi_in_req_i` and `sys_axi_in_req_i` AxADDR decoded to the row, gap or class |`smc_map_row_response_matrix_test` |planned
-|`cp_dir_size` |direction (read, write: 2) x AxSIZE (1, 2, 4, 8 bytes: 4); 8 cells, crossed with `cp_row_kind` for 352 combinations, of which 208 are counted on their response code and 144 are recorded: on the 24 past-extent row bins inside the window the DECERR code is counted on the 4-byte read and the 4-byte write only, because the Past Extent column states the answer to a 32-bit access (`memmap.adoc`, Address Space Organization), and the response codes of the 1-, 2- and 8-byte read and write of those 24 bins are 144 recorded bins, printed by the owner and compared with nothing; on the 7 gap bins, the 7 outside-window bins and the 6 row bins beyond `BASE + REGION_SIZE` the DECERR code is counted on the write and on the read of every size (the gap and outside-window sentences and the window rule carry no size); the read data is a compared cell on the 4-byte read only, 0xBADCAB1E for the 24 row bins and the 6 gap bins inside the window (`memmap.adoc`, Address Space Organization, which states the answer to a 32-bit access), and the read data of the 1-, 2- and 8-byte reads of those 30 bins are 90 recorded bins, printed by the owner and compared with nothing; DECERR alone for the 7 outside-window bins and the 7 cells beyond `BASE + REGION_SIZE` at the reset value (the PLIC, CLINT and four bus-error-unit rows and the gap after the Xvisor region), whose read data the owner prints and compares with nothing (`memmap.adoc`, Address Space Organization; `memory_map.adoc`, SMC Component Address Map, Past Extent column); 208 cells plus 234 recorded bins |`sep_axi_in_resp_o` and `sys_axi_in_resp_o` B and R response and read data; AxSIZE of the request |`smc_map_row_response_matrix_test` |planned
-|`cp_port` |inbound port (SEP_IN, SYS_IN: 2), crossed with `cp_row_kind` for 88 cells (`fabric.adoc`, Inbound Filtering: entry 0 opened pass-all for the SYS_IN legs) |`sep_axi_in_req_i`, `sys_axi_in_req_i` AW and AR handshakes |`smc_map_row_response_matrix_test` |planned
+|`cp_row_kind` |past-extent row (the 30 rows whose Past Extent (R / W) cell states a response: 30) + gap (the 7 gaps between consecutive rows of the generated map, after the Debug Module Hart Interface, the DFX block, the second AXI Filter block, the Zeroer block, the DFD MMR aperture, the External Window and the Xvisor region: 7) + outside-window class (below both apertures, between the apertures, above both, a 56-bit address above 4 GiB, `BASE + REGION_SIZE` at the local base and at the global base, which at the reset `REGION_SIZE` is the first word of the M-mode region on that base (`memory_map.adoc`, `mmode_region` at `BASE + 0x1000000`), so the M-mode word is no separate class, and the first word of the Xvisor region: 7); 44 bins; the PLIC, CLINT and four bus-error-unit cells of the past-extent bin and the gap after the Xvisor region lie beyond `BASE + REGION_SIZE` at the reset value, which the owner keeps, and answer under the window rule, which states DECERR alone (`memory_map.adoc`, SMC Component Address Map, Past Extent column; `memmap.adoc`, Address Space Organization, the window rule for the seven cells beyond `BASE + REGION_SIZE`) |`sep_axi_in_req_i` and `sys_axi_in_req_i` AxADDR at the AW and AR handshakes (`s_axi_awaddr`, `s_axi_araddr`, `sys_axi_awaddr`, `sys_axi_araddr`), decoded to the row, gap or class by the sampler's table of the generated component map: every row's base and decoded extent from `smc_top_addrmap_pkg`, its aperture end the next row's base or its base plus extent, and for the three rows a gap follows (`dfx_ctrl` 0x800, `smc_outbound_filter_ctrl_wrap` 0x1000, `zeroer_ctrl` 0x100) the `ocah_aperture_size` of `smc_memory_map.rdl`, which no generated SV symbol carries; the window edge `BASE + REGION_SIZE` from `smc_region_size`, counted at the register's reset word only; the first word of the Xvisor region at the local and at the global base is the one Xvisor bin; above both apertures is read as above the last row of the generated map, which holds the owner's draw |`smc_map_row_response_matrix_test` |live
+|`cp_dir_size` |direction (read, write: 2) x AxSIZE (1, 2, 4, 8 bytes: 4); 8 cells, crossed with `cp_row_kind` for 352 combinations, of which 208 are counted on their response code and 144 are recorded: on the 24 past-extent row bins inside the window the DECERR code is counted on the 4-byte read and the 4-byte write only, because the Past Extent column states the answer to a 32-bit access (`memmap.adoc`, Address Space Organization), and the response codes of the 1-, 2- and 8-byte read and write of those 24 bins are 144 recorded bins, printed by the owner and compared with nothing; on the 7 gap bins, the 7 outside-window bins and the 6 row bins beyond `BASE + REGION_SIZE` the DECERR code is counted on the write and on the read of every size (the gap and outside-window sentences and the window rule carry no size); the read data is a compared cell on the 4-byte read only, 0xBADCAB1E for the 24 row bins and the 6 gap bins inside the window (`memmap.adoc`, Address Space Organization, which states the answer to a 32-bit access), and the read data of the 1-, 2- and 8-byte reads of those 30 bins are 90 recorded bins, printed by the owner and compared with nothing; DECERR alone for the 7 outside-window bins and the 7 cells beyond `BASE + REGION_SIZE` at the reset value (the PLIC, CLINT and four bus-error-unit rows and the gap after the Xvisor region), whose read data the owner prints and compares with nothing (`memmap.adoc`, Address Space Organization; `memory_map.adoc`, SMC Component Address Map, Past Extent column); 208 cells plus 234 recorded bins |`sep_axi_in_resp_o` and `sys_axi_in_resp_o` B and R response and read data (`s_axi_bresp`, `s_axi_rresp`, `s_axi_rdata`, `sys_axi_bresp`, `sys_axi_rresp`, `sys_axi_rdata`), the read word taken from the lane the address selects; AxSIZE of the request (`s_axi_awsize`, `s_axi_arsize`, `sys_axi_awsize`, `sys_axi_arsize`); a counted cell needs DECERR, and 0xBADCAB1E on the 4-byte read of an inside row or gap, and a completion with another code or word samples no cell; a recorded bin counts its completion whatever the code or the word |`smc_map_row_response_matrix_test` |live
+|`cp_port` |inbound port (SEP_IN, SYS_IN: 2), crossed with `cp_row_kind` for 88 cells (`fabric.adoc`, Inbound Filtering: entry 0 opened pass-all for the SYS_IN legs) |`sep_axi_in_req_i`, `sys_axi_in_req_i` AW and AR handshakes (`s_axi_*`, `sys_axi_*`): the port of the completing access |`smc_map_row_response_matrix_test` |live
 |===
 
 *Ignore bins*: OKAY and SLVERR as a response of a compared cell (DECERR is the one stated response;
@@ -687,7 +717,18 @@ every `CLOCK_GATE_CONTROL` enable clear, `CHK-MRR-GATE-CLEAR`); an address insid
 extent (not drawn); an offset not aligned to its AxSIZE or crossing the end of its cell (the owner's
 filter); the 11 rows whose Past Extent cell is `-` (their Decoded Extent equals their Size, so no
 past-extent address exists; their in-aperture answers are the Hole in Extent cells, the owner's
-Scope limit).
+Scope limit); a completion outside the owner's window, before inbound entry 0 has been written
+since the gate rose, while one of the five enables is set in the shadow, while `REGION_SIZE` is not
+at its reset word, or while the I2C enable the DUT drives disagrees with the shadow (the gate and
+the qualifiers: the DECERR accesses the random-stress owner issues at its output windows over
+SEP_IN and SYS_IN under its own gate count nothing, since it programs entry 0 before its gate); the
+owner's eighth class (the first word of the Xvisor region at the global base lands in the one
+Xvisor bin with the local one); an address in no row, gap or class (inside a decoded extent, inside
+a row that fills its aperture, or inside the global aperture below the end of its Xvisor region;
+an address between the last row of the generated map and the owner's above-both edge counts in
+`above_both`, where no owner draws); a 1-, 2- or 8-byte access of an inside row (its code is a
+recorded bin, not a cell) and the read word of a 1-, 2- or 8-byte read of an inside bin (a
+recorded bin).
 
 ==== `smc_alias_remap_cg`
 *Description*: Alias-remap region, cacheable override and address position against the region bounds
@@ -1746,7 +1787,7 @@ column of <<smc-traceability-matrix>>.
 |VPLAN group |Coverage
 |MISC |`smc_map_fcov` scratch, chip-configuration, captured-strap and misc-wrapper decodes; `smc_int_fcov` raw vector bit against its PLIC source and the `SYNC_REG` bits; `smc_periph_fcov` `c_irq_*`; `smc_cpu_fcov` cluster interrupt range
 |POWER |`smc_map_fcov` AVSBus, telemetry, OCTS, DMA and zeroer apertures; `smc_periph_fcov` AVSBus, telemetry and OCTS transfers; `smc_dma_fcov`; `smc_zeroer_fcov`; `smc_reset_fcov` and `smc_iso_fcov` watchdog warm-reset sources
-|FABRIC |`smc_map_fcov` region, window, alias-remap and filter-entry decodes; `smc_fabric_fcov` with its three `smc_axi_chan_fcov` instances, the SYS_OUT error and outstanding-depth groups; `smc_filt_fcov` protection, inbound and outbound filters and the alias-remap group
+|FABRIC |`smc_map_fcov` region, window, alias-remap and filter-entry decodes; `smc_fabric_fcov` with its three `smc_axi_chan_fcov` instances, the SYS_OUT error and outstanding-depth groups; `smc_filt_fcov` protection, inbound and outbound filters and the alias-remap group; `smc_map_row_fcov` the memory-map row-response group
 |RESET |`smc_reset_fcov` sources, releases and reset states; `smc_rst_seq_fcov` power-on ordering and what the primary reset holds; `smc_iso_fcov` isolation and FLR; `smc_int_fcov` NDM request path
 |CLOCK |`smc_clk_fcov` clock ratios and gate terms; `smc_clk_domain_fcov` blocks advancing on their clock; `smc_dma_fcov` and `smc_zeroer_fcov` clock-enable terms
 |CPU |`smc_cpu_fcov` core retire, reset vector, cluster traffic, memory-init and cold-boot order; `smc_fabric_fcov` the CPU external path. The measured owner of these points is a FIRMWARE or JTAG leaf, since a CPU point needs a booted cluster

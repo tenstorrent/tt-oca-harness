@@ -2656,6 +2656,54 @@ module smc_uvm_top
         .ext_active_i   (tb_axil_external_active)
     );
 
+    // The memory-map row-response covergroup: SEP_IN and SYS_IN completions
+    // past a unit's decoded extent, between apertures or outside both inbound
+    // apertures, inside the owning leaf's graded window. Same port rule.
+    smc_map_row_fcov u_smc_map_row_fcov (
+        .clk_smc_i      (clk_smc),
+        .rst_cold_ni    (rst_cold_n_int),
+        .sep_awvalid_i  (s_axi_awvalid),
+        .sep_awready_i  (s_axi_awready),
+        .sep_awaddr_i   (s_axi_awaddr),
+        .sep_awsize_i   (s_axi_awsize),
+        .sep_wvalid_i   (s_axi_wvalid),
+        .sep_wready_i   (s_axi_wready),
+        .sep_wlast_i    (s_axi_wlast),
+        .sep_wdata_i    (s_axi_wdata),
+        .sep_wstrb_i    (s_axi_wstrb),
+        .sep_bvalid_i   (s_axi_bvalid),
+        .sep_bready_i   (s_axi_bready),
+        .sep_bresp_i    (s_axi_bresp),
+        .sep_arvalid_i  (s_axi_arvalid),
+        .sep_arready_i  (s_axi_arready),
+        .sep_araddr_i   (s_axi_araddr),
+        .sep_arsize_i   (s_axi_arsize),
+        .sep_rvalid_i   (s_axi_rvalid),
+        .sep_rready_i   (s_axi_rready),
+        .sep_rlast_i    (s_axi_rlast),
+        .sep_rresp_i    (s_axi_rresp),
+        .sep_rdata_i    (s_axi_rdata),
+        .sys_awvalid_i  (sys_axi_awvalid),
+        .sys_awready_i  (sys_axi_awready),
+        .sys_awaddr_i   (sys_axi_awaddr),
+        .sys_awsize_i   (sys_axi_awsize),
+        .sys_bvalid_i   (sys_axi_bvalid),
+        .sys_bready_i   (sys_axi_bready),
+        .sys_bresp_i    (sys_axi_bresp),
+        .sys_arvalid_i  (sys_axi_arvalid),
+        .sys_arready_i  (sys_axi_arready),
+        .sys_araddr_i   (sys_axi_araddr),
+        .sys_arsize_i   (sys_axi_arsize),
+        .sys_rvalid_i   (sys_axi_rvalid),
+        .sys_rready_i   (sys_axi_rready),
+        .sys_rlast_i    (sys_axi_rlast),
+        .sys_rresp_i    (sys_axi_rresp),
+        .sys_rdata_i    (sys_axi_rdata),
+        .region_size_i  (smc_region_size),
+        .i2c_cg_en_i    (tb_i2c_cg_en),
+        .fcov_gate_i    (tb_fcov_gate)
+    );
+
     smc_rst_seq_fcov u_smc_rst_seq_fcov (
         .clk_ref_i                  (clk_ref),
         .clk_smc_i                  (clk_smc),
