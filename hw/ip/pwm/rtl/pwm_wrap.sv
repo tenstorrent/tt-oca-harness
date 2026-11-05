@@ -76,35 +76,6 @@ module pwm_wrap #(
   localparam reg_map_select_t CtrlRegMap = reg_map_select_t'(1);
   localparam reg_map_select_t UndefinedRegMap = reg_map_select_t'(2);
 
-  `OCAH_ASSERT_STATIC(
-      PwmRegMapSize_A, REG_MAP_SIZE == 4 * pwm_reg_pkg::pwm_num_regs(NUM_OUTPUTS),
-      "REG_MAP_SIZE does not match NUM_OUTPUTS; NUM_OUTPUTS must equal the RDL N_OUTPUTS, regenerate the register map")
-  `OCAH_ASSERT_STATIC(
-      PwmParamRegOffset_A, PWM_PARAM_REG_OFFSET == pwm_reg_pkg::pwm_pwm_param_offset(),
-      "PWM_PARAM_REG_OFFSET does not match the register package; regenerate the register map from the RDL")
-  `OCAH_ASSERT_STATIC(
-      PwmDutyCycleRegOffset_A, DUTY_CYCLE_REG_OFFSET == pwm_reg_pkg::pwm_duty_cycle_offset(
-      NUM_OUTPUTS),
-      "DUTY_CYCLE_REG_OFFSET does not match NUM_OUTPUTS; NUM_OUTPUTS must equal the RDL N_OUTPUTS, regenerate the register map")
-  `OCAH_ASSERT_STATIC(
-      PwmBlinkParamRegOffset_A, BLINK_PARAM_REG_OFFSET == pwm_reg_pkg::pwm_blink_param_offset(
-      NUM_OUTPUTS),
-      "BLINK_PARAM_REG_OFFSET does not match NUM_OUTPUTS; NUM_OUTPUTS must equal the RDL N_OUTPUTS, regenerate the register map")
-  `OCAH_ASSERT_STATIC(
-      PwmRegMapBaseAligned_A, REG_MAP_BASE_ADDR % (32'd1 << pwm_reg_pkg::pwm_block_aw(NUM_OUTPUTS
-      )) == 0,
-      "REG_MAP_BASE_ADDR is not aligned to the PWM register block size; place the PWM window on a block-size boundary in the RDL")
-  `OCAH_ASSERT_STATIC(
-      PwmPadEnWidth_A, $bits(pwm_ctrl_reg_pkg::pwm_ctrl__CTRL__PAD_EN__out_t) == NUM_OUTPUTS,
-      "CTRL.PAD_EN width does not match NUM_OUTPUTS; NUM_OUTPUTS must equal the RDL N_OUTPUTS, regenerate the register map")
-  `OCAH_ASSERT_STATIC(
-      PwmCtrlRegMapSize_A, CTRL_REG_MAP_SIZE == pwm_ctrl_reg_pkg::PWM_CTRL_REG_SIZE,
-      "CTRL_REG_MAP_SIZE does not match the register package; regenerate the register map from the RDL")
-  `OCAH_ASSERT_STATIC(
-      PwmCtrlRegMapBaseAligned_A,
-      CTRL_REG_MAP_BASE_ADDR % (32'd1 << pwm_ctrl_reg_pkg::PWM_CTRL_REG_MIN_ADDR_WIDTH) == 0,
-      "CTRL_REG_MAP_BASE_ADDR is not aligned to the CTRL register block size; place the CTRL map on a block-size boundary in the RDL")
-
   ///////////
   // Demux //
   ///////////
@@ -275,5 +246,38 @@ module pwm_wrap #(
   );
 
   assign pad_en_o = ctrl_reg_out.CTRL.PAD_EN.value;
+
+  ////////////////
+  // Assertions //
+  ////////////////
+
+  `OCAH_ASSERT_STATIC(
+      PwmRegMapSize_A, REG_MAP_SIZE == 4 * pwm_reg_pkg::pwm_num_regs(NUM_OUTPUTS),
+      "REG_MAP_SIZE does not match NUM_OUTPUTS; NUM_OUTPUTS must equal the RDL N_OUTPUTS, regenerate the register map")
+  `OCAH_ASSERT_STATIC(
+      PwmParamRegOffset_A, PWM_PARAM_REG_OFFSET == pwm_reg_pkg::pwm_pwm_param_offset(),
+      "PWM_PARAM_REG_OFFSET does not match the register package; regenerate the register map from the RDL")
+  `OCAH_ASSERT_STATIC(
+      PwmDutyCycleRegOffset_A, DUTY_CYCLE_REG_OFFSET == pwm_reg_pkg::pwm_duty_cycle_offset(
+      NUM_OUTPUTS),
+      "DUTY_CYCLE_REG_OFFSET does not match NUM_OUTPUTS; NUM_OUTPUTS must equal the RDL N_OUTPUTS, regenerate the register map")
+  `OCAH_ASSERT_STATIC(
+      PwmBlinkParamRegOffset_A, BLINK_PARAM_REG_OFFSET == pwm_reg_pkg::pwm_blink_param_offset(
+      NUM_OUTPUTS),
+      "BLINK_PARAM_REG_OFFSET does not match NUM_OUTPUTS; NUM_OUTPUTS must equal the RDL N_OUTPUTS, regenerate the register map")
+  `OCAH_ASSERT_STATIC(
+      PwmRegMapBaseAligned_A, REG_MAP_BASE_ADDR % (32'd1 << pwm_reg_pkg::pwm_block_aw(NUM_OUTPUTS
+      )) == 0,
+      "REG_MAP_BASE_ADDR is not aligned to the PWM register block size; place the PWM window on a block-size boundary in the RDL")
+  `OCAH_ASSERT_STATIC(
+      PwmPadEnWidth_A, $bits(pwm_ctrl_reg_pkg::pwm_ctrl__CTRL__PAD_EN__out_t) == NUM_OUTPUTS,
+      "CTRL.PAD_EN width does not match NUM_OUTPUTS; NUM_OUTPUTS must equal the RDL N_OUTPUTS, regenerate the register map")
+  `OCAH_ASSERT_STATIC(
+      PwmCtrlRegMapSize_A, CTRL_REG_MAP_SIZE == pwm_ctrl_reg_pkg::PWM_CTRL_REG_SIZE,
+      "CTRL_REG_MAP_SIZE does not match the register package; regenerate the register map from the RDL")
+  `OCAH_ASSERT_STATIC(
+      PwmCtrlRegMapBaseAligned_A,
+      CTRL_REG_MAP_BASE_ADDR % (32'd1 << pwm_ctrl_reg_pkg::PWM_CTRL_REG_MIN_ADDR_WIDTH) == 0,
+      "CTRL_REG_MAP_BASE_ADDR is not aligned to the CTRL register block size; place the CTRL map on a block-size boundary in the RDL")
 
 endmodule : pwm_wrap
