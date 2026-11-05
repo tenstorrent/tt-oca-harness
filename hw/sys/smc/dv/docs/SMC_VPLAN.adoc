@@ -53655,14 +53655,28 @@ inside its window, and the `NEXT_ID_0` read of a launch is the sample event of
 the read of the baseline copy and of the errored and recovery copies of every DMA pass) and raises
 it again before the copy's first burst, which the DMA issues only after the read has returned; the
 alias-remap, random-stress and timing owners issue no DMA launch and drive no reset, and the
-filter-window writes of the random-stress and timing owners precede their gates. Drives no
-`smc_wrapper` port and changes no stimulus.
-|The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov` and
-`smc_fabric_fcov` in `hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
+filter-window writes of the random-stress and timing owners precede their gates.
+`smc_map_row_response_cg` samples only while inbound entry 0 has been written over SEP_IN since the
+gate rose (a write completed OKAY at `START_ADDR`, `END_ADDR` or `FILTER_CONFIG` of entry 0; the
+flag clears on every rise) and while the sampler's shadow of `CLOCK_GATE_CONTROL` holds the five
+peripheral-window enables clear: the DMA, reset, SYS_OUT-error, random-stress and timing owners
+program entry 0 before their gates (the SYS_OUT-error owner's re-rise after each launch dip clears
+the flag again) and the inbound-filter, outbound-filter and alias-remap owners never write it, so
+the DECERR accesses the random-stress
+owner issues at its output windows (0x0200_0000 and 0x0201_0000, below `GLOBAL_BASE`) over SEP_IN
+and SYS_IN under its own gate, which the address decode alone would class as outside both
+apertures, open no cell. The map-row owner raises the gate before its entry 0 pass-all writes and
+holds it to its last probe; its window holds no sample event of another group: it drives no reset,
+issues no DMA launch, writes entry 0 of the inbound filter alone (below the index 2 the inbound
+filter group needs) and no outbound entry, region or zeroer register, and issues its accesses one
+at a time. Drives no `smc_wrapper` port and changes no stimulus.
+|The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov`, `smc_fabric_fcov`
+and `smc_map_row_fcov` in `hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
 |`smc_dma_transfer_matrix_rand_test`, `smc_reset_mid_transaction_rand_test`,
 `smc_infilt_rule_matrix_rand_test`, `smc_outfilt_rule_matrix_rand_test`,
 `smc_alias_remap_attr_rand_test`, `smc_sys_out_error_inject_rand_test`,
-`smc_axi_random_stress_test`, `smc_axi_channel_timing_ports_test`
+`smc_axi_random_stress_test`, `smc_axi_channel_timing_ports_test`,
+`smc_map_row_response_matrix_test`
 |===
 
 [[smc-vplan-phase3-proposed-drives]]

@@ -82,6 +82,10 @@ incdirs = [
   # filter_ctrl_addrmap_pkg through the bender filelist.
   "hw/ip/axi_filter/regs/gen/svh",
   "hw/ip/axi_alias_remap/regs/gen/svh",
+  # smc_reg.svh, the SMC_BASE_CONFIG reset words and CLOCK_GATE_CONTROL field
+  # masks smc_map_row_fcov includes; the row addresses keep coming from
+  # smc_top_addrmap_pkg through the bender filelist.
+  "hw/sys/smc/regs/gen/svh",
 ]
 exclude_files = [
   "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
@@ -164,6 +168,7 @@ sources = [
   "hw/sys/smc/dv/cov/sv/smc_axi_order_fcov.sv",
   # Spec-derived P0 coverage.
   "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_map_row_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
@@ -640,6 +645,7 @@ sources = [
   "hw/sys/smc/dv/cov/sv/smc_axi_order_fcov.sv",
   # Spec-derived P0 coverage.
   "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_map_row_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
