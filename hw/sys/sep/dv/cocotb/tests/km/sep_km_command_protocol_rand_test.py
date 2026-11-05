@@ -656,7 +656,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         )
 
     async def _alive_and_twins(self) -> None:
-        """Steps 10 and 14: CMD_STAT after the pair leg, the positive twins and the rejected transfer."""
+        """Step 10 CHK-ALIVE after the pair leg, the positive twins, and the rejected CMD_KEY_TRANSFER of step 14."""
         await self._alive("after-pair-leg")
 
         # CHK-NOCHG-VAULT control: a generate write-locks every slot of its span
@@ -727,13 +727,18 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         bad, e0 = self.plan.invalid_cmd, self.e
         f = await self._send_frame_raw(pl.cmd_frame(bad, e0, []), f"invalid cmd 0x{bad:02x}")
         rej = self._parse_cmd(f, bad, e0)
+        if rej is None:
+            raise AssertionError(
+                f"[invalid cmd 0x{bad:02x}] expected the RESP_CMD of cmd 0x{bad:02x} seq {e0}; got "
+                f"rid=0x{f.rid:02x} plen={f.plen} payload={[hex(w) for w in f.payload]}"
+            )
         self.e = (e0 + pl.E_ADVANCE["cmd_id"]) & 0xFF
         self.chk.info(
             "INVALID-CMD-ADVANCE",
             control=1,
             bad_cmd=f"0x{bad:02x}",
             e=e0,
-            code=rej.code if rej else "none",
+            code=rej.code,
             graded_by=["CHK-ILLEGAL", "CHK-ALIVE"],
             leaf="sep_km_command_set_rand_test",
         )
