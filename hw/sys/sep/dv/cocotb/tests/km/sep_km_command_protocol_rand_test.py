@@ -81,6 +81,7 @@ from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_ras_map import check_tap_width, ras_bit
+from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
 from env.sep_shard import sep_shard
 from env.sep_spec_tables import agg_from_pic
 from km import sep_km_command_protocol_rand_plan as pl
@@ -123,6 +124,21 @@ _KM_RECOV = agg_from_pic("KM recoverable error")
 # before its success response (hw/ip/key_manager/doc/firmware.adoc, "Error
 # Recovery"); a warm reset clears it (architecture.adoc, "Reset Conditioning").
 _RAS_KM = "km_correctable"
+
+# KM-KPV packs CTRL[s] {seal, erase, lock_use, lock_write} slot after slot
+# (hw/sys/sep/dv/tb/tb_top.sv), in the bit order of km_kpv.rdl CTRL. The slot
+# stride is the top of SEAL; lock_write sits at its RDL bit position.
+_KPV_CTRL = CHeaderRegBlock("KM_KPV", ip_c_header("key_manager").with_name("km_kpv.h")).fields(
+    "CTRL_REG"
+)
+_KPV_CTRL_STRIDE = _KPV_CTRL["SEAL"]["bp"] + _KPV_CTRL["SEAL"]["bw"]
+_KPV_LOCK_WRITE_BP = _KPV_CTRL["LOCK_WRITE"]["bp"]
+# KM-CSR OTP_READ_LOCK_COLD fields (km_csr.rdl) that the gate leg grades.
+_OTP_COLD = CHeaderRegBlock("KM_CSR", ip_c_header("key_manager").with_name("km_csr.h")).fields(
+    "OTP_READ_LOCK_COLD_REG"
+)
+_OTP_COLD_LIFE_CYCLE = _OTP_COLD["LIFE_CYCLE"]["bm"]
+_OTP_COLD_DEMOTION = _OTP_COLD["DEMOTION"]["bm"]
 
 _POLL_GAP = 20  # clocks between two status polls
 _RESP_POLLS = 50_000  # polls for one response word
@@ -627,7 +643,9 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         # The all-zero samples of the pair leg are therefore not a dead tap.
         gen = await self._cmd(pl.CMD_KEY_GENERATE, (4, pl.DEST_AES), "twin CMD_KEY_GENERATE")
         ctrl, _ = await self._vault()
-        lock_write = int(any((ctrl >> (4 * s)) & 1 for s in range(64)))
+        lock_write = int(
+            any((ctrl >> (_KPV_CTRL_STRIDE * s + _KPV_LOCK_WRITE_BP)) & 1 for s in range(64))
+        )
         self.logger.info(
             "LOG twin cmd=0x22 code=%d arg=%s ctrl=0x%064x control=1", gen.code, _a(gen.arg), ctrl
         )
@@ -1013,13 +1031,13 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         # CHK-NOCHG-VAULT: each gated command leaves KM-KPV CTRL, KM-VALID and
         # OTP_READ_LOCK_COLD as they were. At the matrix the AES key is valid (a
         # shred of AES clears it), the HMAC key is not (a transfer of h to HMAC
-        # sets it) and OTP_GATED_MASK is clear (the lock sets it); the twins after
-        # the acknowledge set HMAC and clear AES on the same tap.
+        # sets it) and DEMOTION is clear (the lock of OTP_GATED_MASK sets it); the
+        # twins after the acknowledge set HMAC and clear AES on the same tap.
         visible = (
             kv_matrix & pl.DEST_AES
             and not kv_matrix & pl.DEST_HMAC
-            and otp_matrix & pl.OTP_LOCK_MASK
-            and not otp_matrix & pl.OTP_GATED_MASK
+            and otp_matrix & _OTP_COLD_LIFE_CYCLE
+            and not otp_matrix & _OTP_COLD_DEMOTION
         )
         live = kv_clear & pl.DEST_HMAC and not kv_clear & pl.DEST_AES
         self.chk.ok(
