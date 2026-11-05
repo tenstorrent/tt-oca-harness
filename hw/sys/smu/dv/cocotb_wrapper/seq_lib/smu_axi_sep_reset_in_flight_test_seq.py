@@ -250,14 +250,15 @@ BUDGET = {
     "RELEASE_LIVENESS": {"j2a": 3, "dmi": 28, "ext_in": 5, "ic_reset": 0},
 }
 # Planned count per term: routes, SMC-aperture accesses, ext_in requests outstanding plus the armed
-# stub store, edges with sep_reset_n low, accesses issued during the reset, fresh routes after the
+# stub store, edges with sep_reset_n low, request handshakes during the reset (the ext_in pair; the
+# JTAG2AXI pair meets the bridge still holding the S4 read, see BRIDGE_HELD), fresh routes after the
 # release.
 PLANNED = {
     "SETUP": 5,
     "SEP2SMC": 3,
     "LOAD": 5,
     "SEP_RESET": 2,
-    "NONSEP_DURING_RESET": 4,
+    "NONSEP_DURING_RESET": 2,
     "RELEASE_LIVENESS": 6,
 }
 # Requests outstanding at the fall of sep_reset_n per port. The dtp_dbg cell is not drivable: see
@@ -292,6 +293,13 @@ DTP_NOT_DRIVABLE = (
     "hold its response as it holds the ext_in ones, and the SEP SRAM answers within the S3 "
     "captures, so the one operation the port takes completes before the two IC_RESET scans that "
     "lead to the fall"
+)
+BRIDGE_HELD = (
+    "INFO-CELL-NOT-DRIVABLE: SMC_OUT/to-ext-during JTAG2AXI write and read to ext_out while "
+    'sep_reset_n is low; hw/ip/jtag/jtag_ptap/doc/architecture.adoc, *_AXI_SINGLE_OP op: "The '
+    "latest operation was attempted before the previous operation completed; the previous AXI "
+    'request is still in progress. The operation attempted in this access will be ignored"; the '
+    "S4 read into the held SEP stays outstanding (OBS-G2B-RESET-ENDS, SF-003)"
 )
 SMC_APERTURE_ATTRS = (
     "hw/sys/sep/doc/fabric.adoc sep-outbound-attributes-table: SMC aperture, AxUSER the "
@@ -1245,7 +1253,13 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         if (axi_mon := smu_axi_monitor("ext_in")) is not None:
             for arid in LOAD_ARIDS:
                 axi_mon.forget_pending_reads(arid)
-        self._fence(self.used[self.term]["j2a"] + self.used[self.term]["ext_in"])
+        j2a_hs = sum(
+            len(self._tsince(rec["mks"], "dtp_dbg", "aw" if rec["op"] == J2A_OP_WRITE else "ar"))
+            for rec in (jw, jr)
+        )
+        if j2a_hs == 0 and J2A_STATUS_BUSY in (jw["met"], jr["met"]):
+            self.log.info("%s", BRIDGE_HELD)
+        self._fence(j2a_hs + len(b) + len(r))
         self.steps["S5"] = True
 
     async def _s6_liveness(self) -> None:
