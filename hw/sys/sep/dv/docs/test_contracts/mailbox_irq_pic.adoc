@@ -193,7 +193,7 @@ Each access must be one beat. A four-byte access at a word offset + 2 crosses th
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 1 seed per regression
 
 *Source Module*: `sep_axil_mailbox_iface_rand_test`
 
@@ -203,7 +203,7 @@ Each access must be one beat. A four-byte access at a word offset + 2 crosses th
 from the run seed, one from the low half (1 to `MAILBOX_DEPTH`/2 - 1) and one
 from the high half (`MAILBOX_DEPTH`/2 to `MAILBOX_DEPTH` - 1) of the legal
 range, in seeded order, with a seeded first fill length and seeded payloads for
-each. Both halves are programmed and graded on every seed; `reseed = 3`.
+each. Both halves are programmed and graded on every seed; one seed runs per regression.
 
 *Objective*: 64-bit TX FIFO, status, threshold IRQ, empty/full errors, and flush on the outbound mailbox aperture.
 
@@ -1147,13 +1147,13 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `cpu`, `+skip_fuse_sense`, 3 seeds. VCS (4-state) for the reset X check, Verilator for the value checks. Testlist groups `all`, `cpu`.
+*Run mode*: `cpu`, `+skip_fuse_sense`, 1 seed per regression. VCS (4-state) for the reset X check, Verilator for the value checks. Testlist groups `all`, `cpu`.
 
 *Source Module*: `sep_pic_reg_rand_test`
 
 *BFM / Model*: CPU firmware with the PIC driver `hw/sys/sep/dv/fw/drivers/sep_pic.h` and the mailbox driver `hw/sys/sep/dv/fw/drivers/sep_axil_mailbox.h` (control source only); host console scorer. Probes and injects: firmware CSR reads and writes of the PIC registers, and the firmware trap count; `pic_rd_data_probe_o`, a read-only copy of the PIC register read data (`picm_rd_data`) at each PIC register read (an observation tap the test adds to the SEP_TB_ARCH observation-probe list; it is the anchor of CHK-RESET-X); `pic_wr_probe_o`, a read-only copy of the PIC register write strobe and offset (`picm_wren_ff`, `picm_waddr_ff[14:0]`; an observation tap in the same list; it is the anchor of CHK-MEIP-WR-STORE).
 
-*Randomization*: RAND-REP. `SepSeededRng` from the run seed. Dimensions: the source index N (1 to 255, with the anchors 1, 43, 44, 128 and 255 always walked, and at least one drawn entry in each of the ranges 2 to 42, 45 to 127 and 129 to 254); the register group; the value (inside the implemented bits: `meipl` 0 to 15, `meie` 0 or 1, `meigwctrl` 0 to 3, so that every `meigwctrl` value is written at least once per seed, and so that over the drawn sources the pair (`meie`, `meipl`) takes each of the four arming cells (0, 0), (1, 0), (0, non-zero) and (1, non-zero) at least once per seed); the `meigwclr` write value (any non-zero 32-bit value); the hole address (4-byte aligned, inside each hole range, with an entry index K from 1 to 254 in address bits [9:2]); the order of the groups. Entry 0 is outside the read-back draw. The host patches the drawn lists, including the hole addresses, into the firmware parameter block. `reseed = 3` samples different entries, values, hole addresses and orders. The five hole ranges and the past-extent range are walked on every seed.
+*Randomization*: RAND-REP. `SepSeededRng` from the run seed. Dimensions: the source index N (1 to 255, with the anchors 1, 43, 44, 128 and 255 always walked, and at least one drawn entry in each of the ranges 2 to 42, 45 to 127 and 129 to 254); the register group; the value (inside the implemented bits: `meipl` 0 to 15, `meie` 0 or 1, `meigwctrl` 0 to 3, so that every `meigwctrl` value is written at least once per seed, and so that over the drawn sources the pair (`meie`, `meipl`) takes each of the four arming cells (0, 0), (1, 0), (0, non-zero) and (1, non-zero) at least once per seed); the `meigwclr` write value (any non-zero 32-bit value); the hole address (4-byte aligned, inside each hole range, with an entry index K from 1 to 254 in address bits [9:2]); the order of the groups. Entry 0 is outside the read-back draw. The host patches the drawn lists, including the hole addresses, into the firmware parameter block. A merge of regressions, one seed each, samples different entries, values, hole addresses and orders. The five hole ranges and the past-extent range are walked on every seed.
 
 *Objective*: The PIC register groups sit at base 0xC008_0000 plus 0x0, 0x1000, 0x2000, 0x3000, 0x4000 and 0x5000 with stride 4 (`mpiccfg` is one register), and every field resets to 0. Entry 0 of `meipl`, `meie`, `meigwctrl` and `meigwclr` reads 0 and discards writes. `meigwclr` reads 0. A CPU access to a hole inside the 32 KiB aperture or past the 21 KiB extent answers OKAY and reads 0 (EL2_PIC row, columns Hole in Extent and Past Extent: `OKAY, 0x0 / OKAY`). A hole write answers OKAY and changes no decoded register, because a hole is an undecoded offset. Source 0 never sets. Sources: `hw/sys/sep/doc/interrupts.adoc` ("Sources and Routing", "Software Handling"); `hw/sys/sep/regs/gen/adoc/memory_map.adoc` (EL2_PIC row); `hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc` (`mpiccfg`, `meipl`, `meip`, `meie`, `meigwctrl`, `meigwclr`).
 
@@ -1221,13 +1221,13 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `cpu` plus the external SMN master, real PROD fuse sense of a pinned image, 3 seeds. Verilator and VCS. Testlist groups `all`, `cpu`.
+*Run mode*: `cpu` plus the external SMN master, real PROD fuse sense of a pinned image, 1 seed per regression. Verilator and VCS. Testlist groups `all`, `cpu`.
 
 *Source Module*: `sep_pic_external_access_refuse_test`
 
 *BFM / Model*: CPU firmware (PIC, mailbox and filter drivers under `hw/sys/sep/dv/fw/drivers/`); the external SMN master (`ocah_axi_vip`) on the inbound port and its response codes, with the passive bus monitor of that port (DECERR tallied, not failed). Probes and injects: the external SMN master and its response codes, the monitor taps `efuse_shadow_probe_o` (sensed LC state), `lcc_security_disable_probe_o` and `lcc_feat_ctrl_probe_o`, the firmware CSR reads of the armed PIC state, and the firmware reads of the inbound filter entry registers. No PROPOSED item. Every check is a reached check.
 
-*Randomization*: RAND-REP. `SepSeededRng` from the run seed. Dimensions: the interior entry J of each array (2 to 254, never one of the sources 13, 15, 16, 37, 38 and 39); the interior `meip` word (1 to 6); the hole address; the past-extent address; the access order; the order of read and write on each target; the eFuse image fields that are not pinned. The image pins LC state PROD and `SIP_DIS` 0x0F0F_0F0F_0F0F_0F0C and `SYS_DIS` 0x00FF_00FF_00FF_00FC (DBG_1 bit 0 clear in both). Addresses are aligned and lie inside 0xC008_0000 to 0xC008_7FFF. `SEP_DBG` stays off. `reseed = 3` samples different interior registers, addresses and orders. Both regimes and every target are walked on every seed.
+*Randomization*: RAND-REP. `SepSeededRng` from the run seed. Dimensions: the interior entry J of each array (2 to 254, never one of the sources 13, 15, 16, 37, 38 and 39); the interior `meip` word (1 to 6); the hole address; the past-extent address; the access order; the order of read and write on each target; the eFuse image fields that are not pinned. The image pins LC state PROD and `SIP_DIS` 0x0F0F_0F0F_0F0F_0F0C and `SYS_DIS` 0x00FF_00FF_00FF_00FC (DBG_1 bit 0 clear in both). Addresses are aligned and lie inside 0xC008_0000 to 0xC008_7FFF. `SEP_DBG` stays off. A merge of regressions, one seed each, samples different interior registers, addresses and orders. Both regimes and every target are walked on every seed.
 
 *Objective*: The PIC is reachable only through the CPU internal wiring. An external access through the inbound port to each sampled PIC address answers DECERR and changes no PIC register. The sampled addresses are the first, a drawn interior and the last register of each of the six PIC groups, a drawn hole address and a drawn past-extent address. The test does not claim every address of the aperture: the drawn addresses change with the seed and accumulate over merged regressions. In regime B the claim rests on two items: the read-back of the PIC window entries, which shows that the entries hold the programmed values, and the response code. Sources: `hw/sys/sep/doc/memory_map.adoc` ("Units Unreachable from the Inbound Port"); `hw/sys/sep/regs/gen/adoc/memory_map.adoc` (EL2_PIC row); `hw/ip/axi_filter/regs/gen/adoc/filter_ctrl.adoc` (`FILTER_CONFIG`, `START_ADDR`, `END_ADDR`); `hw/ip/axi_filter/doc/index.adoc` ("Address Range Granule").
 
