@@ -3548,7 +3548,7 @@ feature, and the note says how the test treats the blocked leg.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |Invalid encodings map to safe values: MODE to AES_NONE, KEY_LEN to AES_256, OPERATION to AES_ENC, PRNG_RESEED_RATE to PER_1, PHASE to GCM_INIT, NUM_VALID_BYTES to 16.
 |Readback of an invalid KEY_LEN. `aes.hjson` states that invalid OPERATION and MODE values are mapped to AES_ENC and AES_NONE, and the readback of those two fields is graded; the question stays open for the KEY_LEN readback only. Source: `vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc` (`CTRL_SHADOWED`); `vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson` (`CTRL_SHADOWED.OPERATION`, `CTRL_SHADOWED.MODE`).
-|`sep_aes_encoding_inject_rand_test` grades the OPERATION and MODE readback after a legal non-reset pair (CHK-AES-INV-OP-RB, CHK-AES-INV-MODE-RB, `aes.hjson` field text "are mapped to"). The KEY_LEN cell grades the mapping by its ciphertext and logs the readback as `OBS-AES-ENC-RB`, an open question.
+|`sep_aes_encoding_inject_rand_test` grades the OPERATION and MODE readback after a legal non-reset pair (CHK-AES-INV-OP-RB, CHK-AES-INV-MODE-RB, `aes.hjson` field text "are mapped to"), and the ciphertext of the control block after each invalid MODE cell against the AES-256 golden (CHK-AES-INV-MODE-CTRL-CT). The KEY_LEN cell grades the mapping by its ciphertext and logs the readback as `OBS-AES-ENC-RB`, an open question.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |STATUS reset value
 |The RDL reset column states 0x0 for READY, TXEMPTY and RXEMPTY (`spi_controller.adoc`, STATUS). The Phase 1 and Phase 2 reset check requires them set. Which one is the contract?
