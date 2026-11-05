@@ -1452,7 +1452,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "with both apertures in the SEP's SMU window at the reset sizes and after one "
             "reprogram, base and base+size-1 decode inside and base-1 and base+size outside each "
             "aperture, routed per the table for sep_out, smc_out and ext_in; the sep_out reads "
-            "inside the SMC aperture and the smc_out reads inside it are not graded",
+            "inside the SMC aperture are observed only, and the smc_out reads inside it are not "
+            "issued",
         ),
         (
             "CHK-G4B-ZERO",
@@ -1466,8 +1467,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-NONVAC",
             "CHK-NONVAC",
             "ordered fence SETUP < STALLED_EXT_OUT < INTERLEAVE < ROUTE_FWD < DECERR_CELLS < "
-            "APERTURE_EDGES < ZERO_SIZE with sim time, a non-zero count at least the plan and "
-            "the LSU probe runs and sep_out system-bus accesses equal to the step budget per term",
+            "APERTURE_EDGES < ZERO_SIZE with sim time, a count per term from the stimulus marks of "
+            "its step, at least the plan, and the LSU probe runs and sep_out system-bus accesses "
+            "equal to the step budget per term; the per-step compares carry the non-vacuity",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -1511,13 +1513,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the bench expectation window opens at the one fall of sep_reset_n under the IC_RESET "
             "override and closes 8 clk_smu_i edges after the release, never opens outside the "
             "hold, is closed at the end with a window count of 1, sees no primary-reset fall, and "
-            "the SEP rst_ni and the primary reset stay high through the hold",
+            "the SEP rst_ni and the primary reset stay high through the hold; sep_reset_n is "
+            "sampled low with no X, and every graded link is sampled with no X on its VALIDs",
         ),
         (
             "CHK-NONVAC",
             "CHK-NONVAC",
             "ordered fence SETUP < SEP2SMC < LOAD < SEP_RESET < NONSEP_DURING_RESET < "
-            "RELEASE_LIVENESS with sim time, a non-zero count at least the plan per term, and the "
+            "RELEASE_LIVENESS with sim time, a non-zero count at least the plan per term (for "
+            "NONSEP_DURING_RESET the four observation windows closed, met or run out), and the "
             "JTAG2AXI, debug-module and system-bus, ext_in and IC_RESET accesses equal to the step "
             "budget",
         ),

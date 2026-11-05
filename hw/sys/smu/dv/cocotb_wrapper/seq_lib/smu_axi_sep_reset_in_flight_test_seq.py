@@ -36,16 +36,17 @@ S4 SEP_RESET: the first IC_RESET scan stages the override and carries the
    the reset; no checker expects its response (OBS-G2B-RESET-ENDS, SF-003).
 S5 NONSEP_DURING_RESET: a JTAG2AXI write and read to ext_out and an ext_in
    write and read to the SMC scratchpad while sep_reset_n is low, each an
-   observation window; then the override is released and the bench
-   expectation window closes.
-S6 RELEASE_LIVENESS: every B and R on smu_in, dtp_dbg and sep_out is held
-   against the issue log; a TAP test-logic reset (CTRL-G2B-TLR), then the
-   debug module is brought up again, the hart halted and the stub rewritten,
-   then one fresh write and read on every S1 route, a bridge write read back
-   over ext_in or the system bus, and the stub store and load to ext_out and
-   to the SMC aperture, with no cold reset before them; last, one JTAG2AXI
-   read, observed only (OBS-G2B-J2A-READ-AFTER-HOLD, SF-003); the one cold
-   reset of the leaf follows.
+   observation window; the term counts the four windows closed, met or run
+   out, so no answer during the hold reaches CHK-NONVAC; then the override is
+   released and the bench expectation window closes.
+S6 RELEASE_LIVENESS: every B and R on smu_in and dtp_dbg is held against the
+   issue log, and every B and R on sep_out is logged; a TAP test-logic reset
+   (CTRL-G2B-TLR), then the debug module is brought up again, the hart halted
+   and the stub rewritten, then one fresh write and read on every S1 route, a
+   bridge write read back over ext_in or the system bus, and the stub store
+   and load to ext_out and to the SMC aperture, with no cold reset before
+   them; last, one JTAG2AXI read, observed only (OBS-G2B-J2A-READ-AFTER-HOLD,
+   SF-003); the one cold reset of the leaf follows.
 S7 TIMEOUT: every wait is bounded in clk_smu_i edges, polls or captures; an
    expiry fails the leaf and is classified as unanswered-transaction evidence.
    Every JTAG2AXI operation of S3 to S6 issued as a capture window and the S5
@@ -257,15 +258,14 @@ BUDGET = {
     "RELEASE_LIVENESS": {"j2a": 3, "dmi": 28, "ext_in": 5, "ic_reset": 0},
 }
 # Planned count per term: routes, SMC-aperture accesses, ext_in requests outstanding plus the armed
-# stub store, edges with sep_reset_n low, request handshakes during the reset (the ext_in pair; the
-# JTAG2AXI pair meets the bridge still holding the S4 read, see BRIDGE_HELD), fresh routes after the
-# release.
+# stub store, edges with sep_reset_n low, observation windows closed during the reset (met or ran out,
+# so what the DUT does in them never reaches this count), fresh routes after the release.
 PLANNED = {
     "SETUP": 5,
     "SEP2SMC": 4,
     "LOAD": 5,
     "SEP_RESET": 2,
-    "NONSEP_DURING_RESET": 2,
+    "NONSEP_DURING_RESET": 4,
     "RELEASE_LIVENESS": 6,
 }
 # Requests outstanding at the fall of sep_reset_n per port. The dtp_dbg cell is not drivable: see
@@ -322,59 +322,41 @@ FILTER_ORDER = (
     "the accesses ran under that state (OBS-G2B-ADDR)"
 )
 DMA_CELL = "no bench path drives the SEP secure DMA without firmware (SEP2SMC/secure-DMA)"
-# Required cells of the allocated scenarios: (scenario, cell, status, line or reason, measure).
+# Required cells, each named link/phase: (cell, status, line or reason, measure).
 # A status of None is OBSERVED when its measure is above zero, else NOT-DRIVABLE (BRIDGE_HELD).
 CELLS = (
-    (
-        "AXIG-PROT-RESETLOW.S3",
-        "SEP_OUT/entry-edge",
-        "OBSERVED",
-        "OBS-G2B-ENTRY-EDGE",
-        "pend_sep_out",
-    ),
-    ("AXIG-PROT-RESETLOW.S3", "SMC_OUT/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
-    (
-        "AXIG-PROT-RESETLOW.S3",
-        "SEP_IN/entry-edge",
-        "OBSERVED",
-        "OBS-G2B-ENTRY-EDGE",
-        "entry_sep_in",
-    ),
-    ("AXIG-PROT-RESETLOW.S3", "SMC_IN/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
-    ("AXIG-PROT-RESETLOW.S3", "EXT_OUT/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
-    (
-        "AXIG-PROT-RESETLOW.S3",
-        "IWC_SEP/entry-edge",
-        "OBSERVED",
-        "OBS-G2B-ENTRY-EDGE",
-        "pend_iwc_sep",
-    ),
-    ("AXIG-PROT-RESETLOW.S3", "IWC_SMC/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
-    ("AXIG-PROT-RESETLOW.S3", "INCUT/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
-    ("AXIG-PROT-RESETLOW.S3", "SEP2SMC/entry-edge", "OBSERVED", "OBS-G2B-ENTRY-EDGE", "pend_s2s"),
-    ("AXIG-PROT-RESETLOW.S3", "JTAG2AXI/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
-    ("AXIG-RST-SEPSYS.S2", "SEP_IN/in-reset", "OBSERVED", "OBS-G2B-SEPIN-VALID", "sepin_high"),
-    ("AXIG-RST-SEPSYS.S2", "IWC_SEP/in-reset", "OBSERVED", "OBS-G2B-SEP-VALID-LOW", "low_iwc_sep"),
-    ("AXIG-RST-SEPSYS.S2", "SEP_OUT/in-reset", "OBSERVED", "OBS-G2B-SEP-VALID-LOW", "low_sep_out"),
-    ("AXIG-RST-SEPSYS.S2", "SEP2SMC/in-reset", "OBSERVED", "OBS-G2B-SEP-VALID-LOW", "low_s2s"),
-    ("AXIG-RST-SEPSYS.S3", "EXT_IN/to-sep", "DRIVEN", "CHK-G2B-NO-PHANTOM", "ext_at_fall"),
-    ("AXIG-RST-SEPSYS.S3", "SMC_OUT/to-sep", "DRIVEN", "CHK-G2B-NO-PHANTOM", "s4_read_ar"),
-    ("AXIG-RST-SEPSYS.S4", "SMC_OUT/to-ext-during", None, "OBS-G2B-NONSEP-DURING", "s5_j2a_hs"),
-    ("AXIG-RST-SEPSYS.S4", "EXT_IN/to-smc-during", "OBSERVED", "OBS-G2B-NONSEP-DURING", "s5_ext"),
-    ("AXIG-RST-SEPSYS.S4", "all/after", "DRIVEN", "CHK-G2B-LIVENESS", "routes_after"),
-    ("AXIG-RST-SEPSYS.S5", "SEP/local-xbar-live", "OBSERVED", "OBS-G2B-RESET-ENDS", "held_ars"),
-    ("AXIG-RST-RULING.S2", "JTAG/sep_reset_n", "OBSERVED", "OBS-G2B-RULING-2891", "holds"),
-    ("AXIG-ATOP-INTERNAL.S1", "SEP_OUT/aw", "OBSERVED", "OBS-G2B-ATOP-SEP", "aw_xbar_sep_out"),
-    ("AXIG-ATOP-INTERNAL.S1", "SEP2SMC/aw", "OBSERVED", "OBS-G2B-ATOP-SEP", "aw_sep_to_smc"),
-    ("AXIG-SEP2SMC.S1", "SEPLSU/rd", "DRIVEN", "CHK-G2B-SEP2SMC", "lsu_rd"),
-    ("AXIG-SEP2SMC.S1", "SEPLSU/wr", "DRIVEN", "CHK-G2B-SEP2SMC", "lsu_wr"),
-    ("AXIG-SEP2SMC.S1", "SEPDBG/rd", "DRIVEN", "CHK-G2B-SEP2SMC", "dbg_rd"),
-    ("AXIG-SEP2SMC.S1", "SEPDBG/wr", "DRIVEN", "CHK-G2B-SEP2SMC", "dbg_wr"),
-    ("AXIG-SEP2SMC.S2", "nofilter/rd", "NOT-DRIVABLE", FILTER_ORDER, None),
-    ("AXIG-SEP2SMC.S2", "nofilter/wr", "NOT-DRIVABLE", FILTER_ORDER, None),
-    ("AXIG-SEP2SMC.S3", "CPU/attrs", "OBSERVED", "OBS-G2B-SEP2SMC-TIE", "lsu_all"),
-    ("AXIG-SEP2SMC.S3", "DMA/attrs", "NOT-DRIVABLE", DMA_CELL, None),
-    ("AXIG-SEP2SMC.S3", "DBG/attrs", "OBSERVED", "OBS-G2B-SEP2SMC-TIE", "dbg_all"),
+    ("SEP_OUT/entry-edge", "OBSERVED", "OBS-G2B-ENTRY-EDGE", "pend_sep_out"),
+    ("SMC_OUT/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("SEP_IN/entry-edge", "OBSERVED", "OBS-G2B-ENTRY-EDGE", "entry_sep_in"),
+    ("SMC_IN/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("EXT_OUT/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("IWC_SEP/entry-edge", "OBSERVED", "OBS-G2B-ENTRY-EDGE", "pend_iwc_sep"),
+    ("IWC_SMC/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("INCUT/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("SEP2SMC/entry-edge", "OBSERVED", "OBS-G2B-ENTRY-EDGE", "pend_s2s"),
+    ("JTAG2AXI/entry-edge", "NOT-DRIVABLE", PRIMARY_LINK, None),
+    ("SEP_IN/in-reset", "OBSERVED", "OBS-G2B-SEPIN-VALID", "sepin_high"),
+    ("IWC_SEP/in-reset", "OBSERVED", "OBS-G2B-SEP-VALID-LOW", "low_iwc_sep"),
+    ("SEP_OUT/in-reset", "OBSERVED", "OBS-G2B-SEP-VALID-LOW", "low_sep_out"),
+    ("SEP2SMC/in-reset", "OBSERVED", "OBS-G2B-SEP-VALID-LOW", "low_s2s"),
+    ("EXT_IN/to-sep", "DRIVEN", "CHK-G2B-NO-PHANTOM", "ext_at_fall"),
+    ("SMC_OUT/to-sep", "DRIVEN", "CHK-G2B-NO-PHANTOM", "s4_read_ar"),
+    ("SMC_OUT/to-ext-during", None, "OBS-G2B-NONSEP-DURING", "s5_j2a_hs"),
+    ("EXT_IN/to-smc-during", "OBSERVED", "OBS-G2B-NONSEP-DURING", "s5_ext"),
+    ("all/after", "DRIVEN", "CHK-G2B-LIVENESS", "routes_after"),
+    ("SEP/local-xbar-live", "OBSERVED", "OBS-G2B-RESET-ENDS", "held_ars"),
+    ("JTAG/sep_reset_n", "OBSERVED", "OBS-G2B-RULING-2891", "holds"),
+    ("SEP_OUT/aw", "OBSERVED", "OBS-G2B-ATOP-SEP", "aw_xbar_sep_out"),
+    ("SEP2SMC/aw", "OBSERVED", "OBS-G2B-ATOP-SEP", "aw_sep_to_smc"),
+    ("SEPLSU/rd", "DRIVEN", "CHK-G2B-SEP2SMC", "lsu_rd"),
+    ("SEPLSU/wr", "DRIVEN", "CHK-G2B-SEP2SMC", "lsu_wr"),
+    ("SEPDBG/rd", "DRIVEN", "CHK-G2B-SEP2SMC", "dbg_rd"),
+    ("SEPDBG/wr", "DRIVEN", "CHK-G2B-SEP2SMC", "dbg_wr"),
+    ("nofilter/rd", "NOT-DRIVABLE", FILTER_ORDER, None),
+    ("nofilter/wr", "NOT-DRIVABLE", FILTER_ORDER, None),
+    ("CPU/attrs", "OBSERVED", "OBS-G2B-SEP2SMC-TIE", "lsu_all"),
+    ("DMA/attrs", "NOT-DRIVABLE", DMA_CELL, None),
+    ("DBG/attrs", "OBSERVED", "OBS-G2B-SEP2SMC-TIE", "dbg_all"),
 )
 
 
@@ -1309,6 +1291,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         h = self.h
         rec = self.holds[HOLD]
         self._enter("NONSEP_DURING_RESET", "S5", "JTAG2AXI to ext_out and ext_in to the SMC")
+        first_window = len(self.windows)
         pre = _val(dut.sep_reset_n_o)
         jw = await self._j2a_obs(
             J2A_OP_WRITE, EXT_J2A_S5, W_S5_EXT_OUT, "s5_j2a_ext_wr", J2A_OBS_CAPTURES
@@ -1382,7 +1365,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         self.obs["s5_j2a_hs"] = j2a_hs
         if j2a_hs == 0 and J2A_STATUS_BUSY in (jw["met"], jr["met"]):
             self.log.info("%s", BRIDGE_HELD)
-        self._fence(j2a_hs + len(b) + len(r))
+        self._fence(len(self.windows) - first_window)
         self.steps["S5"] = True
 
     async def _s6_liveness(self) -> None:
@@ -1653,6 +1636,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
                 "x_on_graded": 0,
                 "x_on_sep_reset_n": 0,
             },
+            evidence="CHK-G2B-WINDOW",
         )
 
     def _dtp_fate(self, rec: dict) -> dict:
@@ -1695,7 +1679,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             "aperture ports while held %s; JTAG2AXI read at %s during the reset: met=%s status=%s "
             "rdata=%s captures=%s, dtp_dbg AR %s, sep_in AR handshakes while sep_reset_n low %s, "
             "R before the release %s, R by the end %s; bridge (met, status) of the S5 operations %s; "
-            "observation only, the SEP, SF-003, SF-005, SF-001",
+            "observation only, SF-003, SF-005, SF-001",
             h["low"],
             len(h["nets_bad"]),
             quiet,
@@ -2139,18 +2123,18 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         }
 
     def _cell_rollup(self) -> None:
-        """One line per required cell of the allocated scenarios, then the rollup counts."""
+        """One line per required cell, then the rollup counts."""
         got = self._cell_measures()
         tally: Counter = Counter()
-        for scenario, cell, status, line, key in CELLS:
+        for cell, status, line, key in CELLS:
             n = got[key] if key else None
             if status is None:
                 status, line = ("OBSERVED", line) if n else ("NOT-DRIVABLE", BRIDGE_HELD)
             if status == "NOT-DRIVABLE":
                 reason = line.removeprefix("INFO-CELL-NOT-DRIVABLE: ")
-                self.log.info("INFO-CELL-NOT-DRIVABLE: %s %s: %s", scenario, cell, reason)
+                self.log.info("INFO-CELL-NOT-DRIVABLE: %s: %s", cell, reason)
             else:
-                self.log.info("INFO-CELL-%s: %s %s %s measured=%d", status, scenario, cell, line, n)
+                self.log.info("INFO-CELL-%s: %s %s measured=%d", status, cell, line, n)
             tally[status] += 1
         self.log.info(
             "INFO-G2B-CELL-ROLLUP: cells=%d driven=%d observed=%d not_drivable=%d",

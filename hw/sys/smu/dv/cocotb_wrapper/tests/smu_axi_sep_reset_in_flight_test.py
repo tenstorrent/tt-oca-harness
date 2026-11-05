@@ -3,8 +3,8 @@
 """smu_axi_sep_reset_in_flight_test - the SEP-facing links across one IC_RESET hold.
 
 DV-TESTCASE-CONTRACT: TC_G2B ANCHOR: smu_axi_sep_reset_in_flight_test
-DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: 164e5b38bd00d1d579dfdeac1e600ca53d4a1cd4e053bac3708eeb54717b235e
-DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 8 ENV: cocotb
+DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 996912a4bc3cf9026ab6be8e3b76f3cebe20273d91c4786da51c176212a6e62d
+DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 9 ENV: cocotb
 
 The DTP IC_RESET TDR override holds sep_reset_n low once, with the SMC primary
 reset high, while ext_in reads and writes toward the SEP SRAM, with BREADY and
@@ -14,7 +14,7 @@ hold complete before the fall: the bridge holds one operation and drives its
 own BREADY and RREADY, so the leaf prints INFO-CELL-NOT-DRIVABLE for that cell.
 The JTAG2AXI read issued during the hold is accepted on sep_in and gets no
 response; no checker expects one, and that read and the JTAG2AXI read after the
-release are observations of the open question SF-003 (the SEP). The response
+release are observations of the open question SF-003. The response
 check on dtp_dbg covers both reads and the bridge writes after the release.
 The SEP-originated traffic is the ICCM stub of smu_sep_reset_inflight_test
 under the debug module, plus the debug module's system bus. Nothing

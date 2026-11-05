@@ -5229,8 +5229,9 @@ args = [
 # The SEP-facing crossbar links across one JTAG IC_RESET hold of sep_reset_n
 # with ext_in, JTAG2AXI and SEP CPU traffic in flight: the SEP hart runs the
 # four-instruction ICCM stub the debug module writes, the debug module's system
-# bus reads the SMC aperture, and after the release alone every route takes a
-# fresh write and read before the one cold reset at the end. Access budget:
+# bus reads the SMC aperture, and after the release and a TAP test-logic reset
+# every route takes a fresh write and read before the one cold reset at the
+# end; the JTAG2AXI read after the hold is observed only. Access budget:
 # 12 JTAG2AXI, 59 debug-module and system-bus, 15 ext_in, 4 IC_RESET scans
 # and one hold.
 [[tests]]
