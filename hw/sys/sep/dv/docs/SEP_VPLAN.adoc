@@ -2167,8 +2167,10 @@ RMA_CHIPLET over merged regressions. An entry whose leaf runs its whole cell set
 the seed selects only orders, values and timing, runs one seed per regression
 (no `reseed`); each regression draws a new seed, so those values still vary.
 
-*Testlist entries.* A Phase 3 test has one testlist entry, except a planned
-entry that is not in the regression, which has none. Each entry runs on
+*Testlist entries.* A Phase 3 test has one testlist entry, except a test whose
+Run mode field names several (`+sep_shard` entries, or one entry for each
+preloaded build), and a planned entry that is not in the regression, which
+has none. Each entry runs on
 its testlist target, so a test that grades some checks on one simulator only
 splits them inside its one entry, and the leaf selects them from the simulator.
 Full-CPU legs of a `no_cpu` test run in a dedicated full-CPU entry
