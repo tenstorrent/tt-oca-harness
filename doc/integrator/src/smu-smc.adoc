@@ -538,7 +538,8 @@ sets the limit: the open map reserves 16 KB, 4096 words or 128 Kbit, at
 `smc_external` map, anywhere it does not overlap another block, and regenerate
 the register collateral. `WORDS` may not exceed 65535.
 * *Configure it.* Set `CFG.SMC_SUPPLEMENTARY_FUSE`: the window offset `BASE`
-inside the slot, the size `WORDS` and the lock region ends
+in `smc_external`, at or above `CFG.SMC_EFUSE_SHIM_SIZE` and usually in the
+slot, the size `WORDS` and the lock region ends
 `LOCK_REGION_END`. `WORDS = 0`, the SMU
 default, removes the region. The reference `smu_wrapper` and `smc_wrapper`
 enable the example in `smc_supplementary_fuse_example_pkg`; `smu_wrapper` turns it

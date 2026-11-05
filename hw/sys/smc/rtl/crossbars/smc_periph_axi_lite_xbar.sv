@@ -15,6 +15,7 @@
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "ocah_assert.svh"
 
 module smc_periph_axi_lite_xbar
   import smc_periph_axi_lite_xbar_pkg::axi_lite32_req_t;
@@ -94,6 +95,12 @@ module smc_periph_axi_lite_xbar
   // repeat a neighbouring rule for the same target when they have no bytes.
   localparam bit HasSupplementaryRule = SUPPLEMENTARY_FUSE_WORDS > 0;
   localparam bit HasGapRule = SupplementaryStart > EFUSE_SHIM_SIZE;
+
+  // The four external rules tile the window in this order: shim, gap, supplementary, tail.
+  `OCAH_ASSERT_STATIC(SupplementaryWindowAboveShim_A,
+      !HasSupplementaryRule ||
+      (SUPPLEMENTARY_FUSE_BASE >= EFUSE_SHIM_SIZE && SupplementaryEnd <= smc_pkg::SmcExternalWindowSize),
+      "The supplementary fuse window must lie in smc_external at or above EFUSE_SHIM_SIZE")
   localparam int unsigned SupplementaryRuleStart = HasSupplementaryRule ? SupplementaryStart : 0;
   localparam int unsigned SupplementaryRuleEnd = HasSupplementaryRule ? SupplementaryEnd : EFUSE_SHIM_SIZE;
   localparam int unsigned GapRuleStart = HasGapRule ? EFUSE_SHIM_SIZE : SupplementaryEnd;

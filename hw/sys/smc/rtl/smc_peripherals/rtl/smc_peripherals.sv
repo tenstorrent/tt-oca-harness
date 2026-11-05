@@ -1290,14 +1290,13 @@ module smc_peripherals #(
       SupplementaryFuseWindow_A,
       SUPPLEMENTARY_FUSE.WORDS == 0 ||
       (SUPPLEMENTARY_FUSE.BASE % 4 == 0 &&
-       64'(SUPPLEMENTARY_FUSE.BASE) >=
-           smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR -
-           smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR &&
-       64'(SUPPLEMENTARY_FUSE.BASE) + 4 * SUPPLEMENTARY_FUSE.WORDS <=
-           smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR +
-           smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_SIZE -
-           smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
-      "SUPPLEMENTARY_FUSE.BASE must be word aligned with the window inside the supplementary fuse slot")
+       SUPPLEMENTARY_FUSE.BASE >= EFUSE_SHIM_SIZE &&
+       64'(SUPPLEMENTARY_FUSE.BASE) + 4 * SUPPLEMENTARY_FUSE.WORDS <= 64'(smc_pkg::SmcExternalWindowSize)),
+      "SUPPLEMENTARY_FUSE.BASE must be word aligned with the window in smc_external at or above EFUSE_SHIM_SIZE")
+  `OCAH_ASSERT_STATIC(
+      SupplementaryFuseWords_A,
+      SUPPLEMENTARY_FUSE.WORDS <= smc_efuse_pkg::MaxSupplementaryFuseWords,
+      "SUPPLEMENTARY_FUSE.WORDS exceeds the supplementary fuse slot that sizes the fuse command")
   `OCAH_ASSERT_STATIC(
       SupplementaryLockRegionEnd_A,
       smc_efuse_pkg::supplementary_lock_region_end_valid(SUPPLEMENTARY_FUSE),

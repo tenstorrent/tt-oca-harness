@@ -114,9 +114,10 @@ registers at offset `0x0` of its own `smc_external` map.
 The optional supplementary fuse window is diverted the same way. When
 `CFG.SMC_SUPPLEMENTARY_FUSE.WORDS` is non-zero, the crossbar routes
 4 × `WORDS` bytes from `CFG.SMC_SUPPLEMENTARY_FUSE.BASE` to the eFuse controller,
-which serves them from the supplementary shadow registers. The window lies inside
-the `fuse` slot of the supplementary region, 16 KB at `BASE + 0x040_7000` in
-the open map; see
+which serves them from the supplementary shadow registers. The window sits at or
+above the shim carve-out, anywhere in `smc_external`; the reference wrappers put
+it in the `fuse` slot of the supplementary region, 16 KB at `BASE + 0x040_7000`
+in the open map. See
 xref:ip:efuse/doc/index.adoc#efuse-supplementary-fuses[Supplementary Fuse Region].
 
 The supplementary (optional) region of the window is passed through to the SMU's

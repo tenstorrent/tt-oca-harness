@@ -242,9 +242,9 @@ package smc_efuse_pkg;
   // Supplementary fuse region of an SMC integration. An all-zero value omits the region.
   typedef struct packed {
     int unsigned              BASE;             // Byte offset of the supplementary window in
-                                                // smc_external: word aligned, with the window
-                                                // inside the fuse slot of the supplementary
-                                                // region. Unused without a region.
+                                                // smc_external: word aligned, at or above
+                                                // EFUSE_SHIM_SIZE, with the window inside
+                                                // smc_external. Unused without a region.
     int unsigned              WORDS;            // Region size in 32-bit words, sensed after the
                                                 // 2048 harness fuse bits; 0 for no region, at
                                                 // most MaxSupplementaryFuseWords.

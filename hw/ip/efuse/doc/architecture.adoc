@@ -437,9 +437,10 @@ reads only these members, never adopter field names.
 |===
 |Member |Meaning
 |`BASE` |Byte offset of the region's software window in `smc_external`, word
-aligned. The window must lie inside the `fuse` slot of the supplementary
-region. The fabric diverts the window to the eFuse controller instead of
-`smc_external_req_o`.
+aligned. The window must sit at or above `EFUSE_SHIM_SIZE` and end within
+`smc_external`; the reference wrappers place it in the `fuse` slot of the
+supplementary region. The fabric diverts the window to the eFuse controller
+instead of `smc_external_req_o`.
 |`WORDS` |Region size in 32-bit words, so the window is 4 × `WORDS` bytes. 0,
 the default, removes the region and its logic.
 |`LOCK_REGION_END` |32 word offsets that divide the region into lock regions
@@ -456,11 +457,12 @@ The reference wrappers enable the example in `smc_supplementary_fuse_example_pkg
 ==== Region Size
 
 The `fuse` slot in the `smc_external` map sets the largest region, and the
-controller sizes the fuse command's bit address and word count from it. The
-open map reserves a 16 KB slot, 4096 words or 128 Kbit, at `smc_external`
-offset `0x7000`. An adopter that needs more enlarges the slot in its own
-`smc_external` map; the slot may sit anywhere in `smc_external` that does not
-overlap another block. `WORDS` may not exceed 65535, the range of a
+controller sizes the fuse command's bit address and word count from it; `WORDS`
+may not exceed the slot's word count. The open map reserves a 16 KB slot, 4096
+words or 128 Kbit, at `smc_external` offset `0x7000`. An adopter that needs more
+enlarges the slot in its own `smc_external` map; the slot may sit anywhere in
+`smc_external` that does not overlap another block, and the window itself need
+not sit in the slot. `WORDS` may not exceed 65535, the range of a
 `LOCK_REGION_END` entry. Each word costs 32 shadow flops and lengthens the boot
 sense, so a large region trades area and boot time for fuses.
 
