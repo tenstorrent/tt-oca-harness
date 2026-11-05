@@ -25,14 +25,15 @@ Global rules:
 | `SPI_INIT_OK` `SPI_ROTATE=` | `rom_spi_init` | |
 | `OT_SPI: init ok` | `ot_spi_init` | |
 | `STRAPS_LO=` `STRAPS_HI=` `STRAP primary=` `rotate=` | `init_straps` | |
-| `SRAM_SCRUB_CFG=` `SRAM_CLR_SKIP` `SRAM_CLR_OK` | `rom_clear_ext_sram` | |
+| `SRAM_SCRUB_CFG=` `SRAM_SCRUB_LEN=` `SRAM_CLR_SKIP` `SRAM_CLR_OK` `SRAM_CLR_FAIL` | `rom_clear_ext_sram` | `SRAM_SCRUB_LEN=` and the scrub only with `SRAM_SCRUB_BYTES` > 0 |
 | `LC_STATE=` `LC_STATE_INVALID=` `LC=TEST_DEV` `LC=PROD` `LC=PROD_END` `LC=RMA_CHIPLET` `LC=RMA_SIP` | `rom_lifecycle_policy` | |
 | `FUSE: SBOOT_DIS:` | `rom_sboot_dis_policy` | |
 | `SMC_STATUS_TO_SEP=` `MANIFEST_OFF=` `SMC_MANIFEST_ADDR=` `SMC_COORD_NOT_READY` `SMC_MANIFEST_OFF_INVALID` | `rom_smc_coordination_probe` | |
 | `WAIT_SMC_MANIFEST` | `rom_manifest_boot` | |
 | `MANIFEST_SRC=` | `rom_manifest_boot` | Starts every slot attempt; with rotate, `MANIFEST_BACKUP` and `MANIFEST_SRC=0x00041000` print first |
 | `MANIFEST_PRIMARY` `MANIFEST_BACKUP` | `rom_manifest_boot` | Printed per slot, not per attempt order |
-| `MANIFEST_ALL_FAILED` | `rom_manifest_boot` | |
+| `SRAM_RETRY_CLR_FAIL` | `rom_clear_sram_for_retry` | The clear between SPI slots failed; no further slot is staged |
+| `MANIFEST_ALL_FAILED` | `rom_manifest_boot` | Not printed when the search ends on `SRAM_RETRY_CLR_FAIL` |
 | `MANIFEST_ERR=` | `rom_manifest_boot` | Codes in table 2 |
 | `MANIFEST_BOOT_FAIL=` | `rom_manifest_validate_handoff` | Codes in table 2 |
 | `OCA_BODY=` `MFST_VER=` | `try_manifest_slot` | `MFST_VER=` is the low 32 bits of the 16 B flag field, printed for every slot |
@@ -145,7 +146,7 @@ OCA code = `OCA_BOOT_ERR_BASE (0x00030000) | oca_result_t`; `0x000301xx` are the
 | straps | 0x40403000 / 0x40403004 (LO 13/19/20/21/25, HI 22/26) |
 | SMC SRAM | 0x40060000, 1 MiB |
 | BL1_JUMP | 0xC0000000; may also be in SRAM when `BL1_SRAM_EXEC_ENABLE=1` (default) |
-| SEP SRAM staging | body 0x10000000, payload 0x10001000, BL1 source 0x10001000 + TOC offset, 0x3FFF8 available |
+| SEP SRAM staging | body 0x10000000, payload 0x10001000, BL1 source 0x10001000 + TOC offset, 0x40000 available |
 | fuse sense | Always waited for (0x10A30140 bit 0) |
 | eFuse lc_state | 0x0C (RMA_CHIPLET is 0x6–0x7 only) |
 | eFuse sboot_dis | 0x10 (a reserved bit is terminal and ranks after the signed bit) |

@@ -872,6 +872,14 @@ tests = [
     "sep_rom_lc_state_invalid_0x5_test",
     "sep_rom_dma_stall_terminal_test",
     "sep_rom_hmac_fifo_stall_terminal_test",
+    # Zero-fill memory clears: the pad and clear-variant results, and a single
+    # failed fill at each clear site.
+    "sep_iccm_pad_sram_top_intact_test",
+    "sep_rom_clear_variant_test",
+    "sep_rom_zero_fill_fault_pad_test",
+    "sep_rom_zero_fill_fault_retry_test",
+    "sep_rom_zero_fill_fault_scrub_test",
+    "sep_rom_zero_fill_fault_iccm_clear_test",
 ]
 
 [[groups]]

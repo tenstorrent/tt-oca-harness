@@ -213,7 +213,7 @@ markers = [
   "Matches DV sep_firmware_payload_exceeds_slot_window_fixed_test: 0x3F400 is one KiB past the DV capacity 0x3F000 (SEP SRAM less the body).",
   "payload_length sits in the signed region, so declare_payload_length re-signs the primary; the slot passes RSA and oca_locate_payload refuses it on the region bound before any payload read.",
   "Follows DV PayloadSizeRefusedTest: the oversized primary fails over to the backup, with no rotate_update; the TOC still holds the shipped 2156-byte length, which the ROM would check only after staging.",
-  "PAYLOAD_TOO_LARGE (0x00030101) cannot fire on the SPI path, because the slot window (at most 0x3E000 payload bytes) is tighter than the SEP SRAM staging room (0x3EFF8); it stays forbidden.",
+  "PAYLOAD_TOO_LARGE (0x00030101) cannot fire on the SPI path, because the slot window (at most 0x3E000 payload bytes) is tighter than the SEP SRAM staging room (0x3F000); it stays forbidden.",
 ]
 
 [[testcase]]
@@ -284,6 +284,6 @@ markers = [
   "DV sep_firmware_payload_exceeds_slot_window_random_test draws 1 to 100 KiB past 0x3F000 by seed; this entry pins the 100 KiB end, 0x58000, which also runs past the backup manifest at 0x41000.",
   "payload_length sits in the signed region, so declare_payload_length re-signs the primary; the slot passes RSA and oca_locate_payload refuses it on the region bound before any payload read.",
   "Follows DV PayloadSizeRefusedTest: the oversized primary fails over to the backup, with no rotate_update; the TOC still holds the shipped 2156-byte length, which the ROM would check only after staging.",
-  "PAYLOAD_TOO_LARGE (0x00030101) cannot fire on the SPI path, because the slot window (at most 0x3E000 payload bytes) is tighter than the SEP SRAM staging room (0x3EFF8); it stays forbidden.",
+  "PAYLOAD_TOO_LARGE (0x00030101) cannot fire on the SPI path, because the slot window (at most 0x3E000 payload bytes) is tighter than the SEP SRAM staging room (0x3F000); it stays forbidden.",
 ]
 
