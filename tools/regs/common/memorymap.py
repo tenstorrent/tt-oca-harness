@@ -640,10 +640,12 @@ def _check_regblocks(
         if not isinstance(child, AddrmapNode):
             continue
         name = child.orig_type_name
-        if name in no_rtl_blocks or _opaque_response(child) is not None:
+        if _opaque_response(child) is not None:
             continue
         checked = err_checked or name in err_check_blocks
-        if any(isinstance(grand, (RegNode, RegfileNode)) for grand in child.children()):
+        if name not in no_rtl_blocks and any(
+            isinstance(grand, (RegNode, RegfileNode)) for grand in child.children()
+        ):
             expected = "SLVERR" if checked else "OKAY"
             for resolve in (_hole_response,) if child.is_array else (_hole_response, _gap_response):
                 try:
