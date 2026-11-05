@@ -9,8 +9,8 @@
 // AXCACHE forcing and the AXI 64 to AXI 32 to AXI-Lite 32 conversion chain live in
 // sep_crypto_axi_interconnect.
 // OTBN is built with the flip-flop register file and the MAI stubbed. Its OTP scrambling-key
-// request is answered locally with a fixed key and nonce, acknowledged one cycle after the
-// request; lifecycle escalation and RMA requests are tied off.
+// request is answered locally with a fixed key and nonce, acknowledged for one cycle in the
+// first cycle of the request; lifecycle escalation and RMA requests are tied off.
 // Exposes RND and URND EDN clients, the done interrupt, two alerts (index 0 fatal, index 1
 // recoverable), and external IMEM/DMEM SRAM structs from prim_ram_1p_scr_ext.
 // bus_err_o sticks on a TL-UL error response until bus_err_clr_i.
@@ -160,7 +160,9 @@ module sep_crypto_otbn_wrapper (
 
   `OCAH_FF(otbn_otp_key_req_delay, otbn_otp_key_req.req, 1'b0, clk_i, rst_ni)
 
-  assign otbn_otp_key_rsp.ack        = otbn_otp_key_req_delay;
+  // The OTBN key synchronizer (prim_sync_reqack) drops req the cycle after the handshake and
+  // rejects an acknowledge without a request.
+  assign otbn_otp_key_rsp.ack        = otbn_otp_key_req.req & ~otbn_otp_key_req_delay;
   assign otbn_otp_key_rsp.key        = 128'h48ecf6c738f0f108a5b08620695ffd4d;
   assign otbn_otp_key_rsp.nonce      = 64'hf88c2578fa4cd123;
   assign otbn_otp_key_rsp.seed_valid = 1'b1;
