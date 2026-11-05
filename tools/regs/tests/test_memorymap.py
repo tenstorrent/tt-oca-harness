@@ -555,6 +555,10 @@ class RegblockResponseCheckTest(unittest.TestCase):
     def test_exempts_blocks_without_regblock_rtl(self):
         self.check(no_rtl={"strict"})
 
+    def test_checks_sub_blocks_of_blocks_without_regblock_rtl(self):
+        with self.assertRaisesRegex(ValueError, "top.composite.low: regblock answers SLVERR"):
+            self.check(err_check={"strict", "wrap"}, no_rtl={"wrap"})
+
     def test_composite_sub_blocks_take_the_composite_flag(self):
         with self.assertRaisesRegex(ValueError, "top.composite.low: regblock answers SLVERR"):
             self.check(err_check={"strict", "wrap"})
