@@ -1497,9 +1497,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-G2B-LIVENESS",
             "CHK-G2B-LIVENESS",
             "after the release alone, with no cold reset before, ext_in to the SEP SRAM and the "
-            "SMC scratchpad, JTAG2AXI to the SEP SRAM and ext_out, and the stub store and load "
+            "SMC scratchpad, JTAG2AXI writes to the SEP SRAM and ext_out read back over ext_in "
+            "and over the debug module's system bus through sep_out, and the stub store and load "
             "to ext_out each complete a fresh write and read: one response with the issued ID "
-            "within the bound, OKAY, and the read returns what was written",
+            "within the bound, OKAY, and the read returns what was written; the JTAG2AXI read "
+            "after the hold is observed only (SF-003)",
         ),
         (
             "CHK-G2B-SEP2SMC",

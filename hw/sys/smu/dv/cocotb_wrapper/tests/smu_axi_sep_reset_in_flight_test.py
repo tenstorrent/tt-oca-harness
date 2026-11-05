@@ -3,23 +3,26 @@
 """smu_axi_sep_reset_in_flight_test - the SEP-facing links across one IC_RESET hold.
 
 DV-TESTCASE-CONTRACT: TC_G2B ANCHOR: smu_axi_sep_reset_in_flight_test
-DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 095844da013017357b99a6012cecc23f650d18c4b91a91f85c8fc0ab9703e369
-DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 5 ENV: cocotb
+DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: 742a5916d95e83e62b2de11c30c881243285f27c2f1b28f88155c95005f17aee
+DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_AXI_GAPS_VPLAN_DETAIL.md @ artifact_revision 7 ENV: cocotb
 
 The DTP IC_RESET TDR override holds sep_reset_n low once, with the SMC primary
 reset high, while ext_in reads and writes toward the SEP SRAM, with BREADY and
 RREADY withheld, and a SEP CPU egress store toward a stalled ext_out are
 outstanding. The JTAG2AXI write and read toward the SEP SRAM issued before the
 hold complete before the fall: the bridge holds one operation and drives its
-own BREADY and RREADY, so the leaf prints INFO-CELL-NOT-DRIVABLE for that cell,
-and the response check on dtp_dbg covers the JTAG2AXI read issued during the
-hold and the operations after the release.
+own BREADY and RREADY, so the leaf prints INFO-CELL-NOT-DRIVABLE for that cell.
+The JTAG2AXI read issued during the hold is accepted on sep_in and gets no
+response; no checker expects one, and that read and the JTAG2AXI read after the
+release are observations of the open question SF-003 (the SEP). The response
+check on dtp_dbg covers both reads and the bridge writes after the release.
 The SEP-originated traffic is the ICCM stub of smu_sep_reset_inflight_test
 under the debug module, plus the debug module's system bus. The leaf samples
 the SEP-driven VALIDs on every clk_smu_i edge of the hold, holds every
 response against its issue log, grades the bench expectation window, and
 after the release alone runs a fresh write and read on every route, the
-SEP-to-SMC accesses included; the one cold reset comes last. Observation is
+SEP-to-SMC accesses included, with each bridge write read back over ext_in or
+the debug module's system bus; the one cold reset comes last. Observation is
 passive. VCS is the run of record; the bench checkers print their CHK-AXI-SVA
 lines at final.
 

@@ -28,17 +28,21 @@ S4 SEP_RESET: the first IC_RESET scan stages the override and carries the
    sep_reset_n low. Every clk_smu_i edge while sep_reset_n is low samples the
    SEP-driven VALIDs of the SEP-to-SMC port and sep_out, B and R VALID of the
    converter output toward the SEP, the crossbar-driven sep_in VALIDs and the
-   reset nets. One JTAG2AXI read goes into the SEP aperture during the reset.
+   reset nets. One JTAG2AXI read goes into the SEP aperture during the reset;
+   no checker expects its response (OBS-G2B-RESET-ENDS, SF-003).
 S5 NONSEP_DURING_RESET: a JTAG2AXI write and read to ext_out and an ext_in
    write and read to the SMC scratchpad while sep_reset_n is low; then the
    override is released and the bench expectation window closes.
 S6 RELEASE_LIVENESS: every B and R on smu_in, dtp_dbg and sep_out is held
    against the issue log; the debug module is brought up again, the hart
    halted and the stub rewritten, then one fresh write and read on every S1
-   route and the stub store and load to ext_out and to the SMC aperture, with
-   no cold reset before them; the one cold reset of the leaf follows.
+   route, a bridge write read back over ext_in or the system bus, and the stub
+   store and load to ext_out and to the SMC aperture, with no cold reset before
+   them; last, one JTAG2AXI read, observed only (OBS-G2B-J2A-READ-AFTER-HOLD,
+   SF-003); the one cold reset of the leaf follows.
 S7 TIMEOUT: every wait is bounded in clk_smu_i edges, polls or captures; an
    expiry fails the leaf and is classified as unanswered-transaction evidence.
+   The two observed JTAG2AXI reads are capture windows that never fail it.
 
 Observation is passive: the ext_in pins, the request and response structs of
 the dtp_dbg, sep_out and SEP-to-SMC links, the ports of the bench checker
@@ -183,10 +187,11 @@ SPM_S6 = SPM_LOCAL + 0x50
 # ext_out words: JTAG2AXI through smc_out, and the stub through sep_out (SEP SMU window)
 EXT_J2A_S1 = EXT_J2A
 EXT_J2A_S5 = EXT_J2A + 0x100
-EXT_J2A_S6 = EXT_J2A + 0x200
 EGRESS_S1 = EGRESS_ADDR + 0x40
 EGRESS_HELD = EGRESS_ADDR + 0x80
 EGRESS_S6 = EGRESS_ADDR + 0xC0
+# The bridge writes this ext_out word through smc_out; the system bus reads it back through sep_out.
+EGRESS_J2A_S6 = EGRESS_ADDR + 0x200
 
 # --- ext_in IDs ---
 S1_IDS = {"sep": (0x01, 0x02), "spm": (0x03, 0x04)}
@@ -194,6 +199,7 @@ LOAD_ARIDS = (0x11, 0x12)
 LOAD_AWIDS = (0x13, 0x14)
 S5_IDS = (0x21, 0x22)
 S6_IDS = {"sep": (0x31, 0x32), "spm": (0x33, 0x34)}
+S6_J2A_READBACK_ARID = 0x35
 
 # --- words ---
 W_S1_EXT = 0x6201_0001_6201_0002
@@ -241,7 +247,7 @@ BUDGET = {
     "LOAD": {"j2a": 2, "dmi": 3, "ext_in": 4, "ic_reset": 0},
     "SEP_RESET": {"j2a": 1, "dmi": 1, "ext_in": 0, "ic_reset": 2},
     "NONSEP_DURING_RESET": {"j2a": 2, "dmi": 0, "ext_in": 2, "ic_reset": 2},
-    "RELEASE_LIVENESS": {"j2a": 4, "dmi": 27, "ext_in": 4, "ic_reset": 0},
+    "RELEASE_LIVENESS": {"j2a": 3, "dmi": 28, "ext_in": 5, "ic_reset": 0},
 }
 # Planned count per term: routes, SMC-aperture accesses, ext_in requests outstanding plus the armed
 # stub store, edges with sep_reset_n low, accesses issued during the reset, fresh routes after the
@@ -802,6 +808,17 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         self.ext_ops[tag] = {"addr": addr, "ids": ids, "res": res}
         return res
 
+    async def _ext_read(self, tag: str, addr: int, arid: int) -> dict:
+        self._use("ext_in")
+        mk = self.mon.mark()
+        ok = await self._xfer(f"{tag}_read", self._issue_read(addr, 8, 3, arid), fatal=False)
+        r = self._since(mk, "r", {arid}, "rid")
+        return {
+            "r_done": ok is not None,
+            "rresp": [_rn(x["rresp"]) for x in r],
+            "rdata": [_hx(x["rdata"]) for x in r],
+        }
+
     @staticmethod
     def _ext_ok(res: dict) -> tuple:
         return (res["w_done"], res["bresp"], res["r_done"], res["rresp"], res["rdata"])
@@ -1256,20 +1273,32 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         got["ext_in->smc_spm"] = self._ext_ok(res)
         want["ext_in->smc_spm"] = self._ext_want(W_S6_SPM)
         await self._j2a_idle("s6_j2a_port_idle")
-        for route, addr, word in (
-            ("j2a->sep_sram", SEP_S6_J2A, W_S6_J2A),
-            ("j2a->ext_out", EXT_J2A_S6, W_S6_EXT_OUT),
-        ):
-            w = await self._j2a(J2A_OP_WRITE, addr, word, f"s6_{route}_wr")
-            r = await self._j2a(J2A_OP_READ, addr, 0, f"s6_{route}_rd")
-            wv, rv = self._j2a_view(w), self._j2a_view(r)
-            got[route] = (wv, rv, _hx(r["rdata"]))
-            one = {"requests": 1, "responses": 1, "issued_id": 1}
-            want[route] = (
-                {"status": J2A_STATUS_SUCCESS, **one},
-                {"status": J2A_STATUS_SUCCESS, **one},
-                _hx(word),
-            )
+        j2a_ok = {"status": J2A_STATUS_SUCCESS, "requests": 1, "responses": 1, "issued_id": 1}
+        w = await self._j2a(J2A_OP_WRITE, SEP_S6_J2A, W_S6_J2A, "s6_j2a->sep_sram_wr")
+        rb = await self._ext_read("s6_j2a_sep_readback", SEP_S6_J2A, S6_J2A_READBACK_ARID)
+        got["j2a->sep_sram"] = (self._j2a_view(w), rb["r_done"], rb["rresp"], rb["rdata"])
+        want["j2a->sep_sram"] = (j2a_ok, True, [okay], [_hx(W_S6_J2A)])
+        w = await self._j2a(J2A_OP_WRITE, EGRESS_J2A_S6, W_S6_EXT_OUT, "s6_j2a->ext_out_wr")
+        sba = await self._sba_access(EGRESS_J2A_S6, "s6_j2a_ext_out_readback")
+        sbv = self._sep_view(sba)
+        got["j2a->ext_out"] = (
+            self._j2a_view(w),
+            sba["link"],
+            sba["sberror"],
+            sbv["one_response_issued_id"],
+            sbv["resp"],
+            _hx(self.mem.read_int(EGRESS_J2A_S6, 8)),
+            _hx(sba["value"]),
+        )
+        want["j2a->ext_out"] = (
+            j2a_ok,
+            "xbar_sep_out",
+            0,
+            True,
+            [okay],
+            _hx(W_S6_EXT_OUT),
+            _hx(W_S6_EXT_OUT & 0xFFFF_FFFF),
+        )
         st, ld = await self._stub_pair(EGRESS_S6, "s6_stub_ext", BYTE["s6_ext"])
         sv, lw = self._sep_view(st), self._sep_view(ld)
         got["stub->ext_out"] = (
@@ -1292,6 +1321,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         )
         smc_st, smc_ld = await self._stub_pair(spm, "s6_stub_smc", BYTE["s6_smc"])
         self._sep2smc_obs([smc_st, smc_ld], "S6")
+        j = await self._j2a_obs(J2A_OP_READ, SEP_S6_J2A, 0, "s6_j2a_sep_rd", J2A_OBS_CAPTURES)
+        self._j2a_read_after_obs(j)
         self.routes["s6"] = got
         self.routes["s6_want"] = want
         self.routes["s6_smc"] = (smc_st, smc_ld)
@@ -1383,6 +1414,21 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             f"valid_high_after_entry={len(high)}",
         )
 
+    def _dtp_fate(self, rec: dict) -> dict:
+        """The read's dtp_dbg AR and every R with its ID before the next dtp_dbg AR."""
+        ars = self._tsince(rec["mks"], "dtp_dbg", "ar")
+        if not ars:
+            return {"ar": None, "r": []}
+        ar = ars[0]
+        nxt = [e["cyc"] for e in self.taps["dtp_dbg"].ev["ar"] if e["cyc"] > ar["cyc"]]
+        end = min(nxt) if nxt else None
+        rs = [
+            e
+            for e in self.taps["dtp_dbg"].ev["r"]
+            if e["rid"] == ar["arid"] and e["cyc"] > ar["cyc"] and (end is None or e["cyc"] < end)
+        ]
+        return {"ar": ar, "r": rs}
+
     def _reset_ends_obs(self) -> None:
         h = self.h
         j = self.obs.get("reset_read", {})
@@ -1390,11 +1436,25 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         for link in GRADED:
             quiet[link] = "quiet" if not [x for x in h["high"] if x[1] == link] else "VALID high"
         sepin = "VALID high" if any(h["sepin_high"].values()) else "quiet"
+        fall, rise = h["fall"], h["rise"]
+        held_ars = [
+            f"arid={_hx(e['arid'])} araddr={_hx(e['araddr'])}@{e['cyc']}"
+            for e in self.taps["xbar_sep_in"].ev["ar"]
+            if fall is not None and e["cyc"] >= fall and (rise is None or e["cyc"] < rise)
+        ]
+        fate = self._dtp_fate(j) if j else {"ar": None, "r": []}
+        ar = fate["ar"]
+        before = [e for e in fate["r"] if rise is None or e["cyc"] < rise]
+        s5 = [
+            (r["label"], r["met"], r["status"]) for r in self.obs.get("nonsep", {}).get("j2a", ())
+        ]
         self.log.info(
             "OBS-G2B-RESET-ENDS: sep_reset_n low for %d edges; obs_sep_rst_n_o (rst_ni) and the "
             "primary reset not high on %d of them; from the second edge %s, sep_in %s; "
             "aperture ports while held %s; JTAG2AXI read at %s during the reset: met=%s status=%s "
-            "rdata=%s captures=%s; observation only, SF-005, SF-001",
+            "rdata=%s captures=%s, dtp_dbg AR %s, sep_in AR handshakes while sep_reset_n low %s, "
+            "R before the release %s, R by the end %s; bridge (met, status) of the S5 operations %s; "
+            "observation only, the SEP, SF-003, SF-005, SF-001",
             h["low"],
             len(h["nets_bad"]),
             quiet,
@@ -1405,7 +1465,46 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             j.get("status"),
             _hx(j.get("rdata")),
             j.get("captures"),
+            f"arid={_hx(ar['arid'])}@{ar['cyc']}" if ar else "none",
+            held_ars or "none",
+            [(_hx(e["rid"]), _rn(e["rresp"])) for e in before] or "none",
+            [(_hx(e["rid"]), _rn(e["rresp"])) for e in fate["r"]] or "none",
+            s5,
         )
+        if ar is not None and not fate["r"]:
+            self._classify(
+                "unanswered-transaction",
+                "design-side",
+                f"JTAG2AXI read at {_hx(DURING_ADDR)} accepted while sep_reset_n is low, no R to "
+                "the end; no pinned source states an answer, SF-003; graded=no, OBS-G2B-RESET-ENDS",
+                "dtp_dbg",
+            )
+
+    def _j2a_read_after_obs(self, rec: dict) -> None:
+        fate = self._dtp_fate(rec)
+        ar = fate["ar"]
+        self.log.info(
+            "OBS-G2B-J2A-READ-AFTER-HOLD: JTAG2AXI read at %s after the bridge write of %s: met=%s "
+            "status=%s rdata=%s captures=%s; dtp_dbg AR %s, R %s; the SEP, open owner question "
+            "SF-003 (must a request forwarded to sep_in while the IC_RESET override holds "
+            "sep_reset_n be answered), observation only, never compared, SF-005",
+            _hx(SEP_S6_J2A),
+            _hx(W_S6_J2A),
+            rec["met"],
+            rec["status"],
+            _hx(rec["rdata"]),
+            rec["captures"],
+            f"arid={_hx(ar['arid'])}@{ar['cyc']}" if ar else "none",
+            [(_hx(e["rid"]), _rn(e["rresp"]), _hx(e["rdata"])) for e in fate["r"]] or "none",
+        )
+        if rec["status"] == J2A_STATUS_BUSY:
+            self._classify(
+                "unanswered-transaction",
+                "design-side",
+                f"JTAG2AXI read at {_hx(SEP_S6_J2A)} after the hold reports op={rec['status']}; "
+                "SF-003; graded=no, OBS-G2B-J2A-READ-AFTER-HOLD",
+                "dtp_dbg",
+            )
 
     def _outcome_obs(self) -> None:
         rec = self.holds.get(HOLD, {})
@@ -1757,15 +1856,17 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             await self._s4_sep_reset()
             await self._s5_nonsep()
             self._valid_low_grade()
-            self._reset_ends_obs()
             await self._s6_liveness()
         except AssertionError as exc:
+            if self.steps.get("S5"):
+                self._reset_ends_obs()
             if str(exc).startswith("TIMEOUT"):
                 self._classify("unanswered-transaction", "design-side", str(exc), "dtp_dbg")
                 self._info(
                     f"G2B-LAST-SEP-LINKS {self._last('xbar_sep_out')} {self._last('sep_to_smc')}"
                 )
             raise
+        self._reset_ends_obs()
         cut_mon, cut_w = self.mon.cyc, self.wcyc
         self._phantom_grade(cut_mon, cut_w)
         self._liveness_grade()
