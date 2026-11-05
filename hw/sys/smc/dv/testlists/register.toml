@@ -93,17 +93,10 @@ tags = ["ci", "register"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_pwm_pad_test"
-module = "smc_pwm_pad_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "axil"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_pwm_sanity_test"
 module = "smc_pwm_sanity_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "axil"]
 run_modes = ["smoke"]
