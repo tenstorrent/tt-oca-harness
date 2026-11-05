@@ -16,12 +16,15 @@
 //
 // Hold-off knob: +smc_flr_requeue_assertoff turns SMC_FLR_ONE_PULSE_PER_EDGE
 // off for the leaf that reproduces the FLR requeue defect, whose own check
-// line the fire would pre-empt on Verilator.
+// line the fire would preempt on Verilator.
 //
 // Non-vacuity: a counter per rule group counts the clock edges at which its
 // antecedent held; the final block prints each as
 // CHK-RESET-SVA-<GROUP>: antecedent_edges=<n>, and
-// +smc_reset_sva_need_<group> fails the run when that count is 0.
+// +smc_reset_sva_need_<group> fails the run when that count is 0. Two counts
+// leave out what every run does on its own: iso_release counts a release of
+// the cluster boundary only after a software reset request was applied, and
+// uncore_low counts an uncore reset only after its first release.
 
 `include "ocah_sva_macros.svh"
 
@@ -308,19 +311,30 @@ module smc_reset_sva #(
   int unsigned cnt_iso_l2_blocked, cnt_iso_mmio_resp, cnt_mmio_held, cnt_flush_rose;
   int unsigned cnt_flr_fall, cnt_pad62_low;
 
+  // A release that follows an applied software request, and an uncore reset
+  // after the first release: the cold-boot release and the bring-up reset of
+  // every run do not count.
+  bit sw_request_applied, uncore_released_once;
+  always_ff @(posedge clk_smc_i) begin
+    if (!rst_primary_smc_clk_ni) sw_request_applied <= 1'b0;
+    else if (a2_release_ant) sw_request_applied <= 1'b0;
+    else if (cpu_reset_applied_i) sw_request_applied <= 1'b1;
+    if (powergood_stable_i && cpu_uncore_reset_ni) uncore_released_once <= 1'b1;
+  end
+
   always_ff @(posedge clk_smc_i) begin
     if (rst_primary_smc_clk_ni) begin
       if (a1_withheld_ant) cnt_uncore_withheld <= cnt_uncore_withheld + 1;
       if (a1_cause_ant && rst_warm_smc_clk_ni && warm_q) cnt_uncore_cause <= cnt_uncore_cause + 1;
       if (a1_applied_ant) cnt_uncore_applied <= cnt_uncore_applied + 1;
-      if (a2_release_ant) cnt_iso_release <= cnt_iso_release + 1;
+      if (a2_release_ant && sw_request_applied) cnt_iso_release <= cnt_iso_release + 1;
       if (a2_held_ant) cnt_iso_ready_held <= cnt_iso_ready_held + 1;
       if (a5_l2_ant) cnt_iso_l2_blocked <= cnt_iso_l2_blocked + 1;
       if (a5_b_ant || a5_r_ant) cnt_iso_mmio_resp <= cnt_iso_mmio_resp + 1;
       if (a7_aw_ant || a7_w_ant || a7_ar_ant) cnt_mmio_held <= cnt_mmio_held + 1;
       if (a8_rose_ant) cnt_flush_rose <= cnt_flush_rose + 1;
     end
-    if (powergood_stable_i && a3_ant) cnt_uncore_low <= cnt_uncore_low + 1;
+    if (powergood_stable_i && uncore_released_once && a3_ant) cnt_uncore_low <= cnt_uncore_low + 1;
   end
 
   always_ff @(posedge clk_ref_i) begin
