@@ -1399,6 +1399,44 @@ module sep_uvm_top
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_busy_qs
     };
 
+    // Zero-fill fault inject (dma_fill_fault_sel_i). The DMA host path's
+    // TL-UL-to-AXI-Lite adapter holds each response's error in resp_error_q; it
+    // is forced on only while the selected fill is busy, so the fill's write
+    // responses carry d_error and every other transfer of the run is untouched.
+    // A zero fill issues no reads. The condition is sampled on each falling
+    // edge, and the flop is released only after a force.
+    logic        dma_fill_fault_hit;
+    logic        dma_fill_fault_forced;
+    logic [31:0] dma_fill_dst;
+    assign dma_fill_dst = `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.dst_addr_lo.q;
+    assign dma_fill_fault_hit =
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.status.busy.q &&
+        (`SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.control.opcode.q == 4'h4) &&
+        (((dma_fill_fault_sel_i == 2'd1) &&
+          (dma_fill_dst >= 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_ICCM_BASE_ADDR)) &&
+          (dma_fill_dst < 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_ICCM_BASE_ADDR +
+                              sep_top_addrmap_pkg::SEP_TOP_SEP_ICCM_SIZE))) ||
+         ((dma_fill_fault_sel_i == 2'd2) &&
+          (dma_fill_dst == 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR))));
+
+    always @(negedge clk_i) begin
+        if (dma_fill_fault_hit === 1'b1) begin
+            force `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.resp_error_q = 1'b1;
+            dma_fill_fault_forced = 1'b1;
+        end else if (dma_fill_fault_forced === 1'b1) begin
+            release `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.resp_error_q;
+            dma_fill_fault_forced = 1'b0;
+        end
+    end
+
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            dma_fill_fault_count_o <= '0;
+        end else if (dma_fill_fault_hit === 1'b1 && !(&dma_fill_fault_count_o)) begin
+            dma_fill_fault_count_o <= dma_fill_fault_count_o + 1'b1;
+        end
+    end
+
     // Mailbox, IRQ and PIC observation taps (docs/SEP_TB_ARCH.adoc). Read-only
     // copies of DUT nets; no force.
     assign crypto_alert_pulse_probe_o = `SEP_CORE.u_sep_crypto.crypto_alert_pulse;
@@ -5883,6 +5921,7 @@ module sep_uvm_top
     assign lc_sigint_bad_value_i    = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
+    assign dma_fill_fault_sel_i     = '0;
     assign token_cmp_fault_copy_i   = '0;
     assign token_digest_test_en_inject_i = 1'b0;
     assign token_digest_chiplet_test_en_inject_i = 1'b0;

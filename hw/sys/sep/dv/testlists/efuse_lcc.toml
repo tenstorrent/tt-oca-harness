@@ -408,6 +408,24 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
+# Same module with the refused-program leg pinned: the plan comes from plan seed 8,
+# which draws the leg that programs a lifecycle bit with only the other token channel
+# matched, and the preload is that plan's t=0 image. The status and the go-write
+# response of each refused program are logged, not graded.
+name = "sep_efuse_transient_rma_rand_test_legb"
+module = "efuse.sep_efuse_transient_rma_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 3600
+tags = ["efuse", "lcc", "rma", "rand_rep", "subsystem", "sep_spec_log"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_rma_require_legb",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_transient_rma_legb.toml",
+]
+
+[[tests]]
 # Token match, mismatch shapes, hold, channel independence, no reset of the token
 # arrays, and retention of a SEC_DIS match over cold reset. VCS only: the no-reset check
 # needs X on unreset flops. RAND-REP.

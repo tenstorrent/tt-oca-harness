@@ -728,8 +728,10 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 if size == 2:
                     self._grade_cell("reset_ctrl", "past", "LSU", SepAxiOp.WRITE, a, resp, 0, wd)
                 else:
+                    self.logger.info("INFO-ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d", a, size)
                     self.logger.info(
-                        "OBS-ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d resp=%s graded=0",
+                        "OBS-ROW-NOALIAS-RESP LOG: seed=%d addr=0x%08x size=%d resp=%s",
+                        self.random_seed(),
                         a,
                         size,
                         _RN.get(resp),
