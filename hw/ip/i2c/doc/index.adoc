@@ -77,6 +77,8 @@ pointer mismatch in a hardened FIFO counter, or a parity mismatch on the entry
 at the head of a FIFO. It is independent of `INTR_ENABLE`. The pointer error
 holds until the FIFO is cleared or reset; the parity error clears once that
 entry is read. The SMC ORs the instances into `smc_ras_o.i2c_intg_err`.
+Each FIFO's error also drives its own `INTR_STATE.*_FIFO_ERROR` field, so
+the field tells software which FIFO to reset through `FIFO_CTRL`.
 
 ifdef::backend-html5[]
 include::partial$i2c/doc/memmap.adoc[]

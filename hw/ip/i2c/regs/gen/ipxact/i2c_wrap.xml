@@ -269,8 +269,11 @@ to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CONTROLLER_TX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-error. Write `1` to clear.</ipxact:description>
+              <ipxact:description>Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -284,8 +287,11 @@ error. Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CONTROLLER_RX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-error. Write `1` to clear.</ipxact:description>
+              <ipxact:description>Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>17</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -299,8 +305,11 @@ error. Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TARGET_TX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-Write `1` to clear.</ipxact:description>
+              <ipxact:description>Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>18</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -314,8 +323,11 @@ Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TARGET_RX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-Write `1` to clear.</ipxact:description>
+              <ipxact:description>Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>19</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
