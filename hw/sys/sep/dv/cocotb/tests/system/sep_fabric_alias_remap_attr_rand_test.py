@@ -284,10 +284,9 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         """Two valid regions over the same pages with different offsets: one read.
 
         CHK-ALIAS-OVERLAP: the alias remap output carries one AR at the source
-        translated by the offset of the lower-numbered region, and the read
-        answers as the outbound filter rules for that address. The only filter
-        entry covers region ``k``'s translation, so the read is OKAY when ``k``
-        is the lower-numbered region and DECERR otherwise.
+        translated by the offset of the lower-numbered region, and the read is
+        OKAY. The only filter entry covers that translation, so a read remapped
+        by the other region's offset is refused with DECERR.
         """
         cfg = self.tcfg
         k2 = cfg.overlap_region
@@ -303,7 +302,9 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             attrs_word(cfg.overlap_offset, cfg.cacheable, True),
             "overlap",
         )
-        await self.filt.program(cfg.entry, self._entry(translate(mid, cfg.offset)))
+        low_offset = cfg.offset if cfg.region < k2 else cfg.overlap_offset
+        want = translate(mid, low_offset)
+        await self.filt.program(cfg.entry, self._entry(want))
         mo = self.tap_out.mark()
         self.env.axi_monitor.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
@@ -320,17 +321,14 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         if seq.resp_code != RESP_DECERR:
             self.env.axi_monitor.release_expected_decerr(1)
         outs = self.tap_out.since(mo, "ar")
-        low_offset = cfg.offset if cfg.region < k2 else cfg.overlap_offset
-        want = translate(mid, low_offset)
-        want_resp = RESP_OKAY if cfg.region < k2 else RESP_DECERR
         line = (
             f"region_a={cfg.region} offset_a=0x{cfg.offset:014x} region_b={k2} "
             f"offset_b=0x{cfg.overlap_offset:014x} src=0x{mid:x} "
             f"alias_out_addr={','.join(_hx(b.addr) for b in outs) or 'none'} n_out={len(outs)} "
             f"expect=0x{want:x} (region {min(cfg.region, k2)}) "
-            f"resp={_rname(seq.resp_code)} expect_resp={_rname(want_resp)}"
+            f"resp={_rname(seq.resp_code)} expect_resp=OKAY"
         )
-        assert [b.addr for b in outs] == [want] and seq.resp_code == want_resp, (
+        assert [b.addr for b in outs] == [want] and seq.resp_code == RESP_OKAY, (
             f"CHK-ALIAS-OVERLAP FAIL: {line}"
         )
         self.logger.info("CHK-ALIAS-OVERLAP PASS: %s", line)

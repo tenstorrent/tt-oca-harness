@@ -1078,7 +1078,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`
 |LSU master, outbound responder, alias-remap reference model
-|Proves that an alias-remap hit is `start_addr <= address < end_addr` and replaces all four AxCACHE bits, and that a miss, and a region with `valid` 0, keeps address and AxCACHE. A hit lands at or above `0x1_0000_0000`, so the hit cells also prove the route of that address class. Also logs the AxCACHE at the alias remap output next to the PR-OUT value (`OBS-ALIAS-OUT-CACHE`) with no verdict. Also grades that a read through two valid regions over the same pages leaves the alias remap at the address of the lower-numbered region and answers as the outbound filter rules for that address (`CHK-ALIAS-OVERLAP`; `hw/ip/axi_alias_remap/regs/alias_remap.rdl:42`, `hw/ip/axi_filter/doc/index.adoc` "Blocked Transactions").
+|Proves that an alias-remap hit is `start_addr <= address < end_addr` and replaces all four AxCACHE bits, and that a miss, and a region with `valid` 0, keeps address and AxCACHE. A hit lands at or above `0x1_0000_0000`, so the hit cells also prove the route of that address class. Also logs the AxCACHE at the alias remap output next to the PR-OUT value (`OBS-ALIAS-OUT-CACHE`) with no verdict. Also grades that a read through two valid regions over the same pages leaves the alias remap at the address of the lower-numbered region and is admitted by an outbound entry over that address only (`CHK-ALIAS-OVERLAP`; `hw/ip/axi_alias_remap/regs/alias_remap.rdl:42`, `hw/ip/axi_filter/doc/index.adoc` "Blocked Transactions").
 
 |<<sep_fabric_smc_route_test,`sep_fabric_smc_route_test`>>
 |3

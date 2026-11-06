@@ -757,7 +757,7 @@ this entry does not write or grade them with the strap high.
 . Firmware arms PIC source 40, publishes READY on the cold-scratch register, then presents a SEC_DISABLE token so a compare is in flight.
 . Host injects a differential-pair collapse on the SEC_DISABLE comparator once READY is observed.
 . The service routine records the claim id and the fault register, then masks `meie[40]`.
-. Firmware holds a quiet window and requires the source to still be requesting at both ends of it.
+. Firmware holds a quiet window and requires the source to read pending on every sample of it.
 . After the quiet window, firmware enables `meie[40]` again with the service routine not masking the source, and holds for a fixed window. The routine masks the source on its fifth entry, so a storm cannot stall the core. Firmware masks the source, reads the pending state of source 40, and grades the number of entries and the pending state (`CHK-PIC-LEVEL-REENTRY`).
 
 *Checkers*:
@@ -770,7 +770,7 @@ this entry does not write or grade them with the strap high.
 |CHK-PIC-FAULT
 |`TOKEN_MATCH_FAULT` secure-disable bit is set.
 |CHK-PIC-MASK
-|After `meie[40]` is masked the service routine does not re-enter, AND the source is still asserting its request at both ends of the quiet window. `TOKEN_MATCH_FAULT` is software-read-only and clears only on reset, so the line cannot drop by itself; without the still-requesting leg a quiet window would also be satisfied by a request that went away on its own, or by a sticky latch that never set. The check is additionally gated on an interrupt having been delivered at all, so it cannot report a mask result on a run where nothing arrived.
+|After `meie[40]` is masked the service routine does not re-enter, AND the source reads pending on every one of the 4096 samples of the quiet window. `TOKEN_MATCH_FAULT` is software-read-only and clears only on reset, so the line cannot drop by itself; without the still-requesting leg a quiet window would also be satisfied by a request that went away on its own, or by a sticky latch that never set. The check is additionally gated on an interrupt having been delivered at all, so it cannot report a mask result on a run where nothing arrived.
 |CHK-PIC-LEVEL-REENTRY
 |With `meie[40]` enabled again and the service routine not masking the source, the routine enters at least twice in the fixed window, and source 40 still reads pending after the window (`doc/programmer/src/sep-programming.adoc:235-237`: source 40 "Stays asserted until reset ... an unmasked handler re-enters"). Fails if the level request is lost after the first claim or after the repeated claims, or the PIC does not deliver it again. Evidence: `CHK-PIC-LEVEL-REENTRY PASS: entries=0x<n> min=0x00000002 pending=0x00000001 expect_pending=0x00000001`. The upper count is set by the firmware storm cap, not by the specification, and is not graded.
 |CHK-RAS-TOKEN_MATCH_FAULT-IDLE, CHK-RAS-TOKEN_MATCH_FAULT-RISE, CHK-RAS-TOKEN_MATCH_FAULT-SHAPE

@@ -13,7 +13,7 @@
  *   CHK-PIC-CLAIM  : the ISR claims the fault source
  *   CHK-PIC-FAULT  : the secure-disable fault bit is set
  *   CHK-PIC-MASK   : after masking, the ISR does not re-enter, and the source
- *                    is still pending at both ends of the quiet window
+ *                    reads pending on every sample of the quiet window
  *   CHK-PIC-LEVEL-REENTRY : with source 40 enabled again and the handler not
  *                    masking it, the ISR enters at least twice in a fixed
  *                    window, and source 40 is still pending after the window
@@ -119,14 +119,13 @@ int main(void) {
         errors++;
     } else {
         uint32_t before = g_isr_count;
-        /* The fault clears only on reset. Sample the pending state at both
-         * ends of the quiet window so a request that drops during it fails. */
-        uint32_t pending_before = pic_source_pending(PIC_TOKEN_FAULT);
+        /* The fault clears only on reset, so every sample of the quiet
+         * window reads the source pending. */
+        uint32_t not_pending = 0u;
         for (i = 0; i < STORM_CHECK_ITERS; i++) {
-            __asm__ volatile("nop");
+            not_pending += pic_source_pending(PIC_TOKEN_FAULT) ^ 1u;
         }
-        uint32_t pending_after = pic_source_pending(PIC_TOKEN_FAULT);
-        if (!pending_before || !pending_after) {
+        if (not_pending != 0u) {
             sep_mbx_puts("FAIL: PIC 40 not requesting across the mask window\n");
             errors++;
         } else if (g_isr_count != before) {
