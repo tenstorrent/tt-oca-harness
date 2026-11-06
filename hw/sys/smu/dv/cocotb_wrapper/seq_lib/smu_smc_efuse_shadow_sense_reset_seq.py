@@ -95,7 +95,11 @@ class smu_smc_efuse_shadow_sense_reset_seq:
         """(name, byte offset, byte length) per register of the map, from smc_addr.h."""
         base = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
         entries = [
-            ("LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")),
+            ("HARNESS_LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")),
+            (
+                "SUPPLEMENTARY_LOCKS",
+                smc_addr("SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR"),
+            ),
             (
                 "JTAG_PUBLIC_IDENTITY",
                 smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
