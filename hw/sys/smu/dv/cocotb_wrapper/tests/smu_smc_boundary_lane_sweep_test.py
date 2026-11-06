@@ -5,7 +5,7 @@
 Extends what smu_smc_boundary_io_test proves on one or two lanes to all of
 them: the 256 external interrupt lanes on the SMC CPU interrupt vector, the
 32 isolation-request and 32 subsystem-configuration lanes of the reset unit,
-the 32 outbound mailbox interrupt lanes, the 65 GPIO pads on their interrupt
+the 32 outbound mailbox interrupt lanes, the 67 GPIO pads on their interrupt
 and DATA_CTRL.PAD2CORE mirrors, and the four UART interrupt lanes. Each lane
 is driven both ways, each compare reads a DUT-produced value, and each
 aggregate names the lane count it expects.

@@ -73,7 +73,10 @@ module smc_periph_axi_lite_xbar
 
   output axi_lite32_req_t  external_req_o,  // Request for the smc_external window above
                                             // the eFuse shim carve-out.
-  input  axi_lite32_resp_t external_resp_i  // Response from the smc_external target.
+  input  axi_lite32_resp_t external_resp_i,  // Response from the smc_external target.
+
+  output axi_lite32_req_t  pwm_req_o,   // Request for the PWM wrapper window.
+  input  axi_lite32_resp_t pwm_resp_i   // Response from the PWM wrapper.
 );
 
   // ===========================================================================
@@ -146,7 +149,11 @@ module smc_periph_axi_lite_xbar
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
                     + EFUSE_SHIM_SIZE),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + smc_pkg::SmcExternalWindowSize)}
+                    + smc_pkg::SmcExternalWindowSize)},
+    '{idx: 12,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE)}
   };
 
   // ===========================================================================
@@ -162,8 +169,8 @@ module smc_periph_axi_lite_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  smc_periph_axi_lite_xbar_pkg::xbar_mst_req_t  [11:0] xbar_mst_req;
-  smc_periph_axi_lite_xbar_pkg::xbar_mst_resp_t [11:0] xbar_mst_resp;
+  smc_periph_axi_lite_xbar_pkg::xbar_mst_req_t  [12:0] xbar_mst_req;
+  smc_periph_axi_lite_xbar_pkg::xbar_mst_resp_t [12:0] xbar_mst_resp;
 
   axi_lite_xbar #(
     .Cfg          (smc_periph_axi_lite_xbar_pkg::XbarCfg),
@@ -262,5 +269,11 @@ module smc_periph_axi_lite_xbar
   // ---------------------------------------------------------------------------
   assign external_req_o = xbar_mst_req[11];
   assign xbar_mst_resp[11] = external_resp_i;
+
+  // ---------------------------------------------------------------------------
+  // Output: pwm (AXI4_LITE, 32-bit)
+  // ---------------------------------------------------------------------------
+  assign pwm_req_o = xbar_mst_req[12];
+  assign xbar_mst_resp[12] = pwm_resp_i;
 
 endmodule : smc_periph_axi_lite_xbar

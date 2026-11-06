@@ -156,6 +156,7 @@ tests = [
     "smc_uart_extremes_misc_test",
     "smc_uart_sanity_test",
     "smc_log_engine_intr_mask_test",
+    "smc_log_engine_port_limits_test",
 ]
 
 [[tests]]
@@ -236,6 +237,17 @@ name = "smc_uart_log_engine_reg_map_test"
 module = "smc_uart_log_engine_reg_map_test"
 seed = 1
 timeout_sec = 3600
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+# Wrapper 0: CPU THR writes merged with a running log through the write-port
+# arbiter, the four-word read-data FIFO measured against a stalled transmitter,
+# and the 512 KiB region clamp placing slot 1.
+[[tests]]
+name = "smc_log_engine_port_limits_test"
+module = "smc_log_engine_port_limits_test"
+seed = 1
+timeout_sec = 1800
 tags = ["ci", "uart"]
 run_modes = ["smoke"]
 

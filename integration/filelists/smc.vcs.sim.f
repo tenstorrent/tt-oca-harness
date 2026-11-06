@@ -977,6 +977,7 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv
 hw/sys/smc/dv/models/smc_scratch_map_pkg.sv
 hw/sys/smc/dv/models/smc_cpu_mem_dv.sv
+hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv
 hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv
 hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv
 hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv

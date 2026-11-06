@@ -7,7 +7,9 @@ own over the fields `DAT_structure.rdl` declares, and all six are read back
 after all six are written. Each entry is then cleared and read back 0. DCT
 entry 0, which only dynamic address assignment writes, is read twice on every
 instance. Every read must complete OKAY, and the two reads must agree on every
-bit known in both; unwritten RAM reads X under a four-state simulator.
+bit known in both; unwritten RAM reads X under a four-state simulator. DAT
+slot 16 must alias entry 0 both ways, and a write to DCT entry 0 or slot 16
+must be dropped, as `memmap.adoc` and `oca_i3c_wrap.rdl` state.
 """
 
 from __future__ import annotations
@@ -22,10 +24,12 @@ class smc_i3c_dxt_table_test(smc_base_test):
     """Write/read the DAT and read the DCT of all six I3C instances."""
 
     required_evidence = (
+        "CHK-I3C-DAT-ALIAS-16",
         "CHK-I3C-DAT-TABLE-RW",
         "CHK-I3C-DCT-TABLE-READ",
+        "CHK-I3C-DCT-WRITE-DROPPED",
     )
-    min_evidence = 2
+    min_evidence = 4
 
     auto_protocol_vip = False
 
@@ -34,3 +38,5 @@ class smc_i3c_dxt_table_test(smc_base_test):
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.dat_checked == 6, f"{seq.dat_checked} DAT entries checked, expected 6"
         assert seq.dct_checked == 6, f"{seq.dct_checked} DCT entries checked, expected 6"
+        assert seq.dat_aliased == 6, f"{seq.dat_aliased} DAT aliases checked, expected 6"
+        assert seq.dct_dropped == 6, f"{seq.dct_dropped} DCT writes checked, expected 6"
