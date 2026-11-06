@@ -308,107 +308,6 @@ localparam int unsigned SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_A
 
 
 //==============================================================================
-// Addresses for Address Map: smc_misc_wrap
-//==============================================================================
-
-
-localparam int unsigned SMC_MISC_WRAP_REG_MAP_BASE_ADDR                                                           = 32'hC0002800;
-localparam int unsigned SMC_MISC_WRAP_REG_MAP_SIZE                                                                = 32'h0000020C;
-
-
-
-
-//==============================================================================
-// Addresses for Address Map: scratch_cold
-//==============================================================================
-
-
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR                                              = 32'hC0002800;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_SIZE                                                   = 32'h00000020;
-
-
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_OFFSET                                          = 32'h00000000;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_ADDR                                            = 32'hC0002800;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_OFFSET                                          = 32'h00000004;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_ADDR                                            = 32'hC0002804;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_OFFSET                                          = 32'h00000008;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_ADDR                                            = 32'hC0002808;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_OFFSET                                          = 32'h0000000C;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_ADDR                                            = 32'hC000280C;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_OFFSET                                          = 32'h00000010;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_ADDR                                            = 32'hC0002810;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_OFFSET                                          = 32'h00000014;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_ADDR                                            = 32'hC0002814;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_OFFSET                                          = 32'h00000018;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_ADDR                                            = 32'hC0002818;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_OFFSET                                          = 32'h0000001C;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_ADDR                                            = 32'hC000281C;
-
-
-//==============================================================================
-// Addresses for Address Map: scratch_cold_warm
-//==============================================================================
-
-
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_REG_MAP_BASE_ADDR                                         = 32'hC0002880;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_REG_MAP_SIZE                                              = 32'h00000020;
-
-
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_OFFSET                                     = 32'h00000000;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_ADDR                                       = 32'hC0002880;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_OFFSET                                     = 32'h00000004;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_ADDR                                       = 32'hC0002884;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_OFFSET                                     = 32'h00000008;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_ADDR                                       = 32'hC0002888;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_OFFSET                                     = 32'h0000000C;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_ADDR                                       = 32'hC000288C;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_OFFSET                                     = 32'h00000010;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_ADDR                                       = 32'hC0002890;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_OFFSET                                     = 32'h00000014;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_ADDR                                       = 32'hC0002894;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_OFFSET                                     = 32'h00000018;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_ADDR                                       = 32'hC0002898;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_OFFSET                                     = 32'h0000001C;
-localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_ADDR                                       = 32'hC000289C;
-
-
-//==============================================================================
-// Addresses for Address Map: chip_config
-//==============================================================================
-
-
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_BASE_ADDR                                               = 32'hC0002900;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_SIZE                                                    = 32'h00000010;
-
-
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_OFFSET                                           = 32'h00000000;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_ADDR                                             = 32'hC0002900;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_OFFSET                                           = 32'h00000004;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_ADDR                                             = 32'hC0002904;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_OFFSET                                              = 32'h00000008;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_ADDR                                                = 32'hC0002908;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_OFFSET                                             = 32'h0000000C;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR                                               = 32'hC000290C;
-
-
-//==============================================================================
-// Addresses for Address Map: ndm_reset
-//==============================================================================
-
-
-localparam int unsigned SMC_MISC_WRAP_NDM_RESET_REG_MAP_BASE_ADDR                                                 = 32'hC0002A00;
-localparam int unsigned SMC_MISC_WRAP_NDM_RESET_REG_MAP_SIZE                                                      = 32'h0000000C;
-
-
-localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_OFFSET                                       = 32'h00000000;
-localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_ADDR                                         = 32'hC0002A00;
-localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_OFFSET                                       = 32'h00000004;
-localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_ADDR                                         = 32'hC0002A04;
-localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_OFFSET                                 = 32'h00000008;
-localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_ADDR                                   = 32'hC0002A08;
-
-
-//==============================================================================
 // Addresses for Address Map: gpio_intf_wrap
 //==============================================================================
 
@@ -2748,23 +2647,6 @@ localparam int unsigned DTP_CTRL_REG_MEM_SIZE                                   
 
 
 //==============================================================================
-// Addresses for Address Map: dfx_ctrl
-//==============================================================================
-
-
-localparam int unsigned DFX_CTRL_REG_MAP_BASE_ADDR                                                                = 32'hC000B800;
-localparam int unsigned DFX_CTRL_REG_MAP_SIZE                                                                     = 32'h00000018;
-
-
-localparam int unsigned DFX_CTRL_STATUS_SMU_REG_OFFSET                                                            = 32'h00000000;
-localparam int unsigned DFX_CTRL_STATUS_SMU_REG_ADDR                                                              = 32'hC000B800;
-localparam int unsigned DFX_CTRL_DEBUG_CTRL_REG_OFFSET                                                            = 32'h00000008;
-localparam int unsigned DFX_CTRL_DEBUG_CTRL_REG_ADDR                                                              = 32'hC000B808;
-localparam int unsigned DFX_CTRL_DEBUG_BUS_MUX_REG_OFFSET                                                         = 32'h00000010;
-localparam int unsigned DFX_CTRL_DEBUG_BUS_MUX_REG_ADDR                                                           = 32'hC000B810;
-
-
-//==============================================================================
 // Addresses for Address Map: smc_pwm
 //==============================================================================
 
@@ -2831,6 +2713,107 @@ localparam int unsigned SMC_PWM_PWM_CTRL_REG_MAP_SIZE                           
 
 localparam int unsigned SMC_PWM_PWM_CTRL_CTRL_REG_OFFSET                                                          = 32'h00000000;
 localparam int unsigned SMC_PWM_PWM_CTRL_CTRL_REG_ADDR                                                            = 32'hC000C800;
+
+
+//==============================================================================
+// Addresses for Address Map: smc_misc_wrap
+//==============================================================================
+
+
+localparam int unsigned SMC_MISC_WRAP_REG_MAP_BASE_ADDR                                                           = 32'hC000D000;
+localparam int unsigned SMC_MISC_WRAP_REG_MAP_SIZE                                                                = 32'h0000020C;
+
+
+
+
+//==============================================================================
+// Addresses for Address Map: scratch_cold
+//==============================================================================
+
+
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR                                              = 32'hC000D000;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_SIZE                                                   = 32'h00000020;
+
+
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_ADDR                                            = 32'hC000D000;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_OFFSET                                          = 32'h00000004;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_ADDR                                            = 32'hC000D004;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_OFFSET                                          = 32'h00000008;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_ADDR                                            = 32'hC000D008;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_OFFSET                                          = 32'h0000000C;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_ADDR                                            = 32'hC000D00C;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_OFFSET                                          = 32'h00000010;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_ADDR                                            = 32'hC000D010;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_OFFSET                                          = 32'h00000014;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_ADDR                                            = 32'hC000D014;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_OFFSET                                          = 32'h00000018;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_ADDR                                            = 32'hC000D018;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_OFFSET                                          = 32'h0000001C;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_ADDR                                            = 32'hC000D01C;
+
+
+//==============================================================================
+// Addresses for Address Map: scratch_cold_warm
+//==============================================================================
+
+
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_REG_MAP_BASE_ADDR                                         = 32'hC000D080;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_REG_MAP_SIZE                                              = 32'h00000020;
+
+
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_OFFSET                                     = 32'h00000000;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_ADDR                                       = 32'hC000D080;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_OFFSET                                     = 32'h00000004;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_ADDR                                       = 32'hC000D084;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_ADDR                                       = 32'hC000D088;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_OFFSET                                     = 32'h0000000C;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_ADDR                                       = 32'hC000D08C;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_OFFSET                                     = 32'h00000010;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_ADDR                                       = 32'hC000D090;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_OFFSET                                     = 32'h00000014;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_ADDR                                       = 32'hC000D094;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_OFFSET                                     = 32'h00000018;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_ADDR                                       = 32'hC000D098;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_OFFSET                                     = 32'h0000001C;
+localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_ADDR                                       = 32'hC000D09C;
+
+
+//==============================================================================
+// Addresses for Address Map: chip_config
+//==============================================================================
+
+
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_BASE_ADDR                                               = 32'hC000D100;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_SIZE                                                    = 32'h00000010;
+
+
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_OFFSET                                           = 32'h00000000;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_ADDR                                             = 32'hC000D100;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_OFFSET                                           = 32'h00000004;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_ADDR                                             = 32'hC000D104;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_OFFSET                                              = 32'h00000008;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_ADDR                                                = 32'hC000D108;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_OFFSET                                             = 32'h0000000C;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR                                               = 32'hC000D10C;
+
+
+//==============================================================================
+// Addresses for Address Map: ndm_reset
+//==============================================================================
+
+
+localparam int unsigned SMC_MISC_WRAP_NDM_RESET_REG_MAP_BASE_ADDR                                                 = 32'hC000D200;
+localparam int unsigned SMC_MISC_WRAP_NDM_RESET_REG_MAP_SIZE                                                      = 32'h0000000C;
+
+
+localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_OFFSET                                       = 32'h00000000;
+localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_ADDR                                         = 32'hC000D200;
+localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_OFFSET                                       = 32'h00000004;
+localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_ADDR                                         = 32'hC000D204;
+localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_OFFSET                                 = 32'h00000008;
+localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_ADDR                                   = 32'hC000D208;
 
 
 //==============================================================================
@@ -4021,6 +4004,23 @@ localparam int unsigned SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_15__START_ADDR
 localparam int unsigned SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_15__START_ADDR_REG_ADDR                         = 32'hC00161E8;
 localparam int unsigned SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_15__END_ADDR_REG_OFFSET                         = 32'h00000010;
 localparam int unsigned SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_15__END_ADDR_REG_ADDR                           = 32'hC00161F0;
+
+
+//==============================================================================
+// Addresses for Address Map: dfx_ctrl
+//==============================================================================
+
+
+localparam int unsigned DFX_CTRL_REG_MAP_BASE_ADDR                                                                = 32'hC0017000;
+localparam int unsigned DFX_CTRL_REG_MAP_SIZE                                                                     = 32'h00000018;
+
+
+localparam int unsigned DFX_CTRL_STATUS_SMU_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned DFX_CTRL_STATUS_SMU_REG_ADDR                                                              = 32'hC0017000;
+localparam int unsigned DFX_CTRL_DEBUG_CTRL_REG_OFFSET                                                            = 32'h00000008;
+localparam int unsigned DFX_CTRL_DEBUG_CTRL_REG_ADDR                                                              = 32'hC0017008;
+localparam int unsigned DFX_CTRL_DEBUG_BUS_MUX_REG_OFFSET                                                         = 32'h00000010;
+localparam int unsigned DFX_CTRL_DEBUG_BUS_MUX_REG_ADDR                                                           = 32'hC0017010;
 
 
 //==============================================================================
@@ -10980,14 +10980,6 @@ localparam longint unsigned RESET_UNIT_ISOLATE_REQ_SMCEN_REG_REG_DEFAULT        
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT                                                = 32'h00000111;
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_DEFAULT                                  = 32'h00000000;
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_DEFAULT                            = 32'h00000000;
-localparam longint unsigned SCRATCH_SCRATCH_REG_DEFAULT                                                           = 32'h00000000;
-localparam longint unsigned CHIP_CONFIG_VERSION_LO_REG_DEFAULT                                                    = 32'h000100A0;
-localparam longint unsigned CHIP_CONFIG_VERSION_HI_REG_DEFAULT                                                    = 32'h00000000;
-localparam longint unsigned CHIP_CONFIG_CHIP_ID_REG_DEFAULT                                                       = 32'h00000000;
-localparam longint unsigned CHIP_CONFIG_LC_STATE_REG_DEFAULT                                                      = 32'h0000000F;
-localparam longint unsigned NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT                                                = 32'h00000000;
-localparam longint unsigned NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT                                                = 32'h00000000;
-localparam longint unsigned NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT                                          = 32'h00000000;
 localparam longint unsigned GPIO_INTF_DATA_CTRL_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned GPIO_INTF_DATA_CTRL_ENABLE_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned GPIO_INTF_ACCESS_FILTER_REG_DEFAULT                                                   = 32'h00010100;
@@ -11086,9 +11078,6 @@ localparam longint unsigned SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_REG_DEFAULT        
 localparam longint unsigned SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_REG_DEFAULT                                          = 32'h00000000;
 localparam longint unsigned SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_REG_DEFAULT                                       = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_200_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
-localparam longint unsigned DFX_CTRL_STATUS_STATUS_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_CTRL_REG_DEFAULT                                                = 32'h00000000;
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT                                             = 64'h0000000000000000;
 localparam longint unsigned PWM_ALERT_TEST_REG_DEFAULT                                                            = 32'h00000000;
 localparam longint unsigned PWM_REGWEN_REG_DEFAULT                                                                = 32'h00000001;
 localparam longint unsigned PWM_CFG_REG_DEFAULT                                                                   = 32'h38008000;
@@ -11098,6 +11087,14 @@ localparam longint unsigned PWM_PWM_PARAM_REG_DEFAULT                           
 localparam longint unsigned PWM_DUTY_CYCLE_REG_DEFAULT                                                            = 32'h7FFF7FFF;
 localparam longint unsigned PWM_BLINK_PARAM_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned PWM_CTRL_CTRL_REG_DEFAULT                                                             = 32'h00000000;
+localparam longint unsigned SCRATCH_SCRATCH_REG_DEFAULT                                                           = 32'h00000000;
+localparam longint unsigned CHIP_CONFIG_VERSION_LO_REG_DEFAULT                                                    = 32'h000100A0;
+localparam longint unsigned CHIP_CONFIG_VERSION_HI_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned CHIP_CONFIG_CHIP_ID_REG_DEFAULT                                                       = 32'h00000000;
+localparam longint unsigned CHIP_CONFIG_LC_STATE_REG_DEFAULT                                                      = 32'h0000000F;
+localparam longint unsigned NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT                                          = 32'h00000000;
 localparam longint unsigned SMC_BASE_CONFIG_GLOBAL_BASE_REG_DEFAULT                                               = 64'h0000000040000000;
 localparam longint unsigned SMC_BASE_CONFIG_LOCAL_BASE_REG_DEFAULT                                                = 64'h00000000C0000000;
 localparam longint unsigned SMC_BASE_CONFIG_REGION_SIZE_REG_DEFAULT                                               = 64'h0000000001000000;
@@ -11111,6 +11108,9 @@ localparam longint unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT        
 localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT                                                 = 64'h0000000000003000;
 localparam longint unsigned FILTER_CTRL_START_ADDR_REG_DEFAULT                                                    = 64'h0000000000000000;
 localparam longint unsigned FILTER_CTRL_END_ADDR_REG_DEFAULT                                                      = 64'h0000000000000007;
+localparam longint unsigned DFX_CTRL_STATUS_STATUS_REG_DEFAULT                                                    = 64'h0000000000000000;
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_CTRL_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT                                             = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_WRITE_DATA_REG_DEFAULT                                                   = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_READ_DATA_REG_DEFAULT                                                    = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_STATUS_REG_DEFAULT                                                       = 64'h0000000000000001;
@@ -11637,30 +11637,6 @@ localparam int unsigned RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_ISOLATE_REQ_FLR
 
 localparam int unsigned RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_MASK    = 32'hFFFFFFFF;
 localparam int unsigned RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_SHIFT    = 0;
-
-localparam int unsigned SCRATCH_SCRATCH_DATA_MASK                                                                 = 32'hFFFFFFFF;
-localparam int unsigned SCRATCH_SCRATCH_DATA_SHIFT                                                                = 0;
-
-localparam int unsigned CHIP_CONFIG_VERSION_LO_VERSION_LO_MASK                                                    = 32'hFFFFFFFF;
-localparam int unsigned CHIP_CONFIG_VERSION_LO_VERSION_LO_SHIFT                                                   = 0;
-
-localparam int unsigned CHIP_CONFIG_VERSION_HI_VERSION_HI_MASK                                                    = 32'hFFFFFFFF;
-localparam int unsigned CHIP_CONFIG_VERSION_HI_VERSION_HI_SHIFT                                                   = 0;
-
-localparam int unsigned CHIP_CONFIG_CHIP_ID_CHIP_ID_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned CHIP_CONFIG_CHIP_ID_CHIP_ID_SHIFT                                                         = 0;
-
-localparam int unsigned CHIP_CONFIG_LC_STATE_LC_STATE_MASK                                                        = 32'hFF;
-localparam int unsigned CHIP_CONFIG_LC_STATE_LC_STATE_SHIFT                                                       = 0;
-
-localparam int unsigned NDM_RESET_NDMRESET_REQUEST_NDMRESET_REQUEST_MASK                                          = 32'hFFFFFFFF;
-localparam int unsigned NDM_RESET_NDMRESET_REQUEST_NDMRESET_REQUEST_SHIFT                                         = 0;
-
-localparam int unsigned NDM_RESET_NDMRESET_PROCESS_NDMRESET_PROCESS_MASK                                          = 32'hFFFFFFFF;
-localparam int unsigned NDM_RESET_NDMRESET_PROCESS_NDMRESET_PROCESS_SHIFT                                         = 0;
-
-localparam int unsigned NDM_RESET_NDMRESET_CLUSTER_COUNT_NDMRESET_CLUSTER_COUNT_MASK                              = 32'hFF;
-localparam int unsigned NDM_RESET_NDMRESET_CLUSTER_COUNT_NDMRESET_CLUSTER_COUNT_SHIFT                             = 0;
 
 localparam int unsigned GPIO_INTF_DATA_CTRL_CORE2PAD_MASK                                                         = 32'h1;
 localparam int unsigned GPIO_INTF_DATA_CTRL_CORE2PAD_SHIFT                                                        = 0;
@@ -12910,81 +12886,6 @@ localparam int unsigned SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_GPIO_ENABLE_SHIFT   
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_200_MEM_WORD_DATA_MASK                                             = 32'hFFFFFFFF;
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_200_MEM_WORD_DATA_SHIFT                                            = 0;
 
-localparam longint unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_DONE_MASK                                           = 64'h1;
-localparam     int unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_DONE_SHIFT                                          = 0;
-
-localparam longint unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_SUCCESS_MASK                                        = 64'h2;
-localparam     int unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_SUCCESS_SHIFT                                       = 1;
-
-localparam longint unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_ABORT_MASK                                          = 64'h4;
-localparam     int unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_ABORT_SHIFT                                         = 2;
-
-localparam longint unsigned DFX_CTRL_STATUS_STATUS_MBIST_DONE_MASK                                                = 64'h10;
-localparam     int unsigned DFX_CTRL_STATUS_STATUS_MBIST_DONE_SHIFT                                               = 4;
-
-localparam longint unsigned DFX_CTRL_STATUS_STATUS_MBIST_PASS_MASK                                                = 64'h100;
-localparam     int unsigned DFX_CTRL_STATUS_STATUS_MBIST_PASS_SHIFT                                               = 8;
-
-localparam longint unsigned DFX_CTRL_STATUS_STATUS_MBIST_ABORT_MASK                                               = 64'h1000;
-localparam     int unsigned DFX_CTRL_STATUS_STATUS_MBIST_ABORT_SHIFT                                              = 12;
-
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_CHIPLET_ENABLE_MASK                                            = 32'h3;
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_CHIPLET_ENABLE_SHIFT                                           = 0;
-
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_GPIO_EN_MASK                                                   = 32'h4;
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_GPIO_EN_SHIFT                                                  = 2;
-
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_CG_EN_MASK                                                     = 32'h8;
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_CG_EN_SHIFT                                                    = 3;
-
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_FORCE_CLK_EN_MASK                                              = 32'h10;
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_FORCE_CLK_EN_SHIFT                                             = 4;
-
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DTB_NS_EN_MASK                                                 = 32'h20;
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DTB_NS_EN_SHIFT                                                = 5;
-
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DTB_EW_EN_MASK                                                 = 32'h40;
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DTB_EW_EN_SHIFT                                                = 6;
-
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_XTRIG_CLK_HALT_MASK_MASK                                       = 32'h7FFF80;
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_XTRIG_CLK_HALT_MASK_SHIFT                                      = 7;
-
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DEBUG_MARKER_MASK                                              = 32'h7F800000;
-localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DEBUG_MARKER_SHIFT                                             = 23;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_DBMMODE_MASK                                            = 64'h3;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_DBMMODE_SHIFT                                           = 0;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_DBMID_MASK                                              = 64'hFC;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_DBMID_SHIFT                                             = 2;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_RSVD158_MASK                                            = 64'hFF00;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_RSVD158_SHIFT                                           = 8;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG0_MASK                                         = 64'h3F0000;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG0_SHIFT                                        = 16;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG1_MASK                                         = 64'hFC00000;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG1_SHIFT                                        = 22;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG2_MASK                                         = 64'h3F0000000;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG2_SHIFT                                        = 28;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG3_MASK                                         = 64'hFC00000000;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG3_SHIFT                                        = 34;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG4_MASK                                         = 64'h3F0000000000;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG4_SHIFT                                        = 40;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG5_MASK                                         = 64'hFC00000000000;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG5_SHIFT                                        = 46;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG6_MASK                                         = 64'h3F0000000000000;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG6_SHIFT                                        = 52;
-
-localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG7_MASK                                         = 64'hFC00000000000000;
-localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG7_SHIFT                                        = 58;
-
 localparam int unsigned PWM_ALERT_TEST_FATAL_FAULT_MASK                                                           = 32'h1;
 localparam int unsigned PWM_ALERT_TEST_FATAL_FAULT_SHIFT                                                          = 0;
 
@@ -13029,6 +12930,30 @@ localparam int unsigned PWM_BLINK_PARAM_Y_SHIFT                                 
 
 localparam int unsigned PWM_CTRL_CTRL_PAD_EN_MASK                                                                 = 32'hF;
 localparam int unsigned PWM_CTRL_CTRL_PAD_EN_SHIFT                                                                = 0;
+
+localparam int unsigned SCRATCH_SCRATCH_DATA_MASK                                                                 = 32'hFFFFFFFF;
+localparam int unsigned SCRATCH_SCRATCH_DATA_SHIFT                                                                = 0;
+
+localparam int unsigned CHIP_CONFIG_VERSION_LO_VERSION_LO_MASK                                                    = 32'hFFFFFFFF;
+localparam int unsigned CHIP_CONFIG_VERSION_LO_VERSION_LO_SHIFT                                                   = 0;
+
+localparam int unsigned CHIP_CONFIG_VERSION_HI_VERSION_HI_MASK                                                    = 32'hFFFFFFFF;
+localparam int unsigned CHIP_CONFIG_VERSION_HI_VERSION_HI_SHIFT                                                   = 0;
+
+localparam int unsigned CHIP_CONFIG_CHIP_ID_CHIP_ID_MASK                                                          = 32'hFFFFFFFF;
+localparam int unsigned CHIP_CONFIG_CHIP_ID_CHIP_ID_SHIFT                                                         = 0;
+
+localparam int unsigned CHIP_CONFIG_LC_STATE_LC_STATE_MASK                                                        = 32'hFF;
+localparam int unsigned CHIP_CONFIG_LC_STATE_LC_STATE_SHIFT                                                       = 0;
+
+localparam int unsigned NDM_RESET_NDMRESET_REQUEST_NDMRESET_REQUEST_MASK                                          = 32'hFFFFFFFF;
+localparam int unsigned NDM_RESET_NDMRESET_REQUEST_NDMRESET_REQUEST_SHIFT                                         = 0;
+
+localparam int unsigned NDM_RESET_NDMRESET_PROCESS_NDMRESET_PROCESS_MASK                                          = 32'hFFFFFFFF;
+localparam int unsigned NDM_RESET_NDMRESET_PROCESS_NDMRESET_PROCESS_SHIFT                                         = 0;
+
+localparam int unsigned NDM_RESET_NDMRESET_CLUSTER_COUNT_NDMRESET_CLUSTER_COUNT_MASK                              = 32'hFF;
+localparam int unsigned NDM_RESET_NDMRESET_CLUSTER_COUNT_NDMRESET_CLUSTER_COUNT_SHIFT                             = 0;
 
 localparam longint unsigned SMC_BASE_CONFIG_GLOBAL_BASE_BASE_MASK                                                 = 64'hFFFFFFFFFFFFFF;
 localparam     int unsigned SMC_BASE_CONFIG_GLOBAL_BASE_BASE_SHIFT                                                = 0;
@@ -13152,6 +13077,81 @@ localparam     int unsigned FILTER_CTRL_START_ADDR_START_ADDR_SHIFT             
 
 localparam longint unsigned FILTER_CTRL_END_ADDR_END_ADDR_MASK                                                    = 64'hFFFFFFFFFFFFFF;
 localparam     int unsigned FILTER_CTRL_END_ADDR_END_ADDR_SHIFT                                                   = 0;
+
+localparam longint unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_DONE_MASK                                           = 64'h1;
+localparam     int unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_DONE_SHIFT                                          = 0;
+
+localparam longint unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_SUCCESS_MASK                                        = 64'h2;
+localparam     int unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_SUCCESS_SHIFT                                       = 1;
+
+localparam longint unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_ABORT_MASK                                          = 64'h4;
+localparam     int unsigned DFX_CTRL_STATUS_STATUS_MEM_REPAIR_ABORT_SHIFT                                         = 2;
+
+localparam longint unsigned DFX_CTRL_STATUS_STATUS_MBIST_DONE_MASK                                                = 64'h10;
+localparam     int unsigned DFX_CTRL_STATUS_STATUS_MBIST_DONE_SHIFT                                               = 4;
+
+localparam longint unsigned DFX_CTRL_STATUS_STATUS_MBIST_PASS_MASK                                                = 64'h100;
+localparam     int unsigned DFX_CTRL_STATUS_STATUS_MBIST_PASS_SHIFT                                               = 8;
+
+localparam longint unsigned DFX_CTRL_STATUS_STATUS_MBIST_ABORT_MASK                                               = 64'h1000;
+localparam     int unsigned DFX_CTRL_STATUS_STATUS_MBIST_ABORT_SHIFT                                              = 12;
+
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_CHIPLET_ENABLE_MASK                                            = 32'h3;
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_CHIPLET_ENABLE_SHIFT                                           = 0;
+
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_GPIO_EN_MASK                                                   = 32'h4;
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_GPIO_EN_SHIFT                                                  = 2;
+
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_CG_EN_MASK                                                     = 32'h8;
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_CG_EN_SHIFT                                                    = 3;
+
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_FORCE_CLK_EN_MASK                                              = 32'h10;
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_FORCE_CLK_EN_SHIFT                                             = 4;
+
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DTB_NS_EN_MASK                                                 = 32'h20;
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DTB_NS_EN_SHIFT                                                = 5;
+
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DTB_EW_EN_MASK                                                 = 32'h40;
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DTB_EW_EN_SHIFT                                                = 6;
+
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_XTRIG_CLK_HALT_MASK_MASK                                       = 32'h7FFF80;
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_XTRIG_CLK_HALT_MASK_SHIFT                                      = 7;
+
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DEBUG_MARKER_MASK                                              = 32'h7F800000;
+localparam int unsigned DFX_CTRL_STATUS_DEBUG_CTRL_DEBUG_MARKER_SHIFT                                             = 23;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_DBMMODE_MASK                                            = 64'h3;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_DBMMODE_SHIFT                                           = 0;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_DBMID_MASK                                              = 64'hFC;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_DBMID_SHIFT                                             = 2;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_RSVD158_MASK                                            = 64'hFF00;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_RSVD158_SHIFT                                           = 8;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG0_MASK                                         = 64'h3F0000;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG0_SHIFT                                        = 16;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG1_MASK                                         = 64'hFC00000;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG1_SHIFT                                        = 22;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG2_MASK                                         = 64'h3F0000000;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG2_SHIFT                                        = 28;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG3_MASK                                         = 64'hFC00000000;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG3_SHIFT                                        = 34;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG4_MASK                                         = 64'h3F0000000000;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG4_SHIFT                                        = 40;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG5_MASK                                         = 64'hFC00000000000;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG5_SHIFT                                        = 46;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG6_MASK                                         = 64'h3F0000000000000;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG6_SHIFT                                        = 52;
+
+localparam longint unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG7_MASK                                         = 64'hFC00000000000000;
+localparam     int unsigned DFX_CTRL_STATUS_DEBUG_BUS_MUX_MUXSELSEG7_SHIFT                                        = 58;
 
 localparam longint unsigned AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_SHIFT                                              = 0;
@@ -17587,54 +17587,6 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   data ;
-} scratch_scratch_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   version_lo ;
-} chip_config_version_lo_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   version_hi ;
-} chip_config_version_hi_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   chip_id ;
-} chip_config_chip_id_reg_t;
-
-
-
-typedef struct packed {
-    logic [7:0]   lc_state ;
-} chip_config_lc_state_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   ndmreset_request ;
-} ndm_reset_ndmreset_request_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   ndmreset_process ;
-} ndm_reset_ndmreset_process_reg_t;
-
-
-
-typedef struct packed {
-    logic [7:0]   ndmreset_cluster_count ;
-} ndm_reset_ndmreset_cluster_count_reg_t;
-
-
-
-typedef struct packed {
     logic [0:0]   pad2core ;
     logic [4:0]   rsvd_3 ;
     logic [0:0]   lsio_enable ;
@@ -18598,49 +18550,6 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [0:0]   mbist_abort ;
-    logic [2:0]   rsvd_2 ;
-    logic [0:0]   mbist_pass ;
-    logic [2:0]   rsvd_1 ;
-    logic [0:0]   mbist_done ;
-    logic [0:0]   rsvd_0 ;
-    logic [0:0]   mem_repair_abort ;
-    logic [0:0]   mem_repair_success ;
-    logic [0:0]   mem_repair_done ;
-} dfx_ctrl_status_status_reg_t;
-
-
-
-typedef struct packed {
-    logic [7:0]   debug_marker ;
-    logic [15:0]   xtrig_clk_halt_mask ;
-    logic [0:0]   dtb_ew_en ;
-    logic [0:0]   dtb_ns_en ;
-    logic [0:0]   force_clk_en ;
-    logic [0:0]   cg_en ;
-    logic [0:0]   gpio_en ;
-    logic [1:0]   chiplet_enable ;
-} dfx_ctrl_status_debug_ctrl_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   muxselseg7 ;
-    logic [5:0]   muxselseg6 ;
-    logic [5:0]   muxselseg5 ;
-    logic [5:0]   muxselseg4 ;
-    logic [5:0]   muxselseg3 ;
-    logic [5:0]   muxselseg2 ;
-    logic [5:0]   muxselseg1 ;
-    logic [5:0]   muxselseg0 ;
-    logic [7:0]   rsvd158 ;
-    logic [5:0]   dbmid ;
-    logic [1:0]   dbmmode ;
-} dfx_ctrl_status_debug_bus_mux_reg_t;
-
-
-
-typedef struct packed {
     logic [0:0]   fatal_fault ;
 } pwm_alert_test_reg_t;
 
@@ -18698,6 +18607,54 @@ typedef struct packed {
 typedef struct packed {
     logic [3:0]   pad_en ;
 } pwm_ctrl_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} scratch_scratch_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   version_lo ;
+} chip_config_version_lo_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   version_hi ;
+} chip_config_version_hi_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   chip_id ;
+} chip_config_chip_id_reg_t;
+
+
+
+typedef struct packed {
+    logic [7:0]   lc_state ;
+} chip_config_lc_state_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   ndmreset_request ;
+} ndm_reset_ndmreset_request_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   ndmreset_process ;
+} ndm_reset_ndmreset_process_reg_t;
+
+
+
+typedef struct packed {
+    logic [7:0]   ndmreset_cluster_count ;
+} ndm_reset_ndmreset_cluster_count_reg_t;
 
 
 
@@ -18818,6 +18775,49 @@ typedef struct packed {
 typedef struct packed {
     logic [55:0]   end_addr ;
 } filter_ctrl_end_addr_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   mbist_abort ;
+    logic [2:0]   rsvd_2 ;
+    logic [0:0]   mbist_pass ;
+    logic [2:0]   rsvd_1 ;
+    logic [0:0]   mbist_done ;
+    logic [0:0]   rsvd_0 ;
+    logic [0:0]   mem_repair_abort ;
+    logic [0:0]   mem_repair_success ;
+    logic [0:0]   mem_repair_done ;
+} dfx_ctrl_status_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [7:0]   debug_marker ;
+    logic [15:0]   xtrig_clk_halt_mask ;
+    logic [0:0]   dtb_ew_en ;
+    logic [0:0]   dtb_ns_en ;
+    logic [0:0]   force_clk_en ;
+    logic [0:0]   cg_en ;
+    logic [0:0]   gpio_en ;
+    logic [1:0]   chiplet_enable ;
+} dfx_ctrl_status_debug_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [5:0]   muxselseg7 ;
+    logic [5:0]   muxselseg6 ;
+    logic [5:0]   muxselseg5 ;
+    logic [5:0]   muxselseg4 ;
+    logic [5:0]   muxselseg3 ;
+    logic [5:0]   muxselseg2 ;
+    logic [5:0]   muxselseg1 ;
+    logic [5:0]   muxselseg0 ;
+    logic [7:0]   rsvd158 ;
+    logic [5:0]   dbmid ;
+    logic [1:0]   dbmmode ;
+} dfx_ctrl_status_debug_bus_mux_reg_t;
 
 
 

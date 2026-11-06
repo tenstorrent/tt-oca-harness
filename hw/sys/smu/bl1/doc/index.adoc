@@ -51,8 +51,8 @@ The SEP reaches SMC-local address _a_ at `0x4000_0000 + (_a_ - 0xC000_0000)`.
 |`0x4003_9000`
 
 |SMC `CHIP_CONFIG.LC_STATE`
-|`0xC000_290C`
-|`0x4000_290C`
+|`0xC000_D10C`
+|`0x4000_D10C`
 
 |SEP mailbox 0, outbound port (the SEP pushes)
 |SEP aperture + `0x10A0_0000`

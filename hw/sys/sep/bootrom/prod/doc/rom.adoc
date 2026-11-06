@@ -318,11 +318,11 @@ them from the generated SMC map; the values shown are those of the open map.
 |*Resource* |*Offset* |*ROM usage*
 |Captured straps `STRAPS_LO` / `STRAPS_HI` |`0x40_3000` / `0x40_3004` |Latched hardware straps
 (<<sec:straps>>).
-|`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([S12]).
-|`CHIP_CONFIG_LC_STATE` |`0x290C` |SMC-side lifecycle mirror (low 4 bits); informational.
+|`CHIP_CONFIG_CHIP_ID` |`0xD108` |Chip identification, diagnostic only ([S12]).
+|`CHIP_CONFIG_LC_STATE` |`0xD10C` |SMC-side lifecycle mirror (low 4 bits); informational.
 |SMC CPU_CTRL scratch registers |`0x39080 + 8·index` |Coordination protocol
 (<<tbl:smc_scratch>>).
-|`DFX_CTRL_STATUS_SMU` |`0xB800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
+|`DFX_CTRL_STATUS_SMU` |`0x17000` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
 |SMC SRAM |`0x60000` |1 MiB shared memory: status ring buffer; manifest/payload staging for
 recovery and secondary boot.
 |SMC `CPU_CTRL_RESET_CTRL` |`0x39020` |Written only on invalid LC state to hold all SMC cores
@@ -1284,7 +1284,7 @@ success.
 
 [[req-SEP-ROM-SMC-030]]*[SEP-ROM-SMC-030]* The ROM shall not proceed past [S03] unless every
 memory check that runs passes. Both checks read `DFX_CTRL_STATUS_SMU` (SMC window offset
-`0xB800`):
+`0x17000`):
 
 . *Memory repair.* When the `mem_repair_bypass` strap (`STRAPS_LO[13]`) is 1, repair did not
   run and the ROM skips this check. Otherwise bit 1 (`mem_repair_success`) shall be 1.
@@ -1309,7 +1309,7 @@ entries to the platform (OCCP). Ring initialization waits for the SMC's
 
 === Chip Identification ([S12])
 
-`CHIP_CONFIG_CHIP_ID` (SMC window offset `0x2908`) is read once and reported on the status
+`CHIP_CONFIG_CHIP_ID` (SMC window offset `0xD108`) is read once and reported on the status
 channel (low 16 bits as an `INFO_EXT` status word). The read is diagnostic: it gives DV and a
 debugger the part's identity, and exercises the SMC `chip_config` path while a failure there is
 still attributable.
