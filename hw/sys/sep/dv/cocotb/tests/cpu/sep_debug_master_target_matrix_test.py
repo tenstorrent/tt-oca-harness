@@ -173,8 +173,13 @@ Checks:
                   and NS 1 (AP) or the inverse of bit 55 of the remapped address
                   (STEE), and the W beat carries the written word
                   (``hw/sys/sep/doc/fabric.adoc:178-181``, ``:314-315``,
-                  ``:320``). The responses come from the bench outbound responder
-                  and are logged only.
+                  ``:320``). The reply on PR-OUT-RSP is the bench outbound
+                  responder's (CTRL-DBG-REMAP-RSP: one B beat, or one R beat with
+                  ``last`` 1, that answers OKAY).
+  CHK-DBG-REMAP-SBERROR: (entry S) for each remap access whose CTRL-DBG-REMAP-RSP
+                  reply is OKAY, ``sberror`` is 0 (RISC-V debug ``sbcs.sberror``,
+                  through the EL2 PRM, as for CHK-DBG-EXT). The line also logs the
+                  ``sbdata`` word of the read.
   CHK-DBG-SBA-ISO: (entry S) with ``hmac_sw_rst_n`` written 0, a debug-master
                   4-byte read and write of HMAC ``MSG_LENGTH_LOWER`` each show
                   one R or B beat on PR-DBG-SB that answers SLVERR, the R beat
@@ -1753,12 +1758,13 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 )
             classes.append((path, csr_base, region, local, translated, wval, pair))
         out = SepFabricTap("PR-OUT").start()
+        rsp = SepFabricTap("PR-OUT-RSP").start()
         for path, _csr, _region, local, translated, wval, _pair in classes:
             ns = outbound_ns(path, translated)
             await self._inst_open()
             passed = []
             for d in ("w", "r"):
-                om, sm = out.mark(), self.sb_tap.mark()
+                om, rm, sm = out.mark(), rsp.mark(), self.sb_tap.mark()
                 if d == "w":
                     err = await self.dmi.sba_write(local, wval, size=8)
                     data = None
@@ -1790,17 +1796,29 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     f"out_w={len(ow)} out_wdata={_h(ow[0].data if ow else None)} "
                     f"wdata={_h(wval) if d == 'w' else 'na'}",
                 )
-                self.logger.info(
-                    "INFO-DBG-REMAP-RESP: path=%s dir=%s sberror=%d data=%s",
-                    path,
-                    d.upper(),
-                    err,
-                    _h(data),
+                reply = self._beats(rsp, rm, "b" if d == "w" else "r")
+                rb = reply[0] if len(reply) == 1 else None
+                last = None if rb is None else rb.fields.get("last")
+                rsp_ok = rb is not None and rb.resp == RESP_OKAY and (d == "w" or last == 1)
+                out_resp = "none" if rb is None else _h(rb.resp, 1)
+                self._ctrl(
+                    "DBG-REMAP-RSP",
+                    rsp_ok,
+                    f"path={path} dir={d.upper()} out_rsp={len(reply)} out_resp={out_resp} "
+                    f"expect_resp=0x{RESP_OKAY:x} "
+                    f"out_last={'na' if last is None else last}",
                 )
-                if ok:
+                sb_ok = rsp_ok and self._grade(
+                    "CHK-DBG-REMAP-SBERROR",
+                    err == 0,
+                    f"path={path} dir={d.upper()} out_resp={out_resp} sberror={err} "
+                    f"expect_sberror=0 data={_h(data) if d == 'r' else 'na'}",
+                )
+                if ok and sb_ok:
                     passed.append(f"{path}_{d}")
             await self._inst_close(dbg_sba_bits(*passed) if len(passed) == 2 else 0)
         await out.stop()
+        await rsp.stop()
         # Clean-up, outside the windows: regions invalid, filter entries at reset.
         for _path, csr_base, region, _l, _t, _w, pair in classes:
             await self._remap_program(csr_base, region, 0)
