@@ -55,13 +55,13 @@ module smc_local_xbar
                                                  // control port.
 
   output axi_lite64_req_t  local_reg_req_o,  // Request to the internal CSR crossbar for the
-                                             // base config through mailbox windows and the
-                                             // DFX control window.
+                                             // base config through mailbox windows, DFX
+                                             // control included.
   input  axi_lite64_resp_t local_reg_resp_i,  // Response from the internal CSR crossbar.
 
   output axi_lite32_req_t  periph_reg_req_o,  // Request to the peripheral CSR crossbar for
-                                              // the reset unit through DTP control windows,
-                                              // the PWM, the I3C wrapper and smc_external.
+                                              // the reset unit through the miscellaneous
+                                              // registers, the I3C wrapper and smc_external.
   input  axi_lite32_resp_t periph_reg_resp_i,  // Response from the peripheral CSR crossbar.
 
   output apb32_req_t  smc_dfd_reg_req_o,  // Request for the SMC CLA window.
@@ -137,22 +137,14 @@ module smc_local_xbar
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE)},
-    '{idx: 2,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE))},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE)},
-    '{idx: 3,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
