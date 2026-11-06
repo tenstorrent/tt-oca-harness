@@ -393,6 +393,7 @@ class sep_spi_pad_oe_rules_test(sep_base_test):
 
     async def _enable(self, ctrl: int) -> None:
         await self.ops.wr(CONTROL, CTRL_RESET | ctrl)
+        self.oe.cs_sck_high = bool(ctrl & CTRL_OUTPUT_EN)
         await self.ops.wr(CSID, 0)
         await self.ops.write_configopts(self.draw.configopts)
 
@@ -447,7 +448,6 @@ class sep_spi_pad_oe_rules_test(sep_base_test):
         # Leg 1: traffic A, then the long TX x1 segment that the cold reset cuts.
         oe.mode = "traffic"
         await self._enable(CTRL_SPIEN | CTRL_OUTPUT_EN)
-        oe.cs_sck_high = True
         await self._traffic("a", d.order_a)
         await self._push_tx(d.reset_tx)
         rises0 = oe.sck_rises_cs_low
@@ -517,7 +517,6 @@ class sep_spi_pad_oe_rules_test(sep_base_test):
         # Leg 4: traffic B.
         oe.mode = "traffic"
         await self._enable(CTRL_SPIEN | CTRL_OUTPUT_EN)
-        oe.cs_sck_high = True
         await self._traffic("b", d.order_b)
         await ClockCycles(clk, TAIL_CLKS)
         oe.mode = None

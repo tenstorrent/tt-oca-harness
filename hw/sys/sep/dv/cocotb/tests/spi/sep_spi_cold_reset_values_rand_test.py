@@ -219,15 +219,16 @@ class _ResetOeWindow:
             f"pre_sck_oe={pre[4] if pre else '-'} pre_sd_oe={pre[5] if pre else '-'}"
         )
 
-    def live_before(self) -> bool:
-        """Control: chip select low and cs, sck and lane 0 driven just before rst_ni fell."""
+    def live_before(self, width: int) -> bool:
+        """Control: chip select low, cs and sck driven, and exactly the ``width`` Tx lanes
+        driven just before rst_ni fell."""
         pre = self.pre
         return (
             pre is not None
             and pre[2] == 0
             and pre[3] == 1
             and pre[4] == 1
-            and bool((pre[5] or 0) & 1)
+            and pre[5] == (1 << width) - 1
         )
 
 
@@ -583,7 +584,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
             f"trial=midseg width=x{width} {oe.line()} "
             f"sep_reset_n_at_hold_end={rst['sep_reset_n_at_hold_end']}"
         )
-        if not oe.live_before() or oe.samples == 0 or rst["sep_reset_n_at_hold_end"] != 0:
+        if not oe.live_before(width) or oe.samples == 0 or rst["sep_reset_n_at_hold_end"] != 0:
             self._ctrl_missing(f"CHK-SPI-OE-RESET {line}")
         if oe.violations or oe.xz:
             self._fail("CHK-SPI-OE-RESET", line)

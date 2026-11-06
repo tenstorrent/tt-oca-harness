@@ -953,6 +953,15 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     await self._release()
                 s = await self._si(op, word, size=3, wdata=(comp << 32) | comp)
                 self._log_size3(unit, "hole", s.resp_code, s.rdata, d)
+                if unit in STRADDLE_GRADED and op is SepAxiOp.READ:
+                    # Both halves are holes, so the beat answers OKAY: the SLVERR of
+                    # the straddle cell then comes from the past-extent half.
+                    self.size3_hole_ok[unit] = self._ctrl(
+                        "ROW-SIZE3",
+                        s.resp_code == RESP_OKAY,
+                        f"row={unit} kind=hole init=SI dir=R size=3 addr=0x{word:08x} "
+                        f"resp={_RN.get(s.resp_code)} expect=OKAY",
+                    )
             self._close()
             if unit == "abr":
                 # ABR has no stable register with a non-zero reset, so its live
@@ -1061,6 +1070,10 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             self._log_size3(key, "straddle", s.resp_code, s.rdata, "R")
         for key in STRADDLE_GRADED:
             a = self._straddle_addr(key)
+            if key not in self.size3_hole_ok:
+                self._ctrl(
+                    "ROW-SIZE3", False, f"row={key} no hole AxSIZE 3 read before the straddle"
+                )
             for op in (SepAxiOp.READ, SepAxiOp.WRITE):
                 d = "R" if op is SepAxiOp.READ else "W"
                 wd = rng.getrandbits(64) if op is SepAxiOp.WRITE else 0
@@ -2056,6 +2069,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.rng = SepSeededRng(self.random_seed())
         self.walked: set[tuple[str, str, str, str]] = set()
+        self.size3_hole_ok: dict[str, bool] = {}
         self.fails: list[str] = []
         self.released = 0
         self.si_id_ok = 0
