@@ -1146,7 +1146,7 @@ reported as such rather than counted as a pass.
 . Prime a scratch word with a known value.
 . Issue a write narrower than the bus beat at each legal lane offset for each AxSIZE, and read the whole word back.
 . Compare against the AXI lane rule: the addressed lanes take the new data, every other lane keeps the primed value.
-. Write and read back the OTBN IMEM and DMEM windows.
+. Read OTBN `STATUS`. Write and read back the OTBN IMEM and DMEM windows: graded while `STATUS` reads IDLE, logged (`OBS-OTBN-MEM-BUSY-ACCESS`) in any other state.
 
 *Checkers*:
 
@@ -1156,7 +1156,7 @@ reported as such rather than counted as a pass.
 |CHK-STROBE
 |Each narrow write changed only its own byte lanes, at every AxSIZE and every legal offset. The line reports the count, so a run that issued no narrow write cannot read as a pass. The compare is the addressed 32-bit word: the generated SEP C headers contain no 4-byte-adjacent register pair, so a 64-bit beat has no neighbour CSR in bytes 4–7 and a widened strobe has no second register to corrupt.
 |CHK-WINDOW-DATA
-|Each memory window returned the value written to it. A window behind an SRAM-style TileLink adapter applies the mask on reads, unlike a register behind a register adapter which ignores it, so a bridge driving that read mask from the write strobe returns zeros with a correct response. A window not writable in this configuration is named with its reason. At least one window must have been verified: a walk where none was writable proves nothing and fails.
+|Each memory window returned the value written to it. A window behind an SRAM-style TileLink adapter applies the mask on reads, unlike a register behind a register adapter which ignores it, so a bridge driving that read mask from the write strobe returns zeros with a correct response. A window not writable in this configuration is named with its reason. At least one window must have been verified: a walk where none was writable proves nothing and fails. The check runs only while OTBN `STATUS` reads IDLE. In any other state the OTBN register text states that a busy OTBN reads 0 and ignores the write, and no SEP text states the result during the post-reset internal wipe, so each probe logs `OBS-OTBN-MEM-BUSY-ACCESS status=0x<word> window=<name> addr=0x<addr> wr_resp=<code> rd_resp=<code> written=0x<word> readback=0x<word>` and is not graded. The `no_cpu` run does not bring EDN up, so OTBN stays in that wipe and the leaf grades CHK-STROBE only.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

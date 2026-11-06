@@ -34,6 +34,7 @@ from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_otbn_mem_smoke_seq import OTBN_ADDR_STATUS
 
 RESP_OKAY = RESP_CODE["OKAY"]
 
@@ -144,13 +145,14 @@ class SepAxiStrobeWindow:
     # a neighbour. A strobe widened past the addressed lanes has no second
     # register to corrupt, and the addressed-word compare below is the whole
     # contract.
-    async def _rd(self, addr: int, *, size: int = 2) -> tuple[int, int]:
+    async def _rd(self, addr: int, *, size: int = 2, ungraded: bool = False) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
             f"sw_rd_0x{addr:08x}",
             op=SepAxiOp.READ,
             addr=addr,
             length=SIZE_BYTES[size],
             size=size,
+            allow_ungraded_read_resp=ungraded,
         )
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF
@@ -251,6 +253,33 @@ class SepAxiStrobeWindow:
             return f"{p.name} window 0x{p.addr:08x}: wrote 0x{p.value:08x}, read 0x{got:08x}{extra}"
         self.window_ok += 1
         return None
+
+    async def otbn_status(self) -> int:
+        """The OTBN STATUS word; the scoreboard grades its read response OKAY."""
+        _, raw = await self._rd(OTBN_ADDR_STATUS)
+        return raw
+
+    async def observe_window(self, p: WindowProbe, status: int) -> None:
+        """Write and read back a window and log the result without grading it.
+
+        While OTBN STATUS reports a busy state, the OTBN register text states
+        that a memory read returns 0 and a write is ignored; no SEP text states
+        whether that holds during the post-reset internal wipe. The responses
+        and the readback are logged on OBS-OTBN-MEM-BUSY-ACCESS.
+        """
+        wr_resp = await self._wr(p.addr, p.value, tolerate=True)
+        rd_resp, got = await self._rd(p.addr, ungraded=True)
+        self.test.logger.info(
+            "OBS-OTBN-MEM-BUSY-ACCESS status=0x%08x window=%s addr=0x%08x wr_resp=%d "
+            "rd_resp=%d written=0x%08x readback=0x%08x",
+            status,
+            p.name,
+            p.addr,
+            wr_resp,
+            rd_resp,
+            p.value,
+            got,
+        )
 
 
 def _selftest() -> None:

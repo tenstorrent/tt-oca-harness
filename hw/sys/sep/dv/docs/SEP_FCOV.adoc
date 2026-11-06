@@ -271,7 +271,7 @@ A `keyed_mac` hit fills `cp_kmac` as configuration only.
 |Coverpoint |Bins
 |`cp_cmd` |An `EXECUTE` write to `CMD`
 |`cp_done` |ONE bin: the same post-`EXECUTE` window saw `STATUS` back at IDLE and then `ERR_BITS` == 0
-|`cp_imem_rdback` / `cp_dmem_rdback` |The last whole-word write to IMEM (or DMEM), then an OKAY read of that address returning it
+|`cp_imem_rdback` / `cp_dmem_rdback` |No bins. A whole-word write to IMEM (or DMEM) then an OKAY read of that address returning it is in <<sep-fcov-km-unreachable>>
 |===
 
 `cp_done` is one bin. Two independent strobes would let a stale
@@ -1071,7 +1071,7 @@ human. Other members may fill a group in passing.
 |`sep_aes_mode_cg` |`sep_aes_mode_keysize_rand_test`
 |`sep_hmac_mode_cg` |`sep_hmac_sha_variant_rand_test`
 |`sep_kmac_mode_cg` |`sep_kmac_mode_strength_rand_test` owns the digest-equals-golden walk. The KM sideload cell needs `sep_km_kmac_sideload_kat_test`, whose completion is a STATE-share read rather than an `INTR_STATE` read and whose `cp_kmac` hit is configuration only
-|`sep_otbn_execute_cg` |`sep_otbn_compute_rand_test`; `cp_imem_rdback` / `cp_dmem_rdback` `sep_otbn_mem_smoke_test`
+|`sep_otbn_execute_cg` |`sep_otbn_compute_rand_test`; `cp_imem_rdback` / `cp_dmem_rdback` have no bins (<<sep-fcov-km-unreachable>>)
 |`sep_abr_keygen_cg` |`sep_abr_mldsa_keygen_kat_test`
 |`sep_abr_sign_cg` |`sep_abr_mldsa_sign_verify_kat_test`
 |`sep_abr_mlkem_cg` |`sep_abr_mlkem_kat_test`
@@ -7092,6 +7092,7 @@ These cells are not bins of any point. No stimulus of an owning test drives them
 [cols="3,4,5,2",options="header"]
 |===
 |Group and point |Bin |Reason |Disposition
+|`sep_otbn_execute_cg` `cp_imem_rdback`, `cp_dmem_rdback` |A whole-word IMEM or DMEM write, then an OKAY read of that address returning the written word |The tests that write and read back these memories (`sep_otbn_mem_smoke_test`, `sep_axi_strobe_window_test`) run while `STATUS` reads BUSY_SEC_WIPE_INT. The OTBN register text states that a busy OTBN reads 0 and ignores the write, and no SEP text states the result during the post-reset internal wipe. The tests log the accesses (`OBS-OTBN-MEM-BUSY-ACCESS`). |UNSTATED
 |`sep_km_kpv_slot_cg` `cp_kpv_erase` |The stored block after an erase differs from the block before it |The specification does not state the value of the erase fill. |UNSTATED
 |`sep_km_kpv_slot_cg` `cp_kpv_scramble_mode` |With enable 1 the stored word differs from the written word; with enable 1 the physical index differs from the linear index |A one-round cipher can map a word to itself, and the address permutation perm10 is not tabulated. |UNSTATED
 |`sep_km_sideload_delivery_cg` `cp_sd_write_order` |A share-0 word after a share-1 word; not all share-0 words before all share-1 words |A uniformly random shuffle admits every order, so no order property of one transfer is stated. |UNSTATED
