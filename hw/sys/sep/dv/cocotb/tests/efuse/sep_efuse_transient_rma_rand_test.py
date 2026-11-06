@@ -106,6 +106,7 @@ from env.sep_efuse_plan import (
     poll_code,
     program_addr_word,
     program_ctrl_word,
+    require_addr_readback,
     shadow_addr,
     token_go,
     write_token,
@@ -376,6 +377,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         """Program one bit with the full W wait, then read status and the OTP word.
 
         Three writes: the address, then enable and data, then the same with the go bit. The
+        address is read back and must equal the written value before the go. The
         command record runs from the go write to the end of W. ``program_enable`` is
         dropped before the direct read, so the read interface reaches the bank. A
         refused program sets the sticky ``efuse_req_error``, which holds off every
@@ -383,7 +385,9 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         ``efuse_req_error_clear`` (``efuse_interface_ctrl.adoc``); the flag is
         returned (logged, not graded) and cleared before the direct read.
         """
-        await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(bit_addr))
+        addr = program_addr_word(bit_addr)
+        await self.fd.wr(PROGRAM_ADDR_ADDR, addr)
+        await require_addr_readback(self.fd.rd, PROGRAM_ADDR_ADDR, addr)
         await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(go=0))
         mark = self.shim.mark()
         await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(go=1))

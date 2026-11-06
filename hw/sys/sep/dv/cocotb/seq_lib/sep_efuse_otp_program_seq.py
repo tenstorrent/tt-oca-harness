@@ -58,6 +58,20 @@ def _place_addr(bit_addr: int) -> int:
     return placed
 
 
+async def _write_program_addr(seq: uvm_sequence, bit_addr: int, addr: int) -> None:
+    """Write EFUSE_PROGRAM_ADDR and require the readback to equal the written value.
+
+    A refused or failed program is graded only at the address the sequence set.
+    """
+    await seq._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_ADDR, data=addr, label="program_addr")
+    got = await seq._access(SepAxiOp.READ, _EFUSE_PROGRAM_ADDR, label="program_addr_rb")
+    if got != addr:
+        raise AssertionError(
+            f"CHK-EFUSE-ADDR-RB FAIL: EFUSE_PROGRAM_ADDR read 0x{got:08x} after write "
+            f"0x{addr:08x} (OTP bit {bit_addr})"
+        )
+
+
 class sep_efuse_otp_program_seq(uvm_sequence):
     """W1S one OTP bit via the frontdoor, retrying past injected program failures."""
 
@@ -95,7 +109,7 @@ class sep_efuse_otp_program_seq(uvm_sequence):
             | _EFUSE_PROGRAM_ENABLE_BIT
         )
         for attempt in range(1, self.max_attempts + 1):
-            await self._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_ADDR, data=addr, label="program_addr")
+            await _write_program_addr(self, self.bit_addr, addr)
             await self._access(
                 SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=wdata, label="program_ctrl"
             )
@@ -202,7 +216,7 @@ class sep_efuse_otp_program_once_seq(uvm_sequence):
             | (_EFUSE_PROGRAM_READ_BACK_BIT if self.read_back else 0)
             | _EFUSE_PROGRAM_ENABLE_BIT
         )
-        await self._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_ADDR, data=addr, label="program_addr")
+        await _write_program_addr(self, self.bit_addr, addr)
         await self._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=wdata, label="program_ctrl")
         for _ in range(_POLL_CYCLES):
             await ClockCycles(cocotb.top.clk_i, 1)

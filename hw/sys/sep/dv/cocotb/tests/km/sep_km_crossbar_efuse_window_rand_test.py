@@ -49,8 +49,11 @@ Checks (anchor):
                   logged; efuse_req_error is graded on both (path readback +
                   host OTP readback)
   CHK-EFW-DENY    a KM program of a write-locked bit is refused and the OTP
-                  word equals the staged word (``efuse_req_error`` readback +
-                  host OTP readback)
+                  word equals the staged word; before each path's program the
+                  host writes EFUSE_PROGRAM_ADDR to a value other than the
+                  target, and after it reads the target back
+                  (``efuse_req_error`` readback + host OTP readback + host
+                  EFUSE_PROGRAM_ADDR readback)
   CHK-EFW-TM      in secure test mode the KM and host efuse_req_error results
                   and write responses are equal, the EFUSE_PROGRAM_ADDR read
                   back on each path is the written address, each KM eFuse write
@@ -1535,11 +1538,18 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
 
     async def _deny_pair(self, rng: SepSeededRng, fp: KmFusePlan, prog: dict) -> None:
         tgt = fp.targets["denied"]
+        want_addr = self._prog_addr(tgt)
+        # The legs share EFUSE_PROGRAM_ADDR. The host sets it to a value other than
+        # the target before each leg, so the host readback after the leg shows the
+        # address write of that leg.
+        sentinel = _place(tgt.address ^ 1, PC_ADDR_LSB, PC_ADDR_MASK)
         out: dict = {}
         for path in self._order(rng, "deny.order"):
+            await self._hw(R_PADDR, sentinel)
             r = await (
                 self._km_program(tgt, "deny") if path == "km" else self._host_program(tgt, "deny")
             )
+            r["addr_rb"] = await self._hr(R_PADDR)
             r["otp"] = await self._host_otp_read(tgt)
             out[path] = r
         spare = {}
@@ -1560,9 +1570,15 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 f"path={path} field={tgt.field} word={tgt.word} bit={tgt.bit} "
                 f"req_err_before={r['req_err_before']} req_err={r['req_err']} "
                 f"done={r['done']} status={r['status']} otp_word=0x{r['otp']['word']:08x} "
-                f"staged=0x{staged:08x} otp_word_eq={r['eq']} rd_cmds={r['otp']['rd_cmds']}"
+                f"staged=0x{staged:08x} otp_word_eq={r['eq']} rd_cmds={r['otp']['rd_cmds']} "
+                f"program_addr_rb=0x{r['addr_rb']:08x} sentinel=0x{sentinel:08x}"
             )
             r["line"] = line
+            if r["addr_rb"] != want_addr:
+                problems.append(
+                    f"EFUSE_PROGRAM_ADDR read by the host after the {path} leg "
+                    f"!= the target 0x{want_addr:08x}: {line}"
+                )
             bad = []
             if r["req_err_before"]:
                 bad.append("efuse_req_error read 1 after its clear (control)")

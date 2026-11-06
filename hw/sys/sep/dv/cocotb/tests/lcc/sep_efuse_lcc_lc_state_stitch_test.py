@@ -158,6 +158,9 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
         # PROGRAM_DONE+PROGRAM_ERR here instead of inferring a bank write
         # from fail-injection credit (that credit re-arms on every rst_ni).
         self.last_status = 0
+        # EFUSE_PROGRAM_ADDR read back after the last address write.
+        self.addr_readback: int | None = None
+        self.addr_written: int | None = None
 
     async def _access(
         self,
@@ -232,6 +235,14 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
         saw_retry = False
         for attempt in range(1, self.max_attempts + 1):
             await self._write(_EFUSE_PROGRAM_ADDR, addr, "program_addr")
+            self.addr_written = addr
+            self.addr_readback = await self._read(_EFUSE_PROGRAM_ADDR, "program_addr_rb")
+            if self.addr_readback != addr:
+                raise AssertionError(
+                    f"CHK-EFUSE-ADDR-RB FAIL: EFUSE_PROGRAM_ADDR read "
+                    f"0x{self.addr_readback:08x} after write 0x{addr:08x} "
+                    f"(OTP bit {self.bit_addr})"
+                )
             await self._write(_EFUSE_PROGRAM_CTRL, wdata, "program_ctrl")
 
             for _ in range(200):
@@ -534,6 +545,9 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 try:
                     await self.start_seq(blocked)
                 except AssertionError as exc:
+                    # A refusal counts only at the address this leg set.
+                    if blocked.addr_readback != blocked.addr_written:
+                        raise
                     status = blocked.last_status
                     self.logger.info(
                         "OBS-STM-PROG-BLOCK-STATUS: PROGRAM_DONE=%d PROGRAM_ERR=%d "
@@ -576,10 +590,11 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 # resense compared the whole sensed shadow with the image, which does
                 # not hold the blocked bit, so a written bit fails there.
                 self.logger.info(
-                    "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] not programmed after %d "
-                    "refused attempt(s) under secure_tm=1; the post-sense shadow equals "
-                    "the image without it (expected LC=0x%x)",
-                    _LC_STATE_BIT_BASE,
+                    "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] (EFUSE_PROGRAM_ADDR read "
+                    "back before the go) not programmed after %d refused attempt(s) under "
+                    "secure_tm=1; the post-sense shadow equals the image without it "
+                    "(expected LC=0x%x)",
+                    blocked.addr_readback,
                     blocked_attempts,
                     raw,
                 )

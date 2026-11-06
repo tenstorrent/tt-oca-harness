@@ -64,6 +64,12 @@ class sep_efuse_direct_read_seq(uvm_sequence):
         if self.word_index < 0 or bit_addr & ~_EFUSE_ADDR_MASK:
             raise ValueError(f"word {self.word_index} is outside the efuse_addr range")
         await self._access(SepAxiOp.WRITE, _EFUSE_READ_ADDR, data=bit_addr, label="read_addr")
+        got = await self._access(SepAxiOp.READ, _EFUSE_READ_ADDR, label="read_addr_rb")
+        if got != bit_addr:
+            raise AssertionError(
+                f"CHK-EFUSE-ADDR-RB FAIL: EFUSE_READ_ADDR read 0x{got:08x} after write "
+                f"0x{bit_addr:08x} (OTP word {self.word_index})"
+            )
         await self._access(
             SepAxiOp.WRITE,
             _EFUSE_READ_CTRL,

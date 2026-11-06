@@ -757,15 +757,36 @@ def read_ctrl_word(*, enable: int = 1, go: int = 1) -> int:
     return _fld(_RD, "efuse_read_go", go) | _fld(_RD, "read_enable", enable)
 
 
+_ADDR_REG_NAME = {PROGRAM_ADDR_ADDR: _PA, READ_ADDR_ADDR: _RA}
+
+
+async def require_addr_readback(rd: ReadFn, reg_addr: int, want: int) -> int:
+    """Read ``EFUSE_PROGRAM_ADDR`` or ``EFUSE_READ_ADDR`` back; fail unless it holds ``want``.
+
+    A refused or blocked command is graded only at the address the test set. Returns
+    the value read.
+    """
+    got = await rd(reg_addr)
+    if got != want:
+        raise AssertionError(
+            f"CHK-EFUSE-ADDR-RB FAIL: {_ADDR_REG_NAME[reg_addr]} read 0x{got:08x} after "
+            f"write 0x{want:08x}"
+        )
+    return got
+
+
 async def program_go_no_wait(
-    wr: WriteFn, bit_addr: int, *, data: int = 1, read_back: int = 0
+    wr: WriteFn, rd: ReadFn, bit_addr: int, *, data: int = 1, read_back: int = 0
 ) -> int:
-    """Write ``EFUSE_PROGRAM_ADDR``, then ``EFUSE_PROGRAM_CTRL`` with enable, data and go; no poll.
+    """Write ``EFUSE_PROGRAM_ADDR``, read it back, then write ``EFUSE_PROGRAM_CTRL`` with
+    enable, data and go; no poll.
 
     Returns the written control value. The caller places every later step by a probe or a
     bounded window (VPLAN eFuse rules, Time).
     """
-    await wr(PROGRAM_ADDR_ADDR, program_addr_word(bit_addr))
+    addr = program_addr_word(bit_addr)
+    await wr(PROGRAM_ADDR_ADDR, addr)
+    await require_addr_readback(rd, PROGRAM_ADDR_ADDR, addr)
     value = program_ctrl_word(data=data, read_back=read_back)
     await wr(PROGRAM_CTRL_ADDR, value)
     return value
@@ -2062,6 +2083,8 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
             written.append((acc["channel"], acc["index"]))
     denied = d.shuffled("denied_order", denied)
     rw_cands = [f for f in SHADOW_RW_FIELDS if zero_bits(img, f)]
+    # The direct read of p leaves the bit address of its word in EFUSE_READ_ADDR.
+    p_read = (field_word(p_bit["field"]) + p_bit["word"]) * 32
     for i, acc in enumerate(denied):
         if acc["cls"] == "shadow" and acc["op"] == "rd":
             w = d.randrange(f"shadow_read_word.{i}", 0, NUM_FUSE_WORDS)
@@ -2096,7 +2119,15 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
                     )
                 )
             else:
-                data = read_addr_word(d.randrange(f"ifctl_read_addr.{i}", 1, NUM_FUSE_WORDS * 32))
+                # Neither 0 nor p_read (the value the frontdoor holds there during
+                # the denied block).
+                data = read_addr_word(
+                    d.until(
+                        f"ifctl_read_addr.{i}",
+                        lambda: d.rng.randrange(1, NUM_FUSE_WORDS * 32),
+                        lambda v: v != p_read,
+                    )
+                )
             acc.update(reg=reg, addr=EFUSE_INTERFACE_CTRL.addr(reg), data=data)
     leg = {
         "access_count": n,

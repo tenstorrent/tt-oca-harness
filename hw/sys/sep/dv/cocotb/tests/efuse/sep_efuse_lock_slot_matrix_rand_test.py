@@ -164,6 +164,7 @@ from env.sep_efuse_plan import (
     program_go_no_wait,
     read_addr_word,
     read_ctrl_word,
+    require_addr_readback,
     shadow_addr,
     write_lock_bit,
 )
@@ -371,7 +372,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         graded on a flag that was already set cannot pass.
         """
         pre = await self._req_err_now()
-        await self._wr(READ_ADDR_ADDR, read_addr_word(bit_addr))
+        addr = read_addr_word(bit_addr)
+        await self._wr(READ_ADDR_ADDR, addr)
+        await require_addr_readback(self._rd32, READ_ADDR_ADDR, addr)
         start = self._pulse_mark()
         await self._wr(READ_CTRL_ADDR, read_ctrl_word())
         await ClockCycles(cocotb.top.clk_i, self.w)
@@ -396,7 +399,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         snap = self.bank.snapshot()
         mark = self.shim.mark() if watch else None
         start = self._pulse_mark() if watch else None
-        await program_go_no_wait(self._wr, bit_addr, read_back=read_back)
+        await program_go_no_wait(self._wr, self._rd32, bit_addr, read_back=read_back)
         await ClockCycles(cocotb.top.clk_i, self.w)
         progs = self.shim.programs_since(mark) if mark is not None else None
         diff = self.bank.diff_since(snap)

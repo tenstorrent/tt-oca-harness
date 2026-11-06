@@ -117,6 +117,7 @@ from env.sep_efuse_plan import (
     program_ctrl_word,
     read_addr_word,
     read_ctrl_word,
+    require_addr_readback,
     shadow_addr,
     zero_bits,
 )
@@ -257,14 +258,26 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
     def _idle(f: dict[str, int]) -> bool:
         return f["rd_busy"] == 0 and f["pg_busy"] == 0
 
+    async def _set_program_addr(self, bit_addr: int) -> None:
+        """Write EFUSE_PROGRAM_ADDR and require the readback to equal it before a go."""
+        addr = program_addr_word(bit_addr)
+        await self._wr(PROGRAM_ADDR_ADDR, addr)
+        await require_addr_readback(self._rd, PROGRAM_ADDR_ADDR, addr)
+
+    async def _set_read_addr(self, bit_addr: int) -> None:
+        """Write EFUSE_READ_ADDR and require the readback to equal it before a go."""
+        addr = read_addr_word(bit_addr)
+        await self._wr(READ_ADDR_ADDR, addr)
+        await require_addr_readback(self._rd, READ_ADDR_ADDR, addr)
+
     async def _run_program(self, bit_addr: int, *, data: int = 1) -> dict[str, int]:
-        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(bit_addr))
+        await self._set_program_addr(bit_addr)
         await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=data))
         await ClockCycles(cocotb.top.clk_i, self.w)
         return await self._flags()
 
     async def _run_read(self, bit_addr: int, *, enable: int = 1) -> dict[str, int]:
-        await self._wr(READ_ADDR_ADDR, read_addr_word(bit_addr))
+        await self._set_read_addr(bit_addr)
         await self._wr(READ_CTRL_ADDR, read_ctrl_word(enable=enable))
         await ClockCycles(cocotb.top.clk_i, self.w)
         return await self._flags()
@@ -404,9 +417,9 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, _RST_HOLD)
         task, win = self._start_presense_monitor(self.bank.read())
         dut.rst_ni.value = 1
-        # First accesses after the release: the address, then one write with enable,
-        # data 1 and go.
-        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(bit))
+        # First accesses after the release: the address and its readback, then one
+        # write with enable, data 1 and go.
+        await self._set_program_addr(bit)
         await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         sense_at_go = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
         t_go = win["n"]
@@ -429,7 +442,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         snap = self.bank.read()
         watch = SepEfuseBankWatch(dut).start(reference=snap)
         m_cmd = self.cmds.mark()
-        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(twin))
+        await self._set_program_addr(twin)
         m0 = watch.mark()
         await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         m1 = watch.mark()
@@ -869,7 +882,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         tag = self._step()
         mark = self.cmds.mark()
         await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=0, enable=1, go=0))
-        await self._wr(READ_ADDR_ADDR, read_addr_word(bit))
+        await self._set_read_addr(bit)
         await self._wr(READ_CTRL_ADDR, read_ctrl_word(enable=1))
         await ClockCycles(dut.clk_i, _BOTH_WAIT)
         st = await self._rd(STATUS_ADDR)
