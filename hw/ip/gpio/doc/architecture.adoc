@@ -83,7 +83,7 @@ the pad input.
 
 === SMC Pad Ring
 
-The SMC instantiates one `gpio` controller per pad in `u_smc_padring`, 65 in all.
+The SMC instantiates one `gpio` controller per pad in `u_smc_padring`, 67 in all.
 <<gpio-padring-diagram>> shows how the controllers are reached and where the shims sit.
 `u_smc_padring` sits in `u_smc_peripherals` beside the peripheral crossbar
 `u_smc_periph_axi_lite_xbar`, which receives the peripheral window from the local crossbar
@@ -95,12 +95,12 @@ cool-reset functions to fixed pads, and drives the LSIO plane of each controller
 controllers' pad wires leave the SMC; outside it, the adopter's pad integration places a
 `gpio_shim` and a pad macro on each pad, and decodes the `smc_external` window to give
 each shim its `gpio_ctrl` slot; the rest of that window reaches adopter-specific targets.
-The figure draws pads 0, 1 and 64; the ellipses stand for
+The figure draws pads 0, 1 and 66; the ellipses stand for
 the pads between them.
 
 [[gpio-padring-diagram]]
 .SMC pad ring GPIO interfaces and adopter pad shims
-image::gpio-padring.svg[alt="Local crossbar in u_smc_base feeding the peripheral crossbar in u_smc_peripherals, which feeds u_smc_padring, whose demux reaches 65 gpio controllers and a DECERR responder, with the LSIO pad map on a shared bus; the controllers' pad wires reach per-pad gpio_shim and pad macro instances in the adopter pad integration, which decodes the smc_external window for the shims and adopter-specific targets",width=100%,pdfwidth=100%]
+image::gpio-padring.svg[alt="Local crossbar in u_smc_base feeding the peripheral crossbar in u_smc_peripherals, which feeds u_smc_padring, whose demux reaches 67 gpio controllers and a DECERR responder, with the LSIO pad map on a shared bus; the controllers' pad wires reach per-pad gpio_shim and pad macro instances in the adopter pad integration, which decodes the smc_external window for the shims and adopter-specific targets",width=100%,pdfwidth=100%]
 
 The open reference integration, `smc_ip_integration`, stands in for the adopter side
 with one `prim_pad_shim` per pad at fixed electrical settings, and answers the `gpio_ctrl`

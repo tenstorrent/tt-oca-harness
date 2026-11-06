@@ -61,7 +61,7 @@ module smc_local_xbar
 
   output axi_lite32_req_t  periph_reg_req_o,  // Request to the peripheral CSR crossbar for
                                               // the reset unit through DTP control windows,
-                                              // the I3C wrapper and smc_external.
+                                              // the PWM, the I3C wrapper and smc_external.
   input  axi_lite32_resp_t periph_reg_resp_i,  // Response from the peripheral CSR crossbar.
 
   output apb32_req_t  smc_dfd_reg_req_o,  // Request for the SMC CLA window.
@@ -149,6 +149,10 @@ module smc_local_xbar
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE)},
+    '{idx: 3,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR

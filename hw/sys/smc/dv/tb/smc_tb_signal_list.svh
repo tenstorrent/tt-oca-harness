@@ -220,7 +220,7 @@
 // Synced observe is smc_base.ext_interrupts_smc_clk[0], not GPIO.
 `SMC_TB_IN(logic, tb_ext_interrupt_0_i)
 `SMC_TB_OUT(logic, tb_ext_interrupt_0_sync)
-// Reset-unit captured GPIO straps (wrapper [63:0]; STRAPS_LO/HI use [60:0]).
+// Reset-unit captured GPIO straps (wrapper [63:0]; STRAPS_LO/HI use [62:0]).
 // Unique vs GPIO0 IRQ pads (`smc_gpio_irq_active_test`); this pin is strap capture.
 `SMC_TB_IN(logic [63:0], tb_captured_straps)
 // Subsystem reset-complete pin (prim_sync3 → SS_RESET_COMPLETE CSR). Idle 1.

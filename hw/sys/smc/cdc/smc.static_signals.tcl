@@ -43,7 +43,7 @@ _smc_static_port {mbist_pass_i}
 _smc_static_port {mbist_abort_i}
 
 # Boot Stall
-_smc_static_port {pad2core_i[60]}
+_smc_static_port {pad2core_i[57]}
 _smc_static_port {boot_stall_jtag_ovrd_i}
 _smc_static_port {boot_stall_jtag_val_i}
 

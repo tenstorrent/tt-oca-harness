@@ -78,8 +78,8 @@
  */
 #define SMC_I3C_0_SCL_GPIO 27
 #define SMC_I3C_0_SDA_GPIO 28
-#define SMC_I3C_1_SCL_GPIO 63 /* unbonded */
-#define SMC_I3C_1_SDA_GPIO 64 /* unbonded */
+#define SMC_I3C_1_SCL_GPIO 65 /* unbonded */
+#define SMC_I3C_1_SDA_GPIO 66 /* unbonded */
 #define SMC_I3C_2_SCL_GPIO 29
 #define SMC_I3C_2_SDA_GPIO 30
 #define SMC_I3C_3_SCL_GPIO 31
