@@ -51,7 +51,7 @@ from .smc_efuse_vip_utils import (
     efuse_preload_word_at,
 )
 
-_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 
 
 def _map_expect(addr: int, lock_field: str | None) -> int:
@@ -81,17 +81,17 @@ _MAP_REGIONS = (
     (
         "JTAG_PUBLIC_IDENTITY",
         "SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR",
-        "SMC_EFUSE_MAP__LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_bm",
+        "SMC_EFUSE_MAP__HARNESS_LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_bm",
     ),
     (
         "SMC_CONFIG",
         "SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR",
-        "SMC_EFUSE_MAP__LOCKS__SMC_CONFIG_READ_LOCK_bm",
+        "SMC_EFUSE_MAP__HARNESS_LOCKS__SMC_CONFIG_READ_LOCK_bm",
     ),
     (
         "OCCP_TRANSPORT_TIMEOUT",
         "SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR",
-        "SMC_EFUSE_MAP__LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_bm",
+        "SMC_EFUSE_MAP__HARNESS_LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_bm",
     ),
 )
 # `I2C_I3C_ID` is a 9-entry array. The authoritative map carries it as a PeakRDL
@@ -119,12 +119,12 @@ for _i in range(_I2C_I3C_ID_COUNT):
         (
             f"EFUSE_MAP_I2C_I3C_ID_{_i}",
             _a,
-            _map_expect(_a, "SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bm"),
+            _map_expect(_a, "SMC_EFUSE_MAP__HARNESS_LOCKS__I2C_I3C_ID_READ_LOCK_bm"),
         )
     )
 for _i in range(_SPARE_PROBE_COUNT):
     _a = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", _i)
-    _lsym = f"SMC_EFUSE_MAP__LOCKS__SPARE{_i}_READ_LOCK_bm"
+    _lsym = f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{_i}_READ_LOCK_bm"
     EFUSE_MAP_READS.append((f"EFUSE_MAP_SPARE_{_i}", _a, _map_expect(_a, _lsym)))
 
 

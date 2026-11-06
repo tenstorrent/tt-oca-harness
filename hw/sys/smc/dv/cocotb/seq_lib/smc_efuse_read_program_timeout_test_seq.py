@@ -46,6 +46,8 @@ from .smc_efuse_vip_utils import efuse_preload_word_at
 STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
 PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 READ_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR")
+PROGRAM_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR")
+READ_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR")
 READ_DATA = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR")
 PROG_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR")
 READ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
@@ -85,7 +87,7 @@ READ_ADDR_ERR = efuse_ifc_u32(
 # Word 0 of the eFuse bank MODEL after fuse sense, i.e. word 0 of the preload
 # asset the model $readmemh'd at time 0 -- derived from the asset at run time,
 # never a hand literal. Model-backed observation, not a silicon claim.
-OTP_WORD0_MARKER = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"))
+OTP_WORD0_MARKER = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR"))
 _BIT = 0
 _POLL = 10_000
 
@@ -118,14 +120,14 @@ STATUS_ERRORS = REQ_ERR | PROG_ADDR_ERR | READ_ADDR_ERR
 # Fuse bit address of a SMC_EFUSE_MAP byte: map word n is preload word n, which
 # holds fuse bits 32n..32n+31 (smc_efuse_vip_utils preload layout).
 EFUSE_MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
-LOCKS_ADDR = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-SPARE4_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 4)
-SPARE27_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 27)
+LOCKS_ADDR = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
+SPARE1_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 4)
+SPARE2_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 27)
 SPARE0_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
-SPARE4_WLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE4_WRITE_LOCK_bm")
-SPARE4_RLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE4_READ_LOCK_bm")
-SPARE27_WLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE27_WRITE_LOCK_bm")
-SPARE27_RLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE27_READ_LOCK_bm")
+SPARE1_WLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE1_WRITE_LOCK_bm")
+SPARE1_RLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE1_READ_LOCK_bm")
+SPARE2_WLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE2_WRITE_LOCK_bm")
+SPARE2_RLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE2_READ_LOCK_bm")
 
 #: Bit addresses of SMC_COV_B4_010: 0xFFFF is out of range under every reading;
 #: 0x2000 and 0x6000 are measured only, and 0x1FFF is the last bit of the
@@ -137,7 +139,7 @@ LAST_IN_RANGE = 0x1FFF
 ONES_WORD_BIT = (SPARE0_ADDR - EFUSE_MAP_BASE) * 8
 UPPER_ONES = (29, 30, 31)
 UPPER_ONES_MASK = sum(1 << b for b in UPPER_ONES)
-SPARE4_BIT = (SPARE4_ADDR - EFUSE_MAP_BASE) * 8
+SPARE1_BIT = (SPARE1_ADDR - EFUSE_MAP_BASE) * 8
 WORD_MASK = 0xFFFF_FFFF
 
 FENCE = (
@@ -249,7 +251,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("STATUS_CLR0", STATUS, 0)
 
     async def _program(self, label: str, idle: bool = True) -> int:
-        cmd = _BIT | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
+        await self.csr_write(f"{label}_ADDR", PROGRAM_ADDR, _BIT)
+        cmd = PROG_DATA | PROG_GO | PROG_RB | PROG_EN
         await self.csr_write(f"{label}_GO", PROGRAM_CTRL, cmd)
         st = await self._wait_mask(PROGRAM_CTRL, PROG_DONE, f"{label}_DONE")
         if idle:
@@ -257,7 +260,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         return st
 
     async def _read(self, label: str) -> tuple[int, int]:
-        await self.csr_write(f"{label}_GO", READ_CTRL, _BIT | READ_GO | READ_EN)
+        await self.csr_write(f"{label}_ADDR", READ_ADDR, _BIT)
+        await self.csr_write(f"{label}_GO", READ_CTRL, READ_GO | READ_EN)
         st = await self._wait_mask(READ_CTRL, READ_DONE, f"{label}_DONE")
         data = await self.csr_read(f"{label}_DATA", READ_DATA)
         await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
@@ -272,7 +276,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         model. Identical to `_read` except the command word omits READ_EN, so
         the difference between the two is exactly the quantity under test.
         """
-        await self.csr_write(f"{label}_GO", READ_CTRL, _BIT | READ_GO)
+        await self.csr_write(f"{label}_ADDR", READ_ADDR, _BIT)
+        await self.csr_write(f"{label}_GO", READ_CTRL, READ_GO)
         st = await self._wait_mask(READ_CTRL, READ_DONE, f"{label}_DONE")
         data = await self.csr_read(f"{label}_DATA", READ_DATA)
         await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
@@ -670,7 +675,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
 
     async def _prog_cmd(self, label: str, addr: int, complete: bool) -> tuple[int, int]:
         """Program ``addr`` with efuse_data 1; poll busy low (and done high when ``complete``)."""
-        await self.csr_write(f"{label}_GO", PROGRAM_CTRL, addr | PROG_DATA | PROG_GO | PROG_EN)
+        await self.csr_write(f"{label}_ADDR", PROGRAM_ADDR, addr)
+        await self.csr_write(f"{label}_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_EN)
 
         def want(v: int) -> bool:
             return not v & PROG_BUSY and (not complete or bool(v & PROG_DONE))
@@ -680,7 +686,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
 
     async def _read_cmd(self, label: str, addr: int, complete: bool) -> tuple[int, int]:
         """Read ``addr``; poll busy low (and done high when ``complete``)."""
-        await self.csr_write(f"{label}_GO", READ_CTRL, addr | READ_GO | READ_EN)
+        await self.csr_write(f"{label}_ADDR", READ_ADDR, addr)
+        await self.csr_write(f"{label}_GO", READ_CTRL, READ_GO | READ_EN)
 
         def want(v: int) -> bool:
             return not v & READ_BUSY and (not complete or bool(v & READ_DONE))
@@ -886,7 +893,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         self._stamp("UPPER-ONES")
 
         # S8: write locks on slots 8 and 31; a write of 0 must not clear them.
-        wlocks = SPARE4_WLOCK | SPARE27_WLOCK
+        wlocks = SPARE1_WLOCK | SPARE2_WLOCK
         await self.csr_write("S8_LOCKS_SET", LOCKS_ADDR, wlocks, length=8)
         set_rb = await self._read_locks("S8_LOCKS_SET_RB")
         await self.csr_write("S8_LOCKS_ZERO", LOCKS_ADDR, 0, length=8)
@@ -895,19 +902,19 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         assert zero_rb & wlocks == wlocks, (
             f"S8: LOCKS=0x{zero_rb:016x} after writing 0; RW1S bits 0x{wlocks:x} cleared"
         )
-        ctrl, st = await self._prog_cmd("S8_PROG_SPARE4", SPARE4_BIT, complete=False)
+        ctrl, st = await self._prog_cmd("S8_PROG_SPARE1", SPARE1_BIT, complete=False)
         await self.csr_write("S8_REQ_ERR_CLR", STATUS, REQ_ERR_CLR)
         await self.csr_write("S8_PROG_IDLE", PROGRAM_CTRL, 0)
         st_after = await self._status("S8_STATUS_AFTER_CLR")
         cocotb.log.info(
             "CHK-EFUSE-GUARD-HI-WRITE: lock bits %d/%d set=1, after write 0 still 1; "
-            "req_error after SPARE4 program=%d (bit address 0x%x, PROGRAM_CTRL=0x%x "
+            "req_error after SPARE1 program=%d (bit address 0x%x, PROGRAM_CTRL=0x%x "
             "STATUS=0x%x, after clear 0x%x; LOCKS 0x%016x / 0x%016x; measured, "
             "LINKED-ISSUE SF-028)",
-            SPARE4_WLOCK.bit_length() - 1,
-            SPARE27_WLOCK.bit_length() - 1,
+            SPARE1_WLOCK.bit_length() - 1,
+            SPARE2_WLOCK.bit_length() - 1,
             int(bool(st & REQ_ERR)),
-            SPARE4_BIT,
+            SPARE1_BIT,
             ctrl,
             st,
             st_after,
@@ -918,17 +925,17 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         self._stamp("WRITE-LOCKS")
 
         # S9: read locks on slots 8 and 31, then read both shadow registers.
-        rlocks = SPARE4_RLOCK | SPARE27_RLOCK
+        rlocks = SPARE1_RLOCK | SPARE2_RLOCK
         await self.csr_write("S9_LOCKS_SET", LOCKS_ADDR, rlocks, length=8)
         rd_rb = await self._read_locks("S9_LOCKS_SET_RB")
         assert rd_rb & rlocks == rlocks, f"S9: LOCKS=0x{rd_rb:016x} after setting 0x{rlocks:x}"
-        sp4 = await self._shadow_read("S9_SPARE4", SPARE4_ADDR)
-        sp27 = await self._shadow_read("S9_SPARE27", SPARE27_ADDR)
+        sp4 = await self._shadow_read("S9_SPARE1", SPARE1_ADDR)
+        sp27 = await self._shadow_read("S9_SPARE2", SPARE2_ADDR)
         cocotb.log.info(
-            "CHK-EFUSE-GUARD-HI-READ: read locks %d/%d = 1; SPARE4 resp=%d data=0x%08x; "
-            "SPARE27 resp=%d data=0x%08x (LOCKS 0x%016x; measured, LINKED-ISSUE SF-029/SF-028)",
-            SPARE4_RLOCK.bit_length() - 1,
-            SPARE27_RLOCK.bit_length() - 1,
+            "CHK-EFUSE-GUARD-HI-READ: read locks %d/%d = 1; SPARE1 resp=%d data=0x%08x; "
+            "SPARE2 resp=%d data=0x%08x (LOCKS 0x%016x; measured, LINKED-ISSUE SF-029/SF-028)",
+            SPARE1_RLOCK.bit_length() - 1,
+            SPARE2_RLOCK.bit_length() - 1,
             sp4.resp_code,
             sp4.rdata & WORD_MASK,
             sp27.resp_code,

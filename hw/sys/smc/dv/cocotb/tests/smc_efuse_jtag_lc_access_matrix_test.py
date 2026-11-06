@@ -55,7 +55,7 @@ from seq_lib.smc_efuse_vip_utils import efuse_map_read_locked
 from smc_base_test import smc_base_test
 
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
-EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
 
 # Non-identity address class (RAND-REP): the seed draws, per lifecycle image, the register the
@@ -71,7 +71,7 @@ NUM_I2C_I3C_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM")
 
 def _non_id_candidates() -> list[tuple[str, int]]:
     rows = [("LOCKS", EFUSE_MAP_NON_ID)]
-    if not efuse_map_read_locked("SMC_EFUSE_MAP__LOCKS__I2C_I3C_ID_READ_LOCK_bm"):
+    if not efuse_map_read_locked("SMC_EFUSE_MAP__HARNESS_LOCKS__I2C_I3C_ID_READ_LOCK_bm"):
         for n in range(NUM_I2C_I3C_ID):
             rows.append(
                 (
@@ -87,10 +87,10 @@ def _non_id_candidates() -> list[tuple[str, int]]:
             "OCCP_TRANSPORT_TIMEOUT_READ_LOCK",
         ),
     ):
-        if not efuse_map_read_locked(f"SMC_EFUSE_MAP__LOCKS__{lock}_bm"):
+        if not efuse_map_read_locked(f"SMC_EFUSE_MAP__HARNESS_LOCKS__{lock}_bm"):
             rows.append((name, smc_addr(symbol)))
     for n in range(NUM_SPARE):
-        if not efuse_map_read_locked(f"SMC_EFUSE_MAP__LOCKS__SPARE{n}_READ_LOCK_bm"):
+        if not efuse_map_read_locked(f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{n}_READ_LOCK_bm"):
             rows.append((f"SPARE{n}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", n)))
     return rows
 

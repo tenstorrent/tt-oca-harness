@@ -1475,9 +1475,9 @@ logged as controls.
 |`smc_efuse_jtag_lc_negative_test` |3 |PROD JTAG eFuse deny paths + identity-read exception.
 |`smc_efuse_locked_access_interrupt_test` |2 |JTAG_PUBLIC_IDENTITY unlocked write silent; locked write/read pulse `tb_efuse_locked_access_irq`.
 |`smc_efuse_lock_guard_test` |2 |Software locks established from the CSR side on three shadow fields: the write no longer lands, the lock cannot be cleared, and the read no longer discloses.
-|`smc_efuse_image_alt55_test` |3 |Sense a 0x5555... image, then sweep, complement-write, lock and re-sense all 256 SMC_EFUSE_MAP words against it.
-|`smc_efuse_image_altaa_test` |3 |Sense a 0xAAAA... image, then sweep, complement-write, lock and re-sense all 256 SMC_EFUSE_MAP words against it.
-|`smc_efuse_image_random_test` |3 |Sense a seeded full-width random image, then sweep, complement-write, lock and re-sense all 256 SMC_EFUSE_MAP words against it.
+|`smc_efuse_image_alt55_test` |3 |Sense a 0x5555... image, then sweep, complement-write, lock and re-sense all 64 SMC_EFUSE_MAP words against it.
+|`smc_efuse_image_altaa_test` |3 |Sense a 0xAAAA... image, then sweep, complement-write, lock and re-sense all 64 SMC_EFUSE_MAP words against it.
+|`smc_efuse_image_random_test` |3 |Sense a seeded full-width random image, then sweep, complement-write, lock and re-sense all 64 SMC_EFUSE_MAP words against it.
 |`smc_efuse_map_read_test` |2 |SMC_EFUSE_MAP direct read.
 |`smc_efuse_otp_burn_shadow_test` |2 |Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
 |`smc_efuse_otp_clock_config_depth_test` |3 |Run eFuse OTP clock/timing register programming depth checks.
@@ -1506,7 +1506,7 @@ the ones eFuse image.
 |`smc_efuse_map_sense_image_zero_test` |3 |Sensed image words match the loaded file on every path, in
 the zero eFuse image.
 |`smc_efuse_map_sep_write_test` |3 |Unlocked SEP_IN map writes read back and reach the shadow port.
-|`smc_efuse_sense_sequence_test` |2 |Sense request, 256 strobes and hand-over follow the interface.
+|`smc_efuse_sense_sequence_test` |2 |Sense request, 192 strobes (64 harness plus 128 supplementary words) and hand-over follow the interface.
 |`smc_efuse_security_disable_bypass_test` |3, planned |With the security-disable input held at 1
 from time 0 and a bank image of non-zero words, the eFuse sense state machine issues no read command
 to the bank, the shadow registers keep their all-zero reset values, and register access to them over
@@ -27597,9 +27597,9 @@ pattern (a fixed-cell variant of the image-pattern family).
 
 * Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern alt55` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds 0x5555...; the write-lock bit of each schema block is set, which is LOCKS slots 0-4 (the schema carries one lock pair for all of SPARE, so SPARE1 to SPARE27 stay write-unlocked). Every read lock is clear, so every word compares content, and LOCKS is never zero, so sensing it is visible and a write of 0 to it is a real clear attempt.
 * Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. Lock semantics come from the RDL `LOCKS` description (a write-locked field "is not programmable", a read-locked shadow register "is not readable") and `architecture.adoc` line 233 (`lock[0] = 1` is read-locked). Neither states the response code or the word a read-locked read returns, so read-locked reads are held to non-disclosure only and their response code is recorded, not asserted.
-* After sense all 256 words are read. Every non-LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
-* LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 256 words then reads LOCKS as all-ones, and each of the 254 other words, now read-locked, must return neither its image word nor its complement.
-* A cold reset follows. `tb_fuse_sense_done` must read 0 under it and set again after release, and all 256 words must again equal the image, so the shadow writes and the LOCKS set are gone.
+* After sense all 64 words are read. Every non-HARNESS_LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
+* HARNESS_LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 64 words then reads HARNESS_LOCKS as all-ones, and each of the 62 other words, now read-locked, must return neither its image word nor its complement.
+* A cold reset follows. `tb_fuse_sense_done` must read 0 under it and set again after release, and all 64 words must again equal the image, so the shadow writes and the HARNESS_LOCKS set are gone.
 * Proof class is transport and lock enforcement: the bank is the DV model of the OTP macro, and nothing here claims fuse programming.
 
 *Test Procedure*:
@@ -27612,10 +27612,10 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 |===
 |Checker |Description
 |`CHK-EFUSE-IMG-IMAGE` |The schema the generator used matches the generated RDL map (block order, bit offsets and widths, LOCKS bit positions); the generated image has a non-zero LOCKS, at least one write-locked and one write-unlocked data word, a non-zero data word and no read lock, every data word equals the pattern word, and the bank model's word 0 equals image word 0, so the image reached the model
-|`CHK-EFUSE-IMG-SENSE` |All 256 SMC_EFUSE_MAP words read after the first sense equal the image
+|`CHK-EFUSE-IMG-SENSE` |All 64 SMC_EFUSE_MAP words read after the first sense equal the image
 |`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; each of the two counts is at least one
 |`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and each of the 254 non-LOCKS words read afterwards, read-locked, returns neither its image word nor its complement (response code not asserted)
-|`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 256 words again equal the image
+|`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 64 words again equal the image
 |`CHK-EFUSE-IMG-SCOREBOARD` |The scoreboard booked exactly the 774 exact-value compares the sequence issues (two 256-word content sweeps, 254 complement readbacks, 6 LOCKS readbacks and 2 LOCKS reads in the read-locked sweep), derived from the RDL map size
 |===
 
@@ -27653,9 +27653,9 @@ pattern (a fixed-cell variant of the image-pattern family).
 
 * Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern altaa` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds 0xAAAA...; the write locks of the odd schema slots are set (bit `2i` of 0x4444..., since 0xAAAA... sets no even bit), which write-locks `I2C_I3C_ID` and `OCCP_TRANSPORT_TIMEOUT`. Every read lock is clear, so every word compares content, and LOCKS is never zero, so sensing it is visible and a write of 0 to it is a real clear attempt.
 * Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. Lock semantics come from the RDL `LOCKS` description (a write-locked field "is not programmable", a read-locked shadow register "is not readable") and `architecture.adoc` line 233 (`lock[0] = 1` is read-locked). Neither states the response code or the word a read-locked read returns, so read-locked reads are held to non-disclosure only and their response code is recorded, not asserted.
-* After sense all 256 words are read. Every non-LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
-* LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 256 words then reads LOCKS as all-ones, and each of the 254 other words, now read-locked, must return neither its image word nor its complement.
-* A cold reset follows. `tb_fuse_sense_done` must read 0 under it and set again after release, and all 256 words must again equal the image, so the shadow writes and the LOCKS set are gone.
+* After sense all 64 words are read. Every non-HARNESS_LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
+* HARNESS_LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 64 words then reads HARNESS_LOCKS as all-ones, and each of the 62 other words, now read-locked, must return neither its image word nor its complement.
+* A cold reset follows. `tb_fuse_sense_done` must read 0 under it and set again after release, and all 64 words must again equal the image, so the shadow writes and the HARNESS_LOCKS set are gone.
 * Proof class is transport and lock enforcement: the bank is the DV model of the OTP macro, and nothing here claims fuse programming.
 
 *Test Procedure*:
@@ -27668,10 +27668,10 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 |===
 |Checker |Description
 |`CHK-EFUSE-IMG-IMAGE` |The schema the generator used matches the generated RDL map (block order, bit offsets and widths, LOCKS bit positions); the generated image has a non-zero LOCKS, at least one write-locked and one write-unlocked data word, a non-zero data word and no read lock, every data word equals the pattern word, and the bank model's word 0 equals image word 0, so the image reached the model
-|`CHK-EFUSE-IMG-SENSE` |All 256 SMC_EFUSE_MAP words read after the first sense equal the image
+|`CHK-EFUSE-IMG-SENSE` |All 64 SMC_EFUSE_MAP words read after the first sense equal the image
 |`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; each of the two counts is at least one
 |`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and each of the 254 non-LOCKS words read afterwards, read-locked, returns neither its image word nor its complement (response code not asserted)
-|`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 256 words again equal the image
+|`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 64 words again equal the image
 |`CHK-EFUSE-IMG-SCOREBOARD` |The scoreboard booked exactly the 774 exact-value compares the sequence issues (two 256-word content sweeps, 254 complement readbacks, 6 LOCKS readbacks and 2 LOCKS reads in the read-locked sweep), derived from the RDL map size
 |===
 
@@ -27709,9 +27709,9 @@ subset of blocks; the expected map content is a function of the image.
 
 * Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern random` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds a value drawn over its full width from the leaf seed, and the same seed picks which schema blocks are write-locked, never none and never all of them; the leaf passes for any seed because every compare is against the image the seed produced. Every read lock is clear, so every word compares content, and LOCKS is never zero, so sensing it is visible and a write of 0 to it is a real clear attempt.
 * Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. Lock semantics come from the RDL `LOCKS` description (a write-locked field "is not programmable", a read-locked shadow register "is not readable") and `architecture.adoc` line 233 (`lock[0] = 1` is read-locked). Neither states the response code or the word a read-locked read returns, so read-locked reads are held to non-disclosure only and their response code is recorded, not asserted.
-* After sense all 256 words are read. Every non-LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
-* LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 256 words then reads LOCKS as all-ones, and each of the 254 other words, now read-locked, must return neither its image word nor its complement.
-* A cold reset follows. `tb_fuse_sense_done` must read 0 under it and set again after release, and all 256 words must again equal the image, so the shadow writes and the LOCKS set are gone.
+* After sense all 64 words are read. Every non-HARNESS_LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
+* HARNESS_LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 64 words then reads HARNESS_LOCKS as all-ones, and each of the 62 other words, now read-locked, must return neither its image word nor its complement.
+* A cold reset follows. `tb_fuse_sense_done` must read 0 under it and set again after release, and all 64 words must again equal the image, so the shadow writes and the HARNESS_LOCKS set are gone.
 * Proof class is transport and lock enforcement: the bank is the DV model of the OTP macro, and nothing here claims fuse programming.
 
 *Test Procedure*:
@@ -27724,10 +27724,10 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 |===
 |Checker |Description
 |`CHK-EFUSE-IMG-IMAGE` |The schema the generator used matches the generated RDL map (block order, bit offsets and widths, LOCKS bit positions); the generated image has a non-zero LOCKS, at least one write-locked and one write-unlocked data word, a non-zero data word and no read lock, and the bank model's word 0 equals image word 0, so the image reached the model
-|`CHK-EFUSE-IMG-SENSE` |All 256 SMC_EFUSE_MAP words read after the first sense equal the image
+|`CHK-EFUSE-IMG-SENSE` |All 64 SMC_EFUSE_MAP words read after the first sense equal the image
 |`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; each of the two counts is at least one
 |`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and each of the 254 non-LOCKS words read afterwards, read-locked, returns neither its image word nor its complement (response code not asserted)
-|`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 256 words again equal the image
+|`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 64 words again equal the image
 |`CHK-EFUSE-IMG-SCOREBOARD` |The scoreboard booked exactly the 774 exact-value compares the sequence issues (two 256-word content sweeps, 254 complement readbacks, 6 LOCKS readbacks and 2 LOCKS reads in the read-locked sweep), derived from the RDL map size
 |===
 
@@ -28111,7 +28111,7 @@ draws nothing from the seed.
   nine `I2C_I3C_ID` elements at 0x28 plus 8 per element, `SMC_CONFIG` at 0x70,
   `OCCP_TRANSPORT_TIMEOUT` at 0x78 and 28 `SPARE` elements at 0x80 with a 0x20 stride, tiling the
   0x400-byte map (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`).
-* Every one of the 256 words reads its own marker word with no gap or alias between adjacent
+* Every one of the 64 words reads its own marker word with no gap or alias between adjacent
   regions, region-edge words included.
 * The 64-bit registers read correctly as separate 32-bit halves and as one 64-bit access, with the
   high word above the low word, and `SMC_CONFIG` is read as one 32-bit access in a single beat

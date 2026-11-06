@@ -48,7 +48,10 @@ _SENSE_DONE_BM = _field_mask(
 _MAP_PREFIX = "SMC_TOP_SMC_EFUSE_MAP_"
 _AXI_OKAY = 0
 _STEPS = ("REFERENCE-READ", "S1", "S2", "PRESENSE-READ", "S3", "S4", "S5", "S6", "POSTSENSE-READ")
-_NUM_WORDS = 256
+# Harness map words plus the supplementary region of the reference wrappers
+# (hw/top/smc_supplementary_fuse_example_pkg.sv, FuseWords = 128), sensed as one linear READ.
+_SUPPLEMENTARY_WORDS = 128
+_NUM_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE") // 4 + _SUPPLEMENTARY_WORDS
 _HOLD_SAMPLES = 8
 _QUIET_WINDOW = 64
 _POST_RISE_READS = 4
@@ -477,14 +480,16 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
         assert rise > last, f"tb_fuse_sense_done is 1 on the cycle of the last strobe: {rise}"
         before = sum(1 for t in rec[first_strobe:rise] if t[2])
-        assert before == _NUM_WORDS, f"{before} strobes before the sense done, expected 256"
+        assert before == _NUM_WORDS, (
+            f"{before} strobes before the sense done, expected {_NUM_WORDS}"
+        )
         gaps = [b - a for a, b in zip(strobes, strobes[1:])]
         self._term("LAST-STROBE", last, before)
         self._done("S3")
         self._chk(
             "CHK-SENSE-STROBE-COUNT",
             "%d resp_valid strobes from edge %d to edge %d before tb_fuse_sense_done rose at edge "
-            "%d, sense done 0 on the 256th strobe cycle; strobe gap min %d max %d cycles "
+            f"%d, sense done 0 on the {_NUM_WORDS}th strobe cycle; strobe gap min %d max %d cycles "
             "(logged only)",
             before,
             first_strobe,
@@ -539,7 +544,7 @@ class smc_efuse_sense_sequence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._done("S5")
         self._chk(
             "CHK-SENSE-DONE-OFFSET",
-            "tb_fuse_sense_done rose %d cycles after the 256th strobe (edge %d to %d; the "
+            f"tb_fuse_sense_done rose %d cycles after the {_NUM_WORDS}th strobe (edge %d to %d; the "
             "port-visible offset is not specified, measured); "
             "the first STATUS read issued after "
             "the rise (edge %d) read efuse_sense_done=1 and %d reads issued after the rise all "

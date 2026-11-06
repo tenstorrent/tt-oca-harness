@@ -21,7 +21,7 @@ the DUT:
 * data words -- word ``n`` of the image backs ``SMC_EFUSE_MAP_BASE + 4*n``.
 * lock slots -- the region of each word and its ``*_WRITE_LOCK`` /
   ``*_READ_LOCK`` bit come from ``smc_addr.h`` and ``blocks/smc_efuse_map.h``.
-  LOCKS (at ``SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR``) is set-only and carries
+  LOCKS (at ``SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR``) is set-only and carries
   no lock of its own. Every other region follows its LOCKS bits: the RDL LOCKS
   description says a write-locked field "is not programmable" and a read-locked
   shadow register "is not readable", and ``architecture.adoc`` (eFuse lock-field
@@ -67,7 +67,7 @@ _SMC_EFUSE_MAP_H = (
 )
 _WORD_MASK = 0xFFFF_FFFF
 EFUSE_MAP_WORDS = EFUSE_MAP_SIZE // 4
-_LOCKS_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+_LOCKS_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 #: Map words that hold LOCKS, low word first.
 LOCKS_WORDS = range(
     (_LOCKS_BASE - EFUSE_MAP_BASE) // 4,
@@ -87,7 +87,7 @@ class _Region:
 
 
 def _lock(name: str, kind: str) -> int:
-    return _field_mask(_SMC_EFUSE_MAP_H, f"SMC_EFUSE_MAP__LOCKS__{name}_{kind}_LOCK_bm")
+    return _field_mask(_SMC_EFUSE_MAP_H, f"SMC_EFUSE_MAP__HARNESS_LOCKS__{name}_{kind}_LOCK_bm")
 
 
 def _regions() -> tuple[_Region, ...]:

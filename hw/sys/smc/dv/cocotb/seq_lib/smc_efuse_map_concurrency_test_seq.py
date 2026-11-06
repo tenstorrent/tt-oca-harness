@@ -216,8 +216,8 @@ class smc_efuse_map_concurrency_test_seq(SmcCsrSeq):
         assert (w0, w1) == (32, 40), f"SPARE[0]/SPARE[1] first words are {w0}/{w1}"
         outstanding = [spare(k) for k in range(2, 2 + _SPARE_WORDS)]
         owords = [(a - base) // 4 for a in outstanding]
-        locks_addr = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-        wlock = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE0_WRITE_LOCK_bm")
+        locks_addr = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
+        wlock = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE0_WRITE_LOCK_bm")
         assert wlock == 1 << 8, f"SPARE0_WRITE_LOCK mask 0x{wlock:x}"
 
         assert len(words) == EFUSE_MAP_WORDS and words[0] == 0 and words[1] == 0, (

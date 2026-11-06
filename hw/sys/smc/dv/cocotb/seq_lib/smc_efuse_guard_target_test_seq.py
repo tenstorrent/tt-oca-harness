@@ -17,13 +17,13 @@ write-1-to-set:
 
 * **An unlocked read.** The default image leaves every SPARE word at zero, so a
   read of one cannot tell a disclosed word from a withheld one. One bit of
-  SPARE[6] is therefore first set by an unlocked read-back program, and a read
+  SPARE[0] is therefore first set by an unlocked read-back program, and a read
   of the word through the read interface must then complete without error and
   return the asset word with that bit set.
-* **A read-locked read.** With SPARE[6]'s read lock set, the same read must
+* **A read-locked read.** With SPARE[0]'s read lock set, the same read must
   complete with `READ_STATUS` set and `EFUSE_REQ_ERROR` raised, and must not
   return the word.
-* **A write-locked program.** With SPARE[7]'s write lock set, a program with
+* **A write-locked program.** With SPARE[1]'s write lock set, a program with
   read-back of a bit the asset holds at 0 must complete with `PROGRAM_STATUS`
   set and `EFUSE_REQ_ERROR` raised. The command never reaches the bank: a
   read of the word afterwards must still return the asset's value.
@@ -34,14 +34,14 @@ write-1-to-set:
 
 * **Requests while `EFUSE_REQ_ERROR` is set.** The error "must be cleared by
   writing 1" (`efuse_interface_ctrl.rdl`); before it is, a read and a
-  program of SPARE[9] must both be refused, and the program must not burn.
+  program of SPARE_TAIL[0] must both be refused, and the program must not burn.
 * **Timeouts configured but not reached.** A read-back program with the
   program timeout enabled at its reset length, and another with the timeout
   disabled and its length 0, must both complete; a program with no data bit
   must fail; and a read with the read timeout disabled at length 0 must return
   exactly the two bits programmed.
 
-Locks set through `LOCKS` hold until reset, so SPARE[6] and SPARE[7] are left
+Locks set through `LOCKS` hold until reset, so SPARE[0] and SPARE[1] are left
 locked; no other leaf in the run uses them.
 """
 
@@ -78,18 +78,20 @@ from .smc_efuse_read_program_timeout_test_seq import (
 )
 from .smc_efuse_vip_utils import EFUSE_MAP_BASE, efuse_preload_word_at
 
-LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-READ_FIELD = 6
-PROGRAM_FIELD = 7
+LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
+READ_FIELD = 0
+PROGRAM_FIELD = 1
 READ_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", READ_FIELD)
-PLAIN_FIELD = 8
-QUIET_FIELD = 9
-QUIET_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", QUIET_FIELD)
+PLAIN_FIELD = 2
+QUIET_FIELD = "_TAIL[0]"
+QUIET_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", 0)
 PLAIN_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", PLAIN_FIELD)
 PROGRAM_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", PROGRAM_FIELD)
-READ_LOCK = smc_efuse_map_u32(f"SMC_EFUSE_MAP__LOCKS__SPARE{READ_FIELD}_READ_LOCK_bm")
-WRITE_LOCK = smc_efuse_map_u32(f"SMC_EFUSE_MAP__LOCKS__SPARE{PROGRAM_FIELD}_WRITE_LOCK_bm")
-ADDR_BM = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bm")
+READ_LOCK = smc_efuse_map_u32(f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{READ_FIELD}_READ_LOCK_bm")
+WRITE_LOCK = smc_efuse_map_u32(f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{PROGRAM_FIELD}_WRITE_LOCK_bm")
+ADDR_BM = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_READ_ADDR__EFUSE_ADDR_bm")
+PROGRAM_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR")
+READ_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR")
 _LOCKS_BYTES = 8
 _POLL = 10_000
 
@@ -112,10 +114,11 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
         raise AssertionError(f"{label}: 0x{mask:x} never set (0x{value:08x})")
 
     async def _read(self, label: str, bit_addr: int) -> tuple[int, int]:
-        await self.csr_write(f"{label}_GO", READ_CTRL, bit_addr | READ_GO | READ_EN)
+        await self.csr_write(f"{label}_ADDR", READ_ADDR, bit_addr)
+        await self.csr_write(f"{label}_GO", READ_CTRL, READ_GO | READ_EN)
         ctrl = await self._wait(READ_CTRL, READ_DONE, f"{label}_DONE")
         data = await self.csr_read(f"{label}_DATA", READ_DATA)
-        await self.csr_write(f"{label}_IDLE", READ_CTRL, bit_addr)
+        await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
         return ctrl, data
 
     async def _clear_req_err(self, label: str) -> None:
@@ -137,13 +140,8 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
         assert got & bit, f"{label}: LOCKS reads 0x{got:08x} without bit 0x{bit:x}"
 
     async def _program(self, label: str, bit_addr: int, data: int, read_back: bool) -> int:
-        cmd = (
-            bit_addr
-            | PROG_GO
-            | PROG_EN
-            | (PROG_DATA if data else 0)
-            | (PROG_RB if read_back else 0)
-        )
+        await self.csr_write(f"{label}_ADDR", PROGRAM_ADDR, bit_addr)
+        cmd = PROG_GO | PROG_EN | (PROG_DATA if data else 0) | (PROG_RB if read_back else 0)
         await self.csr_write(f"{label}_GO", PROGRAM_CTRL, cmd)
         ctrl = await self._wait(PROGRAM_CTRL, PROG_DONE, f"{label}_DONE")
         await self.csr_write(f"{label}_IDLE", PROGRAM_CTRL, 0)
@@ -170,7 +168,7 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
         """Timeouts configured but not reached, and a program carrying no data."""
         word = efuse_preload_word_at(QUIET_WORD_ADDR)
         free = [b for b in range(32) if not (word >> b) & 1]
-        assert len(free) >= 3, f"SPARE[{QUIET_FIELD}] word 0 has fewer than three clear bits"
+        assert len(free) >= 3, f"SPARE{QUIET_FIELD} word 0 has fewer than three clear bits"
         await self.csr_write("TMO_P_ON", PROG_TMO, TMO_EN_P | TMO_CYC_RST_P)
         ctrl = await self._program("TMO_ON", _bit_addr(QUIET_WORD_ADDR, free[0]), 1, True)
         assert not ctrl & PROG_ERR, (
@@ -194,7 +192,7 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
         await self.csr_write("TMO_P_RESTORE", PROG_TMO, TMO_CYC_RST_P)
         await self.csr_write("TMO_R_RESTORE", READ_TMO, TMO_CYC_RST_R)
         assert not ctrl & READ_ERR and data == want, (
-            f"SPARE[{QUIET_FIELD}] reads 0x{data:08x} (READ_CTRL=0x{ctrl:08x}) with the read "
+            f"SPARE{QUIET_FIELD} reads 0x{data:08x} (READ_CTRL=0x{ctrl:08x}) with the read "
             f"timeout disabled at length 0; the two programmed bits make it 0x{want:08x}, and "
             f"neither the no-data program nor the one refused under EFUSE_REQ_ERROR may add a bit"
         )
@@ -219,11 +217,8 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
         asset_word = efuse_preload_word_at(READ_WORD_ADDR)
         free = [b for b in range(32) if not (asset_word >> b) & 1]
         assert free, f"SPARE[{READ_FIELD}] word 0 is all ones in the asset"
-        await self.csr_write(
-            "MARK_GO",
-            PROGRAM_CTRL,
-            _bit_addr(READ_WORD_ADDR, free[0]) | PROG_DATA | PROG_GO | PROG_RB | PROG_EN,
-        )
+        await self.csr_write("MARK_ADDR", PROGRAM_ADDR, _bit_addr(READ_WORD_ADDR, free[0]))
+        await self.csr_write("MARK_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN)
         ctrl = await self._wait(PROGRAM_CTRL, PROG_DONE, "MARK_DONE")
         await self.csr_write("MARK_IDLE", PROGRAM_CTRL, 0)
         assert not ctrl & PROG_ERR, (
@@ -266,12 +261,11 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
         assert zero_bits, f"SPARE[{PROGRAM_FIELD}] word 0 is all ones in the asset"
         program_bit = _bit_addr(PROGRAM_WORD_ADDR, zero_bits[0])
         await self._set_lock("WRITE_LOCK", WRITE_LOCK)
-        await self.csr_write(
-            "PROGRAM_GO", PROGRAM_CTRL, program_bit | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
-        )
+        await self.csr_write("PROGRAM_ADDR", PROGRAM_ADDR, program_bit)
+        await self.csr_write("PROGRAM_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN)
         ctrl = await self._wait(PROGRAM_CTRL, PROG_DONE, "PROGRAM_DONE")
         status = await self.csr_read("PROGRAM_STATUS", STATUS)
-        await self.csr_write("PROGRAM_IDLE", PROGRAM_CTRL, program_bit)
+        await self.csr_write("PROGRAM_IDLE", PROGRAM_CTRL, 0)
         assert ctrl & PROG_ERR and status & REQ_ERR, (
             f"write-locked program of SPARE[{PROGRAM_FIELD}]: PROGRAM_CTRL=0x{ctrl:08x} "
             f"STATUS=0x{status:08x}; PROGRAM_STATUS and EFUSE_REQ_ERROR must both set"
@@ -295,7 +289,8 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
         plain_free = [b for b in range(32) if not (plain_word >> b) & 1]
         assert plain_free, f"SPARE[{PLAIN_FIELD}] word 0 is all ones in the asset"
         plain_bit = _bit_addr(PLAIN_WORD_ADDR, plain_free[0])
-        await self.csr_write("PLAIN_GO", PROGRAM_CTRL, plain_bit | PROG_DATA | PROG_GO | PROG_EN)
+        await self.csr_write("PLAIN_ADDR", PROGRAM_ADDR, plain_bit)
+        await self.csr_write("PLAIN_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_EN)
         ctrl = await self._wait(PROGRAM_CTRL, PROG_DONE, "PLAIN_DONE")
         await self.csr_write("PLAIN_IDLE", PROGRAM_CTRL, 0)
         assert not ctrl & PROG_ERR, (
@@ -308,8 +303,9 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
             f"after a program without read-back SPARE[{PLAIN_FIELD}] reads 0x{data:08x} "
             f"(READ_CTRL=0x{ctrl:08x}); with the bit burnt it is 0x{want:08x}"
         )
+        await self.csr_write("PLAIN_CHECK_ADDR", PROGRAM_ADDR, plain_bit)
         await self.csr_write(
-            "PLAIN_CHECK_GO", PROGRAM_CTRL, plain_bit | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
+            "PLAIN_CHECK_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN
         )
         ctrl = await self._wait(PROGRAM_CTRL, PROG_DONE, "PLAIN_CHECK_DONE")
         await self.csr_write("PLAIN_CHECK_IDLE", PROGRAM_CTRL, 0)

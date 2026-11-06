@@ -15,8 +15,8 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
 
 * S1 drives ``tb_lc_state`` to TEST_DEV and requires ``efuse_sense_done`` 1 with the
   error bits [6:4] 0.
-* S2 writes all RW fields, zero and a walking one to EFUSE_PROGRAM_CTRL (19 RW bits),
-  EFUSE_READ_CTRL (17 RW bits) and both timeout registers (29 RW bits), then the
+* S2 writes all RW fields, zero and a walking one to EFUSE_PROGRAM_CTRL (3 RW bits),
+  EFUSE_READ_CTRL (1 RW bit) and both timeout registers (29 RW bits), then the
   0x0080_0000 reset to the timeouts. Each SEP_IN readback masked to the RW fields equals
   the written word and the status fields read 0. One JTAG read of each register follows.
 * S3 writes EFUSE_PROGRAM_CTRL full-width 0x1234, with WSTRB 0x1 and data 0x0805_FFA5,
@@ -55,6 +55,8 @@ from .smc_efuse_vip_utils import EFUSE_MAP_BASE, efuse_preload_word_at
 STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
 PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 READ_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR")
+PROGRAM_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR")
+READ_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR")
 PROG_IF_DATA = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR")
 READ_DATA = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR")
 READ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
@@ -72,7 +74,6 @@ STATUS_ERRORS = (
     | _f("EFUSE_INTERFACE_CTRL_STATUS", "EFUSE_READ_ADDR_ERROR")
 )
 
-PROG_ADDR = _f("EFUSE_PROGRAM_CTRL", "EFUSE_ADDR")
 PROG_DATA = _f("EFUSE_PROGRAM_CTRL", "EFUSE_DATA")
 PROG_GO = _f("EFUSE_PROGRAM_CTRL", "EFUSE_PROGRAM_GO")
 PROG_RB = _f("EFUSE_PROGRAM_CTRL", "EFUSE_PROGRAM_READ_BACK")
@@ -80,16 +81,15 @@ PROG_BUSY = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_BUSY")
 PROG_DONE = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_DONE")
 PROG_ERR = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_STATUS")
 PROG_EN = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_ENABLE")
-PROG_RW = PROG_ADDR | PROG_DATA | PROG_RB | PROG_EN
+PROG_RW = PROG_DATA | PROG_RB | PROG_EN
 PROG_STATE = PROG_BUSY | PROG_DONE | PROG_ERR
 
-READ_ADDR = _f("EFUSE_READ_CTRL", "EFUSE_ADDR")
 READ_GO = _f("EFUSE_READ_CTRL", "EFUSE_READ_GO")
 READ_BUSY = _f("EFUSE_READ_CTRL", "READ_BUSY")
 READ_DONE = _f("EFUSE_READ_CTRL", "READ_DONE")
 READ_ERR = _f("EFUSE_READ_CTRL", "READ_STATUS")
 READ_EN = _f("EFUSE_READ_CTRL", "READ_ENABLE")
-READ_RW = READ_ADDR | READ_EN
+READ_RW = READ_EN
 READ_STATE = READ_BUSY | READ_DONE | READ_ERR
 
 TMO_RW_R = _f("EFUSE_READ_REQ_TIMEOUT", "READ_REQ_TIMEOUT_CYCLES") | _f(
@@ -255,8 +255,9 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         starts by writing EFUSE_PROGRAM_CTRL to 0.
         """
         await self._jtag_write(f"{label}_PROG_OFF", PROGRAM_CTRL, 0)
-        await self._jtag_write(f"{label}_EN", READ_CTRL, bit | READ_EN)
-        await self._jtag_write(f"{label}_GO", READ_CTRL, bit | READ_EN | READ_GO)
+        await self._jtag_write(f"{label}_ADDR", READ_ADDR, bit)
+        await self._jtag_write(f"{label}_EN", READ_CTRL, READ_EN)
+        await self._jtag_write(f"{label}_GO", READ_CTRL, READ_EN | READ_GO)
         ctrl, samples = await self._poll(
             f"{label}_DONE", READ_CTRL, lambda v: bool(v & READ_DONE) and not v & READ_BUSY
         )
@@ -280,12 +281,15 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
 
     async def _setup(self) -> None:
         dut = cocotb.top
-        locks = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"))
-        locks |= efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4) << 32
+        locks = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR"))
+        locks |= (
+            efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR") + 4)
+            << 32
+        )
         for spare, bit in ((SPARE_A, BIT_A), (SPARE_A2, BIT_A2)):
             lock_mask = smc_efuse_map_u32(
-                f"SMC_EFUSE_MAP__LOCKS__SPARE{spare}_WRITE_LOCK_bm"
-            ) | smc_efuse_map_u32(f"SMC_EFUSE_MAP__LOCKS__SPARE{spare}_READ_LOCK_bm")
+                f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{spare}_WRITE_LOCK_bm"
+            ) | smc_efuse_map_u32(f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{spare}_READ_LOCK_bm")
             assert locks & lock_mask == 0, (
                 f"SPARE{spare} is locked by the image LOCKS 0x{locks:016x} (mask 0x{lock_mask:x})"
             )
@@ -430,10 +434,11 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
     async def _program(self) -> int:
         _ctrl, dout_pre, _busy = await self._fuse_read("S4_PRE", BIT_A)
         self.dout_pre_a = dout_pre
-        await self._jtag_write("S4_ARM", PROGRAM_CTRL, BIT_A | PROG_DATA | PROG_EN)
+        await self._jtag_write("S4_ADDR", PROGRAM_ADDR, BIT_A)
+        await self._jtag_write("S4_ARM", PROGRAM_CTRL, PROG_DATA | PROG_EN)
 
         async def _go() -> None:
-            await self._jtag_write("S4_GO", PROGRAM_CTRL, BIT_A | PROG_DATA | PROG_EN | PROG_GO)
+            await self._jtag_write("S4_GO", PROGRAM_CTRL, PROG_DATA | PROG_EN | PROG_GO)
 
         go = cocotb.start_soon(_go())
         ctrl, samples = await self._poll("S4_DONE", PROGRAM_CTRL, lambda v: bool(v & PROG_DONE))
@@ -488,12 +493,13 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
 
     async def _data0(self) -> None:
         _ctrl, pre, _busy = await self._fuse_read("S6_PRE", BIT_A2)
-        await self._jtag_write("S6_ARM", PROGRAM_CTRL, BIT_A2 | PROG_EN)
+        await self._jtag_write("S6_ADDR", PROGRAM_ADDR, BIT_A2)
+        await self._jtag_write("S6_ARM", PROGRAM_CTRL, PROG_EN)
         pre_go = await self._sep_read("S6_PRE_GO", PROGRAM_CTRL)
         done0, status0 = pre_go & PROG_DONE, pre_go & PROG_ERR
 
         async def _go() -> None:
-            await self._jtag_write("S6_GO", PROGRAM_CTRL, BIT_A2 | PROG_EN | PROG_GO)
+            await self._jtag_write("S6_GO", PROGRAM_CTRL, PROG_EN | PROG_GO)
 
         go = cocotb.start_soon(_go())
         samples: list[int] = []
