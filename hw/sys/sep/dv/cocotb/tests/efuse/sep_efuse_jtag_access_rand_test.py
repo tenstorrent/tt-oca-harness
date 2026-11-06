@@ -101,6 +101,7 @@ from env.sep_efuse_plan import (
     program_ctrl_word,
     read_addr_word,
     read_ctrl_word,
+    require_addr_readback,
     token_words,
     words_token,
 )
@@ -522,7 +523,9 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
 
         # Denied accesses, then the token block, in the drawn order. A denied program go
         # targets p, the address the frontdoor leaves in EFUSE_PROGRAM_ADDR.
-        await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(p_bit["addr"]))
+        p_addr = program_addr_word(p_bit["addr"])
+        await self.fd.wr(PROGRAM_ADDR_ADDR, p_addr)
+        await require_addr_readback(self.fd.rd, PROGRAM_ADDR_ADDR, p_addr)
         open_graded_window(TEST, self.logger)
         deny_mark = self.shim.mark()
         for acc in p.leg["denied"]:
