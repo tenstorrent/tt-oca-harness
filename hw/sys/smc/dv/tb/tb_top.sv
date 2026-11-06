@@ -5173,12 +5173,12 @@ module smc_uvm_top
     // firmware's RNG, so all three selectable channels are wired.
     //
     // Channel-to-pad mapping is smc_padring.sv's, not smc_rom_defs.h's:
-    //   I3C[0] -> 27/28, I3C[1] -> 63/64, I3C[2] -> 29/30, I3C[3] -> 31/32.
+    //   I3C[0] -> 27/28, I3C[1] -> 65/66, I3C[2] -> 29/30, I3C[3] -> 31/32.
     // ------------------------------------------------------------------
     localparam int unsigned NumSharedI3c = 3;
     localparam int unsigned SharedI3cIdx    [NumSharedI3c] = '{0,  1,  3};
-    localparam int unsigned SharedI3cSclPad [NumSharedI3c] = '{27, 63, 31};
-    localparam int unsigned SharedI3cSdaPad [NumSharedI3c] = '{28, 64, 32};
+    localparam int unsigned SharedI3cSclPad [NumSharedI3c] = '{27, 65, 31};
+    localparam int unsigned SharedI3cSdaPad [NumSharedI3c] = '{28, 66, 32};
 
     logic [NumSharedI3c-1:0] i3c_scl_dut_low, i3c_sda_dut_low;
     logic [NumSharedI3c-1:0] i3c_scl_bfm_low, i3c_sda_bfm_low;

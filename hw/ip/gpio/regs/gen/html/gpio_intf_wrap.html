@@ -10,19 +10,19 @@
 <p>Wrapper address map instantiating one GPIO interface register block per pad.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>gpio_intf[65].DATA_CTRL</strong>: 65 registers, base 0x0, stride 0x10</li>
-<li><strong>gpio_intf[65].DATA_CTRL_ENABLE</strong>: 65 registers, base 0x4, stride 0x10</li>
-<li><strong>gpio_intf[65].ACCESS_FILTER</strong>: 65 registers, base 0x8, stride 0x10</li>
+<li><strong>gpio_intf[67].DATA_CTRL</strong>: 67 registers, base 0x0, stride 0x10</li>
+<li><strong>gpio_intf[67].DATA_CTRL_ENABLE</strong>: 67 registers, base 0x4, stride 0x10</li>
+<li><strong>gpio_intf[67].ACCESS_FILTER</strong>: 67 registers, base 0x8, stride 0x10</li>
 </ul>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0x400</td><td><a href="#gpio_intf_65_.DATA_CTRL">gpio_intf[65].DATA_CTRL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x4 - 0x404</td><td><a href="#gpio_intf_65_.DATA_CTRL_ENABLE">gpio_intf[65].DATA_CTRL_ENABLE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8 - 0x408</td><td><a href="#gpio_intf_65_.ACCESS_FILTER">gpio_intf[65].ACCESS_FILTER</a></td><td>RW</td><td>GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
+<tr><td>0x0 - 0x420</td><td><a href="#gpio_intf_67_.DATA_CTRL">gpio_intf[67].DATA_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4 - 0x424</td><td><a href="#gpio_intf_67_.DATA_CTRL_ENABLE">gpio_intf[67].DATA_CTRL_ENABLE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8 - 0x428</td><td><a href="#gpio_intf_67_.ACCESS_FILTER">gpio_intf[67].ACCESS_FILTER</a></td><td>RW</td><td>GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="gpio_intf_65_.DATA_CTRL">gpio_intf[65].DATA_CTRL</h3>
+<h3 id="gpio_intf_67_.DATA_CTRL">gpio_intf[67].DATA_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>pad2core</td><td>R</td><td>0x0</td><td>PAD2SOC Value</td></tr>
@@ -39,7 +39,7 @@
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>core2pad</td><td>RW</td><td>0x0</td><td>Register-driven data to send to the pad.</td></tr>
 </table>
-<h3 id="gpio_intf_65_.DATA_CTRL_ENABLE">gpio_intf[65].DATA_CTRL_ENABLE</h3>
+<h3 id="gpio_intf_67_.DATA_CTRL_ENABLE">gpio_intf[67].DATA_CTRL_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -48,7 +48,7 @@
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>use_reg_core2pad</td><td>RW</td><td>0x0</td><td>Per-field register override. When set, core2pad is register-driven. OR&#x27;d with interface_enable.</td></tr>
 </table>
-<h3 id="gpio_intf_65_.ACCESS_FILTER">gpio_intf[65].ACCESS_FILTER</h3>
+<h3 id="gpio_intf_67_.ACCESS_FILTER">gpio_intf[67].ACCESS_FILTER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>

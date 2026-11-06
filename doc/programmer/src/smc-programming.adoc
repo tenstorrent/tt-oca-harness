@@ -1325,7 +1325,7 @@ restarting may duplicate output.
 [[smc-gpio]]
 ==== GPIO
 
-The SMC exposes 65 GPIO pins, each controlled through its own register
+The SMC exposes 67 GPIO pins, each controlled through its own register
 instance within the GPIO block.
 
 The per-pin `DATA_CTRL` register contains the pin's configuration and value.

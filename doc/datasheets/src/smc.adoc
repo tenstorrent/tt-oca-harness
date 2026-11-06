@@ -87,7 +87,7 @@ AT A GLANCE
 !Scratch memory !1 MiB across 32 banks
 !Boot ROM !128 KiB interface
 !External interrupt inputs !256
-!Platform I/O !65 GPIO wrappers (61 bonded, 4 unbonded); 3 I2C; 4 UART
+!Platform I/O !67 GPIO wrappers (63 bonded, 4 unbonded); 3 I2C; 4 UART
 !Telemetry inputs !3 receivers
 !Control fanout !32 mailboxes with 32 mailbox interrupts; 32 subsystem reset/isolation slots
 !===

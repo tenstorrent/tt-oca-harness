@@ -20,7 +20,7 @@ DATA_CTRL field encoding (hw/ip/gpio/regs/gpio_intf.rdl):
   * bit16     interface_enable  select register values to drive the pad
 
 After the wrap-0 leg, every GPIO interface except the bench-owned pads 27, 28
-and 51, the boot-stall pad 57 and the cool-reset-in pad 61 is walked alone
+and 51, the boot-stall pad 57 and the cool-reset-in pad 63 is walked alone
 with lsio_disable set: enable_rx_tx 01 (TX), 00, 11, then the reset word, each
 written and read back over SEP_IN before ``tb_core2pad_en_o``,
 ``tb_pad2core_en_o`` and ``tb_core2pad_o`` are sampled. Each interface's pad
@@ -72,7 +72,7 @@ EXCLUDED_PADS = {
     28: "bench-owned",
     51: "bench-owned",
     57: "boot stall",
-    61: "cool reset in",
+    63: "cool reset in",
 }
 #: Pads whose core2pad_o data bit the AVS controller drives; the other-pads compares
 #: log it instead of comparing it, and keep comparing their enables.
@@ -84,8 +84,8 @@ TRANSITIONS = (
     ("BOTH-OFF", "RESTORE"),
     ("RESTORE", "RESET-WORD"),
 )
-#: Interfaces the testcase contract walks (0..64 minus the five above).
-WALKED_COUNT = 60
+#: Interfaces the testcase contract walks (0..66 minus the five above).
+WALKED_COUNT = 62
 #: (term, enable_rx_tx) for each write of one interface, in walk order.
 WALK_TERMS = (("TX", 0b01), ("BOTH-OFF", 0b00), ("RESTORE", 0b11), ("RESET-WORD", None))
 
@@ -448,7 +448,9 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
                 f"the integrator pad table puts {function} on pad {pad_index(function)}, not {q}"
             )
         walk = [w for w in range(count) if w not in EXCLUDED_PADS]
-        assert len(walk) == WALKED_COUNT, f"{len(walk)} interfaces to walk, contract says 60"
+        assert len(walk) == WALKED_COUNT, (
+            f"{len(walk)} interfaces to walk, contract says {WALKED_COUNT}"
+        )
         cocotb.log.info(
             "walk: %d interfaces of %d; excluded %s; words %s",
             len(walk),
