@@ -61,7 +61,7 @@ The access policy does not reserve the status ring buffers from OCCP memory comm
 
 === Lifecycle handling
 
-The lifecycle register is `CHIP_CONFIG.LC_STATE` at `0xC000290C`.
+The lifecycle register is `CHIP_CONFIG.LC_STATE` at `0xC000D10C`.
 The ROM reads all eight bits as a differential encoding:
 
 [listing]

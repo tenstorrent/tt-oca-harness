@@ -338,85 +338,6 @@ SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_TYPE = 'RESET_UNIT_ISOLATE_REQ_
 SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_OFFSET = 0x000000C8
 SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_ADDR = 0xC00020C8
 SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_TYPE = 'RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE'
-SMC_MISC_WRAP_REG_MAP_BASE_ADDR = 0xC0002800
-SMC_MISC_WRAP_REG_MAP_SIZE = 0x0000020C
-SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR = 0xC0002800
-SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_SIZE = 0x00000020
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_OFFSET = 0x00000000
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_ADDR = 0xC0002800
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_OFFSET = 0x00000004
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_ADDR = 0xC0002804
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_OFFSET = 0x00000008
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_ADDR = 0xC0002808
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_OFFSET = 0x0000000C
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_ADDR = 0xC000280C
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_OFFSET = 0x00000010
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_ADDR = 0xC0002810
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_OFFSET = 0x00000014
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_ADDR = 0xC0002814
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_OFFSET = 0x00000018
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_ADDR = 0xC0002818
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_OFFSET = 0x0000001C
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_ADDR = 0xC000281C
-SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_REG_MAP_BASE_ADDR = 0xC0002880
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_REG_MAP_SIZE = 0x00000020
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_OFFSET = 0x00000000
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_ADDR = 0xC0002880
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_OFFSET = 0x00000004
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_ADDR = 0xC0002884
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_OFFSET = 0x00000008
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_ADDR = 0xC0002888
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_OFFSET = 0x0000000C
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_ADDR = 0xC000288C
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_OFFSET = 0x00000010
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_ADDR = 0xC0002890
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_OFFSET = 0x00000014
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_ADDR = 0xC0002894
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_OFFSET = 0x00000018
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_ADDR = 0xC0002898
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_OFFSET = 0x0000001C
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_ADDR = 0xC000289C
-SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_TYPE = 'SCRATCH_SCRATCH'
-SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_BASE_ADDR = 0xC0002900
-SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_SIZE = 0x00000010
-SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_OFFSET = 0x00000000
-SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_ADDR = 0xC0002900
-SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_TYPE = 'CHIP_CONFIG_VERSION_LO'
-SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_OFFSET = 0x00000004
-SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_ADDR = 0xC0002904
-SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_TYPE = 'CHIP_CONFIG_VERSION_HI'
-SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_OFFSET = 0x00000008
-SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_ADDR = 0xC0002908
-SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_TYPE = 'CHIP_CONFIG_CHIP_ID'
-SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_OFFSET = 0x0000000C
-SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR = 0xC000290C
-SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_TYPE = 'CHIP_CONFIG_LC_STATE'
-SMC_MISC_WRAP_NDM_RESET_REG_MAP_BASE_ADDR = 0xC0002A00
-SMC_MISC_WRAP_NDM_RESET_REG_MAP_SIZE = 0x0000000C
-SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_OFFSET = 0x00000000
-SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_ADDR = 0xC0002A00
-SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_TYPE = 'NDM_RESET_NDMRESET_REQUEST'
-SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_OFFSET = 0x00000004
-SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_ADDR = 0xC0002A04
-SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_TYPE = 'NDM_RESET_NDMRESET_PROCESS'
-SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_OFFSET = 0x00000008
-SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_ADDR = 0xC0002A08
-SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_TYPE = 'NDM_RESET_NDMRESET_CLUSTER_COUNT'
 GPIO_INTF_WRAP_REG_MAP_BASE_ADDR = 0xC0003000
 GPIO_INTF_WRAP_REG_MAP_SIZE = 0x00000430
 GPIO_INTF_WRAP_GPIO_INTF_0__REG_MAP_BASE_ADDR = 0xC0003000
@@ -2493,17 +2414,6 @@ SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_REG_ADDR = 0xC000A020
 SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_REG_TYPE = 'SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE'
 DTP_CTRL_REG_MEM_BASE_ADDR = 0xC000B000
 DTP_CTRL_REG_MEM_SIZE = 0x00000800
-DFX_CTRL_REG_MAP_BASE_ADDR = 0xC000B800
-DFX_CTRL_REG_MAP_SIZE = 0x00000018
-DFX_CTRL_STATUS_SMU_REG_OFFSET = 0x00000000
-DFX_CTRL_STATUS_SMU_REG_ADDR = 0xC000B800
-DFX_CTRL_STATUS_SMU_REG_TYPE = 'DFX_CTRL_STATUS_STATUS'
-DFX_CTRL_DEBUG_CTRL_REG_OFFSET = 0x00000008
-DFX_CTRL_DEBUG_CTRL_REG_ADDR = 0xC000B808
-DFX_CTRL_DEBUG_CTRL_REG_TYPE = 'DFX_CTRL_STATUS_DEBUG_CTRL'
-DFX_CTRL_DEBUG_BUS_MUX_REG_OFFSET = 0x00000010
-DFX_CTRL_DEBUG_BUS_MUX_REG_ADDR = 0xC000B810
-DFX_CTRL_DEBUG_BUS_MUX_REG_TYPE = 'DFX_CTRL_STATUS_DEBUG_BUS_MUX'
 SMC_PWM_REG_MAP_BASE_ADDR = 0xC000C000
 SMC_PWM_REG_MAP_SIZE = 0x00000804
 SMC_PWM_PWM_REG_MAP_BASE_ADDR = 0xC000C000
@@ -2564,6 +2474,85 @@ SMC_PWM_PWM_CTRL_REG_MAP_SIZE = 0x00000004
 SMC_PWM_PWM_CTRL_CTRL_REG_OFFSET = 0x00000000
 SMC_PWM_PWM_CTRL_CTRL_REG_ADDR = 0xC000C800
 SMC_PWM_PWM_CTRL_CTRL_REG_TYPE = 'PWM_CTRL_CTRL'
+SMC_MISC_WRAP_REG_MAP_BASE_ADDR = 0xC000D000
+SMC_MISC_WRAP_REG_MAP_SIZE = 0x0000020C
+SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR = 0xC000D000
+SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_SIZE = 0x00000020
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_OFFSET = 0x00000000
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_ADDR = 0xC000D000
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_0__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_OFFSET = 0x00000004
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_ADDR = 0xC000D004
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_1__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_OFFSET = 0x00000008
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_ADDR = 0xC000D008
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_2__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_OFFSET = 0x0000000C
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_ADDR = 0xC000D00C
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_3__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_OFFSET = 0x00000010
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_ADDR = 0xC000D010
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_4__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_OFFSET = 0x00000014
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_ADDR = 0xC000D014
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_5__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_OFFSET = 0x00000018
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_ADDR = 0xC000D018
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_6__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_OFFSET = 0x0000001C
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_ADDR = 0xC000D01C
+SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_7__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_REG_MAP_BASE_ADDR = 0xC000D080
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_REG_MAP_SIZE = 0x00000020
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_OFFSET = 0x00000000
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_ADDR = 0xC000D080
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_0__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_OFFSET = 0x00000004
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_ADDR = 0xC000D084
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_1__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_OFFSET = 0x00000008
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_ADDR = 0xC000D088
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_2__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_OFFSET = 0x0000000C
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_ADDR = 0xC000D08C
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_3__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_OFFSET = 0x00000010
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_ADDR = 0xC000D090
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_4__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_OFFSET = 0x00000014
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_ADDR = 0xC000D094
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_5__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_OFFSET = 0x00000018
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_ADDR = 0xC000D098
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_6__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_OFFSET = 0x0000001C
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_ADDR = 0xC000D09C
+SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_TYPE = 'SCRATCH_SCRATCH'
+SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_BASE_ADDR = 0xC000D100
+SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_SIZE = 0x00000010
+SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_OFFSET = 0x00000000
+SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_ADDR = 0xC000D100
+SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_TYPE = 'CHIP_CONFIG_VERSION_LO'
+SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_OFFSET = 0x00000004
+SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_ADDR = 0xC000D104
+SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_TYPE = 'CHIP_CONFIG_VERSION_HI'
+SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_OFFSET = 0x00000008
+SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_ADDR = 0xC000D108
+SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_TYPE = 'CHIP_CONFIG_CHIP_ID'
+SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_OFFSET = 0x0000000C
+SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR = 0xC000D10C
+SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_TYPE = 'CHIP_CONFIG_LC_STATE'
+SMC_MISC_WRAP_NDM_RESET_REG_MAP_BASE_ADDR = 0xC000D200
+SMC_MISC_WRAP_NDM_RESET_REG_MAP_SIZE = 0x0000000C
+SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_OFFSET = 0x00000000
+SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_ADDR = 0xC000D200
+SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_REG_TYPE = 'NDM_RESET_NDMRESET_REQUEST'
+SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_OFFSET = 0x00000004
+SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_ADDR = 0xC000D204
+SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_REG_TYPE = 'NDM_RESET_NDMRESET_PROCESS'
+SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_OFFSET = 0x00000008
+SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_ADDR = 0xC000D208
+SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_TYPE = 'NDM_RESET_NDMRESET_CLUSTER_COUNT'
 SMC_BASE_CONFIG_REG_MAP_BASE_ADDR = 0xC0010000
 SMC_BASE_CONFIG_REG_MAP_SIZE = 0x0000004C
 SMC_BASE_CONFIG_GLOBAL_BASE_REG_OFFSET = 0x00000000
@@ -3174,6 +3163,17 @@ SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_15__START_ADDR_REG_TYPE = 'FILTER_CTRL
 SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_15__END_ADDR_REG_OFFSET = 0x00000010
 SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_15__END_ADDR_REG_ADDR = 0xC00161F0
 SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_15__END_ADDR_REG_TYPE = 'FILTER_CTRL_END_ADDR'
+DFX_CTRL_REG_MAP_BASE_ADDR = 0xC0017000
+DFX_CTRL_REG_MAP_SIZE = 0x00000018
+DFX_CTRL_STATUS_SMU_REG_OFFSET = 0x00000000
+DFX_CTRL_STATUS_SMU_REG_ADDR = 0xC0017000
+DFX_CTRL_STATUS_SMU_REG_TYPE = 'DFX_CTRL_STATUS_STATUS'
+DFX_CTRL_DEBUG_CTRL_REG_OFFSET = 0x00000008
+DFX_CTRL_DEBUG_CTRL_REG_ADDR = 0xC0017008
+DFX_CTRL_DEBUG_CTRL_REG_TYPE = 'DFX_CTRL_STATUS_DEBUG_CTRL'
+DFX_CTRL_DEBUG_BUS_MUX_REG_OFFSET = 0x00000010
+DFX_CTRL_DEBUG_BUS_MUX_REG_ADDR = 0xC0017010
+DFX_CTRL_DEBUG_BUS_MUX_REG_TYPE = 'DFX_CTRL_STATUS_DEBUG_BUS_MUX'
 SMC_MAILBOX_REG_MAP_BASE_ADDR = 0xC0018000
 SMC_MAILBOX_REG_MAP_SIZE = 0x0001F850
 SMC_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR = 0xC0018000
@@ -12066,302 +12066,6 @@ class RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SCRATCH_SCRATCH_REG_DEFAULT = 0x00000000
-SCRATCH_SCRATCH_REG_FIELD_ACCESS = (
-    ('data', 'rw', '', '', False),
-)
-
-SCRATCH_SCRATCH_REG_WIDTH = 32
-SCRATCH_SCRATCH_REG_FIELDS = (
-    ('data', 0, 31, 'rw', 'na', '', '', False, False, 0),
-)
-
-class SCRATCH_SCRATCH_reg_t(Structure):
-    _fields_ = [
-        ('data', c_uint32, 32),
-    ]
-
-SCRATCH_SCRATCH_REG_DEFAULT = 0x00000000
-
-class SCRATCH_SCRATCH_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', SCRATCH_SCRATCH_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(SCRATCH_SCRATCH_reg_u, self).__init__(*args, **kwargs)
-        self.val = SCRATCH_SCRATCH_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-CHIP_CONFIG_VERSION_LO_REG_DEFAULT = 0x000100A0
-CHIP_CONFIG_VERSION_LO_REG_FIELD_ACCESS = (
-    ('version_lo', 'r', '', '', False),
-)
-
-CHIP_CONFIG_VERSION_LO_REG_WIDTH = 32
-CHIP_CONFIG_VERSION_LO_REG_FIELDS = (
-    ('version_lo', 0, 31, 'r', 'w', '', '', False, True, 65696),
-)
-
-class CHIP_CONFIG_VERSION_LO_reg_t(Structure):
-    _fields_ = [
-        ('version_lo', c_uint32, 32),
-    ]
-
-CHIP_CONFIG_VERSION_LO_REG_DEFAULT = 0x000100A0
-
-class CHIP_CONFIG_VERSION_LO_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', CHIP_CONFIG_VERSION_LO_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(CHIP_CONFIG_VERSION_LO_reg_u, self).__init__(*args, **kwargs)
-        self.val = CHIP_CONFIG_VERSION_LO_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-CHIP_CONFIG_VERSION_HI_REG_DEFAULT = 0x00000000
-CHIP_CONFIG_VERSION_HI_REG_FIELD_ACCESS = (
-    ('version_hi', 'r', '', '', False),
-)
-
-CHIP_CONFIG_VERSION_HI_REG_WIDTH = 32
-CHIP_CONFIG_VERSION_HI_REG_FIELDS = (
-    ('version_hi', 0, 31, 'r', 'w', '', '', False, True, 0),
-)
-
-class CHIP_CONFIG_VERSION_HI_reg_t(Structure):
-    _fields_ = [
-        ('version_hi', c_uint32, 32),
-    ]
-
-CHIP_CONFIG_VERSION_HI_REG_DEFAULT = 0x00000000
-
-class CHIP_CONFIG_VERSION_HI_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', CHIP_CONFIG_VERSION_HI_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(CHIP_CONFIG_VERSION_HI_reg_u, self).__init__(*args, **kwargs)
-        self.val = CHIP_CONFIG_VERSION_HI_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-CHIP_CONFIG_CHIP_ID_REG_DEFAULT = 0x00000000
-CHIP_CONFIG_CHIP_ID_REG_FIELD_ACCESS = (
-    ('chip_id', 'r', '', '', False),
-)
-
-CHIP_CONFIG_CHIP_ID_REG_WIDTH = 32
-CHIP_CONFIG_CHIP_ID_REG_FIELDS = (
-    ('chip_id', 0, 31, 'r', 'w', '', '', False, True, 0),
-)
-
-class CHIP_CONFIG_CHIP_ID_reg_t(Structure):
-    _fields_ = [
-        ('chip_id', c_uint32, 32),
-    ]
-
-CHIP_CONFIG_CHIP_ID_REG_DEFAULT = 0x00000000
-
-class CHIP_CONFIG_CHIP_ID_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', CHIP_CONFIG_CHIP_ID_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(CHIP_CONFIG_CHIP_ID_reg_u, self).__init__(*args, **kwargs)
-        self.val = CHIP_CONFIG_CHIP_ID_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-CHIP_CONFIG_LC_STATE_REG_DEFAULT = 0x0000000F
-CHIP_CONFIG_LC_STATE_REG_FIELD_ACCESS = (
-    ('lc_state', 'r', '', '', False),
-)
-
-CHIP_CONFIG_LC_STATE_REG_WIDTH = 32
-CHIP_CONFIG_LC_STATE_REG_FIELDS = (
-    ('lc_state', 0, 7, 'r', 'w', '', '', False, True, 15),
-)
-
-class CHIP_CONFIG_LC_STATE_reg_t(Structure):
-    _fields_ = [
-        ('lc_state', c_uint8, 8),
-    ]
-
-CHIP_CONFIG_LC_STATE_REG_DEFAULT = 0x0000000F
-
-class CHIP_CONFIG_LC_STATE_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', CHIP_CONFIG_LC_STATE_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(CHIP_CONFIG_LC_STATE_reg_u, self).__init__(*args, **kwargs)
-        self.val = CHIP_CONFIG_LC_STATE_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT = 0x00000000
-NDM_RESET_NDMRESET_REQUEST_REG_FIELD_ACCESS = (
-    ('ndmreset_request', 'r', '', '', False),
-)
-
-NDM_RESET_NDMRESET_REQUEST_REG_WIDTH = 32
-NDM_RESET_NDMRESET_REQUEST_REG_FIELDS = (
-    ('ndmreset_request', 0, 31, 'r', 'w', '', '', False, True, 0),
-)
-
-class NDM_RESET_NDMRESET_REQUEST_reg_t(Structure):
-    _fields_ = [
-        ('ndmreset_request', c_uint32, 32),
-    ]
-
-NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT = 0x00000000
-
-class NDM_RESET_NDMRESET_REQUEST_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', NDM_RESET_NDMRESET_REQUEST_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(NDM_RESET_NDMRESET_REQUEST_reg_u, self).__init__(*args, **kwargs)
-        self.val = NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT = 0x00000000
-NDM_RESET_NDMRESET_PROCESS_REG_FIELD_ACCESS = (
-    ('ndmreset_process', 'rw', '', '', False),
-)
-
-NDM_RESET_NDMRESET_PROCESS_REG_WIDTH = 32
-NDM_RESET_NDMRESET_PROCESS_REG_FIELDS = (
-    ('ndmreset_process', 0, 31, 'rw', 'r', '', '', False, False, 0),
-)
-
-class NDM_RESET_NDMRESET_PROCESS_reg_t(Structure):
-    _fields_ = [
-        ('ndmreset_process', c_uint32, 32),
-    ]
-
-NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT = 0x00000000
-
-class NDM_RESET_NDMRESET_PROCESS_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', NDM_RESET_NDMRESET_PROCESS_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(NDM_RESET_NDMRESET_PROCESS_reg_u, self).__init__(*args, **kwargs)
-        self.val = NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT = 0x00000000
-NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_FIELD_ACCESS = (
-    ('ndmreset_cluster_count', 'r', '', '', False),
-)
-
-NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_WIDTH = 32
-NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_FIELDS = (
-    ('ndmreset_cluster_count', 0, 7, 'r', 'w', '', '', False, True, 0),
-)
-
-class NDM_RESET_NDMRESET_CLUSTER_COUNT_reg_t(Structure):
-    _fields_ = [
-        ('ndmreset_cluster_count', c_uint8, 8),
-    ]
-
-NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT = 0x00000000
-
-class NDM_RESET_NDMRESET_CLUSTER_COUNT_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', NDM_RESET_NDMRESET_CLUSTER_COUNT_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(NDM_RESET_NDMRESET_CLUSTER_COUNT_reg_u, self).__init__(*args, **kwargs)
-        self.val = NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
 GPIO_INTF_DATA_CTRL_REG_DEFAULT = 0x00000000
 GPIO_INTF_DATA_CTRL_REG_FIELD_ACCESS = (
     ('core2pad', 'rw', '', '', False),
@@ -17001,186 +16705,6 @@ class EXT_MEMORY_NUM_ENTRIES_200_MEM_WORD_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-DFX_CTRL_STATUS_STATUS_REG_DEFAULT = 0x0000000000000000
-DFX_CTRL_STATUS_STATUS_REG_FIELD_ACCESS = (
-    ('mem_repair_done', 'r', '', '', False),
-    ('mem_repair_success', 'r', '', '', False),
-    ('mem_repair_abort', 'r', '', '', False),
-    ('mbist_done', 'r', '', '', False),
-    ('mbist_pass', 'r', '', '', False),
-    ('mbist_abort', 'r', '', '', False),
-)
-
-DFX_CTRL_STATUS_STATUS_REG_WIDTH = 64
-DFX_CTRL_STATUS_STATUS_REG_FIELDS = (
-    ('mem_repair_done', 0, 0, 'r', 'w', '', '', False, True, 0),
-    ('mem_repair_success', 1, 1, 'r', 'w', '', '', False, True, 0),
-    ('mem_repair_abort', 2, 2, 'r', 'w', '', '', False, True, 0),
-    ('mbist_done', 4, 4, 'r', 'w', '', '', False, True, 0),
-    ('mbist_pass', 8, 8, 'r', 'w', '', '', False, True, 0),
-    ('mbist_abort', 12, 12, 'r', 'w', '', '', False, True, 0),
-)
-
-class DFX_CTRL_STATUS_STATUS_reg_t(Structure):
-    _fields_ = [
-        ('mem_repair_done', c_uint16, 1),
-        ('mem_repair_success', c_uint16, 1),
-        ('mem_repair_abort', c_uint16, 1),
-        ('rsvd_0', c_uint16, 1),
-        ('mbist_done', c_uint16, 1),
-        ('rsvd_1', c_uint16, 3),
-        ('mbist_pass', c_uint16, 1),
-        ('rsvd_2', c_uint16, 3),
-        ('mbist_abort', c_uint16, 1),
-    ]
-
-DFX_CTRL_STATUS_STATUS_REG_DEFAULT = 0x0000000000000000
-
-class DFX_CTRL_STATUS_STATUS_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint64),
-        ('f', DFX_CTRL_STATUS_STATUS_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(DFX_CTRL_STATUS_STATUS_reg_u, self).__init__(*args, **kwargs)
-        self.val = DFX_CTRL_STATUS_STATUS_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-DFX_CTRL_STATUS_DEBUG_CTRL_REG_DEFAULT = 0x00000000
-DFX_CTRL_STATUS_DEBUG_CTRL_REG_FIELD_ACCESS = (
-    ('chiplet_enable', 'rw', '', '', False),
-    ('gpio_en', 'rw', '', '', False),
-    ('cg_en', 'rw', '', '', False),
-    ('force_clk_en', 'rw', '', '', False),
-    ('dtb_ns_en', 'rw', '', '', False),
-    ('dtb_ew_en', 'rw', '', '', False),
-    ('xtrig_clk_halt_mask', 'rw', '', '', False),
-    ('debug_marker', 'rw', '', '', False),
-)
-
-DFX_CTRL_STATUS_DEBUG_CTRL_REG_WIDTH = 32
-DFX_CTRL_STATUS_DEBUG_CTRL_REG_FIELDS = (
-    ('chiplet_enable', 0, 1, 'rw', 'r', '', '', False, False, 0),
-    ('gpio_en', 2, 2, 'rw', 'r', '', '', False, False, 0),
-    ('cg_en', 3, 3, 'rw', 'r', '', '', False, False, 0),
-    ('force_clk_en', 4, 4, 'rw', 'r', '', '', False, False, 0),
-    ('dtb_ns_en', 5, 5, 'rw', 'r', '', '', False, False, 0),
-    ('dtb_ew_en', 6, 6, 'rw', 'r', '', '', False, False, 0),
-    ('xtrig_clk_halt_mask', 7, 22, 'rw', 'r', '', '', False, False, 0),
-    ('debug_marker', 23, 30, 'rw', 'r', '', '', False, False, 0),
-)
-
-class DFX_CTRL_STATUS_DEBUG_CTRL_reg_t(Structure):
-    _fields_ = [
-        ('chiplet_enable', c_uint32, 2),
-        ('gpio_en', c_uint32, 1),
-        ('cg_en', c_uint32, 1),
-        ('force_clk_en', c_uint32, 1),
-        ('dtb_ns_en', c_uint32, 1),
-        ('dtb_ew_en', c_uint32, 1),
-        ('xtrig_clk_halt_mask', c_uint32, 16),
-        ('debug_marker', c_uint32, 8),
-    ]
-
-DFX_CTRL_STATUS_DEBUG_CTRL_REG_DEFAULT = 0x00000000
-
-class DFX_CTRL_STATUS_DEBUG_CTRL_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', DFX_CTRL_STATUS_DEBUG_CTRL_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(DFX_CTRL_STATUS_DEBUG_CTRL_reg_u, self).__init__(*args, **kwargs)
-        self.val = DFX_CTRL_STATUS_DEBUG_CTRL_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT = 0x0000000000000000
-DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_FIELD_ACCESS = (
-    ('Dbmmode', 'rw', '', '', False),
-    ('Dbmid', 'rw', '', '', False),
-    ('Rsvd158', 'rw', '', '', False),
-    ('Muxselseg0', 'rw', '', '', False),
-    ('Muxselseg1', 'rw', '', '', False),
-    ('Muxselseg2', 'rw', '', '', False),
-    ('Muxselseg3', 'rw', '', '', False),
-    ('Muxselseg4', 'rw', '', '', False),
-    ('Muxselseg5', 'rw', '', '', False),
-    ('Muxselseg6', 'rw', '', '', False),
-    ('Muxselseg7', 'rw', '', '', False),
-)
-
-DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_WIDTH = 64
-DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_FIELDS = (
-    ('Dbmmode', 0, 1, 'rw', 'r', '', '', False, False, 0),
-    ('Dbmid', 2, 7, 'rw', 'r', '', '', False, False, 0),
-    ('Rsvd158', 8, 15, 'rw', 'r', '', '', False, False, 0),
-    ('Muxselseg0', 16, 21, 'rw', 'r', '', '', False, False, 0),
-    ('Muxselseg1', 22, 27, 'rw', 'r', '', '', False, False, 0),
-    ('Muxselseg2', 28, 33, 'rw', 'r', '', '', False, False, 0),
-    ('Muxselseg3', 34, 39, 'rw', 'r', '', '', False, False, 0),
-    ('Muxselseg4', 40, 45, 'rw', 'r', '', '', False, False, 0),
-    ('Muxselseg5', 46, 51, 'rw', 'r', '', '', False, False, 0),
-    ('Muxselseg6', 52, 57, 'rw', 'r', '', '', False, False, 0),
-    ('Muxselseg7', 58, 63, 'rw', 'r', '', '', False, False, 0),
-)
-
-class DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_t(Structure):
-    _fields_ = [
-        ('dbmmode', c_uint64, 2),
-        ('dbmid', c_uint64, 6),
-        ('rsvd158', c_uint64, 8),
-        ('muxselseg0', c_uint64, 6),
-        ('muxselseg1', c_uint64, 6),
-        ('muxselseg2', c_uint64, 6),
-        ('muxselseg3', c_uint64, 6),
-        ('muxselseg4', c_uint64, 6),
-        ('muxselseg5', c_uint64, 6),
-        ('muxselseg6', c_uint64, 6),
-        ('muxselseg7', c_uint64, 6),
-    ]
-
-DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT = 0x0000000000000000
-
-class DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint64),
-        ('f', DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_u, self).__init__(*args, **kwargs)
-        self.val = DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
 PWM_ALERT_TEST_REG_DEFAULT = 0x00000000
 PWM_ALERT_TEST_REG_FIELD_ACCESS = (
     ('fatal_fault', 'w', '', '', False),
@@ -17522,6 +17046,302 @@ class PWM_CTRL_CTRL_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(PWM_CTRL_CTRL_reg_u, self).__init__(*args, **kwargs)
         self.val = PWM_CTRL_CTRL_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+SCRATCH_SCRATCH_REG_DEFAULT = 0x00000000
+SCRATCH_SCRATCH_REG_FIELD_ACCESS = (
+    ('data', 'rw', '', '', False),
+)
+
+SCRATCH_SCRATCH_REG_WIDTH = 32
+SCRATCH_SCRATCH_REG_FIELDS = (
+    ('data', 0, 31, 'rw', 'na', '', '', False, False, 0),
+)
+
+class SCRATCH_SCRATCH_reg_t(Structure):
+    _fields_ = [
+        ('data', c_uint32, 32),
+    ]
+
+SCRATCH_SCRATCH_REG_DEFAULT = 0x00000000
+
+class SCRATCH_SCRATCH_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', SCRATCH_SCRATCH_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SCRATCH_SCRATCH_reg_u, self).__init__(*args, **kwargs)
+        self.val = SCRATCH_SCRATCH_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+CHIP_CONFIG_VERSION_LO_REG_DEFAULT = 0x000100A0
+CHIP_CONFIG_VERSION_LO_REG_FIELD_ACCESS = (
+    ('version_lo', 'r', '', '', False),
+)
+
+CHIP_CONFIG_VERSION_LO_REG_WIDTH = 32
+CHIP_CONFIG_VERSION_LO_REG_FIELDS = (
+    ('version_lo', 0, 31, 'r', 'w', '', '', False, True, 65696),
+)
+
+class CHIP_CONFIG_VERSION_LO_reg_t(Structure):
+    _fields_ = [
+        ('version_lo', c_uint32, 32),
+    ]
+
+CHIP_CONFIG_VERSION_LO_REG_DEFAULT = 0x000100A0
+
+class CHIP_CONFIG_VERSION_LO_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', CHIP_CONFIG_VERSION_LO_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(CHIP_CONFIG_VERSION_LO_reg_u, self).__init__(*args, **kwargs)
+        self.val = CHIP_CONFIG_VERSION_LO_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+CHIP_CONFIG_VERSION_HI_REG_DEFAULT = 0x00000000
+CHIP_CONFIG_VERSION_HI_REG_FIELD_ACCESS = (
+    ('version_hi', 'r', '', '', False),
+)
+
+CHIP_CONFIG_VERSION_HI_REG_WIDTH = 32
+CHIP_CONFIG_VERSION_HI_REG_FIELDS = (
+    ('version_hi', 0, 31, 'r', 'w', '', '', False, True, 0),
+)
+
+class CHIP_CONFIG_VERSION_HI_reg_t(Structure):
+    _fields_ = [
+        ('version_hi', c_uint32, 32),
+    ]
+
+CHIP_CONFIG_VERSION_HI_REG_DEFAULT = 0x00000000
+
+class CHIP_CONFIG_VERSION_HI_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', CHIP_CONFIG_VERSION_HI_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(CHIP_CONFIG_VERSION_HI_reg_u, self).__init__(*args, **kwargs)
+        self.val = CHIP_CONFIG_VERSION_HI_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+CHIP_CONFIG_CHIP_ID_REG_DEFAULT = 0x00000000
+CHIP_CONFIG_CHIP_ID_REG_FIELD_ACCESS = (
+    ('chip_id', 'r', '', '', False),
+)
+
+CHIP_CONFIG_CHIP_ID_REG_WIDTH = 32
+CHIP_CONFIG_CHIP_ID_REG_FIELDS = (
+    ('chip_id', 0, 31, 'r', 'w', '', '', False, True, 0),
+)
+
+class CHIP_CONFIG_CHIP_ID_reg_t(Structure):
+    _fields_ = [
+        ('chip_id', c_uint32, 32),
+    ]
+
+CHIP_CONFIG_CHIP_ID_REG_DEFAULT = 0x00000000
+
+class CHIP_CONFIG_CHIP_ID_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', CHIP_CONFIG_CHIP_ID_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(CHIP_CONFIG_CHIP_ID_reg_u, self).__init__(*args, **kwargs)
+        self.val = CHIP_CONFIG_CHIP_ID_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+CHIP_CONFIG_LC_STATE_REG_DEFAULT = 0x0000000F
+CHIP_CONFIG_LC_STATE_REG_FIELD_ACCESS = (
+    ('lc_state', 'r', '', '', False),
+)
+
+CHIP_CONFIG_LC_STATE_REG_WIDTH = 32
+CHIP_CONFIG_LC_STATE_REG_FIELDS = (
+    ('lc_state', 0, 7, 'r', 'w', '', '', False, True, 15),
+)
+
+class CHIP_CONFIG_LC_STATE_reg_t(Structure):
+    _fields_ = [
+        ('lc_state', c_uint8, 8),
+    ]
+
+CHIP_CONFIG_LC_STATE_REG_DEFAULT = 0x0000000F
+
+class CHIP_CONFIG_LC_STATE_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', CHIP_CONFIG_LC_STATE_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(CHIP_CONFIG_LC_STATE_reg_u, self).__init__(*args, **kwargs)
+        self.val = CHIP_CONFIG_LC_STATE_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT = 0x00000000
+NDM_RESET_NDMRESET_REQUEST_REG_FIELD_ACCESS = (
+    ('ndmreset_request', 'r', '', '', False),
+)
+
+NDM_RESET_NDMRESET_REQUEST_REG_WIDTH = 32
+NDM_RESET_NDMRESET_REQUEST_REG_FIELDS = (
+    ('ndmreset_request', 0, 31, 'r', 'w', '', '', False, True, 0),
+)
+
+class NDM_RESET_NDMRESET_REQUEST_reg_t(Structure):
+    _fields_ = [
+        ('ndmreset_request', c_uint32, 32),
+    ]
+
+NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT = 0x00000000
+
+class NDM_RESET_NDMRESET_REQUEST_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', NDM_RESET_NDMRESET_REQUEST_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(NDM_RESET_NDMRESET_REQUEST_reg_u, self).__init__(*args, **kwargs)
+        self.val = NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT = 0x00000000
+NDM_RESET_NDMRESET_PROCESS_REG_FIELD_ACCESS = (
+    ('ndmreset_process', 'rw', '', '', False),
+)
+
+NDM_RESET_NDMRESET_PROCESS_REG_WIDTH = 32
+NDM_RESET_NDMRESET_PROCESS_REG_FIELDS = (
+    ('ndmreset_process', 0, 31, 'rw', 'r', '', '', False, False, 0),
+)
+
+class NDM_RESET_NDMRESET_PROCESS_reg_t(Structure):
+    _fields_ = [
+        ('ndmreset_process', c_uint32, 32),
+    ]
+
+NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT = 0x00000000
+
+class NDM_RESET_NDMRESET_PROCESS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', NDM_RESET_NDMRESET_PROCESS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(NDM_RESET_NDMRESET_PROCESS_reg_u, self).__init__(*args, **kwargs)
+        self.val = NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT = 0x00000000
+NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_FIELD_ACCESS = (
+    ('ndmreset_cluster_count', 'r', '', '', False),
+)
+
+NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_WIDTH = 32
+NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_FIELDS = (
+    ('ndmreset_cluster_count', 0, 7, 'r', 'w', '', '', False, True, 0),
+)
+
+class NDM_RESET_NDMRESET_CLUSTER_COUNT_reg_t(Structure):
+    _fields_ = [
+        ('ndmreset_cluster_count', c_uint8, 8),
+    ]
+
+NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT = 0x00000000
+
+class NDM_RESET_NDMRESET_CLUSTER_COUNT_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', NDM_RESET_NDMRESET_CLUSTER_COUNT_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(NDM_RESET_NDMRESET_CLUSTER_COUNT_reg_u, self).__init__(*args, **kwargs)
+        self.val = NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -18101,6 +17921,186 @@ class FILTER_CTRL_END_ADDR_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(FILTER_CTRL_END_ADDR_reg_u, self).__init__(*args, **kwargs)
         self.val = FILTER_CTRL_END_ADDR_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DFX_CTRL_STATUS_STATUS_REG_DEFAULT = 0x0000000000000000
+DFX_CTRL_STATUS_STATUS_REG_FIELD_ACCESS = (
+    ('mem_repair_done', 'r', '', '', False),
+    ('mem_repair_success', 'r', '', '', False),
+    ('mem_repair_abort', 'r', '', '', False),
+    ('mbist_done', 'r', '', '', False),
+    ('mbist_pass', 'r', '', '', False),
+    ('mbist_abort', 'r', '', '', False),
+)
+
+DFX_CTRL_STATUS_STATUS_REG_WIDTH = 64
+DFX_CTRL_STATUS_STATUS_REG_FIELDS = (
+    ('mem_repair_done', 0, 0, 'r', 'w', '', '', False, True, 0),
+    ('mem_repair_success', 1, 1, 'r', 'w', '', '', False, True, 0),
+    ('mem_repair_abort', 2, 2, 'r', 'w', '', '', False, True, 0),
+    ('mbist_done', 4, 4, 'r', 'w', '', '', False, True, 0),
+    ('mbist_pass', 8, 8, 'r', 'w', '', '', False, True, 0),
+    ('mbist_abort', 12, 12, 'r', 'w', '', '', False, True, 0),
+)
+
+class DFX_CTRL_STATUS_STATUS_reg_t(Structure):
+    _fields_ = [
+        ('mem_repair_done', c_uint16, 1),
+        ('mem_repair_success', c_uint16, 1),
+        ('mem_repair_abort', c_uint16, 1),
+        ('rsvd_0', c_uint16, 1),
+        ('mbist_done', c_uint16, 1),
+        ('rsvd_1', c_uint16, 3),
+        ('mbist_pass', c_uint16, 1),
+        ('rsvd_2', c_uint16, 3),
+        ('mbist_abort', c_uint16, 1),
+    ]
+
+DFX_CTRL_STATUS_STATUS_REG_DEFAULT = 0x0000000000000000
+
+class DFX_CTRL_STATUS_STATUS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', DFX_CTRL_STATUS_STATUS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DFX_CTRL_STATUS_STATUS_reg_u, self).__init__(*args, **kwargs)
+        self.val = DFX_CTRL_STATUS_STATUS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DFX_CTRL_STATUS_DEBUG_CTRL_REG_DEFAULT = 0x00000000
+DFX_CTRL_STATUS_DEBUG_CTRL_REG_FIELD_ACCESS = (
+    ('chiplet_enable', 'rw', '', '', False),
+    ('gpio_en', 'rw', '', '', False),
+    ('cg_en', 'rw', '', '', False),
+    ('force_clk_en', 'rw', '', '', False),
+    ('dtb_ns_en', 'rw', '', '', False),
+    ('dtb_ew_en', 'rw', '', '', False),
+    ('xtrig_clk_halt_mask', 'rw', '', '', False),
+    ('debug_marker', 'rw', '', '', False),
+)
+
+DFX_CTRL_STATUS_DEBUG_CTRL_REG_WIDTH = 32
+DFX_CTRL_STATUS_DEBUG_CTRL_REG_FIELDS = (
+    ('chiplet_enable', 0, 1, 'rw', 'r', '', '', False, False, 0),
+    ('gpio_en', 2, 2, 'rw', 'r', '', '', False, False, 0),
+    ('cg_en', 3, 3, 'rw', 'r', '', '', False, False, 0),
+    ('force_clk_en', 4, 4, 'rw', 'r', '', '', False, False, 0),
+    ('dtb_ns_en', 5, 5, 'rw', 'r', '', '', False, False, 0),
+    ('dtb_ew_en', 6, 6, 'rw', 'r', '', '', False, False, 0),
+    ('xtrig_clk_halt_mask', 7, 22, 'rw', 'r', '', '', False, False, 0),
+    ('debug_marker', 23, 30, 'rw', 'r', '', '', False, False, 0),
+)
+
+class DFX_CTRL_STATUS_DEBUG_CTRL_reg_t(Structure):
+    _fields_ = [
+        ('chiplet_enable', c_uint32, 2),
+        ('gpio_en', c_uint32, 1),
+        ('cg_en', c_uint32, 1),
+        ('force_clk_en', c_uint32, 1),
+        ('dtb_ns_en', c_uint32, 1),
+        ('dtb_ew_en', c_uint32, 1),
+        ('xtrig_clk_halt_mask', c_uint32, 16),
+        ('debug_marker', c_uint32, 8),
+    ]
+
+DFX_CTRL_STATUS_DEBUG_CTRL_REG_DEFAULT = 0x00000000
+
+class DFX_CTRL_STATUS_DEBUG_CTRL_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DFX_CTRL_STATUS_DEBUG_CTRL_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DFX_CTRL_STATUS_DEBUG_CTRL_reg_u, self).__init__(*args, **kwargs)
+        self.val = DFX_CTRL_STATUS_DEBUG_CTRL_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT = 0x0000000000000000
+DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_FIELD_ACCESS = (
+    ('Dbmmode', 'rw', '', '', False),
+    ('Dbmid', 'rw', '', '', False),
+    ('Rsvd158', 'rw', '', '', False),
+    ('Muxselseg0', 'rw', '', '', False),
+    ('Muxselseg1', 'rw', '', '', False),
+    ('Muxselseg2', 'rw', '', '', False),
+    ('Muxselseg3', 'rw', '', '', False),
+    ('Muxselseg4', 'rw', '', '', False),
+    ('Muxselseg5', 'rw', '', '', False),
+    ('Muxselseg6', 'rw', '', '', False),
+    ('Muxselseg7', 'rw', '', '', False),
+)
+
+DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_WIDTH = 64
+DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_FIELDS = (
+    ('Dbmmode', 0, 1, 'rw', 'r', '', '', False, False, 0),
+    ('Dbmid', 2, 7, 'rw', 'r', '', '', False, False, 0),
+    ('Rsvd158', 8, 15, 'rw', 'r', '', '', False, False, 0),
+    ('Muxselseg0', 16, 21, 'rw', 'r', '', '', False, False, 0),
+    ('Muxselseg1', 22, 27, 'rw', 'r', '', '', False, False, 0),
+    ('Muxselseg2', 28, 33, 'rw', 'r', '', '', False, False, 0),
+    ('Muxselseg3', 34, 39, 'rw', 'r', '', '', False, False, 0),
+    ('Muxselseg4', 40, 45, 'rw', 'r', '', '', False, False, 0),
+    ('Muxselseg5', 46, 51, 'rw', 'r', '', '', False, False, 0),
+    ('Muxselseg6', 52, 57, 'rw', 'r', '', '', False, False, 0),
+    ('Muxselseg7', 58, 63, 'rw', 'r', '', '', False, False, 0),
+)
+
+class DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_t(Structure):
+    _fields_ = [
+        ('dbmmode', c_uint64, 2),
+        ('dbmid', c_uint64, 6),
+        ('rsvd158', c_uint64, 8),
+        ('muxselseg0', c_uint64, 6),
+        ('muxselseg1', c_uint64, 6),
+        ('muxselseg2', c_uint64, 6),
+        ('muxselseg3', c_uint64, 6),
+        ('muxselseg4', c_uint64, 6),
+        ('muxselseg5', c_uint64, 6),
+        ('muxselseg6', c_uint64, 6),
+        ('muxselseg7', c_uint64, 6),
+    ]
+
+DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT = 0x0000000000000000
+
+class DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DFX_CTRL_STATUS_DEBUG_BUS_MUX_reg_u, self).__init__(*args, **kwargs)
+        self.val = DFX_CTRL_STATUS_DEBUG_BUS_MUX_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

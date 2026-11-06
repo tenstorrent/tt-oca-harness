@@ -1555,208 +1555,6 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
-        <ipxact:name>smc_misc_wrap</ipxact:name>
-        <ipxact:displayName>SMC Miscellaneous Wrapper Address Map</ipxact:displayName>
-        <ipxact:description>Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.</ipxact:description>
-        <ipxact:baseAddress>'hc0002800</ipxact:baseAddress>
-        <ipxact:range>'h20c</ipxact:range>
-        <ipxact:width>32</ipxact:width>
-        <ipxact:registerFile>
-          <ipxact:name>scratch_cold</ipxact:name>
-          <ipxact:displayName>Scratch Address Map</ipxact:displayName>
-          <ipxact:description>General-purpose scratch register bank.</ipxact:description>
-          <ipxact:addressOffset>'h0</ipxact:addressOffset>
-          <ipxact:range>'h20</ipxact:range>
-          <ipxact:register>
-            <ipxact:name>SCRATCH</ipxact:name>
-            <ipxact:dim>8</ipxact:dim>
-            <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>data</ipxact:name>
-              <ipxact:description>Scratch register</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-        </ipxact:registerFile>
-        <ipxact:registerFile>
-          <ipxact:name>scratch_cold_warm</ipxact:name>
-          <ipxact:displayName>Scratch Address Map</ipxact:displayName>
-          <ipxact:description>General-purpose scratch register bank.</ipxact:description>
-          <ipxact:addressOffset>'h80</ipxact:addressOffset>
-          <ipxact:range>'h20</ipxact:range>
-          <ipxact:register>
-            <ipxact:name>SCRATCH</ipxact:name>
-            <ipxact:dim>8</ipxact:dim>
-            <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>data</ipxact:name>
-              <ipxact:description>Scratch register</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-        </ipxact:registerFile>
-        <ipxact:registerFile>
-          <ipxact:name>chip_config</ipxact:name>
-          <ipxact:displayName>Chip Configuration Address Map</ipxact:displayName>
-          <ipxact:description>Chip version, identification, and lifecycle-state registers.</ipxact:description>
-          <ipxact:addressOffset>'h100</ipxact:addressOffset>
-          <ipxact:range>'h10</ipxact:range>
-          <ipxact:register>
-            <ipxact:name>VERSION_LO</ipxact:name>
-            <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>version_lo</ipxact:name>
-              <ipxact:description>SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h100a0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>VERSION_HI</ipxact:name>
-            <ipxact:addressOffset>'h4</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>version_hi</ipxact:name>
-              <ipxact:description>SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>CHIP_ID</ipxact:name>
-            <ipxact:addressOffset>'h8</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>chip_id</ipxact:name>
-              <ipxact:description>Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>LC_STATE</ipxact:name>
-            <ipxact:addressOffset>'hc</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>lc_state</ipxact:name>
-              <ipxact:description>Lifecycle state from SEP, differentially encoded: {~raw[3:0], raw[3:0]}. The register has no storage: each read returns the value SEP drives at that moment, neither latched nor decoded. The reset value 0x0F is the INVALID encoding 4'b1111, the fail-safe state, and is what SEP itself drives until fuse sensing completes. An SMU built without SEP drives 0xF0 (TEST_DEV).</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'hf</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>8</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-        </ipxact:registerFile>
-        <ipxact:registerFile>
-          <ipxact:name>ndm_reset</ipxact:name>
-          <ipxact:displayName>NDM Reset Control Address Map</ipxact:displayName>
-          <ipxact:description>Per-cluster NDM reset handshake with an external CPU cluster debug module</ipxact:description>
-          <ipxact:addressOffset>'h200</ipxact:addressOffset>
-          <ipxact:range>'hc</ipxact:range>
-          <ipxact:register>
-            <ipxact:name>NDMRESET_REQUEST</ipxact:name>
-            <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>ndmreset_request</ipxact:name>
-              <ipxact:description>Bit i is the NDM reset request from external CPU cluster i.
-Bits below ndmreset_cluster_count follow the request input.
-Bits at and above that count read as 0. The field holds up to 32 clusters.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>NDMRESET_PROCESS</ipxact:name>
-            <ipxact:addressOffset>'h4</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>ndmreset_process</ipxact:name>
-              <ipxact:description>Bit i is the firmware response to the NDM reset request from external CPU cluster i.
-Bits below ndmreset_cluster_count are driven on the process output.
-Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>NDMRESET_CLUSTER_COUNT</ipxact:name>
-            <ipxact:addressOffset>'h8</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>ndmreset_cluster_count</ipxact:name>
-              <ipxact:description>Number of external CPU clusters connected on the low bits of NDMRESET_REQUEST and NDMRESET_PROCESS.
-Software masks those registers with this value. The maximum is 32.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>8</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-        </ipxact:registerFile>
-      </ipxact:addressBlock>
-      <ipxact:addressBlock>
         <ipxact:name>gpio_intf_wrap</ipxact:name>
         <ipxact:displayName>GPIO Interface Wrapper Address Map</ipxact:displayName>
         <ipxact:description>Wrapper address map instantiating one GPIO interface register block per pad.</ipxact:description>
@@ -8225,367 +8023,6 @@ If PRIMARY, this field is always 0.</ipxact:description>
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
-        <ipxact:name>dfx_ctrl</ipxact:name>
-        <ipxact:displayName>DFX Control and Status Address Map</ipxact:displayName>
-        <ipxact:description>Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.</ipxact:description>
-        <ipxact:baseAddress>'hc000b800</ipxact:baseAddress>
-        <ipxact:range>'h18</ipxact:range>
-        <ipxact:width>64</ipxact:width>
-        <ipxact:register>
-          <ipxact:name>STATUS_SMU</ipxact:name>
-          <ipxact:addressOffset>'h0</ipxact:addressOffset>
-          <ipxact:size>64</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>mem_repair_done</ipxact:name>
-            <ipxact:description>One bit indicator from DFT logic to say when mem repair is completed.
-This register is sticky 1 and will hold the value until reset</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>mem_repair_success</ipxact:name>
-            <ipxact:description>One bit indicator from DFT logic to say if mem repair was successful
-This register is sticky 1 and will hold the value until reset</ipxact:description>
-            <ipxact:bitOffset>1</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>mem_repair_abort</ipxact:name>
-            <ipxact:description>One bit indicator from DFT logic to say that mem repair has hit timeout and aborted
-This register is sticky 1 and will hold the value until reset</ipxact:description>
-            <ipxact:bitOffset>2</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>mbist_done</ipxact:name>
-            <ipxact:description>One bit indicator from DFT logic to say when MBIST is completed
-This register is sticky 1 and will hold the value until reset</ipxact:description>
-            <ipxact:bitOffset>4</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>mbist_pass</ipxact:name>
-            <ipxact:description>One bit indicator from DFT logic to say when MBIST is successful
-This register is sticky 1 and will hold the value until reset</ipxact:description>
-            <ipxact:bitOffset>8</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>mbist_abort</ipxact:name>
-            <ipxact:description>One bit indicator from DFT logic to say that MBIST has hit timeout and aborted
-This register is sticky 1 and will hold the value until reset</ipxact:description>
-            <ipxact:bitOffset>12</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>DEBUG_CTRL</ipxact:name>
-          <ipxact:addressOffset>'h8</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>chiplet_enable</ipxact:name>
-            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>2</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>gpio_en</ipxact:name>
-            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
-            <ipxact:bitOffset>2</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>cg_en</ipxact:name>
-            <ipxact:description>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
-force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
-reset. While the clock is stopped, CLA and DST register accesses complete
-with an error and reads return 0xBADCAB1E.</ipxact:description>
-            <ipxact:bitOffset>3</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>force_clk_en</ipxact:name>
-            <ipxact:description>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
-value of cg_en.</ipxact:description>
-            <ipxact:bitOffset>4</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>dtb_ns_en</ipxact:name>
-            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
-            <ipxact:bitOffset>5</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>dtb_ew_en</ipxact:name>
-            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
-            <ipxact:bitOffset>6</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>xtrig_clk_halt_mask</ipxact:name>
-            <ipxact:description>CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every
-CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds
-them all inactive. Bits 15:1 hold the written value for software to read back
-and have no effect.</ipxact:description>
-            <ipxact:bitOffset>7</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>debug_marker</ipxact:name>
-            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC;
-the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).</ipxact:description>
-            <ipxact:bitOffset>23</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>8</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>DEBUG_BUS_MUX</ipxact:name>
-          <ipxact:description>Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug
-bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,
-and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux
-at a time.</ipxact:description>
-          <ipxact:addressOffset>'h10</ipxact:addressOffset>
-          <ipxact:size>64</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>Dbmmode</ipxact:name>
-            <ipxact:description>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>2</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Dbmid</ipxact:name>
-            <ipxact:description>ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
-level-3 muxes.</ipxact:description>
-            <ipxact:bitOffset>2</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Rsvd158</ipxact:name>
-            <ipxact:description>No effect in the SMC: the field stores and reads back, but no debug-bus mux uses
-it. Write 0.</ipxact:description>
-            <ipxact:bitOffset>8</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>8</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Muxselseg0</ipxact:name>
-            <ipxact:description>Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
-takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k
-from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Muxselseg1</ipxact:name>
-            <ipxact:description>Binary input-lane select for output lane 1 of the addressed debug-bus mux, which
-takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k
-from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
-            <ipxact:bitOffset>22</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Muxselseg2</ipxact:name>
-            <ipxact:description>Binary input-lane select for output lane 2 of the addressed debug-bus mux, which
-takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k
-from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
-            <ipxact:bitOffset>28</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Muxselseg3</ipxact:name>
-            <ipxact:description>Binary input-lane select for output lane 3 of the addressed debug-bus mux, which
-takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k
-from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
-            <ipxact:bitOffset>34</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Muxselseg4</ipxact:name>
-            <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
-Muxselseg0 to Muxselseg3.</ipxact:description>
-            <ipxact:bitOffset>40</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Muxselseg5</ipxact:name>
-            <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
-Muxselseg0 to Muxselseg3.</ipxact:description>
-            <ipxact:bitOffset>46</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Muxselseg6</ipxact:name>
-            <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
-Muxselseg0 to Muxselseg3.</ipxact:description>
-            <ipxact:bitOffset>52</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>Muxselseg7</ipxact:name>
-            <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
-Muxselseg0 to Muxselseg3.</ipxact:description>
-            <ipxact:bitOffset>58</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-      </ipxact:addressBlock>
-      <ipxact:addressBlock>
         <ipxact:name>smc_pwm</ipxact:name>
         <ipxact:displayName>PWM Wrapper Address Map</ipxact:displayName>
         <ipxact:description>Wrapper address map instantiating the PWM register block and its pad control.</ipxact:description>
@@ -8885,6 +8322,208 @@ every time it is incremented (or decremented).</ipxact:description>
               </ipxact:resets>
               <ipxact:bitWidth>4</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+      </ipxact:addressBlock>
+      <ipxact:addressBlock>
+        <ipxact:name>smc_misc_wrap</ipxact:name>
+        <ipxact:displayName>SMC Miscellaneous Wrapper Address Map</ipxact:displayName>
+        <ipxact:description>Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.</ipxact:description>
+        <ipxact:baseAddress>'hc000d000</ipxact:baseAddress>
+        <ipxact:range>'h20c</ipxact:range>
+        <ipxact:width>32</ipxact:width>
+        <ipxact:registerFile>
+          <ipxact:name>scratch_cold</ipxact:name>
+          <ipxact:displayName>Scratch Address Map</ipxact:displayName>
+          <ipxact:description>General-purpose scratch register bank.</ipxact:description>
+          <ipxact:addressOffset>'h0</ipxact:addressOffset>
+          <ipxact:range>'h20</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>SCRATCH</ipxact:name>
+            <ipxact:dim>8</ipxact:dim>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Scratch register</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
+          <ipxact:name>scratch_cold_warm</ipxact:name>
+          <ipxact:displayName>Scratch Address Map</ipxact:displayName>
+          <ipxact:description>General-purpose scratch register bank.</ipxact:description>
+          <ipxact:addressOffset>'h80</ipxact:addressOffset>
+          <ipxact:range>'h20</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>SCRATCH</ipxact:name>
+            <ipxact:dim>8</ipxact:dim>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Scratch register</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
+          <ipxact:name>chip_config</ipxact:name>
+          <ipxact:displayName>Chip Configuration Address Map</ipxact:displayName>
+          <ipxact:description>Chip version, identification, and lifecycle-state registers.</ipxact:description>
+          <ipxact:addressOffset>'h100</ipxact:addressOffset>
+          <ipxact:range>'h10</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>VERSION_LO</ipxact:name>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>version_lo</ipxact:name>
+              <ipxact:description>SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h100a0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>VERSION_HI</ipxact:name>
+            <ipxact:addressOffset>'h4</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>version_hi</ipxact:name>
+              <ipxact:description>SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>CHIP_ID</ipxact:name>
+            <ipxact:addressOffset>'h8</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>chip_id</ipxact:name>
+              <ipxact:description>Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>LC_STATE</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>lc_state</ipxact:name>
+              <ipxact:description>Lifecycle state from SEP, differentially encoded: {~raw[3:0], raw[3:0]}. The register has no storage: each read returns the value SEP drives at that moment, neither latched nor decoded. The reset value 0x0F is the INVALID encoding 4'b1111, the fail-safe state, and is what SEP itself drives until fuse sensing completes. An SMU built without SEP drives 0xF0 (TEST_DEV).</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'hf</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
+          <ipxact:name>ndm_reset</ipxact:name>
+          <ipxact:displayName>NDM Reset Control Address Map</ipxact:displayName>
+          <ipxact:description>Per-cluster NDM reset handshake with an external CPU cluster debug module</ipxact:description>
+          <ipxact:addressOffset>'h200</ipxact:addressOffset>
+          <ipxact:range>'hc</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>NDMRESET_REQUEST</ipxact:name>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>ndmreset_request</ipxact:name>
+              <ipxact:description>Bit i is the NDM reset request from external CPU cluster i.
+Bits below ndmreset_cluster_count follow the request input.
+Bits at and above that count read as 0. The field holds up to 32 clusters.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>NDMRESET_PROCESS</ipxact:name>
+            <ipxact:addressOffset>'h4</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>ndmreset_process</ipxact:name>
+              <ipxact:description>Bit i is the firmware response to the NDM reset request from external CPU cluster i.
+Bits below ndmreset_cluster_count are driven on the process output.
+Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>NDMRESET_CLUSTER_COUNT</ipxact:name>
+            <ipxact:addressOffset>'h8</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>ndmreset_cluster_count</ipxact:name>
+              <ipxact:description>Number of external CPU clusters connected on the low bits of NDMRESET_REQUEST and NDMRESET_PROCESS.
+Software masks those registers with this value. The maximum is 32.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
             </ipxact:field>
           </ipxact:register>
         </ipxact:registerFile>
@@ -9933,6 +9572,367 @@ disabled on a 64-bit bus; the reset does not follow the data width.</ipxact:desc
             </ipxact:field>
           </ipxact:register>
         </ipxact:registerFile>
+      </ipxact:addressBlock>
+      <ipxact:addressBlock>
+        <ipxact:name>dfx_ctrl</ipxact:name>
+        <ipxact:displayName>DFX Control and Status Address Map</ipxact:displayName>
+        <ipxact:description>Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.</ipxact:description>
+        <ipxact:baseAddress>'hc0017000</ipxact:baseAddress>
+        <ipxact:range>'h18</ipxact:range>
+        <ipxact:width>64</ipxact:width>
+        <ipxact:register>
+          <ipxact:name>STATUS_SMU</ipxact:name>
+          <ipxact:addressOffset>'h0</ipxact:addressOffset>
+          <ipxact:size>64</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>mem_repair_done</ipxact:name>
+            <ipxact:description>One bit indicator from DFT logic to say when mem repair is completed.
+This register is sticky 1 and will hold the value until reset</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>mem_repair_success</ipxact:name>
+            <ipxact:description>One bit indicator from DFT logic to say if mem repair was successful
+This register is sticky 1 and will hold the value until reset</ipxact:description>
+            <ipxact:bitOffset>1</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>mem_repair_abort</ipxact:name>
+            <ipxact:description>One bit indicator from DFT logic to say that mem repair has hit timeout and aborted
+This register is sticky 1 and will hold the value until reset</ipxact:description>
+            <ipxact:bitOffset>2</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>mbist_done</ipxact:name>
+            <ipxact:description>One bit indicator from DFT logic to say when MBIST is completed
+This register is sticky 1 and will hold the value until reset</ipxact:description>
+            <ipxact:bitOffset>4</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>mbist_pass</ipxact:name>
+            <ipxact:description>One bit indicator from DFT logic to say when MBIST is successful
+This register is sticky 1 and will hold the value until reset</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>mbist_abort</ipxact:name>
+            <ipxact:description>One bit indicator from DFT logic to say that MBIST has hit timeout and aborted
+This register is sticky 1 and will hold the value until reset</ipxact:description>
+            <ipxact:bitOffset>12</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>DEBUG_CTRL</ipxact:name>
+          <ipxact:addressOffset>'h8</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>chiplet_enable</ipxact:name>
+            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>2</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>gpio_en</ipxact:name>
+            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
+            <ipxact:bitOffset>2</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>cg_en</ipxact:name>
+            <ipxact:description>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+reset. While the clock is stopped, CLA and DST register accesses complete
+with an error and reads return 0xBADCAB1E.</ipxact:description>
+            <ipxact:bitOffset>3</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>force_clk_en</ipxact:name>
+            <ipxact:description>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+value of cg_en.</ipxact:description>
+            <ipxact:bitOffset>4</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>dtb_ns_en</ipxact:name>
+            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
+            <ipxact:bitOffset>5</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>dtb_ew_en</ipxact:name>
+            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
+            <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>xtrig_clk_halt_mask</ipxact:name>
+            <ipxact:description>CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every
+CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds
+them all inactive. Bits 15:1 hold the written value for software to read back
+and have no effect.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>16</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>debug_marker</ipxact:name>
+            <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC;
+the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).</ipxact:description>
+            <ipxact:bitOffset>23</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>8</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>DEBUG_BUS_MUX</ipxact:name>
+          <ipxact:description>Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug
+bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,
+and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux
+at a time.</ipxact:description>
+          <ipxact:addressOffset>'h10</ipxact:addressOffset>
+          <ipxact:size>64</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>Dbmmode</ipxact:name>
+            <ipxact:description>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>2</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Dbmid</ipxact:name>
+            <ipxact:description>ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
+level-3 muxes.</ipxact:description>
+            <ipxact:bitOffset>2</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Rsvd158</ipxact:name>
+            <ipxact:description>No effect in the SMC: the field stores and reads back, but no debug-bus mux uses
+it. Write 0.</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>8</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Muxselseg0</ipxact:name>
+            <ipxact:description>Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
+            <ipxact:bitOffset>16</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Muxselseg1</ipxact:name>
+            <ipxact:description>Binary input-lane select for output lane 1 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
+            <ipxact:bitOffset>22</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Muxselseg2</ipxact:name>
+            <ipxact:description>Binary input-lane select for output lane 2 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
+            <ipxact:bitOffset>28</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Muxselseg3</ipxact:name>
+            <ipxact:description>Binary input-lane select for output lane 3 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
+            <ipxact:bitOffset>34</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Muxselseg4</ipxact:name>
+            <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
+            <ipxact:bitOffset>40</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Muxselseg5</ipxact:name>
+            <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
+            <ipxact:bitOffset>46</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Muxselseg6</ipxact:name>
+            <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
+            <ipxact:bitOffset>52</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>Muxselseg7</ipxact:name>
+            <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
+            <ipxact:bitOffset>58</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>smc_mailbox</ipxact:name>

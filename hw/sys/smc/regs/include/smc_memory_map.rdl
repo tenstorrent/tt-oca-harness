@@ -29,10 +29,10 @@
     smc_cluster_core3_wdt->desc = "Core 3 watchdog timer.";
     debug_module->ocah_hole_resp = `OCAH_SMC_DECERR;
     debug_module->ocah_hole_note = "Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.";
-    smc_reset_unit->ocah_aperture_size = 0x800;
+    smc_reset_unit->ocah_aperture_size = 0x1000;
     smc_reset_unit->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_reset_unit->desc = "System reset control.";
-    smc_misc_wrap->ocah_aperture_size = 0x800;
+    smc_misc_wrap->ocah_aperture_size = 0x1000;
     smc_misc_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     gpio_intf_wrap->ocah_aperture_size = 0x1000;
     gpio_intf_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
@@ -52,7 +52,7 @@
     smc_telemetry_receiver_wrap->desc = "Telemetry data receiver.";
     smc_system_timer_octs->ocah_aperture_size = 0x1000;
     smc_system_timer_octs->ocah_past_extent_resp = `OCAH_SMC_DECERR;
-    dfx_ctrl->ocah_aperture_size = 0x800;
+    dfx_ctrl->ocah_aperture_size = 0x1000;
     dfx_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     dfx_ctrl->desc = "DFT status exposed to boot firmware.";
     smc_pwm->ocah_aperture_size = 0x1000;
