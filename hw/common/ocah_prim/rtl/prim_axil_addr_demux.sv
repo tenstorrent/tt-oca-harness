@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Route an AXI-Lite port to NUM_RANGES address ranges and answer every other address with
-// SLVERR.
+// Route an AXI-Lite port to NUM_RANGES address windows and answer every other address with
+// DECERR and read data 0xBADCAB1E, as a crossbar answers an address no rule holds.
 //
-// Range i holds the addresses from RANGE_BASE[i] up to, not including, RANGE_BASE[i] +
-// RANGE_SIZE[i]. An access to range i leaves on mst_reqs_o[i] with its address unchanged;
-// an access no range holds completes at an internal responder with SLVERR and read data 0.
-// Ranges must not overlap, and each RANGE_BASE[i] is a multiple of RANGE_SIZE[i] rounded up
-// to a power of two, so the low $clog2(RANGE_SIZE[i]) address bits are the offset into the
-// range.
+// Window i holds the RANGE_SIZE[i] bytes from RANGE_BASE[i]. Each RANGE_SIZE[i] is a power of
+// two and each RANGE_BASE[i] a multiple of it, so a window is matched on the address bits above
+// its low $clog2(RANGE_SIZE[i]) bits, which are the offset into the window. An access to window
+// i leaves on mst_reqs_o[i] with its address unchanged. Windows must not overlap.
 module prim_axil_addr_demux #(
   parameter int unsigned AXI_ADDR_WIDTH = 32,  // AXI-Lite address width.
   parameter int unsigned AXI_DATA_WIDTH = 32,  // AXI-Lite data width; a power of two of at
                                                // least 8.
-  parameter int unsigned NUM_RANGES     = 1,   // Number of ranges; at least 1.
+  parameter int unsigned NUM_RANGES     = 1,   // Number of windows; at least 1.
   parameter logic [AXI_ADDR_WIDTH-1:0] RANGE_BASE [NUM_RANGES] = '{default: '0},  // First address
-                                                                                  // of each range.
-  parameter logic [AXI_ADDR_WIDTH-1:0] RANGE_SIZE [NUM_RANGES] = '{default: '0},  // Range sizes in
-                                                                                  // bytes; nonzero.
+                                                                                  // of each window;
+                                                                                  // a multiple of
+                                                                                  // its size.
+  parameter logic [AXI_ADDR_WIDTH-1:0] RANGE_SIZE [NUM_RANGES] = '{default: '0},  // Window sizes in
+                                                                                  // bytes; each a
+                                                                                  // power of two.
   parameter int unsigned MAX_TRANS      = 1,  // Outstanding transactions per channel.
   parameter type         aw_chan_t      = logic,  // AXI-Lite AW channel type.
   parameter type         w_chan_t       = logic,  // AXI-Lite W channel type.
@@ -34,8 +35,8 @@ module prim_axil_addr_demux #(
                                                     // responder.
   input  axil_req_t                   slv_req_i,    // Request from the manager.
   output axil_resp_t                  slv_resp_o,   // Response to the manager.
-  output axil_req_t  [NUM_RANGES-1:0] mst_reqs_o,   // Request to each range.
-  input  axil_resp_t [NUM_RANGES-1:0] mst_resps_i   // Response from each range.
+  output axil_req_t  [NUM_RANGES-1:0] mst_reqs_o,   // Request to each window.
+  input  axil_resp_t [NUM_RANGES-1:0] mst_resps_i   // Response from each window.
 );
 
   `include "ocah_assert.svh"
@@ -44,14 +45,11 @@ module prim_axil_addr_demux #(
   localparam int unsigned ErrPort = NUM_RANGES;
 
   typedef logic [AXI_ADDR_WIDTH-1:0] addr_t;
-  // One bit wider than addr_t, so the end of a range at the top of the address space does not
-  // wrap to 0.
-  typedef logic [AXI_ADDR_WIDTH:0] range_end_t;
   typedef logic [$clog2(NumPorts)-1:0] select_t;
   typedef struct packed {
     int unsigned idx;
-    addr_t       start_addr;
-    range_end_t  end_addr;
+    addr_t       base;
+    addr_t       mask;
   } rule_t;
 
   ////////////////
@@ -61,14 +59,13 @@ module prim_axil_addr_demux #(
   `OCAH_ASSERT_STATIC(NumRangesValid_A, NUM_RANGES >= 1)
 
   for (genvar i = 0; i < NUM_RANGES; i++) begin : gen_range_checks
-    localparam addr_t OffsetMask = (addr_t'(1) << $clog2(RANGE_SIZE[i])) - 1;
-
-    `OCAH_ASSERT_STATIC(RangeSizeNonzero_A, RANGE_SIZE[i] != '0)
-    `OCAH_ASSERT_STATIC(RangeBaseAligned_A, (RANGE_BASE[i] & OffsetMask) == '0)
+    `OCAH_ASSERT_STATIC(RangeSizePow2_A,
+                        RANGE_SIZE[i] != '0 && (RANGE_SIZE[i] & (RANGE_SIZE[i] - 1)) == '0)
+    `OCAH_ASSERT_STATIC(RangeBaseAligned_A, (RANGE_BASE[i] & (RANGE_SIZE[i] - 1)) == '0)
     for (genvar j = i + 1; j < NUM_RANGES; j++) begin : gen_disjoint
       `OCAH_ASSERT_STATIC(RangesDisjoint_A,
-                          range_end_t'(RANGE_BASE[i]) + RANGE_SIZE[i] <= RANGE_BASE[j] ||
-                          range_end_t'(RANGE_BASE[j]) + RANGE_SIZE[j] <= RANGE_BASE[i])
+                          (RANGE_BASE[j] & ~(RANGE_SIZE[i] - 1)) != RANGE_BASE[i] &&
+                          (RANGE_BASE[i] & ~(RANGE_SIZE[j] - 1)) != RANGE_BASE[j])
     end
   end
 
@@ -79,14 +76,14 @@ module prim_axil_addr_demux #(
   rule_t [NUM_RANGES-1:0] addr_map;
 
   for (genvar i = 0; i < NUM_RANGES; i++) begin : gen_rules
-    assign addr_map[i].idx        = i;
-    assign addr_map[i].start_addr = RANGE_BASE[i];
-    assign addr_map[i].end_addr   = range_end_t'(RANGE_BASE[i]) + RANGE_SIZE[i];
+    assign addr_map[i].idx  = i;
+    assign addr_map[i].base = RANGE_BASE[i];
+    assign addr_map[i].mask = ~(RANGE_SIZE[i] - 1);
   end
 
   select_t aw_select, ar_select;
 
-  addr_decode #(
+  addr_decode_napot #(
     .NoIndices (NumPorts),
     .NoRules   (NUM_RANGES),
     .addr_t    (addr_t),
@@ -102,7 +99,7 @@ module prim_axil_addr_demux #(
     .default_idx_i    (select_t'(ErrPort))
   );
 
-  addr_decode #(
+  addr_decode_napot #(
     .NoIndices (NumPorts),
     .NoRules   (NUM_RANGES),
     .addr_t    (addr_t),
@@ -156,18 +153,16 @@ module prim_axil_addr_demux #(
   assign mst_reqs_o                 = demux_reqs[NUM_RANGES-1:0];
   assign demux_resps[NUM_RANGES-1:0] = mst_resps_i;
 
-  ////////////////////////
-  // Spare-space answer //
-  ////////////////////////
+  ///////////////////
+  // Miss response //
+  ///////////////////
 
   prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH (AXI_ADDR_WIDTH),
     .AXI_DATA_WIDTH (AXI_DATA_WIDTH),
     .axil_req_t     (axil_req_t),
     .axil_resp_t    (axil_resp_t),
-    .RESP           (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH     (AXI_DATA_WIDTH),
-    .RESP_DATA      ('0),
+    .RESP           (axi_pkg::RESP_DECERR),
     .MAX_TRANS      (MAX_TRANS)
   ) u_err_slv (
     .clk_i,

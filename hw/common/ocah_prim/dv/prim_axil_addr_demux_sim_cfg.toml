@@ -42,12 +42,12 @@ results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 
 [run_modes.smoke]
-description = "Range edges and the word past each range"
+description = "Range edges and the words on either side of each range"
 timeout_sec = 600
 args = []
 
 [run_modes.functional]
-description = "Every word around the window and random addresses"
+description = "Every word around the ranges' page and random addresses"
 timeout_sec = 900
 args = []
 
