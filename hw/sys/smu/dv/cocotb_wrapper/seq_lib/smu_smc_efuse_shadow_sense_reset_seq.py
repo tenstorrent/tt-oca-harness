@@ -121,6 +121,13 @@ class smu_smc_efuse_shadow_sense_reset_seq:
             entries.append(
                 (f"SPARE[{k}]", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k))
             )
+        for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")):
+            entries.append(
+                (
+                    f"SPARE_TAIL[{k}]",
+                    smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", k),
+                )
+            )
         entries.sort(key=lambda row: row[1])
         offsets = [addr - base for _, addr in entries]
         bounds = offsets[1:] + [self.map_bytes]
