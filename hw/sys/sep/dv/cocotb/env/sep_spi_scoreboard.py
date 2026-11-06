@@ -42,6 +42,14 @@ needs each beat's data lane output enables to equal the segment's lanes
 exactly (x1 0001, x2 0011, x4 1111); a beat with another pattern is a
 mismatch. Receive and dummy beats are not graded for their enables.
 
+With ``order`` (a ``SepSpiByteOrder``), the expected bytes of each TX
+payload and tx segment are ``order.tx_bytes(data, wire)``: the stimulus
+bytes in the leaf's in-word byte order, chosen by the wire decode, so the
+compare grades the order-free part. The leaf must have pushed exactly
+``pack_tx_words(data)`` for that payload. Without ``order`` the expected
+bytes are ``data`` (``ByteOrder = 1``). RX bytes come in already decoded by
+the leaf (``SepSpiByteOrder.bytes_of``) and are compared as given.
+
 Each direction with expectations logs one line with its frame and byte
 counts; a scoreboard with no expectation at all fails. A program or read is
 matched to the first unused flash record with exactly its opcode (and address
@@ -60,6 +68,7 @@ from typing import Any
 
 from ocah_spi_vip import OcahSpiFlash, OcahSpiOpcode, command_format, lanes_to_bytes
 
+from env.sep_spi_lane_responder import SepSpiByteOrder
 from env.sep_spi_wire_monitor import SepSpiWireMonitor
 
 __all__ = ["SepSpiScoreboard"]
@@ -99,8 +108,10 @@ class SepSpiScoreboard:
         logger: logging.Logger,
         *,
         seed: int,
+        order: SepSpiByteOrder | None = None,
     ) -> None:
         self.wire = wire
+        self.order = order
         self.flash = flash
         self.logger = logger
         self.seed = seed
@@ -188,12 +199,15 @@ class SepSpiScoreboard:
                 got = _wire_data(frame, rec["opcode"], self._addr_bytes, response=True, limit=n)
                 device = bytes(rec["data_out"])[:n]
             wire = b"" if got is None else got[:n] if exp.kind == "rx" else got
-            ok = n > 0 and got is not None and wire == exp.data and device == exp.data
+            want = exp.data
+            if exp.kind == "tx" and self.order is not None:
+                want = self.order.tx_bytes(exp.data, wire, where=exp.label or "tx")
+            ok = n > 0 and got is not None and wire == want and device == want
             if exp.kind == "tx":
                 ok = ok and bool(rec["ok"])
             line = (
                 f"{exp.label} record={index} opcode=0x{rec['opcode']:02x} addr=0x{rec['addr']:06x} "
-                f"bytes={len(exp.data)} expected={exp.data.hex()} "
+                f"bytes={len(exp.data)} expected={want.hex()} "
                 f"wire={'X/Z' if got is None else wire.hex()} "
                 f"device={device.hex()} accepted={rec['ok']}"
             )
@@ -237,7 +251,10 @@ class SepSpiScoreboard:
                     shift = 0 if kind == "tx" or lanes > 1 else 1
                     got = _decode(beats[pos : pos + clocks], field_index, lanes, shift)
                     wire.append(f"{kind}x{lanes}:{'X/Z' if got is None else got.hex()}")
-                    ok = ok and got == bytes(value)
+                    want = bytes(value)
+                    if kind == "tx" and self.order is not None:
+                        want = self.order.tx_bytes(want, got or b"", where=exp.label or "frame")
+                    ok = ok and got == want
                     if kind == "rx":
                         rx_driven += bytes(value)
                         rx_wire += got or b""
