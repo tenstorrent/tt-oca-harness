@@ -1665,6 +1665,8 @@ logged as a control.
 |`smc_temp_interrupt_test` |2 |Digital temp IRQ pin; analog PVT macros not claimed.
 |`smc_ext_irq_hold_release_test` |3 |Hold external inputs 0, 2..16 high at least 256 rises, then
 release.
+|`smc_ext_irq_upper_walk_test` |3 |Raise and lower external inputs 17..255 one at a time, then all
+together; compare the raw vector.
 |`smc_ext_irq_low_bits_test` |2 |Drive external inputs 0 and 1 alone and together; compare vector.
 |`smc_ext_irq_pulse_sampling_test` |3 |Pulse external input 0 at set widths and phases; read bit 0.
 |`smc_hang_data_timeout_window_test` |3 |Stall a data-accelerator job around 0x40; gate irq by enable, irq_en, irq_test.
@@ -35433,7 +35435,7 @@ Drive `smc_temp_interrupt_test_seq`. Each checker below is a named compare the D
 *BFM / Model*: SEP_IN AXI driver (no external VIP, one scratch read); bench inputs
 `tb_top.tb_ext_interrupt_0_i` (raw bit 0), `tb_top.tb_ext_interrupts_hi_i` (the [16:2] bus: bit 0 of
 the bus is raw bit 2, bit 14 of the bus is raw bit 16) and `tb_top.tb_temp_interrupt_i` (raw bit 1,
-read only, must be 0); inputs 17..255 are tied 0 by the bench (open: where the pending behaviour of inputs 17 to 255 is closed); observed
+read only, must be 0); inputs 17..255 sit on `tb_top.tb_ext_interrupts_ext_i` and stay 0; observed
 `tb_top.tb_cpu_interrupts` sampled on each `clk_smc_i` rise; the PLIC `pending_N` registers (source
 N + 1) read passively under `u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.plic_domain.plic`
 and only logged; scratch register `SCRATCH_COLD_WARM_0`.
@@ -55840,6 +55842,73 @@ Drive `smc_dfd_cla_irq_plic_source_test_seq`. Each checker below is a named comp
 *Pass Criteria*: `CHK-CLA-IRQ-PLIC-322` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The release of the line after the W2C write is the subject of `smc_dfd_cla_irq_w2c_release_test` and is not graded here. Source 321 can only read 0 on this bench, which ties `tdr_dbg_ctrl_clock_stop_en_i` low.
+'''''
+
+[[sec-609-smc_ext_irq_upper_walk_test]]
+===== 609 `smc_ext_irq_upper_walk_test`
+
+*Phase*: 3
+
+*Area*: IRQ
+
+*Source Module*: `smc_ext_irq_upper_walk_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP, one scratch read); bench input
+`tb_top.tb_ext_interrupts_ext_i` (the [255:17] bus: bit 0 of the bus is raw bit 17) with
+`tb_top.tb_ext_interrupt_0_i`, `tb_top.tb_temp_interrupt_i` and `tb_top.tb_ext_interrupts_hi_i` left
+0; observed `tb_top.tb_cpu_interrupts` sampled on each `clk_smc_i` rise; the PLIC `pending_N`
+registers (source N + 1) read passively under
+`u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.plic_domain.plic` and only logged; scratch
+register `SCRATCH_COLD_WARM_0`.
+
+*Run mode*: one testlist entry in `testlists/irq.toml`; groups `all`, `hosted`, `irq`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `irq`, `ext`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-SEED: the walk order over inputs 17..255 is drawn from the seed and logged on
+the `RAND-DRAW` line; every input is walked once whatever the order.
+
+*Objective*: Every external input 17..255 reaches its raw `cpu_interrupts` bit no earlier than the
+three-flop synchroniser latency and within the bench bound (`interrupts.adoc` cpu-interrupt-vector-map:
+raw bit N is `ext_interrupts_i[N]` and PLIC ID N + 1) and releases it, alone and together, without
+moving any other bit.
+
+*Test Coverage*:
+
+* Each of inputs 17..255 driven 1 alone: its raw bit rises within 64 rises and not before the
+  three-flop latency, holds 1 for 8 rises, and no other vector bit leaves the baseline.
+* Each input driven back to 0: its raw bit falls within 64 rises and not before the latency, and the
+  vector equals the baseline for 8 rises.
+* All of inputs 17..255 driven 1 together, then 0 together: raw bits [255:17] read all ones, then all
+  zeros, with bits [16:0] and the peripheral and mailbox bits at the baseline throughout.
+* The SEP_IN path still answers after the walk (one scratch read).
+
+*Test Procedure*:
+
+Drive `smc_ext_irq_upper_walk_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EXTWALK-ALL-HIGH` |With every input 17..255 driven 1, raw bits [255:17] read all ones within 64 rises and for 8 rises while bits [16:0] hold the baseline
+|`CHK-EXTWALK-ALL-LOW` |With every input 17..255 driven back to 0, the vector equals the baseline within 64 rises and for 8 rises
+|`CHK-EXTWALK-BASELINE` |Before the walk, raw bits [255:0] read 0 and the vector holds for 16 rises with `tb_ext_interrupts_ext_i` at 0
+|`CHK-EXTWALK-BUS-ALIVE` |`SCRATCH_COLD_WARM_0` reads 0 over SEP_IN after the walk
+|`CHK-EXTWALK-FALL` |Every input 17..255 driven 0 lowers its raw bit within 64 rises, not before 3, and the vector holds the baseline for 8 rises
+|`CHK-EXTWALK-ISOLATION` |On every sample of the walk and the all-high leg, no bit outside the driven set left the baseline
+|`CHK-EXTWALK-RISE` |Every input 17..255 driven 1 raises its raw bit within 64 rises, not before 3, and holds it for 8 rises
+|===
+
+
+*Pass Criteria*: `CHK-EXTWALK-ALL-HIGH`, `CHK-EXTWALK-ALL-LOW`, `CHK-EXTWALK-BASELINE`, `CHK-EXTWALK-BUS-ALIVE`, `CHK-EXTWALK-FALL`, `CHK-EXTWALK-ISOLATION`, `CHK-EXTWALK-RISE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `irq`.
+
+*Scope limit*: Inputs 0, 1 and 2..16 are the subject of `smc_ext_interrupts_pin_test`,
+`smc_ext_irq_low_bits_test` and `smc_ext_irq_hold_release_test`. The PLIC pending registers are read
+passively and not compared (their register map, route, bound and retention are open). Claim through the PLIC is not graded
+here.
+
 '''''
 
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
