@@ -25,7 +25,7 @@
 
 puts "INFO: Loading DFD debug bus mux CDC constraints"
 
-set dbm_cells [get_cells -hier -filter {ref_name =~ tt_debug_bus_mux*} -quiet]
+set dbm_cells [get_cells -hier -filter "ref_name =~ ${::MODPREFIX}tt_debug_bus_mux*" -quiet]
 set dbm_input_pins [get_pins -of_objects $dbm_cells \
     -filter {name =~ debug_signals_in*} \
     -quiet]

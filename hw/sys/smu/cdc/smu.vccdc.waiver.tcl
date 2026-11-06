@@ -7,13 +7,24 @@
 # Child-block waivers are replayed from hw/sys/{smc,dtp,sep}/cdc under their
 # instance prefix and are not repeated here.
 
+# ${MODPREFIX} is the module-name prefix of a design whose modules are renamed
+# <prefix>_<name> ("" otherwise); apply_modprefix substitutes it in the filters. A
+# violation at the top reports the top module's name as its ContainerInstance, so these
+# waivers compare it with ${MODPREFIX}smu.
+if { ![info exists ::MODPREFIX] } { set ::MODPREFIX "" }
+if { [info procs apply_modprefix] eq "" } {
+    proc apply_modprefix { filter } {
+        return [string map [list {${MODPREFIX}} $::MODPREFIX] $filter]
+    }
+}
+
 # =====================================================================================================================
 # SMU CDC waivers (flat run)
 # =====================================================================================================================
 
 waive_violation -add {SMU_CDC_GLITCH_UNSYNC_smc_gpio_core2pad} \
     -comment {core2pad_o primary-output glitch from reconvergence of quasi-static GPIO/UART mode-control CSRs (interface_enable / uart_enable_sync / MCR.LINE_LOOPBACK) through the padring mux. Off-chip pad, no on-chip receiver; brief glitch during a mode/loopback change is tolerable. create_static does not clear it (proven in SMC). Mirrors SMC_CDC_GLITCH_UNSYNC_10758 / SMC_CDC_GLITCH_UNSYNC_13868.} \
-    -filter {(GlitchDestInfo:DestObject =~ "core2pad_o*") AND (GlitchDestInfo:DestObjectType == "primary output") AND (ReasonInfoList:ReasonInfo:ReasonCode == "GLITCH_SOURCE_RECONVERGES") AND (ContainerInstance == "smu")} \
+    -filter [apply_modprefix {(GlitchDestInfo:DestObject =~ "core2pad_o*") AND (GlitchDestInfo:DestObjectType == "primary output") AND (ReasonInfoList:ReasonInfo:ReasonCode == "GLITCH_SOURCE_RECONVERGES") AND (ContainerInstance == "${MODPREFIX}smu")}] \
     -app { cdc } -tag { CDC_GLITCH_UNSYNC } -user { nbetik } -timestamp { 27-08-2026 17:22:38 }
 
 # DTP STAP trst_n outputs. jtag_stap_*_host_tap_ctrl_o.trst_n is driven from
@@ -21,7 +32,7 @@ waive_violation -add {SMU_CDC_GLITCH_UNSYNC_smc_gpio_core2pad} \
 # power-on reset; same IEEE 1149.1 family as the DTP block pwr_on_rst->STAP trst signoff.
 waive_violation -add {SMU_CDC_UNSYNC_NOSCHEME_stap_trst_out} \
     -comment {DTP STAP trst_n primary output (jtag_stap_*_host_tap_ctrl_o.trst_n) from the power-on reset; output + IEEE 1149.1 reset, mirrors DTP block pwr_on_rst->STAP trst signoff.} \
-    -filter {(DestObject =~ "jtag_stap_*trst_n") AND (ContainerInstance == "smu")} \
+    -filter [apply_modprefix {(DestObject =~ "jtag_stap_*trst_n") AND (ContainerInstance == "${MODPREFIX}smu")}] \
     -app { cdc } -tag { CDC_UNSYNC_NOSCHEME } -user { nbetik } -timestamp { 27-08-2026 17:22:38 }
 
 # The SMC powergood/primary reset (REFCLK, powergood_stretcher) async-deasserts
@@ -31,7 +42,7 @@ waive_violation -add {SMU_CDC_UNSYNC_NOSCHEME_stap_trst_out} \
 # at power-on TCK is quiescent, so the deassertion is safe by construction.
 waive_violation -add {SMU_CDC_UNSYNC_ASYNCRESET_smc_porst_to_dtp_jtag} \
     -comment {SMC power-on reset async deassertion into DTP JTAG-TCK flops (u_jtag_intf_unit); IEEE 1149.1: TRST async to TCK, TCK static at power-on -> safe. Mirrors DTP block ocah_dtp_CDC_UNSYNC_ASYNCRESET_pwr_on_rst_to_jtag_flops signoff.} \
-    -filter {(DestObject =~ "u_dtp/u_jtag_intf_unit/*") AND (ContainerInstance == "smu")} \
+    -filter [apply_modprefix {(DestObject =~ "u_dtp/u_jtag_intf_unit/*") AND (ContainerInstance == "${MODPREFIX}smu")}] \
     -app { cdc } -tag { CDC_UNSYNC_ASYNCRESET } -user { nbetik } -timestamp { 27-08-2026 17:22:38 }
 
 # External cross-trigger inputs (xtrig_ctp_*_din_i, ck_feedthru) are synchronized
@@ -40,17 +51,17 @@ waive_violation -add {SMU_CDC_UNSYNC_ASYNCRESET_smc_porst_to_dtp_jtag} \
 # cross-trigger network and was signed off in the DTP block run (20 RECONV_SEQ).
 waive_violation -add {SMU_CDC_COHERENCY_RECONV_SEQ_dtp_xtrig} \
     -comment {DTP cross-trigger handshake reconvergence (u_cross_trigger_network, gray-coded sync); signed off in DTP block CDC run (RECONV_SEQ).} \
-    -filter {(ConvergencePoint =~ "u_dtp/u_cross_trigger_network/*") AND (ContainerInstance == "smu")} \
+    -filter [apply_modprefix {(ConvergencePoint =~ "u_dtp/u_cross_trigger_network/*") AND (ContainerInstance == "${MODPREFIX}smu")}] \
     -app { cdc } -tag { CDC_COHERENCY_RECONV_SEQ } -user { nbetik } -timestamp { 27-08-2026 17:22:38 }
 
 waive_violation -add {SMU_CDC_GLITCH_CTRL_smc_cpu_dm} \
     -comment {SMC CPU Chipyard Rocket tlDM async DM/JTAG boundary (3sync chains); signed off in SMC block run (SMC_CPU_CDC_GLITCH_CTRL_*).} \
-    -filter {(GlitchDestInfo:DestObject =~ "u_smc/u_smc_cpu_wrapper/*") AND ((ContainerInstance == "smu") OR (ContainerInstance =~ "u_smc*"))} \
+    -filter [apply_modprefix {(GlitchDestInfo:DestObject =~ "u_smc/u_smc_cpu_wrapper/*") AND ((ContainerInstance == "${MODPREFIX}smu") OR (ContainerInstance =~ "u_smc*"))}] \
     -app { cdc } -tag { CDC_GLITCH_CTRL } -user { nbetik } -timestamp { 27-08-2026 17:22:38 }
 
 waive_violation -add {SMU_CDC_GLITCH_CTRL_dtp} \
     -comment {DTP-internal glitch control (u_jtag_ptap / u_clock_stop_ctrl); signed off in DTP block CDC run (CDC_GLITCH_CTRL).} \
-    -filter {(GlitchDestInfo:DestObject =~ "u_dtp/*") AND (ContainerInstance == "smu")} \
+    -filter [apply_modprefix {(GlitchDestInfo:DestObject =~ "u_dtp/*") AND (ContainerInstance == "${MODPREFIX}smu")}] \
     -app { cdc } -tag { CDC_GLITCH_CTRL } -user { nbetik } -timestamp { 27-08-2026 17:22:38 }
 
 # DTP clock-stop syncs: xtrig_clk_stop_req / SMC CLA halt -> DTP clock-stop
@@ -58,7 +69,7 @@ waive_violation -add {SMU_CDC_GLITCH_CTRL_dtp} \
 # present; DTP cross-trigger / debug clock-stop control, signed off in DTP block.
 waive_violation -add {SMU_CDC_UNSYNC_CTRL_dtp_clock_stop} \
     -comment {DTP clock-stop / CLA-clock-stop control syncs (u_clk_stop_sync, u_cla_clock_stop_sync) from xtrig_clk_stop_req / SMC CLA halt; recognized sync, DTP debug clock-stop path signed off in DTP block.} \
-    -filter {(DestObject =~ "u_dtp/*clock_stop*") AND (ContainerInstance == "smu")} \
+    -filter [apply_modprefix {(DestObject =~ "u_dtp/*clock_stop*") AND (ContainerInstance == "${MODPREFIX}smu")}] \
     -app { cdc } -tag { CDC_UNSYNC_CTRL } -user { nbetik } -timestamp { 27-08-2026 17:22:38 }
 
 waive_violation -add {SMU_CDC_UNSYNC_ASYNCRESET_smc_porst_to_cpu_sep_jtag} \
@@ -93,7 +104,7 @@ waive_violation -add {SMU_CDC_UNSYNC_NOSCHEME_sep_spi_miso} \
 
 waive_violation -add {SMU_CDC_COHERENCY_MULTI_SYNC_debug_observation} \
     -comment {ext_trng_irq_i / the SEP WDT reset request synced on its functional path and again by the SMC external debug-bus observation sync (u_ext_debug_bus_sync3, DFD capture-only); single-bit independent lanes with no coherency requirement.} \
-    -filter {(NoConvNoSrcControlPathList:NoConvControlPathInfo:SyncOutput =~ "u_smc/u_smc_base/u_ext_debug_bus_sync3/*") AND (ContainerInstance == "smu")} \
+    -filter [apply_modprefix {(NoConvNoSrcControlPathList:NoConvControlPathInfo:SyncOutput =~ "u_smc/u_smc_base/u_ext_debug_bus_sync3/*") AND (ContainerInstance == "${MODPREFIX}smu")}] \
     -app { cdc } -tag { CDC_COHERENCY_MULTI_SYNC } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # Same source set as SEP_CDC_COHERENCY_ASYNCSRCS_RECONV_SEQ_5975; the flat run reports the convergence at the
