@@ -222,10 +222,12 @@ module ocah_axi_sva #(
   `OCAH_FCOV_COVER(OCAH_AXI_C_W_BACKPRESSURE, en_i && wvalid && !wready, aclk, !aresetn)
   `OCAH_FCOV_COVER(OCAH_AXI_C_W_PARTIAL_STRB, en_i && wvalid && wready && (wstrb != '1), aclk,
                    !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_B_BACKPRESSURE, en_i && bvalid && !bready, aclk, !aresetn)
   `OCAH_FCOV_COVER(OCAH_AXI_C_B_HANDSHAKE, en_i && bvalid && bready, aclk, !aresetn)
   `OCAH_FCOV_COVER(OCAH_AXI_C_B_ERR_RESP, en_i && bvalid && bready && bresp inside {2'b10, 2'b11},
                    aclk, !aresetn)
   `OCAH_FCOV_COVER(OCAH_AXI_C_AR_HANDSHAKE, en_i && arvalid && arready, aclk, !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_R_BACKPRESSURE, en_i && rvalid && !rready, aclk, !aresetn)
   `OCAH_FCOV_COVER(OCAH_AXI_C_R_HANDSHAKE, en_i && rvalid && rready, aclk, !aresetn)
   `OCAH_FCOV_COVER(OCAH_AXI_C_R_ERR_RESP, en_i && rvalid && rready && rresp inside {2'b10, 2'b11},
                    aclk, !aresetn)
@@ -324,6 +326,7 @@ module ocah_axi_sva #(
 
     ar_info_t    rd_q[logic [ID_WIDTH-1:0]][$];  // per-ID accepted ARs
     int unsigned r_beat_idx[logic [ID_WIDTH-1:0]];
+    int unsigned rd_outstanding = 0;  // accepted AR bursts awaiting their RLAST handshake
 
     // Active byte lanes for one write beat (IHI 0022 A3.4.3). WRAP lane
     // windows are not modeled; WRAP beats return the all-lanes mask.
@@ -357,6 +360,7 @@ module ocah_axi_sva #(
         early_wburst_len_q.delete();
         w_beat_idx = 0;
         w_burst_checkable = 1'b0;
+        rd_outstanding = 0;
         rd_q.delete();
         r_beat_idx.delete();
       end else if (en_i === 1'b1) begin
@@ -377,9 +381,9 @@ module ocah_axi_sva #(
 
         // -- Read data beats ---------------------------------------
         if (rvalid === 1'b1) begin
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, (rd_outstanding > 0))
           rd_id_known = rd_q.exists(rid) && (rd_q[rid].size() > 0);
           `OCAH_SVA_ASSERT_I(OCAH_AXI_R_ID_OUTSTANDING, rd_id_known)
-          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, rd_id_known)
           if (rready === 1'b1 && rd_id_known) begin
             `OCAH_SVA_ASSERT_I(OCAH_AXI_R_LAST_POSITION,
                                (rlast === (r_beat_idx[rid] == int'(rd_q[rid][0].len))))
@@ -387,6 +391,7 @@ module ocah_axi_sva #(
                                ((rresp !== RespExokay) || (rd_q[rid][0].lock === 1'b1)))
             if (rlast === 1'b1) begin
               void'(rd_q[rid].pop_front());
+              rd_outstanding--;
               r_beat_idx[rid] = 0;
             end else begin
               r_beat_idx[rid]++;
@@ -440,6 +445,7 @@ module ocah_axi_sva #(
         // -- Read address acceptance -------------------------------
         if (arvalid === 1'b1 && arready === 1'b1) begin
           rd_q[arid].push_back('{len: arlen, lock: arlock});
+          rd_outstanding++;
           if (!r_beat_idx.exists(arid)) r_beat_idx[arid] = 0;
         end
 

@@ -27,7 +27,7 @@
 //                axi_<ch>_len_fixed_max16, axi_<ch>_len_wrap_legal (A3.4.1 burst length),
 //                axi_<ch>_wrap_aligned (A3.4.1 wrapping bursts), axi_<ch>_4kb_boundary (A3.4.1),
 //                axi_<ch>_within_capacity (MAX_OUTSTANDING)
-//   B/R        : axi_b_not_before_aw, axi_r_not_before_ar (A3.3 dependencies),
+//   B/R        : axi_b_not_before_aw, axi_r_not_before_ar (A3.3.1, checked on VALID),
 //                axi_axil_b_resp_legal, axi_axil_r_resp_legal (B1.1.1: no EXOKAY on AXI4-Lite)
 //   Covers     : axi_<ch>_handshake
 //

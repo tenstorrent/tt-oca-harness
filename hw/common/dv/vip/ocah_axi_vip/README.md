@@ -550,7 +550,8 @@ stops at the first assertion failure, so later checks are not reported.
 |---|---|---|
 | AXI4 `b_no_request`, `b_aw_only`, `b_w_only`, `b_same_w`, `b_same_aw`, `b_after_reset` | `B_NOT_BEFORE_AW` and `B_ID_OUTSTANDING` | `B_NOT_BEFORE_AW` |
 | AXI4 `b_wrong_id` | `B_ID_OUTSTANDING` | `B_ID_OUTSTANDING` |
-| AXI4 `r_no_request`, `r_same_ar`, `r_after_reset`, `r_wrong_id` | `R_ID_OUTSTANDING` and `R_NOT_BEFORE_AR` | `R_ID_OUTSTANDING` |
+| AXI4 `r_no_request`, `r_same_ar`, `r_after_reset` | `R_NOT_BEFORE_AR` and `R_ID_OUTSTANDING` | `R_NOT_BEFORE_AR` |
+| AXI4 `r_wrong_id` | `R_ID_OUTSTANDING` | `R_ID_OUTSTANDING` |
 | AXI4-Lite write faults | `B_NOT_BEFORE_AW` | `B_NOT_BEFORE_AW` |
 | AXI4-Lite read faults | `R_NOT_BEFORE_AR` | `R_NOT_BEFORE_AR` |
 
