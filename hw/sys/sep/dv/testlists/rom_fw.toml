@@ -4128,8 +4128,9 @@ args = [
 ]
 
 [[tests]]
-# SPI-030 (partial): every secure-DMA host response is SLVERR from the first slot attempt, so each
-# OpenTitan SPI flash read fails; at most 4 attempts per slot, backup fallback, then the FAIL verdict.
+# SPI-030 (partial): every secure-DMA host response outside a zero fill is SLVERR from the first slot
+# attempt, so each OpenTitan SPI flash read fails; at most 4 attempts per slot, backup fallback,
+# then the FAIL verdict.
 name = "sep_rom_spi_retry_exhaust_test"
 module = "rom_fw.sep_rom_spi_retry_exhaust_test"
 target = "rom_boot"

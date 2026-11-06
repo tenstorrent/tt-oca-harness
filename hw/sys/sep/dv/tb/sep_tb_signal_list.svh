@@ -145,9 +145,10 @@
 `SEP_TB_IN(logic, mbox_lane_inject_arm_i)
 `SEP_TB_IN(logic [sep_pkg::NumMailboxes-1:0], mbox_lane_inject_mbx_i)
 `SEP_TB_IN(logic [63:0], mbox_lane_inject_data_i)
-// DMA host-path response error inject. Default 0. While 1, the host adapter's AXI-lite
-// read and write resp is forced to SLVERR. A release can keep SLVERR until the response
-// driver changes, so a DMA transfer after the drop can still fail. See tb_top.sv.
+// DMA host-path response error inject. Default 0. While 1 and CONTROL.OPCODE is not the zero
+// fill, the host adapter's AXI-lite read and write resp is forced to SLVERR. A release can keep
+// SLVERR until the response driver changes, so a DMA transfer after the drop can still fail.
+// See tb_top.sv.
 `SEP_TB_IN(logic, dma_host_rsp_err_inject_i)
 // AES software-reset readback inject. Default 0. While 1, reads of sep_reset_ctrl return bit 2
 // (SW_RESET_N.aes_sw_rst_n) as 0; the register and the AES reset are not forced. See tb_top.sv.

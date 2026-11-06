@@ -27,8 +27,9 @@ rom.adoc, tbl:stage_trace, [S23] manifest:
 Status words are STATUS_ENCODE(type, 1 = BL0, code), codes from the registry
 include/status_values.h (SEP-ROM-STAT-030). The OpenTitan driver retries 3 times, so a read makes
 at most 1 + 3 = 4 transport attempts. From the first MANIFEST_LOAD_START word to the verdict,
-dma_host_rsp_err_inject_i makes every secure-DMA host response SLVERR, so each OpenTitan SPI DMA
-read fails on its first beat in both slots. Each flash frame is matched to the chip-select
+dma_host_rsp_err_inject_i makes every secure-DMA host response SLVERR except during a zero fill,
+so each OpenTitan SPI DMA read fails on its first beat in both slots and the SEP SRAM clear
+between slots (RETRY-040) still completes. Each flash frame is matched to the chip-select
 assertion of the same index.
 
 * CTRL-FAULT-APPLIED: the pin rises after the first MANIFEST_LOAD_START word and is 1 at the
@@ -149,7 +150,7 @@ def _level(changes: list[tuple[int, int]], t: int) -> int | None:
 
 @pyuvm.test()
 class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
-    """SPI boot with every secure-DMA host response SLVERR from the first slot attempt on."""
+    """SPI boot with every non-zero-fill secure-DMA host response SLVERR from the first slot attempt on."""
 
     max_run_cycles = 6_000_000
     required_evidence = (

@@ -3119,11 +3119,13 @@ module sep_uvm_top
     end
 `undef DMA_HOST_CMD_INTG_DI
 
-    // Every secure-DMA host read and write response returns SLVERR while the input is high.
+    // Every secure-DMA host read and write response returns SLVERR while the input is high,
+    // except during a zero fill, so a ROM memory clear still completes.
 `define DMA_HOST_AXIL_RSP `SEP_CORE.u_sep_dma_wrap.axi_lite_mst_resp
     logic dma_host_rsp_err_forced;
     always @(posedge clk_i) begin
-        if (dma_host_rsp_err_inject_i === 1'b1) begin
+        if ((dma_host_rsp_err_inject_i === 1'b1) &&
+            (`SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.control.opcode.q != 4'h4)) begin
             force `DMA_HOST_AXIL_RSP.r.resp = axi_pkg::RESP_SLVERR;
             force `DMA_HOST_AXIL_RSP.b.resp = axi_pkg::RESP_SLVERR;
             dma_host_rsp_err_forced <= 1'b1;

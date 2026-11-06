@@ -1206,8 +1206,9 @@ Exceptions (a closed set):
   `sep_mailbox_plic_test`.
 * *DMA host-path response error inject* — `dma_host_rsp_err_inject_i` forces
   the `resp` of the host adapter's AXI-lite read and write responses to
-  SLVERR, so every secure-DMA host transfer ends in a bus error on its first
-  beat. Data, valid and ready are not forced. Nothing is forced until the input
+  SLVERR, so every secure-DMA host transfer other than a zero fill
+  (`CONTROL.OPCODE` 4) ends in a bus error on its first beat. A zero fill is left
+  alone so the ROM's memory clears complete. Data, valid and ready are not forced. Nothing is forced until the input
   first rises; a release can keep SLVERR until the response driver changes.
   Owner: `sep_rom_spi_retry_exhaust_test`.
 * *AES software-reset readback inject* — `aes_sw_rst_readback_inject_i`
