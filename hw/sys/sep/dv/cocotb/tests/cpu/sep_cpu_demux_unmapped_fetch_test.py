@@ -77,7 +77,7 @@ reads the CSR back into a mailbox record, and a read-back that differs fails
 the leaf (``CTRL-DEMUX-MRAC``). The core then issues each store at its own size, so a 32-bit
 register write reaches a register block with its own strobe and no zero-strobe
 neighbour beat. ``OBS-DMA-CSR-WRITE`` logs the shape and BRESP of every LSU
-write to the secure DMA registers; ``OBS-EXT-READ`` logs every NMI.
+write to the secure DMA registers; ``INFO-EXT-READ`` logs every NMI.
 
 The trap cause and value of an unmapped fetch and the cause of an ICCM data
 access are graded. ``INFO-IFU-TRAP`` re-logs every trap record, which
@@ -905,7 +905,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             ):
                 last = names[r.off]
         self.logger.info(
-            "OBS-EXT-READ LOG nmi_records=%d mcause@marker/mdseac=%s",
+            "INFO-EXT-READ LOG nmi_records=%d mcause@marker/mdseac=%s",
             len(rows),
             " ".join(rows) or "-",
         )

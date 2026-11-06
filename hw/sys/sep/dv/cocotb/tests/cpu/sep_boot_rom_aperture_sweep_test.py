@@ -1402,7 +1402,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         )
         pre_rel = [b for b in beats if t_fall < b.t_ps < t_rel]
         self.logger.info(
-            "OBS-ROM-OTF LOG beats_between_fall_and_release=%d %s cpu_low_t=%d",
+            "INFO-ROM-OTF LOG beats_between_fall_and_release=%d %s cpu_low_t=%d",
             len(pre_rel),
             " ".join(f"{b.ch}@{b.t_ps}" for b in pre_rel[:6]),
             cpu_low,
