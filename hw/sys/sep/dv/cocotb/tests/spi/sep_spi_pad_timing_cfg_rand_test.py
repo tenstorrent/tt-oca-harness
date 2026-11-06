@@ -32,11 +32,13 @@ driven lane never changing on a sample edge or between a sample edge and the
 next shift edge, the data lane output enables, and no X/Z (``CHK-SPI-WIRE``,
 both cells' modes with graded frames).
 
-Data (OpenTitan SPI_HOST "Input and Output Byte Ordering", ``ByteOrder = 1``):
-the first byte on the wire is TXDATA[7:0] and the first byte received lands in
-RXDATA[7:0]; most significant bits first; in x2 and x4 the least significant
-bit of each pair or nibble is on ``sd[0]``; in x1 the host sends on ``sd[0]``
-and receives on ``sd[1]``. Tx data is seeded; the first two bytes of each Tx
+Data (OpenTitan SPI_HOST "Input and Output Byte Ordering"): each TXDATA and
+RXDATA word carries its bytes in one in-word byte order, the same order for
+every word of the leaf (``SepSpiByteOrder`` of
+``env/sep_spi_lane_responder.py``); which of the two orders the words use is
+not graded, and one OBS-SPI-BYTEORDER line per leaf logs it. Most significant
+bits first; in x2 and x4 the least significant bit of each pair or nibble is
+on ``sd[0]``; in x1 the host sends on ``sd[0]`` and receives on ``sd[1]``. Tx data is seeded; the first two bytes of each Tx
 segment hold lane 0 at 1, 0, 1, 0 on successive clocks, so the data-edge check
 has its changes by construction.
 
@@ -77,7 +79,8 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
 * CHK-SPI-FULLCYC: at x1, x2 and x4 (drawn order, drawn CPOL and CLKDIV 1 to
   15), first at CPHA 0 and then at CPHA 1, an Rx segment from a late responder
   (each beat one core clock after its sample edge) reads the seeded bytes with
-  FULLCYC = 1: the host samples a full cycle after its shift edge. Source
+  FULLCYC = 1: the host samples a full cycle after its shift edge (RXDATA
+  words read in the leaf's in-word byte order). Source
   ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:373-380``
   (CONFIGOPTS.FULLCYC): "Rather than sampling the SD bus a half cycle after
   shifting out data, the data is sampled a full cycle after shifting data out.
@@ -145,11 +148,11 @@ from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_win
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spi_lane_responder import (
+    SepSpiByteOrder,
     SepSpiLaneResponder,
     late_sample_edge_bytes,
     pack_tx_words,
     spi_lane_fcov,
-    unpack_rx_words,
 )
 from env.sep_spi_pad_sampler import CsWindow, SepSpiPadSampler
 from env.sep_spi_scoreboard import SepSpiScoreboard
@@ -399,6 +402,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
                     command_word(len(rx) - 1 + RX_EXTRA_BYTES, speed=speed, direction=DIR_RX),
                 )
                 queued = st
+                self.status_byteorder = st.byteorder
                 break
             if st.ready and not st.active:
                 break
@@ -426,7 +430,9 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
                 f"{tag}: the Rx layout was not armed before the Rx window"
             )
         self._rx_words(words, len(rx), tag=tag)
-        delivered = unpack_rx_words(words, len(rx))
+        delivered = self.order.bytes_of(
+            words, len(rx), expect=rx, where=f"mode={self.cell.mode} width=x{width} {tag}_rx"
+        )
         self._expect(fmark, (width, "tx", tx), leg=f"{tag}_tx")
         self._expect(fmark + 1, (width, "rx", rx), delivered=delivered, leg=f"{tag}_rx")
         return mark, wins
@@ -476,7 +482,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         half = c.a + 1
         w = c.width
         self.cell = c
-        self.sb = SepSpiScoreboard(self.wire, None, self.logger, seed=seed)
+        self.sb = SepSpiScoreboard(self.wire, None, self.logger, seed=seed, order=self.order)
         self.tally = {"tx": [0, 0], "rx": [0, 0]}
         self.marks: set[int] = set()
         first = self.sb.frame_mark()
@@ -757,9 +763,13 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
 
     # ---- FULLCYC sampling point -------------------------------------------
     async def _fullcyc_rx(
-        self, cpol: int, cpha: int, clkdiv: int, fullcyc: int, data: bytes, w: int
+        self, cpol: int, cpha: int, clkdiv: int, fullcyc: int, data: bytes, w: int, expect: bytes
     ):
-        """One Rx segment of ``data`` from the late responder; return the RXDATA bytes."""
+        """One Rx segment of ``data`` from the late responder; return the RXDATA bytes.
+
+        The RXDATA words are read in the leaf's in-word byte order against
+        ``expect``, the bytes the host should sample at this FULLCYC.
+        """
         ops, pads = self.ops, self.pads
         cfg = configopts_word(clkdiv=clkdiv, fullcyc=fullcyc, cpha=cpha, cpol=cpol)
         await ops.write_configopts(cfg)
@@ -774,7 +784,12 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
                 f"CHK-SPI-FULLCYC FAIL seed={self.seed} width=x{w} cpha={cpha} fullcyc={fullcyc} "
                 f"rx_bytes={len(data)} words={len(words)}"
             )
-        return unpack_rx_words(words, len(data))
+        return self.order.bytes_of(
+            words,
+            len(data),
+            expect=expect,
+            where=f"fullcyc width=x{w} cpha={cpha} fullcyc={fullcyc}",
+        )
 
     async def _fullcyc_cell(self, w: int, cpha: int) -> None:
         """One CHK-SPI-FULLCYC frame pair at width ``w`` and ``cpha``, late responder."""
@@ -795,7 +810,8 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         for fullcyc in (1, 0) if graded_first else (0, 1):
             if fullcyc:
                 open_graded_window(TEST, self.logger)
-            got[fullcyc] = await self._fullcyc_rx(cpol, cpha, clkdiv, fullcyc, data, w)
+            want = data if fullcyc else late
+            got[fullcyc] = await self._fullcyc_rx(cpol, cpha, clkdiv, fullcyc, data, w, want)
             close_graded_window(self.logger)
         self.rsp.set_late(False)
         line = (
@@ -846,6 +862,8 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         self.seed = self.random_seed()
         cells = self._plan(self.seed)
         self.ran: set[str] = set()
+        self.order = SepSpiByteOrder()
+        self.status_byteorder: int | None = None
         close_graded_window()
 
         try:
@@ -895,6 +913,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             await self.wire.finish(
                 self.logger, seed=self.seed, modes=[(c.cpol, c.cpha) for c in cells]
             )
+            self.order.log_obs(self.logger, self.seed, status_byteorder=self.status_byteorder)
         finally:
             close_graded_window()
             if getattr(self, "rsp", None) is not None:

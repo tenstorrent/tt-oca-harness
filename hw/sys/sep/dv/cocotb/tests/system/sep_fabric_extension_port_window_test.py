@@ -31,7 +31,9 @@ Checks:
   response of its own fails.
 * CTRL-EXT-RSP-DRIVE (bench control): each port reply beat carries the code and
   word the leaf set on the responder. The bench drives that net, so the DUT
-  cannot fail it; it runs before CHK-EXT-REPLY.
+  cannot fail it; it runs before CHK-EXT-REPLY. Each single beat and each
+  admitted burst logs one ``CTRL-EXT-RSP-DRIVE seen`` line with the code set
+  and the code seen (and, for reads, the word set and the word seen).
 * CHK-EXT-REACH: each SI single beat shows one PR-XEXT handshake with the issued
   address.
 * CHK-EXT-PORT: each LSU and SI single beat leaves on PR-EXT once, with the
@@ -46,14 +48,14 @@ Checks:
   to a seeded lane of the shim word, each between two LSU word reads of that
   word. The read after equals the read before with only that lane replaced by
   the written byte, and no access of the leg leaves on PR-EXT
-  (``hw/sys/sep/doc/memory_map.adoc:154-157``: the shim window is forwarded
+  (``hw/sys/sep/doc/memory_map.adoc:156-161``: the shim window is forwarded
   unchanged to the SHIM). The written byte always differs from the byte it
   replaces, so the change is the positive probe. The two lanes differ, so the
   word after both legs is not the SHIM reset value. The response codes are
   logged only (``OBS-EXT-SHIM-BYTE-RESP``).
 * CHK-EXT-SHIM-BURST: an SI INCR read burst and then an SI INCR write burst,
   AxSIZE 3 and seeded AxLEN 1 to 3, at the shim window base through the
-  ``allow_burst`` entry (``doc/integrator/src/smu-sep.adoc:142-144``: SEP
+  ``allow_burst`` entry (``doc/integrator/src/smu-sep.adoc:158-160``: SEP
   routes a burst on its first address, so its later beats go to the SHIM).
   Each burst shows one PR-XEXT handshake at the issued address (it passed the
   filter into the local crossbar) and no PR-EXT request or reply beat. The
@@ -63,7 +65,7 @@ Checks:
   LSU read after it returns that reset value while the read before did not.
   The response codes and the later read beats are logged only
   (``OBS-EXT-SHIM-BURST-RESP``): a burst to a register region may answer its
-  later beats with errors or alias (``hw/sys/sep/doc/memory_map.adoc:90-93``).
+  later beats with errors or alias (``hw/sys/sep/doc/memory_map.adoc:94-97``).
 * CHK-EXT-BURST: an SI INCR write burst (AxLEN 3) and read burst (AxLEN 7)
   through an entry with ``allow_burst`` 1 reach PR-XEXT and PR-EXT with the
   issued AxLEN, AxSIZE and write beats, and the port returns one B, or eight R
@@ -337,6 +339,14 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CTRL-EXT-RSP-DRIVE FAIL: {tag} port reply {r.fmt()}; the responder was set to "
             f"resp={RESP_NAME[c['code']]}" + ("" if want_word is None else f" data=0x{want_word:x}")
         )
+        self.logger.info(
+            "CTRL-EXT-RSP-DRIVE seen: %s code_set=%s code_seen=%s data_set=%s data_seen=%s",
+            tag,
+            RESP_NAME[c["code"]],
+            RESP_NAME.get(r.resp, r.resp),
+            "na" if want_word is None else f"0x{want_word:016x}",
+            "na" if want_word is None else f"0x{r.data:016x}",
+        )
         strb = _strb(c["addr"], c["size"])
         data_ok = "na"
         seen_strb = "na"
@@ -481,7 +491,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CHK-EXT-SHIM-BYTE FAIL: {tag} shim leg left on PR-EXT: "
             + "; ".join(b.fmt() for b in c["ext"] + c["ext_rsp"])
         )
-        # memory_map.adoc:154-157: the shim window is forwarded unchanged, so
+        # memory_map.adoc:156-161: the shim window is forwarded unchanged, so
         # only the written lane changes and it takes the written byte.
         want = (c["pre"] & ~(0xFF << (8 * lane)) & WORD32) | (c["byte"] << (8 * lane))
         assert c["byte"] != old_byte and c["post"] == want, (
@@ -534,7 +544,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             )
             c["after"] = after.rdata & WORD32
         # The later beats of a burst to a register region are not stated
-        # (memory_map.adoc:90-93); the SHIM codes are adopter-owned.
+        # (memory_map.adoc:94-97); the SHIM codes are adopter-owned.
         later = []
         if op is SepAxiOp.READ:
             later = [(seq.rdata >> (64 * k)) & WORD_MASK for k in range(1, axlen + 1)]
@@ -889,6 +899,12 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CTRL-EXT-RSP-DRIVE FAIL: dir=W burst port reply {wb_rep[0].fmt()}; the responder "
             f"was set to {RESP_NAME[wb_code]}"
         )
+        self.logger.info(
+            "CTRL-EXT-RSP-DRIVE seen: dir=W burst issued=0x%08x code_set=%s code_seen=%s",
+            wr_burst_addr,
+            RESP_NAME[wb_code],
+            RESP_NAME.get(wb_rep[0].resp, wb_rep[0].resp),
+        )
         assert wd.resp_code == RESP_DECERR and not wd_x, (
             f"CHK-EXT-BURST FAIL: dir=W denied resp={RESP_NAME.get(wd.resp_code)} "
             f"xbar_seen={len(wd_x)}; expected DECERR with PR-XEXT silent"
@@ -932,6 +948,15 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "CTRL-EXT-RSP-DRIVE FAIL: dir=R burst port reply "
             + "; ".join(r.fmt() for r in rb_rep)
             + "; the responder was set to the seeded codes and words"
+        )
+        self.logger.info(
+            "CTRL-EXT-RSP-DRIVE seen: dir=R burst issued=0x%08x code_set=%s code_seen=%s "
+            "data_set=%s data_seen=%s",
+            rd_burst_addr,
+            ",".join(RESP_NAME[x] for x in rb_codes),
+            ",".join(RESP_NAME.get(r.resp, str(r.resp)) for r in rb_rep),
+            ",".join(f"0x{w:016x}" for w in rb_words),
+            ",".join(f"0x{r.data:016x}" for r in rb_rep),
         )
         assert rb_x == [rd_burst_addr], (
             f"CHK-EXT-BURST FAIL: dir=R admitted xbar={[hex(a) for a in rb_x if a is not None]}, "

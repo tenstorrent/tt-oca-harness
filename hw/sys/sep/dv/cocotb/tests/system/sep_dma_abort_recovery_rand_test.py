@@ -21,7 +21,9 @@ destination offsets and guards in the SEP SRAM, the sentinel byte, the source
 words and the recovery copy shapes. The reference copy measures its clean time
 t_clean (clocks from the end of the first GO write to the STATUS read that
 first shows DONE=1, re-GO gaps included). t_clean sets the abort delay only;
-it is never an expected value.
+it is never an expected value. ``CTRL-DMA-REF-COPY`` passes when the reference
+copy reads DONE=1 and ERROR=0 and its destination equals the source words
+(``mismatch_words=0``); otherwise it fails the leaf before any abort run.
 
 Abort-run repeats (no grade from a repeated run, each from a cold reset):
 
@@ -281,9 +283,9 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
             f"t_clean={self.t_clean} go_writes={res.go_writes} polls={res.polls} "
             f"read_cost={self.read_cost} {res.status.fmt()} mismatch_words={bad}"
         )
-        self.logger.info("INFO-REF-COPY LOG seed=%d %s", c.seed, line)
         if not (res.status.done and not res.status.error and bad == 0):
-            self._ctrl_missing(f"reference copy did not complete clean: {line}")
+            self._fail("CTRL-DMA-REF-COPY", f"reference copy did not complete clean: {line}")
+        self.logger.info("CTRL-DMA-REF-COPY PASS seed=%d %s", c.seed, line)
         self.step = max(1, self.t_clean // (10 * c.n))
 
     def _initial_delay(self, plan: _RunPlan) -> int:

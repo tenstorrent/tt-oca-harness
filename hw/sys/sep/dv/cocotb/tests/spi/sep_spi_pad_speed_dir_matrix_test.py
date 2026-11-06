@@ -22,18 +22,17 @@ short name ``ToO`` below):
   bit in any instantaneous pair or nibble is transmitted or received on
   `SD[0]`", ``ToO:422``). The most significant bits of a byte go first
   ("*within a given byte*, the most significant bits are transmitted and
-  received first.", ``ToO:421``). The first byte on the wire is TXDATA[7:0]
-  and the first byte received lands in RXDATA[7:0] (ByteOrder 1: "By default
-  (`ByteOrder = 1`, for Little-Endian processors), the LSB of `TXDATA` (i.e
-  bits 7 though 0) is transmitted first", ``ToO:416``; "the first byte
-  received is always packed into either the most- or least-significant byte
-  read from the `RXDATA` memory window", ``ToO:539``; STATUS.BYTEORDER is
-  "The value of the ByteOrder parameter",
-  ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:124``;
-  the ``ByteOrder`` parameter default is 1,
-  ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:76-84``,
-  and the SEP SPI host is the unmodified OpenTitan IP,
-  ``doc/trm/src/revision.adoc:191``).
+  received first.", ``ToO:421``). The bytes of a TXDATA or RXDATA word go
+  on the wire in one of two in-word orders, first byte in bits 7:0 or in bits
+  31:24 (``ToO:415-419``; "the first byte received is always packed into
+  either the most- or least-significant byte read from the `RXDATA` memory
+  window", ``ToO:539``). No SEP text states which order the SEP SPI host uses,
+  so the leaf grades the order-free part: one ``SepSpiByteOrder``
+  (``env/sep_spi_lane_responder.py``) per leaf, every TX and RX data word in
+  one order, the same order for every word of the leaf. The order seen is
+  logged once on OBS-SPI-BYTEORDER with STATUS.BYTEORDER ("The value of the
+  ByteOrder parameter",
+  ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:124``).
   At the end of a TX segment the unused bytes of its last TXDATA word are
   dropped ("unused bytes from the latest TX FIFO word are simply ignored at
   the end of a segment.", ``ToO:484``), and each RX segment starts
@@ -60,7 +59,7 @@ short name ``ToO`` below):
 
 The leaf walks the 10 legal SPEED x DIRECTION cells as single segments, a dummy
 segment between FIFO reads, CSAAT chains that change speed or direction, the
-seed-drawn long dummy segment and the 6 illegal cells. A test-side sampler
+long dummy segment and the 6 illegal cells. A test-side sampler
 (``env/sep_spi_pad_sampler.py``) reads ``spi_sck_o`` and ``spi_cs_n_o`` on each
 core clock and counts one sck cycle at each leading edge while chip select is
 low. The lane responder (``env/sep_spi_lane_responder.py``) drives the seeded
@@ -85,12 +84,16 @@ Checks:
   Control: every Tx-only and
   dummy cell starts with RXEMPTY=1 and leaves RXQD at 0.
 * CHK-SPI-RX-PAD: for an Rx or bidirectional segment whose LEN+1 is not a
-  multiple of 4, the unused most significant bytes of the last RXDATA word
-  read 0 ("If ByteOrder=1 (the default, Little-Endian case), this padding will
-  fill the unused most-significant bytes of the final RX DATA word",
-  ``ToO:486``; ByteOrder 1 as above). STATUS.BYTEORDER is logged in the line
-  and is not the golden. A seed with no such segment logs
-  ``INFO-SPI-RX-PAD partial_segments=0``.
+  multiple of 4, the bytes of the last RXDATA word that carry no received
+  byte read 0 ("the partial word will be zero-padded", ``ToO:485``), at the
+  pad position of the leaf's in-word byte order (most significant bytes for
+  the first byte in bits 7:0, least significant for the first byte in bits
+  31:24, ``ToO:486``). Every seed draws at least one Rx cell whose LEN+1 is
+  not a multiple of 4; ``CTRL-SPI-RX-PAD`` logs the count of graded
+  segments, and a count of 0 fails the leaf.
+* OBS-SPI-RX-PAD: per such segment, the pad position (``upper`` or
+  ``lower`` bytes) and STATUS.BYTEORDER, logged, not graded: no SEP text
+  states the byte order.
 * CHK-SPI-DUMMY: a dummy segment leaves TXQD and RXQD unchanged and runs LEN+1
   sck cycles. Control: both
   are at least 1 before the segment.
@@ -104,14 +107,16 @@ Checks:
 * CHK-SPI-SB-FRAME (``SepSpiScoreboard.expect_frame``): each graded frame
   (every legal cell, the dummy segment of the FIFO leg, every chain) has
   exactly the sample edges of its segments; the wire decode of each TX
-  segment equals its seeded bytes, the wire decode of each RX segment equals
-  the seeded bytes given to the responder, and the bytes read from RXDATA
-  equal them. A bidirectional segment is graded as TX and as RX on the same
-  sample edges.
+  segment equals its seeded bytes (taken from the TXDATA words in the leaf's
+  in-word byte order), the wire decode of each RX segment equals the seeded
+  bytes given to the responder, and the RXDATA words carry them in the leaf's
+  in-word byte order. A bidirectional segment is graded as TX and as RX on
+  the same sample edges.
 * CHK-SPI-LANE-DATA: one line per data segment and direction, with its width
   and byte count, after the frame passed CHK-SPI-SB-FRAME: the TX line
   compares the monitor decode and the RX line the RXDATA bytes with the seeded
-  bytes. Control: x1, x2 and x4 are each graded in both directions.
+  bytes, both in the leaf's in-word byte order. Control: x1, x2 and x4 are
+  each graded in both directions.
 * CHK-SPI-OE-SEG: in each graded frame, the data lane output enables at every
   sample edge of a segment equal the pattern of that segment. Control: every
   pattern row (x1 TX, x1 bidirectional, x2 TX, x2 RX, x4 TX, x4 RX, x2
@@ -124,12 +129,16 @@ Checks:
   ``CTRL-SPI-ILLEGAL LOG`` and prints no CHK line. The illegal COMMAND is written
   with the core held (CONTROL.SPIEN=0), so the reserved cell never runs on the
   pads, and the SW_RST of the SPI clean state empties the command queue.
-* CHK-SPI-LONGDUMMY: on a seed that draws it (1 in 4), LEN 0xFFFFF at CLKDIV 0
-  gives 1,048,576 sck cycles in exactly one chip-select-low window; every
-  window after the command counts. The wire monitor and the responder are
-  stopped for this leg, so it runs at the cost of the sampler alone. Other
-  seeds do not run it.
+* CHK-SPI-LONGDUMMY: on every seed, LEN 0xFFFFF at CLKDIV 0 gives 1,048,576
+  sck cycles in exactly one chip-select-low window, with the chip-select and
+  sck output enables on at every clock of it; every window after the command
+  counts. The leg runs last, after every graded frame. The
+  wire monitor and the responder are stopped for this leg, so it runs at the
+  cost of the sampler alone.
 * CHK-SPI-WIRE: the wire checks of ``SepSpiWireMonitor`` over the leaf.
+* OBS-SPI-BYTEORDER: one line at the end of the leaf: the in-word byte order
+  the data words carried, the compare that fixed it, the word counts and
+  STATUS.BYTEORDER. Logged, not graded.
 
 FCOV: after a frame passes, the leaf writes one ``spi_lane_fcov`` data record
 per width and direction it graded, and one chain record per chain (0 one
@@ -155,10 +164,10 @@ from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_win
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spi_lane_responder import (
+    SepSpiByteOrder,
     SepSpiLaneResponder,
     pack_tx_words,
     spi_lane_fcov,
-    unpack_rx_words,
 )
 from env.sep_spi_pad_sampler import SepSpiPadSampler
 from env.sep_spi_scoreboard import SepSpiScoreboard
@@ -204,6 +213,9 @@ CLKDIV_CLASSES = {"zero": (0, 0), "small": (1, 3), "mid": (4, 7)}
 
 LONG_DUMMY_LEN = 0xFFFFF
 LONG_DUMMY_CYCLES = LONG_DUMMY_LEN + 1
+# The legs in run order. The long dummy leg runs after them: it stops the wire
+# monitor and the responder, which the frames of these legs need.
+LEGS = ("_single_cells", "_dummy_fifo_leg", "_chain_leg", "_illegal_leg")
 
 # Output-enable pattern rows the leaf must grade. The x1 RX-only and x1 dummy rows
 # are logged as OBS-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
@@ -220,7 +232,7 @@ MUT_X4_RX_LANE_SWAP = 0  # responder drives the x4 RX cell with lanes 2 and 3 sw
 MUT_X2_TX_DROP_BYTE = 0  # golden of the x2 TX cell lacks its last byte
 MUT_X4_TX_OE = 0  # graded OE pattern of an x4 TX segment is 0b0011
 MUT_X1_RX_BIT_FLIP = 0  # responder drives the x1 RX cell with bit 0 of byte 0 inverted
-MUT_LONG_DUMMY_EXTRA_WIN = 0  # long dummy runs on every seed and expects 2 windows
+MUT_LONG_DUMMY_EXTRA_WIN = 0  # long dummy expects 2 windows
 MUT_CHAIN_X4_DROP_BYTE = 0  # golden of the x4 data segment of the lane chain lacks its last byte
 
 
@@ -310,7 +322,7 @@ class Seg:
 
     @property
     def tx_words(self) -> list[int]:
-        """TXDATA words of this segment alone (ByteOrder 1)."""
+        """TXDATA words of this segment alone (``pack_tx_words``)."""
         return pack_tx_words(self.tx_bytes) if self.is_tx else []
 
     @property
@@ -391,6 +403,10 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         rx1 = [c for c in self.legal_order if c[1] == DIR_RX]
         if not any(classes[c] == "word_multiple" for c in rx1):
             classes[rng.choice(rx1)] = "word_multiple"
+        # One Rx cell whose LEN+1 is not a multiple of 4, so CHK-SPI-RX-PAD
+        # grades a zero pad on every seed.
+        if all(classes[c] == "word_multiple" for c in rx1):
+            classes[rng.choice(rx1[1:])] = "non_multiple"
 
         self.cells: list[tuple[Seg, str, int]] = []
         for speed, direction in self.legal_order:
@@ -436,7 +452,6 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             self._fill_data(rng, seg)
         self.chains.append((clkdiv, 1, "lane", lane))
 
-        self.long_dummy = int(rng.randrange(4) == 0 or bool(MUT_LONG_DUMMY_EXTRA_WIN))
         self.illegal_lens = {c: rng.randrange(64) for c in self.illegal_order}
         self.illegal_ctl_lens = {c: rng.randrange(16) for c in self.illegal_order}
 
@@ -451,7 +466,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         csaat_dirs = [[s.direction for s in segs if s.csaat] for _, _, _, segs in self.chains]
         self.logger.info(
             "INFO-PLAN seed=%d cells=%s illegal=%s dummy_leg=s%dd0:%s/L%d chains=%s "
-            "chain_csaat1_dirs=%s long_dummy=%d",
+            "chain_csaat1_dirs=%s",
             seed,
             cell_txt,
             ",".join(f"s{s}d{d}" for s, d in self.illegal_order),
@@ -460,7 +475,6 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             self.dummy_seg.len_field,
             chain_txt,
             csaat_dirs,
-            self.long_dummy,
         )
         self.logger.info(
             "INFO-DRAW seed=%d chain_ctl_lens=%s illegal_lens=%s illegal_ctl_lens=%s "
@@ -540,13 +554,21 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         """Grade the frame at ``mark``: data (scoreboard), lane data lines and lane enables."""
         seed = self.seed
         # RX bytes the DUT delivered, per segment, each RX segment from its
-        # own word-aligned RXDATA words.
+        # own word-aligned RXDATA words, read in the leaf's in-word byte order
+        # against the seeded bytes given to the responder.
         delivered: list[bytes] = []
         pos = 0
-        for seg in segs:
+        for i, seg in enumerate(segs):
             if seg.is_rx:
                 count = (seg.nbytes + 3) // 4
-                delivered.append(unpack_rx_words(words[pos : pos + count], seg.nbytes))
+                delivered.append(
+                    self.order.bytes_of(
+                        words[pos : pos + count],
+                        seg.nbytes,
+                        expect=seg.rx_bytes,
+                        where=f"{label} seg={i}",
+                    )
+                )
                 pos += count
             else:
                 delivered.append(b"")
@@ -607,8 +629,10 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             if seg.direction == DIR_DUMMY:
                 continue
             if seg.is_tx:
-                gold = self._golden(seg, where, "tx", i == last)
                 wire = _decode(seg_beats, 0, seg.lanes, 0)
+                gold = self.order.tx_bytes(
+                    self._golden(seg, where, "tx", i == last), wire, where=f"{label} seg={i}"
+                )
                 line = (
                     f"seed={seed} {label} seg={i} dir=tx width=x{seg.lanes} bytes={len(wire)} "
                     f"expect_bytes={len(gold)} wire={wire.hex()}"
@@ -698,7 +722,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         )
 
     def _scoreboard(self) -> SepSpiScoreboard:
-        return SepSpiScoreboard(self.wire, None, self.logger, seed=self.seed)
+        return SepSpiScoreboard(self.wire, None, self.logger, seed=self.seed, order=self.order)
 
     # ---- legs -------------------------------------------------------------
     async def _single_cells(self) -> None:
@@ -769,15 +793,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             nbytes = seg.len_field + 1
             if nbytes % 4:
                 partial += 1
-                pad_mask = 0xFFFF_FFFF & ~((1 << (8 * (nbytes % 4))) - 1)
-                pad = (
-                    f"seed={seed} speed={seg.speed} dir={seg.direction} bytes={nbytes} "
-                    f"last_word=0x{last_word:08x} pad_mask=0x{pad_mask:08x} "
-                    f"pad=0x{last_word & pad_mask:08x} expect_pad=0x00000000 byteorder={byteorder}"
-                )
-                if last_word & pad_mask:
-                    raise AssertionError(f"CHK-SPI-RX-PAD FAIL {pad}")
-                self.logger.info("CHK-SPI-RX-PAD PASS %s", pad)
+                self._grade_rx_pad(seg, nbytes, last_word, byteorder)
             words = in_seg + drained
             row = (
                 f"seed={seed} speed={seg.speed} dir={seg.direction} bytes={nbytes} "
@@ -791,9 +807,48 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             if drained != rxqd or words != exp or in_seg + rxqd != exp:
                 raise AssertionError(f"CHK-SPI-RXCNT FAIL {line}")
             self.logger.info("CHK-SPI-RXCNT PASS %s", line)
+        self.logger.info("CTRL-SPI-RX-PAD LOG seed=%d partial_segments=%d", seed, partial)
         if not partial:
-            self.logger.info("INFO-SPI-RX-PAD seed=%d partial_segments=0", seed)
-        self.ran.update(("CHK-SPI-CELL", "CHK-SPI-RXCNT"))
+            raise AssertionError(
+                f"CTRL-MISSING seed={seed} CHK-SPI-RX-PAD: no Rx cell whose LEN+1 is not "
+                "a multiple of 4"
+            )
+        self.ran.update(("CHK-SPI-CELL", "CHK-SPI-RXCNT", "CHK-SPI-RX-PAD"))
+
+    def _grade_rx_pad(self, seg: Seg, nbytes: int, last_word: int, byteorder: int) -> None:
+        """CHK-SPI-RX-PAD (zero pad at the leaf order) and OBS-SPI-RX-PAD (pad position)."""
+        seed = self.seed
+        data_bytes = nbytes % 4
+        pad_bytes = 4 - data_bytes
+        # Pad mask per in-word order: the first byte in bits 7:0 leaves the pad
+        # in the most significant bytes, the first byte in bits 31:24 in the
+        # least significant bytes (ToO:486).
+        masks = {
+            "lsb_first": 0xFFFF_FFFF & ~((1 << (8 * data_bytes)) - 1),
+            "msb_first": (1 << (8 * pad_bytes)) - 1,
+        }
+        position = {"lsb_first": "upper", "msb_first": "lower"}
+        orders = [self.order.order] if self.order.order else list(masks)
+        zero = [o for o in orders if not last_word & masks[o]]
+        self.logger.info(
+            "OBS-SPI-RX-PAD seed=%d speed=%d dir=%d bytes=%d last_word=0x%08x pad_bytes=%s "
+            "byteorder=%d",
+            seed,
+            seg.speed,
+            seg.direction,
+            nbytes,
+            last_word,
+            "/".join(position[o] for o in orders),
+            byteorder,
+        )
+        line = (
+            f"seed={seed} speed={seg.speed} dir={seg.direction} bytes={nbytes} "
+            f"last_word=0x{last_word:08x} order={self.order.order or 'undecided'} "
+            f"pad=" + ",".join(f"0x{last_word & masks[o]:08x}" for o in orders) + " expect_pad=0"
+        )
+        if not zero:
+            raise AssertionError(f"CHK-SPI-RX-PAD FAIL {line}")
+        self.logger.info("CHK-SPI-RX-PAD PASS %s", line)
 
     async def _dummy_fifo_leg(self) -> None:
         seed = self.seed
@@ -1037,13 +1092,12 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         self._plan(self.seed)
         required = ["CHK-SPI-CELL", "CHK-SPI-RXCNT", "CHK-SPI-DUMMY", "CHK-SPI-CHAIN"]
         required += ["CHK-SPI-SB-FRAME", "CHK-SPI-LANE-DATA", "CHK-SPI-OE-SEG"]
-        required += ["CHK-SPI-ILLEGAL", "CHK-SPI-WIRE"]
-        if self.long_dummy:
-            required.append("CHK-SPI-LONGDUMMY")
+        required += ["CHK-SPI-ILLEGAL", "CHK-SPI-WIRE", "CHK-SPI-LONGDUMMY", "CHK-SPI-RX-PAD"]
         self.required_evidence = tuple(required)
         self.ran: set[str] = set()
         self.lane_graded: set[tuple[int, bool]] = set()
         self.oe_graded: set[str] = set()
+        self.order = SepSpiByteOrder()
         close_graded_window()
 
         dut = cocotb.top
@@ -1083,18 +1137,15 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 int(fcov_present()),
             )
 
-            await self._single_cells()
-            await self._dummy_fifo_leg()
-            await self._chain_leg()
-            if self.long_dummy:
-                await self._long_dummy_leg()
-            else:
-                self.logger.info("INFO-SPI-LONGDUMMY seed=%d long_dummy=0 graded=0", self.seed)
-            await self._illegal_leg()
+            for leg in (*LEGS, "_long_dummy_leg"):
+                await getattr(self, leg)()
             self._ungraded()
             await self.pads.stop()
             await self.wire.finish(self.logger, seed=self.seed)
             self.ran.add("CHK-SPI-WIRE")
+            self.order.log_obs(
+                self.logger, self.seed, status_byteorder=self.ops.status_log[-1].byteorder
+            )
         finally:
             close_graded_window()
             await self.rsp.stop()
