@@ -4520,7 +4520,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |PR-OUT
 |Read-only probe
 |AW and AR fields (address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxBURST) and W beats (data, strobe, last, W user) of `smn_outbound_axi_req_o`. The net `smn_outbound_req_w` exists and no port exports it.
-|`sep_fabric_outbound_route_attr_test` (CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT, CHK-OUT-NOEXTRA), `sep_fabric_filter_match_priority_rand_test` (supplement, CHK-FILTER-SRC), `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-PAIR, CHK-DMA-REMAP), `sep_fabric_smc_route_test`, `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-NEVER), `sep_debug_master_target_matrix_test` (CHK-DBG-REMAP)
+|`sep_fabric_outbound_route_attr_test` (CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT, CHK-OUT-NOEXTRA), `sep_fabric_filter_match_priority_rand_test` (supplement, CHK-FILTER-SRC), `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-PAIR, CHK-DMA-REMAP), `sep_fabric_smc_route_test`, `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-NEVER), `sep_debug_master_target_matrix_test` (CHK-DBG-REMAP, and CHK-DBG-REMAP-SBERROR through the PR-OUT-RSP response capture)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-EXT
 |Read-only probe
@@ -4660,7 +4660,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`dbg_sb_req` and `dbg_sb_rsp`
 |Read-only tap
 |The system-bus master port of the debug module: ID bits, AxSIZE, AxLEN, AxPROT, W strobes and beat shape.
-|`sep_debug_master_target_matrix_test` (CHK-DBG-SBA, CHK-DBG-POOL-RD, CHK-DBG-POOL-WR, CHK-DBG-EXT, CHK-DBG-NC, CHK-DBG-REMAP, CHK-DBG-REMAP-SBERROR, CHK-DBG-AXPROT), `sep_cpu_reset_entry_test` (CHK-WDT-STORE-RESP)
+|`sep_debug_master_target_matrix_test` (CHK-DBG-SBA, CHK-DBG-POOL-RD, CHK-DBG-POOL-WR, CHK-DBG-EXT, CHK-DBG-NC, CHK-DBG-REMAP, CHK-DBG-AXPROT), `sep_cpu_reset_entry_test` (CHK-WDT-STORE-RESP)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |PR-DBG-IN and PR-DBG-OUT
 |Read-only tap
