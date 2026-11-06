@@ -62,6 +62,13 @@ Checks:
                        ``:102-107``; ICCM and DCCM
                        share region 12, ``hw/sys/sep/doc/memory_map.adoc:41-43``).
                        Control: the DCCM pair reads K, writes V2 and reads V2.
+  CHK-EXT-READ-NMI   : the LSU read at 0x2000_0100 raises exactly one NMI
+                       between the EXT_B and EXT_E markers, with mcause
+                       0xF000_0001 (load bus error) and mdseac 0x2000_0100
+                       (the extension port answers DECERR, SEP_TB_ARCH.adoc
+                       "AXI Extension port responder"; NMI mcause values, VeeR
+                       EL2 PRM linked from cpu.adoc). Control: the read is on
+                       PR-EXT.
   CHK-LSU-ICCM-WE    : no ICCM write enable on PR-TCM during the LSU store.
                        Control: the DMA copy of an SRAM word to another ICCM
                        word shows the ICCM write enable.
@@ -77,7 +84,8 @@ reads the CSR back into a mailbox record, and a read-back that differs fails
 the leaf (``CTRL-DEMUX-MRAC``). The core then issues each store at its own size, so a 32-bit
 register write reaches a register block with its own strobe and no zero-strobe
 neighbour beat. ``OBS-DMA-CSR-WRITE`` logs the shape and BRESP of every LSU
-write to the secure DMA registers; ``INFO-EXT-READ`` logs every NMI.
+write to the secure DMA registers. The CHK-EXT-READ-NMI line also lists every
+NMI record of the run with the last marker before it.
 
 The trap cause and value of an unmapped fetch and the cause of an ICCM data
 access are graded. ``INFO-IFU-TRAP`` re-logs every trap record, which
@@ -206,6 +214,7 @@ U_SET = (
     0x0000_1000,
 )
 EXT_ADDR = 0x2000_0100  # extension port read of step 6
+NMI_LOAD_BUS_ERROR = 0xF000_0001
 OUT_ADDR = MBX  # outbound port store of step 6 (the console address)
 OUT_VAL = 0x5EC0_0006
 
@@ -535,6 +544,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         "CHK-LSU-ICCM-WE",
         "CHK-IFU-TRAP",
         "CHK-LSU-ICCM-CAUSE",
+        "CHK-EXT-READ-NMI",
     )
 
     def _grade(self, chk: str, ok: bool, text: str) -> None:
@@ -904,10 +914,15 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
                 OFF["FE2"],
             ):
                 last = names[r.off]
-        self.logger.info(
-            "INFO-EXT-READ LOG nmi_records=%d mcause@marker/mdseac=%s",
-            len(rows),
-            " ".join(rows) or "-",
+        causes = [r.val for r in self._recs("EXT_B", "EXT_E", "NMI")]
+        addrs = [r.val for r in self._recs("EXT_B", "EXT_E", "NMI_ADDR")]
+        self._grade(
+            "CHK-EXT-READ-NMI",
+            causes == [NMI_LOAD_BUS_ERROR] and addrs == [EXT_ADDR] and ext_ctl >= 1,
+            f"nmi_in_window={len(causes)} mcause={','.join(f'0x{v:08x}' for v in causes) or 'none'} "
+            f"mdseac={','.join(f'0x{v:08x}' for v in addrs) or 'none'} "
+            f"expect=0x{NMI_LOAD_BUS_ERROR:08x}/0x{EXT_ADDR:08x} lsu_ext_seen={ext_ctl} "
+            f"nmi_records={len(rows)} mcause@marker/mdseac={' '.join(rows) or '-'}",
         )
 
     def _log_dma_csr_writes(self) -> None:

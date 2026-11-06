@@ -91,7 +91,7 @@ Checkers:
                    (rst_ni) that follows CTRL 0x1 on every drawn slot.
   CHK-KPV-NOX      VCS only: no compared KPV read and no KM-KPV snapshot holds
                    an X or Z bit. On Verilator (two-state) the leaf logs
-                   ``OBS-BLOCKED CHK-KPV-NOX``.
+                   ``INFO-BLOCKED CHK-KPV-NOX``.
   CHK-KPV-RSVD     the reserved bits of CTRL (31:4), KPV_SCRAMBLER_CTRL (31:2) and
                    IRQ_STATUS (31:12) read 0 in every read of the leaf (RDL
                    ``rsvd`` R 0x0).
@@ -123,7 +123,7 @@ Checkers:
                    (the tweak uses the logical index, so only the key differs).
   CHK-NONVAC       every control of a "no effect" check above was seen.
 
-Log only: OBS-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
+Log only: INFO-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
 erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
 (KPV cells after a cold reset are not stated), ``INFO-KPV-RACE-REDRAW`` and
 ``INFO-KPV-RACE``, and ``OBS-KPV-WIPE-ERR-O`` (PIC vector bit 30 at the wipe).

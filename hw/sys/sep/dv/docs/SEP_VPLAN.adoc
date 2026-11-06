@@ -1078,7 +1078,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`
 |LSU master, outbound responder, alias-remap reference model
-|Proves that an alias-remap hit is `start_addr <= address < end_addr` and replaces all four AxCACHE bits, and that a miss, and a region with `valid` 0, keeps address and AxCACHE. A hit lands at or above `0x1_0000_0000`, so the hit cells also prove the route of that address class. Also logs the AxCACHE at the alias remap output next to the PR-OUT value (`OBS-ALIAS-OUT-CACHE`) with no verdict. Also grades that a read through two valid regions over the same pages leaves the alias remap at the address of the lower-numbered region (`CHK-ALIAS-OVERLAP`; `hw/ip/axi_alias_remap/regs/alias_remap.rdl:42`); the response of that read is logged (`INFO-ALIAS-OVERLAP`).
+|Proves that an alias-remap hit is `start_addr <= address < end_addr` and replaces all four AxCACHE bits, and that a miss, and a region with `valid` 0, keeps address and AxCACHE. A hit lands at or above `0x1_0000_0000`, so the hit cells also prove the route of that address class. Also logs the AxCACHE at the alias remap output next to the PR-OUT value (`OBS-ALIAS-OUT-CACHE`) with no verdict. Also grades that a read through two valid regions over the same pages leaves the alias remap at the address of the lower-numbered region and is admitted by an outbound entry over that address only (`CHK-ALIAS-OVERLAP`; `hw/ip/axi_alias_remap/regs/alias_remap.rdl:42`, `hw/ip/axi_filter/doc/index.adoc` "Blocked Transactions").
 
 |<<sep_fabric_smc_route_test,`sep_fabric_smc_route_test`>>
 |3
@@ -1188,7 +1188,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |cpu, real fuse sense (blank OTP image)
 |ocah_axi_vip, CPU FW
-|Proves the PIC delivery that the no_cpu RMA token test cannot reach: EL2 claims source 40, reads the SEC_DISABLE sticky bit, and masks `meie[40]` so the level-high line does not re-enter. A later leg enables the source again with the handler unmasked and requires at least two handler entries over a fixed window (`CHK-PIC-LEVEL-REENTRY`).
+|Proves the PIC delivery that the no_cpu RMA token test cannot reach: EL2 claims source 40, reads the SEC_DISABLE sticky bit, and masks `meie[40]` so the level-high line does not re-enter. A later leg enables the source again with the handler unmasked and requires at least two handler entries over a fixed window and the source still pending after it (`CHK-PIC-LEVEL-REENTRY`).
 |<<sep_mailbox_fifo_model_rand_test,`sep_mailbox_fifo_model_rand_test`>>
 |3
 |no_cpu, +skip_fuse_sense
@@ -1527,7 +1527,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |cpu
 |CPU firmware, CPU master port observation taps
-|Proves that a fetch outside ROM and SRAM gets DECERR, never reaches another port and traps once as an instruction access fault with the fetch address in `mtval` (CHK-IFU-TRAP), that load and store routing follows the demux table, that ICCM and DCCM are reached through the core wiring only, and that an LSU load and store at an ICCM word trap with `mcause` 5 and 7 (CHK-LSU-ICCM-CAUSE). Extends the open ROM and register-reach tests with those cells only.
+|Proves that a fetch outside ROM and SRAM gets DECERR, never reaches another port and traps once as an instruction access fault with the fetch address in `mtval` (CHK-IFU-TRAP), that load and store routing follows the demux table, that ICCM and DCCM are reached through the core wiring only, that an LSU load and store at an ICCM word trap with `mcause` 5 and 7 (CHK-LSU-ICCM-CAUSE), and that an LSU read at the extension port raises one load bus-error NMI with the read address in `mdseac` (CHK-EXT-READ-NMI). Extends the open ROM and register-reach tests with those cells only.
 
 |<<sep_debug_master_target_matrix_test,`sep_debug_master_target_matrix_test`>>
 |3
