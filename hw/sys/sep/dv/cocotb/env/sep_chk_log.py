@@ -15,12 +15,14 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
 * ``blocked(check, reason)`` logs ``INFO-BLOCKED CHK-<NAME> reason=<r>``: a
   check that the leaf cannot grade.
 * ``info(name, **fields)`` logs
-  ``INFO-<NAME> ...``: a bench record (set-up value, reference timing, leg
-  marker, bookkeeping), or a re-log of a DUT value that a named ``CHK-``
+  ``INFO-<NAME> ...``: a bench record (set-up value, stimulus draw or redraw,
+  reference timing, leg marker, bookkeeping), or a re-log of a DUT value that a named ``CHK-``
   grades, in the same leaf or in another leaf. That INFO line names its
   ``CHK-``, and its leaf when the check is in another leaf. ``INFO-`` also
-  logs a DUT value that no check grades and that no open specification
-  question asks for. ``obs()``, ``blocked()`` and ``info()`` grade nothing.
+  logs a DUT value that no check of the leaf grades and that no open
+  specification question asks for: the specification states its golden but
+  the leaf does not grade it, or an ``OBS-`` line of another leaf holds the
+  open question. ``obs()``, ``blocked()`` and ``info()`` grade nothing.
 * ``finish()`` is the verdict. It raises ``AssertionError`` if any check or
   control failed, or if no check passed. Otherwise it hands the
   ``RESULT <leaf> seed=<n> PASS checks=<k>`` line to ``result_pass`` of the

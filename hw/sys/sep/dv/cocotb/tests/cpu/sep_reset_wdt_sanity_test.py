@@ -69,7 +69,7 @@ below logs its own PASS or FAIL line, and the leaf fails once at its end if any 
   CHK-RAS-WDT_BITE-IDLE   0 on every clock from the CPU release to the clock
                           ``wdt_timer_rst_req_o`` reads 1, after ``CHK-WDT-REBARK PASS``.
   CHK-RAS-WDT_BITE-RISE   high within ``_BITE_POLL_CYCLES`` of ``wdt_timer_rst_req_o``
-                          reading 1.
+                          reading 1; no rise, or a first rise later than that, fails.
   CHK-RAS-WDT_BITE-SHAPE  no fall for ``_RAS_BITE_HOLD`` clocks after the rise.
 Log only: ``OBS-RAS-WDT_BARK-DELAY`` (clocks from the ``WDOG_CTRL`` enable write to each
 rise), ``OBS-RAS-WDT_BARK-FALL`` (clocks from the ``INTR_STATE`` write to the fall),
@@ -543,7 +543,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         self._ras(
             fld,
             "RISE",
-            bool(rises),
+            bool(rises) and rises[0] - req.clk <= _BITE_POLL_CYCLES,
             rise_clk=rises[0] if rises else "none",
             wdt_timer_rst_req_o_clk=req.clk,
             bound=_BITE_POLL_CYCLES,
