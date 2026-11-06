@@ -62,8 +62,9 @@ class sep_otbn_mem_smoke_seq(uvm_sequence):
         CTRL-OTBN-MEM-PRECOND requires the STATUS status field to be neither
         LOCKED nor BUSY_EXECUTE; otherwise it logs CTRL-MISSING and fails the
         leaf. OBS-OTBN-MEM-STATUS logs the raw STATUS word and the status field.
-        It is logged, not graded: no authored text states whether IMEM/DMEM
-        accept a bus access in the state that the field reports here.
+        It is logged, not graded: the OTBN register text states that a memory
+        access while OTBN is busy reads 0 and is ignored, and no SEP text
+        states whether that applies in the busy state the field reports here.
         """
         raw = await self._read(OTBN_ADDR_STATUS)
         st = raw & OTBN_STATUS_MASK

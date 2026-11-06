@@ -314,14 +314,19 @@ The `KM-SRAM-RD` log line is a measurement, not a checker: the count of KM SRAM 
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CTRL-OTBN-MEM-PRECOND is the `STATUS` gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`: `CTRL-OTBN-MEM-PRECOND seen: status=0x<raw word> locked=0 executing=0`, or `CTRL-MISSING OTBN-MEM-PRECOND: status=0x<raw word> locked=<l> executing=<e>` and a failed leaf. The same read is logged as `OBS-OTBN-MEM-STATUS status=0x<raw word> status_code=0x<status field>`. That record is not graded: no authored text states whether IMEM and DMEM accept a bus access in the state that the field reports.
+*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CTRL-OTBN-MEM-PRECOND is the `STATUS` gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`: `CTRL-OTBN-MEM-PRECOND seen: status=0x<raw word> locked=0 executing=0`, or `CTRL-MISSING OTBN-MEM-PRECOND: status=0x<raw word> locked=<l> executing=<e>` and a failed leaf. The same read is logged as `OBS-OTBN-MEM-STATUS status=0x<raw word> status_code=0x<status field>`. That record is not graded. CHK-IMEM and CHK-DMEM expect the written word; while the field reports a busy state, `otbn.hjson` states that a read returns 0 and a write is ignored, so for that state the expected value is an open specification question.
 
 *Scope limit*: OTBN sits in `StatusBusySecWipeInt` (`0x04`) for the whole of this
 test — leaving that state needs EDN entropy to reseed URND, and the `no_cpu`
 smoke configuration never brings EDN up. `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson:798-804`
-and `:821-828` state that the memories are accessible only while OTBN is idle,
-and no text states the result of a bus access in this state, so the leaf logs
-the `STATUS` word (`OBS-OTBN-MEM-STATUS`) and does not grade it. `CTRL-OTBN-MEM-PRECOND` requires only
+and `:821-828` state that the memories are accessible only while OTBN is idle
+and that, while OTBN is busy, a read returns 0, a write is ignored and the
+access raises ILLEGAL_BUS_ACCESS. `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md:103-105`
+names `BUSY_SEC_WIPE_INT` a busy state. No SEP text states whether that rule
+applies during the post-reset internal wipe, and the readbacks in this test
+return the written words, so the result in this state is an open
+specification question. The leaf logs the `STATUS` word
+(`OBS-OTBN-MEM-STATUS`) and does not grade it. `CTRL-OTBN-MEM-PRECOND` requires only
 that the status field is not `LOCKED` and not executing. It does not pin `STATUS`,
 it does not state that the memories accept a bus access at the observed status,
 and it does not detect a change from `BusySecWipeInt` to `IDLE` or `BusyExecute`.
