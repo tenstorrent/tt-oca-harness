@@ -4445,7 +4445,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-LANE-GPIO",
             "CHK-SMU-LANE-GPIO",
-            "with all 65 pads taken from their LSIO owners and armed as active-high "
+            "with all 67 pads taken from their LSIO owners and armed as active-high "
             "levels, driving every pad raises every gpio_interrupt_o lane and sets "
             "DATA_CTRL.PAD2CORE on every interface, and both follow the pads back "
             "down",

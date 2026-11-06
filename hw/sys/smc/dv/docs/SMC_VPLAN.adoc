@@ -741,13 +741,13 @@ sources)
 `smc_clk_domain_fcov` (`c_avsbus_on_clk_periph`)
 |`YES`: `smc_sideband_protocol_smoke_test`
 |F34
-|GPIO (65 instances)
+|GPIO (67 instances)
 |`periphs.adoc` SMC Peripheral Summary, GPIO; `doc/integrator/src/smu-smc.adoc` GPIO Pad Integration
 |`smc_gpio_irq_active_test`, `smc_gpio_ctrl_full_sweep_test`, `smc_gpio_irq_type_matrix_test`,
 `smc_gpio_pad_input_readback_test`, `smc_gpio_output_driveback_test`, `smc_gpio_boot_stall_test`,
 `smc_gpio_irq_latency_test`, `smc_gpio_default_direction_test`
 |`smc_gpio_fcov` (`c_pad_output_low`, `c_per_instance_default_matches_map`,
-`c_default_input_count_62`); `smc_periph_fcov` (`c_irq_gpio`, `c_gpio_core2pad_active`,
+`c_default_input_count`); `smc_periph_fcov` (`c_irq_gpio`, `c_gpio_core2pad_active`,
 `c_gpio_pad2core_en_active`, `c_gpio_boot_stall_pad_high`); `smc_map_fcov` (`c_gpio_instance_0`,
 `c_gpio_instance_64`)
 |`YES`: `smc_gpio_irq_active_test`
@@ -850,6 +850,12 @@ has no canonical scenario
 |`smc_map_fcov` (`c_pll_wrapper_decodes`, `c_pvt_wrapper_decode`, `c_pvt_wrapper_decodes`): OKAY+0
 placeholder wraps
 |`OUT`: "The adopter's PLL and PVT blocks"; the PLL/PVT clock config row is `NO`
+|F46
+|PWM (4 channels) and its claim of GPIO pads 59 to 62
+|`periphs.adoc` SMC Peripheral Summary, PWM; PWM Registers
+|`smc_pwm_sanity_test`
+|`smc_map_fcov` (`c_pwm_decode`)
+|`DECODE-ONLY`: no point observes `PAD_EN`, a claimed pad or the channel waveform
 |===
 
 The remaining Verification Scope rows (the DTP CSR and raw OTP windows, the
@@ -921,8 +927,9 @@ feature rows.
 |`smc_ext_interrupts_pin_test` |2 |ext_interrupts_i[0] after prim_sync3.
 |`smc_fw_plic_claim_test` |2 |Firmware programs the cluster PLIC and claims ext_interrupts_i[0] through it.
 |`smc_periph_regblock_sweep_test` |3 |The peripheral register blocks no other leaf writes -- AVSBus, telemetry, system timer, eFuse interface, DMA configuration and the log-engine region registers -- cycled against their RDL contract and restored.
+|`smc_pwm_sanity_test` |2 |PWM register reset, read/write, partial-strobe refusal and decoded extent; channel i on GPIO pad 59+i while `PWM_CTRL.CTRL.PAD_EN[i]` is set, with period, active time and phase graded on the pads for seeded configurations, the `INVERT` idle level, software veto, `REGWEN` lock and release; Cool Reset In and Out sit on pads 63 and 64.
 |`smc_rdl_field_sweep_test` |3 |Every software-owned field of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, plus the adopter strap capture registers, driven against its generated RDL contract and restored.
-|`smc_regblock_subword_strobe_sweep_test` |3 |One reference register of each of the 133 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
+|`smc_regblock_subword_strobe_sweep_test` |3 |One reference register of each of the 135 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
 |`smc_axil_narrow_zero_strobe_write_test` |3 |Narrow and zero-strobe writes over SEP_IN to the 64-bit AXI-Lite links: eleven strobe patterns on the plain CPU_CTRL registers with full-width restores, the reset-unit 32-bit registers, the base configuration and WSTRB 0x00 writes, the core 3 watchdog byte-enable rule with its KEY protocol, the mutex acquire-on-read and release-on-write sequence, the mailbox hole answers, the zeroer start, ISOLATE_REQ_SMC_REG, RESET_CTRL start bits, SEMA and the lock registers; the zeroer start under WSTRB 0x00, 0x0F and 0xF0 is graded by `smc_zeroer_strobe_error_status_test`, and the remaining unstated strobe semantics are observed.
 |`smc_register_boundary_depth_test` |3, planned upgrade |Run a compact safe register-boundary sweep.
 |`smc_register_boundary_depth_test` |3 |Run a compact safe register-boundary sweep.
@@ -1070,7 +1077,7 @@ uncore reset pulse.
 |`smc_filter_region_span_test` |3 |A filter region spanning two granules on every outbound entry, with one of them enabled and enforced against a DMA copy.
 |`smc_filter_remap_bitwalk_test` |3 |A one and a zero walked across every bit of START_ADDR and END_ADDR on all 32 filter entries and of REGION_START and REGION_END on all 8 alias-remap regions, each register read back after every write, and every mailbox aperture driven with a walking-one byte strobe and its share of the 255 non-empty strobe patterns, the paired READ_DATA returning the strobed bytes alone.
 |`smc_dma_decouple_rw_test` |3 |DMA transfers with CONFIG.DECOUPLE_RW set -- a scatter and a gather -- and two descriptors queued back to back.
-|`smc_gpio_data_ctrl_field_test` |3 |Each software-writable DATA_CTRL field of one idle GPIO instance driven on its own, with the pad's output enable measured at 0 after every write.
+|`smc_gpio_data_ctrl_field_test` |3 |Each software-writable DATA_CTRL field of one idle GPIO instance driven on its own, with the pad's output enable measured after every write: 0, or the PWM[1] idle drive while `lsio_select` is set.
 |`smc_alias_remap_region_attrs_test` |3 |One alias-remap region marked cacheable and valid over an empty window, with both bits held across a write of the other half of the register.
 |`smc_cpuif_handshake_test` |3 |Every register block's AXI-Lite front end driven with outstanding, W-first and backpressured traffic on a side-effect-free probe register.
 |`smc_cpuif_external_stall_test` |3 |Requests presented to each register block while one of its external registers is still pending.
@@ -1213,7 +1220,7 @@ answer a denied request DECERR, with the reset words of the entries logged as a 
 every row of the SMC component address map answer DECERR on every drawn access, with read data
 0xBADCAB1E on the 4-byte reads, in each of the 6 gaps between unit apertures inside the window,
 DECERR with read data 0xBADCAB1E on the drawn 4-byte accesses past the decoded extent of each of the
-24 rows inside the window whose Past Extent cell states a response (the other sizes printed), DECERR
+25 rows inside the window whose Past Extent cell states a response (the other sizes printed), DECERR
 alone at the 6 rows and the gap beyond `BASE + REGION_SIZE` at its reset value, and DECERR outside
 both inbound apertures.
 |`smc_alias_remap_attr_rand_test` |3 |Seeded alias remap regions, with a drawn region
@@ -1611,11 +1618,11 @@ completes without waiting for sense completion.
 |===
 |Testcase |Phase |Objective
 |`smc_external_window_pad_ctrl_decode_test` |3 |The five mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
-|`smc_gpio_ctrl_full_sweep_test` |3 |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
+|`smc_gpio_ctrl_full_sweep_test` |3 |GPIO_CTRL full sweep over every external GPIO_CTRL entry (67).
 |`smc_gpio_filter_access_sep_test` |2 |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
-|`smc_gpio_intf_data_ctrl_write_sweep_test` |3 |Every software-writable DATA_CTRL field written on all 65 GPIO_INTF instances, with the pad driven both ways through all four interrupt types and the instance's own interrupt bit and `pad2core` checked.
-|`smc_gpio_intf_full_sweep_test` |3 |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
-|`smc_gpio_intf_regblock_sweep_test` |3 |GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycled to all-ones and all-zeros on all 65 instances, with an AxPROT allow and deny leg on each.
+|`smc_gpio_intf_data_ctrl_write_sweep_test` |3 |Every software-writable DATA_CTRL field written on all 67 GPIO_INTF instances, with the pad driven both ways through all four interrupt types and the instance's own interrupt bit and `pad2core` checked.
+|`smc_gpio_intf_full_sweep_test` |3 |GPIO_INTF full sweep over all GPIO_INTF_NUM (67) instances.
+|`smc_gpio_intf_regblock_sweep_test` |3 |GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycled to all-ones and all-zeros on all 67 instances, with an AxPROT allow and deny leg on each.
 |`smc_gpio_irq_active_test` |1 |Run GPIO CSR plus IRQ-control decode precheck.
 |`smc_gpio_irq_type_matrix_test` |2 |Drive GPIO0 for both level polarities and check the IRQ aggregate.
 |`smc_gpio_multi_sample_test` |1 |Run the SMC OSS GPIO multi-sample observability scenario.
@@ -1640,7 +1647,7 @@ recorded.
 direction and interrupt outcomes that the GPIO register descriptions state, with the reset words
 logged as a control.
 |`smc_gpio_irq_latency_test` |3 |A pad edge reaches the pad's own `tb_gpio_interrupt` bit exactly three synchronizer stages plus one register later on eight drawn pads, for the rising, falling and level types; an edge is detected with register readback unselected while `pad2core` reads 0.
-|`smc_gpio_default_direction_test` |3 |`INPUT_BY_DEFAULT` on the pad vectors: RX on 62 pads and off on pads 62-64 with TX off and data 0, forced on all 65 controllers while a cold reset is asserted after two pads were programmed as outputs.
+|`smc_gpio_default_direction_test` |3 |`INPUT_BY_DEFAULT` on the pad vectors: RX on 60 pads and off on pads 59-62 and 64-66 with TX off and data 0, forced on all 67 controllers while a cold reset is asserted after two pads were programmed as outputs.
 |===
 
 ==== IRQ
@@ -2635,6 +2642,121 @@ first and last words are read only, and their reason column reads not specified 
 
 '''''
 
+
+[[sec-569-smc_pwm_sanity_test]]
+===== 569 `smc_pwm_sanity_test`
+
+*Phase*: 2
+
+*Area*: MISC
+
+*Source Module*: `smc_pwm_sanity_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 4-byte accesses) to the PWM
+registers at `SMC_TOP_SMC_PWM_PWM_BASE_ADDR`, the first word past `SMC_TOP_SMC_PWM_PWM_SIZE`,
+`PWM_CTRL.CTRL` at `SMC_TOP_SMC_PWM_PWM_CTRL_CTRL_BASE_ADDR` and `GPIO_INTF[59..62].DATA_CTRL`;
+bench signals `tb_lsio_interface_select`, `tb_core2pad_o`, `tb_core2pad_en_o`,
+`tb_rst_cool_from_flr`, `tb_fuse_sense_done` and `clk_smc_i`, the PWM counter clock.
+
+*Run mode*: one testlist entry in `testlists/register.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `axil`; seed 1, `reseed` 3; tool Verilator (cocotb).
+
+*Randomization*: RAND-REP; the seed draws eight PWM configurations, each with `CFG.DC_RESN` 0 to
+5, `CFG.CLK_DIV` 0 to 7 (a period of at most 512 clocks), and per channel `DUTY_CYCLE.A` and
+`PWM_PARAM.PHASE_DELAY` and the `INVERT` bit (filter: the duty's `DC_RESN`+1 used bits are 1 to
+2^(`DC_RESN`+1)-1 beats, so every channel has both levels in each period; the bits below them are
+drawn too, so the rounding down is graded). Each configuration's outcome is the timing `pwm.rdl`
+gives for it. The register, strobe, extent, level, veto and cool-reset steps are directed.
+
+*Objective*: The PWM register block decodes at its generated addresses, resets, stores, refuses a
+partial-strobe write and ends at its decoded extent; channel i drives GPIO pad 59+i exactly while
+`PAD_EN[i]` is set, with the period, active time and phase its registers set; the pad's own
+`lsio_disable` vetoes the claim; `REGWEN` locks a running configuration; and the cool-reset pads
+sit at 63 (in) and 64 (out).
+
+*Test Coverage*:
+
+* Every register of the block, with the channel count taken from the generated
+  `SMC_TOP_SMC_PWM_PWM_*_NUM`, reads the reset word composed from the generated `pwm.h` fields.
+  `PAD_EN` reads 0 and pads 59-62 have LSIO select 0 and output enable 0.
+* `CFG`, `PWM_EN`, `INVERT` and every `PWM_PARAM`, `DUTY_CYCLE` and `BLINK_PARAM` instance hold a
+  distinct pattern masked to the fields `smc_reg.py` marks `rw`, and then the same pattern with
+  every writable bit flipped, so each writable bit is written and read back as 1 and as 0. In each
+  pass all patterns are written before any is read back, so two addresses that decode to one
+  register fail the compare. Each register is restored to its reset word.
+* A write to `PWM_PARAM_0` with only byte lane 0 strobed answers SLVERR, because the register
+  takes full-word writes only, and the register keeps its earlier value.
+* A read of the first word past the decoded extent answers an error with the generated
+  past-extent data word.
+* With `PAD_EN` 0, `GPIO_INTF[60]` drives pad 60 from its registers, 1 then 0.
+* With `PAD_EN` and `PWM_EN` all ones, pads 59-62 have select 1, output enable 1 and
+  `DATA_CTRL.lsio_enable` 1.
+* For each drawn configuration, loaded with the counter and channels stopped and started again,
+  each pad's leading edges are one period, 2^(`DC_RESN`+1) x (`CLK_DIV`+1) clocks, apart; each
+  active run lasts the duty's used bits in beats x (`CLK_DIV`+1) clocks; and each pad's leading
+  edge follows pad 59's by the difference of their used phase bits in beats, modulo the period.
+  The active level is 1, or 0 where the channel's `INVERT` bit is set. Four periods are graded
+  after one is let pass.
+* With `PWM_EN[0]` 0 and `PAD_EN[0]` 1, pad 59 stays an output at 0 for a period, and at 1 with
+  `INVERT[0]` 1; with `PWM_EN[0]` set again every pad matches the configuration.
+* `GPIO_INTF[61].DATA_CTRL.lsio_disable` 1 makes pad 61 follow its registers, 1 then 0 for a
+  period each, with `lsio_enable` reading 0; once cleared, every pad matches the configuration.
+* Writing 0 to `REGWEN` clears it. Later writes of the inverted running values to `CFG`,
+  `PWM_EN`, `INVERT` and the last `DUTY_CYCLE` instance leave the running values in place,
+  `REGWEN` still reads 0, and every pad still matches the configuration.
+* `PAD_EN` 0 returns pads 59-62 to select 0 and output enable 0 with the channels still running.
+* Pad 64 has select 1, data 0 and output enable equal to the inverted cool reset; pad 63 has
+  select 0.
+
+*Test Procedure*:
+
+Drive `smc_pwm_sanity_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PWM-RESET` |Every register reads its generated reset word; any other word or a non-OKAY
+response fails it
+|`CHK-PWM-PAD-RESET` |`PAD_EN` reads 0 and pads 59-62 have select 0 and output enable 0; any other
+value fails it
+|`CHK-PWM-RW` |Every writable register reads back its distinct pattern and its flipped pattern,
+then its reset word after each restore; a mismatch fails it
+|`CHK-PWM-STROBE` |The one-lane write to `PWM_PARAM_0` answers SLVERR and the register still reads
+the pattern written before it; another response or a changed value fails it
+|`CHK-PWM-PAST-END` |The read at `SMC_TOP_SMC_PWM_PWM_BASE_ADDR` plus `SMC_TOP_SMC_PWM_PWM_SIZE` answers
+an error with the generated past-extent data word; an OKAY response or other data fails it
+|`CHK-PWM-PAD-SW` |With `PAD_EN` 0, pad 60 shows output enable 1 and data 1, then data 0, from its
+`GPIO_INTF` registers with select 0; a bounded wait that expires fails it
+|`CHK-PWM-PAD-CLAIM` |Pads 59-62 have select 1, output enable 1 and `lsio_enable` 1; a missing
+select, enable or status bit fails it
+|`CHK-PWM-PAD-WAVE` |For every drawn configuration each pad's leading-edge spacing, active run
+length and leading-edge offset from pad 59 equal the values the configuration gives, to the clock;
+fewer than three leading edges, or any other spacing, length or offset, fails it
+|`CHK-PWM-PAD-IDLE` |Pad 59 holds output enable 1 and data 0 for a period with `PWM_EN[0]` 0, and
+data 1 with `INVERT[0]` 1, and the pads match the configuration once `PWM_EN[0]` is set; a change
+within the period or a timing mismatch fails it
+|`CHK-PWM-PAD-VETO` |Pad 61 holds its register data, 1 then 0, for a period each while
+`lsio_disable` is set, `lsio_enable` reads 0, and the pads match the configuration once it is
+cleared; any toggle under the veto or a timing mismatch fails it
+|`CHK-PWM-REGWEN` |`REGWEN` reads 0 after the clear and after the locked writes, `CFG`, `PWM_EN`,
+`INVERT` and the last `DUTY_CYCLE` instance still read their running values, and the pads match the
+configuration; any other value or a timing mismatch fails it
+|`CHK-PWM-PAD-RELEASE` |`PAD_EN` 0 brings pads 59-62 to select 0 and output enable 0; a bounded
+wait that expires fails it
+|`CHK-PAD-MOVED` |Pad 64 has select 1, data 0 and output enable the inverse of the cool reset, and
+pad 63 select 0, at every cycle of 32; any other value fails it
+|===
+
+*Pass Criteria*: all thirteen checkers hold after their compares, in order, and every sequence
+assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: Blink and heartbeat (`PWM_PARAM.BLINK_EN`, `HTBT_EN`) stay off, so `DUTY_CYCLE.B`
+and `BLINK_PARAM` take no part in any graded waveform; `ALERT_TEST` is read for its reset word and never
+written. The cool reset is not asserted, so pad 64 is seen only with its output enable at 0.
+
+'''''
 
 [[smc-vplan-area-power]]
 ==== POWER
@@ -8879,9 +9001,9 @@ draws nothing from the seed.
 
 * Every expectation comes from the generated register map (`hw/sys/smc/regs/gen/py/smc_reg.py`) or from a co-resident write/readback pattern, never from a first read of the DUT. A region whose reset is zero throughout is proven by the co-resident pattern rather than by a 0 == 0 compare, because a dead or unmapped window commonly reads 0.
 * The co-resident shape writes several addresses before any of them is read back, so a decode that collapses two windows onto one physical register returns a neighbour's pattern and fails the exact compare -- which a per-address write-then-read cannot see.
-* Three addresses no generated-map block declares and no crossbar rule covers (past the watchdog cluster, past the DFX block, past the fabric-control block) are declared expected-error to the SEP_IN monitor and required to answer DECERR from the fabric error slave.
+* Three addresses no generated-map block declares and no crossbar rule covers (past the watchdog cluster, past the PWM block's aperture, past the fabric-control block) are declared expected-error to the SEP_IN monitor and required to answer DECERR from the fabric error slave.
 * The first word past the straps block in the external window (`SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR` plus `SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE` from the generated `smc_addr.h`) is claimed by no target of the window's demux. It must reach the external port and be answered DECERR there, and `STRAPS_LO`/`STRAPS_HI` must read the same on both sides of it.
-* **Past a block's generated extent.** The crossbars decode each block to its generated `SIZE` or `TOTAL_SIZE` and send every other address to the error slave. A read and a write at the first word past `GPIO_INTF[64]` (`GPIO_INTF_TOTAL_SIZE`), and a write past misc_wrap (`SIZE`), must each be refused with an error response, and the last register before each must read the same afterwards.
+* **Past a block's generated extent.** The crossbars decode each block to its generated `SIZE` or `TOTAL_SIZE` and send every other address to the error slave. A read and a write at the first word past `GPIO_INTF[66]` (`GPIO_INTF_TOTAL_SIZE`), and a write past misc_wrap (`SIZE`), must each be refused with an error response, and the last register before each must read the same afterwards.
 * **Data-accelerator range.** The crossbar decodes the DMA block to `SMC_TOP_DMA_CTRL_SIZE` and the zeroer block to `SMC_TOP_ZEROER_CTRL_SIZE`, both cross-checked against the decoded extent of the generated memory map (`regs/gen/py/smc_memory_map.py`), whose RDL past-extent response (`ocah_past_extent_resp`) is DECERR for a read and a write. The first word past the DMA block (the gap below the zeroer, `0xC0038138` in the current map) and the first word past the zeroer block (`0xC0038218`) each take a read and an all-ones write, and each access must answer DECERR. Every DMA descriptor register and the zeroer's `DEST_ADDR` read 0 before and after, so a write that reached either block at any offset fails the readback.
 * The 32-bit peripheral CSR blocks behind the AXI-Lite peripheral crossbar are read at their generated-map addresses, and 32-bit reads are required to return values with bits above 16 set, so the 32-bit data path is exercised beyond a 16-bit window.
 * The regions SEP_IN cannot reach in this bench are named in the log and left open rather than claimed: the PLIC and CLINT/BEU windows lie outside the local and global apertures at the reset `REGION_SIZE` and answer DECERR (`smc_region_size_plic_clint_beu_decode_test` reaches them after widening it), the generated map declares no register in the debug-module region, and the M-mode/Xvisor remap regions are outbound apertures with no inbound decode pinned by the specification.
@@ -11891,8 +12013,9 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * The address gap between apertures answers DECERR (`memmap.adoc`, Address Space Organization;
-  `smc.rdl`, `ocah_gap_resp`): the first and last word of the gap at offsets 0xC000 to 0xFFFF read
-  DECERR with the error-slave word 0xBADCAB1E and write DECERR from SEP_IN at the local base.
+  `smc.rdl`, `ocah_gap_resp`): the first and last word of the gap at offsets 0xD000 to 0xFFFF,
+  between the PWM aperture and `smc_base_config`, read DECERR with the error-slave word 0xBADCAB1E
+  and write DECERR from SEP_IN at the local base.
 * The gap at offsets 0x3_8300 to 0x3_8FFF between the zeroer and CPU control apertures gives the
   same responses for both directions.
 * The same two gaps answer identically from SYS_IN and JTAG at the local base and from all three
@@ -11922,8 +12045,8 @@ draws nothing from the seed.
   bring-up signals, write inbound filter entry 0 `START_ADDR` 0, `END_ADDR` 0x00FF_FFFF_FFFF_FFFF
   and `FILTER_CONFIG` pass-all over SEP_IN as 8-byte writes, then read the local base from SYS_IN
   while sampling `tb_inb_read_hit` (bounded by 6 000 cycles), requiring OKAY and the hit bit seen.
-. Error injection. Point: SEP_IN at the local base, the gap at offsets 0xC000 to 0xFFFF. Kind:
-  reads of the first (0xC000) and last (0xFFF8) word of the gap. Expected response: DECERR with
+. Error injection. Point: SEP_IN at the local base, the gap at offsets 0xD000 to 0xFFFF. Kind:
+  reads of the first (0xD000) and last (0xFFF8) word of the gap. Expected response: DECERR with
   0xBADCAB1E.
 . Error injection. Point: the same two gap words from SEP_IN at the local base. Kind: writes.
   Expected response: DECERR.
@@ -11957,9 +12080,9 @@ draws nothing from the seed.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GAP-READ-DECERR` |The reads at offsets 0xC000 and 0xFFF8 from SEP_IN at the local base answer
+|`CHK-GAP-READ-DECERR` |The reads at offsets 0xD000 and 0xFFF8 from SEP_IN at the local base answer
 DECERR with rdata 0xBADCAB1E, after the admission probe read answered OKAY with the filter hit seen
-|`CHK-GAP-WRITE-DECERR` |The writes at offsets 0xC000 and 0xFFF8 from SEP_IN
+|`CHK-GAP-WRITE-DECERR` |The writes at offsets 0xD000 and 0xFFF8 from SEP_IN
 at the local base answer DECERR
 |`CHK-GAP-ZEROER-CPU-DECERR` |The reads at offsets 0x3_8300 and 0x3_8FF8 answer DECERR with
 0xBADCAB1E and the writes answer DECERR
@@ -12315,7 +12438,7 @@ count, IDs and data word, and the port stays live afterwards.
 * Bystanders: `SCRATCH_COLD[0..7]`, `CPU_CTRL.SCRATCH[0..3]`, `SCRATCH_COLD_WARM[7]`, alias
   remap 7, M-mode remap 7 and Xvisor remap 7 `REGION_ATTRS`, inbound and outbound filter 15
   `END_ADDR` and one scratchpad word hold distinct values the leaf wrote; `CPU_CTRL.DUMMY_ROM_NULL[3]`,
-  `CHIP_CONFIG.LC_STATE`, GPIO interface 64 `ACCESS_FILTER` and the three split-slot registers hold
+  `CHIP_CONFIG.LC_STATE`, GPIO interface 66 `ACCESS_FILTER` and the three split-slot registers hold
   the value read at setup. They are re-read from SEP_IN, with the SYS_OUT responder counters, after
   each family's single writes and write bursts.
 * A fresh 64-bit read of `LOCAL_BASE` on the same port and ID answers OKAY 0x0000_0000_C000_0000
@@ -12502,7 +12625,7 @@ IHI 0022 burst footprint unchanged.
   filter enables 0, each differing in its seeded fields from both halves of every beat, and
   restored afterwards. Every slot register outside a write footprint is compared with its
   reference: the seed read-back, or the value an earlier write of the same port left in it. `DATA_CTRL` `pad2core` and `lsio_enable` are read-only fields
-  that the pad and LSIO hardware drive, so every unchanged `DATA_CTRL` compare (bank and slot 64)
+  that the pad and LSIO hardware drive, so every unchanged `DATA_CTRL` compare (bank and slot 66)
   excludes them.
 * Scratchpad: INCR write and read with AxLEN 0, 7 and 255 crossing 64-byte stripes in one page,
   WRAP write and read with AxLEN 1, 3, 7 and 15 starting mid-window, FIXED write and read
@@ -12515,14 +12638,14 @@ IHI 0022 burst footprint unchanged.
   k, first beat at slot k + 0x10).
 * Extent edges: INCR read and write (AxLEN=3) starting on the last live register of the CPU
   control (+0x2B8), alias slot 7, inbound filter entry 15 (written with its current value), misc
-  wrapper (+0x208), reset unit (+0xC8) and GPIO slot 64, with the registers below each start read
+  wrapper (+0x208), reset unit (+0xC8) and GPIO slot 66, with the registers below each start read
   before and after. At setup every writable one is seeded with a distinct non-zero value that no
   beat of its burst carries: `DUMMY_ROM_NULL[1]`/`[2]`; alias slot 7 `REGION_START`/`REGION_END`
   with `valid`=0; inbound filter entry 15 `START_ADDR` (4 KiB aligned) and `FILTER_CONFIG`
   `src_id`/`group_id` with `entry_enabled` and `locked` 0, so the filter configuration in force
   does not change; `NDMRESET_PROCESS` in the bits at or above `NDMRESET_CLUSTER_COUNT`;
   `ISOLATE_REQ_FLR_COUNTER_VALUE` (seeded again before the first extent-edge burst, since the
-  island and strobe steps write it); GPIO slot 64 `DATA_CTRL` and `DATA_CTRL_ENABLE` and slot 63
+  island and strobe steps write it); GPIO slot 66 `DATA_CTRL` and `DATA_CTRL_ENABLE` and slot 65
   `ACCESS_FILTER` as in the GPIO bank. They are restored after the last extent-edge burst.
   `NDMRESET_REQUEST` and `ISOLATE_REQ_VIS` are protocol-only.
 * Rule and window ends: INCR write and read (AxLEN=7) ending on the last scratchpad word with the
@@ -12952,7 +13075,7 @@ array; SYS_IN `ocah_axi_vip` (AXI) master (`sys_axi_*`, `sys_in_axi_agent`) and 
 `tb_rst_warm_smc_clk_n` required high after the bring-up wait; registers `SCRATCH_COLD` and
 `SCRATCH_COLD_WARM` words 0 to 7 of `misc_wrap`, alias remap `REGION_START` entries 0 to 7, M-mode
 and Xvisor remap `REGION_ATTRS` entries 0 to 7, inbound and outbound filter control `START_ADDR`
-entries 0 to 15, the 65 `GPIO_INTF` `ACCESS_FILTER` entries, and inbound filter entry 0 for the
+entries 0 to 15, the 67 `GPIO_INTF` `ACCESS_FILTER` entries, and inbound filter entry 0 for the
 port step
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
@@ -12978,7 +13101,7 @@ port step
 * The sixteen inbound and sixteen outbound filter control `START_ADDR` registers at a 0x20 stride
   hold their own patterns and neither array shows the other's (`smc.rdl`); `FILTER_CONFIG` is not
   touched.
-* The 65 `GPIO_INTF` `ACCESS_FILTER` registers at a 0x10 stride each hold their own AWPROT and
+* The 67 `GPIO_INTF` `ACCESS_FILTER` registers at a 0x10 stride each hold their own AWPROT and
   ARPROT requirement fields (`gpio_intf.rdl`), in two rounds of different distinct pairs with the
   filter enables clear.
 * A 32-bit `SCRATCH_COLD` word written through an 8-byte write with strobe 0x0F from each of SEP_IN,
@@ -13001,7 +13124,7 @@ port step
 . Write distinct 64-bit patterns to the sixteen inbound and sixteen outbound `START_ADDR` entries,
   read all thirty-two back exactly, require no cross-array pattern, restore the `START_ADDR`
   register description reset value and read it back.
-. Write distinct protection patterns to all 65 `GPIO_INTF` `ACCESS_FILTER` entries and read all back
+. Write distinct protection patterns to all 67 `GPIO_INTF` `ACCESS_FILTER` entries and read all back
   exactly, then repeat with a second distinct pairing; restore the reset word and read it back.
 . Program inbound filter entry 0 pass-all and read `FILTER_CONFIG` back; from each of SEP_IN, SYS_IN
   and JTAG write a distinct pattern to `SCRATCH_COLD` word 0 as an 8-byte write with strobe 0x0F,
@@ -13028,7 +13151,7 @@ and all read 0 after the restore
 |`CHK-FILTER-CTRL-ISOLATION` |The sixteen inbound and sixteen outbound `START_ADDR`
 registers each read back their own pattern with no cross-array pattern, and read
 their reset value after the restore
-|`CHK-GPIO-INSTANCE-ISOLATION` |All 65 `GPIO_INTF` `ACCESS_FILTER` registers each read their own
+|`CHK-GPIO-INSTANCE-ISOLATION` |All 67 `GPIO_INTF` `ACCESS_FILTER` registers each read their own
 protection pattern with all resident in two rounds, and read the reset word after the restore
 |`CHK-SCRATCH-32BIT-PORTS` |A 32-bit pattern written to `SCRATCH_COLD` word 0 by an 8-byte write
 with strobe 0x0F from each of SEP_IN, SYS_IN and JTAG reads back exactly through all three ports,
@@ -13068,7 +13191,7 @@ admission read; `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk
 bring-up wait; registers inbound filter entry 0, `GLOBAL_BASE`, `LOCAL_BASE`, `REGION_SIZE` and
 `CLOCK_GATE_CONTROL` of `SMC_BASE_CONFIG`, `SCRATCH_COLD` word 0; the outside-window addresses
 0xBFFF_FFFC, 0x8000_0000, 0xD000_0000 and 0x0000_0100_0000_0000 and the gap addresses at offsets
-0xC000, 0x3_8300 and 0x1_6200 from the local base and the first address past the core 0 watchdog's
+0xD000, 0x3_8300 and 0x1_6200 from the local base and the first address past the core 0 watchdog's
 decoded extent
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
@@ -13116,7 +13239,7 @@ draws nothing from the seed.
   each; after each run `CLOCK_GATE_CONTROL` reads OKAY with 0x1F00_0000.
 . Write 0x5A3C_96E1 to `SCRATCH_COLD` word 0 over SEP_IN and read it back, read it back from SYS_IN
   and JTAG, and restore it to 0 and read 0 back; every access OKAY with exact values.
-. Error injection. Point: SEP_IN, the gap addresses at offsets 0xC000, 0x3_8300 and 0x1_6200. Kind:
+. Error injection. Point: SEP_IN, the gap addresses at offsets 0xD000, 0x3_8300 and 0x1_6200. Kind:
   33 consecutive probes cycling the three addresses, alternating read and write. Expected response:
   DECERR on each, 0xBADCAB1E on each read, and each probe finishing within 50 000 ns.
 . Restore inbound filter entry 0 `FILTER_CONFIG`, `END_ADDR` and `START_ADDR` to their register
@@ -15726,7 +15849,7 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* **Instance set.** 225 instances, one at a time. Every instance of the multi-instance families: GPIO interfaces 0..64, inbound and outbound filter entries 0..15, M-mode, Xvisor and alias remaps 0..7, I2C 0..2, the UART/log wraps 0..3 (log-engine control, main UART, divisor latch and log engine), telemetry receivers 0..2 and the cold and warm scratch banks. Instance 0 of every single-instance family: reset unit, cpu_ctrl, the `IRQEN` register of each of the 64 mailbox apertures, AVSBus, I2C control, OCTS, DFX, base configuration, eFuse interface control, the eFuse shadow, zeroer and iDMA control, I3C 0, the DFD/CLA sink, chip_config, ndm_reset and the straps window. 187 are pinned-map instances (GPIO interface, filter entries, remaps, reset unit, cpu_ctrl, mailbox) and 38 are plain. Instance addresses come from `smc_addr.h` through `smc_indexed_addr` where the block is indexed and must equal the IP-XACT map's address. The DTP CSR target has no responder on this bench and is never accessed (NOT-REACHABLE-AT-THIS-LEVEL, SF-040). `uart_16550_main_wo` has no read side and is not in the set. The mailbox clock enable in `CLOCK_GATE_CONTROL` is set for the run and restored at the end.
+* **Instance set.** 227 instances, one at a time. Every instance of the multi-instance families: GPIO interfaces 0..66, inbound and outbound filter entries 0..15, M-mode, Xvisor and alias remaps 0..7, I2C 0..2, the UART/log wraps 0..3 (log-engine control, main UART, divisor latch and log engine), telemetry receivers 0..2 and the cold and warm scratch banks. Instance 0 of every single-instance family: reset unit, cpu_ctrl, the `IRQEN` register of each of the 64 mailbox apertures, AVSBus, I2C control, OCTS, DFX, base configuration, eFuse interface control, the eFuse shadow, zeroer and iDMA control, I3C 0, the DFD/CLA sink, chip_config, ndm_reset and the straps window. 189 are pinned-map instances (GPIO interface, filter entries, remaps, reset unit, cpu_ctrl, mailbox) and 38 are plain. Instance addresses come from `smc_addr.h` through `smc_indexed_addr` where the block is indexed and must equal the IP-XACT map's address. The DTP CSR target has no responder on this bench and is never accessed (NOT-REACHABLE-AT-THIS-LEVEL, SF-040). `uart_16550_main_wo` has no read side and is not in the set. The mailbox clock enable in `CLOCK_GATE_CONTROL` is set for the run and restored at the end.
 * **Reference register.** Each instance has one register, and its first isolated read is the reference. On the pinned-map families it is a register whose fields the generated documentation makes inert while the entry is disabled, so it also takes distinct values: GPIO `ACCESS_FILTER` (only the AxPROT requirement fields move; both filter enables must read clear), filter `START_ADDR` (4 KiB multiples, with `FILTER_CONFIG.entry_enabled`, `allow_burst` and `locked` reading clear first, so the granule rounding `filter_ctrl.adoc` describes leaves each value unchanged), alias `region_start` (with `region_attrs.valid` clear) and M-mode / Xvisor `region_attrs` (offset bits 55:20 only, `valid` held clear). The second register of a pinned-map instance is GPIO `DATA_CTRL` (only `interrupt_type`, with `interrupt_enable` clear, compared on its read-write bits), filter `END_ADDR`, alias `region_end`, and for a remap, which has one register, the next instance's `region_attrs`. The reset unit uses its two FLR counter value registers and cpu_ctrl `SCRATCH[15]` / `SCRATCH[14]`. A mailbox aperture uses `IRQEN`, with `IRQS` of the aperture and of its neighbour required to read clear first so that no enabled interrupt is pending (`IRQP` is `IRQS` gated by `IRQEN`); its second register is the next aperture's `IRQEN`, and its three enable bits repeat once exhausted. The plain instances use the instance-0 leaf's probe: a register whose every field is plain read-write in the generated contract, or a read-only one (chip_config, ndm_reset, straps) (`HOST_FIFO_CONFIG`, `CTRL`, `SCR`, `DLL` with `LCR.DLAB` set and restored, `LOG_REGION_SIZE`, `INTR_ENABLE`, `SCRATCH[0]`) and write only the value it holds.
 * **Pipelined.** On every pinned-map instance an interleaved group of 4 writes of distinct values and 4 reads is outstanding at once; every access must answer OKAY, and the requests the port accepted before the first response (the achieved outstanding depth, 4 requested) must be at least 2 and are logged per instance. Each read is classified: equal to the last write whose B preceded its AR (compared), equal to a write of the group whose AW handshake is at or before the read's R handshake and whose B is not before its AR (logged with the AR, R, AW and B cycles of each match; AXI orders no read against writes on the write channel, SF-010), or a value no write of the group produced (must be none). On every instance 4 reads of the reference register are outstanding at once, each returns the reference, and the achieved depth must be at least 2.
 * **Back to back.** Every instance takes two reads of its reference register in one group (the AR handshake gap is logged), each returning the reference; every pinned-map instance writes distinct values to its two registers and reads both in one group, each returning its own written value.
@@ -15734,7 +15857,7 @@ draws nothing from the seed.
 * **Held ready.** Every instance takes a read with RREADY held 16 cycles after RVALID is first seen, and every pinned-map instance a write with BREADY held the same way: VALID must stay high and RID/RRESP/RDATA or BID/BRESP unchanged on every held cycle, with exactly one handshake, the read returning the reference and the write read back.
 * **Held groups.** Every instance takes 16 reads, then 8 writes alternating with 8 reads (distinct values on a pinned-map instance, write-backs of the reference on a plain one), then 16 writes, each group queued behind its held ready and released 16 cycles after the first response VALID. Every request of a group carries the same ID on its channel, so AXI requires the responses in issue order; every response must arrive once and is matched to its request by position. Each read must return the reference or, on the mixed group of a pinned-map instance, is classified as in the pipelined group: last acknowledged write (compared), a write of the group overlapping the read as in the pipelined group (logged with its AR, R, AW and B cycles, SF-010), a value no write of the group produced (must be none). The register must read the last write afterwards. Same-ID requests are serialised in front of some blocks, so every instance then also takes 16 reads and 16 write-backs of its reference with one ID each behind the same held ready; AXI leaves their response order free, so each read must return the reference, every write answer OKAY and the register read the reference afterwards.
 * **Long hold.** 69 instances in 16 families: every instance of six families -- inbound and outbound filter entries 0..15, M-mode, Xvisor and alias remaps 0..7 and telemetry receivers 0..2 (59 instances) -- and one instance of each of the other ten -- the log-engine control, main UART, divisor latch and log engine of UART/log wrap 0, GPIO interface 0, chip_config, ndm_reset, the cold scratch bank, the straps window and I2C control -- take every held group again with the ready released 512 cycles after the first response VALID instead of 16: 16 reads, 8 writes alternating with 8 reads, 16 writes and the two distinct-ID groups, with the same read rule as the held groups. The head response of each group must keep VALID high with an unchanged RID/RRESP/RDATA or BID/BRESP on at least 512 cycles before its handshake. A listed family with no instance in the set, an every-instance family whose instance count differs from the list, or a listed instance with no long-hold leg run, fails the run. The 16-cycle groups still run on every instance.
-* **Coverage intent.** The stimulus targets the accept-while-acknowledged rows of every regblock instance, the held BVALID / RVALID arms of `gpio_intf_reg` 1..64 and the read-after-read dispatch arm of the output remaps 1..6; and the response back-pressure arms of the listed register blocks, which a response held longer than the single-outstanding path in front of each block can absorb reaches; these are stimulus criteria, not expected values.
+* **Coverage intent.** The stimulus targets the accept-while-acknowledged rows of every regblock instance, the held BVALID / RVALID arms of `gpio_intf_reg` 1..66 and the read-after-read dispatch arm of the output remaps 1..6; and the response back-pressure arms of the listed register blocks, which a response held longer than the single-outstanding path in front of each block can absorb reaches; these are stimulus criteria, not expected values.
 * Every register a leg writes is restored to its reference and read back before the next leg compares against the reference. Every SEP_IN record must be resolvable on a VALID cycle, and no response may drop VALID or change while held.
 * Every group wait, the long-hold groups included, is bounded at 40 us and fails with the outstanding count and the last SEP_IN record; every held ready and every held AW waits at most 4000 clk_smc_i cycles for VALID and fails with the last VALID level.
 
@@ -16225,7 +16348,7 @@ Receiver windows; the row table read from the generated component map
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-REP; every seed walks all 30 rows whose Past Extent cell states a
+*Randomization*: RAND-REP; every seed walks all 31 rows whose Past Extent cell states a
 response, all 7 gaps between consecutive unit apertures (6 inside the window and the one after the
 Xvisor region) and 8 classes of address outside both inbound apertures; the seed selects offset,
 size, direction, port and order only. Per row: one 4-byte point at a drawn offset inside the
@@ -16240,7 +16363,7 @@ word of the Xvisor region, at each base). Every point is a read and a write in a
 first or write first), and the walk order inside each of the three steps is a drawn permutation.
 `CHK-MRR-PAST-EXTENT` grades the row points, `CHK-MRR-GAP` the gap points and
 `CHK-MRR-OUTSIDE-WINDOWS` the outside points; each prints the drawn table (`drawn=` with address,
-size, port and order per point). On the 24 past-extent rows inside the window the response code and
+size, port and order per point). On the 25 past-extent rows inside the window the response code and
 the read data of a drawn 1-, 2- or 8-byte point are printed, not compared, because the Past Extent
 column states the answer to a 32-bit access only (`memmap.adoc`, Address Space Organization); the
 pinned 4-byte point keeps a compared cell on every row. Filters: a drawn offset is aligned to its
@@ -16250,13 +16373,13 @@ AxSIZE and no access crosses the end of its cell (asserted at the draw). 3 seeds
 *Objective*: Seeded offsets, AxSIZE, direction and order over every row of the SMC component address
 map answer DECERR on every drawn access, with read data 0xBADCAB1E on the 4-byte reads, in each of
 the 6 gaps between unit apertures inside the window, DECERR with read data 0xBADCAB1E on the drawn
-4-byte accesses past the decoded extent of each of the 24 rows inside the window whose Past Extent
+4-byte accesses past the decoded extent of each of the 25 rows inside the window whose Past Extent
 cell states a response (the other sizes printed), DECERR alone at the 6 rows and the gap beyond
 `BASE + REGION_SIZE` at its reset value, and DECERR outside both inbound apertures.
 
 *Test Coverage*:
 
-* Past extent: for each of the 24 rows inside the window whose Past Extent (R / W) cell states a
+* Past extent: for each of the 25 rows inside the window whose Past Extent (R / W) cell states a
   response, a 4-byte read inside the span between the decoded extent and the end of the aperture
   answers DECERR with 0xBADCAB1E as its read data and a 4-byte write answers DECERR
   (`memory_map.adoc`, SMC Component Address Map, Past Extent column, which states the answer to a
@@ -16276,7 +16399,7 @@ point is compared like the pinned one). The PLIC, CLINT and four
   the window rule, DECERR alone (`memmap.adoc`, Address Space Organization): the read data there is
   printed, not compared.
 * Response and read data by AxSIZE (`memmap.adoc`, Address Space Organization): the Hole in Extent
-  and Past Extent columns state how the SMC answers a 32-bit access, so on the 24 past-extent rows
+  and Past Extent columns state how the SMC answers a 32-bit access, so on the 25 past-extent rows
   inside the window the DECERR compare and the 0xBADCAB1E compare apply to the drawn 4-byte accesses
   and the response code and the read data of a drawn 1-, 2- or 8-byte access are printed, not
   compared; the gap and outside-window sentences carry no size, so there the DECERR response code is
@@ -16295,15 +16418,15 @@ point is compared like the pinned one). The PLIC, CLINT and four
 probes; read `REGION_SIZE`, `LOCAL_BASE` and `GLOBAL_BASE` and require their reset words; read
 `CLOCK_GATE_CONTROL` and require the five peripheral enables clear for the walk; program inbound
 filter entry 0 pass-all over SEP_IN, read it back, and require a SYS_IN read of `LOCAL_BASE` to
-answer OKAY; read the generated component map into the row list and require 30 rows with a stated
-Past Extent response (24 inside the window, the PLIC, CLINT and four bus-error units beyond it), 6
+answer OKAY; read the generated component map into the row list and require 31 rows with a stated
+Past Extent response (25 inside the window, the PLIC, CLINT and four bus-error units beyond it), 6
 gaps inside the window and 1 beyond it, the one after the Xvisor region.
 . Draw the points of every row, gap and outside class with their AxSIZE, order and port, shuffle
 the walk of each step, print `RAND-SEED` with the drawn table, and register every address in
 `expected_decerr_addrs` before it is accessed.
-. Error injection. Point: each of the 30 rows with a stated Past Extent response, at a drawn offset
+. Error injection. Point: each of the 31 rows with a stated Past Extent response, at a drawn offset
 past the decoded extent, with `REGION_SIZE` at its reset value. Kind: a read and a write in the
-drawn order on the drawn port. Expected response: on the 24 rows inside the window a 4-byte read
+drawn order on the drawn port. Expected response: on the 25 rows inside the window a 4-byte read
 answers DECERR with 0xBADCAB1E as its data and a 4-byte write answers DECERR, while the response
 code and the data of a 1-, 2- or 8-byte access are printed; on the PLIC, CLINT and four
 bus-error-unit rows beyond `BASE + REGION_SIZE` the read and the write answer DECERR and the read
@@ -16328,13 +16451,13 @@ the walk's access count to equal the drawn table's (180: 2 accesses per point); 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-MRR-PAST-EXTENT` |For each of the 24 rows inside the window with a stated Past Extent
+|`CHK-MRR-PAST-EXTENT` |For each of the 25 rows inside the window with a stated Past Extent
 response, the drawn 4-byte read answers DECERR with the row's Past Extent read data 0xBADCAB1E and
 the drawn 4-byte write answers DECERR (the pinned 4-byte point and a second point drawn at 4
 bytes), and the response code and the read data of a drawn 1-, 2- or 8-byte point are printed, not
 compared; for the PLIC, CLINT and four bus-error-unit rows beyond `BASE + REGION_SIZE`
 at its reset value the drawn read and write answer DECERR on every size and the read data is
-printed, not compared; all 30 rows visited, the line carrying every drawn point.
+printed, not compared; all 31 rows visited, the line carrying every drawn point.
 |`CHK-MRR-GAP` |At each of the 6 gaps inside the window the drawn read answers DECERR, with
 read data 0xBADCAB1E when its AxSIZE is 4 bytes and the read data printed, not compared, when it is
 1, 2 or 8 bytes, and the drawn write answers DECERR; at the gap after the Xvisor region, beyond
@@ -16350,7 +16473,7 @@ apply to a compared cell; printed first, after the setup step.
 |`CHK-NONVAC` |The stamps of steps 1 and 3 to 6 (S1, S3, S4, S5, S6) are in increasing time
 order (step 2, the draw, takes no simulation time and is not stamped), the 4 checker lines above
 were printed in step order each after its own step (`CHK-MRR-GATE-CLEAR` after S1), every one of
-the 30 rows with a past-extent span, all 7 gaps and the 8 outside classes on both ports were probed,
+the 31 rows with a past-extent span, all 7 gaps and the 8 outside classes on both ports were probed,
 and the walk issued exactly the drawn table's accesses; a control-flow invariant, not a DUT compare.
 |`CHK-TIMEOUT-PATHS` |Reports every bounded wait with its bound (the fuse-sense wait of
 200000 `clk_smc_i` rises and the 50 us driver guard per access); it is a printed report with no
@@ -16364,7 +16487,7 @@ write, every stated past-extent cell inside the window answers DECERR with 0xBAD
 read and DECERR on a 4-byte write with the response code and the data of its other sizes printed,
 the six rows and the gap beyond `BASE + REGION_SIZE` at its reset value answer DECERR on both with
 their read data printed, every outside-window address answers DECERR on both, and every one of the
-30 rows is walked on every seed. Enrolled in: `all`, `hosted`.
+31 rows is walked on every seed. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The 11 rows whose Decoded Extent equals their Size have no past-extent span; their
 in-aperture answers are the Hole in Extent cells, which stay with
@@ -16377,7 +16500,7 @@ under the window rule, which states DECERR alone, and the 0xBADCAB1E past a reac
 that path stays with `smc_region_gated_units_decode_test`, which widens `REGION_SIZE`. The response
 of an address that lies inside a unit's register extent is not drawn. The read data of a drawn 1-,
 2- or 8-byte read is printed, not compared, because `memmap.adoc` states the 0xBADCAB1E read data
-for a 32-bit access only, and on the 24 past-extent rows inside the window the response code of such
+for a 32-bit access only, and on the 25 past-extent rows inside the window the response code of such
 an access is printed too, because the Past Extent column states the response of a 32-bit access
 only. The first address past the `SCRATCH_COLD` block lies between the sub-blocks of the SMC
 miscellaneous wrapper, not in a row or gap of the map this entry walks; the component map that
@@ -16854,7 +16977,7 @@ pattern is pinned.
 *Test Coverage*:
 
 * A burst that starts between unit apertures answers DECERR for every beat: INCR read bursts of 4
-  and 16 beats from the gap at `BASE + 0xC000` answer DECERR with 0xBADCAB1E in both halves of
+  and 16 beats from the gap at `BASE + 0xD000` answer DECERR with 0xBADCAB1E in both halves of
   every beat and the write bursts answer DECERR; `LOCAL_BASE` reads OKAY afterwards.
 * Exclusive access answers OKAY, never EXOKAY, and is performed as a normal access: an `AxLOCK` 1
   read and write of `HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD` (`smc_base_config`), `scratch_cold`
@@ -16882,7 +17005,7 @@ pattern is pinned.
 [arabic]
 . Wait for `tb_fuse_sense_done` (bound 200000 `clk_smc_i` cycles) and start the SEP_IN R and B
   sampler.
-. Error injection. Point: the gap at `BASE + 0xC000`, every beat address of which lies in no decoded
+. Error injection. Point: the gap at `BASE + 0xD000`, every beat address of which lies in no decoded
   extent. Kind: INCR read bursts of 4 and 16 beats and INCR write bursts of 4 and 16 beats. Expected
   response: every R beat DECERR with 0xBADCAB1E in both halves, RLAST on the last beat only, one B
   DECERR per write; `LOCAL_BASE` then reads OKAY with its reset value.
@@ -28270,7 +28393,8 @@ response code and read data seen by the SEP_IN scoreboard; bench signals `tb_fus
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: `dfx_ctrl` addresses, DECERR past the extent and the gap at 0xC.
+*Objective*: `dfx_ctrl` addresses, DECERR past the extent, the next block after the aperture and
+the gap at 0xC.
 
 *Test Coverage*:
 
@@ -28290,9 +28414,11 @@ draws nothing from the seed.
   response and the word are taken from the generated map row of `dfx_ctrl`
   (`memory_map.adoc`, Past Extent: DECERR, 0xBADCAB1E).
 * Writes past the register extent answer DECERR and leave the three registers as they were.
-* The first address after the aperture, 0xC000_C000, lies between the `dfx_ctrl` aperture and
-  `smc_base_config` at BASE + 0x1_0000, so it reaches no unit; `memmap.adoc` states that a read
-  or write between unit apertures answers DECERR, and a read returns 0xBADCAB1E.
+* The first address after the aperture, 0xC000_C000, is the base of the next unit in the
+  generated map, the PWM block, whose first register `ALERT_TEST` is write-only and reads 0. The
+  read answers OKAY with that word, so it is decoded by the PWM block and not by `dfx_ctrl`,
+  whose past-extent answer is DECERR with 0xBADCAB1E. A hole would also read OKAY with 0, so
+  `DUTY_CYCLE_0`, at its generated address, must read its non-zero reset word 0x7FFF_7FFF.
 * The offset 0xC between `DEBUG_CTRL` and `DEBUG_BUS_MUX`, inside the register extent, holds no
   register; `memory_map.adoc` (Hole in Extent) documents OKAY with data 0x0 for it. The leaf
   compares the response and data with the generated Hole in Extent answer.
@@ -28313,9 +28439,9 @@ draws nothing from the seed.
   `dfx_ctrl` register extent. Kind: all-ones past-extent writes. Expected response: each answers
   the generated past-extent write response (DECERR). Read the three registers again and require
   them equal to their step 2 values.
-. Error injection. Point: the SEP_IN AXI read address, at 0xC000_C000, the first address after
-  the `dfx_ctrl` aperture, which lies between unit apertures and reaches no unit. Kind: read of
-  an address between unit apertures. Expected response: DECERR carrying 0xBADCAB1E.
+. Read 0xC000_C000, the first address after the `dfx_ctrl` aperture and the PWM `ALERT_TEST`
+  register, and require OKAY with its generated reset word 0; then read PWM `DUTY_CYCLE_0` and
+  require OKAY with its generated reset word.
 . Read 0xC000_B80C and require OKAY with data 0x0.
 . Wait one rising edge of `clk_smc_i`, log the two bounded waits (the SEP_IN access bound and
   fuse sense), then require the step stamps in order and increasing and print the ordered-fence
@@ -28335,8 +28461,9 @@ carrying 0xBADCAB1E; any other response or data fails it
 |`CHK-APERTURE-PAST-WRITE` |Writes at 0xC000_B818 and 0xC000_BFFC answer DECERR and `STATUS_SMU`,
 `DEBUG_CTRL` and `DEBUG_BUS_MUX` read the values they held before; an OKAY response or a changed
 register fails it
-|`CHK-APERTURE-NEXT-BLOCK` |The read at 0xC000_C000 answers DECERR carrying 0xBADCAB1E; any other
-response or data fails it
+|`CHK-APERTURE-NEXT-BLOCK` |The read at 0xC000_C000, the PWM `ALERT_TEST` register, and the read
+of PWM `DUTY_CYCLE_0` answer OKAY with their generated reset words; any other response or data
+fails it
 |`CHK-APERTURE-HOLE` |The read at offset 0xC compares OKAY, 0x0; any other response or data
 fails it
 |`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
@@ -32960,7 +33087,7 @@ draws nothing from the seed.
 
 *Randomization*: RAND-NONE: directed, the leaf walks the whole cell set in one run.
 
-*Objective*: GPIO_CTRL full sweep over every external GPIO_CTRL entry (65, from `external_gpio_ctrl_indices()`).
+*Objective*: GPIO_CTRL full sweep over every external GPIO_CTRL entry (67, from `external_gpio_ctrl_indices()`).
 
 *Test Coverage*:
 
@@ -33056,7 +33183,7 @@ Drive `smc_gpio_filter_access_sep_test_seq`. Each checker below is a named compa
 
 *Randomization*: RAND-NONE: directed, the leaf walks the whole cell set in one run.
 
-*Objective*: GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
+*Objective*: GPIO_INTF full sweep over all GPIO_INTF_NUM (67) instances.
 
 *Test Coverage*:
 
@@ -33289,7 +33416,7 @@ draws nothing from the seed.
 * bit0 core2pad register-driven value to the pad
 * bit[5:4] enable_rx_tx 2'b01 = TX enabled (drive pad)
 * bit16 interface_enable select register values to drive the pad
-* **Pad direction enables** -- every GPIO interface 0 to 64 except the bench-owned pads 27, 28 and 51, the boot-stall pad 57 and the cool-reset-in pad 61 (60 interfaces, the exclusions logged by name) is programmed alone with DATA_CTRL = interface_enable | lsio_disable | core2pad 1 and enable_rx_tx 01 (TX), 00, 11, then 0x0, so each pad's `core2pad_en_o` and `pad2core_en_o` toggle both ways (`gpio_intf.adoc` DATA_CTRL, `architecture.adoc` Data and Direction Ownership).
+* **Pad direction enables** -- every GPIO interface 0 to 66 except the bench-owned pads 27, 28 and 51, the boot-stall pad 57 and the cool-reset-in pad 63 (62 interfaces, the exclusions logged by name) is programmed alone with DATA_CTRL = interface_enable | lsio_disable | core2pad 1 and enable_rx_tx 01 (TX), 00, 11, then 0x0, so each pad's `core2pad_en_o` and `pad2core_en_o` toggle both ways (`gpio_intf.adoc` DATA_CTRL, `architecture.adoc` Data and Direction Ownership).
 * The absolute enable levels under TX and DATA_CTRL.pad2core under 11 are measured and logged, not compared, while SF-013 is open.
 * The `core2pad_o` data bits of the AVS-driven pads 49 (AVS.CLOCK) and 50 (AVS.MDATA) are logged, not compared, in every other-pads compare, because `AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE` resets to 0 and the AVS clock runs while the bus is idle; their enable bits stay compared.
 
@@ -33299,7 +33426,7 @@ Drive `smc_gpio_output_driveback_test_seq`. Each checker below is a named compar
 
 . Wait for fuse sense done and sample `tb_core2pad_en_o`, `tb_pad2core_en_o` and `tb_core2pad_o` as the baseline; run the wrap-0 TX-high / TX-low / disable leg.
 . For each walked interface w, one at a time with every other interface at reset: write and read back DATA_CTRL with enable_rx_tx 01, 00, 11 and then 0x0, sampling the three pad vectors after each readback.
-. Require the walk to cover 60 interfaces on 60 distinct pads, every access answered OKAY within the AXI driver bound, and print the ordered fence.
+. Require the walk to cover 62 interfaces on 62 distinct pads, every access answered OKAY within the AXI driver bound, and print the ordered fence.
 
 
 *Checkers*:
@@ -33337,15 +33464,15 @@ Drive `smc_gpio_output_driveback_test_seq`. Each checker below is a named compar
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the contract and the sequence
 draws nothing from the seed.
 
-*Objective*: On 56 GPIO pads, every DATA_CTRL RW field reads back, the TX output and output enable, the three direction encodings, RX capture into `pad2core` and the three `use_reg_*` overrides are observed at the pad, and every register is restored.
+*Objective*: On 58 GPIO pads, every DATA_CTRL RW field reads back, the TX output and output enable, the three direction encodings, RX capture into `pad2core` and the three `use_reg_*` overrides are observed at the pad, and every register is restored.
 
 *Test Coverage*:
 
 * Contract `SMC_COV_W2T_010` revision 2 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
-* Every GPIO interface 0 to 64 except the pads the bench drives itself under the default plusargs -- 11, 27, 28, 37, 38, 51, 55, 56, 57 -- is walked (56 pads); interface p is observed at pad p through `tb_core2pad_o`, `tb_core2pad_en_o` and `tb_pad2core_en_o`.
+* Every GPIO interface 0 to 66 except the pads the bench drives itself under the default plusargs -- 11, 27, 28, 37, 38, 51, 55, 56, 57 -- is walked (58 pads); interface p is observed at pad p through `tb_core2pad_o`, `tb_core2pad_en_o` and `tb_pad2core_en_o`.
 * DATA_CTRL takes 0x003F_0031, 0, then core2pad, enable_rx_tx 11, interface_enable, lsio_select, interrupt_enable, lsio_disable and interrupt_type 11 alone, then 0, each read back (`gpio_intf.adoc` DATA_CTRL).
 * A hardware LSIO request outranks interface_enable and lsio_disable gates it (`gpio_intf.adoc` lsio_enable, lsio_select), so every TX, direction, RX and `use_reg_*` word, and the interface-clear starting word, sets lsio_disable.
-* With interface_enable set: enable_rx_tx 01 and core2pad 0, 1, 0 drive the pad, and DATA_CTRL.lsio_enable reads 0 once per pad; enable_rx_tx 00, 10, 11 set the output and input enables; with enable_rx_tx 10 the bench drives the pad 0 then 1 and DATA_CTRL.pad2core follows, on 54 pads: pads 53 and 61, whose inputs feed the isolate request and the cool-reset input, are not driven (SF-023).
+* With interface_enable set: enable_rx_tx 01 and core2pad 0, 1, 0 drive the pad, and DATA_CTRL.lsio_enable reads 0 once per pad; enable_rx_tx 00, 10, 11 set the output and input enables; with enable_rx_tx 10 the bench drives the pad 0 then 1 and DATA_CTRL.pad2core follows, on 56 pads: pads 53 and 63, whose inputs feed the isolate request and the cool-reset input, are not driven (SF-023).
 * With interface_enable and every `use_reg_*` clear, the pad values across core2pad and enable_rx_tx toggles and lsio_disable 1 / 0 are logged (SF-022).
 * With interface_enable clear, `use_reg_tx`, `use_reg_rx` and `use_reg_core2pad | use_reg_tx` each take their field from DATA_CTRL (`gpio_intf.adoc` DATA_CTRL_ENABLE).
 
@@ -33354,7 +33481,7 @@ draws nothing from the seed.
 Drive `smc_gpio_pad_enable_walk_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 . Wait for fuse sense done, release the bench drive on the walked pads and save each walked pad's DATA_CTRL and DATA_CTRL_ENABLE.
-. Run each phase over all 56 pads in turn: field readback, TX, direction, RX, interface clear, use_reg overrides, restore.
+. Run each phase over all 58 pads in turn: field readback, TX, direction, RX, interface clear, use_reg overrides, restore.
 . Poll each probe expectation for at most 64 `clk_smc_i` cycles after the write response, and each `pad2core` expectation for at most 8 DATA_CTRL reads.
 
 *Checkers*:
@@ -33362,19 +33489,19 @@ Drive `smc_gpio_pad_enable_walk_test_seq`. Each checker below is a named compare
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-FIELD-RB` |On all 56 walked pads every DATA_CTRL readback masked to 0x003F_0031 equals the written word (560 compares); `pad2core` and `lsio_enable` are logged. Fails on a masked mismatch, a walked count other than 56, a non-OKAY response, or X
-|`CHK-GPIO-TX-OUT` |With lsio_disable 1, interface_enable 1 and enable_rx_tx 01, on all 56 pads `tb_core2pad_en_o[p]` is 1 and `tb_core2pad_o[p]` follows core2pad 0, 1, 0 within the bound (168 observations), and DATA_CTRL.lsio_enable reads 0. Fails on OE 0, an output not following core2pad, lsio_enable 1 with lsio_disable set, a poll expiring, fewer than 56 pads, or X
-|`CHK-GPIO-DIR` |With lsio_disable 1 and interface_enable 1, on all 56 pads enable_rx_tx 00 / 10 / 11 give `tb_core2pad_en_o[p]` 0 / 0 / 1 and `tb_pad2core_en_o[p]` 0 / 1 / 1 (168 observations). Fails on a value off the table, a poll expiring, fewer than 56 pads, or X
-|`CHK-GPIO-RX-IN` |With lsio_disable 1, interface_enable 1 and enable_rx_tx 10, on the 54 walked pads other than 53 and 61 DATA_CTRL.pad2core reads 0 while the pad is driven 0 and 1 while it is driven 1 (108 observations); pads 53 and 61 are listed as skipped. Fails on pad2core not following within the bound, another pad skipped, pad 53 or 61 driven, or fewer than 54 pads
+|`CHK-GPIO-FIELD-RB` |On all 58 walked pads every DATA_CTRL readback masked to 0x003F_0031 equals the written word (580 compares); `pad2core` and `lsio_enable` are logged. Fails on a masked mismatch, a walked count other than 58, a non-OKAY response, or X
+|`CHK-GPIO-TX-OUT` |With lsio_disable 1, interface_enable 1 and enable_rx_tx 01, on all 58 pads `tb_core2pad_en_o[p]` is 1 and `tb_core2pad_o[p]` follows core2pad 0, 1, 0 within the bound (174 observations), and DATA_CTRL.lsio_enable reads 0. Fails on OE 0, an output not following core2pad, lsio_enable 1 with lsio_disable set, a poll expiring, fewer than 58 pads, or X
+|`CHK-GPIO-DIR` |With lsio_disable 1 and interface_enable 1, on all 58 pads enable_rx_tx 00 / 10 / 11 give `tb_core2pad_en_o[p]` 0 / 0 / 1 and `tb_pad2core_en_o[p]` 0 / 1 / 1 (174 observations). Fails on a value off the table, a poll expiring, fewer than 58 pads, or X
+|`CHK-GPIO-RX-IN` |With lsio_disable 1, interface_enable 1 and enable_rx_tx 10, on the 56 walked pads other than 53 and 63 DATA_CTRL.pad2core reads 0 while the pad is driven 0 and 1 while it is driven 1 (112 observations); pads 53 and 63 are listed as skipped. Fails on pad2core not following within the bound, another pad skipped, pad 53 or 63 driven, or fewer than 56 pads
 |`CHK-GPIO-IFACE-CLEAR` |Each pad starts from lsio_disable \| interface_enable \| enable_rx_tx 01 \| core2pad 1; then, with interface_enable and every `use_reg_*` clear, no walked pad has both its output following core2pad 0, 1, 0 and its output enable following enable_rx_tx[0] 01, 00, 01; the output, output-enable and input-enable values, with and without lsio_disable, are logged (LINKED-ISSUE SF-022). Fails on a pad that follows the register, a skipped pad, or X
-|`CHK-GPIO-USE-REG` |With interface_enable 0 and lsio_disable 1, on all 56 pads `use_reg_tx` gives OE 1 / 0 for enable_rx_tx 01 / 00; `use_reg_rx` gives IE 1 / 0 for 10 / 00; `use_reg_core2pad \| use_reg_tx` gives OE 1 and output 0 / 1 following core2pad (336 observations). Fails on an override not taking its field, a poll expiring, fewer than 56 pads, or X
+|`CHK-GPIO-USE-REG` |With interface_enable 0 and lsio_disable 1, on all 58 pads `use_reg_tx` gives OE 1 / 0 for enable_rx_tx 01 / 00; `use_reg_rx` gives IE 1 / 0 for 10 / 00; `use_reg_core2pad \| use_reg_tx` gives OE 1 and output 0 / 1 following core2pad (348 observations). Fails on an override not taking its field, a poll expiring, fewer than 58 pads, or X
 |`CHK-NONVAC` |Ordered fence SETUP < FIELD-RB < TX < DIRECTION < RX < IFACE-CLEAR < USE-REG < RESTORED, each term with a non-zero access count and a later sim time than the one before
 |`CHK-TIMEOUT-PATHS` |Every probe poll, `pad2core` poll and SEP_IN access is bounded; the line logs each bound and the last observed state, and no wait expires
 |===
 
 *Pass Criteria*: all eight checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The pad values with interface_enable and every `use_reg_*` clear are logged only (SF-022). The nine bench-driven pads are not walked, and the RX drive leaves out pads 53 and 61 (SF-023).
+*Scope limit*: The pad values with interface_enable and every `use_reg_*` clear are logged only (SF-022). The nine bench-driven pads are not walked, and the RX drive leaves out pads 53 and 63 (SF-023).
 
 '''''
 
@@ -33493,19 +33620,19 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: The five mandatory external-window control blocks and the first, second and last of the 65 per-pad control blocks decode into the adopter external AXI-Lite window.
+*Objective*: The five mandatory external-window control blocks and the first, second and last of the 67 per-pad control blocks decode into the adopter external AXI-Lite window.
 
 *Test Coverage*:
 
 * Addresses come from the generated bootrom register header, the same map the boot ROM is built against.
 * The adopter's implementation of these blocks is outside this repository, so nothing behind the window is specified or credited here. What the SMC side owns, and what is measured here, is the decode into the window: every access must drive the external port while it is in flight and must complete with a decode error (DECERR, the AMBA code for an address nobody decodes) carrying the error-slave word 0xBADCAB1E that every error slave in the design returns, so another word means a live block answered in the window's place. An access that wedges or is answered by another block fails.
 * The activity sampler keeps running for a few cycles after the access completes, so a request still being drained is not missed; a zero active-cycle count fails.
-* The per-pad instance list and stride are checked against the chapter's 65 instances and 0x20 stride, and the last instance's address is checked to equal base plus index times stride, before the first, second and last instance are probed.
+* The per-pad instance list and stride are checked against the chapter's 67 instances and 0x20 stride, and the last instance's address is checked to equal base plus index times stride, before the first, second and last instance are probed.
 * Every probe is credited only for cycles on which the external port presents a request on the matching channel carrying the probed address, so activity from another master or at another address in the same window does not count. A write into the first per-pad block must likewise reach the port as a write request for that address and be refused, so the terminator's write channel is shown as its read channel is. The error code is reported, not asserted.
 
 *Test Procedure*:
 
-Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer: probe the five control blocks, check the generated per-pad geometry against the chapter, probe per-pad instances 0, 1 and 64, require the access count to have reached its floor and print the cell ledger. The leaf then requires an external-port activity record for every probe with a non-zero active-cycle count, and books a protocol-VIP record.
+Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer: probe the five control blocks, check the generated per-pad geometry against the chapter, probe per-pad instances 0, 1 and 66, require the access count to have reached its floor and print the cell ledger. The leaf then requires an external-port activity record for every probe with a non-zero active-cycle count, and books a protocol-VIP record.
 
 *Checkers*:
 
@@ -33546,7 +33673,7 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* The six wraps are taken from the integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`): three SPI data lanes and the SPI chip select, whose function the bench leaves disabled, the thermal-emergency input and a pad the table reserves. Whether a wrap is free is measured: each must read its enable bit clear before it is programmed and follow the bench drive on `pad2core`.
+* The six wraps are taken from the integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`): three SPI data lanes and the SPI chip select, whose function the bench leaves disabled, the thermal-emergency input and the PWM[1] pad, which PWM `CTRL.PAD_EN` leaves to register control from reset. Whether a wrap is free is measured: each must read its enable bit clear before it is programmed and follow the bench drive on `pad2core`.
 * Each wrap's `core2pad_en_o` bit is required to read 0 before it is programmed, so the bit that later moves is the one this test caused to move; a wrap already enabled fails rather than being skipped.
 * The pad is driven 0, then 1, then 0, and `DATA_CTRL.pad2core` is polled to follow each level within a bounded number of reads; the bound raises, and the number of reads each level needed is reported.
 * While a wrap's output enable is programmed, exactly one bit of `tb_core2pad_en_o` may move: any other bit moving raises, which is what attributes the change to that wrap rather than to the write itself.
@@ -33652,9 +33779,9 @@ register description.
   and reads 0 after being cleared.
 * `DATA_CTRL` and `DATA_CTRL_ENABLE` are separate registers: a write of `DATA_CTRL.core2pad` and a
   write of `DATA_CTRL_ENABLE` = 0x31 do not disturb each other in either write order.
-* Instance 60 is the pad the integrator pad table marks Reserved
-  (`doc/integrator/meta/ocah_gpio_table.csv`), so the test changes no pad that another function
-  uses.
+* Instance 60 is the PWM[1] pad (`doc/integrator/meta/ocah_gpio_table.csv`); with PWM `CTRL.PAD_EN` at its reset 0 the
+  pad is register-controlled GPIO, so the
+  test changes no pad that another function drives.
 * Only the register fields are compared; the effect of the overrides on the pad is not driven or
   probed here.
 
@@ -33662,7 +33789,7 @@ register description.
 
 [arabic]
 . Wait for fuse sense done, require the integrator pad table to give pad 60 the function
-  Reserved, and require the three override masks to be 0x1, 0x10 and 0x20.
+  PWM[1], and require the three override masks to be 0x1, 0x10 and 0x20.
 . Read `DATA_CTRL` (writable bits) and `DATA_CTRL_ENABLE` of instance 60 and require their reset
   values.
 . For each of `use_reg_core2pad`, `use_reg_tx` and `use_reg_rx`: write the bit alone to
@@ -33707,7 +33834,7 @@ not driven or probed here.
 
 *Source Module*: `smc_gpio_data_ctrl_ro_status_test`
 
-*BFM / Model*: SEP_IN AXI driver for the CSR accesses; `DATA_CTRL` of all 65 GPIO interface
+*BFM / Model*: SEP_IN AXI driver for the CSR accesses; `DATA_CTRL` of all 67 GPIO interface
 instances (read scan) and `DATA_CTRL` and `DATA_CTRL_ENABLE` of instance 60 (the generated SMC
 address symbols for the `gpio_intf` register arrays, 32-bit accesses); the pad of instance 60 is
 driven through the bench external-pin path `tb_gpio_ext_drive_en` / `tb_gpio_ext_drive_value`, bit
@@ -33746,10 +33873,10 @@ register description.
 *Test Procedure*:
 
 [arabic]
-. Wait for fuse sense done and check the register shape: 65 `DATA_CTRL` instances, writable mask
+. Wait for fuse sense done and check the register shape: 67 `DATA_CTRL` instances, writable mask
   0x003F_0031, declared mask equal to the writable mask plus bits 25 and 31, reset word 0 and the
   `use_reg_rx` mask 0x20.
-. Read `DATA_CTRL` of all 65 instances, record the pads whose bit 25 reads 1 and require the
+. Read `DATA_CTRL` of all 67 instances, record the pads whose bit 25 reads 1 and require the
   writable bits of instance 60 to read the reset value.
 . Error injection. Point: `DATA_CTRL` bit 25 (`lsio_enable`, software read-only) of instance 60,
   and of each pad whose bit 25 read 1 in the scan. Kind: a software write of 0x0200_0000 (bit 25
@@ -33838,14 +33965,15 @@ draws nothing from the seed.
   `enable_rx_tx` bits, 0x10000 `interface_enable`, 0x40000 `interrupt_enable`, 0x200000 the rising
   edge `interrupt_type`) each read back as exactly themselves, setting only the named field
   (`doc/programmer/src/smc-programming.adoc`, GPIO).
-* Instance 60 is the pad the integrator pad table marks Reserved
-  (`doc/integrator/meta/ocah_gpio_table.csv`). The `core2pad_en_o` bit is sampled and printed after
+* Instance 60 is the PWM[1] pad (`doc/integrator/meta/ocah_gpio_table.csv`); with PWM `CTRL.PAD_EN` at its reset 0 the
+  pad is register-controlled GPIO. The
+  `core2pad_en_o` bit is sampled and printed after
   the `enable_rx_tx` leg without being compared.
 
 *Test Procedure*:
 
 [arabic]
-. Wait for fuse sense done; require the integrator pad table to give pad 60 the function Reserved,
+. Wait for fuse sense done; require the integrator pad table to give pad 60 the function PWM[1],
   the field masks to add up to the writable mask, `tb_core2pad_en_o` to exist, and `DATA_CTRL` of
   instance 60 to read the reset value.
 . For each `enable_rx_tx` value 0 to 3 write it alone, read back and require the whole writable word
@@ -34022,14 +34150,14 @@ register description.
   protection value that satisfies the filter they arm (1, the reset value of both requirements);
   `write_filter_enable`, `read_filter_enable` and both together can each be set and cleared and read
   back exactly. The register description requires reading the register back after writing it.
-* Instance 60 is the pad the integrator pad table marks Reserved
-  (`doc/integrator/meta/ocah_gpio_table.csv`).
+* Instance 60 is the PWM[1] pad (`doc/integrator/meta/ocah_gpio_table.csv`); with PWM `CTRL.PAD_EN` at its reset 0 the
+  pad is register-controlled GPIO.
 * The effect of an armed filter on accesses with another protection value is not driven here.
 
 *Test Procedure*:
 
 [arabic]
-. Wait for fuse sense done, require the integrator pad table to give pad 60 the function Reserved,
+. Wait for fuse sense done, require the integrator pad table to give pad 60 the function PWM[1],
   and read `ACCESS_FILTER` of instance 60 and require the reset word (both requirements 1, both
   enables 0).
 . For `awprot_requirement` and then `arprot_requirement`, write each value 0 to 7 with the other
@@ -34077,7 +34205,7 @@ filter they arm.
 *Source Module*: `smc_gpio_intf_decode_map_test`
 
 *BFM / Model*: SEP_IN AXI driver for the CSR accesses; `DATA_CTRL`, `DATA_CTRL_ENABLE` and
-`ACCESS_FILTER` of all 65 GPIO interface instances (the generated SMC address symbols for the
+`ACCESS_FILTER` of all 67 GPIO interface instances (the generated SMC address symbols for the
 `gpio_intf` register arrays and their field masks and bit positions, 32-bit accesses); the
 scoreboard's SEP_IN value-check count; no pad pin is driven and no output is probed
 
@@ -34090,16 +34218,16 @@ scoreboard's SEP_IN value-check count; no pad pin is driven and no output is pro
 
 *Test Coverage*:
 
-* The GPIO block holds one interface instance per pad, 65 in all, each with `DATA_CTRL` at offset
+* The GPIO block holds one interface instance per pad, 67 in all, each with `DATA_CTRL` at offset
   0x0, `DATA_CTRL_ENABLE` at 0x4 and `ACCESS_FILTER` at 0x8, at the base 0xC000_3000 plus 0x10 per
   pin (`doc/programmer/src/smc-programming.adoc`, GPIO; `hw/ip/gpio/regs/gpio_intf.rdl`).
-* The first and last instances (0 and 64) answer at the three offsets, and a different pattern
+* The first and last instances (0 and 66) answer at the three offsets, and a different pattern
   written to each register reads back at its own offset.
 * A distinct pattern written to the `ACCESS_FILTER` and `DATA_CTRL_ENABLE` of every instance reads
-  back from the same instance after all 130 writes, so no instance aliases another;
+  back from the same instance after all 134 writes, so no instance aliases another;
   `ACCESS_FILTER` carries the instance number modulo 64 over its two requirement fields and
-  `DATA_CTRL_ENABLE` carries the instance number modulo 8 over its three bits (instance 64 adds one
-  to its number, so the pair for instance 64 differs from the pair for instance 0); the
+  `DATA_CTRL_ENABLE` carries the instance number modulo 8 over its three bits (instances 64 to 66 add
+  one to their number, so the pair for instance 64 differs from the pair for instance 0); the
   `DATA_CTRL` of every instance is unchanged by those writes.
 * On one instance, a write to any one of the three registers leaves the other two at their earlier
   values, so the three registers do not alias each other.
@@ -34111,9 +34239,9 @@ scoreboard's SEP_IN value-check count; no pad pin is driven and no output is pro
 *Test Procedure*:
 
 [arabic]
-. Wait for fuse sense done, require 65 instances of each of the three registers in the generated
+. Wait for fuse sense done, require 67 instances of each of the three registers in the generated
   map, and snapshot all three registers of every instance.
-. For instances 0 and 64: require the three offsets 0x0, 0x4 and 0x8; read `ACCESS_FILTER` and
+. For instances 0 and 66: require the three offsets 0x0, 0x4 and 0x8; read `ACCESS_FILTER` and
   require its reset word; write `core2pad` to `DATA_CTRL`, `use_reg_core2pad` plus `use_reg_rx` to
   `DATA_CTRL_ENABLE` and `awprot_requirement` 3 plus `arprot_requirement` 5 to `ACCESS_FILTER`;
   read all three and require the written patterns; restore the snapshot values and require them.
@@ -34122,7 +34250,7 @@ scoreboard's SEP_IN value-check count; no pad pin is driven and no output is pro
   `DATA_CTRL_ENABLE` pattern in which `use_reg_core2pad`, `use_reg_tx` and `use_reg_rx` carry the
   bits of (instance number plus instance number divided by 64) modulo 8. Read back
   every instance's `ACCESS_FILTER` and `DATA_CTRL_ENABLE` against its pattern and its `DATA_CTRL`
-  against the snapshot; require all 65 read-back pairs to be pairwise distinct and the scoreboard's
+  against the snapshot; require all 67 read-back pairs to be pairwise distinct and the scoreboard's
   value-check count to have grown by at least 130; restore and re-read every instance.
 . On instance 60 write a pattern to all three registers and read them back; then write a new value
   to `DATA_CTRL`, then to `DATA_CTRL_ENABLE`, then to `ACCESS_FILTER`, each alone, and after each
@@ -34138,11 +34266,11 @@ scoreboard's SEP_IN value-check count; no pad pin is driven and no output is pro
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-DECODE-ENDPOINTS` |Instances 0 and 64 answer OKAY at offsets 0x0, 0x4 and 0x8, and each
+|`CHK-GPIO-DECODE-ENDPOINTS` |Instances 0 and 66 answer OKAY at offsets 0x0, 0x4 and 0x8, and each
 pattern written to a register reads back at its own offset, with `ACCESS_FILTER` first reading its
 reset word.
-|`CHK-GPIO-DECODE-NO-ALIAS` |After all writes every one of the 65 instances reads back its own
-`ACCESS_FILTER` and `DATA_CTRL_ENABLE` pattern, its `DATA_CTRL` is unchanged, all 65 read-back pairs
+|`CHK-GPIO-DECODE-NO-ALIAS` |After all writes every one of the 67 instances reads back its own
+`ACCESS_FILTER` and `DATA_CTRL_ENABLE` pattern, its `DATA_CTRL` is unchanged, all 67 read-back pairs
 differ, and all registers restore.
 |`CHK-GPIO-DECODE-REG-DISTINCT` |On instance 60, writing any one of `DATA_CTRL`, `DATA_CTRL_ENABLE`
 and `ACCESS_FILTER` leaves the other two at their earlier values.
@@ -34173,7 +34301,7 @@ addresses. Enrolled in: `all`, `hosted`.
 *Source Module*: `smc_gpio_intf_reset_writeback_test`
 
 *BFM / Model*: SEP_IN AXI driver for the CSR accesses; `ACCESS_FILTER`, `DATA_CTRL_ENABLE` and
-`DATA_CTRL` of all 65 GPIO interface instances (the generated SMC address symbols for the
+`DATA_CTRL` of all 67 GPIO interface instances (the generated SMC address symbols for the
 `gpio_intf` register arrays, 32-bit accesses); the scoreboard's SEP_IN value-check count; no pad pin
 is driven and no output is probed
 
@@ -34192,7 +34320,7 @@ register description.
   (`hw/ip/gpio/regs/gpio_intf.rdl`, regs `ACCESS_FILTER`, `DATA_CTRL_ENABLE` and `DATA_CTRL`); the
   reset word of `ACCESS_FILTER` in the generated map equals 0x0001_0100.
 * A non-reset pattern is written and read back first on each of the three registers of each of the
-  65 instances (`ACCESS_FILTER` 0x0006_0500, `DATA_CTRL_ENABLE` 0x20 and `DATA_CTRL` 0x0030_0000);
+  67 instances (`ACCESS_FILTER` 0x0006_0500, `DATA_CTRL_ENABLE` 0x20 and `DATA_CTRL` 0x0030_0000);
   writing the reset word back to each register is then accepted and reads back as the reset word,
   so a write of the reset word takes effect and the writable bits of `DATA_CTRL` return to 0.
 * The first reads of the registers are taken as a snapshot only and are not compared; the pad state
@@ -34201,7 +34329,7 @@ register description.
 *Test Procedure*:
 
 [arabic]
-. Wait for fuse sense done, require 65 instances of each of the three registers in the generated
+. Wait for fuse sense done, require 67 instances of each of the three registers in the generated
   map and the `ACCESS_FILTER` reset word 0x0001_0100.
 . Read all three registers of every instance as an uncompared snapshot.
 . For each instance in turn write the non-reset pattern to the three registers and require it on
@@ -34216,14 +34344,14 @@ register description.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-RESET-WRITEBACK` |On all 65 instances `ACCESS_FILTER` reads 0x0001_0100,
+|`CHK-GPIO-RESET-WRITEBACK` |On all 67 instances `ACCESS_FILTER` reads 0x0001_0100,
 `DATA_CTRL_ENABLE` reads 0 and the software-writable bits of `DATA_CTRL` read 0 after the reset
 words are written back.
 |`CHK-NONVAC` |The ordered fence (bring-up, initial reads, reset-word writes, write-back reads) with
 increasing time stamps and the checker line printed after the write-back reads.
 |===
 
-*Pass Criteria*: both checkers hold: all 65 instances read back the reset words of the three
+*Pass Criteria*: both checkers hold: all 67 instances read back the reset words of the three
 registers after the write-back. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The first reads of the three registers of every instance are taken as a snapshot only
@@ -34259,7 +34387,7 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * The GPIO interrupt sources are OR-reduced into two lines: sources 0 to 31 raise PLIC source 284
-  (`tb_peripheral_interrupts[28]`) and sources 32 to 64 raise PLIC source 285
+  (`tb_peripheral_interrupts[28]`) and sources 32 to 66 raise PLIC source 285
   (`tb_peripheral_interrupts[29]`) (`hw/sys/smc/doc/interrupts.adoc`, the 284 and 285 rows).
 * A pad interrupt on wrap 4 or 31 asserts only the lower line, and on wrap 32 or 60 only the upper
   line, within a bound of 64 cycles and while the pad is held.
@@ -34522,7 +34650,7 @@ outcomes that the GPIO register descriptions state, with the reset words logged 
   `ACCESS_FILTER` beside 0x00010100, read and write filters disabled; a drawn subset of instances
   adds no cell to the words that `smc_gpio_intf_full_sweep_test` (`CHK-GPIO-INTF-DATA-CTRL-SWEEP`,
   the `DATA_CTRL` reset word) and `smc_gpio_intf_reset_writeback_test` (`CHK-GPIO-RESET-WRITEBACK`,
-  `ACCESS_FILTER` 0x0001_0100) grade on all 65 instances.
+  `ACCESS_FILTER` 0x0001_0100) grade on all 67 instances.
 * GPIO_CTRL window (`hw/ip/gpio/regs/gpio_ctrl.rdl`; `hw/sys/smc/doc/memmap.adoc`, AXI-Lite External
   Window): the pull enable (default disabled), pull select (default pull-down) and `drive_strength`
   (reset 2) of the register description sit behind the per-pad GPIO controls of the adopter window,
@@ -34541,8 +34669,8 @@ outcomes that the GPIO register descriptions state, with the reset words logged 
   set, type 0 raises `tb_gpio_irq_any` while the pad is high and type 1 while it is low, and each
   drops when the pad returns to the idle level; with `interrupt_enable` clear, on the level-type
   instance pinned with the enable clear on every seed, `tb_gpio_irq_any` stays 0 through a sequence
-  that reaches the active level, the other 64 instances being at their reset `DATA_CTRL` so that the
-  OR over all 65 interfaces (`tb_gpio_irq_any`, `tb_top.sv`) carries the drawn instance alone
+  that reaches the active level, the other 66 instances being at their reset `DATA_CTRL` so that the
+  OR over all 67 interfaces (`tb_gpio_irq_any`, `tb_top.sv`) carries the drawn instance alone
   (`hw/ip/gpio/doc/architecture.adoc`, Interrupts: the registered condition is gated by
   `DATA_CTRL.interrupt_enable` at `interrupt_o`; the de-assert on a clear is graded by
   `smc_gpio_irq_mask_deassert_test`).
@@ -34553,7 +34681,7 @@ outcomes that the GPIO register descriptions state, with the reset words logged 
   direction or an unchanged level raises none; the pulse is not stretched, so the per-rise sampler
   of the sequence catches it; with `interrupt_enable` clear, on the edge-type instance pinned with
   the enable clear on every seed, `tb_gpio_irq_any` stays 0 through a sequence that holds the named
-  edge, the other 64 instances at their reset `DATA_CTRL` as above.
+  edge, the other 66 instances at their reset `DATA_CTRL` as above.
 
 *Test Procedure*:
 
@@ -34578,9 +34706,9 @@ for the other codes require the bit 0 on each of 64 rises after the write and af
 every sampled rise require no other bit to differ from the snapshot taken before the write; return
 `DATA_CTRL` to its reset word before the next instance; print `CHK-PADCFG-DIR`.
 . Start the per-rise sampler of `tb_gpio_irq_any`. For each drawn instance with RX enabled in turn,
-the other 64 instances at their reset `DATA_CTRL` (each instance is returned to its reset word and
+the other 66 instances at their reset `DATA_CTRL` (each instance is returned to its reset word and
 its pad released before the next is taken, and `tb_gpio_irq_any` must read 0 after that, because it
-is the OR over all 65 interfaces): put the pad at the idle level of the drawn type (the bench drive
+is the OR over all 67 interfaces): put the pad at the idle level of the drawn type (the bench drive
 for both codes, with `core2pad` set to the same level for code 11), write `DATA_CTRL` with the drawn
 code, `interface_enable` and
 `interrupt_type` with `interrupt_enable` clear, wait 24 rises, write the drawn `interrupt_enable`,
@@ -34607,7 +34735,7 @@ types 2 and 3 the window holds exactly one high sample after the edge the type n
 |`CHK-PADCFG-RESET` |Logged control, not graded: on every drawn instance the reads of
 `enable_rx_tx`, `interrupt_type` and `ACCESS_FILTER` before any write are printed beside the control
 words 0, 0 and 0x00010100, which `smc_gpio_intf_full_sweep_test` (`CHK-GPIO-INTF-DATA-CTRL-SWEEP`)
-and `smc_gpio_intf_reset_writeback_test` (`CHK-GPIO-RESET-WRITEBACK`) grade on all 65 instances;
+and `smc_gpio_intf_reset_writeback_test` (`CHK-GPIO-RESET-WRITEBACK`) grade on all 67 instances;
 the response and data of the GPIO_CTRL `CONTROL` address of every drawn instance are printed, not
 asserted here, beside the error response `smc_gpio_ctrl_full_sweep_test`
 (`CHK-GPIO-CTRL-WINDOW-ERROR-SWEEP`) grades.
@@ -34738,13 +34866,13 @@ reserved pads); every other stimulus value is pinned.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: `INPUT_BY_DEFAULT` per instance on the pad vectors: RX on 62 pads and off on pads 62-64, TX off and data 0, forced on all 65 controllers while a cold reset is asserted and holding on the free pads in operation.
+*Objective*: `INPUT_BY_DEFAULT` per instance on the pad vectors: RX on 60 pads and off on pads 59-62 and 64-66, TX off and data 0, forced on all 67 controllers while a cold reset is asserted and holding on the free pads in operation.
 
 *Test Coverage*:
 
-* `periphs.adoc` (parameter table): `INPUT_BY_DEFAULT` per instance from `smc_padring_pkg::DefaultDirectionMap`, input on 62 of 65 GPIOs and output on the remaining 3; the package the document delegates to names them as pads 62-64. `gpio` `architecture.adoc` (Data and Direction Ownership, priority 4): with no owner, output data 0, TX disabled, RX set by `INPUT_BY_DEFAULT`; (Reset and Strap Capture): `rst_cold_ni` forces controller outputs to data 0, TX disabled and RX = `INPUT_BY_DEFAULT`.
+* `periphs.adoc` (parameter table): `INPUT_BY_DEFAULT` per instance from `smc_padring_pkg::DefaultDirectionMap`, input on 60 of 67 GPIOs and output on the remaining 7; the package the document delegates to names them as pads 59-62 and 64-66. `gpio` `architecture.adoc` (Data and Direction Ownership, priority 4): with no owner, output data 0, TX disabled, RX set by `INPUT_BY_DEFAULT`; (Reset and Strap Capture): `rst_cold_ni` forces controller outputs to data 0, TX disabled and RX = `INPUT_BY_DEFAULT`.
 * In operation the map is graded on the pads whose `lsio_interface_select` is 0: every one has RX on (all free pads are inputs in the map), TX off and data 0, at entry and again after the cold reset's release.
-* Pads 1 and 2 (SPI lanes 1 and 2, no LSIO owner at reset) are programmed as register-owned outputs driving 1 with RX off before the reset, so the forcing has state to undo: with the cold reset asserted `core2pad_en_o` is 0 on all 65 pads, `core2pad_o` is 0 on all 65 and `pad2core_en_o` equals the map, 62 ones with pads 62-64 off, LSIO-owned pads included.
+* Pads 1 and 2 (SPI lanes 1 and 2, no LSIO owner at reset) are programmed as register-owned outputs driving 1 with RX off before the reset, so the forcing has state to undo: with the cold reset asserted `core2pad_en_o` is 0 on all 67 pads, `core2pad_o` is 0 on all 67 and `pad2core_en_o` equals the map, 60 ones with pads 59-62 and 64-66 off, LSIO-owned pads included.
 * After the release the fuse sense is waited for, the free pads read the map again and the two programmed DATA_CTRL words read 0.
 * The reset agent's WAIT_STATE handshakes bound the cold assertion and release; the pad-vector waits are bounded by 64 rises; expiry fails.
 
@@ -34759,7 +34887,7 @@ draws nothing from the seed.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-DEFAULT-DIRECTION-MAP` |With the cold reset asserted after two pads were programmed as outputs driving 1 with RX off: `pad2core_en_o` == `DefaultDirectionMap` (popcount 62, off exactly on pads 62-64), `core2pad_en_o` == 0 and `core2pad_o` == 0 on all 65; at entry and after the release every pad with `lsio_interface_select` 0 has RX on, TX off and data 0, and the programmed DATA_CTRL words read 0 after the release. Fails on any pad off the map under reset, an output enable or data 1 under reset, a free pad off the map in operation, or a register that survived the reset
+|`CHK-GPIO-DEFAULT-DIRECTION-MAP` |With the cold reset asserted after two pads were programmed as outputs driving 1 with RX off: `pad2core_en_o` == `DefaultDirectionMap` (popcount 60, off exactly on pads 59-62 and 64-66), `core2pad_en_o` == 0 and `core2pad_o` == 0 on all 65; at entry and after the release every pad with `lsio_interface_select` 0 has RX on, TX off and data 0, and the programmed DATA_CTRL words read 0 after the release. Fails on any pad off the map under reset, an output enable or data 1 under reset, a free pad off the map in operation, or a register that survived the reset
 |===
 
 *Pass Criteria*: `CHK-GPIO-DEFAULT-DIRECTION-MAP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `gpio`.
@@ -46228,12 +46356,12 @@ is read once and held against the write, not predicted from the integration.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the contract and the sequence
 draws nothing from the seed.
 
-*Objective*: One reference register of each of the 133 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; all 24 remap regions take lane-7-only and lane-7-unstrobed writes and restore exactly; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
+*Objective*: One reference register of each of the 135 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; all 24 remap regions take lane-7-only and lane-7-unstrobed writes and restore exactly; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
 
 *Test Coverage*:
 
 * Contract `SMC_COV_W2T_008` revision 5 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
-* The instance list comes from the generated map (`seq_lib/smc_rdl_regmap.py`): alias 8, M-mode 8, Xvisor 8, inbound filter 16, outbound filter 16, GPIO 65, CPU_CTRL 1, telemetry 3, timer 1, zeroer 1, UART 4, eFuse control 1, CLA 1 (133). The reference registers are alias `region_start`, output remap `region_attrs`, filter `END_ADDR`, GPIO `ACCESS_FILTER`, CPU_CTRL `RESET_VECTOR[0]`, timer `CTRL`, telemetry `STATUS`, zeroer `SIZE`, UART `LSR`, eFuse `EFUSE_READ_REQ_TIMEOUT` and CLA `Trdstcontrol`.
+* The instance list comes from the generated map (`seq_lib/smc_rdl_regmap.py`): alias 8, M-mode 8, Xvisor 8, inbound filter 16, outbound filter 16, GPIO 67, CPU_CTRL 1, telemetry 3, timer 1, zeroer 1, UART 4, eFuse control 1, CLA 1 (135). The reference registers are alias `region_start`, output remap `region_attrs`, filter `END_ADDR`, GPIO `ACCESS_FILTER`, CPU_CTRL `RESET_VECTOR[0]`, timer `CTRL`, telemetry `STATUS`, zeroer `SIZE`, UART `LSR`, eFuse `EFUSE_READ_REQ_TIMEOUT` and CLA `Trdstcontrol`.
 * Each reference register takes a full-width read, 1-byte reads at every byte offset, 2-byte reads at offsets 0..6 (64-bit) or 0..2 (32-bit), and a second full-width read that must equal the first; outside the inbound filter (SF-006) it must equal the documented reset over the declared fields. Sub-word data and RRESP are logged against the reference read (SF-009).
 * CPU_CTRL `SCRATCH[0]` (preloaded 0) takes 0xA5 at offsets 1 and 3; `START_ADDR` of inbound and outbound entry 15 takes 0x5A at lanes 1, 3 and 5; timer `CTRL` takes 0x05 at offset 1 and telemetry 0 `CTRL` 0x30 at offset 1. `SCRATCH[1]`, the entry's `END_ADDR`, `TIMER_PRESET_LO` and `INTR_ENABLE` must not change, and a full-width restore must read back the pre-leg value.
 * Alias, M-mode and Xvisor `REGION[7].region_attrs` take all ones, then 0; every documented field must read all ones, then 0 (`alias_remap.adoc`, `output_remap.adoc`). Reserved bits are logged (SF-001).
@@ -46252,7 +46380,7 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SWEEP-SUBWORD` |All 133 instances are visited with the family counts of the map, every planned sub-word read completes, the second full-width read equals the first on 133/133, and 117/117 outside the inbound filter equal the documented reset; sub-word lanes and RRESP are logged (LINKED-ISSUE SF-009)
+|`CHK-SWEEP-SUBWORD` |All 135 instances are visited with the family counts of the map, every planned sub-word read completes, the second full-width read equals the first on 135/135, and 119/119 outside the inbound filter equal the documented reset; sub-word lanes and RRESP are logged (LINKED-ISSUE SF-009)
 |`CHK-SWEEP-BYTE-LANE` |The five full-width restores read back the pre-leg value and the neighbour registers never change; the byte-lane readbacks are logged (LINKED-ISSUE SF-009, SF-031)
 |`CHK-SWEEP-FULLWIDTH-REMAP` |Alias `region_attrs` reads valid 1, cacheable 0xF, offset [55:12] all ones; M-mode and Xvisor read valid 1 and offset [55:0] all ones; all three read their documented fields 0 after the zero write; reserved bits logged (LINKED-ISSUE SF-001)
 |`CHK-SWEEP-VALID-LANE` |All 24 remap regions are visited (8 alias, 8 M-mode, 8 Xvisor) and every access answers OKAY; the 8 alias regions save valid 0; the WSTRB 0xFF restore reads back the saved word on 24/24; the counts of regions reading valid 1 after the WSTRB 0x80 write and reading valid 1 after the WSTRB 0x7F write (bit 63 set, so that count does not separate an honoured lane-7 strobe from an ignored one; the valid-0 leg carries that evidence), the count of saved-valid-0 regions still reading valid 0 after the valid-0 WSTRB 0x7F write (bit 63 set) as `valid-0 lane-7-unstrobed kept 0 <k>/<z>`, and the lane fields, are logged (LINKED-ISSUE SF-009)
@@ -46635,7 +46763,7 @@ Drive `smc_cpu_mmio_write_wedge_test_seq`. Each checker below is a named compare
 *Randomization*: RAND-NONE: directed, the cells are the stated reset values and access classes of
 the register description.
 
-*Objective*: Cycle GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER on all 65 instances.
+*Objective*: Cycle GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER on all 67 instances.
 
 *Test Coverage*:
 
@@ -46655,10 +46783,10 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP` |All 65 DATA_CTRL_ENABLE instances read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
-|`CHK-GPIO-INTF-ACCESS-FILTER-SWEEP` |All 65 ACCESS_FILTER instances took both filter enables and both AxPROT requirement fields to all-ones and all-zeros, matched the predicted word after every step, and returned to the RDL reset 0x0001_0100
-|`CHK-GPIO-INTF-ACCESS-FILTER-DENY` |On each of the 65 instances the armed read filter returned the programmed word to the matching-AxPROT read and refused the non-matching read of the same address with DECERR and the error-slave word, so the refusal is the AxPROT gate and not a dead window
-|`CHK-GPIO-INTF-ACCESS-FILTER-WRITE-DENY` |On each of the 65 instances the AWPROT=7 write in the armed state (write requirement 0) answered BRESP DECERR and the following ARPROT=7 readback equals the armed word with `write_filter_enable` still 1; the number of accesses between the armed write and the refused write is logged (SF-016)
+|`CHK-GPIO-INTF-DATA-CTRL-ENABLE-SWEEP` |All 67 DATA_CTRL_ENABLE instances read their RDL reset, carried the all-ones and all-zeros pattern of their software-writable fields after each half-register write, drove no bit outside the fields the RDL declares, and returned to that reset
+|`CHK-GPIO-INTF-ACCESS-FILTER-SWEEP` |All 67 ACCESS_FILTER instances took both filter enables and both AxPROT requirement fields to all-ones and all-zeros, matched the predicted word after every step, and returned to the RDL reset 0x0001_0100
+|`CHK-GPIO-INTF-ACCESS-FILTER-DENY` |On each of the 67 instances the armed read filter returned the programmed word to the matching-AxPROT read and refused the non-matching read of the same address with DECERR and the error-slave word, so the refusal is the AxPROT gate and not a dead window
+|`CHK-GPIO-INTF-ACCESS-FILTER-WRITE-DENY` |On each of the 67 instances the AWPROT=7 write in the armed state (write requirement 0) answered BRESP DECERR and the following ARPROT=7 readback equals the armed word with `write_filter_enable` still 1; the number of accesses between the armed write and the refused write is logged (SF-016)
 |`CHK-NONVAC` |Ordered fence DATA-CTRL-ENABLE-CYCLE < ARMED(i) < READ-LEGS(i) < WRITE-DENY(i) < RESTORE(i) for every instance i, every term with its measured access count and its own sim time, strictly rising
 |===
 
@@ -46685,7 +46813,7 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Write every software-writable DATA_CTRL field on all 65 GPIO_INTF instances and drive each pad both ways through all four interrupt types.
+*Objective*: Write every software-writable DATA_CTRL field on all 67 GPIO_INTF instances and drive each pad both ways through all four interrupt types.
 
 *Test Coverage*:
 
@@ -46704,9 +46832,9 @@ Drive `smc_gpio_intf_data_ctrl_write_sweep_test_seq`. Each checker below is a na
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP` |All 65 DATA_CTRL instances read their RDL reset, carried `lsio_select` alone and then every other software-writable field with each `interrupt_type` value, matched the predicted word including `lsio_enable` and `pad2core` after every write, and returned to that reset; the scoreboard booked an exact compare for every predicted readback
-|`CHK-GPIO-INTF-IRQ-TYPE-SWEEP` |On each of the 65 instances the interrupt bit of that instance alone followed the pad both ways as active-high and as active-low level, pulsed once on the rising edge and once on the falling edge, stayed clear with `interrupt_enable` clear while the active-low level was active, and rose when the next write set `interrupt_enable`
-|`CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` |On each of the 65 instances under register control `DATA_CTRL.pad2core` read the bench-driven pad level both ways, `pad2core_en_o` carried the receiver enable, `core2pad_o` carried the `core2pad` field at 0 and at 1 and `core2pad_en_o` stayed 0
+|`CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP` |All 67 DATA_CTRL instances read their RDL reset, carried `lsio_select` alone and then every other software-writable field with each `interrupt_type` value, matched the predicted word including `lsio_enable` and `pad2core` after every write, and returned to that reset; the scoreboard booked an exact compare for every predicted readback
+|`CHK-GPIO-INTF-IRQ-TYPE-SWEEP` |On each of the 67 instances the interrupt bit of that instance alone followed the pad both ways as active-high and as active-low level, pulsed once on the rising edge and once on the falling edge, stayed clear with `interrupt_enable` clear while the active-low level was active, and rose when the next write set `interrupt_enable`
+|`CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` |On each of the 67 instances under register control `DATA_CTRL.pad2core` read the bench-driven pad level both ways, `pad2core_en_o` carried the receiver enable, `core2pad_o` carried the `core2pad` field at 0 and at 1 and `core2pad_en_o` stayed 0
 |===
 
 *Pass Criteria*: `CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP`, `CHK-GPIO-INTF-IRQ-TYPE-SWEEP`, `CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` hold after their compares and every sequence assert holds.
@@ -47798,8 +47926,8 @@ draws nothing from the seed.
 
 * `smc_gpio_intf_regblock_sweep_test` cycles `DATA_CTRL_ENABLE` and `ACCESS_FILTER` on every GPIO_INTF instance but leaves `DATA_CTRL` at its reset word, because writing it moves the pad mux and can drive the pad. This leaf owns the write side of its seven software-writable fields.
 * The footprint is the smallest that reaches them: **one instance, one field at a time, each field set and put straight back to its reset with a read-back on either side, and nothing held between fields.** At no point is more than one field off its reset value, and the register is read against its RDL reset before the first field and after the last.
-* **Which instance, and why it is safe.** The integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`) assigns a function to every pad and marks index 60 "Reserved"; the leaf checks that row before it starts. The bench pad table (`tb/tb_top.sv`) names no function on it, and the only `DATA_CTRL` index any other leaf writes is 0. The leaf also reads the register first and fails if it is not at its reset, so an instance somebody else had taken would stop it.
-* **What the pad does during the cycle is measured.** The GPIO ownership table (`hw/ip/gpio/doc/architecture.adoc`, "Data and Direction Ownership") gives the transmit enable to a hardware LSIO request first, then to `enable_rx_tx[0]` when `interface_enable` or `use_reg_tx` selects the register, then to the LSIO inputs when `lsio_select` forces them, and otherwise disables it. With one field off its reset at a time the register row needs two fields at once and is unreachable, and the bench raises no hardware LSIO request. The `lsio_select` step hands the pad to its LSIO inputs, and no document states what the LSIO plane carries on a Reserved pad: the sequence records that as a DV-owned fact (`RESERVED_PAD_LSIO_TX_ENABLE = 0`) and samples the pad's `core2pad_en_o` bit on `tb_core2pad_en_o` after every write, so a pad that drove during any step fails.
+* **Which instance, and why it is safe.** The integrator pad table (`doc/integrator/meta/ocah_gpio_table.csv`) gives index 60 to PWM[1]; the leaf checks that row before it starts. PWM `CTRL.PAD_EN` and `PWM_EN` reset to 0, so the channel neither claims the pad nor runs, and the bench never drives it. The leaf also reads the register first and fails if it is not at its reset, so an instance somebody else had taken would stop it.
+* **What the pad does during the cycle is measured.** The GPIO ownership table (`hw/ip/gpio/doc/architecture.adoc`, "Data and Direction Ownership") gives the transmit enable to a hardware LSIO request first, then to `enable_rx_tx[0]` when `interface_enable` or `use_reg_tx` selects the register, then to the LSIO inputs when `lsio_select` forces them, and otherwise disables it. With one field off its reset at a time the register row needs two fields at once and is unreachable, and the bench raises no hardware LSIO request. The `lsio_select` step hands the pad to its LSIO inputs, the PWM[1] channel (`periphs.adoc`, PWM), which always drives: with `PWM_EN` clear the pad carries the channel's idle level, the `INVERT[1]` reset (`PWM_PAD_LSIO_TX_ENABLE = 1`, `PWM_PAD_IDLE_LEVEL` from `pwm.h`). The sequence samples the pad's `core2pad_en_o` bit on `tb_core2pad_en_o` after every write and its `core2pad_o` bit on `tb_core2pad_o` during the `lsio_select` step, so a pad that drove during any other step fails.
 * The order still puts the fields that cannot reach the pad mux first -- `interrupt_enable`, `interrupt_type`, `core2pad`, `enable_rx_tx` -- then `lsio_disable`, which only ever withdraws LSIO ownership, then `lsio_select` and `interface_enable` last.
 * The set of fields the leaf drives is compared against the generated contract, so a regenerated map that adds or removes a software-writable field stops the leaf rather than silently skipping it.
 
@@ -47812,14 +47940,13 @@ Drive `smc_gpio_data_ctrl_field_test_seq`. Each checker below is a named compare
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-DATA-CTRL-FIELDS` |On GPIO instance 60, a pad the integrator table reserves, each of the seven software-writable DATA_CTRL fields was set on its own and put straight back to its reset, with the whole register read and the pad's `core2pad_en_o` bit read 0 after every write, no bit outside the declared fields driven, and the register at its RDL reset before the first field and after the last
+|`CHK-GPIO-DATA-CTRL-FIELDS` |On GPIO instance 60, the PWM[1] pad, each of the seven software-writable DATA_CTRL fields was set on its own and put straight back to its reset, with the whole register read and the pad's `core2pad_en_o` bit read 0 after every write except with `lsio_select` set, where `core2pad_en_o` reads 1 and `core2pad_o` the PWM[1] idle level, no bit outside the declared fields driven, and the register at its RDL reset before the first field and after the last
 |===
 
 *Pass Criteria*: `CHK-GPIO-DATA-CTRL-FIELDS` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: No document states what the LSIO plane carries on a Reserved pad, so the expected
-`core2pad_en_o` of 0 during the `lsio_select` step is recorded as a DV-owned fact rather than taken
-from a specification. The register-owned transmit row needs two fields off reset at once and is
+*Scope limit*: The PWM channel stays disabled, so the `lsio_select` step sees only its idle level,
+not a waveform; `smc_pwm_sanity_test` covers the running channel. The register-owned transmit row needs two fields off reset at once and is
 unreachable with one field moved at a time, and the bench raises no hardware LSIO request.
 
 '''''
@@ -50756,7 +50883,7 @@ draws nothing from the seed.
 
 * Each probe is the word halfway between the end of the block's decoded extent (`SIZE` or `TOTAL_SIZE` from the generated `smc_addr.h`) and the end of its aperture (the generated memory map as data, `regs/gen/py/smc_memory_map.py`), and is checked to lie in no unit's decoded extent.
 * Misc: 0xC000_2D04, past `NDM_RESET` ending at 0xC000_2A0C, inside the aperture ending 0xC000_3000. The live register is `SCRATCH_COLD` 0.
-* GPIO: 0xC000_3A08, past the 65th GPIO interface ending at 0xC000_3410, inside the aperture ending 0xC000_4000. The live register is `DATA_CTRL` of GPIO 64.
+* GPIO: 0xC000_3A18, past the 67th GPIO interface ending at 0xC000_3430, inside the aperture ending 0xC000_4000. The live register is `DATA_CTRL` of GPIO 66.
 * DMA: 0xC003_819C, past the DMA's 312 B decoded extent ending at 0xC003_8138, inside the aperture ending 0xC003_8200. The live register is the DMA's `DST_ADDRESS_LO`.
 * For each, the live register is seeded and read back first, so a stray write can show. The unmapped read must answer DECERR and the unmapped write must be refused with an error response (the AXI-Lite peripheral and internal crossbars answer SLVERR to a write, the local crossbar DECERR); the write must leave the seed in place, and the read must not return it.
 
@@ -50773,7 +50900,7 @@ draws nothing from the seed.
 |===
 |Checker |Description
 |`CHK-DECODE-HOLE-MISC` |An unmapped write and read in the misc aperture's tail were refused (the read with DECERR), left `SCRATCH_COLD` 0 holding its seed and did not read it back
-|`CHK-DECODE-HOLE-GPIO` |An unmapped write and read past the last GPIO interface were refused (the read with DECERR), left `DATA_CTRL` of GPIO 64 holding its seed and did not read it back
+|`CHK-DECODE-HOLE-GPIO` |An unmapped write and read past the last GPIO interface were refused (the read with DECERR), left `DATA_CTRL` of GPIO 66 holding its seed and did not read it back
 |`CHK-DECODE-HOLE-DATA_ACCEL` |An unmapped write and read past the DMA's decoded extent were refused (the read with DECERR), left the DMA's `DST_ADDRESS_LO` holding its seed and did not read it back
 |===
 
@@ -51471,7 +51598,7 @@ inside its area.
 |Boundary signals under a held external boot, the PROD deny paths, OTP clock and timing depth, read and program timeouts and their status, the fault-injected state encodings, the three image patterns, the bank-control window, map concurrency, layout decode, reset persistence, the six sensed-image kinds (the owning test draws one from the seed, six variants pin one each) and the SEP-side map writes. Security-disable bypass leaves shadow registers zero.
 |<<smc-vplan-area-gpio,GPIO>>
 |102, 104, 111, 163, 186, 468 to 474, 476, 562
-|Control and interface sweeps over all 65 instances, the interface-enable competitor, interrupt-enable de-assertion, the external-window extra blocks and per-pad control decode, DATA_CTRL enable fields, read-only status and reset write-back, interface decode without aliasing, and primary-reset clearing with an in-flight access. Drawn per-pad direction and interrupt type outcomes.
+|Control and interface sweeps over all 67 instances, the interface-enable competitor, interrupt-enable de-assertion, the external-window extra blocks and per-pad control decode, DATA_CTRL enable fields, read-only status and reset write-back, interface decode without aliasing, and primary-reset clearing with an in-flight access. Drawn per-pad direction and interrupt type outcomes.
 |<<smc-vplan-area-irq,IRQ>>
 |477, 479 to 487, 491, 493, 564
 |External input hold and release and pulse sampling, the hang-detector windows, OR matrix, held-read control changes and threshold updates, register read-back and isolation, reserved bits at idle, the SEP mailbox vector walk and SYNC_REG isolation. Hang detector windows against drawn thresholds and holds.
@@ -51893,7 +52020,7 @@ entry's `*Randomization*` field.
 |`smc_map_row_response_matrix_test`
 |<<smc-vplan-area-fabric,FABRIC>>
 |RAND-REP
-|every seed walks the 30 past-extent rows, the 7 gaps and 8 outside classes; the seed draws per row and gap a 4-byte point and a point of drawn AxSIZE (1, 2, 4 or 8) at aligned offsets inside the cell, the inbound port, the read/write order of each point, the address of four outside classes and the walk order; DECERR compared on every 4-byte point and on every size in the gaps, beyond `BASE + REGION_SIZE` and outside the apertures, 0xBADCAB1E compared on 4-byte reads inside the window, the response code and read data of 1-, 2- or 8-byte points on the 24 inside rows printed
+|every seed walks the 31 past-extent rows, the 7 gaps and 8 outside classes; the seed draws per row and gap a 4-byte point and a point of drawn AxSIZE (1, 2, 4 or 8) at aligned offsets inside the cell, the inbound port, the read/write order of each point, the address of four outside classes and the walk order; DECERR compared on every 4-byte point and on every size in the gaps, beyond `BASE + REGION_SIZE` and outside the apertures, 0xBADCAB1E compared on 4-byte reads inside the window, the response code and read data of 1-, 2- or 8-byte points on the 24 inside rows printed
 |`smc_alias_remap_attr_rand_test`
 |<<smc-vplan-area-fabric,FABRIC>>
 |RANDCFG

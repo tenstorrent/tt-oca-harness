@@ -322,7 +322,7 @@ def _families() -> list[Family]:
     )
 
     gap_locs = []
-    for off in (0x1868, 0xC000, 0x1_7000, 0x3_8300, 0x16_4000, 0x40_6548):
+    for off in (0x1868, 0xD000, 0x1_7000, 0x3_8300, 0x16_4000, 0x40_6548):
         lo, hi = _gap_range(off)
         targets = tuple(
             Target(name, base + off, base + lo, base + hi)

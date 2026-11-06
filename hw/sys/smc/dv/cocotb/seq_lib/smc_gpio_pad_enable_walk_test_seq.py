@@ -13,13 +13,13 @@ lsio_enable [25] and pad2core [31] are R. DATA_CTRL_ENABLE: use_reg_core2pad
 interface_enable selects the register values to drive the pad.
 
 Every GPIO interface except the pads the bench drives itself (11, 27, 28, 37,
-38, 51, 55, 56, 57) is walked, 56 in all, phase by phase: field readback, TX
+38, 51, 55, 56, 57) is walked, 58 in all, phase by phase: field readback, TX
 output and enable, direction enables, RX capture into pad2core from a bench
 pad drive, interface_enable clear, the use_reg_* overrides, and the restore.
 Interface p drives pad p, observed through `tb_core2pad_o`,
 `tb_core2pad_en_o` and `tb_pad2core_en_o`. A hardware LSIO request outranks
 interface_enable and lsio_disable gates it, so every TX, direction, RX and
-use_reg_* word sets lsio_disable. The RX drive leaves out pads 53 and 61, whose
+use_reg_* word sets lsio_disable. The RX drive leaves out pads 53 and 63, whose
 inputs feed the isolate request and the cool-reset input (SF-023). With
 interface_enable and every use_reg_* clear the pad values are logged, not
 compared (SF-022 is open).
@@ -66,10 +66,10 @@ def _dir(rx_tx: int) -> int:
 
 #: Pads the bench drives itself under the default plusargs.
 EXCLUDED_PADS = (11, 27, 28, 37, 38, 51, 55, 56, 57)
-WALKED_COUNT = 56
+WALKED_COUNT = 58
 #: Walked pads the RX leg does not drive: isolate request and cool-reset input.
-RX_SKIPPED_PADS = (53, 61)
-RX_COUNT = 54
+RX_SKIPPED_PADS = (53, 63)
+RX_COUNT = 56
 #: S2 words, each written and read back on every walked pad.
 FIELD_WORDS = (
     DATA_CTRL_RW,
@@ -133,7 +133,7 @@ def _data_ctrl_enable(pad: int) -> int:
 
 
 class smc_gpio_pad_enable_walk_test_seq(SmcCsrSeq):
-    """Walk DATA_CTRL / DATA_CTRL_ENABLE on 56 pads and observe each pad's probes."""
+    """Walk DATA_CTRL / DATA_CTRL_ENABLE on 58 pads and observe each pad's probes."""
 
     def __init__(self, name: str = "smc_gpio_pad_enable_walk_test_seq") -> None:
         super().__init__(name)

@@ -51,7 +51,7 @@ endif::backend-html5[]
 |`core2pad_o` |`logic` |Output |`[NumGpioWraps-1:0]` |GPIO output data from core to pad ring. |SMC → GPIO padring |N/A
 |`pad2core_en_o` |`logic` |Output |`[NumGpioWraps-1:0]` |GPIO pad-to-core path enable. |SMC → GPIO padring |N/A
 |`core2pad_en_o` |`logic` |Output |`[NumGpioWraps-1:0]` |GPIO core-to-pad path enable. |SMC → GPIO padring |N/A
-|`rst_cool_n_from_pin_i` |`logic` |Input |1 |Cool reset input from GPIO pin 61. |GPIO pin 61 → Reset Unit |N/A
+|`rst_cool_n_from_pin_i` |`logic` |Input |1 |Cool reset input from GPIO pin 63. |GPIO pin 63 → Reset Unit |N/A
 |`clk_telemetry_i` |`logic` |Input |1 |Telemetry clock domain. Separate clock for ATB telemetry data collection. |Telemetry clock source |N/A
 |`rst_telemetry_ni` |`logic` |Input |1 |Telemetry reset (active low). Resets telemetry receiver logic. |Telemetry reset source |N/A
 |`telemetry_atdata_i` |`telemetry_receiver_pkg::telemetry_data_t` |Input |`[NumTelemetryReceivers-1:0]` |ATB telemetry data input array. |ATB sources → Telemetry receivers |N/A

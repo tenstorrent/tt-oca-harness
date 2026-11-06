@@ -7959,7 +7959,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 *Test Coverage*:
 
 * `smu_smc_boundary_io_test` proves each of these contracts on one or two lanes. This anchor takes the same contracts across every lane, so no lane of any of these buses rests on a neighbour's result.
-* The 256 external interrupt lanes on the external-interrupt slice of `cpu_interrupts_o`; the 32 isolation-request and 32 subsystem-configuration lanes of the reset unit; the 32 outbound mailbox interrupt lanes; the 65 GPIO pads on `gpio_interrupt_o` and on their `DATA_CTRL.PAD2CORE` mirrors; and the four UART interrupt lanes.
+* The 256 external interrupt lanes on the external-interrupt slice of `cpu_interrupts_o`; the 32 isolation-request and 32 subsystem-configuration lanes of the reset unit; the 32 outbound mailbox interrupt lanes; the 67 GPIO pads on `gpio_interrupt_o` and on their `DATA_CTRL.PAD2CORE` mirrors; and the four UART interrupt lanes.
 * Every lane count comes from the generated SMC register header -- the enumerated outbound mailbox instances, `SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM`, the UART instance count and the reset-unit field widths -- or from the DV-owned port table in `seq_lib/smu_compose_helpers.py`, and the bench-side width is required to match it before any lane is driven, so a narrowed port fails rather than reducing the sweep.
 * Each group ends in an aggregate that states its lane count, so a bus that never moved fails on the count rather than passing on an empty sweep.
 * `smc_global_base_o` and `smc_region_size_o` are out of scope: the SMC aperture routes the bench's own JTAG2AXI accesses, and `smc_base_config.rdl` constrains `REGION_SIZE.size` to a non-zero power of two that `LOCAL_BASE` is aligned to, so no all-lanes sweep of either port is a legal stimulus.
@@ -7983,7 +7983,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 |`CHK-SMU-LANE-ISOLATE-REQ` |isolate_req_o carries the RESET_UNIT.ISOLATE_REQ_REG software term on all 32 lanes, each lane observed set and cleared against the CSR read-back
 |`CHK-SMU-LANE-SS-CONFIG` |with SS_CONFIG_LOCK read open, ss_config_o carries RESET_UNIT.SS_CONFIG on all 32 lanes for all-ones, both alternating patterns and the RDL reset value it is restored to
 |`CHK-SMU-LANE-MBX-IRQ` |each of the 32 outbound mailboxes raises its own smc_ext_mailbox_interrupts_o bit through IRQEN.WTIRQ and an outbound push, and clearing IRQEN retires that bit alone
-|`CHK-SMU-LANE-GPIO` |with all 65 pads taken from their LSIO owners and armed as active-high levels, driving every pad raises every gpio_interrupt_o lane and sets DATA_CTRL.PAD2CORE on every interface, and both follow the pads back down
+|`CHK-SMU-LANE-GPIO` |with all 67 pads taken from their LSIO owners and armed as active-high levels, driving every pad raises every gpio_interrupt_o lane and sets DATA_CTRL.PAD2CORE on every interface, and both follow the pads back down
 |`CHK-SMU-LANE-UART-IRQ` |each of the four UART instances raises uart_interrupt_o on its own lane from IER.ETBEI, reports the transmitter-holding-register-empty code in IIR, and retires that lane on the IIR read
 |===
 
@@ -8600,15 +8600,15 @@ sequence's own raise, outside the scoreboard
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `hosted`, `all`; `timeout_sec` 3600; tags `smc`, `sep`, `p0`, `real_rtl`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+expected_sep=1`.
 
-*Randomization*: RAND-NONE: directed, the per-pad codes are the fixed seven-bit words (pad index + 1) and all 65 pads run every receive and transmit phase in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+*Randomization*: RAND-NONE: directed, the per-pad codes are the fixed seven-bit words (pad index + 1) and all 67 pads run every receive and transmit phase in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
 
 *Objective*: every GPIO pad is driven from the SMC, so `core2pad_o`, `core2pad_en_o` and `pad2core_en_o` cross the SMU on every lane.
 
 *Test Coverage*:
 
 * `smu_smc_boundary_lane_sweep_test` drives the pads from the bench and reads them in; this leaf drives them from the SMC and reads them back.
-* With the bench's pad drivers off, each pad's `DATA_CTRL` takes the pad from its LSIO owner (`INTERFACE_ENABLE`, `LSIO_DISABLE`) with `INTERRUPT_ENABLE` at the reset interrupt type (active-high level) (`hw/ip/gpio` register description). Each pad carries a code of its own: in phase `k` its field is set when bit `k` of (pad index + 1) is 1, which over seven phases is a distinct word for each of the 65 pads, never all zeros and never all ones, so every pad is high in some phase and low in another. A pad answering another pad's `DATA_CTRL`, an interrupt lane taken from another pad, or one pad's enable fanned out to others reads a different code on some phase.
-* In the seven receive phases each pad has both `ENABLE_RX_TX` enables and `CORE2PAD` from its code; every pad follows its own `CORE2PAD` and loops the value back to its own receiver, so the 65 pads and the 65 lanes of `gpio_interrupt_o` both equal the phase mask bit for bit. The vector is read on the wrapper pin: a 32-bit `DATA_CTRL` read returns an undriven upper lane on the 64-bit inbound port. The pads are read on the bench's pad nets, which a pulldown holds low when nothing drives them.
+* With the bench's pad drivers off, each pad's `DATA_CTRL` takes the pad from its LSIO owner (`INTERFACE_ENABLE`, `LSIO_DISABLE`) with `INTERRUPT_ENABLE` at the reset interrupt type (active-high level) (`hw/ip/gpio` register description). Each pad carries a code of its own: in phase `k` its field is set when bit `k` of (pad index + 1) is 1, which over seven phases is a distinct word for each of the 67 pads, never all zeros and never all ones, so every pad is high in some phase and low in another. A pad answering another pad's `DATA_CTRL`, an interrupt lane taken from another pad, or one pad's enable fanned out to others reads a different code on some phase.
+* In the seven receive phases each pad has both `ENABLE_RX_TX` enables and `CORE2PAD` from its code; every pad follows its own `CORE2PAD` and loops the value back to its own receiver, so the 67 pads and the 67 lanes of `gpio_interrupt_o` both equal the phase mask bit for bit. The vector is read on the wrapper pin: a 32-bit `DATA_CTRL` read returns an undriven upper lane on the 64-bit inbound port. The pads are read on the bench's pad nets, which a pulldown holds low when nothing drives them.
 * `ENABLE_RX_TX` at 2'b01 is "TX enabled" alone (`gpio_intf.rdl`). In the seven transmit phases every pad has `CORE2PAD` at 1, with 2'b01 where its code bit is set and 2'b11 elsewhere: every pad is driven high while exactly the lanes outside the phase mask raise their interrupt, so each pad's `pad2core_en_o` crosses apart from its `core2pad_en_o` and apart from every other pad's.
 * The `DATA_CTRL` reset value is written back last and the pads it leaves are recorded; which LSIO function owns each pad then is not a register fact, so it is not compared.
 
@@ -9402,7 +9402,7 @@ sequence's own raise, outside the scoreboard
 
 *Test Coverage*:
 
-* Pad 11 is entry 11 of `gpio_intf_wrap.gpio_intf[65]` at `BASE_ADDR + 0x000_3000` with a 0x10 stride (`hw/sys/smc/regs/smc.rdl`); within it DATA_CTRL is at +0x0 and ACCESS_FILTER at +0x8 (`hw/ip/gpio/regs/gpio_intf.rdl`).
+* Pad 11 is entry 11 of `gpio_intf_wrap.gpio_intf[67]` at `BASE_ADDR + 0x000_3000` with a 0x10 stride (`hw/sys/smc/regs/smc.rdl`); within it DATA_CTRL is at +0x0 and ACCESS_FILTER at +0x8 (`hw/ip/gpio/regs/gpio_intf.rdl`).
 * The ACCESS_FILTER rules are the RDL's: with write_filter_enable set, writes require an exact match between AWPROT and awprot_requirement; with read_filter_enable set, reads require an exact match between ARPROT and arprot_requirement; a clear enable leaves that direction unfiltered, and the register is to be read back after a write. ACCESS_FILTER resets to `0x00010100`, both enables clear and both requirements `3'b001` (`gpio_intf.rdl`; `hw/ip/gpio/doc/memmap.adoc`, Reset Values).
 * Setup over JTAG2AXI: SMC GLOBAL_BASE is written with the LOCAL_BASE value and read back, and SMC inbound filter entries 0 (secure) and 1 (non-secure) are cleared, given the range from DATA_CTRL to ACCESS_FILTER + 4, enabled with read and write allowed and read back, so that an AxPROT[1] of either value reaches the GPIO block (`hw/ip/axi_filter/regs/filter_ctrl.rdl`, `allow_ns`; `doc/programmer/src/sep-smc-common.adoc`, AXI Inbound/Outbound Filters). The entry range, the aperture value and the pad number are values the leaf programs.
 * Reset and unfiltered: ACCESS_FILTER of pad 11 reads `0x00010100` with response OKAY; with both filters clear, a DATA_CTRL write with AWPROT 0 sets `core2pad` and the pad reads 1, a write with AWPROT 7 clears it and the pad reads 0, and DATA_CTRL reads with ARPROT 0 and 7 return the written word, each with response OKAY.
@@ -13107,7 +13107,7 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |`smu_smc_gpio_pad_output_test` (118)
 |SMU_WRAPPER
 |RAND-NONE
-|none; directed: the per-pad codes are the fixed seven-bit words (pad index + 1) and all 65 pads run every receive and transmit phase in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+|none; directed: the per-pad codes are the fixed seven-bit words (pad index + 1) and all 67 pads run every receive and transmit phase in every run; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
 |`smu_sep_sba_fabric_sweep_test` (119)
 |SMU_WRAPPER
 |RAND-REP

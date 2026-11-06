@@ -34,8 +34,8 @@
 # Pinout reference (authoritative): doc/integrator/meta/ocah_gpio_table.adoc.
 # Padring connectivity is adopter-defined and lives outside this repo; the bit
 # assignments below are cross-checked against the pinout table only.
-# `pad2core_i` is NUM_GPIO_WRAPS wide (61 bonded + 4 unbonded = 65), so 64 is
-# the last bit; pinout rows 65+ are dedicated JTAG/REFCLK pads, not GPIO bits.
+# `pad2core_i` is NUM_GPIO_WRAPS wide (63 bonded + 4 unbonded = 67), so 66 is
+# the last bit; pinout rows 67+ are dedicated JTAG/REFCLK pads, not GPIO bits.
 #
 # NOTE:
 # THE NUMBERS BELOW ARE STARTING POINTS, NOT A SPECIFICATION. Every budget,
@@ -155,8 +155,8 @@ set spi_cs_in_bit 8
 set uart_tx_rts_bits {12 13 16 17 20 21 24 25}
 set uart_rx_cts_bits {11 14 15 18 19 22 23 26}
 
-# I3C (GPIO 27-36 for I3C[0] and I3C[2:5], 63-64 for the unbonded I3C[1]).
-set i3c_bits {27 28 29 30 31 32 33 34 35 36 63 64}
+# I3C (GPIO 27-36 for I3C[0] and I3C[2:5], 65-66 for the unbonded I3C[1]).
+set i3c_bits {27 28 29 30 31 32 33 34 35 36 65 66}
 
 # I2C (GPIO 37-48), three controllers at 37+4i x {SCL, SDA, SMB_A, SMB_D}.
 set i2c_bits {37 38 39 40 41 42 43 44 45 46 47 48}
@@ -172,10 +172,10 @@ set avs_obs_in_bits {49 50 51}
 set clk_source_out_bits {49}
 
 # Bits with a fixed launch/capture domain that no protocol section above owns.
-set sys_timer_bits {58 59}
-set reserved_out_bit 56
-set misc_smc_in_bits {52 53 55 56 57}
-set misc_feedthru_in_bits {61 62}
+set sys_timer_bits {55 56}
+set pwm_out_bits {59 60 61 62}
+set misc_smc_in_bits {52 53 57}
+set misc_feedthru_in_bits {63 64}
 
 proc smc_gpio_ports {sig bits} {
     set names {}
@@ -209,7 +209,7 @@ if {$gpio_spi_timed} {
 
 set core2pad_claimed [concat $spi_out_claimed $uart_tx_rts_bits $uart_rx_cts_bits \
                              $i3c_bits $i2c_bits {50} $sys_timer_bits \
-                             [list $reserved_out_bit] $clk_source_out_bits]
+                             $pwm_out_bits $clk_source_out_bits]
 set core2pad_generic [remove_from_collection [get_ports {core2pad_o*}] \
                                              [smc_gpio_ports core2pad_o $core2pad_claimed]]
 set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)] -clock [get_clock ck_feedthru] $core2pad_generic -add_delay
@@ -297,7 +297,7 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.45] -clock [get_clock $gp
 set_input_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*0.45] -clock [get_clock PERIPHERALCLK] [smc_gpio_ports pad2core_i $uart_tx_rts_bits] -add_delay
 
 ########################################################
-# I3C -- GPIO 27-36, 63-64
+# I3C -- GPIO 27-36, 65-66
 ########################################################
 # Bidirectional open-drain/push-pull SCL and SDA. The controller builds SCL
 # from a PERIPHERALCLK counter and never uses the pad SCL as a clock, so both
@@ -367,14 +367,16 @@ set_input_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*$io_budget(default)] 
 ########################################################
 # Fixed-domain pads with no protocol section
 ########################################################
-# Reserved (56) and system timer / OCTS (58-59) outputs are driven from the
-# SMCCLK-domain timer; the matching inputs are sampled by `system_timer_octs`.
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports core2pad_o [list $reserved_out_bit]] -add_delay
+# System timer / OCTS (55-56) outputs are driven from the SMCCLK-domain timer;
+# the matching inputs are sampled by `system_timer_octs`.
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports core2pad_o $sys_timer_bits] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports pad2core_i $sys_timer_bits] -add_delay
 
-# Thermal / isolate (52-53) and PLL obs / PVT / straps (55-57) are sampled in
-# the SMCCLK plane; the unbonded pads (61-62) have no known source clock.
+# PWM (59-62) outputs are launched by the SMCCLK-domain PWM.
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)] -clock [get_clock $gpio_sys_clk] [smc_gpio_ports core2pad_o $pwm_out_bits] -add_delay
+
+# Thermal / isolate (52-53) and boot stall (57) are sampled in the SMCCLK
+# plane; the unbonded cool reset pads (63-64) have no known source clock.
 set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock $gpio_sys_clk]     [smc_gpio_ports pad2core_i $misc_smc_in_bits] -add_delay
 set_input_delay [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)] -clock [get_clock ck_feedthru] [smc_gpio_ports pad2core_i $misc_feedthru_in_bits] -add_delay
 
