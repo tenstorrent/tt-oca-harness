@@ -94,7 +94,7 @@ module prim_axi_lite_err_slv #(
     .axi_resp_t (axi_resp_t),
     .Resp       (RESP),
     .RespWidth  (AXI_DATA_WIDTH),
-    .RespData   (RESP_DATA),
+    .RespData   (data_t'(RESP_DATA)),
     .ATOPs      (1'b0),
     .MaxTrans   (MAX_TRANS)
   ) u_axi_err_slv (
