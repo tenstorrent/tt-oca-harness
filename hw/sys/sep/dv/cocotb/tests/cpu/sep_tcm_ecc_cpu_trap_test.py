@@ -570,6 +570,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         )
         if (
             ntr != 1
+            or arm_mceip != 1
             or len(itraps) != 1
             or int(itraps[0]["mcause"]) != MCAUSE_MCEIP
             or len(ev) != 1
