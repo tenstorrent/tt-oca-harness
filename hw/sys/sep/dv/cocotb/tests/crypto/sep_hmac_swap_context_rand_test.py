@@ -25,6 +25,13 @@ Contracts (spec text, not RTL):
   ``hash_stop``; wait for ``hmac_done``; save DIGEST and MSG_LENGTH; clear
   ``sha_en``; before the restore ``sha_en`` reads 0; write ``CFG``, DIGEST and
   MSG_LENGTH; set ``sha_en``; write ``hash_continue``.
+* While ``STATUS.hmac_idle`` = 1 and ``sha_en`` = 0, software writes to DIGEST_0 to
+  DIGEST_15 and ``MSG_LENGTH_LOWER``/``MSG_LENGTH_UPPER`` load them (hmac.hjson:473,
+  :497, :511; programmers_guide.md:105-108). On every trip, after the save and the
+  ``sha_en`` clear and before the restore, the leaf writes the bitwise complement of
+  the saved words into those registers. ``CTRL-HMAC-CTX-PERTURB`` grades that DIGEST_0
+  and ``MSG_LENGTH_LOWER`` read back the complement. A restore write that does not land
+  leaves the complement in the engine, and CHK-HMAC-CTX fails.
 * ``sha_en`` = 0 clears the digest (hmac.adoc:128).
 * A completed hash sets ``INTR_STATE.hmac_done`` (hmac.adoc:51); with
   ``INTR_ENABLE.hmac_done`` set (hmac.adoc:63) vector bit 17 rises, because bit i of
@@ -80,14 +87,14 @@ from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_hmac_golden import DSWAP_ORDER, sha2_bytes
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import HMAC, sym
+from sep_reg_meta import HMAC
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_hmac_seq import (
     HMAC_CFG,
     HMAC_CMD,
     HMAC_CMD_HASH_PROCESS,
     HMAC_CMD_HASH_START,
-    HMAC_DIGEST_0,
+    HMAC_DIGEST,
     HMAC_DIGEST_WORDS,
     HMAC_INTR_DONE,
     HMAC_INTR_STATE,
@@ -108,10 +115,9 @@ HMAC_INTR_ENABLE = HMAC.addr("INTR_ENABLE")
 HMAC_INTR_ENABLE_DONE = HMAC.field_mask("INTR_ENABLE", "hmac_done")
 HMAC_MSG_LENGTH_LOWER = HMAC.addr("MSG_LENGTH_LOWER")
 HMAC_MSG_LENGTH_UPPER = HMAC.addr("MSG_LENGTH_UPPER")
-HMAC_DIGEST_15 = sym("HMAC_DIGEST_15__REG_ADDR")
 # hmac.hjson:365-366 names DIGEST_0 to DIGEST_15 as the saved hash for every digest size.
 CTX_DIGEST_WORDS = 16
-assert HMAC_DIGEST_15 == HMAC_DIGEST_0 + 4 * (CTX_DIGEST_WORDS - 1), "DIGEST_0..15 not contiguous"
+assert len(HMAC_DIGEST) == CTX_DIGEST_WORDS, "register map does not declare DIGEST_0..15"
 
 # SW_RESET_N baseline: every crypto engine and the TRNG released, Key Manager held
 # (hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc).
@@ -437,7 +443,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
                 raise AssertionError(f"HMAC MSG_FIFO {8 * n}-bit write not OKAY (0x{value:x})")
 
     async def _read_digest(self, n: int) -> list[int]:
-        return [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n)]
+        return [await self._rd(HMAC_DIGEST[i]) for i in range(n)]
 
     async def _poll(
         self, addr: int, mask: int, want: int, bound: int
@@ -769,6 +775,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             if t_idle is None:
                 self.chk.ok("HMAC-CTX", False, tag=tag, part=i, reason="timeout", bound=bound)
                 raise _TrialAbort
+            await self._perturb(saved, len_lo, len_hi, tag, i)
             # Step 7: sha_en reads 0 before the restore.
             cfg_pre = await self._rd(HMAC_CFG)
             self.chk.ctrl(
@@ -781,7 +788,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             # Step 8: CFG, DIGEST and MSG_LENGTH. Step 9: sha_en = 1.
             await self._wr(HMAC_CFG, cfg & ~HMAC_CFG_SHA_EN)
             for k, w in enumerate(saved):
-                await self._wr(HMAC_DIGEST_0 + 4 * k, w)
+                await self._wr(HMAC_DIGEST[k], w)
             await self._wr(HMAC_MSG_LENGTH_LOWER, len_lo)
             await self._wr(HMAC_MSG_LENGTH_UPPER, len_hi)
             await self._wr(HMAC_CFG, cfg)
@@ -809,6 +816,33 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             got0=f"0x{got[0]:08x}",
             single0=f"0x{single[0]:08x}",
             be0=f"0x{golden[0]:08x}",
+        )
+
+    async def _perturb(
+        self, saved: list[int], len_lo: int, len_hi: int, tag: str, part: int
+    ) -> None:
+        """Write the complement of the saved context into DIGEST_0..15 and MSG_LENGTH.
+
+        The engine is idle with ``sha_en`` = 0, the window in which these registers
+        take software writes. A restore that does not land leaves the complement in the
+        engine, so the continued hash differs from the single pass and CHK-HMAC-CTX fails.
+        """
+        mask = 0xFFFF_FFFF
+        for k, w in enumerate(saved):
+            await self._wr(HMAC_DIGEST[k], ~w & mask)
+        await self._wr(HMAC_MSG_LENGTH_LOWER, ~len_lo & mask)
+        await self._wr(HMAC_MSG_LENGTH_UPPER, ~len_hi & mask)
+        dig0 = await self._rd(HMAC_DIGEST[0])
+        lo = await self._rd(HMAC_MSG_LENGTH_LOWER)
+        self.chk.ctrl(
+            "HMAC-CTX-PERTURB",
+            dig0 == ~saved[0] & mask and lo == ~len_lo & mask,
+            tag=tag,
+            part=part,
+            digest0=f"0x{dig0:08x}",
+            saved0=f"0x{saved[0]:08x}",
+            len_lo=f"0x{lo:08x}",
+            saved_len_lo=f"0x{len_lo:08x}",
         )
 
     async def _unrelated(

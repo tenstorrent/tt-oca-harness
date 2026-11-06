@@ -144,12 +144,12 @@ from seq_lib.sep_hmac_seq import (
     HMAC_CMD,
     HMAC_CMD_HASH_PROCESS,
     HMAC_CMD_HASH_START,
-    HMAC_DIGEST_0,
+    HMAC_DIGEST,
     HMAC_DIGEST_WORDS,
     HMAC_ILLEGAL_KEYED,
     HMAC_INTR_DONE,
     HMAC_INTR_STATE,
-    HMAC_KEY_0,
+    HMAC_KEY,
     HMAC_KEY_LENGTH,
     HMAC_MSG_FIFO,
     HMAC_STATUS,
@@ -522,7 +522,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             if self._now_clk() - t0 > DONE_BOUND:
                 break
             await ClockCycles(self.dut.clk_i, 10)
-        got = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)] if done else []
+        got = [await self._rd(HMAC_DIGEST[i]) for i in range(n_words)] if done else []
         match = bool(got) and self.digest_order.match(got, golden)[0]
         self._grade(
             "HMAC-NARROW-WRITE",
@@ -717,7 +717,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         )
         if h.hmac_en:
             for i, word in enumerate(KEY_ROWS[h.key_row]):
-                await self._wr(HMAC_KEY_0 + 4 * i, word)
+                await self._wr(HMAC_KEY[i], word)
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
 
     async def _post_words(self, group: list[tuple[int, int]]) -> None:
@@ -785,7 +785,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
                 raise _TrialTimeout(owner, DONE_BOUND, "hmac_done")
             await ClockCycles(self.dut.clk_i, 10)
         await self._status("idle", expect_done_idle=True)
-        digest = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(HMAC_DIGEST_WORDS[sha])]
+        digest = [await self._rd(HMAC_DIGEST[i]) for i in range(HMAC_DIGEST_WORDS[sha])]
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
         return digest
 
@@ -900,7 +900,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         )
         if h.hmac_en:
             for i, word in enumerate(KEY_ROWS[h.key_row]):
-                await self._wr(HMAC_KEY_0 + 4 * i, word)
+                await self._wr(HMAC_KEY[i], word)
         self.dut.hmac_fifo_drain_stall_i.value = 1
         await ClockCycles(self.dut.clk_i, 2)
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
@@ -1169,7 +1169,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
 
         self._open()
         await self._wr(HMAC_WIPE_SECRET, leg.w)
-        after = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)]
+        after = [await self._rd(HMAC_DIGEST[i]) for i in range(n_words)]
         digest_all_w = self.digest_order.order is not None and after == w_read
 
         # The next HMAC writes CFG and no KEY word, so it hashes with a key of all-w words.
@@ -1225,7 +1225,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
                 break
             await ClockCycles(self.dut.clk_i, 10)
             intr = await self._rd(HMAC_INTR_STATE)
-        digest = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)]
+        digest = [await self._rd(HMAC_DIGEST[i]) for i in range(n_words)]
         golden = golden_digest(h.sha, True, KEY_ROWS[h.key_row], h.key_bits, leg.msg2)
         w2_read = self.digest_order.expected(w2.to_bytes(4, "big") * n_words)
         self.chk.obs(

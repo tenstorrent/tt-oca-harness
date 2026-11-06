@@ -57,20 +57,23 @@ class sep_otbn_mem_smoke_seq(uvm_sequence):
         return item.rdata
 
     async def _check_mem_access_precondition(self) -> None:
-        """Read STATUS once before the memory accesses and record it.
+        """Read STATUS once before the memory accesses and grade the bench state.
 
-        Asserts that the STATUS status field is neither LOCKED nor BUSY_EXECUTE.
-        OBS-OTBN-MEM-STATUS logs the raw STATUS word and the status field. It is
-        logged, not graded: no authored text states whether IMEM/DMEM accept a bus
-        access in the state that the field reports here.
+        CTRL-OTBN-MEM-PRECOND requires the STATUS status field to be neither
+        LOCKED nor BUSY_EXECUTE; otherwise it logs CTRL-MISSING and fails the
+        leaf. OBS-OTBN-MEM-STATUS logs the raw STATUS word and the status field.
+        It is logged, not graded: no authored text states whether IMEM/DMEM
+        accept a bus access in the state that the field reports here.
         """
         raw = await self._read(OTBN_ADDR_STATUS)
         st = raw & OTBN_STATUS_MASK
-        assert st != OTBN_STATUS_LOCKED, f"OTBN LOCKED (STATUS=0x{st:02x}) before memory smoke"
-        assert st not in OTBN_MEM_ACCESS_ILLEGAL_STATES, (
-            f"OTBN is executing (STATUS=0x{st:02x}); a bus access to IMEM/DMEM would "
-            f"be diverted and flagged as an illegal bus access"
-        )
+        locked = int(st == OTBN_STATUS_LOCKED)
+        executing = int(st in OTBN_MEM_ACCESS_ILLEGAL_STATES)
+        fields = f"status=0x{raw:08x} locked={locked} executing={executing}"
+        if locked or executing:
+            cocotb.log.error("CTRL-MISSING OTBN-MEM-PRECOND: %s", fields)
+            raise AssertionError(f"CTRL-MISSING OTBN-MEM-PRECOND: {fields}")
+        cocotb.log.info("CTRL-OTBN-MEM-PRECOND seen: %s", fields)
         cocotb.log.info("OBS-OTBN-MEM-STATUS status=0x%08x status_code=0x%02x", raw, st)
 
     async def body(self) -> None:

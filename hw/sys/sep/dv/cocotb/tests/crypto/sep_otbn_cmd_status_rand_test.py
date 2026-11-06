@@ -219,7 +219,7 @@ Checkers:
   CHK-OTBN-RND-CLEAN   the ``RND`` run reads ``software_errs_fatal`` = 0 and
                        ``done`` = 0 before the ``CMD`` write, ends at IDLE (never
                        0xFF) with ``done`` = 1 and at least one acknowledge of the
-                       OTBN RND client (crypto EDN client 2, ``trng.adoc`` :90-91)
+                       OTBN RND client (crypto EDN client 2, ``trng.adoc`` :92-93)
                        between the ``CMD`` write and IDLE, and ``ERR_BITS`` reads 0
                        in every bit except ``rnd_rep_chk_fail`` (bit 6). ToO:137;
                        "A high tag prevents a FIPS-tag failure for that response"
@@ -493,7 +493,7 @@ def load_checksum_golden(writes: list[tuple[int, int, int]], order: str) -> int:
     return crc
 
 
-# Native crypto EDN client of OTBN RND, bit 2 of crypto_edn_ack_o (trng.adoc:90-91).
+# Native crypto EDN client of OTBN RND, bit 2 of crypto_edn_ack_o (trng.adoc:92-93).
 EDN_OTBN_RND = 2
 
 # Memory of the host read of the bus-access leg.
