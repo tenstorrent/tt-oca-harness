@@ -61,6 +61,9 @@ sequence (`axi_out_mem`)
 |`smu_evidence_map.py` |Per-testcase `(CHK_ID, TOKEN, EXPECT)` token contracts,
 plus the `UNMAPPED_TESTS` declarations for testcases that run without rows
 |`smu_fcov.py` |Scenario-intent coverage bins, hit per test
+|`SmuAxiMonitor` |Passive protocol and integrity monitor on the `ext_in` and
+`ext_out` boundary buses, built by `smu_base_test` for every leaf; see
+<<smu-axi-monitor,Boundary AXI Monitor>>
 |===
 
 === Clock and Reset Strategy
@@ -134,16 +137,21 @@ them:
 `expect_eq` and `expect_true` are the only two check primitives; both take an
 optional `evidence=` argument naming the TOKEN they prove.
 
-Three groups of observation-only `ocah_axi_sva` instances in
+Five groups of observation-only `ocah_axi_sva` instances in
 `tb/tb_wrapper_top.sv` grade the AXI4 reset, handshake, X, burst, ID and
 response rules on the SMU AXI links. `aresetn` is the primary SMC-clock reset
-`rst_primary_smc_clk_n_o` on every link, the reset of the crossbar, the DTP
+`rst_primary_smc_clk_n_o` on every link but the reset-domain instances, the
+reset of the crossbar, the DTP
 and the SEP system logic; the clock is `clk_smu_i`. The checkers are held off
 while `aresetn` is X and until the first `clk_ref` edge that samples
 `powergood_stable` low, because the SEP reset passes through the IC_RESET
 override that the DTP loads at its power-on reset. Under the SV-UVM build the
-enable also takes `smu_tb_if.axi_sva_en`. The rules grade on VCS only: both
-Verilator targets define `ASSERTS_OFF` and pass no `--assert`. On VCS a test
+enable also takes `smu_tb_if.axi_sva_en`. The two-state rules grade on VCS
+and on Verilator, whose targets turn the Verilator assertion switch on while
+`ASSERTS_OFF` keeps the vendor and DUT assertions off; the X-hygiene rules,
+the data-known rules, the count lines and the need checks grade on VCS only.
+The `axi_sva` group of `testlists/all.toml` is their run of
+record (`--dut smu --items axi_sva --tool vcs`). On VCS a test
 with `+axi_sva_need_<port>` fails when that checker graded no AW or AR
 handshake. Protocol, not data.
 
@@ -173,6 +181,64 @@ handshake. Protocol, not data.
   power-on reset are outside `aresetn`: no reset rule grades them, and a
   transaction open at one of them stays in the checker's outstanding
   tracking until the next primary reset.
+* *Reset-domain AXI SVA* -- second instances on the links whose far side
+  resets on a narrower reset, the SEP side under `sep_reset_n`, with
+  `MASTER_SYNC_RESET` set: `u_xbar_sep_in_sep_rst_axi_sva` on the crossbar
+  SEP target port and `u_sep_to_smc_sep_rst_axi_sva` on the SEP-to-SMC port
+  take `aresetn` = `sep_reset_n`, the boot-qualified SEP reset, and are held
+  off while `sep_reset_n` or the link's AW and AR valids are X. No SMC-side
+  link has such a far side: the SMC warm reset `u_smc.rst_warm_smc_clk_n`
+  resets only the CPU cluster and the warm scratch register, and the
+  crossbar SMC target link resets on the primary reset at both ends, so
+  `u_xbar_smc_in_axi_sva` grades every window in which that link is in
+  reset. The SMC cool reset feeds the primary reset, so the primary-reset
+  instances already grade it. Their counters print as
+  `CHK-AXI-SVA-XBAR-SEP-IN-SEP-RST` and `CHK-AXI-SVA-SEP-TO-SMC-SEP-RST`.
+* *Converter, cut, OTP and DTP CSR AXI SVA* -- on the primary reset:
+  `u_iwc_sep_axi_sva` and `u_iwc_smc_axi_sva` on the ID-width converter
+  outputs toward the SEP (`sep_smn_inbound_axi_req` / `_resp`) and the SMC
+  (`smc_sys_axi_in_req` / `_resp`), `u_incut_axi_sva` on the inbound boundary
+  cut output (`smu_axi_in_cut_req` / `_resp`), and three AXI-Lite instances,
+  `u_otp_smc_axil_sva` and `u_otp_sep_axil_sva` on the DTP OTP JTAG ports
+  into the SMC and the SEP and `u_dtp_csr_axil_sva` on the SMC port into the
+  DTP CSRs. `MAX_OUTSTANDING` follows the crossbar target port each
+  converter sits behind and is 32 on the cut. Their counters print as
+  `CHK-AXI-SVA-IWC-SEP`, `-IWC-SMC`, `-INCUT`, `-OTP-SMC`, `-OTP-SEP` and
+  `-DTP-CSR`.
+* *Data-known rules* -- beside every `ocah_axi_sva` instance a
+  `smu_axi_data_known_sva` instance (`tb/smu_axi_data_known_sva.sv`),
+  `<link>_data_sva`, on the same clock, `aresetn` and enable:
+  `SMU_AXI_W_STROBED_DATA_KNOWN` requires every WSTRB-active WDATA lane known
+  while WVALID is high, and `SMU_AXI_R_DATA_KNOWN` requires RDATA known while
+  RVALID is high. Both are four-state rules and grade on VCS only; the reset
+  scope of each is its sibling checker's.
+* *No atomic transactions* -- `SMU_AXI_XBAR_SEP_OUT_AWATOP_ZERO`,
+  `SMU_AXI_XBAR_SMC_OUT_AWATOP_ZERO`, `SMU_AXI_DTP_DBG_AWATOP_ZERO` and
+  `SMU_AXI_INCUT_AWATOP_ZERO` require AWATOP zero on every AW request of the
+  SEP and SMC crossbar initiator ports, the DTP debug port and the inbound
+  cut output, on `clk_smu_i`, off while the primary reset is low and
+  qualified by the same enable. The external inbound AWATOP is tied to zero
+  at the boundary.
+* *READY-stall counters* -- per `ocah_axi_sva` instance, `axi_stall_<port>_aw`,
+  `_w` and `_ar` count the `clk_smu_i` cycles in which that channel's VALID
+  is 1 and its READY is 0 while the instance's enable is true, the
+  antecedent of its `VALID_HELD` and `PAYLOAD_STABLE` rules. At `final`
+  each instance prints `CHK-AXI-STALL-<PORT>: aw=<n> w=<n> ar=<n>
+  instance=<instance>` beside its `CHK-AXI-SVA-<PORT>` line, and a test with
+  `+axi_sva_need_stall_<port>` fails at `final` when all three counts of
+  that port are zero.
+* *Illegal-encoding inject* -- `+smu_axi_illegal_inject` lets the external
+  inbound master drive a WRAP burst with AxLEN = 0, the reserved burst
+  encoding 2'b11, or an INCR burst that crosses a 4 KiB boundary, none of
+  which AXI4 allows. The checkers on the external inbound path,
+  `u_smu_in_axi_sva`, `u_incut_axi_sva` and `u_xbar_ext_in_axi_sva`, see
+  AxBURST = INCR on the first two and the 4 KiB-page start address on the
+  third, so they track each such request as a legal single-beat or
+  page-aligned burst and grade every other rule on it. On those three
+  instances the plusarg therefore masks `AW_LEN_WRAP_LEGAL`,
+  `AR_LEN_WRAP_LEGAL`, `AW_BURST_LEGAL`, `AR_BURST_LEGAL`,
+  `AW_4KB_BOUNDARY` and `AR_4KB_BOUNDARY`. The DUT receives the illegal
+  request unchanged, and every other instance sees it as driven.
 
 [[sep-processor-state-monitor]]
 === SEP Processor-State Monitoring (wrapper)
@@ -233,6 +299,78 @@ passing run logs the same summary at info level in `report_phase`.
 `+sep_trace_log` streams every retirement (cycle, PC, encoding, symbol) to
 `sep_trace.log` in the run directory.
 
+[[smu-axi-monitor]]
+=== Boundary AXI Monitor
+
+`cocotb/env/smu_axi_monitor.py` holds `SmuAxiMonitor`, a passive
+`uvm_component` that samples one boundary AXI bus on every `clk_smu_i` edge,
+independent of the master and the responder. It carries the rules of the SEP
+bench's `env/sep_axi_monitor.py`, so the READY-wait and decode rules hold on
+Verilator, where the RTL SVA checkers do not run.
+
+Rules::
+* *Read-data lanes*: an accepted OKAY or EXOKAY R beat carries no X/Z bit in a
+  byte lane the read accesses. Each R beat joins its AR by ID (ARADDR, ARLEN,
+  ARSIZE, ARBURST; IHI 0022 A3.4.1 lane math); a beat with no recorded AR fails
+  only when the whole data bus is X/Z. `open_unknown_rdata_window` exempts a read
+  that must accept unknown data, `open_error_rdata_window` also grades the data
+  of error beats, and `forget_pending_reads` drops the ARs of a read that timed
+  out.
+* *Decode errors*: a DECERR beat consumes a credit armed through
+  `arm_expected_decerr(n)` (returned through `release_expected_decerr`) or the
+  `expected_decerr(bus, n)` context manager. A DECERR with no credit is counted
+  as unexpected and fails only where `fail_decerr` is set; a credit left
+  standing at the end fails.
+* *Slave READY wait*: a run of consecutive `VALID && !READY` cycles on AW, W
+  or AR fails when it exceeds `SmuEnvCfg.axi_timeout_ns` (default
+  `AXI_TIMEOUT_NS` of `smu_axi_helpers.py`, 200 us), counted in `clk_smu_i`
+  cycles.
+* *VALID known*: every VALID is 0 or 1 out of reset. A VALID that stays X/Z is
+  reported once per signal and its cycles are counted in `valid_unknown`.
+* *Response known*: RRESP and BRESP of an accepted beat carry no X/Z.
+
+While the bus reset is low the monitor drops its recorded ARs, clears the
+READY-wait runs and skips the VALID-known check. On Verilator, a two-state
+simulator, no net is X/Z, so the read-data, VALID-known and response-known rules
+cannot fire on bus data; they grade on a four-state simulator.
+
+The `ext_in` instance samples both buses from one coroutine. Each `clk_smu_i`
+edge reads the five VALIDs first and reads no other net when all of them are 0.
+
+[cols=",,,,",options="header",]
+|===
+|Instance |Signals |Reset |Slave the READY rule grades |`fail_decerr`
+|`ext_in` |flat `ext_in_*` pins of `tb_wrapper_top` |`rst_primary_smc_clk_n_o`
+|the DUT |False: the routing table answers a request to neither aperture with
+DECERR
+|`ext_out` |members of `u_axi_out_if`, read at the `axi_out_geometry` widths
+|`rst_cold_n_o` |the bench responder |False
+|===
+
+Each instance registers in `ConfigDB` as `smu_axi_monitor_<bus>` (`ext_in`,
+`ext_out`), where a sequence finds it to arm a DECERR. The `ext_in` instance
+fails the run when its pins are missing; `ext_out` logs and idles, and also
+idles when the test builds no `ext_out` responder (`cfg.axi_out_mem`), whose
+VALIDs are then undriven.
+
+Opt-outs are class attributes of the leaf: `axi_monitor_enabled = False` builds
+neither instance; `axi_monitor_ready_budget_ext_in = False` turns off the
+READY rule on `ext_in` only, for a leaf whose stimulus withholds the master's
+RREADY / BREADY or holds the target in reset past the budget, so the DUT stops
+taking requests; `axi_monitor_ready_budget_ext_out = False` turns off the READY
+rule on `ext_out` only, for a leaf that withholds the responder's READY beyond
+the budget; `axi_monitor_fail_decerr_ext_in = True` makes an unarmed `ext_in`
+DECERR fail.
+
+At `check_phase` each instance logs one tally line, on a passing run as well as
+a failing one, and then asserts it found no error:
+
+----
+CHK-AXI-MON-EXT-IN: beats=<r> b=<b> x_lane=<n> decerr_unexpected=<n> decerr_expected=<n> ready_wait_max=aw:<n>,w:<n>,ar:<n> bound=<cycles> errors=<n> valid_unknown=<cycles>
+----
+
+A rule that trips logs `AXI MONITOR [<bus>] FAIL: <rule>` at the cycle it trips.
+
 === Coverage Strategy
 
 `SMU_FCOV.adoc` owns coverage intent: the metric choice, the `cov/sv`
@@ -281,6 +419,36 @@ own name or by any group it belongs to.
 Names classified deferred or OUT are catalogued in
 `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`; none of them is enrolled and
 none is reportable as a PASS.
+
+[[smu-formal-view]]
+=== Formal
+
+The formal view checks the AXI crossbar `smu_axi_xbar` on its own, with no
+testbench: `smu_formal_cfg.toml` names it as the formal top, and
+`run_dv.py --dut smu --mode formal` runs the `smu_axi_xbar_fpv` item of
+`testlists/formal.toml`, the `xbar_bmc`, `xbar_cover` and `xbar_prove` tasks of
+`formal/fpv/sby/smu.sby`. The layout and the property subset are those of
+`hw/common/dv/docs/formal-property-style.adoc`.
+
+* `formal/props/smu_axi_xbar_axi_fv_bind.sv` binds six `ocah_axi_fv`
+  instances into `smu_axi_xbar`, one per port. On the initiator ports
+  `sep_out`, `smc_out` and `ext_in` the master rules are assumed and the
+  crossbar's subordinate rules asserted; on the target ports `sep_in`,
+  `smc_in` and `ext_out` the crossbar's master rules are asserted and the
+  subordinate rules assumed.
+* `formal/props/smu_axi_xbar_props.sv`, bound by `smu_axi_xbar_bind.sv`,
+  asserts that an aperture whose region size has been 0 since reset routes
+  nothing to its target and that every B and R-last response on a port answers
+  an accepted request within eight outstanding, and covers each legal
+  initiator-to-target pair and each DECERR cell of the SMU chapter's routing
+  table.
+* `formal/fpv/sby/smu_axi_xbar_sby_env.sv` is the reset model: reset low at
+  the first edge and high after it, with the DFT test input held low.
+
+The filelist stage writes `formal/build/smu.f` from the vendored AXI and
+common-cells Bender targets plus the crossbar sources and the checker. The
+tasks need Yosys with the yosys-slang plugin and SymbiYosys on `PATH`;
+`run_dv.py --doctor --dut smu --mode formal` reports whether `sby` resolves.
 
 [[sv-uvm-realization]]
 === SystemVerilog UVM Realization (`--framework uvm`)

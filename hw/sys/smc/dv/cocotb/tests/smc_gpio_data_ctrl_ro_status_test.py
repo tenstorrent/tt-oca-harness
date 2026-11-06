@@ -15,12 +15,12 @@ from seq_lib.smc_gpio_data_ctrl_ro_status_test_seq import (
 from smc_base_test import smc_base_test
 
 # Expected CSR access floor, independent of the sequence count:
-#   65 DATA_CTRL scan reads                                                     65
+#   67 DATA_CTRL scan reads                                                     67
 #   2 (lsio write, read back)                                                    2
 #   10 (idle enable read, bit 31 write, read, rx on write, enable set, read, rx read,
 #       enable clear, rx off write, read)                                       10
 #   7 (all ones, read, zeros, read, restore, read, enable read)                  7
-GPIO_DATA_CTRL_RO_STATUS_MIN_CSR_ACCESSES = 65 + 2 + 10 + 7
+GPIO_DATA_CTRL_RO_STATUS_MIN_CSR_ACCESSES = 67 + 2 + 10 + 7
 
 
 @pyuvm.test()

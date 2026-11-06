@@ -955,37 +955,12 @@ package i2c_reg_pkg;
     } i2c__CONTROLLER_EVENTS__UNHANDLED_NACK_TIMEOUT__out_t;
 
     typedef struct {
-        logic value;
-    } i2c__CONTROLLER_EVENTS__BUS_TIMEOUT__out_t;
-
-    typedef struct {
-        logic value;
-    } i2c__CONTROLLER_EVENTS__ARBITRATION_LOST__out_t;
-
-    typedef struct {
         i2c__CONTROLLER_EVENTS__NACK__out_t NACK;
         i2c__CONTROLLER_EVENTS__UNHANDLED_NACK_TIMEOUT__out_t UNHANDLED_NACK_TIMEOUT;
-        i2c__CONTROLLER_EVENTS__BUS_TIMEOUT__out_t BUS_TIMEOUT;
-        i2c__CONTROLLER_EVENTS__ARBITRATION_LOST__out_t ARBITRATION_LOST;
         logic intr;
     } i2c__CONTROLLER_EVENTS__out_t;
 
     typedef struct {
-        logic value;
-    } i2c__TARGET_EVENTS__TX_PENDING__out_t;
-
-    typedef struct {
-        logic value;
-    } i2c__TARGET_EVENTS__BUS_TIMEOUT__out_t;
-
-    typedef struct {
-        logic value;
-    } i2c__TARGET_EVENTS__ARBITRATION_LOST__out_t;
-
-    typedef struct {
-        i2c__TARGET_EVENTS__TX_PENDING__out_t TX_PENDING;
-        i2c__TARGET_EVENTS__BUS_TIMEOUT__out_t BUS_TIMEOUT;
-        i2c__TARGET_EVENTS__ARBITRATION_LOST__out_t ARBITRATION_LOST;
         logic intr;
     } i2c__TARGET_EVENTS__out_t;
 

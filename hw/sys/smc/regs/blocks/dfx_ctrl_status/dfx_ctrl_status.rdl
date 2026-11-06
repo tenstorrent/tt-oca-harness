@@ -144,6 +144,8 @@ addrmap dfx_ctrl_status {
 
         } Dbmid[7:2] = 0x0;
         field {
+            desc = "No effect in the SMC: the field stores and reads back, but no debug-bus mux uses
+                    it. Write 0.";
             sw = rw;
             hw = r;
 

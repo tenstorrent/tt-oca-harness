@@ -60,26 +60,26 @@ typedef union {
 } straps__STRAPS_LO_t;
 
 // reg - straps::STRAPS_HI
-// Configuration straps 32 - 60.
+// Configuration straps 32 - 62.
 // All bits other than those listed below have no strap assigned; no strap
 // function consumes them.
 // Strap assignments in this range:
 // * bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot
 // * bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM
-#define STRAPS__STRAPS_HI__STRAPS_bm 0x1fffffff
+#define STRAPS__STRAPS_HI__STRAPS_bm 0x7fffffff
 #define STRAPS__STRAPS_HI__STRAPS_bp 0
-#define STRAPS__STRAPS_HI__STRAPS_bw 29
+#define STRAPS__STRAPS_HI__STRAPS_bw 31
 #define STRAPS__STRAPS_HI__STRAPS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Configuration straps 32 - 60.
+        // Configuration straps 32 - 62.
         // All bits other than those listed below have no strap assigned; no strap
         // function consumes them.
         // Strap assignments in this range:
         // * bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot
         // * bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM
-        uint32_t straps :29;
-        uint32_t :3;
+        uint32_t straps :31;
+        uint32_t :1;
     } f;
     uint32_t w;
 } straps__STRAPS_HI_t;

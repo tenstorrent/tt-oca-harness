@@ -516,6 +516,12 @@ before issuing the next write. Compare against a window above the written value
 rather than for equality, since the counter advances while the poll runs. Where
 the written value is too close to the free-running count to tell the two apart,
 separate consecutive writes by at least eight reference-clock periods instead.
+A reload crosses into the reference-clock domain in at most three
+reference-clock periods plus three CPU-clock periods, so eight is a margin over
+that window while the CPU clock runs at or above the reference clock; prefer
+the poll where it can be used. A write issued before the previous one has
+crossed is dropped with an `OKAY` response and no status indication, so only
+the poll confirms that a reload landed.
 
 .SMC reference counter reload example C usage.
 [source,sourceCode,c]

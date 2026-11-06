@@ -11,7 +11,9 @@ sep_rtl_fuse_sense run mode, which leaves +skip_fuse_sense and the SEP shadow
 preload unset so the SEP eFuse bank model answers the sense:
 sep_fuse_sense_skipped_o reads 0, sep_fuse_sense_done_o is low under cold
 reset, and it rises once after the cold reset released and after SEP eFuse read
-traffic appeared on the SMU eFuse shim command port.
+traffic appeared on the SMU eFuse shim command port. The SEP's
+smc_fuse_sense_done_i input follows smc_fuse_sense_done_o on every sample, and
+sep_reset_n_o rises only after it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_sep_fuse_sense_done_test --tool verilator
@@ -22,7 +24,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from seq_lib.smu_fuse_sense_probe import SmuFuseSenseProbe, sep_command_nets
-from seq_lib.smu_sep_fuse_sense_done_seq import smu_sep_fuse_sense_done_seq
+from seq_lib.smu_sep_fuse_sense_done_seq import SmuSenseWireMonitor, smu_sep_fuse_sense_done_seq
 from smu_base_test import smu_base_test
 
 
@@ -45,10 +47,13 @@ class smu_sep_fuse_sense_done_test(smu_base_test):
                 "rst_cold_n_o": dut.rst_cold_n_o,
                 "sep_reset_n_o": dut.sep_reset_n_o,
                 "sep_fuse_sense_done_o": dut.sep_fuse_sense_done_o,
+                "smc_fuse_sense_done_o": dut.smc_fuse_sense_done_o,
             },
             command_nets={"sep_efuse_shim": sep_command_nets(dut)},
         )
         self.fuse_probe.arm()
+        self.sense_wire = SmuSenseWireMonitor(dut)
+        self.sense_wire.arm()
         await super().bring_up()
 
     async def run_scenario(self) -> None:

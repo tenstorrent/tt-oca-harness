@@ -570,6 +570,7 @@ module sep_uvm_top
     assign lcc_sigint_err_probe_o = sep_ras_w.lc_sigint_err;
     assign km_unrecoverable_err_o = sep_ras_w.km_uncorrectable;
     assign km_recoverable_err_o   = sep_ras_w.km_correctable;
+    assign sep_ras_probe_o        = sep_ras_w;
 
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
@@ -1354,6 +1355,12 @@ module sep_uvm_top
     assign spi_lsio_trigger_probe_o = `SEP_CORE.lsio_trigger[0];
     assign dma_busy_probe_o =
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.status.busy.q;
+    // SPI host fatal_fault alert sender output (read-only XMR, no force).
+    assign spi_alert_tx_probe_o =
+        `SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.alert_tx_o[0];
+    // SEP_TEST_CTRL read strobe (read-only XMR, no force).
+    assign sep_test_ctrl_rd_probe_o =
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg.decoded_reg_strb.SEP_TEST_CTRL;
 
     // Secure DMA master taps (read-only XMR, no force). dma_axi_req is the
     // request after u_dma_local_alias_remap; the layout is in the signal list.
@@ -1391,6 +1398,44 @@ module sep_uvm_top
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_done_qs,
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_busy_qs
     };
+
+    // Zero-fill fault inject (dma_fill_fault_sel_i). The DMA host path's
+    // TL-UL-to-AXI-Lite adapter holds each response's error in resp_error_q; it
+    // is forced on only while the selected fill is busy, so the fill's write
+    // responses carry d_error and every other transfer of the run is untouched.
+    // A zero fill issues no reads. The condition is sampled on each falling
+    // edge, and the flop is released only after a force.
+    logic        dma_fill_fault_hit;
+    logic        dma_fill_fault_forced;
+    logic [31:0] dma_fill_dst;
+    assign dma_fill_dst = `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.dst_addr_lo.q;
+    assign dma_fill_fault_hit =
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.status.busy.q &&
+        (`SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.control.opcode.q == 4'h4) &&
+        (((dma_fill_fault_sel_i == 2'd1) &&
+          (dma_fill_dst >= 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_ICCM_BASE_ADDR)) &&
+          (dma_fill_dst < 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_ICCM_BASE_ADDR +
+                              sep_top_addrmap_pkg::SEP_TOP_SEP_ICCM_SIZE))) ||
+         ((dma_fill_fault_sel_i == 2'd2) &&
+          (dma_fill_dst == 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR))));
+
+    always @(negedge clk_i) begin
+        if (dma_fill_fault_hit === 1'b1) begin
+            force `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.resp_error_q = 1'b1;
+            dma_fill_fault_forced = 1'b1;
+        end else if (dma_fill_fault_forced === 1'b1) begin
+            release `SEP_CORE.u_sep_dma_wrap.u_tlul_to_axi_lite_dma.resp_error_q;
+            dma_fill_fault_forced = 1'b0;
+        end
+    end
+
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            dma_fill_fault_count_o <= '0;
+        end else if (dma_fill_fault_hit === 1'b1 && !(&dma_fill_fault_count_o)) begin
+            dma_fill_fault_count_o <= dma_fill_fault_count_o + 1'b1;
+        end
+    end
 
     // Mailbox, IRQ and PIC observation taps (docs/SEP_TB_ARCH.adoc). Read-only
     // copies of DUT nets; no force.
@@ -4483,6 +4528,30 @@ module sep_uvm_top
                                  `KM_TAP.cpu_axil_resp.w_ready};
     assign km_cpu_rst_n_o     = `KM_TAP.rst_warm_sync_n;
 
+    // KM-AXIV, slave side: bit i of each port output is master port i of the
+    // KM crossbar u_xbar, the AddrMap index of km_axi_lite_xbar (0 KPV, 1 KMCSR,
+    // 2 DRBG sampler, 3 mailbox, 4 OTBN, 5 AES, 6 KMAC, 7 HMAC, 8 OTP,
+    // 9 Adams Bridge): the AR, AW and W handshakes (valid and ready both 1),
+    // the R and B valids and the R and B handshakes, on every clock. Explicit
+    // per-index assigns avoid a genvar-indexed XMR.
+`define KM_AXI_PORT_TAP(i) \
+    assign km_cpu_axi_port_ar_hs_o[i]  = `KM_TAP.u_xbar.xbar_mst_req[i].ar_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_resp[i].ar_ready; \
+    assign km_cpu_axi_port_aw_hs_o[i]  = `KM_TAP.u_xbar.xbar_mst_req[i].aw_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_resp[i].aw_ready; \
+    assign km_cpu_axi_port_w_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_req[i].w_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_resp[i].w_ready; \
+    assign km_cpu_axi_port_r_valid_o[i] = `KM_TAP.u_xbar.xbar_mst_resp[i].r_valid; \
+    assign km_cpu_axi_port_b_valid_o[i] = `KM_TAP.u_xbar.xbar_mst_resp[i].b_valid; \
+    assign km_cpu_axi_port_r_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_resp[i].r_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_req[i].r_ready; \
+    assign km_cpu_axi_port_b_hs_o[i]   = `KM_TAP.u_xbar.xbar_mst_resp[i].b_valid & \
+                                         `KM_TAP.u_xbar.xbar_mst_req[i].b_ready
+    `KM_AXI_PORT_TAP(0); `KM_AXI_PORT_TAP(1); `KM_AXI_PORT_TAP(2); `KM_AXI_PORT_TAP(3);
+    `KM_AXI_PORT_TAP(4); `KM_AXI_PORT_TAP(5); `KM_AXI_PORT_TAP(6); `KM_AXI_PORT_TAP(7);
+    `KM_AXI_PORT_TAP(8); `KM_AXI_PORT_TAP(9);
+`undef KM_AXI_PORT_TAP
+
     // ------------------------------------------------------------------
     // HK-OTP: KM OTP input rail flip (docs/SEP_TB_ARCH.adoc, inject
     // exceptions). No legal fuse image presents a broken dual-rail word: the
@@ -5280,8 +5349,7 @@ module sep_uvm_top
     // the valids may be high on the first edge that samples the KM CPU reset
     // low and must be low from the next edge on. The cold reset asserts
     // asynchronously and the warm reset on a clock edge
-    // (hw/ip/key_manager/doc/architecture.adoc, Reset Conditioning).
-    // Issue: #3170
+    // (hw/ip/key_manager/doc/architecture.adoc:185-191, Reset Conditioning).
     bind key_manager ocah_axi_sva #(
         .MASTER_SYNC_RESET (1'b1),
         .IS_LITE    (1'b1),
@@ -5853,6 +5921,7 @@ module sep_uvm_top
     assign lc_sigint_bad_value_i    = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
+    assign dma_fill_fault_sel_i     = '0;
     assign token_cmp_fault_copy_i   = '0;
     assign token_digest_test_en_inject_i = 1'b0;
     assign token_digest_chiplet_test_en_inject_i = 1'b0;
@@ -7440,6 +7509,7 @@ module sep_uvm_top
         .lockstep_ctrl_i       (lockstep_ctrl_i),
         .lockstep_status_i     (lockstep_status_o.corruption_detected),
         .dbg_in_araddr_i       (pr_dbg_in_araddr_o),
+        .sep_ras_i             (sep_ras_probe_o),
         // Key Manager taps of the feature points (docs/SEP_FCOV.adoc, Key
         // Manager groups, Sampled signals): read-only, no force.
         .km_unrec_port_i       (km_unrecoverable_err_o),

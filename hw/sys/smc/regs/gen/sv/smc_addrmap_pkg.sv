@@ -42,15 +42,15 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR = 64'hC000
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE = 64'hC;
 
 localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR = 64'hC0003000;
-localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_SIZE = 64'h410;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_SIZE = 64'h430;
 
 function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003000 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM = 64'h43;
 localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_SIZE = 64'hC;
 localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE = 64'h10;
-localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE = 64'h410;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE = 64'h430;
 
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR = 64'hC0004000;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE = 64'h5C;
@@ -123,6 +123,15 @@ localparam longint unsigned SMC_TOP_DTP_CTRL_REG_SIZE = 64'h800;
 
 localparam longint unsigned SMC_TOP_DFX_CTRL_BASE_ADDR = 64'hC000B800;
 localparam longint unsigned SMC_TOP_DFX_CTRL_SIZE = 64'h18;
+
+localparam longint unsigned SMC_TOP_SMC_PWM_BASE_ADDR = 64'hC000C000;
+localparam longint unsigned SMC_TOP_SMC_PWM_SIZE = 64'h804;
+
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_BASE_ADDR = 64'hC000C000;
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_SIZE = 64'h44;
+
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_CTRL_BASE_ADDR = 64'hC000C800;
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_CTRL_SIZE = 64'h4;
 
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_SIZE = 64'h4C;
@@ -518,10 +527,10 @@ localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_SIZE 
 function automatic longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(input int unsigned gpio_ctrl_idx);
     return 64'hC0401000 + (gpio_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_NUM = 64'h43;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_SIZE = 64'h4;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_STRIDE = 64'h20;
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_TOTAL_SIZE = 64'h820;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_TOTAL_SIZE = 64'h860;
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_BASE_ADDR = 64'hC0402000;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_SIZE = 64'hEE8;
@@ -659,15 +668,15 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COU
 function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003000 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM = 64'h43;
 function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003004 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h43;
 function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003008 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h43;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CMD_BASE_ADDR = 64'hC0004000;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_READBACK_BASE_ADDR = 64'hC0004004;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_BASE_ADDR = 64'hC0004008;
@@ -956,6 +965,24 @@ localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE
 localparam longint unsigned SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR = 64'hC000B800;
 localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR = 64'hC000B808;
 localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR = 64'hC000B810;
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_ALERT_TEST_BASE_ADDR = 64'hC000C000;
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_REGWEN_BASE_ADDR = 64'hC000C004;
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_CFG_BASE_ADDR = 64'hC000C008;
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_PWM_EN_BASE_ADDR = 64'hC000C00C;
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_INVERT_BASE_ADDR = 64'hC000C010;
+function automatic longint unsigned SMC_TOP_SMC_PWM_PWM_PWM_PARAM_BASE_ADDR(input int unsigned PWM_PARAM_idx);
+    return 64'hC000C014 + (PWM_PARAM_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_PWM_PARAM_NUM = 64'h4;
+function automatic longint unsigned SMC_TOP_SMC_PWM_PWM_DUTY_CYCLE_BASE_ADDR(input int unsigned DUTY_CYCLE_idx);
+    return 64'hC000C024 + (DUTY_CYCLE_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_DUTY_CYCLE_NUM = 64'h4;
+function automatic longint unsigned SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_BASE_ADDR(input int unsigned BLINK_PARAM_idx);
+    return 64'hC000C034 + (BLINK_PARAM_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_NUM = 64'h4;
+localparam longint unsigned SMC_TOP_SMC_PWM_PWM_CTRL_CTRL_BASE_ADDR = 64'hC000C800;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR = 64'hC0010008;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR = 64'hC0010010;

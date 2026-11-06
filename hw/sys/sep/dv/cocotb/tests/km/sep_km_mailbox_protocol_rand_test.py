@@ -23,9 +23,9 @@ refused it. The mailbox register block's own address decode is observed
 instead (tb_top probe km_mbox_sep_wr_err_count_o / _addr_o): it must refuse
 exactly one write, at the first offset past the RDL window, and the legal
 32-bit writes must not trip it. The SEP_CTRL value after the beat is logged
-and not graded (VPLAN known limitation "Dead-space per-beat refusal on
-writes (AXI)"). SEP_CTRL is then rewritten with a 32-bit beat so the cells after it
-start from a known value.
+and not graded because one BRESP cannot attribute the refusal to one half.
+SEP_CTRL is then rewritten with a 32-bit beat so the cells after it start from
+a known value.
 
 Checkers:
   CHK-HELD     SW_RESET_N bit 0 reads 0: KM is held, so no firmware peer
@@ -55,8 +55,8 @@ Checkers:
                leaves inbound_overflow and outbound_underflow set in STATUS
                and IRQ_STATUS until W1C. The outbound FIFO is
                empty before and after: with KM held nothing can push into
-               it, so the outbound flush is not proven (VPLAN known
-               limitation "KM mailbox outbound flush")
+               it, so this leaf grades only the inbound flush. A non-empty
+               outbound flush belongs to sep_km_mailbox_km_side_rand_test
 
 Not covered:
   * inbound_underflow, outbound_overflow, and flushed_by_km need the KM CPU
@@ -255,9 +255,8 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
 
         # 64-bit beat at SEP_CTRL: its upper half is past the register file.
         # The beat has one BRESP, which cannot say which half was refused, so
-        # only the response is graded (VPLAN known limitation "Dead-space
-        # per-beat refusal on writes (AXI)"). The low word differs from ctrl_32 in
-        # one response-mode bit, so the logged readback shows whether it landed.
+        # only the response is graded. The low word differs from ctrl_32 in one
+        # response-mode bit, so the logged readback shows whether it landed.
         ctrl_64_lo = ctrl_32 | (1 << KM_CTRL_INBOUND_OVERFLOW_RESP)
         # One credit: the monitor fails an unexpected DECERR in check_phase.
         # SLVERR consumes nothing, so that response returns the credit.

@@ -374,7 +374,7 @@ typedef union {
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_OCCUPIED_SLOTS_bp 0
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_OCCUPIED_SLOTS_bw 4
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_OCCUPIED_SLOTS_reset 0x0
-// Number of vacant slots in the command FIFO
+// Number of vacant slots in the command FIFO. The field has no storage; with the FIFO empty after reset it reads the COMMAND_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_VACANT_SLOTS_bm 0xf00
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_VACANT_SLOTS_bp 8
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_VACANT_SLOTS_bw 4
@@ -384,7 +384,7 @@ typedef union {
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_bp 16
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_bw 4
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_OCCUPIED_SLOTS_reset 0x0
-// Number of vacant slots in the readback FIFO
+// Number of vacant slots in the readback FIFO. The field has no storage; with the FIFO empty after reset it reads the READBACK_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_VACANT_SLOTS_bm 0xf000000
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_VACANT_SLOTS_bp 24
 #define AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__READBACK_FIFO_VACANT_SLOTS_bw 4
@@ -394,13 +394,13 @@ typedef union {
         // Number of occupied slots in the command FIFO
         uint32_t CMD_FIFO_OCCUPIED_SLOTS :4;
         uint32_t :4;
-        // Number of vacant slots in the command FIFO
+        // Number of vacant slots in the command FIFO. The field has no storage; with the FIFO empty after reset it reads the COMMAND_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.
         uint32_t CMD_FIFO_VACANT_SLOTS :4;
         uint32_t :4;
         // Number of occupied slots in the readback FIFO
         uint32_t READBACK_FIFO_OCCUPIED_SLOTS :4;
         uint32_t :4;
-        // Number of vacant slots in the readback FIFO
+        // Number of vacant slots in the readback FIFO. The field has no storage; with the FIFO empty after reset it reads the READBACK_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.
         uint32_t READBACK_FIFO_VACANT_SLOTS :4;
         uint32_t :4;
     } f;

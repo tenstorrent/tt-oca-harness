@@ -38,6 +38,24 @@ Checks (anchor):
                   (POKE result + IRQ_STATUS + KM-BUS)
   CHK-XBAR-SIZE   ROM top, SRAM base and top, the SRAM top store and the first
                   and last decoded word of each row answer clean (POKE result)
+  CHK-XBAR-SRAM-TOP
+                  the KM read of the SRAM top word 0xFFFC after the store of a
+                  drawn non-zero word returns that word, and the two words that
+                  alias it under half and a quarter of the size keep their own
+                  stored words: the main KM SRAM is 32 KB, 0x8000 to 0xFFFF
+                  (``architecture.adoc`` "Parameters"; ``key_manager.rdl:62``)
+                  (POKE readback)
+  CHK-XBAR-SHARE-ZERO
+                  the first-word read of each of the five key windows (otbn,
+                  aes, kmac, hmac and abr ``_wrapper_key``, the word
+                  ``KEY_SHARE0[0]``) returns 0x00000000: the share words are
+                  write-only and reads return zero (``architecture.adoc`` "Key
+                  Delivery"; ``<eng>_wrapper_key.rdl`` ``KEY_SHARE0``) (POKE
+                  readback), in the decode walk and again after a clean write of
+                  a drawn non-zero word; that write makes exactly one AW
+                  handshake at the window's first word on the window's
+                  key-path port (``KM-BUS`` tap). The response class of these
+                  reads is logged
   CHK-EFW-RD      40 KM reads of the eFuse maps equal the host reads of the same
                   register (KM readback vs host readback, staged fuse model)
   CHK-EFW-RD-TM   the same with ``secure_tm_o`` = 1; register reads keep their
@@ -90,15 +108,16 @@ Checks (anchor):
   CHK-REMAP-BUS   ``efuse_req_o`` after the remap keeps bits [11:0] of the KM
                   offset and holds one constant [31:12] (``KM-BUS`` tap)
 
-Logged only (no verdict): ``OBS-XBAR-UNSTATED`` (the first word of the mailbox,
-the DRBG sampler and the five key windows, which have no stated read response),
+Logged only (no verdict): ``OBS-XBAR-UNSTATED`` (the first word of the mailbox
+and the DRBG sampler, which have no stated read response, and the response class
+of the first word of the five key windows, whose read data CHK-XBAR-SHARE-ZERO
+grades),
 ``CTRL-XBAR`` (cells another open test grades: 0x4000, 0x13108 store),
 ``INFO-EFW-PROG`` / ``INFO-EFW-DENY`` (the host path line of each
 program check), ``OBS-EFW-TM-TUPLE`` (the secure test program done, busy and
 efuse_req_error values and the read done, status and word; no text states that
 read_status carries the error of a blocked read, and efuse_req_error is stated
-for lock refusals only), ``OBS-REMAP-BASE`` (the value of ``OTP_EFUSE_REMAP_BASE``),
-``OBS-XBAR-SRAM-TOP`` (the SRAM top readback after the store).
+for lock refusals only), ``OBS-REMAP-BASE`` (the value of ``OTP_EFUSE_REMAP_BASE``).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on a ``DRAW`` line.
@@ -183,11 +202,40 @@ _FIRST_UNSTATED = (
     "main:hmac_wrapper_key",
     "main:abr_wrapper_key",
 )
+# Key windows of _FIRST_UNSTATED whose first word is KEY_SHARE0[0]: "Write-only;
+# reads return 0." (``<eng>_wrapper_key.rdl`` KEY_SHARE0, ``architecture.adoc``
+# "Key Delivery"). The response class of that read is not stated.
+_SHARE_ZERO_KEYS = (
+    "main:otbn_wrapper_key",
+    "main:aes_wrapper_key",
+    "main:kmac_wrapper_key",
+    "main:hmac_wrapper_key",
+    "main:abr_wrapper_key",
+)
+# Key-path port index of each key window on ``km_key_aw_*`` (KM-BUS).
+_KEY_PORT = {
+    "main:otbn_wrapper_key": 0,
+    "main:aes_wrapper_key": 1,
+    "main:hmac_wrapper_key": 2,
+    "main:kmac_wrapper_key": 3,
+    "main:abr_wrapper_key": 4,
+}
+_SHARE_ZERO_CONTRACT = (
+    "key_manager/doc/architecture.adoc:290-291(Key_Delivery),"
+    "{aes,otbn,kmac,hmac}_wrapper_key.rdl:37,abr_wrapper_key.rdl:44(KEY_SHARE0)"
+)
+_SRAM_TOP_CONTRACT = (
+    "key_manager/doc/architecture.adoc:90(Parameters),key_manager.rdl:62(SRAM_Region)"
+)
 
 KM_ROM_BASE = _ROW["main:rom"]["base"]
 KM_ROM_TOP = _ROW["main:rom"]["end"] - 3
 KM_SRAM_BASE = _ROW["main:sram"]["base"]
 KM_SRAM_TOP = _ROW["main:sram"]["end"] - 3
+# The words that alias the SRAM top word if the array had half or a quarter of
+# the stated size (above the poke image's words 0-255).
+_SRAM_SIZE = _ROW["main:sram"]["end"] + 1 - KM_SRAM_BASE
+KM_SRAM_ALIAS = (KM_SRAM_TOP - _SRAM_SIZE // 2, KM_SRAM_TOP - _SRAM_SIZE * 3 // 4)
 KM_EFUSE_MAP = _ROW["main:otp_efuse_map"]["base"]
 KM_EFUSE_CTRL = _ROW["main:otp_efuse_ctrl"]["base"]
 KM_EFUSE_MMR = _ROW["main:otp_efuse_mmr"]["base"]
@@ -568,6 +616,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         "CHK-XBAR-RSV",
         "CHK-XBAR-EFUSE",
         "CHK-XBAR-SIZE",
+        "CHK-XBAR-SRAM-TOP",
+        "CHK-XBAR-SHARE-ZERO",
         "CHK-EFW-RD",
         "CHK-EFW-RD-TM",
         "CHK-EFW-PROG",
@@ -720,6 +770,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
+        self.mon_xz = 0
         fp = plan(TEST, seed)
         self.fp = fp
         self.logger.info("DRAW fuse_plan %s", fp.summary())
@@ -746,13 +797,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         set_km_xbar_pass(0, 0, self.logger)
         walk = await self._decode_walk(rng)
         fwd = await self._efuse_forward_probe(walk)
+        share_wr = await self._share_write_read(rng)
         size = await self._size_boundaries(rng)
         vrom = await self._vrom_walk(rng)
         clean = await self._run(
             [kp.rd(KM_MBX_STATUS), kp.rd(KM_DRBG_STATUS), kp.rd(KM_ROM_BASE), kp.rd(KM_SRAM_BASE)]
         )
         rd1 = await self._efw_reads(rng, model, tm=0, bus=True)
-        self._grade_walk(seed, walk, size, vrom, clean, rd1)
+        self._grade_walk(seed, walk, size, vrom, clean, rd1, share_wr)
         self._grade_forward(seed, fwd)
         self._grade_efw_rd(seed, rd1, tm=0, tm_seen=tm0)
         self._grade_remap(rd1)
@@ -895,26 +947,88 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         res = await self._run(ops, allow_unknown=True)
         return list(zip(cells, res, strict=True))
 
+    async def _share_write_read(
+        self, rng: SepSeededRng
+    ) -> list[tuple[str, int, kp.PokeResult, kp.PokeResult, list[int]]]:
+        """KEY_SHARE0[0] of each key window: write a drawn non-zero word, then read it.
+
+        Each entry carries the AW addresses that the window's key-path port
+        (``KM-BUS``) handshook during the batch.
+        """
+        ops: list[kp.PokeOp] = []
+        data: list[int] = []
+        for key in _SHARE_ZERO_KEYS:
+            d = rng.randrange(1, 1 << WORD_BITS)
+            self._draw(f"share.wdata.{_short(key)}", d)
+            data.append(d)
+            ops += [kp.wr(_ROW[key]["base"], d), kp.rd(_ROW[key]["base"])]
+        aw: list[tuple[int, int]] = []
+        mon = cocotb.start_soon(self._key_aw_monitor(aw))
+        res = await self._run(ops, allow_unknown=True)
+        await ClockCycles(cocotb.top.clk_i, 4)
+        if hasattr(mon, "cancel"):
+            mon.cancel()
+        else:
+            mon.kill()
+        return [
+            (
+                key,
+                d,
+                res[2 * i],
+                res[2 * i + 1],
+                [a for p, a in aw if p == _KEY_PORT[key]],
+            )
+            for i, (key, d) in enumerate(zip(_SHARE_ZERO_KEYS, data, strict=True))
+        ]
+
     async def _size_boundaries(self, rng: SepSeededRng) -> list[kp.PokeResult]:
         data = rng.randrange(1, 1 << WORD_BITS)
         self._draw("size.sram_top_wdata", data)
+        alias_data = []
+        for addr in KM_SRAM_ALIAS:
+            d = rng.randrange(1, 1 << WORD_BITS)
+            while d == data or d in alias_data:
+                d = rng.randrange(1, 1 << WORD_BITS)
+            self._draw(f"size.sram_alias_wdata.0x{addr:05x}", d)
+            alias_data.append(d)
         res = await self._run(
             [
                 kp.rd(KM_ROM_TOP),
                 kp.rd(KM_RSV_ROM_GROWTH),
                 kp.wr(KM_SRAM_TOP, data),
                 kp.rd(KM_SRAM_BASE),
+                *(kp.wr(a, d) for a, d in zip(KM_SRAM_ALIAS, alias_data, strict=True)),
                 kp.rd(KM_SRAM_TOP),
+                *(kp.rd(a) for a in KM_SRAM_ALIAS),
             ],
             allow_unknown=True,
         )
+        n_alias = len(KM_SRAM_ALIAS)
+        top = res[4 + n_alias]
+        cells = [(KM_SRAM_TOP, data, top)] + [
+            (a, d, res[5 + n_alias + i])
+            for i, (a, d) in enumerate(zip(KM_SRAM_ALIAS, alias_data, strict=True))
+        ]
+        problems = []
+        for addr, exp, r in cells:
+            rd_txt = f"0x{r.value:08x}" if r.known else "X"
+            if not (r.known and r.value == exp):
+                problems.append(f"off=0x{addr:05x} read={rd_txt}, expected 0x{exp:08x}")
+        for i, r in enumerate(res[4 : 4 + n_alias]):
+            if not (r.known and r.clean and (r.slv, r.dec) == (0, 0)):
+                problems.append(f"alias store off=0x{KM_SRAM_ALIAS[i]:05x} slv={r.slv} dec={r.dec}")
+        self._fail("CHK-XBAR-SRAM-TOP", problems)
         self.logger.info(
-            "OBS-XBAR-SRAM-TOP stored=0x%08x read=0x%08x equal=%d",
+            "CHK-XBAR-SRAM-TOP PASS contract=%s off=0x%05x stored=0x%08x read=0x%08x "
+            "exp=0x%08x alias=%s",
+            _SRAM_TOP_CONTRACT,
+            KM_SRAM_TOP,
             data,
-            res[4].value,
-            int(res[4].value == data),
+            top.value,
+            data,
+            ",".join(f"0x{a:05x}:0x{r.value:08x}/0x{d:08x}" for a, d, r in cells[1:]),
         )
-        return res
+        return [res[0], res[1], res[2], res[3], top]
 
     def _grade_walk(
         self,
@@ -924,6 +1038,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         vrom: list[tuple[Cell, kp.PokeResult]],
         clean: list[kp.PokeResult],
         rd1: list[dict],
+        share_wr: list[tuple[str, int, kp.PokeResult, kp.PokeResult]],
     ) -> None:
         # Controls: the clean in-map reads show both bits at 0, and the in-map
         # eFuse reads answer OKAY, so a 0 bit and an OKAY can be seen.
@@ -948,8 +1063,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             "CHK-XBAR-RSV": [],
             "CHK-XBAR-EFUSE": [],
             "CHK-XBAR-SIZE": [],
+            "CHK-XBAR-SHARE-ZERO": [],
         }
         passes: dict[str, list[str]] = {k: [] for k in problems}
+        share_zero_wins = {_short(k) for k in _SHARE_ZERO_KEYS}
         first_last_clean = 0
         first_last_logged = 0
         vrom_graded = {"rd": 0, "wr": 0}
@@ -962,6 +1079,12 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 self.logger.info(
                     "OBS-XBAR-UNSTATED %s rd=%s slv=%d dec=%d", tag, rd_txt, res.slv, res.dec
                 )
+                if cell.win in share_zero_wins:
+                    line = f"contract={_SHARE_ZERO_CONTRACT} {tag} rd={rd_txt} exp=0x00000000"
+                    if res.known and res.value == 0:
+                        passes["CHK-XBAR-SHARE-ZERO"].append(f"seed={seed} {line}")
+                    else:
+                        problems["CHK-XBAR-SHARE-ZERO"].append(line)
                 continue
             want = _EXP_BITS[cell.resp]
             if d == "rd" and cell.rdata is not None:
@@ -1017,7 +1140,28 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         for d, name in (("rd", "load"), ("wr", "store")):
             if not vrom_graded[d]:
                 problems["CHK-XBAR-RSV"].append(f"no VROM {name} cell answered DECERR")
-        for chk in ("CHK-XBAR", "CHK-XBAR-RSV", "CHK-XBAR-EFUSE", "CHK-XBAR-SIZE"):
+        for key, data, wr, rd, aw in share_wr:
+            base = _ROW[key]["base"]
+            rd_txt = f"0x{rd.value:08x}" if rd.known else "X"
+            aw_txt = ",".join(f"0x{a:08x}" for a in aw) or "none"
+            line = (
+                f"contract={_SHARE_ZERO_CONTRACT} win={_short(key)} off=0x{base:05x} "
+                f"kind=after_write wrote=0x{data:08x} wr_slv={wr.slv} wr_dec={wr.dec} "
+                f"aw_port={_KEY_PORT[key]} aw_hs={len(aw)} aw_addr={aw_txt} "
+                f"rd={rd_txt} rd_slv={rd.slv} rd_dec={rd.dec} exp=0x00000000"
+            )
+            wr_ok = wr.known and wr.clean and (wr.slv, wr.dec) == (0, 0)
+            landed = len(aw) == 1 and (aw[0] & 0xFFF) == (base & 0xFFF)
+            if wr_ok and landed and rd.known and rd.value == 0:
+                passes["CHK-XBAR-SHARE-ZERO"].append(f"seed={seed} {line}")
+            else:
+                problems["CHK-XBAR-SHARE-ZERO"].append(line)
+        n_share = len(passes["CHK-XBAR-SHARE-ZERO"]) + len(problems["CHK-XBAR-SHARE-ZERO"])
+        if n_share != 2 * len(_SHARE_ZERO_KEYS):
+            problems["CHK-XBAR-SHARE-ZERO"].append(
+                f"{n_share} key-window first-word reads, expected {2 * len(_SHARE_ZERO_KEYS)}"
+            )
+        for chk in problems:
             self._fail(chk, problems[chk])
             if not passes[chk]:
                 self._fail(chk, ["no graded cell"])
@@ -1116,7 +1260,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         return out
 
     async def _efuse_ar_monitor(self, sink: list[int], ch: str = "ar") -> None:
-        """Addresses of the handshakes on channel ``ch`` of ``efuse_req_o`` (KM-BUS)."""
+        """Addresses of the handshakes on channel ``ch`` of ``efuse_req_o`` (KM-BUS).
+
+        A clock with VALID or READY unknown counts in ``mon_xz`` and is no handshake.
+        """
         dut = cocotb.top
         valid = getattr(dut, f"km_efuse_{ch}_valid_o")
         ready = getattr(dut, f"km_efuse_{ch}_ready_o")
@@ -1124,8 +1271,40 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         while True:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            if self.rd(valid, allow_unknown=True) and self.rd(ready, allow_unknown=True):
+            v, r = self._known(valid), self._known(ready)
+            if v and r:
                 sink.append(self.rd(addr))
+
+    async def _key_aw_monitor(self, sink: list[tuple[int, int]]) -> None:
+        """``(port, address)`` of each AW handshake on the five key-path ports (KM-BUS).
+
+        A clock with VALID or READY unknown counts in ``mon_xz`` and is no handshake.
+        """
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            hs = self._known(dut.km_key_aw_valid_o) & self._known(dut.km_key_aw_ready_o)
+            if hs:
+                addrs = self.rd(dut.km_key_aw_addr_o)
+                sink += [
+                    (p, (addrs >> (32 * p)) & WORD_MASK)
+                    for p in range(len(_KEY_PORT))
+                    if (hs >> p) & 1
+                ]
+
+    def _known(self, sig) -> int:
+        """``sig`` as int; an unknown bit counts one clock in ``mon_xz`` and reads 0."""
+        try:
+            return self.rd(sig)
+        except AssertionError:
+            self.mon_xz += 1
+            return 0
+
+    def _xz_problems(self) -> list[str]:
+        if self.mon_xz:
+            return [f"{self.mon_xz} monitor clocks read an unknown VALID, READY or request tap"]
+        return []
 
     def _grade_forward(self, seed: int, fwd: dict) -> None:
         """CHK-XBAR-EFUSE: no graded eFuse-gap access reaches efuse_req_o."""
@@ -1149,14 +1328,15 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 f"{fwd['gap_answered']} of {fwd['gap_ops']} replayed eFuse-gap accesses "
                 "answered SLVERR (each must, so each ran)"
             )
-        self._fail("CHK-XBAR-EFUSE", problems)
+        self._fail("CHK-XBAR-EFUSE", problems + self._xz_problems())
         self.logger.info(
             "CHK-XBAR-EFUSE PASS seed=%d forward=none gap_ops=%d gap_answered_slverr=%d "
-            "efuse_req_ar=0 efuse_req_aw=0 control_map_rd_ar=%d",
+            "efuse_req_ar=0 efuse_req_aw=0 control_map_rd_ar=%d xz_cycles=%d",
             seed,
             fwd["gap_ops"],
             fwd["gap_answered"],
             fwd["control_ar"],
+            self.mon_xz,
         )
 
     def _grade_efw_rd(
@@ -1267,11 +1447,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             uppers.add(addr >> KM_EFUSE_LOW_BITS)
         if len(uppers) > 1:
             problems.append(f"efuse_req_o bits [31:12] take {len(uppers)} values: {sorted(uppers)}")
-        self._fail("CHK-REMAP-BUS", problems)
+        self._fail("CHK-REMAP-BUS", problems + self._xz_problems())
         base = next(iter(uppers)) << KM_EFUSE_LOW_BITS
         self.logger.info("OBS-REMAP-BASE base=0x%08x", base)
         self.logger.info(
-            "CHK-REMAP-BUS PASS draws=%d low12=ok base_constant=1 base=0x%08x", len(draws), base
+            "CHK-REMAP-BUS PASS draws=%d low12=ok base_constant=1 base=0x%08x xz_cycles=%d",
+            len(draws),
+            base,
+            self.mon_xz,
         )
 
     # --- steps 9, 10 and 12: programs -----------------------------------------
@@ -1419,13 +1602,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 if not rc & RC_BUSY and (not need_done or (rc & RC_DONE and fresh)):
                     waited = True
                     break
-            data = await self._hr(R_RDATA)
+            data, rcls = await self._host(SepAxiOp.READ, EFUSE_INTERFACE_CTRL.addr(R_RDATA))
             rd_cmds = len(mon.reads_since(mark, address=addr))
             await self._hw(R_READ, 0)
         finally:
             await mon.stop()
         return {
             "word": data,
+            "rcls": rcls,
             "done": _bit(rc, RC_DONE),
             "status": _bit(rc, RC_STATUS),
             "waited": waited,
@@ -1449,8 +1633,11 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             ]
         )
         rc = res[4].value
+        rd = res[5]
+        okay = rd.clean and (rd.slv, rd.dec) == (0, 0)
         return {
-            "word": res[5].value,
+            "word": rd.value,
+            "rcls": "OKAY" if okay else f"slv={rd.slv},dec={rd.dec}",
             "done": _bit(rc, RC_DONE),
             "status": _bit(rc, RC_STATUS),
             "waited": not res[3].data[0] & RC_BUSY,
@@ -1699,14 +1886,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         )
 
     async def _rise_monitor(self, sig, sink: list[int]) -> None:
-        """Clock index of each 0 to 1 edge of the 1-bit tap ``sig``."""
+        """Clock index of each 0 to 1 edge of the 1-bit tap ``sig`` (unknown: ``mon_xz``)."""
         clk = cocotb.top.clk_i
         n = prev = 0
         while True:
             await RisingEdge(clk)
             await ReadOnly()
             n += 1
-            cur = int(bool(self.rd(sig, allow_unknown=True)))
+            cur = int(bool(self._known(sig)))
             if cur and not prev:
                 sink.append(n)
             prev = cur
@@ -1954,6 +2141,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                     f"{r['otp']['shim_cmds']} read-window fuse commands issued in secure "
                     "test mode, expected none"
                 )
+            # EFUSE_READ_RDATA is a readable register (efuse_interface_ctrl.rdl), so
+            # its read answers OKAY with the test mode off; the blocked read keeps
+            # that response.
+            if r["otp"]["rcls"] != "OKAY":
+                problems.append(
+                    f"path={path}: the RDATA read in secure test mode answered "
+                    f"{r['otp']['rcls']}, expected OKAY"
+                )
             if word == 0 and staged != 0:
                 read_zero += 1
             else:
@@ -1973,7 +2168,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         # efuse_req_error is cleared before each program, so each path reads
         # its own.
         keys = ("req_err", "prog_reqs", "read_reqs", "prog_done_tap", "prog_busy_tap", "status")
-        otp_keys = ("word", "done_tap", "busy_tap")
+        otp_keys = ("word", "rcls", "done_tap", "busy_tap")
 
         def _tuple(path: str) -> tuple:
             r = tm_res[path]
@@ -2032,9 +2227,9 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 "control: a boot-one OTP word of a spare != staged + its bit: "
                 + ", ".join(f"{p}=0x{prog[p]['otp']['word']:08x}" for p in ("km", "host"))
             )
-        self._fail("CHK-EFW-TM", problems)
+        self._fail("CHK-EFW-TM", problems + self._xz_problems())
         self.logger.info(
-            "CHK-EFW-TM PASS km_host_equal=1 req_err=%d read_zero=%d read_reqs=%d,%d "
+            "CHK-EFW-TM PASS xz_cycles=%d km_host_equal=1 req_err=%d read_zero=%d read_reqs=%d,%d "
             "prog_reqs=%d,%d path_order=%s read_done_before=%d,%d prog_done_before=%d,%d "
             "read_done_rise=%d,%d prog_done_rise=%d,%d done_taps=1 busy_taps=0 "
             "read_addr_echo=1,1 prog_status=%d,%d "
@@ -2042,6 +2237,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             "host_word_eq_model=1 control_landed=%d path_reset_secure_tm=%d secure_tm=%d "
             "km_writes=%d "
             "efuse_req_aw=%d km_wr_resp_eq_host=1 efuse_addr_echo=%d,%d",
+            self.mon_xz,
             km_tuple[0],
             read_zero,
             tm_res["km"]["read_reqs"],

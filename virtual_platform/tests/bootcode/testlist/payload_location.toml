@@ -128,7 +128,7 @@ spi_reads = [
 spi_read_order = ["primary_manifest", "backup_peek"]
 markers = [
   "The primary payload starts at 0x40000, the end of its 0x3F000-byte slot window, so oca_locate_payload refuses it on the region bound (0x0003001b), not the ROM's staging bound.",
-  "PAYLOAD_TOO_LARGE (0x00030101) is unreachable on the SPI path: the slot window admits at most 0x3E000 payload bytes after the 0x1000 body, less than the SEP SRAM staging room 0x3EFF8, so it stays forbidden here.",
+  "PAYLOAD_TOO_LARGE (0x00030101) is unreachable on the SPI path: the slot window admits at most 0x3E000 payload bytes after the 0x1000 body, less than the SEP SRAM staging room 0x3F000, so it stays forbidden here.",
   "The two slots fail for different reasons, so the terminal code 0x00030002 identifies the backup and 0x0003001b appears exactly once.",
   "The hang is asserted by terminal_token and the FAILED verdict from cold scratch 0; it does not prove the CPU stays in the WFI loop.",
 ]

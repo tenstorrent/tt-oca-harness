@@ -1333,6 +1333,7 @@ class smc_base_test(uvm_test):
             "tb_zeroer_state_inject_en",
             "tb_efuse_program_state_inject_en",
             "tb_efuse_read_state_inject_en",
+            "tb_rdata_known_hold",
         ):
             if hasattr(dut, name):
                 getattr(dut, name).value = 0
@@ -1385,6 +1386,8 @@ class smc_base_test(uvm_test):
             dut.tb_sys_axi_r_drop.value = 0
         if hasattr(dut, "tb_output_axi_resp_hold"):
             dut.tb_output_axi_resp_hold.value = 0
+        if hasattr(dut, "tb_fcov_gate"):
+            dut.tb_fcov_gate.value = 0
         if hasattr(dut, "tb_mem_repair_abort"):
             dut.tb_mem_repair_abort.value = 0
         if hasattr(dut, "tb_mbist_abort"):

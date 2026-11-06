@@ -7,7 +7,7 @@
 `include "gpio_intf.rdl"
 
 addrmap gpio_intf_wrap #(
-    longint unsigned NUM_GPIOS = 65
+    longint unsigned NUM_GPIOS = 67
 ) {
     name = "GPIO Interface Wrapper Address Map";
     desc = "Wrapper address map instantiating one GPIO interface register block per pad.";

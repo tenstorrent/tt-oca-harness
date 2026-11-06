@@ -102,6 +102,8 @@ tests = [
     "smc_gpio_irq_mask_deassert_test",
     "smc_gpio_intf_data_ctrl_write_sweep_test",
     "smc_gpio_pad_config_rand_test",
+    "smc_gpio_irq_latency_test",
+    "smc_gpio_default_direction_test",
 ]
 
 [[tests]]
@@ -230,6 +232,27 @@ name = "smc_gpio_pad_config_rand_test"
 module = "smc_gpio_pad_config_rand_test"
 seed = 1
 reseed = 3
+timeout_sec = 1800
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+# Pad-edge-to-interrupt latency on eight drawn pads: the three-stage synchronizer
+# plus the condition register; detection with register readback unselected.
+[[tests]]
+name = "smc_gpio_irq_latency_test"
+module = "smc_gpio_irq_latency_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+# INPUT_BY_DEFAULT per instance on the pad vectors, forced on all 67 under a
+# cold reset.
+[[tests]]
+name = "smc_gpio_default_direction_test"
+module = "smc_gpio_default_direction_test"
+seed = 1
 timeout_sec = 1800
 tags = ["ci", "gpio"]
 run_modes = ["smoke"]
