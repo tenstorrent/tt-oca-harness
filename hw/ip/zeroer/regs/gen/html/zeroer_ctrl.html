@@ -19,7 +19,7 @@
 <h3 id="DEST_ADDR">DEST_ADDR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>DEST_ADDR</td><td>RW</td><td>0x0</td><td>Byte address to write zeros to</td></tr>
+<tr><td>63:0</td><td>DEST_ADDR</td><td>RW</td><td>0x0</td><td>Byte address to write zeros to. Bits at and above the master address width, 56 in the SMC, are ignored: a clear starts at the address truncated to that width. Program them as zero; the zeroer truncates an out-of-range value rather than rejecting it.</td></tr>
 </table>
 <h3 id="SIZE">SIZE</h3>
 <table>

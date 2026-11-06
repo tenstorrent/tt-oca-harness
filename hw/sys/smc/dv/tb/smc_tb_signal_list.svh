@@ -63,6 +63,16 @@
 `SMC_TB_OUT(logic, tb_zeroer_intp)
 `SMC_TB_OUT(logic, tb_zeroer_awvalid)
 `SMC_TB_OUT(logic, tb_zeroer_wvalid)
+// Held high by cocotb while a read whose data is declared observed-only is in
+// flight (an unwritten I3C table entry, the aperture-end word of a window with
+// no past-extent response): the SEP_IN and peripheral R-data-known rules do not
+// judge its beats. The hold is by time, not per read: it disables the whole
+// u_sep_in_data_sva and u_periph_data_sva instance while high, so any other R
+// beat on those two links in that window is not judged by the SVA either; the
+// declaring sequences issue one read at a time inside the hold. smc_axi_monitor
+// exempts the same read per AR through its unknown-rdata window and counts the
+// exempt ARs and beats for the sequence to compare with its declarations.
+`SMC_TB_IN(logic, tb_rdata_known_hold)
 `SMC_TB_IN(logic, tb_test_en_i)
 `SMC_TB_IN(logic, tb_i2c0_scl_ext_low)
 `SMC_TB_IN(logic, tb_i2c0_sda_ext_low)
@@ -87,6 +97,13 @@
 `SMC_TB_OUT(logic, tb_i3c0_sda)
 `SMC_TB_OUT(logic, tb_i3c0_scl_dut_low)
 `SMC_TB_OUT(logic, tb_i3c0_sda_dut_low)
+// I3C0 pad-enable gates of i3c_wrapper: the SCL output enable asserted with the
+// SCL output level high (a high drive the open-drain pad must never see), the
+// push-pull select, the SDA output enable and the SDA output level.
+`SMC_TB_OUT(logic, tb_i3c0_scl_drive_high)
+`SMC_TB_OUT(logic, tb_i3c0_sda_pp_sel)
+`SMC_TB_OUT(logic, tb_i3c0_sda_oe)
+`SMC_TB_OUT(logic, tb_i3c0_sda_out)
 // Completed CSR accesses at each I3C core's AXI-Lite port, after the wrapper's
 // instance decode: R handshakes and B handshakes, 32 bits per instance.
 `SMC_TB_OUT(logic [smc_config_pkg::NumI3c*32-1:0], tb_i3c_csr_read_count)
@@ -197,6 +214,8 @@
 // The three I2C instances' PLIC lines (smc_peripherals.sv:1161,
 // peripheral_interrupts[25:23]). tb_i2c_cg_en is the clock gate, not the IRQ.
 `SMC_TB_OUT(logic [2:0], tb_i2c_irq)
+// The six I3C instances' PLIC lines (smc_peripherals.sv peripheral_interrupts[17:12]).
+`SMC_TB_OUT(logic [smc_config_pkg::NumI3c-1:0], tb_i3c_irq)
 `SMC_TB_OUT(logic, tb_mailbox_irq_any)
 `SMC_TB_OUT(logic, tb_avsbus_irq)
 `SMC_TB_OUT(logic, tb_telemetry_irq_any)
@@ -210,7 +229,7 @@
 // Synced observe is smc_base.ext_interrupts_smc_clk[0], not GPIO.
 `SMC_TB_IN(logic, tb_ext_interrupt_0_i)
 `SMC_TB_OUT(logic, tb_ext_interrupt_0_sync)
-// Reset-unit captured GPIO straps (wrapper [63:0]; STRAPS_LO/HI use [60:0]).
+// Reset-unit captured GPIO straps (wrapper [63:0]; STRAPS_LO/HI use [62:0]).
 // Unique vs GPIO0 IRQ pads (`smc_gpio_irq_active_test`); this pin is strap capture.
 `SMC_TB_IN(logic [63:0], tb_captured_straps)
 // Subsystem reset-complete pin (prim_sync3 → SS_RESET_COMPLETE CSR). Idle 1.
@@ -665,6 +684,12 @@
 // The three contributors the combined UART bit ORs together, before the OR.
 `SMC_TB_OUT(logic [3:0], tb_uart_irq_raw)
 `SMC_TB_OUT(logic [3:0], tb_uart_err_raw)
+// The three I2C instances' FIFO integrity error outputs (`i2c_fifo_intg_err_o`,
+// before the OR), and the two RAS bits the SMC ORs them and `uart_err_o` into
+// (`smc_ras_o.i2c_intg_err`, `smc_ras_o.uart_intg_err`).
+`SMC_TB_OUT(logic [2:0], tb_i2c_intg_err)
+`SMC_TB_OUT(logic, tb_ras_i2c_intg_err)
+`SMC_TB_OUT(logic, tb_ras_uart_intg_err)
 `SMC_TB_OUT(logic [3:0], tb_logengine_irq_raw)
 `SMC_TB_OUT(logic [2:0], tb_telemetry_irq)
 `SMC_TB_OUT(logic, tb_sep_wdt_irq_sync)
@@ -689,8 +714,19 @@
 // Source index 331 is the fourth cluster-internal watchdog: a PLIC source
 // with no cpu_interrupts bit behind it.
 `SMC_TB_OUT(logic, tb_plic_pending_331)
-// Source 324 is the zeroer completion bit (cpu_interrupts[323]) at the PLIC.
+// Source 323 is the DMA completion bit (cpu_interrupts[322]) and source 324
+// the zeroer completion bit (cpu_interrupts[323]) at the PLIC.
+`SMC_TB_OUT(logic, tb_plic_pending_323)
 `SMC_TB_OUT(logic, tb_plic_pending_324)
+// Sources 329, 330 and 332 are the cluster-internal watchdogs of cores 0, 1
+// and 3 (PLIC ID 329 + core), beside 331 above for core 2.
+`SMC_TB_OUT(logic, tb_plic_pending_329)
+`SMC_TB_OUT(logic, tb_plic_pending_330)
+`SMC_TB_OUT(logic, tb_plic_pending_332)
+// Sources 321 and 322 are the CLA clock-stop status (cpu_interrupts[320])
+// and the CLA debug interrupt (cpu_interrupts[321]) at the PLIC.
+`SMC_TB_OUT(logic, tb_plic_pending_321)
+`SMC_TB_OUT(logic, tb_plic_pending_322)
 
 // CLINT. MTIMECMP is `pad`/`pad_N` in the generated cluster.
 `SMC_TB_OUT(logic [63:0], tb_clint_mtime)
@@ -741,6 +777,7 @@
 `SMC_TB_OUT(logic [7:0], tb_zeroer_wstrb)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_wdata)
 `SMC_TB_OUT(logic, tb_zeroer_bvalid)
+`SMC_TB_OUT(logic, tb_zeroer_bready)
 `SMC_TB_OUT(logic [31:0], tb_zeroer_outstanding)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_dest_addr)
 `SMC_TB_OUT(logic [63:0], tb_zeroer_size)
@@ -852,6 +889,13 @@
 `SMC_TB_OUT(logic, tb_efuse_shim_resp_valid)
 `SMC_TB_OUT(logic, tb_efuse_shim_resp_status)
 `SMC_TB_OUT(logic [63:0], tb_efuse_locks)
+
+// OCTS live count and the timer's pulse ports on either side of the padring.
+`SMC_TB_OUT(logic [63:0], tb_octs_timer_count)
+`SMC_TB_OUT(logic, tb_octs_core_sync_load_out)
+`SMC_TB_OUT(logic, tb_octs_core_credit_out)
+`SMC_TB_OUT(logic, tb_octs_core_sync_load_in)
+`SMC_TB_OUT(logic, tb_octs_core_credit_in)
 
 // ------------------------------------------------------------------
 // Elaboration aliases: optional observe ports for the bring-up smoke

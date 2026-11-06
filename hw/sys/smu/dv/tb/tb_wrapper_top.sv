@@ -118,6 +118,9 @@ module smu_wrapper_uvm_top
         .u_sep_lifecycle_ctrl.feat_ctrl_o);
   assign lcc_dbg_disable_o    = 16'(u_dut.u_smu.sep_dbg_disable);
   assign lcc_dbg_disable_smc_jtag2axi_o = u_dut.u_smu.sep_dbg_disable.smc_jtag2axi;
+  assign dtp_smc_dbg_aw_valid_o = u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid;
+  assign dtp_smc_dbg_w_valid_o  = u_dut.u_smu.dtp_axi_smc_dbg_req.w_valid;
+  assign dtp_smc_dbg_ar_valid_o = u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid;
   assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
 
   always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
@@ -881,6 +884,33 @@ module smu_wrapper_uvm_top
   assign obs_sep_rst_n_o = u_dut.u_smu.gen_sep.u_sep.rst_ni;
   assign obs_xbar_rst_n_o = u_dut.u_smu.gen_sep.u_smu_axi_xbar.rst_ni;
   assign obs_sep_wdt_clk_o = u_dut.u_smu.gen_sep.u_sep.clk_wdt_i;
+  assign obs_sep_smc_fuse_sense_done_i_o = u_dut.u_smu.gen_sep.u_sep.smc_fuse_sense_done_i;
+  assign obs_smu_axi_in_id_widths_o = {
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.ar.id)),
+    8'($bits(u_dut.u_smu.smu_axi_in_resp_o.r.id)),
+    8'($bits(u_dut.u_smu.smu_axi_in_resp_o.b.id)),
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.aw.id))
+  };
+  assign obs_smu_axi_out_id_widths_o = {
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.ar.id)),
+    8'($bits(u_dut.u_smu.smu_axi_out_resp_i.r.id)),
+    8'($bits(u_dut.u_smu.smu_axi_out_resp_i.b.id)),
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.aw.id))
+  };
+  assign obs_smu_axi_in_user_widths_o = {
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.ar.user)),
+    8'($bits(u_dut.u_smu.smu_axi_in_resp_o.r.user)),
+    8'($bits(u_dut.u_smu.smu_axi_in_resp_o.b.user)),
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.w.user)),
+    8'($bits(u_dut.u_smu.smu_axi_in_req_i.aw.user))
+  };
+  assign obs_smu_axi_out_user_widths_o = {
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.ar.user)),
+    8'($bits(u_dut.u_smu.smu_axi_out_resp_i.r.user)),
+    8'($bits(u_dut.u_smu.smu_axi_out_resp_i.b.user)),
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.w.user)),
+    8'($bits(u_dut.u_smu.smu_axi_out_req_o.aw.user))
+  };
   // Live SEP LCC export — must match lc_state_o for lc_state=from_sep.
   assign obs_sep_lc_state_o = u_dut.u_smu.gen_sep.u_sep.lc_state_o;
   // The SEP efuse shadow registers' own sim_skip_fuse_sense flag: 1 when
@@ -1220,6 +1250,9 @@ module smu_wrapper_uvm_top
   always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_smn_out_aw_count_o <= '0;
+      sep_smn_out_ar_count_o <= '0;
+      smc_smn_out_aw_count_o <= '0;
+      smc_smn_out_ar_count_o <= '0;
       sep_xbar_in_aw_count_o <= '0;
       sep_xbar_in_aw_user_o  <= '0;
       sep_xbar_in_aw_addr_o  <= '0;
@@ -1237,6 +1270,18 @@ module smu_wrapper_uvm_top
       if (u_dut.u_smu.gen_sep.sep_out_xbar_req.aw_valid &&
                 u_dut.u_smu.gen_sep.sep_out_xbar_resp.aw_ready) begin
         sep_smn_out_aw_count_o <= sep_smn_out_aw_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.gen_sep.sep_out_xbar_req.ar_valid &&
+                u_dut.u_smu.gen_sep.sep_out_xbar_resp.ar_ready) begin
+        sep_smn_out_ar_count_o <= sep_smn_out_ar_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.gen_sep.smc_out_xbar_req.aw_valid &&
+                u_dut.u_smu.gen_sep.smc_out_xbar_resp.aw_ready) begin
+        smc_smn_out_aw_count_o <= smc_smn_out_aw_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.gen_sep.smc_out_xbar_req.ar_valid &&
+                u_dut.u_smu.gen_sep.smc_out_xbar_resp.ar_ready) begin
+        smc_smn_out_ar_count_o <= smc_smn_out_ar_count_o + 32'd1;
       end
       if (u_dut.u_smu.xbar_to_sep_req.aw_valid && u_dut.u_smu.xbar_to_sep_resp.aw_ready) begin
         sep_xbar_in_aw_count_o <= sep_xbar_in_aw_count_o + 32'd1;
@@ -1778,6 +1823,7 @@ module smu_wrapper_uvm_top
   ) u_smu_xbar_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
+    .rst_primary_smc_clk_ni   (rst_primary_smc_clk_n_o),
     .sep_global_base_i        (sep_global_base_o),
     .sep_region_size_i        (sep_region_size_o),
     .smc_global_base_i        (smc_global_base_o),
@@ -1798,7 +1844,97 @@ module smu_wrapper_uvm_top
     .s_axi_rresp_i            (ext_in_rresp),
     .axi_in_awvalid_count_i   (smu_axi_in_awvalid_count),
     .axi_out_awvalid_count_i  (smu_axi_out_awvalid_count),
-    .axil_external_active_i   (tb_axil_external_active)
+    .axil_external_active_i   (tb_axil_external_active),
+    .xbar_sep_out_awvalid_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_req_i.aw_valid),
+    .xbar_sep_out_awready_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_resp_o.aw_ready),
+    .xbar_sep_out_awaddr_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_req_i.aw.addr),
+    .xbar_sep_out_awid_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_req_i.aw.id),
+    .xbar_sep_out_arvalid_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_req_i.ar_valid),
+    .xbar_sep_out_arready_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_resp_o.ar_ready),
+    .xbar_sep_out_araddr_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_req_i.ar.addr),
+    .xbar_sep_out_arid_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_req_i.ar.id),
+    .xbar_sep_out_bvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_resp_o.b_valid),
+    .xbar_sep_out_bready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_req_i.b_ready),
+    .xbar_sep_out_bid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_resp_o.b.id),
+    .xbar_sep_out_bresp_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_resp_o.b.resp),
+    .xbar_sep_out_rvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_resp_o.r_valid),
+    .xbar_sep_out_rready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_req_i.r_ready),
+    .xbar_sep_out_rlast_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_resp_o.r.last),
+    .xbar_sep_out_rid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_resp_o.r.id),
+    .xbar_sep_out_rresp_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_out_resp_o.r.resp),
+    .xbar_smc_out_awvalid_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_req_i.aw_valid),
+    .xbar_smc_out_awready_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_resp_o.aw_ready),
+    .xbar_smc_out_awaddr_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_req_i.aw.addr),
+    .xbar_smc_out_awid_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_req_i.aw.id),
+    .xbar_smc_out_arvalid_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_req_i.ar_valid),
+    .xbar_smc_out_arready_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_resp_o.ar_ready),
+    .xbar_smc_out_araddr_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_req_i.ar.addr),
+    .xbar_smc_out_arid_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_req_i.ar.id),
+    .xbar_smc_out_bvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_resp_o.b_valid),
+    .xbar_smc_out_bready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_req_i.b_ready),
+    .xbar_smc_out_bid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_resp_o.b.id),
+    .xbar_smc_out_bresp_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_resp_o.b.resp),
+    .xbar_smc_out_rvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_resp_o.r_valid),
+    .xbar_smc_out_rready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_req_i.r_ready),
+    .xbar_smc_out_rlast_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_resp_o.r.last),
+    .xbar_smc_out_rid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_resp_o.r.id),
+    .xbar_smc_out_rresp_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_out_resp_o.r.resp),
+    .xbar_ext_in_awvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_req_i.aw_valid),
+    .xbar_ext_in_awready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_resp_o.aw_ready),
+    .xbar_ext_in_awaddr_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_req_i.aw.addr),
+    .xbar_ext_in_awid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_req_i.aw.id),
+    .xbar_ext_in_arvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_req_i.ar_valid),
+    .xbar_ext_in_arready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_resp_o.ar_ready),
+    .xbar_ext_in_araddr_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_req_i.ar.addr),
+    .xbar_ext_in_arid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_req_i.ar.id),
+    .xbar_ext_in_bvalid_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_resp_o.b_valid),
+    .xbar_ext_in_bready_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_req_i.b_ready),
+    .xbar_ext_in_bid_i        (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_resp_o.b.id),
+    .xbar_ext_in_bresp_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_resp_o.b.resp),
+    .xbar_ext_in_rvalid_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_resp_o.r_valid),
+    .xbar_ext_in_rready_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_req_i.r_ready),
+    .xbar_ext_in_rlast_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_resp_o.r.last),
+    .xbar_ext_in_rid_i        (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_resp_o.r.id),
+    .xbar_ext_in_rresp_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_in_resp_o.r.resp),
+    .xbar_sep_in_awvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_req_o.aw_valid),
+    .xbar_sep_in_awready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_resp_i.aw_ready),
+    .xbar_sep_in_awid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_req_o.aw.id),
+    .xbar_sep_in_arvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_req_o.ar_valid),
+    .xbar_sep_in_arready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_resp_i.ar_ready),
+    .xbar_sep_in_arid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_req_o.ar.id),
+    .xbar_sep_in_bvalid_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_resp_i.b_valid),
+    .xbar_sep_in_bready_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_req_o.b_ready),
+    .xbar_sep_in_bid_i        (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_resp_i.b.id),
+    .xbar_sep_in_rvalid_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_resp_i.r_valid),
+    .xbar_sep_in_rready_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_req_o.r_ready),
+    .xbar_sep_in_rlast_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_resp_i.r.last),
+    .xbar_sep_in_rid_i        (u_dut.u_smu.gen_sep.u_smu_axi_xbar.sep_in_resp_i.r.id),
+    .xbar_smc_in_awvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_req_o.aw_valid),
+    .xbar_smc_in_awready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_resp_i.aw_ready),
+    .xbar_smc_in_awid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_req_o.aw.id),
+    .xbar_smc_in_arvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_req_o.ar_valid),
+    .xbar_smc_in_arready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_resp_i.ar_ready),
+    .xbar_smc_in_arid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_req_o.ar.id),
+    .xbar_smc_in_bvalid_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_resp_i.b_valid),
+    .xbar_smc_in_bready_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_req_o.b_ready),
+    .xbar_smc_in_bid_i        (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_resp_i.b.id),
+    .xbar_smc_in_rvalid_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_resp_i.r_valid),
+    .xbar_smc_in_rready_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_req_o.r_ready),
+    .xbar_smc_in_rlast_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_resp_i.r.last),
+    .xbar_smc_in_rid_i        (u_dut.u_smu.gen_sep.u_smu_axi_xbar.smc_in_resp_i.r.id),
+    .xbar_ext_out_awvalid_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_req_o.aw_valid),
+    .xbar_ext_out_awready_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_resp_i.aw_ready),
+    .xbar_ext_out_awid_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_req_o.aw.id),
+    .xbar_ext_out_arvalid_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_req_o.ar_valid),
+    .xbar_ext_out_arready_i   (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_resp_i.ar_ready),
+    .xbar_ext_out_arid_i      (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_req_o.ar.id),
+    .xbar_ext_out_bvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_resp_i.b_valid),
+    .xbar_ext_out_bready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_req_o.b_ready),
+    .xbar_ext_out_bid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_resp_i.b.id),
+    .xbar_ext_out_rvalid_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_resp_i.r_valid),
+    .xbar_ext_out_rready_i    (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_req_o.r_ready),
+    .xbar_ext_out_rlast_i     (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_resp_i.r.last),
+    .xbar_ext_out_rid_i       (u_dut.u_smu.gen_sep.u_smu_axi_xbar.ext_out_resp_i.r.id)
   );
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.

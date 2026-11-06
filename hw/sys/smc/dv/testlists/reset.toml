@@ -9,6 +9,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["smoke", "ci", "reset"]
 run_modes = ["smoke"]
+args = ["+smc_reset_sva_need_uncore_low"]
 
 [[tests]]
 name = "smc_powergood_glitch_test"
@@ -99,6 +100,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset"]
 run_modes = ["smoke"]
+args = ["+smc_reset_sva_need_uncore_withheld"]
 
 # BFM: SW RESET_CTRL.core0 → RESET_TIMEOUT.reset_applied (no Force drain).
 [[tests]]
@@ -108,6 +110,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset"]
 run_modes = ["smoke"]
+args = [
+    "+smc_reset_sva_need_uncore_cause",
+    "+smc_reset_sva_need_uncore_applied",
+    "+smc_reset_sva_need_iso_release",
+]
 
 [[tests]]
 name = "smc_spm_access_core_reset_test"
@@ -330,6 +337,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
+args = ["+smc_reset_sva_need_flr_fall", "+smc_reset_sva_need_pad62_low"]
 
 [[groups]]
 name = "reset"

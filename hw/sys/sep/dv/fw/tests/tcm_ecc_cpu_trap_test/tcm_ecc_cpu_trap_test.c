@@ -20,7 +20,7 @@
 //                                  MICCMECT, MDCCMECT, mip, mie, mstatus and
 //                                  the trap count, read after the access, and
 //                                  the counter reads of the wait before them
-//   ARM leg= kind= traps_before= traps_after= ic= dc= mip=
+//   ARM leg= kind= traps_before= traps_after= ic= dc= mip= mie= mst=
 //   TRAP i= tag= mcause= mscause= mepc=
 //   MEIP when= w0..w7= micect=
 //   CLAMP ic31= dc31= ict= dct=
@@ -318,6 +318,8 @@ static void put_arm(const char *leg, const char *kind, uint32_t n0, const struct
     rec_hex("ic", s->ic);
     rec_hex("dc", s->dc);
     rec_hex("mip", s->mip);
+    rec_hex("mie", s->mie);
+    rec_hex("mst", s->mst);
     rec_end();
     put_traps();
 }

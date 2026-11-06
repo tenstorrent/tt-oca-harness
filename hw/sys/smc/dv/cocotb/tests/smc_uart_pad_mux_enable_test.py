@@ -11,17 +11,20 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_uart_pad_mux_enable_test(smc_base_test):
-    """THR 0xA5 on pad 12 with UART_EN = 1, then 0 (measured), then 1 again."""
+    """THR 0xA5 on pad 12 with UART_EN = 1, then 0 (pad held at 0), then 1 again."""
 
     required_evidence = (
         "CHK-NONVAC",
+        "CHK-UART-PADMUX-CTS",
         "CHK-UART-PADMUX-FRAME-ON",
         "CHK-UART-PADMUX-FRAME-RECOVER",
         "CHK-UART-PADMUX-GPIO-LEVEL-MEASURED",
-        "CHK-UART-PADMUX-OFF-PAD-MEASURED",
+        "CHK-UART-PADMUX-OFF-PAD-HELD",
         "CHK-UART-PADMUX-OFF-TX-SHIFTED",
+        "CHK-UART-PADMUX-RTS",
+        "CHK-UART-PADMUX-RX",
     )
-    min_evidence = 6
+    min_evidence = 9
 
     auto_protocol_vip = False
 

@@ -4,8 +4,10 @@
 
 Drives the OpenTitan SPI host controller over the CPU-LSU AXI bus to issue a
 JEDEC-ID (0x9F) command against the OSS flash BFM, then reads RXDATA and
-ERROR_STATUS back with exact ``expected`` values (scoreboard value-checked). The
-RXDATA / opcode assertions live in the test; this sequence exposes ``rxdata``.
+ERROR_STATUS back. ERROR_STATUS carries an exact ``expected`` value (scoreboard
+value-checked). CONFIGOPTS is read back after its write and exposed as
+``configopts`` for the test to compare with ``SPI_CONFIGOPTS_MODE0``. RXDATA has no ``expected`` value: its in-word byte order is not
+fixed here, so the test grades the identifier bytes from the exposed ``rxdata``.
 
 Co-located with the SPI register-map constants so the test does not embed raw
 addresses. The SEP instantiates the upstream OpenTitan spi_host register block
@@ -32,7 +34,6 @@ SPI_CONTROLLER_TXDATA = sym("SPI_CONTROLLER_TXDATA_0__MEM_BASE_ADDR")
 SPI_CONTROLLER_ERROR_STATUS = sym("SPI_CONTROLLER_ERROR_STATUS_REG_ADDR")
 
 SPI_JEDEC_ID = 0x20BA18
-SPI_RX_JEDEC_WORD = 0x0018BA20
 
 STATUS_ACTIVE = SPI_CONTROLLER.field_mask("STATUS", "active")
 STATUS_READY = SPI_CONTROLLER.field_mask("STATUS", "ready")
@@ -81,10 +82,11 @@ SPI_CONFIGOPTS_MODE0 = (
 
 
 class sep_spi_flash_jedec_seq(uvm_sequence):
-    """Issue JEDEC-ID over the OpenTitan SPI host; exposes ``rxdata``."""
+    """Issue JEDEC-ID over the OpenTitan SPI host; exposes ``configopts`` and ``rxdata``."""
 
     def __init__(self, name: str = "sep_spi_flash_jedec_seq") -> None:
         super().__init__(name)
+        self.configopts: int | None = None
         self.rxdata = 0
 
     async def _write(self, addr: int, data: int) -> None:
@@ -123,6 +125,7 @@ class sep_spi_flash_jedec_seq(uvm_sequence):
     async def body(self) -> None:
         await self._write(SPI_CONTROLLER_CONTROL, SPI_CONTROL_ENABLE)
         await self._write(SPI_CONTROLLER_CONFIGOPTS, SPI_CONFIGOPTS_MODE0)
+        self.configopts = await self._read(SPI_CONTROLLER_CONFIGOPTS)
         await self._write(SPI_CONTROLLER_CSID, 0)
         await self._write(SPI_CONTROLLER_ERROR_STATUS, 0xFFFF_FFFF)
 
@@ -135,5 +138,5 @@ class sep_spi_flash_jedec_seq(uvm_sequence):
         # Three-byte read of the ID; CS# deasserts when the segment ends.
         await self._write(SPI_CONTROLLER_COMMAND, spi_command(CMD_DIR_RDONLY, 3))
         await self._wait_idle()
-        self.rxdata = await self._read(SPI_CONTROLLER_RXDATA, SPI_RX_JEDEC_WORD)
+        self.rxdata = await self._read(SPI_CONTROLLER_RXDATA)
         await self._read(SPI_CONTROLLER_ERROR_STATUS, 0)

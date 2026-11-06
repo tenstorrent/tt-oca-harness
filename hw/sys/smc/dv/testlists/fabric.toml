@@ -12,6 +12,15 @@ tags = ["ci", "fabric", "i3c"]
 run_modes = ["smoke"]
 
 [[tests]]
+# Each I3C instance's forced PIO interrupt on its own peripheral-interrupt bit, 12 to 17.
+name = "smc_i3c_irq_route_test"
+module = "smc_i3c_irq_route_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "i3c"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_i3c_to_fabric_test"
 module = "smc_i3c_to_fabric_test"
 seed = 1
@@ -780,4 +789,25 @@ module = "smc_sys_in_filter_idle_clock_gate_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+# The merged BRESP of a split two-beat write follows the stated rule; every declared
+# past-extent and gap write is recorded beside its declaration.
+name = "smc_bresp_evidence_test"
+module = "smc_bresp_evidence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+# A burst starting in a gap answers DECERR on every beat; exclusive accesses answer OKAY;
+# in-block holes and array padding answer OKAY with 0; the beat past the last register of
+# smc_cpu_ctrl answers SLVERR.
+name = "smc_memmap_access_rules_test"
+module = "smc_memmap_access_rules_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
 run_modes = ["smoke"]

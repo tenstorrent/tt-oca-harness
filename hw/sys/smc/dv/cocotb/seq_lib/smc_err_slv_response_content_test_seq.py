@@ -9,10 +9,12 @@ access gates; doc/trm memory_map.adoc Decode Response Codes; the generated SMC m
 misc_wrap register descriptions; the AXI rules transcribed in the ocah_axi_sva header.
 
 Every response is graded from a passive per-port sampler of the tb_top R, B, AR, AW and
-W handshakes, because the bench item carries one merged response code. Values the
-contract leaves open (second words, burst beats, narrow lanes, the straddling unit below
-the REGION_SIZE limit, merged split-slot answers) are printed as OBS lines that name their
-finding and are never compared.
+W handshakes, because the bench item carries one merged response code. Every beat of a
+read burst that starts in a gap is graded DECERR (memmap.adoc, a burst routed by its start
+address); the straddling scratchpad below the REGION_SIZE limit is graded OKAY with its
+word landed. Values the contract leaves open (second words, other burst beats, narrow
+lanes, merged split-slot answers) are printed as OBS lines that name their finding and are
+never compared.
 """
 
 from __future__ import annotations
@@ -28,6 +30,8 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
 from .smc_addr_map import (
+    _RESET_UNIT_H,
+    _SMC_BASE_CFG_H,
     AVS_CG_EN,
     CLOCK_GATE_CONTROL,
     CLOCK_GATE_CONTROL_RESET,
@@ -44,6 +48,7 @@ from .smc_addr_map import (
     UART_CG_EN,
     generated_decoded_extent,
     generated_window,
+    reg_reset_word,
     smc_addr,
     smc_indexed_addr,
 )
@@ -91,26 +96,25 @@ REGION_SIZE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 
 # AXIFAB-ERR-REGIONSIZE.S3: at REGION_SIZE 1 MiB the scratchpad RAM aperture
 # (BASE+0x6_0000..0x15_FFFF) straddles BASE+REGION_SIZE. BASE+REGION_SIZE itself is
-# outside the aperture (memmap.adoc:63-64, DECERR); whether the part of the unit below
-# the limit answers is open (SPEC issue #3551), so those accesses are OBS lines.
+# outside the aperture (DECERR) and the part of the unit below the limit stays
+# reachable (memmap.adoc, "A unit that extends past the limit stays reachable below it").
 REGION_SIZE_STRADDLE = 0x10_0000
 STRADDLE_ADDR = SPM_MEMORY_BASE
 STRADDLE_LIMIT_ADDR = LOCAL_BASE_RESET + REGION_SIZE_STRADDLE
-STRADDLE_ISSUE = "#3551"
 STRADDLE_D0 = 0x0D0D_0D0D_5EED_0000
 STRADDLE_D0_LIMIT = 0x0D0F_0D0F_5EED_0F00
 STRADDLE_D1 = {"SEP_IN": 0x0D1D_1D1D_5EED_0001, "SYS_IN": 0x0D1D_1D1D_5EED_0011}
 STRADDLE_D2 = {"SEP_IN": 0x0D2D_2D2D_5EED_0002, "SYS_IN": 0x0D2D_2D2D_5EED_0012}
 
 # Split 8-byte slots: +0 is the last live 32-bit register of the island, +4 is past
-# its extent. Reset values: reset_unit.adoc:213-220, smc_base_config.adoc:149-157.
+# its extent. Reset values come from the generated block headers.
 # NDMRESET_CLUSTER_COUNT is read-only and reports the connected clusters
 # (misc_wrap.adoc:117), a value no pinned source states: None marks it OBS-only.
 SPLIT_SLOTS = (
     (
         "reset_unit",
         smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR"),
-        0x0,
+        reg_reset_word(_RESET_UNIT_H, "RESET_UNIT", "ISOLATE_REQ_FLR_RESET_COUNTER_VALUE"),
     ),
     (
         "misc_wrap",
@@ -120,7 +124,7 @@ SPLIT_SLOTS = (
     (
         "base_config",
         smc_addr("SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR"),
-        0x1000,
+        reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "HANG_DET_TIMEOUT_THRESHOLD"),
     ),
 )
 
@@ -318,7 +322,7 @@ def _families() -> list[Family]:
     )
 
     gap_locs = []
-    for off in (0x1868, 0xC000, 0x1_7000, 0x3_8300, 0x16_4000, 0x40_6548):
+    for off in (0x1868, 0xD000, 0x1_7000, 0x3_8300, 0x16_4000, 0x40_6548):
         lo, hi = _gap_range(off)
         targets = tuple(
             Target(name, base + off, base + lo, base + hi)
@@ -1145,7 +1149,17 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                     item, hs = await self._issue(
                         port, f"{fam.key}_RBURST{ln}", start, write=False, beats=ln + 1
                     )
-                    r = self._check_read(fam, ctx, port, item, hs, ln + 1, None)
+                    # A burst that starts in a gap answers DECERR on every beat; the beat
+                    # codes of the other families are not stated.
+                    code = fam.code if fam.key == "GAP" else None
+                    r = self._check_read(fam, ctx, port, item, hs, ln + 1, code)
+                    if code is not None:
+                        for i, beat in enumerate(r):
+                            if beat.data != ERR_WORD | (ERR_WORD << 32):
+                                fam.findings.append(
+                                    f"{ctx}: beat {i} RDATA {_hl(beat.data)}, want "
+                                    f"0x{ERR_WORD:08x} in both halves"
+                                )
                     self._obs_beats(fam, bcell, start, r)
                 else:
                     wdata = int.from_bytes(WRITE_WORD.to_bytes(BEAT, "little") * (ln + 1), "little")
@@ -1226,12 +1240,14 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
             self._check_write(fam, f"{where} 64-bit write", port, item, hs, 1, DECERR)
             fam.cells[f"S3 {cell}"] = 1
             n += 2
+            ctx = f"{cell} 0x{STRADDLE_ADDR:x} below the limit"
             item, hs = await self._issue(port, "STRADDLE_BELOW_RD", STRADDLE_ADDR, write=False)
-            r = hs["r"]
+            r = self._check_read(fam, f"{ctx} 64-bit read", port, item, hs, 1, OKAY)
             below.append((port, "rd", r[0].resp if r else None, r[0].data if r else None))
             item, hs = await self._issue(
                 port, "STRADDLE_BELOW_WR", STRADDLE_ADDR, write=True, wdata=STRADDLE_D1[port]
             )
+            self._check_write(fam, f"{ctx} 64-bit write", port, item, hs, 1, OKAY)
             b = hs["b"]
             below.append((port, "wr", b[0].resp if b else None, None))
             n += 2
@@ -1253,12 +1269,11 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
             if r and r[0].data is not None:
                 seen.add(r[0].data)
             cocotb.log.info(
-                "INFO-STRADDLE-REREAD: port=%s addr=0x%x rresp=%s rdata=%s issue=%s",
+                "INFO-STRADDLE-REREAD: port=%s addr=0x%x rresp=%s rdata=%s",
                 port,
                 STRADDLE_ADDR,
                 _rname(r[0].resp) if r else "none",
                 _hl(r[0].data) if r else "none",
-                STRADDLE_ISSUE,
             )
             n += 2
         # A below-limit write landed when its data is read back later: by the other port
@@ -1271,14 +1286,19 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                 landed = resp == OKAY and data in stored
             else:
                 landed = STRADDLE_D1[port] in seen
+            if not landed:
+                fam.findings.append(
+                    f"{port} {op} at 0x{STRADDLE_ADDR:x} below the REGION_SIZE 0x{REGION_SIZE_STRADDLE:X} "
+                    f"limit did not reach the scratchpad: resp {_rname(resp)}, "
+                    f"rdata {_hl(data) if op == 'rd' else 'none'}"
+                )
             cocotb.log.info(
-                "OBS-ERRC-REGIONSIZE-STRADDLE: port=%s op=%s resp=%s rdata=%s landed=%s issue=%s",
+                "INFO-STRADDLE-BELOW: port=%s op=%s resp=%s rdata=%s landed=%s",
                 port,
                 op,
                 _rname(resp),
                 _hl(data) if op == "rd" else "none",
                 "y" if landed else "n",
-                STRADDLE_ISSUE,
             )
         for port in ("SYS_IN", "SEP_IN"):
             cell = f"{port}/spm/rs16M"
@@ -1553,8 +1573,8 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                 extra = (
                     f"; REGION_SIZE 0x{REGION_SIZE_STRADDLE:X}: SYS_IN and SEP_IN read and write at "
                     f"0x{STRADDLE_LIMIT_ADDR:x} DECERR one beat and one B, D0' kept at "
-                    f"0x{REGION_SIZE_RESET:X}; 0x{STRADDLE_ADDR:x} below the limit observed "
-                    f"({STRADDLE_ISSUE}), D2 written and read OKAY"
+                    f"0x{REGION_SIZE_RESET:X}; 0x{STRADDLE_ADDR:x} below the limit answers OKAY "
+                    f"and its words land, D2 written and read OKAY"
                 )
             if fam.key == "CLKGATE":
                 extra = (

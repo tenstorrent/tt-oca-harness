@@ -3,7 +3,7 @@
 """Seeded mailbox FIFO model: STATUS, threshold flags, ERROR_FLAGS and flushes on drawn pairs.
 
 Specs: hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox.rdl (STATUS, ERROR_FLAGS, WIRQT, RIRQT,
-CTRL), hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc (Paired FIFOs, Interrupts),
+IRQS, CTRL), hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc (Paired FIFOs, Interrupts),
 hw/ip/axi_lite_mailbox_unit/doc/interface.adoc (Mailbox access results),
 hw/ip/axi_lite_mailbox_unit/doc/memmap.adoc (CTRL flush bits) and hw/sys/smc/doc/periphs.adoc
 (SMC Peripheral Parameter Overrides, `MailboxDepth` 2).
@@ -55,6 +55,7 @@ ERROR_FIELDS = READ_ERROR | WRITE_ERROR
 WFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__WFLUSH_bm")
 RFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__RFLUSH_bm")
 FLUSH_BITS = WFLUSH | RFLUSH
+EIRQ = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__IRQS__EIRQ_bm")
 WIRQT_RESET = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__WIRQT__WIRQT_reset")
 RIRQT_RESET = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__RIRQT__RIRQT_reset")
 
@@ -289,10 +290,27 @@ class smc_mailbox_fifo_model_rand_test_seq(SmcCsrSeq):
         return first, again
 
     async def _upper_half_clear(self, tag: str, p: dict, side: str) -> str:
-        """An empty read, then ERROR_FLAGS read at +4 with 4 bytes and again with 8 bytes."""
+        """IRQS.eirq acknowledged, an empty read, then ERROR_FLAGS read at +4 with 4 bytes and again
+        with 8 bytes.
+
+        IRQS.eirq is the sentinel of the injection: an empty read sets the read-error flag and
+        IRQS[2] (interface.adoc:50-51), reading IRQS does not clear it (architecture.adoc:61-62)
+        and reading ERROR_FLAGS does not acknowledge it (architecture.adoc:68-69).
+        """
         pair = p["pair"]
+        await self._wr(f"{tag}_IRQS_ACK", pair, side, "IRQS", EIRQ)
+        pre = await self._rd(f"{tag}_IRQS_PRE", pair, side, "IRQS") & EIRQ
+        assert pre == 0, (
+            f"{tag}: IRQS.eirq of {side} reads 1 after a write of 1 to it, want 0 "
+            f"(axil_mailbox.rdl IRQS: write 1 acknowledges and clears); {self._cell(p)}"
+        )
         await self._do(f"{tag}_INJECT", SmcSysAxiOp.READ, pair, side, "READ_DATA", mode=ERROR)
         self.n_empty_reads += 1
+        injected = await self._rd(f"{tag}_IRQS_INJ", pair, side, "IRQS") & EIRQ
+        assert injected == EIRQ, (
+            f"{tag}: IRQS.eirq of {side} reads 0 after an empty read, want 1 "
+            f"(interface.adoc: an empty read sets the read-error flag and IRQS[2]); {self._cell(p)}"
+        )
         item = SmcSysAxiItem(f"rd_{tag}_EF_UPPER")
         item.op, item.length = SmcSysAxiOp.READ, UPPER_HALF_BYTES
         item.addr = self._addr(pair, side, "ERROR_FLAGS") + UPPER_HALF_OFFSET
@@ -308,7 +326,16 @@ class smc_mailbox_fifo_model_rand_test_seq(SmcCsrSeq):
             f"(axil_mailbox.rdl ERROR: a read of any size or alignment clears every flag); "
             f"{self._cell(p)}"
         )
-        return f"{side} upper-half 0x{upper:x}/0b{after:02b}"
+        kept = await self._rd(f"{tag}_IRQS_POST", pair, side, "IRQS") & EIRQ
+        assert kept == EIRQ, (
+            f"{tag}: IRQS.eirq of {side} reads 0 after the ERROR_FLAGS reads, want 1 "
+            f"(architecture.adoc: reading ERROR_FLAGS does not acknowledge IRQS[2]); "
+            f"{self._cell(p)}"
+        )
+        return (
+            f"{side} IRQS.eirq {int(bool(pre))}->{int(bool(injected))}->{int(bool(kept))}, "
+            f"upper-half 0x{upper:x}/0b{after:02b}"
+        )
 
     async def _flush(self, tag: str, p: dict, side: str, bit: int) -> str:
         pair, model = p["pair"], self.models[p["pair"]]
@@ -492,8 +519,9 @@ class smc_mailbox_fifo_model_rand_test_seq(SmcCsrSeq):
             "CHK-MBFM-CLEAR",
             f"every first ERROR_FLAGS read after an injection returned the flags set and the "
             f"repeat read 0: {3 * len(self.passes)} injection reads over {len(self.passes)} "
-            f"passes; after one more empty read on pass 0 the 4-byte read at ERROR_FLAGS + 4 "
-            f"returned 0 and the 8-byte read after it 0 ({upper_log}); {self._drawn()}",
+            f"passes; on pass 0, IRQS.eirq read 0 after its acknowledge and 1 after one more "
+            f"empty read, the 4-byte read at ERROR_FLAGS + 4 then returned 0, the 8-byte read "
+            f"after it 0 and IRQS.eirq still 1 ({upper_log}); {self._drawn()}",
         )
 
     async def _s5(self) -> None:

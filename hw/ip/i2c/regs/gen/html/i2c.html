@@ -205,17 +205,17 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>27:16</td><td>RXLVL</td><td>R</td><td>-</td><td>Controller RX FIFO fill level.</td></tr>
+<tr><td>27:16</td><td>RXLVL</td><td>R</td><td>-</td><td>Controller RX FIFO fill level, from 0 to the FIFO depth when full.</td></tr>
 <tr><td>15:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>11:0</td><td>FMTLVL</td><td>R</td><td>-</td><td>Controller TX FIFO fill level.</td></tr>
+<tr><td>11:0</td><td>FMTLVL</td><td>R</td><td>-</td><td>Controller TX FIFO fill level, from 0 to the FIFO depth when full.</td></tr>
 </table>
 <h3 id="TARGET_FIFO_STATUS">TARGET_FIFO_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>27:16</td><td>ACQLVL</td><td>R</td><td>0x0</td><td>Target RX FIFO fill level.</td></tr>
+<tr><td>27:16</td><td>ACQLVL</td><td>R</td><td>0x0</td><td>Target RX FIFO fill level, from 0 to the FIFO depth when full.</td></tr>
 <tr><td>15:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>11:0</td><td>TXLVL</td><td>R</td><td>0x0</td><td>Target TX FIFO fill level.</td></tr>
+<tr><td>11:0</td><td>TXLVL</td><td>R</td><td>0x0</td><td>Target TX FIFO fill level, from 0 to the FIFO depth when full.</td></tr>
 </table>
 <h3 id="OVRD">OVRD</h3>
 <table>

@@ -1672,6 +1672,8 @@ tests = [
   "smu_axi_out_outstanding_test",
   "smu_axi_in_sep_aperture_test",
   "smu_xbar_zero_aperture_test",
+  "smu_xbar_self_route_smc_test",
+  "smu_xbar_self_route_sep_test",
   "smu_smc_inbound_window_sweep_test",
   "smu_sys_in_filter_src_id_rule_test",
   "smu_base_config_corners_test",
@@ -2254,6 +2256,7 @@ tests = [
   "smu_smc_gpio_pad_output_test",
   "smu_smc_efuse_shadow_sense_reset_test",
   "smu_smc_cool_reset_pin_test",
+  "smu_cold_reset_pin_timing_test",
   "smu_smc_peripheral_irq_test",
   "smu_sram_auto_init_disabled_test",
   "smu_telemetry_atb_capture_test",
@@ -3097,7 +3100,7 @@ module = "smu_sep_reset_inflight_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 5400
+timeout_sec = 9000
 tags = ["fabric", "sep", "sba", "reset", "axi"]
 run_modes = ["sep_rtl"]
 args = [
@@ -3396,12 +3399,6 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
-# sep_lifecycle_ctrl.sv hardwires dbg_disable.smc_otp_jtag2axi and
-# .sep_otp_jtag2axi to 0 while deriving .smc_jtag2axi from the Case-2 gating
-# term, so the OTP bridges sit outside the lifecycle debug ladder. Every other
-# OTP leaf runs with an image that leaves debug open, so that separation is
-# never observed. This entry names the PROD_END SEP shadow image, whose posture
-# closes the fabric bridge, and drives both OTP bridges to completion in it.
 [[tests]]
 name = "smu_dtp_ptap_ir_walk_test"
 module = "smu_dtp_ptap_ir_walk_test"
@@ -3424,12 +3421,12 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
-# sep_lifecycle_ctrl.sv hardwires dbg_disable.smc_otp_jtag2axi and
-# .sep_otp_jtag2axi to 0 while deriving .smc_jtag2axi from the Case-2 gating
-# term, so the OTP bridges sit outside the lifecycle debug ladder. Every other
-# OTP leaf runs with an image that leaves debug open, so that separation is
-# never observed. This entry names the PROD_END SEP shadow image, whose posture
-# closes the fabric bridge, and drives both OTP bridges to completion in it.
+# The lifecycle chapter gates the SMC fabric JTAG2AXI path on Case 2 and leaves
+# both OTP JTAG2AXIL paths ungated (hw/sys/sep/doc/lifecycle_controller.adoc).
+# Every other OTP leaf runs with an image that leaves debug open, so that
+# separation is never observed. This entry names the PROD_END SEP shadow image,
+# whose posture closes the fabric bridge, and drives both OTP bridges to
+# completion in it.
 [[tests]]
 name = "smu_otp_bridges_under_dbg_disable_test"
 module = "smu_otp_bridges_under_dbg_disable_test"
@@ -4036,6 +4033,52 @@ args = [
 ]
 
 [[tests]]
+name = "smu_xbar_self_route_smc_test"
+module = "smu_xbar_self_route_smc_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "sep", "jtag2axi", "axi"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+[[tests]]
+name = "smu_xbar_self_route_sep_test"
+module = "smu_xbar_self_route_sep_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3900
+tags = ["fabric", "sep", "sba", "axi"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: every SEP debug path open, so the DTP forwards TMS to the SEP
+  # STAP and the debug module's system bus is reachable.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+]
+
+[[tests]]
 # Burst and single-beat ext_in misses answered by the crossbar DECERR
 # responder; one JTAG2AXI bring-up opens the SMC inbound filter for the
 # SCRATCH_COLD readback, everything else is ext_in traffic.
@@ -4451,6 +4494,8 @@ tests = [
   "smu_efuse_command_test",
   "smu_axi_in_sep_aperture_test",
   "smu_xbar_zero_aperture_test",
+  "smu_xbar_self_route_smc_test",
+  "smu_xbar_self_route_sep_test",
   "smu_smc_inbound_window_sweep_test",
   "smu_dtp_smc_stap_smoke_test",
   "smu_ext_boot_seq_gate_test",
@@ -4492,6 +4537,7 @@ tests = [
   "smu_smc_gpio_pad_output_test",
   "smu_smc_efuse_shadow_sense_reset_test",
   "smu_smc_cool_reset_pin_test",
+  "smu_cold_reset_pin_timing_test",
   "smu_dtp_scan_chain_boundary_test",
   "smu_telemetry_atb_capture_test",
   "smu_cla_action_test",
@@ -4593,7 +4639,7 @@ tests = [
   "smu_lc_disable_vector_matrix_prod_sip_sys_test",
   "smu_lc_disable_vector_matrix_prod_all_test",
 ]
-expected_count = 175
+expected_count = 178
 
 # The VCS run of record of the AXI protocol checkers in tb_wrapper_top.sv: the
 # leaves that drive the checked links, all but one of which name a checker with a
@@ -4613,6 +4659,9 @@ tests = [
   "smu_xtrig_ctp_pad_test",
   "smu_axi_smc_cool_reset_in_flight_test",
   "smu_axi_ext_in_illegal_encoding_test",
+  "smu_axi_concurrent_initiators_stall_test",
+  "smu_axi_sep_lsu_initiator_stall_test",
+  "smu_axi_sep_reset_in_flight_test",
 ]
 
 # `--items all`: every test in this file, so this group is the whole SMU
@@ -4688,6 +4737,8 @@ tests = [
   "smu_efuse_command_test",
   "smu_axi_in_sep_aperture_test",
   "smu_xbar_zero_aperture_test",
+  "smu_xbar_self_route_smc_test",
+  "smu_xbar_self_route_sep_test",
   "smu_smc_inbound_window_sweep_test",
   "smu_dtp_smc_stap_smoke_test",
   "smu_ext_boot_seq_gate_test",
@@ -4744,6 +4795,7 @@ tests = [
   "smu_smc_gpio_pad_output_test",
   "smu_smc_efuse_shadow_sense_reset_test",
   "smu_smc_cool_reset_pin_test",
+  "smu_cold_reset_pin_timing_test",
   "smu_dtp_scan_chain_boundary_test",
   "smu_telemetry_atb_capture_test",
   "smu_cla_action_test",
@@ -4842,8 +4894,11 @@ tests = [
   "smu_sep_reset_inflight_test",
   "smu_smc_reset_inflight_test",
   "smu_dtp_jtag2axi_smc_reset_inflight_test",
+  "smu_axi_concurrent_initiators_stall_test",
+  "smu_axi_sep_lsu_initiator_stall_test",
+  "smu_axi_sep_reset_in_flight_test",
 ]
-expected_count = 219
+expected_count = 225
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -5068,6 +5123,171 @@ args = [
   "+axi_sva_need_iwc_smc",
 ]
 
+# The SMU crossbar with the smc_out initiators (JTAG2AXI and the iDMA it
+# programs) and the ext_in master against a stalling ext_out responder, then the
+# smc_out and ext_in forwarding cells, the ext_in DECERR cell, the aperture
+# edges at reset, the 57-bit carry, the 32-bit SEP size edge and a reprogram
+# with a read in flight. The SEP aperture registers are written over the SEP
+# debug module's system bus. The need gates, the X rules and the data-known
+# rules grade under VCS only.
+# Access budget, JTAG2AXI accesses (about 10 us each) and SEP system-bus
+# accesses (several DMI scans each) per step: S1 12 + 3, S2 18, S3 5, S4 14,
+# S5 2, S6 3 + 1, S7 5 + 8; about 60 JTAG2AXI and 12 system-bus accesses.
+[[tests]]
+name = "smu_axi_concurrent_initiators_stall_test"
+module = "smu_axi_concurrent_initiators_stall_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 5400
+tags = ["fabric", "axi", "axi_sva"]
+# The leaf reads the crossbar smc_out port structs by hierarchy, which the
+# Verilator build does not expose.
+tools = ["vcs"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the paths are opened over JTAG2AXI and the SEP system bus, no eFuse word is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: every SEP debug path open, so the DTP forwards TMS to the SEP
+  # STAP and the debug module's system bus is reachable.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades. The leaf
+  # drives no SEP-originated traffic, so xbar_sep_out and sep_to_smc have none.
+  "+axi_sva_need_xbar_smc_out",
+  "+axi_sva_need_smu_in",
+  "+axi_sva_need_xbar_ext_in",
+  "+axi_sva_need_incut",
+  "+axi_sva_need_xbar_sep_in",
+  "+axi_sva_need_iwc_sep",
+  "+axi_sva_need_xbar_smc_in",
+  "+axi_sva_need_iwc_smc",
+  "+axi_sva_need_xbar_ext_out",
+  "+axi_sva_need_smu_out",
+  "+axi_sva_need_dtp_dbg",
+]
+
+# The SMU crossbar with the SEP debug-module initiator on sep_out: the hart runs
+# the ICCM probe under the debug module and the debug module's system bus issues
+# single accesses, while the JTAG2AXI-programmed SMC iDMA, JTAG2AXI and the
+# ext_in master run against a stalling ext_out responder; then interleaved IDs
+# on every permitted cell with one error response per link, the sep_out
+# forwarding and SEP-aperture DECERR cells, the ext_in DECERR bursts, the
+# aperture edges and the zero-size apertures. The need gates, the X rules and the
+# data-known rules grade under VCS only.
+# SEP debug-module budget per step: 3 probe runs (S2 1, S3 2) and 42 system-bus
+# accesses on sep_out (S1 2, S2 4, S3 4, S4 2, S5 2, S6 16, S7 12).
+[[tests]]
+name = "smu_axi_sep_lsu_initiator_stall_test"
+module = "smu_axi_sep_lsu_initiator_stall_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 14400
+tags = ["fabric", "axi", "axi_sva", "lsu"]
+# The leaf reads the crossbar port structs by hierarchy, which the Verilator
+# build does not expose.
+tools = ["vcs"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  # The probe the debug module points the hart at; generated by
+  # assets/gen_sep_lsu_probe_itcm.py.
+  "+sep_itcm_hex={repo_root}/hw/sys/smu/dv/assets/sep_lsu_probe.itcm.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the paths are opened over JTAG2AXI and the SEP system bus, no eFuse word is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: every SEP debug path open, so the DTP forwards TMS to the SEP
+  # STAP and the debug module can halt and resume the hart.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_xbar_sep_out",
+  "+axi_sva_need_xbar_smc_out",
+  "+axi_sva_need_smu_in",
+  "+axi_sva_need_xbar_ext_in",
+  "+axi_sva_need_incut",
+  "+axi_sva_need_xbar_sep_in",
+  "+axi_sva_need_iwc_sep",
+  "+axi_sva_need_xbar_smc_in",
+  "+axi_sva_need_iwc_smc",
+  "+axi_sva_need_xbar_ext_out",
+  "+axi_sva_need_smu_out",
+  "+axi_sva_need_dtp_dbg",
+  "+axi_sva_need_sep_to_smc",
+]
+
+# The SEP-facing crossbar links across one JTAG IC_RESET hold of sep_reset_n
+# with ext_in, JTAG2AXI and SEP CPU traffic in flight: the SEP hart runs the
+# four-instruction ICCM stub the debug module writes, the debug module's system
+# bus reads the SMC aperture, and after the release and a TAP test-logic reset
+# every route takes a fresh write and read before the one cold reset at the
+# end; the JTAG2AXI read after the hold is observed only. Access budget:
+# 12 JTAG2AXI, 59 debug-module and system-bus, 15 ext_in, 4 IC_RESET scans
+# and one hold.
+[[tests]]
+name = "smu_axi_sep_reset_in_flight_test"
+module = "smu_axi_sep_reset_in_flight_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 5400
+tags = ["fabric", "sep", "axi", "axi_sva", "reset", "held"]
+# The bench expectation window and the need gates grade on four-state
+# simulators only, and the leaf reads the checker ports by hierarchy.
+tools = ["vcs"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  # The debug module writes the stub into the ICCM over the default image.
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: every SEP debug path open, so the DTP forwards TMS to the SEP
+  # STAP and the debug module can halt and resume the hart.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades, the two
+  # instances on sep_reset_n included.
+  "+axi_sva_need_smu_in",
+  "+axi_sva_need_xbar_ext_in",
+  "+axi_sva_need_incut",
+  "+axi_sva_need_xbar_sep_in",
+  "+axi_sva_need_iwc_sep",
+  "+axi_sva_need_xbar_sep_in_sep_rst",
+  "+axi_sva_need_xbar_smc_in",
+  "+axi_sva_need_iwc_smc",
+  "+axi_sva_need_dtp_dbg",
+  "+axi_sva_need_xbar_smc_out",
+  "+axi_sva_need_xbar_sep_out",
+  "+axi_sva_need_sep_to_smc",
+  "+axi_sva_need_sep_to_smc_sep_rst",
+  "+axi_sva_need_xbar_ext_out",
+  "+axi_sva_need_smu_out",
+  # +axi_sva_expect_sep_in_override: the bench kills the sep_in and iwc_sep
+  # R_VALID_HELD and R_PAYLOAD_STABLE rules, the AW, W and AR VALID_RESET_LOW
+  # rules of the sep_in instance on sep_reset_n, and the req1 assertion and the
+  # lock_req assumption of the SEP SRAM burst-demux R arbiter only from the
+  # fall of sep_reset_n under the JTAG override to just after its release,
+  # where the SEP side of sep_in withdraws its R beat with no isolation and the
+  # crossbar keeps presenting requests to the held SEP; the leaf grades that
+  # window.
+  "+axi_sva_expect_sep_in_override",
+]
+
 # SMC-facing boundary signals against the SMC registers that own them.
 # port_table.adoc declares each one; the bench drives and observes them from
 # cocotb.
@@ -5254,6 +5474,30 @@ seed = 1
 reseed = 3
 timeout_sec = 3600
 tags = ["smc", "sep", "p0", "real_rtl"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+[[tests]]
+name = "smu_cold_reset_pin_timing_test"
+module = "smu_cold_reset_pin_timing_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["smc", "sep", "p0", "real_rtl", "reset"]
 run_modes = ["sep_rtl"]
 args = [
   "+expected_sep=1",
@@ -5725,8 +5969,10 @@ target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 3000
-tags = ["depth", "dtp", "jtag2axi", "smc", "wdt", "reset"]
-run_modes = ["sep_rtl"]
+tags = ["depth", "dtp", "jtag2axi", "smc", "wdt", "reset", "efuse"]
+# Real fuse sense (no +skip_fuse_sense): the leaf grades that the SMC eFuse
+# controller's one cold-boot sense is not repeated by the warm reset.
+run_modes = ["sep_rtl_fuse_sense"]
 args = [
   "+expected_sep=1",
   "+rom_hex=smc_rom_default.hex",
@@ -5735,10 +5981,6 @@ args = [
   "+sep_boot_rom_hex=sep_boot_rom_default.hex",
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: the claim is a register value, not an eFuse word.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]

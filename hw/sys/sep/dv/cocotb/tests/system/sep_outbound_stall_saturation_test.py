@@ -119,7 +119,7 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
 
 A row of a checker that the leg cannot grade (a sysif access that never reaches
 the port, the DMA stall at a held crossbar stop) is logged as
-``OBS-BLOCKED CHK-<NAME> reason=<r>`` and earns no credit.
+``INFO-BLOCKED CHK-<NAME> reason=<r>`` and earns no credit.
 """
 
 from __future__ import annotations

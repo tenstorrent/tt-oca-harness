@@ -54,11 +54,19 @@ Checks:
   cocotb golden cross-check:
     BFM golden (logged as "SPI DMA-TX breadth GOLDEN PASS"): the BFM saw at least
                       _BREADTH_FLOOR WREN and program transactions, one program
-                      with the case's opcode at each random addr with that case's
-                      data, and BFM memory == the SRAM source pattern.
-    CHK-SPI-SB-TX   : per case, the SRAM source bytes equal the monitor's wire
-                      decode at the case's lane width and the flash record's
-                      ``data_in``.
+                      with the case's opcode at each random addr, and its data
+                      and the BFM memory equal the SRAM source words read in
+                      the leaf's in-word byte order.
+    CHK-SPI-SB-TX   : per case, the SRAM source words read in the leaf's in-word
+                      byte order equal the monitor's wire decode at the case's
+                      lane width and the flash record's ``data_in``.
+  In-word byte order (OpenTitan SPI_HOST "Input and Output Byte Ordering"):
+    every TXDATA word of the leaf goes on the wire in one of the two in-word
+    orders, the same order for every word (``SepSpiByteOrder`` of
+    ``env/sep_spi_lane_responder.py``). Which order is not graded: one
+    OBS-SPI-BYTEORDER line per leaf logs it. The firmware read-back
+    (CHK-DMA-TX) writes and reads through the same host and does not depend
+    on the order.
     OBS-MULTICHUNK  : how the TX watermark paced each DMA transfer, logged and
                       not graded (no source states one chunk per trigger in the
                       TX direction or a TXQD bound). A watch-only probe samples
@@ -89,7 +97,7 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spi_lane_responder import spi_lane_fcov
+from env.sep_spi_lane_responder import SepSpiByteOrder, spi_lane_fcov
 from env.sep_spi_scoreboard import SepSpiScoreboard
 from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
@@ -165,7 +173,11 @@ class SepSpiDmaTxCase:
         return (total_bytes + 15) // 16
 
     def source(self) -> bytes:
-        """The data bytes in wire order: least significant byte of each word first."""
+        """The data bytes whose ``pack_tx_words`` packing is the SRAM words.
+
+        Least significant byte of each word first; ``SepSpiByteOrder.tx_bytes``
+        turns them into the wire bytes of the leaf's in-word order.
+        """
         return b"".join(w.to_bytes(4, "little") for w in self.data)
 
     def param_words(self) -> list[int]:
@@ -282,7 +294,8 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
         # the wire monitor.
         bfm_errors = attach_error_counter(flash.log)
         wire = await SepSpiWireMonitor(dut).start()
-        sb = SepSpiScoreboard(wire, flash, self.logger, seed=self.random_seed())
+        order = SepSpiByteOrder()
+        sb = SepSpiScoreboard(wire, flash, self.logger, seed=self.random_seed(), order=order)
         await flash.start()
         windows: list[_DmaTxWindow] = []
         cocotb.start_soon(self._watch_dma_pacing(dut, windows))
@@ -298,12 +311,10 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                 no_boot_cycles=_NO_BOOT_CYCLES,
                 progress_every=_PROGRESS_EVERY,
             )
-            self._golden_check(flash, cfg, cases)
+            self._golden_check(flash, cfg, cases, order)
             self._firmware_check(cfg, cases)
             dropped = False
             for case in cases:
-                # The SPI host sends the least significant byte of each TXDATA word
-                # first (ByteOrder 1, the OpenTitan default the wrapper keeps).
                 source = case.source()
                 if MUT_DROP_X4_TX_BYTE and case.lanes == 4 and not dropped:
                     source, dropped = source[:-1], True
@@ -322,6 +333,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             await flash.stop()
         await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
         sb.finish()
+        order.log_obs(self.logger, self.random_seed())
         # FCOV records only after every check above passed.
         for case in cases:
             await spi_lane_fcov(_TEST, "data", lanes=case.lanes, rx=False)
@@ -404,7 +416,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                 win.cycles,
             )
 
-    def _golden_check(self, flash, cfg, cases) -> None:
+    def _golden_check(self, flash, cfg, cases, order: SepSpiByteOrder) -> None:
         txns = flash.get_transactions()
         opcodes = [t.get("opcode") for t in txns]
         self.logger.info(
@@ -430,21 +442,26 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             )
 
         for case in cases:
-            exp = case.source()
             match = next(
                 (
                     t
                     for t in pp_txns
-                    if t.get("opcode") == case.opcode
-                    and t.get("addr") == case.addr
-                    and bytes(t.get("data_in") or b"") == exp
+                    if t.get("opcode") == case.opcode and t.get("addr") == case.addr
                 ),
                 None,
             )
             if match is None:
                 raise AssertionError(
                     f"SPI DMA-TX breadth golden case[{case.idx}]: missing program "
-                    f"op=0x{case.opcode:02x} addr=0x{case.addr:06x} data={exp.hex()}"
+                    f"op=0x{case.opcode:02x} addr=0x{case.addr:06x}"
+                )
+            data_in = bytes(match.get("data_in") or b"")
+            exp = order.tx_bytes(case.source(), data_in, where=f"golden case[{case.idx}]")
+            if data_in != exp:
+                raise AssertionError(
+                    f"SPI DMA-TX breadth golden case[{case.idx}]: program "
+                    f"op=0x{case.opcode:02x} addr=0x{case.addr:06x} data {data_in.hex()} "
+                    f"!= source {exp.hex()} in one in-word byte order"
                 )
             if not match.get("ok"):
                 raise AssertionError(

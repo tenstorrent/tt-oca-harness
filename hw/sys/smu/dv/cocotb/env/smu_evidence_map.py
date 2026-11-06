@@ -1323,6 +1323,218 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "target is refused with SLVERR",
         ),
     ],
+    "smu_axi_concurrent_initiators_stall_test": [
+        (
+            "CHK-G4-CONC-EXTOUT",
+            "CHK-G4-CONC-EXTOUT",
+            "with the ext_out responder withholding READY and delaying B and R, every iDMA burst at "
+            "ext_out is INCR and answered once per ID, the destination equals the source and DONE "
+            "reports the launch id; a JTAG2AXI write and read of ext_out complete once with the "
+            "word written; each ext_in request to neither aperture is answered once with DECERR "
+            "and its ID, none reaches ext_out and no target port moves",
+        ),
+        (
+            "CHK-G4-IWC-ID",
+            "CHK-G4-IWC-ID",
+            "interleaved ext_in reads and writes under distinct IDs to the SEP SRAM and the SMC "
+            "scratchpad each get one response with the issued ID and the reference data, no "
+            "response carries an ID ext_in did not issue, the iDMA copy from the SEP SRAM lands "
+            "at ext_out unchanged, an iDMA read of the SEP SRAM under the ext_in train's ARID "
+            "crosses the crossbar smc_out port while a train read is outstanding, the train reads "
+            "return in issue order with the SEP SRAM word at each address, and at the smc_out port "
+            "the B IDs equal the AW IDs and the RLAST IDs equal the AR IDs, all OKAY",
+        ),
+        (
+            "CHK-G4-ROUTE-FWD",
+            "CHK-G4-ROUTE-FWD",
+            "each single-beat and 32-byte INCR read and write of the four forwarding cells "
+            "(smc_out SEP, smc_out neither, ext_in SEP, ext_in SMC) moves only the target port "
+            "its cell names and returns once with the issued ID and the data written; each smc_out "
+            "request appears once at the crossbar smc_out port with its address and its B or RLAST "
+            "carries its ID there, and each 32-byte iDMA copy is one INCR AxLEN 3 AR and AW at "
+            "that port and one sep_in request",
+        ),
+        (
+            "CHK-G4-ROUTE-DECERR",
+            "CHK-G4-ROUTE-DECERR",
+            "an ext_in read and write to neither aperture get one R with DECERR and RLAST=1 and "
+            "one B with DECERR under the issued IDs, and no target port or ext_out sees an AW or "
+            "AR; the smc_out SMC-aperture cell is not drivable from the SMC and is not graded",
+        ),
+        (
+            "CHK-G4-APERTURE",
+            "CHK-G4-APERTURE",
+            "at the reset sizes base+0x00FF_FFFF of each aperture decodes inside and "
+            "base+0x0100_0000 outside, routed per the routing table for smc_out and ext_in (no "
+            "smc_out read inside the SMC aperture, which is not drivable); with "
+            "base+size above 2^56 0xFF_FFFF_FFFF_FFFF decodes inside; with a 32-bit SEP_REGION_SIZE "
+            "the last word below base+size decodes inside and base+size outside; every aperture "
+            "register reads back its reset value",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < STALLED_EXT_OUT < INTERLEAVE < ROUTE_FWD < DECERR_CELLS < "
+            "APERTURE_RESET_SIZES < APERTURE_PROGRAMMING with sim time and a non-zero count at "
+            "least the plan per term",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every access, handshake, port and DONE wait is bounded in clk_smu_i edges or polls, "
+            "fails on expiry with the last handshakes and the reset-net sample, none expired",
+        ),
+    ],
+    "smu_axi_sep_lsu_initiator_stall_test": [
+        (
+            "CHK-G4B-CONC-EXTOUT",
+            "CHK-G4B-CONC-EXTOUT",
+            "with the ext_out responder withholding READY and delaying B and R, the LSU probe "
+            "completes with every load returning the store word and the responder holding every "
+            "stored byte, each system-bus write and read of ext_out completes with the word "
+            "written, every sep_out AW gets one B and every AR one RLAST per ID, all OKAY, and "
+            "each LSU and system-bus request at ext_out carries AxPROT 0b011 (the debug and LSU "
+            "masters' 0b001 with NS set for address bit 55 clear); the iDMA copy lands unchanged "
+            "with INCR bursts, the JTAG2AXI write and read complete once, the ext_in requests to "
+            "neither aperture get DECERR, the LSU, iDMA and JTAG2AXI spans at ext_out overlap "
+            "pairwise and all three at once, and every crossbar request reaches the target its "
+            "cell names",
+        ),
+        (
+            "CHK-G4B-INTERLEAVE",
+            "CHK-G4B-INTERLEAVE",
+            "per initiator port (sep_out, smc_out, ext_in) and the SEP-to-SMC port, one B per AW "
+            "and AxLEN+1 R beats with RLAST on the last per AR, per ID in order, none lost or "
+            "duplicated; the LSU probe runs toward ext_out and the SMC scratchpad complete with "
+            "the stored bytes held, a system-bus read is outstanding on sep_out while the LSU "
+            "issues, JTAG2AXI full and partial writes read back, same-ID ext_in reads toward the "
+            "SEP SRAM and the scratchpad return the written bytes in issue order, both iDMA "
+            "copies land unchanged, the error cells answer their stated codes, and every crossbar "
+            "request reaches the target its cell names and no other",
+        ),
+        (
+            "CHK-G4B-NO-EXOKAY",
+            "CHK-G4B-NO-EXOKAY",
+            "no B or R on any of the 13 checked links is EXOKAY or unresolved over S2 and S3",
+        ),
+        (
+            "CHK-G4B-CONTENT-FLOOR",
+            "CHK-G4B-CONTENT-FLOOR",
+            "every checked link carries in S3 at least one partial-strobe W beat, one error B and "
+            "one error R, and every link but sep_out, the SEP-to-SMC port and the DTP debug link "
+            "(single-beat initiators) one multi-beat AW and one multi-beat AR",
+        ),
+        (
+            "CHK-G4B-DATA-KNOWN",
+            "CHK-G4B-DATA-KNOWN",
+            "every checked link carries in S3 at least one strobed W beat and one OKAY R beat, no "
+            "strobed WDATA lane is unresolved and no OKAY RDATA bit is unresolved",
+        ),
+        (
+            "CHK-G4B-ROUTE-FWD",
+            "CHK-G4B-ROUTE-FWD",
+            "a system-bus write and read matching neither aperture each appear once at ext_out "
+            "and at no other target port, return on sep_out with the issued ID and the read "
+            "returns the word the responder holds",
+        ),
+        (
+            "CHK-G4B-ROUTE-DECERR",
+            "CHK-G4B-ROUTE-DECERR",
+            "a system-bus write and read into the SEP aperture get one B DECERR and one R DECERR "
+            "with RLAST 1 on sep_out under the issued IDs and reach no target port; each ext_in "
+            "INCR burst of AxLEN 1, 15 and 255 into neither aperture gets AxLEN+1 R beats with "
+            "RLAST on the last only, every W beat accepted and one B DECERR, and reaches no target "
+            "port; the smc_out SMC-aperture cell is not drivable and is not graded",
+        ),
+        (
+            "CHK-G4B-APERTURE",
+            "CHK-G4B-APERTURE",
+            "with both apertures in the SEP's SMU window at the reset sizes and after one "
+            "reprogram, base and base+size-1 decode inside and base-1 and base+size outside each "
+            "aperture, routed per the table for sep_out, smc_out and ext_in; the sep_out reads "
+            "inside the SMC aperture are observed only, and the smc_out reads inside it are not "
+            "issued",
+        ),
+        (
+            "CHK-G4B-ZERO",
+            "CHK-G4B-ZERO",
+            "with SEP_REGION_SIZE 0, then REGION_SIZE 0, then both, sep_out and smc_out requests "
+            "into each zero-size range reach ext_out with the word written, ext_in requests there "
+            "get DECERR and move no target port, a sep_out request into the SEP aperture while it "
+            "is enabled gets DECERR, and the SEP aperture reads back its reset after the restore",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < STALLED_EXT_OUT < INTERLEAVE < ROUTE_FWD < DECERR_CELLS < "
+            "APERTURE_EDGES < ZERO_SIZE with sim time, a count per term from the stimulus marks of "
+            "its step, at least the plan, and the LSU probe runs and sep_out system-bus accesses "
+            "equal to the step budget per term; the per-step compares carry the non-vacuity",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every access, DMI, system-bus, probe, handshake, port and DONE wait is bounded in "
+            "clk_smu_i edges or polls, fails on expiry with the last handshakes and the reset-net "
+            "sample, none expired",
+        ),
+    ],
+    "smu_axi_sep_reset_in_flight_test": [
+        (
+            "CHK-G2B-NO-PHANTOM",
+            "CHK-G2B-NO-PHANTOM",
+            "from the IC_RESET override to the end, no B and no R on smu_in or dtp_dbg carries an "
+            "ID for which that initiator has no request outstanding in the issue log, no response "
+            "ID is unresolved, and the log is not empty",
+        ),
+        (
+            "CHK-G2B-LIVENESS",
+            "CHK-G2B-LIVENESS",
+            "after the release and the S6 TAP test-logic reset, with no cold reset before, ext_in "
+            "to the SEP SRAM and the SMC scratchpad, JTAG2AXI writes to the SEP SRAM and ext_out "
+            "read back over ext_in and over the debug module's system bus through sep_out, and "
+            "the stub store and load "
+            "to ext_out each complete a fresh write and read: one response with the issued ID "
+            "within the bound, OKAY, and the read returns what was written; the JTAG2AXI read "
+            "after the hold is observed only (SF-003)",
+        ),
+        (
+            "CHK-G2B-SEP2SMC",
+            "CHK-G2B-SEP2SMC",
+            "each of the six stub and system-bus accesses to the SMC aperture (the stub store and "
+            "load, a system-bus read and a system-bus write before the hold, the stub store and "
+            "load after the release) appears once on a SEP link and gets exactly one "
+            "response with the issued ID within the bound; the link, the response code, AxUSER, "
+            "AxPROT and the address are observed only",
+        ),
+        (
+            "CHK-G2B-WINDOW",
+            "CHK-G2B-WINDOW",
+            "the bench expectation window opens at the one fall of sep_reset_n under the IC_RESET "
+            "override and closes 8 clk_smu_i edges after the release, never opens outside the "
+            "hold, is closed at the end with a window count of 1, sees no primary-reset fall, and "
+            "the SEP rst_ni and the primary reset stay high through the hold; sep_reset_n is "
+            "sampled low with no X, and every graded link is sampled with no X on its VALIDs",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < SEP2SMC < LOAD < SEP_RESET < NONSEP_DURING_RESET < "
+            "RELEASE_LIVENESS with sim time, a non-zero count at least the plan per term (for "
+            "NONSEP_DURING_RESET the four observation windows closed, met or run out), and the "
+            "JTAG2AXI, debug-module and system-bus, ext_in and IC_RESET accesses equal to the step "
+            "budget",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every DMI, system-bus, abstract-command, JTAG2AXI, handshake, reset-net and window "
+            "wait is bounded in clk_smu_i edges, polls or captures, fails on expiry with the last "
+            "handshakes and the reset-net sample, none expired; the JTAG2AXI and ext_in "
+            "observation windows are listed apart with their outcome, and one that runs out is "
+            "measured, never an expiry",
+        ),
+    ],
     "smu_axi_smc_cool_reset_in_flight_test": [
         (
             "CHK-G2A-VALID-LOW",
@@ -1996,6 +2208,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_dtp_smc_stap_smoke_test": [
         (
+            "CHK-DTP-SMC-STAP-TRST-POLARITY",
+            "CHK-DTP-SMC-STAP-TRST-POLARITY",
+            "on every clk_ref_i sample of the run the SMC's smc_cpu_jtag_reset_i reads the "
+            "complement of tb_stap_smc_trst_n, with at least TRST_CYCLES samples on each side "
+            "of the S1 and S3 TRST asserts",
+        ),
+        (
             "CHK-DTP-SMC-STAP-JTAG-READY",
             "CHK-DTP-SMC-STAP-JTAG-READY",
             "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
@@ -2393,7 +2612,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SBA-OUT-ERROR",
             "CHK-SEP-SBA-OUT-ERROR",
-            "responder SLVERR and DECERR on a read and a write each return a system-bus error",
+            "responder SLVERR and DECERR on a read and a write each return a non-zero sberror "
+            "(code logged), and the next write and read complete with sberror 0",
         ),
         (
             "CHK-SEP-SBA-SMC-WINDOW",
@@ -2405,7 +2625,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "every external-aperture and TRNG-window access, the address bits walked in the "
-            "seed-drawn order, returns a system-bus error",
+            "seed-drawn order, returns a non-zero sberror (code logged)",
         ),
     ],
     "smu_sep_external_irq_pins_test": [
@@ -2456,92 +2676,103 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEPRST-OTBN-ISOLATE",
             "CHK-SEPRST-OTBN-ISOLATE",
-            "SW_RESET_N bit 1 (SEP-local 0x10900000): every read accepted before the system-bus "
-            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
-            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
-            "write a fresh read and write are OKAY",
+            "SW_RESET_N bit 1 (SEP-local 0x10900000): every read accepted before the system-bus 0 "
+            "write completes; SW_RESET_N reads back the 0 write and then 0x7E after the 1 write "
+            "in each drain cell; new 64- and 32-bit reads during the drain and with the reset "
+            "held are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the "
+            "1 write a fresh read and write are OKAY",
         ),
         (
             "CHK-SEPRST-AES-ISOLATE",
             "CHK-SEPRST-AES-ISOLATE",
-            "SW_RESET_N bit 2 (SEP-local 0x10910000): every read accepted before the system-bus "
-            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
-            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
-            "write a fresh read and write are OKAY",
+            "SW_RESET_N bit 2 (SEP-local 0x10910000): every read accepted before the system-bus 0 "
+            "write completes; SW_RESET_N reads back the 0 write and then 0x7E after the 1 write "
+            "in each drain cell; new 64- and 32-bit reads during the drain and with the reset "
+            "held are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the "
+            "1 write a fresh read and write are OKAY",
         ),
         (
             "CHK-SEPRST-HMAC-ISOLATE",
             "CHK-SEPRST-HMAC-ISOLATE",
-            "SW_RESET_N bit 3 (SEP-local 0x10911000): every read accepted before the system-bus "
-            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
-            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
-            "write a fresh read and write are OKAY",
+            "SW_RESET_N bit 3 (SEP-local 0x10911000): every read accepted before the system-bus 0 "
+            "write completes; SW_RESET_N reads back the 0 write and then 0x7E after the 1 write "
+            "in each drain cell; new 64- and 32-bit reads during the drain and with the reset "
+            "held are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the "
+            "1 write a fresh read and write are OKAY",
         ),
         (
             "CHK-SEPRST-KMAC-ISOLATE",
             "CHK-SEPRST-KMAC-ISOLATE",
-            "SW_RESET_N bit 4 (SEP-local 0x10913000): every read accepted before the system-bus "
-            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
-            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
-            "write a fresh read and write are OKAY",
+            "SW_RESET_N bit 4 (SEP-local 0x10913000): every read accepted before the system-bus 0 "
+            "write completes; SW_RESET_N reads back the 0 write and then 0x7E after the 1 write "
+            "in each drain cell; new 64- and 32-bit reads during the drain and with the reset "
+            "held are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the "
+            "1 write a fresh read and write are OKAY",
         ),
         (
             "CHK-SEPRST-ABR-ISOLATE",
             "CHK-SEPRST-ABR-ISOLATE",
-            "SW_RESET_N bit 6 (SEP-local 0x10940000): every read accepted before the system-bus "
-            "0 write completes; new 64- and 32-bit reads during the drain and with the reset held "
-            "are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the 1 "
-            "write a fresh read and write are OKAY",
+            "SW_RESET_N bit 6 (SEP-local 0x10940000): every read accepted before the system-bus 0 "
+            "write completes; SW_RESET_N reads back the 0 write and then 0x7E after the 1 write "
+            "in each drain cell; new 64- and 32-bit reads during the drain and with the reset "
+            "held are SLVERR with 0x1501A7ED in each 32-bit word and new writes SLVERR; after the "
+            "1 write a fresh read and write are OKAY",
         ),
         (
             "CHK-SEPRST-TRNG-ISOLATE",
             "CHK-SEPRST-TRNG-ISOLATE",
-            "ESRC reads accepted before the bit 5 = 0 write complete; ESRC, CSRNG and EDN reads "
-            "are SLVERR with 0x1501A7ED in each 32-bit word and writes SLVERR; the entropy pool "
-            "answers without the isolation response; after bit 5 = 1 each path reads OKAY",
+            "ESRC reads accepted before the bit 5 = 0 write complete; SW_RESET_N reads back 0x5E "
+            "after the 0 write and 0x7E after the 1 write in each drain cell; ESRC, CSRNG and EDN "
+            "reads are SLVERR with 0x1501A7ED in each 32-bit word and writes SLVERR; the entropy "
+            "pool answers without the isolation response; after bit 5 = 1 each path reads OKAY",
         ),
         (
             "CHK-SEPRST-KM-MAILBOX",
             "CHK-SEPRST-KM-MAILBOX",
             "the KM mailbox SEP-side status word (offset 0xC) reads OKAY with no 32-bit lane at "
             "0x1501A7ED with bit 0 held from power-up, released and held again (value logged), "
-            "and SW_RESET_N bit 0 reads 1 after the 1 write",
+            "and SW_RESET_N reads 0x7F, 0x7E and 0x7F after the 1, 0 and 1 writes",
         ),
         (
             "CHK-SEPRST-NEVER-ISO",
             "CHK-SEPRST-NEVER-ISO",
-            "with SW_RESET_N = 0x00 the KM mailbox status read (offset 0xC) is OKAY with no lane "
-            "at 0x1501A7ED and the mailbox write (offset 0x0) is OKAY, three eFuse windows and "
-            "the lifecycle controller are OKAY with no isolation word; the external TRNG window "
-            "is DECERR with 0xBADCAB1E in each lane on read and DECERR on write",
+            "with SW_RESET_N = 0x00, read back as 0x00, the KM mailbox status read (offset 0xC) "
+            "is OKAY with no lane at 0x1501A7ED and the mailbox write (offset 0x0) is OKAY, three "
+            "eFuse windows and the lifecycle controller are OKAY with no isolation word; the "
+            "external TRNG window is DECERR with 0xBADCAB1E in each lane on read and DECERR on "
+            "write",
         ),
         (
             "CHK-SEPRST-DOMAIN-INDEP",
             "CHK-SEPRST-DOMAIN-INDEP",
             "with OTBN held an AES read and with AES held an HMAC read are OKAY; SEP SRAM write "
             "and readback are OKAY under every held domain; a CPU egress load held across a "
-            "system-bus SW_RESET_N = 0x00 completes with the responder word",
+            "system-bus SW_RESET_N = 0x00 (read back as 0x00) completes with the responder word",
         ),
         (
             "CHK-SEPRST-EARLY-RELEASE",
             "CHK-SEPRST-EARLY-RELEASE",
             "for OTBN, AES and TRNG, six pairs of system-bus 0 and 1 writes 0 and 8 debug-bus "
-            "operations apart: every read and probe completes and SW_RESET_N reads 0x7E",
+            "operations apart: the written domain's bits of the SEP crypto isolation request "
+            "(host_otbn, host_aes or the three trng_* bits) each leave their value from before "
+            "the 0 write within the pair, every read and probe completes and SW_RESET_N reads 0x7E",
         ),
         (
             "CHK-SEPRST-JTAG-INFLIGHT",
             "CHK-SEPRST-JTAG-INFLIGHT",
             "sep_reset_n_o reads 0 from the IC_RESET engage to the release, the aperture ports "
             "read SEP_GLOBAL_BASE_ADDR 0x0 and SEP_REGION_SIZE 0x1000000 while held, the first "
-            "retired PC after the release is in the boot ROM, "
-            "SW_RESET_N reads 0x7E where 0x7F was written, and a system-bus egress write and "
-            "read complete with sberror 0 and the responder word",
+            "retired PC after the release is in the boot ROM, SW_RESET_N reads 0x7F after its "
+            "write and 0x7E after the release, and a system-bus egress write and read complete "
+            "with sberror 0 and the responder word",
         ),
         (
             "CHK-SEPRST-BITE-INFLIGHT",
             "CHK-SEPRST-BITE-INFLIGHT",
             "the bite request falls with no software write; the first retired PC is in the boot "
-            "ROM; the SEP SRAM read outstanding at the bite returns OKAY with the written word; "
+            "ROM; the SEP SRAM read issued before the bite returns OKAY with the written word, "
+            "its ext_in AR handshake before rst_wdt_n asserts (the DUT's accept) and its R "
+            "handshake after the reset edge because the bench holds RREADY until then; "
             "a fresh SEP SRAM write and read after the release are OKAY with their data; the "
             "DMA / PERIPH bus-error status readback and the system-bus egress write and read "
             "after the bite are logged as OBS-SEPRST-BITE-ORPHAN lines, never compared",
@@ -2833,7 +3064,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SPI-QUAD",
             "quad-mode transmits drive all four data lanes high and off their pre-command "
             "idle level, and raise their enables, a quad receive "
-            "fills one RX FIFO word and completes with every enable low, and "
+            "fills one RX FIFO word and completes with every enable low, "
+            "INTR_ENABLE.ERROR set and cleared on the same path reads back each value, and "
             "INTR_STATE.SPI_EVENT and the interrupt stay "
             "high across a write to INTR_STATE and fall when EVENT_ENABLE.IDLE is cleared",
         ),
@@ -2848,8 +3080,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-WDT-BITE",
             "CHK-SEP-WDT-BITE",
-            "the SEP watchdog reset request is low before the watchdog is enabled, rises "
-            "when it bites, and falls without a cool or primary reset",
+            "the SEP watchdog reset request is low and rst_wdt_n high before the watchdog is "
+            "enabled; with the bark and bite thresholds read back as 0x20 it rises when it "
+            "bites, one clk_smu_i sample shows the request high and rst_wdt_n low together, "
+            "rst_wdt_n first reads low no earlier than the request first reads high, the SMC "
+            "watchdog second timeout stays low, and the request falls again",
         ),
     ],
     "smu_sep_stap_hold_reset_test": [
@@ -2919,6 +3154,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "ext_boot_seq_done_i low across a cold reset holds the fuse reset until it rises",
         ),
         ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),
+        (
+            "CHK-BOOT-SEQ-GATE-SEP",
+            "CHK-BOOT-SEQ-GATE-SEP",
+            "with ext_boot_seq_done_i low sep_reset_n_o reads 0 on every gated sample and first "
+            "rises only after the pin, in S4 and again across the S6 cold reset; the sense-done "
+            "level in the gated window is logged",
+        ),
         ("CHK-PRIMARY-NOT-GATED", "CHK-PRIMARY-NOT-GATED", "primary still releases while gated"),
         (
             "CHK-TIMEOUT-PATHS",
@@ -2991,6 +3233,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_smc_unmapped_response_test": [
+        (
+            "CHK-UNMAP-RESET-SIZE-PLIC-CLINT",
+            "CHK-UNMAP-RESET-SIZE-PLIC-CLINT",
+            "ext_in reads at the PLIC and CLINT bases answer DECERR and reach no smc_in request "
+            "under the reset REGION_SIZE (the crossbar's read data is logged), and answer OKAY, "
+            "each counted at smc_in, under 2^28",
+        ),
         (
             "CHK-UNMAP-BETWEEN",
             "CHK-UNMAP-BETWEEN",
@@ -3326,8 +3575,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OTP-FABRIC-BLOCKED",
             "CHK-OTP-FABRIC-BLOCKED",
-            "a SINGLE_OP on the primary TAP launches neither AW nor AR on the "
-            "DTP -> SMC debug AXI port while that posture holds",
+            "with SMC_AXI_SINGLE_OP selected, a non-zero pattern and its complement "
+            "shifted through the SINGLE_OP register come back after exactly 132 bits; "
+            "then, with the bridge's PTAP disable input at 1 before and after, a "
+            "SINGLE_OP read on the primary TAP moves neither the AW nor the AR handshake "
+            "count on the DTP -> SMC debug AXI port, no AWVALID, WVALID or ARVALID is high "
+            "or X/Z on any clk_smu_i edge of the window, and the bridge's SINGLE_OP "
+            "capture reads op 0 and address 0 (update not latched); the open-posture "
+            "controls are smu_jtag2axi_access_matrix_rand_test (same driver: "
+            "make_smu_jtag_tap and pack_single_op) and smu_sep_dbg_gating_test_dev_test",
         ),
         (
             "CHK-OTP-SMC-RW-WHILE-BLOCKED",
@@ -3559,6 +3815,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-NDMRESET-PROC",
             "smc_ndmreset_process_o carries NDMRESET_PROCESS[NDMRESET_CLUSTER_COUNT-1:0], "
             "including the all-ones write that pins the port width to the reported count",
+        ),
+        (
+            "CHK-SMU-EXT-IRQ-PULSE",
+            "CHK-SMU-EXT-IRQ-PULSE",
+            "a lane-0 pulse that spans no clk_smu_i rising edge never appears on "
+            "cpu_interrupts_o[0]; a pulse sampled by four edges appears 3 to 4 edges after the "
+            "pin rose as one contiguous run of four and clears with the pin",
         ),
         (
             "CHK-SMU-EXT-IRQ",
@@ -3816,6 +4079,29 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "each primary reset rises within its bounded wait and reads 1 at the end of each boot",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded reset-pin waits with last state"),
+    ],
+    "smu_cold_reset_pin_timing_test": [
+        (
+            "CHK-SMU-COLD-PIN-DEGLITCH",
+            "CHK-SMU-COLD-PIN-DEGLITCH",
+            "a pinned 31 clk_ref rst_cold_ni low pulse driven right after a clk_ref edge and a "
+            "seed-drawn 1 to 31 clk_ref pulse, each read back low on the pin for exactly its "
+            "width, leave the stable cold reset and the SMC "
+            "primary reset at 1 on every clk_ref sample during the pulse and the 128 after it; "
+            "a hold of a seed-drawn 32 to 94 clk_ref past the assertion asserts the stable cold "
+            "reset 32 to 33 clk_ref after the pin fell and the primary reset on that sample or "
+            "the next, keeps the stable reset low through the hold, and both return after the "
+            "release",
+        ),
+        (
+            "CHK-SMU-COLD-NO-PROPAGATE-CLKSTOP",
+            "CHK-SMU-COLD-NO-PROPAGATE-CLKSTOP",
+            "with clk_ref_i held and rst_cold_ni read low on every one of more clk_smu_i cycles "
+            "than four de-glitch windows, the stable cold reset and the SMC primary reset read 1 "
+            "on every "
+            "clk_smu_i sample with no clk_ref edge seen; after the clock restarts the stable "
+            "cold reset falls 32 to 33 clk_ref later and both return after the release",
+        ),
     ],
     "smu_smc_cool_reset_pin_test": [
         (
@@ -4159,7 +4445,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-LANE-GPIO",
             "CHK-SMU-LANE-GPIO",
-            "with all 65 pads taken from their LSIO owners and armed as active-high "
+            "with all 67 pads taken from their LSIO owners and armed as active-high "
             "levels, driving every pad raises every gpio_interrupt_o lane and sets "
             "DATA_CTRL.PAD2CORE on every interface, and both follow the pads back "
             "down",
@@ -4704,6 +4990,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     # its own zero-check refusal covers the same ground.
     "smu_boundary_port_composition_test": [
         (
+            "CHK-SMU-BOUNDARY-ID-USER-WIDTH",
+            "CHK-SMU-BOUNDARY-ID-USER-WIDTH",
+            "$bits of every ID and user field of the smu AXI boundary ports: smu_axi_in IDs 8 "
+            "on AW, B, R and AR, smu_axi_out IDs 10, user 12 on all five channels of both",
+        ),
+        (
             "CHK-SMU-EXT-SMN-S4",
             "CHK-SMU-EXT-SMN-S4",
             "the SMC-side ID-width converter presents the specified 6-bit subsystem ID",
@@ -4804,6 +5096,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-FUSE-SENSE-S2",
             "CHK-SMU-FUSE-SENSE-S2",
             "sep_fuse_sense_done_o rises once, after reset release and after SEP eFuse traffic",
+        ),
+        (
+            "CHK-SMU-SMC-SENSE-TO-SEP",
+            "CHK-SMU-SMC-SENSE-TO-SEP",
+            "the SEP's smc_fuse_sense_done_i equals smc_fuse_sense_done_o on every clk_smu_i "
+            "sample with the wire seen low and high; after the cold release "
+            "smc_fuse_sense_done_o rises once and every sep_reset_n_o rise comes after it",
         ),
     ],
     "smu_smc_efuse_shadow_map_readback_test": [
@@ -5139,6 +5438,30 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "every proof-path wait carries a finite bound, a fail-on-expiry path and a last "
             "state and none expired; every observation window logged its length and outcome; "
             "the bench expectation window is closed at the end",
+        ),
+    ],
+    "smu_xbar_self_route_smc_test": [
+        (
+            "CHK-XBAR-SELF-SMC-LOCAL",
+            "CHK-XBAR-SELF-SMC-LOCAL",
+            "a JTAG2AXI SINGLE_OP write and read at GLOBAL_BASE plus the VERSION_LO offset, the "
+            "SMC's own global window at its reset values, answer SUCCESS, the read returns the "
+            "VERSION_LO reset value, and neither reaches the crossbar's smc_out port nor the "
+            "smc_in, sep_in and ext_out taps; the local-alias VERSION_LO read answers SUCCESS "
+            "with its reset value before and after, and a write and read outside both apertures "
+            "each cross the crossbar's smc_out port and smu_axi_out once",
+        ),
+    ],
+    "smu_xbar_self_route_sep_test": [
+        (
+            "CHK-XBAR-SELF-SEP-DECERR",
+            "CHK-XBAR-SELF-SEP-DECERR",
+            "a SEP debug system-bus write and read of a word of the admitted page with "
+            "SEP_GLOBAL_BASE_ADDR moved onto it each report a non-zero sberror (code logged), "
+            "the crossbar accepts both on sep_out, and the sep_in, smc_in and ext_out taps do "
+            "not move; with the base at its "
+            "reset value the same write and read each cross smu_axi_out once and return the "
+            "written word, before and after",
         ),
     ],
     "smu_xbar_zero_aperture_test": [
@@ -5812,6 +6135,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_smc_warm_reset_register_retention_test": [
         (
+            "CHK-WARM-RET-NO-RESENSE",
+            "CHK-WARM-RET-NO-RESENSE",
+            "the real cold-boot sense rose once over one eFuse shim read command before S1; "
+            "smc_fuse_sense_done_o reads 1 at every clk_smu_i sample from S2 to S10 while the "
+            "warm reset reads 0 inside the window, and no shim read command is issued there",
+        ),
+        (
             "CHK-WARM-RET-SSCFG",
             "CHK-WARM-RET-SSCFG",
             "SS_CONFIG reads its non-zero pattern before and after the CORE0 watchdog "
@@ -5865,8 +6195,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS",
-            "four bounded waits in two kinds (event 2, release 2), none expired, with the "
-            "bound, cycles used and last state recorded, no unresolved probe sample",
+            "five bounded waits in three kinds (sense 1, event 2, release 2), none expired, "
+            "with the bound, cycles used and last state recorded, no unresolved probe sample",
         ),
     ],
     "smu_dtp_jtag2axi_smc_reset_inflight_test": [
@@ -5928,7 +6258,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-EXTERR-RESP",
             "a responder SLVERR or DECERR on the single beat of a JTAG2AXI read or write at the "
             "cell's address reads op 1 or op 2 at the bridge, and on a SEP system-bus read or "
-            "write reads sbcs.sberror 2, on each pinned and drawn bridge and SEP cell",
+            "write reads a non-zero sbcs.sberror, on each pinned and drawn bridge and SEP cell",
         ),
         (
             "CHK-EXTERR-BEAT",
@@ -6073,8 +6403,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-NONVAC",
             "CHK-NONVAC",
-            "a graded cell per bridge and per cell kind and all four sizes on the outbound tap; "
-            "the step stamps and the seed are logged, not compared",
+            "a graded cell per bridge and per cell kind, a graded non-zero image word per OTP "
+            "bridge, and all four sizes on the outbound tap; the step stamps and the seed are "
+            "logged, not compared",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -6108,7 +6439,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-FMATCH-PRIORITY",
             "on each instance the lower drawn entry clearing the drawn channel's permission over "
             "the higher drawn entry permitting both blocks that channel and admits the other, "
-            "programmed lower-first and higher-first",
+            "programmed lower-first and higher-first, both entries' registers read back as "
+            "programmed before the access",
         ),
         (
             "CHK-FMATCH-PERM",

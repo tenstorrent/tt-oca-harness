@@ -14,7 +14,8 @@ in Extent and Past Extent columns, through ``env.sep_decode_resp``), the
 allocation of the generated IP-XACT (``seq_lib.sep_row_response_seq``). The
 table states each cell for a 32-bit access at the inbound AXI port, so every
 graded single beat uses AxSIZE 2 in both halves of the 64-bit data bus; an
-AxSIZE 3 access is logged and not graded. The reset-control rows state what the
+AxSIZE 3 access is logged (``OBS-ROW-SIZE3``) and not graded, except the
+straddle cell below. The reset-control rows state what the
 SEP CPU sees, so the reset-control cells are graded from the LSU.
 
 Every SI access goes through inbound entry 0, which covers 0x1000_0000 to
@@ -138,10 +139,23 @@ Extent and Hole in Extent cell; the table states the cells for 32-bit accesses
 only. CTRL-ROW-NARROW: the SI address handshake carried AxSIZE 0 or 1 at the
 drawn address.
 
+CHK-ROW-SIZE3: an SI AxSIZE 3 read and write at the last register of the
+entropy source block (its register extent is 4 mod 8, so the upper half of the
+beat lies past the extent) answer SLVERR on RRESP and on BRESP
+(``hw/sys/sep/doc/memory_map.adoc:78-80``: a generated register block answers
+SLVERR past its last register, "a 64-bit access to the last register of a
+block with 32-bit registers" included; ``doc/trm/src/memory_map.adoc:93-96``).
+The leaf derives the cell from the generated register allocation and fails
+when that extent is not 4 mod 8. The 64-bit read data has no stated value and
+is logged on ``OBS-ROW-SIZE3 kind=straddle``, as is an AES straddle read at its
+last register: the AES block is bridged to TL-UL, not generated from
+SystemRDL, so no line states its response. The straddle cells run after the
+hole and live cells and fill no FCOV bin.
+
 Not graded: the Forwarded and adopter-defined rows; the response of a burst to
 a register region outside the crypto region and the SPI host extent (the
 specification states none); any AxSIZE 3 access except the pool ``STATUS``
-probe.
+probe and the entropy source straddle cell.
 """
 
 from __future__ import annotations
@@ -245,6 +259,15 @@ AXI_INCR = 1
 AX_ATTRS = ("prot", "user", "cache", "qos", "region", "lock")
 # Separates the stream of the open-value legs from the cell walk of the same seed.
 _ATTR_SALT = 0x524F_5741
+# Separates the straddle-cell write data from the cell walk and open-value streams.
+_STRADDLE_SALT = 0x5354_5244
+# Straddle cells: an AxSIZE 3 access at the last 32-bit register of a block whose
+# register extent is 4 mod 8, so the upper half lies past that extent.
+# hw/sys/sep/doc/memory_map.adoc:78-80 states SLVERR for a block generated from
+# SystemRDL (entropy source); the AES block is bridged to TL-UL, so its read is
+# logged only and it takes no write (its last register is shadowed).
+STRADDLE_GRADED = ("esrc",)
+STRADDLE_LOGGED = ("aes",)
 # The inbound entry admits the whole SEP Local region of the CPU logical map.
 _SEP_LOCAL = logical_region("logical:sep_local")
 # Last register word of the rows whose 2-beat SI burst runs one beat past the extent.
@@ -374,6 +397,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         "CHK-ROW-FILTER-SRC",
         "CHK-ROW-FABRIC-CSR",
         "CHK-OTBN-IMEM-SUBWORD-CRC",
+        "CHK-ROW-SIZE3",
     )
 
     # ------------------------------------------------------------------ access
@@ -728,8 +752,10 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 if size == 2:
                     self._grade_cell("reset_ctrl", "past", "LSU", SepAxiOp.WRITE, a, resp, 0, wd)
                 else:
+                    self.logger.info("INFO-ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d", a, size)
                     self.logger.info(
-                        "OBS-ROW-NOALIAS-DRAW LOG: addr=0x%08x size=%d resp=%s graded=0",
+                        "OBS-ROW-NOALIAS-RESP LOG: seed=%d addr=0x%08x size=%d resp=%s",
+                        self.random_seed(),
                         a,
                         size,
                         _RN.get(resp),
@@ -927,6 +953,15 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     await self._release()
                 s = await self._si(op, word, size=3, wdata=(comp << 32) | comp)
                 self._log_size3(unit, "hole", s.resp_code, s.rdata, d)
+                if unit in STRADDLE_GRADED and op is SepAxiOp.READ:
+                    # Both halves are holes, so the beat answers OKAY: the SLVERR of
+                    # the straddle cell then comes from the past-extent half.
+                    self.size3_hole_ok[unit] = self._ctrl(
+                        "ROW-SIZE3",
+                        s.resp_code == RESP_OKAY,
+                        f"row={unit} kind=hole init=SI dir=R size=3 addr=0x{word:08x} "
+                        f"resp={_RN.get(s.resp_code)} expect=OKAY",
+                    )
             self._close()
             if unit == "abr":
                 # ABR has no stable register with a non-zero reset, so its live
@@ -1008,6 +1043,53 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             await self._begin()
             if await self._live_word(key, rr.live_word(key)):
                 await self._release()
+
+    @staticmethod
+    def _straddle_addr(key: str) -> int:
+        """Address of the last 32-bit register of ``key``; its extent must be 4 mod 8."""
+        row = rr.map_row(key)
+        last = max(r.addr for r in rr.row_regs(key))
+        ext = last + 4 - row.base
+        if ext != row.extent or ext % 8 != 4:
+            raise RuntimeError(
+                f"{key}: last register 0x{last:08x} gives extent 0x{ext:x}, decoded extent "
+                f"0x{row.extent:x}; a straddle cell needs one extent that is 4 mod 8"
+            )
+        return last
+
+    async def _straddle_leg(self) -> None:
+        """AxSIZE 3 SI accesses whose lower half is the last register of a block.
+
+        Runs after the hole and live cells, so the entropy source
+        ``NOISE_OBS_RDATA`` pop of the straddle read cannot move a graded value.
+        The samples of these accesses are never released."""
+        rng = SepSeededRng(self.random_seed() ^ _STRADDLE_SALT)
+        for key in STRADDLE_LOGGED:
+            a = self._straddle_addr(key)
+            s = await self._si(SepAxiOp.READ, a, size=3)
+            self._log_size3(key, "straddle", s.resp_code, s.rdata, "R")
+        for key in STRADDLE_GRADED:
+            a = self._straddle_addr(key)
+            if key not in self.size3_hole_ok:
+                self._ctrl(
+                    "ROW-SIZE3", False, f"row={key} no hole AxSIZE 3 read before the straddle"
+                )
+            for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+                d = "R" if op is SepAxiOp.READ else "W"
+                wd = rng.getrandbits(64) if op is SepAxiOp.WRITE else 0
+                s = await self._si(op, a, size=3, wdata=wd)
+                if op is SepAxiOp.READ:
+                    self._log_size3(key, "straddle", s.resp_code, s.rdata, d)
+                line = (
+                    f"row={key} kind=straddle init=SI dir={d} size=3 addr=0x{a:08x} "
+                    f"wdata={'na' if op is SepAxiOp.READ else f'0x{wd:016x}'} "
+                    f"resp={_RN.get(s.resp_code)} expect=SLVERR"
+                )
+                if s.resp_code == RESP_SLVERR:
+                    self.logger.info("CHK-ROW-SIZE3 PASS: %s", line)
+                else:
+                    self._fail("CHK-ROW-SIZE3", line)
+        await self._begin()
 
     async def _km_leg(self) -> None:
         """Step 15: Key Manager mailbox window from SI with KM held in reset."""
@@ -1973,6 +2055,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         self._open()
         await self._past_leg()
         await self._live_leg()
+        await self._straddle_leg()
         await self._km_leg()
         await self._burst_leg()
         await self._pool_leg()
@@ -1986,6 +2069,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.rng = SepSeededRng(self.random_seed())
         self.walked: set[tuple[str, str, str, str]] = set()
+        self.size3_hole_ok: dict[str, bool] = {}
         self.fails: list[str] = []
         self.released = 0
         self.si_id_ok = 0

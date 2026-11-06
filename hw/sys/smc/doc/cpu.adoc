@@ -422,6 +422,15 @@ debug memory accesses independent of cluster reset or boundary isolation.
 Per-core boot addresses are controlled by the `RESET_VECTOR` registers
 described above.
 
+The system bus access engine of the Debug Module is reset with the uncore,
+while its DMI registers are not. A system bus access requested while the
+uncore reset is applied is not started and is not replayed after the release.
+No DMI register reports it: `sbcs` reads `sbbusy` 0 and `sberror` 0, as after a
+completed access, `sbaddress0` does not advance under `sbautoincrement`, and a
+write leaves its target unchanged. Before relying on a system bus access, a
+debugger checks that `RESET_CTRL.uncore_reset_n_n0_scan` reads 1 and
+`RESET_TIMEOUT.reset_applied` reads 0.
+
 [[smc-debug-transport-module]]
 === Debug Transport Module
 

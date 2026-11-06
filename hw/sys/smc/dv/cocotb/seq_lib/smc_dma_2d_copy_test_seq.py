@@ -5,7 +5,8 @@
 Specs hw/sys/smc/doc/dma.adoc, vendor idma overlay dma_ctrl.rdl.
 
 Sources and destinations sit in the SYS_OUT responder memory and are preloaded and read back
-through its backdoor. Every AR and AW handshake of the exported SYS_OUT probes is recorded.
+through its backdoor. Every AR and AW handshake of the exported SYS_OUT probes is recorded with
+its address, and every R and B handshake with its response code.
 """
 
 from __future__ import annotations
@@ -83,6 +84,10 @@ S7_SRC_STRIDE = 0x80
 S7_DST_STRIDE = 0x100
 S7_SRC_BASE = TWO_POW_56 - 0x80
 S7_DST_BASE = TWO_POW_56 - 0x1C0
+RESP_OKAY = 0
+S8_LENGTH = 16
+#: DST_ADDRESS_HI of the command programmed before the half-register launch.
+S8_OLD_HI = 1
 
 _TB_SIGNALS = (
     "tb_output_axi_arvalid",
@@ -91,6 +96,12 @@ _TB_SIGNALS = (
     "tb_output_axi_awvalid",
     "tb_output_axi_awready",
     "tb_output_axi_awaddr",
+    "tb_output_axi_rvalid",
+    "tb_output_axi_rready",
+    "tb_output_axi_rresp",
+    "tb_output_axi_bvalid",
+    "tb_output_axi_bready",
+    "tb_output_axi_bresp",
     "tb_dma_busy",
 )
 _IF_SIGNALS = ("arlen", "arsize", "awlen", "awsize")
@@ -121,15 +132,19 @@ class _Job:
         self.id = -1
         self.ar: list[int] = []
         self.aw: list[int] = []
+        self.rresp: list[int] = []
+        self.bresp: list[int] = []
 
 
 class _BurstSampler:
-    """Records every AR and AW handshake address."""
+    """Records every AR and AW handshake address and every R and B handshake response."""
 
     def __init__(self, dut) -> None:
         self.dut = dut
         self.ar: list[int] = []
         self.aw: list[int] = []
+        self.rresp: list[int] = []
+        self.bresp: list[int] = []
 
     @staticmethod
     def _bit(sig, name: str) -> int:
@@ -139,18 +154,28 @@ class _BurstSampler:
 
     async def run(self) -> None:
         dut = self.dut
+        channels = (
+            ("ar", "addr", self.ar),
+            ("aw", "addr", self.aw),
+            ("r", "resp", self.rresp),
+            ("b", "resp", self.bresp),
+        )
         while True:
             await RisingEdge(dut.clk_smc_i)
             await ReadOnly()
-            for ch, store in (("ar", self.ar), ("aw", self.aw)):
+            for ch, field, store in channels:
                 valid = self._bit(getattr(dut, f"tb_output_axi_{ch}valid"), f"{ch}valid")
                 ready = self._bit(getattr(dut, f"tb_output_axi_{ch}ready"), f"{ch}ready")
                 if valid and ready:
-                    store.append(self._bit(getattr(dut, f"tb_output_axi_{ch}addr"), f"{ch}addr"))
+                    store.append(
+                        self._bit(getattr(dut, f"tb_output_axi_{ch}{field}"), f"{ch}{field}")
+                    )
 
 
 class smc_dma_2d_copy_test_seq(SmcCsrSeq):
-    """2D copies with independent strides, row counts, unaligned rows and edge strides."""
+    """2D copies with independent strides, row counts, unaligned rows, edge strides, the row
+    wrap at 2^56 (dma.adoc, Transfer Configuration) and a launch between the two halves of a
+    64-bit address register (dma.adoc, Stream and Register Ownership)."""
 
     def __init__(self, name: str = "smc_dma_2d_copy_test_seq") -> None:
         super().__init__(name)
@@ -277,13 +302,15 @@ class smc_dma_2d_copy_test_seq(SmcCsrSeq):
             f"(status 0x{status:x}, tb_dma_busy {self._busy()})"
         )
 
-    async def _run(self, j: _Job) -> None:
+    async def _run(self, j: _Job, program: bool = True) -> None:
         s = self.sampler
-        ar0, aw0 = len(s.ar), len(s.aw)
-        await self._program(j)
+        ar0, aw0, r0, b0 = len(s.ar), len(s.aw), len(s.rresp), len(s.bresp)
+        if program:
+            await self._program(j)
         await self._launch(j)
         await self._await_done(j)
         j.ar, j.aw = s.ar[ar0:], s.aw[aw0:]
+        j.rresp, j.bresp = s.rresp[r0:], s.bresp[b0:]
 
     def _span(self, j: _Job) -> int:
         return (j.reps - 1) * j.dst_stride + j.length + 0x40
@@ -438,21 +465,108 @@ class smc_dma_2d_copy_test_seq(SmcCsrSeq):
         await self._run(j)
         ar = ",".join(f"0x{a:x}" for a in j.ar)
         aw = ",".join(f"0x{a:x}" for a in j.aw)
-        assert j.ar and j.aw, f"no AR or AW handshake observed (ar={ar} aw={aw})"
-        wrapped = any(a < S7_DST_STRIDE * S7_ROWS for a in j.ar + j.aw)
+        want_ar = [a % TWO_POW_56 for a in src_logical]
+        want_aw = [a % TWO_POW_56 for a in dst_logical]
+        assert j.ar == want_ar, (
+            f"CHK-DMA-2D-WRAP-2POW56 FAIL: AR addresses {ar}, want the logical source rows "
+            f"modulo 2^56 {[hex(a) for a in want_ar]}"
+        )
+        assert j.aw == want_aw, (
+            f"CHK-DMA-2D-WRAP-2POW56 FAIL: AW addresses {aw}, want the logical destination rows "
+            f"modulo 2^56 {[hex(a) for a in want_aw]}"
+        )
+        assert len(j.bresp) == S7_ROWS and len(j.rresp) >= S7_ROWS, (
+            f"CHK-DMA-2D-WRAP-2POW56 FAIL: {len(j.rresp)} R and {len(j.bresp)} B handshakes for "
+            f"{S7_ROWS} rows"
+        )
+        bad = [r for r in j.rresp + j.bresp if r != RESP_OKAY]
+        assert not bad, (
+            f"CHK-DMA-2D-WRAP-2POW56 FAIL: non-OKAY responses {bad} (RRESP {j.rresp}, "
+            f"BRESP {j.bresp})"
+        )
         low_rows = []
-        for addr in dst_logical:
+        for n, addr in enumerate(dst_logical):
             low = addr % TWO_POW_56
-            low_rows.append(f"0x{low:x}={bytes(self._responder.read(low, S7_LENGTH)).hex()}")
+            got = bytes(self._responder.read(low, S7_LENGTH))
+            want = bytes(_pattern(src_logical[n] + i) for i in range(S7_LENGTH))
+            assert got == want, (
+                f"CHK-DMA-2D-WRAP-2POW56 FAIL: destination row {n} at 0x{low:x} (logical "
+                f"0x{addr:x}) holds {got.hex()}, want source row 0x{src_logical[n]:x} {want.hex()}"
+            )
+            low_rows.append(f"0x{low:x}")
         self._mark("S7")
         return (
             f"{S7_ROWS} rows from source base 0x{S7_SRC_BASE:x} stride 0x{S7_SRC_STRIDE:x} to "
             f"destination base 0x{S7_DST_BASE:x} stride 0x{S7_DST_STRIDE:x}, id {j.id} retired "
             f"within {POLL_LIMIT} polls; logical rows past 2^56: source "
-            f"{[hex(a) for a in past_src]} destination {[hex(a) for a in past_dst]}; issued AR "
-            f"addresses {ar}; issued AW addresses {aw}; "
-            f"address_wrapped_to_low_range={wrapped} (not specified, measured and printed); "
-            f"low-range destination bytes {'; '.join(low_rows)}"
+            f"{[hex(a) for a in past_src]} destination {[hex(a) for a in past_dst]}; the "
+            f"{len(j.ar)} AR addresses {ar} and {len(j.aw)} AW addresses {aw} equal the logical "
+            f"rows modulo 2^56; {len(j.rresp)} RRESP and {len(j.bresp)} BRESP all OKAY; the "
+            f"destination rows at {', '.join(low_rows)} equal their source rows"
+        )
+
+    async def _s8(self) -> str:
+        base = self._case_base()
+        new_lo = base + 0xC00
+        dst_half = (S8_OLD_HI << 32) | new_lo
+        j = _Job("HALVES", base, (S8_OLD_HI << 32) | (base + 0x800), S8_LENGTH, 1, 0, 0)
+        source = bytes(_pattern(base + i) for i in range(S8_LENGTH))
+        self._responder.write(j.src, source)
+        for addr in (j.dst, dst_half, new_lo):
+            self._responder.write(addr, bytes([SENTINEL]) * S8_LENGTH)
+        await self._program(j)
+        await self.csr_write("HALVES_DST_LO_NEW", DMA_CTRL_DST_ADDRESS_LO, new_lo)
+        await self._run(j, program=False)
+        await self.csr_write("HALVES_DST_HI_NEW", DMA_CTRL_DST_ADDRESS_HI, 0)
+        assert j.aw == [dst_half], (
+            f"CHK-DMA-HALVES-NOT-ATOMIC FAIL: the launch between the DST_ADDRESS halves issued AW "
+            f"{[hex(a) for a in j.aw]}, want 0x{dst_half:x} (new LO 0x{new_lo:x} with old HI "
+            f"0x{S8_OLD_HI:x})"
+        )
+        got = bytes(self._responder.read(dst_half, S8_LENGTH))
+        assert got == source, (
+            f"CHK-DMA-HALVES-NOT-ATOMIC FAIL: 0x{dst_half:x} holds {got.hex()}, want {source.hex()}"
+        )
+        untouched = [bytes(self._responder.read(a, S8_LENGTH)) for a in (j.dst, new_lo)]
+        assert untouched == [bytes([SENTINEL]) * S8_LENGTH] * 2, (
+            f"CHK-DMA-HALVES-NOT-ATOMIC FAIL: the old destination 0x{j.dst:x} holds "
+            f"{untouched[0].hex()} and the new destination 0x{new_lo:x} holds "
+            f"{untouched[1].hex()} after the half-register launch"
+        )
+        first_id, first_aw = j.id, j.aw
+        await self._run(j, program=False)
+        assert j.aw == [new_lo], (
+            f"CHK-DMA-HALVES-NOT-ATOMIC FAIL: the launch after both halves issued AW "
+            f"{[hex(a) for a in j.aw]}, want 0x{new_lo:x}"
+        )
+        got = bytes(self._responder.read(new_lo, S8_LENGTH))
+        assert got == source, (
+            f"CHK-DMA-HALVES-NOT-ATOMIC FAIL: 0x{new_lo:x} holds {got.hex()}, want {source.hex()}"
+        )
+        second_id, second_aw = j.id, j.aw
+        self._responder.write(dst_half, bytes([SENTINEL]) * S8_LENGTH)
+        await self.csr_write("HALVES_DST_HI_AGAIN", DMA_CTRL_DST_ADDRESS_HI, S8_OLD_HI)
+        await self._run(j, program=False)
+        assert j.aw == [dst_half], (
+            f"CHK-DMA-HALVES-NOT-ATOMIC FAIL: the launch after a DST_ADDRESS_HI write alone "
+            f"issued AW {[hex(a) for a in j.aw]}, want 0x{dst_half:x} (new HI 0x{S8_OLD_HI:x} "
+            f"with the current LO 0x{new_lo:x})"
+        )
+        got = bytes(self._responder.read(dst_half, S8_LENGTH))
+        assert got == source, (
+            f"CHK-DMA-HALVES-NOT-ATOMIC FAIL: 0x{dst_half:x} holds {got.hex()} after the HI-only "
+            f"write, want {source.hex()}"
+        )
+        self._mark("S8")
+        return (
+            f"DST_ADDRESS programmed 0x{j.dst:x}, then DST_ADDRESS_LO written 0x{new_lo:x}, the "
+            f"launch (id {first_id}) issued AW {[hex(a) for a in first_aw]} = new LO with old HI "
+            f"0x{S8_OLD_HI:x} and wrote the {S8_LENGTH} source bytes there, leaving the old and "
+            f"the new destination at the sentinel; after DST_ADDRESS_HI was written 0 the next "
+            f"launch (id {second_id}) issued AW {[hex(a) for a in second_aw]} and wrote the "
+            f"source bytes at the new destination; after DST_ADDRESS_HI alone was written "
+            f"0x{S8_OLD_HI:x} the launch (id {j.id}) issued AW {[hex(a) for a in j.aw]}: each "
+            f"half takes effect on its own write"
         )
 
     async def body(self) -> None:
@@ -464,6 +578,7 @@ class smc_dma_2d_copy_test_seq(SmcCsrSeq):
             ("S5", self._s5, "CHK-DMA-2D-SINGLE-ID"),
             ("S6", self._s6, "CHK-DMA-2D-STRIDE-EDGES"),
             ("S7", self._s7, "CHK-DMA-2D-WRAP-2POW56"),
+            ("S8", self._s8, "CHK-DMA-HALVES-NOT-ATOMIC"),
         )
         for step, fn, chk in steps:
             text = await fn()

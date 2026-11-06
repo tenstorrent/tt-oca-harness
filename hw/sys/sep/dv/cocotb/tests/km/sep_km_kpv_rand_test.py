@@ -55,7 +55,7 @@ Checkers:
                    still reads RETIRED (lock_write, lock_use and seal set, erase
                    0): "Erasing a sealed slot is still permitted, and leaves it
                    *retired* ... repeating the erase changes nothing."
-                   (``architecture.adoc:453-456``; CTRL bits ``:416-428``).
+                   (``architecture.adoc:461-464``; CTRL bits ``:424-436``).
   CHK-KPV-RACE     erase and seal in back-to-back writes retire the slot when
                    the erase bit reads 1 right after the seal write. A try that
                    shows the erase bit at 0 is logged and not graded. Control:
@@ -72,9 +72,9 @@ Checkers:
                    every snapshot that overlaps no erase, returns the stored
                    word of the same snapshot (KM-KPV, the scrambler is off) with
                    OKAY: "the KM port sees the logical (unscrambled) data on the
-                   bus" (``architecture.adoc:474-476``); on a neighbour whose
+                   bus" (``architecture.adoc:482-484``); on a neighbour whose
                    CTRL read shows lock_use it returns 0 with SLVERR ("Key-data
-                   reads return zero with SLVERR", ``architecture.adoc:419-420``).
+                   reads return zero with SLVERR", ``architecture.adoc:427-428``).
                    With the scrambler off the port passes the word through
                    (``km_kpv.rdl:183``). The graded reads must include one
                    whose stored word is non-zero. A
@@ -83,7 +83,7 @@ Checkers:
                    snapshot takes before the word reads, or the KM-KPV CTRL tap
                    (``km_kpv_ctrl_o``) at its sync, shows an erase bit set on
                    any slot: "key-data accesses during an erase are not defined"
-                   (``architecture.adoc:433-435``). The excluded snapshots are
+                   (``architecture.adoc:441-443``). The excluded snapshots are
                    counted in the line, and the graded count must be non-zero.
   CHK-KPV-RESET    CTRL of the 12 drawn slots reads 0 after the power-up cold
                    reset, after a warm reset (SW_RESET_N bit 0) that follows
@@ -91,7 +91,7 @@ Checkers:
                    (rst_ni) that follows CTRL 0x1 on every drawn slot.
   CHK-KPV-NOX      VCS only: no compared KPV read and no KM-KPV snapshot holds
                    an X or Z bit. On Verilator (two-state) the leaf logs
-                   ``OBS-BLOCKED CHK-KPV-NOX``.
+                   ``INFO-BLOCKED CHK-KPV-NOX``.
   CHK-KPV-RSVD     the reserved bits of CTRL (31:4), KPV_SCRAMBLER_CTRL (31:2) and
                    IRQ_STATUS (31:12) read 0 in every read of the leaf (RDL
                    ``rsvd`` R 0x0).
@@ -123,7 +123,7 @@ Checkers:
                    (the tweak uses the logical index, so only the key differs).
   CHK-NONVAC       every control of a "no effect" check above was seen.
 
-Log only: OBS-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
+Log only: INFO-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
 erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
 (KPV cells after a cold reset are not stated), ``INFO-KPV-RACE-REDRAW`` and
 ``INFO-KPV-RACE``, and ``OBS-KPV-WIPE-ERR-O`` (PIC vector bit 30 at the wipe).
@@ -846,7 +846,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             self.chk.ok(
                 "KPV-RETIRED-REERASE",
                 final == m.RETIRED,
-                contract="key_manager/doc/architecture.adoc:453-456",
+                contract="key_manager/doc/architecture.adoc:461-464",
                 slot=s,
                 ctrl=_h(final),
                 expect=_h(m.RETIRED),
@@ -995,7 +995,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         self.chk.ok(
             "KPV-NEIGH-PORT",
             port_bad == 0 and port_nonzero > 0,
-            contract="key_manager/doc/architecture.adoc:474-476,key_manager/regs/km_kpv.rdl:183",
+            contract="key_manager/doc/architecture.adoc:482-484,key_manager/regs/km_kpv.rdl:183",
             slots=len(by_slot),
             compared=port_graded,
             lock_use_reads=port_locked,
@@ -1349,7 +1349,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             W=p.wipe_hold,
         )
         sram_same = sum(1 for a, b in zip(sram_post, p.sram_values, strict=True) if a == b)
-        # architecture.adoc:506-508: the wipe pulse clears KEY_VALID of every
+        # architecture.adoc:514-516: the wipe pulse clears KEY_VALID of every
         # accelerator sideload register block.
         bank_set = [b.name for v, b in zip(bank_post, m.KEY_BANKS, strict=True) if v != 0]
         self.chk.ok(

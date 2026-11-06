@@ -792,13 +792,13 @@ addrmap i2c {
         field {
             sw = r;
             hw = w;
-            desc = "Controller TX FIFO fill level.";
+            desc = "Controller TX FIFO fill level, from 0 to the FIFO depth when full.";
         } FMTLVL[11:0];
 
         field {
             sw = r;
             hw = w;
-            desc = "Controller RX FIFO fill level.";
+            desc = "Controller RX FIFO fill level, from 0 to the FIFO depth when full.";
         } RXLVL[27:16];
     };
 
@@ -808,13 +808,13 @@ addrmap i2c {
         field {
             sw = r;
             hw = w;
-            desc = "Target TX FIFO fill level.";
+            desc = "Target TX FIFO fill level, from 0 to the FIFO depth when full.";
         } TXLVL[11:0] = 0x0;
 
         field {
             sw = r;
             hw = w;
-            desc = "Target RX FIFO fill level.";
+            desc = "Target RX FIFO fill level, from 0 to the FIFO depth when full.";
         } ACQLVL[27:16] = 0x0;
     };
 
@@ -1218,7 +1218,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that this controller has halted due to a Bus Timeout. See
@@ -1228,7 +1228,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that the controller has halted due to it losing an arbitration
@@ -1242,7 +1242,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that the target is stretching the clock due to receiving a READ
@@ -1254,7 +1254,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that this target has halted due a Bus Timeout terminating a READ
@@ -1264,7 +1264,7 @@ addrmap i2c {
 
         field {
             sw = rw;
-            hw = rw;
+            hw = w;
             level intr;
             woclr;
             desc = "Indicates that a controller has lost arbitration, causing a READ

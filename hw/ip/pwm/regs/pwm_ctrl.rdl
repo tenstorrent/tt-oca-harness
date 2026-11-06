@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef PWM_CTRL_RDL
+`define PWM_CTRL_RDL
+
+addrmap pwm_ctrl #(
+    longint unsigned N_OUTPUTS = 4
+) {
+    name = "PWM Control Address Map";
+    desc = "Per-channel pad-function select for the PWM outputs.";
+
+    //////////////////////////
+    // Register Definitions //
+    //////////////////////////
+
+    reg CTRL {
+        desc = "Control Register";
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "PWM Pad Function Select, one bit per channel. When bit i is set, the integration routes channel i's output to its pad. Does not start the channel; PWM_EN starts and stops each channel's waveform.";
+        } PAD_EN[N_OUTPUTS-1:0] = 0x0;
+    };
+
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    CTRL    CTRL    @0x0;
+
+};
+
+`endif

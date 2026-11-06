@@ -60,17 +60,28 @@ Checks:
     CHK-ERR-RECOVER      : JEDEC works again afterwards, so the host was really
                            released rather than left disabled by a stuck latch.
     CHK-SPI-LANE-READ    : each dual or quad read (0x3B, 0x6B, 0xBB, 0xEB)
-                           returns, word by word, the seeded words the leaf
-                           preloaded at its address, and ERROR_STATUS stays 0.
+                           returns, word by word in the firmware's RXDATA
+                           order, the seeded bytes the leaf preloaded at its
+                           address, and ERROR_STATUS stays 0.
     CHK-SPI-LANE-PROGRAM : the quad page program (0x32), read back with 0x03,
                            returns the seeded words, and ERROR_STATUS stays 0.
+    RXDATA order       : CHK-JEDEC fixes the in-word order of RXDATA from the
+                           JEDEC ID word (the ID bytes and a zero pad in one
+                           order) and prints ``OBS-SPI-BYTEORDER fw order=``;
+                           CHK-RDSR, CHK-WRDI, CHK-WEL-AUTOCLR, CHK-RDSR2,
+                           CHK-ERR-RECOVER and CHK-SPI-LANE-READ take each
+                           response byte in that order, and the bytes past the
+                           response must read 0. CHK-PROGRAM/CHK-READ,
+                           CHK-FAST-READ and CHK-SPI-LANE-PROGRAM write and read
+                           through the same host and do not depend on it.
   cocotb golden cross-check (independent of the firmware readback):
     - exactly the BFM-visible opcode sequence (JEDEC, WREN, RDSR, WRDI, RDSR,
       primary program/read, FAST_READ, neighbour program/read, erase, primary read,
       neighbour read, post-erase RDSR, the ignored WEL-clear PP and its read,
       WREN, RDSR2, WRDI, recovery JEDEC);
-    - the PAGE PROGRAM (0x02) landed at the random addr with the random data,
-      and the device accepted it (``ok``): its frame ended on a byte boundary;
+    - the PAGE PROGRAM (0x02) landed at the random addr with the random data
+      words in the leaf's in-word byte order, and the device accepted it
+      (``ok``): its frame ended on a byte boundary;
     - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards)
       and left the neighbour 4 KiB sector intact;
     - CHK-WP-PP/BFM: the controller delivered the third PAGE PROGRAM to the
@@ -82,7 +93,19 @@ Checks:
     CHK-SPI-SB-TX / CHK-SPI-SB-RX : the scoreboard compares the 0x32 payload,
                            each lane read and the x1 primary READ (0x03) with
                            the seeded bytes, the monitor's wire decode at the
-                           command's lane width, and the flash record.
+                           command's lane width, and the flash record. A TX
+                           payload and the primary READ, which returns the
+                           programmed bytes, expect the seeded words in the
+                           leaf's in-word byte order; a lane read expects the
+                           preloaded flash bytes.
+  In-word byte order (OpenTitan SPI_HOST "Input and Output Byte Ordering"):
+    one order for every TXDATA and RXDATA word of the leaf
+    (``SepSpiByteOrder`` of ``env/sep_spi_lane_responder.py``). The leaf
+    takes the firmware's order with ``adopt``; an order that differs from the
+    one the TX words showed fails CHK-SPI-SB-RX. Which order is not graded:
+    one OBS-SPI-BYTEORDER line per leaf logs it. The opcode and address bytes
+    in TXDATA[7:0] first, and the WIP poll of the flash driver, are stimulus
+    that assumes the order with the first byte in bits 7:0.
     CHK-SPI-LANE-FW      : the firmware console holds exactly one PASS line per
                            lane entry, with its opcode, width and word count.
 
@@ -107,7 +130,7 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_log_error_counter import attach_error_counter
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spi_lane_responder import spi_lane_fcov
+from env.sep_spi_lane_responder import SepSpiByteOrder, spi_lane_fcov
 from env.sep_spi_scoreboard import SepSpiScoreboard
 from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
@@ -145,6 +168,7 @@ _LANE_MAX = 5  # LANE_MAX in the firmware
 # Sectors of the lane leg: above the standard leg's sectors (1..31 and their
 # neighbours), inside the 16 MiB flash model.
 _LANE_SECTORS = range(32, 4096)
+_FW_ORDER = re.compile(r"OBS-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided)")
 _LANE_LINE = re.compile(
     r"(CHK-SPI-LANE-(?:READ|PROGRAM)) PASS: op=0x([0-9a-f]{8}) width=x(\d) "
     r"words=0x([0-9a-f]{8}) bytes=0x([0-9a-f]{8})"
@@ -175,7 +199,11 @@ class SepSpiLaneEntry:
         return self.opcode == _LANE_PROGRAM
 
     def data_bytes(self) -> bytes:
-        """The words as the flash holds them: least significant byte first (ByteOrder 1)."""
+        """The words as bytes, least significant byte first.
+
+        A read entry preloads these bytes into the flash; a program entry's
+        TXDATA words are their ``pack_tx_words`` packing.
+        """
         return b"".join(w.to_bytes(4, "little") for w in self.data)
 
     def param_words(self) -> list[int]:
@@ -250,7 +278,7 @@ class SepSpiFlashCmdCfg:
         return self.addr ^ 0x1000
 
     def neigh_bytes(self) -> bytes:
-        """PAGE PROGRAM payload the firmware writes to the neighbour sector."""
+        """Neighbour PAGE PROGRAM words as bytes, least significant byte first."""
         return b"".join((w ^ 0xFFFFFFFF).to_bytes(4, "little") for w in self.data)
 
     @classmethod
@@ -304,7 +332,11 @@ class SepSpiFlashCmdCfg:
         return ops
 
     def pp_bytes(self) -> bytes:
-        """Expected PAGE PROGRAM payload (little-endian) the BFM must observe."""
+        """PAGE PROGRAM words as bytes, least significant byte first.
+
+        Their ``pack_tx_words`` packing is the words the firmware writes to
+        TXDATA; ``SepSpiByteOrder.tx_bytes`` gives the wire bytes.
+        """
         return b"".join(w.to_bytes(4, "little") for w in self.data)
 
 
@@ -370,7 +402,8 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         # the wire monitor.
         bfm_errors = attach_error_counter(flash.log)
         wire = await SepSpiWireMonitor(dut).start()
-        sb = SepSpiScoreboard(wire, flash, self.logger, seed=self.random_seed())
+        order = SepSpiByteOrder()
+        sb = SepSpiScoreboard(wire, flash, self.logger, seed=self.random_seed(), order=order)
         await flash.start()
         dtcm_hex, cfg = self._stage_dtcm()
         if cfg is not None:
@@ -388,15 +421,14 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 no_boot_cycles=_NO_BOOT_CYCLES,
                 progress_every=_PROGRESS_EVERY,
             )
-            self._golden_check(flash, cfg)
+            pp_wire = self._golden_check(flash, cfg, order)
+            self._adopt_fw_order(order)
             if cfg is not None:
                 sb.expect_tx(cfg.addr, cfg.pp_bytes(), label="primary program")
                 sb.expect_tx(cfg.neigh_addr, cfg.neigh_bytes(), label="neighbour program")
                 # The first 0x03 record in device order is the primary READ that
-                # follows the primary program; it returns the programmed words.
-                sb.expect_rx(
-                    0x03, cfg.pp_bytes(), source="fw:CHK-READ", label="primary read width=x1"
-                )
+                # follows the primary program; it returns the programmed bytes.
+                sb.expect_rx(0x03, pp_wire, source="fw:CHK-READ", label="primary read width=x1")
                 for entry in cfg.lanes:
                     label = f"lane op=0x{entry.opcode:02x} width=x{entry.lanes}"
                     if entry.is_program:
@@ -426,6 +458,24 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             for entry in cfg.lanes:
                 await spi_lane_fcov(_TEST, "opcode", lanes=entry.lanes, opcode=entry.opcode)
                 await spi_lane_fcov(_TEST, "data", lanes=entry.lanes, rx=not entry.is_program)
+        order.log_obs(self.logger, self.random_seed())
+
+    def _adopt_fw_order(self, order: SepSpiByteOrder) -> None:
+        """Take the firmware's RXDATA order; it must equal the order the leaf saw."""
+        console = self.sb.console_text()
+        found = _FW_ORDER.findall(console)
+        if len(found) != 1:
+            raise AssertionError(
+                f"CTRL-MISSING seed={self.random_seed()}: {len(found)} firmware "
+                f"OBS-SPI-BYTEORDER line(s), expected 1. Console was:\n{console}"
+            )
+        if found[0] == "undecided":
+            return
+        if not order.adopt(found[0], where="fw CHK-JEDEC"):
+            raise AssertionError(
+                f"CHK-SPI-SB-RX FAIL seed={self.random_seed()}: the firmware read RXDATA in "
+                f"order {found[0]}, the leaf saw {order.order} at {order.fixed_at}"
+            )
 
     def _preload_lane_reads(self, flash, cfg) -> None:
         """Write the seeded words of each lane read range into the flash model."""
@@ -496,10 +546,11 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             [f"0x{e.opcode:02x}" for e in cfg.lanes],
         )
 
-    def _golden_check(self, flash, cfg) -> None:
+    def _golden_check(self, flash, cfg, order: SepSpiByteOrder) -> bytes:
         """Independent BFM-side golden: confirm the random program/erase actually
         traversed the SPI datapath (not just the firmware's own readback). All
-        expectations come from the single SepSpiFlashCmdCfg object."""
+        expectations come from the single SepSpiFlashCmdCfg object, read in the
+        leaf's in-word byte order. Returns the primary program's wire bytes."""
         txns = flash.get_transactions()
         for t in txns:
             din = t.get("data_in") or b""
@@ -510,7 +561,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 bytes(din).hex() if din else "",
             )
         if cfg is None:  # +spi1_directed: firmware-self-checked only
-            return
+            return b""
 
         opcodes = [t.get("opcode") for t in txns]
         if opcodes != cfg.expected_ops():
@@ -522,7 +573,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             raise AssertionError("SPI flash command breadth golden: unexpected BFM opcode sequence")
 
         pp = txns[6]
-        exp_bytes = cfg.pp_bytes()
+        exp_bytes = order.tx_bytes(
+            cfg.pp_bytes(), bytes(pp.get("data_in") or b""), where="golden primary program"
+        )
         if (
             pp.get("addr") != cfg.addr
             or bytes(pp.get("data_in") or b"") != exp_bytes
@@ -543,7 +596,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             )
 
         neigh_pp = txns[10]
-        neigh_bytes = cfg.neigh_bytes()
+        neigh_bytes = order.tx_bytes(
+            cfg.neigh_bytes(), bytes(neigh_pp.get("data_in") or b""), where="golden neighbour"
+        )
         if (
             neigh_pp.get("addr") != cfg.neigh_addr
             or bytes(neigh_pp.get("data_in") or b"") != neigh_bytes
@@ -654,3 +709,4 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             "JEDEC/WREN/RDSR/RDSR2/WRDI/PP/READ/FAST/ERASE and the lane leg %s",
             [f"0x{e.opcode:02x}" for e in cfg.lanes],
         )
+        return exp_bytes

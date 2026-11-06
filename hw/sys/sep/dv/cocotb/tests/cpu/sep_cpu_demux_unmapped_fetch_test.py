@@ -62,6 +62,13 @@ Checks:
                        ``:102-107``; ICCM and DCCM
                        share region 12, ``hw/sys/sep/doc/memory_map.adoc:41-43``).
                        Control: the DCCM pair reads K, writes V2 and reads V2.
+  CHK-EXT-READ-NMI   : the LSU read at 0x2000_0100 raises exactly one NMI
+                       between the EXT_B and EXT_E markers, with mcause
+                       0xF000_0001 (load bus error) and mdseac 0x2000_0100
+                       (the extension port answers DECERR, SEP_TB_ARCH.adoc
+                       "AXI Extension port responder"; NMI mcause values, VeeR
+                       EL2 PRM linked from cpu.adoc). Control: the read is on
+                       PR-EXT.
   CHK-LSU-ICCM-WE    : no ICCM write enable on PR-TCM during the LSU store.
                        Control: the DMA copy of an SRAM word to another ICCM
                        word shows the ICCM write enable.
@@ -77,13 +84,16 @@ reads the CSR back into a mailbox record, and a read-back that differs fails
 the leaf (``CTRL-DEMUX-MRAC``). The core then issues each store at its own size, so a 32-bit
 register write reaches a register block with its own strobe and no zero-strobe
 neighbour beat. ``OBS-DMA-CSR-WRITE`` logs the shape and BRESP of every LSU
-write to the secure DMA registers; ``OBS-EXT-READ`` logs every NMI.
+write to the secure DMA registers. The CHK-EXT-READ-NMI line also lists every
+NMI record of the run with the last marker before it.
 
 The trap cause and value of an unmapped fetch and the cause of an ICCM data
-access are graded; ``OBS-IFU-TRAP`` and ``OBS-LSU-ICCM`` still log every trap
-record, the load value and the DMA status. Every expected value comes
-from the drawn plan and the staged images; no expected value is read from the
-DUT.
+access are graded. ``INFO-IFU-TRAP`` re-logs every trap record, which
+``CHK-IFU-TRAP`` grades. ``INFO-LSU-ICCM`` re-logs the two trap causes, which
+``CHK-LSU-ICCM-CAUSE`` grades, and the load value. When the load traps, the value holds
+the bench preset; when it does not, ``CHK-LSU-ICCM`` grades it and the line names that check. ``OBS-LSU-ICCM-DMA-STATUS`` logs the SECURE_DMA ``STATUS`` of each copy, which
+no check grades. Every expected value comes from the drawn plan and the staged images; no
+expected value is read from the DUT.
 
 cpu run mode (real core), ``+skip_fuse_sense``; Verilator and VCS.
 """
@@ -146,7 +156,10 @@ from seq_lib.sep_dma_ops import (
     RANGE_VALID,
     SECURE_DMA,
     ST_ABORTED,
+    ST_BUSY,
+    ST_CHUNK_DONE,
     ST_CLEAN_W1C,
+    ST_DIGEST_VALID,
     ST_DONE,
     ST_ERROR,
     STATUS,
@@ -201,6 +214,7 @@ U_SET = (
     0x0000_1000,
 )
 EXT_ADDR = 0x2000_0100  # extension port read of step 6
+NMI_LOAD_BUS_ERROR = 0xF000_0001
 OUT_ADDR = MBX  # outbound port store of step 6 (the console address)
 OUT_VAL = 0x5EC0_0006
 
@@ -323,6 +337,19 @@ def _fail_if_ne(a: Asm, addr: int, exp: int, mask: int, code: int, tag: str) -> 
     a.op(sw(A1, GP, OFF["FAIL"] + 4))
     a.li(T0, code).op(sw(T0, GP, OFF["FAIL"]), FENCE).j("halt")
     a.label(f"ok_{tag}")
+
+
+def _dma_status_bits(status: int) -> str:
+    """The six SECURE_DMA ``STATUS`` bits of one copy, in register order."""
+    bits = (
+        ("BUSY", ST_BUSY),
+        ("DONE", ST_DONE),
+        ("ABORTED", ST_ABORTED),
+        ("ERROR", ST_ERROR),
+        ("SHA2_DIGEST_VALID", ST_DIGEST_VALID),
+        ("CHUNK_DONE", ST_CHUNK_DONE),
+    )
+    return ",".join(f"{n}={int(bool(status & m))}" for n, m in bits)
 
 
 def _dma_copy(a: Asm, src: int, dst: int, tag: str, code: int) -> None:
@@ -517,6 +544,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         "CHK-LSU-ICCM-WE",
         "CHK-IFU-TRAP",
         "CHK-LSU-ICCM-CAUSE",
+        "CHK-EXT-READ-NMI",
     )
 
     def _grade(self, chk: str, ok: bool, text: str) -> None:
@@ -803,7 +831,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             causes = self._recs(f"FB{k}", f"FE{k}", "TRAP_CAUSE")
             tvals = self._recs(f"FB{k}", f"FE{k}", "TRAP_VAL")
             self.logger.info(
-                "OBS-IFU-TRAP LOG fetch=0x%08x mcause=%s mtval=%s",
+                "INFO-IFU-TRAP LOG fetch=0x%08x mcause=%s mtval=%s graded_by=CHK-IFU-TRAP",
                 u,
                 ",".join(f"0x{r.val:x}" for r in causes) or "-",
                 ",".join(f"0x{r.val:08x}" for r in tvals) or "-",
@@ -886,10 +914,15 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
                 OFF["FE2"],
             ):
                 last = names[r.off]
-        self.logger.info(
-            "OBS-EXT-READ LOG nmi_records=%d mcause@marker/mdseac=%s",
-            len(rows),
-            " ".join(rows) or "-",
+        causes = [r.val for r in self._recs("EXT_B", "EXT_E", "NMI")]
+        addrs = [r.val for r in self._recs("EXT_B", "EXT_E", "NMI_ADDR")]
+        self._grade(
+            "CHK-EXT-READ-NMI",
+            causes == [NMI_LOAD_BUS_ERROR] and addrs == [EXT_ADDR] and ext_ctl >= 1,
+            f"nmi_in_window={len(causes)} mcause={','.join(f'0x{v:08x}' for v in causes) or 'none'} "
+            f"mdseac={','.join(f'0x{v:08x}' for v in addrs) or 'none'} "
+            f"expect=0x{NMI_LOAD_BUS_ERROR:08x}/0x{EXT_ADDR:08x} lsu_ext_seen={ext_ctl} "
+            f"nmi_records={len(rows)} mcause@marker/mdseac={' '.join(rows) or '-'}",
         )
 
     def _log_dma_csr_writes(self) -> None:
@@ -999,11 +1032,20 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             and pair1[0].val == p.v2_val
         )
         self.logger.info(
-            "OBS-LSU-ICCM LOG load_mcause=%s store_mcause=%s load_value=%s dma_status=%s",
+            "INFO-LSU-ICCM LOG load_mcause=%s store_mcause=%s load_value=%s "
+            "cause_graded_by=CHK-LSU-ICCM-CAUSE value_graded_by=%s",
             ",".join(f"0x{r.val:x}" for r in traps) or "-",
             ",".join(f"0x{r.val:x}" for r in straps) or "-",
             "X" if load_val is None else f"0x{load_val:08x}",
-            ",".join(f"0x{v:08x}" for v in dma_st),
+            "-" if traps else "CHK-LSU-ICCM",
+        )
+        dma = [(f"0x{v:08x}", _dma_status_bits(v)) for v in dma_st[:3]]
+        dma += [("-", "-")] * (3 - len(dma))
+        self.logger.info(
+            "OBS-LSU-ICCM-DMA-STATUS seed=%d "
+            "dma_d1=%s d1_bits=%s dma_d2=%s d2_bits=%s dma_d3=%s d3_bits=%s",
+            self.random_seed(),
+            *(f for pair in dma for f in pair),
         )
         lc = ",".join(f"0x{r.val:x}" for r in traps) or "-"
         sc = ",".join(f"0x{r.val:x}" for r in straps) or "-"

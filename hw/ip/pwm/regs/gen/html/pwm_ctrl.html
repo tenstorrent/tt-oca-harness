@@ -1,0 +1,23 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-pwm_ctrl">PWM Control Address Map</h2>
+<p>Per-channel pad-function select for the PWM outputs.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>PAD_EN</td><td>RW</td><td>0x0</td><td>PWM Pad Function Select, one bit per channel. When bit i is set, the integration routes channel i&#x27;s output to its pad. Does not start the channel; PWM_EN starts and stops each channel&#x27;s waveform.</td></tr>
+</table>
+</div>

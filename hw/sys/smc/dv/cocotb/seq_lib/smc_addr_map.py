@@ -298,6 +298,8 @@ CG_HYST_SHIFT = _field_mask(
     _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bp"
 )
 DMA_CONFIG_ENABLED_ND = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__ENABLED_ND_bm")
+DMA_STATUS_BUSY_MASK = _field_mask(_DMA_CTRL_H, "DMA_CTRL__STATUS__BUSY_bm")
+DMA_NEXT_ID_MASK = _field_mask(_DMA_CTRL_H, "DMA_CTRL__NEXT_ID__DATA_bm")
 DMA_CONFIG_DECOUPLE_RW = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__DECOUPLE_RW_bm")
 DMA_CONFIG_DECOUPLE_AW = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__DECOUPLE_AW_bm")
 
@@ -427,6 +429,16 @@ _WDT_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "wdt.h
 def wdt_u32(symbol: str) -> int:
     """Field mask from generated ``wdt.h``."""
     return _field_mask(_WDT_H, symbol)
+
+
+_PWM_H = (
+    _REPO / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs" / "pwm" / "regs" / "gen" / "c"
+) / "pwm.h"
+
+
+def pwm_reset_word(reg: str) -> int:
+    """Reset word of PWM register ``reg`` from generated ``pwm.h``."""
+    return reg_reset_word(_PWM_H, "PWM", reg)
 
 
 _RESET_UNIT_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "reset_unit.h"

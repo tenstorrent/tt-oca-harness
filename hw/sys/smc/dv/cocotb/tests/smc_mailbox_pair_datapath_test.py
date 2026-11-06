@@ -23,7 +23,7 @@ class smc_mailbox_pair_datapath_test(smc_base_test):
         "CHK-PARTIAL-FILLS-FIFO",
         "CHK-PARTIAL-LANES-ZERO",
         "CHK-PARTIAL-NO-MERGE",
-        "CHK-PARTIAL-ZERO-STROBE-OBSERVED",
+        "CHK-PARTIAL-ZERO-STROBE-PUSHES",
         "CHK-PUSHPOP-EMPTY-OBSERVED",
         "CHK-PUSHPOP-FULL-OBSERVED",
         "CHK-PUSHPOP-OCCUPANCY-ONE",

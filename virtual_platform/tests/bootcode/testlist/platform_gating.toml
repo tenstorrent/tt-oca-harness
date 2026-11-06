@@ -191,7 +191,7 @@ spi_reads = [
 ]
 spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
 markers = [
-  "Not covered, and it is the claim this entry is named for: the clear_sram_region() zeroing of SEP SRAM between the primary refusal and the backup fetch prints nothing; DV witnesses it in the SRAM array, and the VP needs an ISS-trace judge for the stores.",
+  "Not covered, and it is the claim this entry is named for: the rom_clear_sram_for_retry() zero fill of SEP SRAM between the primary refusal and the backup fetch prints nothing when it succeeds; DV witnesses it in the SRAM array, and the VP has no judge for the DMA writes.",
   "Covered: the failover window itself, from the device side (only the primary peek, then the backup) and on the console.",
   "SRAM_SCRUB_CFG= and SRAM_CLR_SKIP belong to the one-time pre-manifest scrub in rom_clear_ext_sram, not to this window, so they are not asserted.",
   "The primary span is erased as in DV, so the primary is refused at the magic peek.",

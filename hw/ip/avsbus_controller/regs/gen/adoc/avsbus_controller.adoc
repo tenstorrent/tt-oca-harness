@@ -186,11 +186,11 @@ general condition of the slave, per AVS spec StatusReponse field: [list]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:28 | `Reserved` | - | - a| Reserved
-| 27:24 | `READBACK_FIFO_VACANT_SLOTS` | R | 0x8 a| Number of vacant slots in the readback FIFO
+| 27:24 | `READBACK_FIFO_VACANT_SLOTS` | R | 0x8 a| Number of vacant slots in the readback FIFO. The field has no storage; with the FIFO empty after reset it reads the READBACK_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.
 | 23:20 | `Reserved` | - | - a| Reserved
 | 19:16 | `READBACK_FIFO_OCCUPIED_SLOTS` | R | 0x0 a| Number of occupied slots in the readback FIFO
 | 15:12 | `Reserved` | - | - a| Reserved
-| 11:8 | `CMD_FIFO_VACANT_SLOTS` | R | 0x8 a| Number of vacant slots in the command FIFO
+| 11:8 | `CMD_FIFO_VACANT_SLOTS` | R | 0x8 a| Number of vacant slots in the command FIFO. The field has no storage; with the FIFO empty after reset it reads the COMMAND_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.
 | 7:4 | `Reserved` | - | - a| Reserved
 | 3:0 | `CMD_FIFO_OCCUPIED_SLOTS` | R | 0x0 a| Number of occupied slots in the command FIFO
 |===

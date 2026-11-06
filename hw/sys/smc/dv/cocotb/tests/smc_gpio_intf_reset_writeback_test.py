@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GPIO_INTF reset-word write-back on all 65 instances.
+"""GPIO_INTF reset-word write-back on all 67 instances.
 
 Spec sources: hw/ip/gpio/regs/gpio_intf.rdl, hw/sys/smc/regs/gen/c/smc_addr.h.
 """

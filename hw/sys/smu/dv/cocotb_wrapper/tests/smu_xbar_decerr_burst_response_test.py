@@ -30,6 +30,8 @@ class smu_xbar_decerr_burst_response_test(smu_base_test):
     """ext_in misses get the full AXI4 DECERR response shape from the crossbar; no Force."""
 
     use_shared_env = True
+    # AXI monitor decode rule: every step arms its DECERR beats, so an unarmed one fails.
+    axi_monitor_fail_decerr_ext_in = True
 
     async def run_scenario(self) -> None:
         self.logger.info(

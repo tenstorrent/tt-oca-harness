@@ -170,7 +170,7 @@ window, OKAY unless the row says otherwise.
 |`c_rom_base_read`, `c_rom_top_read`, `c_rom_just_above_top_not_rom` |ROM first and last word; any completion of the word above the ROM
 |`c_spm_region_base`, `c_spm_region_top`, `c_spm_write_then_read` |Scratchpad first and last word, and a read after a write landed there
 |`c_dma_aperture_base`, `c_dma_aperture_top`, `c_dma_just_above_top_not_dma`, `c_zeroer_aperture_base`, `c_zeroer_aperture_top`, `c_zeroer_distinct_from_dma_aperture`, `c_all_16_banks_decode` |DMA and zeroer bases and decoded-extent tops, the word above the DMA aperture, both apertures reached in one run, and every DMA stream bank's `NEXT_ID` read
-|`c_gpio_interface_decode`, `c_i3c_decode`, `c_i3c_region`, `c_avsbus_decode`, `c_avsbus_aperture_decode`, `c_i2c_decode`, `c_uart_decode`, `c_efuse_map_decode`, `c_efuse_if_map_decode`, `c_efuse_interface_decode`, `c_efuse_if_interface_decode`, `c_telemetry_decode`, `c_octs_decode`, `c_octs_aperture_decode`, `c_dfx_status_decode`, `c_reset_unit_decode`, `c_misc_wrap_decode`, `c_cla_decode`, `c_cla_region` |Each peripheral unit's aperture at its generated base. Two labels on one window are two spec cells over the same aperture
+|`c_gpio_interface_decode`, `c_i3c_decode`, `c_i3c_region`, `c_avsbus_decode`, `c_avsbus_aperture_decode`, `c_i2c_decode`, `c_uart_decode`, `c_efuse_map_decode`, `c_efuse_if_map_decode`, `c_efuse_interface_decode`, `c_efuse_if_interface_decode`, `c_telemetry_decode`, `c_octs_decode`, `c_octs_aperture_decode`, `c_pwm_decode`, `c_dfx_status_decode`, `c_reset_unit_decode`, `c_misc_wrap_decode`, `c_cla_decode`, `c_cla_region` |Each peripheral unit's aperture at its generated base. Two labels on one window are two spec cells over the same aperture
 |`c_gpio_instance_0`, `c_gpio_instance_64`, `c_i3c_instance_0`, `c_i3c_instance_5`, `c_i3c_count_6`, `c_uart_instance_0`, `c_uart_instance_3`, `c_mailbox_pair_0`, `c_mailbox_pair_31`, `c_outbound_pair_0`, `c_inbound_pair_0`, `c_outbound_pair_31`, `c_inbound_pair_31` |First and last instance at the generated stride; all six I3C CSR windows in one run; both halves of the first and last mailbox pair
 |`c_config_reg_read`, `c_config_reg_write`, `c_alias_region_0_configured`, `c_alias_region_7_configured`, `c_local_alias_base_reaches_local_resource`, `c_transparent_at_reset`, `c_global_base_readable`, `c_local_base_readonly_c0000000`, `c_local_base_reads_c0000000`, `c_local_base_write_has_no_effect`, `c_base_config_read`, `c_hang_det_control_fields_present` |Fabric control block: base configuration, alias remap regions, the local alias at reset, `LOCAL_BASE` unchanged after a write, hang-detector controls
 |`c_inbound_entry_0`, `c_inbound_entry_15`, `c_outbound_entry_0`, `c_outbound_entry_15`, `c_outbound_entry_stride_32b` |First and last filter entry of each direction, and the 32 B entry stride
@@ -314,7 +314,7 @@ depth, telemetry, UART, and OCTS.
 |Points |Records
 |`c_i2c0_*`, `c_i3c0_scl_falling`, `c_i3c0_scl_driven_by_dut`, `c_i3c0_sda_driven_by_dut` |Bus conditions, who drove each line, contention and stretch
 |`c_gpio_core2pad_active`, `c_gpio_core2pad_en_active`, `c_gpio_pad2core_en_active`, `c_gpio_single_pad_enabled`, `c_gpio_multi_pad_enabled`, `c_gpio_output_value_driven`, `c_gpio_boot_stall_pad_*`, `c_pad_output_low` |Pad activity. The single-pad point counts the output enables GPIO software owns; a pad an LSIO function selects takes that function's direction (Programmer's Guide GPIO section, Selecting and Reclaiming LSIO)
-|`c_default_output_count_3`, `c_default_input_count_62`, `c_per_instance_default_matches_map` |The `INPUT_BY_DEFAULT` map at primary-reset release (`periphs.adoc`), compared on the pads no LSIO function owns
+|`c_default_output_count`, `c_default_input_count`, `c_per_instance_default_matches_map` |The `INPUT_BY_DEFAULT` map at primary-reset release (`periphs.adoc`), compared on the pads no LSIO function owns
 |`c_irq_*` |Each interrupt source asserted, the hang legs, and two sources concurrent
 |`c_axil_cdc_*`, `c_mailbox_*`, `c_single_entry_message`, `c_two_entry_message`, `c_atb_transfer_accepted`, `c_receiver_*_decode`, `c_distinct_atid_values`, `c_tx_*`, `c_controller_*`, `c_target_*`, `c_octs_count_*` |CDC bridge, mailbox, telemetry, UART, I2C controller and target transfers, OCTS counter
 |===
@@ -322,7 +322,7 @@ depth, telemetry, UART, and OCTS.
 ==== `smc_reset_fcov`, `smc_rst_seq_fcov`, `smc_iso_fcov` and `smc_filt_fcov`
 
 *Description*: each reset source and release edge, the relationships between
-them, isolation and FLR, and the protection and inbound filters.
+them, isolation and FLR, and the protection, inbound and outbound filters.
 
 [cols="3,4",options="header"]
 |===
@@ -334,6 +334,10 @@ them, isolation and FLR, and the protection and inbound filters.
 |`c_powergood_rise_stretched`, `c_cold_reset_*`, `c_async_assert_observed`, `c_sync_deassert_observed`, `c_multi_stage_sync_present`, `c_release_primary_periph`, `c_*_held_in_primary_reset`, `c_warm_cascaded_from_primary`, `c_region_size_reset_16mib`, `c_config_registers_at_reset_value`, `c_ss_config_driven`, `c_reset_*_boot_seq_done`, `c_telemetry_reset_*` |Power-on ordering, what the primary reset holds, the boot-sequence gate
 |`c_sw_isolate_per_subsystem`, `c_flr_isolate_*`, `c_single_sequence_per_rising_edge`, `c_no_sequence_on_level_hold`, `c_warm_from_*_wdt`, `c_cool_reset_from_gpio_pin_61` |Isolation terms, FLR sequencing, warm and cool reset sources
 |`c_awprot_*`, `c_arprot_*`, `c_jtag2axi_remapped`, `c_jtag2axi_filtered`, `c_inbound_filter_*` |Protection filter exact and nearest-miss matches, the JTAG2AXI path, the inbound filter
+|`c_infilt_deny_range`, `c_infilt_deny_ns`, `c_infilt_deny_src_id`, `c_infilt_deny_burst` |Each
+match term that alone keeps a lower inbound entry, whose permission bit answers the other way,
+from deciding a SYS_IN probe inside the graded window of `smc_infilt_rule_matrix_rand_test`, the
+twins of `cp_deny_term` of `smc_infilt_rule_cg`
 |===
 
 [[smc-fcov-groups]]
@@ -401,6 +405,109 @@ operation in flight |The owner draws every pass from the four operations; a
 pass whose operation finished before the assertion (an engine idle at the FLR
 cool-reset fall) or whose SPM address is not yet presented (`AWVALID` or
 `ARVALID` not raised) samples no cell
+|`smc_filt_fcov::smc_infilt_rule_cg` |`cp_rule` decided by entry 0 or 1, 32
+cells |The owner's filter leaves entries 0 and 1 disabled and unchanged
+(`CHK-IFM-RESET`, `CHK-IFM-RESTORE`), so no probe is decided by them; no bin
+lists them
+|`smc_filt_fcov::smc_infilt_rule_cg` |`cp_probe` of a blocked probe |The row
+counts the probe shapes of the owner's admitted-probe step; a blocked probe
+completes DECERR and its shape has no bin
+|`smc_filt_fcov::smc_infilt_rule_cg` |A probe whose hit-vector entry differs
+from the shadow table's lowest match, or whose response is not that entry's
+permission bit |The deciding entry is read from the DUT and cross-checked
+against the match rule of `axi_filter` `index.adoc`; a disagreement is a
+sampler fault or the failing outcome of `CHK-IFM-LOWEST-WINS`, and counts in
+no cell rather than in a wrong one
+|`smc_filt_fcov::smc_outfilt_rule_cg` |`cp_priority` lowest matching entry
+allows with no higher-numbered deny |A `cp_rule` cell alone; the three
+priority bins are the outcomes `CHK-OFM-LOWEST-WINS` and
+`CHK-OFM-UNMATCHED-PASS` name
+|`smc_filt_fcov::smc_outfilt_rule_cg` |A probe whose response is not the
+function of its cell |The failing outcome of `CHK-OFM-LOWEST-WINS` and
+`CHK-OFM-DENY-DECERR`; counts in no cell
+|`smc_filt_fcov::smc_alias_remap_cg` |`cp_region_hit` of a miss that sits on
+no valid region's edge |The reset probe and the valid-clear probe are the two
+`cp_pass` cells; a miss is a `cp_region_hit` cell only on the page before the
+start page or the end page of a valid region
+|`smc_filt_fcov::smc_alias_remap_cg` |A probe whose remap index or SYS_OUT
+pair disagrees with the shadow |The lowest-hit region index the DUT exposes
+and the SYS_OUT address and AxCACHE are cross-checked against the shadow's
+match; a disagreement is a sampler fault or the failing outcome of
+`CHK-ALR-HIT-TRANSLATE` and `CHK-ALR-HIT-CACHE`, and counts in no cell
+|`smc_fabric_fcov::smc_sys_out_error_cg` |`cp_job_code_burst` on a JTAG
+access; an error the attribution names no manager for |A JTAG injection
+lands on one access or one group member (the group's Ignore-bins line); an
+error on a transaction that is neither a shadowed job's burst nor a JTAG
+access of the owner's windows is a sampler fault or the failing outcome of
+`CHK-SOE-MONITOR-TALLY`, and counts in no cell
+|`smc_fabric_fcov::smc_sys_out_error_cg` |`cp_recovery` of a pair with no
+error before it, or at an address inside a shadowed job |The row counts the pair the
+owner issues alone, outside every job, after each injected error
+|`smc_fabric_fcov::smc_outstanding_cg` |`cp_depth` above 24; the 32 hold x
+depth cells the row leaves out; both ready signals held in one run |No owner
+draws them (the group's Ignore-bins line); a run under both holds has no bin
+|`smc_fabric_fcov::smc_outstanding_cg` |A run of accesses before two of the
+window's accesses were outstanding together on SEP_IN or SYS_IN |The
+qualifier that keeps the one-access-at-a-time windows of the other owners
+out; the single accesses the owner issues before its first group and the
+co-owner's steps 2 and 4 count nothing, and the same cells recur later in
+both walks
+|`smc_map_row_fcov::smc_map_row_response_cg` |`cp_dir_size` codes of the 1-,
+2- and 8-byte accesses of the 24 past-extent rows inside the window; the read
+words of the 1-, 2- and 8-byte reads of the 30 inside bins |Recorded bins
+(`rec_*`): the Past Extent column and the gap sentence state the answer to a
+32-bit access, so the owner prints these and compares nothing
+|`smc_map_row_fcov::smc_map_row_response_cg` |A completion whose code is not
+DECERR, or whose 4-byte read word inside the window is not 0xBADCAB1E |The
+failing outcome of `CHK-MRR-PAST-EXTENT`, `CHK-MRR-GAP` and
+`CHK-MRR-OUTSIDE-WINDOWS`; counts in no cell
+|`smc_map_row_fcov::smc_map_row_response_cg` |A completion before inbound
+entry 0 was written since the gate rose, with a peripheral-window enable
+set in the sampler's shadow of `CLOCK_GATE_CONTROL`, with `REGION_SIZE` off
+its reset word, or with the I2C enable the DUT drives disagreeing with the
+shadow |The qualifiers that keep the other owners' windows out and the
+decode table at the value it holds for: the random-stress owner's DECERR
+accesses at its output windows over SEP_IN and SYS_IN follow its entry 0
+programming, which precedes its gate, a gated window answers SLVERR, the
+table is written at the reset `REGION_SIZE`, and a shadow the DUT contradicts
+grades nothing
+|`smc_efuse_ctrl_fcov::smc_state_inject_cg` |`cp_block_enc` cells of the live Zeroer
+phases and of the response or data-wait phase of an eFuse interface, 12 cells |Not reached
+by construction: no owner leg exists, the Zeroer is injected from `IDLE` only and each
+eFuse interface takes one encoding idle and the other inside its request window (entry
+101); the row counts them (its bins exist and read 0 on every run) and the proposed plan
+change, a draw of the injection phase in entry 101 or a recount of the row to its 12
+reached cells, is not applied
+|`smc_efuse_ctrl_fcov::smc_efuse_lock_cg` |`cp_refusal` SPARE[27] write kept, 1 cell |Not
+reached by construction: the image the owner renders presets the SPARE[27] write lock, so
+no write to that field is kept (entry 458); the row counts it (its bin reads 0 on every
+run) and the proposed plan change, naming the cell in the Ignore-bins line without a bin
+or an image with every lock clear, is not applied
+|`smc_efuse_ctrl_fcov::smc_efuse_timeout_cg` |`cp_count` program interface at the reset
+count, 1 cell |Not reached by construction: the owner writes the reset count to the program
+register with the enable bit clear (entry 98), so the count never confirms with the enable
+set; the row counts it (its bin reads 0 on every run) and the proposed plan change, the
+owner's program recovery leg writing the reset count with the enable set as its read
+recovery leg does, is not applied
+|`smc_efuse_ctrl_fcov::smc_state_inject_cg` |An injection of a legal encoding or from the
+Zeroer's `ST_ERROR`; a recovery whose taps or control word differ from the stated state
+|No bin lists a legal encoding or a fourth phase; the failing outcome of `CHK-STATE-FAULT`
+counts in no cell
+|`smc_efuse_ctrl_fcov::smc_efuse_lock_cg` |A field read-back disagreeing with the shadow
+output; a kept write under the write lock, a refused write before it, a hidden read before
+the read lock, a returned read under it |The outcome the read-back and
+`efuse_shadow_probe_o` state is the one bin of the slot; a disagreement is a sampler fault
+and a contrary outcome the failing outcome of the owner's compares, and neither counts in a
+cell
+|`smc_efuse_ctrl_fcov::smc_efuse_jtag_lc_cg` |A completion with a verdict contrary to the
+policy, a blocked read without `0xbadcab1e`, or one while the DUT's integrity flag
+disagrees with the sampler's decode of `lc_state_i` |The failing outcome of the owner's
+compares, or a sampler fault; counts in no cell
+|`smc_efuse_ctrl_fcov::smc_efuse_timeout_cg` |An operation while no timeout word with the
+enable bit set and a count of 1 to the reset value has been written and read back under the
+gate; a done whose status contradicts the stall class |The pinned count-0 legs and the
+reset-count recovery write carry no qualifying word (the group's Ignore-bins line); the
+failing outcome of `CHK-EFUSE-TMO-RD` and `CHK-EFUSE-TMO-PROG` counts in no cell
 |===
 
 Verilator and VCS build the same goal bins for each covergroup because no
@@ -411,8 +518,20 @@ A cross whose unreachable cells only a select expression could remove is a
 tuple coverpoint, with one bin per reachable cell named for the bins it pairs:
 `cp_gate_contract`, `cp_gaters`, `cp_claim`, `cp_terms`, `cp_region_resp`,
 `cp_transition`, `cp_axi_terms`, `cp_reg_terms`, the four copy coverpoints of
-`smc_dma_geometry_cg` (led by a copy flag that every bin sets) and both
-coverpoints of `smc_reset_kind_inflight_cg`. On Verilator, a value that
+`smc_dma_geometry_cg` (led by a copy flag that every bin sets), both
+coverpoints of `smc_reset_kind_inflight_cg`, and `cp_rule`, `cp_probe` and
+`cp_deny_term` of `smc_infilt_rule_cg`, `cp_rule` and `cp_probe` of
+`smc_outfilt_rule_cg`, `cp_region_hit`, `cp_low_bits` and `cp_pass` of
+`smc_alias_remap_cg`, `cp_mgr_dir`, `cp_job_code_burst`, `cp_jtag_code` and
+`cp_recovery` of `smc_sys_out_error_cg`, `cp_depth` and `cp_hold` of
+`smc_outstanding_cg`, `cp_row_kind`, `cp_dir_size` and `cp_port` of
+`smc_map_row_response_cg`, and `cp_block_enc` of `smc_state_inject_cg`,
+`cp_slot_kind` and `cp_refusal` of `smc_efuse_lock_cg`, `cp_image_op` of
+`smc_efuse_jtag_lc_cg` and `cp_stall_status` and `cp_count` of
+`smc_efuse_timeout_cg` (each led by a flag or kind code that only a graded
+sample carries, with one `pass:[`define]` macro per entry, channel, region,
+port, row kind, block, slot or image writing the bins of one axis product). On
+Verilator, a value that
 a bin and an `ignore_bins` both list counts in the bin, without a warning, so
 no goal bin overlaps an `ignore_bins`: `cg_reset_state` lists the four
 partial-release states its ignore bins leave, and `cg_clk_ratio` has no
@@ -516,18 +635,22 @@ count of its counted bins, and each group ends with an `*Ignore bins*:` line tha
 bin counts and the reason: a cell the owner's draw or filter never produces, a bench tie-off, the
 owner's Scope limit, the rule that makes it unreachable, or the failing outcome of one of the
 owner's checkers. The existing "Phase 2 (not collected)" section keeps its meaning: points the bench
-cannot reach. Two groups below (`smc_efuse_lock_cg`, `smc_zeroer_job_cg`) have an existing entry as
-their only owner, which is not planned and walks the cells today; each is planned until its sampler
-lands with that leaf, and earns credit once the sampler exists. `smc_outstanding_cg` has an existing
-owner and a planned-upgrade co-owner. For these three groups "planned" means that no sampler exists
-yet and says nothing about the owner. A bucket edge that no document states is a bench bucket beside
-the documented values of its row.
+cannot reach. One group below (`smc_zeroer_job_cg`) has an existing entry as its only owner, which is
+not planned and walks the cells today; it is planned until its sampler lands with that leaf, and earns
+credit once the sampler exists, as `smc_efuse_lock_cg` did with `smc_efuse_ctrl_fcov`. For that group
+"planned" means that no sampler exists yet and says nothing about the owner. A bucket edge that no
+document states is a bench bucket beside the documented values of its row.
 
 ==== `smc_infilt_rule_cg`
 *Description*: Inbound filter entry terms, probe shape and verdict on SYS_IN, per programmed entry.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_infilt_rule_matrix_rand_test`, the test
-that draws these cells; no sampler exists). Owner's draw: "the seed draws 4 rule sets, each of 2 to
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_filt_fcov::smc_infilt_rule_cg`, handle
+`u_cg_infilt_rule`, one sample per SYS_IN probe at the B or R-last handshake that completes it,
+while the owner `smc_infilt_rule_matrix_rand_test` holds `tb_fcov_gate` high over its step 2, from
+the first table write of its first rule set to the last restore of its last, and while an inbound
+entry at an index of 2 to 15 has been written since the gate rose and the sampler's shadow of the
+inbound table holds one enabled). Owner's draw:
+"the seed draws 4 rule sets, each of 2 to
 6 inbound entries at distinct indices 2 to 15, and 12 SYS_IN probes per set"; the field goes on to
 the terms and the window of each entry (a two-page `allow_burst` 1 window with its edges inside its
 granules), the overlap placement, per probe the cell kind, the address, AxPROT[1], AxUSER[3:0],
@@ -540,23 +663,35 @@ lowest-entry block, the pinned twin of one such probe on the other channel; filt
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_rule` |lowest matching entry, the entry whose permission bit decides the probe (2 to 15: 14) x its `allow_ns` (0, 1: 2) x `src_id` class of the probe against that entry (wildcard `src_id` 0, equal: 2) x its `allow_burst` (0, 1: 2) x verdict of the probe (permit, deny: 2); 224 cells, plus one bin for the no-match block (a probe that matches no entry, decided by no entry); 225 cells; a probe whose `src_id`, AxPROT[1], AxLEN or address fails an entry falls through to a higher-numbered entry or to the block and is binned under the entry that decides it or under the block, with the failing term in `cp_deny_term` (`fabric.adoc`, Inbound Filtering; `filter_ctrl.rdl`, `allow_ns`, `src_id`, `allow_burst`) |`sys_axi_in_req_i` AxADDR, AxPROT[1], AxUSER[3:0], AxLEN; `tb_inb_read_hit`, `tb_inb_write_hit`; `sys_axi_in_resp_o` B and R response |`smc_infilt_rule_matrix_rand_test` |planned
-|`cp_probe` |channel (read, write: 2) x AxLEN (0, 1, 3, 7, 15: 5) x AxPROT[1] (0, 1: 2); 20 cells, the probe shapes of the owner's admitted-probe step (`filter_ctrl.rdl`, `allow_burst`, `allow_ns`) |`sys_axi_in_req_i` AxLEN, AxPROT[1], AW and AR handshakes |`smc_infilt_rule_matrix_rand_test` |planned
-|`cp_deny_term` |deny per term: address window, `allow_ns`, `src_id`, `allow_burst` (4 single-event bins; each also has an `OCAH_FCOV_COVER` twin) (`axi_filter` `index.adoc`, Match, Then Permit) |as above, with the matching entry's permission bit |`smc_infilt_rule_matrix_rand_test` |planned
+|`cp_rule` |lowest matching entry, the entry whose permission bit decides the probe (2 to 15: 14) x its `allow_ns` (0, 1: 2) x `src_id` class of the probe against that entry (wildcard `src_id` 0, equal: 2) x its `allow_burst` (0, 1: 2) x verdict of the probe (permit, deny: 2); 224 cells, plus one bin for the no-match block (a probe that matches no entry, decided by no entry); 225 cells, one tuple coverpoint with one bin per cell; a probe whose `src_id`, AxPROT[1], AxLEN or address fails an entry falls through to a higher-numbered entry or to the block and is binned under the entry that decides it or under the block, with the failing term in `cp_deny_term` (`fabric.adoc`, Inbound Filtering; `filter_ctrl.rdl`, `allow_ns`, `src_id`, `allow_burst`) |`sys_axi_in_req_i` AxADDR, AxPROT[1], AxUSER[3:0], AxLEN at the AW and AR handshakes; `tb_inb_read_hit`, `tb_inb_write_hit` one `clk_smc_i` edge after that handshake, whose lowest set bit is the deciding entry; `sys_axi_in_resp_o` B and R response, the verdict; the entry's `allow_ns`, `src_id` and `allow_burst` from the sampler's shadow of the inbound table, the last SEP_IN write that completed OKAY at `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` of each entry (the decode assumes one SEP_IN write outstanding at a time and all eight strobes of the single 64-bit beat set, which the owner's writes meet); the shadow's lowest match under the rule of `axi_filter` `index.adoc` (Match, Then Permit) is compared with the hit vector's, and the response with that entry's permission bit, and a probe on which either differs samples no cell |`smc_infilt_rule_matrix_rand_test` |live
+|`cp_probe` |channel (read, write: 2) x AxLEN (0, 1, 3, 7, 15: 5) x AxPROT[1] (0, 1: 2); 20 cells, one tuple coverpoint with one bin per cell, the probe shapes of the owner's admitted-probe step: a probe that completes OKAY (`filter_ctrl.rdl`, `allow_burst`, `allow_ns`) |`sys_axi_in_req_i` AxLEN, AxPROT[1] at the AW and AR handshakes; `sys_axi_in_resp_o` B and R response |`smc_infilt_rule_matrix_rand_test` |live
+|`cp_deny_term` |deny per term: address window, `allow_ns`, `src_id`, `allow_burst` (4 single-event bins; each also has an `OCAH_FCOV_COVER` twin, `c_infilt_deny_range`, `c_infilt_deny_ns`, `c_infilt_deny_src_id` and `c_infilt_deny_burst`); a term counts on a probe when it alone keeps a lower-numbered entry, whose permission bit for the channel answers the other way from the probe's verdict, from matching, so that the entry would decide the probe with the term passing (the owner's term cells, `CHK-IFM-MATCH-TERMS` and `CHK-IFM-SRC-ID`) (`axi_filter` `index.adoc`, Match, Then Permit) |as above, with the shadow entries' permission bits |`smc_infilt_rule_matrix_rand_test` |live
 |===
 
-*Ignore bins*: entries 0 and 1 (the owner's filter leaves them at their reset words;
-`CHK-IFM-RESTORE` requires them unchanged, so no probe is decided by them); the repeats with a
-source ID above AxUSER[3:0] (printed, not compared: the chapter prose names no lane, the figure
-names AxUSER[3:0]); the hit-vector values (printed); the 56-bit address leg (the owner's Scope limit
-leaves it with the directed leaves).
+*Ignore bins*: entries 0 and 1 (the owner's filter leaves them disabled and unchanged,
+`CHK-IFM-RESET` and `CHK-IFM-RESTORE`, so no probe is decided by them; no bin lists them); the
+repeats with a source ID above AxUSER[3:0] (the inbound filter compares AxUSER[3:0] alone,
+`fabric.adoc`, Output Remapping; the owner grades each repeat against its probe,
+`CHK-INB-SRCID-UPPER-BITS-IGNORED`, and the repeat presents the probe's own cell, so the sampler
+takes a probe whose AxUSER[11:4] is 0 only); the
+hit-vector values (printed; the sampler reads the lowest set bit alone); a probe outside the
+owner's window, or issued before an inbound entry at an index of 2 to 15 has been written since the
+gate rose or while none is enabled (the gate and the shadow qualifier; the written flag clears on
+every rise of the gate); a probe on which the hit vector and the shadow's match rule name different
+deciding entries, or whose response is not the function of that entry's bit (a sampler fault or
+the failing outcome of `CHK-IFM-LOWEST-WINS`; counts in no cell); the 56-bit address leg (the
+owner's Scope limit leaves it with the directed leaves).
 
 ==== `smc_outfilt_rule_cg`
 *Description*: Outbound filter entry, the permission bit of the probe's direction, deny priority and
 probe shape on SMC-initiated requests.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_outfilt_rule_matrix_rand_test`, the test
-that draws these cells; no sampler exists). Owner's draw: "the seed draws 4 rule sets, each of 2 to
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_filt_fcov::smc_outfilt_rule_cg`, handle
+`u_cg_outfilt_rule`, one sample per JTAG probe at the B or R-last handshake at the JTAG port and
+one per SYS_OUT address handshake of an admitted probe, while the owner
+`smc_outfilt_rule_matrix_rand_test` holds `tb_fcov_gate` high over its step 2, from the first table
+write of its first rule set to the last restore of its last, and while an outbound entry has been
+written since the gate rose). Owner's draw: "the seed draws 4 rule sets, each of 2 to
 6 outbound entries at distinct indices 0 to 15, and 10 JTAG probes per set"; the field goes on to
 the terms and the window of each entry (a two-page `allow_burst` 1 window with its edges inside its
 granules), the overlap placement, per probe the cell kind, the address, AxPROT[1], AxLEN and the
@@ -568,33 +703,51 @@ one such probe in the other direction; filter: every `src_id` is 0.
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_rule` |entry (0 to 15: 16) x `allow_ns` (0, 1: 2) x `allow_burst` (0, 1: 2) x direction of the probe (read, write: 2) x the entry's permission bit for that direction (clear, set: 2); 256 cells; the verdict is the stated function of the cell (a matching lowest entry with the bit clear answers DECERR through the error subordinate, every other probe passes) (`fabric.adoc`, Outbound Filtering; `filter_ctrl.rdl`, read and write permission) |`output_axi_req_o` and `output_axi_resp_i` AW, AR, B and R handshakes; `tb_output_axi_awvalid`, `tb_output_axi_arvalid`; `jtag_axi_in_resp_o` B and R response |`smc_outfilt_rule_matrix_rand_test` |planned
-|`cp_priority` |lowest matching entry is deny, lowest matching entry is allow with a higher-numbered deny, no match: 3 bins, the verdict the stated function (DECERR, pass, pass) (`axi_filter` `index.adoc`, Match, Then Permit; `fabric.adoc`, Outbound Filtering, unmatched requests pass) |as above |`smc_outfilt_rule_matrix_rand_test` |planned
-|`cp_probe` |AxLEN (0, non-zero: 2) x AxPROT[1] (0, 1: 2); 4 cells (`filter_ctrl.rdl`, `allow_burst`, `allow_ns`) |`u_output_axi_if` `awprot`, `arprot` and the lengths at the AW and AR handshakes |`smc_outfilt_rule_matrix_rand_test` |planned
+|`cp_rule` |entry (0 to 15: 16) x `allow_ns` (0, 1: 2) x `allow_burst` (0, 1: 2) x direction of the probe (read, write: 2) x the entry's permission bit for that direction (clear, set: 2); 256 cells, one tuple coverpoint with one bin per cell; the verdict is the stated function of the cell (a matching lowest entry with the bit clear answers DECERR through the error subordinate, every other probe passes) (`fabric.adoc`, Outbound Filtering; `filter_ctrl.rdl`, read and write permission) |`jtag_axi_in_req_i` AxADDR, AxPROT[1], AxUSER[3:0], AxLEN at the AW and AR handshakes, matched by the sampler against its shadow of the outbound table (the last SEP_IN write that completed OKAY at each entry register, decoded as for `smc_infilt_rule_cg`) under the rule of `axi_filter` `index.adoc`, which gives the lowest matching entry and its permission bit for the direction; `jtag_axi_in_resp_o` B and R response at the completing handshake, DECERR for a matching lowest entry with the bit clear and OKAY otherwise, a probe with another response sampling no cell |`smc_outfilt_rule_matrix_rand_test` |live
+|`cp_priority` |lowest matching entry is deny, lowest matching entry is allow with a higher-numbered deny, no match: 3 bins, the verdict the stated function (DECERR, pass, pass) (`axi_filter` `index.adoc`, Match, Then Permit; `fabric.adoc`, Outbound Filtering, unmatched requests pass) |as above |`smc_outfilt_rule_matrix_rand_test` |live
+|`cp_probe` |AxLEN (0, non-zero: 2) x AxPROT[1] (0, 1: 2); 4 cells, one tuple coverpoint with one bin per cell (`filter_ctrl.rdl`, `allow_burst`, `allow_ns`) |`u_output_axi_if` `awprot`, `arprot`, `awlen` and `arlen` at the AW and AR handshakes (`tb_output_axi_awvalid`, `tb_output_axi_awready`, `tb_output_axi_arvalid`, `tb_output_axi_arready`) while a JTAG probe of the owner is outstanding on that channel |`smc_outfilt_rule_matrix_rand_test` |live
 |===
 
 *Ignore bins*: a non-zero `src_id` (the owner's filter sets every `src_id` to 0 and its Scope limit
-leaves the source-ID cells with `smc_outfilt_attr_match_test`); a verdict contrary to the function
-(the failing outcome of `CHK-OFM-LOWEST-WINS` and `CHK-OFM-DENY-DECERR`); the output remaps, the
+leaves the source-ID cells with `smc_outfilt_attr_match_test`; the shadow match applies `src_id`
+to the JTAG request's AxUSER[3:0] as a bench reading, which the JTAG manager drives 0, while the
+output path assigns the outbound source ID the filter compares (`fabric.adoc`, Output Remapping), so
+a non-zero `src_id` cell takes that assigned ID, not AxUSER[3:0]); a verdict contrary to the
+function (the failing outcome of `CHK-OFM-LOWEST-WINS` and `CHK-OFM-DENY-DECERR`; counts in no
+cell); a lowest matching entry that allows with no higher-numbered deny in `cp_priority` (a
+`cp_rule` cell alone); a probe outside the owner's window or issued before an outbound entry has
+been written since the gate rose (the gate and the shadow qualifier: a SEP_IN write completed at an
+outbound entry register, the flag cleared on every rise of the gate, so the DMA and reset owners,
+which program entry 0 before their gates, open no cell); the output remaps, the
 56-bit address leg and the AxCACHE carriage (the owner's Scope limit); the responder's response to
-an admitted request (not graded by the owner).
+an admitted request (not graded by the owner; `cp_rule` takes OKAY as the pass).
 
 ==== `smc_map_row_response_cg`
 *Description*: Memory-map row, gap and outside-window class, direction, size and inbound port
 against the DECERR response the map states.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_map_row_response_matrix_test`, the test
-that draws these cells; no sampler exists). Owner's draw: "every seed walks all 30 rows whose Past
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_map_row_fcov::smc_map_row_response_cg`,
+handle `u_cg_map_row_response`, one sample per SEP_IN or SYS_IN access at the B or R-last handshake
+that completes it, while the owner `smc_map_row_response_matrix_test` holds `tb_fcov_gate` high
+from before its S1 inbound entry 0 pass-all writes to the last probe of its S5, and while inbound
+entry 0 has been written over SEP_IN since the gate rose (a write completed OKAY at its
+`START_ADDR`, `END_ADDR` or `FILTER_CONFIG` register with every strobe set; the flag clears on
+every rise) and the sampler's shadow of `CLOCK_GATE_CONTROL` holds the I2C, UART, I3C, AVSBus and
+Telemetry Receiver enables clear, with the I2C enable the DUT drives agreeing). Owner's draw:
+"every seed walks all 30 rows whose Past
 Extent cell states a response, all 7 gaps between consecutive unit apertures (6 inside the window
 and the one after the Xvisor region) and 8 classes of address outside both inbound apertures; the
-seed selects offset, size, direction, port and order only".
+seed selects offset, size, direction, port and order only"; the field goes on to the per-row pair
+(a pinned 4-byte point and a point of drawn AxSIZE on one drawn port), the per-gap pair (each point
+on its own drawn port), one point of drawn AxSIZE per outside class on each port, the four drawn
+and the four pinned classes, and the read and write of every point in a drawn order.
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_row_kind` |past-extent row (the 30 rows whose Past Extent (R / W) cell states a response: 30) + gap (the 7 gaps between consecutive rows of the generated map, after the Debug Module Hart Interface, the DFX block, the second AXI Filter block, the Zeroer block, the DFD MMR aperture, the External Window and the Xvisor region: 7) + outside-window class (below both apertures, between the apertures, above both, a 56-bit address above 4 GiB, `BASE + REGION_SIZE` at the local base and at the global base, which at the reset `REGION_SIZE` is the first word of the M-mode region on that base (`memory_map.adoc`, `mmode_region` at `BASE + 0x1000000`), so the M-mode word is no separate class, and the first word of the Xvisor region: 7); 44 bins; the PLIC, CLINT and four bus-error-unit cells of the past-extent bin and the gap after the Xvisor region lie beyond `BASE + REGION_SIZE` at the reset value, which the owner keeps, and answer under the window rule, which states DECERR alone (`memory_map.adoc`, SMC Component Address Map, Past Extent column; `memmap.adoc`, Address Space Organization, the window rule for the seven cells beyond `BASE + REGION_SIZE`) |`sep_axi_in_req_i` and `sys_axi_in_req_i` AxADDR decoded to the row, gap or class |`smc_map_row_response_matrix_test` |planned
-|`cp_dir_size` |direction (read, write: 2) x AxSIZE (1, 2, 4, 8 bytes: 4); 8 cells, crossed with `cp_row_kind` for 352 combinations, of which 208 are counted on their response code and 144 are recorded: on the 24 past-extent row bins inside the window the DECERR code is counted on the 4-byte read and the 4-byte write only, because the Past Extent column states the answer to a 32-bit access (`memmap.adoc`, Address Space Organization), and the response codes of the 1-, 2- and 8-byte read and write of those 24 bins are 144 recorded bins, printed by the owner and compared with nothing; on the 7 gap bins, the 7 outside-window bins and the 6 row bins beyond `BASE + REGION_SIZE` the DECERR code is counted on the write and on the read of every size (the gap and outside-window sentences and the window rule carry no size); the read data is a compared cell on the 4-byte read only, 0xBADCAB1E for the 24 row bins and the 6 gap bins inside the window (`memmap.adoc`, Address Space Organization, which states the answer to a 32-bit access), and the read data of the 1-, 2- and 8-byte reads of those 30 bins are 90 recorded bins, printed by the owner and compared with nothing; DECERR alone for the 7 outside-window bins and the 7 cells beyond `BASE + REGION_SIZE` at the reset value (the PLIC, CLINT and four bus-error-unit rows and the gap after the Xvisor region), whose read data the owner prints and compares with nothing (`memmap.adoc`, Address Space Organization; `memory_map.adoc`, SMC Component Address Map, Past Extent column); 208 cells plus 234 recorded bins |`sep_axi_in_resp_o` and `sys_axi_in_resp_o` B and R response and read data; AxSIZE of the request |`smc_map_row_response_matrix_test` |planned
-|`cp_port` |inbound port (SEP_IN, SYS_IN: 2), crossed with `cp_row_kind` for 88 cells (`fabric.adoc`, Inbound Filtering: entry 0 opened pass-all for the SYS_IN legs) |`sep_axi_in_req_i`, `sys_axi_in_req_i` AW and AR handshakes |`smc_map_row_response_matrix_test` |planned
+|`cp_row_kind` |past-extent row (the 30 rows whose Past Extent (R / W) cell states a response: 30) + gap (the 7 gaps between consecutive rows of the generated map, after the Debug Module Hart Interface, the DFX block, the second AXI Filter block, the Zeroer block, the DFD MMR aperture, the External Window and the Xvisor region: 7) + outside-window class (below both apertures, between the apertures, above both, a 56-bit address above 4 GiB, `BASE + REGION_SIZE` at the local base and at the global base, which at the reset `REGION_SIZE` is the first word of the M-mode region on that base (`memory_map.adoc`, `mmode_region` at `BASE + 0x1000000`), so the M-mode word is no separate class, and the first word of the Xvisor region: 7); 44 bins; the PLIC, CLINT and four bus-error-unit cells of the past-extent bin and the gap after the Xvisor region lie beyond `BASE + REGION_SIZE` at the reset value, which the owner keeps, and answer under the window rule, which states DECERR alone (`memory_map.adoc`, SMC Component Address Map, Past Extent column; `memmap.adoc`, Address Space Organization, the window rule for the seven cells beyond `BASE + REGION_SIZE`) |`sep_axi_in_req_i` and `sys_axi_in_req_i` AxADDR at the AW and AR handshakes (`s_axi_awaddr`, `s_axi_araddr`, `sys_axi_awaddr`, `sys_axi_araddr`), decoded to the row, gap or class by the sampler's table of the generated component map: every row's base and decoded extent from `smc_top_addrmap_pkg`, its aperture end the next row's base or its base plus extent, and for the three rows a gap follows (`dfx_ctrl` 0x800, `smc_outbound_filter_ctrl_wrap` 0x1000, `zeroer_ctrl` 0x100) the `ocah_aperture_size` of `smc_memory_map.rdl`, which no generated SV symbol carries; the window edge `BASE + REGION_SIZE` from `smc_region_size`, counted at the register's reset word only; the first word of the Xvisor region at the local and at the global base is the one Xvisor bin; above both apertures is read as above the last row of the generated map, which holds the owner's draw |`smc_map_row_response_matrix_test` |live
+|`cp_dir_size` |direction (read, write: 2) x AxSIZE (1, 2, 4, 8 bytes: 4); 8 cells, crossed with `cp_row_kind` for 352 combinations, of which 208 are counted on their response code and 144 are recorded: on the 24 past-extent row bins inside the window the DECERR code is counted on the 4-byte read and the 4-byte write only, because the Past Extent column states the answer to a 32-bit access (`memmap.adoc`, Address Space Organization), and the response codes of the 1-, 2- and 8-byte read and write of those 24 bins are 144 recorded bins, printed by the owner and compared with nothing; on the 7 gap bins, the 7 outside-window bins and the 6 row bins beyond `BASE + REGION_SIZE` the DECERR code is counted on the write and on the read of every size (the gap and outside-window sentences and the window rule carry no size); the read data is a compared cell on the 4-byte read only, 0xBADCAB1E for the 24 row bins and the 6 gap bins inside the window (`memmap.adoc`, Address Space Organization, which states the answer to a 32-bit access), and the read data of the 1-, 2- and 8-byte reads of those 30 bins are 90 recorded bins, printed by the owner and compared with nothing; DECERR alone for the 7 outside-window bins and the 7 cells beyond `BASE + REGION_SIZE` at the reset value (the PLIC, CLINT and four bus-error-unit rows and the gap after the Xvisor region), whose read data the owner prints and compares with nothing (`memmap.adoc`, Address Space Organization; `memory_map.adoc`, SMC Component Address Map, Past Extent column); 208 cells plus 234 recorded bins |`sep_axi_in_resp_o` and `sys_axi_in_resp_o` B and R response and read data (`s_axi_bresp`, `s_axi_rresp`, `s_axi_rdata`, `sys_axi_bresp`, `sys_axi_rresp`, `sys_axi_rdata`), the read word taken from the lane the address selects; AxSIZE of the request (`s_axi_awsize`, `s_axi_arsize`, `sys_axi_awsize`, `sys_axi_arsize`); a counted cell needs DECERR, and 0xBADCAB1E on the 4-byte read of an inside row or gap, and a completion with another code or word samples no cell; a recorded bin counts its completion whatever the code or the word |`smc_map_row_response_matrix_test` |live
+|`cp_port` |inbound port (SEP_IN, SYS_IN: 2), crossed with `cp_row_kind` for 88 cells (`fabric.adoc`, Inbound Filtering: entry 0 opened pass-all for the SYS_IN legs) |`sep_axi_in_req_i`, `sys_axi_in_req_i` AW and AR handshakes (`s_axi_*`, `sys_axi_*`): the port of the completing access |`smc_map_row_response_matrix_test` |live
 |===
 
 *Ignore bins*: OKAY and SLVERR as a response of a compared cell (DECERR is the one stated response;
@@ -605,14 +758,30 @@ every `CLOCK_GATE_CONTROL` enable clear, `CHK-MRR-GATE-CLEAR`); an address insid
 extent (not drawn); an offset not aligned to its AxSIZE or crossing the end of its cell (the owner's
 filter); the 11 rows whose Past Extent cell is `-` (their Decoded Extent equals their Size, so no
 past-extent address exists; their in-aperture answers are the Hole in Extent cells, the owner's
-Scope limit).
+Scope limit); a completion outside the owner's window, before inbound entry 0 has been written
+since the gate rose, while one of the five enables is set in the shadow, while `REGION_SIZE` is not
+at its reset word, or while the I2C enable the DUT drives disagrees with the shadow (the gate and
+the qualifiers: the DECERR accesses the random-stress owner issues at its output windows over
+SEP_IN and SYS_IN under its own gate count nothing, since it programs entry 0 before its gate); the
+owner's eighth class (the first word of the Xvisor region at the global base lands in the one
+Xvisor bin with the local one); an address in no row, gap or class (inside a decoded extent, inside
+a row that fills its aperture, or inside the global aperture below the end of its Xvisor region;
+an address between the last row of the generated map and the owner's above-both edge counts in
+`above_both`, where no owner draws); a 1-, 2- or 8-byte access of an inside row (its code is a
+recorded bin, not a cell) and the read word of a 1-, 2- or 8-byte read of an inside bin (a
+recorded bin).
 
 ==== `smc_alias_remap_cg`
 *Description*: Alias-remap region, cacheable override and address position against the region bounds
 on the JTAG initiator.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_alias_remap_attr_rand_test`, the test that
-draws these cells; no sampler exists). Owner's draw: "the seed draws 4 configurations, each of 1 to
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_filt_fcov::smc_alias_remap_cg`, handle
+`u_cg_alias_remap`, one sample per JTAG probe at the B or R-last handshake that completes it OKAY,
+while the owner `smc_alias_remap_attr_rand_test` holds `tb_fcov_gate` high from its S1 reset-word
+reads to its S7 restore, and while a region register has been accessed over SEP_IN since the gate
+rose: a write that completed OKAY at `REGION_START`, `REGION_END` or `REGION_ATTRS` of one of the
+eight regions, or a read of one, the flag clearing on every rise of the gate). Owner's draw: "the
+seed draws 4 configurations, each of 1 to
 3 valid regions plus one region programmed with `valid` clear"; the field goes on to the region
 indices, page counts, start and translated pages and `cacheable` values, and per probe the target
 region, the offset and AxCACHE; filter: the drawn regions do not overlap and the offset sum stays
@@ -621,22 +790,35 @@ below bit 56.
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_region_hit` |region (8) x `cacheable` (0, non-zero: 2) x position (interior hit, first byte of the start page, last byte of the last page, last byte of the page before the start page, first byte of the end page: 5); 80 cells; the translated address and AxCACHE on a hit and the unchanged pair on a miss are the stated outcomes (`alias_remap.rdl`, `start_addr`, `end_addr`, `cacheable`; `fabric.adoc`, Alias Remapping) |`jtag_axi_in_req_i` AxADDR and AxCACHE; `tb_remap_jtag_aw_hit`, `tb_remap_jtag_ar_hit`; `tb_output_axi_awaddr`, `tb_output_axi_araddr`; `u_output_axi_if` `awcache`, `arcache` |`smc_alias_remap_attr_rand_test` |planned
-|`cp_low_bits` |low 12 address bits of the probe (zero, non-zero: 2); 2 cells, kept unchanged on a hit (`alias_remap.rdl`, `offset`) |`jtag_axi_in_req_i` AxADDR[11:0]; `tb_output_axi_awaddr`, `tb_output_axi_araddr` |`smc_alias_remap_attr_rand_test` |planned
-|`cp_pass` |every region at reset (transparent), a region programmed over the drawn range with `valid` clear: 2 bins, the access passing unchanged with its own AxCACHE (`fabric.adoc`, Alias Remapping; `alias_remap.rdl`, `valid`) |`REGION_ATTRS.valid` as the owner reads it back; `tb_remap_jtag_aw_hit`, `tb_remap_jtag_ar_hit` |`smc_alias_remap_attr_rand_test` |planned
+|`cp_region_hit` |region (8) x `cacheable` (0, non-zero: 2) x position (interior hit, first byte of the start page, last byte of the last page, last byte of the page before the start page, first byte of the end page: 5); 80 cells, one tuple coverpoint with one bin per cell; the translated address and AxCACHE on a hit and the unchanged pair on a miss are the stated outcomes (`alias_remap.rdl`, `start_addr`, `end_addr`, `cacheable`; `fabric.adoc`, Alias Remapping) |`jtag_axi_awaddr`, `jtag_axi_araddr`, `jtag_axi_awcache`, `jtag_axi_arcache` at the JTAG AW and AR handshakes, matched by the sampler against its shadow of the eight regions (the last SEP_IN write that completed OKAY at `REGION_START`, `REGION_END` and `REGION_ATTRS` of each region, the whole 64-bit beat with every strobe set, one SEP_IN write outstanding at a time, which the owner's writes meet) under the rule of `fabric.adoc` Alias Remapping (valid, start at or below the address, end above it, the lowest-numbered region applying), which gives the region, the position against its bounds (on a miss, the valid region whose page before the start page or end page the probe sits on) and the translated pair; `tb_remap_jtag_aw_hit`, `tb_remap_jtag_ar_hit` one `clk_smc_i` edge after that handshake, the lowest-hit region the DUT exposes, compared with the shadow's region on a hit (on a miss the index reads as the highest region); `tb_output_axi_awaddr`, `tb_output_axi_araddr` and `u_output_axi_if` `awcache`, `arcache` at the first SYS_OUT address handshake of the channel while the probe is outstanding, compared with the pair the shadow derives; `jtag_axi_bresp`, `jtag_axi_rresp` at the completing handshake, OKAY; a probe on which the index or the pair differs samples no cell |`smc_alias_remap_attr_rand_test` |live
+|`cp_low_bits` |low 12 address bits of the probe (zero, non-zero: 2); 2 cells, the low bits of the SYS_OUT address equal to the probe's on a hit (the page is translated above them) and on a miss (the whole address passes) (`alias_remap.rdl`, `offset`) |`jtag_axi_awaddr`, `jtag_axi_araddr` [11:0] at the handshake of every graded probe, hit or miss, whose SYS_OUT address carries the same low bits |`smc_alias_remap_attr_rand_test` |live
+|`cp_pass` |every region at reset (transparent), a region programmed over the drawn range with `valid` clear: 2 bins, the access passing unchanged with its own AxCACHE (`fabric.adoc`, Alias Remapping; `alias_remap.rdl`, `valid`) |the sampler's shadow at the probe: every region at its reset word (the three registers 0), or the address inside a region with `valid` clear and inside no valid region (`REGION_ATTRS.valid` as the owner wrote and read it back); the SYS_OUT pair equal to the input pair |`smc_alias_remap_attr_rand_test` |live
 |===
 
 *Ignore bins*: two overlapping valid regions and an offset sum carrying past bit 55 (the owner's
-measured legs, printed; the Blocked legs rows of SMC_VPLAN); an offset of 0 pages (the transparent
-case of `cp_pass`, not a drawn offset); the SEP_IN, SYS_IN and CPU initiators (the owner's Scope
-limit drives JTAG only); the firmware register-attribute cells and the output remaps (the owner's
-Scope limit).
+measured legs, printed; the Blocked legs rows of SMC_VPLAN; the overlap probe counts as an interior
+hit of the lower-numbered region and the wrap probe as an interior hit of its region); an offset of
+0 pages (the transparent case of `cp_pass`, not a drawn offset); the SEP_IN, SYS_IN and CPU
+initiators (the owner's Scope limit drives JTAG only); the firmware register-attribute cells and the
+output remaps (the owner's Scope limit); a probe outside the owner's window or issued before a
+region register was accessed since the gate rose (the gate and the shadow qualifier: no other owner
+accesses a region register under its gate, so their JTAG traffic opens no cell); a probe whose remap
+index or SYS_OUT pair disagrees with the shadow (a sampler fault or the failing outcome of
+`CHK-ALR-HIT-TRANSLATE` and `CHK-ALR-HIT-CACHE`; counts in no cell).
 
 ==== `smc_sys_out_error_cg`
 *Description*: SYS_OUT responder error code, issuing manager, direction and burst position.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_sys_out_error_inject_rand_test`, the test
-that draws these cells; no sampler exists). Owner's draw: "the seed draws, for 8 passes, the manager
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_fabric_fcov::smc_sys_out_error_cg`, handle
+`u_cg_sys_out_error`, one sample per SYS_OUT completion that carries SLVERR or DECERR, one per JTAG
+completion that carries one, and one per recovery pair, while the owner
+`smc_sys_out_error_inject_rand_test` holds `tb_fcov_gate` high from its zeroer baseline to the last
+recovery pair of its last pass, low over each DMA launch it issues (the register writes and the
+`NEXT_ID_0` read of the baseline copy and of the errored and recovery copies of every DMA pass: the
+`NEXT_ID_0` read is the sample event of `smc_dma_geometry_cg`, and the copy's first burst follows
+the read), and once the zeroer `DEST_ADDR` or `SIZE` register has been written over SEP_IN while the
+gate was high, a flag that holds to the next cold reset so the dips do not clear it). Owner's draw:
+"the seed draws, for 8 passes, the manager
 (JTAG, DMA, zeroer; five passes are pinned legs in a drawn order, a JTAG single access, a JTAG
 group, a DMA read, a DMA write and a zeroer write, so every seed runs each of them at least once,
 and the other three are drawn freely), the direction (read or write; the zeroer pass is a write),
@@ -649,10 +831,10 @@ access or one member of a group".
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_mgr_dir` |issuing manager and direction (JTAG read, JTAG write, DMA read, DMA write, zeroer write: 5); 5 cells (`zeroer.adoc`, AXI Master Interface; `dma.adoc`, Submission and Completion; `fabric.adoc`, Outbound Traffic Flow) |`output_axi_req_o` AW and AR handshakes with the issuing manager |`smc_sys_out_error_inject_rand_test` |planned
-|`cp_job_code_burst` |job manager (DMA read, DMA write, zeroer write: 3) x code (SLVERR, DECERR: 2) x burst of the job (first, middle, last: 3); 6 cells plus 12 recorded bins: the 6 zeroer write cells, whose stated outcome is the zeroer finishing with `STATUS` 0 and no error report (`zeroer.adoc`, Status Features, Error Reporting; AMBA AXI4, response codes), and the 12 DMA cells, recorded bins (visited, compared with nothing): no document states what an errored copy does with its ID, `DONE_0` and `STATUS_0`, the question is the Blocked legs row of SMC_VPLAN on the `NEXT_ID` and `DONE` reset values and the meaning of `DONE_0`, and the owner's `CHK-SOE-DMA-RETIRES` grades only the recovery copy issued after the errored burst, which completes byte-exact (`dma.adoc`, Submission and Completion) |`output_axi_resp_i` BRESP and RRESP; `tb_output_axi_bresp`, `tb_output_axi_rresp`; `CTRL_STATUS`, `DONE_0` as the owner reads them |`smc_sys_out_error_inject_rand_test` |planned
-|`cp_jtag_code` |JTAG direction (read, write: 2) x code (SLVERR, DECERR: 2); 4 cells; the code returns at the JTAG port (AMBA AXI4, response codes): with the access's own ID on a single access (`capture_resp_id`), and on the injected member's own item in a group (`expect_error` with `expected_resp`; the ID is not captured there, because a capturing access cannot share a group, the owner's step 2), the other members answering OKAY |`output_axi_resp_i` BRESP and RRESP; `jtag_axi_in_resp_o` BRESP and RRESP, and its ID on the single accesses |`smc_sys_out_error_inject_rand_test` |planned
-|`cp_recovery` |the recovery write then read after a pass answers OKAY with the word written (1 bin) |`jtag_axi_in_resp_o` B and R response after the injection is cleared |`smc_sys_out_error_inject_rand_test` |planned
+|`cp_mgr_dir` |issuing manager and direction (JTAG read, JTAG write, DMA read, DMA write, zeroer write: 5); 5 cells, one tuple coverpoint with one bin per cell, the manager and direction of the transaction whose response carries the injected code (`zeroer.adoc`, AXI Master Interface; `dma.adoc`, Submission and Completion; `fabric.adoc`, Outbound Traffic Flow) |`tb_output_axi_awaddr`, `tb_output_axi_araddr` and `u_output_axi_if` `awlen`, `awsize`, `arlen`, `arsize` at the SYS_OUT AW and AR handshakes, attributed by the sampler from bench state: a zeroer write when `tb_zeroer_busy` is 1 and the address lies in the zeroer job of its shadow (`DEST_ADDR` and `SIZE` as written over SEP_IN), a DMA write or read when `tb_dma_busy` is 1 and the address lies in the destination or source of the shadowed copy (`DST_ADDRESS`, `SRC_ADDRESS` and `LENGTH` as written over SEP_IN, each 32-bit register from the lane its address selects), a JTAG write or read when the address equals that of a JTAG request of the same direction outstanding at the JTAG port (`jtag_axi_awaddr`, `jtag_axi_araddr`, kept per request with `jtag_axi_awid` / `jtag_axi_arid` from the AW or AR handshake to the `jtag_axi_bid` / `jtag_axi_rid` completion of that ID), no manager otherwise; `u_output_axi_if` `awid`, `arid`, `bid`, `rid`, which pair each `tb_output_axi_bresp` and `tb_output_axi_rresp` with its request (a table of 32 per direction, oldest of the ID first); the sample is the B or R-last handshake whose code is SLVERR or DECERR (a read's first non-OKAY beat) |`smc_sys_out_error_inject_rand_test` |live
+|`cp_job_code_burst` |job manager (DMA read, DMA write, zeroer write: 3) x code (SLVERR, DECERR: 2) x burst of the job (first, middle, last: 3); 6 cells plus 12 recorded bins: the 6 zeroer write cells, whose stated outcome is the zeroer finishing with `STATUS` 0 and no error report (`zeroer.adoc`, Status Features, Error Reporting; AMBA AXI4, response codes), and the 12 DMA cells, recorded bins (visited, compared with nothing): no document states what an errored copy does with its ID, `DONE_0` and `STATUS_0`, the question is the Blocked legs row of SMC_VPLAN on the `NEXT_ID` and `DONE` reset values and the meaning of `DONE_0`, and the owner's `CHK-SOE-DMA-RETIRES` grades only the recovery copy issued after the errored burst, which completes byte-exact (`dma.adoc`, Submission and Completion) |`output_axi_resp_i` BRESP and RRESP; `tb_output_axi_bresp`, `tb_output_axi_rresp`; `CTRL_STATUS`, `DONE_0` as the owner reads them; as `cp_mgr_dir`, with the burst's position read against the shadowed job range at its address handshake: first at the job base, last when the burst's bytes (AxLEN + 1 shifted by AxSIZE) reach the job end, middle otherwise, the position the same burst has in the uninjected reference job the owner keys its injection to; the code from `tb_output_axi_bresp` or the first non-OKAY `tb_output_axi_rresp` of the burst; the 12 DMA cells are `rec_*` bins |`smc_sys_out_error_inject_rand_test` |live
+|`cp_jtag_code` |JTAG direction (read, write: 2) x code (SLVERR, DECERR: 2); 4 cells, one tuple coverpoint with one bin per cell; the code returns at the JTAG port (AMBA AXI4, response codes): with the access's own ID on a single access (`capture_resp_id`), and on the injected member's own item in a group (`expect_error` with `expected_resp`; the ID is not captured there, because a capturing access cannot share a group, the owner's step 2), the other members answering OKAY |`jtag_axi_bresp` at the JTAG B handshake and `jtag_axi_rresp` at the R-last handshake (the first non-OKAY beat of the read, kept per `jtag_axi_rid`), SLVERR or DECERR; the ID compare is the owner's (`CHK-SOE-JTAG-CODE`) |`smc_sys_out_error_inject_rand_test` |live
+|`cp_recovery` |the recovery write then read after a pass answers OKAY with the word written (1 bin) |after a SYS_OUT completion with SLVERR or DECERR inside the window: a JTAG write issued alone at an address inside no shadowed job (neither the zeroer job nor the copy's source or destination; `jtag_axi_awaddr`) completing OKAY, then a JTAG read of that address, issued alone (`jtag_axi_araddr`), completing OKAY on every beat; the word compare is the owner's (`CHK-SOE-RECOVERY`) |`smc_sys_out_error_inject_rand_test` |live
 |===
 
 *Ignore bins*: JTAG x middle and last burst (a JTAG injection lands on one access or one member of
@@ -660,15 +842,25 @@ a group; the owner's 3-burst filter applies to the DMA copies and zeroer jobs); 
 (the owner's filter); the SEP_IN pass-through and the log engine as managers, and the bus-error
 unit's view (the owner's Scope limit); the bytes at the destination of an errored burst, `DONE_0`
 and `STATUS_0` after an errored copy, and the response order (printed; the Unstated cells and
-Blocked legs lists of SMC_VPLAN).
+Blocked legs lists of SMC_VPLAN); an error outside the owner's window or before a zeroer job
+register was written while the gate was high (the gate and the sticky qualifier: the stress leaf
+injects SYS_OUT errors on JTAG accesses under its own gate and writes no zeroer register, so its
+errors open no cell); an error on a transaction the attribution names no manager for (a sampler
+fault or the failing outcome of `CHK-SOE-MONITOR-TALLY`; counts in no cell); a recovery pair with no
+error before it or at an address inside a shadowed job.
 
 ==== `smc_outstanding_cg`
 *Description*: Outstanding transaction depth and held response channel per inbound manager.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_axi_random_stress_test` is an existing Phase
-3 entry and is not planned; it drives the depth cells today; co-owner
-`smc_axi_channel_timing_ports_test` is an existing entry that draws its hold cells; no sampler
-exists; the group is planned until the sampler lands). Owner's draw: "the seed draws the AXI
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_fabric_fcov::smc_outstanding_cg`, handle
+`u_cg_outstanding`, one sample per run of accesses on a port, one or more outstanding together, at
+the completion that returns the port's outstanding count to zero, while the owner `smc_axi_random_stress_test` holds
+`tb_fcov_gate` high over its S2 to S11 (its S1 programs the filter windows and its S12 restores them,
+outside the gate) or the co-owner `smc_axi_channel_timing_ports_test` holds it high over its steps 2
+to 9 (its setup programs inbound entry 0 and its teardown restores it, outside the gate), and once
+two of the window's accesses have been outstanding together on SEP_IN or SYS_IN since the gate
+rose, until the gate falls; the owner is an existing Phase 3 entry that drives the depth cells; the
+co-owner is an existing entry that draws its hold cells). Owner's draw: "the seed draws the AXI
 attributes, burst shapes, outstanding depths, transaction IDs, payload words and the SYS_OUT
 responder timing and error faults on SEP_IN, SYS_IN and JTAG"; co-owner's draw: "the seed draws the
 hold lengths on `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` and, on SEP_IN before the
@@ -679,8 +871,8 @@ leg of step 7 keeps its `b_ready_delay`, on SEP_IN armed once the hold has dropp
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_depth` |port (SEP_IN, SYS_IN, JTAG: 3) x depth (1, 2 to 4, 5 to 8, 9 to 16, 17 to 24: 5); 15 cells; the owner drives groups of depth 4, 8, 9, 16 and 24 (`fabric.adoc`, Configuration Parameters, `FabricMaxTrans` 32, local crossbar 8, AXI-Lite crossbar 4) |a per-port count the planned sampler keeps from the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` AW and AR accepts less the B and R-last accepts of the signal list |`smc_axi_random_stress_test` |planned
-|`cp_hold` |port (3) x held ready with the depth the co-owner's walk puts under it: none x depth 1 (the single writes of steps 2 and 4), none x depth 9 to 16 (the groups of sixteen of step 9: eight writes and eight reads issued as one group per port), none x depth 2 to 4 on SEP_IN only (the group of four of step 6), BREADY x depth 5 to 8 (the eight outstanding writes of step 7 on SYS_IN and JTAG; on SEP_IN the five under the `b_ready_delay` armed after the drawn hold, which covers the three writes before them) and RREADY x depth 1 (the single 4-beat read of step 8); 13 cells; the SEP_IN BREADY and RREADY holds and the SYS_IN RREADY hold are the drawn lengths on `tb_sep_axi_b_hold`, `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`; the SYS_IN BREADY cells and every JTAG cell come from the `b_ready_delay` and `r_ready_delay` of the co-owner's items (the bench has no `tb_sys_axi_b_hold` and no JTAG hold drive) (`fabric.adoc`, Configuration Parameters) |the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` BREADY and RREADY nets of the signal list with the per-port count of `cp_depth` |`smc_axi_channel_timing_ports_test` |planned
+|`cp_depth` |port (SEP_IN, SYS_IN, JTAG: 3) x depth (1, 2 to 4, 5 to 8, 9 to 16, 17 to 24: 5); 15 cells, one tuple coverpoint with one bin per cell; the owner drives groups of depth 4, 8, 9, 16 and 24 (`fabric.adoc`, Configuration Parameters, `FabricMaxTrans` 32, local crossbar 8, AXI-Lite crossbar 4); the depth of a run is the peak of the port's count inside it, whatever the fabric admits downstream of the port |a per-port count the sampler keeps from the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` AW and AR accepts less the B and R-last accepts of the signal list, cleared by the cold reset, by the primary reset (`rst_primary_smc_clk_no`, which holds the fabric) and on every rise of the gate, a completion before the port's first accept of the window not subtracted; a run opens on the accept that takes the count from zero and closes on the completion that returns it there |`smc_axi_random_stress_test` |live
+|`cp_hold` |port (3) x held ready with the depth the co-owner's walk puts under it: none x depth 1 (the single writes of steps 2 and 4), none x depth 9 to 16 (the groups of sixteen of step 9: eight writes and eight reads issued as one group per port), none x depth 2 to 4 on SEP_IN only (the group of four of step 6), BREADY x depth 5 to 8 (the eight outstanding writes of step 7 on SYS_IN and JTAG; on SEP_IN the five under the `b_ready_delay` armed after the drawn hold, which covers the three writes before them) and RREADY x depth 1 (the single 4-beat read of step 8); 13 cells; the SEP_IN BREADY and RREADY holds and the SYS_IN RREADY hold are the drawn lengths on `tb_sep_axi_b_hold`, `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`; the SYS_IN BREADY cells and every JTAG cell come from the `b_ready_delay` and `r_ready_delay` of the co-owner's items (the bench has no `tb_sys_axi_b_hold` and no JTAG hold drive) (`fabric.adoc`, Configuration Parameters) |the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` BVALID, BREADY, RVALID and RREADY nets of the signal list, with `tb_sep_axi_r_raw_valid` and `tb_sys_axi_r_raw_valid`, and the per-port count and runs of `cp_depth`: a run is held on BREADY when a cycle inside it had BVALID high with BREADY low at the port (the SEP_IN knob gates BVALID and BREADY together, so the hold the port shows is the manager's `b_ready_delay`, the co-owner's stall evidence), on RREADY when a cycle inside it had the DUT's raw R valid high without an R handshake on SEP_IN or SYS_IN (the knobs hide RVALID from the manager while they hold; the co-owner's port watch counts its R stalls the same way) or RVALID high with RREADY low on JTAG, none when neither; a run with both has no bin |`smc_axi_channel_timing_ports_test` |live
 |===
 
 *Ignore bins*: depths above 24 (no owner draws them, although the port limit is 32); the other 32
@@ -692,7 +884,13 @@ under the BREADY hold) and no group above sixteen, and its planned draw is the h
 AxID set and the interleave, not the depth; the owner's groups of eight and of 24 carry no hold and
 are `cp_depth` cells); a `tb_*` hold on JTAG or on SYS_IN BREADY (the bench has no JTAG hold drive
 and no `tb_sys_axi_b_hold`; those held-ready cells come from the item delays); a response order
-under the holds (printed by the owner, not asserted).
+under the holds (printed by the owner, not asserted); a run outside the owner's or co-owner's window
+or before two of the window's accesses were outstanding together on SEP_IN or SYS_IN (the gate and
+the qualifier: the DMA, reset, filter-rule, alias-remap and SYS_OUT-error owners issue their SEP_IN
+and SYS_IN accesses one at a time under their gates, and the SYS_OUT-error owner's JTAG groups open
+nothing here, so their runs count nothing; the single accesses the owner issues before its first
+SEP_IN or SYS_IN group and the co-owner's steps 2 and 4 count nothing either, and the same cells
+recur later in both walks); a run under both holds (no bin).
 
 ==== `smc_reset_kind_inflight_cg`
 *Description*: Reset kind against the operation in flight, its phase and the register domain the
@@ -845,8 +1043,16 @@ cells stay with the external-interrupt entries).
 ==== `smc_state_inject_cg`
 *Description*: State-encoding injection by block, encoding, live-operation phase and recovery.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_state_fault_inject_test` is an existing
-entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the order of the
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_efuse_ctrl_fcov::smc_state_inject_cg`,
+handle `u_cg_state_inject`, one sample per rise of a `tb_zeroer_state_inject_en`,
+`tb_efuse_read_state_inject_en` or `tb_efuse_program_state_inject_en` hook while the owner
+`smc_state_fault_inject_test` holds `tb_fcov_gate` high, from after the fuse sense to the end of
+its last block, with the gate low over each Zeroer cold reset: dropped once the Zeroer has held
+`ERROR` through the ignored start write and raised again after the sense that follows the reset;
+the Zeroer's recovery is sampled at that gate fall and an eFuse interface's recovery at the
+owner's read of its control register after the injection; the phase of an injection is read on
+the falling edge before the hook's rise, since the force lands on the state register at the
+rising edge at which the hook first reads 1). Owner's draw: "the seed draws the order of the
 three blocks (program, read, zeroer); for each eFuse interface which of its two unused encodings
 (`0b00`, `0b11`) is forced with no request outstanding and which concurrently with a live
 operation, and which of the two comes first; the injection cycle of the live corruption, an
@@ -857,43 +1063,72 @@ of the four illegal Zeroer encodings.
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_block_enc` |block x encoding x phase of the injection cycle (idle, during the request or start, during the response or data wait: 3): zeroer (the unused codes `3'b011`, `3'b101`, `3'b110`, `3'b111`: 4) x phase (3) = 12; eFuse read interface (the two encodings outside the two documented states: 2) x phase (3) = 6; eFuse program interface (2) x phase (3) = 6; 24 cells (`zeroer.adoc`, State Machine; `efuse` `architecture.adoc`, State Machine Architecture, the two-state sequence of the read interface only; the program interface has a capture-data state, `efuse_interface_ctrl.rdl`, `EFUSE_PROGRAM_INTERFACE_READ_DATA`, and the 2 unused encodings of each eFuse interface rest on the owner's walk, entry 101: `0b00` and `0b11` on the 2-bit `tb_efuse_read_state` and `tb_efuse_program_state` taps); across seeds the owner reaches 12 of the 24: the Zeroer is injected from `IDLE` only (its 4 idle cells), and each eFuse interface takes one encoding while idle and the other inside the request-valid window (`tb_efuse_read_req_valid`, `tb_efuse_program_req_valid`), the during-the-request phase (its 4 idle and request cells); the response or data-wait phase and the live Zeroer phases have no owner leg |`tb_zeroer_state`, `tb_efuse_read_state`, `tb_efuse_program_state` with the `_inject_en` taps |`smc_state_fault_inject_test` |planned
-|`cp_recovery` |zeroer: stays busy until the cold reset (1 cell, the stated outcome: `ST_ERROR` holds the zeroer busy with no interrupt until reset); eFuse read interface, eFuse program interface: returns to idle with done and error set (2 recorded bins: the eFuse chapter states no outcome of an illegal encoding; the existing entry's `CHK-STATE-FAULT` grades it) (`zeroer.adoc`, `ST_ERROR`; `efuse` `architecture.adoc`, State Machine Architecture) |`tb_zeroer_busy`, `tb_efuse_read_busy`, `tb_efuse_program_busy`; `CTRL_STATUS`, `EFUSE_READ_CTRL`, `EFUSE_PROGRAM_CTRL` as the owner reads them |`smc_state_fault_inject_test` |planned
+|`cp_block_enc` |block x encoding x phase of the injection cycle (idle, during the request or start, during the response or data wait: 3): zeroer (the unused codes `3'b011`, `3'b101`, `3'b110`, `3'b111`: 4) x phase (3) = 12; eFuse read interface (the two encodings outside the two documented states: 2) x phase (3) = 6; eFuse program interface (2) x phase (3) = 6; 24 cells (`zeroer.adoc`, State Machine; `efuse` `architecture.adoc`, State Machine Architecture, the two-state sequence of the read interface only; the program interface has a capture-data state, `efuse_interface_ctrl.rdl`, `EFUSE_PROGRAM_INTERFACE_READ_DATA`, and the 2 unused encodings of each eFuse interface rest on the owner's walk, entry 101: `0b00` and `0b11` on the 2-bit `tb_efuse_read_state` and `tb_efuse_program_state` taps); across seeds the owner reaches 12 of the 24: the Zeroer is injected from `IDLE` only (its 4 idle cells), and each eFuse interface takes one encoding while idle and the other inside the request-valid window (`tb_efuse_read_req_valid`, `tb_efuse_program_req_valid`), the during-the-request phase (its 4 idle and request cells); the response or data-wait phase and the live Zeroer phases have no owner leg: those 12 cells are not reached by construction and stay counted in the row, the plan change proposed and not applied (the left-out table) |`tb_zeroer_state_inject`, `tb_efuse_read_state_inject`, `tb_efuse_program_state_inject` with their `_en` hooks (the encoding at the hook's rise); the phase on the falling edge before the rise: `tb_zeroer_state` with `tb_zeroer_busy` clear for the idle cell (`ST_IDLE`, `ST_ISSUE_ADDR`, `ST_ISSUE_DATA` of `zeroer.adoc`, State Machine), and per eFuse interface `tb_efuse_read_req_valid` / `tb_efuse_program_req_valid` with `tb_efuse_read_busy` / `tb_efuse_program_busy` agreeing (during the request: the request line and busy high; the response or data wait: busy with no request; idle: neither; the `read_busy` and `program_busy` fields of `efuse_interface_ctrl.rdl`); a request line and busy that disagree, or an idle Zeroer state with busy high, sample no cell |`smc_state_fault_inject_test` |live
+|`cp_recovery` |zeroer: stays busy until the cold reset (1 cell, the stated outcome: `ST_ERROR` holds the zeroer busy with no interrupt until reset); eFuse read interface, eFuse program interface: returns to idle with done and error set (2 recorded bins: the eFuse chapter states no outcome of an illegal encoding; the existing entry's `CHK-STATE-FAULT` grades it) (`zeroer.adoc`, `ST_ERROR`; `efuse` `architecture.adoc`, State Machine Architecture) |`tb_zeroer_state`, `tb_zeroer_busy`, `tb_zeroer_intp` at the gate fall before the cold reset (`ST_ERROR`, busy high, no interrupt); `EFUSE_READ_CTRL` and `EFUSE_PROGRAM_CTRL` as the owner reads them back over SEP_IN (`sep_axi_in_req_i`, `sep_axi_in_resp_o`: `s_axi_araddr`, `s_axi_rdata`, `s_axi_rresp`; done and status set, busy clear, by the generated field masks), with `tb_efuse_read_busy` / `_done` / `_error` and `tb_efuse_program_busy` / `_done` / `_error` agreeing |`smc_state_fault_inject_test` |live
 |===
 
 *Ignore bins*: zeroer x returns to idle without a reset (`zeroer.adoc` holds `ST_ERROR` until reset;
 the failing outcome of `CHK-STATE-FAULT`); eFuse x stays busy until reset (not the recovery the
 owner grades); an AXI error as the cause (`zeroer.adoc`: the error state handles the encoding, not
 AXI errors); the injected read error through `tb_efuse_read_error_inject` (a directed step, not
-drawn).
+drawn); an injection of a legal encoding or from the Zeroer's `ST_ERROR` (no bin lists them); an
+injection outside the owner's window; an injection whose request line and busy disagree, or from
+an idle Zeroer state with busy high (a sampler fault; counts in no cell); a Zeroer recovery whose
+state, busy or interrupt differs at the gate fall, an eFuse control word read back without done
+and status set and busy clear, or one the taps disagree with (the failing outcome of
+`CHK-STATE-FAULT`; counts in no cell). The 12 `cp_block_enc` cells of the live Zeroer phases and
+of the eFuse data-wait phase are not reached by construction (no owner leg, entry 101) and stay
+counted in the row; the plan change is proposed in the left-out table and not applied.
 
 ==== `smc_efuse_lock_cg`
 *Description*: eFuse map lock slot, lock kind and the refusal of the locked write or read.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_map_locks_register_test` is an
-existing Phase 2 entry and is not planned; its seeded walk reaches every cell today; no sampler
-exists; the group is planned until a sampler lands with that leaf). Owner's draw: "the seed draws
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_efuse_ctrl_fcov::smc_efuse_lock_cg`, handle
+`u_cg_efuse_lock`, sampled while the owner `smc_efuse_map_locks_register_test`, an existing Phase 2
+entry, holds `tb_fcov_gate` high from before its S2 sensed-`LOCKS` read to the end of its S6 sweep,
+with the gate low over its S5R cold reset and over S7 and S8; a slot-kind cell at a SEP_IN write to
+`LOCKS`, the 64-bit word or a 32-bit half, that sets the slot's bit, once `tb_efuse_locks` carries
+it, so the S3 to S5 writes of bits 0, 4, 32 and 33 count their cells as the S6 sweep then counts
+every bit, and the bit the image presets counts at the no-op write that leaves it set; a refusal
+cell at the owner's 4-byte read-back of a field word, against the shadow output; its seeded walk
+reaches every slot-kind cell and 127 of the 128 refusal cells, the kept write of SPARE[27] being
+one the image's preset write lock never lets the walk produce: a cell not reached by construction,
+counted in the row, the plan change proposed and not applied, the left-out table). Owner's draw:
+"the seed draws
 the slot order and the fresh field values written before each lock"; the walk sets every slot's
 write lock and later its read lock.
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_slot_kind` |slot (32: four named fields, SPARE[0] to SPARE[27]) x lock kind (write lock at bit 2n, read lock at bit 2n+1: 2); 64 cells (`smc_efuse_map.rdl`, `LOCKS`) |`tb_efuse_locks`, `shadow_regs_o` |`smc_efuse_map_locks_register_test` |planned
-|`cp_refusal` |lock kind and state with its one stated outcome (write lock not yet set: the write is kept; write lock set: the write is refused and the field keeps its value; read lock not yet set: the read returns the field; read lock set: the read returns neither the value nor its complement: 4), crossed with slot (32); 128 cells; the response code is not a bin (`smc_efuse_map.rdl`, `LOCKS`: when write locked the field is not programmable, when read locked the shadow register is not readable; "neither the value nor its complement" is the owner's compare, entry 458 step 8) |`efuse_shadow_probe_o` against the written value, and the field words as the owner reads them back over SEP_IN |`smc_efuse_map_locks_register_test` |planned
+|`cp_slot_kind` |slot (32: four named fields, SPARE[0] to SPARE[27]) x lock kind (write lock at bit 2n, read lock at bit 2n+1: 2); 64 cells (`smc_efuse_map.rdl`, `LOCKS`) |`sep_axi_in_req_i` writes to `LOCKS` (`s_axi_awaddr`, `s_axi_awsize`; `s_axi_wdata`, `s_axi_wstrb` at the W-last handshake; OKAY on `s_axi_bresp` at the B handshake), the bits the write sets decoded to slot and kind by the generated `LOCKS` field positions, each counted once `tb_efuse_locks` (`shadow_regs_o`) carries the bit |`smc_efuse_map_locks_register_test` |live
+|`cp_refusal` |lock kind and state with its one stated outcome (write lock not yet set: the write is kept; write lock set: the write is refused and the field keeps its value; read lock not yet set: the read returns the field; read lock set: the read returns neither the value nor its complement: 4), crossed with slot (32); 128 cells; the response code is not a bin (`smc_efuse_map.rdl`, `LOCKS`: when write locked the field is not programmable, when read locked the shadow register is not readable; "neither the value nor its complement" is the owner's compare, entry 458 step 8) |the 4-byte SEP_IN writes to the field words (`s_axi_awaddr`, `s_axi_wdata`, `s_axi_wstrb`; the write lock in `tb_efuse_locks` at the write) and the owner's 4-byte read-backs of the same words (`s_axi_araddr`, `s_axi_rdata`, `s_axi_rresp`), the word's slot from the generated map addresses; `efuse_shadow_probe_o` word `w` at bits `32w+31:32w`: a kept write returns the written value, a refused write the value the probe holds, a read-unlocked read the probe word with OKAY, a read-locked read neither the probe word nor its complement |`smc_efuse_map_locks_register_test` |live
 |===
 
 *Ignore bins*: the four contrary outcomes (a kept write under the write lock, a refused write before
 it, a hidden read before the read lock, a returned read under it: the failing outcomes of the
 owner's step 8 compares); the response codes of rejected writes and hidden reads (the owner's Scope
 limit: not asserted); the `JTAG_PUBLIC_IDENTITY` write under every lock (a directed step, not a slot
-draw).
+draw); a `LOCKS` write or field access outside the owner's window (the S7 write, the S8 reset and
+the slot 8 and 31 locks of the timeout owner after its window); a read-back disagreeing with the
+shadow output (a sampler fault; counts in no cell). The kept write of SPARE[27] is not reached by
+construction (the image presets its write lock, entry 458) and stays counted in the row; the plan
+change is proposed in the left-out table and not applied.
 
 ==== `smc_efuse_jtag_lc_cg`
 *Description*: Lifecycle image, eFuse JTAG operation and the verdict the SMC JTAG policy states.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_jtag_lc_access_matrix_test` is an
-existing entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the order
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_efuse_ctrl_fcov::smc_efuse_jtag_lc_cg`,
+handle `u_cg_efuse_jtag_lc`, one sample per completion on the JTAG eFuse port
+(`axil_smc_otp_jtag_resp_o`, the B or R handshake) while the owner
+`smc_efuse_jtag_lc_access_matrix_test` holds `tb_fcov_gate` high, from after the fuse sense to its
+restore of TEST_DEV; the image from `lc_state_i` ({diff_n, diff_p}: the state is diff_p while
+diff_n is its complement, the integrity-error fallback otherwise), cross-checked against the
+integrity flag the DUT derives, a disagreement sampling nothing; the operation from the port's
+address (a read of `JTAG_PUBLIC_IDENTITY`, a read elsewhere in the map, a write); a cell counts
+with its stated verdict, DECERR with the read data `0xbadcab1e` where the policy blocks and OKAY
+where it allows, and the three fallback bins record their completion whatever the code). Owner's
+draw: "the seed draws the order
 of the six lifecycle images, per image the order of the three operations and the non-identity
 register the read probes"; the images are the ones the walk drives (one encoding per state plus
 the integrity-error case, every image in every run).
@@ -901,30 +1136,43 @@ the integrity-error case, every image in every run).
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_image_op` |image (TEST_DEV 0x0, PROD 0x1, RMA_SOP 0x2, RMA_CHIPLET 0x6, PROD_END 0x8, the integrity-error fallback INVALID: 6) x operation (write, read outside `JTAG_PUBLIC_IDENTITY`, read of `JTAG_PUBLIC_IDENTITY`: 3); 15 cells, the cells of the five encoded images, each with its one stated verdict: PROD and RMA_SOP block the write and the outside read and allow the identity read; TEST_DEV, RMA_CHIPLET and PROD_END allow all three (`efuse` `architecture.adoc`, Lifecycle State (LC_STATE) Effects, the SMC JTAG Policy paragraph, the eFuse JTAG permissions (SMC) table and the lifecycle encodings; the owner's `CHK-EFUSE-JTAG-LC-PROD`, `-RMA_SOP`, `-TEST_DEV`, `-RMA_CHIPLET` and `-PROD_END` compares); the 3 fallback cells are recorded bins carried by the owner's existing `CHK-EFUSE-JTAG-LC-SIGINT` compare: the driven fallback is the integrity-error case of entry 90 `smc_efuse_jtag_lc_access_matrix_test`, which no row of the permission table or of the encoding table names (the owner's Test Coverage calls it "not a specification table row") |`lc_state_i`; `axil_smc_otp_jtag_req_i` and `axil_smc_otp_jtag_resp_o` |`smc_efuse_jtag_lc_access_matrix_test` |planned
-|`cp_error_data` |blocked read data `0xbadcab1e` (1 bin) (`efuse` `architecture.adoc`, Lifecycle State (LC_STATE) Effects, SMC JTAG Policy) |`axil_smc_otp_jtag_resp_o` read data and response |`smc_efuse_jtag_lc_access_matrix_test` |planned
+|`cp_image_op` |image (TEST_DEV 0x0, PROD 0x1, RMA_SOP 0x2, RMA_CHIPLET 0x6, PROD_END 0x8, the integrity-error fallback INVALID: 6) x operation (write, read outside `JTAG_PUBLIC_IDENTITY`, read of `JTAG_PUBLIC_IDENTITY`: 3); 15 cells, the cells of the five encoded images, each with its one stated verdict: PROD and RMA_SOP block the write and the outside read and allow the identity read; TEST_DEV, RMA_CHIPLET and PROD_END allow all three (`efuse` `architecture.adoc`, Lifecycle State (LC_STATE) Effects, the SMC JTAG Policy paragraph, the eFuse JTAG permissions (SMC) table and the lifecycle encodings; the owner's `CHK-EFUSE-JTAG-LC-PROD`, `-RMA_SOP`, `-TEST_DEV`, `-RMA_CHIPLET` and `-PROD_END` compares); the 3 fallback cells are recorded bins carried by the owner's existing `CHK-EFUSE-JTAG-LC-SIGINT` compare: the driven fallback is the integrity-error case of entry 90 `smc_efuse_jtag_lc_access_matrix_test`, which no row of the permission table or of the encoding table names (the owner's Test Coverage calls it "not a specification table row") |`lc_state_i` (`tb_lc_state`) with the DUT's integrity flag `lc_sigint_err` as the cross-check; `axil_smc_otp_jtag_req_i` AW and AR addresses (`ej_axi_awaddr`, `ej_axi_araddr`, the `JTAG_PUBLIC_IDENTITY` extent and the map extent from the generated addresses) and `axil_smc_otp_jtag_resp_o` B and R codes and read data (`ej_axi_bresp`, `ej_axi_rresp`, `ej_axi_rdata`) at the B and R handshakes |`smc_efuse_jtag_lc_access_matrix_test` |live
+|`cp_error_data` |blocked read data `0xbadcab1e` (1 bin) (`efuse` `architecture.adoc`, Lifecycle State (LC_STATE) Effects, SMC JTAG Policy) |`axil_smc_otp_jtag_resp_o` read data and response (`ej_axi_rdata`, `ej_axi_rresp` at the R handshake: DECERR with the word) |`smc_efuse_jtag_lc_access_matrix_test` |live
 |===
 
 *Ignore bins*: RMA_SOP 0x3 and RMA_CHIPLET 0x7 (the owner's Scope limit: the second encodings are
 not driven); the 15 contrary verdicts of the encoded images (the failing outcomes of the owner's
 compares); other blocked
 read data (failing); the RMA_SIP cells of the SEP policy paragraph (not a cell of this entry;
-RMA_SIP is absent from the encoding table).
+RMA_SIP is absent from the encoding table); a completion outside the owner's window, at an
+address outside the eFuse map (none is driven), under an encoding the owner does not drive (the
+other valid differentials), or while the DUT's integrity flag disagrees with the sampler's decode
+(counts in no cell).
 
 ==== `smc_efuse_timeout_cg`
 *Description*: eFuse request stall against the programmed timeout count, per interface, with the
 status.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_read_program_timeout_test` is an
-existing entry that draws its cells through the bank-model stall knob; no sampler exists).
-Owner's draw: "the seed draws, per interface, the timeout count and a stall length on either side
-of it, applied through the bank-model stall knob".
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_efuse_ctrl_fcov::smc_efuse_timeout_cg`,
+handle `u_cg_efuse_timeout`, sampled while the owner `smc_efuse_read_program_timeout_test` holds
+`tb_fcov_gate` high from its first timeout-register write to the end of its last drawn read leg
+(the no-enable read and the range and lock legs follow outside the window), and per interface
+only after a SEP_IN write to its timeout register completed OKAY under the gate with the enable
+bit set and a count of 1 to the reset value and the owner's read-back returned that word (the
+flag drops at the next write to the register and on every rise of the gate); the count cell is
+sampled at that read-back and the stall cell at the owner's first OKAY read of the interface's
+control register after its done, when the status field of the word read and the error output both
+equal the class; the program interface's reset-count cell is not reached by construction, since the
+owner writes the reset count to that register with the enable bit clear: counted in the row, the
+plan change proposed and not applied, the left-out table). Owner's draw: "the seed draws, per
+interface, the timeout count and a stall length on either side of it, applied through the
+bank-model stall knob".
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_stall_status` |interface (read, program: 2) x stall (shorter than the count, longer than the count: 2); 4 cells; a shorter stall completes with done and the status clear, a longer stall sets the interface's status, `read_status` on the read interface and `program_status` on the program interface ("1: Error", the stated error indication) (`efuse_interface_ctrl.rdl`, `read_req_timeout_cycles`, `program_req_timeout_cycles`, `read_status`, `program_status`) |`tb_efuse_read_busy`, `tb_efuse_read_done`, `tb_efuse_read_error`, `tb_efuse_program_busy`, `tb_efuse_program_done`, `tb_efuse_program_error`; `efuse_bank_ctrl_resp_i` |`smc_efuse_read_program_timeout_test` |planned
-|`cp_count` |count (1 to 0x7FFFFF, the reset value 0x800000: 2) x interface (2); 4 cells (`efuse_interface_ctrl.rdl`, `read_req_timeout_cycles`, `program_req_timeout_cycles`) |`EFUSE_READ_REQ_TIMEOUT`, `EFUSE_PROGRAM_REQ_TIMEOUT` fields as the owner reads them back |`smc_efuse_read_program_timeout_test` |planned
+|`cp_stall_status` |interface (read, program: 2) x stall (shorter than the count, longer than the count: 2); 4 cells; a shorter stall completes with done and the status clear, a longer stall sets the interface's status, `read_status` on the read interface and `program_status` on the program interface ("1: Error", the stated error indication) (`efuse_interface_ctrl.rdl`, `read_req_timeout_cycles`, `program_req_timeout_cycles`, `read_status`, `program_status`) |`tb_efuse_read_done` / `tb_efuse_program_done` (the rise), `tb_efuse_read_req_valid` / `tb_efuse_program_req_valid` (the request) and `tb_efuse_shim_resp_valid`, the SHIM's response to the fuse command (the bank model's completion as the interface controller receives it; the bank-control port `efuse_bank_ctrl_resp_i` carries the SHIM's own registers, not the fuse path): shorter when the response was seen between the request and the done, longer otherwise; the cell sampled at the owner's first OKAY 4-byte read of `EFUSE_READ_CTRL` / `EFUSE_PROGRAM_CTRL` after the done (`s_axi_araddr`, `s_axi_rdata`, `s_axi_rresp`), when the `read_status` / `program_status` field of the word (the generated mask) and `tb_efuse_read_error` / `tb_efuse_program_error` both equal the class (clear for the shorter stall, set for the longer) |`smc_efuse_read_program_timeout_test` |live
+|`cp_count` |count (1 to 0x7FFFFF, the reset value 0x800000: 2) x interface (2); 4 cells (`efuse_interface_ctrl.rdl`, `read_req_timeout_cycles`, `program_req_timeout_cycles`) |`EFUSE_READ_REQ_TIMEOUT`, `EFUSE_PROGRAM_REQ_TIMEOUT` as the owner writes and reads them back over SEP_IN (`s_axi_awaddr`, `s_axi_wdata`, `s_axi_wstrb`; `s_axi_araddr`, `s_axi_rdata`, `s_axi_rresp`), the count field and the enable bit by the generated field masks, the reset value by the generated reset word |`smc_efuse_read_program_timeout_test` |live
 |===
 
 *Ignore bins*: the timeout enable bit clear (the owner's timeout legs run with the enable bit [28]
@@ -935,7 +1183,13 @@ not draw it); a status contrary to the function (the failing outcome of `CHK-EFU
 is shorter than 0); counts 0x800001 to 0xFFFFFFF (the field is 28 bits, `read_req_timeout_cycles`
 and `program_req_timeout_cycles`; the owner's draw stays at or below the reset value 0x800000 so the
 longer stall fits its bounded wait); the out-of-range, last-in-range, upper-ones and lock legs
-(directed steps of the existing walk).
+(directed steps of the existing walk); an operation while no timeout word with the enable bit set
+and a count of 1 to the reset value has been written and read back under the gate (the pinned
+count-0 legs, and the reset-count recovery write, which carries no enable); a status read back or
+an error output contrary to the stall class (the failing outcome of the owner's compares, or a
+sampler fault; counts in no cell). The program interface's reset-count cell is not reached by
+construction (entry 98) and stays counted in the row; the plan change is proposed in the left-out
+table and not applied.
 
 ==== `smc_dma_geometry_cg`
 *Description*: DMA row width, row count, unaligned starts and burst-shaping configuration.
@@ -1630,12 +1884,12 @@ column of <<smc-traceability-matrix>>.
 |VPLAN group |Coverage
 |MISC |`smc_map_fcov` scratch, chip-configuration, captured-strap and misc-wrapper decodes; `smc_int_fcov` raw vector bit against its PLIC source and the `SYNC_REG` bits; `smc_periph_fcov` `c_irq_*`; `smc_cpu_fcov` cluster interrupt range
 |POWER |`smc_map_fcov` AVSBus, telemetry, OCTS, DMA and zeroer apertures; `smc_periph_fcov` AVSBus, telemetry and OCTS transfers; `smc_dma_fcov`; `smc_zeroer_fcov`; `smc_reset_fcov` and `smc_iso_fcov` watchdog warm-reset sources
-|FABRIC |`smc_map_fcov` region, window, alias-remap and filter-entry decodes; `smc_fabric_fcov` with its three `smc_axi_chan_fcov` instances; `smc_filt_fcov` protection and inbound filters
+|FABRIC |`smc_map_fcov` region, window, alias-remap and filter-entry decodes; `smc_fabric_fcov` with its three `smc_axi_chan_fcov` instances, the SYS_OUT error and outstanding-depth groups; `smc_filt_fcov` protection, inbound and outbound filters and the alias-remap group; `smc_map_row_fcov` the memory-map row-response group
 |RESET |`smc_reset_fcov` sources, releases and reset states; `smc_rst_seq_fcov` power-on ordering and what the primary reset holds; `smc_iso_fcov` isolation and FLR; `smc_int_fcov` NDM request path
 |CLOCK |`smc_clk_fcov` clock ratios and gate terms; `smc_clk_domain_fcov` blocks advancing on their clock; `smc_dma_fcov` and `smc_zeroer_fcov` clock-enable terms
 |CPU |`smc_cpu_fcov` core retire, reset vector, cluster traffic, memory-init and cold-boot order; `smc_fabric_fcov` the CPU external path. The measured owner of these points is a FIRMWARE or JTAG leaf, since a CPU point needs a booted cluster
 |JTAG |`smc_map_fcov` `c_jtag_axi_in_read` / `c_jtag_axi_in_write`; `smc_filt_fcov` `c_jtag2axi_remapped` / `c_jtag2axi_filtered`; `smc_fabric_fcov` eFuse JTAG port; `smc_cpu_fcov` the boot points a JTAG leaf reaches. No point covers the CPU TAP itself
-|EFUSE |`smc_efuse_fcov` sense, shadow, bank control, SHIM and the lock contract; `smc_fabric_fcov` `c_axil_efuse_bank_active` and the eFuse JTAG port; `smc_map_fcov` eFuse and SHIM decodes
+|EFUSE |`smc_efuse_fcov` sense, shadow, bank control, SHIM and the lock contract; `smc_efuse_ctrl_fcov` the state-injection, lock, lifecycle and timeout groups; `smc_fabric_fcov` `c_axil_efuse_bank_active` and the eFuse JTAG port; `smc_map_fcov` eFuse and SHIM decodes
 |GPIO |`smc_gpio_fcov` the `INPUT_BY_DEFAULT` map; `smc_periph_fcov` pad activity and `c_irq_gpio`; `smc_map_fcov` GPIO instance and interface decodes; `smc_filt_fcov` on the SEP-side filter leaves
 |IRQ |`smc_int_fcov` claim, hang OR and NDM; `smc_periph_fcov` `c_irq_*`, each source and two concurrent
 |I2C |`smc_periph_fcov` `c_i2c0_*` bus conditions and the controller and target transfers; `smc_clk_fcov` `c_i2c_cg_open` / `c_i2c_cg_closed`
