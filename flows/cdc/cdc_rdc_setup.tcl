@@ -55,7 +55,7 @@ if { [info procs cdc_conv_ignore_among] eq "" } {
 # and `cdc_conv_ignore_among`).
 proc collect_prim_flop_3sync_qpins { parent_pattern } {
     set out_pins [list]
-    set cells [get_cells -hier -filter "ref_name == prim_flop_3sync" -quiet]
+    set cells [get_cells -hier -filter "ref_name == ${::MODPREFIX}prim_flop_3sync" -quiet]
     foreach cname [get_object_name $cells] {
         if { [string match $parent_pattern $cname] } {
             # prim_flop_3sync elaborates the three stages as q_d / q_dd / q_ddd.
@@ -75,7 +75,7 @@ proc collect_prim_flop_3sync_qpins { parent_pattern } {
 ################################################################################
 # prim_rst_mux2_hf_n: DFT reset bypass mux — override value is stable
 # before mux select changes. Blocks append their own modules additively.
-configure_glitch_free_cells -ignore_modules {prim_rst_mux2_hf_n}
+configure_glitch_free_cells -ignore_modules [cdc_mod {prim_rst_mux2_hf_n}]
 
 ################################################################################
 # SYNCHRONIZER (NFF) CONFIGURATION
@@ -85,41 +85,25 @@ configure_glitch_free_cells -ignore_modules {prim_rst_mux2_hf_n}
 # reset sequencers) — those have internal logic beyond simple FF chains
 # and SpyGlass must analyze their internals.
 
-configure_cdc_nff_sync -uds_modules { \
-    prim_sync_reset \
-    prim_flop_3sync \
-    prim_sync2 \
-    prim_sync2r \
-    prim_sync3 \
-    prim_sync3r \
-    prim_sync4 \
-    prim_sync4r \
-    prim_flop_2sync* \
-    prim_flop_3sync* \
-    prim_flop_4sync*
-}
+configure_cdc_nff_sync -uds_modules [concat \
+    [cdc_mod {prim_sync_reset prim_flop_3sync}] \
+    {prim_sync2 prim_sync2r} \
+    [cdc_mod {prim_sync3 prim_sync3r prim_sync4 prim_sync4r}] \
+    [cdc_mod {prim_flop_2sync* prim_flop_3sync* prim_flop_4sync*}]]
 
 # Async reset synchronizers: these specifically synchronize reset deassertion.
 # Blocks append their own async-reset sync modules additively.
-configure_cdc_asyncrst_nff_sync -uds_modules {prim_sync_reset}
+configure_cdc_asyncrst_nff_sync -uds_modules [cdc_mod {prim_sync_reset}]
 
 # RDC synchronizer declaration: set_rdc_synchronizer tells the RDC engine
 # that these modules are synchronizers, so RDC crossings with destinations
 # inside them are considered blocked. Without this, the tool traces through
 # their internal flops and reports false SETUP_RESET_ASSERT_MISSING errors.
-set_rdc_synchronizer -sync_cell { \
-    prim_sync_reset \
-    prim_flop_3sync \
-    prim_sync2 \
-    prim_sync2r \
-    prim_sync3 \
-    prim_sync3r \
-    prim_sync4 \
-    prim_sync4r \
-    prim_flop_2sync* \
-    prim_flop_3sync* \
-    prim_flop_4sync*
-} -min_depth 2
+set_rdc_synchronizer -sync_cell [concat \
+    [cdc_mod {prim_sync_reset prim_flop_3sync}] \
+    {prim_sync2 prim_sync2r} \
+    [cdc_mod {prim_sync3 prim_sync3r prim_sync4 prim_sync4r}] \
+    [cdc_mod {prim_flop_2sync* prim_flop_3sync* prim_flop_4sync*}]] -min_depth 2
 
 # TODO: Review/confirm if we want 2 or 3 stages for the synchronizers
 # Verify detected synchronizers have at least 2 stages.
@@ -133,33 +117,33 @@ configure_cdc_nff_sync -depth 2 -detect_insufficient_depth_nff true
 # Use explicit module names, not wildcards, to avoid accidental matching.
 
 # AXI CDC chain: axi_cdc_intf → axi_cdc → axi_cdc_src/dst → cdc_fifo_gray_*
-configure_ip_block -names {axi_cdc_intf} -type {cdc}
-configure_ip_block -names {axi_cdc} -type {cdc}
-configure_ip_block -names {axi_cdc_src} -type {cdc}
-configure_ip_block -names {axi_cdc_dst} -type {cdc}
+configure_ip_block -names [cdc_mod {axi_cdc_intf}] -type {cdc}
+configure_ip_block -names [cdc_mod {axi_cdc}] -type {cdc}
+configure_ip_block -names [cdc_mod {axi_cdc_src}] -type {cdc}
+configure_ip_block -names [cdc_mod {axi_cdc_dst}] -type {cdc}
 
 # APB CDC chain: apb_cdc_intf → apb_cdc → cdc_fifo_gray
 # Note: We are not using APB CDC in this design, but it is still a valid CDC module
 # configure_ip_block -names {apb_cdc_intf} -type {cdc}
 
 # CDC FIFO primitives (common_cells library)
-configure_ip_block -names {cdc_fifo_gray} -type {cdc}
-configure_ip_block -names {cdc_fifo_gray_src} -type {cdc}
-configure_ip_block -names {cdc_fifo_gray_dst} -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_fifo_gray}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_fifo_gray_src}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_fifo_gray_dst}] -type {cdc}
 
 # Clearable variants of common_cells CDC suite
-configure_ip_block -names {axi_cdc_clearable} -type {cdc}
-configure_ip_block -names {cdc_fifo_gray_clearable} -type {cdc}
-configure_ip_block -names {cdc_fifo_gray_src_clearable} -type {cdc}
-configure_ip_block -names {cdc_fifo_gray_dst_clearable} -type {cdc}
-configure_ip_block -names {cdc_reset_ctrlr} -type {cdc}
-configure_ip_block -names {cdc_reset_ctrlr_half} -type {cdc}
-configure_ip_block -names {cdc_4phase} -type {cdc}
-configure_ip_block -names {cdc_4phase_src} -type {cdc}
-configure_ip_block -names {cdc_4phase_dst} -type {cdc}
+configure_ip_block -names [cdc_mod {axi_cdc_clearable}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_fifo_gray_clearable}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_fifo_gray_src_clearable}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_fifo_gray_dst_clearable}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_reset_ctrlr}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_reset_ctrlr_half}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_4phase}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_4phase_src}] -type {cdc}
+configure_ip_block -names [cdc_mod {cdc_4phase_dst}] -type {cdc}
 
 # Handshake-based data synchronizer, used in AVS Bus
-configure_ip_block -names {prim_sync_data_autohs} -type {cdc}
+configure_ip_block -names [cdc_mod {prim_sync_data_autohs}] -type {cdc}
 
 ################################################################################
 # cdc_reset_ctrlr FLUSH-STATE DISTRIBUTION
@@ -169,7 +153,7 @@ configure_ip_block -names {prim_sync_data_autohs} -type {cdc}
 # By construction both FIFO sides are held in isolate/clear for the whole state
 # transition, so no live data can capture an intermediate value
 set cdc_rstctrl_state_src [list]
-foreach _rstctrl_cell [get_object_name [get_cells -hier -filter "ref_name =~ cdc_4phase_src*" -quiet]] {
+foreach _rstctrl_cell [get_object_name [get_cells -hier -filter "ref_name =~ ${::MODPREFIX}cdc_4phase_src*" -quiet]] {
     if { [string match {*i_cdc_reset_ctrlr*} $_rstctrl_cell] } {
         set _p [get_pins "$_rstctrl_cell/data_src_q/Q" -quiet]
         if { [sizeof_collection $_p] > 0 } {

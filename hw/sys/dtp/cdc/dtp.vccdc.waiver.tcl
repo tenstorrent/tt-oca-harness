@@ -26,6 +26,15 @@ if { [info procs apply_prefix] eq "" } {
         return $out
     }
 }
+# ${MODPREFIX} is the module-name prefix of a design whose modules are renamed
+# <prefix>_<name> ("" otherwise); apply_modprefix substitutes it in Module filters and
+# is independent of apply_prefix, which a parent run may replace.
+if { ![info exists ::MODPREFIX] } { set ::MODPREFIX "" }
+if { [info procs apply_modprefix] eq "" } {
+    proc apply_modprefix { filter } {
+        return [string map [list {${MODPREFIX}} $::MODPREFIX] $filter]
+    }
+}
 # ----------------------------------------------------------------------------------
 
 #=======================================================================================================================
@@ -55,7 +64,7 @@ if { [info procs apply_prefix] eq "" } {
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_CDC_COHERENCY_RECONV_SEQ_ctp_4phase_busy_d} \
     -comment {cross_trigger_port 4-phase handshake: req_in and ack_in are independently synchronized 1-bit signals from ck_feedthru domain that converge at u_handshake_ctrl/busy_d. The 4-phase protocol guarantees they are strictly alternating (never simultaneously asserted); the CDC tool does not model the handshake protocol. One waiver covers all 16 gen_ext_ctp instances.} \
-    -filter {(ReasonInfoList:ReasonInfo:ReasonCode == "SYNC_SRC_CONV") AND (ReasonInfoList:ReasonInfo:ReasonCode == "GRAY_CHECK_IGNORED_SEQ_CONV") AND (ConvergencePoint =~ "*gen_ext_ctp*u_handshake_ctrl/busy_d") AND (Module == "dtp")} \
+    -filter [apply_modprefix {(ReasonInfoList:ReasonInfo:ReasonCode == "SYNC_SRC_CONV") AND (ReasonInfoList:ReasonInfo:ReasonCode == "GRAY_CHECK_IGNORED_SEQ_CONV") AND (ConvergencePoint =~ "*gen_ext_ctp*u_handshake_ctrl/busy_d") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_COHERENCY_RECONV_SEQ } -user { bmelton } -timestamp { 14-05-2026 22:30:00 }
 
 #=======================================================================================================================
@@ -75,7 +84,7 @@ waive_violation -add {ocah_dtp_CDC_COHERENCY_RECONV_SEQ_ctp_4phase_busy_d} \
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_CDC_COHERENCY_RECONV_SEQ_ctm_src_selector} \
     -comment {Cross-trigger matrix source selector: multiple independently synchronized 1-bit req_out signals from all CTPs (ck_feedthru domain) converge at ct_src_comb. Each bit is a distinct independent trigger request; CTM does not require atomic coherency across sources. 4-phase handshake in each CTP ensures per-bit stability. Tool does not model trigger arbitration.} \
-    -filter {(ReasonInfoList:ReasonInfo:ReasonCode == "SYNC_SRC_CONV") AND (ReasonInfoList:ReasonInfo:ReasonCode == "GRAY_CHECK_IGNORED_SEQ_CONV") AND (ConvergencePoint =~ "*u_ctm*u_src_selector/ct_src_comb") AND (Module == "dtp")} \
+    -filter [apply_modprefix {(ReasonInfoList:ReasonInfo:ReasonCode == "SYNC_SRC_CONV") AND (ReasonInfoList:ReasonInfo:ReasonCode == "GRAY_CHECK_IGNORED_SEQ_CONV") AND (ConvergencePoint =~ "*u_ctm*u_src_selector/ct_src_comb") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_COHERENCY_RECONV_SEQ } -user { bmelton } -timestamp { 14-05-2026 22:30:00 }
 
 #=======================================================================================================================
@@ -96,7 +105,7 @@ waive_violation -add {ocah_dtp_CDC_COHERENCY_RECONV_SEQ_ctm_src_selector} \
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_CDC_UNSYNC_NOSCHEME_pwr_on_rst_to_stap_trst} \
     -comment {pwr_on_rst_ni is forwarded directly to STAP TRST_N outputs (stap_extra, stap_io, stap_sep, stap_smc). Per IEEE 1149.1 Rule 4.6.1(a), TRST* assertion (1->0) shall be asynchronous to TCK by definition. Deassertion (0->1) has a documented race if TRST* and TCK rise simultaneously with TMS=0 (Recommendation 4.6.1(d)); the standard resolves this via a host protocol constraint (hold TMS=1 during deassertion) rather than a synchronizer on TRST* itself. No in-chip synchronizer is expected or appropriate.} \
-    -filter {(SrcObject == "pwr_on_rst_ni") AND (DestObject =~ "*jtag_stap_*host_tap_ctrl_o*.trst_n") AND (Module == "dtp")} \
+    -filter [apply_modprefix {(SrcObject == "pwr_on_rst_ni") AND (DestObject =~ "*jtag_stap_*host_tap_ctrl_o*.trst_n") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_UNSYNC_NOSCHEME } -user { bmelton } -timestamp { 14-05-2026 22:30:00 }
 
 #=======================================================================================================================
@@ -118,7 +127,7 @@ waive_violation -add {ocah_dtp_CDC_UNSYNC_NOSCHEME_pwr_on_rst_to_stap_trst} \
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_CDC_UNSYNC_NOSCHEME_ctp_primary_outputs} \
     -comment {gen_ext_ctp[N] DTPCLK-domain handshake/data outputs to ck_feedthru GPIO primary outputs (req_out, req_in_din_en, ack_out, ack_in_din_en). These are primary outputs; synchronization at the DTP boundary is the responsibility of the GPIO pad ring and CLA. 4-phase handshake ensures stability before each new handshake.} \
-    -filter {(ReasonInfoList:ReasonInfo:ReasonCode == "NO_SYNC_METHOD") AND (DestObjectType == "primary output") AND (DestClockInfoList:DestClockInfo:ClockName == "ck_feedthru") AND (Module == "dtp")} \
+    -filter [apply_modprefix {(ReasonInfoList:ReasonInfo:ReasonCode == "NO_SYNC_METHOD") AND (DestObjectType == "primary output") AND (DestClockInfoList:DestClockInfo:ClockName == "ck_feedthru") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_UNSYNC_NOSCHEME } -user { bmelton } -timestamp { 14-05-2026 22:30:00 }
 
 #=======================================================================================================================
@@ -141,7 +150,7 @@ waive_violation -add {ocah_dtp_CDC_UNSYNC_NOSCHEME_ctp_primary_outputs} \
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_INTEGRITY_ASYNCRESET_COMBO_MUX_prim_and2_resets} \
     -comment {Single-cell async reset gating in the JTAG TAP. prim_and2 combines two active-low resets and asserts on either; prim_or2 masks the TLR reset with a TCK-domain hold bit (config_hold_sticky, reset_hold) that changes only at Update-DR, never in Test-Logic-Reset, and under TRST both inputs fall together so the output is monotonic. All inputs are TCK-domain, so no glitch can form at the reset pin; primitive cells keep the path from being merged by synthesis (W402b).} \
-    -filter {(Tag == "INTEGRITY_ASYNCRESET_COMBO_MUX") AND (ContainerInstance =~ "*u_jtag_intf_unit/*") AND ((Module == "prim_and2") OR (Module == "jtag_ic_reset_reg") OR ((Module == "prim_or2") AND (ContainerInstance =~ "*u_jtag_ic_reset_reg/*")))} \
+    -filter [apply_modprefix {(Tag == "INTEGRITY_ASYNCRESET_COMBO_MUX") AND (ContainerInstance =~ "*u_jtag_intf_unit/*") AND ((Module == "${MODPREFIX}prim_and2") OR (Module == "${MODPREFIX}jtag_ic_reset_reg") OR ((Module == "${MODPREFIX}prim_or2") AND (ContainerInstance =~ "*u_jtag_ic_reset_reg/*")))}] \
     -app { cdc } -tag { INTEGRITY_ASYNCRESET_COMBO_MUX } -user { bmelton } -timestamp { 14-05-2026 22:30:00 }
 
 #=======================================================================================================================
@@ -187,12 +196,12 @@ waive_violation -add {ocah_dtp_SETUP_CLOCK_UNUSED_output_tck_clocks} \
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_CDC_GLITCH_CTRL_ctn_clk_stop_sync} \
     -comment {ctn_clock_stop_ctrl/u_clk_stop_sync (DTPCLK domain), GLITCH_SOURCES_FROM_DIFF_DOMAIN: xtrig_clk_stop_req_i[8:0] (ck_feedthru) is OR'd with jtag_clock_stop (JTAG_TCK) before the 2-stage synchronizer. The synchronizer is precisely the correct mechanism for asynchronous multi-domain inputs; any transient at its input resolves within 2 DTPCLK cycles. Fail-safe stop-clock path -- output is metastability-free regardless of input waveform.} \
-    -filter {(GlitchDestInfo:DestObject =~ "*u_clock_stop_ctrl/u_clk_stop_sync*") AND (Module == "dtp")} \
+    -filter [apply_modprefix {(GlitchDestInfo:DestObject =~ "*u_clock_stop_ctrl/u_clk_stop_sync*") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_GLITCH_CTRL } -user { bmelton } -timestamp { 15-05-2026 04:30:00 }
 
 waive_violation -add {ocah_dtp_CDC_GLITCH_CTRL_cla_clock_stop_sync} \
     -comment {jtag_debug_ctrl_reg/u_cla_clock_stop_sync (JTAG_TCK domain), GLITCH_SOURCES_FROM_SAME_DOMAIN: xtrig_clk_stop_req_i[8:0] (all ck_feedthru) is OR-reduced before the 2-stage synchronizer. The 9 bits are synchronous to each other so the OR is glitch-free in practice. The synchronizer captures the result during JTAG Capture-DR; any residual transient resolves within 2 TCK cycles. Worst-case incorrect capture is harmless -- JTAG host re-reads on the next scan.} \
-    -filter {(GlitchDestInfo:DestObject =~ "*u_jtag_debug_ctrl_reg/u_cla_clock_stop_sync*") AND (Module == "dtp")} \
+    -filter [apply_modprefix {(GlitchDestInfo:DestObject =~ "*u_jtag_debug_ctrl_reg/u_cla_clock_stop_sync*") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_GLITCH_CTRL } -user { bmelton } -timestamp { 15-05-2026 04:30:00 }
 
 #=======================================================================================================================
@@ -216,12 +225,12 @@ waive_violation -add {ocah_dtp_CDC_GLITCH_CTRL_cla_clock_stop_sync} \
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_CDC_UNSYNC_CTRL_cla_clock_stop_sync} \
     -comment {NONSTATIC_COMBO_IN_CROSSING: xtrig_clk_stop_req_i[8:0] is OR-reduced combinationally before u_cla_clock_stop_sync. ctn_clock_stop_ctrl lacks the ck_feedthru clock so pre-registration in source domain is not possible here. Tool confirms SYNC_BY_NFF (2-stage synchronizer present). The synchronizer correctly resolves any metastability within 2 TCK cycles.} \
-    -filter {(DestObject =~ "*u_cla_clock_stop_sync*") AND (Module == "dtp")} \
+    -filter [apply_modprefix {(DestObject =~ "*u_cla_clock_stop_sync*") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_UNSYNC_CTRL } -user { bmelton } -timestamp { 15-05-2026 04:30:00 }
 
 waive_violation -add {ocah_dtp_CDC_UNSYNC_CTRL_clk_stop_sync} \
     -comment {NONSTATIC_COMBO_IN_CROSSING + ASYNC_SRC_CONVERGE: xtrig_clk_stop_req_i[8:0] (ck_feedthru) and jtag_clock_stop Q[3] (JTAG_TCK) are OR'd combinationally before u_clk_stop_sync. Two sources from different domains cannot be pre-registered together without knowing which domain to use. The OR-then-sync pattern is the standard approach for "is any stop requested?" logic; the 2-stage synchronizer handles both sources. Tool confirms SYNC_BY_NFF.} \
-    -filter {(DestObject =~ "*u_clk_stop_sync*") AND (Module == "dtp")} \
+    -filter [apply_modprefix {(DestObject =~ "*u_clk_stop_sync*") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_UNSYNC_CTRL } -user { bmelton } -timestamp { 15-05-2026 04:30:00 }
 
 #=======================================================================================================================
@@ -253,7 +262,7 @@ waive_violation -add {ocah_dtp_CDC_UNSYNC_CTRL_clk_stop_sync} \
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_CDC_UNSYNC_ASYNCRESET_pwr_on_rst_to_jtag_flops} \
     -comment {pwr_on_rst_ni (DTPCLK-domain primary reset) is gated with TRST_N via prim_and2 (u_trst_n_and) into trst_n_combined and further per-STAP rst_n gates. All 27 destinations are JTAG-domain flop async-reset pins inside u_jtag_intf_unit (TAP FSM flops, dr_scan_select_reg, tdo_retimed, per-STAP config_hold_sticky_flop, *_3dcr update flops, jtag_ic_reset_reg update flop, jtag_tmp state flop). Per IEEE 1149.1 Rule 4.6.1(a), TRST* assertion is asynchronous to TCK by definition; deassertion is governed by Recommendation 4.6.1(d) (host holds TMS=1 with TCK inactive or stably clocking). At chip power-on TCK is quiescent so pwr_on_rst_ni deassertion is safe by construction. Same justification family as ocah_dtp_CDC_UNSYNC_NOSCHEME_pwr_on_rst_to_stap_trst.} \
-    -filter {(Tag == "CDC_UNSYNC_ASYNCRESET") AND (SrcObject == "pwr_on_rst_ni") AND (Module == "dtp") AND (DestObject =~ "*u_jtag_intf_unit*")} \
+    -filter [apply_modprefix {(Tag == "CDC_UNSYNC_ASYNCRESET") AND (SrcObject == "pwr_on_rst_ni") AND (Module == "${MODPREFIX}dtp") AND (DestObject =~ "*u_jtag_intf_unit*")}] \
     -app { cdc } -tag { CDC_UNSYNC_ASYNCRESET } -user { bmelton } -timestamp { 17-05-2026 22:30:00 }
 
 #=======================================================================================================================

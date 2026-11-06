@@ -1544,9 +1544,9 @@ not-implemented DMI registers read 0, and a `data0` access re-executes the store
 reaches, `hawindowsel` reads 0, and `setresethaltreq` halts a hart on its `RESET_CTRL` pulse.
 |`smc_jtag_dm_haltgroup_test` |3 |`dmcs2` halt group 1 membership, a member halt halting the other
 member, and a write with `hgselect` set ignored.
-|`smc_jtag_dm_sba_uncore_hold_obs_test` |3, held out |A system bus write under the uncore reset
-hold leaves `CPU_CTRL.SCRATCH` unchanged and a write after the release lands; the DMI readbacks
-under the hold are recorded for #3654.
+|`smc_jtag_dm_sba_uncore_hold_test` |3 |A system bus write requested under the uncore reset hold is
+not started: `sbcs` reads `sbbusy` 0 and `sberror` 0, `sbaddress0` does not advance and
+`CPU_CTRL.SCRATCH` stays unchanged during and after the hold; a write after the release lands.
 |`smc_dfd_mmr_rand_test` |3 |A drawn register order, pattern and lane take the access classes that
 the DFD register descriptions state, with the reset values and the read-only holds logged as
 controls.
@@ -29598,6 +29598,124 @@ chapter states no reset value.
 
 '''''
 
+[[sec-586-smc_jtag_dm_sba_uncore_hold_test]]
+===== 586 `smc_jtag_dm_sba_uncore_hold_test`
+
+*Phase*: 3
+
+*Area*: JTAG
+
+*Source Module*: `smc_jtag_dm_sba_uncore_hold_test`
+
+*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
+`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs; DMI
+addresses `sbcs` 0x38 (`sbbusyerror` bit 22, `sbbusy` bit 21, `sbaccess` bits 19:17,
+`sbautoincrement` bit 16, `sberror` bits 14:12, write 1 to clear), `sbaddress0` 0x39,
+`sbaddress1` 0x3A and `sbdata0` 0x3C, with
+`dtmcs` giving `abits` and the idle count; ocah_axi_vip (AXI) on SEP_IN writing and reading
+`CPU_CTRL.RESET_CTRL` (8 bytes, `debug_reset_n` at bit 24, `uncore_reset_n` at bit 8),
+`CPU_CTRL.RESET_TIMEOUT` (`timeout_value` 32, `timeout_mode` set, `reset_applied` read back),
+`CPU_CTRL.SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` (8 bytes, addresses from the generated
+address map); DMI `data0` 0x04 and `dmstatus` 0x11 read under the hold; `clk_smc_i`
+
+*Run mode*: one testlist entry in `testlists/jtag.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tag `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: A system bus write requested while the uncore reset is held is not started: `sbcs`
+reads `sbbusy` 0 and `sberror` 0, `sbaddress0` does not advance under `sbautoincrement`, and the
+`CPU_CTRL.SCRATCH` word stays unchanged during and after the hold; a system bus write after the
+release lands.
+
+*Test Coverage*:
+
+* After the debug reset release and `dmcontrol.dmactive` = 1, `sbcs` reads `sbbusy` 0 and
+  `sberror` 0.
+* With `SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` zeroed over AXI, a 32-bit system bus write to
+  `SCRATCH[4]` with `sbautoincrement` set ends `sbbusy` 0 `sberror` 0, advances `sbaddress0` by 4
+  and the AXI read returns the pattern.
+* With `RESET_TIMEOUT` in force mode and `uncore_reset_n` written 0, `reset_applied` sets; the
+  `sbdata0` scan of a system bus write to `SCRATCH[5]` under the hold reaches the Debug Module
+  (`sbdata0` reads back the pattern) and `SCRATCH[5]` reads 0 over AXI during the hold.
+* Under the hold the `sbcs` of that write reads `sbbusy` 0, `sberror` 0 and `sbbusyerror` 0 within
+  sixteen reads and `sbaddress0` reads the `SCRATCH[5]` address, not advanced under
+  `sbautoincrement`, and `reset_applied` still reads 1 after those scans; a `data0` write and
+  readback and `dmstatus` are printed.
+* After `uncore_reset_n` is written 1 and `reset_applied` clears, `sbcs` reads `sbbusy` 0 and
+  `sberror` 0 once the error bits are cleared, and a system bus write to `SCRATCH[6]` ends
+  `sberror` 0, advances `sbaddress0` by 4 and reads back over AXI; `SCRATCH[5]` still reads 0 after
+  the release and after that write (the write requested under the hold is not replayed).
+
+*Test Procedure*:
+
+[arabic]
+. Read `CPU_CTRL.RESET_TIMEOUT`. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64
+  `clk_smc_i` cycles, read it back and require bit 24 set. Create the TAP, reset it with
+  `tb_cpu_jtag_reset` while TCK steps, read IDCODE, activate the Debug Module (`dmactive` plus a
+  bounded wait on `dmstatus`), read `dtmcs` for `abits` and the idle count, read `sbcs` and
+  `dmstatus`; require `sbbusy` 0 and `sberror` 0.
+. Write 0 to `SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` over AXI. Write `sbcs` with `sbaccess` 2,
+  `sbautoincrement` 1 and `sberror` cleared, `sbaddress1` 0, `sbaddress0` the `SCRATCH[4]` address
+  and `sbdata0` the pattern; read `sbcs` until `sbbusy` is 0 (sixteen reads at most), require
+  `sberror` 0, read `sbaddress0` and require the address plus 4. Read `SCRATCH[4]` and
+  `SCRATCH[5]` over AXI; require the pattern and 0.
+. Write `RESET_TIMEOUT` with `timeout_value` 32 and `timeout_mode` 1; write `RESET_CTRL` with
+  `uncore_reset_n` 0 and `debug_reset_n` 1; read it back; read `RESET_TIMEOUT` until
+  `reset_applied` is 1 (sixty-four reads at most).
+. Start a 32-bit system bus write to `SCRATCH[5]` as in step 2 and read `sbcs` until `sbbusy` is 0
+  or sixteen reads pass; read `sbaddress0` and `sbdata0`, require `sbdata0` to read the pattern,
+  `sbcs` to read `sbbusy` 0, `sberror` 0 and `sbbusyerror` 0, and `sbaddress0` to read the
+  `SCRATCH[5]` address; write `data0` with a pattern and read it; read `dmstatus`; print them on
+  the `CHK-DM-SBA-NOT-STARTED-UNDER-HOLD` line. Read `SCRATCH[5]` over AXI and require 0; read
+  `RESET_TIMEOUT` again and require `reset_applied` 1.
+. Write `RESET_CTRL` with `uncore_reset_n` 1, read `RESET_TIMEOUT` until `reset_applied` is 0, wait
+  64 cycles, read `sbcs` and `dmstatus`, write `sbcs` with `sberror` and `sbbusyerror` cleared and
+  read it; require `sbbusy` 0 and `sberror` 0. Read `SCRATCH[5]` over AXI and require 0. Start a
+  system bus write to `SCRATCH[6]`, require `sbbusy` 0 and `sberror` 0 within the bound, read
+  `SCRATCH[6]` over AXI and require the pattern, then read `SCRATCH[5]` again and require 0.
+. Restore `RESET_TIMEOUT` and read it back. Require the steps in order with increasing stamps and
+  each checker line after its step, print the ordered-fence line and the bounded waits (DMI busy
+  retries, four at most; `dmactive` wait, sixteen reads; `sbbusy` wait, sixteen reads;
+  `reset_applied` wait, sixty-four reads).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DM-SBA-NOT-STARTED-UNDER-HOLD` |With `reset_applied` set, the system bus write to `SCRATCH[5]`
+ends with `sbcs` reading `sbbusy` 0, `sberror` 0 and `sbbusyerror` 0 within sixteen reads and
+`sbaddress0` reading the `SCRATCH[5]` address under `sbautoincrement`, with `reset_applied` still 1
+after the scans; a stuck `sbbusy`, a nonzero `sberror` or `sbbusyerror`, an advanced `sbaddress0`
+or a hold that ended during the scans fails it
+|`CHK-DM-SBA-WORD-UNCHANGED-UNDER-HOLD` |With `reset_applied` set, the `sbdata0` scan of the system
+bus write to `SCRATCH[5]` reaches the Debug Module (`sbdata0` reads back the pattern) and
+`SCRATCH[5]` reads 0 over AXI during the hold, with the `SCRATCH[4]` write before the hold as the
+positive control; a lost scan, a changed `SCRATCH[5]` or a failed control fails it
+|`CHK-DM-SBA-RESUMES-AFTER-RELEASE` |After the release, `sbcs` reads `sbbusy` 0 and `sberror` 0
+once the error bits are cleared, and the system bus write to `SCRATCH[6]` ends `sberror` 0 within
+the bound, advances `sbaddress0` by 4 and reads back over AXI, while `SCRATCH[5]` still reads 0
+before and after that write; a stuck `sbbusy`, a nonzero `sberror`, an unadvanced `sbaddress0`, a
+missing word or a `SCRATCH[5]` changed after the release fails it
+|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
+lines follow their steps; a missing or misordered term fails it
+|`CHK-TIMEOUT-PATHS` |The DMI busy retries (four at most), the sixteen-read `dmactive` and
+`sbbusy` waits and the sixty-four-read `reset_applied` wait are bounded and fail on expiry with the
+last `sbcs` and DMI response
+|===
+
+*Pass Criteria*: `CHK-DM-SBA-NOT-STARTED-UNDER-HOLD`, `CHK-DM-SBA-WORD-UNCHANGED-UNDER-HOLD` and
+`CHK-DM-SBA-RESUMES-AFTER-RELEASE` hold after their compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS`
+hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The `data0` write and readback and the `dmstatus` readback under the hold are
+printed and not compared: the chapter states that the DMI registers are not reset with the uncore
+and no value for them under the hold.
+
+'''''
+
 [[sec-566-smc_dfd_mmr_rand_test]]
 ===== 566 `smc_dfd_mmr_rand_test`
 
@@ -50807,7 +50925,7 @@ draws nothing from the seed.
 
 [arabic]
 . Check that `RESET_CTRL` has the uncore and every core released and that no reset is applied.
-. Program `RESET_TIMEOUT` to force mode after 32 cycles. Write the uncore reset low, read it back, and poll for `reset_applied`.
+. Program `RESET_TIMEOUT` to force mode after 32 cycles and read it back. Write the uncore reset low, read it back, and poll for `reset_applied`.
 . Write the uncore reset high and poll for `reset_applied` clear. Restore `RESET_TIMEOUT` and read back both registers.
 
 *Checkers*:
@@ -50815,7 +50933,7 @@ draws nothing from the seed.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CPU-UNCORE-RESET` |The uncore reset held alone set `reset_applied`, and releasing it cleared `reset_applied` and `reset_timeout`
+|`CHK-CPU-UNCORE-RESET` |With the read-back words of `RESET_TIMEOUT` (force mode) and `RESET_CTRL` (the uncore reset low, every core released) logged, the uncore reset held alone set `reset_applied`, and releasing it cleared `reset_applied` and `reset_timeout`
 |===
 
 *Pass Criteria*: the checker holds after its compares and every sequence assert holds.
@@ -52240,7 +52358,7 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
-|`smc_jtag_dm_sba_uncore_hold_obs_test`
+|`smc_jtag_dm_sba_uncore_hold_test`
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
@@ -53550,6 +53668,36 @@ names them for their Phase 3 users.
 |Monitor (`OCAH_SVA_ASSERT`)
 |`SMC_AXI_AWATOP_ZERO_<PORT>`: `aw.atop` is 0 whenever `aw_valid` on each SMC-internal AXI4 manager, disabled while the primary reset is low; two-state and live on both simulators. The final block prints `CHK-AXI-ATOP-ZERO-<PORT>: aw_evaluated=<n>`.
 |Every test; CPU MMIO and CPU front by `smc_fw_hello_world_test`, iDMA, iDMA control and the local output by `smc_dma_backpressure_test`, the filtered SYS path by `smc_sys_axi_in_port_test`, the output-fabric output and SYS_OUT by `smc_sys_out_aw_w_split_test`, the SEP remap path by `smc_sep_in_axi_flow_control_test`
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, uncore reset handshake (`u_smc_reset_sva`: `SMC_RST_UNCORE_NOT_WHILE_WITHHELD`, `SMC_RST_UNCORE_LOW_HAS_CAUSE`, `SMC_RST_APPLIED_TAKES_EFFECT`, `SMC_ISO_DRAINED_MEANS_EMPTY`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|`hw/sys/smc/dv/tb/smc_reset_sva.sv`, one instance in the single-instance body of `tb_top`. On `clk_smc`, disabled while `rst_primary_smc_clk_no` is low, enabled with the AXI checkers' enable: the cluster uncore reset (`tb_cpu_uncore_reset_n`) stays high on the edge after the software request was withheld (`tb_cpu_isolate_req` with `tb_cpu_drained` low and no force-mode timeout) while the warm reset (`tb_rst_warm_smc_clk_n`) is high on both edges; the uncore reset is low only with the warm reset low on this or the previous edge or `tb_cpu_reset_applied` high on the previous edge; and `tb_cpu_reset_applied` on one edge puts the uncore reset low on the next while the warm reset is high; and while `tb_cpu_drained` is high the four open-request counts `tb_cpu_l2_pending_aw`, `tb_cpu_l2_pending_ar`, `tb_cpu_mmio_pending_aw` and `tb_cpu_mmio_pending_ar` are zero. This is the drain handshake of `cpu.adoc` 233-240 and 272-280 and the `reset_applied` status of `cpu.adoc` 293-295, read as the reset contract accepts the asynchronous watchdog warm reset (`cpu.adoc` 328-338): a warm reset is a cause of its own. No knob. The final block prints `CHK-RESET-SVA-uncore_withheld`, `CHK-RESET-SVA-uncore_cause` and `CHK-RESET-SVA-uncore_applied` (antecedent edges); `+smc_reset_sva_need_<group>` fails a run whose count is 0.
+|Every single-instance test; the software uncore request (force mode programmed, applied by the completed drain) is driven by `smc_cpu_uncore_reset_test` (`+smc_reset_sva_need_uncore_cause`, `+smc_reset_sva_need_uncore_applied`), the withheld window by `smc_cpu_reset_pulse_test` (`+smc_reset_sva_need_uncore_withheld`; the count is every withheld edge, not only a timed-out one), the force-mode timeout by `smc_cpu_l2_write_wedge_test`, the watchdog warm reset by `smc_wdt_warm_reset_rand_test` and `smc_axi_partial_reset_open_txn_test`
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, cluster boundary isolate (`SMC_ISO_HELD_WHEN_NOT_READY`, `SMC_ISO_RELEASE_AFTER_FOUR`, `SMC_ISO_RELEASED_WHEN_READY_HELD`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_smc`, disabled while the primary reset is low. With `ready` = `smc_init_mem_done_o` and the uncore reset high and no isolate request: `tb_cpu_cluster_isolate` is high whenever `ready` is low; a fall of `tb_cpu_cluster_isolate` sees `ready` high now and four edges earlier; and `ready` high on five consecutive edges sees `tb_cpu_cluster_isolate` low (`cpu.adoc` 253-258: self-isolation on cold boot released four cycles after SRAM initialization with the uncore out of reset, isolated while the uncore is in reset, a held core does not isolate). The five-edge form holds under either reading of whether a `ready` dip restarts the delay. No knob. `CHK-RESET-SVA-iso_release` counts a fall of `tb_cpu_cluster_isolate` only after `tb_cpu_reset_applied` was high since the last fall, so the cold-boot release of every run is not in it; `CHK-RESET-SVA-iso_ready_held` counts every edge.
+|Every single-instance test (the cold-boot release); the software-request release is driven by `smc_cpu_uncore_reset_test` (`+smc_reset_sva_need_iso_release`, satisfied only by the release that follows its applied uncore request)
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, reset tree (`SMC_RST_UNCORE_HOLDS_CORES`, `SMC_RST_WARM_HOLDS_CLUSTER`, `SMC_RST_PRIMARY_IMPLIES_WARM`, `SMC_RST_WDT_IMPLIES_WARM`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_smc`, disabled while `powergood_stable_o` is low so the cold window is graded: the uncore reset low puts every bit of `tb_cpu_core_resets_n` low on the same edge (`cpu.adoc` 157-158); the warm reset low holds the uncore and every core (`clk_rst.adoc` 299-301); with `tb_jtag_reset_ctrl` all zero, `rst_primary_smc_clk_no` low and `rst_wdt_smc_clk_no` low each imply `tb_rst_warm_smc_clk_n` low (`clk_rst.adoc` 287-291). The JTAG qualifier takes the override leaves out of the two containment rules on the edges they drive an override; the fuse term of the warm equation is not graded, since the lag of the wrapper's delayed fuse reset is not stated. No knob. `CHK-RESET-SVA-uncore_low` counts an uncore-reset-low edge with powergood high only after the uncore reset was first seen high, so the bring-up window of every run is not in it.
+|Every single-instance test; `smc_cold_reset_test` (`+smc_reset_sva_need_uncore_low`, satisfied by the cold reset it asserts after bring-up) drives the cold path, `smc_wdt_warm_reset_rand_test` and `smc_wdt_timeout_pin_test` the watchdog path
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, isolated ports and status crossings (`SMC_ISO_L2_ACCEPTS_NONE`, `SMC_ISO_MMIO_PRESENTS_NONE`, `SMC_ISO_MMIO_B_SLVERR`, `SMC_ISO_MMIO_R_SLVERR`, `SMC_ISO_STATUS_CLAMPED`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_smc`. While `tb_cpu_l2_isolated` is high no AW or AR handshake occurs on the L2 frontend isolate's slave port; while `tb_cpu_mmio_isolated` is high the CPU MMIO port presents no AW or AR to the fabric and every B or R beat the cluster side of the MMIO isolate sees carries SLVERR (`cpu.adoc` 245-249; the response code only, the data word the chapter does not name is not graded); while `tb_cpu_cluster_isolate` is high the cluster's `wb_pc_valid_o`, `wb_reg_pc_o` and `wdt_reset_o` are all zero (`cpu.adoc` 251-253). The port rules are disabled while the primary reset is low, the clamp rule while powergood is low. No knob. `CHK-RESET-SVA-iso_l2_blocked` (an AW or AR presented to the isolated L2 port) and `CHK-RESET-SVA-iso_mmio_resp` (a B or R beat seen while isolated).
+|Every single-instance test (the clamp, on the cold-boot window, and the MMIO presents-none rule on every isolation); a request presented to an isolated port and a response answered while isolated occur only in the firmware leaves `smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test` (MMIO traffic while isolated), so no toolchain-free leaf carries `+smc_reset_sva_need_iso_l2_blocked` or `+smc_reset_sva_need_iso_mmio_resp`
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, force-mode flush (`SMC_FLUSH_IS_FORCE`, `SMC_FLUSH_WINDOW_CLOSES_AT_RECONNECT`, `SMC_FLUSH_ONLY_WHEN_FORCED`, `SMC_MMIO_AW_HELD_UNDER_FLUSH`, `SMC_MMIO_W_HELD_UNDER_FLUSH`, `SMC_MMIO_AR_HELD_UNDER_FLUSH`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_smc`, disabled while the primary reset is low. The control wrapper's flush request equals `tb_cpu_reset_timeout` AND `timeout_mode` on every edge; a latched flush (`tb_cpu_l2_flush_active`, `tb_cpu_mmio_flush_active`) is low on the edge after `tb_cpu_cluster_isolate` is low; and a flush latches only on the edge after the force condition held (`cpu.adoc` 287-291, 297-298). On the CPU MMIO port into the fabric an AW, W or AR presented without READY is still presented on the next edge unless the warm reset fell (`cpu.adoc` 304-306: the flush cannot cancel a presented request; the asynchronous warm reset is outside the rule, `cpu.adoc` 328-338). The request-hold rules stay on in the leaves whose `+smc_front_port_r_arb_assertoff` turns the CPU-port AXI checkers off. No knob. `CHK-RESET-SVA-flush_rose` and `CHK-RESET-SVA-mmio_held`.
+|Every single-instance test; the flush is driven by `smc_cpu_l2_write_wedge_test` (`+smc_reset_sva_need_flush_rose`) and `smc_cpu_l2_read_wedge_test` (whose documented `OCAH_AXI_R_ID_OUTSTANDING` fire stops the Verilator run before the final block); a presented-without-READY MMIO request occurs only in the firmware leaves (`smc_fw_hello_world_test`, the MMIO wedge leaves), so no toolchain-free leaf carries `+smc_reset_sva_need_mmio_held`
+|<<smc-vplan-area-reset,RESET>>
+|Reset-protocol assertions, FLR cool reset (`SMC_FLR_ONE_PULSE_PER_EDGE`, `SMC_FLR_HOLD_ZERO_NO_PULSE`, `SMC_FLR_PAD62_PULLS_LOW`, `SMC_FLR_PAD62_UNDRIVEN`)
+|Monitor (`OCAH_SVA_ASSERT`)
+|On `clk_ref`, disabled while `rst_cold_stable_ref_clk_no` is low. A fall of the sequencer's cool reset (`u_smc_cool_reset_wrap.rst_cool_no`, before the JTAG override) sees a pending FLR edge, set by a synchronized edge (`tb_flr_posedge_ref`) arriving with the sequencer idle (`tb_flr_counter_state`), the cool reset high and the reference-domain hold count nonzero, and cleared by the fall, so one edge starts at most one pulse and an edge inside the hold starts none (`clk_rst.adoc` 410-414, the sequencer is not a queue); the hold count latched at the edge the sequencer judged was nonzero (`clk_rst.adoc` 413-414, 418-419), so a count rewritten during the flow does not fire the rule. While GPIO 62 is on its LSIO function, `tb_rst_cool_from_flr` low drives `tb_core2pad_en_o[62]` high with `tb_core2pad_o[62]` low, and high leaves the enable low (`clk_rst.adoc` 440-442). Knob: `+smc_flr_requeue_assertoff` holds `SMC_FLR_ONE_PULSE_PER_EDGE` off in `smc_flr_hold_edge_requeue_test`, the `rtl_issue` holdout whose second pulse the rule reports. `CHK-RESET-SVA-flr_fall` and `CHK-RESET-SVA-pad62_low`.
+|Every single-instance test; the pulse is driven by `smc_flr_sequencer_single_pulse_test` (`+smc_reset_sva_need_flr_fall`, `+smc_reset_sva_need_pad62_low`), `smc_cool_reset_from_pcie_test`, `smc_cool_reset_pin_flr_overlap_test` and `smc_cool_reset_zero_delay_test`
 |===
 
 [[smc-vplan-phase3-added-hooks]]
@@ -54126,7 +54274,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |to follow |`smc_clock_gate_inflight_completes_test` |`rtl_issue` |The I2C register block runs on the gated peripheral clock and the peripheral side of its AXI-Lite CDC on the ungated one, so a response handed over as `I2C_CG_EN` closes the gate is taken more than once and every later read of the leg receives the previous read's word, where `clk_rst.adoc` states an accepted access finishes there; the leaf arms with an open and a closed read and asserts every swept read completes once with the leg idle after it (the issue number follows once filed)
 |to follow |`smc_fabric_demux_bucket_limits_test` |`rtl_issue` |The vendored `axi_demux` sizes its per-ID-bucket in-flight counter to `clog2(MaxTrans)` bits and reports the bucket full when it is all ones, so the fabric demultiplexers admit 31 same-ID reads per ID bucket and the local crossbar's demux 7 per manager, where the module's parameter contract and `fabric.adoc` give `FabricMaxTrans` 32 and `MaxMstTrans` 8; the leaf holds RREADY, probes at the counters' own handshake points, requires the port behind each demux to withhold nothing, and asserts the chapter's numbers (the issue number follows once filed)
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
-|#3654 |`smc_jtag_dm_sba_uncore_hold_obs_test` |`held_out` |`cpu.adoc` does not state what the DMI shows while the uncore reset is held; the DMI stays live under the hold and a system bus write is not started (`sbaddress0` does not advance under `sbautoincrement`) while `sbcs` reports `sbbusy` 0 and `sberror` 0; the `OBS-DM-SBA-UNDER-HOLD` line records the readbacks, the CHK lines grade the writes before and after the hold and the unchanged word
 |===
 
 The reproducers are the `rtl_issue` group:
@@ -55249,122 +55396,10 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_r
 
 '''''
 
-[[sec-586-smc_jtag_dm_sba_uncore_hold_obs_test]]
-===== 586 `smc_jtag_dm_sba_uncore_hold_obs_test`
-
-*Phase*: 3
-
-*Area*: JTAG
-
-*Source Module*: `smc_jtag_dm_sba_uncore_hold_obs_test`
-
-*BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
-`tb_cpu_jtag_tdi` and `tb_cpu_jtag_tdo` with `tb_cpu_jtag_reset` pulsed while TCK runs; DMI
-addresses `sbcs` 0x38 (`sbbusyerror` bit 22, `sbbusy` bit 21, `sbaccess` bits 19:17,
-`sbautoincrement` bit 16, `sberror` bits 14:12, write 1 to clear), `sbaddress0` 0x39,
-`sbaddress1` 0x3A and `sbdata0` 0x3C, with
-`dtmcs` giving `abits` and the idle count; ocah_axi_vip (AXI) on SEP_IN writing and reading
-`CPU_CTRL.RESET_CTRL` (8 bytes, `debug_reset_n` at bit 24, `uncore_reset_n` at bit 8),
-`CPU_CTRL.RESET_TIMEOUT` (`timeout_value` 32, `timeout_mode` set, `reset_applied` read back),
-`CPU_CTRL.SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` (8 bytes, addresses from the generated
-address map); DMI `data0` 0x04 and `dmstatus` 0x11 read under the hold; `clk_smc_i`
-
-*Run mode*: one testlist entry in `testlists/holdout.toml`; group `held_out`, outside `all`, run
-on demand; `run_modes` `smoke`; `timeout_sec` 1800; tags `jtag`, `reset`; seed 1; tool Verilator
-(cocotb).
-
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed.
-
-*Objective*: A system bus write while the uncore reset is held leaves its `CPU_CTRL.SCRATCH`
-word unchanged and a system bus write after the release lands; what the DMI shows under the hold
-(`sbcs`, `sbaddress0`, `data0`, `dmstatus`) is recorded for the ruling the chapter still owes.
-
-*Test Coverage*:
-
-* After the debug reset release and `dmcontrol.dmactive` = 1, `sbcs` reads `sbbusy` 0 and
-  `sberror` 0.
-* With `SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` zeroed over AXI, a 32-bit system bus write to
-  `SCRATCH[4]` with `sbautoincrement` set ends `sbbusy` 0 `sberror` 0, advances `sbaddress0` by 4
-  and the AXI read returns the pattern.
-* With `RESET_TIMEOUT` in force mode and `uncore_reset_n` written 0, `reset_applied` sets; the
-  `sbdata0` scan of a system bus write to `SCRATCH[5]` under the hold reaches the Debug Module
-  (`sbdata0` reads back the pattern) and `SCRATCH[5]` reads 0 over AXI during the hold.
-* Under the hold the `sbcs` of that write, the `sbaddress0` readback (whether it advanced under
-  `sbautoincrement`), a `data0` write and readback and `dmstatus` are printed on the
-  `OBS-DM-SBA-UNDER-HOLD` line and not compared.
-* After `uncore_reset_n` is written 1 and `reset_applied` clears, `sbcs` reads `sbbusy` 0 and
-  `sberror` 0 once the error bits are cleared, and a system bus write to `SCRATCH[6]` ends
-  `sberror` 0, advances `sbaddress0` by 4 and reads back over AXI; `SCRATCH[5]` after the release
-  is printed and not compared.
-
-*Test Procedure*:
-
-[arabic]
-. Read `CPU_CTRL.RESET_TIMEOUT`. Write `CPU_CTRL.RESET_CTRL` with `debug_reset_n` set, wait 64
-  `clk_smc_i` cycles, read it back and require bit 24 set. Create the TAP, reset it with
-  `tb_cpu_jtag_reset` while TCK steps, read IDCODE, activate the Debug Module (`dmactive` plus a
-  bounded wait on `dmstatus`), read `dtmcs` for `abits` and the idle count, read `sbcs` and
-  `dmstatus`; require `sbbusy` 0 and `sberror` 0.
-. Write 0 to `SCRATCH[4]`, `SCRATCH[5]` and `SCRATCH[6]` over AXI. Write `sbcs` with `sbaccess` 2,
-  `sbautoincrement` 1 and `sberror` cleared, `sbaddress1` 0, `sbaddress0` the `SCRATCH[4]` address
-  and `sbdata0` the pattern; read `sbcs` until `sbbusy` is 0 (sixteen reads at most), require
-  `sberror` 0, read `sbaddress0` and require the address plus 4. Read `SCRATCH[4]` and
-  `SCRATCH[5]` over AXI; require the pattern and 0.
-. Write `RESET_TIMEOUT` with `timeout_value` 32 and `timeout_mode` 1; write `RESET_CTRL` with
-  `uncore_reset_n` 0 and `debug_reset_n` 1; read it back; read `RESET_TIMEOUT` until
-  `reset_applied` is 1 (sixty-four reads at most).
-. Start a 32-bit system bus write to `SCRATCH[5]` as in step 2 and read `sbcs` until `sbbusy` is 0
-  or sixteen reads pass; read `sbaddress0` and `sbdata0`, require `sbdata0` to read the pattern;
-  write `data0` with a pattern and read it; read `dmstatus`; print all of them on the
-  `OBS-DM-SBA-UNDER-HOLD` line. Read `SCRATCH[5]` over AXI and require 0.
-. Write `RESET_CTRL` with `uncore_reset_n` 1, read `RESET_TIMEOUT` until `reset_applied` is 0, wait
-  64 cycles, read `sbcs` and `dmstatus`, write `sbcs` with `sberror` and `sbbusyerror` cleared and
-  read it; require `sbbusy` 0 and `sberror` 0. Read `SCRATCH[5]` over AXI (printed). Start a
-  system bus write to `SCRATCH[6]`, require `sbbusy` 0 and `sberror` 0 within the bound, read
-  `SCRATCH[6]` over AXI and require the pattern.
-. Restore `RESET_TIMEOUT` and read it back. Require the steps in order with increasing stamps and
-  each checker line after its step, print the ordered-fence line and the bounded waits (DMI busy
-  retries, four at most; `dmactive` wait, sixteen reads; `sbbusy` wait, sixteen reads;
-  `reset_applied` wait, sixty-four reads).
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-DM-SBA-WORD-UNCHANGED-UNDER-HOLD` |With `reset_applied` set, the `sbdata0` scan of the system
-bus write to `SCRATCH[5]` reaches the Debug Module (`sbdata0` reads back the pattern) and
-`SCRATCH[5]` reads 0 over AXI during the hold, with the `SCRATCH[4]` write before the hold as the
-positive control; a lost scan, a changed `SCRATCH[5]` or a failed control fails it
-|`CHK-DM-SBA-RESUMES-AFTER-RELEASE` |After the release, `sbcs` reads `sbbusy` 0 and `sberror` 0
-once the error bits are cleared, and the system bus write to `SCRATCH[6]` ends `sberror` 0 within
-the bound, advances `sbaddress0` by 4 and reads back over AXI; a stuck `sbbusy`, a nonzero
-`sberror`, an unadvanced `sbaddress0` or a missing word fails it
-|`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
-lines follow their steps; a missing or misordered term fails it
-|`CHK-TIMEOUT-PATHS` |The DMI busy retries (four at most), the sixteen-read `dmactive` and
-`sbbusy` waits and the sixty-four-read `reset_applied` wait are bounded and fail on expiry with the
-last `sbcs` and DMI response; the `sbbusy` wait under the hold records its result instead of
-failing
-|===
-
-*Pass Criteria*: `CHK-DM-SBA-WORD-UNCHANGED-UNDER-HOLD` and `CHK-DM-SBA-RESUMES-AFTER-RELEASE`
-hold after their compares; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert
-holds. Enrolled in: `held_out` only (see <<smc-held-out-testcases>>). This card records what a run
-must show, not a pass.
-
-*Scope limit*: The `sbcs`, `sbaddress0`, `data0` and `dmstatus` readbacks under the hold and
-`SCRATCH[5]` after the release are printed and not compared: the chapter does not state what the
-DMI shows while the uncore reset is held (the Debug Module does not start the access, `sbaddress0`
-does not advance under `sbautoincrement`, and `sbcs` reports `sbbusy` 0 and `sberror` 0).
-
-'''''
-
-The observation leaves of `held_out` (`smc_flr_counter_timing_obs_test`,
-`smc_jtag_dm_sba_uncore_hold_obs_test`) pass today: each logs `OBS-*` lines for the
-value its specification issue (#3423, #3654) has to rule on and grades nothing about it. When the ruling lands
-the `OBS-*` line becomes a `CHK-*` grade and the leaf joins its feature testlist.
+The observation leaf of `held_out` (`smc_flr_counter_timing_obs_test`) passes today: it logs
+`OBS-*` lines for the value its specification issue (#3423) has to rule on and grades nothing
+about it. When the ruling lands the `OBS-*` line becomes a `CHK-*` grade and the leaf joins its
+feature testlist.
 
 ===== SV-UVM held-out scenarios
 
@@ -57339,7 +57374,6 @@ which runs a `c_compile` stage, is run on demand with the toolchain image
 |`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |As above
 |`smc_flr_counter_timing_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It measures the FLR pre-delay and hold on `clk_ref_i` and grades nothing about them; #3423 asks `reset_unit.rdl` to name the clock and the offset |#3423 is ruled: the `OBS-FLR` lines become `CHK-FLR-PRE-DELAY-CYCLES` and `CHK-FLR-HOLD-CYCLES` grades and the leaf joins `reset`
 |`smc_fabric_demux_bucket_limits_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It grades `FabricMaxTrans` 32 per ID bucket at the SEP region demux and `MaxMstTrans` 8 at the local crossbar's SEP_IN demux with RREADY held and measures 31 and 7, the `axi_demux` counter sizing; `expect_fail` grades the recorded failure as PASS |The chapter or the parameters settle the number: the leaf grades it and joins `fabric`
-|`smc_jtag_dm_sba_uncore_hold_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records what the DMI shows while the uncore reset is held and grades the system bus writes before and after the hold and the unchanged `SCRATCH[5]`; the chapter owes the statement that a system bus access under the hold is not started and reports no `sberror` (#3654) |The ruling lands: the `OBS-DM-SBA-UNDER-HOLD` readbacks become `CHK-*` grades and the leaf joins `jtag`
 |===
 
 `smc_rom.toml` is in the toolchain bucket: every leaf in it declares
