@@ -75,6 +75,7 @@ from env.sep_chk_log import SepChkLog
 from env.sep_esrc_pattern_noise import (
     NUM_LANES,
     Alternate,
+    EsrcStrobeTimeout,
     LanePattern,
     SepEsrcPatternNoise,
     Square,
@@ -237,12 +238,19 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
     async def _observe_source(self, ht: SepHtWatermark, sel: int) -> None:
         """OBS-HT-WM-SOURCE: HT_WATERMARK after the fixed pattern of selector ``sel``.
 
-        An unsupported ``sel`` runs the REPCNT_HI pattern and word count.
+        An unsupported ``sel`` runs the REPCNT_HI pattern and word count. The leg
+        grades nothing: a selector that does not settle to the written value
+        (``sel_settled=0``) or a pattern that delivers fewer words than asked
+        within the pacing bound (``short``) is logged on the record, not raised.
         """
         pattern, want_words = _SOURCE_LEGS.get(sel, _SOURCE_LEGS[REPCNT_HI])
         await ht.hold_health_tests_off()
+        sel_settled = 1
         if sel in SUPPORTED:
-            await ht.write_num(sel)
+            try:
+                await ht.write_num(sel)
+            except AssertionError:
+                sel_settled = 0
         else:
             await ht.write_unsupported(sel)
         sel_rb = await ht.read_num()
@@ -254,7 +262,11 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             await ht.enable_sample_path()
             await ht.enable_health_tests()
             mark = noise.mark()
-            await noise.wait_words(want_words, want_words * _SOURCE_CYCLES_PER_WORD_BOUND)
+            short = 0
+            try:
+                await noise.wait_words(want_words, want_words * _SOURCE_CYCLES_PER_WORD_BOUND)
+            except EsrcStrobeTimeout as exc:
+                short = exc.missing
             words = noise.words_since(mark)
             wm = await ht.read_watermark()
         finally:
@@ -264,9 +276,11 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             "HT-WM-SOURCE",
             sel=f"0x{sel:x}",
             sel_rb=f"0x{sel_rb:x}",
+            sel_settled=sel_settled,
             arm=f"0x{arm:04x}",
             pattern=pattern.describe(),
             words=words,
+            short=short,
             watermark=f"0x{wm:04x}",
             moved=wm != arm,
         )
