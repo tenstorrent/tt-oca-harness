@@ -51,8 +51,9 @@ Checks:
                    (``dbg_sep_reset_n_o`` = 0) and closes when the release and
                    fuse sense are done, before the first register write.
                    Controls: the last sample before ``rst_ni`` falls reads chip
-                   select low with ``spi_cs_oe_o``, ``spi_sck_oe_o`` and
-                   ``spi_sd_oe_o[0]`` = 1, and the window has samples.
+                   select low with ``spi_cs_oe_o`` and ``spi_sck_oe_o`` = 1
+                   and ``spi_sd_oe_o`` equal to the Tx lane pattern of the
+                   trial width, and the window has samples.
   CHK-SPI-SB-FRAME (``env/sep_spi_scoreboard.py``, one scoreboard per midseg
                    trial): the clean dummy command has LEN+1 sample edges, and
                    the clean Tx command at the width of the trial puts its
