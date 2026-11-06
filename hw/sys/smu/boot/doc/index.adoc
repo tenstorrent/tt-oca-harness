@@ -367,8 +367,8 @@ which one waits for the other.
 . [[req-SMU-BOOT-SMC-010]]*[SMU-BOOT-SMC-010]* *Early start-up* (every hart, assembly): check
   memory health (MBIST and repair, unless bypassed), set the trap vector, and on the boot hart
   clear the coordination scratch registers 3, 8, 9, 11, 13 and 14 while keeping register 15.
-  An MBIST failure or a memory-repair failure stops the hart unless eFuse
-  `SMC_CONFIG.dft_ignore_error` is set; an MBIST abort stops it regardless.
+  An MBIST abort, an MBIST failure or a memory-repair failure stops the hart unless eFuse
+  `SMC_CONFIG.dft_ignore_error` is set.
   Harts 1 to 3 then wait in `wfi`.
 . [[req-SMU-BOOT-SMC-020]]*[SMU-BOOT-SMC-020]* *Coordination* (hart 0, POST phases 0 and 2):
   initialize both status rings, publish the SEP ring offset and the SEP-safe SRAM range, and
@@ -549,14 +549,10 @@ that must hold for a release build uses the status channels.
 |===
 |Failure |Effect |Signature
 
-|SMC MBIST abort
-|SMC hart stops in `wfi` without parking. The SEP waits at SMU-BOOT-WAIT-010.
-|SMC scratch 15 abort code; no `BUFFER_READY`
-
-|SMC MBIST or memory-repair failure
-|As an MBIST abort, unless eFuse `SMC_CONFIG.dft_ignore_error` is set. Then the boot continues
-as if the check had passed.
-|SMC scratch 15 failure code, kept for the rest of the boot; with the eFuse unset, no
+|SMC MBIST abort, MBIST failure or memory-repair failure
+|SMC hart stops in `wfi` without parking, and the SEP waits at SMU-BOOT-WAIT-010, unless eFuse
+`SMC_CONFIG.dft_ignore_error` is set. Then the boot continues as if the check had passed.
+|SMC scratch 15 abort or failure code, kept for the rest of the boot; with the eFuse unset, no
 `BUFFER_READY`
 
 |SEP memory health
@@ -648,6 +644,11 @@ complement.
 (`SEP-ROM-SB-020`, `SEP-ROM-SB-030`) that the validator does not implement. This
 specification's decision (SMU-BOOT-SB-010) is the implemented one.
 |SMU-BOOT-SB-010
+
+|SMC MBIST abort
+|The SMC Boot ROM stops on an MBIST abort without reading `SMC_CONFIG.dft_ignore_error`, so
+the abort stops the hart even when the eFuse is set.
+|SMU-BOOT-SMC-010; the MBIST row of <<smu-boot-failure-table>>
 
 |Debug-locked SMC policy
 |In debug-locked TEST_DEV and RMA_SiP, the SMC Boot ROM still allows `ExecuteImage`.
