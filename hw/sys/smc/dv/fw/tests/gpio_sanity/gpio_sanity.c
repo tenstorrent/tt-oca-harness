@@ -10,7 +10,7 @@
 #define BLOCKED_REQUEST 0xbadcab1e
 #define PAD2SOC_MASK 0x80000000
 
-#define TOTAL_GPIOS 65
+#define TOTAL_GPIOS 67
 
 #define GPIO_INTF_DATA_CTRL_OFF \
     (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - \
@@ -196,7 +196,7 @@ void test_rw_core2pad(void) {
         gpio_intf.w = read_data_control;
 
         // This GPIO triggers cool reset; leave it undriven so the walk does not reset the SMC
-        if (gpio_num == 61) {
+        if (gpio_num == 63) {
             gpio_intf.f.core2pad = 0;
             gpio_intf.f.interface_enable = 0;
         } else {

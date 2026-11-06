@@ -68,7 +68,7 @@ Checkers:
                     the wipe: its ZEROIZE leg needs at least one window that held a
                     non-zero word, else the check fails. ML-DSA KEYGEN+SIGN fills no
                     secret output window, so its ZEROIZE leg grades READY and logs
-                    the wipe part as ``OBS-BLOCKED`` when every window is empty.
+                    the wipe part as ``INFO-BLOCKED`` when every window is empty.
   CHK-ABR-ORDER     the single-step result equals its ACVP vector whatever ran
                     before it.
   CHK-ABR-TAMPER    for the drawn reject case ``MLDSA_VERIFY_RES`` differs from

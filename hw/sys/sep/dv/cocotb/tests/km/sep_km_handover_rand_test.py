@@ -10,7 +10,7 @@ is the SEP host and reaches the KM only through ``km_mailbox_sep``.
 Images. The spin image (``env/sep_km_img_h.py``, ``spin_image``) is a drawn image
 whose word 0 jumps to itself. IMG-H (``tests/km_fw/km_img_h.S``, committed as
 ``tests/km_img_h.parhex``) runs after the handover and sends the KM state that
-it reads at the jump to the host as one 263-word KM mailbox message, decoded by
+it reads at the jump to the host as one 264-word KM mailbox message, decoded by
 ``env/sep_km_img_h.py``. The images grade nothing; every golden is in this leaf
 and its model (``sep_km_handover_rand_model.py``), from
 ``hw/ip/key_manager/doc/firmware.adoc`` ("0x11 - CMD_SRAM_LOAD_EXEC",
@@ -49,7 +49,8 @@ Checks:
   CHK-HO-REGS         IRQ_ENABLE 0, KM_IRQ_ENABLE 0, IRQ_ENTRY_ADDR 0x10,
                       IRQ_ENTRY_LOCK 0, CPU IRQ mask bits 3 to 5 set,
                       SRAM_EXEC_MODE.enable 1 at the jump.
-  CHK-HO-NOIRQ        every IRQ_STATUS bit reads 0 at the jump.
+  CHK-HO-NOIRQ        every IRQ_STATUS bit and every SRAM_WRITE_LOCK_VIOLATION
+                      bit reads 0 at the jump.
   CHK-HO-ENTRY        x5 = 0x8000, every other reported GPR 0.
   CHK-HO-OTP          OTP_READ_LOCK: the four secret bits set; the public and
                       life-cycle bits clear.
@@ -68,7 +69,8 @@ Checks:
 
 Controls: PIC bit 30 reads 0 in a quiet window before the corrupted load and
 after the good load; the good size n1 gets the confirmation; the read path of
-each locked-slot read shows AXI_SLVERR; the free-slot word and the KMAC
+each locked-slot read shows AXI_SLVERR; the region-31 store shows its
+violation bit; the free-slot word and the KMAC
 KEY_CTRL write and readback show a live read path; pass 1 posts 6 junk words;
 pass 2 has six banks with no key; the pass 1 shared key is pending and its KEY
 words are non-zero before the handover. The cells that ``sep_km_handover_test`` grades (the code of FW_WORDS

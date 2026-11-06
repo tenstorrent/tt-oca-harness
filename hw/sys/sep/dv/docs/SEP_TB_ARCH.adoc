@@ -1997,8 +1997,8 @@ them.
 |`CHK-<NAME> PASS` / `CHK-<NAME> FAIL` |A checker: the DUT value compared with a golden from a specification or the RDL. A FAIL fails the leaf. |yes
 |`CTRL-<NAME>`, `CTRL-MISSING <NAME>` |A control: proof that the stimulus of a check reached its case, so that the check can fail. A missing control fails the leaf. |yes
 |`OBS-<NAME>` |A DUT value whose golden no specification states yet. It prints the value and grades nothing; it becomes a `CHK-` when a specification states the value. |no
-|`OBS-BLOCKED CHK-<NAME>` |A check that this run could not grade, with the reason. |no
-|`INFO-<NAME>` |A bench record: a set-up value, a stimulus draw or redraw, a reference timing that sizes a bench window, a leg marker, or bookkeeping. No specification states a bench record. `INFO-` also covers a re-log of a DUT value that a named `CHK-` grades, in the same leaf or in another leaf; that line names its `CHK-`, and its leaf when the check is in another leaf. |no
+|`INFO-BLOCKED CHK-<NAME>` |A check that this run could not grade, with the reason. |no
+|`INFO-<NAME>` |A bench record: a set-up value, a stimulus draw or redraw, a reference timing that sizes a bench window, a leg marker, or bookkeeping. No specification states a bench record. `INFO-` also covers a re-log of a DUT value that a named `CHK-` grades, in the same leaf or in another leaf; that line names its `CHK-`, and its leaf when the check is in another leaf. `INFO-` also covers a DUT value that no check of the leaf grades and that no open specification question asks for: the specification states its golden but this leaf does not grade it, or an `OBS-` line of another leaf holds the open question. The test contract says that the value is not graded. |no
 |===
 
 A bench wait that runs past its bound before a check can grade fails the
@@ -2161,11 +2161,11 @@ IMG-H (`sep_km_handover_rand_test`) is an SRAM image, not a ROM image: the
 host streams it with `CMD_SRAM_LOAD_EXEC` after the ROM confirmation, and the
 ROM hands over to it at SRAM `0x8000`. The source is
 `cocotb/tests/km_fw/km_img_h.S` (RV32E, position-independent), and the
-committed build is `cocotb/tests/km_img_h.parhex`, 168 words in SRAM region 0
+committed build is `cocotb/tests/km_img_h.parhex`, 172 words in SRAM region 0
 (`make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_img_h.parhex`). At the jump
 the image saves x5, x1 to x4 and x6 to x14 before any other instruction writes
 them (x15 is its store base register and is not reported), reads the KM state
-and sends one KM mailbox message of 263 words: first word `0x4B4D4948`, last
+and sends one KM mailbox message of 264 words: first word `0x4B4D4948`, last
 word `0x4B4D4945` with the separator, and no response header. Then it spins.
 The header of `km_img_h.S` lists the layout, and `cocotb/env/sep_km_img_h.py`
 decodes it. The image grades nothing; every golden lives in the test. The same

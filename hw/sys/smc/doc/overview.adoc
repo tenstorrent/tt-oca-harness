@@ -59,8 +59,8 @@ detectors, marked HD on the links they watch, observe the system inbound,
 SEP inbound and data accelerator AXI links without sitting in the data
 path; their combined interrupt reaches the PLIC through `smc_peripherals`.
 
-The peripheral crossbar, `smc_periph_axi_lite_xbar`, has twelve targets.
-Ten of them are inside `smc_peripherals`. The UART, I2C, I3C and AVSBus
+The peripheral crossbar, `smc_periph_axi_lite_xbar`, has thirteen targets.
+Eleven of them are inside `smc_peripherals`. The UART, I2C, I3C and AVSBus
 register paths, and the log-engine fetch path, cross between the SMC clock
 and the peripheral clock (CDC). The remaining two targets leave the SMC:
 the DTP control registers and the `smc_external` window. In the reference

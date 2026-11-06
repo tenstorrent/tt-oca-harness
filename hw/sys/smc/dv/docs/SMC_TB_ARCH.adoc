@@ -267,10 +267,11 @@ takes over (see <<sv-uvm-realization>>).
 |eFuse |DV-only `tb_sep_security_disable` on `sep_security_disable_i` of the primary DUT (`+smc_sep_security_disable`, default 0); `tb_efuse_bank_stall_en/rd/wr` force the bank-model stall counts
 |Sideband |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug`
 |FCOV gate |DV-only `tb_fcov_gate` into `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov`,
-`smc_fabric_fcov` and `smc_map_row_fcov`: the owning leaf of a live planned covergroup holds it 1
-over its graded window
-(the SYS_OUT-error owner low over each DMA launch inside it), and the one net opens every gated
-group at once; idle 0 from `smc_base_test.py`, tied 0 under SV-UVM
+`smc_fabric_fcov`, `smc_map_row_fcov` and `smc_efuse_ctrl_fcov`: the owning leaf of a live
+planned covergroup holds it 1 over its graded window
+(the SYS_OUT-error owner low over each DMA launch inside it, the state-injection and eFuse-lock
+owners low over each cold reset inside theirs), and the one net opens every gated group at
+once; idle 0 from `smc_base_test.py`, tied 0 under SV-UVM
 |Clocks / resets |cocotb drives `clk_ref_i`, `clk_smc_i`, `clk_periph_i` into the `pll_wrap`
 oscillators (`+pll_osc_bench`), plus power-good and `rst_cold_ni`; under SV-UVM the model
 free-runs and the harness sequences the resets through `smc_tb_if`
@@ -278,6 +279,18 @@ free-runs and the harness sequences the resets through `smc_tb_if`
 |===
 
 [[env-and-agents-cocotbenvsmc_envpy]]
+*FIFO-integrity deposit* -- `tb/smc_public_scope.vlt` publishes the entry
+array `storage` of every `prim_fifo_sync_parity` and the register `q_o` of every
+`prim_flop` as `public_flat_rw`. `smc_uart_fifo_integrity_fault_test` and
+`smc_i2c_fifo_integrity_fault_test` write one bit of a queued entry's stored
+parity, or one bit of the secondary copy of a hardened pointer, by hierarchical
+path on a `clk_periph` edge (`seq_lib/smc_fifo_fault_inject.py`) and read the
+register back after the next edge, so a refused or overwritten deposit fails
+the leg. The verdicts read the DUT's reaction (`tb_uart_err_raw`,
+`tb_i2c_intg_err`, the two RAS probes, the interrupt probes and the registers);
+the written pointer copy is read again only to require the reset value the FIFO
+reset reloads. The entry array has no reset, so the sequences read only the slot they queued, and both leaves are Verilator-only (`tools = ["verilator"]`): the deposit path is the Verilator public scope. No other leaf writes a published DUT register.
+
 === Environment Components
 
 Agents are split by *honesty class* — this is the defining SMC structure:
@@ -690,8 +703,10 @@ The scoreboard also asserts non-vacuity (`total > 0`).
 * *No hierarchical writes*: every `.value=` write in `seq_lib` targets a
 top-level pin of `smc_uvm_top` -- a reset input, a `tb_*` pad stimulus, or one
 of the inject / poke hooks the VPLAN's Verification Strategy admits -- never a
-DUT register by hierarchical path. The memory-model golden is TB-local, not a DUT-hierarchy
-read.
+DUT register by hierarchical path. The one admitted hierarchical write is the
+FIFO-integrity deposit of the HDL Top section (the two FIFO-integrity leaves,
+through `seq_lib/smc_fifo_fault_inject.py`), whose verdicts read the DUT's
+reaction. The memory-model golden is TB-local, not a DUT-hierarchy read.
 * *OSS hygiene*: the public filelist must be vendor-clean — verify with
 `check_no_vendor_paths.py --filelist build/smc_bender.f --target smc`. Never
 commit simulator artifacts (waves/logs/xrun tmpdirs); the local `.gitignore`

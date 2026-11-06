@@ -8,8 +8,8 @@ package gpio_intf_wrap_reg_pkg;
 
     localparam GPIO_INTF_WRAP_REG_DATA_WIDTH = 32;
     localparam GPIO_INTF_WRAP_REG_MIN_ADDR_WIDTH = 11;
-    localparam GPIO_INTF_WRAP_REG_SIZE = 'h410;
-    localparam NUM_GPIOS = 'h41;
+    localparam GPIO_INTF_WRAP_REG_SIZE = 'h430;
+    localparam NUM_GPIOS = 'h43;
 
     typedef struct {
         logic rd_ack;
@@ -18,7 +18,7 @@ package gpio_intf_wrap_reg_pkg;
     } gpio_intf__external__in_t;
 
     typedef struct {
-        gpio_intf__external__in_t gpio_intf[65];
+        gpio_intf__external__in_t gpio_intf[67];
     } gpio_intf_wrap__in_t;
 
     typedef struct {
@@ -30,6 +30,6 @@ package gpio_intf_wrap_reg_pkg;
     } gpio_intf__external__out_t;
 
     typedef struct {
-        gpio_intf__external__out_t gpio_intf[65];
+        gpio_intf__external__out_t gpio_intf[67];
     } gpio_intf_wrap__out_t;
 endpackage

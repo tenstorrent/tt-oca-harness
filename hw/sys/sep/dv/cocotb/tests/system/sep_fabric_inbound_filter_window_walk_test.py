@@ -17,6 +17,11 @@ START_ADDR and END_ADDR bit of every entry takes a 0->1 and a 1->0 step, and
 the upper bits [55:32] decide the response of a read whose own upper bits are
 zero.
 
+CTRL-FILTER-ACTIVE (bench precondition at bring-up): the FEAT_CTRL readback
+equals ``feat_ctrl_expected`` for the PROD image, with SEC_DIS from
+``lcc_security_disable_probe_o``, and SEP_DBG reads 0, so the inbound filter
+is active. A mismatch fails the leaf before any check runs.
+
 Checkers:
   CHK-WALK-READBACK  every START/END (56 bits) and FILTER_CONFIG write to the
                      entry under test, bit-leg windows included, reads back
@@ -146,11 +151,21 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
-        assert ctl.sep_debug == 0, (
-            f"sep_debug must be 0 (filter active) in PROD, got {ctl.sep_debug} "
-            f"(FEAT_CTRL=0x{ctl.feat_ctrl:016x})"
+        state = lc_state_name(image.lc_raw())
+        if ctl.feat_ctrl != feat or ctl.sep_debug != 0:
+            msg = (
+                f"CTRL-FILTER-ACTIVE FAIL: feat_ctrl=0x{ctl.feat_ctrl:016x} golden=0x{feat:016x} "
+                f"sep_debug={ctl.sep_debug} sec_dis={sec_dis} lc={state}"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-FILTER-ACTIVE PASS: feat_ctrl=0x%016x golden=0x%016x sep_debug=0 sec_dis=%d lc=%s",
+            ctl.feat_ctrl,
+            feat,
+            sec_dis,
+            state,
         )
-        self.logger.info("inbound filter ACTIVE: %s sep_debug=0", lc_state_name(image.lc_raw()))
 
     async def _ext_read(self, addr: int) -> tuple[int, int]:
         seq = ext_read_seq(addr)
