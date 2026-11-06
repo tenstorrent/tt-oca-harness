@@ -368,6 +368,32 @@ class ResponseColumnTest(unittest.TestCase):
             ],
         )
 
+    def test_wrap_labels_array_padding_between_instances(self):
+        text = """
+addrmap entry_leaf {
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY};
+`endif
+    reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0;
+};
+addrmap other_leaf {
+    reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0;
+};
+addrmap mixed {
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+    entry_leaf entry[4] @0x0 += 0x10;
+    other_leaf other @0x100;
+};
+addrmap top {
+    mixed wrapped @0x0;
+};
+"""
+        cells = self.cells(self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text))
+        self.assertIn("between sub-blocks: SLVERR, 0x0 / SLVERR", cells["wrapped"][-2])
+        self.assertIn("between instances: OKAY, 0x0 / OKAY", cells["wrapped"][-2])
+
     def test_full_stride_extent_decodes_the_last_tail(self):
         text = RESPONSE_RDL.replace(
             "addrmap top {\n`ifdef OCAH_DOC_MEMORY_MAP\n",
@@ -517,7 +543,9 @@ addrmap bounds_top {
         text = RESPONSE_RDL.replace("    leaf high @0x100;", "    leaf high[2] @0x100 += 0x10;")
         cells = self.cells(self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text))
         self.assertEqual(
-            cells["composite"][-2], "OKAY, 0x0 / OKAY; between sub-blocks: DECERR, 0x0 / SLVERR"
+            cells["composite"][-2],
+            "OKAY, 0x0 / OKAY; between sub-blocks: DECERR, 0x0 / SLVERR; "
+            "between instances: DECERR, 0x0 / SLVERR",
         )
 
     def test_rejects_invalid_read_data(self):

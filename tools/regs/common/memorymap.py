@@ -254,7 +254,7 @@ def _extent_responses(
             tail = _own(block, "ocah_gap_resp")
             parts.append(
                 (
-                    "between sub-blocks",
+                    "between instances",
                     _gap_response(node)
                     if tail is None
                     else Response.from_rdl(tail, f"{block.get_path()}: ocah_gap_resp"),
