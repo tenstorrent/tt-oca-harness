@@ -3,7 +3,8 @@
 
 /*
  * Runs random OCCP commands, checks GET_STATUS, then drains the SEP and SMC status
- * ring buffers.
+ * ring buffers. With the STATUS_RPT_DISABLE strap set, every status command must return
+ * Unsupported_StatusID instead, and the GET_STATUS value is not checked.
  */
 
 #include "occp_test_common.h"

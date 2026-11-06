@@ -3,7 +3,9 @@
 
 /*
  * Reads the SMC and SEP status ring buffers through OCCP status commands: drains the SMC
- * buffer, interleaves SMC/SEP reads, and polls repeatedly, checking non-empty SMC entries.
+ * buffer, interleaves SMC/SEP reads, and polls repeatedly, checking non-empty SMC entries. With
+ * the STATUS_RPT_DISABLE strap set, every status command must return Unsupported_StatusID
+ * instead, so no entry is checked.
  */
 
 #include "occp_test_common.h"

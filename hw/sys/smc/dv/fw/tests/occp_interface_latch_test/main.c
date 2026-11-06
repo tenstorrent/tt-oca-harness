@@ -3,7 +3,8 @@
 
 /*
  * Verifies that the ROM latches to the first I2C interface that issues a valid OCCP command
- * and ignores commands from the other I2C interface thereafter.
+ * and ignores commands from the other I2C interface thereafter. With the STATUS_RPT_DISABLE strap
+ * set, the Step 3 GET_OCCP_COMMAND_COUNT must return Unsupported_StatusID instead of a count.
  */
 
 #include "occp_test_common.h"
@@ -64,6 +65,9 @@ static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected
         ctx->overall_result = false;
         return false;
     }
+    if (ctx->status_reporting_disabled) {
+        return true;
+    }
     uint8_t actual_cmd_count = status_data & 0xFF;
     if (actual_cmd_count != expected_cmd_count) {
         simputshex16("FAIL: cmd_count mismatch after status, expected ", expected_cmd_count);
@@ -94,6 +98,8 @@ int main(void) {
     ctxB.exp_occp_last_error = 0;
     set_ctx_addr_bounds(&ctxA);
     set_ctx_addr_bounds(&ctxB);
+    ctxA.status_reporting_disabled = smc_strap_is_set(SMC_STRAP_STATUS_RPT_DISABLE);
+    ctxB.status_reporting_disabled = smc_strap_is_set(SMC_STRAP_STATUS_RPT_DISABLE);
     simputs("=== OCCP Interface Latch Test ===\n");
 
     simputs("Waiting for target to be ready...\n");
