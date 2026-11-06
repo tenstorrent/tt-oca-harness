@@ -410,7 +410,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         before: dict[str, int],
         armed: tuple[str, ...],
         after: dict[str, int],
-        cs_low: int,
+        cs_low: int | None,
         clean: tuple[int, int],
         clean_len: int,
         *,
@@ -433,7 +433,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         exp_cycles = clean_len + 1
         line = (
             f"trial={trial} width={width} data_bytes={data_bytes} "
-            f"cs_low_at_reset={cs_low} regs={len(_REGS)} "
+            f"cs_low_at_reset={'-' if cs_low is None else cs_low} regs={len(_REGS)} "
             f"nonreset={len(nonreset)} mismatch={len(mismatch)} "
             f"clean_cmd={int(cycles == exp_cycles and err == 0)} "
             f"clean_cycles={cycles}/{exp_cycles} clean_err_status=0x{err:02x}"
@@ -469,7 +469,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         after = await self._read_regs()
         self.logger.info("INFO-COLDRST-RST LOG seed=%d trial=idle %s", self.seed, rst)
         clean = await self._clean_command(draw["idle_clean_len"])
-        self._grade("idle", before, armed, after, 0, clean, draw["idle_clean_len"])
+        self._grade("idle", before, armed, after, None, clean, draw["idle_clean_len"])
 
         # Trials 2 to 4, midseg: one per lane width, in the drawn order.
         for trial in draw["midseg"]:

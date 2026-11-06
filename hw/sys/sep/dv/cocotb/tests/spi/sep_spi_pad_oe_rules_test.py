@@ -12,7 +12,7 @@ the output-enable rules; ``spi_controller.adoc``, CONTROL.OUTPUT_EN, reset 0):
 * a data lane is driven only while chip select is asserted;
 * with CONTROL.OUTPUT_EN = 1, ``spi_cs_oe_o`` and ``spi_sck_oe_o`` are 1 with
   chip select high or low:
-  ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:222-224``
+  ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:74-77``
   (CONTROL.OUTPUT_EN) "Enable the SPI host output buffers for the sck, csb, and
   sd lines." The pin-assignment text narrows only the data lanes.
 
@@ -151,6 +151,7 @@ class _Win:
     cs_high_after_rise: int = 0
     cs_rises: int = 0
     sd0_high_cs_low: int = 0
+    sd31_high_cs_low: int = 0
     cs_low_violations: int = 0
     cs_high_violations: int = 0
     cs_high_cs_sck: int = 0
@@ -272,6 +273,8 @@ class _OeSampler:
             win.cs_low += 1
             if sd_oe is not None and sd_oe & 1:
                 win.sd0_high_cs_low += 1
+            if sd_oe is not None and sd_oe & 0xE:
+                win.sd31_high_cs_low += 1
             if cs_oe is None or sck_oe is None:
                 win.xz += 1
             if (cs_oe, sck_oe) != EXP_CS_LOW:
@@ -532,11 +535,13 @@ class sep_spi_pad_oe_rules_test(sep_base_test):
             f"expect_cs_sck_oe={EXP_CS_HIGH_CS_SCK} "
             f"cs_sck_oe_violations={win.cs_high_cs_sck_violations} "
             f"control_sd0_high_cs_low={win.sd0_high_cs_low} "
+            f"control_sd31_high_cs_low={win.sd31_high_cs_low} "
             f"control_off_samples={off.samples} control_off_violations={off.violations} "
             f"xz={win.xz} first={';'.join(win.first) or '-'}"
         )
         if (
             win.sd0_high_cs_low == 0
+            or win.sd31_high_cs_low == 0
             or win.cs_high_after_rise == 0
             or win.cs_high_cs_sck == 0
             or off.samples == 0
