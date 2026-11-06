@@ -615,7 +615,9 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
             read_txt = (
                 f"(data not converted, read declared observed-only to the monitor; "
                 f"rdata_resolvable={resolvable} rdata_bits={bits}; "
-                f"exempt ARs/beats={exempt[0]}/{exempt[1]}; read data LINKED-ISSUE SF-003, SF-004)"
+                f"exempt ARs/beats={exempt[0]}/{exempt[1]}; read data LINKED-ISSUE: the read "
+                f"data of an aperture-end word with no reset value and the response code of a "
+                f"dropped DCT write)"
             )
         bresp = await self._write_past(f"{tag}_TOP", top)
         beats = monitor.r_beats - beats_before
@@ -636,7 +638,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         if bresp_declared is None:
             bresp_txt = (
                 f"bresp={bname} (logged: the component map drops DCT writes without naming "
-                f"a response code, LINKED-ISSUE SF-004)"
+                f"a response code, LINKED-ISSUE: the response code of a dropped DCT write)"
             )
         else:
             assert bresp == bresp_declared, (
@@ -932,7 +934,10 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         assert scr == base + UART_SCR_OFF, f"SCR at 0x{scr:08x}"
         await self._wr_exact("UART", "UART_SCR", scr, AXI_RESP_OKAY, UART_SCR_VALUE)
         got = await self._rd_exact("UART", "UART_SCR_RB", scr, (AXI_RESP_OKAY, UART_SCR_VALUE))
-        uart = f"{', '.join(parts)} (LINKED-ISSUE SF-015); SCR=0x{got:X} OKAY"
+        uart = (
+            f"{', '.join(parts)} (LINKED-ISSUE: the UART wrapper sub-block extents and "
+            f"log-engine gap answers); SCR=0x{got:X} OKAY"
+        )
 
         parts = []
         for bank_off, off in LOGENG_PROBE_OFFSETS:
@@ -949,7 +954,8 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
             "UART", "LOG_WRITE_ADDR_RESTORE_RB", lwa, (AXI_RESP_OKAY, 0)
         )
         logeng = (
-            f"bank {', '.join(parts)} (LINKED-ISSUE SF-015); LOG_WRITE_ADDR=0x{got:08X} OKAY "
+            f"bank {', '.join(parts)} (LINKED-ISSUE: the UART wrapper sub-block extents and "
+            f"log-engine gap answers); LOG_WRITE_ADDR=0x{got:08X} OKAY "
             f"(restored 0x{restored:X})"
         )
         return uart, logeng
@@ -970,7 +976,8 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
             None, "EFUSE_SHADOW_FIRST", self._in_window("smc_efuse_map", EFUSE_SHADOW_FIRST_OFF)
         )
         cocotb.log.info(
-            "EFUSE: EFUSE_INTERFACE_CTRL_STATUS=0x%08x shadow +0x0=0x%08x (data recorded, SF-018)",
+            "EFUSE: EFUSE_INTERFACE_CTRL_STATUS=0x%08x shadow +0x0=0x%08x (data recorded; "
+            "open: which DMA, AVSBus and eFuse-shadow offsets are registers or holes)",
             status,
             first,
         )
@@ -987,10 +994,13 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         await self._wr_exact("I3C", "I3C_HOLE", hole, AXI_RESP_OKAY)
         rerd = await self._rd_exact("I3C", "I3C_HOLE_RERD", hole, (AXI_RESP_OKAY, 0))
         if self.gated["I3C"]:
-            return f"gated: +0x3F0 rd/wr/re-rd SLVERR 0x{rd:08X}/0x{rerd:08X} (SF-019)"
+            return (
+                f"gated: +0x3F0 rd/wr/re-rd SLVERR 0x{rd:08X}/0x{rerd:08X} "
+                "(open: whether the peripheral clock-gate enables are clear after reset)"
+            )
         return (
             f"+0x3F0 rd OKAY 0x{rd:X}, wr OKAY, re-rd OKAY 0x{rerd:X} "
-            "(DAT/DCT not accessed, SF-029)"
+            "(DAT/DCT not accessed; open: whether I3C DAT and DCT entries have a reset value)"
         )
 
     async def _err_telemetry_avs(self) -> tuple[str, str]:
@@ -1009,7 +1019,10 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         ctrl_val = await self._rd_code("TELEMETRY", "TELEM_CTRL", ctrl)
         telemetry = "hole rd OKAY 0x0 wr OKAY; past rd DECERR 0xBADCAB1E wr DECERR; CTRL OKAY"
         if self.gated["TELEMETRY"]:
-            telemetry = "gated: every access SLVERR 0xBADCAB1E (SF-019)"
+            telemetry = (
+                "gated: every access SLVERR 0xBADCAB1E "
+                "(open: whether the peripheral clock-gate enables are clear after reset)"
+            )
 
         unit = "smc_avsbus_controller"
         past = self._past_extent(unit, AVS_PAST_OFF)
@@ -1018,7 +1031,11 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         first = await self._rd_code("AVS", "AVS_FIRST", self._in_window(unit, AVS_FIRST_OFF))
         avs = f"past rd DECERR 0xBADCAB1E wr DECERR; +0x0 rd OKAY data=0x{first:08X}"
         if self.gated["AVS"]:
-            avs = f"gated: every access SLVERR 0xBADCAB1E (SF-019); +0x0 data=0x{first:08X}"
+            avs = (
+                "gated: every access SLVERR 0xBADCAB1E "
+                "(open: whether the peripheral clock-gate enables are clear after reset); "
+                f"+0x0 data=0x{first:08X}"
+            )
         cocotb.log.info("TELEMETRY: CTRL=0x%08x (data recorded)", ctrl_val)
         return telemetry, avs
 
@@ -1035,7 +1052,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         return (
             f"past-window rd DECERR 0x{rd:08X} wr DECERR; +0x6000 rd "
             f"{_RESP_NAMES.get(rresp, rresp)} 0x{rdata:08X} wr {_RESP_NAMES.get(bresp, bresp)} "
-            f"(LINKED-ISSUE SF-016)"
+            f"(LINKED-ISSUE: the reference integration's answer to an unclaimed external offset)"
         )
 
     def log_timeout_paths(self) -> None:

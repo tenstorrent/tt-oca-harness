@@ -22,8 +22,8 @@
 // Claims: (P1) a write whose AW is accepted after the lock write's B, addressed to one of the
 // entry's three registers, answers DECERR and leaves the locked configuration unchanged;
 // (P2) a read of the entry's FILTER_CONFIG accepted after the lock write's B returns the locked
-// configuration on the software-writable fields. The read's response code is open (SF-009) and
-// is not asserted. A write queued before the lock write's B is open (SF-008): the
+// configuration on the software-writable fields. The read's response code is open and
+// is not asserted. A write queued before the lock write's B is open: the
 // one-write-at-a-time assumption below excludes it, so P1 claims only writes accepted after that
 // B. No per-ID, per-beat, WLAST, strobe-lane or exclusive rule is stated here.
 
@@ -167,7 +167,7 @@ module smc_filter_lock_props #(
 `endif
 
   // One write at a time: the next AW and W wait for the previous write's B. A write queued before
-  // the lock write's B is the open question SF-008, so this assumption excludes it rather than
+  // the lock write's B is an open question, so this assumption excludes it rather than
   // claiming its outcome.
   `OCAH_FV_ASSUME(asm_env_one_write_aw, `OCAH_FV_IMPLIES(aw_pending_q, !req_i.aw_valid), clk_i, rst_ni)
   `OCAH_FV_ASSUME(asm_env_one_write_w, `OCAH_FV_IMPLIES(w_pending_q, !req_i.w_valid), clk_i, rst_ni)
