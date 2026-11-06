@@ -289,7 +289,7 @@ register back after the next edge, so a refused or overwritten deposit fails
 the leg. The verdicts read the DUT's reaction (`tb_uart_err_raw`,
 `tb_i2c_intg_err`, the two RAS probes, the interrupt probes and the registers);
 the written pointer copy is read again only to require the reset value the FIFO
-reset reloads. No other leaf writes a published DUT register.
+reset reloads. The entry array has no reset, so the sequences read only the slot they queued, and both leaves are Verilator-only (`tools = ["verilator"]`): the deposit path is the Verilator public scope. No other leaf writes a published DUT register.
 
 === Environment Components
 

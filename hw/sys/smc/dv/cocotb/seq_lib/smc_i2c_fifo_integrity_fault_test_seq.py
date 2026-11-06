@@ -17,13 +17,16 @@ the fault is real, on the controller TX (FMT) FIFO of I2C0:
 * **Parity.** With the controller disabled one format entry is queued, so it
   stays at the head. The stored parity bit of that entry is flipped by a
   deposit into the published `prim_fifo_sync_parity` storage
-  (`tb/smc_public_scope.vlt`); the entry's data bits are untouched.
-  `tb_i2c_intg_err[0]`, `tb_ras_i2c_intg_err` and
-  `INTR_STATE.CONTROLLER_TX_FIFO_ERROR` must rise with `INTR_ENABLE` all
-  zero and `tb_i2c_irq[0]` low; enabling the source must raise the line;
-  enabling the controller pops the entry (the byte goes out with START and
-  STOP and `NAKOK`, so the unanswered address ends the transfer) and the
-  error must fall with it.
+  (`tb/smc_public_scope.vlt`); the entry's data bits are untouched, and only
+  that slot is read, since the entry array has no reset and the other slots
+  are X on a four-state simulator. `tb_i2c_intg_err[0]`,
+  `tb_ras_i2c_intg_err` and `INTR_STATE.CONTROLLER_TX_FIFO_ERROR` must rise
+  with `INTR_ENABLE` all zero and `tb_i2c_irq[0]` low; enabling the source
+  must raise the line; the status bit's reading after a W1C with the fault
+  still live is recorded on `OBS-I2C-FIFO-INTG-W1C-LIVE`, not required
+  (`i2c.rdl` says only "Write `1` to clear"); enabling the controller pops
+  the entry (the byte goes out with START and STOP and `NAKOK`, so the
+  unanswered address ends the transfer) and the error must fall with it.
 * **Pointer.** With the FIFO empty, one bit of the secondary copy of the
   write pointer (`prim_count` keeps two copies whose sum is constant) is
   flipped off its reset value. The error must rise with the FIFO empty, hold,
@@ -42,7 +45,15 @@ from cocotb.triggers import ClockCycles
 
 from .smc_addr_map import I2C_CG_EN, _field_mask, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_fifo_fault_inject import SMC_PERIPH, flip_bit, hier, hold_level, read_int, wait_level
+from .smc_fifo_fault_inject import (
+    SMC_PERIPH,
+    flip_bit,
+    hier,
+    hold_level,
+    read_field,
+    read_int,
+    wait_level,
+)
 from .smc_i2c_field_masks import (
     _I2C_H,
     I2C_CTRL_ENABLEHOST,
@@ -210,7 +221,7 @@ class smc_i2c_fifo_integrity_fault_test_seq(SmcCsrSeq):
         assert level == 1, f"{label}: HOST_FIFO_STATUS.FMTLVL={level}, expected 1"
 
         storage = hier(FMT_FIFO_STORAGE)
-        entry = read_int(storage) & ((1 << ENTRY_BITS) - 1)
+        entry = read_field(storage, 0, ENTRY_BITS)
         expected_entry = (_odd_parity(FMT_ENTRY, ENTRY_WIDTH) << ENTRY_WIDTH) | FMT_ENTRY
         assert entry == expected_entry, (
             f"{label}: FMT FIFO slot 0 holds 0x{entry:04x}, expected 0x{expected_entry:04x} "
@@ -218,7 +229,9 @@ class smc_i2c_fifo_integrity_fault_test_seq(SmcCsrSeq):
         )
         # A queued, intact entry raises nothing: the rise below is the flip's.
         await hold_level(self._intg, 0, _HOLD, f"{label}: tb_i2c_intg_err with the entry queued")
-        await flip_bit(storage, ENTRY_WIDTH, f"{label}: parity bit of FMT FIFO slot 0")
+        await flip_bit(
+            storage, ENTRY_WIDTH, f"{label}: parity bit of FMT FIFO slot 0", field=(0, ENTRY_BITS)
+        )
 
         await wait_level(self._intg0, 1, _ERR_BOUND, f"{label}: tb_i2c_intg_err[0]")
         intg = self._intg()
@@ -252,8 +265,14 @@ class smc_i2c_fifo_integrity_fault_test_seq(SmcCsrSeq):
         await wait_level(self._irq0, 0, _ERR_BOUND, f"{label}: tb_i2c_irq[0] after the enable")
         cocotb.log.info(
             "CHK-I2C-FIFO-INTG-REAL: enable: INTR_ENABLE.CONTROLLER_TX_FIFO_ERROR=1 raised "
-            "tb_i2c_irq[0] (peripheral interrupt 23) and clearing it released the line; a W1C "
-            "with the entry still faulted left the status bit at %d",
+            "tb_i2c_irq[0] (peripheral interrupt 23) and clearing it released the line"
+        )
+        # `i2c.rdl` says "Write `1` to clear" and nothing about a parity error
+        # that is still live, so the reading is recorded, not required.
+        cocotb.log.info(
+            "OBS-I2C-FIFO-INTG-W1C-LIVE: INTR_STATE.CONTROLLER_TX_FIFO_ERROR read %d after a "
+            "W1C with the faulted entry still at the head (observation: no document states "
+            "whether the bit re-latches while the parity error is live)",
             relatched,
         )
 

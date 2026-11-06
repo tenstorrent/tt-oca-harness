@@ -19,10 +19,12 @@ Every other leaf reaches ID 7 through `ITR.TFEI`. Here the fault is real:
   queued in the TX FIFO, so its entry stays at the head. The stored parity bit
   of that entry is flipped by a deposit into the published
   `prim_fifo_sync_parity` storage (`tb/smc_public_scope.vlt`); the entry's
-  data bits are untouched. `tb_uart_err_raw[0]` (`uart_err_o` of UART0) and
-  `tb_ras_uart_intg_err` must rise, and so must `tb_uart_irq_combined[0]`
-  (peripheral interrupt 18) while `IER.EFEI` is still clear, since the SMC ORs
-  `uart_err_o` into that line (`hw/ip/uart/uart_16550/doc/index.adoc`,
+  data bits are untouched; only that slot is read, since the entry array has
+  no reset and the other slots are X on a four-state simulator.
+  `tb_uart_err_raw[0]` (`uart_err_o` of UART0) and `tb_ras_uart_intg_err`
+  must rise, and so must `tb_uart_irq_combined[0]` (peripheral interrupt 18),
+  held low before the fault, while `IER.EFEI` is still clear, since the SMC
+  ORs `uart_err_o` into that line (`hw/ip/uart/uart_16550/doc/index.adoc`,
   Integration). IIR must show no ID 7 and `tb_uart_irq_raw[0]` must stay 0
   with `IER.EFEI` clear; with it set IIR must read `0xCE` (pending, ID 7,
   FIFOs enabled) and `tb_uart_irq_raw[0]` must rise; a second and a third IIR
@@ -48,7 +50,15 @@ from cocotb.triggers import ClockCycles
 
 from .smc_addr_map import UART_CG_EN, _field_mask, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_fifo_fault_inject import SMC_PERIPH, flip_bit, hier, hold_level, read_int, wait_level
+from .smc_fifo_fault_inject import (
+    SMC_PERIPH,
+    flip_bit,
+    hier,
+    hold_level,
+    read_field,
+    read_int,
+    wait_level,
+)
 
 _REPO = Path(__file__).resolve().parents[6]
 _UART_H = _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
@@ -209,6 +219,12 @@ class smc_uart_fifo_integrity_fault_test_seq(SmcCsrSeq):
         assert not _iir_pending(iir), f"{label}: IIR=0x{iir:02x} still pending before the fault"
         await hold_level(self._err, 0, _HOLD, f"{label}: tb_uart_err_raw before the fault")
         await hold_level(self._ras, 0, _HOLD, f"{label}: tb_ras_uart_intg_err before the fault")
+        await hold_level(self._irq0, 0, _HOLD, f"{label}: tb_uart_irq_raw[0] before the fault")
+        # Peripheral interrupt 18 ORs the log engine's request with err_o: a
+        # low line here is the control for the rise the parity leg requires.
+        await hold_level(
+            self._irq_combined0, 0, _HOLD, f"{label}: tb_uart_irq_combined[0] before the fault"
+        )
 
     async def _parity_leg(self) -> None:
         label = "PARITY"
@@ -225,7 +241,7 @@ class smc_uart_fifo_integrity_fault_test_seq(SmcCsrSeq):
         )
 
         storage = hier(TX_FIFO_STORAGE)
-        entry = read_int(storage) & ((1 << ENTRY_BITS) - 1)
+        entry = read_field(storage, 0, ENTRY_BITS)
         expected_entry = (_odd_parity(CHARACTER, ENTRY_WIDTH) << ENTRY_WIDTH) | CHARACTER
         assert entry == expected_entry, (
             f"{label}: TX FIFO slot 0 holds 0x{entry:03x}, expected 0x{expected_entry:03x} "
@@ -233,7 +249,9 @@ class smc_uart_fifo_integrity_fault_test_seq(SmcCsrSeq):
         )
         # A queued, intact entry raises nothing: the rise below is the flip's.
         await hold_level(self._err, 0, _HOLD, f"{label}: tb_uart_err_raw with the entry queued")
-        await flip_bit(storage, ENTRY_WIDTH, f"{label}: parity bit of TX FIFO slot 0")
+        await flip_bit(
+            storage, ENTRY_WIDTH, f"{label}: parity bit of TX FIFO slot 0", field=(0, ENTRY_BITS)
+        )
 
         await wait_level(self._err0, 1, _ERR_BOUND, f"{label}: tb_uart_err_raw[0]")
         err = self._err()
@@ -259,10 +277,11 @@ class smc_uart_fifo_integrity_fault_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-UART-FIFO-INTG-REAL: mask: with IER.EFEI=0 and err_o high, four IIR reads "
             "reported no id 0x%x (last IIR=0x%02x) and tb_uart_irq_raw[0]=0, while "
-            "tb_uart_irq_combined[0]=1: err_o reaches peripheral interrupt 18 through the SMC "
-            "OR regardless of the mask",
+            "tb_uart_irq_combined[0] rose from the 0 it held for %d cycles before the fault: "
+            "err_o reaches peripheral interrupt 18 through the SMC OR regardless of the mask",
             ID_FIFO_ERROR,
             self.iir_masked,
+            _HOLD,
         )
 
         await self.csr_write(f"{label}_IER_EFEI", UART_IER, IER_EFEI)
@@ -309,7 +328,7 @@ class smc_uart_fifo_integrity_fault_test_seq(SmcCsrSeq):
             if lsr & LSR_THRE:
                 break
         assert lsr & LSR_THRE, f"{label}: LSR=0x{lsr:02x} THRE clear after the entry popped"
-        slot0 = read_int(storage) & ((1 << ENTRY_BITS) - 1)
+        slot0 = read_field(storage, 0, ENTRY_BITS)
         cocotb.log.info(
             "CHK-UART-FIFO-INTG-REAL: pop: enabling the transmitter popped the faulted entry; "
             "tb_uart_err_raw[0]=0 and tb_ras_uart_intg_err=0 with LSR.THRE=1; slot 0 still "

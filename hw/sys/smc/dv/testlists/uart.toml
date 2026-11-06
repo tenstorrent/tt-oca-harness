@@ -65,11 +65,16 @@ run_modes = ["smoke"]
 # the hardened read pointer's secondary copy are each flipped in place; err_o,
 # IIR id 7 under IER.EFEI, its persistence across IIR reads, the RAS bit and
 # the clearing (pop, FCR.XMIT_FIFO_RESET) are compared.
+# The fault is deposited through the Verilator public scope
+# (`tb/smc_public_scope.vlt`), so the leaf runs on Verilator only; a VCS run
+# of `hosted` reports it as skipped_wrong_tool instead of failing on the
+# unreset entry array.
 [[tests]]
 name = "smc_uart_fifo_integrity_fault_test"
 module = "smc_uart_fifo_integrity_fault_test"
 seed = 1
 timeout_sec = 1800
+tools = ["verilator"]
 tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
