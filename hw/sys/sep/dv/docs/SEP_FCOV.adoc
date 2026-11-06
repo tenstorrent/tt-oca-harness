@@ -3972,7 +3972,7 @@ they add or reuse.
 
 *Class*: executable.
 
-*Tool*: VCS. *Crosses*: all three coverpoints. *Illegal bins*: `max` x `data` is an `ignore_bins` (a 1 MiB data segment is not driven), which leaves 9 cells in `cp_len_x_kind`. Every coverpoint depends on the seed and is graded on a merge of regressions: the owning test draws the LEN class and the CLKDIV class of each cell and the chain shapes, and it draws the position of the long dummy segment (`max` x `dummy`), which runs on every seed. The `CSAAT` = 0 cells fill on every run.
+*Tool*: VCS. *Crosses*: all three coverpoints. *Illegal bins*: `max` x `data` is an `ignore_bins` (a 1 MiB data segment is not driven), which leaves 9 cells in `cp_len_x_kind`. Every coverpoint depends on the seed and is graded on a merge of regressions: the owning test draws the LEN class and the CLKDIV class of each cell and the chain shapes The long dummy segment (`max` x `dummy`) runs on every seed, after the other legs. The `CSAAT` = 0 cells fill on every run.
 
 [cols="2,4,4,3,1,2",options="header"]
 |===
@@ -4429,7 +4429,7 @@ records it or the reason it has none.
 |===
 |Leaf |Factor the seed picks |Bin, or why none
 |`sep_spi_pad_speed_dir_matrix_test` |Order of the 16 cells |None: every seed walks all 10 legal and 6 illegal cells (5 illegal cells graded, 1 control)
-|`sep_spi_pad_speed_dir_matrix_test` |`LEN` class and `CLKDIV` class of each cell, values inside a class, chain shape, long dummy position |`sep_spi_seg_rand_cg.cp_len_x_kind`, `cp_csaat_x_dir`, `cp_clkdiv_x_speed`, graded on a merge of regressions. The long dummy segment runs on every seed and the seed draws only its position among the other legs
+|`sep_spi_pad_speed_dir_matrix_test` |`LEN` class and `CLKDIV` class of each cell, values inside a class, chain shape |`sep_spi_seg_rand_cg.cp_len_x_kind`, `cp_csaat_x_dir`, `cp_clkdiv_x_speed`, graded on a merge of regressions. The long dummy segment runs on every seed and the seed draws only its position among the other legs
 |`sep_spi_pad_speed_dir_matrix_test` |Responder stream, TX words |None: data inside a fixed contract. Every width and direction runs on every seed (`sep_spi_lane_data_cg`)
 |`sep_spi_pad_timing_cfg_rand_test` |The two mode cells (the second at the other `CPOL` and `CPHA` value) and their order |`sep_spi_pad_rand_cg.cp_mode8`, `cp_mode_x_dir` and `cp_cpha_edge`, graded on a merge of regressions. `cp_idle_level` fills on every run
 |`sep_spi_pad_timing_cfg_rand_test` |`CLKDIV`, `CSNLEAD`, `CSNTRAIL` and `CSNIDLE` values, weighted toward 0 and 15 |`sep_spi_pad_rand_cg.cp_clkdiv_class`, `cp_csn_class`, graded on a merge of regressions
