@@ -45,9 +45,8 @@ SIZE_BYTES = {0: 1, 1: 2, 2: 4}
 SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR")
 SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR")
 
-# Memory-mapped windows. These are the apertures that sit behind an SRAM-style
-# adapter rather than a register adapter, which is the class the read-mask
-# defect affects.
+# Memory-mapped windows: apertures behind an SRAM-style adapter rather than a
+# register adapter.
 # The KMAC STATE window is gated by the engine's own configuration and refuses
 # a bare CSR-path write, so a probe there tests KMAC bring-up rather than the
 # read mask; it is not a target here.
