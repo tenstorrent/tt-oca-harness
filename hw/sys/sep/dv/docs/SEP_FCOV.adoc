@@ -3972,7 +3972,7 @@ they add or reuse.
 
 *Class*: executable.
 
-*Tool*: VCS. *Crosses*: all three coverpoints. *Illegal bins*: `max` x `data` is an `ignore_bins` (a 1 MiB data segment is not driven), which leaves 9 cells in `cp_len_x_kind`. Every coverpoint depends on the seed and is graded on a merge of regressions: the owning test draws the LEN class and the CLKDIV class of each cell and the chain shapes The long dummy segment (`max` x `dummy`) runs on every seed, after the other legs. The `CSAAT` = 0 cells fill on every run.
+*Tool*: VCS. *Crosses*: all three coverpoints. *Illegal bins*: `max` x `data` is an `ignore_bins` (a 1 MiB data segment is not driven), which leaves 9 cells in `cp_len_x_kind`. Every coverpoint depends on the seed and is graded on a merge of regressions: the owning test draws the LEN class and the CLKDIV class of each cell and the chain shapes. The long dummy segment (`max` x `dummy`) runs on every seed, after the other legs. The `CSAAT` = 0 cells fill on every run.
 
 [cols="2,4,4,3,1,2",options="header"]
 |===
@@ -4429,7 +4429,7 @@ records it or the reason it has none.
 |===
 |Leaf |Factor the seed picks |Bin, or why none
 |`sep_spi_pad_speed_dir_matrix_test` |Order of the 16 cells |None: every seed walks all 10 legal and 6 illegal cells (5 illegal cells graded, 1 control)
-|`sep_spi_pad_speed_dir_matrix_test` |`LEN` class and `CLKDIV` class of each cell, values inside a class, chain shape |`sep_spi_seg_rand_cg.cp_len_x_kind`, `cp_csaat_x_dir`, `cp_clkdiv_x_speed`, graded on a merge of regressions. The long dummy segment runs on every seed and the seed draws only its position among the other legs
+|`sep_spi_pad_speed_dir_matrix_test` |`LEN` class and `CLKDIV` class of each cell, values inside a class, chain shape |`sep_spi_seg_rand_cg.cp_len_x_kind`, `cp_csaat_x_dir`, `cp_clkdiv_x_speed`, graded on a merge of regressions. The long dummy segment runs on every seed, after the other legs
 |`sep_spi_pad_speed_dir_matrix_test` |Responder stream, TX words |None: data inside a fixed contract. Every width and direction runs on every seed (`sep_spi_lane_data_cg`)
 |`sep_spi_pad_timing_cfg_rand_test` |The two mode cells (the second at the other `CPOL` and `CPHA` value) and their order |`sep_spi_pad_rand_cg.cp_mode8`, `cp_mode_x_dir` and `cp_cpha_edge`, graded on a merge of regressions. `cp_idle_level` fills on every run
 |`sep_spi_pad_timing_cfg_rand_test` |`CLKDIV`, `CSNLEAD`, `CSNTRAIL` and `CSNIDLE` values, weighted toward 0 and 15 |`sep_spi_pad_rand_cg.cp_clkdiv_class`, `cp_csn_class`, graded on a merge of regressions
@@ -4474,7 +4474,7 @@ records it or the reason it has none.
 |Point |Condition
 |`sep_spi_fifo_rand_cg.cp_txwm` (`above_depth`) |`TX_WATERMARK` has 8 bits. If the TX depth is 255, depth + 1 is not writable and the owning test skips it, so the cell is a hole for that depth. For any other depth the cell fills on every run
 |`sep_dma_xfer_rand_cg.cp_abort_phase` |The owning test runs a mid-chunk abort on every seed and draws the class of a second abort. It repeats a run until the beat count at the ABORT write, read on `dma_axi_req_probe_o`, lies in the class of the run. The three drawn classes close on a merge of regressions
-|`sep_spi_seg_rand_cg.cp_len_x_kind` (`max` x `dummy`) |`LEN` = 0xFFFFF at `CLKDIV` 0 takes 2,097,152 core clocks. The owning test runs it on every seed and draws only where it runs among the other legs, so every regression fills the cell
+|`sep_spi_seg_rand_cg.cp_len_x_kind` (`max` x `dummy`) |`LEN` = 0xFFFFF at `CLKDIV` 0 takes 2,097,152 core clocks. The owning test runs it on every seed, after the other legs, so every regression fills the cell
 |Coverpoints marked `parked: needs ...` |The bins need a value that the register description does not state. The coverpoint scores nothing
 |Rx bit content at the pad |`doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment") names the lanes, and the TB drives all four response lanes with `+sep_spi_four_lane`. The tests grade the Rx content byte for byte, and `sep_spi_lane_data_cg` records each graded width and direction (<<sep-fcov-spi-lane>>)
 |===
