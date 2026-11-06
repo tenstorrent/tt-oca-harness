@@ -45,6 +45,17 @@ if { ![array exists ::cdc_reset_alias] } { array set ::cdc_reset_alias {} }
 # every IO delay; "functional" is the VC CDC/RDC run whose case-analysis files pin the
 # DFT and strap ports, so those ports get no IO delay there.
 if { ![info exists ::cdc_scenario] } { set ::cdc_scenario synth }
+# Module-name prefix of a design whose modules are all renamed <prefix>_<name>; "" for
+# the RTL as delivered. Unlike ::cdc_hier_prefix it is one value for the whole run, so a
+# parent replaying a child leaves it alone.
+if { ![info exists ::MODPREFIX] } { set ::MODPREFIX "" }
+
+# Apply ::MODPREFIX to every module name (or module-name glob) in a list.
+proc cdc_mod { mods } {
+    set out {}
+    foreach m $mods { lappend out "${::MODPREFIX}${m}" }
+    return $out
+}
 
 # True when constraints are being applied at the block's own top (no re-anchoring).
 proc cdc_is_block_top { } { return [expr { $::cdc_hier_prefix eq "" }] }
