@@ -574,6 +574,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             wdt_rst_ni="not_driven",
             level=self.ras.level(fld),
             clk=self.ras.clk,
+            chk="CHK-RAS-WDT_BITE-SHAPE",
         )
 
     @staticmethod

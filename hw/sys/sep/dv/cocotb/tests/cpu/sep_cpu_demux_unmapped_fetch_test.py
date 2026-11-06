@@ -905,8 +905,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             ):
                 last = names[r.off]
         self.logger.info(
-            "INFO-EXT-READ LOG nmi_records=%d mcause@marker/mdseac=%s"
-            " graded_by=CHK-BADADDR leaf=sep_reset_wdt_sanity_test",
+            "INFO-EXT-READ LOG nmi_records=%d mcause@marker/mdseac=%s",
             len(rows),
             " ".join(rows) or "-",
         )

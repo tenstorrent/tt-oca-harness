@@ -115,7 +115,7 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
                     return
 
     def _ras_grade(self) -> None:
-        """CHK-RAS-TOKEN_MATCH_FAULT-IDLE, -RISE and -SHAPE; the clear and the delay are OBS."""
+        """CHK-RAS-TOKEN_MATCH_FAULT-IDLE, -RISE and -SHAPE; the delay is OBS and the clear is INFO."""
         w, m_open, m_inj = self.ras_w, self.ras_m_open, self.ras_m_inj
         chk = self.ras_chk
         if m_open is None or m_inj is None:
@@ -165,7 +165,13 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         chk.obs(
             f"{_RAS}-DELAY", inject_to_rise_clk=rise - m_inj.clk if rise is not None else "none"
         )
-        chk.info(f"{_RAS}-CLEAR", reset_in_leaf=0, held="to_end_of_window", level_at_end=level)
+        chk.info(
+            f"{_RAS}-CLEAR",
+            reset_in_leaf=0,
+            held="to_end_of_window",
+            level_at_end=level,
+            chk=f"CHK-{_RAS}-SHAPE",
+        )
 
     def _ras_release_ctrl(self) -> None:
         """Read back the comparator inject after its release; anything but off fails.

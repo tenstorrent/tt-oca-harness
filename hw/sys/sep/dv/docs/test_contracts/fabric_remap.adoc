@@ -1809,7 +1809,7 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 |CHK-ALIAS-OVERLAP
 |One read through two valid regions over the same pages with offsets that differ in bit 33 leaves the alias remap as one AR at the source translated by the offset of the lower-numbered region (`hw/ip/axi_alias_remap/regs/alias_remap.rdl:42`: "When more than one valid region contains the address, the lowest-numbered region applies."). The seed draws `k2` above or below `k`, so a remap that takes the higher-numbered or the last-programmed region shows the other offset and fails. The check is required evidence of the leaf; a map with fewer than two alias regions fails it. Anchor: the AR at the PR-ALIAS output. Evidence: `CHK-ALIAS-OVERLAP PASS: region_a=<k> offset_a=0x<O> region_b=<k2> offset_b=0x<O^bit33> src=0x<addr> alias_out_addr=0x<addr> n_out=1 expect=0x<addr> (region <min>)`.
 |INFO-ALIAS-OVERLAP
-|A bench record: the response of the overlap read, with no grading check. The outbound entry covers the translation of region `k` only, so the response follows the outbound filter.
+|Logged, not graded: the response of the overlap read. The outbound entry covers the translation of region `k` only, so the response follows the outbound filter.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

@@ -40,10 +40,11 @@ Checkers:
                       AES_ENC and the other fields as written; the written
                       OPERATION is an invalid code.
   CHK-AES-INV-MODE    after START, OUTPUT_VALID reads 0 at every sample of the
-                      window and DATA_OUT keeps its base words. The START
-                      write response is logged
-                      (``INFO-AES-INV-MODE-START-RESP``). Control: MODE = ECB
-                      with a new key load sets OUTPUT_VALID in a bounded wait.
+                      window and DATA_OUT keeps its base words. The line
+                      logs the START write response (``start_bresp``); the
+                      shared scoreboard fails the leaf on a non-OKAY
+                      response. Control: MODE = ECB with a new key load sets
+                      OUTPUT_VALID in a bounded wait.
   CHK-AES-INV-MODE-RB after the invalid pair, CTRL_SHADOWED reads MODE =
                       AES_NONE, KEY_LEN = AES_256 and MANUAL_OPERATION = 1;
                       the written MODE is an invalid code.
@@ -466,6 +467,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
         base: list[int] | None = None
         after: list[int] | None = None
         rb: int | None = None
+        start_bresp: int | str = "none"
         n_samples = 0
         reason = ""
         open_graded_window(TEST, self.logger)
@@ -479,7 +481,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
                 "aes_wr", op=SepAxiOp.WRITE, addr=AES_TRIGGER, wdata=start, length=4, size=2
             )
             await self.start_seq(start_wr)
-            self.chk.info("AES-INV-MODE-START-RESP", cell=cell, bresp=start_wr.resp_code)
+            start_bresp = start_wr.resp_code
             # The poll reads back to back for the whole window and stops early
             # only at an OUTPUT_VALID sample.
             _, samples = await self._poll(ST_OV, ST_OV, window)
@@ -525,6 +527,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
             "window_clk": window,
             "samples": n_samples,
             "ctrl_valid_clk": ctrl_clk,
+            "start_bresp": start_bresp,
         }
         if reason:
             fields["reason"] = reason

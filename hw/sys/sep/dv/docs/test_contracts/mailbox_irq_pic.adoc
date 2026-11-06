@@ -778,7 +778,7 @@ this entry does not write or grade them with the strap high.
 |OBS-RAS-TOKEN_MATCH_FAULT-DELAY
 |Logged, not graded: the clocks from the inject to the field rise. No document states the rise delay.
 |INFO-RAS-TOKEN_MATCH_FAULT-CLEAR
-|A bench record: the leaf applies no reset after the fault, so the clear at reset is not reached; the field is held to the end of the window.
+|Re-logs `level_at_end`, which CHK-RAS-TOKEN_MATCH_FAULT-SHAPE grades (`chk=`). The leaf applies no reset after the fault, so the clear at reset is not reached; the field is held to the end of the window.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
