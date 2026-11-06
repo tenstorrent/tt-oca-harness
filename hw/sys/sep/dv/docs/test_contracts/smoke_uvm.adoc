@@ -290,7 +290,7 @@ The `KM-SRAM-RD` log line is a measurement, not a checker: the count of KM SRAM 
 
 [arabic]
 . Bring up in `no_cpu` mode.
-. Read OTBN `STATUS` and require it to be neither `LOCKED` nor executing.
+. Read OTBN `STATUS` once and require its status field to be neither `LOCKED` nor executing. Log the raw word and the status field (`OBS-OTBN-MEM-STATUS`).
 . Write a known word to the OTBN instruction memory base; read it back.
 . Write a known word to the OTBN data memory base; read it back.
 . Read the instruction and data memory request and write counters.
@@ -314,12 +314,14 @@ The `KM-SRAM-RD` log line is a measurement, not a checker: the count of KM SRAM 
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`: an assert that fails the leaf on `LOCKED` or an executing state, and logs an untagged `OTBN memory-access precondition OK: STATUS=0x<v>` line. It prints no CHK-PRECOND record.
+*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`: an assert that fails the leaf on `LOCKED` or an executing state. It prints no CHK-PRECOND record. The same read is logged as `OBS-OTBN-MEM-STATUS status=0x<raw word> status_code=0x<status field>`. That record is not graded: no authored text states whether IMEM and DMEM accept a bus access in the state that the field reports.
 
 *Scope limit*: OTBN sits in `StatusBusySecWipeInt` (`0x04`) for the whole of this
 test — leaving that state needs EDN entropy to reseed URND, and the `no_cpu`
-smoke configuration never brings EDN up. The internal wipe does not touch
-IMEM/DMEM, which is why every access completes OKAY. `CHK-PRECOND` excludes only
+smoke configuration never brings EDN up. `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson:798-804`
+and `:821-828` state that the memories are accessible only while OTBN is idle,
+and no text states the result of a bus access in this state, so the leaf logs
+the `STATUS` word (`OBS-OTBN-MEM-STATUS`) and does not grade it. `CHK-PRECOND` excludes only
 the states that would invalidate the access (`LOCKED`, and `BusyExecute`, in which
 the core owns these memories and a bus request is diverted to a dummy response
 and flagged illegal); it does not pin `STATUS`, and it does not detect a change
