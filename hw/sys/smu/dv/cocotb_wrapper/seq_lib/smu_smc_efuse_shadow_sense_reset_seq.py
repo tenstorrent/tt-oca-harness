@@ -11,7 +11,7 @@ The expected value comes from two DV-owned sources and no RTL: the image file
 ``+smc_efuse_hex`` names, which this leaf owns under ``dv/assets``, and the
 generated PeakRDL header ``smc_addr.h``, which gives the map's size and the byte
 offset of every register in it. The fuse word is 4 bytes and ``smc_efuse_map``
-tiles its whole 1024-byte map with no holes, so fuse word ``i`` is map bytes
+tiles its whole 256-byte map with no holes, so fuse word ``i`` is map bytes
 ``4i..4i+3`` and shadow bits ``32i+31..32i``. Every field of every register in
 ``smc_efuse_map.rdl`` resets to ``0x0``, so the map's reset value is zero across
 its full width.

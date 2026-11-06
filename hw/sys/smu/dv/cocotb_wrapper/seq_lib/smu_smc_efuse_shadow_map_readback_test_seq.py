@@ -11,7 +11,7 @@ read back over JTAG2AXI; each map word and the stream word of the same index are
 the word of that index in the +smc_efuse_hex image the run loads, and the map word with the
 stream word. The sixteen indices and their read order are drawn from the seed, with the first
 word of each of the six named elements pinned into every set because the element compare looks
-each up in the sampled set, and word 255, the last word of the bank and the last store of the
+each up in the sampled set, and word 191, the last word of the stream and the last store of the
 sense's running count, pinned beside them. The pre-sense status, multi-word elements and the
 per-slice smc_shadow_regs values are not compared.
 """
