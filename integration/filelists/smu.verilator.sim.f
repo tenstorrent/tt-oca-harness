@@ -783,12 +783,13 @@ hw/common/axi/axi_lite_to_tlul.sv
 hw/common/axi/tlul_to_axi_lite.sv
 hw/common/ocah_prim/rtl/prim_axi_snoop.sv
 hw/common/ocah_prim/rtl/prim_clkmux4.sv
+hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv
+hw/common/ocah_prim/rtl/prim_axil_addr_demux.sv
 hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
 hw/common/ocah_prim/rtl/prim_apb_arb.sv
 hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv
 hw/common/ocah_prim/rtl/prim_axi_id_converter.sv
 hw/common/ocah_prim/rtl/prim_axi_id_prepend_wrap.sv
-hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv
 hw/common/ocah_prim/rtl/prim_axi_lite_to_apb_single.sv
 hw/common/ocah_prim/rtl/prim_axi_user_override.sv
 hw/common/ocah_prim/rtl/prim_axil_access_gate.sv

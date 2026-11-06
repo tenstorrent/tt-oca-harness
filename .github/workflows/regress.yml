@@ -197,6 +197,11 @@ jobs:
             reseed: 1
             coverage: false
             runner: ubuntu-latest
+          - dut: prim_axil_addr_demux
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -341,6 +346,11 @@ jobs:
             coverage: true
             runner: ubuntu-latest
           - dut: axi_lite_to_ahb
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: prim_axil_addr_demux
             items: all
             reseed: 1
             coverage: false
