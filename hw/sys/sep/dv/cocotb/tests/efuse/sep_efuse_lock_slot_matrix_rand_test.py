@@ -32,8 +32,8 @@ Checkers:
                     locks); an unlocked frontdoor read equals them; a frontdoor read
                     of a read-locked field returns no word equal to its non-zero
                     staged word (``otp_fuse_controller.adoc:108-109``: a read-lock
-                    blocks software reads of the shadow; the response code is
-                    logged in ``OBS-LOCK-READ``, not graded); a read-interface
+                    blocks software reads of the shadow; ``CHK-LOCK-READ`` grades
+                    its response and data); a read-interface
                     request on a read-locked field sets ``efuse_req_error`` from 0
                     (read before the go) and the write-one clear returns it to 0, on an
                     unlocked twin it ends with ``read_done`` 1, ``read_status`` 0 and
@@ -44,8 +44,15 @@ Checkers:
                     unlocked field it lands exactly its bit with one program command
                     at its address; a shadow write is
                     blocked under a write-lock and ORs the new bit without one.
-                    ``OBS-LOCK-CELL-WR-RESP`` logs the response code of each shadow
-                    write: no TT text states it.
+                    ``CHK-LOCK-CELL-WR-RESP`` grades the response of a shadow write
+                    that a write-lock blocks as SLVERR
+                    (``otp_fuse_controller.adoc:110-112``);
+                    ``OBS-LOCK-CELL-WR-RESP`` logs the response of an unlocked
+                    shadow write: no TT text states it.
+  CHK-LOCK-READ     lock leg, single-bit image with a read-lock and exempt cell
+                    (``CLASS_KEY``), one line per word of a frontdoor read that a
+                    read-lock blocks: the read completes with SLVERR and read
+                    data ``0xBADCAB1E`` (``otp_fuse_controller.adoc:110-112``).
   CHK-LOCK-READ-DONE lock leg and the single-bit image with a read-lock, one line per
                     read-interface request on a read-locked field: after the full W
                     the request reads ``read_done`` 1 and ``read_status`` 1 (Error)
@@ -69,8 +76,8 @@ Checkers:
                     (``otp_fuse_controller.adoc:108-109``: a read-lock blocks JTAG
                     reads of the shadow; ``lifecycle_controller.adoc:714-719``: in
                     TEST_DEV the JTAG path reaches the whole shadow map). The
-                    response code of the locked read is logged, not graded: the
-                    specification states none.
+                    locked read completes with SLVERR and read data ``0xBADCAB1E``
+                    (``otp_fuse_controller.adoc:110-112``).
   CHK-LOCK-EXEMPT   exempt cell: ``LC_STATE``, ``LOCKS`` and ``LOCKS_SPARE`` read their
                     staged values with every assigned lock bit burned.
   CHK-LOCK-EXEMPT-PROG exempt cell: a program of ``LC_STATE`` bit 0 or bit 3 (drawn)
@@ -86,9 +93,12 @@ Checkers:
                     ``sep_efuse_map.adoc`` ``LC_STATE``).
   CHK-LOCK-ORDER    order cell: a shadow write lands only before the lock, the lock bit
                     survives a write of 0 to ``LOCKS``, a later write of a third bit
-                    leaves the shadow unchanged. No TT text states the response code
-                    of these writes, legal or blocked, so ``OBS-LOCK-ORDER-RESP`` logs
-                    them.
+                    leaves the shadow unchanged. ``CHK-LOCK-ORDER-RESP`` grades the
+                    response of every field write after the lock as SLVERR
+                    (``otp_fuse_controller.adoc:110-112``). No TT text states the
+                    response code of the legal writes (the field writes before the
+                    lock, the lock write and the zero writes to ``LOCKS``), so
+                    ``OBS-LOCK-ORDER-RESP`` logs them.
   CHK-LOCK-SLOT0-STORE order cell, after CHK-LOCK-ORDER: a write of ``LOCKS`` bits [1:0]
                     (slot 0, ``LC_STATE``) reads both bits 1, and a later write of 0
                     leaves both 1 (``sep_efuse_map.rdl`` ``LOCKS``, woset);
@@ -145,10 +155,8 @@ moves): ``jtag_rlock_twin``, ``jtag_rlock_locked``, ``uid_rlock_slot`` and
 ``uid_rlock_bit`` (lock leg),
 ``exempt_prog_bit`` (exempt cell).
 
-Observations: ``OBS-LOCK-READ`` logs the response and data of a frontdoor read that a
-read-lock blocks; the specification states neither, so they are not graded.
-``OBS-LOCK-CELL-WR-RESP`` and ``OBS-LOCK-ORDER-RESP`` log the response of a shadow write
-that a write-lock blocks, which the specification does not state. At the end
+Observations: ``OBS-LOCK-CELL-WR-RESP`` and ``OBS-LOCK-ORDER-RESP`` log the response
+of a legal shadow write, which the specification does not state. At the end
 of the lock leg, ``OBS-UID-RDLOCK-PROG`` logs a program of a 0 bit of one UID field
 whose slot had no lock and now has its read-lock alone (programmed into ``LOCKS``,
 then a resense): ``efuse_req_error``, the program commands at the post-guard tap and
@@ -210,7 +218,7 @@ from env.sep_efuse_test_lib import (
     probe_words,
     set_shadow_golden,
 )
-from env.sep_fabric_common import resp_name
+from env.sep_fabric_common import RESP_SLVERR, resp_name
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -219,6 +227,7 @@ from env.sep_fcov_gate import (
     set_lock_exempt_pass,
 )
 from env.sep_lcc_golden import LC_PROD, LC_PROD_END
+from env.sep_locked_field_irq import DENY_DATA_MARKER
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -266,10 +275,10 @@ _UID_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("CHIPLET_UID", "SIP_UID", "SYS_UID
 
 # Checks per leaf kind (checkers table of the entry). No check runs on every seed.
 _EVIDENCE = {
-    "lock_leg": ("CHK-LOCK-CELL", "CHK-GUARD-NOPULSE", "CHK-LOCK-JTAG-RD"),
+    "lock_leg": ("CHK-LOCK-CELL", "CHK-LOCK-READ", "CHK-GUARD-NOPULSE", "CHK-LOCK-JTAG-RD"),
     "single_bit": ("CHK-LOCK-CELL", "CHK-GUARD-NOPULSE"),
-    "exempt": ("CHK-LOCK-EXEMPT", "CHK-LOCK-EXEMPT-PROG"),
-    "order": ("CHK-LOCK-ORDER", "CHK-LOCK-SLOT0-STORE"),
+    "exempt": ("CHK-LOCK-EXEMPT", "CHK-LOCK-READ", "CHK-LOCK-EXEMPT-PROG"),
+    "order": ("CHK-LOCK-ORDER", "CHK-LOCK-ORDER-RESP", "CHK-LOCK-SLOT0-STORE"),
     "chain": ("CHK-PROG-ROUND", "CHK-PROG-VERSION"),
 }
 _KIND_CHECK = {k: v[0] for k, v in _EVIDENCE.items()}
@@ -337,8 +346,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
     # --- bus, probes and senses ----------------------------------------------
     async def _rd(self, addr: int, *, blocked: bool = False) -> SepAxiAccessSeq:
-        """Frontdoor read. A read of a read-locked field is logged, not graded, so its
-        response and a timeout pass the scoreboard."""
+        """Frontdoor read. A read of a read-locked field passes the scoreboard with any
+        response or a timeout; the caller grades both (CHK-LOCK-READ)."""
         return await self.fd.access(
             SepAxiOp.READ, addr, ungraded_read=blocked, allow_timeout=blocked
         )
@@ -373,24 +382,45 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             bad |= 0 if seq.resp_ok else max(seq.resp_code, 1)
         return words, bad
 
+    @staticmethod
+    def _require_not_marker(name: str, word: int, staged: int) -> None:
+        """A read-locked staged word never equals ``DENY_DATA_MARKER``.
+
+        The plan draws no such word (``sep_efuse_plan.plan_lock_slot_matrix``). With one,
+        the data compare with the marker and the compare with the staged word could
+        not both fail on the same DUT value.
+        """
+        if staged == DENY_DATA_MARKER:
+            raise AssertionError(
+                f"test bug: {name} word {word} is staged as 0x{DENY_DATA_MARKER:08x}, "
+                "the read data of a read-locked shadow"
+            )
+
     async def _fd_locked(self, slot: int, name: str) -> bool:
         """Frontdoor read of a read-locked field: True when no word returns its non-zero
-        staged value. The response code is logged, not graded: no specification states it.
+        staged value. CHK-LOCK-READ grades each word: SLVERR and read data
+        ``0xBADCAB1E`` (``otp_fuse_controller.adoc:110-112``).
         """
         w0 = field_word(name)
         ok = True
         for k in range(field_n_words(name)):
             staged = self.plan.image.words[w0 + k] & _WORD
+            self._require_not_marker(name, k, staged)
             seq = await self._rd(shadow_addr(name, k), blocked=True)
             rdata = seq.rdata & _WORD
             ok &= staged != 0 and (seq.timed_out or rdata != staged)
-            self.chk.obs(
+            resp = "timeout" if seq.timed_out else resp_name(seq.resp_code)
+            self._grade(
                 "LOCK-READ",
+                not seq.timed_out and seq.resp_code == RESP_SLVERR and rdata == DENY_DATA_MARKER,
                 slot=slot,
+                field=name,
                 word=k,
-                resp="timeout" if seq.timed_out else (0 if seq.resp_ok else seq.resp_code),
+                resp=resp,
+                exp_resp="SLVERR",
                 rdata=f"0x{rdata:08x}",
-                staged=f"0x{staged:08x}",
+                exp_rdata=f"0x{DENY_DATA_MARKER:08x}",
+                staged=_hexf(name, [staged], "0x"),
             )
         return ok
 
@@ -574,6 +604,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         self.required_evidence = _EVIDENCE[kind]
         if kind == "lock_leg" or (kind == "single_bit" and p.leg["lock_kind"] == "read"):
             self.required_evidence += ("CHK-LOCK-READ-DONE",)
+        if kind == "single_bit" and p.leg["lock_kind"] == "read":
+            self.required_evidence += ("CHK-LOCK-READ",)
         self.logger.info(
             "INFO-EVIDENCE seed=%d kind=%s required=%s",
             seed,
@@ -749,9 +781,20 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             f["shadow_exp"] = _hexf(name, exp)
             f["shadow_got"] = _hexf(name, after)
             ok &= after == exp
-            self.chk.obs(
-                "LOCK-CELL-WR-RESP", slot=slot, field=name, locked=int(wl), resp=resp_name(resp)
-            )
+            if wl:
+                self._grade(
+                    "LOCK-CELL-WR-RESP",
+                    resp == RESP_SLVERR,
+                    slot=slot,
+                    field=name,
+                    locked=1,
+                    resp=resp_name(resp),
+                    exp_resp="SLVERR",
+                )
+            else:
+                self.chk.obs(
+                    "LOCK-CELL-WR-RESP", slot=slot, field=name, locked=0, resp=resp_name(resp)
+                )
             if wl:
                 self.blocked_writes += 1
             else:
@@ -884,6 +927,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
     async def _jtag_read(self, slot: int, word: int) -> dict[str, Any]:
         name = LOCK_SLOT_FIELD[slot]
         staged = self.plan.image.words[field_word(name) + word] & _WORD
+        self._require_not_marker(name, word, staged)
         probe = self._probe(name)[word]
         resp, data = await self.jtag_axil_op(write=False, addr=shadow_addr(name, word))
         return {
@@ -903,7 +947,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         return {"twin": twin_r, "locked": locked_r}
 
     def _jtag_grade(self, r: dict, phase: str) -> bool:
-        """CHK-LOCK-JTAG-RD on one read pair (``otp_fuse_controller.adoc:108-109``)."""
+        """CHK-LOCK-JTAG-RD on one read pair (``otp_fuse_controller.adoc:108-112``)."""
         t, lk = r["twin"], r["locked"]
         twin_ok = (
             t is not None
@@ -912,7 +956,13 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             and t["resp"] == _RESP_OKAY
             and t["data"] == t["staged"]
         )
-        locked_ok = lk["staged"] != 0 and lk["probe"] == lk["staged"] and lk["data"] != lk["staged"]
+        locked_ok = (
+            lk["staged"] != 0
+            and lk["probe"] == lk["staged"]
+            and lk["data"] != lk["staged"]
+            and lk["resp"] == RESP_SLVERR
+            and lk["data"] == DENY_DATA_MARKER
+        )
         tf: dict[str, Any] = {"twin": "none"}
         if t is not None:
             tf = {
@@ -934,7 +984,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             locked_probe=_hexf(lk["field"], [lk["probe"]], "0x"),
             locked_data=_hexf(lk["field"], [lk["data"]], "0x"),
             locked_eq_staged=int(lk["data"] == lk["staged"]),
-            locked_resp_obs=lk["resp"],
+            locked_resp=resp_name(lk["resp"]),
+            exp_locked_resp="SLVERR",
+            exp_locked_data=f"0x{DENY_DATA_MARKER:08x}",
             **tf,
         )
 
@@ -1228,7 +1280,14 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             legal_wr_resp="/".join(resp_name(r) for r in legal_resps),
             lock_wr_resp=resp_name(lock_resp),
             zero_wr_resp="/".join(resp_name(r) for r in zero_resps),
-            blocked_wr_resp="/".join(resp_name(r) for r in blocked_resps),
+        )
+        self._grade(
+            "LOCK-ORDER-RESP",
+            bool(blocked_resps) and all(r == RESP_SLVERR for r in blocked_resps),
+            field=name,
+            blocked_wr_resp="/".join(resp_name(r) for r in blocked_resps) or "none",
+            exp_resp="SLVERR",
+            n_blocked=len(blocked_resps),
         )
         ok = self._grade(
             "LOCK-ORDER",

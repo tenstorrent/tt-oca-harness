@@ -106,11 +106,10 @@ def efuse_map_read_locked(lock_field_symbol: str) -> bool:
     return bool(locks & mask)
 
 
-# Data returned on a blocked eFuse read. SPEC: "When a request is blocked, the
-# error slave returns an error response with data value 0xbadcab1e"
-# (hw/ip/efuse/doc/architecture.adoc, Lifecycle State (LC_STATE) Effects). That
-# sentence describes the JTAG lifecycle error slave; it states no response code
-# for a lock-blocked SMC_EFUSE_MAP read.
+# Data returned on a refused eFuse read, with SLVERR: the RDL LOCKS description
+# (smc_efuse_map.rdl) fixes it for a read of a read-locked SMC_EFUSE_MAP field,
+# and hw/ip/efuse/doc/architecture.adoc (Lifecycle State (LC_STATE) Effects)
+# for a JTAG access the lifecycle gate routes to the error slave.
 EFUSE_BLOCKED_READ_DATA = 0xBADCAB1E
 
 # Positive-control stimulus target, addressed by generated symbol (no hand

@@ -196,6 +196,16 @@ GPIOs, output on the remaining 3
 |UART 16550 |`smc_config_pkg::UartTxFifoDepth` |16 |32
 
 |UART 16550 |`smc_config_pkg::UartRxFifoDepth` |16 |32
+
+|eFuse |`HAS_LC_STATE` |1 |0
+
+|eFuse |`EFUSE_FIELDS` (`smc_efuse_pkg::NumEfuseFields`) |16 |33
+
+|eFuse |`EFUSE_MMR_REG_MAP_BASE_ADDR`, `EFUSE_MMR_REG_MAP_SIZE` |`0x2000`,
+`0x1000` |0, 0 (no MMR window)
+
+|eFuse |`CLASS1_SHADOW_RANGES` (`smc_efuse_pkg::Class1ShadowRanges`) |none
+|the two `LOCKS` shadow words
 |=======================================================================
 
 The SMC I2C instances keep the IP default of 64 entries for the controller TX
@@ -203,7 +213,8 @@ The SMC I2C instances keep the IP default of 64 entries for the controller TX
 four FIFOs of each instance hold 64 entries, and `FMTLVL`, `RXLVL`, `TXLVL`
 and `ACQLVL` read 64 when their FIFO is full.
 
-The System Timer OCTS takes no parameters. The eFuse overrides only bus
-widths and interface types. The Log Engine, AVSBus Controller, and Telemetry
+The System Timer OCTS takes no parameters. Beyond the eFuse rows above, the
+eFuse overrides its bus widths, interface types, and the placement of its MAP
+and CTRL windows in the SMC address map. The Log Engine, AVSBus Controller, and Telemetry
 Receiver are configured explicitly through `smc_config_pkg`, but at values
 equal to their IP defaults.
