@@ -16,7 +16,7 @@ class smc_efuse_guard_target_test(smc_base_test):
     required_evidence = (
         "CHK-EFUSE-GUARD-PROGRAM-TARGET",
         "CHK-EFUSE-GUARD-READ-TARGET",
-        "CHK-EFUSE-PROGRAM-NO-READBACK",
+        "CHK-EFUSE-PROGRAM-VERIFY",
         "CHK-EFUSE-QUIET-TIMEOUTS",
     )
     min_evidence = 4

@@ -8773,16 +8773,16 @@ sequence's own raise, outside the scoreboard
 
 * Both subsystems carry an `efuse_interface_ctrl` block (`hw/ip/efuse` register description): EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL each start one fuse command at a fuse bit address, and an address at or beyond the fuse array -- the `*_efuse_map` size in bits from the generated address headers -- is rejected with the sticky address error. The SEP block is on the SEP map; the SMC block is reached through the SEP view of the SMC window. Every register address and field mask comes from the generated headers.
 * S4: a read at bit address 0, and at the middle of the array with each address bit set in turn, completes with `read_done` and no `read_status` error. The middle of the array is spare space that no lock field of the shadow preloads covers, so no read there is blocked.
-* S5: programs of four bits of the fuse word at the middle of the array, alternately with read-back, complete without error, and a read of that word returns every programmed bit on top of its earlier value; a program with `efuse_data` 0, which the description says is ignored, changes nothing. `program_enable` is cleared before the read-back, since while it is set the controller gives the fuse-command port to the program interface (`efuse_interface_controller.sv`).
+* S5: programs of four bits of the fuse word at the middle of the array complete without error, and a read of that word returns every programmed bit on top of its earlier value; a program with `efuse_data` 0, which the description says is ignored, changes nothing. `program_enable` is cleared before the read, since while it is set the controller gives the fuse-command port to the program interface (`efuse_interface_controller.sv`).
 * S6: a read and a program one bit past the array complete with an error and set the sticky read and program address errors, and the clear strobes clear both.
-* S7: the bench fuse-bank models run with `+sep_efuse_prog_fail_count=1` and `+smc_efuse_prog_fail_count=1`, so the first program each bank takes leaves the fuse unblown. A program with read-back at a fresh bit then reads the bit back unset and reports `program_status` 1 (`efuse_interface_shim.sv`), and the word reads 0.
+* S7: the bench fuse-bank models run with `+sep_efuse_prog_fail_count=1` and `+smc_efuse_prog_fail_count=1`, so the first program each bank takes leaves the fuse unblown. Every program ends with the SHIM's verify read of the word, so a program at a fresh bit reads the bit back unset and reports `program_status` 1 (`efuse_interface_shim.sv`), and the word reads 0.
 * S8: programs of all 32 bits of a fresh word complete without error, the word reads back `0xFFFF_FFFF`, and the word after it still reads 0.
 
 *Test Procedure*:
 
 [arabic]
 . Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`.
-. For the SEP block and then the SMC block: read at every walk address. Error injection. Point: EFUSE_PROGRAM_CTRL at a fresh bit, with the bench fuse-bank model under `+sep_efuse_prog_fail_count=1` / `+smc_efuse_prog_fail_count=1`. Kind: the first program the bank takes leaves the fuse unblown. Expected response: the program with read-back reads the bit back unset and reports `program_status` 1, and the word reads 0. Read the middle fuse word, program four of its bits and a zero-data program, and read it again; program all 32 bits of a fresh word and read it and the next word. Error injection. Point: EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL at the bit address one past the fuse array. Kind: an out-of-range read and program. Expected response: each completes with an error and sets the sticky read and program address errors, and the clear strobes clear both. Read and clear the sticky errors.
+. For the SEP block and then the SMC block: read at every walk address. Error injection. Point: EFUSE_PROGRAM_CTRL at a fresh bit, with the bench fuse-bank model under `+sep_efuse_prog_fail_count=1` / `+smc_efuse_prog_fail_count=1`. Kind: the first program the bank takes leaves the fuse unblown. Expected response: the program's verify read finds the bit unset, `program_status` reads 1, and the word reads 0. Read the middle fuse word, program four of its bits and a zero-data program, and read it again; program all 32 bits of a fresh word and read it and the next word. Error injection. Point: EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL at the bit address one past the fuse array. Kind: an out-of-range read and program. Expected response: each completes with an error and sets the sticky read and program address errors, and the clear strobes clear both. Read and clear the sticky errors.
 
 *Checkers*:
 
@@ -8793,7 +8793,7 @@ sequence's own raise, outside the scoreboard
 |`CHK-EFUSE-CMD-READ` |on both blocks every walk read completes with `read_done` and no error
 |`CHK-EFUSE-CMD-PROGRAM` |on both blocks the four programs complete without error and the middle fuse word reads back with every programmed bit set
 |`CHK-EFUSE-CMD-OOB` |on both blocks the out-of-range read and program complete with an error, set both sticky address errors, and the clear strobes clear them
-|`CHK-EFUSE-CMD-PROGRAM-FAIL` |on both blocks the program with read-back against a failing bank reports `program_status` 1 and the word reads 0
+|`CHK-EFUSE-CMD-PROGRAM-FAIL` |on both blocks a program against a failing bank reports `program_status` 1 from its verify read and the word reads 0
 |`CHK-EFUSE-CMD-WORD` |on both blocks the all-ones word reads back `0xFFFF_FFFF` and the next word reads 0
 |assertion |efuse_command incomplete s1..s3,sep,smc=<values>
 |===

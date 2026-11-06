@@ -71,7 +71,8 @@ class smc_efuse_jtag_otp_data_walk_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
-            # Directed SEP_IN reads without the polls: 1 status, 104 walk readbacks,
+            # Directed SEP_IN reads without the polls: 1 status, 104 walk readbacks
+            # (20 + 19 + 31 + 31 walk words, 2 timeout resets, 1 reserved-bit word),
             # 4 partial-strobe readbacks, 1 program-interface read, 4 dout reads and
             # 4 restore readbacks.
             min_csr_accesses=118,

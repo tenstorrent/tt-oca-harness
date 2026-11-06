@@ -35,7 +35,6 @@ from .smc_efuse_read_program_timeout_test_seq import (
     PROG_EN,
     PROG_ERR,
     PROG_GO,
-    PROG_RB,
     PROGRAM_CTRL,
     READ_BUSY,
     READ_CTRL,
@@ -254,9 +253,7 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
         bit = _bit_addr(LOCK_WORD_ADDR, LOCK_BIT_IN_FLIGHT)
         self._stall(PROGRAM_STALL_CYCLES)
         mark = watch.mark()
-        await self.csr_write(
-            "INFLIGHT_GO", PROGRAM_CTRL, bit | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
-        )
+        await self.csr_write("INFLIGHT_GO", PROGRAM_CTRL, bit | PROG_DATA | PROG_GO | PROG_EN)
         busy = await self.csr_read("INFLIGHT_BUSY", PROGRAM_CTRL)
         issued_before_lock = watch.since(mark)[0]
         assert busy & PROG_BUSY and issued_before_lock == 1, (
@@ -293,7 +290,7 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
         refused_bit = _bit_addr(LOCK_WORD_ADDR, LOCK_BIT_REFUSED)
         mark = watch.mark()
         await self.csr_write(
-            "REFUSED_GO", PROGRAM_CTRL, refused_bit | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
+            "REFUSED_GO", PROGRAM_CTRL, refused_bit | PROG_DATA | PROG_GO | PROG_EN
         )
         refused, _ = await self._poll("REFUSED_DONE", PROGRAM_CTRL, PROG_DONE)
         refused_status = await self.csr_read("REFUSED_STATUS", STATUS)
@@ -307,7 +304,7 @@ class smc_efuse_command_path_test_seq(SmcCsrSeq):
         )
         self._chk(
             "CHK-EFUSE-LOCK-AFTER-ISSUE",
-            f"SPARE{LOCK_FIELD} bit {LOCK_BIT_IN_FLIGHT} read-back program with the bank write "
+            f"SPARE{LOCK_FIELD} bit {LOCK_BIT_IN_FLIGHT} program with the bank write "
             f"stalled {PROGRAM_STALL_CYCLES} cycles: busy with its SHIM command issued (PROGRAM_CTRL "
             f"0x{busy:08x}), LOCKS write lock 0x{LOCK_WRITE:x} landed while busy "
             f"(0x{still_busy:08x}), program completed "

@@ -17,7 +17,7 @@ DEFENDS (real DUT RTL):
     window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv`, loaded
     by its sense FSM).
   * The eFuse interface controller issues a PROGRAM command, latches the
-    readback comparison result and reports it in `PROGRAM_STATUS`
+    verify-read comparison result and reports it in `PROGRAM_STATUS`
     (`efuse_interface_shim.sv` -> `efuse_program_interface.sv`), with
     both polarities observed: set on the injected failure, clear on the clean
     program.
@@ -59,9 +59,6 @@ OTP_WORD0_MARKER = efuse_preload_word_at(SMC_EFUSE_MAP_LOCKS)
 # moves them with it.
 _PROG_DATA = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
 _PROG_GO = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
-_PROG_READBACK = efuse_ifc_u32(
-    "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm"
-)
 _PROG_ENABLE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm")
 _PROG_DONE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm")
 _PROG_STATUS = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm")
@@ -130,14 +127,14 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         )
 
         # First PROGRAM (bit2 is clear in the preload word): the injected failure
-        # must not sticky-OR. Prefer a clear bit so PROGRAM_READBACK observes a
-        # real miss when the bank model zeroes the write data under
-        # +smc_efuse_prog_fail_count.
+        # must not sticky-OR. Prefer a clear bit so the verify read every program
+        # ends with observes a real miss when the bank model zeroes the write data
+        # under +smc_efuse_prog_fail_count.
         _FAIL_BIT = 2
         await self.csr_write(
             "EFUSE_PROGRAM_CTRL_FAIL",
             EFUSE_PROGRAM_CTRL,
-            _FAIL_BIT | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
+            _FAIL_BIT | _PROG_DATA | _PROG_GO | _PROG_ENABLE,
         )
         st_fail = await self._wait_program_done(clk, "PROGRAM_FAIL")
         prog_fail = int(dut.tb_efuse_programmed_word0.value)
@@ -150,7 +147,7 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-EFUSE-OTP-PROGRAM-FAIL: PROGRAM_CTRL=0x%08x status=%d "
-            "(real RTL: efuse_interface_shim readback comparison) and the "
+            "(real RTL: efuse_interface_shim verify-read comparison) and the "
             "bank-model word 0 is unchanged at 0x%08x (model-scored)",
             st_fail,
             1 if st_fail & _PROG_STATUS else 0,
@@ -161,7 +158,7 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         await self.csr_write(
             "EFUSE_PROGRAM_CTRL_OK",
             EFUSE_PROGRAM_CTRL,
-            0 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
+            0 | _PROG_DATA | _PROG_GO | _PROG_ENABLE,
         )
         st_ok = await self._wait_program_done(clk, "PROGRAM_OK")
         prog_ok = int(dut.tb_efuse_programmed_word0.value)

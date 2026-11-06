@@ -30762,7 +30762,7 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * `LOCKS` -- read from `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time via `efuse_preload_word_at` rather than a hand-transcribed literal, which cannot detect the asset and the model disagreeing. That asset is what `efuse_bank_model.sv` `$readmemh`s under the bench-wide `+smc_efuse_hex` (`smc_sim_cfg.toml`), so this leg's proof class is **transport** (the map returns the sensed word), not fuse programming ([NO-UNJUSTIFIED-PRELOAD]).
-* `EFUSE_PROGRAM_INTERFACE_READ_DATA` -- the generated RDL reset `EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset` (`hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h`); no program read-back has been issued in this testcase, so the register must still hold it. That reset is `0x0` and the field is `sw = r`, so this compare is a transport/decode probe and **not** a liveness proof: a dead or unmapped window satisfies it equally. Since the field is driven only in the program FSM's `ST_CAPTURE_DATA` state ("Hardware debug only", `efuse_interface_ctrl.rdl`), which this testcase never enters, no distinguishing value can be placed in it. Block liveness is instead proven on the writable sibling `EFUSE_READ_REQ_TIMEOUT` @0x14 (`sw=rw`, `rdl:180`, non-zero reset `0x800000`) by a reset read plus a write/read-back/restore in the same run ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+* `EFUSE_PROGRAM_INTERFACE_READ_DATA` -- the generated RDL reset `EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset` (`hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h`); no program has been issued in this testcase, so the register must still hold it. That reset is `0x0` and the field is `sw = r`, so this compare is a transport/decode probe and **not** a liveness proof: a dead or unmapped window satisfies it equally. Since the field is driven only in the program FSM's `ST_CAPTURE_DATA` state ("Hardware debug only", `efuse_interface_ctrl.rdl`), which this testcase never enters, no distinguishing value can be placed in it. Block liveness is instead proven on the writable sibling `EFUSE_READ_REQ_TIMEOUT` @0x14 (`sw=rw`, `rdl:180`, non-zero reset `0x800000`) by a reset read plus a write/read-back/restore in the same run ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 * `SCRATCH_COLD_WARM_0` -- its own reset value 0, backed in the same run by a write/read-back positive control proving the register can hold a one ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 
 *Test Procedure*:
@@ -30874,7 +30874,7 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * Real fuse sense completes without `+skip_fuse_sense`, and the SMC_EFUSE_MAP window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv`, loaded by the sense FSM).
-* The eFuse interface controller issues a PROGRAM command, latches the readback comparison result and reports it in `PROGRAM_STATUS` (`efuse_interface_shim.sv` -> `efuse_program_interface.sv`), with both polarities observed: set on the injected failure, clear on the clean program.
+* The eFuse interface controller issues a PROGRAM command, latches the verify-read comparison result and reports it in `PROGRAM_STATUS` (`efuse_interface_shim.sv` -> `efuse_program_interface.sv`), with both polarities observed: set on the injected failure, clear on the clean program.
 * `EFUSE_STATUS.efuse_sense_done` mirrors the sense handshake.
 * The bank model's storage is unchanged by a fail-injected program and sticky-ORs one bit on a successful one. This shows the controller's command reached the bank; it says nothing about fuse physics.
 * Foundry OTP macro analog timing / voltage.
@@ -33044,21 +33044,21 @@ draws nothing from the seed.
 * Control: with `program_enable` clear a read of word 0 raises one SHIM command, completes without error and returns the preload word; after the legs, clearing `program_enable` lets the held read issue, so the same probe reads 1 in the same run.
 * Exclusive enables: `read_go` with `program_enable` set and `read_enable` clear raises no SHIM command, never shows `read_busy`, reads `read_done` 1 and `read_status` 1 on the first register read, and leaves READ_DATA unchanged.
 * Both enables set with a 64-cycle read timeout: the read is accepted (`read_busy` 1), raises no SHIM command, and ends with `read_done` 1 and `read_status` 1 by the timeout. Both enables set with no timeout: no SHIM command over 256 busy samples, then exactly one once `program_enable` clears, completing without error with the preload word.
-* Lock after issue: a read-back program of SPARE[10] bit 0 with the bank write stalled 512 cycles reads `program_busy` 1; `LOCKS` then sets SPARE[10]'s write lock while the program is still busy; the program completes with `program_status` 0 and no `efuse_req_error`, one SHIM command, and the read interface returns the word with the bit burnt. A program of bit 1 started afterwards raises no SHIM command, ends with `program_status` 1 and sets `efuse_req_error`.
+* Lock after issue: a program of SPARE[10] bit 0 with the bank write stalled 512 cycles reads `program_busy` 1; `LOCKS` then sets SPARE[10]'s write lock while the program is still busy; the program completes with `program_status` 0 and no `efuse_req_error`, one SHIM command, and the read interface returns the word with the bit burnt. A program of bit 1 started afterwards raises no SHIM command, ends with `program_status` 1 and sets `efuse_req_error`.
 
 *Test Procedure*:
 
 [arabic]
 . Wait for fuse sense, start the SHIM command and busy watch, run the control read.
 . Set `program_enable` only; issue `read_go` without `read_enable`, read READ_CTRL and READ_DATA; arm the read timeout and issue `read_go` with `read_enable`, poll to done; restore the timeout, issue the same read, watch 256 busy samples, clear `program_enable`, poll to done and read the data.
-. Stall the bank write, start the read-back program, read `program_busy`, write LOCKS, read it and `program_busy` back, poll to done, read STATUS, read the word through the read interface; start a program of the next bit, poll to done, read STATUS, clear the error.
+. Stall the bank write, start the program, read `program_busy`, write LOCKS, read it and `program_busy` back, poll to done, read STATUS, read the word through the read interface; start a program of the next bit, poll to done, read STATUS, clear the error.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-LOCK-AFTER-ISSUE` |With the bank write stalled, a read-back program of SPARE[10] bit 0 is busy when its write lock lands in LOCKS and still busy after; it completes with `program_status` 0, `efuse_req_error` 0 and one SHIM command, and the word reads with the bit set; a program of bit 1 started after the lock raises no SHIM command, ends with `program_status` 1 and `efuse_req_error` 1. Fails on a program the late lock aborts or errors, a lock that misses the in-flight window, an unburnt bit, or a later program the lock does not refuse
+|`CHK-EFUSE-LOCK-AFTER-ISSUE` |With the bank write stalled, a program of SPARE[10] bit 0 is busy when its write lock lands in LOCKS and still busy after; it completes with `program_status` 0, `efuse_req_error` 0 and one SHIM command, and the word reads with the bit set; a program of bit 1 started after the lock raises no SHIM command, ends with `program_status` 1 and `efuse_req_error` 1. Fails on a program the late lock aborts or errors, a lock that misses the in-flight window, an unburnt bit, or a later program the lock does not refuse
 |`CHK-EFUSE-READ-UNDER-PROGRAM-ENABLE` |With `program_enable` set and no program go: `read_go` without `read_enable` raises 0 SHIM commands and 0 busy samples, reads `read_done` 1 and `read_status` 1 at once and leaves READ_DATA at the preload word; `read_go` with `read_enable` and a 64-cycle timeout raises 0 SHIM commands, shows `read_busy`, and ends with `read_done` 1 and `read_status` 1; `read_go` with `read_enable` and no timeout raises 0 SHIM commands over 256 busy samples and exactly 1 once `program_enable` clears, completing with no error and the preload word; the control read with the path free raises 1. Fails on any SHIM command while `program_enable` is set, a refused read not completing at once, an accepted read not timing out, or a held read that does not issue once the path frees
 |`CHK-TIMEOUT-PATHS` |Every SEP_IN access is bounded by the AXI driver timeout, every register poll by 4096 reads and every watch by 2048 rises, each reported with what it took
 |===
@@ -46503,8 +46503,8 @@ draws nothing from the seed.
 
 * Contract `SMC_COV_W2T_009` revision 4 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
 * `tb_lc_state` is driven to TEST_DEV (0xF0) for the run and back to that value at the end (SF-017); `EFUSE_INTERFACE_CTRL_STATUS` must read `efuse_sense_done` 1 with bits [6:4] 0 before the first write.
-* Through the JTAG eFuse port, EFUSE_PROGRAM_CTRL takes 0x0805_FFFF, 0 and a walking one over its 19 RW bits; EFUSE_READ_CTRL 0x1000_FFFF, 0 and a walking one over its 17 RW bits; each timeout register 0x1FFF_FFFF, 0 and a walking one over bits [28:0], then 0x0080_0000. Every write is read back over SEP_IN at the same generated address (`efuse_interface_ctrl.adoc`).
-* EFUSE_PROGRAM_CTRL takes 0x0000_1234 full width, then 0x0805_FFA5 with WSTRB 0x1, then 0x0805_FFA5 with WSTRB 0x2 (byte lane 1 on, lane 0 off), then 0 full width; both strobed readbacks and responses are logged (SF-009).
+* Through the JTAG eFuse port, EFUSE_PROGRAM_CTRL takes 0x0801_FFFF, 0 and a walking one over its 18 RW bits; EFUSE_READ_CTRL 0x1000_FFFF, 0 and a walking one over its 17 RW bits; each timeout register 0x1FFF_FFFF, 0 and a walking one over bits [28:0], then 0x0080_0000. Every write is read back over SEP_IN at the same generated address (`efuse_interface_ctrl.adoc`).
+* EFUSE_PROGRAM_CTRL takes 0x0000_1234 full width, then 0x0801_FFA5 with WSTRB 0x1, then 0x0801_FFA5 with WSTRB 0x2 (byte lane 1 on, lane 0 off), then 0 full width; both strobed readbacks and responses are logged (SF-009).
 * Bit A (bit 5 of SPARE[2]) is read through the read interface, programmed with `efuse_data` 1 and read again; bit A2 (bit 9 of SPARE[3]) is read, takes a program request with `efuse_data` 0 and is read again; `program_busy`, `program_done` and `program_status` are recorded before that GO write and EFUSE_PROGRAM_CTRL is polled after it until the write has completed and `program_busy` has read 0 on eight consecutive samples; whether the request shows a lifecycle at all is logged, not compared, since `efuse_interface_ctrl.rdl` says a request with `efuse_data` 0 is ignored (SF-034). Both regions are unlocked in the default image and their image words are 0. Every read first writes EFUSE_PROGRAM_CTRL to 0: `program_enable` and `read_enable` are mutually exclusive owners of the command path, and a read issued while `program_enable` is set does not reach the bank (`hw/ip/efuse/doc/architecture.adoc`, Command-path ownership).
 * After the data-0 program, EFUSE_PROGRAM_CTRL is read over the JTAG eFuse port and the value read is written back, with AxPROT 0b101, then 0b000, then the port default 0b010 (stimulus for the AxPROT bits of the JTAG eFuse request path, which every other access drives at 0b010). The register holds the data-0 word, so no write-back starts a fuse program (`efuse_interface_ctrl.adoc`).
 * EFUSE_PROGRAM_CTRL and EFUSE_READ_CTRL end at 0 and both timeouts at 0x0080_0000.
@@ -46518,7 +46518,7 @@ Drive `smc_efuse_jtag_otp_data_walk_test_seq`. Each checker below is a named com
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-JTAG-WALK` |Every SEP_IN readback equals the JTAG-written word masked to the register's RW fields with the status fields 0, in 21 + 19 + 31 + 31 writes, every JTAG write answers OKAY, and both timeouts read 0x0080_0000 at the end; reserved bits logged (LINKED-ISSUE SF-001)
+|`CHK-EFUSE-JTAG-WALK` |Every SEP_IN readback equals the JTAG-written word masked to the register's RW fields with the status fields 0, in 20 + 19 + 31 + 31 writes, every JTAG write answers OKAY, reserved bit 18 of EFUSE_PROGRAM_CTRL reads 0 after a write of 1, and both timeouts read 0x0080_0000 at the end; other reserved bits logged (LINKED-ISSUE SF-001)
 |`CHK-EFUSE-JTAG-PARTIAL-STRB` |The full-width writes read back exactly 0x0000_1234 and 0x0; the WSTRB 0x1 readback and response are logged against 0x0000_12A5, and the WSTRB 0x2 readback and response against the WSTRB 0x1 readback with `efuse_addr[15:8]` 0xFF (both LINKED-ISSUE SF-009)
 |`CHK-EFUSE-JTAG-PROGRAM` |After the go write `program_busy` reads 1 on at least one sample before `program_done` reads 1, and `program_status` reads 0, within the poll bound
 |`CHK-EFUSE-JTAG-READBACK` |The read of A completes with `read_done` 1 and `read_status` 0, and its dout differs from the pre-program dout in exactly one bit, which went 0 to 1; the bit position is logged (LINKED-ISSUE SF-016)
@@ -50585,39 +50585,39 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* The default image leaves every SPARE word at zero, so a read of one could not tell a disclosed word from a withheld one. One bit of SPARE[6] is first set by an unlocked read-back program.
+* The default image leaves every SPARE word at zero, so a read of one could not tell a disclosed word from a withheld one. One bit of SPARE[6] is first set by an unlocked program.
 ** The program must complete without error.
 ** A read of the word through the read interface must then return the asset word with that bit set.
 * SPARE[6]'s read lock is set through `LOCKS`, which is write-1-to-set. The same read must complete with `READ_STATUS` set and `EFUSE_REQ_ERROR` raised, and must not return the word.
-* SPARE[7]'s write lock is set, and a read-back program of a bit the asset holds at 0 is issued.
+* SPARE[7]'s write lock is set, and a program of a bit the asset holds at 0 is issued.
 ** It must complete with `PROGRAM_STATUS` set and `EFUSE_REQ_ERROR` raised.
 ** A read of the word afterwards must still return the asset value.
-* A program of one SPARE[8] bit with `EFUSE_PROGRAM_CTRL.EFUSE_PROGRAM_READ_BACK` clear, a plain program. The leaf does not trust the command.
+* A program of one SPARE[8] bit. Every program ends with the SHIM's verify read of the programmed word (`efuse_interface_shim.sv`); the mismatch side, `PROGRAM_STATUS` set when the bank keeps the bit clear, is `smc_efuse_otp_burn_shadow_test` (`CHK-EFUSE-OTP-PROGRAM-FAIL`). The leaf does not trust the command.
 ** The program must complete without error.
 ** A read of the word through the read interface must show the bit burnt.
-** A read-back program of the same bit must find it set.
+** A second program of the same bit, whose verify read finds it already set, must complete without error.
 * The two locks hold until reset and are left set.
 * With `EFUSE_REQ_ERROR` still set, which "must be cleared by writing 1" (`efuse_interface_ctrl.rdl`), a read and a program of SPARE[9] must both be refused, and the program must not burn.
-* Timeouts configured but not reached. A read-back program with the program timeout enabled at its reset length, and another with the timeout disabled and its length 0, must both complete. A program with no data bit must fail. A read with the read timeout disabled at length 0 must return exactly the two bits programmed.
+* Timeouts configured but not reached. A program with the program timeout enabled at its reset length, and another with the timeout disabled and its length 0, must both complete. A program with no data bit must fail. A read with the read timeout disabled at length 0 must return exactly the two bits programmed.
 
 *Test Procedure*:
 
 [arabic]
 . Wait for sense, check that the two locks are clear, and clear `EFUSE_REQ_ERROR`.
-. Error injection. Point: the read interface, with SPARE[6]'s read lock set through `LOCKS`. Kind: a read of a read-locked word. Expected response: the read completes with `READ_STATUS` set and `EFUSE_REQ_ERROR` raised, and does not return the word. Before the lock: program one bit of SPARE[6] with read-back and read the word.
-. Error injection. Point: the program interface, with SPARE[7]'s write lock set. Kind: a read-back program of a bit the asset holds at 0 in a write-locked field. Expected response: `PROGRAM_STATUS` set and `EFUSE_REQ_ERROR` raised, and a read of the word afterwards still returns the asset value.
-. Program one SPARE[8] bit without read-back, read the word, and program the same bit with read-back.
+. Error injection. Point: the read interface, with SPARE[6]'s read lock set through `LOCKS`. Kind: a read of a read-locked word. Expected response: the read completes with `READ_STATUS` set and `EFUSE_REQ_ERROR` raised, and does not return the word. Before the lock: program one bit of SPARE[6] and read the word.
+. Error injection. Point: the program interface, with SPARE[7]'s write lock set. Kind: a program of a bit the asset holds at 0 in a write-locked field. Expected response: `PROGRAM_STATUS` set and `EFUSE_REQ_ERROR` raised, and a read of the word afterwards still returns the asset value.
+. Program one SPARE[8] bit, read the word, and program the same bit again.
 . Error injection. Point: both interfaces, with `EFUSE_REQ_ERROR` still set from the locked read. Kind: a read and a program of SPARE[9] issued before the error is cleared. Expected response: both refused, and the program does not burn.
 . Error injection. Point: the program interface. Kind: a program with no data bit. Expected response: the program fails. Also program two SPARE[9] bits under the two timeout settings, which must both complete, and read the word with the read timeout disabled at length 0.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
-|`CHK-EFUSE-PROGRAM-NO-READBACK` |A program without read-back completed, the read interface then showed the bit burnt, and a read-back program of the same bit found it set
 |===
 |Checker |Description
 |`CHK-EFUSE-GUARD-READ-TARGET` |An unlocked read of a SPARE word returned the value just programmed; with its read lock set the read failed with `EFUSE_REQ_ERROR` and did not return it
 |`CHK-EFUSE-GUARD-PROGRAM-TARGET` |A program of a write-locked SPARE field failed with `EFUSE_REQ_ERROR`, and the word still read its asset value
+|`CHK-EFUSE-PROGRAM-VERIFY` |A program of one bit completed without error, the read interface then showed the bit burnt, and a second program of the same bit, whose verify read finds it already set, completed without error
 |`CHK-EFUSE-QUIET-TIMEOUTS` |Requests under `EFUSE_REQ_ERROR` were refused, programs completed under an enabled and a disabled timeout, a no-data program failed, and the word held exactly the two programmed bits
 |===
 

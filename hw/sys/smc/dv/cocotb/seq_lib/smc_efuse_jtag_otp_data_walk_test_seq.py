@@ -15,11 +15,13 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
 
 * S1 drives ``tb_lc_state`` to TEST_DEV and requires ``efuse_sense_done`` 1 with the
   error bits [6:4] 0.
-* S2 writes all RW fields, zero and a walking one to EFUSE_PROGRAM_CTRL (19 RW bits),
+* S2 writes all RW fields, zero and a walking one to EFUSE_PROGRAM_CTRL (18 RW bits),
   EFUSE_READ_CTRL (17 RW bits) and both timeout registers (29 RW bits), then the
   0x0080_0000 reset to the timeouts. Each SEP_IN readback masked to the RW fields equals
-  the written word and the status fields read 0. One JTAG read of each register follows.
-* S3 writes EFUSE_PROGRAM_CTRL full-width 0x1234, with WSTRB 0x1 and data 0x0805_FFA5,
+  the written word and the status fields read 0. One more write sets every RW field of
+  EFUSE_PROGRAM_CTRL together with its reserved bit 18, which must read back 0. One JTAG
+  read of each register follows.
+* S3 writes EFUSE_PROGRAM_CTRL full-width 0x1234, with WSTRB 0x1 and data 0x0801_FFA5,
   with WSTRB 0x2 and the same data, then full-width 0. Both strobed readbacks and
   responses are logged (SF-009).
 * S4 reads bit A through the read interface, programs it with ``efuse_data`` 1 and polls
@@ -75,12 +77,11 @@ STATUS_ERRORS = (
 PROG_ADDR = _f("EFUSE_PROGRAM_CTRL", "EFUSE_ADDR")
 PROG_DATA = _f("EFUSE_PROGRAM_CTRL", "EFUSE_DATA")
 PROG_GO = _f("EFUSE_PROGRAM_CTRL", "EFUSE_PROGRAM_GO")
-PROG_RB = _f("EFUSE_PROGRAM_CTRL", "EFUSE_PROGRAM_READ_BACK")
 PROG_BUSY = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_BUSY")
 PROG_DONE = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_DONE")
 PROG_ERR = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_STATUS")
 PROG_EN = _f("EFUSE_PROGRAM_CTRL", "PROGRAM_ENABLE")
-PROG_RW = PROG_ADDR | PROG_DATA | PROG_RB | PROG_EN
+PROG_RW = PROG_ADDR | PROG_DATA | PROG_EN
 PROG_STATE = PROG_BUSY | PROG_DONE | PROG_ERR
 
 READ_ADDR = _f("EFUSE_READ_CTRL", "EFUSE_ADDR")
@@ -106,13 +107,15 @@ TMO_RESET_P = efuse_ifc_u32(
 )
 
 #: Contract S2 words: every RW field set and the documented timeout reset.
-PROG_ALL_RW = 0x0805_FFFF
+PROG_ALL_RW = 0x0801_FFFF
+#: Reserved bit of EFUSE_PROGRAM_CTRL: a written 1 must read back 0.
+PROG_RESERVED = 1 << 18
 READ_ALL_RW = 0x1000_FFFF
 TMO_ALL_RW = 0x1FFF_FFFF
 TMO_RESET = 0x0080_0000
 #: Contract S3 words.
 PARTIAL_PRE = 0x0000_1234
-PARTIAL_DATA = 0x0805_FFA5
+PARTIAL_DATA = 0x0801_FFA5
 PARTIAL_STRB = 0x1
 PARTIAL_EXPECT = 0x0000_12A5
 PARTIAL_STRB1 = 0x2
@@ -120,7 +123,7 @@ PARTIAL_STRB1 = 0x2
 PARTIAL_LANE1 = PARTIAL_DATA & 0x0000_FF00
 
 #: Documented write counts per register in S2 (all RW, zero, one per RW bit).
-WALK_COUNTS = {"PROGRAM_CTRL": 21, "READ_CTRL": 19, "READ_TO": 31, "PROG_TO": 31}
+WALK_COUNTS = {"PROGRAM_CTRL": 20, "READ_CTRL": 19, "READ_TO": 31, "PROG_TO": 31}
 
 #: TEST_DEV in the {diff_n, diff_p} encoding of port_table.adoc:64.
 LC_TEST_DEV_PACKED = 0xF0
@@ -357,6 +360,18 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         assert TMO_RESET_R == TMO_RESET and TMO_RESET_P == TMO_RESET, (
             f"generated timeout resets 0x{TMO_RESET_R:x}/0x{TMO_RESET_P:x} are not 0x{TMO_RESET:x}"
         )
+        assert PROG_RESERVED & (PROG_RW | PROG_STATE) == 0, (
+            f"bit 0x{PROG_RESERVED:08x} of EFUSE_PROGRAM_CTRL is a generated field, not reserved"
+        )
+        await self._jtag_write(
+            "S2_PROGRAM_CTRL_RESERVED", PROGRAM_CTRL, PROG_ALL_RW | PROG_RESERVED
+        )
+        rb_reserved = await self._sep_read("S2_PROGRAM_CTRL_RESERVED_RB", PROGRAM_CTRL)
+        assert rb_reserved & PROG_RW == PROG_ALL_RW and rb_reserved & PROG_RESERVED == 0, (
+            f"S2 PROGRAM_CTRL: wrote 0x{PROG_ALL_RW | PROG_RESERVED:08x}, SEP_IN read "
+            f"0x{rb_reserved:08x}; the RW fields must hold 0x{PROG_ALL_RW:08x} and reserved bit "
+            f"0x{PROG_RESERVED:08x} must read 0"
+        )
         finals = []
         for name, addr in (("READ_TO", READ_TMO), ("PROG_TO", PROG_TMO)):
             await self._jtag_write(f"S2_{name}_RESET", addr, TMO_RESET)
@@ -379,7 +394,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-EFUSE-JTAG-WALK",
             "PROGRAM_CTRL %d/%d, READ_CTRL %d/%d, READ_TO %d/%d, PROG_TO %d/%d masked match, "
-            "status idle; final timeouts 0x%08x/0x%08x; JTAG writes OKAY; reserved bits read %s "
+            "status idle; PROGRAM_CTRL reserved bit 0x%08x read 0 after a write of 1 "
+            "(0x%08x); final timeouts 0x%08x/0x%08x; JTAG writes OKAY; reserved bits read %s "
             "(LINKED-ISSUE SF-001); JTAG reads logged %s",
             counts["PROGRAM_CTRL"],
             WALK_COUNTS["PROGRAM_CTRL"],
@@ -389,6 +405,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
             WALK_COUNTS["READ_TO"],
             counts["PROG_TO"],
             WALK_COUNTS["PROG_TO"],
+            PROG_RESERVED,
+            rb_reserved,
             finals[0],
             finals[1],
             {k: sorted(f"0x{v:x}" for v in vals) for k, vals in reserved.items()},

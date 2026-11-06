@@ -52,7 +52,6 @@ READ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_AD
 
 PROG_DATA = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
 PROG_GO = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
-PROG_RB = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm")
 PROG_EN = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm")
 PROG_DONE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm")
 PROG_ERR = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm")
@@ -249,7 +248,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("STATUS_CLR0", STATUS, 0)
 
     async def _program(self, label: str, idle: bool = True) -> int:
-        cmd = _BIT | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
+        cmd = _BIT | PROG_DATA | PROG_GO | PROG_EN
         await self.csr_write(f"{label}_GO", PROGRAM_CTRL, cmd)
         st = await self._wait_mask(PROGRAM_CTRL, PROG_DONE, f"{label}_DONE")
         if idle:

@@ -62,7 +62,6 @@ READ_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR")
 STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
 PROG_DATA = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
 PROG_GO = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
-PROG_RB = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm")
 PROG_EN = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm")
 PROG_BUSY = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bm")
 PROG_DONE = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm")
@@ -271,7 +270,7 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
 
     async def _program_legal(self, label: str) -> int:
         """Run a legal program command and return its completed CSR word."""
-        await self.csr_write(f"{label}_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN)
+        await self.csr_write(f"{label}_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_EN)
         value = await self._wait_done(PROGRAM_CTRL, PROG_DONE, f"{label}_DONE")
         await self.csr_write(f"{label}_IDLE", PROGRAM_CTRL, 0)
         return value
@@ -292,9 +291,7 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
                 offset=self._live_offset("program"),
             )
         )
-        await self.csr_write(
-            "PROGRAM_CORRUPT_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN
-        )
+        await self.csr_write("PROGRAM_CORRUPT_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_EN)
         await monitor
         await self._check_efuse_fault_csr("program", f"PROGRAM_ILLEGAL_{encoding:02b}_CSR")
         await self.csr_write("PROGRAM_CORRUPT_IDLE", PROGRAM_CTRL, 0)
