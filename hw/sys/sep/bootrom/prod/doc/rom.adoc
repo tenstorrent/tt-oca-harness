@@ -1145,8 +1145,9 @@ and on a `TEST_DEV` or `RMA_SiP` part it makes secure boot enforced (SEP-ROM-SB-
 
 [S18] reads the `SIP_DIS_READ_LOCK` / `SYS_DIS_READ_LOCK` bits of `LOCKS` and, when neither is
 set, both vectors, once, after the `SBOOT_DIS` read, and latches the result for the library's
-`is_secure_boot_active()` callback. A read-locked field returns a sentinel instead of its
-value, so a lock on either vector counts as debug disabled.
+`is_secure_boot_active()` callback. A read of a read-locked field completes with a bus error
+and the sentinel `0xBADCAB1E` instead of its value, so a lock on either vector counts as debug
+disabled.
 
 The ROM reads the fuse shadows rather than `FEAT_CTRL`. `SEC_DIS` forces every `FEAT_CTRL`
 bit to 1, and `TEST_DEV` demotion forces the `DBG_1` group to 1, so either would report debug
