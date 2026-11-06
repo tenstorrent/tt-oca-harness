@@ -20,9 +20,9 @@ Image: prestaged from ``plan(test, seed)`` of ``env/sep_efuse_plan.py``: TEST_DE
 burned write-lock slot and a burned read-lock slot, filter-legal pair. The plan also
 draws the case order, the out-of-range address and every program and read bit.
 
-"Run a program" / "run a read" is one control write with enable, address and go, a
-wait of the full window W (``_W_MULT`` x the sense time measured at the first sense,
-no early exit), then reads of ``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_READ_CTRL`` and
+"Run a program" / "run a read" is a write of the address register, then one control
+write with enable and go, a wait of the full window W (``_W_MULT`` x the sense time
+measured at the first sense, no early exit), then reads of ``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_READ_CTRL`` and
 ``EFUSE_PROGRAM_CTRL``; both busy bits must read 0.
 
 Checkers:
@@ -102,7 +102,9 @@ from env.sep_efuse_bank_watch import (
 from env.sep_efuse_plan import (
     FIELD_NAMES,
     LOCK_SLOT_FIELD,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
+    READ_ADDR_ADDR,
     READ_CTRL_ADDR,
     SPARE_FIELDS,
     STATUS_ADDR,
@@ -111,7 +113,9 @@ from env.sep_efuse_plan import (
     field_n_words,
     field_word,
     plan,
+    program_addr_word,
     program_ctrl_word,
+    read_addr_word,
     read_ctrl_word,
     shadow_addr,
     zero_bits,
@@ -254,12 +258,14 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         return f["rd_busy"] == 0 and f["pg_busy"] == 0
 
     async def _run_program(self, bit_addr: int, *, data: int = 1) -> dict[str, int]:
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, data=data))
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(bit_addr))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=data))
         await ClockCycles(cocotb.top.clk_i, self.w)
         return await self._flags()
 
     async def _run_read(self, bit_addr: int, *, enable: int = 1) -> dict[str, int]:
-        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit_addr, enable=enable))
+        await self._wr(READ_ADDR_ADDR, read_addr_word(bit_addr))
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word(enable=enable))
         await ClockCycles(cocotb.top.clk_i, self.w)
         return await self._flags()
 
@@ -398,8 +404,10 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, _RST_HOLD)
         task, win = self._start_presense_monitor(self.bank.read())
         dut.rst_ni.value = 1
-        # First access after the release: one write with enable, data 1, address, go.
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit, data=1))
+        # First accesses after the release: the address, then one write with enable,
+        # data 1 and go.
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(bit))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         sense_at_go = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
         t_go = win["n"]
         await task
@@ -421,8 +429,9 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         snap = self.bank.read()
         watch = SepEfuseBankWatch(dut).start(reference=snap)
         m_cmd = self.cmds.mark()
+        await self._wr(PROGRAM_ADDR_ADDR, program_addr_word(twin))
         m0 = watch.mark()
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(twin, data=1))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         m1 = watch.mark()
         await ClockCycles(dut.clk_i, self.w)
         f2 = await self._flags()
@@ -558,7 +567,8 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
     async def _jtag_program_twin(self) -> bool:
         """Post-sense JTAG program of the twin bit: the JTAG program path works.
 
-        One JTAG write of ``EFUSE_PROGRAM_CTRL`` (enable, data 1, address, go),
+        One JTAG write of ``EFUSE_PROGRAM_ADDR`` and one of ``EFUSE_PROGRAM_CTRL``
+        (enable, data 1, go),
         a wait of W, then the frontdoor flags. The control passes on an OKAY
         write response, exactly one program command (at the twin address), a
         bank diff of exactly the twin bit, program done, both busy bits 0, no
@@ -569,8 +579,11 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await self._clean_ctrl()
         snap = self.bank.read()
         mark = self.cmds.mark()
+        a_resp, _ = await self.jtag_axil_op(
+            write=True, addr=PROGRAM_ADDR_ADDR, wdata=program_addr_word(bit)
+        )
         resp, _ = await self.jtag_axil_op(
-            write=True, addr=PROGRAM_CTRL_ADDR, wdata=program_ctrl_word(bit, data=1)
+            write=True, addr=PROGRAM_CTRL_ADDR, wdata=program_ctrl_word(data=1)
         )
         await ClockCycles(dut.clk_i, self.w)
         f = await self._flags()
@@ -580,6 +593,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         landed = diff_is_exactly(diff, bit)
         ok = (
             resp == RESP_OKAY
+            and a_resp == RESP_OKAY
             and n_at == 1
             and n_all == 1
             and landed
@@ -592,6 +606,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             "IF-PRESENSE-JTAG-TWIN",
             ok,
             bit_addr=bit,
+            addr_resp=RESP_NAME.get(a_resp, a_resp),
             wr_resp=RESP_NAME.get(resp, resp),
             prog_cmds_at_bit=n_at,
             prog_cmds=n_all,
@@ -630,8 +645,11 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         r_data &= M32
         t_rd = None if task.done() else win["n"]
         s_rd = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        a_resp, _ = await self.jtag_axil_op(
+            write=True, addr=PROGRAM_ADDR_ADDR, wdata=program_addr_word(prog_bit)
+        )
         w_resp, _ = await self.jtag_axil_op(
-            write=True, addr=PROGRAM_CTRL_ADDR, wdata=program_ctrl_word(prog_bit, data=1)
+            write=True, addr=PROGRAM_CTRL_ADDR, wdata=program_ctrl_word(data=1)
         )
         t_wr = None if task.done() else win["n"]
         s_wr = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
@@ -647,6 +665,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             "IF-PRESENSE-JTAG-RESP",
             leg=leg,
             map_resp=RESP_NAME.get(r_resp, r_resp),
+            addr_resp=RESP_NAME.get(a_resp, a_resp),
             prog_resp=RESP_NAME.get(w_resp, w_resp),
             graded=0,
         )
@@ -849,8 +868,9 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await self._frame("both_enables")
         tag = self._step()
         mark = self.cmds.mark()
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(0, data=0, enable=1, go=0))
-        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit, enable=1))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=0, enable=1, go=0))
+        await self._wr(READ_ADDR_ADDR, read_addr_word(bit))
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word(enable=1))
         await ClockCycles(dut.clk_i, _BOTH_WAIT)
         st = await self._rd(STATUS_ADDR)
         rc = await self._rd(READ_CTRL_ADDR)

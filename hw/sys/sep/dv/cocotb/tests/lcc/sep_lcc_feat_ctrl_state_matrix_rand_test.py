@@ -85,6 +85,7 @@ from env.sep_efuse_plan import (
     LEG_D_RMA,
     LEG_D_WALK,
     LEG_E,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
     ST_PROD,
     ST_RMA_CHIPLET,
@@ -95,6 +96,7 @@ from env.sep_efuse_plan import (
     field_word,
     lc_state_class,
     plan,
+    program_addr_word,
     program_ctrl_word,
     shadow_addr,
 )
@@ -498,8 +500,9 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         w = field_word("SPARE8")
         staged = self.p.image.words[w]
         mark = self.shim.mark()
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(ctl["addr"], go=0))
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(ctl["addr"], go=1))
+        await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(ctl["addr"]))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(go=0))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(go=1))
         done = None
         for n in range(1, PROGRAM_READS + 1):
             if await self.fd.rd(PROGRAM_CTRL_ADDR) & PROGRAM_DONE:

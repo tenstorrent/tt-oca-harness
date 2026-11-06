@@ -85,6 +85,7 @@ from env.sep_efuse_bank_watch import SepShimCmdMonitor
 from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
     SECRET_FIELDS,
     STM_PROGRAM_CLASSES,
@@ -96,6 +97,7 @@ from env.sep_efuse_plan import (
     field_word,
     lc_state_class,
     plan,
+    program_addr_word,
     program_ctrl_word,
     shadow_addr,
 )
@@ -331,7 +333,8 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         for cls in STM_PROGRAM_CLASSES:
             pr = progs[cls]
             mark = self.shim.mark()
-            await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(pr["addr"]))
+            await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(pr["addr"]))
+            await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word())
             await ClockCycles(cocotb.top.clk_i, w_prog)
             status = await self.fd.rd(PROGRAM_CTRL_ADDR)
             await self.fd.wr(PROGRAM_CTRL_ADDR, 0)

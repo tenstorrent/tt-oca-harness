@@ -89,6 +89,7 @@ from env.sep_efuse_plan import (
     CH_SIP,
     CODE_MATCH,
     CODE_MISMATCH,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
     RIGHT_TOKEN,
     ST_PROD,
@@ -103,6 +104,7 @@ from env.sep_efuse_plan import (
     lc_state_class,
     plan,
     poll_code,
+    program_addr_word,
     program_ctrl_word,
     shadow_addr,
     token_go,
@@ -373,7 +375,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def _program(self, bit_addr: int) -> dict[str, int]:
         """Program one bit with the full W wait, then read status and the OTP word.
 
-        Two writes: enable, data and address, then the same with the go bit. The
+        Three writes: the address, then enable and data, then the same with the go bit. The
         command record runs from the go write to the end of W. ``program_enable`` is
         dropped before the direct read, so the read interface reaches the bank. A
         refused program sets the sticky ``efuse_req_error``, which holds off every
@@ -381,9 +383,10 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         ``efuse_req_error_clear`` (``efuse_interface_ctrl.adoc``); the flag is
         returned (logged, not graded) and cleared before the direct read.
         """
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, go=0))
+        await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(bit_addr))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(go=0))
         mark = self.shim.mark()
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, go=1))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(go=1))
         await ClockCycles(cocotb.top.clk_i, self.w)
         own = len(self.shim.programs_since(mark, address=bit_addr))
         every = len(self.shim.programs_since(mark))

@@ -2,12 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Interface-control and token window reset values, read-write behaviour, and window decode.
 
-After a real fuse sense the interface-control window (``0x1093_0400``, 28 bytes) and
+After a real fuse sense the interface-control window (``0x1093_0400``, 36 bytes) and
 the token window (``0x1093_0500``) hold the described registers with their reset
 values and read-write behaviour. No access past the interface-control extent and no
 access in the reserved span at ``0x1093_0600`` changes ``EFUSE_INTERFACE_CTRL_STATUS``,
-``EFUSE_PROGRAM_CTRL`` or ``EFUSE_READ_CTRL``, or aliases a software-writable shadow
-word.
+``EFUSE_PROGRAM_CTRL``, ``EFUSE_READ_CTRL``, ``EFUSE_PROGRAM_ADDR`` or
+``EFUSE_READ_ADDR``, or aliases a software-writable shadow word.
 
 Sources: ``hw/sys/sep/regs/gen/adoc/memory_map.adoc`` (rows eFuse Interface Control,
 eFuse Token Registers, Reserved); ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc``
@@ -25,11 +25,12 @@ patterns, token word orders, past-extent offsets, reserved-span addresses, contr
 word w).
 
 Checkers:
-  CHK-CSR-RESET   the five interface-control registers read their reset values after
+  CHK-CSR-RESET   the seven interface-control registers read their reset values after
                   sense done and answer OKAY. Zero-reset rows count on a four-state
                   simulator only; on Verilator they log ``INFO-CSR-RESET LOG``.
-  CHK-CSR-RW      ``EFUSE_PROGRAM_CTRL`` and ``EFUSE_READ_CTRL`` read back the drawn
-                  pattern; a write of 0x71 to the status register leaves 0x1.
+  CHK-CSR-RW      ``EFUSE_PROGRAM_CTRL``, ``EFUSE_PROGRAM_ADDR`` and ``EFUSE_READ_ADDR``
+                  read back the drawn pattern; a write of 0x71 to the status register
+                  leaves 0x1.
   CHK-TOKEN-RW    each token array reads back the eight words written in drawn order.
   CHK-FEAT-RO     ``FEAT_CTRL`` keeps its value after a write of its complement.
   CHK-WIN-DECODE  past-extent and reserved accesses change no graded register and no
@@ -51,8 +52,11 @@ from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import SHADOW_BASE
 from env.sep_efuse_plan import (
     CHANNELS,
+    IFCTL_EXTENT,
     MATCH_ADDR,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
+    READ_ADDR_ADDR,
     READ_CTRL_ADDR,
     STATUS_ADDR,
     T_WINDOW_DECODE,
@@ -79,7 +83,16 @@ _PG = "EFUSE_PROGRAM_CTRL"
 _RD = "EFUSE_READ_CTRL"
 _RD_TMO = "EFUSE_READ_REQ_TIMEOUT"
 _PG_TMO = "EFUSE_PROGRAM_REQ_TIMEOUT"
-_RESET_REGS = (_STATUS, _PG, _RD, _RD_TMO, _PG_TMO)
+_PA = "EFUSE_PROGRAM_ADDR"
+_RA = "EFUSE_READ_ADDR"
+_RESET_REGS = (_STATUS, _PG, _RD, _RD_TMO, _PG_TMO, _PA, _RA)
+_GRADED = (
+    (_STATUS, STATUS_ADDR),
+    (_PG, PROGRAM_CTRL_ADDR),
+    (_RD, READ_CTRL_ADDR),
+    (_PA, PROGRAM_ADDR_ADDR),
+    (_RA, READ_ADDR_ADDR),
+)
 _DATA_REGS = ("EFUSE_PROGRAM_INTERFACE_READ_DATA", "EFUSE_READ_INTERFACE_READ_DATA")
 
 # Reset values from the reset column of efuse_interface_ctrl.adoc. efuse_sense_done
@@ -92,16 +105,26 @@ _RESET_EXP = {
     _RD: _IC.reset32(_RD),
     _RD_TMO: _IC.reset32(_RD_TMO),
     _PG_TMO: _IC.reset32(_PG_TMO),
+    _PA: _IC.reset32(_PA),
+    _RA: _IC.reset32(_RA),
 }
 # Independent anchor: the values the contract states for the RDL reset column.
-if _RESET_EXP != {_STATUS: 0x1, _PG: 0x0, _RD: 0x0, _RD_TMO: 0x0080_0000, _PG_TMO: 0x0080_0000}:
+if _RESET_EXP != {
+    _STATUS: 0x1,
+    _PG: 0x0,
+    _RD: 0x0,
+    _RD_TMO: 0x0080_0000,
+    _PG_TMO: 0x0080_0000,
+    _PA: 0x0,
+    _RA: 0x0,
+}:
     raise RuntimeError(f"interface-control reset values {_RESET_EXP} differ from the contract")
 
 _STATUS_RO_WRITE = 0x0000_0071  # bits 0, 4, 5, 6 at 1; the three clear bits at 0
 _FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 _FEAT_MASK = SEP_LIFECYCLE_CTRL.mask("FEAT_CTRL")
 _SHADOW_LAST = SHADOW_BASE + 0x3FC
-_PAST_EXTENT_PINNED = STATUS_ADDR + 0x1C
+_PAST_EXTENT_PINNED = STATUS_ADDR + IFCTL_EXTENT
 _RSVD_PINNED = (SHADOW_BASE + 0x600, SHADOW_BASE + 0xC1C, SHADOW_BASE + 0xFFFC)
 _ARRAY_TOKEN = {"sip": TOKEN_T1, "chiplet": TOKEN_T2, "sec_dis": TOKEN_OTHER}
 _ARRAY_TAG = {"sip": "sip", "chiplet": "chp", "sec_dis": "sdis"}
@@ -139,9 +162,9 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         log_line(self.logger, tag, self.seed, **fields)
 
     async def _graded_regs(self) -> dict[str, int]:
-        """STATUS, EFUSE_PROGRAM_CTRL and EFUSE_READ_CTRL, field bits only."""
+        """STATUS, the two control and the two address registers, field bits only."""
         out = {}
-        for name, addr in ((_STATUS, STATUS_ADDR), (_PG, PROGRAM_CTRL_ADDR), (_RD, READ_CTRL_ADDR)):
+        for name, addr in _GRADED:
             v, _ok, _c = await self._rd(addr)
             out[name] = v & _IC.mask32(name)
         return out
@@ -209,8 +232,8 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
                 alias_exp=f"0x{exp_word:08x}",
                 alias_got=f"0x{word:08x}",
                 regs_equal=int(regs_ok),
-                regs_got=",".join(f"0x{regs[n]:08x}" for n in (_STATUS, _PG, _RD)),
-                regs_exp=",".join(f"0x{exp_regs[n]:08x}" for n in (_STATUS, _PG, _RD)),
+                regs_got=",".join(f"0x{regs[n]:08x}" for n, _a in _GRADED),
+                regs_exp=",".join(f"0x{exp_regs[n]:08x}" for n, _a in _GRADED),
             )
 
     async def _control_reads(self, tag: str) -> None:
@@ -310,12 +333,20 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             got, _ok, _c = await self._rd(_IC.addr(name))
             self._log("OBS-CSR-RW", reg=name, wr=f"0x{wr:08x}", got=f"0x{got:08x}")
 
-        # Step 8: control-register patterns (go and enable bits 0).
+        # Step 8: control and address register patterns (go and enable bits 0).
         open_graded_window(TEST, self.logger)
-        pg_pat = int(p.draws["program_ctrl_pattern"])
-        rd_pat = int(p.draws["read_ctrl_pattern"])
-        self.reg_model = {_STATUS: _RESET_EXP[_STATUS], _PG: pg_pat, _RD: rd_pat}
-        for name, addr, pat in ((_PG, PROGRAM_CTRL_ADDR, pg_pat), (_RD, READ_CTRL_ADDR, rd_pat)):
+        pats = {
+            _PG: int(p.draws["program_ctrl_pattern"]),
+            _PA: int(p.draws["program_addr_pattern"]),
+            _RA: int(p.draws["read_addr_pattern"]),
+        }
+        self.reg_model = {_STATUS: _RESET_EXP[_STATUS], _RD: _RESET_EXP[_RD], **pats}
+        for name, addr in (
+            (_PG, PROGRAM_CTRL_ADDR),
+            (_PA, PROGRAM_ADDR_ADDR),
+            (_RA, READ_ADDR_ADDR),
+        ):
+            pat = pats[name]
             ok_w, code = await self._wr(addr, pat, ungraded=True)
             got, _ok, _c = await self._rd(addr)
             cmp = field_compare(got, pat, _IC.mask32(name))
@@ -397,7 +428,8 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         # Step 13: control reads before the first unmapped access.
         await self._control_reads("before")
 
-        # Step 14: past-extent leg (pinned 0x1093_041C, then the seven drawn offsets).
+        # Step 14: past-extent leg (pinned first word past the extent, then the seven
+        # drawn offsets).
         for addr in (_PAST_EXTENT_PINNED, *p.leg["past_extent_addrs"]):
             await self._decode_access("ctrl", addr)
 

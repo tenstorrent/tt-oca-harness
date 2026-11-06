@@ -22,6 +22,7 @@ from pyuvm import uvm_sequence
 from sep_reg_meta import EFUSE_INTERFACE_CTRL
 
 _EFUSE_READ_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
+_EFUSE_READ_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_ADDR")
 _EFUSE_READ_DATA = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_INTERFACE_READ_DATA")
 
 _EFUSE_READ_GO_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "efuse_read_go")
@@ -29,8 +30,8 @@ _EFUSE_READ_BUSY_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_
 _EFUSE_READ_DONE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_done")
 _EFUSE_READ_STATUS_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_status")
 _EFUSE_READ_ENABLE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_enable")
-_EFUSE_ADDR_MASK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "efuse_addr")
-_EFUSE_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb("EFUSE_READ_CTRL", "efuse_addr")
+_EFUSE_ADDR_MASK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_ADDR", "efuse_addr")
+_EFUSE_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb("EFUSE_READ_ADDR", "efuse_addr")
 
 _POLL_CYCLES = 200
 
@@ -38,8 +39,8 @@ _POLL_CYCLES = 200
 class sep_efuse_direct_read_seq(uvm_sequence):
     """Read one 32-bit OTP word directly from the read interface.
 
-    ``word_index`` is the fuse WORD index; efuse_addr is a bit address, so the
-    word-aligned bit address is ``word_index * 32``. The 32-bit result is stored in
+    ``word_index`` is the fuse WORD index; ``EFUSE_READ_ADDR`` takes a bit address,
+    so the word-aligned bit address is ``word_index * 32``. The 32-bit result is stored in
     ``self.rdata``.
     """
 
@@ -62,10 +63,11 @@ class sep_efuse_direct_read_seq(uvm_sequence):
         bit_addr = (self.word_index * 32) << _EFUSE_ADDR_LSB
         if self.word_index < 0 or bit_addr & ~_EFUSE_ADDR_MASK:
             raise ValueError(f"word {self.word_index} is outside the efuse_addr range")
+        await self._access(SepAxiOp.WRITE, _EFUSE_READ_ADDR, data=bit_addr, label="read_addr")
         await self._access(
             SepAxiOp.WRITE,
             _EFUSE_READ_CTRL,
-            data=bit_addr | _EFUSE_READ_GO_BIT | _EFUSE_READ_ENABLE_BIT,
+            data=_EFUSE_READ_GO_BIT | _EFUSE_READ_ENABLE_BIT,
             label="read_ctrl",
         )
         for _ in range(_POLL_CYCLES):

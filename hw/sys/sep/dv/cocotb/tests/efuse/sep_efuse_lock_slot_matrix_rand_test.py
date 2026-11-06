@@ -153,6 +153,7 @@ from env.sep_efuse_image import LC_FIELD_MASK, lc_encode
 from env.sep_efuse_plan import (
     LOCK_SLOT_FIELD,
     PROGRAM_CTRL_ADDR,
+    READ_ADDR_ADDR,
     READ_CTRL_ADDR,
     STATUS_ADDR,
     bit_address,
@@ -161,6 +162,7 @@ from env.sep_efuse_plan import (
     field_word,
     plan,
     program_go_no_wait,
+    read_addr_word,
     read_ctrl_word,
     shadow_addr,
     write_lock_bit,
@@ -369,8 +371,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         graded on a flag that was already set cannot pass.
         """
         pre = await self._req_err_now()
+        await self._wr(READ_ADDR_ADDR, read_addr_word(bit_addr))
         start = self._pulse_mark()
-        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit_addr))
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word())
         await ClockCycles(cocotb.top.clk_i, self.w)
         ctrl = await self._rd32(READ_CTRL_ADDR)
         st = await self._rd32(STATUS_ADDR)
