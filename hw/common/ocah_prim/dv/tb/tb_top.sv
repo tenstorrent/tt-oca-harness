@@ -3,10 +3,10 @@
 //
 // prim_axil_addr_demux IP-level testbench top for the cocotb flow.
 //
-// One demux holds five ranges in the 4 KiB window at WindowBase: two adjacent power-of-two
-// ranges, one smaller than its alignment, one whose size is not a power of two and one wider
-// than a power of two below it. Each range is answered by a prim_axi_lite_err_slv set to OKAY
-// whose read data is RangeTag | range index, so a read names the range that answered.
+// One demux holds five ranges in the 4 KiB page at WindowBase, each an aligned power of two:
+// two adjacent ranges, one twice their size, one small and one past a gap. Each range is
+// answered by a prim_axi_lite_err_slv set to OKAY whose read data is RangeTag | range index,
+// so a read names the range that answered.
 // range_aw_count[i] counts the write addresses range i accepts, so a test can tell which
 // range a write reached. The demux's AXI-Lite slave port is exposed flattened (axil_*) for
 // the shared AXI VIP's master. Clock and reset are driven from cocotb.
@@ -53,12 +53,12 @@ module prim_axil_addr_demux_tb_top #(
 
   localparam logic [31:0] RangeBase[NumRanges] = '{
       WindowBase + 32'h000,
-      WindowBase + 32'h020,
+      WindowBase + 32'h080,
       WindowBase + 32'h100,
       WindowBase + 32'h200,
       WindowBase + 32'h800
   };
-  localparam logic [31:0] RangeSize[NumRanges] = '{32'h20, 32'h20, 32'h10, 32'hC, 32'h150};
+  localparam logic [31:0] RangeSize[NumRanges] = '{32'h80, 32'h80, 32'h100, 32'h10, 32'h200};
 
   typedef logic [31:0] addr_t;
   typedef logic [31:0] data_t;

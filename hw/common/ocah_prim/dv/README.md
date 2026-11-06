@@ -16,7 +16,7 @@ Layout
   cocotb framework view, run modes). The build makes Verilator's `USERERROR`
   an error, so a range the demux's static checks reject stops the build.
 * `tb/tb_top.sv` — pin-level testbench top (`prim_axil_addr_demux_tb_top`).
-  One demux holds five ranges in the 4 KiB window at `0xC000_C000`, and its
+  One demux holds five ranges in the 4 KiB page at `0xC000_C000`, and its
   AXI4-Lite slave port is exposed as `axil_*` for the shared AXI VIP's
   AXI4-Lite master. Each range is answered by a `prim_axi_lite_err_slv` set to
   OKAY whose read data names the range, and `range_aw_count[i]` counts the
@@ -25,14 +25,16 @@ Layout
 
   | Range | Offset | Size    | Read data     |
   |-------|--------|---------|---------------|
-  | 0     | 0x000  | 0x20    | `0x5107_0000` |
-  | 1     | 0x020  | 0x20    | `0x5107_0001` |
-  | 2     | 0x100  | 0x10    | `0x5107_0002` |
-  | 3     | 0x200  | 0xC     | `0x5107_0003` |
-  | 4     | 0x800  | 0x150   | `0x5107_0004` |
+  | 0     | 0x000  | 0x80    | `0x5107_0000` |
+  | 1     | 0x080  | 0x80    | `0x5107_0001` |
+  | 2     | 0x100  | 0x100   | `0x5107_0002` |
+  | 3     | 0x200  | 0x10    | `0x5107_0003` |
+  | 4     | 0x800  | 0x200   | `0x5107_0004` |
 
-  Ranges 0 and 1 are back to back. Every other address must reach the
-  demux's own responder: SLVERR, read data 0, and no range counts the write.
+  Each range is an aligned power of two. Ranges 0 and 1 are back to back,
+  range 2 is twice their size, range 3 is small and range 4 sits past a gap.
+  Every other address must reach the demux's own responder: DECERR, read data
+  `0xBADCAB1E`, and no range counts the write.
 * `cocotb/tests/` — test modules; `addr_demux_base_test.py` carries the range
   table, the expected response and range for any address, and the clock,
   reset and VIP bring-up.
@@ -64,9 +66,10 @@ back, so neither channel's decode can pass on the address the other channel
 last carried.
 
 * `addr_demux_smoke_test` — the first and last word of every range (OKAY, the
-  range's read data), the first word past every range and the last word of
-  the window (OKAY where that word starts the next range, otherwise SLVERR
-  with read data 0).
-* `addr_demux_sweep_test` — every word from one page below the window to one
-  page above it, then 512 random words across the 32-bit space; the testlist
-  runs it with three seeds.
+  range's read data), the words on either side of every range and the last
+  word of the page, which include the first and last word of every gap (OKAY
+  where that word is in another range, otherwise DECERR with read data
+  `0xBADCAB1E`).
+* `addr_demux_sweep_test` — every word of the ranges' page and of the pages
+  either side of it, then 512 random words across the 32-bit space; the
+  testlist runs it with three seeds.

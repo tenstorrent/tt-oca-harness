@@ -2,11 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared bench for the prim_axil_addr_demux IP-level cocotb tests.
 
-``prim_axil_addr_demux_tb_top`` places the ranges in ``RANGES`` inside the 4 KiB window at
+``prim_axil_addr_demux_tb_top`` places the ranges in ``RANGES`` inside the 4 KiB page at
 ``WINDOW_BASE``. Each range is answered by a responder that returns OKAY with read data
 ``RANGE_TAG | i`` for range ``i``, so a read names the range that answered, and the top's
 ``range_aw_count`` counts the write addresses each range accepts. Every other address must
-reach the demux's own responder, which answers SLVERR with read data 0.
+reach the demux's own responder, which answers DECERR with read data ``MISS_DATA``.
 """
 
 from __future__ import annotations
@@ -16,18 +16,19 @@ import os
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
-from ocah_axi_vip import RESP_OKAY, RESP_SLVERR, OcahAxiLiteMasterAgent
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY, OcahAxiLiteMasterAgent
 
 CLK_PERIOD_NS = 2
 WINDOW_BASE = 0xC000_C000
 WINDOW_SIZE = 0x1000
 RANGE_TAG = 0x5107_0000
-# (offset in the window, size in bytes) per range, as tb/tb_top.sv places them.
-RANGES = ((0x000, 0x20), (0x020, 0x20), (0x100, 0x10), (0x200, 0xC), (0x800, 0x150))
+MISS_DATA = 0xBADC_AB1E
+# (offset in the page, size in bytes) per range, as tb/tb_top.sv places them.
+RANGES = ((0x000, 0x80), (0x080, 0x80), (0x100, 0x100), (0x200, 0x10), (0x800, 0x200))
 
 
 def range_index(addr: int) -> int | None:
-    """Index of the range holding ``addr``, or None for spare space."""
+    """Index of the range holding ``addr``, or None when no range holds it."""
     for index, (offset, size) in enumerate(RANGES):
         if WINDOW_BASE + offset <= addr < WINDOW_BASE + offset + size:
             return index
@@ -38,7 +39,7 @@ def expected(addr: int) -> tuple[int, int]:
     """Response code and read data the demux must give at ``addr``."""
     index = range_index(addr)
     if index is None:
-        return RESP_SLVERR, 0
+        return RESP_DECERR, MISS_DATA
     return RESP_OKAY, RANGE_TAG | index
 
 
