@@ -250,7 +250,7 @@
 // One pulse per arm. Error inject, docs/SEP_TB_ARCH.adoc. See the force block
 // in tb_top.sv.
 `SEP_TB_IN(logic, km_irqset_arm_i)
-`SEP_TB_IN(logic [11:0], km_irqset_mask_i)
+`SEP_TB_IN(logic [KM_CSR_IRQ_SET_REG_RSVD_SHIFT-1:0], km_irqset_mask_i)
 // Key Manager CPU internal IRQ lines (HK-CPUIRQ). Default 0. At the first
 // falling edge with km_cpuirq_arm_i at 1 and a non-zero km_cpuirq_lines_i, bit
 // 0 drives PicoRV32 irq line 1 (EBREAK or illegal instruction) and bit 1 drives
@@ -260,13 +260,17 @@
 `SEP_TB_IN(logic [1:0], km_cpuirq_lines_i)
 // Key Manager KPV read-data bit flip (HK-KPV). Default 0. While
 // km_kpv_flip_en_i is 1, every KM-port read of the logical word index
-// km_kpv_flip_index_i (slot x 16 + word) returns the read data after the
-// descrambler with bit km_kpv_flip_bit_i inverted. The stored word does not
-// change. Error inject, docs/SEP_TB_ARCH.adoc. See the force block in
+// km_kpv_flip_index_i (slot x words per slot + word) returns the read data
+// after the descrambler with bit km_kpv_flip_bit_i inverted. The stored word
+// does not change. Error inject, docs/SEP_TB_ARCH.adoc. See the force block in
 // tb_top.sv.
 `SEP_TB_IN(logic, km_kpv_flip_en_i)
-`SEP_TB_IN(logic [9:0], km_kpv_flip_index_i)
-`SEP_TB_IN(logic [4:0], km_kpv_flip_bit_i)
+`SEP_TB_IN(logic [$clog2(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_NUM *
+                         key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM)-1:0],
+           km_kpv_flip_index_i)
+`SEP_TB_IN(logic [$clog2(8 * key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_SIZE /
+                         key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM)-1:0],
+           km_kpv_flip_bit_i)
 // Key Manager macro response parity flip (HK-PAR). Default 0. While
 // km_par_arm_i is 1, the N-th read response (N = km_par_n_i, from 1) since the
 // arm of the ROM (km_par_mem_i 0) or the SRAM (km_par_mem_i 1) reaches the KM
@@ -681,25 +685,26 @@
 `SEP_TB_OUT(logic, km_abr_sk_irq_status_o)
 `SEP_TB_OUT(logic, km_abr_sk_irq_enable_o)
 // KM-KPV: CTRL[s] at [4*s +: 4] in register bit order {seal, erase, lock_use,
-// lock_write}, and the 1024 stored KPV words in stored (physical) order,
+// lock_write}, and the stored KPV words in stored (physical) order,
 // word i at [32*i +: 32]. The stored words have no reset.
-`SEP_TB_OUT(logic [255:0], km_kpv_ctrl_o)
-`SEP_TB_OUT(logic [32767:0], km_kpv_words_o)
+`SEP_TB_OUT(logic [4*key_manager_addrmap_pkg::KEY_MANAGER_KPV_CTRL_NUM-1:0], km_kpv_ctrl_o)
+`SEP_TB_OUT(logic [8*key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_TOTAL_SIZE-1:0],
+            km_kpv_words_o)
 // KM-CSR, every clock: IRQ_STATUS, IRQ_ENABLE, the interrupt aggregate (OR
 // of status AND enable), RECOVERABLE_ERR, BOOT_STATUS.COLD_BOOT_DONE,
 // SRAM_EXEC_MODE, OTP_READ_LOCK, OTP_READ_LOCK_COLD, OTP_CHANGE_STATUS (field
 // bit order of km_csr.adoc), the SCRAMBLER_KEY register value, the count of
 // KM writes to SCRAMBLER_KEY since the bench reset, and SCRAMBLER_CTRL
 // {lock, enable}.
-`SEP_TB_OUT(logic [11:0], km_csr_irq_status_o)
-`SEP_TB_OUT(logic [11:0], km_csr_irq_enable_o)
+`SEP_TB_OUT(logic [KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT-1:0], km_csr_irq_status_o)
+`SEP_TB_OUT(logic [KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT-1:0], km_csr_irq_enable_o)
 `SEP_TB_OUT(logic, km_csr_irq_o)
 `SEP_TB_OUT(logic, km_csr_recov_err_o)
 `SEP_TB_OUT(logic, km_csr_cold_boot_done_o)
 `SEP_TB_OUT(logic, km_csr_sram_exec_mode_o)
-`SEP_TB_OUT(logic [8:0], km_csr_otp_read_lock_o)
-`SEP_TB_OUT(logic [8:0], km_csr_otp_read_lock_cold_o)
-`SEP_TB_OUT(logic [8:0], km_csr_otp_change_status_o)
+`SEP_TB_OUT(logic [KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT-1:0], km_csr_otp_read_lock_o)
+`SEP_TB_OUT(logic [KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_SHIFT-1:0], km_csr_otp_read_lock_cold_o)
+`SEP_TB_OUT(logic [KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_SHIFT-1:0], km_csr_otp_change_status_o)
 `SEP_TB_OUT(logic [31:0], km_csr_scrambler_key_o)
 `SEP_TB_OUT(logic [31:0], km_csr_scrambler_key_wr_count_o)
 `SEP_TB_OUT(logic [1:0], km_csr_scrambler_ctrl_o)
@@ -728,17 +733,17 @@
 `SEP_TB_OUT(logic [8:0], km_outfifo_depth_o)
 // KM-INFIFO: head word of the inbound FIFO of the KM mailbox, {separator, data}.
 `SEP_TB_OUT(logic [32:0], km_infifo_head_o)
-// KM-WMAP: per SRAM write-lock region r (256 words) at [9*r +: 9], the count
-// of distinct logical words written with we at 1 on the sep output
-// km_sram_mem_req_o since the bench reset or the last clock with
-// km_sram_wmap_clr_i at 1 (bench state only; default 0).
+// KM-WMAP: per SRAM write-lock region r at [9*r +: 9], the count of distinct
+// logical words written with we at 1 on the sep output km_sram_mem_req_o since
+// the bench reset or the last clock with km_sram_wmap_clr_i at 1 (bench state
+// only; default 0).
 `SEP_TB_IN(logic, km_sram_wmap_clr_i)
-`SEP_TB_OUT(logic [32*9-1:0], km_sram_wmap_region_o)
+`SEP_TB_OUT(logic [$countones(KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK)*9-1:0], km_sram_wmap_region_o)
 // KM-WMAP-JUMP: the KM-WMAP counts captured in the clock of the first
 // completed KM CPU instruction fetch at 0x8000 since the bench reset or the
 // last clear, km_sram_write_count_o in the same clock, and the flag that the
 // capture took place.
-`SEP_TB_OUT(logic [32*9-1:0], km_sram_wmap_jump_o)
+`SEP_TB_OUT(logic [$countones(KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK)*9-1:0], km_sram_wmap_jump_o)
 `SEP_TB_OUT(logic [31:0], km_sram_wmap_jump_wr_o)
 `SEP_TB_OUT(logic, km_sram_wmap_jump_seen_o)
 // KM-AXIV: the KM CPU AXI4-Lite master valids {ar_valid, aw_valid, w_valid},

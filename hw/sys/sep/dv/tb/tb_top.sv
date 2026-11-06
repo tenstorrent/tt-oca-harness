@@ -57,6 +57,10 @@
 
 `timescale 1ps/1fs
 
+// KMCSR field positions: the KM tap and inject port widths of
+// sep_tb_signal_list.svh read them, so the header precedes the module.
+`include "km_csr_reg.svh"
+
 // Shape selection for sep_tb_signal_list.svh: the same list expands as the
 // ANSI port list (cocotb) or as internal TB signals (`UVM`). The macros live
 // only from here to the `undef block after the module header.
@@ -4368,7 +4372,10 @@ module sep_uvm_top
 `endif
     // KM-KPV: CTRL[s] {seal, erase, lock_use, lock_write} and the stored
     // KPV words.
-    for (genvar s = 0; s < 64; s++) begin : g_km_kpv_ctrl
+    localparam int unsigned KmKpvSlots = int'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_CTRL_NUM);
+    localparam int unsigned KmKpvWords =
+        KmKpvSlots * int'(key_manager_addrmap_pkg::KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM);
+    for (genvar s = 0; s < KmKpvSlots; s++) begin : g_km_kpv_ctrl
         assign km_kpv_ctrl_o[4*s +: 4] = {
             `KM_TAP.u_kpv.kpv_hwif_out.CTRL[s].seal.value,
             `KM_TAP.u_kpv.kpv_hwif_out.CTRL[s].erase.value,
@@ -4376,7 +4383,7 @@ module sep_uvm_top
             `KM_TAP.u_kpv.kpv_hwif_out.CTRL[s].lock_write.value
         };
     end
-    for (genvar i = 0; i < 1024; i++) begin : g_km_kpv_words
+    for (genvar i = 0; i < KmKpvWords; i++) begin : g_km_kpv_words
         assign km_kpv_words_o[32*i +: 32] = `KM_TAP.u_kpv.u_key_regfile.mem[i];
     end
     // KM-CSR.
@@ -4454,22 +4461,28 @@ module sep_uvm_top
     // KM-INFIFO: the head word of the inbound FIFO of the KM mailbox
     // ({separator, data}; 0 while the FIFO is empty), every clock.
     assign km_infifo_head_o = 33'(`KM_TAP.u_mailbox.inbound_rdata);
-    // KM-WMAP: per SRAM write-lock region (256 words each, region r holds
-    // the logical word addresses 256*r to 256*r+255), the count of distinct
-    // words written since the bench reset or the last clock with
-    // km_sram_wmap_clr_i at 1. A write counts when it leaves the sep output
-    // km_sram_mem_req_o with we at 1, so a write to a locked region (dropped,
-    // we at 0) does not count. The word is the logical address of the KM CPU
-    // store (u_sram_if.word_addr), before the scrambler. km_sram_wmap_clr_i
-    // clears bench state only. Region r is at [9*r +: 9].
-    logic [8191:0]     km_wmap_q;
-    logic [31:0][8:0]  km_wmap_cnt_q;
-    logic              km_wmap_wr;
-    logic [12:0]       km_wmap_addr;
+    // KM-WMAP: per SRAM write-lock region (KmSramRegionWords words each,
+    // region r holding the logical word addresses from KmSramRegionWords*r),
+    // the count of distinct words written since the bench reset or the last
+    // clock with km_sram_wmap_clr_i at 1. A write counts when it leaves the
+    // sep output km_sram_mem_req_o with we at 1, so a write to a locked region
+    // (dropped, we at 0) does not count. The word is the logical address of
+    // the KM CPU store (u_sram_if.word_addr), before the scrambler.
+    // km_sram_wmap_clr_i clears bench state only. Region r is at [9*r +: 9].
+    localparam int unsigned KmSramRegions = $countones(KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK);
+    localparam int unsigned KmSramRegionBits = $clog2(KmSramRegions);
+    localparam int unsigned KmSramRegionWords =
+        int'(key_manager_addrmap_pkg::KEY_MANAGER_SRAM_SIZE) / 4 / KmSramRegions;
+    logic [8191:0]                  km_wmap_q;
+    logic [KmSramRegions-1:0][8:0]  km_wmap_cnt_q;
+    logic                           km_wmap_wr;
+    logic [12:0]                    km_wmap_addr;
+    logic [KmSramRegionBits-1:0]    km_wmap_region;
     assign km_wmap_wr   = (u_dut.km_sram_mem_req.req === 1'b1) &&
                           (u_dut.km_sram_mem_req.we === 1'b1) &&
                           !$isunknown(`KM_TAP.u_cpu.u_sram_if.word_addr);
     assign km_wmap_addr = 13'(`KM_TAP.u_cpu.u_sram_if.word_addr);
+    assign km_wmap_region = KmSramRegionBits'(km_wmap_addr / KmSramRegionWords);
     always_ff @(posedge clk_i or negedge rst_n_int) begin
         if (!rst_n_int) begin
             km_wmap_q     <= '0;
@@ -4479,7 +4492,7 @@ module sep_uvm_top
             km_wmap_cnt_q <= '0;
         end else if (km_wmap_wr && !km_wmap_q[km_wmap_addr]) begin
             km_wmap_q[km_wmap_addr]           <= 1'b1;
-            km_wmap_cnt_q[km_wmap_addr[12:8]] <= km_wmap_cnt_q[km_wmap_addr[12:8]] + 9'd1;
+            km_wmap_cnt_q[km_wmap_region] <= km_wmap_cnt_q[km_wmap_region] + 9'd1;
         end
     end
     assign km_sram_wmap_region_o = km_wmap_cnt_q;
@@ -4489,7 +4502,7 @@ module sep_uvm_top
     // reset or the last clock with km_sram_wmap_clr_i at 1, the KM-SRAMWR count
     // in the same clock, and a flag set by that capture. Stores of the image
     // after the jump are not in the capture.
-    logic [31:0][8:0]  km_wmap_jump_q;
+    logic [KmSramRegions-1:0][8:0]  km_wmap_jump_q;
     logic [31:0]       km_wmap_jump_wr_q;
     logic              km_wmap_jump_seen_q;
     logic              km_wmap_jump_fetch;
@@ -4842,7 +4855,8 @@ module sep_uvm_top
     // one falling edge after the release the output must equal the live
     // value, else the bench reports an error. Default 0: no force.
     // ------------------------------------------------------------------
-    logic [11:0] km_irqset_drv, km_irqset_live, km_irqset_fv, km_irqset_forced, km_irqset_chk;
+    logic [KM_CSR_IRQ_SET_REG_RSVD_SHIFT-1:0] km_irqset_drv, km_irqset_fv, km_irqset_forced,
+                                              km_irqset_chk;
     logic km_irqset_fired_q;
     initial begin
         km_irqset_drv     = '0;
@@ -4852,31 +4866,18 @@ module sep_uvm_top
         km_irqset_fired_q = 1'b0;
     end
 `define KM_IRQSET_FS `KM_TAP.u_kmcsr.u_km_csr_reg.field_storage.IRQ_SET
-    assign km_irqset_live = {`KM_IRQSET_FS.rom_access_violation_set.value,
-                             `KM_IRQSET_FS.exec_violation_set.value,
-                             `KM_IRQSET_FS.otp_sigint_set.value,
-                             `KM_IRQSET_FS.otp_change_set.value,
-                             `KM_IRQSET_FS.wipe_state_set.value,
-                             `KM_IRQSET_FS.drbg_err_set.value,
-                             `KM_IRQSET_FS.axi_decerr_set.value,
-                             `KM_IRQSET_FS.axi_slverr_set.value,
-                             `KM_IRQSET_FS.sram_write_lock_err_set.value,
-                             `KM_IRQSET_FS.rom_write_err_set.value,
-                             `KM_IRQSET_FS.sram_parity_err_set.value,
-                             `KM_IRQSET_FS.rom_parity_err_set.value};
-`undef KM_IRQSET_FS
 `define KM_IRQSET(b, f) \
     if (km_irqset_chk[b] && \
-        (`KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value !== km_irqset_live[b])) \
+        (`KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value !== `KM_IRQSET_FS.f.value)) \
         $error("[tb] HK-IRQSET: IRQ_SET bit %0d differs from the live value after the release", b); \
     km_irqset_chk[b] = 1'b0; \
     if (km_irqset_drv[b]) begin \
         km_irqset_fv[b] = 1'b1; \
         km_irqset_forced[b] = 1'b1; \
         force `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value = 1'b1; \
-    end else if (km_irqset_forced[b] && (km_irqset_fv[b] !== km_irqset_live[b])) begin \
-        km_irqset_fv[b] = km_irqset_live[b]; \
-        if (km_irqset_live[b] === 1'b1) force `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value = 1'b1; \
+    end else if (km_irqset_forced[b] && (km_irqset_fv[b] !== `KM_IRQSET_FS.f.value)) begin \
+        km_irqset_fv[b] = `KM_IRQSET_FS.f.value; \
+        if (`KM_IRQSET_FS.f.value === 1'b1) force `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value = 1'b1; \
         else force `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value = 1'b0; \
     end else if (km_irqset_forced[b]) begin \
         release `KM_TAP.u_kmcsr.hwif_out.IRQ_SET.f.value; \
@@ -4893,20 +4894,21 @@ module sep_uvm_top
             km_irqset_fired_q = 1'b1;
             $display("[tb] KM IRQ_SET pulse: mask 0x%03h", km_irqset_mask_i);
         end
-        `KM_IRQSET(0, rom_parity_err_set)
-        `KM_IRQSET(1, sram_parity_err_set)
-        `KM_IRQSET(2, rom_write_err_set)
-        `KM_IRQSET(3, sram_write_lock_err_set)
-        `KM_IRQSET(4, axi_slverr_set)
-        `KM_IRQSET(5, axi_decerr_set)
-        `KM_IRQSET(6, drbg_err_set)
-        `KM_IRQSET(7, wipe_state_set)
-        `KM_IRQSET(8, otp_change_set)
-        `KM_IRQSET(9, otp_sigint_set)
-        `KM_IRQSET(10, exec_violation_set)
-        `KM_IRQSET(11, rom_access_violation_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_ROM_PARITY_ERR_SET_SHIFT, rom_parity_err_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_SRAM_PARITY_ERR_SET_SHIFT, sram_parity_err_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_ROM_WRITE_ERR_SET_SHIFT, rom_write_err_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_SRAM_WRITE_LOCK_ERR_SET_SHIFT, sram_write_lock_err_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_AXI_SLVERR_SET_SHIFT, axi_slverr_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_AXI_DECERR_SET_SHIFT, axi_decerr_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_DRBG_ERR_SET_SHIFT, drbg_err_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_WIPE_STATE_SET_SHIFT, wipe_state_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_OTP_CHANGE_SET_SHIFT, otp_change_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_OTP_SIGINT_SET_SHIFT, otp_sigint_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_EXEC_VIOLATION_SET_SHIFT, exec_violation_set)
+        `KM_IRQSET(KM_CSR_IRQ_SET_REG_ROM_ACCESS_VIOLATION_SET_SHIFT, rom_access_violation_set)
     end
 `undef KM_IRQSET
+`undef KM_IRQSET_FS
     assign km_irqset_fired_o = km_irqset_fired_q;
 
     // ------------------------------------------------------------------
