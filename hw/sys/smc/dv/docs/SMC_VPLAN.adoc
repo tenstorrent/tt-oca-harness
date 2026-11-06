@@ -1578,7 +1578,7 @@ controls.
 |`smc_efuse_otp_burn_shadow_test` |2 |Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
 |`smc_efuse_otp_clock_config_depth_test` |3 |Run eFuse OTP clock/timing register programming depth checks.
 |`smc_efuse_otp_clock_test` |1 |Run the eFuse/OTP and clock-control CSR precheck.
-|`smc_efuse_permission_boundary_test` |2 |Read the four eFuse-derived chip-config registers over SEP_IN AXI on the CSR side of the eFuse boundary, with the eFuse-bank AXI-Lite positive control and idle leg.
+|`smc_efuse_permission_boundary_test` |2 |Read the four CHIP_CONFIG registers over SEP_IN AXI on the CSR side of the eFuse boundary, with the eFuse-bank AXI-Lite positive control and idle leg.
 |`smc_efuse_read_program_timeout_test` |3 |timeout_enable\|0 aborts; default timeout recovers OTP bit0.
 |`smc_efuse_read_timeout_status_test` |3 |A read that hits `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, after a successful read shows it clear.
 |`smc_efuse_shim_ctrl_test` |2 |EFUSE_INTERFACE + SHIM_CTRL probe.
@@ -30210,7 +30210,7 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * **CLOCK_GATE_CONTROL RW depth** (fail-capable, real DUT RTL) -- save, write a pattern, read back under a mask, restore, and re-read against the saved value. Evidence: `CHK-EFUSE-CLOCK-GATE-DEPTH`.
-* **CHIP_CONFIG proxy reads** -- fuse-derived mirror registers. `VERSION_LO` / `VERSION_HI` carry their generated RDL resets; the remaining two are observed only (see below).
+* **CHIP_CONFIG proxy reads** -- registers with no storage. `VERSION_LO` / `VERSION_HI` read the version cells, whose ties equal their generated RDL resets; the remaining two are observed only (see below).
 
 *Test Procedure*:
 
@@ -30231,7 +30231,7 @@ Drive `smc_efuse_otp_clock_config_depth_test_seq`. Each checker below is a named
 *Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-CLOCK-GATE-DEPTH` hold after their compares. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Of the CHIP_CONFIG proxy reads, `VERSION_LO` and `VERSION_HI` are compared against
-their generated RDL resets; the remaining two fuse-derived mirror registers are observed only.
+their generated RDL resets; the remaining two registers (`CHIP_ID`, `LC_STATE`) are observed only.
 '''''
 
 [[sec-096-smc_efuse_otp_clock_test]]
@@ -30295,11 +30295,11 @@ Drive `smc_efuse_otp_clock_test_seq`. Each checker below is a named compare the 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Read the four eFuse-derived chip-config registers over SEP_IN AXI on the CSR side of the eFuse boundary, with the eFuse-bank AXI-Lite positive control and idle leg.
+*Objective*: Read the four CHIP_CONFIG registers over SEP_IN AXI on the CSR side of the eFuse boundary, with the eFuse-bank AXI-Lite positive control and idle leg.
 
 *Test Coverage*:
 
-* DEFENDS: the four eFuse-derived chip-config registers decode; `VERSION_LO`, `VERSION_HI` and `CHIP_ID` read their generated reset values, `LC_STATE` is decode-only because its value is simulator-divergent in the OSS bench; and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
+* DEFENDS: the four CHIP_CONFIG registers decode; `VERSION_LO`, `VERSION_HI` and `CHIP_ID` read their generated reset values, `LC_STATE` is decode-only because its value is simulator-divergent in the OSS bench; and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
 * DOES NOT DEFEND: eFuse permission semantics. This testcase runs the same `smc_efuse_chip_config_read_test_seq` body as testcase 86 -- it programs no lock, drives no lifecycle transition and attempts no denied access, because the SMC CSR boundary exposes none of that. Lifecycle-gated access control is proven by `smc_efuse_jtag_lc_access_matrix_test` and locked-shadow access by `smc_efuse_locked_access_interrupt_test`; the raw OTP window has no responder on `smc_wrapper` and is recorded under Known Limitations.
 * PROXY: the protocol-VIP record this leaf files carries `proxy=True` and names what it stands in for -- the raw OTP permission paths -- and what it did not do (no lock programmed, no lifecycle transition, no denied access, no raw OTP window touched). The record is not feature credit for that path.
 
