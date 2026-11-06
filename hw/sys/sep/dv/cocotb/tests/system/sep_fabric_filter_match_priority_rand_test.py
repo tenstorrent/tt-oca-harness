@@ -53,7 +53,7 @@ CHK-RESET-DENY-ARMED, CHK-RESET-DENY-CONTROL, CHK-RESET-DENY-SI, CHK-GRANULE,
 CHK-FILT-GROUP. CHK-RESET-DENY-IN: in the reset state, every inbound probe of
 the fixed reset-round list answers DECERR, no probe reaches a target, and the
 staged words keep their staged value, because every ``entry_enabled`` resets
-to 0 (``hw/ip/axi_filter/regs/filter_ctrl.rdl:33-34``), a disabled entry never
+to 0 (``hw/ip/axi_filter/regs/filter_ctrl.rdl:32-36``), a disabled entry never
 matches (``hw/ip/axi_filter/doc/index.adoc:54``), unmatched SEP inbound traffic
 is blocked (``index.adoc:31``, ``:67-69``) and a blocked transaction ends in
 DECERR (``index.adoc:149-153``). It rests on CTRL-FILTER-ACTIVE, because the
@@ -804,7 +804,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
 
     async def _leg3(self) -> None:
         # Steps 4 to 7, reset state.
-        # CHK-RESET-DENY-IN: every entry_enabled resets to 0 (filter_ctrl.rdl:33-34),
+        # CHK-RESET-DENY-IN: every entry_enabled resets to 0 (filter_ctrl.rdl:32-36),
         # a disabled entry never matches (axi_filter/doc/index.adoc:54), unmatched
         # SEP inbound traffic is blocked (:31, :67-69) and a blocked transaction
         # answers DECERR (:149-153).
