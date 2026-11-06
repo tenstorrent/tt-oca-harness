@@ -37990,12 +37990,12 @@ module sep_fcov (
   // cp_src_exclusive_other bins s35, s36 and s41 to s43: an exclusive rise in
   // the window of its owner (exo_hold_ev_q) is held as pending and samples
   // only when bit (source - 32) of exo_pass rises: the owner writes that bit
-  // after CHK-SRC<source>-EXCL (sources 35 and 36) or CHK-SRC<source>-RISE
-  // (sources 41 to 43) passed over the run. For sources 41 to 43 the
-  // exclusivity of a held rise is this sampler's compare only; the owner
-  // grades that the bit rose and logs the other bits that moved. The release
-  // does not depend on the window, because the bridge-fault owner grades its
-  // RISE checks at the end of the run, after the window closed. A reset drops
+  // after CHK-SRC<source>-RISE (sources 35, 36 and 41 to 43) passed over the
+  // run. The exclusivity of a held rise is this sampler's compare only; the
+  // owner grades that the bit rose and logs the other bits that moved. The
+  // release does not depend on the window, because the bridge-fault owner
+  // grades its RISE checks at the end of the run, after the window closed.
+  // A reset drops
   // every pending rise; a leaf whose check fails never writes the bit, so its
   // rises never sample. exo_pass gates a sample; it is never a DUT value
   // and drives nothing.
