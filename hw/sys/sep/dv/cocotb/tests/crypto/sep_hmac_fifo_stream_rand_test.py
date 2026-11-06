@@ -70,7 +70,7 @@ write shows ``fifo_full`` = 1 (N). The graded run posts N writes, reads ``fifo_f
 issues the next beats one at a time until one is held. The register text states that data
 written to the FIFO whilst it is full is back-pressured (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:159), but a byte packer
 sits in front of the FIFO and the text does not state which write is held. The index of the
-held beat is therefore log-only (``OBS-BLOCKED CHK-HMAC-BACKPRESSURE`` and
+held beat is therefore log-only (``INFO-BLOCKED CHK-HMAC-BACKPRESSURE`` and
 ``OBS-HMAC-BP-HOLD-BEAT``); the graded part is a hold before the termination bound of the
 leg, ``BP_BEAT_BOUND`` beats (a bound that ends the leg, not a spec value), and no lost
 data. The measurement run issues up to ``PROBE_EXTRA_MAX`` more writes with the stall held

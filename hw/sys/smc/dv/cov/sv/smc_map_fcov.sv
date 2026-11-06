@@ -137,6 +137,7 @@ module smc_map_fcov (
       32'(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR - LocalBase);
   localparam logic [31:0] OctsLo = 32'(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR - LocalBase);
   localparam logic [31:0] DtpCtrlLo = 32'(SMC_TOP_DTP_CTRL_REG_BASE_ADDR - LocalBase);
+  localparam logic [31:0] PwmLo = 32'(SMC_TOP_SMC_PWM_BASE_ADDR - LocalBase);
   localparam logic [31:0] DfxLo = 32'(SMC_TOP_DFX_CTRL_BASE_ADDR - LocalBase);
   localparam logic [31:0] I3cLo = 32'(SMC_TOP_OCA_I3C_WRAP_BASE_ADDR - LocalBase);
   localparam logic [31:0] I3cHi = I3cLo + 32'h6000 - 32'd1;
@@ -345,6 +346,7 @@ module smc_map_fcov (
   wire telemetry_e = `SMC_MAP_OK(TelemetryLo, TelemetryLo + 32'h0FFF);
   wire octs_e = `SMC_MAP_OK(OctsLo, OctsLo + 32'h0FFF);
   wire dtp_ctrl_e = `SMC_MAP_OK(DtpCtrlLo, DtpCtrlLo + 32'h07FF);
+  wire pwm_e = `SMC_MAP_OK(PwmLo, PwmLo + 32'h0FFF);
   wire dfx_status_e = `SMC_MAP_OK(DfxLo, DfxLo + 32'h07FF);
   wire reset_unit_e = `SMC_MAP_OK(ResetUnitLo, ResetUnitLo + 32'h07FF);
   wire misc_wrap_e = `SMC_MAP_OK(MiscWrapLo, MiscWrapLo + 32'h07FF);
@@ -363,6 +365,7 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_telemetry_decode, telemetry_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_octs_decode, octs_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_octs_aperture_decode, octs_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_pwm_decode, pwm_e, clk_smc_i, in_reset)
 `ifdef SMC_FCOV_PHASE2
   // Phase 2 (SMC_FCOV.adoc): the DTP control window is served by the DTP,
   // which smc_wrapper leaves outside the bench with its CSR port unterminated.

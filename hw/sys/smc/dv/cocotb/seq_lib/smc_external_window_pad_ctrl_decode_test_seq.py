@@ -3,7 +3,7 @@
 """External-window control apertures route to the adopter AXI-Lite port.
 
 The SMC map places control blocks in the supplementary region of the adopter
-external window and 65 per-pad control blocks at a fixed stride in the
+external window and 67 per-pad control blocks at a fixed stride in the
 mandatory region. Their addresses come from the generated SMC map
 (``smc_addr.h``).
 
@@ -28,9 +28,9 @@ import cocotb
 from .smc_addr_map import external_gpio_ctrl_addr, external_gpio_ctrl_indices, smc_addr
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
 
-# memmap.adoc: "Per-Pad GPIO Control | BASE + ... + (N x 0x20) | 65 instances".
+# memmap.adoc: "Per-Pad GPIO Control | BASE + ... + (N x 0x20) | 67 instances".
 SPEC_PER_PAD_STRIDE = 0x20
-SPEC_PER_PAD_INSTANCES = 65
+SPEC_PER_PAD_INSTANCES = 67
 # The word the reference integration's window terminator returns with its
 # DECERR, shared by every error slave in the design; another word means a
 # live responder answered where only the terminator should.

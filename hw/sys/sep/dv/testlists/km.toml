@@ -507,7 +507,8 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_scr.param.parhex", "+verilator+e
 [[tests]]
 # KM frame validation order, sequence wrap, transport recovery and the recovery gate (rom_main).
 # The leaf resets the KM while its CPU runs; the raised Verilator error limit keeps it running.
-# Shard 1 of 2 of sep_km_command_protocol_rand_test: the pair, twin, alive and wrap legs (no fault frame, the RAS control shard).
+# Shard 1 of 2 of sep_km_command_protocol_rand_test: the pair, twin, alive, invalid-command control and wrap legs
+# (no fault frame, the RAS control shard).
 # The regression runs the shards; together they grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_km_command_protocol_rand_test_shard1"
 module = "km.sep_km_command_protocol_rand_test"

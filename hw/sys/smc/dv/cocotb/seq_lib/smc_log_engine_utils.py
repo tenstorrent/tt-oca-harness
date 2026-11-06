@@ -43,8 +43,9 @@ LSR_TEMT = uart_16550_main_u32("UART_16550_MAIN__LSR__TEMT_bm")
 RBR_DATA = uart_16550_main_u32("UART_16550_MAIN__RBR__DATA_bm")
 # LSR bits the receiver raises on a damaged character. All four are `rclr`, so
 # each LSR read is the only chance to see the ones that read set.
+LSR_OE = uart_16550_main_u32("UART_16550_MAIN__LSR__OE_bm")
 LSR_LINE_ERRORS = (
-    uart_16550_main_u32("UART_16550_MAIN__LSR__OE_bm")
+    LSR_OE
     | uart_16550_main_u32("UART_16550_MAIN__LSR__PE_bm")
     | uart_16550_main_u32("UART_16550_MAIN__LSR__FE_bm")
     | uart_16550_main_u32("UART_16550_MAIN__LSR__BI_bm")

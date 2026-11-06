@@ -7,7 +7,7 @@
 [[smc-fcov-owners]]
 ==== Owning tests, measured
 
-Measured on `--items hosted` at commit `4b5aaa3da93c` with Verilator 5.050: 592 leaves, 613 points, 594 hit, 19 unhit, 21 hit by exactly one leaf.
+Measured on `--items hosted` at commit `f67af493828f` with Verilator 5.050: 593 leaves, 613 points, 594 hit, 19 unhit, 20 hit by exactly one leaf.
 
 A point one leaf alone reaches depends on that leaf: retire or narrow it and
 the point goes dark. A point no leaf reaches carries its policy disposition,
@@ -18,18 +18,18 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`OCAH_AXI_C_AR_HANDSHAKE` |590 |`smc_log_engine_region_size_test@default` (117093) |
+|`OCAH_AXI_C_AR_HANDSHAKE` |591 |`smc_log_engine_region_size_test@default` (117093) |
 |`OCAH_AXI_C_AW_BACKPRESSURE` |17 |`smc_cpuif_handshake_instances_test@default` (93933) |
-|`OCAH_AXI_C_AW_HANDSHAKE` |537 |`smc_cpuif_handshake_instances_test@default` (46776) |
+|`OCAH_AXI_C_AW_HANDSHAKE` |538 |`smc_cpuif_handshake_instances_test@default` (46776) |
 |`OCAH_AXI_C_B_ERR_RESP` |93 |`smc_axi_illegal_encoding_inject_test@default` (988) |
-|`OCAH_AXI_C_B_HANDSHAKE` |537 |`smc_cpuif_handshake_instances_test@default` (46776) |
+|`OCAH_AXI_C_B_HANDSHAKE` |538 |`smc_cpuif_handshake_instances_test@default` (46776) |
 |`OCAH_AXI_C_R_ERR_RESP` |100 |`smc_err_slv_response_content_test@default` (50214) |
-|`OCAH_AXI_C_R_HANDSHAKE` |590 |`smc_log_engine_region_size_test@default` (117177) |
+|`OCAH_AXI_C_R_HANDSHAKE` |591 |`smc_log_engine_region_size_test@default` (117177) |
 |`OCAH_AXI_C_W_BACKPRESSURE` |92 |`smc_zeroer_sram_init_test@default` (158440) |
-|`OCAH_AXI_C_W_HANDSHAKE` |537 |`smc_zeroer_sram_init_test@default` (82754) |
-|`OCAH_AXI_C_W_PARTIAL_STRB` |467 |`smc_cpuif_handshake_instances_test@default` (18858) |
-|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |584 |`smc_dma_transfer_matrix_rand_test@default` (5151) |
-|`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |55 |`smc_dma_transfer_matrix_rand_test@default` (6778) |
+|`OCAH_AXI_C_W_HANDSHAKE` |538 |`smc_zeroer_sram_init_test@default` (82754) |
+|`OCAH_AXI_C_W_PARTIAL_STRB` |468 |`smc_cpuif_handshake_instances_test@default` (18858) |
+|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |585 |`smc_dma_transfer_matrix_rand_test@default` (9580) |
+|`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |55 |`smc_dma_transfer_matrix_rand_test@default` (6399) |
 |===
 
 ===== `u_*_axil_sva`
@@ -54,16 +54,16 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`OCAH_AXI_C_AR_HANDSHAKE` |134 |`smc_spm_bank_walk_test@default` (3573) |
+|`OCAH_AXI_C_AR_HANDSHAKE` |135 |`smc_spm_bank_walk_test@default` (3573) |
 |`OCAH_AXI_C_AW_BACKPRESSURE` |9 |`smc_warm_reset_inflight_links_test@default` (80347) |
-|`OCAH_AXI_C_AW_HANDSHAKE` |105 |`smc_spm_bank_walk_test@default` (3573) |
+|`OCAH_AXI_C_AW_HANDSHAKE` |106 |`smc_spm_bank_walk_test@default` (3573) |
 |`OCAH_AXI_C_B_ERR_RESP` |5 |`smc_axi_fabric_burst_type_islands_test@default` (6) |
-|`OCAH_AXI_C_B_HANDSHAKE` |105 |`smc_spm_bank_walk_test@default` (3573) |
+|`OCAH_AXI_C_B_HANDSHAKE` |106 |`smc_spm_bank_walk_test@default` (3573) |
 |`OCAH_AXI_C_R_ERR_RESP` |4 |`smc_axi_fabric_burst_type_islands_test@default` (9) |
-|`OCAH_AXI_C_R_HANDSHAKE` |134 |`smc_zeroer_sram_init_test@default` (17436) |
+|`OCAH_AXI_C_R_HANDSHAKE` |135 |`smc_zeroer_sram_init_test@default` (17436) |
 |`OCAH_AXI_C_W_BACKPRESSURE` |21 |`smc_warm_reset_inflight_links_test@default` (240348) |
-|`OCAH_AXI_C_W_HANDSHAKE` |105 |`smc_zeroer_sram_init_test@default` (49430) |
-|`OCAH_AXI_C_W_PARTIAL_STRB` |48 |`smc_cpu_ctrl_scratch_all_test@default` (384) |
+|`OCAH_AXI_C_W_HANDSHAKE` |106 |`smc_zeroer_sram_init_test@default` (49430) |
+|`OCAH_AXI_C_W_PARTIAL_STRB` |49 |`smc_cpu_ctrl_scratch_all_test@default` (384) |
 |`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |23 |`smc_zeroer_sram_init_test@default` (72) |
 |`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |19 |`smc_zeroer_sram_init_test@default` (196) |
 |===
@@ -73,17 +73,17 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`OCAH_AXI_C_AR_HANDSHAKE` |583 |`smc_dfd_trace_writeout_phase_test@default` (260) |
+|`OCAH_AXI_C_AR_HANDSHAKE` |584 |`smc_dfd_trace_writeout_phase_test@default` (260) |
 |`OCAH_AXI_C_AW_BACKPRESSURE` |0 |none |cover: user
-|`OCAH_AXI_C_AW_HANDSHAKE` |4 |`smc_ecc_fault_inject_test@default` (16) |
+|`OCAH_AXI_C_AW_HANDSHAKE` |5 |`smc_ecc_fault_inject_test@default` (20) |
 |`OCAH_AXI_C_B_ERR_RESP` |0 |none |cover: user
-|`OCAH_AXI_C_B_HANDSHAKE` |4 |`smc_ecc_fault_inject_test@default` (16) |
+|`OCAH_AXI_C_B_HANDSHAKE` |5 |`smc_ecc_fault_inject_test@default` (20) |
 |`OCAH_AXI_C_R_ERR_RESP` |0 |none |cover: user
-|`OCAH_AXI_C_R_HANDSHAKE` |583 |`smc_dfd_trace_writeout_phase_test@default` (2080) |
-|`OCAH_AXI_C_W_BACKPRESSURE` |4 |`smc_ecc_fault_inject_test@default` (16) |
-|`OCAH_AXI_C_W_HANDSHAKE` |4 |`smc_ecc_fault_inject_test@default` (16) |
-|`OCAH_AXI_C_W_PARTIAL_STRB` |4 |`smc_ecc_fault_inject_test@default` (16) |
-|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |583 |`smc_dfd_trace_writeout_phase_test@default` (260) |
+|`OCAH_AXI_C_R_HANDSHAKE` |584 |`smc_dfd_trace_writeout_phase_test@default` (2080) |
+|`OCAH_AXI_C_W_BACKPRESSURE` |5 |`smc_ecc_fault_inject_test@default` (20) |
+|`OCAH_AXI_C_W_HANDSHAKE` |5 |`smc_ecc_fault_inject_test@default` (20) |
+|`OCAH_AXI_C_W_PARTIAL_STRB` |5 |`smc_ecc_fault_inject_test@default` (20) |
+|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |584 |`smc_dfd_trace_writeout_phase_test@default` (260) |
 |`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |0 |none |cover: user
 |===
 
@@ -92,17 +92,17 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`OCAH_AXI_C_AR_HANDSHAKE` |583 |`smc_dfd_trace_writeout_phase_test@default` (260) |
+|`OCAH_AXI_C_AR_HANDSHAKE` |584 |`smc_dfd_trace_writeout_phase_test@default` (260) |
 |`OCAH_AXI_C_AW_BACKPRESSURE` |0 |none |cover: user
-|`OCAH_AXI_C_AW_HANDSHAKE` |4 |`smc_ecc_fault_inject_test@default` (16) |
+|`OCAH_AXI_C_AW_HANDSHAKE` |5 |`smc_ecc_fault_inject_test@default` (20) |
 |`OCAH_AXI_C_B_ERR_RESP` |0 |none |cover: user
-|`OCAH_AXI_C_B_HANDSHAKE` |4 |`smc_ecc_fault_inject_test@default` (16) |
+|`OCAH_AXI_C_B_HANDSHAKE` |5 |`smc_ecc_fault_inject_test@default` (20) |
 |`OCAH_AXI_C_R_ERR_RESP` |0 |none |cover: user
-|`OCAH_AXI_C_R_HANDSHAKE` |583 |`smc_dfd_trace_writeout_phase_test@default` (2080) |
-|`OCAH_AXI_C_W_BACKPRESSURE` |4 |`smc_ecc_fault_inject_test@default` (16) |
-|`OCAH_AXI_C_W_HANDSHAKE` |4 |`smc_ecc_fault_inject_test@default` (16) |
-|`OCAH_AXI_C_W_PARTIAL_STRB` |4 |`smc_ecc_fault_inject_test@default` (16) |
-|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |583 |`smc_dfd_trace_writeout_phase_test@default` (260) |
+|`OCAH_AXI_C_R_HANDSHAKE` |584 |`smc_dfd_trace_writeout_phase_test@default` (2080) |
+|`OCAH_AXI_C_W_BACKPRESSURE` |5 |`smc_ecc_fault_inject_test@default` (20) |
+|`OCAH_AXI_C_W_HANDSHAKE` |5 |`smc_ecc_fault_inject_test@default` (20) |
+|`OCAH_AXI_C_W_PARTIAL_STRB` |5 |`smc_ecc_fault_inject_test@default` (20) |
+|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |584 |`smc_dfd_trace_writeout_phase_test@default` (260) |
 |`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |0 |none |cover: user
 |===
 
@@ -111,18 +111,18 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`OCAH_AXI_C_AR_HANDSHAKE` |30 |`smc_dma_transfer_matrix_rand_test@default` (8438) |
+|`OCAH_AXI_C_AR_HANDSHAKE` |30 |`smc_dma_transfer_matrix_rand_test@default` (13249) |
 |`OCAH_AXI_C_AW_BACKPRESSURE` |5 |`smc_dma_decouple_rw_test@default` (37612) |
-|`OCAH_AXI_C_AW_HANDSHAKE` |47 |`smc_dma_transfer_matrix_rand_test@default` (8438) |
+|`OCAH_AXI_C_AW_HANDSHAKE` |47 |`smc_dma_transfer_matrix_rand_test@default` (13249) |
 |`OCAH_AXI_C_B_ERR_RESP` |6 |`smc_zeroer_resp_unchecked_test@default` (10) |
-|`OCAH_AXI_C_B_HANDSHAKE` |47 |`smc_dma_transfer_matrix_rand_test@default` (8438) |
-|`OCAH_AXI_C_R_ERR_RESP` |2 |`smc_sys_out_error_inject_rand_test@default` (4) |
-|`OCAH_AXI_C_R_HANDSHAKE` |30 |`smc_dma_transfer_matrix_rand_test@default` (42210) |
+|`OCAH_AXI_C_B_HANDSHAKE` |47 |`smc_dma_transfer_matrix_rand_test@default` (13249) |
+|`OCAH_AXI_C_R_ERR_RESP` |2 |`smc_sys_out_error_inject_rand_test@default` (5) |
+|`OCAH_AXI_C_R_HANDSHAKE` |30 |`smc_dma_transfer_matrix_rand_test@default` (45295) |
 |`OCAH_AXI_C_W_BACKPRESSURE` |47 |`smc_zeroer_sram_init_test@default` (33167) |
-|`OCAH_AXI_C_W_HANDSHAKE` |47 |`smc_dma_transfer_matrix_rand_test@default` (46084) |
-|`OCAH_AXI_C_W_PARTIAL_STRB` |11 |`smc_dma_transfer_matrix_rand_test@default` (11765) |
-|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |18 |`smc_dma_transfer_matrix_rand_test@default` (5139) |
-|`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |33 |`smc_dma_transfer_matrix_rand_test@default` (6778) |
+|`OCAH_AXI_C_W_HANDSHAKE` |47 |`smc_dma_transfer_matrix_rand_test@default` (39522) |
+|`OCAH_AXI_C_W_PARTIAL_STRB` |11 |`smc_dma_transfer_matrix_rand_test@default` (6599) |
+|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |18 |`smc_dma_transfer_matrix_rand_test@default` (9568) |
+|`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |33 |`smc_dma_transfer_matrix_rand_test@default` (6399) |
 |===
 
 ===== `u_dma_ctrl_axi_sva`
@@ -150,7 +150,7 @@ or `unclassified` when the policy has none.
 |===
 |Point |Leaves |Owner (hits) |Note
 |`OCAH_AXI_C_AR_HANDSHAKE` |54 |`smc_err_slv_response_content_test@default` (784) |
-|`OCAH_AXI_C_AW_BACKPRESSURE` |2 |`smc_axi_random_stress_test@default` (91) |
+|`OCAH_AXI_C_AW_BACKPRESSURE` |2 |`smc_axi_random_stress_test@default` (69) |
 |`OCAH_AXI_C_AW_HANDSHAKE` |59 |`smc_dma_backpressure_test@default` (383) |
 |`OCAH_AXI_C_B_ERR_RESP` |20 |`smc_err_slv_response_content_test@default` (163) |
 |`OCAH_AXI_C_B_HANDSHAKE` |58 |`smc_dma_backpressure_test@default` (383) |
@@ -158,7 +158,7 @@ or `unclassified` when the policy has none.
 |`OCAH_AXI_C_R_HANDSHAKE` |54 |`smc_err_slv_response_content_test@default` (9735) |
 |`OCAH_AXI_C_W_BACKPRESSURE` |15 |`smc_err_slv_response_content_test@default` (5214) |
 |`OCAH_AXI_C_W_HANDSHAKE` |59 |`smc_err_slv_response_content_test@default` (8983) |
-|`OCAH_AXI_C_W_PARTIAL_STRB` |15 |`smc_axi_random_stress_test@default` (142) |
+|`OCAH_AXI_C_W_PARTIAL_STRB` |15 |`smc_axi_random_stress_test@default` (90) |
 |`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |11 |`smc_err_slv_response_content_test@default` (161) |
 |`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |11 |`smc_err_slv_response_content_test@default` (117) |
 |===
@@ -168,18 +168,18 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_ar_during_write` |2 |`smc_axi_random_stress_test@default` (68) |
-|`c_aw_first` |8 |`smc_axi_random_stress_test@default` (103) |
+|`c_ar_during_write` |2 |`smc_axi_random_stress_test@default` (66) |
+|`c_aw_first` |8 |`smc_axi_random_stress_test@default` (99) |
 |`c_aw_w_same_cycle` |55 |`smc_dma_backpressure_test@default` (383) |
 |`c_bid_out_of_order` |2 |`smc_axi_random_stress_test@default` (27) |
-|`c_rd_depth_few` |7 |`smc_axi_random_stress_test@default` (61) |
-|`c_rd_depth_many` |4 |`smc_axi_random_stress_test@default` (78) |
+|`c_rd_depth_few` |7 |`smc_axi_random_stress_test@default` (58) |
+|`c_rd_depth_many` |4 |`smc_axi_random_stress_test@default` (79) |
 |`c_rd_depth_one` |52 |`smc_dma_backpressure_test@default` (165) |
 |`c_rd_eight_ids` |0 |none |waive: unreachable
-|`c_rid_out_of_order` |3 |`smc_axi_random_stress_test@default` (27) |
-|`c_w_first` |2 |`smc_axi_channel_timing_ports_test@default` (12) |
-|`c_wr_depth_few` |11 |`smc_axi_random_stress_test@default` (51) |
-|`c_wr_depth_many` |8 |`smc_axi_random_stress_test@default` (80) |
+|`c_rid_out_of_order` |3 |`smc_axi_random_stress_test@default` (21) |
+|`c_w_first` |3 |`smc_axi_channel_timing_ports_test@default` (12) |
+|`c_wr_depth_few` |11 |`smc_axi_random_stress_test@default` (53) |
+|`c_wr_depth_many` |8 |`smc_axi_random_stress_test@default` (77) |
 |`c_wr_depth_one` |55 |`smc_dma_backpressure_test@default` (383) |
 |===
 
@@ -207,17 +207,17 @@ or `unclassified` when the policy has none.
 |Point |Leaves |Owner (hits) |Note
 |`c_ar_during_write` |6 |`smc_cpuif_handshake_instances_test@default` (294) |
 |`c_aw_first` |13 |`smc_cpuif_handshake_instances_test@default` (4488) |
-|`c_aw_w_same_cycle` |531 |`smc_cpuif_handshake_instances_test@default` (18114) |
-|`c_bid_out_of_order` |6 |`smc_axi_random_stress_test@default` (5) |
+|`c_aw_w_same_cycle` |532 |`smc_cpuif_handshake_instances_test@default` (18114) |
+|`c_bid_out_of_order` |6 |`smc_axi_random_stress_test@default` (8) |
 |`c_rd_depth_few` |30 |`smc_cpuif_handshake_instances_test@default` (4294) |
 |`c_rd_depth_many` |19 |`smc_cpuif_handshake_instances_test@default` (8232) |
-|`c_rd_depth_one` |567 |`smc_log_engine_region_size_test@default` (58385) |
+|`c_rd_depth_one` |568 |`smc_log_engine_region_size_test@default` (58385) |
 |`c_rd_eight_ids` |13 |`smc_cpuif_handshake_instances_test@default` (294) |
 |`c_rid_out_of_order` |9 |`smc_cpuif_handshake_instances_test@default` (16) |
-|`c_w_first` |5 |`smc_cpuif_handshake_instances_test@default` (786) |
+|`c_w_first` |6 |`smc_cpuif_handshake_instances_test@default` (786) |
 |`c_wr_depth_few` |27 |`smc_cpuif_handshake_instances_test@default` (5907) |
 |`c_wr_depth_many` |12 |`smc_cpuif_handshake_instances_test@default` (8232) |
-|`c_wr_depth_one` |531 |`smc_filter_remap_bitwalk_test@default` (9487) |
+|`c_wr_depth_one` |532 |`smc_filter_remap_bitwalk_test@default` (9487) |
 |===
 
 ===== `u_smc_clk_domain_fcov`
@@ -225,10 +225,10 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_avsbus_on_clk_periph` |592 |`smc_log_engine_region_size_test@default` (234869) |
-|`c_cpu_retires_on_clk_smc` |585 |`smc_log_engine_region_size_test@default` (625836) |
+|`c_avsbus_on_clk_periph` |593 |`smc_log_engine_region_size_test@default` (234869) |
+|`c_cpu_retires_on_clk_smc` |586 |`smc_log_engine_region_size_test@default` (625836) |
 |`c_octs_tick_on_clk_ref` |14 |`smc_octs_clk_rate_test@default` (15797) |
-|`c_uart_on_clk_periph` |37 |`smc_uart_baud_word_parity_format_test@default` (537) |
+|`c_uart_on_clk_periph` |38 |`smc_uart_baud_word_parity_format_test@default` (537) |
 |===
 
 ===== `u_smc_clk_fcov`
@@ -236,34 +236,34 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_activity_detected_clock_restored` |7 |`smc_clk_multi_window_test@default` (44) |
+|`c_activity_detected_clock_restored` |7 |`smc_dma_cg_activity_test@default` (42) |
 |`c_atb_capture_on_clk_telemetry` |8 |`smc_telemetry_buffer_overflow_test@default` (231) |
 |`c_cg_test_en_override` |2 |`smc_cg_dft_reset_bringup_test@default` (102) |
-|`c_clk_periph_at_minimum_100mhz` |592 |`smc_log_engine_region_size_test@default` (941138) |
-|`c_clk_ratio_periph_equal_ref` |5 |`smc_clk_smc_slower_periph_equal_test@default` (3) |
-|`c_clk_ratio_periph_faster_than_ref` |279 |`smc_log_engine_region_size_test@default` (457) |
-|`c_clk_ratio_periph_faster_than_smc` |15 |`smc_octs_clk_rate_smc_slower_test@default` (15) |
-|`c_clk_ratio_periph_slower_than_ref` |6 |`smc_clk_smc_slower_periph_slower_test@default` (4) |
-|`c_clk_ratio_smc_equal_ref` |7 |`smc_octs_clk_rate_test@default` (13) |
+|`c_clk_periph_at_minimum_100mhz` |593 |`smc_log_engine_region_size_test@default` (941138) |
+|`c_clk_ratio_periph_equal_ref` |6 |`smc_clk_smc_slower_periph_equal_test@default` (3) |
+|`c_clk_ratio_periph_faster_than_ref` |280 |`smc_log_engine_region_size_test@default` (457) |
+|`c_clk_ratio_periph_faster_than_smc` |14 |`smc_octs_clk_rate_test@default` (15) |
+|`c_clk_ratio_periph_slower_than_ref` |7 |`smc_clk_smc_slower_periph_slower_test@default` (4) |
+|`c_clk_ratio_smc_equal_ref` |7 |`smc_octs_clk_rate_smc_equal_test@default` (13) |
 |`c_clk_ratio_smc_faster_than_periph` |274 |`smc_log_engine_region_size_test@default` (457) |
 |`c_clk_ratio_smc_faster_than_ref` |275 |`smc_log_engine_region_size_test@default` (457) |
-|`c_clk_ratio_smc_slower_than_ref` |10 |`smc_octs_clk_rate_smc_slower_test@default` (15) |
+|`c_clk_ratio_smc_slower_than_ref` |10 |`smc_octs_clk_rate_test@default` (15) |
 |`c_dma_busy_fe0_be0` |44 |`smc_axil_endpoint_prot_sweep_test@default` (239771) |
-|`c_dma_busy_fe0_be1` |30 |`smc_hang_detector_window_rand_test@default` (34352) |
+|`c_dma_busy_fe0_be1` |30 |`smc_hang_detector_window_rand_test@default` (35878) |
 |`c_dma_busy_fe1_be0` |4 |`smc_dma_transfer_matrix_rand_test@default` (3) |
 |`c_dma_busy_fe1_be1` |30 |`smc_dma_decouple_rw_test@default` (68880) |
 |`c_dma_busy_seen` |31 |`smc_dma_decouple_rw_test@default` (84007) |
 |`c_dma_cg_closed` |3 |`smc_rdl_field_sweep_test@default` (2579) |
-|`c_dma_cg_open` |8 |`smc_clk_multi_window_test@default` (4059) |
+|`c_dma_cg_open` |8 |`smc_clk_multi_window_test@default` (3861) |
 |`c_dma_gate_closed_when_idle` |3 |`smc_rdl_field_sweep_test@default` (2579) |
-|`c_dma_gate_hysteresis_window` |8 |`smc_clk_multi_window_test@default` (3579) |
+|`c_dma_gate_hysteresis_window` |8 |`smc_clk_multi_window_test@default` (3381) |
 |`c_dma_gate_open_on_busy` |4 |`smc_clk_multi_window_test@default` (480) |
 |`c_dma_gated_clk_held` |2 |`smc_cg_ctrl_reg_access_test@default` (5) |
-|`c_dma_gated_clk_running` |8 |`smc_clk_multi_window_test@default` (2946) |
+|`c_dma_gated_clk_running` |8 |`smc_clk_multi_window_test@default` (2811) |
 |`c_i2c_cg_closed` |16 |`smc_i2c_target_instance_pair_test@default` (187765) |
 |`c_i2c_cg_open` |16 |`smc_err_slv_response_content_test@default` (5687) |
 |`c_module_gate_disabled` |20 |`smc_i2c_target_instance_pair_test@default` (751058) |
-|`c_module_gate_enabled` |13 |`smc_clk_multi_window_test@default` (2946) |
+|`c_module_gate_enabled` |13 |`smc_clk_multi_window_test@default` (2811) |
 |`c_zeroer_bus_active` |37 |`smc_zeroer_sram_init_test@default` (10965) |
 |`c_zeroer_cg_closed` |6 |`smc_rdl_field_sweep_test@default` (2579) |
 |`c_zeroer_cg_open` |11 |`smc_cg_ctrl_reg_access_test@default` (1155) |
@@ -281,25 +281,25 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_core0_retire` |585 |`smc_log_engine_region_size_test@default` (625836) |
-|`c_core1_retire` |585 |`smc_log_engine_region_size_test@default` (1251690) |
-|`c_core2_retire` |585 |`smc_log_engine_region_size_test@default` (1251708) |
-|`c_core3_retire` |586 |`smc_log_engine_region_size_test@default` (1251726) |
+|`c_core0_retire` |586 |`smc_log_engine_region_size_test@default` (625836) |
+|`c_core1_retire` |586 |`smc_log_engine_region_size_test@default` (1251690) |
+|`c_core2_retire` |586 |`smc_log_engine_region_size_test@default` (1251708) |
+|`c_core3_retire` |587 |`smc_log_engine_region_size_test@default` (1251726) |
 |`c_cpu_to_sram_read` |45 |`smc_zeroer_sram_init_test@default` (17437) |
 |`c_cpu_to_sram_write` |42 |`smc_zeroer_sram_init_test@default` (49430) |
 |`c_custom_action_output_driven` |1 |`smc_dfd_cla_live_bus_test@default` (1) |single
-|`c_first_fetch_at_c0040000` |582 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_first_fetch_at_rom_vector` |582 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_init_done_high_after_init` |590 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_first_fetch_at_c0040000` |583 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_first_fetch_at_rom_vector` |583 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_init_done_high_after_init` |591 |`smc_dfd_trace_writeout_phase_test@default` (65) |
 |`c_init_done_low_during_init` |34 |`smc_dfd_trace_writeout_phase_test@default` (52992) |
 |`c_internal_range_323_320` |20 |`smc_zeroer_job_breadth_test@default` (24) |
 |`c_mmio_write_peripheral` |4 |`smc_ecc_fault_inject_test@default` (3) |
-|`c_no_step_out_of_order` |590 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_ordered_powergood_fusesense_repair_mbist_release` |590 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_release_requires_cores_out_of_reset` |590 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_release_requires_init_done` |590 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_rom_req_issued` |584 |`smc_dfd_trace_writeout_phase_test@default` (2404) |
-|`c_self_isolated_at_cold_boot` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_no_step_out_of_order` |591 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_ordered_powergood_fusesense_repair_mbist_release` |591 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_release_requires_cores_out_of_reset` |591 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_release_requires_init_done` |591 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_rom_req_issued` |585 |`smc_dfd_trace_writeout_phase_test@default` (2404) |
+|`c_self_isolated_at_cold_boot` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
 |===
 
 ===== `u_smc_dma_fcov`
@@ -307,17 +307,17 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_all_three_blocks_gated_together` |7 |`smc_dma_cg_activity_test@default` (1282) |
-|`c_dest_contents_match` |21 |`smc_dma_burst_shaping_test@default` (22) |
-|`c_dma_wlast_accepted` |30 |`smc_dma_transfer_matrix_rand_test@default` (8438) |
+|`c_all_three_blocks_gated_together` |7 |`smc_dma_cg_activity_test@default` (1272) |
+|`c_dest_contents_match` |20 |`smc_dma_burst_shaping_test@default` (22) |
+|`c_dma_wlast_accepted` |30 |`smc_dma_transfer_matrix_rand_test@default` (13249) |
 |`c_done0_holds_after_read` |32 |`smc_dma_decouple_rw_test@default` (2191) |
-|`c_done0_set_on_completion` |592 |`smc_dma_transfer_matrix_rand_test@default` (66) |
+|`c_done0_set_on_completion` |593 |`smc_dma_transfer_matrix_rand_test@default` (67) |
 |`c_enable_from_backend_busy` |4 |`smc_clk_multi_window_test@default` (208) |
 |`c_enable_from_frontend_wakeup` |4 |`smc_clk_multi_window_test@default` (248) |
 |`c_gated_when_neither` |3 |`smc_rdl_field_sweep_test@default` (2579) |
-|`c_len_multi_burst` |17 |`smc_dma_transfer_matrix_rand_test@default` (6080) |
+|`c_len_multi_burst` |17 |`smc_dma_transfer_matrix_rand_test@default` (5530) |
 |`c_len_one_byte` |1 |`smc_dma_sanity_test@default` (1) |single
-|`c_len_single_beat` |18 |`smc_dma_transfer_matrix_rand_test@default` (1642) |
+|`c_len_single_beat` |17 |`smc_dma_transfer_matrix_rand_test@default` (4304) |
 |`c_next_id_0_launches_transfer` |25 |`smc_dma_linear_copy_test@default` (48) |
 |`c_next_id_0_nonzero_on_valid_setup` |31 |`smc_dma_linear_copy_test@default` (49) |
 |`c_shared_registers_consumed` |25 |`smc_dma_linear_copy_test@default` (48) |
@@ -332,19 +332,19 @@ or `unclassified` when the policy has none.
 |`c_bank_ctrl_read` |22 |`smc_ext_window_routing_test@default` (19) |
 |`c_bank_ctrl_response_returned` |22 |`smc_axil_write_side_test@default` (20) |
 |`c_bank_ctrl_write` |5 |`smc_axil_write_side_test@default` (8) |
-|`c_fuse_reset_delayed_16_stages` |589 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_fuse_sense_done_asserted` |590 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_fuse_reset_delayed_16_stages` |590 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_fuse_sense_done_asserted` |591 |`smc_dfd_trace_writeout_phase_test@default` (65) |
 |`c_jtag_otp_read` |6 |`smc_efuse_jtag_lc_access_matrix_test@default` (54) |
 |`c_jtag_otp_write` |3 |`smc_efuse_jtag_otp_data_walk_test@default` (131) |
-|`c_lc_state_test_dev_tie` |2 |`smc_efuse_jtag_lc_access_matrix_test@default` (267) |
+|`c_lc_state_test_dev_tie` |2 |`smc_efuse_jtag_lc_access_matrix_test@default` (203) |
 |`c_locks_cleared_access_permitted` |4 |`smc_efuse_read_program_timeout_test@default` (1410) |
 |`c_locks_set_access_refused` |13 |`smc_efuse_map_locks_register_test@default` (303) |
 |`c_read_locked_field_masked` |1 |`smc_efuse_guard_target_test@default` (109) |single
 |`c_read_unlocked_field_returned` |4 |`smc_efuse_read_program_timeout_test@default` (711) |
-|`c_repair_triggered_by_fuse_sense_done` |4 |`smc_reset_mid_transaction_rand_test@default` (11) |
-|`c_shadow_regs_reflect_sensed_values` |590 |`smc_log_engine_region_size_test@default` (3755468) |
-|`c_shim_command_issued` |591 |`smc_dfd_trace_writeout_phase_test@default` (52130) |
-|`c_shim_response_consumed` |591 |`smc_dfd_trace_writeout_phase_test@default` (16640) |
+|`c_repair_triggered_by_fuse_sense_done` |4 |`smc_reset_mid_transaction_rand_test@default` (10) |
+|`c_shadow_regs_reflect_sensed_values` |591 |`smc_log_engine_region_size_test@default` (3755468) |
+|`c_shim_command_issued` |592 |`smc_dfd_trace_writeout_phase_test@default` (52130) |
+|`c_shim_response_consumed` |592 |`smc_dfd_trace_writeout_phase_test@default` (16640) |
 |`c_write_locked_field_unchanged` |2 |`smc_efuse_guard_target_test@default` (163) |
 |`c_write_unlocked_field_updated` |3 |`smc_efuse_read_program_timeout_test@default` (711) |
 |===
@@ -365,56 +365,56 @@ or `unclassified` when the policy has none.
 |`c_efuse_jtag_rresp_decerr` |2 |`smc_efuse_jtag_lc_access_matrix_test@default` (21) |
 |`c_efuse_jtag_rresp_okay` |6 |`smc_efuse_jtag_lc_access_matrix_test@default` (33) |
 |`c_efuse_jtag_w_accept` |3 |`smc_efuse_jtag_otp_data_walk_test@default` (131) |
-|`c_full_64bit_beat` |224 |`smc_zeroer_sram_init_test@default` (32812) |
-|`c_internal_addr_high` |579 |`smc_log_engine_region_size_test@default` (58931) |
+|`c_full_64bit_beat` |225 |`smc_zeroer_sram_init_test@default` (32812) |
+|`c_internal_addr_high` |580 |`smc_log_engine_region_size_test@default` (58931) |
 |`c_internal_addr_low` |14 |`smc_err_slv_response_content_test@default` (182) |
 |`c_partial_strobe_beat` |460 |`smc_cpuif_handshake_instances_test@default` (9429) |
-|`c_response_id_matches_request_port` |578 |`smc_log_engine_region_size_test@default` (58931) |
+|`c_response_id_matches_request_port` |579 |`smc_log_engine_region_size_test@default` (58931) |
 |`c_sep_in_arsize_word` |487 |`smc_log_engine_region_size_test@default` (58193) |
-|`c_sep_in_awburst_fixed` |3 |`smc_sep_in_axi_shape_test@default` (18) |
-|`c_sep_in_awburst_incr` |537 |`smc_cpuif_handshake_instances_test@default` (23388) |
+|`c_sep_in_awburst_fixed` |3 |`smc_sep_in_axi_shape_test@default` (16) |
+|`c_sep_in_awburst_incr` |538 |`smc_cpuif_handshake_instances_test@default` (23388) |
 |`c_sep_in_awburst_wrap` |5 |`smc_sep_in_axi_shape_test@default` (17) |
-|`c_sep_in_awsize_byte` |10 |`smc_map_row_response_matrix_test@default` (26) |
-|`c_sep_in_awsize_dword` |224 |`smc_cpuif_handshake_instances_test@default` (13959) |
+|`c_sep_in_awsize_byte` |10 |`smc_dfd_mmr_lane_test@default` (23) |
+|`c_sep_in_awsize_dword` |225 |`smc_cpuif_handshake_instances_test@default` (13959) |
 |`c_sep_in_awsize_half` |12 |`smc_gpio_intf_regblock_sweep_test@default` (650) |
 |`c_sep_in_awsize_word` |456 |`smc_cpuif_handshake_instances_test@default` (9429) |
 |`c_sep_in_r_hold_engaged` |14 |`smc_cpu_reset_timeout_zero_test@default` (65778) |
-|`c_sep_in_wstrb_full` |224 |`smc_zeroer_sram_init_test@default` (32812) |
+|`c_sep_in_wstrb_full` |225 |`smc_zeroer_sram_init_test@default` (32812) |
 |`c_sep_in_wstrb_partial` |460 |`smc_cpuif_handshake_instances_test@default` (9429) |
-|`c_sys_in_r_hold_engaged` |8 |`smc_hang_detector_window_rand_test@default` (26783) |
-|`c_sys_out_ar_accept` |583 |`smc_dma_transfer_matrix_rand_test@default` (8450) |
-|`c_sys_out_aw_accept` |68 |`smc_dma_transfer_matrix_rand_test@default` (8438) |
-|`c_sys_out_bresp_decerr` |5 |`smc_axi_random_stress_test@default` (6) |
-|`c_sys_out_bresp_okay` |68 |`smc_dma_transfer_matrix_rand_test@default` (8438) |
-|`c_sys_out_bresp_slverr` |6 |`smc_sys_out_error_inject_rand_test@default` (13) |
-|`c_sys_out_read_count_advanced` |582 |`smc_dma_transfer_matrix_rand_test@default` (8450) |
-|`c_sys_out_resp_hold_engaged` |19 |`smc_hang_detector_window_rand_test@default` (38194) |
-|`c_sys_out_rresp_decerr` |5 |`smc_axi_random_stress_test@default` (8) |
-|`c_sys_out_rresp_okay` |583 |`smc_dma_transfer_matrix_rand_test@default` (42306) |
+|`c_sys_in_r_hold_engaged` |8 |`smc_hang_detector_window_rand_test@default` (24856) |
+|`c_sys_out_ar_accept` |584 |`smc_dma_transfer_matrix_rand_test@default` (13261) |
+|`c_sys_out_aw_accept` |68 |`smc_dma_transfer_matrix_rand_test@default` (13249) |
+|`c_sys_out_bresp_decerr` |5 |`smc_sys_out_error_inject_rand_test@default` (6) |
+|`c_sys_out_bresp_okay` |68 |`smc_dma_transfer_matrix_rand_test@default` (13249) |
+|`c_sys_out_bresp_slverr` |6 |`smc_sys_out_error_inject_rand_test@default` (10) |
+|`c_sys_out_read_count_advanced` |583 |`smc_dma_transfer_matrix_rand_test@default` (13261) |
+|`c_sys_out_resp_hold_engaged` |19 |`smc_hang_detector_window_rand_test@default` (40172) |
+|`c_sys_out_rresp_decerr` |5 |`smc_axi_random_stress_test@default` (7) |
+|`c_sys_out_rresp_okay` |584 |`smc_dma_transfer_matrix_rand_test@default` (45391) |
 |`c_sys_out_rresp_slverr` |5 |`smc_axi_random_stress_test@default` (7) |
-|`c_sys_out_w_accept` |68 |`smc_dma_transfer_matrix_rand_test@default` (46084) |
-|`c_sys_out_write_count_advanced` |68 |`smc_dma_transfer_matrix_rand_test@default` (8438) |
-|`u_*.c_ar_accept` |573 |`smc_log_engine_region_size_test@default` (58385) |
+|`c_sys_out_w_accept` |68 |`smc_dma_transfer_matrix_rand_test@default` (39522) |
+|`c_sys_out_write_count_advanced` |68 |`smc_dma_transfer_matrix_rand_test@default` (13249) |
+|`u_*.c_ar_accept` |574 |`smc_log_engine_region_size_test@default` (58385) |
 |`u_*.c_ar_multi_beat` |31 |`smc_err_slv_response_content_test@default` (503) |
-|`u_*.c_ar_single_beat` |573 |`smc_log_engine_region_size_test@default` (58385) |
+|`u_*.c_ar_single_beat` |574 |`smc_log_engine_region_size_test@default` (58385) |
 |`u_*.c_ar_stall` |14 |`smc_cpuif_handshake_instances_test@default` (52429) |
-|`u_*.c_aw_accept` |537 |`smc_cpuif_handshake_instances_test@default` (23388) |
+|`u_*.c_aw_accept` |538 |`smc_cpuif_handshake_instances_test@default` (23388) |
 |`u_*.c_aw_multi_beat` |25 |`smc_err_slv_response_content_test@default` (367) |
-|`u_*.c_aw_single_beat` |537 |`smc_cpuif_handshake_instances_test@default` (23388) |
+|`u_*.c_aw_single_beat` |538 |`smc_cpuif_handshake_instances_test@default` (23388) |
 |`u_*.c_aw_stall` |11 |`smc_cpuif_handshake_instances_test@default` (45600) |
-|`u_*.c_b_accept` |537 |`smc_cpuif_handshake_instances_test@default` (23388) |
+|`u_*.c_b_accept` |538 |`smc_cpuif_handshake_instances_test@default` (23388) |
 |`u_*.c_b_stall` |11 |`smc_cpuif_handshake_instances_test@default` (120845) |
 |`u_*.c_bresp_decerr` |70 |`smc_axi_illegal_encoding_inject_test@default` (490) |
-|`u_*.c_bresp_okay` |531 |`smc_cpuif_handshake_instances_test@default` (23388) |
+|`u_*.c_bresp_okay` |532 |`smc_cpuif_handshake_instances_test@default` (23388) |
 |`u_*.c_bresp_slverr` |35 |`smc_mailbox_multi_instance_test@default` (256) |
-|`u_*.c_r_accept` |573 |`smc_log_engine_region_size_test@default` (58385) |
-|`u_*.c_r_last` |573 |`smc_log_engine_region_size_test@default` (58385) |
+|`u_*.c_r_accept` |574 |`smc_log_engine_region_size_test@default` (58385) |
+|`u_*.c_r_last` |574 |`smc_log_engine_region_size_test@default` (58385) |
 |`u_*.c_r_stall` |14 |`smc_cpuif_handshake_instances_test@default` (121491) |
 |`u_*.c_rresp_decerr` |75 |`smc_err_slv_response_content_test@default` (27992) |
-|`u_*.c_rresp_okay` |571 |`smc_log_engine_region_size_test@default` (58385) |
-|`u_*.c_rresp_slverr` |40 |`smc_err_slv_response_content_test@default` (2826) |
-|`u_*.c_w_accept` |537 |`smc_zeroer_sram_init_test@default` (32838) |
-|`u_*.c_w_last` |537 |`smc_cpuif_handshake_instances_test@default` (23388) |
+|`u_*.c_rresp_okay` |572 |`smc_log_engine_region_size_test@default` (58385) |
+|`u_*.c_rresp_slverr` |41 |`smc_err_slv_response_content_test@default` (2826) |
+|`u_*.c_w_accept` |538 |`smc_zeroer_sram_init_test@default` (32838) |
+|`u_*.c_w_last` |538 |`smc_cpuif_handshake_instances_test@default` (23388) |
 |`u_*.c_w_stall` |34 |`smc_zeroer_sram_init_test@default` (61569) |
 |===
 
@@ -427,12 +427,12 @@ or `unclassified` when the policy has none.
 |`c_arprot_one_bit_off` |3 |`smc_gpio_filter_access_sep_test@default` (25) |
 |`c_awprot_exact_match` |4 |`smc_gpio_filter_access_sep_test@default` (18) |
 |`c_awprot_one_bit_off` |3 |`smc_gpio_filter_access_sep_test@default` (25) |
-|`c_inbound_filter_admitted` |5 |`smc_axi_random_stress_test@default` (263) |
-|`c_inbound_filter_blocked` |592 |`smc_log_engine_region_size_test@default` (3764564) |
-|`c_infilt_deny_burst` |1 |`smc_infilt_rule_matrix_rand_test@default` (18) |single
-|`c_infilt_deny_ns` |1 |`smc_infilt_rule_matrix_rand_test@default` (25) |single
-|`c_infilt_deny_range` |1 |`smc_infilt_rule_matrix_rand_test@default` (79) |single
-|`c_infilt_deny_src_id` |1 |`smc_infilt_rule_matrix_rand_test@default` (11) |single
+|`c_inbound_filter_admitted` |5 |`smc_axi_random_stress_test@default` (229) |
+|`c_inbound_filter_blocked` |593 |`smc_log_engine_region_size_test@default` (3764564) |
+|`c_infilt_deny_burst` |1 |`smc_infilt_rule_matrix_rand_test@default` (16) |single
+|`c_infilt_deny_ns` |1 |`smc_infilt_rule_matrix_rand_test@default` (36) |single
+|`c_infilt_deny_range` |1 |`smc_infilt_rule_matrix_rand_test@default` (69) |single
+|`c_infilt_deny_src_id` |1 |`smc_infilt_rule_matrix_rand_test@default` (5) |single
 |`c_jtag2axi_filtered` |66 |`smc_err_slv_response_content_test@default` (948) |
 |`c_jtag2axi_remapped` |66 |`smc_err_slv_response_content_test@default` (948) |
 |===
@@ -442,10 +442,10 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_default_input_count_62` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_default_output_count_3` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_pad_output_low` |592 |`smc_log_engine_region_size_test@default` (1878928) |
-|`c_per_instance_default_matches_map` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_default_input_count_62` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_default_output_count_3` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_pad_output_low` |593 |`smc_log_engine_region_size_test@default` (1878928) |
+|`c_per_instance_default_matches_map` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
 |===
 
 ===== `u_smc_int_fcov`
@@ -453,13 +453,13 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_arbitrary_bit_plus_one` |3 |`smc_ext_irq_hold_release_test@default` (1997) |
-|`c_bit0_source1` |9 |`smc_ext_irq_hold_release_test@default` (1917) |
-|`c_bit323_source324` |20 |`smc_sys_out_error_inject_rand_test@default` (32036) |
+|`c_arbitrary_bit_plus_one` |3 |`smc_ext_irq_hold_release_test@default` (1021) |
+|`c_bit0_source1` |9 |`smc_ext_irq_hold_release_test@default` (2402) |
+|`c_bit323_source324` |20 |`smc_sys_out_error_inject_rand_test@default` (34251) |
 |`c_claim_returns_highest_priority` |3 |`smc_mbx_inbound_irq_vector_test@default` (42) |
 |`c_claim_returns_zero_when_none_pending` |4 |`smc_mbx_inbound_irq_vector_test@default` (9) |
 |`c_delivery_after_full_initialization` |1 |`smc_plic_gateway_claim_test@default` (122) |single
-|`c_hang_or_bit286` |16 |`smc_hang_detector_window_rand_test@default` (2613) |
+|`c_hang_or_bit286` |16 |`smc_hang_detector_window_rand_test@default` (2526) |
 |`c_ndm_or_reduced_to_bit267` |3 |`smc_ndm_irq_or_test@default` (939) |
 |`c_ndm_request_cleared` |3 |`smc_irq_vector_assembly_test@default` (490) |
 |`c_ndm_request_synchronized` |3 |`smc_ndm_irq_or_test@default` (918) |
@@ -472,13 +472,13 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_cool_reset_from_gpio_pin_61` |26 |`smc_cool_reset_deglitch_window_test@default` (6656) |
-|`c_flr_isolate_disabled` |11 |`smc_cool_reset_deglitch_window_test@default` (24129) |
-|`c_flr_isolate_enabled` |5 |`smc_reset_mid_transaction_rand_test@default` (17881) |
+|`c_cool_reset_from_gpio_pin_61` |26 |`smc_cool_reset_deglitch_window_test@default` (6512) |
+|`c_flr_isolate_disabled` |11 |`smc_cool_reset_deglitch_window_test@default` (24801) |
+|`c_flr_isolate_enabled` |5 |`smc_reset_mid_transaction_rand_test@default` (13376) |
 |`c_no_sequence_on_level_hold` |12 |`smc_flr_sequencer_single_pulse_test@default` (2172) |
 |`c_single_sequence_per_rising_edge` |12 |`smc_flr_isolation_sources_test@default` (12) |
 |`c_sw_isolate_per_subsystem` |5 |`smc_reset_unit_sanity_test@default` (2600) |
-|`c_warm_from_external_wdt` |8 |`smc_reset_mid_transaction_rand_test@default` (1808) |
+|`c_warm_from_external_wdt` |8 |`smc_reset_mid_transaction_rand_test@default` (2408) |
 |`c_warm_from_internal_wdt` |3 |`smc_wdt_timeout_pin_test@default` (4) |
 |===
 
@@ -490,8 +490,8 @@ or `unclassified` when the policy has none.
 |`c_alias_region_0_configured` |18 |`smc_filter_remap_bitwalk_test@default` (178) |
 |`c_alias_region_7_configured` |16 |`smc_filter_remap_bitwalk_test@default` (178) |
 |`c_all_16_banks_decode` |3 |`smc_dma_reserved_stream_banks_test@default` (1) |
-|`c_avsbus_aperture_decode` |63 |`smc_avsbus_resync_timing_test@default` (4522) |
-|`c_avsbus_decode` |63 |`smc_avsbus_resync_timing_test@default` (4522) |
+|`c_avsbus_aperture_decode` |63 |`smc_avsbus_resync_timing_test@default` (4755) |
+|`c_avsbus_decode` |63 |`smc_avsbus_resync_timing_test@default` (4755) |
 |`c_axil_external_region` |27 |`smc_cpuif_handshake_instances_test@default` (42) |
 |`c_base_config_read` |240 |`smc_hang_irq_or_matrix_test@default` (126) |
 |`c_beu0_decode` |5 |`smc_beu_register_test@default` (406) |
@@ -516,10 +516,10 @@ or `unclassified` when the policy has none.
 |`c_dma_aperture_base` |36 |`smc_dma_backpressure_breadth_test@default` (118) |
 |`c_dma_aperture_top` |36 |`smc_dma_linear_copy_test@default` (98) |
 |`c_dma_just_above_top_not_dma` |36 |`smc_zeroer_size_corners_test@default` (261) |
-|`c_efuse_if_interface_decode` |26 |`smc_efuse_read_program_timeout_test@default` (731) |
-|`c_efuse_if_map_decode` |37 |`smc_efuse_map_locks_register_test@default` (9202) |
-|`c_efuse_interface_decode` |26 |`smc_efuse_read_program_timeout_test@default` (731) |
-|`c_efuse_map_decode` |37 |`smc_efuse_map_locks_register_test@default` (9202) |
+|`c_efuse_if_interface_decode` |26 |`smc_efuse_read_program_timeout_test@default` (935) |
+|`c_efuse_if_map_decode` |37 |`smc_efuse_map_locks_register_test@default` (9454) |
+|`c_efuse_interface_decode` |26 |`smc_efuse_read_program_timeout_test@default` (935) |
+|`c_efuse_map_decode` |37 |`smc_efuse_map_locks_register_test@default` (9454) |
 |`c_efuse_shim_decodes` |20 |`smc_efuse_bank_ctrl_window_test@default` (18) |
 |`c_enables_written_to_disabled` |6 |`smc_mbx_inbound_irq_vector_test@default` (25) |
 |`c_fabric_control_region` |314 |`smc_filter_remap_bitwalk_test@default` (17352) |
@@ -539,8 +539,8 @@ or `unclassified` when the policy has none.
 |`c_i3c_region` |17 |`smc_i3c_csr_sweep_ext_test@default` (4758) |
 |`c_inbound_entry_0` |91 |`smc_filter_remap_bitwalk_test@default` (453) |
 |`c_inbound_entry_15` |19 |`smc_filter_remap_bitwalk_test@default` (453) |
-|`c_inbound_pair_0` |19 |`smc_mailbox_register_map_reset_test@default` (171) |
-|`c_inbound_pair_31` |15 |`smc_mailbox_register_map_reset_test@default` (69) |
+|`c_inbound_pair_0` |20 |`smc_mailbox_register_map_reset_test@default` (171) |
+|`c_inbound_pair_31` |16 |`smc_mailbox_register_map_reset_test@default` (69) |
 |`c_jtag_axi_in_read` |54 |`smc_err_slv_response_content_test@default` (784) |
 |`c_jtag_axi_in_write` |58 |`smc_dma_backpressure_test@default` (383) |
 |`c_just_above_clint_not_clint` |4 |`smc_beu_csr_access_test@default` (24) |
@@ -550,8 +550,8 @@ or `unclassified` when the policy has none.
 |`c_local_base_readonly_c0000000` |19 |`smc_region_zero_reset_recovery_test@default` (35) |
 |`c_local_base_reads_c0000000` |19 |`smc_region_zero_reset_recovery_test@default` (35) |
 |`c_local_base_write_has_no_effect` |6 |`smc_dual_base_addressing_test@default` (1) |
-|`c_mailbox_pair_0` |31 |`smc_mailbox_register_map_reset_test@default` (342) |
-|`c_mailbox_pair_31` |15 |`smc_mailbox_register_map_reset_test@default` (138) |
+|`c_mailbox_pair_0` |32 |`smc_mailbox_register_map_reset_test@default` (342) |
+|`c_mailbox_pair_31` |16 |`smc_mailbox_register_map_reset_test@default` (138) |
 |`c_mailbox_region` |34 |`smc_cpuif_handshake_instances_test@default` (4416) |
 |`c_mandatory_region_base_decodes` |20 |`smc_efuse_bank_ctrl_window_test@default` (18) |
 |`c_memory_region` |40 |`smc_spm_bank_walk_test@default` (7146) |
@@ -564,8 +564,8 @@ or `unclassified` when the policy has none.
 |`c_outbound_entry_0` |76 |`smc_filter_remap_bitwalk_test@default` (453) |
 |`c_outbound_entry_15` |17 |`smc_filter_remap_bitwalk_test@default` (453) |
 |`c_outbound_entry_stride_32b` |13 |`smc_outfilt_rule_matrix_rand_test@default` (3) |
-|`c_outbound_pair_0` |25 |`smc_mailbox_register_map_reset_test@default` (171) |
-|`c_outbound_pair_31` |10 |`smc_mailbox_register_map_reset_test@default` (69) |
+|`c_outbound_pair_0` |26 |`smc_mailbox_register_map_reset_test@default` (171) |
+|`c_outbound_pair_31` |11 |`smc_mailbox_register_map_reset_test@default` (69) |
 |`c_per_pad_block_first` |4 |`smc_external_window_pad_ctrl_decode_test@default` (2) |
 |`c_per_pad_block_last` |2 |`smc_gpio_ctrl_full_sweep_test@default` (1) |
 |`c_per_pad_instance_0` |4 |`smc_external_window_pad_ctrl_decode_test@default` (2) |
@@ -580,7 +580,7 @@ or `unclassified` when the policy has none.
 |`c_pvt_wrapper_decode` |2 |`smc_past_extent_slverr_units_test@default` (2) |
 |`c_pvt_wrapper_decodes` |2 |`smc_past_extent_slverr_units_test@default` (2) |
 |`c_readback_matches` |4 |`smc_plic_register_test@default` (36) |
-|`c_region_base_decodes` |202 |`smc_dfd_trace_writeout_phase_test@default` (909) |
+|`c_region_base_decodes` |203 |`smc_dfd_trace_writeout_phase_test@default` (909) |
 |`c_region_top_decodes` |11 |`smc_dfd_csr_field_access_test@default` (254) |
 |`c_remap_region` |6 |`smc_output_remap_window_test@default` (173) |
 |`c_reset_unit_decode` |47 |`smc_reset_unit_sanity_test@default` (663) |
@@ -590,9 +590,9 @@ or `unclassified` when the policy has none.
 |`c_scratch_all_ones` |1 |`smc_alias_remap_spare_block_decode_test@default` (1) |single
 |`c_scratch_all_zeros` |35 |`smc_axi_channel_timing_ports_test@default` (24) |
 |`c_scratch_write_readback` |42 |`smc_scratch_banks_test@default` (264) |
-|`c_security_timing_dft_region` |108 |`smc_efuse_map_locks_register_test@default` (9202) |
-|`c_sep_axi_in_read` |569 |`smc_log_engine_region_size_test@default` (58385) |
-|`c_sep_axi_in_write` |537 |`smc_cpuif_handshake_instances_test@default` (23388) |
+|`c_security_timing_dft_region` |108 |`smc_efuse_map_locks_register_test@default` (9454) |
+|`c_sep_axi_in_read` |570 |`smc_log_engine_region_size_test@default` (58385) |
+|`c_sep_axi_in_write` |538 |`smc_cpuif_handshake_instances_test@default` (23388) |
 |`c_spm_region_base` |11 |`smc_spm_bank_walk_test@default` (10) |
 |`c_spm_region_top` |6 |`smc_spm_aperture_region_size_test@default` (9) |
 |`c_spm_write_then_read` |31 |`smc_spm_bank_walk_test@default` (3573) |
@@ -612,10 +612,10 @@ or `unclassified` when the policy has none.
 |`c_uart_instance_0` |77 |`smc_log_engine_region_size_test@default` (58547) |
 |`c_uart_instance_3` |37 |`smc_log_engine_transfer_test@default` (2314) |
 |`c_wdt0_decode` |38 |`smc_wdt_scale_zerocmp_test@default` (322) |
-|`c_wdt1_decode` |11 |`smc_wdt_register_map_test@default` (102) |
+|`c_wdt1_decode` |10 |`smc_wdt_register_map_test@default` (102) |
 |`c_wdt2_decode` |8 |`smc_wdt_register_map_test@default` (101) |
-|`c_wdt3_decode` |13 |`smc_axil_narrow_zero_strobe_write_test@default` (200) |
-|`c_wdt_instance_3` |13 |`smc_axil_narrow_zero_strobe_write_test@default` (200) |
+|`c_wdt3_decode` |12 |`smc_axil_narrow_zero_strobe_write_test@default` (200) |
+|`c_wdt_instance_3` |12 |`smc_axil_narrow_zero_strobe_write_test@default` (200) |
 |`c_wdt_region` |43 |`smc_wdt_register_map_test@default` (491) |
 |`c_zeroer_aperture_base` |36 |`smc_zeroer_size_corners_test@default` (261) |
 |`c_zeroer_aperture_top` |27 |`smc_zeroer_sram_init_test@default` (3623) |
@@ -631,29 +631,29 @@ or `unclassified` when the policy has none.
 |`c_axil_cdc_bridge_read` |113 |`smc_i2c_target_bus_timeout_test@default` (8313) |
 |`c_axil_cdc_bridge_write` |104 |`smc_i2c_ctrl_intr_w1c_test@default` (2712) |
 |`c_axil_cdc_request_seen` |113 |`smc_i2c_target_bus_timeout_test@default` (8409) |
-|`c_controller_read` |20 |`smc_i2c_timing_set_rand_test@default` (62261) |
-|`c_controller_repeated_start` |18 |`smc_i2c_timing_set_rand_test@default` (32) |
+|`c_controller_read` |20 |`smc_i2c_timing_set_rand_test@default` (78331) |
+|`c_controller_repeated_start` |18 |`smc_i2c_timing_set_rand_test@default` (38) |
 |`c_controller_write` |29 |`smc_i2c_target_multi_instance_stretch_test@default` (101577) |
 |`c_distinct_atid_values` |5 |`smc_telemetry_buffer_overflow_test@default` (1600) |
-|`c_gpio_boot_stall_pad_high` |3 |`smc_ecc_fault_inject_test@default` (68) |
+|`c_gpio_boot_stall_pad_high` |3 |`smc_ecc_fault_inject_test@default` (135) |
 |`c_gpio_boot_stall_pad_low` |7 |`smc_warm_reset_inflight_links_test@default` (70283) |
-|`c_gpio_core2pad_active` |592 |`smc_log_engine_region_size_test@default` (939470) |
-|`c_gpio_core2pad_en_active` |592 |`smc_log_engine_region_size_test@default` (939470) |
-|`c_gpio_multi_pad_enabled` |592 |`smc_log_engine_region_size_test@default` (939470) |
-|`c_gpio_output_value_driven` |592 |`smc_log_engine_region_size_test@default` (939470) |
-|`c_gpio_pad2core_en_active` |592 |`smc_log_engine_region_size_test@default` (941141) |
+|`c_gpio_core2pad_active` |593 |`smc_log_engine_region_size_test@default` (939470) |
+|`c_gpio_core2pad_en_active` |593 |`smc_log_engine_region_size_test@default` (939470) |
+|`c_gpio_multi_pad_enabled` |593 |`smc_log_engine_region_size_test@default` (939470) |
+|`c_gpio_output_value_driven` |593 |`smc_log_engine_region_size_test@default` (939470) |
+|`c_gpio_pad2core_en_active` |593 |`smc_log_engine_region_size_test@default` (941141) |
 |`c_gpio_single_pad_enabled` |19 |`smc_gpio_pad_enable_walk_test@default` (3045) |
-|`c_i2c0_clock_stretch_by_dut` |49 |`smc_i2c_timing_set_rand_test@default` (240516) |
-|`c_i2c0_enabled` |63 |`smc_i2c_timing_set_rand_test@default` (357858) |
+|`c_i2c0_clock_stretch_by_dut` |49 |`smc_i2c_timing_set_rand_test@default` (298044) |
+|`c_i2c0_enabled` |63 |`smc_i2c_timing_set_rand_test@default` (400612) |
 |`c_i2c0_scl_contention` |15 |`smc_i2c_target_tx_read_test@default` (643) |
-|`c_i2c0_scl_driven_by_dut` |50 |`smc_i2c_timing_set_rand_test@default` (240516) |
+|`c_i2c0_scl_driven_by_dut` |50 |`smc_i2c_timing_set_rand_test@default` (298044) |
 |`c_i2c0_scl_driven_by_ext` |36 |`smc_i2c_target_bus_timeout_test@default` (346200) |
 |`c_i2c0_scl_falling` |61 |`smc_i2c1_target_ack_ctrl_test@default` (5407) |
 |`c_i2c0_scl_rising` |61 |`smc_i2c1_target_ack_ctrl_test@default` (5407) |
-|`c_i2c0_sda_contention` |42 |`smc_i2c_timing_set_rand_test@default` (3222) |
-|`c_i2c0_sda_driven_by_dut` |60 |`smc_i2c_timing_set_rand_test@default` (188682) |
+|`c_i2c0_sda_contention` |42 |`smc_i2c_timing_set_rand_test@default` (3712) |
+|`c_i2c0_sda_driven_by_dut` |60 |`smc_i2c_timing_set_rand_test@default` (205806) |
 |`c_i2c0_sda_driven_by_ext` |52 |`smc_i2c_target_bus_timeout_test@default` (292650) |
-|`c_i2c0_sense_tracks_bus` |63 |`smc_i2c_timing_set_rand_test@default` (357858) |
+|`c_i2c0_sense_tracks_bus` |63 |`smc_i2c_timing_set_rand_test@default` (400612) |
 |`c_i2c0_smbalert_asserted` |7 |`smc_smbus_alert_self_clear_test@default` (133028) |
 |`c_i2c0_start_condition` |62 |`smc_i2c_protocol_interruption_test@default` (179) |
 |`c_i2c0_stop_condition` |61 |`smc_i2c_protocol_interruption_test@default` (125) |
@@ -661,34 +661,34 @@ or `unclassified` when the policy has none.
 |`c_i3c0_scl_falling` |3 |`smc_i3c_private_write_test@default` (10) |
 |`c_i3c0_sda_driven_by_dut` |1 |`smc_i3c_private_write_test@default` (167) |single
 |`c_irq_avsbus` |3 |`smc_avsbus_interrupt_sources_test@default` (9392) |
-|`c_irq_axi_hang_any` |16 |`smc_hang_detector_window_rand_test@default` (2613) |
+|`c_irq_axi_hang_any` |16 |`smc_hang_detector_window_rand_test@default` (2526) |
 |`c_irq_axi_hang_data` |8 |`smc_hang_irq_or_matrix_test@default` (1329) |
 |`c_irq_axi_hang_multi_leg` |3 |`smc_hang_irq_or_matrix_test@default` (1173) |
-|`c_irq_axi_hang_periph30` |16 |`smc_hang_detector_window_rand_test@default` (2613) |
-|`c_irq_axi_hang_plic_src` |16 |`smc_hang_detector_window_rand_test@default` (2613) |
+|`c_irq_axi_hang_periph30` |16 |`smc_hang_detector_window_rand_test@default` (2526) |
+|`c_irq_axi_hang_plic_src` |16 |`smc_hang_detector_window_rand_test@default` (2526) |
 |`c_irq_axi_hang_sep` |13 |`smc_hang_irq_or_matrix_test@default` (1319) |
-|`c_irq_axi_hang_single_leg` |16 |`smc_hang_detector_window_rand_test@default` (2613) |
+|`c_irq_axi_hang_single_leg` |16 |`smc_hang_detector_window_rand_test@default` (2526) |
 |`c_irq_axi_hang_sys` |10 |`smc_hang_irq_or_matrix_test@default` (1309) |
 |`c_irq_efuse_locked_access` |13 |`smc_efuse_map_locks_register_test@default` (303) |
-|`c_irq_ext_interrupt_0` |9 |`smc_ext_irq_hold_release_test@default` (1920) |
+|`c_irq_ext_interrupt_0` |9 |`smc_ext_irq_hold_release_test@default` (2405) |
 |`c_irq_gpio` |19 |`smc_gpio_intf_data_ctrl_write_sweep_test@default` (6267) |
 |`c_irq_mailbox` |6 |`smc_sep_mbx_irq_vector_test@default` (1818) |
 |`c_irq_multiple_concurrent` |2 |`smc_irq_observe_test@default` (228) |
 |`c_irq_sync` |10 |`smc_irq_observe_test@default` (367) |
 |`c_irq_telemetry` |5 |`smc_telemetry_buffer_overflow_test@default` (1156) |
 |`c_irq_temp_interrupt` |2 |`smc_ext_irq_low_bits_test@default` (284) |
-|`c_irq_uart` |21 |`smc_uart_fifo_control_depth_test@default` (1845092) |
+|`c_irq_uart` |21 |`smc_uart_fifo_control_depth_test@default` (1784220) |
 |`c_mailbox_count_32` |5 |`smc_mbx_inbound_irq_vector_test@default` (2554) |
-|`c_mailbox_depth_2_full_at_two_entries` |4 |`smc_axil_narrow_zero_strobe_write_test@default` (5342) |
+|`c_mailbox_depth_2_full_at_two_entries` |5 |`smc_axil_narrow_zero_strobe_write_test@default` (5342) |
 |`c_octs_count_advances` |14 |`smc_octs_clk_rate_test@default` (15797) |
 |`c_octs_count_monotonic` |14 |`smc_octs_clk_rate_test@default` (15794) |
 |`c_receiver_0_decode` |8 |`smc_telemetry_buffer_overflow_test@default` (252) |
 |`c_receiver_1_decode` |5 |`smc_telemetry_buffer_overflow_test@default` (800) |
 |`c_receiver_2_decode` |4 |`smc_telemetry_buffer_overflow_test@default` (800) |
-|`c_single_entry_message` |13 |`smc_mbx_inbound_irq_vector_test@default` (1328) |
+|`c_single_entry_message` |14 |`smc_mbx_inbound_irq_vector_test@default` (1328) |
 |`c_target_read_served` |19 |`smc_i2c_target_loopback_test@default` (144600) |
 |`c_target_write_received` |25 |`smc_i2c0_target_addr_stretch_test@default` (224257) |
-|`c_two_entry_message` |4 |`smc_axil_narrow_zero_strobe_write_test@default` (5342) |
+|`c_two_entry_message` |5 |`smc_axil_narrow_zero_strobe_write_test@default` (5342) |
 |`c_tx_multi_char` |7 |`smc_uart_baud_word_parity_format_test@default` (128549) |
 |`c_tx_single_char` |10 |`smc_uart_baud_word_parity_format_test@default` (128645) |
 |===
@@ -700,30 +700,30 @@ or `unclassified` when the policy has none.
 |Point |Leaves |Owner (hits) |Note
 |`c_reassert_cold_after_release` |44 |`smc_region_zero_reset_recovery_test@default` (36) |
 |`c_reassert_primary_smc_after_release` |67 |`smc_dfd_trace_writeout_phase_test@default` (64) |
-|`c_release_cold_stable_ref` |592 |`smc_region_zero_reset_recovery_test@default` (37) |
-|`c_release_fuse_reset` |591 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_release_powergood_stable` |592 |`smc_irq_during_powergood_glitch_test@default` (6) |
-|`c_release_primary_ref` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_release_primary_smc` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_release_warm_smc` |591 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_reset_kind_cold_graded` |1 |`smc_reset_mid_transaction_rand_test@default` (7) |single
-|`c_reset_kind_cool_pin_graded` |1 |`smc_reset_mid_transaction_rand_test@default` (4) |single
-|`c_reset_kind_flr_graded` |1 |`smc_reset_mid_transaction_rand_test@default` (7) |single
-|`c_reset_kind_wdt_graded` |1 |`smc_reset_mid_transaction_rand_test@default` (3) |single
-|`c_reset_op_cold_asserted` |592 |`smc_region_zero_reset_recovery_test@default` (1198) |
+|`c_release_cold_stable_ref` |593 |`smc_region_zero_reset_recovery_test@default` (37) |
+|`c_release_fuse_reset` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_release_powergood_stable` |593 |`smc_irq_during_powergood_glitch_test@default` (6) |
+|`c_release_primary_ref` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_release_primary_smc` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_release_warm_smc` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_reset_kind_cold_graded` |1 |`smc_reset_mid_transaction_rand_test@default` (4) |single
+|`c_reset_kind_cool_pin_graded` |1 |`smc_reset_mid_transaction_rand_test@default` (6) |single
+|`c_reset_kind_flr_graded` |1 |`smc_reset_mid_transaction_rand_test@default` (5) |single
+|`c_reset_kind_wdt_graded` |1 |`smc_reset_mid_transaction_rand_test@default` (4) |single
+|`c_reset_op_cold_asserted` |593 |`smc_region_zero_reset_recovery_test@default` (1198) |
 |`c_reset_op_cool_asserted` |27 |`smc_dfd_trace_writeout_phase_test@default` (2112) |
 |`c_reset_op_cool_from_flr` |10 |`smc_flr_sequencer_single_pulse_test@default` (2064) |
 |`c_reset_op_flr_pf_active` |12 |`smc_flr_sequencer_single_pulse_test@default` (2174) |
 |`c_reset_op_ndm_irq` |3 |`smc_ndm_irq_or_test@default` (939) |
 |`c_reset_op_ndm_processed` |3 |`smc_ndm_reset_test@default` (340) |
 |`c_reset_op_ndm_requested` |3 |`smc_ndm_irq_or_test@default` (939) |
-|`c_reset_op_sep_wdt_asserted` |8 |`smc_reset_mid_transaction_rand_test@default` (226) |
+|`c_reset_op_sep_wdt_asserted` |8 |`smc_reset_mid_transaction_rand_test@default` (301) |
 |`c_reset_op_ss0_warm_asserted` |4 |`smc_jtag_reset_ovrd_walk_test@default` (47) |
-|`c_reset_op_warm_asserted` |592 |`smc_efuse_security_disable_bypass_test@default` (606939) |
-|`c_reset_op_wdt_asserted` |592 |`smc_reset_mid_transaction_rand_test@default` (3128) |
-|`c_reset_state_all_held` |592 |`smc_irq_during_powergood_glitch_test@default` (192) |
-|`c_reset_state_all_released` |592 |`smc_log_engine_region_size_test@default` (469723) |
-|`c_reset_state_partial_release` |592 |`smc_region_zero_reset_recovery_test@default` (9656) |
+|`c_reset_op_warm_asserted` |593 |`smc_efuse_security_disable_bypass_test@default` (606939) |
+|`c_reset_op_wdt_asserted` |593 |`smc_reset_mid_transaction_rand_test@default` (3988) |
+|`c_reset_state_all_held` |593 |`smc_irq_during_powergood_glitch_test@default` (192) |
+|`c_reset_state_all_released` |593 |`smc_log_engine_region_size_test@default` (469723) |
+|`c_reset_state_partial_release` |593 |`smc_region_zero_reset_recovery_test@default` (9656) |
 |===
 
 ===== `u_smc_rst_seq_fcov`
@@ -733,23 +733,23 @@ or `unclassified` when the policy has none.
 |Point |Leaves |Owner (hits) |Note
 |`c_async_assert_observed` |2 |`smc_cool_reset_x_cold_reset_test@default` (1) |
 |`c_cold_reset_async_assert` |2 |`smc_cool_reset_x_cold_reset_test@default` (1) |
-|`c_cold_reset_gated_before_powergood` |592 |`smc_irq_during_powergood_glitch_test@default` (162) |
-|`c_cold_reset_released_after_powergood` |592 |`smc_region_zero_reset_recovery_test@default` (37) |
-|`c_cold_reset_sync_deassert` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_config_registers_at_reset_value` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_cold_reset_gated_before_powergood` |593 |`smc_irq_during_powergood_glitch_test@default` (162) |
+|`c_cold_reset_released_after_powergood` |593 |`smc_region_zero_reset_recovery_test@default` (37) |
+|`c_cold_reset_sync_deassert` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_config_registers_at_reset_value` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
 |`c_cores_held_in_primary_reset` |66 |`smc_region_zero_reset_recovery_test@default` (74160) |
 |`c_fabric_held_in_primary_reset` |0 |none |cover: user
-|`c_multi_stage_sync_present` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_multi_stage_sync_present` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
 |`c_peripherals_held_in_primary_reset` |67 |`smc_region_zero_reset_recovery_test@default` (74160) |
-|`c_powergood_rise_stretched` |592 |`smc_irq_during_powergood_glitch_test@default` (6) |
-|`c_region_size_reset_16mib` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_release_primary_periph` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_powergood_rise_stretched` |593 |`smc_irq_during_powergood_glitch_test@default` (6) |
+|`c_region_size_reset_16mib` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_release_primary_periph` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
 |`c_reset_held_before_boot_seq_done` |3 |`smc_efuse_fuse_reset_gate_test@default` (1388) |
-|`c_reset_released_after_boot_seq_done` |590 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_reset_released_after_boot_seq_done` |591 |`smc_dfd_trace_writeout_phase_test@default` (65) |
 |`c_ss_config_driven` |5 |`smc_reset_unit_lock_test@default` (66) |
-|`c_sync_deassert_observed` |592 |`smc_dfd_trace_writeout_phase_test@default` (65) |
-|`c_telemetry_reset_asserted` |592 |`smc_region_zero_reset_recovery_test@default` (9429) |
-|`c_telemetry_reset_released` |592 |`smc_region_zero_reset_recovery_test@default` (37) |
+|`c_sync_deassert_observed` |593 |`smc_dfd_trace_writeout_phase_test@default` (65) |
+|`c_telemetry_reset_asserted` |593 |`smc_region_zero_reset_recovery_test@default` (9429) |
+|`c_telemetry_reset_released` |593 |`smc_region_zero_reset_recovery_test@default` (37) |
 |`c_warm_cascaded_from_primary` |66 |`smc_region_zero_reset_recovery_test@default` (74160) |
 |===
 
@@ -761,8 +761,8 @@ or `unclassified` when the policy has none.
 |`c_address_phase_issues_aw` |22 |`smc_zeroer_size_corners_test@default` (92) |
 |`c_axi_clk_gated_when_idle` |11 |`smc_cg_ctrl_reg_access_test@default` (1150) |
 |`c_axi_clk_on_busy` |3 |`smc_zeroer_axiclk_cg_test@default` (104) |
-|`c_axi_clk_on_disable_cg` |592 |`smc_log_engine_region_size_test@default` (3757880) |
-|`c_axi_clk_on_reset` |592 |`smc_region_zero_reset_recovery_test@default` (76100) |
+|`c_axi_clk_on_disable_cg` |593 |`smc_log_engine_region_size_test@default` (3757880) |
+|`c_axi_clk_on_reset` |593 |`smc_region_zero_reset_recovery_test@default` (76100) |
 |`c_busy_cleared_on_completion` |22 |`smc_zeroer_size_corners_test@default` (60) |
 |`c_busy_set_on_start` |22 |`smc_zeroer_size_corners_test@default` (60) |
 |`c_completion_status_updated` |22 |`smc_zeroer_size_corners_test@default` (60) |
@@ -772,8 +772,8 @@ or `unclassified` when the policy has none.
 |`c_idle_state_no_axi_activity` |22 |`smc_zeroer_sram_init_test@default` (88788) |
 |`c_reg_clk_gated_when_idle` |10 |`smc_cg_ctrl_reg_access_test@default` (995) |
 |`c_reg_clk_on_activity` |4 |`smc_zeroer_axiclk_cg_test@default` (48) |
-|`c_reg_clk_on_disable_cg` |592 |`smc_log_engine_region_size_test@default` (3757880) |
-|`c_reg_clk_on_reset` |592 |`smc_region_zero_reset_recovery_test@default` (76100) |
+|`c_reg_clk_on_disable_cg` |593 |`smc_log_engine_region_size_test@default` (3757880) |
+|`c_reg_clk_on_reset` |593 |`smc_region_zero_reset_recovery_test@default` (76100) |
 |`c_return_to_idle` |22 |`smc_zeroer_size_corners_test@default` (60) |
 |`c_size_readback` |14 |`smc_zeroer_capture_burst_test@default` (67) |
 |`c_trigger_write_starts_operation` |22 |`smc_zeroer_size_corners_test@default` (60) |
@@ -788,17 +788,17 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_ar_during_write` |1 |`smc_axi_channel_timing_ports_test@default` (24) |single
+|`c_ar_during_write` |1 |`smc_axi_channel_timing_ports_test@default` (16) |single
 |`c_aw_first` |4 |`smc_axi_channel_timing_ports_test@default` (27) |
-|`c_aw_w_same_cycle` |21 |`smc_axi_random_stress_test@default` (119) |
-|`c_bid_out_of_order` |1 |`smc_axi_random_stress_test@default` (8) |single
+|`c_aw_w_same_cycle` |21 |`smc_axi_random_stress_test@default` (116) |
+|`c_bid_out_of_order` |1 |`smc_axi_random_stress_test@default` (9) |single
 |`c_rd_depth_few` |5 |`smc_axi_random_stress_test@default` (28) |
 |`c_rd_depth_many` |4 |`smc_axi_channel_timing_ports_test@default` (24) |
 |`c_rd_depth_one` |33 |`smc_axi_channel_timing_ports_test@default` (87) |
 |`c_rd_eight_ids` |4 |`smc_axi_channel_timing_ports_test@default` (4) |
-|`c_rid_out_of_order` |1 |`smc_axi_random_stress_test@default` (6) |single
-|`c_w_first` |1 |`smc_axi_channel_timing_ports_test@default` (18) |single
-|`c_wr_depth_few` |5 |`smc_axi_random_stress_test@default` (32) |
+|`c_rid_out_of_order` |1 |`smc_axi_random_stress_test@default` (5) |single
+|`c_w_first` |2 |`smc_axi_channel_timing_ports_test@default` (18) |
+|`c_wr_depth_few` |5 |`smc_axi_random_stress_test@default` (33) |
 |`c_wr_depth_many` |4 |`smc_axi_channel_timing_ports_test@default` (36) |
 |`c_wr_depth_one` |21 |`smc_axi_random_stress_test@default` (74) |
 |===
@@ -808,16 +808,16 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`OCAH_AXI_C_AR_HANDSHAKE` |584 |`smc_dma_transfer_matrix_rand_test@default` (8450) |
+|`OCAH_AXI_C_AR_HANDSHAKE` |585 |`smc_dma_transfer_matrix_rand_test@default` (13261) |
 |`OCAH_AXI_C_AW_BACKPRESSURE` |9 |`smc_dma_decouple_rw_test@default` (60684) |
-|`OCAH_AXI_C_AW_HANDSHAKE` |68 |`smc_dma_transfer_matrix_rand_test@default` (8438) |
-|`OCAH_AXI_C_B_ERR_RESP` |6 |`smc_sys_out_error_inject_rand_test@default` (18) |
-|`OCAH_AXI_C_B_HANDSHAKE` |68 |`smc_dma_transfer_matrix_rand_test@default` (8438) |
-|`OCAH_AXI_C_R_ERR_RESP` |5 |`smc_axi_random_stress_test@default` (15) |
-|`OCAH_AXI_C_R_HANDSHAKE` |584 |`smc_dma_transfer_matrix_rand_test@default` (42306) |
+|`OCAH_AXI_C_AW_HANDSHAKE` |68 |`smc_dma_transfer_matrix_rand_test@default` (13249) |
+|`OCAH_AXI_C_B_ERR_RESP` |6 |`smc_sys_out_error_inject_rand_test@default` (16) |
+|`OCAH_AXI_C_B_HANDSHAKE` |68 |`smc_dma_transfer_matrix_rand_test@default` (13249) |
+|`OCAH_AXI_C_R_ERR_RESP` |5 |`smc_axi_random_stress_test@default` (14) |
+|`OCAH_AXI_C_R_HANDSHAKE` |585 |`smc_dma_transfer_matrix_rand_test@default` (45391) |
 |`OCAH_AXI_C_W_BACKPRESSURE` |6 |`smc_dma_decouple_rw_test@default` (51033) |
-|`OCAH_AXI_C_W_HANDSHAKE` |68 |`smc_dma_transfer_matrix_rand_test@default` (46084) |
-|`OCAH_AXI_C_W_PARTIAL_STRB` |12 |`smc_dma_transfer_matrix_rand_test@default` (11765) |
-|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |584 |`smc_dma_transfer_matrix_rand_test@default` (5151) |
-|`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |35 |`smc_dma_transfer_matrix_rand_test@default` (6778) |
+|`OCAH_AXI_C_W_HANDSHAKE` |68 |`smc_dma_transfer_matrix_rand_test@default` (39522) |
+|`OCAH_AXI_C_W_PARTIAL_STRB` |12 |`smc_dma_transfer_matrix_rand_test@default` (6599) |
+|`gen_axi4_rules.OCAH_AXI_C_AR_MULTI_BEAT` |585 |`smc_dma_transfer_matrix_rand_test@default` (9580) |
+|`gen_axi4_rules.OCAH_AXI_C_AW_MULTI_BEAT` |35 |`smc_dma_transfer_matrix_rand_test@default` (6399) |
 |===

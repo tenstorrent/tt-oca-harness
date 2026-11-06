@@ -77,6 +77,7 @@ _PERIPH_XBAR = {
     "smc_telemetry_receiver_wrap",
     "smc_system_timer_octs",
     "dtp_ctrl_reg",
+    "smc_pwm",
     "oca_i3c_wrap",
     "smc_external",
 }
@@ -85,7 +86,7 @@ _PERIPH_XBAR = {
 # unit apertures that the inbound port reaches at the reset REGION_SIZE.
 _UNIT_GAPS = (
     ("gap_after_debug_module", 0x1868, 0x1FF8, "local"),
-    ("gap_C000", 0xC000, 0xFFF8, "local"),
+    ("gap_D000", 0xD000, 0xFFF8, "local"),
     ("gap_17000", 0x1_7000, 0x1_7FF8, "internal"),
     ("gap_38300", 0x3_8300, 0x3_8FF8, "local"),
     ("gap_after_cla", 0x16_4000, 0x3F_FFF8, "local"),
@@ -575,8 +576,8 @@ class smc_bresp_evidence_test_seq(SmcCsrSeq):
         )
         assert scratch_cold_7 == base + 0x281C and scratch_cold_6 == base + 0x2818
         assert scratch_warm_0 == base + 0x2880
-        gpio_last = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 64)
-        assert gpio_last == base + 0x3408
+        gpio_last = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 66)
+        assert gpio_last == base + 0x3428
         outfilt_last = (
             smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 15)
             + smc_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE")

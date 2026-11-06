@@ -18,6 +18,13 @@
 // block, and a quad page program 0x32, read back with 0x03 and compared with the
 // block. The flash model sits on all four data lanes for this leg.
 //
+// RXDATA in-word byte order (OpenTitan SPI_HOST "Input and Output Byte
+// Ordering"): the first byte received sits in bits 7:0 of the word in one
+// order and in bits 31:24 in the other. CHK-JEDEC fixes the order from the
+// JEDEC ID word, prints it on an OBS-SPI-BYTEORDER line, and every later
+// register read and lane read is graded in that order. Which order the host
+// uses is not graded.
+//
 // cocotb patches the scenario block (g_spi1_params, located by SPI1_PARAM_MAGIC)
 // per seed. The defaults are the directed scenario, so the image also runs
 // standalone.
@@ -37,6 +44,8 @@
 // Non-zero SR2 the device model is built with. Must match status_reg2 in
 // cocotb/tests/spi/sep_spi_ot_flash_cmd_rand_test.py.
 #define FLASH_SR2_SEEDED 0x5Au
+// JEDEC ID response, first byte received in bits 7:0; the fourth byte is the
+// zero pad of the 3-byte response.
 #define FLASH_JEDEC_RX 0x0018BA20u
 
 // Reserved command speed encoding: the host must reject the segment with an
@@ -47,10 +56,11 @@
 #define SPI1_PARAM_MAGIC 0x5A11C0DEu
 
 // Scenario block. Layout: [0]=magic, [1]=flash addr, [2]=word count (1..MAX_WORDS),
-// [3 .. 3+MAX_WORDS-1]=data words (LSB byte sent first), then the lane leg:
-// [LANE_BASE]=entry count (0..LANE_MAX), and per entry [opcode, flash addr,
-// word count, data words]. A read entry holds the words the flash holds at that
-// address; the quad program entry holds the words to program. Volatile so the
+// [3 .. 3+MAX_WORDS-1]=data words (the TXDATA words of the program), then the
+// lane leg: [LANE_BASE]=entry count (0..LANE_MAX), and per entry [opcode, flash
+// addr, word count, data words]. A read entry holds the bytes the flash holds at
+// that address, first byte in bits 7:0 of each word; the quad program entry
+// holds the TXDATA words to program. Volatile so the
 // run-time patched values are not folded. The directed defaults stage no lane
 // entry: the lane reads need the flash preload that only the cocotb test makes.
 #define LANE_BASE (3 + MAX_WORDS)
@@ -58,6 +68,72 @@
 volatile uint32_t g_spi1_params[LANE_BASE + 1 + LANE_MAX * LANE_STRIDE] = {
     SPI1_PARAM_MAGIC, 0x000000u, 4u, 0xA5C31234u, 0xDEADBEEFu, 0x0BADF00Du, 0xCAFEBABEu,
 };
+
+#define RX_ORDER_UNSET 0u
+#define RX_ORDER_LSB 1u // first byte received in RXDATA bits 7:0
+#define RX_ORDER_MSB 2u // first byte received in RXDATA bits 31:24
+static uint32_t g_rx_order = RX_ORDER_UNSET;
+
+static inline uint32_t bswap32(uint32_t w) {
+    return (w >> 24) | ((w >> 8) & 0x0000FF00u) | ((w << 8) & 0x00FF0000u) | (w << 24);
+}
+
+static const char *rx_order_name(void) {
+    if (g_rx_order == RX_ORDER_LSB) return "lsb_first";
+    if (g_rx_order == RX_ORDER_MSB) return "msb_first";
+    return "undecided";
+}
+
+// Fixes the RXDATA order from a word that reads as want in exactly one order.
+// Returns -1 when it reads as want in neither.
+static int rx_fix_order(uint32_t w, uint32_t want) {
+    if (w == want) {
+        g_rx_order = RX_ORDER_LSB;
+    } else if (bswap32(w) == want) {
+        g_rx_order = RX_ORDER_MSB;
+    } else {
+        return -1;
+    }
+    return 0;
+}
+
+// An RXDATA word in the fixed order, with the first byte received in bits 7:0.
+static inline uint32_t rx_first(uint32_t w) {
+    return g_rx_order == RX_ORDER_MSB ? bswap32(w) : w;
+}
+
+// Reads an nbytes (1 to 4) register response through sep_spi_flash_rdreg.
+// *out holds byte k of the response in bits [8k+7:8k]: bits [8k+7:8k] of the
+// RXDATA word in one order, bits [31-8k:24-8k] in the other. The bytes past
+// nbytes must read 0; when one does not, the FAIL line names chk and the
+// return is -4. A failed read returns the sep_spi_flash_rdreg code.
+static int rdreg_local(const char *chk, uint32_t opcode, uint32_t nbytes, uint32_t *out) {
+    uint32_t w = 0;
+    int rc = sep_spi_flash_rdreg(opcode, nbytes, &w);
+    if (rc) return rc;
+    uint32_t v = rx_first(w);
+    uint32_t mask = nbytes >= 4u ? 0xFFFFFFFFu : ((1u << (8u * nbytes)) - 1u);
+    *out = v & mask;
+    if (v & ~mask) {
+        sep_mbx_puts("FAIL: ");
+        sep_mbx_puts(chk);
+        sep_mbx_puts(" RXDATA=");
+        sep_mbx_puthex(w);
+        sep_mbx_puts(" order=");
+        sep_mbx_puts(rx_order_name());
+        sep_mbx_puts(": a byte past the response is not 0\n");
+        return -4;
+    }
+    return 0;
+}
+
+// Status register 1 through rdreg_local.
+static int rdsr_local(const char *chk, uint8_t *out) {
+    uint32_t v = 0;
+    int rc = rdreg_local(chk, SEP_SPI_OP_RDSR, 1, &v);
+    if (rc == 0) *out = (uint8_t)v;
+    return rc;
+}
 
 // Recovers from a latched host error, which blocks further commands until
 // cleared. Software reset flushes the command queue and both FIFOs, so the
@@ -71,6 +147,19 @@ static int spi_err_recover(uint32_t expect_bm, uint32_t *residual) {
     const uint32_t empty = SPI_CONTROLLER__STATUS__TXEMPTY_bm | SPI_CONTROLLER__STATUS__RXEMPTY_bm;
     uint32_t ctrl = spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    // The FIFOs are already empty and ERROR_STATUS keeps its value through the
+    // reset, so the CONTROL readback is the evidence that SW_RST is held.
+    uint32_t held_ctrl = spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    if (!(held_ctrl & SPI_CONTROLLER__CONTROL__SW_RST_bm)) {
+        sep_mbx_puts("FAIL: CTRL-ERR-SWRST CONTROL=");
+        sep_mbx_puthex(held_ctrl);
+        sep_mbx_puts(" SW_RST not held\n");
+        err++;
+    } else {
+        sep_mbx_puts("CTRL-ERR-SWRST PASS: CONTROL=");
+        sep_mbx_puthex(held_ctrl);
+        sep_mbx_puts(" SW_RST held\n");
+    }
     uint32_t st = 0;
     int t = SEP_SPI_TIMEOUT;
     while (t-- > 0) {
@@ -139,12 +228,15 @@ static void lane_pass_line(const char *chk, uint32_t opcode, uint32_t lanes, uin
 }
 
 // Compares nwords read words with the expected words; prints a FAIL line per
-// mismatch and returns the mismatch count.
+// mismatch and returns the mismatch count. With rx_order each read word is
+// taken in the fixed RXDATA order, so want holds the first byte received in
+// bits 7:0; without it the words compare as read.
 static int lane_compare(const char *chk, uint32_t opcode, const uint32_t *got, const uint32_t *want,
-                        uint32_t nwords) {
+                        uint32_t nwords, int rx_order) {
     int err = 0;
     for (uint32_t i = 0; i < nwords; i++) {
-        if (got[i] != want[i]) {
+        uint32_t g = rx_order ? rx_first(got[i]) : got[i];
+        if (g != want[i]) {
             sep_mbx_puts("FAIL: ");
             sep_mbx_puts(chk);
             sep_mbx_puts(" op=");
@@ -152,7 +244,7 @@ static int lane_compare(const char *chk, uint32_t opcode, const uint32_t *got, c
             sep_mbx_puts(" word ");
             sep_mbx_puthex(i);
             sep_mbx_puts(" got ");
-            sep_mbx_puthex(got[i]);
+            sep_mbx_puthex(g);
             sep_mbx_puts(" exp ");
             sep_mbx_puthex(want[i]);
             sep_mbx_putc('\n');
@@ -162,11 +254,12 @@ static int lane_compare(const char *chk, uint32_t opcode, const uint32_t *got, c
     return err;
 }
 
-// Lane leg. CHK-SPI-LANE-READ: each dual or quad read returns, word by word, the
-// words the parameter block says the flash holds at that address.
-// CHK-SPI-LANE-PROGRAM: a quad page program followed by a standard read returns
-// the programmed words. Every entry must also leave ERROR_STATUS at 0. Returns
-// the error count.
+// Lane leg. CHK-SPI-LANE-READ: each dual or quad read returns, word by word in
+// the fixed RXDATA order, the words the parameter block says the flash holds at
+// that address, first byte in bits 7:0. CHK-SPI-LANE-PROGRAM: a quad page
+// program followed by a standard read returns the programmed words; that round
+// trip runs through the same host both ways and does not depend on the order.
+// Every entry must also leave ERROR_STATUS at 0. Returns the error count.
 static int lane_leg(void) {
     uint32_t count = g_spi1_params[LANE_BASE];
     if (count > LANE_MAX) {
@@ -221,7 +314,7 @@ static int lane_leg(void) {
             errors++;
             continue;
         }
-        int err = lane_compare(chk, opcode, got, want, nwords);
+        int err = lane_compare(chk, opcode, got, want, nwords, opcode != SEP_SPI_OP_QPP);
         uint32_t es = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
         if (es != 0) {
             sep_mbx_puts("FAIL: ");
@@ -278,14 +371,25 @@ int main(void) {
         sep_mbx_puts("FAIL: JEDEC timeout\n");
         return errors + 1;
     }
-    if ((jedec & 0x00FFFFFFu) != FLASH_JEDEC_RX) {
+    // The ID bytes are distinct, so the word reads as FLASH_JEDEC_RX in at most
+    // one order; that order is fixed for every later read.
+    if (rx_fix_order(jedec, FLASH_JEDEC_RX)) {
         sep_mbx_puts("FAIL: CHK-JEDEC got ");
         sep_mbx_puthex(jedec);
-        sep_mbx_putc('\n');
+        sep_mbx_puts(", the ID bytes with a zero pad in neither order\n");
         errors++;
     } else {
-        sep_mbx_puts("CHK-JEDEC PASS: READ ID 0x9F -> 0x0018ba20\n");
+        sep_mbx_puts("CHK-JEDEC PASS: READ ID 0x9F -> RXDATA=");
+        sep_mbx_puthex(jedec);
+        sep_mbx_puts(" id=");
+        sep_mbx_puthex(rx_first(jedec));
+        sep_mbx_puts(" order=");
+        sep_mbx_puts(rx_order_name());
+        sep_mbx_putc('\n');
     }
+    sep_mbx_puts("OBS-SPI-BYTEORDER fw order=");
+    sep_mbx_puts(rx_order_name());
+    sep_mbx_puts(" fixed_at=CHK-JEDEC\n");
 
     // Write enable is clear out of reset, so set it first: otherwise the write
     // disable check would pass on a no-op.
@@ -294,8 +398,8 @@ int main(void) {
         sep_mbx_puts("FAIL: WREN(rdsr) timeout\n");
         return errors + 1;
     }
-    if (sep_spi_flash_rdsr(&sr)) {
-        sep_mbx_puts("FAIL: CHK-RDSR status read timed out after WREN\n");
+    if (rdsr_local("CHK-RDSR", &sr)) {
+        sep_mbx_puts("FAIL: CHK-RDSR status read failed after WREN\n");
         errors++;
     } else if (!(sr & SEP_SPI_SR_WEL)) {
         sep_mbx_puts("FAIL: CHK-RDSR WEL not set after WREN\n");
@@ -308,8 +412,8 @@ int main(void) {
         sep_mbx_puts("FAIL: WRDI timeout\n");
         return errors + 1;
     }
-    if (sep_spi_flash_rdsr(&sr)) {
-        sep_mbx_puts("FAIL: CHK-WRDI status read timed out after WRDI\n");
+    if (rdsr_local("CHK-WRDI", &sr)) {
+        sep_mbx_puts("FAIL: CHK-WRDI status read failed after WRDI\n");
         errors++;
     } else if (sr & SEP_SPI_SR_WEL) {
         sep_mbx_puts("FAIL: CHK-WRDI WEL still set after WRDI\n");
@@ -446,8 +550,8 @@ int main(void) {
     // --- CHK-WEL-AUTOCLR: SECTOR ERASE must consume the write-enable latch ---
     // CHK-WP-PP below relies on write enable being clear.
     uint8_t sr_post;
-    if (sep_spi_flash_rdsr(&sr_post)) {
-        sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR status read timed out after ERASE\n");
+    if (rdsr_local("CHK-WEL-AUTOCLR", &sr_post)) {
+        sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR status read failed after ERASE\n");
         errors++;
     } else if (sr_post & SEP_SPI_SR_WEL) {
         sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR WEL still set after ERASE, sr=");
@@ -497,11 +601,10 @@ int main(void) {
         sep_mbx_puts("FAIL: WREN(rdsr2) timeout\n");
         return errors + 1;
     }
-    uint32_t sr2_word = 0;
-    int sr2_rc = sep_spi_flash_rdreg(SEP_SPI_OP_RDSR2, 1, &sr2_word);
-    uint32_t sr2 = sr2_word & 0xFFu;
+    uint32_t sr2 = 0;
+    int sr2_rc = rdreg_local("CHK-RDSR2", SEP_SPI_OP_RDSR2, 1, &sr2);
     if (sr2_rc) {
-        sep_mbx_puts("FAIL: CHK-RDSR2 status-2 read timed out\n");
+        sep_mbx_puts("FAIL: CHK-RDSR2 status-2 read failed\n");
         errors++;
     } else if (sr2 != FLASH_SR2_SEEDED) {
         sep_mbx_puts("FAIL: CHK-RDSR2 got ");
@@ -600,17 +703,22 @@ int main(void) {
     // CHK-ERR-RECOVER: the host runs real bus traffic again after the three
     // injections; a host still held by an error returns nothing here.
     uint32_t jedec_post = 0;
-    if (sep_spi_flash_rdreg(SEP_SPI_OP_JEDEC, 3, &jedec_post)) {
-        sep_mbx_puts("FAIL: CHK-ERR-RECOVER JEDEC timeout after error injection\n");
+    if (rdreg_local("CHK-ERR-RECOVER", SEP_SPI_OP_JEDEC, 3, &jedec_post)) {
+        sep_mbx_puts("FAIL: CHK-ERR-RECOVER JEDEC read failed after error injection\n");
         errors++;
-    } else if ((jedec_post & 0x00FFFFFFu) != FLASH_JEDEC_RX) {
+    } else if (jedec_post != FLASH_JEDEC_RX) {
         sep_mbx_puts("FAIL: CHK-ERR-RECOVER JEDEC got ");
         sep_mbx_puthex(jedec_post);
+        sep_mbx_puts(" order=");
+        sep_mbx_puts(rx_order_name());
         sep_mbx_putc('\n');
         errors++;
     } else {
-        sep_mbx_puts("CHK-ERR-RECOVER PASS: READ ID 0x9F -> 0x0018ba20 again after "
-                     "underflow/cmdinval/csidinval recovery\n");
+        sep_mbx_puts("CHK-ERR-RECOVER PASS: READ ID 0x9F -> id=");
+        sep_mbx_puthex(jedec_post);
+        sep_mbx_puts(" order=");
+        sep_mbx_puts(rx_order_name());
+        sep_mbx_puts(" again after underflow/cmdinval/csidinval recovery\n");
     }
 
     // --- Lane leg: dual and quad reads, quad page program ---

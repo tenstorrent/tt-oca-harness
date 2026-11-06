@@ -158,6 +158,12 @@ KIND_CODE = {
 # Sentinel for an argument that is logged and not graded (kind (d)).
 ARG_LOGGED = "logged"
 
+# Salt of the invalid-command control draw, so the draws of the main stream keep
+# their seed mapping.
+_INVALID_CMD_SALT = 0x4241_4443 << 32
+# Salt of the draws of the rejected CMD_KEY_TRANSFER, for the same reason.
+_XFER_SALT = 0x5846_4552 << 32
+
 
 def signed8(value: int) -> int:
     v = value & 0xFF
@@ -324,6 +330,22 @@ def build_vault_frame(d: PairDraw, v: VaultDraw, e: int) -> FaultFrame:
     return build_fault_frame(vd, kinds, e, payload=v.payload)
 
 
+@dataclass(frozen=True)
+class XferDraw:
+    """The key loaded for the rejected CMD_KEY_TRANSFER and the one frame-level fault of that frame."""
+
+    key: tuple[int, ...]
+    dest_valid: int
+    fault: PairDraw  # first == second: the one kind the frame carries
+
+
+def build_xfer_frame(x: XferDraw, handle: int, e: int) -> FaultFrame:
+    """CMD_KEY_TRANSFER of ``handle`` to HMAC with the one fault of ``x``."""
+    return build_fault_frame(
+        x.fault, frozenset([x.fault.first]), e, payload=(handle & 0xFF, DEST_HMAC)
+    )
+
+
 # --- seeded plan ----------------------------------------------------------------------
 
 
@@ -455,6 +477,13 @@ class CommandProtocolPlan:
 
         self.vault = tuple(self._vault(rng, i, d) for i, d in enumerate(self.pairs))
 
+        # Step 14 invalid-command control.
+        self.invalid_cmd = SepSeededRng(seed ^ _INVALID_CMD_SALT).choice(INVALID_CMD_IDS)
+        self._log("invalid_cmd", f"0x{self.invalid_cmd:02x}")
+
+        # Step 14 rejected CMD_KEY_TRANSFER.
+        self.xfer = self._xfer(SepSeededRng(seed ^ _XFER_SALT))
+
     # -- draw helpers ------------------------------------------------------------------
 
     def _log(self, name: str, value: object) -> None:
@@ -525,6 +554,34 @@ class CommandProtocolPlan:
         if "len_wire" in d.kinds:
             self._log(f"{tag}_d_plen", d_plen)
         return VaultDraw(cmd, payload, d_plen)
+
+    def _xfer(self, rng: SepSeededRng) -> XferDraw:
+        key = _key(rng, 8)
+        dest_valid = _dest_with(rng, DEST_HMAC)
+        kind = rng.choice(VAULT_KINDS)
+        crc_xor = rng.randrange(1, 0x100) if kind == "hdr_crc" else 0
+        seq_delta = rng.randrange(1, 0x100) if kind == "seq" else 0
+        flip_bit = rng.randrange(32) if kind == "pcrc" else 0
+        d_plen = 0
+        if kind == "len_wire":
+            while True:
+                d_plen = rng.randrange(0, 0x100)
+                if frame_len(d_plen) != frame_len(2):
+                    break
+        fault = PairDraw(
+            kind, kind, CMD_KEY_TRANSFER, crc_xor, seq_delta, 0, flip_bit, (), d_plen, ()
+        )
+        self._log("xfer_key_sha", word_digest(key))
+        self._log("xfer_dest_valid", dest_valid)
+        self._log("xfer_kind", kind)
+        name, value = {
+            "hdr_crc": ("crc_xor", crc_xor),
+            "seq": ("seq_delta", seq_delta),
+            "len_wire": ("d_plen", d_plen),
+            "pcrc": ("flip_bit", flip_bit),
+        }[kind]
+        self._log(f"xfer_{name}", value)
+        return XferDraw(key, dest_valid, fault)
 
     def _gate(self, rng: SepSeededRng, source: str) -> GateDraw:
         gen_words = rng.randrange(1, 17)

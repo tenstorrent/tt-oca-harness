@@ -40,10 +40,9 @@ Checkers:
                       AES_ENC and the other fields as written; the written
                       OPERATION is an invalid code.
   CHK-AES-INV-MODE    after START, OUTPUT_VALID reads 0 at every sample of the
-                      window and DATA_OUT keeps its base words. The START
-                      write returns OKAY (``CTRL-AES-INV-MODE-START``). Control:
-                      MODE = ECB with a new key load sets OUTPUT_VALID in a
-                      bounded wait.
+                      window, DATA_OUT keeps its base words, and the START
+                      write response (``start_bresp``) is OKAY. Control: MODE = ECB with a new key load sets
+                      OUTPUT_VALID in a bounded wait.
   CHK-AES-INV-MODE-RB after the invalid pair, CTRL_SHADOWED reads MODE =
                       AES_NONE, KEY_LEN = AES_256 and MANUAL_OPERATION = 1;
                       the written MODE is an invalid code.
@@ -466,6 +465,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
         base: list[int] | None = None
         after: list[int] | None = None
         rb: int | None = None
+        start_bresp: int | str = "none"
         n_samples = 0
         reason = ""
         open_graded_window(TEST, self.logger)
@@ -479,9 +479,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
                 "aes_wr", op=SepAxiOp.WRITE, addr=AES_TRIGGER, wdata=start, length=4, size=2
             )
             await self.start_seq(start_wr)
-            self.chk.ctrl(
-                "AES-INV-MODE-START", start_wr.resp_code == 0, cell=cell, bresp=start_wr.resp_code
-            )
+            start_bresp = start_wr.resp_code
             # The poll reads back to back for the whole window and stops early
             # only at an OUTPUT_VALID sample.
             _, samples = await self._poll(ST_OV, ST_OV, window)
@@ -518,7 +516,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
             bound=OV_BOUND_FACTOR * t_blk,
         )
         unchanged = base is not None and after == base
-        ok = not reason and ov_seen is False and unchanged
+        ok = not reason and ov_seen is False and unchanged and start_bresp == 0
         fields = {
             "cell": f"mode.{kind}",
             "written": f"0b{v:06b}",
@@ -527,6 +525,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
             "window_clk": window,
             "samples": n_samples,
             "ctrl_valid_clk": ctrl_clk,
+            "start_bresp": start_bresp,
         }
         if reason:
             fields["reason"] = reason
