@@ -40,10 +40,8 @@ Checkers:
                       AES_ENC and the other fields as written; the written
                       OPERATION is an invalid code.
   CHK-AES-INV-MODE    after START, OUTPUT_VALID reads 0 at every sample of the
-                      window and DATA_OUT keeps its base words. The line
-                      logs the START write response (``start_bresp``); the
-                      shared scoreboard fails the leaf on a non-OKAY
-                      response. Control: MODE = ECB with a new key load sets
+                      window, DATA_OUT keeps its base words, and the START
+                      write response (``start_bresp``) is OKAY. Control: MODE = ECB with a new key load sets
                       OUTPUT_VALID in a bounded wait.
   CHK-AES-INV-MODE-RB after the invalid pair, CTRL_SHADOWED reads MODE =
                       AES_NONE, KEY_LEN = AES_256 and MANUAL_OPERATION = 1;
@@ -518,7 +516,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
             bound=OV_BOUND_FACTOR * t_blk,
         )
         unchanged = base is not None and after == base
-        ok = not reason and ov_seen is False and unchanged
+        ok = not reason and ov_seen is False and unchanged and start_bresp == 0
         fields = {
             "cell": f"mode.{kind}",
             "written": f"0b{v:06b}",
