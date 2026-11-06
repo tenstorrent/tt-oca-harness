@@ -3646,6 +3646,78 @@ module smc_uvm_top
         `SMC_AXIL_SVA_PORTS_RST(misc_warm_req, misc_warm_resp, 3'd2, misc_warm_rst_n)
     );
 
+    // Reset-protocol rules of cpu.adoc and clk_rst.adoc (smc_reset_sva.sv):
+    // the uncore reset handshake, the cluster boundary isolate, the reset
+    // tree, the isolated ports, the force-mode flush and the FLR cool-reset
+    // pulse, graded on every edge. Two-state, live on both simulators.
+`define SMC_RST_SVA_CPU  u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
+`define SMC_RST_SVA_CTRL u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap
+`define SMC_RST_SVA_L2   `SMC_RST_SVA_CPU.u_l2_frontend_axi_isolate
+`define SMC_RST_SVA_COOL u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_cool_reset_wrap
+`define SMC_RST_SVA_PAD62 u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface
+    smc_reset_sva #(
+        .NUM_CORES       ($bits(tb_cpu_core_resets_n)),
+        .JTAG_CTRL_WIDTH ($bits(tb_jtag_reset_ctrl))
+    ) u_smc_reset_sva (
+        .clk_smc_i                  (clk_smc),
+        .clk_ref_i                  (clk_ref),
+        .en_i                       (`SMC_AXI_SVA_ON),
+        .powergood_stable_i         (powergood_stable_o),
+        .rst_primary_smc_clk_ni     (rst_primary_smc_clk_no),
+        .rst_wdt_smc_clk_ni         (rst_wdt_smc_clk_no),
+        .rst_warm_smc_clk_ni        (tb_rst_warm_smc_clk_n),
+        .rst_cold_stable_ref_clk_ni (rst_cold_stable_ref_clk_no),
+        .jtag_reset_ctrl_i          (tb_jtag_reset_ctrl),
+        .cpu_isolate_req_i          (tb_cpu_isolate_req),
+        .cpu_drained_i              (tb_cpu_drained),
+        .cpu_reset_timeout_i        (tb_cpu_reset_timeout),
+        .cpu_reset_applied_i        (tb_cpu_reset_applied),
+        .cpu_timeout_mode_i         (`SMC_RST_SVA_CTRL.timeout_mode),
+        .cpu_isolate_flush_i        (`SMC_RST_SVA_CTRL.isolate_flush_o),
+        .cpu_uncore_reset_ni        (tb_cpu_uncore_reset_n),
+        .cpu_core_resets_ni         (tb_cpu_core_resets_n),
+        .init_mem_done_i            (smc_init_mem_done_o),
+        .cpu_cluster_isolate_i      (tb_cpu_cluster_isolate),
+        .cpu_l2_isolated_i          (tb_cpu_l2_isolated),
+        .cpu_mmio_isolated_i        (tb_cpu_mmio_isolated),
+        .cpu_l2_flush_active_i      (tb_cpu_l2_flush_active),
+        .cpu_mmio_flush_active_i    (tb_cpu_mmio_flush_active),
+        .cpu_wb_pc_valid_i          (`SMC_RST_SVA_CPU.wb_pc_valid_o),
+        .cpu_wb_reg_pc_i            (`SMC_RST_SVA_CPU.wb_reg_pc_o),
+        .cpu_wdt_reset_i            (`SMC_RST_SVA_CPU.wdt_reset_o),
+        .cpu_l2_pending_aw_i        (tb_cpu_l2_pending_aw),
+        .cpu_l2_pending_ar_i        (tb_cpu_l2_pending_ar),
+        .cpu_mmio_pending_aw_i      (tb_cpu_mmio_pending_aw),
+        .cpu_mmio_pending_ar_i      (tb_cpu_mmio_pending_ar),
+        .l2_slv_aw_valid_i          (`SMC_RST_SVA_L2.slv_req_i.aw_valid),
+        .l2_slv_aw_ready_i          (`SMC_RST_SVA_L2.slv_resp_o.aw_ready),
+        .l2_slv_ar_valid_i          (`SMC_RST_SVA_L2.slv_req_i.ar_valid),
+        .l2_slv_ar_ready_i          (`SMC_RST_SVA_L2.slv_resp_o.ar_ready),
+        .mmio_port_aw_valid_i       (u_dut.u_smc.cpu_axi_mmio_port_req.aw_valid),
+        .mmio_port_aw_ready_i       (u_dut.u_smc.cpu_axi_mmio_port_resp.aw_ready),
+        .mmio_port_w_valid_i        (u_dut.u_smc.cpu_axi_mmio_port_req.w_valid),
+        .mmio_port_w_ready_i        (u_dut.u_smc.cpu_axi_mmio_port_resp.w_ready),
+        .mmio_port_ar_valid_i       (u_dut.u_smc.cpu_axi_mmio_port_req.ar_valid),
+        .mmio_port_ar_ready_i       (u_dut.u_smc.cpu_axi_mmio_port_resp.ar_ready),
+        .mmio_cpu_b_valid_i         (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.b_valid),
+        .mmio_cpu_b_resp_i          (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.b.resp),
+        .mmio_cpu_r_valid_i         (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.r_valid),
+        .mmio_cpu_r_resp_i          (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.r.resp),
+        .flr_posedge_ref_i          (tb_flr_posedge_ref),
+        .flr_counter_state_i        (tb_flr_counter_state),
+        .flr_cool_reset_ni          (`SMC_RST_SVA_COOL.rst_cool_no),
+        .flr_hold_count_ref_i       (`SMC_RST_SVA_COOL.flr_reset_set_cnt_ref_clk),
+        .cool_reset_ni              (tb_rst_cool_from_flr),
+        .pad62_lsio_pin_i           (`SMC_RST_SVA_PAD62.lsio_pin),
+        .core2pad_62_i              (tb_core2pad_o[62]),
+        .core2pad_en_62_i           (tb_core2pad_en_o[62])
+    );
+`undef SMC_RST_SVA_PAD62
+`undef SMC_RST_SVA_COOL
+`undef SMC_RST_SVA_L2
+`undef SMC_RST_SVA_CTRL
+`undef SMC_RST_SVA_CPU
+
     // Four-state data rules beside every checker instance, on the data the
     // link's DUT side drives: the strobed WDATA lanes where smc is the
     // manager, the OKAY/EXOKAY RDATA where smc is the subordinate. Each has
