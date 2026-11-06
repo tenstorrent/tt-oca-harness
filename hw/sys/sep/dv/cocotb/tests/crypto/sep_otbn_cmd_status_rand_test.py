@@ -52,7 +52,10 @@ Legs (one seed draws the plan, logged in one ``PLAN`` line):
              after an OTBN reset: BAD_DATA_ADDR (``lw`` at a drawn offset 1 to 3
              from address 0), BAD_INSN_ADDR (``jalr`` to PC 2), CALL_STACK
              (``jalr x0, x1, 0`` with an empty call stack), LOOP (``loopi`` with
-             zero iterations).
+             zero iterations). Then, on every seed and with no draw, the MAI
+             program (``CSRRW x0, 0x7E0, x0`` then ``ecall``: 0 to ``MAI_CTRL``)
+             with ``software_errs_fatal`` = 0 after an OTBN reset, outside the
+             graded window.
   bus access the last leg (it locks OTBN): the ``RND`` program held at
              BUSY_EXECUTE by the TRNG reset, then one host read of a drawn IMEM
              or DMEM word that holds a non-zero value; then an OTBN reset.
@@ -283,7 +286,17 @@ sentence states the code); ``OBS-OTBN-CKSUM-ORDER`` (the record byte order that
 ``CHK-OTBN-LOAD-CKSUM`` matched: no sentence states it); ``OBS-OTBN-WIPE-MEM`` (two words of the wiped memory
 read after each SEC_WIPE command: the wipe makes the stored data unusable (ToO,
 ``registers.md`` ``CMD``) but no sentence states the value a read returns, and
-``hw/sys/sep/doc/otbn.adoc`` ties the OTP scramble-key handshake to fixed values).
+``hw/sys/sep/doc/otbn.adoc`` ties the OTP scramble-key handshake to fixed values);
+``OBS-OTBN-RSVD`` (the raw word, the mask of the bits outside every field and those
+bits, of each ``INTR_STATE`` and ``STATUS`` read before a command and each
+``INTR_STATE``, ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` read after it in the command
+leg, and of the last ``STATUS`` read and the end reads of ``INTR_STATE``,
+``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` of each sw-kind and MAI run: ``registers.md``
+:36, :157, :198, :207, :239 mark these bits reserved and state no read value; the
+checks grade the masked words); ``OBS-OTBN-MAI-STUB-ERR`` (the raw ``ERR_BITS`` with
+``mai_software_error`` (bit 8) and ``illegal_insn`` (bit 3) named, ``STATUS`` and
+``FATAL_ALERT_CAUSE`` after the MAI program: with ``FeatStubMai`` = 1 MAI is not
+present (``otbn.hjson`` :117-123) and no sentence states the outcome of the write).
 
 Shards (``env/sep_shard.py``): ``+sep_shard=1`` runs every leg except RND clean
 and sw kind; ``+sep_shard=2`` runs only RND clean and sw kind, with no
@@ -435,6 +448,14 @@ INTG_WORD_BITS = 39
 # after it ends the program cleanly if the error is not raised.
 CSR_CYCLE = 0xC00
 OTBN_UNIMP_PROG = (csrw(CSR_CYCLE, ZERO), ECALL)
+
+# MAI_CTRL is CSR 0x7E0 (OT otbn ``README.md`` :567-569). The write of 0 sets
+# MAI_OPERATION to 0, which is none of 11, 16, 23, 12; an invalid value "will cause a
+# MAI_ERROR software error" (:586). SEP builds OTBN with ``FeatStubMai`` = 1 (MAI not
+# present, ``otbn.hjson`` :117-123), and ``csr.yml`` lists no CSR at 0x7E0.
+CSR_MAI_CTRL = 0x7E0
+OTBN_MAI_PROG = (csrw(CSR_MAI_CTRL, ZERO), ECALL)
+M_ERR_MAI = OTBN.field_mask("ERR_BITS", "mai_software_error")
 
 # ``nop`` is ``ADDI x0, x0, 0`` (base-insns.yml :639-645).
 NOP = addi(ZERO, ZERO, 0)
@@ -697,6 +718,25 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
     async def _rd(self, addr: int, mask: int = 0xFFFF_FFFF) -> int:
         return (await self.otbn._rd(addr)) & mask
 
+    def _obs_rsvd(self, seed: int, site: str, reg: str, raw: int) -> None:
+        """Log the raw word of one ``reg`` read and its bits outside every field."""
+        rsvd_mask = ~OTBN.mask32(reg) & 0xFFFF_FFFF
+        self.chk.obs(
+            "OTBN-RSVD",
+            seed=seed,
+            site=site,
+            reg=reg,
+            raw=f"0x{raw:08x}",
+            rsvd_mask=f"0x{rsvd_mask:08x}",
+            rsvd=f"0x{raw & rsvd_mask:08x}",
+        )
+
+    async def _rd_rsvd(self, seed: int, site: str, reg: str, mask: int) -> int:
+        """Read ``reg`` once, log ``OBS-OTBN-RSVD``, return the word masked with ``mask``."""
+        raw = await self.otbn._rd(OTBN.addr(reg))
+        self._obs_rsvd(seed, site, reg, raw)
+        return raw & mask
+
     async def _wr(self, addr: int, val: int) -> None:
         await self.otbn._wr(addr, val)
 
@@ -723,11 +763,15 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         return self.irq.clk
 
     async def _poll_status(self, pred, bound: int, *, gap: int = 0) -> tuple[bool, list[int], int]:
-        """Read STATUS until ``pred(code)``; returns (met, codes read, clocks)."""
+        """Read STATUS until ``pred(code)``; returns (met, codes read, clocks).
+
+        ``self.status_raw`` holds the unmasked word of the last read.
+        """
         start = self._clk()
         vals: list[int] = []
         while True:
-            st = await self._rd(A_STATUS, M_STATUS)
+            self.status_raw = await self._rd(A_STATUS)
+            st = self.status_raw & M_STATUS
             vals.append(st)
             if pred(st):
                 return True, vals, self._clk() - start
@@ -982,8 +1026,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 await ClockCycles(cocotb.top.clk_i, gap)
             if cmd == CMD_EXECUTE:
                 await self._stage_compute(otbn_compute_prog(p.op))
-            done_before = await self._rd(A_INTR_STATE, M_DONE)
-            pre = await self._rd(A_STATUS, M_STATUS)
+            done_before = await self._rd_rsvd(seed, f"cmd{idx}-pre", "INTR_STATE", M_DONE)
+            pre = await self._rd_rsvd(seed, f"cmd{idx}-pre", "STATUS", M_STATUS)
             t0 = _now_ps()
             await self._wr(A_CMD, cmd)
             ok, vals, clks = await self._wait_idle(_OUTER_CLK)
@@ -1041,9 +1085,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 allowed=",".join(f"0x{v:02x}" for v in allowed),
             )
             counts.append(clks)
-            done = await self._rd(A_INTR_STATE, M_DONE)
-            err = await self._rd(A_ERR_BITS, M_ERR_BITS)
-            fatal = await self._rd(A_FATAL, M_FATAL)
+            done = await self._rd_rsvd(seed, f"cmd{idx}-end", "INTR_STATE", M_DONE)
+            err = await self._rd_rsvd(seed, f"cmd{idx}-end", "ERR_BITS", M_ERR_BITS)
+            fatal = await self._rd_rsvd(seed, f"cmd{idx}-end", "FATAL_ALERT_CAUSE", M_FATAL)
             cleared = await self._clear_done()
             if cmd != CMD_EXECUTE:
                 if cmd == CMD_SEC_WIPE_DMEM:
@@ -1869,12 +1913,16 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             await self._pass_label(OTBN_CMD_PASS_IGNORE)
 
     # ------------------------------------------------------- sw-kind leg
-    async def _run_sw_prog(self, prog: tuple[int, ...], tag: str, *, graded: bool) -> dict:
+    async def _run_sw_prog(
+        self, seed: int, prog: tuple[int, ...], tag: str, *, graded: bool
+    ) -> dict:
         """Reset OTBN, run ``prog`` with ``software_errs_fatal`` = 0, read the end state.
 
         With ``graded`` the window opens before the ``CMD`` write. Every value of the
         check except ``ERR_BITS`` is read before the ``ERR_BITS`` read; when one of
-        them fails, the window closes before that read.
+        them fails, the window closes before that read. The last ``STATUS`` read and
+        the end reads of ``INTR_STATE``, ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` each
+        log ``OBS-OTBN-RSVD`` with site ``tag``.
         """
         arc_ok, arc = await self._reset_otbn(tag)
         await self._clear_done()
@@ -1887,7 +1935,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         met, vals, clks = await self._poll_status(
             lambda s: s in (ST_IDLE, ST_LOCKED), self.idle_bound
         )
-        done = await self._rd(A_INTR_STATE, M_DONE)
+        self._obs_rsvd(seed, tag, "STATUS", self.status_raw)
+        done = await self._rd_rsvd(seed, tag, "INTR_STATE", M_DONE)
         pre_ok = (
             arc_ok
             and ctrl == 0
@@ -1899,8 +1948,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         )
         if graded and not pre_ok:
             close_graded_window(self.logger)
-        err = await self._rd(A_ERR_BITS, M_ERR_BITS)
-        fatal = await self._rd(A_FATAL, M_FATAL)
+        err_raw = await self._rd(A_ERR_BITS)
+        self._obs_rsvd(seed, tag, "ERR_BITS", err_raw)
+        fatal = await self._rd_rsvd(seed, tag, "FATAL_ALERT_CAUSE", M_FATAL)
         return {
             "pre_ok": pre_ok,
             "reset_arc": arc,
@@ -1908,8 +1958,10 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             "pre_done": done0,
             "status": _runs(vals),
             "final": f"0x{vals[-1]:02x}",
+            "met": met,
             "done": done,
-            "err": err,
+            "err": err_raw & M_ERR_BITS,
+            "err_raw": err_raw,
             "fatal": fatal,
             "clk": clks,
         }
@@ -1921,7 +1973,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         mask = M_ERR_SW_KIND[kind]
         prog, legal = sw_kind_progs(kind, p.swk_off)
         close_graded_window(self.logger)
-        t = await self._run_sw_prog(legal, "swkind-legal", graded=False)
+        t = await self._run_sw_prog(seed, legal, "swkind-legal", graded=False)
         self._ctrl(
             "OTBN-SWERR-KIND",
             t["pre_ok"] and t["err"] == 0,
@@ -1932,7 +1984,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             done=t["done"],
             err_bits=f"0x{t['err']:x}",
         )
-        r = await self._run_sw_prog(prog, "swkind", graded=True)
+        r = await self._run_sw_prog(seed, prog, "swkind", graded=True)
         passed = self._grade(
             "OTBN-SWERR-KIND",
             r["pre_ok"] and bool(r["err"] & mask),
@@ -1964,6 +2016,26 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             kind=SW_KINDS[kind],
             err_bits=f"0x{r['err']:x}",
             fatal_cause=f"0x{r['fatal']:x}",
+        )
+        # The MAI_CTRL write runs outside the graded window, so no outcome of it
+        # samples. No sentence states the outcome with MAI not present.
+        close_graded_window(self.logger)
+        m = await self._run_sw_prog(seed, OTBN_MAI_PROG, "mai", graded=False)
+        self.chk.obs(
+            "OTBN-MAI-STUB-ERR",
+            seed=seed,
+            csr=f"0x{CSR_MAI_CTRL:x}",
+            wdata="0x0",
+            ctrl=m["ctrl"],
+            reset_arc=m["reset_arc"],
+            status=m["status"],
+            final=m["final"],
+            met=int(m["met"]),
+            done=m["done"],
+            err_bits=f"0x{m['err_raw']:08x}",
+            mai_software_error=int(bool(m["err_raw"] & M_ERR_MAI)),
+            illegal_insn=int(bool(m["err_raw"] & M_ERR_ILLEGAL)),
+            fatal_cause=f"0x{m['fatal']:08x}",
         )
 
     # ------------------------------------------------------ bus-access leg

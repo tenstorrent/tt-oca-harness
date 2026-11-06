@@ -21,6 +21,10 @@ This is a positive-evidence alive smoke (no vacuous pass): the force is proven t
 have taken (lane-0 DUT noise_i tracks the driven bit), a seed is accumulated, the
 CSRNG CTR_DRBG produces genbits, the KM consumes a word (post-mux tvalid && tready
 handshake) and lands it in KM SRAM, and CSRNG/EDN err_code + recov_alert are zero.
+CHK-KM-SRAM grades the stored value in both modes: KM SRAM word0 equals the first
+word the KM took on the EDN->KM AXIS endpoint (the DRBG-sampler DATA read returns
+the stream word, hw/ip/key_manager/doc/architecture.adoc), and km_rom_entropy.S
+stores that word to SRAM word0. A FAIL closes the window as the other checks do.
 On top of the alive checks, the CHK1..CHK5 golden-vs-probe scoreboard
 (sep_drbg_scoreboard + sep_entropy_golden) runs bit-exact and strict: decorrelator
 SR -> BIW+SHA whitener -> 384b seed -> CTR_DRBG genbits -> EDN/KM beats, each stage
@@ -333,6 +337,13 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
             "KM consumed a word but never stored it to KM SRAM word0",
         )
         self.logger.info("KM landed the consumed entropy word in SRAM word0")
+        try:
+            self.check_km_sram_word_matches_consumed()
+        except AssertionError as e:
+            text = str(e)
+            if "FAIL" not in text:
+                text = f"CHK-KM-SRAM FAIL: {text}"
+            await self._grade(False, text)
 
         await self.check_entropy_alerts_zero()
         self.logger.info("ESRC->DRBG->CSRNG->EDN->KM alive; KM consumed entropy; alerts clean")

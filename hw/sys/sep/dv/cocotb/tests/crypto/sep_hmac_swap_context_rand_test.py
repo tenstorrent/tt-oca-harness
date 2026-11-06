@@ -54,7 +54,16 @@ Checkers:
   CHK-HMAC-STOP       after hash_stop: hmac_done reads 1 (STATUS.hmac_idle is logged as
                       OBS-HMAC-STOP-IDLE; the register text does not state it)
   CHK-HMAC-SHAOFF     sha_en 1 -> 0 after a finished hash: every DIGEST word reads 0
-  CHK-HMAC-DONE-LINE  at a graded completion with the enable set: state 1, bit 17 rises
+  CHK-HMAC-DONE-LINE  at a graded completion with the enable set: bit 17 reads 0 before the
+                      ending command, state reads 1, and bit 17 rises at or after the lower
+                      bound and within LINE_BOUND_X x t_done of the mark taken before the
+                      ending command. The lower bound is the mark taken before the last
+                      INTR_STATE read that shows hmac_done = 0 (lower_src=done0): the state
+                      bit is sticky until its W1C write (hmac.adoc:51), so that read proves
+                      no rise before its mark. When the first read already shows 1, the
+                      lower bound is the mark taken before the ending command
+                      (lower_src=cmd). The line logs rise_clk, lower_clk, lower_src and
+                      zero_reads (the number of reads that showed 0).
 """
 
 from __future__ import annotations
@@ -65,7 +74,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
-from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
+from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_hmac_golden import DSWAP_ORDER, sha2_bytes
@@ -430,14 +439,28 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
     async def _read_digest(self, n: int) -> list[int]:
         return [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n)]
 
-    async def _poll(self, addr: int, mask: int, want: int, bound: int) -> int | None:
-        """Read ``addr`` until the masked bits equal ``want``; return the clock, None on timeout."""
+    async def _poll(
+        self, addr: int, mask: int, want: int, bound: int
+    ) -> tuple[int | None, BitMark | None, int]:
+        """Read ``addr`` until the masked bits equal ``want``.
+
+        Returns the clock of the matching read (None on timeout), the vector-watch mark
+        taken before the last read that did not match (None when the first read matches),
+        and the number of reads that did not match. A read that does not match was sampled
+        after its mark, so a sticky bit that it shows as not yet set was not set before
+        that mark.
+        """
         start = self.vec.clk
+        last_miss = None
+        misses = 0
         while True:
+            m = self.vec.mark()
             if (await self._rd(addr)) & mask == want:
-                return self.vec.clk
+                return self.vec.clk, last_miss, misses
+            last_miss = m
+            misses += 1
             if self.vec.clk - start > bound:
-                return None
+                return None, last_miss, misses
             await ClockCycles(self.dut.clk_i, POLL_GAP_CLK)
 
     async def _reset_hmac(self) -> None:
@@ -493,7 +516,9 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         mark = self.vec.mark()
         await end_action()
         t_end = self.vec.clk
-        t_done = await self._poll(HMAC_INTR_STATE, HMAC_INTR_DONE, HMAC_INTR_DONE, bound)
+        t_done, done_miss, zero_reads = await self._poll(
+            HMAC_INTR_STATE, HMAC_INTR_DONE, HMAC_INTR_DONE, bound
+        )
         if t_done is None:
             self.chk.ok(owner, False, tag=tag, reason="timeout", bound=bound)
             if graded:
@@ -503,20 +528,28 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         if graded:
             state = (await self._rd(HMAC_INTR_STATE)) & HMAC_INTR_DONE
             line_bound = LINE_BOUND_X * dt
+            lower, lower_src = mark, "cmd"
+            if done_miss is not None:
+                lower, lower_src = done_miss, "done0"
             try:
-                await self.vec.wait_rise(mark, line_bound, "hmac_done")
-                vec17 = 1
+                rise_clk = await self.vec.wait_rise(mark, line_bound, "hmac_done")
             except BitWatchTimeout:
-                vec17 = 0
+                rise_clk = None
+            in_order = rise_clk is not None and lower.clk <= rise_clk <= mark.clk + line_bound
             self.chk.ok(
                 "HMAC-DONE-LINE",
-                before == 0 and state != 0 and vec17 == 1,
+                before == 0 and state != 0 and in_order,
                 event=idx,
                 tag=tag,
                 enable=1,
                 state=int(state != 0),
                 vec17_before=before,
-                vec17=vec17,
+                vec17=int(rise_clk is not None),
+                rise_clk=rise_clk if rise_clk is not None else "none",
+                lower_clk=lower.clk,
+                lower_src=lower_src,
+                zero_reads=zero_reads,
+                cmd_clk=mark.clk,
                 bound=line_bound,
                 t_done=dt,
             )
@@ -721,7 +754,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
                 "HMAC-STOP-IDLE", tag=tag, part=i, idle=int(bool(st_stop & HMAC_STATUS_IDLE))
             )
             # Precondition of the context save: the engine is idle.
-            t_idle = await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound)
+            t_idle, _, _ = await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound)
             self.chk.ctrl("HMAC-STOP-IDLE-WAIT", t_idle is not None, tag=tag, part=i, bound=bound)
             if t_idle is None:
                 raise _TrialAbort
@@ -732,7 +765,8 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             await self._wr(HMAC_CFG, cfg & ~HMAC_CFG_SHA_EN)
             if trip.interleave:
                 await self._unrelated(trip, cfg, saved, tag, i)
-            if await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound) is None:
+            t_idle, _, _ = await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound)
+            if t_idle is None:
                 self.chk.ok("HMAC-CTX", False, tag=tag, part=i, reason="timeout", bound=bound)
                 raise _TrialAbort
             # Step 7: sha_en reads 0 before the restore.

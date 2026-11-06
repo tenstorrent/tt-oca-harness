@@ -4,7 +4,9 @@
 
 no_cpu / +skip_fuse_sense / +esrc_noise_force. HEALTH_TEST_CTRL.ENABLE stays 0 on
 every arming leg. RANDCFG walks every supported selector through MODULE_ENABLE,
-then an unsupported selector and two low-mode falls (APT_LO, MARKOV_LO).
+then an unsupported selector and two low-mode falls (APT_LO, MARKOV_LO). After the
+last fall, with the graded window closed, one source leg per selector drives a
+fixed noise pattern.
 
 Contract (hw/ip/entropy_source/regs/entropy_source.rdl HT_WATERMARK_NUM :799-807,
 HT_WATERMARK :810-818; hw/ip/entropy_source/doc/architecture.adoc:130-132):
@@ -17,12 +19,20 @@ HT_WATERMARK :810-818; hw/ip/entropy_source/doc/architecture.adoc:130-132):
   CHK-UNSUPPORTED  after a write of an unsupported selector, a MODULE_ENABLE pulse arms
                    0x0000, the high-mode arm value (rdl:805: "Unsupported values select
                    REPCNT_HI"; rdl:811). The entry holds 0xFFFF, so a dropped write
-                   fails. Which counter the watermark then tracks is not graded.
+                   fails. Which counter the watermark then tracks is not graded;
+                   OBS-HT-WM-SOURCE logs it.
   OBS-HT-UNSUP-SEL the HT_WATERMARK_NUM readback after that write. Logged, not graded:
                    no text states the stored or read value of an unsupported selector.
   CHK-LOW-FALL     a low-mode watermark arms 0xFFFF and falls from it once health
                    tests run.
   CHK-RANDCFG      every encoding of enum WATERMARK_TEST (rdl:790-796) armed to its value.
+  OBS-HT-WM-SOURCE for each of the five selectors and the unsupported value: the
+                   selector readback, the arm value, the noise pattern, the word
+                   count and the HT_WATERMARK value after that pattern ran with the
+                   health tests on. The value is logged, not graded: no text states
+                   which test instance or statistic feeds HT_WATERMARK, so no
+                   expected count exists. The legs run outside the graded window and
+                   draw nothing from the seed.
 
 FCOV: the graded window of owner sep_esrc_ht_watermark_arming_test opens after the
 health tests are held off and covers the arm walk, the unsupported leg and each
@@ -42,6 +52,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import NextTimeStep, RisingEdge
+from env.sep_esrc_pattern_noise import NUM_LANES, SepEsrcPatternNoise, Square
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_ht_watermark_seq import (
@@ -50,6 +61,7 @@ from seq_lib.sep_esrc_ht_watermark_seq import (
     ARM_LOW,
     RDL_MODE_COUNT,
     REPCNT_HI,
+    SUPPORTED,
     SepHtWatermark,
     SepHtWatermarkCfg,
     arm_value,
@@ -59,6 +71,10 @@ from seq_lib.sep_esrc_ht_watermark_seq import (
 TEST = "sep_esrc_ht_watermark_arming_test"
 _FALL_TIMEOUT_CYCLES = 80_000
 _FALL_POLL_EVERY = 64
+# Source legs: one fixed pattern on every lane, held for a fixed word count.
+_SOURCE_PATTERN = [Square(8, 0)] * NUM_LANES
+_SOURCE_WORDS = 128
+_SOURCE_WORD_TIMEOUT_CYCLES = 80_000
 
 
 @pyuvm.test()
@@ -181,6 +197,38 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             f"{_FALL_TIMEOUT_CYCLES} cycles after ENABLE (want below 0x{ARM_LOW:04x})",
         )
 
+    async def _observe_source(self, ht: SepHtWatermark, sel: int) -> None:
+        """OBS-HT-WM-SOURCE: HT_WATERMARK after a fixed pattern, under selector ``sel``."""
+        await ht.hold_health_tests_off()
+        if sel in SUPPORTED:
+            await ht.write_num(sel)
+        else:
+            await ht.write_unsupported(sel)
+        sel_rb = await ht.read_num()
+        await ht.pulse_module_enable()
+        arm = await ht.read_watermark()
+        noise = SepEsrcPatternNoise(logger=self.logger)
+        noise.start(_SOURCE_PATTERN)
+        try:
+            await ht.enable_sample_path()
+            await ht.enable_health_tests()
+            mark = noise.mark()
+            await noise.wait_words(_SOURCE_WORDS, _SOURCE_WORD_TIMEOUT_CYCLES)
+            words = noise.words_since(mark)
+            wm = await ht.read_watermark()
+        finally:
+            await noise.stop()
+        await ht.hold_health_tests_off()
+        self.logger.info(
+            "OBS-HT-WM-SOURCE sel=0x%x sel_rb=0x%x arm=0x%04x pattern=%s words=%d wm=0x%04x",
+            sel,
+            sel_rb,
+            arm,
+            _SOURCE_PATTERN[0].describe(),
+            words,
+            wm,
+        )
+
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
         cfg = SepHtWatermarkCfg(self.random_seed())
@@ -212,6 +260,8 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
                 await ht.hold_health_tests_off()
                 if fall_sel != cfg.fall_sels[-1]:
                     open_graded_window(TEST, self.logger)
+            for sel in (*SUPPORTED, cfg.unsupported):
+                await self._observe_source(ht, sel)
         except BaseException:
             # A failure may resume from ReadOnly, where no value can be written.
             await NextTimeStep()

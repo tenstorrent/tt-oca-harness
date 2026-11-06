@@ -24,8 +24,6 @@ OTBN_STATUS_LOCKED = ot_rdl_table_code("otbn", "STATUS", "LOCKED")
 
 # The state in which a bus access to IMEM/DMEM is illegal. While STATUS
 # is BusyExecute, a host request is diverted and latches illegal_bus_access.
-# The BusySecWipe*mem encodings are not that case: a scramble-key request
-# is outstanding and the bus still reaches the SRAM.
 OTBN_MEM_ACCESS_ILLEGAL_STATES = (OTBN_STATUS_BUSY_EXECUTE,)
 
 # OTBN IMEM/DMEM are 32-bit SECDED words and reject a 64-bit beat with SLVERR, so
@@ -59,28 +57,21 @@ class sep_otbn_mem_smoke_seq(uvm_sequence):
         return item.rdata
 
     async def _check_mem_access_precondition(self) -> None:
-        """Establish, from the DUT, that an IMEM/DMEM readback compare is meaningful.
+        """Read STATUS once before the memory accesses and record it.
 
-        OTBN comes out of reset into StatusBusySecWipeInt (0x04) and stays there for
-        this test: leaving it needs EDN entropy to reseed URND, and the no_cpu smoke
-        configuration never brings EDN up. That is harmless here -- the internal wipe
-        does not touch IMEM/DMEM, which is why every access below completes OKAY.
-
-        What would NOT be harmless is OTBN executing, which makes a bus access to
-        these memories illegal, or OTBN LOCKED, which fails accesses outright. Both
-        are checked rather than assumed, so this test fails loudly if OTBN's reset
-        behaviour ever changes.
+        Asserts that the STATUS status field is neither LOCKED nor BUSY_EXECUTE.
+        OBS-OTBN-MEM-STATUS logs the raw STATUS word and the status field. It is
+        logged, not graded: no authored text states whether IMEM/DMEM accept a bus
+        access in the state that the field reports here.
         """
-        st = await self._read(OTBN_ADDR_STATUS) & OTBN_STATUS_MASK
+        raw = await self._read(OTBN_ADDR_STATUS)
+        st = raw & OTBN_STATUS_MASK
         assert st != OTBN_STATUS_LOCKED, f"OTBN LOCKED (STATUS=0x{st:02x}) before memory smoke"
         assert st not in OTBN_MEM_ACCESS_ILLEGAL_STATES, (
             f"OTBN is executing (STATUS=0x{st:02x}); a bus access to IMEM/DMEM would "
             f"be diverted and flagged as an illegal bus access"
         )
-        cocotb.log.info(
-            "OTBN memory-access precondition OK: STATUS=0x%08x (not LOCKED, not executing)",
-            st,
-        )
+        cocotb.log.info("OBS-OTBN-MEM-STATUS status=0x%08x status_code=0x%02x", raw, st)
 
     async def body(self) -> None:
         await self._check_mem_access_precondition()

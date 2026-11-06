@@ -64,6 +64,11 @@ Checkers:
                          a write of 1 to ``INTR_TEST.fifo_empty`` (``CTRL-HMAC-FE-INTRTEST``),
                          and the first read one clock after the write reads 1 (``hmac.adoc``:74
                          "Write 1 to force !!INTR_STATE.fifo_empty to 1.")
+  CHK-HMAC-IDLE-DONE     ``STATUS.hmac_idle`` reads 1 at the ``STATUS`` read that follows the
+                         ``INTR_STATE`` read showing ``hmac_done`` = 1 after ``hash_process``,
+                         with no command between them (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:112,
+                         ``hmac_done`` or ``hmac_idle`` shows that ``hash_process`` is
+                         complete). Every cell that ends with ``hash_process`` reads it.
 
 The measurement run of each stalled leg counts the writes until a ``STATUS`` read after each
 write shows ``fifo_full`` = 1 (N). The graded run posts N writes, reads ``fifo_full`` = 1 and
@@ -91,8 +96,9 @@ Controls: ``CTRL-HMAC-STALL-FULL`` (a stalled leg reads ``fifo_full`` = 1),
 ``CTRL-HMAC-BP-CLEAN`` (a beat into a FIFO that is not full completes), ``CTRL-HMAC-LENGTHS``
 (every length cell ran), ``CTRL-HMAC-FE-DEPTH`` (the not-full leg writes fewer words than the
 depth at full), ``CTRL-HMAC-WIPE-PRE`` (DIGEST before the wipe equals the golden and differs
-from w). Log-only: ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text gives only its
-reset value), ``OBS-HMAC-STALL-N`` (N and the count of writes that the measurement run
+from w). Log-only: ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle`` at the reset, ``run``,
+``stalled`` and ``drain`` reads; the register text gives no value for it while a hash
+runs), ``OBS-HMAC-STALL-N`` (N and the count of writes that the measurement run
 completes with the stall held), ``OBS-HMAC-BP-HOLD-BEAT`` (index of the held beat, beats
 accepted after ``fifo_full`` reads 1, ``no_resp_clk``, ``hold_clk``).
 
@@ -391,6 +397,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         "CHK-HMAC-WIPE",
         "CHK-HMAC-NARROW-WRITE",
         "CHK-HMAC-FE-INTRTEST",
+        "CHK-HMAC-IDLE-DONE",
     )
 
     async def run_scenario(self) -> None:
@@ -648,8 +655,15 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             raise AssertionError("no B handshake seen for a completed MSG_FIFO write")
         return max(1, round((t1 - t0) / self._period_ps))
 
-    async def _status(self, phase: str, *, expect_reset: bool = False) -> dict:
-        """Read STATUS and grade one sample (hmac.adoc:157-160)."""
+    async def _status(
+        self, phase: str, *, expect_reset: bool = False, expect_done_idle: bool = False
+    ) -> dict:
+        """Read STATUS and grade one sample (hmac.adoc:157-160).
+
+        ``expect_done_idle`` marks the read after ``hmac_done`` = 1: it grades
+        ``hmac_idle`` = 1 as CHK-HMAC-IDLE-DONE. Every other read logs ``hmac_idle`` as
+        OBS-HMAC-IDLE.
+        """
         raw = await self._rd(HMAC_STATUS)
         st = {
             "depth": (raw & ST_DEPTH) >> ST_DEPTH_LSB,
@@ -681,7 +695,18 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             full=st["full"],
             cap=FIFO_CAP,
         )
-        self.chk.obs("HMAC-IDLE", phase=phase, idle=st["idle"])
+        if expect_done_idle:
+            self._grade(
+                "HMAC-IDLE-DONE",
+                st["idle"] == 1,
+                phase=phase,
+                idle=st["idle"],
+                expect=1,
+                depth=st["depth"],
+                empty=st["empty"],
+            )
+        else:
+            self.chk.obs("HMAC-IDLE", phase=phase, idle=st["idle"])
         self.samples.append((phase, st["depth"], st["full"], st["empty"]))
         return st
 
@@ -759,7 +784,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             if self._now_clk() - t0 > DONE_BOUND:
                 raise _TrialTimeout(owner, DONE_BOUND, "hmac_done")
             await ClockCycles(self.dut.clk_i, 10)
-        await self._status("idle")
+        await self._status("idle", expect_done_idle=True)
         digest = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(HMAC_DIGEST_WORDS[sha])]
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
         return digest
