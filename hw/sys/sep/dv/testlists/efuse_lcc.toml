@@ -85,17 +85,17 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# Program with and without EFUSE_PROGRAM_CTRL.efuse_program_read_back. count=2
-# drops the first two bank writes, so each leg sees one dropped and one kept write.
-name = "sep_efuse_program_read_back_select_test"
-module = "efuse.sep_efuse_program_read_back_select_test"
+# The SHIM verifies every program. count=1 drops the first bank write, so the
+# first program sees a dropped write and the second a kept write.
+name = "sep_efuse_program_verify_test"
+module = "efuse.sep_efuse_program_verify_test"
 seed = 1
 timeout_sec = 1800
 tags = ["efuse", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = [
-    "+sep_efuse_prog_fail_count=2",
+    "+sep_efuse_prog_fail_count=1",
     "+sep_efuse_prog_fail_percent=0",
     "+sep_efuse_prog_fail_seed={seed}",
 ]

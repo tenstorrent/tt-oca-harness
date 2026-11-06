@@ -224,7 +224,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         addr = bit_address(f, w, b)
         bank = SepEfuseBank(cocotb.top)
         pre = bank.read()
-        prog = sep_efuse_otp_program_once_seq(addr, read_back=True)
+        prog = sep_efuse_otp_program_once_seq(addr)
         await self.start_seq(prog)
         post = bank.read()
         diff = bank_diff(pre, post)

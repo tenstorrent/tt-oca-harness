@@ -460,7 +460,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             r["clr_req_err"] = await self._clear_status()
         return r
 
-    async def _program(self, bit_addr: int, *, read_back: int = 0, watch: bool = True) -> dict:
+    async def _program(self, bit_addr: int, *, watch: bool = True) -> dict:
         """Program bit ``bit_addr`` (data 1): clear, go, full W, command tap, bank diff, status.
 
         ``efuse_req_error`` is sticky, so the request clears it and reads it back
@@ -471,7 +471,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         snap = self.bank.snapshot()
         mark = self.shim.mark() if watch else None
         start = self._pulse_mark() if watch else None
-        await program_go_no_wait(self._wr, bit_addr, read_back=read_back)
+        await program_go_no_wait(self._wr, bit_addr)
         await ClockCycles(cocotb.top.clk_i, self.w)
         progs = self.shim.programs_since(mark) if mark is not None else None
         diff = self.bank.diff_since(snap)
@@ -1331,12 +1331,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
     async def _round(self, k: int, rnd: dict, ref: list[int]) -> None:
         """Step 13 (program, unchanged shadow) and step 14 (resense, model compare)."""
-        name, a, rb = rnd["field"], rnd["addr"], rnd["read_back"]
+        name, a = rnd["field"], rnd["addr"]
         wi = field_word(name) + rnd["word"]
         old = ref[wi]
         tag = self._step()
         pre = await self._rd32(shadow_addr(name, rnd["word"]))
-        r = await self._program(a, read_back=rb, watch=False)
+        r = await self._program(a, watch=False)
         after_prog = await self._rd32(shadow_addr(name, rnd["word"]))
         prog_ok = r["req_err"] == 0 and diff_is_exactly(r["diff"], a)
         new = old | (1 << rnd["bit"])
@@ -1367,7 +1367,6 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             round=k,
             field=name,
             bit_addr=a,
-            rb=rb,
             otp_diff=a if diff_is_exactly(r["diff"], a) else diff_log(r["diff"]),
             req_err=r["req_err"],
             prog_status=r["prog_status"],

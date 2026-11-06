@@ -31,9 +31,8 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     frontdoor write lands; the SEC_DIS match gives
                     ``security_disable_o`` = 1 and an all-ones ``FEAT_CTRL``.
   CHK-STM-PROG      no strap-1 program changes its bank bit (direct read in the strap-0
-                    epoch before any program of that epoch) and no ``PROGRAM`` or
-                    ``PROGRAM_READ_BACK`` command reaches ``efuse_shim_command_req_o``
-                    at strap 1.
+                    epoch before any program of that epoch) and no ``PROGRAM`` command
+                    reaches ``efuse_shim_command_req_o`` at strap 1.
   CHK-STM-PROG-CTL  each strap-0 program lands inside ``W_prog`` (direct read) and
                     shows a program command with its address at the tap.
   CHK-STM-SECRET    at strap 1 the four secret fields read 0 at
@@ -69,7 +68,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     access itself (bus timeout).
   CTRL-STM-PROG-ISSUED  after each program go of both straps, the software-owned
                     fields of ``EFUSE_PROGRAM_CTRL`` (``efuse_addr``, ``efuse_data``,
-                    ``efuse_program_read_back``, ``program_enable``) read back equal to
+                    ``program_enable``) read back equal to
                     the go, so a strap-1 go that did not land fails.
 
 Each strap-0 target cell is graded right after its readback. A strap-1 cell FAILs
@@ -187,7 +186,6 @@ _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse
 _PG_RW = (
     EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
     | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
-    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
     | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
 )
 _REQ_ERR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(

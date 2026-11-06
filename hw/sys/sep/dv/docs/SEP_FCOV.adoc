@@ -5413,7 +5413,7 @@ that closed set (<<sep-fcov-parked>>); it blocks no cell. Each absent input is l
 |`efuse_read_state_i`, `efuse_program_state_i` |`efuse_read_state_o`, `efuse_program_state_o` |interface FSM state |In the sampler
 |`cpu_reset_n_i`, `sep_reset_n_i`, `jtag_sep_reset_n_ovrd_i`, `jtag_sep_reset_n_val_i` |reset pair and IC_RESET override |reset release |In the sampler
 |Generated address constants `SEP_EFUSE_MAP_*`, `EFUSE_INTERFACE_CTRL_*`, `EFUSE_MMR_*`, `SEP_LIFECYCLE_CTRL_*` |`sep_reg.svh` |address decode |In the sampler (the sampler already uses constants of this family)
-|`shim_cmd_i.command` (READ `2'b00`, PROGRAM `2'b01`, PROGRAM_READ_BACK `2'b10`) and `.valid` |decode of the post-guard shim command |program or read at the shim |In the sampler; the input is the added tap `shim_cmd_i`
+|`shim_cmd_i.command` (READ `1'b0`, PROGRAM `1'b1`) and `.valid` |decode of the post-guard shim command |program or read at the shim |In the sampler; the input is the added tap `shim_cmd_i`
 |`efuse_shadow_probe_o` (masked `shadow_efuse_o`), words LOCKS 0 to 2, LC_STATE 3, TRANSIENT_RMA_EN 5, SIP_DIS 6 to 7, SYS_DIS 8 to 9, digests, secrets |sensed shadow words |DIS words, lock bits, field values |Approved probe. In the sampler; the input is `efuse_shadow_i`
 |`feat_ctrl_i[63:0]` |`lcc_feat_ctrl_probe_o` (`SEP_CORE.feat_ctrl`) |64-bit feature control |Approved probe. In the sampler
 |`lc_sigint_i` |`lcc_sigint_err_probe_o` (`sep_ras_o.lc_sigint_err`) |lifecycle integrity error |Approved probe. In the sampler

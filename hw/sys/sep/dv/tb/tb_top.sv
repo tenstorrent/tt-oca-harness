@@ -2929,8 +2929,7 @@ module sep_uvm_top
     assign efuse_shim_cmd_valid_o = `SEP_CORE.efuse_shim_command_req_o.valid;
     assign efuse_shim_cmd_command_o = `SEP_CORE.efuse_shim_command_req_o.command;
     assign efuse_shim_cmd_address_o = `SEP_CORE.efuse_shim_command_req_o.address;
-    assign efuse_shim_cmd_program_data_o = `SEP_CORE.efuse_shim_command_req_o.program_data;
-    assign efuse_shim_cmd_len_o = `SEP_CORE.efuse_shim_command_req_o.access_length_words;
+    assign efuse_shim_cmd_len_o = `SEP_CORE.efuse_shim_command_req_o.read_word_count;
     // The shim response at the sep input efuse_shim_command_resp_i: valid, status
     // and data, after the sense-status inject.
     assign efuse_shim_resp_valid_o = `SEP_CORE.efuse_shim_command_resp_i.valid;
@@ -3025,9 +3024,8 @@ module sep_uvm_top
     // eFuse shim response hold.
     // ------------------------------------------------------------------
     // A healthy shim always answers, so a late program response has no
-    // frontdoor. While efuse_shim_resp_hold_i=1 and a PROGRAM or
-    // PROGRAM_READ_BACK command is at the post-guard port, the valid of the
-    // shim response at the sep input efuse_shim_command_resp_i (the
+    // frontdoor. While efuse_shim_resp_hold_i=1 and a PROGRAM command is at
+    // the post-guard port, the valid of the shim response at the sep input efuse_shim_command_resp_i (the
     // sep_wrapper net efuse_shim_command_resp) is forced to 0. A READ command
     // never matches, so sense and read responses are not held. The program
     // interface keeps its request valid until a response arrives, so while

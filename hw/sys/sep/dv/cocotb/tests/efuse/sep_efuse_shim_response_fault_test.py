@@ -545,7 +545,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
         await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
         ctl_go = self.clk
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1, read_back=0))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1))
         pg = await self._poll_pg(_M_PG_DONE, poll_bound)
         ctl_clks = self.clk - ctl_go if pg is not None else None
         pg = await self._rd(PROGRAM_CTRL_ADDR) if pg is not None else None

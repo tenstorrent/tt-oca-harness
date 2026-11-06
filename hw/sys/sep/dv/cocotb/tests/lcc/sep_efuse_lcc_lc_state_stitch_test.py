@@ -108,7 +108,6 @@ _EFUSE_PROGRAM_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
 _PG_ADDR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
 _PG_DATA = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
 _PG_GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_go")
-_PG_READ_BACK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
 _PG_ENABLE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
 _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
@@ -229,7 +228,7 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
 
         # Field masks from the generated export, like the register address above,
         # so a field move in the RDL moves the programming word with it.
-        wdata = (self.bit_addr & _PG_ADDR) | _PG_DATA | _PG_GO | _PG_READ_BACK | _PG_ENABLE
+        wdata = (self.bit_addr & _PG_ADDR) | _PG_DATA | _PG_GO | _PG_ENABLE
         saw_retry = False
         for attempt in range(1, self.max_attempts + 1):
             await self._write(_EFUSE_PROGRAM_CTRL, wdata, "program_ctrl")
