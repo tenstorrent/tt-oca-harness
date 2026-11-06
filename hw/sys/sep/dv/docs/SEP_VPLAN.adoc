@@ -577,7 +577,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip
-|Proves the OpenTitan SPI host controller is configured, clocks a real command out, and receives a real reply: the RXDATA word carries the flash model's three identifier bytes and a zero pad byte in one in-word byte order (`CHK-JEDEC-ID`; the order is logged, `OBS-SPI-BYTEORDER`).
+|Proves the OpenTitan SPI host controller is configured (CONFIGOPTS reads back the written word, `CTRL-SPI-CONFIGOPTS`), clocks a real command out, and receives a real reply: the RXDATA word carries the flash model's three identifier bytes and a zero pad byte in one in-word byte order (`CHK-JEDEC-ID`; the order is logged, `OBS-SPI-BYTEORDER`).
 |<<sep_rom_sanity_test,`sep_rom_sanity_test`>>
 |1
 |cpu, +skip_fuse_sense

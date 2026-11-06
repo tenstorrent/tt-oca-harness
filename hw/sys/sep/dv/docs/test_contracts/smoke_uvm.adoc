@@ -401,7 +401,7 @@ not grade that rejection.
 
 [arabic]
 . Bring up in `no_cpu` mode.
-. Configure the SPI host: clock divider, chip-select timing, enable.
+. Configure the SPI host: clock divider, chip-select timing, enable. Read CONFIGOPTS back; it equals the written word (CTRL-SPI-CONFIGOPTS).
 . Issue the JEDEC identify command through the command and transmit registers.
 . Read the received identifier out of the receive register.
 
@@ -410,6 +410,8 @@ not grade that rejection.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CTRL-SPI-CONFIGOPTS
+|CONFIGOPTS reads back the written Mode 0 word (CLKDIV 9, CSNIDLE, CSNTRAIL and CSNLEAD 2; every CONFIGOPTS field is `sw = rw` in `vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl`). The reset value 0 also runs Mode 0, so a write that does not land would pass every other checker; a mismatch fails the leaf. Evidence: `CTRL-SPI-CONFIGOPTS PASS: configopts=0x<w> expect=0x<w>`.
 |CHK-JEDEC-ID
 |The RXDATA word carries the flash model's three identifier bytes in wire order (the model sends the most significant byte of the identifier first) in one in-word byte order, and its fourth byte reads 0. The word is graded in either order; a byte that is wrong, rotated or non-zero in the pad position fails. The in-word order is not graded (OBS-SPI-BYTEORDER).
 |CHK-SPI-WIRE

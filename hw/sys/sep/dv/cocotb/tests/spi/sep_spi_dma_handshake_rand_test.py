@@ -158,8 +158,10 @@ Checkers:
                   with TXQD 0 raises the probe; after each of the first
                   W_tx-1 TXDATA words the probe reads 1 and has not fallen;
                   the W_tx-th word makes TXQD = W_tx and the probe falls once
-                  and reads 0. Each state is read after a settle of
-                  TX_SETTLE_CLKS clocks. Controls: STATUS.TXQD reads the number
+                  and reads 0. The states with an edge are read after a
+                  settle of TX_SETTLE_CLKS clocks; each state between them
+                  is read after a watch for a fall of TRIG_RISE_CLKS clocks,
+                  the bound of an expected edge. Controls: STATUS.TXQD reads the number
                   of words written at each state (else CTRL-MISSING), and the
                   probe reads 0 before the TX_WATERMARK write. The clocks from
                   the TX_WATERMARK write to the rise and from the last
@@ -399,8 +401,8 @@ SENSE_CYCLES = 20_000
 STABLE_READS = 8
 TRIG_RISE_CLKS = 200
 CS_HIGH_CLKS = 2_000
-# TX-term cell: clocks from a TXQD/TX_WATERMARK change to the level read, and
-# the STATUS reads allowed for TXQD to show a written word.
+# TX-term cell: clocks from a TXQD/TX_WATERMARK change to the level read at a
+# state with an edge, and the STATUS reads allowed for TXQD to show a written word.
 TX_SETTLE_CLKS = 16
 TX_QD_READS = 50
 # Clocks the pass label is held before it returns to 0.
@@ -567,13 +569,15 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             return word_image(words, self.order.order or "lsb_first")
         return self.order.bytes_of(words, len(expect), expect=expect, where=where)
 
-    def _expect_rx(self, opcode: int, lanes: int, data: bytes, *, want: int, label: str) -> None:
-        """Register the bytes the DUT delivered for one frame of the open session."""
+    def _expect_rx(
+        self, opcode: int, lanes: int, data: bytes, *, want: int, label: str, addr: int = FLASH_ADDR
+    ) -> None:
+        """Register the bytes the DUT delivered for one read at ``addr`` of the open session."""
         sess = self.sess
         if sess is None:
             raise AssertionError(f"{label}: RX expectation outside a monitor session")
         full = f"{sess.tag}:{label} width=x{lanes}"
-        sess.sb.expect_rx(opcode, data, source="dut", label=full)
+        sess.sb.expect_rx(opcode, data, source="dut", label=full, addr=addr)
         sess.rx.append(_RxExpect(lanes, opcode, len(data), want, full))
 
     async def _session_end(self) -> None:
@@ -1178,7 +1182,15 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
                 st = await spi.read_status()
                 if st.txqd == k:
                     break
-            await ClockCycles(cocotb.top.clk_i, TX_SETTLE_CLKS)
+            if want is None:
+                # A state with no edge expected: watch for a fall for as long as
+                # an expected edge may take.
+                try:
+                    await self.trig.wait_level(0, TRIG_RISE_CLKS)
+                except BitWatchTimeout:
+                    pass
+            else:
+                await ClockCycles(cocotb.top.clk_i, TX_SETTLE_CLKS)
             lvl = self.tw.level()
             falls = len(self.trig.fall_clks_since(m_cell))
             rises = self.trig.rises_since(m_cell)
@@ -1262,7 +1274,9 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             # MUTATION hook (step 14, item 11d): for lanes == 2 register
             # ``delivered`` with one byte flipped (XOR 0xFF); the byte count
             # stays the same, so CHK-SPI-SB-RX fails on the x2 byte compare.
-            self._expect_rx(opcode, lanes, delivered, want=len(data), label=f"lane_x{lanes}")
+            self._expect_rx(
+                opcode, lanes, delivered, want=len(data), label=f"lane_x{lanes}", addr=addr
+            )
         close_graded_window(self.logger)
 
     async def run_scenario(self) -> None:

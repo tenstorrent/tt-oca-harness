@@ -5,7 +5,11 @@
 The flash BFM must log 0x9F as its last opcode, and the RXDATA word must carry
 the BFM's three ID bytes in wire order, in one in-word byte order, with its
 fourth byte 0 (CHK-JEDEC-ID). The in-word order is not graded: the one
-OBS-SPI-BYTEORDER line logs it. Run mode: no_cpu with +skip_fuse_sense.
+OBS-SPI-BYTEORDER line logs it. CTRL-SPI-CONFIGOPTS: CONFIGOPTS reads back the
+written Mode 0 word (CLKDIV 9, CSNIDLE, CSNTRAIL and CSNLEAD 2; every field is
+``sw = rw`` in ``spi_controller.rdl``), else the leaf fails before CHK-JEDEC-ID,
+because the reset value 0 also runs Mode 0. Run mode: no_cpu with
++skip_fuse_sense.
 """
 
 from __future__ import annotations
@@ -17,7 +21,11 @@ from env.sep_spi_scoreboard import SepSpiScoreboard
 from env.sep_spi_wire_monitor import SepSpiWireMonitor
 from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
-from seq_lib.sep_spi_flash_jedec_seq import SPI_JEDEC_ID, sep_spi_flash_jedec_seq
+from seq_lib.sep_spi_flash_jedec_seq import (
+    SPI_CONFIGOPTS_MODE0,
+    SPI_JEDEC_ID,
+    sep_spi_flash_jedec_seq,
+)
 
 
 @pyuvm.test()
@@ -43,6 +51,11 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
             # No select step: the OT SPI host drives the pads directly.
             seq = sep_spi_flash_jedec_seq("spi_flash_jedec_seq")
             await self.start_seq(seq)
+            line = f"configopts=0x{seq.configopts:08x} expect=0x{SPI_CONFIGOPTS_MODE0:08x}"
+            if seq.configopts != SPI_CONFIGOPTS_MODE0:
+                self.logger.error("CTRL-SPI-CONFIGOPTS FAIL: %s", line)
+                raise AssertionError(f"CTRL-SPI-CONFIGOPTS FAIL: {line}")
+            self.logger.info("CTRL-SPI-CONFIGOPTS PASS: %s", line)
             transactions = flash.get_transactions()
             assert transactions, "SPI flash BFM saw no completed transactions"
             assert transactions[-1]["opcode"] == 0x9F, "SPI flash did not see JEDEC-ID opcode"

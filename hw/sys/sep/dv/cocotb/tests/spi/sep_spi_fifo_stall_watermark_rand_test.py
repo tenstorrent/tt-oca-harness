@@ -64,7 +64,9 @@ Checkers:
                    (RXQD > RX_WATERMARK) one below and one above RX_WATERMARK
                    0, 1 and a drawn mid value, and reads 0 when a drain takes
                    RXQD to RX_WATERMARK minus 1. Control: TX_WATERMARK 1 with
-                   TXQD 0 gives TXWM=1. At the drawn control watermark Wt (1, a
+                   TXQD 0 gives TXWM=1. Control: CONTROL reads back each
+                   RX_WATERMARK value the leg writes before its RXWM reads,
+                   else CTRL-MISSING. At the drawn control watermark Wt (1, a
                    mid value or the TX depth) TXWM equals (q < Wt) at each
                    occupancy q: TXWM "If high, the amount of data in the TX
                    FIFO has fallen below the level of CONTROL.TX_WATERMARK
@@ -1215,6 +1217,12 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             wr = vals[name]
             self._gate(True)
             await self._write_control(rx_wm=wr)
+            back = (await self.ops.rd(CONTROL) & CTRL_RX_WM) >> RX_WM_LSB
+            if back != wr:
+                self._ctrl_missing(chk, f"side=rx CONTROL.RX_WATERMARK reads {back}, wrote {wr}")
+            self.logger.info(
+                "CTRL-SPI-WM seed=%d side=rx wm=%d control_rx_watermark=%d", self.seed, wr, back
+            )
             rs = ([wr - 1] if wr >= 1 else []) + [wr + 1]
             pending = None
             for r in rs:

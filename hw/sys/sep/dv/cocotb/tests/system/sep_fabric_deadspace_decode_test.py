@@ -104,7 +104,7 @@ CHK-TRNG-REPLY: a single-beat (AxSIZE 2) read and a single-beat write, each
 answered OKAY, SLVERR and DECERR at the port, reach the port as exactly one
 AXI-Lite access with exactly one reply beat, and the initiator receives the
 port code. SEP does not decode offsets inside the window
-(``doc/integrator/src/smu-sep.adoc:117-119``), so the address of that port
+(``doc/integrator/src/smu-sep.adoc:133-135``), so the address of that port
 access carries the issued window offset in its low 12 bits (the 4 KiB
 aperture). Besides the drawn offsets, every run issues a read and a write at
 the first word (offset 0x000), the last word (0xFFC) and one drawn interior
@@ -178,7 +178,7 @@ _RESP_NAME = {
 }
 
 _TRNG_BASE = sym("TRNG_REG_MAP_BASE_ADDR")
-# Size of the TRNG aperture (4 KiB, doc/integrator/src/smu-sep.adoc:117); the
+# Size of the TRNG aperture (4 KiB, doc/integrator/src/smu-sep.adoc:133); the
 # port address carries the window offset in these low bits.
 _TRNG_SIZE = sym("TRNG_REG_MAP_SIZE")
 _TRNG_OFF_MASK = _TRNG_SIZE - 1

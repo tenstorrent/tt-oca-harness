@@ -1360,7 +1360,8 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         # AxUSER with SEP's source ID, which has no stated number. Wildcard probes
         # with two distinct LSU AxUSER values read it off PR-OUT; the grade is not
         # OTHERS and one value for both (SepSrcIdGrade). The exact and mismatch
-        # cells take the read ID as stimulus.
+        # cells take the read ID as stimulus and an issued AxUSER whose [3:0]
+        # differs from it, so a filter that matches the issued AxUSER fails them.
         users = draw_src_users(self.rng)
         grade = SepSrcIdGrade("FILT")
         for write in (False, True):
@@ -1389,7 +1390,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         sep = grade.value()
         self.sep_id = sep
         for write in (False, True):
-            u = self.rng.choice(users)
+            u = self.rng.choice([x for x in users if x & 0xF != sep])
             v = self.rng.choice([x for x in range(1, 16) if x != sep])
             p = self._p_out("smu", write, self.rng.getrandbits(1), user=u)
             idx = self.rng.randrange(n_out)

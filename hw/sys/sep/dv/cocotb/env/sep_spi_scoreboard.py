@@ -7,7 +7,8 @@ A leaf tells the scoreboard what it expects:
 * ``expect_tx(addr, data, opcode=PAGE_PROGRAM)``: a program the stimulus
   sent from the DUT to the flash (the payload the leaf or its firmware
   queued); ``opcode`` names the program command, e.g. QUAD PAGE PROGRAM;
-* ``expect_rx(opcode, data, source=...)``: the bytes of a read.
+* ``expect_rx(opcode, data, source=..., addr=None)``: the bytes of a read
+  (at ``addr`` when given).
   ``source="dut"``: ``data`` is what the DUT delivered (what the leaf read
   from RXDATA or a DMA destination), so the DUT side is graded here.
   ``source="fw:<CHK id>"``: ``data`` is the golden, and the named firmware
@@ -53,7 +54,7 @@ the leaf (``SepSpiByteOrder.bytes_of``) and are compared as given.
 Each direction with expectations logs one line with its frame and byte
 counts; a scoreboard with no expectation at all fails. A program or read is
 matched to the first unused flash record with exactly its opcode (and address
-for a program), so a record of another program command does not satisfy it;
+for a program, or for a read given ``addr``), so a record of another program command does not satisfy it;
 a missing match fails. ``flash`` may be ``None`` for a leaf with raw
 frames only; a program or read expectation then fails.
 """
@@ -139,13 +140,18 @@ class SepSpiScoreboard:
             raise ValueError(f"expect_tx opcode=0x{int(opcode):02x}: not a program command")
         self._expects.append(_Expect("tx", int(opcode), addr, bytes(data), label))
 
-    def expect_rx(self, opcode: int, data: bytes, *, source: str, label: str = "") -> None:
-        """Bytes of a read with ``opcode``; ``source`` is ``"dut"`` or ``"fw:<CHK id>"``."""
+    def expect_rx(
+        self, opcode: int, data: bytes, *, source: str, label: str = "", addr: int | None = None
+    ) -> None:
+        """Bytes of a read with ``opcode``; ``source`` is ``"dut"`` or ``"fw:<CHK id>"``.
+
+        With ``addr`` only a flash record of a read at ``addr`` matches.
+        """
         if source != "dut" and not re.fullmatch(r"fw:CHK-[A-Z0-9-]+", source):
             raise ValueError(f"expect_rx source={source!r}: 'dut' or 'fw:<CHK id>'")
         tag = f"source={source}"
         full = f"{label} {tag}" if label else tag
-        self._expects.append(_Expect("rx", int(opcode), None, bytes(data), full))
+        self._expects.append(_Expect("rx", int(opcode), addr, bytes(data), full))
 
     def frame_mark(self) -> int:
         """Index the next monitor frame will take; pass it to ``expect_frame``."""
@@ -283,7 +289,12 @@ class SepSpiScoreboard:
                 continue
             if exp.kind == "tx" and rec["opcode"] == exp.opcode and rec["addr"] == exp.addr:
                 return i
-            if exp.kind == "rx" and fmt.response and rec["opcode"] == exp.opcode:
+            if (
+                exp.kind == "rx"
+                and fmt.response
+                and rec["opcode"] == exp.opcode
+                and exp.addr in (None, rec["addr"])
+            ):
                 return i
         return None
 

@@ -147,6 +147,19 @@ static int spi_err_recover(uint32_t expect_bm, uint32_t *residual) {
     const uint32_t empty = SPI_CONTROLLER__STATUS__TXEMPTY_bm | SPI_CONTROLLER__STATUS__RXEMPTY_bm;
     uint32_t ctrl = spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    // The FIFOs are already empty and ERROR_STATUS keeps its value through the
+    // reset, so the CONTROL readback is the evidence that SW_RST is held.
+    uint32_t held_ctrl = spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    if (!(held_ctrl & SPI_CONTROLLER__CONTROL__SW_RST_bm)) {
+        sep_mbx_puts("FAIL: CTRL-ERR-SWRST CONTROL=");
+        sep_mbx_puthex(held_ctrl);
+        sep_mbx_puts(" SW_RST not held\n");
+        err++;
+    } else {
+        sep_mbx_puts("CTRL-ERR-SWRST PASS: CONTROL=");
+        sep_mbx_puthex(held_ctrl);
+        sep_mbx_puts(" SW_RST held\n");
+    }
     uint32_t st = 0;
     int t = SEP_SPI_TIMEOUT;
     while (t-- > 0) {

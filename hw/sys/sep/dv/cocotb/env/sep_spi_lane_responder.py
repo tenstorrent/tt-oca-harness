@@ -70,8 +70,10 @@ In-word byte order (OpenTitan SPI_HOST "Input and Output Byte Ordering" and
 "Command Length and Alignment in DATA"): ``lsb_first`` is ``ByteOrder = 1``
 (first wire byte in bits 7:0), ``msb_first`` is ``ByteOrder = 0`` (first wire
 byte in bits 31:24). ``word_image(words, order)`` is the wire-order bytes of
-whole words. In both orders the data of a partial last word comes first in
-its image and the zero pad last, so one ``[:n]`` cut serves both.
+whole words. In both orders the data of a partial last RX word comes first in
+its image and the zero pad last, so one ``[:n]`` cut serves both. A TX image
+is built from ``pack_tx_words``, so the ``msb_first`` image of a 1- or 2-byte
+last TX word holds only zero pad.
 
 ``SepSpiByteOrder`` holds one order for every data word of a leaf. Build one
 per leaf and pass it to every compare, to ``run_lane_frame`` and to each
@@ -81,6 +83,9 @@ per leaf and pass it to every compare, to ``run_lane_frame`` and to each
   and counts as decisive when it matches the fixed order;
 * a word that both orders match (a byte palindrome, e.g. all zero) passes on
   its bytes and fixes nothing;
+* a TX word whose image in the only order it matches is only zero pad fixes
+  nothing: it passes, as ambiguous, only when that order is already fixed,
+  and fails otherwise;
 * a word that matches neither order, or only the order not fixed, fails.
 
 ``bytes_of(words, n, expect=..., where=...)`` (RX, and any word image a
@@ -402,16 +407,30 @@ class SepSpiByteOrder:
         self.unmatched = 0
         self._logged = False
 
-    def _grade(self, images: dict[str, bytes], target: bytes, where: str) -> str:
+    def _grade(
+        self,
+        images: dict[str, bytes],
+        target: bytes,
+        where: str,
+        pad_only: dict[str, int] | None = None,
+    ) -> str:
         """Grade ``target`` word by word against the image of each order; return the leaf order.
 
-        The returned order is the fixed one, or ``lsb_first`` while none is fixed.
+        ``pad_only`` maps an order to the position of the one word whose image
+        in that order is only zero pad. The returned order is the fixed one, or
+        ``lsb_first`` while none is fixed.
         """
         self.compares += 1
+        pad_only = pad_only or {}
         size = max(len(target), *(len(img) for img in images.values()))
         for pos in range(0, size, 4):
             want = target[pos : pos + 4]
             hits = [o for o in SPI_WORD_ORDERS if images[o][pos : pos + 4] == want]
+            if len(hits) == 1 and pad_only.get(hits[0]) == pos:
+                if hits[0] == self.order:
+                    self.ambiguous += 1
+                    continue
+                hits = []
             if len(hits) == 2:
                 self.ambiguous += 1
             elif not hits:
@@ -457,7 +476,9 @@ class SepSpiByteOrder:
         data = bytes(data)
         words = pack_tx_words(data)
         images = {o: word_image(words, o)[: len(data)] for o in SPI_WORD_ORDERS}
-        return images[self._grade(images, bytes(wire), where)]
+        tail = len(data) % 4
+        pad_only = {"msb_first": len(data) - tail} if tail in (1, 2) else None
+        return images[self._grade(images, bytes(wire), where, pad_only)]
 
     def adopt(self, order: str, *, where: str) -> bool:
         """Take an order that another grader fixed (e.g. a firmware console line).

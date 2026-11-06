@@ -36,7 +36,9 @@ Checks:
                    field bits, and the clean command runs LEN+1 sck cycles with
                    ERROR_STATUS 0. Controls: each armed register held a
                    non-reset value (``nonreset``), and in the midseg trial
-                   ``spi_cs_n_o`` is low when ``rst_ni`` asserts; a control
+                   ``spi_cs_n_o`` is low when ``rst_ni`` asserts, and the
+                   READY read before its COMMAND shows TXQD at least the m +
+                   extra words written (CTRL-COLDRST-TXQD); a control
                    that does not hold logs CTRL-MISSING and fails. A midseg
                    line carries ``width=`` and the Tx byte count of the clean
                    data command; the idle line carries ``width=-``.
@@ -498,7 +500,21 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         cpol = (d["arm"]["CONFIGOPTS"] >> _R.field_lsb("CONFIGOPTS", "cpol")) & 1
         self.pads.set_idle_level(cpol)
         mark = self.pads.mark()
-        await self.ops.issue_command(command_word(4 * m - 1, speed=_SPEED[width], direction=DIR_TX))
+        rdy = await self.ops.issue_command(
+            command_word(4 * m - 1, speed=_SPEED[width], direction=DIR_TX)
+        )
+        if rdy.txqd < m + extra:
+            self._ctrl_missing(
+                f"trial=midseg width=x{width} TXQD={rdy.txqd} before the COMMAND, "
+                f"{m + extra} words written"
+            )
+        self.logger.info(
+            "CTRL-COLDRST-TXQD LOG seed=%d width=x%d txqd=%d written=%d",
+            self.seed,
+            width,
+            rdy.txqd,
+            m + extra,
+        )
         edges = await self.pads.wait_leading_edges(d["t"], mark, _SEG_BOUND_CLKS)
         cs_low = int(self.pads.cs_low())
         self.logger.info(
