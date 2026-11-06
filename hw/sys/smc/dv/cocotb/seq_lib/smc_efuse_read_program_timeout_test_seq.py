@@ -121,8 +121,8 @@ STATUS_ERRORS = REQ_ERR | PROG_ADDR_ERR | READ_ADDR_ERR
 # holds fuse bits 32n..32n+31 (smc_efuse_vip_utils preload layout).
 EFUSE_MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 LOCKS_ADDR = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
-SPARE1_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 4)
-SPARE2_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 27)
+SPARE1_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 1)
+SPARE2_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 2)
 SPARE0_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 SPARE1_WLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE1_WRITE_LOCK_bm")
 SPARE1_RLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE1_READ_LOCK_bm")
@@ -130,8 +130,8 @@ SPARE2_WLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE2_WRITE_LOC
 SPARE2_RLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE2_READ_LOCK_bm")
 
 #: Bit addresses of SMC_COV_B4_010: 0xFFFF is out of range under every reading;
-#: 0x2000 and 0x6000 are measured only, and 0x1FFF is the last bit of the
-#: 8192-bit reading (SF-025).
+#: 0x2000 and 0x6000 are measured only, and 0x1FFF lies inside the 6144-bit
+#: reading (64 harness plus 128 supplementary words) (SF-025).
 OOR_ADDR = 0xFFFF
 OOR_EXTRA = (0x2000, 0x6000)
 LAST_IN_RANGE = 0x1FFF
@@ -892,7 +892,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         self.chk_seen.add("CHK-EFUSE-RDATA-UPPER-ONES")
         self._stamp("UPPER-ONES")
 
-        # S8: write locks on slots 8 and 31; a write of 0 must not clear them.
+        # S8: write locks on slots 5 and 6 (SPARE[1], SPARE[2]); a write of 0 must not clear them.
         wlocks = SPARE1_WLOCK | SPARE2_WLOCK
         await self.csr_write("S8_LOCKS_SET", LOCKS_ADDR, wlocks, length=8)
         set_rb = await self._read_locks("S8_LOCKS_SET_RB")
@@ -924,7 +924,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         self.chk_seen.add("CHK-EFUSE-GUARD-HI-WRITE")
         self._stamp("WRITE-LOCKS")
 
-        # S9: read locks on slots 8 and 31, then read both shadow registers.
+        # S9: read locks on slots 5 and 6 (SPARE[1], SPARE[2]), then read both shadow registers.
         rlocks = SPARE1_RLOCK | SPARE2_RLOCK
         await self.csr_write("S9_LOCKS_SET", LOCKS_ADDR, rlocks, length=8)
         rd_rb = await self._read_locks("S9_LOCKS_SET_RB")

@@ -103,16 +103,22 @@ def _regions() -> tuple[_Region, ...]:
     ]
     for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")):
         starts.append((f"SPARE{k}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k)))
+    # The three SPARE_TAIL entries share one lock pair.
+    for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")):
+        starts.append(
+            (f"SPARE_TAIL{k}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", k))
+        )
     regions = []
     for idx, (name, addr) in enumerate(starts):
         end = starts[idx + 1][1] if idx + 1 < len(starts) else EFUSE_MAP_BASE + EFUSE_MAP_SIZE
+        lock_name = "SPARE_TAIL" if name.startswith("SPARE_TAIL") else name
         regions.append(
             _Region(
                 name,
                 (addr - EFUSE_MAP_BASE) // 4,
                 (end - EFUSE_MAP_BASE) // 4,
-                _lock(name, "WRITE"),
-                _lock(name, "READ"),
+                _lock(lock_name, "WRITE"),
+                _lock(lock_name, "READ"),
             )
         )
     return tuple(regions)
