@@ -314,7 +314,7 @@ The `KM-SRAM-RD` log line is a measurement, not a checker: the count of KM SRAM 
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`.
+*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`: an assert that fails the leaf on `LOCKED` or an executing state, and logs an untagged `OTBN memory-access precondition OK: STATUS=0x<v>` line. It prints no CHK-PRECOND record.
 
 *Scope limit*: OTBN sits in `StatusBusySecWipeInt` (`0x04`) for the whole of this
 test — leaving that state needs EDN entropy to reseed URND, and the `no_cpu`
@@ -347,14 +347,15 @@ not grade that rejection.
 
 *Objective*: Proves the eFuse sense sequence runs to completion at reset and that what landed in the shadow registers matches the programmed image word for word.
 
-*Test Coverage*: Reset sense-done; shadow words match the programmed image.
+*Test Coverage*: Reset sense-done; shadow words match the programmed image; `lc_state_o` holds INVALID through the pre-sense window and takes the sensed value at sense done.
 
 *Test Procedure*:
 
 [arabic]
 . Stage an eFuse image and bring up with real fuse sense — no skip plusarg.
-. Wait for sense-done.
+. Wait for sense-done. While waiting, record on every clock the first clock at which each shadow word changes at `efuse_shadow_probe_o`, and the clock of the `sep_fuse_sense_done_o` rise (CHK-SENSE-WORD-ORDER).
 . Compare all shadow words against the staged image.
+. From the `rst_ni` release to the sense-done rise, sample `lc_state_o`, the sensed `LC_STATE` byte and `security_disable_o` on every clock, and on the rise clock sample `lc_state_o` and the sensed byte.
 
 *Checkers*:
 
@@ -367,11 +368,15 @@ not grade that rejection.
 |The sense loads the shadow words in ascending word order, one word per response strobe, and `sep_fuse_sense_done_o` rises one clock after the strobe that stores word 255 (`hw/sys/sep/doc/otp_fuse_controller.adoc`, eFuse sensing). Over the words whose staged value differs from reset, the first clock on which each word changes at `efuse_shadow_probe_o` rises strictly with the word index; the done rise is one clock after the change of word 255, or after the last changed word when word 255 stays at reset. Fewer than two changed words fails the check.
 |CHK-IMAGE-MATCH
 |Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare shows a store only for a word whose staged value differs from its RDL reset value. The image keeps the `LOCKS` and `LOCKS_SPARE` words at their reset value 0, because a non-zero lock word locks the image, so for those words the compare also passes on a word that was not stored; `CHK-SENSE-WORD-ORDER` prints the count of words that changed (`changed_words`). The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
+|CHK-LC-STATE-PRESENSE-HOLD
+|On every clock from the `rst_ni` release until the `sep_fuse_sense_done_o` rise, `lc_state_o` (tap `lc_state_probe_o`) equals the `LC_STATE` RDL reset value 0x0F, the INVALID encoding, and `security_disable_o` is 0 (`hw/sys/sep/doc/otp_fuse_controller.adoc`, Fuse Sensing and Boot Sequencing: the logical `LC_STATE` output remains `4'b1111` until fuse sensing completes). The sensed `LC_STATE` byte at `efuse_shadow_probe_o` must equal the staged encoding on at least one of those clocks, so the hold is graded while the sensed value is present; the staged state must not encode INVALID. A window of zero clocks fails the check.
+|CHK-LC-STATE-RELEASE
+|On the first clock with `sep_fuse_sense_done_o` = 1, `lc_state_o` equals the sensed `LC_STATE` byte and the encoding `{~raw, raw}` of the staged raw state (same section; `doc/integrator/src/smu-sep.adoc`, `lc_state_o`). The cited sentence names no clock: taking that first clock as the point where sensing has completed is this test's contract, not a statement of the document.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: `cocotb/tests/efuse/sep_efuse_sense_test.py` logs `CHK-SENSE-DONE PASS` with the clock of the `sep_fuse_sense_done_o` rise. The shared backdoor compare (`cocotb/seq_lib/sep_efuse_backdoor_check.py`, run by the bring-up) logs `CHK-SENSE-BACKDOOR PASS words=<n> errors=0 secure_tm=<s>`, or `CHK-SENSE-BACKDOOR FAIL` and fails the leaf. `CHK-IMAGE-MATCH PASS words=<n>` follows only when that compare logged its PASS and `+skip_fuse_sense` is absent. The leaf names the four records in `required_evidence`, so a missing record fails it. `CHK-SENSE-WORD-ORDER` is its own record. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock, and grades nothing.
+*Evidence*: `cocotb/tests/efuse/sep_efuse_sense_test.py` logs `CHK-SENSE-DONE PASS` with the clock of the `sep_fuse_sense_done_o` rise. The shared backdoor compare (`cocotb/seq_lib/sep_efuse_backdoor_check.py`, run by the bring-up) logs `CHK-SENSE-BACKDOOR PASS words=<n> errors=0 secure_tm=<s>`, or `CHK-SENSE-BACKDOOR FAIL` and fails the leaf. `CHK-IMAGE-MATCH PASS words=<n>` follows only when that compare logged its PASS and `+skip_fuse_sense` is absent. The leaf names the six records in `required_evidence`, so a missing record fails it. `CHK-LC-STATE-PRESENSE-HOLD PASS` logs the window length in clocks, the staged encoding and the number of window clocks on which the sensed byte equalled it; `CHK-LC-STATE-RELEASE PASS` logs the sense-done clock, the port, the sensed byte and the staged encoding. `CHK-SENSE-WORD-ORDER` is its own record. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock, and grades nothing. `OBS-SHADOW-PRESENSE-WITHHELD` logs, for `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID`, the first clock on which the field at `efuse_shadow_probe_o` holds its sense-done value (`landed`), the first clock on which the value half of the Key Manager OTP input `km_otp_sep_*_id_o` equals it (`downstream`), the number of clocks on which the sensed field held that value and the input did not (`withheld_clocks`), whether the sensed value is zero (`sensed_zero`), and the sense-done clock. It grades nothing: `hw/sys/sep/doc/otp_fuse_controller.adoc` (Fuse Sensing and Boot Sequencing) makes these fields available downstream as soon as they are ready, and the description of `hw/sys/sep/doc/assets/sep-token-processing.svg` withholds the shadow map until sense done.
 
 '''''
 
@@ -396,7 +401,7 @@ not grade that rejection.
 
 [arabic]
 . Bring up in `no_cpu` mode.
-. Configure the SPI host: clock divider, chip-select timing, enable.
+. Configure the SPI host: clock divider, chip-select timing, enable. Read CONFIGOPTS back; it equals the written word (CTRL-SPI-CONFIGOPTS).
 . Issue the JEDEC identify command through the command and transmit registers.
 . Read the received identifier out of the receive register.
 
@@ -405,12 +410,10 @@ not grade that rejection.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CTRL-SPI-CONFIGOPTS
+|CONFIGOPTS reads back the written Mode 0 word (CLKDIV 9, CSNIDLE, CSNTRAIL and CSNLEAD 2; every CONFIGOPTS field is `sw = rw` in `vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl`). The reset value 0 also runs Mode 0, so a write that does not land would pass every other checker; a mismatch fails the leaf. Evidence: `CTRL-SPI-CONFIGOPTS PASS: configopts=0x<w> expect=0x<w>`.
 |CHK-JEDEC-ID
-|The received identifier equals the flash model's device identifier.
-|CHK-RESP
-|Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
-|CHK-NONVAC
-|The scoreboard performed a non-zero number of checks.
+|The RXDATA word carries the flash model's three identifier bytes in wire order (the model sends the most significant byte of the identifier first) in one in-word byte order, and its fourth byte reads 0. The word is graded in either order; a byte that is wrong, rotated or non-zero in the pad position fails. The in-word order is not graded (OBS-SPI-BYTEORDER).
 |CHK-SPI-WIRE
 |The shared SPI monitor grades the pad ports in SPI Mode 0 on every frame: SCK is at the CPOL level at each chip-select edge and moves only to that level while chip select is high; MOSI does not change on a sample edge, nor after a sample edge and before the next shift edge; no graded pin resolves to X or Z. The monitor also grades the monitor-only taps `spi_sd_o`, `spi_sd_oe_o`, `spi_cs_oe_o` and `spi_sck_oe_o` against the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment": lane n drives `sd[n]` with output enable `sd_oe[n]`, chip select and clock have `cs_oe` and `sck_oe`, and the host drives a data lane only while chip select is asserted): no data lane output enable rises, or is on at an SCK edge, while chip select is high (`oe_idle`); at each sample edge the data lane output enables are none, lane 0, lanes 1:0 or lanes 3:0 (`oe_lanes`); and the chip-select and clock output enables are on at each sample edge (`oe_ctrl`). The MOSI edge and X/Z rules apply to every data lane whose output enable is on. A host that drives a data lane while chip select is high, enables another lane pattern, or turns off the chip-select or clock output enable in a frame fails. At least one Mode 0 frame is graded.
 |CHK-SPI-FRAME-SHAPE
@@ -418,12 +421,14 @@ not grade that rejection.
 |CHK-SPI-LEDGER
 |The flash model records and the monitor frames match one for one, in order, with the same command byte and the same input clock count.
 |CHK-SPI-SB-RX
-|The SPI data scoreboard (`hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py`) compares three copies of the identifier byte for byte: the three bytes the DUT delivered in RXDATA (the first received byte in the least significant byte, ByteOrder 1), the first three bytes of the flash record's `data_out` for the READ JEDEC ID frame, and the first three bytes of the monitor's own decode of the response phase on the pads. The monitor frame is the one at the position of the flash record (CHK-SPI-LEDGER lines the two lists up). A receive path that drops, reorders or corrupts a byte, or that delivers the bytes in the opposite order, fails; so does a run with no READ JEDEC ID record. Evidence: one `INFO-SPI-SB RX` line with the expected, wire and device bytes, and `CHK-SPI-SB-RX PASS seed=<n> frames=1 bytes=3`.
+|The SPI data scoreboard (`hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py`) compares three copies of the identifier byte for byte: the three bytes the DUT delivered in RXDATA (read from the word in the order CHK-JEDEC-ID accepted), the first three bytes of the flash record's `data_out` for the READ JEDEC ID frame, and the first three bytes of the monitor's own decode of the response phase on the pads. The monitor frame is the one at the position of the flash record (CHK-SPI-LEDGER lines the two lists up). A receive path that drops, reorders or corrupts a byte fails; so does a run with no READ JEDEC ID record. Evidence: one `INFO-SPI-SB RX` line with the expected, wire and device bytes, and `CHK-SPI-SB-RX PASS seed=<n> frames=1 bytes=3`.
+|OBS-SPI-BYTEORDER
+|Logged, not graded: no authored text states which in-word byte order the SEP SPI host uses (`spi_controller.adoc` gives `STATUS.BYTEORDER` as read-only with reset 0x0; the OpenTitan SPI_HOST theory of operation gives `ByteOrder = 1` as the default). One line at the end of the leaf: `OBS-SPI-BYTEORDER seed=<n> order=<lsb_first\|msb_first\|undecided> fixed_at=<where\|-> decisive_words=<n> ambiguous_words=<n> other_order_words=<n> unmatched_words=<n> compares=<n> status_byteorder=-`. The JEDEC identifier has distinct bytes, so the word fixes the order.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: `CHK-JEDEC-ID PASS` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`) carries the opcode and the RXDATA word; the leaf raises before it when the flash model saw no 0x9F frame or RXDATA differs from the model identifier. CHK-RESP and CHK-NONVAC are enforced by the shared scoreboard. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
+*Evidence*: `CHK-JEDEC-ID PASS: opcode=0x9F rxdata=0x<w> bytes=<hex> order=<lsb_first\|msb_first\|undecided>` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`) carries the opcode, the RXDATA word, the identifier bytes read from it and the order; the leaf raises before it when the flash model saw no 0x9F frame or the word does not carry the model identifier bytes with a zero pad byte. The shared scoreboard (`cocotb/env/sep_scoreboard.py`) fails the leaf on any access that does not answer `OKAY` and on a run with no AXI transaction; it prints no named record. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
 
 '''''
 
@@ -586,7 +591,13 @@ access class of each `sep_cpu_ctrl` register, transcribed from
 response of each sweep access. Adds `+SEP_RANDOM_COUNT`
 seeded random patterns per storage register, a readback after each restore,
 and a read of `0x10A3_0170` after the hole write that must return zero. The
-scoreboard check CHK-SB-CPU-CTRL-CSR is required.
+scoreboard check CHK-SB-CPU-CTRL-CSR is required. The PR-EXT and PR-OUT tap
+checks (CTRL-EXT-DEMUX-PORT, CTRL-EXT-DEMUX-SHIM, CTRL-FABRIC-WALK-LOCAL,
+CTRL-CPU-CTRL-HOLE-LOCAL) and
+the `SEP_TEST_CTRL` write check (CHK-SEP-TEST-CTRL-RO) run on cocotb only. The
+SV sequence grades the response class of the eFuse-shim boundary words, the
+response of each walked read and, for the rows whose register has a non-zero
+RDL reset, its value; it reads `SEP_TEST_CTRL` with a response check only.
 
 |<<sep_periph_bus_err_misaligned_test,`sep_periph_bus_err_misaligned_test`>>
 |Same as the cocotb procedure, over sixteen seeded passes by default
@@ -626,6 +637,8 @@ graded as the increments of each pass. The STATUS read response is CHK-CSR-RESP.
 (`+SEP_TEST_LOOPS`, `+SEP_EFUSE_LCC_TEST_LOOPS`, `+SEP_EFUSE_SENSE_TEST_LOOPS`);
 the sense runs once at bring-up and each pass compares the held shadow again.
 The staged image is the committed default preload (`+sep_efuse_hex`).
+The SV-UVM pass does not grade CHK-SENSE-WORD-ORDER, CHK-LC-STATE-PRESENSE-HOLD
+or CHK-LC-STATE-RELEASE; the cocotb leaf grades them.
 CHK-SENSE-DONE is named CHK-FUSE-SENSE-DONE. CHK-SENSE compares the whole
 shadow probe with the committed expected shadow
 `tb/efuse_preloads/sep_efuse_default.shadow.hex` (`+sep_efuse_shadow_hex`),

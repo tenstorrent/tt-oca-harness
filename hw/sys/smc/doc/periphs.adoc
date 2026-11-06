@@ -59,8 +59,8 @@ progress. |AXI4-Lite |6
 rails and power conditions. |APB4/AXI4-Lite |1
 
 |xref:ip:gpio/doc/index.adoc[GPIO] |General Purpose Input/Output
-with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).
-|AXI4-Lite |65
+with dual-mode operation and comprehensive interrupt system (63 bonded + 4 unbonded).
+|AXI4-Lite |67
 
 |xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
 |Hardware component for decoding and processing telemetry data from
@@ -71,6 +71,9 @@ subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
 
 |SMC Misc |Wrapper for miscellaneous registers: scratch registers, chip config and NDM reset.
 |AXI4-Lite |1
+
+|PWM |OpenTitan pulse-width modulator with per-channel duty cycle and blink
+parameters. |AXI4-Lite |1
 endif::backend-html5[]
 ifdef::backend-pdf[]
 |Mailbox |FIFO-based bidirectional
@@ -104,8 +107,8 @@ wrapper. Integration verification remains a work in progress. |AXI4-Lite |6
 rails and power conditions. |APB4/AXI4-Lite |1
 
 |GPIO |General Purpose Input/Output
-with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).
-|AXI4-Lite |65
+with dual-mode operation and comprehensive interrupt system (63 bonded + 4 unbonded).
+|AXI4-Lite |67
 
 |Telemetry Receiver
 |Hardware component for decoding and processing telemetry data from
@@ -116,6 +119,9 @@ subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
 
 |SMC Misc |Wrapper for miscellaneous registers: scratch registers, chip config and NDM reset.
 |AXI4-Lite |1
+
+|PWM |OpenTitan pulse-width modulator with per-channel duty cycle and blink
+parameters. |AXI4-Lite |1
 endif::backend-pdf[]
 |=======================================================================
 
@@ -163,6 +169,35 @@ include::../../../ip/uart/uart_log_engine_wrap/regs/gen/adoc/uart_log_engine_ctr
 include::../../../ip/uart/uart_log_engine_wrap/regs/gen/adoc/uart_log_engine_wrap.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
+== PWM Registers
+
+The pulse-width modulator has one output per channel; the count is `smc_config_pkg::NumPwmOutputs`.
+The PWM wrapper map places the OpenTitan PWM registers at offset 0x000 and the
+pad-control register `CTRL` at offset 0x800. `CTRL.PAD_EN` holds one bit per
+channel: while bit _i_ is set, channel _i_ drives GPIO pad 59+_i_ (pads 59 to 62
+for four channels), with the pad output enabled and its input disabled; while it is
+clear the pad is ordinary software GPIO. `PAD_EN` resets to 0. It does not start the
+channel; `PWM_EN` does. A claimed pad whose channel is off (`PWM_EN[_i_]` 0) drives the
+idle level selected by `INVERT`. The pad's own `DATA_CTRL.lsio_disable` vetoes the
+claim, so the pad stays under register control. Setting the pad's
+`DATA_CTRL.lsio_select` also routes channel _i_ to the pad, as it does for the other
+LSIO pads. Other offsets in the wrapper answer DECERR. Offsets are relative to the PWM
+base address.
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$pwm/regs/gen/html/pwm_wrap.html[]
+include::ip:partial$pwm/regs/gen/html/pwm.html[]
+include::ip:partial$pwm/regs/gen/html/pwm_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../ip/pwm/regs/gen/adoc/pwm_wrap.adoc[leveloffset=+1]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/pwm/regs/gen/adoc/pwm.adoc[leveloffset=+1]
+include::../../../ip/pwm/regs/gen/adoc/pwm_ctrl.adoc[leveloffset=+1]
+endif::backend-pdf[]
+
 == Peripheral Parameter Settings
 
 The SMC sets peripheral parameters at instantiation from `smc_config_pkg`,
@@ -190,13 +225,20 @@ each peripheral's default values.
 |GPIO |`MAX_TRANS` (threaded from the `smc` module parameter) |32 |2
 
 |GPIO |`INPUT_BY_DEFAULT` (per instance, from
-`smc_padring_pkg::DefaultDirectionMap`) |input on all |input on 62 of 65
-GPIOs, output on the remaining 3
+`smc_padring_pkg::DefaultDirectionMap`) |input on all |input on 60 of 67
+GPIOs, output on the remaining 7
 
 |UART 16550 |`smc_config_pkg::UartTxFifoDepth` |16 |32
 
 |UART 16550 |`smc_config_pkg::UartRxFifoDepth` |16 |32
+
+|PWM |`smc_config_pkg::NumPwmOutputs` (channels) |6 |4
 |=======================================================================
+
+The SMC I2C instances keep the IP default of 64 entries for the controller TX
+(FMT), controller RX and target TX FIFOs, so with the target RX override all
+four FIFOs of each instance hold 64 entries, and `FMTLVL`, `RXLVL`, `TXLVL`
+and `ACQLVL` read 64 when their FIFO is full.
 
 The System Timer OCTS takes no parameters. The eFuse overrides only bus
 widths and interface types. The Log Engine, AVSBus Controller, and Telemetry

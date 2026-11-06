@@ -65,6 +65,19 @@ Checks:
                      same fetch of the calibration boot, whose beat carries
                      image word 1.
 
+Logged only (OBS-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
+closed, a set-up ``rst_ni`` pulse and the same anchor, ``wdt_rst_ni`` falls at
+the same offset o and is released after RST_HOLD cycles. The ``wdt_rst_ni``
+reset lowers the CPU reset and not the reset of the boot ROM interface
+(reset_controller.adoc:44-52), and no line states whether the accepted fetch
+reaches the ROM request or response channels while the CPU reset is low. The
+line logs the PR-ROM requests and responses and the PR-ROM-MACRO requests
+from the first ``clk_i`` edge with ``sep_cpu_reset_n_o`` at 0 to the release,
+the anchor response beat, and the first request after the release with its
+response, in ``clk_i`` cycles from the anchor. Reach control
+(CTRL-ROM-WDT-OTF): the fetch is in flight at the fall, by the terms of
+``midflight`` of CHK-ROM-OTF; else the leaf fails.
+
 FCOV gate: the leaf opens its graded window for the sweep and store steps
 and closes it before the flips. Inside a window the sampler counts each legal
 outcome of the sweep, store and reset-in-flight points as pending; the leaf
@@ -766,6 +779,8 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             await self._noecc_repeat()
         # Step 14.
         await self._otf()
+        # Step 15: logged only, with the graded window closed.
+        await self._otf_wdt()
 
     def _flip_stored(self) -> None:
         """CTRL-FLIP-STORED: each flipped macro word holds image ^ mask, each neighbour the image."""
@@ -1245,56 +1260,64 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 return get_sim_time("ps")
         raise AssertionError(f"{what}: not {level} within {bound} clk_i cycles")
 
-    async def _otf(self) -> None:
+    async def _setup_reset(self, what: str) -> None:
+        """An ``rst_ni`` pulse that is not graded: low until ``sep_cpu_reset_n_o`` reads 0."""
         dut = cocotb.top
-        img = self.plan.img
-        # Set-up reset (not graded).
         await RisingEdge(dut.clk_i)
         dut.rst_ni.value = 0
-        await self._wait_level(dut.sep_cpu_reset_n_o, 0, CPU_LOW_BOUND, "setup reset")
+        await self._wait_level(dut.sep_cpu_reset_n_o, 0, CPU_LOW_BOUND, what)
         await ClockCycles(dut.clk_i, RST_HOLD)
         dut.rst_ni.value = 1
-        # The window opens at least one clk_i edge before the rst_ni fall: the
-        # sampler drops the pending rom_ap_pass counts at the first clk_i edge
-        # of a window, so a window that opens with the fall drops the ROM read
-        # cell that the fall counts.
-        self._open_window()
-        # Anchor: the PR-ROM handshake of the stub fetch at word address 1.
+
+    def _macro_now(self) -> tuple:
+        dut = cocotb.top
+        return (
+            self.rd(dut.pr_rom_macro_req_o, allow_unknown=True),
+            self.rd(dut.pr_rom_macro_addr_o, allow_unknown=True),
+            self.rd(dut.pr_rom_memif_rst_n_o, allow_unknown=True),
+        )
+
+    async def _anchor(self, chk: str) -> tuple[int, tuple]:
+        """The PR-ROM handshake of the stub fetch at word address 1, in the ReadOnly phase.
+
+        Returns its time and the macro side on that edge (request, word
+        address, memory interface reset). No anchor within the bound closes the
+        graded window and raises.
+        """
+        dut = cocotb.top
         for _ in range(ANCHOR_BOUND):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             if self.rd(dut.pr_rom_req_o) and self.rd(dut.pr_rom_addr_o) >> 3 == 1:
-                break
-        else:
-            await Timer(1, units="ps")
-            close_graded_window(self.logger)
-            raise AssertionError(f"CHK-ROM-OTF: no anchor fetch within {ANCHOR_BOUND} cycles")
-        t_hs = get_sim_time("ps")
-        # The word-1 request at the ROM macro ports with the memory interface out
-        # of reset, on the edge before the fall.
-        at_hs = (
-            self.rd(dut.pr_rom_macro_req_o, allow_unknown=True),
-            self.rd(dut.pr_rom_macro_addr_o, allow_unknown=True),
-            self.rd(dut.pr_rom_memif_rst_n_o, allow_unknown=True),
-        )
+                return get_sim_time("ps"), self._macro_now()
+        await Timer(1, units="ps")
+        close_graded_window(self.logger)
+        raise AssertionError(f"{chk}: no anchor fetch within {ANCHOR_BOUND} cycles")
+
+    async def _pulse_in_flight(self, pin, what: str) -> tuple[int, tuple, int, int]:
+        """Lower ``pin`` o cycles after the anchor edge; release it after RST_HOLD.
+
+        Returns the fall time, the macro side after the fall, the first
+        ``clk_i`` edge with ``sep_cpu_reset_n_o`` at 0 and the edge where it
+        reads 1 again.
+        """
+        dut = cocotb.top
         for _ in range(self.o):
             await RisingEdge(dut.clk_i)
         await Timer(1, units="ps")
-        dut.rst_ni.value = 0
+        pin.value = 0
         t_fall = get_sim_time("ps")
-        # The fall can land only between the request edge and the macro latch edge:
-        # with W=1 the response beat comes on the latch edge itself. The settled
-        # state after the fall is logged, not graded.
         await ReadOnly()
-        at_fall = (
-            self.rd(dut.pr_rom_macro_req_o, allow_unknown=True),
-            self.rd(dut.pr_rom_macro_addr_o, allow_unknown=True),
-            self.rd(dut.pr_rom_memif_rst_n_o, allow_unknown=True),
-        )
-        cpu_low = await self._wait_level(dut.sep_cpu_reset_n_o, 0, CPU_LOW_BOUND, "OTF reset")
+        at_fall = self._macro_now()
+        cpu_low = await self._wait_level(dut.sep_cpu_reset_n_o, 0, CPU_LOW_BOUND, f"{what} reset")
         await ClockCycles(dut.clk_i, RST_HOLD)
-        dut.rst_ni.value = 1
-        t_rel = await self._wait_level(dut.sep_cpu_reset_n_o, 1, RELEASE_BOUND, "OTF release")
+        pin.value = 1
+        t_rel = await self._wait_level(dut.sep_cpu_reset_n_o, 1, RELEASE_BOUND, f"{what} release")
+        return t_fall, at_fall, cpu_low, t_rel
+
+    async def _first_after(self, t_rel: int) -> tuple:
+        """The first PR-ROM request at or after ``t_rel`` and the first response after it."""
+        dut = cocotb.top
         first = None
         for _ in range(FIRST_REQ_BOUND):
             first = next((b for b in self.rom.beats if b.ch == "req" and b.t_ps >= t_rel), None)
@@ -1310,23 +1333,51 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 if rsp is not None:
                     break
                 await RisingEdge(dut.clk_i)
-        await ClockCycles(dut.clk_i, 2)
-        close_graded_window(self.logger)
-        self._taps_live()
-        period = self._period_ps()
-        beats = self.rom.beats
-        early_rsp = [b for b in beats if b.ch == "rsp" and t_hs < b.t_ps <= t_fall]
-        # The word-1 fetch counts as in flight only when it reached the ROM macro
-        # (PR-ROM-MACRO request at word 1) at or after the anchor and before the fall.
+        return first, rsp
+
+    def _midflight(self, t_hs: int, t_fall: int, at_hs: tuple) -> tuple[int, int, int]:
+        """(midflight, response beats from the anchor to the fall, macro word-1 requests).
+
+        The word-1 fetch counts as in flight only when the fall lands inside
+        the response window W, no response beat lies between the anchor and
+        the fall, the fetch reached the ROM macro (PR-ROM-MACRO request at word
+        1) at or after the anchor and before the fall, and the anchor edge shows
+        it at the macro with the memory interface out of reset.
+        """
+        early = sum(1 for b in self.rom.beats if b.ch == "rsp" and t_hs < b.t_ps <= t_fall)
         macro_w1 = sum(
             1
             for b in self.macro.beats
             if b.ch == "req" and t_hs <= b.t_ps <= t_fall and b.addr == 1
         )
-        latched = int(at_hs == (1, 1, 1))
         midflight = int(
-            t_fall < t_hs + self.W * period and not early_rsp and macro_w1 >= 1 and latched
+            t_fall < t_hs + self.W * self._period_ps()
+            and not early
+            and macro_w1 >= 1
+            and at_hs == (1, 1, 1)
         )
+        return midflight, early, macro_w1
+
+    async def _otf(self) -> None:
+        dut = cocotb.top
+        img = self.plan.img
+        await self._setup_reset("setup reset")
+        # The window opens at least one clk_i edge before the rst_ni fall: the
+        # sampler drops the pending rom_ap_pass counts at the first clk_i edge
+        # of a window, so a window that opens with the fall drops the ROM read
+        # cell that the fall counts.
+        self._open_window()
+        t_hs, at_hs = await self._anchor("CHK-ROM-OTF")
+        # The fall can land only between the request edge and the macro latch edge:
+        # with W=1 the response beat comes on the latch edge itself. The settled
+        # state after the fall is logged, not graded.
+        t_fall, at_fall, cpu_low, t_rel = await self._pulse_in_flight(dut.rst_ni, "OTF")
+        first, rsp = await self._first_after(t_rel)
+        await ClockCycles(dut.clk_i, 2)
+        close_graded_window(self.logger)
+        self._taps_live()
+        beats = self.rom.beats
+        midflight, _early, macro_w1 = self._midflight(t_hs, t_fall, at_hs)
         t_first = first.t_ps if first is not None else None
         # A word-1 request from the clock the CPU reset is seen low up to the first
         # request after the release is a replay of the abandoned fetch: the core
@@ -1351,7 +1402,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         )
         pre_rel = [b for b in beats if t_fall < b.t_ps < t_rel]
         self.logger.info(
-            "OBS-ROM-OTF LOG beats_between_fall_and_release=%d %s cpu_low_t=%d",
+            "INFO-ROM-OTF LOG beats_between_fall_and_release=%d %s cpu_low_t=%d",
             len(pre_rel),
             " ".join(f"{b.ch}@{b.t_ps}" for b in pre_rel[:6]),
             cpu_low,
@@ -1380,3 +1431,82 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             f"t_hs={t_hs} t_fall={t_fall} t_release={t_rel}",
         )
         await self._ap_passed()
+
+    async def _otf_wdt(self) -> None:
+        """A ``wdt_rst_ni`` pulse with the stub fetch at word 1 in flight; logged, not graded.
+
+        ``sep_reset_n`` resets the boot ROM interface and ``wdt_rst_ni`` does
+        not (reset_controller.adoc:44-52), and no line states whether the
+        accepted fetch reaches the ROM request or response channels while the
+        CPU reset is low. The leg runs with the graded window closed, after
+        CHK-ROM-OTF, at the same offset o. CTRL-ROM-WDT-OTF fails the leaf
+        unless the fetch is in flight at the fall; a CPU reset that does not
+        fall or rise within its bound fails the leaf in ``_pulse_in_flight``.
+        """
+        dut = cocotb.top
+        img = self.plan.img
+        await self._setup_reset("wdt leg setup reset")
+        t_hs, at_hs = await self._anchor("CTRL-ROM-WDT-OTF")
+        t_fall, at_fall, cpu_low, t_rel = await self._pulse_in_flight(dut.wdt_rst_ni_i, "WDT OTF")
+        first, rsp = await self._first_after(t_rel)
+        await ClockCycles(dut.clk_i, 2)
+        self._taps_live()
+        period = self._period_ps()
+        midflight, early, macro_w1 = self._midflight(t_hs, t_fall, at_hs)
+        beats = self.rom.beats
+
+        def cyc(t: int) -> int:
+            return round((t - t_hs) / period)
+
+        def words(bs) -> str:
+            return ",".join(
+                f"{'x' if b.addr is None else b.addr >> 3}@{cyc(b.t_ps)}" for b in bs[:6]
+            )
+
+        low_req = [b for b in beats if b.ch == "req" and cpu_low <= b.t_ps < t_rel]
+        low_rsp = [b for b in beats if b.ch == "rsp" and cpu_low <= b.t_ps < t_rel]
+        low_macro = [b for b in self.macro.beats if b.ch == "req" and cpu_low <= b.t_ps < t_rel]
+        anchor_rsp = next((b for b in beats if b.ch == "rsp" and b.t_ps > t_hs), None)
+        t_first = first.t_ps if first is not None else t_rel
+        replay = sum(
+            1
+            for b in beats
+            if b.ch == "req" and cpu_low < b.t_ps < t_first and (b.addr is None or b.addr >> 3 == 1)
+        )
+        first_word = None if first is None or first.addr is None else first.addr >> 3
+        self.logger.info(
+            "OBS-ROM-WDT-OTF LOG offset=%d/%d fall_c=%d cpu_low_c=%d release_c=%d "
+            "macro_after_fall=req%s/addr%s/memif_rst_n%s "
+            "cpu_low_rom_req=%d[%s] cpu_low_rom_rsp=%d[%s] cpu_low_macro_req=%d[%s] "
+            "anchor_rsp_c=%s anchor_rsp_is_word1=%s first_req_word=%s first_req_c=%s "
+            "replay_word1=%d first_rsp_is_word0=%s",
+            self.o,
+            self.W,
+            cyc(t_fall),
+            cyc(cpu_low),
+            cyc(t_rel),
+            *at_fall,
+            len(low_req),
+            words(low_req),
+            len(low_rsp),
+            ",".join(str(cyc(b.t_ps)) for b in low_rsp[:6]),
+            len(low_macro),
+            ",".join(f"{b.addr}@{cyc(b.t_ps)}" for b in low_macro[:6]),
+            "none" if anchor_rsp is None else cyc(anchor_rsp.t_ps),
+            "na" if anchor_rsp is None else int(anchor_rsp.rdata == img.word(1)),
+            first_word,
+            "none" if first is None else cyc(first.t_ps),
+            replay,
+            "na" if rsp is None else int(rsp.rdata == img.word(0)),
+        )
+        line = (
+            f"offset={self.o}/{self.W} midflight={midflight} early_rsp={early} "
+            f"macro_req_word1={macro_w1} macro_at_req=req{at_hs[0]}/addr{at_hs[1]}/"
+            f"memif_rst_n{at_hs[2]} t_hs={t_hs} t_fall={t_fall} cpu_low_t={cpu_low} "
+            f"t_release={t_rel}"
+        )
+        if midflight != 1:
+            self.logger.error("CTRL-ROM-WDT-OTF FAIL: %s", line)
+            self.failures.append(f"CTRL-ROM-WDT-OTF: {line}")
+            raise AssertionError(f"CTRL-ROM-WDT-OTF FAIL: {line}")
+        self.logger.info("CTRL-ROM-WDT-OTF PASS: %s", line)

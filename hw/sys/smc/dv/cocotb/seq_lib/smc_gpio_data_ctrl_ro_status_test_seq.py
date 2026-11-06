@@ -5,7 +5,8 @@
 Sources hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL, DATA_CTRL_ENABLE), integrator GPIO pad table.
 
 lsio_enable (bit 25) and pad2core (bit 31) are sw=r hw=w. Instance 60 receives software writes
-carrying those bits; the writable fields of the same register are checked beside them.
+carrying those bits; the writable fields of the same register are checked beside them. Instance 60
+is the PWM[1] pad; with PWM CTRL.PAD_EN at its reset 0 the pad is register-controlled GPIO.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_pad_table import pad_function
 from .smc_regblock_field_sweep_utils import RegInstance, reg_instances
 
 _DATA_CTRL = (
@@ -31,7 +33,8 @@ _DATA_CTRL_ENABLE = (
 )
 
 _INSTANCE = 60
-_PAD_COUNT = 65
+_INSTANCE_FUNCTION = "PWM[1]"
+_PAD_COUNT = 67
 _LSIO_ENABLE_BIT = 25
 _PAD2CORE_BIT = 31
 _ALL_ONES = 0xFFFF_FFFF
@@ -102,6 +105,11 @@ class smc_gpio_data_ctrl_ro_status_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
+        function = pad_function(_INSTANCE)
+        assert function == _INSTANCE_FUNCTION, (
+            f"the integrator pad table gives pad {_INSTANCE} the function {function!r}, not "
+            f"{_INSTANCE_FUNCTION!r}"
+        )
         dcs = reg_instances(*_DATA_CTRL)
         en = reg_instances(*_DATA_CTRL_ENABLE)[_INSTANCE]
         assert len(dcs) == _PAD_COUNT, f"{len(dcs)} DATA_CTRL instances, expected {_PAD_COUNT}"

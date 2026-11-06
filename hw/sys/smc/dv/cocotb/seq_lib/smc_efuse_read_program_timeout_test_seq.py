@@ -187,6 +187,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         self.waits: list[_BoundedWait] = []
         self.axi_items: list[SmcSysAxiItem] = []
         self.fence: list[tuple[str, int, int]] = []
+        self._read_rec: tuple[int, int] = (0, 0)
 
     async def finish_item(self, item) -> None:
         await super().finish_item(item)
@@ -383,10 +384,35 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self._clear_req_err()
         return st, data, busy
 
+    @staticmethod
+    def _gate(up: bool) -> None:
+        """Drive tb_fcov_gate, the graded window of smc_efuse_timeout_cg."""
+        cocotb.top.tb_fcov_gate.value = int(up)
+        cocotb.log.info("CTRL-FCOV-GATE: %s %d ps", "rise" if up else "fall", get_sim_time("ps"))
+
     async def body(self) -> None:
-        dut = cocotb.top
         await self.wait_fuse_sense_done()
         self._stall(0, 0)
+
+        # smc_efuse_timeout_cg samples the timeout legs, from the first timeout
+        # write to the last drawn read leg; the no-enable read and the range
+        # and lock legs stay outside the window.
+        self._gate(True)
+        try:
+            await self._timeout_legs()
+        finally:
+            # A compare that fails inside a leg leaves it with the exception;
+            # the gate is written after the next clock edge.
+            await RisingEdge(cocotb.top.clk_smc_i)
+            self._gate(False)
+        await self.csr_write("READ_TMO_DEF_AGAIN", READ_TMO, TMO_CYC_RST_R)
+        await self._no_enable_and_summary()
+
+        await self._range_legs()
+
+    async def _timeout_legs(self) -> None:
+        """The pinned, recovery and drawn timeout legs of both interfaces."""
+        dut = cocotb.top
 
         await self.csr_write("PROG_TMO_SHORT", PROG_TMO, TMO_EN_P)
         got = await self.csr_read("PROG_TMO_RB", PROG_TMO, expected=TMO_EN_P)
@@ -571,7 +597,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         assert (data & 1) == 1, f"recovery read missed bit0 data=0x{data:x}"
         self.read_rec_ok = True
         st_rshort, data_rshort, busy_rshort = await self._drawn_read(rcells, "short")
-        await self.csr_write("READ_TMO_DEF_AGAIN", READ_TMO, TMO_CYC_RST_R)
+        self._read_rec = (st, data)
         cocotb.log.info(
             "CHK-EFUSE-TMO-RD-REC: timeout disabled (READ_TMO=0x%x) -> "
             "READ_CTRL=0x%x READ_DATA=0x%x with bit0 set. DUT property: the "
@@ -593,6 +619,10 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             busy_rshort,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-RD-REC")
+
+    async def _no_enable_and_summary(self) -> None:
+        """The no-enable read and the summary token, after the timeout legs."""
+        st, data = self._read_rec
 
         # READ_STATUS positive control: the `== 0` READ_STATUS assertions on the
         # enabled reads above cannot on their own distinguish a working status
@@ -662,8 +692,6 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             data,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-BASIC")
-
-        await self._range_legs()
 
     async def _status(self, label: str) -> int:
         return await self.csr_read(label, STATUS)

@@ -199,11 +199,11 @@ typedef struct __attribute__ ((__packed__)) {
 // addrmap - gpio_intf_wrap
 // Wrapper address map instantiating one GPIO interface register block per pad.
 typedef struct __attribute__ ((__packed__)) {
-    gpio_intf__stride10_t gpio_intf[65];
+    gpio_intf__stride10_t gpio_intf[67];
 } gpio_intf_wrap_t;
 
 
-static_assert(sizeof(gpio_intf_wrap_t) == 0x410, "Packing error");
+static_assert(sizeof(gpio_intf_wrap_t) == 0x430, "Packing error");
 
 #ifdef __cplusplus
 }

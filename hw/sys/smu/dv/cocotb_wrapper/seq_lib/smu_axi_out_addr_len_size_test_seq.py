@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+from env.smu_axi_monitor import expected_decerr
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import _REPO_ROOT, c_header_u32, smc_addr, smc_indexed_addr
@@ -492,7 +493,9 @@ class smu_axi_out_addr_len_size_test_seq:
             await self._step_single(jtag, sb, tap)
             await self._step_dma(jtag, sb, tap)
             await self._step_backpressure(jtag, sb, tap)
-            await self._step_errors(jtag, sb)
+            # AXI monitor decode rule: the injected DECERR read and write are two DECERR beats.
+            with expected_decerr("ext_out", 2):
+                await self._step_errors(jtag, sb)
             await self._step_zeroer(jtag, sb, tap)
             await self._step_output_remap(jtag, sb, tap)
         finally:

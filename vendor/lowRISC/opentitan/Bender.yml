@@ -131,10 +131,30 @@ sources:
   # hmac_wrapper.sv, kmac_wrapper.sv, sep_crypto_otbn_wrapper.sv, sep.sv's secure_dma
   # integration) unconditionally instantiate these OpenTitan IP cores, so any build
   # that compiles SEP/SMU needs this whole file list to elaborate cleanly.
+  - target: any(drbg, opentitan_smu, sep, smu, smc)
+    files:
+      - upstream/hw/ip/prim/rtl/prim_secded_pkg.sv
+      # Per-top packages are OCAH-owned (hw/common/ot_chip_cfg/).
+      - ../../../hw/common/ot_chip_cfg/top_pkg.sv
+      - ../../../hw/common/tlul/rtl/tlul_pkg.sv
+      - ../../../hw/common/ot_chip_cfg/top_racl_pkg.sv
+
+  - target: any(drbg, opentitan_smu, sep, smu, smc)
+    files:
+      - upstream/hw/ip/prim/rtl/prim_alert_receiver.sv
+      - upstream/hw/ip/prim/rtl/prim_reg_cdc.sv
+      - upstream/hw/ip/prim/rtl/prim_reg_cdc_arb.sv
+      - upstream/hw/ip/prim/rtl/prim_reg_we_check.sv
+      - upstream/hw/ip/prim/rtl/prim_onehot_check.sv
+      - upstream/hw/ip/prim/rtl/prim_pulse_sync.sv
+      - upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv
+      - upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_enc.sv
+      - upstream/hw/ip/prim/rtl/prim_secded_inv_64_57_dec.sv
+      - upstream/hw/ip/prim/rtl/prim_secded_inv_64_57_enc.sv
+
   - target: any(drbg, opentitan_smu, sep, smu)
     files:
       # Primitive packages.
-      - upstream/hw/ip/prim/rtl/prim_secded_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_trivium_pkg.sv
 
       # CSRNG/entropy/EDN. entropy_src_pkg comes from the vendored IP.
@@ -143,11 +163,6 @@ sources:
       - upstream/hw/ip/csrng/rtl/csrng_pkg.sv
       - upstream/hw/ip/edn/rtl/edn_reg_pkg.sv
       - upstream/hw/ip/edn/rtl/edn_pkg.sv
-
-      # Per-top packages are OCAH-owned (hw/common/ot_chip_cfg/).
-      - ../../../hw/common/ot_chip_cfg/top_pkg.sv
-      - ../../../hw/common/tlul/rtl/tlul_pkg.sv
-      - ../../../hw/common/ot_chip_cfg/top_racl_pkg.sv
 
       # Key Manager and LC packages to satisfy the OT compile ABI.
       - upstream/hw/ip/keymgr/rtl/keymgr_reg_pkg.sv
@@ -185,7 +200,6 @@ sources:
       - upstream/hw/ip/aon_timer/rtl/aon_timer_reg_pkg.sv
 
       # Primitive modules used by the OpenTitan IPs.
-      - upstream/hw/ip/prim/rtl/prim_alert_receiver.sv
       - upstream/hw/ip/prim/rtl/prim_arbiter_fixed.sv
       - upstream/hw/ip/prim/rtl/prim_racl_error_arb.sv
       - upstream/hw/ip/prim/rtl/prim_arbiter_ppc.sv
@@ -202,21 +216,12 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_mubi4_sync.sv
       - upstream/hw/ip/prim/rtl/prim_mubi4_sender.sv
       - upstream/hw/ip/prim/rtl/prim_mubi8_sync.sv
-      - upstream/hw/ip/prim/rtl/prim_onehot_check.sv
       - upstream/hw/ip/prim/rtl/prim_onehot_enc.sv
       - upstream/hw/ip/prim/rtl/prim_onehot_mux.sv
       - upstream/hw/ip/prim/rtl/prim_packer.sv
       - upstream/hw/ip/prim/rtl/prim_packer_fifo.sv
       - upstream/hw/ip/prim/rtl/prim_present.sv
       - upstream/hw/ip/prim/rtl/prim_prince.sv
-      - upstream/hw/ip/prim/rtl/prim_pulse_sync.sv
-      - upstream/hw/ip/prim/rtl/prim_reg_cdc.sv
-      - upstream/hw/ip/prim/rtl/prim_reg_cdc_arb.sv
-      - upstream/hw/ip/prim/rtl/prim_reg_we_check.sv
-      - upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv
-      - upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_enc.sv
-      - upstream/hw/ip/prim/rtl/prim_secded_inv_64_57_dec.sv
-      - upstream/hw/ip/prim/rtl/prim_secded_inv_64_57_enc.sv
       - upstream/hw/ip/prim/rtl/prim_slicer.sv
       - upstream/hw/ip/prim/rtl/prim_sync_reqack.sv
       - upstream/hw/ip/prim/rtl/prim_sync_reqack_data.sv
@@ -367,3 +372,11 @@ sources:
       - ../../../hw/sys/sep/rtl/sep_pkg.sv
       - ../../../hw/sys/sep/rtl/sep_crypto_pkg.sv
       - upstream/hw/ip/otbn/rtl/otbn.sv
+
+  - target: smc
+    files:
+      - upstream/hw/top_earlgrey/ip_autogen/pwm/rtl/pwm_reg_pkg.sv
+      - upstream/hw/top_earlgrey/ip_autogen/pwm/rtl/pwm_chan.sv
+      - upstream/hw/top_earlgrey/ip_autogen/pwm/rtl/pwm_core.sv
+      - upstream/hw/top_earlgrey/ip_autogen/pwm/rtl/pwm_reg_top.sv
+      - upstream/hw/top_earlgrey/ip_autogen/pwm/rtl/pwm.sv

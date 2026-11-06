@@ -124,9 +124,9 @@ Logged only: ``OBS-COND-PASSTHRU-OUTCOUNT`` logs every
 (entropy_source.adoc:206 "remains 0 while idle or bypassed"). No bus read in the
 whitened window shows the field non-zero, so a read of 0 does not tell a correct
 field from one that is not connected; the status tap grades the count
-(CHK-COND-SHA-COUNT). Also logged only: ``OBS-BLOCKED CHK-COND-HT-OFF`` (the
+(CHK-COND-SHA-COUNT). Also logged only: ``INFO-BLOCKED CHK-COND-HT-OFF`` (the
 32-bit health test with the compressor bypassed has no single stated behaviour)
-and ``OBS-BLOCKED CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW
+and ``INFO-BLOCKED CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW
 word is not stated).
 ``OBS-COND-PERIOD-ABS`` logs the gap of each divider value in ``clk_i`` cycles
 (the time base of the period is not stated: the register text names sample-clock

@@ -20,7 +20,7 @@ create_static -name [get_ports {mbist_pass_i}]
 create_static -name [get_ports {mbist_abort_i}]
 
 # Boot stall
-create_static -name [get_ports {pad2core_i[60]}]
+create_static -name [get_ports {pad2core_i[57]}]
 
 # will transition once as a strap (one time capture on cold reset de-assertion)
 create_static -name [get_ports {smc_disable_sram_auto_init_i}]

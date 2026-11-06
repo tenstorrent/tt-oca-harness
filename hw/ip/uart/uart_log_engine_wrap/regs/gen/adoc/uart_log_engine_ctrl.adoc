@@ -21,6 +21,9 @@ Top-level enable register for the UART log-engine block.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `UART_EN` | RW | 0x0 a| UART Enable. When set, the pad-mux downstream will be forced to accept UART
-traffic.
+| 0 | `UART_EN` | RW | 0x0 a| UART Enable. The hardware LSIO request of the UART's RX, TX, RTS and CTS
+pads: while set, the UART owns their data and direction. While clear, the UART
+keeps running, but its pads follow the GPIO data and direction selection like
+any pad without a hardware request, so TX and RTS do not reach the pins unless
+software forces LSIO selection.
 |===

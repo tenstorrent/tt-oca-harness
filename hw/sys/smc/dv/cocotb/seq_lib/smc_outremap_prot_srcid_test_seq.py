@@ -2,12 +2,15 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AxPROT through the output remaps and the AxUSER source ID of each outbound path.
 
-Spec sources: fabric.adoc Privilege-Controlled Remapping, Protection Bit Pass-Through and
-Outbound Traffic Flow, output_remap.rdl, alias_remap.rdl; source IDs are not pinned.
+Spec sources: fabric.adoc Output Remapping, Protection Bit Pass-Through, Outbound Traffic Flow
+and the table "SMC Source ID by Traffic Path"; output_remap.rdl; alias_remap.rdl.
 
 JTAG accesses carry each AxPROT value 0..7. The output interface is sampled passively at every
 AW and AR handshake; the AxPROT must equal the driven value and the address must be the remapped
-landing. The AxUSER values are printed only: no source-ID number is pinned.
+landing. The source-ID legs drive AxUSER 0xFFF, require it at the JTAG ingress handshake, and
+require the whole 12-bit AWUSER and ARUSER at the output to equal the path's source ID (`SMC_ID` 0x3 direct, `OTHER_ID` 0x0 through the Xvisor
+remap, `MMODE_ID` 0xC through the M-mode remap), so bits [11:4] leave as zero; an access through a
+clear M-mode region keeps its address and still leaves with `MMODE_ID`.
 """
 
 from __future__ import annotations
@@ -66,6 +69,13 @@ _DIRECT = 0x0200_0000
 _ALIAS_ADDR, _ALIAS_LAND, _ALIAS_PROT = 0x0203_0040, 0x0213_0040, 0b101
 _M4_ADDR = 0xC140_0100
 _SENTINEL = 0x5A5A_5A5A_5A5A_5A5A
+# fabric.adoc, "SMC Source ID by Traffic Path": SMC_ID 0x3, OTHER_ID 0x0, MMODE_ID 0xC.
+SMC_ID = 0x3
+OTHER_ID = 0x0
+MMODE_ID = 0xC
+_USER_WIDTH = 12
+_USER_ALL = (1 << _USER_WIDTH) - 1
+_PATH_REQUESTS = 3
 _AXI_BOUND_NS = 50_000
 _FUSE_BOUND = 200_000
 _FLOOR = 81
@@ -79,15 +89,19 @@ _CHECKERS = (
     ("CHK-PROT-XVISOR", "S3"),
     ("CHK-PROT-DIRECT", "S4"),
     ("CHK-PROT-AFTER-REMAPS", "S5"),
-    ("CHK-SRCID-DIRECT-OBSERVE", "S6"),
-    ("CHK-SRCID-MMODE-OBSERVE", "S6"),
-    ("CHK-SRCID-XVISOR-OBSERVE", "S6"),
-    ("CHK-VALID0-SRCID-OBSERVE", "S7"),
+    ("CHK-SRCID-DIRECT-0X3", "S6"),
+    ("CHK-SRCID-MMODE-0XC", "S6"),
+    ("CHK-SRCID-XVISOR-0X0", "S6"),
+    ("CHK-VALID0-SRCID-MMODE-0XC", "S7"),
 )
 
 
 class _Sampler:
-    """Passive sampler of AW and AR handshakes on the output interface."""
+    """Passive sampler of AW and AR handshakes on the output interface and at the JTAG ingress.
+
+    An output event is ``(ch, addr, prot, user)``; a JTAG ingress event is ``("j" + ch, addr, 0,
+    user)`` with the AxUSER the JTAG manager presented.
+    """
 
     def __init__(self) -> None:
         self.events: list[tuple[str, int, int, int]] = []
@@ -98,9 +112,10 @@ class _Sampler:
         return int(sig.value)
 
     async def run(self) -> None:
-        ifc = cocotb.top.u_output_axi_if
+        top = cocotb.top
+        ifc = top.u_output_axi_if
         while True:
-            await RisingEdge(cocotb.top.clk_smc_i)
+            await RisingEdge(top.clk_smc_i)
             await ReadOnly()
             for ch in ("aw", "ar"):
                 valid = self._bit(getattr(ifc, f"{ch}valid"), f"{ch}valid")
@@ -111,6 +126,12 @@ class _Sampler:
                         for n in ("addr", "prot", "user")
                     ]
                     self.events.append((ch, *vals))
+                jvalid = self._bit(getattr(top, f"jtag_axi_{ch}valid"), f"jtag {ch}valid")
+                jready = self._bit(getattr(top, f"jtag_axi_{ch}ready"), f"jtag {ch}ready")
+                if jvalid and jready:
+                    jaddr = self._bit(getattr(top, f"jtag_axi_{ch}addr"), f"jtag {ch}addr")
+                    juser = self._bit(getattr(top, f"jtag_axi_{ch}user"), f"jtag {ch}user")
+                    self.events.append((f"j{ch}", jaddr, 0, juser))
 
 
 class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
@@ -138,12 +159,13 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
             await self.csr_write(f"{label}_{'RESTORE' if final else 'SET'}", addr, want, length=8)
             await self.csr_read(f"{label}_RB", addr, expected=want, length=8)
 
-    async def _access(self, op, addr, prot, land, word):
+    async def _access(self, op, addr, prot, land, word, user=0):
         """One JTAG access; returns (awprot-or-arprot, user) sampled at its handshake."""
         kind = "aw" if op is SmcSysAxiOp.WRITE else "ar"
         seen = len(self._sampler.events)
         item = SmcSysAxiItem(f"{op.value}_0x{addr:x}_p{prot}")
         item.op, item.addr, item.length, item.prot = op, addr, 8, prot
+        item.axi_user, item.axi_wuser = user, user
         if kind == "aw":
             item.wdata = word
         else:
@@ -164,14 +186,20 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
         assert len(got) == 1, f"{op.value} 0x{addr:x}: {len(got)} {kind} handshakes: {got}"
         _, haddr, hprot, huser = got[0]
         assert haddr == land, f"{op.value} 0x{addr:x}: {kind}addr 0x{haddr:x}, want 0x{land:x}"
+        ingress = [e for e in self._sampler.events[seen:] if e[0] == f"j{kind}"]
+        assert len(ingress) == 1, f"{op.value} 0x{addr:x}: {len(ingress)} JTAG {kind} handshakes"
+        assert ingress[0][1] == addr and ingress[0][3] == user, (
+            f"{op.value} 0x{addr:x}: JTAG ingress {kind}addr 0x{ingress[0][1]:x} {kind}user "
+            f"0x{ingress[0][3]:03x}, driven 0x{addr:x} / 0x{user:03x}"
+        )
         if kind == "ar":
             assert item.rdata == word, f"read 0x{addr:x} gave 0x{item.rdata:x}, want 0x{word:x}"
         return hprot, huser
 
-    async def _write_leg(self, addr, prot, land, word, window=True):
+    async def _write_leg(self, addr, prot, land, word, window=True, user=0):
         responder = self.cfg.sys_out_mem
         responder.write_int(land, _SENTINEL, 8)
-        hprot, huser = await self._access(SmcSysAxiOp.WRITE, addr, prot, land, word)
+        hprot, huser = await self._access(SmcSysAxiOp.WRITE, addr, prot, land, word, user)
         landed = responder.read_int(land, 8)
         assert landed == word, f"write 0x{addr:x} left 0x{landed:016x} at 0x{land:x}, want {word:x}"
         if window and addr != land:
@@ -180,9 +208,9 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
         assert hprot == prot, f"write 0x{addr:x}: awprot {hprot}, want {prot}"
         return hprot, huser
 
-    async def _read_leg(self, addr, prot, land, word):
+    async def _read_leg(self, addr, prot, land, word, user=0):
         self.cfg.sys_out_mem.write_int(land, word, 8)
-        hprot, huser = await self._access(SmcSysAxiOp.READ, addr, prot, land, word)
+        hprot, huser = await self._access(SmcSysAxiOp.READ, addr, prot, land, word, user)
         assert hprot == prot, f"read 0x{addr:x}: arprot {hprot}, want {prot}"
         return hprot, huser
 
@@ -195,19 +223,29 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
         return out
 
     async def _path(self, base: int, land: int, tag: int):
+        """Three writes and three reads with AxUSER 0xFFF; the output AWUSER/ARUSER per request."""
         users = {"aw": [], "ar": []}
-        for n in range(3):
+        for n in range(_PATH_REQUESTS):
             word = 0xB000_0000_0000_0000 | (tag << 32) | n
-            users["aw"].append((await self._write_leg(base + 0x100, 0, land + 0x100, word))[1])
-        for n in range(3):
+            got = await self._write_leg(base + 0x100, 0, land + 0x100, word, user=_USER_ALL)
+            users["aw"].append(got[1])
+        for n in range(_PATH_REQUESTS):
             word = 0xB000_0000_0000_0000 | (tag << 32) | n
-            users["ar"].append((await self._read_leg(base + 0x100, 0, land + 0x100, word))[1])
+            got = await self._read_leg(base + 0x100, 0, land + 0x100, word, user=_USER_ALL)
+            users["ar"].append(got[1])
         return users
 
     @staticmethod
-    def _stable(path: str, users) -> tuple[int, int]:
+    def _source_id(chk: str, path: str, users, want: int) -> tuple[int, int]:
+        """Every captured AWUSER and ARUSER of ``path`` equals ``want`` over all 12 bits."""
         for ch in ("aw", "ar"):
-            assert len(set(users[ch])) == 1, f"{path} {ch}user changed across requests: {users}"
+            got = users[ch]
+            assert len(got) == _PATH_REQUESTS, f"{chk}: {path} {ch} captured {len(got)} requests"
+            assert all(u == want for u in got), (
+                f"{chk}: {path} path {ch}user {[hex(u) for u in got]} with AxUSER 0x{_USER_ALL:x} "
+                f"driven, want 0x{want:03x} on every request (fabric.adoc Output Remapping: the "
+                f"path replaces the whole AWUSER and ARUSER with its source ID, bits [11:4] zero)"
+            )
         return users["aw"][0], users["ar"][0]
 
     async def body(self) -> None:
@@ -281,34 +319,43 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
             f"for all eight values (M-mode {mmode}, Xvisor {xvisor})",
         )
 
-        # S6: source ID per path, observe-only (the specification does not state the value).
-        direct = self._stable("direct", await self._path(_DIRECT, _DIRECT, 6))
-        mmode_user = self._stable("mmode", await self._path(_MMODE_WIN, _MMODE_LAND, 7))
-        xvisor_user = self._stable("xvisor", await self._path(_XVISOR_WIN, _XVISOR_LAND, 8))
+        # S6: the source ID of each path (fabric.adoc "SMC Source ID by Traffic Path").
+        paths = (
+            ("CHK-SRCID-DIRECT-0X3", "direct", _DIRECT, _DIRECT, 6, SMC_ID),
+            ("CHK-SRCID-MMODE-0XC", "M-mode", _MMODE_WIN, _MMODE_LAND, 7, MMODE_ID),
+            ("CHK-SRCID-XVISOR-0X0", "Xvisor", _XVISOR_WIN, _XVISOR_LAND, 8, OTHER_ID),
+        )
+        ids = {}
+        for chk, path, win, land, tag, want in paths:
+            ids[path] = self._source_id(chk, path, await self._path(win, land, tag), want)
+        assert len({SMC_ID, MMODE_ID, OTHER_ID}) == 3
         self._mark_step("S6")
-        for chk, path, (aw, ar), win in (
-            ("CHK-SRCID-DIRECT-OBSERVE", "direct", direct, _DIRECT),
-            ("CHK-SRCID-MMODE-OBSERVE", "M-mode", mmode_user, _MMODE_WIN),
-            ("CHK-SRCID-XVISOR-OBSERVE", "Xvisor", xvisor_user, _XVISOR_WIN),
-        ):
+        for chk, path, win, _land, _tag, want in paths:
+            aw, ar = ids[path]
             self._log_chk(
                 chk,
-                f"observe-only {path} path at 0x{win + 0x100:x}: awuser=0x{aw:x} "
-                f"aruser=0x{ar:x} stable over 3 writes and 3 reads; no expected source ID; "
-                "fallback: only resolvability and stability are asserted",
+                f"{path} path at 0x{win + 0x100:x} with AxUSER 0x{_USER_ALL:x} driven and seen "
+                f"at the JTAG ingress: "
+                f"awuser=0x{aw:03x} aruser=0x{ar:03x} == 0x{want:03x} on {_PATH_REQUESTS} writes "
+                f"and {_PATH_REQUESTS} reads, bits [11:4] zero; the other two paths carry "
+                + ", ".join(f"0x{v:03x}" for v in sorted({SMC_ID, MMODE_ID, OTHER_ID} - {want})),
             )
 
-        # S7: valid-clear region, observe-only (the specification does not state the value).
+        # S7: a clear M-mode region keeps the address and still leaves with MMODE_ID.
         word = 0xF000_0000_0000_0004
-        _, aw = await self._write_leg(_M4_ADDR, 0, _M4_ADDR, word, window=False)
-        _, ar = await self._read_leg(_M4_ADDR, 0, _M4_ADDR, word)
+        _, aw = await self._write_leg(_M4_ADDR, 0, _M4_ADDR, word, window=False, user=_USER_ALL)
+        _, ar = await self._read_leg(_M4_ADDR, 0, _M4_ADDR, word, user=_USER_ALL)
+        assert aw == MMODE_ID and ar == MMODE_ID, (
+            f"CHK-VALID0-SRCID-MMODE-0XC: M-mode region 4 (valid clear) at 0x{_M4_ADDR:x}: "
+            f"awuser 0x{aw:03x} aruser 0x{ar:03x}, want 0x{MMODE_ID:03x} (fabric.adoc Output "
+            f"Remapping: a request to a remap window leaves with the window's source ID)"
+        )
         self._mark_step("S7")
         self._log_chk(
-            "CHK-VALID0-SRCID-OBSERVE",
-            f"observe-only M-mode region 4 (valid clear) at 0x{_M4_ADDR:x} landed at its "
-            f"own address: awuser=0x{aw:x} aruser=0x{ar:x} next to direct awuser=0x{direct[0]:x} "
-            f"aruser=0x{direct[1]:x} and M-mode awuser=0x{mmode_user[0]:x} "
-            f"aruser=0x{mmode_user[1]:x}",
+            "CHK-VALID0-SRCID-MMODE-0XC",
+            f"M-mode region 4 (valid clear) at 0x{_M4_ADDR:x} landed at its own address with "
+            f"AxUSER 0x{_USER_ALL:x} driven: awuser=0x{aw:03x} aruser=0x{ar:03x} == "
+            f"0x{MMODE_ID:03x}, bits [11:4] zero; direct path carried 0x{ids['direct'][0]:03x}",
         )
 
         # S8: restore every programmed register to its reset word.
@@ -321,8 +368,8 @@ class smc_outremap_prot_srcid_test_seq(SmcCsrSeq):
             f"{self.accesses} SEP_IN and {self.jtag_accesses} JTAG completed",
             f"check_output_responder_delta bound {RESPONDER_OBS_TIMEOUT_CYCLES} clk_smc_i per "
             f"JTAG access, last write/read counts {self._counts}",
-            "passive AW/AR handshake sampler: no wait, one sample per clk_smc_i rise, "
-            f"{len(self._sampler.events)} handshakes recorded",
+            "passive AW/AR handshake sampler on output_axi and the JTAG ingress: no wait, one "
+            f"sample per clk_smc_i rise, {len(self._sampler.events)} handshakes recorded",
         ]
         self._nonvac_fence()
 

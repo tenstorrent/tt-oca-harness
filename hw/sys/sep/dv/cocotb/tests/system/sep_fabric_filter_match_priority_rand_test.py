@@ -48,8 +48,16 @@ Legs:
   edges.
 
 Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTRL-FILTER-RAND (stimulus
-completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-ARMED,
-CHK-RESET-DENY-CONTROL, CHK-RESET-DENY-SI, CHK-GRANULE, CHK-FILT-GROUP.
+completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-IN,
+CHK-RESET-DENY-ARMED, CHK-RESET-DENY-CONTROL, CHK-RESET-DENY-SI, CHK-GRANULE,
+CHK-FILT-GROUP. CHK-RESET-DENY-IN: in the reset state, every inbound probe of
+the fixed reset-round list answers DECERR, no probe reaches a target, and the
+staged words keep their staged value, because every ``entry_enabled`` resets
+to 0 (``hw/ip/axi_filter/regs/filter_ctrl.rdl:31-35``), a disabled entry never
+matches (``hw/ip/axi_filter/doc/index.adoc:54``), unmatched SEP inbound traffic
+is blocked (``index.adoc:31``, ``:67-69``) and a blocked transaction ends in
+DECERR (``index.adoc:149-153``). It rests on CTRL-FILTER-ACTIVE, because the
+SEP inbound filter is bypassed while SEP-scope debug is open.
 CHK-RESET-DENY-SI: in the reset and the armed state, the System Interface
 reads of the extension window and of ``0x4000_0100`` answer DECERR, because
 no enabled entry matches and a blocked transaction ends in DECERR
@@ -67,7 +75,7 @@ never 0, which matches any ``group_id``. CTRL-FILT-USER shows the issued
 AxUSER, bits 11:4 included, on PR-INFLT at the filter output for the
 ``equal``, ``differ`` and ``upper_bits`` probes. CTRL-FILTER-ACTIVE is the bring-up
 precondition. The inbound cells that open tests grade run as controls and log
-CTRL-FILTER-CELL / CTRL-RESET-DENY lines. Every admitted outbound probe must
+CTRL-FILTER-CELL lines. Every admitted outbound probe must
 show PR-OUT handshakes only at its predicted outbound address
 (CTRL-PR-OUT-ADDR).
 
@@ -229,6 +237,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         "CHK-FILTER-CELL",
         "CHK-FILTER-SRC",
         "CHK-RESET-DENY",
+        "CHK-RESET-DENY-IN",
         "CHK-RESET-DENY-ARMED",
         "CHK-RESET-DENY-CONTROL",
         "CHK-GRANULE",
@@ -741,7 +750,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             "ext_seen": 0,
         }
         self._gate(graded_in)
-        self._chk = "CHK-RESET-DENY-ARMED" if graded_in else "CTRL-RESET-DENY"
+        self._chk = "CHK-RESET-DENY-ARMED" if graded_in else "CHK-RESET-DENY-IN"
         for p in self._deny_probes_in():
             r = await self._run(p)
             assert not r.verdict.allowed, f"{label}: model admits {p}"
@@ -795,12 +804,17 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
 
     async def _leg3(self) -> None:
         # Steps 4 to 7, reset state.
+        # CHK-RESET-DENY-IN: every entry_enabled resets to 0 (filter_ctrl.rdl:31-35),
+        # a disabled entry never matches (axi_filter/doc/index.adoc:54), unmatched
+        # SEP inbound traffic is blocked (:31, :67-69) and a blocked transaction
+        # answers DECERR (:149-153).
         st0 = await self._deny_round("RESET", graded_in=False)
-        assert st0["in_seen"] == 0 and st0["in_decerr"] == st0["in_probes"], (
-            f"CTRL-RESET-DENY FAIL: {st0}"
-        )
+        if not (st0["in_seen"] == 0 and st0["in_decerr"] == st0["in_probes"]):
+            msg = f"CHK-RESET-DENY-IN FAIL: inst=in {st0}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
         self.logger.info(
-            "CTRL-RESET-DENY LOG inst=in probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=%d "
+            "CHK-RESET-DENY-IN PASS: inst=in probes=%d prot1_0=%d prot1_1=%d decerr=%d target_seen=%d "
             "readback_same=%d",
             st0["in_probes"],
             st0["in_p0"],
@@ -1346,7 +1360,8 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         # AxUSER with SEP's source ID, which has no stated number. Wildcard probes
         # with two distinct LSU AxUSER values read it off PR-OUT; the grade is not
         # OTHERS and one value for both (SepSrcIdGrade). The exact and mismatch
-        # cells take the read ID as stimulus.
+        # cells take the read ID as stimulus and an issued AxUSER whose [3:0]
+        # differs from it, so a filter that matches the issued AxUSER fails them.
         users = draw_src_users(self.rng)
         grade = SepSrcIdGrade("FILT")
         for write in (False, True):
@@ -1375,7 +1390,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         sep = grade.value()
         self.sep_id = sep
         for write in (False, True):
-            u = self.rng.choice(users)
+            u = self.rng.choice([x for x in users if x & 0xF != sep])
             v = self.rng.choice([x for x in range(1, 16) if x != sep])
             p = self._p_out("smu", write, self.rng.getrandbits(1), user=u)
             idx = self.rng.randrange(n_out)

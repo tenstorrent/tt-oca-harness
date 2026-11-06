@@ -40,12 +40,12 @@
 <h3 id="VERSION_LO">VERSION_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>version_lo</td><td>R</td><td>0x100A0</td><td>SMC version, lower 32 bits</td></tr>
+<tr><td>31:0</td><td>version_lo</td><td>R</td><td>0x100A0</td><td>SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</td></tr>
 </table>
 <h3 id="VERSION_HI">VERSION_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>version_hi</td><td>R</td><td>0x0</td><td>SMC version, upper 32 bits</td></tr>
+<tr><td>31:0</td><td>version_hi</td><td>R</td><td>0x0</td><td>SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</td></tr>
 </table>
 <h3 id="CHIP_ID">CHIP_ID</h3>
 <table>

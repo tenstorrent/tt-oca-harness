@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Moves the re-sealed primary BL1 into SEP SRAM so that its last byte is the last byte of SEP SRAM (it ends at 0x10040000); the backup is unchanged.
+base = "signed"
+ops = [
+  { op = "set_bl1_load_end", slot = "primary", args = { end = 0x10040000 } },
+]

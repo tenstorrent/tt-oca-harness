@@ -2,7 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Mailbox access results, ERROR_FLAGS read-to-clear and channel coincidence on pair 2.
 
-Sources: axi_lite_mailbox_unit interface.adoc, architecture.adoc, axil_mailbox.rdl.
+Sources: axi_lite_mailbox_unit interface.adoc, architecture.adoc, axil_mailbox.rdl
+(`READ_DATA`: a read of any size or alignment pops one whole 64-bit entry and returns only the
+lanes it requests; `ERROR`: a 32-bit read of the upper half returns 0 and still clears the
+flags).
 """
 
 from __future__ import annotations
@@ -35,12 +38,13 @@ WFLUSH = _field_mask(_AXIL_MAILBOX_H, "AXIL_MAILBOX__CTRL__WFLUSH_bm")
 
 FUSE_SENSE_RISES = 200_000
 AXI_SLVERR = 2
-EMPTY_ERROR_LOW = 0xFEEDDEAD
-WRITE_DATA_EMPTY_LOW = 0xFEEDC0DE
+EMPTY_ERROR_WORD = 0x0000_0000_FEED_DEAD
+WRITE_DATA_EMPTY_WORD = 0x0000_0000_FEED_C0DE
+HALF = 4
 PAIR = 2
 SIDE = {"A": "OUTBOUND", "B": "INBOUND"}
 OKAY, ERROR = "okay", "error"
-_STEPS = tuple(f"S{n}" for n in range(1, 17))
+_STEPS = tuple(f"S{n}" for n in range(1, 19))
 _CHECKERS = (
     ("CHK-EMPTY-READ-SLVERR-DATA", "S2"),
     ("CHK-EMPTY-READ-FLAGS", "S3"),
@@ -59,6 +63,8 @@ _CHECKERS = (
     ("CHK-CHANNELS-WRITE-WITH-READ", "S15"),
     ("CHK-CHANNELS-CTRL-WITH-IRQS", "S16"),
     ("CHK-CHANNELS-COMPLETE-BOUNDED", "S16"),
+    ("CHK-MBOX-NARROW-READ-POPS", "S17"),
+    ("CHK-MBOX-ERRFLAGS-UPPER-HALF-CLEARS", "S18"),
 )
 
 
@@ -119,6 +125,16 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
     async def _val(self, name, side, reg) -> int:
         return (await self._rd(name, side, reg)).rdata
 
+    async def _rd_half(self, name, side, reg, upper: bool, expected=None):
+        """A 32-bit read of the lower or the upper half of a 64-bit register."""
+        item = self._item(name, SmcSysAxiOp.READ, side, reg, expected=expected)
+        item.addr += HALF if upper else 0
+        item.length = HALF
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        return self._check(item, OKAY)
+
     async def _push(self, name, side, data, mode=OKAY):
         return await self._wr(name, side, "WRITE_DATA", data, mode)
 
@@ -127,7 +143,9 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
 
     async def _empty_read(self, name, side="A"):
         item = await self._rd(name, side, "READ_DATA", mode=ERROR)
-        assert item.rdata & 0xFFFF_FFFF == EMPTY_ERROR_LOW, f"{name}: data 0x{item.rdata:x}"
+        assert item.rdata == EMPTY_ERROR_WORD, (
+            f"{name}: empty read data 0x{item.rdata:016x}, want 0x{EMPTY_ERROR_WORD:016x}"
+        )
         return item
 
     async def _flags(self, name, side) -> int:
@@ -158,9 +176,8 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-EMPTY-READ-SLVERR-DATA",
             f"READ_DATA of A and B answered SLVERR (resp {ea.resp_code}, {eb.resp_code}) with "
-            f"rdata[31:0]=0x{ea.rdata & 0xFFFFFFFF:08x},0x{eb.rdata & 0xFFFFFFFF:08x}; "
-            f"rdata[63:32]=0x{ea.rdata >> 32:08x},0x{eb.rdata >> 32:08x} "
-            "(not specified, measured)",
+            f"rdata=0x{ea.rdata:016x},0x{eb.rdata:016x}, the 0x0000_0000_FEED_DEAD word of "
+            "interface.adoc",
         )
 
         fa = await self._flags("EF_A", "A")
@@ -282,13 +299,12 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             f"not applicable; checked_cleared: second B read 0b{f10b:02b}",
         )
 
-        e11 = await self._rd("WD_EMPTY", "A", "WRITE_DATA")
-        assert e11.rdata & 0xFFFF_FFFF == WRITE_DATA_EMPTY_LOW, f"WRITE_DATA 0x{e11.rdata:x}"
+        e11 = await self._rd("WD_EMPTY", "A", "WRITE_DATA", expected=WRITE_DATA_EMPTY_WORD)
         self._mark_step("S11")
         self._log_chk(
             "CHK-WRITE-DATA-READ-EMPTY",
-            f"WRITE_DATA read OKAY resp {e11.resp_code} rdata[31:0]=0x{e11.rdata & 0xFFFFFFFF:08x} "
-            f"rdata[63:32]=0x{e11.rdata >> 32:08x} (not specified, measured)",
+            f"WRITE_DATA read OKAY resp {e11.resp_code} rdata=0x{e11.rdata:016x}, the "
+            f"0xFEEDC0DE word of interface.adoc with its upper word 0",
         )
 
         await self._wr("IRQS_CLEAN_12", "A", "IRQS", IRQ_ALL)
@@ -397,6 +413,54 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             "no cycle count assumed",
         )
 
+        n1, n2 = 0x1111_2222_3333_4444, 0x5555_6666_7777_8888
+        await self._push("N1", "A", n1)
+        await self._push("N2", "A", n2)
+        lo = await self._rd_half("N_LOW", "B", "READ_DATA", False, expected=n1 & 0xFFFF_FFFF)
+        hi = await self._rd_half("N_HIGH", "B", "READ_DATA", True, expected=n2 >> 32)
+        gone = await self._empty_read("N_EMPTY", "B")
+        f17 = await self._flags("EF_17", "B")
+        assert f17 == READ_ERROR, f"B ERROR_FLAGS 0b{f17:02b} after the empty read, want 0b01"
+        await self._wr("IRQS_CLEAN_17", "B", "IRQS", IRQ_ALL)
+        self._mark_step("S17")
+        self._log_chk(
+            "CHK-MBOX-NARROW-READ-POPS",
+            f"with 0x{n1:016x} then 0x{n2:016x} queued, a 32-bit read of READ_DATA[31:0] "
+            f"returned 0x{lo.rdata:08x} (the first word's low half), a 32-bit read of "
+            f"READ_DATA[63:32] returned 0x{hi.rdata:08x} (the second word's upper half, so the "
+            f"first read popped its whole entry), and the next 64-bit read answered resp "
+            f"{gone.resp_code} with the empty word: each narrow read popped one whole entry",
+        )
+
+        e = [0x1800_0000_0000_0000 + n for n in range(3)]
+        for tag in ("S18_CONTROL", "S18_UPPER"):
+            await self._empty_read(f"{tag}_EMPTY", "A")
+            await self._push(f"{tag}_F0", "A", e[0])
+            await self._push(f"{tag}_F1", "A", e[1])
+            await self._push(f"{tag}_FULL", "A", e[2], mode=ERROR)
+            await self._pop(f"{tag}_P0", "B", e[0])
+            await self._pop(f"{tag}_P1", "B", e[1])
+            if tag == "S18_CONTROL":
+                control = await self._flags("EF_18_CONTROL", "A")
+                assert control == READ_ERROR | WRITE_ERROR, (
+                    f"ERROR_FLAGS 0b{control:02b} after an empty read and a full write, want 0b11"
+                )
+        upper = await self._rd_half("EF_18_UPPER", "A", "ERROR_FLAGS", True, expected=0)
+        after = await self._flags("EF_18_AFTER", "A")
+        assert after == 0, (
+            f"ERROR_FLAGS 0b{after:02b} after the 32-bit read of its upper half, want 0b00: the "
+            f"narrow read did not clear the flags"
+        )
+        await self._wr("IRQS_CLEAN_18", "A", "IRQS", IRQ_ALL)
+        self._mark_step("S18")
+        self._log_chk(
+            "CHK-MBOX-ERRFLAGS-UPPER-HALF-CLEARS",
+            f"an empty read and a full write set ERROR_FLAGS to 0b{control:02b} (64-bit read, "
+            f"control); after the same two errors a 32-bit read of ERROR_FLAGS[63:32] answered "
+            f"resp {upper.resp_code} with 0x{upper.rdata:08x} and the next 64-bit read returned "
+            f"0b{after:02b}: the upper-half read returned 0 and cleared both flags",
+        )
+
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, cg)
         await self.csr_read("CLOCK_GATE_CONTROL_RESTORED", CLOCK_GATE_CONTROL, expected=cg)
         self._nonvac_fence()
@@ -414,7 +478,8 @@ class smc_mailbox_access_error_test_seq(SmcCsrSeq):
             assert when >= stamp_of[step], f"{chk_id} printed before its step {step} stamp"
         cocotb.log.info(
             "CHK-NONVAC: ordered fence GATE_ENABLED<EMPTY_READ<FLAGS<NO_EFFECT<CLEAN<FULL_WRITE<"
-            "BOTH_FLAGS<STICKY<RECOVER<PER_APERTURE<WRDATA_EMPTY<WRDATA_BUSY<RO_WRITES<GROUPS; "
+            "BOTH_FLAGS<STICKY<RECOVER<PER_APERTURE<WRDATA_EMPTY<WRDATA_BUSY<RO_WRITES<GROUPS<"
+            "NARROW_POPS<ERRFLAGS_UPPER_HALF; "
             "checker lines %s; stamps %s",
             ",".join(chk_ids),
             ",".join(f"{s}={t}" for s, t in self._stamps),

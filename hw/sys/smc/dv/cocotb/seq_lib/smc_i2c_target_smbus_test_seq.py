@@ -7,9 +7,10 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, Timer
 
-from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
+from .smc_addr_map import I2C_CG_EN, _field_mask, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_i2c_field_masks import (
+    _I2C_H,
     I2C_CTRL_ENABLETARGET,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_FIFO_CTRL_TXRST,
@@ -49,33 +50,47 @@ I2C0_TIMING3 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR", 0)
 I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", 0)
 
 
+def _timing_field(reg: str, field: str, value: int) -> int:
+    mask = _field_mask(_I2C_H, f"I2C__{reg}__{field}_bm")
+    return (value << _field_mask(_I2C_H, f"I2C__{reg}__{field}_bp")) & mask
+
+
 def _pack_timing0(thigh: int, tlow: int) -> int:
-    return (thigh & 0x1FFF) | ((tlow & 0x1FFF) << 16)
+    return _timing_field("TIMING0", "THIGH", thigh) | _timing_field("TIMING0", "TLOW", tlow)
 
 
 def _pack_timing1(t_r: int, t_f: int) -> int:
-    return (t_r & 0x3FF) | ((t_f & 0x1FF) << 16)
+    return _timing_field("TIMING1", "T_R", t_r) | _timing_field("TIMING1", "T_F", t_f)
 
 
 def _pack_timing2(tsu_sta: int, thd_sta: int) -> int:
-    return (tsu_sta & 0x1FFF) | ((thd_sta & 0x1FFF) << 16)
+    return _timing_field("TIMING2", "TSU_STA", tsu_sta) | _timing_field(
+        "TIMING2", "THD_STA", thd_sta
+    )
 
 
 def _pack_timing3(tsu_dat: int, thd_dat: int) -> int:
-    return (tsu_dat & 0x1FF) | ((thd_dat & 0x1FFF) << 16)
+    return _timing_field("TIMING3", "TSU_DAT", tsu_dat) | _timing_field(
+        "TIMING3", "THD_DAT", thd_dat
+    )
 
 
 def _pack_timing4(tsu_sto: int, t_buf: int) -> int:
-    return (tsu_sto & 0x1FFF) | ((t_buf & 0x1FFF) << 16)
+    return _timing_field("TIMING4", "TSU_STO", tsu_sto) | _timing_field("TIMING4", "T_BUF", t_buf)
 
 
-def _pack_target_id(address0: int, mask0: int = 0x7F, address1: int = 0, mask1: int = 0) -> int:
-    return (
-        (address0 & 0x7F)
-        | ((mask0 & 0x7F) << 7)
-        | ((address1 & 0x7F) << 14)
-        | ((mask1 & 0x7F) << 21)
-    )
+_TARGET_ID_FIELDS = tuple(
+    (_field_mask(_I2C_H, f"I2C__TARGET_ID__{f}_bp"), _field_mask(_I2C_H, f"I2C__TARGET_ID__{f}_bm"))
+    for f in ("ADDRESS0", "MASK0", "ADDRESS1", "MASK1")
+)
+_TARGET_ID_FULL_MASK = _TARGET_ID_FIELDS[1][1] >> _TARGET_ID_FIELDS[1][0]
+
+
+def _pack_target_id(
+    address0: int, mask0: int = _TARGET_ID_FULL_MASK, address1: int = 0, mask1: int = 0
+) -> int:
+    values = (address0, mask0, address1, mask1)
+    return sum((v << bp) & bm for (bp, bm), v in zip(_TARGET_ID_FIELDS, values))
 
 
 class smc_i2c_target_smbus_test_seq(SmcCsrSeq):

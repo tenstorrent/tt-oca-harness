@@ -47,7 +47,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     reaches the shadow registers outside PROD and RMA_SIP, and the
                     four targets are set-only in every state. PROD and RMA_SIP restrict
                     JTAG to the token block and log
-                    ``OBS-BLOCKED CHK-STM-JTAG reason=lifecycle_gate``.
+                    ``INFO-BLOCKED CHK-STM-JTAG reason=lifecycle_gate``.
   CHK-STM-FEAT-DEMOTED  a closing leg after the SEC_DIS control: for each demotion
                     {``DEMOTE_1``, ``DEMOTE_2``, both}, in seeded order, a cold reset
                     with the strap at 1, a full sense, the ``demote`` write and a

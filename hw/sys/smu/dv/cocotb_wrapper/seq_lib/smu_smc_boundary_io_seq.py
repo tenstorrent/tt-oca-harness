@@ -23,7 +23,13 @@ bench drove:
   inputs, so the release leg requires the vector to follow the pins back down
   rather than latch. fabric.adoc places the PLIC on the CPU cluster's local
   path, out of reach of the bench's JTAG2AXI manager, so PLIC pending state
-  is not claimed here.
+  is not claimed here. ``doc/integrator/src/smu-smc.adoc`` ("Interrupt
+  Integration") makes the pin three-flop synchronized with no edge-triggered
+  mode: a pulse has to stay high long enough to be sampled on ``clk_smc``,
+  and a short asynchronous pulse can be lost. The pulse leg drives lane 0
+  high between two ``clk_smu_i`` rising edges and requires the vector bit to
+  stay clear, then high across four edges and requires the bit high three to
+  four edges later for as many cycles as the pin, and clear afterwards.
 * ``RESET_UNIT.SS_CONFIG`` / ``SYNC_REG`` / ``ISOLATE_REQ_REG`` ->
   ``ss_config_o`` / ``sync_irq_o`` / ``isolate_req_o``.
 * ``mem_repair_abort_i`` / ``mbist_abort_i`` -> ``DFX_CTRL.STATUS_SMU``. Those
@@ -48,7 +54,7 @@ reset value of zero so the cool-reset FSM never starts.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import reset_unit_u32, smc_addr
@@ -107,6 +113,17 @@ EXT_IRQ_VECTOR_BITS = 256
 SYNC_CYCLES = 32
 EXT_IRQ_LANE = 0
 EXT_IRQ_PATTERN = 0xA5A5_5A5A
+# smu-smc.adoc "Interrupt Integration": three-flop synchronized, so a pulse
+# sampled by clk_smu_i reaches the vector three edges after the first edge
+# that samples it high; the observation of the vector adds at most one.
+EXT_IRQ_SYNC_LATENCY_MIN = 3
+EXT_IRQ_SYNC_LATENCY_MAX = 4
+EXT_IRQ_SAMPLED_PULSE_EDGES = 4
+EXT_IRQ_PULSE_WINDOW_CYCLES = 16
+# The lost pulse rises and falls between two consecutive clk_smu_i rising
+# edges, at these fractions of the period after an edge.
+EXT_IRQ_LOST_PULSE_RISE = 0.2
+EXT_IRQ_LOST_PULSE_FALL = 0.6
 SS_CONFIG_PATTERN = 0xA5A5_5A5A
 SS_RESET_INCOMPLETE_PATTERNS = (0x5555_5555, 0xAAAA_AAAA, 0xFFFF_FFFF)
 ISOLATE_SW_BIT = 0
@@ -178,6 +195,7 @@ class smu_smc_boundary_io_seq:
         await self._ndmreset_request()
         await self._ndmreset_process()
         await self._ext_interrupt()
+        await self._ext_interrupt_pulse()
         await self._reset_unit_outputs()
         await self._dft_abort_status()
         await self._ss_reset_complete()
@@ -303,6 +321,98 @@ class smu_smc_boundary_io_seq:
             sample(received, "cpu_interrupts_o") & lane_mask,
             0,
             evidence="CHK-SMU-EXT-IRQ",
+        )
+
+    # ------------------------------------------------------------------
+    # S3b: a pulse on an external interrupt lane against the three-flop
+    # synchronizer: lost when it spans no clk_smu_i edge, delivered as a
+    # level when it spans four.
+    # ------------------------------------------------------------------
+    async def _ext_interrupt_pulse(self) -> None:
+        dut = self.dut
+        clk = dut.clk_smu_i
+        lane_bit = 1 << EXT_IRQ_LANE
+        received = hier(smu_scope(dut), f"{SMC_BASE_PATH}.cpu_interrupts_o")
+        period_ps = round(self.cfg.smu_clk_period_ns * 1000)
+
+        def lane() -> int:
+            return (sample(received, "cpu_interrupts_o") >> EXT_IRQ_LANE) & 1
+
+        rise_ps = round(EXT_IRQ_LOST_PULSE_RISE * period_ps)
+        fall_ps = round(EXT_IRQ_LOST_PULSE_FALL * period_ps)
+        await RisingEdge(clk)
+        await Timer(rise_ps, unit="ps")
+        dut.tb_smc_ext_interrupts.value = lane_bit
+        await Timer((fall_ps - rise_ps) // 2, unit="ps")
+        on_pin = sample(dut.tb_smc_ext_interrupts, "tb_smc_ext_interrupts") & lane_bit
+        await Timer(fall_ps - rise_ps - (fall_ps - rise_ps) // 2, unit="ps")
+        dut.tb_smc_ext_interrupts.value = 0
+        self.sb.expect_eq(
+            f"the lost pulse reads high on smc_ext_interrupts_i[{EXT_IRQ_LANE}] between its edges",
+            on_pin,
+            lane_bit,
+        )
+        lost = []
+        for _ in range(EXT_IRQ_PULSE_WINDOW_CYCLES):
+            await RisingEdge(clk)
+            lost.append(lane())
+        self.log.info(
+            "CHK-SMU-EXT-IRQ-PULSE lane %d high from %d ps to %d ps after a clk_smu_i edge "
+            "(period %d ps): cpu_interrupts_o[%d] per edge %s",
+            EXT_IRQ_LANE,
+            rise_ps,
+            fall_ps,
+            period_ps,
+            EXT_IRQ_LANE,
+            lost,
+        )
+        self.sb.expect_eq(
+            f"CHK-SMU-EXT-IRQ-PULSE a pulse on smc_ext_interrupts_i[{EXT_IRQ_LANE}] that spans no "
+            f"clk_smu_i rising edge ({rise_ps} to {fall_ps} ps of a {period_ps} ps period) never "
+            f"appears on cpu_interrupts_o[{EXT_IRQ_LANE}] over {EXT_IRQ_PULSE_WINDOW_CYCLES} "
+            f"edges (per edge {lost})",
+            sum(lost),
+            0,
+            evidence="CHK-SMU-EXT-IRQ-PULSE",
+        )
+
+        await RisingEdge(clk)
+        dut.tb_smc_ext_interrupts.value = lane_bit
+        delivered = []
+        for edge in range(EXT_IRQ_PULSE_WINDOW_CYCLES):
+            await RisingEdge(clk)
+            delivered.append(lane())
+            if edge == EXT_IRQ_SAMPLED_PULSE_EDGES - 1:
+                dut.tb_smc_ext_interrupts.value = 0
+        highs = [idx for idx, level in enumerate(delivered) if level]
+        latency = highs[0] + 1 if highs else None
+        run = (highs[-1] - highs[0] + 1) if highs else 0
+        contiguous = len(highs) == run
+        self.log.info(
+            "CHK-SMU-EXT-IRQ-PULSE lane %d high across %d clk_smu_i edges: cpu_interrupts_o[%d] "
+            "per edge %s, first high %s edges after the pin rose, high run %d",
+            EXT_IRQ_LANE,
+            EXT_IRQ_SAMPLED_PULSE_EDGES,
+            EXT_IRQ_LANE,
+            delivered,
+            latency,
+            run,
+        )
+        self.sb.expect_eq(
+            f"CHK-SMU-EXT-IRQ-PULSE a pulse on smc_ext_interrupts_i[{EXT_IRQ_LANE}] sampled by "
+            f"{EXT_IRQ_SAMPLED_PULSE_EDGES} clk_smu_i edges appears on cpu_interrupts_o"
+            f"[{EXT_IRQ_LANE}] {EXT_IRQ_SYNC_LATENCY_MIN} to {EXT_IRQ_SYNC_LATENCY_MAX} edges "
+            f"after the pin rose and clears with the pin, one contiguous run of "
+            f"{EXT_IRQ_SAMPLED_PULSE_EDGES} (first high after {latency} edges, run {run}, "
+            f"per edge {delivered})",
+            (
+                latency is not None
+                and EXT_IRQ_SYNC_LATENCY_MIN <= latency <= EXT_IRQ_SYNC_LATENCY_MAX,
+                run,
+                contiguous,
+            ),
+            (True, EXT_IRQ_SAMPLED_PULSE_EDGES, True),
+            evidence="CHK-SMU-EXT-IRQ-PULSE",
         )
 
     # ------------------------------------------------------------------

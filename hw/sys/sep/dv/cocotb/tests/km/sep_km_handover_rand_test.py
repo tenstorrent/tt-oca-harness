@@ -10,7 +10,7 @@ is the SEP host and reaches the KM only through ``km_mailbox_sep``.
 Images. The spin image (``env/sep_km_img_h.py``, ``spin_image``) is a drawn image
 whose word 0 jumps to itself. IMG-H (``tests/km_fw/km_img_h.S``, committed as
 ``tests/km_img_h.parhex``) runs after the handover and sends the KM state that
-it reads at the jump to the host as one 263-word KM mailbox message, decoded by
+it reads at the jump to the host as one 264-word KM mailbox message, decoded by
 ``env/sep_km_img_h.py``. The images grade nothing; every golden is in this leaf
 and its model (``sep_km_handover_rand_model.py``), from
 ``hw/ip/key_manager/doc/firmware.adoc`` ("0x11 - CMD_SRAM_LOAD_EXEC",
@@ -23,8 +23,9 @@ Key Manager register map.
 Probes: ``HOST-MBX`` (``SEP_STATUS``, ``SEP_READ_DATA``, ``SEP_IRQ_STATUS``),
 ``PIC-IRQ`` bit 30 (``sep_ras_o.km_uncorrectable``), ``KM-COUNT``
 (``km_sram_write_count_o``), and the read-only taps ``KM-BUS``
-(``km_key_aw_*``) and ``KM-VALID`` (``km_engine_key_valid_o``,
-``km_abr_sk_valid_o``, ``km_abr_sk_key_o``). No inject: the flipped image bit
+(``km_key_aw_*``), ``KM-VALID`` (``km_engine_key_valid_o``,
+``km_abr_sk_valid_o``, ``km_abr_sk_key_o``), ``KM-WMAP`` and ``KM-INFIFO``
+(``km_infifo_head_o``). No inject: the flipped image bit
 and the refused FW_WORDS values are legal host stimulus.
 
 Plan (``SepSeededRng`` from the run seed). RAND-REP for the load legs: the good
@@ -48,7 +49,8 @@ Checks:
   CHK-HO-REGS         IRQ_ENABLE 0, KM_IRQ_ENABLE 0, IRQ_ENTRY_ADDR 0x10,
                       IRQ_ENTRY_LOCK 0, CPU IRQ mask bits 3 to 5 set,
                       SRAM_EXEC_MODE.enable 1 at the jump.
-  CHK-HO-NOIRQ        every IRQ_STATUS bit reads 0 at the jump.
+  CHK-HO-NOIRQ        every IRQ_STATUS bit and every SRAM_WRITE_LOCK_VIOLATION
+                      bit reads 0 at the jump.
   CHK-HO-ENTRY        x5 = 0x8000, every other reported GPR 0.
   CHK-HO-OTP          OTP_READ_LOCK: the four secret bits set; the public and
                       life-cycle bits clear.
@@ -60,12 +62,15 @@ Checks:
   CHK-HO-SIDELOAD-BUS every (share, word) address of the eight bank windows is
                       written after the handover command, also in empty banks.
   CHK-HO-SRAM         SRAM_LOCK = 0x80000001 and every word of every unlocked
-                      region is written before the jump (KM-WMAP-JUMP).
-  CHK-HO-MBOX         KM_STATUS.inbound_empty = 1 at the jump.
+                      region is written before the jump (KM-WMAP-JUMP, read back
+                      cleared at the baseline of the pass).
+  CHK-HO-MBOX         KM_STATUS.inbound_empty = 1 at the jump; in pass 1 the first
+                      junk word reached the head of the inbound FIFO (KM-INFIFO).
 
 Controls: PIC bit 30 reads 0 in a quiet window before the corrupted load and
 after the good load; the good size n1 gets the confirmation; the read path of
-each locked-slot read shows AXI_SLVERR; the free-slot word and the KMAC
+each locked-slot read shows AXI_SLVERR; the region-31 store shows its
+violation bit; the free-slot word and the KMAC
 KEY_CTRL write and readback show a live read path; pass 1 posts 6 junk words;
 pass 2 has six banks with no key; the pass 1 shared key is pending and its KEY
 words are non-zero before the handover. The cells that ``sep_km_handover_test`` grades (the code of FW_WORDS
@@ -74,8 +79,14 @@ words are non-zero before the handover. The cells that ``sep_km_handover_test`` 
 Logged only: the response to the mid size (``OBS-SIZE-MID``), the shared-key
 words at the jump of each pass (``INFO-HO-SK-WORDS``), the VAL_0 reads of the OTP fields, the
 SRAM store and violation readbacks, the demotion lock bit and the full CPU IRQ
-mask. CHK-HO-NOIRQ and CHK-HO-SK-WORDS can fail on this DUT (contract, "Known
-limitation").
+mask. CHK-HO-NOIRQ and CHK-HO-SK-WORDS remain graded contracts.
+
+The regression runs the leaf as two shards (``+sep_shard``, ``env/sep_shard.py``),
+each from its own seed and its own boot, and each draws the whole plan: shard 1 the
+good load, the fw_crc leg, the size refusals and the mid size (steps 2 to 9); shard
+2 the warm reset before pass 1 and passes 1 and 2 (steps 10 to 16). Pass 2 runs the
+image that pass 1 loads, so both passes are in one shard. Without the plusarg the
+leaf runs every leg, as one boot.
 """
 
 from __future__ import annotations
@@ -90,6 +101,7 @@ from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_image import LC_PROD, SepEfuseImage
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_km_fuse_plan import OTP_DUAL_RAIL_FIELDS
+from env.sep_shard import sep_shard
 from env.sep_spec_tables import agg_from_pic
 from km import sep_km_handover_rand_model as md
 from sep_base_test import sep_base_test
@@ -275,6 +287,31 @@ class _KeyBusWatch:
                     self.count += 1
 
 
+class _HeadWatch:
+    """KM-INFIFO: whether ``word``, without the separator, is at the head of the
+    inbound FIFO on any clock between start and stop."""
+
+    def __init__(self, test: sep_base_test, word: int) -> None:
+        if not word:
+            raise AssertionError("the watched inbound word is 0, the head value of an empty FIFO")
+        self.test = test
+        self.word = word
+        self.seen = 0
+        self._on = True
+        cocotb.start_soon(self._run())
+
+    async def stop(self) -> int:
+        self._on = False
+        await ClockCycles(cocotb.top.clk_i, 2)
+        return self.seen
+
+    async def _run(self) -> None:
+        while self._on and not self.seen:
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            self.seen = int(self.test.rd_known(cocotb.top.km_infifo_head_o) == self.word)
+
+
 class _RiseHold:
     """PIC bit 30 on every clock: the rise after the trailer, then the hold window."""
 
@@ -329,6 +366,26 @@ class _RiseHold:
                 return
 
 
+_LOAD_SHARD = 1
+_PASS_SHARD = 2
+SHARD_EVIDENCE = {
+    _LOAD_SHARD: ("CHK-FWCRC", "CHK-SIZE-REJ"),
+    _PASS_SHARD: (
+        "CHK-HO-FIRST",
+        "CHK-HO-REGS",
+        "CHK-HO-NOIRQ",
+        "CHK-HO-ENTRY",
+        "CHK-HO-OTP",
+        "CHK-HO-KPV-LOCK",
+        "CHK-HO-SIDELOAD",
+        "CHK-HO-SK-WORDS",
+        "CHK-HO-SIDELOAD-BUS",
+        "CHK-HO-SRAM",
+        "CHK-HO-MBOX",
+    ),
+}
+
+
 @pyuvm.test()
 class sep_km_handover_rand_test(sep_base_test):
     """Image load refusals, the fw_crc fault and the KM state at the handover jump."""
@@ -357,13 +414,16 @@ class sep_km_handover_rand_test(sep_base_test):
     def _sram_writes(self) -> int:
         return self.rd_known(cocotb.top.km_sram_write_count_o)
 
-    async def _wmap_clear(self) -> None:
-        """KM-WMAP: clear the distinct-word counts. The clear is held to the
-        falling edge, so the rising edge that the model evaluates samples it."""
+    async def _wmap_clear(self) -> int:
+        """KM-WMAP: clear the distinct-word counts and the jump capture, and
+        return the capture flag read back after the clear. The clear is held to
+        the falling edge, so the rising edge that the model evaluates samples it."""
         cocotb.top.km_sram_wmap_clr_i.value = 1
         await RisingEdge(cocotb.top.clk_i)
         await FallingEdge(cocotb.top.clk_i)
+        seen = self.rd_known(cocotb.top.km_sram_wmap_jump_seen_o)
         cocotb.top.km_sram_wmap_clr_i.value = 0
+        return seen
 
     def _wmap_regions(self) -> list[int]:
         """KM-WMAP: the distinct words written in each SRAM write-lock region."""
@@ -776,19 +836,21 @@ class sep_km_handover_rand_test(sep_base_test):
         image = imgh.read_image()
         bus = _KeyBusWatch(self)
         await self._graded(True)
+        head = None
         if via_load:
             seq = await self.km.send_command(KM_CMD_SRAM_LOAD_EXEC, [len(image)])
             rc, arg = await self.km.recv_resp_cmd(KM_CMD_SRAM_LOAD_EXEC, seq)
-            await self._wmap_clear()
+            clear_seen = await self._wmap_clear()
             base = self._sram_writes()
             bus.start()
             await self._post(imgh.stream_words(image))
             if junk:
+                head = _HeadWatch(self, junk[0])
                 await self._post(junk)
         else:
             # The handover begins when the ROM sends the confirmation, so the
             # baseline and the bus record start before the command.
-            await self._wmap_clear()
+            clear_seen = await self._wmap_clear()
             base = self._sram_writes()
             bus.start()
             seq = await self.km.send_command(KM_CMD_SRAM_EXEC, [])
@@ -845,6 +907,7 @@ class sep_km_handover_rand_test(sep_base_test):
         delta = (writes_end - base) & md.WORD
         wmap_end = self._wmap_regions()
         jump_seen, jump_wr, wmap = self._wmap_jump()
+        junk_head = await head.stop() if head else 0
         self.logger.info(
             "LOG pass=%d KM-WMAP-JUMP seen=%d r30_jump=%d r30_end=%d writes_after_jump=%d",
             exp.no,
@@ -887,8 +950,8 @@ class sep_km_handover_rand_test(sep_base_test):
             ("HO-KPV-LOCK", md.grade_kpv_lock, (rep, exp)),
             ("HO-SIDELOAD", md.grade_sideload, (rep, exp)),
             ("HO-SIDELOAD-BUS", md.grade_sideload_bus, (bus.writes, exp)),
-            ("HO-SRAM", md.grade_sram, (rep, exp, delta, wmap, jump_seen, wmap_end)),
-            ("HO-MBOX", md.grade_mbox, (rep, exp)),
+            ("HO-SRAM", md.grade_sram, (rep, exp, delta, wmap, jump_seen, wmap_end, clear_seen)),
+            ("HO-MBOX", md.grade_mbox, (rep, exp, junk_head)),
         ):
             ok, f = grade(*args)
             self.chk.ok(name, ok, **f)
@@ -943,6 +1006,7 @@ class sep_km_handover_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
+        self.shard = sep_shard(self, SHARD_EVIDENCE)
         self.chk = SepChkLog(self, TEST, seed)
         self.plan = md.draw_plan(
             seed, {f: SepEfuseImage.field(f).n_words for f in OTP_DUAL_RAIL_FIELDS}
@@ -985,17 +1049,19 @@ class sep_km_handover_rand_test(sep_base_test):
             hashlib.sha256(imgh.IMAGE_PATH.read_bytes()).hexdigest(),
             len(imgh.read_image()),
         )
-        await self._good_load()  # steps 2 and 3
-        await self._fwcrc_leg()  # steps 5 and 6
-        # Step 7: the warm boot of step 6 serves the first oversize value.
-        oversize = (*md.OVERSIZE_FIXED, self.plan.oversize)
-        for i, w in enumerate(oversize):
-            await self._size_rej(w, zero=False, boot=i > 0)
-        await self._size_rej(0, zero=True, boot=True)  # step 8
-        await self._mid_size()  # step 9
-        await self._warm("pass 1 pre-state")
-        await self._state_pass(1)  # steps 10 to 14
-        await self._state_pass(2)  # steps 15 and 16
+        if self.shard in (None, _LOAD_SHARD):
+            await self._good_load()  # steps 2 and 3
+            await self._fwcrc_leg()  # steps 5 and 6
+            # Step 7: the warm boot of step 6 serves the first oversize value.
+            oversize = (*md.OVERSIZE_FIXED, self.plan.oversize)
+            for i, w in enumerate(oversize):
+                await self._size_rej(w, zero=False, boot=i > 0)
+            await self._size_rej(0, zero=True, boot=True)  # step 8
+            await self._mid_size()  # step 9
+        if self.shard in (None, _PASS_SHARD):
+            await self._warm("pass 1 pre-state")
+            await self._state_pass(1)  # steps 10 to 14
+            await self._state_pass(2)  # steps 15 and 16
 
         # Step 18: leave the leaf with km_sw_rst_n high.
         await self._warm("end of leaf")

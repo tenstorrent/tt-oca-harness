@@ -41,7 +41,7 @@ illegal main-state encoding of the illegal-state leg.
 Shards (``env/sep_shard.py``): shard 1 is the reset leg and the threshold
 blocks; shard 2 is the reset leg and the ERR leg; shard 3 is the reset leg and
 the threshold blocks 0, 5 and 7, with no no-trip leg, and it does not grade
-CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD: it logs ``OBS-BLOCKED CHK-PF-TRIP-HOLD``
+CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD: it logs ``INFO-BLOCKED CHK-PF-TRIP-HOLD``
 at each trip, with the reason, and releases no cell by them. Shard 1 and the entry
 without ``+sep_shard`` grade both. The entry without
 ``+sep_shard`` runs every leg, the ERR leg last.
@@ -277,8 +277,8 @@ TOTAL_ADDRS = tuple(
 BASELINE_PARK = ("otbn", "aes", "hmac", "kmac", "abr")
 T_DRAWN = (4, 5, 7)
 # Shard 3 runs both of these trip thresholds, in a drawn order, in place of 3 and
-# T_d: the green shard then trips at 5 and at 7 on every seed. The reset leg reads
-# the 4 on every seed, and the alert test grades the trip at 3.
+# T_d. It trips at 5 and at 7 on every seed. The reset leg reads 4 on every
+# seed, and the alert test grades the trip at 3.
 T_SHARD3 = (5, 7)
 WINDOWS = (256, 512)
 GAPS = (2, 3, 4)
@@ -1156,7 +1156,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         }
 
     def _not_graded(self, name: str) -> bool:
-        """In shard 3, log an ungraded check as OBS-BLOCKED and return True."""
+        """In shard 3, log an ungraded check as INFO-BLOCKED and return True."""
         if name not in self.ungraded:
             return False
         self.chk.blocked(
