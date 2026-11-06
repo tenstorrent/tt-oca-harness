@@ -22,7 +22,8 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
   logs a DUT value that no check of the leaf grades and that no open
   specification question asks for: the specification states its golden but
   the leaf does not grade it, or an ``OBS-`` line of another leaf holds the
-  open question. ``obs()``, ``blocked()`` and ``info()`` grade nothing.
+  open question; the test contract says that the value is not graded.
+  ``obs()``, ``blocked()`` and ``info()`` grade nothing.
 * ``finish()`` is the verdict. It raises ``AssertionError`` if any check or
   control failed, or if no check passed. Otherwise it hands the
   ``RESULT <leaf> seed=<n> PASS checks=<k>`` line to ``result_pass`` of the

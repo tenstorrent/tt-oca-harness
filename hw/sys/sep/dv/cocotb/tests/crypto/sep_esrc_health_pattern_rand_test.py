@@ -65,7 +65,8 @@ Checkers:
                    with ENABLE bit 0 cleared while REPETITION_TEST_COUNT reads
                    at least 100, the count reads below 100 and below its value
                    before the write after one window (the run state is cleared).
-                   The exact cleared value is not stated: INFO-BLOCKED.
+                   The exact cleared value is not stated: OBS-HT-REPCOUNT-AFTER
+                   logs it.
   CHK-HT-W1C       a write of 1 to the set bits of GENERATOR_k_HEALTH_STATUS
                    clears them. The write runs with every tester disabled, so no
                    window end can latch a bit between the write and the read;
