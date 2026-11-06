@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut prim_axil_addr_demux`, registered in
+# hw/common/dv/configs/duts.toml because hw/common/ocah_prim is outside the
+# hw/ip/<name>/dv directory convention. IP-level cocotb bench for the AXI-Lite address demux:
+# the shared AXI VIP's AXI4-Lite master drives the pin-exposed slave port of tb/tb_top.sv.
+name = "prim_axil_addr_demux"
+profile = "native"
+default_framework = "cocotb"
+description = "AXI-Lite address demux IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/common/ocah_prim/dv/build"]
+
+[build]
+top_module = "prim_axil_addr_demux_tb_top"
+top_file = "hw/common/ocah_prim/dv/tb/tb_top.sv"
+filelist = "hw/common/ocah_prim/dv/build/prim_axil_addr_demux_dut_compile.f"
+bender_filelist = "hw/common/ocah_prim/dv/build/prim_axil_addr_demux_bender.f"
+work_dir = "hw/common/ocah_prim/dv/build"
+common_bender_targets = [
+  "axi_rtl",
+  "common_cells_rtl",
+]
+bender_targets = ["prim_axil_addr_demux"]
+
+[frameworks.cocotb]
+python_root = "hw/common/ocah_prim/dv/cocotb"
+test_dir = "hw/common/ocah_prim/dv/cocotb/tests"
+python_paths = ["hw/common/dv/vip"]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Range edges and the word past each range"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "Every word around the window and random addresses"
+timeout_sec = 900
+args = []
+
+[targets.default]
+description = "AXI-Lite address demux IP-level cocotb target"
+build_dir = "hw/common/ocah_prim/dv/build/cocotb"
+
+# USERERROR is an error: under -Wno-fatal Verilator reports an elaboration-time $error, such
+# as a failed OCAH_ASSERT_STATIC range check, as a warning and builds the model anyway.
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-TIMESCALEMOD",
+  "-Werror-USERERROR",
+  "+define+VERILATOR",
+]
