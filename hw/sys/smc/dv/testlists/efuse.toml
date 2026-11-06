@@ -106,7 +106,7 @@ run_modes = ["smoke"]
 # through tb_ext_interrupts_hi_i.
 
 [[tests]]
-# The default asset programs only LOCKS word 0, so every other content row of
+# The default asset programs only HARNESS_LOCKS word 0, so every other content row of
 # this sweep compares zeros; the smc_efuse_image_*_test leaves below sense images
 # that fill every word.
 name = "smc_efuse_map_read_test"

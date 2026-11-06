@@ -4,7 +4,7 @@
 
 Expected-value provenance:
 
-* ``LOCKS`` -- read from ``hw/sys/smc/dv/assets/smc_efuse_default.hex`` at run
+* ``HARNESS_LOCKS`` -- read from ``hw/sys/smc/dv/assets/smc_efuse_default.hex`` at run
   time via ``efuse_preload_word_at`` rather than a hand-transcribed literal,
   which cannot detect the asset and the model disagreeing. That asset is what
   ``efuse_bank_model.sv`` ``$readmemh``s under the bench-wide

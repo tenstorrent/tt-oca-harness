@@ -12,7 +12,7 @@ targets bit 0, which lies in `LOCKS` itself, a field hardware never applies
 locks to, so none of them exercises the guard's field lookup.
 
 This leaf targets SPARE fields, whose locks the default image leaves clear
-(the sequence checks), and sets their locks through the `LOCKS` CSR, which is
+(the sequence checks), and sets their locks through the `HARNESS_LOCKS` CSR, which is
 write-1-to-set:
 
 * **An unlocked read.** The default image leaves every SPARE word at zero, so a
@@ -41,7 +41,7 @@ write-1-to-set:
   must fail; and a read with the read timeout disabled at length 0 must return
   exactly the two bits programmed.
 
-Locks set through `LOCKS` hold until reset, so SPARE[0] and SPARE[1] are left
+Locks set through `HARNESS_LOCKS` hold until reset, so SPARE[0] and SPARE[1] are left
 locked; no other leaf in the run uses them.
 """
 

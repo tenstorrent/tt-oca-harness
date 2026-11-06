@@ -31,12 +31,12 @@ the DUT:
   word could hold, and its response
   code is recorded, not asserted.
 
-**Scenario.** Sense; read all 256 words. Write the complement of every non-LOCKS
+**Scenario.** Sense; read all 64 words. Write the complement of every non-LOCKS
 word, then read them all: a write-unlocked word holds the complement, a
 write-locked one still holds the image. Every image senses a non-zero LOCKS, so
 a write of 0 is a real clear attempt: LOCKS must keep its sensed value, read
 all-ones after a write of all-ones, and keep all-ones across a second write of
-0. A sweep of all 256 words then reads LOCKS as all-ones and every other word
+0. A sweep of all 64 words then reads HARNESS_LOCKS as all-ones and every other word
 without disclosing it. Cold
 reset, observe sense restart, and read all 256 words against the image once
 more -- the shadow writes above are gone because the shadow file is reloaded
@@ -226,7 +226,7 @@ def word_addr(word: int) -> int:
     return EFUSE_MAP_BASE + 4 * word
 
 
-#: SEP_IN AXI accesses one run issues: three 256-word read sweeps, a complement
+#: SEP_IN AXI accesses one run issues: three 64-word read sweeps, a complement
 #: write and a readback of every non-LOCKS word, and three write-then-readback
 #: rounds over the LOCKS words in the set-only leg.
 EXPECTED_ACCESSES = 3 * EFUSE_MAP_WORDS + 2 * len(DATA_WORDS) + 3 * 2 * len(LOCKS_WORDS)

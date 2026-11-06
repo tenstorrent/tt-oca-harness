@@ -328,7 +328,7 @@ verifying the block behind the port.
 This plan claims SMC behaviour at the `smc_wrapper` boundary and over the
 SEP_IN AXI and JTAG-AXI ports, with the DUT elaborated at the open-source
 integration's parameter defaults (four CPU cores, 256 external interrupts,
-32 mailbox pairs, the 1 KiB eFuse map). The behaviours below sit behind
+32 mailbox pairs, the 256 B eFuse map). The behaviours below sit behind
 that boundary or belong to another level's plan; a green SMC regression says
 nothing about them, and Known Limitations records the disposition of each.
 
@@ -823,7 +823,7 @@ has no canonical scenario
 `smc_cpu_fcov` (`c_custom_action_output_driven`); no trace, trigger or debug-bus point
 |`YES`: `smc_ecc_dfd_dbs_sanity_test`; trace, trigger and debug bus are `DECODE-ONLY`
 |F44
-|eFuse shadow-register scan protection and the `LOCKS` path
+|eFuse shadow-register scan protection and the `HARNESS_LOCKS` / `SUPPLEMENTARY_LOCKS` path
 |`scan_protection.adoc` Implementation, Downstream Lock Path, Verification
 |`smc_efuse_lock_guard_test`, `smc_efuse_map_locks_register_test`,
 `smc_efuse_map_lock_field_enforce_test`, `smc_efuse_locked_access_interrupt_test`; the chapter names
@@ -1492,7 +1492,7 @@ logged as controls.
 |`smc_efuse_map_concurrency_test` |3 |Overlapping SEP_IN and JTAG map accesses return exact data.
 |`smc_efuse_map_layout_decode_test` |3 |Map layout, read widths and past-extent decode match.
 |`smc_efuse_map_lock_field_enforce_test` |2 |Each field's write and read locks are enforced.
-|`smc_efuse_map_locks_register_test` |2 |LOCKS sets by write-one and each slot locks its field.
+|`smc_efuse_map_locks_register_test` |2 |HARNESS_LOCKS sets by write-one and each slot locks its field.
 |`smc_efuse_map_reset_persistence_test` |3 |Shadow words and locks survive warm reset, not cold.
 |`smc_efuse_map_sense_image_test` |3 |Sensed image words match the loaded file on every path.
 |`smc_efuse_map_sense_image_unique_test` |3 |Sensed image words match the loaded file on every path, in
@@ -1870,7 +1870,7 @@ through `INTR_TEST`.
 cycles since a count credit was due, on a secondary. It says: "To reset the value of this register,
 write anything to it." No other leaf writes it.
 |`smc_efuse_guard_target_test` |3 |The eFuse guard applying a field's hardware locks to the read and program interfaces. Every other
-leaf that uses those interfaces targets bit 0, which lies in `LOCKS` itself, a field whose locks the
+leaf that uses those interfaces targets bit 0, which lies in `HARNESS_LOCKS` itself, a field whose locks the
 guard never applies. So no other leaf makes the guard look up a target and find a field.
 |`smc_i2c_bus_corners_test` |3 |Five edges around the I2C0 target that the target leaves never reach.
 |`smc_octs_primary_start_test` |3 |Start a PRIMARY OCTS timer that has never run. Every other OCTS leaf starts the timer only after a
@@ -13648,8 +13648,8 @@ the component map documents for that window, and an OKAY access on the same path
   and each write answers OKAY or DECERR; which pair is printed, not compared (LINKED-ISSUE
   SF-015). `SCR` (+0x11C) then reads back 0x5A and `LOG_WRITE_ADDR` (+0x210) reads back
   0x1357_9BDF and 0x0 after its restore.
-* BASE + 0x8800 (past the 28-byte eFuse interface control extent) and BASE + 0x7800 (past the
-  1 KiB shadow extent) read DECERR with 0xBADCAB1E and their writes answer DECERR;
+* BASE + 0x8800 (past the 36-byte eFuse interface control extent) and BASE + 0x7800 (past the
+  256 B shadow extent) read DECERR with 0xBADCAB1E and their writes answer DECERR;
   `EFUSE_INTERFACE_CTRL_STATUS` and BASE + 0x7000 then read OKAY (`memory_map.adoc` eFuse rows).
 * I3C window offset 0x3F0 (an offset the component map leaves unimplemented) reads OKAY with
   0x0, takes a write of 0xA5A5_5A5A with OKAY and re-reads OKAY with 0x0 (`memory_map.adoc` I3C
@@ -26735,10 +26735,10 @@ walk drives, one encoding per state plus the integrity-error case, every image d
 run), per image the order of the three operations (the non-identity read, the
 `JTAG_PUBLIC_IDENTITY` read and the write) and the non-identity register the read probes, drawn
 among the map registers outside `JTAG_PUBLIC_IDENTITY` whose read lock is clear in the preloaded
-`LOCKS` word (each element of the `I2C_I3C_ID` and `SPARE` arrays a candidate under its lock; a
+`HARNESS_LOCKS` word (each element of the `I2C_I3C_ID` and `SPARE` arrays a candidate under its lock; a
 read-locked register answers for its lock, not for the lifecycle gate, a filter the code needs;
-`LOCKS` has no lock and is always eligible); the pinned `LOCKS` read and the write of 0 to
-`LOCKS` stay in every image; the verdict of each cell, the pinned and the drawn
+`HARNESS_LOCKS` has no lock and is always eligible); the pinned `HARNESS_LOCKS` read and the write of 0 to
+`HARNESS_LOCKS` stay in every image; the verdict of each cell, the pinned and the drawn
 non-identity read included, is graded by the owner's `CHK-EFUSE-JTAG-LC-*` compare of that
 image, whose line carries the drawn position, operation order and register; the same draw covers
 the PROD deny and identity-read cells of `smc_efuse_jtag_lc_negative_test` (its `CHIP_CONFIG`
@@ -27050,9 +27050,9 @@ covers the cells of `smc_efuse_read_timeout_status_test`; 3 seeds per regression
 * SPEC declares that block a stand-in: "The eFuse bank model (`efuse_bank_model.sv`) is a reference, simulation-only stand-in for the real foundry OTP macro ...
 * In a production integration it is replaced by the actual foundry macro driven by the SHIM" (`hw/ip/efuse/doc/architecture.adoc`), and its set-once semantics are `onwrite = woset` in the DV RDL `hw/ip/efuse/dv/models/regs/efuse_bank.rdl`.
 * The `OTP=...` observations below therefore show that the controller's command did or did not reach the bank model -- they are **not** proof that a fuse burns in silicon ([BEHAVIORAL-STUB-DECLARED]).
-* **Address range** (`efuse_interface_ctrl.adoc`, EFUSE_INTERFACE_CTRL_STATUS, EFUSE_PROGRAM_CTRL, EFUSE_READ_CTRL) -- a program and a read at bit address 0xFFFF set `efuse_program_addr_error` / `efuse_read_addr_error` (and `read_status` for the read); the bit-9 / bit-10 W1P write clears each, and an in-range request at bit 0 leaves it clear. The results at 0x2000 and 0x6000 and `program_status` / `program_done` of the out-of-range program are measured and logged (SF-025, SF-027). A program and a read at 0x1FFF complete within the poll bound; their address-error bits are logged (SF-025).
+* **Address range** (`efuse_interface_ctrl.adoc`, EFUSE_INTERFACE_CTRL_STATUS, EFUSE_PROGRAM_ADDR, EFUSE_READ_ADDR) -- a program and a read at bit address 0xFFFF set `efuse_program_addr_error` / `efuse_read_addr_error` (and `read_status` for the read); the bit-9 / bit-10 W1P write clears each, and an in-range request at bit 0 leaves it clear. The results at 0x2000 and 0x6000 and `program_status` / `program_done` of the out-of-range program are measured and logged (SF-025, SF-027). A program and a read at 0x1FFF complete within the poll bound; their address-error bits are logged (SF-025).
 * **Read data upper bits** (`efuse_interface_ctrl.adoc` READ_INTERFACE_READ_DATA, `architecture.adoc` capture and retention) -- bits 29, 30 and 31 of the first SPARE[0] word are burned, a read of that word completes with `read_status` 0 and returns `dout[31:29]` = 0b111, and a second read after three STATUS reads returns the same word (SF-031).
-* **LOCKS slots 8 and 31** (`smc_efuse_map.adoc` LOCKS, RW1S) -- the SPARE[4] and SPARE[27] write locks read 1 after the set and still read 1 after LOCKS is written 0; `efuse_req_error` after a program inside SPARE[4] is logged (SF-028). The two read locks read 1 after the set; the RRESP and RDATA of SEP_IN reads of SPARE[4] and SPARE[27] are logged (SF-029).
+* **HARNESS_LOCKS slots 5 and 6** (`smc_efuse_map.adoc` HARNESS_LOCKS, RW1S) -- the SPARE[1] and SPARE[2] write locks read 1 after the set and still read 1 after HARNESS_LOCKS is written 0; `efuse_req_error` after a program inside SPARE[1] is logged (SF-028). The two read locks read 1 after the set; the RRESP and RDATA of SEP_IN reads of SPARE[4] and SPARE[27] are logged (SF-029).
 
 *Test Procedure*:
 
@@ -27074,8 +27074,8 @@ after each leg; the no-enable read of the read interface follows the drawn legs.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-GUARD-HI-READ` |The SPARE[4] (bit 17) and SPARE[27] (bit 63) read locks read 1 after the set; SEP_IN reads of SPARE[4] and SPARE[27] complete within the agent bound and their RRESP and RDATA are logged (measured, LINKED-ISSUE SF-029, SF-028). Fails on a lock bit not setting or a read with no response
-|`CHK-EFUSE-GUARD-HI-WRITE` |The SPARE[4] (bit 16) and SPARE[27] (bit 62) write locks read 1 after the set and still read 1 after LOCKS is written 0; `efuse_req_error` after a program inside SPARE[4] is logged (measured, LINKED-ISSUE SF-028). Fails on a lock bit not setting or clearing without reset
+|`CHK-EFUSE-GUARD-HI-READ` |The SPARE[1] (bit 11) and SPARE[2] (bit 13) read locks read 1 after the set; SEP_IN reads of SPARE[1] and SPARE[2] complete within the agent bound and their RRESP and RDATA are logged (measured, LINKED-ISSUE SF-029, SF-028). Fails on a lock bit not setting or a read with no response
+|`CHK-EFUSE-GUARD-HI-WRITE` |The SPARE[1] (bit 10) and SPARE[2] (bit 12) write locks read 1 after the set and still read 1 after HARNESS_LOCKS is written 0; `efuse_req_error` after a program inside SPARE[1] is logged (measured, LINKED-ISSUE SF-028). Fails on a lock bit not setting or clearing without reset
 |`CHK-EFUSE-LAST-IN-RANGE` |A program and a read at bit address 0x1FFF each complete (busy low, done high) within the poll bound; both address-error bits are logged (measured, LINKED-ISSUE SF-025). Fails on a request that never completes
 |`CHK-EFUSE-OOR-PROG` |A program at bit address 0xFFFF sets `efuse_program_addr_error`; the bit-9 W1P write clears it and an in-range program of bit 0 leaves it clear. The 0x2000 / 0x6000 results and `program_status` / `program_done` are logged (measured, LINKED-ISSUE SF-025, SF-027). Fails on the error not setting, not clearing, setting in range, or a poll timeout
 |`CHK-EFUSE-OOR-READ` |A read at bit address 0xFFFF sets `efuse_read_addr_error` and `read_status`; the bit-10 W1P write clears the error and an in-range read of bit 0 leaves it clear. The 0x2000 / 0x6000 results are logged (measured, LINKED-ISSUE SF-025). Fails on either bit not setting, the error not clearing, setting in range, or a poll timeout
@@ -27381,13 +27381,13 @@ testbench taps, as Known Limitations records.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: SMC_EFUSE_MAP 1 KiB window direct read.
+*Objective*: SMC_EFUSE_MAP 256 B window direct read.
 
 *Test Coverage*:
 
-* The sweep reads LOCKS lo/hi, `JTAG_PUBLIC_IDENTITY`, `SMC_CONFIG`, `OCCP_TRANSPORT_TIMEOUT`, all nine `I2C_I3C_ID` entries, and SPARE[0:1] -- every region that has both a generated base address and a generated `*_READ_LOCK` bit, plus LOCKS itself.
+* The sweep reads HARNESS_LOCKS lo/hi, `JTAG_PUBLIC_IDENTITY`, `SMC_CONFIG`, `OCCP_TRANSPORT_TIMEOUT`, all nine `I2C_I3C_ID` entries, and SPARE[0:1] -- every region that has both a generated base address and a generated `*_READ_LOCK` bit, plus LOCKS itself.
 * readable words -- `efuse_preload_word_at(addr)` parses `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time and indexes it by `(addr - SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)/4`, the same word ordering `efuse_bank_model.sv` uses. Regenerating the asset moves the expectation with it instead of leaving a stale literal asserting a false identity.
-* read-locked words -- `efuse_map_read_locked()` reads the `*_READ_LOCK` bit out of the *preloaded* `LOCKS` word using the generated bit position from `regs/gen/c/blocks/smc_efuse_map.h`; SPEC then fixes the data a blocked read returns: "When a request is blocked, the error slave returns an error response with data value `0xbadcab1e`" (`architecture.adoc:297-299`), and `lock[0] = 1` is "read-locked" (`architecture.adoc:198`).
+* read-locked words -- `efuse_map_read_locked()` reads the `*_READ_LOCK` bit out of the *preloaded* `HARNESS_LOCKS` word using the generated bit position from `regs/gen/c/blocks/smc_efuse_map.h`; SPEC then fixes the data a blocked read returns: "When a request is blocked, the error slave returns an error response with data value `0xbadcab1e`" (`architecture.adoc:297-299`), and `lock[0] = 1` is "read-locked" (`architecture.adoc:198`).
 
 *Test Procedure*:
 
@@ -27429,7 +27429,7 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* `LOCKS` -- read from `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time via `efuse_preload_word_at` rather than a hand-transcribed literal, which cannot detect the asset and the model disagreeing. That asset is what `efuse_bank_model.sv` `$readmemh`s under the bench-wide `+smc_efuse_hex` (`smc_sim_cfg.toml`), so this leg's proof class is **transport** (the map returns the sensed word), not fuse programming ([NO-UNJUSTIFIED-PRELOAD]).
+* `HARNESS_LOCKS` -- read from `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time via `efuse_preload_word_at` rather than a hand-transcribed literal, which cannot detect the asset and the model disagreeing. That asset is what `efuse_bank_model.sv` `$readmemh`s under the bench-wide `+smc_efuse_hex` (`smc_sim_cfg.toml`), so this leg's proof class is **transport** (the map returns the sensed word), not fuse programming ([NO-UNJUSTIFIED-PRELOAD]).
 * `EFUSE_PROGRAM_INTERFACE_READ_DATA` -- the generated RDL reset `EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset` (`hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h`); no program read-back has been issued in this testcase, so the register must still hold it. That reset is `0x0` and the field is `sw = r`, so this compare is a transport/decode probe and **not** a liveness proof: a dead or unmapped window satisfies it equally. Since the field is driven only in the program FSM's `ST_CAPTURE_DATA` state ("Hardware debug only", `efuse_interface_ctrl.rdl`), which this testcase never enters, no distinguishing value can be placed in it. Block liveness is instead proven on the writable sibling `EFUSE_READ_REQ_TIMEOUT` @0x14 (`sw=rw`, `rdl:180`, non-zero reset `0x800000`) by a reset read plus a write/read-back/restore in the same run ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 * `SCRATCH_COLD_WARM_0` -- its own reset value 0, backed in the same run by a write/read-back positive control proving the register can hold a one ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 
@@ -27453,7 +27453,7 @@ Drive `smc_efuse_boundary_signals_test_seq`. Each checker below is a named compa
 
 *Pass Criteria*: `CHK-EFUSE-BND-BASIC`, `CHK-EFUSE-BND-HOLD`, `CHK-EFUSE-BND-MAP`, `CHK-EFUSE-BND-REL`, `CHK-EFUSE-BND-STAY` hold after their compares. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The `LOCKS` compare is of transport class (the map returns the sensed word), not fuse
+*Scope limit*: The `HARNESS_LOCKS` compare is of transport class (the map returns the sensed word), not fuse
 programming. The `EFUSE_PROGRAM_INTERFACE_READ_DATA` reset compare is a transport/decode probe and
 not a liveness proof, since a dead or unmapped window satisfies it equally; block liveness is proven
 on the writable sibling `EFUSE_READ_REQ_TIMEOUT` instead.
@@ -27483,9 +27483,9 @@ draws nothing from the seed.
 
 * Locked eFuse shadow access raises `tb_efuse_locked_access_irq`.
 * DECLARED PRECONDITION -- the read-lock is supplied by the bench, not the DUT.
-* `JTAG_PUBLIC_IDENTITY` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `JTAG_PUBLIC_IDENTITY_READ_LOCK` set (LOCKS bit 1), and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/holdout.toml`).
+* `JTAG_PUBLIC_IDENTITY` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `JTAG_PUBLIC_IDENTITY_READ_LOCK` set (HARNESS_LOCKS bit 1), and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/holdout.toml`).
 * The read-lock leg therefore proves that the DUT ENFORCES a lock it found already set; it does not prove a lock can be established through the fuse-programming path.
-* The write-lock leg does establish its own lock, through the real `LOCKS` CSR write path.
+* The write-lock leg does establish its own lock, through the real `HARNESS_LOCKS` CSR write path.
 * Everything asserted below -- lock enforcement, the non-disclosure property and the interrupt itself -- is produced by the design under test.
 * The read-locked read is not value-compared: `hw/ip/efuse/doc/architecture.adoc` fixes `0xbadcab1e` only for the JTAG lifecycle-demux error slave and does not state what a read-locked shadow register returns over the CSR path, so that leg claims the interrupt pulse and non-disclosure (`lock[0] = 1` is read-locked) and nothing about the substituted word.
 * The model contributes the fuse CONTENT only, and every expectation that depends on that content is derived from the asset at run time rather than hand-transcribed.
@@ -27591,7 +27591,7 @@ secure-boot stack (see `smc_occp_sanity_secure_error_test`), are outside this te
 *Randomization*: RAND-NONE: directed, the image fields and the lock set are fixed by the `alt55`
 pattern (a fixed-cell variant of the image-pattern family).
 
-*Objective*: Sense a 0x5555... image and check every SMC_EFUSE_MAP word through sense, shadow writes, the LOCKS set-only contract and a cold-reset re-sense.
+*Objective*: Sense a 0x5555... image and check every SMC_EFUSE_MAP word through sense, shadow writes, the HARNESS_LOCKS set-only contract and a cold-reset re-sense.
 
 *Test Coverage*:
 
@@ -27647,7 +27647,7 @@ programming.
 *Randomization*: RAND-NONE: directed, the image fields and the lock set are fixed by the `altaa`
 pattern (a fixed-cell variant of the image-pattern family).
 
-*Objective*: Sense a 0xAAAA... image and check every SMC_EFUSE_MAP word through sense, shadow writes, the LOCKS set-only contract and a cold-reset re-sense.
+*Objective*: Sense a 0xAAAA... image and check every SMC_EFUSE_MAP word through sense, shadow writes, the HARNESS_LOCKS set-only contract and a cold-reset re-sense.
 
 *Test Coverage*:
 
@@ -27703,7 +27703,7 @@ programming.
 *Randomization*: RANDCFG: the seed draws every field value of the sensed image and the write-locked
 subset of blocks; the expected map content is a function of the image.
 
-*Objective*: Sense a seeded full-width random image and check every SMC_EFUSE_MAP word through sense, shadow writes, the LOCKS set-only contract and a cold-reset re-sense.
+*Objective*: Sense a seeded full-width random image and check every SMC_EFUSE_MAP word through sense, shadow writes, the HARNESS_LOCKS set-only contract and a cold-reset re-sense.
 
 *Test Coverage*:
 
@@ -29136,12 +29136,12 @@ behind the SHIM interface is the DV model; an EFUSE protocol-VIP record is booke
 *Randomization*: RAND-NONE: directed, the feature has no legal knob space (a strap, a single named
 handshake).
 
-*Objective*: Sense request, 256 strobes and hand-over follow the interface.
+*Objective*: Sense request, 192 strobes (64 harness plus 128 supplementary words) and hand-over follow the interface.
 
 *Test Coverage*:
 
 * After the primary reset is released the eFuse controller issues one sense request that reads the
-  whole 256-word bank, and the SHIM answers with one `valid` strobe per word
+  whole 192-word bank (64 harness plus 128 supplementary words), and the SHIM answers with one `valid` strobe per word
   (`doc/integrator/src/smu-smc.adoc`, eFuse Interface, SHIM read rules and sensing once per cold
   boot). The latency from the reset release to the first request is measured; no bound is asserted.
 * `tb_fuse_sense_done` stays 0 from the cold reset through the last strobe, and
@@ -46190,7 +46190,7 @@ draws nothing from the seed.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: The eFuse guard applying a field's hardware locks to the read and program interfaces. Every other leaf that uses those interfaces targets bit 0, which lies in `LOCKS` itself, a field whose locks the guard never applies. So no other leaf makes the guard look up a target and find a field.
+*Objective*: The eFuse guard applying a field's hardware locks to the read and program interfaces. Every other leaf that uses those interfaces targets bit 0, which lies in `HARNESS_LOCKS` itself, a field whose locks the guard never applies. So no other leaf makes the guard look up a target and find a field.
 
 *Test Coverage*:
 
