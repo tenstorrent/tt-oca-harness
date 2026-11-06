@@ -1035,7 +1035,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Narrow-write lane masking against the AXI strobe rule (IHI 0022 A3.4.3), plus write/readback of the OTBN IMEM and DMEM memory windows. The window readback is graded (CHK-WINDOW-DATA) only while OTBN `STATUS` reads IDLE; in the `no_cpu` run OTBN stays in the post-reset internal wipe (BUSY_SEC_WIPE_INT), whose memory access result no SEP text states, so the window probes are logged (`OBS-OTBN-MEM-BUSY-ACCESS`) and not graded. The KMAC state window is not probed: it is gated by the engine's own configuration, so a probe there would test KMAC bring-up rather than the read mask. A window behind an SRAM-style adapter applies the mask on reads, unlike a register behind a register adapter, so a bridge driving that mask from the write strobe returns zeros with a correct response — only a data compare sees it. `cp_strobe_merge` samples in owner window 758, opened per narrow write after the prime word read back.
+|Narrow-write lane masking against the AXI strobe rule (IHI 0022 A3.4.3), plus write/readback of the OTBN IMEM and DMEM memory windows. In the `no_cpu` run OTBN stays in the post-reset internal wipe (BUSY_SEC_WIPE_INT), whose memory access result no SEP text states, so the window probes are logged (`OBS-OTBN-MEM-BUSY-ACCESS`) and not graded; `CTRL-OTBN-MEM-PRECOND` fails the leaf unless `STATUS` reads that state before them. `cp_strobe_merge` samples in owner window 758, opened per narrow write after the prime word read back.
 |<<sep_axi_partial_lane_read_test,`sep_axi_partial_lane_read_test`>>
 |2
 |no_cpu, +skip_fuse_sense

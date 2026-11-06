@@ -1136,7 +1136,7 @@ reported as such rather than counted as a pass.
 
 *Randomization*: RANDCFG — the size and lane axes are walked exhaustively rather than seeded, so every AxSIZE at every legal lane offset runs on every seed and no run can issue zero narrow writes. The seed varies the data.
 
-*Objective*: A write narrower than the bus beat must change only the byte lanes its strobe selects (IHI 0022 A3.4.3), and a memory window must return the data that was written to it. A stage that widens the strobe, or writes the whole beat, changes bytes the master never asked for; only a data compare sees it, because the response is OKAY either way.
+*Objective*: A write narrower than the bus beat must change only the byte lanes its strobe selects (IHI 0022 A3.4.3), A stage that widens the strobe, or writes the whole beat, changes bytes the master never asked for; only a data compare sees it, because the response is OKAY either way. The OTBN IMEM and DMEM windows are written and read back and logged, not graded.
 
 *Test Coverage*: Write-strobe windows on the LSU splice.
 
@@ -1146,7 +1146,8 @@ reported as such rather than counted as a pass.
 . Prime a scratch word with a known value.
 . Issue a write narrower than the bus beat at each legal lane offset for each AxSIZE, and read the whole word back.
 . Compare against the AXI lane rule: the addressed lanes take the new data, every other lane keeps the primed value.
-. Read OTBN `STATUS`. Write and read back the OTBN IMEM and DMEM windows: graded while `STATUS` reads IDLE, logged (`OBS-OTBN-MEM-BUSY-ACCESS`) in any other state.
+. Read OTBN `STATUS` and require BUSY_SEC_WIPE_INT (`CTRL-OTBN-MEM-PRECOND`).
+. Write and read back the OTBN IMEM and DMEM windows and log each result (`OBS-OTBN-MEM-BUSY-ACCESS`).
 
 *Checkers*:
 
@@ -1155,11 +1156,13 @@ reported as such rather than counted as a pass.
 |Checker |Contract
 |CHK-STROBE
 |Each narrow write changed only its own byte lanes, at every AxSIZE and every legal offset. The line reports the count, so a run that issued no narrow write cannot read as a pass. The compare is the addressed 32-bit word: the generated SEP C headers contain no 4-byte-adjacent register pair, so a 64-bit beat has no neighbour CSR in bytes 4–7 and a widened strobe has no second register to corrupt.
-|CHK-WINDOW-DATA
-|Each memory window returned the value written to it. A window behind an SRAM-style TileLink adapter applies the mask on reads, unlike a register behind a register adapter which ignores it, so a bridge driving that read mask from the write strobe returns zeros with a correct response. A window not writable in this configuration is named with its reason. At least one window must have been verified: a walk where none was writable proves nothing and fails. The check runs only while OTBN `STATUS` reads IDLE. In any other state the OTBN register text states that a busy OTBN reads 0 and ignores the write, and no SEP text states the result during the post-reset internal wipe, so each probe logs `OBS-OTBN-MEM-BUSY-ACCESS status=0x<word> window=<name> addr=0x<addr> wr_resp=<code> rd_resp=<code> written=0x<word> readback=0x<word>` and is not graded. The `no_cpu` run does not bring EDN up, so OTBN stays in that wipe and the leaf grades CHK-STROBE only.
+|CTRL-OTBN-MEM-PRECOND
+|Bench-state control, not a DUT check. Before the window probes, OTBN `STATUS` reports BUSY_SEC_WIPE_INT, the post-reset internal wipe that lasts the whole `no_cpu` run: `CTRL-OTBN-MEM-PRECOND seen: status=0x<word> status_code=0x04 expect=0x04`. Any other value logs `CTRL-MISSING OTBN-MEM-PRECOND: ...` and fails the leaf. The STATUS read response is graded OKAY by the shared scoreboard.
 |===
 
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+*Pass Criteria*: Every named checker PASSes and `CTRL-OTBN-MEM-PRECOND` is seen. UVM_ERROR == 0.
+
+*Logged, not graded*: each OTBN window logs `OBS-OTBN-MEM-BUSY-ACCESS status=0x<word> window=<name> addr=0x<addr> wr_resp=<code> rd_resp=<code> written=0x<word> readback=0x<word>`. The OTBN register text (`vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson:798-804`, `:821-828`) states that while OTBN is busy a read returns 0 and a write is ignored, and no SEP text states whether that holds during the internal wipe, so the window responses and readbacks are not graded.
 
 *Functional coverage*: `sep_axi_decode_cg.cp_strobe_merge`, owner window 758, one window per narrow write: it opens after the prime word read back as written and closes after the CHK-STROBE compare of that write. The window-probe legs run with the window closed. No window opens after a CHK-STROBE FAIL.
 
