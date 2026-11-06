@@ -29,9 +29,15 @@ Contracts (spec text, not RTL):
   DIGEST_15 and ``MSG_LENGTH_LOWER``/``MSG_LENGTH_UPPER`` load them (hmac.hjson:473,
   :497, :511; programmers_guide.md:105-108). On every trip, after the save and the
   ``sha_en`` clear and before the restore, the leaf writes the bitwise complement of
-  the saved words into those registers. ``CTRL-HMAC-CTX-PERTURB`` grades that DIGEST_0
-  and ``MSG_LENGTH_LOWER`` read back the complement. A restore write that does not land
-  leaves the complement in the engine, and CHK-HMAC-CTX fails.
+  the saved words into those registers. ``CTRL-HMAC-CTX-PERTURB`` grades that DIGEST_0,
+  ``MSG_LENGTH_LOWER`` and ``MSG_LENGTH_UPPER`` read back the complement. Every message
+  of the leaf is shorter than 2^32 bits, so the saved ``MSG_LENGTH_UPPER`` is 0 and its
+  complement is 0xFFFFFFFF. A restore write that does not land leaves the complement in
+  the engine, and CHK-HMAC-CTX fails: the engine hashes on from the complemented digest,
+  and the final block carries the message length {MSG_LENGTH_UPPER, MSG_LENGTH_LOWER}
+  in its padding (hmac.hjson:513-514;
+  vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/theory_of_operation.md:62-63), so a
+  wrong length gives a different digest.
 * ``sha_en`` = 0 clears the digest (hmac.adoc:128).
 * A completed hash sets ``INTR_STATE.hmac_done`` (hmac.adoc:51); with
   ``INTR_ENABLE.hmac_done`` set (hmac.adoc:63) vector bit 17 rises, because bit i of
@@ -824,8 +830,10 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         """Write the complement of the saved context into DIGEST_0..15 and MSG_LENGTH.
 
         The engine is idle with ``sha_en`` = 0, the window in which these registers
-        take software writes. A restore that does not land leaves the complement in the
-        engine, so the continued hash differs from the single pass and CHK-HMAC-CTX fails.
+        take software writes. DIGEST_0 and both MSG_LENGTH words must read back the
+        complement, so a register that ignores the write fails here. A restore that does
+        not land leaves the complement in the engine, so the continued hash differs from
+        the single pass and CHK-HMAC-CTX fails.
         """
         mask = 0xFFFF_FFFF
         for k, w in enumerate(saved):
@@ -834,15 +842,18 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         await self._wr(HMAC_MSG_LENGTH_UPPER, ~len_hi & mask)
         dig0 = await self._rd(HMAC_DIGEST[0])
         lo = await self._rd(HMAC_MSG_LENGTH_LOWER)
+        hi = await self._rd(HMAC_MSG_LENGTH_UPPER)
         self.chk.ctrl(
             "HMAC-CTX-PERTURB",
-            dig0 == ~saved[0] & mask and lo == ~len_lo & mask,
+            dig0 == ~saved[0] & mask and lo == ~len_lo & mask and hi == ~len_hi & mask,
             tag=tag,
             part=part,
             digest0=f"0x{dig0:08x}",
             saved0=f"0x{saved[0]:08x}",
             len_lo=f"0x{lo:08x}",
             saved_len_lo=f"0x{len_lo:08x}",
+            len_hi=f"0x{hi:08x}",
+            saved_len_hi=f"0x{len_hi:08x}",
         )
 
     async def _unrelated(
