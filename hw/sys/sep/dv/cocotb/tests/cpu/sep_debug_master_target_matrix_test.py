@@ -2123,6 +2123,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 "CHK-DBG-EXT",
                 "CHK-DBG-NC",
                 "CHK-DBG-REMAP",
+                "CHK-DBG-REMAP-SBERROR",
                 "CHK-DBG-SBA-ISO",
                 "CHK-DBG-SBA-REG",
                 "CHK-DBG-AXPROT",
