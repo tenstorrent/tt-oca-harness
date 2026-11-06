@@ -2,14 +2,16 @@
 # SPDX-FileCopyrightText: 2026 VNCHIP LABS
 """Drive legal and deliberately illegal dependencies into the real protocol SVA.
 
-These checker selftests own both sides of the existing wire harness. A normal
-VIP responder cannot generate the invalid VALID timing being tested. Fault
-modes are expected-failure leaves; their production assertion reports must
-be checked in the logs because the runner cannot yet match simulator failures
-when the framework XML records a passing test.
+These checker selftests own both sides of the VIP wire harness. A normal VIP
+responder cannot generate the invalid VALID timing being tested. Fault modes
+are expected-failure leaves; their production assertion reports must be
+checked in the logs: the runner matches expected failures against the
+framework XML, which does not carry simulator assertion reports.
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 import cocotb
 from cocotb.clock import Clock
@@ -31,7 +33,28 @@ COMMON_FAULTS = frozenset(
 ID_FAULTS = frozenset({"b_wrong_id", "r_wrong_id"})
 
 
-def validate_case(case, lite):
+SETUP_STEPS: dict[str, tuple[dict[str, int], ...]] = {
+    "b_aw_only": ({"awvalid": 1}, {"awvalid": 0}),
+    "b_w_only": ({"wvalid": 1}, {"wvalid": 0}),
+    "b_same_w": ({"awvalid": 1}, {"awvalid": 0}),
+    "b_same_aw": ({"wvalid": 1}, {"wvalid": 0}),
+}
+REQUEST_FIRST: dict[str, str] = {
+    "b_wrong_id": "write",
+    "b_after_reset": "write",
+    "r_wrong_id": "read",
+    "r_after_reset": "read",
+}
+RESPONSE_EXTRA: dict[str, dict[str, int]] = {
+    "b_wrong_id": {"bid": 2},
+    "b_same_w": {"wvalid": 1},
+    "b_same_aw": {"awvalid": 1},
+    "r_wrong_id": {"rid": 2},
+    "r_same_ar": {"arvalid": 1},
+}
+
+
+def validate_case(case: str, lite: bool) -> None:
     if case not in COMMON_FAULTS | ID_FAULTS | {"legal"}:
         raise ValueError(f"Unknown AXI SVA case {case!r}")
     if lite and case in ID_FAULTS:
@@ -39,22 +62,22 @@ def validate_case(case, lite):
 
 
 class DependencyWires:
-    def __init__(self, dut, lite):
+    def __init__(self, dut: Any, lite: bool) -> None:
         self.dut = dut
         self.lite = lite
         self.prefix = "l_axi" if lite else "s_axi"
 
-    def set(self, **values):
+    def set(self, **values: int) -> None:
         for name, value in values.items():
             getattr(self.dut, f"{self.prefix}_{name}").value = value
 
-    async def step(self, **values):
+    async def step(self, **values: int) -> None:
         await FallingEdge(self.dut.clk)
         self.set(**values)
         await RisingEdge(self.dut.clk)
         await ReadOnly()
 
-    async def reset(self):
+    async def reset(self) -> None:
         await FallingEdge(self.dut.clk)
         self.set(awvalid=0, wvalid=0, arvalid=0, bvalid=0, rvalid=0)
         self.dut.rst_n.value = 0
@@ -64,21 +87,21 @@ class DependencyWires:
         await RisingEdge(self.dut.clk)
         await ReadOnly()
 
-    async def request_write(self, ident=1):
+    async def request_write(self, ident: int = 1) -> None:
         if not self.lite:
             await self.step(awid=ident, awvalid=1, wvalid=1)
         else:
             await self.step(awvalid=1, wvalid=1)
         await self.step(awvalid=0, wvalid=0)
 
-    async def request_read(self, ident=1, length=0):
+    async def request_read(self, ident: int = 1, length: int = 0) -> None:
         if not self.lite:
             await self.step(arid=ident, arlen=length, arvalid=1)
         else:
             await self.step(arvalid=1)
         await self.step(arvalid=0)
 
-    async def legal(self):
+    async def legal(self) -> None:
         # W may finish before AW; no response may precede either acceptance.
         await self.step(wvalid=1)
         await self.step(wvalid=0, awvalid=1)
@@ -121,50 +144,26 @@ class DependencyWires:
         await self.step(rvalid=1)
         await self.step(rvalid=0)
 
-    async def fault(self, case):
-        if case == "b_aw_only":
-            await self.step(awvalid=1)
-            await self.step(awvalid=0)
-        elif case == "b_w_only":
-            await self.step(wvalid=1)
-            await self.step(wvalid=0)
-        elif case == "b_same_w":
-            await self.step(awvalid=1)
-            await self.step(awvalid=0)
-        elif case == "b_same_aw":
-            await self.step(wvalid=1)
-            await self.step(wvalid=0)
-        elif case == "b_wrong_id":
+    async def fault(self, case: str) -> None:
+        for values in SETUP_STEPS.get(case, ()):
+            await self.step(**values)
+        kind = REQUEST_FIRST.get(case)
+        if kind == "write":
             await self.request_write(1)
-        elif case == "r_wrong_id":
+        elif kind == "read":
             await self.request_read(1)
-        elif case == "b_after_reset":
-            await self.request_write()
+        if case.endswith("_after_reset"):
             await self.reset()
-        elif case == "r_after_reset":
-            await self.request_read()
-            await self.reset()
-        if case.startswith("b_"):
-            values = dict(bvalid=1, bready=0)
-            if case == "b_wrong_id":
-                values["bid"] = 2
-            if case == "b_same_w":
-                values["wvalid"] = 1
-            if case == "b_same_aw":
-                values["awvalid"] = 1
-        else:
-            values = dict(rvalid=1, rready=0)
-            if case == "r_wrong_id":
-                values["rid"] = 2
-            if case == "r_same_ar":
-                values["arvalid"] = 1
-        await self.step(**values)
+        channel = case[0]
+        await self.step(
+            **{f"{channel}valid": 1, f"{channel}ready": 0, **RESPONSE_EXTRA.get(case, {})}
+        )
         # If assertions are absent, expect_fail rejects the passing diagnostic.
         await self.reset()
 
 
 @cocotb.test()
-async def ocah_axi_sva_dependencies_test(dut):
+async def ocah_axi_sva_dependencies_test(dut: Any) -> None:
     lite = bool(int(cocotb.plusargs.get("OCAH_AXI_SVA_LITE", "0")))
     case = cocotb.plusargs.get("OCAH_AXI_SVA_CASE", "legal")
     validate_case(case, lite)

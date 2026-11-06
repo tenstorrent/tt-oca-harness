@@ -518,8 +518,10 @@ VIPs.
 The `sva_dependencies` group drives the VIP wire harness directly into
 `ocah_axi_sva`, for AXI4 and AXI4-Lite. It contains two legal controls and
 20 expected-failure controls. The legal controls also belong to `smoke` and
-`all` in the cocotb view and carry the `ci` tag; fault leaves stay outside
-`smoke`, `all` and `ci`.
+`all` in the cocotb view and carry the `ci` tag. Fault leaves stay outside
+`smoke` and `all`; `ocah_axi_sva_b_no_request_test` and
+`ocah_axil_sva_r_no_request_test` also carry the `ci` tag, so a run that
+selects by that tag fails them if the checker stops reporting.
 
 Legal controls exercise W-before-AW, READY backpressure, the earliest legal
 response and reset recovery. The AXI4 control also exercises multiple IDs
@@ -534,12 +536,10 @@ python3 tools/dv/run_dv.py --dut ocah_axi_vip --framework cocotb --tool vcs \
 
 Each fault leaf uses `expect_fail`: an observed failure grades PASS, and an
 observed pass grades FAIL. This does not establish which assertion fired.
-The current runner obtains cocotb match evidence from framework XML, which
+The runner takes cocotb match evidence from the framework XML, which
 does not carry simulator assertion failures when the Python test passes.
 The negative leaves therefore omit `expect_fail_match`. An unrelated
-failure, including a Python error graded FAIL, can satisfy `expect_fail`;
-this remains a regression limitation until simulator failure messages are
-available to the matcher.
+failure, including a Python error graded FAIL, can satisfy `expect_fail`.
 
 For each fault run, inspect the actual `[ASSERT FAILED]` reports against
 the tool-specific rule set below. Rule names in the table have the prefix

@@ -162,7 +162,7 @@ name = "ocah_axi_sva_b_no_request_test"
 module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
 seed = 1
 timeout_sec = 120
-tags = ["sva_negative"]
+tags = ["sva_negative", "ci"]
 run_modes = ["smoke"]
 args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=b_no_request"]
 expect_fail = "negative control: axi b_no_request must fire OCAH_AXI_B_NOT_BEFORE_AW"
@@ -322,7 +322,7 @@ name = "ocah_axil_sva_r_no_request_test"
 module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
 seed = 1
 timeout_sec = 120
-tags = ["sva_negative"]
+tags = ["sva_negative", "ci"]
 run_modes = ["smoke"]
 args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=r_no_request"]
 expect_fail = "negative control: axil r_no_request must fire OCAH_AXI_R_NOT_BEFORE_AR"
