@@ -107,6 +107,13 @@ module smc_reset_sva #(
   assign cluster_ready  = init_mem_done_i && cpu_uncore_reset_ni && !cpu_isolate_req_i;
   assign flush_active   = cpu_l2_flush_active_i || cpu_mmio_flush_active_i;
 
+  // The disable term of every rule in this module is a net: a negation inside the disable
+  // iff of a non-top module does not compile under expression coverage.
+  logic primary_reset_active, powergood_lost, cold_reset_ref_active;
+  assign primary_reset_active  = !rst_primary_smc_clk_ni;
+  assign powergood_lost        = !powergood_stable_i;
+  assign cold_reset_ref_active = !rst_cold_stable_ref_clk_ni;
+
   // Previous-edge values on clk_smc_i.
   logic warm_q, withheld_q, applied_q, isolate_q, flush_active_q, force_apply_q;
   logic [3:0] ready_q;
@@ -132,17 +139,17 @@ module smc_reset_sva #(
   assign a1_applied_ant  = en_i && rst_warm_smc_clk_ni && applied_q;
 
   `OCAH_SVA_ASSERT(SMC_RST_UNCORE_NOT_WHILE_WITHHELD, a1_withheld_ant |-> cpu_uncore_reset_ni,
-                   clk_smc_i, !rst_primary_smc_clk_ni)
+                   clk_smc_i, primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_RST_UNCORE_LOW_HAS_CAUSE,
                    a1_cause_ant |-> (!rst_warm_smc_clk_ni || !warm_q || applied_q), clk_smc_i,
-                   !rst_primary_smc_clk_ni)
+                   primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_RST_APPLIED_TAKES_EFFECT, a1_applied_ant |-> !cpu_uncore_reset_ni,
-                   clk_smc_i, !rst_primary_smc_clk_ni)
+                   clk_smc_i, primary_reset_active)
   logic isolates_empty;
   assign isolates_empty = ({cpu_l2_pending_aw_i, cpu_l2_pending_ar_i,
                             cpu_mmio_pending_aw_i, cpu_mmio_pending_ar_i} == '0);
   `OCAH_SVA_ASSERT(SMC_ISO_DRAINED_MEANS_EMPTY, (en_i && cpu_drained_i) |-> isolates_empty,
-                   clk_smc_i, !rst_primary_smc_clk_ni)
+                   clk_smc_i, primary_reset_active)
 
   // ------------------------------------------------------------------
   // A2: the cluster boundary is isolated whenever it is not ready, releases
@@ -154,11 +161,11 @@ module smc_reset_sva #(
   assign a2_held_ant    = en_i && cluster_ready && (ready_q == 4'hF);
 
   `OCAH_SVA_ASSERT(SMC_ISO_HELD_WHEN_NOT_READY, (en_i && !cluster_ready) |-> cpu_cluster_isolate_i,
-                   clk_smc_i, !rst_primary_smc_clk_ni)
+                   clk_smc_i, primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_ISO_RELEASE_AFTER_FOUR, a2_release_ant |-> (cluster_ready && ready_q[3]),
-                   clk_smc_i, !rst_primary_smc_clk_ni)
+                   clk_smc_i, primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_ISO_RELEASED_WHEN_READY_HELD, a2_held_ant |-> !cpu_cluster_isolate_i,
-                   clk_smc_i, !rst_primary_smc_clk_ni)
+                   clk_smc_i, primary_reset_active)
 
   // ------------------------------------------------------------------
   // A3: an uncore reset holds every core on the same edge (cpu.adoc 157-158).
@@ -167,7 +174,7 @@ module smc_reset_sva #(
   assign a3_ant = en_i && !cpu_uncore_reset_ni;
 
   `OCAH_SVA_ASSERT(SMC_RST_UNCORE_HOLDS_CORES, a3_ant |-> (cpu_core_resets_ni == '0), clk_smc_i,
-                   !powergood_stable_i)
+                   powergood_lost)
 
   // ------------------------------------------------------------------
   // A4: the warm reset holds the cluster; with the JTAG overrides idle the
@@ -177,13 +184,13 @@ module smc_reset_sva #(
   `OCAH_SVA_ASSERT(
       SMC_RST_WARM_HOLDS_CLUSTER,
       (en_i && !rst_warm_smc_clk_ni) |-> (!cpu_uncore_reset_ni && cpu_core_resets_ni == '0),
-      clk_smc_i, !powergood_stable_i)
+      clk_smc_i, powergood_lost)
   `OCAH_SVA_ASSERT(SMC_RST_PRIMARY_IMPLIES_WARM,
                    (en_i && jtag_ovrd_idle && !rst_primary_smc_clk_ni) |-> !rst_warm_smc_clk_ni,
-                   clk_smc_i, !powergood_stable_i)
+                   clk_smc_i, powergood_lost)
   `OCAH_SVA_ASSERT(SMC_RST_WDT_IMPLIES_WARM,
                    (en_i && jtag_ovrd_idle && !rst_wdt_smc_clk_ni) |-> !rst_warm_smc_clk_ni,
-                   clk_smc_i, !powergood_stable_i)
+                   clk_smc_i, powergood_lost)
 
   // ------------------------------------------------------------------
   // A5: an isolated L2 frontend accepts nothing; an isolated MMIO port
@@ -199,14 +206,14 @@ module smc_reset_sva #(
   assign a5_r_ant    = en_i && cpu_mmio_isolated_i && mmio_cpu_r_valid_i;
 
   `OCAH_SVA_ASSERT(SMC_ISO_L2_ACCEPTS_NONE, (en_i && cpu_l2_isolated_i) |-> !l2_slv_accept,
-                   clk_smc_i, !rst_primary_smc_clk_ni)
+                   clk_smc_i, primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_ISO_MMIO_PRESENTS_NONE,
                    a5_mmio_ant |-> !(mmio_port_aw_valid_i || mmio_port_ar_valid_i), clk_smc_i,
-                   !rst_primary_smc_clk_ni)
+                   primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_ISO_MMIO_B_SLVERR, a5_b_ant |-> (mmio_cpu_b_resp_i == RespSlvErr),
-                   clk_smc_i, !rst_primary_smc_clk_ni)
+                   clk_smc_i, primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_ISO_MMIO_R_SLVERR, a5_r_ant |-> (mmio_cpu_r_resp_i == RespSlvErr),
-                   clk_smc_i, !rst_primary_smc_clk_ni)
+                   clk_smc_i, primary_reset_active)
 
   // ------------------------------------------------------------------
   // A6: the status crossings are clamped while the boundary is isolated
@@ -216,7 +223,7 @@ module smc_reset_sva #(
   assign status_clamped = (cpu_wb_pc_valid_i == '0) && (cpu_wb_reg_pc_i == '0)
                           && (cpu_wdt_reset_i == '0);
   `OCAH_SVA_ASSERT(SMC_ISO_STATUS_CLAMPED, (en_i && cpu_cluster_isolate_i) |-> status_clamped,
-                   clk_smc_i, !powergood_stable_i)
+                   clk_smc_i, powergood_lost)
 
   // ------------------------------------------------------------------
   // A7: a request beat the MMIO port presents to the fabric stays presented
@@ -230,13 +237,13 @@ module smc_reset_sva #(
 
   `OCAH_SVA_ASSERT(SMC_MMIO_AW_HELD_UNDER_FLUSH,
                    a7_aw_ant |=> (mmio_port_aw_valid_i || !rst_warm_smc_clk_ni), clk_smc_i,
-                   !rst_primary_smc_clk_ni)
+                   primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_MMIO_W_HELD_UNDER_FLUSH,
                    a7_w_ant |=> (mmio_port_w_valid_i || !rst_warm_smc_clk_ni), clk_smc_i,
-                   !rst_primary_smc_clk_ni)
+                   primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_MMIO_AR_HELD_UNDER_FLUSH,
                    a7_ar_ant |=> (mmio_port_ar_valid_i || !rst_warm_smc_clk_ni), clk_smc_i,
-                   !rst_primary_smc_clk_ni)
+                   primary_reset_active)
 
   // ------------------------------------------------------------------
   // A8: the flush is the force path and lives only while the boundary is
@@ -246,12 +253,12 @@ module smc_reset_sva #(
   assign a8_rose_ant = en_i && flush_active && !flush_active_q;
 
   `OCAH_SVA_ASSERT(SMC_FLUSH_IS_FORCE, en_i |-> (cpu_isolate_flush_i == force_apply), clk_smc_i,
-                   !rst_primary_smc_clk_ni)
+                   primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_FLUSH_WINDOW_CLOSES_AT_RECONNECT,
                    (en_i && !cpu_cluster_isolate_i) |=> !flush_active, clk_smc_i,
-                   !rst_primary_smc_clk_ni)
+                   primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_FLUSH_ONLY_WHEN_FORCED, a8_rose_ant |-> force_apply_q, clk_smc_i,
-                   !rst_primary_smc_clk_ni)
+                   primary_reset_active)
 
   // ------------------------------------------------------------------
   // A9: one FLR edge taken with the sequencer idle starts at most one cool
@@ -285,9 +292,9 @@ module smc_reset_sva #(
 
   `OCAH_SVA_ASSERT(SMC_FLR_ONE_PULSE_PER_EDGE,
                    (a9_fall_ant && !flr_requeue_assertoff) |-> flr_edge_pending, clk_ref_i,
-                   !rst_cold_stable_ref_clk_ni)
+                   cold_reset_ref_active)
   `OCAH_SVA_ASSERT(SMC_FLR_HOLD_ZERO_NO_PULSE, a9_fall_ant |-> (flr_hold_at_edge != '0), clk_ref_i,
-                   !rst_cold_stable_ref_clk_ni)
+                   cold_reset_ref_active)
 
   // ------------------------------------------------------------------
   // A10: GPIO 62 is driven low while the cool reset is asserted and left
@@ -298,10 +305,10 @@ module smc_reset_sva #(
   assign a10_low_ant = en_i && pad62_lsio_pin_i && !cool_reset_ni;
 
   `OCAH_SVA_ASSERT(SMC_FLR_PAD62_PULLS_LOW, a10_low_ant |-> (core2pad_en_62_i && !core2pad_62_i),
-                   clk_ref_i, !rst_cold_stable_ref_clk_ni)
+                   clk_ref_i, cold_reset_ref_active)
   `OCAH_SVA_ASSERT(SMC_FLR_PAD62_UNDRIVEN,
                    (en_i && pad62_lsio_pin_i && cool_reset_ni) |-> !core2pad_en_62_i, clk_ref_i,
-                   !rst_cold_stable_ref_clk_ni)
+                   cold_reset_ref_active)
 
   // ------------------------------------------------------------------
   // Non-vacuity counts, one per rule group, on the group's clock.

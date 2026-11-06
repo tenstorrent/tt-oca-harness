@@ -83,8 +83,9 @@ incdirs = [
   "hw/ip/axi_filter/regs/gen/svh",
   "hw/ip/axi_alias_remap/regs/gen/svh",
   # smc_reg.svh, the SMC_BASE_CONFIG reset words and CLOCK_GATE_CONTROL field
-  # masks smc_map_row_fcov includes; the row addresses keep coming from
-  # smc_top_addrmap_pkg through the bender filelist.
+  # masks smc_map_row_fcov includes and the LOCKS bit positions and eFuse
+  # interface-control fields smc_efuse_ctrl_fcov includes; the register
+  # addresses keep coming from smc_top_addrmap_pkg through the bender filelist.
   "hw/sys/smc/regs/gen/svh",
 ]
 exclude_files = [
@@ -177,6 +178,7 @@ sources = [
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_ctrl_fcov.sv",
   # Spec-derived P1 coverage.
   "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
@@ -655,6 +657,7 @@ sources = [
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_ctrl_fcov.sv",
   # Spec-derived P1 coverage.
   "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",

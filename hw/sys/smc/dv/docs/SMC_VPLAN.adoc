@@ -54215,9 +54215,10 @@ been written since the gate rose; each written flag clears on every rise of the 
 gate rose (a write completed OKAY at a region register, or a read of one; the flag clears on every
 rise), which no other owner does under its gate. `smc_sys_out_error_cg` samples only once a zeroer
 `DEST_ADDR` or `SIZE` write completed over SEP_IN while the gate was high, a flag that holds to the
-next cold reset; no other owner writes a zeroer register under its gate (the reset owner writes them
-before its gate), so the SYS_OUT errors the random-stress leaf injects under its own gate open no
-cell. `smc_outstanding_cg` samples only once two of the window's accesses have been outstanding
+next cold reset; the reset owner writes the zeroer registers before its gate and the state-injection
+owner under its gate, whose Zeroer control beats complete OKAY at the SYS_OUT responder and whose
+denied starts issue none, so the flag opens no cell there, and the SYS_OUT errors the random-stress
+leaf injects under its own gate open no cell either. `smc_outstanding_cg` samples only once two of the window's accesses have been outstanding
 together on SEP_IN or SYS_IN since the gate rose, until the gate falls; every other owner issues its
 SEP_IN and SYS_IN accesses one at a time under its gate. The SYS_OUT-error owner launches DMA copies
 inside its window, and the `NEXT_ID_0` read of a launch is the sample event of
@@ -54239,14 +54240,38 @@ apertures, open no cell. The map-row owner raises the gate before its entry 0 pa
 holds it to its last probe; its window holds no sample event of another group: it drives no reset,
 issues no DMA launch, writes entry 0 of the inbound filter alone (below the index 2 the inbound
 filter group needs) and no outbound entry, region or zeroer register, and issues its accesses one
-at a time. Drives no `smc_wrapper` port and changes no stimulus.
-|The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov`, `smc_fabric_fcov`
-and `smc_map_row_fcov` in `hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
+at a time. The four eFuse-control groups sample behind a condition only their owner drives under
+its gate: `smc_state_inject_cg` at a rise of a `tb_*_state_inject_en` hook, `smc_efuse_lock_cg`
+at a SEP_IN write to `LOCKS` or a 4-byte access of an eFuse-map field word,
+`smc_efuse_jtag_lc_cg` at a completion on the JTAG eFuse port (`ej_axi_*`, not the JTAG2AXI
+port the filter and alias owners probe through), and `smc_efuse_timeout_cg` only after a timeout
+register was written with its enable bit set under the gate and read back (the flag drops at the
+next write to the register and on every rise); no other owner drives a hook, accesses the map,
+drives that port or writes a timeout register under its gate. The state-injection owner holds
+the gate low over each of its Zeroer cold resets and the lock owner over its re-sense cold
+reset and its S7 and S8, so the cold falls that are the sample event of
+`smc_reset_kind_inflight_cg` and of `c_reset_kind_cold_graded` lie outside every window (the
+reset group re-arms while the gate is low); the Zeroer stays-busy cell is read at the gate fall
+before the reset. The state-injection owner's windows also hold its filter entry 0 pass-all
+writes of both directions and its zeroer `DEST_ADDR`, `SIZE` and `CTRL_STATUS` writes: entry 0
+sets the outbound-written flag of `smc_outfilt_rule_cg` and the entry-0 flag of
+`smc_map_row_response_cg`, and the zeroer writes set the sticky flag of `smc_sys_out_error_cg`,
+but that owner issues no JTAG probe, no address past a decoded extent, between apertures or
+outside the apertures (its registers lie inside the zeroer, filter and eFuse interface-control
+extents and the eFuse map fills its decoded extent), one SEP_IN access at a time, and its
+Zeroer control beats complete OKAY at the SYS_OUT responder, so none of those groups samples;
+the lifecycle and timeout owners drive no reset, and the lock owner none under its gate; the
+three launch no DMA, program no filter, region or zeroer register and issue one access at a
+time. Drives no `smc_wrapper` port and changes no stimulus.
+|The `fcov_gate_i` inputs of `smc_dma_fcov`, `smc_reset_fcov`, `smc_filt_fcov`, `smc_fabric_fcov`,
+`smc_map_row_fcov` and `smc_efuse_ctrl_fcov` in `hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
 |`smc_dma_transfer_matrix_rand_test`, `smc_reset_mid_transaction_rand_test`,
 `smc_infilt_rule_matrix_rand_test`, `smc_outfilt_rule_matrix_rand_test`,
 `smc_alias_remap_attr_rand_test`, `smc_sys_out_error_inject_rand_test`,
 `smc_axi_random_stress_test`, `smc_axi_channel_timing_ports_test`,
-`smc_map_row_response_matrix_test`
+`smc_map_row_response_matrix_test`, `smc_state_fault_inject_test`,
+`smc_efuse_map_locks_register_test`, `smc_efuse_jtag_lc_access_matrix_test`,
+`smc_efuse_read_program_timeout_test`
 |===
 
 [[smc-vplan-phase3-proposed-drives]]

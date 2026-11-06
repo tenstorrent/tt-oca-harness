@@ -2832,6 +2832,76 @@ module smc_uvm_top
         .program_addr_i     (tb_efuse_program_addr)
     );
 
+    // eFuse-control covergroups (smc_efuse_ctrl_fcov): the state injections,
+    // the eFuse-map lock walk, the lifecycle-gated JTAG eFuse accesses and
+    // the request timeouts, inside the owning leaves' graded windows. Every
+    // port is a tb signal, a smc_wrapper boundary port or the lifecycle
+    // integrity flag u_smc_efuse_fcov takes.
+    smc_efuse_ctrl_fcov #(
+        .LC_STATE_WIDTH ($bits(tb_lc_state)),
+        .SHADOW_BITS    (smc_efuse_pkg::NumEfuseBits)
+    ) u_smc_efuse_ctrl_fcov (
+        .clk_smc_i           (clk_smc),
+        .rst_cold_ni         (rst_cold_n_int),
+        .sep_awvalid_i       (s_axi_awvalid),
+        .sep_awready_i       (s_axi_awready),
+        .sep_awaddr_i        (s_axi_awaddr),
+        .sep_awsize_i        (s_axi_awsize),
+        .sep_wvalid_i        (s_axi_wvalid),
+        .sep_wready_i        (s_axi_wready),
+        .sep_wlast_i         (s_axi_wlast),
+        .sep_wdata_i         (s_axi_wdata),
+        .sep_wstrb_i         (s_axi_wstrb),
+        .sep_bvalid_i        (s_axi_bvalid),
+        .sep_bready_i        (s_axi_bready),
+        .sep_bresp_i         (s_axi_bresp),
+        .sep_arvalid_i       (s_axi_arvalid),
+        .sep_arready_i       (s_axi_arready),
+        .sep_araddr_i        (s_axi_araddr),
+        .sep_arsize_i        (s_axi_arsize),
+        .sep_rvalid_i        (s_axi_rvalid),
+        .sep_rready_i        (s_axi_rready),
+        .sep_rlast_i         (s_axi_rlast),
+        .sep_rresp_i         (s_axi_rresp),
+        .sep_rdata_i         (s_axi_rdata),
+        .ej_awvalid_i        (ej_axi_awvalid),
+        .ej_awready_i        (ej_axi_awready),
+        .ej_awaddr_i         (ej_axi_awaddr),
+        .ej_bvalid_i         (ej_axi_bvalid),
+        .ej_bready_i         (ej_axi_bready),
+        .ej_bresp_i          (ej_axi_bresp),
+        .ej_arvalid_i        (ej_axi_arvalid),
+        .ej_arready_i        (ej_axi_arready),
+        .ej_araddr_i         (ej_axi_araddr),
+        .ej_rvalid_i         (ej_axi_rvalid),
+        .ej_rready_i         (ej_axi_rready),
+        .ej_rresp_i          (ej_axi_rresp),
+        .ej_rdata_i          (ej_axi_rdata),
+        .lc_state_i          (tb_lc_state),
+        .lc_sigint_err_i     (lc_sigint_err),
+        .zeroer_inject_en_i  (tb_zeroer_state_inject_en),
+        .zeroer_inject_i     (tb_zeroer_state_inject),
+        .zeroer_state_i      (tb_zeroer_state),
+        .zeroer_busy_i       (tb_zeroer_busy),
+        .zeroer_intp_i       (tb_zeroer_intp),
+        .program_inject_en_i (tb_efuse_program_state_inject_en),
+        .program_inject_i    (tb_efuse_program_state_inject),
+        .program_req_valid_i (tb_efuse_program_req_valid),
+        .program_busy_i      (tb_efuse_program_busy),
+        .program_done_i      (tb_efuse_program_done),
+        .program_error_i     (tb_efuse_program_error),
+        .read_inject_en_i    (tb_efuse_read_state_inject_en),
+        .read_inject_i       (tb_efuse_read_state_inject),
+        .read_req_valid_i    (tb_efuse_read_req_valid),
+        .read_busy_i         (tb_efuse_read_busy),
+        .read_done_i         (tb_efuse_read_done),
+        .read_error_i        (tb_efuse_read_error),
+        .shim_resp_valid_i   (tb_efuse_shim_resp_valid),
+        .locks_i             (tb_efuse_locks),
+        .shadow_probe_i      (efuse_shadow_probe_o),
+        .fcov_gate_i         (tb_fcov_gate)
+    );
+
     // AXI order and depth coverage (smc_axi_order_fcov) on the three inbound
     // ports, one instance per port, on the requests and responses the DUT
     // sees and on the reset of the port checkers.
