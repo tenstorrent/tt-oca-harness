@@ -1792,6 +1792,7 @@ transfers at the same time on separate pad pairs, each pad pair carries only its
 bytes with the programmed timing difference, and the register windows, FIFO levels, `CMD_COMPLETE`
 and NACK state stay per instance.
 |`smc_i2c_intr_mask_test` |3 |The same interrupt-enable placement, on I2C: INTR_ENABLE must mask the output, not the set path.
+|`smc_i2c_fifo_integrity_fault_test` |3 |A flipped parity bit of a queued FMT entry and a flipped write-pointer copy of I2C0 reach the status bit, `i2c_fifo_intg_err_o` and the RAS bit independent of INTR_ENABLE; the parity error clears on the pop, the pointer error on FMTRST.
 |`smc_i2c1_target_ack_ctrl_test` |3 |Targets I2C1 and I2C2, driven by the other instance on the
 shared bus, ACK exactly the bytes each `TARGET_ACK_CTRL.NBYTES` reload grants, hold with the pending
 byte in `ACQ_FIFO_NEXT_DATA`, and on a `TARGET_ACK_CTRL.NACK` write NACK the byte, record an error
@@ -1867,6 +1868,7 @@ states.
 |`smc_uart_error_conditions_test` |2 |UART0 parity / overrun / break and UART1-3 line status, loopback, THRE and FIFO access.
 |`smc_uart_extremes_misc_test` |3 |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |2 |UART0 IER gating, natural clears, and multi-source IIR priority.
+|`smc_uart_fifo_integrity_fault_test` |3 |A flipped parity bit of a queued TX entry and a flipped read-pointer copy of UART0 reach `err_o`, the RAS bit and IIR id 7 under IER.EFEI, persist across IIR reads, and clear on the pop and on FCR.XMIT_FIFO_RESET.
 |`smc_uart_log_engine_error_boundary_test` |3 |Run log-engine CSR R/W depth as the error/boundary checker.
 |`smc_log_engine_abort_test` |2 |A log-engine transfer on all four wrapper instances halted part-way by clearing CTRL.EN, then a shorter entry re-triggered and delivered in full.
 |`smc_log_engine_transfer_test` |2 |A real log-engine transfer on all four wrapper instances: four logs fetched from the SPM log region and written to the wrapper UART in loopback, read back byte for byte.
@@ -51612,6 +51614,93 @@ Drive `smc_i3c_irq_route_test_seq`. Each checker below is a named compare the DU
 
 '''''
 
+[[sec-607-smc_uart_fifo_integrity_fault_test]]
+===== 607 `smc_uart_fifo_integrity_fault_test`
+
+*Phase*: 3
+
+*Area*: UART
+
+*Source Module*: `smc_uart_fifo_integrity_fault_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); bench probes `tb_uart_err_raw` (the four `uart_err_o` outputs), `tb_ras_uart_intg_err` (`smc_ras_o.uart_intg_err`), `tb_uart_irq_raw`, `tb_uart_irq_combined`, sampled on `clk_smc_i`; a deposit into the published TX FIFO storage and read-pointer copy of UART0 (`tb/smc_public_scope.vlt`)
+
+*Run mode*: one testlist entry in `testlists/uart.toml`; groups `all`, `hosted`, `uart`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`, `uart`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: A real storage fault in a UART FIFO reaches `err_o`, the RAS bit and IIR id 7 as `hw/ip/uart/uart_16550/doc/architecture.adoc` (Error Handling, Interrupt Priority and Service), `uart_log_engine_wrap.adoc` (Interrupts) and `uart_16550_main.rdl` (IER.EFEI, IIR.INTERRUPT_ID 0x7) state: the FIFO-error interrupt is masked by `IER.EFEI`, an IIR read does not repair or acknowledge the failure, and the error clears only when the faulted entry leaves the FIFO or the pointers are reloaded.
+
+*Test Coverage*:
+
+* Parity: with the transmitter disabled (divisor 0) one character is queued in the UART0 TX FIFO, so its entry stays at the head. The stored odd-parity bit of that entry is flipped in place; the data bits are untouched. `tb_uart_err_raw` must read exactly `0001` and `tb_ras_uart_intg_err` 1 within the bound. With `IER.EFEI` clear four IIR reads must report no id 7 and `tb_uart_irq_raw[0]` must be 0, while `tb_uart_irq_combined[0]` (peripheral interrupt 18) must already be 1: the SMC ORs `uart_err_o` into that line (`hw/ip/uart/uart_16550/doc/index.adoc`, Integration), so the mask hides the UART's own request and not the system interrupt. With `IER.EFEI` set IIR must read `0xCE` (pending, id 7, FIFOs enabled) and `tb_uart_irq_raw[0]` must be 1. Two further IIR reads must still return `0xCE` with `err_o` high after each. Clearing `IER.EFEI` must remove id 7 while `err_o` stays high. Enabling the transmitter (divisor 1) pops the entry: `err_o` and the RAS bit must fall and `LSR.THRE` must set; the storage is read back and printed, not compared, to show the flipped bit is still there and no longer reported.
+* Pointer: after an `FCR.XMIT_FIFO_RESET` has reloaded both pointer copies, one bit of the secondary copy of the hardened read pointer is flipped with the FIFO empty; the copy must have read its all-ones reset value before the flip and a different value after it. `err_o` and the RAS bit must rise although the FIFO is empty, IIR must read `0xCE` under `IER.EFEI`, and `err_o` must hold for 32 cycles. A second `FCR.XMIT_FIFO_RESET` must drop `err_o` and the RAS bit, reload the copy to its all-ones value, and leave no id 7 pending.
+* Every poke lands on a `clk_periph` edge and is read back after the next edge of that clock; it must differ in exactly the flipped bit, so a refused, optimised-away or overwritten deposit fails the leg instead of leaving the report ungraded. Bounds and holds count `clk_periph` cycles. Before each leg `err_o`, the RAS bit and IIR must be quiet for 32 cycles, and again after the entry is queued and before the flip.
+
+*Test Procedure*:
+
+Drive `smc_uart_fifo_integrity_fault_test_seq`. The faults are the FIFO-integrity deposit hook of the Phase 3 hooks table (`tb/smc_public_scope.vlt` publishes `prim_fifo_sync_parity` `storage` and `prim_flop` `q_o`): one bit is written by hierarchical path on a `clk_periph` edge and read back after the next; the verdicts read the DUT's reaction on `tb_uart_err_raw`, `tb_ras_uart_intg_err`, the interrupt probes and the registers, and the written register is read again only to require the reset value the FIFO reset reloads. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-FIFO-INTG-REAL` |One line per clause: `parity` (the flipped parity bit raised `uart_err_o` of UART0 alone and the RAS bit), `mask` (no id 7 and `tb_uart_irq_raw[0]` low with `IER.EFEI` clear, while peripheral interrupt 18 is already high from `uart_err_o`), `report` (IIR `0xCE` and `tb_uart_irq_raw[0]` high with it set), `persistence` (two more IIR reads still `0xCE` with `err_o` high), `remask` (clearing `IER.EFEI` removed id 7 while `err_o` stayed high), `pop` (`err_o` and the RAS bit low with `LSR.THRE` set once the entry left the FIFO, the flipped entry still in the storage), `pointer` (the flipped pointer copy raised `err_o`, the RAS bit and IIR `0xCE` with the FIFO empty and held), `pointer clear` (`FCR.XMIT_FIFO_RESET` restored the copy and dropped the error); a missing rise, a report under the mask, a lost id across an IIR read, or an error that fails to clear fails it
+|===
+
+*Pass Criteria*: every clause of `CHK-UART-FIFO-INTG-REAL` holds, the test module's gates on the measured IIR values and `err_o` levels hold, and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: UART0's TX FIFO is the vehicle; the RX FIFO and the holding registers carry the same cell and are not faulted here. The character the pop transmits is not sampled on the pad: the claim is the integrity report, not the data path. The deposit reaches the storage through the Verilator public scope, so the leaf is Verilator-only by construction.
+
+'''''
+
+[[sec-608-smc_i2c_fifo_integrity_fault_test]]
+===== 608 `smc_i2c_fifo_integrity_fault_test`
+
+*Phase*: 3
+
+*Area*: I2C
+
+*Source Module*: `smc_i2c_fifo_integrity_fault_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); bench probes `tb_i2c_intg_err` (the three `i2c_fifo_intg_err_o` outputs), `tb_ras_i2c_intg_err` (`smc_ras_o.i2c_intg_err`), `tb_i2c_irq`, sampled on `clk_smc_i`; a deposit into the published FMT FIFO storage and write-pointer copy of I2C0 (`tb/smc_public_scope.vlt`); the bench I2C0 pads with nothing answering
+
+*Run mode*: one testlist entry in `testlists/i2c.toml`; groups `all`, `hosted`, `i2c`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`, `i2c`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: A real storage fault in an I2C FIFO reaches `INTR_STATE.CONTROLLER_TX_FIFO_ERROR`, `i2c_fifo_intg_err_o` and `smc_ras_o.i2c_intg_err` as `hw/ip/i2c/doc/index.adoc` (Interfaces) and `i2c.rdl` (INTR_STATE `*_FIFO_ERROR`) state: the error output is independent of `INTR_ENABLE`, the parity error clears once the entry is read, and the pointer error holds until the FIFO is cleared.
+
+*Test Coverage*:
+
+* Parity: with the controller disabled one format entry (START, STOP, NAKOK, an unanswered address) is queued in the I2C0 FMT FIFO, so it stays at the head; `HOST_FIFO_STATUS.FMTLVL` must read 1. The stored odd-parity bit of that entry is flipped in place. `tb_i2c_intg_err` must read exactly `001`, `tb_ras_i2c_intg_err` 1 and the status bit 1 within the bound while `INTR_ENABLE` is all zero and `tb_i2c_irq[0]` holds 0 for 64 cycles. Enabling the source must raise `tb_i2c_irq[0]` (peripheral interrupt 23) and clearing it must release the line; the status bit's reading after a W1C with the fault live is printed. `CTRL.ENABLEHOST` makes the controller read the entry: `tb_i2c_intg_err[0]` and the RAS bit must fall, `FMTLVL` must read 0, and a W1C must leave the status bit clear with the RAS bit low for 64 cycles. The transfer ends with the controller's STOP and `STATUS.HOSTIDLE`.
+* Pointer: after a `FIFO_CTRL.FMTRST` has reloaded both pointer copies, one bit of the secondary copy of the hardened write pointer is flipped with the FIFO empty; the copy must have read its all-ones reset value before the flip and a different value after it. The output and the RAS bit must rise with the FIFO empty and the RAS bit must hold for 64 cycles. `INTR_STATE.CONTROLLER_TX_FIFO_ERROR` under the pointer fault is recorded on `OBS-I2C-FIFO-INTG-PTR-STATUS` and not required: `i2c.rdl` ties the field to a parity error and `index.adoc` names the pointer mismatch only for `i2c_fifo_intg_err_o` (#3704). A second `FIFO_CTRL.FMTRST` must drop the output and the RAS bit, reload the copy to its all-ones value, and a W1C must then leave the status bit clear.
+* Every poke lands on a `clk_periph` edge and is read back after the next edge of that clock; it must differ in exactly the flipped bit, so a refused, optimised-away or overwritten deposit fails the leg instead of leaving the report ungraded. Bounds and holds count `clk_periph` cycles. Before each leg the output, the RAS bit, the status bit and `tb_i2c_irq[0]` must be quiet for 64 cycles, and the output again after the entry is queued and before the flip.
+
+*Test Procedure*:
+
+Drive `smc_i2c_fifo_integrity_fault_test_seq`. The faults are the FIFO-integrity deposit hook of the Phase 3 hooks table (`tb/smc_public_scope.vlt` publishes `prim_fifo_sync_parity` `storage` and `prim_flop` `q_o`): one bit is written by hierarchical path on a `clk_periph` edge and read back after the next; the verdicts read the DUT's reaction on `tb_i2c_intg_err`, `tb_ras_i2c_intg_err`, `tb_i2c_irq` and the registers, and the written register is read again only to require the reset value the FIFO reset reloads. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-FIFO-INTG-REAL` |One line per clause: `parity` (the flipped parity bit raised `i2c_fifo_intg_err_o` of I2C0 alone, the RAS bit and the status bit with `INTR_ENABLE` clear and the interrupt line held low), `enable` (the enable raised peripheral interrupt 23 and its clear released it), `pop` (the output and the RAS bit low with `FMTLVL` 0 and the status bit cleared for good once the controller read the entry), `pointer` (the flipped pointer copy raised the output and the RAS bit with the FIFO empty and held), `pointer clear` (`FIFO_CTRL.FMTRST` restored the copy and dropped the error, and a W1C left the status bit clear); a missing rise, an interrupt line following the fault with the enable clear, or an error that fails to clear fails it
+|`OBS-I2C-FIFO-INTG-PTR-STATUS` |Observation, not a compare: the value `INTR_STATE.CONTROLLER_TX_FIFO_ERROR` reads while the pointer fault is live, for the document owner (no document states the status bit for a pointer mismatch, #3704)
+|===
+
+*Pass Criteria*: every clause of `CHK-I2C-FIFO-INTG-REAL` holds, the test module's gates on the measured RAS and interrupt-line levels hold, and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: I2C0's FMT FIFO is the vehicle; the RX, TX and ACQ FIFOs carry the same cell and are not faulted here. The address byte the pop transmits is not sampled on the pads: the claim is the integrity report, not the data path. The deposit reaches the storage through the Verilator public scope, so the leaf is Verilator-only by construction.
+
+'''''
+
 [[sec-242-smc_jtag_axi_shape_test]]
 ===== 242 `smc_jtag_axi_shape_test`
 
@@ -53001,6 +53090,14 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-i2c,I2C>>
 |RAND-NONE
 |none; directed, the leaf walks the whole cell set in one run.
+|`smc_i2c_fifo_integrity_fault_test`
+|<<smc-vplan-area-i2c,I2C>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
+|`smc_uart_fifo_integrity_fault_test`
+|<<smc-vplan-area-uart,UART>>
+|RAND-NONE
+|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_i2c_clock_gate_response_test`
 |<<smc-vplan-area-i2c,I2C>>
 |RAND-NONE
@@ -54160,6 +54257,12 @@ top-port drive and the point of an error inject.
 |Drives the UART0 receive pad from the bench, or crosses UART3 TX into UART0 RX at the pads.
 |The UART pad inputs of `smc_wrapper`
 |`smc_uart_baud_word_parity_format_test`, `smc_uart_pad_mux_enable_test`, `smc_uart_core_mode_select_test`, `smc_uart_error_conditions_test`, `smc_uart_rbr_error_path_test`, `smc_uart_sanity_test`, `smc_uart_frame_error_inject_rand_test`
+|<<smc-vplan-area-uart,UART>>, <<smc-vplan-area-i2c,I2C>>
+|FIFO-integrity deposit (`tb/smc_public_scope.vlt`: `prim_fifo_sync_parity` `storage`, `prim_flop` `q_o`)
+|Added hook
+|Writes one bit of a queued FIFO entry's stored parity, or one bit of the secondary copy of a hardened FIFO pointer, by hierarchical path on a `clk_periph` edge, and reads the register back after the next edge so a refused or overwritten deposit fails the leg; the reaction is read on the error outputs, the RAS bits, the interrupt lines and the registers, and the written pointer copy is read again only to require the reset value the FIFO reset reloads.
+|The TX FIFO storage and read-pointer copy of UART0 and the FMT FIFO storage and write-pointer copy of I2C0, published per module by `hw/sys/smc/dv/tb/smc_public_scope.vlt`
+|`smc_uart_fifo_integrity_fault_test`, `smc_i2c_fifo_integrity_fault_test`
 |<<smc-vplan-area-i2c,I2C>>
 |`+smc_i2c_shared_bus`, `+smc_i2c1_pads`
 |Existing bench hook

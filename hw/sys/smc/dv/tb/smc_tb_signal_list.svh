@@ -684,6 +684,12 @@
 // The three contributors the combined UART bit ORs together, before the OR.
 `SMC_TB_OUT(logic [3:0], tb_uart_irq_raw)
 `SMC_TB_OUT(logic [3:0], tb_uart_err_raw)
+// The three I2C instances' FIFO integrity error outputs (`i2c_fifo_intg_err_o`,
+// before the OR), and the two RAS bits the SMC ORs them and `uart_err_o` into
+// (`smc_ras_o.i2c_intg_err`, `smc_ras_o.uart_intg_err`).
+`SMC_TB_OUT(logic [2:0], tb_i2c_intg_err)
+`SMC_TB_OUT(logic, tb_ras_i2c_intg_err)
+`SMC_TB_OUT(logic, tb_ras_uart_intg_err)
 `SMC_TB_OUT(logic [3:0], tb_logengine_irq_raw)
 `SMC_TB_OUT(logic [2:0], tb_telemetry_irq)
 `SMC_TB_OUT(logic, tb_sep_wdt_irq_sync)
