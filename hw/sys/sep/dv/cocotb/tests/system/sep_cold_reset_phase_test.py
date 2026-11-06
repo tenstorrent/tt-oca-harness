@@ -34,7 +34,10 @@ Checkers:
 
 Controls and observations: ``INFO-COLD-WDT`` logs ``WDOG_REGWEN``, the two
 watchdog thresholds and ``WKUP_THOLD_HI`` after the reset (graded by
-``sep_timer_clock_contract_test``). ``OBS-RST-ASSERT`` logs the delay from the
+``sep_timer_clock_contract_test``). ``CTRL-RST-OFFEDGE`` logs the measured
+offset of each ``rst_ni`` release from the nearest ``clk_i`` edge; in the
+graded pass an offset within the edge allowance fails the leaf, because
+CHK-RST-SYNC could not then fail. ``OBS-RST-ASSERT`` logs the delay from the
 ``rst_ni`` fall to the ``sep_reset_n`` fall; the specification gives no
 assertion timing, so it is not graded. ``OBS-RST-MIN-WIDTH`` logs the width
 of the pulse below the floor, whether ``sep_reset_n`` fell and rose, whether
@@ -289,7 +292,19 @@ class sep_cold_reset_phase_test(sep_base_test):
             wdt_ph,
             phase_pct(wdt_ph, self.pw_ps),
         )
+        clk_off = nearest_edge_offset_ps(t_rel, self.edges.edge_times("clk_i"))
+        self.logger.info(
+            "CTRL-RST-OFFEDGE: pass=%s rst_ni rose t=%d offset_to_clk_edge=%s allowance=%d",
+            pass_name,
+            t_rel,
+            clk_off,
+            _EDGE_ALLOWANCE_PS,
+        )
         if pass_name == "graded":
+            assert clk_off is not None and abs(clk_off) > _EDGE_ALLOWANCE_PS, (
+                f"CTRL-MISSING RST-OFFEDGE: pass=graded rst_ni rose t={t_rel} "
+                f"offset_to_clk_edge={clk_off} ps is within {_EDGE_ALLOWANCE_PS} ps of a clk_i edge"
+            )
             lo, hi = _THIRDS[self.third]
             assert lo * self.pw_ps < 100 * wdt_ph < hi * self.pw_ps, (
                 f"test error: graded release clk_wdt_i phase {wdt_ph} ps not in third {self.third}"
