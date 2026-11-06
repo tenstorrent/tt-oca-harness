@@ -1829,6 +1829,9 @@ module smc_uvm_top
         u_dut.u_smc.u_smc_peripherals.ndmreset_request_smc_clk;
     assign tb_uart_irq_raw      = u_dut.u_smc.u_smc_peripherals.uart_irq_periph_clk;
     assign tb_uart_err_raw      = u_dut.u_smc.u_smc_peripherals.uart_err_periph_clk;
+    assign tb_i2c_intg_err      = u_dut.u_smc.u_smc_peripherals.i2c_fifo_intg_err_periph_clk;
+    assign tb_ras_i2c_intg_err  = smc_ras.i2c_intg_err;
+    assign tb_ras_uart_intg_err = smc_ras.uart_intg_err;
     assign tb_logengine_irq_raw = u_dut.u_smc.u_smc_peripherals.log_engine_irq_periph_clk;
     assign tb_telemetry_irq     = u_dut.u_smc.u_smc_peripherals.telemetry_irq;
     assign tb_sep_wdt_irq_sync  = u_dut.u_smc.u_smc_peripherals.rst_ext_wdt_smc_clk;

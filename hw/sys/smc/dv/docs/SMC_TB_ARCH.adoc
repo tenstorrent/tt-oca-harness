@@ -279,6 +279,18 @@ free-runs and the harness sequences the resets through `smc_tb_if`
 |===
 
 [[env-and-agents-cocotbenvsmc_envpy]]
+*FIFO-integrity deposit* -- `tb/smc_public_scope.vlt` publishes the entry
+array `storage` of every `prim_fifo_sync_parity` and the register `q_o` of every
+`prim_flop` as `public_flat_rw`. `smc_uart_fifo_integrity_fault_test` and
+`smc_i2c_fifo_integrity_fault_test` write one bit of a queued entry's stored
+parity, or one bit of the secondary copy of a hardened pointer, by hierarchical
+path on a `clk_periph` edge (`seq_lib/smc_fifo_fault_inject.py`) and read the
+register back after the next edge, so a refused or overwritten deposit fails
+the leg. The verdicts read the DUT's reaction (`tb_uart_err_raw`,
+`tb_i2c_intg_err`, the two RAS probes, the interrupt probes and the registers);
+the written pointer copy is read again only to require the reset value the FIFO
+reset reloads. The entry array has no reset, so the sequences read only the slot they queued, and both leaves are Verilator-only (`tools = ["verilator"]`): the deposit path is the Verilator public scope. No other leaf writes a published DUT register.
+
 === Environment Components
 
 Agents are split by *honesty class* — this is the defining SMC structure:
@@ -691,8 +703,10 @@ The scoreboard also asserts non-vacuity (`total > 0`).
 * *No hierarchical writes*: every `.value=` write in `seq_lib` targets a
 top-level pin of `smc_uvm_top` -- a reset input, a `tb_*` pad stimulus, or one
 of the inject / poke hooks the VPLAN's Verification Strategy admits -- never a
-DUT register by hierarchical path. The memory-model golden is TB-local, not a DUT-hierarchy
-read.
+DUT register by hierarchical path. The one admitted hierarchical write is the
+FIFO-integrity deposit of the HDL Top section (the two FIFO-integrity leaves,
+through `seq_lib/smc_fifo_fault_inject.py`), whose verdicts read the DUT's
+reaction. The memory-model golden is TB-local, not a DUT-hierarchy read.
 * *OSS hygiene*: the public filelist must be vendor-clean — verify with
 `check_no_vendor_paths.py --filelist build/smc_bender.f --target smc`. Never
 commit simulator artifacts (waves/logs/xrun tmpdirs); the local `.gitignore`
