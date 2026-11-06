@@ -3556,7 +3556,6 @@ Toggle tsu_dat_i [12:9] "logic tsu_dat_i[12:0]"
 CHECKSUM: "3766731198 3608404439"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core
 ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle reg_out_i.CONTROLLER_EVENTS.BUS_TIMEOUT.value "logic reg_out_i.CONTROLLER_EVENTS.BUS_TIMEOUT.value"
 Toggle reg_in_o.CONTROLLER_EVENTS.BUS_TIMEOUT.next "logic reg_in_o.CONTROLLER_EVENTS.BUS_TIMEOUT.next"
 Toggle reg_in_o.ACQDATA.rd_data._reserved_31_11 "logic reg_in_o.ACQDATA.rd_data._reserved_31_11[20:0]"
 Toggle reg_in_o.TARGET_FIFO_STATUS.ACQLVL.next [11:6] "logic reg_in_o.TARGET_FIFO_STATUS.ACQLVL.next[11:0]"
