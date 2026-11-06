@@ -1162,7 +1162,7 @@ reported as such rather than counted as a pass.
 
 *Pass Criteria*: Every named checker PASSes and `CTRL-OTBN-MEM-PRECOND` is seen. UVM_ERROR == 0.
 
-*Logged, not graded*: each OTBN window logs `OBS-OTBN-MEM-BUSY-ACCESS status=0x<word> window=<name> addr=0x<addr> wr_resp=<code> rd_resp=<code> written=0x<word> readback=0x<word>`. The OTBN register text (`vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson:798-804`, `:821-828`) states that while OTBN is busy a read returns 0 and a write is ignored, and no SEP text states whether that holds during the internal wipe, so the window responses and readbacks are not graded.
+*Logged, not graded*: each OTBN window logs `OBS-OTBN-MEM-BUSY-ACCESS status=0x<word> window=<name> addr=0x<addr> wr_resp=<code> rd_resp=<code> written=0x<word> readback=0x<word>`. The OTBN register text (`vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson:798-804`, `:821-828`) states that while OTBN is busy a read returns 0 and a write is ignored; the window responses and readbacks are not graded, under the <<sep-otbn-wipe-access-exception,OTBN wipe-state memory access exception>>.
 
 *Functional coverage*: `sep_axi_decode_cg.cp_strobe_merge`, owner window 758, one window per narrow write: it opens after the prime word read back as written and closes after the CHK-STROBE compare of that write. The window-probe legs run with the window closed. No window opens after a CHK-STROBE FAIL.
 

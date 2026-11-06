@@ -11,9 +11,10 @@ fails here rather than looking like a normal write.
 
 **Memory windows.** The OTBN DMEM and IMEM windows sit behind an SRAM-style
 adapter. In the no_cpu run OTBN stays in its post-reset internal wipe, where
-the OTBN register text states that a read returns 0 and a write is ignored and
-no SEP text states the result, so each window write and readback is logged
-(``observe_window``), not graded.
+the OTBN register text states that a read returns 0 and a write is ignored.
+Each window write and readback is logged (``observe_window``), not graded,
+under the OTBN wipe-state memory access exception
+(docs/test_contracts/smoke_uvm.adoc).
 
 Narrow-write targets are the scratch banks (safe to scribble, not restored).
 """
@@ -241,9 +242,10 @@ class SepAxiStrobeWindow:
         """Write and read back a window and log the result without grading it.
 
         Runs after ``check_otbn_busy``. While OTBN is busy, the OTBN register
-        text states that a memory read returns 0 and a write is ignored; no SEP
-        text states whether that holds during the post-reset internal wipe. The
-        responses and the readback are logged on OBS-OTBN-MEM-BUSY-ACCESS.
+        text states that a memory read returns 0 and a write is ignored; during
+        the post-reset internal wipe the result is accepted as logged only (OTBN
+        wipe-state memory access exception, docs/test_contracts/smoke_uvm.adoc).
+        The responses and the readback are logged on OBS-OTBN-MEM-BUSY-ACCESS.
         """
         wr_resp = await self._wr(p.addr, p.value, tolerate=True)
         rd_resp, got = await self._rd(p.addr, ungraded=True)

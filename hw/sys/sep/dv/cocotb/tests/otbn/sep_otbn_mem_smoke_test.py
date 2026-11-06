@@ -4,8 +4,9 @@
 
 The leaf grades no DUT value of the memory accesses. The OTBN register text
 states that while OTBN is busy a memory read returns 0, a write is ignored and
-the access raises ILLEGAL_BUS_ACCESS; no SEP text states whether that holds
-during the post-reset internal wipe, which lasts the whole no_cpu smoke. The
+the access raises ILLEGAL_BUS_ACCESS. During the post-reset internal wipe, which
+lasts the whole no_cpu smoke, the result is logged under the OTBN wipe-state
+memory access exception (docs/test_contracts/smoke_uvm.adoc). The
 response codes, the readbacks and the SRAM request and write counters are
 logged on one OBS-OTBN-MEM-BUSY-ACCESS record. CTRL-OTBN-MEM-PRECOND fails the
 leaf unless STATUS reads BUSY_SEC_WIPE_INT before the accesses.

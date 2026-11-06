@@ -13,8 +13,9 @@ or writes the whole beat fails the compare rather than looking normal.
 OBS-OTBN-MEM-BUSY-ACCESS: the memory windows are OTBN IMEM and DMEM. The
 no_cpu run does not bring EDN up, so OTBN stays in its post-reset internal wipe
 (STATUS BUSY_SEC_WIPE_INT). The OTBN register text states that a busy OTBN
-reads 0 and ignores the write, and no SEP text states whether that holds
-during the wipe, so each window write and readback is logged, not graded.
+reads 0 and ignores the write; each window write and readback is logged, not
+graded, under the OTBN wipe-state memory access exception
+(docs/test_contracts/smoke_uvm.adoc).
 CTRL-OTBN-MEM-PRECOND fails the leaf unless STATUS reads BUSY_SEC_WIPE_INT
 before the windows, so a configuration that leaves the wipe is noticed.
 

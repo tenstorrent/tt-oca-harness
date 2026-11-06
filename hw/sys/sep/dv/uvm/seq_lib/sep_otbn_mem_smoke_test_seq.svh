@@ -18,8 +18,9 @@
 //     OBS-OTBN-MEM-BUSY-ACCESS line per memory. They are not graded: the
 //     OTBN register text states that while OTBN is busy a memory read
 //     returns 0, a write is ignored and the access raises
-//     ILLEGAL_BUS_ACCESS, and no SEP text states whether that holds during
-//     the internal wipe. An X/Z response or read data and a timed-out access
+//     ILLEGAL_BUS_ACCESS; during the internal wipe the result is logged
+//     under the OTBN wipe-state memory access exception
+//     (docs/test_contracts/smoke_uvm.adoc). An X/Z response or read data and a timed-out access
 //     still raise a UVM_ERROR.
 // Addresses and the STATUS field mask come from the RDL header; the STATUS
 // encoding from the STATUS field description in

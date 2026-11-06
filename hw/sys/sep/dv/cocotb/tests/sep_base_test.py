@@ -124,8 +124,9 @@ class _EvidenceFilter(logging.Filter):
     NO_OWN_EVIDENCE: dict[str, str] = {
         "sep_otbn_mem_smoke_test": (
             "grades only the bench state (CTRL-OTBN-MEM-PRECOND); the IMEM/DMEM "
-            "access result while STATUS reads BUSY_SEC_WIPE_INT is an open "
-            "specification question, logged by OBS-OTBN-MEM-BUSY-ACCESS"
+            "access result while STATUS reads BUSY_SEC_WIPE_INT is logged by "
+            "OBS-OTBN-MEM-BUSY-ACCESS under the OTBN wipe-state memory access "
+            "exception (docs/test_contracts/smoke_uvm.adoc)"
         ),
     }
 

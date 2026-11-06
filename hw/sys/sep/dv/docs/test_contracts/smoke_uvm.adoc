@@ -282,7 +282,7 @@ The `KM-SRAM-RD` log line is a measurement, not a checker: the count of KM SRAM 
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Writes and reads back one word of the OTBN instruction and data memories over the CPU LSU frontdoor at the 32-bit access width OTBN's own program-load driver uses, and logs the result. The leaf grades only its bench state.
+*Objective*: Writes and reads back one word of the OTBN instruction and data memories over the CPU LSU frontdoor at the 32-bit access width OTBN's own program-load driver uses, and logs the result. The leaf grades only its bench state, under the <<sep-otbn-wipe-access-exception,OTBN wipe-state memory access exception>>.
 
 *Test Coverage*: OTBN IMEM/DMEM 32-bit LSU write and read while `STATUS` reads BUSY_SEC_WIPE_INT.
 
@@ -314,9 +314,35 @@ smoke configuration never brings EDN up. `vendor/lowRISC/opentitan/upstream/hw/i
 and `:821-828` state that the memories are accessible only while OTBN is idle
 and that, while OTBN is busy, a read returns 0, a write is ignored and the
 access raises ILLEGAL_BUS_ACCESS. `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md:103-105`
-names BUSY_SEC_WIPE_INT a busy state. No SEP text states whether that rule
-applies during the post-reset internal wipe, so the result in this state is an
-open specification question and the leaf logs it without grading it.
+names BUSY_SEC_WIPE_INT a busy state. The DUT returns the written word with
+`OKAY` in this state. The leaf logs the result and does not grade it, under the
+accepted exception below.
+
+[[sep-otbn-wipe-access-exception]]
+*Accepted exception (OTBN wipe-state memory access)*:
+
+* Unproven claim: the result of a host write and read of OTBN IMEM or DMEM
+  while `STATUS` reads BUSY_SEC_WIPE_INT (`0x04`).
+* Why the proven path is not used: `hw/sys/sep/doc/otbn.adoc:96-97` defers
+  core behaviour to the vendored OpenTitan documents.
+  `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson:798-804`,
+  `:821-828` and `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/registers.md:300-305`
+  state that a busy OTBN returns 0 on a read, ignores a write and raises
+  ILLEGAL_BUS_ACCESS, and `theory_of_operation.md:103-105` names
+  BUSY_SEC_WIPE_INT a busy state. Upstream OpenTitan keeps host memory access
+  open during the initial wipe (lowRISC/opentitan#14066, closed as not
+  planned), and the upstream RTL blocks host access only while OTBN executes.
+  The vendored text is therefore not the contract of this integration, and no
+  SEP text states the result in this state. A `no_cpu` run cannot leave the
+  wipe, because leaving it needs EDN entropy.
+* Accepted scope: `sep_otbn_mem_smoke_test` (cocotb and SV-UVM views) and the
+  OTBN IMEM and DMEM windows of `sep_axi_strobe_window_test`, only while
+  `STATUS` reads BUSY_SEC_WIPE_INT, which `CTRL-OTBN-MEM-PRECOND` requires
+  before the accesses. These accesses are logged as
+  `OBS-OTBN-MEM-BUSY-ACCESS` and not graded. The exception ends when a SEP
+  sentence or the upstream text states the result in this state; the leaves
+  then grade that result.
+* Approver: the SEP DV owner (GitHub `yenhenglai`), 2026-11-06.
 
 *Design context, not a claim*: accesses drive `AxSIZE=2` (4-byte beats). These
 memories are 32-bit SECDED words and reject the 64-bit default beat with SLVERR;

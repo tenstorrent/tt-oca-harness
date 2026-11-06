@@ -4036,9 +4036,9 @@ module sep_fcov (
     cp_cmd: coverpoint otbn_execute {bins execute = {1'b1};}
     cp_done: coverpoint otbn_done {bins idle_err_bits_zero = {1'b1};}
     // The only IMEM/DMEM write-then-read leaves run while STATUS reads
-    // BUSY_SEC_WIPE_INT, where the OTBN register text states that a read returns
-    // 0 and a write is ignored, and no SEP text states the result during the
-    // post-reset wipe. The leaves log these accesses only (ungraded in
+    // BUSY_SEC_WIPE_INT and log these accesses under the OTBN wipe-state
+    // memory access exception (docs/test_contracts/smoke_uvm.adoc). No leaf
+    // writes and reads back these memories while OTBN is idle (NO-STIMULUS in
     // docs/SEP_FCOV.adoc), so every value is an ignore bin.
     // verilator lint_off COVERIGN
     cp_imem_rdback: coverpoint otbn_imem_rdback {

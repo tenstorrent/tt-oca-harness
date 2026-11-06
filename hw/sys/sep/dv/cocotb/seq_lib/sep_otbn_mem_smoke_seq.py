@@ -40,9 +40,10 @@ class sep_otbn_mem_smoke_seq(uvm_sequence):
     """IMEM and DMEM write/readback while OTBN STATUS reads BUSY_SEC_WIPE_INT.
 
     The OTBN register text states that while OTBN is busy a memory read
-    returns 0, a write is ignored and the access raises ILLEGAL_BUS_ACCESS. No
-    SEP text states whether that holds during the post-reset internal wipe, so
-    the memory accesses are not graded: the scoreboard does not judge their
+    returns 0, a write is ignored and the access raises ILLEGAL_BUS_ACCESS.
+    During the post-reset internal wipe the memory accesses are not graded,
+    under the OTBN wipe-state memory access exception
+    (docs/test_contracts/smoke_uvm.adoc): the scoreboard does not judge their
     response codes or read data, and the test logs them. A timed-out access
     still fails the leaf.
     """
