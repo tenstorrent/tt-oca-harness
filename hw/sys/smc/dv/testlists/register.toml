@@ -58,6 +58,15 @@ run_modes = ["smoke"]
 args = ["+axi_sva_need_sep_in"]
 
 [[tests]]
+# Lane-off writes to one register of each of the 12 narrow-cpuif register blocks.
+name = "smc_regblock_byte_lane_write_sweep_test"
+module = "smc_regblock_byte_lane_write_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "register"]
+run_modes = ["smoke"]
+
+[[tests]]
 # Sub-word reads of 133 register-block instances, strobed FILTER_CONFIG writes, window sweeps.
 name = "smc_regblock_subword_strobe_sweep_test"
 module = "smc_regblock_subword_strobe_sweep_test"
