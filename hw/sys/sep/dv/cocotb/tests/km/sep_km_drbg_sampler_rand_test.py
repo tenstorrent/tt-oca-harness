@@ -122,7 +122,7 @@ Checkers:
 
 Blocked (the bench drives no legal beat pattern; ``HK-STRM-PAT`` is an error
 inject only): CHK-SMP-PACK, CHK-SMP-TO-ASM and CHK-SMP-STRM-CTRL log
-``OBS-BLOCKED`` and grade nothing.
+``INFO-BLOCKED`` and grade nothing.
 
 Log only: ``OBS-SMP-PRE-WITHDRAW-READ`` (the response of the DATA read whose
 start gives the withdrawal its TREADY-low clock: the text does not state

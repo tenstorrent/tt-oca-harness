@@ -284,9 +284,10 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         """Two valid regions over the same pages with different offsets: one read.
 
         CHK-ALIAS-OVERLAP: the alias remap output carries one AR at the source
-        translated by the offset of the lower-numbered region. The response
-        comes from the outbound filter entry, which covers region ``k``'s
-        translation only, and is logged (``INFO-ALIAS-OVERLAP``).
+        translated by the offset of the lower-numbered region, and the read
+        answers as the outbound filter rules for that address. The only filter
+        entry covers region ``k``'s translation, so the read is OKAY when ``k``
+        is the lower-numbered region and DECERR otherwise.
         """
         cfg = self.tcfg
         k2 = cfg.overlap_region
@@ -321,15 +322,18 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         outs = self.tap_out.since(mo, "ar")
         low_offset = cfg.offset if cfg.region < k2 else cfg.overlap_offset
         want = translate(mid, low_offset)
+        want_resp = RESP_OKAY if cfg.region < k2 else RESP_DECERR
         line = (
             f"region_a={cfg.region} offset_a=0x{cfg.offset:014x} region_b={k2} "
             f"offset_b=0x{cfg.overlap_offset:014x} src=0x{mid:x} "
             f"alias_out_addr={','.join(_hx(b.addr) for b in outs) or 'none'} n_out={len(outs)} "
-            f"expect=0x{want:x} (region {min(cfg.region, k2)})"
+            f"expect=0x{want:x} (region {min(cfg.region, k2)}) "
+            f"resp={_rname(seq.resp_code)} expect_resp={_rname(want_resp)}"
         )
-        assert [b.addr for b in outs] == [want], f"CHK-ALIAS-OVERLAP FAIL: {line}"
+        assert [b.addr for b in outs] == [want] and seq.resp_code == want_resp, (
+            f"CHK-ALIAS-OVERLAP FAIL: {line}"
+        )
         self.logger.info("CHK-ALIAS-OVERLAP PASS: %s", line)
-        self.logger.info("INFO-ALIAS-OVERLAP resp=%s", _rname(seq.resp_code))
         # Clear valid first: a valid region with START 0 covers this register block.
         await alias._wr64(ALIAS_BASE + k2 * ALIAS_STRIDE + ALIAS_ATTRS, 0)
         await alias.program(k2, 0, 0, 0, "overlap_clear")

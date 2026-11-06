@@ -16,11 +16,9 @@
  *                    is still pending at both ends of the quiet window
  *   CHK-PIC-LEVEL-REENTRY : with source 40 enabled again and the handler not
  *                    masking it, the ISR enters at least twice in a fixed
- *                    window (doc/programmer/src/sep-programming.adoc:235-237
- *                    "an unmasked handler re-enters")
- *
- * Observed, not graded:
- *   INFO-PIC-LEVEL-REENTRY : the pending state of source 40 after that window
+ *                    window, and source 40 is still pending after the window
+ *                    (doc/programmer/src/sep-programming.adoc:235-237 "Stays
+ *                    asserted until reset ... an unmasked handler re-enters")
  */
 
 #include <stdint.h>
@@ -150,17 +148,16 @@ int main(void) {
         uint32_t entries = g_isr_count - g_cap_base;
         uint32_t pending = pic_source_pending(PIC_TOKEN_FAULT);
         g_no_mask = 0u;
-        if (entries < 2u) {
+        if (entries < 2u || pending != 1u) {
             sep_mbx_puts("FAIL: CHK-PIC-LEVEL-REENTRY entries=");
             errors++;
         } else {
             sep_mbx_puts("CHK-PIC-LEVEL-REENTRY PASS: entries=");
         }
         sep_mbx_puthex(entries);
-        sep_mbx_puts(" min=0x00000002\n");
-        sep_mbx_puts("INFO-PIC-LEVEL-REENTRY pending=");
+        sep_mbx_puts(" min=0x00000002 pending=");
         sep_mbx_puthex(pending);
-        sep_mbx_puts("\n");
+        sep_mbx_puts(" expect_pending=0x00000001\n");
     }
 
     return errors;
