@@ -59,7 +59,7 @@ records, the trace events, the pulse counts and the field record:
                   fails once after its other checks if any of them failed.
 
 Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366`` (the
-bit-366 pulse counts in total, inside the ``iccm_ue`` window and in the other windows, and the
+bit-366 pulse counts in total and in the windows other than ``iccm_ue``, and the
 widths of the pulses outside that window),
 ``OBS-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
 each window), ``OBS-RAS-<FIELD>-COUNT`` (rises per window) and
@@ -315,17 +315,17 @@ class TcmCfg:
 
     def draw_lines(self) -> list[str]:
         return [
-            f"DRAW t={self.t} order={'miss_first' if self.order == 0 else 'reach_first'} "
+            f"INFO-DRAW t={self.t} order={'miss_first' if self.order == 0 else 'reach_first'} "
             f"flips_per_memory={self.n}",
-            f"DRAW iccm_slots={self.islots} iccm_bits={self.ibits}",
-            "DRAW dccm_singles="
+            f"INFO-DRAW iccm_slots={self.islots} iccm_bits={self.ibits}",
+            "INFO-DRAW dccm_singles="
             + ",".join(f"0x{self.addr(i):08x}" for i in self.singles)
             + f" dccm_bits={self.sbits}",
-            f"DRAW dccm_load=0x{self.addr(self.ld):08x} bits={list(self.ld_bits)} "
+            f"INFO-DRAW dccm_load=0x{self.addr(self.ld):08x} bits={list(self.ld_bits)} "
             f"neighbour=0x{self.addr(self.ld_nbr):08x} dccm_store=0x{self.addr(self.st):08x} "
             f"bits={list(self.st_bits)} neighbour=0x{self.addr(self.st_nbr):08x} "
             f"lane={self.lane} byte=0x{self.byte:02x} vector_table_bits={list(self.tbl_bits)}",
-            f"DRAW iccm_ue_bits={list(self.iue_bits)}",
+            f"INFO-DRAW iccm_ue_bits={list(self.iue_bits)}",
         ]
 
 
@@ -534,9 +534,10 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         ev = self._intr_events(win, 0x1E)
         cnt = int(arm[0]["ic"]) & CNT_MASK if arm else -1
         ntr = int(arm[0]["traps_after"]) - int(arm[0]["traps_before"]) if arm else -1
+        arm_mceip = (int(arm[0]["mip"]) & MIP_MCEIP) >> 30 if arm else -1
         body = (
             f"mem=ICCM order={order} t={cfg.t} arming=after_block counter={cnt} "
-            f"mceip_at_arming=1 traps={ntr} mcause="
+            f"mceip_after_arm={arm_mceip} traps={ntr} mcause="
             + ",".join(f"0x{int(kv['mcause']):08x}" for kv in itraps)
             + f" trace_ecause_0x1e={len(ev)} rewrite_counter={int(rew['ic']) & CNT_MASK} "
             f"rewrite_mceip={(int(rew['mip']) & MIP_MCEIP) >> 30}"
@@ -649,17 +650,19 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         dmc = ",".join(f"0x{int(kv['mcause']):08x}" for kv in dtrap) or "none"
         self.logger.info(
             "CHK-TCM-CE PASS: mem=DCCM order=%s t=%d counter=%d mceip=%d mcause=none "
-            "data_corrected=%d/%d",
+            "data_corrected=%d/%d rises=%d/%d",
             order,
             cfg.t,
             last_below[0],
             last_below[1],
             data_ok,
             cfg.n,
+            accesses,
+            cfg.n,
         )
         self.logger.info(
             "CHK-TCM-CE PASS: mem=DCCM order=%s t=%d counter=%d mceip=%d mcause=%s sample=%s "
-            "data_corrected=%d/%d",
+            "data_corrected=%d/%d rises=%d/%d",
             order,
             cfg.t,
             first_at[0],
@@ -667,6 +670,8 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             dmc if first_at[2] == "cross" else "none",
             first_at[2],
             data_ok,
+            cfg.n,
+            accesses,
             cfg.n,
         )
         n += 2
@@ -917,11 +922,10 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         db366 = [p for p in self.pulses if p.bit == BIT_I_DB]
         outside = [p for p in db366 if not win[0] <= p.nl <= win[1]]
         self.logger.info(
-            "OBS-TCM-DBG366 LOG seed=%d pulses_total=%d pulses_iccm_ue=%d pulses_other_windows=%d "
+            "OBS-TCM-DBG366 LOG seed=%d pulses_total=%d pulses_other_windows=%d "
             "widths_outside_iccm_ue=%s",
             self.random_seed(),
             len(db366),
-            len(db366) - len(outside),
             len(outside),
             [p.width for p in outside[:8]],
         )
@@ -1159,7 +1163,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.tcfg = cfg = TcmCfg.from_seed(seed)
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         for line in cfg.draw_lines():
             self.logger.info("%s", line)
         sy = load_symbols(_FW_DIR)

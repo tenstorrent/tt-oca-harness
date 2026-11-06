@@ -20,7 +20,7 @@
  *                    "an unmasked handler re-enters")
  *
  * Observed, not graded:
- *   OBS-PIC-LEVEL-REENTRY : the pending state of source 40 after that window
+ *   INFO-PIC-LEVEL-REENTRY : the pending state of source 40 after that window
  */
 
 #include <stdint.h>
@@ -158,7 +158,7 @@ int main(void) {
         }
         sep_mbx_puthex(entries);
         sep_mbx_puts(" min=0x00000002\n");
-        sep_mbx_puts("OBS-PIC-LEVEL-REENTRY pending=");
+        sep_mbx_puts("INFO-PIC-LEVEL-REENTRY pending=");
         sep_mbx_puthex(pending);
         sep_mbx_puts("\n");
     }

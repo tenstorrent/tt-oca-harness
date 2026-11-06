@@ -286,7 +286,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         CHK-ALIAS-OVERLAP: the alias remap output carries one AR at the source
         translated by the offset of the lower-numbered region. The response
         comes from the outbound filter entry, which covers region ``k``'s
-        translation only, and is logged (``OBS-ALIAS-OVERLAP``).
+        translation only, and is logged (``INFO-ALIAS-OVERLAP``).
         """
         cfg = self.tcfg
         k2 = cfg.overlap_region
@@ -329,7 +329,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         )
         assert [b.addr for b in outs] == [want], f"CHK-ALIAS-OVERLAP FAIL: {line}"
         self.logger.info("CHK-ALIAS-OVERLAP PASS: %s", line)
-        self.logger.info("OBS-ALIAS-OVERLAP resp=%s", _rname(seq.resp_code))
+        self.logger.info("INFO-ALIAS-OVERLAP resp=%s", _rname(seq.resp_code))
         # Clear valid first: a valid region with START 0 covers this register block.
         await alias._wr64(ALIAS_BASE + k2 * ALIAS_STRIDE + ALIAS_ATTRS, 0)
         await alias.program(k2, 0, 0, 0, "overlap_clear")

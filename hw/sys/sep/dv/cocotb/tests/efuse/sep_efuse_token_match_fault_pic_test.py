@@ -36,7 +36,7 @@ back ``token_cmp_fault_inject_i`` and fails the leaf unless it is off; the line
 also logs the SEC_DIS comparator rails.
 
 The leaf applies no reset after the fault, so the clear is
-``OBS-RAS-TOKEN_MATCH_FAULT-CLEAR``; the rise delay after the inject is
+``INFO-RAS-TOKEN_MATCH_FAULT-CLEAR``; the rise delay after the inject is
 ``OBS-RAS-TOKEN_MATCH_FAULT-DELAY``.
 """
 
@@ -165,7 +165,7 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         chk.obs(
             f"{_RAS}-DELAY", inject_to_rise_clk=rise - m_inj.clk if rise is not None else "none"
         )
-        chk.obs(f"{_RAS}-CLEAR", reset_in_leaf=0, held="to_end_of_window", level_at_end=level)
+        chk.info(f"{_RAS}-CLEAR", reset_in_leaf=0, held="to_end_of_window", level_at_end=level)
 
     def _ras_release_ctrl(self) -> None:
         """Read back the comparator inject after its release; anything but off fails.

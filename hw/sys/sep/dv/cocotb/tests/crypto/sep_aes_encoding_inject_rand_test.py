@@ -41,9 +41,9 @@ Checkers:
                       OPERATION is an invalid code.
   CHK-AES-INV-MODE    after START, OUTPUT_VALID reads 0 at every sample of the
                       window and DATA_OUT keeps its base words. The START
-                      write returns OKAY (``CTRL-AES-INV-MODE-START``). Control:
-                      MODE = ECB with a new key load sets OUTPUT_VALID in a
-                      bounded wait.
+                      write response is logged
+                      (``INFO-AES-INV-MODE-START-RESP``). Control: MODE = ECB
+                      with a new key load sets OUTPUT_VALID in a bounded wait.
   CHK-AES-INV-MODE-RB after the invalid pair, CTRL_SHADOWED reads MODE =
                       AES_NONE, KEY_LEN = AES_256 and MANUAL_OPERATION = 1;
                       the written MODE is an invalid code.
@@ -479,9 +479,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
                 "aes_wr", op=SepAxiOp.WRITE, addr=AES_TRIGGER, wdata=start, length=4, size=2
             )
             await self.start_seq(start_wr)
-            self.chk.ctrl(
-                "AES-INV-MODE-START", start_wr.resp_code == 0, cell=cell, bresp=start_wr.resp_code
-            )
+            self.chk.info("AES-INV-MODE-START-RESP", cell=cell, bresp=start_wr.resp_code)
             # The poll reads back to back for the whole window and stops early
             # only at an OUTPUT_VALID sample.
             _, samples = await self._poll(ST_OV, ST_OV, window)

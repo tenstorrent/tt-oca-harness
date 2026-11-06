@@ -75,7 +75,7 @@ Log only: ``OBS-RAS-WDT_BARK-DELAY`` (clocks from the ``WDOG_CTRL`` enable write
 rise), ``OBS-RAS-WDT_BARK-FALL`` (clocks from the ``INTR_STATE`` write to the fall),
 ``OBS-RAS-WDT_BARK-BARK2`` (the field after the second bark, whose clear the leaf does not
 grade: the watchdog stays enabled toward the bite), ``OBS-RAS-WDT_BITE-DELAY`` (clocks from
-``wdt_timer_rst_req_o`` to the rise) and ``OBS-RAS-WDT_BITE-CLEAR`` (the leaf drives no
+``wdt_timer_rst_req_o`` to the rise) and ``INFO-RAS-WDT_BITE-CLEAR`` (the leaf drives no
 ``wdt_rst_ni``, so the field is held to the end of the window). The leaf opens its FCOV
 graded window from the CPU release to the end of the bite hold.
 
@@ -569,7 +569,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             falls=falls[:4] or "none",
             exp_hold=_RAS_BITE_HOLD,
         )
-        self.ras_chk.obs(
+        self.ras_chk.info(
             "RAS-WDT_BITE-CLEAR",
             wdt_rst_ni="not_driven",
             level=self.ras.level(fld),
