@@ -132,7 +132,7 @@ Checks:
 * CHK-SPI-LONGDUMMY: on every seed, LEN 0xFFFFF at CLKDIV 0 gives 1,048,576
   sck cycles in exactly one chip-select-low window, with the chip-select and
   sck output enables on at every clock of it; every window after the command
-  counts. The seed draws only where the leg runs among the other legs. The
+  counts. The leg runs last, after every graded frame. The
   wire monitor and the responder are stopped for this leg, so it runs at the
   cost of the sampler alone.
 * CHK-SPI-WIRE: the wire checks of ``SepSpiWireMonitor`` over the leaf.
@@ -213,7 +213,8 @@ CLKDIV_CLASSES = {"zero": (0, 0), "small": (1, 3), "mid": (4, 7)}
 
 LONG_DUMMY_LEN = 0xFFFFF
 LONG_DUMMY_CYCLES = LONG_DUMMY_LEN + 1
-# The legs in run order; the long dummy leg goes in at a seeded position.
+# The legs in run order. The long dummy leg runs after them: it stops the wire
+# monitor and the responder, which the frames of these legs need.
 LEGS = ("_single_cells", "_dummy_fifo_leg", "_chain_leg", "_illegal_leg")
 
 # Output-enable pattern rows the leaf must grade. The x1 RX-only and x1 dummy rows
@@ -451,8 +452,6 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             self._fill_data(rng, seg)
         self.chains.append((clkdiv, 1, "lane", lane))
 
-        # Index of the long dummy leg among the other legs (0: before the first).
-        self.long_dummy_pos = rng.randrange(len(LEGS) + 1)
         self.illegal_lens = {c: rng.randrange(64) for c in self.illegal_order}
         self.illegal_ctl_lens = {c: rng.randrange(16) for c in self.illegal_order}
 
@@ -467,7 +466,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         csaat_dirs = [[s.direction for s in segs if s.csaat] for _, _, _, segs in self.chains]
         self.logger.info(
             "INFO-PLAN seed=%d cells=%s illegal=%s dummy_leg=s%dd0:%s/L%d chains=%s "
-            "chain_csaat1_dirs=%s long_dummy_pos=%d",
+            "chain_csaat1_dirs=%s",
             seed,
             cell_txt,
             ",".join(f"s{s}d{d}" for s, d in self.illegal_order),
@@ -476,7 +475,6 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             self.dummy_seg.len_field,
             chain_txt,
             csaat_dirs,
-            self.long_dummy_pos,
         )
         self.logger.info(
             "INFO-DRAW seed=%d chain_ctl_lens=%s illegal_lens=%s illegal_ctl_lens=%s "
@@ -1139,9 +1137,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 int(fcov_present()),
             )
 
-            legs = list(LEGS)
-            legs.insert(self.long_dummy_pos, "_long_dummy_leg")
-            for leg in legs:
+            for leg in (*LEGS, "_long_dummy_leg"):
                 await getattr(self, leg)()
             self._ungraded()
             await self.pads.stop()

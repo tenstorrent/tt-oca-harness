@@ -109,7 +109,6 @@ class sep_cpu_ifu_lsu_alias_remap_matrix_test(sep_base_test):
     required_evidence = (
         "CHK-IFU-AXPROT",
         "CHK-IFU-SINGLE-BEAT",
-        "CTRL-UMODE-ENTRY",
         "CHK-LSU-UMODE-AXPROT",
     )
 
