@@ -8,7 +8,7 @@ observation probes):
 * ``otp_bank_probe_o`` -- the 256 bank words that SEP reaches, word i at bits
   [32i+31:32i]. The bench has no bank write hook, so a bank bit changes only by a
   fuse program.
-* ``efuse_shim_cmd_{valid,command,address,program_data,len}_o`` -- the fuse command
+* ``efuse_shim_cmd_{valid,command,address,len}_o`` -- the fuse command
   at the ``sep`` output ``efuse_shim_command_req_o``, after the guard. The request
   valids of the read and program interfaces sit before the guard and cannot show a
   refusal; this tap can.
@@ -23,7 +23,7 @@ counts the clocks with post-guard valid 1 and with ``psel`` 1 between two marks,
 pulse of one clock is counted.
 
 Command record rule: a command is recorded on the first clock of a valid run, and
-again on a clock where valid stays 1 and the command, address, data or length
+again on a clock where valid stays 1 and the command, address or length
 changes. A command that the shim re-issues after a response shows as a new valid
 run, so a held program that repeats shows one record per repeat.
 
@@ -53,22 +53,19 @@ WORD_BITS = 32
 WORD_MASK = (1 << WORD_BITS) - 1
 
 # efuse_pkg::fuse_command_e (hw/ip/efuse/doc/interface.adoc, Fuse Command Protocol).
-FUSE_COMMAND_READ = 0b00
-FUSE_COMMAND_PROGRAM = 0b01
-FUSE_COMMAND_PROGRAM_READ_BACK = 0b10
+FUSE_COMMAND_READ = 0b0
+FUSE_COMMAND_PROGRAM = 0b1
 COMMAND_NAMES = {
     FUSE_COMMAND_READ: "READ",
     FUSE_COMMAND_PROGRAM: "PROGRAM",
-    FUSE_COMMAND_PROGRAM_READ_BACK: "PROGRAM_READ_BACK",
 }
-PROGRAM_COMMANDS = (FUSE_COMMAND_PROGRAM, FUSE_COMMAND_PROGRAM_READ_BACK)
+PROGRAM_COMMANDS = (FUSE_COMMAND_PROGRAM,)
 
 BANK_PROBE = "otp_bank_probe_o"
 CMD_TAPS = {
     "valid": "efuse_shim_cmd_valid_o",
     "command": "efuse_shim_cmd_command_o",
     "address": "efuse_shim_cmd_address_o",
-    "data": "efuse_shim_cmd_program_data_o",
     "length": "efuse_shim_cmd_len_o",
 }
 PSEL_TAP = "efuse_bank_psel_o"
@@ -164,7 +161,6 @@ class ShimCmd:
     clk: int
     command: int
     address: int
-    data: int
     length: int
 
     @property
@@ -180,26 +176,24 @@ class ShimCmd:
         return self.command == FUSE_COMMAND_READ
 
 
-def command_edges(samples: Sequence[tuple[int, int, int, int, int, int]]) -> list[ShimCmd]:
-    """Commands of a per-clock sample list ``(clk, valid, command, address, data, length)``.
+def command_edges(samples: Sequence[tuple[int, int, int, int, int]]) -> list[ShimCmd]:
+    """Commands of a per-clock sample list ``(clk, valid, command, address, length)``.
 
     A record starts on the first clock of a valid run and on a clock where valid stays
     1 and any field changes (the module record rule).
     """
     out: list[ShimCmd] = []
-    prev: tuple[int, int, int, int, int] | None = None
-    for clk, valid, command, address, data, length in samples:
-        cur = (valid, command, address, data, length)
+    prev: tuple[int, int, int, int] | None = None
+    for clk, valid, command, address, length in samples:
+        cur = (valid, command, address, length)
         if is_command_edge(prev, cur):
-            out.append(ShimCmd(clk, command, address, data, length))
+            out.append(ShimCmd(clk, command, address, length))
         prev = cur
     return out
 
 
-def is_command_edge(
-    prev: tuple[int, int, int, int, int] | None, cur: tuple[int, int, int, int, int]
-) -> bool:
-    """True when ``cur`` (valid, command, address, data, length) starts a command record."""
+def is_command_edge(prev: tuple[int, int, int, int] | None, cur: tuple[int, int, int, int]) -> bool:
+    """True when ``cur`` (valid, command, address, length) starts a command record."""
     return bool(cur[0]) and (prev is None or not prev[0] or prev[1:] != cur[1:])
 
 
@@ -402,9 +396,9 @@ class SepShimCmdMonitor:
 
         return PulseCount(end.clk - start.clk, _n(self.valid_clks), _n(self.psel_clks))
 
-    def _sample(self) -> tuple[int, int, int, int, int]:
+    def _sample(self) -> tuple[int, int, int, int]:
         vals = {k: decode_bits(_binstr(s.value), CMD_TAPS[k]) for k, s in self.sigs.items()}
-        return vals["valid"], vals["command"], vals["address"], vals["data"], vals["length"]
+        return vals["valid"], vals["command"], vals["address"], vals["length"]
 
     async def _run(self) -> None:
         clk = self.dut.clk_i
@@ -418,7 +412,7 @@ class SepShimCmdMonitor:
                 self.valid_clks.append(self.clk)
             if self.psel_sig is not None and decode_bits(_binstr(self.psel_sig.value), PSEL_TAP):
                 self.psel_clks.append(self.clk)
-            cur = self._sample() if valid else (0, 0, 0, 0, 0)
+            cur = self._sample() if valid else (0, 0, 0, 0)
             if is_command_edge(self._prev, cur):
                 self.cmds.append(ShimCmd(self.clk, *cur[1:]))
             self._prev = cur

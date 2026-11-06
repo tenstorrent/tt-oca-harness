@@ -129,7 +129,7 @@
   <text x="207" y="596" class="mono">access_length_words</text>
   <text x="357" y="596" class="small">words to return</text>
   <text x="207" y="618" class="mono">command</text>
-  <text x="357" y="618" class="small">READ, PROGRAM or read-back</text>
+  <text x="357" y="618" class="small">READ or PROGRAM</text>
   <text x="207" y="640" class="mono">valid</text>
   <text x="357" y="640" class="warn">level: held until response</text>
 
@@ -167,7 +167,7 @@
   <text x="480" y="842" text-anchor="middle" class="small">one access per word</text>
   <rect x="600" y="800" width="200" height="55" rx="5" class="block"/>
   <text x="700" y="823" text-anchor="middle" class="label">Program FSM</text>
-  <text x="700" y="842" text-anchor="middle" class="small">optional read-back check</text>
+  <text x="700" y="842" text-anchor="middle" class="small">adopter verify (reference shim: read-back check)</text>
 
   <path d="M255 828 H380" class="tech"/>
   <text x="317" y="820" text-anchor="middle" class="tech-label">timing</text>

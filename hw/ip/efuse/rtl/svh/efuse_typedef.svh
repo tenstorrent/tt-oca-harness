@@ -11,14 +11,13 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Usage Example:
-// `EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)
+// `EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, word_count_t, command_t)
 // `EFUSE_COMMAND_RESP_T(fuse_command_resp_t, data_t)
 
-`define EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)  \
+`define EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, word_count_t, command_t)  \
   typedef struct packed {                                       \
     addr_t                    address;                          \
-    logic                     program_data;                     \
-    access_length_words_t     access_length_words;              \
+    word_count_t              read_word_count;                  \
     command_t                 command;                          \
     logic                     valid;                            \
   } fuse_command_req_t;

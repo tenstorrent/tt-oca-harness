@@ -59,7 +59,7 @@ addrmap efuse_interface_ctrl {
     };
 
     reg EFUSE_PROGRAM_CTRL {
-        desc = "eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.";
+        desc = "eFuse program control and status. Configures the program address and data, triggers a program, and reports program progress and completion status.";
         regwidth = 32;
         accesswidth = 32;
 
@@ -82,11 +82,7 @@ addrmap efuse_interface_ctrl {
             desc = "When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set";
         } efuse_program_go [17:17] = 0x0;
 
-        field {
-            sw = rw;
-            hw = r;
-            desc = "When set, trigger a read back after a program";
-        } efuse_program_read_back [18:18] = 0x0;
+        // bit 18: reserved
 
         field {
             sw=r;
@@ -157,11 +153,11 @@ addrmap efuse_interface_ctrl {
     };
 
     reg EFUSE_PROGRAM_INTERFACE_READ_DATA {
-        desc = "Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.";
+        desc = "Data returned by the adopter SHIM with the last successful program response. The meaning of this data is defined by the adopter (for example, a read-back word from the macro). Retained until the next successful program; not valid after an error response. Hardware debug only.";
         field {
         sw = r;
         hw = w;
-        desc = "Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only";
+        desc = "Data returned by the adopter SHIM with the last successful program response. The meaning is adopter-defined.";
         } dout[31:0] = 0x0;
     };
 

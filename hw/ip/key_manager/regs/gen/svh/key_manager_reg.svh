@@ -4367,9 +4367,6 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_SHIFT
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK                             = 32'h20000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_SHIFT                            = 17;
 
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_READ_BACK_MASK                      = 32'h40000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_READ_BACK_SHIFT                     = 18;
-
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_MASK                                 = 32'h1000000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_SHIFT                                = 24;
 
@@ -5316,8 +5313,7 @@ typedef struct packed {
     logic [0:0]   program_status ;
     logic [0:0]   program_done ;
     logic [0:0]   program_busy ;
-    logic [4:0]   rsvd_0 ;
-    logic [0:0]   efuse_program_read_back ;
+    logic [5:0]   rsvd_0 ;
     logic [0:0]   efuse_program_go ;
     logic [0:0]   efuse_data ;
     logic [15:0]   efuse_addr ;

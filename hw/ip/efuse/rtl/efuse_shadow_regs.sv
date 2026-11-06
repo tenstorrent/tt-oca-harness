@@ -45,7 +45,7 @@ module efuse_shadow_regs
 
     parameter type efuse_addr_t = logic,  // Fuse bit-address type.
     parameter type efuse_data_t = logic,  // Fuse data-word type.
-    parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+    parameter type efuse_word_counter_t = logic,  // Fuse read word-count type.
     parameter type fuse_command_req_t = logic,  // Fuse-command request type.
     parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
@@ -484,7 +484,7 @@ module efuse_shadow_regs
                 // .address is a bit address. current_word_num_q is always 0 here, so it is also
                 // bit 0 of word 0.
                 fuse_command_req_d.address = efuse_addr_t'(current_word_num_q);
-                fuse_command_req_d.access_length_words =
+                fuse_command_req_d.read_word_count =
                     efuse_word_counter_t'(NumShadowWords);
                 fuse_command_req_d.valid = 1'b1;
                 fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;

@@ -20,6 +20,8 @@
 // Raise locked_field_access_interrupt_o and token_match_fault_o. Debug outputs expose
 // lock, timeout, and token-match state.
 
+`include "prim_assert.sv"
+
 module efuse_interface_controller #(
   parameter int unsigned ADDR_WIDTH = 32,  // AXI4-Lite address width at the AXI-Lite to APB bridge.
   parameter int unsigned DATA_WIDTH = 32,  // AXI4-Lite data width at the AXI-Lite to APB bridge.
@@ -41,7 +43,7 @@ module efuse_interface_controller #(
 
   parameter type efuse_addr_t = logic,  // Fuse bit-address type.
   parameter type efuse_data_t = logic,  // Fuse data-word type.
-  parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+  parameter type efuse_word_counter_t = logic,  // Fuse read word-count type.
   parameter type fuse_command_req_t = logic,  // Fuse-command request type.
   parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
@@ -105,7 +107,7 @@ module efuse_interface_controller #(
                                                         // control registers.
 
   output fuse_command_req_t                     fuse_command_req_o,  // Fuse command request to the SHIM: {address,
-                                                                     // program data, access_length_words, command, valid}.
+                                                                     // read_word_count, command, valid}.
   input  fuse_command_resp_t                    fuse_command_resp_i,  // Fuse command response from the SHIM: {read data, command
                                                                       // status, valid}.
 
@@ -560,7 +562,6 @@ module efuse_interface_controller #(
   logic reg_interface_program_go;
   efuse_addr_t reg_interface_program_addr;
   logic reg_interface_program_data;
-  logic reg_interface_program_read_back_enable;
 
   // Full-width CSR address and out-of-bounds flag. The cast to efuse_addr_t
   // truncates upper bits; without this comparator the OOB check would run on
@@ -574,7 +575,6 @@ module efuse_interface_controller #(
   assign reg_interface_program_addr = efuse_addr_t'(reg_interface_program_addr_csr);
   assign reg_interface_program_addr_oob = ({16'h0, reg_interface_program_addr_csr} >= SHADOW_REG_BITS);
   assign reg_interface_program_data = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.efuse_data.value;
-  assign reg_interface_program_read_back_enable = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value;
 
   // CSR driven Program Request
   fuse_command_req_t  fuse_command_req_interface_ctrl_w;
@@ -589,7 +589,6 @@ module efuse_interface_controller #(
 
     .efuse_addr_t(efuse_addr_t),
     .efuse_data_t(efuse_data_t),
-    .efuse_word_counter_t(efuse_word_counter_t),
     .fuse_command_req_t(fuse_command_req_t),
     .fuse_command_resp_t(fuse_command_resp_t)
   ) u_efuse_program_interface (
@@ -603,7 +602,6 @@ module efuse_interface_controller #(
     .program_addr_i               (reg_interface_program_addr),
     .program_data_in_i            (reg_interface_program_data),
     .program_go_i                 (reg_interface_program_go),
-    .program_read_back_enable_i   (reg_interface_program_read_back_enable),
 
     .program_busy_o               (efuse_program_busy),
     .program_done_o               (efuse_program_done),
@@ -843,5 +841,17 @@ module efuse_interface_controller #(
   assign is_read_locked_o = read_locked;
   assign is_efuse_req_err_o = efuse_req_err;
   assign is_secure_tm_blocked_o = secure_tm_blocked;
+
+  // A read covers one word or, for sensing, the whole bank; a program carries no word count.
+  // verilog_format: off
+  `OCAH_OT_ASSERT(
+      FuseCommandReadWordCountValid_A,
+      fuse_command_req_o.valid && fuse_command_req_o.command == efuse_pkg::FUSE_COMMAND_READ |-> fuse_command_req_o.read_word_count inside {efuse_word_counter_t'(1), efuse_word_counter_t'(SHADOW_REG_BITS / EFUSE_MACRO_WORD_WIDTH)},
+      clk_i, !rst_ni)
+  `OCAH_OT_ASSERT(
+      FuseCommandProgramWordCountZero_A,
+      fuse_command_req_o.valid && fuse_command_req_o.command == efuse_pkg::FUSE_COMMAND_PROGRAM |-> fuse_command_req_o.read_word_count == '0,
+      clk_i, !rst_ni)
+  // verilog_format: on
 
 endmodule : efuse_interface_controller

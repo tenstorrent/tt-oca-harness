@@ -316,7 +316,7 @@ initialization delay before sensing can begin). Firmware reaches these CSRs
 through the base of the adopter external window; see
 <<efuse-bank-ctrl-window>>.
 * `efuse_shim_command` -- the custom fuse command interface used to issue
-read, program, and program/read-back operations to the eFuse bank.
+read and program operations to the eFuse bank.
 
 *Adopter responsibility.* The `efuse_shim_command` interface is intentionally
 generic and technology-neutral. The adopter must implement an Interface SHIM
@@ -394,7 +394,7 @@ typedef struct packed {
     addr_t                address;             // Target address (in bits)
     logic                 program_data;        // Data to program (when programming)
     access_length_words_t access_length_words; // Number of WORD_WIDTH words to access
-    command_t             command;             // READ / PROGRAM / PROGRAM_READ_BACK
+    command_t             command;             // READ / PROGRAM
     logic                 valid;               // Request valid
 } fuse_command_req_t;
 
@@ -406,9 +406,8 @@ typedef struct packed {
 } fuse_command_resp_t;
 ----
 
-`command` is `efuse_pkg::fuse_command_e`: `FUSE_COMMAND_READ` (`+2'b00+`),
-`FUSE_COMMAND_PROGRAM` (`+2'b01+`) and `FUSE_COMMAND_PROGRAM_READ_BACK`
-(`+2'b10+`).
+`command` is `efuse_pkg::fuse_command_e`: `FUSE_COMMAND_READ` (`+1'b0+`) and
+`FUSE_COMMAND_PROGRAM` (`+1'b1+`).
 
 The SHIM implements two operations, reads and programs:
 
@@ -418,10 +417,15 @@ carrying one `WORD_WIDTH` word in `data`, reading consecutive words starting
 at `address`. Firmware reads set _N_ to one; fuse sensing sets it to the whole
 bank, as described below.
 * *Programs.* If a request has `command` set to `FUSE_COMMAND_PROGRAM`, program
-the single bit at `address` and respond with one `valid` strobe when the macro
-finishes. `program_data` is always 1 and `access_length_words` is always 1.
-For `FUSE_COMMAND_PROGRAM_READ_BACK`, also read the word back, return it in
-`data`, and set `status` if the programmed bit did not stick.
+the single bit at `address` using the foundry's native program flow and respond
+with one `valid` strobe when done. `program_data` is always 1 and
+`access_length_words` is always 1. `status` and `data` in the response are
+adopter-defined: whether to verify the bit and what data to return in the
+program response is the SHIM's responsibility, not the controller's.
++
+NOTE: If the macro does not verify automatically, firmware should read the bit
+back through `EFUSE_READ_CTRL` *before* setting any read lock on the field.
+Setting a read lock first blocks the follow-up read through the guard.
 
 Both operations follow these rules:
 

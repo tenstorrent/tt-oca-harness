@@ -34947,14 +34947,11 @@ module sep_fcov (
     return 1'b0;
   endfunction
 
-  // Post-guard shim command (READ 2'b00, PROGRAM 2'b01, PROGRAM_READ_BACK
-  // 2'b10, interface.adoc Fuse Command Protocol) and response.
+  // Post-guard shim command (READ 1'b0, PROGRAM 1'b1, interface.adoc Fuse
+  // Command Protocol) and response.
   wire ef_cmd_v = (shim_cmd_i.valid === 1'b1);
   wire ef_cmd_rd = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_READ);
-  // A program command is PROGRAM or PROGRAM_READ_BACK: the read-back flag of
-  // EFUSE_PROGRAM_CTRL selects the second, and both burn the bit.
-  wire ef_cmd_pg = ef_cmd_v && ((shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM) ||
-                                (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK));
+  wire ef_cmd_pg = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM);
   wire [12:0] ef_cmd_addr = 13'(shim_cmd_i.address);
   wire ef_resp_v = (shim_resp_i.valid === 1'b1);
 

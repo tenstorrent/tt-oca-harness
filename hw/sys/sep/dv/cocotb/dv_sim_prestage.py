@@ -250,9 +250,9 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x0,
         "fixed_from": "program_lock_spares",
     },
-    # Same spare-zero image as the lock matrix: the read-back select test
-    # programs bits of one seed-selected spare field.
-    "sep_efuse_program_read_back_select_test": {
+    # Same spare-zero image as the lock matrix: the program verify test
+    # programs a bit of one seed-selected spare field.
+    "sep_efuse_program_verify_test": {
         "mode": "random",
         "lc_raw": 0x0,
         "fixed_from": "program_lock_spares",

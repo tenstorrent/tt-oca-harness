@@ -1589,11 +1589,11 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |no_cpu, real fuse sense
 |ocah_axi_vip
 |Program × lock on every legal spare field: each spare programs while unlocked, rejects a program after its own lock bit is set, and its lock does not block the next spare.
-|<<sep_efuse_program_read_back_select_test,`sep_efuse_program_read_back_select_test`>>
+|<<sep_efuse_program_verify_test,`sep_efuse_program_verify_test`>>
 |2
 |no_cpu, real fuse sense
 |ocah_axi_vip, OTP bank model program-fail injection
-|`EFUSE_PROGRAM_CTRL.efuse_program_read_back` selects the verified program: against a dropped bank write the read-back program reports `program_status` 1 and the plain program reports 0; both program the bit when the write is kept.
+|The reference SHIM verifies every program: against a dropped bank write the program reports `program_status` 1 and the bit stays clear; against a kept write it reports 0, the bit lands, and `EFUSE_PROGRAM_INTERFACE_READ_DATA` returns the programmed word.
 |<<sep_lcc_demote_feat_ctrl_matrix_test,`sep_lcc_demote_feat_ctrl_matrix_test`>>
 |2
 |no_cpu, real fuse sense
@@ -4701,7 +4701,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Core CSR nets `tlu.{mcause, mscause, mdccmect, miccmect, ce_int, mie, mip}`, `dmi_rst_vec`, `dmi_en`, `dmi_addr`, `dmi_wr_en`, `SEP_CORE.nmi_vec`, the four `u_sep_wdt_wrap` stage nets and the two Key Manager conditioner nets.
 |The owners of `cp_ce_*`, `cp_mceip_delivery`, `cp_tcm_trap_cause`, `cp_nmi_fast_path`, `cp_jtag_mech`, `cp_rstvec_tdr`, `cp_dmi_*`, `cp_adapt_stage` and `cp_scan_net_effect`
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|`efuse_shim_command_req_o` tap (`efuse_shim_cmd_valid_o`, `efuse_shim_cmd_command_o`, `efuse_shim_cmd_address_o`, `efuse_shim_cmd_program_data_o`, `efuse_shim_cmd_len_o`)
+|`efuse_shim_command_req_o` tap (`efuse_shim_cmd_valid_o`, `efuse_shim_cmd_command_o`, `efuse_shim_cmd_address_o`, `efuse_shim_cmd_len_o`)
 |Read-only tap
 |The program and read commands that reach the bank port after the guard: valid, command, bit address, program data and word count.
 |`sep_lcc_feat_ctrl_state_matrix_rand_test` (CHK-DEMOTE-OTP), `sep_efuse_transient_rma_rand_test` (CHK-TRANSIENT-NOBURN, CHK-PROG-LC), `sep_efuse_interface_status_rand_test` (CHK-IF-CMD, CHK-IF-CTRL, CHK-IF-PRESENSE), `sep_efuse_lock_slot_matrix_rand_test` (CHK-LOCK-CELL, CHK-GUARD-NOPULSE), `sep_efuse_secure_tm_matrix_rand_test` (CHK-STM-PROG, CHK-STM-PROG-CTL), `sep_efuse_jtag_access_rand_test` (CHK-JTAG), `sep_sec_dis_timing_rand_test` (class C), `sep_efuse_shim_response_fault_test` (CHK-HOOK hook control)

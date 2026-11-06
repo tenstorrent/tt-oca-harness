@@ -19,7 +19,7 @@ Beyond the bank storage itself, it adds three simulation-only conveniences:
   `out/sep_efuse.hex` when no plusarg is given). A named image that cannot be
   opened at that point ends the run with a `$fatal` naming the plusarg.
 - **Program-fail injection**: silently drops program writes (no APB error,
-  matching real OTP) to exercise firmware's `PROGRAM_READ_BACK` error path —
+  matching real OTP) to exercise the shim's program verify path —
   either the first N writes after reset
   (`+{sep,smc}_efuse_prog_fail_count=<N>`) or ~N% of writes at random
   (`+{sep,smc}_efuse_prog_fail_percent=<N>`, seeded by

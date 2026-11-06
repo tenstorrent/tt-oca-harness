@@ -545,7 +545,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await self.pulse_rst_ni(max_sense_cycles=sense_bound)
         await self._wr(_PG_TMO_ADDR, _TMO_CYC_RESET)
         ctl_go = self.clk
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1, read_back=0))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(a["addr"], data=1))
         pg = await self._poll_pg(_M_PG_DONE, poll_bound)
         ctl_clks = self.clk - ctl_go if pg is not None else None
         pg = await self._rd(PROGRAM_CTRL_ADDR) if pg is not None else None
@@ -703,9 +703,32 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         cw = int(p.leg["ctrl_word"])
         dut.efuse_sense_status_word_i.value = cw
         dut.efuse_sense_status_inject_i.value = 1
+        cw_rec = _SenseRec()
+        cw_task = cocotb.start_soon(self._sense_mon(cw_rec))
         await rst_pulse(self, hold=_RST_HOLD)
         n = await clocks_to_sense(self, sense_bound, started=True)
         await ClockCycles(dut.clk_i, 20)
+        cw_done = cw_task.done()
+        if not cw_done:
+            cw_task.cancel()
+        await cw_rec.stop()
+        # The inject reached the drawn word: exactly one response of the sense
+        # carries status 1, at word cw, with the staged data.
+        cw_err = [k for k, (st, _d) in enumerate(cw_rec.resp) if st]
+        cw_resp = cw_rec.resp[cw] if len(cw_rec.resp) > cw else None
+        self._ctrl(
+            "SENSE-STATUS-CTRLWORD-INJ",
+            cw_done
+            and len(cw_rec.resp) == _N_WORDS
+            and cw_err == [cw]
+            and cw_resp is not None
+            and cw_resp[1] == staged[cw],
+            word=cw,
+            n_resp=len(cw_rec.resp),
+            err_idx=cw_err[:4],
+            data="none" if cw_resp is None else f"0x{cw_resp[1]:08x}",
+            staged=f"0x{staged[cw]:08x}",
+        )
         await ReadOnly()
         shadow = self._probe_words()[cw]
         done_o = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
