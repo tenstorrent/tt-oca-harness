@@ -95,6 +95,7 @@ class sep_efuse_otp_program_seq(uvm_sequence):
         item.op = op
         item.addr = addr
         item.length = 4
+        item.size = 2
         item.wdata = data
         await self.start_item(item)
         await self.finish_item(item)
@@ -203,6 +204,7 @@ class sep_efuse_otp_program_once_seq(uvm_sequence):
         item.op = op
         item.addr = addr
         item.length = 4
+        item.size = 2
         item.wdata = data
         await self.start_item(item)
         await self.finish_item(item)
