@@ -76,10 +76,16 @@ incdirs = [
   "hw/common/assert",
   # ocah_path_plusargs.svh, the file-path plusarg guard tb_top runs at time 0.
   "hw/common/dv/vip/ocah_lib/uvm",
-  # filter_ctrl_reg.svh, the filter-entry field positions and reset words
-  # smc_filt_fcov includes; the entry addresses keep coming from
-  # smc_top_addrmap_pkg and filter_ctrl_addrmap_pkg through the bender filelist.
+  # filter_ctrl_reg.svh and alias_remap_reg.svh, the filter-entry and
+  # remap-region field positions and reset words smc_filt_fcov includes; the
+  # entry and region addresses keep coming from smc_top_addrmap_pkg and
+  # filter_ctrl_addrmap_pkg through the bender filelist.
   "hw/ip/axi_filter/regs/gen/svh",
+  "hw/ip/axi_alias_remap/regs/gen/svh",
+  # smc_reg.svh, the SMC_BASE_CONFIG reset words and CLOCK_GATE_CONTROL field
+  # masks smc_map_row_fcov includes; the row addresses keep coming from
+  # smc_top_addrmap_pkg through the bender filelist.
+  "hw/sys/smc/regs/gen/svh",
 ]
 exclude_files = [
   "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
@@ -148,6 +154,9 @@ sources = [
   # Four-state WDATA/RDATA known-ness rules beside each ocah_axi_sva instance;
   # the rules need OCAH_INC_ASSERT, so they are live under VCS only.
   "hw/sys/smc/dv/tb/smc_axi_data_known_sva.sv",
+  # Reset-protocol rules of the SMC chapters, instantiated once in the
+  # single-instance body of tb_top; two-state, live on both simulators.
+  "hw/sys/smc/dv/tb/smc_reset_sva.sv",
   # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
   # this list feeds the cocotb/Verilator filelist, and the
   # [frameworks.uvm.build] sources list (which replaces this one) repeats the
@@ -162,6 +171,7 @@ sources = [
   "hw/sys/smc/dv/cov/sv/smc_axi_order_fcov.sv",
   # Spec-derived P0 coverage.
   "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_map_row_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
@@ -573,8 +583,10 @@ incdirs = [
   # coming from smc_top_addrmap_pkg through the bender filelist. Same split as
   # hw/sys/sep/dv/sep_sim_cfg.toml.
   "hw/sys/smc/regs/gen/svh",
-  # filter_ctrl_reg.svh for smc_filt_fcov, as in the [build] table above.
+  # filter_ctrl_reg.svh and alias_remap_reg.svh for smc_filt_fcov, as in the
+  # [build] table above.
   "hw/ip/axi_filter/regs/gen/svh",
+  "hw/ip/axi_alias_remap/regs/gen/svh",
   "hw/sys/smc/dv/uvm/env",
   "hw/sys/smc/dv/uvm/seq_lib",
   "hw/sys/smc/dv/uvm/tests",
@@ -624,6 +636,7 @@ sources = [
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   "hw/sys/smc/dv/tb/smc_axi_data_known_sva.sv",
+  "hw/sys/smc/dv/tb/smc_reset_sva.sv",
   # Flow-shared functional-coverage modules; the same entries the [build]
   # sources list carries for the cocotb/Verilator flow.
   "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
@@ -636,6 +649,7 @@ sources = [
   "hw/sys/smc/dv/cov/sv/smc_axi_order_fcov.sv",
   # Spec-derived P0 coverage.
   "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_map_row_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",

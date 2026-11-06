@@ -23,7 +23,7 @@ Chip version, identification, and lifecycle-state registers.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `version_lo` | R | 0x100A0 a| SMC version, lower 32 bits
+| 31:0 | `version_lo` | R | 0x100A0 a| SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
 |===
 
 [#reg-{regmap-instance}-chip_config-VERSION_HI]
@@ -32,7 +32,7 @@ Chip version, identification, and lifecycle-state registers.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `version_hi` | R | 0x0 a| SMC version, upper 32 bits
+| 31:0 | `version_hi` | R | 0x0 a| SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.
 |===
 
 [#reg-{regmap-instance}-chip_config-CHIP_ID]

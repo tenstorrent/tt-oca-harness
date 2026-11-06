@@ -174,6 +174,8 @@ typedef union {
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMID_bp 2
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMID_bw 6
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__DBMID_reset 0x0
+// No effect in the SMC: the field stores and reads back, but no debug-bus mux uses
+// it. Write 0.
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__RSVD158_bm 0xff00
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__RSVD158_bp 8
 #define DFX_CTRL_STATUS__DEBUG_BUS_MUX__RSVD158_bw 8
@@ -237,6 +239,8 @@ typedef union {
         // ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
         // level-3 muxes.
         uint64_t Dbmid :6;
+        // No effect in the SMC: the field stores and reads back, but no debug-bus mux uses
+        // it. Write 0.
         uint64_t Rsvd158 :8;
         // Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
         // takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k

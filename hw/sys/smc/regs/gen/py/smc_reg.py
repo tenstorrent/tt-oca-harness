@@ -14515,8 +14515,8 @@ I2C_CONTROLLER_EVENTS_REG_WIDTH = 32
 I2C_CONTROLLER_EVENTS_REG_FIELDS = (
     ('NACK', 0, 0, 'rw', 'rw', 'woclr', '', False, True, 0),
     ('UNHANDLED_NACK_TIMEOUT', 1, 1, 'rw', 'rw', 'woclr', '', False, True, 0),
-    ('BUS_TIMEOUT', 2, 2, 'rw', 'rw', 'woclr', '', False, True, 0),
-    ('ARBITRATION_LOST', 3, 3, 'rw', 'rw', 'woclr', '', False, True, 0),
+    ('BUS_TIMEOUT', 2, 2, 'rw', 'w', 'woclr', '', False, True, 0),
+    ('ARBITRATION_LOST', 3, 3, 'rw', 'w', 'woclr', '', False, True, 0),
 )
 
 class I2C_CONTROLLER_EVENTS_reg_t(Structure):
@@ -14560,9 +14560,9 @@ I2C_TARGET_EVENTS_REG_FIELD_ACCESS = (
 
 I2C_TARGET_EVENTS_REG_WIDTH = 32
 I2C_TARGET_EVENTS_REG_FIELDS = (
-    ('TX_PENDING', 0, 0, 'rw', 'rw', 'woclr', '', False, True, 0),
-    ('BUS_TIMEOUT', 1, 1, 'rw', 'rw', 'woclr', '', False, True, 0),
-    ('ARBITRATION_LOST', 2, 2, 'rw', 'rw', 'woclr', '', False, True, 0),
+    ('TX_PENDING', 0, 0, 'rw', 'w', 'woclr', '', False, True, 0),
+    ('BUS_TIMEOUT', 1, 1, 'rw', 'w', 'woclr', '', False, True, 0),
+    ('ARBITRATION_LOST', 2, 2, 'rw', 'w', 'woclr', '', False, True, 0),
     ('START_DETECT', 3, 3, 'rw', 'w', 'woclr', '', False, True, 0),
     ('STOP_DETECT', 4, 4, 'rw', 'w', 'woclr', '', False, True, 0),
 )
