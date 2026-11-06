@@ -45,13 +45,13 @@ module prim_axil_addr_demux #(
 
   typedef logic [AXI_ADDR_WIDTH-1:0] addr_t;
   // One bit wider than addr_t, so the end of a range at the top of the address space does not
-  // wrap in the disjointness check.
+  // wrap to 0.
   typedef logic [AXI_ADDR_WIDTH:0] range_end_t;
   typedef logic [$clog2(NumPorts)-1:0] select_t;
   typedef struct packed {
     int unsigned idx;
     addr_t       start_addr;
-    addr_t       end_addr;
+    range_end_t  end_addr;
   } rule_t;
 
   ////////////////
@@ -78,12 +78,10 @@ module prim_axil_addr_demux #(
 
   rule_t [NUM_RANGES-1:0] addr_map;
 
-  // A range that ends at the top of the address space wraps end_addr to 0, which addr_decode
-  // reads as the top.
   for (genvar i = 0; i < NUM_RANGES; i++) begin : gen_rules
     assign addr_map[i].idx        = i;
     assign addr_map[i].start_addr = RANGE_BASE[i];
-    assign addr_map[i].end_addr   = RANGE_BASE[i] + RANGE_SIZE[i];
+    assign addr_map[i].end_addr   = range_end_t'(RANGE_BASE[i]) + RANGE_SIZE[i];
   end
 
   select_t aw_select, ar_select;
