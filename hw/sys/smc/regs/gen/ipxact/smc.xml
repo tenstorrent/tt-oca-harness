@@ -1623,7 +1623,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>version_lo</ipxact:name>
-              <ipxact:description>SMC version, lower 32 bits</ipxact:description>
+              <ipxact:description>SMC version identifier, lower 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1641,7 +1641,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>version_hi</ipxact:name>
-              <ipxact:description>SMC version, upper 32 bits</ipxact:description>
+              <ipxact:description>SMC version identifier, upper 32 bits, set by eight metal-programmable revision cells, one byte per cell, so a metal-only respin can change it. The register has no storage: a read returns the cell values, and the reset value is the version the cells are tied to.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2423,7 +2423,7 @@ general condition of the slave, per AVS spec StatusReponse field: [list]
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>CMD_FIFO_VACANT_SLOTS</ipxact:name>
-            <ipxact:description>Number of vacant slots in the command FIFO</ipxact:description>
+            <ipxact:description>Number of vacant slots in the command FIFO. The field has no storage; with the FIFO empty after reset it reads the COMMAND_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2449,7 +2449,7 @@ general condition of the slave, per AVS spec StatusReponse field: [list]
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>READBACK_FIFO_VACANT_SLOTS</ipxact:name>
-            <ipxact:description>Number of vacant slots in the readback FIFO</ipxact:description>
+            <ipxact:description>Number of vacant slots in the readback FIFO. The field has no storage; with the FIFO empty after reset it reads the READBACK_FIFO_DEPTH parameter, 8 by default, and the reset value is that default. The 4-bit field holds depths up to 15.</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -8464,6 +8464,8 @@ level-3 muxes.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>Rsvd158</ipxact:name>
+            <ipxact:description>No effect in the SMC: the field stores and reads back, but no debug-bus mux uses
+it. Write 0.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -9315,7 +9317,7 @@ Filter entry will match if AxPROT[1] matches the value in this field</ipxact:des
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>data_bus_width</ipxact:name>
-              <ipxact:description>Data bus width in bytes, encoded as 2^value</ipxact:description>
+              <ipxact:description>Data bus width in bytes, encoded as 2^value: log2 of the instance's AXI data width in bytes, 3 for a 64-bit bus. The register has no storage, and the reset value is the 64-bit case.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9422,7 +9424,8 @@ matching is still granule-aligned.</ipxact:description>
               <ipxact:name>end_addr</ipxact:name>
               <ipxact:description>End of the allowable address range, rounded up to the top of its granule.
 The granule and the write-back behaviour are described under start_addr.
-Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.</ipxact:description>
+Resets to 7, the top of the first 8-byte granule that applies while bursts are
+disabled on a 64-bit bus; the reset does not follow the data width.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9505,7 +9508,7 @@ Filter entry will match if AxPROT[1] matches the value in this field</ipxact:des
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>data_bus_width</ipxact:name>
-              <ipxact:description>Data bus width in bytes, encoded as 2^value</ipxact:description>
+              <ipxact:description>Data bus width in bytes, encoded as 2^value: log2 of the instance's AXI data width in bytes, 3 for a 64-bit bus. The register has no storage, and the reset value is the 64-bit case.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9612,7 +9615,8 @@ matching is still granule-aligned.</ipxact:description>
               <ipxact:name>end_addr</ipxact:name>
               <ipxact:description>End of the allowable address range, rounded up to the top of its granule.
 The granule and the write-back behaviour are described under start_addr.
-Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.</ipxact:description>
+Resets to 7, the top of the first 8-byte granule that applies while bursts are
+disabled on a 64-bit bus; the reset does not follow the data width.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34194,6 +34198,11 @@ Wait for STATUS to read 0 before writing this register again.</ipxact:descriptio
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>vector</ipxact:name>
+            <ipxact:description>Boot address of core n, one register per core. Core n starts fetching here when
+its reset releases, so a write takes effect at that core's next reset release;
+bit 0 is ignored. While the warm reset is asserted every core takes 0xC004_0000
+instead. The register is on the primary reset and keeps its value across a warm
+reset.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34770,7 +34779,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_0</ipxact:name>
-            <ipxact:description>Word 0 of WFI loop</ipxact:description>
+            <ipxact:description>Word 0 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34787,7 +34796,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_1</ipxact:name>
-            <ipxact:description>Word 1 of WFI loop</ipxact:description>
+            <ipxact:description>Word 1 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34804,7 +34813,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_2</ipxact:name>
-            <ipxact:description>Word 2 of WFI loop</ipxact:description>
+            <ipxact:description>Word 2 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34821,7 +34830,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_word_3</ipxact:name>
-            <ipxact:description>Word 3 of WFI loop</ipxact:description>
+            <ipxact:description>Word 3 of a park loop for a core whose RESET_VECTOR points at DUMMY_ROM_0: the loop points mtvec at its own wfi, masks interrupts and waits. The words are writable by design with no lock, so software may replace the loop; a master that can write them can also write RESET_VECTOR and RESET_CTRL.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -34839,7 +34848,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>dummy_rom_null</ipxact:name>
-            <ipxact:description>Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom</ipxact:description>
+            <ipxact:description>Zero padding that fills the 64-byte cache line holding the park loop, so a line fetch of the loop reads no undefined data.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
