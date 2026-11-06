@@ -7,7 +7,7 @@
 
 `smc_cpuif_handshake_test` drives instance 0 of each register block. This
 sequence drives every instance of the multi-instance families -- GPIO
-interfaces 0..64, inbound and outbound filter entries 0..15, M-mode, Xvisor and
+interfaces 0..66, inbound and outbound filter entries 0..15, M-mode, Xvisor and
 alias remaps 0..7, I2C 0..2, the UART/log wraps 0..3 (control, main UART,
 divisor latch, log engine), telemetry receivers 0..2 and the cold and warm
 scratch banks -- and instance 0 of every single-instance family: reset unit,
@@ -332,7 +332,7 @@ def _indexed(sym: str, path: str, idx: int) -> RdlReg:
 
 def build_instances() -> tuple[Inst, ...]:
     out: list[Inst] = []
-    assert GPIO_INTF_NUM == 65, f"GPIO_INTF_NUM is {GPIO_INTF_NUM}, the contract names 0..64"
+    assert GPIO_INTF_NUM == 67, f"GPIO_INTF_NUM is {GPIO_INTF_NUM}, the contract names 0..66"
     for i in range(GPIO_INTF_NUM):
         sym = "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR"
         a = _indexed(sym, "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", i)

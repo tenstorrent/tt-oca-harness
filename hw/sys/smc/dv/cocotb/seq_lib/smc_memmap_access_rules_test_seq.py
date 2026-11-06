@@ -48,7 +48,7 @@ AXI_TIMEOUT_NS = 50_000
 ONES32 = 0xFFFF_FFFF
 ONES64 = 0xFFFF_FFFF_FFFF_FFFF
 EXCL_PATTERN = {4: 0x5EC0_A5A5, 8: 0x5EC0_A5A5_C3C3_1E1E}
-GAP_OFFSET = 0xC000
+GAP_OFFSET = 0xD000
 GAP_BURST_BEATS = (4, 16)
 
 # Generated blocks whose fabric decode is exact: (unit, register width in bytes). A hole is

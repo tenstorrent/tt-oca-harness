@@ -149,7 +149,7 @@ set_cdc_max_delay_prim_sync3 u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_cool
 set_cdc_max_delay_prim_sync3 u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_rst_cool_no_sync_smc SMUCLK
 set_cdc_max_delay_prim_sync3 u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_subsystem_resets/u_reset_complete_sync SMUCLK
 
-# ---- prim_sync3r (286 instances) ----
+# ---- prim_sync3r (288 instances) ----
 set_cdc_max_delay_prim_sync3 {u_dtp/u_jtag_intf_unit/u_jtag_ptap/gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi/u_axi_cdc/i_cdc_fifo_gray_clearable_ar/i_dst/gen_sync[0].i_sync/gen_tt_sync3_async_clr.u_prim_sync3r} SMUCLK
 set_cdc_max_delay_prim_sync3 {u_dtp/u_jtag_intf_unit/u_jtag_ptap/gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi/u_axi_cdc/i_cdc_fifo_gray_clearable_ar/i_dst/gen_sync[1].i_sync/gen_tt_sync3_async_clr.u_prim_sync3r} SMUCLK
 set_cdc_max_delay_prim_sync3 {u_dtp/u_jtag_intf_unit/u_jtag_ptap/gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi/u_axi_cdc/i_cdc_fifo_gray_clearable_ar/i_dst/gen_sync[2].i_sync/gen_tt_sync3_async_clr.u_prim_sync3r} SMUCLK
@@ -332,6 +332,8 @@ set_cdc_max_delay_prim_sync3 {u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_int
 set_cdc_max_delay_prim_sync3 {u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_intf[62].u_gpio_interface/u_pad2core_sync} SMUCLK
 set_cdc_max_delay_prim_sync3 {u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_intf[63].u_gpio_interface/u_pad2core_sync} SMUCLK
 set_cdc_max_delay_prim_sync3 {u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_intf[64].u_gpio_interface/u_pad2core_sync} SMUCLK
+set_cdc_max_delay_prim_sync3 {u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_intf[65].u_gpio_interface/u_pad2core_sync} SMUCLK
+set_cdc_max_delay_prim_sync3 {u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_intf[66].u_gpio_interface/u_pad2core_sync} SMUCLK
 set_cdc_max_delay_prim_sync3 {u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_intf[6].u_gpio_interface/u_pad2core_sync} SMUCLK
 set_cdc_max_delay_prim_sync3 {u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_intf[7].u_gpio_interface/u_pad2core_sync} SMUCLK
 set_cdc_max_delay_prim_sync3 {u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_intf[8].u_gpio_interface/u_pad2core_sync} SMUCLK
