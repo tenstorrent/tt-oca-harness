@@ -1136,7 +1136,7 @@ reported as such rather than counted as a pass.
 
 *Randomization*: RANDCFG — the size and lane axes are walked exhaustively rather than seeded, so every AxSIZE at every legal lane offset runs on every seed and no run can issue zero narrow writes. The seed varies the data.
 
-*Objective*: A write narrower than the bus beat must change only the byte lanes its strobe selects (IHI 0022 A3.4.3), A stage that widens the strobe, or writes the whole beat, changes bytes the master never asked for; only a data compare sees it, because the response is OKAY either way. The OTBN IMEM and DMEM windows are written and read back and logged, not graded.
+*Objective*: A write narrower than the bus beat must change only the byte lanes its strobe selects (IHI 0022 A3.4.3). A stage that widens the strobe, or writes the whole beat, changes bytes the master never asked for; only a data compare sees it, because the response is OKAY either way. The OTBN IMEM and DMEM windows are written and read back and logged, not graded.
 
 *Test Coverage*: Write-strobe windows on the LSU splice.
 

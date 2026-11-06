@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Narrow-write byte masking and memory-window readback.
+"""Narrow-write byte masking; OTBN memory-window accesses logged.
 
 no_cpu / +skip_fuse_sense. Every AxSIZE at every legal lane offset runs on
 every seed; the seed varies the staged data, never whether a case is covered.
@@ -51,7 +51,7 @@ WINDOW_HOLD_CYCLES = 2
 
 @pyuvm.test()
 class sep_axi_strobe_window_test(sep_base_test):
-    """Byte-lane masking on narrow writes; data integrity through windows."""
+    """Byte-lane masking on narrow writes; OTBN window accesses logged, not graded."""
 
     async def run_scenario(self) -> None:
         cfg = SepAxiStrobeWindowCfg(self.random_seed())
