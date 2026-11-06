@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The log engine on UART wrapper 0 fetching from an address that refuses the read.
+"""The log engine on UART wrapper 0 fetching from, and writing to, addresses that refuse.
 
-`log_engine.rdl` has an error interrupt, `LOG_FETCH_ERR`, for an error
-response on the engine's fetch from the log region; this leaf provokes that
-response.
+`log_engine.rdl` has two error interrupts, `LOG_FETCH_ERR` for an error
+response on the engine's fetch from the log region and `LOG_WRITE_ERR` for one
+on its write to `LOG_WRITE_ADDR`; this leaf provokes both responses.
 
 The address that refuses is the one `smc_deadspace_decode_test` holds the
 decode to: inside the I2C0 instance's stride but past its `SIZE`, which the
@@ -33,12 +33,18 @@ then waits for a word the FIFO does not have. Once all eight bytes have come
 back through the loopback, with exactly one fetch returned, the hold is
 released, and all sixteen bytes must arrive in order with no error status.
 
-The companion `LOG_WRITE_ERR` has no bus to come from: the engine's write port
-reaches only its own wrapper's UART register blocks, which answer every
-address without error. Its status is set instead through `INTR_TEST`
-(`sw = w`, `singlepulse`), with only `INTR_ENABLE.LOG_WRITE_ERR` set: the
-status must set alone, the interrupt line must rise, and the written one must
-clear the status and drop the line.
+The engine's write port reaches its own wrapper's UART register port, whose
+main register block answers an offset above its last register with an error
+response (`uart_16550_main.rdl` ends at `ITR`, offset 0x24). `LOG_WRITE_ADDR`
+is pointed at the last word of the 64-byte UART window and one slot of a
+readable region is submitted: `INTR_STATUS.LOG_WRITE_ERR` must set alone, the
+line must rise with only its enable set, the engine must still run the log to
+its end and clear `LOG_CTRL[0]` (`architecture.adoc`: the FSMs advance on
+error responses), no character may reach the UART, and the written one must
+clear the status and drop the line. `INTR_TEST` sets the same status
+without a bus error (`sw = w`, `singlepulse`), with only
+`INTR_ENABLE.LOG_WRITE_ERR` set: the status must set alone, the interrupt line
+must rise, and the written one must clear the status and drop the line.
 """
 
 from __future__ import annotations
@@ -48,7 +54,7 @@ from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import UART_CG_EN, smc_addr, smc_indexed_addr
+from .smc_addr_map import SPM_MEMORY_BASE, UART_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_log_engine_utils import (
     CTRL_EN,
@@ -97,6 +103,12 @@ POLL_CYCLES = 50
 STARVED_REGION = OUTPUT_FABRIC_ADDR + 0x3000
 STARVED_WORDS = (0x4847_4645_4443_4241, 0x5057_5655_5453_5251)
 WORD_BYTES = 8
+#: The last word of the 64-byte UART register window. uart_16550_main.rdl ends
+#: at ITR (0x24), so the main register block answers this offset with an error.
+UNMAPPED_UART_OFFSET = 0x3C
+#: One readable log word in the SPM, for the log whose write is refused.
+WRITE_ERR_REGION = SPM_MEMORY_BASE + 0x41000
+WRITE_ERR_WORD = 0x5A5A_A5A5_3C3C_C3C3
 
 
 class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
@@ -207,6 +219,57 @@ class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
         assert not cleared & want, f"{label}: the written one left 0x{cleared:08x}"
         await self._await_irq(f"{label}_DROP", 0)
         await self.csr_write(f"{label}_INTR_EN_OFF", engine_reg(WRAP, "INTR_ENABLE"), 0)
+
+    async def _write_err_real_leg(self) -> None:
+        """The write port refused: LOG_WRITE_ERR latches, the line rises, the log still ends."""
+        label = "WRITE_REAL"
+        element = array_reg_instances(LOG_CTRL_PATH, LOG_CTRL_PY, WRAP_STRIDE_SYMBOL, WRAP)[0]
+        await self.csr_write(f"{label}_LOG_WORD", WRITE_ERR_REGION, WRITE_ERR_WORD, length=8)
+        await self.csr_read(
+            f"{label}_LOG_WORD_RB", WRITE_ERR_REGION, expected=WRITE_ERR_WORD, length=8
+        )
+        await self._arm(
+            label, WRITE_ERR_REGION, uart_base(WRAP) + UNMAPPED_UART_OFFSET, ENABLE_WRITE
+        )
+        await self.csr_write(f"{label}_GO", element.addr, LOG_BYTES)
+        status = await self._await_status(label, WRITE_ERR)
+        assert not status & FETCH_ERR, (
+            f"{label}: INTR_STATUS=0x{status:08x}; the readable region cannot raise a fetch "
+            f"error, only the refused write may set"
+        )
+        await self._await_irq(f"{label}_RAISE", 1)
+        remaining = LOG_BYTES
+        for _ in range(POLL_LIMIT):
+            remaining = (await self.csr_read(f"{label}_HWCLR", element.addr)) & LOG_LEN
+            if remaining == 0:
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+        assert remaining == 0, (
+            f"{label}: LOG_CTRL[0] still holds {remaining} byte(s) after the refused writes; "
+            f"the engine advances on error responses and clears the length at the end"
+        )
+        lsr = await self.csr_read(f"{label}_LSR", uart_reg(WRAP, "LSR"))
+        assert not lsr & LSR_DR, (
+            f"{label}: the looped-back UART reports data (LSR 0x{lsr:02x}) after writes "
+            f"aimed at an unmapped offset; none may reach the transmit holding register"
+        )
+        await self.csr_write(f"{label}_STOP", engine_reg(WRAP, "CTRL"), 0)
+        await self.csr_write(f"{label}_W1C", engine_reg(WRAP, "INTR_STATUS"), WRITE_ERR)
+        cleared = await self.csr_read(f"{label}_CLEARED", engine_reg(WRAP, "INTR_STATUS"))
+        assert not cleared & WRITE_ERR, f"{label}: the written one left 0x{cleared:08x}"
+        await self._await_irq(f"{label}_DROP", 0)
+        await self.csr_write(f"{label}_INTR_EN_OFF", engine_reg(WRAP, "INTR_ENABLE"), 0)
+        cocotb.log.info(
+            "CHK-LOGENG-WRITE-ERR-REAL: LOG_WRITE_ADDR at UART window offset 0x%02x (above the "
+            "last register) with an %d-byte log from a readable region: INTR_STATUS read 0x%02x "
+            "(LOG_WRITE_ERR alone), tb_uart_irq_combined[0] rose with only that enable, "
+            "LOG_CTRL[0] cleared to 0, the UART received nothing (LSR 0x%02x), and the written "
+            "one cleared the status and dropped the line",
+            UNMAPPED_UART_OFFSET,
+            LOG_BYTES,
+            status,
+            lsr,
+        )
 
     async def _write_err_test_leg(self) -> None:
         """Set LOG_WRITE_ERR through INTR_TEST, with only its interrupt enabled."""
@@ -352,6 +415,8 @@ class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
             REFUSING_ADDR,
             self.written,
         )
+
+        await self._write_err_real_leg()
 
         got, fetches = await self._starved_leg()
         cocotb.log.info(
