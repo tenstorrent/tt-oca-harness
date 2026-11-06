@@ -54,10 +54,13 @@ Checks:
   CHK-SPI-SB-FRAME (``env/sep_spi_scoreboard.py``, one scoreboard per midseg
                    trial): the clean dummy command has LEN+1 sample edges, and
                    the clean Tx command at the width of the trial puts its
-                   queued bytes on the wire (``ByteOrder = 1``: the first byte
-                   on the wire is TXDATA[7:0]; most significant bits first; in
-                   x2 and x4 the least significant bit of each pair or nibble
-                   on ``sd[0]``). The shared SPI monitor
+                   queued bytes on the wire in one in-word byte order, the
+                   same order for every TXDATA word of the leaf (most
+                   significant bits first; in x2 and x4 the least significant
+                   bit of each pair or nibble on ``sd[0]``). Which order the
+                   words use is not graded: one OBS-SPI-BYTEORDER line per
+                   leaf logs it (``env/sep_spi_lane_responder.py``,
+                   ``SepSpiByteOrder``). The shared SPI monitor
                    (``env/sep_spi_wire_monitor.py``) runs only from the first
                    CONTROL write after the release to the end of the clean
                    commands, so it never sees the frame the reset cuts.
@@ -85,7 +88,7 @@ from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_reg_meta import SPI_CONTROLLER
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spi_lane_responder import pack_tx_words, spi_lane_fcov
+from env.sep_spi_lane_responder import SepSpiByteOrder, pack_tx_words, spi_lane_fcov
 from env.sep_spi_pad_sampler import SepSpiPadSampler
 from env.sep_spi_scoreboard import SepSpiScoreboard
 from env.sep_spi_wire_monitor import SepSpiWireMonitor
@@ -235,6 +238,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.seed = self.random_seed()
         self.checks = 0
+        self.order = SepSpiByteOrder()
         rng = SepSeededRng(self.seed)
         draw = self._draw(rng)
         self.logger.info(
@@ -275,6 +279,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         try:
             await self._run(draw)
             await self.wire.finish(self.logger, seed=self.seed)
+            self.order.log_obs(self.logger, self.seed)
         finally:
             close_graded_window(self.logger)
             await self.pads.stop()
@@ -523,7 +528,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         )
 
         # Clean commands after the release, with the monitor and a scoreboard.
-        sb = SepSpiScoreboard(self.wire, None, self.logger, seed=self.seed)
+        sb = SepSpiScoreboard(self.wire, None, self.logger, seed=self.seed, order=self.order)
         dmark = len(self.wire.monitor.get_transactions())
         clean = await self._clean_command(d["clean_len"], start_monitor=True)
         sb.expect_frame(

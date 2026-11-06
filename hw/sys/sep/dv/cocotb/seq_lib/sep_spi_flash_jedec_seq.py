@@ -4,8 +4,9 @@
 
 Drives the OpenTitan SPI host controller over the CPU-LSU AXI bus to issue a
 JEDEC-ID (0x9F) command against the OSS flash BFM, then reads RXDATA and
-ERROR_STATUS back with exact ``expected`` values (scoreboard value-checked). The
-RXDATA / opcode assertions live in the test; this sequence exposes ``rxdata``.
+ERROR_STATUS back. ERROR_STATUS carries an exact ``expected`` value (scoreboard
+value-checked). RXDATA has no ``expected`` value: its in-word byte order is not
+fixed here, so the test grades the identifier bytes from the exposed ``rxdata``.
 
 Co-located with the SPI register-map constants so the test does not embed raw
 addresses. The SEP instantiates the upstream OpenTitan spi_host register block
@@ -32,7 +33,6 @@ SPI_CONTROLLER_TXDATA = sym("SPI_CONTROLLER_TXDATA_0__MEM_BASE_ADDR")
 SPI_CONTROLLER_ERROR_STATUS = sym("SPI_CONTROLLER_ERROR_STATUS_REG_ADDR")
 
 SPI_JEDEC_ID = 0x20BA18
-SPI_RX_JEDEC_WORD = 0x0018BA20
 
 STATUS_ACTIVE = SPI_CONTROLLER.field_mask("STATUS", "active")
 STATUS_READY = SPI_CONTROLLER.field_mask("STATUS", "ready")
@@ -135,5 +135,5 @@ class sep_spi_flash_jedec_seq(uvm_sequence):
         # Three-byte read of the ID; CS# deasserts when the segment ends.
         await self._write(SPI_CONTROLLER_COMMAND, spi_command(CMD_DIR_RDONLY, 3))
         await self._wait_idle()
-        self.rxdata = await self._read(SPI_CONTROLLER_RXDATA, SPI_RX_JEDEC_WORD)
+        self.rxdata = await self._read(SPI_CONTROLLER_RXDATA)
         await self._read(SPI_CONTROLLER_ERROR_STATUS, 0)
