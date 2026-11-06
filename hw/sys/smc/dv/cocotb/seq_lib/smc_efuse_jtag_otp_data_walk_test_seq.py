@@ -39,7 +39,7 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
 * S7 writes both control registers 0 and both timeouts 0x0080_0000 and drives
   ``tb_lc_state`` back to its S1 value.
 
-A and A2 are bits of SPARE[2] and SPARE[3], whose write and read locks the default image's
+A and A2 are bits of SPARE[1] and SPARE[2], whose write and read locks the default image's
 LOCKS word leaves clear and whose image words are 0.
 """
 
@@ -150,7 +150,7 @@ def _spare_bit(index: int, offset: int) -> int:
     ) * 8 + (offset)
 
 
-SPARE_A, SPARE_A2 = 2, 3
+SPARE_A, SPARE_A2 = 1, 2
 BIT_A = _spare_bit(SPARE_A, 5)
 BIT_A2 = _spare_bit(SPARE_A2, 9)
 
