@@ -440,7 +440,7 @@ module smc_padring #(
         lsio_core2pad_en_n[39+4*i]  = ~i2c_smbus_alert_oe_i[i];
         lsio_core2pad_data[39+4*i]  = 1'b0;
         lsio_pad2core_en_n[39+4*i]  = smc_padring_pkg::DISABLED;
-        i2c_smbus_alert_n_o[i]      = 1'b0;
+        i2c_smbus_alert_n_o[i]      = 1'b1;
       end else begin
         lsio_core2pad_en_n[39+4*i]  = smc_padring_pkg::DISABLED;
         lsio_core2pad_data[39+4*i]  = 1'b0;
@@ -454,7 +454,7 @@ module smc_padring #(
         lsio_core2pad_en_n[40+4*i]  = i2c_smbus_n_i[i];
         lsio_core2pad_data[40+4*i]  = 1'b0;
         lsio_pad2core_en_n[40+4*i]  = smc_padring_pkg::DISABLED;
-        i2c_smbus_n_o[i]            = 1'b0;
+        i2c_smbus_n_o[i]            = 1'b1;
       end else begin
         lsio_core2pad_en_n[40+4*i]  = smc_padring_pkg::DISABLED;
         lsio_core2pad_data[40+4*i]  = 1'b0;
@@ -553,6 +553,7 @@ module smc_padring #(
 
     // Pad allocation settings
     localparam bit InputByDefault = smc_padring_pkg::DefaultDirectionMap[i];
+    localparam bit LsioIdleLevel = smc_padring_pkg::LsioIdleLevelMap[i];
 
     // Assertion to protect against truncation on casts
     `OCAH_ASSERT_STATIC(
@@ -563,6 +564,7 @@ module smc_padring #(
     gpio #(
       .MAX_TRANS                  (MAX_TRANS),
       .INPUT_BY_DEFAULT           (InputByDefault),
+      .LSIO_PAD2CORE_IDLE         (LsioIdleLevel),
 
       .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::AddrWidth'(
           smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_SIZE))

@@ -228,6 +228,10 @@ each peripheral's default values.
 `smc_padring_pkg::DefaultDirectionMap`) |input on all |input on 60 of 67
 GPIOs, output on the remaining 7
 
+|GPIO |`LSIO_PAD2CORE_IDLE` (per instance, from
+`smc_padring_pkg::LsioIdleLevelMap`) |0 on all |1 on the UART RX and CTS,
+I2C SCL, SDA, SMBALERT# and SMBSUS#, and I3C SCL and SDA pads; 0 on the rest
+
 |UART 16550 |`smc_config_pkg::UartTxFifoDepth` |16 |32
 
 |UART 16550 |`smc_config_pkg::UartRxFifoDepth` |16 |32
