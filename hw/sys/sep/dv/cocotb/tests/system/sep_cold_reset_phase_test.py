@@ -292,6 +292,7 @@ class sep_cold_reset_phase_test(sep_base_test):
             wdt_ph,
             phase_pct(wdt_ph, self.pw_ps),
         )
+        await self._wait_level(dut.dbg_sep_reset_n_o, 1, clk, _SEP_BOUND, "sep_reset_n release")
         clk_off = nearest_edge_offset_ps(t_rel, self.edges.edge_times("clk_i"))
         self.logger.info(
             "CTRL-RST-OFFEDGE: pass=%s rst_ni rose t=%d offset_to_clk_edge=%s allowance=%d",
@@ -310,7 +311,6 @@ class sep_cold_reset_phase_test(sep_base_test):
                 f"test error: graded release clk_wdt_i phase {wdt_ph} ps not in third {self.third}"
             )
 
-        await self._wait_level(dut.dbg_sep_reset_n_o, 1, clk, _SEP_BOUND, "sep_reset_n release")
         sep_rise = [t for t in self.sep_t.rises(t_rel)]
         assert sep_rise, f"CHK-RST-SYNC FAIL: pass={pass_name} no sep_reset_n rise after release"
         t_sr = sep_rise[0]

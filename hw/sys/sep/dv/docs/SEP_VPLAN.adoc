@@ -3605,6 +3605,7 @@ feature, and the note says how the test treats the blocked leg.
 <<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>:
 
 * The response of a write of 0 to a W 1P clear register is not stated beyond "write 1 to clear". `sep_cpu_bridge_fault_matrix_rand_test` grades that 0 leaves the latch set and does not grade the response code.
+* Whether another bit of `sep_internal_interrupts` may change in the clock where a PIC source's own vector bit rises. `hw/sys/sep/doc/interrupts.adoc` maps each source to one bit and says that slots 1 to 43 are individually assigned, and no sentence says that one event raises one bit only. The own-bit rise is graded (`CHK-SRC35-RISE`, `CHK-SRC36-RISE`, `CHK-SRC40-RISE`, `CHK-SRC41-RISE`, `CHK-SRC42-RISE`, `CHK-SRC43-RISE`). `sep_abr_mldsa_keygen_kat_test`, `sep_efuse_token_fault_matrix_test` and `sep_cpu_bridge_fault_matrix_rand_test` log the other bits that change in that clock (`OBS-SRC35-COINCIDENT`, `OBS-SRC36-COINCIDENT`, `OBS-SRC40-COINCIDENT`, `OBS-SRC41-COINCIDENT`, `OBS-SRC42-COINCIDENT`, `OBS-SRC43-COINCIDENT`).
 
 <<sep-vplan-phase3-fabric-remap,Fabric and remap>>:
 

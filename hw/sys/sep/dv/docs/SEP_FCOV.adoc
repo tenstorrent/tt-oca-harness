@@ -5180,8 +5180,8 @@ owner reaches them.
 |The extension-port LSU read of `cp_ext_refused_ifu`; the software assert of `cp_ovrd_no_iso`
 |Each is the control of the checker that grades the coverpoint (CHK-IFU-NEVER, CHK-OVR-SKIP-ISO).
 |`sep_reset_source_cg`
-|The `rst_ni` edges of the bring-up reset, of the control pass and of the full-width reset that ends `sep_cold_reset_phase_test` (`cp_source_edge`, `cp_rst_release_sync`)
-|The control pass releases at a fixed phase after a `clk_i` edge and is the control of CHK-RST-SYNC. The bring-up reset falls before the leaf opens its graded window, and the full-width reset that ends the leaf falls after the leaf closes it.
+|The `rst_ni` edges of the bring-up reset, of the control pass, of the sub-floor pulse and of the full-width reset that ends `sep_cold_reset_phase_test` (`cp_source_edge`, `cp_rst_release_sync`)
+|The control pass releases at a fixed phase after a `clk_i` edge and is the control of CHK-RST-SYNC. The bring-up reset falls before the leaf opens its graded window. The sub-floor pulse, which `OBS-RST-MIN-WIDTH` logs, and the full-width reset that ends the leaf fall after the leaf closes it.
 |`sep_reset_scope_retention_cg`
 |The reset events of `cp_reset_class` that no check of the owner grades: the `SW_RESET_N` writes of the calibration and arming steps of `sep_cpu_reset_retention_test`; the control of step 4, the set-up write that clears the field of d1 in the pulse leg, the `rst_ni` control and the `sep_reset_n` override shift of the PTAP TRST leg of `sep_ip_reset_override_matrix_test`; the recovery reset of a watchdog-run baseline (`INFO-WDT-BITE-HOLD`) of `sep_timer_clock_contract_test`
 |Each event places stimulus, restores a state or is logged only. The owner runs it with the graded window closed.
