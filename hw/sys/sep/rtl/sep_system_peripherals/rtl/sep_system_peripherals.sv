@@ -16,10 +16,10 @@
 // (STEE), then to the outbound filter; everything else to the peripheral xbar. No path changes
 // address bit 55. SMN inbound requests pass an axi_cut and the inbound filter, have
 // SEP_GLOBAL_BASE_ADDR within SEP_REGION_SIZE rebased to 0, and enter the same xbar. The xbar
-// serves the mailbox and the system CSR pages and forwards other addresses below 0x4000_0000
-// outside 0x10A0_0000-0x10A4_FFFF, truncated to 32 address bits with a 3-bit ID, on
-// smn_inbound_to_sep_axi_req_o. Both filters block by default and check the 4-bit source ID
-// and the non-secure bit.
+// serves the mailbox, the scratch page and the system CSR pages, and forwards other addresses
+// below 0x4000_0000 outside 0x1080_2000-0x1080_2FFF and 0x10A0_0000-0x10A4_FFFF, truncated to
+// 32 address bits with a 3-bit ID, on smn_inbound_to_sep_axi_req_o. Both filters block by
+// default and check the 4-bit source ID and the non-secure bit.
 
 module sep_system_peripherals (
   input  logic clk_i,                         // System clock.

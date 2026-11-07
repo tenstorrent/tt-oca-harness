@@ -103,11 +103,12 @@ memory map below, refuses bursts ({sep-crypto-access-ref}).
 Several SEP units are not connected to the external inbound port and answer
 `DECERR` to any external access attempt. These units include the Boot ROM,
 Reset Control, ICCM, DCCM, PIC, and AP/STEE remap regions. The inbound port
-serves the mailbox and system CSR windows, and forwards all other addresses
-below 0x4000_0000 (outside the mailbox and system CSR windows) to the SEP local
-crossbar. Addresses above 0x4000_0000 and the units listed above are not
-reachable through this external path and receive error responses from the
-`smn_inbound` port. Their rows in the table below state what the SEP CPU sees.
+serves the mailbox and the scratch and system CSR pages, and forwards every
+address below 0x4000_0000 outside 0x1080_2000 to 0x1080_2FFF and 0x10A0_0000
+to 0x10A4_FFFF to the SEP local crossbar; the rest of 0x10A1_0000 to
+0x10A4_FFFF answers `DECERR`. Addresses above 0x4000_0000 and the units listed
+above are not reachable through this external path and receive error responses
+from the `smn_inbound` port. Their rows in the table below state what the SEP CPU sees.
 
 ifdef::backend-html5[]
 include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-components]
