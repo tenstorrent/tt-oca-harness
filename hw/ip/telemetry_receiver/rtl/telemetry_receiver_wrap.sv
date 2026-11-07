@@ -5,8 +5,9 @@
 //
 // Register accesses and the receivers use clk_i / rst_ni; ATB streams use clk_telemetry_i /
 // rst_telemetry_ni.
-// Receiver i decodes at TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR plus i times
-// TELEMETRY_RECEIVER_0__REG_MAP_SIZE; other addresses get DECERR with read data 0xBADCAB1E.
+// Receiver i owns the TELEMETRY_RECEIVER_0__REG_MAP_SIZE bytes from
+// TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR plus i times TELEMETRY_RECEIVER_0__REG_MAP_SIZE; the
+// demux answers other addresses with DECERR and read data 0xBADCAB1E.
 // The demux allows one outstanding transaction per channel.
 // Each ATB stream crosses into clk_i through an 8-entry prim_fifo_async. afready_i passes
 // through a 2-flop synchronizer clocked by clk_telemetry_i, and afvalid_o through one
@@ -15,7 +16,6 @@
 // is in reset, so beats offered then are dropped.
 // NUM_TELEMETRY_RECEIVERS must be between 1 and MaxNumTelemetryReceivers.
 // TELEMETRY_RECEIVER_BUFFER_DEPTH must be a power of two and greater than or equal to 2.
-// NumRegMaps is NUM_TELEMETRY_RECEIVERS plus one for the error slave.
 // Each receiver's debug nibble matches telemetry_receiver's four-bit debug bus.
 
 module telemetry_receiver_wrap #(
@@ -24,15 +24,11 @@ module telemetry_receiver_wrap #(
                                                               // must be a power of two and >= 2.
   parameter int unsigned TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE [NUM_TELEMETRY_RECEIVERS-1:0] = '{default: 4}, // Per-receiver max counters.
 
-  parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0,   // Instance 0 register-map byte base address.
-  parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0,   // Per-instance register-map size in bytes; instances are
+  parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0,   // Instance 0 register-map byte base address; a multiple of the size.
+  parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0,   // Per-instance register-map size in bytes, a power of two; instances are
                                                                                                                // contiguous.
 
-  localparam int unsigned NumRegMaps                               = NUM_TELEMETRY_RECEIVERS + 1, // Decode targets: instances + error slave.
-  localparam type         telemetry_receiver_wrap_reg_map_select_t = logic [$clog2(NumRegMaps)-1:0], // Register-map select type.
-
-  localparam telemetry_receiver_wrap_reg_map_select_t UndefinedRegMap = // Select index for the error slave.
-        telemetry_receiver_wrap_reg_map_select_t'(NumRegMaps-1)
+  localparam int unsigned NumRegMaps = NUM_TELEMETRY_RECEIVERS // Decode targets: one per instance.
 ) (
   input  logic clk_i,                                       // Register-domain clock; also clocks
                                                             // the receivers.
@@ -78,68 +74,50 @@ module telemetry_receiver_wrap #(
   // AXI4-Lite Register Demux //
   //////////////////////////////
 
-  telemetry_receiver_wrap_reg_map_select_t axil_aw_select, axil_ar_select;
+  `OCAH_ASSERT_STATIC(
+      ReceiverWindow_A,
+      TELEMETRY_RECEIVER_0__REG_MAP_SIZE == 32'(1) << telemetry_receiver_reg_pkg::TELEMETRY_RECEIVER_REG_MIN_ADDR_WIDTH)
 
-  always_comb begin
-    axil_aw_select = UndefinedRegMap;
-    axil_ar_select = UndefinedRegMap;
+  typedef logic [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] range_addr_t[NumRegMaps];
 
-    for (int i = 0; i < NUM_TELEMETRY_RECEIVERS; i++) begin
-      if (axil_req_i.aw.addr >= TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_SIZE &&
-                axil_req_i.aw.addr <  TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + (i + 1) * TELEMETRY_RECEIVER_0__REG_MAP_SIZE) begin
-        axil_aw_select = telemetry_receiver_wrap_reg_map_select_t'(i);
-      end
-      if (axil_req_i.ar.addr >= TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_SIZE &&
-                axil_req_i.ar.addr <  TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + (i + 1) * TELEMETRY_RECEIVER_0__REG_MAP_SIZE) begin
-        axil_ar_select = telemetry_receiver_wrap_reg_map_select_t'(i);
-      end
+  function automatic range_addr_t range_base();
+    range_addr_t base;
+    for (int unsigned i = 0; i < NUM_TELEMETRY_RECEIVERS; i++) begin
+      base[i] = TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_SIZE;
     end
-  end
+    return base;
+  endfunction
 
-  axi_lite_demux #(
-    .aw_chan_t       (telemetry_receiver_wrap_pkg::axil_aw_chan_t),
-    .w_chan_t        (telemetry_receiver_wrap_pkg::axil_w_chan_t),
-    .b_chan_t        (telemetry_receiver_wrap_pkg::axil_b_chan_t),
-    .ar_chan_t       (telemetry_receiver_wrap_pkg::axil_ar_chan_t),
-    .r_chan_t        (telemetry_receiver_wrap_pkg::axil_r_chan_t),
-    .axi_req_t       (telemetry_receiver_wrap_pkg::axil_req_t),
-    .axi_resp_t      (telemetry_receiver_wrap_pkg::axil_resp_t),
-    .NoMstPorts      (NumRegMaps),
-    .MaxTrans        (1),
-    .FallThrough     (1'b0),
-    .SpillAw         (1'b1),
-    .SpillW          (1'b0),
-    .SpillB          (1'b0),
-    .SpillAr         (1'b1),
-    .SpillR          (1'b0)
+  function automatic range_addr_t range_size();
+    range_addr_t size;
+    for (int unsigned i = 0; i < NUM_TELEMETRY_RECEIVERS; i++) begin
+      size[i] = TELEMETRY_RECEIVER_0__REG_MAP_SIZE;
+    end
+    return size;
+  endfunction
+
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (telemetry_receiver_wrap_pkg::RegAddrWidth),
+    .AXI_DATA_WIDTH (telemetry_receiver_wrap_pkg::RegDataWidth),
+    .NUM_RANGES     (NumRegMaps),
+    .RANGE_BASE     (range_base()),
+    .RANGE_SIZE     (range_size()),
+    .MAX_TRANS      (1),
+    .aw_chan_t      (telemetry_receiver_wrap_pkg::axil_aw_chan_t),
+    .w_chan_t       (telemetry_receiver_wrap_pkg::axil_w_chan_t),
+    .b_chan_t       (telemetry_receiver_wrap_pkg::axil_b_chan_t),
+    .ar_chan_t      (telemetry_receiver_wrap_pkg::axil_ar_chan_t),
+    .r_chan_t       (telemetry_receiver_wrap_pkg::axil_r_chan_t),
+    .axil_req_t     (telemetry_receiver_wrap_pkg::axil_req_t),
+    .axil_resp_t    (telemetry_receiver_wrap_pkg::axil_resp_t)
   ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i          (test_en_i),
-    .slv_req_i       (axil_req_i),
-    .slv_aw_select_i (axil_aw_select),
-    .slv_ar_select_i (axil_ar_select),
-    .slv_resp_o      (axil_resp_o),
-    .mst_reqs_o      (axil_reqs),
-    .mst_resps_i     (axil_resps)
-  );
-
-  prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (telemetry_receiver_wrap_pkg::RegAddrWidth),
-    .AXI_DATA_WIDTH (telemetry_receiver_wrap_pkg::RegDataWidth),
-    .axil_req_t     (telemetry_receiver_wrap_pkg::axil_req_t),
-    .axil_resp_t    (telemetry_receiver_wrap_pkg::axil_resp_t),
-    .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (telemetry_receiver_wrap_pkg::RegDataWidth),
-    .RESP_DATA      (32'hBADCAB1E),
-    .MAX_TRANS      (1)
-  ) u_prim_axi_lite_err_slv (
-    .clk_i,
-    .rst_ni,
     .test_en_i,
-
-    .axil_req_i     (axil_reqs [UndefinedRegMap]),
-    .axil_resp_o    (axil_resps[UndefinedRegMap])
+    .slv_req_i   (axil_req_i),
+    .slv_resp_o  (axil_resp_o),
+    .mst_reqs_o  (axil_reqs),
+    .mst_resps_i (axil_resps)
   );
 
 
