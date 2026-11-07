@@ -435,7 +435,7 @@ VIEWS = {
                 "occupied_size": 0x808,
                 "count": 1,
                 "stride": 0x0,
-                "hole_responses": (("between sub-blocks", {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"}), ("past sub-block registers", {"rresp": "SLVERR", "rdata": 0x0, "bresp": "SLVERR", "text": "SLVERR, 0x0 / SLVERR"})),
+                "hole_responses": (("between sub-blocks", {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"}), ("past pwm registers", {"rresp": "SLVERR", "rdata": 0xFFFFFFFF, "bresp": "SLVERR", "text": "SLVERR, 0xFFFFFFFF / SLVERR"}), ("past pwm_ctrl registers", {"rresp": "SLVERR", "rdata": 0x0, "bresp": "SLVERR", "text": "SLVERR, 0x0 / SLVERR"})),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
