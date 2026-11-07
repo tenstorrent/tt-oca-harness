@@ -579,6 +579,13 @@ modules simply do not elaborate. Its contents:
   `ASSUME_MASTER_RULES` / `ASSUME_SLAVE_RULES` emit that side's rules as
   assumptions, so a formal environment asserts the design's side and assumes
   its own; both default to assertions.
+  Response dependencies (IHI 0022 A3.3.1) are checked whenever BVALID or
+  RVALID is high, including backpressure with READY low. AXI4 requires a
+  matching BID/RID in the pending requests; AXI4-Lite requires the address
+  and write-data counts, or the read-address count. The dependency state
+  precedes the current edge's request acceptances, so a response cannot
+  qualify itself with a same-edge request. Pending work is consumed only on
+  response handshakes, and reset clears it.
 - `sva/ocah_axi_fv.sv` — the same protocol's handshake, reset,
   burst-legality and response-ordering rules written in the boolean subset
   the open-source formal frontend reads (`OCAH_FV_RULE`,
@@ -586,7 +593,8 @@ modules simply do not elaborate. Its contents:
   `ocah_axi_sva` and the same two side parameters; the formal environments
   of the DTP bind it (`hw/common/dv/docs/formal-property-style.adoc`,
   Shared protocol checkers). Rules that need per-ID or per-beat history stay
-  in `sva/ocah_axi_sva.sv`.
+  in `sva/ocah_axi_sva.sv`. The formal response rules use aggregate
+  pre-edge counts; they do not establish per-ID matching.
 - `interface/ocah_axi_struct_bridge.sv` — places a DUT-mastered port that
   stays a pulp request/response struct inside `tb_top` on an `ocah_axi_if`
   instance for the slave agent (see "Struct-Port Boundaries").

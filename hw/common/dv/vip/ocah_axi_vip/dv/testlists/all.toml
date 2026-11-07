@@ -139,9 +139,229 @@ timeout_sec = 600
 tags = ["smoke", "ci", "axi_burst"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "ocah_axi_sva_legal_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["smoke", "ci", "sva_dependencies"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0"]
+
+[[tests]]
+name = "ocah_axil_sva_legal_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["smoke", "ci", "sva_dependencies"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1"]
+
+[[tests]]
+name = "ocah_axi_sva_b_no_request_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=b_no_request"]
+expect_fail = "negative control: axi b_no_request must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axi_sva_b_aw_only_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=b_aw_only"]
+expect_fail = "negative control: axi b_aw_only must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axi_sva_b_w_only_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=b_w_only"]
+expect_fail = "negative control: axi b_w_only must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axi_sva_b_same_w_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=b_same_w"]
+expect_fail = "negative control: axi b_same_w must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axi_sva_b_same_aw_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=b_same_aw"]
+expect_fail = "negative control: axi b_same_aw must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axi_sva_r_no_request_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=r_no_request"]
+expect_fail = "negative control: axi r_no_request must fire OCAH_AXI_R_NOT_BEFORE_AR"
+
+[[tests]]
+name = "ocah_axi_sva_r_same_ar_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=r_same_ar"]
+expect_fail = "negative control: axi r_same_ar must fire OCAH_AXI_R_NOT_BEFORE_AR"
+
+[[tests]]
+name = "ocah_axi_sva_b_after_reset_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=b_after_reset"]
+expect_fail = "negative control: axi b_after_reset must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axi_sva_r_after_reset_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=r_after_reset"]
+expect_fail = "negative control: axi r_after_reset must fire OCAH_AXI_R_NOT_BEFORE_AR"
+
+[[tests]]
+name = "ocah_axi_sva_b_wrong_id_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=b_wrong_id"]
+expect_fail = "negative control: axi b_wrong_id must fire OCAH_AXI_B_ID_OUTSTANDING"
+
+[[tests]]
+name = "ocah_axi_sva_r_wrong_id_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=0", "+OCAH_AXI_SVA_CASE=r_wrong_id"]
+expect_fail = "negative control: axi r_wrong_id must fire OCAH_AXI_R_ID_OUTSTANDING"
+
+[[tests]]
+name = "ocah_axil_sva_b_no_request_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=b_no_request"]
+expect_fail = "negative control: axil b_no_request must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axil_sva_b_aw_only_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=b_aw_only"]
+expect_fail = "negative control: axil b_aw_only must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axil_sva_b_w_only_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=b_w_only"]
+expect_fail = "negative control: axil b_w_only must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axil_sva_b_same_w_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=b_same_w"]
+expect_fail = "negative control: axil b_same_w must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axil_sva_b_same_aw_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=b_same_aw"]
+expect_fail = "negative control: axil b_same_aw must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axil_sva_r_no_request_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=r_no_request"]
+expect_fail = "negative control: axil r_no_request must fire OCAH_AXI_R_NOT_BEFORE_AR"
+
+[[tests]]
+name = "ocah_axil_sva_r_same_ar_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=r_same_ar"]
+expect_fail = "negative control: axil r_same_ar must fire OCAH_AXI_R_NOT_BEFORE_AR"
+
+[[tests]]
+name = "ocah_axil_sva_b_after_reset_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=b_after_reset"]
+expect_fail = "negative control: axil b_after_reset must fire OCAH_AXI_B_NOT_BEFORE_AW"
+
+[[tests]]
+name = "ocah_axil_sva_r_after_reset_test"
+module = { cocotb = "ocah_axi_sva_dependencies_test", uvm = false }
+seed = 1
+timeout_sec = 120
+tags = ["sva_negative"]
+run_modes = ["smoke"]
+args = ["+OCAH_AXI_SVA_LITE=1", "+OCAH_AXI_SVA_CASE=r_after_reset"]
+expect_fail = "negative control: axil r_after_reset must fire OCAH_AXI_R_NOT_BEFORE_AR"
+
 [[groups]]
 name = "smoke"
 tests = [
+    "ocah_axi_sva_legal_test",
+    "ocah_axil_sva_legal_test",
     "ocah_axi_id_match_test",
     "ocah_axi_id_mismatch_test",
     "ocah_axi_lite_channel_skew_test",
@@ -163,6 +383,8 @@ tests = [
 [[groups]]
 name = "all"
 tests = [
+    "ocah_axi_sva_legal_test",
+    "ocah_axil_sva_legal_test",
     "ocah_axi_id_match_test",
     "ocah_axi_id_mismatch_test",
     "ocah_axi_lite_channel_skew_test",
@@ -216,4 +438,33 @@ tests = [
 name = "axi_responder"
 tests = [
     "ocah_axi_responder_ops_test",
+]
+
+[[groups]]
+# Response dependency controls; negative leaves stay outside smoke/all/ci.
+name = "sva_dependencies"
+expected_count = 22
+tests = [
+    "ocah_axi_sva_legal_test",
+    "ocah_axil_sva_legal_test",
+    "ocah_axi_sva_b_no_request_test",
+    "ocah_axi_sva_b_aw_only_test",
+    "ocah_axi_sva_b_w_only_test",
+    "ocah_axi_sva_b_same_w_test",
+    "ocah_axi_sva_b_same_aw_test",
+    "ocah_axi_sva_r_no_request_test",
+    "ocah_axi_sva_r_same_ar_test",
+    "ocah_axi_sva_b_after_reset_test",
+    "ocah_axi_sva_r_after_reset_test",
+    "ocah_axi_sva_b_wrong_id_test",
+    "ocah_axi_sva_r_wrong_id_test",
+    "ocah_axil_sva_b_no_request_test",
+    "ocah_axil_sva_b_aw_only_test",
+    "ocah_axil_sva_b_w_only_test",
+    "ocah_axil_sva_b_same_w_test",
+    "ocah_axil_sva_b_same_aw_test",
+    "ocah_axil_sva_r_no_request_test",
+    "ocah_axil_sva_r_same_ar_test",
+    "ocah_axil_sva_b_after_reset_test",
+    "ocah_axil_sva_r_after_reset_test",
 ]
