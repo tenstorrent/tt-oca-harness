@@ -10,6 +10,8 @@ minor release it updates.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-07 (Beta)
+
 ### Added
 
 - SEP secure DMA zero-fill opcode, `CONTROL.OPCODE` 4 (#3081).
@@ -301,7 +303,8 @@ First public release of the Open Chiplet Atlas (OCA) Harness.
 - Lint, format and DV tooling, and a Nix-based reproducible environment with a
   container for the RISC-V firmware toolchain.
 
-[Unreleased]: https://github.com/tenstorrent/tt-oca-harness/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/tenstorrent/tt-oca-harness/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.6.0
 [0.5.3]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.3
 [0.5.2]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.2
 [0.5.1]: https://github.com/tenstorrent/tt-oca-harness/releases/tag/v0.5.1
