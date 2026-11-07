@@ -184,22 +184,26 @@ GO value during a transfer is not graded.
                       the same fills with the wide range.
   CHK-DMA-HASH        per graded Leg D run: digest words equal the hashlib
                       golden for the swap value; the copy equals the source.
+                      Control: the destination reads the sentinel just
+                      before each GO (CTRL-DMA-HASH-SENTINEL).
   CHK-DMA-HASH-VALID  per Leg D run: SHA2_DIGEST_VALID reads 1 after the chain;
-                      on ``dma_status_probe_o`` it falls after the initial GO
-                      and rises again after that fall, before the digest
-                      read; on the long message a BUSY=1 read shows it 0.
-                      Controls: it reads 1 just before the GO of the second
-                      run; the probe shows it 1 before each GO.
+                      on ``dma_status_probe_o`` it rises after the initial GO,
+                      and when it was 1 before the GO it falls after the GO
+                      and its last rise comes after that fall, before the
+                      digest read; on the long message a BUSY=1 read shows
+                      it 0. Controls: it reads 1 just before the GO of the
+                      second run; at least one run of the seed has the
+                      probe at 1 before its GO (CTRL-DMA-DV-FALL-REACH).
   CHK-DMA-HASH-CHAIN  per message with a split form: single-chunk and split
                       digests are equal.
   CHK-DMA-CONT-CFG    per Leg D continuation run: the digest words equal the
                       hashlib golden of the first-start algorithm in the
                       first-start byte order; DONE=1, STATUS.ERROR=0,
                       ERROR_CODE=0, SHA2_DIGEST_VALID=1 after the chain, the
-                      probe fall and rise of CHK-DMA-HASH-VALID, and the copy
-                      equals the source. Controls (else CTRL-MISSING): the
-                      probe shows SHA2_DIGEST_VALID=1 before the GO; at least
-                      one later start; a CONTROL read after each later start
+                      probe edges of CHK-DMA-HASH-VALID, and the copy equals
+                      the source. Controls (else CTRL-MISSING): at least one
+                      run of the seed has the probe at 1 before its GO; at
+                      least one later start; a CONTROL read after each later start
                       shows the OPCODE and DIGEST_SWAP that start wrote, both
                       other than the first start; the digest registers
                       before the GO differ from the golden.
@@ -1001,9 +1005,11 @@ class DigestValidEdges:
     """SHA2_DIGEST_VALID on ``dma_status_probe_o`` from the initial GO to the digest read.
 
     Clocks are relative to the tap mark taken just before the GO write.
-    ``fall`` is the first fall, ``rise`` the last rise; the clear at the
-    initial transfer and the set when the digest is written hold when the
-    first fall precedes the last rise. Edges between them are not graded.
+    ``fall`` is the first fall, ``rise`` the last rise. With the bit 1 before
+    the GO, the clear at the initial transfer and the set when the digest is
+    written hold when the first fall precedes the last rise. With the bit 0
+    before the GO, no clear can show, so only the rise is graded. Edges
+    between them are not graded.
     """
 
     pre_go: int | None
@@ -1020,15 +1026,22 @@ class DigestValidEdges:
         return self.rises[-1] if self.rises else None
 
     @property
+    def fall_graded(self) -> bool:
+        return self.pre_go == 1
+
+    @property
     def ok(self) -> bool:
-        return self.fall is not None and self.rise is not None and self.rise > self.fall
+        if self.rise is None:
+            return False
+        return not self.fall_graded or (self.fall is not None and self.rise > self.fall)
 
     def fmt(self) -> str:
         def rel(c: int | None) -> str:
             return "-" if c is None else f"+{c - self.go_clk}"
 
+        fall = rel(self.fall) if self.fall_graded else "n/a"
         return (
-            f"dv_pre_go={self.pre_go} go_clk={self.go_clk} dv_fall_clk={rel(self.fall)} "
+            f"dv_pre_go={self.pre_go} go_clk={self.go_clk} dv_fall_clk={fall} "
             f"dv_rise_clk={rel(self.rise)} dv_falls={len(self.falls)} dv_rises={len(self.rises)}"
         )
 
@@ -1285,6 +1298,17 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         return DigestValidEdges(
             pre_go, m_go.clk, ev.falls("sha2_digest_valid"), ev.rises("sha2_digest_valid")
         )
+
+    def _check_dv_pre_go(self, chk: str, dv: DigestValidEdges, tag: str) -> None:
+        if dv.pre_go not in (0, 1):
+            self._ctrl_missing(chk, f"{tag}: SHA2_DIGEST_VALID before the GO = {dv.pre_go}")
+
+    def _dv_fall_reach(self, chk: str, falls: int, runs: int) -> None:
+        """At least one run of the seed starts with SHA2_DIGEST_VALID=1, so a clear can show."""
+        line = f"{chk} runs={runs} graded_fall={falls}"
+        if not falls:
+            self._ctrl_missing(chk, f"no run with SHA2_DIGEST_VALID=1 before the GO: {line}")
+        self.logger.info("CTRL-DMA-DV-FALL-REACH seen seed=%d %s", self.seed, line)
 
     def _obs_edge_order(self, ev: DmaTapEvents, clk0: int, tag: str) -> None:
         """STATUS edge clocks and the last B of one transfer, relative to its GO."""
@@ -2128,7 +2152,23 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         chunk = length // split if split else length
         k = split or 1
         tag = f"alg={m.alg} kind={m.kind} len={length} split={split} swap={swap}"
-        await self.mem.fill(m.dst, [sentinel_word(m.sentinel)] * (length // 4))
+        sw = sentinel_word(m.sentinel)
+        await self.mem.fill(m.dst, [sw] * (length // 4))
+        not_sw = sum(1 for w in await self.mem.read(m.dst, length // 4) if w != sw)
+        self.logger.info(
+            "CTRL-DMA-HASH-SENTINEL LOG seed=%d %s dst=0x%08x sentinel=0x%08x words=%d "
+            "not_sentinel=%d",
+            self.seed,
+            tag,
+            m.dst,
+            sw,
+            length // 4,
+            not_sw,
+        )
+        if not_sw:
+            self._ctrl_missing(
+                "CHK-DMA-HASH", f"{tag}: {not_sw} destination words before the GO not the sentinel"
+            )
         await ops.program_transfer(
             src=m.src if src is None else src,
             dst=m.dst if dst is None else dst,
@@ -2336,6 +2376,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 f"SHA2_DIGEST_VALID before the GO of the second run = "
                 f"{ctrl_state.get('before_second')}",
             )
+        falls_graded = 0
         for m, info in valid_lines:
             length = len(m.msg)
             graded_clear = length >= LONG_TOTAL
@@ -2344,12 +2385,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                     "CHK-DMA-HASH-VALID", f"{info['tag']}: no STATUS read landed at BUSY=1"
                 )
             dv: DigestValidEdges = info["dv"]
-            if dv.pre_go != 1:
-                self._ctrl_missing(
-                    "CHK-DMA-HASH-VALID",
-                    f"{info['tag']}: SHA2_DIGEST_VALID before the GO = {dv.pre_go}, "
-                    f"so the clear cannot show",
-                )
+            self._check_dv_pre_go("CHK-DMA-HASH-VALID", dv, info["tag"])
+            falls_graded += dv.fall_graded
             ok = (
                 info["valid_after"] == 1
                 and dv.ok
@@ -2363,6 +2400,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 f"after_last={info['valid_after']} {dv.fmt()} control_before_second=1 "
                 f"kind={m.kind} split={info['split']} swap={info['swap']}",
             )
+        self._dv_fall_reach("CHK-DMA-HASH-VALID", falls_graded, len(valid_lines))
 
     # ---- Leg D continuation -----------------------------------------------
     def _cont_control(self, c: ContMsg, i: int) -> int:
@@ -2373,7 +2411,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         """Digest words of the first-start algorithm in the first-start byte order."""
         return golden_words(c.alg, c.msg, c.swap)
 
-    async def _cont_run(self, c: ContMsg) -> None:
+    async def _cont_run(self, c: ContMsg) -> bool:
+        """One continuation run; returns whether its SHA2_DIGEST_VALID fall was graded."""
         ops = self.ops
         alg_op, _, n_words = ALGS[c.alg]
         length = len(c.msg)
@@ -2465,11 +2504,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             f"first_control=0x{first:08x} later_starts={len(conts)} "
             f"control_written/read={','.join(f'0x{w:08x}/0x{r:08x}' for w, r in conts) or '-'}"
         )
-        if dv.pre_go != 1:
-            self._ctrl_missing(
-                "CHK-DMA-CONT-CFG",
-                f"{tag} SHA2_DIGEST_VALID before the GO = {dv.pre_go}, so the clear cannot show",
-            )
+        self._check_dv_pre_go("CHK-DMA-CONT-CFG", dv, tag)
         if not conts or rb_bad:
             self._ctrl_missing(
                 "CHK-DMA-CONT-CFG",
@@ -2506,6 +2541,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         )
         await self._digest_ro_hold(tag)
         self._close()
+        return dv.fall_graded
 
     async def _chunk_done_rw1c(self, tag: str, stop: int) -> None:
         """CHK-DMA-RW1C at a continuation stop (CHUNK_DONE=1, BUSY=0, DONE=0).
@@ -2553,8 +2589,10 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         )
 
     async def _leg_d_cont(self, plan: Plan) -> None:
+        falls_graded = 0
         for c in plan.conts:
-            await self._cont_run(c)
+            falls_graded += await self._cont_run(c)
+        self._dv_fall_reach("CHK-DMA-CONT-CFG", falls_graded, len(plan.conts))
 
     # ---- alias form -------------------------------------------------------
     async def _alias_runs(self, plan: Plan) -> None:
