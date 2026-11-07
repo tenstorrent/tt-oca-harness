@@ -10,7 +10,7 @@ module uart_16550_main_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [5:0] s_axil_awaddr,
+        input wire [7:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module uart_16550_main_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [5:0] s_axil_araddr,
+        input wire [7:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -37,7 +37,7 @@ module uart_16550_main_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [5:0] cpuif_addr;
+    logic [7:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,10 +54,10 @@ module uart_16550_main_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [5:0] axil_araddr;
+    logic [7:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [5:0] axil_awaddr;
+    logic [7:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -135,17 +135,17 @@ module uart_16550_main_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[5:2], 2'b0};
+                cpuif_addr = {axil_araddr[7:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[5:2], 2'b0};
+                cpuif_addr = {axil_awaddr[7:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[5:2], 2'b0};
+                cpuif_addr = {axil_araddr[7:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -245,7 +245,7 @@ module uart_16550_main_reg (
     logic decoded_err;
     logic decoded_req_is_external;
 
-    logic [5:0] decoded_addr;
+    logic [7:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -258,28 +258,28 @@ module uart_16550_main_reg (
         is_external = '0;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.RBR = cpuif_req_masked & (cpuif_addr == 6'h0) & !cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 6'h0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h0);
-        decoded_reg_strb.IER = cpuif_req_masked & (cpuif_addr == 6'h4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h4);
-        decoded_reg_strb.IIR = cpuif_req_masked & (cpuif_addr == 6'h8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h8);
-        decoded_reg_strb.LCR = cpuif_req_masked & (cpuif_addr == 6'hc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'hc);
-        decoded_reg_strb.MCR = cpuif_req_masked & (cpuif_addr == 6'h10);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h10);
-        decoded_reg_strb.LSR = cpuif_req_masked & (cpuif_addr == 6'h14) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h14);
-        decoded_reg_strb.MSR = cpuif_req_masked & (cpuif_addr == 6'h18) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h18);
-        decoded_reg_strb.SCR = cpuif_req_masked & (cpuif_addr == 6'h1c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h1c);
-        decoded_reg_strb.ECR = cpuif_req_masked & (cpuif_addr == 6'h20);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h20);
-        decoded_reg_strb.ITR = cpuif_req_masked & (cpuif_addr == 6'h24);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h24);
-        is_valid_addr = cpuif_addr < 6'h28;
+        decoded_reg_strb.RBR = cpuif_req_masked & (cpuif_addr == 8'h0) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 8'h0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h0);
+        decoded_reg_strb.IER = cpuif_req_masked & (cpuif_addr == 8'h4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h4);
+        decoded_reg_strb.IIR = cpuif_req_masked & (cpuif_addr == 8'h8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h8);
+        decoded_reg_strb.LCR = cpuif_req_masked & (cpuif_addr == 8'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc);
+        decoded_reg_strb.MCR = cpuif_req_masked & (cpuif_addr == 8'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h10);
+        decoded_reg_strb.LSR = cpuif_req_masked & (cpuif_addr == 8'h14) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h14);
+        decoded_reg_strb.MSR = cpuif_req_masked & (cpuif_addr == 8'h18) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h18);
+        decoded_reg_strb.SCR = cpuif_req_masked & (cpuif_addr == 8'h1c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h1c);
+        decoded_reg_strb.ECR = cpuif_req_masked & (cpuif_addr == 8'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h20);
+        decoded_reg_strb.ITR = cpuif_req_masked & (cpuif_addr == 8'h24);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h24);
+        is_valid_addr = cpuif_addr < 8'h28;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -1430,8 +1430,8 @@ module uart_16550_main_reg (
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
 
-    logic [5:0] rd_mux_addr;
-    logic [5:0] pending_rd_addr;
+    logic [7:0] rd_mux_addr;
+    logic [7:0] pending_rd_addr;
     // Hold read mux address to guarantee it is stable throughout any external accesses
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
@@ -1448,22 +1448,22 @@ module uart_16550_main_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 6'h0) begin
+        if(rd_mux_addr == 8'h0) begin
             readback_data_var = hwif_in.RBR.rd_data;
         end
-        if(rd_mux_addr == 6'h4) begin
+        if(rd_mux_addr == 8'h4) begin
             readback_data_var[0] = field_storage.IER.ERBFI.value;
             readback_data_var[1] = field_storage.IER.ETBEI.value;
             readback_data_var[2] = field_storage.IER.ELSI.value;
             readback_data_var[3] = field_storage.IER.EDSSI.value;
             readback_data_var[4] = field_storage.IER.EFEI.value;
         end
-        if(rd_mux_addr == 6'h8) begin
+        if(rd_mux_addr == 8'h8) begin
             readback_data_var[0] = hwif_in.IIR.INTERRUPT_PENDING.next;
             readback_data_var[3:1] = hwif_in.IIR.INTERRUPT_ID.next;
             readback_data_var[7:6] = hwif_in.IIR.FIFOS_ENABLED.next;
         end
-        if(rd_mux_addr == 6'hc) begin
+        if(rd_mux_addr == 8'hc) begin
             readback_data_var[1:0] = field_storage.LCR.WLS.value;
             readback_data_var[2] = field_storage.LCR.STB.value;
             readback_data_var[3] = field_storage.LCR.PEN.value;
@@ -1472,7 +1472,7 @@ module uart_16550_main_reg (
             readback_data_var[6] = field_storage.LCR.SET_BREAK.value;
             readback_data_var[7] = field_storage.LCR.DLAB.value;
         end
-        if(rd_mux_addr == 6'h10) begin
+        if(rd_mux_addr == 8'h10) begin
             readback_data_var[0] = field_storage.MCR.DTR.value;
             readback_data_var[1] = field_storage.MCR.RTS.value;
             readback_data_var[2] = field_storage.MCR.OUT1.value;
@@ -1480,7 +1480,7 @@ module uart_16550_main_reg (
             readback_data_var[4] = field_storage.MCR.LOOP.value;
             readback_data_var[5] = field_storage.MCR.LINE_LOOPBACK.value;
         end
-        if(rd_mux_addr == 6'h14) begin
+        if(rd_mux_addr == 8'h14) begin
             readback_data_var[0] = hwif_in.LSR.DR.next;
             readback_data_var[1] = field_storage.LSR.OE.value;
             readback_data_var[2] = field_storage.LSR.PE.value;
@@ -1490,7 +1490,7 @@ module uart_16550_main_reg (
             readback_data_var[6] = hwif_in.LSR.TEMT.next;
             readback_data_var[7] = hwif_in.LSR.ERROR_IN_RCVR_FIFO.next;
         end
-        if(rd_mux_addr == 6'h18) begin
+        if(rd_mux_addr == 8'h18) begin
             readback_data_var[0] = field_storage.MSR.DCTS.value;
             readback_data_var[1] = field_storage.MSR.DDSR.value;
             readback_data_var[2] = field_storage.MSR.TERI.value;
@@ -1500,13 +1500,13 @@ module uart_16550_main_reg (
             readback_data_var[6] = hwif_in.MSR.RI.next;
             readback_data_var[7] = hwif_in.MSR.DCD.next;
         end
-        if(rd_mux_addr == 6'h1c) begin
+        if(rd_mux_addr == 8'h1c) begin
             readback_data_var[7:0] = field_storage.SCR.SCR.value;
         end
-        if(rd_mux_addr == 6'h20) begin
+        if(rd_mux_addr == 8'h20) begin
             readback_data_var[1:0] = field_storage.ECR.RCVR_TRIGGER_MS2B.value;
         end
-        if(rd_mux_addr == 6'h24) begin
+        if(rd_mux_addr == 8'h24) begin
             readback_data_var[0] = field_storage.ITR.TRBFI.value;
             readback_data_var[1] = field_storage.ITR.TTBEI.value;
             readback_data_var[2] = field_storage.ITR.TLSI.value;

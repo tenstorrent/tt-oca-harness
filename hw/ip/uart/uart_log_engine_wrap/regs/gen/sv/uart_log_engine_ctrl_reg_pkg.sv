@@ -7,7 +7,7 @@
 package uart_log_engine_ctrl_reg_pkg;
 
     localparam UART_LOG_ENGINE_CTRL_REG_DATA_WIDTH = 32;
-    localparam UART_LOG_ENGINE_CTRL_REG_MIN_ADDR_WIDTH = 3;
+    localparam UART_LOG_ENGINE_CTRL_REG_MIN_ADDR_WIDTH = 8;
     localparam UART_LOG_ENGINE_CTRL_REG_SIZE = 'h4;
 
     typedef struct {

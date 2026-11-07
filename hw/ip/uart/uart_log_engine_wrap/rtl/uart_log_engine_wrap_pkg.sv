@@ -4,7 +4,7 @@
 // Define register-map selects and AXI-Lite typedefs for the UART plus log-engine wrap.
 //
 // Defines the 32-bit csr_axil types and uart_log_engine_wrap_reg_map_e, which selects the
-// UART, log-engine, CTRL or undefined register map.
+// UART, log-engine or CTRL register map.
 
 package uart_log_engine_wrap_pkg;
 
@@ -29,15 +29,14 @@ package uart_log_engine_wrap_pkg;
   // Register Map Definitions //
   //////////////////////////////
 
-  localparam int unsigned NumRegMaps = 4;
+  localparam int unsigned NumRegMaps = 3;
 
   typedef enum logic [$clog2(
 NumRegMaps
 )-1:0] {
     UART_REG_MAP       = 2'd0,
     LOG_ENGINE_REG_MAP = 2'd1,
-    CTRL_REG_MAP       = 2'd2,
-    UNDEFINED_REG_MAP  = 2'd3
+    CTRL_REG_MAP       = 2'd2
   } uart_log_engine_wrap_reg_map_e;
 
 endpackage

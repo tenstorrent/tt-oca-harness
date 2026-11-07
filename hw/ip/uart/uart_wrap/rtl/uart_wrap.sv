@@ -3,10 +3,10 @@
 
 // Map NUM_UARTS uart_log_engine_wrap instances behind one AXI-Lite port.
 //
-// Instance i owns the window at UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR plus
-// i*UART_LOG_ENGINE_WRAP_SPACING; its UART, log-engine and CTRL bases shift by the same
-// amount.
-// Addresses outside every window go to an error slave that answers DECERR with read data
+// Instance i owns the UART_LOG_ENGINE_WRAP_SPACING bytes from
+// UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR plus i*UART_LOG_ENGINE_WRAP_SPACING; its UART,
+// log-engine and CTRL bases shift by the same amount.
+// The demux routes each instance its window and answers the rest with DECERR and read data
 // 0xBADCAB1E.
 // The instances' log-fetch masters share log_fetch_axil_* through an AXI-Lite mux.
 // All other outputs are per-instance vectors, bit i from instance i.
@@ -20,9 +20,9 @@ module uart_wrap #(
   parameter int unsigned        LOG_ENGINE_FIFO_DEPTH = 4,  // Entries in each log engine's
                                                             // read-data FIFO.
 
-  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR = 0,  // Base of instance 0's decode window.
-  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      = 0,  // Size of each instance's decode window.
-  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_SPACING              = 0,  // Address stride between instance windows and their internal map bases.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR = 0,  // Base of instance 0's window; a multiple of the spacing.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      = 0,  // Size of each instance's register map; at most the spacing.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_SPACING              = 0,  // Size of each instance's window and the stride between instances and their internal map bases; a power of two.
 
   parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_REG_MAP_BASE_ADDR = 0,  // Instance 0's UART register-map base.
   parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_REG_MAP_SIZE      = 0,  // Per-instance UART register-map size.
@@ -31,10 +31,7 @@ module uart_wrap #(
   parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,  // Instance 0's CTRL register-map base.
   parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0,  // Per-instance CTRL register-map size.
 
-  localparam int unsigned NumRegMaps = NUM_UARTS + 1,  // +1 for error slave.
-  localparam type uart_wrap_reg_map_select_t = logic [$clog2(NumRegMaps)-1:0],  // UART-wrap window select type.
-  localparam uart_wrap_reg_map_select_t UndefinedRegMap =  // Unmapped address sink select.
-        uart_wrap_reg_map_select_t'(NumRegMaps - 1)
+  localparam int unsigned NumRegMaps = NUM_UARTS  // Decode targets: one per instance.
 ) (
   input  logic                                 clk_i,  // System clock.
   input  logic                                 rst_ni,  // Active-low reset.
@@ -103,72 +100,49 @@ module uart_wrap #(
   // AXI4-Lite Register Demux //
   //////////////////////////////
 
-  uart_wrap_reg_map_select_t csr_axil_aw_select, csr_axil_ar_select;
+  `OCAH_ASSERT_STATIC(InstanceMapFitsWindow_A,
+                      UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE <= UART_LOG_ENGINE_WRAP_SPACING)
 
-  always_comb begin
-    csr_axil_aw_select = UndefinedRegMap;
-    csr_axil_ar_select = UndefinedRegMap;
+  typedef logic [uart_wrap_pkg::RegAddrWidth-1:0] range_addr_t[NumRegMaps];
 
-    for (int i = 0; i < NUM_UARTS; i++) begin
-      logic [uart_wrap_pkg::RegAddrWidth-1:0] uart_i_base_addr;
-      uart_i_base_addr = UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR + i * UART_LOG_ENGINE_WRAP_SPACING;
-      if (csr_axil_req_i.aw.addr >= uart_i_base_addr &&
-                csr_axil_req_i.aw.addr <  uart_i_base_addr +
-                                          UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE) begin
-        csr_axil_aw_select = uart_wrap_reg_map_select_t'(i);
-      end
-      if (csr_axil_req_i.ar.addr >= uart_i_base_addr &&
-                csr_axil_req_i.ar.addr <  uart_i_base_addr +
-                                          UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE) begin
-        csr_axil_ar_select = uart_wrap_reg_map_select_t'(i);
-      end
+  function automatic range_addr_t range_base();
+    range_addr_t base;
+    for (int unsigned i = 0; i < NUM_UARTS; i++) begin
+      base[i] = UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR + i * UART_LOG_ENGINE_WRAP_SPACING;
     end
-  end
+    return base;
+  endfunction
 
-  axi_lite_demux #(
-    .aw_chan_t       (uart_wrap_pkg::csr_axil_aw_chan_t),
-    .w_chan_t        (uart_wrap_pkg::csr_axil_w_chan_t),
-    .b_chan_t        (uart_wrap_pkg::csr_axil_b_chan_t),
-    .ar_chan_t       (uart_wrap_pkg::csr_axil_ar_chan_t),
-    .r_chan_t        (uart_wrap_pkg::csr_axil_r_chan_t),
-    .axi_req_t       (uart_wrap_pkg::csr_axil_req_t),
-    .axi_resp_t      (uart_wrap_pkg::csr_axil_resp_t),
-    .NoMstPorts      (NumRegMaps),
-    .MaxTrans        (1),
-    .FallThrough     (1'b0),
-    .SpillAw         (1'b1),
-    .SpillW          (1'b0),
-    .SpillB          (1'b0),
-    .SpillAr         (1'b1),
-    .SpillR          (1'b0)
+  function automatic range_addr_t range_size();
+    range_addr_t size;
+    for (int unsigned i = 0; i < NUM_UARTS; i++) begin
+      size[i] = UART_LOG_ENGINE_WRAP_SPACING;
+    end
+    return size;
+  endfunction
+
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (uart_wrap_pkg::RegAddrWidth),
+    .AXI_DATA_WIDTH (uart_wrap_pkg::RegDataWidth),
+    .NUM_RANGES     (NumRegMaps),
+    .RANGE_BASE     (range_base()),
+    .RANGE_SIZE     (range_size()),
+    .MAX_TRANS      (1),
+    .aw_chan_t      (uart_wrap_pkg::csr_axil_aw_chan_t),
+    .w_chan_t       (uart_wrap_pkg::csr_axil_w_chan_t),
+    .b_chan_t       (uart_wrap_pkg::csr_axil_b_chan_t),
+    .ar_chan_t      (uart_wrap_pkg::csr_axil_ar_chan_t),
+    .r_chan_t       (uart_wrap_pkg::csr_axil_r_chan_t),
+    .axil_req_t     (uart_wrap_pkg::csr_axil_req_t),
+    .axil_resp_t    (uart_wrap_pkg::csr_axil_resp_t)
   ) u_csr_axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i          (test_en_i),
-    .slv_req_i       (csr_axil_req_i),
-    .slv_aw_select_i (csr_axil_aw_select),
-    .slv_ar_select_i (csr_axil_ar_select),
-    .slv_resp_o      (csr_axil_resp_o),
-    .mst_reqs_o      (csr_axil_reqs),
-    .mst_resps_i     (csr_axil_resps)
-  );
-
-  prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (uart_wrap_pkg::RegAddrWidth),
-    .AXI_DATA_WIDTH (uart_wrap_pkg::RegDataWidth),
-    .axil_req_t     (uart_wrap_pkg::csr_axil_req_t),
-    .axil_resp_t    (uart_wrap_pkg::csr_axil_resp_t),
-    .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (uart_wrap_pkg::RegDataWidth),
-    .RESP_DATA      (32'hBADCAB1E),
-    .MAX_TRANS      (1)
-  ) u_csr_axi_lite_err_slv (
-    .clk_i,
-    .rst_ni,
     .test_en_i,
-
-    .axil_req_i     (csr_axil_reqs [UndefinedRegMap]),
-    .axil_resp_o    (csr_axil_resps[UndefinedRegMap])
+    .slv_req_i   (csr_axil_req_i),
+    .slv_resp_o  (csr_axil_resp_o),
+    .mst_reqs_o  (csr_axil_reqs),
+    .mst_resps_i (csr_axil_resps)
   );
 
 

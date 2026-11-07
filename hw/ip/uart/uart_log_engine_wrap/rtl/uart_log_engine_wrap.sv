@@ -3,9 +3,8 @@
 
 // Map one uart_16550, an optional log engine and a CTRL register behind one AXI-Lite port.
 //
-// Decodes the UART, log-engine and CTRL windows set by the *_REG_MAP_* parameters.
-// Addresses outside every window go to an error slave that answers DECERR with
-// read data 0xBADCAB1E.
+// The demux routes the UART, the log engine and CTRL each its window from its
+// *_REG_MAP_BASE_ADDR and answers the rest with DECERR and read data 0xBADCAB1E.
 // The log engine shares the UART register port with the CSR path through an AXI-Lite mux
 // and is paced by uart_txrdy_o.
 // UART serial, modem, DMA and interrupt pins pass to the top unchanged.
@@ -17,16 +16,15 @@ module uart_log_engine_wrap
   import uart_log_engine_wrap_pkg::CTRL_REG_MAP;
   import uart_log_engine_wrap_pkg::csr_axil_req_t;
   import uart_log_engine_wrap_pkg::csr_axil_resp_t;
-  import uart_log_engine_wrap_pkg::UNDEFINED_REG_MAP;
 #(
   parameter int unsigned UART_TX_FIFO_DEPTH    = 32,  // Per-UART TX FIFO depth. Must be a power of
                                                       // 2 from 4 to 4096 inclusive.
   parameter int unsigned UART_RX_FIFO_DEPTH    = 32,  // Per-UART RX FIFO depth. Must be a power of
                                                       // 2 from 4 to 4096 inclusive.
   parameter bit          GEN_LOG_ENGINE        = 1'b1,  // Instantiates the log engine when set.
-                                                        // When clear, the log-engine window is not
-                                                        // decoded, log_fetch_axil_req_o is idle and
-                                                        // log_engine_irq_o is low.
+                                                        // When clear, the log-engine window
+                                                        // answers DECERR, log_fetch_axil_req_o is
+                                                        // idle and log_engine_irq_o is low.
   parameter int unsigned LOG_ENGINE_FIFO_DEPTH = 32,  // Entries in the log engine's read-data FIFO
                                                       // between log fetch and UART write.
 
@@ -97,6 +95,7 @@ module uart_log_engine_wrap
 );
 
   `include "axi/assign.svh"
+  `include "ocah_assert.svh"
 
   /////////////////////////
   // Signal Declarations //
@@ -116,93 +115,48 @@ module uart_log_engine_wrap
   // AXI4-Lite Register Demux //
   //////////////////////////////
 
-  uart_log_engine_wrap_pkg::uart_log_engine_wrap_reg_map_e csr_axil_aw_select, csr_axil_ar_select;
-
   assign csr_axil_req = csr_axil_req_i;
   assign csr_axil_resp_o = csr_axil_resp;
 
-  always_comb begin
-    if (csr_axil_req.aw.addr >= UART_REG_MAP_BASE_ADDR &&
-            csr_axil_req.aw.addr <  UART_REG_MAP_BASE_ADDR +
-                                     UART_REG_MAP_SIZE) begin
-      csr_axil_aw_select = UART_REG_MAP;
-    end else if (GEN_LOG_ENGINE &&
-                     csr_axil_req.aw.addr >= LOG_ENGINE_REG_MAP_BASE_ADDR &&
-                     csr_axil_req.aw.addr <  LOG_ENGINE_REG_MAP_BASE_ADDR +
-                                              LOG_ENGINE_REG_MAP_SIZE) begin
-      csr_axil_aw_select = LOG_ENGINE_REG_MAP;
-    end else if (csr_axil_req.aw.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR &&
-                     csr_axil_req.aw.addr <  UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR +
-                                              UART_LOG_ENGINE_CTRL_REG_MAP_SIZE) begin
-      csr_axil_aw_select = CTRL_REG_MAP;
-    end else begin
-      csr_axil_aw_select = UNDEFINED_REG_MAP;
-    end
-  end
+  localparam logic [RegAddrWidth-1:0] RangeBase[uart_log_engine_wrap_pkg::NumRegMaps] = '{
+      UART_REG_MAP_BASE_ADDR,
+      LOG_ENGINE_REG_MAP_BASE_ADDR,
+      UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR
+  };
+  localparam logic [RegAddrWidth-1:0] RangeSize[uart_log_engine_wrap_pkg::NumRegMaps] = '{
+      RegAddrWidth'(1) << uart_16550_main_reg_pkg::UART_16550_MAIN_REG_MIN_ADDR_WIDTH,
+      RegAddrWidth'(1) << log_engine_reg_pkg::LOG_ENGINE_REG_MIN_ADDR_WIDTH,
+      RegAddrWidth'(1) << uart_log_engine_ctrl_reg_pkg::UART_LOG_ENGINE_CTRL_REG_MIN_ADDR_WIDTH
+  };
 
-  always_comb begin
-    if (csr_axil_req.ar.addr >= UART_REG_MAP_BASE_ADDR &&
-            csr_axil_req.ar.addr <  UART_REG_MAP_BASE_ADDR +
-                                     UART_REG_MAP_SIZE) begin
-      csr_axil_ar_select = UART_REG_MAP;
-    end else if (GEN_LOG_ENGINE &&
-                     csr_axil_req.ar.addr >= LOG_ENGINE_REG_MAP_BASE_ADDR &&
-                     csr_axil_req.ar.addr <  LOG_ENGINE_REG_MAP_BASE_ADDR +
-                                              LOG_ENGINE_REG_MAP_SIZE) begin
-      csr_axil_ar_select = LOG_ENGINE_REG_MAP;
-    end else if (csr_axil_req.ar.addr >= UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR &&
-                     csr_axil_req.ar.addr <  UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR +
-                                              UART_LOG_ENGINE_CTRL_REG_MAP_SIZE) begin
-      csr_axil_ar_select = CTRL_REG_MAP;
-    end else begin
-      csr_axil_ar_select = UNDEFINED_REG_MAP;
-    end
-  end
+  `OCAH_ASSERT_STATIC(UartMapFitsWindow_A, UART_REG_MAP_SIZE <= RangeSize[UART_REG_MAP])
+  `OCAH_ASSERT_STATIC(LogEngineMapFitsWindow_A,
+                      LOG_ENGINE_REG_MAP_SIZE <= RangeSize[LOG_ENGINE_REG_MAP])
+  `OCAH_ASSERT_STATIC(CtrlMapFitsWindow_A,
+                      UART_LOG_ENGINE_CTRL_REG_MAP_SIZE <= RangeSize[CTRL_REG_MAP])
 
-  axi_lite_demux #(
-    .aw_chan_t       (uart_log_engine_wrap_pkg::csr_axil_aw_chan_t),
-    .w_chan_t        (uart_log_engine_wrap_pkg::csr_axil_w_chan_t),
-    .b_chan_t        (uart_log_engine_wrap_pkg::csr_axil_b_chan_t),
-    .ar_chan_t       (uart_log_engine_wrap_pkg::csr_axil_ar_chan_t),
-    .r_chan_t        (uart_log_engine_wrap_pkg::csr_axil_r_chan_t),
-    .axi_req_t       (csr_axil_req_t),
-    .axi_resp_t      (csr_axil_resp_t),
-    .NoMstPorts      (uart_log_engine_wrap_pkg::NumRegMaps),
-    .MaxTrans        (1),
-    .FallThrough     (1'b0),
-    .SpillAw         (1'b1),
-    .SpillW          (1'b0),
-    .SpillB          (1'b0),
-    .SpillAr         (1'b1),
-    .SpillR          (1'b0)
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (RegAddrWidth),
+    .AXI_DATA_WIDTH (uart_log_engine_wrap_pkg::RegDataWidth),
+    .NUM_RANGES     (uart_log_engine_wrap_pkg::NumRegMaps),
+    .RANGE_BASE     (RangeBase),
+    .RANGE_SIZE     (RangeSize),
+    .MAX_TRANS      (1),
+    .aw_chan_t      (uart_log_engine_wrap_pkg::csr_axil_aw_chan_t),
+    .w_chan_t       (uart_log_engine_wrap_pkg::csr_axil_w_chan_t),
+    .b_chan_t       (uart_log_engine_wrap_pkg::csr_axil_b_chan_t),
+    .ar_chan_t      (uart_log_engine_wrap_pkg::csr_axil_ar_chan_t),
+    .r_chan_t       (uart_log_engine_wrap_pkg::csr_axil_r_chan_t),
+    .axil_req_t     (csr_axil_req_t),
+    .axil_resp_t    (csr_axil_resp_t)
   ) u_csr_axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i          (test_en_i),
-    .slv_req_i       (csr_axil_req),
-    .slv_aw_select_i (csr_axil_aw_select),
-    .slv_ar_select_i (csr_axil_ar_select),
-    .slv_resp_o      (csr_axil_resp),
-    .mst_reqs_o      (csr_axil_reqs),
-    .mst_resps_i     (csr_axil_resps)
-  );
-
-  prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (RegAddrWidth),
-    .AXI_DATA_WIDTH (uart_log_engine_wrap_pkg::RegDataWidth),
-    .axil_req_t     (csr_axil_req_t),
-    .axil_resp_t    (csr_axil_resp_t),
-    .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (uart_log_engine_wrap_pkg::RegDataWidth),
-    .RESP_DATA      (32'hBADCAB1E),
-    .MAX_TRANS      (1)
-  ) u_csr_axi_lite_err_slv (
-    .clk_i,
-    .rst_ni,
     .test_en_i,
-
-    .axil_req_i     (csr_axil_reqs [UNDEFINED_REG_MAP]),
-    .axil_resp_o    (csr_axil_resps[UNDEFINED_REG_MAP])
+    .slv_req_i   (csr_axil_req),
+    .slv_resp_o  (csr_axil_resp),
+    .mst_reqs_o  (csr_axil_reqs),
+    .mst_resps_i (csr_axil_resps)
   );
 
 
@@ -354,6 +308,19 @@ module uart_log_engine_wrap
 
     assign log_fetch_axil_req = log_engine_pkg::log_fetch_axil_req_t'(0);
     assign log_engine_irq_o = 1'b0;
+
+    prim_axi_lite_err_slv #(
+      .AXI_ADDR_WIDTH (RegAddrWidth),
+      .AXI_DATA_WIDTH (uart_log_engine_wrap_pkg::RegDataWidth),
+      .axil_req_t     (csr_axil_req_t),
+      .axil_resp_t    (csr_axil_resp_t)
+    ) u_log_engine_err_slv (
+      .clk_i,
+      .rst_ni,
+      .test_en_i,
+      .axil_req_i  (csr_axil_reqs [LOG_ENGINE_REG_MAP]),
+      .axil_resp_o (csr_axil_resps[LOG_ENGINE_REG_MAP])
+    );
 
   end
 
