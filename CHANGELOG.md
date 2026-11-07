@@ -12,6 +12,8 @@ minor release it updates.
 
 ### RTL bugs
 
+- Entropy source raw-noise observe FIFO could repeat a sample, and lose the
+  next, when a sample-clock edge landed just before a `clk_i` edge (#3740).
 - Entropy source raw-noise observe FIFO wrote each word before its 32nd sample,
   so the first word after a restart had a 0 in bit 0 (#3729).
 
