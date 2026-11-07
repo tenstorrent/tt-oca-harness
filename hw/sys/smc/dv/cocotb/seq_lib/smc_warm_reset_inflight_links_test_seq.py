@@ -39,7 +39,7 @@ hang-threshold and fabric configuration registers are kept; after the chain entr
 scratch register reads its reset, one fresh write and read per link completes, no link answers
 without a request and core 3 follows RESET_CTRL; the armed watchdog asserts the warm reset only
 at its second stage and a FEED does not withdraw it. Pending-phase fates, the post-release wedge,
-the cluster-side VALIDs under the uncore hold (ruling #3170, SF-003), the isolate state, the
+the cluster-side VALIDs under the uncore hold (ruling #3170), the isolate state, the
 in-window accesses, the fuse-window accesses, the SMC_ATTRIBUTES fields and the ROM fetch count
 are printed as ``OBS-*`` lines and never compared.
 """
@@ -247,7 +247,6 @@ R_DROP = {"SEP_IN": "tb_sep_axi_r_drop", "SYS_IN": "tb_sys_axi_r_drop"}
 CLUSTER_VALIDS = {"CPU_FRONT": ("b", "r"), "CPU_MMIO": ("aw", "w", "ar")}
 RULING_WDT = "#3341"
 RULING_VALID = "#3170"
-SF_FUSE_WINDOW = "SF-021"
 
 _EXTRA_NAMES = (
     "rst_primary_smc_clk_no",
@@ -901,8 +900,7 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
     def _fuse_line(self, target: str, code, value, completed: str = "in_window") -> None:
         self.obs["OBS-FUSE-WINDOW-ACCESS"].append(
             f"OBS-FUSE-WINDOW-ACCESS: target={target} resp={'none' if code is None else code} "
-            f"data={'none' if value is None else f'0x{value:x}'} completed={completed} "
-            f"sf={SF_FUSE_WINDOW}"
+            f"data={'none' if value is None else f'0x{value:x}'} completed={completed}"
         )
 
     async def _fuse_access(self, target: str, op, addr: int, data=0, length=4):
@@ -2134,14 +2132,13 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
             f"mmio_isolated high {iso['mmio_isolated'][0]}/{n} flush l2={iso['l2_flush'][0]} "
             f"mmio={iso['mmio_flush'][0]} (first/last l2_isolated {iso['l2_isolated'][1]}/"
             f"{iso['l2_isolated'][2]} mmio_isolated {iso['mmio_isolated'][1]}/{iso['mmio_isolated'][2]})"
-            f" sf=SF-007"
         )
         port = "high" if mon.window_samples and mon.primary_high == mon.window_samples else "low"
         if mon.uncore_low_n == 0:
             self._fail("CHK-OBS-WARM-CLUSTER-VALIDS", "no sampled edge with the uncore reset held")
         obs["OBS-WARM-CLUSTER-VALIDS"].append(
             f"OBS-WARM-CLUSTER-VALIDS: edges={mon.uncore_low_n} "
-            f"high={','.join(mon.valid_high[:16]) or 'none'} port_aresetn={port} sf=SF-003 "
+            f"high={','.join(mon.valid_high[:16]) or 'none'} port_aresetn={port} "
             f"ruling={RULING_VALID}"
         )
         for raw in w.window:
@@ -2149,7 +2146,7 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
             data = "none" if value is None else f"0x{value:x}"
             obs["OBS-WARM-WINDOW-ACCESS"].append(
                 f"OBS-WARM-WINDOW-ACCESS: target={raw.label} resp={'none' if code is None else code} "
-                f"data={data} completed={raw.fate} sf=SF-002"
+                f"data={data} completed={raw.fate}"
             )
         if c is not None and hasattr(c, "fresh_window"):
             for name, value in c.fresh_window.items():
@@ -2170,18 +2167,17 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         }
         obs["OBS-ATTRIBUTES"].append(
             f"OBS-ATTRIBUTES: before=0x{self.attr_before:x} after=0x{self.attr_after:x} "
-            f"changed={changed} fields_before={fields_b} fields_after={fields_a} sf=SF-032"
+            f"changed={changed} fields_before={fields_b} fields_after={fields_a}"
         )
         if v is None:
             obs["OBS-WARM-VECTOR"].append(
                 f"OBS-WARM-VECTOR: NOT-SAMPLED window={VECTOR_WINDOW_EDGES} vector3=0x{VECTOR3_OBS:X} "
-                f"(SEP_IN wedged by {self.wedged.get('SEP', '?')}) sf=SF-025"
+                f"(SEP_IN wedged by {self.wedged.get('SEP', '?')})"
             )
         else:
             obs["OBS-WARM-VECTOR"].append(
                 f"OBS-WARM-VECTOR: rom_read_count_delta={v.delta} (the cluster's ROM read count, "
-                f"every core's fetches) window={VECTOR_WINDOW_EDGES} vector3=0x{VECTOR3_OBS:X} "
-                f"sf=SF-025"
+                f"every core's fetches) window={VECTOR_WINDOW_EDGES} vector3=0x{VECTOR3_OBS:X}"
             )
         for token, key in (
             ("CHK-OBS-WARM-PHASE-FATE", "OBS-WARM-PHASE-FATE"),
