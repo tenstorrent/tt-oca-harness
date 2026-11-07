@@ -10,6 +10,11 @@ minor release it updates.
 
 ## [Unreleased]
 
+### RTL bugs
+
+- Entropy source raw-noise observe FIFO wrote each word before its 32nd sample,
+  so the first word after a restart had a 0 in bit 0 (#3729).
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added
