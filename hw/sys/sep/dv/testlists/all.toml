@@ -80,7 +80,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 287
+expected_count = 288
 # Listed longest first by each entry's longest measured leaf time, over every
 # measured seed. An entry with no measured time is placed by its estimated time.
 # Place a new test by its runtime.
@@ -142,6 +142,7 @@ tests = [
     "sep_km_key_bank_register_rand_test_shard2",
     "sep_pic_pending_map_walk_rand_test",
     "sep_fabric_dma_endpoint_matrix_test",
+    "sep_fabric_dma_endpoint_matrix_test_slverr",
     "sep_fabric_outbound_remap_filter_walk_test",
     "sep_km_abr_mlkem_sideload_test",
     "sep_cpu_isa_pmp_csr_test",
@@ -404,6 +405,7 @@ tests = [
     "sep_spi_ot_dma_tx_test",
     "sep_cpu_lsu_alias_window_twin_test",
     "sep_fabric_dma_endpoint_matrix_test",
+    "sep_fabric_dma_endpoint_matrix_test_slverr",
     "sep_pic_reg_rand_test",
     "sep_pic_external_access_refuse_test",
     "sep_pic_priority_gate_rand_test",
@@ -902,7 +904,7 @@ tests = [
 # Convenience group of the fabric and remap tests.
 # The `all`, `cpu_stub` and `cpu` groups hold the same tests.
 name = "fabric_remap"
-expected_count = 9
+expected_count = 10
 tests = [
     "sep_fabric_inbound_rebase_test",
     "sep_fabric_filter_match_priority_rand_test",
@@ -913,6 +915,7 @@ tests = [
     "sep_fabric_row_response_matrix_test",
     "sep_cpu_lsu_alias_window_twin_test",
     "sep_fabric_dma_endpoint_matrix_test",
+    "sep_fabric_dma_endpoint_matrix_test_slverr",
 ]
 
 [[groups]]

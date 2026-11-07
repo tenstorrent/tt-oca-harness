@@ -30,6 +30,18 @@ beats come from ``env/sep_dma_model.DmaZeroFill``.
   encodings {0x7, 0xA, 0x9} and DST_ADDR_SPACE_ID 0x7, then the same fill with
   SRC_ADDR_SPACE_ID 0x7 (``hw/sys/sep/doc/dma.adoc``, Zero Fill: the source
   registers are validated as for a copy).
+* Leg X: one fill to the SEP SRAM through the local alias window
+  (``hw/sys/sep/doc/fabric.adoc``, local alias; ``hw/sys/sep/doc/memory_map.adoc``)
+  in a drawn destination mode and width, shaped as a Leg Z cell. The DMA
+  checks each fill write against BASE and LIMIT before it issues it, and the
+  local-alias remapper follows the engine (``hw/sys/sep/doc/dma.adoc``, Zero
+  Fill and data path), so BASE and LIMIT are programmed in the alias form around
+  the alias destination. The tap is after the remap, so the expected beats and
+  image are those of the same fill at the direct address. The SEP SRAM range is
+  restored after it.
+* Leg B: a width-1 fill whose destination is BASE = LIMIT, total 2 to 4 bytes.
+  ERROR_CODE.BASE_LIMIT_ERROR names an "invalid value" of the pair without a
+  rule for BASE = LIMIT, so the outcome is logged only.
 * Leg L, last because the lock holds until reset: RANGE_REGWEN written False,
   a write that would widen LIMIT, then a fill that runs past the locked LIMIT.
 
@@ -97,8 +109,19 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          the AW, W and B shape of CHK-DMA-ZERO-WIN-ERR for
                          the beats up to LIMIT and no beat beyond it.
 
+  CHK-DMA-ALIAS-FORM     the Leg X fill: DONE=1, ERROR=0, ERROR_CODE=0; no AR;
+                         one AW per model beat at the direct address with
+                         AxLEN 0, AxADDR[31:2] and the WSTRB lanes of that
+                         beat; one OKAY B per AW; the destination region
+                         equals the direct-form model. Controls (else
+                         CTRL-MISSING): SEP_LOCAL_BASE_ADDR reads its reset
+                         value, and BASE, LIMIT and DST_ADDR_LO read back the
+                         alias-form values written.
+
 Logged only: ``OBS-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
-rise (``sep_dma_abort_recovery_rand_test`` grades that contract).
+rise (``sep_dma_abort_recovery_rand_test`` grades that contract);
+``OBS-DMA-ZF-BASELIM``, STATUS, ERROR_CODE, the AW list (address, WSTRB) and the
+words around BASE after the Leg B fill.
 
 Run mode: no_cpu, target ``lsu_stub_all_live``, ``+skip_fuse_sense``; Verilator
 and VCS. Graded-window owner code from ``tb/sep_fcov_owner_codes.svh``. The
@@ -124,17 +147,19 @@ from env.sep_fcov_gate import close_graded_window, open_graded_window, set_dma_z
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import SPI_CONTROLLER, sym
+from sep_reg_meta import SEP_CPU_CTRL, SPI_CONTROLLER, sym
 from seq_lib.sep_dma_ops import (
     _D,
     ADDR_SPACE_ID,
     DST_ADDR_HI,
+    DST_ADDR_LO,
     ERROR_CODE,
     ERROR_CODE_MASK,
     HANDSHAKE_INTR_ENABLE,
     INTR_ENABLE,
     OP_COPY,
     OP_ZERO,
+    RANGE_BASE,
     RANGE_LIMIT,
     RANGE_REGWEN,
     SRC_ADDR_HI,
@@ -153,6 +178,11 @@ TEST = "sep_dma_zero_fill_rand_test"
 SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 SRAM_LIMIT = SRAM_BASE + SRAM_SIZE - 1
+# The local alias window maps SEP_LOCAL_BASE_ADDR + o to the SEP map base + o.
+SEP_MAP_BASE = sym("SEP_TOP_REG_MAP_BASE_ADDR")
+LOCAL_BASE_REG = SEP_CPU_CTRL.addr("SEP_LOCAL_BASE_ADDR")
+LOCAL_BASE_MASK = SEP_CPU_CTRL.mask32("SEP_LOCAL_BASE_ADDR")
+LOCAL_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR")
 ASID = 0x7
 # The first OPCODE above ZERO.
 OP_INVALID = 0x5
@@ -275,6 +305,31 @@ def draw_region(rng: SepSeededRng, alloc: Alloc, nbytes: int) -> Region:
     return Region(addr, [nonzero_word(rng) for _ in range(-(-nbytes // 4))])
 
 
+def alias(addr: int) -> int:
+    """The local-alias form of a SEP map address."""
+    return addr - SEP_MAP_BASE + LOCAL_ALIAS
+
+
+def draw_zero_fill(
+    rng: SepSeededRng, alloc: Alloc, mode: str, enc: int
+) -> tuple[DmaZeroFill, Region]:
+    """A fill of a drawn shape in ``mode`` and width ``enc``, inside a guarded region."""
+    w = WIDTH[enc]
+    inc, wrap = MODES[mode]
+    if mode == "fixed":
+        chunk = w * rng.randrange(1, 9)
+        total = rng.randrange(1, chunk + 1)
+    else:
+        n = rng.randrange(2, 5) if mode == "wrap" else rng.randrange(1, 5)
+        chunk = w * rng.randrange(4, 33)
+        total = (n - 1) * chunk + rng.randrange(1, chunk + 1)
+    off = w * rng.randrange(0, 8 // w)
+    probe = DmaZeroFill(off, total, chunk, enc, inc, wrap)
+    reach = max(b.addr + b.nbytes for b in probe.beats())
+    region = draw_region(rng, alloc, GUARD + reach + GUARD)
+    return DmaZeroFill(region.addr + GUARD + off, total, chunk, enc, inc, wrap), region
+
+
 class Plan:
     """Every value of the leaf, drawn from the seed before the first DUT access."""
 
@@ -289,31 +344,20 @@ class Plan:
         self._leg_a(rng, alloc)
         self._leg_l(rng, alloc)
         self._leg_s(rng, alloc)
+        self._leg_x(rng, alloc)
+        self._leg_b(rng, alloc)
 
     def _leg_z(self, rng: SepSeededRng, alloc: Alloc) -> None:
         cells = [(m, e) for m in MODES for e in WIDTH]
         rng.shuffle(cells)
         self.cells: list[ZCell] = []
         for mode, enc in cells:
-            w = WIDTH[enc]
-            inc, wrap = MODES[mode]
-            if mode == "fixed":
-                chunk = w * rng.randrange(1, 9)
-                total = rng.randrange(1, chunk + 1)
-            else:
-                n = rng.randrange(2, 5) if mode == "wrap" else rng.randrange(1, 5)
-                chunk = w * rng.randrange(4, 33)
-                total = (n - 1) * chunk + rng.randrange(1, chunk + 1)
-            off = w * rng.randrange(0, 8 // w)
-            probe = DmaZeroFill(off, total, chunk, enc, inc, wrap)
-            reach = max(b.addr + b.nbytes for b in probe.beats())
-            region = draw_region(rng, alloc, GUARD + reach + GUARD)
-            fill = DmaZeroFill(region.addr + GUARD + off, total, chunk, enc, inc, wrap)
+            fill, region = draw_zero_fill(rng, alloc, mode, enc)
             copy_src = draw_region(rng, alloc, COPY_BYTES)
             copy_dst = alloc.take(COPY_BYTES)
             self.cells.append(ZCell(mode, enc, fill, region, copy_src, copy_dst))
             self.lines.append(
-                f"DRAW leg=Z mode={mode} enc={enc} total={total} chunk={chunk} "
+                f"DRAW leg=Z mode={mode} enc={enc} total={fill.total} chunk={fill.chunk} "
                 f"n={fill.n_chunks} dst=0x{fill.dst_base:08x} region=0x{region.addr:08x}+"
                 f"{region.nbytes} copy_last=0x{copy_src.words[-1]:08x}"
             )
@@ -385,6 +429,26 @@ class Plan:
             f"dst_asid=0x{ASID:x}"
         )
 
+    def _leg_x(self, rng: SepSeededRng, alloc: Alloc) -> None:
+        self.x_mode = rng.choice(tuple(MODES))
+        self.x_enc = rng.choice(tuple(WIDTH))
+        self.x_fill, self.x_region = draw_zero_fill(rng, alloc, self.x_mode, self.x_enc)
+        f = self.x_fill
+        self.lines.append(
+            f"DRAW leg=X mode={self.x_mode} enc={self.x_enc} total={f.total} chunk={f.chunk} "
+            f"n={f.n_chunks} dst=0x{f.dst_base:08x} dst_alias=0x{alias(f.dst_base):08x} "
+            f"region=0x{self.x_region.addr:08x}+{self.x_region.nbytes}"
+        )
+
+    def _leg_b(self, rng: SepSeededRng, alloc: Alloc) -> None:
+        self.b_region = draw_region(rng, alloc, 16)
+        self.b_dst = self.b_region.addr + 4 + rng.randrange(0, 8)
+        self.b_total = rng.randrange(2, 5)
+        self.lines.append(
+            f"DRAW leg=B base=limit=dst=0x{self.b_dst:08x} total={self.b_total} enc=0 "
+            f"region=0x{self.b_region.addr:08x}+{self.b_region.nbytes}"
+        )
+
 
 class _EdgeCount:
     """Counts clock edges, so a tap window can prove it sampled every clock."""
@@ -430,6 +494,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         "CHK-DMA-ZERO-ABORT",
         "CHK-DMA-ZERO-SRC-ASID",
         "CHK-DMA-ZERO-WIN-LOCK",
+        "CHK-DMA-ALIAS-FORM",
     )
 
     # ---- log helpers ------------------------------------------------------
@@ -479,6 +544,8 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             await self._leg_e(plan)
             await self._leg_a(plan)
             await self._leg_s(plan)
+            await self._leg_x(plan)
+            await self._leg_b(plan)
             await self._leg_l(plan)
         finally:
             close_graded_window(self.logger)
@@ -1064,6 +1131,96 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         )
         await self._release()
         await self._idle()
+
+    # ---- Leg X: a fill through the local alias window -----------------------
+    async def _leg_x(self, plan: Plan) -> None:
+        ops = self.ops
+        f = plan.x_fill
+        r = plan.x_region
+        inc, wrap = MODES[plan.x_mode]
+        a_base, a_limit, a_dst = alias(SRAM_BASE), alias(SRAM_LIMIT), alias(f.dst_base)
+        tag = (
+            f"mode={plan.x_mode} enc={plan.x_enc} total={f.total} chunk={f.chunk} "
+            f"dst=0x{a_dst:08x} direct=0x{f.dst_base:08x}"
+        )
+        local_rb = await ops.rd(LOCAL_BASE_REG) & LOCAL_BASE_MASK
+        await ops.program_range(a_base, a_limit, valid=True)
+        range_rb = (await ops.rd(RANGE_BASE), await ops.rd(RANGE_LIMIT))
+        await self.mem.fill(r.addr, r.words)
+        run = await self._run(
+            opcode=OP_ZERO,
+            dst=a_dst,
+            total=f.total,
+            chunk=f.chunk,
+            width_enc=plan.x_enc,
+            dst_inc=inc,
+            dst_wrap=wrap,
+            graded=True,
+        )
+        dst_rb = await ops.rd(DST_ADDR_LO)
+        if (
+            local_rb != LOCAL_ALIAS & LOCAL_BASE_MASK
+            or range_rb != (a_base, a_limit)
+            or dst_rb != a_dst
+        ):
+            self._ctrl_missing(
+                "CHK-DMA-ALIAS-FORM",
+                f"{tag} sep_local_base=0x{local_rb:08x} range=0x{range_rb[0]:08x}..0x"
+                f"{range_rb[1]:08x} expect=0x{a_base:08x}..0x{a_limit:08x} "
+                f"dst_addr_lo=0x{dst_rb:08x}",
+            )
+        beats = f.beats()
+        got = await self._read_region(r)
+        exp = self._expect_words(r, f, beats)
+        st = run.status
+        ec = run.error_code & ERROR_CODE_MASK
+        probs = self._beat_problems(run.ev, beats)
+        self._pass(
+            "CHK-DMA-ALIAS-FORM",
+            st.done and not st.error and ec == 0 and got == exp and not probs,
+            f"{tag} range=0x{a_base:08x}..0x{a_limit:08x} {st.fmt()} error_code=0x{ec:x} "
+            f"aw={len(run.ev.aw)} beats={len(beats)} "
+            f"aw0=0x{(run.ev.aw[0].addr or 0) if run.ev.aw else 0:08x} "
+            f"{' '.join(probs) or 'shape=model'} {self._diff(got, exp, r.addr)}",
+        )
+        await self._release()
+        await self._idle()
+        await ops.program_range(SRAM_BASE, SRAM_LIMIT, valid=True)
+
+    # ---- Leg B: a fill at BASE = LIMIT, logged only ------------------------
+    async def _leg_b(self, plan: Plan) -> None:
+        ops = self.ops
+        r = plan.b_region
+        dst = plan.b_dst
+        await ops.program_range(dst, dst, valid=True)
+        range_rb = (await ops.rd(RANGE_BASE), await ops.rd(RANGE_LIMIT))
+        await self.mem.fill(r.addr, r.words)
+        run = await self._run(
+            opcode=OP_ZERO, dst=dst, total=plan.b_total, chunk=plan.b_total, width_enc=0
+        )
+        got = await self._read_region(r)
+        self.logger.info(
+            "OBS-DMA-ZF-BASELIM seed=%d base=limit=dst=0x%08x total=%d enc=0 range_readback="
+            "0x%08x..0x%08x %s error_code=0x%x ar=%d aw=[%s] b=[%s] region=0x%08x before=[%s] "
+            "after=[%s]",
+            self.seed,
+            dst,
+            plan.b_total,
+            range_rb[0],
+            range_rb[1],
+            run.status.fmt(),
+            run.error_code & ERROR_CODE_MASK,
+            len(run.ev.ar),
+            ",".join(
+                f"0x{aw.addr or 0:08x}/0x{wb.strb or 0:02x}" for aw, wb in zip(run.ev.aw, run.ev.w)
+            ),
+            ",".join(str(b.resp) for b in run.ev.b),
+            r.addr,
+            ",".join(f"0x{w:08x}" for w in r.words),
+            ",".join(f"0x{w:08x}" for w in got),
+        )
+        await self._idle()
+        await ops.program_range(SRAM_BASE, SRAM_LIMIT, valid=True)
 
     # ---- Leg L: the locked range -------------------------------------------
     async def _leg_l(self, plan: Plan) -> None:

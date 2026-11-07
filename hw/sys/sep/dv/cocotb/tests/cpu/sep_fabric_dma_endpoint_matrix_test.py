@@ -12,7 +12,9 @@ model of the staged data and the fabric taps:
 * CHK-DMA-PAIR    the random pairs SRAM<->scratch, WDT and AES words to SRAM,
                   the outbound legs (PR-OUT) and the extension-port legs (PR-EXT):
                   the port answers DECERR (PR-EXT-RSP) and the DMA ends with
-                  STATUS.ERROR and ERROR_CODE.BUS_ERROR only.
+                  STATUS.ERROR and ERROR_CODE.BUS_ERROR only, and the recovery
+                  copy after it lands exactly (``secure_dma.adoc``, ERROR_CODE
+                  BUS_ERROR: the bus transfer returned an error).
 * CHK-DMA-ALIAS   alias source and destination copy as their direct twins; the
                   directed direct copy; the alias write to the extension top
                   word reaches PR-EXT at 0x3FFF_FFF8, the port answers DECERR and
@@ -58,7 +60,11 @@ model of the staged data and the fabric taps:
                   master tap, keeps its staged SRAM word, and the level after
                   the run equals the level before the GO. The end state
                   (STATUS and ERROR_CODE) is logged as OBS-DMA-NOTCONN-RESP;
-                  the PIC base as a source is logged the same way.
+                  the PIC base as a source is logged the same way. The boot ROM
+                  legs (source and destination) show no PR-ROM handshake between
+                  the GO and the DMA interrupt; the LSU read of the boot ROM
+                  base in the control leg shows one (fabric.adoc: the boot ROM
+                  is reached only from the CPU IFU and LSU).
 * CHK-DMA-KM-SRC  the DMA copy from the Key Manager mailbox STATUS word: the DMA
                   reaches ``sep_crypto``, which holds the mailbox
                   (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:130``,
@@ -76,6 +82,22 @@ model of the staged data and the fabric taps:
                   high word of the unlocked entry read back as written, then,
                   with the entry locked, the write answers DECERR, the DMA
                   reports a bus error and the word keeps its value.
+
+Entry ``_slverr`` (``+sep_ext_port_responder``) runs only the extension-port
+legs, each a 16-byte copy, and the bench responder answers every reply of the
+port with SLVERR; CHK-DMA-PAIR grades both legs as above with SLVERR in place
+of DECERR, and CHK-DMA-AXPROT runs. ``ext_port_rsp_on_o`` reads 1 in that
+entry and 0 in the other (a failed precondition otherwise). The entry samples
+no coverage cell. OBS-DMA-BEATS-AFTER-ERR logs, per leg, the PR-EXT requests
+and W beats before and after the first error reply, the DMA master requests,
+W beats and B responses of the leg, STATUS, ERROR_CODE and the destination
+words of the read leg; no text states whether the DMA issues beats after a bus
+error.
+
+OBS-DMA-KM-MBOX-ACCESS logs a DMA write and a DMA read of the Key Manager
+mailbox ``SEP_IRQ_ENABLE`` word (end state, interrupt, ERROR_CODE and the
+word before, written, read back and restored, or the CPU value and the copied
+value); no text states the DMA access policy of the mailbox.
 
 Two lines grade nothing. OBS-FILTER-RANGE gives, per out_setup filter entry,
 the time of the START and END write on the system-CSR AXI-Lite port and of
@@ -123,6 +145,7 @@ from env.sep_ext_trng_stream import SepExtTrngStream
 from env.sep_fabric_common import (
     RESP_DECERR,
     RESP_OKAY,
+    RESP_SLVERR,
     SRC_ID_MASK,
     SepSrcIdGrade,
     outbound_ns,
@@ -286,8 +309,14 @@ P_FIELDS = (
     "smu reg_order reg_len0 reg_len1 reg_len2 reg_last0 reg_last1 reg_last2 filt_src "
     "filt_grp smc_off smc_len smc_base irq_done irq_err pool_src stee_idx stee_intra stee_w_lo "
     "stee_w_hi stee_r_lo stee_r_hi filt_idx filt_e_lo filt_e_hi filt_v_lo filt_v_hi filt_w "
-    "filt_lock smc_cpu_w"
+    "filt_lock smc_cpu_w legs ext_len"
 ).split()
+# Leg selection of the firmware (LEG_EXT, LEG_REST) and the byte count of each
+# extension-port copy.
+LEG_EXT, LEG_REST = 1 << 0, 1 << 1
+EXT_LEN, EXT_LEN_SLVERR = 4, 16
+# Every R beat slot (8 beats of 2 bits) and the B code of the bench responder.
+EXT_RRESP_SLOTS = 8
 PAIR_NAMES = (
     ("sram", "scratch"),
     ("scratch", "sram"),
@@ -342,8 +371,11 @@ class DmaEpCfg:
     p: dict
 
     @classmethod
-    def from_seed(cls, seed: int, smc_base: int, smc_size: int) -> "DmaEpCfg":
-        """The SMC aperture comes from the testlist plusargs, not from the seed."""
+    def from_seed(cls, seed: int, smc_base: int, smc_size: int, slverr: bool = False) -> "DmaEpCfg":
+        """The SMC aperture comes from the testlist plusargs, not from the seed.
+
+        ``slverr`` selects the extension-port legs only, with a 16-byte copy.
+        """
         assert smc_base + smc_size <= 1 << 32, "the firmware addresses the SMC aperture in 32 bits"
         rng = SepSeededRng(seed)
         p = {"magic": P_MAGIC_WORD, "smc_base": smc_base}
@@ -441,6 +473,8 @@ class DmaEpCfg:
         # Word pairs the test sends on the external stream 2 in the pool leg:
         # 1 to POOL_DEPTH - 1, so the pool holds entropy below its depth.
         p["pool_pairs"] = rng.randrange(1, POOL_DEPTH)
+        p["legs"] = LEG_EXT if slverr else LEG_EXT | LEG_REST
+        p["ext_len"] = EXT_LEN_SLVERR if slverr else EXT_LEN
         return cls(p)
 
     def words(self) -> list[int]:
@@ -527,6 +561,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
     def build_phase(self) -> None:
         super().build_phase()
         self.sb = SepBootScoreboard("sb", self)
+        self.slverr = "sep_ext_port_responder" in cocotb.plusargs
+        if self.slverr:
+            self.required_evidence = ("CHK-DMA-PAIR", "CHK-DMA-AXPROT")
 
     # ---- live monitors ----
     async def _console(self) -> None:
@@ -767,10 +804,10 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         """STATUS.ERROR set and ERROR_CODE holds BUS_ERROR and no other defined bit."""
         return bool(r["st"] & ST_ERROR) and (r["ec"] & EC_DEFINED) == EC_BUS
 
-    def _port_decerr(self, leg_i: int, ch: str) -> list:
-        """The PR-EXT replies of a leg; every one must be DECERR and there must be one."""
+    def _port_reply(self, leg_i: int, ch: str, code: int = RESP_DECERR) -> list:
+        """The PR-EXT replies of a leg; every one must be ``code`` and there must be one."""
         rep = self._beats("PR-EXT-RSP", leg_i, ch)
-        return rep if rep and all(b.resp == RESP_DECERR for b in rep) else []
+        return rep if rep and all(b.resp == code for b in rep) else []
 
     @staticmethod
     def _done_ok(r: dict, pre: str = "pre", st: str = "st", ec: str = "ec") -> bool:
@@ -864,7 +901,11 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 exp0,
             )
 
-        # Extension port: one beat each way; the port DECERR and the DMA bus error are graded.
+        self._chk_ext(RESP_DECERR, "DECERR")
+
+    def _chk_ext(self, code: int, name: str) -> None:
+        """CHK-DMA-PAIR of the extension-port legs: the port reply and the DMA bus error."""
+        ln = self.ep.p["ext_len"]
         for d, leg, ch in (("R", "ext_r", "ar"), ("W", "ext_w", "aw")):
             leg_i = self._leg_index(leg)
             _, r, text = self._one("EXT", dir=d)
@@ -873,26 +914,66 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 f"CHK-DMA-PAIR FAIL: PR-EXT {ch} of the {leg} leg: {[b.fmt() for b in beats]}, "
                 f"expected first at 0x{EXT_WORD:x}"
             )
-            # The port answers DECERR (port table: tie to DECERR if unused), and
-            # the DMA reports it as a bus error.
-            rep = self._port_decerr(leg_i, "r" if d == "R" else "b")
-            assert rep and self._bus_error(r), (
-                f"CHK-DMA-PAIR FAIL: ext_{d.lower()} port_resp={[b.resp for b in self._beats('PR-EXT-RSP', leg_i, 'r' if d == 'R' else 'b')]} "
-                f"dma_status=0x{r['st']:08x} error_code=0x{r['ec']:08x}; expected port DECERR, "
+            # The port answers DECERR (port table: tie to DECERR if unused) or
+            # the SLVERR the bench responder drives, and the DMA reports it as a
+            # bus error.
+            rep = self._port_reply(leg_i, "r" if d == "R" else "b", code)
+            assert r["len"] == ln and rep and self._bus_error(r), (
+                f"CHK-DMA-PAIR FAIL: ext_{d.lower()} len={r['len']} expect_len={ln} "
+                f"port_resp={[b.resp for b in self._beats('PR-EXT-RSP', leg_i, 'r' if d == 'R' else 'b')]} "
+                f"dma_status=0x{r['st']:08x} error_code=0x{r['ec']:08x}; expected port {name}, "
                 "STATUS.ERROR and ERROR_CODE.BUS_ERROR only"
             )
             self._recovery_after(leg)
             self.logger.info(
-                "CHK-DMA-PAIR PASS: src=%s dst=%s len=4 data_ok=na done=na seen=PR-EXT %s=0x%x beats=%d "
-                "port_resp=DECERR replies=%d dma_status=0x%08x error_code=0x%08x recovery_ok=1",
+                "CHK-DMA-PAIR PASS: src=%s dst=%s len=%d data_ok=na done=na seen=PR-EXT %s=0x%x beats=%d "
+                "port_resp=%s replies=%d dma_status=0x%08x error_code=0x%08x recovery_ok=1",
                 "ext" if d == "R" else "sram",
                 "sram" if d == "R" else "ext",
+                ln,
                 ch,
                 EXT_WORD,
                 len(beats),
+                name,
                 len(rep),
                 r["st"],
                 r["ec"],
+            )
+
+    def _obs_beats_after_err(self) -> None:
+        """OBS-DMA-BEATS-AFTER-ERR: the beats of each extension-port leg after the first error reply."""
+        for d, leg, ch, rch in (("R", "ext_r", "ar", "r"), ("W", "ext_w", "aw", "b")):
+            leg_i = self._leg_index(leg)
+            _, r, _ = self._one("EXT", dir=d)
+            errs = [b for b in self._beats("PR-EXT-RSP", leg_i, rch) if b.resp != RESP_OKAY]
+            t_err = errs[0].t_ps if errs else None
+            reqs = self._beats("PR-EXT", leg_i, ch)
+            ws = self._beats("PR-EXT", leg_i, "w")
+            after = [b for b in reqs if t_err is not None and b.t_ps > t_err]
+            w_after = [b for b in ws if t_err is not None and b.t_ps > t_err]
+            ev = self._dma_ev(leg_i)
+            words = " ".join(f"{k}=0x{r[k]:08x}" for k in ("d0", "d1", "d2", "d3") if k in r)
+            self.logger.info(
+                "OBS-DMA-BEATS-AFTER-ERR leg=%s len=%d ext_%s=%d ext_axlen=%s ext_w=%d "
+                "first_err_ps=%s ext_%s_after_err=%d ext_w_after_err=%d dma_ar=%d dma_aw=%d "
+                "dma_w=%d dma_b=%d dma_status=0x%08x error_code=0x%08x %s",
+                leg,
+                r["len"],
+                ch,
+                len(reqs),
+                [b.len for b in reqs],
+                len(ws),
+                t_err,
+                ch,
+                len(after),
+                len(w_after),
+                len(ev.ar),
+                len(ev.aw),
+                len(ev.w),
+                len(ev.b),
+                r["st"],
+                r["ec"],
+                words or "dst=na",
             )
 
     def _chk_alias(self) -> None:
@@ -943,7 +1024,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             f"CHK-DMA-ALIAS FAIL: alias write to 0x{EXT_TOP_ALIAS:x}: PR-EXT aw {[b.fmt() for b in aws]}, "
             f"expected first at 0x{EXT_TOP_WORD:x}"
         )
-        rep = self._port_decerr(leg_i, "b")
+        rep = self._port_reply(leg_i, "b")
         assert rep and self._bus_error(r), (
             f"CHK-DMA-ALIAS FAIL: alias_ext_top port_resp={[b.resp for b in self._beats('PR-EXT-RSP', leg_i, 'b')]} "
             f"dma_status=0x{r['st']:08x} error_code=0x{r['ec']:08x}; expected port DECERR, "
@@ -1466,12 +1547,18 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         # The PIC base as a DMA source is logged, not graded.
         logged = {"pic_src": "nc_pic_src"}
         logged_seen = set()
+        km_mbox = {"km_wr": "nc_km_wr", "km_rd": "nc_km_rd"}
+        km_mbox_seen = set()
         km_seen = False
         graded = 0
         for _leg_rec, r, text in self._recs("NC"):
             tgt = text.split("tgt=")[1].split()[0]
-            leg_i = self._leg_index({**names, **logged, "km_src": "nc_km_src"}[tgt])
+            leg_i = self._leg_index({**names, **logged, **km_mbox, "km_src": "nc_km_src"}[tgt])
             end = {0: "done", 1: "error", 2: "timeout"}[r["end"]]
+            if tgt in km_mbox:
+                self._obs_km_mbox(leg_i, tgt, r, end)
+                km_mbox_seen.add(tgt)
+                continue
             if tgt == "km_src":
                 self._chk_km_src(leg_i, r, end, text)
                 km_seen = True
@@ -1518,18 +1605,21 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             )
             self._recovery_after(names[tgt])
             if tgt == "rom_src":
-                ok = r["dst"] != r["src_v"] and r["src_v"] == c0["rom"]
-                assert ok, f"CHK-DMA-NOTCONN FAIL: {text}: the destination holds the boot ROM word"
+                ok = r["dst"] != r["src_v"] and r["src_v"] == c0["rom"] and not rom_win
+                assert ok, (
+                    f"CHK-DMA-NOTCONN FAIL: {text}: the destination holds the boot ROM word, or "
+                    f"PR-ROM shows {len(rom_win)} handshakes between GO and the interrupt"
+                )
                 self.logger.info(
                     "CHK-DMA-NOTCONN PASS: target=rom_src src_value=0x%08x dst_value=0x%08x end=%s "
-                    "dma_status=0x%08x control_value=0x%08x recovery_ok=1 rom_seen=%d "
-                    "dma_ar_at_tgt=%d",
+                    "dma_status=0x%08x control_value=0x%08x recovery_ok=1 rom_seen=0 "
+                    "rom_ctrl_seen=%d dma_ar_at_tgt=%d",
                     r["src_v"],
                     r["dst"],
                     end,
                     r["st"],
                     c0["rom"],
-                    len(rom_win),
+                    len(rom_ctl),
                     len(at_tgt),
                 )
             elif tgt == "rom_dst":
@@ -1573,6 +1663,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             f"OBS-DMA-NOTCONN-RESP: records for {sorted(logged_seen)}, expected {sorted(logged)}"
         )
         assert km_seen, "CHK-DMA-KM-SRC FAIL: no km_src record"
+        assert km_mbox_seen == set(km_mbox), (
+            f"OBS-DMA-KM-MBOX-ACCESS: records for {sorted(km_mbox_seen)}, expected {sorted(km_mbox)}"
+        )
         self.logger.info("INFO-STEP not-connected: %d graded runs", graded)
 
     def _chk_km_src(self, leg_i: int, r: dict, end: str, text: str) -> None:
@@ -1599,6 +1692,29 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             r["dst"],
         )
         self._recovery_after("nc_km_src")
+
+    def _obs_km_mbox(self, leg_i: int, tgt: str, r: dict, end: str) -> None:
+        """OBS-DMA-KM-MBOX-ACCESS: a DMA write or read of the mailbox SEP_IRQ_ENABLE word."""
+        _t_go, t_irq = self._go_and_irq(leg_i)
+        if tgt == "km_wr":
+            vals = (
+                f"irq_status=0x{r['irq_status']:08x} value_before=0x{r['before']:08x} "
+                f"value_written=0x{r['written']:08x} readback=0x{r['readback']:08x} "
+                f"restored=0x{r['restored']:08x}"
+            )
+        else:
+            vals = f"cpu_value=0x{r['src_v']:08x} dst_value=0x{r['dst']:08x}"
+        self.logger.info(
+            "OBS-DMA-KM-MBOX-ACCESS leg=%s word=SEP_IRQ_ENABLE end=%s irq=%d dma_status=0x%08x "
+            "error_code=0x%08x %s",
+            tgt[3:],
+            end,
+            int(t_irq is not None),
+            r["st"],
+            r["ec"],
+            vals,
+        )
+        self._recovery_after(f"nc_{tgt}")
 
     def _chk_pool(self, leg_i: int, r: dict, end: str, t_go: int) -> None:
         """CHK-DMA-NOTCONN, target pool_src: the DMA does not reach the entropy pool.
@@ -1837,7 +1953,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
 
     # ---- scenario ----
     def _stage_dtcm(self) -> str:
-        self.ep = DmaEpCfg.from_seed(self.random_seed(), *aperture_plusargs())
+        self.ep = DmaEpCfg.from_seed(self.random_seed(), *aperture_plusargs(), self.slverr)
         patched = os.path.join(os.getcwd(), "sep_dtcm_dma_ep.hex")
         patch_param_block(_DTCM_HEX, patched, P_MAGIC_WORD, self.ep.words())
         self.logger.info(
@@ -1861,6 +1977,12 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         self.pool_feed_ps: int | None = None
         self.pool_feed_err: str | None = None
         dtcm = self._stage_dtcm()
+        if self.slverr:
+            top = cocotb.top
+            top.ext_port_rsp_bresp_i.value = RESP_SLVERR
+            top.ext_port_rsp_rresp_i.value = sum(
+                RESP_SLVERR << (2 * k) for k in range(EXT_RRESP_SLOTS)
+            )
         self.taps = start_taps(
             "PR-OUT",
             "PR-OUT-RSP",
@@ -1914,6 +2036,17 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             await self.dma_raw.stop()
             await self.dma_tap.stop()
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
+        on = self.rd(cocotb.top.ext_port_rsp_on_o)
+        if on != int(self.slverr):
+            msg = (
+                f"CTRL-MISSING EXT-RSP: ext_port_rsp_on_o={on}, expected {int(self.slverr)}; "
+                "the _slverr entry needs +sep_ext_port_responder and the other entry must not set it"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-DMA-EXT-RSP LOG on=%d entry=%s", on, "slverr" if self.slverr else "main"
+        )
         assert not self.irq_xz, (
             "CHK-DMA-IRQ FAIL: X/Z on the DMA done or error interrupt out of reset "
             f"(time_ps, done, error): {self.irq_xz[:4]}"
@@ -1924,10 +2057,14 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
 
         _, prm, _ = self._one("PARAMS")
         keys = ("seed", "order", "form", "smu", "smc_off", "smc_base", "irq_done", "irq_err")
-        for k in keys + ("stee_idx", "filt_idx"):
+        for k in keys + ("stee_idx", "filt_idx", "legs", "ext_len"):
             assert prm[k] == self.ep.p[k], (
                 f"firmware ran {k}=0x{prm[k]:x}, patched 0x{self.ep.p[k]:x}"
             )
+        if self.slverr:
+            self._chk_ext(RESP_SLVERR, "SLVERR")
+            self._obs_beats_after_err()
+            return
         self._chk_pairs()
         self._chk_alias()
         self._chk_remap()

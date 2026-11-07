@@ -84,7 +84,34 @@ Checkers:
                  dma.hjson:669-670``; the faults are "cleared through
                  ``DMA_BUS_ERR_CLEAR``", ``hw/sys/sep/doc/dma.adoc:66-68``), so
                  a stale code or flag cannot pass the check.
-Observations (not graded): OBS-TCM-EXCL (whether the other memory's clock-enable
+  CHK-TCM-DMA-T2T one multi-word DMA copy ICCM -> DCCM and one DCCM -> ICCM
+                 (4 to 16 words, 4-byte width, one chunk, 8-byte aligned)
+                 end with DONE at 1, ERROR at 0 and ``host_path_err`` at 0, and
+                 each destination word, read back by a DMA copy to an SRAM
+                 staging word that holds its complement, equals its source
+                 word (``hw/sys/sep/doc/dma.adoc:58-59``: the TCM backdoor
+                 range is available to the DMA; ``:118-121``: whole 32-bit
+                 words; ``hw/sys/sep/doc/cpu.adoc:46-47``). The source words
+                 are written by single-word DMA copies from the SRAM. Control:
+                 both ``dbg_iccm_active_o`` and ``dbg_dccm_active_o`` rise
+                 during each copy.
+  CHK-TCM-ABORT-RECOVER  CONTROL.ABORT written while a 32- to 64-word copy from
+                 the SRAM to the DCCM runs sets STATUS.ABORTED; after the STATUS
+                 clear, a full copy of new words to the same DCCM words ends with
+                 DONE at 1, ERROR at 0, ERROR_CODE at 0 and ``host_path_err``
+                 at 0, and every DCCM word reads back its new source word
+                 (``secure_dma.adoc``, CONTROL.ABORT and STATUS.ABORTED;
+                 ``doc/programmer/src/sep-programming.adoc:805-806``). Control:
+                 ABORTED reads 0 before the GO, and the PR-TCM tap shows at
+                 least one DCCM write and fewer DCCM writes than the copy has
+                 words when the ABORT write returns, so the copy runs at the
+                 abort.
+Observations (not graded): OBS-DMA-TCM-SEAM (STATUS, ERROR_CODE,
+``DMA_BUS_ERR_STATUS`` and the four words read back after a 16-byte copy from
+the SRAM to the two last ICCM words and the two first DCCM words; no text
+states a DMA transfer across the ICCM end; the four words hold known values
+before the copy; CTRL-TCM-SEAM-ADJ requires the ICCM end to equal the DCCM
+base), OBS-TCM-EXCL (whether the other memory's clock-enable
 tap rose), OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read),
 OBS-TCM-SUBWORD-CODE (the whole ERROR_CODE after the sub-word copy into a word,
 and its bits other than BUS_ERROR), OBS-TCM-DBE-DONE (STATUS.done and
@@ -119,7 +146,7 @@ import os
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
@@ -141,6 +168,12 @@ FLIP_STAGE = SRAM_BASE + 0x0_9000
 RB_STAGE = SRAM_BASE + 0x1_0000
 # Source and readback words of the logged sub-word copies.
 SUB_STAGE = SRAM_BASE + 0x0_A000
+# Source words of the TCM-to-TCM, seam and abort legs, and their readback words.
+T2T_STAGE = SRAM_BASE + 0x0_B000
+SEAM_STAGE = SRAM_BASE + 0x0_B100
+ABORT_STAGE = SRAM_BASE + 0x0_C000
+RECOVER_STAGE = SRAM_BASE + 0x0_C100
+MW_RB_STAGE = SRAM_BASE + 0x1_C000
 
 MEMS = {
     "ICCM": (sym("SEP_ICCM_MEM_BASE_ADDR"), sym("SEP_ICCM_MEM_SIZE")),
@@ -172,6 +205,9 @@ DBG_WANT = {
     ("DCCM", "single"): 0b0010,
     ("DCCM", "double"): 0b0001,
 }
+T2T_PAIRS = (2, 8)  # TCM-to-TCM copy: 4 to 16 words, in 8-byte pairs
+ABORT_PAIRS = (16, 32)  # aborted copy: 32 to 64 words, in 8-byte pairs
+ABORT_WAIT = 2_000  # clk_i cycles from GO to the first DCCM write of the aborted copy
 ROW_BITS = 14
 ROW_MASK = (1 << ROW_BITS) - 1
 RESP_OKAY = 0
@@ -270,6 +306,35 @@ class _Cfg:
             assert clean, f"every {mem} aperture word is a flip target"
             self.sub[mem] = (rng.choice(clean), enc, off, uniq32())
 
+        # TCM-to-TCM copies: one block per direction, 8-byte aligned, the ICCM
+        # source and destination in different halves and both DCCM blocks
+        # clear of the first DCCM pair at the seam.
+        iccm_sz, dccm_sz = MEMS["ICCM"][1], MEMS["DCCM"][1]
+        self.t2t_words = 2 * rng.randrange(T2T_PAIRS[0], T2T_PAIRS[1] + 1)
+
+        def block(lo: int, hi: int, n_words: int) -> int:
+            return 8 * rng.randrange(lo // 8, (hi - WORD_BYTES * n_words) // 8 + 1)
+
+        self.t2t = [
+            (
+                ("ICCM", MEMS["ICCM"][0] + block(0, iccm_sz // 2, self.t2t_words)),
+                ("DCCM", MEMS["DCCM"][0] + block(0x40, dccm_sz // 2, self.t2t_words)),
+            ),
+            (
+                ("DCCM", MEMS["DCCM"][0] + block(dccm_sz // 2, dccm_sz, self.t2t_words)),
+                ("ICCM", MEMS["ICCM"][0] + block(iccm_sz // 2, iccm_sz - 0x40, self.t2t_words)),
+            ),
+        ]
+        self.t2t_data = [[uniq32() for _ in range(self.t2t_words)] for _ in self.t2t]
+        # Seam copy: the words before it and the words it writes.
+        self.seam_before = [uniq32() for _ in range(4)]
+        self.seam_data = [uniq32() for _ in range(4)]
+        # Aborted copy into the DCCM and its recovery copy.
+        self.abort_words = 2 * rng.randrange(ABORT_PAIRS[0], ABORT_PAIRS[1] + 1)
+        self.abort_dst = MEMS["DCCM"][0] + block(0x40, dccm_sz, self.abort_words)
+        self.abort_data = [uniq32() for _ in range(self.abort_words)]
+        self.recover_data = [uniq32() for _ in range(self.abort_words)]
+
     def draw_lines(self) -> list[str]:
         out = []
         for mem, rows in self.apert.items():
@@ -287,6 +352,11 @@ class _Cfg:
                 f"{m}/{a},{b}/{pair_class(a, b)}/@0x{addr:08x}" for m, a, b, addr, _ in self.dbe
             )
         )
+        out.append(
+            f"t2t words={self.t2t_words} "
+            + " ".join(f"{sm}@0x{sa:08x}->{dm}@0x{da:08x}" for (sm, sa), (dm, da) in self.t2t)
+        )
+        out.append(f"abort words={self.abort_words} dst=0x{self.abort_dst:08x}")
         return out
 
 
@@ -373,6 +443,8 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         "CHK-TCM-SUBWORD-WR",
         "CHK-TCM-DBE",
         "CHK-TCM-DMA-DBG",
+        "CHK-TCM-DMA-T2T",
+        "CHK-TCM-ABORT-RECOVER",
     )
 
     # ---- primitives --------------------------------------------------------------
@@ -498,6 +570,11 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         self.logger.info("CHK-TCM-DMA-DBG PASS: %s", line)
         self.n_checks += 1
 
+    def _missing(self, chk: str, line: str) -> None:
+        msg = f"CTRL-MISSING {chk}: {line}"
+        self.logger.error(msg)
+        raise AssertionError(msg)
+
     def _fail(self, chk: str, line: str) -> None:
         msg = f"{chk} FAIL: {line}"
         self.logger.error(msg)
@@ -542,6 +619,10 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             if not fc.ok:
                 raise AssertionError(f"CTRL-TCM-RANGE FAIL: {name} readback {fc.fields()}")
         self.logger.info("CTRL-TCM-RANGE: %s", " | ".join(parts))
+        await self._word_xfer()
+
+    async def _word_xfer(self) -> None:
+        """Program and read back the one-word transfer that ``_copy`` relies on."""
         written = await self.dma.program_transfer(
             src=SRC_STAGE, dst=RB_STAGE, total=WORD_BYTES, chunk=WORD_BYTES, width_enc=WIDTH_ENC
         )
@@ -812,6 +893,193 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         await self.dma.clean_state()
         await self._clear_bus_err()
 
+    # ---- multi-word legs ---------------------------------------------------------------
+    async def _copy_n(self, src: int, dst: int, n_words: int, what: str):
+        """One multi-word copy; returns (STATUS, ERROR_CODE, bus err, taps).
+
+        Restores the one-word transfer before it returns.
+        """
+        nbytes = WORD_BYTES * n_words
+        await self.dma.clean_state()
+        await self.dma.program_transfer(
+            src=src, dst=dst, total=nbytes, chunk=nbytes, width_enc=WIDTH_ENC
+        )
+        self.sampler.arm()
+        await self.dma.go()
+        st = await self.dma.poll_status(
+            lambda s: bool(s.done or s.error), self.dma.done_bound(nbytes), what
+        )
+        await ClockCycles(cocotb.top.clk_i, 2)
+        rose, _ = self.sampler.take()
+        ecode = await self.dma.rd(_D.addr("ERROR_CODE")) & EC_MASK
+        berr = await self._bus_err()
+        self.n_copies += 1
+        await self._word_xfer()
+        return st, ecode, berr, rose
+
+    async def _read_words(self, mem: str, base: int, expect: list[int], what: str) -> list[str]:
+        """Read each word through ``_read_tcm``; returns one entry per word that differs."""
+        bad = []
+        for i, want in enumerate(expect):
+            addr = base + WORD_BYTES * i
+            st, _, got, _, _, _ = await self._read_tcm(
+                mem, addr, want, MW_RB_STAGE + WORD_BYTES * i, what
+            )
+            if got != want or st.error or not st.done:
+                bad.append(f"0x{addr:08x}=0x{got:08x}/exp=0x{want:08x}/{st.fmt()}")
+        return bad
+
+    async def _t2t(self) -> None:
+        """CHK-TCM-DMA-T2T: ICCM -> DCCM and DCCM -> ICCM multi-word copies."""
+        c = self.plan
+        n = c.t2t_words
+        for ((smem, src), (dmem, dst)), data in zip(c.t2t, c.t2t_data):
+            tag = f"T2T {smem}->{dmem}"
+            await self.mem.fill(T2T_STAGE, data)
+            for i in range(n):
+                await self._write_tcm(
+                    smem, src + WORD_BYTES * i, data[i], T2T_STAGE + WORD_BYTES * i, f"{tag} source"
+                )
+            await self._clear_bus_err()
+            open_graded_window(TEST, self.logger)
+            st, ecode, berr, rose = await self._copy_n(src, dst, n, tag)
+            bad = await self._read_words(dmem, dst, data, f"{tag} readback")
+            close_graded_window(self.logger)
+            hpe = int(bool(berr & DMA_HOST_PATH_BIT))
+            line = (
+                f"contract=hw/sys/sep/doc/dma.adoc:58-59,118-121 dir={smem}->{dmem} "
+                f"src=0x{src:08x} dst=0x{dst:08x} words={n} done={st.done} error={st.error} "
+                f"error_code=0x{ecode:x} host_path_err={hpe} iccm_rose={int(rose['ICCM'])} "
+                f"dccm_rose={int(rose['DCCM'])} mismatches={len(bad)} first={bad[:2]}"
+            )
+            if not (rose["ICCM"] and rose["DCCM"]):
+                self._missing("CHK-TCM-DMA-T2T", line)
+            if not st.done or st.error or hpe or bad:
+                self._fail("CHK-TCM-DMA-T2T", line)
+            self.logger.info("CHK-TCM-DMA-T2T PASS: %s", line)
+            self.n_checks += 1
+            await self.dma.clean_state()
+            await self._clear_bus_err()
+
+    async def _seam(self) -> None:
+        """OBS-DMA-TCM-SEAM: a 16-byte copy from the SRAM over the ICCM end."""
+        c = self.plan
+        iccm_base, iccm_sz = MEMS["ICCM"]
+        seam = iccm_base + iccm_sz
+        adj = f"iccm_end=0x{seam:08x} dccm_base=0x{MEMS['DCCM'][0]:08x}"
+        if seam != MEMS["DCCM"][0]:
+            self._missing("CTRL-TCM-SEAM-ADJ", adj)
+        self.logger.info("CTRL-TCM-SEAM-ADJ: %s", adj)
+        start = seam - 8
+        mems = ("ICCM", "ICCM", "DCCM", "DCCM")
+        await self.mem.fill(SEAM_STAGE, c.seam_before)
+        for i, mem in enumerate(mems):
+            await self._write_tcm(
+                mem,
+                start + WORD_BYTES * i,
+                c.seam_before[i],
+                SEAM_STAGE + WORD_BYTES * i,
+                "seam before",
+            )
+        await self.mem.fill(SEAM_STAGE, c.seam_data)
+        await self._clear_bus_err()
+        st, ecode, berr, _ = await self._copy_n(SEAM_STAGE, start, len(mems), "seam copy")
+        await self._clear_bus_err()
+        words = []
+        for i, mem in enumerate(mems):
+            addr = start + WORD_BYTES * i
+            rst, _, got, _, _, _ = await self._read_tcm(
+                mem, addr, c.seam_data[i], MW_RB_STAGE + WORD_BYTES * i, "seam readback"
+            )
+            words.append(
+                f"0x{addr:08x}=0x{got:08x}/before=0x{c.seam_before[i]:08x}/"
+                f"src=0x{c.seam_data[i]:08x}/read_error={rst.error}"
+            )
+            await self._clear_bus_err()
+        self.logger.info(
+            "OBS-DMA-TCM-SEAM LOG %s error_code=0x%x dma_bus_err_status=0x%x words=%s",
+            st.fmt(),
+            ecode,
+            berr,
+            " ".join(words),
+        )
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+
+    def _dccm_writes(self, mark) -> int:
+        """DCCM bank writes on PR-TCM since ``mark``."""
+        return sum(
+            1
+            for b in self.tcm_tap.since(mark, "dccm")
+            for bank in (0, 1)
+            if b.lane("clken", bank, 1) == 1 and b.lane("wren", bank, 1) == 1
+        )
+
+    async def _abort_recover(self) -> None:
+        """CHK-TCM-ABORT-RECOVER: ABORT during an SRAM -> DCCM copy, then a full copy."""
+        c = self.plan
+        top = cocotb.top
+        n, dst = c.abort_words, c.abort_dst
+        nbytes = WORD_BYTES * n
+        await self.mem.fill(ABORT_STAGE, c.abort_data)
+        await self.mem.fill(RECOVER_STAGE, c.recover_data)
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+        await self.dma.program_transfer(
+            src=ABORT_STAGE, dst=dst, total=nbytes, chunk=nbytes, width_enc=WIDTH_ENC
+        )
+        st0 = await self.dma.read_status()
+        if st0.aborted:
+            self._missing("CHK-TCM-ABORT-RECOVER", f"ABORTED before GO {st0.fmt()}")
+        mark = self.tcm_tap.mark()
+        await self.dma.go()
+        first = 0
+        for _ in range(ABORT_WAIT):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            first = self._dccm_writes(mark)
+            if first:
+                break
+        await FallingEdge(top.clk_i)
+        if not first:
+            self._missing(
+                "CHK-TCM-ABORT-RECOVER",
+                f"no DCCM write within {ABORT_WAIT} clk_i cycles of GO",
+            )
+        await self.dma.abort()
+        at_abort = self._dccm_writes(mark)
+        if at_abort >= n:
+            self._missing(
+                "CHK-TCM-ABORT-RECOVER",
+                f"the copy wrote {at_abort} of {n} DCCM words before the ABORT write returned",
+            )
+        st = await self.dma.poll_status(
+            lambda s: bool(s.aborted or s.done or s.error), self.dma.done_bound(nbytes), "abort"
+        )
+        await ClockCycles(top.clk_i, 16)
+        total = self._dccm_writes(mark)
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+        st_clr = await self.dma.read_status()
+        if st_clr.aborted:
+            self._missing("CHK-TCM-ABORT-RECOVER", f"ABORTED after the W1C {st_clr.fmt()}")
+        rst, ecode, berr, _ = await self._copy_n(RECOVER_STAGE, dst, n, "recovery copy")
+        bad = await self._read_words("DCCM", dst, c.recover_data, "recovery readback")
+        hpe = int(bool(berr & DMA_HOST_PATH_BIT))
+        line = (
+            f"contract=secure_dma.adoc CONTROL.ABORT,STATUS.ABORTED;sep-programming.adoc:805-806 "
+            f"dst=0x{dst:08x} words={n} dccm_writes_first={first} dccm_writes_at_abort={at_abort} "
+            f"dccm_writes_aborted_run={total} abort_{st.fmt()} recovery_done={rst.done} "
+            f"recovery_error={rst.error} recovery_error_code=0x{ecode:x} host_path_err={hpe} "
+            f"mismatches={len(bad)} first={bad[:2]}"
+        )
+        if not st.aborted or not rst.done or rst.error or ecode or hpe or bad:
+            self._fail("CHK-TCM-ABORT-RECOVER", line)
+        self.logger.info("CHK-TCM-ABORT-RECOVER PASS: %s", line)
+        self.n_checks += 1
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+
     # ---- scenario ---------------------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -861,6 +1129,9 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         self.logger.info("CHK-TCM-CLEAN PASS: %s", line)
         self.n_checks += 1
         await self._subword()
+        await self._t2t()
+        await self._seam()
+        await self._abort_recover()
 
         self.sampler.stop()
         await self.tcm_tap.stop()

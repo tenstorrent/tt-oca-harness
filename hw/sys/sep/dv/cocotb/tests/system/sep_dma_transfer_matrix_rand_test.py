@@ -3,8 +3,12 @@
 """Secure DMA transfer matrix: address modes, widths, geometry, range edges, inline hash.
 
 RANDOMIZED (SepSeededRng from the run seed). The leaf programs the secure DMA
-over the CPU-LSU splice (no CPU) and runs four legs on SEP SRAM
-(``memory_map.adoc``, 0x1000_0000 to 0x1003_FFFF):
+over the CPU-LSU splice ``s_axi`` (no CPU); the Leg A cells alternate, from a
+drawn first cell, between ``s_axi`` and the SMN-inbound master ``m_axi``, which
+reaches the DMA registers through one inbound filter entry over the block.
+It runs four legs on SEP SRAM (``memory_map.adoc``, 0x1000_0000 to
+0x1003_FFFF), then the alias, one-byte-chunk, start, range and logged runs
+below:
 
 * Leg A: the 16 source {INCREMENT, WRAP} x destination {INCREMENT, WRAP}
   cells, each at a drawn width encoding (every encoding on every seed), a
@@ -39,11 +43,14 @@ Read over the little-endian bus, byte lane j (bits 8j+7:8j) of SHA2_DIGEST_i
 holds digest byte 4i+j with DIGEST_SWAP=1, and digest byte 4i+3-j with
 DIGEST_SWAP=0 (the SHA-2 digest is a byte string whose first byte is byte 0).
 
-Probes: register and SRAM frontdoor over ``s_axi``; ``dma_busy_probe_o``;
+Probes: register and SRAM frontdoor over ``s_axi``, register frontdoor over
+``m_axi`` (Leg A rotation and the 64-bit access); ``dma_busy_probe_o``;
 bit 9 of ``sep_internal_interrupts_probe_o`` (PIC source 10, DMA chunk done);
 the observation taps ``dma_axi_req_probe_o`` (DMA master AR/AW/W/B after the
 alias remap) and ``dma_status_probe_o`` (STATUS levels), read through
-``env/sep_dma_tap.py``. No inject.
+``env/sep_dma_tap.py``. Hooks (``docs/SEP_TB_ARCH.adoc``): the m_axi WSTRB
+drive of one half-strobe write, and ``smn_outbound_resp_hold_i`` of the
+outbound responder for one logged run.
 
 Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
   CHK-DMA-IMAGE       per Leg A cell: destination and guard words equal the
@@ -52,8 +59,58 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       and W counts equal TOTAL/width, WSTRB popcount equals the
                       width, read address step 4 inside a chunk at width 4.
   CHK-DMA-ADDR        per Leg A cell: every AR/AW address equals the model
-                      (AxADDR[31:2] and the WSTRB lanes at widths 1 and 2;
-                      AxADDR[1:0] there only in ``OBS-DMA-ADDR-LOW``).
+                      (AxADDR[31:2]; the full address at width 4) and every
+                      WSTRB equals ((1 << w) - 1) << (AWADDR mod 8) at every
+                      width (AMBA AXI protocol specification (IHI 0022),
+                      narrow transfers). AxADDR[1:0] at widths 1 and 2, and
+                      ARSIZE and AWSIZE at every width, are logged only in
+                      ``OBS-DMA-ADDR-LOW``.
+  CHK-DMA-MASTER-ROT  per Leg A cell, before GO: each transfer register read
+                      back on the programming master (``s_axi`` or ``m_axi``)
+                      equals the value written; the cell's checks then grade
+                      the transfer (``hw/sys/sep/doc/fabric.adoc:102-103``,
+                      dma_csr reached from LSU and EXT). Control
+                      (else CTRL-MISSING): both masters program a cell.
+  CHK-DMA-DIGEST-RESET before the first hash: SHA2_DIGEST_0..15 read the RDL
+                      reset value 0.
+  CHK-DMA-ALIAS-FORM  three copies (widths 1, 2, 4; drawn side, mode and
+                      chunking; a fixed side runs one chunk) and one SHA-2 run
+                      programmed in the local-alias form (``fabric.adoc:155-156``,
+                      ``memory_map.adoc:37``): image, AR/AW addresses and
+                      WSTRB, or the digest, equal the direct-form golden
+                      (``env/sep_dma_model.DmaXfer``, hashlib). Control (else
+                      CTRL-MISSING): SEP_LOCAL_BASE_ADDR reads its reset value.
+                      The fixed-source two-chunk run of OBS-DMA-FIXED-CHUNK
+                      takes a drawn direct or alias form and stays logged.
+  CHK-DMA-CHUNK1      width 1 with CHUNK_DATA_SIZE 1 (the stated minimum) on a
+                      drawn 2 to 16 bytes: image, beat counts, addresses and
+                      WSTRB equal the model, n-1 to n CHUNK_DONE rises, n-1
+                      stop reads and n GO writes; the Leg A checks follow.
+  CHK-DMA-RW1C        per Leg D continuation stop: a STATUS write of 0 leaves
+                      CHUNK_DONE 1 and a write of CHUNK_DONE clears it
+                      (``dma.adoc:131-132``).
+  CHK-DMA-RO-HOLD     after each Leg D continuation run: each SHA2_DIGEST word
+                      v reads v after a write of ~v (``sw = r``); the write
+                      response is logged.
+  CHK-DMA-NOGO        CONTROL with INITIAL_TRANSFER=1 and GO=0: no AR or AW,
+                      no BUSY rise and BUSY=0, DONE unchanged over 2000 clocks
+                      (``dma.adoc:79-80``). Control CTRL-DMA-NOGO-GO: the GO=1
+                      write after it raises BUSY within the same 2000 clocks
+                      and moves the copy.
+  CHK-DMA-RANGE-COPY  an SRAM copy whose destination crosses LIMIT part-way
+                      completes: DONE=1, ERROR=0, ERROR_CODE=0, the model AR
+                      and AW, the model image (``dma.adoc:105``). Control
+                      CTRL-DMA-RANGE-COPY: a zero fill of the same
+                      destination under the same range stops at LIMIT with
+                      ERROR_CODE.DST_ADDR_ERROR (``dma.adoc:98-104``).
+
+Logged only (no stated value): OBS-DMA-CHUNK1-W4 (width 4 with
+CHUNK_DATA_SIZE 1), OBS-DMA-BASELIM-COPY (a copy with BASE = LIMIT),
+OBS-DMA-SHORT-LAST-CHUNK (TOTAL_DATA_SIZE not a multiple of CHUNK_DATA_SIZE),
+OBS-DMA-CSR-64 (64-bit m_axi read, write and half-strobe write of a DMA
+register pair) and OBS-DMA-BEAT-HOLD (a DMA read whose response the outbound
+responder holds for 20000 clocks). A logged run that has not ended after its
+GO cap or poll bound is aborted and must reach BUSY=0.
   CHK-DMA-GEOM        per Leg B transfer: DONE=1, BUSY=0, GO=0, ERROR=0,
                       destination equals source, guards intact. Control: a
                       CONTROL read with GO=1 while ``dma_busy_probe_o`` is 1.
@@ -192,9 +249,9 @@ from dataclasses import dataclass, field, replace
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
-from env.sep_bit_watch import SepBitWatch
+from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_dma_model import (
     DmaXfer,
     bytes_to_words,
@@ -209,12 +266,15 @@ from env.sep_fcov_gate import (
     set_dma_matrix_pass,
 )
 from env.sep_field_compare import field_compare
+from env.sep_filter_model import FilterEntry
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import SEP_CPU_CTRL, sym
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_dma_ops import (
     CFG_REGWEN,
     CONTROL,
+    DIGEST_BASE,
     DIGEST_WORDS,
     DST_ADDR_HI,
     ERROR_CODE,
@@ -225,6 +285,7 @@ from seq_lib.sep_dma_ops import (
     OP_SHA256,
     OP_SHA384,
     OP_SHA512,
+    OP_ZERO,
     RANGE_BASE,
     RANGE_LIMIT,
     RANGE_REGWEN,
@@ -243,6 +304,7 @@ from seq_lib.sep_dma_ops import (
     asid_word,
     control_word,
 )
+from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 
 TEST = "sep_dma_transfer_matrix_rand_test"
 
@@ -284,6 +346,48 @@ RANGE_LIMIT_MASK = SECURE_DMA.field_mask("ENABLED_MEMORY_RANGE_LIMIT", "limit")
 RANGE_VALID_MASK = SECURE_DMA.field_mask("RANGE_VALID", "range_valid")
 RANGE_REGWEN_MASK = SECURE_DMA.field_mask("RANGE_REGWEN", "regwen")
 RANGE_REGWEN_UNLOCKED = 0x6
+M32 = 0xFFFF_FFFF
+
+# Draws added after the first stream come from a second stream on the same
+# seed, so every value of the first stream keeps its seed mapping.
+SALT = 0x5A17_C0DE
+# DMA register block, admitted to m_axi by one inbound filter entry.
+DMA_CSR_BASE = sym("SECURE_DMA_REG_MAP_BASE_ADDR")
+DMA_CSR_LAST = DMA_CSR_BASE + sym("SECURE_DMA_REG_MAP_SIZE") - 1
+IN_ENTRY = 0
+# Local alias: the window at SEP_LOCAL_BASE_ADDR reaches 0x1000_0000, the SEP
+# SRAM base (hw/sys/sep/doc/fabric.adoc:155-156; "0xD000_0000 aliases
+# 0x1000_0000", hw/sys/sep/doc/memory_map.adoc:37).
+LOCAL_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR")
+LOCAL_BASE_REG = SEP_CPU_CTRL.addr("SEP_LOCAL_BASE_ADDR")
+# SHA2_DIGEST_0[16] reset value (secure_dma.rdl SHA2_DIGEST_0, sw = r).
+DIGEST_RESET = sym("SECURE_DMA_SHA2_DIGEST_0_REG_DEFAULT")
+DST_ADDR_ERROR = SECURE_DMA.field_mask("ERROR_CODE", "dst_addr_error")
+# 8-byte-aligned RW register pairs for the 64-bit m_axi access.
+CSR64_PAIRS = (("SRC_ADDR_LO", "SRC_ADDR_HI"), ("DST_ADDR_LO", "DST_ADDR_HI"))
+for _lo, _hi in CSR64_PAIRS:
+    if SECURE_DMA.addr(_lo) % 8 or SECURE_DMA.addr(_hi) != SECURE_DMA.addr(_lo) + 4:
+        raise ValueError(f"{_lo}/{_hi} is not an 8-byte-aligned register pair")
+# Clocks the leaf waits for m_axi WVALID while it drives a sparse strobe.
+STRB_FOLLOW_BOUND = 2_000
+# STATUS reads after ABORT that a logged run may take to reach BUSY=0.
+ABORT_POLL_BOUND = 200
+# Outbound source window inside the SMU aperture at its reset value, away from
+# the console and verdict words of tb/sep_outbound_mbx.sv; the pair of outbound
+# entries admits it at either AxPROT[1].
+SMU_BASE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
+OUT_WIN_LO = SMU_BASE + 0x0001_0000
+OUT_WIN_HI = OUT_WIN_LO + 0xFFFF
+OUT_PAIR = (2, 3)
+DMA_BUS_ERR_STATUS = SEP_CPU_CTRL.addr("DMA_BUS_ERR_STATUS")
+# Clocks smn_outbound_resp_hold_i holds the responses of the outbound responder.
+HOLD_CLKS = 20_000
+
+
+def alias_of(addr: int) -> int:
+    """Local-alias form of a SEP-local address."""
+    return LOCAL_ALIAS + (addr - SRAM_BASE)
+
 
 # The order in which step 4 writes the transfer registers is drawn from these.
 XFER_ORDER_REGS = (
@@ -526,6 +630,7 @@ class Plan:
         self._leg_d(rng)
         self._leg_d_cont(rng)
         self._logged(rng)
+        self._salted(SepSeededRng(seed ^ SALT))
 
     def _logged(self, rng: SepSeededRng) -> None:
         """Logged runs, drawn after every graded leg so the graded draws keep their values."""
@@ -541,6 +646,99 @@ class Plan:
             f"DRAW logged fixed_src=0x{src:08x} fixed_dst=0x{dst:08x} fixed_chunk={chunk} "
             f"busy_ctrl_go={self.busy_go} busy_src=0x{self.busy_copy.x.src_base:08x} "
             f"busy_dst=0x{self.busy_copy.x.dst_base:08x}"
+        )
+
+    def _salted(self, rng: SepSeededRng) -> None:
+        """Draws of the master rotation, alias, chunk, range and logged runs."""
+        self.rot_start = rng.randrange(2)
+        self.alias_cells: list[tuple[CellDraw, str]] = []
+        modes = {"inc": (1, 0), "wrap": (1, 1), "fixed": (0, 0)}
+        for enc in (0, 1, 2):
+            side = rng.choice(("src", "dst", "both"))
+            si, sw = modes[rng.choice(tuple(modes))]
+            di, dw = modes[rng.choice(tuple(modes))]
+            # A fixed side runs one chunk: the fixed multi-chunk source address is open.
+            n = 1 if not si or not di else rng.randrange(2, 9)
+            chunk = 4 * rng.randrange(1, 17)
+            cell = (si, sw, di, dw)
+            copy = self._copy(
+                rng,
+                dict(
+                    total=n * chunk,
+                    chunk=chunk,
+                    width_enc=enc,
+                    src_inc=bool(si),
+                    src_wrap=bool(sw),
+                    dst_inc=bool(di),
+                    dst_wrap=bool(dw),
+                ),
+            )
+            self.alias_cells.append((CellDraw(cell, enc, n, chunk, copy), side))
+            self.lines.append(
+                f"DRAW alias cell={cell_name(cell)} enc={enc} n={n} chunk={chunk} side={side} "
+                f"src=0x{copy.x.src_base:08x} dst=0x{copy.x.dst_base:08x}"
+            )
+        alg = rng.choice((256, 384, 512))
+        length = rng.choice(CONT_LENGTHS)
+        m = self._drawn_msg(rng, alg, "alias", length)
+        m.src, m.dst = place(rng, [length, length])
+        self.alias_dst = rng.randrange(2)
+        self.alias_msg = m
+        self.fixed_form = rng.choice(("direct", "alias"))
+        self.lines.append(
+            f"DRAW alias_sha alg={alg} len={length} split={m.split} swap={m.swaps[0]} "
+            f"dst_alias={self.alias_dst} src=0x{m.src:08x} dst=0x{m.dst:08x} "
+            f"fixed_chunk_form={self.fixed_form}"
+        )
+        n1 = rng.randrange(2, 17)
+        sw1, dw1 = rng.randrange(2), rng.randrange(2)
+        c1 = self._copy(
+            rng,
+            dict(total=n1, chunk=1, width_enc=0, src_wrap=bool(sw1), dst_wrap=bool(dw1)),
+        )
+        self.chunk1 = CellDraw((1, sw1, 1, dw1), 0, n1, 1, c1)
+        self.lines.append(
+            f"DRAW chunk1 cell={cell_name(self.chunk1.cell)} bytes={n1} "
+            f"src=0x{c1.x.src_base:08x} dst=0x{c1.x.dst_base:08x}"
+        )
+        src, dst = place(rng, [8, 8])
+        s = rng.randrange(256)
+        self.chunk1_w4 = (src, dst, s, draw_source_words(rng, 2, s))
+        self.baselim = self._copy(rng, dict(total=16, chunk=16, width_enc=2), order=False)
+        self.baselim_word = self.baselim.src_addr + 4 * rng.randrange(4)
+        k = rng.randrange(2, 17)
+        total = rng.randrange(1, 4) * 4 * k + 4 * rng.randrange(1, k)
+        self.short = self._copy(rng, dict(total=total, chunk=4 * k, width_enc=2), order=False)
+        nogo_total = 4 * rng.randrange(16, 1025)
+        self.nogo = self._copy(
+            rng, dict(total=nogo_total, chunk=nogo_total, width_enc=2), order=False
+        )
+        size = 4 * rng.randrange(8, 65)
+        s = rng.randrange(256)
+        words = draw_source_words(rng, size // 4, s)
+        (blk,) = place(rng, [2 * size + 8])
+        x = DmaXfer(blk, blk + size + 4, total=size, chunk=size, width_enc=2)
+        self.range_copy = CopyXfer(
+            x, s, words, blk, blk + size, size // 4 + 2, [blk + size, blk + 2 * size + 4]
+        )
+        # BASE at the source, LIMIT inside the destination: the copy leaves the range.
+        self.range_limit = x.dst_base + 4 * rng.randrange(1, size // 4) - 1
+        self.csr64 = (
+            rng.choice(CSR64_PAIRS),
+            rng.getrandbits(64),
+            rng.getrandbits(64),
+            rng.choice((0x0F, 0xF0)),
+        )
+        hold_src = OUT_WIN_LO + 8 * rng.randrange(0x100)
+        (hold_dst,) = place(rng, [8])
+        self.hold = (hold_src, hold_dst, rng.randrange(256))
+        self.lines.append(
+            f"DRAW salted rot_start={'ext' if self.rot_start else 'lsu'} "
+            f"chunk1_w4_src=0x{src:08x} baselim_word=0x{self.baselim_word:08x} "
+            f"short_total={total} short_chunk={4 * k} nogo_total={nogo_total} "
+            f"range_copy_src=0x{blk:08x} range_copy_bytes={size} "
+            f"range_limit=0x{self.range_limit:08x} csr64_pair={self.csr64[0][0]} "
+            f"csr64_strb=0x{self.csr64[3]:02x} hold_src=0x{hold_src:08x} hold_dst=0x{hold_dst:08x}"
         )
 
     # Leg A ---------------------------------------------------------------
@@ -733,6 +931,38 @@ class _LoggedDmaOps(SepDmaOps):
         return sum(1 for a, b, addr, _ in self.writes if addr == STATUS and b > clk0 and a < clk1)
 
 
+class _RotDmaOps(_LoggedDmaOps):
+    """_LoggedDmaOps whose register accesses run on the master named by ``master``.
+
+    ``lsu`` is the CPU-LSU splice (``s_axi``) and ``ext`` the SMN-inbound
+    master (``m_axi``). The access is the 32-bit ``SepAxiAccessSeq`` of
+    ``SepDmaOps.access``; ``wr``, ``rd`` and the write log are inherited.
+    """
+
+    MASTERS = ("lsu", "ext")
+
+    def __init__(self, test, tap: SepDmaTap) -> None:
+        super().__init__(test, tap)
+        self.master = "lsu"
+
+    async def access(
+        self, op: SepAxiOp, addr: int, data: int = 0, *, ungraded: bool = False
+    ) -> SepAxiAccessSeq:
+        if self.master == "lsu":
+            return await super().access(op, addr, data, ungraded=ungraded)
+        seq = SepAxiAccessSeq(
+            f"dma_ext_{op.value}_0x{addr:08x}",
+            op=op,
+            addr=addr,
+            wdata=data & M32,
+            size=2,
+            allow_unverified_write_resp=ungraded and op is SepAxiOp.WRITE,
+            allow_ungraded_read_resp=ungraded and op is SepAxiOp.READ,
+        )
+        await self.test.start_ext_seq(seq)
+        return seq
+
+
 @dataclass
 class XferRecord:
     """What one Leg A or Leg B transfer showed in its window."""
@@ -766,6 +996,14 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         "CHK-DMA-HASH-VALID",
         "CHK-DMA-HASH-CHAIN",
         "CHK-DMA-CONT-CFG",
+        "CHK-DMA-DIGEST-RESET",
+        "CHK-DMA-MASTER-ROT",
+        "CHK-DMA-RW1C",
+        "CHK-DMA-RO-HOLD",
+        "CHK-DMA-ALIAS-FORM",
+        "CHK-DMA-CHUNK1",
+        "CHK-DMA-NOGO",
+        "CHK-DMA-RANGE-COPY",
     )
 
     # ---- log helpers ------------------------------------------------------
@@ -824,7 +1062,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         dut = cocotb.top
         self.tap = SepDmaTap(dut).start()
         self.busy = SepBitWatch(dut.dma_busy_probe_o, name="dma_busy_probe_o").start()
-        self.ops = _LoggedDmaOps(self, self.tap)
+        self.ops = _RotDmaOps(self, self.tap)
         self.mem = SepMemWords(self)
         try:
             await RisingEdge(dut.clk_i)
@@ -834,12 +1072,21 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 dut.sep_internal_interrupts_probe_o, {"chunk": 9}, name="pic_src10"
             ).start()
             await self._leg_a(plan)
+            await self._alias_runs(plan)
+            await self._chunk1(plan)
             await self._obs_fixed_chunk(plan)
             await self._leg_b(plan)
             await self._obs_ctrl_busy(plan)
             await self._leg_c(plan)
             await self._leg_d(plan)
             await self._leg_d_cont(plan)
+            await self._nogo(plan)
+            await self._range_copy(plan)
+            await self._obs_chunk1_w4(plan)
+            await self._obs_baselim_copy(plan)
+            await self._obs_short_last_chunk(plan)
+            await self._obs_csr64(plan)
+            await self._obs_beat_hold(plan)
             self._close()
             await self._release_matrix()
         finally:
@@ -851,14 +1098,27 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         self.result_pass(TEST, self.seed, self.k)
 
     async def _setup(self) -> None:
-        """Step 2: wide range, ADDR_SPACE_ID, ADDR_HI, STATUS clear, chunk-done interrupt."""
+        """Step 2: digest reset read, wide range, ADDR_SPACE_ID, ADDR_HI, STATUS clear,
+        chunk-done interrupt, inbound entry over the DMA registers."""
         ops = self.ops
+        await self._check_digest_reset()
         await ops.program_range(SRAM_BASE, SRAM_LIMIT, valid=True)
         await ops.set_asid(ASID, ASID)
         await ops.wr(SRC_ADDR_HI, 0)
         await ops.wr(DST_ADDR_HI, 0)
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
         await ops.wr(INTR_ENABLE, INTR_CHUNK_DONE)
+        await SepFilterBank(self, "in").program(
+            IN_ENTRY,
+            FilterEntry(
+                start=DMA_CSR_BASE,
+                end=DMA_CSR_LAST,
+                enabled=True,
+                read_allowed=True,
+                write_allowed=True,
+                allow_ns=True,
+            ),
+        )
         self.logger.info(
             "SETUP range=0x%08x..0x%08x valid=1 addr_space_id=0x%02x intr_enable=0x%x",
             SRAM_BASE,
@@ -867,16 +1127,30 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             INTR_CHUNK_DONE,
         )
 
+    async def _check_digest_reset(self) -> None:
+        """CHK-DMA-DIGEST-RESET: SHA2_DIGEST_0..15 read the reset value before any hash."""
+        words = await self.ops.read_digest(DIGEST_WORDS)
+        bad = [i for i, w in enumerate(words) if w != DIGEST_RESET]
+        self._pass(
+            "CHK-DMA-DIGEST-RESET",
+            not bad,
+            f"words={len(words)} expect=0x{DIGEST_RESET:08x} bad_words={bad or '-'} "
+            f"values={','.join(f'0x{w:08x}' for w in words)}",
+        )
+
     # ---- shared transfer pieces -------------------------------------------
     async def _fill_copy(self, c: CopyXfer) -> None:
         await self.mem.fill(c.src_addr, c.src_words)
         await self.mem.fill(c.dst_region, [sentinel_word(c.sentinel)] * c.dst_region_words)
 
-    async def _program(self, c: CopyXfer) -> None:
+    async def _program(
+        self, c: CopyXfer, *, src: int | None = None, dst: int | None = None
+    ) -> dict[str, int]:
+        """Program ``c``; ``src`` and ``dst`` replace the model bases (alias form)."""
         x = c.x
-        await self.ops.program_transfer(
-            src=x.src_base,
-            dst=x.dst_base,
+        return await self.ops.program_transfer(
+            src=x.src_base if src is None else src,
+            dst=x.dst_base if dst is None else dst,
             total=x.total,
             chunk=x.chunk,
             width_enc=x.width_enc,
@@ -1015,12 +1289,66 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
 
     # ---- Leg A ------------------------------------------------------------
     async def _leg_a(self, plan: Plan) -> None:
+        reach = dict.fromkeys(_RotDmaOps.MASTERS, 0)
+        enc2_lanes: set[int] = set()
+        for i, cd in enumerate(plan.cells):
+            master = _RotDmaOps.MASTERS[(plan.rot_start + i) % len(_RotDmaOps.MASTERS)]
+            reach[master] += 1
+            meas = await self._cell_measure(cd, master=master, rot=True)
+            if cd.enc == 2:
+                enc2_lanes |= {b.strb for b in meas["rec"].ev.w if b.strb is not None}
+            await self._cell_grade(cd, meas)
+        self.logger.info(
+            "INFO-DMA-LANE-REACH seed=%d enc2_lanes=%s",
+            self.seed,
+            ",".join(f"0x{v:02x}" for v in sorted(enc2_lanes)) or "-",
+        )
+        line = " ".join(f"{k}={v}" for k, v in reach.items())
+        self.logger.info("INFO-DMA-MASTER-REACH seed=%d %s", self.seed, line)
+        if not all(reach.values()):
+            self._ctrl_missing("CHK-DMA-MASTER-ROT", f"a master programmed no transfer: {line}")
+
+    async def _master_readback(self, written: dict[str, int], master: str, tag: str) -> None:
+        """CHK-DMA-MASTER-ROT: the programming master reads back each transfer register."""
+        bad = []
+        for name, value in written.items():
+            mask = SECURE_DMA.mask32(name)
+            got = await self.ops.rd(SECURE_DMA.addr(name)) & mask
+            if got != value & mask:
+                bad.append(f"{name}:0x{got:08x}/0x{value & mask:08x}")
+        self._pass(
+            "CHK-DMA-MASTER-ROT",
+            not bad,
+            f"master={master} regs={len(written)} readback_bad={','.join(bad) or '-'} "
+            f"contract=hw/sys/sep/doc/fabric.adoc:102-103 {tag}",
+        )
+
+    async def _cell_measure(
+        self,
+        cd: CellDraw,
+        *,
+        master: str = "lsu",
+        rot: bool = False,
+        src: int | None = None,
+        dst: int | None = None,
+        tag_extra: str = "",
+    ) -> dict:
+        """Run one Leg-A-shaped copy and collect its readbacks; the window stays open.
+
+        ``master`` programs and polls the DMA registers; with ``rot`` the
+        transfer registers are read back on it before GO. ``src`` and ``dst``
+        replace the programmed bases (alias form); the expected values stay
+        those of the direct-form model.
+        """
         ops = self.ops
-        for cd in plan.cells:
-            c, x = cd.copy, cd.copy.x
-            tag = f"cell={cell_name(cd.cell)} enc={cd.enc}"
-            await self._fill_copy(c)
-            await self._program(c)
+        c, x = cd.copy, cd.copy.x
+        tag = f"cell={cell_name(cd.cell)} enc={cd.enc}{tag_extra}"
+        await self._fill_copy(c)
+        ops.master = master
+        try:
+            written = await self._program(c, src=src, dst=dst)
+            if rot:
+                await self._master_readback(written, master, tag)
             m_tap, m_irq = self.tap.mark(), self.irq.mark()
             self._open()
             await ops.go(opcode=OP_COPY, initial=1)
@@ -1031,46 +1359,82 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             if res.status.done:
                 await self._wait_idle_done(tag)
             rec = self._record(m_tap, m_irq, res.go_writes, res.statuses)
-            self.logger.info(
-                "LEGA %s statuses=%s",
-                tag,
-                rle([f"b{s.busy}d{s.done}c{s.chunk_done}e{s.error}" for s in res.statuses]),
-            )
             st, err, _ = await self._read_regs()
-            got_dst = await self.mem.read(c.dst_region, c.dst_region_words)
-            got_src = await self.mem.read(c.src_addr, len(c.src_words))
-            exp = c.expected_dst()
-            mism = sum(1 for g, e in zip(got_dst[1:-1], exp[1:-1]) if g != e)
-            sw = sentinel_word(c.sentinel)
-            guard_ok = int(got_dst[0] == sw and got_dst[-1] == sw)
-            src_ok = int(got_src == c.src_words)
-            fst = field_compare(st.raw, ST_DONE, ST_DONE | ST_BUSY | ST_ERROR)
-            fer = field_compare(err, 0, ERROR_CODE_MASK)
-            if mism:
-                first = next(i for i, (g, e) in enumerate(zip(got_dst, exp)) if g != e and 0 < i)
-                self.logger.error(
-                    "LEGA %s first mismatch word %d @0x%08x got=0x%08x exp=0x%08x",
-                    tag,
-                    first,
-                    c.dst_region + 4 * first,
-                    got_dst[first],
-                    exp[first],
-                )
-            ok = mism == 0 and guard_ok and src_ok and fst.ok and fer.ok
-            self._pass(
-                "CHK-DMA-IMAGE",
-                ok,
-                f"cell={cell_name(cd.cell)} enc={cd.enc} w={x.w} chunk={cd.chunk} n={cd.n} "
-                f"bytes={x.total} mem_mismatch={mism} guard_ok={guard_ok} error={st.error} "
-                f"go_writes={res.go_writes} src_ok={src_ok} {ff('status', fst)} "
-                f"{ff('error_code', fer)}",
+        finally:
+            ops.master = "lsu"
+        self.logger.info(
+            "LEGA %s master=%s statuses=%s",
+            tag,
+            master,
+            rle([f"b{s.busy}d{s.done}c{s.chunk_done}e{s.error}" for s in res.statuses]),
+        )
+        got_dst = await self.mem.read(c.dst_region, c.dst_region_words)
+        got_src = await self.mem.read(c.src_addr, len(c.src_words))
+        exp = c.expected_dst()
+        sw = sentinel_word(c.sentinel)
+        return dict(
+            tag=tag,
+            res=res,
+            rec=rec,
+            st=st,
+            got_dst=got_dst,
+            exp=exp,
+            mism=sum(1 for g, e in zip(got_dst[1:-1], exp[1:-1]) if g != e),
+            guard_ok=int(got_dst[0] == sw and got_dst[-1] == sw),
+            src_ok=int(got_src == c.src_words),
+            fst=field_compare(st.raw, ST_DONE, ST_DONE | ST_BUSY | ST_ERROR),
+            fer=field_compare(err, 0, ERROR_CODE_MASK),
+        )
+
+    async def _cell_grade(self, cd: CellDraw, meas: dict) -> None:
+        """The Leg A checks of one measured copy; closes the window and clears STATUS."""
+        c, x = cd.copy, cd.copy.x
+        tag, res, rec, st = meas["tag"], meas["res"], meas["rec"], meas["st"]
+        mism, fst, fer = meas["mism"], meas["fst"], meas["fer"]
+        if mism:
+            got_dst, exp = meas["got_dst"], meas["exp"]
+            first = next(i for i, (g, e) in enumerate(zip(got_dst, exp)) if g != e and 0 < i)
+            self.logger.error(
+                "LEGA %s first mismatch word %d @0x%08x got=0x%08x exp=0x%08x",
+                tag,
+                first,
+                c.dst_region + 4 * first,
+                got_dst[first],
+                exp[first],
             )
-            self._check_beats(cd, rec)
-            self._check_chunkrise(rec, cd.n, tag)
-            self._check_done_order(rec, x.total, tag)
-            self._check_go_chunks(rec, x, tag)
-            self._close()
-            await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
+        ok = mism == 0 and meas["guard_ok"] and meas["src_ok"] and fst.ok and fer.ok
+        self._pass(
+            "CHK-DMA-IMAGE",
+            ok,
+            f"cell={cell_name(cd.cell)} enc={cd.enc} w={x.w} chunk={cd.chunk} n={cd.n} "
+            f"bytes={x.total} mem_mismatch={mism} guard_ok={meas['guard_ok']} error={st.error} "
+            f"go_writes={res.go_writes} src_ok={meas['src_ok']} {ff('status', fst)} "
+            f"{ff('error_code', fer)}",
+        )
+        self._check_beats(cd, rec)
+        self._check_chunkrise(rec, cd.n, tag)
+        self._check_done_order(rec, x.total, tag)
+        self._check_go_chunks(rec, x, tag)
+        self._close()
+        await self.ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
+
+    @staticmethod
+    def _beat_mm(x: DmaXfer, ev: DmaTapEvents) -> tuple[int, int, int]:
+        """(AR/AW address mismatches, WSTRB mismatches, address mask) against ``x``.
+
+        WSTRB of a w-byte write at A is ``((1 << w) - 1) << (A mod 8)`` on the
+        64-bit master (AMBA AXI protocol specification (IHI 0022), narrow
+        transfers; ``env/sep_dma_model.wstrb_lanes``).
+        """
+        n = x.n_txn
+        amask = 0xFFFF_FFFF if x.width_enc == 2 else 0xFFFF_FFFC
+        addr_mm = abs(len(ev.ar) - n) + abs(len(ev.aw) - n)
+        for got, exp in ((ev.ar, x.ar_addrs()), (ev.aw, x.aw_addrs())):
+            addr_mm += sum(
+                1 for b, e in zip(got, exp) if b.addr is None or (b.addr & amask) != (e & amask)
+            )
+        strb_mm = abs(len(ev.w) - n) + sum(1 for b, e in zip(ev.w, x.wstrbs()) if b.strb != e)
+        return addr_mm, strb_mm, amask
 
     def _check_beats(self, cd: CellDraw, rec: XferRecord) -> None:
         x, ev = cd.copy.x, rec.ev
@@ -1103,32 +1467,30 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             f"axlen_nonzero={axlen_nz} wstrb_bad={wstrb_bad} rstep_bad={rstep_bad} "
             f"w_beats={len(wb)} expect_beats={n_txn}",
         )
-        exp_ar, exp_aw, exp_strb = x.ar_addrs(), x.aw_addrs(), x.wstrbs()
-        amask = 0xFFFF_FFFF if cd.enc == 2 else 0xFFFF_FFFC
-        addr_mm = abs(len(ar) - n_txn) + abs(len(aw) - n_txn)
-        for got, exp in ((ar, exp_ar), (aw, exp_aw)):
-            for b, e in zip(got, exp):
-                if b.addr is None or (b.addr & amask) != (e & amask):
-                    addr_mm += 1
-        strb_mm = 0
-        low_eq = 0
+        exp_ar, exp_aw = x.ar_addrs(), x.aw_addrs()
+        addr_mm, strb_mm, amask = self._beat_mm(x, ev)
+        low_eq = "-"
         if cd.enc != 2:
-            strb_mm = abs(len(wb) - n_txn)
-            for b, e in zip(wb, exp_strb):
-                if b.strb != e:
-                    strb_mm += 1
-            for got, exp in ((ar, exp_ar), (aw, exp_aw)):
-                low_eq += sum(
-                    1 for b, e in zip(got, exp) if b.addr is not None and b.addr & 3 == e & 3
+            low_eq = str(
+                sum(
+                    1
+                    for got, exp in ((ar, exp_ar), (aw, exp_aw))
+                    for b, e in zip(got, exp)
+                    if b.addr is not None and b.addr & 3 == e & 3
                 )
-            self.logger.info(
-                "OBS-DMA-ADDR-LOW LOG seed=%d enc=%d beats=%d low_eq_model=%d cell=%s",
-                self.seed,
-                cd.enc,
-                len(ar) + len(aw),
-                low_eq,
-                name,
             )
+        self.logger.info(
+            "OBS-DMA-ADDR-LOW LOG seed=%d enc=%d width_bytes=%d beats=%d low_eq_model=%s "
+            "arsize=%s awsize=%s cell=%s",
+            self.seed,
+            cd.enc,
+            x.w,
+            len(ar) + len(aw),
+            low_eq,
+            rle([str(b.size) for b in ar]) or "-",
+            rle([str(b.size) for b in aw]) or "-",
+            name,
+        )
         if addr_mm or strb_mm:
             for i, (b, e) in enumerate(zip(ar, exp_ar)):
                 if b.addr is None or (b.addr & amask) != (e & amask):
@@ -1138,11 +1500,17 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 if b.addr is None or (b.addr & amask) != (e & amask):
                     self.logger.error("AW %d got=%s exp=0x%08x", i, b.addr, e)
                     break
+            for i, (b, e) in enumerate(zip(wb, x.wstrbs())):
+                if b.strb != e:
+                    self.logger.error("W %d strb=%s exp=0x%02x", i, b.strb, e)
+                    break
+        lanes = sorted({b.strb for b in wb if b.strb is not None})
         self._pass(
             "CHK-DMA-ADDR",
             n_txn > 0 and addr_mm == 0 and strb_mm == 0,
             f"cell={name} enc={cd.enc} beats={len(ar) + len(aw)} addr_mismatch={addr_mm} "
-            f"strb_lane_mismatch={strb_mm} addr_mask=0x{amask:08x}",
+            f"strb_lane_mismatch={strb_mm} addr_mask=0x{amask:08x} "
+            f"strb_lanes={','.join(f'0x{v:02x}' for v in lanes) or '-'}",
         )
 
     # ---- Leg B ------------------------------------------------------------
@@ -1347,13 +1715,22 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
 
     # ---- logged runs --------------------------------------------------------
     async def _obs_fixed_chunk(self, plan: Plan) -> None:
-        """Source address of the second chunk of a two-chunk copy from a fixed source."""
+        """Source address of the second chunk of a two-chunk copy from a fixed source.
+
+        The source is programmed in the drawn form (direct or local alias); the
+        tap addresses are after the alias remap.
+        """
         ops = self.ops
         src, dst, chunk, s, words = plan.fixed
         await self.mem.fill(src, words)
         await self.mem.fill(dst, [sentinel_word(s)] * (2 * chunk // 4))
         await ops.program_transfer(
-            src=src, dst=dst, total=2 * chunk, chunk=chunk, width_enc=2, src_inc=False
+            src=alias_of(src) if plan.fixed_form == "alias" else src,
+            dst=dst,
+            total=2 * chunk,
+            chunk=chunk,
+            width_enc=2,
+            src_inc=False,
         )
         m_tap = self.tap.mark()
         await ops.go(opcode=OP_COPY, initial=1)
@@ -1371,9 +1748,10 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         second = [b.addr for b in ev.ar if len(gos) > 1 and b.clk >= gos[1]]
         err = await ops.rd(ERROR_CODE)
         self.logger.info(
-            "OBS-DMA-FIXED-CHUNK seed=%d chunk=%d go_writes=%d done=%d error=%d error_code=0x%x "
-            "src=0x%08x chunk2_ar=%s chunk2_first_off=%s",
+            "OBS-DMA-FIXED-CHUNK seed=%d form=%s chunk=%d go_writes=%d done=%d error=%d "
+            "error_code=0x%x src=0x%08x chunk2_ar=%s chunk2_first_off=%s",
             self.seed,
+            plan.fixed_form,
             chunk,
             res.go_writes,
             res.status.done,
@@ -1581,7 +1959,16 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
 
     # ---- Leg D ------------------------------------------------------------
     async def _hash_run(
-        self, m: HashMsg, split: int, swap: int, run_idx: int, ctrl_state: dict, graded: bool
+        self,
+        m: HashMsg,
+        split: int,
+        swap: int,
+        run_idx: int,
+        ctrl_state: dict,
+        graded: bool,
+        *,
+        src: int | None = None,
+        dst: int | None = None,
     ) -> tuple[list[int], dict]:
         """Steps 17 to 22 for one form and swap value; returns the digest words read.
 
@@ -1596,7 +1983,12 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         tag = f"alg={m.alg} kind={m.kind} len={length} split={split} swap={swap}"
         await self.mem.fill(m.dst, [sentinel_word(m.sentinel)] * (length // 4))
         await ops.program_transfer(
-            src=m.src, dst=m.dst, total=length, chunk=chunk, width_enc=2, order=XFER_ORDER_REGS
+            src=m.src if src is None else src,
+            dst=m.dst if dst is None else dst,
+            total=length,
+            chunk=chunk,
+            width_enc=2,
+            order=XFER_ORDER_REGS,
         )
         if run_idx >= 1:
             pre = await ops.read_status()
@@ -1866,7 +2258,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                         f"{tag} CHUNK_DONE=1 DONE=0 BUSY=0 after {go_writes} GO writes "
                         f"(chunks={k}); {st.fmt()}",
                     )
-                await ops.wr(STATUS, ST_CHUNK_DONE)
+                await self._chunk_done_rw1c(tag, go_writes)
                 mark = self.busy.mark()
                 value = self._cont_control(c, go_writes - 1)
                 await ops.wr(CONTROL, value)
@@ -1941,8 +2333,596 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             f"digest_valid_after={valid_after} copy_mismatch={copy_mm} go_writes={go_writes} "
             f"stale_eq_golden=0 {rb_line} {ff('error_code', fer)}",
         )
+        await self._digest_ro_hold(tag)
         self._close()
+
+    async def _chunk_done_rw1c(self, tag: str, stop: int) -> None:
+        """CHK-DMA-RW1C at a continuation stop (CHUNK_DONE=1, BUSY=0, DONE=0).
+
+        STATUS.CHUNK_DONE is RW1C (``secure_dma.adoc`` STATUS; "Status completion
+        and error bits are write-one-to-clear", ``hw/sys/sep/doc/dma.adoc:131-132``):
+        a write of 0 leaves it 1 and a write of 1 clears it. No GO is written
+        between the writes, so no chunk start clears it.
+        """
+        ops = self.ops
+        await ops.wr(STATUS, 0)
+        st0 = await ops.read_status()
+        await ops.wr(STATUS, ST_CHUNK_DONE)
+        st1 = await ops.read_status()
+        line = (
+            f"bit=CHUNK_DONE stop={stop} after_w0={st0.chunk_done} expect_after_w0=1 "
+            f"after_w1={st1.chunk_done} expect_after_w1=0 busy={st0.busy}/{st1.busy} "
+            f"done={st0.done}/{st1.done} {tag}"
+        )
+        if st0.busy or st1.busy or st0.done or st1.done:
+            self._ctrl_missing("CHK-DMA-RW1C", f"stop left: {line}")
+        self._pass("CHK-DMA-RW1C", st0.chunk_done == 1 and st1.chunk_done == 0, line)
+
+    async def _digest_ro_hold(self, tag: str) -> None:
+        """CHK-DMA-RO-HOLD: each SHA2_DIGEST word keeps value v after a write of ~v.
+
+        SHA2_DIGEST_0[16] is ``sw = r`` (``secure_dma.adoc`` SHA2_DIGEST_0). No
+        text states the response of a write to it, so the response is logged.
+        """
+        ops = self.ops
+        before = await ops.read_digest(DIGEST_WORDS)
+        resps = []
+        for i, v in enumerate(before):
+            seq = await ops.access(SepAxiOp.WRITE, DIGEST_BASE + 4 * i, ~v & M32, ungraded=True)
+            resps.append(str(seq.resp_code))
+        after = await ops.read_digest(DIGEST_WORDS)
+        changed = [
+            f"{i}:0x{a:08x}/0x{b:08x}" for i, (a, b) in enumerate(zip(after, before)) if a != b
+        ]
+        self._pass(
+            "CHK-DMA-RO-HOLD",
+            not changed,
+            f"reg=SHA2_DIGEST_0[0..{DIGEST_WORDS - 1}] written=complement changed="
+            f"{','.join(changed) or '-'} word0=0x{before[0]:08x} write_resp={rle(resps)} {tag}",
+        )
 
     async def _leg_d_cont(self, plan: Plan) -> None:
         for c in plan.conts:
             await self._cont_run(c)
+
+    # ---- alias form -------------------------------------------------------
+    async def _alias_runs(self, plan: Plan) -> None:
+        """CHK-DMA-ALIAS-FORM: alias-form copies at widths 1, 2, 4 and an alias-source hash.
+
+        Expected values are those of the same transfer in the direct form: beat
+        addresses, WSTRB and image from ``env/sep_dma_model.DmaXfer``, the digest
+        from hashlib.
+        """
+        ops = self.ops
+        base = await ops.rd(LOCAL_BASE_REG)
+        line = f"sep_local_base=0x{base:08x} expect=0x{LOCAL_ALIAS & M32:08x}"
+        if base != LOCAL_ALIAS & M32:
+            self._ctrl_missing("CHK-DMA-ALIAS-FORM", line)
+        self.logger.info("CTRL-DMA-ALIAS-BASE seen seed=%d %s", self.seed, line)
+        for cd, side in plan.alias_cells:
+            x = cd.copy.x
+            src = alias_of(x.src_base) if side in ("src", "both") else None
+            dst = alias_of(x.dst_base) if side in ("dst", "both") else None
+            meas = await self._cell_measure(
+                cd, src=src, dst=dst, tag_extra=f" form=alias side={side}"
+            )
+            ev = meas["rec"].ev
+            addr_mm, strb_mm, _ = self._beat_mm(x, ev)
+            ok = (
+                meas["mism"] == 0
+                and meas["guard_ok"]
+                and meas["src_ok"]
+                and meas["fst"].ok
+                and meas["fer"].ok
+                and addr_mm == 0
+                and strb_mm == 0
+            )
+            self._pass(
+                "CHK-DMA-ALIAS-FORM",
+                ok,
+                f"kind=copy side={side} cell={cell_name(cd.cell)} enc={cd.enc} n={cd.n} "
+                f"chunk={cd.chunk} prog_src=0x{(x.src_base if src is None else src):08x} "
+                f"prog_dst=0x{(x.dst_base if dst is None else dst):08x} "
+                f"mem_mismatch={meas['mism']} guard_ok={meas['guard_ok']} "
+                f"addr_mismatch={addr_mm} strb_mismatch={strb_mm} ar={len(ev.ar)} "
+                f"aw={len(ev.aw)} expect_beats={x.n_txn} {ff('status', meas['fst'])} "
+                f"{ff('error_code', meas['fer'])}",
+            )
+            await self._cell_grade(cd, meas)
+        m = plan.alias_msg
+        swap = m.swaps[0]
+        length = len(m.msg)
+        gold = golden_words(m.alg, m.msg, swap)
+        await self.mem.fill(
+            m.src, [int.from_bytes(m.msg[i : i + 4], "little") for i in range(0, length, 4)]
+        )
+        stale = await ops.read_digest(len(gold))
+        if stale == gold:
+            self._ctrl_missing("CHK-DMA-ALIAS-FORM", f"alg={m.alg} digest before GO equals golden")
+        dst = alias_of(m.dst) if plan.alias_dst else m.dst
+        words, info = await self._hash_run(
+            m, m.split, swap, 2, {}, graded=True, src=alias_of(m.src), dst=dst
+        )
+        mism = sum(1 for g, e in zip(words, gold) if g != e) + abs(len(words) - len(gold))
+        fer = field_compare(info["err"], 0, ERROR_CODE_MASK)
+        self._pass(
+            "CHK-DMA-ALIAS-FORM",
+            mism == 0
+            and info["copy_mm"] == 0
+            and info["done"] == 1
+            and info["error"] == 0
+            and fer.ok,
+            f"kind=sha alg={m.alg} len={length} split={m.split} swap={swap} "
+            f"prog_src=0x{alias_of(m.src):08x} prog_dst=0x{dst:08x} words={len(gold)} "
+            f"mismatch={mism} copy_mismatch={info['copy_mm']} done={info['done']} "
+            f"{ff('error_code', fer)}",
+        )
+        self._close()
+        self.logger.info(
+            "INFO-DMA-ALIAS-REACH seed=%d copies=%d sha=1 fixed_chunk_form=%s",
+            self.seed,
+            len(plan.alias_cells),
+            plan.fixed_form,
+        )
+
+    # ---- one-byte chunks ----------------------------------------------------
+    async def _chunk1(self, plan: Plan) -> None:
+        """CHK-DMA-CHUNK1: width 1, CHUNK_DATA_SIZE 1 (the stated minimum).
+
+        One chunk per byte: the image, the AR/AW/W counts, addresses and WSTRB
+        equal the model, n-1 to n CHUNK_DONE rises and n-1 stop reads, one GO
+        per chunk.
+        """
+        cd = plan.chunk1
+        x = cd.copy.x
+        meas = await self._cell_measure(cd, tag_extra=" chunk=1")
+        ev, res = meas["rec"].ev, meas["res"]
+        addr_mm, strb_mm, _ = self._beat_mm(x, ev)
+        rises = len(ev.rises("chunk_done"))
+        stops = sum(1 for s in res.statuses if s.chunk_done and not s.busy and not s.done)
+        n = x.n_chunks
+        ok = (
+            meas["mism"] == 0
+            and meas["guard_ok"]
+            and meas["src_ok"]
+            and meas["fst"].ok
+            and meas["fer"].ok
+            and addr_mm == 0
+            and strb_mm == 0
+            and n - 1 <= rises <= n
+            and stops == n - 1
+            and res.go_writes == n
+        )
+        self._pass(
+            "CHK-DMA-CHUNK1",
+            ok,
+            f"cell={cell_name(cd.cell)} bytes={x.total} chunks={n} mem_mismatch={meas['mism']} "
+            f"guard_ok={meas['guard_ok']} addr_mismatch={addr_mm} strb_mismatch={strb_mm} "
+            f"ar={len(ev.ar)} aw={len(ev.aw)} w={len(ev.w)} expect_beats={x.n_txn} "
+            f"chunk_done_rises={rises} stop_reads={stops} go_writes={res.go_writes} "
+            f"{ff('status', meas['fst'])} {ff('error_code', meas['fer'])}",
+        )
+        await self._cell_grade(cd, meas)
+
+    # ---- INITIAL_TRANSFER without GO ------------------------------------------
+    async def _nogo(self, plan: Plan) -> None:
+        """CHK-DMA-NOGO: CONTROL with INITIAL_TRANSFER=1 and GO=0 starts nothing.
+
+        "A start is a write of CONTROL.GO while STATUS.BUSY is clear"
+        (``hw/sys/sep/doc/dma.adoc:79-80``). Over BUSY_RISE_BOUND clocks after
+        the write: no AR or AW on the DMA master, no BUSY rise, and a STATUS read
+        with BUSY=0 and DONE as before. Control CTRL-DMA-NOGO-GO: the GO=1
+        write that follows raises BUSY within the same bound and moves the copy.
+        """
+        ops = self.ops
+        c, x = plan.nogo, plan.nogo.x
+        await self._fill_copy(c)
+        await self._program(c)
+        await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
+        pre = await ops.read_status()
+        self._open()
+        m_tap, m_busy = self.tap.mark(), self.busy.mark()
+        await ops.wr(CONTROL, control_word(opcode=OP_COPY, initial=1, go=0))
+        await ClockCycles(cocotb.top.clk_i, BUSY_RISE_BOUND)
+        ev = self.tap.since(m_tap)
+        st = await ops.read_status()
+        probe_rises = self.busy.rises_since(m_busy)
+        nogo = (
+            f"ar={len(ev.ar)} aw={len(ev.aw)} tap_busy_rises={len(ev.rises('busy'))} "
+            f"probe_busy_rises={probe_rises} busy={st.busy} done_before={pre.done} "
+            f"done_after={st.done} window_clks={BUSY_RISE_BOUND}"
+        )
+        m_tap, m_busy = self.tap.mark(), self.busy.mark()
+        await ops.go(opcode=OP_COPY, initial=1)
+        try:
+            rise = await self.busy.wait_rise(m_busy, BUSY_RISE_BOUND)
+        except BitWatchTimeout:
+            self._ctrl_missing("CHK-DMA-NOGO", f"GO=1 raised no BUSY: {nogo}")
+        res = await ops.run_to_done(
+            poll_size(x.total), busy=self.busy, busy_bound=BUSY_RISE_BOUND, tag=" nogo-go"
+        )
+        if res.status.done:
+            await self._wait_idle_done("nogo-go")
+        ev_go = self.tap.since(m_tap)
+        got = await self.mem.read(c.dst_region, c.dst_region_words)
+        exp = c.expected_dst()
+        mism = sum(1 for g, e in zip(got, exp) if g != e)
+        ctrl = (
+            f"go_to_busy_clks={rise - m_busy.clk} ar={len(ev_go.ar)} aw={len(ev_go.aw)} "
+            f"expect={x.n_txn} mem_mismatch={mism} done={res.status.done}"
+        )
+        if not (
+            rise - m_busy.clk < BUSY_RISE_BOUND
+            and len(ev_go.ar) == x.n_txn
+            and len(ev_go.aw) == x.n_txn
+            and mism == 0
+            and res.status.done
+        ):
+            self._ctrl_missing("CHK-DMA-NOGO", ctrl)
+        self.logger.info("CTRL-DMA-NOGO-GO PASS seed=%d %s", self.seed, ctrl)
+        self._pass(
+            "CHK-DMA-NOGO",
+            not ev.ar
+            and not ev.aw
+            and not ev.rises("busy")
+            and probe_rises == 0
+            and st.busy == 0
+            and st.done == pre.done,
+            f"contract=hw/sys/sep/doc/dma.adoc:79-80 bytes={x.total} {nogo}",
+        )
+        self._close()
+        await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
+
+    # ---- range and internal copies --------------------------------------------
+    async def _set_range(self, base: int, limit: int, tag: str) -> None:
+        """Program BASE, LIMIT and RANGE_VALID=1 and read them back (else CTRL-MISSING)."""
+        ops = self.ops
+        await ops.program_range(base, limit, valid=True)
+        got = (
+            await ops.rd(RANGE_BASE) & RANGE_BASE_MASK,
+            await ops.rd(RANGE_LIMIT) & RANGE_LIMIT_MASK,
+            await ops.rd(RANGE_VALID) & RANGE_VALID_MASK,
+        )
+        want = (base & RANGE_BASE_MASK, limit & RANGE_LIMIT_MASK, RANGE_VALID_MASK)
+        if got != want:
+            self._ctrl_missing(
+                "RANGE-SET",
+                f"{tag} base/limit/valid read 0x{got[0]:08x}/0x{got[1]:08x}/{got[2]} "
+                f"expect 0x{want[0]:08x}/0x{want[1]:08x}/{want[2]}",
+            )
+
+    async def _range_copy(self, plan: Plan) -> None:
+        """CHK-DMA-RANGE-COPY: an SRAM copy whose destination leaves the range completes.
+
+        "The range does not bound a copy between internal addresses"
+        (``hw/sys/sep/doc/dma.adoc:105``): DONE=1, ERROR=0, ERROR_CODE=0, every
+        AR and AW of the model, and the image equals the model. Control
+        CTRL-DMA-RANGE-COPY: under the same range a zero fill of the same
+        destination stops at LIMIT with ERROR and ERROR_CODE.DST_ADDR_ERROR and
+        keeps the words before it (``dma.adoc:98-104``), so the range is in force.
+        """
+        ops = self.ops
+        c, x = plan.range_copy, plan.range_copy.x
+        limit = plan.range_limit
+        tag = f"src=0x{x.src_base:08x} dst=0x{x.dst_base:08x} bytes={x.total} limit=0x{limit:08x}"
+        sw = sentinel_word(c.sentinel)
+        await self._fill_copy(c)
+        await self._set_range(x.src_base, limit, tag)
+        await ops.program_transfer(src=0, dst=x.dst_base, total=x.total, chunk=x.total)
+        await ops.go(opcode=OP_ZERO, initial=1)
+        zst = await ops.poll_status(
+            lambda s: bool((s.done or s.error) and not s.busy),
+            ops.done_bound(poll_size(x.total)),
+            f"zero fill end {tag}",
+        )
+        zerr = await ops.rd(ERROR_CODE)
+        zimg = await self.mem.read(x.dst_base, x.total // 4)
+        in_words = (limit + 1 - x.dst_base) // 4
+        zero_ok = all(w == 0 for w in zimg[:in_words]) and all(w == sw for w in zimg[in_words:])
+        ctrl = (
+            f"zero_error={zst.error} zero_error_code=0x{zerr:x} words_in_range={in_words} "
+            f"zero_image_ok={int(zero_ok)}"
+        )
+        if not (zst.error and zerr & DST_ADDR_ERROR and zero_ok):
+            self._ctrl_missing("CHK-DMA-RANGE-COPY", f"{ctrl} {tag}")
+        self.logger.info("CTRL-DMA-RANGE-COPY PASS seed=%d %s %s", self.seed, ctrl, tag)
+        await ops.clean_state()
+        await self.mem.fill(c.dst_region, [sw] * c.dst_region_words)
+        self._open()
+        m_tap = self.tap.mark()
+        await self._program(c)
+        await ops.go(opcode=OP_COPY, initial=1)
+        res = await ops.run_to_done(
+            poll_size(x.total), busy=self.busy, busy_bound=BUSY_RISE_BOUND, tag=" range-copy"
+        )
+        if res.status.done:
+            await self._wait_idle_done("range-copy")
+        ev = self.tap.since(m_tap)
+        st, err, _ = await self._read_regs()
+        got = await self.mem.read(c.dst_region, c.dst_region_words)
+        mism = sum(1 for g, e in zip(got, c.expected_dst()) if g != e)
+        addr_mm, _, _ = self._beat_mm(x, ev)
+        past = sum(1 for b in ev.aw if b.addr is not None and b.addr > limit)
+        fst = field_compare(st.raw, ST_DONE, ST_DONE | ST_BUSY | ST_ERROR)
+        fer = field_compare(err, 0, ERROR_CODE_MASK)
+        self._pass(
+            "CHK-DMA-RANGE-COPY",
+            fst.ok and fer.ok and mism == 0 and addr_mm == 0 and past > 0,
+            f"contract=hw/sys/sep/doc/dma.adoc:105 {tag} ar={len(ev.ar)} aw={len(ev.aw)} "
+            f"expect_beats={x.n_txn} aw_past_limit={past} addr_mismatch={addr_mm} "
+            f"mem_mismatch={mism} {ff('status', fst)} {ff('error_code', fer)}",
+        )
+        self._close()
+        await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
+        await self._set_range(SRAM_BASE, SRAM_LIMIT, "restore")
+
+    # ---- logged runs (open questions) -----------------------------------------
+    async def _logged_run(
+        self, n_bytes: int, go_cap: int, tag: str
+    ) -> tuple[DmaStatus, list[int], str]:
+        """A COPY with the re-GO rule, capped at ``go_cap`` GO writes; nothing graded.
+
+        Returns the last STATUS, the tap clock of each GO write and how the run
+        ended (done, error, go_cap, bound). A run that has not ended is aborted
+        and must reach BUSY=0 within ABORT_POLL_BOUND reads.
+        """
+        ops = self.ops
+        go_clks = [self.tap.clk]
+        await ops.go(opcode=OP_COPY, initial=1)
+        ended = "bound"
+        st = None
+        for _ in range(ops.done_bound(poll_size(n_bytes))):
+            st = await ops.read_status()
+            if st.done and not st.busy:
+                ended = "done"
+                break
+            if st.error or st.aborted:
+                ended = "error"
+                break
+            if st.chunk_done and not st.busy:
+                if len(go_clks) >= go_cap:
+                    ended = "go_cap"
+                    break
+                m = self.busy.mark()
+                go_clks.append(self.tap.clk)
+                await ops.wr(CONTROL, (ops.last_control & ~control_word(initial=1)) | GO_MASK)
+                try:
+                    await self.busy.wait_rise(m, BUSY_RISE_BOUND)
+                except BitWatchTimeout:
+                    self.logger.info("LOGGED %s no BUSY rise after GO %d", tag, len(go_clks))
+        if ended in ("bound", "go_cap"):
+            await ops.abort()
+            st = await ops.poll_status(
+                lambda s: not s.busy, ABORT_POLL_BOUND, f"BUSY=0 after ABORT {tag}"
+            )
+        return st, go_clks, ended
+
+    async def _obs_chunk1_w4(self, plan: Plan) -> None:
+        """Width 4 with CHUNK_DATA_SIZE 1, total 8 (no text relates the two)."""
+        ops = self.ops
+        src, dst, s, words = plan.chunk1_w4
+        await self.mem.fill(src, words)
+        await self.mem.fill(dst, [sentinel_word(s)] * 2)
+        await ops.program_transfer(src=src, dst=dst, total=8, chunk=1, width_enc=2)
+        m_tap = self.tap.mark()
+        st, go_clks, ended = await self._logged_run(8, 9, "chunk1-w4")
+        ev = self.tap.since(m_tap)
+        err = await ops.rd(ERROR_CODE)
+        got = await self.mem.read(dst, 2)
+        self.logger.info(
+            "OBS-DMA-CHUNK1-W4 seed=%d ended=%s %s error_code=0x%x ar=%d aw=%d w=%d wstrb=%s "
+            "go_writes=%d dst=%s src=%s",
+            self.seed,
+            ended,
+            st.fmt(),
+            err,
+            len(ev.ar),
+            len(ev.aw),
+            len(ev.w),
+            rle([f"0x{b.strb:02x}" if b.strb is not None else "X" for b in ev.w]) or "-",
+            len(go_clks),
+            ",".join(f"0x{w:08x}" for w in got),
+            ",".join(f"0x{w:08x}" for w in words),
+        )
+        await ops.clean_state()
+
+    async def _obs_baselim_copy(self, plan: Plan) -> None:
+        """A 16-byte SRAM copy with ENABLED_MEMORY_RANGE_BASE = LIMIT inside the source."""
+        ops = self.ops
+        c, x = plan.baselim, plan.baselim.x
+        word = plan.baselim_word
+        await self._fill_copy(c)
+        await self._set_range(word, word, "baselim")
+        await self._program(c)
+        m_tap = self.tap.mark()
+        st, go_clks, ended = await self._logged_run(x.total, 1, "baselim")
+        ev = self.tap.since(m_tap)
+        err = await ops.rd(ERROR_CODE)
+        got = await self.mem.read(c.dst_region, c.dst_region_words)
+        self.logger.info(
+            "OBS-DMA-BASELIM-COPY seed=%d base=limit=0x%08x ended=%s %s error_code=0x%x "
+            "ar=%d aw=%d expect_beats=%d dst_eq_model=%d dst=%s",
+            self.seed,
+            word,
+            ended,
+            st.fmt(),
+            err,
+            len(ev.ar),
+            len(ev.aw),
+            x.n_txn,
+            int(got == c.expected_dst()),
+            ",".join(f"0x{w:08x}" for w in got),
+        )
+        await ops.clean_state()
+        await self._set_range(SRAM_BASE, SRAM_LIMIT, "restore")
+
+    async def _obs_short_last_chunk(self, plan: Plan) -> None:
+        """A firmware-paced COPY whose TOTAL_DATA_SIZE is not a multiple of CHUNK_DATA_SIZE."""
+        ops = self.ops
+        c, x = plan.short, plan.short.x
+        await self._fill_copy(c)
+        await self._program(c)
+        m_tap = self.tap.mark()
+        st, go_clks, ended = await self._logged_run(x.total, x.n_chunks + 2, "short-last")
+        ev = self.tap.since(m_tap)
+        ctl = await ops.rd(CONTROL)
+        got = await self.mem.read(c.dst_region, c.dst_region_words)
+        # W beats of chunk i lie between GO write i and GO write i + 1.
+        ends = go_clks[1:] + [ev.last_beat_clk() or go_clks[-1]]
+        per_chunk = []
+        last: list = []
+        for i, (c0, c1) in enumerate(zip(go_clks, ends)):
+            last = [b for b in ev.w if c0 <= b.clk and (b.clk < c1 or i == len(go_clks) - 1)]
+            strbs = rle([f"0x{b.strb:02x}" if b.strb is not None else "X" for b in last])
+            per_chunk.append(f"{i}:{len(last)}/{strbs or '-'}")
+        last_bytes = sum(bin(b.strb).count("1") for b in last if b.strb is not None)
+        self.logger.info(
+            "OBS-DMA-SHORT-LAST-CHUNK seed=%d total=%d chunk=%d tail=%d ended=%s go_writes=%d "
+            "w_per_chunk=%s last_chunk_bytes=%d %s control_go=%d dst_eq_model=%d",
+            self.seed,
+            x.total,
+            x.chunk,
+            x.total % x.chunk,
+            ended,
+            len(go_clks),
+            ",".join(per_chunk),
+            last_bytes,
+            st.fmt(),
+            int(bool(ctl & GO_MASK)),
+            int(got == c.expected_dst()),
+        )
+        await ops.clean_state()
+
+    # ---- 64-bit register access from m_axi ------------------------------------
+    async def _drive_strb(self, strb: int, seen: dict) -> None:
+        """Drive ``m_axi_wstrb`` to ``strb`` at each falling edge while WVALID is high.
+
+        Returns after the falling edge whose read-only phase shows WVALID and
+        WREADY high, so the W handshake on the next rising edge takes ``strb``;
+        ``seen`` then holds that strobe. Bounded by STRB_FOLLOW_BOUND clocks.
+        """
+        top = cocotb.top
+        for _ in range(STRB_FOLLOW_BOUND):
+            await FallingEdge(top.clk_i)
+            if self.rd(top.m_axi_wvalid, allow_unknown=True) != 1:
+                continue
+            top.m_axi_wstrb.value = strb
+            await ReadOnly()
+            if self.rd(top.m_axi_wready, allow_unknown=True) == 1:
+                seen["wstrb"] = self.rd(top.m_axi_wstrb)
+                return
+
+    async def _obs_csr64(self, plan: Plan) -> None:
+        """64-bit m_axi read, full-strobe write and half-strobe write of a DMA register pair."""
+        ops = self.ops
+        (lo_name, hi_name), full, half, strb = plan.csr64
+        lo, hi = SECURE_DMA.addr(lo_name), SECURE_DMA.addr(hi_name)
+        pre = (await ops.rd(lo), await ops.rd(hi))
+        mon = self.env.ext_axi_monitor
+
+        def acc(op: SepAxiOp, data: int = 0) -> SepAxiAccessSeq:
+            return SepAxiAccessSeq(
+                f"dma_csr64_{op.value}_0x{lo:08x}",
+                op=op,
+                addr=lo,
+                wdata=data,
+                length=8,
+                size=3,
+                allow_unverified_write_resp=op is SepAxiOp.WRITE,
+                allow_ungraded_read_resp=op is SepAxiOp.READ,
+            )
+
+        rseq = acc(SepAxiOp.READ)
+        mon.open_error_rdata_window()
+        try:
+            await self.start_ext_seq(rseq)
+        finally:
+            mon.close_error_rdata_window()
+        wseq = acc(SepAxiOp.WRITE, full)
+        await self.start_ext_seq(wseq)
+        after_full = (await ops.rd(lo), await ops.rd(hi))
+        seen: dict = {}
+        drive = cocotb.start_soon(self._drive_strb(strb, seen))
+        hseq = acc(SepAxiOp.WRITE, half)
+        await self.start_ext_seq(hseq)
+        await drive
+        after_half = (await ops.rd(lo), await ops.rd(hi))
+        await ops.wr(lo, pre[0])
+        await ops.wr(hi, pre[1])
+        restored = (await ops.rd(lo), await ops.rd(hi))
+        line = (
+            f"pair={lo_name}/{hi_name} read_resp={rseq.resp_code} read_ok={int(rseq.resp_ok)} "
+            f"rdata=0x{int(rseq.rdata):016x} pre=0x{pre[1]:08x}_{pre[0]:08x} "
+            f"full_wdata=0x{full:016x} full_bresp={wseq.resp_code} "
+            f"after_full=0x{after_full[1]:08x}_{after_full[0]:08x} half_wdata=0x{half:016x} "
+            f"half_strb=0x{strb:02x} half_bresp={hseq.resp_code} "
+            f"after_half=0x{after_half[1]:08x}_{after_half[0]:08x}"
+        )
+        if seen.get("wstrb") != strb:
+            self._ctrl_missing("OBS-DMA-CSR-64", f"strobe not on the bus seen={seen} {line}")
+        if restored != pre:
+            self._ctrl_missing(
+                "OBS-DMA-CSR-64", f"restore read 0x{restored[1]:08x}_{restored[0]:08x}"
+            )
+        self.logger.info("OBS-DMA-CSR-64 seed=%d %s", self.seed, line)
+
+    # ---- held outbound response -------------------------------------------------
+    async def _obs_beat_hold(self, plan: Plan) -> None:
+        """A DMA read from the outbound window while the responder holds its R response.
+
+        ``smn_outbound_resp_hold_i`` holds the response for HOLD_CLKS clocks;
+        the line logs STATUS, ERROR_CODE and DMA_BUS_ERR_STATUS at the bound and
+        after the release. No text states a timeout of a DMA beat.
+        """
+        ops = self.ops
+        dut = cocotb.top
+        src, dst, s = plan.hold
+        await SepFilterBank(self, "out").program_pair(OUT_PAIR, OUT_WIN_LO, OUT_WIN_HI)
+        await self._set_range(0, M32, "hold")
+        await self.mem.fill(dst, [sentinel_word(s)] * 2)
+        await ops.program_transfer(src=src, dst=dst, total=8, chunk=8, width_enc=2)
+        m_tap = self.tap.mark()
+        dut.smn_outbound_resp_hold_i.value = 1
+        try:
+            await ops.go(opcode=OP_COPY, initial=1)
+            await ClockCycles(dut.clk_i, HOLD_CLKS)
+            ev = self.tap.since(m_tap)
+            st_hold = await ops.read_status()
+            err_hold = await ops.rd(ERROR_CODE)
+            bus_hold = await ops.rd(DMA_BUS_ERR_STATUS)
+        finally:
+            dut.smn_outbound_resp_hold_i.value = 0
+        st = await ops.poll_status(
+            lambda x: bool((x.done or x.error or x.aborted) and not x.busy),
+            ops.done_bound(poll_size(8)),
+            "end after the hold release",
+        )
+        ev_end = self.tap.since(m_tap)
+        err = await ops.rd(ERROR_CODE)
+        bus = await ops.rd(DMA_BUS_ERR_STATUS)
+        got = await self.mem.read(dst, 2)
+        self.logger.info(
+            "OBS-DMA-BEAT-HOLD seed=%d hold_clks=%d src=0x%08x at_bound: ar=%d aw=%d b=%d "
+            "busy=%d error=%d done=%d error_code=0x%x dma_bus_err_status=0x%x after_release: "
+            "ar=%d aw=%d b=%d %s error_code=0x%x dma_bus_err_status=0x%x dst=%s",
+            self.seed,
+            HOLD_CLKS,
+            src,
+            len(ev.ar),
+            len(ev.aw),
+            len(ev.b),
+            st_hold.busy,
+            st_hold.error,
+            st_hold.done,
+            err_hold,
+            bus_hold,
+            len(ev_end.ar),
+            len(ev_end.aw),
+            len(ev_end.b),
+            st.fmt(),
+            err,
+            bus,
+            ",".join(f"0x{w:08x}" for w in got),
+        )
+        await ops.clean_state()
+        await self._set_range(SRAM_BASE, SRAM_LIMIT, "restore")

@@ -9,7 +9,8 @@
 //
 // Console protocol (one line each):
 //   M G <leg>   a graded leg starts; the host opens its coverage window.
-//   M C <leg>   a control, set-up or recovery leg starts; the window closes.
+//   M C <leg>   a control, set-up, recovery or logged leg starts; the window
+//               closes.
 //   R <kind> k=0x<v> ...   the values of one leg, printed after the leg.
 // After each M line the CPU spins, so the host marks its tap records before
 // the leg's first bus access.
@@ -27,6 +28,9 @@
 // pool holds entropy below its depth and its level stays fixed. Every CPU access that
 // only stages, sets up or restores a leg runs in an M C leg; the accesses
 // that a leg grades (the read-back of the DMA effect) run inside its M G leg.
+//
+// PLEGS selects the legs: LEG_EXT the extension-port legs, LEG_REST every
+// other leg. PEXT_LEN is the byte count of each extension-port copy.
 
 #include <stdint.h>
 
@@ -98,6 +102,8 @@ enum {
     PFILT_W,    // the low word the DMA writes to the locked START_ADDR
     PFILT_LOCK, // the high word of FILTER_CONFIG that sets locked
     PSMC_CPU_W, // the CPU store to the SMC word
+    PLEGS,      // leg selection: LEG_EXT, LEG_REST
+    PEXT_LEN,   // byte count of each extension-port copy (4 to EXT_LEN_MAX)
     P_COUNT
 };
 
@@ -105,6 +111,9 @@ enum {
 #define D_POOL SEP_TOP_ENTROPY_POOL_DATA_BASE_ADDR
 #define D_FIDX (SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM - 1u)
 #define D_LOCK ((uint32_t)(FILTER_CTRL__FILTER_CONFIG__LOCKED_bm >> 32))
+#define LEG_EXT (1u << 0)
+#define LEG_REST (1u << 1)
+#define EXT_LEN_MAX 16u
 volatile uint32_t g_p[P_COUNT] = {
     P_MAGIC_WORD, 0x3210u,     0x0u,        0x1234567u,  32u,     0x0000u, 0x0u,
     32u,          0x0u,        0x1000u,     16u,         0x2000u, 16u,     0x3000u,
@@ -113,7 +122,7 @@ volatile uint32_t g_p[P_COUNT] = {
     0x11111111u,  0x2u,        0x33333333u, 0x5u,        0xAu,    0x1000u, 64u,
     0x40000000u,  9u,          11u,         D_POOL,      0x21u,   0x200u,  0x00080000u,
     0x80000001u,  0x00080000u, 0x80800001u, D_FIDX,      0x3000u, 0x2u,    0x5008u,
-    0x1u,         0xA5A50000u, D_LOCK,      0x5EC0C0DEu,
+    0x1u,         0xA5A50000u, D_LOCK,      0x5EC0C0DEu, LEG_EXT | LEG_REST, 4u,
 };
 
 // ---- Address map ----
@@ -141,6 +150,14 @@ volatile uint32_t g_p[P_COUNT] = {
 #define ROM_BASE SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
 #define DMA_CSR_WORD SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR
 #define KM_SRC_WORD SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR
+#define KM_IRQ_STATUS SEP_TOP_KM_MAILBOX_SEP_SEP_IRQ_STATUS_BASE_ADDR
+#define KM_IRQ_ENABLE SEP_TOP_KM_MAILBOX_SEP_SEP_IRQ_ENABLE_BASE_ADDR
+#define KM_IRQ_EN_FIELDS \
+    (KM_MAILBOX_SEP__IRQ_ENABLE_REG__OUTBOUND_READ_DATA_AVAIL_EN_bm | \
+     KM_MAILBOX_SEP__IRQ_ENABLE_REG__INBOUND_WRITE_SPACE_AVAIL_EN_bm | \
+     KM_MAILBOX_SEP__IRQ_ENABLE_REG__INBOUND_OVERFLOW_EN_bm | \
+     KM_MAILBOX_SEP__IRQ_ENABLE_REG__OUTBOUND_UNDERFLOW_EN_bm | \
+     KM_MAILBOX_SEP__IRQ_ENABLE_REG__FLUSHED_BY_KM_EN_bm)
 #define PIC_SRC_WORD SEP_TOP_PIC_BASE_ADDR
 #define FILT_IN0_CFG SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
 #define N_OUT_ENTRIES SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM
@@ -481,26 +498,37 @@ static void direct_copy(void) {
     dma_clear();
 }
 
-// ---- Step 4: extension port, one beat each way ----
+// ---- Step 4: extension port, one copy each way of PEXT_LEN bytes ----
+static const char *const EXT_DST_KEY[EXT_LEN_MAX / 4u] = {"d0", "d1", "d2", "d3"};
+
 static void ext_legs(void) {
     uint32_t d = SRAM + B_EXT;
+    uint32_t len = g_p[PEXT_LEN], n = len / 4u;
+    if (len == 0u || len > EXT_LEN_MAX || (len & 3u)) {
+        sep_mbx_puts("FAIL: extension-port copy length\n");
+        g_err++;
+        return;
+    }
     mark('C', "stage");
-    wr(d, 0x5A5A5A5Au);
+    for (uint32_t i = 0; i < n; i++) wr(d + 4u * i, 0x5A5A5A5Au);
     mark('G', "ext_r");
-    uint32_t st = dma_run(EXT_WORD, d, 4u, 1, 1);
+    uint32_t st = dma_run(EXT_WORD, d, len, 1, 1);
     rec("EXT");
     sep_mbx_puts(" dir=R");
     rec_run(st);
     kv("dst_word", rd(d));
+    kv("len", len);
+    for (uint32_t i = 0; i < n; i++) kv(EXT_DST_KEY[i], rd(d + 4u * i));
     end();
     recovery("ext_r");
 
-    stage_src(SRAM + B_EXT + 0x10u, 1u, 0x30u);
+    stage_src(SRAM + B_EXT + 0x10u, n, 0x30u);
     mark('G', "ext_w");
-    st = dma_run(SRAM + B_EXT + 0x10u, EXT_WORD, 4u, 1, 1);
+    st = dma_run(SRAM + B_EXT + 0x10u, EXT_WORD, len, 1, 1);
     rec("EXT");
     sep_mbx_puts(" dir=W");
     rec_run(st);
+    kv("len", len);
     end();
     recovery("ext_w");
 }
@@ -1188,6 +1216,45 @@ static void nc_legs(void) {
         else
             recovery("nc_km_src");
     }
+    // The KM mailbox SEP_IRQ_ENABLE word as the destination and as the source,
+    // each logged. The write sets only enable bits whose IRQ_STATUS bit reads
+    // 0, so no mailbox interrupt rises; the CPU then restores the word.
+    if (!timed_out) {
+        uint32_t s0 = rd(KM_IRQ_STATUS), e0 = rd(KM_IRQ_ENABLE);
+        uint32_t v = e0 ^ (KM_IRQ_EN_FIELDS & ~s0);
+        wr(d, v);
+        mark('C', "nc_km_wr");
+        e = nc_run(d, KM_IRQ_ENABLE);
+        uint32_t rb = rd(KM_IRQ_ENABLE);
+        wr(KM_IRQ_ENABLE, e0);
+        rec("NC");
+        sep_mbx_puts(" tgt=km_wr");
+        kv("end", e);
+        kv("pre", g_pre);
+        kv("st", g_isr_st);
+        kv("ec", g_isr_ec);
+        kv("irq_status", s0);
+        kv("before", e0);
+        kv("written", v);
+        kv("readback", rb);
+        kv("restored", rd(KM_IRQ_ENABLE));
+        end();
+        if (e == 2u)
+            timed_out = 1;
+        else
+            recovery("nc_km_wr");
+    }
+    if (!timed_out) {
+        uint32_t e1 = rd(KM_IRQ_ENABLE);
+        wr(d, ~e1);
+        mark('C', "nc_km_rd");
+        e = nc_run(KM_IRQ_ENABLE, d);
+        nc_rec("km_rd", e, 1, e1, rd(d));
+        if (e == 2u)
+            timed_out = 1;
+        else
+            recovery("nc_km_rd");
+    }
     if (!timed_out) {
         uint32_t pic0 = rd(PIC_SRC_WORD);
         wr(d, ~pic0);
@@ -1323,11 +1390,14 @@ int main(void) {
     kv("irq_err", g_p[PIRQ_ERR]);
     kv("stee_idx", g_p[PSTEE_IDX]);
     kv("filt_idx", g_p[PFILT_IDX]);
+    kv("legs", g_p[PLEGS]);
+    kv("ext_len", g_p[PEXT_LEN]);
     end();
 
     dma_init();
 
-    for (uint32_t k = 0; k < 4u; k++) {
+    uint32_t rest = g_p[PLEGS] & LEG_REST;
+    for (uint32_t k = 0; rest && k < 4u; k++) {
         switch ((g_p[P_ORDER] >> (4u * k)) & 0xFu) {
         case 0:
             pair_sram_to_scratch();
@@ -1348,16 +1418,18 @@ int main(void) {
             g_err++;
         }
     }
-    direct_copy();
-    ext_legs();
-    alias_legs();
-    outbound_legs();
-    stack_leg();
-    reg_legs();
-    smc_legs();
-    entropy_legs();
-    nc_legs();
-    filt_legs();
+    if (rest) direct_copy();
+    if (g_p[PLEGS] & LEG_EXT) ext_legs();
+    if (rest) {
+        alias_legs();
+        outbound_legs();
+        stack_leg();
+        reg_legs();
+        smc_legs();
+        entropy_legs();
+        nc_legs();
+        filt_legs();
+    }
     mark('C', "end");
     sep_mbx_puts("DONE\n");
     return g_err;
