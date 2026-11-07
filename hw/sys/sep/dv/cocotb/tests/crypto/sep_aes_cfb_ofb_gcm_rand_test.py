@@ -51,6 +51,9 @@ Checkers (each logs mode, key size, direction and the first mismatched word):
                 (0 or more than one bit set) written to CTRL_GCM_SHADOWED reads
                 back GCM_INIT (upstream aes/doc/registers.md:525). Control: the
                 PHASE field reads GCM_TAG before that write.
+  CHK-AES-STATUS-CLEAN  at the end of the cell, STATUS.ALERT_RECOV_CTRL_UPDATE_ERR
+                and STATUS.ALERT_FATAL_FAULT read 0 (aes.hjson STATUS). The line
+                logs the STATUS word and both bits; a set bit fails the leaf.
 Controls (from the plan, before the first stimulus):
   CTRL-AES-OUT-NE-IN       every golden output block differs from its input block,
                            so a DUT that returns DATA_IN fails the check.
@@ -94,6 +97,8 @@ from seq_lib.sep_aes_seq import (
     AES_OP_DEC,
     AES_OP_ENC,
     AES_STATUS,
+    AES_STATUS_ALERT_FATAL_FAULT,
+    AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR,
     AES_STATUS_IDLE,
     AES_STATUS_INPUT_READY,
     AES_STATUS_OUTPUT_VALID,
@@ -327,7 +332,7 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
         seed = self.random_seed()
         plan = draw_plan(seed)
         self.plan = plan
-        self.required_evidence = (f"CHK-{CHK_NAME[plan.mode]}",)
+        self.required_evidence = (f"CHK-{CHK_NAME[plan.mode]}", "CHK-AES-STATUS-CLEAN")
         if plan.mode == "gcm":
             self.required_evidence += ("CHK-AES-GCM-PHASE-MAP",)
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
@@ -355,12 +360,36 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
             await self._gcm_phase_map(plan)
         else:
             await self._run_cfb_ofb(plan)
-        await self.aes.check_status_clean(plan.cell())
+        await self._status_clean(plan.cell())
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
         self.chk.finish()
+
+    async def _status_clean(self, tag: str) -> None:
+        """CHK-AES-STATUS-CLEAN: both AES alert bits of STATUS read 0.
+
+        ``SepAes.check_status_clean`` asserts the two bits; its ``AssertionError``
+        is logged as the FAIL line and raised again. After it returns, one more
+        STATUS read gives the word and the bits of the PASS line.
+        """
+        try:
+            await self.aes.check_status_clean(tag)
+        except AssertionError as exc:
+            self.chk.ok("AES-STATUS-CLEAN", False, tag=tag, reason=str(exc).replace(" ", "_"))
+            raise
+        st = await self.aes._rd(AES_STATUS)
+        recov = (st >> AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR) & 1
+        fatal = (st >> AES_STATUS_ALERT_FATAL_FAULT) & 1
+        self.chk.ok(
+            "AES-STATUS-CLEAN",
+            recov == 0 and fatal == 0,
+            tag=tag,
+            status=f"0x{st:08x}",
+            alert_recov_ctrl_update_err=recov,
+            alert_fatal_fault=fatal,
+        )
 
     def _fields(self, plan: Plan) -> dict[str, object]:
         return {"mode": plan.mode, "keylen": plan.key_bits, "dir": plan.direction}
