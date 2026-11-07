@@ -25,5 +25,7 @@ Top-level enable register for the UART log-engine block.
 pads: while set, the UART owns their data and direction. While clear, the UART
 keeps running, but its pads follow the GPIO data and direction selection like
 any pad without a hardware request, so TX and RTS do not reach the pins unless
-software forces LSIO selection.
+software forces LSIO selection. Without that selection, the receive and CTS
+inputs read high, the serial idle level: the receiver sees no start bit and
+`MSR.CTS` reads 0.
 |===

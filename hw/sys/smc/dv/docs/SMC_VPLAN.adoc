@@ -40557,6 +40557,12 @@ pad is an input or an output by `I2C_CONTROLLER_MODE_EN`.
   on a write, and the neighbouring registers keep their values (`memory_map.adoc`).
 * The `I2C[1]` alert pad drives `SMBUS_STATUS.SMBALERT` with `I2C_CONTROLLER_MODE_EN` 1 and follows
   `SMBUS_CTRL.SMBALERT` with it 0; `I2C[2]` is checked as an input (`i2c_ctrl.adoc`, `i2c.adoc`).
+* The padring ties the SMBus input a mode does not read to the deasserted level (`smc_padring`
+  `gen_i2c_connections`: `i2c_smbus_alert_n_o` high in target mode, `i2c_smbus_n_o` high in host
+  mode; no document states it): the host-mode `I2C[1]` and `I2C[2]` read `SMBUS_STATUS.SMBSUS` 0 in
+  16 of 16 reads with the suspend pad released and again while they drive it low, and the
+  target-mode `I2C[1]` reads `SMBUS_STATUS.SMBALERT` 0 in 16 of 16 reads while it drives its alert
+  pad low and again after it releases it.
 
 *Test Procedure*:
 
@@ -40589,8 +40595,12 @@ pad is an input or an output by `I2C_CONTROLLER_MODE_EN`.
   after the `I2C_CTRL` block end from the generated header (logged); read `I2C_CTRL[0..2]` and
   `SMBUS_CTRL` of I2C1 and I2C2.
 . I2C1 with `I2C_CTRL[1]` = 0x111 and `ENABLEHOST`: drive its pad low and poll the status to 1,
-  release it and poll to 0; with `I2C_CTRL[1]` = 0x101 and `ENABLETARGET`: write `SMBUS_CTRL` 0x10 and
-  poll the pad to driven low, write 0 and poll it to released; I2C2 input leg; restore 0x111 and `CTRL` 0x1.
+  release it and poll to 0, read `SMBUS_STATUS.SMBSUS` 16 times requiring 0, write `SMBUS_CTRL`
+  `SMBSUS` 1, poll the suspend pad to driven low, read `SMBSUS` 16 times requiring 0, write 0 and
+  poll the pad to released; with `I2C_CTRL[1]` = 0x101 (read back) and `ENABLETARGET`: write
+  `SMBUS_CTRL` 0x10, poll the pad to driven low and read `SMBUS_STATUS.SMBALERT` 16 times requiring
+  0, write 0, poll it to released and read the status 16 times requiring 0 again; restore 0x111 and
+  `CTRL` 0x1; I2C2 input leg with the same `SMBSUS` reads and drive.
 . Clear `SMBUS_CTRL`, the wrapper register and `CTRL` on all instances, release the pads and restore
   `CLOCK_GATE_CONTROL`.
 . Print the list of bounded waits and check the ordered fence SETUP, GATE_ROUNDS, SMBUS_EN_MASK, LLPBK,
@@ -40631,9 +40641,12 @@ after `I2C_CTRL[2]` = 0x010 they read 0x111, 0x100, 0x010.
 and the writes answer DECERR; `I2C_CTRL[0..2]` and `SMBUS_CTRL` of I2C1 and I2C2 are unchanged; the
 block-end word responses are logged (LINKED-ISSUE SF-001 / SF-002).
 |`CHK-I2C-ALERT-PAD-DIR` |With `I2C_CONTROLLER_MODE_EN` 1, `SMBUS_STATUS.SMBALERT` of I2C1 and I2C2
-reads 1 while the pad is low and 0 after release; with it 0, the DUT drives the I2C1 alert pad low
-(`tb_core2pad_en_o` / `tb_core2pad_o`) while `SMBUS_CTRL.SMBALERT` is 1 and releases it after it is
-written 0.
+reads 1 while the pad is low and 0 after release, and `SMBUS_STATUS.SMBSUS` reads 0 in 16 of 16
+reads on each with the suspend pad released and again while `SMBUS_CTRL.SMBSUS` drives it low
+(`tb_core2pad_en_o` / `tb_core2pad_o`); with it 0 (`I2C_CTRL[1]` read back 0x101), the DUT drives
+the I2C1 alert pad low while `SMBUS_CTRL.SMBALERT` is 1 and releases it after it is written 0, and
+`SMBUS_STATUS.SMBALERT` of I2C1 reads 0 in 16 of 16 reads while it drives and again after release;
+a status read of 1 or a suspend pad that does not follow `SMBUS_CTRL.SMBSUS` fails.
 |`CHK-TIMEOUT-PATHS` |Every bounded poll of the run is satisfied within its bound, otherwise the run
 fails with the last readings; the line lists each bound and last state.
 |`CHK-NONVAC` |The fence prints SETUP, GATE_ROUNDS, SMBUS_EN_MASK, LLPBK, RSVD, PARTIAL, ENTRY,
@@ -44289,7 +44302,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-UART-MSR-DELTA-CLEAR` |The CTS and DCTS bits of the second back-to-back `UART_MSR` read equal exactly 0x10: CTS still asserted and DCTS clear, because CTS has not changed since the first read, as the delta-since-last-read contract in `uart_16550_main.rdl` requires (`smc_uart_spi_log_engine_test_seq.py`). Every MSR compare in this card is masked to CTS and DCTS, the two bits this test drives through pad 14; DSR, RI, DCD and their delta bits are logged, not compared, because the integrator pin table (`ocah_gpio_table.csv`) pins no pad for them and the bench has no specification for their level
 |`CHK-UART-MSR-DELTA-CLEAR-PAD0` |The CTS and DCTS bits of the read after the pad-0 transition read equal exactly the settled word: DCTS cleared, CTS 1 (`smc_uart_spi_log_engine_test_seq.py`)
 |`CHK-UART-MSR-DELTA-CLEAR-PAD1` |The CTS and DCTS bits of the read after the pad-1 transition read equal exactly the settled word: DCTS cleared, CTS 0 (`smc_uart_spi_log_engine_test_seq.py`)
-|`CHK-UART-MSR-FIRST` |The CTS bit of the first `UART_MSR` read of the run is set (0x10): CTS=1 because this test drives pad 14 low. DCTS on this first read is an open spec question for the UART owner (#3461): `uart_16550_main.rdl` defines DCTS as "changed since the last time this register was read" and resets both DCTS and CTS to 0, so read against the reset value a live CTS=1 is a change (DCTS=1), while read as a delta between two reads the first read has no predecessor. The RDL does not say which reading is the contract, so until the UART owner rules the first read is compared on CTS only and its DCTS is logged, not graded (`smc_uart_spi_log_engine_test_seq.py`). DSR, RI, DCD and their delta bits are outside the compare (see `CHK-UART-MSR-DELTA-CLEAR`)
+|`CHK-UART-MSR-FIRST` |The CTS bit of the first `UART_MSR` read of the run is set (0x10): CTS=1 because this test drives pad 14 low before the `UART_EN` write routes the pad in (while `UART_EN` is clear the CTS input reads the idle level, high, so `cts_ni` falls to 0 at the write). DCTS on this first read is an open spec question for the UART owner (#3461): `uart_16550_main.rdl` defines DCTS as "changed since the last time this register was read" and resets both DCTS and CTS to 0, so read against the reset value, or against the level before the write, a live CTS=1 is a change (DCTS=1), while read as a delta between two reads the first read has no predecessor. The RDL does not say which reading is the contract, so until the UART owner rules the first read is compared on CTS only and its DCTS is logged, not graded (`smc_uart_spi_log_engine_test_seq.py`). DSR, RI, DCD and their delta bits are outside the compare (see `CHK-UART-MSR-DELTA-CLEAR`)
 |===
 
 
@@ -44885,8 +44898,10 @@ the register description.
   compares can discriminate.
 * `MSR` (reset 0x00 in `uart_16550_main.rdl`): on the first read of each instance `DCD`, `RI` and
   `DSR` must read 0. The `CTS` level and the four delta bits of that first read are printed and
-  not compared to a value; how the modem input is connected, and why a delta can be set on a
-  first read with no input transition since reset, are not stated by the document. A second
+  not compared to a value by this leaf: with `CTRL.UART_EN` clear the CTS input reads the idle
+  level, high, so `MSR.CTS` reads 0 (`uart_log_engine_ctrl.rdl`; graded by
+  `smc_uart_pad_mux_enable_test` `CHK-UART-PADMUX-INPUT-IDLE`), and whether a delta bit counts a
+  first-read level that differs from the reset value as a change is not stated by the document. A second
   read must return the delta bits clear (the delta bits clear on read) with the level bits equal
   to the first read.
 * The twelve-value reset vector (the ten registers read plus `DLL` and `DLM`, with the first `MSR`
@@ -45015,8 +45030,9 @@ not part of the claim. Enrolled in:
 `all`.
 
 *Scope limit*: The `CTS` level and the four delta bits of the first `MSR` read are printed and not
-compared, because how the modem input is connected, and why a delta can be set on a first read
-with no input transition since reset, are not stated by the document. `IER` bits 31:5 are printed,
+compared by this leaf: the level with `CTRL.UART_EN` clear is graded by `smc_uart_pad_mux_enable_test`
+(`CHK-UART-PADMUX-INPUT-IDLE`), and whether a delta bit counts a first-read level that differs from
+the reset value as a change is not stated by the document. `IER` bits 31:5 are printed,
 since the document does not say they read 0. The 0x00 reset compares are not reset evidence on the
 2-state bench, where zero-initialised flops read 0x00 with or without a reset; only the `IIR` and
 `LSR` compares discriminate. The response to a write of the read-only `MSR` / `LSR` is printed and
@@ -45039,7 +45055,8 @@ not compared, because the document does not state it (SF-012).
 `DATA_CTRL.lsio_select`, `DATA_CTRL.lsio_enable` and `DATA_CTRL_ENABLE` (`use_reg_*`); the UART0 pad
 VIP sink on `tb_uart0_tx_from_dut` (pad 12) decodes 8N1 frames at 115200 baud, and the same signal
 and bit 12 of `tb_core2pad_en_o` (the pad's output enable) are also sampled on every `clk_smc_i`
-rise; `tb_uart0_rx_ext_drive` (pad 11) is bound by the VIP and left idle
+rise; `tb_uart0_rx_ext_drive` (pad 11) is bound by the VIP, idle outside the S5 RX leg, which drives one
+frame on it
 
 *Run mode*: one testlist entry in `testlists/uart.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `uart`; seed 1; tool Verilator (cocotb).
@@ -45052,7 +45069,8 @@ cleared and set, and with `UART_EN` clear the UART transmits while pad 12, with 
 the register row's own data at 1, carries no frame and stays at output data 0 with its output
 enable 0; with
 `UART_EN` clear the RTS, CTS and RX pads (13, 14, 11) are released from the UART and with it set
-they carry it.
+they carry it; with `UART_EN` clear the receive and CTS inputs read the idle level, high, so
+`MSR.CTS` reads 0 and the receiver reports no character.
 
 *Test Coverage*:
 
@@ -45085,9 +45103,12 @@ they carry it.
   `MSR.CTS` reads the same with pad 14 driven low and high; with it set `MSR.CTS` follows the pad in
   opposite polarity. With `UART_EN` clear a frame driven on pad 11 does not reach `RBR`; with it
   set the same frame reads back with `LSR` clear of errors.
-* The level the UART's receiver and CTS input see while `UART_EN` is clear is not stated by the
-  documents: the `MSR.CTS` level and every character the receiver reports in that state are logged
-  as `OBS-UART-PADMUX-INPUT-LEVEL`, not compared.
+* With `UART_EN` clear and no LSIO selection on pads 11 and 14 (`tb_lsio_interface_select` of both
+  reads 0 on 64 cycles), the UART's receive and CTS inputs read high, the serial idle level
+  (`uart_log_engine_ctrl.rdl` `CTRL.UART_EN`; `hw/sys/smc/doc/periphs.adoc`, GPIO
+  `LSIO_PAD2CORE_IDLE` from `smc_padring_pkg::LsioIdleLevelMap`): `MSR.CTS` reads 0 with pad 14 low
+  and with it high, and the receiver reports no character after a receive-FIFO reset, a frame queued
+  on pad 11 and two frame times (compared, `CHK-UART-PADMUX-INPUT-IDLE`).
 * `UART_EN` set again: the same `THR` write produces exactly one frame decoded as 0xA5, the
   positive control that the stimulus and the pad decoder still work after the clear leg. Pad 12 is
   held at 1 by the register row (`interface_enable`, `enable_rx_tx` and `core2pad` 1) from the start
@@ -45135,8 +45156,8 @@ they carry it.
   8N1 frame of 0x3C on pad 11, wait one frame time and drain `RBR` (at most 40 reads), requiring
   0x3C absent; write `UART_EN` 1, wait one frame time, reset the receive FIFO, drive the same frame
   and require exactly one character 0x3C with `LSR` 0x61; write `UART_EN` 0. Stamp S5 and print
-  `CHK-UART-PADMUX-RTS`, `CHK-UART-PADMUX-CTS`, `CHK-UART-PADMUX-RX` and the measured
-  `OBS-UART-PADMUX-INPUT-LEVEL`.
+  `CHK-UART-PADMUX-RTS`, `CHK-UART-PADMUX-CTS`, `CHK-UART-PADMUX-RX` and
+  `CHK-UART-PADMUX-INPUT-IDLE`.
 . Write `UART_EN` 1 and read it back, then write the saved pad-12 `DATA_CTRL` back and read it,
   requiring `interface_enable`, `enable_rx_tx` and `core2pad` equal to the saved value; stop the
   sampler and require every pad-12 sample since the S5 hold equal to 1 with no X/Z sample. Write
@@ -45177,8 +45198,11 @@ they carry it.
 |`CHK-UART-PADMUX-RX` |With `UART_EN` 0 a frame of 0x3C on pad 11 is absent from everything the
   receiver reports; with `UART_EN` 1 the same frame reads back as exactly one character 0x3C with
   `LSR` 0x61
-|`OBS-UART-PADMUX-INPUT-LEVEL` |Measured, not compared: the `MSR.CTS` level with `UART_EN` 0 and
-  the characters the receiver reported with `UART_EN` 0 (#3694)
+|`CHK-UART-PADMUX-INPUT-IDLE` |With `UART_EN` 0 and `tb_lsio_interface_select[11]` and `[14]` read
+  0 on 64 cycles, `MSR.CTS` reads 0 with pad 14 low and 0 with it high (64 cycles after each drive),
+  and the receiver reports no character after a receive-FIFO reset, a frame queued on pad 11 and two
+  frame times with the divisor programmed; a select bit of 1, an `MSR.CTS` of 1 or any character
+  drained fails
 |`CHK-UART-PADMUX-FRAME-RECOVER` |Pad 12 reads 1 at every `clk_smc_i` sample from the S5
   register hold through the `UART_EN` toggles, the `UART_EN` write and the `DATA_CTRL` restore
   (compared; the saved `DATA_CTRL` reads back), and with `UART_EN` read back 1 again the same `THR`
@@ -45188,11 +45212,11 @@ they carry it.
   nine checker lines printed in order, each after its own step
 |===
 
-*Pass Criteria*: all checkers hold after their compares. The level the UART's inputs see with
-`UART_EN` clear is observed and is not part of the claim. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all checkers hold after their compares. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The level the UART's receiver and CTS input see with `UART_EN` clear is measured, not
-compared, because the documents do not state it (#3694).
+*Scope limit*: The idle level is graded at the UART's registers (`MSR.CTS`, `RBR`, `LSR`) with
+`UART_EN` clear; the LSIO return path of the other idle-high pads (I2C and I3C SCL and SDA) is not
+observed by this leaf.
 
 '''''
 
@@ -53886,7 +53910,7 @@ burst with the watchdog warm reset and asserts the drain reading under `expect_f
 |`smc_uart_irq_thre_identify_test` requires `LSR.THRE` to read 1 and the up to 16 `IIR` reads to agree with one another, and logs them.
 |<<smc-vplan-area-uart,UART>>
 |`MSR` reads its reset value 0x00 after reset.
-|The CTS level at the SMC boundary is not stated, and the first `MSR` read after reset may report a modem-status delta with no transition. Source: `hw/ip/uart/uart_16550/regs/uart_16550_main.rdl` (`MSR`, reset 0x00; `DCTS` "changed since the last read"); `hw/sys/smc/doc/port_table.adoc` (the UART modem inputs).
+|With `CTRL.UART_EN` clear, its reset value, the UART's CTS input reads the idle level, high, so `MSR.CTS` reads 0 (`uart_log_engine_ctrl.rdl` `CTRL.UART_EN`; graded by `smc_uart_pad_mux_enable_test` `CHK-UART-PADMUX-INPUT-IDLE`); whether the first `MSR` read after reset reports a modem-status delta for a level that differs from the reset value is not stated. Source: `hw/ip/uart/uart_16550/regs/uart_16550_main.rdl` (`MSR`, reset 0x00; `DCTS` "changed since the last read"); `hw/sys/smc/doc/port_table.adoc` (the UART modem inputs).
 |`smc_uart_spi_log_engine_test` grades that the delta bits clear on the second read (`CHK-UART-MSR-DELTA-CLEAR`) and logs the first read; `smc_uart_reg_reset_rw_test` logs the first `MSR` read on all four instances.
 |<<smc-vplan-area-uart,UART>>
 |`IER` bits 31:5.

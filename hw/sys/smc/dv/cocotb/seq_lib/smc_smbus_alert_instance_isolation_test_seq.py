@@ -9,7 +9,7 @@ Sources: hw/ip/i2c/regs/i2c_ctrl.rdl (I2C_CTRL array), hw/ip/i2c/regs/i2c.rdl (S
 CTRL.LLPBK, SMBUS_CTRL), hw/ip/i2c/doc/index.adoc (OCAH Modifications),
 hw/ip/i2c/regs/gen/adoc/i2c_ctrl.adoc, hw/ip/i2c/regs/gen/adoc/i2c.adoc,
 hw/sys/smc/regs/gen/adoc/memory_map.adoc (I2C wrapper decoded extent).
-The specification does not state the padring reach.
+The specification does not state how far SMBUS_EN reaches into the padring.
 
 * Gate rounds: with the three alert pads driven low, clearing SMBUS_EN on one
   instance leaves SMBUS_STATUS.SMBALERT of the other two at 1 and masks its own
@@ -24,7 +24,13 @@ The specification does not state the padring reach.
   compared, the reserved readback and every BRESP are logged (SF-004, SF-005).
 * The wrapper window past its decoded extent answers DECERR 0xBADCAB1E / DECERR.
 * The I2C1 alert pad is an input with I2C_CONTROLLER_MODE_EN 1 and follows
-  SMBUS_CTRL.SMBALERT as an output with it 0; I2C2 is checked as an input.
+  SMBUS_CTRL.SMBALERT as an output with it 0; I2C2 is checked as an input. The
+  padring ties the SMBus input a mode does not read to the deasserted level
+  (smc_padring gen_i2c_connections: i2c_smbus_alert_n_o high in target mode,
+  i2c_smbus_n_o high in host mode; no document states it): a host instance reads
+  SMBUS_STATUS.SMBSUS 0 with its suspend pad released and while it drives it low,
+  and the I2C1 target reads SMBUS_STATUS.SMBALERT 0 while it drives its own alert
+  pad low and after it releases it.
 """
 
 from __future__ import annotations
@@ -51,7 +57,9 @@ from .smc_i2c_field_masks import (
     I2C_CTRL_ENABLETARGET,
     I2C_INTR_STATE_SMBALERT,
     I2C_SMBUS_CTRL_SMBALERT,
+    I2C_SMBUS_CTRL_SMBSUS,
     I2C_SMBUS_STATUS_SMBALERT,
+    I2C_SMBUS_STATUS_SMBSUS,
     I2C_WRAP_CONTROLLER_MODE,
     I2C_WRAP_CTRL_HOST,
     I2C_WRAP_CTRL_HOST_SMBUS,
@@ -62,6 +70,7 @@ from .smc_pad_table import pad_index
 
 INSTANCES = (0, 1, 2)
 ALERT_PADS = tuple(pad_index(f"I2C[{i}] SMB_A") for i in INSTANCES)
+SUS_PADS = tuple(pad_index(f"I2C[{i}] SMB_D") for i in INSTANCES)
 MASK_INSTANCES = (1, 2)
 CTRL_INSTANCES = (1, 2)
 
@@ -184,6 +193,30 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
     async def _status(self, label: str, idx: int) -> int:
         word = await self.csr_read(label, _reg("SMBUS_STATUS", idx))
         return 1 if word & I2C_SMBUS_STATUS_SMBALERT else 0
+
+    async def _smbsus(self, label: str, idx: int) -> int:
+        word = await self.csr_read(label, _reg("SMBUS_STATUS", idx))
+        return 1 if word & I2C_SMBUS_STATUS_SMBSUS else 0
+
+    async def _hold_status(self, label: str, idx: int, want: int) -> int:
+        """Read SMBUS_STATUS.SMBALERT of ``idx`` OBSERVE_POLLS times; every read must be ``want``."""
+        for poll in range(OBSERVE_POLLS):
+            got = await self._status(f"{label}_p{poll}", idx)
+            assert got == want, (
+                f"{label}: i2c{idx} read {poll}: SMBUS_STATUS.SMBALERT={got}, expected {want}; "
+                f"the padring returns the deasserted level to a target's alert input"
+            )
+        return OBSERVE_POLLS
+
+    async def _hold_smbsus(self, label: str, idx: int, want: int) -> int:
+        """Read SMBUS_STATUS.SMBSUS of ``idx`` OBSERVE_POLLS times; every read must be ``want``."""
+        for poll in range(OBSERVE_POLLS):
+            got = await self._smbsus(f"{label}_p{poll}", idx)
+            assert got == want, (
+                f"{label}: i2c{idx} read {poll}: SMBUS_STATUS.SMBSUS={got}, expected {want}; "
+                f"the padring returns the deasserted level to a host's suspend input"
+            )
+        return OBSERVE_POLLS
 
     async def _intr(self, label: str, idx: int) -> int:
         word = await self.csr_read(label, _reg("INTR_STATE", idx))
@@ -619,6 +652,12 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
         await self._poll_one(f"dir{k}_input_low", k, 1)
         self._drive_pads_low(pad, False)
         await self._poll_one(f"dir{k}_input_released", k, 0)
+        await self._hold_smbsus(f"dir{k}_host_smbsus_released", k, 0)
+        await self.csr_write(f"dir{k}_SMBSUS_SET", _reg("SMBUS_CTRL", k), I2C_SMBUS_CTRL_SMBSUS)
+        await self._poll_pad(f"dir{k}_host_sus_pad_low", SUS_PADS[k], 0)
+        await self._hold_smbsus(f"dir{k}_host_smbsus_driving", k, 0)
+        await self.csr_write(f"dir{k}_SMBSUS_CLR", _reg("SMBUS_CTRL", k), 0)
+        await self._poll_pad(f"dir{k}_host_sus_pad_high", SUS_PADS[k], 1)
 
     async def _pad_dir(self) -> None:
         await self._pad_input(1)
@@ -628,8 +667,12 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
         await self.csr_write("dir1_CTRL_TARGET", _reg("CTRL", 1), I2C_CTRL_ENABLETARGET)
         await self.csr_write("dir1_SMBALERT_SET", _reg("SMBUS_CTRL", 1), I2C_SMBUS_CTRL_SMBALERT)
         await self._poll_pad("dir1_output_pad_low", pad1, 0)
+        wrap_rb = await self._ctrl_word("dir1_WRAP_OUT_RB", 1) & WRAP_FIELDS
+        assert wrap_rb == WRAP_TARGET_SMBUS, f"I2C_CTRL[1] reads {wrap_rb:#05x} in the target leg"
+        await self._hold_status("dir1_target_driving_status", 1, 0)
         await self.csr_write("dir1_SMBALERT_CLR", _reg("SMBUS_CTRL", 1), 0)
         await self._poll_pad("dir1_output_pad_high", pad1, 1)
+        await self._hold_status("dir1_target_released_status", 1, 0)
         await self.csr_write("dir1_WRAP_RESTORE", _wrap_ctrl(1), WRAP_ALL)
         await self.csr_write("dir1_CTRL_RESTORE", _reg("CTRL", 1), I2C_CTRL_ENABLEHOST)
         await self._pad_input(2)
@@ -637,7 +680,12 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-ALERT-PAD-DIR",
             "i2c1 input low->1 rel->0; i2c2 input low->1 rel->0; i2c1 output smbalert=1 pad=0, "
-            f"smbalert=0 pad=1 (observed at tb_core2pad_en_o/tb_core2pad_o[{pad1}])",
+            f"smbalert=0 pad=1 (observed at tb_core2pad_en_o/tb_core2pad_o[{pad1}]); i2c1 target "
+            f"SMBUS_STATUS.SMBALERT=0 in {OBSERVE_POLLS} of {OBSERVE_POLLS} reads while driving "
+            f"and again after release; i2c1 and i2c2 host SMBUS_STATUS.SMBSUS=0 in "
+            f"{OBSERVE_POLLS} of {OBSERVE_POLLS} reads each with the suspend pad released and "
+            f"again while driving it low (observed at tb_core2pad_en_o/tb_core2pad_o"
+            f"[{SUS_PADS[1]},{SUS_PADS[2]}])",
         )
 
     async def _teardown(self, cg: int) -> None:
