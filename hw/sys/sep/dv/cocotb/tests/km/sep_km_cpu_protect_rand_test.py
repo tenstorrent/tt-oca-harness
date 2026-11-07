@@ -59,6 +59,12 @@ Checks:
                      in the window; ROM_ACCESS_VIOLATION stays 0.
   CHK-EXEC-OK        C0 and C2: the permitted fetch lands its marker with no
                      violation; the ROM data read returns the image word.
+  CHK-EXEC-ROM-HI    C0: a jump to the image stub at ROM 0x2000 (ENTRY_ROM_HI,
+                     the first word of the ROM upper half) stores its marker in
+                     SRAM word 97 and returns it as the jump result, with no
+                     slv or dec; EXEC_VIOLATION and ROM_ACCESS_VIOLATION are 0
+                     at the jump and over the window, and PIC bit 30 is 0 at the
+                     jump and does not rise.
   CHK-LOCKOUT        C2 after the lockout: ROM read 0 with ROM_ACCESS_VIOLATION;
                      ROM store clean with ROM_WRITE_ERR only; enable stays 1.
   CHK-LOCKOUT-FETCH  C4: a ROM fetch after the lockout traps and halts the CPU;
@@ -75,7 +81,9 @@ Logged only: ``OBS-TRAP-OPC`` (a non-zero word of a major opcode outside the bas
 set: the KM CPU ISA is not stated, so its outcome is not graded), the handler
 result words of the refused fetches, the snippet marker of a refused fetch, the
 CRC results of the legal encodings, the CTRL reads after the reset, and the
-ROM store controls before the lockout.
+ROM store controls before the lockout. ``INFO-EXEC-ROM-HI-REQ`` logs the
+km_rom_req_count_o advance over the ROM upper-half jump (no golden; the image
+loop also fetches from ROM).
 
 FCOV: each graded case (one trap kind, C0, C1 locked, C1 unlocked, C2 with its
 CHK-EXEC-RST reset, C3, C4, C5, C6) runs in its own owner window. The window
@@ -251,7 +259,11 @@ MARK_S = 0x5EC5_0001
 MARK_S_UNLOCKED = 0x5EC5_0003  # C1 boot B: a snippet that differs from boot A's
 MARK_P_START = 0x5EC5_0002
 MARK_P_END = 0x5EC5_00FF
-MARKERS = (MARK_S, MARK_S_UNLOCKED, MARK_P_START, MARK_P_END)
+MARK_ROM_HI = 0x5EC5_0004  # stored by the ROM upper-half stub
+MARKERS = (MARK_S, MARK_S_UNLOCKED, MARK_P_START, MARK_P_END, MARK_ROM_HI)
+# Salt of the stream of the ROM upper-half jump draws, so the draws of the
+# other cases keep their seed-to-value mapping.
+_ROM_HI_SALT = 0x524F_4D48 << 32
 
 TRAP_KINDS = ("a", "b", "c", "d", "e", "f")
 TRAP_TEXT = {
@@ -486,12 +498,16 @@ class Plan:
         return Witness(slots, words, locks, _nz(self.rng), _nz(self.rng))
 
     def sentinel(self) -> int:
-        # Bit 31 set: IRQ_STATUS bits [31:12] are reserved, so no IRQ_STATUS
-        # copy of the image can equal the sentinel.
-        while True:
-            v = self.rng.getrandbits(32) | 0x8000_0000
-            if v not in MARKERS:
-                return v
+        return _sentinel(self.rng)
+
+
+def _sentinel(rng: SepSeededRng) -> int:
+    # Bit 31 set: IRQ_STATUS bits [31:12] are reserved, so no IRQ_STATUS
+    # copy of the image can equal the sentinel.
+    while True:
+        v = rng.getrandbits(32) | 0x8000_0000
+        if v not in MARKERS:
+            return v
 
 
 @dataclass
@@ -646,6 +662,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         "CHK-TRAP-STATUS",
         "CHK-EXEC",
         "CHK-EXEC-OK",
+        "CHK-EXEC-ROM-HI",
         "CHK-LOCKOUT",
         "CHK-LOCKOUT-FETCH",
         "CHK-LOCKOUT-ORDER",
@@ -1475,7 +1492,63 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         await self._instance(self._c0_graded())
         await self._plain_reset()
 
+    async def _c0_rom_hi(self) -> None:
+        """CHK-EXEC-ROM-HI: ROM mode executes the ROM upper half (KA:673, ROM 0x0000-0x3FFF)."""
+        sentinel = _sentinel(SepSeededRng(self.plan.seed ^ _ROM_HI_SALT))
+        self.logger.info("DRAW C0 rom_hi sentinel=0x%08x", sentinel)
+        ops = [
+            kp.wr(IRQ_STATUS_A, IRQ_DEFINED),
+            *self._sentinel_ops(sentinel),
+            kp.disarm(),
+            kp.jump(kp.ENTRY_ROM_HI, MARK_ROM_HI, kp.sram_addr(W_S_MARK)),
+        ]
+        await ReadOnly()
+        rom0 = self._rom_count()
+        await RisingEdge(cocotb.top.clk_i)
+        handle, jw = await self._post_jump(ops)
+        await self.poke.wait(handle)
+        await ReadOnly()
+        rom1 = self._rom_count()
+        res = self.poke.results(handle)
+        mark_word = W_S_MARK
+        mark = self.poke.word(mark_word)
+        await RisingEdge(cocotb.top.clk_i)
+        jr = res[-1]
+        viol = IRQ_EXEC_VIOL | IRQ_ROM_ACC_VIOL
+        self.logger.info(
+            "INFO-EXEC-ROM-HI-REQ rom_req_delta=%d (km_rom_req_count_o from before the post to "
+            "the list end; no golden, logged only)",
+            rom1 - rom0,
+        )
+        assert self._sentinel_ok(res, 1, sentinel), (
+            "CHK-EXEC-ROM-HI FAIL: C0: a result word did not hold the sentinel before the jump"
+        )
+        assert mark == MARK_ROM_HI, (
+            f"CHK-EXEC-ROM-HI FAIL: C0: SRAM word {mark_word} reads 0x{mark:08x} after the jump "
+            f"to ROM 0x{kp.ENTRY_ROM_HI:04x}, the stub stores 0x{MARK_ROM_HI:08x}"
+        )
+        assert jr.value == MARK_ROM_HI and not jr.slv and not jr.dec, (
+            f"CHK-EXEC-ROM-HI FAIL: C0: jump result 0x{jr.value:08x} slv={jr.slv} dec={jr.dec}, "
+            f"expected 0x{MARK_ROM_HI:08x} with no slv or dec"
+        )
+        assert (jw.irq_at_jump | jw.irq_or) & viol == 0, (
+            f"CHK-EXEC-ROM-HI FAIL: C0: KM-CSR showed {irq_text((jw.irq_at_jump | jw.irq_or) & viol)}"
+            f" at or after the jump to ROM 0x{kp.ENTRY_ROM_HI:04x}"
+        )
+        assert jw.err_at_jump == 0 and jw.err_rise is None, (
+            f"CHK-EXEC-ROM-HI FAIL: C0: PIC bit 30 at the jump={jw.err_at_jump} rise at clock "
+            f"{jw.err_rise} after the jump to ROM 0x{kp.ENTRY_ROM_HI:04x}"
+        )
+        self.logger.info(
+            "CHK-EXEC-ROM-HI PASS: case=C0 target=0x%04x pre=sentinel marker=0x%08x "
+            "jump_result=0x%08x slv=0 dec=0 exec_viol=0 rom_acc_viol=0 err_o=0",
+            kp.ENTRY_ROM_HI,
+            mark,
+            jr.value,
+        )
+
     async def _c0_graded(self) -> None:
+        await self._c0_rom_hi()
         p = self.plan
         sentinel = p.sentinel()
         self.logger.info("DRAW C0 sentinel=0x%08x", sentinel)

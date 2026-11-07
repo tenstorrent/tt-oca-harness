@@ -324,6 +324,13 @@ class EncodingTest(unittest.TestCase):
             bad.write_text("\n".join(lines) + "\n")
             with self.assertRaises(AssertionError):
                 kp.check_image(bad)
+            tag_line = 3 + (kp.ENTRY_ROM_HI + kp.ROM_HI_TAG_OFFSET) // 4
+            self.assertEqual(rom[kp.ENTRY_ROM_HI + kp.ROM_HI_TAG_OFFSET], kp.ROM_HI_TAG)
+            lines = list(text)
+            lines[tag_line] = "E00000013"
+            bad.write_text("\n".join(lines) + "\n")
+            with self.assertRaises(AssertionError):
+                kp.check_image(bad)
 
 
 class ImageTest(unittest.TestCase):
@@ -396,6 +403,14 @@ class ImageTest(unittest.TestCase):
         with self.assertRaises(Trap):
             m2.run_until(lambda: False, 200_000)
         self.assertEqual(kp.progress_of(m2.word(kp.W_PROG))[0], 1)
+
+    def test_rom_hi_stub(self) -> None:
+        m = model()
+        marker, word = 0x5EC5_0004, 97
+        ops = [kp.jump(kp.ENTRY_ROM_HI, marker, kp.sram_addr(word))]
+        self.assertEqual(m.run_list(ops), (kp.ST_DONE, 1))
+        self.assertEqual(kp.decode(ops, m.words())[0].value, marker)
+        self.assertEqual(m.word(word), marker)
 
     def test_spin_and_handler(self) -> None:
         m = model()

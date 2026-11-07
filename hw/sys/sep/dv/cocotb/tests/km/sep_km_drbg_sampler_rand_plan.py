@@ -50,6 +50,7 @@ A_CFG = km_addr("DRBG_SAMPLER_CFG_BASE_ADDR")
 A_STATUS = km_addr("DRBG_SAMPLER_STATUS_BASE_ADDR")
 A_PDATA = km_addr("DRBG_SAMPLER_PREFETCH_DATA_BASE_ADDR")
 A_IRQ_STATUS = km_addr("KMCSR_IRQ_STATUS_BASE_ADDR")
+A_IRQ_ENABLE = km_addr("KMCSR_IRQ_ENABLE_BASE_ADDR")
 
 # --- generated fields and resets (RDL) -------------------------------------------
 KM_CSR = CHeaderRegBlock("KM_CSR", ip_c_header("key_manager").with_name("km_csr.h"))
@@ -70,6 +71,8 @@ IRQ_SLVERR = _f(KM_CSR, "IRQ_STATUS_REG", "AXI_SLVERR")["bm"]
 IRQ_DECERR = _f(KM_CSR, "IRQ_STATUS_REG", "AXI_DECERR")["bm"]
 IRQ_DRBG_ERR = _f(KM_CSR, "IRQ_STATUS_REG", "DRBG_ERR")["bm"]
 IRQ_FIELDS = _field_mask(KM_CSR, "IRQ_STATUS_REG")
+IRQ_EN_DRBG_ERR = _f(KM_CSR, "IRQ_ENABLE_REG", "DRBG_ERR_EN")["bm"]
+IRQ_ENABLE_RESET = KM_CSR.reset("IRQ_ENABLE_REG")
 
 CFG_RESET = KM_SMP.reset("CFG_REG")
 STATUS_RESET = KM_SMP.reset("STATUS_REG")
@@ -174,5 +177,139 @@ def draw_plan(rng: SepSeededRng, seed: int) -> Plan:
         ("t_order", ",".join(str(t) for t in order)),
         ("good_sat", int(good_sat)),
         ("pulse_delay_case_a", pulse_delay),
+    ]
+    return plan
+
+
+# --- external-stream legs ------------------------------------------------------------
+# The legs draw from their own generator, ``SepSeededRng(seed ^ EXT_SALT)``, so
+# the draws of ``draw_plan`` keep their seed-to-value mapping.
+EXT_SALT = 0x5A4D_5045
+WORD_BYTES = 4
+STRB_ALL = (1 << WORD_BYTES) - 1
+IRQ_GATE_T_RANGE = (1, 8)
+TO_ASM_T_RANGE = (4, 20)
+PRE_PARTIAL_PATTERNS = 2
+PRE_PARTIAL_BEATS = (2, 4)
+# Clocks after a completed handshake before the next host action; every value
+# is drawn once per seed.
+PRE_PARTIAL_GAPS = (0, 1, 2, 5)
+PACK_STRB0_BEATS = 2
+STRM_DROP_GAP_RANGE = (1, 8)
+# Clocks between the TREADY rise of a waiting DATA read and the host queueing
+# the beat; every value is drawn once per seed, plus one from the range.
+STRM_PULSE_DELAYS = (0, 1, 2)
+STRM_PULSE_EXTRA_RANGE = (2, 6)
+
+Beat = tuple[int, int]  # (TDATA, TSTRB)
+
+_BY_COUNT = {c: [s for s in range(STRB_ALL + 1) if s.bit_count() == c] for c in range(5)}
+
+
+def pack(beats: list[Beat]) -> tuple[int, int]:
+    """The word a DATA read assembles from ``beats``, and the bytes it drops.
+
+    Each beat gives its TSTRB-selected bytes, lanes 0 to 3 in order; the
+    bytes fill the word from byte 0 upward in beat order; bytes past the
+    fourth are dropped (architecture.adoc, "Reads, prefetch and register
+    access"). A TSTRB 0x0 beat gives no byte.
+    """
+    got: list[int] = []
+    for data, strb in beats:
+        got += [(data >> (8 * j)) & 0xFF for j in range(WORD_BYTES) if strb >> j & 1]
+    if len(got) < WORD_BYTES:
+        raise ValueError(f"beats give {len(got)} valid bytes, a word needs {WORD_BYTES}")
+    return sum(b << (8 * i) for i, b in enumerate(got[:WORD_BYTES])), len(got) - WORD_BYTES
+
+
+@dataclass
+class ExtPlan:
+    """The seeded draws of the external-stream legs."""
+
+    irq_t: int
+    to_asm_t: int
+    to_asm_beat: Beat
+    pre_patterns: list[list[Beat]]
+    pre_gaps: list[int]
+    pack_patterns: list[list[Beat]]
+    strm_drop: tuple[int, int]
+    strm_pulses: list[tuple[int, int]]
+    draws: list[tuple[str, object]] = field(default_factory=list)
+
+
+def _strb(rng: SepSeededRng, count: int) -> int:
+    return rng.choice(_BY_COUNT[count])
+
+
+def _beat(rng: SepSeededRng, strb: int) -> Beat:
+    return rng.getrandbits(32), strb
+
+
+def _pre_pattern(rng: SepSeededRng) -> list[Beat]:
+    """2 to 4 beats with a non-zero TSTRB; four valid bytes only with the last beat."""
+    n = rng.randrange(PRE_PARTIAL_BEATS[0], PRE_PARTIAL_BEATS[1] + 1)
+    head = [1] * (n - 1)
+    for _ in range(rng.randrange(WORD_BYTES - n + 1)):
+        head[rng.randrange(n - 1)] += 1
+    need = WORD_BYTES - sum(head)
+    last = rng.randrange(need, WORD_BYTES + 1)
+    return [_beat(rng, _strb(rng, c)) for c in [*head, last]]
+
+
+def _pack_patterns(rng: SepSeededRng) -> list[list[Beat]]:
+    """Every TSTRB 0x1 to 0xF once, in drawn order, with two TSTRB 0x0 beats
+    inside; each pattern is the beats of one DATA read, and at least one
+    pattern drops bytes."""
+    strbs = list(range(1, STRB_ALL + 1))
+    rng.shuffle(strbs)
+    for _ in range(PACK_STRB0_BEATS):
+        strbs.insert(rng.randrange(len(strbs) + 1), 0)
+    patterns: list[list[Beat]] = []
+    cur: list[Beat] = []
+    for s in strbs:
+        cur.append(_beat(rng, s))
+        if sum(b[1].bit_count() for b in cur) >= WORD_BYTES:
+            patterns.append(cur)
+            cur = []
+    if cur:
+        patterns.append([*cur, _beat(rng, STRB_ALL)])
+    if not any(pack(p)[1] for p in patterns):
+        patterns.append([_beat(rng, 0x1), _beat(rng, STRB_ALL)])
+    return patterns
+
+
+def _strbs(patterns: list[list[Beat]]) -> str:
+    return "|".join(",".join(f"{s:x}" for _, s in p) for p in patterns)
+
+
+def draw_ext_plan(seed: int) -> ExtPlan:
+    """Draw the external-stream legs from ``SepSeededRng(seed ^ EXT_SALT)``."""
+    rng = SepSeededRng(seed ^ EXT_SALT)
+    irq_t = rng.randrange(IRQ_GATE_T_RANGE[0], IRQ_GATE_T_RANGE[1] + 1)
+    to_asm_t = rng.randrange(TO_ASM_T_RANGE[0], TO_ASM_T_RANGE[1] + 1)
+    to_asm_beat = _beat(rng, _strb(rng, rng.randrange(1, WORD_BYTES)))
+    pre = [_pre_pattern(rng) for _ in range(PRE_PARTIAL_PATTERNS)]
+    n_pre = sum(len(p) for p in pre)
+    gaps = [*PRE_PARTIAL_GAPS, *(rng.choice(PRE_PARTIAL_GAPS) for _ in range(n_pre - 4))]
+    rng.shuffle(gaps)
+    pack_patterns = _pack_patterns(rng)
+    drop = (rng.getrandbits(32), rng.randrange(STRM_DROP_GAP_RANGE[0], STRM_DROP_GAP_RANGE[1] + 1))
+    delays = [
+        *STRM_PULSE_DELAYS,
+        rng.randrange(STRM_PULSE_EXTRA_RANGE[0], STRM_PULSE_EXTRA_RANGE[1] + 1),
+    ]
+    rng.shuffle(delays)
+    pulses = [(k, rng.getrandbits(32)) for k in delays]
+    plan = ExtPlan(irq_t, to_asm_t, to_asm_beat, pre, gaps, pack_patterns, drop, pulses)
+    plan.draws = [
+        ("irq_gate_t", irq_t),
+        ("to_asm_t", to_asm_t),
+        ("to_asm_strb", f"0x{to_asm_beat[1]:x}"),
+        ("pre_partial_strb", _strbs(pre)),
+        ("pre_partial_gaps", ",".join(str(g) for g in gaps)),
+        ("pack_strb", _strbs(pack_patterns)),
+        ("pack_beats", sum(len(p) for p in pack_patterns)),
+        ("strm_drop_gap", drop[1]),
+        ("strm_pulse_delays", ",".join(str(k) for k, _ in pulses)),
     ]
     return plan

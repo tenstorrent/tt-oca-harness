@@ -38892,6 +38892,7 @@ module sep_fcov (
   // stream error.
   localparam logic [2:0] KmStIdle = 3'd0;
   localparam logic [2:0] KmStRequest = 3'd1;
+  localparam logic [2:0] KmStByteAssembly = 3'd2;
   localparam logic [2:0] KmStTimeout = 3'd4;
   localparam logic [2:0] KmStStreamErr = 3'd5;
   // Release write of km_sw_rst_n: the leaf raises AWVALID of the SW_RESET_N
@@ -39791,15 +39792,17 @@ module sep_fcov (
     cp_smp_read_service: coverpoint v[0] iff (pt == 5'd0) {
       bins prefetched_word_at_once = {1'b0}; bins tready_and_wait = {1'b1};
     }
-    // The delayed-arrival bins need the PROPOSED drive HK-STRM-PAT and are
-    // not declared.
-    cp_smp_tvalid_arrival: coverpoint v[0] iff (pt == 5'd1) {
-      bins tvalid_high_at_read_start = {1'b1};
+    // 0: TVALID high at the read start; 1, 2, 3: TVALID first high 1, 2, or 3
+    // or more clocks after it.
+    cp_smp_tvalid_arrival: coverpoint v[1:0] iff (pt == 5'd1) {
+      bins tvalid_high_at_read_start = {2'd0};
+      bins tvalid_delayed_1 = {2'd1};
+      bins tvalid_delayed_2 = {2'd2};
+      bins tvalid_delayed_3_or_more = {2'd3};
     }
-    // Every TSTRB value other than 0xF needs the PROPOSED drive HK-STRM-PAT
-    // and is not declared.
+    // TSTRB of a beat that the active read path takes.
     cp_smp_strb: coverpoint v[3:0] iff (pt == 5'd2) {
-      bins strb_f = {4'hF}; ignore_bins strb_0_not_stated = {4'h0};
+      bins strb_0 = {4'h0}; bins strb_partial[] = {[4'h1 : 4'hE]}; bins strb_f = {4'hF};
     }
     cp_smp_freshness: coverpoint v[0] iff (pt == 5'd3) {bins new_word_per_read = {1'b1};}
     cp_smp_prefetch_mode: coverpoint v[2:0] iff (pt == 5'd4) {
@@ -39859,10 +39862,8 @@ module sep_fcov (
     cp_df_timeout_value: coverpoint v[0] iff (pt == 5'd0) {
       bins timeout1 = {1'b0}; bins timeout65535 = {1'b1};
     }
-    // The timeout from ST_BYTE_ASSEMBLY needs the PROPOSED drive HK-STRM-PAT
-    // and is not declared.
     cp_df_entry_state: coverpoint v[0] iff (pt == 5'd1) {
-      bins from_request = {1'b0};
+      bins from_request = {1'b0}; bins from_byte_assembly = {1'b1};
     }
     cp_df_timeout_outcome: coverpoint v[1:0] iff (pt == 5'd2) {
       bins slverr_data0 = {2'd0};
@@ -41804,6 +41805,8 @@ module sep_fcov (
   logic [7:0] km_bad_q = '0;
   logic [1:0] km_sticky_q = '0;
   logic km_wait_req = 1'b0;  // a DATA read started with no prefetched word
+  logic km_arr_v = 1'b0;  // a read started with TVALID low; waits for its arrival
+  logic [1:0] km_arr_cnt = '0;
   logic km_prev_data_ok = 1'b0;
   logic [15:0] km_hs_since = '0;
   logic km_pf_read_done = 1'b0;  // a DATA read completed with prefetch 1
@@ -41853,6 +41856,7 @@ module sep_fcov (
     km_strm_pass_q <= (km_strm_pass != 0);
     if (!km_rst_warm_n || !km_rst_cold_n) begin
       km_wait_req <= 1'b0;
+      km_arr_v <= 1'b0;
       km_prev_data_ok <= 1'b0;
       km_pf_read_done <= 1'b0;
       km_pf_dis_word <= 1'b0;
@@ -41879,9 +41883,17 @@ module sep_fcov (
       if ((km_smp_st_q == KmStIdle) && (st == KmStRequest)) begin
         if (km_wait_req && km_tr) u_sep_km_drbg_sampler_cg.sample(5'd0, 16'd1);
         km_wait_req <= 1'b0;
-        if (km_tv) u_sep_km_drbg_sampler_cg.sample(5'd1, 16'd1);
+        if (km_tv) u_sep_km_drbg_sampler_cg.sample(5'd1, 16'd0);
+        km_arr_v   <= !km_tv;
+        km_arr_cnt <= 2'd1;
+      end else if (km_arr_v) begin
+        if (km_tv && (st == KmStRequest)) begin
+          u_sep_km_drbg_sampler_cg.sample(5'd1, 16'(km_arr_cnt));
+          km_arr_v <= 1'b0;
+        end else if (st != KmStRequest) km_arr_v <= 1'b0;
+        else if (km_arr_cnt != 2'd3) km_arr_cnt <= km_arr_cnt + 2'd1;
       end
-      if (km_smp_hs && ((st == KmStRequest) || (st == 3'd2)))
+      if (km_smp_hs && ((st == KmStRequest) || (st == KmStByteAssembly)))
         u_sep_km_drbg_sampler_cg.sample(5'd2, 16'(km_smp_tstrb_i));
       // Freshness: a sink handshake between two OKAY DATA reads.
       if (km_smp_hs && (km_hs_since != 16'hFFFF)) km_hs_since <= km_hs_since + 16'd1;
@@ -41947,6 +41959,7 @@ module sep_fcov (
         if (km_smp_cfg_i[16:1] == 16'd1) u_sep_km_drbg_fault_cg.sample(5'd0, 16'd0);
         if (km_smp_cfg_i[16:1] == 16'hFFFF) u_sep_km_drbg_fault_cg.sample(5'd0, 16'd1);
         if (km_smp_st_q == KmStRequest) u_sep_km_drbg_fault_cg.sample(5'd1, 16'd0);
+        if (km_smp_st_q == KmStByteAssembly) u_sep_km_drbg_fault_cg.sample(5'd1, 16'd1);
         km_to_cnt <= 4'd1;
         km_to_bad <= km_bad_q;
         km_to_slv <= 1'b0;

@@ -84,6 +84,9 @@ SIG_ADDR = 0x80
 SIG_MAGIC = 0x504F_4B45  # "POKE"
 ENTRY_SPIN = 0x20  # ROM spin loop: IRQ_STATUS -> SPIN on every pass
 ENTRY_RESUME = 0x40  # continue the list after a jump target returns
+ENTRY_ROM_HI = 0x2000  # ROM upper-half jump target: stores a0 at a1, result a0
+ROM_HI_TAG = 0x504F_4B48  # "POKH", the word at ENTRY_ROM_HI + ROM_HI_TAG_OFFSET
+ROM_HI_TAG_OFFSET = 12
 EXEC_BASE = 0x100
 EXEC_ENTRY_BYTES = 8
 EXEC_COUNT = 22
@@ -564,7 +567,8 @@ def rom_word(addr: int, path: str | Path = IMAGE_PATH) -> int:
 
 
 def check_image(path: str | Path = IMAGE_PATH) -> None:
-    """Raise if the image signature does not match the layout of this module."""
+    """Raise if the image signature or the ROM upper-half stub tag does not match
+    the layout of this module."""
     words = read_parhex(path)
     expect = (
         SIG_MAGIC,
@@ -585,4 +589,10 @@ def check_image(path: str | Path = IMAGE_PATH) -> None:
         raise AssertionError(
             f"{path}: POKE signature {[hex(w) for w in got]} does not match the host "
             f"layout {[hex(w) for w in expect]}; rebuild the image or update sep_km_poke.py"
+        )
+    tag = words.get(ENTRY_ROM_HI + ROM_HI_TAG_OFFSET, 0)
+    if tag != ROM_HI_TAG:
+        raise AssertionError(
+            f"{path}: ROM word 0x{ENTRY_ROM_HI + ROM_HI_TAG_OFFSET:x} is 0x{tag:08x}, not the "
+            f"ROM upper-half stub tag 0x{ROM_HI_TAG:08x}; rebuild the image or update sep_km_poke.py"
         )

@@ -157,6 +157,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom.parhex"]
 
 [[tests]]
+# The same legs with the POKE Key Manager image, plus a key-share burst on each
+# destination key path that the destination's SW_RESET_N field resets mid-burst:
+# the accepted key beat completes before the destination reset asserts.
+name = "sep_sw_reset_isolation_matrix_test_km_poke"
+module = "system.sep_sw_reset_isolation_matrix_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 4
+timeout_sec = 900
+tags = ["reset", "crypto", "isolation", "km", "memory", "subsystem", "grades_spec_rst_timer", "poke"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+sep_swiso_km_key_beat"]
+
+[[tests]]
 # The per-IP JTAG override pair forces each domain reset or release whatever SW_RESET_N
 # holds, without isolation. The sep_reset_n override leaves the rst_ni-domain blocks
 # intact.
