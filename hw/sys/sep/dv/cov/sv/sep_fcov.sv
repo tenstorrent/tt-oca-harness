@@ -2447,7 +2447,7 @@ module sep_fcov (
   logic d_gswap_q;  // CONTROL.DIGEST_SWAP of the last initial GO
   logic go_q, busy_q, done_q, chunk_q, dvalid_q, aborted_q, abort_q, size_err_q;
   logic ir_v_q;
-  logic [1:0] ir_src_q, ir_dst_q;
+  logic [1:0] ir_dst_q;
   logic dv_arm_q, dv_hash_q;
   logic szk_v_q, hwf_v_q;
   logic [1:0]  szk_q;
@@ -2751,10 +2751,10 @@ module sep_fcov (
       if (d_chunk && !chunk_q) cdc_wr_q <= 1'b0;
       else if (di_status) cdc_wr_q <= 1'b1;
 
-      // In-range position of each side at the initial GO, scored at DONE.
+      // In-range position of the destination of a zero fill at the initial
+      // GO, scored at DONE.
       if (d_go && dg_init) begin
-        ir_v_q   <= 1'b1;
-        ir_src_q <= rng_pos(d_src_q, d_total_q, d_base_q, d_limit_q);
+        ir_v_q   <= (dg_op == DmaOpZero);
         ir_dst_q <= rng_pos(d_dst_q, d_total_q, d_base_q, d_limit_q);
       end else if (d_done && !done_q) begin
         ir_v_q <= 1'b0;
@@ -9715,11 +9715,13 @@ module sep_fcov (
     cp_range_valid_at_go: coverpoint rv_v {bins valid1 = {1'b1};}
     cp_base_limit_rel: coverpoint bl_v {bins limit_gt_base = {1'b1};}
     // {side (0 source, 1 destination), position (0 at BASE, 1 interior,
-    // 2 at LIMIT)} of a transfer that ends with DONE and no error.
+    // 2 at LIMIT)} of a zero fill that ends with DONE and no error. The
+    // range bounds zero-fill writes only, not a source or a copy, so no
+    // source cell has stimulus (NO-STIMULUS in docs/SEP_FCOV.adoc).
     cp_inrange_pos_x_side: coverpoint ip iff (ip_v) {
-      bins src_at_base = {3'b0_00};
-      bins src_interior = {3'b0_01};
-      bins src_at_limit = {3'b0_10};
+      ignore_bins src_at_base = {3'b0_00};
+      ignore_bins src_interior = {3'b0_01};
+      ignore_bins src_at_limit = {3'b0_10};
       bins dst_at_base = {3'b1_00};
       bins dst_interior = {3'b1_01};
       bins dst_at_limit = {3'b1_10};
@@ -11465,8 +11467,6 @@ module sep_fcov (
 
       // ---- DMA range ----
       if (d_done && !done_q && ir_v_q && d_no_err && !d_err) begin
-        dmx_range_config(1'b0, 1'b0, {1'b0, ir_src_q}, own_dma_matrix && (ir_src_q != 2'd3), 2'd0,
-                         1'b0);
         dmx_range_config(1'b0, 1'b0, {1'b1, ir_dst_q}, own_dma_matrix && (ir_dst_q != 2'd3), 2'd0,
                          1'b0);
       end

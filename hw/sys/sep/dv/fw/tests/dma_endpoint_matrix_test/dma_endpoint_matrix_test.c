@@ -298,11 +298,9 @@ static inline void dma_go(void) {
     wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
        SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm | SEP_DMA_OPCODE_COPY);
 }
-// Polled run. Returns STATUS; a bounded wait that ends in neither DONE nor
+// Polls STATUS after the GO. Returns STATUS; a bounded wait that ends in neither DONE nor
 // ERROR returns the last STATUS, which the host fails.
-static uint32_t dma_run(uint32_t src, uint32_t dst, uint32_t len, int src_inc, int dst_inc) {
-    dma_prep(src, dst, len, src_inc, dst_inc);
-    dma_go();
+static uint32_t dma_wait(void) {
     uint32_t st;
     int t = POLL_ITERS;
     do {
@@ -313,6 +311,21 @@ static uint32_t dma_run(uint32_t src, uint32_t dst, uint32_t len, int src_inc, i
         g_err++;
     }
     return st;
+}
+static uint32_t dma_run(uint32_t src, uint32_t dst, uint32_t len, int src_inc, int dst_inc) {
+    dma_prep(src, dst, len, src_inc, dst_inc);
+    dma_go();
+    return dma_wait();
+}
+// Incrementing run that reads TOTAL_DATA_SIZE and CHUNK_DATA_SIZE back
+// after the programming and before the GO; the host grades both.
+static uint32_t g_tot, g_chunk;
+static uint32_t dma_run_rb(uint32_t src, uint32_t dst, uint32_t len) {
+    dma_prep(src, dst, len, 1, 1);
+    g_tot = rd(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR);
+    g_chunk = rd(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR);
+    dma_go();
+    return dma_wait();
 }
 static void rec_run(uint32_t st) {
     kv("pre", g_pre);
@@ -512,23 +525,27 @@ static void ext_legs(void) {
     mark('C', "stage");
     for (uint32_t i = 0; i < n; i++) wr(d + 4u * i, 0x5A5A5A5Au);
     mark('G', "ext_r");
-    uint32_t st = dma_run(EXT_WORD, d, len, 1, 1);
+    uint32_t st = dma_run_rb(EXT_WORD, d, len);
     rec("EXT");
     sep_mbx_puts(" dir=R");
     rec_run(st);
     kv("dst_word", rd(d));
     kv("len", len);
+    kv("tot", g_tot);
+    kv("chunk", g_chunk);
     for (uint32_t i = 0; i < n; i++) kv(EXT_DST_KEY[i], rd(d + 4u * i));
     end();
     recovery("ext_r");
 
     stage_src(SRAM + B_EXT + 0x10u, n, 0x30u);
     mark('G', "ext_w");
-    st = dma_run(SRAM + B_EXT + 0x10u, EXT_WORD, len, 1, 1);
+    st = dma_run_rb(SRAM + B_EXT + 0x10u, EXT_WORD, len);
     rec("EXT");
     sep_mbx_puts(" dir=W");
     rec_run(st);
     kv("len", len);
+    kv("tot", g_tot);
+    kv("chunk", g_chunk);
     end();
     recovery("ext_w");
 }

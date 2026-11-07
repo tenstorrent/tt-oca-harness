@@ -38,8 +38,8 @@ STATUS.ERROR, with no reset, ERROR and ERROR_CODE read 0 and a legal copy
 completes with the destination equal to the source. Control: the hash of the
 same opcode at encoding 2 completes with ERROR clear.
 In the error state, before that write, each kind writes all-ones and then 0 to
-INTR_STATE, all-ones and then 0 to ERROR_CODE, and 0 to STATUS, reading the
-register back after each write. INTR_STATE and ERROR_CODE are ``sw = r``
+INTR_STATE, all-ones and then 0 to ERROR_CODE, and, on the one kind drawn per
+seed, 0 to STATUS, reading the register back after each write. INTR_STATE and ERROR_CODE are ``sw = r``
 (``secure_dma.rdl:9-20``, ``:334-371``; ``doc/trm/src/register-field-access.adoc:42-44``)
 and STATUS.ERROR is RW1C (``secure_dma.rdl``, STATUS;
 ``register-field-access.adoc:61``, "writing 0 leaves it"), so none of these
@@ -243,8 +243,16 @@ Checkers:
                     case is the live control of the hold.
   CHK-DMA-RO-HOLD   per L2 kind: ERROR_CODE reads its SIZE_ERROR value after a
                     write of all-ones and after a write of 0.
-  CHK-DMA-ERR-W0    per L2 kind: after a write of 0 to STATUS in the error
+  CHK-DMA-ERR-W0    on one L2 kind per seed (``err_w0_kind`` on the
+                    INFO-DRAW line): after a write of 0 to STATUS in the error
                     state, STATUS.ERROR reads 1 and ERROR_CODE is unchanged.
+                    On that kind the CHK-DMA-SIZE-ERR ERROR_CODE clear is
+                    logged only (``code_cleared=-``,
+                    OBS-DMA-SIZE-ERR-CODE-CLEARED); every other kind writes
+                    no STATUS before the W1C, and its ERROR_CODE must read
+                    the SIZE_ERROR value just before it (else CTRL-MISSING).
+                    A FAIL is logged at once and raised at the end of the
+                    run, so the later checks still run and print.
   CHK-DMA-REGWEN-CLR per L2 kind: after the write of 1 to STATUS.ERROR, with
                     BUSY=0, CFG_REGWEN reads True. Control
                     (``CTRL-DMA-REGWEN-CLR``, else CTRL-MISSING): in each L5
@@ -413,6 +421,7 @@ CFG_ERR_CHK = {
 # Width-1 copy with the source on a 4-byte boundary and the destination off it;
 # its draws come from their own stream, so the draws above keep their seed mapping.
 ALIGN_SALT = 0x414C_4D53
+ERR_W0_SALT = 0x4552_5730
 ALIGN_WIDTH_ENC = 0
 # Opcodes above the enum, 5 left to the zero-fill leaf; ASIDs other than OT/SOC/SYS.
 OPC_INVALID = range(6, _D.field_mask("CONTROL", "opcode") + 1)
@@ -552,6 +561,8 @@ class _Cfg:
             o = list(RELEASE_STEPS)
             arng.shuffle(o)
             self.test_order[ev] = tuple(o)
+        # The one L2 kind that writes 0 to STATUS in the error state (CHK-DMA-ERR-W0).
+        self.err_w0_kind = SepSeededRng(seed ^ ERR_W0_SALT).choice(L2_KINDS)
 
     def _place(self, rng, size: int) -> tuple[int, int]:
         span = size + 2 * self.guard
@@ -590,6 +601,7 @@ class _Cfg:
             + " ".join(f"{k}_opcode={v}" for k, v in self.hash_op.items())
             + " "
             + " ".join(f"test_order_{e}={','.join(o)}" for e, o in self.test_order.items())
+            + f" err_w0_kind={self.err_w0_kind}"
         )
 
 
@@ -624,6 +636,12 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         msg = f"{chk} FAIL seed={self.cfg_t.seed} {line}"
         self.logger.error(msg)
         raise AssertionError(msg)
+
+    def _fail_at_end(self, chk: str, line: str) -> None:
+        """Log a FAIL now and raise it at the end of ``run_scenario``."""
+        msg = f"{chk} FAIL seed={self.cfg_t.seed} {line}"
+        self.logger.error(msg)
+        self.end_fails.append(msg)
 
     def _ctrl_missing(self, name: str, line: str) -> None:
         msg = f"CTRL-MISSING {name} seed={self.cfg_t.seed} {line}"
@@ -815,9 +833,19 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         src11 = int(self.irq.any_high_since(m, "src11"))
         await self._intr_ro(kind, "pending", istate, self.irq.level("src11"))
         await self._ro_hold(kind, ecode)
-        await self._err_w0(kind, ecode)
-        # Control of CHK-DMA-INTR-RELEASE: the line is high just before the write.
+        w0 = kind == c.err_w0_kind
+        if w0:
+            await self._err_w0(kind, ecode)
+        # Control of CHK-DMA-INTR-RELEASE: the bit and the line read 1 just before the write.
+        istate_pre = await ops.rd(INTR_STATE)
+        ecode_pre = await ops.rd(ERROR_CODE)
         src11_pre = self.irq.level("src11")
+        if not w0 and ecode_pre != ecode:
+            self._ctrl_missing(
+                "CTRL-DMA-SIZE-ERR",
+                f"CHK-DMA-SIZE-ERR code_cleared control: kind={kind} "
+                f"error_code_before_w1c=0x{ecode_pre:x} expect=0x{ecode:x}",
+            )
         # Recovery with no reset: write 1 to STATUS.ERROR alone.
         await ops.wr(STATUS, ST_ERROR)
         st_c = await ops.read_status()
@@ -842,19 +870,33 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         fc_errc = field_compare(st_c.raw, 0, ST_ERROR)
         fc_codec = field_compare(ecode_c, 0, ERROR_CODE_MASK)
         rec_ok = res.status.done and not res.status.error and mism == 0
+        if w0:
+            # The STATUS write of CHK-DMA-ERR-W0 comes before the W1C, so the
+            # ERROR_CODE read after the W1C cannot show what the W1C cleared.
+            self.logger.info(
+                "OBS-DMA-SIZE-ERR-CODE-CLEARED LOG seed=%d kind=%s not_graded=err_w0_kind "
+                "error_code_before_w1c=0x%x error_code_after_w1c=0x%x",
+                c.seed,
+                kind,
+                ecode_pre,
+                ecode_c,
+            )
+        code_cleared = "-" if w0 else str(int(fc_codec.ok))
         return (
             f"kind={kind} opcode={opcode} error={st.error} "
             f"size_error={int(bool(ecode & SIZE_ERR_MASK))} code_exact={int(fc_code.ok)} "
             f"intr_dma_error={int(bool(istate & INTR_ERROR))} src11={src11} "
-            f"error_cleared={int(fc_errc.ok)} code_cleared={int(fc_codec.ok)} "
+            f"error_cleared={int(fc_errc.ok)} code_cleared={code_cleared} "
             f"recovery_done={int(rec_ok)} @@CTRL@@ size={size} recovery_size={rsize} "
             f"recovery_mismatch={mism} error_code=0x{ecode:x} code_mask=0x{SIZE_ERR_MASK:x} "
             f"intr_state=0x{istate:x} intr_mask=0x{INTR_ERROR:x} "
+            f"error_code_before_w1c=0x{ecode_pre:x} "
             f"code[{fc_code.fields()}] code_after_clear[{fc_codec.fields()}]",
-            all(f.ok for f in (fc_err, fc_code, fc_int, fc_errc, fc_codec))
+            all(f.ok for f in (fc_err, fc_code, fc_int, fc_errc))
+            and (w0 or fc_codec.ok)
             and src11 == 1
             and rec_ok,
-            (istate, istate_c, src11_c, src11_pre),
+            (istate_pre, istate_c, src11_c, src11_pre),
         )
 
     async def _intr_ro(self, kind: str, case: str, istate: int, line: int) -> None:
@@ -902,7 +944,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"error_code_before=0x{ecode:x} {st.fmt()}"
         )
         if not (st.error and code == ecode):
-            self._fail("CHK-DMA-ERR-W0", text)
+            self._fail_at_end("CHK-DMA-ERR-W0", text)
+            return
         self._pass("CHK-DMA-ERR-W0", text)
 
     async def _regwen_clr(self, kind: str, st: DmaStatus) -> None:
@@ -1884,6 +1927,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         seed = self.random_seed()
         self.cfg_t = c = _Cfg(seed)
         self.n_checks = 0
+        self.end_fails: list[str] = []
         self.logger.info(
             "INFO-PLAN LOG seed=%d L1 6 trials, L2 5 kinds + width-2 control + DONE and CHUNK_DONE "
             "release + INTR_TEST release (logged), L3 outside copy + zero-fill control + lock from idle and after an error "
@@ -1916,4 +1960,6 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         close_graded_window(self.logger)
         await self.irq.stop()
         await self.busy.stop()
+        if self.end_fails:
+            raise AssertionError("; ".join(self.end_fails))
         self.result_pass(TEST, seed, self.n_checks)

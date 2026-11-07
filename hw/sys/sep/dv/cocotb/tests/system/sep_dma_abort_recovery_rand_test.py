@@ -57,9 +57,9 @@ Checkers:
                        each appear after the recovery GO write. The probe
                        carries no R channel, so R beats are not graded.
   CHK-DMA-ABORT-CLR    a write of 1 to STATUS.ABORTED clears it.
-  CHK-DMA-RW1C         in runs 1 and 2, a write of 0 to STATUS leaves
-                       ABORTED at 1, and the write of 1 that follows clears it
-                       (STATUS.ABORTED is RW1C).
+  CHK-DMA-RW1C         in runs 1 and 2, a write of 0 to STATUS returns OKAY
+                       (``w0_resp``) and leaves ABORTED at 1, and the write
+                       of 1 that follows clears it (STATUS.ABORTED is RW1C).
   CHK-DMA-RECOVER      the recovery copy sets DONE, leaves ERROR and
                        ERROR_CODE clear, copies the data and leaves the guards
                        and the rest of the destination at the sentinel.
@@ -103,6 +103,7 @@ from dataclasses import dataclass
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import DmaXfer, bytes_to_words, words_to_bytes
 from env.sep_dma_model import draw_source_words as _draw_words
@@ -553,7 +554,7 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         rec.update(quiet_ok=not diff, quiet_diff=diff[:4], written=n_written, sentinel=n_sent)
         # Step 10: ABORTED holds on a write of 0, then clears on a write of 1.
         st_b = await ops.read_status()
-        await ops.wr(STATUS, 0)
+        w0 = await ops.access(SepAxiOp.WRITE, STATUS, 0, ungraded=True)
         st_0 = await ops.read_status()
         await ops.wr(STATUS, ST_ABORTED)
         st_a = await ops.read_status()
@@ -612,11 +613,12 @@ class sep_dma_abort_recovery_rand_test(sep_base_test):
         self._pass("CHK-DMA-ABORT-CLR", clr_line)
         # CHK-DMA-RW1C.
         rw1c_line = (
-            f"run={plan.idx} aborted_before_w0={st_b.aborted} aborted_after_w0={st_0.aborted} "
+            f"run={plan.idx} w0_resp={w0.resp_code} aborted_before_w0={st_b.aborted} "
+            f"aborted_after_w0={st_0.aborted} "
             f"aborted_after_w1c={st_a.aborted} after_w0[{fc_0.fields()}] "
             f"after_w1c[{fc_a.fields()}]"
         )
-        if not (fc_0.ok and fc_a.ok):
+        if not (w0.resp_ok and fc_0.ok and fc_a.ok):
             self._fail("CHK-DMA-RW1C", rw1c_line)
         self._pass("CHK-DMA-RW1C", rw1c_line)
         # CHK-DMA-ABORT-BEATS.

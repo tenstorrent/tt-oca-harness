@@ -86,7 +86,10 @@ model of the staged data and the fabric taps:
 Entry ``_slverr`` (``+sep_ext_port_responder``) runs only the extension-port
 legs, each a 16-byte copy, and the bench responder answers every reply of the
 port with SLVERR; CHK-DMA-PAIR grades both legs as above with SLVERR in place
-of DECERR, and CHK-DMA-AXPROT runs. ``ext_port_rsp_on_o`` reads 1 in that
+of DECERR, and CHK-DMA-AXPROT runs. In both entries the firmware reads
+``TOTAL_DATA_SIZE`` and ``CHUNK_DATA_SIZE`` back after the programming and
+before the GO of each extension-port leg; CTRL-DMA-EXT-LEN fails the leaf
+unless both equal the copy length. ``ext_port_rsp_on_o`` reads 1 in that
 entry and 0 in the other (a failed precondition otherwise). The entry samples
 no coverage cell. OBS-DMA-BEATS-AFTER-ERR logs, per leg, the PR-EXT requests
 and W beats before and after the first error reply, the DMA master requests,
@@ -909,6 +912,20 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         for d, leg, ch in (("R", "ext_r", "ar"), ("W", "ext_w", "aw")):
             leg_i = self._leg_index(leg)
             _, r, text = self._one("EXT", dir=d)
+            # TOTAL_DATA_SIZE and CHUNK_DATA_SIZE as the LSU read them back
+            # between the programming and the GO.
+            if r["tot"] != ln or r["chunk"] != ln:
+                raise AssertionError(
+                    f"CTRL-DMA-EXT-LEN FAIL: leg={leg} total=0x{r['tot']:x} chunk=0x{r['chunk']:x} "
+                    f"expect=0x{ln:x}"
+                )
+            self.logger.info(
+                "CTRL-DMA-EXT-LEN PASS: leg=%s total=%d chunk=%d expect=%d",
+                leg,
+                r["tot"],
+                r["chunk"],
+                ln,
+            )
             beats = self._beats("PR-EXT", leg_i, ch)
             assert beats and beats[0].addr == EXT_WORD, (
                 f"CHK-DMA-PAIR FAIL: PR-EXT {ch} of the {leg} leg: {[b.fmt() for b in beats]}, "
@@ -918,8 +935,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             # the SLVERR the bench responder drives, and the DMA reports it as a
             # bus error.
             rep = self._port_reply(leg_i, "r" if d == "R" else "b", code)
-            assert r["len"] == ln and rep and self._bus_error(r), (
-                f"CHK-DMA-PAIR FAIL: ext_{d.lower()} len={r['len']} expect_len={ln} "
+            assert rep and self._bus_error(r), (
+                f"CHK-DMA-PAIR FAIL: ext_{d.lower()} total={r['tot']} "
                 f"port_resp={[b.resp for b in self._beats('PR-EXT-RSP', leg_i, 'r' if d == 'R' else 'b')]} "
                 f"dma_status=0x{r['st']:08x} error_code=0x{r['ec']:08x}; expected port {name}, "
                 "STATUS.ERROR and ERROR_CODE.BUS_ERROR only"
@@ -930,7 +947,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 "port_resp=%s replies=%d dma_status=0x%08x error_code=0x%08x recovery_ok=1",
                 "ext" if d == "R" else "sram",
                 "sram" if d == "R" else "ext",
-                ln,
+                r["tot"],
                 ch,
                 EXT_WORD,
                 len(beats),

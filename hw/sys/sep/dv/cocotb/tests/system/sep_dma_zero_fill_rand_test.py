@@ -68,7 +68,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          copy, reads back equal to the non-zero source words,
                          else CTRL-MISSING.
   CHK-DMA-ZERO-WIN-OK    the fill of the whole range completes, clears the
-                         range and leaves the guards.
+                         range and leaves the guards. Control
+                         (``CTRL-DMA-ZERO-WIN-OK``, else CTRL-MISSING): BASE
+                         and LIMIT read back the values written, before GO.
   CHK-DMA-ZERO-WIN-ERR   per out-of-range fill: ERROR=1 with ERROR_CODE equal
                          to DST_ADDR_ERROR alone; no AR; one AW per in-range
                          model beat with AxLEN 0, AxADDR[31:2] and the WSTRB
@@ -77,6 +79,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          byte unchanged.
   CHK-DMA-ZERO-WIN-EXACT the fill whose narrow last beat ends on an unaligned
                          LIMIT completes and leaves the bytes after LIMIT.
+                         Control (``CTRL-DMA-ZERO-WIN-EXACT``, else
+                         CTRL-MISSING): BASE and LIMIT read back the values
+                         written, before GO.
   CHK-DMA-ZERO-COPY-CTRL a copy whose destination is outside the range
                          completes with the data copied (control: the range
                          bounds a fill, not a copy).
@@ -513,6 +518,18 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         self.logger.error(line)
         raise AssertionError(line)
 
+    async def _range_rb(self, chk: str, base: int, limit: int) -> str:
+        """Read BASE and LIMIT back before GO; CTRL-MISSING unless they equal the values written."""
+        rb = (await self.ops.rd(RANGE_BASE), await self.ops.rd(RANGE_LIMIT))
+        line = (
+            f"base_wr=0x{base:08x} base_rb=0x{rb[0]:08x} "
+            f"limit_wr=0x{limit:08x} limit_rb=0x{rb[1]:08x}"
+        )
+        if rb != (base, limit):
+            self._ctrl_missing(chk, f"range readback: {line}")
+        self.logger.info("CTRL-%s PASS seed=%d %s", chk[len("CHK-") :], self.seed, line)
+        return f"base_rb=0x{rb[0]:08x} limit_rb=0x{rb[1]:08x}"
+
     # ---- scenario ---------------------------------------------------------
     async def run_scenario(self) -> None:
         self.seed = self.random_seed()
@@ -827,6 +844,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
 
         # The whole range.
         await ops.program_range(d.base, d.limit, valid=True)
+        rb = await self._range_rb("CHK-DMA-ZERO-WIN-OK", d.base, d.limit)
         await self.mem.fill(d.region.addr, d.region.words)
         fill = DmaZeroFill(d.base, size, size)
         m_irq = self.irq.mark()
@@ -839,8 +857,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         self._pass(
             "CHK-DMA-ZERO-WIN-OK",
             st.done and not st.error and got == exp,
-            f"base=0x{d.base:08x} limit=0x{d.limit:08x} {st.fmt()} "
-            f"{self._diff(got, exp, d.region.addr)}",
+            f"{rb} {st.fmt()} {self._diff(got, exp, d.region.addr)}",
         )
         done_r = self.irq.rises_since(m_irq, "done")
         err_r = self.irq.rises_since(m_irq, "error")
@@ -875,6 +892,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         # A narrow last beat that ends on an unaligned LIMIT.
         limit = d.limit - d.exact_trim
         await ops.program_range(d.base, limit, valid=True)
+        rb = await self._range_rb("CHK-DMA-ZERO-WIN-EXACT", d.base, limit)
         await self.mem.fill(d.region.addr, d.region.words)
         total = size - d.exact_trim
         fill = DmaZeroFill(d.base, total, total)
@@ -885,7 +903,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         self._pass(
             "CHK-DMA-ZERO-WIN-EXACT",
             st.done and not st.error and got == exp,
-            f"limit=0x{limit:08x} total={total} last_beat={fill.beats()[-1].nbytes} {st.fmt()} "
+            f"{rb} total={total} last_beat={fill.beats()[-1].nbytes} {st.fmt()} "
             f"{self._diff(got, exp, d.region.addr)}",
         )
         await self._release()
@@ -1141,7 +1159,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         a_base, a_limit, a_dst = alias(SRAM_BASE), alias(SRAM_LIMIT), alias(f.dst_base)
         tag = (
             f"mode={plan.x_mode} enc={plan.x_enc} total={f.total} chunk={f.chunk} "
-            f"dst=0x{a_dst:08x} direct=0x{f.dst_base:08x}"
+            f"direct=0x{f.dst_base:08x}"
         )
         local_rb = await ops.rd(LOCAL_BASE_REG) & LOCAL_BASE_MASK
         await ops.program_range(a_base, a_limit, valid=True)
@@ -1167,7 +1185,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
                 "CHK-DMA-ALIAS-FORM",
                 f"{tag} sep_local_base=0x{local_rb:08x} range=0x{range_rb[0]:08x}..0x"
                 f"{range_rb[1]:08x} expect=0x{a_base:08x}..0x{a_limit:08x} "
-                f"dst_addr_lo=0x{dst_rb:08x}",
+                f"dst_addr_lo=0x{dst_rb:08x} expect=0x{a_dst:08x}",
             )
         beats = f.beats()
         got = await self._read_region(r)
@@ -1178,7 +1196,8 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         self._pass(
             "CHK-DMA-ALIAS-FORM",
             st.done and not st.error and ec == 0 and got == exp and not probs,
-            f"{tag} range=0x{a_base:08x}..0x{a_limit:08x} {st.fmt()} error_code=0x{ec:x} "
+            f"{tag} sep_local_base=0x{local_rb:08x} dst_addr_lo_rb=0x{dst_rb:08x} "
+            f"range_rb=0x{range_rb[0]:08x}..0x{range_rb[1]:08x} {st.fmt()} error_code=0x{ec:x} "
             f"aw={len(run.ev.aw)} beats={len(beats)} "
             f"aw0=0x{(run.ev.aw[0].addr or 0) if run.ev.aw else 0:08x} "
             f"{' '.join(probs) or 'shape=model'} {self._diff(got, exp, r.addr)}",

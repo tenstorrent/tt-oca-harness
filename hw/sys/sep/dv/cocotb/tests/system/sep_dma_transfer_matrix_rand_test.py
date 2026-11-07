@@ -22,8 +22,11 @@ below:
   with no software clear of STATUS.DONE between them.
 * Leg C: ENABLED_MEMORY_RANGE_BASE and LIMIT exactly on the region edges (low,
   high, both, and both with a guard outside the range at the low end, the
-  high end and both ends), each in a drawn region order, with a wide-range
-  control run of the same copy.
+  high end and both ends). Each cell runs two zero fills, the operation the
+  range bounds (``hw/sys/sep/doc/dma.adoc:98-104``; the range does not bound
+  an internal copy, ``:105``): one of the low region from BASE and one of the
+  high region up to LIMIT, in a drawn order, with a wide-range control run of
+  the same fills.
 * Leg D: SHA-256, SHA-384 and SHA-512 inline hashing on the published 56-byte
   and 112-byte vectors at both DIGEST_SWAP values, two drawn lengths per
   algorithm, an equal split of each message into 2 to 4 chunks of one
@@ -67,7 +70,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       ``OBS-DMA-ADDR-LOW``.
   CHK-DMA-MASTER-ROT  per Leg A cell, before GO: each transfer register read
                       back on the programming master (``s_axi`` or ``m_axi``)
-                      equals the value written; the cell's checks then grade
+                      equals the value written and differs from the value read
+                      before the write (a register that held the value is
+                      first written with its inverse); the cell's checks then grade
                       the transfer (``hw/sys/sep/doc/fabric.adoc:102-103``,
                       dma_csr reached from LSU and EXT). Control
                       (else CTRL-MISSING): both masters program a cell.
@@ -94,9 +99,10 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       response is logged.
   CHK-DMA-NOGO        CONTROL with INITIAL_TRANSFER=1 and GO=0: no AR or AW,
                       no BUSY rise and BUSY=0, DONE unchanged over 2000 clocks
-                      (``dma.adoc:79-80``). Control CTRL-DMA-NOGO-GO: the GO=1
-                      write after it raises BUSY within the same 2000 clocks
-                      and moves the copy.
+                      (``dma.adoc:79-80``). Controls: CTRL-DMA-NOGO-WR, CONTROL
+                      reads INITIAL_TRANSFER=1 GO=0 after the window; and
+                      CTRL-DMA-NOGO-GO, the GO=1 write after it raises BUSY
+                      within the same 2000 clocks and moves the copy.
   CHK-DMA-RANGE-COPY  an SRAM copy whose destination crosses LIMIT part-way
                       completes: DONE=1, ERROR=0, ERROR_CODE=0, the model AR
                       and AW, the model image (``dma.adoc:105``). Control
@@ -167,8 +173,12 @@ GO value during a transfer is not graded.
                       the values written next. Control: over Leg C at least
                       one write changes BASE and one changes LIMIT (the guard
                       edges), else CTRL-MISSING.
-  CHK-DMA-RANGE-OK    per Leg C cell: the copy completes with ERROR=0 and the
-                      data copied. Control: the same copy with the wide range.
+  CHK-DMA-RANGE-OK    per Leg C cell: both zero fills end with DONE=1, ERROR=0
+                      and ERROR_CODE=0, every word of both regions reads 0,
+                      and the in-range gap word and the guards keep the
+                      prefill. A DUT that treats BASE or LIMIT as exclusive
+                      refuses the first or the last write and fails. Control: the same
+                      fills with the wide range.
   CHK-DMA-HASH        per graded Leg D run: digest words equal the hashlib
                       golden for the swap value; the copy equals the source.
   CHK-DMA-HASH-VALID  per Leg D run: SHA2_DIGEST_VALID reads 1 after the chain;
@@ -539,13 +549,12 @@ class CellDraw:
 @dataclass
 class EdgeDraw:
     edge: str  # low, high, both, guard_low, guard_high, guard_both
-    order: str  # src_low or dst_low
+    order: str  # high_first or low_first: the region the first fill writes
     size: int
     g_low: int
     g_high: int
     block: int
     sentinel: int
-    src_words: list[int]
 
     @property
     def lo_region(self) -> int:
@@ -553,16 +562,18 @@ class EdgeDraw:
 
     @property
     def hi_region(self) -> int:
-        # One in-range sentinel word sits between the two regions.
+        # One in-range prefill word sits between the two regions.
         return self.lo_region + self.size + 4
 
-    @property
-    def src(self) -> int:
-        return self.lo_region if self.order == "src_low" else self.hi_region
+    def fills(self) -> tuple[tuple[str, int], tuple[str, int]]:
+        """The two zero-fill regions, (name, first byte), in the drawn order."""
+        lo, hi = ("lo", self.lo_region), ("hi", self.hi_region)
+        return (hi, lo) if self.order == "high_first" else (lo, hi)
 
     @property
-    def dst(self) -> int:
-        return self.hi_region if self.order == "src_low" else self.lo_region
+    def prefill(self) -> int:
+        """A word with no zero byte, so a byte the fill skips never reads 0."""
+        return sentinel_word(self.sentinel) or M32
 
     @property
     def gap_word(self) -> int:
@@ -584,7 +595,7 @@ class EdgeDraw:
         return self.range_lo, self.range_hi
 
     def guards(self) -> list[int]:
-        """Addresses of the sentinel words the copy must leave unchanged."""
+        """Addresses of the prefill words the fills must leave unchanged."""
         out = [self.gap_word]
         out += [self.block + 4 * i for i in range(self.g_low // 4)]
         out += [self.range_hi + 1 + 4 * i for i in range(self.g_high // 4)]
@@ -828,20 +839,21 @@ class Plan:
     def _leg_c(self, rng: SepSeededRng) -> None:
         self.edges: list[EdgeDraw] = []
         for edge in ("low", "high", "both", "guard_low", "guard_high", "guard_both"):
-            order = rng.choice(("src_low", "dst_low"))
+            order = rng.choice(("high_first", "low_first"))
             size = 4 * rng.randrange(4, 65)
             g_low = 4 * rng.randrange(1, 9) if edge in ("guard_low", "guard_both") else 0
             g_high = 4 * rng.randrange(1, 9) if edge in ("guard_high", "guard_both") else 0
             (block,) = place(rng, [g_low + 2 * size + 4 + g_high])
             s = rng.randrange(256)
-            words = draw_source_words(rng, size // 4, s)
-            e = EdgeDraw(edge, order, size, g_low, g_high, block, s, words)
+            # Unused words: the draw keeps every later value of the seed stream.
+            draw_source_words(rng, size // 4, s)
+            e = EdgeDraw(edge, order, size, g_low, g_high, block, s)
             self.edges.append(e)
             base, limit = e.base_limit()
             self.lines.append(
                 f"DRAW leg=C edge={edge} order={order} bytes={size} g_low={g_low} "
-                f"g_high={g_high} src=0x{e.src:08x} dst=0x{e.dst:08x} base=0x{base:08x} "
-                f"limit=0x{limit:08x} sentinel=0x{s:02x}"
+                f"g_high={g_high} lo=0x{e.lo_region:08x} hi=0x{e.hi_region:08x} "
+                f"base=0x{base:08x} limit=0x{limit:08x} prefill=0x{e.prefill:08x}"
             )
 
     # Leg D ---------------------------------------------------------------
@@ -1308,18 +1320,42 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         if not all(reach.values()):
             self._ctrl_missing("CHK-DMA-MASTER-ROT", f"a master programmed no transfer: {line}")
 
-    async def _master_readback(self, written: dict[str, int], master: str, tag: str) -> None:
-        """CHK-DMA-MASTER-ROT: the programming master reads back each transfer register."""
+    async def _read_xfer_regs(self) -> dict[str, int]:
+        return {
+            n: await self.ops.rd(SECURE_DMA.addr(n)) & SECURE_DMA.mask32(n) for n in XFER_ORDER_REGS
+        }
+
+    async def _master_readback(
+        self, written: dict[str, int], prior: dict[str, int], master: str, tag: str
+    ) -> None:
+        """CHK-DMA-MASTER-ROT: each transfer register write of the master changes the register.
+
+        ``prior`` holds the values read before the program. A register that
+        already held the value written is written with the inverted field
+        value, read, and written again, so every graded write moves the
+        register away from the value read before it.
+        """
+        ops = self.ops
         bad = []
+        vals = []
         for name, value in written.items():
             mask = SECURE_DMA.mask32(name)
-            got = await self.ops.rd(SECURE_DMA.addr(name)) & mask
-            if got != value & mask:
-                bad.append(f"{name}:0x{got:08x}/0x{value & mask:08x}")
+            addr = SECURE_DMA.addr(name)
+            want = value & mask
+            before = prior[name]
+            if before == want:
+                await ops.wr(addr, ~value & mask)
+                before = await ops.rd(addr) & mask
+                await ops.wr(addr, value)
+            got = await ops.rd(addr) & mask
+            vals.append(f"{name}:0x{before:x}/0x{want:x}/0x{got:x}")
+            if got != want or before == want:
+                bad.append(name)
         self._pass(
             "CHK-DMA-MASTER-ROT",
             not bad,
-            f"master={master} regs={len(written)} readback_bad={','.join(bad) or '-'} "
+            f"master={master} regs={len(written)} bad={','.join(bad) or '-'} "
+            f"prior/written/readback={','.join(vals)} "
             f"contract=hw/sys/sep/doc/fabric.adoc:102-103 {tag}",
         )
 
@@ -1346,9 +1382,10 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         await self._fill_copy(c)
         ops.master = master
         try:
+            prior = await self._read_xfer_regs() if rot else {}
             written = await self._program(c, src=src, dst=dst)
             if rot:
-                await self._master_readback(written, master, tag)
+                await self._master_readback(written, prior, master, tag)
             m_tap, m_irq = self.tap.mark(), self.irq.mark()
             self._open()
             await ops.go(opcode=OP_COPY, initial=1)
@@ -1882,41 +1919,80 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         )
         return int(base0 != base & RANGE_BASE_MASK), int(limit0 != limit & RANGE_LIMIT_MASK)
 
-    async def _edge_copy(self, e: EdgeDraw, base: int, limit: int, tag: str, graded: bool):
-        """One Leg C copy; a graded copy runs in the window from its range writes to its reads."""
+    async def _edge_fill(self, e: EdgeDraw, base: int, limit: int, tag: str, graded: bool):
+        """One Leg C cell: zero fills of the low and the high region under one range.
+
+        The fill is the operation the range bounds (``hw/sys/sep/doc/dma.adoc:98-104``):
+        the low region starts at ``range_lo`` and the high region ends at
+        ``range_hi``, so the cell writes the bytes at BASE and at LIMIT that its
+        edge places there. A graded cell runs in the window from its range
+        writes to its reads. Returns one (name, STATUS, ERROR_CODE) per fill run,
+        the nonzero words of the regions filled, the guards changed and the
+        RANGE-WR changed flags.
+        """
         ops = self.ops
-        sw = sentinel_word(e.sentinel)
-        await self.mem.fill(e.src, e.src_words)
-        await self.mem.fill(e.dst, [sw] * (e.size // 4))
+        pre = e.prefill
+        for region in (e.lo_region, e.hi_region):
+            await self.mem.fill(region, [pre] * (e.size // 4))
         for g in e.guards():
-            await self.mem.fill(g, [sw])
+            await self.mem.fill(g, [pre])
         changed = (0, 0)
         if graded:
             self._open()
             changed = await self._range_write(base, limit, tag)
         else:
             await ops.program_range(base, limit, valid=True)
-        await ops.program_transfer(
-            src=e.src, dst=e.dst, total=e.size, chunk=e.size, width_enc=2, order=XFER_ORDER_REGS
-        )
-        await ops.go(opcode=OP_COPY, initial=1)
-        res = await ops.run_to_done(
-            poll_size(e.size), busy=self.busy, busy_bound=BUSY_RISE_BOUND, tag=tag
-        )
-        if res.status.done:
-            await self._wait_idle_done(tag)
-        st, err, _ = await self._read_regs()
-        got = await self.mem.read(e.dst, e.size // 4)
-        mism = sum(1 for g, s in zip(got, e.src_words) if g != s)
+        runs = []
+        for name, region in e.fills():
+            await ops.program_transfer(
+                src=0, dst=region, total=e.size, chunk=e.size, width_enc=2, order=XFER_ORDER_REGS
+            )
+            await ops.go(opcode=OP_ZERO, initial=1)
+            res = await ops.run_to_done(
+                poll_size(e.size), busy=self.busy, busy_bound=BUSY_RISE_BOUND, tag=f" {tag}"
+            )
+            if res.status.done:
+                await self._wait_idle_done(tag)
+            # ERROR_CODE is read before any STATUS write.
+            st, err, _ = await self._read_regs()
+            runs.append((name, st, err))
+            if st.error:
+                await self._clear_error(tag)
+                break
+            await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
+        nonzero = 0
+        for _, region in e.fills()[: len(runs)]:
+            got = await self.mem.read(region, e.size // 4)
+            nonzero += sum(1 for w in got if w != 0)
         guards_bad = 0
         for g in e.guards():
             (v,) = await self.mem.read(g, 1)
-            guards_bad += int(v != sw)
-        self._close()
-        await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
-        fst = field_compare(st.raw, ST_DONE, ST_DONE | ST_BUSY | ST_ERROR)
-        fer = field_compare(err, 0, ERROR_CODE_MASK)
-        return st, fst, fer, mism, guards_bad, changed
+            guards_bad += int(v != pre)
+        if graded:
+            self._close()
+        return runs, nonzero, guards_bad, changed
+
+    async def _clear_error(self, tag: str) -> None:
+        """W1C STATUS.ERROR, DONE, ABORTED and CHUNK_DONE, then wait for BUSY=0.
+
+        BUSY stays 1 in the error state until ERROR is cleared.
+        """
+        await self.ops.clean_state()
+        await self.ops.poll_status(
+            lambda s: not s.busy, ABORT_POLL_BOUND, f"BUSY=0 after the ERROR clear {tag}"
+        )
+
+    @staticmethod
+    def _fill_grade(runs: list) -> tuple[bool, str]:
+        """Both fills ended with DONE=1, BUSY=0, ERROR=0 and ERROR_CODE=0."""
+        ok = len(runs) == 2
+        parts = []
+        for name, st, err in runs:
+            fst = field_compare(st.raw, ST_DONE, ST_DONE | ST_BUSY | ST_ERROR)
+            fer = field_compare(err, 0, ERROR_CODE_MASK)
+            ok = ok and fst.ok and fer.ok
+            parts.append(f"{ff(f'{name}_status', fst)} {ff(f'{name}_error_code', fer)}")
+        return ok, f"fills_run={len(runs)} " + " ".join(parts)
 
     async def _leg_c(self, plan: Plan) -> None:
         await self.ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
@@ -1924,30 +2000,30 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         for e in plan.edges:
             base, limit = e.base_limit()
             tag = f"edge={e.edge} order={e.order}"
-            st, fst, fer, mism, gbad, (bc, lc) = await self._edge_copy(
-                e, base, limit, tag, graded=True
-            )
+            runs, nz, gbad, (bc, lc) = await self._edge_fill(e, base, limit, tag, graded=True)
             base_changed += bc
             limit_changed += lc
-            # Control: the same regions under the wide range of step 2.
-            cst, cfst, cfer, cmism, cgbad, _ = await self._edge_copy(
+            # Control: the same fills under the wide range of step 2.
+            cruns, cnz, cgbad, _ = await self._edge_fill(
                 e, SRAM_BASE, SRAM_LIMIT, f"{tag} control_wide", graded=False
             )
-            control_wide = int(cfst.ok and cfer.ok and cmism == 0 and cgbad == 0)
+            cok, cvals = self._fill_grade(cruns)
+            control_wide = int(cok and cnz == 0 and cgbad == 0)
             if not control_wide:
                 self._ctrl_missing(
                     "CHK-DMA-RANGE-OK",
-                    f"{tag} wide-range control failed: {ff('status', cfst)} "
-                    f"{ff('error_code', cfer)} mem_mismatch={cmism} guards_bad={cgbad}",
+                    f"{tag} wide-range control failed: {cvals} nonzero_words={cnz} "
+                    f"guards_bad={cgbad}",
                 )
+            fok, fvals = self._fill_grade(runs)
             edge = "guard" if e.edge.startswith("guard") else e.edge
-            ok = fst.ok and fer.ok and mism == 0 and gbad == 0
             self._pass(
                 "CHK-DMA-RANGE-OK",
-                ok,
-                f"edge={edge} order={e.order} base=0x{base:08x} limit=0x{limit:08x} "
-                f"done={st.done} error={st.error} mem_mismatch={mism} control_wide={control_wide} "
-                f"cell={e.edge} guards_bad={gbad} {ff('status', fst)} {ff('error_code', fer)}",
+                fok and nz == 0 and gbad == 0,
+                f"contract=hw/sys/sep/doc/dma.adoc:98-104 edge={edge} order={e.order} "
+                f"base=0x{base:08x} limit=0x{limit:08x} lo=0x{e.lo_region:08x} "
+                f"hi_last=0x{e.range_hi:08x} bytes={e.size} nonzero_words={nz} "
+                f"guards_bad={gbad} control_wide={control_wide} cell={e.edge} {fvals}",
             )
         # The guard edges place BASE above and LIMIT below the wide range, so
         # every seed writes a changed BASE and a changed LIMIT.
@@ -2527,6 +2603,15 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         ev = self.tap.since(m_tap)
         st = await ops.read_status()
         probe_rises = self.busy.rises_since(m_busy)
+        ctl = await ops.rd(CONTROL)
+        init_mask = control_word(initial=1)
+        wr_line = (
+            f"control=0x{ctl:08x} initial_transfer={int(bool(ctl & init_mask))} "
+            f"go={int(bool(ctl & GO_MASK))}"
+        )
+        if ctl & (init_mask | GO_MASK) != init_mask:
+            self._ctrl_missing("CHK-DMA-NOGO", f"INITIAL_TRANSFER=1 GO=0 write: {wr_line}")
+        self.logger.info("CTRL-DMA-NOGO-WR PASS seed=%d %s", self.seed, wr_line)
         nogo = (
             f"ar={len(ev.ar)} aw={len(ev.aw)} tap_busy_rises={len(ev.rises('busy'))} "
             f"probe_busy_rises={probe_rises} busy={st.busy} done_before={pre.done} "
@@ -2610,8 +2695,9 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         await self._set_range(x.src_base, limit, tag)
         await ops.program_transfer(src=0, dst=x.dst_base, total=x.total, chunk=x.total)
         await ops.go(opcode=OP_ZERO, initial=1)
+        # A STATUS write while ERROR=1 also clears ERROR_CODE: it is read first.
         zst = await ops.poll_status(
-            lambda s: bool((s.done or s.error) and not s.busy),
+            lambda s: bool(s.done or s.error),
             ops.done_bound(poll_size(x.total)),
             f"zero fill end {tag}",
         )
@@ -2626,7 +2712,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         if not (zst.error and zerr & DST_ADDR_ERROR and zero_ok):
             self._ctrl_missing("CHK-DMA-RANGE-COPY", f"{ctrl} {tag}")
         self.logger.info("CTRL-DMA-RANGE-COPY PASS seed=%d %s %s", self.seed, ctrl, tag)
-        await ops.clean_state()
+        await self._clear_error(tag)
         await self.mem.fill(c.dst_region, [sw] * c.dst_region_words)
         self._open()
         m_tap = self.tap.mark()
