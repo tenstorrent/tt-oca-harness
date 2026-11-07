@@ -951,7 +951,8 @@
 `SEP_TB_OUT(logic, km_entropy_tvalid_o)  // CHK5: post-mux EDN->KM tvalid (entropy_muxed_req[0])
 `SEP_TB_OUT(logic [31:0], km_entropy_tdata_o)  // CHK5: post-mux EDN->KM tdata word
 `SEP_TB_OUT(logic, km_entropy_tready_o)  // CHK5: KM tready (entropy_muxed_rsp[0]) -> real handshake
-`SEP_TB_OUT(logic, km_entropy_tuser_o)  // post-mux EDN->KM tuser (entropy_muxed_req[0].tuser, the FIPS bit)
+`SEP_TB_OUT(
+    logic, km_entropy_tuser_o)  // post-mux EDN->KM tuser (entropy_muxed_req[0].tuser, the FIPS bit)
 // CHK5 crypto EDN sinks: the SEP EDN's crypto leg (entropy_muxed_req[1]) fans
 // out through drbg_axis_edn_adapter to native EDN clients crypto_edn[0]=AES,
 // [1]=KMAC, [2]=OTBN-RND, [3]=OTBN-URND. A delivered word to sink i is the cycle

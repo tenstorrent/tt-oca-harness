@@ -1301,14 +1301,14 @@ static void leg_soft_pin(void) {
     }
     mstatus_mie(0);
     uint32_t ex = g_cls_ext - te0, sw = g_cls_sw - ts0, tm = g_cls_timer - tt0,
-             ot = g_cls_other - to0;
+             oth = g_cls_other - to0;
     uint32_t mst_mie = (mst & MSTATUS_MIE) ? 1u : 0u;
     req_sint(0u);
     int down = wait_msip(0u);
     uint32_t msip_off = (read_mip() >> 3) & 1u;
     int pass = mie_rd == MIE_MEIE && msip_before == 0u && up && msip_on == 1u && mst_mie == 1u &&
                msip_hold == 1u && meip_delta == 0u && ex == 0u && sw == 0u && tm == 0u &&
-               ot == 0u && hclk >= LEG_HOLD_MIN_CLK && down && msip_off == 0u;
+               oth == 0u && hclk >= LEG_HOLD_MIN_CLK && down && msip_off == 0u;
     rec_chk("SOFT-PIN", pass);
     rec_hex("mie", mie_rd);
     rec_num("msip_before", msip_before);
@@ -1319,7 +1319,7 @@ static void leg_soft_pin(void) {
     rec_num("msie0_traps_ext", ex);
     rec_num("msie0_traps_sw", sw);
     rec_num("msie0_traps_timer", tm);
-    rec_num("msie0_traps_other", ot);
+    rec_num("msie0_traps_other", oth);
     rec_num("hold_clk", hclk);
     rec_num("msip_off", msip_off);
     chk_end(pass);
