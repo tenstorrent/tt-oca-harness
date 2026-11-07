@@ -115,14 +115,16 @@ enum {
 #define LEG_REST (1u << 1)
 #define EXT_LEN_MAX 16u
 volatile uint32_t g_p[P_COUNT] = {
-    P_MAGIC_WORD, 0x3210u,     0x0u,        0x1234567u,  32u,     0x0000u, 0x0u,
-    32u,          0x0u,        0x1000u,     16u,         0x2000u, 16u,     0x3000u,
-    32u,          0x4000u,     0x5000u,     32u,         0x6000u, 0x7000u, 0x0u,
-    0xC0u,        0x100u,      0x80004000u, 0x210u,      8u,      8u,      8u,
-    0x11111111u,  0x2u,        0x33333333u, 0x5u,        0xAu,    0x1000u, 64u,
-    0x40000000u,  9u,          11u,         D_POOL,      0x21u,   0x200u,  0x00080000u,
-    0x80000001u,  0x00080000u, 0x80800001u, D_FIDX,      0x3000u, 0x2u,    0x5008u,
-    0x1u,         0xA5A50000u, D_LOCK,      0x5EC0C0DEu, LEG_EXT | LEG_REST, 4u,
+    P_MAGIC_WORD, 0x3210u,     0x0u,        0x1234567u, 32u,         0x0000u,
+    0x0u,         32u,         0x0u,        0x1000u,    16u,         0x2000u,
+    16u,          0x3000u,     32u,         0x4000u,    0x5000u,     32u,
+    0x6000u,      0x7000u,     0x0u,        0xC0u,      0x100u,      0x80004000u,
+    0x210u,       8u,          8u,          8u,         0x11111111u, 0x2u,
+    0x33333333u,  0x5u,        0xAu,        0x1000u,    64u,         0x40000000u,
+    9u,           11u,         D_POOL,      0x21u,      0x200u,      0x00080000u,
+    0x80000001u,  0x00080000u, 0x80800001u, D_FIDX,     0x3000u,     0x2u,
+    0x5008u,      0x1u,        0xA5A50000u, D_LOCK,     0x5EC0C0DEu, LEG_EXT | LEG_REST,
+    4u,
 };
 
 // ---- Address map ----
