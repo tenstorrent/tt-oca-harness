@@ -20,8 +20,9 @@ module smc_data_accelerator_wrap #(
   input  logic                                             rst_ni,  // Primary reset, active-low, synchronized to
                                                                     // the SMC core clock.
   input  logic                                             test_en_i,  // Scan test mode enable, active-high;
-                                                                       // forwarded to the DMA, the zeroer, and the
-                                                                       // AXI demux and mux.
+                                                                       // forwarded to the DMA, the zeroer, the
+                                                                       // AXI demux and mux, and the control error
+                                                                       // subordinate.
 
   input  logic                                             dma_cg_en_i,  // Enables idle clock gating of the
                                                                          // DMA front end when high; while low
