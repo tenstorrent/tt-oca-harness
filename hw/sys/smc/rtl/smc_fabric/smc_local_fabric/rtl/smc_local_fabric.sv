@@ -49,7 +49,8 @@ module smc_local_fabric (
                                                                              // front port in smc.
   input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_front_port_rsp_i,  // AXI response from the CPU cluster's front port.
   output smc_pkg::smc_local_32_64_8_12_axi_req_t      axi_data_accel_ctrl_req_o,  // AXI request to the data accelerator's control port
-                                                                                  // for its DMA and zeroer control windows.
+                                                                                  // for the page that holds its DMA and zeroer
+                                                                                  // control windows.
   input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_data_accel_ctrl_rsp_i,  // AXI response from the data accelerator's control port.
 
   output smc_local_xbar_pkg::axi_lite32_req_t         periph_reg_req_o,  // 32-bit AXI-Lite request from the local crossbar
