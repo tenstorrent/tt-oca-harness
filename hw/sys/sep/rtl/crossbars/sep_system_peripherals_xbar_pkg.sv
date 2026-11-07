@@ -194,8 +194,8 @@ package sep_system_peripherals_xbar_pkg;
 
   // Output: mailbox
   localparam logic [55:0] MAILBOX_MAIN_BASE = 56'h10a00000;
-  localparam logic [55:0] MAILBOX_MAIN_SIZE = 56'h10000;
-  localparam logic [56:0] MAILBOX_MAIN_END  = 57'h10a10000;
+  localparam logic [55:0] MAILBOX_MAIN_SIZE = 56'h8000;
+  localparam logic [56:0] MAILBOX_MAIN_END  = 57'h10a08000;
 
   // ===========================================================================
   // Crossbar Configuration

@@ -280,7 +280,7 @@ program.
 |Lifecycle controller |`0x10918000` |4 KiB |`FEAT_CTRL` @ `+0x0` (64-bit), `DEMOTE_1` @
 `+0x8`, `DEMOTE_2` @ `+0x10`.
 |SEP efuse map |`0x10930000` |1 KiB |Fuse shadow registers; see <<tbl:fuse_fields>>.
-|AXI-Lite mailboxes |`0x10A00000` |64 KiB |Inbound/outbound mailbox pairs; not used by BL0
+|AXI-Lite mailboxes |`0x10A00000` |32 KiB |Inbound/outbound mailbox pairs; not used by BL0
 boot decisions.
 |Outbound AXI filter |`0x10A20000` |— |Egress filter windows (`OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_n`).
 |OpenTitan SPI host |`0x10B00000` |— |Boot-flash transport option A.
