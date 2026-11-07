@@ -135,6 +135,10 @@ package csrng_reg_pkg;
   } csrng_reg2hw_fips_force_reg_t;
 
   typedef struct packed {
+    logic [15:0] q;
+  } csrng_reg2hw_hw_exc_sts_reg_t;
+
+  typedef struct packed {
     logic [4:0]  q;
     logic        qe;
   } csrng_reg2hw_err_code_test_reg_t;
@@ -288,18 +292,19 @@ package csrng_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    csrng_reg2hw_intr_state_reg_t intr_state; // [184:181]
-    csrng_reg2hw_intr_enable_reg_t intr_enable; // [180:177]
-    csrng_reg2hw_intr_test_reg_t intr_test; // [176:169]
-    csrng_reg2hw_alert_test_reg_t alert_test; // [168:165]
-    csrng_reg2hw_ctrl_reg_t ctrl; // [164:149]
-    csrng_reg2hw_cmd_req_reg_t cmd_req; // [148:116]
-    csrng_reg2hw_reseed_interval_reg_t reseed_interval; // [115:83]
-    csrng_reg2hw_genbits_reg_t genbits; // [82:50]
-    csrng_reg2hw_int_state_read_enable_reg_t int_state_read_enable; // [49:47]
-    csrng_reg2hw_int_state_num_reg_t int_state_num; // [46:42]
-    csrng_reg2hw_int_state_val_reg_t int_state_val; // [41:9]
-    csrng_reg2hw_fips_force_reg_t fips_force; // [8:6]
+    csrng_reg2hw_intr_state_reg_t intr_state; // [200:197]
+    csrng_reg2hw_intr_enable_reg_t intr_enable; // [196:193]
+    csrng_reg2hw_intr_test_reg_t intr_test; // [192:185]
+    csrng_reg2hw_alert_test_reg_t alert_test; // [184:181]
+    csrng_reg2hw_ctrl_reg_t ctrl; // [180:165]
+    csrng_reg2hw_cmd_req_reg_t cmd_req; // [164:132]
+    csrng_reg2hw_reseed_interval_reg_t reseed_interval; // [131:99]
+    csrng_reg2hw_genbits_reg_t genbits; // [98:66]
+    csrng_reg2hw_int_state_read_enable_reg_t int_state_read_enable; // [65:63]
+    csrng_reg2hw_int_state_num_reg_t int_state_num; // [62:58]
+    csrng_reg2hw_int_state_val_reg_t int_state_val; // [57:25]
+    csrng_reg2hw_fips_force_reg_t fips_force; // [24:22]
+    csrng_reg2hw_hw_exc_sts_reg_t hw_exc_sts; // [21:6]
     csrng_reg2hw_err_code_test_reg_t err_code_test; // [5:0]
   } csrng_reg2hw_t;
 
