@@ -78,12 +78,28 @@ data bus. Where the two halves differ, a note on the cell gives the word
 returned when address bit 2 is set.
 
 * The _Hole in Extent_ column covers an unbacked offset inside the unit's
-  decoded extent. Where the space between a wrapper's sub-blocks, or the
-  padding after each element of an array, answers differently, the cell names
-  it separately as `between sub-blocks` or `between instances`.
+  decoded extent.
 * The _Past Extent_ column covers the rest of the unit's aperture, the range
   its Size column gives.
 * A `Reserved` row is an address between unit apertures.
+
+The fabric routes each register block a window, the addresses it passes to
+that block, and inside its window a block answers for itself. The fabric is
+the subsystem crossbars and, inside a unit, the demultiplexer or crossbar that
+routes between the unit's register blocks.
+
+Windows follow one rule in the cross-trigger network and in the SMC, apart from
+the eFuse blocks and the units inside the CPU cluster. The SMC crossbars route
+each register target whole 4 KiB pages, so an AXI burst, which never crosses a
+4 KiB boundary, stays on one target. Inside a page, a window is a power of two
+in size and starts at a multiple of its size, so a decoder compares only the
+address bits above the window:
+
+* A block alone in its page has the whole page.
+* A block that shares a page has the space up to the next block or, if it is
+  the last block, the window its register block decodes.
+* Each instance of an array has its stride.
+* A vendored block has the window its own decoder implies.
 
 A register block generated from SystemRDL answers an access that reaches it as
 follows:
@@ -96,13 +112,30 @@ follows:
   a block with 32-bit registers, answers `SLVERR`.
 
 A block instantiated as an array at a stride wider than one instance answers
-`OKAY` at every offset, so the padding between instances behaves as a hole. The
-alias and output remap regions, the traffic filter entries, the GPIO interfaces
-and the cross-trigger ports are such blocks.
+`OKAY` at every offset, so the padding between instances behaves as a hole;
+past its last instance, the fabric answers `DECERR`. The alias and output remap
+regions, the traffic filter entries, the GPIO interfaces and the cross-trigger
+ports are such blocks.
 
-Whether a unit's _Past Extent_ cell shows this `SLVERR` depends on the decoder in
-front of the block. Where the fabric decodes the unit's extent exactly, the
-fabric answers first.
+A vendored block keeps the responses of its own decoder. At an offset with no
+register, the PWM core and the other OpenTitan blocks answer `SLVERR` with read
+data `0xFFFFFFFF`, and the register file of the SMC DMA controller answers
+`OKAY` with read data `0xFFFFFFFF`.
+
+Where the parts of a wrapper answer differently, the _Hole in Extent_ cell
+names each part:
+
+* `between sub-blocks` is space in the wrapper that no sub-block's window
+  holds, which the fabric answers with `DECERR`.
+* `past sub-block registers` is a sub-block's window past its last register.
+  Where the sub-blocks of one wrapper answer there differently, the cell names
+  each instead, as `past <instance> registers` with the instance name from the
+  wrapper's register table, as in the SMC PWM row.
+* `between instances` is the padding after each element of an array. It
+  answers `OKAY` for the arrays above, `SLVERR` for an array of whole
+  controllers such as the I2C controllers, and `DECERR` for an array of
+  wrappers such as the UART instances, where each wrapper's own demultiplexer
+  answers.
 
 [[ocah-decode-response-codes-table]]
 .Decode response codes
@@ -115,11 +148,12 @@ fabric answers first.
 effect.
 
 |`SLVERR`
-|The access reaches a component that refuses it.
+|The access reaches a component that refuses it. With read data 0, the access
+reached a register block that has no register at that offset.
 
 |`DECERR`
-|No unit or sub-block claims the address, and a decoder refuses the access
-before it reaches one.
+|No window holds the address, so the fabric refuses the access before it
+reaches a unit or sub-block. The read data is `0xBADCAB1E`.
 
 |Aliases registers
 |The access reaches a live register at another offset, which answers it.

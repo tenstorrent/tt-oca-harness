@@ -111,6 +111,38 @@ HJSON-backed OpenTitan blocks are first exported to RDL via
 `make regen-regs` to regenerate; committed generated output always corresponds to the
 RDL sources. The flow lives in `hw/common/regs/` (discovery, classification, and rules).
 
+=== Address windows
+
+The SMC and the cross-trigger network route a register block a power-of-two
+window. The
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/memory_map.html#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-pdf[]
+section of the Technical Reference Manual gives the rule and the responses.
+To add a register block:
+
+* Give each crossbar target an `ocah_aperture_size` of whole 4 KiB pages, and
+  end its crossbar rule on its last page (`smc_pkg::reg_page_end` in the SMC).
+* For a block alone in its page, set `OCAH_REG_ADDR_WIDTH_<block> ?= 12` in
+  `hw/common/regs/classify.mk` and give it an `SLVERR` `ocah_past_extent_resp`.
+* For a block that shares a page, place it at a multiple of its window and set
+  `OCAH_REG_ADDR_WIDTH_<block>` so that 2^width^ is the window. Route it
+  through `prim_axil_addr_demux` with a range of
+  `+1 << <BLOCK>_REG_MIN_ADDR_WIDTH+`. In the RDL that instantiates it, give it
+  that window as its `ocah_aperture_size` and an `SLVERR`
+  `ocah_past_extent_resp`; the wrapper's own `ocah_gap_resp` and
+  `ocah_past_extent_resp` stay `DECERR`.
+* For a block instantiated as an array at a stride wider than one instance,
+  add the block to `OCAH_REG_NO_ERR_BLOCKS`, give each instance its stride as
+  its range, and set `ocah_full_stride_extent`. An array of whole controllers
+  stays off the list, decodes its stride, and sets its `ocah_gap_resp` to
+  `SLVERR`.
+* A vendored block keeps its own decode width; record its response past its
+  registers in the memory map.
+
 == DV Firmware
 
 Per-subsystem DV firmware libraries (runtime **drivers**, not tests) are built via
