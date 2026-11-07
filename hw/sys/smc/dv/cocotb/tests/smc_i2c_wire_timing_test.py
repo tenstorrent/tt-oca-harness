@@ -3,8 +3,8 @@
 """I2C0 wire timing on the instance-0 pads as a function of TIMING0-TIMING4.
 
 The controller's phases are graded against THIGH, TLOW, T_R, T_F, THD_DAT, TSU_STA, THD_STA,
-TSU_STO and T_BUF; TSU_DAT, whose effect the controller's bits do not show, is graded with I2C0
-as a target.
+TSU_STO and T_BUF, and its data setup against TLOW minus THD_DAT; TSU_DAT, which only the target
+applies, is graded with I2C0 as a target.
 """
 
 from __future__ import annotations
