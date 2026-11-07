@@ -3551,7 +3551,7 @@ module sep_uvm_top
     function automatic logic esrc_sm_err_live_f(
         logic [entropy_src_main_sm_pkg::StateWidth-1:0] st);
         entropy_src_main_sm_pkg::state_e e;
-        return !$cast(e, st) || (st == entropy_src_main_sm_pkg::Error);
+        return ($cast(e, st) == 0) || (st == entropy_src_main_sm_pkg::Error);
     endfunction
     logic esrc_sm_err_held, esrc_sm_err_fv, esrc_sm_err_chk;
     initial begin
