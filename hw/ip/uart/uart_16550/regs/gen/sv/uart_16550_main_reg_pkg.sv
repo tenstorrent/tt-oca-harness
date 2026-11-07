@@ -7,7 +7,7 @@
 package uart_16550_main_reg_pkg;
 
     localparam UART_16550_MAIN_REG_DATA_WIDTH = 32;
-    localparam UART_16550_MAIN_REG_MIN_ADDR_WIDTH = 6;
+    localparam UART_16550_MAIN_REG_MIN_ADDR_WIDTH = 8;
     localparam UART_16550_MAIN_REG_SIZE = 'h28;
 
     typedef struct packed {

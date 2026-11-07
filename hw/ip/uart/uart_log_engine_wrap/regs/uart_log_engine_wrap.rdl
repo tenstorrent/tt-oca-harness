@@ -22,6 +22,10 @@ addrmap uart_log_engine_wrap {
 
 `ifdef OCAH_DOC_MEMORY_MAP
     ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    uart_log_engine_ctrl->ocah_aperture_size = 0x100;
+    uart_log_engine_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    uart->ocah_aperture_size = 0x100;
+    uart->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
 `endif
 };
 
