@@ -151,7 +151,9 @@ edges in (t0, t1].
   ``:295-308``). With regwen 0 a ``WDOG_CTRL`` write reads back unchanged, and
   writes to ``WDOG_COUNT``, ``WKUP_CTRL``, ``WKUP_COUNT_HI/LO`` and
   ``WKUP_THOLD_HI/LO`` read back the written value. CTRL-REGWEN-LOCKED grades the
-  thresholds.
+  thresholds: after a write to each with regwen 0, each reads back its value from
+  before the lock, and each write has a completed AXI response (not a timeout);
+  the line logs both read-backs and both response codes.
 * CHK-WDT-PET. "Pet the watchdog by writing zero to the WDOG_COUNT register."
   (``<aon>/doc/programmers_guide.md:13``). The first count read after the pet is
   below the count read before it and at most ``E(pet write, read done)``.
@@ -2910,15 +2912,18 @@ class sep_timer_clock_contract_test(sep_base_test):
         fc = field_compare(r1, 0, REGWEN_FIELD)
         assert fc.ok, f"CHK-REGWEN-STICKY FAIL: write of 1 after the clear {fc.fields()}"
         self.logger.info("CHK-REGWEN-STICKY PASS: before=1 write1_after_clear regwen=0")
-        await self.wdt.write_tolerant(WDOG_BARK_THOLD, cfg.locked_b)
-        await self.wdt.write_tolerant(WDOG_BITE_THOLD, cfg.locked_d)
+        # A completed AXI response is 0 to 3; a write with no response reads -1.
+        rb = await self.wdt.write_tolerant(WDOG_BARK_THOLD, cfg.locked_b)
+        rd = await self.wdt.write_tolerant(WDOG_BITE_THOLD, cfg.locked_d)
         await self._wait_wdt(WDT_WAIT)
         lb = await self._rd(WDOG_BARK_THOLD)
         ld = await self._rd(WDOG_BITE_THOLD)
-        assert lb == cfg.xb and ld == cfg.xd, (
-            f"CTRL-REGWEN-LOCKED FAIL: bark=0x{lb:x} bite=0x{ld:x} after locked writes"
+        values = f"bark=0x{lb:08x} bark_bresp={rb} bite=0x{ld:08x} bite_bresp={rd}"
+        assert lb == cfg.xb and ld == cfg.xd and 0 <= rb <= 3 and 0 <= rd <= 3, (
+            f"CTRL-REGWEN-LOCKED FAIL: {values} after locked writes of bark=0x{cfg.locked_b:x} "
+            f"bite=0x{cfg.locked_d:x} (each write needs a completed response)"
         )
-        self.logger.info("CTRL-REGWEN-LOCKED: bark=0x%08x bite=0x%08x", lb, ld)
+        self.logger.info("CTRL-REGWEN-LOCKED: %s", values)
         await self._lock_scope()
 
         done = []

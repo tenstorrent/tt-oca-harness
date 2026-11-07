@@ -13,9 +13,14 @@ Reset column of ``WDOG_CTRL``, ``WKUP_CTRL`` and ``INTR_STATE``).
 ``clk_wdt_i`` runs at eight ``clk_i`` periods from a drawn start phase. Each leaf
 runs two ``rst_ni`` passes. The control pass (graded window closed) asserts
 ``rst_ni`` at a drawn phase and releases it 10 percent of a ``clk_i`` period
-after a ``clk_i`` rising edge. The graded pass asserts and releases ``rst_ni``
-inside a drawn third of the ``clk_i`` period, with the release placed in the
-``clk_i`` cycle that puts it inside the same third of the ``clk_wdt_i`` period.
+after a ``clk_i`` rising edge; ``ext_boot_seq_done_i`` holds 1. The graded pass
+asserts and releases ``rst_ni`` inside a drawn third of the ``clk_i`` period,
+with the release placed in the ``clk_i`` cycle that puts it inside the same
+third of the ``clk_wdt_i`` period. It drives ``ext_boot_seq_done_i`` low with
+the ``rst_ni`` assert and holds it low through the ``rst_ni`` release and
+fuse-sense done, then raises it at a drawn offset after a ``clk_i`` rising edge,
+so ``ext_boot_seq_done_i`` is the last release term and rises off a ``clk_i``
+edge.
 Each pass first arms seven watchdog and wakeup registers to non-default values.
 After the graded pass, with the graded window closed, one ``rst_ni`` pulse of a
 drawn 1 to 7 ``clk_i`` cycles runs, and a full-width ``rst_ni`` pulse follows it
@@ -24,8 +29,10 @@ so the leaf ends from a complete cold reset.
 Checkers:
   CHK-ARM           each armed register reads back its armed value, which
                     differs from its RDL reset value on the field bits.
-  CHK-RST-SYNC      the ``dbg_sep_reset_n_o`` tap rises after the ``rst_ni``
-                    release, within 1 ps of a ``clk_i`` rising edge.
+  CHK-RST-SYNC      the ``dbg_sep_reset_n_o`` tap rises after the last
+                    release term, within 1 ps of a ``clk_i`` rising edge. The
+                    last term is the ``ext_boot_seq_done_i`` rise in the graded
+                    pass and the ``rst_ni`` release in the control pass.
   CHK-AON-REL       the ``aon_rst_n_probe_o`` tap is low at the end of the
                     ``rst_ni`` low window and rises after the release, within
                     1 ps of a ``clk_wdt_i`` rising edge.
@@ -34,10 +41,14 @@ Checkers:
 
 Controls and observations: ``INFO-COLD-WDT`` logs ``WDOG_REGWEN``, the two
 watchdog thresholds and ``WKUP_THOLD_HI`` after the reset (graded by
-``sep_timer_clock_contract_test``). ``CTRL-RST-OFFEDGE`` logs the measured
-offset of each ``rst_ni`` release from the nearest ``clk_i`` edge; in the
-graded pass an offset within the edge allowance fails the leaf, because
-CHK-RST-SYNC could not then fail. ``OBS-RST-ASSERT`` logs the delay from the
+``sep_timer_clock_contract_test``). ``CTRL-RST-EXT-HOLD`` (graded pass) logs
+that ``sep_reset_n`` has not risen since the ``rst_ni`` release and that
+fuse-sense done is 1 when ``ext_boot_seq_done_i`` rises; otherwise
+``CTRL-MISSING`` fails the leaf. ``CTRL-RST-OFFEDGE`` logs the measured offset
+from the nearest ``clk_i`` edge of the ``rst_ni`` release (control pass) and of
+the ``ext_boot_seq_done_i`` rise (graded pass); in the graded pass an offset
+within the edge allowance fails the leaf, because CHK-RST-SYNC could not then
+fail. ``OBS-RST-ASSERT`` logs the delay from the
 ``rst_ni`` fall to the ``sep_reset_n`` fall; the specification gives no
 assertion timing, so it is not graded. ``OBS-RST-MIN-WIDTH`` logs the width
 of the pulse below the floor, whether ``sep_reset_n`` fell and rose, whether
@@ -45,8 +56,8 @@ of the pulse below the floor, whether ``sep_reset_n`` fell and rose, whether
 ``clk_i`` cycles after the release; the specification states no minimum
 ``rst_ni`` width, so nothing in it is graded. ``OBS-RST-SYNC-EDGES`` logs,
 per pass, the ``clk_i`` rising edges after the last of the release terms (the
-``rst_ni`` rise or the ``sep_fuse_sense_done_o`` rise after it;
-``ext_boot_seq_done_i`` holds 1) up to and including the edge of the
+``rst_ni`` rise, the ``sep_fuse_sense_done_o`` rise after it, or the graded
+pass's ``ext_boot_seq_done_i`` rise) up to and including the edge of the
 ``sep_reset_n`` rise; the specification states a synchronizer on that path
 without its stage count, so the count is not graded.
 
@@ -54,10 +65,12 @@ Environment choices (not from the specification): the 1 ps edge allowance
 covers the simulator resolution; the ``sep_reset_n`` release wait is
 ``_SEP_BOUND`` ``clk_i`` cycles and the ``aon_rst_n`` wait ``_AON_BOUND``
 ``clk_wdt_i`` periods; the reset width floor of the graded passes is 8
-``clk_i`` cycles.
+``clk_i`` cycles; the ``ext_boot_seq_done_i`` offset is drawn from 10 to 90
+percent of a ``clk_i`` period, although the port table states the port as
+qualified to ``clk_i``, so the off-edge rise exercises the release
+synchronizer.
 
-Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense`` with
-``ext_boot_seq_done_i`` at 1, so ``rst_ni`` is the only open term. VCS only:
+Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``. VCS only:
 the sub-cycle phases need a four-state, event-ordered simulator. RANDCFG.
 """
 
@@ -104,6 +117,7 @@ _RST_WIDTH_FLOOR = 8
 # Thirds of a period in percent (each away from the edge).
 _THIRDS = {1: (10, 33), 2: (33, 67), 3: (67, 90)}
 _CTL_RELEASE_PCT = 10
+_BOOT_PCT = (10, 90)
 # The clk_wdt_i start phase is a whole number of 125 ps steps. The bench clock
 # start takes the delay in ns, and a multiple of 0.125 ns is exact in binary,
 # so the delay is a whole step count at 1 ps and at 1 fs simulator precision.
@@ -257,6 +271,8 @@ class sep_cold_reset_phase_test(sep_base_test):
         sep_before = self.rd(dut.dbg_sep_reset_n_o)
         assert sep_before == 1, f"pass={pass_name}: sep_reset_n tap not 1 before the assert"
         dut.rst_ni.value = 0
+        if pass_name == "graded":
+            dut.ext_boot_seq_done_i.value = 0
         t_fall = _now_ps()
         for _ in range(self.wc[pass_name]):
             await RisingEdge(clk)
@@ -305,18 +321,25 @@ class sep_cold_reset_phase_test(sep_base_test):
             wdt_ph,
             phase_pct(wdt_ph, self.pw_ps),
         )
+        if pass_name == "graded":
+            t_last = await self._raise_ext_boot(t_rel)
+            term, ph = "ext_boot_seq_done_i", self.boot_off
+        else:
+            t_last = t_rel
+            term, ph = "rst_ni", pr
         await self._wait_level(dut.dbg_sep_reset_n_o, 1, clk, _SEP_BOUND, "sep_reset_n release")
-        clk_off = nearest_edge_offset_ps(t_rel, self.edges.edge_times("clk_i"))
+        clk_off = nearest_edge_offset_ps(t_last, self.edges.edge_times("clk_i"))
         self.logger.info(
-            "CTRL-RST-OFFEDGE: pass=%s rst_ni rose t=%d offset_to_clk_edge=%s allowance=%d",
+            "CTRL-RST-OFFEDGE: pass=%s term=%s rose t=%d offset_to_clk_edge=%s allowance=%d",
             pass_name,
-            t_rel,
+            term,
+            t_last,
             clk_off,
             _EDGE_ALLOWANCE_PS,
         )
         if pass_name == "graded":
             assert clk_off is not None and abs(clk_off) > _EDGE_ALLOWANCE_PS, (
-                f"CTRL-MISSING RST-OFFEDGE: pass=graded rst_ni rose t={t_rel} "
+                f"CTRL-MISSING RST-OFFEDGE: pass=graded {term} rose t={t_last} "
                 f"offset_to_clk_edge={clk_off} ps is within {_EDGE_ALLOWANCE_PS} ps of a clk_i edge"
             )
             lo, hi = _THIRDS[self.third]
@@ -324,21 +347,22 @@ class sep_cold_reset_phase_test(sep_base_test):
                 f"test error: graded release clk_wdt_i phase {wdt_ph} ps not in third {self.third}"
             )
 
-        sep_rise = [t for t in self.sep_t.rises(t_rel)]
-        assert sep_rise, f"CHK-RST-SYNC FAIL: pass={pass_name} no sep_reset_n rise after release"
+        sep_rise = self.sep_t.rises(t_last)
+        assert sep_rise, f"CHK-RST-SYNC FAIL: pass={pass_name} no sep_reset_n rise after {term}"
         t_sr = sep_rise[0]
         self._log_sync_edges(pass_name, t_rel, t_sr)
         off = nearest_edge_offset_ps(t_sr, self.edges.edge_times("clk_i"))
-        assert t_sr > t_rel and off is not None and abs(off) <= _EDGE_ALLOWANCE_PS, (
-            f"CHK-RST-SYNC FAIL: pass={pass_name} rst_ni rose t={t_rel} sep_reset_n rose t={t_sr} "
-            f"offset_to_clk_edge={off} ps (allowance {_EDGE_ALLOWANCE_PS} ps)"
+        assert t_sr > t_last and off is not None and abs(off) <= _EDGE_ALLOWANCE_PS, (
+            f"CHK-RST-SYNC FAIL: pass={pass_name} {term} rose t={t_last} sep_reset_n rose "
+            f"t={t_sr} offset_to_clk_edge={off} ps (allowance {_EDGE_ALLOWANCE_PS} ps)"
         )
         self.logger.info(
-            "CHK-RST-SYNC PASS: pass=%s rst_ni rose t=%d phase=%.1f sep_reset_n rose t=%d "
+            "CHK-RST-SYNC PASS: pass=%s %s rose t=%d phase=%.1f sep_reset_n rose t=%d "
             "offset_to_clk_edge=%d allowance=%d",
             pass_name,
-            t_rel,
-            phase_pct(pr, p),
+            term,
+            t_last,
+            phase_pct(ph, p),
             t_sr,
             off,
             _EDGE_ALLOWANCE_PS,
@@ -403,22 +427,49 @@ class sep_cold_reset_phase_test(sep_base_test):
             got["WKUP_THOLD_HI"],
         )
 
+    async def _raise_ext_boot(self, t_rel: int) -> int:
+        """Raise ``ext_boot_seq_done_i`` off a clk_i edge after sense done; return its rise time."""
+        dut = cocotb.top
+        await self.wait_fuse_sense(max_cycles=_SEP_BOUND)
+        await RisingEdge(dut.clk_i)
+        await Timer(self.boot_off, units="ps")
+        sense = self.rd_known(dut.sep_fuse_sense_done_o)
+        sep = self.rd_known(dut.dbg_sep_reset_n_o)
+        early = self.sep_t.rises(t_rel)
+        dut.ext_boot_seq_done_i.value = 1
+        t_boot = _now_ps()
+        values = (
+            f"rst_ni rose t={t_rel} ext_boot_seq_done_i rose t={t_boot} "
+            f"offset_after_clk_edge={self.boot_off} ps sense_done={sense} sep_reset_n={sep} "
+            f"sep_reset_n_rises_since_release={len(early)}"
+        )
+        if sense != 1 or sep != 0 or early:
+            raise AssertionError(f"CTRL-MISSING RST-EXT-HOLD: {values}")
+        self.ext_boot_rise = t_boot
+        self.logger.info("CTRL-RST-EXT-HOLD: %s", values)
+        return t_boot
+
     def _log_sync_edges(self, pass_name: str, t_rel: int, t_sr: int) -> None:
         """Log the clk_i edges from the last release term to the sep_reset_n rise (not graded)."""
-        dut = cocotb.top
         sense_rise = self.sense_t.rises(t_rel, until_ps=t_sr)
-        t_last = max([t_rel, *sense_rise])
-        last = "sense_done" if t_last > t_rel else "rst_ni"
+        terms = {"rst_ni": t_rel}
+        if sense_rise:
+            terms["sense_done"] = sense_rise[0]
+        boot = self.ext_boot_rise if pass_name == "graded" else None
+        if boot is not None:
+            terms["ext_boot_seq_done"] = boot
+        last = max(terms, key=terms.get)
+        t_last = terms[last]
         edges = sum(1 for t in self.edges.edge_times("clk_i") if t_last < t <= t_sr)
         self.logger.info(
             "OBS-RST-SYNC-EDGES: pass=%s rst_ni rose t=%d sense_done rose t=%s "
-            "sense_done_at_release=%s ext_boot_seq_done=%s last_term=%s t=%d "
+            "sense_done_at_release=%s ext_boot_seq_done rose t=%s last_term=%s t=%d "
             "sep_reset_n rose t=%d clk_i_edges=%d",
             pass_name,
             t_rel,
             sense_rise[0] if sense_rise else "none",
             self.sense_t.value_at(t_rel),
-            self.rd(dut.ext_boot_seq_done_i, allow_unknown=True),
+            "held 1" if boot is None else boot,
             last,
             t_last,
             t_sr,
@@ -470,6 +521,15 @@ class sep_cold_reset_phase_test(sep_base_test):
         self.sub_w = rng.randrange(1, _RST_WIDTH_FLOOR)
         self.logger.info(
             "DRAW sub_floor_width=%d clk_i cycles (floor %d)", self.sub_w, _RST_WIDTH_FLOOR
+        )
+        self.boot_off = rng.randrange(
+            _BOOT_PCT[0] * self.p_ps // 100 + 1, _BOOT_PCT[1] * self.p_ps // 100
+        )
+        self.ext_boot_rise = None
+        self.logger.info(
+            "DRAW ext_boot_seq_done_offset=%d ps (%.1f %%) after a clk_i rising edge",
+            self.boot_off,
+            phase_pct(self.boot_off, self.p_ps),
         )
         close_graded_window()
         self.cfg.wdt_clk_period_ns = self.pw_ps / 1000

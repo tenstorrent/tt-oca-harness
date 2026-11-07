@@ -55,7 +55,10 @@ memory interfaces). Engine probe registers:
 ``KM_MAILBOX_SEP.SEP_IRQ_ENABLE``, ``SEP_LIFECYCLE_CTRL.DEMOTE_2`` (one 64-bit
 access; ``rsvd`` is ``woset``, so each event sets one more drawn bit of
 ``[63:2]``) and ``WDT_TIMER.WDOG_BARK_THOLD``. Every expected register value is
-its RDL reset value or the value the leaf wrote and read back.
+its RDL reset value or the value the leaf wrote and read back. Each arm of an
+engine, SPI or DMA probe logs ``CTRL-OVR-ARM`` with the armed value, the
+read-back and the RDL reset; a read-back that differs from the armed value, or
+an armed value equal to the reset, fails the leaf.
 
 Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-OVR-IP        each pass, pair and domain: after the settle the tap is 0
@@ -71,7 +74,15 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-OVR-PULSE     the V=0 tap is low and the V=1 tap high on every cycle of a
                     ``wdt_rst_ni`` pulse; both move after the overrides go.
   CHK-OVR-PRIO      with the software bit and the override both active the tap
-                    stays low until both are released, in either order.
+                    stays low until both are released, in either order. In the
+                    software-first order the software bit is cleared before the
+                    override is applied. In the override-first order the
+                    override is applied while the software bit is 1, and
+                    ``CTRL-OVR-PRIO-FORCE`` logs the tap fall it causes
+                    (``CTRL-MISSING`` otherwise); then the software bit is
+                    cleared, the override released (tap stays 0) and the
+                    software bit set (tap rises). The software bit is set only
+                    with the host-path isolate-complete bits of the domain high.
   CHK-OVR-AND       during the ``sep_reset_n`` override ``ip_rst_n[6:1]``,
                     ``pr_sram_memif_rst_n_o`` and ``pr_rom_memif_rst_n_o`` are
                     low on every cycle after the settle and ``aon_rst_n`` stays
@@ -402,9 +413,11 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         await self.pd.write(p, val)
         got = await self.pd.read(p)
         fc = field_compare(got, val, p.mask)
+        line = f"probe={p.name} armed=0x{val:08x} read=0x{got:08x} RDL reset=0x{p.reset:08x}"
         if not fc.ok or (val & p.mask) == (p.reset & p.mask):
-            raise AssertionError(f"arm {p.name}: {fc.fields()} RDL reset 0x{p.reset:08x}")
+            raise AssertionError(f"CTRL-MISSING OVR-ARM: {line} {fc.fields()}")
         self.armed[p.name] = val
+        self.logger.info("CTRL-OVR-ARM: %s", line)
 
     async def _read_probe(self, p):
         return await self.pd.read(p)
@@ -712,18 +725,36 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
     # ---- step 6: priority leg -----------------------------------------------
     async def _priority_leg(self) -> None:
         for d, order, hold in self.plan.prio:
-            await self._sw_write(self.sw & ~(1 << IPRST[d]))
-            await self._wait_tap(d, 0, f"priority {d} assert")
-            await self._wait_host_iso(d, f"priority {d} assert")
-            await self._shift(
-                tdr_word(apply=(TDR_PORT[d],), hold=(TDR_PORT[d],)), f"priority {d} force"
-            )
+            key = f"ip_rst_{IPRST[d]}"
+            force = tdr_word(apply=(TDR_PORT[d],), hold=(TDR_PORT[d],))
+            if order == "sw_first":
+                await self._sw_write(self.sw & ~(1 << IPRST[d]))
+                await self._wait_tap(d, 0, f"priority {d} assert")
+                await self._wait_host_iso(d, f"priority {d} assert")
+                await self._shift(force, f"priority {d} force")
+            else:
+                await self._wait_tap(d, 1, f"priority {d} before the force")
+                sw_bit = (self.sw >> IPRST[d]) & 1
+                m = self.taps.mark()
+                await self._shift(force, f"priority {d} force")
+                await self._cycles(SETTLE)
+                await ReadOnly()
+                falls = len(self.taps.ip_rst[IPRST[d]].fall_clks_since(m[key]))
+                tap = self._tap(d)
+                self._ctl(
+                    "CTRL-OVR-PRIO-FORCE",
+                    sw_bit == 1 and falls > 0 and tap == 0,
+                    f"dom={d} order={order} sw_bit={sw_bit} tap_falls_after_force={falls} "
+                    f"tap={tap} over {SETTLE}",
+                )
+                await RisingEdge(cocotb.top.clk_i)
+                await self._sw_write(self.sw & ~(1 << IPRST[d]))
+                await self._wait_host_iso(d, f"priority {d} assert")
             await self._cycles(SETTLE)
             await ReadOnly()
             iso_before = self._host_iso_now(d)
             await RisingEdge(cocotb.top.clk_i)
             m = self.taps.mark()
-            key = f"ip_rst_{IPRST[d]}"
             if order == "sw_first":
                 await self._sw_write(self.sw | (1 << IPRST[d]))
             else:
@@ -746,10 +777,12 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             p = PROBE[d]
             got = await self._read_probe(p)
             fc = field_compare(got, p.reset, p.mask)
+            first = "sw_bit" if order == "sw_first" else "override"
             self._chk(
                 "CHK-OVR-PRIO",
                 iso_before == 1 and first_ok and fc.ok,
-                f"dom={d} order={order} iso_ack_high_before_sw_release={iso_before} "
+                f"dom={d} order={order} first_release={first} "
+                f"iso_ack_high_before_sw_release={iso_before} "
                 f"tap_after_first_release={0 if first_ok else 1} (rises={rose} "
                 f"high_cycles={high} over {SETTLE + hold}) tap_after_second=1 "
                 f"probe_default: {fc.fields()}",

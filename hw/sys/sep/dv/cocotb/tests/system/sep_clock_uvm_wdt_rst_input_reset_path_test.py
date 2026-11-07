@@ -27,7 +27,8 @@ Checks (each asserts an exact value, so a stuck or X reset net fails):
           rising edge; an offset within 1 ps fails the leaf). The
           ``sep_wdt_reset_n`` tap reads 0 before the rise and at the first
           ``clk_i`` rising edge after it, reads 1 at the second, and its rise
-          time is that second edge within 1 ps.
+          time is that second edge within 1 ps. An X/Z read at either edge
+          fails the check.
   CHK-CPU-RST-AND   on every ``clk_i`` rising edge from the end of bring-up to
           the end of the leaf, ``sep_cpu_reset_n_o`` equals
           ``dbg_sep_reset_n_o`` AND ``wdt_rst_ni_i``, and ``test_en_i`` reads 0.
@@ -247,7 +248,9 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test(sep_base_test):
             await RisingEdge(clk)
             t_edge = _now_ps()
             await ReadOnly()
-            reads.append((t_edge, self.rd(dut.sep_wdt_reset_n_probe_o, allow_unknown=True)))
+            val = dut.sep_wdt_reset_n_probe_o.value
+            # An X/Z read keeps its string form, which equals neither expected value.
+            reads.append((t_edge, int(val) if val.is_resolvable else str(val)))
         await FallingEdge(clk)
         off = nearest_edge_offset_ps(t_rise, self.edges.edge_times("clk_i"))
         self.logger.info(
