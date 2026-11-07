@@ -5,8 +5,8 @@
 //
 // Address decode rules live in sep_system_peripherals_xbar rather than this package; the
 // named address-range constants here mirror its smn_inbound_from_xbar and mailbox rules and
-// are not referenced by the crossbar. Its system_csr rules take each register block's bounds
-// from sep_top_addrmap_pkg.
+// are not referenced by the crossbar. Its system_csr rules take each page's bounds from
+// sep_top_addrmap_pkg.
 // Both initiators connect to all three targets.
 
 `include "axi/typedef.svh"
@@ -19,7 +19,7 @@ package sep_system_peripherals_xbar_pkg;
   // ===========================================================================
   localparam int unsigned NumInputs     = 2;
   localparam int unsigned NumOutputs    = 3;
-  localparam int unsigned NumAddrRules  = 12;
+  localparam int unsigned NumAddrRules  = 9;
   localparam int unsigned MaxInputIdW   = 6;
   localparam int unsigned XbarOutputIdW = 7;
 
@@ -185,8 +185,8 @@ package sep_system_peripherals_xbar_pkg;
   localparam logic [55:0] SMN_INBOUND_FROM_XBAR_REGION_0_BASE = 56'h0;
   localparam logic [55:0] SMN_INBOUND_FROM_XBAR_REGION_0_SIZE = 56'h10802000;
   localparam logic [56:0] SMN_INBOUND_FROM_XBAR_REGION_0_END  = 57'h10802000;
-  localparam logic [55:0] SMN_INBOUND_FROM_XBAR_REGION_1_BASE = 56'h10802100;
-  localparam logic [55:0] SMN_INBOUND_FROM_XBAR_REGION_1_SIZE = 56'h1fdf00;
+  localparam logic [55:0] SMN_INBOUND_FROM_XBAR_REGION_1_BASE = 56'h10803000;
+  localparam logic [55:0] SMN_INBOUND_FROM_XBAR_REGION_1_SIZE = 56'h1fd000;
   localparam logic [56:0] SMN_INBOUND_FROM_XBAR_REGION_1_END  = 57'h10a00000;
   localparam logic [55:0] SMN_INBOUND_FROM_XBAR_REGION_2_BASE = 56'h10a50000;
   localparam logic [55:0] SMN_INBOUND_FROM_XBAR_REGION_2_SIZE = 56'h2f5b0000;

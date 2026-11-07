@@ -69,8 +69,8 @@ module sep_local_axi_xbar_wrapper (
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    entropy_fifo_axi_resp_i,  // Response from the entropy pool.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     sep_system_peripherals_axi_req_o,  // Request for sep_system_peripherals:
-                                                                                  // scratch 0x1080_2000-0x1080_20FF, CSRs
-                                                                                  // 0x10A0_0000-0x10A5_FFFF, remap window
+                                                                                  // scratch 0x1080_2000-0x1080_2FFF, CSRs
+                                                                                  // 0x10A0_0000-0x10A4_FFFF, remap window
                                                                                   // 0x1100_0000-0x11FF_FFFF, external
                                                                                   // chiplet 0x0000_0000-0x0FFF_FFFF, and SMU
                                                                                   // 0x4000_0000-0xBFFF_FFFF.

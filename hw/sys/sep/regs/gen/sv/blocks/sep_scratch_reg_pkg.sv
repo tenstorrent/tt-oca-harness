@@ -7,7 +7,7 @@
 package sep_scratch_reg_pkg;
 
     localparam SEP_SCRATCH_REG_DATA_WIDTH = 64;
-    localparam SEP_SCRATCH_REG_MIN_ADDR_WIDTH = 6;
+    localparam SEP_SCRATCH_REG_MIN_ADDR_WIDTH = 7;
     localparam SEP_SCRATCH_REG_SIZE = 'h40;
 
     typedef struct {

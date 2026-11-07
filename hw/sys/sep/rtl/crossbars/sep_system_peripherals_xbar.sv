@@ -4,9 +4,11 @@
 // Route system-peripherals AXI traffic to mailbox, system CSR, and SMN paths.
 //
 // Address rules are explicit integration apertures in AddrMap below:
-// 0x10A0_0000-0x10A0_FFFF to the mailbox, and each system-CSR register block's extent from
-// sep_top_addrmap_pkg to the system CSRs. Every other address in 0x10A1_0000-0x10A4_FFFF and
-// 0x1080_2000-0x1080_20FF, and anything at or above 0x4000_0000, gets the axi_xbar DECERR
+// 0x10A0_0000-0x10A0_FFFF to the mailbox, and to the system CSRs the scratch page and the
+// remap, outbound filter, inbound filter and sep_cpu_ctrl pages, each from its
+// sep_top_addrmap_pkg base to the 4 KiB page boundary after its registers; sep_system_csr
+// answers the addresses of those pages outside its register windows. Every other address in
+// 0x10A1_0000-0x10A4_FFFF, and anything at or above 0x4000_0000, gets the axi_xbar DECERR
 // responder; the rest of the space below 0x4000_0000 goes to smn_inbound_from_xbar. Both
 // initiators reach every target.
 // Initiators are full AXI4 64-bit. mailbox and system_csr targets are AXI4-Lite 64-bit;
@@ -36,18 +38,18 @@ module sep_system_peripherals_xbar
   output axi64_resp_t smn_inbound_resp_o,     // Response to the SMN inbound request.
 
   output axi_out_req_t  smn_inbound_from_xbar_req_o,  // Request for any address below 0x4000_0000
-                                                      // outside the mailbox and system CSR windows,
-                                                      // forwarded to the SEP local xbar in
-                                                      // sep_system_peripherals.
+                                                      // outside 0x1080_2000-0x1080_2FFF and
+                                                      // 0x10A0_0000-0x10A4_FFFF, forwarded to the
+                                                      // SEP local xbar in sep_system_peripherals.
   input  axi_out_resp_t smn_inbound_from_xbar_resp_i,  // Response to smn_inbound_from_xbar_req_o.
 
   output axi_lite64_req_t  mailbox_req_o,     // Request for 0x10A0_0000-0x10A0_FFFF, converted to
                                               // AXI-Lite.
   input  axi_lite64_resp_t mailbox_resp_i,    // Mailbox AXI-Lite response.
 
-  output axi_lite64_req_t  system_csr_req_o,  // Request for a system-CSR register block extent
-                                              // in 0x10A1_0000-0x10A4_FFFF or
-                                              // 0x1080_2000-0x1080_20FF, converted to AXI-Lite.
+  output axi_lite64_req_t  system_csr_req_o,  // Request for the scratch page
+                                              // 0x1080_2000-0x1080_2FFF or a system CSR page in
+                                              // 0x10A1_0000-0x10A4_FFFF, converted to AXI-Lite.
   input  axi_lite64_resp_t system_csr_resp_i  // System CSR AXI-Lite response.
 );
 
@@ -63,67 +65,58 @@ module sep_system_peripherals_xbar
   localparam sep_system_peripherals_xbar_pkg::addr_rule_t [sep_system_peripherals_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     // smn_inbound_from_xbar.region_0: 0x00000000 - 0x10802000
     '{idx: 0, start_addr: 56'h0, end_addr: 57'h10802000},
-    // smn_inbound_from_xbar.region_1: 0x10802100 - 0x10a00000
-    '{idx: 0, start_addr: 56'h10802100, end_addr: 57'h10a00000},
+    // smn_inbound_from_xbar.region_1: from the end of the scratch page to 0x10a00000
+    '{
+      idx: 0,
+      start_addr: 56'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR,
+                                            sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE)),
+      end_addr: 57'h10a00000
+    },
     // smn_inbound_from_xbar.region_2: 0x10a50000 - 0x40000000
     '{idx: 0, start_addr: 56'h10a50000, end_addr: 57'h40000000},
     // mailbox.main: 0x10a00000 - 0x10a10000
     '{idx: 1, start_addr: 56'h10a00000, end_addr: 57'h10a10000},
-    // system_csr.local_master_alias_remap_ctrl: 0x10a10000 - 0x10a10200
+    // system_csr.remap_ctrl: the remap page; sep_system_csr answers the addresses outside the
+    // alias, AP and STEE remap windows.
     '{
       idx: 2,
       start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR +
-                    sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_SIZE)
+      end_addr: 57'(sep_pkg::reg_page_end(
+          sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR,
+          sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_SIZE))
     },
-    // system_csr.ap_output_remap_ctrl: 0x10a10200 - 0x10a10280
-    '{
-      idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR +
-                    sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_SIZE)
-    },
-    // system_csr.stee_output_remap_ctrl: 0x10a10300 - 0x10a10380
-    '{
-      idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR +
-                    sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_SIZE)
-    },
-    // system_csr.outbound_filter_ctrl: 0x10a20000 - 0x10a20400
+    // system_csr.outbound_filter_ctrl: the outbound filter page; sep_system_csr answers the
+    // addresses outside the outbound filter window.
     '{
       idx: 2,
       start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR +
-                    sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_SIZE)
+      end_addr: 57'(sep_pkg::reg_page_end(
+          sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
+          sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_SIZE))
     },
-    // system_csr.inbound_filter_ctrl: 0x10a21000 - 0x10a21200
+    // system_csr.inbound_filter_ctrl: the inbound filter page; sep_system_csr answers the
+    // addresses outside the inbound filter window.
     '{
       idx: 2,
       start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR +
-                    sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_SIZE)
+      end_addr: 57'(sep_pkg::reg_page_end(
+          sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
+          sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_SIZE))
     },
-    // system_csr.sep_cpu_ctrl: 0x10a30000 - 0x10a31008
+    // system_csr.sep_cpu_ctrl: the sep_cpu_ctrl pages, all of which its register block decodes.
     '{
       idx: 2,
       start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR +
-                    sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE)
+      end_addr: 57'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR,
+                                          sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE))
     },
-    // system_csr.sep_scratch_cold: 0x10802000 - 0x10802040
+    // system_csr.sep_scratch: the scratch page; sep_system_csr answers the addresses outside the
+    // cold and warm scratch windows.
     '{
       idx: 2,
       start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR +
-                    sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_SIZE)
-    },
-    // system_csr.sep_scratch_warm: 0x10802080 - 0x108020c0
-    '{
-      idx: 2,
-      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR),
-      end_addr: 57'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR +
-                    sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE)
+      end_addr: 57'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR,
+                                          sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE))
     }
   };
 
