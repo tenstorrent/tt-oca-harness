@@ -11,9 +11,10 @@
 // the local-master alias remap, 0x80 each for the AP and STEE output remap, 0x400 for the
 // outbound filter, 0x200 for the inbound filter, 0x2000 for sep_cpu_ctrl, and 0x80 each for the
 // cold and warm scratch registers. The rest of each 4 KiB page reaches a slave that answers
-// DECERR, with read data 0xBADCAB1E. The cold scratch registers reset on rst_ni and the warm
-// ones on rst_warm_ni; everything else resets on rst_ni. REFERENCE_COUNTER counts clk_ref_i and
-// is read through a CDC into clk_i; a software write loads it.
+// DECERR, with read data 0xBADCAB1E. A write to a filter whose FILTER_CONFIG.locked bit is set
+// receives SLVERR; reads of a locked filter still complete. The cold scratch registers reset on
+// rst_ni and the warm ones on rst_warm_ni; everything else resets on rst_ni. REFERENCE_COUNTER
+// counts clk_ref_i and is read through a CDC into clk_i; a software write loads it.
 
 `include "ocah_assert.svh"
 `include "ocah_registers.svh"
@@ -639,7 +640,10 @@ module sep_system_csr (
       .AXI_ADDR_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH),
       .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
       .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
-      .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
+      .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
+      .RESP           (axi_pkg::RESP_SLVERR),
+      .RESP_WIDTH     (64),
+      .RESP_DATA      ('0)
     ) u_err_slv (
       .clk_i       (clk_i),
       .rst_ni      (rst_ni),
@@ -755,7 +759,10 @@ module sep_system_csr (
       .AXI_ADDR_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH),
       .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
       .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
-      .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
+      .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
+      .RESP           (axi_pkg::RESP_SLVERR),
+      .RESP_WIDTH     (64),
+      .RESP_DATA      ('0)
     ) u_err_slv (
       .clk_i       (clk_i),
       .rst_ni      (rst_ni),
