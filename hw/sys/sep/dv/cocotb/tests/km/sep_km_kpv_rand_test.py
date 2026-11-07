@@ -95,7 +95,7 @@ Checkers:
                    locked, sealed and retired slots, and after a cold reset
                    (rst_ni) that follows CTRL 0x1 on every drawn slot. CTRL of
                    the 8 slots of the erase-warm leg reads 0 after a warm reset
-                   that lands while their latched erases run.
+                   that lands while the erase of at least one of them runs.
   CTRL-KPV-ERASE-WARM-REACH  at the fall of the KM warm reset
                    (``km_gated_rst_n_probe_o``) of the erase-warm leg, the
                    KM-KPV CTRL tap shows at least one of the leg's 8 slots with
