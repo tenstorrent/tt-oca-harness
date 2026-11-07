@@ -18,8 +18,8 @@
 // dma_reg_bus_err_o and dma_host_intg_err_o stick until dma_err_clr_i; a fault arriving in
 // the same cycle as the clear still latches. They are not cleared by a CPU-only reset
 // (sep_cpu_reset_n is a subset of this block's rst_ni), so firmware must treat an
-// assertion at boot as possibly stale. An access past the DMA's registers sets
-// dma_reg_bus_err_o; an access the demux answers does not.
+// assertion at boot as possibly stale. An access to an offset in the DMA's window that holds
+// no register sets dma_reg_bus_err_o; an access the demux answers does not.
 
 `include "ocah_assert.svh"
 
