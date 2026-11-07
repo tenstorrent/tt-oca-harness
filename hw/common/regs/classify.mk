@@ -165,6 +165,7 @@ OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
 # demux routes it exactly 2^width bytes from a base that is a multiple of that size.
 OCAH_REG_ADDR_WIDTH_scratch ?= 7
 OCAH_REG_ADDR_WIDTH_chip_config ?= 8
+OCAH_REG_ADDR_WIDTH_i2c ?= 9
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
