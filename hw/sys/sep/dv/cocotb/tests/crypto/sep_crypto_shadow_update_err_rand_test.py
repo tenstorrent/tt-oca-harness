@@ -135,6 +135,13 @@ condition is the per-read compare of CHK-SHADOW-FATAL-QUIET.
 SecAllowForcingMasks at leaf start (``aes_sec_params_o``): ``aes.hjson`` gives
 only the OpenTitan defaults and no SEP text states the build values.
 
+``OBS-SHADOW-MIS-RB`` logs the CTRL_SHADOWED read after the mismatched AES pair, with
+A, B, the reset value and the drawn field; ``OBS-SHADOW-RECOV-STATUS`` logs STATUS,
+ALERT_RECOV_CTRL_UPDATE_ERR and ALERT_FATAL_FAULT after the recovery pair R, R and
+again after the recovery block: no text states the value held after a mismatched
+pair, or that the rewrite clears the update error (``aes.hjson`` CTRL_SHADOWED,
+STATUS).
+
 ``OBS-SHADOW-GCM`` logs ``STATUS.IDLE`` after the mismatched GCM pair, and the
 reserved bits of CTRL_GCM_SHADOWED after the equal pair: no text states either
 value. Every KMAC result
@@ -242,6 +249,7 @@ AES_ST_OV = AES.field_mask("STATUS", "output_valid")
 AES_ST_ERR = AES.field_mask("STATUS", "alert_recov_ctrl_update_err")
 AES_ST_FATAL = AES.field_mask("STATUS", "alert_fatal_fault")
 AES_CTRL_MASK = AES.mask32("CTRL_SHADOWED")
+AES_CTRL_RESET = AES.reset32("CTRL_SHADOWED")
 AES_AUX = AES.addr("CTRL_AUX_SHADOWED")
 AES_AUX_MASK = AES.mask32("CTRL_AUX_SHADOWED")
 AES_AUX_KTFR = AES.field_mask("CTRL_AUX_SHADOWED", "key_touch_forces_reseed")
@@ -673,6 +681,39 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         await self._pulse("aes")
         await self._aes_idle("aes_idle_after_reset")
 
+    async def _mismatch_readback(self) -> None:
+        """OBS-SHADOW-MIS-RB: CTRL_SHADOWED after the mismatched pair (A then B).
+
+        aes.hjson CTRL_SHADOWED states the alert and that a read clears the phase
+        tracking, not which value the register holds after a mismatched pair.
+        """
+        plan = self.plan
+        rb = await self.aes._rd(AES_CTRL_SHADOWED)
+        self.chk.obs(
+            "SHADOW-MIS-RB",
+            raw=f"0x{rb:08x}",
+            readback=f"0x{rb & AES_CTRL_MASK:x}",
+            a=f"0x{plan.a & AES_CTRL_MASK:x}",
+            b=f"0x{plan.b & AES_CTRL_MASK:x}",
+            reset=f"0x{AES_CTRL_RESET & AES_CTRL_MASK:x}",
+            field=plan.a_desc.split()[0].removeprefix("field="),
+        )
+
+    async def _recovery_status(self, point: str) -> None:
+        """OBS-SHADOW-RECOV-STATUS: STATUS during the recovery that follows a mismatch.
+
+        aes.hjson STATUS.ALERT_RECOV_CTRL_UPDATE_ERR says the unit "needs to be
+        restarted by re-writing" the register, not whether that rewrite clears the bit.
+        """
+        st = await self.aes._rd(AES_STATUS)
+        self.chk.obs(
+            "SHADOW-RECOV-STATUS",
+            point=point,
+            status=f"0x{st:08x}",
+            alert_recov_ctrl_update_err=int(bool(st & AES_ST_ERR)),
+            alert_fatal_fault=int(bool(st & AES_ST_FATAL)),
+        )
+
     # --- AES pass -------------------------------------------------------------------
     async def _aes_pass(self) -> int:
         plan = self.plan
@@ -696,6 +737,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             except BitWatchTimeout:
                 reason = f"no_alert_rise bound={WAIT_LIMIT}"
             fatal = int(bool(await self.aes._rd(AES_STATUS) & AES_ST_FATAL))
+            await self._mismatch_readback()
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         cycles = self.vec.high_clocks_since(m1, "alert") if m1 is not None else 0
@@ -726,6 +768,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         try:
             await self.aes._wr(AES_CTRL_SHADOWED, r)
             await self.aes._wr(AES_CTRL_SHADOWED, r)
+            await self._recovery_status("after_ctrl_rewrite")
             await self.aes.write_key(key)
             await self._aes_idle("idle_after_key")
             await self.aes._wr(AES_TRIGGER, AES_TRIGGER_DATA_OUT_CLEAR)
@@ -734,6 +777,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 await self.aes._wr(AES_DATA_IN_0 + 4 * i, w)
             await self._poll(self.aes, AES_STATUS, AES_ST_OV, AES_ST_OV, WAIT_LIMIT, "output_valid")
             ct = [await self.aes._rd(AES_DATA_OUT_0 + 4 * i) for i in range(4)]
+            await self._recovery_status("after_block")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         fields = {"reg": "aes_ctrl", "op==golden": int(ct == golden)}

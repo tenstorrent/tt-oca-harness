@@ -508,7 +508,7 @@ and STEE output-remap banks.
 
 *Randomization*: RANDCFG — one seed per regression (no `reseed`), because every run bashes every register. The seed varies the block order, the complement-vs-ones order and every touch value, never which registers are swept: the cell set is identical on every seed, so coverage is not seed-dependent. A new seed in each regression exposes a register that accepts one mask-legal value and refuses another. The reset walk is the inventory after reasoned skips. Write-lands is the full-mask registers; the inbound START/END pairs use the wrap model.
 
-*Objective*: Proves that every register in the generated SystemRDL export reads its RDL reset value, that a write moves exactly its software-usable bits, that read-only and reserved bits hold, and that every side-effect-free register stores a seeded value. `env/sep_reg_meta.py` exports `addr`, `reset`, `mask` (software-usable field bits) and `mask_all` (storage, reserved included) from the generated SystemRDL.
+*Objective*: Proves that every register in the generated SystemRDL export reads its RDL reset value (except the eight AES `IV_0..3` and `DATA_OUT_0..3` rows, which are logged and not graded), that HMAC `STATUS` reads its stated reset on `hmac_idle` and `fifo_empty` before any HMAC access, that a write moves exactly its software-usable bits, that read-only and reserved bits hold, and that every side-effect-free register stores a seeded value. `env/sep_reg_meta.py` exports `addr`, `reset`, `mask` (software-usable field bits) and `mask_all` (storage, reserved included) from the generated SystemRDL.
 
 *Test Coverage*: Seeded CSR bit-bash across the LSU-reachable register map.
 
@@ -516,10 +516,11 @@ and STEE output-remap banks.
 
 [arabic]
 . Build the seeded configuration from `SepRegBitBashCfg`. Set `clk_wdt` to eight core periods and bring up in `no_cpu`.
-. Read every register in the reset walk and compare it to its exported reset, with the bits of fields that have no RDL reset masked out (CHK-RESET).
+. Read HMAC `STATUS` once, after bring-up and before any HMAC access or HMAC `SW_RESET_N` change. Require `hmac_idle` = 1 and `fifo_empty` = 1; log `fifo_full`, `fifo_depth` and the other bits (CHK-HMAC-STATUS-POR).
+. Read every register in the reset walk and compare it to its exported reset, with the bits of fields that have no RDL reset masked out (CHK-RESET). The eight rows `IV_0..3` and `DATA_OUT_0..3` of AES leave that compare: each is read, and its address, value and RDL reset are logged (OBS-RESET-AES-SCRUB). The walk must hold exactly eight such rows.
 . For every register in the write walk, write the complement of the current value and all ones, in the seeded order of the two, and read back after each write. Compare inbound START/END readback to the same-beat wrap model. Then write the reset value and read it back (CHK-WRITE-LANDS, CHK-RO, CHK-RESERVED).
 . For every register in the storage-touch walk, write a seed-derived value (twice for a shadowed register), read it back under the software-usable mask, and restore the reset value (CHK-BLOCK-TOUCH).
-. Require the reset, write and storage-touch walks each to cover every register the configuration named, and log the walk sizes (CHK-RANDCFG).
+. Require the reset, write and storage-touch walks each to cover every register the configuration named, and log the walk sizes (CHK-RANDCFG). The reset walk counts the registers it named less the eight AES rows, and the eight AES rows count as a walk of their own (`reset_obs`).
 . Log, for each block of the walk, the distinct RUSER and BUSER values that the CPU-LSU port returned on the R and B handshakes of that block (OBS-LSU-RESP-USER).
 
 *Checkers*:
@@ -528,7 +529,11 @@ and STEE output-remap banks.
 |===
 |Checker |Contract
 |CHK-RESET
-|Every reset-eligible register reads its exported reset value on every bit except the bits of fields with no RDL reset, which the compare masks out. Each masked row logs its read, reset and mask, and the PASS line gives the masked-row count.
+|Every reset-eligible register reads its exported reset value on every bit except the bits of fields with no RDL reset, which the compare masks out. Each masked row logs its read, reset and mask, and the PASS line gives the masked-row count and the number of AES `IV_0..3` and `DATA_OUT_0..3` rows logged as OBS-RESET-AES-SCRUB. Those eight rows are not part of this compare: the RDL declares a reset of 0, and `vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson:550`, `:563`, `:607` and `:620` and `programmers_guide.md:8-11` state that the reset also starts internal operations that clear these registers with pseudo-random data shortly afterwards, so no exact value read after reset is stated.
+|OBS-RESET-AES-SCRUB
+|Not a graded check. One line per AES `IV_0..3` and `DATA_OUT_0..3` row of the reset walk, eight lines: a frontdoor read with the block, name, address, response code, read value and RDL reset. The walk must hold exactly eight such rows (a construction guard that fails the leaf otherwise). Evidence: `OBS-RESET-AES-SCRUB <block>.<name> @0x<a> resp=<r> read=0x<v> rdl_reset=0x<z>`.
+|CHK-HMAC-STATUS-POR
+|One frontdoor read of HMAC `STATUS` after bring-up and before any HMAC access or HMAC `SW_RESET_N` change: `hmac_idle` = 1 and `fifo_empty` = 1 (`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:384-393`, reset value 1 on bits 0 and 1; `vendor/lowRISC/opentitan/overlay/regs/hmac/regs/hmac.rdl:194`, `:199`). `fifo_full`, `fifo_depth` and the other bits have no stated reset (`hmac.rdl:204`, `:209`) and are logged in the same line, not graded. A construction guard requires that the generated reset of the two graded fields equals their field masks. A DUT whose `STATUS` reads not idle or not empty at power-on fails. Anchor: the `STATUS` readback; the compare is on the two field bits only. `required_evidence` names the check. Evidence: `CHK-HMAC-STATUS-POR PASS: status=0x<s> graded_mask=0x<m> want=0x<w> fifo_full=<f> fifo_depth=<d> other_bits=0x<o> (fifo_full, fifo_depth and other bits logged, not graded)`.
 |CHK-WRITE-LANDS
 |A complement write moves exactly the software-usable mask bits: the full-mask registers over the full mask, plus the inbound START/END pairs over ``mask[31:3]`` whose ``[2:0]`` are pinned by the same-beat wrap model instead.
 |CHK-RO
@@ -538,7 +543,7 @@ and STEE output-remap banks.
 |CHK-BLOCK-TOUCH
 |Every side-effect-free export RW storage register of the inventory, not one per IP: write a seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. The gate is the per-register safety predicate AND the side-effect predicate; the second is required, because the first admits registers whose write drops live beats. `TOUCH_BLOCKS` is the anti-vacuity list, so the sweep fails if any of those nine IPs stops offering a candidate. Excluded registers each carry a tallied reason and the sweep accounts for the whole inventory. Not storage: hardware-owned status and state-machine observability words, the CSRNG reseed counters, an identity register, two read ports, `ENTROPY_SOURCE.FIPS_LOCK` (a sticky lock is never a storage touch), and two selectors that refuse a random mask-legal value — `HT_WATERMARK_NUM`, whose unsupported encodings sanitize, and `NOISE_OBS_CTRL`, whose mask contains a write-only singlepulse field.
 |CHK-RANDCFG
-|The whole seed-built configuration ran in one invocation: the reset, write and storage-touch walks each covered every register the cfg named. `TOUCH_BLOCKS` is the anti-vacuity list, not the third walk. A completeness control over the sweep itself, not evidence about the DUT -- it fails when a walk silently drops work, not when a register misbehaves. The walk sizes (`export`, `inventory`, `nometa`) are logged with it so a shrunken inventory is visible rather than inferred from a PASS.
+|The whole seed-built configuration ran in one invocation: the reset, write and storage-touch walks each covered every register the cfg named; the reset walk counts the named registers less the eight AES `IV_0..3` and `DATA_OUT_0..3` rows, and the eight rows are counted as the `reset_obs` walk. `TOUCH_BLOCKS` is the anti-vacuity list, not the third walk. A completeness control over the sweep itself, not evidence about the DUT -- it fails when a walk silently drops work, not when a register misbehaves. The walk sizes (`export`, `inventory`, `nometa`) are logged with it so a shrunken inventory is visible rather than inferred from a PASS.
 |OBS-LSU-RESP-USER
 |Logged only, no pass or fail. One line per block of the walk: the distinct RUSER values of its R handshakes and the distinct BUSER values of its B handshakes, as `0x<value>` in ascending order (`X` for an unknown value, `none` when no handshake of that channel shows). The specification states no response USER value for a target.
 |===

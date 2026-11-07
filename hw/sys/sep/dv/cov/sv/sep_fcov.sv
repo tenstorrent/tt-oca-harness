@@ -23662,6 +23662,8 @@ module sep_fcov (
     logic s3_v;  // KMAC SHA3-128, bit clear: 0 blocked, 1 absorbed
     logic [2:0] kc;
     logic kc_v;  // {0 SHAKE / 1 cSHAKE / 2 SHA3, 1 ERR_CODE[31:24] is 0x06}
+    logic [3:0] ec;
+    logic ec_v;  // {1 held HMAC ERR_CODE equals the label, label code[2:0]}
   } cy_inv_t;
 
   covergroup sep_crypto_invalid_encoding_cg with function sample (cy_inv_t s);
@@ -23706,6 +23708,14 @@ module sep_fcov (
     cp_kmac_err_recover: coverpoint s.kr_v iff (s.kr_v) {bins recovered = {1'b1};}
     cp_hmac_err_code: coverpoint s.hc iff (s.hc_v) {
       bins sw_invalid_config = {1'b1}; illegal_bins other_code = {1'b0};
+    }
+    // HMAC ERR_CODE of an error class whose check passed (hmac.hjson ERR_CODE).
+    cp_hmac_err_class: coverpoint s.ec iff (s.ec_v) {
+      bins sw_hash_start_sha_disabled = {4'b1_010};
+      bins sw_update_key_in_process = {4'b1_011};
+      bins sw_hash_start_active = {4'b1_100};
+      bins sw_push_msg_disallowed = {4'b1_101};
+      wildcard illegal_bins label_code_mismatch = {4'b0_???};
     }
     cp_kmac_sha3_128: coverpoint s.s3 iff (s.s3_v) {
       bins blocked = {1'b0}; illegal_bins absorbed_with_bit_clear = {1'b1};
@@ -24330,6 +24340,10 @@ module sep_fcov (
         e.s3   = v[0];
         e.s3_v = 1'b1;
       end
+      8: begin
+        e.ec   = v[3:0];
+        e.ec_v = 1'b1;
+      end
       default: begin
         e.kc   = v[2:0];
         e.kc_v = 1'b1;
@@ -24738,6 +24752,28 @@ module sep_fcov (
   logic       cy_fe_on = 1'b0;
   logic       cy_fe_full = 1'b0;
   int unsigned cy_fe_cnt = 0;
+  // cp_hmac_err_class. After CHK-HMAC-ERR-CLASS passes for one class,
+  // sep_hmac_illegal_cfg_start_test writes the class code into hmac_ec_want
+  // and adds 1 to hmac_ec_seq (hmac_err_class_fcov in the leaf). The first
+  // clock that sees a new hmac_ec_seq inside the owner window samples the
+  // class; the bin is legal only when the last non-zero ERR_CODE the IP wrote
+  // inside that window equals the label. cy_ec_win survives an HMAC reset
+  // inside the window and clears when the window closes. These variables
+  // drive nothing.
+  logic [3:0] hmac_ec_want = '0;
+  logic [31:0] hmac_ec_seq = '0;
+  logic [31:0] cy_ec_seq_q = '0;
+  logic [31:0] cy_ec_win = '0;
+  always @(posedge clk_i) begin
+    cy_ec_seq_q <= hmac_ec_seq;
+    if (!cy_own_hblk) cy_ec_win <= '0;
+    else if (cy_t(hmac_hw2reg_i.err_code.de) && cy_ip[3] && (hmac_hw2reg_i.err_code.d != '0)) begin
+      cy_ec_win <= hmac_hw2reg_i.err_code.d;
+    end
+    if ((hmac_ec_seq != cy_ec_seq_q) && cy_own_hblk) begin
+      cy_inv(8, {1'b0, (cy_ec_win == {28'd0, hmac_ec_want}), hmac_ec_want[2:0]});
+    end
+  end
   // Pass label of the points of owner sep_hmac_fifo_stream_rand_test, written by
   // set_hmac_fifo_pass of env/sep_fcov_gate.py. Bit 0 x_len_class, bit 1
   // x_fifo_state_mode, bit 2 cp_backpressure, bit 3 cp_hmac_fifo_empty_qual
