@@ -12,10 +12,12 @@ beats come from ``env/sep_dma_model.DmaZeroFill``.
 
 * Leg Z: one fill per destination mode {INCREMENT, INCREMENT and WRAP, fixed}
   and TRANSFER_WIDTH encoding {0, 1, 2}: a drawn chunk size and chunk count
-  (one chunk for the fixed destination), a drawn start offset inside the
-  64-bit beat, and a drawn total whose last beat can be narrower than the
-  width. A copy of non-zero words runs just before each fill, so the data
-  register holds a non-zero word when the fill starts.
+  (two to four chunks for INCREMENT and for WRAP; one chunk of at least two
+  beats for the fixed destination), a drawn start offset inside the 64-bit
+  beat, and a drawn total whose last beat can be narrower than the width. So
+  the beat addresses of each mode differ from those of the other two modes.
+  A copy of non-zero words runs just before each fill, so the data register
+  holds a non-zero word when the fill starts.
 * Leg W: the enabled memory range around a drawn block, with DMA_DONE and
   DMA_ERROR enabled in INTR_ENABLE: a fill of the whole range; fills that start
   below BASE (by words at width 4, by one byte at width 1), that run past LIMIT
@@ -58,10 +60,20 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          unchanged); DONE=1, ERROR=0, ERROR_CODE=0.
   CHK-DMA-ZERO-BEAT      per Leg Z cell: no AR handshake; one AW per model
                          beat with AxLEN 0, AxADDR[31:2] and the WSTRB lanes
-                         of that beat; one OKAY B per AW. Control: the
-                         4-byte-wide copy before the fill records one AR
-                         handshake per source word, at the source word
-                         addresses, through the same tap, else CTRL-MISSING.
+                         of that beat; one OKAY B per AW. The start address
+                         of each beat (AxADDR and the lowest WSTRB lane)
+                         follows the destination mode (``secure_dma.adoc``,
+                         DST_CONFIG): fixed, every beat at the destination;
+                         INCREMENT, beat k at the destination + k * width;
+                         WRAP, back to the destination at each chunk end.
+                         Controls (else CTRL-MISSING): the 4-byte-wide copy
+                         before the fill records one AR handshake per source
+                         word, at the source word addresses, through the same
+                         tap; DST_CONFIG and TRANSFER_WIDTH, read after
+                         programming and before GO, read back the values
+                         written (``CTRL-DMA-ZERO-BEAT``); the drawn shape
+                         gives each mode a beat-address list that differs from
+                         those of the other two modes.
   CHK-DMA-ZERO-RESIDUE   per Leg Z cell: the cleared bytes read 0 although the
                          last word of the copy before the fill is non-zero.
                          Control: the copy destination, zeroed before the
@@ -109,7 +121,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          0, one AW per model beat and the model image, else
                          CTRL-MISSING.
   CHK-DMA-ZERO-WIN-LOCK  RANGE_REGWEN reads other than True after it is written
-                         False and LIMIT keeps its value through a later write;
+                         False and LIMIT keeps its value through a later write
+                         of LIMIT + 64 (its response is logged, not graded);
                          a fill past LIMIT then ends in DST_ADDR_ERROR with
                          the AW, W and B shape of CHK-DMA-ZERO-WIN-ERR for
                          the beats up to LIMIT and no beat beyond it.
@@ -145,8 +158,9 @@ from dataclasses import dataclass
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
-from env.sep_dma_model import DmaZeroFill, ZeroBeat, bytes_to_words, words_to_bytes
+from env.sep_dma_model import BUS_BYTES, DmaZeroFill, ZeroBeat, bytes_to_words, words_to_bytes
 from env.sep_dma_tap import DmaTapEvents, SepDmaTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_dma_zero_pass
 from env.sep_field_compare import field_compare
@@ -158,6 +172,7 @@ from seq_lib.sep_dma_ops import (
     ADDR_SPACE_ID,
     DST_ADDR_HI,
     DST_ADDR_LO,
+    DST_CONFIG,
     ERROR_CODE,
     ERROR_CODE_MASK,
     HANDSHAKE_INTR_ENABLE,
@@ -171,10 +186,13 @@ from seq_lib.sep_dma_ops import (
     ST_ABORTED,
     ST_DONE,
     STATUS,
+    TRANSFER_WIDTH,
     DmaStatus,
     SepDmaOps,
     SepMemWords,
+    addr_cfg,
     asid_word,
+    transfer_width_word,
 )
 from seq_lib.sep_spi_host_csr_seq import CONTROL as SPI_CONTROL
 
@@ -315,6 +333,22 @@ def alias(addr: int) -> int:
     return addr - SEP_MAP_BASE + LOCAL_ALIAS
 
 
+def mode_addrs(mode: str, base: int, w: int, chunk: int, n_beats: int) -> list[int]:
+    """Beat start addresses the destination mode states (``secure_dma.adoc``, DST_CONFIG)."""
+    if mode == "fixed":
+        return [base] * n_beats
+    if mode == "wrap":
+        return [base + (k % (chunk // w)) * w for k in range(n_beats)]
+    return [base + k * w for k in range(n_beats)]
+
+
+def beat_start(aw_addr: int | None, strb: int | None) -> int | None:
+    """Start address of a write beat: the bus beat of AxADDR plus its lowest WSTRB lane."""
+    if aw_addr is None or not strb:
+        return None
+    return (aw_addr & ~(BUS_BYTES - 1)) + (strb & -strb).bit_length() - 1
+
+
 def draw_zero_fill(
     rng: SepSeededRng, alloc: Alloc, mode: str, enc: int
 ) -> tuple[DmaZeroFill, Region]:
@@ -322,10 +356,10 @@ def draw_zero_fill(
     w = WIDTH[enc]
     inc, wrap = MODES[mode]
     if mode == "fixed":
-        chunk = w * rng.randrange(1, 9)
-        total = rng.randrange(1, chunk + 1)
+        chunk = w * rng.randrange(2, 9)
+        total = rng.randrange(w + 1, chunk + 1)
     else:
-        n = rng.randrange(2, 5) if mode == "wrap" else rng.randrange(1, 5)
+        n = rng.randrange(2, 5)
         chunk = w * rng.randrange(4, 33)
         total = (n - 1) * chunk + rng.randrange(1, chunk + 1)
     off = w * rng.randrange(0, 8 // w)
@@ -480,6 +514,7 @@ class FillRun:
     ev: DmaTapEvents
     go_writes: int
     dst_rb: int | None = None
+    cfg_rb: tuple[int, int] | None = None
 
 
 @pyuvm.test()
@@ -628,6 +663,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         stop_on_error: bool = True,
         graded: bool = False,
         read_dst: bool = False,
+        read_cfg: bool = False,
     ) -> FillRun:
         """Program one transfer, GO, and wait for DONE or ERROR (re-GO between chunks).
 
@@ -639,7 +675,8 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         ``graded`` opens the graded window after the transfer registers are
         written and closes it after the ERROR_CODE read, before the W1C.
         ``read_dst`` reads DST_ADDR_LO back after programming and before GO,
-        since a fixed-address fill moves it.
+        since a fixed-address fill moves it. ``read_cfg`` reads DST_CONFIG and
+        TRANSFER_WIDTH back at the same point.
         """
         ops = self.ops
         await ops.program_transfer(
@@ -652,6 +689,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             dst_wrap=dst_wrap,
         )
         dst_rb = await ops.rd(DST_ADDR_LO) if read_dst else None
+        cfg_rb = (await ops.rd(DST_CONFIG), await ops.rd(TRANSFER_WIDTH)) if read_cfg else None
         mark = self.tap.mark()
         e0 = self.edges.n
         if graded:
@@ -667,7 +705,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         elif res.status.busy:
             await ops.poll_status(lambda s: not s.busy, ERR_POLL_BOUND, "BUSY=0 after DONE")
         self._tap_window_sampled(mark.clk, e0)
-        return FillRun(res.status, ec, self.tap.since(mark), res.go_writes, dst_rb)
+        return FillRun(res.status, ec, self.tap.since(mark), res.go_writes, dst_rb, cfg_rb)
 
     def _tap_window_sampled(self, tap0: int, e0: int) -> None:
         """Fails unless the tap sampled every clock of the window.
@@ -723,6 +761,55 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             out.append(f"b={len(ev.b)} resp={[b.resp for b in ev.b]}")
         return out
 
+    def _cfg_rb(self, tag: str, run: FillRun, inc: bool, wrap: bool, enc: int) -> None:
+        """CTRL-MISSING unless DST_CONFIG and TRANSFER_WIDTH, read before GO, hold the values written."""
+        wr = (addr_cfg(inc, wrap), transfer_width_word(enc))
+        rb = run.cfg_rb or (-1, -1)
+        rb = (rb[0] & _D.mask32("DST_CONFIG"), rb[1] & _D.mask32("TRANSFER_WIDTH"))
+        line = (
+            f"{tag} dst_config_wr=0x{wr[0]:x} dst_config_rb=0x{rb[0]:x} "
+            f"transfer_width_wr=0x{wr[1]:x} transfer_width_rb=0x{rb[1]:x}"
+        )
+        if rb != wr:
+            self._ctrl_missing("CHK-DMA-ZERO-BEAT", f"config readback: {line}")
+        self.logger.info("CTRL-DMA-ZERO-BEAT PASS seed=%d %s", self.seed, line)
+
+    def _mode_rule(
+        self, tag: str, mode: str, f: DmaZeroFill, ev: DmaTapEvents, n_beats: int
+    ) -> tuple[bool, str]:
+        """Grade the observed beat start addresses against the rule of ``mode``.
+
+        CTRL-MISSING when the drawn shape gives another mode the same address
+        list, since the check could then not tell the modes apart.
+        """
+        exp = mode_addrs(mode, f.dst_base, f.w, f.chunk, n_beats)
+        same = [
+            m
+            for m in MODES
+            if m != mode and mode_addrs(m, f.dst_base, f.w, f.chunk, n_beats) == exp
+        ]
+        if same:
+            self._ctrl_missing("CHK-DMA-ZERO-BEAT", f"{tag} mode rule equals {same} for this shape")
+        obs = [beat_start(aw.addr, wb.strb) for aw, wb in zip(ev.aw, ev.w)]
+        bad = next((k for k, (o, e) in enumerate(zip(obs, exp)) if o != e), None)
+        if bad is None and len(obs) != len(exp):
+            bad = min(len(obs), len(exp))
+
+        def fmt(v: int | None) -> str:
+            return "none" if v is None else f"0x{v:08x}"
+
+        k = f.chunk // f.w
+        line = (
+            f"mode_rule={mode} distinct_addrs={len(set(obs))} addr0={fmt(obs[0] if obs else None)}"
+        )
+        if mode != "fixed" and len(exp) > k:
+            line += f" beat{k}={fmt(obs[k] if len(obs) > k else None)} expect={fmt(exp[k])}"
+        if bad is None:
+            return True, f"{line} addrs=rule"
+        got = obs[bad] if bad < len(obs) else None
+        want = exp[bad] if bad < len(exp) else None
+        return False, f"{line} first_bad=beat{bad} got={fmt(got)} expect={fmt(want)}"
+
     # ---- Leg Z: image and beats per mode and width -------------------------
     async def _leg_z(self, plan: Plan) -> None:
         for c in plan.cells:
@@ -766,7 +853,9 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
                 dst_inc=inc,
                 dst_wrap=wrap,
                 graded=True,
+                read_cfg=True,
             )
+            self._cfg_rb(tag, run, inc, wrap, c.enc)
             beats = f.beats()
             got = await self._read_region(c.region)
             exp = self._expect_words(c.region, f, beats)
@@ -779,11 +868,12 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
                 f"{self._diff(got, exp, c.region.addr)}",
             )
             probs = self._beat_problems(run.ev, beats)
+            mode_ok, mode_line = self._mode_rule(tag, c.mode, f, run.ev, len(beats))
             self._pass(
                 "CHK-DMA-ZERO-BEAT",
-                not probs,
+                not probs and mode_ok,
                 f"{tag} ar={len(run.ev.ar)} copy_ar={len(cp_ar)} aw={len(run.ev.aw)} "
-                f"beats={len(beats)} "
+                f"beats={len(beats)} {mode_line} "
                 f"{' '.join(probs) or 'shape=model'}",
             )
             cleared = sorted({beat.addr + b for beat in beats for b in range(beat.nbytes)})
@@ -1254,14 +1344,19 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         await ops.program_range(plan.l_base, plan.l_limit, valid=True)
         await ops.wr(RANGE_REGWEN, REGWEN_FALSE << REGWEN_LSB)
         regwen = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> REGWEN_LSB
-        await ops.wr(RANGE_LIMIT, plan.l_limit + 64)
+        limit_wr = plan.l_limit + 64
+        seq = await ops.access(SepAxiOp.WRITE, RANGE_LIMIT, limit_wr, ungraded=True)
+        limit_resp = int(seq.resp_code)
         limit_rb = await ops.rd(RANGE_LIMIT)
+        lock_line = (
+            f"regwen=0x{regwen:x} limit_wr=0x{limit_wr:08x} limit_wr_resp={limit_resp} "
+            f"limit_readback=0x{limit_rb:08x}"
+        )
         if regwen == REGWEN_TRUE or limit_rb != plan.l_limit:
             self._pass(
                 "CHK-DMA-ZERO-WIN-LOCK",
                 False,
-                f"regwen=0x{regwen:x} limit_readback=0x{limit_rb:08x} "
-                f"expect_limit=0x{plan.l_limit:08x}",
+                f"{lock_line} expect_limit=0x{plan.l_limit:08x}",
             )
         start = plan.l_limit + 1 - 4 * plan.l_words
         total = 4 * plan.l_words + plan.l_extra
@@ -1283,7 +1378,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             and got == exp
             and not probs
             and len(beats) == plan.l_words,
-            f"regwen=0x{regwen:x} limit_readback=0x{limit_rb:08x} {st.fmt()} "
+            f"{lock_line} {st.fmt()} "
             f"error_code=0x{ec:x} aw={len(run.ev.aw)} in_range_beats={len(beats)} "
             f"{' '.join(probs) or 'shape=model'} {self._diff(got, exp, r.addr)}",
         )
