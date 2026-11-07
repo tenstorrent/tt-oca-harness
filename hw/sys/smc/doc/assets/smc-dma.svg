@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="786" viewBox="0 0 1040 786" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="786" viewBox="0 0 1140 786" role="img" aria-labelledby="title desc">
 <title id="title">SMC DMA and data-accelerator path</title>
-<desc id="desc">u_smc_data_accelerator_wrap takes the control port from the local crossbar (AXI4, 32-bit address, 64-bit data, 8-bit ID). Its demux u_axi_demux sends the zeroer window to the zeroer, after the address is cut to 5 bits, and every other address to the DMA, after the address is cut to 9 bits. In u_dma_wrap (idma_wrapper) the frontend u_idma_frontend_wrapper passes a register cut, an AXI4-to-register converter from 64 to 32 bits, the idma_reg64_2d registers, a 4-entry request FIFO and the idma_nd_midend 2D midend. The request manager is a passthrough for one control and one master interface. The backend u_idma_backend_wrapper has no manager-to-backend FIFO; idma_backend_rw_axi holds the read and write managers with a 16-beat buffer, up to 32 outstanding transactions and R-AW coupling, and its read and write ports, each with 2-bit IDs, are merged by u_backend_axi_mux to one 3-bit-ID port behind a register cut. The frontend clock comes from u_frontend_cg, an AXI snoop of the control port; the request manager and backend clock comes from u_request_maneger_cg. u_axi_mux merges the DMA and zeroer master ports, adding one ID bit, onto the port to the input fabric (AXI4, 56-bit address, 64-bit data, 4-bit ID). The zeroer busy and interrupt outputs leave on the left and the DMA busy and interrupt outputs at the bottom.</desc>
+<desc id="desc">u_smc_data_accelerator_wrap takes the control port from the local crossbar (AXI4, 32-bit address, 64-bit data, 8-bit ID). Its burst splitter u_ctrl_burst_splitter splits each burst into single beats. Its demux u_axi_demux sends a beat in the DMA's window to the DMA, after the address is cut to 9 bits, a beat in the zeroer's window to the zeroer, after the address is cut to 5 bits, and every other beat to u_ctrl_err_slv, which answers DECERR. In u_dma_wrap (idma_wrapper) the frontend u_idma_frontend_wrapper passes a register cut, an AXI4-to-register converter from 64 to 32 bits, the idma_reg64_2d registers, a 4-entry request FIFO and the idma_nd_midend 2D midend. The request manager is a passthrough for one control and one master interface. The backend u_idma_backend_wrapper has no manager-to-backend FIFO; idma_backend_rw_axi holds the read and write managers with a 16-beat buffer, up to 32 outstanding transactions and R-AW coupling, and its read and write ports, each with 2-bit IDs, are merged by u_backend_axi_mux to one 3-bit-ID port behind a register cut. The frontend clock comes from u_frontend_cg, an AXI snoop of the control port; the request manager and backend clock comes from u_request_maneger_cg. u_axi_mux merges the DMA and zeroer master ports, adding one ID bit, onto the port to the input fabric (AXI4, 56-bit address, 64-bit data, 4-bit ID). The zeroer busy and interrupt outputs leave on the left and the DMA busy and interrupt outputs at the bottom.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -82,103 +82,111 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
 </style>
 </defs>
-<rect width="1040" height="786" fill="#ffffff"/>
-<rect class="smu" x="150" y="20" width="876" height="640" rx="6"/>
+<rect width="1140" height="786" fill="#ffffff"/>
+<rect class="smu" x="150" y="8" width="976" height="652" rx="6"/>
 <text class="b" x="164" y="650" text-anchor="start">u_smc_data_accelerator_wrap</text>
-<path class="axi" d="M14,125 L165,125"/>
+<path class="axi" d="M14,125 L170,125"/>
 <text class="t" x="14" y="85" text-anchor="start">from the local</text>
 <text class="t" x="14" y="103" text-anchor="start">crossbar</text>
 <text class="s" x="14" y="147" text-anchor="start">AXI4, address 32,</text>
 <text class="s" x="14" y="163" text-anchor="start">data 64, ID 8</text>
-<path class="fabric" d="M165,108.2 L195,95 L195,155 L165,141.8 Z"/>
-<text class="s" x="158" y="82" text-anchor="start">u_axi_demux</text>
-<path class="axi" d="M195,110 L225,110"/>
-<rect class="network" x="225" y="88" width="70" height="44" rx="4"/>
-<text class="s" x="260" y="107.5" text-anchor="middle">32 to 9</text>
-<text class="s" x="260" y="122.5" text-anchor="middle">addr bits</text>
-<rect class="smu" x="315" y="40" width="695" height="410" rx="6"/>
-<text class="b" x="329" y="440" text-anchor="start">u_dma_wrap (idma_wrapper)</text>
-<rect class="smu" x="330" y="58" width="520" height="112" rx="6"/>
-<text class="bs" x="342" y="161" text-anchor="start">u_idma_frontend_wrapper</text>
-<path class="axi" d="M295,110 L345,110"/>
-<rect class="network" x="345" y="85" width="60" height="50" rx="4"/>
-<text class="s" x="375" y="107.5" text-anchor="middle">register</text>
-<text class="s" x="375" y="122.5" text-anchor="middle">cut</text>
-<path class="axin" d="M405,110 L425,110"/>
-<rect class="network" x="425" y="85" width="80" height="50" rx="4"/>
-<text class="s" x="465" y="107.5" text-anchor="middle">AXI4 to reg</text>
-<text class="s" x="465" y="122.5" text-anchor="middle">64 to 32 bits</text>
-<path class="axil" d="M505,110 L525,110"/>
-<rect class="core" x="525" y="85" width="100" height="50" rx="6"/>
-<text class="t" x="575" y="107" text-anchor="middle">Registers</text>
-<text class="s" x="575" y="123" text-anchor="middle">idma_reg64_2d</text>
-<path class="sigo" d="M625,110 L643,110"/>
-<rect class="core" x="643" y="85" width="60" height="50" rx="6"/>
-<text class="t" x="673" y="107" text-anchor="middle">FIFO</text>
-<text class="s" x="673" y="123" text-anchor="middle">depth 4</text>
-<path class="sigo" d="M703,110 L721,110"/>
-<rect class="core" x="721" y="85" width="118" height="50" rx="6"/>
-<text class="t" x="780" y="107" text-anchor="middle">2D midend</text>
-<text class="s" x="780" y="123" text-anchor="middle">idma_nd_midend</text>
-<rect class="core" x="866" y="150" width="130" height="100" rx="6"/>
-<text class="bs" x="931" y="187" text-anchor="middle">Request</text>
-<text class="bs" x="931" y="205" text-anchor="middle">manager</text>
-<text class="si" x="931" y="223" text-anchor="middle">passthrough</text>
-<path class="sig" d="M839,110 L931.0,110 L931.0,150"/>
-<rect class="core" x="345" y="192" width="190" height="60" rx="6"/>
-<text class="bs" x="440" y="218" text-anchor="middle">u_frontend_cg</text>
-<text class="s" x="440" y="236" text-anchor="middle">axi_cg_snoop, control port</text>
-<path class="sigo" d="M440,192 L440,170"/>
-<rect class="core" x="565" y="192" width="230" height="60" rx="6"/>
-<text class="bs" x="680" y="218" text-anchor="middle">u_request_maneger_cg</text>
-<text class="s" x="680" y="236" text-anchor="middle">prim_clk_gater_hysteresis</text>
-<path class="sigo" d="M680,252 L680,280"/>
-<path class="sigo" d="M795,222.0 L866,222.0"/>
-<rect class="smu" x="330" y="280" width="520" height="140" rx="6"/>
-<text class="bs" x="342" y="411" text-anchor="start">u_idma_backend_wrapper</text>
-<path class="sig" d="M931.0,250 L931.0,340 L838,340"/>
-<rect class="core opt" x="768" y="315" width="70" height="50" rx="6"/>
-<text class="s" x="803" y="337" text-anchor="middle">M2B FIFO</text>
-<text class="si" x="803" y="353" text-anchor="middle">absent</text>
-<path class="sigo" d="M768,340 L748,340"/>
-<rect class="core" x="573" y="298" width="175" height="84" rx="6"/>
-<text class="bs" x="660.5" y="319.5" text-anchor="middle">idma_backend_rw_axi</text>
-<text class="s" x="660.5" y="336.5" text-anchor="middle">read, write managers</text>
-<text class="s" x="660.5" y="353.5" text-anchor="middle">16-beat buffer</text>
-<text class="s" x="660.5" y="370.5" text-anchor="middle">32 txns, R-AW coupled</text>
-<path class="fabric" d="M515,319 L545,305 L545,375 L515,361 Z"/>
-<path class="axi" d="M573,322 L545,322"/>
-<path class="axi" d="M573,358 L545,358"/>
-<text class="s" x="559" y="316" text-anchor="middle">R</text>
-<text class="s" x="559" y="352" text-anchor="middle">W</text>
-<text class="s" x="530" y="297" text-anchor="middle">u_backend_axi_mux</text>
-<path class="axin" d="M515,340 L490,340"/>
-<rect class="network" x="420" y="315" width="70" height="50" rx="4"/>
-<text class="s" x="455" y="337.5" text-anchor="middle">register</text>
-<text class="s" x="455" y="352.5" text-anchor="middle">cut</text>
-<path class="axi" d="M195,140 L210,140 L210,209"/>
-<rect class="network" x="178" y="212" width="65" height="40" rx="4"/>
-<text class="s" x="210.5" y="229.5" text-anchor="middle">32 to 5</text>
-<text class="s" x="210.5" y="244.5" text-anchor="middle">addr bits</text>
-<path class="axi" d="M210,252 L210,300"/>
-<rect class="core" x="165" y="300" width="130" height="64" rx="6"/>
-<text class="bs" x="230" y="328" text-anchor="middle">Memory zeroer</text>
-<text class="s" x="230" y="346" text-anchor="middle">u_zeroer</text>
-<path class="axi" d="M270,364 L270,555 L250,555"/>
-<path class="axi" d="M420,340 L305,340 L305,585 L250,585"/>
-<path class="fabric" d="M220,553.2 L250,540 L250,600 L220,586.8 Z"/>
-<text class="s" x="235" y="532" text-anchor="middle">u_axi_mux</text>
-<text class="s" x="235" y="616" text-anchor="middle">ID 3 to 4</text>
-<path class="axi" d="M220,570 L14,570"/>
+<rect class="network" x="170" y="100" width="70" height="50" rx="4"/>
+<text class="s" x="205" y="122.5" text-anchor="middle">burst</text>
+<text class="s" x="205" y="137.5" text-anchor="middle">splitter</text>
+<path class="axi" d="M240,125 L265,125"/>
+<path class="fabric" d="M265,104 L295,70 L295,160 L265,146 Z"/>
+<text class="s" x="290" y="62" text-anchor="end">u_axi_demux</text>
+<path class="axi" d="M295,80 L355,80 L355,58"/>
+<rect class="core" x="305" y="18" width="100" height="40" rx="6"/>
+<text class="bs" x="355" y="35" text-anchor="middle">DECERR</text>
+<text class="s" x="355" y="51" text-anchor="middle">u_ctrl_err_slv</text>
+<path class="axi" d="M295,110 L325,110"/>
+<rect class="network" x="325" y="92" width="70" height="36" rx="4"/>
+<text class="s" x="360" y="107.5" text-anchor="middle">32 to 9</text>
+<text class="s" x="360" y="122.5" text-anchor="middle">addr bits</text>
+<rect class="smu" x="415" y="40" width="695" height="410" rx="6"/>
+<text class="b" x="429" y="440" text-anchor="start">u_dma_wrap (idma_wrapper)</text>
+<rect class="smu" x="430" y="58" width="520" height="112" rx="6"/>
+<text class="bs" x="442" y="161" text-anchor="start">u_idma_frontend_wrapper</text>
+<path class="axi" d="M395,110 L445,110"/>
+<rect class="network" x="445" y="85" width="60" height="50" rx="4"/>
+<text class="s" x="475" y="107.5" text-anchor="middle">register</text>
+<text class="s" x="475" y="122.5" text-anchor="middle">cut</text>
+<path class="axin" d="M505,110 L525,110"/>
+<rect class="network" x="525" y="85" width="80" height="50" rx="4"/>
+<text class="s" x="565" y="107.5" text-anchor="middle">AXI4 to reg</text>
+<text class="s" x="565" y="122.5" text-anchor="middle">64 to 32 bits</text>
+<path class="axil" d="M605,110 L625,110"/>
+<rect class="core" x="625" y="85" width="100" height="50" rx="6"/>
+<text class="t" x="675" y="107" text-anchor="middle">Registers</text>
+<text class="s" x="675" y="123" text-anchor="middle">idma_reg64_2d</text>
+<path class="sigo" d="M725,110 L743,110"/>
+<rect class="core" x="743" y="85" width="60" height="50" rx="6"/>
+<text class="t" x="773" y="107" text-anchor="middle">FIFO</text>
+<text class="s" x="773" y="123" text-anchor="middle">depth 4</text>
+<path class="sigo" d="M803,110 L821,110"/>
+<rect class="core" x="821" y="85" width="118" height="50" rx="6"/>
+<text class="t" x="880" y="107" text-anchor="middle">2D midend</text>
+<text class="s" x="880" y="123" text-anchor="middle">idma_nd_midend</text>
+<rect class="core" x="966" y="150" width="130" height="100" rx="6"/>
+<text class="bs" x="1031" y="187" text-anchor="middle">Request</text>
+<text class="bs" x="1031" y="205" text-anchor="middle">manager</text>
+<text class="si" x="1031" y="223" text-anchor="middle">passthrough</text>
+<path class="sig" d="M939,110 L1031,110 L1031,150"/>
+<rect class="core" x="445" y="192" width="190" height="60" rx="6"/>
+<text class="bs" x="540" y="218" text-anchor="middle">u_frontend_cg</text>
+<text class="s" x="540" y="236" text-anchor="middle">axi_cg_snoop, control port</text>
+<path class="sigo" d="M540,192 L540,170"/>
+<rect class="core" x="665" y="192" width="230" height="60" rx="6"/>
+<text class="bs" x="780" y="218" text-anchor="middle">u_request_maneger_cg</text>
+<text class="s" x="780" y="236" text-anchor="middle">prim_clk_gater_hysteresis</text>
+<path class="sigo" d="M780,252 L780,280"/>
+<path class="sigo" d="M895,222.0 L966,222.0"/>
+<rect class="smu" x="430" y="280" width="520" height="140" rx="6"/>
+<text class="bs" x="442" y="411" text-anchor="start">u_idma_backend_wrapper</text>
+<path class="sig" d="M1031,250 L1031,340 L938,340"/>
+<rect class="core opt" x="868" y="315" width="70" height="50" rx="6"/>
+<text class="s" x="903" y="337" text-anchor="middle">M2B FIFO</text>
+<text class="si" x="903" y="353" text-anchor="middle">absent</text>
+<path class="sigo" d="M868,340 L848,340"/>
+<rect class="core" x="673" y="298" width="175" height="84" rx="6"/>
+<text class="bs" x="760.5" y="319.5" text-anchor="middle">idma_backend_rw_axi</text>
+<text class="s" x="760.5" y="336.5" text-anchor="middle">read, write managers</text>
+<text class="s" x="760.5" y="353.5" text-anchor="middle">16-beat buffer</text>
+<text class="s" x="760.5" y="370.5" text-anchor="middle">32 txns, R-AW coupled</text>
+<path class="fabric" d="M615,319 L645,305 L645,375 L615,361 Z"/>
+<path class="axi" d="M673,322 L645,322"/>
+<path class="axi" d="M673,358 L645,358"/>
+<text class="s" x="659" y="316" text-anchor="middle">R</text>
+<text class="s" x="659" y="352" text-anchor="middle">W</text>
+<text class="s" x="630" y="297" text-anchor="middle">u_backend_axi_mux</text>
+<path class="axin" d="M615,340 L590,340"/>
+<rect class="network" x="520" y="315" width="70" height="50" rx="4"/>
+<text class="s" x="555" y="337.5" text-anchor="middle">register</text>
+<text class="s" x="555" y="352.5" text-anchor="middle">cut</text>
+<path class="axi" d="M295,140 L310,140 L310,209"/>
+<rect class="network" x="278" y="212" width="65" height="40" rx="4"/>
+<text class="s" x="310.5" y="229.5" text-anchor="middle">32 to 5</text>
+<text class="s" x="310.5" y="244.5" text-anchor="middle">addr bits</text>
+<path class="axi" d="M310,252 L310,300"/>
+<rect class="core" x="265" y="300" width="130" height="64" rx="6"/>
+<text class="bs" x="330" y="328" text-anchor="middle">Memory zeroer</text>
+<text class="s" x="330" y="346" text-anchor="middle">u_zeroer</text>
+<path class="axi" d="M370,364 L370,555 L350,555"/>
+<path class="axi" d="M520,340 L405,340 L405,585 L350,585"/>
+<path class="fabric" d="M320,553.2 L350,540 L350,600 L320,586.8 Z"/>
+<text class="s" x="335" y="532" text-anchor="middle">u_axi_mux</text>
+<text class="s" x="335" y="616" text-anchor="middle">ID 3 to 4</text>
+<path class="axi" d="M320,570 L14,570"/>
 <text class="t" x="14" y="530" text-anchor="start">to the input</text>
 <text class="t" x="14" y="548" text-anchor="start">fabric</text>
 <text class="s" x="14" y="592" text-anchor="start">AXI4, address 56,</text>
 <text class="s" x="14" y="608" text-anchor="start">data 64, ID 4</text>
-<path class="sigo" d="M165,332.0 L14,332.0"/>
+<path class="sigo" d="M265,332.0 L14,332.0"/>
 <text class="s" x="14" y="308" text-anchor="start">zeroer_busy_o,</text>
 <text class="s" x="14" y="324" text-anchor="start">zeroer_intp_o</text>
-<path class="sigo" d="M930,450 L930,684"/>
-<text class="s" x="930" y="702" text-anchor="middle">dma_busy_o, dma_intp_o</text>
+<path class="sigo" d="M1030,450 L1030,684"/>
+<text class="s" x="1030" y="702" text-anchor="middle">dma_busy_o, dma_intp_o</text>
 <path class="fabric" d="M14,735 L36,730 L36,750 L14,745 Z"/>
 <text class="s" x="44" y="744.5" text-anchor="start">Demux or mux</text>
 <rect class="network" x="152.8" y="731" width="36" height="18" rx="3"/>
