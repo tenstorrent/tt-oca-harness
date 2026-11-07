@@ -114,6 +114,12 @@ slot of their own, and `LC_STATE` ignores its assigned lock bits. Lifecycle
 transition and token checks still apply to `LC_STATE`. The slot numbers and
 bit positions are defined in <<sep-fuse-fields-table>>.
 
+A write-lock bit exists in two places that must not be confused: the LOCKS *shadow*
+register bit, which firmware sets to close a field for the remainder of the current
+boot and which clears on the next cold reset, and the LOCKS *fuse* bit, whose burn
+closes the field permanently. Setting the shadow bit alone protects the current
+session while leaving the field burnable in a later boot.
+
 The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
 shown in the figure, and each interface has its own access control. In addition
@@ -206,11 +212,12 @@ addresses. Access permissions remain subject to the lock and lifecycle rules abo
 `LOCKS` (64 bits at `0x0`) covers slots 0–31: write-lock at bit `2n`,
 read-lock at bit `2n+1` for slot `n`.
 
-`LOCKS_SPARE` (32 bits at `0x8`) covers slots 32–40: write-lock at bit
-`2(n-32)`, read-lock at bit `2(n-32)+1`. Bits [31:18] are unassigned slots 41–47.
+`LOCKS_SPARE` (32 bits at `0x8`) covers slots 32–41: write-lock at bit
+`2(n-32)`, read-lock at bit `2(n-32)+1`. Slot 41 (SIGNATURE_REVOKE) is in bits
+[19:18]; bits [31:20] are unassigned slots 42–47.
 
 Firmware reads the complete state as three consecutive 32-bit words.
-There are 41 assigned slots (0–40); slot 0 belongs to `LC_STATE`, which ignores
+There are 42 assigned slots (0–41); slot 0 belongs to `LC_STATE`, which ignores
 both lock bits. LOCK has no lock-bit pair and cannot lock itself.
 
 |LC_STATE |0 |32 (4-bit state, 8-bit encoding) |set-only |true |Life-cycle state of the
@@ -322,28 +329,45 @@ the hashes embedded in the ROM to authenticate manifests.
 |CHIPLET_PUBK_HASH1 |20 |256 |true |true |Hash of chiplet-owner authentication
 key 1, fused.
 
-|REQUIRED_SIGNERS |21 |32 (use only 2 bits) |true |true |Owners whose signature
-a manifest must carry to be authenticated by SEP ROM. Per owner, 1 = required,
-0 = not-required; the default all-zero value requires no additional owner. [0]
-SiP owner, [1] system owner, [31:2] reserved. The chiplet creator is the root of
-trust -- its classical and PQC root digests are embedded in SEP ROM and always
-authenticate BL1 -- so it has no bit here. Burning a fuse bit only ever adds a
-required signer, so the fuse is monotonic: the standard LOCK bits exist but
-locking this field is unnecessary, since a later burn can never weaken security.
-The value is applied via the shadow register (loaded from the fuse at cold reset,
-SW-writable): firmware may update the shadow to set the required signers for each
-manifest it verifies (BL1, BL2, runtime, ...). See Secure-Boot Signing Model in
-the Life Cycle Controller section.
+|REQUIRED_SIGNERS |21 |64 (40 used) |true |true |Owners whose signature a manifest
+must carry as a co-signer to be authenticated by SEP ROM. The OCA Payload Manifest
+defines the co-signer mechanism but leaves the choice of co-signing keys to the
+implementor; this field is where SEP fills that gap. Bits [7:0] are the
+required-co-signer mask, bit n selecting co-signer n+1, matching the shape of
+co_signer_enable in the manifest: a required co-signer must be enabled there and
+must carry a populated signature block, or the manifest is rejected. Bits [39:8]
+hold one 4-bit owner code per co-signer, with co-signer N at bits [4N+7:4N+4], so
+co-signer N occupies the same nibble index here as it does in REQUIRED_ALGS. Owner
+codes are one-hot: 0b0001 anonymous key (verify with the public key carried in the
+co-signer block itself, no revocation check), 0b0010 chiplet-designated key (must
+match a non-revoked ROM-embedded or CHIPLET_PUBK* digest), 0b0100 SiP key (must
+match a non-revoked SIP_PUBK* digest), 0b1000 system key (must match a non-revoked
+SYS_PUBK* digest); all other values are reserved. Bits [63:40] reserved. The
+chiplet creator remains the root of trust -- its classical and PQC root digests are
+embedded in SEP ROM and always authenticate BL1 -- so it needs no co-signer slot.
+Because the fuse is one-way and the owner codes are one-hot, a slot's owner code
+must be burned and read back before its mask bit is burned. See Secure-Boot Signing
+Model in the Life Cycle Controller section.
 
-|REQUIRED_ALGS |22 |32 (use only 12 bits) |set-only |true |Per-owner required
-signature algorithms, applied only when that owner is required. Each owner has a
-4-bit nibble; bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum
-(ML-DSA), bits 3:2 reserved. The specific classical scheme and ML-DSA parameter
-set (e.g., ML-DSA-44/65/87) are set by the owner's provisioned keys, not mandated
-here. [3:0] chiplet, [7:4] SiP owner, [11:8] system owner, [31:12] reserved. For
-each required (owner, algorithm) the manifest must carry a signature verified
-against that owner's burned, non-revoked key of that type; all required pairs
-must verify, and any signature from a non-required owner is ignored.
+|REQUIRED_ALGS |22 |64 (40 used) |true |true |Per-entity required signature
+algorithms, so each verification entity can carry its own classical, PQC, or hybrid
+policy. Each entity has a 4-bit nibble: bit 0 = classical (RSA, ECDSA, or EdDSA),
+bit 1 = post-quantum (ML-DSA), bits 3:2 reserved. Nibble 0 (bits [3:0]) is the
+chiplet creator, which the OCA Payload Manifest calls the manifest ROOT; nibble 1
+(bits [7:4]) is the verifier key entry; and nibbles 2 through 9 (bits [39:8]) are
+co-signers 1 through 8, so co-signer N sits at the same nibble index here as it
+does in REQUIRED_SIGNERS. Bits [63:40] reserved. The chiplet-creator nibble is
+always enforced and governs the chiplet creator's signature, which covers the main
+manifest when use_verifier_key is clear and the appended verifier key entry when it
+is set. The verifier nibble governs the verifier key's signature over the main
+manifest and applies only when use_verifier_key is set; a co-signer nibble applies
+only when REQUIRED_SIGNERS requires that slot. The specific scheme and parameter
+set (e.g., ML-DSA-44/65/87) follow from that entity's provisioned keys and the
+manifest's signature_type_classic / signature_type_pqc values, not from this field.
+Setting both bits of a nibble requires a genuine hybrid signature from that entity:
+both must be present and both must verify. Because a single entity requiring PQC
+forces the manifest into the PQC variant, the union of these nibbles effectively
+selects the manifest format.
 
 |CHIPLET_PUBK_PQC_HASH0 |23 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.
@@ -393,10 +417,43 @@ input to the Key Manager. No read protection is required.
 
 |spare7 |39 |256 |true |true |Spare field 7 for future use.
 
-|spare8 |40 |256 |true |true |Spare field 8 for future use.
+|spare8 |40 |160 |true |true |Spare field 8 for future use. Reduced from 256 to
+160 bits to fund the REQUIRED_SIGNERS and REQUIRED_ALGS widening and the new
+SIGNATURE_REVOKE field, keeping the map at exactly 8192 bits.
+
+|SIGNATURE_REVOKE |41 |32 (12 used) |set-only |true |Signature-algorithm revocation
+vector. The BL1_VERSION and BL2_VERSION counters retire a manifest by version, while
+this field retires an
+algorithm family across every manifest and every entity, which is what makes a
+graceful migration possible in a hybrid classical/PQC world -- if ML-DSA is broken,
+or if practical quantum computers force the classical families to be sunset, the
+device stops trusting that family without re-provisioning keys and without
+invalidating manifests already in the field. The bit map mirrors the manifest's
+signature_type_classic and signature_type_pqc enumerations: bit 0 RSA, bit 1 ECDSA,
+bit 2 EdDSA, bit 3 adopter implementation-defined classical (signature_type_classic
+`0xF0-0xFF`), bit 6 ML-DSA, bit 7 FN-DSA (FALCON), bit 8 SLH-DSA, bit 9 adopter
+implementation-defined PQC (signature_type_pqc `0xF0-0xFF`); bits 4, 5, and [11:10]
+are reserved for further families in each half, and bits [31:12] are reserved. The
+adopter bits exist because OCAH is open-sourced: an adopter that selects its own
+scheme through the implementation-defined range needs a way to retire it. A set bit
+means SEP ROM shall not accept a signature of that family from any entity. Revoked
+families are *ignored* rather than treated as failures, so a hybrid manifest whose
+PQC signature is revoked still authenticates on its classical signature; rejecting
+instead would brick every hybrid manifest in the field at the moment of revocation.
+The fuse is the only input to verification -- ROM never compares it against the
+manifest's copy of this value, so a manifest cannot re-enable a revoked family. Only
+an authenticated BL1 may burn it, subject to the pre-burn survivability check, and
+the burn takes effect from the next boot. The accompanying write-lock is applied in
+the LOCKS shadow register only, never by burning the LOCKS fuse bit, so a further
+family can still be revoked in a later boot. Lock slot 41 in LOCKS_SPARE[19:18]. See
+Signature Algorithm Revocation in the Life Cycle Controller section.
 |=======================================================================
 
 The fuse map is exactly 8192 bits with exclusive end address `0x400` (1024 bytes, 256 × 32-bit words).
+This budget is fully allocated, so every field added or widened must be funded by
+reclaiming bits from the spare pool; the co-signer alignment takes its 96 bits
+(32 each for the REQUIRED_SIGNERS and REQUIRED_ALGS widening, 32 for
+SIGNATURE_REVOKE) out of spare8.
 
 The JTAG_ID field has been removed from the fuse map and will be implemented as a top-level port.
 
