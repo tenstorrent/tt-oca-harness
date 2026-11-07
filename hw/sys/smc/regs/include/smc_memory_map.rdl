@@ -74,6 +74,8 @@
     smc_mailbox->ocah_aperture_size = 0x20000;
     smc_mailbox->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_mailbox->desc = "Thirty-two bidirectional mailbox pairs.";
+    // The fabric routes the mailboxes only up to the last mailbox's registers.
+    smc_mailbox.inbound_mailbox_31->ocah_aperture_size = 0x50;
     dma_ctrl->ocah_aperture_size = 0x200;
     dma_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     dma_ctrl->desc = "Direct-memory-access controller.";
