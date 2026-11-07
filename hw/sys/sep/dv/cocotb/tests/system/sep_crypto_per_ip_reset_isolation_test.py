@@ -645,8 +645,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         (upstream aes/doc/programmers_guide.md, Clear upon Reset: the unit then idles and
         is ready for initialization), reprograms CTRL_SHADOWED, key and IV, and runs
         message 2. CTRL-AES-MIDMSG-DISTINCT: the message 2 golden differs from the CBC
-        result under message 1's key, IV or chaining value, so a key, IV or chain that
-        survives the reset fails the check.
+        result under message 1's key, IV or chaining value, so a key or IV write after
+        the reset that does not take effect fails the check. The new key and IV
+        overwrite whatever the reset left, so the check does not see whether the reset
+        itself clears them.
         """
         seed = self.random_seed()
         mp = draw_midmsg_plan(seed)
