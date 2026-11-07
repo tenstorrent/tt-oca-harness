@@ -60,8 +60,14 @@ class sep_otbn_mem_smoke_test_seq extends sep_base_test_seq;
     rd.start(p_sequencer.m_lsu_seqr);
     check_resp_known(rd.result, label);
     check_read_known(rd.result, addr, SepCsrSize, label);
-    fields = $sformatf("%s wr_resp=%0d rd_resp=%0d written=0x%08h readback=0x%08h", label,
-                       wr.result.worst_resp(), rd.result.worst_resp(), data, rd.data);
+    fields = $sformatf(
+        "%s wr_resp=%0d rd_resp=%0d written=0x%08h readback=0x%08h",
+        label,
+        wr.result.worst_resp(),
+        rd.result.worst_resp(),
+        data,
+        rd.data
+    );
   endtask
 
   task body();
@@ -83,9 +89,9 @@ class sep_otbn_mem_smoke_test_seq extends sep_base_test_seq;
       imem_words.push_back(32'(random_pattern(32)));
       dmem_words.push_back(32'(random_pattern(32)));
     end
-    `uvm_info(get_type_name(),
-              $sformatf(
-                  {"SEP SV-UVM OTBN memory smoke: STATUS control then %0d IMEM and %0d DMEM ",
+    `uvm_info(
+        get_type_name(),
+        $sformatf({"SEP SV-UVM OTBN memory smoke: STATUS control then %0d IMEM and %0d DMEM ",
                    "32-bit write/readbacks; scenario_seed=%0d random_count=%0d"},
                     imem_words.size(), dmem_words.size(), scenario_seed, random_count), UVM_LOW)
 
@@ -121,14 +127,18 @@ class sep_otbn_mem_smoke_test_seq extends sep_base_test_seq;
 
     log_step("4", "OTBN SRAM request and write counters");
     wait_sys_cycles(CounterSettleCycles);
-    `uvm_info(get_type_name(), $sformatf(
-              "OBS-OTBN-MEM-BUSY-ACCESS mem=imem status=0x%08h reqs=%0d writes=%0d words=%0d %p",
-              status_word, tb_vif.otbn_imem_req_count - imem_req0,
-              tb_vif.otbn_imem_write_count - imem_wr0, imem_words.size(), imem_fields), UVM_LOW)
-    `uvm_info(get_type_name(), $sformatf(
-              "OBS-OTBN-MEM-BUSY-ACCESS mem=dmem status=0x%08h reqs=%0d writes=%0d words=%0d %p",
-              status_word, tb_vif.otbn_dmem_req_count - dmem_req0,
-              tb_vif.otbn_dmem_write_count - dmem_wr0, dmem_words.size(), dmem_fields), UVM_LOW)
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "OBS-OTBN-MEM-BUSY-ACCESS mem=imem status=0x%08h reqs=%0d writes=%0d words=%0d %p",
+            status_word, tb_vif.otbn_imem_req_count - imem_req0,
+            tb_vif.otbn_imem_write_count - imem_wr0, imem_words.size(), imem_fields), UVM_LOW)
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "OBS-OTBN-MEM-BUSY-ACCESS mem=dmem status=0x%08h reqs=%0d writes=%0d words=%0d %p",
+            status_word, tb_vif.otbn_dmem_req_count - dmem_req0,
+            tb_vif.otbn_dmem_write_count - dmem_wr0, dmem_words.size(), dmem_fields), UVM_LOW)
     finalize_evidence();
   endtask
 

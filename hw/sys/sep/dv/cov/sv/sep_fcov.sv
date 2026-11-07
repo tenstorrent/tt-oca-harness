@@ -4042,16 +4042,12 @@ module sep_fcov (
     // docs/SEP_FCOV.adoc), so every value is an ignore bin.
     // verilator lint_off COVERIGN
     cp_imem_rdback: coverpoint otbn_imem_rdback {
-      option.weight = 0;
-      ignore_bins write_then_read = {1'b1};
-      ignore_bins no_readback = {1'b0};
+      option.weight = 0; ignore_bins write_then_read = {1'b1}; ignore_bins no_readback = {1'b0};
     }
     cp_dmem_rdback: coverpoint otbn_dmem_rdback {
-      option.weight = 0;
-      ignore_bins write_then_read = {1'b1};
-      ignore_bins no_readback = {1'b0};
+      option.weight = 0; ignore_bins write_then_read = {1'b1}; ignore_bins no_readback = {1'b0};
     }
-    // verilator lint_on COVERIGN
+  // verilator lint_on COVERIGN
   endgroup
 
   covergroup sep_abr_keygen_cg @(posedge clk_i);
