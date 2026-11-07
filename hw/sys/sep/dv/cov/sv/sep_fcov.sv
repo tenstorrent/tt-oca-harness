@@ -666,7 +666,7 @@ module sep_fcov (
   input wire [KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT-1:0] km_irq_enable_i,  // km_csr_irq_enable_o
   input wire                                km_cold_boot_done_i,
   input wire                                km_sram_exec_mode_i,
-  input wire [31:0]                         km_sram_lock_i,   // KM sram_lock_bits
+  input wire [$countones(KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK)-1:0] km_sram_lock_i,  // KM sram_lock_bits
   input wire [31:0]                         km_sram_viol_i,   // SRAM_WRITE_LOCK_VIOLATION
   input wire [31:0]                         km_sram_viol_pulse_i, // sram_write_lock_violation_region
   input wire [31:0]                         km_scr_key_i,     // SCRAMBLER_KEY register value
