@@ -4,11 +4,11 @@
 // Route system-peripherals AXI traffic to mailbox, system CSR, and SMN paths.
 //
 // Address rules are explicit integration apertures in AddrMap below:
-// 0x10A0_0000-0x10A0_FFFF to the mailbox, and to the system CSRs the scratch page and the
-// remap, outbound filter, inbound filter and sep_cpu_ctrl pages, each from its
-// sep_top_addrmap_pkg base to the 4 KiB page boundary after its registers; sep_system_csr
+// the mailbox pages (0x10A0_0000-0x10A0_7FFF) to the mailbox, and to the system CSRs the
+// scratch page and the remap, outbound filter, inbound filter and sep_cpu_ctrl pages, each from
+// its sep_top_addrmap_pkg base to the 4 KiB page boundary after its registers; sep_system_csr
 // answers the addresses of those pages outside its register windows. Every other address in
-// 0x10A1_0000-0x10A4_FFFF, and anything at or above 0x4000_0000, gets the axi_xbar DECERR
+// 0x10A0_8000-0x10A4_FFFF, and anything at or above 0x4000_0000, gets the axi_xbar DECERR
 // responder; the rest of the space below 0x4000_0000 goes to smn_inbound_from_xbar. Both
 // initiators reach every target.
 // Initiators are full AXI4 64-bit. mailbox and system_csr targets are AXI4-Lite 64-bit;
@@ -43,7 +43,7 @@ module sep_system_peripherals_xbar
                                                       // SEP local xbar in sep_system_peripherals.
   input  axi_out_resp_t smn_inbound_from_xbar_resp_i,  // Response to smn_inbound_from_xbar_req_o.
 
-  output axi_lite64_req_t  mailbox_req_o,     // Request for 0x10A0_0000-0x10A0_FFFF, converted to
+  output axi_lite64_req_t  mailbox_req_o,     // Request for 0x10A0_0000-0x10A0_7FFF, converted to
                                               // AXI-Lite.
   input  axi_lite64_resp_t mailbox_resp_i,    // Mailbox AXI-Lite response.
 
@@ -74,8 +74,14 @@ module sep_system_peripherals_xbar
     },
     // smn_inbound_from_xbar.region_2: 0x10a50000 - 0x40000000
     '{idx: 0, start_addr: 56'h10a50000, end_addr: 57'h40000000},
-    // mailbox.main: 0x10a00000 - 0x10a10000
-    '{idx: 1, start_addr: 56'h10a00000, end_addr: 57'h10a10000},
+    // mailbox.main: the mailbox pages, from its base to the 4 KiB page boundary after its
+    // registers.
+    '{
+      idx: 1,
+      start_addr: 56'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_BASE_ADDR),
+      end_addr: 57'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_BASE_ADDR,
+                                          sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_SIZE))
+    },
     // system_csr.remap_ctrl: the remap page; sep_system_csr answers the addresses outside the
     // alias, AP and STEE remap windows.
     '{

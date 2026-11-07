@@ -26,7 +26,7 @@ module sep_system_peripherals_xbar_wrapper
     output sep_pkg::sep_system_peripherals_xbar_slv_axi_req_t          smn_inbound_from_xbar_axi_req_o,  // Request for any address below 0x4000_0000 outside 0x1080_2000-0x1080_2FFF and
                                                                                                          // 0x10A0_0000-0x10A4_FFFF, forwarded to the SEP local xbar in sep_system_peripherals.
     input  sep_pkg::sep_system_peripherals_xbar_slv_axi_resp_t         smn_inbound_from_xbar_axi_resp_i,  // Response to smn_inbound_from_xbar_axi_req_o.
-    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   mailbox_req_o,  // Mailbox request for 0x10A0_0000-0x10A0_FFFF.
+    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   mailbox_req_o,  // Mailbox request for 0x10A0_0000-0x10A0_7FFF.
     input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t  mailbox_resp_i,  // Mailbox response.
     output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   system_csr_req_o,  // System CSR request for the scratch page 0x1080_2000-0x1080_2FFF or a system CSR
                                                                                           // page in 0x10A1_0000-0x10A4_FFFF.

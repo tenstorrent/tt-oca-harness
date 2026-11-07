@@ -63,7 +63,7 @@
     entropy_pool->ocah_aperture_size = 0x10000;
     entropy_pool->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
     entropy_pool->ocah_past_extent_note = "A 32-bit read of the upper word of a register also answers SLVERR, 0x0.";
-    axil_mailbox->ocah_aperture_size = 0x10000;
+    axil_mailbox->ocah_aperture_size = 0x8000;
     axil_mailbox->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
     axil_mailbox->desc = "Eight bidirectional mailbox pairs.";
     local_master_alias_remap_ctrl_wrap->ocah_aperture_size = 0x200;
