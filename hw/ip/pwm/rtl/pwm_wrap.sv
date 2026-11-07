@@ -3,9 +3,9 @@
 
 // Wrap the OpenTitan PWM and its pad-control register behind one AXI-Lite port.
 //
-// The AXI-Lite slave is demuxed onto three ports: the PWM register map, the CTRL register map and
-// an error slave that answers DECERR with read data 0xBADCAB1E for every other address. PWM
-// accesses are rebased by subtracting REG_MAP_BASE_ADDR and bridged to the PWM TL-UL port.
+// The AXI-Lite slave is demuxed onto the PWM register window and the CTRL window; every other
+// address in the page answers DECERR with read data 0xBADCAB1E. PWM accesses are rebased by
+// subtracting REG_MAP_BASE_ADDR and bridged to the PWM TL-UL port.
 // CTRL.PAD_EN drives pad_en_o, one bit per channel; it does not gate the PWM itself. The demux,
 // the bridge, CTRL, the alert receiver and the PWM register interface run on clk_i; clk_core_i
 // clocks the PWM phase counters and channel outputs. fatal_alert_o aggregates the fatal alert
@@ -69,73 +69,46 @@ module pwm_wrap #(
 
   localparam int unsigned NumAlerts = pwm_reg_pkg::NumAlerts;
 
-  // Demux ports: PWM, CTRL and the error slave.
-  localparam int unsigned NumRegMaps = 3;
-  typedef logic [$clog2(NumRegMaps)-1:0] reg_map_select_t;
-  localparam reg_map_select_t PwmRegMap = reg_map_select_t'(0);
-  localparam reg_map_select_t CtrlRegMap = reg_map_select_t'(1);
-  localparam reg_map_select_t UndefinedRegMap = reg_map_select_t'(2);
+  // Demux ranges: the PWM registers and CTRL.
+  localparam int unsigned NumRegMaps = 2;
+  localparam int unsigned PwmRegMap = 0;
+  localparam int unsigned CtrlRegMap = 1;
 
   ///////////
   // Demux //
   ///////////
 
-  function automatic reg_map_select_t reg_map_select(logic [31:0] addr);
-    if (addr >= REG_MAP_BASE_ADDR && addr < REG_MAP_BASE_ADDR + REG_MAP_SIZE) begin
-      return PwmRegMap;
-    end
-    if (addr >= CTRL_REG_MAP_BASE_ADDR && addr < CTRL_REG_MAP_BASE_ADDR + CTRL_REG_MAP_SIZE) begin
-      return CtrlRegMap;
-    end
-    return UndefinedRegMap;
-  endfunction
+  localparam logic [31:0] RangeBase[NumRegMaps] = '{REG_MAP_BASE_ADDR, CTRL_REG_MAP_BASE_ADDR};
+  localparam logic [31:0] RangeSize[NumRegMaps] = '{
+      32'(1) << pwm_reg_pkg::pwm_block_aw(NUM_OUTPUTS),
+      32'(1) << pwm_ctrl_reg_pkg::PWM_CTRL_REG_MIN_ADDR_WIDTH
+  };
 
   axil_req_t  [NumRegMaps-1:0] axil_reqs;
   axil_resp_t [NumRegMaps-1:0] axil_resps;
 
-  axi_lite_demux #(
-    .aw_chan_t       (axil_aw_chan_t),
-    .w_chan_t        (axil_w_chan_t),
-    .b_chan_t        (axil_b_chan_t),
-    .ar_chan_t       (axil_ar_chan_t),
-    .r_chan_t        (axil_r_chan_t),
-    .axi_req_t       (axil_req_t),
-    .axi_resp_t      (axil_resp_t),
-    .NoMstPorts      (NumRegMaps),
-    .MaxTrans        (1),
-    .FallThrough     (1'b0),
-    .SpillAw         (1'b1),
-    .SpillW          (1'b0),
-    .SpillB          (1'b0),
-    .SpillAr         (1'b1),
-    .SpillR          (1'b0)
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (32),
+    .AXI_DATA_WIDTH (32),
+    .NUM_RANGES     (NumRegMaps),
+    .RANGE_BASE     (RangeBase),
+    .RANGE_SIZE     (RangeSize),
+    .MAX_TRANS      (1),
+    .aw_chan_t      (axil_aw_chan_t),
+    .w_chan_t       (axil_w_chan_t),
+    .b_chan_t       (axil_b_chan_t),
+    .ar_chan_t      (axil_ar_chan_t),
+    .r_chan_t       (axil_r_chan_t),
+    .axil_req_t     (axil_req_t),
+    .axil_resp_t    (axil_resp_t)
   ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i          (test_en_i),
-    .slv_req_i       (csr_axil_req_i),
-    .slv_aw_select_i (reg_map_select(csr_axil_req_i.aw.addr)),
-    .slv_ar_select_i (reg_map_select(csr_axil_req_i.ar.addr)),
-    .slv_resp_o      (csr_axil_resp_o),
-    .mst_reqs_o      (axil_reqs),
-    .mst_resps_i     (axil_resps)
-  );
-
-  prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (32),
-    .AXI_DATA_WIDTH (32),
-    .axil_req_t     (axil_req_t),
-    .axil_resp_t    (axil_resp_t),
-    .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (32),
-    .RESP_DATA      (32'hBADCAB1E),
-    .MAX_TRANS      (1)
-  ) u_prim_axi_lite_err_slv (
-    .clk_i,
-    .rst_ni,
     .test_en_i,
-    .axil_req_i     (axil_reqs [UndefinedRegMap]),
-    .axil_resp_o    (axil_resps[UndefinedRegMap])
+    .slv_req_i   (csr_axil_req_i),
+    .slv_resp_o  (csr_axil_resp_o),
+    .mst_reqs_o  (axil_reqs),
+    .mst_resps_i (axil_resps)
   );
 
   /////////
