@@ -10,7 +10,7 @@ module scratch_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [4:0] s_axil_awaddr,
+        input wire [6:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module scratch_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [4:0] s_axil_araddr,
+        input wire [6:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -34,7 +34,7 @@ module scratch_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [4:0] cpuif_addr;
+    logic [6:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -51,10 +51,10 @@ module scratch_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [4:0] axil_araddr;
+    logic [6:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [4:0] axil_awaddr;
+    logic [6:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -132,17 +132,17 @@ module scratch_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[4:2], 2'b0};
+                cpuif_addr = {axil_araddr[6:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[4:2], 2'b0};
+                cpuif_addr = {axil_awaddr[6:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[4:2], 2'b0};
+                cpuif_addr = {axil_araddr[6:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -229,7 +229,7 @@ module scratch_reg (
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
-    logic [4:0] decoded_addr;
+    logic [6:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -241,10 +241,10 @@ module scratch_reg (
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         for(int i0=0; i0<8; i0++) begin
-            decoded_reg_strb.SCRATCH[i0] = cpuif_req_masked & (cpuif_addr == 5'h0 + (5)'(i0) * 5'h4);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h0 + (5)'(i0) * 5'h4);
+            decoded_reg_strb.SCRATCH[i0] = cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h0 + (7)'(i0) * 7'h4);
         end
-        is_valid_addr = '1;
+        is_valid_addr = cpuif_addr < 7'h20;
         decoded_err = ~is_valid_addr & decoded_req;
     end
 
@@ -313,7 +313,7 @@ module scratch_reg (
     // Readback
     //--------------------------------------------------------------------------
 
-    logic [4:0] rd_mux_addr;
+    logic [6:0] rd_mux_addr;
     assign rd_mux_addr = decoded_addr;
 
     logic readback_err;
@@ -323,7 +323,7 @@ module scratch_reg (
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
         for(int i0=0; i0<8; i0++) begin
-            if(rd_mux_addr == 5'h0 + (5)'(i0) * 5'h4) begin
+            if(rd_mux_addr == 7'h0 + (7)'(i0) * 7'h4) begin
                 readback_data_var[31:0] = field_storage.SCRATCH[i0].data.value;
             end
         end
