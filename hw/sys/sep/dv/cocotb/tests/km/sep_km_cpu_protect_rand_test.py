@@ -1412,7 +1412,8 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         """Arm the exec_violation handler, write the enable, jump to ``target``.
 
         SRAM_EXEC_MODE and SRAM_LOCK are read back before the jump: an enable
-        write, or the SRAM_LOCK bit ``lock_bit``, that did not land fails here.
+        that differs from ``enable``, or an SRAM_LOCK bit ``lock_bit`` that did
+        not land, fails here.
         """
         sentinel = self.plan.sentinel()
         self.logger.info("DRAW %s sentinel=0x%08x", case, sentinel)
@@ -1438,11 +1439,10 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             res[n].value,
             lock_rd,
         )
-        if enable:
-            assert mode_rd == EXEC_ENABLE, (
-                f"CHK-EXEC FAIL: {case}: SRAM_EXEC_MODE reads 0x{res[n].value:08x} before the "
-                "jump, expected ENABLE = 1"
-            )
+        assert mode_rd == (EXEC_ENABLE if enable else 0), (
+            f"CHK-EXEC FAIL: {case}: SRAM_EXEC_MODE reads 0x{res[n].value:08x} before the "
+            f"jump, expected ENABLE = {enable}"
+        )
         if lock_bit is not None:
             assert (lock_rd >> lock_bit) & 1 == 1, (
                 f"CHK-EXEC FAIL: {case}: SRAM_LOCK reads 0x{lock_rd:08x} before the jump, "
