@@ -157,6 +157,6 @@ subordinate that terminates it with a `DECERR` response on `BRESP` or
 
 Setting `FILTER_CONFIG.locked` freezes a filter entry. The bit is
 write-once (`woset`): once set it cannot be cleared. While it is set,
-every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR`
-registers is steered to an AXI-Lite error subordinate and terminates with
+every write to that entry's 32-byte slot, including the unused word after
+`END_ADDR`, is steered to an AXI-Lite error subordinate and terminates with
 a `SLVERR` response; reads still return the locked configuration.
