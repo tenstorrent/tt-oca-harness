@@ -5,6 +5,8 @@
  * In non-secure mode, issues JUMPs into the protected SRAM region below the OCCP test range,
  * checks each is rejected with INVALID_ADDRESS and a JUMP_READ_FAILED status entry, and that
  * the ROM still answers afterwards.
+ * With the STATUS_RPT_DISABLE strap set, the status-buffer check is replaced by one GET_SMC_STATUS
+ * that must return Unsupported_StatusID.
  */
 
 #include "occp_test_common.h"
@@ -15,7 +17,13 @@ int exp_num_jump_security_errors = 0;
 static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
     simputs("=== Reading and validating SMC status buffer ===\n");
     if (ctx->status_reporting_disabled) {
-        simputs("STATUS_RPT_DISABLE strap active; skipping SMC status buffer validation\n");
+        uint32_t rejected_status;
+        simputs("STATUS_RPT_DISABLE strap active; expecting GET_SMC_STATUS to be rejected\n");
+        if (occp_send_get_smc_status_command(ctx, ctx->slave_addr, &rejected_status) !=
+            OCCP_SUCCESS) {
+            simputs("FAIL: GET_SMC_STATUS not rejected with OCCP_UNSUPPORTED_STATUS\n");
+            ctx->overall_result = false;
+        }
         return;
     }
     uint32_t status_data = 0xdeadbeef;
