@@ -270,6 +270,14 @@ def _extent_responses(
         return memo[key]
     windows = _windows(node)
     blocks = [entry for entry in windows if not isinstance(entry[0], RegNode)]
+    past = {
+        block.inst_name: Response.from_rdl(
+            _own(block, "ocah_past_extent_resp"), f"{block.get_path()}: ocah_past_extent_resp"
+        )
+        for block, _, extent, window in blocks
+        if window > extent
+    }
+    named = len(set(past.values())) > 1
     intervals: list[tuple[int, int]] = []
     for child, offset, _, window in windows:
         if isinstance(child, RegNode) and child.is_array and child.array_stride > child.size:
@@ -282,7 +290,7 @@ def _extent_responses(
         parts.append(
             ("between sub-blocks", _gap_response(node)) if blocks else ("", _hole_response(node))
         )
-    for block, _, extent, window in blocks:
+    for block, _, _, _ in blocks:
         parts += _extent_responses(block, memo)
         if block.is_array and block.array_stride > block.size:
             tail = _own(block, "ocah_gap_resp")
@@ -294,14 +302,9 @@ def _extent_responses(
                     else Response.from_rdl(tail, f"{block.get_path()}: ocah_gap_resp"),
                 )
             )
-        if window > extent:
-            past = _own(block, "ocah_past_extent_resp")
-            parts.append(
-                (
-                    "past sub-block registers",
-                    Response.from_rdl(past, f"{block.get_path()}: ocah_past_extent_resp"),
-                )
-            )
+        if block.inst_name in past:
+            name = block.inst_name if named else "sub-block"
+            parts.append((f"past {name} registers", past[block.inst_name]))
     memo[key] = tuple(dict.fromkeys(parts))
     return memo[key]
 

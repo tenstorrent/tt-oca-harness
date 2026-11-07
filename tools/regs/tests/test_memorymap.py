@@ -449,6 +449,19 @@ addrmap top {
             [label for label, _ in view.rows[0].hole_responses], ["past sub-block registers"]
         )
 
+    def test_wrap_cell_names_each_sub_block_whose_past_response_differs(self):
+        text = SUB_BLOCK_RDL.replace(
+            "c->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0,",
+            "c->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF,",
+        )
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        self.assertEqual(
+            self.cells(view)["wrap"][-2],
+            "between sub-blocks: DECERR, 0xBADCAB1E / DECERR; "
+            "past a registers: SLVERR, 0x0 / SLVERR; "
+            "past c registers: SLVERR, 0xFFFFFFFF / SLVERR",
+        )
+
     def test_rejects_a_sub_block_window_past_the_next_sibling(self):
         text = SUB_BLOCK_RDL.replace(
             "a->ocah_aperture_size = 0x40;", "a->ocah_aperture_size = 0x80;"
