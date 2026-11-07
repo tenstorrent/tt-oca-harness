@@ -293,7 +293,7 @@ VIEWS = {
                 "hole_responses": (),
                 "hole_notes": (),
                 "past_response": {"rresp": "SLVERR", "rdata": 0xFFFFFFFF, "bresp": "SLVERR", "text": "SLVERR, 0xFFFFFFFF / SLVERR"},
-                "past_note": "An access to an unmapped offset also latches PERIPH_BUS_ERR_STATUS.wdt, which drives PIC source 43.",
+                "past_note": "An access to an unmapped offset also latches PERIPH_BUS_ERR_STATUS.wdt, one of the bits behind PIC source 43.",
             },
             {
                 "key": "reserved_10801040",

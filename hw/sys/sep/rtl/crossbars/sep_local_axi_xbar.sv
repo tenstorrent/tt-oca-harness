@@ -5,8 +5,8 @@
 //
 // The DMA, watchdog, reset controller, SPI controller and scratch rules start at their
 // sep_top_addrmap_pkg base and end on the 4 KiB page boundary after the registers; each of
-// those targets answers the addresses of the page that its registers do not decode. The
-// remaining address rules are explicit integration apertures in AddrMap below.
+// those targets answers every address in its page. The remaining address rules are explicit
+// integration apertures in AddrMap below.
 // Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits
 // than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity
 // get DECERR.

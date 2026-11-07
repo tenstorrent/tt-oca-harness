@@ -93,7 +93,7 @@
 
 .Notes
 [[sep-components-note-1]]^[1]^ An access to an unmapped offset also latches PIC source 41. +
-[[sep-components-note-2]]^[2]^ An access to an unmapped offset also latches PERIPH_BUS_ERR_STATUS.wdt, which drives PIC source 43. +
+[[sep-components-note-2]]^[2]^ An access to an unmapped offset also latches PERIPH_BUS_ERR_STATUS.wdt, one of the bits behind PIC source 43. +
 [[sep-components-note-3]]^[3]^ With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR. +
 [[sep-components-note-4]]^[4]^ A 32-bit read of the upper word of a register also answers SLVERR, 0x0.
 // end::sep-components[]

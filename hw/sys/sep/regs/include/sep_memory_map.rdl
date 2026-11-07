@@ -20,7 +20,7 @@
     secure_dma->desc = "Secure DMA control and status registers.";
     wdt_timer->ocah_aperture_size = 0x40;
     wdt_timer->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
-    wdt_timer->ocah_past_extent_note = "An access to an unmapped offset also latches PERIPH_BUS_ERR_STATUS.wdt, which drives PIC source 43.";
+    wdt_timer->ocah_past_extent_note = "An access to an unmapped offset also latches PERIPH_BUS_ERR_STATUS.wdt, one of the bits behind PIC source 43.";
     sep_scratch_cold->ocah_aperture_size = 0x80;
     sep_scratch_cold->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
     sep_scratch_cold->desc = "Cold-reset scratch register bank.";
