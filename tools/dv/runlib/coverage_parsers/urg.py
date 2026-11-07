@@ -381,7 +381,7 @@ def parse_urg_details(
         warnings=warnings,
     )
     scope_payload = "\n".join(
-        f"{path}:{hashlib.sha256(path.read_bytes()).hexdigest()}" for path in detail_paths
+        sorted(path.relative_to(report_dir).as_posix() for path in detail_paths)
     )
     # A grade of another table hashes the table's name into its scope, so it never shares a
     # comparison key with the hierarchy grade of the same report.
