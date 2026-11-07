@@ -380,8 +380,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Narrow-write byte masking at every AxSIZE and lane offset, plus memory-window readback,
-# which catches a read-mask defect.
+# Narrow-write byte masking at every AxSIZE and lane offset; the OTBN memory-window
+# accesses are logged, not graded.
 name = "sep_axi_strobe_window_test"
 module = "system.sep_axi_strobe_window_test"
 seed = 1

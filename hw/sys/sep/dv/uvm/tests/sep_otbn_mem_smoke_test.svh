@@ -4,8 +4,9 @@
 // sep_otbn_mem_smoke_test (`--items sep_otbn_mem_smoke_test`): runs
 // sep_otbn_mem_smoke_test_seq on the environment's virtual sequencer once
 // per pass. The scenario reads no predicted sep_cpu_ctrl register, so the
-// test requires no scoreboard feature; its evidence is the readbacks and
-// the OTBN SRAM counter probes the sequence grades.
+// test requires no scoreboard feature. Its only graded evidence is the
+// STATUS read response (CHK-CSR-RESP) and the STATUS control; the memory
+// results are logged (OBS-OTBN-MEM-BUSY-ACCESS).
 
 class sep_otbn_mem_smoke_test extends sep_base_test;
   `uvm_component_utils(sep_otbn_mem_smoke_test)
