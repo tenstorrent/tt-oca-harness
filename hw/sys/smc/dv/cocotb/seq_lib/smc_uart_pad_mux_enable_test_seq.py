@@ -16,11 +16,12 @@ enable the pad-13 driver (`tb_core2pad_en_o[13]` stays 0); with UART_EN set the 
 the pad carries the inverted bit. CTS: with UART_EN clear the pad-14 level does not reach MSR.CTS;
 with UART_EN set MSR.CTS follows the pad in opposite polarity. RX: with UART_EN clear a frame driven
 on pad 11 does not reach RBR; with UART_EN set it does. INPUT-IDLE: with UART_EN clear and no
-software LSIO selection on pads 11 and 14, the UART's receive and CTS inputs read high, the serial
+LSIO selection on pads 11 and 14 (`tb_lsio_interface_select` of both reads 0 on 64 cycles), the
+UART's receive and CTS inputs read high, the serial
 idle level (uart_log_engine_ctrl.rdl CTRL.UART_EN; hw/sys/smc/doc/periphs.adoc, GPIO
 LSIO_PAD2CORE_IDLE from smc_padring_pkg::LsioIdleLevelMap): MSR.CTS reads 0 with pad 14 low and
-with it high, and the receiver reports no character after a receive-FIFO reset, the frame driven on
-pad 11 and one further frame time.
+with it high, and the receiver reports no character after a receive-FIFO reset, a frame queued on
+pad 11 and two frame times.
 
 CTRL.UART_EN is the hardware LSIO request of the UART0 pads (uart_log_engine_ctrl.rdl CTRL.UART_EN;
 the SMC programmer's guide, "LSIO" of the GPIO section). With it clear and pad 12 holding no register
@@ -499,6 +500,10 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
         )
 
     async def _cts_leg(self) -> tuple[str, str]:
+        await self._hold_pad_bits(
+            "S5_INPUTS_DESELECTED",
+            {("tb_lsio_interface_select", RX_PAD): 0, ("tb_lsio_interface_select", CTS_PAD): 0},
+        )
         self._drive_pad(CTS_PAD, 0)
         await ClockCycles(cocotb.top.clk_smc_i, PAD_BOUND)
         cts_low = await self._msr_cts("S5_CTS_OFF_PAD0")
@@ -527,6 +532,7 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
             f"UART_EN=0: MSR.CTS={cts_low} with pad {CTS_PAD} low and {cts_high} with it high "
             f"({PAD_BOUND} cycles after each drive); UART_EN=1: pad low -> MSR.CTS=1 in "
             f"{low_reads} reads, pad high -> MSR.CTS=0 in {high_reads} reads",
+            f"lsio_select[{RX_PAD}]=0 and lsio_select[{CTS_PAD}]=0 on {PAD_BOUND} cycles; "
             f"MSR.CTS={cts_low} with pad {CTS_PAD} low and {cts_high} with it high ({PAD_BOUND} "
             f"cycles after each drive; the CTS input reads the idle level, high)",
         )
@@ -546,15 +552,17 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
         frame_ns = FRAME_BITS * vip.sink.bit_ns
         await self.csr_write("S5_RX_FCR_OFF", UART0_FCR, FCR_RX_RESET)
         await vip.drive_frame(bytes([RX_BYTE]))
-        await Timer(frame_ns, "ns")
+        # The frame is queued; one frame time carries it on the pad and one more
+        # lets a receiver that took it post the character before the drain.
+        await Timer(2 * frame_ns, "ns")
         off = await self._drain_rx("S5_RX_OFF")
         assert all(byte != RX_BYTE for _, byte in off), (
             f"with UART_EN=0 the frame 0x{RX_BYTE:02X} driven on pad {RX_PAD} reached RBR "
             f"({off}); the pad follows the GPIO selection and does not reach the UART"
         )
         assert off == [], (
-            f"with UART_EN=0 the receiver reported {off} after the receive-FIFO reset, the "
-            f"pad-{RX_PAD} frame and one further frame time; the receive input of a deselected "
+            f"with UART_EN=0 the receiver reported {off} after the receive-FIFO reset, a frame "
+            f"queued on pad {RX_PAD} and two frame times; the receive input of a deselected "
             f"UART reads high, the idle level, so no start bit opens a frame"
         )
         readback = await self._set_uart_en("S5_RX_UART_EN", UART_EN)
@@ -576,8 +584,8 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
             f"UART_EN=0: frame 0x{RX_BYTE:02X} on pad {RX_PAD} not in the {len(off)} "
             f"character(s) drained; UART_EN=1: the same frame read back as 0x{RX_BYTE:02X} "
             f"with LSR 0x{on[0][0]:02X}",
-            f"no character reported after the receive-FIFO reset, the pad-{RX_PAD} frame and one "
-            f"further frame time ({len(off)} drained; the receive input reads the idle level, high)",
+            f"no character reported after the receive-FIFO reset, a frame queued on pad {RX_PAD} "
+            f"and two frame times ({len(off)} drained; the receive input reads the idle level, high)",
         )
 
     async def _s5(self) -> None:

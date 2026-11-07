@@ -45103,12 +45103,12 @@ they carry it; with `UART_EN` clear the receive and CTS inputs read the idle lev
   `MSR.CTS` reads the same with pad 14 driven low and high; with it set `MSR.CTS` follows the pad in
   opposite polarity. With `UART_EN` clear a frame driven on pad 11 does not reach `RBR`; with it
   set the same frame reads back with `LSR` clear of errors.
-* With `UART_EN` clear and no software LSIO selection on pads 11 and 14, the UART's receive and CTS
-  inputs read high, the serial idle level (`uart_log_engine_ctrl.rdl` `CTRL.UART_EN`;
-  `hw/sys/smc/doc/periphs.adoc`, GPIO `LSIO_PAD2CORE_IDLE` from `smc_padring_pkg::LsioIdleLevelMap`):
-  `MSR.CTS` reads 0 with pad 14 low and with it high, and the receiver reports no character after a
-  receive-FIFO reset, the frame driven on pad 11 and one further frame time (compared,
-  `CHK-UART-PADMUX-INPUT-IDLE`).
+* With `UART_EN` clear and no LSIO selection on pads 11 and 14 (`tb_lsio_interface_select` of both
+  reads 0 on 64 cycles), the UART's receive and CTS inputs read high, the serial idle level
+  (`uart_log_engine_ctrl.rdl` `CTRL.UART_EN`; `hw/sys/smc/doc/periphs.adoc`, GPIO
+  `LSIO_PAD2CORE_IDLE` from `smc_padring_pkg::LsioIdleLevelMap`): `MSR.CTS` reads 0 with pad 14 low
+  and with it high, and the receiver reports no character after a receive-FIFO reset, a frame queued
+  on pad 11 and two frame times (compared, `CHK-UART-PADMUX-INPUT-IDLE`).
 * `UART_EN` set again: the same `THR` write produces exactly one frame decoded as 0xA5, the
   positive control that the stimulus and the pad decoder still work after the clear leg. Pad 12 is
   held at 1 by the register row (`interface_enable`, `enable_rx_tx` and `core2pad` 1) from the start
@@ -45198,10 +45198,11 @@ they carry it; with `UART_EN` clear the receive and CTS inputs read the idle lev
 |`CHK-UART-PADMUX-RX` |With `UART_EN` 0 a frame of 0x3C on pad 11 is absent from everything the
   receiver reports; with `UART_EN` 1 the same frame reads back as exactly one character 0x3C with
   `LSR` 0x61
-|`CHK-UART-PADMUX-INPUT-IDLE` |With `UART_EN` 0 and no software LSIO selection, `MSR.CTS` reads 0
-  with pad 14 low and 0 with it high (64 cycles after each drive), and the receiver reports no
-  character after a receive-FIFO reset, the frame driven on pad 11 and one further frame time with
-  the divisor programmed; an `MSR.CTS` of 1 or any character drained fails
+|`CHK-UART-PADMUX-INPUT-IDLE` |With `UART_EN` 0 and `tb_lsio_interface_select[11]` and `[14]` read
+  0 on 64 cycles, `MSR.CTS` reads 0 with pad 14 low and 0 with it high (64 cycles after each drive),
+  and the receiver reports no character after a receive-FIFO reset, a frame queued on pad 11 and two
+  frame times with the divisor programmed; a select bit of 1, an `MSR.CTS` of 1 or any character
+  drained fails
 |`CHK-UART-PADMUX-FRAME-RECOVER` |Pad 12 reads 1 at every `clk_smc_i` sample from the S5
   register hold through the `UART_EN` toggles, the `UART_EN` write and the `DATA_CTRL` restore
   (compared; the saved `DATA_CTRL` reads back), and with `UART_EN` read back 1 again the same `THR`
