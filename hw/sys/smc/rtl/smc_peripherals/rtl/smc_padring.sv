@@ -3,11 +3,12 @@
 
 // Mux SMC peripheral digital I/O onto chiplet pads.
 //
-// Instantiates one gpio interface per pad behind an AXI-Lite demux whose error target
-// returns DECERR with data 0xBADCAB1E outside the GPIO window. Assigns fixed pads to SPI,
-// UART, I3C, I2C, AVSBus, PWM, the system timer, and the isolate-request, boot-stall and
-// cool-reset pins; each function's enable drives the pad's LSIO select, which the gpio
-// registers can disable. The pad mapping is combinational.
+// Instantiates one gpio interface per pad behind an AXI-Lite demux that routes each pad
+// its own window and answers an address past the last pad's window with DECERR and read
+// data 0xBADCAB1E. Assigns fixed pads to SPI, UART, I3C, I2C, AVSBus, PWM, the system
+// timer, and the isolate-request, boot-stall and cool-reset pins; each function's enable
+// drives the pad's LSIO select, which the gpio registers can disable. The pad mapping is
+// combinational.
 
 `include "ocah_assert.svh"
 
@@ -18,9 +19,9 @@ module smc_padring #(
                                                                            // gpio interface.
   parameter bit [gpio_pkg::AddrWidth-1:0] GPIO_INTF_BASE_ADDR       = 32'h00000000   // Base address of the
                                                                                      // first GPIO interface;
-                                                                                     // the demux decodes
-                                                                                     // NumGpioWraps
-                                                                                     // 16-byte slots from it.
+                                                                                     // a multiple of the
+                                                                                     // 16-byte interface
+                                                                                     // stride.
 
 ) (
   input  logic clk_i,                   // SMC core clock for the GPIO register demux and
@@ -221,78 +222,51 @@ module smc_padring #(
   // AXI-Lite Demux //
   ////////////////////
 
-  // Demux across the GPIO interfaces, plus a decode-error target at index
-  // NumGpioWraps for out-of-window / unmapped accesses (including the
-  // former gpio_ctrl/ext range, now unimplemented).
-  localparam int unsigned NumIntfDemuxMst = smc_pkg::NumGpioWraps + 1;
-  localparam int unsigned IntfErrIdx = smc_pkg::NumGpioWraps;
+  // Each pad owns a window of one register stride; an address past the last pad's window
+  // answers DECERR with read data 0xBADCAB1E.
+  localparam int unsigned NumIntfRanges = smc_pkg::NumGpioWraps;
 
-  gpio_pkg::gpio_axil_req_t  [NumIntfDemuxMst-1:0] axil_reqs_to_intf;
-  gpio_pkg::gpio_axil_resp_t [NumIntfDemuxMst-1:0] axil_resps_from_intf;
+  typedef logic [gpio_pkg::AddrWidth-1:0] intf_range_addr_t[NumIntfRanges];
 
-  logic [$clog2(NumIntfDemuxMst)-1:0] gpio_intf_aw_select;
-  logic [$clog2(NumIntfDemuxMst)-1:0] gpio_intf_ar_select;
-
-  always_comb begin
-    // Decode gpio_intf window. Out of window accesses routed to error slave
-    if (axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR &&
-            ((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps) begin
-      gpio_intf_aw_select = (axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4;
-    end else begin
-      gpio_intf_aw_select = IntfErrIdx;
+  function automatic intf_range_addr_t intf_range_base();
+    intf_range_addr_t base;
+    for (int unsigned i = 0; i < NumIntfRanges; i++) begin
+      base[i] = GPIO_INTF_BASE_ADDR + gpio_pkg::AddrWidth'(
+          i * smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE);
     end
+    return base;
+  endfunction
 
-    if (axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR &&
-            ((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps) begin
-      gpio_intf_ar_select = (axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4;
-    end else begin
-      gpio_intf_ar_select = IntfErrIdx;
-    end
-  end
+  localparam intf_range_addr_t IntfRangeBase = intf_range_base();
+  localparam intf_range_addr_t IntfRangeSize = '{
+      default: gpio_pkg::AddrWidth'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE)
+  };
 
-  axi_lite_demux #(
-    .aw_chan_t          (gpio_pkg::gpio_axil_aw_chan_t),
-    .w_chan_t           (gpio_pkg::gpio_axil_w_chan_t),
-    .b_chan_t           (gpio_pkg::gpio_axil_b_chan_t),
-    .ar_chan_t          (gpio_pkg::gpio_axil_ar_chan_t),
-    .r_chan_t           (gpio_pkg::gpio_axil_r_chan_t),
-    .axi_req_t          (gpio_pkg::gpio_axil_req_t),
-    .axi_resp_t         (gpio_pkg::gpio_axil_resp_t),
-    .NoMstPorts         (NumIntfDemuxMst),  // gpio_intf + decode-error target
-    .MaxTrans           (MAX_TRANS),
-    .FallThrough        (1'b0),
-    .SpillAw            (1'b1),
-    .SpillW             (1'b0),
-    .SpillB             (1'b0),
-    .SpillAr            (1'b1),
-    .SpillR             (1'b0)
-  ) u_gpio_intf_demux (
-    .clk_i              (clk_i),
-    .rst_ni             (rst_primary_ni),
-    .test_i             (test_en_i),
-    .slv_req_i          (axil_req_i),
-    .slv_resp_o         (axil_resp_o),
-    .slv_aw_select_i    (gpio_intf_aw_select),
-    .slv_ar_select_i    (gpio_intf_ar_select),
-    .mst_reqs_o         (axil_reqs_to_intf),
-    .mst_resps_i        (axil_resps_from_intf)
-  );
+  gpio_pkg::gpio_axil_req_t  [NumIntfRanges-1:0] axil_reqs_to_intf;
+  gpio_pkg::gpio_axil_resp_t [NumIntfRanges-1:0] axil_resps_from_intf;
 
-  // Decode-error slave on the demux's final target: unmapped gpio_intf-window accesses return DECERR
-  prim_axi_lite_err_slv #(
+  prim_axil_addr_demux #(
     .AXI_ADDR_WIDTH (gpio_pkg::AddrWidth),
     .AXI_DATA_WIDTH (gpio_pkg::DataWidth),
+    .NUM_RANGES     (NumIntfRanges),
+    .RANGE_BASE     (IntfRangeBase),
+    .RANGE_SIZE     (IntfRangeSize),
+    .MAX_TRANS      (MAX_TRANS),
+    .aw_chan_t      (gpio_pkg::gpio_axil_aw_chan_t),
+    .w_chan_t       (gpio_pkg::gpio_axil_w_chan_t),
+    .b_chan_t       (gpio_pkg::gpio_axil_b_chan_t),
+    .ar_chan_t      (gpio_pkg::gpio_axil_ar_chan_t),
+    .r_chan_t       (gpio_pkg::gpio_axil_r_chan_t),
     .axil_req_t     (gpio_pkg::gpio_axil_req_t),
-    .axil_resp_t    (gpio_pkg::gpio_axil_resp_t),
-    .RESP_WIDTH     (gpio_pkg::DataWidth),
-    .RESP_DATA      (32'hBADCAB1E),
-    .MAX_TRANS      (1)
-  ) u_intf_demux_err_slv (
-    .clk_i          (clk_i),
-    .rst_ni         (rst_primary_ni),
-    .test_en_i      (test_en_i),
-    .axil_req_i     (axil_reqs_to_intf[IntfErrIdx]),
-    .axil_resp_o    (axil_resps_from_intf[IntfErrIdx])
+    .axil_resp_t    (gpio_pkg::gpio_axil_resp_t)
+  ) u_gpio_intf_demux (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_primary_ni),
+    .test_en_i   (test_en_i),
+    .slv_req_i   (axil_req_i),
+    .slv_resp_o  (axil_resp_o),
+    .mst_reqs_o  (axil_reqs_to_intf),
+    .mst_resps_i (axil_resps_from_intf)
   );
 
   ////////////////////
