@@ -144,8 +144,8 @@ To add a register block to the SMC:
   array of whole controllers stays off the list, decodes its stride, and sets
   its `ocah_gap_resp` to `SLVERR`.
 * A vendored block keeps its own decode width. Route it the window its decoder
-  implies, and set its `ocah_past_extent_resp` in the RDL to what that decoder
-  returns, read data included.
+  implies, and set its `ocah_hole_resp` and `ocah_past_extent_resp` in the RDL
+  to what that decoder returns, read data included.
 
 == DV Firmware
 

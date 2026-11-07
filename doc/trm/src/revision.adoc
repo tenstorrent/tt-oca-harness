@@ -209,7 +209,7 @@ clock/reset/powergood inputs.
 |0.5.37 |2026-11-07 |Daniel Kim |Stated the power-of-two window that the SMC
 and cross-trigger network fabric route to each register block, what `SLVERR`
 and `DECERR` mean in the address maps, and the labels for the space past a
-sub-block's registers. An SMC register block now answers `SLVERR`, not
-`DECERR`, past its registers inside its window. Added the steps for placing a
-register block to the Getting Started guide.
+sub-block's registers. Most SMC register blocks now answer `SLVERR`, not
+`DECERR`, past their registers inside their windows. Added the steps for
+placing a register block to the Getting Started guide.
 |=======================================================================
