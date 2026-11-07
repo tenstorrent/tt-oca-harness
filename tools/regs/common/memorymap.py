@@ -139,8 +139,47 @@ def _walk(node: AddressableNode, prefix: str = "") -> dict[str, AddressableNode]
     return result
 
 
+def _windows(node: AddressableNode) -> list[tuple[AddressableNode, int, int, int]]:
+    """Each addressable child of node with its offset, extent and window.
+
+    A child's own ocah_aperture_size is its window; an array's spans every element.
+    """
+    children = [
+        child
+        for child in node.children(unroll=False)
+        if isinstance(child, (AddrmapNode, MemNode, RegNode, RegfileNode))
+    ]
+    windows = []
+    for child in children:
+        offset = int(child.raw_address_offset)
+        extent = window = int(child.total_size)
+        aperture = _own(child, "ocah_aperture_size")
+        if aperture is not None:
+            extent, window = max(extent, _node_extent(child)), int(aperture)
+            if window < extent:
+                raise ValueError(
+                    f"{child.get_path()}: aperture 0x{window:X} is smaller than occupied "
+                    f"extent 0x{extent:X}"
+                )
+            sibling = min(
+                (other for other in children if other.raw_address_offset > offset),
+                key=lambda other: other.raw_address_offset,
+                default=None,
+            )
+            if sibling is not None and offset + window > sibling.raw_address_offset:
+                raise ValueError(
+                    f"{child.get_path()}: aperture 0x{window:X} reaches past "
+                    f"{sibling.inst_name} at 0x{sibling.raw_address_offset:X}"
+                )
+        windows.append((child, offset, extent, window))
+    return windows
+
+
 def _node_extent(node: AddressableNode) -> int:
-    size = int(getattr(node, "size", 0) or 0)
+    size = max(
+        [int(getattr(node, "size", 0) or 0)]
+        + [offset + window for _, offset, _, window in _windows(node)]
+    )
     if getattr(node, "is_array", False):
         count = 1
         for dimension in node.array_dimensions or ():
@@ -149,7 +188,7 @@ def _node_extent(node: AddressableNode) -> int:
         if _inherited(node, "ocah_full_stride_extent"):
             return count * stride
         return (count - 1) * stride + size
-    return int(getattr(node, "total_size", 0) or size)
+    return size
 
 
 def _count(node: AddressableNode) -> int:
@@ -229,26 +268,21 @@ def _extent_responses(
             else (("", Response.from_rdl(own, f"{node.get_path()}: ocah_hole_resp")),)
         )
         return memo[key]
-    children = [
-        child
-        for child in node.children(unroll=False)
-        if isinstance(child, (AddrmapNode, MemNode, RegNode, RegfileNode))
-    ]
-    blocks = [child for child in children if not isinstance(child, RegNode)]
+    windows = _windows(node)
+    blocks = [entry for entry in windows if not isinstance(entry[0], RegNode)]
     intervals: list[tuple[int, int]] = []
-    for child in children:
-        offset = int(child.raw_address_offset)
+    for child, offset, _, window in windows:
         if isinstance(child, RegNode) and child.is_array and child.array_stride > child.size:
             starts = range(offset, offset + _count(child) * child.array_stride, child.array_stride)
             intervals += [(start, start + child.size) for start in starts]
         else:
-            intervals.append((offset, offset + int(child.total_size)))
+            intervals.append((offset, offset + window))
     parts: list[tuple[str, Response]] = []
     if _has_gap(intervals, int(node.size)):
         parts.append(
             ("between sub-blocks", _gap_response(node)) if blocks else ("", _hole_response(node))
         )
-    for block in blocks:
+    for block, _, extent, window in blocks:
         parts += _extent_responses(block, memo)
         if block.is_array and block.array_stride > block.size:
             tail = _own(block, "ocah_gap_resp")
@@ -258,6 +292,14 @@ def _extent_responses(
                     _gap_response(node)
                     if tail is None
                     else Response.from_rdl(tail, f"{block.get_path()}: ocah_gap_resp"),
+                )
+            )
+        if window > extent:
+            past = _own(block, "ocah_past_extent_resp")
+            parts.append(
+                (
+                    "past sub-block registers",
+                    Response.from_rdl(past, f"{block.get_path()}: ocah_past_extent_resp"),
                 )
             )
     memo[key] = tuple(dict.fromkeys(parts))
