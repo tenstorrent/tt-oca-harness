@@ -241,8 +241,9 @@ module csrng_ctr_drbg import csrng_pkg::*; (
     .rst_ni,
 
     .clr_i    (!enable_i),
-    .set_i    (v_ctr_load),
-    .set_cnt_i(core_data.v[CtrLen-1:0]),
+    // SP 800-90A increments V modulo 2^CtrLen, but prim_count saturates: wrap through the set.
+    .set_i    (v_ctr_load || (v_ctr_inc && (&v_ctr))),
+    .set_cnt_i(v_ctr_load ? core_data.v[CtrLen-1:0] : '0),
 
     .incr_en_i(v_ctr_inc),
     .decr_en_i(1'b0),
