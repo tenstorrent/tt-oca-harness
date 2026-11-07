@@ -8,6 +8,16 @@ stages the t=0 image from): the follow-on leg (B 3, C 2, RMA bypass 1, earlier
 owner 1, walk 2, E 2), the raw code r of the leg, the strap s of the leg A read,
 the disable-vector pair (or the exception of the leg) and the leg dimensions.
 
+With ``+sep_pin_cell=<cell>`` the plan seed is the fixed seed of the cell in
+``_PIN`` in place of the run seed: ``rma_chiplet_c`` draws leg C at RMA_CHIPLET,
+``test_dev_b`` leg B at TEST_DEV and ``prod_b`` leg B at PROD. The entry that sets
+it stages the same image with ``+sep_efuse_preload``. The run seed stays the
+``seed=`` of every check line and draws the ``rsvd`` marker bits; INFO-SEED prints
+the plan seed as ``seed=`` and ``run_seed=``, ``plan_seed=`` and ``pin=``.
+``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell. CTRL-PIN-LEG: the
+plan draws the pinned cell; a plan that draws another cell logs
+``CTRL-MISSING PIN-LEG`` and ends the leaf before its first DUT access.
+
 Leg A runs in every leaf: the strap-s read, the SEC_DIS demotion step, then a cold
 reset at strap 0. Then only the follow-on leg runs. Every ``FEAT_CTRL`` read
 is a 64-bit frontdoor read with a sample of ``lcc_feat_ctrl_probe_o``. The golden is
@@ -188,6 +198,28 @@ RSVD_BITS = tuple(b for b in range(64) if (RSVD_MASK >> b) & 1)
 MARK_BITS = tuple(b for b in RSVD_BITS if b >= 32)
 # Salt of the marker-bit stream; the leaf plan draws nothing from it.
 _MARK_SALT = 0x4D41_524B_4445_4D4F
+# Pinned cells: plan seed and the draw the cell needs.
+_PIN = {
+    "rma_chiplet_c": (
+        85,
+        lambda p: p.leg["leg"] == LEG_C and lc_state_class(p.lc_raw) == ST_RMA_CHIPLET,
+    ),
+    "test_dev_b": (
+        21,
+        lambda p: p.leg["leg"] == LEG_B and lc_state_class(p.lc_raw) == ST_TEST_DEV,
+    ),
+    "prod_b": (35, lambda p: p.leg["leg"] == LEG_B and lc_state_class(p.lc_raw) == ST_PROD),
+}
+
+
+def _pin(seed: int) -> tuple[str | None, int]:
+    """Pinned cell and plan seed: no cell and the run seed without ``+sep_pin_cell``."""
+    cell = cocotb.plusargs.get("sep_pin_cell")
+    if cell is None:
+        return None, seed
+    if cell not in _PIN:
+        raise AssertionError(f"SETUP FAIL seed={seed} reason=unknown sep_pin_cell {cell!r}")
+    return cell, int(cocotb.plusargs.get("sep_pin_plan_seed", _PIN[cell][0]))
 
 
 def _op_value(op: str) -> int:
@@ -1106,15 +1138,33 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
 
     async def run_scenario(self) -> None:
         self.seed = seed = self.random_seed()
-        p = plan(TEST, seed)
+        cell, plan_seed = _pin(seed)
+        p = plan(TEST, plan_seed)
         self.p = p
         self.raw = p.lc_raw
         self.state = lc_state_class(self.raw)
         leg = p.leg["leg"]
         self._strap = p.leg["strap"]
-        for line in p.log_lines(leg=leg, raw=f"0x{self.raw:x}", stm=self._strap):
+        for line in p.log_lines(
+            run_seed=seed,
+            plan_seed=plan_seed,
+            pin=cell or "none",
+            leg=leg,
+            raw=f"0x{self.raw:x}",
+            stm=self._strap,
+        ):
             self.logger.info("%s", line)
         self.chk = SepChkLog(self, TEST, seed)
+        if cell is not None and not self.chk.ctrl(
+            "PIN-LEG",
+            _PIN[cell][1](p),
+            pin=cell,
+            plan_seed=plan_seed,
+            leg=leg,
+            state=self.state,
+            raw=f"0x{self.raw:x}",
+        ):
+            self.chk.finish()
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         extra = {

@@ -44,6 +44,10 @@
 //                            it takes no trap; with mie.MTIE 1 and mstatus.MIE
 //                            1 it takes one trap with mcause 0x8000_0007; the
 //                            bit drops with the pin
+//   CHK-SOFT-PIN             the soft_int pin drives mip.MSIP: with mie.MSIE 0
+//                            and mstatus.MIE 1 it takes no trap, the meip
+//                            words outside the excluded idle bits do not
+//                            change, and the bit drops with the pin
 //   CHK-INT-TIMER-HOLD       internal timer k pending (mip.MITIPk 1) with
 //                            mie.MITIEk 0 takes no trap, with mie.MTIE and
 //                            mie.MSIE both 0 or both 1; then mie.MITIEk 1
@@ -1176,6 +1180,21 @@ static int wait_mtip(uint32_t want) {
     return 0;
 }
 
+static void req_sint(uint32_t on) {
+    rec_req("sint");
+    rec_num("on", on);
+    rec_end();
+}
+
+static int wait_msip(uint32_t want) {
+    for (uint32_t i = 0; i < g_prm[P_WAIT]; i++) {
+        if (((read_mip() & MIP_MSIP) != 0u) == (want != 0u)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 // mie.MEIE gate (EL2 PRM section 8.6.1, named by hw/sys/sep/doc/cpu.adoc: an
 // external interrupt is taken once one is pending and the meie bit of mie and
 // the mie bit of mstatus are set): the source pending at an open PIC gate with
@@ -1249,6 +1268,48 @@ static void leg_timer_pin(void) {
     rec_num("mtie1_traps", taken);
     rec_hex("mcause", mc);
     rec_num("mip_mtip_off", mip_off);
+    chk_end(pass);
+}
+
+// Software pin (hw/sys/sep/doc/interrupts.adoc:291-292: the soft_int pin
+// drives mip.MSIP; :261: the pin bypasses the PIC; RISC-V privileged spec
+// section 3.1.9: a pending MSIP with mie.MSIE 0 takes no trap). The host
+// drives soft_int_i on each REQ sint line. mcgc.picio 1 reports disabled
+// sources in meip, so a pin routed into a PIC source changes a meip bit.
+static void leg_soft_pin(void) {
+    uint32_t mie_rd, meip_w0[P_ROUND - P_IDLE], meip_delta = 0u;
+    __asm__ volatile("csrr %0, mie" : "=r"(mie_rd));
+    uint32_t msip_before = (read_mip() >> 3) & 1u;
+    for (uint32_t w = 0; w < P_ROUND - P_IDLE; w++) {
+        meip_w0[w] = pic_read_meip(w) & ~g_prm[P_IDLE + w];
+    }
+    uint32_t ts0 = g_cls_sw, tt0 = g_cls_timer, to0 = g_cls_other;
+    req_sint(1u);
+    int up = wait_msip(1u);
+    uint32_t msip_on = (read_mip() >> 3) & 1u;
+    for (uint32_t w = 0; w < P_ROUND - P_IDLE; w++) {
+        meip_delta |= (pic_read_meip(w) & ~g_prm[P_IDLE + w]) ^ meip_w0[w];
+    }
+    mstatus_mie(1);
+    uint32_t hclk = hold();
+    mstatus_mie(0);
+    uint32_t sw = g_cls_sw - ts0, tm = g_cls_timer - tt0, ot = g_cls_other - to0;
+    req_sint(0u);
+    int down = wait_msip(0u);
+    uint32_t msip_off = (read_mip() >> 3) & 1u;
+    int pass = mie_rd == MIE_MEIE && msip_before == 0u && up && msip_on == 1u &&
+               meip_delta == 0u && sw == 0u && tm == 0u && ot == 0u &&
+               hclk >= LEG_HOLD_MIN_CLK && down && msip_off == 0u;
+    rec_chk("SOFT-PIN", pass);
+    rec_hex("mie", mie_rd);
+    rec_num("msip_before", msip_before);
+    rec_num("msip_on", msip_on);
+    rec_hex("meip_delta", meip_delta);
+    rec_num("msie0_traps_sw", sw);
+    rec_num("msie0_traps_timer", tm);
+    rec_num("msie0_traps_other", ot);
+    rec_num("hold_clk", hclk);
+    rec_num("msip_off", msip_off);
     chk_end(pass);
 }
 
@@ -1470,6 +1531,12 @@ int main(void) {
     leg_mie_meie();
     rec_mark(0, "timer_pin_setup");
     leg_timer_pin();
+    mstatus_mie(0);
+    __asm__ volatile("csrc mie, %0" ::"r"(MIE_MTIE | MIE_MSIE));
+    rec_mark(1, "soft_pin");
+    leg_soft_pin();
+    rec_mark(0, "soft_pin_restore");
+    __asm__ volatile("csrw mie, %0" ::"r"(MIE_WRITE));
 
     rec_mark(0, "end");
     if (g_err == 0) {

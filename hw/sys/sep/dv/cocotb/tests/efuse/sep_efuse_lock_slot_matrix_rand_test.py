@@ -26,6 +26,15 @@ The seed draws one leaf kind and its t=0 image through ``sep_efuse_plan.plan``
 (the pre-sim hook stages the same image): the lock leg 6, the single-bit image 1,
 the exempt cell 1, the order cell 2 and the chain leg 2.
 
+With ``+sep_pin_cell=<cell>`` the plan seed is the fixed seed of the cell in
+``_PIN`` in place of the run seed: ``chain`` draws the chain leg and ``single`` the
+single-bit image (its plan seed draws the write-lock kind of slot 1). The entry that sets it stages the same image
+with ``+sep_efuse_preload``. The run seed stays the ``seed=`` of every check line;
+INFO-SEED prints the plan seed as ``seed=`` and ``run_seed=``, ``plan_seed=`` and
+``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell.
+CTRL-PIN-LEG: the plan draws the pinned leaf kind; a plan that draws another kind
+logs ``CTRL-MISSING PIN-LEG`` and ends the leaf before its first DUT access.
+
 Checkers:
   CHK-LOCK-CELL     lock leg and single-bit image, one line per read slot: the
                     sensed-shadow output equals the staged words (the sense ignores
@@ -273,9 +282,21 @@ _EVIDENCE = {
     "chain": ("CHK-PROG-ROUND", "CHK-PROG-VERSION"),
 }
 _KIND_CHECK = {k: v[0] for k, v in _EVIDENCE.items()}
+# Pinned cells: plan seed and the leaf kind the cell needs.
+_PIN = {"chain": (4, "chain"), "single": (5, "single_bit")}
 # LC_STATE bits a program may set from TEST_DEV and the raw state each one reaches
 # (otp_fuse_controller.adoc:219-220; lifecycle_controller.adoc:118, :126-131).
 _EXEMPT_PROG_RAW = {0: LC_PROD, 3: LC_PROD_END}
+
+
+def _pin(seed: int) -> tuple[str | None, int]:
+    """Pinned cell and plan seed: no cell and the run seed without ``+sep_pin_cell``."""
+    cell = cocotb.plusargs.get("sep_pin_cell")
+    if cell is None:
+        return None, seed
+    if cell not in _PIN:
+        raise AssertionError(f"SETUP FAIL seed={seed} reason=unknown sep_pin_cell {cell!r}")
+    return cell, int(cocotb.plusargs.get("sep_pin_plan_seed", _PIN[cell][0]))
 
 
 def _bit(v: int, m: int) -> int:
@@ -565,9 +586,10 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
     # --- scenario ---------------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        p = plan(TEST, seed)
+        cell, plan_seed = _pin(seed)
+        p = plan(TEST, plan_seed)
         kind = p.leg["kind"]
-        for line in p.log_lines(kind=kind):
+        for line in p.log_lines(run_seed=seed, plan_seed=plan_seed, pin=cell or "none", kind=kind):
             self.logger.info("%s", line)
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
@@ -581,6 +603,16 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             ",".join(self.required_evidence),
         )
         self.chk = SepChkLog(self, TEST, seed)
+        if cell is not None and not self.chk.ctrl(
+            "PIN-LEG",
+            kind == _PIN[cell][1],
+            pin=cell,
+            plan_seed=plan_seed,
+            kind=kind,
+            slot=p.leg.get("slot", "none"),
+            lock_kind=p.leg.get("lock_kind", "none"),
+        ):
+            self.chk.finish()
         self.plan = p
         self.fd = SepEfuseFd(self)
         check = _KIND_CHECK[kind]
