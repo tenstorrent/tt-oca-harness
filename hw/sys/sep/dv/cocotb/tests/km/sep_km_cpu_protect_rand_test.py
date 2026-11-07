@@ -44,7 +44,7 @@ Checks:
                      A last line grades the port over the whole run.
   CHK-SRC31-EXCL     at each rise of bit 30 (trap kinds and C4) every other
                      vector bit keeps its value of one clock before.
-  CHK-TRAP-WIPE      after the recovery reset all 1024 KPV words read 0; the
+  CHK-TRAP-WIPE      after the recovery reset every KPV word reads 0; the
                      witnesses read non-zero before the trap.
   CHK-TRAP-SCOPE     the SRAM witness word and the mailbox witness word stay.
   CHK-TRAP-CLR       PIC bit 30 and the port read 0 after the warm or cold
@@ -110,6 +110,7 @@ from env.sep_fcov_gate import (
     open_graded_window,
     set_km_cpu_pass,
 )
+from env.sep_km_img_h import KPV_SLOT_WORDS, KPV_SLOTS, SRAM_LOCK_REGIONS, SRAM_REGION_BYTES
 from env.sep_monitor_life import MonitorLife
 from env.sep_pic_map import vec_mask
 from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
@@ -167,15 +168,11 @@ KPV_BASE = _a("KPV_BASE_ADDR")
 _KPV_WORD = _ARRAYS["KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR"]  # base, entry, word
 _KPV_CTRL = _ARRAYS["KEY_MANAGER_KPV_CTRL_BASE_ADDR"]  # base, stride
 
-# km_kpv.adoc: KEY_ENTRY[64].WORD[16] and CTRL[64].
-KPV_SLOTS = 64
-KPV_WORDS_PER_SLOT = 16
-KPV_WORDS = KPV_SLOTS * KPV_WORDS_PER_SLOT
+KPV_WORDS = KPV_SLOTS * KPV_SLOT_WORDS
 
-# architecture.adoc, "SRAM Write Locking": 32 regions of 1 KB, one per SRAM_LOCK bit.
-SRAM_REGION_BYTES = 0x400
-# Contract range of a drawn snippet region; region 0 holds the POKE context.
-REGION_MIN, REGION_MAX = 1, 30
+# Contract range of a drawn snippet region: region 0 holds the POKE context,
+# and C3 takes region r + 1.
+REGION_MIN, REGION_MAX = 1, SRAM_LOCK_REGIONS - 2
 
 # architecture.adoc, executable regions table: the VROM window. A build without
 # OCAH_KM_VROM treats it as unmapped, and a fetch pulses EXEC_VIOLATION.
@@ -236,7 +233,7 @@ JUMP_BOUND = 400_000  # bounded wait for the image to reach its jump
 MARKER_BOUND = 200_000  # bounded wait for a snippet or spin-loop result word
 SEP_RESET_BOUND = 20_000  # bounded wait for dbg_sep_reset_n_o
 WITNESS_DELAY = 1000  # idle POKE iterations between the witness push and the trap
-RDLOOP_TIMEOUT = 4_000_000  # the 1024-word KPV read loop
+RDLOOP_TIMEOUT = 4_000_000  # the read loop over every KPV word
 REL_HOLD_CLKS = 2  # clocks a km_cpu_pass bit is held before it is written 0
 PORT_BAD_KEEP = 64  # mismatch clocks the port watcher keeps for the FAIL text
 
@@ -431,7 +428,9 @@ class Plan:
         rom_addr = rng.choice(rom_addrs)
         rom_word = image[rom_addr]
         mis_access, mis_offset = rng.choice(sorted(MISALIGNED))
-        scratch = region_base(rng.randrange(REGION_MIN, REGION_MAX + 1)) + 4 * rng.randrange(256)
+        scratch = region_base(rng.randrange(REGION_MIN, REGION_MAX + 1)) + 4 * rng.randrange(
+            SRAM_REGION_BYTES // 4
+        )
         return cls(
             seed=seed,
             kind_order=order,
@@ -482,7 +481,7 @@ class Plan:
 
     def witness(self) -> Witness:
         slots = tuple(self.rng.sample(range(KPV_SLOTS), 4))
-        words = {s: tuple(_nz(self.rng) for _ in range(KPV_WORDS_PER_SLOT)) for s in slots}
+        words = {s: tuple(_nz(self.rng) for _ in range(KPV_SLOT_WORDS)) for s in slots}
         locks = {s: self.rng.choice(sorted(KPV_LOCKS)) for s in slots}
         return Witness(slots, words, locks, _nz(self.rng), _nz(self.rng))
 
@@ -897,7 +896,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
     async def _write_witnesses(self, w: Witness) -> dict[str, int]:
         ops = [kp.wr(IRQ_STATUS_A, IRQ_DEFINED)]
         ops += [kp.wrblk(kpv_word_addr(s, 0), w.words[s]) for s in w.slots]
-        ops += [kp.rdloop(kpv_word_addr(s, 0), KPV_WORDS_PER_SLOT) for s in w.slots]
+        ops += [kp.rdloop(kpv_word_addr(s, 0), KPV_SLOT_WORDS) for s in w.slots]
         res = await self.poke.run(ops)
         self._require_clean(res, "KPV witness write")
         nonzero = [res[1 + len(w.slots) + i].data[0] for i in range(len(w.slots))]
@@ -928,7 +927,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             seen[1],
         )
         return {
-            "kpv_nonzero_before": int(all(v == KPV_WORDS_PER_SLOT for v in nonzero)),
+            "kpv_nonzero_before": int(all(v == KPV_SLOT_WORDS for v in nonzero)),
             "control_w0": seen[0],
             "control_w1": seen[1],
         }
@@ -1146,7 +1145,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         )
         assert ctl["kpv_nonzero_before"] == 1, (
             f"CHK-TRAP-WIPE FAIL: kind={kind}: a witness slot read back fewer than "
-            f"{KPV_WORDS_PER_SLOT} non-zero words before the trap; the control is not met"
+            f"{KPV_SLOT_WORDS} non-zero words before the trap; the control is not met"
         )
         assert kpv_nonzero == 0, (
             f"CHK-TRAP-WIPE FAIL: kind={kind} reset={reset}: {kpv_nonzero} of {KPV_WORDS} KPV "
@@ -1179,10 +1178,10 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
     def _kpv_tap_words(self, slot: int) -> tuple[int, ...]:
         """KM-KPV: the 16 stored words of ``slot``. The KPV scrambler stays off
         (reset 0, never enabled here), so stored word i is logical word i."""
-        lo = 32 * slot * KPV_WORDS_PER_SLOT
-        mask = ((1 << (32 * KPV_WORDS_PER_SLOT)) - 1) << lo
+        lo = 32 * slot * KPV_SLOT_WORDS
+        mask = ((1 << (32 * KPV_SLOT_WORDS)) - 1) << lo
         v = self.rd_known(cocotb.top.km_kpv_words_o, mask=mask) >> lo
-        return tuple((v >> (32 * i)) & kp.WORD_MASK for i in range(KPV_WORDS_PER_SLOT))
+        return tuple((v >> (32 * i)) & kp.WORD_MASK for i in range(KPV_SLOT_WORDS))
 
     async def _plain_reset_kpv_control(self, kind: str) -> None:
         """Control of CHK-TRAP-WIPE: a reset with no trap keeps the KPV words.
@@ -1195,7 +1194,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         """
         kinds = sorted(KPV_LOCKS)
         slots = self.plan.rng.sample(range(KPV_SLOTS), len(kinds))
-        words = {s: tuple(_nz(self.plan.rng) for _ in range(KPV_WORDS_PER_SLOT)) for s in slots}
+        words = {s: tuple(_nz(self.plan.rng) for _ in range(KPV_SLOT_WORDS)) for s in slots}
         locks = dict(zip(slots, kinds, strict=True))
         for s in slots:
             self.logger.info(
@@ -1207,9 +1206,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             )
         for s in slots:
             base = kpv_word_addr(s, 0)
-            res = await self.poke.run(
-                [kp.wrblk(base, words[s]), kp.rdblk(base, KPV_WORDS_PER_SLOT)]
-            )
+            res = await self.poke.run([kp.wrblk(base, words[s]), kp.rdblk(base, KPV_SLOT_WORDS)])
             self._require_clean(res, f"KPV {kind} reset control write")
             assert tuple(res[1].data) == words[s], (
                 f"KPV {kind} reset control: slot {s} read back "
@@ -1239,7 +1236,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         tap_after = {s: self._kpv_tap_words(s) for s in slots}
         res = await self.poke.run(
             [kp.rd(kpv_ctrl_addr(s)) for s in slots]
-            + [kp.rdblk(kpv_word_addr(s, 0), KPV_WORDS_PER_SLOT) for s in slots]
+            + [kp.rdblk(kpv_word_addr(s, 0), KPV_SLOT_WORDS) for s in slots]
         )
         ctrl_after = [r.value for r in res[: len(slots)]]
         port_after = {s: res[len(slots) + i] for i, s in enumerate(slots)}
@@ -1254,8 +1251,8 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             ",".join(locks[s] for s in slots),
             ",".join(f"0x{c:x}" for c in ctrl_before),
             ",".join(f"0x{c:x}" for c in ctrl_after),
-            KPV_WORDS_PER_SLOT * len(slots),
-            sum(KPV_WORDS_PER_SLOT for s in slots if ctrl_after[slots.index(s)] == 0),
+            KPV_SLOT_WORDS * len(slots),
+            sum(KPV_SLOT_WORDS for s in slots if ctrl_after[slots.index(s)] == 0),
         )
 
     async def _normal_irq_control(self) -> None:
@@ -1367,23 +1364,46 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         await self._reset("warm")
 
     async def _refused_case(
-        self, case: str, target: int, *, enable: int, region: str, locked: int
+        self,
+        case: str,
+        target: int,
+        *,
+        enable: int,
+        region: str,
+        locked: int,
+        lock_bit: int | None = None,
     ) -> None:
         await self._instance(
-            self._refused_graded(case, target, enable=enable, region=region, locked=locked)
+            self._refused_graded(
+                case, target, enable=enable, region=region, locked=locked, lock_bit=lock_bit
+            )
         )
         await self._plain_reset()
 
     async def _refused_graded(
-        self, case: str, target: int, *, enable: int, region: str, locked: int
+        self,
+        case: str,
+        target: int,
+        *,
+        enable: int,
+        region: str,
+        locked: int,
+        lock_bit: int | None,
     ) -> None:
-        """Arm the exec_violation handler, write the enable, jump to ``target``."""
+        """Arm the exec_violation handler, write the enable, jump to ``target``.
+
+        SRAM_EXEC_MODE and SRAM_LOCK are read back before the jump: an enable
+        write, or the SRAM_LOCK bit ``lock_bit``, that did not land fails here.
+        """
         sentinel = self.plan.sentinel()
         self.logger.info("DRAW %s sentinel=0x%08x", case, sentinel)
         ops = [kp.wr(IRQ_STATUS_A, IRQ_DEFINED), *self._sentinel_ops(sentinel)]
         if enable:
             ops.append(kp.wr(SRAM_EXEC_MODE_A, EXEC_ENABLE))
+        n = len(ops)
         ops += [
+            kp.rd(SRAM_EXEC_MODE_A),
+            kp.rd(SRAM_LOCK_A),
             kp.wr(IRQ_ENABLE_A, EN_EXEC_VIOL),
             kp.arm([kp.IRQ_LINE_KMCSR], kp.ACT_SPIN),
             kp.jump(target),
@@ -1391,6 +1411,24 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         handle, jw = await self._post_jump(ops)
         res = self.poke.results(handle, partial=True)
         pre_ok = self._sentinel_ok(res, 1, sentinel)
+        mode_rd = self._field(res[n].value, EXEC_ENABLE, f"{case} SRAM_EXEC_MODE", self.logger)
+        lock_rd = res[n + 1].value
+        self.logger.info(
+            "LOG %s SRAM_EXEC_MODE=0x%08x SRAM_LOCK=0x%08x before the jump",
+            case,
+            res[n].value,
+            lock_rd,
+        )
+        if enable:
+            assert mode_rd == EXEC_ENABLE, (
+                f"CHK-EXEC FAIL: {case}: SRAM_EXEC_MODE reads 0x{res[n].value:08x} before the "
+                "jump, expected ENABLE = 1"
+            )
+        if lock_bit is not None:
+            assert (lock_rd >> lock_bit) & 1 == 1, (
+                f"CHK-EXEC FAIL: {case}: SRAM_LOCK reads 0x{lock_rd:08x} before the jump, "
+                f"expected lock bit {lock_bit} = 1"
+            )
         hword = self.poke.word(kp.W_HWORD)
         s_mark = self.poke.word(W_S_MARK)
         exec_rise = self._rise(jw, IRQ_EXEC_VIOL)
@@ -1419,12 +1457,15 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         )
         self.exec_hits += 1
         self.logger.info(
-            "CHK-EXEC PASS: case=%s mode=%d region=%s locked=%d exec_viol_at_jump=0 exec_viol=1 "
-            "rom_acc_viol=0 handler_word_logged=0x%08x rise_clk=%d",
+            "CHK-EXEC PASS: case=%s mode=%d mode_rd=%d region=%s locked=%d sram_lock=0x%08x "
+            "exec_viol_at_jump=0 exec_viol=1 rom_acc_viol=0 handler_word_logged=0x%08x "
+            "rise_clk=%d",
             case,
             enable,
+            int(mode_rd == EXEC_ENABLE),
             region,
             locked,
+            lock_rd,
             hword,
             exec_rise,
         )
@@ -1765,7 +1806,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         base3 = region_base(r + 1)
         await self._copy_snippet(base3, snippet_s(MARK_S), "C3 snippet")
         await self.poke.run([kp.wr(SRAM_LOCK_A, 1 << r)])
-        await self._refused_case("C3", base3, enable=1, region=str(r + 1), locked=0)
+        await self._refused_case("C3", base3, enable=1, region=str(r + 1), locked=0, lock_bit=r)
         assert self.c2_ok, "CHK-REGION FAIL: the C2 boot of region r did not complete"
         self.logger.info("CHK-REGION PASS: r=%d in_r=allowed in_r1=refused", r)
 

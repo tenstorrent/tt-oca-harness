@@ -7,14 +7,16 @@ RANDCFG. The KM CPU owns KPV CTRL and SRAM_LOCK, so a dedicated ROM
 here rather than on the mailbox command set because no command seals a
 slot: over that surface an erase always frees. The host mailbox word
 selects the legal slot, the SRAM lock region and the seal/free slot
-pair; extent endpoints 0 and 63 are always walked, then a store past
-``KM_KPV_SIZE`` must raise AXI SLVERR. Result flags land in KM SRAM
-word0, with the slot the ROM received echoed back alongside them.
+pair; extent endpoints 0 and the last slot are always walked, then a
+store past ``KM_KPV_SIZE`` must raise AXI SLVERR. Result flags land in
+KM SRAM word0, with the slot the ROM received echoed back alongside
+them.
 """
 
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_km_img_h import KPV_SLOTS, SRAM_LOCK_REGIONS
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import sym
 
@@ -22,13 +24,10 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_km_mailbox_seq import KM_MBOX_WRITE_DATA, KM_MBOX_WRITE_SEPARATOR
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
 
-N_SLOTS = 64
-# km_csr.rdl SRAM_LOCK defines 32 lockable 1 KB regions (0..31). Region 0 is
-# excluded because it holds the result words at 0x8000 and 0x8004: SRAM_LOCK
-# is write-1-set until warm reset, so a lock there drops the ROM's final store.
-# Every other region is drawn.
-N_LOCK_REGIONS = 32
-LEGAL_REGIONS = tuple(range(1, N_LOCK_REGIONS))
+# Region 0 is excluded because it holds the result words at 0x8000 and 0x8004:
+# SRAM_LOCK is write-1-set until warm reset, so a lock there drops the ROM's
+# final store. Every other region is drawn.
+LEGAL_REGIONS = tuple(range(1, SRAM_LOCK_REGIONS))
 # Result word: magic in [31:24], a fold of the received config word in [23:16],
 # and the checker flags in [15:0].
 RESULT_MAGIC = 0xA1
@@ -86,19 +85,21 @@ class SepKmVaultCfg:
     ``seal_slot`` and ``free_slot`` are the two halves of the seal contrast --
     the same erase, run once on a sealed slot and once on an unsealed one, must
     retire the first and free the second. They are drawn distinct from each
-    other and from every slot the extent walk write-locks (0, ``slot``, 63), so
-    neither outcome can be attributed to a lock the walk left behind.
+    other and from every slot the extent walk write-locks (0, ``slot`` and the
+    last slot), so neither outcome can be attributed to a lock the walk left
+    behind.
     """
 
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
-        self.slot = rng.randrange(N_SLOTS)
+        self.slot = rng.randrange(KPV_SLOTS)
         self.region = rng.choice(LEGAL_REGIONS)
-        taken = {0, N_SLOTS - 1, self.slot}
+        taken = {0, KPV_SLOTS - 1, self.slot}
         self.seal_slot = self._pick_free(rng, taken)
         taken.add(self.seal_slot)
         self.free_slot = self._pick_free(rng, taken)
+        # The mailbox word layout that km_rom_vault.S reads, a testbench choice.
         self.cfg_word = (
             (self.slot & 0x3F)
             | ((self.region & 0x1F) << 8)
@@ -110,7 +111,7 @@ class SepKmVaultCfg:
     @staticmethod
     def _pick_free(rng, taken: set[int]) -> int:
         while True:
-            cand = rng.randrange(N_SLOTS)
+            cand = rng.randrange(KPV_SLOTS)
             if cand not in taken:
                 return cand
 

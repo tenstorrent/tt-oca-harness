@@ -364,7 +364,9 @@ def draw_rep(rng) -> RepPlan:
 
 
 def lock_rounds(a: int) -> dict[str, int]:
-    """The two lock masks of the plan: A and its complement over the nine field bits."""
+    """The two lock masks of the plan: A and its complement over the field bits."""
     if not 1 <= bin(a).count("1") <= N_FIELDS - 1 or a & ~LOCK_ALL:
-        raise ValueError(f"lock mask A=0x{a:x} must hold 1 to 8 of bits [8:0]")
+        raise ValueError(
+            f"lock mask A=0x{a:x} must hold 1 to {N_FIELDS - 1} of bits [{N_FIELDS - 1}:0]"
+        )
     return {"a": a, "not_a": ~a & LOCK_ALL}

@@ -29,7 +29,7 @@ from sep_efuse_image import (
     WORD_MASK,
     SepEfuseImage,
 )
-from sep_reg_meta import RegBlock
+from sep_reg_meta import CHeaderRegBlock, RegBlock, ip_c_header
 from sep_seeded_rng import SepSeededRng
 
 T_XBAR_EFUSE = "sep_km_crossbar_efuse_window_rand_test"
@@ -64,9 +64,9 @@ OTP_DUAL_RAIL_FIELDS = (
 # The two fields that the OTP leaf writes through the shadow registers with one
 # added bit; the plan stages them at 0, so every used bit is a 0 bit.
 OTP_SHADOW_WRITE_FIELDS = ("REQUIRED_ALGS", "REQUIRED_SIGNERS")
-# OTP_READ_LOCK holds nine field bits.
-OTP_LOCK_FIELDS = 9
-OTP_LOCK_ALL = (1 << OTP_LOCK_FIELDS) - 1
+# OTP_READ_LOCK holds one bit per field, from bit 0, then its reserved bits.
+_KM_CSR = CHeaderRegBlock("KM_CSR", ip_c_header("key_manager").with_name("km_csr.h"))
+OTP_LOCK_FIELDS = sum(1 for n in _KM_CSR.fields("OTP_READ_LOCK_REG") if n != "RSVD")
 
 # A draw that cannot find a fresh word in this many tries is a generator bug:
 # each try fails with probability below 2^-20 for the word counts here.
@@ -237,9 +237,9 @@ def _otp_iface_plan(seed: int) -> KmFusePlan:
     The seven dual-rail fields hold words that are neither 0 nor all ones, so
     every value word and every complement word has a set bit, and no word
     repeats across the fields. The life-cycle state is TEST_DEV or PROD with
-    equal weight. The lock mask A has 1 to 8 of the 9 field bits. LOCKS,
-    LOCKS_SPARE, SIP_DIS, SYS_DIS and the two shadow-write fields are 0; every
-    other word is drawn non-zero.
+    equal weight. The lock mask A sets at least one OTP_READ_LOCK field bit and
+    leaves at least one clear. LOCKS, LOCKS_SPARE, SIP_DIS, SYS_DIS and the two
+    shadow-write fields are 0; every other word is drawn non-zero.
     """
     rng = SepSeededRng(seed)
     lc_raw = LC_TEST_DEV if rng.getrandbits(1) == 0 else LC_PROD
