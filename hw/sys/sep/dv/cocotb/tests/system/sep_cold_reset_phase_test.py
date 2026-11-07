@@ -102,6 +102,9 @@ _CTL_RELEASE_PCT = 10
 # The clk_wdt_i start phase is a whole number of 125 ps steps. The bench clock
 # start takes the delay in ns, and a multiple of 0.125 ns is exact in binary,
 # so the delay is a whole step count at 1 ps and at 1 fs simulator precision.
+# A start phase that is a multiple of the clk_i period puts every clk_wdt_i edge
+# on a clk_i edge, where CHK-RST-SYNC cannot tell a release synchronized to
+# clk_wdt_i from one synchronized to clk_i, so the draw excludes those phases.
 _WDT_PHASE_STEP_PS = 125
 
 _BARK = 0x0FFF_0000
@@ -177,7 +180,12 @@ class sep_cold_reset_phase_test(sep_base_test):
             self.pr_graded,
             phase_pct(self.pr_graded, p),
         )
-        self.wdt_phase = rng.randrange(0, self.pw_ps // _WDT_PHASE_STEP_PS) * _WDT_PHASE_STEP_PS
+        phases = [
+            k * _WDT_PHASE_STEP_PS
+            for k in range(self.pw_ps // _WDT_PHASE_STEP_PS)
+            if (k * _WDT_PHASE_STEP_PS) % p
+        ]
+        self.wdt_phase = rng.choice(phases)
         log.info(
             "DRAW clk_wdt_i start phase=%d ps (period %d ps)",
             self.wdt_phase,
