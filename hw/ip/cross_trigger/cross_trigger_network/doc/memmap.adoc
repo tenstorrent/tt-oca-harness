@@ -29,9 +29,8 @@ ifdef::backend-pdf[]
 <<ocah-decode-response-codes,Decode Response Codes>>
 endif::backend-pdf[]
 defines them, their codes and the rule for the windows the internal crossbar
-routes. An
-address above `0x2FF` lies in no block's window and answers `DECERR`, with
-read data `0xBADCAB1E`.
+routes. An address above `0x2FF` lies in no block's window and answers
+`DECERR`, with read data `0xBADCAB1E`.
 
 === Detailed Register Map
 
