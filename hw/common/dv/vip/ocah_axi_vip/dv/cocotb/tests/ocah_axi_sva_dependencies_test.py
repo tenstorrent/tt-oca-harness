@@ -154,7 +154,7 @@ class DependencyWires:
             await self.request_read(1)
         if case.endswith("_after_reset"):
             await self.reset()
-        channel = case[0]
+        channel = "b" if case.startswith("b_") else "r"
         await self.step(
             **{f"{channel}valid": 1, f"{channel}ready": 0, **RESPONSE_EXTRA.get(case, {})}
         )

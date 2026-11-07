@@ -580,12 +580,14 @@ modules simply do not elaborate. Its contents:
   assumptions, so a formal environment asserts the design's side and assumes
   its own; both default to assertions.
   Response dependencies (IHI 0022 A3.3.1) are checked whenever BVALID or
-  RVALID is high, including backpressure with READY low. AXI4 requires a
-  matching BID/RID in the pending requests; AXI4-Lite requires the address
-  and write-data counts, or the read-address count. The dependency state
+  RVALID is high, including backpressure with READY low. AXI4 checks the
+  aggregate pending state first, then checks for a matching BID/RID among
+  the pending requests. The AXI4 read count tracks accepted AR bursts
+  until their RLAST handshake. AXI4-Lite requires the address and
+  write-data counts, or the read-address count. The dependency state
   precedes the current edge's request acceptances, so a response cannot
-  qualify itself with a same-edge request. Pending work is consumed only on
-  response handshakes, and reset clears it.
+  qualify itself with a same-edge request. Pending work is consumed only
+  on response handshakes, and reset clears it.
 - `sva/ocah_axi_fv.sv` — the same protocol's handshake, reset,
   burst-legality and response-ordering rules written in the boolean subset
   the open-source formal frontend reads (`OCAH_FV_RULE`,
