@@ -88,31 +88,31 @@ module smc_periph_axi_lite_xbar
     // reset_unit: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_{BASE_ADDR,SIZE}
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE))},
     // misc: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_{BASE_ADDR,SIZE}
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE))},
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_SIZE))},
     // apb2avsbus: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_{BASE_ADDR,SIZE}
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE))},
     // i2c: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_{BASE_ADDR,SIZE}
     '{idx: 4,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_SIZE))},
     '{idx: 5,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_SIZE))},
     // efuse (SMC_EFUSE_MAP): RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_{BASE_ADDR,SIZE}
     '{idx: 6,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR),
@@ -126,21 +126,21 @@ module smc_periph_axi_lite_xbar
     // telemetry: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_{BASE_ADDR,SIZE}
     '{idx: 7,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_SIZE))},
     // system_timer_octs: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_{BASE_ADDR,SIZE}
     '{idx: 8,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE))},
     '{idx: 9,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE))},
     '{idx: 10,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE))},
     '{idx: 6,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
@@ -152,8 +152,8 @@ module smc_periph_axi_lite_xbar
                     + smc_pkg::SmcExternalWindowSize)},
     '{idx: 12,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE)}
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE))}
   };
 
   // ===========================================================================

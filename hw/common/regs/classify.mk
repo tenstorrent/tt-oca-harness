@@ -152,6 +152,15 @@ OCAH_REG_NO_ERR_BLOCKS ?= \
   filter_ctrl \
   gpio_intf
 
+# Blocks alone in a 4 KiB page: the regblock decodes the whole page offset, so an access
+# past its last register answers SLVERR rather than aliasing onto a register.
+OCAH_REG_ADDR_WIDTH_reset_unit ?= 12
+OCAH_REG_ADDR_WIDTH_avsbus_controller ?= 12
+OCAH_REG_ADDR_WIDTH_system_timer_octs ?= 12
+OCAH_REG_ADDR_WIDTH_smc_base_config ?= 12
+OCAH_REG_ADDR_WIDTH_dfx_ctrl_status ?= 12
+OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
+
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
 ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))
