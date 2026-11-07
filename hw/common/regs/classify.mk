@@ -144,8 +144,9 @@ OCAH_REG_ERR_CHECK_BLOCKS ?= \
   otbn_wrapper_key
 OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
 
-# Blocks whose regblock answers OKAY even past its last register: each is arrayed
-# at a stride wider than one instance, and the maps state OKAY between instances.
+# Blocks instantiated as an array at a stride wider than one instance. Each instance's window
+# is its stride and the regblock answers OKAY throughout it, so the padding reads as a hole.
+# Arrays of whole controllers answer SLVERR in their padding and are not listed.
 OCAH_REG_NO_ERR_BLOCKS ?= \
   alias_remap \
   cross_trigger_port \
