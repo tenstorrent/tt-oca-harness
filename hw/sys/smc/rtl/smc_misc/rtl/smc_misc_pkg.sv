@@ -4,7 +4,7 @@
 // Declare register-map select types for the SMC miscellaneous block.
 //
 // Enumerates the misc register targets the misc wrapper demultiplexes: cold scratch,
-// cold-and-warm scratch, chip_config, NDM reset and the error slave.
+// cold-and-warm scratch, chip_config and NDM reset.
 // Exposes NumRegMaps for address decode in smc_misc_wrap; the max() helper is unused by
 // the SMC RTL.
 
@@ -14,16 +14,15 @@ package smc_misc_pkg;
     return a > b ? a : b;
   endfunction
 
-  localparam int unsigned NumRegMaps = 5;
+  localparam int unsigned NumRegMaps = 4;
 
   typedef enum logic [$clog2(
 NumRegMaps
 )-1:0] {
-    SCRATCH_COLD        = 3'b000,
-    SCRATCH_COLD_WARM   = 3'b001,
-    CHIP_CONFIG         = 3'b010,
-    NDM_RESET           = 3'b011,
-    ERR_SLV             = 3'b100
+    SCRATCH_COLD        = 2'b00,
+    SCRATCH_COLD_WARM   = 2'b01,
+    CHIP_CONFIG         = 2'b10,
+    NDM_RESET           = 2'b11
   } select_e;
 
 endpackage

@@ -5,8 +5,8 @@
 //
 // Demultiplexes the misc map onto cold scratch registers, cold-and-warm scratch
 // registers, the chip_config registers (version ID, chip ID and lifecycle state) and the
-// NDM reset registers. Addresses outside those windows reach an error slave that returns
-// DECERR with read data 0xBADCAB1E.
+// NDM reset registers. The demux routes each block the window its register block
+// decodes, and answers the rest of the page with DECERR and read data 0xBADCAB1E.
 
 module smc_misc_wrap #(
   parameter int unsigned CHIP_ID        = 0,  // Chip identifier reported by the chip_config CHIP_ID
@@ -49,70 +49,44 @@ module smc_misc_wrap #(
   // AXI-Lite Demux //
   ////////////////////
 
-  smc_misc_pkg::select_e reg_axi_lite_aw_select;
-  smc_misc_pkg::select_e reg_axi_lite_ar_select;
+  localparam logic [31:0] RangeBase[smc_misc_pkg::NumRegMaps] = '{
+      32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR),
+      32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR),
+      32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR),
+      32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR)
+  };
+  localparam logic [31:0] RangeSize[smc_misc_pkg::NumRegMaps] = '{
+      32'(1) << scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH,
+      32'(1) << scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH,
+      32'(1) << chip_config_reg_pkg::CHIP_CONFIG_REG_MIN_ADDR_WIDTH,
+      32'(1) << ndm_reset_reg_pkg::NDM_RESET_REG_MIN_ADDR_WIDTH
+  };
 
   smc_pkg::smc_axil_32_32_req_t  [smc_misc_pkg::NumRegMaps-1:0] from_demux_reg_axi_lite_req;
   smc_pkg::smc_axil_32_32_resp_t [smc_misc_pkg::NumRegMaps-1:0] from_demux_reg_axi_lite_resp;
 
-  /* add new choice to connect ndm to ndm_reset. Modify below demux to accept new NDM_RESET ENUM*/
-  // Address decoding logic
-  // Uses unique if to avoid priority mux since address ranges are non-overlapping
-  always_comb begin
-    unique if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE) begin
-      reg_axi_lite_aw_select = smc_misc_pkg::SCRATCH_COLD;
-    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE) begin
-      reg_axi_lite_aw_select = smc_misc_pkg::SCRATCH_COLD_WARM;
-    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE) begin
-      reg_axi_lite_aw_select = smc_misc_pkg::CHIP_CONFIG;
-    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE) begin
-      reg_axi_lite_aw_select = smc_misc_pkg::NDM_RESET;
-    end else begin
-      reg_axi_lite_aw_select = smc_misc_pkg::ERR_SLV;
-    end
-
-    unique if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE) begin
-      reg_axi_lite_ar_select = smc_misc_pkg::SCRATCH_COLD;
-    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE) begin
-      reg_axi_lite_ar_select = smc_misc_pkg::SCRATCH_COLD_WARM;
-    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE) begin
-      reg_axi_lite_ar_select = smc_misc_pkg::CHIP_CONFIG;
-    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE) begin
-      reg_axi_lite_ar_select = smc_misc_pkg::NDM_RESET;
-    end else begin
-      reg_axi_lite_ar_select = smc_misc_pkg::ERR_SLV;
-    end
-  end
-
-  axi_lite_demux #(
-    .aw_chan_t   (smc_pkg::smc_axil_32_32_aw_chan_t),
-    .w_chan_t    (smc_pkg::smc_axil_32_32_w_chan_t),
-    .b_chan_t    (smc_pkg::smc_axil_32_32_b_chan_t),
-    .ar_chan_t   (smc_pkg::smc_axil_32_32_ar_chan_t),
-    .r_chan_t    (smc_pkg::smc_axil_32_32_r_chan_t),
-    .axi_req_t   (smc_pkg::smc_axil_32_32_req_t),
-    .axi_resp_t  (smc_pkg::smc_axil_32_32_resp_t),
-    .NoMstPorts  (smc_misc_pkg::NumRegMaps),
-    .MaxTrans    (1),
-    .FallThrough (1'b0),
-    .SpillAw     (1'b1),
-    .SpillW      (1'b0),
-    .SpillB      (1'b0),
-    .SpillAr     (1'b1),
-    .SpillR      (1'b0)
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (32),
+    .AXI_DATA_WIDTH (32),
+    .NUM_RANGES     (smc_misc_pkg::NumRegMaps),
+    .RANGE_BASE     (RangeBase),
+    .RANGE_SIZE     (RangeSize),
+    .MAX_TRANS      (1),
+    .aw_chan_t      (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .w_chan_t       (smc_pkg::smc_axil_32_32_w_chan_t),
+    .b_chan_t       (smc_pkg::smc_axil_32_32_b_chan_t),
+    .ar_chan_t      (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .r_chan_t       (smc_pkg::smc_axil_32_32_r_chan_t),
+    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
+    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t)
   ) u_axi_lite_demux (
-    .clk_i            (clk_i),
-    .rst_ni           (rst_ni),
-    .test_i           (test_en_i),
-
-    .slv_req_i        (reg_axi_lite_req_i),
-    .slv_resp_o       (reg_axi_lite_resp_o),
-
-    .slv_aw_select_i  (reg_axi_lite_aw_select),
-    .slv_ar_select_i  (reg_axi_lite_ar_select),
-
-    .mst_reqs_o       (from_demux_reg_axi_lite_req),
-    .mst_resps_i      (from_demux_reg_axi_lite_resp)
+    .clk_i,
+    .rst_ni,
+    .test_en_i,
+    .slv_req_i   (reg_axi_lite_req_i),
+    .slv_resp_o  (reg_axi_lite_resp_o),
+    .mst_reqs_o  (from_demux_reg_axi_lite_req),
+    .mst_resps_i (from_demux_reg_axi_lite_resp)
   );
 
   //////////////////////////
@@ -261,25 +235,5 @@ module smc_misc_wrap #(
 
   // Output: ndmreset_process goes to reset control logic (via SMU)
   assign ndmreset_process_o = ndm_hwif_out.NDMRESET_PROCESS.ndmreset_process.value[smc_config_pkg::CpuClusterCount - 1:0];
-
-  //////////////////////////
-  // AXI-Lite Error Slave //
-  //////////////////////////
-
-  prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (32),
-    .AXI_DATA_WIDTH (32),
-    .axil_req_t     (smc_pkg::smc_axil_32_32_req_t),
-    .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
-    .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (32),
-    .RESP_DATA      (32'hBADCAB1E)
-  ) u_prim_axi_lite_err_slv (
-    .clk_i      (clk_i),
-    .rst_ni     (rst_ni),
-    .test_en_i  (test_en_i),
-    .axil_req_i (from_demux_reg_axi_lite_req[smc_misc_pkg::ERR_SLV]),
-    .axil_resp_o(from_demux_reg_axi_lite_resp[smc_misc_pkg::ERR_SLV])
-  );
 
 endmodule

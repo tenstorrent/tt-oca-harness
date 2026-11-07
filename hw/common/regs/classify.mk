@@ -161,6 +161,11 @@ OCAH_REG_ADDR_WIDTH_smc_base_config ?= 12
 OCAH_REG_ADDR_WIDTH_dfx_ctrl_status ?= 12
 OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
 
+# Blocks that share a page: the regblock decodes its whole window there, and the wrapper's
+# demux routes it exactly 2^width bytes from a base that is a multiple of that size.
+OCAH_REG_ADDR_WIDTH_scratch ?= 7
+OCAH_REG_ADDR_WIDTH_chip_config ?= 8
+
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
 ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))
