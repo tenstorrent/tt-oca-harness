@@ -8,7 +8,7 @@
     "run_dir": "vcs/dtp/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-c9269c7eb686732b",
+    "comparison_key": "COVCMP-1e7fda67e35f00c0",
     "details_available": true,
     "effective_metrics": {
       "assertion": 100.0,
@@ -39,7 +39,7 @@
     "raw_metrics": {
       "assertion": 96.7,
       "branch": 93.77,
-      "condition": 93.22,
+      "condition": 93.19,
       "fsm_state": 60.21,
       "functional": 100.0,
       "line": 96.74,
@@ -61,11 +61,11 @@
   "failure_buckets": [],
   "flow": "dtp",
   "framework": "",
-  "generated_at": "2026-11-03T10:41:14+00:00",
+  "generated_at": "2026-11-07T19:49:24+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
-    "short_sha": "871dea3"
+    "sha": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
+    "short_sha": "40fe2d9"
   },
   "junit_xml": {
     "missing": 0,
@@ -74,10 +74,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-11-03T10:41:08.991140+00:00",
+    "generated_at": "2026-11-07T19:49:20.464486+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
+      "commit": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
       "dirty": "false"
     },
     "label": "combine",
@@ -102,9 +102,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 20.624,
-    "end_time": "2026-11-03T10:41:08.438319+00:00",
-    "start_time": "2026-11-03T10:40:47.807916+00:00"
+    "duration_sec": 18.616,
+    "end_time": "2026-11-07T19:49:20.111354+00:00",
+    "start_time": "2026-11-07T19:49:01.490873+00:00"
   },
   "tool": "vcs"
 }
