@@ -19,8 +19,9 @@ fabric integration.
 [width="100%",cols="30%,70%",options="header",]
 |===================================================================
 |Parameter |Description
-|Address Range |0xC003_8200 - 0xC003_82FF (256-byte slot); the registers decode
-the first 24 bytes, and an access to 0xC003_8218 - 0xC003_82FF receives DECERR
+|Address Range |0xC003_8200 - 0xC003_821F (32-byte window); the registers decode
+the first 24 bytes, and an access to 0xC003_8218 - 0xC003_821F receives SLVERR with
+read data 0
 |Control Interface |AXI4 (5-bit address, 64-bit data, 8-bit ID), converted internally to
 AXI4-Lite for the registers
 |Data Interface |AXI4 Master (56-bit address, 64-bit data, 3-bit ID; 4-bit ID

@@ -49,8 +49,9 @@ module smc_local_xbar
                                            // PLIC, CLINT and core bus-error units.
   input  axi_out_resp_t front_port_resp_i,  // Response from the CPU cluster front port.
 
-  output axi_out_req_t  data_accel_ctrl_req_o,  // Request for the DMA and zeroer control
-                                                // windows of the data accelerator.
+  output axi_out_req_t  data_accel_ctrl_req_o,  // Request for the data accelerator's
+                                                // control page, which holds the DMA and
+                                                // zeroer control windows.
   input  axi_out_resp_t data_accel_ctrl_resp_i,  // Response from the data accelerator
                                                  // control port.
 
@@ -125,12 +126,8 @@ module smc_local_xbar
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE)},
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE)},
-    '{idx: 1,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE))},
     // The internal and peripheral child xbars reject holes within these
     // generated aggregate bounds.
     '{idx: 2,
