@@ -1507,6 +1507,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         await RisingEdge(cocotb.top.clk_i)
         handle, jw = await self._post_jump(ops)
         await self.poke.wait(handle)
+        await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
         rom1 = self._rom_count()
         res = self.poke.results(handle)
