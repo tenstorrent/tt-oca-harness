@@ -4,8 +4,9 @@
 // SMU address-map and inbound-fabric functional coverage: the
 // `xbar_route_cg` filter intent and the `reg_access_cg` outcome intent of
 // smu_fcov.py as native cover-property points, driven by the map outputs and
-// the inbound AXI handshake, and the routing, outstanding-depth and ID-order
-// families of the six crossbar ports.
+// the inbound AXI handshake, the routing, outstanding-depth and ID-order
+// families of the six crossbar ports, and smu_outstanding_cg of SMU_FCOV.adoc,
+// the IDs in flight and the burst class of the inbound port.
 //
 // One passive, signal-driven module. Every port is a signal of the bench
 // top, except axil_external_active_i, which the bench reads from a window
@@ -51,18 +52,27 @@ module smu_xbar_fcov #(
   input wire [31:0] smc_region_size_i,  // SMC aperture size in bytes; zero disables it.
   input wire s_axi_awvalid_i,  // Inbound AXI manager AW valid at the wrapper boundary.
   input wire s_axi_awready_i,  // Inbound AXI AW ready at the wrapper boundary.
+  input wire [7:0] s_axi_awid_i,  // Inbound AXI AW ID at the wrapper boundary.
+  input wire [7:0] s_axi_awlen_i,  // Inbound AXI AWLEN at the wrapper boundary.
+  input wire [1:0] s_axi_awburst_i,  // Inbound AXI AWBURST at the wrapper boundary.
   input wire s_axi_wvalid_i,  // Inbound AXI W valid at the wrapper boundary.
   input wire s_axi_wready_i,  // Inbound AXI W ready at the wrapper boundary.
   input wire s_axi_wlast_i,  // Inbound AXI WLAST at the wrapper boundary.
   input wire s_axi_bvalid_i,  // Inbound AXI B valid at the wrapper boundary.
   input wire s_axi_bready_i,  // Inbound AXI B ready at the wrapper boundary.
+  input wire [7:0] s_axi_bid_i,  // Inbound AXI B ID at the wrapper boundary.
   input wire [1:0] s_axi_bresp_i,  // Inbound AXI BRESP at the wrapper boundary.
   input wire s_axi_arvalid_i,  // Inbound AXI AR valid at the wrapper boundary.
   input wire s_axi_arready_i,  // Inbound AXI AR ready at the wrapper boundary.
+  input wire [7:0] s_axi_arid_i,  // Inbound AXI AR ID at the wrapper boundary.
+  input wire [7:0] s_axi_arlen_i,  // Inbound AXI ARLEN at the wrapper boundary.
+  input wire [1:0] s_axi_arburst_i,  // Inbound AXI ARBURST at the wrapper boundary.
   input wire s_axi_rvalid_i,  // Inbound AXI R valid at the wrapper boundary.
   input wire s_axi_rready_i,  // Inbound AXI R ready at the wrapper boundary.
+  input wire [7:0] s_axi_rid_i,  // Inbound AXI R ID at the wrapper boundary.
   input wire s_axi_rlast_i,  // Inbound AXI RLAST at the wrapper boundary.
   input wire [1:0] s_axi_rresp_i,  // Inbound AXI RRESP at the wrapper boundary.
+  input wire fcov_gate_i,  // Graded-window gate (tb_fcov_gate), driven by the owning leaf.
   input wire [31:0] axi_in_awvalid_count_i,  // Crossbar inbound AW valid count.
   input wire [31:0] axi_out_awvalid_count_i,  // Crossbar outbound AW valid count.
   input wire axil_external_active_i,  // Downstream AXI-Lite window activity.
@@ -948,6 +958,161 @@ module smu_xbar_fcov #(
       if (b_accept) u_cg_bresp.sample(s_axi_bresp_i);
       if (r_accept) u_cg_rresp.sample(s_axi_rresp_i);
       u_cg_smc_window.sample(smc_size_prog_q, smc_size_zero_e);
+    end
+  end
+
+  // ------------------------------------------------------------------
+  // smu_outstanding_cg (SMU_FCOV.adoc, smu_outstanding_cg): the IDs in
+  // flight on the inbound port and the burst class of each request, inside
+  // the owners' graded windows. An ID is in flight from its AW accept to its
+  // B accept, or from its AR accept to its R-last accept; the counters run
+  // outside the window too, so an access accepted before it still counts.
+  // ------------------------------------------------------------------
+  wire gate_on = (fcov_gate_i === 1'b1);
+  wire r_last_accept = r_accept && (s_axi_rlast_i === 1'b1);
+
+  logic [7:0] pending_w_q[256];
+  logic [7:0] pending_r_q[256];
+  always_ff @(posedge clk_smu_i) begin
+    if (in_reset) begin
+      for (int unsigned i = 0; i < 256; i++) begin
+        pending_w_q[i] <= '0;
+        pending_r_q[i] <= '0;
+      end
+    end else begin
+      // An accept and a completion of one ID in the same cycle leave its
+      // count unchanged.
+      if (aw_accept_e && !(b_accept && (s_axi_bid_i == s_axi_awid_i))) begin
+        pending_w_q[s_axi_awid_i] <= pending_w_q[s_axi_awid_i] + 8'd1;
+      end
+      if (b_accept && !(aw_accept_e && (s_axi_bid_i == s_axi_awid_i))) begin
+        pending_w_q[s_axi_bid_i] <= pending_w_q[s_axi_bid_i] - 8'd1;
+      end
+      if (ar_accept_e && !(r_last_accept && (s_axi_rid_i == s_axi_arid_i))) begin
+        pending_r_q[s_axi_arid_i] <= pending_r_q[s_axi_arid_i] + 8'd1;
+      end
+      if (r_last_accept && !(ar_accept_e && (s_axi_rid_i == s_axi_arid_i))) begin
+        pending_r_q[s_axi_rid_i] <= pending_r_q[s_axi_rid_i] - 8'd1;
+      end
+    end
+  end
+
+  function automatic logic id_in_flight(input logic [7:0] id);
+    return (pending_w_q[id] != 8'd0) || (pending_r_q[id] != 8'd0);
+  endfunction
+
+  logic [8:0] ids_in_flight;
+  always_comb begin
+    ids_in_flight = '0;
+    for (int unsigned i = 0; i < 256; i++) ids_in_flight = ids_in_flight + 9'(id_in_flight(8'(i)));
+  end
+
+  // IDs in flight at an accept, the accepted ID included, against the set
+  // registered before the cycle: an AW and an AR of two new IDs accepted in
+  // one cycle each count the other as not yet in flight.
+  wire [8:0] aw_depth = ids_in_flight + 9'(!id_in_flight(s_axi_awid_i));
+  wire [8:0] ar_depth = ids_in_flight + 9'(!id_in_flight(s_axi_arid_i));
+
+  // Reads accepted since the last R handshake: the depth a read train reaches
+  // with RREADY held back.
+  logic [7:0] ar_train_q;
+  always_ff @(posedge clk_smu_i) begin
+    if (in_reset) ar_train_q <= '0;
+    else if (r_accept) ar_train_q <= '0;
+    else if (ar_accept_e && (ar_train_q != 8'hff)) ar_train_q <= ar_train_q + 8'd1;
+  end
+
+  // Depth buckets of the plan: 1, 2, 3 to 8, 9 to 64 (ignored), above.
+  function automatic logic [2:0] depth_bucket(input logic [8:0] depth);
+    if (depth == 9'd1) return 3'd0;
+    if (depth == 9'd2) return 3'd1;
+    if ((depth >= 9'd3) && (depth <= 9'd8)) return 3'd2;
+    if ((depth >= 9'd9) && (depth <= 9'd64)) return 3'd3;
+    return 3'd7;
+  endfunction
+
+  // Burst classes: single-beat INCR, short INCR (AxLEN 1 to 3), the
+  // eight-beat INCR burst, WRAP, FIXED; another INCR length has no bin.
+  localparam logic [1:0] BurstFixed = 2'b00;
+  localparam logic [1:0] BurstIncr = 2'b01;
+  localparam logic [1:0] BurstWrap = 2'b10;
+
+  function automatic logic [2:0] burst_class(input logic [1:0] burst, input logic [7:0] len);
+    if (burst == BurstWrap) return 3'd3;
+    if (burst == BurstFixed) return 3'd4;
+    if (burst != BurstIncr) return 3'd7;
+    if (len == 8'd0) return 3'd0;
+    if (len <= 8'd3) return 3'd1;
+    if (len == 8'd7) return 3'd2;
+    return 3'd7;
+  endfunction
+
+  // ID classes: all zero, all ones, other.
+  function automatic logic [1:0] id_class(input logic [7:0] id);
+    if (id == 8'h00) return 2'd0;
+    if (id == 8'hff) return 2'd1;
+    return 2'd2;
+  endfunction
+
+  // cp_inflight_burst is {direction, burst class, depth bucket}: the single
+  // and short classes pair with the first three depth buckets on either
+  // direction; the WRAP read, the WRAP write, the FIXED write and the
+  // eight-beat burst are cells at one ID in flight only. Nine to sixty-four
+  // IDs in flight, and an unsupported type or the eight-beat burst with
+  // another ID in flight, are the plan's ignored cells. cp_ar_train_depth is
+  // the measured-only depth of the read train, kept apart from the ignored
+  // range. cp_id_value is {direction, ID class}.
+  covergroup smu_outstanding_cg with function sample (
+      logic dir, logic [2:0] bclass, logic [2:0] depth, logic [7:0] train, logic [1:0] idc
+  );
+    option.per_instance = 1;
+    cp_inflight_burst: coverpoint {
+      dir, bclass, depth
+    } {
+      bins single_depth1 = {7'b0_000_000, 7'b1_000_000};
+      bins single_depth2 = {7'b0_000_001, 7'b1_000_001};
+      bins single_depth3_8 = {7'b0_000_010, 7'b1_000_010};
+      bins short_depth1 = {7'b0_001_000, 7'b1_001_000};
+      bins short_depth2 = {7'b0_001_001, 7'b1_001_001};
+      bins short_depth3_8 = {7'b0_001_010, 7'b1_001_010};
+      bins eight_beat_alone = {7'b0_010_000, 7'b1_010_000};
+      bins wrap_read_alone = {7'b0_011_000};
+      bins wrap_write_alone = {7'b1_011_000};
+      bins fixed_write_alone = {7'b1_100_000};
+      ignore_bins depth_9_64 = {7'b0_000_011, 7'b1_000_011, 7'b0_001_011, 7'b1_001_011};
+      ignore_bins not_alone = {
+        7'b0_010_001, 7'b0_010_010, 7'b0_010_011, 7'b1_010_001, 7'b1_010_010, 7'b1_010_011,
+        7'b0_011_001, 7'b0_011_010, 7'b0_011_011, 7'b1_011_001, 7'b1_011_010, 7'b1_011_011,
+        7'b1_100_001, 7'b1_100_010, 7'b1_100_011
+      };
+    }
+    cp_ar_train_depth: coverpoint train {bins train_2_64 = {[2 : 64]};}
+    cp_id_value: coverpoint {
+      dir, idc
+    } {
+      bins ar_zero = {3'b0_00};
+      bins ar_ones = {3'b0_01};
+      bins ar_other = {3'b0_10};
+      bins aw_zero = {3'b1_00};
+      bins aw_ones = {3'b1_01};
+      bins aw_other = {3'b1_10};
+    }
+  endgroup
+
+  smu_outstanding_cg u_cg_outstanding = new();
+
+  // One sample per accepted address phase; a sample hands the train depth
+  // 0 on a write (no bin) and the real count on a read.
+  always_ff @(posedge clk_smu_i) begin
+    if (!in_reset && gate_on) begin
+      if (aw_accept_e) begin
+        u_cg_outstanding.sample(1'b1, burst_class(s_axi_awburst_i, s_axi_awlen_i), depth_bucket(
+                                aw_depth), 8'd0, id_class(s_axi_awid_i));
+      end
+      if (ar_accept_e) begin
+        u_cg_outstanding.sample(1'b0, burst_class(s_axi_arburst_i, s_axi_arlen_i), depth_bucket(
+                                ar_depth), ar_train_q + 8'd1, id_class(s_axi_arid_i));
+      end
     end
   end
 
