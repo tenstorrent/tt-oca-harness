@@ -15,9 +15,22 @@ minor release it updates.
 - SEP secure DMA zero-fill opcode, `CONTROL.OPCODE` 4 (#3081).
 - SMC cluster MMIO covers I3C instance 5 at `0xC003F000`, which took an access
   fault (#3362).
+- SMC PWM controller (OpenTitan PWM, 4 channels) at `0xC000C000`, driving GPIO
+  59-62 (#3624).
+- Alias remap debug: per-channel miss flags `no_write_hit` and `no_read_hit` in
+  the SMC and SEP debug buses, which could not tell a miss from a hit on the
+  last region (#3165).
+- `MODPREFIX` names the modules in the CDC, RDC and synthesis constraints, so
+  RTL with prefixed module names only needs it set (#3687).
+- Yosys synthesis swaps in IHP SG13G2 implementations of the prim cells, from
+  `flows/synth/pdk` (#3043).
 
 ### Changed
 
+- SMU top level: the GPIO pad ports widen from 65 to 67
+  (`smc_pkg::NumGpioWraps`; GPIO 0-62 bonded, 63-66 unbonded). The PWM takes
+  GPIO 59-62, which were two reserved pads and Cool Reset In and Out; Cool Reset
+  and every pad after it move up by two (#3624).
 - SMU top level: the SMC RAS outputs `smc_cluster_ded_o`,
   `smc_wdt_first_timeout_o` and `smc_wdt_second_timeout_o` are grouped into
   `smc_ras_o` (`smc_pkg::smc_ras_t`), which adds the AXI hang timeouts, the
@@ -40,7 +53,19 @@ minor release it updates.
   `PROT_NS_OVERRIDE_EN`, `PROT_NS_OVERRIDE_VAL` and `PROT_NS_FROM_ADDR_EN`, off
   by default (#3225).
 - Register blocks answer SLVERR only past their end, and OKAY in gaps and
-  between instances of arrayed blocks (#3514, #3518).
+  between instances of arrayed blocks (#3514, #3518). SMC writes past the unit
+  extents and into the `misc_wrap`, `i2c_wrap`, `uart_wrap` and
+  `uart_log_engine_wrap` gaps are declared DECERR, which the crossbars already
+  answered; the RDL and memory map said SLVERR (#3294).
+- SEP ROM memory clears, including the SRAM scrub, use the secure DMA zero fill
+  and read back their first, middle and last words; a failed clear stops the
+  boot (#3631).
+- eFuse read and program interfaces refuse a command to a locked target, or any
+  command in secure test mode, before issuing it; a command already in flight
+  completes (#3315). The SHA digest sticky bits are flops instead of latches
+  (#3304).
+- `prim_sync_reset` goes through the `ocah_prim_generic` technology swap and
+  uses the prim synchronizer cells (#3193).
 - SEP watchdog reset clears the bite, and a cold reset must follow every
   watchdog timeout (#3341). The SMC second-stage watchdog flag is qualified by
   the first-stage timeout (#3502).
@@ -50,12 +75,18 @@ minor release it updates.
   scan-reset bypass of the CDC primitives, which were tied to 0 (#3221).
 - SEP `LC_STATE` resets to `0x0F`, the INVALID hold before fuse sensing (#3450).
 - Configuration checks run at elaboration through `OCAH_ASSERT_STATIC` (#3034).
-- Integrator Guide: `smu_axi_in` carries no AXI atomics (#3591), and the SMU
-  forwards illegal AXI burst encodings unchecked (#3593).
+- Integrator Guide: `smu_axi_in` carries no AXI atomics (#3591), the SMU
+  forwards illegal AXI burst encodings unchecked (#3593), and the NS and source
+  ID contract at the SMU AXI boundary is stated (#3585).
 - AVSBus controller cites PMBus 1.3 Part III (#3394).
 - AoU RTL moves to upstream 080724c. `AOU_TOP` gains `O_LP_LINKERROR` and
   `INT_FDI_LINK_DOWN` and loses `I_SW_DEACTIVATE_START` and `I_SW_RETRAIN_REQ`;
   nothing in this tree instantiates it (#3274, #3412).
+
+### Fixed
+
+- SMC ROM: the hex image failed to build when `.rodata` ended 4 bytes off an
+  8-byte word (#3271).
 
 ### RTL bugs
 
@@ -88,6 +119,26 @@ RTL bugs fixed on `main` since v0.5.3, each with the pull request that fixed it.
   check (#3401).
 - SMC firmware let the SEP reset hart 0 with stores still in its D-cache
   (#3503).
+- SMC DFD register accesses hung while `DEBUG_CTRL.cg_en` stopped the DFD
+  clock; they now get SLVERR (#3310).
+- Isolated SEP 64-bit reads returned `0x1501A7ED` only in the lower 32 bits,
+  with zeros above (#3305).
+- A zero-size SEP or SMC aperture broke the SMU crossbar's `addr_decode` rule
+  check, raising runtime errors on every SEP production boot (#3273).
+- The SMU eFuse shim size check used the example `smc_external` RDL's size
+  instead of the `smc_external` window (#3485).
+- OTBN `LOAD_CHECKSUM` advanced on host reads of IMEM and DMEM, so reading back
+  a loaded program failed the load check (#3677). The SEP mock OTP key
+  responder acknowledged after OTBN had dropped its request (#3676).
+- Key Manager ROM entered the unrecoverable fault path with IRQs unmasked
+  (#3332), let its ISR send stale TX words during RX overflow recovery (#3395),
+  never cleared `IRQ_STATUS.otp_change` (#3397), and handed over with the
+  scramble's write-lock errors set (#3691).
+- Telemetry receiver dropped the first byte of a message whose first beat came
+  in the cycle after the previous message ended (#3313).
+- UART: an input already asserted at reset made the first MSR read report a
+  delta and raise the modem status interrupt (#3312).
+- I2C ignored `CTRL.LLPBK` on `smbalert_ni` in controller mode (#3311).
 
 ## [0.5.3] - 2026-10-09 (Beta)
 
