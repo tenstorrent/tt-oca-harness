@@ -80,8 +80,8 @@ addrmap filter_ctrl {
             desc = "Lock filter configurations. Write once register.
                     Once set, this bit cannot be cleared, and every subsequent write to this
                     filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers terminates
-                    with an error response and leaves the register unchanged; reads still
-                    return the locked configuration.";
+                    with SLVERR and leaves the register unchanged; reads still return the
+                    locked configuration.";
         } locked[63:63] = 0x0;
     };
 

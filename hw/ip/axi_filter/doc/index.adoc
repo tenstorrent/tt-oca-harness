@@ -159,5 +159,4 @@ Setting `FILTER_CONFIG.locked` freezes a filter entry. The bit is
 write-once (`woset`): once set it cannot be cleared. While it is set,
 every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR`
 registers is steered to an AXI-Lite error subordinate and terminates with
-a `SLVERR` response in the SMC filter instances and a `DECERR` response in
-the SEP filter instances; reads still return the locked configuration.
+a `SLVERR` response; reads still return the locked configuration.
