@@ -207,19 +207,22 @@ module smc_cpu_wrapper #(
   smc_pkg::smc_axil_32_64_req_t  axil_cpu_ctrl_req;
   smc_pkg::smc_axil_32_64_resp_t axil_cpu_ctrl_resp;
 
+  localparam longint unsigned CpuCtrlWindowEnd = smc_pkg::reg_page_end(
+      smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR,
+      smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE
+  );
+
   always_comb begin
     // Default to the CPU cluster (L2 frontend)
     front_port_aw_select = FrontPortCluster;
     front_port_ar_select = FrontPortCluster;
     // Check if address matches the cpu_ctrl CSR window
     if (axi_front_port_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR &&
-            axi_front_port_req_i.aw.addr <  smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR +
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE) begin
+            axi_front_port_req_i.aw.addr < CpuCtrlWindowEnd) begin
       front_port_aw_select = FrontPortCpuCtrl;
     end
     if (axi_front_port_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR &&
-            axi_front_port_req_i.ar.addr <  smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR +
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE) begin
+            axi_front_port_req_i.ar.addr < CpuCtrlWindowEnd) begin
       front_port_ar_select = FrontPortCpuCtrl;
     end
   end

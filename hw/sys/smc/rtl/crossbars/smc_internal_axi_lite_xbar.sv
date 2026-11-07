@@ -68,8 +68,8 @@ module smc_internal_axi_lite_xbar
     // smc_base_config: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_{BASE_ADDR,SIZE}
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_SIZE))},
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR
@@ -93,13 +93,13 @@ module smc_internal_axi_lite_xbar
     // mailbox: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_{BASE_ADDR,SIZE}
     '{idx: 6,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE))},
     // dfx_csr: RDL — smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_{BASE_ADDR,SIZE}
     '{idx: 7,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE)}
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE))}
   };
 
   // ===========================================================================

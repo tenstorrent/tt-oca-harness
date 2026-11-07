@@ -7,7 +7,7 @@
 package cpu_ctrl_reg_pkg;
 
     localparam CPU_CTRL_REG_DATA_WIDTH = 64;
-    localparam CPU_CTRL_REG_MIN_ADDR_WIDTH = 10;
+    localparam CPU_CTRL_REG_MIN_ADDR_WIDTH = 12;
     localparam CPU_CTRL_REG_SIZE = 'h2c0;
 
     typedef struct packed {
