@@ -187,6 +187,7 @@ state while the internal TRNG reset is active, even if external inputs are selec
 state. Its AXI responder remains accessible; this is not a reset of that responder.
 |AES, KMAC and OTBN |Not reset by the TRNG coordinator. Native requests receive
 no acknowledgement during adapter clear and can resume after fresh data arrives.
+A word acknowledged before the clear stays on the client's bus, so the client takes that word.
 Their software resets cancel the corresponding adapter endpoints; OTBN owns RND and URND.
 |Key Manager sampler |Not scrubbed by TRNG reset: there is no post-mux adapter
 on this path. Keep KM idle before asserting TRNG reset; holding KM in software
