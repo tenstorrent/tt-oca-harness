@@ -185,7 +185,7 @@ class sep_cold_reset_phase_test(sep_base_test):
             for k in range(self.pw_ps // _WDT_PHASE_STEP_PS)
             if (k * _WDT_PHASE_STEP_PS) % p
         ]
-        self.wdt_phase = phases[rng.randrange(0, len(phases))]
+        self.wdt_phase = rng.choice(phases)
         log.info(
             "DRAW clk_wdt_i start phase=%d ps (period %d ps)",
             self.wdt_phase,
