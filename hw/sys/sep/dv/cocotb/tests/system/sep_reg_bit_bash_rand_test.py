@@ -53,7 +53,8 @@ AES IV_0..3 and DATA_OUT_0..3 leave the CHK-RESET compare. The RDL declares a
 reset of 0, but aes.hjson:550,563,607,620 and programmers_guide.md:8-11 state
 that the reset also clears these registers with pseudo-random data shortly
 afterwards, so no exact reset read value is stated. Each of the eight rows is
-read and logged as ``OBS-RESET-AES-SCRUB`` with its RDL reset, not graded.
+read and logged as ``OBS-RESET-AES-SCRUB`` with its RDL reset; only its OKAY
+response is graded (CHK-RESET).
 CHK-RANDCFG counts them as their own walk.
 
 CHK-HMAC-STATUS-POR: after ``bring_up_no_cpu()`` and before any HMAC access or
@@ -122,6 +123,11 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
                     got,
                     info.reset,
                 )
+                if resp != 0:
+                    reset_fails.append(
+                        f"CHK-RESET FAIL: {info.block}.{info.name} @0x{info.addr:08x} "
+                        f"resp={resp}, expected OKAY"
+                    )
                 continue
             miss = await bash.check_reset(info)
             if miss is not None:
