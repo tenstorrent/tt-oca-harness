@@ -289,11 +289,8 @@ package smc_pkg;
   localparam int unsigned OutputRemapIdxStart = 20;
 
   localparam int unsigned NumMmodeOutputRemapRegions = 8;
-  localparam int unsigned MmodeRemapSelW = $clog2(NumMmodeOutputRemapRegions);
   localparam int unsigned NumXvisorOutputRemapRegions = 8;
-  localparam int unsigned XvisorRemapSelW = $clog2(NumXvisorOutputRemapRegions);
   localparam int unsigned NumAliasRemapRegions = 8;
-  localparam int unsigned AliasRemapSelW = $clog2(NumAliasRemapRegions);
   localparam int unsigned AliasRemapIdxStart = 12;
   localparam int unsigned AliasRemapOffsetWidth = AxiAddrWidth - AliasRemapIdxStart;
 
