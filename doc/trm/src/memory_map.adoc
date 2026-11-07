@@ -89,7 +89,8 @@ the subsystem crossbars and, inside a unit, the demultiplexer or crossbar that
 routes between the unit's register blocks.
 
 Windows follow one rule in the cross-trigger network and in the SMC, apart from
-the eFuse blocks and the units inside the CPU cluster. The SMC crossbars route
+the eFuse blocks, the units inside the CPU cluster and the external window.
+The SMC crossbars route
 each register target whole 4 KiB pages, so an AXI burst, which never crosses a
 4 KiB boundary, stays on one target. Inside a page, and in the cross-trigger
 network's register space, a window is a power of two in size and starts at a
