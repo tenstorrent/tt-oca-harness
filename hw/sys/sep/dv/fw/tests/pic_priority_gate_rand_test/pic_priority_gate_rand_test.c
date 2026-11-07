@@ -1306,9 +1306,9 @@ static void leg_soft_pin(void) {
     req_sint(0u);
     int down = wait_msip(0u);
     uint32_t msip_off = (read_mip() >> 3) & 1u;
-    int pass = mie_rd == MIE_MEIE && msip_before == 0u && up && msip_on == 1u &&
-               mst_mie == 1u && msip_hold == 1u && meip_delta == 0u && ex == 0u && sw == 0u &&
-               tm == 0u && ot == 0u && hclk >= LEG_HOLD_MIN_CLK && down && msip_off == 0u;
+    int pass = mie_rd == MIE_MEIE && msip_before == 0u && up && msip_on == 1u && mst_mie == 1u &&
+               msip_hold == 1u && meip_delta == 0u && ex == 0u && sw == 0u && tm == 0u &&
+               ot == 0u && hclk >= LEG_HOLD_MIN_CLK && down && msip_off == 0u;
     rec_chk("SOFT-PIN", pass);
     rec_hex("mie", mie_rd);
     rec_num("msip_before", msip_before);
