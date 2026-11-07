@@ -55,8 +55,9 @@ image::smc-dma.svg[alt="SMC DMA frontend, request manager and backend inside the
 
 The DMA and the zeroer share `smc_data_accelerator_wrap`. Its control port splits each
 burst into single beats. The control demux sends each beat in the DMA's or the zeroer's
-register window to that block, with the address narrowed to the window, and answers every
-other address in the page with DECERR. Its master mux merges the
+register window to that block, with the address narrowed to the window, and sends every
+other address in the page to the error subordinate `u_ctrl_err_slv`, which answers DECERR
+with read data `0xBADCAB1E`. Its master mux merges the
 two master ports onto the port to the input fabric and adds one ID bit to tell their
 responses apart. In the figure, thick lines are AXI4, thin dark lines are the register
 bus, and grey lines are iDMA requests and responses, gated clocks and status outputs.

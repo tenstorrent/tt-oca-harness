@@ -182,7 +182,7 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 <<ocah-decode-response-codes,Decode Response Codes>>
 endif::backend-pdf[]
-describes for a register block. An access to one of their registers behaves
+describes. An access to one of their registers behaves
 as follows:
 
 * Bits that belong to no field read 0, and writes to them have no effect,

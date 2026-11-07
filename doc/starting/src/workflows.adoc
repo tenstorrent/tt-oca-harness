@@ -122,10 +122,11 @@ ifdef::backend-pdf[]
 https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/memory_map.html#ocah-decode-response-codes[Decode Response Codes]
 endif::backend-pdf[]
 section of the Technical Reference Manual gives the rule and the responses.
-To add a register block:
+To add a register block to the SMC:
 
-* Give each crossbar target an `ocah_aperture_size` of whole 4 KiB pages, and
-  end its crossbar rule on its last page (`smc_pkg::reg_page_end` in the SMC).
+* Give each SMC crossbar target an `ocah_aperture_size` of whole 4 KiB pages,
+  and end its crossbar rule at the end of its last page
+  (`smc_pkg::reg_page_end`).
 * For a block alone in its page, set `OCAH_REG_ADDR_WIDTH_<block> ?= 12` in
   `hw/common/regs/classify.mk` and give it an `SLVERR` `ocah_past_extent_resp`.
 * For a block that shares a page, place it at a multiple of its window and set
@@ -136,12 +137,15 @@ To add a register block:
   `ocah_past_extent_resp`; the wrapper's own `ocah_gap_resp` and
   `ocah_past_extent_resp` stay `DECERR`.
 * For a block instantiated as an array at a stride wider than one instance,
-  add the block to `OCAH_REG_NO_ERR_BLOCKS`, give each instance its stride as
-  its range, and set `ocah_full_stride_extent`. An array of whole controllers
-  stays off the list, decodes its stride, and sets its `ocah_gap_resp` to
-  `SLVERR`.
-* A vendored block keeps its own decode width; record its response past its
-  registers in the memory map.
+  add the block to `OCAH_REG_NO_ERR_BLOCKS`, set `OCAH_REG_ADDR_WIDTH_<block>`
+  so that 2^width^ is the stride if the block does not already decode it, and
+  give each instance its stride as its range. The SMC map sets
+  `ocah_full_stride_extent` at its root; elsewhere, set it on the array. An
+  array of whole controllers stays off the list, decodes its stride, and sets
+  its `ocah_gap_resp` to `SLVERR`.
+* A vendored block keeps its own decode width. Route it the window its decoder
+  implies, and set its `ocah_past_extent_resp` in the RDL to what that decoder
+  returns, read data included.
 
 == DV Firmware
 
