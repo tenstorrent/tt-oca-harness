@@ -83,5 +83,7 @@ The wrapper receives ATB traffic on `clk_telemetry_i` / `rst_telemetry_ni` and
 crosses it into `clk_i` / `rst_ni` through an eight-entry asynchronous FIFO per
 receiver. Its external ready signal reflects crossing-FIFO capacity. This does
 not turn the core's decoded-message queue into a lossless backpressured queue.
-The wrapper also contains flush-handshake synchronizers and returns a decode
-error for register addresses outside its configured receiver apertures.
+The wrapper also contains flush-handshake synchronizers. Its register port goes
+through a `prim_axil_addr_demux` that gives each receiver an aligned window of
+one register-map size, 256 bytes, and answers an address outside every window
+with DECERR and read data `0xBADCAB1E`.
