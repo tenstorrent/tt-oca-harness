@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-03T12:29:35+00:00",
+  "generated_at": "2026-11-07T21:23:58+00:00",
   "points": [
     {
       "failed_tests": 7,
@@ -489,6 +489,95 @@
         }
       ],
       "test_pass_rate": 96.76
+    },
+    {
+      "failed_tests": 16,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-11-07T21:23:58+00:00",
+      "id": "5b13886a0490b1f2",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-41cf4c9f1fe9065f",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 98.39,
+            "branch": 98.75,
+            "condition": 98.41,
+            "fsm_state": 95.86,
+            "functional": 92.72,
+            "line": 99.79,
+            "toggle": 99.02,
+            "user": 99.631
+          },
+          "flow": "smc",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 2
+            },
+            "by_disposition": {
+              "cover": 2
+            },
+            "by_metric": {
+              "user": 2
+            },
+            "by_status": {
+              "open": 2
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 2,
+            "observations_complete": false,
+            "open": 2,
+            "unclassified": 2
+          },
+          "raw_metrics": {
+            "assertion": 95.15,
+            "branch": 94.84,
+            "condition": 85.64,
+            "fsm_state": 57.87,
+            "functional": 79.79,
+            "line": 98.55,
+            "toggle": 78.84,
+            "user": 99.631
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "ERROR",
+          "effective_metrics": {},
+          "flow": "smc",
+          "framework": "uvm",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "ERROR",
+          "effective_metrics": {},
+          "flow": "smc",
+          "framework": "",
+          "holes_summary": {},
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 97.75
     }
   ],
   "schema_version": "0.2"

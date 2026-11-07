@@ -1,79 +1,29 @@
 {
   "artifacts": {
-    "coverage_manifest": "artifacts/smc/coverage/coverage.json",
-    "coverage_policy_application": "artifacts/smc/coverage/report/policy-application.json",
-    "coverage_report": "artifacts/smc/coverage/report",
-    "coverage_summary": "artifacts/smc/coverage/report/summary.json",
-    "result_json": "vcs/smc/runs/combined/result.json",
+    "console": "vcs/smc/runs/combined.log",
     "run_dir": "vcs/smc/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-a86a69b0dc9b9fd6",
-    "details_available": true,
-    "effective_metrics": {
-      "assertion": 92.97,
-      "branch": 98.56,
-      "condition": 99.02,
-      "fsm_state": 100.0,
-      "functional": 95.78,
-      "line": 99.85,
-      "toggle": 99.2,
-      "user": 93.9645
-    },
-    "holes_summary": {
-      "accepted": 0,
-      "by_category": {
-        "user": 51
-      },
-      "by_disposition": {
-        "cover": 51
-      },
-      "by_metric": {
-        "user": 51
-      },
-      "by_status": {
-        "open": 51
-      },
-      "details_available": true,
-      "hole_group_count": 0,
-      "native_point_count": 51,
-      "observations_complete": false,
-      "open": 51,
-      "unclassified": 51
-    },
-    "manifest": "artifacts/smc/coverage/coverage.json",
-    "policy_application": "artifacts/smc/coverage/report/policy-application.json",
-    "policy_thresholds": [],
-    "raw_metrics": {
-      "assertion": 91.51,
-      "branch": 94.59,
-      "condition": 85.92,
-      "fsm_state": 58.62,
-      "functional": 78.37,
-      "line": 98.55,
-      "toggle": 78.44,
-      "user": 93.9645
-    },
-    "report": "artifacts/smc/coverage/report",
-    "source_manifest": "vcs/smc/runs/combined/cov/coverage.json",
-    "source_policy_application": "vcs/smc/runs/combined/cov/report/policy-application.json",
-    "source_report": "vcs/smc/runs/combined/cov/report",
-    "source_summary": "vcs/smc/runs/combined/cov/report/summary.json",
-    "status": "PASS",
-    "summary": "artifacts/smc/coverage/report/summary.json",
-    "target": "default",
-    "threshold": 0.0,
-    "threshold_met": true,
-    "total_percent": 97.91
+    "status": "ERROR",
+    "total_percent": null
   },
-  "failure_buckets": [],
+  "failure_buckets": [
+    {
+      "count": 1,
+      "examples": [
+        "vcs/smc/runs/combined.log"
+      ],
+      "kind": "tool_error",
+      "signature": "--cov-combine: vcs/smc/runs/uvm has no coverage manifest (cov/coverage.json)"
+    }
+  ],
   "flow": "smc",
   "framework": "",
-  "generated_at": "2026-11-03T12:29:34+00:00",
+  "generated_at": "2026-11-07T21:23:56+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
-    "short_sha": "871dea3"
+    "sha": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
+    "short_sha": "40fe2d9"
   },
   "junit_xml": {
     "missing": 0,
@@ -81,38 +31,38 @@
   },
   "kind": "dv",
   "run_metadata": {
-    "executor": "local",
-    "generated_at": "2026-11-03T12:29:30.113268+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
+      "commit": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
       "dirty": "false"
     },
     "label": "combine",
-    "result_json": "vcs/smc/runs/combined/result.json",
     "run_dir": "vcs/smc/runs/combined",
     "tool": "vcs",
-    "tool_version": "vcs script version : X-2025.06"
+    "views": [
+      "cocotb",
+      "uvm"
+    ]
   },
   "schema_version": "0.2",
   "source": {
-    "collector": "run_dv-result",
+    "collector": "views",
     "label": "combine",
-    "native_status": "PASS"
+    "native_status": "MISSING"
   },
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 22,
-    "pass_rate": 96.76,
-    "passing": 657,
-    "total": 679
+    "failing": 16,
+    "pass_rate": 97.75,
+    "passing": 695,
+    "total": 711
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 44.541,
-    "end_time": "2026-11-03T12:29:29.702466+00:00",
-    "start_time": "2026-11-03T12:28:45.156435+00:00"
+    "duration_sec": 8443.147,
+    "end_time": "2026-11-07T21:23:47.930478+00:00",
+    "start_time": "2026-11-07T19:03:04.783579+00:00"
   },
   "tool": "vcs"
 }
