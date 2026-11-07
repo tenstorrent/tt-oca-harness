@@ -1785,8 +1785,8 @@ bit and releases the pad.
 START, delivering the bytes through `RDATA` in wire order, unchanged by `SMBUS_CTRL.SMBSUS` written
 mid-transfer and by a clear `I2C_CONTROLLER_MODE_EN`.
 |`smc_i2c_wire_timing_test` |3 |I2C0 controller SCL, SDA, START, STOP and bus-free timing on the pads
-changes between TIMING0-TIMING4 programming sets by exactly the programmed difference, with the
-minimum set a completed transfer.
+changes between TIMING0-TIMING4 programming sets by exactly the programmed difference, the
+controller's data setup equals `TLOW` minus `THD_DAT`, with the minimum set a completed transfer.
 |`smc_i2c_dual_concurrent_transfer_test` |3 |Two I2C controllers, instances 0 and 1, run write
 transfers at the same time on separate pad pairs, each pad pair carries only its own instance's
 bytes with the programmed timing difference, and the register windows, FIFO levels, `CMD_COMPLETE`
@@ -40947,8 +40947,8 @@ draws nothing from the seed.
 
 *Objective*: The difference in the I2C0 controller's SCL, SDA, START, STOP and bus-free timing on
 the pads between two programming sets equals the difference in the `TIMING0` to `TIMING4` counts
-that were changed, and the difference in the I2C0 target's data setup equals the difference in
-`TSU_DAT`.
+that were changed, the controller's data setup equals `TLOW` minus `THD_DAT`, and the difference
+in the I2C0 target's data setup equals the difference in `TSU_DAT`.
 
 *Test Coverage*:
 
@@ -40962,10 +40962,11 @@ that were changed, and the difference in the I2C0 target's data setup equals the
   pulse of a write, repeated-START read and STOP transfer.
 * The SDA hold after an SCL fall of the bits the controller transmits, and the hold after the SCL
   fall of the bit it not-acknowledges, change with `THD_DAT` by the programmed difference. The SDA
-  setup before the SCL rise of those bits is measured and printed next to `TSU_DAT` and
-  `TLOW` minus `THD_DAT` of each set (`OBS-I2C-WIRE-CTRL-DATA-SETUP`): the controller's setup
-  equals `TLOW` minus `THD_DAT` and does not move with `TSU_DAT`, so the field is graded on the
-  target instead, where its effect is observable (#3695).
+  setup before the SCL rise of every transmitted bit whose SDA changes in the low phase equals
+  `TLOW` minus `THD_DAT` in each of sets A, B and C (`CHK-I2C-WIRE-CTRL-DATA-SETUP`), the
+  controller's data setup as `i2c.rdl` states it for `TIMING3.TSU_DAT`; an additive `TSU_DAT`
+  contribution would lengthen the setup past that value.
+  `TSU_DAT` itself is a target-side field and is graded on the target.
 * `TSU_DAT` on the target: after a transmit stretch the target holds SCL low for its data setup
   before releasing it. I2C0 is re-enabled as a target at 0x2C,
   the bench controller reads one byte from the empty transmit FIFO so the target stretches, the
@@ -41049,12 +41050,13 @@ in first-START hold equals the `T_F` raise; the change in SCL period equals thei
 delta fails it.
 |`CHK-I2C-WIRE-MEASURED-ONLY` |Measured only: the first-START hold in A and A3 and the
 STOP-to-next-START time are printed; nothing is compared.
+|`CHK-I2C-WIRE-CTRL-DATA-SETUP` |The controller's SDA setup before the SCL rise of every
+transmitted bit whose SDA changes in the low phase, in sets A, B and C, equals `TLOW` minus
+`THD_DAT` of that set in cycles; a bit whose setup differs, in any set, fails it.
 |`CHK-I2C-WIRE-DATA-SETUP-DELTA` |With I2C0 as a target releasing a transmit stretch, the change
 in time from the target's SDA fall to the SCL rise it released, `TSU_DAT` 500 minus 200, equals
 300 cycles; any other delta, a missing stretch, a wrong byte at the bench or more than one SDA
-fall inside the stretch fails it. The controller's own SDA setup in sets A, B and C is printed
-with `TSU_DAT` and `TLOW` minus `THD_DAT` (`OBS-I2C-WIRE-CTRL-DATA-SETUP`) and not compared
-(#3695).
+fall inside the stretch fails it.
 |`CHK-I2C-WIRE-DATA-HOLD-DELTA` |The change in SDA hold after the SCL fall of each transmitted bit,
 B minus A and C minus A, equals the change in `THD_DAT`; any other delta fails it.
 |`CHK-I2C-WIRE-NACK-HOLD-DELTA` |With SDA high in the controller's not-acknowledge pulse, the change
@@ -41083,16 +41085,15 @@ state.
 
 *Pass Criteria*: `CHK-I2C-WIRE-TIMING-FIELDS`, `CHK-I2C-WIRE-SCL-HIGH-DELTA`,
 `CHK-I2C-WIRE-SCL-LOW-DELTA`, `CHK-I2C-WIRE-SCL-PERIOD-DELTA`, `CHK-I2C-WIRE-TRTF-DELTA`,
-`CHK-I2C-WIRE-DATA-SETUP-DELTA`, `CHK-I2C-WIRE-DATA-HOLD-DELTA`, `CHK-I2C-WIRE-NACK-HOLD-DELTA`,
+`CHK-I2C-WIRE-CTRL-DATA-SETUP`, `CHK-I2C-WIRE-DATA-SETUP-DELTA`, `CHK-I2C-WIRE-DATA-HOLD-DELTA`,
+`CHK-I2C-WIRE-NACK-HOLD-DELTA`,
 `CHK-I2C-WIRE-RSTART-DELTA`, `CHK-I2C-WIRE-STOP-SETUP-DELTA`, `CHK-I2C-WIRE-BUS-FREE-DELTA`,
 `CHK-I2C-WIRE-MIN-SET-RUN`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and
 every sequence assert holds; `CHK-I2C-WIRE-MEASURED-ONLY` records measurements only.
 Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The reset readback of `TIMING0` to `TIMING4` is logged only, because a stuck-at-zero
-reset cannot be told apart on a 2-state bench; the controller's SDA setup before the SCL rise of
-the transmitted bits is printed next to `TSU_DAT` and `TLOW` minus `THD_DAT` with no expectation,
-since it does not move with `TSU_DAT`; the measured bus-free time of each set is printed
+reset cannot be told apart on a 2-state bench; the measured bus-free time of each set is printed
 next to its programmed `T_BUF` and a value below it is printed, not compared; the hold of the first
 START in A and A3 and the STOP-to-next-START time are measured and printed with no expectation;
 full-rate Standard-mode SCL is not run.
@@ -41534,8 +41535,9 @@ pairs (replayed offline over seeds 0 to 1999: no seed needs more than 4 attempts
 seed beside the draw: the set with `THIGH` 2, the lowest legal value, and every other field of the
 base set. Filter: every field of every set is non-zero and fits its register width, `THIGH` and
 `TLOW` are at least 2 in every set (`i2c.rdl`, `TIMING0`, each stated as at least 2), `THD_DAT`
-plus `TSU_DAT`, `T_R` and `T_F` stays below `TLOW` in every set, so the SDA change of a bit falls
-inside the SCL low phase, and each second set differs from the base set in its parameter only; all
+plus `TSU_DAT`, `T_R` and `T_F` stays below `TLOW` in every set (a wider margin than the
+controller's `THD_DAT` plus `T_F` hold, so the SDA change of a bit falls inside the SCL low phase),
+and each second set differs from the base set in its parameter only; all
 asserted at the draw. The base set, every pair's sign, size and shape and the draw attempt are
 logged at the draw and carried in every checker line; 3 seeds per regression (`reseed = 3`).
 
@@ -53835,7 +53837,7 @@ burst with the watchdog warm reset and asserts the drain reading under `expect_f
 |<<smc-vplan-area-i2c,I2C>>
 |The I2C timing registers program the bus timings in system clock cycles.
 |The absolute SCL period, high and low times, START and STOP setup and hold and the bus-free time have no formula in the pinned sources: `hw/ip/i2c/regs/i2c.rdl` gives each `TIMING` field in system clock cycles and cites the OpenTitan theory of operation only by URL. Source: `hw/ip/i2c/regs/i2c.rdl` (`TIMING0` to `TIMING4`); `hw/ip/i2c/doc/index.adoc`.
-|`smc_i2c_wire_timing_test` grades the difference in each timing between two programmed sets and logs the absolute values, the measured bus-free time next to the programmed `T_BUF` among them, without comparing them. `smc_i2c_timing_set_rand_test` grades only the order of the intervals of each drawn one-parameter pair and prints the absolute intervals, the bus-free time measured from the STOP SDA rise to the next START SDA fall among them, without comparing them; its `T_BUF` pair is printed, not graded (next row).
+|`smc_i2c_wire_timing_test` grades the difference in each timing between two programmed sets and the controller's absolute data setup against `TLOW` minus `THD_DAT`, and logs the other absolute values, the measured bus-free time next to the programmed `T_BUF` among them, without comparing them. `smc_i2c_timing_set_rand_test` grades only the order of the intervals of each drawn one-parameter pair and prints the absolute intervals, the bus-free time measured from the STOP SDA rise to the next START SDA fall among them, without comparing them; its `T_BUF` pair is printed, not graded (next row).
 |<<smc-vplan-area-i2c,I2C>>
 |`TIMING4.T_BUF` sets the time between a STOP and the next START.
 |Whether the bus-free time follows `T_BUF` when `THD_DAT` is long. `hw/ip/i2c/regs/i2c.rdl` states that `T_BUF` "specifies the time between a STOP and START condition (t_BUF) in system clock cycles"; with `THD_DAT` 25 to 32 the measured time from the STOP SDA rise to the next START SDA fall equals `T_R` plus `TSU_STA` plus 7 cycles, does not change when `T_BUF` changes, and is below the programmed `T_BUF` in some samples; with `THD_DAT` 1 (`smc_i2c_wire_timing_test` set A) it follows `T_BUF`. Source: `hw/ip/i2c/regs/i2c.rdl` (`TIMING4.T_BUF`, `TIMING3.THD_DAT`).

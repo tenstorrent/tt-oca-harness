@@ -1224,10 +1224,14 @@ typedef union {
 
 // reg - i2c::TIMING3
 // Data Setup and Hold Times Register
-// Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-// cycles. See Table 11 in the I2C Specification for details. This field is sized
-// to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-// requirement, assuming a 1 GHz system clock.
+// Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+// cycles: after driving a data or ACK bit, the target holds SCL low for
+// `TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+// not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+// `t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+// Specification for details. This field is sized to meet the I2C Standard-mode
+// (100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+// clock.
 #define I2C__TIMING3__TSU_DAT_bm 0x1ff
 #define I2C__TIMING3__TSU_DAT_bp 0
 #define I2C__TIMING3__TSU_DAT_bw 9
@@ -1242,10 +1246,14 @@ typedef union {
 #define I2C__TIMING3__THD_DAT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-        // cycles. See Table 11 in the I2C Specification for details. This field is sized
-        // to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-        // requirement, assuming a 1 GHz system clock.
+        // Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+        // cycles: after driving a data or ACK bit, the target holds SCL low for
+        // `TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+        // not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+        // `t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+        // Specification for details. This field is sized to meet the I2C Standard-mode
+        // (100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+        // clock.
         uint32_t TSU_DAT :9;
         uint32_t :7;
         // Global control: specifies the data and (N)ACK bits hold time (`t_HD;DAT`) in

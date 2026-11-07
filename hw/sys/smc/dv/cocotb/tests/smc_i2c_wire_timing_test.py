@@ -3,8 +3,8 @@
 """I2C0 wire timing on the instance-0 pads as a function of TIMING0-TIMING4.
 
 The controller's phases are graded against THIGH, TLOW, T_R, T_F, THD_DAT, TSU_STA, THD_STA,
-TSU_STO and T_BUF; TSU_DAT, whose effect the controller's bits do not show, is graded with I2C0
-as a target.
+TSU_STO and T_BUF, and its data setup against TLOW minus THD_DAT; TSU_DAT, which only the target
+applies, is graded with I2C0 as a target.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ class smc_i2c_wire_timing_test(smc_base_test):
 
     required_evidence = (
         "CHK-I2C-WIRE-BUS-FREE-DELTA",
+        "CHK-I2C-WIRE-CTRL-DATA-SETUP",
         "CHK-I2C-WIRE-DATA-HOLD-DELTA",
         "CHK-I2C-WIRE-DATA-SETUP-DELTA",
         "CHK-I2C-WIRE-MEASURED-ONLY",
@@ -35,7 +36,7 @@ class smc_i2c_wire_timing_test(smc_base_test):
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 15
+    min_evidence = 16
 
     auto_protocol_vip = False
 

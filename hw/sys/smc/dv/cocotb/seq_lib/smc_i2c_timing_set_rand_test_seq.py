@@ -119,8 +119,8 @@ GRADED_PAIR_NOTE = "absolutes and differences printed, not compared; order grade
 
 #: Base-set ranges. Every drawn change of up to CHANGE_MAX in either direction keeps each field
 #: at or above 1, and `THIGH` and `TLOW` at or above 2 (i2c.rdl TIMING0); `THD_DAT` plus
-#: `TSU_DAT`, `T_R` and `T_F` stays below `TLOW` in every set, so the SDA change of a bit falls
-#: inside the SCL low phase.
+#: `TSU_DAT`, `T_R` and `T_F` stays below `TLOW` in every set (a wider margin than the controller's
+#: `THD_DAT` plus `T_F` hold, so the SDA change of a bit falls inside the SCL low phase).
 BASE_RANGE = {
     "thigh": (30, 60),
     "tlow": (110, 150),
