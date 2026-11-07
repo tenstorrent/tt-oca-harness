@@ -664,6 +664,7 @@ Observation probe groups:
    `last`, `data`) on `smn_outbound_axi_resp_i`, with READY from the request net.
    Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST, CHK-DMA-HOST-HOLD),
    `sep_cpu_ctrl_timeout_inert_rand_test` (CHK-STALL-REAL),
+   `sep_debug_master_target_matrix_test` (CTRL-DBG-REMAP-RSP),
    `sep_fabric_dma_endpoint_matrix_test` (the read legs of CHK-DMA-REMAP).
 ** PR-SMC (`pr_smc_*`): `sep_ext_to_smc_axi_req_o`, the same AW and AR fields
    and W beats of data, strobe and last. Owners:

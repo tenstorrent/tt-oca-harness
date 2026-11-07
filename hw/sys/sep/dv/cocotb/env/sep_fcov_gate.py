@@ -1291,8 +1291,7 @@ def set_exo_pass(mask: int, log=None) -> bool:
     s35, s36 and s41 to s43. The sampler holds each exclusive rise of those
     sources in the window of their owner and samples a held rise only when bit
     ``source - 32`` (``exo_pass_bit``) rises; the release does not depend on
-    the window. The owner writes the bit after CHK-SRC<source>-EXCL (sources
-    35 and 36) or CHK-SRC<source>-RISE (sources 41 to 43) passes,
+    the window. The owner writes the bit after CHK-SRC<source>-RISE passes,
     keeps the bits of the checks that passed before it, holds the value at
     least one clock and writes 0 at the end. Same rules as ``graded_owner``: a
     no-op that returns False on Verilator. On VCS a sampler without the

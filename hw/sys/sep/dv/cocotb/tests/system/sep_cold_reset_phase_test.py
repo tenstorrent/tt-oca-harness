@@ -17,6 +17,9 @@ after a ``clk_i`` rising edge. The graded pass asserts and releases ``rst_ni``
 inside a drawn third of the ``clk_i`` period, with the release placed in the
 ``clk_i`` cycle that puts it inside the same third of the ``clk_wdt_i`` period.
 Each pass first arms seven watchdog and wakeup registers to non-default values.
+After the graded pass, with the graded window closed, one ``rst_ni`` pulse of a
+drawn 1 to 7 ``clk_i`` cycles runs, and a full-width ``rst_ni`` pulse follows it
+so the leaf ends from a complete cold reset.
 
 Checkers:
   CHK-ARM           each armed register reads back its armed value, which
@@ -31,14 +34,22 @@ Checkers:
 
 Controls and observations: ``INFO-COLD-WDT`` logs ``WDOG_REGWEN``, the two
 watchdog thresholds and ``WKUP_THOLD_HI`` after the reset (graded by
-``sep_timer_clock_contract_test``). ``OBS-RST-ASSERT`` logs the delay from the
+``sep_timer_clock_contract_test``). ``CTRL-RST-OFFEDGE`` logs the measured
+offset of each ``rst_ni`` release from the nearest ``clk_i`` edge; in the
+graded pass an offset within the edge allowance fails the leaf, because
+CHK-RST-SYNC could not then fail. ``OBS-RST-ASSERT`` logs the delay from the
 ``rst_ni`` fall to the ``sep_reset_n`` fall; the specification gives no
-assertion timing, so it is not graded.
+assertion timing, so it is not graded. ``OBS-RST-MIN-WIDTH`` logs the width
+of the pulse below the floor, whether ``sep_reset_n`` fell and rose, whether
+``sep_fuse_sense_done_o`` fell, and both levels ``_SEP_BOUND``
+``clk_i`` cycles after the release; the specification states no minimum
+``rst_ni`` width, so nothing in it is graded.
 
 Environment choices (not from the specification): the 1 ps edge allowance
 covers the simulator resolution; the ``sep_reset_n`` release wait is
 ``_SEP_BOUND`` ``clk_i`` cycles and the ``aon_rst_n`` wait ``_AON_BOUND``
-``clk_wdt_i`` periods; the reset width floor is 8 ``clk_i`` cycles.
+``clk_wdt_i`` periods; the reset width floor of the graded passes is 8
+``clk_i`` cycles.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense`` with
 ``ext_boot_seq_done_i`` at 1, so ``rst_ni`` is the only open term. VCS only:
@@ -57,6 +68,7 @@ from env.sep_edge_timer import (
     nearest_edge_offset_ps,
     phase_pct,
 )
+from env.sep_efuse_test_lib import rst_pulse
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
@@ -83,6 +95,7 @@ _WDT_RATIO = 8
 _EDGE_ALLOWANCE_PS = 1
 _SEP_BOUND = 64
 _AON_BOUND = 64
+_RST_WIDTH_FLOOR = 8
 # Thirds of a period in percent (each away from the edge).
 _THIRDS = {1: (10, 33), 2: (33, 67), 3: (67, 90)}
 _CTL_RELEASE_PCT = 10
@@ -148,7 +161,10 @@ class sep_cold_reset_phase_test(sep_base_test):
 
         self.third = rng.randrange(1, 4)
         log.info("DRAW third=%d (%d-%d %% of the period)", self.third, *_THIRDS[self.third])
-        self.wc = {"ctl": rng.randrange(8, 65), "graded": rng.randrange(8, 65)}
+        self.wc = {
+            "ctl": rng.randrange(_RST_WIDTH_FLOOR, 65),
+            "graded": rng.randrange(_RST_WIDTH_FLOOR, 65),
+        }
         log.info("DRAW Wc ctl=%d graded=%d clk_i cycles", self.wc["ctl"], self.wc["graded"])
         self.pa = {"ctl": rng.randrange(10 * p // 100, 90 * p // 100 + 1)}
         log.info("DRAW pa_0=%d ps (%.1f %%)", self.pa["ctl"], phase_pct(self.pa["ctl"], p))
@@ -276,13 +292,25 @@ class sep_cold_reset_phase_test(sep_base_test):
             wdt_ph,
             phase_pct(wdt_ph, self.pw_ps),
         )
+        await self._wait_level(dut.dbg_sep_reset_n_o, 1, clk, _SEP_BOUND, "sep_reset_n release")
+        clk_off = nearest_edge_offset_ps(t_rel, self.edges.edge_times("clk_i"))
+        self.logger.info(
+            "CTRL-RST-OFFEDGE: pass=%s rst_ni rose t=%d offset_to_clk_edge=%s allowance=%d",
+            pass_name,
+            t_rel,
+            clk_off,
+            _EDGE_ALLOWANCE_PS,
+        )
         if pass_name == "graded":
+            assert clk_off is not None and abs(clk_off) > _EDGE_ALLOWANCE_PS, (
+                f"CTRL-MISSING RST-OFFEDGE: pass=graded rst_ni rose t={t_rel} "
+                f"offset_to_clk_edge={clk_off} ps is within {_EDGE_ALLOWANCE_PS} ps of a clk_i edge"
+            )
             lo, hi = _THIRDS[self.third]
             assert lo * self.pw_ps < 100 * wdt_ph < hi * self.pw_ps, (
                 f"test error: graded release clk_wdt_i phase {wdt_ph} ps not in third {self.third}"
             )
 
-        await self._wait_level(dut.dbg_sep_reset_n_o, 1, clk, _SEP_BOUND, "sep_reset_n release")
         sep_rise = [t for t in self.sep_t.rises(t_rel)]
         assert sep_rise, f"CHK-RST-SYNC FAIL: pass={pass_name} no sep_reset_n rise after release"
         t_sr = sep_rise[0]
@@ -361,6 +389,40 @@ class sep_cold_reset_phase_test(sep_base_test):
             got["WKUP_THOLD_HI"],
         )
 
+    async def _sub_floor_pulse(self) -> None:
+        """Observe one ``rst_ni`` pulse below the width floor; nothing here is graded."""
+        dut = cocotb.top
+        rst_t = SepEdgeTimer(dut.rst_ni, name="rst_ni").start()
+        sense_t = SepEdgeTimer(dut.sep_fuse_sense_done_o, name="sense_done").start()
+        t0 = _now_ps()
+        await rst_pulse(self, hold=self.sub_w)
+        t_rel = _now_ps()
+        for _ in range(_SEP_BOUND):
+            await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        t_fall = rst_t.falls(t0)[0]
+        sep_falls = self.sep_t.falls(t0)
+        sep_end = self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True)
+        sense_end = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        self.logger.info(
+            "OBS-RST-MIN-WIDTH: width=%d floor=%d rst_ni fell t=%d released t=%d "
+            "sep_reset_n_fell=%d sep_reset_n_fall_delta=%s sep_reset_n_rose=%d "
+            "sense_done_fell=%d sep_reset_n_end=%s sense_done_end=%s window_clk=%d",
+            self.sub_w,
+            _RST_WIDTH_FLOOR,
+            t_fall,
+            t_rel,
+            int(bool(sep_falls)),
+            sep_falls[0] - t_fall if sep_falls else "none",
+            int(bool(self.sep_t.rises(t_rel))),
+            int(bool(sense_t.falls(t0))),
+            "x" if sep_end is None else sep_end,
+            "x" if sense_end is None else sense_end,
+            _SEP_BOUND,
+        )
+        await rst_t.stop()
+        await sense_t.stop()
+
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
@@ -369,6 +431,10 @@ class sep_cold_reset_phase_test(sep_base_test):
         self.pw_ps = _WDT_RATIO * self.p_ps
         rng = SepSeededRng(seed)
         self._draw(rng)
+        self.sub_w = rng.randrange(1, _RST_WIDTH_FLOOR)
+        self.logger.info(
+            "DRAW sub_floor_width=%d clk_i cycles (floor %d)", self.sub_w, _RST_WIDTH_FLOOR
+        )
         close_graded_window()
         self.cfg.wdt_clk_period_ns = self.pw_ps / 1000
         self.clock_phases_ps = {"clk_wdt_i": self.wdt_phase}
@@ -397,4 +463,6 @@ class sep_cold_reset_phase_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         await self._pass("graded")
         close_graded_window(self.logger)
+        await self._sub_floor_pulse()
+        await self.pulse_rst_ni()
         self.result_pass(TEST, seed, len(self.required_evidence))
