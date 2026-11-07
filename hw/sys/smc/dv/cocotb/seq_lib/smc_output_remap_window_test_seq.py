@@ -64,7 +64,7 @@ at the remapped address. Every word reads back through the window.
 [31:0] on the enabled lanes, `valid` set on the disabled top lane) and with
 WSTRB=0x80 (`valid` set on the top lane, another offset on the disabled lanes),
 and read back after each write. Whether a write honours its strobes is not
-stated (SF-027), so the two readbacks are logged, not compared. One word through
+stated, so the two readbacks are logged, not compared. One word through
 slot r must then land where the second readback's `valid` and offset put it.
 
 **Alias cacheable field.** Each alias remap region (`alias_remap.adoc`:
@@ -80,19 +80,19 @@ regions are at their reset. Write-then-read pairs at `D` and `W0` carry:
 
 * an 8-byte single beat at `D` (AW and AR address `D`);
 * INCR bursts of 1, 2, 4, 8 and 16 beats at `D`, every beat read back with
-  RLAST on the last; the output AxLEN is logged (SF-010);
+  RLAST on the last; the output AxLEN is logged;
 * AxPROT 0..7 and AxCACHE 0xF..0x0, each equal on output_axi to the value
   issued (`fabric.adoc`: AxPROT passes unchanged; a transaction that hits no
   alias region keeps its initiator's AxCACHE);
 * AxQOS, AxREGION and AxLOCK varied one at a time, the AxLOCK = 1 pair an
   exclusive read then exclusive write; output values and the exclusive
-  response are logged (SF-008);
+  response are logged;
 * AWUSER / ARUSER 0xFFF then 0 and WUSER 0xFFF then 0; at `D` the output
   AWUSER, ARUSER and WUSER all equal `SMC_ID` and at `W0` all equal `MMODE_ID`
   (`fabric.adoc`: each path replaces the whole AWUSER, ARUSER and WUSER with
   its source ID, so bits [11:4] leave as zero);
 * AWID / ARID 0..3, each answered with its own BID / RID, then four writes and
-  four reads outstanding at once; output AWID / ARID logged (SF-009).
+  four reads outstanding at once; output AWID / ARID logged.
 
 Every pair answers OKAY and reads back the word it wrote. The sampler also
 records the AxUSER the JTAG manager presented at its own AW, AR and W
@@ -779,7 +779,8 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
         if prefix == "XVISOR":
             self._chk(
                 "CHK-ORMP-WSTRB",
-                "mmode/xvisor r0..7 partial-lane readbacks measured (LINKED-ISSUE SF-027), "
+                "mmode/xvisor r0..7 partial-lane readbacks measured (LINKED-ISSUE: whether a "
+                "remap region write honours its byte strobes), "
                 "each landing consistent with the read-back valid and offset: "
                 + "; ".join(self._wstrb_rows + rows),
             )
@@ -1062,7 +1063,8 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-OUT-BURST",
             f"beats {{{','.join(str(b) for b in _BURST_BEATS)}}} {beats_read}/{want} read back, "
-            f"BRESP/RRESP OKAY; output_axi AxLEN {{{'; '.join(rows)}}} (LINKED-ISSUE SF-010)",
+            f"BRESP/RRESP OKAY; output_axi AxLEN {{{'; '.join(rows)}}} (LINKED-ISSUE: the "
+            "allowed JTAG burst shapes and their preservation)",
         )
 
     async def _prot(self) -> None:
@@ -1139,7 +1141,8 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
             "CHK-OUT-QRL",
             f"QOS/REGION/LOCK0 pairs {pairs}/10 data match OKAY; out AW/AR "
             + " ".join(f"{f.upper()} {{{', '.join(v)}}}" for f, v in seen.items())
-            + f"; excl resp {'; '.join(excl)} (LINKED-ISSUE SF-008)",
+            + f"; excl resp {'; '.join(excl)} (LINKED-ISSUE: whether AxQOS, AxREGION and "
+            "AxLOCK pass, and the exclusive response)",
         )
 
     async def _user(self) -> None:
@@ -1263,7 +1266,8 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
             f"id0..3 BID/RID match {resp_ids}/8, data {data}/4; outstanding 4W+4R complete, IDs "
             f"match {len(jb) + len(jr)}/8 (peak JTAG outstanding W {peak_w} R {peak_r}); out "
             f"{' '.join(out)}; group AWID {{{','.join(f'0x{v:02x}' for v in grp_aw)}}} ARID "
-            f"{{{','.join(f'0x{v:02x}' for v in grp_ar)}}} (LINKED-ISSUE SF-009)",
+            f"{{{','.join(f'0x{v:02x}' for v in grp_ar)}}} (LINKED-ISSUE: the output "
+            "AxID a JTAG request carries)",
         )
 
     async def _group(self, label: str, items: list[SmcSysAxiItem]) -> None:

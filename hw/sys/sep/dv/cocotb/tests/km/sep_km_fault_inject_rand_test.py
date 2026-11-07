@@ -76,6 +76,8 @@ Checks (HOST-UNREC unless marked):
   CHK-WIPE-STATUS    (both) the real wipe sets IRQ_STATUS.WIPE_STATE (control:
                      0 before the KM_WIPE_CTRL write).
   CHK-TRAP-HELD      (both) bit 30 stays high and a CMD_STAT gets no answer.
+                     (control CTRL-TRAP-STAT-QUEUED: at every trap window the
+                     inbound depth rises with the posted CMD_STAT frame.)
   CHK-RESTORE        (both, control) a warm reset restores CMD_STAT and bit 30 = 0.
   CHK-PARITY-CLEAN   (both, control) a clean run and each no-flip twin raise no fault.
   CHK-FATAL-SET      HK-IRQSET sets report the code of the first source, the
@@ -97,7 +99,8 @@ Checks (HOST-UNREC unless marked):
   CHK-RESIDUE        a flip past the key end raises no fault.
   CHK-CPU-TRAP       CPU lines 1 and 2 report -9 and -10 and rank above KMCSR.
                      (control CTRL-CPU-TRAP-CSR-SET: the KMCSR source of the
-                     shared clock latched its IRQ_STATUS bit.)
+                     shared clock latched its IRQ_STATUS bit; for WIPE_STATE,
+                     which the CPU trap sets itself, km_irqset_fired_o reads 1.)
   CHK-MAINCTX-FATAL  a bad image CRC sends one 0xFFFFFFF2 frame and holds bit 30.
   CHK-DRBG-STALL     (HOST) a stopped KM entropy stream reports -8; key 0 of
                      the plan sits in its banks (CTRL-DRBG-STALL-KEYED).
@@ -883,6 +886,9 @@ class sep_km_fault_inject_rand_test(sep_base_test):
     async def _status(self) -> int:
         return await self.km.read_status()
 
+    async def _in_depth(self) -> int:
+        return (await self._status() >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK
+
     async def _out_depth(self) -> int:
         return (
             await self._status() >> KM_STATUS_OUTBOUND_DEPTH_LSB
@@ -897,9 +903,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         i = 0
         while i < len(words):
             for _ in range(INBOUND_POLLS):
-                depth = (
-                    await self._status() >> KM_STATUS_INBOUND_DEPTH_LSB
-                ) & KM_STATUS_INBOUND_DEPTH_MASK
+                depth = await self._in_depth()
                 if depth < KM_MBOX_DEPTH:
                     break
                 await ClockCycles(cocotb.top.clk_i, POLL)
@@ -1189,7 +1193,13 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 input_ready_samples=in_ready,
             )
         elif state != "key":
-            self.chk.info("AES-OTHER", step=step, output=output, aes_w_clk=self.aes_w_clk)
+            self.chk.info(
+                "AES-OTHER",
+                step=step,
+                output=output,
+                aes_w_clk=self.aes_w_clk,
+                graded_by="CHK-SHRED-WITNESS" if self.unrec else "CHK-NOSHRED-HOST-AES",
+            )
         if state != "key":
             await self._aes_reset()
         return state
@@ -1207,7 +1217,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             return "key"
         if digest == g_sw:
             return "nokey"
-        self.logger.info("INFO-HMAC-DIGEST digest=%s (neither golden)", [_hx(w) for w in digest])
+        self.chk.info(
+            "HMAC-DIGEST",
+            digest=[_hx(w) for w in digest],
+            graded_by="CHK-SHRED-WITNESS" if self.unrec else "CHK-NOSHRED-HOST",
+        )
         return "other"
 
     # ================================================================ ML-KEM
@@ -1338,10 +1352,26 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             return False
         return True
 
-    async def _trap_window(self, w_clk: int) -> tuple[int, int, list[_Frame]]:
+    async def _trap_window(self, w_clk: int, point: str) -> tuple[int, int, list[_Frame]]:
         """Send CMD_STAT, then sample bit 30 20 times over ``w_clk`` clocks and
-        read every frame that arrives. Returns (high samples, RESP_CMD frames, frames)."""
+        read every frame that arrives. Returns (high samples, RESP_CMD frames, frames).
+
+        Control: the halted core does not read the inbound FIFO, and the posted
+        frame raises the inbound depth. A CMD_STAT without an answer is then a
+        held core and not a lost post.
+        """
+        frame_words = len(self.km.build_frame(KM_CMD_STAT, self.km.seq_num, []))
+        before = await self._in_depth()
         await self._send(KM_CMD_STAT, [])
+        after = await self._in_depth()
+        self.chk.ctrl(
+            "TRAP-STAT-QUEUED",
+            after > before,
+            point=point,
+            in_depth_before=before,
+            in_depth_after=after,
+            frame_words=frame_words,
+        )
         step = max(1, w_clk // TRAP_SAMPLES)
         high = 0
         frames: list[_Frame] = []
@@ -1381,7 +1411,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             hmac = await self._hmac_read(p.keys[0].words, HMAC_MSG)
             aes = await self._aes_read(p.keys[0].words, "pre_wipe")
         t0 = self._cyc()
-        code, arg, _ = await self._cmd(KM_CMD_STAT, [])
+        code, _, _ = await self._cmd(KM_CMD_STAT, [])
         stat_clk = self._cyc() - t0
         for _ in range(p.r):
             await self._send(KM_CMD_STAT, [])
@@ -1403,13 +1433,16 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             keyvalid=_h2(pre.keyvalid),
             v=_h2(p.v),
         )
+        graded_by = "CHK-SHRED-FIRST" if self.unrec else "CHK-SHRED-FIRST-HOST"
+        if point != "real_wipe":
+            graded_by += ",CHK-KPV-TRAP"
         self.logger.info(
-            "INFO-PRE-STATE shared=%d kpv_words_nonzero=%d ctrl_stat_clk=%d stat=%s r=%d",
+            "INFO-PRE-STATE shared=%d kpv_words_nonzero=%d ctrl_stat_clk=%d r=%d graded_by=%s",
             pre.shared,
             pre.kpv_words_nonzero,
             stat_clk,
-            _hx(arg),
             p.r,
+            graded_by,
         )
         # Step 4: the quiet window, w_clk = 10 x ctrl_stat_clk of this point.
         await self._settle(stat_clk)
@@ -1551,7 +1584,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self._wipe_write(0)
         rose = await self._wait_rise(watch, "real wipe")  # step 6
         frames = await self._drain()
-        high, answered, wframes = await self._trap_window(pre.w_clk)
+        high, answered, wframes = await self._trap_window(pre.w_clk, "real_wipe")
         delta = None if watch.wr_at_rise is None else watch.wr_at_rise - wr_base  # step 7
         hmac_after = await self._hmac_read(p.keys[0].words, HMAC_MSG2)
         aes_after = await self._aes_read(p.keys[0].words, "post_wipe", expect_key=False)
@@ -1706,7 +1739,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         top = cocotb.top
         await self._fresh(f"before {'+'.join(names)}")
         mask = pl.set_mask(names)
-        pre = await self._precondition(witness=False, point="irqset_" + "+".join(names))
+        point = "irqset_" + "+".join(names)
+        pre = await self._precondition(witness=False, point=point)
         watch = _FatalWatch(self)
         watch.start()
         await RisingEdge(top.clk_i)
@@ -1715,7 +1749,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         rose = await self._wait_rise(watch, f"HK-IRQSET {names}")
         fired = self.rd(top.km_irqset_fired_o, allow_unknown=True)
         frames = await self._drain()
-        high, answered, _wf = await self._trap_window(pre.w_clk)
+        high, answered, _wf = await self._trap_window(pre.w_clk, point)
         status = self._csr_status()
         # "Interrupt Priority": only sources with status and enable set rank.
         enable = self.rd_known(top.km_csr_irq_enable_o) & mask
@@ -1759,7 +1793,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             set=f"0x{held:03x}",
             status=f"0x{status:03x}",
         )
-        self._shred_first(pre, watch, "irqset_" + "+".join(names))
+        self._shred_first(pre, watch, point)
         # Control: the vault holds keys before the injection.
         self.chk.ok(
             "KPV-TRAP",
@@ -1824,7 +1858,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             if consumed:
                 break
             self.logger.info(
-                "INFO-PARITY-VACUOUS mem=%s lane=%d n=%d fired=%d rstrb=0x%x seed=%d",
+                "INFO-PARITY-VACUOUS mem=%s lane=%d n=%d fired=%d rstrb=0x%x seed=%d "
+                "graded_by=CHK-PARITY-VAC",
                 pl.MEM_NAME[mem],
                 lane,
                 n,
@@ -1931,7 +1966,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         pol_ok = len(pol) == 1 and pol_code == KM_RC_FAILURE and pol_arg is None
         self.logger.info(
             "INFO-KEY-A run=%d-%d handle=%s control xfer code=%d arg=%s aes_writes=%d "
-            "policy code=%s arg=%s",
+            "policy code=%s arg=%s graded_by=CHK-KEYCRC,CHK-CRC-FIRST",
             run_a[0],
             run_a[-1],
             _h2(ha),
@@ -2174,7 +2209,13 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                     status=f"0x{status:03x}",
                 )
             else:
-                self.chk.info("CPU-TRAP-CSR-SET", with_csr=csr_src, anchor="km_irqset_fired_o")
+                self.chk.ctrl(
+                    "CPU-TRAP-CSR-SET",
+                    csr_fired == 1,
+                    with_csr=csr_src,
+                    csr_fired=csr_fired,
+                    anchor="km_irqset_fired_o",
+                )
         self.chk.ok(
             "CPU-TRAP",
             b0 == 0
@@ -2190,6 +2231,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             with_csr="none" if csr_src is None else csr_src,
             csr_status=int(csr_st != 0) if csr_src else "none",
             csr_enable=int(csr_en != 0) if csr_src else "none",
+            csr_fired=csr_fired if csr_src else "none",
             code=_hx(code),
             expected=_hx(pl.fault_word(exp)),
             frames=len(frames),
@@ -2209,7 +2251,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         frame, orig, flipped = p.main_stream()
         assert flipped != orig, "the flipped stream word equals the original word"
         self.logger.info(
-            "INFO-MAIN-STREAM n=%d w=%d bit=%d original=%s flipped=%s confirm=%d",
+            "INFO-MAIN-STREAM n=%d w=%d bit=%d original=%s flipped=%s confirm=%d "
+            "graded_by=CHK-MAINCTX-FATAL",
             n,
             p.main_w,
             p.main_bit,
@@ -2403,7 +2446,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             err_o=int(rose),
         )
         frames = await self._drain()
-        high, answered, _wf = await self._trap_window(self.w_ref)
+        high, answered, _wf = await self._trap_window(self.w_ref, "drbg_stall")
         watch.stop()
         one = len(frames) == 1
         code = frames[0].fault_word if one else None
@@ -2470,7 +2513,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         rose = await self._wait_rise(watch, "key path")
         await self.bus.stop()
         frames = await self._drain()
-        high, answered, _wf = await self._trap_window(self.w_ref)
+        high, answered, _wf = await self._trap_window(self.w_ref, "keypath")
         watch.stop()
         one = len(frames) == 1
         code = frames[0].fault_word if one else None

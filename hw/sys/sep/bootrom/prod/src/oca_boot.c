@@ -148,16 +148,6 @@ static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool
     return (sep_dma_copy(dst, src, len) != 0u) ? OCA_BOOT_ERR_DMA : 0u;
 }
 
-// Zero SEP SRAM between retry attempts so a partially staged bad slot cannot be
-// mistaken for the next one's bytes.
-static void clear_sram_region(uint32_t addr, uint32_t size) {
-    volatile uint32_t *p = (volatile uint32_t *)(uintptr_t)addr;
-    uint32_t words = size / 4u;
-    for (uint32_t i = 0; i < words; ++i) {
-        p[i] = 0u;
-    }
-}
-
 static bool storage_source_aligned(uint32_t addr) {
     const bool aligned_first = (addr & (BOOT_STORAGE_ALIGNMENT - 1u)) == 0u;
     const uint32_t addr_second = harden_u32(addr);
@@ -272,9 +262,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     }
     simputshex32("OCA_BODY=", (uint32_t)pk.body_size);
 
-    // SEP_SRAM_USABLE_SIZE, not SRAM_SIZE: the top of SRAM holds sep_dma_zero()'s
-    // fill word, which the CPU rewrites before every fill.
-    if (pk.body_size > SEP_SRAM_USABLE_SIZE) {
+    if (pk.body_size > SRAM_SIZE) {
         return OCA_BOOT_ERR_STAGE_OVERFLOW;
     }
 
@@ -359,7 +347,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
 
     // Stage the payload immediately after the body, 8-byte aligned.
     uint32_t payload_off = ((uint32_t)pk.body_size + 7u) & ~7u;
-    if (payload_span > (size_t)(SEP_SRAM_USABLE_SIZE - payload_off)) {
+    if (payload_span > (size_t)(SRAM_SIZE - payload_off)) {
         simputs("PAYLOAD_TOO_LARGE\n");
         return OCA_BOOT_ERR_STAGE_OVERFLOW;
     }
@@ -452,6 +440,7 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
     }
 
     uint32_t last_err = 0u;
+    bool clear_failed = false;
 
     for (uint32_t retry = 0; retry <= num_retries; ++retry) {
         // rotate_update swaps which slot is tried first.
@@ -493,7 +482,15 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
             simputshex32("MANIFEST_ERR=", err);
             last_err = err;
             if (from_spi && retry < num_retries) {
-                clear_sram_region(SRAM_BASE, SRAM_SIZE);
+                // SEP SRAM is zeroed between slots so a partially staged bad slot
+                // cannot be mistaken for the next one's bytes. If it cannot be
+                // cleared, no further slot is staged over it.
+                const uint32_t clr = rom_clear_sram_for_retry();
+                if (clr != 0u || harden_u32(clr) != 0u) {
+                    last_err = clr != 0u ? clr : OCA_BOOT_ERR_DMA;
+                    clear_failed = true;
+                    break;
+                }
                 boot_flash_reinit();
             }
             continue;
@@ -511,6 +508,8 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         report_status(STATUS_TYPE_ERROR, status_for_result((oca_result_t)(last_err & 0xFFu)));
     }
     report_status(STATUS_TYPE_ERROR, SEP_MSG_MANIFEST_LOAD_FAILED);
-    simputs("MANIFEST_ALL_FAILED\n");
+    if (!clear_failed) {
+        simputs("MANIFEST_ALL_FAILED\n");
+    }
     return last_err;
 }

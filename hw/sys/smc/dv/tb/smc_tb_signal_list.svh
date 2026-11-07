@@ -97,6 +97,13 @@
 `SMC_TB_OUT(logic, tb_i3c0_sda)
 `SMC_TB_OUT(logic, tb_i3c0_scl_dut_low)
 `SMC_TB_OUT(logic, tb_i3c0_sda_dut_low)
+// I3C0 pad-enable gates of i3c_wrapper: the SCL output enable asserted with the
+// SCL output level high (a high drive the open-drain pad must never see), the
+// push-pull select, the SDA output enable and the SDA output level.
+`SMC_TB_OUT(logic, tb_i3c0_scl_drive_high)
+`SMC_TB_OUT(logic, tb_i3c0_sda_pp_sel)
+`SMC_TB_OUT(logic, tb_i3c0_sda_oe)
+`SMC_TB_OUT(logic, tb_i3c0_sda_out)
 // Completed CSR accesses at each I3C core's AXI-Lite port, after the wrapper's
 // instance decode: R handshakes and B handshakes, 32 bits per instance.
 `SMC_TB_OUT(logic [smc_config_pkg::NumI3c*32-1:0], tb_i3c_csr_read_count)
@@ -207,6 +214,8 @@
 // The three I2C instances' PLIC lines (smc_peripherals.sv:1161,
 // peripheral_interrupts[25:23]). tb_i2c_cg_en is the clock gate, not the IRQ.
 `SMC_TB_OUT(logic [2:0], tb_i2c_irq)
+// The six I3C instances' PLIC lines (smc_peripherals.sv peripheral_interrupts[17:12]).
+`SMC_TB_OUT(logic [smc_config_pkg::NumI3c-1:0], tb_i3c_irq)
 `SMC_TB_OUT(logic, tb_mailbox_irq_any)
 `SMC_TB_OUT(logic, tb_avsbus_irq)
 `SMC_TB_OUT(logic, tb_telemetry_irq_any)
@@ -220,7 +229,7 @@
 // Synced observe is smc_base.ext_interrupts_smc_clk[0], not GPIO.
 `SMC_TB_IN(logic, tb_ext_interrupt_0_i)
 `SMC_TB_OUT(logic, tb_ext_interrupt_0_sync)
-// Reset-unit captured GPIO straps (wrapper [63:0]; STRAPS_LO/HI use [60:0]).
+// Reset-unit captured GPIO straps (wrapper [63:0]; STRAPS_LO/HI use [62:0]).
 // Unique vs GPIO0 IRQ pads (`smc_gpio_irq_active_test`); this pin is strap capture.
 `SMC_TB_IN(logic [63:0], tb_captured_straps)
 // Subsystem reset-complete pin (prim_sync3 → SS_RESET_COMPLETE CSR). Idle 1.
@@ -675,6 +684,12 @@
 // The three contributors the combined UART bit ORs together, before the OR.
 `SMC_TB_OUT(logic [3:0], tb_uart_irq_raw)
 `SMC_TB_OUT(logic [3:0], tb_uart_err_raw)
+// The three I2C instances' FIFO integrity error outputs (`i2c_fifo_intg_err_o`,
+// before the OR), and the two RAS bits the SMC ORs them and `uart_err_o` into
+// (`smc_ras_o.i2c_intg_err`, `smc_ras_o.uart_intg_err`).
+`SMC_TB_OUT(logic [2:0], tb_i2c_intg_err)
+`SMC_TB_OUT(logic, tb_ras_i2c_intg_err)
+`SMC_TB_OUT(logic, tb_ras_uart_intg_err)
 `SMC_TB_OUT(logic [3:0], tb_logengine_irq_raw)
 `SMC_TB_OUT(logic [2:0], tb_telemetry_irq)
 `SMC_TB_OUT(logic, tb_sep_wdt_irq_sync)

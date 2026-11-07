@@ -1106,6 +1106,13 @@
 // STATUS bit i (0 BUSY, 1 DONE, 2 ABORTED, 3 ERROR, 4 SHA2_DIGEST_VALID,
 // 5 CHUNK_DONE), read from the register flops on each clock.
 `SEP_TB_OUT(logic [5:0], dma_status_probe_o)
+// Secure DMA zero-fill fault inject. While a zero fill (CONTROL.OPCODE 4) runs
+// with its destination in the region dma_fill_fault_sel_i names (1 ICCM,
+// 2 the base of SEP SRAM), tb_top forces the engine's host-port response error,
+// so the fill ends in BUS_ERROR. 0 injects nothing.
+`SEP_TB_IN(logic [1:0], dma_fill_fault_sel_i)
+// Rising clock edges, since reset, on which the zero-fill fault condition held.
+`SEP_TB_OUT(logic [31:0], dma_fill_fault_count_o)
 // Crypto alert receiver pulses, observation-only: bit i is
 // u_sep_crypto.crypto_alert_pulse[i], the alert of receiver index i (HMAC [0],
 // OTBN [2:1], AES [4:3], KMAC [6:5], CSRNG [8:7], EDN [10:9]).

@@ -32,6 +32,7 @@ import random
 
 import cocotb
 from cocotb.triggers import FallingEdge, NextTimeStep, ReadOnly, RisingEdge
+from cocotb.utils import get_sim_time
 
 from .smc_addr_map import (
     _REPO,
@@ -434,8 +435,20 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             await RisingEdge(dut.clk_smc_i)
             await self._read_recovery(name, name)
 
+    @staticmethod
+    def _gate(up: bool) -> None:
+        """Drive tb_fcov_gate, the graded window of smc_state_inject_cg."""
+        cocotb.top.tb_fcov_gate.value = int(up)
+        cocotb.log.info("CTRL-FCOV-GATE: %s %d ps", "rise" if up else "fall", get_sim_time("ps"))
+
     async def _zeroer_cold_reset(self, label: str) -> None:
         dut = cocotb.top
+        # The gate is low over the cold reset: its fall, with the Zeroer held in
+        # ERROR, is where the sampler reads the stays-busy-until-reset cell, and
+        # the reset assertion itself is the sample event of the reset covergroup.
+        await RisingEdge(dut.clk_smc_i)
+        self._gate(False)
+        await RisingEdge(dut.clk_smc_i)
         await NextTimeStep()
         dut.rst_cold_ni.value = 0
         await FallingEdge(dut.rst_primary_smc_clk_no)
@@ -443,6 +456,7 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
         await NextTimeStep()
         dut.rst_cold_ni.value = 1
         await self.wait_fuse_sense_done()
+        self._gate(True)
 
     async def _program_output_fabric_pass_all(self, label: str) -> None:
         """Program filter entry 0 in both directions to pass all traffic.
@@ -640,8 +654,15 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             "read": self._read_faults,
             "zeroer": self._zeroer_faults,
         }
-        for block in self.block_order:
-            await blocks[block]()
+        self._gate(True)
+        try:
+            for block in self.block_order:
+                await blocks[block]()
+        finally:
+            # A compare that fails inside a block leaves it with the exception;
+            # the gate is written after the next clock edge.
+            await RisingEdge(cocotb.top.clk_smc_i)
+            self._gate(False)
         cells = "; ".join(
             f"{kind}: {idle:02b} idle, {live:02b} live at offset {self.offsets[kind]} of "
             f"{self.valid_cycles[kind]} request cycles, {'idle' if first else 'live'} first"

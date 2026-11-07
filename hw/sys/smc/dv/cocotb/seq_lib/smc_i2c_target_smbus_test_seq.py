@@ -50,24 +50,33 @@ I2C0_TIMING3 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR", 0)
 I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", 0)
 
 
+def _timing_field(reg: str, field: str, value: int) -> int:
+    mask = _field_mask(_I2C_H, f"I2C__{reg}__{field}_bm")
+    return (value << _field_mask(_I2C_H, f"I2C__{reg}__{field}_bp")) & mask
+
+
 def _pack_timing0(thigh: int, tlow: int) -> int:
-    return (thigh & 0x1FFF) | ((tlow & 0x1FFF) << 16)
+    return _timing_field("TIMING0", "THIGH", thigh) | _timing_field("TIMING0", "TLOW", tlow)
 
 
 def _pack_timing1(t_r: int, t_f: int) -> int:
-    return (t_r & 0x3FF) | ((t_f & 0x1FF) << 16)
+    return _timing_field("TIMING1", "T_R", t_r) | _timing_field("TIMING1", "T_F", t_f)
 
 
 def _pack_timing2(tsu_sta: int, thd_sta: int) -> int:
-    return (tsu_sta & 0x1FFF) | ((thd_sta & 0x1FFF) << 16)
+    return _timing_field("TIMING2", "TSU_STA", tsu_sta) | _timing_field(
+        "TIMING2", "THD_STA", thd_sta
+    )
 
 
 def _pack_timing3(tsu_dat: int, thd_dat: int) -> int:
-    return (tsu_dat & 0x1FF) | ((thd_dat & 0x1FFF) << 16)
+    return _timing_field("TIMING3", "TSU_DAT", tsu_dat) | _timing_field(
+        "TIMING3", "THD_DAT", thd_dat
+    )
 
 
 def _pack_timing4(tsu_sto: int, t_buf: int) -> int:
-    return (tsu_sto & 0x1FFF) | ((t_buf & 0x1FFF) << 16)
+    return _timing_field("TIMING4", "TSU_STO", tsu_sto) | _timing_field("TIMING4", "T_BUF", t_buf)
 
 
 _TARGET_ID_FIELDS = tuple(

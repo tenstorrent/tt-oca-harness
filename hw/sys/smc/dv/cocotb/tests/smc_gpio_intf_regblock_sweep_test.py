@@ -3,7 +3,7 @@
 # DV-TESTCASE-CONTRACT: SMC_COV_B4_012 ANCHOR: smc_gpio_intf_regblock_sweep_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: c065f43a6879651743934132e450ef015bf65d7ce0042c64a4b56be05b32063e
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/docs/SMC_VPLAN.adoc section 198 `smc_gpio_intf_regblock_sweep_test` ENV: cocotb
-"""GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycle on all 65 instances.
+"""GPIO_INTF DATA_CTRL_ENABLE and ACCESS_FILTER cycle on all 67 instances.
 
 Drives both registers to all-ones and all-zeros through half-register writes,
 reads each one back against its generated RDL contract, and restores the RDL
@@ -22,14 +22,14 @@ from smc_base_test import smc_base_test
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
 # sequence that silently stopped issuing accesses.
 #
-# 65 GPIO_INTF instances, 26 SEP_IN AXI accesses each:
+# 67 GPIO_INTF instances, 26 SEP_IN AXI accesses each:
 #   DATA_CTRL_ENABLE cycle: reset read, 2x(half write + readback) for the ones
 #     pattern, the same for the zeros pattern, 2 restore writes, restore read 12
 #   ACCESS_FILTER cycle: reset read, and a write plus a readback for each of
 #     the arprot-ones, armed, arprot-zeros, awprot-ones and restore steps,
 #     plus the refused read of the armed state, and the refused AWPROT=7
 #     write of the armed state with its readback                             14
-GPIO_INTF_REGBLOCK_SWEEP_MIN_CSR_ACCESSES = 65 * 26
+GPIO_INTF_REGBLOCK_SWEEP_MIN_CSR_ACCESSES = 67 * 26
 
 
 @pyuvm.test()

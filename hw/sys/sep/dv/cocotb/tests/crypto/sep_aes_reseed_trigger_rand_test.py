@@ -53,7 +53,7 @@ DATA_OUT after DATA_OUT_CLEAR has no exact form: ``aes.hjson``:909-913 states on
 "clear those registers with pseudo-random data", and no value, status bit or
 read effect. A check that the value differs from the output before the clear
 fails a healthy DUT with probability 2^-128 and passes a partial clear, so it is
-not a check. The leaf logs ``OBS-BLOCKED CHK-AES-CLEAR-OUT`` and
+not a check. The leaf logs ``INFO-BLOCKED CHK-AES-CLEAR-OUT`` and
 ``OBS-AES-CLEAR-OUT`` and grades nothing there. The IV after the clear is logged
 as ``OBS-AES-CLEAR-IV``.
 """

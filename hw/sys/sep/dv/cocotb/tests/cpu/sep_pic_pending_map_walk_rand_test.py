@@ -142,7 +142,7 @@ delegates to calls it a level while an alert pair fails; the port table wins),
 ``OBS-RAS-DMA_ALERT-INTEG-FALL`` (the fall after the pair release),
 ``OBS-RAS-CRYPTO_ALERT-PAIR`` (the run lengths of the pair window, where two
 pulses can be adjacent) and
-``OBS-RAS-CRYPTO_ALERT-MODE2`` (no crypto alert pair force and no crypto EDN
+``INFO-RAS-CRYPTO_ALERT-MODE2`` (no crypto alert pair force and no crypto EDN
 adapter fault in this leaf).
 
 Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
@@ -1402,7 +1402,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
         _, runs, _ = self._ras_win("pr0", "pr1", "crypto_alert")
         self.ras_chk.obs("RAS-CRYPTO_ALERT-PAIR", run_lengths=[w for _, w in runs] or "none")
-        self.ras_chk.obs(
+        self.ras_chk.info(
             "RAS-CRYPTO_ALERT-MODE2", driven=0, pair_force=0, crypto_edn_adapter_fault=0
         )
         for f, kind in RAS_FATAL_KIND.items():

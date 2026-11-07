@@ -47,10 +47,15 @@ FCR_FIFO_ENABLE = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__FIFO_ENABLE_
 FCR_RCVR_FIFO_RESET = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_FIFO_RESET_bm")
 FCR_XMIT_FIFO_RESET = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__XMIT_FIFO_RESET_bm")
 FCR_RCVR_TRIGGER_BP = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_bp")
+FCR_RCVR_TRIGGER_BM = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_bm")
+FCR_RCVR_TRIGGER_BW = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_bw")
 ECR_RCVR_TRIGGER_MS2B_BP = _field_mask(_UART_H, "UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bp")
+ECR_RCVR_TRIGGER_MS2B_BM = _field_mask(_UART_H, "UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bm")
 IIR_INTERRUPT_PENDING = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm")
 IIR_INTERRUPT_ID = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bm")
 IIR_INTERRUPT_ID_BP = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bp")
+IIR_FIFOS_ENABLED = _field_mask(_UART_H, "UART_16550_MAIN__IIR__FIFOS_ENABLED_bm")
+IIR_FIFOS_ENABLED_BP = _field_mask(_UART_H, "UART_16550_MAIN__IIR__FIFOS_ENABLED_bp")
 IER_ERBFI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ERBFI_bm")
 LCR_DLAB = _field_mask(_UART_H, "UART_16550_MAIN__LCR__DLAB_bm")
 LCR_WLS = _field_mask(_UART_H, "UART_16550_MAIN__LCR__WLS_bm")
@@ -60,6 +65,17 @@ LSR_DR = _field_mask(_UART_H, "UART_16550_MAIN__LSR__DR_bm")
 LSR_OE = _field_mask(_UART_H, "UART_16550_MAIN__LSR__OE_bm")
 LSR_THRE = _field_mask(_UART_H, "UART_16550_MAIN__LSR__THRE_bm")
 LSR_TEMT = _field_mask(_UART_H, "UART_16550_MAIN__LSR__TEMT_bm")
+# Every LSR field, for a whole-register compare.
+LSR_FIELDS = (
+    LSR_DR
+    | LSR_OE
+    | _field_mask(_UART_H, "UART_16550_MAIN__LSR__PE_bm")
+    | _field_mask(_UART_H, "UART_16550_MAIN__LSR__FE_bm")
+    | _field_mask(_UART_H, "UART_16550_MAIN__LSR__BI_bm")
+    | LSR_THRE
+    | LSR_TEMT
+    | _field_mask(_UART_H, "UART_16550_MAIN__LSR__ERROR_IN_RCVR_FIFO_bm")
+)
 
 # 16550 IntrID encodings, from uart_16550_main.rdl IIR.INTERRUPT_ID (the RDL
 # lists every encoding with its priority).
@@ -67,12 +83,34 @@ LSR_TEMT = _field_mask(_UART_H, "UART_16550_MAIN__LSR__TEMT_bm")
 #   0x6 - Reception Timeout Interrupt     (priority 2)
 _INTR_ID_RDR = 0x2
 _INTR_ID_CHAR_TIMEOUT = 0x6
+# IIR samples after the pop below the level, a quarter character apart: the
+# Reception Timeout outranks RECEIVED_DATA_READY in IIR and fires four
+# character times after the last FIFO change, so the samples stay inside one
+# character time of the pop and a level that did not clear cannot be hidden
+# behind the timeout id.
+_BELOW_SAMPLES = 2
 # FCR.RCVR_TRIGGER encodings, from uart_16550_main_wo.rdl FCR.RCVR_TRIGGER:
-#   0x0 - 1 character, 0x1 - 4 characters, 0x2 - 8, 0x3 - 14.
+#   0x0 - 1 character, 0x1 - 4 characters, 0x2 - 8, 0x3 - 14; the ECR extension
+#   (uart_16550_main.rdl RCVR_TRIGGER_MS2B) adds 0x4 - 32.
 _TRIG_1B = 0
 _TRIG_4B = 1
+_TRIG_8B = 2
+_TRIG_14B = 3
 _TRIG_32B = 4
-_TRIG_LEVEL_CHARS = {_TRIG_1B: 1, _TRIG_4B: 4, _TRIG_32B: 32}
+_TRIG_LEVEL_CHARS = {_TRIG_1B: 1, _TRIG_4B: 4, _TRIG_8B: 8, _TRIG_14B: 14, _TRIG_32B: 32}
+# The trigger cells in the order they run; the test module gates on every one.
+TRIGGER_CELLS = (
+    ("1B", _TRIG_1B),
+    ("4B", _TRIG_4B),
+    ("8B", _TRIG_8B),
+    ("14B", _TRIG_14B),
+    ("32B", _TRIG_32B),
+)
+# IIR.FIFOS_ENABLED (uart_16550_main.rdl): 0x3 with the FIFOs on, 0x0 off.
+_FIFOS_ON = 0x3
+_FIFOS_OFF = 0x0
+# LSR with the transmitter idle and nothing received: THRE and TEMT only.
+_LSR_IDLE = LSR_THRE | LSR_TEMT
 # The receiver FIFO depth: the largest trigger level the RDL lists that a
 # 32-entry FIFO can reach, and the number of characters the above-depth leg
 # queues so the unsupported encodings are sampled on a full FIFO.
@@ -129,6 +167,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         self.trigger_32b_ok: bool = False
         self.above_depth_ok: bool = False
         self.reset_ok: bool = False
+        self.fcr_under_dlab_ok: bool = False
         # label -> (pre-threshold IIR id, at-threshold IIR id, below-level IIR
         # id). Measured values the test module gates on, so a cell that ran but
         # observed the wrong interrupt fails the testcase, not just the token.
@@ -140,12 +179,17 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         await self.csr_write("FCR_via_UART_IIR", UART_IIR, value)
 
     async def _fifo_set_trigger(self, trigger_cfg: int) -> None:
-        await self.csr_write(
-            "ECR_RCVR_TRIGGER_MS2B",
-            UART_ECR,
-            ((trigger_cfg >> 2) & 0x3) << ECR_RCVR_TRIGGER_MS2B_BP,
+        # The 4-bit encoding splits into FCR.RCVR_TRIGGER (low bits) and
+        # ECR.RCVR_TRIGGER_MS2B (high bits); ECR is readable and read back.
+        ecr = (
+            (trigger_cfg >> FCR_RCVR_TRIGGER_BW) << ECR_RCVR_TRIGGER_MS2B_BP
+        ) & ECR_RCVR_TRIGGER_MS2B_BM
+        await self.csr_write("ECR_RCVR_TRIGGER_MS2B", UART_ECR, ecr)
+        got = await self.csr_read("ECR_RCVR_TRIGGER_MS2B_RB", UART_ECR)
+        assert got & ECR_RCVR_TRIGGER_MS2B_BM == ecr, (
+            f"ECR read 0x{got:08x} after writing 0x{ecr:08x}; RCVR_TRIGGER_MS2B did not land"
         )
-        fcr = FCR_FIFO_ENABLE | ((trigger_cfg & 0x3) << FCR_RCVR_TRIGGER_BP)
+        fcr = FCR_FIFO_ENABLE | ((trigger_cfg << FCR_RCVR_TRIGGER_BP) & FCR_RCVR_TRIGGER_BM)
         await self._write_fcr(fcr)
 
     async def _fifo_reset(self, *, rx: bool, tx: bool) -> None:
@@ -202,7 +246,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if not (_iir_pending(iir) and _iir_id(iir) == forbidden_id):
                 return iir
-            await Timer(1, unit="us")
+            await Timer(self._hold_step_ns(), unit="ns")
         raise AssertionError(
             f"{label}: IIR id=0x{forbidden_id:x} still pending after "
             f"{iters} samples (last=0x{iir:08x})"
@@ -219,7 +263,9 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         * the ``depth``-th character must raise it within a bounded wait -- a
           newly received character also clears any pending Reception Timeout, so
           the higher-priority 0x6 cannot mask this;
-        * popping one character back below the level must clear it again.
+        * popping one character back below the level must clear it again
+          within one character time, before the Reception Timeout, which
+          outranks it in IIR, could stand in for a level that did not clear.
 
         With ``FCR.RCVR_TRIGGER`` tied off, or programmed to the other encoding,
         one of the three legs fails: the 1-character cell would not see 0x2 after
@@ -239,6 +285,11 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             await self.csr_write(f"{label}_THR_PRE_{i}", UART_RBR, 0x30 + i)
         await self._wait_lsr_bit(f"{label}_PRE_TEMT", LSR_TEMT, True)
         pre_iir = await self.csr_read(f"{label}_IIR_PRE", UART_IIR)
+        fifos = (pre_iir & IIR_FIFOS_ENABLED) >> IIR_FIFOS_ENABLED_BP
+        assert fifos == _FIFOS_ON, (
+            f"{label}: IIR=0x{pre_iir:08x} reports FIFOS_ENABLED=0x{fifos:x}; the trigger level "
+            f"is a FIFO-mode compare and needs the FIFOs on (0x{_FIFOS_ON:x})"
+        )
         for sample in range(_PRE_HOLD_SAMPLES):
             held = await self.csr_read(f"{label}_IIR_PRE_HOLD{sample}", UART_IIR)
             if _iir_pending(held) and _iir_id(held) == _INTR_ID_RDR:
@@ -256,19 +307,25 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
 
         # Back below the level.
         await self.csr_read(f"{label}_RBR_POP", UART_RBR)
-        below_iir = await self._wait_iir_not_id(f"{label}_BELOW", _INTR_ID_RDR)
+        below_iir = await self._wait_iir_not_id(f"{label}_BELOW", _INTR_ID_RDR, _BELOW_SAMPLES)
+        assert not (_iir_pending(below_iir) and _iir_id(below_iir) == _INTR_ID_CHAR_TIMEOUT), (
+            f"{label}: IIR=0x{below_iir:08x} reports the Reception Timeout within one character "
+            f"time of the pop; the level below the trigger is not shown cleared"
+        )
         self.trigger_ids[label] = (_iir_id(pre_iir), _iir_id(trig_iir), _iir_id(below_iir))
         cocotb.log.info(
             "CHK-UART-FIFO-TRIG-%s: FCR.RCVR_TRIGGER=0x%x (%d character(s) per "
             "uart_16550_main_wo.rdl) -- with %d character(s) queued IIR read "
-            "0x%08x (id=0x%x, no RECEIVED_DATA_READY over %d samples); the %dth "
-            "character raised IIR=0x%08x id=0x%x; popping one back below the "
-            "level left IIR=0x%08x id=0x%x",
+            "0x%08x (FIFOS_ENABLED=0x%x, id=0x%x, no RECEIVED_DATA_READY over %d samples); "
+            "the %dth character raised IIR=0x%08x id=0x%x; popping one back below the "
+            "level left IIR=0x%08x id=0x%x within %d quarter-character samples (not the "
+            "timeout id 0x%x)",
             label,
             trig_cfg,
             depth,
             depth - 1,
             pre_iir,
+            fifos,
             _iir_id(pre_iir),
             _PRE_HOLD_SAMPLES,
             depth,
@@ -276,6 +333,8 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             _iir_id(trig_iir),
             below_iir,
             _iir_id(below_iir),
+            _BELOW_SAMPLES,
+            _INTR_ID_CHAR_TIMEOUT,
         )
 
     async def _test_fifo_reset(self) -> None:
@@ -372,7 +431,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         encoding the level is re-evaluated by popping one character and
         looping one back, so the 32nd arrival is compared against that
         encoding. The same refill raises RECEIVED_DATA_READY at the
-        32-character encoding immediately before and immediately after the
+        32-character encoding immediately before each encoding and after the
         sweep, so a level that could not fire at all is told apart from one
         that does not fire above the depth.
         """
@@ -388,8 +447,14 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             f"LSR=0x{lsr:08x} reports an overrun after {_RX_FIFO_DEPTH} looped-back "
             f"characters: the RX FIFO is shallower than the 32-character trigger level"
         )
-        armed = await self._wait_iir_id("ABOVE_DEPTH_ARMED", _INTR_ID_RDR)
+        await self._wait_iir_id("ABOVE_DEPTH_ARMED", _INTR_ID_RDR)
         for trigger_cfg, threshold in _ABOVE_FIFO_DEPTH_TRIGGERS.items():
+            # Each encoding starts from the 32-character encoding re-armed and
+            # raising RECEIVED_DATA_READY, so an FCR write that did not land
+            # leaves a level that fires, not the previous unsupported one.
+            await self._fifo_set_trigger(_TRIG_32B)
+            await self._refill_to_depth(f"ABOVE_DEPTH_{threshold}_REARM")
+            armed = await self._wait_iir_id(f"ABOVE_DEPTH_{threshold}_ARMED", _INTR_ID_RDR)
             await self._fifo_set_trigger(trigger_cfg)
             lsr = await self._refill_to_depth(f"ABOVE_DEPTH_{threshold}")
             assert not (lsr & LSR_OE), f"overrun while refilling to depth: LSR=0x{lsr:08x}"
@@ -406,8 +471,9 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             cocotb.log.info(
                 "CHK-UART-FIFO-TRIG-ABOVE-DEPTH: encoding=0x%x threshold=%d characters: the "
                 "32nd character arrived with this encoding programmed (LSR=0x%08x, DR set, no "
-                "overrun; the same refill raised IIR=0x%08x at the 32-character encoding) and "
-                "RECEIVED_DATA_READY stayed absent across IIR samples %s",
+                "overrun; the same refill raised IIR=0x%08x at the 32-character encoding re-armed "
+                "just before, ECR read back) and RECEIVED_DATA_READY stayed absent across IIR "
+                "samples %s",
                 trigger_cfg,
                 threshold,
                 lsr,
@@ -426,18 +492,80 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         )
         await self._fifo_reset(rx=True, tx=True)
 
+    async def _test_fcr_under_dlab(self) -> None:
+        """FCR, IIR and LSR stay reachable with LCR.DLAB set.
+
+        uart_16550_main.rdl (LCR.DLAB) and memmap.adoc: only offsets 0x00 and
+        0x04 change meaning with DLAB; FCR at 0x08 is writable, and IIR and
+        LSR readable, for either DLAB value. With DLAB set, FCR is written
+        with the FIFOs off and then on, and IIR.FIFOS_ENABLED has to follow
+        each write; LSR has to read the idle transmitter. The DLAB=0 write
+        afterwards is the control that the same FCR path answers both ways.
+
+        The reset leg before this one leaves the transmitter idle; under
+        MCR.LOOP its last character lands in the receiver within one character
+        time of that, so one character time at the slow divisor passes before
+        the FIFOs are turned off, and the LSR compare sees no late arrival.
+        """
+        await self._wait_lsr_bit("DLAB_PRE_TEMT", LSR_TEMT, True)
+        await Timer(_SLOW_CHAR_CLOCKS * self.cfg.periph_clk_period_ns, unit="ns")
+        await self.csr_write("DLAB_SET", UART_LCR, LCR_WLS | LCR_DLAB)
+        lcr_set = await self.csr_read("DLAB_SET_RB", UART_LCR)
+        assert lcr_set & LCR_DLAB, f"LCR read 0x{lcr_set:08x} after the DLAB write; DLAB is clear"
+        await self._write_fcr(0)
+        iir_off = await self.csr_read("DLAB_IIR_FIFOS_OFF", UART_IIR)
+        fifos_off = (iir_off & IIR_FIFOS_ENABLED) >> IIR_FIFOS_ENABLED_BP
+        assert fifos_off == _FIFOS_OFF, (
+            f"with LCR.DLAB set an FCR write of 0 left IIR=0x{iir_off:08x} "
+            f"(FIFOS_ENABLED=0x{fifos_off:x}); FCR at 0x08 is writable for either DLAB value"
+        )
+        await self._write_fcr(FCR_FIFO_ENABLE | FCR_RCVR_FIFO_RESET | FCR_XMIT_FIFO_RESET)
+        iir_on = await self.csr_read("DLAB_IIR_FIFOS_ON", UART_IIR)
+        fifos_on = (iir_on & IIR_FIFOS_ENABLED) >> IIR_FIFOS_ENABLED_BP
+        assert fifos_on == _FIFOS_ON, (
+            f"with LCR.DLAB set an FCR write of FIFO_ENABLE left IIR=0x{iir_on:08x} "
+            f"(FIFOS_ENABLED=0x{fifos_on:x}); FCR at 0x08 is writable for either DLAB value"
+        )
+        lsr = await self.csr_read("DLAB_LSR", UART_LSR)
+        assert lsr & LSR_FIELDS == _LSR_IDLE, (
+            f"with LCR.DLAB set LSR read 0x{lsr:08x}; the idle transmitter reads THRE and TEMT "
+            f"(0x{_LSR_IDLE:02x}) for either DLAB value"
+        )
+        await self.csr_write("DLAB_CLR", UART_LCR, LCR_WLS)
+        lcr_clr = await self.csr_read("DLAB_CLR_RB", UART_LCR)
+        assert not lcr_clr & LCR_DLAB, f"LCR read 0x{lcr_clr:08x} after the DLAB clear; DLAB is set"
+        iir_dlab0 = await self.csr_read("DLAB0_IIR_FIFOS_ON", UART_IIR)
+        assert (iir_dlab0 & IIR_FIFOS_ENABLED) >> IIR_FIFOS_ENABLED_BP == _FIFOS_ON, (
+            f"IIR=0x{iir_dlab0:08x} after LCR.DLAB was cleared; the FIFOs enabled under DLAB=1 "
+            f"stay enabled"
+        )
+        self.fcr_under_dlab_ok = True
+        cocotb.log.info(
+            "CHK-UART-FCR-UNDER-DLAB: with LCR read back 0x%08x (DLAB=1) FCR written 0 then "
+            "FIFO_ENABLE: IIR read 0x%08x (FIFOS_ENABLED=0x%x) then 0x%08x (FIFOS_ENABLED=0x%x), "
+            "LSR read 0x%08x (THRE+TEMT); with LCR read back 0x%08x (DLAB=0) IIR read 0x%08x",
+            lcr_set,
+            iir_off,
+            fifos_off,
+            iir_on,
+            fifos_on,
+            lsr,
+            lcr_clr,
+            iir_dlab0,
+        )
+
     async def body(self) -> None:
         cg = await self.csr_read("UART_CG", CLOCK_GATE_CONTROL)
         await self.csr_write("UART_UNGATE", CLOCK_GATE_CONTROL, cg & ~UART_CG_EN)
         await self._init_loopback()
 
-        await self._test_rx_trigger("1B", _TRIG_1B)
-        self.trigger_1b_ok = True
-        await self._test_rx_trigger("4B", _TRIG_4B)
-        self.trigger_4b_ok = True
-        await self._test_rx_trigger("32B", _TRIG_32B)
-        self.trigger_32b_ok = True
+        for label, trig_cfg in TRIGGER_CELLS:
+            await self._test_rx_trigger(label, trig_cfg)
+        self.trigger_1b_ok = "1B" in self.trigger_ids
+        self.trigger_4b_ok = "4B" in self.trigger_ids
+        self.trigger_32b_ok = "32B" in self.trigger_ids
         await self._test_above_depth_triggers()
         self.above_depth_ok = True
         await self._test_fifo_reset()
         self.reset_ok = True
+        await self._test_fcr_under_dlab()

@@ -235,6 +235,13 @@ $(foreach block,$(filter $(OCAH_REG_RAL_LEAF_BLOCKS),$(OCAH_REG_PLAIN_BLOCK_IDS)
 # composite/leaf split.
 $(foreach block,$(filter $(OCAH_REG_JSON_BLOCKS),$(OCAH_REG_BLOCKS)),$(eval $(call ocah_reg_json_rule,$(block))))
 
+# A block whose -P overrides are read from another RDL rebuilds when that RDL
+# changes. The SV stamp is listed because a plain leaf's SV outputs only check
+# that the stamp produced them.
+ocah_reg_param_deps = $(OCAH_REG_PARAM_DEPS_$(call ocah_reg_name,$(1)))
+$(foreach block,$(OCAH_REG_BLOCKS),$(if $(call ocah_reg_param_deps,$(block)),$(eval \
+  $(call ocah_reg_dep_targets,$(block)) $(call ocah_reg_sv_stamp,$(block)): $(call ocah_reg_param_deps,$(block)))))
+
 # Pull in the per-block depfiles (built by the rule in ocah_reg_block_rules): each
 # adds its `include`d RDLs as prerequisites of that block's generated outputs, so
 # an include-only change rebuilds the top collateral. Silent `-` so a missing

@@ -782,8 +782,8 @@ module otbn
 
   // Only advance CRC calculation on full 32-bit writes;
   assign mem_crc_data_in_valid   = ~(dmem_access_core | imem_access_core) &
-      ((imem_req_bus & (imem_byte_mask_bus == 4'hf)) |
-       (dmem_req_bus & (dmem_byte_mask_bus == 4'hf)));
+      ((imem_req_bus & imem_write_bus & (imem_byte_mask_bus == 4'hf)) |
+       (dmem_req_bus & dmem_write_bus & (dmem_byte_mask_bus == 4'hf)));
 
   assign mem_crc_data_in.wr_data = imem_req_bus ? imem_wdata_bus[31:0] :
                                                   dmem_wdata_narrow_bus[31:0];

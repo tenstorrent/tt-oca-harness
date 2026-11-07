@@ -23,7 +23,13 @@ Checks:
                    argument of the earlier check; the twin with only the later fault
                    returns the later code
   CHK-NOCHG-VAULT  KM-KPV CTRL and KM-VALID key_valid read 0 after every rejection of
-                   the pair leg; each gated command leaves both taps unchanged
+                   the pair leg; KM-VALID key_valid reads 0 after a CMD_KEY_TRANSFER of a
+                   loaded handle to HMAC with one drawn frame fault, and HMAC key_valid
+                   reads 1 after the same transfer with no fault (control); each gated
+                   command leaves KM-KPV CTRL, KM-VALID and KM-CSR OTP_READ_LOCK_COLD
+                   unchanged, and the taps just before CMD_RECOV_ACK equal those at the
+                   start of the gate matrix, from a pre-state in which the handler of
+                   each key and OTP command would change one of them
   CHK-WRAP         both 8-bit counters roll over from 255 to 0
   CHK-CNT-RESET    rx_buff_oflow, a SEP flush and a warm reset restart both counters:
                    first response sequence 0, the old sequence refused with -3 arg 0,
@@ -51,12 +57,27 @@ Checks:
                    OBS-RAS-KM_CORRECTABLE-DELAY logs the rise and fall clocks there.
 
 Controls (``control=1``): CHK-WRAP-CTRL (sequence 0 at e = 1 returns -3 arg 1),
-CHK-ALIVE (CMD_STAT reports recov_fault 0 after the pair leg) and CHK-RESPSEQ (the
-response sequence rises by one on every frame except at a reset cause).
+CHK-ALIVE (CMD_STAT reports recov_fault 0 after the pair leg and after the
+invalid-command control) and CHK-RESPSEQ (the response sequence rises by one on every
+frame except at a reset cause). INFO-INVALID-CMD-ADVANCE records the invalid-command
+control of step 14: one frame whose only fault is a drawn command ID outside the 15
+valid IDs, then CMD_STAT at e plus one (CHK-ALIVE). It logs the code of the rejected
+frame and does not grade it: CHK-ILLEGAL and CHK-ALIVE of
+``sep_km_command_set_rand_test`` grade that behaviour.
 
 The procedure steps that serve only non-claimed checkers do not run: the single-fault
 legs (steps 4 to 8), the argument legs (11 to 13), the DEST_VALID walk (15), the
-transport leg (33 to 39) and the record of ``inbound_separator`` in step 1.
+transport leg (33 to 39) and the record of ``inbound_separator`` in step 1. The one
+kind (c) frame of the invalid-command control runs in step 14.
+
+The regression runs the leaf as two shards (``+sep_shard``, ``env/sep_shard.py``),
+each from its own seed and its own boot, and each draws the whole plan: shard 1 the
+pair leg, CHK-ALIVE, the twins, the invalid-command control and the wrap leg; shard 2
+the transport causes, both gate legs, the three handover legs and the overflow-pending
+leg. Shard 1 has no RESP_RECOVERABLE_FAULT frame, so CHK-RAS-KM_CORRECTABLE-RISE,
+-SHAPE and -CLEAR are graded in shard 2 only; CHK-RAS-KM_CORRECTABLE-IDLE and
+CHK-RESPSEQ are graded in both. Without the plusarg the leaf runs every leg, as one
+boot.
 """
 
 from __future__ import annotations
@@ -71,6 +92,8 @@ from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_ras_map import check_tap_width, ras_bit
+from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
+from env.sep_shard import sep_shard
 from env.sep_spec_tables import agg_from_pic
 from km import sep_km_command_protocol_rand_plan as pl
 from sep_base_test import sep_base_test
@@ -113,6 +136,21 @@ _KM_RECOV = agg_from_pic("KM recoverable error")
 # Recovery"); a warm reset clears it (architecture.adoc, "Reset Conditioning").
 _RAS_KM = "km_correctable"
 
+# KM-KPV packs CTRL[s] {seal, erase, lock_use, lock_write} slot after slot
+# (hw/sys/sep/dv/tb/tb_top.sv), in the bit order of km_kpv.rdl CTRL. The slot
+# stride is the top of SEAL; lock_write sits at its RDL bit position.
+_KPV_CTRL = CHeaderRegBlock("KM_KPV", ip_c_header("key_manager").with_name("km_kpv.h")).fields(
+    "CTRL_REG"
+)
+_KPV_CTRL_STRIDE = _KPV_CTRL["SEAL"]["bp"] + _KPV_CTRL["SEAL"]["bw"]
+_KPV_LOCK_WRITE_BP = _KPV_CTRL["LOCK_WRITE"]["bp"]
+# KM-CSR OTP_READ_LOCK_COLD fields (km_csr.rdl) that the gate leg grades.
+_OTP_COLD = CHeaderRegBlock("KM_CSR", ip_c_header("key_manager").with_name("km_csr.h")).fields(
+    "OTP_READ_LOCK_COLD_REG"
+)
+_OTP_COLD_LIFE_CYCLE = _OTP_COLD["LIFE_CYCLE"]["bm"]
+_OTP_COLD_DEMOTION = _OTP_COLD["DEMOTION"]["bm"]
+
 _POLL_GAP = 20  # clocks between two status polls
 _RESP_POLLS = 50_000  # polls for one response word
 _READY_POLLS = 40_000  # polls for RESP_KM_READY after a release
@@ -126,6 +164,36 @@ _DRAIN_IDLE_POLLS = 200  # consecutive empty polls that end the drain
 _DRAIN_MAX_WORDS = 600  # words the drain reads at most
 
 _FAULT_HDR_WORDS = 3  # header, one sign-extended code word, CRC-32C
+
+_PAIR_SHARD = 1
+_FAULT_SHARD = 2
+SHARD_EVIDENCE = {
+    _PAIR_SHARD: (
+        "CHK-PAIR",
+        "CHK-NOCHG-VAULT",
+        "CHK-ALIVE",
+        "CHK-WRAP-CTRL",
+        "CHK-WRAP",
+        "CHK-RESPSEQ",
+        "CHK-RAS-KM_CORRECTABLE-IDLE",
+    ),
+    _FAULT_SHARD: (
+        "CHK-CNT-RESET",
+        "CHK-RECOVER",
+        "CHK-GATE",
+        "CHK-VALID-FIRST",
+        "CHK-ADMIT",
+        "CHK-PERSIST",
+        "CHK-NOCHG-VAULT",
+        "CHK-RESET-CLR",
+        "CHK-RESPSEQ",
+        "CHK-OFLOW-PEND",
+        "CHK-RAS-KM_CORRECTABLE-IDLE",
+        "CHK-RAS-KM_CORRECTABLE-RISE",
+        "CHK-RAS-KM_CORRECTABLE-SHAPE",
+        "CHK-RAS-KM_CORRECTABLE-CLEAR",
+    ),
+}
 
 
 def _a(value: int | None) -> str:
@@ -177,6 +245,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
+        self.shard = sep_shard(self, SHARD_EVIDENCE)
         self.plan = pl.CommandProtocolPlan(seed)
         for line in self.plan.draw_lines():
             self.logger.info(line)
@@ -221,14 +290,18 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             raise AssertionError("sep_ras_probe_o watcher took no sample before the graded window")
         self.ras_ev = [("zero", self.ras_m0.clk)]
 
-        await self._pair_leg()
-        await self._alive_and_twins()
-        await self._wrap_leg()
-        await self._cause_loop()
-        for g in self.plan.gates:
-            await self._gate_leg(g)
-        for hd in self.plan.handovers:
-            await self._handover_leg(hd)
+        if self.shard in (None, _PAIR_SHARD):
+            await self._pair_leg()
+            await self._alive_and_twins()
+            await self._invalid_cmd_ctrl()
+            await self._wrap_leg()
+        faults = self.shard in (None, _FAULT_SHARD)
+        if faults:
+            await self._cause_loop()
+            for g in self.plan.gates:
+                await self._gate_leg(g)
+            for hd in self.plan.handovers:
+                await self._handover_leg(hd)
 
         # CHK-RESPSEQ covers every frame of the response reader up to here; the
         # drain of the overflow step reads raw words and is graded on its own.
@@ -244,12 +317,13 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         # on a sequence mismatch.
         self.resp_seq_graded = True
 
-        await self._oflow_pend_leg()
+        if faults:
+            await self._oflow_pend_leg()
 
         close_graded_window(self.logger)
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        await self._grade_ras()
+        await self._grade_ras(faults)
         assert self.drbg_sb.report()
         self.chk.finish()
 
@@ -291,6 +365,17 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         kv |= self.rd_known(self.dut.km_abr_sk_valid_o) << 8
         await RisingEdge(self.clk)
         return ctrl, kv
+
+    async def _otp_lock_cold(self) -> int:
+        """KM-CSR OTP_READ_LOCK_COLD[8:0], in the bit order of the CMD_OTP_READ_LOCK_COLD mask."""
+        await RisingEdge(self.clk)
+        await ReadOnly()
+        v = self.rd_known(self.dut.km_csr_otp_read_lock_cold_o)
+        await RisingEdge(self.clk)
+        return v
+
+    async def _gate_taps(self) -> tuple[int, int, int]:
+        return (*await self._vault(), await self._otp_lock_cold())
 
     async def _pic31(self) -> int:
         await RisingEdge(self.clk)
@@ -556,21 +641,32 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         self._pair_kv = kv_seen
         self._pair_vault_bad = vault_bad
 
-    async def _alive_and_twins(self) -> None:
-        """Steps 10 and 14: CMD_STAT after the pair leg, then the positive twins."""
-        stat = await self._cmd(pl.CMD_STAT, (), "alive CMD_STAT")
+    async def _alive(self, tag: str) -> None:
+        """CHK-ALIVE: CMD_STAT at e succeeds with recov_fault 0."""
+        stat = await self._cmd(pl.CMD_STAT, (), f"alive CMD_STAT {tag}")
         # A rejection that latched RECOVERABLE_ERR would make every later -1 of
         # this leaf ambiguous; recov_fault 0 here shows it did not.
         self.chk.ok(
-            "ALIVE", stat.code == 0 and stat.arg == 0, control=1, code=stat.code, stat=_a(stat.arg)
+            "ALIVE",
+            stat.code == 0 and stat.arg == 0,
+            control=1,
+            tag=tag,
+            code=stat.code,
+            stat=_a(stat.arg),
         )
+
+    async def _alive_and_twins(self) -> None:
+        """Step 10 CHK-ALIVE after the pair leg, the positive twins, and the rejected CMD_KEY_TRANSFER of step 14."""
+        await self._alive("after-pair-leg")
 
         # CHK-NOCHG-VAULT control: a generate write-locks every slot of its span
         # ("Key Management"), so KM-KPV must show lock_write in one CTRL entry.
         # The all-zero samples of the pair leg are therefore not a dead tap.
         gen = await self._cmd(pl.CMD_KEY_GENERATE, (4, pl.DEST_AES), "twin CMD_KEY_GENERATE")
         ctrl, _ = await self._vault()
-        lock_write = int(any((ctrl >> (4 * s)) & 1 for s in range(64)))
+        lock_write = int(
+            any((ctrl >> (_KPV_CTRL_STRIDE * s + _KPV_LOCK_WRITE_BP)) & 1 for s in range(64))
+        )
         self.logger.info(
             "LOG twin cmd=0x22 code=%d arg=%s ctrl=0x%064x control=1", gen.code, _a(gen.arg), ctrl
         )
@@ -583,12 +679,32 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         )
         self.logger.info("LOG twin cmd=0x27 code=%d arg=%s control=1", abr.code, _a(abr.arg))
 
+        # A rejected CMD_KEY_TRANSFER of a valid handle to HMAC, whose key_valid
+        # reads 0, then the same transfer with no fault: a KM that ran the
+        # handler of the rejected frame sets HMAC key_valid in the first sample.
+        x = self.plan.xfer
+        xl = await self._cmd(
+            pl.CMD_KEY_LOAD, (len(x.key) - 1, x.dest_valid, *x.key), "xfer CMD_KEY_LOAD"
+        )
+        if xl.code != 0 or xl.arg is None or not xl.arg & 0xFF:
+            raise AssertionError(f"[xfer] CMD_KEY_LOAD returned {xl.code} {_a(xl.arg)}")
+        xf = pl.build_xfer_frame(x, xl.arg, self.e)
+        xr = await self._send_words(xf.words, xf.sent_cmd, xf.sent_seq, f"xfer {xf.kind}")
+        self.e = xf.e_after
+        _, xfer_kv = await self._vault()
+        xt = await self._cmd(pl.CMD_KEY_TRANSFER, xf.payload, "xfer twin")
+        _, twin_kv = await self._vault()
+
         self.chk.ok(
             "NOCHG-VAULT",
             not self._pair_nonzero
             and not self._pair_vault_bad
             and gen.code == 0
-            and lock_write == 1,
+            and lock_write == 1
+            and xr.code == xf.code
+            and xfer_kv == 0
+            and xt.code == 0
+            and bool(twin_kv & pl.DEST_HMAC),
             leg="pair",
             rejected=self._pair_rejected,
             vault_frames=len(self.plan.vault),
@@ -598,7 +714,35 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             samples_nonzero=self._pair_nonzero[:4],
             control_gen_code=gen.code,
             control_ctrl_lock_write=lock_write,
+            xfer_kind=xf.kind,
+            xfer_code=xr.code,
+            xfer_golden=xf.code,
+            xfer_key_valid=f"0x{xfer_kv:03x}",
+            control_xfer_code=xt.code,
+            control_xfer_key_valid=f"0x{twin_kv:03x}",
         )
+
+    async def _invalid_cmd_ctrl(self) -> None:
+        """Step 14: a frame whose only fault is its command ID, then CMD_STAT at e plus one."""
+        bad, e0 = self.plan.invalid_cmd, self.e
+        f = await self._send_frame_raw(pl.cmd_frame(bad, e0, []), f"invalid cmd 0x{bad:02x}")
+        rej = self._parse_cmd(f, bad, e0)
+        if rej is None:
+            raise AssertionError(
+                f"[invalid cmd 0x{bad:02x}] expected the RESP_CMD of cmd 0x{bad:02x} seq {e0}; got "
+                f"rid=0x{f.rid:02x} plen={f.plen} payload={[hex(w) for w in f.payload]}"
+            )
+        self.e = (e0 + pl.E_ADVANCE["cmd_id"]) & 0xFF
+        self.chk.info(
+            "INVALID-CMD-ADVANCE",
+            control=1,
+            bad_cmd=f"0x{bad:02x}",
+            e=e0,
+            code=rej.code,
+            graded_by=["CHK-ILLEGAL", "CHK-ALIVE"],
+            leaf="sep_km_command_set_rand_test",
+        )
+        await self._alive("after-invalid-cmd")
 
     # ------------------------------------------------------------- wrap leg
 
@@ -726,9 +870,9 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             pl.CMD_KEY_GENERATE: (g.gen_words - 1, g.gen_dest),
             pl.CMD_KEY_LOAD: (len(g.load_key) - 1, g.load_dest, *g.load_key),
             pl.CMD_KEY_REVOKE: (h,),
-            pl.CMD_KEY_TRANSFER: (h, pl.DEST_AES),
-            pl.CMD_ENGINE_SHRED: (pl.SHRED_MASK,),
-            pl.CMD_OTP_READ_LOCK_COLD: (pl.OTP_LOCK_MASK,),
+            pl.CMD_KEY_TRANSFER: (h, pl.DEST_HMAC),
+            pl.CMD_ENGINE_SHRED: (pl.DEST_AES,),
+            pl.CMD_OTP_READ_LOCK_COLD: (pl.OTP_GATED_MASK,),
             pl.CMD_ABR_SK_TRANSFER: (g.abr_dest,),
             pl.CMD_EXEC_ROM: (),
             pl.CMD_SRAM_LOAD_EXEC: (0,),  # FW_WORDS 0
@@ -755,11 +899,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         pre[pl.CMD_KEY_REVOKE] = rev.code
         xfer = await self._cmd(pl.CMD_KEY_TRANSFER, (load_h, pl.DEST_AES), f"{tag} pre transfer")
         pre[pl.CMD_KEY_TRANSFER] = xfer.code
-        # CHK-NOCHG-VAULT control: the AES key_valid bit (DEST_VALID bit 2) is set
-        # after a transfer to AES, so an unchanged tap in the matrix is not a dead tap.
-        _, kv_ctrl = await self._vault()
-        aes_valid = (kv_ctrl >> 2) & 1
-        shred = await self._cmd(pl.CMD_ENGINE_SHRED, (pl.SHRED_MASK,), f"{tag} pre shred")
+        shred = await self._cmd(pl.CMD_ENGINE_SHRED, (pl.DEST_HMAC,), f"{tag} pre shred")
         pre[pl.CMD_ENGINE_SHRED] = shred.code
         otp = await self._cmd(pl.CMD_OTP_READ_LOCK_COLD, (pl.OTP_LOCK_MASK,), f"{tag} pre otp")
         pre[pl.CMD_OTP_READ_LOCK_COLD] = otp.code
@@ -770,13 +910,12 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             raise AssertionError(f"[{tag}] the load of key h returned {hl.code} {_a(hl.arg)}")
         h = hl.arg & 0xFF
         self.logger.info(
-            "LOG %s pre-fault codes=%s gen_h=%d load_h=%d h=%d aes_key_valid=%d",
+            "LOG %s pre-fault codes=%s gen_h=%d load_h=%d h=%d",
             tag,
             {f"0x{c:02x}": v for c, v in pre.items()},
             gen_h,
             load_h,
             h,
-            aes_valid,
         )
 
         # Steps 24 and 25: the fault, then the old sequence and sequence 0.
@@ -810,6 +949,8 @@ class sep_km_command_protocol_rand_test(sep_base_test):
 
         # Step 26: the gate matrix.
         pays = self._gate_payloads(g, h)
+        matrix_start = await self._gate_taps()
+        _, kv_matrix, otp_matrix = matrix_start
         res: dict[int, _Resp] = {}
         changed: list[str] = []
         for c in g.order:
@@ -817,12 +958,13 @@ class sep_km_command_protocol_rand_test(sep_base_test):
                 res[c] = await self._cmd(c, pays[c], f"{tag} matrix 0x{c:02x}")
                 persist.append(await self._pic31())
                 continue
-            before = await self._vault()
+            before = await self._gate_taps()
             res[c] = await self._cmd(c, pays[c], f"{tag} matrix 0x{c:02x}")
-            after = await self._vault()
+            after = await self._gate_taps()
             if before != after:
                 changed.append(
                     f"0x{c:02x}:ctrl={before[0] ^ after[0]:#x}:kv={before[1]:#x}->{after[1]:#x}"
+                    f":otp_cold={before[2]:#x}->{after[2]:#x}"
                 )
 
         # Step 27: frame validation runs before the gate.
@@ -853,11 +995,15 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         if g.ack_delay:
             await ClockCycles(self.clk, g.ack_delay)
         persist.append(await self._pic31())
+        matrix_end = await self._gate_taps()
         ack = await self._cmd(pl.CMD_RECOV_ACK, (), f"{tag} CMD_RECOV_ACK")
         st2 = await self._cmd(pl.CMD_STAT, (), f"{tag} CMD_STAT after ack")
         pic_after = await self._pic31()
 
-        # Step 29: the gate-clear twins, transfer before revoke.
+        # Step 29: the gate-clear twins, transfer before revoke. The OTP twin
+        # requests the lock bit of the pre-fault window, so OTP_GATED_MASK stays
+        # clear for the next gate leg.
+        clear_pays = {**pays, pl.CMD_OTP_READ_LOCK_COLD: (pl.OTP_LOCK_MASK,)}
         clear: dict[int, _Resp] = {}
         for c in (
             pl.CMD_KEY_GENERATE,
@@ -868,7 +1014,8 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             pl.CMD_OTP_READ_LOCK_COLD,
             pl.CMD_ABR_SK_TRANSFER,
         ):
-            clear[c] = await self._cmd(c, pays[c], f"{tag} clear 0x{c:02x}")
+            clear[c] = await self._cmd(c, clear_pays[c], f"{tag} clear 0x{c:02x}")
+        _, kv_clear = await self._vault()
 
         # CHK-GATE: each key and OTP command returns -1 with no argument under the
         # gate; its success before the fault and after the acknowledge shows that
@@ -952,15 +1099,34 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             delay_clk=g.ack_delay,
         )
 
-        # CHK-NOCHG-VAULT: each gated command leaves KM-KPV CTRL and KM-VALID as they were.
+        # CHK-NOCHG-VAULT: each gated command leaves KM-KPV CTRL, KM-VALID and
+        # OTP_READ_LOCK_COLD as they were, and the taps just before CMD_RECOV_ACK
+        # (after the validation-first frames and the host delay) equal those at
+        # the start of the matrix, so a handler effect that lands after its
+        # response frame also shows. At the matrix the AES key is valid (a
+        # shred of AES clears it), the HMAC key is not (a transfer of h to HMAC
+        # sets it) and DEMOTION is clear (the lock of OTP_GATED_MASK sets it); the
+        # twins after the acknowledge set HMAC and clear AES on the same tap.
+        visible = (
+            kv_matrix & pl.DEST_AES
+            and not kv_matrix & pl.DEST_HMAC
+            and otp_matrix & _OTP_COLD_LIFE_CYCLE
+            and not otp_matrix & _OTP_COLD_DEMOTION
+        )
+        live = kv_clear & pl.DEST_HMAC and not kv_clear & pl.DEST_AES
         self.chk.ok(
             "NOCHG-VAULT",
-            not changed and aes_valid == 1,
+            not changed and matrix_end == matrix_start and bool(visible) and bool(live),
             leg="gate",
             source=src,
             gated=len(pl.GATED),
             changed=changed[:4],
-            control_aes_key_valid=aes_valid,
+            matrix_end_equal=int(matrix_end == matrix_start),
+            matrix_end=f"ctrl={matrix_start[0] ^ matrix_end[0]:#x}:kv={matrix_end[1]:#x}"
+            f":otp_cold={matrix_end[2]:#x}",
+            matrix_key_valid=f"0x{kv_matrix:03x}",
+            matrix_otp_lock_cold=f"0x{otp_matrix:03x}",
+            control_clear_key_valid=f"0x{kv_clear:03x}",
         )
 
         # CHK-RECOVER.
@@ -1148,8 +1314,12 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         if self.ras_ev is not None:
             self.ras_ev.append((phase, self.ras.clk))
 
-    async def _grade_ras(self) -> None:
-        """CHK-RAS-KM_CORRECTABLE-<HALF>: the per-clock record of the tap against the model."""
+    async def _grade_ras(self, faults: bool) -> None:
+        """CHK-RAS-KM_CORRECTABLE-<HALF>: the per-clock record of the tap against the model.
+
+        ``faults`` is true when the run has the legs that raise RESP_RECOVERABLE_FAULT;
+        RISE, SHAPE and CLEAR are graded only then.
+        """
         end = self.ras.clk
         rises = self.ras.rise_clks_since(self.ras_m0)
         falls = self.ras.fall_clks_since(self.ras_m0)
@@ -1227,31 +1397,32 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             high=sum(h for _, _, h in idle),
             bad=idle_bad[:4],
         )
-        self.chk.ok(
-            "RAS-KM_CORRECTABLE-RISE",
-            rise_graded > 0 and not rise_bad,
-            faults=rise_graded + rise_open,
-            graded=rise_graded,
-            acked_before_bound=rise_open,
-            bound=_PIC_BOUND,
-            bad=rise_bad[:4],
-        )
-        self.chk.ok(
-            "RAS-KM_CORRECTABLE-SHAPE",
-            hold and not hold_bad,
-            hold_spans=len(hold),
-            clocks=clocks(hold),
-            low=sum(b - a - h for a, b, h in hold),
-            bad=hold_bad[:4],
-        )
-        self.chk.ok(
-            "RAS-KM_CORRECTABLE-CLEAR",
-            clear and not clear_bad,
-            spans=len(clear),
-            clocks=clocks(clear),
-            high=sum(h for _, _, h in clear),
-            bad=clear_bad[:4],
-        )
+        if faults:
+            self.chk.ok(
+                "RAS-KM_CORRECTABLE-RISE",
+                rise_graded > 0 and not rise_bad,
+                faults=rise_graded + rise_open,
+                graded=rise_graded,
+                acked_before_bound=rise_open,
+                bound=_PIC_BOUND,
+                bad=rise_bad[:4],
+            )
+            self.chk.ok(
+                "RAS-KM_CORRECTABLE-SHAPE",
+                hold and not hold_bad,
+                hold_spans=len(hold),
+                clocks=clocks(hold),
+                low=sum(b - a - h for a, b, h in hold),
+                bad=hold_bad[:4],
+            )
+            self.chk.ok(
+                "RAS-KM_CORRECTABLE-CLEAR",
+                clear and not clear_bad,
+                spans=len(clear),
+                clocks=clocks(clear),
+                high=sum(h for _, _, h in clear),
+                bad=clear_bad[:4],
+            )
         self.chk.obs(
             "RAS-KM_CORRECTABLE-DELAY",
             rise_after_frame_clk=rise_delay,

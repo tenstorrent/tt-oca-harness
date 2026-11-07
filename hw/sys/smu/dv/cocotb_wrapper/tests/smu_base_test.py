@@ -27,6 +27,7 @@ for _path in (
     if _path_text not in sys.path:
         sys.path.insert(0, _path_text)
 
+from env.smu_axi_monitor import SmuAxiMonitor  # noqa: E402
 from env.smu_env import SmuEnv  # noqa: E402
 from env.smu_env_cfg import SmuEnvCfg, check_pll_clock_periods  # noqa: E402
 from env.smu_evidence_map import TEST_EVIDENCE  # noqa: E402
@@ -124,6 +125,24 @@ class smu_base_test(uvm_test):
     #: refuses that period instead of reporting a false failure.
     require_distinct_ref_smu: bool = False
 
+    #: Attach the boundary AXI monitors (SmuAxiMonitor) on ext_in and ext_out.
+    axi_monitor_enabled: bool = True
+
+    #: Grade the DUT's AWREADY / WREADY / ARREADY wait on ext_in against
+    #: cfg.axi_timeout_ns. A leaf whose stimulus withholds the master's RREADY /
+    #: BREADY for that long, so the DUT stops taking requests, sets it False.
+    axi_monitor_ready_budget_ext_in: bool = True
+
+    #: Grade the bench responder's AWREADY / WREADY / ARREADY wait on ext_out
+    #: against cfg.axi_timeout_ns. A leaf that withholds the responder's READY
+    #: beyond that budget on purpose sets it False.
+    axi_monitor_ready_budget_ext_out: bool = True
+
+    #: Fail the run on an ext_in DECERR with no armed credit. The routing table
+    #: answers an ext_in request to neither aperture with DECERR, so it is a
+    #: tally by default.
+    axi_monitor_fail_decerr_ext_in: bool = False
+
     @staticmethod
     def random_seed() -> int:
         return int(os.environ.get("RANDOM_SEED", "1"), 0)
@@ -204,6 +223,8 @@ class smu_base_test(uvm_test):
         self.sep_trace_mon = SmuSepCpuTraceMonitor("sep_trace_mon", self)
         ConfigDB().set(None, "*", "sep_trace_mon", self.sep_trace_mon)
         self._attach_sep_symbols()
+        if self.axi_monitor_enabled:
+            self._build_axi_monitors()
         # The PyUVM env under cocotb/env. Opt-in: SmuScoreboard
         # refuses a run that registered no checks ("zero checks executed -
         # refusing vacuous PASS"), and the wrapper-native leaves carry their own
@@ -222,6 +243,34 @@ class smu_base_test(uvm_test):
             self.cfg.reset_hold_cycles,
             self.cfg.post_reset_cycles,
         )
+
+    def _build_axi_monitors(self) -> None:
+        """Build the ext_in and ext_out boundary AXI monitors.
+
+        ext_in is the flat ``ext_in_*`` slave port of the DUT on the SMC
+        primary reset; ext_out is ``u_axi_out_if``, where the bench responder is
+        the slave, on the responder's cold reset, and idles when the test builds
+        no responder. Each registers in ConfigDB as ``smu_axi_monitor_<bus_name>``;
+        the ext_in instance samples both.
+        """
+        self.axi_mon_ext_in = SmuAxiMonitor("axi_mon_ext_in", self)
+        self.axi_mon_ext_in.bus_name = "ext_in"
+        self.axi_mon_ext_in.scope_path = ""
+        self.axi_mon_ext_in.signal_prefix = "ext_in"
+        self.axi_mon_ext_in.reset_name = "rst_primary_smc_clk_n_o"
+        self.axi_mon_ext_in.fail_decerr = self.axi_monitor_fail_decerr_ext_in
+        self.axi_mon_ext_in.ready_budget = self.axi_monitor_ready_budget_ext_in
+        self.axi_mon_ext_in.require_attach = True
+        self.axi_mon_ext_out = SmuAxiMonitor("axi_mon_ext_out", self)
+        self.axi_mon_ext_out.bus_name = "ext_out"
+        self.axi_mon_ext_out.scope_path = "u_axi_out_if"
+        self.axi_mon_ext_out.signal_prefix = ""
+        self.axi_mon_ext_out.member_widths = self.cfg.axi_out_geometry.member_widths()
+        self.axi_mon_ext_out.reset_name = "rst_cold_n_o"
+        self.axi_mon_ext_out.fail_decerr = False
+        self.axi_mon_ext_out.ready_budget = self.axi_monitor_ready_budget_ext_out
+        self.axi_mon_ext_out.requires_responder = True
+        self.axi_mon_ext_in.sample_with(self.axi_mon_ext_out)
 
     def _attach_sep_symbols(self) -> None:
         """Feed the staged nm listing of the SEP image to the trace monitor.

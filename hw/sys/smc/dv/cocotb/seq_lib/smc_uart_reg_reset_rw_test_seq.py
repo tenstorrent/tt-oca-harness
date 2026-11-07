@@ -521,7 +521,7 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
             "CHK-UART-RO-MSR-WRITE",
             "MSR-WRITE",
             "%d/%d instances MSR after==before (%s), BRESP=[%s] (measured, not compared; "
-            "LINKED-ISSUE SF-012)",
+            "LINKED-ISSUE: the write response of the read-only LSR and MSR)",
             len(after),
             len(INSTANCES),
             " ".join(f"u{w}=0x{v:02x}" for w, v in after.items()),
@@ -544,7 +544,7 @@ class smc_uart_reg_reset_rw_test_seq(SmcCsrSeq):
             "CHK-UART-RO-LSR-WRITE",
             "LSR-WRITE",
             "%d/%d instances LSR after=0x%02x==before (%s), BRESP=[%s] (measured, not compared; "
-            "LINKED-ISSUE SF-012)",
+            "LINKED-ISSUE: the write response of the read-only LSR and MSR)",
             len(after),
             len(INSTANCES),
             LSR_RO_EXPECT,

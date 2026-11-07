@@ -26,7 +26,7 @@
 
 
 localparam int unsigned GPIO_INTF_WRAP_REG_MAP_BASE_ADDR                                                          = 32'h00000000;
-localparam int unsigned GPIO_INTF_WRAP_REG_MAP_SIZE                                                               = 32'h00000410;
+localparam int unsigned GPIO_INTF_WRAP_REG_MAP_SIZE                                                               = 32'h00000430;
 
 
 
@@ -1137,6 +1137,40 @@ localparam int unsigned GPIO_INTF_64__ACCESS_FILTER_REG_ADDR                    
 
 
 //==============================================================================
+// Addresses for Address Map: gpio_intf[65]
+//==============================================================================
+
+
+localparam int unsigned GPIO_INTF_65__REG_MAP_BASE_ADDR                                                           = 32'h00000410;
+localparam int unsigned GPIO_INTF_65__REG_MAP_SIZE                                                                = 32'h0000000C;
+
+
+localparam int unsigned GPIO_INTF_65__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
+localparam int unsigned GPIO_INTF_65__DATA_CTRL_REG_ADDR                                                          = 32'h00000410;
+localparam int unsigned GPIO_INTF_65__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
+localparam int unsigned GPIO_INTF_65__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'h00000414;
+localparam int unsigned GPIO_INTF_65__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
+localparam int unsigned GPIO_INTF_65__ACCESS_FILTER_REG_ADDR                                                      = 32'h00000418;
+
+
+//==============================================================================
+// Addresses for Address Map: gpio_intf[66]
+//==============================================================================
+
+
+localparam int unsigned GPIO_INTF_66__REG_MAP_BASE_ADDR                                                           = 32'h00000420;
+localparam int unsigned GPIO_INTF_66__REG_MAP_SIZE                                                                = 32'h0000000C;
+
+
+localparam int unsigned GPIO_INTF_66__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
+localparam int unsigned GPIO_INTF_66__DATA_CTRL_REG_ADDR                                                          = 32'h00000420;
+localparam int unsigned GPIO_INTF_66__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
+localparam int unsigned GPIO_INTF_66__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'h00000424;
+localparam int unsigned GPIO_INTF_66__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
+localparam int unsigned GPIO_INTF_66__ACCESS_FILTER_REG_ADDR                                                      = 32'h00000428;
+
+
+//==============================================================================
 // Default values for registers
 //==============================================================================
 
@@ -1197,6 +1231,12 @@ localparam int unsigned GPIO_INTF_ACCESS_FILTER_AWPROT_REQUIREMENT_SHIFT        
 
 localparam int unsigned GPIO_INTF_ACCESS_FILTER_ARPROT_REQUIREMENT_MASK                                           = 32'h70000;
 localparam int unsigned GPIO_INTF_ACCESS_FILTER_ARPROT_REQUIREMENT_SHIFT                                          = 16;
+
+
+
+
+
+
 
 
 

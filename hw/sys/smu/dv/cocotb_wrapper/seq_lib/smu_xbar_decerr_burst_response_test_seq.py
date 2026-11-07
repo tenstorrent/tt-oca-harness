@@ -40,6 +40,7 @@ import random
 
 import cocotb
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
+from env.smu_axi_monitor import expected_decerr
 from ocah_axi_vip import (
     PROT_NONSECURE,
     RESP_DECERR,
@@ -1004,12 +1005,21 @@ class smu_xbar_decerr_burst_response_test_seq:
 
     async def run(self) -> None:
         await self._s1_setup()
-        await self._s2_bit55()
-        await self._s3_incr_reads()
-        await self._s4_wrap_fixed_reads()
-        await self._s5_w_first()
-        await self._s6_incr_writes()
-        await self._s7_w_gaps()
-        await self._s8_side_effect()
-        await self._s9_capacity()
+        # AXI monitor decode rule: each step arms the most DECERR beats its probes return.
+        with expected_decerr("ext_in", 2):
+            await self._s2_bit55()
+        with expected_decerr("ext_in", sum(arlen + 1 for arlen, _ in INCR_READS)):
+            await self._s3_incr_reads()
+        with expected_decerr("ext_in", sum(arlen + 1 for _, arlen, _ in WRAP_FIXED_READS)):
+            await self._s4_wrap_fixed_reads()
+        with expected_decerr("ext_in", 1):
+            await self._s5_w_first()
+        with expected_decerr("ext_in", len(INCR_WRITES)):
+            await self._s6_incr_writes()
+        with expected_decerr("ext_in", 1):
+            await self._s7_w_gaps()
+        with expected_decerr("ext_in", 1):
+            await self._s8_side_effect()
+        with expected_decerr("ext_in", CAP_READS):
+            await self._s9_capacity()
         self._fences()

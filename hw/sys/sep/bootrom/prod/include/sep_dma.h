@@ -13,24 +13,22 @@
 
 #include "sep.h"
 
-// sep_dma_zero() fills through a copy, which needs a source address, so it keeps
-// one word that the CPU zeroes and the engine re-reads for every beat. It sits
-// at the top of SEP SRAM, and the bytes it occupies belong to no one else.
-//
-// SEP_SRAM_USABLE_SIZE, not the region size, is what every consumer that hands
-// out SEP SRAM must bound itself with: the manifest body and the payload
-// (oca_boot.c) and BL1's permitted load span (rom_handoff.c). The CPU writes
-// the fill word immediately before each fill, so anything else placed there is
-// destroyed part-way through a boot -- and the last such overlap was invisible
-// because the only reader of the corrupted bytes was BL1, not the ROM.
-#define SEP_SRAM_FILL_RESERVE_BYTES 8u
-#define SEP_SRAM_USABLE_SIZE ((uint32_t)SEP_TOP_SEP_SRAM_SIZE - SEP_SRAM_FILL_RESERVE_BYTES)
-#define SEP_SRAM_FILL_WORD_ADDR ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR + SEP_SRAM_USABLE_SIZE)
+enum {
+    SEP_DMA_ERR_OUT_OF_RANGE = 0x00020001u,
+    SEP_DMA_ERR_TRANSFER = 0x00020002u,
+};
 
 void sep_dma_init(void);
 uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len);
 
-// Fill `len` bytes at `dest` with zero.  Needed for ICCM, which the CPU cannot
-// store to (ICCM shares VeeR region 0xC with DCCM, so the LSU faults any ICCM
-// address); writing it establishes its ECC.
+// Fills `len` bytes at `dest` with zero using the secure DMA's zero fill, which
+// reads no memory. `dest` and `len` must be whole aligned words, `len` non-zero,
+// and the span inside one of SEP SRAM, SMC SRAM or ICCM; anything else returns
+// SEP_DMA_ERR_OUT_OF_RANGE before the engine is touched. The engine's enabled
+// range is left set to that whole region. Returns 0 only when the engine reports
+// completion with no error; every other outcome is non-zero.
+//
+// The secure DMA is the only writer of ICCM, which the CPU cannot store to (ICCM
+// shares VeeR region 0xC with DCCM, so the LSU faults any ICCM address). A zero
+// fill there establishes the ECC of the words it covers.
 uint32_t sep_dma_zero(uint32_t dest, size_t len);

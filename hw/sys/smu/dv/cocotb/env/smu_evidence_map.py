@@ -1323,6 +1323,218 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "target is refused with SLVERR",
         ),
     ],
+    "smu_axi_concurrent_initiators_stall_test": [
+        (
+            "CHK-G4-CONC-EXTOUT",
+            "CHK-G4-CONC-EXTOUT",
+            "with the ext_out responder withholding READY and delaying B and R, every iDMA burst at "
+            "ext_out is INCR and answered once per ID, the destination equals the source and DONE "
+            "reports the launch id; a JTAG2AXI write and read of ext_out complete once with the "
+            "word written; each ext_in request to neither aperture is answered once with DECERR "
+            "and its ID, none reaches ext_out and no target port moves",
+        ),
+        (
+            "CHK-G4-IWC-ID",
+            "CHK-G4-IWC-ID",
+            "interleaved ext_in reads and writes under distinct IDs to the SEP SRAM and the SMC "
+            "scratchpad each get one response with the issued ID and the reference data, no "
+            "response carries an ID ext_in did not issue, the iDMA copy from the SEP SRAM lands "
+            "at ext_out unchanged, an iDMA read of the SEP SRAM under the ext_in train's ARID "
+            "crosses the crossbar smc_out port while a train read is outstanding, the train reads "
+            "return in issue order with the SEP SRAM word at each address, and at the smc_out port "
+            "the B IDs equal the AW IDs and the RLAST IDs equal the AR IDs, all OKAY",
+        ),
+        (
+            "CHK-G4-ROUTE-FWD",
+            "CHK-G4-ROUTE-FWD",
+            "each single-beat and 32-byte INCR read and write of the four forwarding cells "
+            "(smc_out SEP, smc_out neither, ext_in SEP, ext_in SMC) moves only the target port "
+            "its cell names and returns once with the issued ID and the data written; each smc_out "
+            "request appears once at the crossbar smc_out port with its address and its B or RLAST "
+            "carries its ID there, and each 32-byte iDMA copy is one INCR AxLEN 3 AR and AW at "
+            "that port and one sep_in request",
+        ),
+        (
+            "CHK-G4-ROUTE-DECERR",
+            "CHK-G4-ROUTE-DECERR",
+            "an ext_in read and write to neither aperture get one R with DECERR and RLAST=1 and "
+            "one B with DECERR under the issued IDs, and no target port or ext_out sees an AW or "
+            "AR; the smc_out SMC-aperture cell is not drivable from the SMC and is not graded",
+        ),
+        (
+            "CHK-G4-APERTURE",
+            "CHK-G4-APERTURE",
+            "at the reset sizes base+0x00FF_FFFF of each aperture decodes inside and "
+            "base+0x0100_0000 outside, routed per the routing table for smc_out and ext_in (no "
+            "smc_out read inside the SMC aperture, which is not drivable); with "
+            "base+size above 2^56 0xFF_FFFF_FFFF_FFFF decodes inside; with a 32-bit SEP_REGION_SIZE "
+            "the last word below base+size decodes inside and base+size outside; every aperture "
+            "register reads back its reset value",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < STALLED_EXT_OUT < INTERLEAVE < ROUTE_FWD < DECERR_CELLS < "
+            "APERTURE_RESET_SIZES < APERTURE_PROGRAMMING with sim time and a non-zero count at "
+            "least the plan per term",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every access, handshake, port and DONE wait is bounded in clk_smu_i edges or polls, "
+            "fails on expiry with the last handshakes and the reset-net sample, none expired",
+        ),
+    ],
+    "smu_axi_sep_lsu_initiator_stall_test": [
+        (
+            "CHK-G4B-CONC-EXTOUT",
+            "CHK-G4B-CONC-EXTOUT",
+            "with the ext_out responder withholding READY and delaying B and R, the LSU probe "
+            "completes with every load returning the store word and the responder holding every "
+            "stored byte, each system-bus write and read of ext_out completes with the word "
+            "written, every sep_out AW gets one B and every AR one RLAST per ID, all OKAY, and "
+            "each LSU and system-bus request at ext_out carries AxPROT 0b011 (the debug and LSU "
+            "masters' 0b001 with NS set for address bit 55 clear); the iDMA copy lands unchanged "
+            "with INCR bursts, the JTAG2AXI write and read complete once, the ext_in requests to "
+            "neither aperture get DECERR, the LSU, iDMA and JTAG2AXI spans at ext_out overlap "
+            "pairwise and all three at once, and every crossbar request reaches the target its "
+            "cell names",
+        ),
+        (
+            "CHK-G4B-INTERLEAVE",
+            "CHK-G4B-INTERLEAVE",
+            "per initiator port (sep_out, smc_out, ext_in) and the SEP-to-SMC port, one B per AW "
+            "and AxLEN+1 R beats with RLAST on the last per AR, per ID in order, none lost or "
+            "duplicated; the LSU probe runs toward ext_out and the SMC scratchpad complete with "
+            "the stored bytes held, a system-bus read is outstanding on sep_out while the LSU "
+            "issues, JTAG2AXI full and partial writes read back, same-ID ext_in reads toward the "
+            "SEP SRAM and the scratchpad return the written bytes in issue order, both iDMA "
+            "copies land unchanged, the error cells answer their stated codes, and every crossbar "
+            "request reaches the target its cell names and no other",
+        ),
+        (
+            "CHK-G4B-NO-EXOKAY",
+            "CHK-G4B-NO-EXOKAY",
+            "no B or R on any of the 13 checked links is EXOKAY or unresolved over S2 and S3",
+        ),
+        (
+            "CHK-G4B-CONTENT-FLOOR",
+            "CHK-G4B-CONTENT-FLOOR",
+            "every checked link carries in S3 at least one partial-strobe W beat, one error B and "
+            "one error R, and every link but sep_out, the SEP-to-SMC port and the DTP debug link "
+            "(single-beat initiators) one multi-beat AW and one multi-beat AR",
+        ),
+        (
+            "CHK-G4B-DATA-KNOWN",
+            "CHK-G4B-DATA-KNOWN",
+            "every checked link carries in S3 at least one strobed W beat and one OKAY R beat, no "
+            "strobed WDATA lane is unresolved and no OKAY RDATA bit is unresolved",
+        ),
+        (
+            "CHK-G4B-ROUTE-FWD",
+            "CHK-G4B-ROUTE-FWD",
+            "a system-bus write and read matching neither aperture each appear once at ext_out "
+            "and at no other target port, return on sep_out with the issued ID and the read "
+            "returns the word the responder holds",
+        ),
+        (
+            "CHK-G4B-ROUTE-DECERR",
+            "CHK-G4B-ROUTE-DECERR",
+            "a system-bus write and read into the SEP aperture get one B DECERR and one R DECERR "
+            "with RLAST 1 on sep_out under the issued IDs and reach no target port; each ext_in "
+            "INCR burst of AxLEN 1, 15 and 255 into neither aperture gets AxLEN+1 R beats with "
+            "RLAST on the last only, every W beat accepted and one B DECERR, and reaches no target "
+            "port; the smc_out SMC-aperture cell is not drivable and is not graded",
+        ),
+        (
+            "CHK-G4B-APERTURE",
+            "CHK-G4B-APERTURE",
+            "with both apertures in the SEP's SMU window at the reset sizes and after one "
+            "reprogram, base and base+size-1 decode inside and base-1 and base+size outside each "
+            "aperture, routed per the table for sep_out, smc_out and ext_in; the sep_out reads "
+            "inside the SMC aperture are observed only, and the smc_out reads inside it are not "
+            "issued",
+        ),
+        (
+            "CHK-G4B-ZERO",
+            "CHK-G4B-ZERO",
+            "with SEP_REGION_SIZE 0, then REGION_SIZE 0, then both, sep_out and smc_out requests "
+            "into each zero-size range reach ext_out with the word written, ext_in requests there "
+            "get DECERR and move no target port, a sep_out request into the SEP aperture while it "
+            "is enabled gets DECERR, and the SEP aperture reads back its reset after the restore",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < STALLED_EXT_OUT < INTERLEAVE < ROUTE_FWD < DECERR_CELLS < "
+            "APERTURE_EDGES < ZERO_SIZE with sim time, a count per term from the stimulus marks of "
+            "its step, at least the plan, and the LSU probe runs and sep_out system-bus accesses "
+            "equal to the step budget per term; the per-step compares carry the non-vacuity",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every access, DMI, system-bus, probe, handshake, port and DONE wait is bounded in "
+            "clk_smu_i edges or polls, fails on expiry with the last handshakes and the reset-net "
+            "sample, none expired",
+        ),
+    ],
+    "smu_axi_sep_reset_in_flight_test": [
+        (
+            "CHK-G2B-NO-PHANTOM",
+            "CHK-G2B-NO-PHANTOM",
+            "from the IC_RESET override to the end, no B and no R on smu_in or dtp_dbg carries an "
+            "ID for which that initiator has no request outstanding in the issue log, no response "
+            "ID is unresolved, and the log is not empty",
+        ),
+        (
+            "CHK-G2B-LIVENESS",
+            "CHK-G2B-LIVENESS",
+            "after the release and the S6 TAP test-logic reset, with no cold reset before, ext_in "
+            "to the SEP SRAM and the SMC scratchpad, JTAG2AXI writes to the SEP SRAM and ext_out "
+            "read back over ext_in and over the debug module's system bus through sep_out, and "
+            "the stub store and load "
+            "to ext_out each complete a fresh write and read: one response with the issued ID "
+            "within the bound, OKAY, and the read returns what was written; the JTAG2AXI read "
+            "after the hold is observed only (SF-003)",
+        ),
+        (
+            "CHK-G2B-SEP2SMC",
+            "CHK-G2B-SEP2SMC",
+            "each of the six stub and system-bus accesses to the SMC aperture (the stub store and "
+            "load, a system-bus read and a system-bus write before the hold, the stub store and "
+            "load after the release) appears once on a SEP link and gets exactly one "
+            "response with the issued ID within the bound; the link, the response code, AxUSER, "
+            "AxPROT and the address are observed only",
+        ),
+        (
+            "CHK-G2B-WINDOW",
+            "CHK-G2B-WINDOW",
+            "the bench expectation window opens at the one fall of sep_reset_n under the IC_RESET "
+            "override and closes 8 clk_smu_i edges after the release, never opens outside the "
+            "hold, is closed at the end with a window count of 1, sees no primary-reset fall, and "
+            "the SEP rst_ni and the primary reset stay high through the hold; sep_reset_n is "
+            "sampled low with no X, and every graded link is sampled with no X on its VALIDs",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered fence SETUP < SEP2SMC < LOAD < SEP_RESET < NONSEP_DURING_RESET < "
+            "RELEASE_LIVENESS with sim time, a non-zero count at least the plan per term (for "
+            "NONSEP_DURING_RESET the four observation windows closed, met or run out), and the "
+            "JTAG2AXI, debug-module and system-bus, ext_in and IC_RESET accesses equal to the step "
+            "budget",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every DMI, system-bus, abstract-command, JTAG2AXI, handshake, reset-net and window "
+            "wait is bounded in clk_smu_i edges, polls or captures, fails on expiry with the last "
+            "handshakes and the reset-net sample, none expired; the JTAG2AXI and ext_in "
+            "observation windows are listed apart with their outcome, and one that runs out is "
+            "measured, never an expiry",
+        ),
+    ],
     "smu_axi_smc_cool_reset_in_flight_test": [
         (
             "CHK-G2A-VALID-LOW",
@@ -2400,7 +2612,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SBA-OUT-ERROR",
             "CHK-SEP-SBA-OUT-ERROR",
-            "responder SLVERR and DECERR on a read and a write each return a system-bus error",
+            "responder SLVERR and DECERR on a read and a write each return a non-zero sberror "
+            "(code logged), and the next write and read complete with sberror 0",
         ),
         (
             "CHK-SEP-SBA-SMC-WINDOW",
@@ -2412,7 +2625,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "every external-aperture and TRNG-window access, the address bits walked in the "
-            "seed-drawn order, returns a system-bus error",
+            "seed-drawn order, returns a non-zero sberror (code logged)",
         ),
     ],
     "smu_sep_external_irq_pins_test": [
@@ -2851,7 +3064,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SPI-QUAD",
             "quad-mode transmits drive all four data lanes high and off their pre-command "
             "idle level, and raise their enables, a quad receive "
-            "fills one RX FIFO word and completes with every enable low, and "
+            "fills one RX FIFO word and completes with every enable low, "
+            "INTR_ENABLE.ERROR set and cleared on the same path reads back each value, and "
             "INTR_STATE.SPI_EVENT and the interrupt stay "
             "high across a write to INTR_STATE and fall when EVENT_ENABLE.IDLE is cleared",
         ),
@@ -2866,8 +3080,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-WDT-BITE",
             "CHK-SEP-WDT-BITE",
-            "the SEP watchdog reset request is low before the watchdog is enabled, rises "
-            "when it bites, and falls without a cool or primary reset",
+            "the SEP watchdog reset request is low and rst_wdt_n high before the watchdog is "
+            "enabled; with the bark and bite thresholds read back as 0x20 it rises when it "
+            "bites, one clk_smu_i sample shows the request high and rst_wdt_n low together, "
+            "rst_wdt_n first reads low no earlier than the request first reads high, the SMC "
+            "watchdog second timeout stays low, and the request falls again",
         ),
     ],
     "smu_sep_stap_hold_reset_test": [
@@ -3358,8 +3575,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OTP-FABRIC-BLOCKED",
             "CHK-OTP-FABRIC-BLOCKED",
-            "a SINGLE_OP on the primary TAP launches neither AW nor AR on the "
-            "DTP -> SMC debug AXI port while that posture holds",
+            "with SMC_AXI_SINGLE_OP selected, a non-zero pattern and its complement "
+            "shifted through the SINGLE_OP register come back after exactly 132 bits; "
+            "then, with the bridge's PTAP disable input at 1 before and after, a "
+            "SINGLE_OP read on the primary TAP moves neither the AW nor the AR handshake "
+            "count on the DTP -> SMC debug AXI port, no AWVALID, WVALID or ARVALID is high "
+            "or X/Z on any clk_smu_i edge of the window, and the bridge's SINGLE_OP "
+            "capture reads op 0 and address 0 (update not latched); the open-posture "
+            "controls are smu_jtag2axi_access_matrix_rand_test (same driver: "
+            "make_smu_jtag_tap and pack_single_op) and smu_sep_dbg_gating_test_dev_test",
         ),
         (
             "CHK-OTP-SMC-RW-WHILE-BLOCKED",
@@ -4221,7 +4445,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-LANE-GPIO",
             "CHK-SMU-LANE-GPIO",
-            "with all 65 pads taken from their LSIO owners and armed as active-high "
+            "with all 67 pads taken from their LSIO owners and armed as active-high "
             "levels, driving every pad raises every gpio_interrupt_o lane and sets "
             "DATA_CTRL.PAD2CORE on every interface, and both follow the pads back "
             "down",

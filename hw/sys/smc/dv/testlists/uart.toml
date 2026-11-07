@@ -61,6 +61,23 @@ timeout_sec = 1800
 tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
+# UART0 TX FIFO integrity: a stored parity bit of a queued entry and one bit of
+# the hardened read pointer's secondary copy are each flipped in place; err_o,
+# IIR id 7 under IER.EFEI, its persistence across IIR reads, the RAS bit and
+# the clearing (pop, FCR.XMIT_FIFO_RESET) are compared.
+# The fault is deposited through the Verilator public scope
+# (`tb/smc_public_scope.vlt`), so the leaf runs on Verilator only; a VCS run
+# of `hosted` reports it as skipped_wrong_tool instead of failing on the
+# unreset entry array.
+[[tests]]
+name = "smc_uart_fifo_integrity_fault_test"
+module = "smc_uart_fifo_integrity_fault_test"
+seed = 1
+timeout_sec = 1800
+tools = ["verilator"]
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
 [[tests]]
 name = "smc_uart_error_conditions_test"
 module = "smc_uart_error_conditions_test"
@@ -150,12 +167,14 @@ name = "uart"
 tests = [
     "smc_uart_fifo_basic_trigger_reset_test",
     "smc_uart_irq_sources_priority_test",
+    "smc_uart_fifo_integrity_fault_test",
     "smc_uart_error_conditions_test",
     "smc_uart_baud_word_parity_format_test",
     "smc_uart_frame_error_inject_rand_test",
     "smc_uart_extremes_misc_test",
     "smc_uart_sanity_test",
     "smc_log_engine_intr_mask_test",
+    "smc_log_engine_port_limits_test",
 ]
 
 [[tests]]
@@ -236,6 +255,17 @@ name = "smc_uart_log_engine_reg_map_test"
 module = "smc_uart_log_engine_reg_map_test"
 seed = 1
 timeout_sec = 3600
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+# Wrapper 0: CPU THR writes merged with a running log through the write-port
+# arbiter, the four-word read-data FIFO measured against a stalled transmitter,
+# and the 512 KiB region clamp placing slot 1.
+[[tests]]
+name = "smc_log_engine_port_limits_test"
+module = "smc_log_engine_port_limits_test"
+seed = 1
+timeout_sec = 1800
 tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
