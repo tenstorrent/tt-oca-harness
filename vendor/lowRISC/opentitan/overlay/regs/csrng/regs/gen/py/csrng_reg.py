@@ -842,7 +842,7 @@ CSRNG_HW_EXC_STS_REG_FIELD_ACCESS = (
 
 CSRNG_HW_EXC_STS_REG_WIDTH = 32
 CSRNG_HW_EXC_STS_REG_FIELDS = (
-    ('HW_EXC_STS', 0, 15, 'rw', 'w', 'wzc', '', False, True, 0),
+    ('HW_EXC_STS', 0, 15, 'rw', 'rw', 'wzc', '', False, True, 0),
 )
 
 class CSRNG_HW_EXC_STS_reg_t(Structure):
