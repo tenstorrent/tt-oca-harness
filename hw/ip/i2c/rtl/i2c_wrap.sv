@@ -3,9 +3,10 @@
 
 // Demux one AXI-Lite slave onto NUM_I2CS I2C cores and a shared ctrl map.
 //
-// NumRegMaps is NUM_I2CS plus one for ctrl and one for the error slave.
-// Addresses outside every map reach the error slave, which answers DECERR with read data
-// 0xBADCAB1E.
+// NumRegMaps is NUM_I2CS plus one for ctrl.
+// The demux gives each instance its instance spacing as its window and the ctrl map its own
+// window, and answers the rest of the page with DECERR and read data 0xBADCAB1E. Inside its
+// window an instance or the ctrl map answers SLVERR past its registers.
 // The ctrl map holds one I2C_CTRL register per instance, which drives i2c_en_o,
 // i2c_controller_mode_en_o and that instance's SMBus enable.
 // SMBus, DMA ready, IRQ, and debug ports are vectors with one slice per instance.
@@ -37,13 +38,8 @@ module i2c_wrap #(
   parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_0__REG_MAP_SIZE      = 0, // Per-instance register-map size.
   parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_INSTANCE_SPACING     = 0, // Byte spacing between instances.
 
-  localparam int unsigned NumRegMaps = NUM_I2CS + 2,        // Decode targets: instances + ctrl +
-                                                            // error slave.
-  localparam type i2c_wrap_reg_map_select_t = logic [$clog2(NumRegMaps)-1:0], // Register-map select type.
-  localparam i2c_wrap_reg_map_select_t CtrlRegMap =       // Select index for the ctrl map.
-        i2c_wrap_reg_map_select_t'(NumRegMaps - 2),
-  localparam i2c_wrap_reg_map_select_t UndefinedRegMap =  // Select index for the error slave.
-        i2c_wrap_reg_map_select_t'(NumRegMaps - 1)
+  localparam int unsigned NumRegMaps = NUM_I2CS + 1,        // Decode targets: instances + ctrl.
+  localparam int unsigned CtrlRegMap = NumRegMaps - 1       // Index of the ctrl map.
 ) (
   input  logic                clk_i,                        // System clock.
   input  logic                rst_ni,                       // Async reset, active-low.
@@ -124,92 +120,55 @@ module i2c_wrap #(
   // AXI4-Lite Register Demux //
   //////////////////////////////
 
-  i2c_wrap_reg_map_select_t axil_aw_select, axil_ar_select;
+  localparam int unsigned I2cWindow = 32'(1) << i2c_reg_pkg::I2C_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned CtrlWindow = 32'(1) << i2c_ctrl_reg_pkg::I2C_CTRL_REG_MIN_ADDR_WIDTH;
 
-  always_comb begin
-    axil_aw_select = UndefinedRegMap;
+  `OCAH_ASSERT_STATIC(I2cWindowIsSpacing_A, I2C_INSTANCE_SPACING == I2cWindow)
+  `OCAH_ASSERT_STATIC(I2cMapFitsWindow_A, I2C_0__REG_MAP_SIZE <= I2cWindow)
+  `OCAH_ASSERT_STATIC(CtrlMapFitsWindow_A, I2C_CTRL_REG_MAP_SIZE <= CtrlWindow)
 
-    if (axil_req_i.aw.addr >= I2C_CTRL_REG_MAP_BASE_ADDR &&
-            axil_req_i.aw.addr <  I2C_CTRL_REG_MAP_BASE_ADDR +
-                                  I2C_CTRL_REG_MAP_SIZE) begin
-      axil_aw_select = CtrlRegMap;
-    end else begin
-      for (int i = 0; i < NUM_I2CS; i++) begin
-        logic [i2c_wrap_pkg::RegAddrWidth-1:0] i2c_i_base_addr;
-        i2c_i_base_addr = I2C_0__REG_MAP_BASE_ADDR + i * I2C_INSTANCE_SPACING;
-        if (axil_req_i.aw.addr >= i2c_i_base_addr &&
-                    axil_req_i.aw.addr <  i2c_i_base_addr +
-                                          I2C_0__REG_MAP_SIZE) begin
-          axil_aw_select = i2c_wrap_reg_map_select_t'(i);
-        end
-      end
+  typedef logic [i2c_wrap_pkg::RegAddrWidth-1:0] range_addr_t[NumRegMaps];
+
+  function automatic range_addr_t range_base();
+    range_addr_t base;
+    for (int unsigned i = 0; i < NUM_I2CS; i++) begin
+      base[i] = I2C_0__REG_MAP_BASE_ADDR + i * I2C_INSTANCE_SPACING;
     end
-  end
+    base[CtrlRegMap] = I2C_CTRL_REG_MAP_BASE_ADDR;
+    return base;
+  endfunction
 
-  always_comb begin
-    axil_ar_select = UndefinedRegMap;
-
-    if (axil_req_i.ar.addr >= I2C_CTRL_REG_MAP_BASE_ADDR &&
-            axil_req_i.ar.addr <  I2C_CTRL_REG_MAP_BASE_ADDR +
-                                  I2C_CTRL_REG_MAP_SIZE) begin
-      axil_ar_select = CtrlRegMap;
-    end else begin
-      for (int i = 0; i < NUM_I2CS; i++) begin
-        logic [i2c_wrap_pkg::RegAddrWidth-1:0] i2c_i_base_addr;
-        i2c_i_base_addr = I2C_0__REG_MAP_BASE_ADDR + i * I2C_INSTANCE_SPACING;
-        if (axil_req_i.ar.addr >= i2c_i_base_addr &&
-                    axil_req_i.ar.addr <  i2c_i_base_addr +
-                                          I2C_0__REG_MAP_SIZE) begin
-          axil_ar_select = i2c_wrap_reg_map_select_t'(i);
-        end
-      end
+  function automatic range_addr_t range_size();
+    range_addr_t size;
+    for (int unsigned i = 0; i < NUM_I2CS; i++) begin
+      size[i] = I2cWindow;
     end
-  end
+    size[CtrlRegMap] = CtrlWindow;
+    return size;
+  endfunction
 
-  axi_lite_demux #(
-    .aw_chan_t       (i2c_wrap_pkg::axil_aw_chan_t),
-    .w_chan_t        (i2c_wrap_pkg::axil_w_chan_t),
-    .b_chan_t        (i2c_wrap_pkg::axil_b_chan_t),
-    .ar_chan_t       (i2c_wrap_pkg::axil_ar_chan_t),
-    .r_chan_t        (i2c_wrap_pkg::axil_r_chan_t),
-    .axi_req_t       (i2c_wrap_pkg::axil_req_t),
-    .axi_resp_t      (i2c_wrap_pkg::axil_resp_t),
-    .NoMstPorts      (NumRegMaps),
-    .MaxTrans        (1),
-    .FallThrough     (1'b0),
-    .SpillAw         (1'b1),
-    .SpillW          (1'b0),
-    .SpillB          (1'b0),
-    .SpillAr         (1'b1),
-    .SpillR          (1'b0)
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (i2c_wrap_pkg::RegAddrWidth),
+    .AXI_DATA_WIDTH (i2c_wrap_pkg::RegDataWidth),
+    .NUM_RANGES     (NumRegMaps),
+    .RANGE_BASE     (range_base()),
+    .RANGE_SIZE     (range_size()),
+    .MAX_TRANS      (1),
+    .aw_chan_t      (i2c_wrap_pkg::axil_aw_chan_t),
+    .w_chan_t       (i2c_wrap_pkg::axil_w_chan_t),
+    .b_chan_t       (i2c_wrap_pkg::axil_b_chan_t),
+    .ar_chan_t      (i2c_wrap_pkg::axil_ar_chan_t),
+    .r_chan_t       (i2c_wrap_pkg::axil_r_chan_t),
+    .axil_req_t     (i2c_wrap_pkg::axil_req_t),
+    .axil_resp_t    (i2c_wrap_pkg::axil_resp_t)
   ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
-    .test_i          (test_en_i),
-    .slv_req_i       (axil_req_i),
-    .slv_aw_select_i (axil_aw_select),
-    .slv_ar_select_i (axil_ar_select),
-    .slv_resp_o      (axil_resp_o),
-    .mst_reqs_o      (axil_reqs),
-    .mst_resps_i     (axil_resps)
-  );
-
-  prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (i2c_wrap_pkg::RegAddrWidth),
-    .AXI_DATA_WIDTH (i2c_wrap_pkg::RegDataWidth),
-    .axil_req_t     (i2c_wrap_pkg::axil_req_t),
-    .axil_resp_t    (i2c_wrap_pkg::axil_resp_t),
-    .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (i2c_wrap_pkg::RegDataWidth),
-    .RESP_DATA      (32'hBADCAB1E),
-    .MAX_TRANS      (1)
-  ) u_prim_axi_lite_err_slv (
-    .clk_i,
-    .rst_ni,
     .test_en_i,
-
-    .axil_req_i     (axil_reqs [UndefinedRegMap]),
-    .axil_resp_o    (axil_resps[UndefinedRegMap])
+    .slv_req_i   (axil_req_i),
+    .slv_resp_o  (axil_resp_o),
+    .mst_reqs_o  (axil_reqs),
+    .mst_resps_i (axil_resps)
   );
 
 

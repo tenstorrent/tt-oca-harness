@@ -7,7 +7,7 @@
 package i2c_reg_pkg;
 
     localparam I2C_REG_DATA_WIDTH = 32;
-    localparam I2C_REG_MIN_ADDR_WIDTH = 8;
+    localparam I2C_REG_MIN_ADDR_WIDTH = 9;
     localparam I2C_REG_SIZE = 'h84;
 
     typedef struct {
