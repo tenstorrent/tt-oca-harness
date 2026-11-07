@@ -7,12 +7,15 @@
 // aperture address/size outputs, NMI vector, external TRNG source select, Key Manager
 // wipe, and DMA/peripheral bus-error status/clear.
 //
-// An AXI-Lite demux decodes the local-master alias remap, AP and STEE output remap, outbound
-// and inbound filter, sep_cpu_ctrl, and cold and warm scratch windows; any other address
-// reaches a DECERR slave. The cold scratch registers reset on rst_ni and the warm ones on
-// rst_warm_ni; everything else resets on rst_ni. REFERENCE_COUNTER counts clk_ref_i and is
-// read through a CDC into clk_i; a software write loads it.
+// An AXI-Lite demux routes each register group the aligned window it decodes: 0x200 bytes for
+// the local-master alias remap, 0x80 each for the AP and STEE output remap, 0x400 for the
+// outbound filter, 0x200 for the inbound filter, 0x2000 for sep_cpu_ctrl, and 0x80 each for the
+// cold and warm scratch registers. The rest of each 4 KiB page reaches a slave that answers
+// DECERR, with read data 0xBADCAB1E. The cold scratch registers reset on rst_ni and the warm
+// ones on rst_warm_ni; everything else resets on rst_ni. REFERENCE_COUNTER counts clk_ref_i and
+// is read through a CDC into clk_i; a software write loads it.
 
+`include "ocah_assert.svh"
 `include "ocah_registers.svh"
 
 module sep_system_csr (
@@ -151,103 +154,151 @@ module sep_system_csr (
   // AXI Demux
   ////////////////////////////////////////////////////////////////////////////
 
-  always_comb begin
-    // Default assignments
-    system_csr_demux_select_aw = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
-    system_csr_demux_select_ar = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
+  localparam longint unsigned AliasRemapWindowSize =
+      sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_NUM
+      * sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE;
+  localparam longint unsigned ApOutputRemapWindowSize =
+      sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_NUM
+      * sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE;
+  localparam longint unsigned SteeOutputRemapWindowSize =
+      sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_NUM
+      * sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE;
+  localparam longint unsigned OutboundFilterWindowSize =
+      sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM
+      * sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE;
+  localparam longint unsigned InboundFilterWindowSize =
+      sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM
+      * sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE;
 
-    if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.aw.addr < sep_top_addrmap_pkg
-            ::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_BASE_ADDR(
-            15
-        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE
-            ) begin
-      system_csr_demux_select_aw = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
-    end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.aw.addr <
-            sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
-            15
-        ) + sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_SIZE) begin
-      system_csr_demux_select_aw = sep_pkg::AP_OUTPUT_REMAP;
-    end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.aw.addr <
-            sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
-            15
-        ) + sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_SIZE) begin
-      system_csr_demux_select_aw = sep_pkg::STEE_OUTPUT_REMAP;
-    end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.aw.addr <
-            sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(
-            31
-        ) + sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE) begin
-      system_csr_demux_select_aw = sep_pkg::OUTBOUND_FILTER;
-    end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.aw.addr <
-            sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(
-            15
-        ) + sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE) begin
-      system_csr_demux_select_aw = sep_pkg::INBOUND_FILTER;
-    end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE) begin
-      system_csr_demux_select_aw = sep_pkg::SEP_CPU_CTRL;
-    end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_SIZE) begin
-      system_csr_demux_select_aw = sep_pkg::SEP_SCRATCH_COLD;
-    end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR && sep_system_csr_axil_req_i.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE) begin
-      system_csr_demux_select_aw = sep_pkg::SEP_SCRATCH_WARM;
-    end else begin
-      system_csr_demux_select_aw = sep_pkg::ERR_SLV;
-    end
+  localparam int unsigned AliasRemapWindowW = $clog2(AliasRemapWindowSize);
+  localparam int unsigned ApOutputRemapWindowW = $clog2(ApOutputRemapWindowSize);
+  localparam int unsigned SteeOutputRemapWindowW = $clog2(SteeOutputRemapWindowSize);
+  localparam int unsigned OutboundFilterWindowW = $clog2(OutboundFilterWindowSize);
+  localparam int unsigned InboundFilterWindowW = $clog2(InboundFilterWindowSize);
+  localparam int unsigned CpuCtrlWindowW = sep_cpu_ctrl_reg_pkg::SEP_CPU_CTRL_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned ScratchWindowW = sep_scratch_reg_pkg::SEP_SCRATCH_REG_MIN_ADDR_WIDTH;
 
-    if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.ar.addr < sep_top_addrmap_pkg
-            ::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_BASE_ADDR(
-            15
-        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE
-            ) begin
-      system_csr_demux_select_ar = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
-    end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.ar.addr <
-            sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
-            15
-        ) + sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_SIZE) begin
-      system_csr_demux_select_ar = sep_pkg::AP_OUTPUT_REMAP;
-    end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.ar.addr <
-            sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
-            15
-        ) + sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_SIZE) begin
-      system_csr_demux_select_ar = sep_pkg::STEE_OUTPUT_REMAP;
-    end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.ar.addr <
-            sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(
-            31
-        ) + sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE) begin
-      system_csr_demux_select_ar = sep_pkg::OUTBOUND_FILTER;
-    end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(
-            0
-        ) && sep_system_csr_axil_req_i.ar.addr <
-            sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(
-            15
-        ) + sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE) begin
-      system_csr_demux_select_ar = sep_pkg::INBOUND_FILTER;
-    end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE) begin
-      system_csr_demux_select_ar = sep_pkg::SEP_CPU_CTRL;
-    end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_SIZE) begin
-      system_csr_demux_select_ar = sep_pkg::SEP_SCRATCH_COLD;
-    end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR && sep_system_csr_axil_req_i.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE) begin
-      system_csr_demux_select_ar = sep_pkg::SEP_SCRATCH_WARM;
-    end else begin
-      system_csr_demux_select_ar = sep_pkg::ERR_SLV;
+  localparam longint unsigned CpuCtrlWindowSize = 64'd1 << CpuCtrlWindowW;
+  localparam longint unsigned ScratchWindowSize = 64'd1 << ScratchWindowW;
+
+  `OCAH_ASSERT_STATIC(AliasRemapWindowPow2_A, AliasRemapWindowSize == (64'd1 << AliasRemapWindowW))
+  `OCAH_ASSERT_STATIC(ApOutputRemapWindowPow2_A,
+                      ApOutputRemapWindowSize == (64'd1 << ApOutputRemapWindowW))
+  `OCAH_ASSERT_STATIC(SteeOutputRemapWindowPow2_A,
+                      SteeOutputRemapWindowSize == (64'd1 << SteeOutputRemapWindowW))
+  `OCAH_ASSERT_STATIC(OutboundFilterWindowPow2_A,
+                      OutboundFilterWindowSize == (64'd1 << OutboundFilterWindowW))
+  `OCAH_ASSERT_STATIC(InboundFilterWindowPow2_A,
+                      InboundFilterWindowSize == (64'd1 << InboundFilterWindowW))
+
+  `OCAH_ASSERT_STATIC(
+      AliasRemapWindowAligned_A,
+      sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR % AliasRemapWindowSize == 0)
+  `OCAH_ASSERT_STATIC(
+      ApOutputRemapWindowAligned_A,
+      sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR % ApOutputRemapWindowSize == 0)
+  `OCAH_ASSERT_STATIC(
+      SteeOutputRemapWindowAligned_A,
+      sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR % SteeOutputRemapWindowSize == 0)
+  `OCAH_ASSERT_STATIC(
+      OutboundFilterWindowAligned_A,
+      sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR % OutboundFilterWindowSize == 0)
+  `OCAH_ASSERT_STATIC(
+      InboundFilterWindowAligned_A,
+      sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR % InboundFilterWindowSize == 0)
+  `OCAH_ASSERT_STATIC(CpuCtrlWindowAligned_A,
+                      sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR % CpuCtrlWindowSize == 0)
+  `OCAH_ASSERT_STATIC(
+      ScratchColdWindowAligned_A,
+      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR % ScratchWindowSize == 0)
+  `OCAH_ASSERT_STATIC(
+      ScratchWarmWindowAligned_A,
+      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR % ScratchWindowSize == 0)
+
+  `OCAH_ASSERT_STATIC(
+      AliasRemapMapFitsWindow_A,
+      sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_SIZE <= AliasRemapWindowSize)
+  `OCAH_ASSERT_STATIC(
+      ApOutputRemapMapFitsWindow_A,
+      sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_SIZE <= ApOutputRemapWindowSize)
+  `OCAH_ASSERT_STATIC(
+      SteeOutputRemapMapFitsWindow_A,
+      sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_SIZE <= SteeOutputRemapWindowSize)
+  `OCAH_ASSERT_STATIC(
+      OutboundFilterMapFitsWindow_A,
+      sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_SIZE <= OutboundFilterWindowSize)
+  `OCAH_ASSERT_STATIC(
+      InboundFilterMapFitsWindow_A,
+      sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_SIZE <= InboundFilterWindowSize)
+  `OCAH_ASSERT_STATIC(CpuCtrlMapFitsWindow_A,
+                      sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE <= CpuCtrlWindowSize)
+  `OCAH_ASSERT_STATIC(ScratchColdMapFitsWindow_A,
+                      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_SIZE <= ScratchWindowSize)
+  `OCAH_ASSERT_STATIC(ScratchWarmMapFitsWindow_A,
+                      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE <= ScratchWindowSize)
+
+  function automatic logic in_window(
+      sep_pkg::sep_system_peripherals_system_csr_axi_lite_addr_t addr, longint unsigned base,
+      int unsigned width);
+    return (addr >> width)
+        == sep_pkg::sep_system_peripherals_system_csr_axi_lite_addr_t'(base >> width);
+  endfunction
+
+  function automatic sep_pkg::system_csr_demux_select_e system_csr_select(
+      sep_pkg::sep_system_peripherals_system_csr_axi_lite_addr_t addr);
+    if (in_window(
+            addr,
+            sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR,
+            AliasRemapWindowW
+        )) begin
+      return sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
     end
-  end
+    if (in_window(
+            addr,
+            sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR,
+            ApOutputRemapWindowW
+        )) begin
+      return sep_pkg::AP_OUTPUT_REMAP;
+    end
+    if (in_window(
+            addr,
+            sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR,
+            SteeOutputRemapWindowW
+        )) begin
+      return sep_pkg::STEE_OUTPUT_REMAP;
+    end
+    if (in_window(
+            addr,
+            sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
+            OutboundFilterWindowW
+        )) begin
+      return sep_pkg::OUTBOUND_FILTER;
+    end
+    if (in_window(
+            addr,
+            sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
+            InboundFilterWindowW
+        )) begin
+      return sep_pkg::INBOUND_FILTER;
+    end
+    if (in_window(addr, sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR, CpuCtrlWindowW)) begin
+      return sep_pkg::SEP_CPU_CTRL;
+    end
+    if (in_window(
+            addr, sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR, ScratchWindowW
+        )) begin
+      return sep_pkg::SEP_SCRATCH_COLD;
+    end
+    if (in_window(
+            addr, sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR, ScratchWindowW
+        )) begin
+      return sep_pkg::SEP_SCRATCH_WARM;
+    end
+    return sep_pkg::ERR_SLV;
+  endfunction
+
+  assign system_csr_demux_select_aw = system_csr_select(sep_system_csr_axil_req_i.aw.addr);
+  assign system_csr_demux_select_ar = system_csr_select(sep_system_csr_axil_req_i.ar.addr);
 
   axi_lite_demux #(
     .aw_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_aw_chan_t),

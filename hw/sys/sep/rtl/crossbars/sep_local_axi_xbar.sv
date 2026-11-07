@@ -3,9 +3,9 @@
 
 // Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.
 //
-// The DMA, watchdog, reset controller and SPI controller rules start at their
-// sep_top_addrmap_pkg base and end on the 4 KiB page boundary after the block's registers;
-// each of those targets answers the addresses of the page that it does not decode. The
+// The DMA, watchdog, reset controller, SPI controller and scratch rules start at their
+// sep_top_addrmap_pkg base and end on the 4 KiB page boundary after the registers; each of
+// those targets answers the addresses of the page that its registers do not decode. The
 // remaining address rules are explicit integration apertures in AddrMap below.
 // Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits
 // than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity
@@ -71,7 +71,7 @@ module sep_local_axi_xbar
   input  axi_out_resp_t sep_crypto_resp_i,    // Response from sep_crypto.
 
   output axi_out_req_t  sep_system_peripherals_req_o,  // Request for sep_system_peripherals:
-                                                       // scratch 0x1080_2000-0x1080_20FF, CSRs
+                                                       // scratch 0x1080_2000-0x1080_2FFF, CSRs
                                                        // 0x10A0_0000-0x10A4_FFFF, remap window
                                                        // 0x1100_0000-0x11FF_FFFF, external chiplet
                                                        // 0x0000_0000-0x0FFF_FFFF, and SMU
@@ -142,11 +142,13 @@ module sep_local_axi_xbar
           start_addr: 32'h10900000,
           end_addr: 33'h10950000
       },
-      // sep_system_peripherals.scratch_region: 0x10802000 - 0x10802100
+      // sep_system_peripherals.scratch_region: the scratch page; sep_system_csr answers the
+      // addresses outside the cold and warm scratch windows.
       '{
           idx: 6,
-          start_addr: 32'h10802000,
-          end_addr: 33'h10802100
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR),
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE))
       },
       // sep_system_peripherals.csr_region: 0x10a00000 - 0x10a50000
       '{

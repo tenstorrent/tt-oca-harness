@@ -16,9 +16,10 @@
 // (STEE), then to the outbound filter; everything else to the peripheral xbar. No path changes
 // address bit 55. SMN inbound requests pass an axi_cut and the inbound filter, have
 // SEP_GLOBAL_BASE_ADDR within SEP_REGION_SIZE rebased to 0, and enter the same xbar. The xbar
-// serves the mailbox and system CSR windows and forwards other addresses below 0x4000_0000,
-// truncated to 32 address bits with a 3-bit ID, on smn_inbound_to_sep_axi_req_o. Both filters
-// block by default and check the 4-bit source ID and the non-secure bit.
+// serves the mailbox and the system CSR pages and forwards other addresses below 0x4000_0000
+// outside 0x10A0_0000-0x10A4_FFFF, truncated to 32 address bits with a 3-bit ID, on
+// smn_inbound_to_sep_axi_req_o. Both filters block by default and check the 4-bit source ID
+// and the non-secure bit.
 
 module sep_system_peripherals (
   input  logic clk_i,                         // System clock.
@@ -39,8 +40,9 @@ module sep_system_peripherals (
   input  sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_axi_req_i,  // SMN inbound AXI request with a 56-bit global address, before the inbound filter.
   output sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_axi_resp_o,  // SMN inbound AXI response; blocked requests get the filter's error response.
 
-  output sep_pkg::sep_system_peripherals_inbound_to_sep_axi_req_t  smn_inbound_to_sep_axi_req_o,  // Peripheral-xbar request outside the mailbox and system CSR windows, from either
-                                                                                                  // initiator, with a 32-bit address and 3-bit ID, to the SEP local xbar.
+  output sep_pkg::sep_system_peripherals_inbound_to_sep_axi_req_t  smn_inbound_to_sep_axi_req_o,  // Peripheral-xbar request below 0x4000_0000 outside 0x1080_2000-0x1080_2FFF and
+                                                                                                  // 0x10A0_0000-0x10A4_FFFF, from either initiator, with a 32-bit address and
+                                                                                                  // 3-bit ID, to the SEP local xbar.
   input  sep_pkg::sep_system_peripherals_inbound_to_sep_axi_resp_t smn_inbound_to_sep_axi_resp_i,  // Response from the SEP local xbar to smn_inbound_to_sep_axi_req_o.
 
   output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,  // Outbound request to the SMN after the outbound filter.

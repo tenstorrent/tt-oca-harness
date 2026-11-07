@@ -43,10 +43,9 @@
 |0x10800200 |0x10800FFF |3584 B |3584 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10801000 |0x1080103F |64 B |56 B |Always-On Timer |Wakeup and watchdog timers running on a low-power, always-on clock |- |SLVERR, 0xFFFFFFFF / SLVERR^<<sep-components-note-2,[2]>>^
 |0x10801040 |0x10801FFF |4032 B |4032 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10802000 |0x1080203F |64 B |64 B |SEP Scratch Address Map |Cold-reset scratch register bank. |- |-
-|0x10802040 |0x1080207F |64 B |64 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10802080 |0x108020BF |64 B |64 B |SEP Scratch Address Map |Warm-reset scratch register bank. |- |-
-|0x108020C0 |0x10802FFF |3904 B |3904 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10802000 |0x1080207F |128 B |64 B |SEP Scratch Address Map |Cold-reset scratch register bank. |- |SLVERR, 0x0 / SLVERR
+|0x10802080 |0x108020FF |128 B |64 B |SEP Scratch Address Map |Warm-reset scratch register bank. |- |SLVERR, 0x0 / SLVERR
+|0x10802100 |0x10802FFF |3840 B |3840 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10803000 |0x10803FFF |4 KiB |8 B |SEP Reset Control Address Map |Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge. |- |SLVERR, 0x0 / SLVERR
 |0x10804000 |0x108FFFFF |1008 KiB |1008 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10900000 |0x1090FFFF |64 KiB |48 KiB |OpenTitan Big Number Accelerator |Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures |SLVERR, 0xFFFFFFFF / SLVERR |DECERR, 0xBADCAB1E / DECERR
@@ -78,7 +77,7 @@
 |0x10A20400 |0x10A20FFF |3 KiB |3 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10A21000 |0x10A211FF |512 B |512 B |AXI Filter Wrapper Address Map |Wrapper address map instantiating one filter control register block per filter entry. |OKAY, 0x0 / OKAY |-
 |0x10A21200 |0x10A2FFFF |60928 B |60928 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10A30000 |0x10A31FFF |8 KiB |4104 B |SEP CPU Control Address Map |SEP CPU control and interrupt registers. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|0x10A30000 |0x10A31FFF |8 KiB |4104 B |SEP CPU Control Address Map |SEP CPU control and interrupt registers. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
 |0x10A32000 |0x10AFFFFF |824 KiB |824 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x10B00000 |0x10B0003F |64 B |56 B |SPI Host |External I/O SPI controller bridge. |- |SLVERR, 0xFFFFFFFF / SLVERR
 |0x10B00040 |0x10FFFFFF |5242816 B |5242816 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
