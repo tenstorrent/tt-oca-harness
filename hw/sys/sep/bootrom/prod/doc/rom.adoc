@@ -1922,7 +1922,8 @@ once per manifest attempt, recorded in `bl0_state.secure_boot`, and feeds the va
 gating, the boot measurement, and the hand-off self-check.
 
 1. [[req-SEP-ROM-SB-010]]*[SEP-ROM-SB-010]* In `PROD` and `PROD_END`, secure boot shall be
-   enforced. No manifest content shall be able to disable it.
+   enforced unless `SBOOT_DIS` is set (SEP-ROM-SB-040). No manifest content shall be able to
+   disable it.
 2. [[req-SEP-ROM-SB-020]]*[SEP-ROM-SB-020]* In `TEST_DEV` and `RMA_SiP` with chiplet debug
    enabled, and in `RMA_CHIPLET` whatever the debug lock, secure boot shall be enabled when
    *either* trigger is set, and disabled otherwise:
@@ -1933,8 +1934,8 @@ gating, the boot measurement, and the hand-off self-check.
      it.
 3. [[req-SEP-ROM-SB-025]]*[SEP-ROM-SB-025]* In `TEST_DEV` and `RMA_SiP`, secure boot shall be
    enforced when chiplet-scope debug is disabled: `CHIPLET_DBG` set in `SIP_DIS` or `SYS_DIS`,
-   or either vector read-locked. No manifest content shall be able to disable it. The lock
-   does not apply in `RMA_CHIPLET`.
+   or either vector read-locked, unless `SBOOT_DIS` is set (SEP-ROM-SB-040). No manifest
+   content shall be able to disable it. The lock does not apply in `RMA_CHIPLET`.
 +
 A locked debug posture is only a guarantee if unsigned code cannot be loaded in its place, so
 a debug-locked `TEST_DEV` or `RMA_SiP` part is treated as `PROD` is. The ROM reads the raw fuse
@@ -3568,13 +3569,14 @@ validation only |<<sec:manifest>>
 |<<req-SEP-ROM-MAN-070,SEP-ROM-MAN-070>> |Manifest and resolved payload storage sources are
 8-byte aligned before their first reads; fixed SPI geometry is checked at compile time
 |<<sec:manifest>>
-|<<req-SEP-ROM-SB-010,SEP-ROM-SB-010>> |PROD/PROD_END enforce secure boot
+|<<req-SEP-ROM-SB-010,SEP-ROM-SB-010>> |PROD/PROD_END enforce secure boot unless `SBOOT_DIS`
+is set
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-020,SEP-ROM-SB-020>> |TEST_DEV/RMA_SiP (debug open), RMA_CHIPLET: either
 trigger enables
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-025,SEP-ROM-SB-025>> |TEST_DEV or RMA_SiP with CHIPLET_DBG disabled or its
-vector read-locked enforces secure boot
+vector read-locked enforces secure boot unless `SBOOT_DIS` is set
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-030,SEP-ROM-SB-030>> |Escalation flag is escalation-only
 |<<sec:secure_boot>>

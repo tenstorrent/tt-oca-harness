@@ -67,7 +67,9 @@ else (no)
     stop
   endif
 endif
-:Lock fuse secrets, apply demotion,\nand record boot measurement;
+:Decide demotion and record\nthe boot measurement;
+:Lock fuse secrets, confirm the lock,\nand write the demotion register;
+:Check the stack canary;
 :Copy SEP BL1 from SRAM to ICCM;
 :fence.i, fence, and mret to BL1;
 stop
@@ -103,10 +105,11 @@ ROM scrub DCCM, copy initialized data from ROM, clear BSS, and call
   configured SRAM and ICCM initialization, read `SBOOT_DIS`, install the stack
   canary, and initialize the DMA.
 . Select SPI, recovery, or secondary mode.
-. Probe the SMC coordination state and check the stack canary.
+. Probe the SMC coordination state.
 . Load and validate a manifest and payload.
-. Decide demotion, lock sensitive fuse reads, verify the lock, and record the
-  boot measurement.
+. Decide demotion and record the boot measurement.
+. Lock sensitive fuse reads, verify the lock, and write the demotion register.
+. Check the stack canary.
 . Copy BL1 to ICCM and transfer control.
 
 Errors detected by C code converge on `rom_err_fail()`. The function records the
