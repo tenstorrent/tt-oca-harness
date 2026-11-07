@@ -647,9 +647,13 @@ class sep_km_kpv_rand_test(sep_base_test):
             for v in (start, rd_rsvd, rd_f):
                 self._ctrl(v)
             exp_f = f
+            wr = (res[2][0], res[4][0])
             self.chk.ok(
                 "KPV-RSVD-WR",
-                start == 0 and rd_rsvd == 0 and rd_f == exp_f,
+                start == 0
+                and rd_rsvd == 0
+                and rd_f == exp_f
+                and all(w.flags_known and w.slv == 0 and w.dec == 0 for w in wr),
                 contract="key_manager/regs/km_kpv.rdl:144-149",
                 slot=s,
                 field=m.FIELD_NAME[f],
@@ -659,7 +663,8 @@ class sep_km_kpv_rand_test(sep_base_test):
                 wr_f=_h(f | rsvd),
                 rd_f=_h(rd_f),
                 exp_f=_h(exp_f),
-                wr_slv=f"{res[2][0].slv},{res[4][0].slv}",
+                wr_slv=f"{wr[0].slv},{wr[1].slv}",
+                wr_dec=f"{wr[0].dec},{wr[1].dec}",
             )
 
     # Step 6.

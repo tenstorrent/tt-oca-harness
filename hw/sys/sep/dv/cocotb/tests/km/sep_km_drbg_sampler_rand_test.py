@@ -1385,11 +1385,13 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
 
         async def on_sync(_k: int) -> None:
             span["mark"] = self.ext.mark()
+            span["c0"] = self.mon.cycle
             self.ext.send(_EXT, [beat[0]], beat[1])
             return None
 
         res = await self._run(L.ops, on_sync=on_sync)
         await self.ext.wait_sent(_EXT, _EXT_SENT_BOUND)
+        hs_taps = self._hs_between(span["c0"], self.mon.cycle)
         at = L.at
         got = self._ext_beats(span["mark"])
         pre, post = self._status(res[at["pre"]].value), self._status(res[at["post"]].value)
@@ -1401,6 +1403,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             "SMP-TO-ASM",
             res[at["cfg"]].value == pl.cfg(t, 0)
             and got == [beat]
+            and hs_taps == 1
             and pl.st(pre, "TIMEOUT_ERR") == 0
             and not irq_pre & pl.IRQ_DRBG_ERR
             and d.slv == 1
@@ -1414,6 +1417,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             t=t,
             strb=f"0x{beat[1]:x}",
             beats=len(got),
+            handshakes_taps=hs_taps,
             slv=d.slv,
             dec=d.dec,
             data=_h(d.value),
@@ -2122,9 +2126,11 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 cond = cond and delta == 1
             else:
                 r = res[i_data]
+                cfg_rd = res[1].value
                 bad_want = _withdraw_bad_want(st_pre, st)
                 cond = (
                     cond
+                    and cfg_rd == pl.cfg(t, 0)
                     and r.slv == 1
                     and r.dec == 0
                     and r.value == 0
@@ -2135,6 +2141,8 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                     contract=(
                         "key_manager/doc/architecture.adoc:886-887,891-893(Errors_and_reset)"
                     ),
+                    cfg_rd=_h(cfg_rd),
+                    cfg_want=_h(pl.cfg(t, 0)),
                     slv=r.slv,
                     dec=r.dec,
                     exp_resp="SLVERR(slv=1,dec=0)",

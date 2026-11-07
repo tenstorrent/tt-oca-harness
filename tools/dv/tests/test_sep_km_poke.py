@@ -412,6 +412,23 @@ class ImageTest(unittest.TestCase):
         self.assertEqual(kp.decode(ops, m.words())[0].value, marker)
         self.assertEqual(m.word(word), marker)
 
+    def test_flags_need_a_clean_clear(self) -> None:
+        op = kp.rd(SLVERR_ADDR)
+        stale = kp.PokeResult(0, op, (0,), (kp.SlotFlags(1, 0, 1, 0),))
+        self.assertFalse(stale.clean)
+        with self.assertRaises(AssertionError):
+            _ = stale.slv
+        with self.assertRaises(AssertionError):
+            _ = stale.dec
+        fresh = kp.PokeResult(0, op, (0,), (kp.SlotFlags(1, 0, 0, 0),))
+        self.assertEqual((fresh.slv, fresh.dec, fresh.clean), (1, 0, True))
+
+    def test_rom_word_outside_the_image(self) -> None:
+        words = kp.read_parhex(kp.IMAGE_PATH)
+        unset = max(words) + 4
+        self.assertEqual(kp.rom_word(unset), kp.ROM_UNSET_WORD)
+        self.assertEqual(kp.rom_word(0), words[0])
+
     def test_spin_and_handler(self) -> None:
         m = model()
         ops = [

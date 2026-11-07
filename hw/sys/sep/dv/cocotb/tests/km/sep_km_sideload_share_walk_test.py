@@ -220,7 +220,7 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_STATUS,
     SepAbrMlkem,
 )
-from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_OUTPUT_VALID, SepAes
+from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_INPUT_READY, AES_STATUS_OUTPUT_VALID, SepAes
 from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_km_mailbox_seq import (
     KM_CMD_KEY_LOAD,
@@ -249,7 +249,7 @@ from seq_lib.sep_kmac_seq import (
     KMAC_INTR_STATE,
     SepKmac,
 )
-from seq_lib.sep_otbn_seq import OTBN_ADDR_ERRBIT, OTBN_KEYDUMP_PROG, SepOtbn
+from seq_lib.sep_otbn_seq import OTBN_ADDR_ERRBIT, OTBN_IMEM_BASE, OTBN_KEYDUMP_PROG, SepOtbn
 
 TEST = "sep_km_sideload_share_walk_test"
 ROUNDS = 2
@@ -1002,6 +1002,13 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 "key-dump run of CHK-OTBN, so INSN_CNT = 0 below would not show a stop"
             )
         await self.otbn.load_program(prog=OTBN_KEYDUMP_S1_FIRST_PROG)
+        imem = [await self.otbn._rd(OTBN_IMEM_BASE + i * 4) for i in range(2)]
+        if imem != list(OTBN_KEYDUMP_S1_FIRST_PROG[:2]):
+            raise AssertionError(
+                f"CHK-OTBN-KEY-S1-SHRED FAIL: r={tag} IMEM words 0-1 read "
+                f"[{imem[0]:#010x},{imem[1]:#010x}] after the load, the share-1-first program "
+                f"is [{OTBN_KEYDUMP_S1_FIRST_PROG[0]:#010x},{OTBN_KEYDUMP_S1_FIRST_PROG[1]:#010x}]"
+            )
         await self.otbn._wr(OTBN_ADDR_ERRBIT, 0)
         err_pre = await self.otbn.read_errbits()
         if err_pre != 0:
@@ -1013,7 +1020,8 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         errbits = await self.otbn.read_errbits()
         insn = await self.otbn._rd(OTBN_ADDR_INSN_CNT) & OTBN_INSN_CNT_MASK
         line = (
-            f"r={tag} first_read=KEY_S1_L err_bits_pre=0x{err_pre:x} err_bits=0x{errbits:08x} "
+            f"r={tag} first_read=KEY_S1_L imem01=[{imem[0]:#010x},{imem[1]:#010x}] "
+            f"err_bits_pre=0x{err_pre:x} err_bits=0x{errbits:08x} "
             f"expect_err_bits=0x{OTBN_ERR_KEY_INVALID:08x} insn_cnt={insn} expect_insn_cnt=0 "
             f"insn_cnt_after_completed_run={live}"
         )
@@ -1060,16 +1068,26 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         await self.aes.start_block_no_wait(list(self.walk.aes_pt))
         produced = await self.aes.output_valid_within(_AES_REFUSE_POLLS)
         status = await self.aes._rd(AES_STATUS)
+        input_ready = (status >> AES_STATUS_INPUT_READY) & 1
         assert not produced, (
             "CHK-AES-CLR FAIL: AES produced output with sideload selected and its key "
             f"shredded (STATUS 0x{status:08x})"
         )
+        # INPUT_READY read 1 before the four DATA_IN writes (start_block_no_wait
+        # polls it); it returns to 1 only when the block loads into the cipher.
+        assert input_ready == 0, (
+            f"CHK-AES-CLR FAIL: STATUS 0x{status:08x} input_ready=1 after the four DATA_IN "
+            "writes: the block did not reach the input registers, so the missing output "
+            "does not show a refusal (aes.adoc STATUS.INPUT_READY)"
+        )
         self.logger.info(
             "CHK-AES-CLR PASS: no AES output in %d polls with the key shredded, "
-            "STATUS 0x%08x (output_valid=%d)",
+            "STATUS 0x%08x (output_valid=%d input_ready=%d, input_ready before the "
+            "DATA_IN writes=1)",
             _AES_REFUSE_POLLS,
             status,
             (status >> AES_STATUS_OUTPUT_VALID) & 1,
+            input_ready,
         )
 
     async def _short_key(self) -> None:

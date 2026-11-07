@@ -773,8 +773,12 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         await self.pd.write(p, val)
         got = await self.pd.read(p)
         fc = field_compare(got, val, p.mask)
-        if not fc.ok or (val & p.mask) == (p.reset & p.mask):
-            raise AssertionError(f"arm {p.name}: {fc.fields()} RDL reset 0x{p.reset:08x}")
+        self._ctl(
+            "CTRL-ARM",
+            fc.ok and (val & p.mask) != (p.reset & p.mask),
+            f"probe={p.name} wrote=0x{val:08x} read=0x{got:08x} mask=0x{p.mask:08x} "
+            f"rdl_reset=0x{p.reset:08x} {fc.fields()}",
+        )
         self.armed[p.name] = val
 
     async def _read(self, p: ResetProbe) -> tuple[int, int]:

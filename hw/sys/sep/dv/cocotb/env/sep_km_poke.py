@@ -74,6 +74,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 WORD_MASK = 0xFFFF_FFFF
+# The word the bench loads into a KM ROM word that no image line sets
+# (hw/sys/sep/dv/tb/tb_top.sv).
+ROM_UNSET_WORD = 0x0000_0013
 
 IMAGE_NAME = "km_rom_poke"
 IMAGE_PATH = Path(__file__).resolve().parents[1] / "tests" / f"{IMAGE_NAME}.parhex"
@@ -449,13 +452,25 @@ class PokeResult:
             raise AssertionError(f"op {self.index} ({self.op.name}) does not report slv/dec")
         return f
 
+    def _graded_flags(self) -> SlotFlags:
+        f = self._first_flags()
+        if not f.clean:
+            raise AssertionError(
+                f"op {self.index} ({self.op.name}): IRQ_STATUS read after the slot's clear "
+                f"showed slv={f.pre_slv} dec={f.pre_dec}, so the access's own slv/dec is "
+                "not separable from an earlier one"
+            )
+        return f
+
     @property
     def slv(self) -> int:
-        return self._first_flags().slv
+        """SLVERR of this access; raises when the clear before it did not take."""
+        return self._graded_flags().slv
 
     @property
     def dec(self) -> int:
-        return self._first_flags().dec
+        """DECERR of this access; raises when the clear before it did not take."""
+        return self._graded_flags().dec
 
     @property
     def clean(self) -> bool:
@@ -557,13 +572,14 @@ def read_parhex(path: str | Path = IMAGE_PATH) -> dict[int, int]:
 
 
 def rom_word(addr: int, path: str | Path = IMAGE_PATH) -> int:
-    """The image word at ROM byte address ``addr`` (0 outside the image).
+    """The word a ROM data read at byte address ``addr`` returns.
 
-    This is the stimulus file, the golden of a ROM data read.
+    Inside the image this is the stimulus file word; the bench loads
+    ``ROM_UNSET_WORD`` into every KM ROM word the image does not set.
     """
     if addr % 4:
         raise ValueError(f"ROM address 0x{addr:x} is not word aligned")
-    return read_parhex(path).get(addr, 0)
+    return read_parhex(path).get(addr, ROM_UNSET_WORD)
 
 
 def check_image(path: str | Path = IMAGE_PATH) -> None:
