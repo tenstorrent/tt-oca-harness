@@ -44,7 +44,7 @@
 |BASE + 0xA000 – BASE + 0xAFFF |4 KiB |36 B |OCTS System Timer Address Map |1 instance |- |Open Chiplet Time Synchronization (OCTS) System Timer Registers |- |SLVERR, 0x0 / SLVERR
 |BASE + 0xB000 – BASE + 0xBFFF |4 KiB |2 KiB |dtp_ctrl_reg |1 instance |- |512-entry DTP control block. |Forwarded |Forwarded
 |BASE + 0xC000 – BASE + 0xCFFF |4 KiB |2052 B |PWM Wrapper Address Map |1 instance |- |Pulse-width modulator. |DECERR, 0xBADCAB1E / DECERR |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0xD000 – BASE + 0xDFFF |4 KiB |524 B |SMC Miscellaneous Wrapper Address Map |1 instance |- |Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks. |DECERR, 0xBADCAB1E / DECERR |DECERR, 0xBADCAB1E / DECERR
+|BASE + 0xD000 – BASE + 0xDFFF |4 KiB |528 B |SMC Miscellaneous Wrapper Address Map |1 instance |- |Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks. |SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x10000 – BASE + 0x10FFF |4 KiB |76 B |SMC Base Configuration Address Map |1 instance |- |SMC base-address and aperture configuration. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
 |BASE + 0x12000 – BASE + 0x12FFF |4 KiB |256 B |AXI Alias Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one alias remap register block per remap region. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x13000 – BASE + 0x13FFF |4 KiB |64 B |Output Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one output remap register block per remap region. |- |DECERR, 0xBADCAB1E / DECERR

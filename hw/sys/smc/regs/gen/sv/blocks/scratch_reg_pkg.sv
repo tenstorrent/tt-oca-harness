@@ -7,6 +7,6 @@
 package scratch_reg_pkg;
 
     localparam SCRATCH_REG_DATA_WIDTH = 32;
-    localparam SCRATCH_REG_MIN_ADDR_WIDTH = 5;
+    localparam SCRATCH_REG_MIN_ADDR_WIDTH = 7;
     localparam SCRATCH_REG_SIZE = 'h20;
 endpackage
