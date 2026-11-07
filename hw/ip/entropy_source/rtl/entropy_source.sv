@@ -589,7 +589,7 @@ module entropy_source
         .push_i                 (noise_obs_push),
         .pop_i                  (noise_obs_pop),
         .clr_i                  (noise_obs_flush),
-        .wdata_i                (noise_obs_shift_q),
+        .wdata_i                (noise_obs_shift_d),  // Includes the 32nd sample.
         .entropy_churn_enable_i (1'b0),  // Raw observe path is the unmodified stream.
         .rdata_o                (noise_obs_rdata),
         .level_o                (noise_obs_level),
