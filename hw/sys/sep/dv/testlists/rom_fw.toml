@@ -3,8 +3,7 @@
 schema_version = 1
 
 # ROM firmware boot tests: the production Boot ROM on the `rom_boot` target with the
-# `boot_rom` / `boot_rom_pio` firmware profiles. The `rom_fw` group in all.toml omits
-# sep_rom_sram_iccm_clear_test (ISSUE-008).
+# `boot_rom`, `boot_rom_pio` and `boot_rom_clear` firmware profiles.
 
 [[tests]]
 # Non-secure boot of the production Boot ROM with the manifest served from SMC SRAM (SPI stubbed).
@@ -3471,20 +3470,18 @@ args = [
 ]
 
 [[tests]]
-# Fails on the default ROM build (ISSUE-008), which turns the SRAM and full ICCM clears off to save sim time;
-# rom.adoc marks CPU-100 an implementation gap, so the `rom_fw` group omits this entry.
-# CPU-100 in part: every SRAM byte and ICCM bank row is zero-written, and the probed SRAM residue
-# words read zero, before the first manifest read. ICCM residue is planted but not graded.
+# CPU-100 in part, on the clear-enabled ROM (build_clear/): every SRAM byte and ICCM bank row is
+# zero-written, and the probed SRAM residue words read zero, before the first manifest read.
 name = "sep_rom_sram_iccm_clear_test"
 module = "rom_fw.sep_rom_sram_iccm_clear_test"
 target = "rom_boot"
-firmware = { name = "boot_rom", mode = "boot_rom" }
+firmware = { name = "boot_rom_clear", mode = "boot_rom_clear" }
 seed = 1
-timeout_sec = 5400
-tags = ["boot", "rom", "cpu", "subsystem"]
+timeout_sec = 7200
+tags = ["boot", "rom", "clear", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_clear/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
   "+sep_sram_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_sram_residue.hex",
 ]

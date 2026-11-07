@@ -896,12 +896,12 @@ tests = [
     "sep_rom_zero_fill_fault_retry_test",
     "sep_rom_zero_fill_fault_scrub_test",
     "sep_rom_zero_fill_fault_iccm_clear_test",
-    # Spec-graded ROM invariants. Omitted: sep_rom_sram_iccm_clear_test, which grades a clear the default ROM build turns off
-    # to save sim time (ISSUE-008).
+    # Spec-graded ROM invariants.
     "sep_rom_observer_smoke_test",
     "sep_rom_reset_entry_order_test",
     "sep_rom_boot_quiet_invariants_test",
     "sep_rom_dccm_scrub_test",
+    "sep_rom_sram_iccm_clear_test",
     "sep_rom_fuse_sense_wait_test",
     "sep_rom_fuse_sense_wait_test_hold",
     "sep_rom_lc_state_record_test_test_dev",

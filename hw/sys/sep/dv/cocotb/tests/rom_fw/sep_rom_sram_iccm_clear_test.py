@@ -8,18 +8,19 @@ rom.adoc, Cold Boot Environment Setup and the SEP memory map:
   so that no stale or attacker-resident data can survive into the validated-boot environment."
 * SEP SRAM: "Destination for the manifest and payload"
 
-CPU-100 is covered in part, on the default SMC-SRAM manifest path only. The load of external
-content starts at the first PR-SMC read beat inside [MANIFEST_SRC, MANIFEST_SRC + OCA_BODY),
-the first read of the manifest from its source; the status-ring and SMC scratch reads are not
-content that the ROM loads into SEP SRAM or ICCM. Before that beat every byte of SEP SRAM must
-take a zero write on the SRAM request port, every ICCM bank row a zero write on the ICCM macro
-port, and the seven SRAM words that tb_top probes must read zero. A CTRL proves each port map
-against an independent view: the SRAM array probes, and the BL1 instructions that retire from
-ICCM. SRAM residue comes from +sep_sram_hex; a CTRL reads back only the seven probed words
-before the ROM runs, and the other planted words are not readable. ICCM residue is planted with
-the TCM bit-flip hook while rst_ni is low but is not graded: the stored words are not readable
-from cocotb, and the ICCM CHK grades the clear writes only. The SPI boot path is not graded.
-The X checks of the taps are inert on 2-state Verilator.
+CPU-100 is covered in part, on the clear-enabled ROM build (``boot_rom_clear``) and the default
+SMC-SRAM manifest path only. The load of external content starts at the first PR-SMC read beat
+inside [MANIFEST_SRC, MANIFEST_SRC + OCA_BODY), the first read of the manifest from its source; the
+status-ring and SMC scratch reads are not content that the ROM loads into SEP SRAM or ICCM. Before
+that beat every byte of SEP SRAM must take a zero write on the SRAM request port, every ICCM bank
+row a zero write on the ICCM macro port, and the seven SRAM words that tb_top probes must read
+zero. Both ports sit below the fabric, so they see a write from any master, the secure DMA zero
+fills included. A CTRL proves each port map against an independent view: the SRAM array probes, and
+the BL1 instructions that retire from ICCM. SRAM residue comes from +sep_sram_hex; a CTRL reads
+back only the seven probed words before the ROM runs, and the other planted words are not readable.
+ICCM residue is planted with the TCM bit-flip hook while rst_ni is low but is not graded: the
+stored words are not readable from cocotb, and the ICCM CHK grades the clear writes only. The SPI
+boot path is not graded. The X checks of the taps are inert on 2-state Verilator.
 """
 
 from __future__ import annotations
@@ -155,6 +156,8 @@ class sep_rom_sram_iccm_clear_test(sep_rom_observe_base):
         "CHK-SRAM-RESIDUE-CLEARED-AT-LOAD",
         "CHK-ICCM-CLEARED-BEFORE-LOAD",
     )
+    # The clear-enabled ROM's SRAM scrub and full ICCM clear push the boot to about 3.9M cycles.
+    max_run_cycles = 5_000_000
 
     def _draw_flips(self) -> dict[int, int]:
         """ICCM residue: byte address -> data-bit mask, in the half of ICCM above any BL1."""
