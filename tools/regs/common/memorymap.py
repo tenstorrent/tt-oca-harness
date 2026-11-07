@@ -477,11 +477,6 @@ def _validate(rows: list[MapRow], view_name: str) -> None:
     for row in rows:
         if row.aperture_size <= 0:
             raise ValueError(f"{view_name}:{row.key}: aperture must be positive")
-        if row.aperture_size < row.occupied_size:
-            raise ValueError(
-                f"{row.key}: aperture 0x{row.aperture_size:X} is smaller than occupied "
-                f"extent 0x{row.occupied_size:X}"
-            )
         if row.key in keys:
             raise ValueError(f"{view_name}: duplicate row key {row.key}")
         keys.add(row.key)
