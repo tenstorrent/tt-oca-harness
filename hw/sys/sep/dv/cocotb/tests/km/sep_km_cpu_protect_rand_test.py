@@ -1364,23 +1364,46 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         await self._reset("warm")
 
     async def _refused_case(
-        self, case: str, target: int, *, enable: int, region: str, locked: int
+        self,
+        case: str,
+        target: int,
+        *,
+        enable: int,
+        region: str,
+        locked: int,
+        lock_bit: int | None = None,
     ) -> None:
         await self._instance(
-            self._refused_graded(case, target, enable=enable, region=region, locked=locked)
+            self._refused_graded(
+                case, target, enable=enable, region=region, locked=locked, lock_bit=lock_bit
+            )
         )
         await self._plain_reset()
 
     async def _refused_graded(
-        self, case: str, target: int, *, enable: int, region: str, locked: int
+        self,
+        case: str,
+        target: int,
+        *,
+        enable: int,
+        region: str,
+        locked: int,
+        lock_bit: int | None,
     ) -> None:
-        """Arm the exec_violation handler, write the enable, jump to ``target``."""
+        """Arm the exec_violation handler, write the enable, jump to ``target``.
+
+        SRAM_EXEC_MODE and SRAM_LOCK are read back before the jump: an enable
+        write, or the SRAM_LOCK bit ``lock_bit``, that did not land fails here.
+        """
         sentinel = self.plan.sentinel()
         self.logger.info("DRAW %s sentinel=0x%08x", case, sentinel)
         ops = [kp.wr(IRQ_STATUS_A, IRQ_DEFINED), *self._sentinel_ops(sentinel)]
         if enable:
             ops.append(kp.wr(SRAM_EXEC_MODE_A, EXEC_ENABLE))
+        n = len(ops)
         ops += [
+            kp.rd(SRAM_EXEC_MODE_A),
+            kp.rd(SRAM_LOCK_A),
             kp.wr(IRQ_ENABLE_A, EN_EXEC_VIOL),
             kp.arm([kp.IRQ_LINE_KMCSR], kp.ACT_SPIN),
             kp.jump(target),
@@ -1388,6 +1411,24 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         handle, jw = await self._post_jump(ops)
         res = self.poke.results(handle, partial=True)
         pre_ok = self._sentinel_ok(res, 1, sentinel)
+        mode_rd = self._field(res[n].value, EXEC_ENABLE, f"{case} SRAM_EXEC_MODE", self.logger)
+        lock_rd = res[n + 1].value
+        self.logger.info(
+            "LOG %s SRAM_EXEC_MODE=0x%08x SRAM_LOCK=0x%08x before the jump",
+            case,
+            res[n].value,
+            lock_rd,
+        )
+        if enable:
+            assert mode_rd == EXEC_ENABLE, (
+                f"CHK-EXEC FAIL: {case}: SRAM_EXEC_MODE reads 0x{res[n].value:08x} before the "
+                "jump, expected ENABLE = 1"
+            )
+        if lock_bit is not None:
+            assert (lock_rd >> lock_bit) & 1 == 1, (
+                f"CHK-EXEC FAIL: {case}: SRAM_LOCK reads 0x{lock_rd:08x} before the jump, "
+                f"expected lock bit {lock_bit} = 1"
+            )
         hword = self.poke.word(kp.W_HWORD)
         s_mark = self.poke.word(W_S_MARK)
         exec_rise = self._rise(jw, IRQ_EXEC_VIOL)
@@ -1416,12 +1457,15 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         )
         self.exec_hits += 1
         self.logger.info(
-            "CHK-EXEC PASS: case=%s mode=%d region=%s locked=%d exec_viol_at_jump=0 exec_viol=1 "
-            "rom_acc_viol=0 handler_word_logged=0x%08x rise_clk=%d",
+            "CHK-EXEC PASS: case=%s mode=%d mode_rd=%d region=%s locked=%d sram_lock=0x%08x "
+            "exec_viol_at_jump=0 exec_viol=1 rom_acc_viol=0 handler_word_logged=0x%08x "
+            "rise_clk=%d",
             case,
             enable,
+            int(mode_rd == EXEC_ENABLE),
             region,
             locked,
+            lock_rd,
             hword,
             exec_rise,
         )
@@ -1762,7 +1806,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         base3 = region_base(r + 1)
         await self._copy_snippet(base3, snippet_s(MARK_S), "C3 snippet")
         await self.poke.run([kp.wr(SRAM_LOCK_A, 1 << r)])
-        await self._refused_case("C3", base3, enable=1, region=str(r + 1), locked=0)
+        await self._refused_case("C3", base3, enable=1, region=str(r + 1), locked=0, lock_bit=r)
         assert self.c2_ok, "CHK-REGION FAIL: the C2 boot of region r did not complete"
         self.logger.info("CHK-REGION PASS: r=%d in_r=allowed in_r1=refused", r)
 
