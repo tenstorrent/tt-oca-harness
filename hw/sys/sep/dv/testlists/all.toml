@@ -918,7 +918,6 @@ tests = [
     "sep_rom_pcrv_slot_order_test",
     "sep_rom_smc_scratch_sanity_test",
     "sep_rom_smc_manifest_ready_wait_test",
-    "sep_rom_smc_manifest_offset_invalid_test_ffffffff",
     "sep_rom_smc_manifest_offset_invalid_test_window_end",
     "sep_rom_smc_manifest_offset_invalid_test_window_straddle",
     "sep_rom_smc_manifest_offset_invalid_test_manifest_straddle",

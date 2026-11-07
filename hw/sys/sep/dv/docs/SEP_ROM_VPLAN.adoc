@@ -21,7 +21,7 @@
 |Register sources |`hw/sys/sep/regs/` (SystemRDL) and the generated export `hw/sys/sep/regs/gen/`
 |Testbench architecture |<<sep-dv-testbench-architecture,SEP_TB_ARCH>>, Boot ROM Firmware Builds (<<_boot_rom_firmware_builds>>)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep --items rom_fw`)
-|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 238 tests
+|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 237 tests
 |===
 
 This plan is the technical contract for the Boot ROM firmware tests. It states
@@ -157,8 +157,8 @@ These 6 entries have a `module` file name that differs from the test name:
 * `sep_firmware_payload_correct_sep_sram_4kb_test` is in `rom_fw.sep_firmware_payload_correct_ext_4kb_test`.
 * `sep_firmware_payload_correct_sep_sram_29kb_test` is in `rom_fw.sep_firmware_payload_correct_ext_29kb_test`.
 
-In <<sep-rom-vplan-spec-graded>>, 19 more entries run a module named for their leaf, not for the entry:
-`sep_rom_fuse_sense_wait_test_hold`, the seven `sep_rom_lc_state_record_test_*` entries, the four
+In <<sep-rom-vplan-spec-graded>>, 18 more entries run a module named for their leaf, not for the entry:
+`sep_rom_fuse_sense_wait_test_hold`, the seven `sep_rom_lc_state_record_test_*` entries, the three
 `sep_rom_smc_manifest_offset_invalid_test_*` entries, the two `sep_rom_status_ring_bounds_test_*`
 entries, `sep_rom_rsa_exponent_non_f4_refuse_test_f4_signed` and the four
 `sep_rom_decrypt_exit_zeroize_test_*` entries. A plusarg in each entry selects its case.
@@ -228,7 +228,7 @@ the jump into BL1, as `rom.adoc` defines it, on the `rom_boot` target.
 |===
 |Group |Role
 |`rom_fw_smoke` |Bring-up of the four boot paths and the hand-off magic: `sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` (`expected_count = 5`)
-|`rom_fw` |The credit denominator of this plan: 238 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
+|`rom_fw` |The credit denominator of this plan: 237 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
 |`all`, `cpu`, `cpu_stub` |Not members. They belong to <<sep-dv-verification-plan>>
 |===
 
@@ -291,7 +291,7 @@ those tests.
 |`SEP-ROM-SMC-020` |Scratch round-trip sanity, fatal on mismatch |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-SMC-030` |Memory-repair gate (strap-bypassable) |<<sep-rom-vplan-dft-gate>> |4
 |`SEP-ROM-SMC-040` |Wait MANIFEST_READY before scratch[8] |<<sep-rom-vplan-spec-graded>> |1
-|`SEP-ROM-SMC-050` |Reject invalid offset; bounds-check staging. No test maps the bounds check of the payload region announced in scratch[13]/[14] |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-spec-graded>> |5
+|`SEP-ROM-SMC-050` |Reject invalid offset; bounds-check staging. No test maps the bounds check of the payload region announced in scratch[13]/[14] |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-spec-graded>> |4
 |`SEP-ROM-STRAP-010` |Exactly one boot mode, recorded + reported |<<sep-rom-vplan-secondary-chiplet>> |2
 |`SEP-ROM-SPI-010` |All flash access via the transport shim |<<sep-rom-vplan-ot-spi-boot>> |2
 |`SEP-ROM-SPI-020` |Doubled, laundered bounds gate; default-reject |<<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>> |3
@@ -632,7 +632,6 @@ holds the stimulus, the checkers and the requirements.
 |`sep_rom_pcrv_slot_order_test` |<<sep-rom-vplan-spec-graded>> |two enrollments, slot 0 then slot 1; slot 0 after a full read of the hashed ROM region that follows [S14] and [S10]; slot 1 after MANIFEST_VALIDATED; the inherited measurement checks hold.
 |`sep_rom_smc_scratch_sanity_test` |<<sep-rom-vplan-spec-graded>> |the four spec patterns written to SMC scratch[7] and read back equal, then scratch[7] restored to zero; BL1 PASS.
 |`sep_rom_smc_manifest_ready_wait_test` |<<sep-rom-vplan-spec-graded>> |no scratch[8] or SMC SRAM read while MANIFEST_READY is low; after the release a scratch[9] poll, a scratch[8] read and the manifest fetch at the published offset; BL1 PASS.
-|`sep_rom_smc_manifest_offset_invalid_test_ffffffff` |<<sep-rom-vplan-spec-graded>> |scratch[8] = 0xFFFFFFFF: the single slot fails with ERROR MANIFEST_LOAD_FAILED, no MANIFEST_VALIDATED, verdict 0xDEADBEEF and no record after it.
 |`sep_rom_smc_manifest_offset_invalid_test_window_end` |<<sep-rom-vplan-spec-graded>> |scratch[8] = 0x00100000 (first byte past the window): the single slot fails as above.
 |`sep_rom_smc_manifest_offset_invalid_test_window_straddle` |<<sep-rom-vplan-spec-graded>> |scratch[8] = 0x000FFFF8: the single slot fails as above.
 |`sep_rom_smc_manifest_offset_invalid_test_manifest_straddle` |<<sep-rom-vplan-spec-graded>> |scratch[8] = 0x000FF008 (manifest end crosses the window by 8 bytes): the single slot fails as above; the reads before the refusal are logged only (ISSUE-016).
@@ -2752,7 +2751,7 @@ PASS record of its own.
 [[sep-rom-vplan-spec-graded]]
 ===== Spec-graded ROM invariants (phase 1)
 
-*Tests:* 41 entries from 26 leaf modules, all in `rom_fw.toml` and in the `rom_fw` group.
+*Tests:* 40 entries from 26 leaf modules, all in `rom_fw.toml` and in the `rom_fw` group.
 
 *Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_observe_base.py` for the leaves that start from the common bring-up. The other leaves extend an existing test, keep all of its checks and add their own; the Stimulus cell names the parent.
 
@@ -2797,7 +2796,6 @@ An issue marked SPEC is a contradiction in the specification; the leaf grades on
 |`sep_rom_pcrv_slot_order_test` |Runs `sep_boot_measurement_golden_test` (PROD, signed SPI boot) and keeps its checks. DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim). |Slot 0 then slot 1; slot 0 after a full LSU read of the hashed ROM region that follows [S14] and [S10]; slot 1 after MANIFEST_VALIDATED. |`CHK-SEPARATE-SLOTS`, `CHK-SLOT0-AFTER-VERIFY`, `CHK-VERIFY-AFTER-S14-S10`, `CHK-SLOT0-BEFORE-SLOT1`, `CHK-SLOT1-AFTER-VALIDATION` |`SEP-ROM-ATT-050`
 |`sep_rom_smc_scratch_sanity_test` |Observer base; TEST_DEV; SMC-SRAM boot; a leaf R-channel monitor on the SEP->SMC AXI port pairs each scratch[7] read with its data. |Four spec patterns written and read back equal, then scratch[7] restored to zero; BL1 PASS. |`CHK-SANITY-WRITES`, `CHK-SANITY-READBACKS`, `CHK-SANITY-RESTORE` |`SEP-ROM-SMC-020`
 |`sep_rom_smc_manifest_ready_wait_test` |Runs `sep_firmware_secondary_chiplet_bootcode_test`; holds scratch[9].MANIFEST_READY low with decoy offset 0x80000 in scratch[8] for a fixed hold after the first poll, then publishes the real offset and raises MANIFEST_READY. |No scratch[8] or SMC SRAM read before the release; then scratch[9] poll, scratch[8] read, manifest fetch at the published offset; BL1 PASS. |`CHK-NO-CONSUME-BEFORE-READY`, `CHK-CONSUMED-PUBLISHED-OFFSET` |`SEP-ROM-SMC-040`
-|`sep_rom_smc_manifest_offset_invalid_test_ffffffff` |Secondary boot on `sep_secondary_chiplet_base`; +sep_smc_scratch8=FFFFFFFF. |The single slot fails and the boot halts. |`CHK-SLOT-REFUSED` |`SEP-ROM-SMC-050`
 |`sep_rom_smc_manifest_offset_invalid_test_window_end` |As above with +sep_smc_scratch8=00100000. |As above. |`CHK-SLOT-REFUSED` |`SEP-ROM-SMC-050`
 |`sep_rom_smc_manifest_offset_invalid_test_window_straddle` |As above with +sep_smc_scratch8=000FFFF8. |As above. |`CHK-SLOT-REFUSED` |`SEP-ROM-SMC-050`
 |`sep_rom_smc_manifest_offset_invalid_test_manifest_straddle` |As above with +sep_smc_scratch8=000FF008. |As above; the SMC SRAM reads before the refusal are logged as OBS-SMC-SRAM-READ (ISSUE-016). |`CHK-SLOT-REFUSED` |`SEP-ROM-SMC-050`
@@ -2890,7 +2888,7 @@ An issue marked SPEC is a contradiction in the specification; the leaf grades on
 |`sep_rom_smc_scratch_sanity_test` |`CHK-SANITY-RESTORE` |After the fourth read-back the last scratch[7] write up to the hand-off mret is zero, and the responder holds zero. Spec: "the register shall be restored to zero on success." The 0xA001 mismatch path and "Before any protocol decision depends on the SMC" are not graded (ISSUE-014, SPEC).
 |`sep_rom_smc_manifest_ready_wait_test` |`CHK-NO-CONSUME-BEFORE-READY` |No PR-SMC read of scratch[8] from the wait status to the release, and no SMC SRAM read from the first scratch[9] poll to the release. Spec: "The ROM shall wait (unbounded poll) for `scratch9.MANIFEST_READY` before consuming scratch[8]." The pre-wait probe read of scratch[8] is OBS only (ISSUE-015, SPEC).
 |`sep_rom_smc_manifest_ready_wait_test` |`CHK-CONSUMED-PUBLISHED-OFFSET` |After the release: a scratch[9] poll, a scratch[8] read and the manifest fetch from SMC SRAM at the published offset; no read of the decoy page; MANIFEST_SRC= names the published address. Spec: "The manifest is copied by secure DMA from `SMC_SRAM_base + scratch[8]` into SEP SRAM". The clause "by secure DMA" is not graded.
-|`sep_rom_smc_manifest_offset_invalid_test_*` (4 entries) |`CHK-SLOT-REFUSED` |Between the post-wait scratch[8] read and the verdict an ERROR MANIFEST_LOAD_FAILED; no MANIFEST_VALIDATED; verdict 0xDEADBEEF; no status or console record after it; no MANIFEST_OK or BL1_JUMP= line. Spec: "The ROM shall reject a manifest offset of `0xFFFFFFFF` and shall bounds-check the staged manifest ... against the 1 MiB SMC SRAM window before reading." The clause "before reading" is OBS only (ISSUE-016, SPEC); the `_manifest_straddle` entry shows reads before the refusal, a B under `rom.adoc` alone.
+|`sep_rom_smc_manifest_offset_invalid_test_*` (3 entries) |`CHK-SLOT-REFUSED` |Between the post-wait scratch[8] read and the verdict an ERROR MANIFEST_LOAD_FAILED; no MANIFEST_VALIDATED; verdict 0xDEADBEEF; no status or console record after it; no MANIFEST_OK or BL1_JUMP= line. Spec: "The ROM shall reject a manifest offset of `0xFFFFFFFF` and shall bounds-check the staged manifest ... against the 1 MiB SMC SRAM window before reading." The clause "before reading" is OBS only (ISSUE-016, SPEC); the `_manifest_straddle` entry shows reads before the refusal, a B under `rom.adoc` alone.
 |`sep_rom_status_ring_bounds_test_*` (2 entries) |`CHK-RING-NO-WRITE-OUTSIDE` |Up to the hand-off every PR-SMC write lies in the SMC SRAM window or the SMC scratch block; `straddle`: no write touches the header; `bad_header`: every window write lies in the declared ring. Spec: "never write outside the window".
 |`sep_rom_status_ring_bounds_test_*` (2 entries) |`CHK-INVALID-REPORTED` |After the ROM reads scratch[11] (`bad_header`: after its first header read), cold_scratch[1] carries BL0 STATUS_REPORTING_INVALID (code 0x79; the type is logged only, ISSUE-003, SPEC). Spec: "report `STATUS_REPORTING_INVALID` on the scratch channel".
 |`sep_rom_status_ring_bounds_test_*` (2 entries) |`CHK-BOOT-CONTINUES` |The invalid-ring report precedes MANIFEST_OK, and the boot reaches the BL1 PASS verdict. Spec: "shall degrade gracefully on an invalid ring". The clause "never disable reporting on a possibly-transient error" is not graded (ISSUE-017, SPEC).
@@ -2976,7 +2974,7 @@ The Boot ROM has no formal flow.
 [cols="4,1,4",options="header"]
 |===
 |Item |State |Note
-|Every test in the summary has a procedure group |Yes |232 tests in 34 groups
+|Every test in the summary has a procedure group |Yes |231 tests in 34 groups
 |Every documented test exists in `rom_fw.toml` and in the `rom_fw` group |Yes |Checked against both
 |Every test has at least one checker with a PASS record |Yes |Static check of the test source: 0 tests without one
 |`rom_fw` has an `expected_count` |No |`rom_fw_smoke` has one. `rom_fw` does not, so a dropped entry does not fail the testlist load

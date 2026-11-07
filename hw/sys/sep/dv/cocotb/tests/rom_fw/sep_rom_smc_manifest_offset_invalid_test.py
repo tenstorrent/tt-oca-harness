@@ -46,12 +46,10 @@ manifest, which holds for every entry here.
 * OBS-SMC-SRAM-READ: every PR-SMC read from the first scratch[8] read on that overlaps the SMC
   SRAM window or the 4096 B manifest at `SMC_SRAM_base + offset` (32-bit wrap). Single reads
   inside the status-ring header beats (`SMC_SRAM_base + scratch[11]`, head, tail and entry
-  count) are left out, since every ring insert reads them. For `0xFFFFFFFF` the manifest range
-  overlaps those beats, so a manifest read made only of single reads inside them would be left
-  out too; its first beat, below the SMC SRAM base, would not.
+  count) are left out, since every ring insert reads them.
 
-Partial coverage: the `0xFFFFFFFF` entry shows a failed slot with no read, not a dedicated
-sentinel check (its source is also not 8-byte aligned, and the alignment check refuses it). Not
+Partial coverage: the `0xFFFFFFFF` marker is covered by
+sep_firmware_secondary_manifest_offset_invalid_test, not by this leaf. Not
 covered: the payload region announced via scratch[13]/[14]; `bl0_state.error_code`; RETRY-050
 (b), since with the bench's invalid status ring every status is followed by `0x0F010079`; the
 recovery boot mode; offsets other than the one each testlist entry publishes; which check or
