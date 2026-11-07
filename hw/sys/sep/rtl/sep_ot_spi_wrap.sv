@@ -37,8 +37,9 @@ module sep_ot_spi_wrap #(
 
   input  logic test_en_i,                     // DFT test-enable (scan-enable).
 
-  input  sep_io_pkg::axil_req_t  axil_req_i,  // spi_host register request; 0x10B0_0000 -
-                                              // 0x10B0_0037 (56 bytes) in the SEP address map.
+  input  sep_io_pkg::axil_req_t  axil_req_i,  // spi_host register request for the
+                                              // 2^spi_host_reg_pkg::BlockAw bytes from
+                                              // SEP_TOP_SPI_CONTROLLER_BASE_ADDR.
   output sep_io_pkg::axil_resp_t axil_resp_o,  // spi_host register response from the TL-UL bridge.
 
   output logic              spi_sck_o,        // SPI serial clock to the pad.

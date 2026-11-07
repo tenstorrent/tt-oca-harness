@@ -49,8 +49,7 @@ module sep_local_axi_xbar_wrapper (
                                                                    // the core DMA slave port.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    cpu_tcm_axi_resp_i,  // Response from the core DMA slave port.
   output sep_pkg::sep_32_64_6_12_axi_req_t     dma_csr_axi_req_o,  // Request for the secure DMA
-                                                                   // register extent from
-                                                                   // sep_top_addrmap_pkg.
+                                                                   // register page.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    dma_csr_axi_resp_i,  // Response from the secure DMA registers.
   output sep_pkg::sep_32_64_6_12_axi_req_t     sram_axi_req_o,  // Request for the SEP SRAM,
                                                                 // 0x1000_0000-0x1003_FFFF.
@@ -60,8 +59,9 @@ module sep_local_axi_xbar_wrapper (
                                                                       // 0x1090_0000-0x1094_FFFF.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_crypto_axi_resp_i,  // Response from sep_crypto.
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_io_axi_req_o,  // Request for sep_io,
-                                                                  // 0x10B0_0000-0x10BF_FFFE.
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_io_axi_req_o,  // Request for the SPI
+                                                                  // controller register page, to
+                                                                  // sep_io.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_io_axi_resp_i,  // Response from sep_io.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     entropy_fifo_axi_req_o,  // Request for the entropy pool,
@@ -77,12 +77,12 @@ module sep_local_axi_xbar_wrapper (
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_system_peripherals_axi_resp_i,  // Response from sep_system_peripherals.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     sep_wdt_axi_req_o,  // Request for the watchdog timer
-                                                                   // register extent from
-                                                                   // sep_top_addrmap_pkg.
+                                                                   // register page.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_wdt_axi_resp_i,  // Response from the watchdog timer.
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_reset_ctrl_axi_req_o,  // Request for sep_reset_ctrl,
-                                                                          // 0x1080_3000-0x1080_3007.
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_reset_ctrl_axi_req_o,  // Request for the
+                                                                          // sep_reset_ctrl register
+                                                                          // page.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_reset_ctrl_axi_resp_i,  // Response from sep_reset_ctrl.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     sep_external_axi_req_o,  // Request for the external aperture

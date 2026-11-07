@@ -4,7 +4,10 @@
 // Bridge AXI register and host ports onto the secure_dma TileLink UL core.
 //
 // Register path: 64-bit AXI is downsized to 32 bits, rebased by subtracting
-// SEP_TOP_SECURE_DMA_BASE_ADDR, converted to AXI-Lite and then to TL-UL. Master path:
+// SEP_TOP_SECURE_DMA_BASE_ADDR, converted to AXI-Lite and then to TL-UL. Between the two
+// bridges a demux passes the 2^secure_dma_reg_pkg::BlockAw bytes the DMA decodes and answers
+// the rest of the page with DECERR and read data 0xBADCAB1E. Inside that window the DMA answers
+// an offset that holds no register with SLVERR and read data 0xFFFFFFFF. Master path:
 // TL-UL is converted to AXI-Lite, then to AXI with AxCACHE 0 and AxPROT 3'b001 (privileged,
 // secure, data), upsized to 64 bits, and passed through a window remap that rewrites addresses in
 // [sep_local_base_addr_i, sep_local_base_addr_i + 0x3000_0000) to 0x1000_0000 plus the offset.
@@ -15,7 +18,10 @@
 // dma_reg_bus_err_o and dma_host_intg_err_o stick until dma_err_clr_i; a fault arriving in
 // the same cycle as the clear still latches. They are not cleared by a CPU-only reset
 // (sep_cpu_reset_n is a subset of this block's rst_ni), so firmware must treat an
-// assertion at boot as possibly stale.
+// assertion at boot as possibly stale. An access past the DMA's registers sets
+// dma_reg_bus_err_o; an access the demux answers does not.
+
+`include "ocah_assert.svh"
 
 module sep_dma_wrap #(
   parameter int unsigned REG_ADDR_WIDTH = 32,  // Width of SECURE_DMA_REG_MAP_BASE_ADDR only; unused
@@ -95,6 +101,8 @@ module sep_dma_wrap #(
   // AXI-Lite intermediate signals for register path
   sep_pkg::sep_32_32_axil_req_t  axi_lite_slv_req;
   sep_pkg::sep_32_32_axil_resp_t axi_lite_slv_resp;
+  sep_pkg::sep_32_32_axil_req_t  axi_lite_reg_req;
+  sep_pkg::sep_32_32_axil_resp_t axi_lite_reg_resp;
 
   // DMA SEP Master interface signals (AXI Master)
   tlul_pkg::tl_h2d_t host_tl_h_o;
@@ -228,6 +236,33 @@ module sep_dma_wrap #(
     .mst_resp_i  (axi_lite_slv_resp)
   );
 
+  localparam logic [31:0] RegWindowBase[1] = '{32'h0};
+  localparam logic [31:0] RegWindowSize[1] = '{32'(1) << secure_dma_reg_pkg::BlockAw};
+
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .NUM_RANGES     (1),
+    .RANGE_BASE     (RegWindowBase),
+    .RANGE_SIZE     (RegWindowSize),
+    .MAX_TRANS      (4),
+    .aw_chan_t      (sep_pkg::sep_32_32_axil_aw_chan_t),
+    .w_chan_t       (sep_pkg::sep_32_32_axil_w_chan_t),
+    .b_chan_t       (sep_pkg::sep_32_32_axil_b_chan_t),
+    .ar_chan_t      (sep_pkg::sep_32_32_axil_ar_chan_t),
+    .r_chan_t       (sep_pkg::sep_32_32_axil_r_chan_t),
+    .axil_req_t     (sep_pkg::sep_32_32_axil_req_t),
+    .axil_resp_t    (sep_pkg::sep_32_32_axil_resp_t)
+  ) u_reg_addr_demux (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .test_en_i   (test_en_i),
+    .slv_req_i   (axi_lite_slv_req),
+    .slv_resp_o  (axi_lite_slv_resp),
+    .mst_reqs_o  (axi_lite_reg_req),
+    .mst_resps_i (axi_lite_reg_resp)
+  );
+
   // Convert AXI-Lite to TL-UL
   axi_lite_to_tlul #(
     .AXI_ADDR_WIDTH       (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
@@ -241,8 +276,8 @@ module sep_dma_wrap #(
   ) u_axi_lite_to_tlul_reg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
-    .axi_lite_req_i  (axi_lite_slv_req),
-    .axi_lite_rsp_o  (axi_lite_slv_resp),
+    .axi_lite_req_i  (axi_lite_reg_req),
+    .axi_lite_rsp_o  (axi_lite_reg_resp),
     .tl_o            (tl_d_i),
     .tl_i            (tl_d_o),
     .err_o           (dma_reg_bus_err_o),
@@ -382,5 +417,10 @@ module sep_dma_wrap #(
   end
 
   assign dma_alert_o = (|dma_alert_pulse) | (|dma_alert_integ_fail);
+
+  `OCAH_ASSERT_STATIC(
+      DmaRegMapFitsWindow_A,
+      sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE <= (64'd1 << secure_dma_reg_pkg::BlockAw),
+      "The secure DMA register map is larger than the window its register top decodes")
 
 endmodule

@@ -160,6 +160,7 @@ OCAH_REG_ADDR_WIDTH_system_timer_octs ?= 12
 OCAH_REG_ADDR_WIDTH_smc_base_config ?= 12
 OCAH_REG_ADDR_WIDTH_dfx_ctrl_status ?= 12
 OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
+OCAH_REG_ADDR_WIDTH_sep_reset_ctrl ?= 12
 
 # Blocks that share a page: the regblock decodes the whole window its wrapper
 # routes it.

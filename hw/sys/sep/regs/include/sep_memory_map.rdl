@@ -12,17 +12,19 @@
     sep_boot_rom->desc = "BL0 immutable instruction memory.";
     ocah_hole_resp = `OCAH_SEP_OKAY;
     ocah_gap_resp = `OCAH_SEP_DECERR;
-    secure_dma->ocah_aperture_size = 0x1000;
-    secure_dma->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    secure_dma->ocah_aperture_size = 0x200;
+    secure_dma->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    secure_dma->ocah_past_extent_note = "An access to an unmapped offset also latches PIC source 41.";
     secure_dma->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
     secure_dma->ocah_hole_note = "An access to an unmapped offset also latches PIC source 41.";
     secure_dma->desc = "Secure DMA control and status registers.";
-    wdt_timer->ocah_aperture_size = 0x1000;
-    wdt_timer->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    wdt_timer->ocah_aperture_size = 0x40;
+    wdt_timer->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    wdt_timer->ocah_past_extent_note = "An access to an unmapped offset also latches PERIPH_BUS_ERR_STATUS.wdt, which drives PIC source 43.";
     sep_scratch_cold->desc = "Cold-reset scratch register bank.";
     sep_scratch_warm->desc = "Warm-reset scratch register bank.";
     sep_reset_ctrl->ocah_aperture_size = 0x1000;
-    sep_reset_ctrl->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    sep_reset_ctrl->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
     otbn->ocah_aperture_size = 0x10000;
     otbn->ocah_past_extent_resp = `OCAH_SEP_DECERR;
     otbn->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
@@ -72,8 +74,8 @@
     sep_cpu_ctrl->ocah_aperture_size = 0x2000;
     sep_cpu_ctrl->ocah_past_extent_resp = `OCAH_SEP_DECERR;
     sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
-    spi_controller->ocah_aperture_size = 0x100000;
-    spi_controller->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    spi_controller->ocah_aperture_size = 0x40;
+    spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
     spi_controller->desc = "External I/O SPI controller bridge.";
     sep_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
 `ifndef EXCLUDE_CORE_LOCAL_RESOURCES

@@ -1029,9 +1029,7 @@ NumSramDemuxPorts
   // IO Module //
   ///////////////
 
-  sep_io #(
-    .NUM_COMPONENTS(1)
-  ) u_sep_io (
+  sep_io u_sep_io (
     .clk_i             (clk_i),
     .rst_ni            (sep_reset_n),
 

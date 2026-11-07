@@ -7,7 +7,7 @@
 package sep_reset_ctrl_reg_pkg;
 
     localparam SEP_RESET_CTRL_REG_DATA_WIDTH = 64;
-    localparam SEP_RESET_CTRL_REG_MIN_ADDR_WIDTH = 4;
+    localparam SEP_RESET_CTRL_REG_MIN_ADDR_WIDTH = 12;
     localparam SEP_RESET_CTRL_REG_SIZE = 'h8;
 
     typedef struct {

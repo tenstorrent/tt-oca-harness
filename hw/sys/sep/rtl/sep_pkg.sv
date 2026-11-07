@@ -16,6 +16,14 @@ package sep_pkg;
 
   parameter bit EN_EXTERNAL_MST = 1'b1;
 
+  // An AXI burst never crosses one of these pages, so a crossbar rule that starts and ends on
+  // them keeps a burst on one target.
+  localparam longint unsigned RegPageSize = 64'h1000;
+
+  function automatic longint unsigned reg_page_end(longint unsigned base, longint unsigned size);
+    return (base + size + RegPageSize - 1) & ~(RegPageSize - 1);
+  endfunction
+
   //////////
   // AXI4 main types (decoupled from old xbar config)
   //////////
