@@ -109,10 +109,11 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="axi" d="M250,248 L250,306"/>
 <text class="s" x="258" y="290" text-anchor="start">sep_local_from_remap</text>
 <text class="s" x="648" y="290" text-anchor="start">smn_inbound</text>
-<text class="bs" x="445" y="347" text-anchor="middle">Peripheral crossbar</text>
-<text class="s" x="445" y="365" text-anchor="middle">u_sep_system_peripherals_xbar_wrapper</text>
-<text class="s" x="445" y="382" text-anchor="middle">2 x 3, ID 6 to 7, other addresses: DECERR</text>
-<text class="si" x="330" y="406" text-anchor="middle">other addresses below 0x4000_0000</text>
+<text class="bs" x="445" y="336" text-anchor="middle">Peripheral crossbar</text>
+<text class="s" x="445" y="353" text-anchor="middle">u_sep_system_peripherals_xbar_wrapper</text>
+<text class="s" x="445" y="370" text-anchor="middle">2 x 3, ID 6 to 7, other addresses: DECERR</text>
+<text class="si" x="330" y="390" text-anchor="middle">other addresses below 0x4000_0000</text>
+<text class="si" x="330" y="406" text-anchor="middle">outside 0x10A0_0000 to 0x10A4_FFFF</text>
 <text class="si" x="620" y="406" text-anchor="middle">0x10A0_0000 to 0x10A0_7FFF</text>
 <text class="si" x="855" y="356" text-anchor="middle">0x1080_2000 to 0x1080_2FFF</text>
 <text class="si" x="855" y="373" text-anchor="middle">0x10A1_0000 to 0x10A1_0FFF</text>
