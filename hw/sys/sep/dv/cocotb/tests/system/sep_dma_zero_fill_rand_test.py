@@ -120,8 +120,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          beat; one OKAY B per AW; the destination region
                          equals the direct-form model. Controls (else
                          CTRL-MISSING): SEP_LOCAL_BASE_ADDR reads its reset
-                         value, and BASE, LIMIT and DST_ADDR_LO read back the
-                         alias-form values written.
+                         value, and BASE, LIMIT and DST_ADDR_LO, read before
+                         GO, read back the alias-form values written.
 
 Logged only: ``OBS-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
 rise (``sep_dma_abort_recovery_rand_test`` grades that contract);
@@ -479,6 +479,7 @@ class FillRun:
     error_code: int
     ev: DmaTapEvents
     go_writes: int
+    dst_rb: int | None = None
 
 
 @pyuvm.test()
@@ -626,6 +627,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         hs: int = 0,
         stop_on_error: bool = True,
         graded: bool = False,
+        read_dst: bool = False,
     ) -> FillRun:
         """Program one transfer, GO, and wait for DONE or ERROR (re-GO between chunks).
 
@@ -636,6 +638,8 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         closes. ``status`` and ``error_code`` are read before that W1C.
         ``graded`` opens the graded window after the transfer registers are
         written and closes it after the ERROR_CODE read, before the W1C.
+        ``read_dst`` reads DST_ADDR_LO back after programming and before GO,
+        since a fixed-address fill moves it.
         """
         ops = self.ops
         await ops.program_transfer(
@@ -647,6 +651,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             dst_inc=dst_inc,
             dst_wrap=dst_wrap,
         )
+        dst_rb = await ops.rd(DST_ADDR_LO) if read_dst else None
         mark = self.tap.mark()
         e0 = self.edges.n
         if graded:
@@ -662,7 +667,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         elif res.status.busy:
             await ops.poll_status(lambda s: not s.busy, ERR_POLL_BOUND, "BUSY=0 after DONE")
         self._tap_window_sampled(mark.clk, e0)
-        return FillRun(res.status, ec, self.tap.since(mark), res.go_writes)
+        return FillRun(res.status, ec, self.tap.since(mark), res.go_writes, dst_rb)
 
     def _tap_window_sampled(self, tap0: int, e0: int) -> None:
         """Fails unless the tap sampled every clock of the window.
@@ -1174,8 +1179,9 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             dst_inc=inc,
             dst_wrap=wrap,
             graded=True,
+            read_dst=True,
         )
-        dst_rb = await ops.rd(DST_ADDR_LO)
+        dst_rb = run.dst_rb
         if (
             local_rb != LOCAL_ALIAS & LOCAL_BASE_MASK
             or range_rb != (a_base, a_limit)

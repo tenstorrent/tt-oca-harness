@@ -244,8 +244,9 @@ Checkers:
   CHK-DMA-RO-HOLD   per L2 kind: ERROR_CODE reads its SIZE_ERROR value after a
                     write of all-ones and after a write of 0.
   CHK-DMA-ERR-W0    on one L2 kind per seed (``err_w0_kind`` on the
-                    INFO-DRAW line): after a write of 0 to STATUS in the error
-                    state, STATUS.ERROR reads 1 and ERROR_CODE is unchanged.
+                    INFO-DRAW line): a write of 0 to STATUS in the error state
+                    returns OKAY (``resp=`` on the line), then STATUS.ERROR
+                    reads 1 and ERROR_CODE is unchanged.
                     On that kind the CHK-DMA-SIZE-ERR ERROR_CODE clear is
                     logged only (``code_cleared=-``,
                     OBS-DMA-SIZE-ERR-CODE-CLEARED); every other kind writes
@@ -935,15 +936,15 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         self._pass("CHK-DMA-RO-HOLD", text)
 
     async def _err_w0(self, kind: str, ecode: int) -> None:
-        """A write of 0 to STATUS in the error state leaves ERROR=1 and ERROR_CODE."""
-        await self.ops.wr(STATUS, 0)
+        """An OKAY write of 0 to STATUS in the error state leaves ERROR=1 and ERROR_CODE."""
+        resp = await self._wr_log(STATUS, 0)
         st = await self.ops.read_status()
         code = await self.ops.rd(ERROR_CODE)
         text = (
-            f"kind={kind} error_after_w0={st.error} error_code_after_w0=0x{code:x} "
-            f"error_code_before=0x{ecode:x} {st.fmt()}"
+            f"kind={kind} wr=0x0:resp={resp} error_after_w0={st.error} "
+            f"error_code_after_w0=0x{code:x} error_code_before=0x{ecode:x} {st.fmt()}"
         )
-        if not (st.error and code == ecode):
+        if not (resp == 0 and st.error and code == ecode):
             self._fail_at_end("CHK-DMA-ERR-W0", text)
             return
         self._pass("CHK-DMA-ERR-W0", text)

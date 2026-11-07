@@ -174,11 +174,14 @@ GO value during a transfer is not graded.
                       one write changes BASE and one changes LIMIT (the guard
                       edges), else CTRL-MISSING.
   CHK-DMA-RANGE-OK    per Leg C cell: both zero fills end with DONE=1, ERROR=0
-                      and ERROR_CODE=0, every word of both regions reads 0,
-                      and the in-range gap word and the guards keep the
-                      prefill. A DUT that treats BASE or LIMIT as exclusive
-                      refuses the first or the last write and fails. Control: the same
-                      fills with the wide range.
+                      and ERROR_CODE=0, each with one AW and one W beat per
+                      region word on the DMA master tap, every word of both
+                      regions reads 0, and the in-range gap word and the guards
+                      keep the prefill. A DUT that treats BASE or LIMIT as
+                      exclusive refuses the first or the last write and fails.
+                      Controls: the regions, the gap word and the guards read
+                      the prefill before the first GO (CTRL-DMA-RANGE-PREFILL);
+                      the same fills with the wide range.
   CHK-DMA-HASH        per graded Leg D run: digest words equal the hashlib
                       golden for the swap value; the copy equals the source.
   CHK-DMA-HASH-VALID  per Leg D run: SHA2_DIGEST_VALID reads 1 after the chain;
@@ -332,11 +335,12 @@ VALID_POLL_BOUND = 200
 CTRL_READ_TRIES = 8
 # A total of this size or more lets a frontdoor read land while the engine runs.
 LONG_TOTAL = 1024
-# CFG_REGWEN.REGWEN values (secure_dma.rdl:158-159, MultiBitBool4): False while
-# the DMA is busy, True at idle (dma.hjson:352-353).
-CFG_REGWEN_BUSY = 0x9
-CFG_REGWEN_IDLE = 0x6
+# CFG_REGWEN.REGWEN is MultiBitBool4 (secure_dma.rdl:158-159): True, its reset,
+# at idle and False, the complement of True, while the DMA is busy
+# (dma.hjson:352-353).
 CFG_REGWEN_MASK = SECURE_DMA.field_mask("CFG_REGWEN", "regwen")
+CFG_REGWEN_IDLE = SECURE_DMA.reset("CFG_REGWEN") & CFG_REGWEN_MASK
+CFG_REGWEN_BUSY = CFG_REGWEN_IDLE ^ CFG_REGWEN_MASK
 # CONTROL fields a later start writes (secure_dma.rdl:207-210, :224-230).
 CTRL_OPCODE_MASK = SECURE_DMA.field_mask("CONTROL", "opcode")
 CTRL_SWAP_MASK = SECURE_DMA.field_mask("CONTROL", "digest_swap")
@@ -348,14 +352,14 @@ LABEL_REPLAY_CLKS = 16
 # Clocks after DONE before the DMA master tap is read for the busy-write copy.
 BUSY_SETTLE_CLKS = 16
 # Range registers (secure_dma.rdl:118-122 BASE, :125-130 LIMIT, :133-137
-# RANGE_VALID, all ``sw = rw``; :141-153 RANGE_REGWEN, True = 6 at :142,
+# RANGE_VALID, all ``sw = rw``; :141-153 RANGE_REGWEN, True at :142,
 # "Unlocked at reset" at :151; dma.hjson:289, :304, :318 put the three under
 # RANGE_REGWEN).
 RANGE_BASE_MASK = SECURE_DMA.field_mask("ENABLED_MEMORY_RANGE_BASE", "base")
 RANGE_LIMIT_MASK = SECURE_DMA.field_mask("ENABLED_MEMORY_RANGE_LIMIT", "limit")
 RANGE_VALID_MASK = SECURE_DMA.field_mask("RANGE_VALID", "range_valid")
 RANGE_REGWEN_MASK = SECURE_DMA.field_mask("RANGE_REGWEN", "regwen")
-RANGE_REGWEN_UNLOCKED = 0x6
+RANGE_REGWEN_UNLOCKED = SECURE_DMA.reset("RANGE_REGWEN") & RANGE_REGWEN_MASK
 M32 = 0xFFFF_FFFF
 
 # Draws added after the first stream come from a second stream on the same
@@ -1883,7 +1887,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         """CHK-DMA-RANGE-WR: unlocked range writes land; returns (base, limit) changed flags.
 
         The leaf writes RANGE_VALID 0, then BASE, LIMIT and RANGE_VALID 1 while
-        RANGE_REGWEN reads True (0x6), and reads each register back. The
+        RANGE_REGWEN reads True (its reset), and reads each register back. The
         registers held the wide range before, so a guarded edge changes BASE
         or LIMIT and every edge changes RANGE_VALID twice.
         """
@@ -1926,16 +1930,29 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         the low region starts at ``range_lo`` and the high region ends at
         ``range_hi``, so the cell writes the bytes at BASE and at LIMIT that its
         edge places there. A graded cell runs in the window from its range
-        writes to its reads. Returns one (name, STATUS, ERROR_CODE) per fill run,
-        the nonzero words of the regions filled, the guards changed and the
+        writes to its reads. Before any GO, every word of both regions, the gap
+        word and the guards must read the prefill, else CTRL-MISSING. Returns
+        one (name, STATUS, ERROR_CODE, AW beats, W beats) per fill run, the
+        nonzero words of the regions filled, the guards changed and the
         RANGE-WR changed flags.
         """
         ops = self.ops
         pre = e.prefill
+        words = e.size // 4
         for region in (e.lo_region, e.hi_region):
-            await self.mem.fill(region, [pre] * (e.size // 4))
+            await self.mem.fill(region, [pre] * words)
         for g in e.guards():
             await self.mem.fill(g, [pre])
+        seen = []
+        for region in (e.lo_region, e.hi_region):
+            seen += await self.mem.read(region, words)
+        for g in e.guards():
+            seen += await self.mem.read(g, 1)
+        not_pre = sum(1 for w in seen if w != pre)
+        pre_vals = f"{tag} prefill=0x{pre:08x} words={len(seen)} not_prefill={not_pre}"
+        if not_pre:
+            self._ctrl_missing("CHK-DMA-RANGE-OK", f"prefill readback {pre_vals}")
+        self.logger.info("CTRL-DMA-RANGE-PREFILL PASS seed=%d %s", self.seed, pre_vals)
         changed = (0, 0)
         if graded:
             self._open()
@@ -1947,15 +1964,17 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             await ops.program_transfer(
                 src=0, dst=region, total=e.size, chunk=e.size, width_enc=2, order=XFER_ORDER_REGS
             )
+            m_tap = self.tap.mark()
             await ops.go(opcode=OP_ZERO, initial=1)
             res = await ops.run_to_done(
                 poll_size(e.size), busy=self.busy, busy_bound=BUSY_RISE_BOUND, tag=f" {tag}"
             )
             if res.status.done:
                 await self._wait_idle_done(tag)
+            ev = self.tap.since(m_tap)
             # ERROR_CODE is read before any STATUS write.
             st, err, _ = await self._read_regs()
-            runs.append((name, st, err))
+            runs.append((name, st, err, len(ev.aw), len(ev.w)))
             if st.error:
                 await self._clear_error(tag)
                 break
@@ -1983,16 +2002,20 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         )
 
     @staticmethod
-    def _fill_grade(runs: list) -> tuple[bool, str]:
-        """Both fills ended with DONE=1, BUSY=0, ERROR=0 and ERROR_CODE=0."""
+    def _fill_grade(runs: list, words: int) -> tuple[bool, str]:
+        """Both fills ended with DONE=1, BUSY=0, ERROR=0 and ERROR_CODE=0, and
+        each put one AW and one W beat per region word on the DMA master tap."""
         ok = len(runs) == 2
-        parts = []
-        for name, st, err in runs:
+        parts = [f"fills_run={len(runs)} expect_beats={words}"]
+        for name, st, err, aw, w in runs:
             fst = field_compare(st.raw, ST_DONE, ST_DONE | ST_BUSY | ST_ERROR)
             fer = field_compare(err, 0, ERROR_CODE_MASK)
-            ok = ok and fst.ok and fer.ok
-            parts.append(f"{ff(f'{name}_status', fst)} {ff(f'{name}_error_code', fer)}")
-        return ok, f"fills_run={len(runs)} " + " ".join(parts)
+            ok = ok and fst.ok and fer.ok and aw == words and w == words
+            parts.append(
+                f"{ff(f'{name}_status', fst)} {ff(f'{name}_error_code', fer)} "
+                f"{name}_aw={aw} {name}_w={w}"
+            )
+        return ok, " ".join(parts)
 
     async def _leg_c(self, plan: Plan) -> None:
         await self.ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
@@ -2007,7 +2030,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             cruns, cnz, cgbad, _ = await self._edge_fill(
                 e, SRAM_BASE, SRAM_LIMIT, f"{tag} control_wide", graded=False
             )
-            cok, cvals = self._fill_grade(cruns)
+            cok, cvals = self._fill_grade(cruns, e.size // 4)
             control_wide = int(cok and cnz == 0 and cgbad == 0)
             if not control_wide:
                 self._ctrl_missing(
@@ -2015,7 +2038,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                     f"{tag} wide-range control failed: {cvals} nonzero_words={cnz} "
                     f"guards_bad={cgbad}",
                 )
-            fok, fvals = self._fill_grade(runs)
+            fok, fvals = self._fill_grade(runs, e.size // 4)
             edge = "guard" if e.edge.startswith("guard") else e.edge
             self._pass(
                 "CHK-DMA-RANGE-OK",
@@ -2957,8 +2980,11 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         """A DMA read from the outbound window while the responder holds its R response.
 
         ``smn_outbound_resp_hold_i`` holds the response for HOLD_CLKS clocks;
-        the line logs STATUS, ERROR_CODE and DMA_BUS_ERR_STATUS at the bound and
-        after the release. No text states a timeout of a DMA beat.
+        the line logs STATUS and ERROR_CODE at the bound, and STATUS, ERROR_CODE
+        and DMA_BUS_ERR_STATUS after the release. No text states a timeout of a
+        DMA beat. Inside the hold only DMA CSR accesses run: DMA_BUS_ERR_STATUS
+        shares the peripheral demux with the held read, so a read of it waits for
+        the release.
         """
         ops = self.ops
         dut = cocotb.top
@@ -2975,7 +3001,6 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             ev = self.tap.since(m_tap)
             st_hold = await ops.read_status()
             err_hold = await ops.rd(ERROR_CODE)
-            bus_hold = await ops.rd(DMA_BUS_ERR_STATUS)
         finally:
             dut.smn_outbound_resp_hold_i.value = 0
         st = await ops.poll_status(
@@ -2989,7 +3014,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         got = await self.mem.read(dst, 2)
         self.logger.info(
             "OBS-DMA-BEAT-HOLD seed=%d hold_clks=%d src=0x%08x at_bound: ar=%d aw=%d b=%d "
-            "busy=%d error=%d done=%d error_code=0x%x dma_bus_err_status=0x%x after_release: "
+            "busy=%d error=%d done=%d error_code=0x%x after_release: "
             "ar=%d aw=%d b=%d %s error_code=0x%x dma_bus_err_status=0x%x dst=%s",
             self.seed,
             HOLD_CLKS,
@@ -3001,7 +3026,6 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             st_hold.error,
             st_hold.done,
             err_hold,
-            bus_hold,
             len(ev_end.ar),
             len(ev_end.aw),
             len(ev_end.b),
