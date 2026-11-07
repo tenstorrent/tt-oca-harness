@@ -156,8 +156,20 @@ DONE = 0 at those stops: "**Transfer Completion:** An interrupt is raised when
 the entire data transfer (as defined by `TOTAL_DATA_SIZE`) is complete."
 (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:34``),
 and "Since interrupts are implemented as status bits" (same file, line 39).
-The leaf writes one GO per stop it reads; the GO count is stimulus and is not
-graded.
+In Leg A and Leg B the leaf writes one GO per stop it reads; the GO count is
+stimulus and is not graded there.
+
+Leg D chunk contract (CHK-DMA-HASH-CHAIN, CHK-DMA-CONT-CFG): CHUNK_DATA_SIZE is
+"Size (in bytes) for a single DMA transfer" and ``sw = rw``
+(``secure_dma.rdl:182``, ``:184``); TOTAL_DATA_SIZE "may consist of multiple
+chunks of data as specified by the CHUNK_DATA_SIZE register"
+(``secure_dma.adoc:211-212``); STATUS.CHUNK_DONE "Only raised for multi-chunk
+memory-to-memory transfers. Cleared automatically by the hardware when starting
+the transfer of a new chunk." (``secure_dma.adoc:320-322``); "Chunk completion
+applies to multi-chunk transfers without hardware handshake"
+(``hw/sys/sep/doc/dma.adoc:130``); and the stop and next GO of
+``sep-programming.adoc:768-770``. A transfer of L bytes in chunks of
+L/k therefore stops k-1 times and takes k GO writes.
 
 CFG_REGWEN contract (CHK-DMA-CFG-REGWEN): "In the idle state, this register is
 set to kMultiBitBool4True. When the DMA is performing an operation, i.e. the
@@ -195,14 +207,19 @@ GO value during a transfer is not graded.
                       second run; at least one run of the seed has the
                       probe at 1 before its GO (CTRL-DMA-DV-FALL-REACH).
   CHK-DMA-HASH-CHAIN  per message with a split form: single-chunk and split
-                      digests are equal.
+                      digests are equal; the split run of k chunks reads
+                      CHUNK_DATA_SIZE = L/k back before its GO, shows exactly
+                      k-1 STATUS reads with CHUNK_DONE=1, BUSY=0, DONE=0 and
+                      takes exactly k GO writes to DONE.
   CHK-DMA-CONT-CFG    per Leg D continuation run: the digest words equal the
                       hashlib golden of the first-start algorithm in the
                       first-start byte order; DONE=1, STATUS.ERROR=0,
                       ERROR_CODE=0, SHA2_DIGEST_VALID=1 after the chain, the
                       probe edges of CHK-DMA-HASH-VALID, and the copy equals
-                      the source. Controls (else CTRL-MISSING): at least one
-                      run of the seed has the probe at 1 before its GO; at
+                      the source; CHUNK_DATA_SIZE reads L/k before the GO,
+                      exactly k-1 stop reads and exactly k GO writes as in
+                      CHK-DMA-HASH-CHAIN. Controls (else CTRL-MISSING): at
+                      least one run of the seed has the probe at 1 before its GO; at
                       least one later start; a CONTROL read after each later start
                       shows the OPCODE and DIGEST_SWAP that start wrote, both
                       other than the first start; the digest registers
@@ -295,6 +312,7 @@ from sep_reg_meta import SEP_CPU_CTRL, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_dma_ops import (
     CFG_REGWEN,
+    CHUNK_DATA_SIZE,
     CONTROL,
     DIGEST_BASE,
     DIGEST_WORDS,
@@ -2177,6 +2195,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             width_enc=2,
             order=XFER_ORDER_REGS,
         )
+        chunk_rb = await ops.rd(CHUNK_DATA_SIZE) if split else None
         if run_idx >= 1:
             pre = await ops.read_status()
             self.logger.info("LEGD %s pre-GO %s", tag, pre.fmt())
@@ -2205,6 +2224,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         if res.status.done:
             await self._wait_idle_done(tag)
         busy_reads = [s for s in res.statuses if s.busy]
+        stops = sum(1 for s in res.statuses if s.chunk_done and not s.busy and not s.done)
         self.logger.info(
             "LEGD %s go_writes=%d busy_reads=%s",
             tag,
@@ -2240,6 +2260,9 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             split=split,
             swap=swap,
             go_writes=res.go_writes,
+            stops=stops,
+            chunk=chunk,
+            chunk_rb=chunk_rb,
             done=res.status.done,
             error=st.error,
             err=err,
@@ -2303,7 +2326,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             )
             await self.mem.fill(m.dst, [sw] * (length // 4))
             forms = [0] + ([m.split] if m.split else [])
-            digests: dict[tuple[int, int], tuple[list[int], bool]] = {}
+            digests: dict[tuple[int, int], tuple[list[int], bool, dict]] = {}
             for split in forms:
                 for swap in m.swaps:
                     if split:
@@ -2318,7 +2341,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                         len(words) - len(gold)
                     )
                     fer = field_compare(info["err"], 0, ERROR_CODE_MASK)
-                    digests[(split, swap)] = (words, control)
+                    digests[(split, swap)] = (words, control, info)
                     if control:
                         self.logger.info(
                             "INFO-DMA-HASH-CTRL LOG seed=%d alg=%d len=%d split=%d swap=%d "
@@ -2360,15 +2383,25 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             for swap in m.swaps:
                 if not m.split:
                     continue
-                a, ca = digests[(0, swap)]
-                b, cb = digests[(m.split, swap)]
+                a, ca, _ = digests[(0, swap)]
+                b, cb, si = digests[(m.split, swap)]
                 if ca or cb:
                     continue
+                k = m.split
+                expect_go = k
+                ok = (
+                    a == b
+                    and si["go_writes"] == expect_go
+                    and si["stops"] == k - 1
+                    and si["chunk_rb"] == si["chunk"]
+                )
                 self._pass(
                     "CHK-DMA-HASH-CHAIN",
-                    a == b,
-                    f"alg={m.alg} len={length} split={m.split} single_eq_split={int(a == b)} "
-                    f"swap={swap}",
+                    ok,
+                    f"alg={m.alg} len={length} split={k} single_eq_split={int(a == b)} "
+                    f"go_writes={si['go_writes']} expect_go={expect_go} "
+                    f"chunk_stops={si['stops']} expect_stops={k - 1} "
+                    f"chunk_rb={si['chunk_rb']} expect_chunk={si['chunk']} swap={swap}",
                 )
         if ctrl_state.get("before_second") != 1:
             self._ctrl_missing(
@@ -2440,12 +2473,14 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             width_enc=2,
             order=XFER_ORDER_REGS,
         )
+        chunk_rb = await ops.rd(CHUNK_DATA_SIZE)
         self._open()
         dv_pre = self.tap.level("sha2_digest_valid")
         m_tap = self.tap.mark()
         first = await ops.go(opcode=alg_op, digest_swap=c.swap, initial=1)
         bound = ops.done_bound(poll_size(length))
         go_writes = 1
+        stops = 0
         conts: list[tuple[int, int]] = []  # (CONTROL written, CONTROL read after it)
         st = None
         for _ in range(bound):
@@ -2453,6 +2488,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             if st.done or st.error or st.aborted:
                 break
             if st.chunk_done and not st.busy:
+                stops += 1
                 if go_writes >= k:
                     self._pass(
                         "CHK-DMA-CONT-CFG",
@@ -2530,13 +2566,17 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             and valid_after == 1
             and dv.ok
             and copy_mm == 0
+            and go_writes == k
+            and stops == k - 1
+            and chunk_rb == length // k
         )
         self._pass(
             "CHK-DMA-CONT-CFG",
             ok,
             f"{tag} words={len(exp)} mismatch={mism} done={done} error={st2.error} "
             f"digest_valid_after={valid_after} {dv.fmt()} copy_mismatch={copy_mm} "
-            f"go_writes={go_writes} "
+            f"go_writes={go_writes} expect_go={k} chunk_stops={stops} expect_stops={k - 1} "
+            f"chunk_rb={chunk_rb} expect_chunk={length // k} "
             f"stale_eq_golden=0 {rb_line} {ff('error_code', fer)}",
         )
         await self._digest_ro_hold(tag)
