@@ -475,6 +475,8 @@ class MidMsgPlan:
             "key1_iv1": aes_encrypt_words("cbc", k1, pt2, iv1),
             "key2_ck": aes_encrypt_words("cbc", k2, pt2, c1[4 * self.k - 4 : 4 * self.k]),
             "key2_ck1": aes_encrypt_words("cbc", k2, pt2, c1[4 * self.k : 4 * self.k + 4]),
+            "key1_ck": aes_encrypt_words("cbc", k1, pt2, c1[4 * self.k - 4 : 4 * self.k]),
+            "key1_ck1": aes_encrypt_words("cbc", k1, pt2, c1[4 * self.k : 4 * self.k + 4]),
         }
 
     def distinct(self) -> bool:

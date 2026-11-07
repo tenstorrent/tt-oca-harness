@@ -257,11 +257,12 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             )
         self.logger.info(
             "CHK-RANDCFG PASS: export=%d inventory=%d nometa=%d "
-            "reset=%d write=%d touch=%d gen_off=%d ones_first=%d seed=%d",
+            "reset=%d reset_obs=%d write=%d touch=%d gen_off=%d ones_first=%d seed=%d",
             cfg.export,
             cfg.inventory,
             cfg.nometa,
-            len(cfg.reset_regs),
+            len(cfg.reset_regs) - len(AES_SCRUB_ADDRS),
+            n_scrub,
             len(cfg.write_regs),
             len(cfg.touch_regs),
             bash.gen_off_windows,
