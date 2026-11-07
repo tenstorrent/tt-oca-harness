@@ -68,8 +68,10 @@ Checkers:
                        the mismatched pair pulsed.
   CHK-SHADOW-RESTART   after R written twice the next AES block equals its golden.
                        Control: CTRL-SHADOW-RECOV-RB, CTRL_SHADOWED reads R
-                       after the pair (``aes.hjson:633``); the value read
-                       before the pair is logged with it (``held_differs``).
+                       after the pair (``aes.hjson:633``). R differs from the
+                       value read before the pair (logged as ``held_before``):
+                       its PRNG_RESEED_RATE is PER_64 when that value equals
+                       the PER_8K word.
   CHK-GCM-SHADOW-ERR   AES GCM mismatched pair after GCM_INIT: no bit 32 rise up
                        to the second write, the first rise within 4 x c_err
                        clocks of it, ALERT_FATAL_FAULT 0. Control:
@@ -198,6 +200,7 @@ from seq_lib.sep_aes_seq import (
     AES_MODE_ECB,
     AES_OP_DEC,
     AES_OP_ENC,
+    AES_PRS_RATE_PER_64,
     AES_STATUS,
     AES_TRIGGER,
     AES_TRIGGER_DATA_OUT_CLEAR,
@@ -766,9 +769,17 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         # Recovery: R written twice, then one block.
         key = plan.key
         golden = aes_encrypt_words("ecb", key, _le_words(AES_PT))
-        r = build_aes_ctrl(
+        # R differs from the value held before the pair, so a pair that does not land
+        # fails CTRL-SHADOW-RECOV-RB. R uses PRNG_RESEED_RATE PER_8K, or PER_64 when the
+        # held value equals that word; both are legal values, and the field sets the
+        # reseed rate of the masking PRNG only (aes.hjson:768-799), so the golden block
+        # does not change with it.
+        r_cfg = dict(
             sideload=False, operation=AES_OP_ENC, mode=AES_MODE_ECB, key_len=AES_KEY_LEN_256
         )
+        r = build_aes_ctrl(**r_cfg)
+        if (held ^ r) & AES_CTRL_MASK == 0:
+            r = build_aes_ctrl(**r_cfg, reseed_rate=AES_PRS_RATE_PER_64)
         ct = None
         reason = ""
         rr = -1
@@ -797,7 +808,6 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             readback=f"0x{rr & AES_CTRL_MASK:x}" if rr >= 0 else "none",
             written=f"0x{r & AES_CTRL_MASK:x}",
             held_before=f"0x{held & AES_CTRL_MASK:x}" if held >= 0 else "none",
-            held_differs=int(held >= 0 and (held & AES_CTRL_MASK) != (r & AES_CTRL_MASK)),
         )
         fields = {"reg": "aes_ctrl", "op==golden": int(ct == golden)}
         if reason:

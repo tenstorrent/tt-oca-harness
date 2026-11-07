@@ -388,7 +388,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
                 # the invalid write then keeps PER_8K and its count differs from PER_1.
                 await self._ctrl(self._ctrl_word(PER_8K))
                 # Two equal writes on an idle unit change CTRL_SHADOWED (aes.hjson:631-633);
-                # PER_8K is 3'b100 (:793-794), not the reset PER_1 (:770).
+                # PER_8K is 3'b100 (:793-795), not the reset PER_1 (:770).
                 rb = await self.aes._rd(AES_CTRL_SHADOWED)
                 rb_rate = (rb & PRNG_RATE_MASK) >> PRNG_RATE_LSB
                 self.chk.ctrl(
