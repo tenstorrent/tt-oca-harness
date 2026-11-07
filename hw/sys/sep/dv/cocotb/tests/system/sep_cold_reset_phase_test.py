@@ -29,10 +29,9 @@ so the leaf ends from a complete cold reset.
 Checkers:
   CHK-ARM           each armed register reads back its armed value, which
                     differs from its RDL reset value on the field bits.
-  CHK-RST-SYNC      the ``dbg_sep_reset_n_o`` tap rises after the last
-                    release term, within 1 ps of a ``clk_i`` rising edge. The
-                    last term is the ``ext_boot_seq_done_i`` rise in the graded
-                    pass and the ``rst_ni`` release in the control pass.
+  CHK-RST-SYNC      graded pass: the ``dbg_sep_reset_n_o`` tap rises after the
+                    ``ext_boot_seq_done_i`` rise, the last release term, within
+                    1 ps of a ``clk_i`` rising edge.
   CHK-AON-REL       the ``aon_rst_n_probe_o`` tap is low at the end of the
                     ``rst_ni`` low window and rises after the release, within
                     1 ps of a ``clk_wdt_i`` rising edge.
@@ -44,11 +43,14 @@ watchdog thresholds and ``WKUP_THOLD_HI`` after the reset (graded by
 ``sep_timer_clock_contract_test``). ``CTRL-RST-EXT-HOLD`` (graded pass) logs
 that ``sep_reset_n`` has not risen since the ``rst_ni`` release and that
 fuse-sense done is 1 when ``ext_boot_seq_done_i`` rises; otherwise
-``CTRL-MISSING`` fails the leaf. ``CTRL-RST-OFFEDGE`` logs the measured offset
-from the nearest ``clk_i`` edge of the ``rst_ni`` release (control pass) and of
-the ``ext_boot_seq_done_i`` rise (graded pass); in the graded pass an offset
-within the edge allowance fails the leaf, because CHK-RST-SYNC could not then
-fail. ``OBS-RST-ASSERT`` logs the delay from the
+``CTRL-MISSING`` fails the leaf. ``INFO-RST-CTL-RELEASE`` logs the control
+pass's ``rst_ni`` release and the ``sep_reset_n`` rise with its offset from the
+nearest ``clk_i`` edge; its last release term can be the fuse-sense done rise,
+which is on a ``clk_i`` edge, so it is not graded. ``CTRL-RST-OFFEDGE`` logs
+the measured offset from the nearest ``clk_i`` edge of the ``rst_ni`` release
+(control pass) and of the ``ext_boot_seq_done_i`` rise (graded pass); in the
+graded pass an offset within the edge allowance fails the leaf, because
+CHK-RST-SYNC could not then fail. ``OBS-RST-ASSERT`` logs the delay from the
 ``rst_ni`` fall to the ``sep_reset_n`` fall; the specification gives no
 assertion timing, so it is not graded. ``OBS-RST-MIN-WIDTH`` logs the width
 of the pulse below the floor, whether ``sep_reset_n`` fell and rose, whether
@@ -348,25 +350,38 @@ class sep_cold_reset_phase_test(sep_base_test):
             )
 
         sep_rise = self.sep_t.rises(t_last)
-        assert sep_rise, f"CHK-RST-SYNC FAIL: pass={pass_name} no sep_reset_n rise after {term}"
+        tag = "CHK-RST-SYNC" if pass_name == "graded" else "INFO-RST-CTL-RELEASE"
+        assert sep_rise, f"{tag} FAIL: pass={pass_name} no sep_reset_n rise after {term}"
         t_sr = sep_rise[0]
         self._log_sync_edges(pass_name, t_rel, t_sr)
         off = nearest_edge_offset_ps(t_sr, self.edges.edge_times("clk_i"))
-        assert t_sr > t_last and off is not None and abs(off) <= _EDGE_ALLOWANCE_PS, (
-            f"CHK-RST-SYNC FAIL: pass={pass_name} {term} rose t={t_last} sep_reset_n rose "
-            f"t={t_sr} offset_to_clk_edge={off} ps (allowance {_EDGE_ALLOWANCE_PS} ps)"
-        )
-        self.logger.info(
-            "CHK-RST-SYNC PASS: pass=%s %s rose t=%d phase=%.1f sep_reset_n rose t=%d "
-            "offset_to_clk_edge=%d allowance=%d",
-            pass_name,
-            term,
-            t_last,
-            phase_pct(ph, p),
-            t_sr,
-            off,
-            _EDGE_ALLOWANCE_PS,
-        )
+        if pass_name == "ctl":
+            self.logger.info(
+                "INFO-RST-CTL-RELEASE: pass=ctl %s rose t=%d phase=%.1f sep_reset_n rose t=%d "
+                "offset_to_clk_edge=%s allowance=%d",
+                term,
+                t_last,
+                phase_pct(ph, p),
+                t_sr,
+                off,
+                _EDGE_ALLOWANCE_PS,
+            )
+        else:
+            assert t_sr > t_last and off is not None and abs(off) <= _EDGE_ALLOWANCE_PS, (
+                f"CHK-RST-SYNC FAIL: pass={pass_name} {term} rose t={t_last} sep_reset_n rose "
+                f"t={t_sr} offset_to_clk_edge={off} ps (allowance {_EDGE_ALLOWANCE_PS} ps)"
+            )
+            self.logger.info(
+                "CHK-RST-SYNC PASS: pass=%s %s rose t=%d phase=%.1f sep_reset_n rose t=%d "
+                "offset_to_clk_edge=%d allowance=%d",
+                pass_name,
+                term,
+                t_last,
+                phase_pct(ph, p),
+                t_sr,
+                off,
+                _EDGE_ALLOWANCE_PS,
+            )
 
         try:
             await self._wait_level(

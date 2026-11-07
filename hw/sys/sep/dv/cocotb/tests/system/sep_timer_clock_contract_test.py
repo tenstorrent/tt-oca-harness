@@ -2581,11 +2581,15 @@ class sep_timer_clock_contract_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, next(gaps) + 1)
             segs[1].append(await self._rd(WDOG_COUNT))
         await self._wr(WDOG_CTRL, 0)
-        inc = 0
+        seg_inc = [0, 0]
         for si, seg in enumerate(segs):
             for a, b in zip(seg, seg[1:]):
                 assert b >= a, f"CHK-WDT-COHERENT FAIL: segment {si} count fell 0x{a:x} -> 0x{b:x}"
-                inc += int(b > a)
+                seg_inc[si] += int(b > a)
+            assert seg_inc[si] >= 1, (
+                f"CHK-WDT-COHERENT FAIL: segment {si} increases={seg_inc[si]}, expected at least 1"
+            )
+        inc = sum(seg_inc)
         for c in ctrl_reads:
             fc = field_compare(c, WDOG_EN, WDOG_CTRL_FIELDS)
             assert fc.ok, f"CHK-WDT-COHERENT FAIL: WDOG_CTRL while counting {fc.fields()}"
@@ -2594,9 +2598,12 @@ class sep_timer_clock_contract_test(sep_base_test):
         assert segs[1][0] >= 0x1000, f"CHK-WDT-COHERENT FAIL: first read 0x{segs[1][0]:x} < 0x1000"
         assert inc >= 3, f"CHK-WDT-COHERENT FAIL: only {inc} increases"
         self.logger.info(
-            "CHK-WDT-COHERENT PASS: reads=%d segments=2 monotone=1 increases=%d ctrl_reads=%d ctrl=1",
+            "CHK-WDT-COHERENT PASS: reads=%d segments=2 monotone=1 increases=%d "
+            "seg0_increases=%d seg1_increases=%d ctrl_reads=%d ctrl=1",
             len(segs[0]) + len(segs[1]),
             inc,
+            seg_inc[0],
+            seg_inc[1],
             len(ctrl_reads),
         )
 

@@ -120,8 +120,9 @@ synchronizer behind the override (a few cycles each) with a wide margin, so a
 TRST effect that reaches the tap through them lands inside the graded window.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense of the committed
-default image (``+sep_efuse_preload``), ``+sep_edn_jtag_reset_waive``. Four
-seeds, Verilator and VCS.
+default image (``+sep_efuse_preload``), ``+sep_edn_jtag_reset_waive``.
+Verilator and VCS. Each regression runs one seed, which draws every value the
+leaf logs on a ``DRAW`` line.
 """
 
 from __future__ import annotations
