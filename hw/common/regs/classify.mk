@@ -169,6 +169,7 @@ OCAH_REG_ADDR_WIDTH_chip_config ?= 8
 OCAH_REG_ADDR_WIDTH_i2c ?= 9
 OCAH_REG_ADDR_WIDTH_uart_log_engine_ctrl ?= 8
 OCAH_REG_ADDR_WIDTH_uart_16550_main ?= 8
+OCAH_REG_ADDR_WIDTH_cross_trigger_matrix ?= 9
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))

@@ -36,7 +36,8 @@ package cross_trigger_network_pkg;
   localparam int unsigned CsrAddrCtmSize =
       int'(cross_trigger_network_addrmap_pkg::CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
   // verilog_format: on
-  // Bytes of the CTM aperture its register map decodes; the rest of the aperture is unmapped.
+  // Bytes of the CTM aperture that hold registers; the matrix answers SLVERR from there to the
+  // end of the aperture.
   localparam int unsigned CsrAddrCtmRegSize =
       int'(cross_trigger_network_addrmap_pkg::CROSS_TRIGGER_NETWORK_CTM_SIZE);
   localparam int unsigned CsrAddrCtpSize =
