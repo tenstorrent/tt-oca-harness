@@ -105,6 +105,38 @@ addrmap top {
 };
 """
 
+SUB_BLOCK_RDL = """
+addrmap one {
+    reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0;
+};
+addrmap three {
+    reg { field { sw = rw; hw = r; } value[31:0]; } first @0x0;
+    reg { field { sw = rw; hw = r; } value[31:0]; } second @0x4;
+    reg { field { sw = rw; hw = r; } value[31:0]; } third @0x8;
+};
+addrmap shared {
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+`endif
+    one a @0x0;
+    one b @0x40;
+    three c @0x80;
+`ifdef OCAH_DOC_MEMORY_MAP
+    a->ocah_aperture_size = 0x40;
+    a->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    c->ocah_aperture_size = 0x10;
+    c->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+addrmap top {
+    shared wrap @0x0;
+`ifdef OCAH_DOC_MEMORY_MAP
+    wrap->ocah_aperture_size = 0x1000;
+    wrap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+`endif
+};
+"""
+
 RESPONSE_COLUMNS = ["base", "size", "occupied_size", "label", "hole_resp", "past_resp"]
 
 
@@ -393,6 +425,52 @@ addrmap top {
         cells = self.cells(self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text))
         self.assertIn("between sub-blocks: SLVERR, 0x0 / SLVERR", cells["wrapped"][-2])
         self.assertIn("between instances: OKAY, 0x0 / OKAY", cells["wrapped"][-2])
+
+    def test_wrap_cell_names_the_space_past_sub_block_registers(self):
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, SUB_BLOCK_RDL)
+        self.assertEqual(
+            self.cells(view)["wrap"][-2:],
+            [
+                "between sub-blocks: DECERR, 0xBADCAB1E / DECERR; "
+                "past sub-block registers: SLVERR, 0x0 / SLVERR",
+                "DECERR, 0xBADCAB1E / DECERR",
+            ],
+        )
+        self.assertEqual(view.rows[0].occupied_size, 0x90)
+        text = SUB_BLOCK_RDL.replace(
+            "    c->ocah_aperture_size = 0x10;\n",
+            "    c->ocah_aperture_size = 0x10;\n"
+            "    b->ocah_aperture_size = 0x40;\n"
+            "    b->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0,"
+            " bresp: ocah_resp_e::SLVERR};\n",
+        )
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        self.assertEqual(
+            [label for label, _ in view.rows[0].hole_responses], ["past sub-block registers"]
+        )
+
+    def test_rejects_a_sub_block_window_past_the_next_sibling(self):
+        text = SUB_BLOCK_RDL.replace(
+            "a->ocah_aperture_size = 0x40;", "a->ocah_aperture_size = 0x80;"
+        )
+        with self.assertRaisesRegex(ValueError, "top.wrap.a: aperture 0x80 reaches past b at 0x40"):
+            self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+
+    def test_rejects_a_sub_block_window_smaller_than_its_extent(self):
+        text = SUB_BLOCK_RDL.replace(
+            "c->ocah_aperture_size = 0x10;", "c->ocah_aperture_size = 0x8;"
+        )
+        with self.assertRaisesRegex(
+            ValueError, "top.wrap.c: aperture 0x8 is smaller than occupied extent 0xC"
+        ):
+            self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+
+    def test_sub_block_window_takes_no_past_response_from_its_wrap(self):
+        text = "\n".join(
+            line for line in SUB_BLOCK_RDL.splitlines() if "a->ocah_past_extent_resp" not in line
+        )
+        with self.assertRaisesRegex(ValueError, "top.wrap.a: ocah_past_extent_resp is not set"):
+            self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
 
     def test_full_stride_extent_decodes_the_last_tail(self):
         text = RESPONSE_RDL.replace(
