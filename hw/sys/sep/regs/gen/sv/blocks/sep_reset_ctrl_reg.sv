@@ -10,7 +10,7 @@ module sep_reset_ctrl_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [3:0] s_axil_awaddr,
+        input wire [11:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module sep_reset_ctrl_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [3:0] s_axil_araddr,
+        input wire [11:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -36,7 +36,7 @@ module sep_reset_ctrl_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [3:0] cpuif_addr;
+    logic [11:0] cpuif_addr;
     logic [63:0] cpuif_wr_data;
     logic [63:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -53,10 +53,10 @@ module sep_reset_ctrl_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [3:0] axil_araddr;
+    logic [11:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [3:0] axil_awaddr;
+    logic [11:0] axil_awaddr;
     logic axil_wvalid;
     logic [63:0] axil_wdata;
     logic [7:0] axil_wstrb;
@@ -134,17 +134,17 @@ module sep_reset_ctrl_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[3:3], 3'b0};
+                cpuif_addr = {axil_araddr[11:3], 3'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[3:3], 3'b0};
+                cpuif_addr = {axil_awaddr[11:3], 3'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[3:3], 3'b0};
+                cpuif_addr = {axil_araddr[11:3], 3'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -231,7 +231,7 @@ module sep_reset_ctrl_reg (
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
-    logic [3:0] decoded_addr;
+    logic [11:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [63:0] decoded_wr_data;
@@ -242,9 +242,9 @@ module sep_reset_ctrl_reg (
         automatic logic is_valid_rw;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.SW_RESET_N = cpuif_req_masked & (cpuif_addr == 4'h0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 4'h0);
-        is_valid_addr = cpuif_addr < 4'h8;
+        decoded_reg_strb.SW_RESET_N = cpuif_req_masked & (cpuif_addr == 12'h0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h0);
+        is_valid_addr = cpuif_addr < 12'h8;
         decoded_err = ~is_valid_addr & decoded_req;
     end
 
@@ -492,7 +492,7 @@ module sep_reset_ctrl_reg (
     // Readback
     //--------------------------------------------------------------------------
 
-    logic [3:0] rd_mux_addr;
+    logic [11:0] rd_mux_addr;
     assign rd_mux_addr = decoded_addr;
 
     logic readback_err;
@@ -501,7 +501,7 @@ module sep_reset_ctrl_reg (
     always_comb begin
         automatic logic [63:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 4'h0) begin
+        if(rd_mux_addr == 12'h0) begin
             readback_data_var[0] = field_storage.SW_RESET_N.km_sw_rst_n.value;
             readback_data_var[1] = field_storage.SW_RESET_N.otbn_sw_rst_n.value;
             readback_data_var[2] = field_storage.SW_RESET_N.aes_sw_rst_n.value;

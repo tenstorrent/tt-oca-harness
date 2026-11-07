@@ -4,7 +4,10 @@
 // Wrap the OpenTitan aon_timer watchdog with an AXI register interface.
 //
 // The 64-bit AXI4 slave is downsized to 32 bits, rebased by subtracting the WDT base
-// address, converted to AXI-Lite, and bridged to the aon_timer TL-UL port.
+// address, converted to AXI-Lite, and bridged to the aon_timer TL-UL port. Between the two
+// bridges a demux passes the 2^aon_timer_reg_pkg::BlockAw bytes the timer decodes and answers
+// the rest of the page with DECERR and read data 0xBADCAB1E. Inside that window the timer
+// answers an access past its registers with SLVERR and read data 0xFFFFFFFF.
 // clk_wdt_i times the bark and bite counters. rst_ni resets the register path; the SEP watchdog
 // reset rst_wdt_ni resets the timer and its alert receivers, and rst_wdt_aon_clk_n is its copy
 // synchronized into the clk_wdt_i domain.
@@ -13,6 +16,8 @@
 // wdt_debug_sleep_mode_i pauses the watchdog in debug sleep.
 // RACL is compiled out, lifecycle escalation is tied off, and the wakeup timer outputs are
 // unused.
+
+`include "ocah_assert.svh"
 
 module sep_wdt_wrap (
   input  logic                         clk_i,  // System clock.
@@ -46,7 +51,9 @@ module sep_wdt_wrap (
                                                                 // configured to pause in sleep.
 
   output logic                         bus_err_o,  // Set by a TL-UL error response on the register
-                                                   // bridge; sticky until bus_err_clr_i.
+                                                   // bridge, such as an access past the timer's
+                                                   // registers; an access the demux answers
+                                                   // does not set it. Sticky until bus_err_clr_i.
   input  logic                         bus_err_clr_i  // Single-cycle clear for bus_err_o, pulsed by
                                                       // PERIPH_BUS_ERR_CLEAR.wdt in sep; a fault in
                                                       // the same cycle still latches.
@@ -114,6 +121,8 @@ module sep_wdt_wrap (
   // AXI-Lite intermediate signals
   sep_pkg::sep_32_32_axil_req_t  axi_lite_req;
   sep_pkg::sep_32_32_axil_resp_t axi_lite_resp;
+  sep_pkg::sep_32_32_axil_req_t  wdt_axi_lite_req;
+  sep_pkg::sep_32_32_axil_resp_t wdt_axi_lite_resp;
 
   // Stage 1: AXI to AXI-Lite conversion
   axi_to_axi_lite #(
@@ -137,7 +146,35 @@ module sep_wdt_wrap (
     .mst_resp_i  (axi_lite_resp)
   );
 
-  // Stage 2: AXI-Lite to TL-UL conversion
+  // Stage 2: the timer's window
+  localparam logic [31:0] WdtWindowBase[1] = '{32'h0};
+  localparam logic [31:0] WdtWindowSize[1] = '{32'(1) << aon_timer_reg_pkg::BlockAw};
+
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .NUM_RANGES     (1),
+    .RANGE_BASE     (WdtWindowBase),
+    .RANGE_SIZE     (WdtWindowSize),
+    .MAX_TRANS      (2),
+    .aw_chan_t      (sep_pkg::sep_32_32_axil_aw_chan_t),
+    .w_chan_t       (sep_pkg::sep_32_32_axil_w_chan_t),
+    .b_chan_t       (sep_pkg::sep_32_32_axil_b_chan_t),
+    .ar_chan_t      (sep_pkg::sep_32_32_axil_ar_chan_t),
+    .r_chan_t       (sep_pkg::sep_32_32_axil_r_chan_t),
+    .axil_req_t     (sep_pkg::sep_32_32_axil_req_t),
+    .axil_resp_t    (sep_pkg::sep_32_32_axil_resp_t)
+  ) u_wdt_addr_demux (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .test_en_i   (test_en_i),
+    .slv_req_i   (axi_lite_req),
+    .slv_resp_o  (axi_lite_resp),
+    .mst_reqs_o  (wdt_axi_lite_req),
+    .mst_resps_i (wdt_axi_lite_resp)
+  );
+
+  // Stage 3: AXI-Lite to TL-UL conversion
   axi_lite_to_tlul #(
     .AXI_ADDR_WIDTH   (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AXI_DATA_WIDTH   (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -148,8 +185,8 @@ module sep_wdt_wrap (
   ) u_wdt_axi_lite_to_tlul (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
-    .axi_lite_req_i  (axi_lite_req),
-    .axi_lite_rsp_o  (axi_lite_resp),
+    .axi_lite_req_i  (wdt_axi_lite_req),
+    .axi_lite_rsp_o  (wdt_axi_lite_resp),
     .tl_o            (tl_d_i),
     .tl_i            (tl_d_o),
     .err_o           (bus_err_o),
@@ -204,5 +241,10 @@ module sep_wdt_wrap (
   end
 
   assign wdt_alert_o = (|wdt_alert_pulse) | (|wdt_alert_integ_fail);
+
+  `OCAH_ASSERT_STATIC(
+      WdtRegMapFitsWindow_A,
+      sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE <= (64'd1 << aon_timer_reg_pkg::BlockAw),
+      "The watchdog register map is larger than the window its register top decodes")
 
 endmodule

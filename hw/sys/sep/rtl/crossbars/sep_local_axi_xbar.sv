@@ -3,7 +3,9 @@
 
 // Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.
 //
-// DMA, watchdog and SPI controller address bounds come from sep_top_addrmap_pkg; the
+// The DMA, watchdog, reset controller and SPI controller rules start at their
+// sep_top_addrmap_pkg base and end on the 4 KiB page boundary after the block's registers;
+// each of those targets answers the addresses of the page that it does not decode. The
 // remaining address rules are explicit integration apertures in AddrMap below.
 // Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits
 // than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity
@@ -56,16 +58,13 @@ module sep_local_axi_xbar
   output axi_out_req_t  sram_req_o,           // Request for the SEP SRAM, 0x1000_0000-0x1003_FFFF.
   input  axi_out_resp_t sram_resp_i,          // Response from the SEP SRAM.
 
-  output axi_out_req_t  dma_csr_req_o,        // Request for the secure DMA register extent from
-                                              // sep_top_addrmap_pkg.
+  output axi_out_req_t  dma_csr_req_o,        // Request for the secure DMA register page.
   input  axi_out_resp_t dma_csr_resp_i,       // Response from the secure DMA registers.
 
-  output axi_out_req_t  sep_wdt_req_o,        // Request for the watchdog timer register extent from
-                                              // sep_top_addrmap_pkg.
+  output axi_out_req_t  sep_wdt_req_o,        // Request for the watchdog timer register page.
   input  axi_out_resp_t sep_wdt_resp_i,       // Response from the watchdog timer.
 
-  output axi_out_req_t  sep_reset_ctrl_req_o,  // Request for sep_reset_ctrl,
-                                               // 0x1080_3000-0x1080_3007.
+  output axi_out_req_t  sep_reset_ctrl_req_o,  // Request for the sep_reset_ctrl register page.
   input  axi_out_resp_t sep_reset_ctrl_resp_i,  // Response from sep_reset_ctrl.
 
   output axi_out_req_t  sep_crypto_req_o,     // Request for sep_crypto, 0x1090_0000-0x1094_FFFF.
@@ -79,8 +78,8 @@ module sep_local_axi_xbar
                                                        // 0x4000_0000-0xBFFF_FFFF.
   input  axi_out_resp_t sep_system_peripherals_resp_i,  // Response from sep_system_peripherals.
 
-  output axi_out_req_t  sep_io_req_o,         // Request for the SPI controller register extent
-                                              // from sep_top_addrmap_pkg, to sep_io.
+  output axi_out_req_t  sep_io_req_o,         // Request for the SPI controller register page, to
+                                              // sep_io.
   input  axi_out_resp_t sep_io_resp_i,        // Response from sep_io.
 
   output axi_out_req_t  entropy_fifo_req_o,   // Request for the entropy pool,
@@ -114,35 +113,28 @@ module sep_local_axi_xbar
           start_addr: 32'h10000000,
           end_addr: 33'h10040000
       },
-      // dma_csr.main: secure_dma register extent, not the 4 kB spec aperture --
-      // secure_dma_reg_top decodes 9 bits, so a wider window aliases.
+      // dma_csr.main: the secure_dma page; sep_dma_wrap answers the addresses outside the
+      // window secure_dma_reg_top decodes.
       '{
           idx: 2,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR),
-          end_addr:
-          33'(
-          sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR
-          +
-          sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE
-          )
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE))
       },
-      // sep_wdt.main: wdt_timer register extent, not the 4 kB spec aperture --
-      // aon_timer_reg_top decodes 6 bits, so a wider window aliases.
+      // sep_wdt.main: the wdt_timer page; sep_wdt_wrap answers the addresses outside the
+      // window aon_timer_reg_top decodes.
       '{
           idx: 3,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR),
-          end_addr:
-          33'(
-          sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR
-          +
-          sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE
-          )
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE))
       },
-      // sep_reset_ctrl.main: 0x10803000 - 0x10803008
+      // sep_reset_ctrl.main: the sep_reset_ctrl page, all of which its register block decodes.
       '{
           idx: 4,
-          start_addr: 32'h10803000,
-          end_addr: 33'h10803008
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_BASE_ADDR),
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_SIZE))
       },
       // sep_crypto.main: 0x10900000 - 0x10950000
       '{
@@ -180,17 +172,13 @@ module sep_local_axi_xbar
           start_addr: 32'h40000000,
           end_addr: 33'hc0000000
       },
-      // sep_io.main: spi_controller register extent, not the 1 MiB spec aperture -- the
-      // rest of the aperture is refused here with DECERR.
+      // sep_io.main: the spi_controller page; sep_io answers the addresses outside the window
+      // spi_host_reg_top decodes.
       '{
           idx: 7,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR),
-          end_addr:
-          33'(
-          sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR
-          +
-          sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_SIZE
-          )
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_SIZE))
       },
       // entropy_fifo.main: 0x10950000 - 0x10960000
       '{
