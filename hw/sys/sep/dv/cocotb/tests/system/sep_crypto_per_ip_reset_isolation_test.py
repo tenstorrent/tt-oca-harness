@@ -45,8 +45,11 @@ Isolation proof (both directions, then the remaining isolated bits):
                     CTRL-AES-MIDMSG-PREFIX, the k blocks before the reset equal
                     the CBC golden prefix; CTRL-AES-MIDMSG-DISTINCT, the new
                     golden differs from CBC under the old key, the old IV or
-                    the chaining value after block k or k + 1. STATUS before
-                    the pulse is logged (INFO-AES-MIDMSG-POINT).
+                    the chaining value after block k or k + 1;
+                    CTRL-AES-MIDMSG-TAKEN, STATUS shows the engine took block
+                    k + 1 (IDLE=0 or OUTPUT_VALID=1, from OUTPUT_VALID=0)
+                    before the pulse. STATUS before the pulse is logged
+                    (INFO-AES-MIDMSG-POINT).
   * CHK-REVERSE     roles swapped (AES-victim then HMAC-victim): AES DATA_OUT
                     survives the HMAC pulse. HMAC DIGEST has no stated reset
                     value, so its value after the pulse is logged only.
@@ -247,6 +250,8 @@ from seq_lib.sep_aes_seq import (
     AES_MODE_CTRL,
     AES_OP_ENC,
     AES_STATUS,
+    AES_STATUS_IDLE,
+    AES_STATUS_OUTPUT_VALID,
     AES_TRIGGER,
     AES_TRIGGER_PRNG_RESEED,
     SepAes,
@@ -629,9 +634,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         Message 1 (CBC-ENC-256) runs ``k`` blocks, each equal to the SP 800-38A CBC
         golden prefix (CTRL-AES-MIDMSG-PREFIX, so the reset cuts a live chain); block
-        ``k + 1`` is written to DATA_IN and the reset is pulsed at once. STATUS just
-        before the pulse is logged (INFO-AES-MIDMSG-POINT); the check does not depend on
-        whether the unit is busy. After the pulse the leaf waits for STATUS.IDLE
+        ``k + 1`` is written to DATA_IN and the reset is pulsed at once.
+        CTRL-AES-MIDMSG-TAKEN: STATUS.OUTPUT_VALID reads 0 before that write, and after
+        it STATUS reads IDLE=0 (busy) or OUTPUT_VALID=1, so the engine took block
+        ``k + 1`` before the pulse (aes.hjson:807, automatic mode starts on new input
+        data; :943, IDLE is 0 while an encryption runs; :977, OUTPUT_VALID). STATUS
+        just before the pulse is also logged (INFO-AES-MIDMSG-POINT). After the pulse the leaf waits for STATUS.IDLE
         (upstream aes/doc/programmers_guide.md, Clear upon Reset: the unit then idles and
         is ready for initialization), reprograms CTRL_SHADOWED, key and IV, and runs
         message 2. CTRL-AES-MIDMSG-DISTINCT: the message 2 golden differs from the CBC
@@ -673,9 +681,28 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self.logger.info(
             "CTRL-AES-MIDMSG-PREFIX seen: %s blocks=%d equal the CBC golden prefix", desc, mp.k
         )
+        await self.aes.wait_idle("pre-midmsg-block")
+        pre = await self.aes._rd(AES_STATUS)
         await self.aes.start_block_no_wait(list(mp.pt1[4 * mp.k : 4 * mp.k + 4]))
         st = await self.aes._rd(AES_STATUS)
         self.logger.info("INFO-AES-MIDMSG-POINT %s block=%d status=0x%08x", desc, mp.k + 1, st)
+        idle = 1 << AES_STATUS_IDLE
+        valid = 1 << AES_STATUS_OUTPUT_VALID
+        taken = (pre & valid) == 0 and ((st & idle) == 0 or (st & valid) != 0)
+        if not taken:
+            raise AssertionError(
+                f"CTRL-MISSING CTRL-AES-MIDMSG-TAKEN: {desc} block={mp.k + 1} "
+                f"status_before=0x{pre:08x} status_after=0x{st:08x}: expected OUTPUT_VALID=0 "
+                "before the DATA_IN write and IDLE=0 or OUTPUT_VALID=1 after it"
+            )
+        self.logger.info(
+            "CTRL-AES-MIDMSG-TAKEN seen: %s block=%d status_before=0x%08x status_after=0x%08x "
+            "(engine busy or output valid before the reset pulse)",
+            desc,
+            mp.k + 1,
+            pre,
+            st,
+        )
         await self._pulse_reset(ENG_AES.rst_bit)
         await self.aes.wait_idle("idle-after-midmsg-reset")
 

@@ -64,8 +64,8 @@ Checkers:
   CHK-AES-TRIG-ONESHOT  in manual mode, after the START of block 1 executed and
                       with its output unread, block 2 is written without a START:
                       every STATUS read of a 20 x t_blk window shows IDLE = 1,
-                      INPUT_READY = 0 and OUTPUT_LOST = 0 (aes.hjson TRIGGER: each
-                      bit "is individually cleared to zero when executing the
+                      INPUT_READY = 0 and OUTPUT_LOST = 0 (registers.md:392 TRIGGER:
+                      each bit "is individually cleared to zero when executing the
                       corresponding trigger"; CTRL_SHADOWED.MANUAL_OPERATION: the
                       unit "only starts to encrypt/decrypt after receiving a start
                       trigger"; STATUS.IDLE, INPUT_READY, OUTPUT_LOST). A START
@@ -126,11 +126,13 @@ Checkers:
 Vector bits 36 and 37 (entropy pool sources) are logged as ``OBS-POOL-VEC``.
 OUTPUT_VALID after each word of the first DATA_OUT read that the streams make
 word by word is logged as ``OBS-AES-OV-PARTIAL``.
-``OBS-AES-EARLY-READ``: in automatic ECB-256, one block is written and, at once,
-STATUS and DATA_OUT_i are read in turn for i = 0..3; then, once OUTPUT_VALID is 1,
-DATA_OUT_0..3 and STATUS. The line logs OUTPUT_VALID at each early read, the early
-and the final words, whether the final words equal the FIPS-197 golden, and STALL
-and IDLE after. No text states the effect of a DATA_OUT read before OUTPUT_VALID
+``OBS-AES-EARLY-READ``: in automatic ECB-256, one block is written; the access right
+after the last DATA_IN write reads DATA_OUT_0 while the block is in progress, and the
+next access reads STATUS. Only one DATA_OUT word is read before it, so OUTPUT_VALID = 0
+in that STATUS read shows that the block was still in progress at the DATA_OUT_0 read.
+Then, once OUTPUT_VALID is 1, DATA_OUT_0..3 and STATUS are read. The line
+logs the clocks of the write and the read, STATUS at the read, the early word, the final
+words, whether the final words equal the FIPS-197 golden, and STALL and IDLE after. No text states the effect of a DATA_OUT read before OUTPUT_VALID
 (aes.hjson DATA_OUT, OUTPUT_VALID), so nothing is graded; the leg runs with the
 graded window closed.
 ``aes.rdl`` is ``vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl``; the two ``.md``
@@ -987,18 +989,19 @@ class sep_aes_stream_status_rand_test(sep_base_test):
 
     # --- DATA_OUT read before OUTPUT_VALID ------------------------------------------------
     async def _early_read_leg(self) -> None:
-        """OBS-AES-EARLY-READ: DATA_OUT read right after DATA_IN, before OUTPUT_VALID.
+        """OBS-AES-EARLY-READ: DATA_OUT_0 read while the block is in progress.
 
         aes.hjson DATA_OUT and STATUS.OUTPUT_VALID state when the output is valid, not
-        what a read before that returns or does. The block golden is known, so whether
-        the final output equals it is logged with the early words. Nothing is graded.
+        what a read before that returns or does. The STATUS read after the early read
+        logs OUTPUT_VALID at that read. The block golden is known, so whether the final
+        output equals it is logged with the early word. Nothing is graded.
         """
         key = _le_words(KEY_ROWS[256][0][1])
         blk = list(self.plan.early_block)
         gold = aes_encrypt_words("ecb", key, blk)
         ctrl = build_aes_ctrl(sideload=False, mode=AES_MODE_ECB, key_len=AES_KEY_LEN_256)
-        ov_before: list[int] = []
-        early: list[int] = []
+        early = st_read = -1
+        clk_write = clk_read = -1
         final: list[int] | None = None
         st_after = -1
         reason = "-"
@@ -1006,23 +1009,36 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         try:
             await self._load(ctrl, key, None)
             await self._write_block(blk)
-            for i in range(4):
-                ov_before.append(int(bool(await self.aes._rd(AES_STATUS) & ST_OV)))
-                early.append(await self.aes._rd(AES_DATA_OUT[i]))
+            clk_write = self._now()
+            early = await self.aes._rd(AES_DATA_OUT[0])
+            clk_read = self._now()
+            st_read = await self._status()
             await self._wait(ST_OV, ST_OV, self._ov_bound(), "early_read_output_valid")
             final = await self._read_out()
-            st_after = await self.aes._rd(AES_STATUS)
+            st_after = await self._status()
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
+
+        def bit(st: int, mask: int) -> int | str:
+            return int(bool(st & mask)) if st >= 0 else "none"
+
+        def hexw(w: int) -> str:
+            return f"0x{w:08x}" if w >= 0 else "none"
+
         self.chk.obs(
             "AES-EARLY-READ",
-            ov_before_each=ov_before,
-            early=[f"0x{w:08x}" for w in early],
+            clk_write=clk_write,
+            clk_read=clk_read,
+            ov_at_read=bit(st_read, ST_OV),
+            idle_at_read=bit(st_read, ST_IDLE),
+            status_at_read=hexw(st_read),
+            early_w0=hexw(early),
+            early_eq_golden_w0=int(early == gold[0]),
             final=[f"0x{w:08x}" for w in final] if final is not None else "none",
             final_eq_golden=int(final == gold),
-            stall_after=int(st_after >= 0 and bool(st_after & ST_STALL)),
-            idle_after=int(st_after >= 0 and bool(st_after & ST_IDLE)),
-            status_after=f"0x{st_after:x}" if st_after >= 0 else "none",
+            stall_after=bit(st_after, ST_STALL),
+            idle_after=bit(st_after, ST_IDLE),
+            status_after=hexw(st_after),
             reason=reason,
         )
 

@@ -64,10 +64,13 @@ Checkers:
                         first one and part of the message. The engine state after the
                         error is not stated, so the recovery hash follows an engine reset.
                     0x5 ``SwPushMsgWhenDisallowed`` (:125, :127): one ``MSG_FIFO`` word with
-                        one of the three stated triggers, drawn per seed: ``sha_en`` = 0,
-                        before ``hash_start``, or at once after ``hash_process``. Whether
-                        the refused word entered the FIFO is not stated, so the recovery
-                        hash follows an engine reset.
+                        one of two stated triggers, drawn per seed: ``sha_en`` = 0 or before
+                        ``hash_start``. The third stated trigger, a push after
+                        ``hash_process``, is not driven: it fires the IP assertion
+                        ``ValidWriteAssert``
+                        (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv``:937).
+                        Whether the refused word entered the FIFO is not stated, so the
+                        recovery hash follows an engine reset.
 
 Plan seed: ``+sep_plan_seed=N`` replaces the run seed as the seed of ``draw_plan`` only, so
 one value fixes the whole stimulus (the class orders, the hashes and the drawn 0x5
@@ -84,7 +87,10 @@ other than 0x6 there), ``CTRL-HMAC-ERRCODE-CLR`` (before each blocked class the 
 reset and ``ERR_CODE`` reads its reset value 0x0, hmac.adoc:171; no text states a clear of
 ``ERR_CODE`` by a write, a legal hash or the write-one clear of ``hmac_err``, so the reset is
 the only stated way back to 0x0; the last hash then runs again so that D_prev holds its
-golden), ``CTRL-HMAC-ERRCODE-BEFORE`` (``ERR_CODE`` just before each blocked start is not
+golden), ``CTRL-HMAC-ERR-CFG`` (after the ``CFG`` write of the 0x2 class and of the 0x5
+class, the ``CFG`` readback under the implemented-field mask equals the written word: ``CFG``
+is ``rw`` and "updated when the engine is in Idle", ``vendor/lowRISC/opentitan/upstream/hw/ip/
+hmac/data/hmac.hjson``:176-181, and each of these writes follows an engine reset), ``CTRL-HMAC-ERRCODE-BEFORE`` (``ERR_CODE`` just before each blocked start is not
 0x6, so the 0x6 of ``CHK-HMAC-ERRCODE`` comes from that start; the exact value after the
 legal hash is not stated and is logged) and ``CTRL-HMAC-ERR-PRESTART`` (after the blocked
 ``CFG`` and ``KEY`` writes and one hold, before ``hash_start``, ``hmac_err`` reads 0 and
@@ -177,8 +183,10 @@ ERR_CLASS_NAMES = {
     ERR_HASH_START_ACTIVE: "sw_hash_start_active",
     ERR_PUSH_MSG_DISALLOWED: "sw_push_msg_disallowed",
 }
-# programmers_guide.md:127: the three stated triggers of SwPushMsgWhenDisallowed.
-E5_TRIGGERS = ("sha_disabled", "before_start", "after_process")
+# programmers_guide.md:127: the SwPushMsgWhenDisallowed triggers the leaf drives. A push after
+# hash_process fires the IP assertion ValidWriteAssert (hmac.sv:937), so it is not drawn.
+E5_TRIGGERS = ("sha_disabled", "before_start")
+CFG_MASK = HMAC.mask32("CFG")
 INTR_FIELDS = HMAC_INTR_DONE | HMAC_INTR_ERR | HMAC.field_mask("INTR_STATE", "fifo_empty")
 CFG_LSB = {f: HMAC.field_lsb("CFG", f) for f in ("hmac_en", "sha_en", "digest_size", "key_length")}
 
@@ -875,6 +883,19 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         return self._now_clk()
 
+    async def _wr_cfg_graded(self, word: int, fields: dict[str, object]) -> None:
+        """Write ``CFG`` on an idle engine and grade its readback (``CTRL-HMAC-ERR-CFG``)."""
+        await self._wr(HMAC_CFG, word)
+        got = await self._rd(HMAC_CFG) & CFG_MASK
+        self.chk.ctrl(
+            "HMAC-ERR-CFG",
+            got == word & CFG_MASK,
+            **fields,
+            written=f"0x{word:08x}",
+            read=f"0x{got:08x}",
+            mask=f"0x{CFG_MASK:08x}",
+        )
+
     async def _err_class(self, e: ErrStep, e5_trigger: str) -> None:
         """One error class from an engine reset, graded after its recovery hash."""
         dut = cocotb.top
@@ -895,7 +916,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         extra: dict[str, object] = {}
         t0 = 0
         if e.code == ERR_HASH_START_SHA_DISABLED:
-            await self._wr(HMAC_CFG, cfg_word_sha_off(h))
+            await self._wr_cfg_graded(cfg_word_sha_off(h), cls)
             await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         elif e.code == ERR_UPDATE_KEY_IN_PROCESS:
             t0 = await self._start_body(h)
@@ -910,16 +931,12 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             await self._obs_idle_in_hash(e.name)
             await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         else:
-            if e5_trigger == "sha_disabled":
-                await self._wr(HMAC_CFG, cfg_word_sha_off(h))
-            elif e5_trigger == "before_start":
-                await self._wr(HMAC_CFG, h.cfg())
-                if h.hmac_en:
-                    await self._write_key_row(h.row)
-            else:
-                await self._start_body(h)
-                await self._write_msg(h.msg)
-                await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+            sha_off = e5_trigger == "sha_disabled"
+            await self._wr_cfg_graded(
+                cfg_word_sha_off(h) if sha_off else h.cfg(), {**cls, "trigger": e5_trigger}
+            )
+            if not sha_off and h.hmac_en:
+                await self._write_key_row(h.row)
             resp = await self._wr_resp(HMAC_MSG_FIFO, e.word)
             self.chk.obs("HMAC-ERR-RESP", **cls, reg="MSG_FIFO", trigger=e5_trigger, resp=resp)
             extra["trigger"] = e5_trigger

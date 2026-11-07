@@ -67,6 +67,9 @@ Checkers:
                        reads its reset value 0 (``aes.hjson:992-995``). Control:
                        the mismatched pair pulsed.
   CHK-SHADOW-RESTART   after R written twice the next AES block equals its golden.
+                       Control: CTRL-SHADOW-RECOV-RB, CTRL_SHADOWED reads R
+                       after the pair (``aes.hjson:633``); the value read
+                       before the pair is logged with it (``held_differs``).
   CHK-GCM-SHADOW-ERR   AES GCM mismatched pair after GCM_INIT: no bit 32 rise up
                        to the second write, the first rise within 4 x c_err
                        clocks of it, ALERT_FATAL_FAULT 0. Control:
@@ -681,11 +684,12 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         await self._pulse("aes")
         await self._aes_idle("aes_idle_after_reset")
 
-    async def _mismatch_readback(self) -> None:
+    async def _mismatch_readback(self) -> int:
         """OBS-SHADOW-MIS-RB: CTRL_SHADOWED after the mismatched pair (A then B).
 
         aes.hjson CTRL_SHADOWED states the alert and that a read clears the phase
         tracking, not which value the register holds after a mismatched pair.
+        Returns the read.
         """
         plan = self.plan
         rb = await self.aes._rd(AES_CTRL_SHADOWED)
@@ -698,6 +702,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             reset=f"0x{AES_CTRL_RESET & AES_CTRL_MASK:x}",
             field=plan.a_desc.split()[0].removeprefix("field="),
         )
+        return rb
 
     async def _recovery_status(self, point: str) -> None:
         """OBS-SHADOW-RECOV-STATUS: STATUS during the recovery that follows a mismatch.
@@ -725,6 +730,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         c_err: int | None = None
         reason = ""
         m1 = None
+        held = -1
         try:
             m1, m2 = await self._pair(
                 self.aes, AES_CTRL_SHADOWED, plan.a, plan.b, plan.gaps["aes_mis"]
@@ -737,7 +743,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             except BitWatchTimeout:
                 reason = f"no_alert_rise bound={WAIT_LIMIT}"
             fatal = int(bool(await self.aes._rd(AES_STATUS) & AES_ST_FATAL))
-            await self._mismatch_readback()
+            held = await self._mismatch_readback()
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         cycles = self.vec.high_clocks_since(m1, "alert") if m1 is not None else 0
@@ -765,9 +771,11 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         )
         ct = None
         reason = ""
+        rr = -1
         try:
             await self.aes._wr(AES_CTRL_SHADOWED, r)
             await self.aes._wr(AES_CTRL_SHADOWED, r)
+            rr = await self.aes._rd(AES_CTRL_SHADOWED)
             await self._recovery_status("after_ctrl_rewrite")
             await self.aes.write_key(key)
             await self._aes_idle("idle_after_key")
@@ -780,10 +788,21 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             await self._recovery_status("after_block")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
+        # Two equal writes change the content of CTRL_SHADOWED while the unit is idle
+        # (aes.hjson:631-633); the mismatch read before the pair clears the phase
+        # tracking (:635), so the first R is the first write of the pair.
+        rr_ok = self._control(
+            "SHADOW-RECOV-RB",
+            rr >= 0 and (rr & AES_CTRL_MASK) == (r & AES_CTRL_MASK),
+            readback=f"0x{rr & AES_CTRL_MASK:x}" if rr >= 0 else "none",
+            written=f"0x{r & AES_CTRL_MASK:x}",
+            held_before=f"0x{held & AES_CTRL_MASK:x}" if held >= 0 else "none",
+            held_differs=int(held >= 0 and (held & AES_CTRL_MASK) != (r & AES_CTRL_MASK)),
+        )
         fields = {"reg": "aes_ctrl", "op==golden": int(ct == golden)}
         if reason:
             fields["reason"] = reason
-        if self._grade("SHADOW-RESTART", ct == golden, **fields):
+        if self._grade("SHADOW-RESTART", ct == golden, **fields) and rr_ok:
             await self._passed(AES_SHADOW_PASS_RECOVERY)
         self._close()
 

@@ -33,7 +33,9 @@ Checkers:
   CHK-AES-RESEED-INVALID  3'b000 and the multi-hot value each map to PER_1
                           (aes.adoc:109): written over a committed PER_8K, each
                           count equals count(PER_1) of the same key and plaintexts. Control: each count is above
-                          count(PER_64).
+                          count(PER_64); CTRL-AES-RESEED-PER8K-RB,
+                          CTRL_SHADOWED reads PER_8K before each invalid
+                          write.
   CHK-AES-RESEED-TRIG     no acknowledge in 4 x t_r clocks after a TRIGGER write
                           of 0 on an idle unit. Control: a PRNG_RESEED write is
                           acknowledged in a window of the same length.
@@ -385,6 +387,17 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
                 # The reset value is PER_1, so commit PER_8K first: a DUT that ignores
                 # the invalid write then keeps PER_8K and its count differs from PER_1.
                 await self._ctrl(self._ctrl_word(PER_8K))
+                # Two equal writes on an idle unit change CTRL_SHADOWED (aes.hjson:631-633);
+                # PER_8K is 3'b100 (:793-794), not the reset PER_1 (:770).
+                rb = await self.aes._rd(AES_CTRL_SHADOWED)
+                rb_rate = (rb & PRNG_RATE_MASK) >> PRNG_RATE_LSB
+                self.chk.ctrl(
+                    "AES-RESEED-PER8K-RB",
+                    rb_rate == PER_8K,
+                    run=run,
+                    rate_read=f"0b{rb_rate:03b}",
+                    rate_written=f"0b{PER_8K:03b}",
+                )
             await self._ctrl(self._ctrl_word(value))
             mark = self.ack.mark()
             req_mark = self.req.mark()
