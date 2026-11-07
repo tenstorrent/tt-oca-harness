@@ -1275,15 +1275,17 @@ static void leg_timer_pin(void) {
 // drives mip.MSIP; :261: the pin bypasses the PIC; RISC-V privileged spec
 // section 3.1.9: a pending MSIP with mie.MSIE 0 takes no trap). The host
 // drives soft_int_i on each REQ sint line. mcgc.picio 1 reports disabled
-// sources in meip, so a pin routed into a PIC source changes a meip bit.
+// sources in meip, so a pin routed into a PIC source changes a meip bit. No
+// PIC source is enabled when this leg runs, so a trap of the external class
+// in the hold window also fails.
 static void leg_soft_pin(void) {
-    uint32_t mie_rd, meip_w0[P_ROUND - P_IDLE], meip_delta = 0u;
+    uint32_t mie_rd, mst, meip_w0[P_ROUND - P_IDLE], meip_delta = 0u;
     __asm__ volatile("csrr %0, mie" : "=r"(mie_rd));
     uint32_t msip_before = (read_mip() >> 3) & 1u;
     for (uint32_t w = 0; w < P_ROUND - P_IDLE; w++) {
         meip_w0[w] = pic_read_meip(w) & ~g_prm[P_IDLE + w];
     }
-    uint32_t ts0 = g_cls_sw, tt0 = g_cls_timer, to0 = g_cls_other;
+    uint32_t te0 = g_cls_ext, ts0 = g_cls_sw, tt0 = g_cls_timer, to0 = g_cls_other;
     req_sint(1u);
     int up = wait_msip(1u);
     uint32_t msip_on = (read_mip() >> 3) & 1u;
@@ -1292,19 +1294,29 @@ static void leg_soft_pin(void) {
     }
     mstatus_mie(1);
     uint32_t hclk = hold();
+    __asm__ volatile("csrr %0, mstatus" : "=r"(mst));
+    uint32_t msip_hold = (read_mip() >> 3) & 1u;
+    for (uint32_t w = 0; w < P_ROUND - P_IDLE; w++) {
+        meip_delta |= (pic_read_meip(w) & ~g_prm[P_IDLE + w]) ^ meip_w0[w];
+    }
     mstatus_mie(0);
-    uint32_t sw = g_cls_sw - ts0, tm = g_cls_timer - tt0, ot = g_cls_other - to0;
+    uint32_t ex = g_cls_ext - te0, sw = g_cls_sw - ts0, tm = g_cls_timer - tt0,
+             ot = g_cls_other - to0;
+    uint32_t mst_mie = (mst & MSTATUS_MIE) ? 1u : 0u;
     req_sint(0u);
     int down = wait_msip(0u);
     uint32_t msip_off = (read_mip() >> 3) & 1u;
     int pass = mie_rd == MIE_MEIE && msip_before == 0u && up && msip_on == 1u &&
-               meip_delta == 0u && sw == 0u && tm == 0u && ot == 0u &&
-               hclk >= LEG_HOLD_MIN_CLK && down && msip_off == 0u;
+               mst_mie == 1u && msip_hold == 1u && meip_delta == 0u && ex == 0u && sw == 0u &&
+               tm == 0u && ot == 0u && hclk >= LEG_HOLD_MIN_CLK && down && msip_off == 0u;
     rec_chk("SOFT-PIN", pass);
     rec_hex("mie", mie_rd);
     rec_num("msip_before", msip_before);
     rec_num("msip_on", msip_on);
+    rec_num("mstatus_mie", mst_mie);
+    rec_num("msip_hold", msip_hold);
     rec_hex("meip_delta", meip_delta);
+    rec_num("msie0_traps_ext", ex);
     rec_num("msie0_traps_sw", sw);
     rec_num("msie0_traps_timer", tm);
     rec_num("msie0_traps_other", ot);

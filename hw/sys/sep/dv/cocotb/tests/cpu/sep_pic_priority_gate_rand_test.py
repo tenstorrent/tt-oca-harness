@@ -106,9 +106,11 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
 * CHK-SOFT-PIN   (firmware, last leg) the host drives ``soft_int_i`` on each
                  ``REQ sint`` line. With the pin 1, ``mip.MSIP`` reads 1; with
                  ``mie`` read back as MEIE only and mstatus.MIE 1 no trap of
-                 any class for a hold window of 32 core clocks or more; the
-                 ``meip`` words outside the excluded idle bits read the same
-                 as with the pin 0; with the pin 0, ``mip.MSIP`` reads 0
+                 any class for a hold window of 32 core clocks or more, and
+                 at the end of the window mstatus.MIE and ``mip.MSIP`` read
+                 1; the ``meip`` words outside the excluded idle bits read
+                 the same as with the pin 0 before and after the window; with
+                 the pin 0, ``mip.MSIP`` reads 0
                  (``hw/sys/sep/doc/interrupts.adoc:291-292``: the pin drives
                  ``mip.MSIP``; ``:261``: the pin bypasses the PIC; RISC-V
                  privileged spec section 3.1.9: no trap with ``mie.MSIE`` 0).
