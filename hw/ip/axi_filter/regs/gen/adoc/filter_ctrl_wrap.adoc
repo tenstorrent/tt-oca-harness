@@ -34,7 +34,7 @@ Wrapper address map instantiating one filter control register block per filter e
 | 63 | `locked` | RW1S | 0x0 a| Lock filter configurations. Write once register.
 Once set, this bit cannot be cleared, and every subsequent write to this
 filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
-to the AXI error subordinate and terminates with a DECERR response; reads
+to the AXI error subordinate and terminates with an error response; reads
 still return the locked configuration.
 | 62:25 | `Reserved` | - | - a| Reserved
 | 24 | `allow_burst` | RW | 0x0 a| Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.

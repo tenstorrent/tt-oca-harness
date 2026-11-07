@@ -66,7 +66,7 @@ extern "C" {
 // Lock filter configurations. Write once register.
 // Once set, this bit cannot be cleared, and every subsequent write to this
 // filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
-// to the AXI error subordinate and terminates with a DECERR response; reads
+// to the AXI error subordinate and terminates with an error response; reads
 // still return the locked configuration.
 #define FILTER_CTRL__FILTER_CONFIG__LOCKED_bm 0x8000000000000000
 #define FILTER_CTRL__FILTER_CONFIG__LOCKED_bp 63
@@ -107,7 +107,7 @@ typedef union {
         // Lock filter configurations. Write once register.
         // Once set, this bit cannot be cleared, and every subsequent write to this
         // filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
-        // to the AXI error subordinate and terminates with a DECERR response; reads
+        // to the AXI error subordinate and terminates with an error response; reads
         // still return the locked configuration.
         uint64_t locked :1;
     } f;
