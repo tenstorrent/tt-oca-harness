@@ -22,6 +22,11 @@ addrmap pwm_wrap #(
 
 `ifdef OCAH_DOC_MEMORY_MAP
     ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    // 0x80 is the PWM window for the default N_OUTPUTS, which the SMC uses.
+    pwm->ocah_aperture_size = 0x80;
+    pwm->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    pwm_ctrl->ocah_aperture_size = 0x8;
+    pwm_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
 `endif
 };
 
