@@ -214,6 +214,12 @@ in the TRM.
 (active-high: 1 = path disabled). On `sep.sv`, route it to DTP
 `dbg_disable_i`; the SMU does that internally.
 
+* `feat_ctrl_o` is the lifecycle feature-control vector (1 = enabled),
+the value `FEAT_CTRL` reads. It leaves the SMU so adopter logic can gate
+its own debug, DFT and function features with the reserved bits, as the
+Adopter Extension of the Life Cycle Controller chapter describes. All
+ones when `CFG.SEP` is 0.
+
 * `lcc_demote_state_1_o` / `lcc_demote_state_2_o` are differentially
 encoded in-field debug demotion. They leave the SMU for adopter
 lifecycle logic and are not connected to the SMC. See

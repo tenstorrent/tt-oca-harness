@@ -108,6 +108,7 @@ endif::backend-html5[]
 |`sep_io_spi_rsp_i` |`sep_io_spi_rsp_t` |Input |- |SPI host controller response. |SPI pad interface |N/A
 
 |`lc_state_o` |`logic` |Output |`[2*LcStateBitWidth-1:0]` |Lifecycle state output (differentially encoded). Routed to SMC and the SMU external output; debug-disable control to DTP is via `dbg_disable_o`. |SMC, SMU external |N/A
+|`feat_ctrl_o` |`sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t` |Output |- |Lifecycle feature-control vector (1 = enabled), as `FEAT_CTRL`. Its reserved DBG_1, DBG_2 and function bits gate adopter features (Adopter Extension). Exported at SMU boundary. |SMU external port |N/A
 |`dbg_disable_o` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |Output |- |Typed debug-disable struct routed by SMU to DTP debug-disable control. |SMU → DTP |N/A
 |`sep_fuse_dft_disable_o` |`logic` |Output |1 |Gate for the DFT-inserted access path into the SEP OTP, composed as Case 3 AND `SEP_FUSE_DBG`. Unconnected in the functional design; an adopter's DFT insertion connects it. |Adopter DFT insertion |Leave open if no path is inserted
 |`smc_fuse_dft_disable_o` |`logic` |Output |1 |Gate for the DFT-inserted access path into the SMC OTP, composed as Case 2 AND `SMC_FUSE_DBG`. Unconnected in the functional design; an adopter's DFT insertion connects it. |Adopter DFT insertion |Leave open if no path is inserted

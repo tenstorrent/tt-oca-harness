@@ -770,7 +770,8 @@ their own scan-chain protection -- assets not covered by the
 chiplet-scope SEP scan chain or the general-logic scan chain in
 <<asset-and-scan-chain-protection>> -- the LCC architecture
 accommodates this via the *reserved bits* in `feat_ctrl_o` (and the
-matching positions in SIP_DIS / SYS_DIS):
+matching positions in SIP_DIS / SYS_DIS). `feat_ctrl_o` is an output of
+`sep` and of `smu`, so the gating logic sits outside the SMU:
 
 * Debug group: bits 5-23 (DBG_1, 19 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
 * Function group: bits 48-63 (16 reserved bits)
