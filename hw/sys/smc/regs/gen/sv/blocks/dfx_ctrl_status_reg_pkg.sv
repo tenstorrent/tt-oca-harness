@@ -7,7 +7,7 @@
 package dfx_ctrl_status_reg_pkg;
 
     localparam DFX_CTRL_STATUS_REG_DATA_WIDTH = 64;
-    localparam DFX_CTRL_STATUS_REG_MIN_ADDR_WIDTH = 5;
+    localparam DFX_CTRL_STATUS_REG_MIN_ADDR_WIDTH = 12;
     localparam DFX_CTRL_STATUS_REG_SIZE = 'h18;
 
     typedef struct {

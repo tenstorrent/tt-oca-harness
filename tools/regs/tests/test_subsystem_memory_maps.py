@@ -109,6 +109,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         sep_crypto = (ROOT / "hw/sys/sep/rtl/sep_crypto_pkg.sv").read_text()
         sep_addrmap = (ROOT / "hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv").read_text()
         smc_addrmap = (ROOT / "hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv").read_text()
+        smc_pkg = (ROOT / "hw/sys/smc/rtl/smc_pkg.sv").read_text()
         smc_xbar = (ROOT / "hw/sys/smc/rtl/crossbars/smc_local_xbar.sv").read_text()
         smc_periph_xbar = (
             ROOT / "hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv"
@@ -160,14 +161,16 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
             sv_hex(smc_addrmap, "SMC_TOP_OCA_I3C_WRAP_BASE_ADDR"),
         )
         self.assertIn("SMC_TOP_OCA_I3C_WRAP_BASE_ADDR", smc_xbar)
-        self.assertEqual(
-            smc["main:smc_mailbox"].base,
-            sv_hex(smc_addrmap, "SMC_TOP_SMC_MAILBOX_BASE_ADDR"),
+        mailbox_base = sv_hex(smc_addrmap, "SMC_TOP_SMC_MAILBOX_BASE_ADDR")
+        mailbox_size = sv_hex(smc_addrmap, "SMC_TOP_SMC_MAILBOX_SIZE")
+        page = sv_hex(smc_pkg, "RegPageSize")
+        self.assertEqual(smc["main:smc_mailbox"].base, mailbox_base)
+        self.assertIn(
+            "reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR", smc_internal_xbar
         )
-        self.assertIn("SMC_TOP_SMC_MAILBOX_BASE_ADDR", smc_internal_xbar)
         self.assertEqual(
             smc["main:smc_mailbox"].occupied_size,
-            sv_hex(smc_addrmap, "SMC_TOP_SMC_MAILBOX_SIZE"),
+            (mailbox_base + mailbox_size + page - 1) // page * page - mailbox_base,
         )
         self.assertEqual(
             smc["main:smc_cluster_plic"].base,

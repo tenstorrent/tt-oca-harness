@@ -7,7 +7,7 @@
 package smc_base_config_reg_pkg;
 
     localparam SMC_BASE_CONFIG_REG_DATA_WIDTH = 64;
-    localparam SMC_BASE_CONFIG_REG_MIN_ADDR_WIDTH = 7;
+    localparam SMC_BASE_CONFIG_REG_MIN_ADDR_WIDTH = 12;
     localparam SMC_BASE_CONFIG_REG_SIZE = 'h4c;
 
     typedef struct {

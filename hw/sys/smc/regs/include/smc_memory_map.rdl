@@ -7,6 +7,8 @@
 
 `define OCAH_SMC_OKAY ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY}
 `define OCAH_SMC_DECERR ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR}
+`define OCAH_SMC_SLVERR ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR}
+`define OCAH_SMC_FORWARD ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD}
 
     ocah_full_stride_extent = true;
     ocah_hole_resp = `OCAH_SMC_OKAY;
@@ -30,14 +32,14 @@
     debug_module->ocah_hole_resp = `OCAH_SMC_DECERR;
     debug_module->ocah_hole_note = "Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.";
     smc_reset_unit->ocah_aperture_size = 0x1000;
-    smc_reset_unit->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    smc_reset_unit->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     smc_reset_unit->desc = "System reset control.";
     smc_misc_wrap->ocah_aperture_size = 0x1000;
     smc_misc_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     gpio_intf_wrap->ocah_aperture_size = 0x1000;
     gpio_intf_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_avsbus_controller->ocah_aperture_size = 0x1000;
-    smc_avsbus_controller->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    smc_avsbus_controller->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     smc_i2c_wrap->ocah_aperture_size = 0x1000;
     smc_i2c_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_i2c_wrap->desc = "I2C and SMBus controller.";
@@ -51,15 +53,15 @@
     smc_telemetry_receiver_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_telemetry_receiver_wrap->desc = "Telemetry data receiver.";
     smc_system_timer_octs->ocah_aperture_size = 0x1000;
-    smc_system_timer_octs->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    smc_system_timer_octs->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     dfx_ctrl->ocah_aperture_size = 0x1000;
-    dfx_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    dfx_ctrl->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     dfx_ctrl->desc = "DFT status exposed to boot firmware.";
     smc_pwm->ocah_aperture_size = 0x1000;
     smc_pwm->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_pwm->desc = "Pulse-width modulator.";
-    smc_base_config->ocah_aperture_size = 0x2000;
-    smc_base_config->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    smc_base_config->ocah_aperture_size = 0x1000;
+    smc_base_config->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     smc_base_config->desc = "SMC base-address and aperture configuration.";
     smc_alias_remap_wrap->ocah_aperture_size = 0x1000;
     smc_alias_remap_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
@@ -74,18 +76,18 @@
     smc_mailbox->ocah_aperture_size = 0x20000;
     smc_mailbox->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_mailbox->desc = "Thirty-two bidirectional mailbox pairs.";
-    // The fabric routes the mailboxes only up to the last mailbox's registers.
-    smc_mailbox.inbound_mailbox_31->ocah_aperture_size = 0x50;
     dma_ctrl->ocah_aperture_size = 0x200;
     dma_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     dma_ctrl->desc = "Direct-memory-access controller.";
     zeroer_ctrl->ocah_aperture_size = 0x100;
     zeroer_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_cpu_ctrl->ocah_aperture_size = 0x1000;
-    smc_cpu_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    smc_cpu_ctrl->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     smc_cpu_ctrl->desc = "SMC CPU-cluster control.";
+    dtp_ctrl_reg->ocah_aperture_size = 0x1000;
+    dtp_ctrl_reg->ocah_past_extent_resp = `OCAH_SMC_FORWARD;
     dtp_ctrl_reg->desc = "512-entry DTP control block.";
-    dtp_ctrl_reg->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    dtp_ctrl_reg->ocah_hole_resp = `OCAH_SMC_FORWARD;
     smc_cla->desc = "Core Logic Analyzer debug and trace aperture.";
     smc_external->desc = "Adopter-owned external peripheral aperture.";
     smc_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};

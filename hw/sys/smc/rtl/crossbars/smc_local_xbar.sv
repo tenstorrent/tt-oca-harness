@@ -93,8 +93,8 @@ module smc_local_xbar
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE)},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE))},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR
@@ -135,8 +135,8 @@ module smc_local_xbar
     // generated aggregate bounds.
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE)},
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE))},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
       end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR,

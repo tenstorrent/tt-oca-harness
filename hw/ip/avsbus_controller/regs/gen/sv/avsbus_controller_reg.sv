@@ -12,7 +12,7 @@ module avsbus_controller_reg (
         input wire s_apb_penable,
         input wire s_apb_pwrite,
         input wire [2:0] s_apb_pprot,
-        input wire [6:0] s_apb_paddr,
+        input wire [11:0] s_apb_paddr,
         input wire [31:0] s_apb_pwdata,
         input wire [3:0] s_apb_pstrb,
         output logic s_apb_pready,
@@ -28,7 +28,7 @@ module avsbus_controller_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [6:0] cpuif_addr;
+    logic [11:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -57,7 +57,7 @@ module avsbus_controller_reg (
                     is_active <= '1;
                     cpuif_req <= '1;
                     cpuif_req_is_wr <= s_apb_pwrite;
-                    cpuif_addr <= {s_apb_paddr[6:2], 2'b0};
+                    cpuif_addr <= {s_apb_paddr[11:2], 2'b0};
                     cpuif_wr_data <= s_apb_pwdata;
                     for(int i=0; i<4; i++) begin
                         cpuif_wr_biten[i*8 +: 8] <= {8{s_apb_pstrb[i]}};
@@ -110,7 +110,7 @@ module avsbus_controller_reg (
     logic decoded_err;
     logic decoded_req_is_external;
 
-    logic [6:0] decoded_addr;
+    logic [11:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -123,35 +123,35 @@ module avsbus_controller_reg (
         is_external = '0;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.AVS_CMD = cpuif_req_masked & (cpuif_addr == 7'h0) & cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 7'h0) & cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h0);
-        decoded_reg_strb.AVS_READBACK = cpuif_req_masked & (cpuif_addr == 7'h4) & !cpuif_req_is_wr;
-        is_external |= cpuif_req_masked & (cpuif_addr == 7'h4) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h4);
-        decoded_reg_strb.AVS_DEBUG_READBACK = cpuif_req_masked & (cpuif_addr == 7'h8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h8);
-        decoded_reg_strb.AVS_LATEST_SLAVE_SUBFRAME = cpuif_req_masked & (cpuif_addr == 7'hc) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'hc);
-        decoded_reg_strb.AVS_NORMAL_STATUS = cpuif_req_masked & (cpuif_addr == 7'h20) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h20);
-        decoded_reg_strb.AVS_SLAVE_STATUS = cpuif_req_masked & (cpuif_addr == 7'h24) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h24);
-        decoded_reg_strb.AVS_FIFOS_STATUS = cpuif_req_masked & (cpuif_addr == 7'h28) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h28);
-        decoded_reg_strb.AVS_INTERRUPT = cpuif_req_masked & (cpuif_addr == 7'h30) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h30);
-        decoded_reg_strb.AVS_INTERRUPT_MASK = cpuif_req_masked & (cpuif_addr == 7'h34);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h34);
-        decoded_reg_strb.AVS_INTERRUPT_CLEAR = cpuif_req_masked & (cpuif_addr == 7'h38) & cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h38);
-        decoded_reg_strb.AVS_CFG_0 = cpuif_req_masked & (cpuif_addr == 7'h50);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h50);
-        decoded_reg_strb.AVS_CFG_1 = cpuif_req_masked & (cpuif_addr == 7'h54);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h54);
-        decoded_reg_strb.AVS_CONFIG = cpuif_req_masked & (cpuif_addr == 7'h58);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h58);
-        is_valid_addr = cpuif_addr < 7'h5c;
+        decoded_reg_strb.AVS_CMD = cpuif_req_masked & (cpuif_addr == 12'h0) & cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'h0) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h0);
+        decoded_reg_strb.AVS_READBACK = cpuif_req_masked & (cpuif_addr == 12'h4) & !cpuif_req_is_wr;
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'h4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h4);
+        decoded_reg_strb.AVS_DEBUG_READBACK = cpuif_req_masked & (cpuif_addr == 12'h8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h8);
+        decoded_reg_strb.AVS_LATEST_SLAVE_SUBFRAME = cpuif_req_masked & (cpuif_addr == 12'hc) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc);
+        decoded_reg_strb.AVS_NORMAL_STATUS = cpuif_req_masked & (cpuif_addr == 12'h20) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h20);
+        decoded_reg_strb.AVS_SLAVE_STATUS = cpuif_req_masked & (cpuif_addr == 12'h24) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h24);
+        decoded_reg_strb.AVS_FIFOS_STATUS = cpuif_req_masked & (cpuif_addr == 12'h28) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h28);
+        decoded_reg_strb.AVS_INTERRUPT = cpuif_req_masked & (cpuif_addr == 12'h30) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h30);
+        decoded_reg_strb.AVS_INTERRUPT_MASK = cpuif_req_masked & (cpuif_addr == 12'h34);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h34);
+        decoded_reg_strb.AVS_INTERRUPT_CLEAR = cpuif_req_masked & (cpuif_addr == 12'h38) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h38);
+        decoded_reg_strb.AVS_CFG_0 = cpuif_req_masked & (cpuif_addr == 12'h50);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h50);
+        decoded_reg_strb.AVS_CFG_1 = cpuif_req_masked & (cpuif_addr == 12'h54);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h54);
+        decoded_reg_strb.AVS_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h58);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h58);
+        is_valid_addr = cpuif_addr < 12'h5c;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -1089,8 +1089,8 @@ module avsbus_controller_reg (
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
 
-    logic [6:0] rd_mux_addr;
-    logic [6:0] pending_rd_addr;
+    logic [11:0] rd_mux_addr;
+    logic [11:0] pending_rd_addr;
     // Hold read mux address to guarantee it is stable throughout any external accesses
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
@@ -1107,16 +1107,16 @@ module avsbus_controller_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 7'h4) begin
+        if(rd_mux_addr == 12'h4) begin
             readback_data_var = hwif_in.AVS_READBACK.rd_data;
         end
-        if(rd_mux_addr == 7'h8) begin
+        if(rd_mux_addr == 12'h8) begin
             readback_data_var[31:0] = hwif_in.AVS_DEBUG_READBACK.AVS_SLAVE_SUBFRAME.next;
         end
-        if(rd_mux_addr == 7'hc) begin
+        if(rd_mux_addr == 12'hc) begin
             readback_data_var[31:0] = hwif_in.AVS_LATEST_SLAVE_SUBFRAME.AVS_SLAVE_SUBFRAME.next;
         end
-        if(rd_mux_addr == 7'h20) begin
+        if(rd_mux_addr == 12'h20) begin
             readback_data_var[15:0] = hwif_in.AVS_NORMAL_STATUS.TOTAL_RETRIES.next;
             readback_data_var[16] = hwif_in.AVS_NORMAL_STATUS.AVS_MASTER_IS_RETRYING.next;
             readback_data_var[17] = hwif_in.AVS_NORMAL_STATUS.CMD_FIFO_EMPTY.next;
@@ -1126,17 +1126,17 @@ module avsbus_controller_reg (
             readback_data_var[21] = hwif_in.AVS_NORMAL_STATUS.AVS_BUS_IS_IDLE.next;
             readback_data_var[22] = hwif_in.AVS_NORMAL_STATUS.AVS_SLAVE_IS_IN_RESYNC.next;
         end
-        if(rd_mux_addr == 7'h24) begin
+        if(rd_mux_addr == 12'h24) begin
             readback_data_var[4:0] = hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_STATUS_RESPONSE.next;
             readback_data_var[17:16] = hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_ACK.next;
         end
-        if(rd_mux_addr == 7'h28) begin
+        if(rd_mux_addr == 12'h28) begin
             readback_data_var[3:0] = hwif_in.AVS_FIFOS_STATUS.CMD_FIFO_OCCUPIED_SLOTS.next;
             readback_data_var[11:8] = hwif_in.AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS.next;
             readback_data_var[19:16] = hwif_in.AVS_FIFOS_STATUS.READBACK_FIFO_OCCUPIED_SLOTS.next;
             readback_data_var[27:24] = hwif_in.AVS_FIFOS_STATUS.READBACK_FIFO_VACANT_SLOTS.next;
         end
-        if(rd_mux_addr == 7'h30) begin
+        if(rd_mux_addr == 12'h30) begin
             readback_data_var[0] = hwif_in.AVS_INTERRUPT.AVS_SLAVE_ISSUED_INTERRUPT.next;
             readback_data_var[1] = hwif_in.AVS_INTERRUPT.CMD_FIFO_FULL_INT.next;
             readback_data_var[2] = hwif_in.AVS_INTERRUPT.READBACK_FIFO_FULL_INT.next;
@@ -1147,7 +1147,7 @@ module avsbus_controller_reg (
             readback_data_var[7] = hwif_in.AVS_INTERRUPT.READBACK_UNDERFLOW_INT.next;
             readback_data_var[8] = hwif_in.AVS_INTERRUPT.READBACK_OVERFLOW_INT.next;
         end
-        if(rd_mux_addr == 7'h34) begin
+        if(rd_mux_addr == 12'h34) begin
             readback_data_var[0] = field_storage.AVS_INTERRUPT_MASK.DISABLE_AVS_SLAVE_ISSUED_INTERRUPT.value;
             readback_data_var[1] = field_storage.AVS_INTERRUPT_MASK.DISABLE_CMD_FIFO_FULL_INT.value;
             readback_data_var[2] = field_storage.AVS_INTERRUPT_MASK.DISABLE_READBACK_FIFO_FULL_INT.value;
@@ -1158,11 +1158,11 @@ module avsbus_controller_reg (
             readback_data_var[7] = field_storage.AVS_INTERRUPT_MASK.DISABLE_READBACK_UNDERFLOW_INT.value;
             readback_data_var[8] = field_storage.AVS_INTERRUPT_MASK.DISABLE_READBACK_OVERFLOW_INT.value;
         end
-        if(rd_mux_addr == 7'h50) begin
+        if(rd_mux_addr == 12'h50) begin
             readback_data_var[15:0] = field_storage.AVS_CFG_0.RESYNC_INTERVAL.value;
             readback_data_var[23:16] = field_storage.AVS_CFG_0.MAX_RETRIES.value;
         end
-        if(rd_mux_addr == 7'h54) begin
+        if(rd_mux_addr == 12'h54) begin
             readback_data_var[1:0] = field_storage.AVS_CFG_1.AVS_CLOCK_SELECT.value;
             readback_data_var[8] = field_storage.AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE.value;
             readback_data_var[9] = field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value;
@@ -1170,7 +1170,7 @@ module avsbus_controller_reg (
             readback_data_var[23:16] = field_storage.AVS_CFG_1.CLK_DIVIDER_VALUE.value;
             readback_data_var[31:24] = field_storage.AVS_CFG_1.CLK_DIVIDER_DUTY_CYCLE_NUMERATOR.value;
         end
-        if(rd_mux_addr == 7'h58) begin
+        if(rd_mux_addr == 12'h58) begin
             readback_data_var[0] = field_storage.AVS_CONFIG.AVS_GPIO_ENABLE.value;
         end
         readback_data = readback_data_var;

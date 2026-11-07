@@ -7,7 +7,7 @@
 package avsbus_controller_reg_pkg;
 
     localparam AVSBUS_CONTROLLER_REG_DATA_WIDTH = 32;
-    localparam AVSBUS_CONTROLLER_REG_MIN_ADDR_WIDTH = 7;
+    localparam AVSBUS_CONTROLLER_REG_MIN_ADDR_WIDTH = 12;
     localparam AVSBUS_CONTROLLER_REG_SIZE = 'h5c;
 
     typedef struct {

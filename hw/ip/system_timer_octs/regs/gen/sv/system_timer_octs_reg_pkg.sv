@@ -7,7 +7,7 @@
 package system_timer_octs_reg_pkg;
 
     localparam SYSTEM_TIMER_OCTS_REG_DATA_WIDTH = 32;
-    localparam SYSTEM_TIMER_OCTS_REG_MIN_ADDR_WIDTH = 6;
+    localparam SYSTEM_TIMER_OCTS_REG_MIN_ADDR_WIDTH = 12;
     localparam SYSTEM_TIMER_OCTS_REG_SIZE = 'h24;
 
     typedef struct {

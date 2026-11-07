@@ -10,7 +10,7 @@ module reset_unit_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [7:0] s_axil_awaddr,
+        input wire [11:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module reset_unit_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [7:0] s_axil_araddr,
+        input wire [11:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -37,7 +37,7 @@ module reset_unit_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [7:0] cpuif_addr;
+    logic [11:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,10 +54,10 @@ module reset_unit_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [7:0] axil_araddr;
+    logic [11:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [7:0] axil_awaddr;
+    logic [11:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -135,17 +135,17 @@ module reset_unit_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[7:2], 2'b0};
+                cpuif_addr = {axil_araddr[11:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[7:2], 2'b0};
+                cpuif_addr = {axil_awaddr[11:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[7:2], 2'b0};
+                cpuif_addr = {axil_araddr[11:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -254,7 +254,7 @@ module reset_unit_reg (
     logic decoded_err;
     logic decoded_req_is_external;
 
-    logic [7:0] decoded_addr;
+    logic [11:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -267,53 +267,53 @@ module reset_unit_reg (
         is_external = '0;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.SS_CONFIG = cpuif_req_masked & (cpuif_addr == 8'h20);
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'h20);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h20);
-        decoded_reg_strb.SS_CONFIG_LOCK = cpuif_req_masked & (cpuif_addr == 8'h24);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h24);
-        decoded_reg_strb.SS_COLD_RESET_N = cpuif_req_masked & (cpuif_addr == 8'h40);
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'h40);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h40);
-        decoded_reg_strb.SS_WARM_RESET_N = cpuif_req_masked & (cpuif_addr == 8'h44);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h44);
-        decoded_reg_strb.SS_CONFIG_HOLD = cpuif_req_masked & (cpuif_addr == 8'h48);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h48);
-        decoded_reg_strb.SS_SRAM_HOLD = cpuif_req_masked & (cpuif_addr == 8'h4c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h4c);
-        decoded_reg_strb.SS_CRITICAL_HOLD = cpuif_req_masked & (cpuif_addr == 8'h50);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h50);
-        decoded_reg_strb.SS_DEBUG_HOLD = cpuif_req_masked & (cpuif_addr == 8'h54);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h54);
-        decoded_reg_strb.SS_RESET_COMPLETE = cpuif_req_masked & (cpuif_addr == 8'h60) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h60);
-        decoded_reg_strb.SS_COLD_RESET_LOCK = cpuif_req_masked & (cpuif_addr == 8'h70);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h70);
-        decoded_reg_strb.SS_FORCE_TO_REF_CLK = cpuif_req_masked & (cpuif_addr == 8'h80);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h80);
-        decoded_reg_strb.SYNC_REG = cpuif_req_masked & (cpuif_addr == 8'ha8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'ha8);
-        decoded_reg_strb.ISOLATE_REQ_REG = cpuif_req_masked & (cpuif_addr == 8'hb0);
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'hb0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hb0);
-        decoded_reg_strb.ISOLATE_REQ_PINEN_REG = cpuif_req_masked & (cpuif_addr == 8'hb4);
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'hb4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hb4);
-        decoded_reg_strb.ISOLATE_REQ_SMC_REG = cpuif_req_masked & (cpuif_addr == 8'hb8);
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'hb8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hb8);
-        decoded_reg_strb.ISOLATE_REQ_SMCEN_REG = cpuif_req_masked & (cpuif_addr == 8'hbc);
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'hbc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hbc);
-        decoded_reg_strb.ISOLATE_REQ_VIS = cpuif_req_masked & (cpuif_addr == 8'hc0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc0);
-        decoded_reg_strb.ISOLATE_REQ_FLR_COUNTER_VALUE = cpuif_req_masked & (cpuif_addr == 8'hc4);
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'hc4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc4);
-        decoded_reg_strb.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE = cpuif_req_masked & (cpuif_addr == 8'hc8);
-        is_external |= cpuif_req_masked & (cpuif_addr == 8'hc8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc8);
-        is_valid_addr = cpuif_addr < 8'hcc;
+        decoded_reg_strb.SS_CONFIG = cpuif_req_masked & (cpuif_addr == 12'h20);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h20);
+        decoded_reg_strb.SS_CONFIG_LOCK = cpuif_req_masked & (cpuif_addr == 12'h24);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h24);
+        decoded_reg_strb.SS_COLD_RESET_N = cpuif_req_masked & (cpuif_addr == 12'h40);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'h40);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h40);
+        decoded_reg_strb.SS_WARM_RESET_N = cpuif_req_masked & (cpuif_addr == 12'h44);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h44);
+        decoded_reg_strb.SS_CONFIG_HOLD = cpuif_req_masked & (cpuif_addr == 12'h48);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h48);
+        decoded_reg_strb.SS_SRAM_HOLD = cpuif_req_masked & (cpuif_addr == 12'h4c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h4c);
+        decoded_reg_strb.SS_CRITICAL_HOLD = cpuif_req_masked & (cpuif_addr == 12'h50);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h50);
+        decoded_reg_strb.SS_DEBUG_HOLD = cpuif_req_masked & (cpuif_addr == 12'h54);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h54);
+        decoded_reg_strb.SS_RESET_COMPLETE = cpuif_req_masked & (cpuif_addr == 12'h60) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h60);
+        decoded_reg_strb.SS_COLD_RESET_LOCK = cpuif_req_masked & (cpuif_addr == 12'h70);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h70);
+        decoded_reg_strb.SS_FORCE_TO_REF_CLK = cpuif_req_masked & (cpuif_addr == 12'h80);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h80);
+        decoded_reg_strb.SYNC_REG = cpuif_req_masked & (cpuif_addr == 12'ha8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'ha8);
+        decoded_reg_strb.ISOLATE_REQ_REG = cpuif_req_masked & (cpuif_addr == 12'hb0);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'hb0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hb0);
+        decoded_reg_strb.ISOLATE_REQ_PINEN_REG = cpuif_req_masked & (cpuif_addr == 12'hb4);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'hb4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hb4);
+        decoded_reg_strb.ISOLATE_REQ_SMC_REG = cpuif_req_masked & (cpuif_addr == 12'hb8);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'hb8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hb8);
+        decoded_reg_strb.ISOLATE_REQ_SMCEN_REG = cpuif_req_masked & (cpuif_addr == 12'hbc);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'hbc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hbc);
+        decoded_reg_strb.ISOLATE_REQ_VIS = cpuif_req_masked & (cpuif_addr == 12'hc0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc0);
+        decoded_reg_strb.ISOLATE_REQ_FLR_COUNTER_VALUE = cpuif_req_masked & (cpuif_addr == 12'hc4);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'hc4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc4);
+        decoded_reg_strb.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE = cpuif_req_masked & (cpuif_addr == 12'hc8);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'hc8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc8);
+        is_valid_addr = cpuif_addr < 12'hcc;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -741,8 +741,8 @@ module reset_unit_reg (
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
 
-    logic [7:0] rd_mux_addr;
-    logic [7:0] pending_rd_addr;
+    logic [11:0] rd_mux_addr;
+    logic [11:0] pending_rd_addr;
     // Hold read mux address to guarantee it is stable throughout any external accesses
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
@@ -759,63 +759,63 @@ module reset_unit_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 8'h20) begin
+        if(rd_mux_addr == 12'h20) begin
             readback_data_var = hwif_in.SS_CONFIG.rd_data;
         end
-        if(rd_mux_addr == 8'h24) begin
+        if(rd_mux_addr == 12'h24) begin
             readback_data_var[31:0] = field_storage.SS_CONFIG_LOCK.config_lock.value;
         end
-        if(rd_mux_addr == 8'h40) begin
+        if(rd_mux_addr == 12'h40) begin
             readback_data_var = hwif_in.SS_COLD_RESET_N.rd_data;
         end
-        if(rd_mux_addr == 8'h44) begin
+        if(rd_mux_addr == 12'h44) begin
             readback_data_var[31:0] = field_storage.SS_WARM_RESET_N.reset_n_n0_scan.value;
         end
-        if(rd_mux_addr == 8'h48) begin
+        if(rd_mux_addr == 12'h48) begin
             readback_data_var[31:0] = field_storage.SS_CONFIG_HOLD.configuration_state_hold.value;
         end
-        if(rd_mux_addr == 8'h4c) begin
+        if(rd_mux_addr == 12'h4c) begin
             readback_data_var[31:0] = field_storage.SS_SRAM_HOLD.sram_hold.value;
         end
-        if(rd_mux_addr == 8'h50) begin
+        if(rd_mux_addr == 12'h50) begin
             readback_data_var[31:0] = field_storage.SS_CRITICAL_HOLD.critical_signal_hold.value;
         end
-        if(rd_mux_addr == 8'h54) begin
+        if(rd_mux_addr == 12'h54) begin
             readback_data_var[31:0] = field_storage.SS_DEBUG_HOLD.debug_hold.value;
         end
-        if(rd_mux_addr == 8'h60) begin
+        if(rd_mux_addr == 12'h60) begin
             readback_data_var[31:0] = hwif_in.SS_RESET_COMPLETE.reset_complete.next;
         end
-        if(rd_mux_addr == 8'h70) begin
+        if(rd_mux_addr == 12'h70) begin
             readback_data_var[31:0] = field_storage.SS_COLD_RESET_LOCK.cold_reset_lock.value;
         end
-        if(rd_mux_addr == 8'h80) begin
+        if(rd_mux_addr == 12'h80) begin
             readback_data_var[31:0] = field_storage.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value;
         end
-        if(rd_mux_addr == 8'ha8) begin
+        if(rd_mux_addr == 12'ha8) begin
             readback_data_var[0] = field_storage.SYNC_REG.sync.value;
         end
-        if(rd_mux_addr == 8'hb0) begin
+        if(rd_mux_addr == 12'hb0) begin
             readback_data_var = hwif_in.ISOLATE_REQ_REG.rd_data;
         end
-        if(rd_mux_addr == 8'hb4) begin
+        if(rd_mux_addr == 12'hb4) begin
             readback_data_var = hwif_in.ISOLATE_REQ_PINEN_REG.rd_data;
         end
-        if(rd_mux_addr == 8'hb8) begin
+        if(rd_mux_addr == 12'hb8) begin
             readback_data_var = hwif_in.ISOLATE_REQ_SMC_REG.rd_data;
         end
-        if(rd_mux_addr == 8'hbc) begin
+        if(rd_mux_addr == 12'hbc) begin
             readback_data_var = hwif_in.ISOLATE_REQ_SMCEN_REG.rd_data;
         end
-        if(rd_mux_addr == 8'hc0) begin
+        if(rd_mux_addr == 12'hc0) begin
             readback_data_var[0] = hwif_in.ISOLATE_REQ_VIS.isolate_req_pin.next;
             readback_data_var[4] = hwif_in.ISOLATE_REQ_VIS.cool_reset_n_i.next;
             readback_data_var[8] = hwif_in.ISOLATE_REQ_VIS.cool_reset_n_o.next;
         end
-        if(rd_mux_addr == 8'hc4) begin
+        if(rd_mux_addr == 12'hc4) begin
             readback_data_var = hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.rd_data;
         end
-        if(rd_mux_addr == 8'hc8) begin
+        if(rd_mux_addr == 12'hc8) begin
             readback_data_var = hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.rd_data;
         end
         readback_data = readback_data_var;

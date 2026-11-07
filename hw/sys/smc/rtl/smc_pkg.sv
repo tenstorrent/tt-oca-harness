@@ -38,8 +38,8 @@ package smc_pkg;
   // however much of it the smc_external map allocates.
   localparam int unsigned SmcExternalWindowSize = 32'h40_0000;
 
-  // Crossbar rules start and end on these pages; an AXI burst never crosses one, so it
-  // stays on one target.
+  // A register target's crossbar rule starts and ends on these pages; an AXI burst never
+  // crosses one, so it stays on one target.
   localparam longint unsigned RegPageSize = 64'h1000;
 
   function automatic longint unsigned reg_page_end(longint unsigned base, longint unsigned size);
