@@ -249,7 +249,13 @@ from seq_lib.sep_kmac_seq import (
     KMAC_INTR_STATE,
     SepKmac,
 )
-from seq_lib.sep_otbn_seq import OTBN_ADDR_ERRBIT, OTBN_IMEM_BASE, OTBN_KEYDUMP_PROG, SepOtbn
+from seq_lib.sep_otbn_seq import (
+    OTBN_ADDR_ERRBIT,
+    OTBN_DMEM_RESULT_LO,
+    OTBN_IMEM_BASE,
+    OTBN_KEYDUMP_PROG,
+    SepOtbn,
+)
 
 TEST = "sep_km_sideload_share_walk_test"
 ROUNDS = 2
@@ -1282,6 +1288,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         valid_post = await self._km_valid()
         ct = await self._aes_sideload_ct()
         digest = await self.hmac.run_keyed_mac(list(msg))
+        await self.otbn.write_dmem(OTBN_DMEM_RESULT_LO, ~k1[KM_DEST_OTBN][0])
         await self.otbn.execute()
         errbits = await self.otbn.read_errbits()
         key, _, _, _ = await self.otbn.read_keydump_outputs()

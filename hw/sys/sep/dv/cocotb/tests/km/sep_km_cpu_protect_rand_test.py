@@ -357,20 +357,22 @@ def kpv_reset_control_fault(
 ) -> str | None:
     """None when every locked slot kept its words over a plain reset, else the failure.
 
-    The stored words are graded on KM-KPV for every slot. A slot whose CTRL reads
-    0 after the reset (locks cleared) is also graded on the KM port, with every
-    read free of slv and dec. A slot still locked after the reset is not read on
-    the port, because lock_use or seal refuses that read.
+    Every CTRL field resets on the warm reset that both reset kinds assert, so
+    CTRL 0 on every slot shows the reset happened. The stored words are graded on
+    KM-KPV and on the KM port, with every port read free of slv and dec.
     """
     for i, s in enumerate(slots):
+        if ctrl_after[i]:
+            return (
+                f"CHK-TRAP-WIPE FAIL: control: KM-KPV slot {s} ({locks[s]}) CTRL reads "
+                f"0x{ctrl_after[i]:x} after a plain {kind} reset, expected 0"
+            )
         if tap_after[s] != words[s]:
             return (
                 f"CHK-TRAP-WIPE FAIL: control: KM-KPV slot {s} ({locks[s]}) holds "
                 f"{[hex(v) for v in tap_after[s]]} after a plain {kind} reset, wrote "
                 f"{[hex(v) for v in words[s]]}; a reset alone overwrote a locked slot"
             )
-        if ctrl_after[i]:
-            continue
         r = port_after[s]
         bad = [k for k, f in enumerate(r.flags) if f is None or f.slv or f.dec]
         if bad:
@@ -1269,7 +1271,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             ",".join(f"0x{c:x}" for c in ctrl_before),
             ",".join(f"0x{c:x}" for c in ctrl_after),
             KPV_SLOT_WORDS * len(slots),
-            sum(KPV_SLOT_WORDS for s in slots if ctrl_after[slots.index(s)] == 0),
+            KPV_SLOT_WORDS * len(slots),
         )
 
     async def _normal_irq_control(self) -> None:

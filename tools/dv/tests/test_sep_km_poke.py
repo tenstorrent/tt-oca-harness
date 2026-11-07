@@ -423,6 +423,13 @@ class ImageTest(unittest.TestCase):
         fresh = kp.PokeResult(0, op, (0,), (kp.SlotFlags(1, 0, 0, 0),))
         self.assertEqual((fresh.slv, fresh.dec, fresh.clean), (1, 0, True))
 
+    def test_flags_need_known_words(self) -> None:
+        op = kp.rd(SLVERR_ADDR)
+        unknown = kp.PokeResult(0, op, (0,), (kp.SlotFlags(0, 0, 0, 0),), flags_known=False)
+        for name in ("slv", "dec", "clean"):
+            with self.assertRaises(AssertionError):
+                getattr(unknown, name)
+
     def test_rom_word_outside_the_image(self) -> None:
         words = kp.read_parhex(kp.IMAGE_PATH)
         unset = max(words) + 4

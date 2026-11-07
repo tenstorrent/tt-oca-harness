@@ -450,6 +450,10 @@ class PokeResult:
         f = self.flags[0] if self.flags else None
         if f is None:
             raise AssertionError(f"op {self.index} ({self.op.name}) does not report slv/dec")
+        if not self.flags_known:
+            raise AssertionError(
+                f"op {self.index} ({self.op.name}): the slv/dec result word held an unknown bit"
+            )
         return f
 
     def _graded_flags(self) -> SlotFlags:
