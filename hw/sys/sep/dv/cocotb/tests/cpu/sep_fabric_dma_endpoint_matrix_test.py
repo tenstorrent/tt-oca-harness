@@ -1238,9 +1238,21 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             user_ok = all(b.user == want_user for b in beats)
             prot_ok = all(b.prot == want_prot for b in beats)
             # A read leg: the two PR-OUT reply beats land in SRAM, which held
-            # the complement of the model words before the copy.
+            # the complement of the model words before the copy. The LSU read of
+            # the staged words before the GO must show that complement.
             data_ok, data = True, "data=na"
             if d == "r":
+                staged = [~x & 0xFFFF_FFFF for x in model_words(seed, tag, 2)]
+                pre = [r.get("s0"), r.get("s1")]
+                stage_line = (
+                    f"leg={leg} staged={[hex(x) if x is not None else 'none' for x in pre]} "
+                    f"expect={[hex(x) for x in staged]}"
+                )
+                if pre != staged:
+                    msg = f"CTRL-MISSING DMA-REMAP-STAGE: {stage_line}"
+                    self.logger.error(msg)
+                    raise AssertionError(msg)
+                self.logger.info("CTRL-DMA-REMAP-STAGE PASS: %s", stage_line)
                 rs = self._beats("PR-OUT-RSP", leg_i, "r")
                 lanes = [
                     None
@@ -1249,7 +1261,6 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                     for k, b in enumerate(rs[:2])
                 ]
                 got = [r["d0"], r["d1"]]
-                staged = [~x & 0xFFFF_FFFF for x in model_words(seed, tag, 2)]
                 data_ok = len(rs) == 2 and got == lanes and got != staged
                 data = (
                     f"sram={[hex(x) for x in got]} "

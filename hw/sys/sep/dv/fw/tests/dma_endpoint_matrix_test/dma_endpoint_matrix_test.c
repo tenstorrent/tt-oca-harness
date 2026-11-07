@@ -717,14 +717,20 @@ static void outbound_legs(void) {
     end();
     dma_clear();
 
-    // AP region 0 as the source.
+    // AP region 0 as the source. The staged destination words are read back
+    // before the GO, so the host can tell a landed reply from an unstaged word.
+    uint32_t s0, s1;
     mark('C', "stage");
     stage_dst_not(SRAM + B_OUT + 0x30u, 2u, 0x53u);
+    s0 = rd(SRAM + B_OUT + 0x30u);
+    s1 = rd(SRAM + B_OUT + 0x34u);
     mark('G', "ap_r");
     st = dma_run(AP_REGION + (g_p[PAP_INTRA] & (AP_SPAN - 1u)), SRAM + B_OUT + 0x30u, 8u, 1, 1);
     rec("REMAP");
     sep_mbx_puts(" leg=ap_r");
     rec_run(st);
+    kv("s0", s0);
+    kv("s1", s1);
     kv("d0", rd(SRAM + B_OUT + 0x30u));
     kv("d1", rd(SRAM + B_OUT + 0x34u));
     end();
@@ -744,11 +750,15 @@ static void outbound_legs(void) {
 
     mark('C', "stage");
     stage_dst_not(SRAM + B_OUT + 0x50u, 2u, 0x55u);
+    s0 = rd(SRAM + B_OUT + 0x50u);
+    s1 = rd(SRAM + B_OUT + 0x54u);
     mark('G', "stee_r");
     st = dma_run(STEE_WORD(STEE_R_IDX), SRAM + B_OUT + 0x50u, 8u, 1, 1);
     rec("REMAP");
     sep_mbx_puts(" leg=stee_r");
     rec_run(st);
+    kv("s0", s0);
+    kv("s1", s1);
     kv("d0", rd(SRAM + B_OUT + 0x50u));
     kv("d1", rd(SRAM + B_OUT + 0x54u));
     end();
