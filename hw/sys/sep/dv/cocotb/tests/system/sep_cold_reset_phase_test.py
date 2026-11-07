@@ -43,7 +43,12 @@ assertion timing, so it is not graded. ``OBS-RST-MIN-WIDTH`` logs the width
 of the pulse below the floor, whether ``sep_reset_n`` fell and rose, whether
 ``sep_fuse_sense_done_o`` fell, and both levels ``_SEP_BOUND``
 ``clk_i`` cycles after the release; the specification states no minimum
-``rst_ni`` width, so nothing in it is graded.
+``rst_ni`` width, so nothing in it is graded. ``OBS-RST-SYNC-EDGES`` logs,
+per pass, the ``clk_i`` rising edges after the last of the release terms (the
+``rst_ni`` rise or the ``sep_fuse_sense_done_o`` rise after it;
+``ext_boot_seq_done_i`` holds 1) up to and including the edge of the
+``sep_reset_n`` rise; the specification states a synchronizer on that path
+without its stage count, so the count is not graded.
 
 Environment choices (not from the specification): the 1 ps edge allowance
 covers the simulator resolution; the ``sep_reset_n`` release wait is
@@ -322,6 +327,7 @@ class sep_cold_reset_phase_test(sep_base_test):
         sep_rise = [t for t in self.sep_t.rises(t_rel)]
         assert sep_rise, f"CHK-RST-SYNC FAIL: pass={pass_name} no sep_reset_n rise after release"
         t_sr = sep_rise[0]
+        self._log_sync_edges(pass_name, t_rel, t_sr)
         off = nearest_edge_offset_ps(t_sr, self.edges.edge_times("clk_i"))
         assert t_sr > t_rel and off is not None and abs(off) <= _EDGE_ALLOWANCE_PS, (
             f"CHK-RST-SYNC FAIL: pass={pass_name} rst_ni rose t={t_rel} sep_reset_n rose t={t_sr} "
@@ -397,6 +403,28 @@ class sep_cold_reset_phase_test(sep_base_test):
             got["WKUP_THOLD_HI"],
         )
 
+    def _log_sync_edges(self, pass_name: str, t_rel: int, t_sr: int) -> None:
+        """Log the clk_i edges from the last release term to the sep_reset_n rise (not graded)."""
+        dut = cocotb.top
+        sense_rise = self.sense_t.rises(t_rel, until_ps=t_sr)
+        t_last = max([t_rel, *sense_rise])
+        last = "sense_done" if t_last > t_rel else "rst_ni"
+        edges = sum(1 for t in self.edges.edge_times("clk_i") if t_last < t <= t_sr)
+        self.logger.info(
+            "OBS-RST-SYNC-EDGES: pass=%s rst_ni rose t=%d sense_done rose t=%s "
+            "sense_done_at_release=%s ext_boot_seq_done=%s last_term=%s t=%d "
+            "sep_reset_n rose t=%d clk_i_edges=%d",
+            pass_name,
+            t_rel,
+            sense_rise[0] if sense_rise else "none",
+            self.sense_t.value_at(t_rel),
+            self.rd(dut.ext_boot_seq_done_i, allow_unknown=True),
+            last,
+            t_last,
+            t_sr,
+            edges,
+        )
+
     async def _sub_floor_pulse(self) -> None:
         """Observe one ``rst_ni`` pulse below the width floor; nothing here is graded."""
         dut = cocotb.top
@@ -449,6 +477,7 @@ class sep_cold_reset_phase_test(sep_base_test):
         self.edges = SepPinEdgeCounter(("clk_i", "clk_wdt_i")).start()
         self.sep_t = SepEdgeTimer(dut.dbg_sep_reset_n_o, name="sep_reset_n").start()
         self.aon_t = SepEdgeTimer(dut.aon_rst_n_probe_o, name="aon_rst_n").start()
+        self.sense_t = SepEdgeTimer(dut.sep_fuse_sense_done_o, name="sense_done_rel").start()
         self.wdt = SepWdtAon(self)
         await self.bring_up_no_cpu()
         await self._wait_level(dut.dbg_sep_reset_n_o, 1, dut.clk_i, _SEP_BOUND, "bring-up")

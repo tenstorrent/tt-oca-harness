@@ -181,7 +181,8 @@ args = ["+sep_edn_jtag_reset_waive", "+sep_efuse_preload"]
 name = "sep_debug_master_target_matrix_test_sba"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
-# No reseed: every run walks all targets and sizes; the seed selects only order, data and the alias base.
+# No reseed: every run walks all targets and sizes; the seed selects only order, data, the alias
+# base and the TCK period and phase, which change TAP timing only and no check grades.
 timeout_sec = 2100
 tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]
@@ -197,7 +198,8 @@ args = ["+skip_fuse_sense", "+sep_ext_port_responder"]
 name = "sep_debug_master_target_matrix_test_sba_sepdbg_open"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
-# No reseed: one write and one read of one target; the seed selects only the data.
+# No reseed: one write and one read of one target; the seed selects only the data and the TCK
+# period and phase, which change TAP timing only and no check grades.
 timeout_sec = 3600
 tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]
@@ -217,7 +219,8 @@ args = [
 name = "sep_debug_master_target_matrix_test_sba_sepdbg_closed"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
-# No reseed: one write and one read of one target; the seed selects only the data.
+# No reseed: one write and one read of one target; the seed selects only the data and the TCK
+# period and phase, which change TAP timing only and no check grades.
 timeout_sec = 3600
 tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]

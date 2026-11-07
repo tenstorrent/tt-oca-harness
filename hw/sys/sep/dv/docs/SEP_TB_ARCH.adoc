@@ -235,15 +235,20 @@ Observation probe groups:
   reset at the output of the reset controller scan bypass (`sep_wdt_reset_n`,
   `u_sep_reset_ctrl.sep_wdt_reset_no`): `scan_rst_ni` when `test_en_i` is high,
   else the two-flop capture of `wdt_rst_ni`; owner
-  `sep_scan_reset_override_test`. `wdt_alert_probe_o` and `wdt_bark_probe_o`,
+  `sep_scan_reset_override_test`; user
+  `sep_clock_uvm_wdt_rst_input_reset_path_test` (cocotb leaf: the release edge
+  of CHK-WDT-RST-SYNC, and the control of OBS-WDT-RD-IN-RST).
+  `wdt_alert_probe_o` and `wdt_bark_probe_o`,
   the watchdog alert (`wdt_alert`) and bark interrupt (`intr_wdog_timer_bark`)
   at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`
   (the bark line, sampled at the AR of each `INTR_STATE` read of a graded
-  watchdog run, is the bark-line clause of CHK-WDT-ORDER and CHK-WDT-MAX;
+  watchdog run, is the bark-line clause of CHK-WDT-ORDER and CHK-WDT-MAX, and
+  is read on every `clk_i` edge of the re-armed window of CHK-WDT-BARK-REARM;
   the alert reads 0 before an `ALERT_TEST` write and rises after it,
-  CTRL-WDT-ALERT-REACH);
-  user `sep_nmi_vector_bark_rand_test` (CTRL-NMI-NESTED: the bark clocks
-  while the NMI handler runs).
+  CTRL-WDT-ALERT-REACH, and has no other rise, CHK-WDT-NO-SPURIOUS);
+  users `sep_nmi_vector_bark_rand_test` (CTRL-NMI-NESTED: the bark clocks
+  while the NMI handler runs) and `sep_wdt_aon_timer_internals_test` (the bark
+  line in OBS-WDT-COUNT-WRAP, logged only, and its set-up precondition).
   `jtag_sep_reset_n_ovrd_probe_o`, the
   `sep_reset_n` override select on the SEP input port
   (`u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd`), the value SEP receives
@@ -548,7 +553,9 @@ Observation probe groups:
 * Memory-interface reset taps (`pr_sram_memif_rst_n_o` /
   `pr_rom_memif_rst_n_o`): the `rst_ni` inputs of the SEP SRAM and boot ROM
   memory interfaces (`u_sram_memory_interface`, `u_boot_rom_memory_interface`).
-  Monitor only. Owner: `sep_cpu_reset_entry_test` (CHK-MEMIF-WDT-RST).
+  Monitor only. Owner: `sep_cpu_reset_entry_test` (CHK-MEMIF-WDT-RST). User:
+  `sep_ip_reset_override_matrix_test` (CHK-OVR-AND: low in the `sep_reset_n`
+  override, 1 after it).
 * The DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`) and the
   DMA/CPU DCCM write overlap counter (`dma_cpu_dccm_overlap_count_o[31:0]`):
   a saturating count, reset with the bench reset, of the clocks in which the

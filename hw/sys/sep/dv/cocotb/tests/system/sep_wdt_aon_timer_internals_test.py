@@ -12,6 +12,14 @@ WKUP_CAUSE status (CHK-WKUP-CAUSE), INTR_TEST (CHK-INTR-TEST), the REGWEN lock
 scope (CHK-REGWEN-SCOPE) and SEP_CPU_CTRL.REFERENCE_COUNTER (CHK-REFCNT-RUNS,
 not an aon_timer register).
 
+Two legs follow the lock legs, each after a wdt_rst_ni_i pulse that returns the
+aon_timer registers to their reset values. OBS-WDT-COUNT-WRAP preloads
+WDOG_COUNT below 0xFFFF_FFFF and logs the count, the status and the bite request
+after the count passes the wrap, then the clear sequence (no line states a wrap
+rule for the 32-bit watchdog count). CHK-WDT-COMBO runs the wakeup timer, the
+bark threshold, the bite threshold and a pet in one window, with WDOG_REGWEN
+locked or not by a seed draw (INFO-DRAW).
+
 The graded coverage window of this leaf is open only around the two locked
 threshold writes of CHK-REGWEN-LOCK and their readbacks; every other step runs
 with it closed.
@@ -42,6 +50,7 @@ from seq_lib.sep_wdt_aon_seq import (
     INTR_STATE,
     INTR_TEST,
     INTR_TEST_WKUP_EXPIRED,
+    INTR_WDOG_BARK,
     INTR_WKUP_EXPIRED,
     INTR_WKUP_LSB,
     WDOG_BARK_THOLD,
@@ -113,6 +122,7 @@ _SETTLE_POLLS = 8
 # are one 32-bit field (aon_timer.hjson WDOG_BARK_THOLD / WDOG_BITE_THOLD,
 # bits 31:0), so the field mask is the whole register word.
 _REGWEN_MASK = WDT_TIMER.field_mask("WDOG_REGWEN", "regwen")
+_REGWEN_LSB = WDT_TIMER.field_lsb("WDOG_REGWEN", "regwen")
 _BARK_MASK = WDT_TIMER.field_mask("WDOG_BARK_THOLD", "threshold")
 _BITE_MASK = WDT_TIMER.field_mask("WDOG_BITE_THOLD", "threshold")
 
@@ -151,6 +161,65 @@ class _LockDraws:
         return f"bite_prelock=0x{self.bite_prelock:08x} bite_postlock=0x{self.bite_postlock:08x}"
 
 
+# Seed stream of the wrap and concurrent legs. A separate stream leaves every
+# earlier draw, and so every recorded seed, where it was.
+_TAIL_DRAW_SALT = 0xC0B0_57A1
+
+# Largest WDOG_COUNT value (one 32-bit field, aon_timer.hjson WDOG_COUNT bits 31:0).
+_COUNT_MAX = WDT_TIMER.field_mask("WDOG_COUNT", "count")
+
+# Wrap leg draws (environment choices): WDOG_BARK_THOLD and WDOG_BITE_THOLD sit
+# j and i below _COUNT_MAX, and the WDOG_COUNT preload k below it, so the count
+# passes the bark threshold, then the bite threshold, then the wrap. The wait
+# runs _WRAP_PAST clk_wdt ticks past the wrap.
+_WRAP_J = (16, 31)
+_WRAP_I = (0, 15)
+_WRAP_K = (32, 63)
+_WRAP_PAST = 32
+
+# Concurrent leg draws in clk_wdt ticks (environment choices): the wakeup
+# threshold Tw (prescaler 0), the bark threshold Tb and the bite-to-bark gap G.
+_COMBO_TW = (16, 48)
+_COMBO_TB = (64, 96)
+_COMBO_G = (128, 192)
+# Largest step of the drawn locked WDOG_BITE_THOLD write above the bite threshold.
+_COMBO_TRY_MAX = 64
+# A: the count allowance of a status read against a count read, in clk_wdt
+# ticks (the age of a count copy is not stated, OBS-WDT-COUNT-AGE).
+_COUNT_ALLOW = 4
+# Least distance in counts from the count read before the pet to the bite threshold.
+_PET_MARGIN = 64
+
+# wdt_rst_ni_i pulse: at least _PULSE_CYCLES clk_i cycles low, and held until the
+# bite request reads 0 for at most _BITE_FALL_WDT clk_wdt periods. _RESET_BOUND
+# bounds the wait for sep_cpu_reset_n_o after the release, in clk_i cycles.
+_PULSE_CYCLES = 16
+_BITE_FALL_WDT = 4
+_RESET_BOUND = 4_000
+
+
+class _TailDraws:
+    """Draws of the wrap and concurrent legs, from the leaf's second salted stream."""
+
+    def __init__(self, seed: int) -> None:
+        rng = SepSeededRng(seed ^ _TAIL_DRAW_SALT)
+        self.combo_lock = rng.choice((False, True))
+        self.tw = rng.randrange(_COMBO_TW[0], _COMBO_TW[1] + 1)
+        self.tb = rng.randrange(_COMBO_TB[0], _COMBO_TB[1] + 1)
+        self.g = rng.randrange(_COMBO_G[0], _COMBO_G[1] + 1)
+        self.bite_try = self.tb + self.g + rng.randrange(1, _COMBO_TRY_MAX + 1)
+        self.wrap_j = rng.randrange(_WRAP_J[0], _WRAP_J[1] + 1)
+        self.wrap_i = rng.randrange(_WRAP_I[0], _WRAP_I[1] + 1)
+        self.wrap_k = rng.randrange(_WRAP_K[0], _WRAP_K[1] + 1)
+
+    def summary(self) -> str:
+        return (
+            f"combo_regwen_lock={int(self.combo_lock)} tw={self.tw} tb={self.tb} g={self.g} "
+            f"bite_try={self.bite_try} wrap_j={self.wrap_j} wrap_i={self.wrap_i} "
+            f"wrap_k={self.wrap_k}"
+        )
+
+
 # SEP_CPU_CTRL.REFERENCE_COUNTER is one 64-bit field. The high 32-bit AXI
 # window is the last word of that field.
 REFERENCE_COUNTER_LO = SEP_CPU_CTRL.addr("REFERENCE_COUNTER")
@@ -175,6 +244,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         "CHK-NONVAC",
         "CHK-REGWEN-LOCK",
         "CHK-REGWEN-SCOPE",
+        "CHK-WDT-COMBO",
     )
 
     async def _grade(self, ok: bool, chk: str, fail: str) -> None:
@@ -252,6 +322,8 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         self.logger.info("WDT config: %s", self.cfg_wdt.summary())
         self.lock_draws = _LockDraws(self.cfg_wdt.seed)
         self.logger.info("WDT lock draws: %s", self.lock_draws.summary())
+        self.tail = _TailDraws(self.cfg_wdt.seed)
+        self.logger.info("INFO-DRAW wrap_combo: %s", self.tail.summary())
         # Speed clk_wdt for this CSR test (see WDT_CLK_RATIO). Set before bring-up so
         # start_clocks picks it up. _tick = core cycles per clk_wdt tick.
         self.cfg.wdt_clk_period_ns = WDT_CLK_RATIO * self.cfg.sys_clk_period_ns
@@ -273,6 +345,9 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_wdog_pet()
         await self._chk_reference_counter()
         await self._chk_regwen_lock_and_nonvac()
+        await self._wdt_rst_pulse("before_wrap")
+        await self._obs_count_wrap()
+        await self._chk_combo()
         # Each facet logs its own PASS line, and the plan rows key on those.
 
     async def _read_refcnt(self) -> int:
@@ -1248,3 +1323,366 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             pre_val,
             count_rb,
         )
+
+    async def _sample(self, *sigs) -> list[int]:
+        """``sigs`` in the read-only phase of the next clk_i edge; returns after that phase."""
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        vals = [self.rd(s) for s in sigs]
+        await NextTimeStep()
+        return vals
+
+    async def _wdt_rst_pulse(self, tag: str) -> dict[str, int | None]:
+        """Pulse ``wdt_rst_ni_i`` low and wait for the aon_timer to leave reset.
+
+        The watchdog reset "resets the watchdog timer and its registers"
+        (``hw/sys/sep/doc/clk_rst.adoc:62``; ``hw/sys/sep/doc/watchdog.adoc:23``),
+        so ``WDOG_REGWEN`` reads 1 again after it. The pulse holds at least
+        ``_PULSE_CYCLES`` clk_i cycles and until ``wdt_timer_rst_req_o`` reads 0,
+        for at most ``_BITE_FALL_WDT`` clk_wdt periods ("Holds until `wdt_rst_ni`
+        resets the watchdog", ``hw/sys/sep/doc/port_table.adoc:26``). Controls:
+        ``sep_cpu_reset_n_o`` reads 0 in the pulse (``clk_rst.adoc:60``), and
+        ``WDOG_REGWEN`` reads 1 after it (CTRL-MISSING otherwise). Returns the
+        bite request before the pulse, the clk_i edge of the pulse where it read 0
+        (None if it did not) and its level after the release.
+        """
+        dut = cocotb.top
+        period = round(self.cfg.wdt_clk_period_ns * 1000)
+        (req_before,) = await self._sample(dut.wdt_timer_rst_req_o)
+        await RisingEdge(dut.clk_i)
+        dut.wdt_rst_ni_i.value = 0
+        t0 = int(get_sim_time("ps"))
+        n = 0
+        cpu_low = 0
+        req_fall = None
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            n += 1
+            cpu_low |= int(not self.rd(dut.sep_cpu_reset_n_o))
+            if req_fall is None and not self.rd(dut.wdt_timer_rst_req_o):
+                req_fall = n
+            wdt_periods = (int(get_sim_time("ps")) - t0) // period
+            if n >= _PULSE_CYCLES and (req_fall is not None or wdt_periods >= _BITE_FALL_WDT):
+                break
+        await RisingEdge(dut.clk_i)
+        dut.wdt_rst_ni_i.value = 1
+        for _ in range(_RESET_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.sep_cpu_reset_n_o):
+                break
+        cpu_up = self.rd(dut.sep_cpu_reset_n_o)
+        await NextTimeStep()
+        (req_after,) = await self._sample(dut.wdt_timer_rst_req_o)
+        ok, regwen = await self._poll_bit_set(
+            WDOG_REGWEN, _REGWEN_LSB, timeout_cycles=100 * self._tick, step=4 * self._tick
+        )
+        line = (
+            f"tag={tag} req_before={req_before} pulse_clk_i={n} cpu_reset_low={cpu_low} "
+            f"req_fall_clk_i={req_fall} req_after_release={req_after} cpu_reset_up={cpu_up} "
+            f"regwen_after=0x{regwen & _REGWEN_MASK:x}"
+        )
+        if not (cpu_low and cpu_up and ok and regwen & _REGWEN_MASK == _REGWEN_MASK):
+            await self._grade(False, "CTRL-MISSING WDT-RST-PULSE", line)
+        self.logger.info("INFO-WDT-RST-PULSE: %s", line)
+        return {"req_before": req_before, "req_fall": req_fall, "req_after": req_after}
+
+    async def _obs_count_wrap(self) -> None:
+        """OBS-WDT-COUNT-WRAP: the watchdog count, status and bite request past 0xFFFF_FFFF.
+
+        The watchdog timer is 32 bits wide
+        (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/doc/theory_of_operation.md:21``),
+        and no line states what the count does after 0xFFFF_FFFF. Both thresholds
+        sit below the wrap, so the count passes the bark threshold, then the bite
+        threshold (``README.md:55-56``), then the wrap. With the watchdog stopped,
+        ``WDOG_BARK_THOLD`` = 0xFFFF_FFFF - j, ``WDOG_BITE_THOLD`` = 0xFFFF_FFFF - i
+        and ``WDOG_COUNT`` = 0xFFFF_FFFF - k are written and read back, and the
+        bark status and the bite request read 0. The watchdog is enabled and read
+        back, and after k + ``_WRAP_PAST`` clk_wdt ticks the leaf logs
+        ``WDOG_COUNT``, ``INTR_STATE``, the bite request and the bark line (tap
+        ``wdt_bark_probe_o``). It then logs the clear sequence: the watchdog
+        disabled, a write of 1 to the bark bit, ``INTR_STATE`` and the request,
+        and the request after a ``wdt_rst_ni_i`` pulse. Nothing here is graded;
+        a setup read that differs fails the leaf as a precondition.
+        """
+        tag = "OBS-WDT-COUNT-WRAP"
+        dut = cocotb.top
+        d = self.tail
+        bark = _COUNT_MAX - d.wrap_j
+        bite = _COUNT_MAX - d.wrap_i
+        pre = _COUNT_MAX - d.wrap_k
+        period = round(self.cfg.wdt_clk_period_ns * 1000)
+        await self.wdt.write(WDOG_CTRL, 0)
+        await self.wdt.write(WDOG_BARK_THOLD, bark)
+        await self.wdt.write(WDOG_BITE_THOLD, bite)
+        await self.wdt.write(WDOG_COUNT, pre)
+        await self.wdt.write(INTR_STATE, INTR_WDOG_BARK)
+        exp = [0, bark, bite, pre]
+        regs = (WDOG_CTRL, WDOG_BARK_THOLD, WDOG_BITE_THOLD, WDOG_COUNT)
+        rb = [await self.wdt.read(r) for r in regs]
+        intr = await self.wdt.read(INTR_STATE)
+        req0, line0 = await self._sample(dut.wdt_timer_rst_req_o, dut.wdt_bark_probe_o)
+        await self._grade(
+            rb == exp and not intr & INTR_WDOG_BARK and not req0 and not line0,
+            tag,
+            f"precondition: WDOG_CTRL/BARK/BITE/COUNT read {[hex(v) for v in rb]} expected "
+            f"{[hex(v) for v in exp]}, INTR_STATE=0x{intr:08x} rst_req={req0} bark_line={line0}, "
+            f"expected bark 0, rst_req 0 and bark_line 0",
+        )
+        await self.wdt.write(WDOG_CTRL, WDOG_ENABLE)
+        rb_on = await self.wdt.read(WDOG_CTRL)
+        t_on = int(get_sim_time("ps"))
+        await self._grade(
+            rb_on == WDOG_ENABLE,
+            tag,
+            f"precondition: WDOG_CTRL readback 0x{rb_on:x} expected 0x{WDOG_ENABLE:x}",
+        )
+        await ClockCycles(dut.clk_wdt_i, d.wrap_k + _WRAP_PAST)
+        count, _, t_rd = await self._timed_read(WDOG_COUNT)
+        intr = await self.wdt.read(INTR_STATE)
+        req, line = await self._sample(dut.wdt_timer_rst_req_o, dut.wdt_bark_probe_o)
+        self.logger.info(
+            "%s: phase=past_wrap preload=0x%08x k=%d bark_thold=0x%08x bite_thold=0x%08x "
+            "clk_wdt_edges_enable_to_count_read=%d wdog_count=0x%08x intr_state=0x%08x "
+            "rst_req=%d bark_line=%d",
+            tag,
+            pre,
+            d.wrap_k,
+            bark,
+            bite,
+            (t_rd - t_on) // period,
+            count,
+            intr,
+            req,
+            line,
+        )
+        await self.wdt.write(WDOG_CTRL, 0)
+        rb_off = await self.wdt.read(WDOG_CTRL)
+        await self.wdt.write(INTR_STATE, INTR_WDOG_BARK)
+        intr_clr = await self.wdt.read(INTR_STATE)
+        req_clr, line_clr = await self._sample(dut.wdt_timer_rst_req_o, dut.wdt_bark_probe_o)
+        pulse = await self._wdt_rst_pulse("after_wrap")
+        self.logger.info(
+            "%s: phase=clear wdog_ctrl_after_disable=0x%x intr_state_after_w1c=0x%08x "
+            "rst_req_after_w1c=%d bark_line_after_w1c=%d rst_req_before_pulse=%d "
+            "rst_req_fall_clk_i=%s rst_req_after_pulse=%d",
+            tag,
+            rb_off,
+            intr_clr,
+            req_clr,
+            line_clr,
+            pulse["req_before"],
+            pulse["req_fall"],
+            pulse["req_after"],
+        )
+
+    async def _chk_combo(self) -> None:
+        """CHK-WDT-COMBO: the wakeup timer, bark, bite threshold and a pet in one window.
+
+        Spec: the wakeup expiry comes "each time the pre-scaler completes when the
+        count is at or above the threshold" (``README.md:35``); the watchdog
+        "increments on every tick of the AON clock" (``README.md:52``) with a bark
+        and a bite "when the count is at least" each threshold (``README.md:55-56``);
+        a pet is "resetting the count to zero" (``README.md:57-58``;
+        ``doc/programmers_guide.md:13``); WDOG_REGWEN locks the watchdog
+        configuration (``data/aon_timer.hjson:247``), and ``WDOG_COUNT`` carries no
+        ``regwen`` (``data/aon_timer.hjson:295-308``).
+
+        With both timers stopped at count 0, ``WKUP_THOLD`` = Tw (prescaler 0),
+        ``WDOG_BARK_THOLD`` = Tb and ``WDOG_BITE_THOLD`` = Tb + G (all read back),
+        the wakeup timer and then the watchdog are enabled, and passes of an
+        ``INTR_STATE`` read, a ``WDOG_COUNT`` read and a ``WKUP_COUNT_LO`` read run
+        until both status bits read 1. Per status bit, a status of 1 comes with a
+        count read at or above its threshold - A, and the count read of the pass
+        before the first status of 1 is below the threshold + A + D_pass (D_pass:
+        the largest step of that count between passes). With the drawn lock,
+        ``WDOG_REGWEN`` is written 0 and reads 0, and a write of another value to
+        ``WDOG_BITE_THOLD`` leaves it at Tb + G. The pet (``WDOG_COUNT`` = 0)
+        follows: the next count read is at most the clk_wdt edges from the pet
+        issue to that read's response, and that bound is below the count read
+        before the pet. The watchdog then runs G + 2A more ticks, and
+        ``wdt_timer_rst_req_o`` reads 0 on every clk_i edge from the enable to the
+        end. Controls (CTRL-MISSING otherwise): at least one pass before each
+        first status of 1, the count before the pet below Tb + G - ``_PET_MARGIN``,
+        the clk_wdt edges of the window at least Tb + G + A (an unpetted count
+        would bite), the last count read below Tb + G - A, and both enables read
+        back at the end.
+        """
+        chk = "CHK-WDT-COMBO"
+        dut = cocotb.top
+        d = self.tail
+        a = _COUNT_ALLOW
+        tw, tb, bite = d.tw, d.tb, d.tb + d.g
+        period = round(self.cfg.wdt_clk_period_ns * 1000)
+        both = INTR_WDOG_BARK | INTR_WKUP_EXPIRED
+        setup = (
+            (WKUP_CTRL, 0),
+            (WKUP_COUNT_HI, 0),
+            (WKUP_COUNT_LO, 0),
+            (WKUP_THOLD_HI, 0),
+            (WKUP_THOLD_LO, tw),
+            (WDOG_CTRL, 0),
+            (WDOG_COUNT, 0),
+            (WDOG_BARK_THOLD, tb),
+            (WDOG_BITE_THOLD, bite),
+        )
+        for reg, val in setup:
+            await self.wdt.write(reg, val)
+        await self.wdt.write(INTR_STATE, both)
+        await self.wdt.write(WKUP_CAUSE, 0)
+        rb = [await self.wdt.read(reg) for reg, _ in setup]
+        intr = await self.wdt.read(INTR_STATE)
+        regwen = await self.wdt.read(WDOG_REGWEN)
+        (req0,) = await self._sample(dut.wdt_timer_rst_req_o)
+        exp = [v for _, v in setup]
+        await self._grade(
+            rb == exp and not intr & both and regwen & _REGWEN_MASK == _REGWEN_MASK and not req0,
+            chk,
+            f"precondition: setup read {[hex(v) for v in rb]} expected "
+            f"{[hex(v) for v in exp]}, INTR_STATE=0x{intr:08x} WDOG_REGWEN=0x{regwen:x} "
+            f"rst_req={req0}, expected status 0, regwen 1 and rst_req 0",
+        )
+
+        mon = {"n": 0, "high": 0}
+        stop = {"v": False}
+
+        async def _req_watch() -> None:
+            while not stop["v"]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                mon["n"] += 1
+                mon["high"] += self.rd(dut.wdt_timer_rst_req_o)
+
+        watch = cocotb.start_soon(_req_watch())
+        t_en = int(get_sim_time("ps"))
+        await self.wdt.write(WKUP_CTRL, WKUP_ENABLE)
+        await self.wdt.write(WDOG_CTRL, WDOG_ENABLE)
+        passes = []
+        limit_ps = (bite - _PET_MARGIN) * period
+        while True:
+            st = await self.wdt.read(INTR_STATE)
+            wc = await self.wdt.read(WDOG_COUNT)
+            kc = await self.wdt.read(WKUP_COUNT_LO)
+            passes.append((st, wc, kc))
+            if st & both == both:
+                break
+            await self._grade(
+                int(get_sim_time("ps")) - t_en < limit_ps,
+                chk,
+                f"both status bits not set within {bite - _PET_MARGIN} clk_wdt periods of "
+                f"the enable: last INTR_STATE=0x{st:08x} WDOG_COUNT={wc} WKUP_COUNT_LO={kc} "
+                f"(Tw={tw} Tb={tb})",
+            )
+
+        grades = {}
+        for name, bit, idx, thr in (
+            ("wkup", INTR_WKUP_EXPIRED, 2, tw),
+            ("bark", INTR_WDOG_BARK, 1, tb),
+        ):
+            counts = [p[idx] for p in passes]
+            d_pass = max([y - x for x, y in zip(counts, counts[1:])] or [0])
+            k = next(i for i, p in enumerate(passes) if p[0] & bit)
+            early = [(i, p[idx]) for i, p in enumerate(passes) if p[0] & bit and p[idx] < thr - a]
+            before = passes[k - 1][idx] if k else None
+            grades[name] = (k, passes[k][idx], before, d_pass)
+            frag = (
+                f"{name}: thold={thr} status_pass={k} count_at_status={passes[k][idx]} "
+                f"count_before={before} early={early} allowance={a} d_pass={d_pass}"
+            )
+            if k < 1:
+                await self._grade(
+                    False, chk, f"CTRL-MISSING no pass before the first status: {frag}"
+                )
+            await self._grade(not early, chk, f"status early: {frag}")
+            await self._grade(before < thr + a + d_pass, chk, f"status late: {frag}")
+
+        lock_txt = "regwen_lock=0"
+        if d.combo_lock:
+            await self.wdt.write(WDOG_REGWEN, 0)
+            rw = await self.wdt.read(WDOG_REGWEN)
+            await self._grade(
+                rw & _REGWEN_MASK == 0,
+                chk,
+                f"CTRL-MISSING WDOG_REGWEN read 0x{rw:x} after the lock write, expected 0",
+            )
+            resp = await self.wdt.write_tolerant(WDOG_BITE_THOLD, d.bite_try)
+            bite_rd = await self.wdt.read(WDOG_BITE_THOLD)
+            await self._grade(
+                bite_rd == bite,
+                chk,
+                f"WDOG_BITE_THOLD changed under the lock: wrote 0x{d.bite_try:x} read "
+                f"0x{bite_rd:x}, expected 0x{bite:x} (resp={resp})",
+            )
+            lock_txt = (
+                f"regwen_lock=1 regwen=0x{rw & _REGWEN_MASK:x} bite_try=0x{d.bite_try:x} "
+                f"bite_read=0x{bite_rd:x} resp={resp}"
+            )
+
+        c_pre = await self.wdt.read(WDOG_COUNT)
+        await self._grade(
+            c_pre < bite - _PET_MARGIN,
+            chk,
+            f"CTRL-MISSING count before the pet {c_pre} not below Tb + G - {_PET_MARGIN} = "
+            f"{bite - _PET_MARGIN}",
+        )
+        t_pet = int(get_sim_time("ps"))
+        await self.wdt.write(WDOG_COUNT, 0)
+        c_pet, _, t_rd = await self._timed_read(WDOG_COUNT)
+        pet_hi = -(-(t_rd - t_pet) // period)
+        await self._grade(
+            c_pet <= pet_hi < c_pre,
+            chk,
+            f"pet: WDOG_COUNT after the pet {c_pet}, expected 0..{pet_hi} (clk_wdt edges from "
+            f"the pet issue to the read response) with the bound below the count before the "
+            f"pet {c_pre} ({lock_txt})",
+        )
+        await ClockCycles(dut.clk_wdt_i, d.g + 2 * a)
+        c_end = await self.wdt.read(WDOG_COUNT)
+        edges = (int(get_sim_time("ps")) - t_en) // period
+        ctl = [await self.wdt.read(r) for r in (WKUP_CTRL, WDOG_CTRL)]
+        stop["v"] = True
+        await watch
+        await NextTimeStep()
+        ctrl_txt = (
+            f"window_clk_wdt_edges={edges} need>={bite + a} count_end={c_end} "
+            f"need<{bite - a} wkup_ctrl=0x{ctl[0]:x} wdog_ctrl=0x{ctl[1]:x}"
+        )
+        await self._grade(
+            edges >= bite + a and c_end < bite - a and ctl == [WKUP_ENABLE, WDOG_ENABLE],
+            chk,
+            f"CTRL-MISSING window: {ctrl_txt}",
+        )
+        await self._grade(
+            mon["high"] == 0 and mon["n"] > 0,
+            chk,
+            f"wdt_timer_rst_req_o high on {mon['high']} of {mon['n']} clk_i edges before the "
+            f"bite threshold {bite} ({ctrl_txt})",
+        )
+        (wk_k, wk_c, wk_b, wk_d), (bk_k, bk_c, bk_b, bk_d) = grades["wkup"], grades["bark"]
+        self.logger.info(
+            "CHK-WDT-COMBO PASS: %s tw=%d tb=%d bite_thold=%d allowance=%d; wkup status_pass=%d "
+            "count_at_status=%d count_before=%d d_pass=%d; bark status_pass=%d count_at_status=%d "
+            "count_before=%d d_pass=%d; pet count_before=%d count_after=%d bound=%d; %s "
+            "rst_req_high=0 rst_req_samples=%d",
+            lock_txt,
+            tw,
+            tb,
+            bite,
+            a,
+            wk_k,
+            wk_c,
+            wk_b,
+            wk_d,
+            bk_k,
+            bk_c,
+            bk_b,
+            bk_d,
+            c_pre,
+            c_pet,
+            pet_hi,
+            ctrl_txt,
+            mon["n"],
+        )
+        await self.wdt.write(WDOG_COUNT, 0)
+        await self._wdt_rst_pulse("after_combo")

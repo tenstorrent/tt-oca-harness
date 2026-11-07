@@ -64,12 +64,15 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# AON timer internals: WKUP timer, WDOG pet and WDOG_REGWEN lock. The WKUP interrupt
-# output is unused in sep, so expiry is read from the polled status bit.
+# AON timer internals: WKUP timer, WDOG pet and WDOG_REGWEN lock, the watchdog count past
+# 0xFFFF_FFFF (logged), and the wakeup timer, bark, bite threshold and a pet in one window.
+# The WKUP interrupt output is unused in sep, so expiry is read from the polled status bit.
 name = "sep_wdt_aon_timer_internals_test"
 module = "system.sep_wdt_aon_timer_internals_test"
 seed = 1
-# No reseed: the seed selects only thresholds and the prescaler under one contract.
+# The seed draws the thresholds, the prescaler, the wrap preload and whether WDOG_REGWEN is
+# locked in the combined window; the lock clause runs only on a locked seed.
+reseed = 3
 timeout_sec = 1200
 tags = ["wdt", "aon_timer", "reset", "regwen", "system", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
