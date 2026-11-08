@@ -6,7 +6,7 @@ The test boots VeeR EL2 from ICCM with the rom_sanity firmware. The firmware cal
 hand-assembled functions in the boot-ROM (0x1004_0000) through function pointers, so the IFU
 fetches and executes them from ROM, and runs the seven calls in three iterations. The core has
 no instruction cache, so each call fetches its body from ROM again. Each return value is
-checked (42/123/100/0xDEADBEEF/55/77/42), covering I/U/R/J-type and NOP-sled sequential fetch.
+checked (42/123/100/0xDEADBEEF/55/77/43), covering I/U/R/J-type and NOP-sled sequential fetch.
 
 Checks:
   CHK-IFU-TYPES  : firmware, one line per call: ``<name> k=<iteration> got= want=``.

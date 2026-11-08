@@ -790,6 +790,13 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             )
             self.logger.error(msg)
             raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-SRAM-REFUSE seen: %s INCR burst @0x%08x and single-beat FIXED @0x%08x "
+            "wrote and read back with OKAY",
+            b.fmt(),
+            ctrl,
+            words[0],
+        )
         # Pre-read.
         pre = {w: await self._read_word("inbound", w, b.axi_id) for w in words}
         for w in words:
