@@ -57,8 +57,9 @@ Checks:
   CHK-OTBN-DMEM-READ-CRC    the same for DMEM.
   CHK-OTBN-IMEM-EDGE        the read of step 8 returns the word of step 7, for the
                             first, middle and last IMEM word, and the read of step
-                            9 (``phase=hold``) returns that word again, so a write
-                            that also lands on another of the three words fails.
+                            9 (``phase=hold``) returns that word again, so an
+                            edge write that also lands on an earlier edge word
+                            fails.
                             IMEM is a read-write window of 4096 32-bit words,
                             accessible at IDLE (``otbn.hjson`` :788-806).
   CHK-OTBN-DMEM-EDGE        the same for DMEM (``otbn.hjson`` :811-829).
@@ -75,8 +76,8 @@ Log-only:
 
 FCOV: the graded window (``sep_otbn_execute_cg`` ``cp_imem_rdback`` and
 ``cp_dmem_rdback``) is open only for steps 6 to 9. The sampler counts a read that
-returns the last whole-word write to that address, so only the reads of steps 8
-and 9 can sample; a FAIL closes the window before it is recorded.
+returns the last whole-word write to that address; a FAIL closes the window
+before it is recorded.
 """
 
 from __future__ import annotations
@@ -234,8 +235,8 @@ class sep_otbn_load_checksum_read_test(sep_base_test):
                 expect=f"0x{wdata:08x}",
             )
             written.append((where, idx, addr, wdata))
-        # Each edge word still holds its own value after every edge write: a
-        # write that also lands on another edge word fails here.
+        # Each edge word still holds its own value after every edge write: an
+        # edge write that also lands on an earlier edge word fails here.
         for where, idx, addr, wdata in written:
             word = (await otbn._rd(addr)) & 0xFFFF_FFFF
             ok = word == wdata
