@@ -40,7 +40,9 @@ SEP_SCRATCH_COLD, plain RW storage behind the system-CSR ``axi_to_axi_lite``
 bridge, which splits bursts and keeps the AXI IDs it needs for the responses
 (hw/sys/sep/doc/fabric.adoc, Interconnect). AXI orders responses of one ID in
 request order (IHI 0022 A6), so a path that reorders, drops or re-labels a
-same-ID response hands a request its neighbour's word. One target and a
+same-ID read response hands a request its neighbour's word. A B carries no
+data, so the four same-ID B beats are graded by ID, OKAY, rank timing (each
+after the AW and W of its rank) and the readback of every register. One target and a
 non-zero ID: the s_axi demux holds back a same-ID read while that ID is
 outstanding to another target, so a second target would serialize the leg.
 
