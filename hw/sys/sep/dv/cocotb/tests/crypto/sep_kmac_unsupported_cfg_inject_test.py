@@ -127,7 +127,8 @@ table of theory_of_operation.md (lines 719-730):
   CHK-KMAC-ERR-07    keyed run: ``KEY_LEN`` 256, a drawn software key in
                      ``KEY_SHARE0`` (``KEY_SHARE1`` 0), ``PREFIX`` =
                      encode_string("") || encode_string("") instead of
-                     encode_string("KMAC") || encode_string(S), cSHAKE-256 with
+                     encode_string("KMAC") || encode_string(S), read back
+                     word for word, cSHAKE-256 with
                      ``kmac_en`` 1, then ``CMD.start``: kmac_err 1, code 0x07
                      (line 727). The error "does not block the hashing
                      operation" (lines 790-796), so the same line also requires
@@ -210,6 +211,7 @@ from seq_lib.sep_kmac_seq import (
     KMAC_KEYLEN,
     KMAC_MODE,
     KMAC_MSG_FIFO,
+    KMAC_PREFIX,
     KMAC_STATUS,
     KMAC_STRENGTH,
     SepKmac,
@@ -244,6 +246,12 @@ _CFG_CELL_MASK = (
 # cSHAKE PREFIX of the open helper: empty function name and empty
 # customization string, encode_string("") || encode_string("").
 _CSHAKE_EMPTY_PREFIX = encode_string(b"") + encode_string(b"")
+# PREFIX_0.. read back after that write: little-endian words, unused words 0.
+_PREFIX_IMAGE = _CSHAKE_EMPTY_PREFIX.ljust(4 * len(KMAC_PREFIX), b"\x00")
+_CSHAKE_EMPTY_PREFIX_RD = ":".join(
+    f"{int.from_bytes(_PREFIX_IMAGE[i : i + 4], 'little'):08x}"
+    for i in range(0, len(_PREFIX_IMAGE), 4)
+)
 
 _XOF_MODES = ("shake", "cshake")
 # kmac.adoc CFG_SHADOWED.kstrength (lines 177-181): only 128 and 256 are legal
@@ -922,7 +930,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             )
             if name == "07":
                 run_ok, run_fields = await self._err07_finish(plan)
-                ok = ok and run_ok
+                ok = ok and run_ok and extra["prefix_rd"] == _CSHAKE_EMPTY_PREFIX_RD
                 extra = {**extra, **run_fields}
             elif name == "05":
                 await self._write_cfg(self._err05_word() & ~_ENTROPY_READY)
@@ -975,6 +983,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         """Keyed cSHAKE-256 with a PREFIX whose function name is not "KMAC", then start."""
         await self._wr(KMAC_KEY_LEN, KMAC_KEYLEN[256])
         await self.kmac._write_prefix(_CSHAKE_EMPTY_PREFIX)
+        prefix_rd = [await self._rd(addr) for addr in KMAC_PREFIX]
         for i, word in enumerate(plan.err07_key):
             await self._wr(KMAC_KEY_SHARE0[i], word)
             await self._wr(KMAC_KEY_SHARE1[i], 0)
@@ -983,7 +992,11 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         )
         await self._write_cfg(cfg)
         await self._wr(KMAC_CMD, KMAC_CMD_START)
-        return {"cfg": f"0x{cfg:08x}", "prefix": _CSHAKE_EMPTY_PREFIX.hex()}
+        return {
+            "cfg": f"0x{cfg:08x}",
+            "prefix": _CSHAKE_EMPTY_PREFIX.hex(),
+            "prefix_rd": ":".join(f"{w:08x}" for w in prefix_rd),
+        }
 
     async def _err07_finish(self, plan: Plan) -> tuple[bool, dict]:
         """One message word and right_encode(256), process, squeeze, done, idle."""
