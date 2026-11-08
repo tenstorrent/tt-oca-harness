@@ -271,8 +271,8 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     value = 32'(random_pattern(32)) | 1;
     value_lo = 32'(random_pattern(32)) | 1;
     value_zf = 32'(random_pattern(32)) | 1;
-    read_before = sep_in_history.count(1);
-    write_before = sep_in_history.count(0);
+    read_before = sep_in_history.read_count();
+    write_before = sep_in_history.write_count();
     compare_before = scoreboard.compare_count(SmcFeatureMutexSema);
     mismatch_before = scoreboard.mismatch_count(SmcFeatureMutexSema);
     mem_read(SmcZeroerCtrlStatusAddr, status, "Zeroer baseline");
@@ -433,19 +433,18 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     for (int unsigned cycle = 0; cycle < ComparisonBound; cycle++) begin
       if (scoreboard.compare_count(
               SmcFeatureMutexSema
-          ) >= compare_before + ComparisonsPerPass && sep_in_history.count(
-              1
-          ) >= read_before + FixedReads + polls + 2 * entries && sep_in_history.count(
-              0
-          ) >= write_before + FixedWrites)
+          ) >= compare_before + ComparisonsPerPass &&
+              sep_in_history.read_count() >= read_before + FixedReads + polls + 2 * entries &&
+              sep_in_history.write_count() >= write_before + FixedWrites)
         break;
       wait_smc_cycles(1);
     end
     check_evidence(ChkScoreboard, "new mutex mismatches", scoreboard.mismatch_count(
                    SmcFeatureMutexSema) - mismatch_before, 0);
-    check_evidence(ChkNonvac, "SEP_IN reads", sep_in_history.count(1) - read_before,
+    check_evidence(ChkNonvac, "SEP_IN reads", sep_in_history.read_count() - read_before,
                    FixedReads + polls + 2 * entries);
-    check_evidence(ChkNonvac, "SEP_IN writes", sep_in_history.count(0) - write_before, FixedWrites);
+    check_evidence(ChkNonvac, "SEP_IN writes", sep_in_history.write_count() - write_before,
+                   FixedWrites);
     check_evidence(ChkNonvac, "mutex comparisons", scoreboard.compare_count(SmcFeatureMutexSema
                    ) - compare_before, ComparisonsPerPass);
     mem_write(FilterConfig, 0, "filter disable before restore");
