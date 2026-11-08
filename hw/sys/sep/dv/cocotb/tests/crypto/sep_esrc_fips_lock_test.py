@@ -12,8 +12,10 @@ rst_ni does. The threshold sweep walks every MIN_ENTROPY_H code. For each of the
 255 codes H > 0 the RCT cutoff is checked against the RDL formula
 C = 1 + ceil(20 / H), and the APT cutoff against the SP 800-90B 4.4.2 binomial
 cutoff for the 1024-sample window with the same alpha = 2^-20 (SP 800-90B 4.4:
-alpha = 2^-20 is used in all the calculations of that section); one CHK-REC-THRESH
-line per sweep counts the codes graded and the matches of each column. At H = 0
+alpha = 2^-20 is used in all the calculations of that section). Every written code,
+H = 0 included, must read back from MIN_ENTROPY_H before its thresholds are read. One
+CHK-REC-THRESH line per sweep counts the codes graded, the matches of each column
+and the readback matches. At H = 0
 neither cutoff has a stated value; the read is logged as OBS-REC-THRESH-H0 and
 not graded.
 Both observe-tap enables are writable before the lock and
@@ -32,7 +34,7 @@ reads 0 again RELATCH_CLKS clocks later. For PERSISTENT_FAILURE, PIC source 16
 reads 1 while the bit is set (interrupts.adoc:23, :109-111). For the other
 sources that value is logged as OBS-LOCK-INTR-PIC16: no text states whether
 they drive source 16. Control: CTRL-LOCK-INTR-IDLE, the status bit reads 0
-after a W1C before the pulse, so no live cause can set it again.
+RELATCH_CLKS clocks after a W1C, before the pulse, so no live cause sets it again.
 
 The FIPS_LOCK write and the pre-lock reserved CTRL write grade their OKAY B
 response in the same CHK line. The observe-tap writes before the lock and the
@@ -70,6 +72,7 @@ from seq_lib.sep_esrc_bringup_seq import ESRC_INTR_ENABLE, ESRC_INTR_STATUS, ESR
 from seq_lib.sep_esrc_fips_lock_seq import (
     APT_WINDOW,
     CTRL_RSVD0_BIT,
+    ESRC_MIN_ENTROPY_H,
     LOCK_BIT,
     MIN_ENTROPY_H_MASK,
     SepEsrcFipsLock,
@@ -171,10 +174,14 @@ class sep_esrc_fips_lock_test(sep_base_test):
         # neither comes from the design table. At H = 0 neither field has a
         # stated value, so that point is logged as OBS and graded by nothing.
         # The H field sits at bit 0, so its mask is the count of non-zero codes.
-        graded = rct_ok = apt_ok = 0
+        graded = rct_ok = apt_ok = h_ok = 0
         bad: list[str] = []
         for h in cfg.rec_thresh_h:
             await esrc.write_min_entropy_h(h)
+            h_rb = await esrc.read(ESRC_MIN_ENTROPY_H) & MIN_ENTROPY_H_MASK
+            h_ok += h_rb == h
+            if h_rb != h:
+                bad.append(f"0x{h:02x}:H={h_rb:#04x}")
             rct, apt = await esrc.read_recommended_thresholds()
             want = rct_limit_golden(h)
             want_apt = apt_limit_golden(h)
@@ -195,9 +202,10 @@ class sep_esrc_fips_lock_test(sep_base_test):
                 bad.append(f"0x{h:02x}:RCT={rct}/{want},APT={apt}/{want_apt}")
         self._grade(
             "CHK-REC-THRESH",
-            graded == rct_ok == apt_ok == MIN_ENTROPY_H_MASK,
+            graded == rct_ok == apt_ok == MIN_ENTROPY_H_MASK and h_ok == len(cfg.rec_thresh_h),
             f"{label} graded {graded} of {MIN_ENTROPY_H_MASK} non-zero MIN_ENTROPY_H codes; "
             f"RCT_LIMIT match {rct_ok}, APT_LIMIT match {apt_ok}, window={APT_WINDOW}; "
+            f"min_entropy_h_readback_match {h_ok} of {len(cfg.rec_thresh_h)}; "
             f"mismatch (code:read/golden) {bad}",
         )
 
@@ -214,11 +222,13 @@ class sep_esrc_fips_lock_test(sep_base_test):
             # Only this source is enabled: with its bit clear no enabled bit is set.
             await esrc.write(ESRC_INTR_ENABLE, bm)
             await esrc.write(ESRC_INTR_STATUS, bm)
+            await ClockCycles(cocotb.top.clk_i, RELATCH_CLKS)
             idle = await esrc.read(ESRC_INTR_STATUS)
             self._grade(
                 "CTRL-LOCK-INTR-IDLE",
                 (idle & bm) == 0,
-                f"{name} INTR_STATUS=0x{idle:08x} after a W1C, before the pulse",
+                f"{name} INTR_STATUS=0x{idle:08x} {RELATCH_CLKS} clocks after a W1C, "
+                "before the pulse",
             )
             pic_idle = self._pic16()
             await esrc.write(ESRC_INTR_TEST, bm)

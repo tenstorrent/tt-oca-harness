@@ -31,6 +31,9 @@ logged (``OBS-INTR-PAIR-PIC16``) for any other j: the register text does not sta
 which other enabled status bits drive source 16. One pair per seed has
 j = ``PERSISTENT_FAILURE``; the PASS line counts those pairs (``pf_j_pairs``).
 
+``CTRL-ALERT-ARM`` reads back ALERT_THRESHOLD, HEALTH_TEST_WINDOW_SIZE and
+HEALTH_TEST_CTRL after the trip setup writes them; each must hold the written value.
+
 Randomization (``SepSeededRng`` from the run seed): the order of the targets, the
 target whose partner is ``PERSISTENT_FAILURE``, and the partner of every other target.
 """
@@ -42,6 +45,7 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import ENTROPY_SOURCE
 from seq_lib.sep_esrc_alert_seq import (
     ALERT_MASK,
     ANY_FAIL_SLACK,
@@ -51,7 +55,13 @@ from seq_lib.sep_esrc_alert_seq import (
     IRQ_AGG_IDX,
     PF_MASK,
     TRIP_THRESHOLD,
+    TRIP_WINDOW,
     SepEsrcAlert,
+)
+from seq_lib.sep_esrc_bringup_seq import (
+    ESRC_ALERT_THRESHOLD,
+    ESRC_HEALTH_TEST_CTRL,
+    ESRC_HEALTH_TEST_WINDOW_SIZE,
 )
 
 _TRIP_TIMEOUT_CYCLES = 80_000
@@ -65,6 +75,24 @@ class sep_esrc_alert_delivery_test(sep_base_test):
     """A persistent failure sets ALERT and PIC source 16, and W1C clears both."""
 
     required_evidence = ("CHK-INTR-PAIR-W1C",)
+
+    async def _check_arm(self, esrc: SepEsrcAlert) -> None:
+        """CTRL-ALERT-ARM: each trip setup register reads back its written value."""
+        want = {
+            "ALERT_THRESHOLD": (ESRC_ALERT_THRESHOLD, TRIP_THRESHOLD),
+            "HEALTH_TEST_WINDOW_SIZE": (ESRC_HEALTH_TEST_WINDOW_SIZE, TRIP_WINDOW),
+            "HEALTH_TEST_CTRL": (
+                ESRC_HEALTH_TEST_CTRL,
+                ENTROPY_SOURCE.value("HEALTH_TEST_CTRL", ENABLE=0x7, REPETITION_LIMIT=5),
+            ),
+        }
+        got = {}
+        for reg, (addr, value) in want.items():
+            mask = ENTROPY_SOURCE.mask(reg)
+            got[reg] = (await esrc._rd(addr) & mask, value & mask)
+        text = " ".join(f"{reg}=0x{rb:08x}/0x{wr:08x}" for reg, (rb, wr) in got.items())
+        assert all(rb == wr for rb, wr in got.values()), f"CTRL-ALERT-ARM FAIL: read/written {text}"
+        self.logger.info("CTRL-ALERT-ARM PASS: read/written %s", text)
 
     def _irq_bit(self) -> int:
         vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
@@ -141,6 +169,7 @@ class sep_esrc_alert_delivery_test(sep_base_test):
 
         await esrc.enable_persistent_irq()
         await esrc.arm_failing_windows()
+        await self._check_arm(esrc)
 
         dut = cocotb.top
         sm = st = 0

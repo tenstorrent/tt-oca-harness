@@ -78,8 +78,8 @@ Checkers:
                     sets the bit in the same leaf, and CTRL-TUNE-PIC16-LIVE.
   CHK-TUNE-W1C      after each autotune burst and its clean gap, a write of 1 to
                     AUTOTUNE_FAIL reads it back 0 and PIC source 16 reads 0
-                    (entropy_source.rdl:145-151, woclr). Control: the bit read 1
-                    before the write.
+                    (entropy_source.rdl:145-151, woclr). Control: the bit reads 1
+                    after the generator status clear and before the write.
   CTRL-TUNE-PIC16-LIVE before the legs, with INTR_ENABLE = PERSISTENT_FAILURE
                     only, an INTR_TEST pulse of that source sets its status bit
                     and raises PIC source 16, and its write-one clear drops the
@@ -94,8 +94,10 @@ Checkers:
                     in the same line: the DIVIDE readback is v, the whole
                     SAMPLE_CLK_SELECT field reads its reset with bit 0 clear,
                     the whole RING_OSC_ENABLE word reads its reset and
-                    MODULE_ENABLE reads 1. Control (CTRL-SCLK-SRC): four
-                    periods of ``entropy_rosc_sample_clk_i`` equal the bench
+                    MODULE_ENABLE reads 1. Controls: CTRL-SCLK-DISABLE reads
+                    MODULE_ENABLE 0 and ENABLE bit 0 clear while the divide is
+                    written; CTRL-SCLK-SRC reads four periods of
+                    ``entropy_rosc_sample_clk_i`` equal to the bench
                     period. After a pass, three more lane periods are graded
                     the same way inside the graded window.
   CHK-SCLK-GUIDE    with the graded window closed, after the one-enable step:
@@ -771,10 +773,18 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             detune_before=f"0x{detune_before:03x}",
             detune_after=f"0x{detune_after:03x}",
         )
-        await self._clear_status(clear_autotune=True)
+        await self._clear_status(clear_autotune=False)
+        mid = await self.esrc._rd(A_INTR_STATUS) & M_INTR_STATUS
+        await self.esrc._wr(A_INTR_STATUS, M_AUTOTUNE_FAIL)
         cleared = await self.esrc._rd(A_INTR_STATUS) & M_INTR_STATUS
         line = self._pic16()
-        self._ctrl("TUNE-W1C", fail == 1, burst=i + 1, autotune_fail_before=fail)
+        self._ctrl(
+            "TUNE-W1C",
+            bool(mid & M_AUTOTUNE_FAIL),
+            burst=i + 1,
+            autotune_fail_before=fail,
+            autotune_fail_after_gen_clear=int(bool(mid & M_AUTOTUNE_FAIL)),
+        )
         self._ok(
             "TUNE-W1C",
             not cleared & M_AUTOTUNE_FAIL and line == 0,
@@ -921,13 +931,16 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             )
         await wr(A_DIV0, ENTROPY_SOURCE.value(REG_DIV0, SAMPLE_CLK_DIVIDE=v))
         # The spec does not name the enable that disables a generator; the leg
-        # clears both and logs them here, ungraded.
+        # clears both and reads both back.
         rd = self.esrc._rd
-        self.chk.info(
+        module_enable = int(bool(await rd(A_CTRL) & M_MODULE_ENABLE))
+        ring = await rd(A_RING_OSC_ENABLE) & M_RING_OSC_ENABLE
+        self._ctrl(
             "SCLK-DISABLE",
+            module_enable == 0 and not ring & LANE0,
             v=v,
-            module_enable=int(bool(await rd(A_CTRL) & M_MODULE_ENABLE)),
-            ring_osc_enable=f"0x{await rd(A_RING_OSC_ENABLE) & M_RING_OSC_ENABLE:06x}",
+            module_enable=module_enable,
+            ring_osc_enable=f"0x{ring:06x}",
         )
         await wr(A_RING_OSC_ENABLE, RING_OSC_ENABLE_RESET)
         await wr(A_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1, AUTOTUNE_ENABLE=0))

@@ -93,14 +93,15 @@ Checkers:
   CHK-PF-DISABLE  T = 0, ten stuck windows: no alert at any poll up to
                   LAT_WINDOWS windows of words after the burst, ANY_FAIL_COUNT
                   peak > 8, and after the burst the count clears by the wrap 2W
-                  words after the break words (below). Then every INTR_STATUS
-                  bit is cleared (W1C): when INTR_STATUS AND INTR_ENABLE then
-                  reads 0 (CTRL-PF-DISABLE-PIC16), vector bit 15 of
+                  words after the break words (below). Then INTR_ENABLE is
+                  set to PERSISTENT_FAILURE only and every INTR_STATUS bit is
+                  cleared (W1C): INTR_STATUS AND INTR_ENABLE reads 0
+                  (CTRL-PF-DISABLE-PIC16) and vector bit 15 of
                   ``sep_internal_interrupts_probe_o`` (PIC source 16) reads 0,
                   since no enabled source is set (entropy_source.rdl
-                  INTR_ENABLE); a bit that a live cause sets again leaves the
-                  value logged as OBS-PF-DISABLE-PIC16, and the CHK line counts
-                  ``pic16_graded``. Control: every trip of the blocks that ran
+                  INTR_ENABLE). A set PERSISTENT_FAILURE bit leaves the value
+                  logged as OBS-PF-DISABLE-PIC16 and fails the check; the CHK
+                  line carries ``pic16_graded``. Control: every trip of the blocks that ran
                   before it reaches the alert, and CHK-PIC16 of the same leaf
                   reads the source at 1.
   CHK-PF-HALT     after a trip, BUSY = 0 and a drain: LEVEL stays 0 and
@@ -315,6 +316,7 @@ def _fm(reg: str, field: str) -> tuple[int, int]:
 M_ALERT, _ = _fm("MAIN_SM_STATUS", "ALERT")
 M_BOOT, _ = _fm("MAIN_SM_STATUS", "BOOT_PHASE_DONE")
 M_PF, _ = _fm("INTR_STATUS", "PERSISTENT_FAILURE")
+M_PF_EN, _ = _fm("INTR_ENABLE", "PERSISTENT_FAILURE")
 M_LEVEL, _ = _fm("FIFO_STATUS", "LEVEL")
 M_BUSY, _ = _fm("SHA256_STATUS", "BUSY")
 M_ANY, _ = _fm("ALERT_SUMMARY_FAIL_COUNTS", "ANY_FAIL_COUNT")
@@ -661,11 +663,14 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         return (v >> 15) & 1
 
     async def _disable_pic16(self) -> dict:
-        """The PIC16 part of CHK-PF-DISABLE: W1C every INTR_STATUS bit, then PIC16.
+        """The PIC16 part of CHK-PF-DISABLE: INTR_ENABLE = PERSISTENT_FAILURE only,
+        W1C every INTR_STATUS bit, then PIC16.
 
         Graded only when INTR_STATUS AND INTR_ENABLE reads 0 after the clear
         (CTRL-PF-DISABLE-PIC16); otherwise PIC16 is logged as OBS-PF-DISABLE-PIC16.
+        The next clean start enables every source again.
         """
+        await self._wr(ESRC_INTR_ENABLE, M_PF_EN)
         await self._wr(ESRC_INTR_STATUS, INTR_STATUS_ALL)
         st = (await self._rd(ESRC_INTR_STATUS)) & INTR_STATUS_ALL
         en = (await self._rd(ESRC_INTR_ENABLE)) & INTR_ENABLE_ALL
@@ -674,7 +679,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         if st & en:
             self.chk.obs("PF-DISABLE-PIC16", **fields, pic16=pic)
             return {"pic16": None, "pic16_graded": 0}
-        self.chk.ctrl("PF-DISABLE-PIC16", True, **fields)
+        self.chk.ctrl("PF-DISABLE-PIC16", en == M_PF_EN, **fields)
         return {"pic16": pic, "pic16_graded": 1}
 
     async def _grade_pic16(self, thr: int, pf: int) -> None:
@@ -1665,7 +1670,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             and d.get("pf") == 0
             and d.get("peak", 0) > DISABLE_WINDOWS - 2
             and d.get("zero") is True
-            and d.get("pic16") in (None, 0),
+            and d.get("pic16") == 0
+            and d.get("pic16_graded") == 1,
             ESRC_PA_DISABLE,
             **extra,
             thr=0,

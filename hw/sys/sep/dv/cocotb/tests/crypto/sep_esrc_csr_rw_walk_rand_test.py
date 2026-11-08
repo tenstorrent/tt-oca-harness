@@ -884,6 +884,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             lock_rb=lk.get("lock_rb"),
             idle_locked=lk.get("idle"),
             level_after_drain=lk.get("level"),
+            ctrl_wr_resp=lk.get("ctrl_wr_resp"),
             bound=2 * lk["t_ref"],
             ctrl_idle_unlocked=ul.get("idle"),
             ctrl_level_after_drain=ul.get("level_max"),
@@ -897,7 +898,9 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             out["lock_rb"] = _fget("FIPS_LOCK", "LOCK", await self._rd("FIPS_LOCK"))
             await self._drain("locked")
             open_graded_window(TEST, self.logger)
-            await self._wr("CTRL", self._ctrl_word(0))
+            # No text states the B code of a write the lock refuses; any B response
+            # shows the write reached ESRC.
+            out["ctrl_wr_resp"] = await self._write_resp("CTRL", self._ctrl_word(0))
             t0 = self._now()
             rose = False
             lvl = 0
@@ -911,7 +914,9 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             close_graded_window(self.logger)
             if not rose:
                 out["reason"] = f"timeout:level bound={2 * t_ref}"
-            out["ok"] = rose and out["idle"] == 0 and out["lock_rb"] == 1
+            out["ok"] = (
+                rose and out["idle"] == 0 and out["lock_rb"] == 1 and out["ctrl_wr_resp"] >= 0
+            )
         except TrialTimeout as exc:
             close_graded_window(self.logger)
             out["reason"] = f"timeout:{exc.what} bound={exc.bound}"
