@@ -56,8 +56,11 @@ path while words reach the DRBG seed port:
   CSRNG seed (hw/sys/sep/doc/trng.adoc). A seed push is a rise of the DRBG
   seed-queue valid, or a seed handshake followed by the valid still high on the
   next clock. A word is accepted on a clock with the conditioner valid and the
-  packer ready; a word offered while the packer is not ready is lost, not packed
-  (hw/ip/drbg/doc/architecture.adoc, Entropy ingress). Every window from one push
+  packer ready. Ingress has no backpressure and the producer must not supply
+  words faster than the packer takes them (hw/ip/drbg/doc/architecture.adoc,
+  Entropy ingress and Seed Assembly), so a word offered while the packer is not
+  ready is outside the stated contract: it is not counted and is logged in
+  OBS-SEED-PACK-DROP. Every window from one push
   to the clock before the next push is graded: it holds exactly 12 accepted words,
   so no push comes before the 12th accepted word. A clock without the conditioner
   valid counts no word. The check also needs at least one graded window and no X
