@@ -98,6 +98,9 @@ check on its own line (``CHK-RAS-<FIELD>-IDLE``, ``-RISE``, ``-MODE2``,
            after the write-one clear of the state: the repeat continues to the
            end of the cell window, before its TRNG reset.
     SHAPE  every high run of the field over the whole leaf is exactly one clock.
+  Control ``CTRL-RAS-<FIELD>-PRE``: in each fatal-alert cell, the field of the
+  unit has no high clock from the end of the set-up to the ERR_CODE_TEST write,
+  so RISE and MODE2 count only the pulses that follow the write of that cell.
   The text does not name the reset that stops the repeat, so the field after
   each TRNG reset is logged only (OBS-RAS-<FIELD>-RESET-STOP), as are the rise
   delay (OBS-RAS-<FIELD>-DELAY), the repeat intervals (OBS-RAS-<FIELD>-REPEAT)
@@ -595,6 +598,19 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             else:
                 self._ok(f"RAS-{name}-IDLE", fields["high_clocks"] == 0, **fields)
 
+    def _ras_pre(self, unit: Unit, bit: int, mark) -> None:
+        """Control of a fatal-alert cell: the field of the unit is idle before the write."""
+        f = RAS_FIELD[unit.name]
+        high = self.ras.high_clocks_since(mark, f)
+        self._ctrl(
+            f"RAS-{f.upper()}-PRE",
+            high == 0,
+            unit=unit.name,
+            bit=bit,
+            clocks=self.ras.clk - mark.clk,
+            high_clocks=high,
+        )
+
     async def _ras_rise_by(self, mark, deadline: int, f: str) -> int | None:
         """Clock of the first rise of ``f`` after ``mark`` and at or before ``deadline``."""
         if not self.ras.rise_clks_since(mark, f) and self.ras.clk < deadline:
@@ -674,6 +690,8 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         vec_pre = self.vec.level(vec_key)
         m_err = self.vec.mark()
         self._ras_idle(m_ras, unit=unit.name, bit=bit)
+        if alert_src:
+            self._ras_pre(unit, bit, m_ras)
         ras_err = self.ras.mark()
         await self._wr(unit.err_code_test, unit.block.value("ERR_CODE_TEST", ERR_CODE_TEST=bit))
         ras_wrote = self.ras.mark()
