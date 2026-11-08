@@ -62,6 +62,11 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   bit negative;
   int unsigned mailbox, mutex_index;
   bit [63:0] destination;
+  protected bit [63:0] saved_start, saved_end, saved_config;
+  protected int unsigned read_before, write_before, compare_before, mismatch_before;
+  protected bit [63:0] word0, word1;
+  protected bit [31:0] value, value_lo, value_zf;
+  protected int unsigned polls, entries;
 
   protected function string access_context(string detail = "");
     return
@@ -199,28 +204,11 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
           ));
   endtask
 
-  task body();
-    int unsigned read_before, write_before, compare_before, mismatch_before;
-    int unsigned polls, control_polls, zero_words, entries;
-    bit [63:0] page, status, errors, observed, word0, word1, upper_push;
-    bit [63:0] saved_start, saved_end, saved_config, programmed_config;
-    bit [63:0] queue_data[$];
-    bit [31:0] upper, lower, value, value_lo, value_zf, pattern;
-    bit unchanged, guards_intact, poll_idle, null_entry_ok;
+  protected task setup_scenario();
+    int unsigned control_polls, zero_words;
+    bit [63:0] page, status, programmed_config;
+    bit unchanged, guards_intact;
     logic [31:0] busy_before, busy_after;
-    seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkMemResp, ChkAcquire, ChkRelease, ChkPoll, ChkPop,
-                    ChkPush, ChkZeroFill, ChkEmpty, ChkError, ChkNullZeroer, ChkNullMailbox,
-                    ChkControl, ChkErrorControl, ChkCleanup, ChkRestore, ChkSetup, ChkScoreboard,
-                    ChkNonvac, ChkSbMinAct});
-    negative = env_cfg.narrow_side_effect_sequence_negative;
-    if (negative)
-      `uvm_info(get_type_name(), "NEGATIVE VALIDATION: narrow side-effect expectations", UVM_LOW)
-    check_min_activity(SmcFeatureMutexSema, ComparisonsPerPass);
-    wait_fuse_sense_done();
-    if (sep_in_history == null) begin
-      `uvm_fatal(get_type_name(), "SEP_IN completed-transaction history is not connected")
-    end
     mailbox = loop_index % SmcMailboxCount;
     mutex_index = loop_index % SmcMutexCount;
     page = OutputBase + 64'(loop_index) * PageBytes;
@@ -264,7 +252,11 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
                  "valid START reaches SYS_OUT with intact guards", $sformatf(
                  "zero_words=%0d guards=%b polls=%0d", zero_words, guards_intact, control_polls));
     clear_command(ChkSetup);
+  endtask
 
+  protected task take_baseline();
+    bit [63:0] status, errors;
+    bit [31:0] pattern;
     pattern = random_pattern(32);
     word0 = {pattern, pattern ^ 32'h0101_0101};
     word1 = {pattern ^ 32'h0202_0202, pattern ^ 32'h0404_0404};
@@ -283,7 +275,10 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     prerequisite(ChkSetup, (status & AXIL_MAILBOX_STATUS_EMPTY_MASK) != 0, "inbound empty");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR), errors, "mailbox clean errors");
     prerequisite(ChkSetup, errors == 0, "mailbox error baseline clear");
+  endtask
 
+  protected task check_mutex();
+    bit [31:0] upper, lower;
     // MUTEX reads acquire, so release cannot be verified by a passive readback.
     csr_write(smc_mutex_addr(mutex_index), 0, "mutex initial release");
     csr_read(smc_mutex_addr(mutex_index), lower, "mutex free control");
@@ -296,7 +291,13 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
           upper == 0 && (lower & SmcMutexMask) == SmcMutexTaken, $sformatf(
           "upper=%h lower=%h", upper, lower));
     csr_write(smc_mutex_addr(mutex_index), 0, "mutex cleanup");
+  endtask
 
+  protected task check_zeroer_poll();
+    int unsigned zero_words;
+    bit [31:0] upper;
+    bit unchanged, guards_intact, poll_idle;
+    logic [31:0] busy_before, busy_after;
     poison_window();
     busy_before = tb_vif.zeroer_busy_sample_count;
     poll_idle = 1;
@@ -321,7 +322,11 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
           busy_before,
           busy_after
           ));
+  endtask
 
+  protected task check_mailbox_data();
+    bit [63:0] observed, upper_push;
+    bit [31:0] upper, lower;
     mem_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), word0, "mailbox word 0");
     mem_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), word1, "mailbox word 1");
     csr_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA) + SmcCsrBytes, upper, "upper pop");
@@ -347,6 +352,11 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "partial-strobe push readback");
     grade(ChkZeroFill, "unstrobed lanes of a partial-strobe push are zero",
           observed == {value_zf, 32'h0}, $sformatf("actual=%h value=%h", observed, value_zf));
+  endtask
+
+  protected task check_mailbox_errors();
+    bit [63:0] status, errors, observed;
+    bit [31:0] upper;
     empty_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), 1);
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR), errors, "read-error control");
     prerequisite(ChkErrorControl, (errors & AXIL_MAILBOX_ERROR_READ_ERROR_MASK) != 0,
@@ -403,7 +413,13 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_IRQS), observed, "EIRQ cleared");
     prerequisite(ChkCleanup, (observed & AXIL_MAILBOX_IRQS_EIRQ_MASK) == 0, "EIRQ cleanup",
                  $sformatf("IRQS=%h", observed));
+  endtask
 
+  protected task check_null_writes();
+    int unsigned zero_words;
+    bit [63:0] status, observed;
+    bit [63:0] queue_data[$];
+    bit unchanged, guards_intact, null_entry_ok;
     poison_window();
     null_write(SmcZeroerCtrlStatusAddr);
     wait_zeroer_idle(ChkNullZeroer, polls);
@@ -429,7 +445,9 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     grade(ChkNullMailbox, "null write pushes exactly one zero entry", null_entry_ok, $sformatf(
           "entries=%0d data=%p", entries, queue_data));
     clear_command();
+  endtask
 
+  protected task check_accounting();
     for (int unsigned cycle = 0; cycle < ComparisonBound; cycle++) begin
       if (scoreboard.compare_count(
               SmcFeatureMutexSema
@@ -447,6 +465,9 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
                    FixedWrites);
     check_evidence(ChkNonvac, "mutex comparisons", scoreboard.compare_count(SmcFeatureMutexSema
                    ) - compare_before, ComparisonsPerPass);
+  endtask
+
+  protected task restore_filter();
     mem_write(FilterConfig, 0, "filter disable before restore");
     mem_write(FilterStart, saved_start, "filter START restore");
     mem_write(FilterEnd, saved_end, "filter END restore");
@@ -454,6 +475,31 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     filter_readback(FilterStart, saved_start, ChkRestore, "filter START restored");
     filter_readback(FilterEnd, saved_end, ChkRestore, "filter END restored");
     filter_readback(FilterConfig, saved_config, ChkRestore, "filter CONFIG restored");
+  endtask
+
+  task body();
+    seed_scenario_rng();
+    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkMemResp, ChkAcquire, ChkRelease, ChkPoll, ChkPop,
+                    ChkPush, ChkZeroFill, ChkEmpty, ChkError, ChkNullZeroer, ChkNullMailbox,
+                    ChkControl, ChkErrorControl, ChkCleanup, ChkRestore, ChkSetup, ChkScoreboard,
+                    ChkNonvac, ChkSbMinAct});
+    negative = env_cfg.narrow_side_effect_sequence_negative;
+    if (negative)
+      `uvm_info(get_type_name(), "NEGATIVE VALIDATION: narrow side-effect expectations", UVM_LOW)
+    check_min_activity(SmcFeatureMutexSema, ComparisonsPerPass);
+    wait_fuse_sense_done();
+    if (sep_in_history == null) begin
+      `uvm_fatal(get_type_name(), "SEP_IN completed-transaction history is not connected")
+    end
+    setup_scenario();
+    take_baseline();
+    check_mutex();
+    check_zeroer_poll();
+    check_mailbox_data();
+    check_mailbox_errors();
+    check_null_writes();
+    check_accounting();
+    restore_filter();
     finalize_evidence();
   endtask
 endclass : smc_narrow_access_side_effect_test_seq
