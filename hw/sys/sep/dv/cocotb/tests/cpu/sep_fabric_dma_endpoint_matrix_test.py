@@ -36,8 +36,9 @@ model of the staged data and the fabric taps:
                   {offset[55:19], address[18:0]}, AxUSER 0 (all 12 bits) and
                   AxPROT with NS 1 (AP) or the inverse of bit 55 of the remapped
                   address (STEE) and the other AxPROT bits as the DMA drives
-                  them; on a read leg the PR-OUT reply data lands in SRAM; each
-                  run ends DONE. The two STEE offsets differ in bit 55, so both
+                  them; on a read leg each PR-OUT reply beat carries the
+                  address-derived word of the bench responder and SRAM holds
+                  exactly those reply lanes; each run ends DONE. The two STEE offsets differ in bit 55, so both
                   NS values leave every run.
 * CHK-DMA-SMC     every DMA beat on PR-SMC has AxUSER 0 and AxLEN 0, in both
                   directions, with the CPU beat as the control.
@@ -86,7 +87,12 @@ model of the staged data and the fabric taps:
 Entry ``_slverr`` (``+sep_ext_port_responder``) runs only the extension-port
 legs, each a 16-byte copy, and the bench responder answers every reply of the
 port with SLVERR; CHK-DMA-PAIR grades both legs as above with SLVERR in place
-of DECERR, and CHK-DMA-AXPROT runs. In both entries the firmware reads
+of DECERR, and CHK-DMA-AXPROT runs. The other entry drives
+``smn_outbound_rd_addr_data_i`` to 1 from the CPU release to the end of the
+leaf, so the outbound responder returns ``{~a, a}`` on every R beat, ``a``
+being the low 32 bits of the 8-byte-aligned beat address
+(``docs/SEP_TB_ARCH.adoc``); CTRL-DMA-REPLY-DATA fails the leaf unless the
+input reads 1 at the end. In both entries the firmware reads
 ``TOTAL_DATA_SIZE`` and ``CHUNK_DATA_SIZE`` back after the programming and
 before the GO of each extension-port leg; CTRL-DMA-EXT-LEN fails the leaf
 unless both equal the copy length. ``ext_port_rsp_on_o`` reads 1 in that
@@ -190,6 +196,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_WRITE_ALLOWED,
 )
 from seq_lib.sep_irq_aggregator_seq import PIC_DMA_DONE, PIC_DMA_ERROR, agg_from_pic
+from seq_lib.sep_outbound_contention_seq import r_lane32
 from seq_lib.sep_outbound_remap_seq import IDX_START, N_REGIONS
 
 _TEST = "sep_fabric_dma_endpoint_matrix_test"
@@ -1216,6 +1223,15 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
     def _chk_remap(self) -> None:
         """CHK-DMA-REMAP: the DMA legs through the AP and the STEE output remap."""
         seed = self.ep.p["seed"]
+        on = self.rd(cocotb.top.smn_outbound_rd_addr_data_i)
+        if on != 1:
+            msg = (
+                f"CTRL-MISSING DMA-REPLY-DATA: smn_outbound_rd_addr_data_i={on}, expected 1; "
+                "the read legs need the address-derived reply data"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-DMA-REPLY-DATA PASS: smn_outbound_rd_addr_data_i=1")
         legs = (
             ("out_ap", "ap", "w", self.ep.ap_out, 0x50, None),
             ("ap_r", "ap", "r", self.ep.ap_out, 0x53, "REMAP"),
@@ -1237,8 +1253,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             addr_ok = [b.addr for b in beats] == want_addr
             user_ok = all(b.user == want_user for b in beats)
             prot_ok = all(b.prot == want_prot for b in beats)
-            # A read leg: the two PR-OUT reply beats land in SRAM, which held
-            # the complement of the model words before the copy. The LSU read of
+            # A read leg: each PR-OUT reply beat carries the responder word of
+            # its address, and SRAM, which held the complement of the model
+            # words before the copy, holds exactly those lanes. The LSU read of
             # the staged words before the GO must show that complement.
             data_ok, data = True, "data=na"
             if d == "r":
@@ -1260,11 +1277,14 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                     else ((b.data >> 32) if want_addr[k] & 4 else b.data) & 0xFFFF_FFFF
                     for k, b in enumerate(rs[:2])
                 ]
+                want_lanes = [r_lane32(a) for a in want_addr]
                 got = [r["d0"], r["d1"]]
-                data_ok = len(rs) == 2 and got == lanes and got != staged
+                data_ok = len(rs) == 2 and lanes == want_lanes and got == want_lanes
+                data_ok = data_ok and got != staged
                 data = (
                     f"sram={[hex(x) for x in got]} "
                     f"reply_lanes={[hex(x) if x is not None else 'X' for x in lanes]} "
+                    f"expect_lanes={[hex(x) for x in want_lanes]} "
                     f"staged={[hex(x) for x in staged]}"
                 )
             ok = self._done_ok(r) and addr_ok and user_ok and prot_ok and data_ok
@@ -1991,6 +2011,10 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         return patched
 
+    async def _reply_data_on(self) -> None:
+        """The outbound responder returns the address-derived word on every R beat."""
+        cocotb.top.smn_outbound_rd_addr_data_i.value = 1
+
     async def run_scenario(self) -> None:
         self.sb.expected_line = _BANNER
         self.legs: list[Leg] = []
@@ -2045,6 +2069,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 rst_vec=_ICCM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
+                after_bring_up_hook=None if self.slverr else self._reply_data_on,
             )
         finally:
             # The window, the noise driver, the monitors and the taps close on

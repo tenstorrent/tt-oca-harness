@@ -1374,7 +1374,11 @@ Exceptions (a closed set):
   CHK-HOLD-DRAIN, CHK-OUT-DRAIN, CHK-XBAR-HELD, CHK-XBAR-POSTDRAIN,
   CHK-CHAIN-DRAIN, CHK-SAT-B-COUNT, CHK-SAT-R-COUNT,
   CHK-SYSIF-NO-OUTBOUND-PATH, CHK-ATTR-USER, CHK-NONVAC, CHK-TIMEOUT-PATHS);
-  both leaves run with the plusarg.
+  both leaves run with the plusarg. `sep_fabric_dma_endpoint_matrix_test`
+  drives `smn_outbound_rd_addr_data_i` to 1 from the CPU release to the end
+  of the leaf, except in its `_slverr` entry (the read legs of CHK-DMA-REMAP:
+  the reply lanes and the SRAM destination equal the `{~a, a}` lane of each
+  beat address; CTRL-DMA-REPLY-DATA reads the input back as 1).
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
   AXI interconnect (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`,
