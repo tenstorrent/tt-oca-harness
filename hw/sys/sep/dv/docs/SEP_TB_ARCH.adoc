@@ -136,7 +136,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN; one-clock pulses timed against a `meigwclr` write for CTRL-GWCLR-RACE and OBS-GWCLR-RACE).
 |CPU machine timer interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `timer_int` (the core pin that drives `mip.MTIP`) from the TB input `timer_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-TIMER-PIN).
 |CPU machine software interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `soft_int` (the core pin that drives `mip.MSIP`) from the TB input `soft_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-SOFT-PIN).
-|External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, the DRBG stall point of `sep_km_fault_inject_rand_test`, and the pool leg of `sep_fabric_dma_endpoint_matrix_test` (stream 2: a drawn number of word pairs below the pool depth).
+|External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, the DRBG stall point of `sep_km_fault_inject_rand_test`, the beat-pattern legs of `sep_km_drbg_sampler_rand_test` (stream 0 with `EXT_TRNG_SRC_SEL` bit 0 set: CHK-SMP-PACK, CHK-SMP-PRE-PARTIAL, CHK-SMP-TO-ASM, CHK-SMP-STRM-CTRL), and the pool leg of `sep_fabric_dma_endpoint_matrix_test` (stream 2: a drawn number of word pairs below the pool depth).
 |External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
 |CPU lockstep control |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `lockstep_ctrl_i` (`err_injection_en`, `disable_corruption_detection`) from the `tb_top` variable `lockstep_ctrl_i`, 0 from time 0, and observes `lockstep_status_o` in the variable of the same name. A leaf writes the variable through the `tb_top` handle. Owner: `sep_cpu_isa_pmp_csr_test`.
@@ -211,7 +211,8 @@ Observation probe groups:
   struct field of that name, so the RTL field order does not reach a test; the
   same table is in `env/sep_reset_taps.py` and the FCOV isolate sets. Owners of the KM reset and the two vectors:
   `sep_cpu_reset_retention_test`, `sep_sw_reset_isolation_matrix_test`,
-  `sep_ip_reset_override_matrix_test`.
+  `sep_ip_reset_override_matrix_test`. `sep_km_kpv_rand_test` reads the KM
+  reset (CTRL-KPV-ERASE-WARM-REACH).
 * Isolate-stage slave-side taps: `iso_slv_aw_hs_probe_o`,
   `iso_slv_ar_hs_probe_o`, `iso_slv_b_hs_probe_o`, `iso_slv_r_hs_probe_o`
   (one bit per isolate stage, valid and ready on the same clock),
@@ -433,7 +434,8 @@ Observation probe groups:
    bits read 0 in the build without Adams Bridge. Users:
    `sep_km_cpu_protect_rand_test`, `sep_km_command_protocol_rand_test`,
    `sep_km_key_transfer_rand_test`, `sep_km_handover_rand_test`,
-   `sep_km_fault_inject_rand_test`, `sep_km_kpv_rand_test` (CHK-WIPE-SCOPE).
+   `sep_km_fault_inject_rand_test`, `sep_km_kpv_rand_test` (CHK-WIPE-SCOPE),
+   `sep_km_sideload_share_walk_test` (CHK-REFUSE-KEEP, OBS-ABR-ZEROIZE-KM-VALID).
 ** KM-KPV (`km_kpv_ctrl_o`, `km_kpv_words_o`): the 64 KPV `CTRL` registers
    (`CTRL[s]` at `[4*s +: 4]`, register bit order) and the 1024 stored KPV
    words in stored order. The stored words have no reset. Users:
@@ -446,7 +448,9 @@ Observation probe groups:
    writes to `SCRAMBLER_KEY` and `SCRAMBLER_CTRL`, on every clock. Users:
    `sep_km_cpu_protect_rand_test`, `sep_km_boot_reset_rand_test`,
    `sep_km_fault_inject_rand_test`, `sep_km_sram_scrambler_key_rand_test`,
-   `sep_km_command_protocol_rand_test` (`OTP_READ_LOCK_COLD`, CHK-NOCHG-VAULT).
+   `sep_km_command_protocol_rand_test` (`OTP_READ_LOCK_COLD`, CHK-NOCHG-VAULT),
+   `sep_km_drbg_sampler_rand_test` (the interrupt aggregate `km_csr_irq_o`,
+   CHK-SMP-IRQ-GATE).
 ** KM-SRAM (`km_sram_peek_o`): the word of the 8192-word KM SRAM array at
    `km_sram_peek_addr_i`, in stored form `{parity, data}`. The address input
    is a select of the tap and drives nothing in the DUT; it is 0 by default.
@@ -470,9 +474,13 @@ Observation probe groups:
    CHK-DELIV-COUNT, CHK-REFUSE),
    `sep_km_handover_rand_test` (CHK-HO-SIDELOAD-BUS),
    `sep_km_fault_inject_rand_test` (CHK-KEYCRC, CHK-XFER-STOP),
-   `sep_km_sideload_share_walk_test` (CHK-XFER-SHORT-KEY),
+   `sep_km_sideload_share_walk_test` (CHK-XFER-SHORT-KEY, CHK-XFER-LONG-KEY,
+   CHK-REFUSE-KEEP),
    `sep_km_abr_mlkem_sideload_test` (CHK-KEM-KEY-OFFSETS),
-   `sep_km_crossbar_efuse_window_rand_test` (CHK-XBAR-SHARE-ZERO).
+   `sep_km_crossbar_efuse_window_rand_test` (CHK-XBAR-SHARE-ZERO),
+   `sep_sw_reset_isolation_matrix_test` (`km_key_aw_{valid,ready}_o` in leg C of
+   the entry `sep_sw_reset_isolation_matrix_test_km_poke`: an AW valid and not
+   ready at the isolate request, logged in INFO-KEY-BEAT-ATTEMPT).
 ** KM-OUTFIFO (`km_outfifo_depth_o[8:0]`): the fill level of the outbound
    FIFO of the Key Manager mailbox, on every clock. User:
    `sep_km_fault_inject_rand_test` (CHK-SHRED-FIRST).
