@@ -464,9 +464,9 @@ not grade that rejection.
 
 *BFM / Model*: ocah_axi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
 
-*Objective*: Proves the CPU fetch unit executes real code out of the boot ROM across the main RISC-V instruction formats.
+*Objective*: Proves the CPU fetch unit executes real code out of the boot ROM across the main RISC-V instruction formats, and that a repeated call of the same ROM code returns the same value each time.
 
-*Test Coverage*: Boot-ROM fetch across the main RV32 instruction formats.
+*Test Coverage*: Boot-ROM fetch across the main RV32 instruction formats, and the same seven calls in three iterations.
 
 *Test Procedure*:
 
@@ -474,6 +474,7 @@ not grade that rejection.
 . Initialise the fabric filter.
 . Call seven ROM functions through pointers at known offsets: immediate arithmetic, a multi-instruction chain, argument passthrough, an upper-immediate load, a jump, a no-operation sled, and a two-register add.
 . Compare each return value with its expected value.
+. Repeat steps 2 and 3 for a total of three iterations. Each check line carries the iteration number.
 
 *Checkers*:
 
@@ -481,14 +482,16 @@ not grade that rejection.
 |===
 |Checker |Contract
 |CHK-IFU-TYPES
-|All seven functions fetch and execute correctly, each returning its expected value across the immediate, upper-immediate, register and jump formats. The register-format call (`ROM_FUNC6(30, 12)`) and the first immediate-format call (`ROM_FUNC0`) both expect 42, so those two rows do not tell a fetch of one function from a fetch of the other.
+|All seven functions fetch and execute correctly in every iteration, each returning its expected value across the immediate, upper-immediate, register and jump formats. The register-format call (`ROM_FUNC6(30, 12)`) and the first immediate-format call (`ROM_FUNC0`) both expect 42, so those two rows do not tell a fetch of one function from a fetch of the other.
+|CHK-IFU-REPEAT
+|Each of the seven functions returns its expected value in each of the three iterations: the console holds one `CHK-IFU-TYPES PASS` line for each function in each iteration, with the same seven names in every iteration, and no `CHK-IFU-TYPES FAIL` line. A fetch that is right once and wrong on a repeat fails here. The core has no instruction cache, so each call fetches its body from ROM again.
 |CHK-ALL
-|The test passes only if all seven match; a partial result is a failure. The host also counts the seven per-function lines itself, so a firmware that stopped calling into the ROM partway cannot pass on the completion magic alone.
+|The test passes only if all 21 calls match; a partial result is a failure. The host also counts the 21 per-call lines itself, so a firmware that stopped calling into the ROM partway cannot pass on the completion magic alone.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: CHK-IFU-TYPES is the firmware console (`fw/tests/rom_sanity_test/rom_sanity_test.c`): one `CHK-IFU-TYPES PASS` or `CHK-IFU-TYPES FAIL` line per function, from a compare of the return value with its expected value, and a non-zero error count turns the completion magic to FAIL. CHK-ALL is the host-side `CHK-ALL` record (`cocotb/tests/cpu/sep_rom_sanity_test.py`), which counts seven `CHK-IFU-TYPES PASS` lines and requires the `PASS: 7/7` summary.
+*Evidence*: CHK-IFU-TYPES is the firmware console (`fw/tests/rom_sanity_test/rom_sanity_test.c`): one `CHK-IFU-TYPES PASS` or `CHK-IFU-TYPES FAIL` line per call, `<function name> k=<iteration> got=<value> want=<value>`, from a compare of the return value with its expected value, and a non-zero error count turns the completion magic to FAIL. CHK-IFU-REPEAT and CHK-ALL are host-side records (`cocotb/tests/cpu/sep_rom_sanity_test.py`): CHK-IFU-REPEAT counts 21 `CHK-IFU-TYPES PASS` lines (seven per iteration, `iterations=3 functions=7 pass_lines=21/21 fail_lines=0`) and requires the `PASS: 21/21` summary; CHK-ALL confirms the 21 lines in the console.
 
 '''''
 

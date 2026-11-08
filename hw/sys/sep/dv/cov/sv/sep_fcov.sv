@@ -1262,6 +1262,58 @@ module sep_fcov (
   wire         sram_readback = rd_ev && sram_valid_q && (ar_addr_q == sram_addr_q) &&
       (lsu_r_data_i == sram_data_q);
 
+  // Pass label sram_access_pass of the owner-graded points of
+  // sep_sram_access_cg: value {point, cell} = point * 256 + cell, 0 idle.
+  // Point 1 cp_sram_wstrb (cell = WSTRB), 2 cp_xmaster_pair (cell = writer * 4
+  // + reader; 0 System Interface, 1 CPU LSU, 2 DMA), 3 cp_pattern_class, 4
+  // cp_addr_line_class. The owner writes the value after the check that grades
+  // that cell passed, holds it two clocks and writes 0. A rise from 0 samples
+  // the cell one clk_i edge later when the last window opened in the run
+  // belongs to the owner of the point, also after that window closed; a value
+  // of another owner samples nothing. The cell is the stimulus value that the
+  // passing check graded on a DUT readback; the label drives nothing. A point 1
+  // cell samples only when an inbound W handshake inside the window of its
+  // owner carried that WSTRB since the last point 1 release (sa_strb_seen);
+  // the release and the next window open of the owner clear sa_strb_seen.
+  int unsigned sram_access_pass = 0;
+  logic        sa_pass_q = 1'b0;
+  int unsigned sa_owner_q = FcovOwnNone;
+  logic [2:0]  sa_pt_q = '0;
+  logic [7:0]  sa_cell_q = '0;
+  logic        sa_own_strb_q = 1'b0;
+  logic [15:0] sa_strb_seen = '0;
+  wire         sa_own_strb = (graded_owner == FcovOwnSepSramAxiShapeMatrixTest);
+  wire         sa_rise = (sram_access_pass != 0) && !sa_pass_q;
+  wire         sa_strb_rel = sa_rise && ((sram_access_pass >> 8) == 1);
+  function automatic int unsigned sa_point_owner(input int unsigned pt);
+    case (pt)
+      1: return FcovOwnSepSramAxiShapeMatrixTest;
+      2: return FcovOwnSepSramInboundBurstAttrTest;
+      3, 4: return FcovOwnSepSramDatapathBreadthTest;
+      default: return FcovOwnNone;
+    endcase
+  endfunction
+  always @(posedge clk_i) begin
+    sa_pass_q     <= (sram_access_pass != 0);
+    sa_own_strb_q <= sa_own_strb;
+    if (graded_owner != FcovOwnNone) sa_owner_q <= graded_owner;
+    if ((sa_own_strb && !sa_own_strb_q) || sa_strb_rel) begin
+      sa_strb_seen <= '0;
+    end else if (!in_reset && sa_own_strb && (in_req_i.w_valid === 1'b1) &&
+                 (in_resp_i.w_ready === 1'b1) && (in_req_i.w.strb[7:4] == 4'h0)) begin
+      sa_strb_seen[in_req_i.w.strb[3:0]] <= 1'b1;
+    end
+    if (sa_rise && (sa_owner_q != FcovOwnNone) &&
+        (sa_point_owner(sram_access_pass >> 8) == sa_owner_q) &&
+        (!sa_strb_rel || ((sram_access_pass[7:0] < 16) &&
+                          sa_strb_seen[sram_access_pass[3:0]]))) begin
+      sa_pt_q   <= 3'(sram_access_pass >> 8);
+      sa_cell_q <= 8'(sram_access_pass);
+    end else begin
+      sa_pt_q <= 3'd0;
+    end
+  end
+
   // --- Boot ROM ----------------------------------------------------------
   wire rom_ifu = !in_reset && (cpu_trace_valid_i === 1'b1) &&
       in_win(cpu_trace_addr_i, BootRomBase, BootRomEnd);
@@ -3892,6 +3944,39 @@ module sep_fcov (
     option.name = "sep_sram_access_cg";
     cp_write: coverpoint sram_write {bins write = {1'b1};}
     cp_match: coverpoint sram_readback {bins write_then_read = {1'b1};}
+    // Owner-gated through sram_access_pass. WSTRB of an 8-byte inbound write
+    // beat (lanes 4 to 7 unstrobed) after CHK-SRAM-STRB passed for it (owner
+    // sep_sram_axi_shape_matrix_test).
+    cp_sram_wstrb: coverpoint sa_cell_q iff (sa_pt_q == 3'd1) {
+      bins strb[] = {[8'h00 : 8'h0F]};
+    }
+    // Ordered {writer, reader} pair of one SRAM word after CHK-SRAM-XMASTER
+    // passed for it (owner sep_sram_inbound_burst_attr_test).
+    cp_xmaster_pair: coverpoint sa_cell_q iff (sa_pt_q == 3'd2) {
+      bins si_to_lsu = {8'h01};
+      bins si_to_dma = {8'h02};
+      bins lsu_to_si = {8'h04};
+      bins lsu_to_dma = {8'h06};
+      bins dma_to_si = {8'h08};
+      bins dma_to_lsu = {8'h09};
+    }
+    // Data pattern class after CHK-PATTERN passed for it (owner
+    // sep_sram_datapath_breadth_test).
+    cp_pattern_class: coverpoint sa_cell_q iff (sa_pt_q == 3'd3) {
+      bins pat_aa = {8'd0};
+      bins pat_55 = {8'd1};
+      bins walk_one = {8'd2};
+      bins walk_zero = {8'd3};
+      bins fixed = {8'd4};
+      bins seed_random = {8'd5};
+    }
+    // Address-line class (base word, offset 2^k for k = 3 to 17, top word)
+    // after CHK-ADDR-LINES passed for it (owner sep_sram_datapath_breadth_test).
+    cp_addr_line_class: coverpoint sa_cell_q iff (sa_pt_q == 3'd4) {
+      bins base = {8'd0};
+      bins line[] = {[8'd3 : 8'd17]};
+      bins top = {8'd18};
+    }
   endgroup
 
   covergroup sep_boot_rom_cg @(posedge clk_i);
@@ -21007,6 +21092,8 @@ module sep_fcov (
     logic ci_v;  // 0 ICCM fetch by the IFU, 1 DCCM access by the LSU
     logic rn;
     logic rn_v;  // cp_rom_noecc: 0 one flipped bit, 1 two
+    logic ro;
+    logic ro_v;  // cp_rom_op_order: 0 read before store, 1 store before read
   } mm_ap_t;
 
   covergroup sep_mem_aperture_cg with function sample (mm_ap_t s);
@@ -21083,6 +21170,11 @@ module sep_fcov (
     // bits: OKAY, the data the macro returns, and no trap.
     cp_rom_noecc: coverpoint s.rn iff (s.rn_v) {
       bins flip1_okay_stored = {1'b0}; bins flip2_okay_stored = {1'b1};
+    }
+    // Two adjacent CPU LSU address handshakes at one 64-bit ROM word: a load
+    // then a store, or a store then a load.
+    cp_rom_op_order: coverpoint s.ro iff (s.ro_v) {
+      bins read_before_store = {1'b0}; bins store_before_read = {1'b1};
     }
   endgroup
 
@@ -21168,8 +21260,8 @@ module sep_fcov (
   int unsigned rom_noecc_pass = 0;
   // Pass label rom_ap_pass of the other points of the boot ROM leaf:
   // cp_mem_x_class (ROM cells), cp_access_size, cp_macro_if (ROM cells),
-  // cp_otf_reset_x_path[rom_read], cp_rom_write_master[cpu_store_readback_only]
-  // and cp_rom_write_response. Inside the window of that leaf each legal
+  // cp_otf_reset_x_path[rom_read], cp_rom_write_master[cpu_store_readback_only],
+  // cp_rom_write_response and cp_rom_op_order. Inside the window of that leaf each legal
   // outcome of these points is counted as pending and does not sample. The
   // leaf writes 1 after the checks of a graded leg pass and 0 after it; the
   // rise samples every pending count, also after the window closed. The first
@@ -21287,6 +21379,10 @@ module sep_fcov (
       4'd7: begin
         e.dt   = v[2:0];
         e.dt_v = 1'b1;
+      end
+      4'd9: begin
+        e.ro   = v[0];
+        e.ro_v = 1'b1;
       end
       default: begin
         e.ci   = v[0];
@@ -21915,6 +22011,28 @@ module sep_fcov (
     if (mm_own_rom && b_any && mm_rom(aw_addr_q) && (wr_lanes inside {4'd1, 4'd2})) begin
       mm_ap_rom(4'd1, {4'd0, (wr_lanes == 4'd2)});
       if (lsu_b_resp_i != 2'b01) mm_abs_rom(2'd1, 2'd0);
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // cp_rom_op_order: the CPU LSU address handshake (AR or AW) that follows a
+  // ROM-word handshake of the other kind with no LSU address handshake
+  // between them, at the same 64-bit ROM word. An AR and an AW in one clk_i
+  // edge order nothing and end the pair.
+  // ---------------------------------------------------------------------
+  logic        mm_oo_v = 1'b0;
+  logic        mm_oo_wr = 1'b0;  // the last handshake was an AW
+  logic [28:0] mm_oo_word = '0;
+  always @(posedge clk_i) begin
+    if (in_reset || !mm_own_rom || (ar_hs && aw_hs)) begin
+      mm_oo_v <= 1'b0;
+    end else if (ar_hs || aw_hs) begin
+      if (mm_oo_v && (mm_oo_wr == ar_hs) &&
+          ((aw_hs ? lsu_aw_addr_i[31:3] : lsu_ar_addr_i[31:3]) == mm_oo_word))
+        mm_ap_rom(4'd9, {4'd0, ar_hs});
+      mm_oo_v    <= mm_rom(aw_hs ? lsu_aw_addr_i : lsu_ar_addr_i);
+      mm_oo_wr   <= aw_hs;
+      mm_oo_word <= aw_hs ? lsu_aw_addr_i[31:3] : lsu_ar_addr_i[31:3];
     end
   end
 
@@ -44791,7 +44909,8 @@ module sep_fcov (
   // states (docs/SEP_FCOV.adoc, open-value stimulus legs).
   // ---------------------------------------------------------------------
   // Bin k is the leg of code k (OPEN_VALUE_LEGS index k - 1 in
-  // cocotb/env/sep_fcov_gate.py). The owner of the leg writes the code to
+  // cocotb/env/sep_fcov_gate.py). Codes 19 and 20 have no bin: their strobe
+  // values are bins of sep_sram_access_cg.cp_sram_wstrb. The owner of the leg writes the code to
   // open_value_leg_pass after the CTRL reach line of that leg passed, holds it
   // two clocks and writes 0. A rise from 0 samples the code only when the last
   // window opened in the run belongs to the owner of that leg; a code of
@@ -44858,8 +44977,6 @@ module sep_fcov (
       bins gwclr_same_cycle = {5'd16};
       bins nmi_during_handler = {5'd17};
       bins priord_flip_pending = {5'd18};
-      bins sram_wstrb_sparse = {5'd19};
-      bins sram_wstrb_zero = {5'd20};
       bins sram_macro_bit_flip = {5'd21};
       bins spi_cmdinval_spien1 = {5'd22};
       bins wdt_pause_in_sleep_set = {5'd23};
