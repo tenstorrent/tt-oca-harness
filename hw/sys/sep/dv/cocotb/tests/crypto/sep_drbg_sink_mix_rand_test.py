@@ -78,14 +78,17 @@ with ``reason=timeout:tail_ack``.
                   ``km_entropy_tuser_o`` (Key Manager handshake). Each tap shows at
                   least one handshake, and no sampled tag reads X or Z
                   (``hw/sys/sep/doc/trng.adoc``, ``tuser`` per-word FIPS provenance and
-                  the provisional seed FIPS constant 1). Only tag 1 is reachable here.
+                  the provisional seed FIPS constant 1). Only tag 1 occurs here, so
+                  tag 0 on these streams is not graded.
   CHK-KM-SEL-FIRST after the graded external run, ``EXT_TRNG_SRC_SEL`` returns to
                   0 while the internal endpoint of stream 0 holds a word W (sampled on
                   the clock before the select write). On the first sampled clock after
                   the readback shows bit 0 clear, ``km_entropy_tvalid_o`` is 1 and
                   ``km_entropy_tdata_o`` equals W: the unselected endpoint retains its
-                  queued word and the selection is combinational with no flush
-                  (``trng.adoc``, Source Selection). Control ``CTRL-KM-SEL-FIRST``: from
+                  queued word and the return to it flushes no word (``trng.adoc``,
+                  Source Selection). The sample is at the first clock after the
+                  readback, so the check grades retention, not the clock of the
+                  switch. Control ``CTRL-KM-SEL-FIRST``: from
                   the write to that clock no Key Manager handshake occurs and
                   ``drbg_int_tvalid_o[0]`` stays 1, and the external beat held at the
                   write differs from W, so a mux that stays on the external port fails

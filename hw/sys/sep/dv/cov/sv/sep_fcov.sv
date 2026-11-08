@@ -23220,8 +23220,9 @@ module sep_fcov (
       return (graded_owner == FcovOwnSepKmacUnsupportedCfgInjectTest) ||
           (graded_owner == FcovOwnSepKmacEntropyModeRandTest);
       12: return graded_owner == FcovOwnSepOtbnCmdStatusRandTest;
-      // Source 7 (cs_entropy_req) of this owner: CHK-CSRNG-ENTROPY-REQ grades the
-      // raise at the flag0-False software instantiate.
+      // Source 7 (cs_entropy_req) of this owner: any hardware rise of the source
+      // inside an open owner window, including the rises at the EDN 0x901
+      // instantiates of the EDN software leg and the instantiate-seed leg.
       6, 7, 10: return graded_owner == FcovOwnSepDrbgCmdSequenceRandTest;
       9, 11: return graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest;
       default: return 1'b0;
