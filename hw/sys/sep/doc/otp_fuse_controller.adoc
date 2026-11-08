@@ -417,42 +417,50 @@ input to the Key Manager. No read protection is required.
 
 |spare7 |39 |256 |true |true |Spare field 7 for future use.
 
-|spare8 |40 |160 |true |true |Spare field 8 for future use. Reduced from 256 to
-160 bits to fund the REQUIRED_SIGNERS and REQUIRED_ALGS widening and the new
+|spare8 |40 |128 |true |true |Spare field 8 for future use. Reduced from 256 to
+128 bits to fund the REQUIRED_SIGNERS and REQUIRED_ALGS widening and the new
 SIGNATURE_REVOKE field, keeping the map at exactly 8192 bits.
 
-|SIGNATURE_REVOKE |41 |32 (12 used) |set-only |true |Signature-algorithm revocation
-vector. The BL1_VERSION and BL2_VERSION counters retire a manifest by version, while
-this field retires an
-algorithm family across every manifest and every entity, which is what makes a
-graceful migration possible in a hybrid classical/PQC world -- if ML-DSA is broken,
-or if practical quantum computers force the classical families to be sunset, the
-device stops trusting that family without re-provisioning keys and without
-invalidating manifests already in the field. The bit map mirrors the manifest's
-signature_type_classic and signature_type_pqc enumerations: bit 0 RSA, bit 1 ECDSA,
-bit 2 EdDSA, bit 3 adopter implementation-defined classical (signature_type_classic
-`0xF0-0xFF`), bit 6 ML-DSA, bit 7 FN-DSA (FALCON), bit 8 SLH-DSA, bit 9 adopter
-implementation-defined PQC (signature_type_pqc `0xF0-0xFF`); bits 4, 5, and [11:10]
-are reserved for further families in each half, and bits [31:12] are reserved. The
-adopter bits exist because OCAH is open-sourced: an adopter that selects its own
-scheme through the implementation-defined range needs a way to retire it. A set bit
-means SEP ROM shall not accept a signature of that family from any entity. Revoked
-families are *ignored* rather than treated as failures, so a hybrid manifest whose
-PQC signature is revoked still authenticates on its classical signature; rejecting
-instead would brick every hybrid manifest in the field at the moment of revocation.
+|SIGNATURE_REVOKE |41 |64 (40 used) |set-only |true |Signature-algorithm class
+revocation. The BL1_VERSION and BL2_VERSION counters retire a manifest by version,
+while this field retires a signature-algorithm class for every manifest and every
+entity, so that a broken or deprecated algorithm can be withdrawn without
+re-provisioning keys. The layout is identical to the signature_class_revoke field
+of the OCA Payload Manifest, through which a manifest requests an update of this
+fuse, so the manifest value is applied by OR without translation. Bits [7:0] are
+the classical classes: bit 0 RSA-3072, bit 1 RSA-4096, bit 2 ECDSA P-256, bit 3
+ECDSA P-384, bit 4 ECDSA P-521, bit 5 Ed25519, bit 6 Ed448, bit 7 adopter
+implementation-defined classical (signature_type_classic `0xF0-0xFF`). Bits [15:8]
+are the classical group code: `0x00`, or exactly `0xCA` meaning every classical
+class is revoked. Bits [23:16] reserved. Bits [31:24] are the post-quantum classes:
+bit 24 ML-DSA-44, bit 25 ML-DSA-65, bit 26 ML-DSA-87, bit 27 reserved for FN-DSA,
+bit 28 SLH-DSA-128, bit 29 SLH-DSA-192, bit 30 SLH-DSA-256, bit 31 adopter
+implementation-defined post-quantum (signature_type_pqc `0xF0-0xFF`). Bits [39:32]
+are the post-quantum group code: `0x00`, or exactly `0xAC` meaning every
+post-quantum class is revoked. Bits [63:40] reserved. The adopter bits exist
+because OCAH is open-sourced: an adopter that selects its own scheme through the
+implementation-defined range needs a way to retire it. A set class bit means that
+a signature of that class fails verification wherever the policy in force
+requires it; the requirement itself stands, so the manifest must carry a
+signature of another class of the same group. A group code is a constant, not a
+bit mask: only the exact value has meaning, a group-code byte holding any other
+non-zero value is invalid, and a set group code waives that group's requirement
+bits in REQUIRED_ALGS for every entity, because no signature could satisfy them.
 The fuse is the only input to verification -- ROM never compares it against the
-manifest's copy of this value, so a manifest cannot re-enable a revoked family. Only
-an authenticated BL1 may burn it, subject to the pre-burn survivability check, and
-the burn takes effect from the next boot. The accompanying write-lock is applied in
-the LOCKS shadow register only, never by burning the LOCKS fuse bit, so a further
-family can still be revoked in a later boot. Lock slot 41 in LOCKS_SPARE[19:18]. See
-Signature Algorithm Revocation in the Life Cycle Controller section.
+manifest's copy of this value, so a manifest cannot re-enable a revoked class.
+Only an authenticated BL1 may program it, after the survivability check; the
+programmed bits apply to the rest of the current boot through the shadow
+register, which BL1 writes, and to every later boot through fuse sensing. The
+accompanying write-lock is applied in the LOCKS shadow register only, which is
+set-only and clears at cold reset, and never by burning the LOCKS fuse bit, so a
+further class can be revoked in a later boot. Lock slot 41 in LOCKS_SPARE[19:18].
+See Signature Algorithm Revocation in the Life Cycle Controller section.
 |=======================================================================
 
 The fuse map is exactly 8192 bits with exclusive end address `0x400` (1024 bytes, 256 × 32-bit words).
 This budget is fully allocated, so every field added or widened must be funded by
-reclaiming bits from the spare pool; the co-signer alignment takes its 96 bits
-(32 each for the REQUIRED_SIGNERS and REQUIRED_ALGS widening, 32 for
+reclaiming bits from the spare pool; the co-signer alignment takes its 128 bits
+(32 each for the REQUIRED_SIGNERS and REQUIRED_ALGS widening, 64 for
 SIGNATURE_REVOKE) out of spare8.
 
 The JTAG_ID field has been removed from the fuse map and will be implemented as a top-level port.
