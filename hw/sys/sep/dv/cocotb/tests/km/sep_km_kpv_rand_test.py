@@ -93,13 +93,12 @@ Checkers:
   CHK-KPV-RESET    CTRL of the 12 drawn slots reads 0 after the power-up cold
                    reset, after a warm reset (SW_RESET_N bit 0) that follows
                    locked, sealed and retired slots, and after a cold reset
-                   (rst_ni) that follows CTRL 0x1 on every drawn slot. CTRL of
-                   the 8 slots of the erase-warm leg reads 0 after a warm reset
-                   that lands while the erase of at least one of them runs.
+                   (rst_ni) that follows CTRL 0x1 on every drawn slot.
   CTRL-KPV-ERASE-WARM-REACH  at the fall of the KM warm reset
                    (``km_gated_rst_n_probe_o``) of the erase-warm leg, the
                    KM-KPV CTRL tap shows at least one of the leg's 8 slots with
-                   the erase bit set.
+                   the erase bit set, so ``OBS-KPV-ERASE-WARM`` logs a reset
+                   that lands during an erase.
   CHK-KPV-NOX      VCS only: no compared KPV read and no KM-KPV snapshot holds
                    an X or Z bit. On Verilator (two-state) the leaf logs
                    ``INFO-BLOCKED CHK-KPV-NOX``.
@@ -140,7 +139,9 @@ erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
 ``INFO-KPV-RACE``, and ``OBS-KPV-WIPE-ERR-O`` (PIC vector bit 30 at the wipe).
 ``OBS-KPV-ERASE-WARM``: a warm reset during a latched erase is not stated; the
 line logs the slots with the erase bit set and the changed stored words at the
-reset fall, and after release and boot the changed stored words of each slot.
+reset fall, and after release and boot the CTRL and the changed stored words of
+each slot. CTRL after the boot is not graded: the erase bit clears when the
+erase ends, so a CTRL of 0 does not show that the reset acted on it.
 
 Log only, not stated: ``OBS-KPV-ACCESS``, a word read and write issued right
 after an erase write, each with the erase bit of a CTRL read right after that
@@ -1330,14 +1331,6 @@ class sep_km_kpv_rand_test(sep_base_test):
         after_erase = self._erase_slots_set(slots)
         await RisingEdge(top.clk_i)
         ctrl = [self._ctrl(r[0].value) for r in res]
-        self.chk.ok(
-            "KPV-RESET",
-            all(c == 0 for c in ctrl),
-            kind="warm_erase",
-            slots=len(slots),
-            erase_set_at_fall=f"0x{erase_set:02x}",
-            ctrl=_h(max(ctrl)),
-        )
         self.chk.obs(
             "KPV-ERASE-WARM",
             q=q,
