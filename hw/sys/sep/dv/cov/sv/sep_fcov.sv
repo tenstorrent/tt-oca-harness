@@ -28936,14 +28936,18 @@ module sep_fcov (
     logic [2:0] ra;
     logic ra_v;  // RECOV_ALERT_STS set request: 0-3 CTRL fields, 4 flag0, 5 bit 13, 6 bit 15
     logic [1:0] cs;
-    logic cs_v;  // CMD_STS at the software ack: 1 INVALID_ACMD, 2 RESEED_CNT_EXCEEDED (code 4), 3 INVALID_CMD_SEQ
+    // CMD_STS at the software ack: 1 INVALID_ACMD, 2 RESEED_CNT_EXCEEDED (code 4),
+    // 3 INVALID_CMD_SEQ.
+    logic cs_v;
     logic [1:0] rs;
-    logic rs_v;  // 0 Generate refused at the limit, 1 accepted after a Reseed, 2 refused after an Update
+    // 0 Generate refused at the limit, 1 accepted after a Reseed, 2 refused after an Update.
+    logic rs_v;
     logic gg_v;  // GENBITS read 0 with GENBITS_VLD 1 and SW_APP_ENABLE not True
     logic kg_v;  // four GENBITS reads equal the CTR_DRBG known answer of the seed
     logic ia_v;  // EDN instantiate acknowledged only after a full ESRC seed handshake
     logic [1:0] fp;
-    logic fp_v;  // {instance flag0 True, GENBITS_FIPS} at the first GENBITS_VLD read with GENBITS_VLD 1
+    // {instance flag0 True, GENBITS_FIPS} at the first GENBITS_VLD read with GENBITS_VLD 1.
+    logic fp_v;
     logic [5:0] cm;
     logic cm_v;  // {CTRL field 0-3, invalid MuBi4 value} at the field alert set request
   } cz_ccmd_t;
@@ -29022,7 +29026,9 @@ module sep_fcov (
     logic es_v;  // CMD_STS at the software ack: 0 SUCCESS, 1 INVALID_ACMD
     logic ae_v;  // RECOV_ALERT_STS.CSRNG_ACK_ERR set request
     logic [1:0] hc;
-    logic hc_v;  // hardware command while AUTO_MODE 1: 0 generate, 1 reseed after N = 1 generates, 2 reseed after N = 2 to 4, 3 after N = 64 to 128
+    // Hardware command while AUTO_MODE 1: 0 generate, 1 reseed after N = 1 generates,
+    // 2 reseed after N = 2 to 4, 3 reseed after N = 64 to 128.
+    logic hc_v;
     logic [5:0] cm;
     logic cm_v;  // {CTRL field 0-3, invalid MuBi4 value} at the field alert set request
   } cz_edn_t;
@@ -31932,7 +31938,8 @@ module sep_fcov (
   logic cz_rl_upd = 1'b0;       // an Update acknowledged with CMD_STS 0 after that refusal
   logic cz_ed_wr = 1'b0;        // an EDN register write since the TRNG reset
   logic cz_ed_ack_q = 1'b0;
-  logic cz_fp_arm = 1'b0;       // a software Instantiate with a legal flag0, no GENBITS_VLD 1 read yet
+  // A software Instantiate with a legal flag0, and no GENBITS_VLD 1 read yet.
+  logic cz_fp_arm = 1'b0;
   logic cz_fp_f0t = 1'b0;       // flag0 of that Instantiate is True
   // Every 4-bit CTRL field of v other than field f reads MuBi4False.
   function automatic logic cz_mubi_others_false(input logic [15:0] v, input int f);
@@ -32053,7 +32060,8 @@ module sep_fcov (
         if ((cz_cs_acmd == 4'h2) && cz_rl_ref && (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd0)) begin
           cz_rl_rsd <= 1'b1;
         end
-        if ((cz_cs_acmd == 4'h4) && cz_rl_ref && (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd0)) begin
+        if ((cz_cs_acmd == 4'h4) && cz_rl_ref &&
+            (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd0)) begin
           cz_rl_upd <= 1'b1;
         end else if (cz_cs_acmd inside {4'h1, 4'h2}) begin
           cz_rl_upd <= 1'b0;
