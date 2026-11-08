@@ -1030,6 +1030,7 @@ count values, not behaviour.
 |SPI and DMA Phase 3 tests |See <<sep-fcov-p2-spi-dma>>, Random factors and their bins |The coverpoints of that area whose status ends in `seed-dependent`
 |`sep_boot_release_terms_test` |Second arrival epoch of `ext_boot_seq_done_i` |`sep_reset_source_cg.cp_release_order[release_after_sense_rise]`, seed-dependent: the bin fills only when the H = no epoch ends with the sense-done rise as its last term (named seed: 2; seed 5 draws no such epoch). The held-window bin of `cp_release_order` fills from the H = yes epoch of every leaf
 |`sep_sw_reset_isolation_matrix_test` |Partition of leg A into step subsets |`cp_independence_pair`, seed-dependent
+|`sep_sw_reset_isolation_matrix_test` (entry `_km_poke`) |Leg C: order of the destinations, key-share words, beat index and sync word of each attempt |None: no bin records leg C
 |`sep_cold_reset_phase_test` |`clk_i` third of the graded pass |`cp_rst_release_sync`, `cp_aon_release_sync`, seed-dependent
 |`sep_sram_axi_shape_matrix_test` |Offset of the reset in flight |`cp_otf_reset_x_path` (the SRAM offset thirds), seed-dependent
 |`sep_efuse_field_layout_rand_test`, `sep_efuse_lock_slot_matrix_rand_test` |Class and value of each narrow field; leaf kind and lock layout |`sep_efuse_field_value_cg`, `sep_efuse_lock_policy_cg`, seed-dependent
@@ -1047,6 +1048,8 @@ count values, not behaviour.
 |`sep_km_fault_inject_rand_test` |Single-source points, multi-source winners, parity points, key CRC word class |`cp_csr_isr_winner`, `cp_if_parity`, `cp_fr_unrec_code`, `cp_fr_isr_disposition`, `cp_transfer_integrity`, seed-dependent
 |`sep_km_cpu_protect_rand_test` |Enable of the C5 and C6 boots |`sep_km_exec_protection_cg.cp_ex_mode_x_target`, seed-dependent
 |`sep_km_drbg_sampler_rand_test` |Whether the leaf runs the good-side saturation loop |`sep_km_drbg_sampler_cg.cp_smp_count_good`, seed-dependent
+|`sep_km_drbg_sampler_rand_test` |Timeouts of the interrupt-gate and assembly-timeout legs, TSTRB order and TDATA of the packing patterns, partial-prefetch patterns and waits, drop gap, order of the pulse delays (a second generator, `draw_ext_plan`) |None: every TSTRB value 0x0 to 0xF of `cp_smp_strb`, the four `cp_smp_tvalid_arrival` bins and `cp_df_entry_state[from_byte_assembly]` fill on every seed
+|`sep_km_kpv_rand_test` |First slot and prefill words of the erase-warm leg |None: no bin records the leg
 |`sep_km_otp_interface_rand_test` |Lifecycle state of the image |`sep_km_otp_readout_cg.cp_otp_read_through`, seed-dependent
 |`sep_km_otp_interface_rand_test` |Class of the programmed fuse field outside the KM interface |`sep_km_otp_readout_cg.cp_otp_notkm_class`, seed-dependent
 |===
@@ -6503,7 +6506,7 @@ The group names and the owning tests are the contract. The owning tests are the 
 * A hit of a bin shows that the scenario happened. The test checker shows that the DUT behaved correctly. The two are separate.
 * A bin that no owning test drives, that the design cannot reach, or whose value the specification does not state, has no bin in a point. It is listed in <<sep-fcov-km-unreachable>> with its reason.
 * The SEP host clock and the Key Manager clock are one net, so every point has one clock.
-* The class of a point is `executable`, `executable in part` or `parked` (<<sep-fcov-parked>>). A bin whose stimulus needs the PROPOSED drive `HK-STRM-PAT` is blocked: the point reads `executable in part. Blocked: <bins> need <item>`, or `parked: <item>` when it has no executable bin. The added hooks (the error injects) and the preloads (`HK-IMG-PARAM`, `HOST-UNREC`, `HOST-BOOTWIPE`) block no bin. <<sep-vplan-km-proposed>> in the VPLAN lists the items. A parked point and a blocked bin are not in an executable total.
+* The class of a point is `executable`, `executable in part` or `parked` (<<sep-fcov-parked>>). A bin whose stimulus needs a PROPOSED drive is blocked: the point reads `executable in part. Blocked: <bins> need <item>`, or `parked: <item>` when it has no executable bin. The added hooks (the error injects) and the preloads (`HK-IMG-PARAM`, `HOST-UNREC`, `HOST-BOOTWIPE`) block no bin. <<sep-vplan-km-proposed>> in the VPLAN lists the items. A parked point and a blocked bin are not in an executable total.
 * A sampled net that is not an approved item is an added tap: a read-only reference that the owning test adds to the SEP_TB_ARCH observation-probe list. It drives nothing and blocks no bin. <<sep-fcov-km-signals>> lists the class of every sampled net.
 * [[sep-fcov-km-checker-gate]]A Phase 3 owner fills a point only through a check that its contract lists in its `*Checker set*` (`hw/sys/sep/dv/docs/test_contracts/key_manager.adoc`). A bin that only a non-claimed check, or only an owner with an empty checker set, fills is blocked: the class cell reads `executable in part. Blocked: <bins> need <check or owner>`, or `parked: <reason>` when the point has no other bin. The sampler declares no blocked bin. An owner whose checks of a shared point are all non-claimed opens no gate for that point, and the class cell names it.
 * A point whose class ends in `seed-dependent` records cells that its owner draws from the seed of the leaf, so one regression can leave a cell empty. The point is graded on a merge of regressions, as <<sep-fcov-rand>> states for the `_rand_cg` groups, and no single regression is claimed to fill it. The bins text of the point names the cells that run on every seed. A point without the mark is filled by cells that its owners run on every seed.
@@ -6602,8 +6605,8 @@ The image report words of `sep_km_handover_rand_test` do not carry 0x00 in bits 
 |`sep_km_otp_readout_cg` |VCS |executable
 |`sep_km_integrity_fault_cg` |VCS |executable
 |`sep_km_exec_protection_cg` |VCS |executable in part; parked: `cp_ex_handover_entry` (<<sep-fcov-km-checker-gate>>)
-|`sep_km_drbg_sampler_cg` |VCS |executable in part; stimulus needs the PROPOSED drive `HK-STRM-PAT`: `cp_smp_tvalid_arrival`, `cp_smp_strb`
-|`sep_km_drbg_fault_cg` |VCS |executable in part; stimulus needs the PROPOSED drive `HK-STRM-PAT`: `cp_df_entry_state`
+|`sep_km_drbg_sampler_cg` |VCS |executable
+|`sep_km_drbg_fault_cg` |VCS |executable
 |`sep_km_fault_report_cg` |VCS |executable
 |`sep_km_reset_domain_cg` |VCS |executable
 |`sep_km_sideload_delivery_cg` |VCS |executable in part; parked: `cp_sd_write_order`; blocked: the `below` cells of `cp_km_size_vs_width` (<<sep-fcov-km-checker-gate>>)
@@ -6896,7 +6899,7 @@ The owner has an empty checker set (<<sep-fcov-km-checker-gate>>).
 [[sep-fcov-km-drbg-sampler]]
 ===== `sep_km_drbg_sampler_cg`
 
-*Tool*: VCS. *Class*: executable in part (<<sep-fcov-parked>>). Bins whose stimulus needs the PROPOSED drive `HK-STRM-PAT`: the delayed-arrival bins of `cp_smp_tvalid_arrival` and the `TSTRB` values other than 0xF of `cp_smp_strb`.
+*Tool*: VCS. *Class*: executable. The beat patterns of `cp_smp_tvalid_arrival` and `cp_smp_strb` come from the External TRNG streams hook on stream 0 (`EXT_TRNG_SRC_SEL` bit 0 set), a top-port drive that `docs/SEP_TB_ARCH.adoc` lists.
 
 *Specification*: `hw/ip/key_manager/doc/architecture.adoc`, "DRBG Sampler", "Reads, prefetch and register access", "Errors and reset"; `hw/ip/key_manager/regs/gen/adoc/km_drbg_sampler.adoc`, "DRBG Sampler", "CFG", "STATUS", "PREFETCH_DATA".
 
@@ -6904,8 +6907,8 @@ The owner has an empty checker set (<<sep-fcov-km-checker-gate>>).
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
 |`cp_smp_read_service` |A prefetched word returns at once. With no prefetched word the sampler raises TREADY and waits. 2 bins. The timing of the response of a waiting read is graded by `sep_km_drbg_sampler_timeout_reset_test` (the exact cycle count), is logged by the owner and is not a bin. |`km_drbg_sampler`, `km_entropy_stream`, `km_cpu_axi` |`sep_km_drbg_sampler_rand_test` |executable
-|`cp_smp_tvalid_arrival` |TVALID already high at the read start. TVALID delayed by 1, 2, or 3 or more cycles. 4 bins. |`km_entropy_stream`, `km_drbg_sampler` |`sep_km_drbg_sampler_rand_test` |executable in part. Blocked: the delayed-arrival bins need the PROPOSED drive `HK-STRM-PAT`
-|`cp_smp_strb` |TSTRB of a beat: each non-zero value 0x1 to 0xF. 15 bins. `ignore_bins`: 0x0 (not stated). |`km_entropy_stream`, `km_drbg_sampler` |`sep_km_drbg_sampler_rand_test` |executable in part. Blocked: every TSTRB value other than 0xF needs the PROPOSED drive `HK-STRM-PAT` (the 0x1 bin fills from the partial beat of CHK-SMP-TO-ASM, which needs it)
+|`cp_smp_tvalid_arrival` |For a DATA read that enters ST_REQUEST: TVALID already high at the read start (`tvalid_high_at_read_start`), or TVALID first high 1, 2, or 3 or more clocks after it while the sampler stays in ST_REQUEST (`tvalid_delayed_1`, `tvalid_delayed_2`, `tvalid_delayed_3_or_more`). 4 bins. The delayed bins fill from the one-clock pulses of CHK-SMP-STRM-CTRL (queued 0, 1, 2 and 2 to 6 clocks after the TREADY rise of a waiting read, on every seed); the owning check is CHK-SMP-STRM-CTRL. |`km_entropy_stream`, `km_drbg_sampler` |`sep_km_drbg_sampler_rand_test` |executable
+|`cp_smp_strb` |TSTRB of a beat that the active read path takes (ST_REQUEST or ST_BYTE_ASSEMBLY): 0x0 (`strb_0`), each value 0x1 to 0xE (`strb_partial`), and 0xF (`strb_f`). 16 bins. A TSTRB 0x0 beat completes its handshake and packs no byte (`hw/ip/key_manager/doc/architecture.adoc`, "Reads, prefetch and register access": `TSTRB` selects the bytes to pack). The packing patterns of CHK-SMP-PACK carry every value 0x1 to 0xF once and two TSTRB 0x0 beats on every seed, and the partial beat of CHK-SMP-TO-ASM adds one value with 1 to 3 valid bytes; the owning checks are CHK-SMP-PACK and CHK-SMP-TO-ASM. |`km_entropy_stream`, `km_drbg_sampler` |`sep_km_drbg_sampler_rand_test` |executable
 |`cp_smp_freshness` |Two successive DATA reads each take a new stream word: a handshake on `km_entropy_stream` falls between them. 1 bin. |`km_cpu_axi`, `km_entropy_stream`, `km_drbg_sampler` |`sep_km_drbg_sampler_rand_test` |executable
 |`cp_smp_prefetch_mode` |PREFETCH 0 and 1, each at the start of a DATA read. A word held after a read. PREFETCHED set. Disabling prefetch with a word held clears it. A stalled prefetch does not time out. 5 bins. |`km_drbg_sampler` |`sep_km_drbg_sampler_rand_test` |executable
 |`cp_smp_prefetch_mirror` |PREFETCH_DATA equals the word the next DATA read returns. Repeated reads return one value. Cleared when prefetch is disabled. 3 bins. |`km_drbg_sampler`, `km_cpu_axi` |`sep_km_drbg_sampler_rand_test` |executable
@@ -6920,7 +6923,7 @@ The owner has an empty checker set (<<sep-fcov-km-checker-gate>>).
 [[sep-fcov-km-drbg-fault]]
 ===== `sep_km_drbg_fault_cg`
 
-*Tool*: VCS. *Class*: executable in part (<<sep-fcov-parked>>). Bins whose stimulus needs the PROPOSED drive `HK-STRM-PAT`: the timeout from ST_BYTE_ASSEMBLY of `cp_df_entry_state`.
+*Tool*: VCS. *Class*: executable.
 
 *Specification*: `hw/ip/key_manager/doc/architecture.adoc`, "DRBG Sampler", "Reads, prefetch and register access", "Errors and reset"; `hw/sys/sep/doc/reset_controller.adoc`, "Resetting the TRNG".
 
@@ -6928,7 +6931,7 @@ The owner has an empty checker set (<<sep-fcov-km-checker-gate>>).
 |===
 |Coverpoint |Bins, crosses, illegal and ignore bins |Sampled signals |Owning tests |Class
 |`cp_df_timeout_value` |CFG.timeout of a stalled read: 1 and 65535. 2 bins. The values 0 (disabled) and 256 are graded by `sep_km_drbg_sampler_timeout_reset_test`, are controls of the owner and are not bins. |`km_drbg_sampler`, `km_entropy_stream` |`sep_km_drbg_sampler_rand_test` |executable
-|`cp_df_entry_state` |Timeout from ST_REQUEST. Timeout from ST_BYTE_ASSEMBLY after a partial beat. 2 bins. |`km_drbg_sampler` |`sep_km_drbg_sampler_rand_test` |executable in part. Blocked: the ST_BYTE_ASSEMBLY bin needs the PROPOSED drive `HK-STRM-PAT` (CHK-SMP-TO-ASM)
+|`cp_df_entry_state` |Timeout from ST_REQUEST (`from_request`). Timeout from ST_BYTE_ASSEMBLY after a partial beat (`from_byte_assembly`): one beat with 1 to 3 valid bytes from the external stream, then no beat, on every seed. 2 bins. The owning check of `from_byte_assembly` is CHK-SMP-TO-ASM. |`km_drbg_sampler` |`sep_km_drbg_sampler_rand_test` |executable
 |`cp_df_timeout_outcome` |The read returns SLVERR with data 0. TIMEOUT_ERR set. COUNT_BAD plus 1. IRQ_STATUS.drbg_err set. 4 bins. |`km_drbg_sampler`, `km_irq_status`, `km_cpu_axi` |`sep_km_drbg_sampler_rand_test` |executable
 |`cp_df_stream_violation` |TVALID drops while TREADY is low: with no read active, with an active read whose first active cycle has TREADY low. Each sets STREAM_ERR and raises IRQ_STATUS.drbg_err. The first bin also needs COUNT_BAD + 1. The second bin also needs SLVERR with data 0, IRQ_STATUS.drbg_err 1 at the end of the read and COUNT_BAD + 1 plus TIMEOUT_ERR (TIMEOUT_ERR itself is not stated for that read and is not part of the bin), and samples only when the owner writes `km_strm_pass` (setter `set_km_strm_pass` of `env/sep_fcov_gate.py`) after CHK-SMP-STRM passes on that case. 2 bins. |`km_entropy_stream`, `km_drbg_sampler`, `km_irq_status` |`sep_km_drbg_sampler_rand_test` |executable
 |`cp_df_offset_race` |The withdrawal on the first active cycle of a read with TIMEOUT 1 (withdrawal and expiry in one cycle) and with TIMEOUT 2 (withdrawal before the expiry). Each sets STREAM_ERR. 2 bins. A TVALID pulse inside the active window with TREADY high is a handshake and is a control, not a bin. A bin samples only when the read of that withdrawal ended with SLVERR, data 0, STREAM_ERR 1 and a COUNT_BAD increment, and only when the owner writes `km_strm_pass` (setter `set_km_strm_pass` of `env/sep_fcov_gate.py`) after CHK-SMP-STRM passes on that case. |`km_entropy_stream`, `km_drbg_sampler` |`sep_km_drbg_sampler_rand_test` |executable
@@ -7138,7 +7141,6 @@ These cells are not bins of any point. No stimulus of an owning test drives them
 |`sep_km_otp_readout_cg` `cp_efw_read_class` |Gap 0x1141C, gap 0x11574 and reserved 0x11600 read with OKAY |`memory_map.adoc` answers every offset outside the three maps with SLVERR and 0xBADCAB1E. The sampler keeps the cells as `ignore_bins`. |IMPOSSIBLE
 |`sep_km_exec_protection_cg` `cp_ex_mode_x_target` |SRAM_EXEC_MODE.enable 0 with ROM_ACCESS_VIOLATION, at each of the five targets |Only a write of `SRAM_EXEC_MODE.enable` arms the ROM lockout (`hw/ip/key_manager/doc/architecture.adoc`, ROM Lockout), so with enable 0 no fetch raises ROM_ACCESS_VIOLATION. The sampler keeps the cells as `ignore_bins`. |IMPOSSIBLE
 |`sep_km_otp_readout_cg` `cp_otp_notkm_class` |The SEC_DIS token class |The shadow map has no SEC_DIS token field: the SEC_DIS token is a register of the eFuse controller, and `hw/sys/sep/doc/otp_fuse_controller.adoc:443-445` names the BL1 and BL2 versions, the RMA token digests and the public-key hashes as the shadow fields outside the Key Manager interface. |IMPOSSIBLE
-|`sep_km_drbg_sampler_cg` `cp_smp_strb` |TSTRB 0x0 |`hw/ip/key_manager/doc/architecture.adoc` states that TSTRB selects the bytes to pack and does not state the result of a beat with no byte selected. The sampler keeps the cell as an `ignore_bins`. |UNSTATED
 |===
 
 ===== Points per owning test
