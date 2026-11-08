@@ -203,7 +203,7 @@ static volatile uint32_t g_nmi_stray_mcause;
 
 // Records the NMI and returns to the interrupted code. Writing mdeau unlocks
 // mdseac; until then the core raises no NMI for a later D-bus error.
-__attribute__((interrupt("machine"), aligned(4))) static void bl1_nmi_handler(void) {
+__attribute__((interrupt("machine"), aligned(4), used)) static void bl1_nmi_handler(void) {
     uint32_t mcause, mdseac;
     __asm__ volatile("csrr %0, mcause" : "=r"(mcause));
     __asm__ volatile("csrr %0, %1" : "=r"(mdseac) : "i"(CSR_MDSEAC));
@@ -218,10 +218,10 @@ __attribute__((interrupt("machine"), aligned(4))) static void bl1_nmi_handler(vo
     g_nmi_mdseac = mdseac;
 }
 
-// SEP_NMI_VEC resets to a placeholder inside BL1's own .text, and the ROM
-// leaves it there. Returns 0 once the vector names bl1_nmi_handler.
+// The ROM runs BL1 from ICCM or SRAM, so the vector takes the handler's run address.
 static int bl1_nmi_init(void) {
-    uint32_t want = (uint32_t)(uintptr_t)&bl1_nmi_handler;
+    uint32_t want;
+    __asm__ volatile("lla %0, bl1_nmi_handler" : "=r"(want));
 
     mmio_write32(NMI_VEC_ADDR, want);
     uint32_t got = mmio_read32(NMI_VEC_ADDR);
