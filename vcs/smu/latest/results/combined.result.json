@@ -8,43 +8,43 @@
     "run_dir": "vcs/smu/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-2f09118c6b425838",
+    "comparison_key": "COVCMP-ed969ffca760400f",
     "details_available": true,
     "effective_metrics": {
-      "assertion": 88.12,
-      "branch": 75.95,
-      "condition": 71.43,
-      "functional": 100.0,
-      "line": 94.31,
-      "toggle": 97.98,
-      "user": 91.2226
+      "assertion": 88.29,
+      "branch": 83.43,
+      "condition": 82.66,
+      "functional": 95.98,
+      "line": 95.94,
+      "toggle": 97.7,
+      "user": 91.0628
     },
     "holes_summary": {
       "accepted": 0,
       "by_category": {
-        "user": 28
+        "user": 37
       },
       "by_disposition": {
-        "cover": 28
+        "cover": 37
       },
       "by_metric": {
-        "user": 28
+        "user": 37
       },
       "by_status": {
-        "open": 28
+        "open": 37
       },
       "details_available": true,
       "hole_group_count": 0,
-      "native_point_count": 28,
+      "native_point_count": 37,
       "observations_complete": false,
-      "open": 28,
-      "unclassified": 28
+      "open": 37,
+      "unclassified": 37
     },
     "manifest": "artifacts/smu/coverage/coverage.json",
     "policy_application": "artifacts/smu/coverage/report/policy-application.json",
     "policy_thresholds": [
       {
-        "actual_percent": 91.2226,
+        "actual_percent": 91.0628,
         "id": "user",
         "max_unclassified_points": null,
         "met": false,
@@ -52,17 +52,17 @@
         "minimum_percent": 100.0,
         "population": "effective",
         "scope": "*",
-        "unclassified_points": 28
+        "unclassified_points": 37
       }
     ],
     "raw_metrics": {
-      "assertion": 88.12,
-      "branch": 75.95,
-      "condition": 71.43,
-      "functional": 70.0,
-      "line": 94.31,
-      "toggle": 72.15,
-      "user": 91.2226
+      "assertion": 88.29,
+      "branch": 83.43,
+      "condition": 82.66,
+      "functional": 74.65,
+      "line": 95.94,
+      "toggle": 73.41,
+      "user": 91.0628
     },
     "report": "artifacts/smu/coverage/report",
     "source_manifest": "vcs/smu/runs/combined/cov/coverage.json",
@@ -74,7 +74,7 @@
     "target": "compile_smu_chiplet",
     "threshold": 0.0,
     "threshold_met": false,
-    "total_percent": 87.97
+    "total_percent": 90.67
   },
   "failure_buckets": [
     {
@@ -88,11 +88,11 @@
   ],
   "flow": "smu",
   "framework": "",
-  "generated_at": "2026-11-03T19:26:19+00:00",
+  "generated_at": "2026-11-08T01:12:17+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "a6348e7e0d81102b5f439ab5a477278980ba455c",
-    "short_sha": "a6348e7"
+    "sha": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
+    "short_sha": "40fe2d9"
   },
   "junit_xml": {
     "missing": 0,
@@ -101,10 +101,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-11-03T19:26:16.788656+00:00",
+    "generated_at": "2026-11-08T01:12:15.393222+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "a6348e7e0d81102b5f439ab5a477278980ba455c",
+      "commit": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
       "dirty": "false"
     },
     "label": "combine",
@@ -122,16 +122,16 @@
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 6,
-    "pass_rate": 97.74,
-    "passing": 260,
-    "total": 266
+    "failing": 4,
+    "pass_rate": 98.54,
+    "passing": 270,
+    "total": 274
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 10.029,
-    "end_time": "2026-11-03T19:26:16.420997+00:00",
-    "start_time": "2026-11-03T19:26:06.387938+00:00"
+    "duration_sec": 11.184,
+    "end_time": "2026-11-08T01:12:14.854614+00:00",
+    "start_time": "2026-11-08T01:12:03.666213+00:00"
   },
   "tool": "vcs"
 }

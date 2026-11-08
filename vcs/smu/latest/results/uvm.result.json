@@ -4,55 +4,55 @@
     "coverage_policy_application": "artifacts/smu/coverage/report/policy-application.json",
     "coverage_report": "artifacts/smu/coverage/report",
     "coverage_summary": "artifacts/smu/coverage/report/summary.json",
-    "log": "vcs/smu/runs/uvm/smu_dtp_jtag_smoke_test@compile_smu_chiplet/seed_1206284293/attempt_0/logs/EXTERNAL_HOST",
+    "log": "vcs/smu/runs/uvm/smu_dtp_jtag_smoke_test@compile_smu_chiplet/seed_1684998963/attempt_0/logs/EXTERNAL_HOST",
     "regression_json": "vcs/smu/runs/uvm/stages/regress/regression.json",
     "result_json": "vcs/smu/runs/uvm/result.json",
     "run_dir": "vcs/smu/runs/uvm"
   },
   "coverage": {
-    "comparison_key": "COVCMP-dbf6b843897ce961",
+    "comparison_key": "COVCMP-edad997b2b418e1d",
     "details_available": true,
     "effective_metrics": {
-      "assertion": 34.84,
-      "branch": 30.1,
-      "condition": 5.41,
-      "functional": 58.89,
-      "line": 35.33,
-      "toggle": 6.54,
-      "user": 26.0188
+      "assertion": 32.92,
+      "branch": 29.78,
+      "condition": 20.55,
+      "functional": 42.96,
+      "line": 35.68,
+      "toggle": 6.96,
+      "user": 21.7391
     },
     "holes_summary": {
       "accepted": 0,
       "by_category": {
-        "user": 236
+        "user": 324
       },
       "by_disposition": {
-        "cover": 236
+        "cover": 324
       },
       "by_metric": {
-        "user": 236
+        "user": 324
       },
       "by_status": {
-        "open": 236
+        "open": 324
       },
       "details_available": true,
       "hole_group_count": 0,
-      "native_point_count": 236,
+      "native_point_count": 324,
       "observations_complete": false,
-      "open": 236,
-      "unclassified": 236
+      "open": 324,
+      "unclassified": 324
     },
     "manifest": "artifacts/smu/coverage/coverage.json",
     "policy_application": "artifacts/smu/coverage/report/policy-application.json",
     "policy_thresholds": [],
     "raw_metrics": {
-      "assertion": 34.84,
-      "branch": 30.1,
-      "condition": 5.41,
-      "functional": 41.22,
-      "line": 35.33,
-      "toggle": 3.78,
-      "user": 26.0188
+      "assertion": 32.92,
+      "branch": 29.78,
+      "condition": 20.55,
+      "functional": 33.41,
+      "line": 35.68,
+      "toggle": 4.08,
+      "user": 21.7391
     },
     "report": "artifacts/smu/coverage/report",
     "source_manifest": "vcs/smu/runs/uvm/cov/coverage.json",
@@ -64,16 +64,16 @@
     "target": "compile_smu_chiplet",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 28.52
+    "total_percent": 28.14
   },
   "failure_buckets": [],
   "flow": "smu",
   "framework": "uvm",
-  "generated_at": "2026-11-03T19:26:18+00:00",
+  "generated_at": "2026-11-08T01:12:17+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "a6348e7e0d81102b5f439ab5a477278980ba455c",
-    "short_sha": "a6348e7"
+    "sha": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
+    "short_sha": "40fe2d9"
   },
   "junit_xml": {
     "missing": 0,
@@ -86,10 +86,10 @@
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-11-03T16:14:54.983583+00:00",
+    "generated_at": "2026-11-07T20:27:47.265648+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "a6348e7e0d81102b5f439ab5a477278980ba455c",
+      "commit": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
       "dirty": "false"
     },
     "label": "all",
@@ -116,58 +116,58 @@
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 16.408,
+      "duration_sec": 22.239,
       "name": "smu_dtp_jtag_smoke_test@compile_smu_chiplet",
       "reason": "positive pass evidence matched",
-      "seed": 1206284293,
+      "seed": 1684998963,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smc_under_smu",
-      "duration_sec": 9.585,
+      "duration_sec": 13.92,
       "name": "smu_ext_boot_seq_gate_test@compile_smu_chiplet",
       "reason": "positive pass evidence matched",
-      "seed": 1231401137,
+      "seed": 1776236129,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "dtp_under_smu",
-      "duration_sec": 33.403,
+      "duration_sec": 31.921,
       "name": "smu_boot_stall_jtag_cold_reset_matrix_test@compile_smu_chiplet",
       "reason": "positive pass evidence matched",
-      "seed": 783245582,
+      "seed": 278378492,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "dtp_under_smu",
-      "duration_sec": 42.104,
+      "duration_sec": 37.794,
       "name": "smu_jtag_reset_override_test@compile_smu_chiplet",
       "reason": "positive pass evidence matched",
-      "seed": 751764967,
+      "seed": 1476345878,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "dtp_under_smu",
-      "duration_sec": 113.232,
+      "duration_sec": 113.879,
       "name": "smu_smc_dtp_jtag2axi_smoke_test@compile_smu_chiplet",
       "reason": "positive pass evidence matched",
-      "seed": 1836037216,
+      "seed": 1365157382,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 427.806,
-    "end_time": "2026-11-03T16:14:54.939097+00:00",
-    "start_time": "2026-11-03T16:09:06.513501+00:00"
+    "duration_sec": 377.616,
+    "end_time": "2026-11-07T20:27:47.217944+00:00",
+    "start_time": "2026-11-07T20:22:57.820211+00:00"
   },
   "tool": "vcs"
 }
