@@ -86,8 +86,8 @@ int main(void) {
         errors += check("IFU simple return (I-type)", k, ((func_void_t)ROM_FUNC0)(), 42);
         errors += check("IFU multi-instruction", k, ((func_void_t)ROM_FUNC1)(), 123);
         errors += check("IFU arg passthrough", k, ((func_i32_t)ROM_FUNC2)(99), 100);
-        errors += check("IFU LUI+ADDI (U-type)", k, ((func_void_t)ROM_FUNC3)(),
-                        (int32_t)0xDEADBEEF);
+        errors +=
+            check("IFU LUI+ADDI (U-type)", k, ((func_void_t)ROM_FUNC3)(), (int32_t)0xDEADBEEF);
         errors += check("IFU jump (J-type JAL)", k, ((func_void_t)ROM_FUNC4)(), 55);
         errors += check("IFU NOP sled", k, ((func_void_t)ROM_FUNC5)(), 77);
         errors += check("IFU two-arg add (R-type)", k, ((func_i32_i32_t)ROM_FUNC6)(30, 13), 43);
