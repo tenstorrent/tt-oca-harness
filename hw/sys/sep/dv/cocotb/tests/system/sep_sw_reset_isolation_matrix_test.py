@@ -20,8 +20,8 @@ and answer as in the memory map while a domain is isolated.
 
 Leg C (``+sep_swiso_km_key_beat`` only). For each of the five destinations of
 the Key Manager key path, a key-share write that the destination's key path
-accepted before its isolate request rose completes before the destination
-reset asserts.
+accepted before its isolate request rose gets its response before the
+destination reset asserts; the response code is not stated.
 
 Sources: ``hw/sys/sep/doc/reset_controller.adoc`` (Software Reset Register,
 Isolation and Reset Sequencing, the table of paths isolated before each
