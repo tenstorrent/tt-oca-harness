@@ -8,15 +8,15 @@
     "run_dir": "vcs/sep/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-682d5935a953977c",
+    "comparison_key": "COVCMP-09ab0d1102bc0e66",
     "details_available": true,
     "effective_metrics": {
-      "branch": 95.29,
-      "condition": 89.69,
+      "branch": 95.28,
+      "condition": 89.71,
       "fsm_state": 88.14,
-      "functional": 95.8,
-      "line": 97.61,
-      "toggle": 90.25
+      "functional": 96.94,
+      "line": 97.58,
+      "toggle": 90.2
     },
     "holes_summary": {
       "accepted": 0,
@@ -35,12 +35,12 @@
     "policy_application": "artifacts/sep/coverage/report/policy-application.json",
     "policy_thresholds": [],
     "raw_metrics": {
-      "branch": 91.33,
-      "condition": 86.74,
+      "branch": 91.32,
+      "condition": 86.75,
       "fsm_state": 85.94,
-      "functional": 95.8,
-      "line": 96.89,
-      "toggle": 86.06
+      "functional": 96.94,
+      "line": 96.86,
+      "toggle": 86.01
     },
     "report": "artifacts/sep/coverage/report",
     "source_manifest": "vcs/sep/runs/combined/cov/coverage.json",
@@ -52,16 +52,16 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 92.8
+    "total_percent": 92.98
   },
   "failure_buckets": [],
   "flow": "sep",
   "framework": "",
-  "generated_at": "2026-11-03T18:20:24+00:00",
+  "generated_at": "2026-11-08T00:30:40+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
-    "short_sha": "871dea3"
+    "sha": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
+    "short_sha": "40fe2d9"
   },
   "junit_xml": {
     "missing": 0,
@@ -70,10 +70,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-11-03T18:20:20.478055+00:00",
+    "generated_at": "2026-11-08T00:30:37.392857+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "871dea3812bf48dbfef99a4e24385a6b5e38bb45",
+      "commit": "40fe2d9f0b6b3bb1f61bd4ceac6cbd10b35a224f",
       "dirty": "false"
     },
     "label": "combine",
@@ -91,16 +91,16 @@
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 37,
-    "pass_rate": 93.66,
-    "passing": 547,
-    "total": 584
+    "failing": 34,
+    "pass_rate": 93.35,
+    "passing": 477,
+    "total": 511
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 34.9,
-    "end_time": "2026-11-03T18:20:20.106472+00:00",
-    "start_time": "2026-11-03T18:19:45.201229+00:00"
+    "duration_sec": 33.68,
+    "end_time": "2026-11-08T00:30:37.003937+00:00",
+    "start_time": "2026-11-08T00:30:03.319768+00:00"
   },
   "tool": "vcs"
 }
