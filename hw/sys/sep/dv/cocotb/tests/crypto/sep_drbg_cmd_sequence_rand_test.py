@@ -200,11 +200,14 @@ Checkers:
                  bit 4; after an uninstantiate and an instantiate with flag0 0x9
                  (the field back to a legal value), bit 4 still reads 1 and a
                  write of 0 clears it.
-                 Control: bit 4 reads 0 after an instantiate with flag0 0x9 and
-                 after one with flag0 0x6. The write-0 readback at the ack of the
-                 invalid instantiate is logged only (``OBS-CSRNG-FLAG0-HELD``):
-                 the text does not say whether a write of 0 clears the bit while
-                 the field still holds the invalid value.
+                 No write to the register comes between the invalid instantiate
+                 and that read. Control: bit 4 reads 0 after an instantiate with
+                 flag0 0x9 and after one with flag0 0x6. After the graded clear,
+                 an uninstantiate and a repeat of the invalid instantiate, a write
+                 of 0 at its ack and the readback are logged only
+                 (``OBS-CSRNG-FLAG0-HELD``): the text does not say whether a write
+                 of 0 clears the bit while the field still holds the invalid
+                 value.
   CHK-CSRNG-FLAG0-ACK  the invalid-flag0 instantiate acknowledges (``CMD_ACK``
                  = 1: a command completes "successfully or unsuccessfully",
                  theory_of_operation.md:286), and bit 4 still reads 1 at that
@@ -2456,6 +2459,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         flag0 = {"word": f"0x{cmd_word(ACMD_INSTANTIATE, flag0=plan.bad_flag0):x}"}
         flag0["alert_set"] = 0
         flag0_ack: dict = {"word": flag0["word"], "cmd_ack": "na", "held_at_ack": "na"}
+        ack_sts: object = "na"
         uni: dict = {}
         reason = ""
         try:
@@ -2520,10 +2524,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             ack_recov = await r._rd(CSRNG_RECOV_ALERT_STS)
             flag0_ack["held_at_ack"] = int(bool(ack_recov & CS_FLAG0_INV))
             flag0_ack["recov"] = f"0x{ack_recov:x}"
-            held = await self._clear_bit(CS_FLAG0_INV)
-            self.chk.obs(
-                "CSRNG-FLAG0-HELD", cmd_sts=_field(sts, CS_STS_STS), cleared_after_ack=held
-            )
+            ack_sts = _field(sts, CS_STS_STS)
             # An instantiate with a legal flag0 sets the field back to a legal value.
             step = "live_f9b"
             await self._live_probe(uni, "f9b", bound)
@@ -2587,6 +2588,29 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             **uni,
             expected_post=0,
         )
+        # A write of 0 while flag0 holds the invalid value runs on a repeat of the
+        # invalid instantiate after the graded clear, so no graded read follows it.
+        held: dict = {"cmd_sts": ack_sts, "repeat_cmd_sts": "na", "cleared_after_ack": "na"}
+        if reason:
+            held["reason"] = reason
+        else:
+            try:
+                step = "uninst4"
+                _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
+                self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="flag0_clear")
+                step = "ins_fbad2"
+                await self._sw_cmd(word, bound, step, wait_ack=False)
+                await self._wait(
+                    CSRNG_RECOV_ALERT_STS, CS_FLAG0_INV, CS_FLAG0_INV, bound, "flag0_alert2"
+                )
+                _, sts = await self._wait(
+                    CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, bound, "fbad2_ack"
+                )
+                held["repeat_cmd_sts"] = _field(sts, CS_STS_STS)
+                held["cleared_after_ack"] = await self._clear_bit(CS_FLAG0_INV)
+            except TrialTimeout as exc:
+                held["reason"] = f"timeout:{exc.what} bound={exc.bound} step={step}"
+        self.chk.obs("CSRNG-FLAG0-HELD", **held)
         await self._release()
 
     async def _live_probe(self, uni: dict, leg: str, bound: int) -> None:
