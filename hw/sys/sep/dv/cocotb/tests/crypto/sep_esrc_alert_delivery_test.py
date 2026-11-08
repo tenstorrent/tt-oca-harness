@@ -17,8 +17,11 @@ so PERSISTENT_FAILURE is attributable to AlertHang rather than to a counter or
 state fault. ``OBS-HT-RSVD`` logs the reserved bits 1:2 and 6:7 of
 HEALTH_TEST_STATUS and of the per-generator status bytes: the RDL allocates them
 and states no value. An opening INTR_TEST sweep, before the trip, drives each interrupt
-source the RDL defines on its own. This proves the aggregate slot per source
-without a real failure.
+source the RDL defines on its own, from ``INTR_STATUS`` = 0 and PIC source 16 at 0.
+Each source must set only its own bit and clear on W1C, which leaves ``INTR_STATUS``
+= 0 and PIC source 16 at 0. While the source is set, PIC source 16 is graded 1 for
+``PERSISTENT_FAILURE`` only and is logged (``OBS-INTR-TEST-PIC16``) for the other
+sources, for the same reason as in the pair walk below.
 
 A pair walk follows the sweep, with every enable set. Each source is a target i once,
 with a partner j != i; one INTR_TEST write sets both. A write of one to i leaves exactly
@@ -137,15 +140,16 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         # state. Sweep before the trip: INTR_STATUS bits are re-driven every cycle
         # from their live cause, so once a real health-test failure is latched the
         # matching bit cannot clear on W1C. From the clean pre-trip state each
-        # source must set only its own bit, raise the aggregate slot, and clear.
+        # source must set only its own bit and clear on W1C. Source 16 is graded 1
+        # for PERSISTENT_FAILURE only; for any other source it is logged.
         await esrc.enable_all_irq()
         proven: list[str] = []
+        pf_sources = 0
         for name, bm in INTR_SOURCES:
-            # Each source starts from a dropped line, so its irq == 1 below is
-            # its own and not one left high by the source before it.
-            assert self._irq_bit() == 0, (
-                f"CHK-INTR-TEST FAIL: sep_internal_interrupts[{IRQ_AGG_IDX}] already high "
-                f"before the {name} pulse"
+            st0 = await esrc.read_intr()
+            assert st0 == 0 and self._irq_bit() == 0, (
+                f"CHK-INTR-TEST FAIL: INTR_STATUS=0x{st0:08x} or "
+                f"sep_internal_interrupts[{IRQ_AGG_IDX}] high before the {name} pulse"
             )
             await esrc.pulse_intr_test(bm)
             st = await esrc.read_intr()
@@ -158,25 +162,33 @@ class sep_esrc_alert_delivery_test(sep_base_test):
                 f"CHK-INTR-TEST FAIL: {name} pulse also set 0x{st & ~bm & 0xFFFF_FFFF:08x}; "
                 f"sources are not independent"
             )
-            assert irq == 1, (
-                f"CHK-INTR-TEST FAIL: {name} set INTR_STATUS but "
-                f"sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
-            )
+            if bm == PF_MASK:
+                pf_sources += 1
+                assert irq == 1, (
+                    f"CHK-INTR-TEST FAIL: {name} set INTR_STATUS with its enable but "
+                    f"sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
+                )
+            else:
+                self.logger.info("OBS-INTR-TEST-PIC16 %s pic16=%d", name, irq)
             await esrc.w1c_intr_status(bm)
             st_after = await esrc.read_intr()
-            assert (st_after & bm) == 0, (
-                f"CHK-INTR-TEST FAIL: {name} did not clear on W1C "
-                f"(INTR_STATUS=0x{st_after:08x}); a single-pulse source must not re-latch"
-            )
-            assert self._irq_bit() == 0, (
-                f"CHK-INTR-TEST FAIL: {name} cleared INTR_STATUS but "
-                f"sep_internal_interrupts[{IRQ_AGG_IDX}] stayed high"
+            irq_after = self._irq_bit()
+            assert st_after == 0 and irq_after == 0, (
+                f"CHK-INTR-TEST FAIL: {name} W1C left INTR_STATUS=0x{st_after:08x} "
+                f"sep_internal_interrupts[{IRQ_AGG_IDX}]={irq_after}, expected both 0; "
+                "a single-pulse source must not re-latch"
             )
             proven.append(name)
+        assert pf_sources == 1, (
+            f"CHK-INTR-TEST FAIL: the sweep graded PERSISTENT_FAILURE {pf_sources} times, "
+            "expected 1"
+        )
         self.logger.info(
-            "CHK-INTR-TEST PASS: all %d INTR_TEST sources set their own INTR_STATUS bit, "
-            "raised PIC source 16 from a dropped line, and dropped it again on W1C: %s",
+            "CHK-INTR-TEST PASS: all %d INTR_TEST sources set only their own INTR_STATUS bit "
+            "and cleared it on W1C with source 16 low; PERSISTENT_FAILURE raised source 16; "
+            "pf_sources=%d: %s",
             len(proven),
+            pf_sources,
             ", ".join(proven),
         )
 
