@@ -319,6 +319,8 @@ args = [
 name = "sep_debug_master_target_matrix_test"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
+# No reseed: every run runs all steps; the seed selects only the ungraded uncore write data
+# and the TCK period and phase, which change TAP timing only and no check grades.
 timeout_sec = 900
 tags = ["debug", "jtag", "dmi", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]

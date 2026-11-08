@@ -1007,7 +1007,9 @@ count values, not behaviour.
 |`sep_axi_order_sweep_test`, `_m_axi_test` |AW/W skew 1-4, BREADY/RREADY delay 0-2 |None: the three orderings are in `cp_aw_w_order` on every seed; the skew depth is a timing value
 |`sep_abr_concurrent_rw_test` |Second-half depth 3-6 per bus (the first half of each stream runs at depth 1 on both buses), AWID, operation mix |`sep_crypto_bus_access_cg.x_abr_concurrent` (depth class {2, 3 to 6} of the ABR transactions in flight on both masters), seed-dependent. The AWID has no bin. The sampler counts only responses with at most 6 ABR transactions in flight on both masters. In the lockstep half of every seed (both masters at depth 1), every overlapping response has one transaction in flight on each master, so the depth-2 cells fill there. Which of the three depth-2 cells a seed fills also depends on the op mix and timing; a cell that no run fills stays on this note
 |`sep_otbn_cmd_status_rand_test` |Software-error kind of the kind leg (one of four per seed) |`sep_otbn_err_lock_cg.cp_sw_err_kind`, seed-dependent. One regression can miss a kind; the four kinds close across regressions. `CHK-OTBN-SWERR-KIND` in the full entry and in the `sep_otbn_cmd_status_rand_test_shard2` entry releases the cell, and `cp_rnd_clean` fills on every run of either entry. The other owned bins of the leaf have no seed dependence. The full entry executes the checks that release every owned bin of the leaf
-|`sep_wdt_aon_timer_internals_test` |Thresholds, prescaler, the post-lock bite threshold |None: values inside a fixed divided-rate contract; the post-lock bite value differs from the pre-lock value by construction, so `cp_lock_scope` `bark_thold_ignored` and `bite_thold_ignored` fill on every seed
+|`sep_wdt_aon_timer_internals_test` |Thresholds, prescaler, the post-lock bite threshold; from a second salted stream the wrap preload and thresholds, the wakeup, bark and bite thresholds of the concurrent window, and whether `WDOG_REGWEN` is locked in that window (`reseed = 3`) |None: values inside a fixed divided-rate contract; the post-lock bite value differs from the pre-lock value by construction, so `cp_lock_scope` `bark_thold_ignored` and `bite_thold_ignored` fill on every seed. The lock state of the concurrent window selects a clause of CHK-WDT-COMBO, not a bin (named seeds: 1 unlocked, 3 locked); the lock write there runs with the graded window closed
+|`sep_timer_clock_contract_test` |Leg T re-arm gap (64 to 128 counts) and the order of the three `INTR_TEST` masks |None: the gap is a value that CHK-WDT-BARK-REARM grades on every seed, and every seed writes all three masks
+|`sep_debug_master_target_matrix_test` (all four entries) |TCK period and the start phase of the first TAP operation |None: timing values; no check or bin depends on them
 |`sep_efuse_image_test` |Lifecycle state of the staged image, SIP_DIS / SYS_DIS vectors |`sep_lc_state_cg.cp_lc`, `sep_feat_ctrl_cg.cp_state` and `cp_debug`; every cell also has a deterministic owner
 |`sep_cpu_trace_diag_test` |The docstring names a seeded clock-timing factor |None exists: `env/sep_env_cfg.py` fixes every clock period
 |Other RANDCFG leaves |Key, data, operand, token and address values; sweep order; bit offsets inside a walked field |None: values inside a fixed contract that the checker reads back
@@ -1099,7 +1101,7 @@ human. Other members may fill a group in passing.
 |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test`
 |`sep_mailbox_pic_cg` |SEP mailbox `sep_mailbox_plic_test`, `sep_pic_irq_source_map_delivery_test`; KM mailbox `sep_km_mailbox_protocol_rand_test`; `cp_peer_fill` `sep_mailbox_peer_rx_rirqt_test` (the only leaf that drives the peer aperture). `sep_axil_mailbox_iface_rand_test` does not fill `cp_raise` / `cp_clear`: it is transmit side, and `sep_internal_interrupts[7:0]` carries the inbound interrupt
 |`sep_mailbox_channel_cg` |`sep_mailbox_plic_test` (it runs one channel at a time, all eight)
-|`sep_wdt_bark_cg` |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test` (threshold, bark and NMI). `sep_wdt_aon_timer_internals_test` writes the threshold but never lets the watchdog bark, so it does not fill `cp_thold`
+|`sep_wdt_bark_cg` |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test` (threshold, bark and NMI). `sep_wdt_aon_timer_internals_test` (its wrap and concurrent legs) and the cocotb leaf of `sep_clock_uvm_wdt_rst_input_reset_path_test` (its forced bark) let the watchdog bark but are not owners of this group
 |`sep_scratch_reset_cg` |`sep_warm_cold_reset_scratch_test`
 |`sep_store_bus_error_cg` |`sep_reset_wdt_sanity_test` (its DECERR and SLVERR stores, CHK-STORE-ERR-NMI)
 |===
@@ -1115,7 +1117,7 @@ the reason.
 [cols="2,3",options="header"]
 |===
 |Test |Reason
-|`sep_clock_uvm_wdt_rst_input_reset_path_test`, `sep_cpu_dbg_reset_independence_test` |No bin: no group samples a watchdog reset (`sep_cpu_reset_n` falls while `sep_reset_n` stays high). Both nets are sampler inputs. These two leaves feed no group
+|`sep_clock_uvm_wdt_rst_input_reset_path_test`, `sep_cpu_dbg_reset_independence_test` |No bin: no group samples a watchdog reset (`sep_cpu_reset_n` falls while `sep_reset_n` stays high). Both nets are sampler inputs. Neither leaf owns a group
 |`sep_cpu_trace_diag_test` |No bin: no group samples an exception-not-interrupt retirement on the trace port. Fills `sep_cpu_boot_cg` in passing
 |`sep_cpu_ifu_lsu_alias_remap_matrix_test` |No bin: no group samples a retired PC in the `SEP_LOCAL` alias window (Phase 2 `sep_remap_alias_cg`)
 |`sep_km_mem_smoke_test` |No bin: KM ROM fetch and scrambled KM SRAM write bins need the `tb_top` KM memory monitors as sampler inputs (Phase 2 `sep_km_memory_boot_cg`)
@@ -5187,7 +5189,7 @@ owner reaches them.
 |Each is the control of the checker that grades the coverpoint (CHK-IFU-NEVER, CHK-OVR-SKIP-ISO).
 |`sep_reset_source_cg`
 |The `rst_ni` edges of the bring-up reset, of the control pass, of the sub-floor pulse and of the full-width reset that ends `sep_cold_reset_phase_test` (`cp_source_edge`, `cp_rst_release_sync`)
-|The control pass releases at a fixed phase after a `clk_i` edge and is the control of CHK-RST-SYNC. The bring-up reset falls before the leaf opens its graded window. The sub-floor pulse, which `OBS-RST-MIN-WIDTH` logs, and the full-width reset that ends the leaf fall after the leaf closes it.
+|The control pass releases at a fixed phase after a `clk_i` edge and logs its release timing (`INFO-RST-CTL-RELEASE`), not graded. The bring-up reset falls before the leaf opens its graded window. The sub-floor pulse, which `OBS-RST-MIN-WIDTH` logs, and the full-width reset that ends the leaf fall after the leaf closes it.
 |`sep_reset_scope_retention_cg`
 |The reset events of `cp_reset_class` that no check of the owner grades: the `SW_RESET_N` writes of the calibration and arming steps of `sep_cpu_reset_retention_test`; the control of step 4, the set-up write that clears the field of d1 in the pulse leg, the `rst_ni` control and the `sep_reset_n` override shift of the PTAP TRST leg of `sep_ip_reset_override_matrix_test`; the recovery reset of a watchdog-run baseline (`INFO-WDT-BITE-HOLD`) of `sep_timer_clock_contract_test`
 |Each event places stimulus, restores a state or is logged only. The owner runs it with the graded window closed.
