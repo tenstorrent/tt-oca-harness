@@ -1431,6 +1431,7 @@ PFP_THRESHOLD = 2  # CHK-THRESHOLD
 PFP_NEST = 3  # CHK-NEST
 PFP_TIMER = 4  # an internal-timer leg: CHK-INT-TIMER-HOLD or CHK-INT-TIMER-TRAP
 PFP_IDLE = 5  # the idle and control legs: CHK-MIP-IDLE, CHK-CONTROL, CHK-NO-TIMER-TRAP
+PFP_SOFT = 6  # the soft-pin leg: CHK-SOFT-PIN
 PFP_DROP_320 = 7  # drop every held owner-320 sample
 PFP_320_MASK = 0xFF
 # sep_nmi_vector_bark_rand_test (owner 324) writes bit 16 after CHK-NMI-IN-EXT

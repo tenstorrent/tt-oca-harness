@@ -41,6 +41,42 @@ Checkers:
                     ``hw/sys/sep/doc/hmac.adoc:52-53`` "An unset or unsupported length raises a
                     configuration error when hashing starts."). The register text gives
                     ``err_code`` the full 31:0 field (hmac.adoc:171), so no bit is masked
+  CHK-HMAC-ERR-CLASS  after the eleven start classes, four error classes in a drawn order on
+                    every seed (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/
+                    programmers_guide.md``:119-127). Each class starts from an engine reset
+                    (``CTRL-HMAC-ERRCODE-CLR``: ``ERR_CODE`` 0x0 and ``hmac_err`` 0) and writes
+                    a legal ``CFG`` only (a one-hot digest size and, with ``hmac_en`` = 1, a
+                    key length legal for it), so ``SwInvalidConfig`` cannot be the reported
+                    code. After a hold of 3 x t_worst ``hmac_err`` reads 1 and all 32 bits of
+                    ``ERR_CODE`` read the class code; the write-one clear then reads
+                    ``hmac_err`` 0, and a legal HMAC recovery hash returns its golden with
+                    ``hmac_err`` 0:
+                    0x2 ``SwHashStartWhenShaDisabled`` (:122): ``hash_start`` with ``sha_en``
+                        = 0. Recovery without a reset.
+                    0x3 ``SwUpdateSecretKeyInProcess`` (:123, :76-80): after ``hash_start``
+                        and the message, before ``hash_process``, one used ``KEY`` word is
+                        written with a different value. "During the hashing" is set by this
+                        command order, not by ``STATUS``. The update is discarded (:76-78),
+                        so the digest after ``hash_process`` equals the golden of the
+                        original key; the golden of the written key differs from it by
+                        construction. Recovery without a reset.
+                    0x4 ``SwHashStartWhenActive`` (:124): a second ``hash_start`` after the
+                        first one and part of the message. The engine state after the
+                        error is not stated, so the recovery hash follows an engine reset.
+                    0x5 ``SwPushMsgWhenDisallowed`` (:125, :127): one ``MSG_FIFO`` word with
+                        one of two stated triggers, drawn per seed: ``sha_en`` = 0 or before
+                        ``hash_start``. The third stated trigger, a push after
+                        ``hash_process``, is not driven: it fires the IP assertion
+                        ``ValidWriteAssert``
+                        (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv``:937).
+                        Whether the refused word entered the FIFO is not stated, so the
+                        recovery hash follows an engine reset.
+
+Plan seed: ``+sep_plan_seed=N`` replaces the run seed as the seed of ``draw_plan`` only, so
+one value fixes the whole stimulus (the class orders, the hashes and the drawn 0x5
+trigger); every other use of the seed keeps the run seed. ``INFO-PLAN-SEED`` logs both seeds,
+the source of the plan seed and the drawn error-class order and 0x5 trigger. The regression
+does not use the plusarg.
 
 Controls: ``CTRL-HMAC-NOBLOCK`` (each legal class raises no error, sets ``hmac_done`` and
 returns its golden), ``CTRL-HMAC-DPREV`` (D_prev equals the golden of the last completed hash
@@ -51,7 +87,10 @@ other than 0x6 there), ``CTRL-HMAC-ERRCODE-CLR`` (before each blocked class the 
 reset and ``ERR_CODE`` reads its reset value 0x0, hmac.adoc:171; no text states a clear of
 ``ERR_CODE`` by a write, a legal hash or the write-one clear of ``hmac_err``, so the reset is
 the only stated way back to 0x0; the last hash then runs again so that D_prev holds its
-golden), ``CTRL-HMAC-ERRCODE-BEFORE`` (``ERR_CODE`` just before each blocked start is not
+golden), ``CTRL-HMAC-ERR-CFG`` (after the ``CFG`` write of the 0x2 class and of the 0x5
+class, the ``CFG`` readback under the implemented-field mask equals the written word: ``CFG``
+is ``rw`` and "updated when the engine is in Idle", ``vendor/lowRISC/opentitan/upstream/hw/ip/
+hmac/data/hmac.hjson``:176-181, and each of these writes follows an engine reset), ``CTRL-HMAC-ERRCODE-BEFORE`` (``ERR_CODE`` just before each blocked start is not
 0x6, so the 0x6 of ``CHK-HMAC-ERRCODE`` comes from that start; the exact value after the
 legal hash is not stated and is logged) and ``CTRL-HMAC-ERR-PRESTART`` (after the blocked
 ``CFG`` and ``KEY`` writes and one hold, before ``hash_start``, ``hmac_err`` reads 0 and
@@ -59,9 +98,12 @@ legal hash is not stated and is logged) and ``CTRL-HMAC-ERR-PRESTART`` (after th
 ``hmac_err`` and ``ERR_CODE`` of ``CHK-HMAC-BLOCK`` and ``CHK-HMAC-ERRCODE`` come from the
 start and not from the configuration writes). Log-only:
 ``OBS-HMAC-BLOCKED-MSG-RESP`` (non-OKAY responses to the message written after a blocked
-start; the register text does not state them) and
+start; the register text does not state them),
+``OBS-HMAC-ERR-RESP`` (the write response code of the 0x3 ``KEY`` write and the 0x5
+``MSG_FIFO`` write; no text states it) and
 ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text does not state its value after a
-blocked start). ``INFO-HMAC-DIGEST-ORDER`` re-logs the byte order inside a DIGEST word, which
+blocked start, nor during a hash, where it is logged before the 0x3 ``KEY`` write and the
+0x4 second start). ``INFO-HMAC-DIGEST-ORDER`` re-logs the byte order inside a DIGEST word, which
 ``CHK-HMAC-RECOVER`` grades.
 
 DIGEST byte order: ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
@@ -85,7 +127,7 @@ from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import RFC4231_KEYS
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window, owner_code
 from env.sep_hmac_golden import DSWAP_ORDER, hmac_sha2_bytes, sha2_bytes
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -130,6 +172,21 @@ SW_RESET_BASELINE = 0x7E
 # programmers_guide.md:128 SwInvalidConfig; hmac.adoc:171 ERR_CODE reset value.
 EXP_ERR_INVALID_CFG = 0x6
 EXP_ERR_CODE_RESET = 0x0
+# programmers_guide.md:122-125 error codes, named as the cp_hmac_err_class bins.
+ERR_HASH_START_SHA_DISABLED = 0x2
+ERR_UPDATE_KEY_IN_PROCESS = 0x3
+ERR_HASH_START_ACTIVE = 0x4
+ERR_PUSH_MSG_DISALLOWED = 0x5
+ERR_CLASS_NAMES = {
+    ERR_HASH_START_SHA_DISABLED: "sw_hash_start_sha_disabled",
+    ERR_UPDATE_KEY_IN_PROCESS: "sw_update_key_in_process",
+    ERR_HASH_START_ACTIVE: "sw_hash_start_active",
+    ERR_PUSH_MSG_DISALLOWED: "sw_push_msg_disallowed",
+}
+# programmers_guide.md:127: the SwPushMsgWhenDisallowed triggers the leaf drives. A push after
+# hash_process fires the IP assertion ValidWriteAssert (hmac.sv:937), so it is not drawn.
+E5_TRIGGERS = ("sha_disabled", "before_start")
+CFG_MASK = HMAC.mask32("CFG")
 INTR_FIELDS = HMAC_INTR_DONE | HMAC_INTR_ERR | HMAC.field_mask("INTR_STATE", "fifo_empty")
 CFG_LSB = {f: HMAC.field_lsb("CFG", f) for f in ("hmac_en", "sha_en", "digest_size", "key_length")}
 
@@ -197,6 +254,26 @@ class ClassStep:
     recovery: Hash | None = None
 
 
+@dataclass(frozen=True)
+class ErrStep:
+    """One error class: its ``ERR_CODE``, the legal hash it starts and its recovery hash.
+
+    ``key_idx`` and ``key_mask`` select the KEY word written during the 0x3 hash and the
+    XOR mask of its new value; ``word`` is the MSG_FIFO word of the 0x5 class.
+    """
+
+    code: int
+    body: Hash
+    recovery: Hash
+    key_idx: int = 0
+    key_mask: int = 0
+    word: int = 0
+
+    @property
+    def name(self) -> str:
+        return ERR_CLASS_NAMES[self.code]
+
+
 @dataclass
 class Plan:
     seed: int
@@ -204,6 +281,11 @@ class Plan:
     steps: list[ClassStep] = field(default_factory=list)
     # The longest hash any class can start: it sizes the blocked-start hold.
     worst: Hash | None = None
+    e5_trigger: str = ""
+    err_steps: list[ErrStep] = field(default_factory=list)
+
+    def err_order(self) -> str:
+        return ",".join(f"0x{e.code:x}" for e in self.err_steps)
 
     def summary(self) -> str:
         order = ",".join(s.name for s in self.steps)
@@ -222,6 +304,11 @@ def cfg_word(digest_code: int, key_code: int, hmac_en: int) -> int:
         | digest_code << CFG_LSB["digest_size"]
         | key_code << CFG_LSB["key_length"]
     ) & 0xFFFF_FFFF
+
+
+def cfg_word_sha_off(h: Hash) -> int:
+    """The legal CFG of ``h`` with sha_en = 0."""
+    return h.cfg() & ~(1 << CFG_LSB["sha_en"])
 
 
 def _golden(sha: int, hmac_en: int, key_bits: int | None, row: int | None, msg: bytes):
@@ -307,22 +394,96 @@ def draw_plan(seed: int) -> Plan:
             last = rec
         plan.steps.append(step)
     plan.worst = _draw_hash(rng, 512, 1, 1024, n=MSG_MAX)
+    plan.e5_trigger = rng.choice(E5_TRIGGERS)
+    codes = list(ERR_CLASS_NAMES)
+    rng.shuffle(codes)
+    for code in codes:
+        plan.err_steps.append(_draw_err_step(rng, code))
     return plan
+
+
+def _key_with_word(h: Hash, idx: int, value: int) -> bytes:
+    """The key bytes of ``h`` with KEY word ``idx`` (KEY_0 most significant) set to ``value``."""
+    assert h.key_bits is not None and h.row is not None
+    key = bytearray(_row128(h.row)[: h.key_bits // 8])
+    key[4 * idx : 4 * idx + 4] = value.to_bytes(4, "big")
+    return bytes(key)
+
+
+def _draw_err_step(rng: SepSeededRng, code: int) -> ErrStep:
+    sha = rng.choice([256, 384, 512])
+    hmac_en = 1 if code == ERR_UPDATE_KEY_IN_PROCESS else rng.randrange(2)
+    key_bits = rng.choice(_legal_keys(sha)) if hmac_en else None
+    body = _draw_hash(rng, sha, hmac_en, key_bits)
+    key_idx = key_mask = 0
+    if code == ERR_UPDATE_KEY_IN_PROCESS:
+        assert key_bits is not None and body.row is not None
+        key_idx = rng.randrange(key_bits // 32)
+        orig = _row_words(body.row)[key_idx]
+        while True:
+            key_mask = rng.getrandbits(32)
+            written = _key_with_word(body, key_idx, orig ^ key_mask)
+            if key_mask and _words(hmac_sha2_bytes(written, body.msg, sha)) != body.golden:
+                break
+    word = 0
+    while not word:
+        word = rng.getrandbits(32)
+    rsha = rng.choice([256, 384, 512])
+    rkey = rng.choice(_legal_keys(rsha))
+    rec = _draw_hash(rng, rsha, 1, rkey, avoid=body.golden)
+    return ErrStep(code, body, rec, key_idx, key_mask, word)
+
+
+async def hmac_err_class_fcov(code: int) -> bool:
+    """Record one passed error class for ``cp_hmac_err_class``; call only after its check passed.
+
+    Writes ``code`` into ``hmac_ec_want`` of ``u_sep_fcov`` and adds 1 to ``hmac_ec_seq``. The
+    sampler scores the class only when the code the IP wrote to ``ERR_CODE`` inside the owner
+    window equals it. Returns False on Verilator (``fcov_present``); on any other simulator a
+    sampler without ``hmac_ec_seq`` is a testbench error.
+    """
+    owner_code(TEST)
+    if not fcov_present():
+        return False
+    top = cocotb.top
+    fcov = top.u_sep_fcov
+    if not hasattr(fcov, "hmac_ec_seq"):
+        raise AttributeError("u_sep_fcov has no hmac_ec_seq variable (cov/sv/sep_fcov.sv)")
+    fcov.hmac_ec_want.value = code
+    fcov.hmac_ec_seq.value = (int(fcov.hmac_ec_seq.value) + 1) & 0xFFFF_FFFF
+    await ClockCycles(top.clk_i, 2)
+    return True
 
 
 @pyuvm.test()
 class sep_hmac_illegal_cfg_start_test(sep_base_test):
     """Blocked HMAC starts raise hmac_err with DIGEST unchanged; the engine then recovers."""
 
-    required_evidence = ("CHK-HMAC-BLOCK", "CHK-HMAC-RECOVER", "CHK-HMAC-ERRCODE")
+    required_evidence = (
+        "CHK-HMAC-BLOCK",
+        "CHK-HMAC-RECOVER",
+        "CHK-HMAC-ERRCODE",
+        "CHK-HMAC-ERR-CLASS",
+    )
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
         seed = self.random_seed()
         self.seed = seed
-        plan = draw_plan(seed)
+        raw = cocotb.plusargs.get("sep_plan_seed")
+        from_plusarg = raw not in (None, "", True)
+        plan_seed = int(str(raw), 0) if from_plusarg else seed
+        plan = draw_plan(plan_seed)
         self.chk = SepChkLog(self, TEST, seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.summary())
+        self.chk.info(
+            "PLAN-SEED",
+            run_seed=seed,
+            plan_seed=plan_seed,
+            source="plusarg" if from_plusarg else "run_seed",
+            e5_trigger=plan.e5_trigger,
+            e_order=plan.err_order(),
+        )
+        self.logger.info("PLAN seed=%d %s", plan_seed, plan.summary())
 
         await self.bring_up_no_cpu()
         self.hmac = SepHmac(self)
@@ -393,6 +554,8 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
                 last = await self._legal_class(step)
 
         close_graded_window(self.logger)
+        for err_step in plan.err_steps:
+            await self._err_class(err_step, plan.e5_trigger)
         self.chk.info("HMAC-DIGEST-ORDER", dswap0=self._dorder or "-", graded_by="CHK-HMAC-RECOVER")
         self.chk.finish()
 
@@ -422,6 +585,20 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         if not seq.resp_ok:
             raise AssertionError(f"HMAC write @0x{addr:08x} not OKAY")
         return bool(seq.resp_ok)
+
+    async def _wr_resp(self, addr: int, data: int) -> int:
+        """One 32-bit write whose response no text states; returns the B code, -1 if none came."""
+        seq = SepAxiAccessSeq(
+            "hmac_wr_resp",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=4,
+            size=2,
+            allow_unverified_write_resp=True,
+        )
+        await self.start_seq(seq)
+        return -1 if seq.timed_out else seq.resp_code
 
     async def _rd(self, addr: int) -> int:
         return await self.hmac._rd(addr)
@@ -688,3 +865,133 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         if t_done is None:
             await self._reset_hmac(cocotb.top)
         return h
+
+    async def _obs_idle_in_hash(self, name: str) -> None:
+        status = await self._rd(HMAC_STATUS)
+        self.chk.obs(
+            "HMAC-IDLE",
+            **{"class": name},
+            phase="in_hash",
+            idle=int(bool(status & HMAC_STATUS_IDLE)),
+        )
+
+    async def _start_body(self, h: Hash) -> int:
+        """Legal CFG, KEY when keyed, hash_start; returns the clock of the start."""
+        await self._wr(HMAC_CFG, h.cfg())
+        if h.hmac_en:
+            await self._write_key_row(h.row)
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
+        return self._now_clk()
+
+    async def _wr_cfg_graded(self, word: int, fields: dict[str, object]) -> None:
+        """Write ``CFG`` on an idle engine and grade its readback (``CTRL-HMAC-ERR-CFG``)."""
+        await self._wr(HMAC_CFG, word)
+        got = await self._rd(HMAC_CFG) & CFG_MASK
+        self.chk.ctrl(
+            "HMAC-ERR-CFG",
+            got == word & CFG_MASK,
+            **fields,
+            written=f"0x{word:08x}",
+            read=f"0x{got:08x}",
+            mask=f"0x{CFG_MASK:08x}",
+        )
+
+    async def _err_class(self, e: ErrStep, e5_trigger: str) -> None:
+        """One error class from an engine reset, graded after its recovery hash."""
+        dut = cocotb.top
+        h = e.body
+        cls = {"class": e.name}
+        await self._reset_hmac(dut)
+        intr_clr = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
+        err_code_clr = await self._rd(HMAC_ERR_CODE)
+        self.chk.ctrl(
+            "HMAC-ERRCODE-CLR",
+            err_code_clr == EXP_ERR_CODE_RESET and not (intr_clr & HMAC_INTR_ERR),
+            **cls,
+            err=int(bool(intr_clr & HMAC_INTR_ERR)),
+            err_code=f"0x{err_code_clr:x}",
+            expected=f"0x{EXP_ERR_CODE_RESET:x}",
+        )
+        open_graded_window(TEST, self.logger)
+        extra: dict[str, object] = {}
+        t0 = 0
+        if e.code == ERR_HASH_START_SHA_DISABLED:
+            await self._wr_cfg_graded(cfg_word_sha_off(h), cls)
+            await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
+        elif e.code == ERR_UPDATE_KEY_IN_PROCESS:
+            t0 = await self._start_body(h)
+            await self._write_msg(h.msg)
+            await self._obs_idle_in_hash(e.name)
+            orig = _row_words(h.row)[e.key_idx]
+            resp = await self._wr_resp(HMAC_KEY[e.key_idx], orig ^ e.key_mask)
+            self.chk.obs("HMAC-ERR-RESP", **cls, reg=f"KEY_{e.key_idx}", resp=resp)
+        elif e.code == ERR_HASH_START_ACTIVE:
+            await self._start_body(h)
+            await self._write_msg(h.msg[: len(h.msg) // 2])
+            await self._obs_idle_in_hash(e.name)
+            await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
+        else:
+            sha_off = e5_trigger == "sha_disabled"
+            await self._wr_cfg_graded(
+                cfg_word_sha_off(h) if sha_off else h.cfg(), {**cls, "trigger": e5_trigger}
+            )
+            if not sha_off and h.hmac_en:
+                await self._write_key_row(h.row)
+            resp = await self._wr_resp(HMAC_MSG_FIFO, e.word)
+            self.chk.obs("HMAC-ERR-RESP", **cls, reg="MSG_FIFO", trigger=e5_trigger, resp=resp)
+            extra["trigger"] = e5_trigger
+        await ClockCycles(dut.clk_i, self.hold)
+        intr = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
+        err_code = await self._rd(HMAC_ERR_CODE)
+        err = int(bool(intr & HMAC_INTR_ERR))
+        ok_class = err == 1 and err_code == e.code
+
+        if e.code == ERR_UPDATE_KEY_IN_PROCESS:
+            # The KEY update is discarded (programmers_guide.md:76-78): the hash completes with
+            # the original key.
+            await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+            t_done = await self._poll_done(t0, self.hash_bound)
+            digest = await self._read_digest(h.sha)
+            await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
+            orig_eq = t_done is not None and self._eq(digest, h.golden)
+            ok_class = ok_class and orig_eq
+            extra["digest_orig_eq"] = int(orig_eq)
+            extra["t_done"] = t_done if t_done is not None else "timeout"
+
+        # Recovery: write-one clear of hmac_err, then a legal HMAC hash. After 0x4 and 0x5 the
+        # engine state is not stated, so the recovery hash follows an engine reset.
+        await self._wr(HMAC_INTR_STATE, HMAC_INTR_ERR)
+        intr_w1c = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
+        err_cleared = int(not (intr_w1c & HMAC_INTR_ERR))
+        reset_first = e.code in (ERR_HASH_START_ACTIVE, ERR_PUSH_MSG_DISALLOWED)
+        if reset_first:
+            await self._reset_hmac(dut)
+        rec = e.recovery
+        t_rec, rdigest = await self._run_hash(rec, bound=self.hash_bound)
+        intr_rec = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
+        rec_eq = t_rec is not None and self._eq(rdigest, rec.golden)
+        rec_err = int(bool(intr_rec & HMAC_INTR_ERR))
+        passed = self.chk.ok(
+            "HMAC-ERR-CLASS",
+            ok_class and err_cleared == 1 and rec_eq and rec_err == 0,
+            **cls,
+            code=f"0x{e.code:x}",
+            err=err,
+            err_code=f"0x{err_code:x}",
+            **extra,
+            sha=h.sha,
+            hmac_en=h.hmac_en,
+            klen=h.key_bits if h.key_bits is not None else "none",
+            hold=self.hold,
+            err_cleared=err_cleared,
+            reset_before_recovery=int(reset_first),
+            recovery_eq=int(rec_eq),
+            recovery_err=rec_err,
+            t_rec=t_rec if t_rec is not None else "timeout",
+            bound=self.hash_bound,
+        )
+        if passed:
+            await hmac_err_class_fcov(e.code)
+        close_graded_window(self.logger)
+        if t_rec is None:
+            await self._reset_hmac(dut)

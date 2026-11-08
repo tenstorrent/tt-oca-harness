@@ -35,9 +35,9 @@ S9 HELD_RESP: the responder holds the B of one JTAG2AXI write toward ext_out
    drops the held B on the primary reset's falling edge, as a subordinate on
    that reset must. What the DUT presents after release (B on smu_out, the
    crossbar ports and dtp_dbg, and the JTAG2AXI status) is printed as
-   OBS-G2A-HELD-RESP, never compared (SF-003). A B presented after release
-   would be the bench's own protocol violation on that link, so it is not
-   driven (HELD_B_AFTER_RELEASE).
+   OBS-G2A-HELD-RESP, never compared. A B presented after release would be
+   the bench's own protocol violation on that link, so it is not driven
+   (HELD_B_AFTER_RELEASE).
 """
 
 from __future__ import annotations
@@ -228,7 +228,8 @@ NOT_DRIVABLE = (
         "HELD_B_AFTER_RELEASE",
         "the only responder outside the link's reset is the bench's; a B it presented after "
         "release would answer a request the link's reset withdrew, a protocol violation by the "
-        "bench, so the SMU's handling of one waits on SF-003",
+        "bench, so the SMU's handling of one waits on an open spec question (whether a request "
+        "accepted before a reset completes or is withdrawn)",
     ),
     ("OTP_SMC", "the DTP OTP JTAG AXI-Lite port is outside this leaf's stimulus"),
     ("OTP_SEP", "the DTP OTP JTAG AXI-Lite port is outside this leaf's stimulus"),
@@ -390,7 +391,8 @@ class _Watch:
             return
         if key in self.cleared:
             cls = (
-                "checker-side-under-SF-003"
+                "checker-side (open spec question: whether a request accepted before a reset "
+                "completes or is withdrawn)"
                 if RESPONDER_RESET[link] != "rst_primary_smc_clk_n_o"
                 else "design-side"
             )
@@ -672,7 +674,9 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         self._info(
             f"OBS-G2A-ADDR: tag={tag} smc_aperture=local_alias inbound0=[0x0,0x{PASS_ALL_END:x}] "
             f"outbound0=pass_all smc_cell=0x{SMC_CELL:x} sep_cell=0x{SEP_CELL:x} "
-            f"ext_cell=0x{EXT_CELL:x} t={before}..{_now()}ns; waits on SF-023, never compared"
+            f"ext_cell=0x{EXT_CELL:x} t={before}..{_now()}ns; waits on an open spec question "
+            "(which addresses and filter entries reach the SEP SRAM and SMC scratchpad), "
+            "never compared"
         )
 
     async def _j2a_route(self, label: str, addr: int, data: int) -> dict:
@@ -716,7 +720,8 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         for e in aw:
             self._info(
                 f"OBS-G2A-ATOP-DTP: route={label} awid={e[3]} awaddr=0x{(e[4] or 0):x} "
-                f"awatop={e[8]} t={e[0]}ns; waits on SF-017, never compared"
+                f"awatop={e[8]} t={e[0]}ns; waits on an open spec question (whether the fabric "
+                "carries ATOP and how an atomic request is answered), never compared"
             )
         return res
 
@@ -1092,7 +1097,8 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         self._info(
             f"OBS-G2A-DTP-RESET: leg={leg} j2a_status_after_release={status} polls={polls} "
             f"dtp_dbg_reset_edges={rst['edges'].get('dtp_dbg', 0)} "
-            f"dtp_responses_after_release={len(dtp)}; waits on SF-028, never compared"
+            f"dtp_responses_after_release={len(dtp)}; waits on an open spec question (which reset "
+            "drives dbg_rstb_i and the JTAG2AXI AXI side), never compared"
         )
         return status, polls
 
@@ -1160,14 +1166,16 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
                 else:
                     outcome = "withdrawn"
                     self._info(
-                        f"INFO-CLASSIFY: kind=unanswered-transaction class=checker-side-under-SF-003 "
+                        f"INFO-CLASSIFY: kind=unanswered-transaction class=checker-side "
                         f"graded=no leg={leg} port={port} id=0x{axid:x} reason=withdrawn by the "
-                        f"primary reset (SF-003 open) last={self.watch.last_state(port)}"
+                        "primary reset (open spec question: whether a request accepted before a "
+                        f"reset completes or is withdrawn) last={self.watch.last_state(port)}"
                     )
             self._info(
                 f"{tag}: leg={leg} port={port} id=0x{axid:x} kind={kind} accepted={n_req} "
                 f"answered_before={n_resp} outcome={outcome} reset_low_at={t_low}ns; "
-                f"aresetn=rst_primary_smc_clk_n_o; waits on SF-003, never compared"
+                f"aresetn=rst_primary_smc_clk_n_o; waits on an open spec question (whether a "
+                "request accepted before a reset completes or is withdrawn), never compared"
             )
 
     async def _liveness(self, leg: str) -> dict:
@@ -1230,12 +1238,17 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         ]:
             self._info(
                 f"OBS-G2A-RESET-DOMAIN: leg={leg} link={link} {sig} dropped t={t}ns nets={nets} "
-                f"graded_against=rst_primary_smc_clk_n_o; waits on SF-001, SF-002, SF-010, never compared"
+                f"graded_against=rst_primary_smc_clk_n_o; waits on open spec questions (which "
+                "reset resets the crossbar, converters and inbound cut; which reset grades the "
+                "SMC-facing links; where the inbound boundary cut sits and whether it is "
+                "transparent), never compared"
             )
         self._info(
             f"OBS-G2A-RESET-DOMAIN: leg={leg} incut=u_dut.u_smu.smu_axi_in_cut "
             f"incut_reset_edges={edges.get('incut', 0)} smu_in_reset_edges={edges.get('smu_in', 0)}; "
-            f"waits on SF-001, SF-002, SF-010, never compared"
+            f"waits on open spec questions (which reset resets the crossbar, converters and "
+            "inbound cut; which reset grades the SMC-facing links; where the inbound boundary cut "
+            "sits and whether it is transparent), never compared"
         )
         self._mark(
             "COOL_RESET" if leg == "cool" else "FLR_RESET",
@@ -1532,6 +1545,7 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
             f"{_now() - t_rel}ns b_after_release={b_after} j2a_status_after_release={status} "
             f"polls={polls} reset_nets={self.watch.reset_sample()}; the bench drops its held B "
             f"at the link's reset, a B presented after release is HELD_B_AFTER_RELEASE "
-            f"(not driven); waits on SF-003, never compared"
+            f"(not driven); waits on an open spec question (whether a request accepted before a "
+            "reset completes or is withdrawn), never compared"
         )
         self.watch.stop()

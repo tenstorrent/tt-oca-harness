@@ -29,9 +29,9 @@ S9: thirty-two single-beat reads at M with RREADY held low for 2000 cycles.
 
 RDATA of a DECERR beat, the codes of later burst beats and the number of reads
 the responder accepts while RREADY is held are recorded as OBS lines and not
-compared (SF-003, SF-004, SF-011). Every handshake is sampled on the ext_in
-pins each clk_smu_i cycle; the subordinate counters and the sep_in AR tap are
-read from the bench top. No force or deposit.
+compared. Every handshake is sampled on the ext_in pins each clk_smu_i cycle;
+the subordinate counters and the sep_in AR tap are read from the bench top. No
+force or deposit.
 """
 
 from __future__ import annotations

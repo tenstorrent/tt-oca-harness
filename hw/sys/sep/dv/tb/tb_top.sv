@@ -634,11 +634,11 @@ module sep_uvm_top
         .rst_vec                      (rst_vec_i),
         .jtag_id                      (jtag_id_drive),
 
-        // Interrupts. soft_int is tied to 0. timer_int is the top-port drive
-        // timer_int_i and the boundary PIC input is the top-port drive
-        // sep_ext_interrupts_i (0 unless a leaf drives them).
+        // Interrupts. timer_int and soft_int are the top-port drives
+        // timer_int_i and soft_int_i, and the boundary PIC input is the
+        // top-port drive sep_ext_interrupts_i (0 unless a leaf drives them).
         .timer_int                    (timer_int_i === 1'b1),
-        .soft_int                     (1'b0),
+        .soft_int                     (soft_int_i === 1'b1),
         .sep_ext_interrupts_i         (sep_ext_interrupts_i),
 
         // SMN external AXI (outbound captured by the mailbox responder; inbound
@@ -1353,6 +1353,25 @@ module sep_uvm_top
         end
     end
 
+    // CPU/DMA DCCM write contention: count clocks where the LSU sees a DMA DCCM
+    // write request and a store-buffer DCCM write request together. Observes
+    // requests only and drives no DUT signal.
+`ifndef SEP_CPU_STUB
+    logic dma_cpu_dccm_overlap;
+    assign dma_cpu_dccm_overlap =
+        `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.lsu.dma_dccm_wen &&
+        `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.veer.lsu.stbuf_reqvld_any;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            dma_cpu_dccm_overlap_count_o <= '0;
+        end else if (dma_cpu_dccm_overlap && !(&dma_cpu_dccm_overlap_count_o)) begin
+            dma_cpu_dccm_overlap_count_o <= dma_cpu_dccm_overlap_count_o + 1'b1;
+        end
+    end
+`else
+    assign dma_cpu_dccm_overlap_count_o = '0;
+`endif
+
     // SPI-to-DMA transmit pacing probes (read-only XMR, no force).
     assign spi_tx_qd_probe_o =
         `SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_qd;
@@ -1387,6 +1406,7 @@ module sep_uvm_top
         `SEP_CORE.dma_axi_resp.ar_ready,
         `SEP_CORE.dma_axi_req.ar_valid
     };
+    assign dma_axi_wdata_probe_o = `SEP_CORE.dma_axi_req.w.data;
     assign dma_resp_buser_o = `SEP_CORE.dma_axi_resp.b.user;
     assign dma_resp_ruser_o = `SEP_CORE.dma_axi_resp.r.user;
     assign dma_resp_r_hs_o  = {
@@ -3521,6 +3541,45 @@ module sep_uvm_top
     end
 `undef ESRC_CNTR_COPY
 
+    // ESRC main state machine error-output inject. While
+    // esrc_main_sm_err_inject_i is 1 the bench forces main_sm_err (the
+    // state machine error output as entropy_source reads it) to 1. The state
+    // machine is not forced, so no cause remains after the input drops.
+    // After the drop the bench forces the live value (computed from the
+    // unforced state) until it equals the value forced last, then releases;
+    // one falling edge later the net must equal the live value. Default 0.
+    function automatic logic esrc_sm_err_live_f(
+        logic [entropy_src_main_sm_pkg::StateWidth-1:0] st);
+        entropy_src_main_sm_pkg::state_e e;
+        return ($cast(e, st) == 0) || (st == entropy_src_main_sm_pkg::Error);
+    endfunction
+    logic esrc_sm_err_held, esrc_sm_err_fv, esrc_sm_err_chk;
+    initial begin
+        esrc_sm_err_held = 1'b0;
+        esrc_sm_err_fv   = 1'b0;
+        esrc_sm_err_chk  = 1'b0;
+    end
+    always @(negedge clk_i) begin
+        if (esrc_sm_err_chk &&
+            (`SEP_ESRC.main_sm_err !== esrc_sm_err_live_f(`SEP_ESRC.main_sm_state)))
+            $error("[tb] ESRC main_sm_err inject: net differs from the live value after the release");
+        esrc_sm_err_chk = 1'b0;
+        if (esrc_main_sm_err_inject_i === 1'b1) begin
+            esrc_sm_err_held = 1'b1;
+            esrc_sm_err_fv   = 1'b1;
+            force `SEP_ESRC.main_sm_err = 1'b1;
+        end else if (esrc_sm_err_held) begin
+            if (esrc_sm_err_live_f(`SEP_ESRC.main_sm_state) === esrc_sm_err_fv) begin
+                release `SEP_ESRC.main_sm_err;
+                esrc_sm_err_held = 1'b0;
+                esrc_sm_err_chk  = 1'b1;
+            end else begin
+                esrc_sm_err_fv = esrc_sm_err_live_f(`SEP_ESRC.main_sm_state);
+                force `SEP_ESRC.main_sm_err = esrc_sm_err_fv;
+            end
+        end
+    end
+
     // ------------------------------------------------------------------
     // Crypto alert sender inject.
     // ------------------------------------------------------------------
@@ -3944,6 +4003,7 @@ module sep_uvm_top
     assign axis1_tready_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_rsp[1].tready;
     assign axis1_tdata_o        = `SEP_CORE.u_sep_crypto.entropy_muxed_req[1].tdata;
     assign km_entropy_tready_o  = `SEP_CORE.u_sep_crypto.entropy_muxed_rsp[0].tready;
+    assign km_entropy_tuser_o   = `SEP_CORE.u_sep_crypto.entropy_muxed_req[0].tuser;
     // CHK5 pool (mux endpoint [2]): pre-adapter AXIS2 + post-adapter native EDN.
     assign axis2_tvalid_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_req[2].tvalid;
     assign axis2_tready_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_rsp[2].tready;
@@ -3964,6 +4024,8 @@ module sep_uvm_top
     assign crypto_edn_fips_o[i]             = `SEP_CORE.u_sep_crypto.crypto_edn_rsp[i].edn_fips
     `CRYPTO_EDN_TAP(0); `CRYPTO_EDN_TAP(1); `CRYPTO_EDN_TAP(2); `CRYPTO_EDN_TAP(3);
 `undef CRYPTO_EDN_TAP
+    assign edn_crypto_arb_req_o = `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan.arb_req;
+    assign edn_crypto_arb_gnt_o = `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan.arb_gnt;
 
     // Client-side EDN synchronizer taps: the prim_sync_reqack_data instance of
     // each native client (AES, KMAC, OTBN RND inside prim_edn_req, OTBN URND).
@@ -4438,8 +4500,8 @@ module sep_uvm_top
     assign km_efuse_aw_addr_o = `KM_TAP.efuse_req_o.aw.addr;
     // KM-BUS (key-path part): the requests on the five Key Manager key-path
     // ports of the crypto interconnect, ahead of the isolation stages: AR and
-    // AW valid, ready and address. Index i is bench isolate stage 8 + i: 0
-    // OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
+    // AW valid, ready and address, and W valid, ready, data and strobe. Index
+    // i is bench isolate stage 8 + i: 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
 `define KM_IC `KM_CRY.u_sep_crypto_axi_interconnect
 `define KM_KEY_BUS(i, req_, rsp_) \
     assign km_key_ar_valid_o[i] = `KM_IC.req_.ar_valid; \
@@ -4447,7 +4509,11 @@ module sep_uvm_top
     assign km_key_ar_addr_o[32*i +: 32] = 32'(`KM_IC.req_.ar.addr); \
     assign km_key_aw_valid_o[i] = `KM_IC.req_.aw_valid; \
     assign km_key_aw_ready_o[i] = `KM_IC.rsp_.aw_ready; \
-    assign km_key_aw_addr_o[32*i +: 32] = 32'(`KM_IC.req_.aw.addr);
+    assign km_key_aw_addr_o[32*i +: 32] = 32'(`KM_IC.req_.aw.addr); \
+    assign km_key_w_valid_o[i] = `KM_IC.req_.w_valid; \
+    assign km_key_w_ready_o[i] = `KM_IC.rsp_.w_ready; \
+    assign km_key_w_data_o[32*i +: 32] = 32'(`KM_IC.req_.w.data); \
+    assign km_key_w_strb_o[4*i +: 4] = 4'(`KM_IC.req_.w.strb);
     `KM_KEY_BUS(0, otbn_key_axil_req_i, otbn_key_axil_resp_o)
     `KM_KEY_BUS(1, aes_key_axil_req_i, aes_key_axil_resp_o)
     `KM_KEY_BUS(2, hmac_key_axil_req_i, hmac_key_axil_resp_o)
@@ -4461,6 +4527,12 @@ module sep_uvm_top
     // KM-INFIFO: the head word of the inbound FIFO of the KM mailbox
     // ({separator, data}; 0 while the FIFO is empty), every clock.
     assign km_infifo_head_o = 33'(`KM_TAP.u_mailbox.inbound_rdata);
+    // KM-FETCH: the native memory request of the KM CPU wrapper, every clock.
+    assign km_mem_valid_o = `KM_TAP.u_cpu.mem_valid;
+    assign km_mem_ready_o = `KM_TAP.u_cpu.mem_ready;
+    assign km_mem_instr_o = `KM_TAP.u_cpu.mem_instr;
+    assign km_mem_addr_o  = `KM_TAP.u_cpu.mem_addr;
+    assign km_mem_wstrb_o = `KM_TAP.u_cpu.mem_wstrb;
     // KM-WMAP: per SRAM write-lock region (KmSramRegionWords words each,
     // region r holding the logical word addresses from KmSramRegionWords*r),
     // the count of distinct words written since the bench reset or the last
@@ -4910,6 +4982,44 @@ module sep_uvm_top
 `undef KM_IRQSET
 `undef KM_IRQSET_FS
     assign km_irqset_fired_o = km_irqset_fired_q;
+
+    // KM mailbox flow-error inject. At the first falling edge with an input at
+    // 1 the bench forces its detect net to 1 for one clock (bit 0
+    // km_outbound_overflow_detected, bit 1 km_inbound_underflow_detected).
+    // The nets drive only the hwset of the sticky STATUS and IRQ_STATUS
+    // fields; the FIFOs are not forced. After the pulse the bench forces the
+    // live value until it equals the value forced last, then releases; one
+    // falling edge later the net must equal the live value. One pulse per
+    // rise; a drop re-arms. Default 0.
+`define KM_MBOX `KM_TAP.u_mailbox
+    logic [1:0] km_mbox_in, km_mbox_live, km_mbox_seen, km_mbox_held, km_mbox_fv, km_mbox_chk;
+    assign km_mbox_in   = {km_mbox_udf_inject_i === 1'b1, km_mbox_ovf_inject_i === 1'b1};
+    assign km_mbox_live = {`KM_MBOX.km_fifo_ar_handshake && `KM_MBOX.inbound_empty,
+                           `KM_MBOX.km_fifo_w_handshake && `KM_MBOX.outbound_full};
+    initial begin
+        km_mbox_seen = '0; km_mbox_held = '0; km_mbox_fv = '0; km_mbox_chk = '0;
+    end
+`define KM_MBOX_FLOW(b, net_) \
+    if (km_mbox_chk[b] && (`KM_MBOX.net_ !== km_mbox_live[b])) \
+        $error("[tb] KM mailbox flow inject: bit %0d differs from the live value after the release", b); \
+    km_mbox_chk[b] = 1'b0; \
+    if (!km_mbox_in[b]) km_mbox_seen[b] = 1'b0; \
+    if (km_mbox_in[b] && !km_mbox_seen[b]) begin \
+        km_mbox_seen[b] = 1'b1; km_mbox_held[b] = 1'b1; km_mbox_fv[b] = 1'b1; \
+        force `KM_MBOX.net_ = 1'b1; \
+    end else if (km_mbox_held[b]) begin \
+        if (km_mbox_live[b] === km_mbox_fv[b]) begin \
+            release `KM_MBOX.net_; km_mbox_held[b] = 1'b0; km_mbox_chk[b] = 1'b1; \
+        end else begin \
+            km_mbox_fv[b] = km_mbox_live[b]; force `KM_MBOX.net_ = km_mbox_fv[b]; \
+        end \
+    end
+    always @(negedge clk_i) begin
+        `KM_MBOX_FLOW(0, km_outbound_overflow_detected)
+        `KM_MBOX_FLOW(1, km_inbound_underflow_detected)
+    end
+`undef KM_MBOX_FLOW
+`undef KM_MBOX
 
     // ------------------------------------------------------------------
     // HK-CPUIRQ: KM CPU internal IRQ lines (docs/SEP_TB_ARCH.adoc, inject
@@ -5952,6 +6062,7 @@ module sep_uvm_top
     assign esrc_cntr_inject_bit_i   = '0;
     assign esrc_noise_stuck_en_i    = '0;
     assign esrc_noise_stuck_val_i   = '0;
+    assign esrc_main_sm_err_inject_i = 1'b0;
     assign km_otp_flip_en_i         = 1'b0;
     assign km_otp_flip_mask_i       = '0;
     assign km_strm_wd_arm_i         = 1'b0;
@@ -5961,6 +6072,8 @@ module sep_uvm_top
     assign km_sram_peek_addr_i      = '0;
     assign km_irqset_arm_i          = 1'b0;
     assign km_irqset_mask_i         = '0;
+    assign km_mbox_ovf_inject_i     = 1'b0;
+    assign km_mbox_udf_inject_i     = 1'b0;
     assign km_cpuirq_arm_i          = 1'b0;
     assign km_cpuirq_lines_i        = '0;
     assign km_kpv_flip_en_i         = 1'b0;
@@ -5988,6 +6101,7 @@ module sep_uvm_top
     assign otbn_intg_flip_bit_i      = '0;
     assign sep_ext_interrupts_i     = '0;
     assign timer_int_i              = 1'b0;
+    assign soft_int_i               = 1'b0;
     assign smn_outbound_resp_hold_i = 1'b0;
     assign smn_outbound_rd_slverr_i = 1'b0;
     assign smn_outbound_ready_stall_i = '0;
@@ -6606,6 +6720,7 @@ module sep_uvm_top
     wire              fcov_tlu_take_nmi = `SEP_FCOV_TLU.take_nmi;
     wire              fcov_tlu_take_tmr = `SEP_FCOV_TLU.take_timer_int;
     wire              fcov_tlu_take_sw  = `SEP_FCOV_TLU.take_soft_int;
+    wire              fcov_tlu_soft_int = `SEP_FCOV_TLU.soft_int;
     wire [3:0]        fcov_pic_meipt    = `SEP_FCOV_TLU.meipt;
     wire [3:0]        fcov_pic_meicurpl = `SEP_FCOV_TLU.meicurpl;
     wire [1:0]        fcov_tlu_take_itmr = {`SEP_FCOV_TLU.take_int_timer1_int,
@@ -6633,6 +6748,7 @@ module sep_uvm_top
     wire              fcov_tlu_take_nmi = 1'b0;
     wire              fcov_tlu_take_tmr = 1'b0;
     wire              fcov_tlu_take_sw  = 1'b0;
+    wire              fcov_tlu_soft_int = 1'b0;
     wire [3:0]        fcov_pic_meipt    = '0;
     wire [3:0]        fcov_pic_meicurpl = '0;
     wire [1:0]        fcov_tlu_take_itmr = '0;
@@ -7051,6 +7167,7 @@ module sep_uvm_top
         .tlu_take_nmi_i    (fcov_tlu_take_nmi),
         .tlu_take_timer_i  (fcov_tlu_take_tmr),
         .tlu_take_soft_i   (fcov_tlu_take_sw),
+        .tlu_soft_int_i    (fcov_tlu_soft_int),
         .mb_status_i       (fcov_mb_status),
         .mb_irqs_i         (fcov_mb_irqs),
         .mb_irqen_i        (fcov_mb_irqen),
