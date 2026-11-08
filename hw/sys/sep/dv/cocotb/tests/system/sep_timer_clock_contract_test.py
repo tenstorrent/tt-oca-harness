@@ -1713,17 +1713,18 @@ class sep_timer_clock_contract_test(sep_base_test):
 
         watch = cocotb.start_soon(_watch())
         for en in (0, 1):
+            want = WDOG_EN if en else 0
+            tag = "CTRL-WDT-INTRTEST-EN" if en else "CTRL-WDT-INTRTEST-DIS"
             if en:
                 await self._wr(WDOG_CTRL, WDOG_EN)
-                ctl = await self._poll_eq(
-                    "WDOG_CTRL", WDOG_CTRL, WDOG_EN, WDOG_CTRL_FIELDS, "CTRL-WDT-INTRTEST-EN"
-                )
-                self.logger.info(
-                    "CTRL-WDT-INTRTEST-EN: WDOG_CTRL=0x%x expect=0x%x field_mask=0x%x",
-                    ctl & WDOG_CTRL_FIELDS,
-                    WDOG_EN,
-                    WDOG_CTRL_FIELDS,
-                )
+            ctl = await self._poll_eq("WDOG_CTRL", WDOG_CTRL, want, WDOG_CTRL_FIELDS, tag)
+            self.logger.info(
+                "%s: WDOG_CTRL=0x%x expect=0x%x field_mask=0x%x",
+                tag,
+                ctl & WDOG_CTRL_FIELDS,
+                want,
+                WDOG_CTRL_FIELDS,
+            )
             await self._wr(INTR_TEST, BARK_BIT)
             await self._poll_eq("INTR_STATE", INTR_STATE, BARK_BIT, BARK_BIT, "CHK-WDT-INTRTEST")
             await self._wr(INTR_STATE, BARK_BIT)
