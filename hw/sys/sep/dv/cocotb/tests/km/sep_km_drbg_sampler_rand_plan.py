@@ -258,8 +258,8 @@ def _pre_pattern(rng: SepSeededRng) -> list[Beat]:
 
 def _pack_patterns(rng: SepSeededRng) -> list[list[Beat]]:
     """Every TSTRB 0x1 to 0xF once, in drawn order, with two TSTRB 0x0 beats
-    inside; each pattern is the beats of one DATA read, and at least one
-    pattern drops bytes."""
+    inside; each pattern is the beats of one DATA read, and a pattern before
+    the last drops bytes, so a later read shows a carried byte."""
     strbs = list(range(1, STRB_ALL + 1))
     rng.shuffle(strbs)
     for _ in range(PACK_STRB0_BEATS):
@@ -273,8 +273,8 @@ def _pack_patterns(rng: SepSeededRng) -> list[list[Beat]]:
             cur = []
     if cur:
         patterns.append([*cur, _beat(rng, STRB_ALL)])
-    if not any(pack(p)[1] for p in patterns):
-        patterns.append([_beat(rng, 0x1), _beat(rng, STRB_ALL)])
+    if not any(pack(p)[1] for p in patterns[:-1]):
+        patterns.insert(len(patterns) - 1, [_beat(rng, 0x1), _beat(rng, STRB_ALL)])
     return patterns
 
 

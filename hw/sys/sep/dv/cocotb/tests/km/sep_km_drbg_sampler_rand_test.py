@@ -154,8 +154,8 @@ Checkers:
                   two TSTRB 0x0 beats, queued before the reads: each DATA read
                   (OKAY) returns the TSTRB-selected bytes in beat order, lanes 0
                   to 3, filling the word from byte 0; bytes past the fourth are
-                  not carried into the next word (at least one pattern drops
-                  bytes); a TSTRB 0x0 beat takes one handshake and packs no
+                  not carried into the next word (a pattern before the last
+                  drops bytes, so a later read shows a carry); a TSTRB 0x0 beat takes one handshake and packs no
                   byte; the handshakes at the source and on the KM entropy taps
                   equal the queued beats; STREAM_ERR and TIMEOUT_ERR 0, COUNT_BAD
                   unchanged, COUNT_GOOD plus the reads (architecture.adoc, "Reads,
