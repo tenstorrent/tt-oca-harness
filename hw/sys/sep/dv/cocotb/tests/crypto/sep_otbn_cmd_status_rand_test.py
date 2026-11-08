@@ -29,8 +29,13 @@ Legs (one seed draws the plan, logged in one ``PLAN`` line):
              instructions, each run after an OTBN reset.
   done line  two EXECUTE runs (enable 1 and enable 0, drawn order), then the
              ``INTR_TEST`` sub-leg.
-  busy write an ``RND`` read held by the TRNG reset keeps ``STATUS`` at 0x01;
-             k ``CTRL`` writes and j ``CMD`` = SEC_WIPE_DMEM writes.
+  busy write first the ``unimp`` program with ``CTRL.software_errs_fatal`` = 0,
+             outside the graded window, which leaves ``ERR_BITS.illegal_insn``
+             set; then an ``RND`` read held by the TRNG reset keeps ``STATUS`` at
+             0x01; k ``CTRL`` writes, j ``CMD`` = SEC_WIPE_DMEM writes, one write
+             of a drawn value W (above the length of the ``RND`` program) to
+             ``INSN_CNT``, one write of a drawn non-zero value to ``ERR_BITS``,
+             then an ``ERR_BITS`` read and a ``STATUS`` read.
   integrity  the compute program twice under ``+sep_otbn_intg_flip``: once with one
              drawn bit (0 to 38) of every IMEM word that the core fetches inverted,
              once with one drawn bit of a DMEM word that a ``lw`` of the program
@@ -177,6 +182,25 @@ Checkers:
                        tag is tied high (``otbn.adoc`` :67-69). Bit 6 is set when
                        two EDN words are equal (ToO:246-251), a chance outcome,
                        so it is logged only.
+  CHK-OTBN-INSNCNT-BUSYWR  the ``INSN_CNT`` write at 0x01 is ignored: after the
+                       release, at IDLE, ``INSN_CNT`` differs from W and is at most
+                       the length of the ``RND`` program (``ecall`` included), on
+                       every seed; when ``ERR_BITS`` reads 0 after the release,
+                       ``INSN_CNT`` equals that length. "Writes are ignored while
+                       OTBN is busy" and any other write clears it to 0
+                       (``otbn.hjson`` :738-739); "reset to 0 at the start of a new
+                       operation" (:728-730); "Instructions triggering an error do
+                       not count" (:733-734). A recoverable error (bit 6 is a
+                       chance outcome) ends the run early (ToO:163-168), so the
+                       exact count is graded only on a run with ``ERR_BITS`` 0;
+                       ``INFO-OTBN-INSNCNT-EXACT`` logs whether it was.
+  CHK-OTBN-ERRBITS-BUSYWR  the ``ERR_BITS`` write at 0x01 is ignored: the
+                       ``ERR_BITS`` read after it, with ``STATUS`` still 0x01,
+                       equals the value P that the ``unimp`` run left. Writes to
+                       ``ERR_BITS`` are ignored while OTBN is busy (``otbn.hjson``
+                       :562-563); ``ERR_BITS`` is set at the end of the run
+                       (ToO:137), and no text changes it when EXECUTE starts
+                       (ToO:128-137).
   CHK-OTBN-CMDIGN-ERR  the unrecognised ``CMD`` at IDLE leaves ``ERR_BITS`` at its
                        value before the write (non-zero). "Unrecognized commands
                        are ignored." (``otbn.hjson`` :464); ``ERR_BITS`` is set at
@@ -248,6 +272,8 @@ Checkers:
                        :672-673).
 
 Controls: ``CTRL-OTBN-BUSYWR`` (the idle write reads back 1),
+``CTRL-OTBN-ERRBITS-BUSYWR-PRE`` (P has ``illegal_insn`` set, so it differs from 0,
+which an accepted busy write would leave),
 ``CTRL-OTBN-DONE-LINE`` (enable-set ``INTR_TEST`` cell), ``CTRL-OTBN-CMD-IGNORE``
 (a recognised command of the same seed sets ``done``), ``CTRL-OTBN-INITDONE``
 (after the power-on wipe ``STATUS`` reads 0x00 and the probe holds 0x00 up to the
@@ -537,6 +563,8 @@ class Plan:
     iba_dmem_val: int
     seq3: tuple[int, ...]
     gaps3: tuple[int, ...]
+    insn_w: int
+    errbits_v: int
 
     def line(self, seed: int) -> str:
         return (
@@ -551,7 +579,8 @@ class Plan:
             f"iba_imem_idx={self.iba_imem_idx} iba_dmem_idx={self.iba_dmem_idx} "
             f"iba_dmem_val=0x{self.iba_dmem_val:08x} "
             f"seq3={','.join(f'0x{c:02x}' for c in self.seq3)} "
-            f"gaps3={','.join(map(str, self.gaps3))}"
+            f"gaps3={','.join(map(str, self.gaps3))} "
+            f"insn_w=0x{self.insn_w:08x} errbits_v=0x{self.errbits_v:08x}"
         )
 
 
@@ -589,6 +618,9 @@ def draw_plan(seed: int) -> Plan:
     # The command leg of shard 3: EXECUTE only.
     seq3 = (CMD_EXECUTE,) * rng.randrange(3, 6)
     gaps3 = tuple(rng.randrange(0, 201) for _ in seq3)
+    # Busy writes of INSN_CNT (above any count the RND program can reach) and ERR_BITS.
+    insn_w = rng.randrange(len(OTBN_RND_PROG) + 1, 1 << 32)
+    errbits_v = rng.randrange(1, 1 << 32)
     return Plan(
         tuple(seq),
         gaps,
@@ -613,6 +645,8 @@ def draw_plan(seed: int) -> Plan:
         iba_dmem_val,
         seq3,
         gaps3,
+        insn_w,
+        errbits_v,
     )
 
 
@@ -653,6 +687,8 @@ _EXEC_LEG_CHECKS = (
     "CHK-OTBN-BUSYWR-ERR",
     "CHK-OTBN-CMDIGN-ERR",
     "CHK-OTBN-LOAD-CKSUM",
+    "CHK-OTBN-INSNCNT-BUSYWR",
+    "CHK-OTBN-ERRBITS-BUSYWR",
 )
 
 
@@ -681,6 +717,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         "CHK-OTBN-IMEM-INTG",
         "CHK-OTBN-DMEM-INTG",
         "CHK-OTBN-LOAD-CKSUM",
+        "CHK-OTBN-INSNCNT-BUSYWR",
+        "CHK-OTBN-ERRBITS-BUSYWR",
     )
 
     # ------------------------------------------------------------- helpers
@@ -1420,6 +1458,19 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         p = self.plan
         dut = cocotb.top
         await self._reset_otbn("busywr")
+        # A recoverable error run leaves ERR_BITS non-zero for the busy ERR_BITS write.
+        close_graded_window(self.logger)
+        _, _, pre_vals, _ = await self._run_unimp(0)
+        err_pre = await self._rd(A_ERR_BITS, M_ERR_BITS)
+        self._open_window()
+        self._ctrl(
+            "OTBN-ERRBITS-BUSYWR-PRE",
+            bool(err_pre & M_ERR_ILLEGAL),
+            seed=seed,
+            status=_runs(pre_vals),
+            err_bits=f"0x{err_pre:x}",
+            illegal_insn=int(bool(err_pre & M_ERR_ILLEGAL)),
+        )
         await self._clear_done()
         ctrl_pre = await self._rd(A_CTRL, M_CTRL_SWERR)
         await self.otbn.load_program(OTBN_RND_PROG)
@@ -1462,6 +1513,20 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
                 bresp=",".join(bresps),
             ):
                 await self._pass_label(OTBN_CMD_PASS_IGNORE)
+            insn_bresp = await self._wr_b(A_INSN_CNT, p.insn_w, refused=True)
+            err_bresp = await self._wr_b(A_ERR_BITS, p.errbits_v, refused=True)
+            err_busy = await self._rd(A_ERR_BITS, M_ERR_BITS)
+            st_err_busy = await self._rd(A_STATUS, M_STATUS)
+            self._grade(
+                "OTBN-ERRBITS-BUSYWR",
+                err_busy == err_pre and st_err_busy == ST_BUSY_EXECUTE,
+                seed=seed,
+                written=f"0x{p.errbits_v:08x}",
+                bresp=err_bresp,
+                err_bits_busy=f"0x{err_busy:x}",
+                expect=f"0x{err_pre:x}",
+                status_after_read=f"0x{st_err_busy:02x}",
+            )
 
         # Steps 21-22: release the TRNG reset, bring the chain up, finish.
         await self.swrst.release("trng")
@@ -1474,6 +1539,26 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             "OTBN-BUSYWR-RNDREP", seed=seed, rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP))
         )
         err_graded = err & ~M_ERR_RND_REP
+        insn = await self._rd(A_INSN_CNT, M_INSN)
+        n_prog = len(OTBN_RND_PROG)
+        exact = err == 0
+        self.chk.info("OTBN-INSNCNT-EXACT", seed=seed, graded=exact, err_bits=f"0x{err:x}")
+        if busy:
+            self._grade(
+                "OTBN-INSNCNT-BUSYWR",
+                idle and insn != p.insn_w and insn <= n_prog and (not exact or insn == n_prog),
+                seed=seed,
+                written=f"0x{p.insn_w:08x}",
+                bresp=insn_bresp,
+                idle_after_release=int(idle),
+                insn_cnt=insn,
+                prog_len=n_prog,
+                exact_graded=exact,
+                err_bits=f"0x{err:x}",
+            )
+        else:
+            for name in ("OTBN-INSNCNT-BUSYWR", "OTBN-ERRBITS-BUSYWR"):
+                self._grade(name, False, seed=seed, reason="timeout", bound=self.idle_bound)
         self._grade(
             "OTBN-BUSYWR-ERR",
             idle and err_graded == 0,

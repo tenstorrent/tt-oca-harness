@@ -80,7 +80,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 295
+expected_count = 296
 # Listed longest first by each entry's longest measured leaf time, over every
 # measured seed. An entry with no measured time is placed by its estimated time.
 # Place a new test by its runtime.
@@ -188,6 +188,7 @@ tests = [
     "sep_mailbox_fifo_model_rand_test",
     "sep_trng_ext_sink_reset_rand_test",
     "sep_hmac_kmac_cpu_crypto_smoke_test",
+    "sep_otbn_fw_control_flow_test",
     "sep_otbn_cmd_status_rand_test",
     "sep_aes_stream_status_rand_test",
     "sep_pic_irq_source_map_delivery_test",
@@ -395,6 +396,7 @@ tests = [
     "sep_rom_sanity_test",
     "sep_spi_ot_dma_rx_test",
     "sep_hmac_kmac_cpu_crypto_smoke_test",
+    "sep_otbn_fw_control_flow_test",
     "sep_efuse_km_axil_cpu_mux_coexist_test",
     "sep_nmi_sanity_test",
     "sep_abr_mldsa87_verify_test_cases_a",

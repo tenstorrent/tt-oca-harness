@@ -77,6 +77,25 @@ Isolation proof (both directions, then the remaining isolated bits):
                     0..7 of both STATE shares read 0 (OT kmac
                     theory_of_operation.md, "Keccak State Access": zero while
                     idle); the held digest before the pulse is non-zero.
+  * CHK-KMAC-REGWEN-RST  the first ``CFG_REGWEN`` read after KMAC's own pulse
+                    shows ``en`` at its register-map reset value 1
+                    (``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson``
+                    lines 354 and 363-367; ``hw/sys/sep/doc/reset_controller.adoc``
+                    lines 136-161). Control CTRL-KMAC-REGWEN-RST-PRE: before the
+                    pulse, with the held result in squeeze, ``CFG_REGWEN.en``
+                    reads 0 (the configuration "cannot be changed ... while in
+                    operation", kmac.hjson lines 354-360), so the reset is the
+                    only way the bit returns to 1 here.
+  * CHK-KMAC-POSTRST-DIGEST  the SHA3-256 hash run after KMAC's own pulse
+                    equals the FIPS 202 golden (``env/sep_kmac_golden.py``).
+  * OBS-KMAC-ALERT-RST  rises of bits 5 and 6 of ``crypto_alert_pulse_probe_o``
+                    (the KMAC alert receivers) from before KMAC's own pulse to
+                    at least ``_ALERT_RST_TAIL_CLK`` clocks after its gated reset
+                    rose.
+                    The senders are in the KMAC software-reset domain and the
+                    receivers are not (``hw/sys/sep/doc/reset_controller.adoc``
+                    lines 68-72); no text states what the receivers see across
+                    that reset, so the counts are logged only.
   * CTRL-RESET-PULSE  every helper pulse (_pulse_reset) shows the engine's
                     gated reset fell after the request and rose after the
                     release, so each neighbour-survives check follows a reset
@@ -201,6 +220,35 @@ Isolation proof (both directions, then the remaining isolated bits):
                     either: that word must be the last word acknowledged to
                     URND before the edge, and URND must be acknowledged
                     again within a bound.
+  * CHK-OTBN-RST-RECOVER  an OTBN reset taken in a busy state is followed by a
+                    usable OTBN: "The secure wipe after reset must succeed
+                    before OTBN can be used" and after reset OTBN wipes its
+                    internal state "and then becomes *idle*"
+                    (``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md``
+                    lines 97, 484-486; STATUS codes ``.../otbn/data/otbn.hjson``
+                    lines 536-541). The state is ``otbn_status_probe_o`` on the
+                    last clock the OTBN gated reset is still released. After the
+                    release, STATUS reaches IDLE within ``_OTBN_IDLE_POLLS`` polls
+                    and never reads LOCKED, then the ``add`` compute program
+                    (``seq_lib/sep_otbn_compute_seq.py``) ends with ERR_BITS 0,
+                    INSN_CNT equal to its length (``ecall`` included; otbn.hjson
+                    lines 724-730) and the DMEM result equal to the operator
+                    golden; the result word is preset to the complement of the
+                    golden and every staged word is read back first. Graded
+                    states: BUSY_SEC_WIPE_INT (0x04) at both OTBN resets of the
+                    EDN-cancel leg, where EDN is disabled so the post-reset wipe
+                    waits for URND, with recovery graded after the release that
+                    CHK-EDN-REARM follows; BUSY_EXECUTE (0x01) at the end of the
+                    walk, on the RND program, up to ``_OTBN_REACH_TRIES``
+                    attempts with a walking 0 to 3 clock delay after the state
+                    first shows. BUSY_SEC_WIPE_DMEM (0x02) and BUSY_SEC_WIPE_IMEM
+                    (0x03) get one attempt each from a wipe command at IDLE,
+                    with the reset requested on the first clock the state shows;
+                    a state not seen at the reset fall logs
+                    ``INFO-BLOCKED CHK-OTBN-RST-RECOVER state=<s>`` and grades
+                    nothing. ``INFO-OTBN-RST-REACH`` logs, per state, the
+                    attempts, whether the state was reached and the states at
+                    each reset fall.
 
 This test proves the reset actually lands in the IP and is domain-isolated at the level of a live
 crypto-datapath result, frontdoor.
@@ -234,14 +282,16 @@ import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge, with_timeout
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words, aes_encrypt_words
+from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import word_digest
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_iprst_edn_pass
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_reset_taps import ISO_BENCH
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import ot_rdl_table_code
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from sep_reg_meta import ENTROPY_SOURCE, register_fields, sym, word_reset
+from sep_reg_meta import ENTROPY_SOURCE, KMAC, OTBN, register_fields, sym, word_reset
 from seq_lib.sep_abr_mlkem_seq import MLKEM_STATUS
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
@@ -284,10 +334,16 @@ from seq_lib.sep_kmac_seq import (
     SepKmacCfg,
     build_kmac_cfg,
 )
+from seq_lib.sep_otbn_compute_seq import golden_result, otbn_compute_prog
 from seq_lib.sep_otbn_seq import (
+    OTBN_ADDR_CMD,
+    OTBN_ADDR_ERRBIT,
+    OTBN_ADDR_STATUS,
     OTBN_DMEM_RESULT_LO,
     OTBN_LOAD_CHECKSUM_RESET,
     OTBN_RND_PROG,
+    OTBN_STATUS_IDLE,
+    OTBN_STATUS_LOCK,
     SepOtbn,
 )
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
@@ -370,6 +426,14 @@ _EDN_QUIET_CYCLES = 40
 # Isolate-before-reset can take longer than the flush itself. This bound is
 # only the wait for edn_req to fall, not the quiet sample.
 _EDN_DROP_CYCLES = 2_000
+# KMAC alert receivers [6:5] of crypto_alert_pulse_probe_o (crypto.adoc alert
+# routing table; hw/sys/sep/doc/kmac.adoc).
+_KMAC_ALERT_IDX = {"a5": 5, "a6": 6}
+# Clocks after the KMAC gated reset rose that OBS-KMAC-ALERT-RST still counts.
+# A testbench window, not a spec value.
+_ALERT_RST_TAIL_CLK = 64
+_KMAC_CFG_REGWEN = KMAC.addr("CFG_REGWEN")
+_KMAC_REGWEN_EN = KMAC.field_mask("CFG_REGWEN", "en")
 # AES masking reseed ack after EDN is enabled. Above a real grant, below a hang.
 _EDN_ACK_CYCLES = 200_000
 # CHK-EDN-HOLD arming. Each attempt starts a fresh URND request burst and
@@ -437,6 +501,35 @@ _CANCEL_ISO_MASK = {
 # A cancelled word handed to another client would be acknowledged within a
 # few grants; this is ~200 URND acknowledges.
 _EDN_DISCARD_WATCH_CYCLES = 2_000
+# CHK-OTBN-RST-RECOVER. STATUS codes and wipe commands come from the value
+# tables of the otbn.rdl field descriptions.
+_OTBN_BUSY_EXECUTE = ot_rdl_table_code("otbn", "STATUS", "BUSY_EXECUTE")
+_OTBN_WIPE_DMEM = ot_rdl_table_code("otbn", "STATUS", "BUSY_SEC_WIPE_DMEM")
+_OTBN_WIPE_IMEM = ot_rdl_table_code("otbn", "STATUS", "BUSY_SEC_WIPE_IMEM")
+_OTBN_WIPE_INT = ot_rdl_table_code("otbn", "STATUS", "BUSY_SEC_WIPE_INT")
+_OTBN_WIPE_CMD = {
+    _OTBN_WIPE_DMEM: ot_rdl_table_code("otbn", "CMD", "SEC_WIPE_DMEM"),
+    _OTBN_WIPE_IMEM: ot_rdl_table_code("otbn", "CMD", "SEC_WIPE_IMEM"),
+}
+_OTBN_INSN_CNT = OTBN.addr("INSN_CNT")
+_OTBN_INSN_MASK = OTBN.field_mask("INSN_CNT", "insn_cnt")
+_OTBN_ERR_MASK = OTBN.mask32("ERR_BITS")
+# Attempts at BUSY_EXECUTE; attempt k waits k clocks after the state shows.
+_OTBN_REACH_TRIES = 4
+# Bench bounds: clocks for a state to show after its command, clocks from the
+# reset request to the gated-reset fall (request write plus isolate drain),
+# and STATUS polls (every _OTBN_POLL_CLK clocks) to IDLE after a release.
+_OTBN_STATE_CYCLES = 2_000
+_OTBN_FALL_CYCLES = 10_000
+_OTBN_IDLE_POLLS = 4_000
+_OTBN_POLL_CLK = 20
+# The recovery compute: DMEM operand and result words of otbn_compute_prog
+# (seq_lib/sep_otbn_compute_seq.py: [0]=a, [4]=b, [8]=result). The sum carries
+# out of bit 31 and differs from a, b, a ^ b and a & b.
+_RECOVER_OP = "add"
+_RECOVER_A = 0x89AB_CDEF
+_RECOVER_B = 0x9876_5432
+_RECOVER_DMEM_A, _RECOVER_DMEM_B, _RECOVER_DMEM_RES = 0x0, 0x4, 0x8
 
 
 def _info_name(tag: str) -> str:
@@ -724,15 +817,24 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"after the mid-message reset equal the CBC golden (last=0x{g2[-1]:08x})",
         )
 
-    async def _run_kmac(self) -> list[int]:
-        """SHA3-256, leave STATE in squeeze so a re-read is a held result."""
+    async def _run_kmac(self, chk: str | None = None) -> list[int]:
+        """SHA3-256, leave STATE in squeeze so a re-read is a held result.
+
+        With ``chk`` the digest compare is graded under that record name.
+        """
         cfg = SepKmacCfg(mode="sha3", sec=256, msg_words=list(KMAC_MSG), outlen_bytes=32)
         digest = await self.kmac.run_family(cfg, tag="sha3-hold", hold=True)
         golden = kmac_family_words(**cfg.golden_kwargs())
-        assert digest == golden, (
-            "KMAC SHA3-256 digest != golden:\n"
-            f"  got={[hex(w) for w in digest]}\n  exp={[hex(w) for w in golden]}"
-        )
+        got_exp = f"got={[hex(w) for w in digest]} exp={[hex(w) for w in golden]}"
+        if chk is None:
+            assert digest == golden, f"KMAC SHA3-256 digest != golden: {got_exp}"
+        else:
+            self._grade(
+                digest == golden,
+                chk,
+                f"KMAC SHA3-256 digest != golden: {got_exp}",
+                f"KMAC SHA3-256 digest == FIPS 202 golden ([0]=0x{golden[0]:08x})",
+            )
         await self.kmac.check_status_clean("sha3-hold")
         return digest
 
@@ -753,6 +855,175 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         got = await self.otbn.read_load_checksum()
         assert got == OTBN_CHECKSUM_MARK, f"OTBN LOAD_CHECKSUM hold write failed 0x{got:08x}"
         return got, dmem
+
+    async def _otbn_state_at_fall(self) -> int:
+        """``otbn_status_probe_o`` on the last clock the OTBN gated reset is released.
+
+        Start it before the reset request. The probe is the STATUS flop, which
+        is in reset once the gated reset is low, so the sample before the fall
+        is the state the reset was taken in. Returns outside the ReadOnly phase.
+        """
+        clk = cocotb.top.clk_i
+        last = None
+        for _ in range(_OTBN_FALL_CYCLES):
+            await RisingEdge(clk)
+            await ReadOnly()
+            if self.rd_known(cocotb.top.otbn_gated_rst_n_probe_o) == 0:
+                break
+            last = self.rd(cocotb.top.otbn_status_probe_o)
+        else:
+            raise AssertionError(
+                f"CHK-OTBN-RST-RECOVER: OTBN gated reset did not fall in {_OTBN_FALL_CYCLES} cycles"
+            )
+        await NextTimeStep()
+        if last is None:
+            raise AssertionError(
+                "CHK-OTBN-RST-RECOVER: OTBN gated reset was already low before the request"
+            )
+        return last
+
+    async def _otbn_reset_on_state(self, state: int, start, delay: int) -> int | None:
+        """Run ``start``; ``delay`` clocks after the first clock the OTBN status
+        probe reads ``state``, write the OTBN reset on the AXI master itself.
+
+        Returns the state at the reset fall, or None when ``state`` did not show
+        within ``_OTBN_STATE_CYCLES`` (no reset requested). The reset stays
+        asserted; the caller releases it.
+        """
+        clk = cocotb.top.clk_i
+
+        async def watch() -> int | None:
+            for _ in range(_OTBN_STATE_CYCLES):
+                await RisingEdge(clk)
+                await ReadOnly()
+                if self.rd(cocotb.top.otbn_status_probe_o) == state:
+                    break
+            else:
+                await NextTimeStep()
+                return None
+            await NextTimeStep()
+            if delay:
+                await ClockCycles(clk, delay)
+            fall = cocotb.start_soon(self._otbn_state_at_fall())
+            await self._request_reset_direct(ENG_OTBN.rst_bit)
+            return await fall
+
+        task = cocotb.start_soon(watch())
+        await start()
+        return await task
+
+    async def _otbn_poll_idle(self) -> tuple[bool, list[int]]:
+        """Poll STATUS until IDLE or LOCKED; returns (IDLE reached, distinct codes read)."""
+        codes: list[int] = []
+        for _ in range(_OTBN_IDLE_POLLS):
+            st = await self.otbn._rd(OTBN_ADDR_STATUS)
+            if not codes or codes[-1] != st:
+                codes.append(st)
+            if st in (OTBN_STATUS_IDLE, OTBN_STATUS_LOCK):
+                return st == OTBN_STATUS_IDLE, codes
+            await ClockCycles(cocotb.top.clk_i, _OTBN_POLL_CLK)
+        return False, codes
+
+    async def _otbn_grade_recover(self, state: int, falls: list[int], where: str) -> None:
+        """CHK-OTBN-RST-RECOVER after OTBN, reset in ``state``, was released."""
+        fmt = ",".join
+        idle, codes = await self._otbn_poll_idle()
+        prog = otbn_compute_prog(_RECOVER_OP)
+        golden = golden_result(_RECOVER_OP, _RECOVER_A, _RECOVER_B)
+        staged = (
+            (_RECOVER_DMEM_A, _RECOVER_A),
+            (_RECOVER_DMEM_B, _RECOVER_B),
+            (_RECOVER_DMEM_RES, golden ^ 0xFFFF_FFFF),
+        )
+        readback: list[int] = []
+        run_idle, run_codes, err, insn, res = False, [], None, None, None
+        if idle:
+            await self.otbn.load_program(prog)
+            for off, val in staged:
+                await self.otbn.write_dmem(off, val)
+            readback = [await self.otbn.read_dmem(off) for off, _ in staged]
+            await self.otbn.start_execute()
+            run_idle, run_codes = await self._otbn_poll_idle()
+            err = await self.otbn._rd(OTBN_ADDR_ERRBIT) & _OTBN_ERR_MASK
+            insn = await self.otbn._rd(_OTBN_INSN_CNT) & _OTBN_INSN_MASK
+            res = await self.otbn.read_dmem(_RECOVER_DMEM_RES)
+        ok = (
+            all(f == state for f in falls)
+            and idle
+            and readback == [val for _, val in staged]
+            and run_idle
+            and err == 0
+            and insn == len(prog)
+            and res == golden
+        )
+        txt = (
+            f"state=0x{state:02x} ({where}): status at reset fall "
+            f"{fmt(f'0x{f:02x}' for f in falls)}; STATUS after release "
+            f"{fmt(f'0x{c:02x}' for c in codes)} idle={int(idle)}; staged a/b/preset readback "
+            f"{fmt(f'0x{w:08x}' for w in readback)}; {_RECOVER_OP} run STATUS "
+            f"{fmt(f'0x{c:02x}' for c in run_codes)} idle={int(run_idle)} ERR_BITS={err} "
+            f"INSN_CNT={insn} (want {len(prog)}) DMEM[0x{_RECOVER_DMEM_RES:x}]="
+            f"{'None' if res is None else f'0x{res:08x}'} (golden 0x{golden:08x})"
+        )
+        self._grade(ok, "CHK-OTBN-RST-RECOVER", txt, txt)
+
+    async def _otbn_reset_in_execute(self) -> None:
+        """CHK-OTBN-RST-RECOVER at BUSY_EXECUTE: the RND program, reset while it runs."""
+        falls: list[str] = []
+        at = None
+        for k in range(_OTBN_REACH_TRIES):
+            await self.otbn.load_program(OTBN_RND_PROG)
+            at = await self._otbn_reset_on_state(_OTBN_BUSY_EXECUTE, self.otbn.start_execute, k)
+            falls.append("none" if at is None else f"0x{at:02x}")
+            if at == _OTBN_BUSY_EXECUTE:
+                break
+            if at is not None:
+                await self.rst.release_resets()
+                await self._wait_gated_rst(ENG_OTBN.rst_bit, 1, "CHK-OTBN-RST-RECOVER retry")
+        reached = at == _OTBN_BUSY_EXECUTE
+        self.logger.info(
+            "INFO-OTBN-RST-REACH state=0x%02x attempts=%d reached=%d at_fall=%s",
+            _OTBN_BUSY_EXECUTE,
+            len(falls),
+            int(reached),
+            ",".join(falls),
+        )
+        if not reached:
+            self._grade(
+                False,
+                "CHK-OTBN-RST-RECOVER",
+                f"state=0x{_OTBN_BUSY_EXECUTE:02x} not at the reset fall in "
+                f"{_OTBN_REACH_TRIES} attempts (at_fall={','.join(falls)})",
+                "",
+            )
+        await self.rst.release_resets()
+        await self._wait_gated_rst(ENG_OTBN.rst_bit, 1, "CHK-OTBN-RST-RECOVER release")
+        await self._otbn_grade_recover(_OTBN_BUSY_EXECUTE, [at], "RND program running")
+
+    async def _otbn_reset_in_wipe(self, state: int) -> None:
+        """One attempt at a wipe-command state; CHK-OTBN-RST-RECOVER when reached."""
+        await self.otbn.wait_idle("pre-wipe-cmd")
+        cmd = _OTBN_WIPE_CMD[state]
+        at = await self._otbn_reset_on_state(state, lambda: self.otbn._wr(OTBN_ADDR_CMD, cmd), 0)
+        reached = at == state
+        self.logger.info(
+            "INFO-OTBN-RST-REACH state=0x%02x attempts=1 reached=%d at_fall=%s",
+            state,
+            int(reached),
+            "none" if at is None else f"0x{at:02x}",
+        )
+        if at is not None:
+            await self.rst.release_resets()
+            await self._wait_gated_rst(ENG_OTBN.rst_bit, 1, "CHK-OTBN-RST-RECOVER release")
+        if reached:
+            await self._otbn_grade_recover(state, [at], f"CMD 0x{cmd:02x} at IDLE")
+            return
+        self.logger.info(
+            "INFO-BLOCKED CHK-OTBN-RST-RECOVER state=0x%02x: the reset fall found %s",
+            state,
+            "no reset (state not seen)" if at is None else f"0x{at:02x}",
+        )
+        await self.otbn.wait_idle("post-wipe-cmd")
 
     def _require_open_isolate_terms(self, *, host, km, rst, name: str) -> None:
         """Host path and gated reset must be live before the request.
@@ -1260,6 +1531,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "CHK-EDN-PEND PASS: OTBN URND edn_req high and edn_ack low before EDN is enabled"
         )
 
+        # CHK-OTBN-RST-RECOVER records the state each OTBN reset of this leg
+        # is taken in; recovery is graded after the release with EDN live.
+        fall = cocotb.start_soon(self._otbn_state_at_fall())
         await self.rst.assert_reset(ENG_OTBN.rst_bit)
         await self._wait_edn_req(
             _EDN_URND, False, _EDN_DROP_CYCLES, "CHK-EDN-FLUSH OTBN drop", ack_low=True
@@ -1268,6 +1542,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             _EDN_URND, req_high=False, cycles=_EDN_QUIET_CYCLES, what="CHK-EDN-FLUSH OTBN"
         )
         self.logger.info("CHK-EDN-FLUSH PASS: OTBN reset dropped URND edn_req and edn_ack stayed 0")
+        self._otbn_wipe_falls = [await fall]
         await self.rst.release_resets()
 
         # The trigger bit raises edn_req and holds it until EDN grants the reseed.
@@ -1313,8 +1588,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
         # Leave OTBN in reset across entropy bring-up. assert_reset restores
         # every other engine, including AES, to the released default.
+        fall = cocotb.start_soon(self._otbn_state_at_fall())
         await self.rst.assert_reset(ENG_OTBN.rst_bit)
         await self._wait_edn_req(_EDN_URND, False, _EDN_DROP_CYCLES, "OTBN held")
+        self._otbn_wipe_falls.append(await fall)
 
     async def _prove_edn_sibling_after_flush(self) -> None:
         """With OTBN held in reset, AES must still be granted, and the cancelled
@@ -2598,6 +2875,17 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self._edn_log_stop = False
         ack_log = cocotb.start_soon(self._watch_edn_acks())
         await self._prove_edn_sibling_after_flush()
+        wipe_reached = all(f == _OTBN_WIPE_INT for f in self._otbn_wipe_falls)
+        self.logger.info(
+            "INFO-OTBN-RST-REACH state=0x%02x attempts=%d reached=%d at_fall=%s",
+            _OTBN_WIPE_INT,
+            len(self._otbn_wipe_falls),
+            int(wipe_reached),
+            ",".join(f"0x{f:02x}" for f in self._otbn_wipe_falls),
+        )
+        await self._otbn_grade_recover(
+            _OTBN_WIPE_INT, self._otbn_wipe_falls, "EDN-cancel leg, released with EDN live"
+        )
         await self._prove_kmac_edn_edge("CHK-EDN-EDGE")
         await self._prove_edn_cancel_lead("EDN-LEAD")
         # Runs here because the URND grant stream is live only while entropy
@@ -2849,6 +3137,21 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         k_digest = await self._run_kmac()
         assert await self.kmac.read_digest() == k_digest, "KMAC STATE not held on re-read"
         kmac_pre = await self.kmac.read_status()
+        regwen_pre = await self.kmac._rd(_KMAC_CFG_REGWEN) & _KMAC_REGWEN_EN
+        if regwen_pre != 0:
+            raise AssertionError(
+                f"CTRL-MISSING CTRL-KMAC-REGWEN-RST-PRE: CFG_REGWEN.en {regwen_pre} in squeeze "
+                f"before the KMAC pulse (STATUS 0x{kmac_pre:08x}), expected 0"
+            )
+        self.logger.info(
+            "CTRL-KMAC-REGWEN-RST-PRE seen: CFG_REGWEN.en 0 in squeeze before the KMAC pulse "
+            "(STATUS 0x%08x)",
+            kmac_pre,
+        )
+        alert = SepBitWatch(
+            cocotb.top.crypto_alert_pulse_probe_o, _KMAC_ALERT_IDX, name="kmac_alert_rst"
+        ).start()
+        alert_mark = alert.mark()
         # The KMAC reset of the drain leg is the own-reset pulse graded below.
         async with self._graded_window():
             await self._drain_kmac()
@@ -2878,6 +3181,26 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "(no stated value)",
             kmac_status & KMAC_STATUS_RESERVED_MASK,
         )
+        regwen_post = await self.kmac._rd(_KMAC_CFG_REGWEN) & _KMAC_REGWEN_EN
+        regwen_rst = KMAC.reset32("CFG_REGWEN") & _KMAC_REGWEN_EN
+        self._grade(
+            regwen_post == regwen_rst,
+            "CHK-KMAC-REGWEN-RST",
+            f"CFG_REGWEN.en {regwen_post} on the first read after KMAC's own SW_RESET_N "
+            f"pulse, expected the register-map reset {regwen_rst} (0 before the pulse)",
+            f"CFG_REGWEN.en {regwen_post} on the first read after KMAC's own SW_RESET_N "
+            f"pulse equals the register-map reset {regwen_rst} (0 before the pulse)",
+        )
+        await self._wait_gated_rst(ENG_KMAC.rst_bit, 1, "OBS-KMAC-ALERT-RST")
+        await ClockCycles(cocotb.top.clk_i, _ALERT_RST_TAIL_CLK)
+        self.logger.info(
+            "OBS-KMAC-ALERT-RST a5_rises=%d a6_rises=%d window_clk=%d tail_clk=%d window=reset",
+            alert.rises_since(alert_mark, "a5"),
+            alert.rises_since(alert_mark, "a6"),
+            alert.clk - alert_mark.clk,
+            _ALERT_RST_TAIL_CLK,
+        )
+        await alert.stop()
         # The Keccak state reads zero while KMAC is idle
         # (vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/theory_of_operation.md,
         # "Keccak State Access"), and CHK-KMAC-SELF has just graded sha3_idle = 1.
@@ -2903,7 +3226,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"HMAC DIGEST bit-exact intact across the KMAC reset ([0]=0x{h_digest[0]:08x})",
         )
 
-        k_digest = await self._run_kmac()
+        k_digest = await self._run_kmac("CHK-KMAC-POSTRST-DIGEST")
         await self._pulse_reset(ENG_HMAC.rst_bit)
         kmac_survived = await self.kmac.read_digest()
         assert kmac_survived == k_digest, (
@@ -2941,6 +3264,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 f"first read after it 0x{otbn_after:08x} == reset "
                 f"0x{OTBN_LOAD_CHECKSUM_RESET:08x}",
             )
+
+        await self._otbn_reset_in_execute()
+        for state in (_OTBN_WIPE_DMEM, _OTBN_WIPE_IMEM):
+            await self._otbn_reset_in_wipe(state)
 
         sw_final = await self.rst.read_back()
         assert sw_final == SW_RESET_N_DEFAULT, (

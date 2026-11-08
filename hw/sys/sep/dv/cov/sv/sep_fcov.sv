@@ -4130,19 +4130,22 @@ module sep_fcov (
     option.name = "sep_otbn_execute_cg";
     cp_cmd: coverpoint otbn_execute {bins execute = {1'b1};}
     cp_done: coverpoint otbn_done {bins idle_err_bits_zero = {1'b1};}
-    // The only IMEM/DMEM write-then-read leaves run while STATUS reads
-    // BUSY_SEC_WIPE_INT and log these accesses under the OTBN wipe-state
-    // memory access exception (docs/test_contracts/smoke_uvm.adoc). No leaf
-    // writes and reads back these memories while OTBN is idle (NO-STIMULUS in
-    // docs/SEP_FCOV.adoc), so every value is an ignore bin.
-    // verilator lint_off COVERIGN
-    cp_imem_rdback: coverpoint otbn_imem_rdback {
-      option.weight = 0; ignore_bins write_then_read = {1'b1}; ignore_bins no_readback = {1'b0};
+    // Word written and read back at IDLE, by its offset in the window (owner
+    // sep_otbn_load_checksum_read_test). Accesses outside that owner window,
+    // such as those under the OTBN wipe-state memory access exception
+    // (docs/test_contracts/smoke_uvm.adoc), do not sample.
+    cp_imem_rdback: coverpoint ar_addr_q iff (otbn_imem_rdback &&
+        (graded_owner == FcovOwnSepOtbnLoadChecksumReadTest)) {
+      bins first_word = {OTBN_IMEM_MEM_BASE_ADDR};
+      bins mid_word = {[OTBN_IMEM_MEM_BASE_ADDR + 32'd4 : OtbnImemEnd - 32'd8]};
+      bins last_word = {OtbnImemEnd - 32'd4};
     }
-    cp_dmem_rdback: coverpoint otbn_dmem_rdback {
-      option.weight = 0; ignore_bins write_then_read = {1'b1}; ignore_bins no_readback = {1'b0};
+    cp_dmem_rdback: coverpoint ar_addr_q iff (otbn_dmem_rdback &&
+        (graded_owner == FcovOwnSepOtbnLoadChecksumReadTest)) {
+      bins first_word = {OTBN_DMEM_MEM_BASE_ADDR};
+      bins mid_word = {[OTBN_DMEM_MEM_BASE_ADDR + 32'd4 : OtbnDmemEnd - 32'd8]};
+      bins last_word = {OtbnDmemEnd - 32'd4};
     }
-  // verilator lint_on COVERIGN
   endgroup
 
   covergroup sep_abr_keygen_cg @(posedge clk_i);
@@ -27674,6 +27677,119 @@ module sep_fcov (
           cxkg_known[gi] <= 1'b1;
         end
       end
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // KMAC: cp_kmac_err_code_class (owner sep_kmac_unsupported_cfg_inject_test)
+  // and sep_kmac_ms_cg (owner sep_kmac_mode_strength_rand_test).
+  // ---------------------------------------------------------------------
+  // A CMD.start write. Both groups drop a held outcome on it.
+  wire cy_kx_start = wr_ev && (aw_addr_q == KMAC_CMD_REG_ADDR) &&
+      (wr_data[5:0] == KmacCmdStart6);
+
+  // ERR_CODE[31:24] of an error-code leg whose check passed (kmac.hjson
+  // ERR_CODE; theory_of_operation.md error table). 0x80 is the Sha3Control
+  // code that the SwCmdSequence error also reports, so it counts as 0x08.
+  // 0x03 needs a command from the application interface, which SEP ties off.
+  covergroup sep_kmac_err_class_cg with function sample (logic [7:0] code);
+    option.per_instance = 1;
+    option.name = "sep_kmac_err_class_cg";
+    cp_kmac_err_code_class: coverpoint code {
+      bins sw_pushed_msg_fifo = {8'h02};
+      bins incorrect_entropy_mode = {8'h05};
+      bins incorrect_function_name = {8'h07};
+      bins sw_cmd_sequence = {8'h08, 8'h80};
+      ignore_bins sw_cmd_in_app_active = {8'h03};
+      illegal_bins other_code = {[8'h00 : 8'h01], 8'h04, 8'h06, [8'h09 : 8'h7F], [8'h81 : 8'hFF]};
+    }
+  endgroup
+  sep_kmac_err_class_cg u_sep_kmac_err_class_cg = new();
+
+  // The last OKAY ERR_CODE read inside the owner-135 window is held and
+  // samples when kmac_unsup_pass rises to 4. The window close, a KMAC reset
+  // and a CMD.start drop it.
+  logic [7:0] cy_kec_code = '0;
+  logic cy_kec_v = 1'b0;
+  always @(posedge clk_i) begin
+    if (!cy_own_kunsup || !cy_ip[4] || cy_kx_start) begin
+      cy_kec_v <= 1'b0;
+    end else if (rd_ev && cy_rd_known && (ar_addr_q == KMAC_ERR_CODE_REG_ADDR)) begin
+      cy_kec_code <= rd_data[31:24];
+      cy_kec_v    <= 1'b1;
+    end else if (cy_ku_rise && (kmac_unsup_pass == 4) && cy_kec_v) begin
+      u_sep_kmac_err_class_cg.sample(cy_kec_code);
+      cy_kec_v <= 1'b0;
+    end
+  end
+
+  // cSHAKE and KMAC cells of the mode-and-strength leaf whose digest check
+  // passed. `pfx` is 1 when the PREFIX words decode (cSHAKE with N empty, KMAC
+  // with N = "KMAC"); `s_empty` is 1 when S is the empty string
+  // (programmers_guide.md PREFIX layout; SP 800-185 encode_string("") = 01 00).
+  covergroup sep_kmac_ms_cg with function sample (
+      logic en, logic [1:0] mode, logic [2:0] strength, logic pfx, logic s_empty
+  );
+    option.per_instance = 1;
+    option.name = "sep_kmac_ms_cg";
+    cp_prefix_custom: coverpoint {en, s_empty} iff ((mode == KmacCshake) && pfx) {
+      bins cshake_s_set = {2'b00};
+      bins cshake_s_empty = {2'b01};
+      bins kmac_s_set = {2'b10};
+      bins kmac_s_empty = {2'b11};
+    }
+    cp_cell_digest_ok: coverpoint {en, strength} iff (mode == KmacCshake) {
+      bins cshake_128 = {{1'b0, KmacL128}};
+      bins cshake_256 = {{1'b0, KmacL256}};
+      bins kmac_128 = {{1'b1, KmacL128}};
+      bins kmac_256 = {{1'b1, KmacL256}};
+    }
+  endgroup
+  sep_kmac_ms_cg u_sep_kmac_ms_cg = new();
+
+  // Pass label of sep_kmac_mode_strength_rand_test (owner 787): 1 after the
+  // digest check of a cell passed, 0 before the next cell starts. The leaf
+  // writes it through the u_sep_fcov handle. The cell outcome is held at
+  // kmac_cell_done and samples on the rise of the label inside the window; the
+  // window close, a KMAC reset and a CMD.start drop it. The label gates a
+  // sample; it is never a DUT value and drives nothing.
+  int unsigned kmac_mode_pass = 0;
+  wire cy_own_kms = (graded_owner == FcovOwnSepKmacModeStrengthRandTest);
+  logic cy_kms_pass_q = 1'b0;
+  logic [31:0] cy_kms_p0 = '0;  // last PREFIX_0 write
+  logic [31:0] cy_kms_p1 = '0;  // last PREFIX_1 write
+  logic cy_kms_v = 1'b0;
+  logic cy_kms_en = 1'b0;
+  logic [1:0] cy_kms_mode = '0;
+  logic [2:0] cy_kms_str = '0;
+  logic cy_kms_pfx = 1'b0;
+  logic cy_kms_se = 1'b0;
+  always @(posedge clk_i) begin
+    cy_kms_pass_q <= (kmac_mode_pass != 0);
+    if (!cy_ip[4]) begin
+      cy_kms_p0 <= '0;
+      cy_kms_p1 <= '0;
+    end else if (wr_ev && (wr_strb == 4'hF)) begin
+      if (aw_addr_q == KMAC_PREFIX_0__REG_ADDR) cy_kms_p0 <= wr_data;
+      if (aw_addr_q == KMAC_PREFIX_1__REG_ADDR) cy_kms_p1 <= wr_data;
+    end
+    if (!cy_own_kms || !cy_ip[4] || cy_kx_start) begin
+      cy_kms_v <= 1'b0;
+    end else if (kmac_cell_done) begin
+      cy_kms_v    <= 1'b1;
+      cy_kms_en   <= kmac_en_q;
+      cy_kms_mode <= kmac_mode_q;
+      cy_kms_str  <= kmac_str_q;
+      if (kmac_en_q) begin
+        cy_kms_pfx <= (cy_kms_p0 == 32'h4D4B_2001) && (cy_kms_p1[15:0] == 16'h4341);
+        cy_kms_se  <= (cy_kms_p1[31:16] == 16'h0001);
+      end else begin
+        cy_kms_pfx <= (cy_kms_p0[15:0] == 16'h0001);
+        cy_kms_se  <= (cy_kms_p0[31:16] == 16'h0001);
+      end
+    end else if (cy_kms_v && (kmac_mode_pass != 0) && !cy_kms_pass_q) begin
+      u_sep_kmac_ms_cg.sample(cy_kms_en, cy_kms_mode, cy_kms_str, cy_kms_pfx, cy_kms_se);
+      cy_kms_v <= 1'b0;
     end
   end
 
