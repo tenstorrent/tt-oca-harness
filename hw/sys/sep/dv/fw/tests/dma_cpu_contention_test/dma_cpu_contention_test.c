@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP Secure DMA vs CPU LSU SRAM contention test. The CPU starts a long
-// SRAM-to-SRAM DMA copy, then immediately runs its own store loop into a
-// disjoint SRAM region, so both masters arbitrate at the SRAM target at once.
-// The firmware alone produces the contention; the testbench injects nothing.
+// SEP Secure DMA vs CPU LSU contention test, in two legs.
+//
+// SRAM leg: the CPU starts a long SRAM-to-SRAM DMA copy, then immediately runs
+// its own store loop into a disjoint SRAM region, so both masters arbitrate at
+// the SRAM target at once. The firmware alone produces the contention; the
+// testbench injects nothing.
 //
 // The DMA copy is 8 times larger than the CPU loop, so the DMA is still busy
 // when the loop finishes; that mid-flight status sample proves the two streams
 // overlapped. The sizes stay small enough for the Verilator timeout.
 //
-// Checks (main() returns the error count; startup/crt0.s turns it into the
-// PASS/FAIL magic on the mailbox):
+// SRAM leg checks (main() returns the error count of both legs; startup/crt0.s
+// turns it into the PASS/FAIL magic on the mailbox):
 //   * overlap: the mid-flight status shows the DMA busy and not done;
 //   * the DMA reaches done with no error status and a zero error code;
 //   * the done status still reads set after the poll and clears on
@@ -20,6 +22,15 @@
 //   * every CPU-written word equals the CPU pattern;
 //   * together these show neither master starved: a starved DMA never reaches
 //     done, and a starved CPU stream fails its integrity check.
+//
+// DCCM leg: the DMA copies an SRAM block into one DCCM array through the core
+// DMA slave port while the CPU stores to a second DCCM array, pass after pass,
+// until the DMA status shows done or error (bounded). Each pass samples the DMA
+// status before its stores and reads its 64 words back after them. The
+// firmware logs the DMA status, the error code, the readback mismatch total,
+// the number of passes that began with the DMA busy and the pass count, then
+// dumps both DCCM arrays; the host grades every word, the mismatch total and
+// the DMA status.
 //
 // Polled, with no interrupts. The DMA registers are clocked on access, so the
 // test does not program the DMA clock gate; it inherits the side-effect region
@@ -43,6 +54,111 @@
 #define CPU_SEED 0x5A5A0000u
 
 #define DMA_WAIT_ITERS 4000000 // bounded poll for DONE/ERROR
+
+#define DCCM_SRC_ADDR (SEP_TOP_SEP_SRAM_BASE_ADDR + 0xC000u)
+#define DCCM_DMA_BYTES 0x400u // 1 KiB SRAM->DCCM copy
+#define DCCM_DMA_WORDS (DCCM_DMA_BYTES / 4)
+#define DCCM_CPU_WORDS 64u    // words the CPU stores per pass
+#define DCCM_MAX_PASSES 4096u // bound on CPU passes while the DMA runs
+
+#define DCCM_SRC_SEED 0xD0CC0000u
+#define DCCM_CPU_SEED 0x3C000000u // pass p, word i: DCCM_CPU_SEED + (p << 16) + i
+
+#define DUMP_WORDS_PER_LINE 8u
+
+// Both arrays sit in .bss, which the tcm link mode places in DCCM below the stack.
+static volatile uint32_t dccm_dst[DCCM_DMA_WORDS];
+static volatile uint32_t dccm_cont[DCCM_CPU_WORDS];
+
+static void dump_words(const char *tag, const volatile uint32_t *w, uint32_t n) {
+    for (uint32_t i = 0; i < n; i++) {
+        if (i % DUMP_WORDS_PER_LINE == 0u) {
+            sep_mbx_puts(tag);
+        }
+        sep_mbx_putc(' ');
+        sep_mbx_puthex(w[i]);
+        if (i % DUMP_WORDS_PER_LINE == DUMP_WORDS_PER_LINE - 1u || i == n - 1u) {
+            sep_mbx_putc('\n');
+        }
+    }
+}
+
+// DCCM leg. Returns the firmware error count of the DMA status; the host grades
+// the dumped data words.
+static int dccm_leg(void) {
+    int errors = 0;
+    volatile uint32_t *src = (volatile uint32_t *)DCCM_SRC_ADDR;
+
+    for (uint32_t i = 0; i < DCCM_DMA_WORDS; i++) {
+        src[i] = DCCM_SRC_SEED + i;
+        dccm_dst[i] = 0u;
+    }
+    for (uint32_t i = 0; i < DCCM_CPU_WORDS; i++) {
+        dccm_cont[i] = 0u;
+    }
+    __asm__ volatile("fence" ::: "memory");
+    sep_mbx_puts("STEP DCCM leg: source seeded; DCCM destination and CPU region cleared\n");
+
+    // Start the SRAM->DCCM copy, then store to the CPU array until the DMA
+    // reports done or error. Each pass writes a pass-unique pattern, reads it
+    // back and counts the words that differ.
+    sep_dma_copy_start(DCCM_SRC_ADDR, (uint32_t)(uintptr_t)dccm_dst, DCCM_DMA_BYTES);
+    uint32_t passes = 0;
+    uint32_t busy_passes = 0;
+    uint32_t mismatches = 0;
+    uint32_t st = 0;
+    do {
+        if (sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR) & SECURE_DMA__STATUS__BUSY_bm) {
+            busy_passes++;
+        }
+        for (uint32_t i = 0; i < DCCM_CPU_WORDS; i++) {
+            dccm_cont[i] = DCCM_CPU_SEED + (passes << 16) + i;
+        }
+        __asm__ volatile("fence" ::: "memory");
+        for (uint32_t i = 0; i < DCCM_CPU_WORDS; i++) {
+            if (dccm_cont[i] != DCCM_CPU_SEED + (passes << 16) + i) {
+                mismatches++;
+            }
+        }
+        passes++;
+        st = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    } while (!(st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) &&
+             passes < DCCM_MAX_PASSES);
+    __asm__ volatile("fence" ::: "memory");
+
+    int timeout = DMA_WAIT_ITERS;
+    while (!(st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) && timeout-- > 0) {
+        st = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    }
+    uint32_t err_code = sep_dma_rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if ((st & SECURE_DMA__STATUS__ERROR_bm) || !(st & SECURE_DMA__STATUS__DONE_bm) ||
+        err_code != 0u) {
+        errors++;
+    }
+
+    sep_mbx_puts("DCCM-LEG STATUS=");
+    sep_mbx_puthex(st);
+    sep_mbx_puts(" ERROR_CODE=");
+    sep_mbx_puthex(err_code);
+    sep_mbx_puts(" mismatches=");
+    sep_mbx_puthex(mismatches);
+    sep_mbx_puts(" busy_passes=");
+    sep_mbx_puthex(busy_passes);
+    sep_mbx_puts(" passes=");
+    sep_mbx_puthex(passes);
+    sep_mbx_puts(" src_seed=");
+    sep_mbx_puthex(DCCM_SRC_SEED);
+    sep_mbx_puts(" cpu_seed=");
+    sep_mbx_puthex(DCCM_CPU_SEED);
+    sep_mbx_puts(" dma_words=");
+    sep_mbx_puthex(DCCM_DMA_WORDS);
+    sep_mbx_puts(" cpu_words=");
+    sep_mbx_puthex(DCCM_CPU_WORDS);
+    sep_mbx_putc('\n');
+    dump_words("DCCM-DST", dccm_dst, DCCM_DMA_WORDS);
+    dump_words("DCCM-CPU", dccm_cont, DCCM_CPU_WORDS);
+    return errors;
+}
 
 int main(void) {
     int errors = 0;
@@ -164,5 +280,7 @@ int main(void) {
         sep_mbx_puthex(st_after_w1c);
         sep_mbx_puts("), dst==src, cont==cpu\n");
     }
+
+    errors += dccm_leg();
     return errors;
 }

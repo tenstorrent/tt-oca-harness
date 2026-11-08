@@ -22,7 +22,12 @@ Checks:
                        fetch handshake and its response and no PR-IFU-XBAR
                        request outside the SRAM in the fetch window (cpu.adoc,
                        CPU: the IFU demux sends every address other than ROM and
-                       SRAM to a DECERR responder). Control: the ROM fetches
+                       SRAM to a DECERR responder). U is each of the three drawn
+                       targets and the fixed secure DMA register base, a mapped
+                       crossbar target that the IFU demux does not reach
+                       (fabric.adoc, SEP local fabric: the IFU demux answers
+                       addresses outside the boot ROM and SEP SRAM with DECERR).
+                       Control: the ROM fetches
                        (boot stub, trap handler) and the SRAM fetch of the
                        copied routine appear on those taps, the SRAM fetch also
                        on PR-IFU-XBAR.
@@ -213,6 +218,9 @@ U_SET = (
     0x4000_0000,
     0x0000_1000,
 )
+# The fixed fetch target after the drawn ones: the secure DMA register base,
+# reached by the LSU, debug and external masters but not by the IFU demux.
+U_DMA_CSR = sym("SECURE_DMA_REG_MAP_BASE_ADDR")
 EXT_ADDR = 0x2000_0100  # extension port read of step 6
 NMI_LOAD_BUS_ERROR = 0xF000_0001
 OUT_ADDR = MBX  # outbound port store of step 6 (the console address)
@@ -223,7 +231,7 @@ _SLOTS = (
     "GATE FAIL TRAP_CAUSE TRAP_VAL NMI NMI_ADDR ROMLD_B ROMLD_V ROMLD_E SRAMLD_B SRAMLD_V "
     "SRAMLD_E EXT_B EXT_E OUT_B OUT_E FB0 FE0 FB1 FE1 FB2 FE2 CORE_B MARKV CORE_M DCCMV CORE_E "
     "DMA1_B DMA_ST DMA1_E LSUL_B ILOAD LSUL_E LSUS_B LSUS_E DMA2_B IREAD DMA2_E DMA3_B DMA3_E "
-    "PAIR_B PAIR0 PAIR1 PAIR_E DONE MRAC"
+    "PAIR_B PAIR0 PAIR1 PAIR_E DONE MRAC FB3 FE3"
 ).split()
 OFF = {name: 8 * (k + 1) for k, name in enumerate(_SLOTS)}
 if max(OFF.values()) + 8 > 0x200:
@@ -300,6 +308,11 @@ class _Plan:
         self.sram_ld_val = rng.getrandbits(32)
         self.sram_a_val = rng.getrandbits(32)
         self.sram_s_val = rng.getrandbits(32)
+
+    @property
+    def fetches(self) -> list[int]:
+        """The drawn unmapped targets, then the fixed secure DMA register base."""
+        return [*self.u, U_DMA_CSR]
 
     @property
     def iccm_w(self) -> int:
@@ -462,7 +475,7 @@ def build_main(p: _Plan) -> Asm:
     _mark(a, "OUT_E")
     # Step 7: a fetch at each unmapped target; the ROM handler resumes at
     # the recovery address.
-    for k, u in enumerate(p.u):
+    for k, u in enumerate(p.fetches):
         _gate(a, 1)
         _mark(a, f"FB{k}")
         a.la(T0, f"rec{k}").op(csrw(CSR_MSCRATCH, T0))
@@ -565,6 +578,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
         self.logger.info("SEED seed=%d", seed)
         p = self.plan = _Plan(SepSeededRng(seed))
         self.logger.info("DRAW U=%s", ",".join(f"0x{u:08x}" for u in p.u))
+        self.logger.info("CFG fixed fetch target U=0x%08x (secure DMA register base)", U_DMA_CSR)
         self.logger.info("DRAW marker_offset=0x%x marker_value=0x%08x", p.mark_off, p.mark_val)
         self.logger.info(
             "DRAW dccm_offsets=%s pattern=%s",
@@ -819,7 +833,7 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             for b in self._beats("PR-OUT", o0, ("aw",))
             if b.addr is not None and (b.addr & ~7) == OUT_ADDR
         )
-        for k, u in enumerate(p.u):
+        for k, u in enumerate(p.fetches):
             w = self._win(f"FB{k}", f"FE{k}")
             ars = [b for b in ifu_ar if w[0] <= b.t_ps <= w[1] and b.addr == u]
             xbar_n = sum(
@@ -905,14 +919,9 @@ class sep_cpu_demux_unmapped_fetch_test(sep_base_test):
             if r.off == OFF["NMI"]:
                 nxt = recs[i + 1].val if i + 1 < len(recs) else 0
                 rows.append(f"0x{r.val:08x}@{last}/0x{nxt:08x}")
-            elif names.get(r.off, "").endswith(("_B", "_E", "_M")) or r.off in (
-                OFF["FB0"],
-                OFF["FB1"],
-                OFF["FB2"],
-                OFF["FE0"],
-                OFF["FE1"],
-                OFF["FE2"],
-            ):
+            elif names.get(r.off, "").endswith(("_B", "_E", "_M")) or names.get(
+                r.off, ""
+            ).startswith(("FB", "FE")):
                 last = names[r.off]
         causes = [r.val for r in self._recs("EXT_B", "EXT_E", "NMI")]
         addrs = [r.val for r in self._recs("EXT_B", "EXT_E", "NMI_ADDR")]

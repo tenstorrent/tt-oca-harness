@@ -2448,11 +2448,11 @@ module sep_fcov (
   logic d_gswap_q;  // CONTROL.DIGEST_SWAP of the last initial GO
   logic go_q, busy_q, done_q, chunk_q, dvalid_q, aborted_q, abort_q, size_err_q;
   logic ir_v_q;
-  logic [1:0] ir_src_q, ir_dst_q;
+  logic [1:0] ir_dst_q;
   logic dv_arm_q, dv_hash_q;
   logic szk_v_q, hwf_v_q;
   logic [1:0]  szk_q;
-  logic        hwf_q;
+  logic [2:0]  hwf_q;  // {CONTROL.OPCODE[1:0], TRANSFER_WIDTH[0]} of the faulty GO
   logic        ea_v_q;
   logic ab_beat_q, ab_on_q, ab_after_q;
   logic        uc_v_q;
@@ -2752,10 +2752,10 @@ module sep_fcov (
       if (d_chunk && !chunk_q) cdc_wr_q <= 1'b0;
       else if (di_status) cdc_wr_q <= 1'b1;
 
-      // In-range position of each side at the initial GO, scored at DONE.
+      // In-range position of the destination of a zero fill at the initial
+      // GO, scored at DONE.
       if (d_go && dg_init) begin
-        ir_v_q   <= 1'b1;
-        ir_src_q <= rng_pos(d_src_q, d_total_q, d_base_q, d_limit_q);
+        ir_v_q   <= (dg_op == DmaOpZero);
         ir_dst_q <= rng_pos(d_dst_q, d_total_q, d_base_q, d_limit_q);
       end else if (d_done && !done_q) begin
         ir_v_q <= 1'b0;
@@ -2775,7 +2775,7 @@ module sep_fcov (
         szk_v_q <= (d_total_q == 32'h0) || (d_chunk_q == 32'h0);
         szk_q   <= (d_total_q == 32'h0) ? ((d_chunk_q == 32'h0) ? 2'd2 : 2'd0) : 2'd1;
         hwf_v_q <= di_hash && (d_width_q <= 2'd1);
-        hwf_q   <= d_width_q[0];
+        hwf_q   <= {di_op[1:0], d_width_q[0]};
       end else if (d_size_err && !size_err_q) begin
         szk_v_q <= 1'b0;
         hwf_v_q <= 1'b0;
@@ -5848,6 +5848,8 @@ module sep_fcov (
   logic [1:0] fx_filter_csr_write = '0;  // 1 unlocked_lo, 2 unlocked_hi, 3 locked
   logic [3:0] fx_cpu_single = '0;    // {AxLEN class, channel}: see cp_cpu_single_beat
   logic [1:0] fx_shim_byte = '0;     // 1 lsu_w, 2 si_w
+  logic [1:0] fx_tcm_t2t = '0;       // see cp_tcm_dma_t2t
+  logic [3:0] fx_alias_run = '0;     // see cp_dma_alias_run
   logic [1:0] fx_shim_burst = '0;    // 1 read, 2 write
   logic [2:0] fx_array_tail = '0;    // 1 alias, 2 infilt, 3 outfilt, 4 ap, 5 stee
   logic [1:0] fx_valid0 = '0;        // 1 ap, 2 stee
@@ -6481,6 +6483,12 @@ module sep_fcov (
     cp_tcm_dma_dir_range: coverpoint tcm_cell iff (own_tcm) {
       bins r_iccm = {2'b00}; bins r_dccm = {2'b01}; bins w_iccm = {2'b10}; bins w_dccm = {2'b11};
     }
+    // {1, write range (0 ICCM, 1 DCCM)} of a DMA TCM write hit whose last DMA
+    // read since the GO rise is in the other TCM range (owner
+    // sep_tcm_dma_aperture_ecc_test, inside its window).
+    cp_tcm_dma_t2t: coverpoint fx_tcm_t2t iff (fx_tcm_t2t != 2'd0) {
+      bins iccm_to_dccm = {2'b1_1}; bins dccm_to_iccm = {2'b1_0};
+    }
     // CPU path cells (memory, boot, reset groups): {backdoor request, cell}.
     // Cell 0 IFU read ICCM, 1 LSU read ICCM, 2 LSU write ICCM, 3 LSU read
     // DCCM, 4 LSU write DCCM.
@@ -6608,6 +6616,31 @@ module sep_fcov (
     cp_src_x_dst_endpoint: coverpoint ep iff (ep_v) {
       bins sram_to_sram = {2'd1}; bins spi_to_sram = {2'd2};
     }
+    // A DMA run with a side in the local-alias form that ends DONE with no
+    // error (alr_* block): codes 1 to 12 owner
+    // sep_dma_transfer_matrix_rand_test (held until dma_matrix_pass), code 13
+    // owner sep_dma_zero_fill_rand_test (held until dma_zero_pass).
+    // verilator lint_off COVERIGN
+    cp_dma_alias_run: coverpoint fx_alias_run iff (fx_alias_run != 4'd0) {
+      bins copy_enc0 = {4'd1};
+      bins copy_enc1 = {4'd2};
+      bins copy_enc2 = {4'd3};
+      bins copy_one_chunk = {4'd4};
+      bins copy_multi_chunk = {4'd5};
+      bins copy_alias_src_increment = {4'd6};
+      bins copy_alias_src_wrap = {4'd7};
+      bins copy_alias_src_fixed = {4'd8};
+      bins copy_alias_dst_increment = {4'd9};
+      bins copy_alias_dst_wrap = {4'd10};
+      bins copy_alias_dst_fixed = {4'd11};
+      bins sha_alias_src = {4'd12};
+      bins zero_alias_dst = {4'd13};
+      // A copy with a side of INCREMENT 0 and WRAP 0 over two or more chunks:
+      // no document states the start address of a later chunk, so the owner
+      // runs it only as a logged run with the window closed.
+      ignore_bins copy_fixed_multi_chunk = {4'd14};
+    }
+  // verilator lint_on COVERIGN
   endgroup
 
   // ---------------------------------------------------------------------
@@ -7528,6 +7561,13 @@ module sep_fcov (
   // DMA TCM cell: a DMA request into ICCM or DCCM, confirmed by tcm activity.
   logic       tcm_pend_q;
   logic [1:0] tcm_cell_q;
+  // {in a TCM range, 0 ICCM 1 DCCM} of the last DMA AR handshake since the
+  // GO rise.
+  logic [1:0] t2t_rd_q;
+  wire        t2t_ar_iccm = in_rng(dma_req_i.ar.addr, 32'(SEP_ICCM_MEM_BASE_ADDR),
+                                   32'(SEP_ICCM_MEM_BASE_ADDR) + 32'(SEP_ICCM_MEM_SIZE) - 32'd1);
+  wire        t2t_ar_dccm = in_rng(dma_req_i.ar.addr, 32'(SEP_DCCM_MEM_BASE_ADDR),
+                                   32'(SEP_DCCM_MEM_BASE_ADDR) + 32'(SEP_DCCM_MEM_SIZE) - 32'd1);
   // The enable of the range that the pending DMA access addresses:
   // tcm_cell_q[0] is 0 for the ICCM range and 1 for the DCCM range.
   wire tcm_clken = tcm_cell_q[0] ? dccm_clken_i : iccm_clken_i;
@@ -7550,7 +7590,10 @@ module sep_fcov (
       dma_ext_q <= 1'b0;
       tcm_pend_q <= 1'b0;
       tcm_cell_q <= '0;
+      t2t_rd_q <= '0;
     end else begin
+      if (dq_ar_hs) t2t_rd_q <= {t2t_ar_iccm || t2t_ar_dccm, t2t_ar_dccm};
+      else if (d_go_q && !go_q) t2t_rd_q <= '0;
       irq_dma_done_q2 <= (irq_dma_done_i === 1'b1);
       irq_dma_err_q2  <= (irq_dma_error_i === 1'b1);
       if (dma_run_end) begin
@@ -8071,9 +8114,13 @@ module sep_fcov (
       if (ext_r_hs)
         u_sep_fabric_dedicated_port_cg.sample(3'd0, own_ext, 1'b0, 2'd0, 2'd0, 2'd0, 1'b0, 4'd0,
                                               1'b0, 1'b0, {1'b0, ext_resp_i.r.resp}, 1'b1);
-      if (tcm_hit)
+      if (tcm_hit) begin
+        fx_tcm_t2t = (own_tcm_dma && tcm_cell_q[1] && t2t_rd_q[1] &&
+                      (t2t_rd_q[0] != tcm_cell_q[0])) ? {1'b1, tcm_cell_q[0]} : 2'd0;
         u_sep_fabric_dedicated_port_cg.sample(3'd0, 1'b0, 1'b0, 2'd0, 2'd0, tcm_cell_q, own_tcm_dma,
                                               4'd0, 1'b0, 1'b0, 3'd0, 1'b0);
+        fx_tcm_t2t = 2'd0;
+      end
       // Alias remap input.
       if (al_ar_hs || al_aw_hs) begin
         logic    w;
@@ -9669,11 +9716,13 @@ module sep_fcov (
     cp_range_valid_at_go: coverpoint rv_v {bins valid1 = {1'b1};}
     cp_base_limit_rel: coverpoint bl_v {bins limit_gt_base = {1'b1};}
     // {side (0 source, 1 destination), position (0 at BASE, 1 interior,
-    // 2 at LIMIT)} of a transfer that ends with DONE and no error.
+    // 2 at LIMIT)} of a zero fill that ends with DONE and no error. The
+    // range bounds zero-fill writes only, not a source or a copy, so no
+    // source cell has stimulus (NO-STIMULUS in docs/SEP_FCOV.adoc).
     cp_inrange_pos_x_side: coverpoint ip iff (ip_v) {
-      bins src_at_base = {3'b0_00};
-      bins src_interior = {3'b0_01};
-      bins src_at_limit = {3'b0_10};
+      ignore_bins src_at_base = {3'b0_00};
+      ignore_bins src_interior = {3'b0_01};
+      ignore_bins src_at_limit = {3'b0_10};
       bins dst_at_base = {3'b1_00};
       bins dst_interior = {3'b1_01};
       bins dst_at_limit = {3'b1_10};
@@ -9736,7 +9785,7 @@ module sep_fcov (
   covergroup sep_dma_config_fault_cg with function sample (
       logic [1:0] sz,
       logic sz_v,
-      logic hw,
+      logic [2:0] hw,
       logic hw_v,
       logic [1:0] ah,
       logic ah_v,
@@ -9749,7 +9798,15 @@ module sep_fcov (
     cp_size_zero_kind: coverpoint sz iff (sz_v) {
       bins total_zero = {2'd0}; bins chunk_zero = {2'd1}; bins both_zero = {2'd2};
     }
-    cp_hash_width_fault: coverpoint hw iff (hw_v) {bins enc0 = {1'b0}; bins enc1 = {1'b1};}
+    // {OPCODE[1:0] (1 SHA-256, 2 SHA-384, 3 SHA-512), TRANSFER_WIDTH encoding}.
+    cp_hash_width_fault: coverpoint hw iff (hw_v) {
+      bins sha256_enc0 = {3'b01_0};
+      bins sha256_enc1 = {3'b01_1};
+      bins sha384_enc0 = {3'b10_0};
+      bins sha384_enc1 = {3'b10_1};
+      bins sha512_enc0 = {3'b11_0};
+      bins sha512_enc1 = {3'b11_1};
+    }
     // {side 0 SRC_ADDR_HI 1 DST_ADDR_HI, a write address landed in the LO
     // destination}, scored at the first DONE or ERROR rise after the GO. No
     // document states the destination footprint, so a LO write is not scored.
@@ -10227,13 +10284,13 @@ module sep_fcov (
         dh_dst_q <= (dh_dst_hi != 0);
         if (dh_cell && dh_pre_q && (dh_ended_q || dh_rise)) begin
           u_sep_dma_config_fault_cg.sample(
-              2'd0, 1'b0, 1'b0, 1'b0, {(dh_dst_hi != 0), dh_wrote_q || dh_aw}, 1'b1, 3'd0, 1'b0);
+              2'd0, 1'b0, 3'd0, 1'b0, {(dh_dst_hi != 0), dh_wrote_q || dh_aw}, 1'b1, 3'd0, 1'b0);
           dh_on_q <= 1'b0;
         end else begin
           dh_on_q <= dh_cell && dh_pre_q;
         end
       end else if (dh_on_q && dh_rise) begin
-        u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, {dh_dst_q, dh_wrote_q || dh_aw},
+        u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 3'd0, 1'b0, {dh_dst_q, dh_wrote_q || dh_aw},
                                          1'b1, 3'd0, 1'b0);
         dh_on_q <= 1'b0;
       end
@@ -10308,7 +10365,7 @@ module sep_fcov (
     end else begin
       for (int c = 0; c < 6; c++) begin
         if (ec_rel[c] && ec_hold_q[c])
-          u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b0, 3'(c), 1'b1);
+          u_sep_dma_config_fault_cg.sample(2'd0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0, 3'(c), 1'b1);
       end
       ec_hold_q <= ec_hold_q & ~ec_rel;
       if (ec_go_q && !(di_go && di_init) && ec_rd && ec_rose_q && d_err && (ec_cls_q != 3'd7) &&
@@ -10558,6 +10615,103 @@ module sep_fcov (
         end
         if (dma_cfg_rw_rd && (dma_cfg_rw == DmxCrwBusyFalse)) dmx_crw_p[0] <= 1'b1;
         if (dma_cfg_rw_rd && (dma_cfg_rw == DmxCrwIdleTrue)) dmx_crw_p[1] <= 1'b1;
+      end
+    end
+  end
+
+  // cp_dma_alias_run. A GO rise of the engine with INITIAL_TRANSFER 1 starts a
+  // run and latches OPCODE, TRANSFER_WIDTH, the chunk class (TOTAL_DATA_SIZE
+  // above CHUNK_DATA_SIZE) and the mode of each side, from the DMA registers.
+  // A DMA AR (AW) handshake of the run whose pre-remap address is the
+  // local-alias form of the remapped address marks the source (destination)
+  // alias. At the DONE rise with STATUS.ERROR 0 and ERROR_CODE 0 the run holds
+  // one bit per code it reached (bit code - 1): a copy with an alias side
+  // holds its width, chunk class and the mode of each alias side, a hash with
+  // an alias source holds 12, a zero fill with an alias destination holds 13,
+  // and a copy with a fixed side over two or more chunks holds only 14. The
+  // codes of a run inside the window of sep_dma_transfer_matrix_rand_test
+  // (copy and hash) sample when dma_matrix_pass rises; a reset drops them, a
+  // window close does not. The code of a run inside the window of
+  // sep_dma_zero_fill_rand_test (zero fill) samples when dma_zero_pass rises;
+  // the next initial GO in that window and a reset drop it.
+  localparam logic [1:0] AlrInc = 2'd1, AlrWrap = 2'd2, AlrFixed = 2'd3;
+  function automatic logic [1:0] alr_mode(input logic inc, input logic wrap);
+    if (inc) return wrap ? AlrWrap : AlrInc;
+    return wrap ? 2'd0 : AlrFixed;
+  endfunction
+  logic alr_on_q, alr_tm_q, alr_zf_q, alr_src_q, alr_dst_q, alr_multi_q;
+  logic [3:0] alr_op_q;
+  logic [1:0] alr_w_q, alr_smode_q, alr_dmode_q;
+  logic [13:0] alr_tm_p = '0, alr_zf_p = '0;
+  wire alr_go = d_go_q && !go_q && (dma_reg2hw_i.control.initial_transfer.q === 1'b1);
+  wire alr_tm_rel = (dma_matrix_pass != 0) && !dmx_pass_q;
+  always @(posedge clk_i) begin
+    if (in_reset) begin
+      alr_on_q <= 1'b0;
+      alr_tm_p <= '0;
+      alr_zf_p <= '0;
+    end else begin
+      if (alr_tm_rel) begin
+        for (int k = 0; k < 14; k++) begin
+          if (alr_tm_p[k]) begin
+            fx_alias_run = 4'(k + 1);
+            u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, 3'd0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0);
+            fx_alias_run = 4'd0;
+          end
+        end
+        alr_tm_p <= '0;
+      end
+      if (dzp_rel) begin
+        for (int k = 0; k < 14; k++) begin
+          if (alr_zf_p[k]) begin
+            fx_alias_run = 4'(k + 1);
+            u_sep_dma_endpoint_cg.sample(4'd0, 3'd0, 3'd0, 1'b0, 3'd0, 1'b0, 2'd0, 1'b0);
+            fx_alias_run = 4'd0;
+          end
+        end
+        alr_zf_p <= '0;
+      end
+      if (alr_go) begin
+        alr_on_q    <= 1'b1;
+        alr_tm_q    <= own_dma_matrix;
+        alr_zf_q    <= own_dma_zero;
+        alr_src_q   <= 1'b0;
+        alr_dst_q   <= 1'b0;
+        alr_op_q    <= dma_reg2hw_i.control.opcode.q;
+        alr_w_q     <= dma_reg2hw_i.transfer_width.q;
+        alr_multi_q <= dma_reg2hw_i.total_data_size.q > dma_reg2hw_i.chunk_data_size.q;
+        alr_smode_q <= alr_mode(dma_reg2hw_i.src_config.increment.q,
+                                dma_reg2hw_i.src_config.wrap.q);
+        alr_dmode_q <= alr_mode(dma_reg2hw_i.dst_config.increment.q,
+                                dma_reg2hw_i.dst_config.wrap.q);
+        if (own_dma_zero && !dzp_rel) alr_zf_p <= '0;
+      end else if (alr_on_q) begin
+        if (dq_ar_hs && (alias_form(dma_raw_req_i.ar.addr, dma_req_i.ar.addr) == 2'd1))
+          alr_src_q <= 1'b1;
+        if (dq_aw_hs && (alias_form(dma_raw_req_i.aw.addr, dma_req_i.aw.addr) == 2'd1))
+          alr_dst_q <= 1'b1;
+        if (d_done && !done_q) begin
+          logic [13:0] m;
+          m = '0;
+          if (!d_err && d_no_err) begin
+            if ((alr_op_q == DmaOpCopy) && (alr_src_q || alr_dst_q)) begin
+              if (alr_multi_q && ((alr_smode_q == AlrFixed) || (alr_dmode_q == AlrFixed))) begin
+                m[13] = 1'b1;
+              end else begin
+                if (alr_w_q != 2'd3) m[alr_w_q] = 1'b1;
+                m[alr_multi_q?4 : 3] = 1'b1;
+                if (alr_src_q && (alr_smode_q != 2'd0)) m[4+alr_smode_q] = 1'b1;
+                if (alr_dst_q && (alr_dmode_q != 2'd0)) m[7+alr_dmode_q] = 1'b1;
+              end
+            end
+            if ((alr_op_q inside {DmaOpSha256, DmaOpSha384, DmaOpSha512}) && alr_src_q)
+              m[11] = 1'b1;
+            if ((alr_op_q == DmaOpZero) && alr_dst_q) m[12] = 1'b1;
+          end
+          if (alr_tm_q && own_dma_matrix) alr_tm_p <= alr_tm_p | (m & ~14'h1000);
+          if (alr_zf_q && own_dma_zero) alr_zf_p <= alr_zf_p | (m & 14'h1000);
+          alr_on_q <= 1'b0;
+        end
       end
     end
   end
@@ -11314,8 +11468,6 @@ module sep_fcov (
 
       // ---- DMA range ----
       if (d_done && !done_q && ir_v_q && d_no_err && !d_err) begin
-        dmx_range_config(1'b0, 1'b0, {1'b0, ir_src_q}, own_dma_matrix && (ir_src_q != 2'd3), 2'd0,
-                         1'b0);
         dmx_range_config(1'b0, 1'b0, {1'b1, ir_dst_q}, own_dma_matrix && (ir_dst_q != 2'd3), 2'd0,
                          1'b0);
       end
