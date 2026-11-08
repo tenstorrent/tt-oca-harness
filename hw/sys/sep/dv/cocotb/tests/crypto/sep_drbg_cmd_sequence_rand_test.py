@@ -200,8 +200,9 @@ Checkers:
                  bit 4; after an uninstantiate and an instantiate with flag0 0x9
                  (the field back to a legal value), bit 4 still reads 1 and a
                  write of 0 clears it.
-                 No write to the register comes between the invalid instantiate
-                 and that read. Control: bit 4 reads 0 after an instantiate with
+                 No write of 0 to bit 4 comes between the invalid instantiate
+                 and that read: the live probe writes 1 to bit 4, which leaves
+                 it set. Control: bit 4 reads 0 after an instantiate with
                  flag0 0x9 and after one with flag0 0x6. After the graded clear,
                  an uninstantiate and a repeat of the invalid instantiate, a write
                  of 0 at its ack and the readback are logged only
