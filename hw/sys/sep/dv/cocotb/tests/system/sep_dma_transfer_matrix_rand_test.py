@@ -105,7 +105,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       within the same 2000 clocks and moves the copy.
   CHK-DMA-RANGE-COPY  an SRAM copy whose destination crosses LIMIT part-way
                       completes: DONE=1, ERROR=0, ERROR_CODE=0, the model AR
-                      and AW, the model image (``dma.adoc:105``). Control
+                      and AW, the model image (``dma.adoc:106``). Control
                       CTRL-DMA-RANGE-COPY: a zero fill of the same
                       destination under the same range stops at LIMIT with
                       ERROR_CODE.DST_ADDR_ERROR (``dma.adoc:98-104``).
@@ -2853,7 +2853,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         """CHK-DMA-RANGE-COPY: an SRAM copy whose destination leaves the range completes.
 
         "The range does not bound a copy between internal addresses"
-        (``hw/sys/sep/doc/dma.adoc:105``): DONE=1, ERROR=0, ERROR_CODE=0, every
+        (``hw/sys/sep/doc/dma.adoc:106``): DONE=1, ERROR=0, ERROR_CODE=0, every
         AR and AW of the model, and the image equals the model. Control
         CTRL-DMA-RANGE-COPY: under the same range a zero fill of the same
         destination stops at LIMIT with ERROR and ERROR_CODE.DST_ADDR_ERROR and
@@ -2907,7 +2907,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         self._pass(
             "CHK-DMA-RANGE-COPY",
             fst.ok and fer.ok and mism == 0 and addr_mm == 0 and past > 0,
-            f"contract=hw/sys/sep/doc/dma.adoc:105 {tag} ar={len(ev.ar)} aw={len(ev.aw)} "
+            f"contract=hw/sys/sep/doc/dma.adoc:106 {tag} ar={len(ev.ar)} aw={len(ev.aw)} "
             f"expect_beats={x.n_txn} aw_past_limit={past} addr_mismatch={addr_mm} "
             f"mem_mismatch={mism} {ff('status', fst)} {ff('error_code', fer)}",
         )
