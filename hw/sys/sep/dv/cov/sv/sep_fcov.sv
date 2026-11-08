@@ -23220,7 +23220,9 @@ module sep_fcov (
       return (graded_owner == FcovOwnSepKmacUnsupportedCfgInjectTest) ||
           (graded_owner == FcovOwnSepKmacEntropyModeRandTest);
       12: return graded_owner == FcovOwnSepOtbnCmdStatusRandTest;
-      6, 10: return graded_owner == FcovOwnSepDrbgCmdSequenceRandTest;
+      // Source 7 (cs_entropy_req) of this owner: CHK-CSRNG-ENTROPY-REQ grades the
+      // raise at the flag0-False software instantiate.
+      6, 7, 10: return graded_owner == FcovOwnSepDrbgCmdSequenceRandTest;
       9, 11: return graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest;
       default: return 1'b0;
     endcase
@@ -23291,6 +23293,7 @@ module sep_fcov (
       bins kmac_done = {4'd3};
       bins kmac_err = {4'd5};
       bins cs_cmd_req_done = {4'd6};
+      bins cs_entropy_req = {4'd7};
       bins cs_fatal_err = {4'd9};
       bins edn_cmd_req_done = {4'd10};
       bins edn_fatal_err = {4'd11};
@@ -28933,12 +28936,16 @@ module sep_fcov (
     logic [2:0] ra;
     logic ra_v;  // RECOV_ALERT_STS set request: 0-3 CTRL fields, 4 flag0, 5 bit 13, 6 bit 15
     logic [1:0] cs;
-    logic cs_v;  // CMD_STS at the software ack: 1 INVALID_ACMD, 2 RESEED_CNT_EXCEEDED (code 4)
-    logic rs;
-    logic rs_v;  // 0 Generate refused at the limit, 1 Generate accepted after a Reseed
+    logic cs_v;  // CMD_STS at the software ack: 1 INVALID_ACMD, 2 RESEED_CNT_EXCEEDED (code 4), 3 INVALID_CMD_SEQ
+    logic [1:0] rs;
+    logic rs_v;  // 0 Generate refused at the limit, 1 accepted after a Reseed, 2 refused after an Update
     logic gg_v;  // GENBITS read 0 with GENBITS_VLD 1 and SW_APP_ENABLE not True
     logic kg_v;  // four GENBITS reads equal the CTR_DRBG known answer of the seed
     logic ia_v;  // EDN instantiate acknowledged only after a full ESRC seed handshake
+    logic [1:0] fp;
+    logic fp_v;  // {instance flag0 True, GENBITS_FIPS} at the first GENBITS_VLD read with GENBITS_VLD 1
+    logic [5:0] cm;
+    logic cm_v;  // {CTRL field 0-3, invalid MuBi4 value} at the field alert set request
   } cz_ccmd_t;
 
   covergroup sep_csrng_cmd_cg with function sample (cz_ccmd_t s);
@@ -28965,15 +28972,36 @@ module sep_fcov (
       bins invalid_acmd = {3'd5};
       bins reseed_cnt = {3'd6};
     }
+    // invalid_cmd_seq: a Generate to an instance that is not instantiated
+    // (CHK-CSRNG-UNINST-REFUSE).
     cp_sw_cmd_sts: coverpoint s.cs iff (s.cs_v) {
-      bins invalid_acmd = {2'd1}; bins reseed_cnt_exceeded = {2'd2};
+      bins invalid_acmd = {2'd1}; bins reseed_cnt_exceeded = {2'd2}; bins invalid_cmd_seq = {2'd3};
     }
+    // refused_after_update: the Generate after an Update that followed a
+    // refusal at the limit (CHK-CSRNG-UPDATE).
     cp_reseed_limit: coverpoint s.rs iff (s.rs_v) {
-      bins refused_at_limit = {1'b0}; bins accepted_after_reseed = {1'b1};
+      bins refused_at_limit = {2'd0};
+      bins accepted_after_reseed = {2'd1};
+      bins refused_after_update = {2'd2};
     }
     cp_genbits_gate: coverpoint s.gg_v iff (s.gg_v) {bins read_zero_gated = {1'b1};}
     cp_kat_generate: coverpoint s.kg_v iff (s.kg_v) {bins four_words_match = {1'b1};}
     cp_inst_ack_vs_seed: coverpoint s.ia_v iff (s.ia_v) {bins ack_after_seed = {1'b1};}
+    // GENBITS_FIPS of the words of a software instance follows its flag0
+    // (CHK-DRBG-FIPS-PROV). A mismatch fails that check, which drops the
+    // held sample, so it is ignored rather than illegal.
+    cp_fips_prov: coverpoint s.fp iff (s.fp_v) {
+      bins flag0_true_fips_0 = {2'b10};
+      bins flag0_false_fips_1 = {2'b01};
+      ignore_bins graded_mismatch = {2'b00, 2'b11};
+    }
+    // CTRL field x invalid MuBi4 value of a field alert (CHK-CSRNG-CTRL-MUBI):
+    // 0 ENABLE, 1 SW_APP_ENABLE, 2 READ_INT_STATE, 3 FIPS_FORCE_ENABLE.
+    cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {bins f[] = {[0 : 3]};}
+    cp_ctrl_mubi_value: coverpoint s.cm[3:0] iff (s.cm_v) {
+      bins v[] = {[0 : 5], [7 : 8], [10 : 15]};
+    }
+    x_ctrl_mubi: cross cp_ctrl_mubi_field, cp_ctrl_mubi_value;
   endgroup
 
   typedef struct packed {
@@ -28993,7 +29021,9 @@ module sep_fcov (
     logic es_v;  // CMD_STS at the software ack: 0 SUCCESS, 1 INVALID_ACMD
     logic ae_v;  // RECOV_ALERT_STS.CSRNG_ACK_ERR set request
     logic [1:0] hc;
-    logic hc_v;  // hardware command while AUTO_MODE 1: 0 generate, 1 reseed after N = 1 generates, 2 reseed after N = 2 to 4
+    logic hc_v;  // hardware command while AUTO_MODE 1: 0 generate, 1 reseed after N = 1 generates, 2 reseed after N = 2 to 4, 3 after N = 64 to 128
+    logic [5:0] cm;
+    logic cm_v;  // {CTRL field 0-3, invalid MuBi4 value} at the field alert set request
   } cz_edn_t;
 
   covergroup sep_edn_mode_cg with function sample (cz_edn_t s);
@@ -29020,8 +29050,13 @@ module sep_fcov (
     cp_boot_cmd_reset: coverpoint s.bc iff (s.bc_v) {
       bins boot_ins_0x901 = {1'b0}; bins boot_gen_0xfff003 = {1'b1};
     }
+    // reseed_after_n64_128: the large-N auto trial (CHK-EDN-AUTO-SEQ). No bin
+    // for N 5 to 63 or above 128: the owner draws N in 1 to 4 and 64 to 128.
     cp_auto_hw_cmd: coverpoint s.hc iff (s.hc_v) {
-      bins generate_cmd = {2'd0}; bins reseed_after_n1 = {2'd1}; bins reseed_after_n2_4 = {2'd2};
+      bins generate_cmd = {2'd0};
+      bins reseed_after_n1 = {2'd1};
+      bins reseed_after_n2_4 = {2'd2};
+      bins reseed_after_n64_128 = {2'd3};
     }
     cp_ctrl_field_alert: coverpoint s.fa iff (s.fa_v) {
       bins edn_enable_field = {2'd0};
@@ -29034,6 +29069,13 @@ module sep_fcov (
       ignore_bins success = {1'b0}; bins invalid_acmd = {1'b1};
     }
     cp_csrng_ack_err: coverpoint s.ae_v iff (s.ae_v) {bins set_by_error_ack = {1'b1};}
+    // CTRL field x invalid MuBi4 value of a field alert (CHK-EDN-CTRL-MUBI):
+    // 0 EDN_ENABLE, 1 BOOT_REQ_MODE, 2 AUTO_REQ_MODE, 3 CMD_FIFO_RST.
+    cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {bins f[] = {[0 : 3]};}
+    cp_ctrl_mubi_value: coverpoint s.cm[3:0] iff (s.cm_v) {
+      bins v[] = {[0 : 5], [7 : 8], [10 : 15]};
+    }
+    x_ctrl_mubi: cross cp_ctrl_mubi_field, cp_ctrl_mubi_value;
   endgroup
 
   typedef struct packed {
@@ -29419,12 +29461,12 @@ module sep_fcov (
     u_sep_drbg_err_inject_cg.sample(e);
   endtask
 
-  task automatic cz_ccmd(input int unsigned pt, input logic [2:0] v);
-    if (cy_own_dcmd) cz_dsp_hold(2'd0, pt, {3'd0, v});
+  task automatic cz_ccmd(input int unsigned pt, input logic [5:0] v);
+    if (cy_own_dcmd) cz_dsp_hold(2'd0, pt, v);
     else cz_ccmd_rel(pt, v);
   endtask
 
-  task automatic cz_ccmd_rel(input int unsigned pt, input logic [2:0] v);
+  task automatic cz_ccmd_rel(input int unsigned pt, input logic [5:0] v);
     cz_ccmd_t e;
     e = '0;
     case (pt)
@@ -29437,7 +29479,7 @@ module sep_fcov (
         e.hs_v = 1'b1;
       end
       2: begin
-        e.ra   = v;
+        e.ra   = v[2:0];
         e.ra_v = 1'b1;
       end
       3: begin
@@ -29445,39 +29487,47 @@ module sep_fcov (
         e.cs_v = 1'b1;
       end
       4: begin
-        e.rs   = v[0];
+        e.rs   = v[1:0];
         e.rs_v = 1'b1;
       end
       6: e.kg_v = 1'b1;
       7: e.ia_v = 1'b1;
+      8: begin
+        e.fp   = v[1:0];
+        e.fp_v = 1'b1;
+      end
+      9: begin
+        e.cm   = v;
+        e.cm_v = 1'b1;
+      end
       default: e.gg_v = 1'b1;
     endcase
     u_sep_csrng_cmd_cg.sample(e);
   endtask
 
-  task automatic cz_edn(input int unsigned pt, input logic [1:0] v);
-    if (cy_own_dcmd && !((pt == 1) && (v == 2'd1))) cz_dsp_hold(2'd1, pt, {4'd0, v});
+  task automatic cz_edn(input int unsigned pt, input logic [5:0] v);
+    if (cy_own_dcmd && !((pt == 1) && (v == 6'd1))) cz_dsp_hold(2'd1, pt, v);
     else cz_edn_rel(pt, v);
   endtask
 
-  task automatic cz_edn_rel(input int unsigned pt, input logic [1:0] v);
+  task automatic cz_edn_rel(input int unsigned pt, input logic [5:0] v);
     cz_edn_t e;
     e = '0;
     case (pt)
       0: begin
-        e.mf   = v;
+        e.mf   = v[1:0];
         e.mf_v = 1'b1;
       end
       1: begin
-        e.rm   = v;
+        e.rm   = v[1:0];
         e.rm_v = 1'b1;
       end
       2: begin
-        e.sp   = v;
+        e.sp   = v[1:0];
         e.sp_v = 1'b1;
       end
       3: begin
-        e.aw   = v;
+        e.aw   = v[1:0];
         e.aw_v = 1'b1;
       end
       4: begin
@@ -29485,7 +29535,7 @@ module sep_fcov (
         e.bc_v = 1'b1;
       end
       5: begin
-        e.fa   = v;
+        e.fa   = v[1:0];
         e.fa_v = 1'b1;
       end
       6: begin
@@ -29495,6 +29545,10 @@ module sep_fcov (
       8: begin
         e.hc   = v[1:0];
         e.hc_v = 1'b1;
+      end
+      9: begin
+        e.cm   = v;
+        e.cm_v = 1'b1;
       end
       default: e.ae_v = 1'b1;
     endcase
@@ -31864,19 +31918,28 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // CSRNG and EDN command cells of the DRBG command-sequence owner: the
   // RECOV_ALERT_STS set requests, CMD_STS at the software acknowledge, the
-  // reseed limit, the GENBITS gate and the reset read of the EDN boot words.
+  // reseed limit, the GENBITS gate, the reset read of the EDN boot words,
+  // the FIPS/CC flag of the software instance and the CTRL field x invalid
+  // MuBi4 value of each field alert.
   // ---------------------------------------------------------------------
   localparam logic [31:0] CzEdBootIns = 32'h0000_0901;  // edn.hjson BOOT_INS_CMD resval
   localparam logic [31:0] CzEdBootGen = 32'h00FF_F003;  // edn.hjson BOOT_GEN_CMD resval
   logic [3:0] cz_cs_acmd = '0;  // acmd of the last software CMD_REQ header word
   logic cz_rl_ref = 1'b0;       // a Generate refused at the limit since the TRNG reset
   logic cz_rl_rsd = 1'b0;       // a Reseed acknowledged after that refusal
+  logic cz_rl_upd = 1'b0;       // an Update acknowledged with CMD_STS 0 after that refusal
   logic cz_ed_wr = 1'b0;        // an EDN register write since the TRNG reset
   logic cz_ed_ack_q = 1'b0;
+  logic cz_fp_arm = 1'b0;       // a software Instantiate with a legal flag0, no GENBITS_VLD 1 read yet
+  logic cz_fp_f0t = 1'b0;       // flag0 of that Instantiate is True
+  logic [3:0] cz_cm_q = '0;     // CSRNG CTRL field alert set requests, last clock
+  logic [3:0] cz_fm_q = '0;     // EDN CTRL field alert set requests, last clock
   wire cz_gb_vld = cy_t(csrng_hw2reg_i.genbits_vld.genbits_vld.d);
   always @(posedge clk_i) begin
     logic [6:0] ra;
     logic [3:0] fa;
+    logic [15:0] csv;
+    logic [15:0] edv;
     logic cs_ack;
     logic ed_ack_rise;
     ra = {cz_dd(csrng_hw2reg_i.recov_alert_sts.cmd_stage_reseed_cnt_alert),
@@ -31890,15 +31953,44 @@ module sep_fcov (
           cz_dd(edn_hw2reg_i.recov_alert_sts.auto_req_mode_field_alert),
           cz_dd(edn_hw2reg_i.recov_alert_sts.boot_req_mode_field_alert),
           cz_dd(edn_hw2reg_i.recov_alert_sts.edn_enable_field_alert)};
+    // CTRL field values in the order of the field alert bits 0-3 of ra and fa.
+    csv = {csrng_reg2hw_i.ctrl.fips_force_enable.q, csrng_reg2hw_i.ctrl.read_int_state.q,
+           csrng_reg2hw_i.ctrl.sw_app_enable.q, csrng_reg2hw_i.ctrl.enable.q};
+    edv = {edn_reg2hw_i.ctrl.cmd_fifo_rst.q, edn_reg2hw_i.ctrl.auto_req_mode.q,
+           edn_reg2hw_i.ctrl.boot_req_mode.q, edn_reg2hw_i.ctrl.edn_enable.q};
+    cz_cm_q <= ra[3:0];
+    cz_fm_q <= fa;
     // The CSRNG software acknowledge writes CMD_STS (its de is the ack
     // pulse); the EDN CMD_ACK is a level, so its rise is the acknowledge.
     cs_ack = cy_t(csrng_hw2reg_i.sw_cmd_sts.cmd_sts.de);
     ed_ack_rise = cz_ed_ack_set && !cz_ed_ack_q;
     cz_ed_ack_q <= cz_ed_ack_set;
+    // cp_fips_prov. A software Instantiate header (acmd 0x1) with flag0 True
+    // or False arms the cell with that flag0; the first GENBITS_VLD read with
+    // GENBITS_VLD 1 after it samples {flag0 True, GENBITS_FIPS} and disarms.
+    // An Uninstantiate header (acmd 0x5), an Instantiate header with another
+    // flag0 and a TRNG reset disarm. The arm and the disarm do not depend on
+    // the window: the owner instantiates its reseed leg before the window
+    // opens. Header bits [11:8] are flag0
+    // (vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md
+    // :156-188).
+    if (cz_fp_arm && rd_ev && cy_rd_known && (ar_addr_q == CSRNG_GENBITS_VLD_REG_ADDR) &&
+        ((rd_data & CSRNG_GENBITS_VLD_GENBITS_VLD_MASK) != 32'h0)) begin
+      cz_fp_arm <= 1'b0;
+      if (cy_own_dcmd && !cz_trng && cy_ip[5]) begin
+        cz_ccmd(8, {4'd0, cz_fp_f0t, ((rd_data & CSRNG_GENBITS_VLD_GENBITS_FIPS_MASK) != 32'h0)});
+      end
+    end
     if (cy_t(csrng_reg2hw_i.cmd_req.qe)) begin
       if (cz_cs_rem == 4'd0) begin
         cz_cs_acmd <= csrng_reg2hw_i.cmd_req.q[3:0];
         cz_cs_rem  <= csrng_reg2hw_i.cmd_req.q[7:4];
+        if (csrng_reg2hw_i.cmd_req.q[3:0] == 4'h1) begin
+          cz_fp_arm <= csrng_reg2hw_i.cmd_req.q[11:8] inside {CzMubiTrue, CzMubiFalse};
+          cz_fp_f0t <= (csrng_reg2hw_i.cmd_req.q[11:8] == CzMubiTrue);
+        end else if (csrng_reg2hw_i.cmd_req.q[3:0] == 4'h5) begin
+          cz_fp_arm <= 1'b0;
+        end
       end else begin
         cz_cs_rem <= cz_cs_rem - 4'd1;
       end
@@ -31908,20 +32000,36 @@ module sep_fcov (
       cz_cs_rem <= '0;
       cz_rl_ref <= 1'b0;
       cz_rl_rsd <= 1'b0;
+      cz_rl_upd <= 1'b0;
       cz_ed_wr  <= 1'b0;
+      cz_fp_arm <= 1'b0;
     end else if (cy_own_dcmd) begin
       for (int b = 0; b < 7; b++) if (ra[b]) cz_ccmd(2, 3'(b));
       for (int b = 0; b < 4; b++) if (fa[b]) cz_edn(5, 2'(b));
+      // x_ctrl_mubi: the field and its invalid value at the rise of the
+      // field alert set request.
+      for (int b = 0; b < 4; b++) begin
+        if (ra[b] && !cz_cm_q[b]) cz_ccmd(9, {2'(b), csv[4*b+:4]});
+        if (fa[b] && !cz_fm_q[b]) cz_edn(9, {2'(b), edv[4*b+:4]});
+      end
       if (cz_dd(edn_hw2reg_i.recov_alert_sts.csrng_ack_err)) cz_edn(7, 2'd0);
       if (cs_ack) begin
+        // Code 3 samples only at a Generate acknowledge
+        // (CHK-CSRNG-UNINST-REFUSE); the owner logs the CMD_STS of its
+        // repeated Instantiate.
         case (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d)
           3'd1: cz_ccmd(3, 3'd1);
+          3'd3: if (cz_cs_acmd == 4'h3) cz_ccmd(3, 3'd3);
           3'd4: cz_ccmd(3, 3'd2);
           default: ;
         endcase
+        // cp_reseed_limit. A Generate refused at the limit samples
+        // refused_after_update when an Update acknowledged with CMD_STS 0
+        // since the last refusal; a Reseed or an Instantiate ends that
+        // state. Update is acmd 0x4 (theory_of_operation.md:255-263).
         if (cz_cs_acmd == 4'h3) begin
           if (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd4) begin
-            cz_ccmd(4, 3'd0);
+            cz_ccmd(4, cz_rl_upd ? 3'd2 : 3'd0);
             cz_rl_ref <= 1'b1;
             cz_rl_rsd <= 1'b0;
           end else if (cz_rl_rsd) begin
@@ -31931,6 +32039,11 @@ module sep_fcov (
         end
         if ((cz_cs_acmd == 4'h2) && cz_rl_ref && (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd0)) begin
           cz_rl_rsd <= 1'b1;
+        end
+        if ((cz_cs_acmd == 4'h4) && cz_rl_ref && (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d == 3'd0)) begin
+          cz_rl_upd <= 1'b1;
+        end else if (cz_cs_acmd inside {4'h1, 4'h2}) begin
+          cz_rl_upd <= 1'b0;
         end
       end
       if (ed_ack_rise) begin
@@ -32496,8 +32609,8 @@ module sep_fcov (
   // true, the command words that EDN hands to CSRNG on its hardware port
   // (edn_csrng_cmd_*): the generates since the last instantiate or reseed
   // are counted; a reseed after exactly N of them (N =
-  // MAX_NUM_REQS_BETWEEN_RESEEDS, 1 to 4), then a generate as the next
-  // command, samples the cell of N. Additional-data words of a command are
+  // MAX_NUM_REQS_BETWEEN_RESEEDS, 1 to 4 or 64 to 128), then a generate as
+  // the next command, samples the cell of N. Additional-data words of a command are
   // skipped by its clen. The acmd field is header bits [3:0], decoded
   // whole: Instantiate 0x1, Reseed 0x2, Generate 0x3
   // (vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md
@@ -32534,8 +32647,9 @@ module sep_fcov (
             cz_ah_gens <= (cz_ah_gens == 32'hFFFF_FFFF) ? cz_ah_gens : cz_ah_gens + 32'd1;
           end
           CzAcmdRes: begin
-            cz_ah_rsd  <= (cz_ah_gens == n) && (n >= 32'd1) && (n <= 32'd4);
-            cz_ah_cell <= (n == 32'd1) ? 2'd1 : 2'd2;
+            cz_ah_rsd  <= (cz_ah_gens == n) &&
+                (((n >= 32'd1) && (n <= 32'd4)) || ((n >= 32'd64) && (n <= 32'd128)));
+            cz_ah_cell <= (n == 32'd1) ? 2'd1 : (n <= 32'd4) ? 2'd2 : 2'd3;
             cz_ah_gens <= '0;
           end
           default: ;
@@ -32629,8 +32743,8 @@ module sep_fcov (
     end else if ((drbg_seq_pass == 1) && !cz_dsp_q) begin
       foreach (cz_dsp[i]) begin
         case (cz_dsp[i].k)
-          2'd0: cz_ccmd_rel(int'(cz_dsp[i].pt), cz_dsp[i].v[2:0]);
-          2'd1: cz_edn_rel(int'(cz_dsp[i].pt), cz_dsp[i].v[1:0]);
+          2'd0: cz_ccmd_rel(int'(cz_dsp[i].pt), cz_dsp[i].v);
+          2'd1: cz_edn_rel(int'(cz_dsp[i].pt), cz_dsp[i].v);
           2'd2: cz_alert_rel(cz_dsp[i].v[0]);
           default: cy_intr_rel(int'(cz_dsp[i].pt), cz_dsp[i].v);
         endcase
