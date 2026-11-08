@@ -33,6 +33,10 @@ j = ``PERSISTENT_FAILURE``; the PASS line counts those pairs (``pf_j_pairs``).
 
 ``CTRL-ALERT-ARM`` reads back ALERT_THRESHOLD, HEALTH_TEST_WINDOW_SIZE and
 HEALTH_TEST_CTRL after the trip setup writes them; each must hold the written value.
+``CTRL-PF-ENABLE`` reads INTR_ENABLE back as the PERSISTENT_FAILURE bit alone before
+the trip. ``CTRL-MODULE-OFF`` reads CTRL.MODULE_ENABLE back as 0 before the alert
+W1C, and ``CTRL-HT-OFF`` reads HEALTH_TEST_CTRL.ENABLE back as 0 before the
+health-status W1C. A failing control fails the leaf.
 
 Randomization (``SepSeededRng`` from the run seed): the order of the targets, the
 target whose partner is ``PERSISTENT_FAILURE``, and the partner of every other target.
@@ -60,8 +64,10 @@ from seq_lib.sep_esrc_alert_seq import (
 )
 from seq_lib.sep_esrc_bringup_seq import (
     ESRC_ALERT_THRESHOLD,
+    ESRC_CTRL,
     ESRC_HEALTH_TEST_CTRL,
     ESRC_HEALTH_TEST_WINDOW_SIZE,
+    ESRC_INTR_ENABLE,
 )
 
 _TRIP_TIMEOUT_CYCLES = 80_000
@@ -93,6 +99,15 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         text = " ".join(f"{reg}=0x{rb:08x}/0x{wr:08x}" for reg, (rb, wr) in got.items())
         assert all(rb == wr for rb, wr in got.values()), f"CTRL-ALERT-ARM FAIL: read/written {text}"
         self.logger.info("CTRL-ALERT-ARM PASS: read/written %s", text)
+
+    async def _check_field(
+        self, esrc: SepEsrcAlert, tag: str, addr: int, reg: str, field: str, want: int
+    ) -> None:
+        """Read ``reg.field`` back and require ``want``; a mismatch fails the leaf."""
+        meta = ENTROPY_SOURCE.fields(reg)[field]
+        got = (await esrc._rd(addr) & meta["bm"]) >> meta["bp"]
+        assert got == want, f"{tag} FAIL: {reg}.{field} reads 0x{got:x}, expected 0x{want:x}"
+        self.logger.info("%s PASS: %s.%s reads 0x%x", tag, reg, field, got)
 
     def _irq_bit(self) -> int:
         vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
@@ -168,6 +183,12 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         await self._pair_walk(esrc)
 
         await esrc.enable_persistent_irq()
+        en = await esrc._rd(ESRC_INTR_ENABLE) & ENTROPY_SOURCE.mask("INTR_ENABLE")
+        assert en == PF_MASK, (
+            f"CTRL-PF-ENABLE FAIL: INTR_ENABLE reads 0x{en:08x}, expected only "
+            f"PERSISTENT_FAILURE 0x{PF_MASK:08x}"
+        )
+        self.logger.info("CTRL-PF-ENABLE PASS: INTR_ENABLE reads 0x%08x", en)
         await esrc.arm_failing_windows()
         await self._check_arm(esrc)
 
@@ -297,6 +318,7 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         )
 
         await esrc.leave_alert_hang()
+        await self._check_field(esrc, "CTRL-MODULE-OFF", ESRC_CTRL, "CTRL", "MODULE_ENABLE", 0)
         sm_before_w1c = await esrc.read_main_sm()
         st_before_w1c = await esrc.read_intr()
         assert (sm_before_w1c & ALERT_MASK) and (st_before_w1c & PF_MASK), (
@@ -323,6 +345,9 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         # With every test disabled no fail signal can re-latch a bit, so the latch
         # still holds the trip bits before the write and reads 0 after it.
         await esrc.disable_health_tests()
+        await self._check_field(
+            esrc, "CTRL-HT-OFF", ESRC_HEALTH_TEST_CTRL, "HEALTH_TEST_CTRL", "ENABLE", 0
+        )
         ht_live = await esrc.read_health_status()
         assert (ht_live & ht_status) == ht_status, (
             f"CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS lost trip bits without a write "

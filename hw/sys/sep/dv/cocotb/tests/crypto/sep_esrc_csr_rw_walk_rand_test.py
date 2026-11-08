@@ -74,7 +74,7 @@ Checkers:
                     graded from a set value. The walked volatile fields must be
                     exactly the 23 the contract names (``CONTRACT_VOLATILE``).
   CHK-LOCK-MEN      locked trial: ``IDLE`` = 0 and ``LEVEL`` > 0 within 2 t_ref after a
-                    drain and the write of 0. Control: the unlocked trial of the same
+                    drain and the write of 0, which answers OKAY or SLVERR. Control: the unlocked trial of the same
                     seed reads ``IDLE`` = 1 and an empty FIFO for 2 t_ref after
                     ``SHA256_STATUS.BUSY`` (:209) reads 0 and a drain.
   CHK-ESRC-INTR     zero corner status 0; all-ones status = all defined bits; drawn T
@@ -898,8 +898,8 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             out["lock_rb"] = _fget("FIPS_LOCK", "LOCK", await self._rd("FIPS_LOCK"))
             await self._drain("locked")
             open_graded_window(TEST, self.logger)
-            # No text states the B code of a write the lock refuses; any B response
-            # shows the write reached ESRC.
+            # No text states the B code of a write the lock refuses, so OKAY and SLVERR
+            # both pass; a DECERR means the write reached no block.
             out["ctrl_wr_resp"] = await self._write_resp("CTRL", self._ctrl_word(0))
             t0 = self._now()
             rose = False
@@ -915,7 +915,10 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             if not rose:
                 out["reason"] = f"timeout:level bound={2 * t_ref}"
             out["ok"] = (
-                rose and out["idle"] == 0 and out["lock_rb"] == 1 and out["ctrl_wr_resp"] >= 0
+                rose
+                and out["idle"] == 0
+                and out["lock_rb"] == 1
+                and out["ctrl_wr_resp"] in RESP_ACCEPTED
             )
         except TrialTimeout as exc:
             close_graded_window(self.logger)
