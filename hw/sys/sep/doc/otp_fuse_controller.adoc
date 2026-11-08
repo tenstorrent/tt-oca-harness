@@ -336,8 +336,8 @@ implementor; this field is where SEP fills that gap. Bits [7:0] are the
 required-co-signer mask, bit n selecting co-signer n+1, matching the shape of
 co_signer_enable in the manifest: a required co-signer must be enabled there and
 must carry a populated signature block, or the manifest is rejected. Bits [39:8]
-hold one 4-bit owner code per co-signer, with co-signer N at bits [4N+7:4N+4], so
-co-signer N occupies the same nibble index here as it does in REQUIRED_ALGS. Owner
+hold one 4-bit owner code per co-signer, with co-signer N at bits [4N+7:4N+4], the
+same bit positions as co-signer N's algorithm requirement in REQUIRED_ALGS. Owner
 codes are one-hot: 0b0001 anonymous key (verify with the public key carried in the
 co-signer block itself, no revocation check), 0b0010 chiplet-designated key (must
 match a non-revoked ROM-embedded or CHIPLET_PUBK* digest), 0b0100 SiP key (must
@@ -351,23 +351,26 @@ Model in the Life Cycle Controller section.
 
 |REQUIRED_ALGS |22 |64 (40 used) |true |true |Per-entity required signature
 algorithms, so each verification entity can carry its own classical, PQC, or hybrid
-policy. Each entity has a 4-bit nibble: bit 0 = classical (RSA, ECDSA, or EdDSA),
-bit 1 = post-quantum (ML-DSA), bits 3:2 reserved. Nibble 0 (bits [3:0]) is the
-chiplet creator, which the OCA Payload Manifest calls the manifest ROOT; nibble 1
-(bits [7:4]) is the verifier key entry; and nibbles 2 through 9 (bits [39:8]) are
-co-signers 1 through 8, so co-signer N sits at the same nibble index here as it
-does in REQUIRED_SIGNERS. Bits [63:40] reserved. The chiplet-creator nibble is
+policy. Each entity has four bits, of which bit 0 set requires a classical
+signature (RSA, ECDSA, or EdDSA), bit 1 set requires a post-quantum signature
+(ML-DSA), and bits 3:2 are reserved. Bits [3:0] belong to the chiplet creator,
+which the OCA Payload Manifest calls the manifest ROOT, so REQUIRED_ALGS[0] requires
+its classical and REQUIRED_ALGS[1] its post-quantum signature; bits [7:4] belong to
+the verifier key entry (REQUIRED_ALGS[4] classical, REQUIRED_ALGS[5] post-quantum);
+and bits [4N+7:4N+4] belong to co-signer N for N = 1 to 8 (REQUIRED_ALGS[4N+4]
+classical, REQUIRED_ALGS[4N+5] post-quantum), the same bit positions as co-signer
+N's owner code in REQUIRED_SIGNERS. Bits [63:40] reserved. REQUIRED_ALGS[1:0] is
 always enforced and governs the chiplet creator's signature, which covers the main
 manifest when use_verifier_key is clear and the appended verifier key entry when it
-is set. The verifier nibble governs the verifier key's signature over the main
-manifest and applies only when use_verifier_key is set; a co-signer nibble applies
-only when REQUIRED_SIGNERS requires that slot. The specific scheme and parameter
-set (e.g., ML-DSA-44/65/87) follow from that entity's provisioned keys and the
-manifest's signature_type_classic / signature_type_pqc values, not from this field.
-Setting both bits of a nibble requires a genuine hybrid signature from that entity:
-both must be present and both must verify. Because a single entity requiring PQC
-forces the manifest into the PQC variant, the union of these nibbles effectively
-selects the manifest format.
+is set. REQUIRED_ALGS[5:4] governs the verifier key's signature over the main
+manifest and applies only when use_verifier_key is set; REQUIRED_ALGS[4N+5:4N+4]
+applies only when REQUIRED_SIGNERS requires co-signer N. The specific scheme and
+parameter set (e.g., ML-DSA-44/65/87) follow from that entity's provisioned keys and
+the manifest's signature_type_classic / signature_type_pqc values, not from this
+field. Setting both bits for one entity requires a genuine hybrid signature from
+that entity: both must be present and both must verify. Because a single entity
+requiring PQC forces the manifest into the PQC variant, the post-quantum bits taken
+together effectively select the manifest format.
 
 |CHIPLET_PUBK_PQC_HASH0 |23 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.

@@ -869,14 +869,17 @@ Required-co-signer mask:: `REQUIRED_SIGNERS[7:0]`. Bit N-1 set means
 co-signer N is required (bit 0 is co-signer 1, bit 7 is co-signer 8).
 Owner code of co-signer N:: `REQUIRED_SIGNERS[4N+7:4N+4]`, a one-hot value
 defined in <<sep-cosigner-owner-codes-table>>.
-Algorithm nibble of an entity:: the four bits of `REQUIRED_ALGS` assigned to
-that entity: `REQUIRED_ALGS[3:0]` for the chiplet creator,
-`REQUIRED_ALGS[7:4]` for the verifier key, and `REQUIRED_ALGS[4N+7:4N+4]` for
-co-signer N. Bit 0 set requires a classical signature (RSA, ECDSA or EdDSA);
-bit 1 set requires a post-quantum signature (ML-DSA); bits 3:2 are reserved. A
-nibble with both bits set is called _hybrid_. For co-signer N the owner code
-and the algorithm nibble occupy the same bit positions in their respective
-fields.
+Algorithm requirement of an entity:: the two bits of `REQUIRED_ALGS` that say
+which signatures that entity must supply. The chiplet creator's are
+`REQUIRED_ALGS[0]` (classical) and `REQUIRED_ALGS[1]` (post-quantum); the
+verifier key's are `REQUIRED_ALGS[4]` and `REQUIRED_ALGS[5]`; co-signer N's are
+`REQUIRED_ALGS[4N+4]` and `REQUIRED_ALGS[4N+5]`. A classical bit set requires a
+classical signature (RSA, ECDSA or EdDSA); a post-quantum bit set requires a
+post-quantum signature (ML-DSA). The two bits above each pair,
+`REQUIRED_ALGS[3:2]`, `[7:6]` and `[4N+7:4N+6]`, are reserved. An entity with
+both bits set is said to require a _hybrid_ signature. Co-signer N's four bits,
+`REQUIRED_ALGS[4N+7:4N+4]`, occupy the same positions as its owner code in
+`REQUIRED_SIGNERS`.
 Signature-algorithm class:: one entry of the `SIGNATURE_REVOKE` bit map: a
 signature scheme with its parameter set, such as ECDSA P-384 or ML-DSA-87, or a
 set of schemes so closely related that a break in one is a break in all, such as
@@ -933,7 +936,8 @@ signature over the main manifest.
 |Co-signer N (1-8)
 |Co-signer block N, enabled by `co_signer_enable` bit N-1.
 |`REQUIRED_SIGNERS` bit N-1 (required); `REQUIRED_SIGNERS[4N+7:4N+4]` (owner
-code); `REQUIRED_ALGS[4N+7:4N+4]` (algorithm nibble)
+code); `REQUIRED_ALGS[4N+4]` (classical required), `REQUIRED_ALGS[4N+5]`
+(post-quantum required)
 |When `REQUIRED_SIGNERS` bit N-1 is set.
 |=======================================================================
 
@@ -1013,20 +1017,21 @@ and populated; the public key in the block satisfies the owner code
 including that the `CHIPLET_PUBK_REVOKE` bit of the matched digest is clear;
 and the signatures required by `REQUIRED_ALGS[4N+7:4N+4]` are present and
 verify under that public key.
-. *Algorithms.* In an entity's algorithm nibble, bit 0 set requires a
-classical signature and bit 1 set requires a post-quantum signature; when both
-are set, both signatures shall be present and both shall verify. The scheme
-and parameter set (for example ML-DSA-44, -65 or -87) are those declared by the
-entity's own signature-type fields in the manifest and shall match the
-entity's key; `REQUIRED_ALGS` does not select them. An all-zero algorithm
-nibble requires no signature from that entity. For a required co-signer, and
-for the verifier key when `use_verifier_key` is set, an all-zero nibble causes
-the manifest to be rejected. For the chiplet creator, an all-zero
-`REQUIRED_ALGS[3:0]` means that no chiplet-creator signature is required for
-this manifest; this value is legitimate only when written to the shadow
-register by a boot stage as described under _Policy propagation_, never as the
-fused value. A requirement that is all zero only because of a group-code waiver
-is not this case: it is rejected by step 1.
+. *Algorithms.* An entity's classical bit set (`REQUIRED_ALGS[0]`, `[4]` or
+`[4N+4]`) requires a classical signature from it and its post-quantum bit set
+(`REQUIRED_ALGS[1]`, `[5]` or `[4N+5]`) requires a post-quantum signature; when
+both are set, both signatures shall be present and both shall verify. The
+scheme and parameter set (for example ML-DSA-44, -65 or -87) are those declared
+by the entity's own signature-type fields in the manifest and shall match the
+entity's key; `REQUIRED_ALGS` does not select them. An entity with both bits
+clear is required to supply no signature. For a required co-signer, and for the
+verifier key when `use_verifier_key` is set, both bits clear causes the
+manifest to be rejected. For the chiplet creator, `REQUIRED_ALGS[1:0]` = `00`
+means that no chiplet-creator signature is required for this manifest; this
+value is legitimate only when written to the shadow register by a boot stage as
+described under _Policy propagation_, never as the fused value. A requirement
+whose bits are clear only because of a group-code waiver is not this case: it is
+rejected by step 1.
 . *Non-required co-signers.* A co-signer block N for which `REQUIRED_SIGNERS`
 bit N-1 is clear is ignored: it is not verified, and its presence, absence or
 validity has no effect on the result.
@@ -1038,8 +1043,8 @@ verifies the BL1 manifest against the shadow registers, which at that point
 hold the fused values. Both shadow registers are SW-writable: a boot stage
 whose manifest has been authenticated may rewrite them to set the policy for
 the next manifest it verifies -- setting or clearing bits of
-`REQUIRED_SIGNERS[7:0]`, changing an owner code, or changing an algorithm
-nibble -- and may then set the write-lock bits of both fields in the `LOCKS`
+`REQUIRED_SIGNERS[7:0]`, changing an owner code, or changing an entity's
+`REQUIRED_ALGS` bits -- and may then set the write-lock bits of both fields in the `LOCKS`
 shadow register to freeze that policy for the rest of the boot. The chiplet
 creator has no bit in `REQUIRED_SIGNERS[7:0]`; a stage removes the
 chiplet-creator requirement from the next manifest by writing
@@ -1072,7 +1077,8 @@ single-signer flow.
 
 |`REQUIRED_SIGNERS[7:0]` = `0x00`; `REQUIRED_ALGS[3:0]` = `0b0011`
 |Classical and ML-DSA chiplet-creator signatures, both verifying. Any entity
-whose algorithm nibble has bit 1 set forces the PQC manifest variant.
+whose post-quantum bit (`REQUIRED_ALGS[1]`, `[5]` or `[4N+5]`) is set forces
+the PQC manifest variant.
 
 |`REQUIRED_SIGNERS[7:0]` = `0x01`; `REQUIRED_SIGNERS[11:8]` = `0b0100` (SiP
 owner); `REQUIRED_ALGS[3:0]` = `0b0011`; `REQUIRED_ALGS[11:8]` = `0b0001`
