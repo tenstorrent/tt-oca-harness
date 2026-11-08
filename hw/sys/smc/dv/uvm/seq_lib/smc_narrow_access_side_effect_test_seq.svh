@@ -65,8 +65,8 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   protected bit [63:0] saved_start, saved_end, saved_config;
   protected int unsigned read_before, write_before, compare_before, mismatch_before;
   protected bit [63:0] word0, word1;
-  protected bit [31:0] value, value_lo, value_zf;
-  protected int unsigned polls, entries;
+  protected bit [31:0] upper_value, value_lo, value_zf;
+  protected int unsigned null_polls, null_entries;
 
   protected function string access_context(string detail = "");
     return
@@ -260,7 +260,7 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     pattern = random_pattern(32);
     word0 = {pattern, pattern ^ 32'h0101_0101};
     word1 = {pattern ^ 32'h0202_0202, pattern ^ 32'h0404_0404};
-    value = 32'(random_pattern(32)) | 1;
+    upper_value = 32'(random_pattern(32)) | 1;
     value_lo = 32'(random_pattern(32)) | 1;
     value_zf = 32'(random_pattern(32)) | 1;
     read_before = sep_in_history.read_count();
@@ -334,17 +334,18 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     grade(ChkPop, "narrow reads consume separate whole entries",
           {upper, lower} == {word0[63:32], word1[31:0]}, $sformatf(
           "actual=%h expected=%h", {upper, lower}, {word0[63:32], word1[31:0]}));
-    csr_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA) + SmcCsrBytes, value, "upper push");
+    csr_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA) + SmcCsrBytes, upper_value,
+              "upper push");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "upper push readback");
     upper_push = observed;
     csr_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), value_lo, "lower push");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "lower push readback");
     grade(ChkPush, "32-bit pushes place data in the addressed half",
-          upper_push == {value, 32'h0} && observed == {32'h0, value_lo}, $sformatf(
+          upper_push == {upper_value, 32'h0} && observed == {32'h0, value_lo}, $sformatf(
           "upper_push=%h lower_push=%h upper_value=%h lower_value=%h",
           upper_push,
           observed,
-          value,
+          upper_value,
           value_lo
           ));
     strobed_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), {value_zf, 32'hFFFF_FFFF}, 8'hF0,
@@ -422,28 +423,28 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     bit unchanged, guards_intact, null_entry_ok;
     poison_window();
     null_write(SmcZeroerCtrlStatusAddr);
-    wait_zeroer_idle(ChkNullZeroer, polls);
+    wait_zeroer_idle(ChkNullZeroer, null_polls);
     inspect_window(unchanged, zero_words, guards_intact);
     grade(ChkNullZeroer, "null START zeros exactly the window",
           zero_words == WindowWords && guards_intact, $sformatf(
-          "zero_words=%0d guards=%b polls=%0d", zero_words, guards_intact, polls));
+          "zero_words=%0d guards=%b polls=%0d", zero_words, guards_intact, null_polls));
     null_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA));
-    entries = 0;
+    null_entries = 0;
     forever begin
       mem_read(smc_mailbox_addr(mailbox, 1, MBX_STATUS), status, "null-push status");
       if ((status & AXIL_MAILBOX_STATUS_EMPTY_MASK) != 0) break;
-      if (entries == SmcMailboxDepth) begin
+      if (null_entries == SmcMailboxDepth) begin
         prerequisite(ChkCleanup, 1'b0, "null-push drain within mailbox depth", $sformatf(
-                     "entries=%0d status=%h data=%p", entries, status, queue_data));
+                     "entries=%0d status=%h data=%p", null_entries, status, queue_data));
       end
       mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "null-push data");
       queue_data.push_back(observed);
-      entries++;
+      null_entries++;
     end
     null_entry_ok = 0;
-    if (entries == 1) null_entry_ok = queue_data[0] == 0;
+    if (null_entries == 1) null_entry_ok = queue_data[0] == 0;
     grade(ChkNullMailbox, "null write pushes exactly one zero entry", null_entry_ok, $sformatf(
-          "entries=%0d data=%p", entries, queue_data));
+          "entries=%0d data=%p", null_entries, queue_data));
     clear_command();
   endtask
 
@@ -451,8 +452,8 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     for (int unsigned cycle = 0; cycle < ComparisonBound; cycle++) begin
       if (scoreboard.compare_count(
               SmcFeatureMutexSema
-          ) >= compare_before + ComparisonsPerPass &&
-              sep_in_history.read_count() >= read_before + FixedReads + polls + 2 * entries &&
+          ) >= compare_before + ComparisonsPerPass && sep_in_history.read_count() >=
+              read_before + FixedReads + null_polls + 2 * null_entries &&
               sep_in_history.write_count() >= write_before + FixedWrites)
         break;
       wait_smc_cycles(1);
@@ -460,7 +461,7 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     check_evidence(ChkScoreboard, "new mutex mismatches", scoreboard.mismatch_count(
                    SmcFeatureMutexSema) - mismatch_before, 0);
     check_evidence(ChkNonvac, "SEP_IN reads", sep_in_history.read_count() - read_before,
-                   FixedReads + polls + 2 * entries);
+                   FixedReads + null_polls + 2 * null_entries);
     check_evidence(ChkNonvac, "SEP_IN writes", sep_in_history.write_count() - write_before,
                    FixedWrites);
     check_evidence(ChkNonvac, "mutex comparisons", scoreboard.compare_count(SmcFeatureMutexSema
