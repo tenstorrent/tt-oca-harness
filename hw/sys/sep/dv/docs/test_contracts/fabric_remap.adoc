@@ -750,15 +750,16 @@ and STEE output-remap banks.
 
 *BFM / Model*: ocah_axi_vip
 
-*Randomization*: RANDCFG — every (register x ordering) cell runs on every seed, and every (ordering x size) cell with it. The seed varies the staged data, the channel separation and the response backpressure, never which cell runs.
+*Randomization*: RANDCFG — every (register x ordering) cell runs on every seed, and every (ordering x size) cell with it. The seed varies the staged data, the channel separation and the response backpressure, never which cell runs. The same-ID leg draws four distinct `SEP_SCRATCH_COLD` registers in an order, a non-zero AXI ID, and distinct primed and written values that differ from each register's reset value; it runs on every seed.
 
-*Objective*: AXI write address and write data are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal stimulus and each must leave the written value in the addressed register without displacing its neighbour. The ordering is driven by holding the trailing channel until the leading one asserts VALID, and the ordering each cell actually presented is read off the bus and asserted against what was requested. The orderings are presented at the s_axi fabric ingress, and the contract is end to end: each one must land at every write-safe register of every swept block, not only at one scratch word. The crossbar in front of the block adapters can re-serialize a write (on the CSRNG path it delivers W one cycle after AW whatever the master presents, see <<sep_drbg_axil_adapter_port_arbitration_test>>), so this test does not claim that each adapter sees all three orderings; W-first and same-cycle orderings at an adapter port are covered for the DRBG lane adapter module by `sep_drbg_axil_adapter_port_arbitration_test`. The sweep configures all three orderings at every write-safe register and crosses them with the 1/2/4-byte sizes on the scratch words, where a narrow write has no side effect. The narrow cells compare the whole software-usable word against the AXI lane rule; `sep_axi_strobe_window_test` owns the same rule at default timing.
+*Objective*: AXI write address and write data are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal stimulus and each must leave the written value in the addressed register without displacing its neighbour. The ordering is driven by holding the trailing channel until the leading one asserts VALID, and the ordering each cell actually presented is read off the bus and asserted against what was requested. The orderings are presented at the s_axi fabric ingress, and the contract is end to end: each one must land at every write-safe register of every swept block, not only at one scratch word. The crossbar in front of the block adapters can re-serialize a write (on the CSRNG path it delivers W one cycle after AW whatever the master presents, see <<sep_drbg_axil_adapter_port_arbitration_test>>), so this test does not claim that each adapter sees all three orderings; W-first and same-cycle orderings at an adapter port are covered for the DRBG lane adapter module by `sep_drbg_axil_adapter_port_arbitration_test`. The sweep configures all three orderings at every write-safe register and crosses them with the 1/2/4-byte sizes on the scratch words, where a narrow write has no side effect. The narrow cells compare the whole software-usable word against the AXI lane rule; `sep_axi_strobe_window_test` owns the same rule at default timing. The walk issues one access at a time. A separate leg holds several requests of one ID in flight at once through the system-CSR `axi_to_axi_lite` bridge, which splits bursts and keeps the AXI IDs it needs for the responses (`hw/sys/sep/doc/fabric.adoc`, Interconnect): AXI returns the responses of one ID in request order (IHI 0022 A6), so a path that reorders, drops or re-labels a same-ID response hands a request the word of its neighbour. The leg uses one target and a non-zero ID, because the demux holds back a same-ID read while that ID is outstanding to another target, so a second target would serialize the leg.
 
-*Test Coverage*: AW/W channel ordering at every write-safe register, from the LSU splice.
+*Test Coverage*: AW/W channel ordering at every write-safe register, from the LSU splice; four same-ID reads and four same-ID writes in flight through the system-CSR bridge.
 
 *Test Procedure*:
 
 [arabic]
+. Same-ID leg, before the walk. Prime each of the four drawn `SEP_SCRATCH_COLD` registers with its distinct value and read it back (CTRL-BRIDGE-ID-PRIME). Issue four reads on the drawn ID, one to each register, and hold them in flight together; sample the AR, R, AW, W and B handshakes on the pins after `ReadOnly`. Then issue four writes on the same ID, one to each register with its distinct value, and hold them in flight together; read each register back. The leg requires at least three requests accepted before the first response (CTRL-BRIDGE-ID-DEPTH) and grades the order of the responses (CHK-BRIDGE-ID-ORDER). The leg raises on its first miss, and the walk does not run.
 . Take the register inventory and the exclusion reasons from `sep_reg_bit_bash_seq`: `write_reason() is None` for the no-side-effect blocks, plus `touch_reason() is None` restricted to `TOUCH_BLOCKS` for plain RW storage inside the other major IPs.
 . Drop the blocks where the access itself would decide the result. `WDT_TIMER` is that block: `clk_wdt_i` is 5 µs and the AXI timeout is 50 µs, about ten watchdog edges, so whether a `prim_reg_cdc` round trip fits depends on the phase the access arrives on. A probe there measures CDC latency against the timeout rather than channel delivery. `sep_reg_bit_bash_rand_test` covers that block's storage, and it runs `clk_wdt` at eight core periods so the handshake retires inside the timeout.
 . Prime the register with the complement under its write mask at default timing, and read it back, so a write that never lands reads as the prime rather than looking plausible.
@@ -783,6 +784,12 @@ and STEE output-remap banks.
 |The cell count is asserted against a floor and against the cells the config presented, then the per-ordering tally, the blocks reached, the (ordering x size) grid and the witness count are logged. Every skipped register is counted under its reason on the configuration line the test logs first. A silent skip would let a shrinking sweep keep reporting PASS.
 |CHK-RANDCFG
 |The cell count for the seed is logged against the configured total, so a shrunken sweep is visible.
+|CHK-BRIDGE-ID-ORDER
+|On the same ID, each R beat, sampled from the R channel, carries the leg ID, OKAY, RLAST and the primed value of the register that the AR of the same rank named, so the R beats return in request order and each is the word of its own request. Each B beat carries the leg ID and OKAY and follows the AW and the W of the same rank, and after the writes each register holds the value written to it. A bridge or crossbar that reorders, drops or re-labels a same-ID response, or returns a neighbour's word, fails. Anchor: the pins, with the value of each beat from the channel. Control: CTRL-BRIDGE-ID-PRIME and CTRL-BRIDGE-ID-DEPTH. Evidence: `CHK-BRIDGE-ID-ORDER PASS: bus=<s_axi\|m_axi> read id=<id> R beats in AR order: <register list>` and `CHK-BRIDGE-ID-ORDER PASS: bus=<bus> write id=<id> each B after the AW and W ...`.
+|CTRL-BRIDGE-ID-PRIME
+|Control, not a counted check. Each of the four registers reads back its distinct primed value before the reads, so each R beat has one register it can match. Otherwise the leg fails with `CTRL-MISSING BRIDGE-ID-PRIME: bus=<bus> <register> ...`. Line: `CTRL-BRIDGE-ID-PRIME PASS: bus=<bus> <register>=0x<value> ...`.
+|CTRL-BRIDGE-ID-DEPTH
+|Control, not a counted check. On the pins, at least three AR (AW) handshakes of the leg ID are accepted by the cycle of the first R (B) handshake of that ID, so the leg holds same-ID requests in flight and does not pass one access at a time. Otherwise the leg fails with `CTRL-MISSING BRIDGE-ID-DEPTH: bus=<bus> <read\|write> id=<id> <ar_before_first_r\|aw_before_first_b>=<n> floor 3`. Line: `CTRL-BRIDGE-ID-DEPTH PASS: bus=<bus> <read\|write> id=<id> <key>=<n> floor 3`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -802,17 +809,18 @@ and STEE output-remap banks.
 
 *BFM / Model*: ocah_axi_vip
 
-*Randomization*: RANDCFG -- every (register x ordering) cell runs on every seed. The seed varies the staged data, the channel separation and the response backpressure, never which cell runs.
+*Randomization*: RANDCFG -- every (register x ordering) cell runs on every seed. The seed varies the staged data, the channel separation and the response backpressure, never which cell runs. The same-ID leg draws as in `sep_axi_order_sweep_test`, for this bus.
 
 *Objective*: The same ordering contract as `sep_axi_order_sweep_test`, driven from the SMN inbound master instead of the CPU-LSU splice. Both masters reach the same IP block adapters, so an adapter that mishandles a channel ordering has to be caught from either. This path also grants a W-first handshake: the CPU-LSU register adapters hold WREADY until AW, so a W-first presentation is accepted same-cycle there, while the inbound path accepts W before AW.
 
-*Test Coverage*: AW/W channel ordering at every write-safe register, from the SMN inbound master.
+*Test Coverage*: AW/W channel ordering at every write-safe register, from the SMN inbound master; the same-ID leg of `sep_axi_order_sweep_test` (four same-ID reads and four same-ID writes in flight through the system-CSR bridge) driven from the SMN inbound master.
 
 *Test Procedure*:
 
 [arabic]
 . Assert the cell floor when the walk completes, and require the compare count to equal the cells the config presented, so a walk shrunk by a map or routing change fails rather than reporting a clean pass over fewer cells.
 . Program the inbound filter from the CPU-LSU side: the filter denies by default, so five allow windows are opened over the swept extent. The window bounds follow `hw/ip/axi_filter/doc/index.adoc` (Address Range Granule): with `allow_burst = 0` the granule is the data bus width, address bits [2:0] are ignored, `START_ADDR` widens down and `END_ADDR` widens up.
+. Same-ID leg, after the filter setup and before the walk: the leg of `sep_axi_order_sweep_test` (four same-ID reads and then four same-ID writes in flight together on one non-zero ID to four primed `SEP_SCRATCH_COLD` registers), driven from the inbound master through the filter.
 . Walk the cells exactly as the CPU-LSU sweep does.
 
 *Checkers*:
@@ -830,6 +838,8 @@ and STEE output-remap banks.
 |Each cell presented the ordering it requested, read off the AW/W valid assertions rather than taken from the configured profile. On this path a W-first presentation is accepted before AW, which is the inbound adapter's own contract and is logged rather than treated as a stimulus failure — the opposite of the CPU-LSU register adapters, which hold WREADY until AW and answer W-first same-cycle.
 |CHK-COVERAGE
 |The cell count is asserted against a floor and against the cells the config presented, then the per-ordering tally, the blocks reached, the (ordering x size) grid and the witness count are logged. Every skipped register is counted under its reason on the configuration line the test logs first, including the sixteen `INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL` blocks this path cannot sweep. A silent skip would let a shrinking sweep keep reporting PASS.
+|CHK-BRIDGE-ID-ORDER
+|As in `sep_axi_order_sweep_test`, from the inbound master: the R beats of four same-ID reads return in request order, each with the leg ID, OKAY, RLAST and the primed value of its own register; each B follows the AW and W of its rank; each register holds its written value. Control: CTRL-BRIDGE-ID-PRIME, and CTRL-BRIDGE-ID-DEPTH requires at least three requests accepted before the first response.
 |CHK-RANDCFG
 |The cell count for the seed is logged against the configured total, so a shrunken sweep is visible.
 |===

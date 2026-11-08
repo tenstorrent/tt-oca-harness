@@ -423,7 +423,8 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # The three legal AW/W orderings at every write-safe register, graded on the readback, not
-# on the response.
+# on the response. Four same-ID reads in flight through the system-CSR bridge return their
+# R beats in request order; the k-th B of four same-ID writes follows the k-th AW and W.
 name = "sep_axi_order_sweep_test"
 module = "system.sep_axi_order_sweep_test"
 seed = 1
@@ -483,8 +484,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# The same sweep from the SMN inbound master. The sixteen INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL blocks stay
-# on s_axi only: they gate the access in flight.
+# The same sweep and same-ID leg from the SMN inbound master. The sixteen INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL
+# blocks stay on s_axi only: they gate the access in flight.
 name = "sep_axi_order_sweep_m_axi_test"
 module = "system.sep_axi_order_sweep_m_axi_test"
 seed = 1
