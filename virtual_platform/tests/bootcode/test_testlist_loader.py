@@ -223,6 +223,14 @@ def test_loads_spi_read_contract(tmp_path):
             'spi_reads = [{ name = "a", range = [0x0, 0x100], exact = 0, size = 4 }]',
             "unknown field",
         ),
+        (
+            'spi_reads = [{ name = "a", range = [0x0, 0x100], bytes = -4 }]',
+            "bytes must be non-negative",
+        ),
+        (
+            'spi_reads = [{ name = "a", range = [0x0, 0x100], bytes = "backup.payload_size" }]',
+            "unknown image fact",
+        ),
         ('spi_read_order = ["a"]', "spi_read_order needs spi_reads"),
         (
             'spi_reads = [{ name = "a", range = [0x0, 0x100], exact = 0 }]\nspi_read_order = ["b"]',
@@ -1064,6 +1072,19 @@ def test_image_fact_bounds_and_values_load_as_expressions(tmp_path):
     assert length.field.value_from == testlist_loader.ValueFrom("toc_cap")
     assert case.spi_reads[0].high == "primary.payload_end"
     assert case.forbid == ("LEN={primary.bl1_len}", "COPY_SRC={backup.bl1_copy_src}")
+
+
+def test_spi_bytes_total_loads_as_an_image_fact_expression(tmp_path):
+    path = _with(
+        tmp_path,
+        "payload_metadata",
+        'spi_reads = [{ name = "p", range = [0x42000, 0x80000], '
+        'bytes = "backup.payload_end - backup.payload_start" }]',
+    )
+    (case,) = load_testlist(path, known_images={"signed"})
+    span = case.spi_reads[0]
+    assert (span.exact, span.minimum, span.maximum) == (None, None, None)
+    assert span.total_bytes == "backup.payload_end - backup.payload_start"
 
 
 def test_smc_sram_source_may_end_at_the_image_end(tmp_path):

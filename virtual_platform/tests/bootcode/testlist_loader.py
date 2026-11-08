@@ -128,7 +128,7 @@ _SMC_SRAM_FIELDS = (
     "smc_sram_offset",
     "smc_sram_manifest_at",
 )
-_SPI_SPAN_FIELDS = {"name", "range", "exact", "min", "max"}
+_SPI_SPAN_FIELDS = {"name", "range", "exact", "min", "max", "bytes"}
 _IMAGE_ASSERT_FIELDS = {
     "range",
     "all",
@@ -426,16 +426,24 @@ def _spi_reads(entry: dict, name: str) -> tuple[SpiReadSpan, ...]:
             _symbolic(edge, f"testcase {name!r} spi_reads[{span!r}] range") for edge in bounds
         )
         counts = {key: value[key] for key in ("exact", "min", "max") if key in value}
-        if not counts:
+        if not counts and "bytes" not in value:
             raise ValueError(
                 f"testcase {name!r} spi_reads[{span!r}] declares no exact/min/max "
-                "read count, so it asserts nothing"
+                "read count or bytes total, so it asserts nothing"
             )
         for key, count in counts.items():
             if type(count) is not int or count < 0:
                 raise ValueError(
                     f"testcase {name!r} spi_reads[{span!r}] {key} must be a non-negative integer"
                 )
+        total_bytes = None
+        if "bytes" in value:
+            total_bytes = value["bytes"]
+            if type(total_bytes) is int and total_bytes < 0:
+                raise ValueError(
+                    f"testcase {name!r} spi_reads[{span!r}] bytes must be non-negative"
+                )
+            total_bytes = _symbolic(total_bytes, f"testcase {name!r} spi_reads[{span!r}] bytes")
         spans.append(
             SpiReadSpan(
                 name=span,
@@ -444,6 +452,7 @@ def _spi_reads(entry: dict, name: str) -> tuple[SpiReadSpan, ...]:
                 exact=counts.get("exact"),
                 minimum=counts.get("min"),
                 maximum=counts.get("max"),
+                total_bytes=total_bytes,
             )
         )
 
