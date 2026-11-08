@@ -292,7 +292,7 @@ A `keyed_mac` hit fills `cp_kmac` as configuration only.
 |Coverpoint |Bins
 |`cp_cmd` |An `EXECUTE` write to `CMD`
 |`cp_done` |ONE bin: the same post-`EXECUTE` window saw `STATUS` back at IDLE and then `ERR_BITS` == 0
-|`cp_imem_rdback` / `cp_dmem_rdback` |first_word, mid_word, last_word. A sample is an OKAY read of an IMEM (or DMEM) word that returns the last whole-word write to that address, by the read address: the first word of the window, any word from the second to the second to last, and the last word. The samples count only inside the graded window of owner 788. `sep_otbn_load_checksum_read_test` opens it around the read, write and read of each edge word and the repeat read of all three for CHK-OTBN-IMEM-EDGE and CHK-OTBN-DMEM-EDGE at IDLE, and closes it before the check line when a check fails. Reads while OTBN is busy do not sample. `otbn.hjson:788-829`
+|`cp_imem_rdback` / `cp_dmem_rdback` |first_word, mid_word, last_word. A sample is an OKAY read, at the address of the last whole-word write to that memory, that returns the written word, by the read address: the first word of the window, any word from the second to the second to last, and the last word. The samples count only inside the graded window of owner 788. `sep_otbn_load_checksum_read_test` opens it around the read, write and read of each edge word and the repeat read of all three (of which only the last word samples) for CHK-OTBN-IMEM-EDGE and CHK-OTBN-DMEM-EDGE at IDLE, and closes it before the check line when a check fails. Reads while OTBN is busy do not sample. `otbn.hjson:788-829`
 |===
 
 `cp_done` is one bin. Two independent strobes would let a stale

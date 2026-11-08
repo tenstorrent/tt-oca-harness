@@ -75,8 +75,9 @@ Log-only:
                             the outcome.
 
 FCOV: the graded window (``sep_otbn_execute_cg`` ``cp_imem_rdback`` and
-``cp_dmem_rdback``) is open only for steps 6 to 9. The sampler counts a read that
-returns the last whole-word write to that address; a FAIL closes the window
+``cp_dmem_rdback``) is open only for steps 6 to 9. The sampler counts a read, at the
+address of the last whole-word write to that memory, that returns the written
+word, so of the step-9 reads only the last word samples; a FAIL closes the window
 before it is recorded.
 """
 
