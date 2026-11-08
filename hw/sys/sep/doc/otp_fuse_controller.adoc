@@ -210,11 +210,12 @@ addresses. Access permissions remain subject to the lock and lifecycle rules abo
 |LOCK |— |96 |set-only |true |Lock state occupies OTP words 0–2:
 
 `LOCKS` (64 bits at `0x0`) covers slots 0–31: write-lock at bit `2n`,
-read-lock at bit `2n+1` for slot `n`.
+read-lock at bit `2n+1` for slot `n`. Slot 23 (SIGNATURE_REVOKE) is in bits
+[47:46].
 
-`LOCKS_SPARE` (32 bits at `0x8`) covers slots 32–41: write-lock at bit
-`2(n-32)`, read-lock at bit `2(n-32)+1`. Slot 41 (SIGNATURE_REVOKE) is in bits
-[19:18]; bits [31:20] are unassigned slots 42–47.
+`LOCKS_SPARE` (32 bits at `0x8`) covers slots 32–41, SEP_SYS_ID and spare0
+through spare8: write-lock at bit `2(n-32)`, read-lock at bit `2(n-32)+1`.
+Bits [31:20] are unassigned slots 42–47.
 
 Firmware reads the complete state as three consecutive 32-bit words.
 There are 42 assigned slots (0–41); slot 0 belongs to `LC_STATE`, which ignores
@@ -329,135 +330,95 @@ the hashes embedded in the ROM to authenticate manifests.
 |CHIPLET_PUBK_HASH1 |20 |256 |true |true |Hash of chiplet-owner authentication
 key 1, fused.
 
-|REQUIRED_SIGNERS |21 |64 (40 used) |true |true |Owners whose signature a manifest
-must carry as a co-signer to be authenticated by SEP ROM. The OCA Payload Manifest
-defines the co-signer mechanism but leaves the choice of co-signing keys to the
-implementor; this field is where SEP fills that gap. Bits [7:0] are the
-required-co-signer mask, bit n selecting co-signer n+1, matching the shape of
-co_signer_enable in the manifest: a required co-signer must be enabled there and
-must carry a populated signature block, or the manifest is rejected. Bits [39:8]
-hold one 4-bit owner code per co-signer, with co-signer N at bits [4N+7:4N+4], the
-same bit positions as co-signer N's algorithm requirement in REQUIRED_ALGS. Owner
-codes are one-hot: 0b0001 anonymous key (verify with the public key carried in the
-co-signer block itself, no revocation check), 0b0010 chiplet-designated key (must
-match a non-revoked ROM-embedded or CHIPLET_PUBK* digest), 0b0100 SiP key (must
-match a non-revoked SIP_PUBK* digest), 0b1000 system key (must match a non-revoked
-SYS_PUBK* digest); all other values are reserved. Bits [63:40] reserved. The
-chiplet creator remains the root of trust -- its classical and PQC root digests are
-embedded in SEP ROM and always authenticate BL1 -- so it needs no co-signer slot.
-Because the fuse is one-way and the owner codes are one-hot, a slot's owner code
-must be burned and read back before its mask bit is burned. See Secure-Boot Signing
-Model in the Life Cycle Controller section.
+|REQUIRED_SIGNERS |21 |64 (40 used) |true |true |Which co-signers a manifest must
+carry to be authenticated by SEP ROM, and whose keys they must use. Bits [7:0] are
+the required-co-signer mask, bit N-1 for co-signer N, matching co_signer_enable in
+the OCA Payload Manifest. Bits [4N+7:4N+4] hold the one-hot owner code of
+co-signer N: 0b0001 anonymous, 0b0010 chiplet-designated, 0b0100 SiP owner,
+0b1000 system owner; other values reserved. Bits [63:40] reserved. The chiplet
+creator is always required and has no slot here. Because the fuse is one-way and
+the codes are one-hot, burn a co-signer's owner code and read it back before
+burning its bit in [7:0]. Owner codes, the requirement rule and policy propagation
+are specified under Secure-Boot Signing Model in the Life Cycle Controller section.
 
-|REQUIRED_ALGS |22 |64 (40 used) |true |true |Per-entity required signature
-algorithms, so each verification entity can carry its own classical, PQC, or hybrid
-policy. Each entity has four bits, of which bit 0 set requires a classical
-signature (RSA, ECDSA, or EdDSA), bit 1 set requires a post-quantum signature
-(ML-DSA), and bits 3:2 are reserved. Bits [3:0] belong to the chiplet creator,
-which the OCA Payload Manifest calls the manifest ROOT, so REQUIRED_ALGS[0] requires
-its classical and REQUIRED_ALGS[1] its post-quantum signature; bits [7:4] belong to
-the verifier key entry (REQUIRED_ALGS[4] classical, REQUIRED_ALGS[5] post-quantum);
-and bits [4N+7:4N+4] belong to co-signer N for N = 1 to 8 (REQUIRED_ALGS[4N+4]
-classical, REQUIRED_ALGS[4N+5] post-quantum), the same bit positions as co-signer
-N's owner code in REQUIRED_SIGNERS. Bits [63:40] reserved. REQUIRED_ALGS[1:0] is
-always enforced and governs the chiplet creator's signature, which covers the main
-manifest when use_verifier_key is clear and the appended verifier key entry when it
-is set. REQUIRED_ALGS[5:4] governs the verifier key's signature over the main
-manifest and applies only when use_verifier_key is set; REQUIRED_ALGS[4N+5:4N+4]
-applies only when REQUIRED_SIGNERS requires co-signer N. The specific scheme and
-parameter set (e.g., ML-DSA-44/65/87) follow from that entity's provisioned keys and
-the manifest's signature_type_classic / signature_type_pqc values, not from this
-field. Setting both bits for one entity requires a genuine hybrid signature from
-that entity: both must be present and both must verify. Because a single entity
-requiring PQC forces the manifest into the PQC variant, the post-quantum bits taken
-together effectively select the manifest format.
+|REQUIRED_ALGS |22 |64 (40 used) |true |true |Which signature classes each
+verification entity must supply. Each entity has four bits: bit 0 set requires a
+classical signature (RSA, ECDSA or EdDSA), bit 1 set requires a post-quantum
+signature (ML-DSA), both set requires both, bits 3:2 reserved. Bits [3:0] are the
+chiplet creator (the manifest's ROOT), bits [7:4] the verifier key entry, and bits
+[4N+7:4N+4] co-signer N for N = 1 to 8, the same positions as its owner code in
+REQUIRED_SIGNERS. Bits [63:40] reserved. An entity's bits apply only when that
+entity is required. The requirement rule, hybrid verification and policy
+propagation are specified under Secure-Boot Signing Model in the Life Cycle
+Controller section.
 
-|CHIPLET_PUBK_PQC_HASH0 |23 |256 |true |true |Chiplet owner ML-DSA PQC
+|SIGNATURE_REVOKE |23 |64 (40 used) |set-only |true |Signature-algorithm class
+revocation: a required signature whose class is revoked fails verification, and a
+set group code revokes a whole group and waives its REQUIRED_ALGS bits for every
+entity. The layout is that of the OCA Payload Manifest's signature_class_revoke
+field. Bits [7:0] classical classes: 0 RSA-3072, 1 RSA-4096, 2 ECDSA P-256, 3
+ECDSA P-384, 4 ECDSA P-521, 5 Ed25519, 6 Ed448, 7 adopter-defined classical
+(signature_type_classic `0xF0-0xFF`). Bits [15:8] classical group code: `0x00`, or
+exactly `0xCA`. Bits [23:16] reserved. Bits [31:24] post-quantum classes: 24
+ML-DSA-44, 25 ML-DSA-65, 26 ML-DSA-87, 27 reserved for FN-DSA, 28 SLH-DSA-128, 29
+SLH-DSA-192, 30 SLH-DSA-256, 31 adopter-defined post-quantum (signature_type_pqc
+`0xF0-0xFF`). Bits [39:32] post-quantum group code: `0x00`, or exactly `0xAC`.
+Bits [63:40] reserved. Programmed only by BL1, and write-locked for the rest of
+each boot in the LOCKS shadow register, never in the LOCKS fuse. Lock slot 23 in
+LOCKS[47:46]. Semantics, group codes and the update procedure are specified
+under Signature Algorithm Revocation in the Life Cycle Controller section.
+
+|CHIPLET_PUBK_PQC_HASH0 |24 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.
 
-|CHIPLET_PUBK_PQC_HASH1 |24 |256 |true |true |Chiplet owner ML-DSA PQC
+|CHIPLET_PUBK_PQC_HASH1 |25 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.
 
-|SIP_PUBK_PQC_HASH0 |25 |256 |true |true |Hash digest of the SiP owner's
+|SIP_PUBK_PQC_HASH0 |26 |256 |true |true |Hash digest of the SiP owner's
 ML-DSA PQC root public key for secure boot (slot 0). PQC counterpart of
 SIP_PUBK_HASH0.
 
-|SYS_PUBK_PQC_HASH |26 |256 |true |true |Hash digest of the system owner's
+|SYS_PUBK_PQC_HASH |27 |256 |true |true |Hash digest of the system owner's
 ML-DSA PQC root public key for secure boot. PQC counterpart of
 SYS_PUBK_HASH.
 
-|SIP_PUBK_HASH1 |27 |256 |true |true |Hash digest of the SiP owner's root
+|SIP_PUBK_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's root
 public key for secure boot, slot 1. Second slot so the SiP owner retains a
 usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].
 
-|SIP_PUBK_PQC_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's ML-DSA
+|SIP_PUBK_PQC_HASH1 |29 |256 |true |true |Hash digest of the SiP owner's ML-DSA
 PQC root public key for secure boot, slot 1. PQC counterpart of
 SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].
 
-|SEP_CHIPLET_ID |29 |256 |true |true |Per-owner chiplet public identity fuse
+|SEP_CHIPLET_ID |30 |256 |true |true |Per-owner chiplet public identity fuse
 used as a public identity input to the Key Manager. No read protection
 is required.
 
-|SEP_SIP_ID |30 |256 |true |true |SiP-owner public identity fuse used as a public identity
+|SEP_SIP_ID |31 |256 |true |true |SiP-owner public identity fuse used as a public identity
 input to the Key Manager. No read protection is required.
 
-|SEP_SYS_ID |31 |256 |true |true |System-owner public identity fuse used as a public identity
+|SEP_SYS_ID |32 |256 |true |true |System-owner public identity fuse used as a public identity
 input to the Key Manager. No read protection is required.
 
-|spare0 |32 |256 |true |true |Spare field 0 for future use.
+|spare0 |33 |256 |true |true |Spare field 0 for future use.
 
-|spare1 |33 |256 |true |true |Spare field 1 for future use.
+|spare1 |34 |256 |true |true |Spare field 1 for future use.
 
-|spare2 |34 |256 |true |true |Spare field 2 for future use.
+|spare2 |35 |256 |true |true |Spare field 2 for future use.
 
-|spare3 |35 |256 |true |true |Spare field 3 for future use.
+|spare3 |36 |256 |true |true |Spare field 3 for future use.
 
-|spare4 |36 |256 |true |true |Spare field 4 for future use.
+|spare4 |37 |256 |true |true |Spare field 4 for future use.
 
-|spare5 |37 |256 |true |true |Spare field 5 for future use.
+|spare5 |38 |256 |true |true |Spare field 5 for future use.
 
-|spare6 |38 |256 |true |true |Spare field 6 for future use.
+|spare6 |39 |256 |true |true |Spare field 6 for future use.
 
-|spare7 |39 |256 |true |true |Spare field 7 for future use.
+|spare7 |40 |256 |true |true |Spare field 7 for future use.
 
-|spare8 |40 |128 |true |true |Spare field 8 for future use. Reduced from 256 to
+|spare8 |41 |128 |true |true |Spare field 8 for future use. Reduced from 256 to
 128 bits to fund the REQUIRED_SIGNERS and REQUIRED_ALGS widening and the new
 SIGNATURE_REVOKE field, keeping the map at exactly 8192 bits.
-
-|SIGNATURE_REVOKE |41 |64 (40 used) |set-only |true |Signature-algorithm class
-revocation. The BL1_VERSION and BL2_VERSION counters retire a manifest by version,
-while this field retires a signature-algorithm class for every manifest and every
-entity, so that a broken or deprecated algorithm can be withdrawn without
-re-provisioning keys. The layout is identical to the signature_class_revoke field
-of the OCA Payload Manifest, through which a manifest requests an update of this
-fuse, so the manifest value is applied by OR without translation. Bits [7:0] are
-the classical classes: bit 0 RSA-3072, bit 1 RSA-4096, bit 2 ECDSA P-256, bit 3
-ECDSA P-384, bit 4 ECDSA P-521, bit 5 Ed25519, bit 6 Ed448, bit 7 adopter
-implementation-defined classical (signature_type_classic `0xF0-0xFF`). Bits [15:8]
-are the classical group code: `0x00`, or exactly `0xCA` meaning every classical
-class is revoked. Bits [23:16] reserved. Bits [31:24] are the post-quantum classes:
-bit 24 ML-DSA-44, bit 25 ML-DSA-65, bit 26 ML-DSA-87, bit 27 reserved for FN-DSA,
-bit 28 SLH-DSA-128, bit 29 SLH-DSA-192, bit 30 SLH-DSA-256, bit 31 adopter
-implementation-defined post-quantum (signature_type_pqc `0xF0-0xFF`). Bits [39:32]
-are the post-quantum group code: `0x00`, or exactly `0xAC` meaning every
-post-quantum class is revoked. Bits [63:40] reserved. The adopter bits exist
-because OCAH is open-sourced: an adopter that selects its own scheme through the
-implementation-defined range needs a way to retire it. A set class bit means that
-a signature of that class fails verification wherever the policy in force
-requires it; the requirement itself stands, so the manifest must carry a
-signature of another class of the same group. A group code is a constant, not a
-bit mask: only the exact value has meaning, a group-code byte holding any other
-non-zero value is invalid, and a set group code waives that group's requirement
-bits in REQUIRED_ALGS for every entity, because no signature could satisfy them.
-The fuse is the only input to verification -- ROM never compares it against the
-manifest's copy of this value, so a manifest cannot re-enable a revoked class.
-Only an authenticated BL1 may program it, after the survivability check; the
-programmed bits apply to the rest of the current boot through the shadow
-register, which BL1 writes, and to every later boot through fuse sensing. The
-accompanying write-lock is applied in the LOCKS shadow register only, which is
-set-only and clears at cold reset, and never by burning the LOCKS fuse bit, so a
-further class can be revoked in a later boot. Lock slot 41 in LOCKS_SPARE[19:18].
-See Signature Algorithm Revocation in the Life Cycle Controller section.
 |=======================================================================
 
 The fuse map is exactly 8192 bits with exclusive end address `0x400` (1024 bytes, 256 × 32-bit words).
