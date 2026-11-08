@@ -424,7 +424,7 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # The three legal AW/W orderings at every write-safe register, graded on the readback, not
 # on the response. Four same-ID reads in flight through the system-CSR bridge return their
-# R beats in request order; four same-ID writes each get their B after their own AW and W.
+# R beats in request order; the k-th B of four same-ID writes follows the k-th AW and W.
 name = "sep_axi_order_sweep_test"
 module = "system.sep_axi_order_sweep_test"
 seed = 1
