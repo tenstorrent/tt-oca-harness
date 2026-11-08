@@ -2656,6 +2656,10 @@ the test does.
 |CSRNG: NumHwApps and the driver of the OTP read enable for INT_STATE_VAL. Source: `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc` (`INT_STATE_NUM`, `INT_STATE_VAL`).
 |`sep_drbg_cmd_sequence_rand_test` logs the 14 `INT_STATE_VAL` words of each `INT_STATE_NUM` index before and after an Uninstantiate as `OBS-CSRNG-UNINST-STATE`. A read of 0 cannot tell the zeroing from a closed read gate, so nothing is graded.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|EDN serves its endpoints with a `req`/`ack` handshake, and SEP connects three AXI-Stream endpoints. The order in which EDN serves the endpoints in each mode is not stated.
+|EDN: which endpoint EDN serves, and in which order, in boot, auto and software mode. Source: `vendor/lowRISC/opentitan/upstream/hw/ip/edn/doc/theory_of_operation.md` (Interactions with Peripheral Devices); `hw/sys/sep/doc/trng.adoc` (three AXI-Stream outputs).
+|`sep_drbg_cmd_sequence_rand_test` logs the endpoint of each EDN push in boot and auto mode as `OBS-EDN-ENDPOINT`. Software mode is not logged: the handshake text has no mode term, so it would record the same open question. Nothing is graded.
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |MAIN_SM_STATE is a 6-bit state (reset 0x37). The value list is not stated.
 |CSRNG: the values of MAIN_SM_STATE. Source: `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc` (`MAIN_SM_STATE`).
 |`sep_drbg_cmd_sequence_rand_test` logs `OBS-DRBG-MAIN-SM` as an open question.
