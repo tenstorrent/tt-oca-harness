@@ -101,8 +101,10 @@ check on its own line (``CHK-RAS-<FIELD>-IDLE``, ``-RISE``, ``-MODE2``,
   Control ``CTRL-RAS-<FIELD>-PRE``: in each fatal-alert cell, the field of the
   unit has no high clock from the end of the set-up to the ERR_CODE_TEST write,
   so RISE and MODE2 count only the pulses that follow the write of that cell.
-  The text does not name the reset that stops the repeat, so the field after
-  each TRNG reset is logged only (OBS-RAS-<FIELD>-RESET-STOP), as are the rise
+  The text does not name the reset that stops the repeat, so the field during
+  each TRNG reset and set-up is logged (OBS-RAS-<FIELD>-RESET-STOP); a repeat
+  that is still running after the next set-up fails CTRL-RAS-<FIELD>-PRE of the
+  next fatal-alert cell. Also logged only: the rise
   delay (OBS-RAS-<FIELD>-DELAY), the repeat intervals (OBS-RAS-<FIELD>-REPEAT)
   and the field in the FIFO-error cells and the EDN FIFO trials
   (OBS-RAS-<FIELD>-FIFO). ALERT_TEST is not written in this leaf.
