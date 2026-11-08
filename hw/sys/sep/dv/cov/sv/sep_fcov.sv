@@ -320,6 +320,7 @@ module sep_fcov (
   input wire                 tlu_take_nmi_i,
   input wire                 tlu_take_timer_i,
   input wire                 tlu_take_soft_i,
+  input wire                 tlu_soft_int_i,  // soft_int (core pin, TLU input)
   // MB[m]: gen_mailbox[m].u_axi_lite_mailbox. Port index 0 is i_slv_port_0
   // (outbound aperture), 1 is i_slv_port_1 (inbound aperture). FIFO index 0
   // is i_mbox_0_to_1 (FIFO A), 1 is i_mbox_1_to_0 (FIFO B).
@@ -11814,6 +11815,7 @@ module sep_fcov (
   localparam int unsigned PfpNest = 3;  // CHK-NEST
   localparam int unsigned PfpTimer = 4;  // CHK-INT-TIMER-HOLD, CHK-INT-TIMER-TRAP
   localparam int unsigned PfpIdle = 5;  // CHK-MIP-IDLE, CHK-CONTROL, CHK-NO-TIMER-TRAP
+  localparam int unsigned PfpSoft = 6;  // CHK-SOFT-PIN
   localparam int unsigned PfpDrop320 = 7;  // drop the held owner-320 cells
   localparam int unsigned PfpNmiInExt = 16;  // CHK-NMI-IN-EXT
   localparam int unsigned PfpPicReg = 17;  // every CHK line of a sep_pic_reg_rand_test leg
@@ -13216,6 +13218,8 @@ module sep_fcov (
     logic       tl_v;
     logic [1:0] it;
     logic it_v;   // internal timer: 0 timer 0 trap, 1 timer 1 trap, 2 and 3 no trap
+    logic [1:0] sp;
+    logic sp_v;   // soft pin: 0 pin1_msip1, 1 pin0_msip0, 2 toggled, 3 pic_independent
   } pnp_t;
 
   covergroup sep_cpu_nonpic_irq_cg with function sample (pnp_t s);
@@ -13237,6 +13241,14 @@ module sep_fcov (
       bins timer1_trap_1C = {2'd1};
       bins mitie_clear_no_trap = {2'd2};
       bins mtie_msie_only_no_trap = {2'd3};
+    }
+    // soft_int pin (hw/sys/sep/doc/interrupts.adoc:291-292: the pin drives
+    // mip.MSIP; :261: the pin bypasses the PIC).
+    cp_soft_pin: coverpoint s.sp iff (s.sp_v) {
+      bins pin1_msip1 = {2'd0};
+      bins pin0_msip0 = {2'd1};
+      bins toggled = {2'd2};
+      bins pic_independent = {2'd3};
     }
   endgroup
 
@@ -13313,6 +13325,55 @@ module sep_fcov (
       pnp_q.nt_v <= own_pprio;
     end
     if (take_r) pnp_q.tl_v <= own_pprio;
+  end
+  // cp_soft_pin tracker, one pin cycle at a time. After a pin edge, the first
+  // clock within PairWin clocks at which mip.MSIP follows the pin is a hit:
+  // bit 0 pin1_msip1 (with mie.MSIE 0), bit 1 pin0_msip0, bit 2 toggled (both
+  // in one cycle), bit 3 pic_independent (toggled, and while the pin is 1 the
+  // gateway outputs outside the idle bits keep their value at the rise and no
+  // external interrupt is taken). One clock can hit several cells.
+  logic sp_pin_q, sp_arm_q, sp_hi_q, sp_pic_ok_q;
+  logic [8:0] sp_wait_q;
+  logic [255:0] sp_gw_q;
+  logic [3:0] sp_hit_q;
+  always_ff @(posedge clk_i) begin
+    sp_hit_q <= '0;
+    sp_pin_q <= (tlu_soft_int_i === 1'b1);
+    if (in_reset) begin
+      sp_arm_q    <= 1'b0;
+      sp_hi_q     <= 1'b0;
+      sp_pic_ok_q <= 1'b0;
+      sp_wait_q   <= '0;
+      sp_gw_q     <= '0;
+    end else if ((tlu_soft_int_i === 1'b1) && !sp_pin_q) begin
+      sp_arm_q    <= 1'b1;
+      sp_wait_q   <= '0;
+      sp_hi_q     <= 1'b0;
+      sp_pic_ok_q <= 1'b1;
+      sp_gw_q     <= gw_live;
+    end else if ((tlu_soft_int_i !== 1'b1) && sp_pin_q) begin
+      sp_arm_q  <= 1'b1;
+      sp_wait_q <= '0;
+    end else begin
+      if (sp_pin_q && ((gw_live != sp_gw_q) || (tlu_take_ext_i === 1'b1))) sp_pic_ok_q <= 1'b0;
+      if (sp_arm_q) begin
+        if (sp_pin_q && (tlu_mip_i[0] === 1'b1) && (tlu_mie_i[0] === 1'b0)) begin
+          sp_arm_q    <= 1'b0;
+          sp_hi_q     <= 1'b1;
+          sp_hit_q[0] <= own_pprio;
+        end else if (!sp_pin_q && (tlu_mip_i[0] === 1'b0)) begin
+          sp_arm_q    <= 1'b0;
+          sp_hi_q     <= 1'b0;
+          sp_hit_q[1] <= own_pprio;
+          sp_hit_q[2] <= own_pprio && sp_hi_q;
+          sp_hit_q[3] <= own_pprio && sp_hi_q && sp_pic_ok_q;
+        end else if (sp_wait_q == 9'(PairWin)) begin
+          sp_arm_q <= 1'b0;
+        end else begin
+          sp_wait_q <= sp_wait_q + 9'd1;
+        end
+      end
+    end
   end
 
   // =====================================================================
@@ -15884,7 +15945,8 @@ module sep_fcov (
   localparam int unsigned PpNnt = 13;  // cp_no_nonpic_trap (hold_window_clean)
   localparam int unsigned PpTl = 14;  // cp_trap_path_live
   localparam int unsigned PpIt = 15;  // cp_int_timer
-  localparam int unsigned PpPoints = 16;
+  localparam int unsigned PpSp = 16;  // cp_soft_pin
+  localparam int unsigned PpPoints = 17;
   logic [15:0] pp_pend[PpPoints] = '{default: '0};
   logic [7:0] pfp_q = '0;
   wire [7:0] pfp_rise = 8'(pic_fw_pass) & ~pfp_q;
@@ -15900,6 +15962,7 @@ module sep_fcov (
       PpNs: return 8'(1 << PfpNest);
       PpIt: return 8'(1 << PfpTimer);
       PpMi, PpNnt: return 8'(1 << PfpIdle);
+      PpSp: return 8'(1 << PfpSoft);
       default: return 8'(1 << PfpRound);
     endcase
   endfunction
@@ -15969,6 +16032,10 @@ module sep_fcov (
         n.it = v[1:0];
         n.it_v = 1'b1;
       end
+      PpSp: begin
+        n.sp = v[1:0];
+        n.sp_v = 1'b1;
+      end
       default: ;
     endcase
     if (e != '0) u_sep_pic_enable_priority_cg.sample(e);
@@ -16015,6 +16082,7 @@ module sep_fcov (
       if (pnp_q.nt_v && !pnp_q.nt) pp_hold(PpNnt, 4'd0);
       if (pnp_q.tl_v) pp_hold(PpTl, 4'd1);
       if (pnp_it_q.it_v) pp_hold(PpIt, 4'(pnp_it_q.it));
+      for (int v = 0; v < 4; v++) if (sp_hit_q[v]) pp_hold(PpSp, 4'(v));
     end
   end
 
@@ -23672,6 +23740,8 @@ module sep_fcov (
     logic s3_v;  // KMAC SHA3-128, bit clear: 0 blocked, 1 absorbed
     logic [2:0] kc;
     logic kc_v;  // {0 SHAKE / 1 cSHAKE / 2 SHA3, 1 ERR_CODE[31:24] is 0x06}
+    logic [3:0] ec;
+    logic ec_v;  // {1 held HMAC ERR_CODE equals the label, label code[2:0]}
   } cy_inv_t;
 
   covergroup sep_crypto_invalid_encoding_cg with function sample (cy_inv_t s);
@@ -23716,6 +23786,14 @@ module sep_fcov (
     cp_kmac_err_recover: coverpoint s.kr_v iff (s.kr_v) {bins recovered = {1'b1};}
     cp_hmac_err_code: coverpoint s.hc iff (s.hc_v) {
       bins sw_invalid_config = {1'b1}; illegal_bins other_code = {1'b0};
+    }
+    // HMAC ERR_CODE of an error class whose check passed (hmac.hjson ERR_CODE).
+    cp_hmac_err_class: coverpoint s.ec iff (s.ec_v) {
+      bins sw_hash_start_sha_disabled = {4'b1_010};
+      bins sw_update_key_in_process = {4'b1_011};
+      bins sw_hash_start_active = {4'b1_100};
+      bins sw_push_msg_disallowed = {4'b1_101};
+      wildcard illegal_bins label_code_mismatch = {4'b0_???};
     }
     cp_kmac_sha3_128: coverpoint s.s3 iff (s.s3_v) {
       bins blocked = {1'b0}; illegal_bins absorbed_with_bit_clear = {1'b1};
@@ -24340,6 +24418,10 @@ module sep_fcov (
         e.s3   = v[0];
         e.s3_v = 1'b1;
       end
+      8: begin
+        e.ec   = v[3:0];
+        e.ec_v = 1'b1;
+      end
       default: begin
         e.kc   = v[2:0];
         e.kc_v = 1'b1;
@@ -24748,6 +24830,28 @@ module sep_fcov (
   logic       cy_fe_on = 1'b0;
   logic       cy_fe_full = 1'b0;
   int unsigned cy_fe_cnt = 0;
+  // cp_hmac_err_class. After CHK-HMAC-ERR-CLASS passes for one class,
+  // sep_hmac_illegal_cfg_start_test writes the class code into hmac_ec_want
+  // and adds 1 to hmac_ec_seq (hmac_err_class_fcov in the leaf). The first
+  // clock that sees a new hmac_ec_seq inside the owner window samples the
+  // class; the bin is legal only when the last non-zero ERR_CODE the IP wrote
+  // inside that window equals the label. cy_ec_win survives an HMAC reset
+  // inside the window and clears when the window closes. These variables
+  // drive nothing.
+  logic [3:0] hmac_ec_want = '0;
+  logic [31:0] hmac_ec_seq = '0;
+  logic [31:0] cy_ec_seq_q = '0;
+  logic [31:0] cy_ec_win = '0;
+  always @(posedge clk_i) begin
+    cy_ec_seq_q <= hmac_ec_seq;
+    if (!cy_own_hblk) cy_ec_win <= '0;
+    else if (cy_t(hmac_hw2reg_i.err_code.de) && cy_ip[3] && (hmac_hw2reg_i.err_code.d != '0)) begin
+      cy_ec_win <= hmac_hw2reg_i.err_code.d;
+    end
+    if ((hmac_ec_seq != cy_ec_seq_q) && cy_own_hblk) begin
+      cy_inv(8, {1'b0, (cy_ec_win == {28'd0, hmac_ec_want}), hmac_ec_want[2:0]});
+    end
+  end
   // Pass label of the points of owner sep_hmac_fifo_stream_rand_test, written by
   // set_hmac_fifo_pass of env/sep_fcov_gate.py. Bit 0 x_len_class, bit 1
   // x_fifo_state_mode, bit 2 cp_backpressure, bit 3 cp_hmac_fifo_empty_qual

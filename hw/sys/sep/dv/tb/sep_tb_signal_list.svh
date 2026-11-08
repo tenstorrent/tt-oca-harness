@@ -212,6 +212,12 @@
 // docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
 `SEP_TB_IN(logic [11:0], esrc_noise_stuck_en_i)
 `SEP_TB_IN(logic [11:0], esrc_noise_stuck_val_i)
+// ESRC main state machine error-output inject. Default 0. While
+// esrc_main_sm_err_inject_i is 1, the error output of the entropy-source main
+// state machine, as entropy_source reads it (main_sm_err), is forced to 1. The
+// state machine is not forced. Error inject, docs/SEP_TB_ARCH.adoc. See the force
+// block in tb_top.sv.
+`SEP_TB_IN(logic, esrc_main_sm_err_inject_i)
 // Key Manager OTP input rail flip (HK-OTP). Default 0. While
 // km_otp_flip_en_i is 1, the KM OTP input otp_data_i of the Key Manager is
 // held at the value it had at the rise of the input XOR km_otp_flip_mask_i.
@@ -251,6 +257,13 @@
 // in tb_top.sv.
 `SEP_TB_IN(logic, km_irqset_arm_i)
 `SEP_TB_IN(logic [KM_CSR_IRQ_SET_REG_RSVD_SHIFT-1:0], km_irqset_mask_i)
+// Key Manager mailbox flow-error inject. Default 0. At the first falling edge
+// with km_mbox_ovf_inject_i at 1 the KM outbound-overflow detect net of the KM
+// mailbox is forced to 1 for one clock; km_mbox_udf_inject_i does the same for
+// the KM inbound-underflow detect net. One pulse per rise of the input. The
+// FIFOs are not forced. Error inject, docs/SEP_TB_ARCH.adoc.
+`SEP_TB_IN(logic, km_mbox_ovf_inject_i)
+`SEP_TB_IN(logic, km_mbox_udf_inject_i)
 // Key Manager CPU internal IRQ lines (HK-CPUIRQ). Default 0. At the first
 // falling edge with km_cpuirq_arm_i at 1 and a non-zero km_cpuirq_lines_i, bit
 // 0 drives PicoRV32 irq line 1 (EBREAK or illegal instruction) and bit 1 drives
@@ -327,6 +340,9 @@
 // Machine timer interrupt pin of sep (sep_wrapper timer_int, mip.MTIP). A value
 // other than 1 drives 0. Default 0 (top-port drive, docs/SEP_TB_ARCH.adoc).
 `SEP_TB_IN(logic, timer_int_i)
+// Machine software interrupt pin of sep (sep_wrapper soft_int, mip.MSIP). A
+// value other than 1 drives 0. Default 0 (top-port drive, docs/SEP_TB_ARCH.adoc).
+`SEP_TB_IN(logic, soft_int_i)
 // Outbound responder response control (tb/sep_outbound_mbx.sv), default 0.
 // smn_outbound_resp_hold_i=1 keeps the responder from raising a B or R
 // response; one already on offer completes, and the requests are still
@@ -722,17 +738,30 @@
 // KM-BUS (key-path part): the requests on the five KM key-path ports of the
 // crypto interconnect, ahead of the isolation stages: AR and AW valid, ready
 // and address. Index i (address at [32*i +: 32]) is bench isolate stage 8 + i:
-// 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
+// 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR. W valid, ready, data ([32*i +: 32])
+// and strobe ([4*i +: 4]).
 `SEP_TB_OUT(logic [4:0], km_key_ar_valid_o)
 `SEP_TB_OUT(logic [4:0], km_key_ar_ready_o)
 `SEP_TB_OUT(logic [5*32-1:0], km_key_ar_addr_o)
 `SEP_TB_OUT(logic [4:0], km_key_aw_valid_o)
 `SEP_TB_OUT(logic [4:0], km_key_aw_ready_o)
 `SEP_TB_OUT(logic [5*32-1:0], km_key_aw_addr_o)
+`SEP_TB_OUT(logic [4:0], km_key_w_valid_o)
+`SEP_TB_OUT(logic [4:0], km_key_w_ready_o)
+`SEP_TB_OUT(logic [5*32-1:0], km_key_w_data_o)
+`SEP_TB_OUT(logic [5*4-1:0], km_key_w_strb_o)
 // KM-OUTFIFO: fill level of the outbound FIFO of the KM mailbox, every clock.
 `SEP_TB_OUT(logic [8:0], km_outfifo_depth_o)
 // KM-INFIFO: head word of the inbound FIFO of the KM mailbox, {separator, data}.
 `SEP_TB_OUT(logic [32:0], km_infifo_head_o)
+// KM-FETCH: the native memory request of the KM CPU wrapper (u_cpu), every
+// clock. A transfer completes on a clock with valid and ready high; instr marks
+// an instruction fetch; wstrb is 0 for a read.
+`SEP_TB_OUT(logic, km_mem_valid_o)
+`SEP_TB_OUT(logic, km_mem_ready_o)
+`SEP_TB_OUT(logic, km_mem_instr_o)
+`SEP_TB_OUT(logic [31:0], km_mem_addr_o)
+`SEP_TB_OUT(logic [3:0], km_mem_wstrb_o)
 // KM-WMAP: per SRAM write-lock region r at [9*r +: 9], the count of distinct
 // logical words written with we at 1 on the sep output km_sram_mem_req_o since
 // the bench reset or the last clock with km_sram_wmap_clr_i at 1 (bench state
@@ -922,6 +951,8 @@
 `SEP_TB_OUT(logic, km_entropy_tvalid_o)  // CHK5: post-mux EDN->KM tvalid (entropy_muxed_req[0])
 `SEP_TB_OUT(logic [31:0], km_entropy_tdata_o)  // CHK5: post-mux EDN->KM tdata word
 `SEP_TB_OUT(logic, km_entropy_tready_o)  // CHK5: KM tready (entropy_muxed_rsp[0]) -> real handshake
+`SEP_TB_OUT(
+    logic, km_entropy_tuser_o)  // post-mux EDN->KM tuser (entropy_muxed_req[0].tuser, the FIPS bit)
 // CHK5 crypto EDN sinks: the SEP EDN's crypto leg (entropy_muxed_req[1]) fans
 // out through drbg_axis_edn_adapter to native EDN clients crypto_edn[0]=AES,
 // [1]=KMAC, [2]=OTBN-RND, [3]=OTBN-URND. A delivered word to sink i is the cycle
@@ -931,6 +962,12 @@
 `SEP_TB_OUT(logic [3:0], crypto_edn_ack_o)  // bit i = crypto_edn_rsp[i].edn_ack
 `SEP_TB_OUT(logic [127:0], crypto_edn_bus_o)  // word i = crypto_edn_rsp[i].edn_bus ([32*i +: 32])
 `SEP_TB_OUT(logic [3:0], crypto_edn_fips_o)  // bit i = crypto_edn_rsp[i].edn_fips
+// Round-robin arbiter of the crypto EDN adapter (u_axis_edn_crypto_s3c_scan
+// .u_arbiter): bit i is the request / grant of client i (0 AES, 1 KMAC,
+// 2 OTBN-RND, 3 OTBN-URND). A grant is high only in the clock the arbiter
+// output is accepted.
+`SEP_TB_OUT(logic [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0], edn_crypto_arb_req_o)
+`SEP_TB_OUT(logic [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0], edn_crypto_arb_gnt_o)
 // Client side of the EDN synchronizer (prim_sync_reqack_data, data from DST to
 // SRC) inside each native crypto client, same client index as crypto_edn_*_o.
 // The client takes data_o on the clock with src_req_i && src_ack_o.
@@ -1073,6 +1110,10 @@
 // Saturating count of cycles where CPU-LSU and DMA simultaneously present an
 // SRAM request on the same local-crossbar address channel.
 `SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
+// Saturating count of cycles where the VeeR LSU sees a DMA DCCM write request
+// and a store-buffer DCCM write request in the same clock. 0 on the CPU-stub
+// build.
+`SEP_TB_OUT(logic [31:0], dma_cpu_dccm_overlap_count_o)
 // SPI-to-DMA transmit pacing, observation-only: the OpenTitan SPI host
 // transmit-FIFO depth, the SPI trigger bit at the secure DMA input, and the
 // DMA STATUS.busy flop. No CSR shows the trigger or the FIFO depth while the
@@ -1099,6 +1140,11 @@
 // cocotb/env/sep_dma_tap.py decodes it. A handshake is VALID and READY high on
 // one clk_i edge. Outside every tb ready/valid cone.
 `SEP_TB_OUT(logic [104:0], dma_axi_req_probe_o)
+// Secure DMA master W data (net u_sep.dma_axi_req.w.data), observation-only,
+// valid on a W handshake of dma_axi_req_probe_o (bits 90 and 91 high). With
+// the WSTRB field of that probe it shows the byte-lane placement. Outside
+// every tb ready/valid cone.
+`SEP_TB_OUT(logic [sep_pkg::SEP_32_64_3_12_DATA_WIDTH-1:0], dma_axi_wdata_probe_o)
 // Secure DMA master response USER, observation-only (net u_sep.dma_axi_resp):
 // dma_resp_buser_o is b.user, valid on a B handshake of dma_axi_req_probe_o;
 // dma_resp_ruser_o is r.user, valid on a clock with bits 0 and 1 of

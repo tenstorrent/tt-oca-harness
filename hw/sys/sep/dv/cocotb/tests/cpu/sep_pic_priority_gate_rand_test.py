@@ -95,7 +95,7 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  specification states the trap latency after the timer
                  reaches its bound, so the clocks past B are logged
                  (``OBS-INT-TIMER-TRAP-LATENCY``) and have no upper bound.
-* CHK-TIMER-PIN  (firmware, last leg) the host drives ``timer_int_i`` on each
+* CHK-TIMER-PIN  (firmware) the host drives ``timer_int_i`` on each
                  ``REQ tint`` line. With the pin 1, ``mip.MTIP`` reads 1; with
                  ``mie.MTIE`` 0 and mstatus.MIE 1 no trap for a hold window;
                  with ``mie.MTIE`` 1 one trap with ``mcause`` 0x8000_0007;
@@ -103,6 +103,17 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  (``hw/sys/sep/doc/interrupts.adoc:291``: the pin drives
                  ``mip.MTIP``; EL2 PRM tables 13.1 and 13.2 for ``mie.mtie``
                  and ``mip.mtip``, table 13.3 for ``mcause`` 0x8000_0007).
+* CHK-SOFT-PIN   (firmware, last leg) the host drives ``soft_int_i`` on each
+                 ``REQ sint`` line. With the pin 1, ``mip.MSIP`` reads 1; with
+                 ``mie`` read back as MEIE only and mstatus.MIE 1 no trap of
+                 any class for a hold window of 32 core clocks or more, and
+                 at the end of the window mstatus.MIE and ``mip.MSIP`` read
+                 1; the ``meip`` words outside the excluded idle bits read
+                 the same as with the pin 0 before and after the window; with
+                 the pin 0, ``mip.MSIP`` reads 0
+                 (``hw/sys/sep/doc/interrupts.adoc:291-292``: the pin drives
+                 ``mip.MSIP``; ``:261``: the pin bypasses the PIC; RISC-V
+                 privileged spec section 3.1.9: no trap with ``mie.MSIE`` 0).
 
 Open-value leg (logged, not graded): the priord flip leg arms a drawn source
 set at drawn ``meipl`` values (never the never value of either order) in one
@@ -146,6 +157,7 @@ from env.sep_fcov_gate import (
     PFP_NEST,
     PFP_RESET,
     PFP_ROUND,
+    PFP_SOFT,
     PFP_THRESHOLD,
     PFP_TIMER,
     close_graded_window,
@@ -412,6 +424,7 @@ _LEG_LAST = {
     "itimer_hold": ("CHK-INT-TIMER-HOLD", PFP_TIMER),
     "itimer_trap": ("CHK-INT-TIMER-TRAP", PFP_TIMER),
     "idle": ("CHK-NO-TIMER-TRAP", PFP_IDLE),
+    "soft_pin": ("CHK-SOFT-PIN", PFP_SOFT),
 }
 
 
@@ -437,6 +450,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         "CHK-INT-TIMER-HOLD",
         "CHK-INT-TIMER-TRAP",
         "CHK-TIMER-PIN",
+        "CHK-SOFT-PIN",
         "CHK-LEVEL-SWEEP",
     )
 
@@ -697,6 +711,11 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         cocotb.top.timer_int_i.value = 1 if int(kv["on"]) else 0
         self.logger.info("INFO-TINT-DRIVE LOG on=%d", int(kv["on"]))
 
+    async def _req_sint(self, kv: dict) -> None:
+        await RisingEdge(cocotb.top.clk_i)
+        cocotb.top.soft_int_i.value = 1 if int(kv["on"]) else 0
+        self.logger.info("INFO-SINT-DRIVE LOG on=%d", int(kv["on"]))
+
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.tcfg = PrioCfg.from_seed(seed)
@@ -710,6 +729,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         close_graded_window(self.logger)
         set_pic_fw_pass(0, self.logger)
         self.con.on_request("tint", self._req_tint)
+        self.con.on_request("sint", self._req_sint)
         follower = cocotb.start_soon(self._label_follower())
         try:
             await self.boot_firmware(
@@ -725,6 +745,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             await self.con.stop()
             set_pic_fw_pass(0, self.logger)
             cocotb.top.timer_int_i.value = 0
+            cocotb.top.soft_int_i.value = 0
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
         prm = self.con.text_lines("INFO-PARAMS")
         want = f"seed=0x{seed & 0xFFFF_FFFF:08x} rounds={len(self.tcfg.rounds)}"
@@ -750,6 +771,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
                 "CHK-INT-TIMER-HOLD": 4,
                 "CHK-INT-TIMER-TRAP": 2,
                 "CHK-TIMER-PIN": 1,
+                "CHK-SOFT-PIN": 1,
                 "CHK-LEVEL-SWEEP": 32,
             }
         )

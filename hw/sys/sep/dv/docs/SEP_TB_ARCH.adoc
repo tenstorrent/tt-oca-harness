@@ -135,6 +135,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |TRNG AXI-Lite passthrough responder |Added hook (top-port drive). The integration wrapper answers the `sep` TRNG AXI-Lite port (`ext_trng_axil_resp_i`) from an error slave: DECERR. In a run with `+sep_ext_trng_axil_responder`, from the first clock with `ext_trng_axil_rsp_en_i` at 1, `tb_top` forces the wrapper net `ext_trng_axil_resp` from its own responder instead, re-issued on each falling edge of `clk_i`. The responder then stays on for the rest of the run and the net is never released. Without the plusarg the net is never forced. The responder accepts one write and one read at a time. B handshake k answers BRESP `ext_trng_axil_rsp_bresp_i[2j +: 2]`, sampled when B becomes valid, and R handshake k answers RRESP `ext_trng_axil_rsp_rresp_i[2j +: 2]` and RDATA `ext_trng_axil_rsp_rdata_i[32j +: 32]`, sampled at the AR handshake, with j = k modulo 8. k counts the handshakes of each channel from 0 at each rise of the enable and at the bench reset. `ext_trng_axil_rsp_on_o` reads 1 while the responder is on, and `ext_trng_axil_rsp_bcnt_o` and `ext_trng_axil_rsp_rcnt_o` read the two counts. All inputs are 0 by default. Users: the dead-space decode entry of the fabric and remap area of `docs/SEP_VPLAN.adoc`, which turns the responder on after its reference-slave legs, with the port idle.
 |Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN; one-clock pulses timed against a `meigwclr` write for CTRL-GWCLR-RACE and OBS-GWCLR-RACE).
 |CPU machine timer interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `timer_int` (the core pin that drives `mip.MTIP`) from the TB input `timer_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-TIMER-PIN).
+|CPU machine software interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `soft_int` (the core pin that drives `mip.MSIP`) from the TB input `soft_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-SOFT-PIN).
 |External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, the DRBG stall point of `sep_km_fault_inject_rand_test`, the beat-pattern legs of `sep_km_drbg_sampler_rand_test` (stream 0 with `EXT_TRNG_SRC_SEL` bit 0 set: CHK-SMP-PACK, CHK-SMP-PRE-PARTIAL, CHK-SMP-TO-ASM, CHK-SMP-STRM-CTRL), and the pool leg of `sep_fabric_dma_endpoint_matrix_test` (stream 2: a drawn number of word pairs below the pool depth).
 |External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
@@ -310,6 +311,16 @@ Observation probe groups:
   only. Owner: `sep_scan_reset_override_test`.
 * EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`,
   `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`).
+  `km_entropy_tuser_o` is the `tuser` bit of the entropy stream that the
+  source-select mux presents to the Key Manager
+  (`u_sep_crypto.entropy_muxed_req[0].tuser`), valid on a clock with
+  `km_entropy_tvalid_o` and `km_entropy_tready_o` high. Read-only.
+* Crypto EDN arbiter taps (`edn_crypto_arb_req_o[3:0]`,
+  `edn_crypto_arb_gnt_o[3:0]`): the request and grant vectors of the
+  round-robin arbiter of the crypto EDN adapter
+  (`u_axis_edn_crypto_s3c_scan.u_arbiter`, nets `arb_req` and `arb_gnt`).
+  Bit i is client i: 0 AES, 1 KMAC, 2 OTBN-RND, 3 OTBN-URND. A grant bit is
+  high only in the clock the arbiter output is accepted. Read-only.
 * Client-side EDN synchronizer taps (read-only, no force).
   `crypto_edn_sync_req_o[i]`, `crypto_edn_sync_ack_o[i]` and
   `crypto_edn_sync_data_o[32*i +: 32]` are `src_req_i`, `src_ack_o` and
@@ -411,7 +422,8 @@ Observation probe groups:
   unrecoverable output against vector bit 30, CHK-TRAP) and the sampler point
   `sep_km_fault_report_cg.cp_fr_err_out`. No check reads the recoverable
   output.
-* Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS, KM-OUTFIFO of
+* Key Manager taps (KM-VALID, KM-KPV, KM-CSR, KM-SRAM, KM-BUS, KM-OUTFIFO,
+  KM-FETCH of
   the Key Manager area of `docs/SEP_VPLAN.adoc`), read-only continuous reads of
   `u_key_manager_s3c_scan` and of the engine wrappers of `u_sep_crypto`:
 ** KM-VALID (`km_engine_key_valid_o`, `km_abr_sk_*_o`): `KEY_CTRL.key_valid`
@@ -452,7 +464,12 @@ Observation probe groups:
    the five Key Manager key-path ports of `u_sep_crypto_axi_interconnect`,
    ahead of the isolation stages, read at `<engine>_key_axil_req_i` and
    `<engine>_key_axil_resp_o`. Index i, address at `[32*i +: 32]`, is bench
-   isolate stage 8 + i: 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 Adams Bridge. Users:
+   isolate stage 8 + i: 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 Adams Bridge. The W
+   channel of the same ports is tapped too (`km_key_w_{valid,ready}_o[4:0]`,
+   `km_key_w_data_o[159:0]` at `[32*i +: 32]`, `km_key_w_strb_o[19:0]` at
+   `[4*i +: 4]`), one lane per port at the same index, so a beat on any port
+   shows in the clock it is presented. A W beat is VALID and READY high on one
+   `clk_i` edge. Users:
    `sep_km_key_transfer_rand_test` (CHK-ENG-ORDER, CHK-KM-BUS-PERM,
    CHK-DELIV-COUNT, CHK-REFUSE),
    `sep_km_handover_rand_test` (CHK-HO-SIDELOAD-BUS),
@@ -471,6 +488,12 @@ Observation probe groups:
    the Key Manager mailbox, `{separator, data}`, on every clock; 0 while the
    FIFO is empty. Read-only. Users: `sep_km_cpu_protect_rand_test`
    (CHK-TRAP-SCOPE), `sep_km_handover_rand_test` (CHK-HO-MBOX).
+** KM-FETCH (`km_mem_{valid,ready,instr}_o`, `km_mem_addr_o[31:0]`,
+   `km_mem_wstrb_o[3:0]`): the native memory request of the KM CPU wrapper
+   (`u_key_manager_s3c_scan.u_cpu`, nets `mem_valid`, `mem_ready`,
+   `mem_instr`, `mem_addr`, `mem_wstrb`), on every clock. A transfer completes
+   on a clock with valid and ready high; `instr` high marks an instruction
+   fetch; `wstrb` 0 marks a read. Read-only.
 ** KM-WMAP (`km_sram_wmap_region_o[32*9-1:0]`, clear `km_sram_wmap_clr_i`):
    for each SRAM write-lock region of 256 words, the count of distinct
    logical word addresses (the KM CPU store address before the scrambler)
@@ -534,7 +557,14 @@ Observation probe groups:
   `pr_rom_memif_rst_n_o`): the `rst_ni` inputs of the SEP SRAM and boot ROM
   memory interfaces (`u_sram_memory_interface`, `u_boot_rom_memory_interface`).
   Monitor only. Owner: `sep_cpu_reset_entry_test` (CHK-MEMIF-WDT-RST).
-* The DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`).
+* The DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`) and the
+  DMA/CPU DCCM write overlap counter (`dma_cpu_dccm_overlap_count_o[31:0]`):
+  a saturating count, reset with the bench reset, of the clocks in which the
+  VeeR LSU sees a DMA DCCM write request (`lsu.dma_dccm_wen`) and a
+  store-buffer DCCM write request (`lsu.stbuf_reqvld_any`) together. It
+  counts requests, not which master is served. A DMA write narrower than a
+  word is not a `dma_dccm_wen` request. 0 on the CPU-stub build. Monitor
+  only.
 * SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`,
   `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`). Owner:
   `sep_spi_ot_dma_tx_test`. Users: `sep_dma_transfer_matrix_rand_test`,
@@ -556,7 +586,10 @@ Observation probe groups:
   the DMA local-alias remap (net `dma_axi_req`, response `dma_axi_resp`): AR
   and AW VALID, READY, address, AxLEN and AxSIZE; W VALID, READY, WSTRB and
   WLAST; B VALID, READY and BRESP (`env/sep_dma_tap.py` records the
-  handshakes). Owners: `sep_dma_transfer_matrix_rand_test`,
+  handshakes). `dma_axi_wdata_probe_o[63:0]` is the W data of the same request
+  (`dma_axi_req.w.data`), valid on a W handshake of `dma_axi_req_probe_o`;
+  with WSTRB it shows the byte-lane placement of each beat. Owners:
+  `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_abort_recovery_rand_test`, `sep_fabric_dma_endpoint_matrix_test`
   (the pool read of CHK-DMA-NOTCONN, the filter-write AW and B of
   CHK-DMA-FILT-WR), `sep_dma_zero_fill_rand_test` (no AR, AW or W of the
@@ -950,6 +983,18 @@ Exceptions (a closed set):
   until the next entropy-source reset (the TRNG reset). `MAIN_SM_STATUS` and
   the other registers the checkers read stay frontdoor. Users: the ESRC
   persistent-alert entry of the crypto and entropy area.
+* *ESRC main state machine error-output inject* — while
+  `esrc_main_sm_err_inject_i` is 1, the error output of the entropy-source
+  main state machine as `entropy_source` reads it (`main_sm_err`, the net
+  that feeds `MAIN_SM_STATUS.ERR` and the `PERSISTENT_FAILURE` interrupt
+  term) is forced to 1. The state machine is not forced and keeps its state,
+  so no error cause remains after the input drops. Software cannot make the
+  state machine report an error without leaving it in the error state, so a
+  transient error has no frontdoor. The input is 0 by default. After the
+  drop the bench forces the value the state machine drives until the two
+  agree, then releases the net; one falling edge after the release the net
+  must equal that value, else the bench reports an error. `MAIN_SM_STATUS`,
+  `INTR_STATUS` and the other registers the checkers read stay frontdoor.
 * *ESRC main state machine illegal-state force* — a cocotb `Force` in the
   leaf, with no `tb_top` input. The leaf forces one drawn 9-bit encoding
   outside the state set of the entropy-source main state machine on both
@@ -1058,6 +1103,21 @@ Exceptions (a closed set):
   is not forced. Users: `sep_km_fault_inject_rand_test` (CHK-FATAL-SET,
   CHK-STATUS-HELD, CHK-CPU-TRAP) and `sep_km_otp_change_irq_test`
   (CHK-OTP-PULSE).
+* *Key Manager mailbox flow-error pulse* — at the first falling edge with
+  `km_mbox_ovf_inject_i` at 1 the bench forces the KM outbound-overflow
+  detect net of the KM mailbox (`u_mailbox.km_outbound_overflow_detected`)
+  to 1 for one clock; `km_mbox_udf_inject_i` does the same for the KM
+  inbound-underflow detect net (`km_inbound_underflow_detected`). One pulse
+  per rise; a drop re-arms. Each net drives only the set input of the sticky
+  `KM_STATUS`, `KM_IRQ_STATUS` and `SEP_STATUS` field of that event, so the
+  pulse sets those fields and nothing else: the FIFOs, their depth and the
+  AXI responses do not change. A Key Manager overflow or underflow needs KM
+  firmware that writes a full FIFO or reads an empty one, which no host
+  stimulus can cause. Both inputs are 0 by default. After the pulse the
+  bench forces the live value of the detect expression until it equals the
+  value forced last, then releases; one falling edge later the net must
+  equal the live value, else the bench reports an error. The status
+  registers the checkers read are not forced.
 * *Key Manager CPU internal IRQ lines* (HK-CPUIRQ) — at the first falling
   edge with `km_cpuirq_arm_i` at 1 and a non-zero `km_cpuirq_lines_i[1:0]`,
   the bench drives bit 1 (mask bit 0: EBREAK or illegal instruction) and bit
