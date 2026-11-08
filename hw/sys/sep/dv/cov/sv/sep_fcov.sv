@@ -28997,6 +28997,7 @@ module sep_fcov (
     }
     // CTRL field x invalid MuBi4 value of a field alert (CHK-CSRNG-CTRL-MUBI):
     // 0 ENABLE, 1 SW_APP_ENABLE, 2 READ_INT_STATE, 3 FIPS_FORCE_ENABLE.
+    // Sampled only while the other CTRL fields read MuBi4False.
     cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {bins f[] = {[0 : 3]};}
     cp_ctrl_mubi_value: coverpoint s.cm[3:0] iff (s.cm_v) {
       bins v[] = {[0 : 5], [7 : 8], [10 : 15]};
@@ -29071,6 +29072,7 @@ module sep_fcov (
     cp_csrng_ack_err: coverpoint s.ae_v iff (s.ae_v) {bins set_by_error_ack = {1'b1};}
     // CTRL field x invalid MuBi4 value of a field alert (CHK-EDN-CTRL-MUBI):
     // 0 EDN_ENABLE, 1 BOOT_REQ_MODE, 2 AUTO_REQ_MODE, 3 CMD_FIFO_RST.
+    // Sampled only while the other CTRL fields read MuBi4False.
     cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {bins f[] = {[0 : 3]};}
     cp_ctrl_mubi_value: coverpoint s.cm[3:0] iff (s.cm_v) {
       bins v[] = {[0 : 5], [7 : 8], [10 : 15]};
@@ -31932,6 +31934,11 @@ module sep_fcov (
   logic cz_ed_ack_q = 1'b0;
   logic cz_fp_arm = 1'b0;       // a software Instantiate with a legal flag0, no GENBITS_VLD 1 read yet
   logic cz_fp_f0t = 1'b0;       // flag0 of that Instantiate is True
+  // Every 4-bit CTRL field of v other than field f reads MuBi4False.
+  function automatic logic cz_mubi_others_false(input logic [15:0] v, input int f);
+    for (int k = 0; k < 4; k++) if ((k != f) && (v[4*k+:4] !== CzMubiFalse)) return 1'b0;
+    return 1'b1;
+  endfunction
   logic [3:0] cz_cm_q = '0;     // CSRNG CTRL field alert set requests, last clock
   logic [3:0] cz_fm_q = '0;     // EDN CTRL field alert set requests, last clock
   wire cz_gb_vld = cy_t(csrng_hw2reg_i.genbits_vld.genbits_vld.d);
@@ -32007,10 +32014,16 @@ module sep_fcov (
       for (int b = 0; b < 7; b++) if (ra[b]) cz_ccmd(2, 3'(b));
       for (int b = 0; b < 4; b++) if (fa[b]) cz_edn(5, 2'(b));
       // x_ctrl_mubi: the field and its invalid value at the rise of the
-      // field alert set request.
+      // field alert set request, only while every other CTRL field reads
+      // MuBi4False (the CTRL word of a MuBi trial; a CTRL write with ENABLE
+      // True does not fill a cell).
       for (int b = 0; b < 4; b++) begin
-        if (ra[b] && !cz_cm_q[b]) cz_ccmd(9, {2'(b), csv[4*b+:4]});
-        if (fa[b] && !cz_fm_q[b]) cz_edn(9, {2'(b), edv[4*b+:4]});
+        if (ra[b] && !cz_cm_q[b] && cz_mubi_others_false(csv, b)) begin
+          cz_ccmd(9, {2'(b), csv[4*b+:4]});
+        end
+        if (fa[b] && !cz_fm_q[b] && cz_mubi_others_false(edv, b)) begin
+          cz_edn(9, {2'(b), edv[4*b+:4]});
+        end
       end
       if (cz_dd(edn_hw2reg_i.recov_alert_sts.csrng_ack_err)) cz_edn(7, 2'd0);
       if (cs_ack) begin

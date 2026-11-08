@@ -53,18 +53,18 @@ path while words reach the DRBG seed port:
   more seed-port words cross. The response code of that write is logged as
   OBS-FIFO-ENABLE-LOCKED-RESP: no specification states it.
 * CHK-SEED-PACK-COUNT: the seed packer collects twelve words into each 384-bit
-  CSRNG seed (hw/sys/sep/doc/trng.adoc; hw/ip/drbg/doc/architecture.adoc). A seed
-  push is a rise of the DRBG seed-queue valid, or a seed handshake followed by the
-  valid still high on the next clock. A window runs from one push to the clock
-  before the next; the first window starts when the tap starts, before the
-  generators run, and counts one seed. In each window with no dropped word (a
-  conditioner word offered while the packer is not ready), the accepted words
-  equal 12 times the seed handshakes in the window. The check also needs at least
-  one graded window and no X or Z on a sampled port. A window with a dropped word
-  is not graded: the result of an overrun is not stated (the producer must not
-  supply words faster than the packer takes them), so OBS-SEED-PACK-DROP logs its
-  accepted, dropped and seed counts, and a summary with the graded and drop
-  window counts.
+  CSRNG seed (hw/sys/sep/doc/trng.adoc). A seed push is a rise of the DRBG
+  seed-queue valid, or a seed handshake followed by the valid still high on the
+  next clock. A word is accepted on a clock with the conditioner valid and the
+  packer ready; a word offered while the packer is not ready is lost, not packed
+  (hw/ip/drbg/doc/architecture.adoc, Entropy ingress). Every window from one push
+  to the clock before the next push is graded: it holds exactly 12 accepted words,
+  so no push comes before the 12th accepted word. A clock without the conditioner
+  valid counts no word. The check also needs at least one graded window and no X
+  or Z on a sampled port. The window from the tap start to the first push is not
+  bounded by two pushes and is not graded. OBS-SEED-PACK-DROP logs the accepted
+  and dropped words of each closed window, and a summary with the graded window
+  count and the dropped-word total.
 
 FCOV owner window: the leaf opens its window before the entropy bring-up and
 closes it at the end. The sampler holds each conditioner-to-seed and read-path
@@ -139,9 +139,10 @@ class _SeedPortTap:
 
     Per seed-push window (CHK-SEED-PACK-COUNT): a clock with the conditioner
     valid counts as accepted when the packer is ready and as dropped otherwise.
-    ``windows`` holds each closed window as ``(index, accepted, dropped, seed
-    handshakes)``; a push closes the open window and the push clock opens the
-    next. ``xz`` counts clocks with an X or Z on a port the window rule reads.
+    ``windows`` holds each closed window as ``(index, accepted, dropped)``;
+    window 1 opens when the tap starts, a push closes the open window and the
+    push clock opens the next. ``xz`` counts clocks with an X or Z on a port the
+    window rule reads.
     """
 
     def __init__(self, dut) -> None:
@@ -149,9 +150,9 @@ class _SeedPortTap:
         self.words = 0
         self.assembled = 0
         self.accepted = 0
-        self.windows: list[tuple[int, int, int, int]] = []
+        self.windows: list[tuple[int, int, int]] = []
         self.xz = 0
-        self._win = [1, 0, 0, 0]
+        self._win = [1, 0, 0]
         self._task = cocotb.start_soon(self._run())
 
     async def _run(self) -> None:
@@ -177,11 +178,9 @@ class _SeedPortTap:
                 self.accepted += 1
             if valid and (not prev_valid or prev_hs):
                 self.windows.append(tuple(self._win))
-                self._win = [self._win[0] + 1, 0, 0, 0]
+                self._win = [self._win[0] + 1, 0, 0]
             if vld:
                 self._win[1 if ready else 2] += 1
-            if hs:
-                self._win[3] += 1
             prev_valid = valid
             prev_hs = hs
 
@@ -555,32 +554,20 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         )
 
     async def _check_seed_pack_count(self, tap: _SeedPortTap) -> None:
-        """CHK-SEED-PACK-COUNT over the closed windows; OBS-SEED-PACK-DROP per drop window."""
+        """CHK-SEED-PACK-COUNT over the push-to-push windows; OBS-SEED-PACK-DROP per window."""
         windows = list(tap.windows)
         xz = tap.xz
-        graded = []
-        drops = []
-        for k, acc, drop, hs in windows:
-            seeds = 1 if k == 1 else hs
-            if drop:
-                drops.append((k, acc, drop, seeds))
-            else:
-                graded.append((k, acc, seeds))
-        for k, acc, drop, seeds in drops:
-            self.logger.info(
-                "OBS-SEED-PACK-DROP window=%d accepted=%d dropped=%d seeds=%d", k, acc, drop, seeds
-            )
-        self.logger.info("OBS-SEED-PACK-DROP graded=%d drop_windows=%d", len(graded), len(drops))
-        bad = [(k, acc, seeds) for k, acc, seeds in graded if acc != SEED_WORDS * seeds]
-        listing = ",".join(f"{k}:{acc}/{seeds}" for k, acc, seeds in graded)
-        line = (
-            f"graded={len(graded)} drop_windows={len(drops)} xz={xz} "
-            f"words_per_seed={SEED_WORDS} windows=[{listing}]"
-        )
+        for k, acc, drop in windows:
+            self.logger.info("OBS-SEED-PACK-DROP window=%d accepted=%d dropped=%d", k, acc, drop)
+        graded = [(k, acc) for k, acc, _ in windows if k > 1]
+        dropped = sum(drop for _, _, drop in windows)
+        self.logger.info("OBS-SEED-PACK-DROP graded=%d dropped=%d", len(graded), dropped)
+        bad = [f"{k}:{acc}" for k, acc in graded if acc != SEED_WORDS]
+        listing = ",".join(f"{k}:{acc}" for k, acc in graded)
+        line = f"graded={len(graded)} xz={xz} words_per_seed={SEED_WORDS} windows=[{listing}]"
         await self._grade(
             bool(graded) and not bad and xz == 0,
-            f"CHK-SEED-PACK-COUNT FAIL: {line} mismatched="
-            f"{[f'{k}:{acc}/{seeds}' for k, acc, seeds in bad]}",
+            f"CHK-SEED-PACK-COUNT FAIL: {line} mismatched={bad}",
         )
         self.logger.info("CHK-SEED-PACK-COUNT PASS: %s", line)
 

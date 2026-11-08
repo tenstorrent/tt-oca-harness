@@ -107,8 +107,11 @@ check on its own line (``CHK-RAS-<FIELD>-IDLE``, ``-RISE``, ``-MODE2``,
 FCOV (owner of the graded window, ``env/sep_fcov_gate.py``): each source-bit
 cell and each FIFO trial opens the window after its set-up and sets the pass
 label ``drbg_fatal_pass`` only after every check of that step passed; the
-sampler holds the cells of the step until then. The first FAIL closes the
-window, and no later step opens it.
+sampler holds the other cells of the step until then. The ``cp_hw_raise`` and
+``x_line_gate`` cells of cs_fatal_err and edn_fatal_err are not held: they
+sample on the DUT rise of the interrupt source inside the window, not on the
+pass of a named check. The first FAIL closes the window, and no later step
+opens it.
 """
 
 from __future__ import annotations

@@ -100,7 +100,7 @@ from itertools import combinations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, Event, FallingEdge, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, Event, FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_aes_golden import aes_encrypt_words
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import AES_KEY_ROWS, KMAC_SAMPLE_KEY_ROW
@@ -967,6 +967,8 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
                         "ed": _word(_known(dut.ext_trng_tdata_o), 0),
                     }
                 )
+            # The awaiter of this task resumes in the phase where the task ends.
+            await NextTimeStep()
 
         async def next_sample() -> int:
             n = len(snaps)
