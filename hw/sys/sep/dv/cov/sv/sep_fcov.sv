@@ -44909,8 +44909,9 @@ module sep_fcov (
   // states (docs/SEP_FCOV.adoc, open-value stimulus legs).
   // ---------------------------------------------------------------------
   // Bin k is the leg of code k (OPEN_VALUE_LEGS index k - 1 in
-  // cocotb/env/sep_fcov_gate.py). Codes 19 and 20 have no bin: their strobe
-  // values are bins of sep_sram_access_cg.cp_sram_wstrb. The owner of the leg writes the code to
+  // cocotb/env/sep_fcov_gate.py). Codes 19 and 20 have no bin: CHK-SRAM-STRB grades
+  // both legs, sep_sram_access_cg.cp_sram_wstrb records WSTRB 0x00-0x0F, and the drawn
+  // 8-bit sparse strobe has no bin. The owner of the leg writes the code to
   // open_value_leg_pass after the CTRL reach line of that leg passed, holds it
   // two clocks and writes 0. A rise from 0 samples the code only when the last
   // window opened in the run belongs to the owner of that leg; a code of

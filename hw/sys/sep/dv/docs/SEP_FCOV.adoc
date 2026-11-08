@@ -7220,7 +7220,8 @@ golden comparison. Where a leg also grades a stated part with a `CHK-`
 line, that line is its reach line and the bin samples after it passes (row 27).
 Codes 19 (`sram_wstrb_sparse`) and 20 (`sram_wstrb_zero`) stay in
 `OPEN_VALUE_LEGS` and have no bin: CHK-SRAM-STRB grades every WSTRB value
-0x00 to 0x0F, and `sep_sram_access_cg.cp_sram_wstrb` records them.
+0x00 to 0x0F and the drawn 8-bit sparse strobe, `sep_sram_access_cg.cp_sram_wstrb`
+records 0x00 to 0x0F, and the sparse strobe is graded without a bin.
 
 *Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>). Not seed-dependent:
 each leg runs on every seed of its owner.

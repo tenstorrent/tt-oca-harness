@@ -484,7 +484,7 @@ not grade that rejection.
 |CHK-IFU-TYPES
 |All seven functions fetch and execute correctly in every iteration, each returning its expected value across the immediate, upper-immediate, register and jump formats. The seven expected values differ, so a fetch that lands on another function returns a value that fails its row.
 |CHK-IFU-REPEAT
-|Each of the seven functions returns its expected value in each of the three iterations: the console holds one `CHK-IFU-TYPES PASS` line for each function in each iteration, with the same seven names in every iteration, and no `CHK-IFU-TYPES FAIL` line. A fetch that is right once and wrong on a repeat fails here. The core has no instruction cache, so each call fetches its body from ROM again.
+|Each of the seven functions returns its expected value in each of the three iterations: the console holds one `CHK-IFU-TYPES PASS` line for each function in each iteration, with the same seven names in every iteration, and no `CHK-IFU-TYPES FAIL` line. A call that returns the right value once and a wrong value on a repeat fails here. The ROM fetches per call are not counted.
 |CHK-ALL
 |The test passes only if all 21 calls match; a partial result is a failure. The host also counts the 21 per-call lines itself, so a firmware that stopped calling into the ROM partway cannot pass on the completion magic alone.
 |===
