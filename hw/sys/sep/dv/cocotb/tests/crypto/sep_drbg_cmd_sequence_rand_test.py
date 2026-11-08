@@ -103,11 +103,12 @@ seed of the known-answer Generate, then the reseed count N of the second auto
 sequence trial (2 to 4) and the hold H of the instantiate-seed leg (256 to 2048
 clocks); last, the reseed count N of the large-N auto sequence trial (64 to 128)
 and, per ``CTRL`` field, six more invalid values distinct from the first (seven of
-the fourteen invalid MuBi4 values per field per seed). The reserved
+the fourteen invalid MuBi4 values per field per seed), then the 384-bit
+additional data of the known-answer Update. The reserved
 values 0x9 to 0xd carry a defined command code in bits [2:0]; the leaf sends 0x9 on
 every seed in its last leg (no draw) and logs the result only. The checked values do
-not depend on the seed; the known-answer control compares with the golden of the
-drawn seed.
+not depend on the seed; the known-answer checks compare with the golden of the
+drawn seed and the drawn Update data.
 
 The three groups run in the drawn order. Then the leaf runs, in this order, the
 ``CTRL`` alert leg (a TRNG reset, no bring-up), the command header leg, the
@@ -353,15 +354,26 @@ Checkers:
                  (theory_of_operation.md:255-263), so the counter stays at K or
                  more. Control (``CTRL-CSRNG-UPDATE``): Generate K + 1 was
                  refused, and ``GENBITS`` was read until ``GENBITS_VLD`` read 0
-                 before the Update.
+                 before the Update. Leg ``known_answer``, after the reseed-leg
+                 window closed: an Instantiate with flag0 True and clen 12 of the
+                 known-answer seed, an Update with clen 12 of the drawn 384-bit
+                 additional data, and one Generate (glen 1). All three acknowledge
+                 with ``CMD_STS`` = 0, and the four ``GENBITS`` words equal the
+                 first block of the SP 800-90A CTR_DRBG golden after the update
+                 function on that data (theory_of_operation.md:255-263,
+                 programmers_guide.md:37-61, hw/ip/drbg/doc/architecture.adoc:14).
+                 Control (``CTRL-CSRNG-UPDATE``, leg ``known_answer``): that golden
+                 block differs from the golden block without the Update, and
+                 ``GENBITS_VLD`` reads 0 before the Instantiate.
   CHK-CSRNG-UNINST-REFUSE  a Generate (glen 1) to a software instance that is
                  not instantiated acknowledges with ``CMD_STS`` = 3
                  (INVALID_CMD_SEQ: "a command other than Instantiate was issued
                  without sending an Instantiate command first", csrng.hjson
                  :427-433), sets bit 14 ("any command other than instantiate is
                  sent for a state that wasn't instantiated yet. The invalid command
-                 is ignored", csrng.hjson:670-675), leaves ``GENBITS_VLD`` at 0,
-                 and a write of 0 clears bit 14. Two legs of the reseed leg: before
+                 is ignored", csrng.hjson:670-675), returns no ``GENBITS`` word
+                 before the acknowledge, leaves ``GENBITS_VLD`` at 0, and a write
+                 of 0 clears bit 14. Two legs of the reseed leg: before
                  its first Instantiate, and after the known-answer Generate and an
                  Uninstantiate (the Uninstantiate "Resets an instance", its status
                  bit cleared, theory_of_operation.md:269-272). Bit 15 is logged.
@@ -708,6 +720,7 @@ class Plan:
     auto_n_big: int
     cs_mubi: tuple[tuple[int, ...], ...]
     ed_mubi: tuple[tuple[int, ...], ...]
+    upd_data: int
 
     def describe(self) -> str:
         def _vals(per_field: tuple[tuple[int, ...], ...]) -> list[list[str]]:
@@ -722,6 +735,7 @@ class Plan:
             f" auto_n={self.auto_n} inst_hold={self.inst_hold}"
             f" auto_n_big={self.auto_n_big}"
             f" cs_mubi={_vals(self.cs_mubi)} ed_mubi={_vals(self.ed_mubi)}"
+            f" upd_data_sha={word_digest(self.upd_data)}"
         )
 
 
@@ -750,6 +764,7 @@ def draw_plan(seed: int) -> Plan:
     auto_n_big = rng.randrange(AUTO_N_BIG_LO, AUTO_N_BIG_HI + 1)
     cs_mubi = _mubi_values(rng, cs_bad)
     ed_mubi = _mubi_values(rng, ed_bad)
+    upd_data = rng.getrandbits(KAT_SEED_BITS)
     return Plan(
         seed,
         tuple(groups),
@@ -766,6 +781,7 @@ def draw_plan(seed: int) -> Plan:
         auto_n_big,
         cs_mubi,
         ed_mubi,
+        upd_data,
     )
 
 
@@ -1362,13 +1378,16 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         exactly ``n`` GENERATE_CMD words, the RESEED_CMD word and a GENERATE_CMD word
         (edn.adoc:107, :258-262). The watch returns before the clock edge that takes
         the last handshake, so the check grades first; the coverage window is open
-        only for that one edge, and only after a PASS.
+        only for that one edge, and only after a PASS. The tap halts after that edge
+        on both paths, so its record holds the clock of the last handshake and the
+        clock after it.
 
         For ``n`` above AUTO_N_HI (the large-N trial) the trial reads CSRNG
         ``RESEED_INTERVAL`` first (``CTRL-EDN-AUTO-INTERVAL``), records the pool
-        port and the endpoint pushes from the instantiate to the last header
-        (``CHK-DRBG-FIPS-PROV`` leg ``edn_auto``, ``OBS-EDN-ENDPOINT`` mode
-        ``auto``), and pops the pool from the instantiate write to the last header.
+        port and the endpoint pushes from the instantiate up to and including the
+        clock edge that takes the last header (``CHK-DRBG-FIPS-PROV`` leg
+        ``edn_auto``, ``OBS-EDN-ENDPOINT`` mode ``auto``), and pops the pool from the
+        instantiate write to the last header.
         """
         dut = cocotb.top
         r = self.reg
@@ -1408,9 +1427,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             reason = f"timeout:{exc.what} bound={exc.bound}"
             if watch is not None:
                 watch.cancel()
-        for rec in (tap, drain):
-            if rec is not None:
-                rec.halt()
+        if drain is not None:
+            drain.halt()
         first = hdrs[0] if hdrs else None
         self.chk.ctrl(
             "EDN-AUTO-TAP",
@@ -1439,6 +1457,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await RisingEdge(dut.clk_i)
             await FallingEdge(dut.clk_i)
             close_graded_window(self.logger)
+        elif tap is not None:
+            await RisingEdge(dut.clk_i)
+            await FallingEdge(dut.clk_i)
+        if tap is not None:
+            tap.halt()
         if big:
             await self._auto_big_grade(fips_pre, tap, drain)
         await self._release()
@@ -2740,6 +2763,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         else:
             await self._uninst_refuse_leg()
         close_graded_window(self.logger)
+        upd_kat: dict = {}
+        if not reason:
+            upd_kat = await self._update_kat()
         for fields in (lim, hdr, gate):
             if reason:
                 fields["reason"] = reason
@@ -2819,6 +2845,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         else:
             self.chk.blocked("DRBG-FIPS-PROV", f"kat_reseed_flag0_true: {reason}")
         self._update_grade(upd, refused, reason)
+        self._update_kat_grade(upd_kat, reason)
         await self._release()
 
     def _update_grade(self, upd: dict, refused: int | None, reason: str) -> None:
@@ -2848,6 +2875,108 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             expected_vld_after=0,
             expected_gen_sts=STS_RESEED_CNT_EXCEEDED,
             expected_alert15=1,
+        )
+
+    async def _update_kat(self) -> dict:
+        """Known-answer leg of CHK-CSRNG-UPDATE: an Update on a known state.
+
+        Runs after the reseed-leg window closed, on the software instance that the
+        refusal leg left uninstantiated. An Instantiate with flag0 True and clen 12
+        of the known-answer seed sets the state from the seed alone
+        (theory_of_operation.md:227), with no derivation function (README.md:47).
+        An Update with clen 12 carries the drawn 384-bit additional data, least
+        significant word first (programmers_guide.md:37-61). The Update uses "only
+        the additional data provided" in the update function
+        (theory_of_operation.md:255-263), the SP 800-90A 10.2.1.2 CTR_DRBG update of
+        the AES-CTR-DRBG (hw/ip/drbg/doc/architecture.adoc:14). One Generate (glen
+        1) follows; its four ``GENBITS`` words, least significant word first
+        (programmers_guide.md:108-114), are compared with the golden first block
+        after the Update. The leg ends with an Uninstantiate."""
+        r = self.reg
+        seed = self.plan.kat_seed
+        data = self.plan.upd_data
+        f: dict = {"leg": "known_answer", "data_sha": word_digest(data)}
+        step = "ins"
+        try:
+            await r._wr(CSRNG_CTRL, CSRNG_CTRL_ON)
+            f["vld_pre"] = int(bool(await r._rd(CSRNG_GENBITS_VLD) & GB_VLD))
+            ins = cmd_word(ACMD_INSTANTIATE, clen=KAT_CLEN, flag0=MUBI_TRUE)
+            await self._sw_cmd(ins, FIRST_CAP, "upd_kat_ins_rdy", wait_ack=False)
+            for i in range(KAT_CLEN):
+                await r._wr(CSRNG_CMD_REQ, (seed >> (32 * i)) & 0xFFFF_FFFF)
+            _, sts = await self._wait(
+                CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "upd_kat_ins_ack"
+            )
+            f["ins_cmd_sts"] = _field(sts, CS_STS_STS)
+            step = "update"
+            await self._sw_cmd(
+                cmd_word(ACMD_UPDATE, clen=KAT_CLEN), FIRST_CAP, "upd_kat_rdy", wait_ack=False
+            )
+            for i in range(KAT_CLEN):
+                await r._wr(CSRNG_CMD_REQ, (data >> (32 * i)) & 0xFFFF_FFFF)
+            _, sts = await self._wait(
+                CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "upd_kat_ack"
+            )
+            f["cmd_sts"] = _field(sts, CS_STS_STS)
+            step = "gen"
+            await self._sw_cmd(CMD_GENERATE_1, FIRST_CAP, "upd_kat_gen", wait_ack=False)
+            got = []
+            for i in range(GEN1_WORDS):
+                await self._wait(CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, f"upd_kat_vld{i}")
+                got.append(await r._rd(CSRNG_GENBITS))
+            f["genbits"] = [f"0x{w:08x}" for w in got]
+            _, sts = await self._wait(
+                CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "upd_kat_gen_ack"
+            )
+            f["gen_cmd_sts"] = _field(sts, CS_STS_STS)
+            step = "uni"
+            await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), FIRST_CAP, "upd_kat_uni")
+        except TrialTimeout as exc:
+            f["reason"] = f"timeout:{exc.what} bound={exc.bound} step={step}"
+        return f
+
+    def _update_kat_grade(self, f: dict, reason: str) -> None:
+        """CTRL-CSRNG-UPDATE and CHK-CSRNG-UPDATE of leg ``known_answer``.
+
+        The control: the golden first block after the Update differs from the
+        golden first block without it, so a DUT that acknowledges the Update and
+        does not apply it fails the check, and ``GENBITS_VLD`` read 0 before the
+        Instantiate. The check: the Instantiate, the Update and the Generate
+        acknowledge with ``CMD_STS`` = 0, and the four ``GENBITS`` words equal the
+        golden after the Update."""
+        if not f:
+            self.chk.blocked("CSRNG-UPDATE", f"known_answer: {reason}")
+            return
+        seed = self.plan.kat_seed
+        plain = SepCtrDrbgGolden()
+        plain.instantiate(0, additional_input=seed)
+        updated = SepCtrDrbgGolden()
+        updated.instantiate(0, additional_input=seed)
+        updated._update(self.plan.upd_data)
+
+        def _txt(block: int) -> list[str]:
+            return [f"0x{(block >> (32 * i)) & 0xFFFF_FFFF:08x}" for i in range(GEN1_WORDS)]
+
+        expected = _txt(updated.generate_one())
+        no_update = _txt(plain.generate_one())
+        self.chk.ctrl(
+            "CSRNG-UPDATE",
+            expected != no_update and f.get("vld_pre") == 0,
+            leg="known_answer",
+            vld_pre=f.get("vld_pre"),
+            golden_after_update=expected,
+            golden_without_update=no_update,
+        )
+        self.chk.ok(
+            "CSRNG-UPDATE",
+            "reason" not in f
+            and f.get("ins_cmd_sts") == STS_SUCCESS
+            and f.get("cmd_sts") == STS_SUCCESS
+            and f.get("gen_cmd_sts") == STS_SUCCESS
+            and f.get("genbits") == expected,
+            **f,
+            expected=expected,
+            expected_sts=STS_SUCCESS,
         )
 
     async def _update_after_refusal(self, drain_max: int) -> dict:
@@ -2889,7 +3018,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
     async def _refused_generate(self, leg: str) -> None:
         """CHK-CSRNG-UNINST-REFUSE of one leg: a Generate (glen 1) to a software
         instance that is not instantiated acknowledges with ``CMD_STS`` = 3, sets bit
-        14 and leaves ``GENBITS_VLD`` at 0; a write of 0 clears bit 14. Control
+        14, returns no ``GENBITS`` word before the acknowledge and leaves
+        ``GENBITS_VLD`` at 0; a write of 0 clears bit 14. Control
         (``CTRL-CSRNG-UNINST-REFUSE``): bit 14 and ``GENBITS_VLD`` read 0 first."""
         r = self.reg
         f: dict = {"leg": leg}
@@ -2917,10 +3047,12 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             "reason" not in f
             and f.get("cmd_sts") == STS_INVALID_CMD_SEQ
             and f.get("invseq") == 1
+            and f.get("words") == 0
             and f.get("vld_after") == 0
             and f.get("cleared_by_write0") == 1,
             **f,
             expected_sts=STS_INVALID_CMD_SEQ,
+            expected_words=0,
         )
 
     async def _uninst_refuse_leg(self) -> None:
