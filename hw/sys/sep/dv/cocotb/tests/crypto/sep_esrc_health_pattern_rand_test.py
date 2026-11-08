@@ -700,9 +700,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             ctrl_lane_latched=int(bool(gk & (1 << BIT_APT))),
         )
         # W1C under disabled testers: no window end can latch a bit between the
-        # write and the read. The FCOV window is closed: the stored ENABLE = 0 bin
-        # belongs to CHK-HT-ALL-OFF.
-        close_graded_window(self.logger)
+        # write and the read. The FCOV window stays open so the read, write-one
+        # clear and read of bit 3 sample x_gen_latch.
         before = (await self._rd(A_GEN_STATUS[k])) & M_GEN
         await self._ht_ctrl(enable=0)
         hold = (await self._rd(A_GEN_STATUS[k])) & M_GEN
@@ -724,6 +723,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             rsvd=f"0x{after_raw & ~M_GEN & 0xFFFFFFFF:x}",
         )
         await self._ht_ctrl(enable=7)
+        close_graded_window(self.logger)
         return bool(gk & (1 << BIT_APT))
 
     async def _apt_enable_leg(self, trial: PatternTrial, ctrl_tripped: bool) -> None:
