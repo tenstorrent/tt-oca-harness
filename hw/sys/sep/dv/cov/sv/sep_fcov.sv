@@ -1293,6 +1293,10 @@ module sep_fcov (
       default: return FcovOwnNone;
     endcase
   endfunction
+  wire sa_owner_ok = (sa_owner_q != FcovOwnNone) &&
+      (sa_point_owner(sram_access_pass >> 8) == sa_owner_q);
+  wire sa_strb_ok = !sa_strb_rel ||
+      ((sram_access_pass[7:0] < 16) && sa_strb_seen[sram_access_pass[3:0]]);
   always @(posedge clk_i) begin
     sa_pass_q     <= (sram_access_pass != 0);
     sa_own_strb_q <= sa_own_strb;
@@ -1303,10 +1307,7 @@ module sep_fcov (
                  (in_resp_i.w_ready === 1'b1) && (in_req_i.w.strb[7:4] == 4'h0)) begin
       sa_strb_seen[in_req_i.w.strb[3:0]] <= 1'b1;
     end
-    if (sa_rise && (sa_owner_q != FcovOwnNone) &&
-        (sa_point_owner(sram_access_pass >> 8) == sa_owner_q) &&
-        (!sa_strb_rel || ((sram_access_pass[7:0] < 16) &&
-                          sa_strb_seen[sram_access_pass[3:0]]))) begin
+    if (sa_rise && sa_owner_ok && sa_strb_ok) begin
       sa_pt_q   <= 3'(sram_access_pass >> 8);
       sa_cell_q <= 8'(sram_access_pass);
     end else begin
@@ -3973,9 +3974,7 @@ module sep_fcov (
     // Address-line class (base word, offset 2^k for k = 3 to 17, top word)
     // after CHK-ADDR-LINES passed for it (owner sep_sram_datapath_breadth_test).
     cp_addr_line_class: coverpoint sa_cell_q iff (sa_pt_q == 3'd4) {
-      bins base = {8'd0};
-      bins line[] = {[8'd3 : 8'd17]};
-      bins top = {8'd18};
+      bins base = {8'd0}; bins line[] = {[8'd3 : 8'd17]}; bins top = {8'd18};
     }
   endgroup
 
