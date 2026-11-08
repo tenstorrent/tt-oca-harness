@@ -6639,7 +6639,7 @@ module sep_fcov (
       // runs it only as a logged run with the window closed.
       ignore_bins copy_fixed_multi_chunk = {4'd14};
     }
-    // verilator lint_on COVERIGN
+  // verilator lint_on COVERIGN
   endgroup
 
   // ---------------------------------------------------------------------
@@ -10698,7 +10698,7 @@ module sep_fcov (
                 m[13] = 1'b1;
               end else begin
                 if (alr_w_q != 2'd3) m[alr_w_q] = 1'b1;
-                m[alr_multi_q ? 4 : 3] = 1'b1;
+                m[alr_multi_q?4 : 3] = 1'b1;
                 if (alr_src_q && (alr_smode_q != 2'd0)) m[4+alr_smode_q] = 1'b1;
                 if (alr_dst_q && (alr_dmode_q != 2'd0)) m[7+alr_dmode_q] = 1'b1;
               end
