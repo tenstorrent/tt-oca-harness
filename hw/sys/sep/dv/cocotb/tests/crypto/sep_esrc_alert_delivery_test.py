@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """An ESRC persistent failure raises the alert on PIC source 16, and W1C clears it.
 
-no_cpu / +skip_fuse_sense / +esrc_noise_force. RAND-NONE. A short
+no_cpu / +skip_fuse_sense / +esrc_noise_force. A short
 health-test window plus stuck forced noise accumulates one failing
 window and trips ``ALERT_THRESHOLD``. Proves ``MAIN_SM_STATUS.ALERT``,
 ``INTR_STATUS.PERSISTENT_FAILURE``, and ``sep_internal_interrupts[15]``
@@ -19,6 +19,20 @@ HEALTH_TEST_STATUS and of the per-generator status bytes: the RDL allocates them
 and states no value. An opening INTR_TEST sweep, before the trip, drives each interrupt
 source the RDL defines on its own. This proves the aggregate slot per source
 without a real failure.
+
+A pair walk follows the sweep, with every enable set. Each source is a target i once,
+with a partner j != i; one INTR_TEST write sets both. A write of one to i leaves exactly
+j set (``INTR_STATUS`` fields are woclr, ``entropy_source.rdl``:108-166; ``INTR_TEST``
+fields are singlepulse, :212-262), and a write of one to j leaves ``INTR_STATUS`` = 0
+and PIC source 16 at 0. While only j is set, PIC source 16 is graded 1 when j is
+``PERSISTENT_FAILURE`` (the persistent-failure interrupt is source 16,
+``hw/sys/sep/doc/interrupts.adoc``:22-24, :109-111; entropy_source.rdl:193) and is
+logged (``OBS-INTR-PAIR-PIC16``) for any other j: the register text does not state
+which other enabled status bits drive source 16. One pair per seed has
+j = ``PERSISTENT_FAILURE``; the PASS line counts those pairs (``pf_j_pairs``).
+
+Randomization (``SepSeededRng`` from the run seed): the order of the targets, the
+target whose partner is ``PERSISTENT_FAILURE``, and the partner of every other target.
 """
 
 from __future__ import annotations
@@ -26,6 +40,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_alert_seq import (
     ALERT_MASK,
@@ -48,6 +63,8 @@ _TRIP_POLL_EVERY = 64
 @pyuvm.test()
 class sep_esrc_alert_delivery_test(sep_base_test):
     """A persistent failure sets ALERT and PIC source 16, and W1C clears both."""
+
+    required_evidence = ("CHK-INTR-PAIR-W1C",)
 
     def _irq_bit(self) -> int:
         vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
@@ -119,6 +136,8 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             len(proven),
             ", ".join(proven),
         )
+
+        await self._pair_walk(esrc)
 
         await esrc.enable_persistent_irq()
         await esrc.arm_failing_windows()
@@ -291,4 +310,63 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             "after ENABLE=0, and W1C of every latched bit reads back 0x00",
             ht_status,
             ht_live,
+        )
+
+    async def _pair_walk(self, esrc: SepEsrcAlert) -> None:
+        """CHK-INTR-PAIR-W1C: each target i clears alone from a pair {i, j} set by INTR_TEST."""
+        rng = SepSeededRng(self.random_seed())
+        targets = list(INTR_SOURCES)
+        rng.shuffle(targets)
+        pf = next(src for src in INTR_SOURCES if src[1] == PF_MASK)
+        pf_target = rng.choice([src for src in INTR_SOURCES if src != pf])
+        pairs: list[str] = []
+        pf_j_pairs = 0
+        for i_name, bi in targets:
+            j_name, bj = (
+                pf
+                if (i_name, bi) == pf_target
+                else rng.choice([src for src in INTR_SOURCES if src[1] != bi])
+            )
+            tag = f"i={i_name} j={j_name}"
+            st0 = await esrc.read_intr()
+            assert st0 == 0 and self._irq_bit() == 0, (
+                f"CHK-INTR-PAIR-W1C FAIL: {tag} INTR_STATUS=0x{st0:08x} or source 16 high "
+                "before the pair"
+            )
+            await esrc.pulse_intr_test(bi | bj)
+            st_pair = await esrc.read_intr()
+            assert st_pair == bi | bj, (
+                f"CHK-INTR-PAIR-W1C FAIL: {tag} INTR_TEST of both left "
+                f"INTR_STATUS=0x{st_pair:08x}, expected 0x{bi | bj:08x}"
+            )
+            await esrc.w1c_intr_status(bi)
+            st_j = await esrc.read_intr()
+            irq_j = self._irq_bit()
+            assert st_j == bj, (
+                f"CHK-INTR-PAIR-W1C FAIL: {tag} W1C of i left INTR_STATUS=0x{st_j:08x}, "
+                f"expected only j 0x{bj:08x}"
+            )
+            if bj == PF_MASK:
+                pf_j_pairs += 1
+                assert irq_j == 1, (
+                    f"CHK-INTR-PAIR-W1C FAIL: {tag} PERSISTENT_FAILURE set alone with its enable "
+                    f"but sep_internal_interrupts[{IRQ_AGG_IDX}]=0"
+                )
+            else:
+                self.logger.info("OBS-INTR-PAIR-PIC16 %s pic16=%d", tag, irq_j)
+            await esrc.w1c_intr_status(bj)
+            st_end = await esrc.read_intr()
+            irq_end = self._irq_bit()
+            assert st_end == 0 and irq_end == 0, (
+                f"CHK-INTR-PAIR-W1C FAIL: {tag} W1C of j left INTR_STATUS=0x{st_end:08x} "
+                f"sep_internal_interrupts[{IRQ_AGG_IDX}]={irq_end}, expected both 0"
+            )
+            pairs.append(f"{i_name}/{j_name}")
+        assert pf_j_pairs >= 1, "CHK-INTR-PAIR-W1C FAIL: no pair had j = PERSISTENT_FAILURE"
+        self.logger.info(
+            "CHK-INTR-PAIR-W1C PASS: %d targets each cleared alone from its pair, then the "
+            "partner cleared INTR_STATUS to 0 and dropped source 16; pf_j_pairs=%d pairs=%s",
+            len(pairs),
+            pf_j_pairs,
+            ",".join(pairs),
         )
