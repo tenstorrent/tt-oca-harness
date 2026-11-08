@@ -29,6 +29,9 @@ RING_OSC_TUNE):
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. SW_RESET_N baseline 0x20: only the TRNG is released.
+From the end of the clean start INTR_ENABLE holds AUTOTUNE_FAIL only. PIC source
+16 is bit ``IRQ_AGG_IDX`` of ``sep_internal_interrupts_probe_o``, read as a
+known value.
 The noise model drives ``balanced`` on all 12 lanes from before the TRNG reset
 release; a burst is one whole window of stuck1 on lane k with ``balanced`` on the
 other lanes. The detune select of each lane is read on ``esrc_detune_o``
@@ -65,6 +68,23 @@ Checkers:
                     least once and no other probe bit changes (count logged).
   CHK-TUNE-OFF      after the autotune-off burst status k bit 0 = 1 and
                     AUTOTUNE_FAIL = 0. Control: CHK-TUNE-AUTO sets it.
+  CHK-TUNE-IRQ      with INTR_ENABLE = AUTOTUNE_FAIL only, after each autotune
+                    burst INTR_STATUS.AUTOTUNE_FAIL = 1 (entropy_source.rdl:150,
+                    :198). The other INTR_STATUS bits have enable 0 and are
+                    logged on OBS-TUNE-PIC16.
+  CHK-TUNE-OFF-NOIRQ after the autotune-off burst INTR_STATUS.AUTOTUNE_FAIL = 0
+                    and PIC source 16 reads 0: AUTOTUNE_FAIL is the only enabled
+                    source (entropy_source.rdl:168-169). Controls: CHK-TUNE-IRQ
+                    sets the bit in the same leaf, and CTRL-TUNE-PIC16-LIVE.
+  CHK-TUNE-W1C      after each autotune burst and its clean gap, a write of 1 to
+                    AUTOTUNE_FAIL reads it back 0 and PIC source 16 reads 0
+                    (entropy_source.rdl:145-151, woclr). Control: the bit read 1
+                    before the write.
+  CTRL-TUNE-PIC16-LIVE before the legs, with INTR_ENABLE = PERSISTENT_FAILURE
+                    only, an INTR_TEST pulse of that source sets its status bit
+                    and raises PIC source 16, and its write-one clear drops the
+                    line (hw/sys/sep/doc/interrupts.adoc:109-111); then
+                    INTR_ENABLE reads back AUTOTUNE_FAIL only.
   CHK-SCLK-DIV      for each divide value v of lane 0, written with
                     CTRL.MODULE_ENABLE and RING_OSC_ENABLE.ENABLE bit 0 clear:
                     after two discarded periods, four consecutive periods of
@@ -91,6 +111,12 @@ Checkers:
 
 Logged only: OBS-ESRC-ANY-FAIL-GEN, ALERT_SUMMARY_FAIL_COUNTS before and after
 each burst (no text states whether a generator failure counts in it).
+OBS-TUNE-PIC16, PIC source 16 and the whole INTR_STATUS word while AUTOTUNE_FAIL
+is 1 after each autotune burst (no text states that a source other than
+PERSISTENT_FAILURE drives source 16, and the value of a status bit with its
+enable 0 is not stated). OBS-TUNE-DETUNE-AFTER, the probe bit k before each
+autotune burst and after its clean gap (no text states the detune after the
+failure ends).
 OBS-SCLK-ONE-ENABLE, with the graded window closed: only one of
 CTRL.MODULE_ENABLE and RING_OSC_ENABLE.ENABLE bit 0 is cleared, the lane 0 edges
 are counted for four old periods, a new divide is written, the enable is
@@ -143,6 +169,7 @@ from env.sep_trial_wait import TrialTimeout
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, sym
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+from seq_lib.sep_esrc_alert_seq import IRQ_AGG_IDX
 from seq_lib.sep_esrc_clean_start_seq import SepEsrcCleanStart, SepEsrcLeafSetup
 
 TEST = "sep_esrc_autotune_detune_test"
@@ -190,10 +217,13 @@ SHARD_EVIDENCE = {
         "CHK-TUNE-AUTO",
         "CHK-TUNE-TOGGLE",
         "CHK-TUNE-OFF",
+        "CHK-TUNE-IRQ",
+        "CHK-TUNE-OFF-NOIRQ",
+        "CHK-TUNE-W1C",
         "CHK-SCLK-DIV",
         "CHK-SCLK-GUIDE",
     ),
-    2: ("CHK-TUNE-AUTO", "CHK-TUNE-TOGGLE"),
+    2: ("CHK-TUNE-AUTO", "CHK-TUNE-TOGGLE", "CHK-TUNE-IRQ", "CHK-TUNE-W1C"),
 }
 
 
@@ -212,6 +242,7 @@ def _fbp(reg: str, field: str) -> int:
 A_CTRL = _addr("CTRL")
 A_INTR_STATUS = _addr("INTR_STATUS")
 A_INTR_ENABLE = _addr("INTR_ENABLE")
+A_INTR_TEST = _addr("INTR_TEST")
 A_RING_OSC_TUNE = _addr("RING_OSC_TUNE")
 A_ALERT_THRESHOLD = _addr("ALERT_THRESHOLD")
 A_RING_OSC_CTRL = _addr("RING_OSC_CTRL")
@@ -221,7 +252,12 @@ A_DIV0 = _addr(REG_DIV0)
 A_ANY_FAIL = _addr("ALERT_SUMMARY_FAIL_COUNTS")
 
 M_INTR_ALL = ENTROPY_SOURCE.mask("INTR_ENABLE")
+M_INTR_STATUS = ENTROPY_SOURCE.mask("INTR_STATUS")
 M_AUTOTUNE_FAIL = _fmask("INTR_STATUS", "AUTOTUNE_FAIL")
+M_AUTOTUNE_EN = _fmask("INTR_ENABLE", "AUTOTUNE_FAIL")
+M_PF = _fmask("INTR_STATUS", "PERSISTENT_FAILURE")
+M_PF_EN = _fmask("INTR_ENABLE", "PERSISTENT_FAILURE")
+M_PF_TEST = _fmask("INTR_TEST", "PERSISTENT_FAILURE")
 M_DETUNE = _fmask("RING_OSC_TUNE", "DETUNE")
 BP_DETUNE = _fbp("RING_OSC_TUNE", "DETUNE")
 M_MODULE_ENABLE = _fmask("CTRL", "MODULE_ENABLE")
@@ -361,6 +397,9 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         "CHK-TUNE-AUTO",
         "CHK-TUNE-TOGGLE",
         "CHK-TUNE-OFF",
+        "CHK-TUNE-IRQ",
+        "CHK-TUNE-OFF-NOIRQ",
+        "CHK-TUNE-W1C",
         "CHK-SCLK-DIV",
         "CHK-SCLK-GUIDE",
     )
@@ -397,6 +436,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         await cs.run(release_mark=mark)
         self.p = await self.setup.measure_period(self.chk, PERIOD_STROBES)
         await self.setup.wait_boot_done(self.esrc, plan.window)
+        self.line_live = await self._line_live()
 
         self.timer = SepEdgeTimer(dut.esrc_detune_o, name="esrc_detune_o").start()
         # Time from each autotune burst start to the first change of probe bit k.
@@ -473,6 +513,37 @@ class sep_esrc_autotune_detune_test(sep_base_test):
     def _now(self) -> int:
         return self.clk.clk
 
+    def _pic16(self) -> int:
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
+        return (vec >> IRQ_AGG_IDX) & 1
+
+    async def _line_live(self) -> bool:
+        """CTRL-TUNE-PIC16-LIVE, then INTR_ENABLE = AUTOTUNE_FAIL only for every leg."""
+        wr, rd = self.esrc._wr, self.esrc._rd
+        await wr(A_INTR_ENABLE, M_PF_EN)
+        await wr(A_INTR_TEST, M_PF_TEST)
+        pf_set = await rd(A_INTR_STATUS) & M_PF
+        line_set = self._pic16()
+        await wr(A_INTR_STATUS, M_PF)
+        pf_clr = await rd(A_INTR_STATUS) & M_PF
+        line_clr = self._pic16()
+        await wr(A_INTR_ENABLE, M_AUTOTUNE_EN)
+        en_rb = await rd(A_INTR_ENABLE) & M_INTR_ALL
+        return self._ctrl(
+            "TUNE-PIC16-LIVE",
+            pf_set == M_PF
+            and line_set == 1
+            and pf_clr == 0
+            and line_clr == 0
+            and en_rb == M_AUTOTUNE_EN,
+            pf_set=int(bool(pf_set)),
+            pic16_set=line_set,
+            pf_cleared=int(not pf_clr),
+            pic16_cleared=line_clr,
+            intr_enable=f"0x{en_rb:08x}",
+            want_intr_enable=f"0x{M_AUTOTUNE_EN:08x}",
+        )
+
     async def _probe(self) -> int:
         await ClockCycles(cocotb.top.clk_i, PROBE_SETTLE)
         return self.rd_known(cocotb.top.esrc_detune_o)
@@ -505,12 +576,12 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             A_CTRL, ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1, AUTOTUNE_ENABLE=on)
         )
 
-    async def _reads(self) -> tuple[int, int]:
-        """(AUTOTUNE_FAIL, GENERATOR_k_HEALTH_STATUS field bits)."""
+    async def _reads(self) -> tuple[int, int, int]:
+        """(AUTOTUNE_FAIL, GENERATOR_k_HEALTH_STATUS field bits, INTR_STATUS)."""
         k = self.plan.lane
-        intr = await self.esrc._rd(A_INTR_STATUS)
+        intr = await self.esrc._rd(A_INTR_STATUS) & M_INTR_STATUS
         gen = await self.esrc._rd(_gen_status_addr(k)) & _gen_status_mask(k)
-        return int(bool(intr & M_AUTOTUNE_FAIL)), gen
+        return int(bool(intr & M_AUTOTUNE_FAIL)), gen, intr
 
     async def _clear_status(self, *, clear_autotune: bool) -> None:
         k = self.plan.lane
@@ -580,7 +651,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
 
     async def _off_leg(self) -> dict:
         plan = self.plan
-        pre_fail, pre_gen = await self._reads()
+        pre_fail, pre_gen, _ = await self._reads()
         self._ctrl(
             "TUNE-OFF",
             pre_fail == 0 and pre_gen == 0,
@@ -595,8 +666,10 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             return out
         changes = [c for c in self.timer.since(t0, until_ps=t1) if c.t_ps > t0]
         after = await self._probe()
-        fail, gen = await self._reads()
-        out.update(changes=len(changes), after=after, fail=fail, gen=gen)
+        fail, gen, intr = await self._reads()
+        out.update(
+            changes=len(changes), after=after, fail=fail, gen=gen, intr=intr, pic16=self._pic16()
+        )
         await self._clear_status(clear_autotune=False)
         return out
 
@@ -626,7 +699,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         """Burst i+1 of the failure leg. Returns the toggle count of probe bit k."""
         plan = self.plan
         k = plan.lane
-        pre_fail, pre_gen = await self._reads()
+        pre_fail, pre_gen, _ = await self._reads()
         self._ctrl(
             "TUNE-AUTO",
             pre_fail == 0 and pre_gen == 0,
@@ -634,12 +707,13 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             pre_autotune_fail=pre_fail,
             pre_gen_status=f"0x{pre_gen:02x}",
         )
+        detune_before = await self._probe()
         try:
             t0, t1 = await self._burst(plan.gaps[i], f"auto{i + 1}")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
-            self._ok("TUNE-TOGGLE", False, lane=k, burst=i + 1, reason=reason)
-            self._ok("TUNE-AUTO", False, lane=k, burst=i + 1, reason=reason)
+            for name in ("TUNE-TOGGLE", "TUNE-AUTO", "TUNE-IRQ", "TUNE-W1C"):
+                self._ok(name, False, lane=k, burst=i + 1, reason=reason)
             await self._clear_status(clear_autotune=True)
             return None
         edges = sorted(
@@ -666,7 +740,9 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             toggles=toggles,
             moved_lanes=moved or "none",
         )
-        fail, gen = await self._reads()
+        fail, gen, intr = await self._reads()
+        line = self._pic16()
+        detune_after = await self._probe()
         if fail:
             self.auto_fail_seen = True
         self._ok(
@@ -678,7 +754,36 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             gen_bit0=gen & GEN_REP_BIT,
             gen_status=f"0x{gen:02x}",
         )
+        self._ok("TUNE-IRQ", fail == 1, lane=k, burst=i + 1, autotune_fail=fail)
+        self.chk.obs(
+            "TUNE-PIC16",
+            burst=i + 1,
+            pic16=line,
+            intr_status=f"0x{intr:08x}",
+            intr_enable=f"0x{M_AUTOTUNE_EN:08x}",
+        )
+        self.chk.obs(
+            "TUNE-DETUNE-AFTER",
+            lane=k,
+            burst=i + 1,
+            bit_k_before=(detune_before >> k) & 1,
+            bit_k_after=(detune_after >> k) & 1,
+            detune_before=f"0x{detune_before:03x}",
+            detune_after=f"0x{detune_after:03x}",
+        )
         await self._clear_status(clear_autotune=True)
+        cleared = await self.esrc._rd(A_INTR_STATUS) & M_INTR_STATUS
+        line = self._pic16()
+        self._ctrl("TUNE-W1C", fail == 1, burst=i + 1, autotune_fail_before=fail)
+        self._ok(
+            "TUNE-W1C",
+            not cleared & M_AUTOTUNE_FAIL and line == 0,
+            lane=k,
+            burst=i + 1,
+            autotune_fail=int(bool(cleared & M_AUTOTUNE_FAIL)),
+            pic16=line,
+            intr_status=f"0x{cleared:08x}",
+        )
         return toggles
 
     auto_fail_seen = False
@@ -717,6 +822,18 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             fields["reason"] = off["reason"]
         ok = not off["reason"] and off.get("fail") == 0 and bool(off.get("gen", 0) & GEN_REP_BIT)
         self._ok("TUNE-OFF", ok, **fields)
+        live = ctrl_auto_fail and self.line_live
+        self._ctrl("TUNE-OFF-NOIRQ", live, ctrl_auto_fail=ctrl_auto_fail, line_live=self.line_live)
+        noirq = {
+            "lane": self.plan.lane,
+            "autotune_fail": off.get("fail", "na"),
+            "pic16": off.get("pic16", "na"),
+            "intr_status": f"0x{off['intr']:08x}" if "intr" in off else "na",
+        }
+        if off["reason"]:
+            noirq["reason"] = off["reason"]
+        quiet = not off["reason"] and off.get("fail") == 0 and off.get("pic16") == 0
+        self._ok("TUNE-OFF-NOIRQ", quiet, **noirq)
 
     def _grade_ignored(self, ign: dict, manual: dict) -> None:
         plan = self.plan
