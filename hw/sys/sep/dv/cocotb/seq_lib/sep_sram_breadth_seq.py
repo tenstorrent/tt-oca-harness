@@ -8,8 +8,8 @@ write/init data, sequential-window length) are seed-randomized, masked so they r
 
 The SRAM port is 64-bit single-beat (AXI4-Lite-like; AWLEN=0/ARLEN=0 only). ``length`` selects
 the byte count: 8 = full word, 1..7 = a sub-word access whose WSTRB cocotbext-axi derives from
-addr+length. Only contiguous strobes are expressible: all 36 are walked, non-contiguous masks
-(e.g. 0x05) are not, and WSTRB=0x00 is excluded (undefined per the SRAM spec).
+addr+length. Only contiguous strobes are expressible: all 36 are walked. Non-contiguous masks
+(e.g. 0x05) and WSTRB=0x00 are graded by CHK-SRAM-STRB in sep_sram_axi_shape_matrix_test.
 """
 
 from __future__ import annotations
