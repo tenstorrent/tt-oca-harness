@@ -29120,7 +29120,9 @@ module sep_fcov (
     // CTRL field x invalid MuBi4 value of a field alert (CHK-CSRNG-CTRL-MUBI):
     // 0 ENABLE, 1 SW_APP_ENABLE, 2 READ_INT_STATE, 3 FIPS_FORCE_ENABLE.
     // Sampled only while the other CTRL fields read MuBi4False.
-    cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {bins f[] = {[0 : 3]};}
+    cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {
+      bins f[] = {[0 : 3]};
+    }
     cp_ctrl_mubi_value: coverpoint s.cm[3:0] iff (s.cm_v) {
       bins v[] = {[0 : 5], [7 : 8], [10 : 15]};
     }
@@ -29197,7 +29199,9 @@ module sep_fcov (
     // CTRL field x invalid MuBi4 value of a field alert (CHK-EDN-CTRL-MUBI):
     // 0 EDN_ENABLE, 1 BOOT_REQ_MODE, 2 AUTO_REQ_MODE, 3 CMD_FIFO_RST.
     // Sampled only while the other CTRL fields read MuBi4False.
-    cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {bins f[] = {[0 : 3]};}
+    cp_ctrl_mubi_field: coverpoint s.cm[5:4] iff (s.cm_v) {
+      bins f[] = {[0 : 3]};
+    }
     cp_ctrl_mubi_value: coverpoint s.cm[3:0] iff (s.cm_v) {
       bins v[] = {[0 : 5], [7 : 8], [10 : 15]};
     }
