@@ -29,7 +29,9 @@ Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20. Each trial pulses the TRNG
 reset, brings up ESRC and CSRNG (``seq_lib/sep_drbg_mode_bringup_seq.py``) and
 enables EDN in software-port mode, so no command consumes the EDN command FIFOs.
-The interrupt vector probe ``sep_internal_interrupts_probe_o`` is watched on
+Each set-up then sends one EDN ``SW_CMD_REQ`` Instantiate (the ``BOOT_INS_CMD`` reset
+value, flag0 false) through the software command port, not through the command
+FIFOs, so CSRNG takes one entropy-source seed. The interrupt vector probe ``sep_internal_interrupts_probe_o`` is watched on
 every ``clk_i``.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
@@ -61,6 +63,19 @@ Checkers:
   CHK-EDN-FIFO14    the 14th word: ERR_CODE equals the FIFO error bit plus
                     FIFO_WRITE_ERR, INTR_STATE equals edn_fatal_err, vector bit 28 high
                     and at least one clock of vector bit 32.
+  CHK-DRBG-RESUME   at every set-up, after the TRNG reset (one domain: ESRC, CSRNG,
+                    EDN, endpoint queues; ``hw/sys/sep/doc/trng.adoc``, reset), a
+                    strict DRBG scoreboard (CHK2 from the conditioner output tap)
+                    grades the data the chain makes again: the EDN Instantiate gets
+                    ``CMD_ACK``, and the report has no mismatch with at least 8
+                    decorrelator words, 4 conditioner words and one CSRNG seed equal
+                    to its golden of 12 conditioner words (``hw/sys/sep/doc/trng.adoc``,
+                    seed packer). Count line: the set-ups that follow the reset leg
+                    of a source-bit cell and pass equal the cell count (12).
+                    Control ``CTRL-DRBG-RESUME``: a write-one clear of EDN
+                    ``edn_cmd_req_done`` and of the CSRNG non-fatal ``INTR_STATE``
+                    bits reads them 0, so CHK-EDN-FIFO13 reads ``INTR_STATE`` 0 from
+                    a clean state.
 Every ERR_CODE compare uses the field bits of the register text; the Reserved
 bits are logged as ``rsvd``.
 
@@ -112,6 +127,7 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import CSRNG, EDN, sym
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_drbg_mode_bringup_seq import drbg_bring_up
+from seq_lib.sep_esrc_bringup_seq import SepEntropyCfg
 
 TEST = "sep_drbg_fatal_err_inject_rand_test"
 
@@ -141,6 +157,25 @@ EDN_CTRL_FIFO_RST = EDN.value(
     CMD_FIFO_RST=_MUBI_TRUE,
 )
 EDN_CTRL_ADDR = sym("EDN_CTRL_REG_ADDR")
+# EDN software command port. The Instantiate word is the RDL reset value of
+# BOOT_INS_CMD (acmd instantiate, clen 0, flag0 false), so CSRNG takes its seed
+# from the entropy source.
+EDN_SW_CMD_REQ = sym("EDN_SW_CMD_REQ_REG_ADDR")
+EDN_SW_CMD_STS = sym("EDN_SW_CMD_STS_REG_ADDR")
+EDN_SW_INSTANTIATE = EDN.reset("BOOT_INS_CMD")
+ED_STS_RDY = (
+    EDN.fields("SW_CMD_STS")["CMD_REG_RDY"]["bm"] | EDN.fields("SW_CMD_STS")["CMD_RDY"]["bm"]
+)
+ED_STS_ACK = EDN.fields("SW_CMD_STS")["CMD_ACK"]["bm"]
+ED_STS_STS = EDN.fields("SW_CMD_STS")["CMD_STS"]
+# SW_CMD_STS polls (one bus read each) before the software command gives up.
+SW_CMD_POLLS = 400
+# Non-fatal interrupt state bits that the resume Instantiate can set.
+EDN_NONFATAL = EDN.fields("INTR_STATE")["EDN_CMD_REQ_DONE"]["bm"]
+CSRNG_NONFATAL = CSRNG.mask("INTR_STATE") & ~CSRNG.fields("INTR_STATE")["CS_FATAL_ERR"]["bm"]
+# Strict resume report: CHK2 scores the conditioner output tap, because no
+# FIFO drain runs in this leaf.
+RESUME_CFG = SepEntropyCfg(chk2_source="backdoor")
 
 
 def _bits(block, *names: str) -> tuple[int, ...]:
@@ -318,6 +353,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         "CHK-DRBG-RESET",
         "CHK-EDN-FIFO13",
         "CHK-EDN-FIFO14",
+        "CHK-DRBG-RESUME",
         *(f"CHK-RAS-{f}-{h}" for f in ("CSRNG_FATAL", "EDN_FATAL") for h in RAS_HALVES),
     )
 
@@ -343,11 +379,20 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         ).start()
         ras_m0 = self.ras.mark()
         self.ras_faulted = False
+        self.after_cell_reset = False
+        self.resumed_after_error = 0
 
         for unit, bit in plan.cells:
             await self._cell(UNITS[unit], bit)
         for fifo in plan.fifo_order:
             await self._fifo_trial(fifo)
+        self._ok(
+            "DRBG-RESUME",
+            self.resumed_after_error == len(plan.cells),
+            count_line=1,
+            resumed_after_error=self.resumed_after_error,
+            cells=len(plan.cells),
+        )
         close_graded_window(self.logger)
         set_drbg_fatal_pass(False, self.logger)
         self._ras_shape(ras_m0)
@@ -430,12 +475,66 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
 
     async def _setup(self) -> None:
         close_graded_window(self.logger)
+        after_error = self.after_cell_reset
+        self.after_cell_reset = False
         await self._trng_reset()
-        self.sb = await drbg_bring_up(self, edn_ctrl=EDN_CTRL_SW_PORT, strict=False)
+        self.sb = await drbg_bring_up(self, edn_ctrl=EDN_CTRL_SW_PORT, strict=True, cfg=RESUME_CFG)
+        self.sb.set_min_matches(CHK4_genbits=0)
+        if await self._resume(after_error):
+            self.resumed_after_error += int(after_error)
         t0 = self._now()
         await self._rd(UNITS["csrng"].err_code)
         self.t_ref = max(1, self._now() - t0)
         self.logger.info("INFO-T-REF t_ref=%d bound=%d", self.t_ref, LAT_FACTOR * self.t_ref)
+
+    async def _poll_sw_sts(self, mask: int) -> tuple[bool, int]:
+        """Read EDN ``SW_CMD_STS`` until every bit of ``mask`` is set, at most ``SW_CMD_POLLS`` reads."""
+        sts = 0
+        for _ in range(SW_CMD_POLLS):
+            sts = await self._rd(EDN_SW_CMD_STS)
+            if sts & mask == mask:
+                return True, sts
+        return False, sts
+
+    async def _resume(self, after_error: bool) -> bool:
+        """CHK-DRBG-RESUME: one EDN software Instantiate, then the strict report."""
+        rdy, sts = await self._poll_sw_sts(ED_STS_RDY)
+        acked = False
+        if rdy:
+            await self._wr(EDN_SW_CMD_REQ, EDN_SW_INSTANTIATE)
+            acked, sts = await self._poll_sw_sts(ED_STS_ACK)
+        try:
+            clean = self.sb.report()
+        except AssertionError:
+            clean = False
+        res = self.sb.results
+        chk3 = res["CHK3_seed"].matches
+        fields = {
+            "after_cell_reset": int(after_error),
+            "cmd_rdy": int(rdy),
+            "cmd_ack": int(acked),
+            "cmd_sts": (sts & ED_STS_STS["bm"]) >> ED_STS_STS["bp"],
+            "report_clean": int(clean),
+            "chk1_match": res["CHK1_decor"].matches,
+            "chk2_match": res["CHK2_compress"].matches,
+            "chk3_match": chk3,
+            "chk3_mismatch": res["CHK3_seed"].mismatches,
+        }
+        if not (rdy and acked):
+            fields["reason"] = f"timeout:sw_cmd_sts polls={SW_CMD_POLLS}"
+        ok = self._ok("DRBG-RESUME", rdy and acked and clean and chk3 > 0, **fields)
+        edn_st, cs_st = UNITS["edn"].intr_state, UNITS["csrng"].intr_state
+        await self._wr(edn_st, EDN_NONFATAL)
+        await self._wr(cs_st, CSRNG_NONFATAL)
+        edn_after = await self._rd(edn_st) & EDN_NONFATAL
+        cs_after = await self._rd(cs_st) & CSRNG_NONFATAL
+        self._ctrl(
+            "DRBG-RESUME",
+            edn_after == 0 and cs_after == 0,
+            edn_nonfatal_after_w1c=f"0x{edn_after:x}",
+            csrng_nonfatal_after_w1c=f"0x{cs_after:x}",
+        )
+        return ok
 
     async def _wait_err_bit(self, unit: Unit, bit_mask: int) -> tuple[bool, int, int]:
         """Read ERR_CODE until ``bit_mask`` is set, at most 16 x t_ref clocks."""
@@ -686,6 +785,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
 
         # Reset leg (step 9).
         await self._reset_leg(unit, bit=bit)
+        self.after_cell_reset = True
         await self._release()
 
     # --- EDN command FIFO trials (steps 10-13) -----------------------------------------

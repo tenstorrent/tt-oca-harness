@@ -69,6 +69,28 @@ with ``reason=timeout:tail_ack``.
                   graded probe (request, completion, tvalid, tready, and the tdata
                   of each graded beat) reads X or Z (``xz`` = 0), and a beat with an
                   X or Z tdata is a mismatch in every compare.
+  CHK-MIX-FIPS    in the internal run (select 0, the EDN boot Instantiate with flag0
+                  false keeps the instance FIPS compliant) every handshake carries
+                  FIPS tag 1 on each of the four taps: ``crypto_edn_fips_o[i]``
+                  (``crypto_edn_req_o[i] && crypto_edn_ack_o[i]``), ``pool_edn_fips_o``
+                  (pool handshake), the pre-mux stream-0 ``drbg_int_tuser_o[0]``
+                  (``drbg_int_tvalid_o[0] && drbg_int_tready_o[0]``) and the post-mux
+                  ``km_entropy_tuser_o`` (Key Manager handshake). Each tap shows at
+                  least one handshake, and no sampled tag reads X or Z
+                  (``hw/sys/sep/doc/trng.adoc``, ``tuser`` per-word FIPS provenance and
+                  the provisional seed FIPS constant 1). Only tag 1 is reachable here.
+  CHK-KM-SEL-FIRST after the graded external run, ``EXT_TRNG_SRC_SEL`` returns to
+                  0 while the internal endpoint of stream 0 holds a word W (sampled on
+                  the clock before the select write). On the first sampled clock after
+                  the readback shows bit 0 clear, ``km_entropy_tvalid_o`` is 1 and
+                  ``km_entropy_tdata_o`` equals W: the unselected endpoint retains its
+                  queued word and the selection is combinational with no flush
+                  (``trng.adoc``, Source Selection). Control ``CTRL-KM-SEL-FIRST``: from
+                  the write to that clock no Key Manager handshake occurs and
+                  ``drbg_int_tvalid_o[0]`` stays 1, and the external beat held at the
+                  write differs from W, so a mux that stays on the external port fails
+                  the compare. The leaf offers no external word equal to the held
+                  internal word, so the control holds on every seed.
 """
 
 from __future__ import annotations
@@ -141,6 +163,8 @@ KM_OP_TIMEOUT = 400_000
 BRIDGE_DEPTH = 4
 # Clocks with every request probe of a unit low before its tail operation starts.
 QUIET_CLKS = 16
+# FIPS tag taps: crypto clients, pool, pre-mux stream 0, post-mux Key Manager stream.
+FIPS_TAPS = ("crypto", "pool", "int0", "km")
 
 
 def _le_words(data: bytes) -> list[int]:
@@ -301,6 +325,10 @@ class _Acc:
         self.dut = dut
         self.clk = 0
         self.life = MonitorLife("SINK-MIX-ACC", lambda: self.clk)
+        # FIPS tag per handshake while ``fips_on``: tap -> [handshakes, tag not 1, X/Z tag].
+        # ``reset`` keeps it, so it spans every phase of a run.
+        self.fips_on = False
+        self.fips = {t: [0, 0, 0] for t in FIPS_TAPS}
         self.reset()
 
     def reset(self, *, ext: bool = False) -> None:
@@ -368,6 +396,39 @@ class _Acc:
             self.xz += 1
         return v
 
+    def _tag(self, tap: str, tag: int | None) -> None:
+        n = self.fips[tap]
+        n[0] += 1
+        if tag is None:
+            n[2] += 1
+        elif tag != 1:
+            n[1] += 1
+
+    def _fips(self, creq: int | None, cack: int | None, km_hs: int | None) -> None:
+        """One tag per handshake on each FIPS tap; X or Z on a handshake counts as a bad tag."""
+        d = self.dut
+        cf = _known(d.crypto_edn_fips_o)
+        for i in CLIENT_BIT.values():
+            if _bit(creq, i) == 1 and _bit(cack, i) == 1:
+                self._tag("crypto", _bit(cf, i))
+            elif None in (_bit(creq, i), _bit(cack, i)):
+                self._tag("crypto", None)
+        preq, pack = _known(d.pool_edn_req_o), _known(d.pool_edn_ack_o)
+        if preq == 1 and pack == 1:
+            self._tag("pool", _known(d.pool_edn_fips_o))
+        elif None in (preq, pack):
+            self._tag("pool", None)
+        iv = _bit(_known(d.drbg_int_tvalid_o), 0)
+        ir = _bit(_known(d.drbg_int_tready_o), 0)
+        if iv == 1 and ir == 1:
+            self._tag("int0", _bit(_known(d.drbg_int_tuser_o), 0))
+        elif None in (iv, ir):
+            self._tag("int0", None)
+        if km_hs == 1:
+            self._tag("km", _known(d.km_entropy_tuser_o))
+        elif km_hs is None:
+            self._tag("km", None)
+
     async def _run(self) -> None:
         d = self.dut
         while True:
@@ -381,6 +442,8 @@ class _Acc:
             for s, i in CLIENT_BIT.items():
                 self._seen(s, _bit(creq, i), _bit(cack, i))
             self._seen("pool", _known(d.pool_edn_req_o), _known(d.pool_edn_ack_o))
+            if self.fips_on:
+                self._fips(creq, cack, km_hs)
             high = [s for s in SINKS if self.req_now.get(s) == 1]
             if len(high) >= 2:
                 self.multi_req += 1
@@ -432,7 +495,7 @@ class _Reg(SepAxiRegDriver):
 class sep_drbg_sink_mix_rand_test(sep_base_test):
     """Drawn sink set in one overlapping run; external stream into the KM sampler."""
 
-    required_evidence = ("CHK-MIX-SINK", "CHK-MIX-EXT-KM")
+    required_evidence = ("CHK-MIX-SINK", "CHK-MIX-EXT-KM", "CHK-MIX-FIPS", "CHK-KM-SEL-FIRST")
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -593,6 +656,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         self.kmac = SepKmac(self)
         self.otbn = SepOtbn(self)
         self.pool = SepEntropyPool(self)
+        self.acc.fips_on = True
         await self._boot()
         units = plan.units()
         # Step 3: each unit alone; clean busy time t_s and request latency r_s.
@@ -757,6 +821,15 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
             if unit in errors:
                 fields["reason"] = errors[unit]
             self.chk.ok("MIX-SINK", done and tail_ok and golden_ok and st.acks >= need, **fields)
+        self.acc.fips_on = False
+        f = self.acc.fips
+        tags = {}
+        for tap in FIPS_TAPS:
+            tags[f"{tap}_hs"] = f[tap][0]
+            tags[f"{tap}_not1"] = f[tap][1]
+            tags[f"{tap}_xz"] = f[tap][2]
+        fips_ok = all(f[t][0] >= 1 and f[t][1] == 0 and f[t][2] == 0 for t in FIPS_TAPS)
+        self.chk.ok("MIX-FIPS", fips_ok, expected_tag=1, **tags)
         await self._end_run()
 
     # --- external Key Manager run --------------------------------------------------------
@@ -775,6 +848,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         self.ext = SepExtTrngStream(dut, logger=self.logger).start(streams=(0,))
         self._wi = 0
         self._gi = 0
+        self.ext_skipped = 0
         # Step 8: control with bit 0 clear; the beats are discarded.
         self.acc.reset(ext=True)
         ctrl = await self._km_with_beats(pattern="random")
@@ -874,10 +948,67 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
                 f"internal endpoint 0 shows no tvalid within {SETTLE_CAP} clocks; "
                 "the select cannot return to it without a withdrawal"
             )
+        snaps: list[dict] = []
+        watch = {"run": True}
+
+        async def sample() -> None:
+            while watch["run"]:
+                await FallingEdge(dut.clk_i)
+                await ReadOnly()
+                kv, kr = _known(dut.km_entropy_tvalid_o), _known(dut.km_entropy_tready_o)
+                snaps.append(
+                    {
+                        "iv": _bit(_known(dut.drbg_int_tvalid_o), 0),
+                        "w": _word(_known(dut.drbg_int_tdata_o), 0),
+                        "kv": kv,
+                        "khs": None if kv is None or kr is None else kv & kr,
+                        "kd": _known(dut.km_entropy_tdata_o),
+                        "ev": _bit(_known(dut.ext_trng_tvalid_o), 0),
+                        "ed": _word(_known(dut.ext_trng_tdata_o), 0),
+                    }
+                )
+
+        async def next_sample() -> int:
+            n = len(snaps)
+            while len(snaps) <= n:
+                await RisingEdge(dut.clk_i)
+            return n
+
+        task = cocotb.start_soon(sample())
+        i_w = await next_sample()
         await self.reg._wr(SEL_ADDR, 0x0)
         sel = await self.reg._rd(SEL_ADDR) & SEP_CPU_CTRL.field_mask("EXT_TRNG_SRC_SEL", "sel")
         if sel & 0x1:
+            watch["run"] = False
+            await task
             raise AssertionError(f"EXT_TRNG_SRC_SEL reads 0x{sel:x} after a write of 0x0")
+        i_g = await next_sample()
+        watch["run"] = False
+        await task
+        at_w, first = snaps[i_w], snaps[i_g]
+        span = snaps[i_w : i_g + 1]
+        w = at_w["w"]
+        km_hs = sum(1 for x in span if x["khs"] != 0)
+        iv_low = sum(1 for x in span if x["iv"] != 1)
+        held = at_w["ed"]
+        self.chk.ctrl(
+            "KM-SEL-FIRST",
+            km_hs == 0 and iv_low == 0 and w is not None and held is not None and held != w,
+            clocks=i_g - i_w,
+            km_handshakes=km_hs,
+            int_tvalid_low_clk=iv_low,
+            ext_tvalid_at_write=at_w["ev"],
+            ext_held_ne_w=int(w is not None and held is not None and held != w),
+        )
+        self.chk.ok(
+            "KM-SEL-FIRST",
+            w is not None and first["kv"] == 1 and first["kd"] == w,
+            held_word="none" if w is None else f"0x{w:08x}",
+            km_tvalid=first["kv"],
+            km_tdata="none" if first["kd"] is None else f"0x{first['kd']:08x}",
+            sel=f"0x{sel:x}",
+            ext_words_skipped=self.ext_skipped,
+        )
         left = await self._until(lambda: self.ext.pending(0) == 0, BRIDGE_DEPTH * 4)
         if left is None:
             raise AssertionError("external port 0 keeps a beat with bit 0 clear")
@@ -936,11 +1067,21 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         }
 
     def _next_word(self) -> int:
-        if self._wi >= len(self.plan.ext_words):
-            raise AssertionError(f"plan word pool of {EXT_WORDS} words exhausted")
-        w = self.plan.ext_words[self._wi]
-        self._wi += 1
-        return w
+        """Next plan word that differs from the word the internal endpoint of stream 0
+        holds, so the beat held at the return to internal differs from it (the unselected
+        endpoint is backpressured and keeps that word)."""
+        dut = cocotb.top
+        held = None
+        if _bit(_known(dut.drbg_int_tvalid_o), 0) == 1:
+            held = _word(_known(dut.drbg_int_tdata_o), 0)
+        while True:
+            if self._wi >= len(self.plan.ext_words):
+                raise AssertionError(f"plan word pool of {EXT_WORDS} words exhausted")
+            w = self.plan.ext_words[self._wi]
+            self._wi += 1
+            if w != held:
+                return w
+            self.ext_skipped += 1
 
     def _next_gap(self) -> int:
         g = self.plan.gaps[self._gi % GAP_TABLE]

@@ -43,15 +43,24 @@ Checkers:
   CHK-FOUR-CLIENT  all four adapter clients are granted in one run.
   CHK1..CHK4, CHK-ROUTING  bit-exact entropy golden and five-sink routing.
 
+The adapter arbiter itself is logged only (``OBS-EDN-ARB-GNT``): on every clock
+with a non-zero grant from the EDN enable on, the request and grant vectors of
+the client arbiter. The line gives the grant count, the count of grants with two
+or more clients requesting, whether every grant was one-hot and inside the
+request vector, and the first 16 grants as ``req:index``. ``trng.adoc`` states
+round-robin arbitration but no order, initial pointer or bound, so none of it
+is graded.
+
 Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (observation
-ports).
+ports), ``edn_crypto_arb_req_o`` / ``edn_crypto_arb_gnt_o`` (client arbiter
+request and grant).
 """
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_drbg_scoreboard import SepDrbgScoreboard
 from env.sep_kmac_golden import kmac_family_words
 from sep_base_test import sep_base_test
@@ -134,6 +143,61 @@ def _ack() -> int:
         return int(cocotb.top.crypto_edn_ack_o.value)
     except ValueError:
         return 0
+
+
+def _known(sig) -> int | None:
+    """The value of ``sig``, or None when a bit is X or Z."""
+    value = sig.value
+    bits = str(getattr(value, "binstr", value)).strip()
+    return int(bits, 2) if bits and all(c in "01" for c in bits) else None
+
+
+class _ArbGrantLog:
+    """Request and grant vectors of the crypto-EDN client arbiter, per clock.
+
+    Samples after each rising edge in the read-only phase. A clock counts when the
+    grant vector is non-zero; ``contended`` counts those with two or more request
+    bits set. ``onehot_in_req`` stays 1 while every grant is one-hot and inside the
+    request vector. ``xz`` counts clocks with an X or Z on either vector.
+    """
+
+    def __init__(self, dut) -> None:
+        self.dut = dut
+        self.grants = 0
+        self.contended = 0
+        self.onehot_in_req = 1
+        self.xz = 0
+        self.first: list[str] = []
+        self.run = True
+        self.task = cocotb.start_soon(self._run())
+
+    async def _run(self) -> None:
+        dut = self.dut
+        while self.run:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            req = _known(dut.edn_crypto_arb_req_o)
+            gnt = _known(dut.edn_crypto_arb_gnt_o)
+            if req is None or gnt is None:
+                self.xz += 1
+                continue
+            if gnt == 0:
+                continue
+            self.grants += 1
+            if bin(req).count("1") >= 2:
+                self.contended += 1
+            onehot = gnt & (gnt - 1) == 0
+            if not onehot or gnt & ~req:
+                self.onehot_in_req = 0
+            if len(self.first) < _GRANT_SAMPLE_TARGET:
+                idx = str(gnt.bit_length() - 1) if onehot else f"g0x{gnt:x}"
+                self.first.append(f"0x{req:x}:{idx}")
+
+    def line(self) -> str:
+        return (
+            f"grants={self.grants} contended={self.contended} "
+            f"onehot_in_req={self.onehot_in_req} xz={self.xz} first=[{','.join(self.first)}]"
+        )
 
 
 @pyuvm.test()
@@ -238,6 +302,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         # Both clients are still held (EDN has not been enabled). Start the
         # grant sampler, then enable EDN so the adapter has to pick.
         cocotb.start_soon(_monitor())
+        arb = _ArbGrantLog(dut)
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
 
         # Collect grants for a fixed budget; the asserts below decide.
@@ -276,6 +341,8 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             grants[:16],
             dual_grants[:12],
         )
+        arb.run = False
+        self.logger.info("OBS-EDN-ARB-GNT %s", arb.line())
 
         # --- OTBN RND, the third adapter client ------------------------------
         # AES (bit 0) and OTBN URND (bit 3) are proven above. RND (bit 2) cannot
