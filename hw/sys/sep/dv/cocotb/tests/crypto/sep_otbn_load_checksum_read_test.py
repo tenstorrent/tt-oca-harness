@@ -29,6 +29,10 @@ Then, still at IDLE, for IMEM, then DMEM, for the first word, a drawn middle wor
      equals the value before the write.
   8. One 32-bit read of the word.
 
+After the last word of the window:
+
+  9. One 32-bit read of each of the three words again.
+
 Last, one 64-bit (AxSIZE 3) read of IMEM words 0 and 1, after a 32-bit write of a
 drawn word to word 1.
 
@@ -52,9 +56,11 @@ Checks:
                             again after the 8-bit IMEM read.
   CHK-OTBN-DMEM-READ-CRC    the same for DMEM.
   CHK-OTBN-IMEM-EDGE        the read of step 8 returns the word of step 7, for the
-                            first, middle and last IMEM word. IMEM is a read-write
-                            window of 4096 32-bit words, accessible at IDLE
-                            (``otbn.hjson`` :788-806).
+                            first, middle and last IMEM word, and the read of step
+                            9 (``phase=hold``) returns that word again, so a write
+                            that also lands on another of the three words fails.
+                            IMEM is a read-write window of 4096 32-bit words,
+                            accessible at IDLE (``otbn.hjson`` :788-806).
   CHK-OTBN-DMEM-EDGE        the same for DMEM (``otbn.hjson`` :811-829).
 
 Log-only:
@@ -68,9 +74,9 @@ Log-only:
                             the outcome.
 
 FCOV: the graded window (``sep_otbn_execute_cg`` ``cp_imem_rdback`` and
-``cp_dmem_rdback``) is open only for steps 6 to 8. The sampler counts a read that
-returns the last whole-word write to that address, so only the read of step 8 can
-sample; a FAIL closes the window before it is recorded.
+``cp_dmem_rdback``) is open only for steps 6 to 9. The sampler counts a read that
+returns the last whole-word write to that address, so only the reads of steps 8
+and 9 can sample; a FAIL closes the window before it is recorded.
 """
 
 from __future__ import annotations
