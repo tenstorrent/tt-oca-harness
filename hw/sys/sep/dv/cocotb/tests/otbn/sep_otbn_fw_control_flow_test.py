@@ -147,16 +147,19 @@ def parse_line(console: str, head: str) -> dict[str, str] | None:
 
 
 def episodes(changes: list[tuple[int, int | None]]) -> tuple[list, list[tuple[int, list, bool]]]:
-    """Split the (time, code) changes of the probe at the first IDLE.
+    """Split the (time, code) changes of the probe where the reset wipe ends.
 
-    Returns the codes before it and, per operation after it, (start time, codes,
+    The reset wipe ends at the first IDLE after the first BUSY_SEC_WIPE_INT; a
+    2-state simulator reads IDLE during reset, before the wipe starts. Returns
+    the codes before that IDLE and, per operation after it, (start time, codes,
     ended): an operation is the codes from a change away from IDLE up to the next
     IDLE; ``ended`` is False for one still open at the end of the record.
     """
     codes = [c for _, c in changes]
-    if ST_IDLE not in codes:
+    wipe = codes.index(ST_SEC_WIPE_INT) if ST_SEC_WIPE_INT in codes else len(codes)
+    if ST_IDLE not in codes[wipe:]:
         return codes, []
-    first = codes.index(ST_IDLE)
+    first = codes.index(ST_IDLE, wipe)
     ops: list[tuple[int, list, bool]] = []
     for t_ps, c in changes[first + 1 :]:
         if c == ST_IDLE:
