@@ -1341,8 +1341,10 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         ``_PULSE_CYCLES`` clk_i cycles and until ``wdt_timer_rst_req_o`` reads 0,
         for at most ``_BITE_FALL_WDT`` clk_wdt periods ("Holds until `wdt_rst_ni`
         resets the watchdog", ``hw/sys/sep/doc/port_table.adoc:26``). Controls:
-        ``sep_cpu_reset_n_o`` reads 0 in the pulse (``clk_rst.adoc:60``), and
-        ``WDOG_REGWEN`` reads 1 after it (CTRL-MISSING otherwise). Returns the
+        ``sep_cpu_reset_n_o`` reads 0 in the pulse (``clk_rst.adoc:60``),
+        ``wdt_timer_rst_req_o`` reads 0 after it (``port_table.adoc:26``;
+        ``hw/sys/sep/doc/reset_controller.adoc:56-58``) and ``WDOG_REGWEN`` reads 1
+        after it (CTRL-MISSING otherwise). Returns the
         bite request before the pulse, the clk_i edge of the pulse where it read 0
         (None if it did not) and its level after the release.
         """
@@ -1383,7 +1385,9 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"req_fall_clk_i={req_fall} req_after_release={req_after} cpu_reset_up={cpu_up} "
             f"regwen_after=0x{regwen & _REGWEN_MASK:x}"
         )
-        if not (cpu_low and cpu_up and ok and regwen & _REGWEN_MASK == _REGWEN_MASK):
+        if not (
+            cpu_low and cpu_up and not req_after and ok and regwen & _REGWEN_MASK == _REGWEN_MASK
+        ):
             await self._grade(False, "CTRL-MISSING WDT-RST-PULSE", line)
         self.logger.info("INFO-WDT-RST-PULSE: %s", line)
         return {"req_before": req_before, "req_fall": req_fall, "req_after": req_after}
@@ -1476,6 +1480,21 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             pulse["req_fall"],
             pulse["req_after"],
         )
+        # The count passed WDOG_BITE_THOLD before the wrap, and a bite "on every AON
+        # clock tick when the count is at least WDOG_BITE_THOLD" (README.md:56) holds
+        # the request until wdt_rst_ni (port_table.adoc:26). This is the positive
+        # control of the no-bite clause of CHK-WDT-COMBO, which reads the same output.
+        await self._grade(
+            pulse["req_before"] == 1,
+            "CTRL-WDT-BITE-REACH",
+            f"wdt_timer_rst_req_o={pulse['req_before']} before the watchdog reset pulse "
+            f"after the count passed WDOG_BITE_THOLD=0x{bite:08x}, expected 1",
+        )
+        self.logger.info(
+            "CTRL-WDT-BITE-REACH: wdt_timer_rst_req_o=1 after the count passed "
+            "WDOG_BITE_THOLD=0x%08x",
+            bite,
+        )
 
     async def _chk_combo(self) -> None:
         """CHK-WDT-COMBO: the wakeup timer, bark, bite threshold and a pet in one window.
@@ -1561,10 +1580,13 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         passes = []
         limit_ps = (bite - _PET_MARGIN) * period
         while True:
+            t_st = int(get_sim_time("ps"))
             st = await self.wdt.read(INTR_STATE)
-            wc = await self.wdt.read(WDOG_COUNT)
-            kc = await self.wdt.read(WKUP_COUNT_LO)
-            passes.append((st, wc, kc))
+            wc, _, t_wc = await self._timed_read(WDOG_COUNT)
+            kc, _, t_kc = await self._timed_read(WKUP_COUNT_LO)
+            # clk_wdt edges from the status read issue to each count read response: the
+            # count can advance by this much after the status is sampled.
+            passes.append((st, wc, kc, -(-(t_wc - t_st) // period), -(-(t_kc - t_st) // period)))
             if st & both == both:
                 break
             await self._grade(
@@ -1582,13 +1604,15 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         ):
             counts = [p[idx] for p in passes]
             d_pass = max([y - x for x, y in zip(counts, counts[1:])] or [0])
+            lag = max(p[idx + 2] for p in passes)
             k = next(i for i, p in enumerate(passes) if p[0] & bit)
             early = [(i, p[idx]) for i, p in enumerate(passes) if p[0] & bit and p[idx] < thr - a]
             before = passes[k - 1][idx] if k else None
-            grades[name] = (k, passes[k][idx], before, d_pass)
+            grades[name] = (k, passes[k][idx], before, d_pass, lag)
             frag = (
                 f"{name}: thold={thr} status_pass={k} count_at_status={passes[k][idx]} "
-                f"count_before={before} early={early} allowance={a} d_pass={d_pass}"
+                f"count_before={before} early={early} allowance={a} d_pass={d_pass} "
+                f"read_lag={lag} early_tolerance={a + lag}"
             )
             if k < 1:
                 await self._grade(
@@ -1659,11 +1683,14 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"wdt_timer_rst_req_o high on {mon['high']} of {mon['n']} clk_i edges before the "
             f"bite threshold {bite} ({ctrl_txt})",
         )
-        (wk_k, wk_c, wk_b, wk_d), (bk_k, bk_c, bk_b, bk_d) = grades["wkup"], grades["bark"]
+        (wk_k, wk_c, wk_b, wk_d, wk_l), (bk_k, bk_c, bk_b, bk_d, bk_l) = (
+            grades["wkup"],
+            grades["bark"],
+        )
         self.logger.info(
             "CHK-WDT-COMBO PASS: %s tw=%d tb=%d bite_thold=%d allowance=%d; wkup status_pass=%d "
-            "count_at_status=%d count_before=%d d_pass=%d; bark status_pass=%d count_at_status=%d "
-            "count_before=%d d_pass=%d; pet count_before=%d count_after=%d bound=%d; %s "
+            "count_at_status=%d count_before=%d d_pass=%d early_tolerance=%d; bark status_pass=%d "
+            "count_at_status=%d count_before=%d d_pass=%d early_tolerance=%d; pet count_before=%d count_after=%d bound=%d; %s "
             "rst_req_high=0 rst_req_samples=%d",
             lock_txt,
             tw,
@@ -1674,10 +1701,12 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             wk_c,
             wk_b,
             wk_d,
+            a + wk_l,
             bk_k,
             bk_c,
             bk_b,
             bk_d,
+            a + bk_l,
             c_pre,
             c_pet,
             pet_hi,
