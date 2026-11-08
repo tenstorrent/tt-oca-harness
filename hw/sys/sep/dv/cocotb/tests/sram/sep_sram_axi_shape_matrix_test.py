@@ -376,8 +376,8 @@ class _Cfg:
         self.meas_data = uniq64()
         self.meas_ids = rng.sample(list(S_IDS), 2)
 
-        # Strobe legs on the inbound master, each over a word written in full: the
-        # drawn 8-bit sparse strobe, then every WSTRB 0x00-0x0F in a seeded order.
+        # Strobe legs on the inbound master, each over a word written in full: every
+        # WSTRB 0x00-0x0F in a seeded order, then the drawn 8-bit sparse strobe.
         # Each new value differs from the stored one in every byte, so each lane
         # shows which value it holds. The stored-bit flip is an open-value leg.
         leg = SepSeededRng(seed ^ LEG_SALT)
