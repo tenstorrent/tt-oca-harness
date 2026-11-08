@@ -207,18 +207,20 @@ GO value during a transfer is not graded.
                       second run; at least one run of the seed has the
                       probe at 1 before its GO (CTRL-DMA-DV-FALL-REACH).
   CHK-DMA-HASH-CHAIN  per message with a split form: single-chunk and split
-                      digests are equal; the split run of k chunks reads
-                      CHUNK_DATA_SIZE = L/k back before its GO, shows exactly
-                      k-1 STATUS reads with CHUNK_DONE=1, BUSY=0, DONE=0 and
-                      takes exactly k GO writes to DONE.
+                      digests are equal; the split run of k chunks shows
+                      exactly k-1 STATUS reads with CHUNK_DONE=1, BUSY=0,
+                      DONE=0 and takes exactly k GO writes to DONE. Control
+                      (``CTRL-DMA-CHUNK-RB``, else CTRL-MISSING):
+                      CHUNK_DATA_SIZE reads L/k back before the GO.
   CHK-DMA-CONT-CFG    per Leg D continuation run: the digest words equal the
                       hashlib golden of the first-start algorithm in the
                       first-start byte order; DONE=1, STATUS.ERROR=0,
                       ERROR_CODE=0, SHA2_DIGEST_VALID=1 after the chain, the
                       probe edges of CHK-DMA-HASH-VALID, and the copy equals
-                      the source; CHUNK_DATA_SIZE reads L/k before the GO,
-                      exactly k-1 stop reads and exactly k GO writes as in
-                      CHK-DMA-HASH-CHAIN. Controls (else CTRL-MISSING): at
+                      the source; exactly k-1 stop reads and exactly k GO
+                      writes as in CHK-DMA-HASH-CHAIN. Controls (else
+                      CTRL-MISSING): CHUNK_DATA_SIZE reads L/k before the GO
+                      (``CTRL-DMA-CHUNK-RB``); at
                       least one run of the seed has the probe at 1 before its GO; at
                       least one later start; a CONTROL read after each later start
                       shows the OPCODE and DIGEST_SWAP that start wrote, both
@@ -1111,6 +1113,18 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         line = f"CTRL-MISSING {chk} seed={self.seed} {why}"
         self.logger.error(line)
         raise AssertionError(line)
+
+    def _ctrl_chunk_rb(self, chk: str, tag: str, chunk_rb: int, expect: int) -> None:
+        """CTRL-DMA-CHUNK-RB: CHUNK_DATA_SIZE reads back the chunk written, else CTRL-MISSING."""
+        self.logger.info(
+            "CTRL-DMA-CHUNK-RB LOG seed=%d %s chunk_rb=%d expect_chunk=%d",
+            self.seed,
+            tag,
+            chunk_rb,
+            expect,
+        )
+        if chunk_rb != expect:
+            self._ctrl_missing(chk, f"{tag} CHUNK_DATA_SIZE read {chunk_rb}, wrote {expect}")
 
     def _open(self) -> None:
         open_graded_window(TEST, self.logger)
@@ -2196,6 +2210,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             order=XFER_ORDER_REGS,
         )
         chunk_rb = await ops.rd(CHUNK_DATA_SIZE) if split else None
+        if split:
+            self._ctrl_chunk_rb("CHK-DMA-HASH-CHAIN", tag, chunk_rb, chunk)
         if run_idx >= 1:
             pre = await ops.read_status()
             self.logger.info("LEGD %s pre-GO %s", tag, pre.fmt())
@@ -2389,12 +2405,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                     continue
                 k = m.split
                 expect_go = k
-                ok = (
-                    a == b
-                    and si["go_writes"] == expect_go
-                    and si["stops"] == k - 1
-                    and si["chunk_rb"] == si["chunk"]
-                )
+                ok = a == b and si["go_writes"] == expect_go and si["stops"] == k - 1
                 self._pass(
                     "CHK-DMA-HASH-CHAIN",
                     ok,
@@ -2474,6 +2485,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             order=XFER_ORDER_REGS,
         )
         chunk_rb = await ops.rd(CHUNK_DATA_SIZE)
+        self._ctrl_chunk_rb("CHK-DMA-CONT-CFG", tag, chunk_rb, length // k)
         self._open()
         dv_pre = self.tap.level("sha2_digest_valid")
         m_tap = self.tap.mark()
@@ -2568,7 +2580,6 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             and copy_mm == 0
             and go_writes == k
             and stops == k - 1
-            and chunk_rb == length // k
         )
         self._pass(
             "CHK-DMA-CONT-CFG",

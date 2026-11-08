@@ -92,9 +92,13 @@ Checkers:
                  word (``hw/sys/sep/doc/dma.adoc:58-59``: the TCM backdoor
                  range is available to the DMA; ``:118-121``: whole 32-bit
                  words; ``hw/sys/sep/doc/cpu.adoc:46-47``). The source words
-                 are written by single-word DMA copies from the SRAM. Control:
-                 both ``dbg_iccm_active_o`` and ``dbg_dccm_active_o`` rise
-                 during each copy.
+                 are written by single-word DMA copies from the SRAM. Controls
+                 (else CTRL-MISSING): before each copy, every destination word
+                 is written with the complement of its source word and reads
+                 it back through the same DMA readback path
+                 (CTRL-TCM-T2T-STAGE), so a copy that moves nothing fails on
+                 data; both ``dbg_iccm_active_o`` and ``dbg_dccm_active_o``
+                 rise during each copy.
   CHK-TCM-ABORT-RECOVER  CONTROL.ABORT written while a 32- to 64-word copy from
                  the SRAM to the DCCM runs sets STATUS.ABORTED; after the STATUS
                  clear, a full copy of new words to the same DCCM words ends with
@@ -168,8 +172,10 @@ FLIP_STAGE = SRAM_BASE + 0x0_9000
 RB_STAGE = SRAM_BASE + 0x1_0000
 # Source and readback words of the logged sub-word copies.
 SUB_STAGE = SRAM_BASE + 0x0_A000
-# Source words of the TCM-to-TCM, seam and abort legs, and their readback words.
+# Source words of the TCM-to-TCM, seam and abort legs, the staged TCM-to-TCM
+# destination words, and their readback words.
 T2T_STAGE = SRAM_BASE + 0x0_B000
+T2T_DST_STAGE = SRAM_BASE + 0x0_B080
 SEAM_STAGE = SRAM_BASE + 0x0_B100
 ABORT_STAGE = SRAM_BASE + 0x0_C000
 RECOVER_STAGE = SRAM_BASE + 0x0_C100
@@ -940,6 +946,24 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
                 await self._write_tcm(
                     smem, src + WORD_BYTES * i, data[i], T2T_STAGE + WORD_BYTES * i, f"{tag} source"
                 )
+            stage = [~w & M32 for w in data]
+            for i in range(n):
+                await self._write_tcm(
+                    dmem,
+                    dst + WORD_BYTES * i,
+                    stage[i],
+                    T2T_DST_STAGE + WORD_BYTES * i,
+                    f"{tag} destination stage",
+                )
+            stage_bad = await self._read_words(dmem, dst, stage, f"{tag} destination stage")
+            same = sum(1 for a, b in zip(stage, data) if a == b)
+            stage_line = (
+                f"dir={smem}->{dmem} dst=0x{dst:08x} words={n} equal_to_source={same} "
+                f"stage_mismatches={len(stage_bad)} first={stage_bad[:2]}"
+            )
+            self.logger.info("CTRL-TCM-T2T-STAGE: %s", stage_line)
+            if same or stage_bad:
+                self._missing("CHK-TCM-DMA-T2T", stage_line)
             await self._clear_bus_err()
             open_graded_window(TEST, self.logger)
             st, ecode, berr, rose = await self._copy_n(src, dst, n, tag)

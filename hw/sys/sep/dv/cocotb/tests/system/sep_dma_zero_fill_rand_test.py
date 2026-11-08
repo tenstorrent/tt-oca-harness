@@ -122,7 +122,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          CTRL-MISSING.
   CHK-DMA-ZERO-WIN-LOCK  RANGE_REGWEN reads other than True after it is written
                          False and LIMIT keeps its value through a later write
-                         of LIMIT + 64 (its response is logged, not graded);
+                         of LIMIT + 64 (its response is logged as
+                         ``OBS-DMA-ZERO-LOCK-RESP``, not graded);
                          a fill past LIMIT then ends in DST_ADDR_ERROR with
                          the AW, W and B shape of CHK-DMA-ZERO-WIN-ERR for
                          the beats up to LIMIT and no beat beyond it.
@@ -139,7 +140,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
 Logged only: ``OBS-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
 rise (``sep_dma_abort_recovery_rand_test`` grades that contract);
 ``OBS-DMA-ZF-BASELIM``, STATUS, ERROR_CODE, the AW list (address, WSTRB) and the
-words around BASE after the Leg B fill.
+words around BASE after the Leg B fill; ``OBS-DMA-ZERO-LOCK-RESP``, the response
+of the Leg L write of LIMIT + 64 under the lock (no specification text names
+the response of a write to a locked register).
 
 Run mode: no_cpu, target ``lsu_stub_all_live``, ``+skip_fuse_sense``; Verilator
 and VCS. Graded-window owner code from ``tb/sep_fcov_owner_codes.svh``. The
@@ -1348,6 +1351,12 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         seq = await ops.access(SepAxiOp.WRITE, RANGE_LIMIT, limit_wr, ungraded=True)
         limit_resp = int(seq.resp_code)
         limit_rb = await ops.rd(RANGE_LIMIT)
+        self.logger.info(
+            "OBS-DMA-ZERO-LOCK-RESP seed=%d limit_wr=0x%08x limit_wr_resp=%d",
+            self.seed,
+            limit_wr,
+            limit_resp,
+        )
         lock_line = (
             f"regwen=0x{regwen:x} limit_wr=0x{limit_wr:08x} limit_wr_resp={limit_resp} "
             f"limit_readback=0x{limit_rb:08x}"

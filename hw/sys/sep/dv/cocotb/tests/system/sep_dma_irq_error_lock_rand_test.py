@@ -254,8 +254,10 @@ Checkers:
                     the SIZE_ERROR value just before it (else CTRL-MISSING).
                     A FAIL is logged at once and raised at the end of the
                     run, so the later checks still run and print.
-  CHK-DMA-REGWEN-CLR per L2 kind: after the write of 1 to STATUS.ERROR, with
-                    BUSY=0, CFG_REGWEN reads True. Control
+  CHK-DMA-REGWEN-CLR per L2 kind: after the write of 1 to STATUS.ERROR, STATUS
+                    is polled for BUSY=0 (at most 200 reads, else
+                    CTRL-MISSING; the line logs ``busy_polls``), then
+                    CFG_REGWEN reads True. Control
                     (``CTRL-DMA-REGWEN-CLR``, else CTRL-MISSING): in each L5
                     tied-off trial, with BUSY=1 just before the ABORT,
                     CFG_REGWEN reads False.
@@ -450,6 +452,7 @@ ASID_OT = 0x7
 ASID_TIEOFF = (("src", 0x9), ("src", 0xA), ("dst", 0x9), ("dst", 0xA))
 ASID_VALID = (ASID_OT, *sorted({v for _side, v in ASID_TIEOFF}))
 ABORT_POLL_BOUND = 200  # STATUS reads in the wait for ABORTED (L5); its control meets it
+CLR_IDLE_POLL_BOUND = 200  # STATUS reads in the wait for BUSY=0 after the ERROR clear
 HASH_OPS = (OP_SHA256, OP_SHA384, OP_SHA512)
 VALID_POLL_BOUND = 200  # STATUS reads in a wait for SHA2_DIGEST_VALID
 IRQ_SETTLE = 8  # clocks before a PIC source level is sampled
@@ -950,14 +953,26 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         self._pass("CHK-DMA-ERR-W0", text)
 
     async def _regwen_clr(self, kind: str, st: DmaStatus) -> None:
-        """CFG_REGWEN reads True once the error is cleared and the DMA is idle."""
+        """CFG_REGWEN reads True once the error is cleared and the DMA is idle.
+
+        ``st`` is the first STATUS read after the ERROR W1C; STATUS is polled
+        for BUSY=0 for at most CLR_IDLE_POLL_BOUND reads before CFG_REGWEN.
+        """
+        polls = 1
+        while st.busy and polls < CLR_IDLE_POLL_BOUND:
+            st = await self.ops.read_status()
+            polls += 1
+        if st.busy:
+            self._ctrl_missing(
+                "CTRL-DMA-REGWEN-CLR",
+                f"CHK-DMA-REGWEN-CLR kind={kind} BUSY=1 after {polls} STATUS reads "
+                f"(bound {CLR_IDLE_POLL_BOUND}) {st.fmt()}",
+            )
         regwen = (await self.ops.rd(CFG_REGWEN) & CFG_REGWEN_MASK) >> _CFG_REGWEN_LSB
         text = (
             f"kind={kind} cfg_regwen=0x{regwen:x} expect=0x{CFG_REGWEN_TRUE:x} "
-            f"busy={st.busy} error={st.error}"
+            f"busy={st.busy} error={st.error} busy_polls={polls}"
         )
-        if st.busy:
-            self._ctrl_missing("CTRL-DMA-REGWEN-CLR", f"CHK-DMA-REGWEN-CLR BUSY=1: {text}")
         if regwen != CFG_REGWEN_TRUE:
             self._fail("CHK-DMA-REGWEN-CLR", text)
         self._pass("CHK-DMA-REGWEN-CLR", text)
