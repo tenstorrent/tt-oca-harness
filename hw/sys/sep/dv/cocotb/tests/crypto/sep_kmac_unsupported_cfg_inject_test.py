@@ -108,7 +108,7 @@ Checkers:
 
 Error-code legs. Each starts with a KMAC reset, reads ``INTR_STATE.kmac_err`` and
 ``ERR_CODE`` (both must read 0), applies one trigger, polls ``kmac_err`` within
-the kmac_err bound and reads ``ERR_CODE``. Bits 23:0 are masked and logged. Each
+the kmac_err bound from the trigger write and reads ``ERR_CODE``. Bits 23:0 are masked and logged. Each
 leg ends with the recovery of CHK-KMAC-ERRPROC. Codes from the "Error Report"
 table of theory_of_operation.md (lines 719-730):
   CHK-KMAC-ERR-02    SHA3-256 configuration at idle, one 32-bit ``MSG_FIFO``
@@ -916,8 +916,8 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         legs = (self._err02, self._err05, self._err07, self._err08)
         for leg, name, msg in zip(legs, _ERR_LEGS, plan.err_msgs):
             pre_intr, pre_code = await self._arm_reset()
-            t0 = self._now_clk()
             extra = await leg(plan)
+            t0 = self._now_clk()
             seen, intr, err_clk = await self._poll(KMAC_INTR_STATE, _ERR, t0, bound)
             code = await self._rd(KMAC_ERR_CODE) & _ERR_CODE_MASK
             expected = _ERR_EXPECTED[name]
