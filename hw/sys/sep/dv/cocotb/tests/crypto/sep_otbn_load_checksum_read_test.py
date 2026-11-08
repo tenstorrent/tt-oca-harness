@@ -201,6 +201,7 @@ class sep_otbn_load_checksum_read_test(sep_base_test):
         self, rng: SepSeededRng, name: str, base: int, edges: tuple[tuple[str, int], ...]
     ) -> None:
         otbn = self.otbn
+        written: list[tuple[str, int, int, int]] = []
         for where, idx in edges:
             addr = base + idx * WORD_BYTES
             pre = (await otbn._rd(addr)) & 0xFFFF_FFFF
@@ -223,6 +224,24 @@ class sep_otbn_load_checksum_read_test(sep_base_test):
                 pre=f"0x{pre:08x}",
                 wdata=f"0x{wdata:08x}",
                 redraws=redraws,
+                rdata=f"0x{word:08x}",
+                expect=f"0x{wdata:08x}",
+            )
+            written.append((where, idx, addr, wdata))
+        # Each edge word still holds its own value after every edge write: a
+        # write that also lands on another edge word fails here.
+        for where, idx, addr, wdata in written:
+            word = (await otbn._rd(addr)) & 0xFFFF_FFFF
+            ok = word == wdata
+            if not ok:
+                close_graded_window(self.logger)
+            self.chk.ok(
+                f"OTBN-{name}-EDGE",
+                ok,
+                word=where,
+                phase="hold",
+                idx=idx,
+                addr=f"0x{addr:08x}",
                 rdata=f"0x{word:08x}",
                 expect=f"0x{wdata:08x}",
             )
