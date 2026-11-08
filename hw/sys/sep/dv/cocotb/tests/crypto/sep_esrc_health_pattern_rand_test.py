@@ -69,9 +69,12 @@ Checkers:
                    read back before the pattern starts);
                    with ENABLE bit 0 cleared while REPETITION_TEST_COUNT reads
                    at least 100, the count reads below 100 and below its value
-                   before the write after one window (the run state is cleared).
-                   The exact cleared value is not stated: OBS-HT-REPCOUNT-AFTER
-                   logs it.
+                   before the write after one window (the run state is cleared;
+                   control CTRL-HT-ENABLE-REP-WRITE: ENABLE reads back 6 after
+                   the write). The exact cleared value is not stated:
+                   OBS-HT-REPCOUNT-AFTER logs it. No enabled control runs: no
+                   text states whether the count restarts at a failure while
+                   the tester stays enabled.
   CHK-HT-W1C       a write of 1 to the set bits of GENERATOR_k_HEALTH_STATUS
                    clears them. The write runs with every tester disabled, so no
                    window end can latch a bit between the write and the read;
@@ -122,15 +125,21 @@ Checkers:
                    RCT_LIMIT C and APT_LIMIT A copied into REPETITION_LIMIT and
                    APT_PROPORTION_1BIT read back exactly (part copy); writes of
                    MIN_ENTROPY_H alone, up to the first code H' whose RCT_LIMIT
-                   C' differs from C, leave both limits unchanged (part h_only);
-                   with H' written and only the repetition tester on, runs of C
-                   words on all lanes latch nothing and runs of C + 1 latch
-                   exactly bit 0 in every generator ("Maximum allowed",
-                   entropy_source.rdl:320); with only the APT tester on, a
-                   1024-word period with A ones latches nothing and one with
-                   A + 1 latches exactly bit 3 (entropy_source.rdl:394); C'
-                   copied into REPETITION_LIMIT flips the result of the run
-                   length between C and C' (C + 1 when C' > C, C when C' < C).
+                   C' differs from C by at least 3, leave both limits unchanged
+                   (part h_only); with H' written and only the repetition
+                   tester on, runs of C - 2 words on all lanes latch nothing
+                   and runs of C + 1 latch exactly bit 0 in every generator;
+                   with only the APT tester on, a 1024-word period with A ones
+                   latches nothing and one with A + 1 latches exactly bit 3
+                   (entropy_source.rdl:394); C' copied into REPETITION_LIMIT
+                   flips the result of a run length graded at C (C + 1 when
+                   C' > C, C - 2 when C' < C).
+                   REPETITION_LIMIT is the "Maximum allowed" count
+                   (entropy_source.rdl:320) and RCT_LIMIT is the SP 800-90B
+                   cutoff C (:966), which fails at a run of C: runs of C - 1
+                   and C are logged as OBS-REC-COPY-BOUNDARY with their result.
+                   A run of C - 1 can count one more when the tester enable
+                   lands inside it, so passes are graded at C - 2 only.
                    Controls (CTRL-REC-COPY): the H readbacks, A + 1 within the
                    window, the cleared statuses and the ENABLE readback before
                    each trial.
@@ -288,6 +297,10 @@ H_MAX = M_MIN_H >> P_MIN_H
 # RCT_LIMIT is 1 + ceil(20 / H) in 16 bits (entropy_source.rdl:966-967), and
 # REPETITION_LIMIT holds 8 bits (:322): code 0x01 gives 321, code 0x02 gives 161.
 REC_H_MIN = 0x02
+# The copy leg grades a pass at a run of C - 2 (C is at least 3 at H = 0xFF) and
+# a flip between C and a C' at least REC_FLIP_GAP away, so that each graded run
+# is at least two below or one above both limits.
+REC_FLIP_GAP = 3
 M_RCT = _fbm("RECOMMENDED_THRESHOLDS", "RCT_LIMIT")
 P_RCT = _fbp("RECOMMENDED_THRESHOLDS", "RCT_LIMIT")
 M_APT_REC = _fbm("RECOMMENDED_THRESHOLDS", "APT_LIMIT")
@@ -778,6 +791,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             close_graded_window(self.logger)
             return None, None
         await self._ht_ctrl(enable=6)
+        enable_rb = ((await self._rd(A_HT_CTRL)) & M_HT_ENABLE) >> P_HT_ENABLE
+        self.chk.ctrl("HT-ENABLE-REP-WRITE", enable_rb == 6, enable=enable_rb, want=6)
         await self._wait_words(w, w)
         after = (await self._rd(A_REP_COUNT)) & M_REP_COUNT
         close_graded_window(self.logger)
@@ -1058,7 +1073,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         await self._ht_ctrl(rep_limit=c)
         await self._wr(A_APT_1BIT, ENTROPY_SOURCE.value("APT_PROPORTION_1BIT", LIMIT=a))
         rep, apt = await self._copied()
-        usable = h_rb == h and apt_lo == 0 and c >= 1 and a + 1 <= w
+        usable = h_rb == h and apt_lo == 0 and c - 2 >= 1 and a + 1 <= w
         self.chk.ctrl(
             "REC-COPY",
             usable,
@@ -1083,7 +1098,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         if not usable:
             return
 
-        # MIN_ENTROPY_H-only writes, up to the first code with another RCT_LIMIT.
+        # MIN_ENTROPY_H-only writes, up to the first code whose RCT_LIMIT is at
+        # least REC_FLIP_GAP from C.
         h2 = c2 = None
         tried = 0
         rb_ok = True
@@ -1091,7 +1107,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             tried += 1
             rb, rct, _ = await self._recommend(code)
             rb_ok = rb_ok and rb == code
-            if rct != c:
+            if abs(rct - c) >= REC_FLIP_GAP:
                 h2, c2 = code, rct
                 break
         rep, apt = await self._copied()
@@ -1111,13 +1127,29 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             return w + 2 * run + 2
 
         common = {"limit": c, "h_written": f"0x{h2:02x}" if h2 is not None else "na"}
-        st = await self._rec_trial("rct_pass", HT_EN_REP, Square(c, 0), rep_words(c))
-        self._grade_rec("rct_pass", st, None, run=c, **common)
-        st = await self._rec_trial("rct_trip", HT_EN_REP, Square(c + 1, 0), rep_words(c + 1))
-        self._grade_rec("rct_trip", st, BIT_REP, run=c + 1, **common)
+        run_pass, run_trip = c - 2, c + 1
+        st = await self._rec_trial("rct_pass", HT_EN_REP, Square(run_pass, 0), rep_words(run_pass))
+        self._grade_rec("rct_pass", st, None, run=run_pass, **common)
+        for run in (c - 1, c):
+            st = await self._rec_trial("boundary", HT_EN_REP, Square(run, 0), rep_words(run))
+            if all(s & M_GEN == 0 for s in st):
+                result = "pass"
+            elif all(s & GRADED_BITS == 1 << BIT_REP for s in st):
+                result = "trip"
+            else:
+                result = "mixed"
+            self.chk.obs(
+                "REC-COPY-BOUNDARY",
+                run=run,
+                result=result,
+                gen_status_all=[f"0x{s:02x}" for s in st],
+                **common,
+            )
+        st = await self._rec_trial("rct_trip", HT_EN_REP, Square(run_trip, 0), rep_words(run_trip))
+        self._grade_rec("rct_trip", st, BIT_REP, run=run_trip, **common)
         if c2 is not None:
-            # The run length between C and C': it passes at one limit, trips at the other.
-            run = c + 1 if c2 > c else c
+            # A run graded at C that passes at one limit and trips at the other.
+            run = run_trip if c2 > c else run_pass
             await self._ht_ctrl(rep_limit=c2)
             rep, _ = await self._copied()
             st = await self._rec_trial("flip", HT_EN_REP, Square(run, 0), rep_words(run))
