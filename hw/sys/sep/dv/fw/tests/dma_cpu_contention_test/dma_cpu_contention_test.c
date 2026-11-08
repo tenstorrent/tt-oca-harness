@@ -25,9 +25,12 @@
 //
 // DCCM leg: the DMA copies an SRAM block into one DCCM array through the core
 // DMA slave port while the CPU stores to a second DCCM array, pass after pass,
-// until the DMA status shows done or error (bounded). The firmware logs the
-// DMA status, the error code and the pass count, then dumps both DCCM arrays;
-// the host grades every word and the DMA status.
+// until the DMA status shows done or error (bounded). Each pass samples the DMA
+// status before its stores and reads its 64 words back after them. The
+// firmware logs the DMA status, the error code, the readback mismatch total,
+// the number of passes that began with the DMA busy and the pass count, then
+// dumps both DCCM arrays; the host grades every word, the mismatch total and
+// the DMA status.
 //
 // Polled, with no interrupts. The DMA registers are clocked on access, so the
 // test does not program the DMA clock gate; it inherits the side-effect region
@@ -97,13 +100,25 @@ static int dccm_leg(void) {
     sep_mbx_puts("STEP DCCM leg: source seeded; DCCM destination and CPU region cleared\n");
 
     // Start the SRAM->DCCM copy, then store to the CPU array until the DMA
-    // reports done or error; each pass writes a pass-unique pattern.
+    // reports done or error. Each pass writes a pass-unique pattern, reads it
+    // back and counts the words that differ.
     sep_dma_copy_start(DCCM_SRC_ADDR, (uint32_t)(uintptr_t)dccm_dst, DCCM_DMA_BYTES);
     uint32_t passes = 0;
+    uint32_t busy_passes = 0;
+    uint32_t mismatches = 0;
     uint32_t st = 0;
     do {
+        if (sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR) & SECURE_DMA__STATUS__BUSY_bm) {
+            busy_passes++;
+        }
         for (uint32_t i = 0; i < DCCM_CPU_WORDS; i++) {
             dccm_cont[i] = DCCM_CPU_SEED + (passes << 16) + i;
+        }
+        __asm__ volatile("fence" ::: "memory");
+        for (uint32_t i = 0; i < DCCM_CPU_WORDS; i++) {
+            if (dccm_cont[i] != DCCM_CPU_SEED + (passes << 16) + i) {
+                mismatches++;
+            }
         }
         passes++;
         st = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
@@ -125,6 +140,10 @@ static int dccm_leg(void) {
     sep_mbx_puthex(st);
     sep_mbx_puts(" ERROR_CODE=");
     sep_mbx_puthex(err_code);
+    sep_mbx_puts(" mismatches=");
+    sep_mbx_puthex(mismatches);
+    sep_mbx_puts(" busy_passes=");
+    sep_mbx_puthex(busy_passes);
     sep_mbx_puts(" passes=");
     sep_mbx_puthex(passes);
     sep_mbx_puts(" src_seed=");

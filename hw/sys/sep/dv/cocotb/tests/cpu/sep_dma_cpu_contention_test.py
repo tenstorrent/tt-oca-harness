@@ -12,9 +12,12 @@ The TB counts cycles where the CPU-LSU and DMA crossbar inputs both present an S
 the same address channel; a positive count is the contention proof, which DMA BUSY alone is not.
 
 The DCCM leg copies an SRAM block into one DCCM array through the core DMA slave port while the
-CPU stores a pass-unique pattern to a second DCCM array until the DMA reports done. The firmware
-dumps both arrays and the DMA STATUS and ERROR_CODE readbacks; the host grades every word and the
-status (CHK-DCCM-DMA-DATA, CHK-DCCM-CPU-DATA, CHK-DCCM-NOERR). The TB counts clocks where the
+CPU stores a pass-unique pattern to a second DCCM array until the DMA reports done. Each pass reads
+its words back and counts mismatches, and samples DMA BUSY before its stores. The firmware logs the
+mismatch total, the busy-pass count and the pass count, dumps both arrays and the DMA STATUS and
+ERROR_CODE readbacks; the host grades every word, the mismatch total and the status
+(CHK-DCCM-DMA-DATA, CHK-DCCM-CPU-DATA, CHK-DCCM-NOERR). At least one pass must begin with the DMA
+busy (CTRL-DCCM-BUSY-PASS, stimulus reach). The TB counts clocks where the
 VeeR LSU sees a DMA DCCM write request and a store-buffer DCCM write request together; a positive
 count is logged as CTRL-DCCM-OVERLAP (stimulus reach, not a DUT contract).
 
@@ -73,6 +76,7 @@ _DCCM_CPU_SEED = 0x3C000000
 _MASK32 = 0xFFFFFFFF
 _DCCM_LEG_RE = re.compile(
     r"DCCM-LEG STATUS=0x(?P<status>[0-9a-f]{8}) ERROR_CODE=0x(?P<err>[0-9a-f]{8})"
+    r" mismatches=0x(?P<mismatches>[0-9a-f]{8}) busy_passes=0x(?P<busy_passes>[0-9a-f]{8})"
     r" passes=0x(?P<passes>[0-9a-f]{8}) src_seed=0x(?P<src_seed>[0-9a-f]{8})"
     r" cpu_seed=0x(?P<cpu_seed>[0-9a-f]{8}) dma_words=0x(?P<dma_words>[0-9a-f]{8})"
     r" cpu_words=0x(?P<cpu_words>[0-9a-f]{8})"
@@ -195,6 +199,11 @@ class sep_dma_cpu_contention_test(sep_base_test):
             _DCCM_DMA_WORDS,
         )
 
+        mismatches, busy_passes = f["mismatches"], f["busy_passes"]
+        assert mismatches == 0, (
+            f"CHK-DCCM-CPU-DATA FAIL: {mismatches} CPU DCCM word(s) read back different from "
+            f"their pass's pattern over {passes} passes"
+        )
         last = passes - 1
         cpu = _dump_words(console, "DCCM-CPU")
         cpu_exp = [(_DCCM_CPU_SEED + (last << 16) + i) & _MASK32 for i in range(_DCCM_CPU_WORDS)]
@@ -207,10 +216,20 @@ class sep_dma_cpu_contention_test(sep_base_test):
             f"(pass {last}), {bad}"
         )
         self.logger.info(
-            "CHK-DCCM-CPU-DATA PASS: all %d CPU-written DCCM words hold the pass-%d pattern "
-            "(%d passes while the DMA ran)",
+            "CHK-DCCM-CPU-DATA PASS: every pass read back its %d words with 0 mismatches over "
+            "%d passes, and the region holds the pass-%d pattern",
             _DCCM_CPU_WORDS,
+            passes,
             last,
+        )
+
+        assert busy_passes >= 1, (
+            f"CTRL-MISSING CTRL-DCCM-BUSY-PASS: none of the {passes} graded CPU passes began "
+            "with DMA STATUS.BUSY set"
+        )
+        self.logger.info(
+            "CTRL-DCCM-BUSY-PASS: %d of %d graded CPU passes began with DMA STATUS.BUSY set",
+            busy_passes,
             passes,
         )
 

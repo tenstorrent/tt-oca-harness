@@ -154,8 +154,8 @@ shared line is not independent evidence for those contracts.
 . Sample DMA status at store-loop exit, then poll to completion. After firmware completion, require the TB's same-channel CPU/DMA SRAM-request overlap count to be nonzero.
 . Check both regions; read the status again and require done still set, then clear the status bits.
 . DCCM leg: seed a second SRAM source; clear two DCCM arrays, the DMA destination and the CPU region.
-. Start an SRAM-to-DCCM DMA copy and do not wait. Store a pass-unique pattern to the CPU region, pass after pass, reading the DMA status after each pass, until it shows done or error or the pass bound is reached; then poll to completion with the same bound as the SRAM leg.
-. Log the DMA status, the error code and the pass count, and dump both DCCM arrays to the console. The host grades the status and every dumped word. After firmware completion, log the TB's DCCM write overlap count; it must be nonzero.
+. Start an SRAM-to-DCCM DMA copy and do not wait. Pass after pass: sample the DMA status and count the pass as busy if STATUS.BUSY is set; store a pass-unique pattern to the CPU region; read the region back and count the words that differ from that pattern; read the DMA status. Stop when it shows done or error or the pass bound is reached; then poll to completion with the same bound as the SRAM leg.
+. Log the DMA status, the error code, the readback mismatch total, the busy-pass count and the pass count, and dump both DCCM arrays to the console. The host grades the status, the mismatch total and every dumped word, and requires at least one busy pass. After firmware completion, log the TB's DCCM write overlap count; it must be nonzero.
 
 *Checkers*:
 
@@ -179,7 +179,9 @@ shared line is not independent evidence for those contracts.
 |CHK-DCCM-DMA-DATA
 |Every word of the DMA's DCCM destination equals its SRAM source word.
 |CHK-DCCM-CPU-DATA
-|Every word of the CPU's DCCM region holds the pattern of the CPU's last pass.
+|Every pass reads back all of its words equal to that pass's pattern (mismatch total 0 over all passes), and every word of the CPU's DCCM region holds the pattern of the CPU's last pass.
+|CTRL-DCCM-BUSY-PASS
+|Stimulus reach, not a DUT contract: at least one graded CPU pass begins with DMA STATUS.BUSY set, so CHK-DCCM-CPU-DATA grades stores made while the DMA was writing DCCM. A zero count fails the test as CTRL-MISSING.
 |CTRL-DCCM-OVERLAP
 |Stimulus reach, not a DUT contract: the DMA and store-buffer DCCM write requests coincide for at least one clock (`dma_cpu_dccm_overlap_count_o`). A zero count fails the test as CTRL-MISSING.
 |===

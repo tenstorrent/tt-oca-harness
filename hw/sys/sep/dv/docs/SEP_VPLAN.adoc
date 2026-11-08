@@ -1271,7 +1271,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW; `dma_cpu_dccm_overlap_count_o` (observation tap)
-|The CPU and DMA complete disjoint SRAM traffic while a TB monitor proves their request windows overlap on the same local-crossbar address channel. In a second leg the DMA copies SRAM into one DCCM array through the core DMA slave port while the CPU stores to another DCCM array; the host grades every word of both arrays (CHK-DCCM-DMA-DATA, CHK-DCCM-CPU-DATA) and the DMA status and error code (CHK-DCCM-NOERR). The tap `dma_cpu_dccm_overlap_count_o` counts the clocks in which the VeeR LSU sees a DMA DCCM write request and a store-buffer DCCM write request together; a nonzero count is logged as stimulus reach (CTRL-DCCM-OVERLAP), not graded as a DUT contract.
+|The CPU and DMA complete disjoint SRAM traffic while a TB monitor proves their request windows overlap on the same local-crossbar address channel. In a second leg the DMA copies SRAM into one DCCM array through the core DMA slave port while the CPU stores to another DCCM array, pass after pass, reading each pass back; the host grades every word of both arrays and a zero per-pass readback mismatch total (CHK-DCCM-DMA-DATA, CHK-DCCM-CPU-DATA) and the DMA status and error code (CHK-DCCM-NOERR). At least one CPU pass must begin with DMA STATUS.BUSY set (CTRL-DCCM-BUSY-PASS, stimulus reach). The tap `dma_cpu_dccm_overlap_count_o` counts the clocks in which the VeeR LSU sees a DMA DCCM write request and a store-buffer DCCM write request together; a nonzero count is logged as stimulus reach (CTRL-DCCM-OVERLAP), not graded as a DUT contract.
 |<<sep_spi_ot_dma_tx_test,`sep_spi_ot_dma_tx_test`>>
 |2
 |cpu, +skip_fuse_sense
