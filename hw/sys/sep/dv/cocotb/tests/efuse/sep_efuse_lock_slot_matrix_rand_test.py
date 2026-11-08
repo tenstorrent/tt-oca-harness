@@ -613,6 +613,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             lock_kind=p.leg.get("lock_kind", "none"),
         ):
             self.chk.finish()
+            return
         self.plan = p
         self.fd = SepEfuseFd(self)
         check = _KIND_CHECK[kind]

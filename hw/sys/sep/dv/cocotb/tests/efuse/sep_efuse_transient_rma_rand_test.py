@@ -586,6 +586,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             leg_s=int(leg_s),
         ):
             self.chk.finish()
+            return
         self.fd = SepEfuseFd(self)
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")

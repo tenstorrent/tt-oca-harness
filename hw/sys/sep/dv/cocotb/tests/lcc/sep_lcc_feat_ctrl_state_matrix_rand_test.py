@@ -1165,6 +1165,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             raw=f"0x{self.raw:x}",
         ):
             self.chk.finish()
+            return
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         extra = {
