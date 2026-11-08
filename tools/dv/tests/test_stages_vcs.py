@@ -594,7 +594,9 @@ class PrebuiltBuildIdentity(unittest.TestCase):
     def model_with_record(self, fingerprint: str) -> Path:
         model = Path(tempfile.mkdtemp()).resolve() / "model"
         self.addCleanup(shutil.rmtree, model.parent, ignore_errors=True)
-        stages._write_build_record(model / stages.BUILD_RECORD_NAME, fingerprint, "vcs X", False)
+        stages._write_build_record(
+            model / stages.BUILD_RECORD_NAME, fingerprint, model.parent, "vcs X", False
+        )
         return model
 
     def test_a_leaf_handed_nothing_reports_the_record_beside_the_model(self):
@@ -702,7 +704,7 @@ class NativeBuildRecord(unittest.TestCase):
     def test_a_failed_elaboration_leaves_no_record(self):
         for tool in self.TOOLS:
             with self.subTest(tool=tool):
-                stages._write_build_record(self.record, "0123456789ab", "old", False)
+                stages._write_build_record(self.record, "0123456789ab", self.root, "old", False)
                 self.assertEqual(self.build(tool, 1), 1)
                 self.assertFalse(self.record.exists())
 
