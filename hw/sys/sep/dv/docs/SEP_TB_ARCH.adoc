@@ -556,7 +556,8 @@ Observation probe groups:
   store-buffer DCCM write request (`lsu.stbuf_reqvld_any`) together. It
   counts requests, not which master is served. A DMA write narrower than a
   word is not a `dma_dccm_wen` request. 0 on the CPU-stub build. Monitor
-  only.
+  only. Reader: `sep_dma_cpu_contention_test` (CHK-OVERLAP on the SRAM
+  counter, CTRL-DCCM-OVERLAP on the DCCM counter).
 * SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`,
   `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`). Owner:
   `sep_spi_ot_dma_tx_test`. Users: `sep_dma_transfer_matrix_rand_test`,
@@ -580,7 +581,8 @@ Observation probe groups:
   WLAST; B VALID, READY and BRESP (`env/sep_dma_tap.py` records the
   handshakes). `dma_axi_wdata_probe_o[63:0]` is the W data of the same request
   (`dma_axi_req.w.data`), valid on a W handshake of `dma_axi_req_probe_o`;
-  with WSTRB it shows the byte-lane placement of each beat. Owners:
+  with WSTRB it shows the byte-lane placement of each beat
+  (`sep_dma_transfer_matrix_rand_test`, CHK-DMA-WDATA-LANE). Owners:
   `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_abort_recovery_rand_test`, `sep_fabric_dma_endpoint_matrix_test`
   (the pool read of CHK-DMA-NOTCONN, the filter-write AW and B of

@@ -51,7 +51,9 @@ Probes: register and SRAM frontdoor over ``s_axi``, register frontdoor over
 bit 9 of ``sep_internal_interrupts_probe_o`` (PIC source 10, DMA chunk done);
 the observation taps ``dma_axi_req_probe_o`` (DMA master AR/AW/W/B after the
 alias remap) and ``dma_status_probe_o`` (STATUS levels), read through
-``env/sep_dma_tap.py``. Hooks (``docs/SEP_TB_ARCH.adoc``): the m_axi WSTRB
+``env/sep_dma_tap.py``, and ``dma_axi_wdata_probe_o`` (the W data of the same
+request), read with the W handshake of ``dma_axi_req_probe_o`` by the
+test-local ``_WdataSampler``. Hooks (``docs/SEP_TB_ARCH.adoc``): the m_axi WSTRB
 drive of one half-strobe write, and ``smn_outbound_resp_hold_i`` of the
 outbound responder for one logged run.
 
@@ -68,6 +70,15 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       narrow transfers). AxADDR[1:0] at widths 1 and 2, and
                       ARSIZE and AWSIZE at every width, are logged only in
                       ``OBS-DMA-ADDR-LOW``.
+  CHK-DMA-WDATA-LANE  per Leg A cell, alias-form copy, width-1 one-byte-chunk
+                      copy and Leg B transfer: the W beat count equals
+                      TOTAL/width, and on W beat k the bytes of lanes
+                      L to L+w-1 (L = model AWADDR mod 8, the lanes WSTRB
+                      enables) equal the w source bytes at the model source
+                      address of transaction k (IHI 0022, narrow transfers;
+                      ``secure_dma.adoc`` TRANSFER_WIDTH). Other lanes are not
+                      graded. Reach (else CTRL-MISSING): INFO-DMA-WDATA-REACH
+                      counts more than 0 graded beats.
   CHK-DMA-MASTER-ROT  per Leg A cell, before GO: each transfer register read
                       back on the programming master (``s_axi`` or ``m_axi``)
                       equals the value written and differs from the value read
@@ -294,13 +305,14 @@ from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_dma_model import (
+    BUS_BYTES,
     DmaXfer,
     bytes_to_words,
     draw_sentinel_byte,
     draw_source_words,
     words_to_bytes,
 )
-from env.sep_dma_tap import DmaTapEvents, DmaTapMark, SepDmaTap
+from env.sep_dma_tap import FIELDS, DmaTapEvents, DmaTapMark, SepDmaTap
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -1066,6 +1078,69 @@ class DigestValidEdges:
         )
 
 
+_REQ_F = {n: (lsb, w) for n, lsb, w in FIELDS}
+
+
+class _WdataSampler:
+    """W beats of the DMA master with their data, from the two DMA master taps.
+
+    On every rising edge of ``clk_i``, in the read-only phase, a W handshake
+    (``w_valid`` and ``w_ready`` of ``dma_axi_req_probe_o`` high) records the
+    byte of each lane of ``dma_axi_wdata_probe_o``, lane j being bits
+    8j+7:8j; a lane with an X or Z bit records None.
+    """
+
+    def __init__(self, dut) -> None:
+        self._clk = dut.clk_i
+        self._req = dut.dma_axi_req_probe_o
+        self._wd = dut.dma_axi_wdata_probe_o
+        self.beats: list[tuple[int | None, ...]] = []
+        self._task = None
+
+    def start(self) -> "_WdataSampler":
+        width = len(self._wd)
+        if width != 8 * BUS_BYTES:
+            raise AssertionError(f"dma_axi_wdata_probe_o is {width} bits; expected {8 * BUS_BYTES}")
+        self._task = cocotb.start_soon(self._run())
+        return self
+
+    async def stop(self) -> None:
+        if self._task is not None:
+            self._task.cancel()
+            self._task = None
+
+    def mark(self) -> int:
+        return len(self.beats)
+
+    def since(self, mark: int) -> list[tuple[int | None, ...]]:
+        if self._task is None or self._task.done():
+            raise AssertionError("DMA-WDATA-TAP FAIL: the W data sampler is not running")
+        return self.beats[mark:]
+
+    @staticmethod
+    def _bits(sig) -> str:
+        v = sig.value
+        s = getattr(v, "binstr", None)
+        return (s if s is not None else str(v)).strip()
+
+    async def _run(self) -> None:
+        v_lsb, r_lsb = _REQ_F["w_valid"][0], _REQ_F["w_ready"][0]
+        while True:
+            await RisingEdge(self._clk)
+            await ReadOnly()
+            req = self._bits(self._req)
+            n = len(req)
+            if req[n - 1 - v_lsb] != "1" or req[n - 1 - r_lsb] != "1":
+                continue
+            wd = self._bits(self._wd)
+            m = len(wd)
+            lanes = []
+            for j in range(BUS_BYTES):
+                b = wd[m - 8 * (j + 1) : m - 8 * j]
+                lanes.append(int(b, 2) if all(c in "01" for c in b) else None)
+            self.beats.append(tuple(lanes))
+
+
 @pyuvm.test()
 class sep_dma_transfer_matrix_rand_test(sep_base_test):
     """Secure DMA copy and hash matrix over address modes, widths, sizes, range edges and SHA-2."""
@@ -1074,6 +1149,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         "CHK-DMA-IMAGE",
         "CHK-DMA-BEAT",
         "CHK-DMA-ADDR",
+        "CHK-DMA-WDATA-LANE",
         "CHK-DMA-GEOM",
         "CHK-DMA-CFG-REGWEN",
         "CHK-DMA-DONE-CLR",
@@ -1165,6 +1241,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         dut = cocotb.top
         self.tap = SepDmaTap(dut).start()
         self.busy = SepBitWatch(dut.dma_busy_probe_o, name="dma_busy_probe_o").start()
+        self.wdata = _WdataSampler(dut).start()
+        self.wdata_beats = 0
         self.ops = _RotDmaOps(self, self.tap)
         self.mem = SepMemWords(self)
         try:
@@ -1179,6 +1257,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             await self._chunk1(plan)
             await self._obs_fixed_chunk(plan)
             await self._leg_b(plan)
+            self._wdata_reach()
             await self._obs_ctrl_busy(plan)
             await self._leg_c(plan)
             await self._leg_d(plan)
@@ -1196,6 +1275,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self._close()
             await self.tap.stop()
             await self.busy.stop()
+            await self.wdata.stop()
             if getattr(self, "irq", None) is not None:
                 await self.irq.stop()
         self.result_pass(TEST, self.seed, self.k)
@@ -1494,7 +1574,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             written = await self._program(c, src=src, dst=dst)
             if rot:
                 await self._master_readback(written, prior, master, tag)
-            m_tap, m_irq = self.tap.mark(), self.irq.mark()
+            m_tap, m_irq, m_wd = self.tap.mark(), self.irq.mark(), self.wdata.mark()
             self._open()
             await ops.go(opcode=OP_COPY, initial=1)
             # The poll bound scales with the transaction count of the cell.
@@ -1504,6 +1584,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             if res.status.done:
                 await self._wait_idle_done(tag)
             rec = self._record(m_tap, m_irq, res.go_writes, res.statuses)
+            wd = self.wdata.since(m_wd)
             st, err, _ = await self._read_regs()
         finally:
             ops.master = "lsu"
@@ -1521,6 +1602,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             tag=tag,
             res=res,
             rec=rec,
+            wd=wd,
             st=st,
             got_dst=got_dst,
             exp=exp,
@@ -1557,6 +1639,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             f"{ff('error_code', fer)}",
         )
         self._check_beats(cd, rec)
+        self._check_wdata(c, meas["wd"], tag)
         self._check_chunkrise(rec, cd.n, tag)
         self._check_done_order(rec, x.total, tag)
         self._check_go_chunks(rec, x, tag)
@@ -1657,6 +1740,46 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             f"strb_lane_mismatch={strb_mm} addr_mask=0x{amask:08x} "
             f"strb_lanes={','.join(f'0x{v:02x}' for v in lanes) or '-'}",
         )
+
+    def _check_wdata(self, c: CopyXfer, beats: list[tuple[int | None, ...]], tag: str) -> None:
+        """CHK-DMA-WDATA-LANE: each W beat carries its source bytes on its WSTRB lanes.
+
+        Write beat k carries the w bytes read at the source address of
+        transaction k on lanes L to L+w-1, L = AWADDR mod 8 of the model
+        (AMBA AXI protocol specification (IHI 0022), narrow transfers; the
+        width of TRANSFER_WIDTH.TRANSACTION_WIDTH,
+        ``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc:241-243``).
+        Lanes outside the WSTRB lanes are not graded.
+        """
+        x = c.x
+        src = words_to_bytes(c.src_addr, c.src_words)
+        bad = 0
+        first = "-"
+        graded = beats[: x.n_txn]
+        for k, lanes in enumerate(graded):
+            lane0 = x.dst_addr(k) % BUS_BYTES
+            for i in range(x.w):
+                lane = lane0 + i
+                exp = src[x.src_addr(k) + i]
+                got = lanes[lane]
+                if got != exp:
+                    bad += 1
+                    if first == "-":
+                        got_s = "x" if got is None else f"0x{got:02x}"
+                        first = f"beat{k}/lane{lane}/got={got_s}/exp=0x{exp:02x}"
+        self.wdata_beats += len(graded)
+        self._pass(
+            "CHK-DMA-WDATA-LANE",
+            x.n_txn > 0 and len(beats) == x.n_txn and bad == 0,
+            f"{tag} w={x.w} w_beats={len(beats)} expect_beats={x.n_txn} "
+            f"graded_beats={len(graded)} byte_mismatch={bad} first_mismatch={first}",
+        )
+
+    def _wdata_reach(self) -> None:
+        line = f"seed={self.seed} graded_beats={self.wdata_beats}"
+        self.logger.info("INFO-DMA-WDATA-REACH %s", line)
+        if self.wdata_beats == 0:
+            self._ctrl_missing("CHK-DMA-WDATA-LANE", f"no W beat graded: {line}")
 
     # ---- Leg B ------------------------------------------------------------
     async def _check_cfg_regwen(self, regwen_busy: int | None, tag: str) -> int:
@@ -1768,12 +1891,14 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 pre_go_done = pre.done
                 self.logger.info("LEGB %s pre-GO %s", tag, pre.fmt())
             m_tap, m_irq, m_busy = self.tap.mark(), self.irq.mark(), self.busy.mark()
+            m_wd = self.wdata.mark()
             self._open()
             await ops.go(opcode=OP_COPY, initial=1)
             st, go_writes, reads, ctrl_go, regwen_busy = await self._poll_b(
                 x.total, m_busy, x.total >= LONG_TOTAL, tag
             )
             rec = self._record(m_tap, m_irq, go_writes, [s for s, _ in reads])
+            wd = self.wdata.since(m_wd)
             self._obs_edge_order(rec.ev, rec.clk0, f"leg=B {tag}")
             busy_trace = (
                 f"rises={self.busy.rise_clks_since(m_busy)} "
@@ -1819,6 +1944,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                     f"total={x.total} pre_go_done=1 busy_reads_done0={k0} "
                     f"busy_reads={sum(1 for s, _ in reads if s.busy)}",
                 )
+            self._check_wdata(c, wd, f"leg=B {tag}")
             if n == 1:
                 single_runs.append((x.total, n, sum(1 for s, _ in reads if s.chunk_done)))
             else:
