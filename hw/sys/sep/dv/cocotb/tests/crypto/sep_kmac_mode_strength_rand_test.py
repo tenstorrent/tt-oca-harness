@@ -215,6 +215,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             cocotb.top.crypto_alert_pulse_probe_o, KMAC_ALERT_IDX, name="kmac_alert"
         ).start()
         quiet_mark = self.alert.mark()
+        await RisingEdge(cocotb.top.clk_i)
         open_graded_window(TEST, self.logger)
         for mode, sec, outb, key_bits, s in CELLS:
             # Key the cell by every dimension that distinguishes it, key length
