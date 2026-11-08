@@ -48,11 +48,14 @@ _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 4_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
+_DMA = RegBlock("SECURE_DMA")
+_ST_BUSY = _DMA.field_mask("STATUS", "busy")
+
 # The clauses of the firmware's single verdict line, one per VPLAN checker. An image
 # without a leg loses its clause, which fails here rather than at the PASS magic.
 _VERDICT_CLAUSES = (
     (
-        "overlap STATUS=0x00000001",
+        f"overlap STATUS=0x{_ST_BUSY:08x}",
         "CHK-IN-FLIGHT",
         "the DMA busy and not done at store-loop exit",
     ),
@@ -81,7 +84,6 @@ _DCCM_LEG_RE = re.compile(
     r" cpu_seed=0x(?P<cpu_seed>[0-9a-f]{8}) dma_words=0x(?P<dma_words>[0-9a-f]{8})"
     r" cpu_words=0x(?P<cpu_words>[0-9a-f]{8})"
 )
-_DMA = RegBlock("SECURE_DMA")
 _ST_DONE = _DMA.field_mask("STATUS", "done")
 _ST_ERROR = _DMA.field_mask("STATUS", "error")
 
