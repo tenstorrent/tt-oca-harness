@@ -5301,7 +5301,7 @@ every memory word; the readable windows read 0 until VALID whatever they hold.
 |===
 |Checker |Contract
 |CHK-OTBN-IMEM-EDGE
-|The read of the edge leg after the 32-bit write returns the written word, for the first, the middle and the last IMEM word. IMEM is a read-write window of 4096 32-bit words that is accessible at IDLE (`otbn.hjson:788-806`). The drawn word differs from the word read before the write, so a write that did not land, or a window that aliases the first and the last word, fails.
+|The read of the edge leg after the 32-bit write returns the written word, for the first, the middle and the last IMEM word, and a read of each of the three words after the last write returns its own written word again. IMEM is a read-write window of 4096 32-bit words that is accessible at IDLE (`otbn.hjson:788-806`). The drawn word differs from the word read before the write, so a write that did not land, or a window that aliases the first and the last word, fails.
 |CHK-OTBN-DMEM-EDGE
 |The same for the DMEM window (`otbn.hjson:811-829`).
 |OBS-OTBN-MEM-64B
