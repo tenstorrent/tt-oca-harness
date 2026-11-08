@@ -80,7 +80,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 287
+expected_count = 293
 # Listed longest first by each entry's longest measured leaf time, over every
 # measured seed. An entry with no measured time is placed by its estimated time.
 # Place a new test by its runtime.
@@ -226,6 +226,8 @@ tests = [
     "sep_dma_zero_test",
     "sep_trng_ext_stream_handshake_rand_test",
     "sep_efuse_lock_slot_matrix_rand_test",
+    "sep_efuse_lock_slot_matrix_rand_test_chain",
+    "sep_efuse_lock_slot_matrix_rand_test_single",
     "sep_cpu_reset_retention_test",
     "sep_aes_mode_keysize_rand_test",
     "sep_axi_order_sweep_test",
@@ -259,6 +261,7 @@ tests = [
     "sep_debug_master_target_matrix_test",
     "sep_efuse_transient_rma_rand_test",
     "sep_efuse_transient_rma_rand_test_legb",
+    "sep_efuse_transient_rma_rand_test_prod",
     "sep_boot_rom_lsu_read_test",
     "sep_efuse_set_only_monotonicity_test",
     "sep_otbn_load_checksum_read_test",
@@ -280,6 +283,9 @@ tests = [
     "sep_efuse_jtag_access_rand_test",
     "sep_abr_access_size_test",
     "sep_lcc_feat_ctrl_state_matrix_rand_test",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test_rma_chiplet_c",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test_test_dev_b",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test_prod_b",
     "sep_lcc_lc_state_w1s_prod_end_test",
     "sep_lcc_lc_state_w1s_transient_test",
     "sep_lcc_lc_state_w1s_prod_demote_test",
@@ -491,12 +497,18 @@ tests = [
     "sep_efuse_field_layout_rand_test",
     "sep_lcc_state_codeword_rand_test",
     "sep_lcc_feat_ctrl_state_matrix_rand_test",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test_rma_chiplet_c",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test_test_dev_b",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test_prod_b",
     "sep_efuse_transient_rma_rand_test",
     "sep_efuse_transient_rma_rand_test_legb",
+    "sep_efuse_transient_rma_rand_test_prod",
     "sep_efuse_token_channel_rand_test",
     "sep_efuse_token_fault_matrix_test",
     "sep_efuse_interface_status_rand_test",
     "sep_efuse_lock_slot_matrix_rand_test",
+    "sep_efuse_lock_slot_matrix_rand_test_chain",
+    "sep_efuse_lock_slot_matrix_rand_test_single",
     "sep_efuse_secure_tm_matrix_rand_test",
     "sep_efuse_jtag_access_rand_test",
     "sep_sec_dis_timing_rand_test",
@@ -1060,18 +1072,24 @@ tests = [
 # Convenience group of the eFuse, lifecycle and SEC_DIS tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_efuse_lifecycle"
-expected_count = 14
+expected_count = 20
 tests = [
     "sep_efuse_window_decode_reset_test",
     "sep_efuse_field_layout_rand_test",
     "sep_lcc_state_codeword_rand_test",
     "sep_lcc_feat_ctrl_state_matrix_rand_test",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test_rma_chiplet_c",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test_test_dev_b",
+    "sep_lcc_feat_ctrl_state_matrix_rand_test_prod_b",
     "sep_efuse_transient_rma_rand_test",
     "sep_efuse_transient_rma_rand_test_legb",
+    "sep_efuse_transient_rma_rand_test_prod",
     "sep_efuse_token_channel_rand_test",
     "sep_efuse_token_fault_matrix_test",
     "sep_efuse_interface_status_rand_test",
     "sep_efuse_lock_slot_matrix_rand_test",
+    "sep_efuse_lock_slot_matrix_rand_test_chain",
+    "sep_efuse_lock_slot_matrix_rand_test_single",
     "sep_efuse_secure_tm_matrix_rand_test",
     "sep_efuse_jtag_access_rand_test",
     "sep_sec_dis_timing_rand_test",
