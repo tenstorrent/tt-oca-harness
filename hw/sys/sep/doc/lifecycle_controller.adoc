@@ -998,13 +998,14 @@ values, and no hardware masks them. SEP ROM rejects the manifest if an entity's
 requirement existed, and nothing still trusted can satisfy it. A single class
 bit revokes one class only; SEP ROM continues to enforce the group's
 requirement bits.
-. *Revoked classes are rejected.* Every signature the policy in force requires
-is mapped from the class the manifest declares for it to its bit in
-`SIGNATURE_REVOKE`. A required signature of a revoked class fails
-verification, and the manifest is rejected, whether or not the signature would
-verify mathematically. A signature the policy does not require -- including a
-signature of a group waived in step 1 that is still present in the manifest --
-is not examined and has no effect. Hence revoking one class forces migration to
+. *Revoked classes are rejected.* For each signature the policy in force
+requires, SEP ROM reads the class the manifest declares for it in the entity's
+signature-type fields and checks that class's bit in `SIGNATURE_REVOKE`. If the
+bit is set, the signature fails verification and SEP ROM rejects the manifest,
+whether or not the signature would verify mathematically. SEP ROM does not
+examine a signature the policy does not require, including a signature of a
+group waived in step 1 that is still present in the manifest; such a signature
+has no effect on the result. Hence revoking one class forces migration to
 another class of the same group, while a group code retires the group and lets
 manifests authenticate on the other group alone. See _Group codes_ under
 <<signature-algorithm-revocation>>.
