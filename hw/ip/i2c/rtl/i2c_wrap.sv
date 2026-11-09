@@ -138,21 +138,14 @@ module i2c_wrap #(
     return base;
   endfunction
 
-  function automatic range_addr_t range_size();
-    range_addr_t size;
-    for (int unsigned i = 0; i < NUM_I2CS; i++) begin
-      size[i] = I2cWindow;
-    end
-    size[CtrlRegMap] = CtrlWindow;
-    return size;
-  endfunction
+  localparam range_addr_t RangeSize = '{CtrlRegMap: CtrlWindow, default: I2cWindow};
 
   prim_axil_addr_demux #(
     .AXI_ADDR_WIDTH (i2c_wrap_pkg::RegAddrWidth),
     .AXI_DATA_WIDTH (i2c_wrap_pkg::RegDataWidth),
     .NUM_RANGES     (NumRegMaps),
     .RANGE_BASE     (range_base()),
-    .RANGE_SIZE     (range_size()),
+    .RANGE_SIZE     (RangeSize),
     .MAX_TRANS      (1),
     .aw_chan_t      (i2c_wrap_pkg::axil_aw_chan_t),
     .w_chan_t       (i2c_wrap_pkg::axil_w_chan_t),
