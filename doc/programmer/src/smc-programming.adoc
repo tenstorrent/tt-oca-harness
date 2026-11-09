@@ -27,8 +27,11 @@ address, which is assigned by the integrator. This must be matched by firmware
 in the `GLOBAL_BASE` register. The global aperture is also of size
 `REGION_SIZE`.
 
-The integrator's assignment of global system addresses to SMCs should be a
-function of each chiplet's Chiplet ID, which can be read from the eFuse block.
+Assigning global system addresses to SMCs is platform policy. A policy that
+keys on the chiplet can use the values the boot ROM forms for the I2C/I3C bus
+addresses: the eFuse `I2C_I3C_ID` slots or, where a slot is unprogrammed, the
+`CHIP_ID` strap in `STRAPS_LO` combined with the `CHIP_CONFIG.CHIP_ID`
+integration constant.
 It is the integrator's responsibility to assign subsystems to global address
 ranges that do not overlap with each other, or with the SMC's local-alias
 aperture.
@@ -72,10 +75,10 @@ RV64GC instruction set, as well as the Zba, Zbb, and Zbs instructions.
 The cores support Machine, Supervisor, and User mode privilege levels.
 
 The CPU cold-reset vector is `0xC004_0000`, corresponding to the start of ROM
-memory -- see the SMC's address map above. Each core's reset vector can be
-modified to a warm-reset (a reset that does not clear SRAM) vector by writing
-the location to the core's `RESET_VECTOR` register, which is part of the CPU
-Control block.
+memory -- see the SMC's address map above. Each core's `RESET_VECTOR` register,
+part of the CPU Control block, sets the address the core fetches from after a
+per-core reset or reset pulse through `RESET_CTRL`. A warm reset ignores the
+programmed vectors and restarts every core at `0xC004_0000`.
 
 During early bring-up, it is advised to allow only one core to perform some
 early initialization procedures. Each core's ID can be read from the `mhartid`
@@ -153,8 +156,8 @@ Their operation is as follows:
 
 `__metal_mbist_early_check` performs the following steps:
 
-. Check the `MEM_BIST_BYPASS` strap (register `STRAPS_HI` bit 54). If set, skip
-MBIST check, otherwise continue.
+. Check the `MEM_BIST_BYPASS` strap (strap 54, RDL `MBIST_BYPASS`, `STRAPS_HI`
+bit 22). If set, skip MBIST check, otherwise continue.
 . Read the DFT Control's `STATUS_SMU` register.
 . Check if the MBIST was performed (register `STATUS_SMU` bit 4). If unset,
 assume the MBIST was not required, and return.
@@ -199,16 +202,17 @@ kill
 
 `__metal_memory_repair_check` performs the following steps:
 
-. Check the `MEM_REPAIR_BYPASS` strap (register `STRAPS_LO` bit 13). If set,
-skip memory repair check, otherwise continue.
+. Check the `MEM_REPAIR_BYPASS` strap (strap 13, RDL `BYPASS_SRAM_REPAIR`,
+`STRAPS_LO` bit 13). If set, skip memory repair check, otherwise continue.
 . Read the DFT Control's `STATUS_SMU` register.
 . Check if memory repair was performed (register `STATUS_SMU` bit 0). If unset,
 assume memory repair was not required, and return.
 . Check if memory repair passed (register `STATUS_SMU` bit 1). If set, return --
 memory repair has passed.
-. Memory repair has failed. If the eFuse `SMC_CONFIG.dft_ignore_error`
-(bit 15) is set, ignore the failure and return.
-. Memory repair has failed -- park the core in a `wfi` loop.
+. Memory repair has failed: record `0xBADC0FFE` in scratch register 15. If the
+eFuse `SMC_CONFIG.dft_ignore_error` (bit 15) is set, ignore the failure and
+return with that code in place.
+. Park the core in a `wfi` loop.
 
 .SMC Boot ROM `__metal_memory_repair_check`.
 [plantuml,ocah-smc-metal-memory-repair-check,svg,width=50.0%,align="center"]
@@ -222,6 +226,7 @@ else (unset)
   else (set)
     if (Check STATUS_SMU bit mem_repair_success) then (set)
     else (unset)
+      : Record failure;
       if (Check eFuse SMC_CONFIG.dft_ignore_error) then (set)
       else (unset)
         : Fail;
@@ -1210,8 +1215,9 @@ void configure(char *log_region, uint32_t log_region_size) {
     write32(LOG_ENGINE_REG_CTRL, LOG_ENGINE_CTRL_DISABLE);
 
     // Write address of log region.
-    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_LO, (uint32_t)log_region);
-    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_HI, (uint32_t)(log_region >> 32));
+    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_LO, (uint32_t)(uintptr_t)log_region);
+    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_HI,
+            (uint32_t)((uintptr_t)log_region >> 32));
 
     // Write size of log region.
     write32(LOG_ENGINE_REG_LOG_REGION_SIZE, log_region_size);
