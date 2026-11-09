@@ -88,20 +88,14 @@ module telemetry_receiver_wrap #(
     return base;
   endfunction
 
-  function automatic range_addr_t range_size();
-    range_addr_t size;
-    for (int unsigned i = 0; i < NUM_TELEMETRY_RECEIVERS; i++) begin
-      size[i] = TELEMETRY_RECEIVER_0__REG_MAP_SIZE;
-    end
-    return size;
-  endfunction
+  localparam range_addr_t RangeSize = '{default: TELEMETRY_RECEIVER_0__REG_MAP_SIZE};
 
   prim_axil_addr_demux #(
     .AXI_ADDR_WIDTH (telemetry_receiver_wrap_pkg::RegAddrWidth),
     .AXI_DATA_WIDTH (telemetry_receiver_wrap_pkg::RegDataWidth),
     .NUM_RANGES     (NumRegMaps),
     .RANGE_BASE     (range_base()),
-    .RANGE_SIZE     (range_size()),
+    .RANGE_SIZE     (RangeSize),
     .MAX_TRANS      (1),
     .aw_chan_t      (telemetry_receiver_wrap_pkg::axil_aw_chan_t),
     .w_chan_t       (telemetry_receiver_wrap_pkg::axil_w_chan_t),

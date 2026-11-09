@@ -113,20 +113,14 @@ module uart_wrap #(
     return base;
   endfunction
 
-  function automatic range_addr_t range_size();
-    range_addr_t size;
-    for (int unsigned i = 0; i < NUM_UARTS; i++) begin
-      size[i] = UART_LOG_ENGINE_WRAP_SPACING;
-    end
-    return size;
-  endfunction
+  localparam range_addr_t RangeSize = '{default: UART_LOG_ENGINE_WRAP_SPACING};
 
   prim_axil_addr_demux #(
     .AXI_ADDR_WIDTH (uart_wrap_pkg::RegAddrWidth),
     .AXI_DATA_WIDTH (uart_wrap_pkg::RegDataWidth),
     .NUM_RANGES     (NumRegMaps),
     .RANGE_BASE     (range_base()),
-    .RANGE_SIZE     (range_size()),
+    .RANGE_SIZE     (RangeSize),
     .MAX_TRANS      (1),
     .aw_chan_t      (uart_wrap_pkg::csr_axil_aw_chan_t),
     .w_chan_t       (uart_wrap_pkg::csr_axil_w_chan_t),
