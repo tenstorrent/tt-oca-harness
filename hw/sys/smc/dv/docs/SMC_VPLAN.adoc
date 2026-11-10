@@ -56937,6 +56937,107 @@ Enrolled only in `reset_uvm_extended`, on demand.
 
 '''''
 
+[[sec-smc_zeroer_reset_during_operation_test]]
+====== `smc_zeroer_reset_during_operation_test`
+
+*Source Module*: `smc_zeroer_reset_during_operation_test` (SV-UVM)
+
+*BFM / Model*: SEP_IN shared AXI initiator, SYS_OUT shared responder and
+required-only passive `zeroer_range` prediction and byte comparison.
+
+*Objective*: Check cool-reset interruption in both the write-data and
+response-drain phases, register defaults after reset and fresh recovery.
+
+*Expectation Sources*: `hw/ip/zeroer/regs/zeroer_ctrl.rdl` defines DEST,
+SIZE, start, STATUS, completion interrupt and register defaults.
+`hw/sys/smc/doc/zeroer.adoc` describes byte strobes and zero generation;
+it gives no safe-drain guarantee for a reset during outstanding writes.
+`hw/sys/smc/doc/clk_rst.adoc` defines cool reset as a primary-reset source
+and places `u_smc_base` on primary SMC reset. Command bookkeeping and
+responder accounting are testbench checks.
+
+*Test Coverage*: Each pass runs A, held while W is still being issued,
+then B, a single aligned burst held after WLAST with B outstanding. Each
+phase has one reset and one fresh 256-byte recovery clear with 64-byte
+guards. Phase windows differ by pass and do not overlap.
+
+*Test Procedure*: Save the outbound-filter entry. Program and read back
+an allowed window, declare and start the interrupted job. Hold W for A
+or B responses for B, and require the selected engine phase for sixteen
+consecutive samples within a bounded wait.
+Read DEST, SIZE and INT_EN again and require STATUS to be one while the
+selected phase is held. Require enough remaining W stall budget for A and
+request cool reset. Check the last pre-reset sample. Release
+stall/hold while reset is asserted, release cool reset and wait for fuse
+sensing. Compare the reset CSR values and responder count snapshots.
+Poison and read back the new recovery region and guards, declare and run
+recovery, and poll completion with a bound. Drain the passive monitor,
+observe 64 further SMC cycles, close the sample and compare it with the
+prediction. Read back zeros/guards and require one recovery IRQ pulse.
+Record old-window observations, then run the other phase. Restore and
+read back the filter. Require exact comparison and interruption counts
+and no pending declarations at the end of the pass.
+
+*Checkers*:
+
+[cols="1,2",options="header"]
+|===
+|Checker |Claim
+|`CHK-ZEROER-RESET-PHASE-A`, `CHK-ZEROER-RESET-PHASE-B` |The selected phase holds for sixteen consecutive samples within a bound and remains present at effective reset; A fits its reserved stall budget
+|`CHK-ZEROER-RESET-PRE-CSR`, `CHK-ZEROER-RESET-CSR` |Programmed non-reset DEST/SIZE/INT_EN values and STATUS = 1 are checked before reset; reset readbacks match RDL defaults
+|`CHK-ZEROER-RESET-EPOCH` |Testbench integrity: predictor, observer and scoreboard use the environment epoch; exactly two cool resets and no cold reset occur per pass
+|`CHK-ZEROER-RESET-FILTER` |Filter address and all defined software-writable configuration fields have programming and restore readback evidence
+|`CHK-ZEROER-RESET-DONE` |Recovery reaches idle within a bench polling bound
+|`CHK-ZEROER-RESET-ASSERTED`, `CHK-ZEROER-RESET-RELEASED` |Primary and warm reset reach the requested level within a bound; timeout records include the final levels before termination
+|`CHK-ZEROER-RECOVERY-DRAIN` |SYS_OUT monitor pending work drains within a bound; timeout records include pending and recovery accounting before termination
+|`CHK-ZEROER-RESET-RESPONDER` |No burst completes between reset count snapshots; exactly one B handshake matches an accepted AW in each recovery window
+|`CHK-ZEROER-RECOVERY-POISON`, `CHK-ZEROER-RECOVERY-DATA` |Recovery poison is present before START; recovered bytes are zero and guards remain intact
+|`CHK-ZEROER-RECOVERY-IRQ` |Exactly one interrupt pulse is sampled during recovery
+|`CHK-ZEROER-DECLARED-VS-PREDICTED` |Independent START keys and predicted windows match declarations
+|`CHK-ZEROER-OBSERVED-OUT-OF-SCOPE` |No enabled byte falls outside declared or observed old windows
+|`CHK-ZEROER-OBSERVED-DELTA` |Samples are closed once, observed bytes exist, counts are exact and no command is left pending
+|`CHK-ZEROER-EXPECTED-TIMEOUT` |A prediction is available within the bounded sample-close wait
+|`CHK-SB-ZEROER-RANGE` |Required Zeroer feature has byte comparisons and no mismatch
+|`CHK-MEM-RESP`, `CHK-FUSE-SENSE-DONE` |CSR accesses return OKAY and fuse sensing releases
+|===
+
+*Known Limitations*: The leaf is enrolled for VCS only. No DMA or CPU traffic
+shares the command windows. Programming is sequential and full-width; the
+predictor supports up to 64 KiB per command and rejects DEST bits 63:56;
+the specified truncation of those bits is not exercised. The scenario does
+not exercise partial or zero-strobe START writes, START with SIZE = 0,
+DEST/SIZE capture against changes after START, or START while issuing bursts.
+It also does not exercise START after the last burst is issued while B
+responses remain outstanding, or grade the always-ready B-channel contract.
+Unaligned destinations and page-crossing regions are not exercised.
+Cool reset is driven through the reset pin in two held phases; FLR-triggered
+cool reset is not exercised. Model declarations and passive samples are two-state;
+wire SVA checks data knownness on VCS. The scenario does not require a byte to
+be written exactly once. Bounds are bench limits, not specified latency.
+`CHK-ZEROER-RESET-STALE-REQ`, `CHK-ZEROER-RESET-UNEXPLAINED-B`,
+`CHK-ZEROER-RESET-OLD-DATA`, `CHK-ZEROER-RESET-OLD-GUARD` and
+`CHK-ZEROER-RESET-OLD-IRQ` remain OBS-BLOCKED: the documents do not define
+safe interruption, residual traffic, guard preservation or completion
+interrupt behavior for the old job. Aggregate B accounting cannot identify a
+stale response replacing a valid one. SYS_OUT B without a tracked AW is
+reported separately as `sys_out_unmatched_b`, without a verdict. These
+observations do not grade old memory contents or forbid old-region traffic.
+
+*Pass Criteria*: Two command comparisons, two cool resets, one interrupted
+command per phase and two recovery IRQ pulses per pass, with no mismatches
+or pending commands. The default sixteen passes give 32 comparisons and
+32 cool resets. `+SMC_ZEROER_RANGE_SCOREBOARD_NEGATIVE` changes one byte
+prediction of the first recovery: its byte comparison and sequence mismatch
+accounting fail. `+SMC_ZEROER_RESET_SEQUENCE_NEGATIVE` offsets the first
+post-reset SIZE expectation of each pass by one; that CSR check fails with no byte
+mismatch.
+Prerequisites, phase checks and accounting are outside these controls.
+The W-stall budget and remaining-window checks terminate on an invalid
+bench measurement window and are outside both negative controls.
+Enrolled only in `zeroer_uvm_extended`, on demand.
+
+'''''
+
 [[smc-deferred-disposition]]
 ==== SMC deferred and OUT disposition
 
@@ -57882,6 +57983,7 @@ which runs a `c_compile` stage, is run on demand with the toolchain image
 [cols="2,1,3,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
+|`smc_zeroer_reset_during_operation_test` |`zeroer_uvm_extended` |SV-UVM only, VCS, on demand; scheduled SMC tiers select the cocotb view |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_mailbox_cool_reset_recovery_test` |`mailbox_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_external_reg_lane_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_narrow_access_side_effect_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand |A scheduled licensed SV-UVM tier selects this leaf

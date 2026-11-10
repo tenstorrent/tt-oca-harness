@@ -938,6 +938,39 @@ interfaces share SMC primary reset in this bench. Interrupted SPM writes
 are overwritten by fresh monitored writes before readback, so the passive
 SPM model does not impose an undefined retention or commit expectation.
 
+The required-only `zeroer_range` feature adds a passive SYS_OUT AXI env,
+`smc_zeroer_range_ref_model` on completed SEP_IN writes, and
+`smc_zeroer_burst_observer` on completed SYS_OUT writes. The sequence declares
+a byte window before START; the predictor independently derives DEST/SIZE
+and counts START commands. The scoreboard checks that their keys and windows
+agree, then compares a closed observed sample with the prediction. Missing
+bytes, nonzero data and error responses fail the comparison. Repeated writes
+are not graded as a separate contract. The observer accepts aligned,
+full-beat INCR bursts and classifies enabled bytes only.
+
+The environment owns the Zeroer reset epoch and passes it to the predictor,
+observer and scoreboard. Uncompared commands become interrupted on primary
+reset. START completes before reset; predictions are keyed by the epoch in
+which START completes. Pending declarations without predictions fail
+end-of-pass and scoreboard end-of-test accounting. The model bounds its per-byte allocation to 64 KiB
+and requires addresses within the responder's backing range; this is a model
+scope limit, not a hardware size limit. Only sequential full-width Zeroer
+programming with no competing writer is supported.
+
+`smc_tb_if.zeroer_cb` samples the engine port, SYS_OUT handshakes and primary
+reset with input skew. The reset scenario holds W backpressure or B responses,
+records the last pre-reset sample, and grades fresh recovery after release.
+The SYS_OUT responder's completed-burst count is sampled before START, before
+reset request and at primary-reset release. Recovery B handshakes are counted
+by their accepted AW region. Old-window W-byte accounting requires the AW
+to have been sampled before or with W; W beats preceding AW are not counted.
+Old-window traffic, interrupted memory/guard
+contents and unexplained B handshakes are observations. SYS_OUT B handshakes
+without a tracked AW are counted separately as `sys_out_unmatched_b` and do
+not fail a check. An old B interleaved with valid recovery responses can evade
+aggregate accounting. AXI and data-knownness assertions are enabled; the
+passive item monitor itself does not retain data X/Z masks.
+
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
 subscribes to the SEP_IN monitor stream, rebuilds a shadow of the

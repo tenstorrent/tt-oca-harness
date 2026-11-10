@@ -114,6 +114,7 @@ localparam string SmcFeatureSpmMem = "spm_mem";
 localparam string SmcFeatureRegblockWide = "regblock_wide";
 localparam string SmcFeatureWdtCsr = "wdt_csr";
 
+localparam string SmcFeatureZeroerRange = "zeroer_range";
 localparam string SmcFeatureFabricReg = "fabric_reg";
 localparam string SmcFeatureMailboxFifo = "mailbox_fifo";
 

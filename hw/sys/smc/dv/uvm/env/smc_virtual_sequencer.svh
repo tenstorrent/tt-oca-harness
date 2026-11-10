@@ -14,6 +14,10 @@ class smc_virtual_sequencer extends ocah_sequencer;
   // SEP_IN AXI4 initiator (VIP typedef: uvm_sequencer over ocah_axi_item).
   ocah_axi_master_sequencer m_sep_in_seqr;
 
+  smc_zeroer_range_ref_model m_zeroer_range_ref_model;
+  smc_zeroer_burst_observer m_zeroer_burst_observer;
+  ocah_axi_monitor m_sys_out_monitor;
+
   // Responder sequence of the SYS_OUT slave agent (VIP slave sequence API:
   // write32/read32/write_bytes, inject_error, enable_backpressure).
   ocah_axi_slave_sequence m_sys_out_slave_seq;

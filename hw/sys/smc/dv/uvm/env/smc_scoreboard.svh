@@ -64,6 +64,10 @@
 //                reset with outstanding traffic is supported. Active SEP_IN
 //                helpers check X/Z; the passive monitor discards data X/Z masks.
 //
+//   zeroer_range required-only command keys, declarations and byte samples.
+//                Primary reset interrupts old commands; closed recovery samples
+//                compare against request-derived predictions independently.
+//
 // Accesses outside those windows carry no data contract here and are skipped
 // on the observed side. The cocotb twin is env/smc_scoreboard.py (its SysAxi
 // expected-value checks).
@@ -86,6 +90,9 @@
 
 `uvm_analysis_imp_decl(_smc_fabric_reg_observed)
 `uvm_analysis_imp_decl(_smc_fabric_reg_expected)
+`uvm_analysis_imp_decl(_smc_zeroer_expected)
+`uvm_analysis_imp_decl(_smc_zeroer_observed)
+`uvm_analysis_imp_decl(_smc_zeroer_declared)
 `uvm_analysis_imp_decl(_smc_mailbox_fifo_observed)
 `uvm_analysis_imp_decl(_smc_mailbox_fifo_expected)
 
@@ -93,6 +100,16 @@ class smc_scoreboard extends ocah_scoreboard;
   `uvm_component_utils(smc_scoreboard)
 
   smc_env_cfg cfg;
+  uvm_analysis_imp_smc_zeroer_expected #(smc_zeroer_range_sample, smc_scoreboard)
+      zeroer_expected_export;
+  uvm_analysis_imp_smc_zeroer_observed #(smc_zeroer_range_sample, smc_scoreboard)
+      zeroer_observed_export;
+  uvm_analysis_imp_smc_zeroer_declared #(smc_zeroer_range_sample, smc_scoreboard)
+      zeroer_declared_export;
+  protected smc_zeroer_range_sample zeroer_declared[string], zeroer_expected[string];
+  protected smc_zeroer_range_sample zeroer_observed[string];
+  protected bit zeroer_interrupted[string], zeroer_compared[string];
+  int unsigned zeroer_epoch, zeroer_interrupted_count[2];
 
   uvm_analysis_imp_smc_fabric_reg_observed #(ocah_axi_item, smc_scoreboard)
       fabric_reg_observed_export;
@@ -159,7 +176,123 @@ class smc_scoreboard extends ocah_scoreboard;
     mailbox_fifo_observed_export = new("mailbox_fifo_observed_export", this);
     mailbox_fifo_expected_export = new("mailbox_fifo_expected_export", this);
     add_feature(SmcFeatureMailboxFifo);
-    foreach (cfg.required_features[i]) require_feature(cfg.required_features[i]);
+    add_feature(SmcFeatureZeroerRange);
+    zeroer_expected_export = new("zeroer_expected_export", this);
+    zeroer_observed_export = new("zeroer_observed_export", this);
+    zeroer_declared_export = new("zeroer_declared_export", this);
+    foreach (cfg.required_features[i]) begin
+      require_feature(cfg.required_features[i]);
+      if (cfg.required_features[i] == SmcFeatureZeroerRange) begin
+        m_evidence.required_ids.push_back("CHK-ZEROER-DECLARED-VS-PREDICTED");
+        m_evidence.required_ids.push_back("CHK-ZEROER-OBSERVED-DELTA");
+      end
+    end
+  endfunction
+
+  function void check_phase(uvm_phase phase);
+    foreach (cfg.required_features[i]) begin
+      if (cfg.required_features[i] == SmcFeatureZeroerRange) begin
+        int unsigned pending = zeroer_pending_count();
+        void'(m_evidence.expect_true(
+            "CHK-ZEROER-OBSERVED-DELTA",
+            pending == 0,
+            $sformatf(
+                "end-of-test pending_commands=%0d", pending)
+        ));
+        break;
+      end
+    end
+    super.check_phase(phase);
+  endfunction
+
+  function void write_smc_zeroer_declared(smc_zeroer_range_sample d);
+    if (zeroer_declared.exists(d.key()))
+      `uvm_fatal("CHK-ZEROER-DECLARED-VS-PREDICTED", "duplicate declaration")
+    zeroer_declared[d.key()] = d;
+  endfunction
+
+  function void write_smc_zeroer_expected(smc_zeroer_range_sample e);
+    string k = e.key();
+    bit new_key = zeroer_declared.exists(k) && !zeroer_expected.exists(k);
+    if (!m_evidence.expect_true("CHK-ZEROER-DECLARED-VS-PREDICTED", new_key, {"expected key=", k}))
+      return;
+    void'(m_evidence.expect_true(
+        "CHK-ZEROER-DECLARED-VS-PREDICTED",
+        zeroer_declared[k].destination == e.destination && zeroer_declared[k].size == e.size,
+        $sformatf(
+            "key=%s declared=%016h/%0d predicted=%016h/%0d",
+            k,
+            zeroer_declared[k].destination,
+            zeroer_declared[k].size,
+            e.destination,
+            e.size)
+    ));
+    zeroer_expected[k] = e;
+    zeroer_try_compare(k);
+  endfunction
+
+  function void write_smc_zeroer_observed(smc_zeroer_range_sample o);
+    string k = o.key();
+    bit new_sample = !zeroer_observed.exists(k);
+    if (!m_evidence.expect_true(
+            "CHK-ZEROER-OBSERVED-DELTA", new_sample, {"new closed sample key=", k}
+        ))
+      return;
+    zeroer_observed[o.key()] = o;
+    zeroer_try_compare(o.key());
+  endfunction
+
+  protected function void zeroer_try_compare(string k);
+    smc_zeroer_range_sample e, o;
+    bit passed;
+    int unsigned bad_bytes = 0;
+    bit ready = zeroer_expected.exists(k) && zeroer_observed.exists(k);
+    bit retired = zeroer_interrupted.exists(k) || zeroer_compared.exists(k);
+    if (!ready || retired) return;
+    e = zeroer_expected[k];
+    o = zeroer_observed[k];
+    passed = !o.response_error && o.bytes_by_addr.num() == e.bytes_by_addr.num();
+    foreach (e.bytes_by_addr[a]) begin
+      if (!o.bytes_by_addr.exists(a) || o.bytes_by_addr[a] != e.bytes_by_addr[a]) bad_bytes++;
+    end
+    passed &= bad_bytes == 0;
+    record_compare(
+        SmcFeatureZeroerRange, passed, $sformatf("dest=%016h bytes=%0d zeros", e.destination, e.size
+        ), $sformatf(
+        "bytes=%0d bad=%0d response_error=%0b", o.bytes_by_addr.num(), bad_bytes, o.response_error),
+        {"key=", k});
+    zeroer_compared[k] = 1;
+  endfunction
+
+  function void zeroer_on_reset(int unsigned new_epoch);
+    foreach (zeroer_declared[k]) begin
+      bit active = !zeroer_compared.exists(k) && !zeroer_interrupted.exists(k);
+      if (zeroer_declared[k].epoch == zeroer_epoch && active) begin
+        zeroer_interrupted[k] = 1;
+        zeroer_interrupted_count[zeroer_declared[k].phase_index]++;
+        zeroer_observed.delete(k);
+      end
+    end
+    zeroer_epoch = new_epoch;
+  endfunction
+
+  function bit zeroer_expected_seen(int unsigned epoch, int unsigned id);
+    return zeroer_expected.exists($sformatf("%0d:%0d", epoch, id));
+  endfunction
+
+  function int unsigned zeroer_pending_count();
+    int unsigned count = 0;
+    foreach (zeroer_declared[k]) begin
+      if (!zeroer_expected.exists(
+              k
+          ) || (!zeroer_compared.exists(
+              k
+          ) && !zeroer_interrupted.exists(
+              k
+          )))
+        count++;
+    end
+    return count;
   endfunction
 
   // ------------------------------------------------------------------
