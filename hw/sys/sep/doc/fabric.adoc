@@ -152,7 +152,7 @@ as well as the output fabric's remaps and outbound filter.
 
 [[sep-local-fabric-diagram]]
 .SEP local fabric
-image::sep-local-fabric.svg[alt="SEP local crossbar with its five initiators, their alias remaps and demuxes, the boot ROM path and the converters in front of its ten targets",width=100%,pdfwidth=100%]
+image::sep-local-fabric.svg[alt="SEP local crossbar with its five initiators, their alias remaps and demuxes, the boot ROM path and the converters and demuxes in front of its ten targets",width=100%,pdfwidth=100%]
 
 <<sep-local-fabric-diagram>> shows the local crossbar with its initiators on the
 left and its targets on the right, in crossbar port order. Each CPU master and
