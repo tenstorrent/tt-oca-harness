@@ -147,7 +147,9 @@ ALL_BANKS = 0xFF
 FORCED_V = (1 << HMAC) | (1 << AES) | (1 << MSG)
 OPTIONAL_V = (KMAC, OTBN, MLDSA, SEED_D, SEED_Z)
 MAX_KEY_WORDS = 128
-SLOT_WORDS = 16
+SLOTS = imgh.KPV_SLOTS
+SLOT_WORDS = imgh.KPV_SLOT_WORDS
+KPV_WORDS = SLOTS * SLOT_WORDS
 
 # The HMAC witness software key. Every drawn key differs from it in its
 # leading 8 words, so the "key" and "no key" goldens differ.
@@ -380,7 +382,7 @@ def check_plan(p: Plan) -> None:
         errs.append("the outside destination of key A")
     if not 0 <= p.flip_word < len(p.key_a) or p.flip_bit not in (0, 31):
         errs.append("the key CRC flip")
-    if len(p.key_c) % SLOT_WORDS == 0 or not len(p.key_c) % SLOT_WORDS <= p.residue_j < 16:
+    if len(p.key_c) % SLOT_WORDS == 0 or not len(p.key_c) % SLOT_WORDS <= p.residue_j < SLOT_WORDS:
         errs.append("the residue flip")
     if p.cpu_src not in ORDER:
         errs.append("the CPU-line KMCSR source")

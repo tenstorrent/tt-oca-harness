@@ -33,7 +33,7 @@ S4 SEP_RESET: the first IC_RESET scan stages the override and carries the
    nets; the last edge before the fall gives the VALIDs pending at the fall.
    These levels are observations (OBS-G2B-ENTRY-EDGE, OBS-G2B-SEP-VALID-LOW,
    OBS-G2B-SEPIN-VALID). One JTAG2AXI read goes into the SEP aperture during
-   the reset; no checker expects its response (OBS-G2B-RESET-ENDS, SF-003).
+   the reset; no checker expects its response (OBS-G2B-RESET-ENDS).
 S5 NONSEP_DURING_RESET: a JTAG2AXI write and read to ext_out and an ext_in
    write and read to the SMC scratchpad while sep_reset_n is low, each an
    observation window; the term counts the four windows closed, met or run
@@ -45,8 +45,8 @@ S6 RELEASE_LIVENESS: every B and R on smu_in and dtp_dbg is held against the
    and the stub rewritten, then one fresh write and read on every S1 route, a
    bridge write read back over ext_in or the system bus, and the stub store
    and load to ext_out and to the SMC aperture, with no cold reset before
-   them; last, one JTAG2AXI read, observed only (OBS-G2B-J2A-READ-AFTER-HOLD,
-   SF-003); the one cold reset of the leaf follows.
+   them; last, one JTAG2AXI read, observed only (OBS-G2B-J2A-READ-AFTER-HOLD);
+   the one cold reset of the leaf follows.
 S7 TIMEOUT: every wait is bounded in clk_smu_i edges, polls or captures; an
    expiry fails the leaf and is classified as unanswered-transaction evidence.
    Every JTAG2AXI operation of S3 to S6 issued as a capture window and the S5
@@ -306,7 +306,7 @@ BRIDGE_HELD = (
     'sep_reset_n is low; hw/ip/jtag/jtag_ptap/doc/architecture.adoc, *_AXI_SINGLE_OP op: "The '
     "latest operation was attempted before the previous operation completed; the previous AXI "
     'request is still in progress. The operation attempted in this access will be ignored"; the '
-    "S4 read into the held SEP stays outstanding (OBS-G2B-RESET-ENDS, SF-003)"
+    "S4 read into the held SEP stays outstanding (OBS-G2B-RESET-ENDS)"
 )
 SMC_APERTURE_ATTRS = (
     "hw/sys/sep/doc/fabric.adoc sep-outbound-attributes-table: SMC aperture, AxUSER the "
@@ -695,7 +695,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         """The access's request on sep_out (by address) or on the SEP-to-SMC port.
 
         The SEP-to-SMC request is taken whatever its address: the SMC-aperture
-        address that port carries is what OBS-G2B-ADDR measures, SF-023.
+        address that port carries is what OBS-G2B-ADDR measures.
         """
         key = f"{ch}addr"
         out = [(n, e) for n in SEP_LINKS for e in self._tsince(mks, n, ch) if e[key] == addr]
@@ -1070,7 +1070,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         smc_driven = sum(len(self.taps["sep_to_smc"].ev[ch]) for ch in ("aw", "ar"))
         self.log.info(
             "OBS-G2B-SEP2SMC-TIE: step=%s sep_to_smc_aw_ar_handshakes=%d (SMC sep_axi_in %s) %s; "
-            "table: %s; observation only, SF-012",
+            "table: %s; observation only; open spec question: whether the SEP-to-SMC connection "
+            "drives the SMC sep_axi_in",
             step,
             smc_driven,
             "driven by the SEP-to-SMC port" if smc_driven else "no AW/AR seen",
@@ -1080,7 +1081,9 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         self.log.info(
             "OBS-G2B-ADDR: step=%s %s; filters: SMC inbound entry 0 and outbound entry 0 over the "
             "whole space (JTAG2AXI), SEP outbound entry over the egress page, every other entry at "
-            "reset; observation only, SF-023, SF-012",
+            "reset; observation only; open spec questions: which addresses and filter entries "
+            "reach the SEP SRAM and SMC scratchpad; whether the SEP-to-SMC connection drives the "
+            "SMC sep_axi_in",
             step,
             " ".join(addrs),
         )
@@ -1103,7 +1106,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             for e in self.taps[n].ev["aw"]
         ]
         self.log.info(
-            "OBS-G2B-ATOP-SEP: every sep_out and SEP-to-SMC AW so far: %s; observation only, SF-017",
+            "OBS-G2B-ATOP-SEP: every sep_out and SEP-to-SMC AW so far: %s; observation only; open "
+            "spec question: whether the fabric carries ATOP and how an atomic request is answered",
             " ".join(atop) or "none",
         )
         self._fence(len(recs))
@@ -1323,7 +1327,9 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             "%d, captures %d/%d) j2a_ext_rd=(met %d, status %d, rdata %s, captures %d/%d) "
             "dtp_dbg request handshakes=%d ext_in_spm_wr=%s in %s cycles from %dns "
             "ext_in_spm_rd=%s in %s cycles from %dns (a window that runs out is measured, never an "
-            "expiry); observation only, SF-001, SF-022, SF-003",
+            "expiry); observation only; open spec questions: which reset resets the crossbar, "
+            "converters and inbound cut; the crossbar arbitration and bounded progress under a "
+            "stalled ext_out; whether a request accepted before a reset completes or is withdrawn",
             _hx(pre),
             _hx(during),
             jw["met"],
@@ -1492,7 +1498,9 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         entry, second = h["entry"], h["second"]
         if entry is None:
             self.log.info(
-                "OBS-G2B-ENTRY-EDGE: no edge sampled sep_reset_n low; SF-005, SF-006, SF-007"
+                "OBS-G2B-ENTRY-EDGE: no edge sampled sep_reset_n low; open spec questions: which "
+                "SEP-facing link ends each reset reaches; which link managers clear VALID with "
+                "synchronous-reset flops; which payload set and reset-entry rule bind on the run"
             )
             return
         e_high = self._highs(entry[1], entry[2])
@@ -1511,7 +1519,9 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         self.log.info(
             "OBS-G2B-ENTRY-EDGE: cycle=%d second=%s entry_high=%s second_high=%s "
             "watcher_no_window=%s checker_one_edge=%s per_instance=%s levels_entry=%s "
-            "sep_in_entry=%s; observation only, SF-005, SF-006, SF-007",
+            "sep_in_entry=%s; observation only; open spec questions: which SEP-facing link ends "
+            "each reset reaches; which link managers clear VALID with synchronous-reset flops; "
+            "which payload set and reset-entry rule bind on the run",
             entry[0],
             second[0] if second else None,
             e_high,
@@ -1565,8 +1575,9 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         sepin = {s: len(v) for s, v in h["sepin_high"].items()}
         self.log.info(
             "OBS-G2B-SEPIN-VALID: edges_low=%d high_edges=%s first_last=%s x_samples=%d "
-            "(crossbar-driven AW/W/AR toward the held SEP, B/R on sep_in); observation only, "
-            "SF-005, SF-006",
+            "(crossbar-driven AW/W/AR toward the held SEP, B/R on sep_in); observation only; "
+            "open spec questions: which SEP-facing link ends each reset reaches; which link "
+            "managers clear VALID with synchronous-reset flops",
             low,
             sepin,
             {s: (v[0], v[-1]) for s, v in h["sepin_high"].items() if v},
@@ -1580,7 +1591,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
                     "checker-side",
                     f"u_xbar_sep_in_sep_rst_axi_sva {sig.upper()[:2]}_VALID_RESET_LOW predicted on "
                     f"{len(later)} edges from {later[0]} inside the expectation window (a reset "
-                    "outside the driver's reset, SF-005, SF-006); OBS-G2B-RULING-2891",
+                    "outside the driver's reset); OBS-G2B-RULING-2891",
                     "xbar_sep_in",
                 )
         s2s = [x for x in high if x[1] == "sep_to_smc"]
@@ -1590,7 +1601,7 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
                 "checker-side",
                 f"u_sep_to_smc_sep_rst_axi_sva VALID_RESET_LOW predicted on {len(s2s)} edges "
                 f"from {s2s[0]}; the bench window of tb_wrapper_top.sv (sep_in override "
-                "expectation window) takes no rule of this instance off, SF-005 and SF-006; "
+                "expectation window) takes no rule of this instance off; "
                 "OBS-G2B-RULING-2891",
                 "sep_to_smc",
             )
@@ -1609,7 +1620,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             "pending_at_fall=%d sep_requests_unanswered_at_fall=%d; per link edges %s, high edges "
             "%s; pending on the last edge before the fall (cycle %s) %s; unanswered %s; nothing "
             "SEP-driven pending at the fall leaves the low levels equal to the pre-reset state; "
-            "observation only, SF-005, SF-006",
+            "observation only; open spec questions: which SEP-facing link ends each reset "
+            "reaches; which link managers clear VALID with synchronous-reset flops",
             len(GRADED),
             e_lo,
             e_hi,
@@ -1679,7 +1691,9 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             "aperture ports while held %s; JTAG2AXI read at %s during the reset: met=%s status=%s "
             "rdata=%s captures=%s, dtp_dbg AR %s, sep_in AR handshakes while sep_reset_n low %s, "
             "R before the release %s, R by the end %s; bridge (met, status) of the S5 operations %s; "
-            "observation only, SF-003, SF-005, SF-001",
+            "observation only; open spec questions: whether a request accepted before a reset "
+            "completes or is withdrawn; which SEP-facing link ends each reset reaches; which reset "
+            "resets the crossbar, converters and inbound cut",
             h["low"],
             len(h["nets_bad"]),
             quiet,
@@ -1701,7 +1715,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
                 "unanswered-transaction",
                 "design-side",
                 f"JTAG2AXI read at {_hx(DURING_ADDR)} accepted while sep_reset_n is low, no R to "
-                "the end; no pinned source states an answer, SF-003; graded=no, OBS-G2B-RESET-ENDS",
+                "the end; no pinned source states an answer (whether a request accepted before a "
+                "reset completes or is withdrawn); graded=no, OBS-G2B-RESET-ENDS",
                 "dtp_dbg",
             )
 
@@ -1710,9 +1725,10 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
         ar = fate["ar"]
         self.log.info(
             "OBS-G2B-J2A-READ-AFTER-HOLD: JTAG2AXI read at %s after the bridge write of %s: met=%s "
-            "status=%s rdata=%s captures=%s; dtp_dbg AR %s, R %s; the SEP, open owner question "
-            "SF-003 (must a request forwarded to sep_in while the IC_RESET override holds "
-            "sep_reset_n be answered), observation only, never compared, SF-005",
+            "status=%s rdata=%s captures=%s; dtp_dbg AR %s, R %s; the SEP, open owner questions "
+            "(must a request forwarded to sep_in while the IC_RESET override holds "
+            "sep_reset_n be answered; which SEP-facing link ends sep_reset_n resets and their "
+            "response while held), observation only, never compared",
             _hx(SEP_S6_J2A),
             _hx(W_S6_J2A),
             rec["met"],
@@ -1727,7 +1743,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
                 "unanswered-transaction",
                 "design-side",
                 f"JTAG2AXI read at {_hx(SEP_S6_J2A)} after the hold reports op={rec['status']}; "
-                "SF-003; graded=no, OBS-G2B-J2A-READ-AFTER-HOLD",
+                "open spec question: whether a request accepted before a reset completes or is "
+                "withdrawn; graded=no, OBS-G2B-J2A-READ-AFTER-HOLD",
                 "dtp_dbg",
             )
 
@@ -1796,7 +1813,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             rows.append("sep_out store: no AW handshake on sep_out")
         rows.append(f"ext_out held store byte={_hx(self.mem.read_int(EGRESS_HELD, 1))}")
         self.log.info(
-            "OBS-G2B-OUTCOME: fall@%s rise@%s (ext_in cycles) %s; observation only, SF-003",
+            "OBS-G2B-OUTCOME: fall@%s rise@%s (ext_in cycles) %s; observation only; open spec "
+            "question: whether a request accepted before a reset completes or is withdrawn",
             fall,
             rise,
             "; ".join(rows),
@@ -1847,7 +1865,8 @@ class smu_axi_sep_reset_in_flight_test_seq(smu_xbar_reset_held_target_test_seq):
             "rid=%s withdrawn=%s; crossbar-driven sep_in AW/W/AR high on %d edges after the entry "
             "edge (u_xbar_sep_in_sep_rst_axi_sva rules inside the window), SEP-to-SMC VALID high "
             "on %d (u_sep_to_smc_sep_rst_axi_sva); responses after release with no request "
-            "issued after it: %s; accepted under ruling #2891, never a failure; SF-031",
+            "issued after it: %s; accepted under ruling #2891, never a failure; the behaviours "
+            "the recorded owner rulings cover are stated on their issues",
             before.get("rvalid"),
             at.get("rvalid"),
             before.get("rready"),

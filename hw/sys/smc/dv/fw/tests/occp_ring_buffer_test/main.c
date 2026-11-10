@@ -3,7 +3,9 @@
 
 /*
  * Reads the SMC and SEP status ring buffers through OCCP status commands: checks the first
- * SMC boot entry, that the SEP buffer is empty, and the firmware ID of later SMC entries.
+ * SMC boot entry, that the SEP buffer is empty, and the firmware ID of later SMC entries. With
+ * the STATUS_RPT_DISABLE strap set, every status command must return Unsupported_StatusID
+ * instead, and no entry value is checked.
  */
 
 #include "occp_test_common.h"
@@ -55,6 +57,16 @@ static bool test_buffer_initialization(ring_buffer_test_context_t *ctx) {
     if (result != OCCP_SUCCESS) {
         simputs("FAIL: Could not read SMC status\n");
         return false;
+    }
+    if (ctx->occp_ctx->status_reporting_disabled) {
+        result =
+            occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        if (result != OCCP_SUCCESS) {
+            simputs("FAIL: Could not read SEP status\n");
+            return false;
+        }
+        simputs("STATUS_RPT_DISABLE strap active; SMC and SEP status queries rejected\n");
+        return true;
     }
 
     uint32_t expected_smc_init = 0x20000001;

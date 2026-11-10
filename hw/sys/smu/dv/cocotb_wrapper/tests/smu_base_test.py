@@ -342,6 +342,7 @@ class smu_base_test(uvm_test):
         "lc_sigint_inject_i",
         "tb_secure_tm_req",
         "tb_smc_sram_auto_init_restore",
+        "tb_fcov_gate",
         "tb_gpio0_drive_en",
         "tb_gpio0_drive_val",
         "tb_gpio_drive_en",

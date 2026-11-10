@@ -135,6 +135,19 @@ class PlanCombine(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.root, ignore_errors=True)
 
+    def test_the_build_fingerprint_names_every_run_build(self):
+        a = write_run(self.root, "a", framework="cocotb")
+        same = write_run(self.root, "same", framework="uvm")
+        b = write_run(self.root, "b", framework="uvm", fingerprint="fp-uvm")
+        c = write_run(self.root, "c", framework="uvm", fingerprint="fp-uvm-2")
+
+        def fingerprint(*runs):
+            return plan_combine(self.root, self.flow, None, list(runs)).build_fingerprint
+
+        self.assertEqual(fingerprint(a, same), "fp-cocotb")
+        self.assertEqual(fingerprint(a, b), fingerprint(b, a))
+        self.assertNotEqual(fingerprint(a, b), fingerprint(a, c))
+
     def test_two_frameworks_of_one_commit_plan_as_one_combined_run(self):
         # A run graded FAIL against its own thresholds is a valid input: the combined run is
         # graded on its own.
@@ -145,7 +158,7 @@ class PlanCombine(unittest.TestCase):
         self.assertEqual(plan.commit, COMMIT)
         self.assertEqual(plan.frameworks, ["cocotb", "uvm"])
         self.assertEqual(plan.target, "default")
-        self.assertIsNone(plan.build_fingerprint)
+        self.assertRegex(plan.build_fingerprint, r"^[0-9a-f]{12}$")
         self.assertEqual(
             plan.input_paths(),
             [
@@ -285,7 +298,7 @@ class MergePhaseWithPlan(unittest.TestCase):
         self.assertEqual(manifest["combine"]["commit"], COMMIT)
         self.assertEqual(manifest["combine"]["frameworks"], ["cocotb", "uvm"])
         self.assertEqual(manifest["target"], "default")
-        self.assertIsNone(manifest["build_fingerprint"])
+        self.assertEqual(manifest["build_fingerprint"], self.plan.build_fingerprint)
         self.assertEqual(manifest["union_warnings"], {})
         self.assertNotIn("graded_summary", manifest)
         self.assertEqual(self.merge({**tool_cov, "summary": "module_definition"}), 0)

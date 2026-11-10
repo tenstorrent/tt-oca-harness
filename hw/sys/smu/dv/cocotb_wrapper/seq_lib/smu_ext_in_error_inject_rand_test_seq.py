@@ -899,6 +899,8 @@ class smu_ext_in_error_inject_rand_test_seq(smu_dtp_sep_dm_sba_test_seq):
             await self._setup_smc()
             self._check_apertures()
             master = await make_smu_axi_master(self.dut, self.clk, smc_primary_reset(self.dut))
+            # smu_ext_in_error_cg samples the cells, the ext_in leg and the SEP cells only.
+            self.dut.tb_fcov_gate.value = 1
             await self._mark("S1", "TAP, aperture alias, outbound entry 0, iDMA and AXI master")
             for cell in self.plan:
                 if cell["initiator"] == IDMA:
@@ -917,6 +919,7 @@ class smu_ext_in_error_inject_rand_test_seq(smu_dtp_sep_dm_sba_test_seq):
             self._log(f"STEP PASS @{self.stamp_ps['PASS'] / 1000:.3f}ns: PASS stamp")
             self._check_integrity(sb)
         finally:
+            self.dut.tb_fcov_gate.value = 0
             self.tap.stop()
         self.done = True
 

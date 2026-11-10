@@ -61,7 +61,7 @@ bit-by-bit responder of ``smc_avsbus_slave_reply_test``, with
   ``architecture.adoc`` "CRC Verification Engine" lets exactly one pass the
   check, and only that one may update ``AVS_LATEST_SLAVE_SUBFRAME`` and
   ``AVS_SLAVE_STATUS``; that one code must be the model's remainder for the
-  reply; ``AVS_SLAVE_ISSUED_INTERRUPT`` is logged only (SF-028),
+  reply; ``AVS_SLAVE_ISSUED_INTERRUPT`` is logged only,
 * a StatusResponse-0 reply is swept over the codes until one is accepted, which
   must be the model's code and must clear ``AVS_SLAVE_STATUS`` bit 1,
 * with ``MAX_RETRIES`` at 1 a rejected code is answered by one retry of the
@@ -664,7 +664,7 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
             "CHK-AVS-GRP1-SUBFRAME",
             "subframes %s for AVS_CMD %s carry 31:30=01, bit27=1, 18:3=0x%04x, 29:28=0 then 1, "
             "and bits 29:3 equal AVS_CMD[29:3]; shift_order=msb_first (first wire bit is bit 31) "
-            "measured, LINKED-ISSUE SF-030"
+            "measured, LINKED-ISSUE: the wire shift order of a master subframe"
             % (
                 ",".join(f"0x{f:08x}" for f in grp1),
                 ",".join(f"0x{w:08x}" for _, w in GRP1_COMMANDS),
@@ -774,7 +774,7 @@ class smc_avsbus_frame_transaction_test_seq(SmcCsrSeq):
             "CHK-AVS-SLAVE-INT-OBS",
             "avs_slave_issued_interrupt_after_accept=%d avs_interrupt=0x%08x; "
             "avs_slave_issued_interrupt_after_clear=%d avs_interrupt=0x%08x (measure and log; "
-            "LINKED-ISSUE SF-028)"
+            "LINKED-ISSUE: whether a status-response reply sets AVS_SLAVE_ISSUED_INTERRUPT)"
             % (
                 int(bool(intr_set & SLAVE_ISSUED_BM)),
                 intr_set,

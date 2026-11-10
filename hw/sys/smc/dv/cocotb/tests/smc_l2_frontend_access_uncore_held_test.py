@@ -11,7 +11,10 @@ completion after the release), scratchpad writes presented during the last hold 
 for a counted window; the release attempted under them is an observation, followed by a cold
 recovery when it does not complete), the cluster-side VALIDs of both isolation blocks on every
 edge of the hold, and fresh INCR bursts afterwards. Graded from a passive per-port handshake
-sampler; open values (SF-016, SF-017, SF-018, SF-019, SF-026) are OBS lines.
+sampler; the open values (whether the isolation block holds READY low while isolated, the
+release timing and completion bound of a blocked request, whether scratchpad contents survive a
+software uncore reset, whether the isolation block drives VALID low while isolated, and whether a
+blocked L2-frontend request stalls CPU-control accesses) are OBS lines.
 
 Run (VCS: the X-hygiene and data-known rules of the AXI checkers grade on VCS only):
     python3 tools/dv/run_dv.py --dut smc --items smc_l2_frontend_access_uncore_held_test --tool vcs

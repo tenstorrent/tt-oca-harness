@@ -12,16 +12,15 @@ and window read groups.
   families, counts from the generated address map) takes a full-width read,
   1-byte reads at every byte offset, 2-byte reads at every offset that stays in
   the register, and a second full-width read. The second read must equal the
-  first, and outside the inbound filter (SF-006) it must equal the documented
-  reset image. Sub-word data and RRESP are logged against the reference read
-  (SF-009 is open).
+  first, and outside the inbound filter, whose reset entry state is open, it
+  must equal the documented reset image. Sub-word data and RRESP are logged
+  against the reference read.
 * CPU_CTRL SCRATCH[0], START_ADDR of inbound and outbound entry 15, the system
   timer CTRL and telemetry receiver 0 CTRL take 1-byte writes; a neighbour
   register must not change and a full-width restore must read back the
-  pre-leg value. The byte-lane readbacks are logged (SF-009, SF-031).
+  pre-leg value. The byte-lane readbacks are logged.
 * REGION[7].region_attrs of the alias, M-mode and Xvisor remaps takes all ones
-  and then 0; every documented field is compared, reserved bits are logged
-  (SF-001).
+  and then 0; every documented field is compared, reserved bits are logged.
 * Every one of the 24 remap regions (alias, M-mode and Xvisor REGION[0..7])
   whose saved valid reads 0 first takes a WSTRB 0x7F write with bit 63 set and
   lanes 0..6 the complement of the saved bytes. Every region then takes a WSTRB
@@ -30,7 +29,7 @@ and window read groups.
   of the saved word, each read back. Every access must answer OKAY, the alias
   regions must start with valid 0 (`alias_remap.adoc`) and the restore must
   read back the saved word; the valid bit and lane fields after the strobed
-  writes are logged (SF-009 is open).
+  writes are logged.
 * The system-timer window answers its 9 registers with their documented resets
   and DECERR 0xBADCAB1E past its 36-byte extent; the telemetry window answers
   OKAY over its 768-byte extent with exactly three words reading 0x1 and DECERR
@@ -426,7 +425,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
         await self._wr("CG_UNGATE", CLOCK_GATE_CONTROL, cg)
         self.cg_ungated = await self._rd("CG_UNGATE_RB", CLOCK_GATE_CONTROL)
         cocotb.log.info(
-            "S1 CLOCK_GATE_CONTROL saved 0x%016x wrote 0x%016x read 0x%016x (SF-030, logged)",
+            "S1 CLOCK_GATE_CONTROL saved 0x%016x wrote 0x%016x read 0x%016x (logged; "
+            "whether the telemetry and UART clocks run at reset is open)",
             self.cg_saved,
             cg,
             self.cg_ungated,
@@ -511,7 +511,9 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             f"{done}/{planned} sub-word reads completed, {stable}/{INSTANCES} stable, "
             f"{reset_ok}/{RESET_COMPARED} reset, lane mismatches={lane_bad} "
             f"(non-OKAY RRESP {resp_bad}; first {first_bad or 'none'}); reserved bits OR="
-            f"0x{self._reserved.get('subword', 0):x} (LINKED-ISSUE SF-009 / SF-001, logged only)",
+            f"0x{self._reserved.get('subword', 0):x} (LINKED-ISSUE: the response, read lanes "
+            "and strobe effect of sub-word accesses; whether reserved register bits read 0 and "
+            "ignore writes; logged only)",
         )
 
     async def _byte_leg(
@@ -605,7 +607,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             "CHK-SWEEP-BYTE-LANE",
             f"5 targets, restores {restores}/5 exact, neighbours unchanged "
             f"{neighbours}/{neighbours}, lane results={'; '.join(results)} "
-            "(LINKED-ISSUE SF-009 / SF-031, logged only)",
+            "(LINKED-ISSUE: the response, read lanes and strobe effect of sub-word accesses; "
+            "the START_ADDR readback after a single-lane write; logged only)",
         )
 
     async def _fullwidth_remap(self) -> None:
@@ -641,7 +644,9 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             "CHK-SWEEP-FULLWIDTH-REMAP",
             f"{', '.join(ok)}, zeroed {zeroed}/3, reserved=ones:0x"
             f"{self._reserved.get('remap', 0):016x} zero:0x"
-            f"{self._reserved.get('remap-zero', 0):016x} (LINKED-ISSUE SF-001 / SF-002, logged only)",
+            f"{self._reserved.get('remap-zero', 0):016x} (LINKED-ISSUE: whether reserved "
+            "register bits read 0 and ignore writes; whether output remap offset bits 19:0 are "
+            "stored; logged only)",
         )
 
     async def _valid_lane(self) -> None:
@@ -705,7 +710,7 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
                 cocotb.log.info(
                     "S13 %s saved=0x%016x valid-0 0x7F %s lane7 wrote=0x%016x read=0x%016x (img 0x%016x) "
                     "0x7F wrote=0x%016x read=0x%016x (img 0x%016x) restore=0x%016x "
-                    "(SF-009, logged)",
+                    "(logged; the strobe effect of sub-word writes is open)",
                     name,
                     saved,
                     zero_log,
@@ -732,7 +737,9 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "S13 lane fields match the strobed-lane image: valid-0 WSTRB 0x7F %d/%d, after "
             "WSTRB 0x80 %d/%d, after WSTRB 0x7F %d/%d; output remap saved valid=%s; reserved OR=0x%016x "
-            "(LINKED-ISSUE SF-009 / SF-001 / SF-002, logged only)",
+            "(LINKED-ISSUE: the strobe effect of sub-word writes; whether reserved register bits "
+            "read 0 and ignore writes; whether output remap offset bits 19:0 are stored; "
+            "logged only)",
             zero_match,
             zero_saved,
             lane7_match,
@@ -749,7 +756,7 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             f"valid-after-lane7={after_lane7}, valid-after-0x7F={kept} (bit 63 written 1, "
             f"no lane-7 strobe evidence), "
             f"valid-0 lane-7-unstrobed kept 0 {zero_kept}/{zero_saved}, "
-            f"restored {restored}/{total} (SF-009)",
+            f"restored {restored}/{total} (the strobe effect of sub-word writes is open)",
         )
 
     async def _window_reads(
@@ -840,9 +847,10 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-SWEEP-TELEM-WINDOW",
             f"{len(inside)}/192 OKAY, nonzero={len(nonzero)} (=0x1) at "
-            f"{','.join(f'+0x{o:x}' for o, _v in nonzero)} (LINKED-ISSUE SF-014, positions "
-            f"logged), {len(past)}/832 DECERR 0x{DEADSPACE_RDATA:X}; CLOCK_GATE_CONTROL "
-            f"restored 0x{self.cg_saved:x} read 0x{cg_back:x} (SF-030, logged)",
+            f"{','.join(f'+0x{o:x}' for o, _v in nonzero)} (positions logged; LINKED-ISSUE: "
+            f"the telemetry receiver instance offsets in their window), {len(past)}/832 DECERR "
+            f"0x{DEADSPACE_RDATA:X}; CLOCK_GATE_CONTROL restored 0x{self.cg_saved:x} read "
+            f"0x{cg_back:x} (logged; whether the telemetry and UART clocks run at reset is open)",
         )
 
     def _dbw(self, label: str, word: int) -> None:
@@ -952,7 +960,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             f"lane results={lane_ok}/{lane_total} match "
             f"the strobed-lane image (first mismatches {lane_bad or 'none'}), unstrobed-lock "
             f"locked={''.join(str(self._unstrobed_locked[e.name]) for e in self.entries)} "
-            "(LINKED-ISSUE SF-009 / SF-029, logged only)",
+            "(LINKED-ISSUE: the strobe effect of sub-word writes; whether FILTER_CONFIG group_id "
+            "stores and reads back; logged only)",
         )
 
     def _entry(self, bank: str, idx: int) -> Entry:
@@ -994,7 +1003,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-SWEEP-FULLWIDTH-FILTER",
             f"out15 cfg fields all set (0x{got:016x}), dbw=0x{F_DBW_VALUE:x}, reserved="
-            f"0x{self._reserved['fullwidth-filter']:016x} (LINKED-ISSUE SF-001, logged only), "
+            f"0x{self._reserved['fullwidth-filter']:016x} (LINKED-ISSUE: whether reserved "
+            "register bits read 0 and ignore writes; logged only), "
             f"START/END 0x{start:x}/0x{end:x}, next write DECERR",
         )
 
@@ -1034,7 +1044,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-SWEEP-LOCK-SET",
             f"31/31 locked, config/start/end == S7 post-restore {matched}/31, lane7-path={lane7} "
-            f"fallback={fallback} (per entry {''.join(paths)}; LINKED-ISSUE SF-009, logged)",
+            f"fallback={fallback} (per entry {''.join(paths)}; LINKED-ISSUE: the strobe effect "
+            f"of sub-word writes, logged)",
         )
 
     async def _locked_writes(self) -> None:

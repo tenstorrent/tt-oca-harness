@@ -658,8 +658,8 @@ class smc_zeroer_size_corners_test_seq(output_fabric_pass_all_cfg_seq):
         self._chk(
             "CHK-ZEROER-UNALIGNED",
             "starts 1, 2, 4 with SIZE 8: exactly the 8 bytes from the start read 0x00 and were the "
-            "only strobed bytes, the other 16 of 0x0..0x17 kept 0x%02X; AW address measured "
-            "(SF-020): %s",
+            "only strobed bytes, the other 16 of 0x0..0x17 kept 0x%02X; AW address "
+            "measured: %s",
             _UNALIGNED_POISON,
             "; ".join(rows),
         )
