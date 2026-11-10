@@ -172,10 +172,13 @@ Checkers:
               architecture.adoc, "Key and Policy Vault (KPV)": the lock/seal
               bits clear on warm reset). A CMD_KEY_TRANSFER to
               AES of handle_b, a pre-reset handle the new registry has not
-              issued, is then refused with RC_INVALID_ARG and RETURN_ARG 0, or
-              with RC_FAILURE and no RETURN_ARG, and CHK-ALIVE follows. Which
-              refusal code is logged as OBS-WARM-STALE-HANDLE (no spec line
-              picks one). The refused load of CHK-VAULT-FULL in the same seed
+              issued and so an unavailable one, is then refused with
+              RC_FAILURE and no RETURN_ARG (firmware.adoc:1069-1070, "Key
+              Transfer and Sideload Purge": an unavailable handle gets
+              failure; "0x24 - CMD_KEY_TRANSFER" Response), as CHK-CLOSED
+              grades a revoked handle, and CHK-ALIVE follows. The code is also
+              logged as OBS-WARM-STALE-HANDLE. The refused load of
+              CHK-VAULT-FULL in the same seed
               is the control of the load. The control of the refusal is a
               CMD_KEY_TRANSFER of the new handle 1 to AES in the same state:
               it returns rc=0 with the handle and dest echoed (firmware.adoc,
@@ -1382,12 +1385,11 @@ class sep_km_command_set_rand_test(sep_base_test):
 
         rc, arg = await self._resp_cmd(KM_CMD_KEY_TRANSFER, [stale, KM_DEST_AES])
         self.logger.info("OBS-WARM-STALE-HANDLE LOG handle=0x%02x rc=%d", stale, rc)
-        exp_arg = 0 if rc == KM_RC_INVALID_ARG else None
-        assert rc in (KM_RC_INVALID_ARG, KM_RC_FAILURE) and arg == exp_arg, (
+        assert rc == KM_RC_FAILURE and arg is None, (
             f"CHK-VAULT-WARM-LOAD FAIL: CMD_KEY_TRANSFER of pre-reset handle 0x{stale:02x} "
             f"to AES after the warm reset returned rc={rc} RETURN_ARG={_arg_str(arg)}, "
-            f"expected rc={KM_RC_INVALID_ARG} (RC_INVALID_ARG) with RETURN_ARG 0x00000000 "
-            f"or rc={KM_RC_FAILURE} (RC_FAILURE) with none (firmware.adoc:491-499)"
+            f"expected rc={KM_RC_FAILURE} (RC_FAILURE) with none for an unavailable handle "
+            "(firmware.adoc:1069-1070, :491-499)"
         )
         await self._check_alive("post-warm-stale-handle")
 
@@ -1402,16 +1404,17 @@ class sep_km_command_set_rand_test(sep_base_test):
         self.logger.info(
             "CHK-VAULT-WARM-LOAD PASS: contract=key_manager/doc/firmware.adoc:1382"
             "(Boot_Sequence),:1889-1895(Key_Registry),:690-691(0x26_CMD_KEY_LOAD),"
-            ":1763-1764(KPV_Driver),:491-499(0x24_CMD_KEY_TRANSFER_Response),"
+            ":1763-1764(KPV_Driver),:1069-1070(Key_Transfer_and_Sideload_Purge),"
+            ":491-499(0x24_CMD_KEY_TRANSFER_Response),"
             ":504-513(Key_Transfer_Success_Response),architecture.adoc:441(KPV) %s "
-            "stale_handle=0x%02x stale_rc=%d stale_arg=%s exp_stale_arg=%s "
+            "stale_handle=0x%02x stale_rc=%d exp_stale_rc=%d stale_arg=%s exp_stale_arg=none "
             "xfer_rc=%d exp_xfer_rc=%d xfer_arg=0x%08x xfer_handle=0x%02x exp_xfer_handle=0x%02x "
             "xfer_dest=0x%02x exp_xfer_dest=0x%02x",
             fields,
             stale,
             rc,
+            KM_RC_FAILURE,
             _arg_str(arg),
-            _arg_str(exp_arg),
             xfer_rc,
             KM_RC_SUCCESS,
             xfer_arg,
