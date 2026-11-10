@@ -30,6 +30,7 @@ import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from sep_km_img_h import KM_SRAM_BASE, KM_SRAM_SIZE, SRAM_REGION_BYTES
 from sep_seeded_rng import SepSeededRng
 
 T_SCR = "sep_km_sram_scrambler_key_rand_test"
@@ -47,11 +48,10 @@ BLOCK_SCR = 0x1
 BLOCK_MBOX_KM = 0x2
 
 WORD_MASK = 0xFFFF_FFFF
-# KM SRAM byte window of the drawn stores: regions 1 to 31, word aligned. Region
-# 0 holds the image data and is never a drawn address.
-SRAM_DRAW_LO = 0x8400
-SRAM_DRAW_HI = 0xFFFC
-SRAM_REGION_BYTES = 0x400
+# KM SRAM byte window of the drawn stores: every SRAM_LOCK region but region 0,
+# word aligned. Region 0 holds the image data and is never a drawn address.
+SRAM_DRAW_LO = KM_SRAM_BASE + SRAM_REGION_BYTES
+SRAM_DRAW_HI = KM_SRAM_BASE + KM_SRAM_SIZE - 4
 MBOX_DEPTH = 16
 
 # A draw that cannot find a fresh value in this many tries is a generator bug.

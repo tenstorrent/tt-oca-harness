@@ -8,7 +8,18 @@ released (value 1), whatever ``SW_RESET_N`` holds, and does not run the
 isolation sequence. The domain returns when the override releases. With
 ``rst_ni`` high, the override that forces ``sep_reset_n`` low resets every
 ``sep_reset_n``-domain block and every sequenced engine domain, and leaves the
-``rst_ni``-domain blocks intact (``sep_fuse_sense_done_o``, ``aon_rst_n``).
+``rst_ni``-domain blocks intact (``sep_fuse_sense_done_o``, ``aon_rst_n``, the
+life cycle controller and the watchdog register path).
+
+``sep_reset_n`` targets graded: the SPI host, the DMA, the engine probes, the
+Key Manager cold domain (``KM_MAILBOX_SEP.SEP_IRQ_ENABLE``, the SEP-facing
+mailbox side) and the SRAM and boot ROM interfaces (their ``rst_ni`` taps).
+``rst_ni``-only targets graded: the life cycle controller (``DEMOTE_2``) and the
+watchdog register path (``WDOG_BARK_THOLD`` with the timer disabled). Two
+``rst_ni``-only blocks have no graded target: the crossbar has no register and
+no tap that holds state, and the TRNG reset that the override asserts clears
+the entropy pool (``hw/sys/sep/doc/crypto.adoc``, ``trng_entropy_clear_o``), so
+the pool cannot keep a value across the override.
 
 Sources: ``hw/sys/sep/doc/reset_controller.adoc`` (SEP Reset Controller,
 Isolation and Reset Sequencing); ``hw/sys/sep/doc/clk_rst.adoc`` (Reset
@@ -33,13 +44,21 @@ Probes. Approved: ``ip_rst_n[6:1]`` (``*_gated_rst_n_probe_o``),
 ``dbg_sep_reset_n_o``, ``sep_cpu_reset_n_o``, ``sep_fuse_sense_done_o``.
 Observation taps: the isolate-complete vector ``crypto_isolated_probe_o`` (the
 host-path bits of every domain, read through ``env/sep_reset_taps.py``),
-``aon_rst_n_probe_o`` and ``jtag_sep_reset_n_ovrd_probe_o`` (the ``sep_reset_n``
-override select on the SEP input port). Engine probe registers:
+``aon_rst_n_probe_o``, ``jtag_sep_reset_n_ovrd_probe_o`` (the ``sep_reset_n``
+override select on the SEP input port), and ``pr_sram_memif_rst_n_o`` /
+``pr_rom_memif_rst_n_o`` (the ``rst_ni`` inputs of the SRAM and boot ROM
+memory interfaces). Engine probe registers:
 ``seq_lib/sep_reset_mid_transfer_seq.PROBES`` (OTBN ``LOAD_CHECKSUM``, AES
 ``CTRL_AUX_SHADOWED``, HMAC ``INTR_ENABLE``, KMAC ``ENTROPY_PERIOD``, CSRNG
 ``INTR_ENABLE`` for TRNG, Adams Bridge ``notif_cmd_done_intr_count_r``) and SPI
-``CONFIGOPTS``, DMA ``SRC_ADDR_LO``. Every expected register value is its RDL
-reset value or the value the leaf wrote.
+``CONFIGOPTS``, DMA ``SRC_ADDR_LO``. Override-leg registers:
+``KM_MAILBOX_SEP.SEP_IRQ_ENABLE``, ``SEP_LIFECYCLE_CTRL.DEMOTE_2`` (one 64-bit
+access; ``rsvd`` is ``woset``, so each event sets one more drawn bit of
+``[63:2]``) and ``WDT_TIMER.WDOG_BARK_THOLD``. Every expected register value is
+its RDL reset value or the value the leaf wrote and read back. Each arm of an
+engine, SPI or DMA probe logs ``CTRL-OVR-ARM`` with the armed value, the
+read-back and the RDL reset; a read-back that differs from the armed value, or
+an armed value equal to the reset, fails the leaf.
 
 Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-OVR-IP        each pass, pair and domain: after the settle the tap is 0
@@ -55,11 +74,25 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-OVR-PULSE     the V=0 tap is low and the V=1 tap high on every cycle of a
                     ``wdt_rst_ni`` pulse; both move after the overrides go.
   CHK-OVR-PRIO      with the software bit and the override both active the tap
-                    stays low until both are released, in either order.
-  CHK-OVR-AND       during the ``sep_reset_n`` override ``ip_rst_n[6:1]`` are low
-                    on every cycle after the settle and ``aon_rst_n`` stays high.
+                    stays low until both are released, in either order. In the
+                    software-first order the software bit is cleared before the
+                    override is applied. In the override-first order the
+                    override is applied while the software bit is 1, and
+                    ``CTRL-OVR-PRIO-FORCE`` logs the tap fall it causes
+                    (``CTRL-MISSING`` otherwise); then the software bit is
+                    cleared, the override released (tap stays 0) and the
+                    software bit set (tap rises). The software bit is set only
+                    with the host-path isolate-complete bits of the domain high.
+  CHK-OVR-AND       during the ``sep_reset_n`` override ``ip_rst_n[6:1]``,
+                    ``pr_sram_memif_rst_n_o`` and ``pr_rom_memif_rst_n_o`` are
+                    low on every cycle after the settle and ``aon_rst_n`` stays
+                    high; the two memory-interface taps read 1 on the last
+                    sample after the release.
   CHK-OVR-DOMAIN    after the ``sep_reset_n`` override SPI ``CONFIGOPTS``, DMA
-                    ``SRC_ADDR_LO`` and the engine probes read their RDL default.
+                    ``SRC_ADDR_LO``, the engine probes and
+                    ``KM_MAILBOX_SEP.SEP_IRQ_ENABLE`` read their RDL default.
+  CHK-OVR-KEEP      after the ``sep_reset_n`` override ``DEMOTE_2`` and
+                    ``WDOG_BARK_THOLD`` read the value armed before it.
   CHK-OVR-SENSE     ``sep_fuse_sense_done_o`` is high on every cycle of the
                     ``sep_reset_n`` override. Control: the ``rst_ni`` pulse drops it.
   CHK-OVR-TRST      after fuse sense, with the ``sep_reset_n`` override applied
@@ -87,8 +120,9 @@ synchronizer behind the override (a few cycles each) with a wide margin, so a
 TRST effect that reaches the tap through them lands inside the graded window.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense of the committed
-default image (``+sep_efuse_preload``), ``+sep_edn_jtag_reset_waive``. Four
-seeds, Verilator and VCS.
+default image (``+sep_efuse_preload``), ``+sep_edn_jtag_reset_waive``.
+Verilator and VCS. Each regression runs one seed, which draws every value the
+leaf logs on a ``DRAW`` line.
 """
 
 from __future__ import annotations
@@ -106,10 +140,16 @@ from env.sep_ic_reset_tdr import IC_RESET_IDLE, SepIcResetTdr, tdr_word
 from env.sep_reset_taps import SepResetTaps, iso_name
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import SEP_RESET_CTRL
+from sep_reg_meta import KM_MAILBOX_SEP, SEP_LIFECYCLE_CTRL, SEP_RESET_CTRL, WDT_TIMER
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_reset_mid_transfer_seq import PROBES, SepResetProbeDriver, other_value
+from seq_lib.sep_reset_mid_transfer_seq import (
+    PROBES,
+    ResetProbe,
+    SepResetProbeDriver,
+    other_value,
+)
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N, SW_RESET_N_BIT
+from seq_lib.sep_wdt_aon_seq import WDT_CDC_CLKS
 
 TEST = "sep_ip_reset_override_matrix_test"
 
@@ -127,6 +167,26 @@ SEPRST_REGS = (_BY_NAME["spi"], _BY_NAME["dma"])
 # Cells the open owners grade: E=1, V=0 of Adams Bridge and TRNG.
 CTL_CELLS = ("abr", "trng")
 PRIO_DOMS = ("otbn", "aes", "hmac", "kmac")
+
+# Override-leg targets outside the engine domains. Their draws use a separate
+# stream, so the Plan draws keep their seed mapping.
+KM_IRQ_EN = ResetProbe(
+    "km_sep_irq_enable",
+    KM_MAILBOX_SEP.addr("SEP_IRQ_ENABLE"),
+    KM_MAILBOX_SEP.reset32("SEP_IRQ_ENABLE"),
+    KM_MAILBOX_SEP.mask32("SEP_IRQ_ENABLE"),
+)
+WDT_BARK = ResetProbe(
+    "wdog_bark_thold",
+    WDT_TIMER.addr("WDOG_BARK_THOLD"),
+    WDT_TIMER.reset32("WDOG_BARK_THOLD"),
+    WDT_TIMER.mask32("WDOG_BARK_THOLD"),
+)
+DEMOTE2_ADDR = SEP_LIFECYCLE_CTRL.addr("DEMOTE_2")
+DEMOTE2_RSVD = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_2", "rsvd")
+DEMOTE2_STORE = SEP_LIFECYCLE_CTRL.mask_all("DEMOTE_2")
+DEMOTE2_RESET = SEP_LIFECYCLE_CTRL.reset("DEMOTE_2")
+KEEP_SALT = 0x4B45_4550
 
 SW_MASK = SEP_RESET_CTRL.mask32("SW_RESET_N")
 SW_DEFAULT = SEP_RESET_CTRL.reset32("SW_RESET_N")
@@ -221,6 +281,24 @@ class Plan:
         self.lines.append(f"DRAW pulse_leg v0_dom={d0} v1_dom={d1} wdt_width={self.wdt_width}")
         self.trst_width = rng.randrange(8, 65)
         self.lines.append(f"DRAW trst_width={self.trst_width} clk_i cycles")
+        krng = SepSeededRng(seed ^ KEEP_SALT)
+        self.km_irq: list[int] = []
+        self.bark: list[int] = []
+        for _ in range(self.events):
+            self.km_irq.append(
+                other_value(krng, KM_IRQ_EN.mask, (KM_IRQ_EN.reset, *self.km_irq[-1:]))
+            )
+            self.bark.append(other_value(krng, WDT_BARK.mask, (WDT_BARK.reset, *self.bark[-1:])))
+        rsvd_bits = [i for i in range(DEMOTE2_RSVD.bit_length()) if (DEMOTE2_RSVD >> i) & 1]
+        self.demote_bits = krng.sample(rsvd_bits, self.events)
+        self.lines.append(
+            "DRAW keep_targets "
+            + " ".join(
+                f"event={ev}:{KM_IRQ_EN.name}=0x{self.km_irq[ev]:02x},"
+                f"{WDT_BARK.name}=0x{self.bark[ev]:08x},demote_2_rsvd_bit={self.demote_bits[ev]}"
+                for ev in range(self.events)
+            )
+        )
 
 
 @pyuvm.test()
@@ -235,6 +313,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         "CHK-OVR-PRIO",
         "CHK-OVR-AND",
         "CHK-OVR-DOMAIN",
+        "CHK-OVR-KEEP",
         "CHK-OVR-SENSE",
         "CHK-OVR-TRST",
     )
@@ -335,12 +414,71 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         await self.pd.write(p, val)
         got = await self.pd.read(p)
         fc = field_compare(got, val, p.mask)
+        line = f"probe={p.name} armed=0x{val:08x} read=0x{got:08x} RDL reset=0x{p.reset:08x}"
         if not fc.ok or (val & p.mask) == (p.reset & p.mask):
-            raise AssertionError(f"arm {p.name}: {fc.fields()} RDL reset 0x{p.reset:08x}")
+            raise AssertionError(f"CTRL-MISSING OVR-ARM: {line} {fc.fields()}")
         self.armed[p.name] = val
+        self.logger.info("CTRL-OVR-ARM: %s", line)
 
     async def _read_probe(self, p):
         return await self.pd.read(p)
+
+    async def _wdt_bark(self, value: int | None = None) -> int:
+        """Write ``WDOG_BARK_THOLD`` (when ``value`` is given), then read it.
+
+        An AON register access waits for the ``clk_wdt_i`` register CDC, so the
+        bus timeout covers ``WDT_CDC_CLKS`` watchdog periods for this access.
+        """
+        saved = self.cfg.axi_timeout_ns
+        self.cfg.axi_timeout_ns = max(saved, WDT_CDC_CLKS * self.cfg.wdt_clk_period_ns)
+        try:
+            if value is not None:
+                await self.pd.write(WDT_BARK, value)
+            return await self.pd.read(WDT_BARK)
+        finally:
+            self.cfg.axi_timeout_ns = saved
+
+    async def _demote2(self, op: SepAxiOp, value: int = 0) -> int:
+        """One 64-bit access to ``DEMOTE_2``; returns the storage bits of a read."""
+        seq = SepAxiAccessSeq(
+            f"demote_2_{op.value}",
+            op=op,
+            addr=DEMOTE2_ADDR,
+            wdata=value,
+            length=8,
+            size=3,
+        )
+        await self.start_seq(seq)
+        if not seq.resp_ok:
+            raise AssertionError(f"DEMOTE_2 {op.value} not OKAY (resp={seq.resp_code})")
+        return int(seq.rdata) & DEMOTE2_STORE
+
+    async def _arm_keep_targets(self, ev: int) -> None:
+        """Arm the KM, LCC and watchdog targets of override event ``ev`` and read them back."""
+        km = self.plan.km_irq[ev]
+        await self.pd.write(KM_IRQ_EN, km)
+        got_km = await self.pd.read(KM_IRQ_EN)
+        bark = self.plan.bark[ev]
+        got_bark = await self._wdt_bark(bark)
+        self.demote2 |= 1 << self.plan.demote_bits[ev]
+        await self._demote2(SepAxiOp.WRITE, 1 << self.plan.demote_bits[ev])
+        got_dem = await self._demote2(SepAxiOp.READ)
+        line = (
+            f"event={ev} {KM_IRQ_EN.name}=0x{got_km:02x}(armed 0x{km:02x} reset "
+            f"0x{KM_IRQ_EN.reset:02x}) {WDT_BARK.name}=0x{got_bark:08x}(armed 0x{bark:08x} reset "
+            f"0x{WDT_BARK.reset:08x}) DEMOTE_2=0x{got_dem:016x}(armed 0x{self.demote2:016x} "
+            f"reset 0x{DEMOTE2_RESET:016x})"
+        )
+        if (
+            not field_compare(got_km, km, KM_IRQ_EN.mask).ok
+            or not field_compare(got_bark, bark, WDT_BARK.mask).ok
+            or got_dem != self.demote2
+            or self.demote2 == DEMOTE2_RESET
+        ):
+            raise AssertionError(f"CTRL-MISSING OVR-ARM: {line}")
+        self.armed[KM_IRQ_EN.name] = km
+        self.armed[WDT_BARK.name] = bark
+        self.logger.info("CTRL-OVR-ARM: %s", line)
 
     # ---- scenario -----------------------------------------------------------
     async def run_scenario(self) -> None:
@@ -373,6 +511,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         self.tdr = SepIcResetTdr(self.rd_known)
         self.armed: dict[str, int] = {}
         self.sense_ovr: list[tuple[int, int, int]] = []
+        self.demote2 = DEMOTE2_RESET
         try:
             await self._cycles(2)
             for name in ("sep_reset_n", "sep_cpu_reset_n"):
@@ -587,18 +726,36 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
     # ---- step 6: priority leg -----------------------------------------------
     async def _priority_leg(self) -> None:
         for d, order, hold in self.plan.prio:
-            await self._sw_write(self.sw & ~(1 << IPRST[d]))
-            await self._wait_tap(d, 0, f"priority {d} assert")
-            await self._wait_host_iso(d, f"priority {d} assert")
-            await self._shift(
-                tdr_word(apply=(TDR_PORT[d],), hold=(TDR_PORT[d],)), f"priority {d} force"
-            )
+            key = f"ip_rst_{IPRST[d]}"
+            force = tdr_word(apply=(TDR_PORT[d],), hold=(TDR_PORT[d],))
+            if order == "sw_first":
+                await self._sw_write(self.sw & ~(1 << IPRST[d]))
+                await self._wait_tap(d, 0, f"priority {d} assert")
+                await self._wait_host_iso(d, f"priority {d} assert")
+                await self._shift(force, f"priority {d} force")
+            else:
+                await self._wait_tap(d, 1, f"priority {d} before the force")
+                sw_bit = (self.sw >> IPRST[d]) & 1
+                m = self.taps.mark()
+                await self._shift(force, f"priority {d} force")
+                await self._cycles(SETTLE)
+                await ReadOnly()
+                falls = len(self.taps.ip_rst[IPRST[d]].fall_clks_since(m[key]))
+                tap = self._tap(d)
+                self._ctl(
+                    "CTRL-OVR-PRIO-FORCE",
+                    sw_bit == 1 and falls > 0 and tap == 0,
+                    f"dom={d} order={order} sw_bit={sw_bit} tap_falls_after_force={falls} "
+                    f"tap={tap} over {SETTLE}",
+                )
+                await RisingEdge(cocotb.top.clk_i)
+                await self._sw_write(self.sw & ~(1 << IPRST[d]))
+                await self._wait_host_iso(d, f"priority {d} assert")
             await self._cycles(SETTLE)
             await ReadOnly()
             iso_before = self._host_iso_now(d)
             await RisingEdge(cocotb.top.clk_i)
             m = self.taps.mark()
-            key = f"ip_rst_{IPRST[d]}"
             if order == "sw_first":
                 await self._sw_write(self.sw | (1 << IPRST[d]))
             else:
@@ -621,10 +778,12 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             p = PROBE[d]
             got = await self._read_probe(p)
             fc = field_compare(got, p.reset, p.mask)
+            first = "sw_bit" if order == "sw_first" else "override"
             self._chk(
                 "CHK-OVR-PRIO",
                 iso_before == 1 and first_ok and fc.ok,
-                f"dom={d} order={order} iso_ack_high_before_sw_release={iso_before} "
+                f"dom={d} order={order} first_release={first} "
+                f"iso_ack_high_before_sw_release={iso_before} "
                 f"tap_after_first_release={0 if first_ok else 1} (rises={rose} "
                 f"high_cycles={high} over {SETTLE + hold}) tap_after_second=1 "
                 f"probe_default: {fc.fields()}",
@@ -645,6 +804,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                 await self._arm(p, ev + 1)
             for d in DOMS:
                 await self._arm(d, ev + 1)
+            await self._arm_keep_targets(ev)
             sw_before = await self._sw_read()
             if (sw_before & SW_MASK) != SW_DEFAULT:
                 raise AssertionError(f"SW_RESET_N before the override reads 0x{sw_before:02x}")
@@ -653,7 +813,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                 fc = field_compare(got, self.armed[p.name], p.mask)
                 if not fc.ok:
                     raise AssertionError(f"armed {p.name} before the override: {fc.fields()}")
-            samples: list[tuple[int, int, int, int]] = []
+            samples: list[tuple[int, int, int, int, int, int]] = []
             stop = [False]
 
             async def sampler() -> None:
@@ -666,6 +826,8 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                             self._ip() & ENGINE_BITS,
                             self.rd_known(dut.sep_fuse_sense_done_o),
                             self.rd_known(dut.aon_rst_n_probe_o),
+                            self.rd_known(dut.pr_sram_memif_rst_n_o),
+                            self.rd_known(dut.pr_rom_memif_rst_n_o),
                         )
                     )
 
@@ -702,20 +864,30 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             for smp in win:
                 taps_or |= smp[1]
             sense_low = sum(1 for s in samples if s[2] == 0)
+            sram_low = sum(1 for s in win if s[4] == 0)
+            rom_low = sum(1 for s in win if s[5] == 0)
+            mem_after = (samples[-1][4], samples[-1][5])
             self._chk(
                 "CHK-OVR-AND",
-                seprst_low == len(win) and ip_high == 0 and aon_low == 0,
+                seprst_low == len(win)
+                and ip_high == 0
+                and aon_low == 0
+                and sram_low == len(win)
+                and rom_low == len(win)
+                and mem_after == (1, 1),
                 f"event={ev} width={self.plan.seprst_width} graded_cycles={len(win)} "
                 f"sep_reset_n_low={seprst_low} ip_rst_n[6:1]=0b{taps_or >> 1:06b} "
                 f"(OR over the graded cycles, cycles_with_a_high_tap={ip_high}) "
                 f"aon_rst_n={int(aon_low == 0)} (low_cycles={aon_low} of {len(samples)}) "
+                f"sram_memif_rst_n_low={sram_low} rom_memif_rst_n_low={rom_low} "
+                f"sram,rom_memif_rst_n_after_release={mem_after[0]},{mem_after[1]} "
                 f"SW_RESET_N_before=0x{sw_before & SW_MASK:02x}",
             )
             self.sense_ovr.append((ev, sense_low, len(samples)))
             for d in DOMS:
                 await self._wait_tap(d, 1, f"sep_reset_n override event={ev} release")
             n_ok = 0
-            regs = (*SEPRST_REGS, *(PROBE[d] for d in DOMS))
+            regs = (*SEPRST_REGS, *(PROBE[d] for d in DOMS), KM_IRQ_EN)
             for p in regs:
                 got = await self._read_probe(p)
                 fc = field_compare(got, p.reset, p.mask)
@@ -737,6 +909,16 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                 "CHK-OVR-DOMAIN",
                 n_ok == len(regs),
                 f"event={ev} sep_reset_n_domain_reset={n_ok}/{len(regs)}",
+            )
+            got_bark = await self._wdt_bark()
+            got_dem = await self._demote2(SepAxiOp.READ)
+            fc_bark = field_compare(got_bark, self.armed[WDT_BARK.name], WDT_BARK.mask)
+            self._chk(
+                "CHK-OVR-KEEP",
+                fc_bark.ok and got_dem == self.demote2,
+                f"event={ev} {WDT_BARK.name} {fc_bark.fields()} reset=0x{WDT_BARK.reset:08x} "
+                f"DEMOTE_2=0x{got_dem:016x} armed=0x{self.demote2:016x} "
+                f"reset=0x{DEMOTE2_RESET:016x}",
             )
 
     # ---- step 10: PTAP TRST of the IC_RESET TDR ------------------------------

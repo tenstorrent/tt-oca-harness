@@ -10,6 +10,7 @@ The runs stay untouched; the combined run is a new run directory graded like any
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,8 +74,12 @@ class CombinePlan:
 
     @property
     def build_fingerprint(self) -> str | None:
+        """The runs' shared build fingerprint, or a digest of every run's when they differ."""
         fingerprints = {run.build_fingerprint for run in self.runs}
-        return next(iter(fingerprints)) if len(fingerprints) == 1 else None
+        if len(fingerprints) <= 1:
+            return next(iter(fingerprints), None)
+        payload = json.dumps(sorted(fingerprint or "" for fingerprint in fingerprints))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
 
     @property
     def frameworks(self) -> list[str]:

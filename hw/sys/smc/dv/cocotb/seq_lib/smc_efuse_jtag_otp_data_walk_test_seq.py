@@ -21,7 +21,8 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
   the written word and the status fields read 0. One JTAG read of each register follows.
 * S3 writes EFUSE_PROGRAM_CTRL full-width 0x1234, with WSTRB 0x1 and data 0x0805_FFA5,
   with WSTRB 0x2 and the same data, then full-width 0. Both strobed readbacks and
-  responses are logged (SF-009).
+  responses are logged; the response and stored lanes of a partial-strobe write are
+  open.
 * S4 reads bit A through the read interface, programs it with ``efuse_data`` 1 and polls
   ``program_done``; S5 reads A again; S6 issues a data-0 program to bit A2, polls until
   the GO write has completed and ``program_busy`` has read 0 on DATA0_SETTLE_READS
@@ -29,13 +30,14 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
   dout; whether the request shows a lifecycle at all (busy seen, or ``program_done`` /
   ``program_status`` changed from their pre-GO values) and the ``program_status`` it leaves
   are logged only, since ``efuse_interface_ctrl.rdl`` says a request with ``efuse_data`` 0
-  "will be ignored" and what that means is open (SF-034). Each read first clears
+  "will be ignored" and what that means is open. Each read first clears
   EFUSE_PROGRAM_CTRL, since ``program_enable`` and ``read_enable`` are mutually exclusive
   owners of the command path.
 * S9 reads EFUSE_PROGRAM_CTRL over the JTAG eFuse port and writes the value read back,
   with AxPROT 0b101, then 0b000, then the port default 0b010. Every response is OKAY and
-  the 0b101 and 0b000 reads equal the 0b010 reference read (SF-033). The register holds
-  the S6 word with ``efuse_data`` 0, so no write-back can start a fuse program.
+  the 0b101 and 0b000 reads equal the 0b010 reference read; whether the JTAG eFuse port
+  refuses some AxPROT values is open. The register holds the S6 word with
+  ``efuse_data`` 0, so no write-back can start a fuse program.
 * S7 writes both control registers 0 and both timeouts 0x0080_0000 and drives
   ``tb_lc_state`` back to its S1 value.
 
@@ -303,7 +305,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
             f"S1: EFUSE_INTERFACE_CTRL_STATUS=0x{status:08x}; sense_done must be 1 and bits [6:4] 0"
         )
         cocotb.log.info(
-            "STEP S1: tb_lc_state 0x%02x (TEST_DEV; prior value %s; LINKED-ISSUE SF-017), "
+            "STEP S1: tb_lc_state 0x%02x (TEST_DEV; prior value %s; LINKED-ISSUE: which "
+            "lifecycle state admits JTAG eFuse requests), "
             "STATUS=0x%08x; A=0x%04x (SPARE%d) A2=0x%04x (SPARE%d), locks clear in LOCKS 0x%016x",
             self.lc_s1,
             prior,
@@ -380,7 +383,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
             "CHK-EFUSE-JTAG-WALK",
             "PROGRAM_CTRL %d/%d, READ_CTRL %d/%d, READ_TO %d/%d, PROG_TO %d/%d masked match, "
             "status idle; final timeouts 0x%08x/0x%08x; JTAG writes OKAY; reserved bits read %s "
-            "(LINKED-ISSUE SF-001); JTAG reads logged %s",
+            "(LINKED-ISSUE: whether reserved register bits read 0 and ignore writes); "
+            "JTAG reads logged %s",
             counts["PROGRAM_CTRL"],
             WALK_COUNTS["PROGRAM_CTRL"],
             counts["READ_CTRL"],
@@ -413,9 +417,11 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         self._stamp("PARTIAL-STROBE")
         self._chk(
             "CHK-EFUSE-JTAG-PARTIAL-STRB",
-            "pre=0x%08x exact, strobe0 rb=0x%08x resp=%d (logged against 0x%08x, LINKED-ISSUE "
-            "SF-009), strobe1 rb=0x%08x resp=%d (logged against 0x%08x: lane 1 0x%02x over the "
-            "strobe0 readback, LINKED-ISSUE SF-009), post=0x%08x exact",
+            "pre=0x%08x exact, strobe0 rb=0x%08x resp=%d (logged against 0x%08x, LINKED-ISSUE: "
+            "the response and stored lanes of a partial-strobe write), strobe1 rb=0x%08x "
+            "resp=%d (logged against 0x%08x: lane 1 0x%02x over the strobe0 readback, "
+            "LINKED-ISSUE: the response and stored lanes of a partial-strobe write), "
+            "post=0x%08x exact",
             pre,
             strobed,
             resp,
@@ -473,7 +479,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-EFUSE-JTAG-READBACK",
             "read_done=1 status=0 (READ_CTRL=0x%08x, busy samples %d), dout 0x%08x -> 0x%08x, "
-            "one new bit at %d for A=0x%04x (A mod 32 = %d; LINKED-ISSUE SF-016); JTAG read of "
+            "one new bit at %d for A=0x%04x (A mod 32 = %d; LINKED-ISSUE: which dout bit "
+            "carries the addressed fuse); JTAG read of "
             "READ_DATA 0x%08x resp %d logged",
             ctrl,
             busy,
@@ -532,8 +539,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
             "CHK-EFUSE-JTAG-DATA0",
             "A2=0x%04x dout 0x%08x == 0x%08x (graded); lifecycle=%s status_pre=%d "
             "status_post=%d, pre-GO PROGRAM_CTRL=0x%08x, done/busy=%s over %d samples, "
-            "PROGRAM_CTRL=0x%08x (logged only, LINKED-ISSUE SF-034: the RDL says a data-0 "
-            "request is ignored)",
+            "PROGRAM_CTRL=0x%08x (logged only, LINKED-ISSUE: the program status an ignored "
+            "data-0 program request leaves; the RDL says a data-0 request is ignored)",
             BIT_A2,
             pre,
             post,
@@ -557,7 +564,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         ref = legs["prot2"][0]
         bad = {n: (r, b) for n, (_d, r, b) in legs.items() if r != RESP_OKAY or b != RESP_OKAY}
         assert not bad, (
-            f"S9: non-OKAY JTAG eFuse port response(s) (rresp, bresp) {bad} (LINKED-ISSUE SF-033)"
+            f"S9: non-OKAY JTAG eFuse port response(s) (rresp, bresp) {bad} (LINKED-ISSUE: "
+            f"whether the JTAG eFuse port refuses some AxPROT values)"
         )
         differ = {n: f"0x{d:08x}" for n, (d, _r, _b) in legs.items() if d != ref}
         assert not differ, (
@@ -567,7 +575,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
             "CHK-EFUSE-JTAG-PROT",
             "prot5 rd=%d wr=%d data==ref y, prot0 rd=%d wr=%d data==ref y, prot2 rd=%d wr=%d "
             "(reference EFUSE_PROGRAM_CTRL=0x%08x; each write-back carries the word just read, "
-            "so only its BRESP tells a taken write from a dropped one; LINKED-ISSUE SF-033)",
+            "so only its BRESP tells a taken write from a dropped one; LINKED-ISSUE: whether "
+            "the JTAG eFuse port refuses some AxPROT values)",
             legs["prot5"][1],
             legs["prot5"][2],
             legs["prot0"][1],

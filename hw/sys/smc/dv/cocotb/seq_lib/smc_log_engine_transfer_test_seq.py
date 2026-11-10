@@ -37,8 +37,8 @@ The steps run in the contract's order, each across all four wrappers before the 
 * S10 clears the engine's configuration and restores the UART.
 
 Every poll is a counted number of register reads that fails with the last value it read.
-The message order is logged and not compared (SF-003); INTR_TEST read values and reserved
-bit readbacks are logged and not compared (SF-005).
+The message order is logged and not compared; INTR_TEST read values and reserved
+bit readbacks are logged and not compared.
 """
 
 from __future__ import annotations
@@ -95,7 +95,7 @@ from .smc_output_fabric_vip_utils import (
 from .smc_regblock_field_sweep_utils import array_reg_instances
 
 _WRAPS = 4
-# uart_log_engine_wrap instance N sits at BASE + 0x6000 + N * 0x400 (SF-026).
+# uart_log_engine_wrap instance N sits at BASE + 0x6000 + N * 0x400.
 _WRAP_OFFSET = 0x6000
 _WRAP_STRIDE = 0x400
 
@@ -541,7 +541,7 @@ class smc_log_engine_transfer_test_seq(SmcCsrSeq):
             others[1],
         )
         cocotb.log.info(
-            "LE-REG-RW reserved-bit readbacks, logged only (SF-005): %s",
+            "LE-REG-RW reserved-bit readbacks, logged only: %s",
             " ".join(f"{k}={sorted(hex(v) for v in vals)}" for k, vals in reserved.items()),
         )
 

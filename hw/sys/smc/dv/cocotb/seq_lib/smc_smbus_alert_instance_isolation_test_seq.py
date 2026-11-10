@@ -21,7 +21,7 @@ The specification does not state how far SMBUS_EN reaches into the padring.
   SMBUS_STATUS and INTR_STATE; LLPBK 0 sees it again.
 * I2C_CTRL[1] and [2] take reserved-bit-only and all-ones writes, byte- and
   half-word-strobed writes and one-entry-at-a-time writes; the defined fields are
-  compared, the reserved readback and every BRESP are logged (SF-004, SF-005).
+  compared, the reserved readback and every BRESP are logged.
 * The wrapper window past its decoded extent answers DECERR 0xBADCAB1E / DECERR.
 * The I2C1 alert pad is an input with I2C_CONTROLLER_MODE_EN 1 and follows
   SMBUS_CTRL.SMBALERT as an output with it 0; I2C2 is checked as an input. The
@@ -292,7 +292,7 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
         return hits
 
     async def _write_logged(self, name: str, addr: int, data: int, wstrb: int | None = None) -> str:
-        """Write whose BRESP the contract only logs (SF-004 / SF-005); returns the response name."""
+        """Write whose BRESP the contract only logs; returns the response name."""
         item = SmcSysAxiItem(f"wr_{name}")
         item.op = SmcSysAxiOp.WRITE
         item.addr = addr
@@ -527,7 +527,8 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-I2C-CTRL-RSVD-WRITE",
             "; ".join(parts)
-            + " (reserved readback: LINKED-ISSUE SF-005; the 0xffffffff write carries the "
+            + " (reserved readback: LINKED-ISSUE: whether reserved I2C_CTRL bits read 0 and "
+            "reserved-only writes answer OKAY; the 0xffffffff write carries the "
             "defined fields already held, so only its bresp tells a taken write from a "
             "dropped one)",
         )
@@ -574,7 +575,8 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
             f"ctrl1 lane1 set={vals[1]['set']:#05x} clr={vals[1]['clr']:#05x} "
             f"lane0={lane0:#05x} half_lo={half_lo:#05x} half_hi={half_hi & WRAP_FIELDS:#05x} "
             f"(raw {half_hi:#010x}); ctrl2 lane1 set={vals[2]['set']:#05x} "
-            f"clr={vals[2]['clr']:#05x}; bresp={','.join(bresps)} (SF-004; the WSTRB 0b1100 "
+            f"clr={vals[2]['clr']:#05x}; bresp={','.join(bresps)} (open: the response and lane "
+            f"effect of a partially strobed write; the WSTRB 0b1100 "
             f"write strobes only reserved lanes, so only its bresp tells a taken write from a "
             f"dropped one)",
         )
@@ -641,7 +643,8 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
             + "/".join(f"{before_smbus[k]:#x}" for k in CTRL_INSTANCES)
             + f"); gap {gap_off:#05x} R={gap_r}/{gap_d & 0xFFFF_FFFF:#010x} W={gap_w}"
             + (" (block end coincides with the decoded extent)" if gap_off == extent else "")
-            + " (LINKED-ISSUE SF-001/SF-002)",
+            + " (LINKED-ISSUE: the offset and decoded size of each I2C wrapper instance; "
+            "whether a gap after an instance map answers DECERR or aliases)",
         )
 
     async def _pad_input(self, k: int) -> None:

@@ -27,8 +27,11 @@ records, the trace events, the pulse counts and the field record:
                   MCEIP set traps once with mcause 0x8000_001E, an arming below
                   2^t does not; the arming at the count 0 reads mie[30] and
                   mstatus.MIE set.
-* CHK-TCM-SILENT  with mie[30] clear the errors count with no trap and no trace
-                  interrupt event, also at a count at or above 2^t.
+* CHK-TCM-SILENT  with mstatus.MIE set and mie clear (every enable, mie[30] and
+                  mie.MEIE included) the errors count with no trap and no trace
+                  interrupt event, also at a count at or above 2^t. Every silent
+                  sample (ICCM before and quiet, DCCM silent and post) reads
+                  mie 0 and mstatus.MIE 1.
 * CHK-TCM-CLAMP   the exponent 31 reads back 26 in both counters; t reads back t.
 * CHK-TCM-UE      the DCCM load traps with mcause 5, the byte store with mcause
                   7, both with mscause 1 and one trace exception event; the clean
@@ -493,6 +496,28 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
     def _intr_events(self, win: tuple[int, int], ecause: int | None = None) -> list[tuple]:
         return [r for r in self._trace_in(win) if r[4] and (ecause is None or r[5] == ecause)]
 
+    @staticmethod
+    def _silent_csr(kvs: list[dict]) -> tuple[str, list[str]]:
+        """The mie and mstatus.MIE fields of silent samples and the samples off that state.
+
+        A silent sample reads mie 0 and mstatus.MIE 1. The fields print the
+        distinct values seen, so a pass prints one value of each.
+        """
+        mies = sorted({int(kv["mie"]) for kv in kvs})
+        msts = sorted({(int(kv["mst"]) & MSTATUS_MIE) >> 3 for kv in kvs})
+        text = (
+            f"mie={','.join(f'0x{v:08x}' for v in mies)} "
+            f"mie30={','.join(str((v & MIE_MCEIE) >> 30) for v in mies)} "
+            f"mstatus_mie={','.join(map(str, msts))}"
+        )
+        bad = [
+            f"{kv['tag']} k={kv['k']} mie=0x{int(kv['mie']):08x} "
+            f"mstatus_mie={(int(kv['mst']) & MSTATUS_MIE) >> 3}"
+            for kv in kvs
+            if int(kv["mie"]) != 0 or not int(kv["mst"]) & MSTATUS_MIE
+        ]
+        return text, bad
+
     def _chk_ce_silent(self) -> int:
         cfg = self.tcfg
         thr = cfg.thr
@@ -545,6 +570,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         )
         if (
             ntr != 1
+            or arm_mceip != 1
             or len(itraps) != 1
             or int(itraps[0]["mcause"]) != MCAUSE_MCEIP
             or len(ev) != 1
@@ -556,22 +582,18 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         n += 1
         iccm_trap_ok = True
 
-        # ICCM silent: the block runs with mie[30] clear.
+        # ICCM silent: the block runs with mstatus.MIE set and mie clear.
         bwin = self._window("iccm_block")
         bev = self._intr_events(bwin)
         qcnt = int(qui["ic"]) & CNT_MASK
+        csr_text, csr_bad = self._silent_csr([bef, qui])
         body = (
-            f"mie30=0 mem=ICCM accesses={cfg.n} counter={qcnt} "
+            f"{csr_text} mem=ICCM accesses={cfg.n} counter={qcnt} "
             f"traps={int(qui['traps']) - int(bef['traps'])} trace_irq_events={len(bev)} "
             f"mceip={(int(qui['mip']) & MIP_MCEIP) >> 30} control_trap_at_arming={int(iccm_trap_ok)}"
         )
-        if (
-            int(qui["traps"]) != int(bef["traps"])
-            or bev
-            or qcnt < thr
-            or int(bef["mie"]) & MIE_MCEIE
-        ):
-            raise AssertionError(f"CHK-TCM-SILENT FAIL: {body}")
+        if int(qui["traps"]) != int(bef["traps"]) or bev or qcnt < thr or csr_bad:
+            raise AssertionError(f"CHK-TCM-SILENT FAIL: {body} {csr_bad}")
         self.logger.info("CHK-TCM-SILENT PASS: %s", body)
         n += 1
         # Per-slot ICCM samples: logged, not graded.
@@ -753,9 +775,9 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 f"CHK-TCM-CE FAIL: {len(mceip_traps)} MCEIP traps in the leaf, expected 2 (one per memory)"
             )
 
-        # DCCM silent: the accesses with mie[30] clear.
+        # DCCM silent: the accesses with mstatus.MIE set and mie clear.
         silent = [kv for kv in ds if kv["tag"] in ("silent", "post")]
-        sbad = []
+        csr_text, sbad = self._silent_csr(silent)
         # The trap count before each access is the count of the last SAMPLE or
         # ARM line of the leg ahead of it (an arming traps between samples).
         seq = sorted(
@@ -770,8 +792,6 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 prev_traps = int(kv["traps_after"])
                 continue
             if kv["tag"] in ("silent", "post"):
-                if int(kv["mie"]) & MIE_MCEIE:
-                    sbad.append(f"k={kv['k']} mie30=1")
                 if prev_traps is not None:
                     trap_deltas.append(int(kv["traps"]) - prev_traps)
                     if trap_deltas[-1]:
@@ -783,7 +803,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         top = max(int(kv["dc"]) & CNT_MASK for kv in silent) if silent else -1
         top_kv = next((kv for kv in silent if int(kv["dc"]) & CNT_MASK == top), None)
         body = (
-            f"mie30=0 mem=DCCM accesses={len(silent)} counter={top} traps={sum(trap_deltas)} "
+            f"{csr_text} mem=DCCM accesses={len(silent)} counter={top} traps={sum(trap_deltas)} "
             f"mceip={(int(top_kv['mip']) & MIP_MCEIP) >> 30 if top_kv else -1} "
             f"control_trap_at_arming={len(dtrap)}"
         )

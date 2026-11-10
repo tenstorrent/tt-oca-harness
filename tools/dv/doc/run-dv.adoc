@@ -2090,10 +2090,11 @@ cocotb's build step rebuilds a model only when a source it was handed is
 newer than the model, and this flow hands it none: the sources reach the
 compiler through the filelist. The runner therefore decides for it. Every
 build writes `build_record.json` into the model directory with the
-fingerprint of the inputs that produced the model, and the next run compares
-its own fingerprint with the record: a different fingerprint (`reason=inputs
-changed`), or a model directory without a record (`reason=no build record`),
-forces a clean build; `--rebuild` forces one regardless (`reason=requested`).
+fingerprint of the inputs that produced the model and the checkout it was
+built in, and the next run compares its own with the record: a different
+fingerprint or checkout (`reason=inputs changed`), or a model directory
+without a record (`reason=no build record`), forces a clean build;
+`--rebuild` forces one regardless (`reason=requested`).
 An edit to any file the filelist reaches, including its `-f` includes, or to
 any file a build argument names, such as a coverage scope file, therefore
 rebuilds the model on the next run. A VCS or Xcelium elaboration writes the
@@ -2124,7 +2125,10 @@ on a model without one reports its own digest.
   includes, a digest of every file a build argument names, the rendered build
   arguments, the selected `[targets.<name>]` table, the Verilator
   public-scope list, the VCS cocotb access list, the wave format, whether
-  coverage is on, and the strings in `cache_key_extra`.
+  coverage is on, and the strings in `cache_key_extra`. A path under the
+  checkout enters it relative to the checkout, so one tree checked out at two
+  paths builds under one fingerprint; the build record also names the
+  checkout, so a moved checkout rebuilds its model.
 * `rebuild = true`, or `--rebuild`, forces a clean build of the selected
   directory through the cocotb runner on every simulator, and removes a
   firmware template's declared outputs before `c_compile` runs so an
@@ -2365,10 +2369,13 @@ report grades the result against the same policy, threshold and exclusion
 inputs as any run. `cov/coverage.json` lists the runs as its inputs (`item`
 of `run:<name>`, `selection_source` of `run_dirs`) and names each run's
 directory, framework, commit, tool version and database under
-`combine.input_runs`. `--run-dir` names the new directory; without it the run
-lands under the DUT's run tree with the label `combine`, and `latest` keeps
-pointing at the last simulation run, so the dashboard's default collection is
-unaffected and a combined run is collected by naming its directory.
+`combine.input_runs`. Its `build_fingerprint` is the one the runs share, or
+a digest of every run's when they differ, so the combined grade's
+`comparison_key` changes when any run's build does. `--run-dir` names the
+new directory; without it the run lands under the DUT's run tree with the
+label `combine`, and `latest` keeps pointing at the last simulation run, so
+the dashboard's default collection is unaffected and a combined run is
+collected by naming its directory.
 `--fail-under`, `--cov-summary` and `--dry-run` apply; selection, seed, wave
 and build options do not.
 
@@ -3477,13 +3484,18 @@ policy applied.
 
 Three fingerprints decide whether two grades are comparable.
 `policy_fingerprint` is the SHA-256 of the policy file. `scope_fingerprint`
-hashes the build fingerprint, the scope the parser recorded, and the policy's
-`scope_epoch`; without a policy it is the parser's hash alone and
-`policy_fingerprint` is `null`. `comparison_key` (`COVCMP-` and 16 hex digits) hashes the DUT,
-the tool, the target, and both fingerprints: two grades share a key only when
-the same design build was graded against the same policy, so compare trend
-points and `holes_summary` counts only when their keys match. A waiver added
-to the policy changes the key; the hit counts do not.
+hashes the scope the parser recorded and the policy's `scope_epoch`; without
+a policy it is the parser's hash alone and `policy_fingerprint` is `null`.
+The parser's scope names the coverable points, never their hit counts: the
+Verilator parser hashes each point's family, source, hierarchy and locator,
+and the URG and IMC parsers hash the names of the report files they read,
+relative to the report directory. `comparison_key` (`COVCMP-` and 16 hex
+digits) hashes the DUT, the tool, the target, the build fingerprint, and the
+scope and policy fingerprints: two grades share a key only when the same
+design build was graded against the same policy, so compare trend points and
+`holes_summary` counts only when their keys match. A waiver added to the
+policy changes the key; the run directory, the seeds and the hit counts do
+not.
 
 The dashboard collector carries the `coverage` object into the normalized
 record and stages `coverage.json`, `summary.json`, and

@@ -12,8 +12,9 @@ interrupt-integration.
 
 The bench drives external input 0 on tb_ext_interrupt_0_i and inputs 2..16 on
 tb_ext_interrupts_hi_i; input 1 is the temperature pin (held 0, read only) and inputs 17..255 are
-tied 0 (SF-039). The PLIC pending state of each external ID is read passively and only logged:
-its register map, route, bound and retention are open (SF-025, SF-026, SF-027, SF-028).
+tied 0 (open: where the pending behaviour of inputs 17 to 255 is closed). The PLIC pending state
+of each external ID is read passively and only logged: its register map, route, bound and
+retention are open.
 """
 
 from __future__ import annotations
@@ -310,8 +311,9 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
             f"{n}/{n} inputs {{0,2..16}} in walk order {self.walk}, raw bit i=1 after n rises "
             f"(i:n {rises}; min {SYNC_FLOPS}, bound {WAIT_BOUND_RISES}) and held the drawn "
             f"hold (i:rises {holds}; at least {HOLD_RISES}), pending(ID i+1)=(i:observed {pend}) "
-            f"measured only, LINKED-ISSUE SF-025 SF-026 SF-028; drawn=seed {self.seed} walk "
-            f"{self.walk} holds {holds}",
+            f"measured only, LINKED-ISSUE: the PLIC pending, enable and claim register offsets, "
+            f"the route from an inbound manager to the PLIC and the bound from an external input "
+            f"to PLIC pending; drawn=seed {self.seed} walk {self.walk} holds {holds}",
         )
         want_iso = sum(self.holds.values())
         assert self._iso_samples == want_iso, (
@@ -323,7 +325,8 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
             f"{n} walks x the drawn hold ({self._iso_samples} samples in total, each hold at "
             f"least {HOLD_RISES}), other raw external bits = 0 throughout (bits 0..255 incl. "
             f"temperature bit 1 and tied 17..255), other pending=(i:observed {other}) measured "
-            f"only, LINKED-ISSUE SF-025; drawn=seed {self.seed} holds {holds}",
+            f"only, LINKED-ISSUE: the PLIC pending, enable and claim register offsets; "
+            f"drawn=seed {self.seed} holds {holds}",
         )
         falls = ",".join(f"{b}:{results[b]['fall']}" for b in self.walk)
         rel = ",".join(f"{b}:{results[b]['pend_rel']}" for b in self.walk)
@@ -331,8 +334,9 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
             "CHK-EXTIRQ-RELEASE",
             f"{n}/{n} raw bits 1->0 (i:n {falls}; bound {WAIT_BOUND_RISES}), baseline restored "
             f"0x{self._baseline:x} for {RELEASE_RISES} rises each, pending(ID i+1) after "
-            f"release=(i:observed {rel}) measured only, LINKED-ISSUE SF-027; drawn=seed "
-            f"{self.seed} walk order {self.walk}",
+            f"release=(i:observed {rel}) measured only, LINKED-ISSUE: whether PLIC pending "
+            f"stays set after an early input release; drawn=seed {self.seed} walk order "
+            f"{self.walk}",
         )
         await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0)
         self.done = True

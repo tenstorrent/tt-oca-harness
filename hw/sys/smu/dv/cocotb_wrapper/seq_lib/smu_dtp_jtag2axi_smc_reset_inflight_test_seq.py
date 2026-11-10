@@ -15,7 +15,7 @@ Expected values: ``hw/sys/smc/regs/gen/adoc/blocks/cpu_ctrl.adoc`` (RESET_VECTOR
 reset; SS_CONFIG is on the primary reset, the isolation registers on the stable cold reset; the
 watchdog second timeout asserts warm reset and not the primary reset).
 
-An access issued inside a reset may never complete; its outcome is an ``OBS-`` line (SF-019)
+An access issued inside a reset may never complete; its outcome is an ``OBS-`` line
 and only its launch inside the window is graded. A launch is the TCK falling edge in
 Update-DR of the SMC_AXI_SINGLE_OP scan. The warm-reset read is shifted in and held in
 Pause-DR until the warm probe reads 0, then updated.

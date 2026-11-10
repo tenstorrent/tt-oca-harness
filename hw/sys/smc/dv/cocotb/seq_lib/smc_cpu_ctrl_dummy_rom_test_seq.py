@@ -229,7 +229,8 @@ class smc_cpu_ctrl_dummy_rom_test_seq(SmcCsrSeq):
             "CHK-CPU-RV-RESET",
             f"{RV_WORDS} first reads vector[55:0]=0x{RV_RESET:x} RRESP OKAY: "
             + " ".join(rv_seen)
-            + " ([63:56] logged, not compared: LINKED-ISSUE SF-001)",
+            + " ([63:56] logged, not compared; LINKED-ISSUE: whether reserved register bits read "
+            "0 and ignore writes)",
         )
         self._chk(
             "CHK-CPU-NULL-RESET",
@@ -324,7 +325,8 @@ class smc_cpu_ctrl_dummy_rom_test_seq(SmcCsrSeq):
             f"cores held; {checked} readbacks of RESET_VECTOR[0..3] equal the written [55:0] "
             f"(0x{RV_MASK:x}, 0x0, 1<<b b=0..55) BRESP/RRESP OKAY; [63:56] observed "
             + ",".join(f"0x{u:02x}" for u in sorted(uppers))
-            + " (logged, not compared: LINKED-ISSUE SF-001)",
+            + " (logged, not compared; LINKED-ISSUE: whether reserved register bits read 0 and "
+            "ignore writes)",
         )
 
     async def _null_patterns(self) -> None:
