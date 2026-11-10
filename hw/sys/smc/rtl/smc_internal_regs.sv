@@ -9,10 +9,10 @@
 // Carries DFD, TDR debug, and trace-sink memory sidebands plus DFT status and clock-gater
 // activity indicators.
 // The mailbox, filter and remap register blocks each run on their own idle-gated copy of
-// the SMC core clock. Each filter and remap entry owns one entry stride of its group's page,
-// and an address past the last entry answers DECERR with read data 0xBADCAB1E. Writes to a
-// filter whose FILTER_CONFIG.locked bit is set receive SLVERR; reads of a locked filter
-// still complete.
+// the SMC core clock. Each filter and remap entry owns the addresses up to the next entry in
+// its group's page, and an address past the last entry answers DECERR with read data
+// 0xBADCAB1E. Writes to a filter whose FILTER_CONFIG.locked bit is set receive SLVERR;
+// reads of a locked filter still complete.
 
 module smc_internal_regs #(
   parameter int unsigned NUM_OUTBOUND_FILTERS = 16,  // Number of outbound filter register blocks;

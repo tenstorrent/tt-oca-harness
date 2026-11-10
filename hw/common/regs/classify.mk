@@ -144,17 +144,16 @@ OCAH_REG_ERR_CHECK_BLOCKS ?= \
   otbn_wrapper_key
 OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
 
-# Blocks instantiated as an array at a stride wider than one instance. Each instance's window
-# is its stride and the regblock answers OKAY throughout it, so the padding reads as a hole.
-# Arrays of whole controllers answer SLVERR in their padding and are not listed.
+# Blocks whose regblock answers OKAY even past its last register: each is arrayed
+# at a stride wider than one instance, and the maps state OKAY between instances.
 OCAH_REG_NO_ERR_BLOCKS ?= \
   alias_remap \
   cross_trigger_port \
   filter_ctrl \
   gpio_intf
 
-# Blocks alone in a 4 KiB page: the regblock decodes the whole page offset, so an access
-# past its last register answers SLVERR rather than aliasing onto a register.
+# Regblock CPU address widths, keyed by RDL stem. A block alone in its 4 KiB page
+# decodes the whole page.
 OCAH_REG_ADDR_WIDTH_reset_unit ?= 12
 OCAH_REG_ADDR_WIDTH_avsbus_controller ?= 12
 OCAH_REG_ADDR_WIDTH_system_timer_octs ?= 12
@@ -162,8 +161,7 @@ OCAH_REG_ADDR_WIDTH_smc_base_config ?= 12
 OCAH_REG_ADDR_WIDTH_dfx_ctrl_status ?= 12
 OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
 
-# Blocks that share a page: the regblock decodes its whole window there, and the wrapper's
-# demux routes it exactly 2^width bytes from a base that is a multiple of that size.
+# A block that shares a page decodes the power-of-two window its wrapper routes it.
 OCAH_REG_ADDR_WIDTH_scratch ?= 7
 OCAH_REG_ADDR_WIDTH_chip_config ?= 8
 OCAH_REG_ADDR_WIDTH_i2c ?= 9
