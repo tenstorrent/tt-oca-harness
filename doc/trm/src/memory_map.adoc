@@ -94,8 +94,9 @@ refuses the access without passing it on.
 
 === Address Ownership
 
-The SMC crossbars give each register target whole 4 KiB pages. An AXI burst
-never crosses a 4 KiB boundary, so every beat of a burst reaches one target.
+The SMC and SEP crossbars give each register target whole 4 KiB pages. An AXI
+burst never crosses a 4 KiB boundary, so every beat of a burst reaches one
+target.
 
 A register block alone in one of these pages owns the whole page, so every
 address in the page past its last register answers `SLVERR`. A generated
@@ -120,8 +121,9 @@ follows:
   block, the window its register block decodes.
 
 The cross-trigger network divides its own address map into windows by the same
-rules. The eFuse blocks, the units inside the CPU cluster and the external
-window keep their own decode.
+rules. The eFuse blocks, the external window of each subsystem, the units
+inside the SMC CPU cluster and the units behind the SEP crypto interconnect keep
+their own decode.
 
 === Responses Inside a Window
 
@@ -151,8 +153,10 @@ an error.
 
 A vendored block keeps the responses of its own decoder at an offset with no
 register. The PWM core and the other blocks that keep their OpenTitan register
-interface answer `SLVERR` with read data `0xFFFFFFFF`. The register file of the
-SMC DMA controller answers `OKAY` with read data `0xFFFFFFFF`.
+interface, such as the SEP DMA controller, watchdog timer and SPI host, answer
+`SLVERR` with read data `0xFFFFFFFF`. The register file of the SMC DMA
+controller answers `OKAY` with read data `0xFFFFFFFF`, and the interrupt
+controller in the SEP CPU answers `OKAY` with read data 0.
 
 === Reading the Map Cells
 
