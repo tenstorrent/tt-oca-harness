@@ -19,12 +19,13 @@ class smc_uart_pad_mux_enable_test(smc_base_test):
         "CHK-UART-PADMUX-FRAME-ON",
         "CHK-UART-PADMUX-FRAME-RECOVER",
         "CHK-UART-PADMUX-GPIO-LEVEL-MEASURED",
+        "CHK-UART-PADMUX-INPUT-IDLE",
         "CHK-UART-PADMUX-OFF-PAD-HELD",
         "CHK-UART-PADMUX-OFF-TX-SHIFTED",
         "CHK-UART-PADMUX-RTS",
         "CHK-UART-PADMUX-RX",
     )
-    min_evidence = 9
+    min_evidence = 10
 
     auto_protocol_vip = False
 

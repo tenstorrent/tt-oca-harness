@@ -28,6 +28,9 @@ module gpio
   parameter bit INPUT_BY_DEFAULT = 1'b1,                    // pad2core_en_o value during cold reset
                                                             // and when no source owns the input
                                                             // enable.
+  parameter bit LSIO_PAD2CORE_IDLE = 1'b0,                  // lsio_pad2core_data_o value while no
+                                                            // LSIO select is active; the idle level
+                                                            // of the function the pad carries.
 
   parameter bit [AddrWidth-1:0] GPIO_INTF_REG_MAP_SIZE      = 0   // Interface register-map size in
                                                                   // bytes; its clog2 is the address
@@ -60,7 +63,7 @@ module gpio
   input  logic lsio_pad2core_en_ni,                         // LSIO pad-to-core enable, active-low.
   output logic lsio_pad2core_data_o,                        // Unsynchronized pad2core_i while an
                                                             // LSIO select is active or in cold
-                                                            // reset; low otherwise.
+                                                            // reset; LSIO_PAD2CORE_IDLE otherwise.
 
   output logic interrupt_o,                                 // GPIO interrupt, active-high,
                                                             // registered in clk_i and gated by
@@ -208,7 +211,7 @@ module gpio
 
   always_comb begin
     reg__pad2core = 1'b0;
-    lsio_pad2core_data_o = 1'b0;
+    lsio_pad2core_data_o = LSIO_PAD2CORE_IDLE;
 
     core2pad = 1'b0;
     core2pad_en = 1'b0;

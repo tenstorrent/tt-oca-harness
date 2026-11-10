@@ -41,7 +41,9 @@
 pads: while set, the UART owns their data and direction. While clear, the UART
 keeps running, but its pads follow the GPIO data and direction selection like
 any pad without a hardware request, so TX and RTS do not reach the pins unless
-software forces LSIO selection.</ipxact:description>
+software forces LSIO selection. Without that selection, the receive and CTS
+inputs read high, the serial idle level: the receiver sees no start bit and
+`MSR.CTS` reads 0.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
