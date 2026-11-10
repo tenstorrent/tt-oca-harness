@@ -362,8 +362,9 @@ Signing Model in the Life Cycle Controller section.
 
 |SIGNATURE_REVOKE |23 |64 (40 used) |set-only |true |Signature-algorithm class
 revocation: a required signature whose class is revoked fails verification, and a
-set group code revokes a whole group and waives its REQUIRED_ALGS bits for every
-entity. The layout is that of the OCA Payload Manifest's signature_class_revoke
+set group code revokes a whole group, after which SEP ROM no longer enforces that
+group's REQUIRED_ALGS bits for any entity. The layout is that of the OCA Payload
+Manifest's signature_class_revoke
 field. Bits [7:0] classical classes: 0 RSA-3072, 1 RSA-4096, 2 ECDSA P-256, 3
 ECDSA P-384, 4 ECDSA P-521, 5 Ed25519, 6 Ed448, 7 adopter-defined classical
 (signature_type_classic `0xF0-0xFF`). Bits [15:8] classical group code: `0x00`, or

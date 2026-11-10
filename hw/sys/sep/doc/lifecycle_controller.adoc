@@ -986,7 +986,7 @@ verifies, using the policy in force at that time.
 
 . *Group codes are applied first.* A set group code revokes every class of its
 group, so no signature of that group can be trusted, and SEP ROM does not
-enforce that group's requirement bits; this chapter calls that the waiver. With
+enforce that group's requirement bits. With
 `SIGNATURE_REVOKE[15:8]` = `0xCA`, SEP ROM does not enforce `REQUIRED_ALGS[0]`,
 `REQUIRED_ALGS[4]` or any `REQUIRED_ALGS[4N+4]`, the classical requirement of
 every entity; with `SIGNATURE_REVOKE[39:32]` = `0xAC`, it does not enforce
@@ -1004,8 +1004,8 @@ signature-type fields and checks that class's bit in `SIGNATURE_REVOKE`. If the
 bit is set, the signature fails verification and SEP ROM rejects the manifest,
 whether or not the signature would verify mathematically. SEP ROM does not
 examine a signature the policy does not require, including a signature of a
-group waived in step 1 that is still present in the manifest; such a signature
-has no effect on the result. Hence revoking one class forces migration to
+group whose group code is set that is still present in the manifest; such a
+signature has no effect on the result. Hence revoking one class forces migration to
 another class of the same group, while a group code retires the group and lets
 manifests authenticate on the other group alone. See _Group codes_ under
 <<signature-algorithm-revocation>>.
@@ -1046,8 +1046,8 @@ substitution before step 1, and writes `01` to `REQUIRED_ALGS[1:0]` in the
 shadow register before hand-off, so that BL1 inherits the policy SEP ROM
 enforced rather than the unprovisioned value. Later stages apply no such
 substitution: a `00` they find was written by their predecessor. A requirement
-whose bits are clear only because of a group-code waiver is not this case: it
-is rejected by step 1.
+that SEP ROM stops enforcing because a group code is set is not this case: its
+bits are still set, and step 1 rejects the manifest.
 . *Non-required co-signers.* A co-signer block N for which `REQUIRED_SIGNERS`
 bit N-1 is clear is ignored: it is not verified, and its presence, absence or
 validity has no effect on the result.
@@ -1140,8 +1140,8 @@ class, such as ML-DSA-65 or SLH-DSA-256, together with its classical signature.
 |`REQUIRED_ALGS[3:0]` = `0b0011`; `SIGNATURE_REVOKE[39:32]` = `0xAC`
 |Every post-quantum class is revoked and `REQUIRED_ALGS[1]` is not enforced. The
 classical chiplet-creator signature alone authenticates the manifest; a
-post-quantum signature still present in the manifest is not examined. The same
-waiver applies to `REQUIRED_ALGS[5]` and to every `REQUIRED_ALGS[4N+5]`.
+post-quantum signature still present in the manifest is not examined. SEP ROM
+likewise stops enforcing `REQUIRED_ALGS[5]` and every `REQUIRED_ALGS[4N+5]`.
 |=======================================================================
 
 [[signature-algorithm-revocation]]
@@ -1226,19 +1226,20 @@ except RSA-3072 and RSA-4096 revoked, a request for bits 0 and 1 with
 `SIGNATURE_REVOKE[15:8]` = `0x00` is rejected; the same request with `0xCA` is
 accepted, subject to the survivability check.
 
-What a group code does once set:: A set group code waives that group's
-requirement bit in `REQUIRED_ALGS` for every entity, because no signature could
-satisfy it: with `0xCA`, SEP ROM does not enforce `REQUIRED_ALGS[0]`,
-`REQUIRED_ALGS[4]` or any `REQUIRED_ALGS[4N+4]`; with `0xAC`, it does not
-enforce `REQUIRED_ALGS[1]`, `REQUIRED_ALGS[5]` or any `REQUIRED_ALGS[4N+5]`.
-The bits themselves are untouched: `REQUIRED_ALGS` and its shadow register
-keep their programmed values, no hardware masks them, and the waiver exists
-only in the ROM's evaluation of the requirement rule. Revocation is the stronger
-statement and takes precedence over a requirement. The waiver is group-wide,
-since there is no per-entity group code, and it waives nothing else: the other
-group's requirement bits, key revocation through `PUBK_REVOKE` and the
-Secure Boot Decision apply unchanged, and a single class bit waives no
-requirement at all. Without the waiver, a fused `REQUIRED_ALGS[1]` = 1 could
+What a group code does once set:: Once a group code is set, SEP ROM stops
+enforcing that group's requirement bit in `REQUIRED_ALGS` for every entity,
+because no signature could satisfy it: with `0xCA`, SEP ROM does not enforce
+`REQUIRED_ALGS[0]`, `REQUIRED_ALGS[4]` or any `REQUIRED_ALGS[4N+4]`; with
+`0xAC`, it does not enforce `REQUIRED_ALGS[1]`, `REQUIRED_ALGS[5]` or any
+`REQUIRED_ALGS[4N+5]`. The bits themselves are untouched: `REQUIRED_ALGS` and
+its shadow register keep their programmed values, no hardware masks them, and
+only SEP ROM's evaluation of the requirement rule changes. Revocation is the
+stronger statement and takes precedence over a requirement. The effect is
+group-wide, since there is one group code for the whole device and none per
+entity, and it reaches nothing else: the other group's requirement bits, key
+revocation through `PUBK_REVOKE` and the Secure Boot Decision apply unchanged,
+and a single class bit leaves every requirement bit enforced. Without this
+rule, a fused `REQUIRED_ALGS[1]` = 1 could
 never be escaped once every post-quantum class had to be retired, because fuses
 cannot be cleared: no manifest could satisfy "post-quantum required" and "no
 post-quantum class trusted" at once. Example: the fused policy is
@@ -1252,7 +1253,7 @@ classical requirement and its ECDSA signature verifies, so the survivability
 check passes and BL1 programs the group code. From then on only the classical
 signatures are checked; F's ML-DSA signatures are present but not required and
 are not examined, and later manifests may omit them and use the classic manifest
-variant. Because the waiver only removes requirements, every required entity
+variant. Because a group code only removes requirements, every required entity
 must already have the surviving group's bit set before the group code is
 written, `REQUIRED_ALGS[0]` and `REQUIRED_ALGS[8]` in the example; otherwise that
 entity is left with no requirement, step 1 of the requirement rule rejects the
@@ -1261,8 +1262,8 @@ manifest, and the survivability check refuses the request.
 The brick guard:: A manifest may legitimately carry both group codes, and
 programming both while secure boot is enforced would leave the device unable to
 verify any manifest. SEP refuses such a request through the survivability
-check: with both groups waived the chiplet creator, which is always required,
-is left with no requirement, so the BL1 manifest no longer authenticates and
+check: with both group codes set the chiplet creator, which is always required,
+is left with no enforced requirement, so the BL1 manifest no longer authenticates and
 the request is not programmed. SEP defines no decommissioning override for this
 state. Should both group codes nevertheless be found set in the fuse, SEP ROM
 rejects every manifest.
