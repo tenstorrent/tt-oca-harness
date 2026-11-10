@@ -50,7 +50,17 @@ handshake run keeps GO set:
 * interrupt-clear run, mask bit 0 set, CLEAR_INTR_SRC bit 0 = 1 and
   CLEAR_INTR_BUS bit 0 = 1, INTR_SRC_ADDR_0 a SEP SRAM word outside the
   destination, INTR_SRC_WR_VAL_0 a drawn word that differs from the word the
-  leaf writes there first; the same copy as the handshake run;
+  leaf writes there first; the same copy as the handshake run. CLEAR_INTR_SRC
+  bits 10:1 are a drawn mask; CLEAR_INTR_BUS is 1 on every enabled source and
+  drawn on every disabled one. INTR_SRC_ADDR_1..10 are distinct drawn SRAM
+  words below the destination (outside every footprint of the leaf, inside
+  the handshake range), each written with the sentinel first, and
+  INTR_SRC_WR_VAL_1..10 are distinct drawn words that differ from the
+  sentinel, from INTR_SRC_WR_VAL_0 and from the reset value 0;
+* complement run: the interrupt-clear run with CLEAR_INTR_SRC bits 10:1
+  inverted (bit 0 kept), the same addresses and values and its own drawn bus
+  bits for the disabled sources, so every source 1..10 is enabled in one of
+  the two runs and disabled in the other on every seed;
 * second masked run: MASK 0 when the drawn upper bits are not 0, else a second
   drawn non-zero upper mask with bit 0 clear, so both masked classes run on
   every seed;
@@ -78,10 +88,11 @@ with it closed. The pass label ``hs_mask_pass`` starts at 0 at each GO. The
 sampler holds the cells of a run at their DUT events; after every check of the
 run passed (handshake run: CHK-HS-DATA, CHK-HS-NOCHUNK, CHK-HS-GO leg total;
 masked runs: CHK-HS-MASKED; stop run: CHK-HS-GO leg between_chunks,
-CHK-HS-STOP; interrupt-clear run: CHK-HS-CLR) the leaf writes the bits of
-that run, holds them LABEL_CLKS clocks and writes 0, then closes the window.
-Bit 0 releases ``cp_hs_mask``, bit 1 ``cp_intr_clear`` (interrupt-clear run
-only), bit 2 the other cells (not in the interrupt-clear run, which grades no
+CHK-HS-STOP; interrupt-clear and complement runs: CTRL-HS-CLR-IDX, CHK-HS-CLR
+and CHK-HS-CLR-IDX) the leaf writes the bits of that run, holds them
+LABEL_CLKS clocks and writes 0, then closes the window. Bit 0 releases
+``cp_hs_mask``, bit 1 ``cp_intr_clear`` (interrupt-clear and complement runs
+only), bit 2 the other cells (not in those two runs, which grade no
 CHUNK_DONE). A FAIL raises with the window open; the close in the clean-up
 then drops the held cells. The clear-range and clear-bus runs write no
 ``hs_mask_pass`` bit: after their CTRL line passed, each writes its
@@ -184,9 +195,10 @@ Checkers:
                   (``SepSpiWireMonitor``), with the flash ledger and frame
                   shape.
 
-  CHK-HS-CLR      interrupt-clear run: at least one AW on the DMA master tap
-                  (``dma_axi_req_probe_o``, ``env/sep_dma_tap.py``) carries the
-                  address INTR_SRC_ADDR_0, and that SRAM word reads
+  CHK-HS-CLR      interrupt-clear and complement runs (``run=``): at least
+                  one AW on the DMA master tap (``dma_axi_req_probe_o``,
+                  ``env/sep_dma_tap.py``) carries the address
+                  INTR_SRC_ADDR_0, and that SRAM word reads
                   INTR_SRC_WR_VAL_0 over the frontdoor after the run. The tap
                   carries no write data, so the data comes from that readback.
                   Contract: "configure `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`,
@@ -202,6 +214,40 @@ Checkers:
                   writes and the WSTRB of the paired W beat are logged
                   (``OBS-HS-CLR``): the text says only "when ... lsio_trigger
                   becomes set".
+  CHK-HS-CLR-IDX  interrupt-clear and complement runs (``run=``, ``idx=``),
+                  per source i = 1..10: enabled (CLEAR_INTR_SRC bit i = 1,
+                  CLEAR_INTR_BUS bit i = 1) -> at least one AW on the DMA
+                  master tap at INTR_SRC_ADDR_i and that SRAM word reads
+                  INTR_SRC_WR_VAL_i over the frontdoor after the run;
+                  disabled (bit i = 0) -> no AW at INTR_SRC_ADDR_i and the
+                  word still holds its sentinel. Contract: "DMA issues writes
+                  with address from INTR_SRC_ADDR and write value from
+                  INTR_SRC_WR_VAL corresponding to each bit set in this
+                  register" (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/
+                  data/dma.hjson:755-757``, CLEAR_INTR_SRC; NumIntClearSources
+                  11, ``:28-33``), CLEAR_INTR_BUS "1: OT-internal crossbar"
+                  (``:771-773``) and ``hw/sys/sep/doc/dma.adoc:61-62`` (the
+                  internal host port is the only route). An enabled source on
+                  bus 0 is not run: its write goes to the tied-off CTN port,
+                  which "does not complete" (``hw/sys/sep/doc/dma.adoc:70``);
+                  bus 0 is graded for source 0 by CHK-DMA-CLR-BUS0. Every
+                  clear address lies inside the enabled range. Controls:
+                  CHK-HS-CLR in the same run, ``CTRL-HS-CLR-IDX``, and for a
+                  disabled source the enabled leg of the same source in the
+                  other run (same address, same tap).
+  CTRL-HS-CLR-IDX interrupt-clear and complement runs: CLEAR_INTR_SRC,
+                  CLEAR_INTR_BUS, INTR_SRC_ADDR_0..10 and
+                  INTR_SRC_WR_VAL_0..10 read back as written before GO, and
+                  the trigger probe is high in the window; else
+                  ``CTRL-MISSING CTRL-HS-CLR-IDX``.
+  OBS-HS-CLR      interrupt-clear and complement runs: the source 0 summary
+                  (clear AW count, clocks, AxSIZE, WSTRB) and, per source
+                  i = 0..10, the AW count, the clock of each AW from the tap
+                  mark and the WSTRB of its first W beat (``idx<i>_aw``,
+                  ``idx<i>_clks``, ``idx<i>_strb``). The first W beat of the
+                  k-th AW of the window is W beat ``sum(len + 1)`` of the AWs
+                  before it (AXI4 W beats follow AW order). Logged: the text
+                  states no clock, count or strobe of a clear write.
   CHK-DMA-CLR-BUS0 clear-bus run (``variant=bus0``, CLEAR_INTR_BUS = 0): no
                   AW at INTR_SRC_ADDR_0 on the DMA master tap and that SRAM
                   word still holds its sentinel after the run. Contract:
@@ -251,7 +297,7 @@ DMA_CHUNK_DONE=1 in the handshake run (``CTRL-HS-INTR-EN``). A missing control l
 CTRL-MISSING and fails the leaf.
 
 Probes: ``spi_lsio_trigger_probe_o``, ``dma_busy_probe_o``, ``spi_tx_qd_probe_o``
-(logged), ``dma_axi_req_probe_o`` (handshake and interrupt-clear runs), ``dbg_sep_reset_n_o``, ``sep_internal_interrupts_probe_o`` bit 9, the
+(logged), ``dma_axi_req_probe_o`` (handshake, interrupt-clear and complement runs), ``dbg_sep_reset_n_o``, ``sep_internal_interrupts_probe_o`` bit 9, the
 SPI pad ports and lane taps, and the register frontdoor over ``s_axi``.
 
 Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense, both simulators,
@@ -353,8 +399,17 @@ HS_DST = SRAM_BASE + 0x1000
 CLR_ADDR = SRAM_BASE + 0x800
 CLEAR_INTR_SRC = SECURE_DMA.addr("CLEAR_INTR_SRC")
 CLEAR_INTR_BUS = SECURE_DMA.addr("CLEAR_INTR_BUS")
-INTR_SRC_ADDR_0 = sym("SECURE_DMA_INTR_SRC_ADDR_0_0__REG_ADDR")
-INTR_SRC_WR_VAL_0 = sym("SECURE_DMA_INTR_SRC_WR_VAL_0_0__REG_ADDR")
+CLR_SRC_MASK = SECURE_DMA.field_mask("CLEAR_INTR_SRC", "source")
+CLR_BUS_MASK = SECURE_DMA.field_mask("CLEAR_INTR_BUS", "bus")
+# NumIntClearSources: one CLEAR_INTR_SRC bit per clearing source.
+N_CLR = CLR_SRC_MASK.bit_length()
+INTR_SRC_ADDR = tuple(sym(f"SECURE_DMA_INTR_SRC_ADDR_0_{i}__REG_ADDR") for i in range(N_CLR))
+INTR_SRC_WR_VAL = tuple(sym(f"SECURE_DMA_INTR_SRC_WR_VAL_0_{i}__REG_ADDR") for i in range(N_CLR))
+INTR_SRC_ADDR_0 = INTR_SRC_ADDR[0]
+INTR_SRC_WR_VAL_0 = INTR_SRC_WR_VAL[0]
+# Interrupt-clear and complement runs: the draw stream of sources 1..10.
+CLR_IDX_SALT = 0x434C_4958
+CLR_IDX_RUNS = ("clear", "clear_comp")
 # Clear-range and clear-bus runs: their own draw stream, the variants with the
 # RANGE_BASE and CLEAR_INTR_BUS each writes, and the fixture leg of each.
 CLR_SALT = 0x434C_5252
@@ -419,6 +474,29 @@ def unique_words(rng: SepSeededRng, k: int, *, exclude: set[int] | None = None) 
             seen.add(w)
             out.append(w)
     return out
+
+
+def w_starts(aw) -> list[int | None]:
+    """Index in the W record of the first beat of each AW (AXI4: W beats follow AW order).
+
+    None from the first AW whose burst length the tap did not resolve.
+    """
+    out: list[int | None] = []
+    n: int | None = 0
+    for b in aw:
+        out.append(n)
+        n = None if n is None or b.len is None else n + b.len + 1
+    return out
+
+
+@dataclass(frozen=True)
+class _ClearPlan:
+    """Clearing sources 0..N_CLR-1 of the interrupt-clear and complement runs."""
+
+    addr: tuple[int, ...]  # INTR_SRC_ADDR_i
+    val: tuple[int, ...]  # INTR_SRC_WR_VAL_i
+    src: tuple[int, int]  # CLEAR_INTR_SRC per run
+    bus: tuple[int, int]  # CLEAR_INTR_BUS per run
 
 
 class _Cfg:
@@ -522,6 +600,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         "CHK-HS-TRIG-TX",
         "CHK-HS-LANE-RX",
         "CHK-HS-CLR",
+        "CHK-HS-CLR-IDX",
         "CHK-DMA-CLR-BUS0",
         "CHK-SPI-SESSION-FRAMES",
         "CHK-SPI-SB-RX",
@@ -758,34 +837,77 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         ]
 
     # ---- runs --------------------------------------------------------------
-    async def _clear_run(
-        self, nw: int, rx_bytes: int, t_fill: int, hs_clr_aw: int, hs_aw: int
-    ) -> None:
-        """CHK-HS-CLR: the source 0 clear write reaches INTR_SRC_ADDR_0 on the DMA master.
+    def _clear_plan(self) -> _ClearPlan:
+        """The draws of the interrupt-clear and complement runs.
 
-        The handshake run (CLEAR_INTR_SRC = 0) is the control: ``hs_aw`` AWs and
-        ``hs_clr_aw`` of them at CLR_ADDR. The wait after the last word lands is
-        ``t_fill``, the clocks the handshake run took from GO to its last word.
+        The source 0 value is the appended draw of the leaf stream; every other
+        draw comes from the CLR_IDX_SALT stream, so the later draws of the leaf
+        stream keep their per-seed values.
         """
         cfg = self.cfg_
-        dma = self.dma
-        await self._cold_reset("clear")
         # Appended draw: the clear value, never the word written there first.
         clr_val = unique_words(cfg.rng, 1, exclude={self.sentinel})[0]
+        rng = SepSeededRng(cfg.seed ^ CLR_IDX_SALT)
+        upper = rng.getrandbits(N_CLR - 1)
+        src = tuple(1 | (u << 1) for u in (upper, ~upper & (CLR_SRC_MASK >> 1)))
+        # Below the destination: outside every footprint, inside the handshake range.
+        slots = [a for a in range(SRAM_BASE, HS_DST, 4) if a != CLR_ADDR]
+        addr = (CLR_ADDR, *rng.sample(slots, N_CLR - 1))
+        val = (clr_val, *unique_words(rng, N_CLR - 1, exclude={self.sentinel, clr_val, 0}))
+        # Enabled sources on bus 1; the bus bits of the disabled sources are drawn.
+        bus = tuple(s | (rng.getrandbits(N_CLR) & ~s & CLR_BUS_MASK) for s in src)
         self.logger.info(
-            "INFO-DRAW seed=%d clear_addr=0x%08x clear_wr_val=0x%08x clear_pre=0x%08x",
+            "INFO-DRAW seed=%d clear_addr=0x%08x clear_wr_val=0x%08x clear_pre=0x%08x "
+            "clear_src=%s clear_bus=%s idx_addr=%s idx_wr_val=%s",
             cfg.seed,
             CLR_ADDR,
             clr_val,
             self.sentinel,
+            ",".join(f"0x{s:03x}" for s in src),
+            ",".join(f"0x{b:03x}" for b in bus),
+            ",".join(f"{a:08x}" for a in addr[1:]),
+            ",".join(f"{v:08x}" for v in val[1:]),
         )
-        await self.mem.fill(CLR_ADDR, [self.sentinel])
-        await dma.wr(CLEAR_INTR_SRC, 0x1)
-        await dma.wr(CLEAR_INTR_BUS, 0x1)
-        await dma.wr(INTR_SRC_ADDR_0, CLR_ADDR)
-        await dma.wr(INTR_SRC_WR_VAL_0, clr_val)
+        return _ClearPlan(addr, val, src, bus)
+
+    async def _clear_run(
+        self,
+        plan: _ClearPlan,
+        k: int,
+        nw: int,
+        rx_bytes: int,
+        t_fill: int,
+        hs_clr_aw: int,
+        hs_aw: int,
+    ) -> None:
+        """CHK-HS-CLR and CHK-HS-CLR-IDX in run ``CLR_IDX_RUNS[k]`` of ``plan``.
+
+        The handshake run (CLEAR_INTR_SRC = 0) is the control of CHK-HS-CLR:
+        ``hs_aw`` AWs and ``hs_clr_aw`` of them at CLR_ADDR. The wait after the
+        last word lands is ``t_fill``, the clocks the handshake run took from GO
+        to its last word.
+        """
+        cfg = self.cfg_
+        dma = self.dma
+        run = CLR_IDX_RUNS[k]
+        src, bus = plan.src[k], plan.bus[k]
+        await self._cold_reset(run)
+        for a in plan.addr:
+            await self.mem.fill(a, [self.sentinel])
+        regs = [("clear_intr_src", CLEAR_INTR_SRC, src), ("clear_intr_bus", CLEAR_INTR_BUS, bus)]
+        for i in range(N_CLR):
+            regs.append((f"intr_src_addr_{i}", INTR_SRC_ADDR[i], plan.addr[i]))
+            regs.append((f"intr_src_wr_val_{i}", INTR_SRC_WR_VAL[i], plan.val[i]))
+        for _, reg, v in regs:
+            await dma.wr(reg, v)
+        rb_bad = []
+        for name, reg, v in regs:
+            got = await dma.rd(reg)
+            if got != v:
+                rb_bad.append(f"{name}=0x{got:x}/0x{v:x}")
         self.dtap.start()
         m_tap = self.dtap.mark()
+        m_trig = self.trig.mark()
         t_go, _ = await self._hs_start(
             mask=cfg.mask_on, total=cfg.n * cfg.chunk, dst_words=nw, rx_bytes=rx_bytes
         )
@@ -797,32 +919,56 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             if self.tw.clk - t_go > bound:
                 self._fail(
                     "CHK-HS-CLR",
-                    f"last word of chunk {cfg.n} still holds the sentinel {bound} clocks "
-                    f"after GO (polls={polls})",
+                    f"run={run} last word of chunk {cfg.n} still holds the sentinel {bound} "
+                    f"clocks after GO (polls={polls})",
                 )
         t_last = self.tw.clk
         await self._wait_clocks(t_last + t_fill)
+        trig_high = self.trig.high_clocks_since(m_trig)
         ev = self.dtap.since(m_tap)
-        clr_rb = (await self.mem.read(CLR_ADDR, 1))[0]
+        words = [(await self.mem.read(a, 1))[0] for a in plan.addr]
         dest = await self.mem.read(HS_DST, nw)
-        clr_idx = [i for i, b in enumerate(ev.aw) if b.addr == CLR_ADDR]
+        aw_at = [[j for j, b in enumerate(ev.aw) if b.addr == a] for a in plan.addr]
+        starts = w_starts(ev.aw)
+
+        def strb(j: int) -> str:
+            s = starts[j]
+            beat = ev.w[s] if s is not None and s < len(ev.w) else None
+            return "-" if beat is None or beat.strb is None else f"0x{beat.strb:x}"
+
+        clr_idx = aw_at[0]
+        clr_rb, clr_val = words[0], plan.val[0]
         self.logger.info(
-            "OBS-HS-CLR LOG seed=%d clear_aw=%d aw_total=%d clear_aw_clks=%s "
-            "clear_aw_size=%s clear_w_strb=%s go_tap_clk=%d last_word_clks_after_go=%d",
+            "OBS-HS-CLR LOG seed=%d run=%s clear_aw=%d aw_total=%d clear_aw_clks=%s "
+            "clear_aw_size=%s clear_w_strb=%s go_tap_clk=%d last_word_clks_after_go=%d %s",
             cfg.seed,
+            run,
             len(clr_idx),
             len(ev.aw),
-            ",".join(str(ev.aw[i].clk - m_tap.clk) for i in clr_idx) or "-",
-            ",".join(str(ev.aw[i].size) for i in clr_idx) or "-",
-            ",".join(f"0x{ev.w[i].strb:x}" if i < len(ev.w) else "-" for i in clr_idx) or "-",
+            ",".join(str(ev.aw[j].clk - m_tap.clk) for j in clr_idx) or "-",
+            ",".join(str(ev.aw[j].size) for j in clr_idx) or "-",
+            ",".join(strb(j) for j in clr_idx) or "-",
             m_tap.clk,
             t_last - t_go,
+            " ".join(
+                f"idx{i}_aw={len(js)} "
+                f"idx{i}_clks={','.join(str(ev.aw[j].clk - m_tap.clk) for j in js) or '-'} "
+                f"idx{i}_strb={','.join(strb(j) for j in js) or '-'}"
+                for i, js in enumerate(aw_at)
+            ),
         )
-        self._probe_log("clear")
+        self._probe_log(run)
+        ctrl = (
+            f"run={run} words={len(regs)} readback_bad={','.join(rb_bad) or '-'} "
+            f"clear_src=0x{src:03x} clear_bus=0x{bus:03x} trigger_high_clk={trig_high}"
+        )
+        if rb_bad or trig_high < 1:
+            self._ctrl_missing("CTRL-HS-CLR-IDX", ctrl)
+        self.logger.info("CTRL-HS-CLR-IDX PASS seed=%d %s", cfg.seed, ctrl)
         line = (
-            f"clear_addr=0x{CLR_ADDR:08x} clear_aw={len(clr_idx)} "
+            f"run={run} clear_addr=0x{CLR_ADDR:08x} clear_aw={len(clr_idx)} "
             f"readback=0x{clr_rb:08x} expect=0x{clr_val:08x} pre=0x{self.sentinel:08x} "
-            f"clear_src=0x1 clear_bus=0x1 control_hs_aw={hs_aw} "
+            f"clear_src=0x{src:03x} clear_bus=0x{bus:03x} control_hs_aw={hs_aw} "
             f"control_hs_clear_aw={hs_clr_aw} window_clks={t_fill}"
         )
         if hs_aw < 1 or hs_clr_aw != 0:
@@ -830,13 +976,30 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         if not clr_idx or clr_rb != clr_val:
             self._fail("CHK-HS-CLR", line)
         self._pass("CHK-HS-CLR", line)
+        idx_lines, idx_bad = [], []
+        for i in range(1, N_CLR):
+            on = bool(src >> i & 1)
+            want = plan.val[i] if on else self.sentinel
+            idx_line = (
+                f"run={run} idx={i} leg={'enabled' if on else 'disabled'} "
+                f"addr=0x{plan.addr[i]:08x} aw={len(aw_at[i])} expect_aw={'>=1' if on else '0'} "
+                f"readback=0x{words[i]:08x} expect=0x{want:08x} bus={bus >> i & 1} "
+                f"clear_src=0x{src:03x} clear_bus=0x{bus:03x}"
+            )
+            idx_lines.append(idx_line)
+            if bool(aw_at[i]) != on or words[i] != want:
+                idx_bad.append(idx_line)
+        if idx_bad:
+            self._fail("CHK-HS-CLR-IDX", " | ".join(idx_bad))
+        for idx_line in idx_lines:
+            self._pass("CHK-HS-CLR-IDX", idx_line)
         await self._release(HS_MASK_PASS_MASK | HS_MASK_PASS_INTR_CLEAR)
         close_graded_window(self.logger)
         # Leave GO clear for the next run, also on a DUT that kept it set.
         await dma.wr(DMA_CONTROL, dma.last_control & ~GO_MASK)
         await self.dtap.stop()
-        got = self._rx_bytes(dest, cfg.flash_bytes()[: 4 * nw], "clear")
-        self._expect_rx(FLASH_READ, 1, got, want=4 * nw, label="clear")
+        got = self._rx_bytes(dest, cfg.flash_bytes()[: 4 * nw], run)
+        self._expect_rx(FLASH_READ, 1, got, want=4 * nw, label=run)
 
     async def _depth_check(self) -> None:
         cfg = self.cfg_
@@ -1291,9 +1454,10 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             )
         self.logger.info(
             "INFO-PLAN seed=%d runs=depth,reference,trigger,lanes,normal,handshake,masked,stop,clear,"
-            "masked_alt,tx_term,clear_outside_range,clear_bus0 graded=trigger,lanes,handshake,masked,stop,clear,"
-            "masked_alt,tx_term checks=CHK-HS-MASKED,CHK-HS-GO,CHK-HS-STOP,CHK-HS-NOCHUNK,"
-            "CHK-HS-DATA,CHK-HS-TRIG-EQ,CHK-HS-TRIG-TX,CHK-HS-LANE-RX,CHK-HS-CLR,CHK-DMA-CLR-BUS0,"
+            "clear_comp,masked_alt,tx_term,clear_outside_range,clear_bus0 graded=trigger,lanes,"
+            "handshake,masked,stop,clear,clear_comp,masked_alt,tx_term checks=CHK-HS-MASKED,"
+            "CHK-HS-GO,CHK-HS-STOP,CHK-HS-NOCHUNK,CHK-HS-DATA,CHK-HS-TRIG-EQ,CHK-HS-TRIG-TX,"
+            "CHK-HS-LANE-RX,CHK-HS-CLR,CHK-HS-CLR-IDX,CHK-DMA-CLR-BUS0,"
             "CHK-SPI-SESSION-FRAMES,CHK-SPI-SB-RX,CHK-SPI-WIRE",
             cfg.seed,
         )
@@ -1818,8 +1982,11 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         ):
             self._expect_rx(FLASH_READ, 1, self._rx_bytes(seg, fb[:n], label), want=n, label=label)
 
-        # Interrupt-clear run: the handshake copy with the source 0 clear write.
-        await self._clear_run(nw, rx_bytes, t_fill, hs_clr_aw, hs_aw)
+        # Interrupt-clear run and its complement run: the handshake copy with
+        # the clear writes.
+        plan = self._clear_plan()
+        for k in range(len(CLR_IDX_RUNS)):
+            await self._clear_run(plan, k, nw, rx_bytes, t_fill, hs_clr_aw, hs_aw)
 
         # Appended draws: the second masked run and the TX-term cell. The
         # second masked run takes the masked class the first one did not.
