@@ -8,13 +8,11 @@ ifdef::backend-html5[]
 :feature-control-vector-ref: xref:sep:lifecycle_controller.adoc#feature-control-vector-definition[Disable Vector Format (SIP_DIS / SYS_DIS)]
 :axi-traffic-filter-ref: xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter]
 :sep-register-single-beat-ref: xref:sep:memory_map.adoc#sep-register-single-beat[Single-Beat Register Access]
-:decode-response-codes-ref: xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
 endif::backend-html5[]
 ifndef::backend-html5[]
 :feature-control-vector-ref: <<feature-control-vector-definition>>
 :axi-traffic-filter-ref: <<axi-traffic-filter>>
 :sep-register-single-beat-ref: <<sep-register-single-beat>>
-:decode-response-codes-ref: <<ocah-decode-response-codes,Decode Response Codes>>
 endif::backend-html5[]
 
 [[sep-interconnect]]
@@ -140,13 +138,13 @@ rebases the `SEP_REGION_SIZE` window at `SEP_GLOBAL_BASE_ADDR` to address 0 and
 passes every other address unchanged. The peripheral crossbar has a second
 initiator, the `SEP_LOCAL` port of the output fabric's route demux, so local
 masters reach the mailboxes and system CSRs through the same decode. Addresses
-below `0x4000_0000` outside `0x1080_2000` to `0x1080_2FFF` and `0x10A0_0000` to
+below `0x4000_0000` outside the scratch register page and `0x10A0_0000` to
 `0x10A4_FFFF` are truncated to 32 bits, their IDs reduced from 7 to 3 bits, and
 forwarded to the `ext` initiator of the local crossbar. The crossbar sends the
-scratch page and each system CSR page whole to the system CSR block, which
-routes each register group its window ({decode-response-codes-ref}). The
-crossbar answers the other addresses in `0x10A0_8000` to `0x10A4_FFFF` with
-DECERR on reads and writes, as it does any address at or above `0x4000_0000`.
+scratch register page and each system CSR page whole to the system CSR block,
+and answers the rest of
+`0x10A0_8000` to `0x10A4_FFFF` with DECERR on reads and writes, as it does any
+address at or above `0x4000_0000`.
 The system CSRs program the inbound filter entries and the SEP aperture,
 as well as the output fabric's remaps and outbound filter.
 
@@ -163,9 +161,7 @@ which reaches the ROM macro without passing the crossbar, and the IFU demux
 answers addresses outside the boot ROM and SEP SRAM with DECERR. The chain on
 each target row is the conversion the target needs: the secure DMA registers
 and the watchdog are reached as 32-bit TL-UL, and the IO block, reset
-controller and entropy pool as AXI-Lite. The secure DMA and watchdog wrappers
-and the IO block each pass their register block only its window
-({decode-response-codes-ref}). The `sep_external` demux diverts the
+controller and entropy pool as AXI-Lite. The `sep_external` demux diverts the
 eFuse shim CSR window to the eFuse wrapper; every other address in the
 `0x2000_0000` to `0x3FFF_FFFF` aperture leaves SEP on the AXI extension port.
 xref:sep-axi-connectivity[xrefstyle=short] gives the initiator-to-target connections.

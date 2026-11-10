@@ -119,16 +119,8 @@ follows:
 A block instantiated as an array at a stride wider than one instance answers
 `OKAY` at every offset, so the padding between instances behaves as a hole. The
 alias remap regions, the traffic filter entries, the GPIO interfaces and the
-cross-trigger ports are such blocks. A write to a locked traffic filter entry
-answers `SLVERR` at every offset of the entry, its padding included; see
-ifdef::backend-html5[]
-xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter-lock[Locking a Filter Entry].
-endif::backend-html5[]
-ifdef::backend-pdf[]
-<<axi-traffic-filter-lock,Locking a Filter Entry>>.
-endif::backend-pdf[]
-An array of whole controllers, such as the I2C controllers, answers `SLVERR` in
-its padding instead.
+cross-trigger ports are such blocks. An array of whole controllers, such as the
+I2C controllers, answers `SLVERR` in its padding instead.
 
 A vendored block keeps the responses of its own decoder. At an offset with no
 register, the PWM core and the other blocks that keep their OpenTitan register

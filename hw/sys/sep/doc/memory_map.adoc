@@ -73,7 +73,11 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 <<ocah-decode-response-codes,Decode Response Codes>>
 endif::backend-pdf[]
-defines them, their codes and the rule for the windows the SEP fabric routes.
+defines them and their codes.
+
+A unit's generated register block answers `SLVERR` to an access that reaches it
+past the end of its last register. This includes a 64-bit access to the last
+register of a block with 32-bit registers.
 
 The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
 does not decode offsets inside that window, so every access reaches the external
@@ -90,8 +94,8 @@ return DECERR, refuse the access and never alias onto a live register. See the
 Register regions support single-beat transactions only. Bursts are supported
 into ICCM, DCCM, SRAM, the extension port and the outbound SMN windows. The
 fabric routes a burst on its first address only, so the later beats of a burst
-to a register region may reach other registers or be answered with errors. The
-crypto region, which spans OTBN through ABR in the generated
+to a register region may be answered with errors or reach other
+registers. The crypto region, which spans OTBN through ABR in the generated
 memory map below, refuses bursts ({sep-crypto-access-ref}).
 
 == Units Unreachable from the Inbound Port
@@ -99,10 +103,9 @@ memory map below, refuses bursts ({sep-crypto-access-ref}).
 Several SEP units are not connected to the external inbound port and answer
 `DECERR` to any external access attempt. These units include the Boot ROM,
 Reset Control, ICCM, DCCM, PIC, and AP/STEE remap regions. The inbound port
-serves the mailbox and the scratch and system CSR pages, and forwards every
-address below 0x4000_0000 outside 0x1080_2000 to 0x1080_2FFF and 0x10A0_0000
-to 0x10A4_FFFF to the SEP local crossbar; the rest of 0x10A0_8000 to
-0x10A4_FFFF answers `DECERR`. Addresses above 0x4000_0000 and the units listed
+serves the mailbox and the scratch register and system CSR pages, answers the
+rest of 0x10A0_0000 to 0x10A4_FFFF with `DECERR`, and forwards every other
+address below 0x4000_0000 to the SEP local crossbar. Addresses above 0x4000_0000 and the units listed
 above are not reachable through this external path and receive error responses
 from the `smn_inbound` port. Their rows in the table below state what the SEP CPU sees.
 
