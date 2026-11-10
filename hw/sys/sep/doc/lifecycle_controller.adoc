@@ -1281,6 +1281,16 @@ places on this field when `use_verifier_key` is set (the
 verification and are not restated here. A `signature_class_revoke` value
 carried by any later-stage manifest is not acted on by SEP.
 
+*Manifest data for BL1.* The requirements below need fields of the BL1 manifest
+that SEP ROM has already parsed and authenticated, and the manifest itself need
+not remain in SEP memory after hand-off. SEP ROM shall make the following
+available to BL1 regardless: `signature_class_revoke`,
+`manifest_security_control`, `use_verifier_key` and `co_signer_enable`; and,
+for the chiplet creator, for the verifier key when `use_verifier_key` is set,
+and for each co-signer whose `REQUIRED_SIGNERS` bit is set, the class of each
+signature SEP ROM verified, as declared in that entity's signature-type fields.
+The form of this hand-off record is defined with the SEP Boot ROM.
+
 *Programming requirements.* Between SEP ROM's hand-off to BL1 and BL1's
 hand-off to the next stage, BL1 shall meet the following. The programming
 procedure that meets them is specified with the SEP Boot ROM and BL1 firmware,
@@ -1295,9 +1305,9 @@ the fuse and its shadow register are set-only.
 value other than `0x00`, `0xCA` or `0xAC`, or that sets every class bit of a
 group while that group's code is `0x00`.
 * Program the fuse only after the survivability check below has passed for the
-requested value, and report a request that is refused or that fails to
-program. A request that is not programmed remains in the manifest and is
-evaluated again at the next boot.
+requested value, and report a request that is refused, an anonymous co-signer
+the check finds failing, or a fuse that fails to program. A request that is not
+programmed remains in the manifest and is evaluated again at the next boot.
 * Write the programmed value to the `SIGNATURE_REVOKE` shadow register.
 Programming a fuse does not update its shadow register until the next fuse
 sensing, so this write is what puts the revocation into the policy in force
@@ -1308,27 +1318,68 @@ stage in that boot can program the field or write its shadow register. The
 LOCKS _fuse_ bit for this slot is never programmed: the lock clears at the next
 cold reset, which is what allows a further class to be revoked in a later boot.
 
-*Survivability check.* A revocation shall never leave the device unable to
-boot. Before programming, BL1 shall confirm that both of the following
-manifests satisfy the requirement rule of <<secure-boot-signing-model>> with
-`SIGNATURE_REVOKE` taken as the requested value and the rest of the policy in
-force unchanged:
+*Survivability check.* A revocation shall never make SEP ROM reject, at the
+next cold reset, the BL1 manifest that requested it. Before programming, BL1
+shall evaluate the requirement rule of <<secure-boot-signing-model>> against its
+own manifest, under the policy SEP ROM will apply at that cold reset:
 
-* the BL1 manifest itself, so that SEP ROM accepts it again at the next cold
-reset. SEP ROM has already verified its signatures, so this is evaluated from
-the manifest's signature-type fields and the policy, without repeating the
-signature verification; and
-* the next-stage manifest, if BL1 loads one, so that this boot completes. BL1
-verifies that manifest before hand-off in any case; performing that
-verification under the requested value before programming satisfies this
-condition.
+* `SIGNATURE_REVOKE` is the value the fuse will hold once the request is
+programmed: the bits already programmed together with the bits requested.
+Example: with `SIGNATURE_REVOKE[15:8]` = `0xCA` already programmed and a
+request for `SIGNATURE_REVOKE[26]`, the evaluation uses `0xCA` and bit 26
+together.
+* `REQUIRED_SIGNERS` and `REQUIRED_ALGS` are the fused values, which are what
+SEP ROM verifies the BL1 manifest against at every cold reset; a fused
+`REQUIRED_ALGS[1:0]` of `00` counts as `01`, as in step 6 of the requirement
+rule. Values that BL1 has written to the shadow registers of these fields for
+the next stage are not used.
 
-If either manifest fails, the request is not programmed and the boot continues
+The evaluation covers every signature this policy requires of the manifest: the
+chiplet creator's; the verifier key's, when the manifest sets
+`use_verifier_key`; and that of each co-signer N whose `REQUIRED_SIGNERS` bit
+N-1 is set. SEP ROM has already verified these signatures, so the evaluation
+uses the class of each, as declared in the manifest's signature-type fields,
+together with the policy; no signature is verified again.
+
+Example: the fused policy is `REQUIRED_ALGS[3:0]` = `0b0011`,
+`REQUIRED_SIGNERS[7:0]` = `0x01`, `REQUIRED_SIGNERS[11:8]` = `0b0100` (SiP
+owner) and `REQUIRED_ALGS[11:8]` = `0b0001`. Co-signer 1 signs RSA-3072, and the
+chiplet creator signs ECDSA P-384 and ML-DSA-87. A request for
+`SIGNATURE_REVOKE[0]` leaves the chiplet creator's signatures intact but makes
+co-signer 1's required signature one of a revoked class, so the request is not
+programmed until the SiP owner signs with another class. This holds even if BL1
+has already cleared `REQUIRED_SIGNERS[0]` in the shadow register for the next
+stage: SEP ROM will require co-signer 1 again at the next cold reset.
+
+The check covers the BL1 manifest only. The next-stage manifest is verified
+under the new policy before hand-off in any case, but its outcome is not a
+condition for programming: a deployment that revokes a class is responsible for
+migrating the later stages it ships, and making the fuse update depend on first
+loading and authenticating the next stage would impose an order of operations on
+every BL1 implementation.
+
+A failing entity withholds the request only if its key is bound to a trust
+anchor: the chiplet creator, the verifier key, and a co-signer whose owner code
+is `0b0010`, `0b0100` or `0b1000`. A co-signer with owner code `0b0001`
+(anonymous) that would fail is reported, and the request is programmed
+regardless. An anonymous co-signer's key is not matched against any digest, so
+a party able to alter the manifest image could re-sign that block with a class
+about to be revoked; if that could withhold the request, it would prevent every
+revocation from ever being programmed while the device continued to boot
+normally. Such a party can already stop the device from booting by corrupting
+any signature, so programming the request grants it nothing new. The guarantee
+of this check therefore does not extend to anonymous co-signers: an adopter
+that requires one accepts that revoking the class it signs with makes that
+manifest fail at the next cold reset, and should bind required co-signers to a
+trust anchor instead.
+
+If a bound entity fails, the request is not programmed and the boot continues
 under the unchanged policy. SEP defines no override for a request that would
 leave no trusted class in a required group: such a request is never programmed.
 
 Because the check is defined through the requirement rule, it follows whatever
-that rule says about revoked classes and group codes and needs no separate definition.
+that rule says about revoked classes and group codes and needs no separate
+definition.
 
 *Example.* The fused policy is `REQUIRED_ALGS[3:0]` = `0b0011`,
 `REQUIRED_SIGNERS[7:0]` = `0x00` and `SIGNATURE_REVOKE` = 0. The fielded BL1
