@@ -225,10 +225,10 @@ reset, so this source stays asserted; there is no write-one-to-clear.
 |`41`
 |DMA register-path bus error
 |A CPU access to a Secure DMA register returned a TL-UL error response
-(an offset in the DMA register window that holds no register, or a partial
-write: a byte strobe that misses a byte the register owns). The faulting access
-also received SLVERR synchronously. A narrow read inside a register returns
-OKAY. Latched and held until firmware writes `DMA_BUS_ERR_CLEAR.clr`.
+(an offset in the register window with no register, or a partial write: a byte
+strobe that misses a byte the register owns). The faulting access also received
+SLVERR synchronously. A narrow read inside a register returns OKAY. Latched and
+held until firmware writes `DMA_BUS_ERR_CLEAR.clr`.
 
 |`42`
 |DMA host-path integrity/bus fault

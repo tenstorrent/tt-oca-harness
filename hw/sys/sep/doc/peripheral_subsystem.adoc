@@ -5,11 +5,9 @@
 :description: SEP access to SMC peripherals and the local SPI boot interface.
 ifdef::backend-html5[]
 :sep-output-fabric-ref: xref:sep:fabric.adoc#sep-output-fabric-diagram[SEP output fabric]
-:sep-memory-map-ref: xref:sep:memory_map.adoc#sep-memory-map[SEP memory map]
 endif::backend-html5[]
 ifndef::backend-html5[]
 :sep-output-fabric-ref: <<sep-output-fabric-diagram>>
-:sep-memory-map-ref: <<sep-memory-map,SEP memory map>>
 endif::backend-html5[]
 
 [[peripheral-subsystem,Peripheral Subsystem]]
@@ -43,8 +41,7 @@ The figure reads from the SEP local crossbar outwards. The SPI host sits
 behind the `sep_io` target, which downsizes the 64-bit AXI4 request to 32
 bits and converts it to AXI-Lite; the quad SPI signals leave for the SPI pads.
 The local crossbar sends the 4 KiB page of the SPI host to `sep_io`, which
-passes the SPI host only its register window. The {sep-memory-map-ref} states
-how an access outside the registers is answered.
+passes the SPI host only its register window.
 Requests in the SMC aperture take the route demux of `sep_system_peripherals` (see
 {sep-output-fabric-ref}) onto the SMC port, which the SMU wires directly
 to the SMC's `sep_axi_in` port with no crossbar and no clock-domain crossing.

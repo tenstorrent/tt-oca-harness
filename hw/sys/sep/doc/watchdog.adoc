@@ -3,12 +3,6 @@
 
 = Watchdog Timer (WDT)
 :description: SEP watchdog timer integration, clocking, bark interrupts, and bite reset requests.
-ifdef::backend-html5[]
-:sep-memory-map-ref: xref:sep:memory_map.adoc#sep-memory-map[SEP memory map]
-endif::backend-html5[]
-ifndef::backend-html5[]
-:sep-memory-map-ref: <<sep-memory-map,SEP memory map>>
-endif::backend-html5[]
 
 [[watchdog-timer-wdt-watchdog-timer-wdt,Watchdog Timer (WDT)]]
 
@@ -22,7 +16,7 @@ timeout has expired and there is a problem within the SEP.
 
 == Bus Interface
 
-The `sep_wdt_wrap` module integrates the OpenTitan `aon_timer` IP as the watchdog timer. The 64-bit AXI slave port from the system crossbar is narrowed to 32-bit AXI through an `axi_dw_converter`. The address path subtracts the WDT base address so that the internal TL-UL decoder sees zero-based offsets. After `axi_to_axi_lite` conversion, a demux passes the timer only its 64-byte register window, and `axi_lite_to_tlul` conversion drives the standard `aon_timer` register block. The {sep-memory-map-ref} states how an access outside the registers is answered.
+The `sep_wdt_wrap` module integrates the OpenTitan `aon_timer` IP as the watchdog timer. The 64-bit AXI slave port from the system crossbar is narrowed to 32-bit AXI through an `axi_dw_converter`. The address path subtracts the WDT base address so that the internal TL-UL decoder sees zero-based offsets. After `axi_to_axi_lite` conversion, a demux passes the timer only its 64-byte register window, and `axi_lite_to_tlul` conversion drives the standard `aon_timer` register block.
 
 == Clock, Reset, and Debug Behavior
 

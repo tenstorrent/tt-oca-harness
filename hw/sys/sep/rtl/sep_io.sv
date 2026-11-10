@@ -120,7 +120,7 @@ module sep_io (
     .r_chan_t       (sep_io_pkg::axil_r_chan_t),
     .axil_req_t     (sep_io_pkg::axil_req_t),
     .axil_resp_t    (sep_io_pkg::axil_resp_t)
-  ) u_axi_lite_demux (
+  ) u_addr_demux (
     .clk_i,
     .rst_ni,
     .test_en_i,
