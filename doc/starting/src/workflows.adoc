@@ -139,10 +139,10 @@ To add a register block to the SMC:
 * For a block instantiated as an array at a stride wider than one instance,
   add the block to `OCAH_REG_NO_ERR_BLOCKS`, set `OCAH_REG_ADDR_WIDTH_<block>`
   so that 2^width^ is the stride if the block does not already decode it, and
-  give each instance its stride as its range. The SMC map sets
+  give each instance a range the size of the stride. The SMC map sets
   `ocah_full_stride_extent` at its root; elsewhere, set it on the array. An
-  array of whole controllers stays off the list, decodes its stride, and sets
-  its `ocah_gap_resp` to `SLVERR`.
+  array of whole controllers stays off the list, decodes the whole stride, and
+  sets its `ocah_gap_resp` to `SLVERR`.
 * A vendored block keeps its own decode width. Route it the window its decoder
   implies, and set its `ocah_hole_resp` and `ocah_past_extent_resp` in the RDL
   to what that decoder returns, read data included.
