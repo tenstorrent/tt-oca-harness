@@ -114,7 +114,8 @@ OTP bit, the program commands at the tap and ``efuse_req_error``; the specificat
 does not state in which states it lands). ``OBS-STM-SECDIS-STRAP1-GO`` logs, on every
 seed, the match code, read count, ``security_disable_o``, ``secure_tm_o`` and
 ``FEAT_CTRL`` of the strap-1 SEC_DIS go: the specification does not state what a
-token go does in secure test mode. No step writes ``LC_STATE``. The demotion
+token go does in secure test mode, so the match code and read count are open;
+``FEAT_CTRL`` reads all ones once a match holds and is logged. No step writes ``LC_STATE``. The demotion
 leg's resenses compare the shadow with the OTP array as the strap-0 programs
 left it.
 In RMA_CHIPLET the profile row is all ones with or without SEC_DIS, so there the
