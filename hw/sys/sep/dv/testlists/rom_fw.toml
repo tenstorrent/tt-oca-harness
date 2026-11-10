@@ -25,6 +25,83 @@ args = [
 ]
 
 [[tests]]
+# STATUS_RPT=00 follows a clear STATUS_RPT_DISABLE strap and enables the SEP status ring.
+name = "sep_status_rpt_follow_enabled_test"
+module = "rom_fw.sep_status_reporting_policy_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+status_rpt_case=follow-enabled",
+]
+
+[[tests]]
+# STATUS_RPT=00 follows an asserted STATUS_RPT_DISABLE strap and leaves the ring untouched.
+name = "sep_status_rpt_follow_disabled_test"
+module = "rom_fw.sep_status_reporting_policy_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+status_rpt_case=follow-disabled",
+  "+sep_straps_lo=00200000",
+]
+
+[[tests]]
+# STATUS_RPT=01 overrides an asserted STATUS_RPT_DISABLE strap and enables the ring.
+name = "sep_status_rpt_force_enabled_test"
+module = "rom_fw.sep_status_reporting_policy_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+status_rpt_case=force-enabled",
+  "+sep_straps_lo=00200000",
+]
+
+[[tests]]
+# STATUS_RPT=10 suppresses the ring even when STATUS_RPT_DISABLE is clear.
+name = "sep_status_rpt_force_disabled_10_test"
+module = "rom_fw.sep_status_reporting_policy_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+status_rpt_case=force-disabled-10",
+]
+
+[[tests]]
+# STATUS_RPT=11 suppresses the ring even when STATUS_RPT_DISABLE is clear.
+name = "sep_status_rpt_force_disabled_11_test"
+module = "rom_fw.sep_status_reporting_policy_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+status_rpt_case=force-disabled-11",
+]
+
+[[tests]]
 # OpenTitan SPI boot, SECURE_DMA drain; no SMC SRAM image is staged, so an SMC-SRAM fallback cannot
 # pass.
 name = "sep_rom_ot_dma_boot_test"

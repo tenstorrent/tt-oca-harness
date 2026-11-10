@@ -111,11 +111,17 @@ status reporting.
 
 === Status-buffer handoff
 
-When status reporting is enabled, BL0 waits for the status-buffer-ready bit in
-scratch register 9. It reads the ring-buffer offset from scratch register 11,
-checks that the ring header lies within SMC SRAM, and then publishes
-non-debug status through that ring. SEP owns the ring head and SMC owns the
-tail.
+After fuse sensing completes, BL0 selects whether the SEP-to-SMC status ring is
+enabled. `STATUS_RPT[1:0]` value `00` follows the inverse of the captured
+`STATUS_RPT_DISABLE` strap, `01` forces the ring on, and `10` or `11` forces
+it off.
+
+When the ring is enabled, BL0 waits for the status-buffer-ready bit in scratch
+register 9. It reads the ring-buffer offset from scratch register 11, checks
+that the ring header lies within SMC SRAM, and then publishes non-debug status
+through that ring. SEP owns the ring head and SMC owns the tail. The policy
+does not gate `cold_scratch[1]`, the terminal verdict, early assembly status,
+or the virtual console.
 
 An invalid offset leaves the scratch-register status channel operational and
 prevents BL0 from writing through an untrusted ring pointer.

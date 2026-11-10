@@ -397,8 +397,8 @@ partition "Platform init, rom_main ([S04]-[S20])" {
   + SMC scratch round-trip sanity;
   :[S05] ROM version + self-hash report;
   :[S06] read straps;
-  :[S07] status ring init (strap-gated);
-  :[S08] fuse-sense readiness;
+  :[S07] fuse-sense readiness;
+  :[S08] status ring init (eFuse/strap policy);
   :[S09] PLL / refclk;
   :[S10] bl0_state init;
   :[S11] LC_STATE policy;
@@ -524,9 +524,10 @@ the DCCM scrub; a strap skips a check, a failed check halts |<<sec:smc_sync>>
 scratch round-trip sanity |<<sec:cpu_init>>
 |[S05] |ROM identity |Version string + build-time ROM SHA-256 reported |<<sec:boot_measurement>>
 |[S06] |Strap read |`STRAPS_LO/HI` parsed into boot configuration |<<sec:straps>>
-|[S07] |Status reporting init |Status ring buffer in SMC SRAM (strap-gated) |<<sec:status>>
-|[S08] |Fuse-sense readiness |`smc_fuse_sense_done` polled to completion; gates every fuse
+|[S07] |Fuse-sense readiness |`smc_fuse_sense_done` polled to completion; gates every fuse
 read in the flow |<<sec:fuses>>
+|[S08] |Status reporting init |Status ring buffer in SMC SRAM, gated by the
+`STATUS_RPT` eFuse/strap policy |<<sec:status>>
 |[S09] |Clock init |SMC-owned PLL from fuses, or 100 MHz refclk (strap-gated) |<<sec:cpu_init>>
 |[S10] |`bl0_state` init |Hand-off block zeroed; precedes every `bl0_state` writer
 |<<sec:handoff>>
@@ -694,8 +695,8 @@ is left showing which wait it is in (<<sec:status>>).
 [cols="34%,12%,54%",options="header",grid=rows,frame=ends]
 |===
 |Unbounded wait |Stage |Status left in `cold_scratch[1]`
-|SMC status buffer ready |[S07] |`STATUS_REPORTING_ENABLED` (DEBUG)
-|Fuse sense complete |[S08] |`FUSE_SENSE_WAIT` (DEBUG)
+|Fuse sense complete |[S07] |`FUSE_SENSE_WAIT` (DEBUG)
+|SMC status buffer ready |[S08] |`STATUS_REPORTING_ENABLED` (DEBUG)
 |PLL lock |[S09] |`WAIT_FOR_PLL_LOCK`
 |SMC manifest ready (recovery and secondary boot) |[S23] |`WAIT_FOR_SMC_MANIFEST_READY`
 |===
@@ -741,9 +742,10 @@ outbound path to the SMC responds before the boot flow depends on it. Mismatch i
 |[S05] ROM identity |ROM version string and build-time SHA-256 are emitted (see
 <<sec:boot_measurement>>), and cold-boot entry is reported on the debug console (`COLD`).
 |[S06] straps |Latched straps parsed into the boot configuration (<<sec:straps>>).
-|[S07] status init |Status ring buffer initialized unless disabled by strap (<<sec:status>>).
-|[S08] fuse sense |`smc_fuse_sense_done` polled to completion (<<sec:fuses>>). Unconditional,
+|[S07] fuse sense |`smc_fuse_sense_done` polled to completion (<<sec:fuses>>). Unconditional,
 and ahead of every fuse consumer in the flow.
+|[S08] status init |Status ring buffer initialized according to `STATUS_RPT[1:0]`
+and the captured disable strap (<<sec:status>>).
 |[S09] clocks |`pll_init()`: if the `bl0_pll_clk` strap is clear, stay on the 100 MHz
 reference clock. If set: read the target sysclk frequency from the `SYSCLK_FREQ_MHZ` fuse
 field (blank fuses fall back to refclk with a warning), then call
@@ -1066,9 +1068,9 @@ before fuse sensing has completed. Completion is indicated by
 `SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS` bit 0 (`smc_fuse_sense_done`); the ROM polls it without
 timeout (the accepted BL0 hang failure mode, SEP-ROM-CPU-080).
 
-The poll is a discrete stage ([S08]) that runs unconditionally, ahead of every fuse consumer:
-the `SYSCLK_FREQ_MHZ` read in [S09], the lifecycle state in [S11], `SBOOT_DIS` and the disable
-vectors in [S18], and the
+The poll is a discrete stage ([S07]) that runs unconditionally, ahead of every fuse consumer:
+the `STATUS_RPT` read in [S08], the `SYSCLK_FREQ_MHZ` read in [S09], the lifecycle state in
+[S11], `SBOOT_DIS` and the disable vectors in [S18], and the
 key digests, revocation bits, security version and identity fields read during manifest
 validation. The ROM does not rely on sensing having completed before the SEP core reset
 released.
@@ -1187,7 +1189,8 @@ digests; select bits 20 / 24 (<<tbl:key_slots>>).
 (<<tbl:key_slots>>).
 |`SYSCLK_FREQ_MHZ` |`0x10930174` |11 b |Configured sysclk PLL frequency in MHz, read at [S09]
 (PLL init); 0 keeps the reference clock.
-|`STATUS_RPT` |`0x1093016C` |32 b |Status-reporting policy modifiers.
+|`STATUS_RPT` |`0x1093016C` |2 b used |Status-ring policy in bits [1:0]; bits [31:2] do not
+participate in the decision.
 |`CHIPLET_UID` |`0x109300CC` |256 b |*Secret.* Per-device seed for Key Manager key
 derivation, chiplet scope. The ROM never reads it; it read-locks it before hand-off
 ([SEP-ROM-HOFF-030]).
@@ -1301,11 +1304,11 @@ boot continue past a check that ran and failed.
 
 === Status Ring Buffer
 
-When status reporting is enabled (<<sec:straps>>), the ROM initializes a produce-only ring
-buffer in SMC SRAM at the offset published in scratch[11] and thereafter mirrors every
-non-debug status code into it (<<sec:status>>). The SMC consumes the ring and forwards
-entries to the platform (OCCP). Ring initialization waits for the SMC's
-`SRAM_INIT`/`BUFFER_READY` indications.
+When status ring reporting is enabled by the `STATUS_RPT` eFuse/strap policy
+(<<sec:status>>), the ROM initializes a produce-only ring buffer in SMC SRAM at the offset
+published in scratch[11] and thereafter mirrors every non-debug status code into it. The SMC
+consumes the ring and forwards entries to the platform (OCCP). Ring initialization waits for
+the SMC's `SRAM_INIT`/`BUFFER_READY` indications.
 
 === Chip Identification ([S12])
 
@@ -1356,8 +1359,9 @@ the SEP↔SMC interface contract.
 NOR flash. 0 = secondary: manifest+payload delivered by the SMC (I3C → SMC SRAM).
 |`mem_repair_bypass` |`STRAPS_LO[13]` |1 = repair did not run; skip the memory-repair check at
 the pre-C memory-health gate (<<sec:smc_sync>>).
-|`status_report_disable` |`STRAPS_LO[21]` |1 = skip status ring-buffer initialization;
-status codes still go to `cold_scratch[1]`.
+|`status_report_disable` |`STRAPS_LO[21]` |Default status-ring disable when
+`STATUS_RPT[1:0]` is `00`; ignored when the eFuse forces the ring on or off. Status codes
+still go to `cold_scratch[1]`.
 |`boot_recovery` |`STRAPS_LO[19]` |1 = recovery mode: even a primary chiplet ignores SPI and
 waits for a manifest from SMC SRAM.
 |`bl0_pll_clk` |`STRAPS_LO[20]` |1 = initialize the PLL from fuses; 0 = stay on the 100 MHz
@@ -3050,13 +3054,30 @@ implementation-specific.
 |Status scratch |`cold_scratch[1]` |Every `STATUS_OUT()` word, including `DEBUG`. Always-on;
 the last value identifies the current/failing stage.
 |Status ring |SMC SRAM (offset from scratch[11]) |Every non-`DEBUG` status, consumed by the
-SMC and forwarded to the platform (OCCP). Strap- and hand-shake-gated (<<sec:smc_sync>>).
+SMC and forwarded to the platform (OCCP). eFuse/strap-policy- and hand-shake-gated
+(<<sec:smc_sync>>).
 |Verdict scratch |`cold_scratch[0]` |Terminal verdict only: `0xDEADBEEF` FAIL from
 `rom_err_fail()` or a trap handler; after hand-off, whatever BL1 writes (`0xACAFACA1` PASS
 or `0xDEADBEEF` FAIL in DV).
 |Virtual console |`cold_scratch[2]` |Packed debug text (debug builds only; decoded by the DV
 monitor).
 |===
+
+[[req-SEP-ROM-STAT-040]]*[SEP-ROM-STAT-040]* After fuse sensing completes, the ROM shall
+derive the status-ring enable from `STATUS_RPT[1:0]` and the captured
+`status_report_disable` strap as follows:
+
+[cols="1,3",options="header"]
+|===
+|`STATUS_RPT[1:0]` |Status-ring policy
+|`00` |Follow the inverse of `status_report_disable`.
+|`01` |Force the status ring enabled.
+|`10`, `11` |Force the status ring disabled.
+|===
+
+This policy gates only the SEP-to-SMC ring/OCCP path. `cold_scratch[1]`,
+`cold_scratch[0]`, early assembly status, and the virtual console remain
+available. Bits `STATUS_RPT[31:2]` do not participate in this decision.
 
 === Ring-Buffer Semantics
 
@@ -3190,9 +3211,9 @@ denotes a following 16-bit payload word.
 |[S04] SMC sanity |— |`ROM_ERR_SMC_SANITY_FAILED` (`0xA001`)
 |[S05] ROM identity |`ROM_HASH` → `INFO_EXT` ×2 (hash prefix) |—
 |[S06] straps |`DEVICE_MODE_INPUTS_CHECK` (DEBUG) |—
-|[S07] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
+|[S07] fuse sense |`FUSE_SENSE_WAIT` (DEBUG) |— (unbounded poll; hang is the failure mode)
+|[S08] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
 (DEBUG) |`STATUS_REPORTING_INVALID`
-|[S08] fuse sense |`FUSE_SENSE_WAIT` (DEBUG) |— (unbounded poll; hang is the failure mode)
 |[S09] clocks |`PLL_CLK_INIT`; then `WAIT_FOR_PLL_LOCK` before the lock poll (followed by
 `REF_CLK_SELECTED` when no PLL driver is linked), or `PLL_FUSES_BLANK` and `REF_CLK_SELECTED`;
 then `INFO_EXT` (MHz) |`PLL_FUSES_BLANK` (WARN); — for
@@ -3443,8 +3464,8 @@ at 80) and per-entry TOC hashes are verified. <<tbl:manifest_fields>> was still 
 against the pre-uprev revision — every offset from `payload_encryption_control` onward was
 low, the signed region among them (`[0,3145)` for `[0,3172)`) — and has been corrected
 field by field. |<<sec:manifest>>
-|Fuse-sense readiness |*gap* |Only the PLL path polls `smc_fuse_sense_done`; other fuse
-reads assume hardware ordering. |<<sec:fuses>>
+|Fuse-sense readiness |*resolved* |Stage [S07] polls `smc_fuse_sense_done` before
+`STATUS_RPT` and every later C-path fuse consumer. |<<sec:fuses>>
 |Peripheral/bus reset |*stub* |`rom_peripheral_reset()` reports `PERIPH_RST_TODO` and
 performs no resets. |<<sec:cpu_init>>
 |ROM key digests |*gated* |`key_digests.c` is generated at build time, always as SHA-256
@@ -3678,4 +3699,6 @@ BL1 loadability included |<<sec:retry>>
 |<<req-SEP-ROM-STAT-020,SEP-ROM-STAT-020>> |Severity-reserved ring capacity |<<sec:status>>
 |<<req-SEP-ROM-STAT-030,SEP-ROM-STAT-030>> |Status codes single-sourced from the TSV
 |<<sec:status>>
+|<<req-SEP-ROM-STAT-040,SEP-ROM-STAT-040>> |`STATUS_RPT` eFuse/strap status-ring policy;
+scratch, verdict, early assembly status and console remain available |<<sec:status>>
 |===

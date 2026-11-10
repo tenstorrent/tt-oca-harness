@@ -263,6 +263,7 @@ those tests.
 |`SEP-ROM-CPU-130` |Poison warm scratch before jump |<<sep-rom-vplan-warm-reset>> |1
 |`SEP-ROM-CPU-140` |Invalid warm handler hangs, never cold-boots |<<sep-rom-vplan-warm-reset>> |2
 |`SEP-ROM-FUSE-020` |Invalid LC => SMC reset + fatal |<<sep-rom-vplan-fuse-integrity>> |4
+|`SEP-ROM-STAT-040` |`STATUS_RPT` eFuse/strap status-ring policy; scratch remains available |<<sep-rom-vplan-status-rpt-policy>> |5
 |`SEP-ROM-SMC-010` |SMC SRAM values exchanged as offsets |<<sep-rom-vplan-secondary-chiplet>> |2
 |`SEP-ROM-SMC-030` |Memory-repair gate (strap-bypassable) |<<sep-rom-vplan-dft-gate>> |4
 |`SEP-ROM-SMC-050` |Reject invalid offset; bounds-check staging. Only the invalid-offset clause is mapped; no test maps the SMC SRAM bounds clause |<<sep-rom-vplan-secondary-chiplet>> |1
@@ -366,6 +367,11 @@ holds the stimulus, the checkers and the requirements.
 [cols="3,2,4",options="header"]
 |===
 |Test |Procedure group |Expected outcome
+|`sep_status_rpt_follow_enabled_test` |<<sep-rom-vplan-status-rpt-policy>> |`STATUS_RPT=00` with `STATUS_RPT_DISABLE=0`: enabled marker precedes PLL status, and the ring contains the PLL status.
+|`sep_status_rpt_follow_disabled_test` |<<sep-rom-vplan-status-rpt-policy>> |`STATUS_RPT=00` with `STATUS_RPT_DISABLE=1`: disabled marker precedes PLL status in scratch, and the ring is unchanged.
+|`sep_status_rpt_force_enabled_test` |<<sep-rom-vplan-status-rpt-policy>> |`STATUS_RPT=01` overrides `STATUS_RPT_DISABLE=1`: enabled marker precedes PLL status, and the ring contains the PLL status.
+|`sep_status_rpt_force_disabled_10_test` |<<sep-rom-vplan-status-rpt-policy>> |`STATUS_RPT=10` overrides `STATUS_RPT_DISABLE=0`: disabled marker precedes PLL status in scratch, and the ring is unchanged.
+|`sep_status_rpt_force_disabled_11_test` |<<sep-rom-vplan-status-rpt-policy>> |`STATUS_RPT=11` overrides `STATUS_RPT_DISABLE=0`: disabled marker precedes PLL status in scratch, and the ring is unchanged.
 |`sep_firmware_device_cntl_non_secure_boot_flow_test` |<<sep-rom-vplan-enforcing-posture>> |boots verified: FUSE: SBOOT_DIS: 1, LC=PROD, PUBK_AUTHORIZED, RSA_EXEC and RSA_VERIFY_OK present; SBOOT_OFF absent.
 |`sep_firmware_sboot_dis_rsvd_terminal_test` |<<sep-rom-vplan-fuse-integrity>> |terminal ROM_ERR_SBOOT_DIS_RSVD_SET: SBOOT_DIS_RSVD=0x00000002, cold_scratch[1] 0x0F010227 then 0x0F01F008, FAIL verdict, halt.
 |`sep_firmware_enforced_secure_boot_flow_test` |<<sep-rom-vplan-enforcing-posture>> |boots: LC=PROD, PUBK_AUTHORIZED, RSA_EXEC, RSA_VERIFY_OK present; SBOOT_OFF and FUSE: SBOOT_DIS: 1 absent.
@@ -1011,6 +1017,46 @@ PASS record of its own.
 |===
 
 ==== Fuses, lifecycle and secure-boot decision
+
+[[sep-rom-vplan-status-rpt-policy]]
+===== Status-reporting eFuse/strap policy
+
+*Tests:* 5.
+
+*Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_status_reporting_policy_test.py`.
+
+*Objective:* Proves all `STATUS_RPT[1:0]` policy encodings at the sensed eFuse boundary: `00` follows the inverse of `STATUS_RPT_DISABLE`, `01` forces the SEP-to-SMC status ring on, and `10`/`11` force it off, while scratch status remains available.
+
+*Procedure:*
+
+. Select the immutable case named by `+status_rpt_case`; reject a missing or unknown case before CPU release.
+. Build a TEST_DEV eFuse image with the case's `STATUS_RPT` value, write it to the sensed OTP model, and confirm that the SMC responder holds the case's `STRAPS_LO[21]`.
+. Initialize a 16-entry status ring in SMC SRAM, fill every entry with a sentinel, and publish its offset through SMC scratch[11].
+. For a disabled case, clear `scratch[9].BUFFER_READY`; for an enabled case, leave it set.
+. Record every change of `cold_scratch[1]` from before CPU release. An enabled case waits for `PLL_CLK_INIT` in the ring; a disabled case waits for it in scratch.
+. Require the case's enabled/disabled marker before `PLL_CLK_INIT`. Require an enabled ring to advance and contain `PLL_CLK_INIT`, or require the complete disabled ring image and `BUFFER_READY=0` to remain unchanged.
+
+*Anti-vacuity:* The enabled cases require an actual post-initialization ring write. The disabled cases reach the post-policy PLL stage while `BUFFER_READY` is clear, which would hang a ROM that entered `init_status_reporting()`, and compare every descriptor and entry word against its pre-boot image. Every case verifies the sensed strap and rejects the opposite policy marker.
+
+*Members:*
+
+[cols="3,4,4,4,2",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers it adds |Requirements
+|`sep_status_rpt_follow_enabled_test` |TEST_DEV; `STATUS_RPT=00`; `STRAPS_LO[21]=0`. |Enabled marker, then PLL status in scratch; ring head advances and contains PLL status. |`CHK-STATUS-RPT-POLICY` |`SEP-ROM-STAT-040`
+|`sep_status_rpt_follow_disabled_test` |TEST_DEV; `STATUS_RPT=00`; `STRAPS_LO[21]=1`; `BUFFER_READY=0`. |Disabled marker, then PLL status in scratch; ring descriptor and sentinels unchanged. |`CHK-STATUS-RPT-POLICY` |`SEP-ROM-STAT-040`
+|`sep_status_rpt_force_enabled_test` |TEST_DEV; `STATUS_RPT=01`; `STRAPS_LO[21]=1`. |Enabled marker, then PLL status in scratch; ring head advances and contains PLL status. |`CHK-STATUS-RPT-POLICY` |`SEP-ROM-STAT-040`
+|`sep_status_rpt_force_disabled_10_test` |TEST_DEV; `STATUS_RPT=10`; `STRAPS_LO[21]=0`; `BUFFER_READY=0`. |Disabled marker, then PLL status in scratch; ring descriptor and sentinels unchanged. |`CHK-STATUS-RPT-POLICY` |`SEP-ROM-STAT-040`
+|`sep_status_rpt_force_disabled_11_test` |TEST_DEV; `STATUS_RPT=11`; `STRAPS_LO[21]=0`; `BUFFER_READY=0`. |Disabled marker, then PLL status in scratch; ring descriptor and sentinels unchanged. |`CHK-STATUS-RPT-POLICY` |`SEP-ROM-STAT-040`
+|===
+
+*Added checker contracts:*
+
+[cols="3,2,5",options="header"]
+|===
+|Test |Checker |Contract
+|All five members |`CHK-STATUS-RPT-POLICY` |The injected eFuse/strap pair selects the required policy marker before PLL initialization, scratch progresses independently of the ring policy, and ring writes occur exactly when enabled.
+|===
 
 [[sep-rom-vplan-fuse-integrity]]
 ===== Invalid lifecycle and fuse-integrity faults

@@ -704,6 +704,11 @@ tests = [
 # run measures. Reaching these tests means naming `rom_fw` (or the test) explicitly.
 name = "rom_fw"
 tests = [
+    "sep_status_rpt_follow_enabled_test",
+    "sep_status_rpt_follow_disabled_test",
+    "sep_status_rpt_force_enabled_test",
+    "sep_status_rpt_force_disabled_10_test",
+    "sep_status_rpt_force_disabled_11_test",
     "sep_rom_non_secure_boot_test",
     "sep_rom_ot_dma_boot_test",
     "sep_manifest_magic_survives_handoff_test",
