@@ -175,11 +175,15 @@ def _windows(node: AddressableNode) -> list[tuple[AddressableNode, int, int, int
     return windows
 
 
-def _node_extent(node: AddressableNode) -> int:
-    size = max(
+def _element_extent(node: AddressableNode) -> int:
+    return max(
         [int(getattr(node, "size", 0) or 0)]
         + [offset + window for _, offset, _, window in _windows(node)]
     )
+
+
+def _node_extent(node: AddressableNode) -> int:
+    size = _element_extent(node)
     if getattr(node, "is_array", False):
         count = 1
         for dimension in node.array_dimensions or ():
@@ -292,7 +296,7 @@ def _extent_responses(
         )
     for block, _, _, _ in blocks:
         parts += _extent_responses(block, memo)
-        if block.is_array and block.array_stride > block.size:
+        if block.is_array and block.array_stride > _element_extent(block):
             tail = _own(block, "ocah_gap_resp")
             parts.append(
                 (

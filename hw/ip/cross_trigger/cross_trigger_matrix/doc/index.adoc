@@ -61,9 +61,9 @@ elaboration if that total disagrees with the generated `NUM_CT_SRC` and
 `NUM_CT_DST`. The CTM takes the AXI-Lite request and response types as
 module parameters, which the CTN overrides to match its own crossbar.
 
-The wrapper passes the register block the address bits its 512-byte window
-spans, and the CTN gives the matrix that whole window, up to the first CTP.
-An access past the last CT_Src register completes with SLVERR rather than
+The wrapper passes the register block the address bits of the 512-byte CTM
+aperture, and the CTN routes that whole aperture to the matrix. An
+access past the last CT_Src register completes with SLVERR rather than
 reaching a register. The 512-byte CTM aperture holds 64 source
 registers at the 8-byte stride, so a matrix of up to 64 ports needs only the
 regenerated CTM and CTN register maps.

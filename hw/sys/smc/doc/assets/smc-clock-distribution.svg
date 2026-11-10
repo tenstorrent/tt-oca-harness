@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1222" viewBox="0 0 1040 1222" role="img" aria-labelledby="title desc">
 <title id="title">SMC clock distribution: u_smc_base</title>
-<desc id="desc">Clock distribution inside u_smc_base. clk_smc_i and clk_ref_i enter u_smc_base on the left. Each box is an RTL instance tinted with the colour of the clock that runs it; a box split into bands runs on several clocks. A clock gate is a tab coloured by the clock it gates, with its instance name in italics above it, and a dashed arrow runs from the gate to every instance its gated clock reaches. In u_internal_regs, u_mailbox_cg clocks u_smc_axil_mailbox; u_outbound_filter_reg_cg clocks u_outbound_filter_axil_demux and, for each of the 16 outbound filters, u_outbound_filter_axi_lite_demux, u_outbound_filter_ctrl_reg and u_err_slv; u_inbound_filter_reg_cg clocks the same inbound set; u_mmode_remap_cg clocks u_mmode_remap_axil_demux and eight u_smc_mmode_remap_reg; u_xvisor_remap_cg clocks u_xvisor_remap_axil_demux and eight u_smc_xvisor_remap_reg; u_alias_remap_cg clocks u_axi_alias_remap_demux and eight u_smc_alias_remap_reg. u_smc_dfx_ctrl_status_wrap and u_smc_base_config_wrap run on the ungated SMC clock. In u_smc_dfd_wrap, u_dfd_clk_gate clocks eight u_debug_bus_mux_l3, four u_debug_bus_mux_l2, u_dfd_top and u_ref_cnt_sync, which receives the reference counter run by clk_ref_i next to u_ref_rst_sync. In u_smc_fabric, u_sys_in_filter_cg clocks u_smc_sys_inbound_filter, u_fabric_cg clocks u_output_axi_demux and u_output_mux when NO_ADDR_REMAP is 0, and u_sys_out_filter_cg clocks u_smc_sys_outbound_filter. In u_smc_data_accelerator_wrap, u_frontend_cg clocks u_idma_frontend_wrapper, u_request_maneger_cg clocks u_idma_request_manager_wrapper and u_idma_backend_wrapper, u_axi_clk_gater clocks the zeroer clear FSM and request counter, and u_zeroer_cg clocks u_zeroer_reg. The remaining instances run on the ungated SMC clock.</desc>
+<desc id="desc">Clock distribution inside u_smc_base. clk_smc_i and clk_ref_i enter u_smc_base on the left. Each box is an RTL instance tinted with the colour of the clock that runs it; a box split into bands runs on several clocks. A clock gate is a tab coloured by the clock it gates, with its instance name in italics above it, and a dashed arrow runs from the gate to every instance its gated clock reaches. In u_internal_regs, u_mailbox_cg clocks u_smc_axil_mailbox; u_outbound_filter_reg_cg clocks u_outbound_filter_addr_demux and, for each of the 16 outbound filters, u_outbound_filter_axi_lite_demux, u_outbound_filter_ctrl_reg and u_err_slv; u_inbound_filter_reg_cg clocks the same inbound set; u_mmode_remap_cg clocks u_mmode_remap_addr_demux and eight u_smc_mmode_remap_reg; u_xvisor_remap_cg clocks u_xvisor_remap_addr_demux and eight u_smc_xvisor_remap_reg; u_alias_remap_cg clocks u_alias_remap_addr_demux and eight u_smc_alias_remap_reg. u_smc_dfx_ctrl_status_wrap and u_smc_base_config_wrap run on the ungated SMC clock. In u_smc_dfd_wrap, u_dfd_clk_gate clocks eight u_debug_bus_mux_l3, four u_debug_bus_mux_l2, u_dfd_top and u_ref_cnt_sync, which receives the reference counter run by clk_ref_i next to u_ref_rst_sync. In u_smc_fabric, u_sys_in_filter_cg clocks u_smc_sys_inbound_filter, u_fabric_cg clocks u_output_axi_demux and u_output_mux when NO_ADDR_REMAP is 0, and u_sys_out_filter_cg clocks u_smc_sys_outbound_filter. In u_smc_data_accelerator_wrap, u_frontend_cg clocks u_idma_frontend_wrapper, u_request_maneger_cg clocks u_idma_request_manager_wrapper and u_idma_backend_wrapper, u_axi_clk_gater clocks the zeroer clear FSM and request counter, and u_zeroer_cg clocks u_zeroer_reg. The remaining instances run on the ungated SMC clock.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -112,7 +112,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="si" x="292" y="136" text-anchor="start">u_outbound_filter_reg_cg</text>
 <rect x="354" y="142" width="260" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="354" y="142" width="260" height="22" rx="4"/>
-<text class="s" x="362" y="157.5" text-anchor="start">u_outbound_filter_axil_demux</text>
+<text class="s" x="362" y="157.5" text-anchor="start">u_outbound_filter_addr_demux</text>
 <rect x="354" y="168" width="260" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="354" y="168" width="260" height="22" rx="4"/>
 <text class="s" x="362" y="183.5" text-anchor="start">u_outbound_filter_axi_lite_demux ×16</text>
@@ -135,7 +135,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="si" x="292" y="264" text-anchor="start">u_inbound_filter_reg_cg</text>
 <rect x="354" y="270" width="260" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="354" y="270" width="260" height="22" rx="4"/>
-<text class="s" x="362" y="285.5" text-anchor="start">u_inbound_filter_axil_demux</text>
+<text class="s" x="362" y="285.5" text-anchor="start">u_inbound_filter_addr_demux</text>
 <rect x="354" y="296" width="260" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="354" y="296" width="260" height="22" rx="4"/>
 <text class="s" x="362" y="311.5" text-anchor="start">u_inbound_filter_axi_lite_demux ×16</text>
@@ -158,7 +158,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="si" x="636" y="86" text-anchor="start">u_mmode_remap_cg</text>
 <rect x="698" y="92" width="270" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="698" y="92" width="270" height="22" rx="4"/>
-<text class="s" x="706" y="107.5" text-anchor="start">u_mmode_remap_axil_demux</text>
+<text class="s" x="706" y="107.5" text-anchor="start">u_mmode_remap_addr_demux</text>
 <rect x="698" y="118" width="270" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="698" y="118" width="270" height="22" rx="4"/>
 <text class="s" x="706" y="133.5" text-anchor="start">u_smc_mmode_remap_reg ×8</text>
@@ -171,7 +171,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="si" x="636" y="162" text-anchor="start">u_xvisor_remap_cg</text>
 <rect x="698" y="168" width="270" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="698" y="168" width="270" height="22" rx="4"/>
-<text class="s" x="706" y="183.5" text-anchor="start">u_xvisor_remap_axil_demux</text>
+<text class="s" x="706" y="183.5" text-anchor="start">u_xvisor_remap_addr_demux</text>
 <rect x="698" y="194" width="270" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="698" y="194" width="270" height="22" rx="4"/>
 <text class="s" x="706" y="209.5" text-anchor="start">u_smc_xvisor_remap_reg ×8</text>
@@ -184,7 +184,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="si" x="636" y="238" text-anchor="start">u_alias_remap_cg</text>
 <rect x="698" y="244" width="270" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="698" y="244" width="270" height="22" rx="4"/>
-<text class="s" x="706" y="259.5" text-anchor="start">u_axi_alias_remap_demux</text>
+<text class="s" x="706" y="259.5" text-anchor="start">u_alias_remap_addr_demux</text>
 <rect x="698" y="270" width="270" height="22" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="698" y="270" width="270" height="22" rx="4"/>
 <text class="s" x="706" y="285.5" text-anchor="start">u_smc_alias_remap_reg ×8</text>

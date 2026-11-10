@@ -426,6 +426,40 @@ addrmap top {
         self.assertIn("between sub-blocks: SLVERR, 0x0 / SLVERR", cells["wrapped"][-2])
         self.assertIn("between instances: OKAY, 0x0 / OKAY", cells["wrapped"][-2])
 
+    def test_wrap_array_whose_sub_block_windows_fill_the_stride_has_no_padding(self):
+        text = """
+addrmap leaf {
+    reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0;
+};
+addrmap pair {
+    leaf a @0x0;
+    leaf b @0x8;
+`ifdef OCAH_DOC_MEMORY_MAP
+    a->ocah_aperture_size = 0x8;
+    a->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    b->ocah_aperture_size = 0x8;
+    b->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
+};
+addrmap paired {
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+`endif
+    pair element[2] @0x0 += 0x10;
+};
+addrmap top {
+    paired wrapped @0x0;
+};
+"""
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        self.assertEqual(
+            [label for label, _ in view.rows[0].hole_responses], ["past sub-block registers"]
+        )
+        view = self.view(
+            {"include_all": True, "columns": RESPONSE_COLUMNS}, text.replace("+= 0x10", "+= 0x20")
+        )
+        self.assertIn("between instances", [label for label, _ in view.rows[0].hole_responses])
+
     def test_wrap_cell_names_the_space_past_sub_block_registers(self):
         view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, SUB_BLOCK_RDL)
         self.assertEqual(

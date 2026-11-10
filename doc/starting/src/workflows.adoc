@@ -113,39 +113,25 @@ RDL sources. The flow lives in `hw/common/regs/` (discovery, classification, and
 
 === Address windows
 
-The SMC and the cross-trigger network route a register block a power-of-two
-window. The
+Each register block in the SMC and the cross-trigger network decodes a
+power-of-two window; the
 ifdef::backend-html5[]
 xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/memory_map.html#ocah-decode-response-codes[Decode Response Codes]
 endif::backend-pdf[]
-section of the Technical Reference Manual gives the rule and the responses.
-To add a register block to the SMC:
+section of the Technical Reference Manual gives the rule. To add one to the SMC:
 
-* Give each SMC crossbar target an `ocah_aperture_size` of whole 4 KiB pages,
-  and end its crossbar rule at the end of its last page
+* End its crossbar rule at the end of its last 4 KiB page
   (`smc_pkg::reg_page_end`).
-* For a block alone in its page, set `OCAH_REG_ADDR_WIDTH_<block> ?= 12` in
-  `hw/common/regs/classify.mk` and give it an `SLVERR` `ocah_past_extent_resp`.
-* For a block that shares a page, place it at a multiple of its window and set
-  `OCAH_REG_ADDR_WIDTH_<block>` so that 2^width^ is the window. Route it
-  through `prim_axil_addr_demux` with a range of
-  `+1 << <BLOCK>_REG_MIN_ADDR_WIDTH+`. In the RDL that instantiates it, give it
-  that window as its `ocah_aperture_size` and an `SLVERR`
-  `ocah_past_extent_resp`; the wrapper's own `ocah_gap_resp` and
-  `ocah_past_extent_resp` stay `DECERR`.
-* For a block instantiated as an array at a stride wider than one instance,
-  add the block to `OCAH_REG_NO_ERR_BLOCKS`, set `OCAH_REG_ADDR_WIDTH_<block>`
-  so that 2^width^ is the stride if the block does not already decode it, and
-  give each instance a range the size of the stride. The SMC map sets
-  `ocah_full_stride_extent` at its root; elsewhere, set it on the array. An
-  array of whole controllers stays off the list, decodes the whole stride, and
-  sets its `ocah_gap_resp` to `SLVERR`.
-* A vendored block keeps its own decode width. Route it the window its decoder
-  implies, and set its `ocah_hole_resp` and `ocah_past_extent_resp` in the RDL
-  to what that decoder returns, read data included.
+* Set `OCAH_REG_ADDR_WIDTH_<block>` in `hw/common/regs/classify.mk` so that a
+  generated block decodes its whole window, and route a block that shares a
+  page through `prim_axil_addr_demux`.
+* Add an array whose stride is wider than one instance to
+  `OCAH_REG_NO_ERR_BLOCKS`.
+* In the RDL, give the block its window as its `ocah_aperture_size` and the
+  responses it returns there.
 
 == DV Firmware
 

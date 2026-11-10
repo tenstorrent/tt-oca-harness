@@ -152,8 +152,8 @@ OCAH_REG_NO_ERR_BLOCKS ?= \
   filter_ctrl \
   gpio_intf
 
-# Regblock CPU address widths, keyed by RDL stem. A block alone in its 4 KiB page
-# decodes the whole page.
+# Blocks alone in a 4 KiB page: the regblock decodes the whole page, so an access
+# past its last register answers SLVERR.
 OCAH_REG_ADDR_WIDTH_reset_unit ?= 12
 OCAH_REG_ADDR_WIDTH_avsbus_controller ?= 12
 OCAH_REG_ADDR_WIDTH_system_timer_octs ?= 12
@@ -161,12 +161,14 @@ OCAH_REG_ADDR_WIDTH_smc_base_config ?= 12
 OCAH_REG_ADDR_WIDTH_dfx_ctrl_status ?= 12
 OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
 
-# A block that shares a page decodes the power-of-two window its wrapper routes it.
+# Blocks that share a page: the regblock decodes the whole window its wrapper
+# routes it.
 OCAH_REG_ADDR_WIDTH_scratch ?= 7
 OCAH_REG_ADDR_WIDTH_chip_config ?= 8
 OCAH_REG_ADDR_WIDTH_i2c ?= 9
 OCAH_REG_ADDR_WIDTH_uart_log_engine_ctrl ?= 8
 OCAH_REG_ADDR_WIDTH_uart_16550_main ?= 8
+OCAH_REG_ADDR_WIDTH_log_engine ?= 9
 OCAH_REG_ADDR_WIDTH_cross_trigger_matrix ?= 9
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))

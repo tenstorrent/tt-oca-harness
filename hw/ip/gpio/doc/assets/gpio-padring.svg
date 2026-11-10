@@ -101,7 +101,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="bs" x="122" y="488" text-anchor="start">u_smc_padring</text>
 <path class="fabric" d="M192.8,230 L327.2,230 L380,275 L140,275 Z"/>
 <path class="axil" d="M225,180 L225,227"/>
-<text class="s" x="390" y="258" text-anchor="start">u_gpio_intf_demux, one 16-byte slot per pad</text>
+<text class="s" x="390" y="258" text-anchor="start">u_gpio_intf_demux (prim_axil_addr_demux), one 16-byte slot per pad</text>
 <path class="axil" d="M170,278 L170,337"/>
 <path class="axil" d="M230,278 L230,318 L380,318 L380,337"/>
 <path class="axil" d="M290,278 L290,304 L620,304 L620,337"/>
