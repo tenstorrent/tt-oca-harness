@@ -211,5 +211,6 @@ Payload Manifest: REQUIRED_SIGNERS as a co-signer mask with owner codes,
 REQUIRED_ALGS as a per-entity algorithm requirement, and a new SIGNATURE_REVOKE
 field with per-class bits and group codes. Restored the Secure-Boot Signing
 Model and added Signature Algorithm Revocation to the Life Cycle Controller
-chapter.
+chapter. SEP ROM requires a classical chiplet-creator signature when
+REQUIRED_ALGS is unprovisioned.
 |=======================================================================

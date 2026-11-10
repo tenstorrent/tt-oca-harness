@@ -1036,11 +1036,18 @@ entity's key; `REQUIRED_ALGS` does not select them. An entity with both bits
 clear is required to supply no signature. For a required co-signer, and for the
 verifier key when `use_verifier_key` is set, both bits clear causes the
 manifest to be rejected. For the chiplet creator, `REQUIRED_ALGS[1:0]` = `00`
-means that no chiplet-creator signature is required for this manifest; this
-value is legitimate only when written to the shadow register by a boot stage as
-described under _Policy propagation_, never as the fused value. A requirement
-whose bits are clear only because of a group-code waiver is not this case: it is
-rejected by step 1.
+means that no chiplet-creator signature is required for this manifest, but
+only when a boot stage has written that value to the shadow register as
+described under _Policy propagation_. SEP ROM verifies the BL1 manifest
+against the fused values, and an unprovisioned field reads all-zero, so when
+SEP ROM finds `REQUIRED_ALGS[1:0]` = `00` it enforces `01` instead: a classical
+chiplet-creator signature is required, not none. SEP ROM applies this
+substitution before step 1, and writes `01` to `REQUIRED_ALGS[1:0]` in the
+shadow register before hand-off, so that BL1 inherits the policy SEP ROM
+enforced rather than the unprovisioned value. Later stages apply no such
+substitution: a `00` they find was written by their predecessor. A requirement
+whose bits are clear only because of a group-code waiver is not this case: it
+is rejected by step 1.
 . *Non-required co-signers.* A co-signer block N for which `REQUIRED_SIGNERS`
 bit N-1 is clear is ignored: it is not verified, and its presence, absence or
 validity has no effect on the result.
@@ -1069,10 +1076,18 @@ applies from BL1's verification of the next-stage manifest onward in the same
 boot, and from SEP ROM's verification of the BL1 manifest at every later cold
 reset. <<signature-algorithm-revocation>> specifies the update.
 
-The chiplet creator shall burn `REQUIRED_ALGS[3:0]` to a non-zero value before
-a part leaves its control. A fused `REQUIRED_ALGS[3:0]` of `0b0000` is a
-provisioning error, not a policy: it would let the BL1 manifest be accepted
-without a chiplet-creator signature.
+A fused `REQUIRED_ALGS[1:0]` of `00` does not remove the chiplet-creator
+requirement. An unprovisioned field reads all-zero, so SEP ROM enforces `01`
+in its place and writes `01` to the shadow register before hand-off, as
+specified in step 6 of the requirement rule; the BL1 manifest of an
+unprovisioned part must carry a classical chiplet-creator signature. This
+default is a safeguard, not a policy. The chiplet creator should burn
+`REQUIRED_ALGS[3:0]` explicitly before a part leaves its control, and shall
+burn `REQUIRED_ALGS[1]` if it requires a post-quantum signature, since the
+default requires a classical signature only. The `REQUIRED_ALGS` write-lock in
+the LOCKS fuse, `LOCKS[44]`, shall not be programmed while `REQUIRED_ALGS[1:0]`
+is `00`: it would prevent SEP ROM's write, and BL1 would find `00` in the shadow
+register and require no chiplet-creator signature of the next manifest.
 
 [[sep-signing-examples-table]]
 [width="100%",cols="<44%,<56%",options="header",]
@@ -1083,6 +1098,13 @@ without a chiplet-creator signature.
 |`REQUIRED_SIGNERS[7:0]` = `0x00`; `REQUIRED_ALGS[3:0]` = `0b0001`
 |A classical chiplet-creator signature over the main manifest. This is the
 single-signer flow.
+
+|`REQUIRED_SIGNERS[7:0]` = `0x00`; `REQUIRED_ALGS[3:0]` fused `0b0000`
+(unprovisioned)
+|A classical chiplet-creator signature over the main manifest, as in the row
+above: SEP ROM enforces `REQUIRED_ALGS[1:0]` = `01` in place of the fused `00`
+and writes `01` to the shadow register before hand-off. A BL1 manifest with no
+chiplet-creator signature is rejected.
 
 |`REQUIRED_SIGNERS[7:0]` = `0x00`; `REQUIRED_ALGS[3:0]` = `0b0011`
 |Classical and ML-DSA chiplet-creator signatures, both verifying. Any entity

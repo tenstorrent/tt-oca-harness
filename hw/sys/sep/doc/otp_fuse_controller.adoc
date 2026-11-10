@@ -348,9 +348,12 @@ signature (ML-DSA), both set requires both, bits 3:2 reserved. Bits [3:0] are th
 chiplet creator (the manifest's ROOT), bits [7:4] the verifier key entry, and bits
 [4N+7:4N+4] co-signer N for N = 1 to 8, the same positions as its owner code in
 REQUIRED_SIGNERS. Bits [63:40] reserved. An entity's bits apply only when that
-entity is required. The requirement rule, hybrid verification and policy
-propagation are specified under Secure-Boot Signing Model in the Life Cycle
-Controller section.
+entity is required. An unprovisioned field reads all-zero, so SEP ROM enforces
+bits [1:0] = 01 (classical required) when the fused value is 00 and writes 01
+to the shadow register before hand-off: an unprovisioned part requires a
+classical chiplet-creator signature rather than none. The requirement rule,
+hybrid verification and policy propagation are specified under Secure-Boot
+Signing Model in the Life Cycle Controller section.
 
 |SIGNATURE_REVOKE |23 |64 (40 used) |set-only |true |Signature-algorithm class
 revocation: a required signature whose class is revoked fails verification, and a
