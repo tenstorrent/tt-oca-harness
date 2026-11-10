@@ -149,7 +149,7 @@ module uart_log_engine_wrap
     .r_chan_t       (uart_log_engine_wrap_pkg::csr_axil_r_chan_t),
     .axil_req_t     (csr_axil_req_t),
     .axil_resp_t    (csr_axil_resp_t)
-  ) u_csr_axi_lite_demux (
+  ) u_csr_addr_demux (
     .clk_i,
     .rst_ni,
     .test_en_i,

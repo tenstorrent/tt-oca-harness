@@ -345,7 +345,7 @@ VIEWS = {
                 "occupied_size": 0x1000,
                 "count": 1,
                 "stride": 0x0,
-                "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}), ("past sub-block registers", {"rresp": "SLVERR", "rdata": 0x0, "bresp": "SLVERR", "text": "SLVERR, 0x0 / SLVERR"}), ("between instances", {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"})),
+                "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}), ("past sub-block registers", {"rresp": "SLVERR", "rdata": 0x0, "bresp": "SLVERR", "text": "SLVERR, 0x0 / SLVERR"})),
                 "hole_notes": (),
                 "past_response": None,
                 "past_note": "",

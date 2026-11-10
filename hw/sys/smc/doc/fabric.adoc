@@ -61,19 +61,11 @@ address bits are replaced by those of `LOCAL_BASE`, so a request for the global
 window reaches the same register as one for the local window. The local
 crossbar `u_smc_local_xbar` connects every initiator to every target, widens the
 ID to 8 bits, registers every port and answers unmapped addresses with DECERR,
-as do the internal CSR and peripheral crossbars.
-ifdef::backend-html5[]
-xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-<<ocah-decode-response-codes,Decode Response Codes>>
-endif::backend-pdf[]
-gives the rule for the windows they route to register targets. The local
-crossbar's targets, in port order, are the CPU cluster front port, the data
-accelerator control port, the internal CSR crossbar, the peripheral crossbar
-and the CLA register window of the DFD block, which is reached over APB. The converters
-in front of the last three belong to `smc_local_xbar`.
-In the peripheral island, the AVSBus, I2C, UART, I3C and PWM
+as do the internal CSR and peripheral crossbars. Its targets, in port order, are
+the CPU cluster front port, the data accelerator control port, the internal CSR
+crossbar, the peripheral crossbar and the CLA register window of the DFD block,
+which is reached over APB. The converters in front of the last three belong to
+`smc_local_xbar`. In the peripheral island, the AVSBus, I2C, UART, I3C and PWM
 register ports cross to the peripheral clock, the DTP CSR window is rebased to
 zero, and the eFuse registers have a second AXI-Lite port for JTAG access. The
 PWM register window is the last peripheral crossbar target. The one before it
