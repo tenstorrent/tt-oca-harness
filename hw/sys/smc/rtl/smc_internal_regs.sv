@@ -405,7 +405,7 @@ module smc_internal_regs #(
     .r_chan_t       (smc_pkg::smc_axil_32_64_r_chan_t),
     .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
-  ) u_outbound_filter_axil_demux (
+  ) u_outbound_filter_addr_demux (
     .clk_i       (outbound_filter_clk),
     .rst_ni      (rst_primary_smc_clk_ni),
     .test_en_i   (test_en_i),
@@ -602,7 +602,7 @@ module smc_internal_regs #(
     .r_chan_t       (smc_pkg::smc_axil_32_64_r_chan_t),
     .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
-  ) u_inbound_filter_axil_demux (
+  ) u_inbound_filter_addr_demux (
     .clk_i       (inbound_filter_clk),
     .rst_ni      (rst_primary_smc_clk_ni),
     .test_en_i   (test_en_i),
@@ -804,7 +804,7 @@ module smc_internal_regs #(
     .r_chan_t       (smc_pkg::smc_axil_32_64_r_chan_t),
     .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
-  ) u_mmode_remap_axil_demux (
+  ) u_mmode_remap_addr_demux (
     .clk_i       (mR_local_clk),
     .rst_ni      (rst_primary_smc_clk_ni),
     .test_en_i   (test_en_i),
@@ -914,7 +914,7 @@ module smc_internal_regs #(
     .r_chan_t       (smc_pkg::smc_axil_32_64_r_chan_t),
     .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
-  ) u_xvisor_remap_axil_demux (
+  ) u_xvisor_remap_addr_demux (
     .clk_i       (xR_local_clk),
     .rst_ni      (rst_primary_smc_clk_ni),
     .test_en_i   (test_en_i),
@@ -1024,7 +1024,7 @@ module smc_internal_regs #(
     .r_chan_t       (smc_pkg::smc_axil_32_64_r_chan_t),
     .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
     .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
-  ) u_axi_alias_remap_demux (
+  ) u_alias_remap_addr_demux (
     .clk_i       (aR_local_clk),
     .rst_ni      (rst_primary_smc_clk_ni),
     .test_en_i   (test_en_i),
