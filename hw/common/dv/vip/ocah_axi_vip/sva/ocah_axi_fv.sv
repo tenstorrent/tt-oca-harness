@@ -27,7 +27,7 @@
 //                axi_<ch>_len_fixed_max16, axi_<ch>_len_wrap_legal (A3.4.1 burst length),
 //                axi_<ch>_wrap_aligned (A3.4.1 wrapping bursts), axi_<ch>_4kb_boundary (A3.4.1),
 //                axi_<ch>_within_capacity (MAX_OUTSTANDING)
-//   B/R        : axi_b_not_before_aw, axi_r_not_before_ar (A3.3 dependencies),
+//   B/R        : axi_b_not_before_aw, axi_r_not_before_ar (A3.3.1, checked on VALID),
 //                axi_axil_b_resp_legal, axi_axil_r_resp_legal (B1.1.1: no EXOKAY on AXI4-Lite)
 //   Covers     : axi_<ch>_handshake
 //
@@ -211,13 +211,13 @@ module ocah_axi_fv #(
                                  r_payload == $past(r_payload)),
                 aclk, aresetn)
 
-  // ---- Slave: a response follows its request (A3.3.1), the same cycle at the earliest ---------
+  // ---- Slave: VALID follows requests accepted on an earlier edge (A3.3.1) -------------------
   `OCAH_FV_RULE(ASSUME_SLAVE_RULES, axi_b_not_before_aw,
-                `OCAH_FV_IMPLIES(bvalid, (writes_addressed_q != '0 || aw_hs) &&
-                                         (writes_data_done_q != '0 || wlast_hs)),
+                `OCAH_FV_IMPLIES(bvalid, (writes_addressed_q != '0) &&
+                                         (writes_data_done_q != '0)),
                 aclk, aresetn)
   `OCAH_FV_RULE(ASSUME_SLAVE_RULES, axi_r_not_before_ar,
-                `OCAH_FV_IMPLIES(rvalid, reads_addressed_q != '0 || ar_hs), aclk, aresetn)
+                `OCAH_FV_IMPLIES(rvalid, reads_addressed_q != '0), aclk, aresetn)
 
   `OCAH_FV_COVER(cov_axi_aw_handshake, aw_hs, aclk, aresetn)
   `OCAH_FV_COVER(cov_axi_w_handshake, w_hs, aclk, aresetn)
