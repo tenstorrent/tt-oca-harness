@@ -1755,7 +1755,7 @@ record that the leaf writes after its check passed, and the record carries the
 owner code. The owner code of an SPI record is the test dimension of
 `sep_spi_lane_data_cg`. `sep_aes_cfb_ofb_gcm_cg` still bins the committed AES
 control and samples only when the record matches it.
-* `sep_km_sram_sbox_in_cg` is also an exception to the next rule. Its owner writes a model record, `km_sbox_in`, through `u_sep_fcov` (setter `set_km_sbox_in`) after its checks pass, one store at a time, and the group samples the record inside the window of the owner. The record holds plan values with the round key of the specification, not DUT values; a control of the owner ties each record to one scrambled store that the DUT took (<<sep-fcov-km-sram-sbox-in>>).
+* `sep_km_sram_sbox_in_cg` is also an exception to the next rule: it is model-side and samples no DUT net. It covers the S-box input values that the graded store stream of its owner presents under the DUT key, which the owner reads from SCRAMBLER_KEY at the ready and done messages of the stream, computed from the store words with the round key of the specification. The owner writes one record per store, `km_sbox_in`, through `u_sep_fcov` (setter `set_km_sbox_in`) after its checks pass, and the group samples the record inside the window of the owner (<<sep-fcov-km-sram-sbox-in>>).
 * The gate is not a bin dimension, a checker verdict or a scoreboard count. A bin
 still samples a DUT signal, and the gate only enables the sample.
 * Outcome bounds. Where a row grades a DUT outcome inside a bound that the owner
@@ -6535,7 +6535,7 @@ The group names and the owning tests are the contract. The owning tests are the 
 ===== Rules for every point
 
 * A point is a coverpoint or a cross. The tool of every point is VCS.
-* A point samples DUT nets or the DUT bus. It never reads log text or a scoreboard count. The one exception is `sep_km_sram_sbox_in_cg`, which samples model values that its owner writes after its checks pass (<<sep-fcov-km-sram-sbox-in>>).
+* A point samples DUT nets or the DUT bus. It never reads log text or a scoreboard count. The one exception is `sep_km_sram_sbox_in_cg`, which is model-side and samples no DUT net: it covers the S-box input values that the graded store stream of its owner presents under the DUT key read at the ready and done messages, computed from the store words with the round key of the specification (<<sep-fcov-km-sram-sbox-in>>).
 * A bin follows the specification or the RDL. A fixed value comes from the text cited with the group.
 * An `illegal_bins` entry is a value that the specification forbids. An `ignore_bins` entry is a cell that the specification makes impossible.
 * A hit of a bin shows that the scenario happened. The test checker shows that the DUT behaved correctly. The two are separate.
@@ -7122,13 +7122,13 @@ The owner has an empty checker set (<<sep-fcov-km-checker-gate>>).
 [[sep-fcov-km-sram-sbox-in]]
 ===== `sep_km_sram_sbox_in_cg`
 
-*Description*: The S-box inputs of the KM SRAM scrambler on a scrambled store: the data-path S-box input of each of the eight nibble lanes, and the value of each of the four lanes of the 13-bit word address. No other group samples them.
+*Description*: The S-box input values that the graded 64-store run of the owner presents to the KM SRAM scrambler under the DUT key: the data-path S-box input of each of the eight nibble lanes, and the value of each of the four lanes of the 13-bit word address. The values are computed from the store words with the round key of the specification under the key that the owner reads from SCRAMBLER_KEY at the ready and done messages of the run. The group is model-side: it samples no DUT net, and a bin hit does not show the S-box input inside the DUT, because the KM SRAM has no cipher golden (<<sep-vplan-phase3-blocked,SEP_VPLAN>>). No other group samples these values.
 
 *Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
 
 *Specification*: `hw/ip/scrambler/doc/architecture.adoc`, "Data Scrambling Algorithm" (`:76`, `:115-116`, `:132`, `:136`), "Address Tweaking" (`:183`), "Address Scrambling" (`:192-196`, `:217`), "Byte-Wise Scrambling Mode" (`:222`), "Integration in the Key Manager" (`:247`).
 
-*Sampling*: model-side. The owner writes `km_sbox_in` through `u_sep_fcov` (setter `set_km_sbox_in` in `cocotb/env/sep_fcov_gate.py`): bit 45 valid, [44:32] the 13-bit plaintext word index a, [31:0] `W ^ Rkey` with W the plan word of the store and `Rkey = kA ^ {a, a, a[12:7]}` (`:132`, `:136`, `:183`; `scr_round_key` in `cocotb/env/sep_km_img_param.py`). The group samples on each rise of bit 45 while the graded window of the owner is open (owner code 737 in `tb/sep_fcov_owner_codes.svh`). The values are plan words with the round key of the specification, never DUT values, and the variable drives nothing. The owner writes one record per store of its 64-store run, and only after CHK-SSCR-ROWS, CHK-SSCR-ALIAS and CTRL-SSCR-SBOX-STORES pass; CTRL-SSCR-SBOX-STORES shows each of the 64 stores as one rise of `km_sram_scr_wr_count_o`, so each record stands for one scrambled store that the DUT took, and a leaf whose store run fails fills no bin. The KM SRAM runs in byte-wise mode, whose S-box and round-key XOR stages are those of the word mode (`:222`, `:247`).
+*Sampling*: model-side. The owner writes `km_sbox_in` through `u_sep_fcov` (setter `set_km_sbox_in` in `cocotb/env/sep_fcov_gate.py`): bit 45 valid, [44:32] the 13-bit plaintext word index a, [31:0] `W ^ Rkey` with W the plan word of the store and `Rkey = kA ^ {a, a, a[12:7]}` (`:132`, `:136`, `:183`; `scr_round_key` in `cocotb/env/sep_km_img_param.py`). The group samples on each rise of bit 45 while the graded window of the owner is open (owner code 737 in `tb/sep_fcov_owner_codes.svh`). The values are computed from the plan words with the round key of the specification, not read from a DUT net, and the variable drives nothing. The owner writes one record per store of its 64-store run, and only after CHK-SSCR-ROWS, CHK-SSCR-ALIAS and CTRL-SSCR-SBOX-STORES pass. CTRL-SSCR-SBOX-STORES shows each of the 64 stores as one rise of `km_sram_scr_wr_count_o` and requires SCRAMBLER_KEY (`km_csr_scrambler_key_o`, `KM-CSR`) to read kA at the ready message and at the done message, so each record stands for one scrambled store that the DUT took under the key the record uses, and a leaf whose store run or key read fails fills no bin. The KM SRAM runs in byte-wise mode, whose S-box and round-key XOR stages are those of the word mode (`:222`, `:247`).
 
 [cols="2,6,2,3,2",options="header"]
 |===

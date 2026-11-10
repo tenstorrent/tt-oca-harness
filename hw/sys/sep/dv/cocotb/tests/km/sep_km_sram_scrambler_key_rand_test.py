@@ -70,13 +70,15 @@ and 1 under one key, slot 2 one key write later, slot 3 two), the store before
 the lock that does not count, the tap word at the kept rows, the empty mailbox
 before the warm reset, SCRAMBLER_CTRL with the enable at 0 before the enable-0
 stores, and the 64 stores of the 64-store run each seen as one rise of the
-scrambled-write count (``CTRL-SSCR-SBOX-STORES``).
+scrambled-write count, with SCRAMBLER_KEY (``KM-CSR``) reading kA at the ready
+and at the done message (``CTRL-SSCR-SBOX-STORES``).
 
-Coverage: once CHK-SSCR-ROWS and CHK-SSCR-ALIAS pass, each of those 64 stores
-samples ``sep_km_sram_sbox_in_cg`` with model-side values: the plaintext word
-index and ``W ^ Rkey`` from the plan word and the round key of the scrambler
-description (``ip.scr_round_key``). The plan makes 16 of the stores take every
-data-lane and address-lane value on every seed.
+Coverage: once CHK-SSCR-ROWS, CHK-SSCR-ALIAS and CTRL-SSCR-SBOX-STORES pass,
+each of those 64 stores samples ``sep_km_sram_sbox_in_cg`` with model-side
+values: the plaintext word index and ``W ^ Rkey`` from the plan word and the
+round key of the scrambler description (``ip.scr_round_key``) under kA, the key
+the DUT held at the ready and done messages. The plan makes 16 of the stores take
+every data-lane and address-lane value on every seed.
 
 Logged only: the 8 reads under kB (``OBS-SSCR-KB``), whether each kept data word
 differs from its plaintext (``OBS-SSCR-STORED``), the number of changed rows
@@ -540,11 +542,13 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             rows_state["w1"] = self.rd_known(self.dut.km_sram_write_count_o)
             rows_state["sw1"] = self.rd_known(self.dut.km_sram_scr_wr_count_o)
             rows_state["live"] = self.rd_known(self.dut.km_sram_scr_wr_cell_o)
+            rows_state["key1"] = self.rd_known(self.dut.km_csr_scrambler_key_o)
 
         async def at_done() -> None:
             rows_state["s2"] = await self._snapshot()
             rows_state["w2"] = self.rd_known(self.dut.km_sram_write_count_o)
             rows_state["sw2"] = self.rd_known(self.dut.km_sram_scr_wr_count_o)
+            rows_state["key2"] = self.rd_known(self.dut.km_csr_scrambler_key_o)
             self._watch_on = False
 
         ready = await self._recv(1, "ready", "SSCR-ROWS", before=at_ready)
@@ -629,8 +633,10 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         # CHK-SSCR-ROWS.
         rows_ok = self._rows_check(rows_state, ready, done)
 
-        # The 64-store run as seen at the scrambled-write count, one +1 per store.
+        # The 64-store run as seen at the scrambled-write count, one +1 per store,
+        # with SCRAMBLER_KEY at kA at the ready and done messages.
         sw1, sw2 = rows_state["sw1"], rows_state["sw2"]
+        key1, key2 = rows_state["key1"], rows_state["key2"]
         steps = [(a, b) for a, b in seen["steps"] if sw1 <= a and b <= sw2]
         n_run = len(p.addrs64)
         stores_ok = self.chk.ctrl(
@@ -638,12 +644,17 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             len(steps) == n_run
             and all(b - a == 1 for a, b in steps)
             and seen["stopped"]
-            and seen["unknown"] == 0,
+            and seen["unknown"] == 0
+            and key1 == p.ka
+            and key2 == p.ka,
             stores=len(steps),
             expect=n_run,
             steps_not_one=sum(1 for a, b in steps if b - a != 1),
             unknown_clocks=seen["unknown"],
             watch_stopped=seen["stopped"],
+            key_ready_sha=word_digest([key1]),
+            key_done_sha=word_digest([key2]),
+            exp_key_sha=word_digest([p.ka]),
         )
         if alias_ok and rows_ok and stores_ok:
             await self._sample_sbox_in()

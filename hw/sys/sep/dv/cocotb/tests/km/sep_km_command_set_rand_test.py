@@ -67,9 +67,11 @@ Checkers:
               of each of the 16 share words is written at least once; (b) the
               CHK5_km EDN->KM beat count rises during the shred; (c) the final
               share-0 vector, the final share-1 vector and their XOR each
-              differ from the key the engine held; (d) the share data of one
-              shred is not one repeated value; (e) the ordered share data of
-              the second shred differs from that of the first (firmware.adoc,
+              differ from the key the engine held; (d) per share, the data
+              written to the share-0 words of one shred is not one repeated
+              value, and neither is the data written to its share-1 words;
+              (e) the ordered share data of the second shred differs from
+              that of the first (firmware.adoc,
               "Crypto Engine Drivers", Shred: PRNG data, a DRBG reseed before
               each pass).
               Terms (c)-(e) compare whole vectors only. The shred data is
@@ -174,7 +176,11 @@ Checkers:
               with RC_FAILURE and no RETURN_ARG, and CHK-ALIVE follows. Which
               refusal code is logged as OBS-WARM-STALE-HANDLE (no spec line
               picks one). The refused load of CHK-VAULT-FULL in the same seed
-              is the control
+              is the control of the load. The control of the refusal is a
+              CMD_KEY_TRANSFER of the new handle 1 to AES in the same state:
+              it returns rc=0 with the handle and dest echoed (firmware.adoc,
+              "0x24 - CMD_KEY_TRANSFER", Response), so the KM-to-AES transfer
+              path is live after the warm reset, and CHK-ALIVE follows
   CHK-ALIVE   after every rejection, and once after the undefined-ID walk,
               CMD_STAT succeeds AND reports no latched recoverable error. The
               second half is what gives the refusal checkers their meaning:
@@ -1235,6 +1241,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         s1 = tuple(final[off] for off in AES_SHARE_OFFSETS[1])
         xor = tuple(a ^ b for a, b in zip(s0, s1))
         data = tuple(d for _, d, _ in share)
+        distinct = [len({d for off, d, _ in share if off in AES_SHARE_OFFSETS[s]}) for s in (0, 1)]
         per_offset = " ".join(
             f"0x{off:03x}:n={len(v)},strb={'/'.join(f'{x:x}' for x in sorted(set(v))) or '-'}"
             for off, v in strobes.items()
@@ -1255,14 +1262,15 @@ class sep_km_command_set_rand_test(sep_base_test):
             "a": not unwritten,
             "b": drbg_beats > 0,
             "c": key not in (s0, s1, xor),
-            "d": len(set(data)) > 1,
+            "d_share0": distinct[0] > 1,
+            "d_share1": distinct[1] > 1,
             "e": prev is None or data != prev,
         }
         failed = [t for t, ok in terms.items() if not ok]
         assert not failed, (
             f"CHK-SHRED-FILL FAIL: shred={shred} failed={failed} aw={len(cap.aw)} "
             f"w={len(cap.w)} xz={cap.xz} unwritten={unwritten} drbg_beats={drbg_beats} "
-            f"distinct_share_values={len(set(data))} "
+            f"distinct_share0_values={distinct[0]} distinct_share1_values={distinct[1]} "
             f"share0={[hex(v) for v in s0]} share1={[hex(v) for v in s1]} "
             f"xor={[hex(v) for v in xor]} key={[hex(v) for v in key]} "
             f"same_as_prev={prev is not None and data == prev}"
@@ -1272,14 +1280,15 @@ class sep_km_command_set_rand_test(sep_base_test):
             "(Crypto_Engine_Drivers_Shred),:1447-1453(Firmware_PRNG),"
             "architecture.adoc:292-294(Key_Delivery) shred=%d aw=%d w=%d xz=0 "
             "share_offsets=%d all_lanes_written=1 drbg_beats=%d exp_drbg_beats>0 "
-            "share0!=key share1!=key xor!=key distinct_share_values=%d exp>1 "
-            "differs_from_prev=%s",
+            "share0!=key share1!=key xor!=key distinct_share0_values=%d "
+            "distinct_share1_values=%d exp_each>1 differs_from_prev=%s",
             shred,
             len(cap.aw),
             len(cap.w),
             len(lanes),
             drbg_beats,
-            len(set(data)),
+            distinct[0],
+            distinct[1],
             "n/a" if prev is None else "1",
         )
         return data
@@ -1330,7 +1339,7 @@ class sep_km_command_set_rand_test(sep_base_test):
 
     async def _vault_warm_load(self, *, stale: int) -> None:
         """CHK-VAULT-WARM-LOAD: after a KM warm reset the full vault takes a load
-        from handle 1, and a pre-reset handle is refused."""
+        from handle 1, a pre-reset handle is refused, and handle 1 transfers to AES."""
         km_bit = 1 << SW_RESET_N_BIT["km"]
         await self.swrst.park("km")
         parked = await self.swrst.read_back()
@@ -1380,19 +1389,38 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"expected rc={KM_RC_INVALID_ARG} (RC_INVALID_ARG) with RETURN_ARG 0x00000000 "
             f"or rc={KM_RC_FAILURE} (RC_FAILURE) with none (firmware.adoc:491-499)"
         )
+        await self._check_alive("post-warm-stale-handle")
+
+        xfer_rc, xfer_arg = await self.km.key_transfer(handle=handle, dest=KM_DEST_AES)
+        xfer_echo = (xfer_arg & 0xFF, (xfer_arg >> 8) & 0xFF)
+        assert xfer_rc == KM_RC_SUCCESS and xfer_echo == (handle, KM_DEST_AES), (
+            f"CHK-VAULT-WARM-LOAD FAIL: CMD_KEY_TRANSFER of new handle 0x{handle:02x} to AES "
+            f"after the warm reset returned rc={xfer_rc} RETURN_ARG=0x{xfer_arg:08x}, expected "
+            f"rc={KM_RC_SUCCESS} with handle 0x{handle:02x} and dest 0x{KM_DEST_AES:02x} "
+            "echoed (firmware.adoc:504-513)"
+        )
         self.logger.info(
             "CHK-VAULT-WARM-LOAD PASS: contract=key_manager/doc/firmware.adoc:1382"
             "(Boot_Sequence),:1889-1895(Key_Registry),:690-691(0x26_CMD_KEY_LOAD),"
             ":1763-1764(KPV_Driver),:491-499(0x24_CMD_KEY_TRANSFER_Response),"
-            "architecture.adoc:441(KPV) %s "
-            "stale_handle=0x%02x stale_rc=%d stale_arg=%s exp_stale_arg=%s",
+            ":504-513(Key_Transfer_Success_Response),architecture.adoc:441(KPV) %s "
+            "stale_handle=0x%02x stale_rc=%d stale_arg=%s exp_stale_arg=%s "
+            "xfer_rc=%d exp_xfer_rc=%d xfer_arg=0x%08x xfer_handle=0x%02x exp_xfer_handle=0x%02x "
+            "xfer_dest=0x%02x exp_xfer_dest=0x%02x",
             fields,
             stale,
             rc,
             _arg_str(arg),
             _arg_str(exp_arg),
+            xfer_rc,
+            KM_RC_SUCCESS,
+            xfer_arg,
+            xfer_echo[0],
+            handle,
+            xfer_echo[1],
+            KM_DEST_AES,
         )
-        await self._check_alive("post-warm-stale-handle")
+        await self._check_alive("post-warm-transfer")
 
     async def _otp_change_dormant(self, en_boot: int) -> None:
         """CHK-OTP-CHG-DORMANT: one OTP_CHANGE pulse enters no KMCSR ISR."""
