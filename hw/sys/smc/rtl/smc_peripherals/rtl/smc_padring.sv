@@ -222,8 +222,8 @@ module smc_padring #(
   // AXI-Lite Demux //
   ////////////////////
 
-  // Each pad owns a window of one register stride; an address past the last pad's window
-  // answers DECERR with read data 0xBADCAB1E.
+  // Each GPIO interface owns the addresses up to the next one; an address past the last
+  // interface's window answers DECERR with read data 0xBADCAB1E.
   localparam int unsigned NumIntfRanges = smc_pkg::NumGpioWraps;
 
   typedef logic [gpio_pkg::AddrWidth-1:0] intf_range_addr_t[NumIntfRanges];
