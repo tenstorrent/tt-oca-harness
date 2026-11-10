@@ -74,7 +74,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     runs with the graded window closed and credits no coverage cell;
                     the write response is logged in the line, not graded.
   CTRL-STM-SECDIS-MATCH  the go of that leg returns the match code within
-                    ``MATCH_READS`` reads, ``security_disable_o`` rises and
+                    ``MATCH_READS`` reads, ``security_disable_o`` reads 1 and
                     ``secure_tm_o`` reads 1. On a failed match the leg skips its
                     writes and the leaf fails.
   INFO-STM-SECDIS-CELLS  counts the frontdoor and JTAG cells of that leg.
