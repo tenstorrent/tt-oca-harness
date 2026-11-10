@@ -261,6 +261,19 @@ class ScrPlanTest(unittest.TestCase):
         order = [(pay[pl.OFF_ORDER8] >> (4 * i)) & 0xF for i in range(8)]
         self.assertEqual(order, pl.order8)
 
+    def test_round_key_rows(self) -> None:
+        # Worked by hand from {addr, addr, addr[12:7]} ^ key
+        # (hw/ip/scrambler/doc/architecture.adoc:132,183).
+        rows = (
+            (0x1FFF, 0x0000_0000, 0xFFFF_FFFF),
+            (0x0001, 0x0000_0000, 0x0008_0040),
+            (0x0080, 0x0000_0000, 0x0400_2001),
+            (0x0080, 0xFFFF_FFFF, 0xFBFF_DFFE),
+            (0x1000, 0x1234_5678, 0x9230_5658),
+        )
+        for idx, key, rkey in rows:
+            self.assertEqual(P.scr_round_key(idx, key), rkey, f"idx={idx:#x} key={key:#x}")
+
     def test_sbox_in_closure(self) -> None:
         # Word index lanes [12:9], [8:6], [5:3], [2:0] as (lsb, width).
         lanes = ((9, 4), (6, 3), (3, 3), (0, 3))
