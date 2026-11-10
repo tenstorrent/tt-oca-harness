@@ -163,7 +163,9 @@ which reaches the ROM macro without passing the crossbar, and the IFU demux
 answers addresses outside the boot ROM and SEP SRAM with DECERR. The chain on
 each target row is the conversion the target needs: the secure DMA registers
 and the watchdog are reached as 32-bit TL-UL, and the IO block, reset
-controller and entropy pool as AXI-Lite. The `sep_external` demux diverts the
+controller and entropy pool as AXI-Lite. The secure DMA and watchdog wrappers
+and the IO block each pass their register block only its window
+({decode-response-codes-ref}). The `sep_external` demux diverts the
 eFuse shim CSR window to the eFuse wrapper; every other address in the
 `0x2000_0000` to `0x3FFF_FFFF` aperture leaves SEP on the AXI extension port.
 xref:sep-axi-connectivity[xrefstyle=short] gives the initiator-to-target connections.

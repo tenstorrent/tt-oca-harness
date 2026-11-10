@@ -113,21 +113,23 @@ RDL sources. The flow lives in `hw/common/regs/` (discovery, classification, and
 
 === Address windows
 
-Each register block in the SMC and the cross-trigger network decodes a
-power-of-two window; the
+Each register block in the SMC, the SEP and the cross-trigger network
+decodes a power-of-two window; the
 ifdef::backend-html5[]
 xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/memory_map.html#ocah-decode-response-codes[Decode Response Codes]
 endif::backend-pdf[]
-section of the Technical Reference Manual gives the rule. To add one to the SMC:
+section of the Technical Reference Manual gives the rule. To add one to the
+SMC or the SEP:
 
 * End its crossbar rule at the end of its last 4 KiB page
-  (`smc_pkg::reg_page_end`).
+  (`smc_pkg::reg_page_end` or `sep_pkg::reg_page_end`).
 * Set `OCAH_REG_ADDR_WIDTH_<block>` in `hw/common/regs/classify.mk` so that a
   generated block decodes its whole window, and route a block that shares a
-  page through `prim_axil_addr_demux`.
+  page through `prim_axil_addr_demux`, or in `sep_system_csr` through its own
+  demux.
 * Add an array whose stride is wider than one instance to
   `OCAH_REG_NO_ERR_BLOCKS`.
 * In the RDL, give the block its window as its `ocah_aperture_size` and the

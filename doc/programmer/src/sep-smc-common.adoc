@@ -179,11 +179,13 @@ granule is increased from 8 bytes to 4 KiB.
 ifdef::backend-html5[]
 See xref:ocah-docs:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter]
 for more details on the match then permit algorithm, address granule
-rules, and blocked transaction behavior.
+rules, blocked transaction behavior and the response to a write to a locked
+entry.
 endif::backend-html5[]
 ifdef::backend-pdf[]
 See <<axi-traffic-filter>> for more details on the match then permit algorithm,
-address granule rules, and blocked transaction behavior.
+address granule rules, blocked transaction behavior and the response to a write
+to a locked entry.
 endif::backend-pdf[]
 
 [[sep-smc-axi-filter-instances]]
