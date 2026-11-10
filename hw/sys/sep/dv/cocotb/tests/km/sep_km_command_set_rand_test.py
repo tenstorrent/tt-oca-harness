@@ -171,8 +171,8 @@ Checkers:
               (firmware.adoc, "Boot Sequence" and "Key Registry", Initialize;
               architecture.adoc, "Key and Policy Vault (KPV)": the lock/seal
               bits clear on warm reset). A CMD_KEY_TRANSFER to
-              AES of handle_b, a pre-reset handle the new registry has not
-              issued and so an unavailable one, is then refused with
+              AES of handle_b, issued before the reset and cleared by the
+              registry Initialize, so an unavailable handle, is then refused with
               RC_FAILURE and no RETURN_ARG (firmware.adoc:1069-1070, "Key
               Transfer and Sideload Purge": an unavailable handle gets
               failure; "0x24 - CMD_KEY_TRANSFER" Response), as CHK-CLOSED
