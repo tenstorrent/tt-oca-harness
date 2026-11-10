@@ -821,8 +821,8 @@ in a future revision of this specification.
 manifests or signatures. It supplies the lifecycle state, and the OTP Fuse
 Controller chapter defines the fuse fields that govern firmware authorization:
 `SBOOT_DIS`, the `SIP_DIS` and `SYS_DIS` debug vectors, the public-key digests,
-`CHIPLET_PUBK_REVOKE`, and the `REQUIRED_SIGNERS`, `REQUIRED_ALGS` and
-`SIGNATURE_REVOKE` policy fields. Firmware, not the LCC, interprets them: the
+`PUBK_REVOKE` (formerly `CHIPLET_PUBK_REVOKE`), and the `REQUIRED_SIGNERS`,
+`REQUIRED_ALGS` and `SIGNATURE_REVOKE` policy fields. Firmware, not the LCC, interprets them: the
 SEP Boot ROM and each later boot stage verify manifests as specified in
 <<secure-boot-signing-model>>. The SEP Boot ROM reads `CHIPLET_DBG`
 from the `SIP_DIS` and `SYS_DIS` fuse shadows rather than from `FEAT_CTRL`,
@@ -859,7 +859,7 @@ verifies. A public key is trusted only if its digest matches a digest embedded
 in SEP ROM or one of the fused digests `CHIPLET_PUBK_HASH0/1`,
 `CHIPLET_PUBK_PQC_HASH0/1`, `SIP_PUBK_HASH0/1`, `SIP_PUBK_PQC_HASH0/1`,
 `SYS_PUBK_HASH` and `SYS_PUBK_PQC_HASH`, and only while the bit assigned to
-that digest in `CHIPLET_PUBK_REVOKE` is clear. The 0.5 ROM does not implement
+that digest in `PUBK_REVOKE` is clear. The 0.5 ROM does not implement
 this model.
 
 *Terms.* The following terms are used throughout this section. Each one names
@@ -894,7 +894,7 @@ class of that group is revoked. See _Group codes_ under
 Revoked class:: a class whose `SIGNATURE_REVOKE` bit is set, or any class of a
 group whose group code is set.
 Revoked key digest:: a ROM-embedded or fused public-key digest whose bit in
-`CHIPLET_PUBK_REVOKE` is set. This is key revocation and is independent of
+`PUBK_REVOKE` is set. This is key revocation and is independent of
 class revocation.
 Policy in force:: the values held in the `REQUIRED_SIGNERS` and
 `REQUIRED_ALGS` shadow registers when a manifest is verified. At cold reset
@@ -955,7 +955,7 @@ manifest to be rejected, which is why the OTP Fuse Controller chapter requires
 [width="100%",cols="<10%,<17%,<43%,<30%",options="header",]
 .Co-signer owner codes (`REQUIRED_SIGNERS[4N+7:4N+4]`)
 |=======================================================================
-|Code |Owner |Public key the ROM accepts |`CHIPLET_PUBK_REVOKE` bits checked
+|Code |Owner |Public key the ROM accepts |`PUBK_REVOKE` bits checked
 
 |`0b0001` |Anonymous
 |The public key(s) carried in the co-signer block itself. The signature is
@@ -1012,7 +1012,7 @@ manifests authenticate on the other group alone. See _Group codes_ under
 . *Chiplet creator.* The chiplet-creator signatures required by
 `REQUIRED_ALGS[3:0]` are present and verify under a public key whose digest
 matches a ROM-embedded chiplet-creator digest, `CHIPLET_PUBK_HASH0/1` or
-`CHIPLET_PUBK_PQC_HASH0/1`, and whose `CHIPLET_PUBK_REVOKE` bit is clear. When
+`CHIPLET_PUBK_PQC_HASH0/1`, and whose `PUBK_REVOKE` bit is clear. When
 `use_verifier_key` is clear these signatures cover the main manifest; when it
 is set they cover the verifier key entry.
 . *Verifier key.* When `use_verifier_key` is set, the verifier key entry is
@@ -1023,7 +1023,7 @@ public key carried in the verifier key entry.
 set: the manifest sets `co_signer_enable` bit N-1; co-signer block N is present
 and populated; the public key in the block satisfies the owner code
 `REQUIRED_SIGNERS[4N+7:4N+4]` as defined in <<sep-cosigner-owner-codes-table>>,
-including that the `CHIPLET_PUBK_REVOKE` bit of the matched digest is clear;
+including that the `PUBK_REVOKE` bit of the matched digest is clear;
 and the signatures required by `REQUIRED_ALGS[4N+7:4N+4]` are present and
 verify under that public key.
 . *Algorithms.* An entity's classical bit set (`REQUIRED_ALGS[0]`, `[4]` or
@@ -1115,7 +1115,7 @@ the PQC manifest variant.
 owner); `REQUIRED_ALGS[3:0]` = `0b0011`; `REQUIRED_ALGS[11:8]` = `0b0001`
 |As above, plus `co_signer_enable` bit 0 set and co-signer block 1 populated
 with a classical signature under a key whose digest matches `SIP_PUBK_HASH0`
-or `SIP_PUBK_HASH1` and whose `CHIPLET_PUBK_REVOKE` bit is clear.
+or `SIP_PUBK_HASH1` and whose `PUBK_REVOKE` bit is clear.
 
 |Manifest sets `use_verifier_key`; `REQUIRED_ALGS[3:0]` = `0b0011`;
 `REQUIRED_ALGS[7:4]` = `0b0001`
@@ -1236,7 +1236,7 @@ keep their programmed values, no hardware masks them, and the waiver exists
 only in the ROM's evaluation of the requirement rule. Revocation is the stronger
 statement and takes precedence over a requirement. The waiver is group-wide,
 since there is no per-entity group code, and it waives nothing else: the other
-group's requirement bits, key revocation through `CHIPLET_PUBK_REVOKE` and the
+group's requirement bits, key revocation through `PUBK_REVOKE` and the
 Secure Boot Decision apply unchanged, and a single class bit waives no
 requirement at all. Without the waiver, a fused `REQUIRED_ALGS[1]` = 1 could
 never be escaped once every post-quantum class had to be retired, because fuses

@@ -212,5 +212,6 @@ REQUIRED_ALGS as a per-entity algorithm requirement, and a new SIGNATURE_REVOKE
 field with per-class bits and group codes. Restored the Secure-Boot Signing
 Model and added Signature Algorithm Revocation to the Life Cycle Controller
 chapter. SEP ROM requires a classical chiplet-creator signature when
-REQUIRED_ALGS is unprovisioned.
+REQUIRED_ALGS is unprovisioned. Renamed CHIPLET_PUBK_REVOKE to PUBK_REVOKE,
+which is never write-locked in the LOCKS fuse.
 |=======================================================================

@@ -261,7 +261,7 @@ RMA_CHIPLET_TOKEN that enables entering RMA_CHIPLET Life Cycle state
 
 |CLASS_KEY |7 |256 |true |true |Can be used for firmware encryption and decryption.
 
-|CHIPLET_PUBK_REVOKE |8 |32 |set-only |true |Global public-key revocation
+|PUBK_REVOKE |8 |32 |set-only |true |Global public-key revocation
 vector covering every boot-verification key of every owner (classical and
 PQC). SEP ROM embeds a set of public-key hash digests and accesses
 additional fused key hashes; each key entry maps to one bit here. Once set,
@@ -272,7 +272,12 @@ PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1;
 SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26]
 reserved. Before the chiplet owner transfers a
 part to the customer, the development-key bits shall be set (revoked).
-(Name retained for compatibility; scope is now all owners.)
+The write-lock of this field, LOCKS[16], shall never be programmed in the
+LOCKS fuse: a key whose private key is compromised must remain revocable at
+any point in the device's life, by whichever owner holds it. A write-lock set
+in the LOCKS shadow register lasts for the rest of that boot only.
+(Formerly CHIPLET_PUBK_REVOKE; the RDL, ROM and DV of the 0.5 release use
+that name.)
 
 |BL1_VERSION |9 |256 |set-only |true |BL1 anti-rollback storage. The
 production ROM supplies the low 128 raw bits as security-version flags to
@@ -387,11 +392,11 @@ SYS_PUBK_HASH.
 
 |SIP_PUBK_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's root
 public key for secure boot, slot 1. Second slot so the SiP owner retains a
-usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].
+usable root key after revoking slot 0 via PUBK_REVOKE[24].
 
 |SIP_PUBK_PQC_HASH1 |29 |256 |true |true |Hash digest of the SiP owner's ML-DSA
 PQC root public key for secure boot, slot 1. PQC counterpart of
-SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].
+SIP_PUBK_HASH1; revocable via PUBK_REVOKE[25].
 
 |SEP_CHIPLET_ID |30 |256 |true |true |Per-owner chiplet public identity fuse
 used as a public identity input to the Key Manager. No read protection
