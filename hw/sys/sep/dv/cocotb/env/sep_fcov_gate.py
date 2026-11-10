@@ -283,7 +283,8 @@ def set_kmac_unsup_pass(check: int, log=None) -> bool:
     passed, 3 the enabled cell passed its absorb check, 4 an error-code leg passed
     its error-code check (``cp_kmac_err_code_class``). The sampler holds a legal
     outcome as pending at its DUT event and samples it only when this value rises
-    from 0 to the check that grades it; illegal outcomes sample at once. The leaf
+    from 0 to the check that grades it; illegal outcomes sample at once, except a
+    ``cp_kmac_err_code_class`` code, which samples only on the rise to 4. The leaf
     writes the value after that check passes, holds it, then writes 0. Same rules
     as ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
     without the variable is a testbench error.
