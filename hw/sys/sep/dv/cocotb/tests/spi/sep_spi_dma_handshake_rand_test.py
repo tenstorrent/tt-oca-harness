@@ -51,16 +51,18 @@ handshake run keeps GO set:
   CLEAR_INTR_BUS bit 0 = 1, INTR_SRC_ADDR_0 a SEP SRAM word outside the
   destination, INTR_SRC_WR_VAL_0 a drawn word that differs from the word the
   leaf writes there first; the same copy as the handshake run. CLEAR_INTR_SRC
-  bits 10:1 are a drawn mask; CLEAR_INTR_BUS is 1 on every enabled source and
-  drawn on every disabled one. INTR_SRC_ADDR_1..10 are distinct drawn SRAM
-  words below the destination (outside every footprint of the leaf, inside
-  the handshake range), each written with the sentinel first, and
-  INTR_SRC_WR_VAL_1..10 are distinct drawn words that differ from the
-  sentinel, from INTR_SRC_WR_VAL_0 and from the reset value 0;
+  bits 10:1 are a drawn mask; CLEAR_INTR_BUS is 1 on every source, enabled or
+  disabled, so a clear write of any source reaches the DMA master tap and its
+  SRAM word. INTR_SRC_ADDR_1..10 are distinct drawn SRAM words below the
+  destination (outside every footprint of the leaf, inside the handshake
+  range). Every clear word, source 0 included, is written with the sentinel
+  and read back over the frontdoor before GO. INTR_SRC_WR_VAL_1..10 are
+  distinct drawn words that differ from the sentinel, from INTR_SRC_WR_VAL_0
+  and from the reset value 0;
 * complement run: the interrupt-clear run with CLEAR_INTR_SRC bits 10:1
-  inverted (bit 0 kept), the same addresses and values and its own drawn bus
-  bits for the disabled sources, so every source 1..10 is enabled in one of
-  the two runs and disabled in the other on every seed;
+  inverted (bit 0 kept) and the same addresses, values and CLEAR_INTR_BUS, so
+  every source 1..10 is enabled in one of the two runs and disabled in the
+  other on every seed;
 * second masked run: MASK 0 when the drawn upper bits are not 0, else a second
   drawn non-zero upper mask with bit 0 clear, so both masked classes run on
   every seed;
@@ -199,8 +201,9 @@ Checkers:
                   one AW on the DMA master tap (``dma_axi_req_probe_o``,
                   ``env/sep_dma_tap.py``) carries the address
                   INTR_SRC_ADDR_0, and that SRAM word reads
-                  INTR_SRC_WR_VAL_0 over the frontdoor after the run. The tap
-                  carries no write data, so the data comes from that readback.
+                  INTR_SRC_WR_VAL_0 over the frontdoor after the run, having
+                  read the sentinel before GO (``pre=``). The tap carries no
+                  write data, so the data comes from that readback.
                   Contract: "configure `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`,
                   `INTR_SRC_ADDR` and `INTR_SRC_WR_VAL` for the connected host
                   port (`CLEAR_INTR_BUS` bit 0 = 1)"
@@ -215,9 +218,9 @@ Checkers:
                   (``OBS-HS-CLR``): the text says only "when ... lsio_trigger
                   becomes set".
   CHK-HS-CLR-IDX  interrupt-clear and complement runs (``run=``, ``idx=``),
-                  per source i = 1..10: enabled (CLEAR_INTR_SRC bit i = 1,
-                  CLEAR_INTR_BUS bit i = 1) -> at least one AW on the DMA
-                  master tap at INTR_SRC_ADDR_i and that SRAM word reads
+                  per source i = 1..10, each with CLEAR_INTR_BUS bit i = 1:
+                  enabled (CLEAR_INTR_SRC bit i = 1) -> at least one AW on the
+                  DMA master tap at INTR_SRC_ADDR_i and that SRAM word reads
                   INTR_SRC_WR_VAL_i over the frontdoor after the run;
                   disabled (bit i = 0) -> no AW at INTR_SRC_ADDR_i and the
                   word still holds its sentinel. Contract: "DMA issues writes
@@ -227,18 +230,21 @@ Checkers:
                   data/dma.hjson:755-757``, CLEAR_INTR_SRC; NumIntClearSources
                   11, ``:28-33``), CLEAR_INTR_BUS "1: OT-internal crossbar"
                   (``:771-773``) and ``hw/sys/sep/doc/dma.adoc:61-62`` (the
-                  internal host port is the only route). An enabled source on
-                  bus 0 is not run: its write goes to the tied-off CTN port,
-                  which "does not complete" (``hw/sys/sep/doc/dma.adoc:70``);
-                  bus 0 is graded for source 0 by CHK-DMA-CLR-BUS0. Every
+                  internal host port is the only route). No source runs on
+                  bus 0 here: a write there goes to the tied-off CTN port,
+                  which "does not complete" (``hw/sys/sep/doc/dma.adoc:70``),
+                  and neither the tap nor the SRAM word would see it; bus 0 is
+                  graded for source 0 by CHK-DMA-CLR-BUS0. Every
                   clear address lies inside the enabled range. Controls:
                   CHK-HS-CLR in the same run, ``CTRL-HS-CLR-IDX``, and for a
                   disabled source the enabled leg of the same source in the
                   other run (same address, same tap).
   CTRL-HS-CLR-IDX interrupt-clear and complement runs: CLEAR_INTR_SRC,
                   CLEAR_INTR_BUS, INTR_SRC_ADDR_0..10 and
-                  INTR_SRC_WR_VAL_0..10 read back as written before GO, and
-                  the trigger probe is high in the window; else
+                  INTR_SRC_WR_VAL_0..10 read back as written before GO, the
+                  eleven clear words read the sentinel over the frontdoor
+                  after their fill and before GO, and the trigger probe is
+                  high in the window; else
                   ``CTRL-MISSING CTRL-HS-CLR-IDX``.
   OBS-HS-CLR      interrupt-clear and complement runs: the source 0 summary
                   (clear AW count, clocks, AxSIZE, WSTRB) and, per source
@@ -496,7 +502,6 @@ class _ClearPlan:
     addr: tuple[int, ...]  # INTR_SRC_ADDR_i
     val: tuple[int, ...]  # INTR_SRC_WR_VAL_i
     src: tuple[int, int]  # CLEAR_INTR_SRC per run
-    bus: tuple[int, int]  # CLEAR_INTR_BUS per run
 
 
 class _Cfg:
@@ -854,21 +859,18 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         slots = [a for a in range(SRAM_BASE, HS_DST, 4) if a != CLR_ADDR]
         addr = (CLR_ADDR, *rng.sample(slots, N_CLR - 1))
         val = (clr_val, *unique_words(rng, N_CLR - 1, exclude={self.sentinel, clr_val, 0}))
-        # Enabled sources on bus 1; the bus bits of the disabled sources are drawn.
-        bus = tuple(s | (rng.getrandbits(N_CLR) & ~s & CLR_BUS_MASK) for s in src)
         self.logger.info(
             "INFO-DRAW seed=%d clear_addr=0x%08x clear_wr_val=0x%08x clear_pre=0x%08x "
-            "clear_src=%s clear_bus=%s idx_addr=%s idx_wr_val=%s",
+            "clear_src=%s idx_addr=%s idx_wr_val=%s",
             cfg.seed,
             CLR_ADDR,
             clr_val,
             self.sentinel,
             ",".join(f"0x{s:03x}" for s in src),
-            ",".join(f"0x{b:03x}" for b in bus),
             ",".join(f"{a:08x}" for a in addr[1:]),
             ",".join(f"{v:08x}" for v in val[1:]),
         )
-        return _ClearPlan(addr, val, src, bus)
+        return _ClearPlan(addr, val, src)
 
     async def _clear_run(
         self,
@@ -890,10 +892,12 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         cfg = self.cfg_
         dma = self.dma
         run = CLR_IDX_RUNS[k]
-        src, bus = plan.src[k], plan.bus[k]
+        src, bus = plan.src[k], CLR_BUS_MASK
         await self._cold_reset(run)
         for a in plan.addr:
             await self.mem.fill(a, [self.sentinel])
+        pre = [(await self.mem.read(a, 1))[0] for a in plan.addr]
+        pre_bad = [f"idx{i}=0x{w:08x}" for i, w in enumerate(pre) if w != self.sentinel]
         regs = [("clear_intr_src", CLEAR_INTR_SRC, src), ("clear_intr_bus", CLEAR_INTR_BUS, bus)]
         for i in range(N_CLR):
             regs.append((f"intr_src_addr_{i}", INTR_SRC_ADDR[i], plan.addr[i]))
@@ -960,14 +964,16 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         self._probe_log(run)
         ctrl = (
             f"run={run} words={len(regs)} readback_bad={','.join(rb_bad) or '-'} "
+            f"sentinel=0x{self.sentinel:08x} pre={','.join(f'{w:08x}' for w in pre)} "
+            f"pre_bad={','.join(pre_bad) or '-'} "
             f"clear_src=0x{src:03x} clear_bus=0x{bus:03x} trigger_high_clk={trig_high}"
         )
-        if rb_bad or trig_high < 1:
+        if rb_bad or pre_bad or trig_high < 1:
             self._ctrl_missing("CTRL-HS-CLR-IDX", ctrl)
         self.logger.info("CTRL-HS-CLR-IDX PASS seed=%d %s", cfg.seed, ctrl)
         line = (
             f"run={run} clear_addr=0x{CLR_ADDR:08x} clear_aw={len(clr_idx)} "
-            f"readback=0x{clr_rb:08x} expect=0x{clr_val:08x} pre=0x{self.sentinel:08x} "
+            f"readback=0x{clr_rb:08x} expect=0x{clr_val:08x} pre=0x{pre[0]:08x} "
             f"clear_src=0x{src:03x} clear_bus=0x{bus:03x} control_hs_aw={hs_aw} "
             f"control_hs_clear_aw={hs_clr_aw} window_clks={t_fill}"
         )
