@@ -1660,10 +1660,14 @@ details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>TSU_DAT</ipxact:name>
-            <ipxact:description>Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-cycles. See Table 11 in the I2C Specification for details. This field is sized
-to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-requirement, assuming a 1 GHz system clock.</ipxact:description>
+            <ipxact:description>Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+cycles: after driving a data or ACK bit, the target holds SCL low for
+`TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+`t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+Specification for details. This field is sized to meet the I2C Standard-mode
+(100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+clock.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
