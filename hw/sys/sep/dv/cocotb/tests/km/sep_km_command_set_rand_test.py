@@ -56,10 +56,43 @@ Checkers:
               the engine is still correctly re-keyable afterwards: a second,
               DISTINCT known key transferred after the shred encrypts to its
               own golden and NOT to the first key's
+  CHK-SHRED-FILL
+              on both AES shreds (CHK-SHRED, AES holding KAT_KEY_A, and
+              CHK-GONE, AES holding KAT_KEY_B) the AES port of the KM-BUS
+              key-path tap is captured from the CMD_ENGINE_SHRED send to its
+              RESP_CMD, with no unknown handshake and as many W beats as AW
+              beats; the k-th W beat is the data of the k-th AW. Beats outside
+              the 16 share-word offsets (the key_valid clear of KEY_CTRL among
+              them) are excluded from the terms. Graded: (a) every byte lane
+              of each of the 16 share words is written at least once; (b) the
+              CHK5_km EDN->KM beat count rises during the shred; (c) the final
+              share-0 vector, the final share-1 vector and their XOR each
+              differ from the key the engine held; (d) the share data of one
+              shred is not one repeated value; (e) the ordered share data of
+              the second shred differs from that of the first (firmware.adoc,
+              "Crypto Engine Drivers", Shred: PRNG data, a DRBG reseed before
+              each pass).
+              Terms (c)-(e) compare whole vectors only. The shred data is
+              xoshiro128++ output from a 128-bit seed of four DRBG words
+              (firmware.adoc, "Firmware PRNG"), so a correct KM fails each of
+              them with probability at most 2^-128, and every failure replays
+              from its seed. INFO-SHRED-FILL logs the W beats and strobes per
+              offset (the pass count is not specified) and the other beats
   CHK-REVOKE  CMD_KEY_REVOKE returns rc=0 with the handle echoed
   CHK-CLOSED  the generated handle transfers to AES (rc=0, handle and dest
               echoed) just before the revoke, and the same transfer on the
               REVOKED handle is refused RC_FAILURE: revoke fails closed
+  CHK-REVOKE-TWICE
+              CMD_KEY_REVOKE of the already-revoked generated handle is
+              refused with RC_INVALID_ARG and RETURN_ARG 0, or with
+              RC_FAILURE and no RETURN_ARG (firmware.adoc, "0x23 -
+              CMD_KEY_REVOKE" Response; "Key Registry", Destroy), and CHK-ALIVE
+              follows. It runs right after CHK-CLOSED and again on the full
+              vault after CHK-VAULT-FULL, where the slot the revoked key held is
+              in use again: there the single-slot CMD_KEY_LOAD that follows
+              still returns RC_FAILURE with no RETURN_ARG, so the refused
+              revoke freed no slot. Which refusal code is logged as
+              OBS-REVOKE-TWICE (no spec line picks one)
   CHK-NULL    CMD_KEY_REVOKE of the reserved null handle is refused with
               RC_INVALID_ARG or RC_FAILURE; which of the two is logged as
               OBS-NULL (no spec line picks one)
@@ -94,7 +127,8 @@ Checkers:
               between the two starts, so it reached the key rather than merely
               returning success. Runs after every AES leg, because an engine
               parked waiting for a key stays that way until its next valid
-              key; the vault and OTP-change legs after it do not use AES
+              key; the vault, OTP-change and warm-reset legs after it run no
+              AES block
   CHK-GEN-ARG CMD_KEY_GENERATE with REQ_SIZE 128 returns RC_INVALID_ARG with
               RETURN_ARG 0, and with a reserved bit in DEST_VALID returns
               RC_INVALID_ARG with RETURN_ARG 1. Both responses must carry
@@ -124,7 +158,23 @@ Checkers:
               of OTP_QUIET_CLKS clocks while the KMCSR ISR entry count stays
               unchanged (firmware.adoc, "OTP Change Status"). The pulse itself
               is the control: HK-IRQSET fired and the status bit rose. Runs
-              last, since the bit stays set
+              after every other key-command leg, since the bit stays set
+  CHK-VAULT-WARM-LOAD
+              with the vault still full, a KM warm reset (SW_RESET_N km bit
+              parked and released, each read back) is followed by
+              RESP_KM_READY, and the same single-slot CMD_KEY_LOAD that
+              CHK-VAULT-FULL saw refused returns rc=0 with the size and
+              destination echoed and handle 1: the boot re-initializes the key
+              registry and the warm reset clears the slot locks
+              (firmware.adoc, "Boot Sequence" and "Key Registry", Initialize;
+              architecture.adoc, "Key and Policy Vault (KPV)": the lock/seal
+              bits clear on warm reset). A CMD_KEY_TRANSFER to
+              AES of handle_b, a pre-reset handle the new registry has not
+              issued, is then refused with RC_INVALID_ARG and RETURN_ARG 0, or
+              with RC_FAILURE and no RETURN_ARG, and CHK-ALIVE follows. Which
+              refusal code is logged as OBS-WARM-STALE-HANDLE (no spec line
+              picks one). The refused load of CHK-VAULT-FULL in the same seed
+              is the control
   CHK-ALIVE   after every rejection, and once after the undefined-ID walk,
               CMD_STAT succeeds AND reports no latched recoverable error. The
               second half is what gives the refusal checkers their meaning:
@@ -147,17 +197,21 @@ Not covered:
     does not have. At SEP level a DRBG fault is unrecoverable: the KM emits an
     unsolicited RESP_UNRECOVERABLE_FAULT, so it also cannot be a return-code
     check. Building it would need a backdoor.
-  * CHK-SHRED does not observe the shredded key material. The engine KEY_SHARE
-    CSRs are write-only and read as zero, so the overwritten value has no
-    frontdoor. The shred is proven by its return code plus the engine
-    re-keying correctly to a different golden afterwards.
+  * The engine KEY_SHARE CSRs are write-only and read as zero, so the shredded
+    key material has no frontdoor. CHK-SHRED-FILL grades it on the KM-BUS
+    key-path tap instead, as whole-vector terms that a correct KM fails with
+    probability at most 2^-128 each; the shred write order and the number of
+    shred passes are not graded.
 """
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import cocotb
 import pyuvm
-from cocotb.triggers import ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_crc_golden import crc8_rohc, crc32c
 from env.sep_km_img_h import KPV_SLOT_WORDS, KPV_SLOTS
@@ -199,6 +253,7 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_VALID_CMD_IDS,
     SepKmMailbox,
 )
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Lowest reserved bit of the KEY_HANDLE and DEST_VALID / DEST_ENGINE payload
 # words (bits [7:0] carry the field), and the first REQ_SIZE above the 7-bit
@@ -248,6 +303,47 @@ KAT_KEY_B = (
 
 AES_ECB_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 
+# CMD_KEY_LOAD payload of a one-slot AES key: KEY_SIZE 0 (one word), DEST_VALID
+# AES, the key word.
+_ONE_SLOT_LOAD = (0, KM_DEST_AES, KAT_KEY_A[0])
+
+# firmware.adoc, "Key Registry": Initialize sets the next handle to 1.
+_FIRST_HANDLE = 1
+
+# AES key-path port of the KM-BUS tap (docs/SEP_TB_ARCH.adoc, KM-BUS key-path
+# part) and the share-word offsets of its bank, from the generated Key Manager
+# register header.
+_KEY_PORT_NAME = ("otbn", "aes", "hmac", "kmac", "abr")
+_AES_KEY_PORT = _KEY_PORT_NAME.index("aes")
+_KM_GEN_PY = Path(__file__).resolve().parents[6] / "ip" / "key_manager" / "regs" / "gen" / "py"
+_KM_REG_SPEC = importlib.util.spec_from_file_location(
+    "km_command_set_key_manager_reg", _KM_GEN_PY / "key_manager_reg.py"
+)
+if _KM_REG_SPEC is None or _KM_REG_SPEC.loader is None:
+    raise FileNotFoundError(_KM_GEN_PY / "key_manager_reg.py")
+_KM_REG = importlib.util.module_from_spec(_KM_REG_SPEC)
+_KM_REG_SPEC.loader.exec_module(_KM_REG)
+_BLOCK_SPAN = 0x1000
+_AES_KEY_BASE = int(_KM_REG.AES_WRAPPER_KEY_REG_MAP_BASE_ADDR)
+if _AES_KEY_BASE % _BLOCK_SPAN or int(_KM_REG.AES_WRAPPER_KEY_REG_MAP_SIZE) > _BLOCK_SPAN:
+    raise AssertionError("AES_WRAPPER_KEY: not a 4 KiB-aligned block below 4 KiB")
+# AES_SHARE_OFFSETS[s][i]: block offset of KEY_SHARE<s>[i].
+AES_SHARE_OFFSETS = tuple(
+    tuple(
+        int(getattr(_KM_REG, f"AES_WRAPPER_KEY_KEY_SHARE{s}_{i}__REG_ADDR")) - _AES_KEY_BASE
+        for i in range(len(KAT_KEY_A))
+    )
+    for s in (0, 1)
+)
+_AES_SHARE_SET = frozenset(AES_SHARE_OFFSETS[0] + AES_SHARE_OFFSETS[1])
+if len(_AES_SHARE_SET) != 2 * len(KAT_KEY_A) or hasattr(
+    _KM_REG, f"AES_WRAPPER_KEY_KEY_SHARE0_{len(KAT_KEY_A)}__REG_ADDR"
+):
+    raise AssertionError(
+        f"AES_WRAPPER_KEY: share offsets are not 2 x {len(KAT_KEY_A)} distinct words"
+    )
+_WORD_STRB = 0xF
+
 # Sizes CMD_KEY_GENERATE is asked for, as word counts: CHK-GEN, then CHK-UNIQ.
 GEN_KEY_WORDS = (8, 12)
 
@@ -294,6 +390,70 @@ _SHRED_REFUSE_POLLS = 50
 
 def _arg_str(arg: int | None) -> str:
     return "none" if arg is None else f"0x{arg:08x}"
+
+
+class _AesKeyPortWrites:
+    """AW and W handshakes on the AES key-path port of the KM-BUS tap.
+
+    The AW block offsets and the W (data, strobe) beats are recorded
+    independently, each in clock order. AXI4-Lite has no write interleaving,
+    so the k-th W beat carries the data of the k-th AW. ``xz`` counts clocks
+    where a VALID or READY bit, or the address, data or strobe of a handshake,
+    is not 0 or 1; the check that reads this monitor requires it to be 0.
+    """
+
+    def __init__(self, test: sep_base_test) -> None:
+        top = cocotb.top
+        self.test = test
+        self.clk = top.clk_i
+        self.aw_valid = top.km_key_aw_valid_o
+        self.aw_ready = top.km_key_aw_ready_o
+        self.aw_addr = top.km_key_aw_addr_o
+        self.w_valid = top.km_key_w_valid_o
+        self.w_ready = top.km_key_w_ready_o
+        self.w_data = top.km_key_w_data_o
+        self.w_strb = top.km_key_w_strb_o
+        if len(self.aw_valid) != len(_KEY_PORT_NAME) or len(self.w_valid) != len(_KEY_PORT_NAME):
+            raise AssertionError(
+                f"km_key_aw_valid_o / km_key_w_valid_o are {len(self.aw_valid)} / "
+                f"{len(self.w_valid)} bits, expected one per key-path port {_KEY_PORT_NAME}"
+            )
+        self.aw: list[int] = []
+        self.w: list[tuple[int, int]] = []
+        self.xz = 0
+        self._on = False
+
+    def start(self) -> None:
+        self.aw = []
+        self.w = []
+        self.xz = 0
+        self._on = True
+        cocotb.start_soon(self._run())
+
+    async def stop(self) -> None:
+        self._on = False
+        await ClockCycles(self.clk, 2)
+
+    async def _run(self) -> None:
+        port = _AES_KEY_PORT
+        bit = 1 << port
+        word = 0xFFFF_FFFF << (32 * port)
+        strb = _WORD_STRB << (4 * port)
+        rd = self.test.rd
+        while True:
+            await RisingEdge(self.clk)
+            await ReadOnly()
+            if not self._on:
+                return
+            try:
+                if rd(self.aw_valid, bit) & rd(self.aw_ready, bit):
+                    self.aw.append((rd(self.aw_addr, word) >> (32 * port)) % _BLOCK_SPAN)
+                if rd(self.w_valid, bit) & rd(self.w_ready, bit):
+                    self.w.append(
+                        (rd(self.w_data, word) >> (32 * port), rd(self.w_strb, strb) >> (4 * port))
+                    )
+            except AssertionError:
+                self.xz += 1
 
 
 class SepKmCommandSetCfg:
@@ -349,6 +509,9 @@ class sep_km_command_set_rand_test(sep_base_test):
         "CHK-VAULT-FILL",
         "CHK-VAULT-FULL",
         "CHK-OTP-CHG-DORMANT",
+        "CHK-SHRED-FILL",
+        "CHK-REVOKE-TWICE",
+        "CHK-VAULT-WARM-LOAD",
     )
 
     async def run_scenario(self) -> None:
@@ -582,12 +745,14 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self._check_alive("post-dest-refusal")
 
         # --- CHK-SHRED: destroy the engine's key, then re-key it --------------
-        rc, arg = await self.km.engine_shred(dest=KM_DEST_AES)
+        aes_writes = _AesKeyPortWrites(self)
+        rc, arg, shred_beats = await self._aes_shred(aes_writes)
         assert rc == KM_RC_SUCCESS, f"CHK-SHRED FAIL: CMD_ENGINE_SHRED rc={rc}"
         assert (arg & 0xFF) == KM_DEST_AES, (
             f"CHK-SHRED FAIL: RETURN_ARG echoed dest 0x{arg & 0xFF:02x}, requested "
             f"0x{KM_DEST_AES:02x}"
         )
+        shred1_data = self._check_shred_fill(1, aes_writes, shred_beats, KAT_KEY_A, None)
         handle_b = await self.km.key_load(key_words=list(KAT_KEY_B), dest=KM_DEST_AES)
         rc, _ = await self.km.key_transfer(handle=handle_b, dest=KM_DEST_AES)
         assert rc == KM_RC_SUCCESS, f"CHK-SHRED FAIL: post-shred CMD_KEY_TRANSFER rc={rc}"
@@ -649,6 +814,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             rc,
         )
         await self._check_alive("post-revoked-transfer")
+        await self._revoke_twice(gen_handle, "revoked", full_vault=False)
         await self._arg_edge(gen_handle)
 
         # --- CHK-NULL / CHK-NULL-ARG: the reserved handle is never a target ---
@@ -896,8 +1062,9 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"  ct     ={[hex(w) for w in ct_live]}\n"
             f"  golden ={[hex(w) for w in golden_b]}"
         )
-        rc, _ = await self.km.engine_shred(dest=KM_DEST_AES)
+        rc, _, shred_beats = await self._aes_shred(aes_writes)
         assert rc == KM_RC_SUCCESS, f"CHK-GONE FAIL: final CMD_ENGINE_SHRED rc={rc}"
+        self._check_shred_fill(2, aes_writes, shred_beats, KAT_KEY_B, shred1_data)
         # Same configure + PRNG reseed as the control block above, so the
         # shredded sideload key is the only difference from a start that runs.
         await self.aes.configure_ecb_enc_256(sideload=True)
@@ -929,9 +1096,14 @@ class sep_km_command_set_rand_test(sep_base_test):
             "test construction error: a live key spans more than one KPV slot"
         )
         await self._vault_fill(cfg, live, revoked=gen_handle)
+        await self._revoke_twice(gen_handle, "full-vault", full_vault=True)
 
-        # --- CHK-OTP-CHG-DORMANT: last, the OTP-change bit stays set -----------
+        # --- CHK-OTP-CHG-DORMANT: the OTP-change bit stays set -----------------
         await self._otp_change_dormant(otp_en_boot)
+
+        # --- CHK-VAULT-WARM-LOAD: a warm reset re-opens the full vault ---------
+        # handle_b was live and AES-permitted at the reset and is never revoked.
+        await self._vault_warm_load(stale=handle_b)
 
         # --- EOT --------------------------------------------------------------
         await self.km.check_outbound_empty("EOT")
@@ -1000,7 +1172,7 @@ class sep_km_command_set_rand_test(sep_base_test):
 
         full_req = cfg.fill_sizes[free]
         gen_rc, gen_arg = await self._resp_cmd(KM_CMD_KEY_GENERATE, [full_req, KM_DEST_AES])
-        load_rc, load_arg = await self._resp_cmd(KM_CMD_KEY_LOAD, [0, KM_DEST_AES, KAT_KEY_A[0]])
+        load_rc, load_arg = await self._resp_cmd(KM_CMD_KEY_LOAD, list(_ONE_SLOT_LOAD))
         full_ok = gen_rc == KM_RC_FAILURE and load_rc == KM_RC_FAILURE and load_arg is None
         assert full_ok, (
             f"CHK-VAULT-FULL FAIL: on the full vault CMD_KEY_GENERATE rc={gen_rc} "
@@ -1020,6 +1192,207 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.logger.info("OBS-VAULT-FULL-GEN-ARG LOG arg=%s", _arg_str(gen_arg))
         await self._check_alive("post-vault-full")
+
+    async def _aes_shred(self, cap: _AesKeyPortWrites) -> tuple[int, int, int]:
+        """CMD_ENGINE_SHRED of AES under the key-path capture.
+
+        Returns (return_code, return_arg, CHK5_km EDN->KM beats during the
+        command). The capture opens before the frame is sent and closes after
+        RESP_CMD, which the KM sends when the shred is complete.
+        """
+        beats0 = self.drbg_sb.results["CHK5_km"].dut_items
+        cap.start()
+        rc, arg = await self.km.engine_shred(dest=KM_DEST_AES)
+        beats = self.drbg_sb.results["CHK5_km"].dut_items - beats0
+        await cap.stop()
+        return rc, arg, beats
+
+    def _check_shred_fill(
+        self,
+        shred: int,
+        cap: _AesKeyPortWrites,
+        drbg_beats: int,
+        key: tuple[int, ...],
+        prev: tuple[int, ...] | None,
+    ) -> tuple[int, ...]:
+        """CHK-SHRED-FILL and INFO-SHRED-FILL of one AES shred.
+
+        Returns the ordered share data of the shred, which term (e) of the next
+        shred compares against.
+        """
+        pairs = list(zip(cap.aw, cap.w))
+        share = [(off, data, strb) for off, (data, strb) in pairs if off in _AES_SHARE_SET]
+        other = [(off, data, strb) for off, (data, strb) in pairs if off not in _AES_SHARE_SET]
+        strobes: dict[int, list[int]] = {off: [] for off in sorted(_AES_SHARE_SET)}
+        final = dict.fromkeys(strobes, 0)
+        lanes = dict.fromkeys(strobes, 0)
+        for off, data, strb in share:
+            mask = sum(0xFF << (8 * b) for b in range(4) if (strb >> b) & 1)
+            final[off] = (final[off] & ~mask) | (data & mask)
+            lanes[off] |= strb
+            strobes[off].append(strb)
+        s0 = tuple(final[off] for off in AES_SHARE_OFFSETS[0])
+        s1 = tuple(final[off] for off in AES_SHARE_OFFSETS[1])
+        xor = tuple(a ^ b for a, b in zip(s0, s1))
+        data = tuple(d for _, d, _ in share)
+        per_offset = " ".join(
+            f"0x{off:03x}:n={len(v)},strb={'/'.join(f'{x:x}' for x in sorted(set(v))) or '-'}"
+            for off, v in strobes.items()
+        )
+        self.logger.info(
+            "INFO-SHRED-FILL shred=%d aw=%d w=%d xz=%d share_beats=%d per_offset=%s other_beats=%s",
+            shred,
+            len(cap.aw),
+            len(cap.w),
+            cap.xz,
+            len(share),
+            per_offset,
+            [f"0x{off:03x}=0x{d:08x}/{st:x}" for off, d, st in other],
+        )
+        unwritten = [f"0x{off:03x}/{v:x}" for off, v in lanes.items() if v != _WORD_STRB]
+        terms = {
+            "capture": cap.xz == 0 and len(cap.aw) == len(cap.w),
+            "a": not unwritten,
+            "b": drbg_beats > 0,
+            "c": key not in (s0, s1, xor),
+            "d": len(set(data)) > 1,
+            "e": prev is None or data != prev,
+        }
+        failed = [t for t, ok in terms.items() if not ok]
+        assert not failed, (
+            f"CHK-SHRED-FILL FAIL: shred={shred} failed={failed} aw={len(cap.aw)} "
+            f"w={len(cap.w)} xz={cap.xz} unwritten={unwritten} drbg_beats={drbg_beats} "
+            f"distinct_share_values={len(set(data))} "
+            f"share0={[hex(v) for v in s0]} share1={[hex(v) for v in s1]} "
+            f"xor={[hex(v) for v in xor]} key={[hex(v) for v in key]} "
+            f"same_as_prev={prev is not None and data == prev}"
+        )
+        self.logger.info(
+            "CHK-SHRED-FILL PASS: contract=key_manager/doc/firmware.adoc:1803-1805"
+            "(Crypto_Engine_Drivers_Shred),:1447-1453(Firmware_PRNG),"
+            "architecture.adoc:292-294(Key_Delivery) shred=%d aw=%d w=%d xz=0 "
+            "share_offsets=%d all_lanes_written=1 drbg_beats=%d exp_drbg_beats>0 "
+            "share0!=key share1!=key xor!=key distinct_share_values=%d exp>1 "
+            "differs_from_prev=%s",
+            shred,
+            len(cap.aw),
+            len(cap.w),
+            len(lanes),
+            drbg_beats,
+            len(set(data)),
+            "n/a" if prev is None else "1",
+        )
+        return data
+
+    async def _revoke_twice(self, handle: int, site: str, *, full_vault: bool) -> None:
+        """CHK-REVOKE-TWICE: a revoke of a revoked handle is refused and frees nothing.
+
+        On the full vault the slot the revoked key held is in use again, so a
+        revoke that freed it would let the single-slot load that follows
+        succeed.
+        """
+        rc, arg = await self._resp_cmd(KM_CMD_KEY_REVOKE, [handle])
+        self.logger.info("OBS-REVOKE-TWICE LOG site=%s rc=%d", site, rc)
+        exp_arg = 0 if rc == KM_RC_INVALID_ARG else None
+        assert rc in (KM_RC_INVALID_ARG, KM_RC_FAILURE) and arg == exp_arg, (
+            f"CHK-REVOKE-TWICE FAIL [{site}]: CMD_KEY_REVOKE of revoked handle "
+            f"0x{handle:02x} returned rc={rc} RETURN_ARG={_arg_str(arg)}, expected "
+            f"rc={KM_RC_INVALID_ARG} (RC_INVALID_ARG) with RETURN_ARG 0x00000000 or "
+            f"rc={KM_RC_FAILURE} (RC_FAILURE) with none (firmware.adoc:433-439)"
+        )
+        cites = ":433-439(0x23_CMD_KEY_REVOKE_Response),:1909(Key_Registry_Destroy)"
+        slot = ""
+        if full_vault:
+            load_rc, load_arg = await self._resp_cmd(KM_CMD_KEY_LOAD, list(_ONE_SLOT_LOAD))
+            assert load_rc == KM_RC_FAILURE and load_arg is None, (
+                f"CHK-REVOKE-TWICE FAIL [{site}]: after the refused revoke the single-slot "
+                f"CMD_KEY_LOAD on the full vault returned rc={load_rc} "
+                f"RETURN_ARG={_arg_str(load_arg)}, expected rc={KM_RC_FAILURE} with none "
+                "(firmware.adoc:680-682) -- the refused revoke freed a slot"
+            )
+            cites += ",:680-682(0x26_CMD_KEY_LOAD)"
+            slot = (
+                f" load_rc={load_rc} load_arg={_arg_str(load_arg)} "
+                f"exp_load_rc={KM_RC_FAILURE} exp_load_arg=none"
+            )
+        self.logger.info(
+            "CHK-REVOKE-TWICE PASS: contract=key_manager/doc/firmware.adoc%s site=%s "
+            "handle=0x%02x rc=%d arg=%s exp_arg=%s%s",
+            cites,
+            site,
+            handle,
+            rc,
+            _arg_str(arg),
+            _arg_str(exp_arg),
+            slot,
+        )
+        await self._check_alive(f"post-revoke-twice-{site}")
+
+    async def _vault_warm_load(self, *, stale: int) -> None:
+        """CHK-VAULT-WARM-LOAD: after a KM warm reset the full vault takes a load
+        from handle 1, and a pre-reset handle is refused."""
+        km_bit = 1 << SW_RESET_N_BIT["km"]
+        await self.swrst.park("km")
+        parked = await self.swrst.read_back()
+        await self.swrst.release("km")
+        released = await self.swrst.read_back()
+        assert not parked & km_bit and released & km_bit, (
+            f"CHK-VAULT-WARM-LOAD FAIL: SW_RESET_N read back 0x{parked:08x} after the KM "
+            f"park and 0x{released:08x} after the release, expected the km bit "
+            f"(0x{km_bit:08x}) 0 and then 1"
+        )
+        self.km.reset_host_seq()
+        await self.km.wait_km_ready()
+
+        rc, arg = await self._resp_cmd(KM_CMD_KEY_LOAD, list(_ONE_SLOT_LOAD))
+        word = arg or 0
+        handle = word & 0xFF
+        size = (word >> 8) & 0x7F
+        dest = (word >> 16) & 0xFF
+        fields = (
+            f"sw_reset_n_parked=0x{parked:08x} sw_reset_n_released=0x{released:08x} "
+            f"km_ready=1 rc={rc} arg={_arg_str(arg)} handle=0x{handle:02x} "
+            f"exp_handle=0x{_FIRST_HANDLE:02x} size={size} exp_size={_ONE_SLOT_LOAD[0]} "
+            f"dest=0x{dest:02x} exp_dest=0x{KM_DEST_AES:02x}"
+        )
+        load_ok = (
+            rc == KM_RC_SUCCESS
+            and arg is not None
+            and handle == _FIRST_HANDLE
+            and size == _ONE_SLOT_LOAD[0]
+            and dest == KM_DEST_AES
+        )
+        assert load_ok, (
+            "CHK-VAULT-WARM-LOAD FAIL: after the warm reset the single-slot CMD_KEY_LOAD "
+            f"that the full vault refused did not succeed from a fresh registry: {fields}"
+        )
+        assert stale != handle, (
+            f"test construction error: pre-reset handle 0x{stale:02x} is the handle the "
+            "new registry issued"
+        )
+
+        rc, arg = await self._resp_cmd(KM_CMD_KEY_TRANSFER, [stale, KM_DEST_AES])
+        self.logger.info("OBS-WARM-STALE-HANDLE LOG handle=0x%02x rc=%d", stale, rc)
+        exp_arg = 0 if rc == KM_RC_INVALID_ARG else None
+        assert rc in (KM_RC_INVALID_ARG, KM_RC_FAILURE) and arg == exp_arg, (
+            f"CHK-VAULT-WARM-LOAD FAIL: CMD_KEY_TRANSFER of pre-reset handle 0x{stale:02x} "
+            f"to AES after the warm reset returned rc={rc} RETURN_ARG={_arg_str(arg)}, "
+            f"expected rc={KM_RC_INVALID_ARG} (RC_INVALID_ARG) with RETURN_ARG 0x00000000 "
+            f"or rc={KM_RC_FAILURE} (RC_FAILURE) with none (firmware.adoc:491-499)"
+        )
+        self.logger.info(
+            "CHK-VAULT-WARM-LOAD PASS: contract=key_manager/doc/firmware.adoc:1382"
+            "(Boot_Sequence),:1889-1895(Key_Registry),:690-691(0x26_CMD_KEY_LOAD),"
+            ":1763-1764(KPV_Driver),:491-499(0x24_CMD_KEY_TRANSFER_Response),"
+            "architecture.adoc:441(KPV) %s "
+            "stale_handle=0x%02x stale_rc=%d stale_arg=%s exp_stale_arg=%s",
+            fields,
+            stale,
+            rc,
+            _arg_str(arg),
+            _arg_str(exp_arg),
+        )
+        await self._check_alive("post-warm-stale-handle")
 
     async def _otp_change_dormant(self, en_boot: int) -> None:
         """CHK-OTP-CHG-DORMANT: one OTP_CHANGE pulse enters no KMCSR ISR."""
