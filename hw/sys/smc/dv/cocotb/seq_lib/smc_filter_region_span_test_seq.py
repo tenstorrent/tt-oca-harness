@@ -70,7 +70,7 @@ through the relocated window have to answer OKAY and agree with the SEP_IN
 local access, the address one half-granule past the window has to answer
 DECERR although the entry admits it, and with the entry's `read_allowed` and
 `write_allowed` clear the same register has to answer DECERR and keep its
-value. The read data of a DECERR is logged, not compared (SF-021). The entry
+value. The read data of a DECERR is logged, not compared. The entry
 and `GLOBAL_BASE` are written back to the words read before the leg.
 """
 
@@ -491,7 +491,7 @@ class smc_filter_region_span_test_seq(SmcCsrSeq):
         )
         hi = g + size + 0xFFF
         cocotb.log.info(
-            "inbound filter entries before the leg (SF-006, logged): %s",
+            "inbound filter entries before the leg (logged): %s",
             ", ".join(
                 f"{i}: cfg=0x{saved['FILTER_CONFIG'][i]:x} start=0x{saved['START_ADDR'][i]:x} "
                 f"end=0x{saved['END_ADDR'][i]:x}"
@@ -593,7 +593,7 @@ class smc_filter_region_span_test_seq(SmcCsrSeq):
         u = g + size + 0x800
         ur = await self._sys_in("UNMAPPED_RD", SmcSysAxiOp.READ, u, _DECERR)
         cocotb.log.info(
-            "CHK-INFILT-HIGH-UNMAPPED-RD: rd 0x%014x resp DECERR data=0x%x (logged, SF-021)",
+            "CHK-INFILT-HIGH-UNMAPPED-RD: rd 0x%014x resp DECERR data=0x%x (logged)",
             u,
             ur.rdata,
         )

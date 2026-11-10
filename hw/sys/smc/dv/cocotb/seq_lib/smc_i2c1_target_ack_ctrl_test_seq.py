@@ -10,7 +10,7 @@ CONTROLLER_EVENTS), hw/sys/smc/doc/periphs.adoc (target RX FIFO depth).
 `+smc_i2c_shared_bus` puts the three instances on one open-drain bus. I2C0 stays disabled;
 I2C1 is the target at 0x26 with I2C2 as the controller, then the roles swap. The bench wire
 monitor counts the data bytes the target acknowledges between ACK-control holds. The NBYTES
-read-backs between bytes and the 0x1FF leg's ACK count are logged and not compared (SF-005).
+read-backs between bytes and the 0x1FF leg's ACK count are logged and not compared.
 """
 
 from __future__ import annotations
@@ -438,7 +438,8 @@ class smc_i2c1_target_ack_ctrl_test_seq(SmcCsrSeq):
             self._chk(
                 "CHK-I2C1-ACKCTRL-DECREMENT",
                 f"{'; '.join(self.decrement_rows)} (compare held); nbytes_readbacks="
-                f"{'; '.join(self.nbytes_seq_rows)} (measured, not compared; LINKED-ISSUE SF-005)",
+                f"{'; '.join(self.nbytes_seq_rows)} (measured, not compared; LINKED-ISSUE: "
+                "the NBYTES readback and ACK count under ACK control)",
             )
             self._stamp("I2C_ACKCTRL_DECREMENT")
 
@@ -555,7 +556,8 @@ class smc_i2c1_target_ack_ctrl_test_seq(SmcCsrSeq):
                     f"N=0x{n:x}: readback=0x{r['readback']:x} (compare held); "
                     f"acked_before_next_hold={between} holds_at_acked={holds} "
                     f"acqfull_polls={r['acqfull_polls']} total_acked={total_acked} "
-                    f"acq_entries={r['acq_entries']} (measured, not compared; LINKED-ISSUE SF-005)"
+                    f"acq_entries={r['acq_entries']} (measured, not compared; LINKED-ISSUE: "
+                    "the NBYTES readback and ACK count under ACK control)"
                 )
             else:
                 assert between == n, (

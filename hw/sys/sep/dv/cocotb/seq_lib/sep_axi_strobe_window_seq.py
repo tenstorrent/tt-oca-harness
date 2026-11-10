@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Narrow-write byte masking and memory-window readback.
-
-Two contracts a register-only sweep cannot reach.
+"""Narrow-write byte masking, and logged OTBN memory-window readback.
 
 **Narrow writes.** A write whose ``AxSIZE`` is smaller than the bus beat
 asserts only some byte lanes. The addressed bytes must take the new value and
@@ -11,17 +9,14 @@ A shadow copy of the word is kept in Python and compared after each write, so
 a conversion stage that widens the strobe, drops it, or writes the whole beat
 fails here rather than looking like a normal write.
 
-**Memory windows.** A window behind ``tlul_adapter_sram`` uses the TileLink
-mask to select bytes on a READ, unlike a plain register behind
-``tlul_adapter_reg`` which ignores it. A bridge that drives the mask from the
-AXI write strobe therefore reads back all zeros from a window while every
-register in the same block behaves. That failure is silent -- correct
-response, wrong data -- so register reads do not cover it and the readback
-compare is the only thing that catches it.
+**Memory windows.** The OTBN DMEM and IMEM windows sit behind an SRAM-style
+adapter. In the no_cpu run OTBN stays in its post-reset internal wipe, where
+the OTBN register text states that a read returns 0 and a write is ignored.
+Each window write and readback is logged (``observe_window``), not graded,
+under the OTBN wipe-state memory access exception
+(docs/test_contracts/smoke_uvm.adoc).
 
-Targets are the scratch banks (safe to scribble, not restored) and the OTBN
-DMEM and IMEM windows. Windows are only exercised when the run can prove they
-read back what was written; see ``probe_window``.
+Narrow-write targets are the scratch banks (safe to scribble, not restored).
 """
 
 from __future__ import annotations
@@ -34,6 +29,11 @@ from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_otbn_mem_smoke_seq import (
+    OTBN_ADDR_STATUS,
+    OTBN_STATUS_BUSY_SEC_WIPE_INT,
+    OTBN_STATUS_MASK,
+)
 
 RESP_OKAY = RESP_CODE["OKAY"]
 
@@ -45,9 +45,8 @@ SIZE_BYTES = {0: 1, 1: 2, 2: 4}
 SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR")
 SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR")
 
-# Memory-mapped windows. These are the apertures that sit behind an SRAM-style
-# adapter rather than a register adapter, which is the class the read-mask
-# defect affects.
+# Memory-mapped windows: apertures behind an SRAM-style adapter rather than a
+# register adapter.
 # The KMAC STATE window is gated by the engine's own configuration and refuses
 # a bare CSR-path write, so a probe there tests KMAC bring-up rather than the
 # read mask; it is not a target here.
@@ -135,8 +134,7 @@ class SepAxiStrobeWindow:
     def __init__(self, test) -> None:
         self.test = test
         self.narrow_ok = 0
-        self.window_ok = 0
-        self.window_skipped: dict[str, str] = {}
+        self.otbn_status = 0
 
     # The readback masks to 32 bits, which is the whole of the addressed
     # register. No addressed register has a 4-byte-adjacent neighbour, so a
@@ -144,13 +142,14 @@ class SepAxiStrobeWindow:
     # a neighbour. A strobe widened past the addressed lanes has no second
     # register to corrupt, and the addressed-word compare below is the whole
     # contract.
-    async def _rd(self, addr: int, *, size: int = 2) -> tuple[int, int]:
+    async def _rd(self, addr: int, *, size: int = 2, ungraded: bool = False) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
             f"sw_rd_0x{addr:08x}",
             op=SepAxiOp.READ,
             addr=addr,
             length=SIZE_BYTES[size],
             size=size,
+            allow_ungraded_read_resp=ungraded,
         )
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF
@@ -220,37 +219,46 @@ class SepAxiStrobeWindow:
         self.narrow_ok += 1
         return None
 
-    async def probe_window(self, p: WindowProbe) -> str | None:
-        """None when the window read back exactly what was written.
+    async def check_otbn_busy(self) -> None:
+        """Require OTBN STATUS to read BUSY_SEC_WIPE_INT before the window probes.
 
-        A window that will not accept a write at all is recorded as skipped
-        with the response, not counted as a pass: the read-mask defect is only
-        observable on a window that stores.
-
-        The write uses allow_unverified_write_resp so a refusal is the
-        sequence's own result rather than a scoreboard failure. Whether a
-        window accepts a bare CSR-path write depends on the engine's state, and
-        that is a skip here, not a defect: the contract under test is the data
-        on a window that stores. A write that is accepted and a read that then
-        refuses is a failure: the window stored, so the readback must return.
+        CTRL-OTBN-MEM-PRECOND: any other status field logs CTRL-MISSING and
+        fails the leaf. The scoreboard grades the STATUS read response OKAY.
         """
-        resp = await self._wr(p.addr, p.value, tolerate=True)
-        if resp != RESP_OKAY:
-            self.window_skipped[p.name] = f"write resp={resp}"
-            return None
-        resp, got = await self._rd(p.addr)
-        if resp != RESP_OKAY:
-            return (
-                f"{p.name} window 0x{p.addr:08x}: write accepted, read "
-                f"resp={resp}; the read-mask contract needs a readable window"
-            )
-        if got != p.value:
-            extra = (
-                " -- all zeros, the signature of a read that masked every byte" if got == 0 else ""
-            )
-            return f"{p.name} window 0x{p.addr:08x}: wrote 0x{p.value:08x}, read 0x{got:08x}{extra}"
-        self.window_ok += 1
-        return None
+        _, raw = await self._rd(OTBN_ADDR_STATUS)
+        self.otbn_status = raw
+        st = raw & OTBN_STATUS_MASK
+        fields = (
+            f"status=0x{raw:08x} status_code=0x{st:02x} "
+            f"expect=0x{OTBN_STATUS_BUSY_SEC_WIPE_INT:02x}"
+        )
+        if st != OTBN_STATUS_BUSY_SEC_WIPE_INT:
+            self.test.logger.error("CTRL-MISSING OTBN-MEM-PRECOND: %s", fields)
+            raise AssertionError(f"CTRL-MISSING OTBN-MEM-PRECOND: {fields}")
+        self.test.logger.info("CTRL-OTBN-MEM-PRECOND seen: %s", fields)
+
+    async def observe_window(self, p: WindowProbe) -> None:
+        """Write and read back a window and log the result without grading it.
+
+        Runs after ``check_otbn_busy``. While OTBN is busy, the OTBN register
+        text states that a memory read returns 0 and a write is ignored; during
+        the post-reset internal wipe the result is accepted as logged only (OTBN
+        wipe-state memory access exception, docs/test_contracts/smoke_uvm.adoc).
+        The responses and the readback are logged on OBS-OTBN-MEM-BUSY-ACCESS.
+        """
+        wr_resp = await self._wr(p.addr, p.value, tolerate=True)
+        rd_resp, got = await self._rd(p.addr, ungraded=True)
+        self.test.logger.info(
+            "OBS-OTBN-MEM-BUSY-ACCESS status=0x%08x window=%s addr=0x%08x wr_resp=%d "
+            "rd_resp=%d written=0x%08x readback=0x%08x",
+            self.otbn_status,
+            p.name,
+            p.addr,
+            wr_resp,
+            rd_resp,
+            p.value,
+            got,
+        )
 
 
 def _selftest() -> None:

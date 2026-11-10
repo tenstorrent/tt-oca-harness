@@ -200,12 +200,6 @@ from seq_lib.sep_km_mailbox_seq import (
     SepKmMailbox,
 )
 
-# Identity lock bit 8 (SsI) and reserved bit 9: firmware.adoc, "0x28 -
-# CMD_OTP_READ_LOCK_COLD", OTP cold-read-lock bit encoding (bits [8:0], [31:9]
-# reserved).
-_OTP_LOCK_IDENTITY = 1 << 8
-_OTP_LOCK_RESERVED = 1 << 9
-
 # Lowest reserved bit of the KEY_HANDLE and DEST_VALID / DEST_ENGINE payload
 # words (bits [7:0] carry the field), and the first REQ_SIZE above the 7-bit
 # field: firmware.adoc, "0x22 - CMD_KEY_GENERATE" to "0x25 - CMD_ENGINE_SHRED".
@@ -272,11 +266,15 @@ DEST_NAME = {
 _KM_CSR = CHeaderRegBlock("KM_CSR", ip_c_header("key_manager").with_name("km_csr.h"))
 OTP_CHANGE = int(_KM_CSR.fields("IRQ_STATUS_REG")["OTP_CHANGE"]["bm"])
 OTP_CHANGE_EN = int(_KM_CSR.fields("IRQ_ENABLE_REG")["OTP_CHANGE_EN"]["bm"])
+# CMD_OTP_READ_LOCK_COLD masks of the identity lock (SEP_SYS_ID) and of the
+# lowest reserved bit: firmware.adoc, "0x28 - CMD_OTP_READ_LOCK_COLD", OTP
+# cold-read-lock bit encoding.
+_OTP_LOCK_COLD = _KM_CSR.fields("OTP_READ_LOCK_COLD_REG")
+_OTP_LOCK_IDENTITY = int(_OTP_LOCK_COLD["SEP_SYS_ID"]["bm"])
+_OTP_LOCK_RESERVED = 1 << _OTP_LOCK_COLD["RSVD"]["bp"]
 # OTP_READ_LOCK_COLD after the first identity lock: its cold-reset value with the
 # SEP_SYS_ID read-lock bit set.
-_OTP_LOCK_COLD_AFTER_ID = _KM_CSR.reset("OTP_READ_LOCK_COLD_REG") | int(
-    _KM_CSR.fields("OTP_READ_LOCK_COLD_REG")["SEP_SYS_ID"]["bm"]
-)
+_OTP_LOCK_COLD_AFTER_ID = _KM_CSR.reset("OTP_READ_LOCK_COLD_REG") | _OTP_LOCK_IDENTITY
 
 # Quiet window of CHK-OTP-CHG-DORMANT, in clocks. An enabled handler enters
 # and clears the bit within this many clocks (sep_km_otp_change_irq_test

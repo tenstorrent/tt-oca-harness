@@ -317,6 +317,14 @@ class ComparisonIdentity(unittest.TestCase):
     def test_the_key_ignores_the_hit_counts(self):
         self.assertEqual(self.key(), self.key(observations=points("l", "line", 50, 50)))
 
+    def test_without_a_policy_the_build_still_changes_the_key(self):
+        def key(fingerprint):
+            result = apply_coverage_policy(details(line_points(), "t1", fingerprint), None)
+            return result.comparison_key
+
+        self.assertEqual(key("fp1"), key("fp1"))
+        self.assertNotEqual(key("fp1"), key("fp2"))
+
 
 class PolicyFile(unittest.TestCase):
     def setUp(self):

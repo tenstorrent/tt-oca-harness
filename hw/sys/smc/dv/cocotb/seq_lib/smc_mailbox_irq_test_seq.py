@@ -250,7 +250,7 @@ class smc_mailbox_ext_irq_seq(smc_base_test_seq):
     The outbound port of mailbox m is at `0xC001_8000 + m * 0x1000`, its inbound partner
     `0x800` above it, and the 32 outbound-port interrupts leave the SMC on
     `smc_ext_mailbox_interrupts_o` (`axi_lite_mailbox_unit/doc/index.adoc`). Which bit each
-    pair drives is not specified (SF-032), so the pair-to-bit map is measured and logged and
+    pair drives is not specified, so the pair-to-bit map is measured and logged and
     only its one-hot shape and distinctness are compared.
     """
 
@@ -513,7 +513,8 @@ class smc_mailbox_ext_irq_seq(smc_base_test_seq):
         wmap = self._check_map("W", self.wirq_map)
         cocotb.log.info(
             "CHK-MAILBOX-EXT-WIRQ: %d/%d pairs raise one distinct bit and clear it; "
-            "map=<%s> (bit assignment SF-032, logged)",
+            "map=<%s> (bit assignment open: which external interrupt bit each mailbox pair "
+            "drives, logged)",
             len(self.wirq_map),
             NUM_MAILBOX_PAIRS,
             wmap,
@@ -522,7 +523,8 @@ class smc_mailbox_ext_irq_seq(smc_base_test_seq):
         differ = [k for k in self.rirq_map if self.rirq_map[k] != self.wirq_map[k]]
         cocotb.log.info(
             "CHK-MAILBOX-EXT-RIRQ: %d/%d pairs raise one distinct bit and clear it; "
-            "map=<%s>; pairs whose read bit differs from the write bit: %s (SF-032, logged)",
+            "map=<%s>; pairs whose read bit differs from the write bit: %s (open: which "
+            "external interrupt bit each mailbox pair drives, logged)",
             len(self.rirq_map),
             NUM_MAILBOX_PAIRS,
             rmap,

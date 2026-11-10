@@ -26,7 +26,8 @@ written and read back over SEP_IN before ``tb_core2pad_en_o``,
 ``tb_pad2core_en_o`` and ``tb_core2pad_o`` are sampled. Each interface's pad
 p_w is the one ``core2pad_en_o`` bit that differs between its TX and 00
 samples. The absolute enable levels and DATA_CTRL.pad2core are logged, not
-compared (SF-013). The AVS controller drives the data bits of pads 49 and 50
+compared; the pad enable polarity and pad2core under enable 11 are open. The
+AVS controller drives the data bits of pads 49 and 50
 (AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE resets to 0, so the AVS clock runs while the
 bus is idle); every other-pads compare logs those two data bits instead of
 comparing them and keeps their enables.
@@ -506,7 +507,8 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
             "CHK-GPIO-PAD-TX-ENABLE: %d interfaces, %d distinct pads, en(TX)!=en(00) on p_w "
             "only, core2pad_o[p_w]=1 on all %d; no other pad's enable bit and no other "
             "pad's data bit outside 49/50 changed; measured core2pad_en_o[p_w] level under "
-            "TX: %d read 1, %d read 0 (SF-013); core2pad_o[49]/[50] logged, not compared: "
+            "TX: %d read 1, %d read 0 (open: the pad enable polarity and pad2core under enable "
+            "11); core2pad_o[49]/[50] logged, not compared: "
             "%s; w->p_w %s",
             n_walked,
             n_distinct,
@@ -528,7 +530,8 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-GPIO-PAD-RESTORE: %d/%d tx-en back to TX level, rx-en toggled, baseline after "
-            "reset word; pad2core logged (LINKED-ISSUE SF-013): %d read 1, %d read 0; "
+            "reset word; pad2core logged (LINKED-ISSUE: the pad enable polarity and pad2core "
+            "under enable 11): %d read 1, %d read 0; "
             "core2pad_o[49]/[50] logged, not compared: %s; pad2core per w %s",
             n_walked,
             n_walked,

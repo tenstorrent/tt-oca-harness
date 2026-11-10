@@ -52,19 +52,19 @@ taken from the IP documents (`architecture.adoc`, `interface.adoc`,
 * **Push against pop.** With the queue full, `BUFFER_POP` is written at each
   offset from -4 to +4 `clk_periph_i` cycles around the last beat of one more
   message. The drain is either every message after the oldest, or one fewer;
-  both are consistent with the documents (SF-027), and which one each offset
+  both are consistent with the documents, and which one each offset
   produced is logged.
 * **Transmitter flush.** The bench holds `afready_i` of receivers 1 and 2 high
   and does not publish their `afvalid_o`, so the flush runs at that level: the
   request self-clears and the three queued messages drain in order. The
-  handshake with `afready_i` low is not reachable on this bench (SF-044).
+  handshake with `afready_i` low is not reachable on this bench.
 * **MISSING_LAST.** Beats without the last-packet marker are sent one at a
   time until `INTR_STATUS.MISSING_LAST` sets, with `INTR_ENABLE` off and then
   on; `peripheral_interrupts_o[8+r]` must follow the enable, and a written one
-  clears the status and the line. The beat count is logged only (SF-024).
+  clears the status and the line. The beat count is logged only.
 * **INTR_TEST.** `INTR_TEST.MISSING_LAST` raises the line with the enable on
   and leaves it low with the enable off; `INTR_STATUS` after the test write is
-  logged only (SF-025).
+  logged only.
 """
 
 from __future__ import annotations
@@ -140,7 +140,7 @@ NINTH_ID = 0x19
 WINDOW_FILL_IDS = tuple(range(0x01, 0x01 + QUEUE_DEPTH))
 WINDOW_ID = 0x09
 WINDOW_OFFSETS = tuple(range(-4, 5))
-#: The two drains the documents allow for a push meeting a pop (SF-027).
+#: The two drains the documents allow for a push meeting a pop.
 WINDOW_NO_DROP = [*WINDOW_FILL_IDS[1:], WINDOW_ID]
 WINDOW_ONE_DROP = [*WINDOW_FILL_IDS[2:], WINDOW_ID]
 TX_FLUSH_IDS = (0x1A, 0x1B, 0x1C)
@@ -753,7 +753,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             outcomes[rx] = [await self._ext_window_trial(rx, d) for d in WINDOW_OFFSETS]
         for rx in EXT_RECEIVERS:
             cocotb.log.info(
-                "TELEM12 push/pop window receiver %d (SF-027): %s",
+                "TELEM12 push/pop window receiver %d (drain unstated when a push meets a pop): %s",
                 rx,
                 " ".join(f"d={d:+d}:{o}" for d, o in zip(WINDOW_OFFSETS, outcomes[rx])),
             )
@@ -762,7 +762,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             f"for every offset d in {WINDOW_OFFSETS[0]}..{WINDOW_OFFSETS[-1]} clk_periph_i "
             f"cycles on receivers {list(EXT_RECEIVERS)}, the drain was exactly "
             f"{[hex(i) for i in WINDOW_NO_DROP]} (no-drop) or "
-            f"{[hex(i) for i in WINDOW_ONE_DROP]} (one-drop), in order; per offset (SF-027): "
+            f"{[hex(i) for i in WINDOW_ONE_DROP]} (one-drop), in order; per offset: "
             + "; ".join(
                 f"r{rx} " + ",".join(f"{d:+d}={o}" for d, o in zip(WINDOW_OFFSETS, outcomes[rx]))
                 for rx in EXT_RECEIVERS
@@ -831,7 +831,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             f"written CTRL.TELEMETRY_TX_FLUSH self-cleared within {POLL_BOUND} polls, STATUS read "
             f"0x00 with PROBE_ID=0x{TX_FLUSH_IDS[0]:02x}, and the queued messages drained in "
             f"order {[hex(i) for i in TX_FLUSH_IDS]}; the afready_i-low handshake is "
-            f"NOT-REACHABLE-AT-THIS-LEVEL on this bench (SF-044)",
+            f"NOT-REACHABLE-AT-THIS-LEVEL on this bench",
         )
         await ClockCycles(cocotb.top.clk_smc_i, 1)
         self._stamp("TELEM12_TX_FLUSH")
@@ -905,7 +905,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
                 f"beats_to_missing_last_r{rx}={counts[rx][0]},{counts[rx][1]}"
                 for rx in EXT_RECEIVERS
             )
-            + " (measured, LINKED-ISSUE SF-024)",
+            + " (measured, LINKED-ISSUE: the beat count that sets MISSING_LAST)",
         )
         await ClockCycles(cocotb.top.clk_smc_i, 1)
         self._stamp("TELEM12_MISSING_LAST")
@@ -957,7 +957,7 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             f"raised the line ("
             + ", ".join(f"r{rx} {rise[rx]} cycles" for rx in EXT_RECEIVERS)
             + ") and with INTR_ENABLE=0x00 left it 0; INTR_STATUS after the test write "
-            "(logged, SF-025): "
+            "(logged): "
             + " ".join(
                 f"r{rx}_enabled=0x{logged[rx][0]:02x} r{rx}_disabled=0x{logged[rx][1]:02x}"
                 for rx in EXT_RECEIVERS

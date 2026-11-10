@@ -439,7 +439,7 @@ class SmcAxiMonitor(uvm_component):
 
     def check_phase(self) -> None:
         self.logger.info(
-            "OBS-AXI-MON-BUDGET: port=%s aw=%d w=%d ar=%d budget=%d sf=SF-016",
+            "OBS-AXI-MON-BUDGET: port=%s aw=%d w=%d ar=%d budget=%d",
             self.port_name,
             self.max_ready_wait["aw"],
             self.max_ready_wait["w"],

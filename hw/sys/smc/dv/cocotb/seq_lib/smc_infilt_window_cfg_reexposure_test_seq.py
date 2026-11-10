@@ -14,7 +14,7 @@ W, R and B handshakes. Where an access through a reprogrammed entry is graded, t
 answer comes from a lowest-hit decode of the sixteen inbound entries read back from SEP_IN.
 Values the contract leaves open (landing of unlocked writes through the window, reconfiguration
 timing, mixed bursts, the global-base switch point, burst beat codes and the REGION_SIZE
-recovery path) are OBS lines naming their finding and are never compared.
+recovery path) are OBS lines and are never compared.
 """
 
 from __future__ import annotations
@@ -852,7 +852,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             e_end=_hx(E_END),
             issued=_hx(LOCAL_BASE_REG),
             admit=_rname(r[0].resp),
-            sf="SF-012",
         )
         self._mark("ADMIT", s)
 
@@ -901,7 +900,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
                 wrote=_hx(value),
                 bresp=_rname(bresp),
                 readback=_hx(back),
-                ruling="SF-021",
             )
         self._cell("AXIFAB-FWIN-WRUNLOCKED.S1", "SYS_IN/entry-j")
         before = await self._rd("SETUP", "SEP_IN", "S3_J_FC_PRE_RO", FC(J_IDX))
@@ -920,7 +918,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             wrote=_hx(J_RO_WORD),
             before=_hx(before),
             readback=_hx(after),
-            ruling="SF-021",
         )
         self._cell("AXIFAB-FWIN-WRUNLOCKED.S2", "SYS_IN/ro-and-reserved")
         self._mark("UNLOCKED", s)
@@ -970,7 +967,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
                 wrote=_hx(word),
                 bresp=_rname(bresp),
                 readback=",".join(backs),
-                ruling="SF-021",
             )
         entries = await self._snapshot(f"S4_E{idx}")
         self._landed(fam, f"S4 deny entry {idx}", entries, idx, (fc_now, sa_now, ea_now))
@@ -1112,7 +1108,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             entry9=self.notes["entry9"],
             prelock_sys_bresp=self.notes["prelock_sys_bresp"],
             prelock_landed=self.notes["prelock_landed"],
-            sf="SF-015,SF-021",
         )
         self._mark("LOCKED", s)
 
@@ -1144,7 +1139,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             field="write_allowed",
             bresp=_rname(bresp),
             readback=_hx(e_fc),
-            sf="SF-014",
         )
         self._cell("AXIFAB-FWIN-SELFDENY.S1", "SYS_IN/clear-write")
         t_ref = await self._rd("SETUP", "SEP_IN", "S7_T_REF", T_REG)
@@ -1178,7 +1172,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             field="entry_enabled",
             bresp=_rname(bresp),
             readback=_hx(e_fc),
-            sf="SF-014",
         )
         want_rd = self._model(fam, "S7 E disabled T read", entries, T_REG, False, by=None)
         want_wr = self._model(fam, "S7 E disabled T write", entries, T_REG, True, by=None)
@@ -1204,7 +1197,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             field="entry_enabled_handover",
             bresp=_rname(bresp),
             readback=_hx(e_fc),
-            sf="SF-014",
         )
         want_rd = self._model(fam, "S7 handover read", entries, LOCAL_BASE_REG, False, by=F_IDX)
         r = await self._read(fam, "SYS_IN", "S7_HANDOVER_RD", LOCAL_BASE_REG, code=want_rd)
@@ -1365,7 +1357,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
                 rdata=",".join(_hx(b.data) for b in r) or "none",
                 bresp=_rname(bresp),
                 landing=",".join(_hx(v) for v in after[:4]),
-                sf="SF-005" if not ab else "SF-007",
             )
 
         for ab, cfg_word in ((0, B_CFG0), (1, B_CFG1)):
@@ -1445,7 +1436,6 @@ class smc_infilt_window_cfg_reexposure_test_seq(SmcCsrSeq):
             first_new_window_txn=self.notes["first_new_window_txn"],
             shrink_bresp=_rname(shrink_bresp),
             restore_bresp=_rname(restore),
-            sf="SF-023,SF-025",
         )
         for port in PORTS:
             assert not self.sampler.pending(port), f"{port} has a transaction outstanding"

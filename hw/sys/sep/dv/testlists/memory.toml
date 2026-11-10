@@ -157,6 +157,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom.parhex"]
 
 [[tests]]
+# The same legs with the POKE Key Manager image, plus a key-share burst on each
+# destination key path that the destination's SW_RESET_N field resets mid-burst:
+# the accepted key beat completes before the destination reset asserts.
+name = "sep_sw_reset_isolation_matrix_test_km_poke"
+module = "system.sep_sw_reset_isolation_matrix_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 4
+timeout_sec = 900
+tags = ["reset", "crypto", "isolation", "km", "memory", "subsystem", "grades_spec_rst_timer", "poke"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+sep_swiso_km_key_beat"]
+
+[[tests]]
 # The per-IP JTAG override pair forces each domain reset or release whatever SW_RESET_N
 # holds, without isolation. The sep_reset_n override leaves the rst_ni-domain blocks
 # intact.
@@ -181,7 +196,8 @@ args = ["+sep_edn_jtag_reset_waive", "+sep_efuse_preload"]
 name = "sep_debug_master_target_matrix_test_sba"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
-# No reseed: every run walks all targets and sizes; the seed selects only order, data and the alias base.
+# No reseed: every run walks all targets and sizes; the seed selects only order, data, the alias
+# base and the TCK period and phase, which change TAP timing only and no check grades.
 timeout_sec = 2100
 tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]
@@ -197,7 +213,8 @@ args = ["+skip_fuse_sense", "+sep_ext_port_responder"]
 name = "sep_debug_master_target_matrix_test_sba_sepdbg_open"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
-# No reseed: one write and one read of one target; the seed selects only the data.
+# No reseed: one write and one read of one target; the seed selects only the data and the TCK
+# period and phase, which change TAP timing only and no check grades.
 timeout_sec = 3600
 tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]
@@ -217,7 +234,8 @@ args = [
 name = "sep_debug_master_target_matrix_test_sba_sepdbg_closed"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
-# No reseed: one write and one read of one target; the seed selects only the data.
+# No reseed: one write and one read of one target; the seed selects only the data and the TCK
+# period and phase, which change TAP timing only and no check grades.
 timeout_sec = 3600
 tags = ["debug", "jtag", "dmi", "sba", "memory", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]
@@ -260,8 +278,10 @@ args = ["+skip_fuse_sense", "+sep_require_full_cpu"]
 
 [[tests]]
 # Every boot ROM word reads the loaded image for 1, 2 and 4-byte reads, a store does not
-# reach the macro, a stored-bit flip returns the stored data, and a cold reset during an access
-# leaves the interface usable. A wdt_rst_ni reset during an access is logged only.
+# reach the macro, a load and a store at one word back to back in either order make one macro
+# read, a load above the aperture does not reach the ROM port, a stored-bit flip returns the
+# stored data, and a cold reset during an access leaves the interface usable. A wdt_rst_ni
+# reset during an access and the response to a load above the aperture are logged only.
 # Real fuse sense of a PROD image whose ROM_CTL is 0.
 name = "sep_boot_rom_aperture_sweep_test"
 module = "cpu.sep_boot_rom_aperture_sweep_test"

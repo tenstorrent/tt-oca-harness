@@ -101,17 +101,20 @@ also a reserved value), the ``RESEED_INTERVAL`` value K (3 or 4) and the
 ``SW_APP_ENABLE`` value that is not True for the ``GENBITS`` read, the 384-bit
 seed of the known-answer Generate, then the reseed count N of the second auto
 sequence trial (2 to 4) and the hold H of the instantiate-seed leg (256 to 2048
-clocks). The reserved
+clocks); last, the reseed count N of the large-N auto sequence trial (64 to 128)
+and, per ``CTRL`` field, six more invalid values distinct from the first (seven of
+the fourteen invalid MuBi4 values per field per seed), then the 384-bit
+additional data of the known-answer Update. The reserved
 values 0x9 to 0xd carry a defined command code in bits [2:0]; the leaf sends 0x9 on
 every seed in its last leg (no draw) and logs the result only. The checked values do
-not depend on the seed; the known-answer control compares with the golden of the
-drawn seed.
+not depend on the seed; the known-answer checks compare with the golden of the
+drawn seed and the drawn Update data.
 
 The three groups run in the drawn order. Then the leaf runs, in this order, the
 ``CTRL`` alert leg (a TRNG reset, no bring-up), the command header leg, the
 reseed leg, the auto leg (the first-command trial, the auto sequence trial with
-N = 1 on every seed, the auto sequence trial with the drawn N, the N = 0
-trial), the instantiate-seed leg (a TRNG reset, ESRC configured with its
+N = 1 on every seed, the auto sequence trial with the drawn N, the large-N auto
+sequence trial, the N = 0 trial), the instantiate-seed leg (a TRNG reset, ESRC configured with its
 generators off) and, last, the reserved acmd 0x9 leg (each from a clean start).
 The 0x9 leg runs after every other check, so its result does not change the
 stimulus of another check. After it come the enable-order leg, then, from one
@@ -181,10 +184,12 @@ Checkers:
                  Control: before the command, bit 13 reads 0 after a write of 0,
                  and ``edn_cmd_req_done`` and vector bit 27 read 0 after a write
                  of 1.
-  CHK-CSRNG-CTRL-MUBI, CHK-EDN-CTRL-MUBI  per ``CTRL`` field, a write of a value
-                 other than 6 or 9 sets the field alert bit; after the legal
-                 value is back, a write of 0 clears it. Control: the bit reads 0
-                 with the legal value, before the write.
+  CHK-CSRNG-CTRL-MUBI, CHK-EDN-CTRL-MUBI  per ``CTRL`` field and per drawn
+                 invalid value (seven distinct values per field), a write of a
+                 value other than 6 or 9 sets the field alert bit; after the
+                 legal value is back, a write of 0 clears it. Each value is one
+                 trial with its own check and coverage release. Control: the bit
+                 reads 0 with the legal value, before the write.
   CHK-CSRNG-ACMD-INV  a drawn reserved acmd sets bit 13 and acks with ``CMD_STS``
                  = 1; a write of 0 clears bit 13. Control: bit 13 reads 0 after an
                  instantiate.
@@ -264,11 +269,20 @@ Checkers:
                  programmers_guide.md:37-114), golden ``env/sep_ctr_drbg_golden.py``,
                  and the Generate acks with ``CMD_STS`` = 0.
   CHK-EDN-AUTO-SEQ  with ``AUTO_REQ_MODE`` true and
-                 ``MAX_NUM_REQS_BETWEEN_RESEEDS`` = N (N = 1, then the drawn N),
-                 the command headers on the EDN to CSRNG port after the
-                 instantiate are exactly N generates, one reseed and a generate
-                 (edn.adoc:107, :258-262). Control (``CTRL-EDN-AUTO-TAP``): the
-                 first command on the port is the software instantiate.
+                 ``MAX_NUM_REQS_BETWEEN_RESEEDS`` = N (N = 1, the drawn N of 2 to
+                 4, then the drawn N of 64 to 128), the command headers on the EDN
+                 to CSRNG port after the instantiate are exactly N generates, one
+                 reseed and a generate (edn.adoc:107, :258-262). Control
+                 (``CTRL-EDN-AUTO-TAP``): the first command on the port is the
+                 software instantiate. The large-N trial pops the entropy pool
+                 while it runs (STATUS, then as many pops as the level shows; never
+                 a pop at level 0, ``hw/sys/sep/doc/entropy_pool.adoc``:31-32), so
+                 EDN does not stall on full endpoint FIFOs. Control
+                 (``CTRL-EDN-AUTO-INTERVAL``): before that trial CSRNG
+                 ``RESEED_INTERVAL`` reads N or more; N "must be chosen smaller than
+                 or equal to the value configured in the ``RESEED_INTERVAL``
+                 register of CSRNG" (``vendor/lowRISC/opentitan/upstream/hw/ip/edn/
+                 data/edn.hjson``:486), and the trial starts from a TRNG reset.
   CHK-EDN-INST-SEED  ESRC generators off, CSRNG on, EDN on with
                  ``AUTO_REQ_MODE`` true; an instantiate to ``SW_CMD_REQ`` reaches
                  the EDN to CSRNG port, then for the drawn hold H no seed
@@ -307,6 +321,88 @@ Checkers:
                  after a command write in the software legs stays logged
                  (``OBS-CSRNG-ACK0``, ``OBS-EDN-ACK0``): ``CMD_ACK`` is 0 before
                  those writes and no text states the acknowledge latency.
+  CHK-DRBG-FIPS-PROV  the FIPS/CC flag of the words follows flag0 of the
+                 instance that made them. flag0 True "will render the instance
+                 non-FIPS compliant until it is re-instantiated"
+                 (theory_of_operation.md:217), ``GENBITS_FIPS`` "is set when
+                 genbits are FIPS/CC compliant" (csrng.hjson:459), and the SEP
+                 seed adapter attaches the provisional flag 1, forwarded to each
+                 endpoint (``hw/sys/sep/doc/trng.adoc``:138-141). Graded legs:
+                 ``GENBITS_FIPS`` at the first ``GENBITS_VLD`` read with
+                 ``GENBITS_VLD`` = 1 reads 1 after a flag0-False software
+                 instantiate (a Generate in the CSRNG software leg; the first
+                 Generate of the reseed leg) and 0 after each flag0-True
+                 known-answer instantiate (reseed leg, bus compare leg);
+                 ``pool_edn_fips_o`` reads 0 on every pool handshake
+                 (``pool_edn_req_o`` and ``pool_edn_ack_o``) from the EDN enable
+                 of the reference boot (``BOOT_INS_CMD`` 0x601, flag0 True) to the
+                 first one, and 1 on every pool handshake of the large-N auto
+                 trial (EDN instance from the 0x901 instantiate). Each pool leg
+                 needs one handshake or more. Control (``CTRL-DRBG-FIPS-PROV``):
+                 before each leg ``FIPS_FORCE`` reads its reset value and
+                 ``CTRL.FIPS_FORCE_ENABLE`` reads False, so no force applies
+                 (csrng.hjson ``FIPS_FORCE``: the force needs
+                 ``CTRL.FIPS_FORCE_ENABLE`` True).
+  CHK-CSRNG-UPDATE  in the reseed leg, after Generate K + 1 was refused and bit
+                 15 cleared: an Update (acmd 0x4, clen 1, flag0 False, one data
+                 word) acknowledges with ``CMD_STS`` = 0, ``GENBITS_VLD`` reads 0
+                 after it, and the next Generate acknowledges with ``CMD_STS`` = 4
+                 and bit 15 at 1; a write of 0 then clears bit 15. The Update
+                 "does the same function as the Reseed command, except that: ...
+                 only the additional data provided will be used ... the Update
+                 command does not reset the reseed counter"
+                 (theory_of_operation.md:255-263), so the counter stays at K or
+                 more. Control (``CTRL-CSRNG-UPDATE``): Generate K + 1 was
+                 refused, and ``GENBITS`` was read until ``GENBITS_VLD`` read 0
+                 before the Update. Leg ``known_answer``, after the reseed-leg
+                 window closed: an Instantiate with flag0 True and clen 12 of the
+                 known-answer seed, an Update with clen 12 of the drawn 384-bit
+                 additional data, and one Generate (glen 1). All three acknowledge
+                 with ``CMD_STS`` = 0, and the four ``GENBITS`` words equal the
+                 first block of the SP 800-90A CTR_DRBG golden after the update
+                 function on that data (theory_of_operation.md:255-263,
+                 programmers_guide.md:37-61, hw/ip/drbg/doc/architecture.adoc:14).
+                 Control (``CTRL-CSRNG-UPDATE``, leg ``known_answer``): that golden
+                 block differs from the golden block without the Update, and
+                 ``GENBITS_VLD`` reads 0 before the Instantiate.
+  CHK-CSRNG-UNINST-REFUSE  a Generate (glen 1) to a software instance that is
+                 not instantiated acknowledges with ``CMD_STS`` = 3
+                 (INVALID_CMD_SEQ: "a command other than Instantiate was issued
+                 without sending an Instantiate command first", csrng.hjson
+                 :427-433), sets bit 14 ("any command other than instantiate is
+                 sent for a state that wasn't instantiated yet. The invalid command
+                 is ignored", csrng.hjson:670-675), returns no ``GENBITS`` word
+                 before the acknowledge, leaves ``GENBITS_VLD`` at 0, and a write
+                 of 0 clears bit 14. Two legs of the reseed leg: before
+                 its first Instantiate, and after the known-answer Generate and an
+                 Uninstantiate (the Uninstantiate "Resets an instance", its status
+                 bit cleared, theory_of_operation.md:269-272). Bit 15 is logged.
+                 Control (``CTRL-CSRNG-UNINST-REFUSE``): bit 14 and
+                 ``GENBITS_VLD`` read 0 before each refused Generate.
+  CHK-CSRNG-ENTROPY-REQ  in the CSRNG software leg, with EDN not enabled since
+                 the clean start, ``INTR_STATE.cs_entropy_req`` reads 1 after the
+                 acknowledge of the flag0-False instantiate: it asserts "whenever
+                 the instance requests entropy from ENTROPY_SRC" in non-deterministic
+                 mode (programmers_guide.md:19; theory_of_operation.md:423).
+                 Control (``CTRL-CSRNG-ENTROPY-REQ``): the bit reads 0 after a write
+                 of 1 before that instantiate, and in the reseed leg it reads 0
+                 after a write of 1 and the flag0-True known-answer instantiate,
+                 which uses "Only provided additional data" as seed
+                 (theory_of_operation.md:227).
+  OBS-CSRNG-UNINST-STATE  with ``CTRL.READ_INT_STATE`` True, the 14
+                 ``INT_STATE_VAL`` words of each ``INT_STATE_NUM`` index, before
+                 and after the Uninstantiate of the second refusal leg, as a
+                 non-zero flag and a digest. The Uninstantiate zeroes the instance
+                 values (theory_of_operation.md:270), but the read also needs the
+                 OTP read gate (csrng.hjson:560-563), whose SEP value and the
+                 software instance index are not stated, so a 0 read does not show
+                 the zeroing.
+  OBS-EDN-ENDPOINT  per EDN mode, the endpoint pushes on
+                 ``drbg_adapter_push_o`` (count per endpoint, the order of the
+                 first sixteen): boot, from the EDN enable of the reference boot to
+                 the first pool handshake; auto, the large-N trial from the
+                 software instantiate to its last header. No text states which
+                 requesting endpoint EDN serves first.
 The unstated effects are logged only (``OBS-EDN-*``, ``OBS-CSRNG-*``,
 ``OBS-DRBG-*``). The
 ``CMD_STS`` of the CSRNG instantiate stays an observation (``OBS-CSRNG-STS``): no
@@ -364,6 +460,7 @@ from models.entropy_noise_model import EntropyNoiseModel
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_drbg_mode_bringup_seq import drbg_bring_up
+from seq_lib.sep_entropy_pool_seq import POOL_POP, RESP_OKAY, SepEntropyPool, pool_level
 from seq_lib.sep_esrc_bringup_seq import SepEsrcConfigSeq, SepEsrcEnableGeneratorsSeq
 from seq_lib.sep_irq_aggregator_seq import IRQ_TABLE
 
@@ -417,6 +514,9 @@ ED_ACK_ERR = EDN.fields("RECOV_ALERT_STS")["CSRNG_ACK_ERR"]["bm"]
 CMD_INSTANTIATE = EDN.reset("BOOT_INS_CMD")
 
 CSRNG_CTRL_ON = CSRNG.value("CTRL", ENABLE=MUBI_TRUE, SW_APP_ENABLE=MUBI_TRUE)
+CSRNG_CTRL_READ_STATE = CSRNG.value(
+    "CTRL", ENABLE=MUBI_TRUE, SW_APP_ENABLE=MUBI_TRUE, READ_INT_STATE=MUBI_TRUE
+)
 
 CSRNG_GENBITS_VLD = sym("CSRNG_GENBITS_VLD_REG_ADDR")
 CSRNG_GENBITS = sym("CSRNG_GENBITS_REG_ADDR")
@@ -430,6 +530,27 @@ ED_HW_TYPE = EDN.fields("HW_CMD_STS")["CMD_TYPE"]
 ED_HW_ACK = EDN.fields("HW_CMD_STS")["CMD_ACK"]["bm"]
 
 GB_VLD = CSRNG.fields("GENBITS_VLD")["GENBITS_VLD"]["bm"]
+GB_FIPS = CSRNG.fields("GENBITS_VLD")["GENBITS_FIPS"]["bm"]
+CS_ENTROPY_REQ = CSRNG.fields("INTR_STATE")["CS_ENTROPY_REQ"]["bm"]
+RESEED_INTERVAL_RESET = CSRNG.reset("RESEED_INTERVAL")
+# FIPS/CC flag force (csrng.hjson FIPS_FORCE): one bit per instance, effective only
+# with CTRL.FIPS_FORCE_ENABLE True.
+CSRNG_FIPS_FORCE = sym("CSRNG_FIPS_FORCE_REG_ADDR")
+FIPS_FORCE_RESET = CSRNG.reset("FIPS_FORCE")
+CS_FIPS_FORCE_EN = CSRNG.fields("CTRL")["FIPS_FORCE_ENABLE"]
+# FIPS/CC flag of words from an instance: flag0 True makes the instance non-FIPS
+# (theory_of_operation.md:217); the SEP seed adapter marks its seeds FIPS
+# (hw/sys/sep/doc/trng.adoc:138-141).
+FIPS_FLAG0_TRUE = 0
+FIPS_FLAG0_FALSE = 1
+# Internal state readback (csrng.hjson INT_STATE_NUM, INT_STATE_VAL): "the internal
+# state field is 448 bits wide, it will require 14 reads".
+CSRNG_INT_STATE_NUM = sym("CSRNG_INT_STATE_NUM_REG_ADDR")
+CSRNG_INT_STATE_VAL = sym("CSRNG_INT_STATE_VAL_REG_ADDR")
+INT_STATE_WORDS = 448 // 32
+# The observation walks every instance index of FIPS_FORCE (one bit per instance)
+# and one more: the index of the software instance is not stated.
+INT_STATE_IDX = range(CSRNG.fields("FIPS_FORCE")["FIPS_FORCE"]["bw"] + 1)
 _CS_RECOV = CSRNG.fields("RECOV_ALERT_STS")
 CS_FLAG0_INV = _CS_RECOV["ACMD_FLAG0_FIELD_ALERT"]["bm"]
 CS_ACMD_INV = _CS_RECOV["CMD_STAGE_INVALID_ACMD_ALERT"]["bm"]
@@ -450,12 +571,19 @@ ED_CTRL_ALERT = {
     "CMD_FIFO_RST": _ED_RECOV["CMD_FIFO_RST_FIELD_ALERT"]["bm"],
 }
 MUBI_INVALID = tuple(v for v in range(16) if v not in (MUBI_TRUE, MUBI_FALSE))
+# Invalid values per CTRL field per seed: half of MUBI_INVALID, so the field x value
+# coverage cross closes over merged regressions.
+MUBI_PER_FIELD = 7
 
 # Command header (theory_of_operation.md:156-188) and application commands (:211-279).
 ACMD_INSTANTIATE = 0x1
 ACMD_RESEED = 0x2
 ACMD_GENERATE = 0x3
+ACMD_UPDATE = 0x4
 ACMD_UNINSTANTIATE = 0x5
+# The Update of the reseed leg carries one additional-data word: "only the additional
+# data provided will be used" (theory_of_operation.md:255-263).
+UPDATE_CLEN = 1
 ACMD_RESERVED = (0x0, *range(0x6, 0x10))
 # The drawn reserved values: those whose bits [2:0] are also a reserved value.
 ACMD_RESERVED_DRAW = tuple(v for v in ACMD_RESERVED if v & 0x7 in ACMD_RESERVED)
@@ -466,6 +594,7 @@ ACMD_RESERVED_HI = 0x9
 # CMD_STS codes (csrng.hjson SW_CMD_STS.CMD_STS; edn.adoc SW_CMD_STS links to them).
 STS_SUCCESS = 0
 STS_INVALID_ACMD = 1
+STS_INVALID_CMD_SEQ = 3
 STS_RESEED_CNT_EXCEEDED = 4
 # EDN RECOV_ALERT_STS.CSRNG_ACK_ERR after an ack with a non-zero status (edn.hjson:542).
 EXP_ACK_ERR = 1
@@ -485,6 +614,14 @@ KAT_CLEN = KAT_SEED_BITS // 32
 AUTO_N_FORCED = 1
 AUTO_N_LO = 2
 AUTO_N_HI = 4
+# Reseed count of the large-N auto sequence trial. With it the endpoint FIFOs and
+# the pool fill before the reseed, so the trial pops the pool while it runs.
+AUTO_N_BIG_LO = 64
+AUTO_N_BIG_HI = 128
+# Clocks between pool STATUS reads while the pool level reads 0.
+POOL_EMPTY_WAIT = 16
+# Endpoint pushes whose order OBS-EDN-ENDPOINT logs.
+EP_SEQ_LEN = 16
 # Headers after the instantiate that the MAX_NUM_REQS_BETWEEN_RESEEDS = 0 trial reads.
 # The first-command trial sees its generate as the first of them.
 AUTO_ZERO_HDRS = 3
@@ -580,8 +717,15 @@ class Plan:
     kat_seed: int
     auto_n: int
     inst_hold: int
+    auto_n_big: int
+    cs_mubi: tuple[tuple[int, ...], ...]
+    ed_mubi: tuple[tuple[int, ...], ...]
+    upd_data: int
 
     def describe(self) -> str:
+        def _vals(per_field: tuple[tuple[int, ...], ...]) -> list[list[str]]:
+            return [[hex(v) for v in field] for field in per_field]
+
         return (
             f"groups={','.join(self.groups)} gaps[0:8]={list(self.gaps[:8])}"
             f" cs_bad={[hex(v) for v in self.cs_bad]} ed_bad={[hex(v) for v in self.ed_bad]}"
@@ -589,7 +733,17 @@ class Plan:
             f" reseed_k={self.reseed_k} gen_off=0x{self.gen_off:x}"
             f" kat_seed_sha={word_digest(self.kat_seed)}"
             f" auto_n={self.auto_n} inst_hold={self.inst_hold}"
+            f" auto_n_big={self.auto_n_big}"
+            f" cs_mubi={_vals(self.cs_mubi)} ed_mubi={_vals(self.ed_mubi)}"
+            f" upd_data_sha={word_digest(self.upd_data)}"
         )
+
+
+def _mubi_values(rng: SepSeededRng, first: tuple[int, ...]) -> tuple[tuple[int, ...], ...]:
+    """Per field, ``first`` then MUBI_PER_FIELD - 1 other distinct invalid values."""
+    return tuple(
+        (b, *rng.sample([v for v in MUBI_INVALID if v != b], MUBI_PER_FIELD - 1)) for b in first
+    )
 
 
 def draw_plan(seed: int) -> Plan:
@@ -607,6 +761,10 @@ def draw_plan(seed: int) -> Plan:
     kat_seed = rng.getrandbits(KAT_SEED_BITS)
     auto_n = rng.randrange(AUTO_N_LO, AUTO_N_HI + 1)
     inst_hold = rng.randrange(INST_HOLD_MIN, INST_HOLD_MAX + 1)
+    auto_n_big = rng.randrange(AUTO_N_BIG_LO, AUTO_N_BIG_HI + 1)
+    cs_mubi = _mubi_values(rng, cs_bad)
+    ed_mubi = _mubi_values(rng, ed_bad)
+    upd_data = rng.getrandbits(KAT_SEED_BITS)
     return Plan(
         seed,
         tuple(groups),
@@ -620,6 +778,10 @@ def draw_plan(seed: int) -> Plan:
         kat_seed,
         auto_n,
         inst_hold,
+        auto_n_big,
+        cs_mubi,
+        ed_mubi,
+        upd_data,
     )
 
 
@@ -710,6 +872,108 @@ class _SeedIngress:
     async def stop(self) -> None:
         self._run = False
         await self._task
+
+
+class _EdnTap:
+    """Per-clock record of the EDN outputs on the pool port and the endpoint pushes.
+
+    A pool handshake is a clock with ``pool_edn_req_o`` and ``pool_edn_ack_o`` both
+    1; its ``pool_edn_fips_o`` counts under 0, 1 or ``"x"`` (an unknown tag is
+    never read as 0 or 1). Each set bit of ``drbg_adapter_push_o`` is one endpoint
+    push: ``per_ep`` counts them per endpoint and ``seq`` keeps the endpoint index
+    of the first EP_SEQ_LEN pushes. ``halt`` ends the record at the next clock edge
+    without a wait; ``stop`` halts and waits for the loop, which leaves outside the
+    ReadOnly phase.
+    """
+
+    def __init__(self, test) -> None:
+        self.t = test
+        self.pool_hs = 0
+        self.pool_fips: dict[int | str, int] = {0: 0, 1: 0, "x": 0}
+        self.per_ep = [0] * len(cocotb.top.drbg_adapter_push_o)
+        self.seq: list[int] = []
+        self._run = True
+        self._task = cocotb.start_soon(self._watch())
+
+    async def _watch(self) -> None:
+        dut = cocotb.top
+        rd = self.t.rd
+        while True:
+            await RisingEdge(dut.clk_i)
+            if not self._run:
+                break
+            await ReadOnly()
+            push = rd(dut.drbg_adapter_push_o, allow_unknown=True)
+            for ep in range(len(self.per_ep)):
+                if (push >> ep) & 1:
+                    self.per_ep[ep] += 1
+                    if len(self.seq) < EP_SEQ_LEN:
+                        self.seq.append(ep)
+            if rd(dut.pool_edn_req_o, allow_unknown=True) and rd(
+                dut.pool_edn_ack_o, allow_unknown=True
+            ):
+                self.pool_hs += 1
+                try:
+                    self.pool_fips[rd(dut.pool_edn_fips_o)] += 1
+                except AssertionError:
+                    self.pool_fips["x"] += 1
+
+    def halt(self) -> None:
+        self._run = False
+
+    async def stop(self) -> None:
+        self._run = False
+        await self._task
+
+    def endpoint_fields(self) -> dict:
+        return {"pushes": sum(self.per_ep), "per_ep": list(self.per_ep), "seq": list(self.seq)}
+
+
+class _PoolDrain:
+    """Entropy-pool reader that keeps EDN generating while a trial runs.
+
+    The loop reads the pool STATUS and pops as many words as its level shows. It
+    never pops at level 0: an empty pop returns SLVERR
+    (``hw/sys/sep/doc/entropy_pool.adoc``:31-32). ``halt`` ends the loop after the
+    access in flight; ``join`` waits for it.
+    """
+
+    def __init__(self, test) -> None:
+        self.pool = SepEntropyPool(test)
+        self.pops = 0
+        self.pop_errors = 0
+        self.status_reads = 0
+        self._run = True
+        self._task = cocotb.start_soon(self._drain())
+
+    async def _drain(self) -> None:
+        while self._run:
+            level = pool_level(await self.pool.status())
+            self.status_reads += 1
+            if not level:
+                await ClockCycles(cocotb.top.clk_i, POOL_EMPTY_WAIT)
+                continue
+            for _ in range(level):
+                if not self._run:
+                    break
+                seq = await self.pool.access(POOL_POP)
+                if seq.resp_code == RESP_OKAY:
+                    self.pops += 1
+                else:
+                    self.pop_errors += 1
+
+    def halt(self) -> None:
+        self._run = False
+
+    async def join(self) -> None:
+        await self._task
+
+    def fields(self) -> dict:
+        return {
+            "pool_pops": self.pops,
+            "pool_pop_errors": self.pop_errors,
+            "pool_status_reads": self.status_reads,
+        }
 
 
 class _InstSeedWatch:
@@ -828,6 +1092,10 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         "CHK-CSRNG-FLAG0-ACK",
         "CHK-CSRNG-UNINST-RESET",
         "CHK-CSRNG-ACK-CLR",
+        "CHK-DRBG-FIPS-PROV",
+        "CHK-CSRNG-UPDATE",
+        "CHK-CSRNG-UNINST-REFUSE",
+        "CHK-CSRNG-ENTROPY-REQ",
     )
 
     async def run_scenario(self) -> None:
@@ -999,6 +1267,54 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await FallingEdge(clk)
         set_drbg_seq_pass(False, self.logger)
 
+    # --- FIPS/CC flag provenance ----------------------------------------------------
+    async def _fips_force_pre(self) -> dict:
+        """``FIPS_FORCE`` and ``CTRL.FIPS_FORCE_ENABLE`` read before a FIPS leg."""
+        force = await self.reg._rd(CSRNG_FIPS_FORCE)
+        enable = _field(await self.reg._rd(CSRNG_CTRL), CS_FIPS_FORCE_EN)
+        return {"fips_force": force, "fips_force_enable": enable}
+
+    def _fips_grade(self, leg: str, pre: dict, ok: bool, **fields) -> None:
+        """CTRL-DRBG-FIPS-PROV (no force applies), then CHK-DRBG-FIPS-PROV of ``leg``."""
+        force = pre.get("fips_force")
+        enable = pre.get("fips_force_enable")
+        self.chk.ctrl(
+            "DRBG-FIPS-PROV",
+            force == FIPS_FORCE_RESET and enable == MUBI_FALSE,
+            leg=leg,
+            fips_force="na" if force is None else f"0x{force:x}",
+            fips_force_enable="na" if enable is None else f"0x{enable:x}",
+            expected_fips_force=f"0x{FIPS_FORCE_RESET:x}",
+            expected_fips_force_enable=f"0x{MUBI_FALSE:x}",
+        )
+        self.chk.ok("DRBG-FIPS-PROV", ok, leg=leg, **fields)
+
+    def _fips_genbits_grade(
+        self, leg: str, pre: dict, fips: int | None, expected: int, reason: str = ""
+    ) -> None:
+        """``GENBITS_FIPS`` at the first ``GENBITS_VLD`` read with ``GENBITS_VLD`` = 1."""
+        f: dict = {"genbits_fips": "na" if fips is None else fips, "expected": expected}
+        if reason:
+            f["reason"] = reason
+        self._fips_grade(leg, pre, not reason and fips == expected, **f)
+
+    def _fips_kat_grade(self, leg: str, kat: dict) -> None:
+        """``GENBITS_FIPS`` of a known-answer Generate (flag0-True instance)."""
+        pre = {k: kat.get(k) for k in ("fips_force", "fips_force_enable")}
+        self._fips_genbits_grade(leg, pre, kat.get("genbits_fips"), FIPS_FLAG0_TRUE)
+
+    def _fips_pool_grade(self, leg: str, pre: dict, tap: _EdnTap, expected: int, **extra) -> None:
+        """``pool_edn_fips_o`` on every pool handshake ``tap`` recorded; one or more."""
+        f = {
+            "handshakes": tap.pool_hs,
+            "fips0": tap.pool_fips[0],
+            "fips1": tap.pool_fips[1],
+            "fips_x": tap.pool_fips["x"],
+            "expected": expected,
+            **extra,
+        }
+        self._fips_grade(leg, pre, tap.pool_hs >= 1 and tap.pool_fips[expected] == tap.pool_hs, **f)
+
     # --- auto request mode ----------------------------------------------------------
     async def _auto_hw(self, what: str) -> int:
         """Poll HW_CMD_STS with no idle gap; return the first read with AUTO_MODE = 1
@@ -1062,12 +1378,33 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         exactly ``n`` GENERATE_CMD words, the RESEED_CMD word and a GENERATE_CMD word
         (edn.adoc:107, :258-262). The watch returns before the clock edge that takes
         the last handshake, so the check grades first; the coverage window is open
-        only for that one edge, and only after a PASS.
+        only for that one edge, and only after a PASS. The tap halts after that edge
+        on both paths, so its record holds the clock of the last handshake and the
+        clock after it.
+
+        For ``n`` above AUTO_N_HI (the large-N trial) the trial reads CSRNG
+        ``RESEED_INTERVAL`` first (``CTRL-EDN-AUTO-INTERVAL``), records the pool
+        port and the endpoint pushes from the instantiate up to and including the
+        clock edge that takes the last header (``CHK-DRBG-FIPS-PROV`` leg
+        ``edn_auto``, ``OBS-EDN-ENDPOINT`` mode ``auto``), and pops the pool from the
+        instantiate write to the last header.
         """
         dut = cocotb.top
         r = self.reg
+        big = n > AUTO_N_HI
         max_reqs = n
         await self._auto_setup(f"seq{n}", max_reqs)
+        fips_pre: dict = {}
+        if big:
+            interval = await r._rd(CSRNG_RESEED_INTERVAL)
+            self.chk.ctrl(
+                "EDN-AUTO-INTERVAL",
+                interval >= n,
+                n=n,
+                reseed_interval=f"0x{interval:x}",
+                expected_reset=f"0x{RESEED_INTERVAL_RESET:x}",
+            )
+            fips_pre = await self._fips_force_pre()
         await r._wr(EDN_CTRL, _edn_ctrl(False, True, True))
         rdy = ED_STS_REG_RDY | ED_STS_RDY
         reseed_word = cmd_word(ACMD_RESEED)
@@ -1075,15 +1412,23 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         hdrs: list[int] = []
         reason = ""
         watch = None
+        tap = None
+        drain = None
         try:
             await self._wait(EDN_SW_CMD_STS, rdy, rdy, FIRST_CAP, f"auto_seq{n}_rdy")
             watch = cocotb.start_soon(self._edn_cmd_watch(1 + len(want), AUTO_CAP))
+            if big:
+                tap = _EdnTap(self)
             await r._wr(EDN_SW_CMD_REQ, CMD_INSTANTIATE)
+            if big:
+                drain = _PoolDrain(self)
             hdrs, reason = await watch
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
             if watch is not None:
                 watch.cancel()
+        if drain is not None:
+            drain.halt()
         first = hdrs[0] if hdrs else None
         self.chk.ctrl(
             "EDN-AUTO-TAP",
@@ -1112,8 +1457,31 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await RisingEdge(dut.clk_i)
             await FallingEdge(dut.clk_i)
             close_graded_window(self.logger)
+        elif tap is not None:
+            await RisingEdge(dut.clk_i)
+            await FallingEdge(dut.clk_i)
+        if tap is not None:
+            tap.halt()
+        if big:
+            await self._auto_big_grade(fips_pre, tap, drain)
         await self._release()
         await r._wr(EDN_CTRL, _edn_ctrl(False, False, False))
+
+    async def _auto_big_grade(
+        self, fips_pre: dict, tap: _EdnTap | None, drain: _PoolDrain | None
+    ) -> None:
+        """The pool-tag leg and the endpoint log of the large-N trial, after the
+        drain and the tap have stopped (no register access of the drain is left)."""
+        extra: dict = {}
+        if drain is not None:
+            await drain.join()
+            extra = drain.fields()
+        if tap is None:
+            self.chk.blocked("DRBG-FIPS-PROV", "edn_auto: the trial ended before the instantiate")
+            return
+        await tap.stop()
+        self._fips_pool_grade("edn_auto", fips_pre, tap, FIPS_FLAG0_FALSE, **extra)
+        self.chk.obs("EDN-ENDPOINT", mode="auto", **tap.endpoint_fields())
 
     async def _auto_trial(self, kind: str, max_reqs: int) -> tuple[int, int]:
         """One auto-mode session. Returns (AUTO_MODE before the instantiate, HW_CMD_STS)."""
@@ -1205,7 +1573,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
 
     async def _auto_leg(self) -> None:
         """The first hardware command with MAX_NUM_REQS = 1, the command sequence with
-        N = 1 and with the drawn N, then MAX_NUM_REQS = 0 (no generate)."""
+        N = 1, the drawn N and the drawn large N, then MAX_NUM_REQS = 0 (no
+        generate)."""
         gen_pre = None
         gen_hw = None
         reason = ""
@@ -1252,6 +1621,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await self._release()
         await self._auto_seq_trial(AUTO_N_FORCED)
         await self._auto_seq_trial(self.plan.auto_n)
+        await self._auto_seq_trial(self.plan.auto_n_big)
         await self._auto_zero_trial()
 
     # --- EDN instantiate and the ESRC seed ------------------------------------------
@@ -1414,9 +1784,33 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         close_graded_window(self.logger)
         return clk, sts, on, ctrl_rb
 
+    async def _boot_pool_grade(self, tap: _EdnTap, fips_pre: dict, booted: bool) -> None:
+        """CHK-DRBG-FIPS-PROV leg ``edn_boot`` and OBS-EDN-ENDPOINT mode ``boot``.
+
+        After the reference boot read ``BOOT_MODE``, wait at most FIRST_CAP clocks
+        for the first pool handshake; every pool handshake from the EDN enable to
+        that point carries the flag of the flag0-True boot instance (0x601)."""
+        if not booted:
+            await tap.stop()
+            self.chk.blocked("DRBG-FIPS-PROV", "edn_boot: the reference boot showed no BOOT_MODE")
+            return
+        waited = 0
+        while not tap.pool_hs and waited < FIRST_CAP:
+            await RisingEdge(cocotb.top.clk_i)
+            waited += 1
+        await tap.stop()
+        extra: dict = {"waited_clk": waited}
+        if not tap.pool_hs:
+            extra["reason"] = f"timeout:pool_handshake bound={FIRST_CAP}"
+        self._fips_pool_grade("edn_boot", fips_pre, tap, FIPS_FLAG0_TRUE, **extra)
+        self.chk.obs("EDN-ENDPOINT", mode="boot", **tap.endpoint_fields())
+
     async def _boot_group(self) -> None:
         await self._clean_start("boot_ref")
+        fips_pre = await self._fips_force_pre()
+        tap = _EdnTap(self)
         t0, sts, ctrl, _ = await self._boot(auto=False, bound=FIRST_CAP, graded=False)
+        await self._boot_pool_grade(tap, fips_pre, t0 is not None)
         if t0 is None:
             self.chk.ok(
                 "EDN-BOOT",
@@ -1769,6 +2163,12 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await r._wr(CSRNG_INTR_STATE, CS_DONE)
         hs["done_pre0"] = int(not await r._rd(CSRNG_INTR_STATE) & CS_DONE)
         hs["vec23_pre0"] = int(self.vec.level("cs_done") == 0)
+        # cs_entropy_req (W1C) reads 0 before the flag0-False instantiate, so a 1 at
+        # its acknowledge comes from that instantiate.
+        await r._wr(CSRNG_INTR_STATE, CS_ENTROPY_REQ)
+        ent_pre = int(bool(await r._rd(CSRNG_INTR_STATE) & CS_ENTROPY_REQ))
+        ent = None
+        fips_pre = await self._fips_force_pre()
         reason = ""
         first = 1
         invseq = 0
@@ -1789,6 +2189,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             self.chk.obs("CSRNG-RDY-AFTER-ACK", cmd_rdy=int(bool(done & CS_STS_RDY)))
             state = await r._rd(CSRNG_INTR_STATE)
             hs["done"] = int(bool(state & CS_DONE))
+            ent = int(bool(state & CS_ENTROPY_REQ))
             hs["vec_clk"] = await self._wait_vec(m, "cs_done", VEC_CAP)
             hs["vec23"] = 1
             self.chk.obs("CSRNG-STS", cmd_sts=_field(done, CS_STS_STS), t_cmd=t_cmd)
@@ -1828,6 +2229,12 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             reason = f"timeout:{exc.what} bound={exc.bound}"
         except BitWatchTimeout:
             reason = f"timeout:vec23 bound={VEC_CAP}"
+        # The instance is still instantiated with flag0 False (the repeated
+        # instantiate is ignored), so one Generate gives the FIPS/CC flag of its words.
+        fips = None
+        fips_reason = ""
+        if not reason:
+            fips, fips_reason = await self._sw_fips_generate("csrng_sw_fips")
         close_graded_window(self.logger)
         hs.update({"ctrl_first_invseq": first, "invseq": invseq, "cleared_by_write0": cleared})
         if reason:
@@ -1850,7 +2257,49 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             )
         )
         self.chk.ok("CSRNG-SW", ok and first == 0 and cleared == 1, **hs)
+        if ent is None:
+            self.chk.blocked("CSRNG-ENTROPY-REQ", f"no instantiate acknowledge: {reason}")
+        else:
+            self.chk.ctrl("CSRNG-ENTROPY-REQ", ent_pre == 0, leg="csrng_sw", ent_pre=ent_pre)
+            self.chk.ok(
+                "CSRNG-ENTROPY-REQ",
+                ent == 1,
+                word=f"0x{CMD_INSTANTIATE:x}",
+                cs_entropy_req=ent,
+                expected=1,
+                ent_pre=ent_pre,
+            )
+        if reason:
+            self.chk.blocked("DRBG-FIPS-PROV", f"csrng_sw_flag0_false: {reason}")
+        else:
+            self._fips_genbits_grade(
+                "csrng_sw_flag0_false", fips_pre, fips, FIPS_FLAG0_FALSE, fips_reason
+            )
         await self._release()
+
+    async def _sw_fips_generate(self, what: str) -> tuple[int | None, str]:
+        """One Generate (glen 1) on the instantiated software instance, with
+        ``GENBITS_VLD`` read 0 first. Returns ``GENBITS_FIPS`` of the first
+        ``GENBITS_VLD`` read with ``GENBITS_VLD`` = 1, and a reason when a wait
+        timed out or ``GENBITS_VLD`` was not 0 before the Generate. The four words
+        are read and the acknowledge is awaited."""
+        r = self.reg
+        try:
+            if await r._rd(CSRNG_GENBITS_VLD) & GB_VLD:
+                return None, "genbits_vld_before_generate"
+            await self._sw_cmd(CMD_GENERATE_1, FIRST_CAP, f"{what}_gen", wait_ack=False)
+            fips = None
+            for i in range(GEN1_WORDS):
+                _, vld = await self._wait(
+                    CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, f"{what}_vld{i}"
+                )
+                if fips is None:
+                    fips = int(bool(vld & GB_FIPS))
+                await r._rd(CSRNG_GENBITS)
+            await self._wait(CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, f"{what}_ack")
+        except TrialTimeout as exc:
+            return None, f"timeout:{exc.what} bound={exc.bound}"
+        return fips, ""
 
     # --- EDN boot command words at reset ----------------------------------------
     async def _boot_cmd_reset(self) -> None:
@@ -1885,7 +2334,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
 
     # --- CTRL field alerts --------------------------------------------------------
     async def _ctrl_mubi_leg(self) -> None:
-        """CHK-CSRNG-CTRL-MUBI and CHK-EDN-CTRL-MUBI, one trial per CTRL field."""
+        """CHK-CSRNG-CTRL-MUBI and CHK-EDN-CTRL-MUBI, one trial per CTRL field and
+        drawn invalid value. Each trial holds its field alert coverage sample in its
+        own window and releases it after its check."""
         close_graded_window(self.logger)
         await self._trng_reset()
         units = (
@@ -1895,42 +2346,61 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 CSRNG_CTRL,
                 CSRNG_RECOV_ALERT_STS,
                 CS_CTRL_ALERT,
-                self.plan.cs_bad,
+                self.plan.cs_mubi,
             ),
-            ("EDN-CTRL-MUBI", EDN, EDN_CTRL, EDN_RECOV_ALERT_STS, ED_CTRL_ALERT, self.plan.ed_bad),
+            ("EDN-CTRL-MUBI", EDN, EDN_CTRL, EDN_RECOV_ALERT_STS, ED_CTRL_ALERT, self.plan.ed_mubi),
         )
-        r = self.reg
-        for name, meta, ctrl_addr, recov_addr, alerts, bad in units:
+        for name, meta, ctrl_addr, recov_addr, alerts, per_field in units:
             legal = meta.value("CTRL", **{f: MUBI_FALSE for f in alerts})
-            for (field, bit), value in zip(alerts.items(), bad):
-                open_graded_window(TEST, self.logger)
-                await r._wr(ctrl_addr, legal)
-                pre = int(bool(await r._rd(recov_addr) & bit))
-                self.chk.ctrl(name, pre == 0, field=field, legal=f"0x{legal:x}", alert_pre=pre)
-                word = meta.value("CTRL", **{**{f: MUBI_FALSE for f in alerts}, field: value})
-                await r._wr(ctrl_addr, word)
-                reason = ""
-                recov = 0
-                try:
-                    _, recov = await self._wait(recov_addr, bit, bit, ALERT_CAP, f"{field}_alert")
-                except TrialTimeout as exc:
-                    reason = f"timeout:{exc.what} bound={exc.bound}"
-                await r._wr(ctrl_addr, legal)
-                await r._wr(recov_addr, 0)
-                cleared = int(not await r._rd(recov_addr) & bit)
-                close_graded_window(self.logger)
-                fields = {
-                    "field": field,
-                    "value": f"0x{value:x}",
-                    "ctrl": f"0x{word:x}",
-                    "alert_set": int(bool(recov & bit)),
-                    "recov": f"0x{recov:x}",
-                    "cleared_by_write0": cleared,
-                }
-                if reason:
-                    fields["reason"] = reason
-                self.chk.ok(name, not reason and bool(recov & bit) and cleared == 1, **fields)
-                await self._release()
+            for (field, bit), values in zip(alerts.items(), per_field):
+                for value in values:
+                    await self._ctrl_mubi_trial(
+                        name, meta, ctrl_addr, recov_addr, alerts, legal, field, bit, value
+                    )
+
+    async def _ctrl_mubi_trial(
+        self,
+        name: str,
+        meta,
+        ctrl_addr: int,
+        recov_addr: int,
+        alerts: dict[str, int],
+        legal: int,
+        field: str,
+        bit: int,
+        value: int,
+    ) -> None:
+        r = self.reg
+        open_graded_window(TEST, self.logger)
+        await r._wr(ctrl_addr, legal)
+        pre = int(bool(await r._rd(recov_addr) & bit))
+        self.chk.ctrl(
+            name, pre == 0, field=field, value=f"0x{value:x}", legal=f"0x{legal:x}", alert_pre=pre
+        )
+        word = meta.value("CTRL", **{**{f: MUBI_FALSE for f in alerts}, field: value})
+        await r._wr(ctrl_addr, word)
+        reason = ""
+        recov = 0
+        try:
+            _, recov = await self._wait(recov_addr, bit, bit, ALERT_CAP, f"{field}_alert")
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+        await r._wr(ctrl_addr, legal)
+        await r._wr(recov_addr, 0)
+        cleared = int(not await r._rd(recov_addr) & bit)
+        close_graded_window(self.logger)
+        fields = {
+            "field": field,
+            "value": f"0x{value:x}",
+            "ctrl": f"0x{word:x}",
+            "alert_set": int(bool(recov & bit)),
+            "recov": f"0x{recov:x}",
+            "cleared_by_write0": cleared,
+        }
+        if reason:
+            fields["reason"] = reason
+        self.chk.ok(name, not reason and bool(recov & bit) and cleared == 1, **fields)
+        await self._release()
 
     # --- CSRNG software commands ----------------------------------------------------
     async def _sw_cmd(self, word: int, bound: int, what: str, wait_ack: bool = True):
@@ -1944,26 +2414,31 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         _, sts = await self._wait(CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, bound, f"{what}_ack")
         return max(self._now() - t_wr, 1), _field(sts, CS_STS_STS)
 
-    async def _sw_generate(self, bound: int) -> tuple[int, int, int]:
+    async def _sw_generate(self, bound: int) -> tuple[int, int, int, int | None]:
         """One Generate of one 128-bit block. Reads GENBITS while GENBITS_VLD is 1
         until CMD_ACK, so the acknowledge can follow the data. Returns
-        ``(CMD_STS, RECOV_ALERT_STS at the ack, words read)``."""
+        ``(CMD_STS, RECOV_ALERT_STS at the ack, words read, first GENBITS_VLD read
+        with GENBITS_VLD = 1 or None)``."""
         r = self.reg
         await self._wait(CSRNG_SW_CMD_STS, CS_STS_RDY, CS_STS_RDY, bound, "gen_rdy")
         await r._wr(CSRNG_CMD_REQ, CMD_GENERATE_1)
         t0 = self._now()
         words = 0
+        first_vld = None
         while True:
             sts = await self._reader(CSRNG_SW_CMD_STS)()
             if sts & CS_STS_ACK:
                 break
             if self._now() - t0 > bound:
                 raise TrialTimeout("gen_ack", bound)
-            if await r._rd(CSRNG_GENBITS_VLD) & GB_VLD:
+            vld = await r._rd(CSRNG_GENBITS_VLD)
+            if vld & GB_VLD:
+                if first_vld is None:
+                    first_vld = vld
                 await r._rd(CSRNG_GENBITS)
                 words += 1
         recov = await r._rd(CSRNG_RECOV_ALERT_STS)
-        return _field(sts, CS_STS_STS), recov, words
+        return _field(sts, CS_STS_STS), recov, words, first_vld
 
     async def _clear_bit(self, bit: int) -> int:
         """Write 0 to RECOV_ALERT_STS; 1 if ``bit`` then reads 0."""
@@ -2146,14 +2621,19 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         plan = self.plan
         k = plan.reseed_k
         await r._wr(CSRNG_RESEED_INTERVAL, k)
+        # No Instantiate has reached the software instance since the clean start.
+        await self._refused_generate("before_instantiate")
         gens: list[tuple[int, int, int]] = []
         refused = None
         lim = {"k": k, "max_generates": k + 1, "expected_refused_index": k + 1}
         hdr = {"word": f"0x{cmd_word(ACMD_RESEED):x}"}
         gate = {"sw_app_enable": f"0x{plan.gen_off:x}"}
         kat: dict = {}
+        upd: dict = {}
+        gen1_vld = None
         reason = ""
         step = "ins"
+        fips_pre = await self._fips_force_pre()
         try:
             # The instantiate runs with the window closed: no check of this leg grades
             # its handshake or its cs_cmd_req_done.
@@ -2161,9 +2641,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             open_graded_window(TEST, self.logger)
             for i in range(1, k + 2):
                 step = f"gen{i}"
-                sts, recov, words = await self._sw_generate(FIRST_CAP)
+                sts, recov, words, vld = await self._sw_generate(FIRST_CAP)
                 gens.append((sts, int(bool(recov & CS_RESEED_CNT)), words))
                 if i == 1:
+                    # The words wait in GENBITS when the acknowledge came first.
+                    gen1_vld = vld if vld is not None else await r._rd(CSRNG_GENBITS_VLD)
                     self.chk.ctrl(
                         "CSRNG-RESEED-LIMIT",
                         sts != STS_RESEED_CNT_EXCEEDED and not recov & CS_RESEED_CNT,
@@ -2180,6 +2662,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             lim["alert15"] = [g[1] for g in gens]
             lim["words"] = [g[2] for g in gens]
             lim["cleared_by_write0"] = await self._clear_bit(CS_RESEED_CNT)
+            if refused is not None:
+                step = "update"
+                upd = await self._update_after_refusal(4 * len(gens))
             # The earlier Generates leave words in GENBITS (_sw_generate stops at the
             # ack), so drain GENBITS until GENBITS_VLD reads 0 before the Reseed: the
             # words counted below then come only from the Generate after the Reseed.
@@ -2196,7 +2681,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             _, sts = await self._sw_cmd(cmd_word(ACMD_RESEED), FIRST_CAP, step)
             hdr["reseed_cmd_sts"] = sts
             step = "gen_after_reseed"
-            sts, recov, words = await self._sw_generate(FIRST_CAP)
+            sts, recov, words, _ = await self._sw_generate(FIRST_CAP)
             # Words still pending after the ack count to the same request. The bound is
             # one read past GEN1_WORDS, so an extra word from the DUT shows as a count of
             # GEN1_WORDS + 1.
@@ -2270,10 +2755,17 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             )
             gate["gen_cmd_sts"] = _field(gen_sts, CS_STS_STS)
             step = "kat"
-            kat = await self._genbits_kat(drain_max)
+            kat = await self._genbits_kat(drain_max, entropy_ctrl=True)
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound} step={step}"
+        if reason:
+            self.chk.blocked("CSRNG-UNINST-REFUSE", f"after_uninstantiate: {reason}")
+        else:
+            await self._uninst_refuse_leg()
         close_graded_window(self.logger)
+        upd_kat: dict = {}
+        if not reason:
+            upd_kat = await self._update_kat()
         for fields in (lim, hdr, gate):
             if reason:
                 fields["reason"] = reason
@@ -2327,9 +2819,283 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             expected_gen_sts=STS_SUCCESS,
             expected_sw_app_alert=int(plan_app_alert),
         )
+        if gens:
+            gen1_fips = None
+            if gen1_vld is not None and gen1_vld & GB_VLD:
+                gen1_fips = int(bool(gen1_vld & GB_FIPS))
+            self._fips_genbits_grade(
+                "reseed_flag0_false",
+                fips_pre,
+                gen1_fips,
+                FIPS_FLAG0_FALSE,
+                "" if gen1_fips is not None else "no_genbits_vld_read_with_vld_1",
+            )
+        else:
+            self.chk.blocked("DRBG-FIPS-PROV", f"reseed_flag0_false: {reason}")
+        if kat:
+            self._fips_kat_grade("kat_reseed_flag0_true", kat)
+            self.chk.ctrl(
+                "CSRNG-ENTROPY-REQ",
+                kat.get("ent_pre") == 0 and kat.get("ent_after_ins") == 0,
+                leg="kat_flag0_true",
+                ent_pre=kat.get("ent_pre"),
+                ent_after_ins=kat.get("ent_after_ins"),
+                expected=0,
+            )
+        else:
+            self.chk.blocked("DRBG-FIPS-PROV", f"kat_reseed_flag0_true: {reason}")
+        self._update_grade(upd, refused, reason)
+        self._update_kat_grade(upd_kat, reason)
         await self._release()
 
-    async def _genbits_kat(self, drain_max: int, clear_recov: bool = False) -> dict:
+    def _update_grade(self, upd: dict, refused: int | None, reason: str) -> None:
+        """CTRL-CSRNG-UPDATE and CHK-CSRNG-UPDATE from ``_update_after_refusal``."""
+        if not upd:
+            why = reason or f"no_refused_generate refused_index={refused}"
+            self.chk.blocked("CSRNG-UPDATE", why)
+            return
+        self.chk.ctrl(
+            "CSRNG-UPDATE",
+            refused is not None and upd.get("pre_vld") == 0,
+            refused_index=refused,
+            pre_drained=upd.get("pre_drained"),
+            pre_vld=upd.get("pre_vld"),
+        )
+        self.chk.ok(
+            "CSRNG-UPDATE",
+            "reason" not in upd
+            and upd.get("cmd_ack") == 1
+            and upd.get("cmd_sts") == STS_SUCCESS
+            and upd.get("vld_after") == 0
+            and upd.get("gen_cmd_sts") == STS_RESEED_CNT_EXCEEDED
+            and upd.get("alert15") == 1
+            and upd.get("alert15_cleared") == 1,
+            **upd,
+            expected_sts=STS_SUCCESS,
+            expected_vld_after=0,
+            expected_gen_sts=STS_RESEED_CNT_EXCEEDED,
+            expected_alert15=1,
+        )
+
+    async def _update_kat(self) -> dict:
+        """Known-answer leg of CHK-CSRNG-UPDATE: an Update on a known state.
+
+        Runs after the reseed-leg window closed, on the software instance that the
+        refusal leg left uninstantiated. An Instantiate with flag0 True and clen 12
+        of the known-answer seed sets the state from the seed alone
+        (theory_of_operation.md:227), with no derivation function (README.md:47).
+        An Update with clen 12 carries the drawn 384-bit additional data, least
+        significant word first (programmers_guide.md:37-61). The Update uses "only
+        the additional data provided" in the update function
+        (theory_of_operation.md:255-263), the SP 800-90A 10.2.1.2 CTR_DRBG update of
+        the AES-CTR-DRBG (hw/ip/drbg/doc/architecture.adoc:14). One Generate (glen
+        1) follows; its four ``GENBITS`` words, least significant word first
+        (programmers_guide.md:108-114), are compared with the golden first block
+        after the Update. The leg ends with an Uninstantiate."""
+        r = self.reg
+        seed = self.plan.kat_seed
+        data = self.plan.upd_data
+        f: dict = {"leg": "known_answer", "data_sha": word_digest(data)}
+        step = "ins"
+        try:
+            await r._wr(CSRNG_CTRL, CSRNG_CTRL_ON)
+            f["vld_pre"] = int(bool(await r._rd(CSRNG_GENBITS_VLD) & GB_VLD))
+            ins = cmd_word(ACMD_INSTANTIATE, clen=KAT_CLEN, flag0=MUBI_TRUE)
+            await self._sw_cmd(ins, FIRST_CAP, "upd_kat_ins_rdy", wait_ack=False)
+            for i in range(KAT_CLEN):
+                await r._wr(CSRNG_CMD_REQ, (seed >> (32 * i)) & 0xFFFF_FFFF)
+            _, sts = await self._wait(
+                CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "upd_kat_ins_ack"
+            )
+            f["ins_cmd_sts"] = _field(sts, CS_STS_STS)
+            step = "update"
+            await self._sw_cmd(
+                cmd_word(ACMD_UPDATE, clen=KAT_CLEN), FIRST_CAP, "upd_kat_rdy", wait_ack=False
+            )
+            for i in range(KAT_CLEN):
+                await r._wr(CSRNG_CMD_REQ, (data >> (32 * i)) & 0xFFFF_FFFF)
+            _, sts = await self._wait(
+                CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "upd_kat_ack"
+            )
+            f["cmd_sts"] = _field(sts, CS_STS_STS)
+            step = "gen"
+            await self._sw_cmd(CMD_GENERATE_1, FIRST_CAP, "upd_kat_gen", wait_ack=False)
+            got = []
+            for i in range(GEN1_WORDS):
+                await self._wait(CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, f"upd_kat_vld{i}")
+                got.append(await r._rd(CSRNG_GENBITS))
+            f["genbits"] = [f"0x{w:08x}" for w in got]
+            _, sts = await self._wait(
+                CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "upd_kat_gen_ack"
+            )
+            f["gen_cmd_sts"] = _field(sts, CS_STS_STS)
+            step = "uni"
+            await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), FIRST_CAP, "upd_kat_uni")
+        except TrialTimeout as exc:
+            f["reason"] = f"timeout:{exc.what} bound={exc.bound} step={step}"
+        return f
+
+    def _update_kat_grade(self, f: dict, reason: str) -> None:
+        """CTRL-CSRNG-UPDATE and CHK-CSRNG-UPDATE of leg ``known_answer``.
+
+        The control: the golden first block after the Update differs from the
+        golden first block without it, so a DUT that acknowledges the Update and
+        does not apply it fails the check, and ``GENBITS_VLD`` read 0 before the
+        Instantiate. The check: the Instantiate, the Update and the Generate
+        acknowledge with ``CMD_STS`` = 0, and the four ``GENBITS`` words equal the
+        golden after the Update."""
+        if not f:
+            self.chk.blocked("CSRNG-UPDATE", f"known_answer: {reason}")
+            return
+        seed = self.plan.kat_seed
+        plain = SepCtrDrbgGolden()
+        plain.instantiate(0, additional_input=seed)
+        updated = SepCtrDrbgGolden()
+        updated.instantiate(0, additional_input=seed)
+        updated._update(self.plan.upd_data)
+
+        def _txt(block: int) -> list[str]:
+            return [f"0x{(block >> (32 * i)) & 0xFFFF_FFFF:08x}" for i in range(GEN1_WORDS)]
+
+        expected = _txt(updated.generate_one())
+        no_update = _txt(plain.generate_one())
+        self.chk.ctrl(
+            "CSRNG-UPDATE",
+            expected != no_update and f.get("vld_pre") == 0,
+            leg="known_answer",
+            vld_pre=f.get("vld_pre"),
+            golden_after_update=expected,
+            golden_without_update=no_update,
+        )
+        self.chk.ok(
+            "CSRNG-UPDATE",
+            "reason" not in f
+            and f.get("ins_cmd_sts") == STS_SUCCESS
+            and f.get("cmd_sts") == STS_SUCCESS
+            and f.get("gen_cmd_sts") == STS_SUCCESS
+            and f.get("genbits") == expected,
+            **f,
+            expected=expected,
+            expected_sts=STS_SUCCESS,
+        )
+
+    async def _update_after_refusal(self, drain_max: int) -> dict:
+        """The Update after the refused Generate K + 1, then one Generate.
+
+        ``GENBITS`` is read until ``GENBITS_VLD`` reads 0, so a ``GENBITS_VLD`` of
+        1 after the Update would come from the Update. The Update carries one
+        additional-data word (the low word of the known-answer seed). After the
+        Generate, a write of 0 clears bit 15 before the Reseed of the leg."""
+        r = self.reg
+        f: dict = {}
+        drained = 0
+        left = await r._rd(CSRNG_GENBITS_VLD) & GB_VLD
+        while left and drained < drain_max:
+            await r._rd(CSRNG_GENBITS)
+            drained += 1
+            left = await r._rd(CSRNG_GENBITS_VLD) & GB_VLD
+        f.update({"pre_drained": drained, "pre_vld": int(bool(left))})
+        word = cmd_word(ACMD_UPDATE, clen=UPDATE_CLEN)
+        f["word"] = f"0x{word:x}"
+        try:
+            await self._sw_cmd(word, FIRST_CAP, "upd", wait_ack=False)
+            await r._wr(CSRNG_CMD_REQ, self.plan.kat_seed & 0xFFFF_FFFF)
+            _, sts = await self._wait(
+                CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "upd_ack"
+            )
+            f["cmd_ack"] = int(bool(sts & CS_STS_ACK))
+            f["cmd_sts"] = _field(sts, CS_STS_STS)
+            f["vld_after"] = int(bool(await r._rd(CSRNG_GENBITS_VLD) & GB_VLD))
+            gen_sts, recov, words, _ = await self._sw_generate(FIRST_CAP)
+            f["gen_cmd_sts"] = gen_sts
+            f["alert15"] = int(bool(recov & CS_RESEED_CNT))
+            f["gen_words"] = words
+            f["alert15_cleared"] = await self._clear_bit(CS_RESEED_CNT)
+        except TrialTimeout as exc:
+            f["reason"] = f"timeout:{exc.what} bound={exc.bound}"
+        return f
+
+    async def _refused_generate(self, leg: str) -> None:
+        """CHK-CSRNG-UNINST-REFUSE of one leg: a Generate (glen 1) to a software
+        instance that is not instantiated acknowledges with ``CMD_STS`` = 3, sets bit
+        14, returns no ``GENBITS`` word before the acknowledge and leaves
+        ``GENBITS_VLD`` at 0; a write of 0 clears bit 14. Control
+        (``CTRL-CSRNG-UNINST-REFUSE``): bit 14 and ``GENBITS_VLD`` read 0 first."""
+        r = self.reg
+        f: dict = {"leg": leg}
+        f["invseq_pre"] = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
+        f["vld_pre"] = int(bool(await r._rd(CSRNG_GENBITS_VLD) & GB_VLD))
+        try:
+            sts, recov, words, _ = await self._sw_generate(FIRST_CAP)
+            f["cmd_sts"] = sts
+            f["invseq"] = int(bool(recov & CS_INVSEQ))
+            f["alert15"] = int(bool(recov & CS_RESEED_CNT))
+            f["words"] = words
+            f["vld_after"] = int(bool(await r._rd(CSRNG_GENBITS_VLD) & GB_VLD))
+            f["cleared_by_write0"] = await self._clear_bit(CS_INVSEQ)
+        except TrialTimeout as exc:
+            f["reason"] = f"timeout:{exc.what} bound={exc.bound}"
+        self.chk.ctrl(
+            "CSRNG-UNINST-REFUSE",
+            f["invseq_pre"] == 0 and f["vld_pre"] == 0,
+            leg=leg,
+            invseq_pre=f["invseq_pre"],
+            vld_pre=f["vld_pre"],
+        )
+        self.chk.ok(
+            "CSRNG-UNINST-REFUSE",
+            "reason" not in f
+            and f.get("cmd_sts") == STS_INVALID_CMD_SEQ
+            and f.get("invseq") == 1
+            and f.get("words") == 0
+            and f.get("vld_after") == 0
+            and f.get("cleared_by_write0") == 1,
+            **f,
+            expected_sts=STS_INVALID_CMD_SEQ,
+            expected_words=0,
+        )
+
+    async def _uninst_refuse_leg(self) -> None:
+        """OBS-CSRNG-UNINST-STATE before and after an Uninstantiate of the
+        instantiated software instance, then the refused Generate of
+        CHK-CSRNG-UNINST-REFUSE leg ``after_uninstantiate``."""
+        await self._int_state_obs("pre")
+        try:
+            _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), FIRST_CAP, "refuse_uni")
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+            self.chk.ok("CSRNG-UNINST-REFUSE", False, leg="after_uninstantiate", reason=reason)
+            return
+        self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="kat")
+        await self._int_state_obs("post")
+        await self._refused_generate("after_uninstantiate")
+
+    async def _int_state_obs(self, phase: str) -> None:
+        """OBS-CSRNG-UNINST-STATE at ``phase``: with ``CTRL.READ_INT_STATE`` True,
+        the INT_STATE_WORDS ``INT_STATE_VAL`` reads of each ``INT_STATE_NUM`` index
+        (written, then read back). ``CTRL`` returns to ``CSRNG_CTRL_ON`` after."""
+        r = self.reg
+        top = cocotb.top
+        await r._wr(CSRNG_CTRL, CSRNG_CTRL_READ_STATE)
+        for idx in INT_STATE_IDX:
+            await r._wr(CSRNG_INT_STATE_NUM, idx)
+            num_rb = await r._rd(CSRNG_INT_STATE_NUM)
+            words = [await r._rd(CSRNG_INT_STATE_VAL) for _ in range(INT_STATE_WORDS)]
+            self.chk.obs(
+                "CSRNG-UNINST-STATE",
+                phase=phase,
+                idx=idx,
+                idx_rb=num_rb,
+                nonzero=int(any(words)),
+                digest=word_digest(words),
+                sw_app_read_en=f"0x{self.rd(top.csrng_sw_app_read_en_o):02x}",
+                lc_hw_debug_en=f"0x{self.rd(top.csrng_lc_hw_debug_en_o):x}",
+            )
+        await r._wr(CSRNG_CTRL, CSRNG_CTRL_ON)
+
+    async def _genbits_kat(
+        self, drain_max: int, clear_recov: bool = False, entropy_ctrl: bool = False
+    ) -> dict:
         """Known-answer Generate with SW_APP_ENABLE True: the GENBITS words equal the
         SP 800-90A CTR_DRBG golden (AES-256, no derivation function) of the drawn seed.
 
@@ -2343,15 +3109,25 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         With ``clear_recov``, ``RECOV_ALERT_STS`` is written 0 and read back
         between the Instantiate acknowledge and the Generate, and read again after
         the Generate acknowledge (``recov_clear``, ``recov_after``).
+
+        The dict also carries ``FIPS_FORCE`` and ``CTRL.FIPS_FORCE_ENABLE`` read
+        before the Instantiate and ``genbits_fips``, the ``GENBITS_FIPS`` bit of the
+        first ``GENBITS_VLD`` read with ``GENBITS_VLD`` = 1. With ``entropy_ctrl``,
+        ``cs_entropy_req`` is written 1 before the Uninstantiate and read after that
+        write (``ent_pre``) and after the Instantiate acknowledge (``ent_after_ins``).
         """
         r = self.reg
         seed = self.plan.kat_seed
         extra: dict = {}
         await r._wr(CSRNG_CTRL, CSRNG_CTRL_ON)
+        extra.update(await self._fips_force_pre())
         drained = 0
         while await r._rd(CSRNG_GENBITS_VLD) & GB_VLD and drained < drain_max:
             await r._rd(CSRNG_GENBITS)
             drained += 1
+        if entropy_ctrl:
+            await r._wr(CSRNG_INTR_STATE, CS_ENTROPY_REQ)
+            extra["ent_pre"] = int(bool(await r._rd(CSRNG_INTR_STATE) & CS_ENTROPY_REQ))
         await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), FIRST_CAP, "kat_uni")
         ins = cmd_word(ACMD_INSTANTIATE, clen=KAT_CLEN, flag0=MUBI_TRUE)
         await self._sw_cmd(ins, FIRST_CAP, "kat_ins_rdy", wait_ack=False)
@@ -2360,13 +3136,17 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         _, ins_sts = await self._wait(
             CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "kat_ins_ack"
         )
+        if entropy_ctrl:
+            extra["ent_after_ins"] = int(bool(await r._rd(CSRNG_INTR_STATE) & CS_ENTROPY_REQ))
         if clear_recov:
             await r._wr(CSRNG_RECOV_ALERT_STS, 0)
             extra["recov_clear"] = await r._rd(CSRNG_RECOV_ALERT_STS)
         await self._sw_cmd(CMD_GENERATE_1, FIRST_CAP, "kat_gen", wait_ack=False)
         got = []
         for i in range(GEN1_WORDS):
-            await self._wait(CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, f"kat_vld{i}")
+            _, vld = await self._wait(CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, f"kat_vld{i}")
+            if i == 0:
+                extra["genbits_fips"] = int(bool(vld & GB_FIPS))
             got.append(await r._rd(CSRNG_GENBITS))
         # The window is open across this Generate, so its acknowledge is graded too:
         # a fresh instance completes the Generate with CMD_STS success.
@@ -2474,6 +3254,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             first = await self._genbits_kat(GEN1_WORDS)
             step = "kat2"
             second = await self._genbits_kat(GEN1_WORDS, clear_recov=True)
+            self._fips_kat_grade("kat_bus_cmp1_flag0_true", first)
+            self._fips_kat_grade("kat_bus_cmp2_flag0_true", second)
             blk_eq = first["genbits"] == second["genbits"]
             bit12_clear = int(bool(second["recov_clear"] & CS_BUS_CMP))
             f = {

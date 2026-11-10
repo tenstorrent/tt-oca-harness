@@ -14,9 +14,8 @@ handshakes resolved from release, no response after release for a request
 issued before it, and a fresh write and read on every route that answered OKAY
 before the reset. The last leg holds one B on the responder across a cool
 reset; the responder drops it at the primary reset, the link's aresetn, and
-OBS-G2A-HELD-RESP records what the DUT presents after release (SF-003). VCS
-only; the bench checkers print their CHK-AXI-SVA and CHK-AXI-STALL lines at
-final.
+OBS-G2A-HELD-RESP records what the DUT presents after release. VCS only; the
+bench checkers print their CHK-AXI-SVA and CHK-AXI-STALL lines at final.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_axi_smc_cool_reset_in_flight_test --target compile_smu_chiplet --tool vcs

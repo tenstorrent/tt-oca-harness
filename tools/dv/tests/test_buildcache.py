@@ -24,10 +24,12 @@ from runlib.buildcache import (  # noqa: E402
 TOP = "sep_uvm_top"
 TOOL_VERSION = "vcs script version : X-2025.06"
 FILELIST = "+define+SIMULATION\nhw/sys/sep/rtl/sep.sv\n"
+ROOT = Path("/work/checkout")
 
 
 def fingerprint(build_args: list[str], extra: list[str] | None = None) -> str:
     return build_fingerprint(
+        root=ROOT,
         build_args=build_args,
         top_module=TOP,
         tool_version=TOOL_VERSION,
@@ -88,6 +90,27 @@ class FingerprintJobCountTest(unittest.TestCase):
             fingerprint_build_args(args),
             ["-sverilog", "-CFLAGS", "-O0", "-jN", "-partcomp=autopart_low"],
         )
+
+
+class FingerprintCheckoutTest(unittest.TestCase):
+    """A path under the checkout names one source wherever the checkout sits."""
+
+    def at(self, root: Path, library: str = "/opt/cocotb/libvpi.so") -> str:
+        return build_fingerprint(
+            root=root,
+            build_args=["-f", f"{root}/hw/sys/sep/dv/sep.f", "-load", library],
+            top_module=TOP,
+            tool_version=TOOL_VERSION,
+            filelist_text=f"{root}/hw/sys/sep/rtl/sep.sv\n",
+            extra=[f"model={root}/build/vcs"],
+        )
+
+    def test_one_tree_at_two_paths_has_one_fingerprint(self) -> None:
+        self.assertEqual(self.at(Path("/a/oss-ocah")), self.at(Path("/b/clone")))
+
+    def test_a_path_outside_the_checkout_still_changes_the_fingerprint(self) -> None:
+        root = Path("/a/oss-ocah")
+        self.assertNotEqual(self.at(root), self.at(root, "/opt/other/libvpi.so"))
 
 
 if __name__ == "__main__":

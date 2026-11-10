@@ -31,7 +31,7 @@ Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. The internal entropy source feeds ESRC, CSRNG and EDN for
 the AES masking reseed. HMAC, KMAC, OTBN and ABR stay in reset.
 
-Randomization (``SepSeededRng`` from the run seed, drawn before the first stimulus
+Randomization (``SepSeededRng`` from the plan seed, drawn before the first stimulus
 by ``draw_plan``): the mode {CFB, OFB, GCM}, the key size {128, 192, 256}, the
 direction {encrypt, decrypt}, the key, the IV and the input. CFB and OFB: 2 to 4
 whole blocks. GCM: a 96-bit IV, an AAD length of 0 to 40 bytes and a text length of
@@ -40,6 +40,10 @@ past NUM_VALID_BYTES of a partial block are 16 drawn non-zero bytes, so a DUT th
 does not mask them by NUM_VALID_BYTES shows a wrong text or tag. Last, one invalid
 CTRL_GCM_SHADOWED.PHASE value. One cell runs per
 seed; the 18 cells close over merged regressions (docs/SEP_FCOV.adoc).
+The plan seed is the run seed, or N when the run carries ``+sep_plan_seed=N``.
+The plusarg fixes the plan draw only; the check log and the KEY_SHARE1 mask
+stream keep the run seed. The regression does not use it. ``INFO-PLAN-SEED``
+logs both seeds, the source and the drawn cell before the first stimulus.
 
 Checkers (each logs mode, key size, direction and the first mismatched word):
   CHK-AES-CFB   every DATA_OUT block equals the SP 800-38A CFB-128 golden.
@@ -51,6 +55,20 @@ Checkers (each logs mode, key size, direction and the first mismatched word):
                 (0 or more than one bit set) written to CTRL_GCM_SHADOWED reads
                 back GCM_INIT (upstream aes/doc/registers.md:525). Control: the
                 PHASE field reads GCM_TAG before that write.
+  CHK-AES-IV-CHAIN  CFB encrypt, OFB and GCM: after the last DATA_OUT read of the
+                cell (GCM: of the TEXT phase, before the GCM_TAG phase write), with
+                IDLE = 1, IV_0..IV_3 hold the next chaining value. CFB encrypt:
+                the last output block (upstream aes/doc/theory_of_operation.md,
+                Datapath Architecture and Operation; SP 800-38A 6.3). OFB: the
+                last keystream block, the last output block XOR the last input
+                block (same section; SP 800-38A 6.4). GCM: IV_0..IV_2 keep the
+                96-bit IV and the counter word (bytes 12..15, big-endian) is 2 +
+                the number of TEXT blocks (programmers_guide.md, GCM Encryption:
+                two inc32 steps in GCM_INIT, one per TEXT block; SP 800-38D 6.2,
+                7.1).
+  CHK-AES-STATUS-CLEAN  at the end of the cell, STATUS.ALERT_RECOV_CTRL_UPDATE_ERR
+                and STATUS.ALERT_FATAL_FAULT read 0 (aes.hjson STATUS). The line
+                logs the STATUS word and both bits; a set bit fails the leaf.
 Controls (from the plan, before the first stimulus):
   CTRL-AES-OUT-NE-IN       every golden output block differs from its input block,
                            so a DUT that returns DATA_IN fails the check.
@@ -59,6 +77,12 @@ Controls (from the plan, before the first stimulus):
                            input, so a DUT that runs another mode fails the check.
                            GCM: the text golden differs from CTR mode from J0 (no
                            inc32) and the tag golden differs from the length block.
+Observation:
+  OBS-AES-IV-CFB-DEC  CFB decrypt, at the same read point: IV_0..IV_3, the last
+                input block (SP 800-38A 6.3) and the last output block (upstream
+                theory_of_operation.md, Datapath Architecture and Operation: "the
+                output data"), and which of the two the IV equals. The two texts
+                disagree, so the value is logged, not graded.
 A passing check writes one FCOV record (``sep_aes_cfb_ofb_gcm_cg``).
 """
 
@@ -90,10 +114,13 @@ from sep_reg_meta import AES
 from seq_lib.sep_aes_seq import (
     AES_DATA_IN,
     AES_DATA_OUT,
+    AES_IV,
     AES_KEYLEN_CTRL,
     AES_OP_DEC,
     AES_OP_ENC,
     AES_STATUS,
+    AES_STATUS_ALERT_FATAL_FAULT,
+    AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR,
     AES_STATUS_IDLE,
     AES_STATUS_INPUT_READY,
     AES_STATUS_OUTPUT_VALID,
@@ -280,6 +307,37 @@ def _whole_words(buf: bytes) -> list[int]:
     return bytes_to_words(buf[: len(buf) - len(buf) % 4])
 
 
+def plan_seed_of(run_seed: int) -> tuple[int, str]:
+    """(plan seed, source): N from ``+sep_plan_seed=N``, else the run seed."""
+    raw = cocotb.plusargs.get("sep_plan_seed")
+    if raw in (None, "", True):
+        return run_seed, "run_seed"
+    return int(str(raw), 0), "plusarg"
+
+
+def _xor(a: bytes, b: bytes) -> bytes:
+    return bytes(x ^ y for x, y in zip(a, b, strict=True))
+
+
+def expected_iv(plan: Plan, golden: bytes) -> list[int] | None:
+    """IV_0..IV_3 after the last block of the cell, or None for CFB decrypt.
+
+    CFB encrypt: the last output block. OFB: the last keystream block, which is
+    the last output block XOR the last input block (whole blocks only). GCM: the
+    96-bit IV and the counter word 2 + the number of TEXT blocks, big-endian.
+    """
+    if plan.mode == "cfb":
+        return bytes_to_words(golden[-16:]) if plan.direction == "enc" else None
+    if plan.mode == "ofb":
+        return bytes_to_words(_xor(golden[-16:], plan.data[-16:]))
+    n_text = len(_blocks(plan.data))
+    return bytes_to_words(plan.iv + ((2 + n_text) & 0xFFFF_FFFF).to_bytes(4, "big"))
+
+
+def _hex_words(words: list[int]) -> list[str]:
+    return [f"0x{w:08x}" for w in words]
+
+
 def first_mismatch(got: bytes, exp: bytes) -> dict[str, object]:
     """Index of the first word that differs, with both words, or ``none``."""
     for i in range(0, max(len(got), len(exp)), 4):
@@ -325,19 +383,33 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        plan = draw_plan(seed)
+        plan_seed, source = plan_seed_of(seed)
+        plan = draw_plan(plan_seed)
         self.plan = plan
-        self.required_evidence = (f"CHK-{CHK_NAME[plan.mode]}",)
+        self.required_evidence = (f"CHK-{CHK_NAME[plan.mode]}", "CHK-AES-STATUS-CLEAN")
         if plan.mode == "gcm":
             self.required_evidence += ("CHK-AES-GCM-PHASE-MAP",)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        if expected_iv(plan, plan.golden()[0]) is not None:
+            self.required_evidence += ("CHK-AES-IV-CHAIN",)
+        self.chk = SepChkLog(self, TEST, seed)
+        self.chk.info(
+            "PLAN-SEED",
+            run_seed=seed,
+            plan_seed=plan_seed,
+            source=source,
+            mode=plan.mode,
+            dir=plan.direction,
+            keylen=plan.key_bits,
+            text_bytes=len(plan.data),
+            aad_bytes=len(plan.aad),
+        )
+        self.logger.info("PLAN seed=%d %s", plan.seed, plan.describe())
 
         await self.bring_up_no_cpu(park=("otbn", "hmac", "kmac", "abr"))
         await self.bring_up_entropy(strict=True, score_km=False)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
-        self.chk = SepChkLog(self, TEST, seed)
         self.aes = SepAes(self)
         guards = plan_guards(plan)
         self.chk.ctrl(
@@ -355,19 +427,81 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
             await self._gcm_phase_map(plan)
         else:
             await self._run_cfb_ofb(plan)
-        await self.aes.check_status_clean(plan.cell())
+        await self._status_clean(plan.cell())
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
         self.chk.finish()
 
+    async def _status_clean(self, tag: str) -> None:
+        """CHK-AES-STATUS-CLEAN: both AES alert bits of STATUS read 0.
+
+        ``SepAes.check_status_clean`` asserts the two bits; its ``AssertionError``
+        is logged as the FAIL line and raised again. After it returns, one more
+        STATUS read gives the word and the bits of the PASS line.
+        """
+        try:
+            await self.aes.check_status_clean(tag)
+        except AssertionError as exc:
+            self.chk.ok("AES-STATUS-CLEAN", False, tag=tag, reason=str(exc).replace(" ", "_"))
+            raise
+        st = await self.aes._rd(AES_STATUS)
+        recov = (st >> AES_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR) & 1
+        fatal = (st >> AES_STATUS_ALERT_FATAL_FAULT) & 1
+        self.chk.ok(
+            "AES-STATUS-CLEAN",
+            recov == 0 and fatal == 0,
+            tag=tag,
+            status=f"0x{st:08x}",
+            alert_recov_ctrl_update_err=recov,
+            alert_fatal_fault=fatal,
+        )
+
     def _fields(self, plan: Plan) -> dict[str, object]:
         return {"mode": plan.mode, "keylen": plan.key_bits, "dir": plan.direction}
+
+    async def _read_iv(self) -> list[int]:
+        """Wait for IDLE, then read IV_0..IV_3."""
+        await self.aes.wait_idle("pre-iv-read")
+        return [await self.aes._rd(AES_IV[i]) for i in range(4)]
+
+    def _iv_chain(self, plan: Plan, golden: bytes, iv: list[int] | None, reason: str) -> None:
+        """CHK-AES-IV-CHAIN, or OBS-AES-IV-CFB-DEC for CFB decrypt.
+
+        ``iv`` is None when a bounded wait expired before the IV read.
+        """
+        fields: dict[str, object] = {**self._fields(plan), "blocks": len(_blocks(plan.data))}
+        if iv is not None:
+            fields["iv"] = _hex_words(iv)
+        if reason:
+            fields["reason"] = reason
+        exp = expected_iv(plan, golden)
+        if exp is None:
+            cands = {
+                "last_input": bytes_to_words(plan.data[-16:]),
+                "last_output": bytes_to_words(golden[-16:]),
+            }
+            matched = [k for k, v in cands.items() if v == iv] or ["none"]
+            self.chk.obs(
+                "AES-IV-CFB-DEC",
+                **fields,
+                last_input=_hex_words(cands["last_input"]),
+                last_output=_hex_words(cands["last_output"]),
+                matched=",".join(matched),
+            )
+            return
+        fields["exp"] = _hex_words(exp)
+        if plan.mode == "gcm":
+            fields["counter_exp"] = int.from_bytes(words_to_bytes(exp)[12:], "big")
+            if iv is not None:
+                fields["counter_got"] = int.from_bytes(words_to_bytes(iv)[12:], "big")
+        self.chk.ok("AES-IV-CHAIN", iv == exp, **fields)
 
     async def _run_cfb_ofb(self, plan: Plan) -> None:
         golden, _ = plan.golden()
         got = b""
+        iv: list[int] | None = None
         reason = ""
         try:
             await self.aes.load_key_iv(plan.key_words, plan.iv_words())
@@ -375,11 +509,19 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
                 got += words_to_bytes(await self.aes.run_ecb_block(bytes_to_words(blk)))
         except AssertionError as exc:  # a bounded STATUS wait expired
             reason = str(exc).replace(" ", "_")
+        iv_reason = reason
+        if not reason:
+            try:
+                iv = await self._read_iv()
+            except AssertionError as exc:
+                iv_reason = str(exc).replace(" ", "_")
         fields = {**self._fields(plan), "blocks": len(golden) // 16}
         fields.update(first_mismatch(got, golden))
         if reason:
             fields["reason"] = reason
-        if self.chk.ok(CHK_NAME[plan.mode], not reason and got == golden, **fields):
+        crypt_ok = self.chk.ok(CHK_NAME[plan.mode], not reason and got == golden, **fields)
+        self._iv_chain(plan, golden, iv, iv_reason)
+        if crypt_ok:
             await aes_mode_fcov(plan)
 
     async def _gcm_phase(self, phase: int, num_valid_bytes: int = 16) -> None:
@@ -420,6 +562,7 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
         golden, tag_golden = plan.golden()
         got = b""
         tag = b""
+        iv: list[int] | None = None
         reason = ""
         try:
             await self._gcm_phase(GCM_INIT)
@@ -431,6 +574,7 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
                 await self._phase_blocks(GCM_AAD, plan.aad, read=False)
             if plan.data:
                 got = await self._phase_blocks(GCM_TEXT, plan.data, read=True)
+            iv = await self._read_iv()
             await self._gcm_phase(GCM_TAG)
             await self._write_block(plan.len_block())
             tag = await self._read_out()
@@ -459,6 +603,7 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
             **base,
             **first_mismatch(tag, tag_golden or b""),
         )
+        self._iv_chain(plan, golden, iv, reason)
         if text_ok and tag_ok:
             await aes_mode_fcov(plan)
 

@@ -64,12 +64,15 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# AON timer internals: WKUP timer, WDOG pet and WDOG_REGWEN lock. The WKUP interrupt
-# output is unused in sep, so expiry is read from the polled status bit.
+# AON timer internals: WKUP timer, WDOG pet and WDOG_REGWEN lock, the watchdog count past
+# 0xFFFF_FFFF (logged), and the wakeup timer, bark, bite threshold and a pet in one window.
+# The WKUP interrupt output is unused in sep, so expiry is read from the polled status bit.
 name = "sep_wdt_aon_timer_internals_test"
 module = "system.sep_wdt_aon_timer_internals_test"
 seed = 1
-# No reseed: the seed selects only thresholds and the prescaler under one contract.
+# The seed draws the thresholds, the prescaler, the wrap preload and whether WDOG_REGWEN is
+# locked in the combined window; the lock clause runs only on a locked seed.
+reseed = 3
 timeout_sec = 1200
 tags = ["wdt", "aon_timer", "reset", "regwen", "system", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
@@ -380,8 +383,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Narrow-write byte masking at every AxSIZE and lane offset, plus memory-window readback,
-# which catches a read-mask defect.
+# Narrow-write byte masking at every AxSIZE and lane offset; the OTBN memory-window
+# accesses are logged, not graded.
 name = "sep_axi_strobe_window_test"
 module = "system.sep_axi_strobe_window_test"
 seed = 1
@@ -420,7 +423,8 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # The three legal AW/W orderings at every write-safe register, graded on the readback, not
-# on the response.
+# on the response. Four same-ID reads in flight through the system-CSR bridge return their
+# R beats in request order; the k-th B of four same-ID writes follows the k-th AW and W.
 name = "sep_axi_order_sweep_test"
 module = "system.sep_axi_order_sweep_test"
 seed = 1
@@ -480,8 +484,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# The same sweep from the SMN inbound master. The sixteen INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL blocks stay
-# on s_axi only: they gate the access in flight.
+# The same sweep and same-ID leg from the SMN inbound master. The sixteen INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL
+# blocks stay on s_axi only: they gate the access in flight.
 name = "sep_axi_order_sweep_m_axi_test"
 module = "system.sep_axi_order_sweep_m_axi_test"
 seed = 1
