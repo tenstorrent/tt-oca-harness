@@ -106,7 +106,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="fabric" d="M406,128 L436,116 L436,164 L406,152 Z"/>
 <path class="axiln" d="M436,140 L446,140"/>
 <path class="axiln" d="M421,158 L421,186"/>
-<rect class="core" x="361" y="186" width="120" height="52" rx="6"/>
+<rect class="external" x="361" y="186" width="120" height="52" rx="6"/>
 <text class="t" x="421" y="208.5" text-anchor="middle">DECERR</text>
 <text class="s" x="421" y="225.5" text-anchor="middle">rest of the page</text>
 <rect class="network" x="446" y="118" width="68" height="44" rx="4"/>
@@ -190,6 +190,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="557.5" y="582.5" text-anchor="start">Signals</text>
 <rect class="core opt" x="631.8" y="569" width="36" height="18" rx="4"/>
 <text class="s" x="675.8" y="582.5" text-anchor="start">Tied off</text>
+<rect class="external" x="754" y="569" width="36" height="18" rx="4"/>
+<text class="s" x="798" y="582.5" text-anchor="start">Error responder</text>
 <rect class="ps" x="139.0" y="131.0" width="22" height="18" rx="4"/>
 <text class="pst" x="150" y="144.5" text-anchor="middle">S</text>
 <rect class="pm" x="139.0" y="351.0" width="22" height="18" rx="4"/>

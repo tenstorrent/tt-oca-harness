@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="888" viewBox="0 0 1040 888" role="img" aria-labelledby="title desc">
 <title id="title">SEP local fabric</title>
-<desc id="desc">The SEP local crossbar u_sep_local_axi_xbar joins five initiators to ten targets with 32-bit addresses and 64-bit data; initiator IDs are 3 bits and target IDs 6 bits. Inside sep_cpu the IFU, LSU and debug masters of the VeeR EL2 core each pass a local alias remap that rewrites the 768 MiB window at SEP_LOCAL_BASE_ADDR to 0x1000_0000. The IFU demux sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the ifu_sram initiator and everything else to a DECERR slave; the LSU demux sends boot ROM addresses to the boot ROM mux and everything else to the lsu initiator; the debug master connects directly. The boot ROM mux feeds the boot ROM memory interface outside the crossbar. The secure DMA master passes TL-UL to AXI-Lite, AXI-Lite to AXI4 and 32 to 64-bit conversion and its own alias remap. The ext initiator is traffic from sep_system_peripherals. Targets: cpu_tcm, the ICCM and DCCM backdoor into the core DMA port; sram, whose burst demux u_sram_burst_demux sends INCR bursts and single-beat bursts through the SRAM memory interface to the 256 KiB SRAM macro and answers a multi-beat FIXED or WRAP burst with SLVERR from u_sram_burst_err_slv; dma_csr and sep_wdt, each downsized to 32 bits and converted to AXI-Lite and TL-UL for the secure DMA registers and the watchdog aon_timer, with a demux, not drawn, between the two converters that passes the register window and answers the rest of the page with DECERR; sep_reset_ctrl through an AXI to AXI-Lite converter; sep_crypto with its own interconnect; sep_system_peripherals, the output fabric; sep_io, downsized, converted to AXI-Lite and demultiplexed to the SPI host or DECERR; entropy_fifo through an AXI to AXI-Lite converter; and sep_external, whose demux sends the eFuse shim CSR window to the eFuse wrapper and the rest to the AXI extension port.</desc>
+<desc id="desc">The SEP local crossbar u_sep_local_axi_xbar joins five initiators to ten targets with 32-bit addresses and 64-bit data; initiator IDs are 3 bits and target IDs 6 bits. Inside sep_cpu the IFU, LSU and debug masters of the VeeR EL2 core each pass a local alias remap that rewrites the 768 MiB window at SEP_LOCAL_BASE_ADDR to 0x1000_0000. The IFU demux sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the ifu_sram initiator and everything else to a DECERR slave; the LSU demux sends boot ROM addresses to the boot ROM mux and everything else to the lsu initiator; the debug master connects directly. The boot ROM mux feeds the boot ROM memory interface outside the crossbar. The secure DMA master passes TL-UL to AXI-Lite, AXI-Lite to AXI4 and 32 to 64-bit conversion and its own alias remap. The ext initiator is traffic from sep_system_peripherals. Targets: cpu_tcm, the ICCM and DCCM backdoor into the core DMA port; sram, whose burst demux u_sram_burst_demux sends INCR bursts and single-beat bursts through the SRAM memory interface to the 256 KiB SRAM macro and answers a multi-beat FIXED or WRAP burst with SLVERR from u_sram_burst_err_slv; dma_csr and sep_wdt, each downsized to 32 bits, converted to AXI-Lite and demultiplexed to a TL-UL bridge in front of the secure DMA registers or the watchdog aon_timer, or to DECERR; sep_reset_ctrl through an AXI to AXI-Lite converter; sep_crypto with its own interconnect; sep_system_peripherals, the output fabric; sep_io, downsized, converted to AXI-Lite and demultiplexed to the SPI host or DECERR; entropy_fifo through an AXI to AXI-Lite converter; and sep_external, whose demux sends the eFuse shim CSR window to the eFuse wrapper and the rest to the AXI extension port.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -125,13 +125,13 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="705" y="321.5" text-anchor="middle">AXI4 to</text>
 <text class="s" x="705" y="336.5" text-anchor="middle">AXI-Lite</text>
 <path class="axiln" d="M736,324 L748,324"/>
-<rect class="network" x="748" y="304" width="62" height="40" rx="4"/>
-<text class="s" x="779" y="321.5" text-anchor="middle">AXI-Lite</text>
-<text class="s" x="779" y="336.5" text-anchor="middle">to TL-UL</text>
-<path class="axiln" d="M810,324 L822,324"/>
-<rect class="core" x="822" y="304" width="108" height="40" rx="6"/>
-<text class="t" x="876" y="321" text-anchor="middle">secure_dma</text>
-<text class="s" x="876" y="337" text-anchor="middle">u_sep_dma_wrap</text>
+<path class="fabric" d="M748,314 L778,304 L778,344 L748,334 Z"/>
+<path class="axiln" d="M778,313 L794,313"/>
+<rect class="core" x="794" y="304" width="136" height="18" rx="4"/>
+<text class="s" x="862" y="317.5" text-anchor="middle">TL-UL, secure_dma</text>
+<path class="axiln" d="M778,335 L794,335"/>
+<rect class="external" x="794" y="326" width="136" height="18" rx="4"/>
+<text class="s" x="862" y="339.5" text-anchor="middle">DECERR</text>
 <path class="axi" d="M580,379 L600,379"/>
 <rect class="network" x="600" y="359" width="62" height="40" rx="4"/>
 <text class="s" x="631" y="376.5" text-anchor="middle">64 to 32</text>
@@ -141,13 +141,13 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="705" y="376.5" text-anchor="middle">AXI4 to</text>
 <text class="s" x="705" y="391.5" text-anchor="middle">AXI-Lite</text>
 <path class="axiln" d="M736,379 L748,379"/>
-<rect class="network" x="748" y="359" width="62" height="40" rx="4"/>
-<text class="s" x="779" y="376.5" text-anchor="middle">AXI-Lite</text>
-<text class="s" x="779" y="391.5" text-anchor="middle">to TL-UL</text>
-<path class="axiln" d="M810,379 L822,379"/>
-<rect class="core" x="822" y="359" width="108" height="40" rx="6"/>
-<text class="t" x="876" y="376" text-anchor="middle">aon_timer</text>
-<text class="s" x="876" y="392" text-anchor="middle">u_sep_wdt_wrap</text>
+<path class="fabric" d="M748,369 L778,359 L778,399 L748,389 Z"/>
+<path class="axiln" d="M778,368 L794,368"/>
+<rect class="core" x="794" y="359" width="136" height="18" rx="4"/>
+<text class="s" x="862" y="372.5" text-anchor="middle">TL-UL, aon_timer</text>
+<path class="axiln" d="M778,390 L794,390"/>
+<rect class="external" x="794" y="381" width="136" height="18" rx="4"/>
+<text class="s" x="862" y="394.5" text-anchor="middle">DECERR</text>
 <path class="axi" d="M580,434 L600,434"/>
 <rect class="network" x="600" y="414" width="62" height="40" rx="4"/>
 <text class="s" x="631" y="431.5" text-anchor="middle">AXI4 to</text>

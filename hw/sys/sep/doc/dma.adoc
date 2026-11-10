@@ -56,8 +56,9 @@ The wrapper exposes separate AXI4 register-slave and DMA-master interfaces,
 both with 32-bit addresses and 64-bit data. Internally, the register path
 converts AXI4 to 32-bit AXI4-Lite, passes the DMA registers only their 512-byte
 window and answers the rest of the page with DECERR, then converts to TL-UL;
-the data path converts the core's TL-UL host port back to AXI4. A local-alias remapper precedes the SEP
-crossbar and leaves the CPU TCM backdoor range available to DMA.
+the data path converts the core's TL-UL host port back to AXI4. A local-alias
+remapper precedes the SEP crossbar and leaves the CPU TCM backdoor range
+available to DMA.
 
 Address-space ID `0x7` selects the core's internal host port, the only route
 in this wrapper. The upstream SoC control and system ports are tied off; their ASIDs do not provide
