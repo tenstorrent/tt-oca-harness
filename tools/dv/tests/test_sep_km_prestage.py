@@ -261,6 +261,23 @@ class ScrPlanTest(unittest.TestCase):
         order = [(pay[pl.OFF_ORDER8] >> (4 * i)) & 0xF for i in range(8)]
         self.assertEqual(order, pl.order8)
 
+    def test_sbox_in_closure(self) -> None:
+        # Word index lanes [12:9], [8:6], [5:3], [2:0] as (lsb, width).
+        lanes = ((9, 4), (6, 3), (3, 3), (0, 3))
+        for seed in (*range(1, 501), 0xFFFF_FFFF):
+            pl = P.plan(P.T_SCR, seed)
+            data: list[set[int]] = [set() for _ in range(8)]
+            addr: list[set[int]] = [set() for _ in lanes]
+            for a, w in zip(pl.addrs64, pl.data64, strict=True):
+                idx = (a - P.KM_SRAM_BASE) // 4
+                sbi = w ^ P.scr_round_key(idx, pl.ka)
+                for j in range(8):
+                    data[j].add((sbi >> (4 * j)) & 0xF)
+                for k, (lsb, width) in enumerate(lanes):
+                    addr[k].add((idx >> lsb) & ((1 << width) - 1))
+            self.assertEqual([len(s) for s in data], [16] * 8, seed)
+            self.assertEqual([len(s) for s in addr], [16, 8, 8, 8], seed)
+
 
 class MboxPlanTest(unittest.TestCase):
     def test_counts_and_words(self) -> None:

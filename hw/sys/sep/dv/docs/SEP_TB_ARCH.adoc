@@ -483,6 +483,7 @@ Observation probe groups:
    CHK-REFUSE-KEEP),
    `sep_km_abr_mlkem_sideload_test` (CHK-KEM-KEY-OFFSETS),
    `sep_km_crossbar_efuse_window_rand_test` (CHK-XBAR-SHARE-ZERO),
+   `sep_km_command_set_rand_test` (CHK-SHRED-FILL),
    `sep_sw_reset_isolation_matrix_test` (`km_key_aw_{valid,ready}_o` in leg C of
    the entry `sep_sw_reset_isolation_matrix_test_km_poke`: an AW valid and not
    ready at the isolate request, logged in INFO-KEY-BEAT-ATTEMPT).
