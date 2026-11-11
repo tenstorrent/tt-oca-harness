@@ -667,6 +667,14 @@ Observation probe groups:
   the ESRC conditioning entry of the crypto and entropy area and the FCOV
   sampler (`sep_esrc_conditioning_cg` `cp_ds_midrun`, `cp_div_midrun`,
   `cp_ds_resume`).
+* ESRC decorrelator chain tap (`esrc_decor_sr_o[347:0]`): the 29-stage chain
+  of each of the twelve lanes, lane i at bits [29i+28:29i]
+  (`gen_ecmplx[i].u_generator.u_decorrelator.ff_stage`). Read-only copy of DUT
+  nets: it drives nothing and adds no force. Users: `SepDrbgScoreboard`, which
+  seeds its decorrelator golden from this state once shifting is live, and the
+  ESRC conditioning entry of the crypto and entropy area (CHK-COND-DECOR-MASK
+  takes the state before one start strobe; CHK-COND-LANES-OFF and
+  CHK-COND-ONE-LANE grade the hold and the change of each slice).
 * ESRC generator enable probe (`esrc_ro_enable_o`): bit i is the enable of
   generator lane i at the generator complex
   (`u_generator_complex.jitter_ro_enable_i`, the stored
