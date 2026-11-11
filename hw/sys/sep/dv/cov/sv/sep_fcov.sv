@@ -35185,8 +35185,8 @@ module sep_fcov (
     logic dr_v;  // x_digest_replay: {channel, Match}
     logic ss;
     logic ss_v;  // cp_stops_sense: 0 match during sense, 1 before sense
-    logic [2:0] sf;
-    logic sf_v;  // x_state_strap_feat: state * 2 + strap
+    logic [3:0] sf;
+    logic sf_v;  // x_state_strap_feat: cell class * 2 + strap
     logic rv;
     logic rv_v;  // cp_reset_values_hold
     logic xs;
@@ -35205,9 +35205,10 @@ module sep_fcov (
     cp_stops_sense: coverpoint s.ss iff (s.ss_v) {
       bins match_during_sense = {1'b0}; bins match_before_sense = {1'b1};
     }
-    // State 0 TEST_DEV, 1 PROD, 2 RMA_SIP.
+    // Cell class 0 TEST_DEV, 1 PROD, 2 RMA_SIP, 3 PROD_END, 4 RMA_CHIPLET,
+    // 5 INVALID.
     x_state_strap_feat: coverpoint s.sf iff (s.sf_v) {
-      bins cells[] = {[3'd0 : 3'd5]};
+      bins cells[] = {[4'd0 : 4'd11]};
     }
     // The LC_STATE word holds its reset value 0x0F, every other word 0.
     cp_reset_values_hold: coverpoint s.rv iff (s.rv_v) {
@@ -36336,12 +36337,12 @@ module sep_fcov (
     u_sep_sec_dis_activation_cg.sample(e);
   endtask
 
-  task automatic ef_rob(input int unsigned which, input logic [2:0] v);
+  task automatic ef_rob(input int unsigned which, input logic [3:0] v);
     ef_rob_t e;
     e = '0;
     case (which)
       0: begin
-        e.dr = v;
+        e.dr = v[2:0];
         e.dr_v = 1'b1;
       end
       1: begin
@@ -36692,10 +36693,18 @@ module sep_fcov (
           endcase
           ef_act(2, {feat_ctrl_i !== '1, dcell});
         end
-        // x_state_strap_feat: sampled with sec_dis_i 0.
-        if (!ef_sd && (ef_lc inside {EfTd, EfProd, EfRs}) && !$isunknown(secure_tm_i)) begin
-          ef_rob(2,
-                 3'((ef_lc == EfTd ? 0 : ef_lc == EfProd ? 1 : 2) * 2) + 3'(secure_tm_i === 1'b1));
+        // x_state_strap_feat: sampled with sec_dis_i 0, every state class.
+        if (!ef_sd && !$isunknown(secure_tm_i)) begin
+          logic [3:0] scell;
+          case (ef_lc)
+            EfTd: scell = 4'd0;
+            EfProd: scell = 4'd1;
+            EfRs: scell = 4'd2;
+            EfPe: scell = 4'd3;
+            EfRc: scell = 4'd4;
+            default: scell = 4'd5;
+          endcase
+          ef_rob(2, 4'(scell * 2) + 4'(secure_tm_i === 1'b1));
         end
       end
 
@@ -37700,7 +37709,7 @@ module sep_fcov (
                   ef_tc(2, {1'b0, code == EfCodeMatch, 4'(c * 3) + 4'(ef_go_shape[c])});
                 if ((c < 2) && ef_go_sensed[c] && (code == EfCodeMatch))
                   ef_tc(3, {3'd0, 2'(c), 1'b1});
-                if (ef_go_replay[c]) ef_rob(0, {2'(c), code == EfCodeMatch});
+                if (ef_go_replay[c]) ef_rob(0, {1'b0, 2'(c), code == EfCodeMatch});
               end
               if (ef_go_others_ok[c] && (ef_code[o1] === ef_code_q[o1]) &&
                   (ef_code[o2] === ef_code_q[o2]))
@@ -38037,13 +38046,13 @@ module sep_fcov (
       ef_ss_cnt <= ef_ss_cnt + 1;
       if ((efuse_sdis_hold_bound != 0) && (ef_ss_cnt + 1 == efuse_sdis_hold_bound)) begin
         if (ef_own_sdt && !ef_ss_bad && (efuse_shadow_i === ef_ss_snap)) begin
-          ef_rob(1, {2'b00, ef_ss_phase});
+          ef_rob(1, {3'b000, ef_ss_phase});
           // cp_reset_values_hold: at the end of the same bounded hold, in the
           // window that starts at a reset release, when every shadow word read
           // its reset value (0x0F for the LC_STATE word, 0 for every other
           // word) at the release and on every clock of the hold. A design that senses under the match loads a word
           // inside the bound, so the bin cannot fill on the release clock.
-          if (ef_ss_phase && (ef_ss_snap == EfShadowResetValue)) ef_rob(3, 3'd1);
+          if (ef_ss_phase && (ef_ss_snap == EfShadowResetValue)) ef_rob(3, 4'd1);
         end
       end
     end
@@ -38386,11 +38395,11 @@ module sep_fcov (
     if (!ef_own_ovr || in_reset) begin
       ef_xs_pend <= 1'b0;
     end else if (ovr_pass_rise[1] && ef_xs_pend) begin
-      ef_rob(4, 3'b000);
+      ef_rob(4, 4'b0000);
       ef_xs_pend <= 1'b0;
     end
     if (cond && (!ef_xs_q || ((secure_tm_i === 1'b1) != ef_xs_stm_q))) begin
-      if ((secure_tm_i === 1'b1) && ef_own_stmss) ef_rob(4, 3'b001);
+      if ((secure_tm_i === 1'b1) && ef_own_stmss) ef_rob(4, 4'b0001);
       else if ((secure_tm_i === 1'b0) && ef_own_ovr) ef_xs_pend <= 1'b1;
     end
   end
