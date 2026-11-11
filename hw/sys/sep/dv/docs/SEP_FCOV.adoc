@@ -6104,7 +6104,7 @@ Shadow Map"); `test_mode.adoc` (sections "Test Mode Entry", "Protection While
 Active"); `lifecycle_controller.adoc` (section "Overrides and Final Gates
 (SEC_DIS)").
 
-*Sample event*: token change on `tok_*_i` (`x_digest_replay`); change of `sec_dis_i` or `feat_ctrl_i`
+*Sample event*: token change on `tok_*_i` (`x_digest_replay`); the settled feature event: the rise of `fuse_sense_done_i`, or a change of the raw state, `sec_dis_i`, the DEMOTE pairs, the DIS vectors, `feat_ctrl_i` or `lc_sigint_i`, stable for 8 clocks
 (`x_state_strap_feat`); the end of a bounded hold in which `sec_dis_i` is high
 and `fuse_sense_done_i` is not 1 on every clock (`cp_stops_sense`,
 `cp_reset_values_hold`). The hold starts on the first clock with `sec_dis_i` high
@@ -6123,7 +6123,7 @@ sample the SEC_DIS-held window in which sense done stays low.
 |Coverpoint |Bins |Class
 |`x_digest_replay` |Channel (3) x go with the token words equal to the channel's expected digest (RMA: the OTP digest words; SEC_DIS: the gate constant) x code {Mismatch legal, Match `illegal_bins`}. A token word or a digest word with an X or Z bit is not equal. 3 legal cells |executable
 |`cp_stops_sense` |`sec_dis_i` 1 and `fuse_sense_done_i` not 1 on every clock of a hold of exactly `efuse_sdis_hold_bound` clocks, the window W of `sep_sec_dis_timing_rand_test` (3 times the sense time measured in the run, the interval from the first reset release to sense done). Phase {match during sense: the sensed shadow words (`efuse_shadow_probe_o`) stay unchanged from the rise of `sec_dis_i`; match before sense: the sensed shadow words stay unchanged from the start of the hold, within 4 clocks of the reset release}. A shadow bit that is not equal (`!==`, so an X or Z counts) on any clock of the hold fills no bin. 2 bins |executable; seed-dependent
-|`x_state_strap_feat` |State {TEST_DEV, PROD, RMA_SIP} x strap {0, 1}, sampled on a feature change with `sec_dis_i` 0, a known raw state and a known strap (the value comparison belongs to the checker). 6 cells |executable; seed-dependent
+|`x_state_strap_feat` |State class {TEST_DEV, PROD, RMA_SIP, PROD_END, RMA_CHIPLET, INVALID} x `secure_tm_o` {0, 1}, `cells[k]` with k = class*2 + `secure_tm_o` and the class order as listed, sampled on the settled feature event with `sec_dis_i` 0, a known state, SEC_DIS, demotion, DIS and `lc_sigint_i` inputs and a known `secure_tm_o` (the value comparison belongs to the checker). 12 cells. Spec: `doc/lifecycle_controller.adoc:341`, `:360-397` |executable; seed-dependent
 |`cp_reset_values_hold` |At the end of a `cp_stops_sense` hold of the match-before-sense phase (the hold that starts within 4 clocks of a reset release): every shadow word reads its reset value (`0x0F` for the `LC_STATE` word, 0 for every other word) on the first clock of the hold, and no shadow bit changes on any clock of the hold. The bin scores at the end of the bounded hold, not on its first clock, so a design that senses under the match loads a word inside the bound and fills no bin. |executable; seed-dependent
 |`x_secdis_stm_feat` |`secure_tm_o` {0, 1} with SEC_DIS asserted and the `FEAT_CTRL` probe all ones, sampled on entry to that condition and on a change of `secure_tm_o` in it. `secure_tm_0` in the window of `sep_sec_dis_override_test` (`FcovOwnSepSecDisOverrideTest`, CHK-OVERRIDE-TM0): the entry is held as pending and samples on the rise of bit 1 of the pass label `ovr_pass`, which the owner writes after CHK-OVERRIDE-TM0 passes; `secure_tm_1` in the window of `sep_secure_tm_strap_sampling_test` (`FcovOwnSepSecureTmStrapSamplingTest`, CHK-STM-SECDIS-FEAT). 2 bins. Spec: `doc/security_disable.adoc:25`; `doc/lifecycle_controller.adoc:341` |executable
 |===
@@ -6142,7 +6142,7 @@ the mismatch shapes of `sep_efuse_token_channel_rand_test`. It samples the added
 taps `tok_words_i` and `sec_disable_expected_i`. Seed-dependent: the two phase bins of
 `cp_stops_sense` (one class of `sep_sec_dis_timing_rand_test` per leaf),
 `cp_reset_values_hold` (only a leaf of the match-before-sense class fills it) and
-`x_state_strap_feat` (drawn states).
+`x_state_strap_feat` (drawn states: a strap-1 cell fills only in leg A of a leaf of that state, so each needs a seed of that state with strap 1; a strap-0 cell also fills in the follow-on legs).
 
 ===== `sep_efuse_if_status_cg`
 
