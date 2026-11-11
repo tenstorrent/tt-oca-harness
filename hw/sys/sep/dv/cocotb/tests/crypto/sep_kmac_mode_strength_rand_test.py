@@ -60,8 +60,10 @@ Checkers:
                  "Write 1 to trigger one alert event of this kind",
                  ``vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc``
                  lines 84-92): bit 5 or bit 6 rises within ``_ALERT_LIVE_CLK``
-                 clocks of the write. This is the control of CHK-KMAC-ALERT-QUIET:
-                 the same watcher sees a live KMAC alert.
+                 clocks of the write, and over the two writes bit 5 and bit 6
+                 each rise at least once: the two KMAC alerts occupy the two
+                 indices [6:5]. This is the control of CHK-KMAC-ALERT-QUIET: the
+                 same watcher sees each of the two receivers live.
 
 Log-only: ``OBS-KMAC-ALERT-BIT`` logs, per ``ALERT_TEST`` field, the rises and
 high clocks of bit 5 and bit 6 in the ``_ALERT_LIVE_CLK`` window after the write,
@@ -334,6 +336,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         routing checks after this leg see no KMAC sender still active.
         """
         alert = self.alert
+        rose_by: dict[str, list[str]] = {"a5": [], "a6": []}
         for field in _ALERT_FIELDS:
             mark = alert.mark()
             await self.kmac._wr(_ALERT_TEST, KMAC.field_mask("ALERT_TEST", field))
@@ -343,6 +346,9 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             a5_high = alert.high_clocks_since(mark, "a5")
             a6_high = alert.high_clocks_since(mark, "a6")
             first = min(a5 + a6) - mark.clk if a5 or a6 else None
+            for bit, rises in (("a5", a5), ("a6", a6)):
+                if rises:
+                    rose_by[bit].append(field)
             live = (
                 f"field={field} rose={int(first is not None)} clk={first} bound={_ALERT_LIVE_CLK}"
             )
@@ -366,6 +372,9 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
                 _ALERT_LIVE_CLK,
                 to_reset,
             )
+        bits = " ".join(f"{bit}_fields={','.join(f) or 'none'}" for bit, f in rose_by.items())
+        assert rose_by["a5"] and rose_by["a6"], f"CTRL-KMAC-ALERT-LIVE FAIL: {bits}"
+        self.logger.info("CTRL-KMAC-ALERT-LIVE PASS: %s", bits)
 
     async def _reset_kmac(self) -> None:
         """One KMAC reset: bit 4 of SW_RESET_N low, then high, then idle."""
