@@ -1273,16 +1273,23 @@ class sep_km_command_set_rand_test(sep_base_test):
         irq_pre = await self.km.read_irq_status()
         await self.km.write_irq_status(flushed_bit)
         irq_clr = await self.km.read_irq_status()
-        assert irq_pre & flushed_bit and not irq_clr & flushed_bit, (
+        flushed_pre = irq_pre >> KM_IRQ_FLUSHED_BY_KM & 1
+        flushed_clr = irq_clr >> KM_IRQ_FLUSHED_BY_KM & 1
+        exp_pre, exp_clr = 1, 0
+        assert flushed_pre == exp_pre and flushed_clr == exp_clr, (
             f"CTRL-FLUSHED-BY-KM-CLR FAIL: SEP_IRQ_STATUS=0x{irq_pre:08x} before and "
-            f"0x{irq_clr:08x} after the write of 0x{flushed_bit:08x}, expected flushed_by_km "
-            "1 then 0"
+            f"0x{irq_clr:08x} after the write of 0x{flushed_bit:08x}: flushed_by_km "
+            f"pre={flushed_pre} exp_pre={exp_pre} clr={flushed_clr} exp_clr={exp_clr}"
         )
         self.logger.info(
             "CTRL-FLUSHED-BY-KM-CLR PASS: SEP_IRQ_STATUS pre=0x%08x clr=0x%08x "
-            "flushed_by_km pre=1 exp_pre=1 clr=0 exp_clr=0",
+            "flushed_by_km pre=%d exp_pre=%d clr=%d exp_clr=%d",
             irq_pre,
             irq_clr,
+            flushed_pre,
+            exp_pre,
+            flushed_clr,
+            exp_clr,
         )
         await self.km.flush()
         self.km.reset_host_seq()
@@ -1319,17 +1326,19 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         irq_post = await self.km.read_irq_status()
         flushed_post = irq_post >> KM_IRQ_FLUSHED_BY_KM & 1
-        assert flushed_post == 0, (
+        exp_post = 0
+        assert flushed_post == exp_post, (
             f"CHK-SEP-FLUSH-NO-PEER FAIL: SEP_IRQ_STATUS=0x{irq_post:08x} after the SEP flush "
-            f"has flushed_by_km={flushed_post}, expected 0 (firmware.adoc:983,1112-1113; "
+            f"has flushed_by_km={flushed_post}, expected {exp_post} (firmware.adoc:983,1112-1113; "
             "architecture.adoc:240-241)"
         )
         self.logger.info(
             "CHK-SEP-FLUSH-NO-PEER PASS: contract=key_manager/doc/architecture.adoc:240-241"
             "(mailbox_flush),firmware.adoc:983(flushed_by_sep),:1112-1113 "
-            "SEP_IRQ_STATUS=0x%08x flushed_by_km=%d exp_flushed_by_km=0",
+            "SEP_IRQ_STATUS=0x%08x flushed_by_km=%d exp_flushed_by_km=%d",
             irq_post,
             flushed_post,
+            exp_post,
         )
 
         # --- CHK-GONE: a shredded engine will not run -------------------------
@@ -1453,26 +1462,28 @@ class sep_km_command_set_rand_test(sep_base_test):
 
     def _check_boot_irq(self, en: int, status: int) -> None:
         """CHK-BOOT-IRQ-EN and CHK-BOOT-IRQ-STATUS on the RESP_KM_READY sample."""
-        assert en == BOOT_IRQ_ENABLE, (
+        exp_en = BOOT_IRQ_ENABLE
+        assert en == exp_en, (
             f"CHK-BOOT-IRQ-EN FAIL: KMCSR IRQ_ENABLE[11:0]=0x{en:03x}, expected "
-            f"0x{BOOT_IRQ_ENABLE:03x} (diff 0x{en ^ BOOT_IRQ_ENABLE:03x}; firmware.adoc:1349-1352, "
-            ":1626)"
+            f"0x{exp_en:03x} (diff 0x{en ^ exp_en:03x}; firmware.adoc:1349-1352, :1626)"
         )
         self.logger.info(
             "CHK-BOOT-IRQ-EN PASS: contract=key_manager/doc/firmware.adoc:1349-1352"
             "(Boot_Sequence),:1626(OTP_Change_Status) irq_enable=0x%03x exp=0x%03x",
             en,
-            BOOT_IRQ_ENABLE,
+            exp_en,
         )
+        exp_status = 0
         set_names = [name for bm, name in _IRQ_STATUS_NAMES.items() if status & bm]
-        assert status == 0, (
+        assert status == exp_status, (
             f"CHK-BOOT-IRQ-STATUS FAIL: KMCSR IRQ_STATUS[11:0]=0x{status:03x} {set_names}, "
-            "expected 0x000 (firmware.adoc:1349, :1532-1533)"
+            f"expected 0x{exp_status:03x} (firmware.adoc:1349, :1532-1533)"
         )
         self.logger.info(
             "CHK-BOOT-IRQ-STATUS PASS: contract=key_manager/doc/firmware.adoc:1349"
-            "(Boot_Sequence),:1532-1533(Interrupt_Priority) irq_status=0x%03x exp=0x000",
+            "(Boot_Sequence),:1532-1533(Interrupt_Priority) irq_status=0x%03x exp=0x%03x",
             status,
+            exp_status,
         )
 
     def _check_boot_fetch(self, fetch: _KmFetchWatch) -> None:
@@ -1486,24 +1497,29 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"irq_enable_addr=0x{KMCSR_IRQ_ENABLE_ADDR:08x} "
             f"sram_lock_addr=0x{KMCSR_SRAM_LOCK_ADDR:08x}"
         )
-        assert fetch.xz == 0 and fetch.rst_low and fetch.rst_rose and n_en >= 1, (
-            f"CTRL-BOOT-FETCH-DECODE FAIL: {fields}, expected xz=0, km_cpu_rst_n_o 0 then 1, "
-            "irq_enable_stores>=1"
+        exp_xz, min_en = 0, 1
+        assert fetch.xz == exp_xz and fetch.rst_low and fetch.rst_rose and n_en >= min_en, (
+            f"CTRL-BOOT-FETCH-DECODE FAIL: {fields}, expected xz={exp_xz}, km_cpu_rst_n_o 0 "
+            f"then 1, irq_enable_stores>={min_en}"
         )
         self.logger.info(
-            "CTRL-BOOT-FETCH-DECODE PASS: %s exp_xz=0 exp_rst_n=0_then_1 exp_irq_enable_stores>=1",
+            "CTRL-BOOT-FETCH-DECODE PASS: %s exp_xz=%d exp_rst_n=0_then_1 exp_irq_enable_stores>=%d",
             fields,
+            exp_xz,
+            min_en,
         )
-        assert n_lock == 0, (
+        exp_lock = 0
+        assert n_lock == exp_lock, (
             f"CHK-BOOT-SRAM-LOCK-NOWR FAIL: {n_lock} KM CPU store(s) to KMCSR SRAM_LOCK "
             f"(0x{KMCSR_SRAM_LOCK_ADDR:08x}) between the KM release and RESP_KM_READY, "
-            f"expected 0: {fields}"
+            f"expected {exp_lock}: {fields}"
         )
         self.logger.info(
             "CHK-BOOT-SRAM-LOCK-NOWR PASS: contract=key_manager/doc/firmware.adoc:1341-1394"
             "(Boot_Sequence),architecture.adoc:1140-1145(Write-lock_policy) "
-            "sram_lock_stores=%d exp=0 window=release..RESP_KM_READY",
+            "sram_lock_stores=%d exp=%d window=release..RESP_KM_READY",
             n_lock,
+            exp_lock,
         )
 
     async def _gen_dest(self, handle: int, cfg: SepKmCommandSetCfg) -> None:
@@ -1520,14 +1536,15 @@ class sep_km_command_set_rand_test(sep_base_test):
         rc, arg = await self._resp_cmd(KM_CMD_KEY_TRANSFER, [handle, cfg.refuse_dest])
         await watch.stop()
         await self.swrst.park(refuse_name)
+        exp_rc = KM_RC_FAILURE
         refuse = (
             f"refuse_dest=0x{cfg.refuse_dest:02x}({refuse_name}) sw_reset_n=0x{sw_reset_n:08x} "
-            f"rc={rc} exp_rc={KM_RC_FAILURE} arg={_arg_str(arg)} exp_arg=none "
+            f"rc={rc} exp_rc={exp_rc} arg={_arg_str(arg)} exp_arg=none "
             f"xz={watch.xz} ports[{watch.counts()}] exp_all=0"
         )
         refuse_ok = (
             sw_reset_n >> SW_RESET_N_BIT[refuse_name] & 1
-            and rc == KM_RC_FAILURE
+            and rc == exp_rc
             and arg is None
             and watch.xz == 0
             and not any(watch.aw)
@@ -1545,15 +1562,17 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self.swrst.park(gen_name)
         echo = (arg & 0xFF, (arg >> 8) & 0xFF)
         others = [p for p in range(len(_KEY_PORT_NAME)) if p != port]
+        exp_rc = KM_RC_SUCCESS
+        exp_echo = (handle, cfg.gen_dest)
         allow = (
-            f"gen_dest=0x{cfg.gen_dest:02x}({gen_name}) rc={rc} exp_rc={KM_RC_SUCCESS} "
-            f"arg=0x{arg:08x} echo_handle=0x{echo[0]:02x} exp_handle=0x{handle:02x} "
-            f"echo_dest=0x{echo[1]:02x} exp_dest=0x{cfg.gen_dest:02x} xz={watch.xz} "
+            f"gen_dest=0x{cfg.gen_dest:02x}({gen_name}) rc={rc} exp_rc={exp_rc} "
+            f"arg=0x{arg:08x} echo_handle=0x{echo[0]:02x} exp_handle=0x{exp_echo[0]:02x} "
+            f"echo_dest=0x{echo[1]:02x} exp_dest=0x{exp_echo[1]:02x} xz={watch.xz} "
             f"ports[{watch.counts()}] exp_{gen_name}:aw=w>=1,others=0"
         )
         allow_ok = (
-            rc == KM_RC_SUCCESS
-            and echo == (handle, cfg.gen_dest)
+            rc == exp_rc
+            and echo == exp_echo
             and watch.xz == 0
             and watch.aw[port] >= 1
             and watch.aw[port] == watch.w[port]
