@@ -6,11 +6,11 @@ Sources: smu-smc.adoc (eFuse Interface), port_table.adoc (smc_fuse_sense_done_o,
 
 One module, six testlist entries. Without ``+smc_efuse_image`` the bench default asset is sensed;
 ``+smc_efuse_image=<zero|ones|walking|random|unique>`` writes that image into the run directory
-during ``build_phase``: word 0 (the low HARNESS_LOCKS word) carries write-lock bits only and
-words 1..63 carry the pattern. Words 1..3 are the upper HARNESS_LOCKS word and the two
-SUPPLEMENTARY_LOCKS words: the shadow file stores and returns them like every other word, and
-the supplementary locks a pattern sets there gate only the supplementary window, which this
-leaf never accesses.
+during ``build_phase``: word 0 (the low HARNESS_LOCKS word) carries write-lock bits only, word 1
+(the upper HARNESS_LOCKS word, reserved in the register map) is 0, and words 2..63 carry the
+pattern. Words 2 and 3 are the SUPPLEMENTARY_LOCKS words: the shadow file stores and returns them
+like every other word, and the supplementary locks a pattern sets there gate only the
+supplementary window, which this leaf never accesses.
 """
 
 from __future__ import annotations
@@ -73,7 +73,7 @@ def _lock_word(kind: str, rnd: random.Random) -> int:
 
 
 def _image_words(kind: str, seed: int) -> list[int]:
-    """Words 0..63 of the kind: word 0 holds the write locks, words 1..63 carry the pattern."""
+    """Words 0..63 of the kind: word 0 the write locks, word 1 zero, words 2..63 the pattern."""
     rnd = random.Random(seed)
     pattern = {
         "zero": lambda n: 0,
@@ -82,7 +82,7 @@ def _image_words(kind: str, seed: int) -> list[int]:
         "random": lambda n: rnd.getrandbits(32),
         "unique": lambda n: 0x5A5A0000 | (n << 8) | (0xA5 ^ n),
     }[kind]
-    return [_lock_word(kind, rnd)] + [pattern(n) for n in range(1, EFUSE_MAP_WORDS)]
+    return [_lock_word(kind, rnd), 0] + [pattern(n) for n in range(2, EFUSE_MAP_WORDS)]
 
 
 def _config_text(words: list[int]) -> str:

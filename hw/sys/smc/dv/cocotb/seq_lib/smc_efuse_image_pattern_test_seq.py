@@ -37,8 +37,8 @@ word, then read them all: a write-unlocked word holds the complement, a
 write-locked one still holds the image. Every image senses a non-zero LOCKS, so
 a write of 0 is a real clear attempt: LOCKS must keep its sensed value, read
 all-ones after a write of all-ones, and keep all-ones across a second write of
-0. A sweep of all 64 words then reads HARNESS_LOCKS as all-ones and every other word
-without disclosing it. Cold
+0. A sweep of all 64 words then reads the four LOCKS words as all-ones and every other
+word without disclosing it. Cold
 reset, observe sense restart, and read all 64 words against the image once
 more -- the shadow writes above are gone because the shadow file is reloaded
 from the bank.
@@ -214,8 +214,8 @@ def check_schema_against_map() -> int:
     }
     assert smc_config == i2c[0] + i2c[1], "I2C_I3C_ID does not end at SMC_CONFIG"
     assert tail[0] == spare[0] + spare[1], "SPARE_TAIL does not follow the last SPARE entry"
-    assert EFUSE_MAP_BASE < supplementary < expected["LOCKS"][0] + expected["LOCKS"][1], (
-        "SUPPLEMENTARY_LOCKS is not inside the LOCKS block"
+    assert supplementary == expected["LOCKS"][0] + 8, (
+        "SUPPLEMENTARY_LOCKS is not the upper 64 bits of the LOCKS block"
     )
     assert list(schema) == list(expected), (
         f"efuse_schema.toml blocks {list(schema)} are not the map's {list(expected)}"
