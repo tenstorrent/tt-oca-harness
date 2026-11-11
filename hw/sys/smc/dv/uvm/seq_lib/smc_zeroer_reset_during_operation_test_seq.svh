@@ -316,7 +316,7 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
                                    longint unsigned responder_before, output sample_t at_reset);
     string phase_name = draining ? "B" : "A";
     time reset_requested, reset_effective;
-    sample_t held;
+    sample_t held, effective;
     longint unsigned request_cycle, responder_at_request, responder_after_release;
     // The phase check uses the last pre-reset clocking-block sample.
     wait_sample();
@@ -337,7 +337,7 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
           begin
             @(negedge tb_vif.rst_primary_smc_clk_n);
             reset_effective = $time;
-            at_reset = sample;
+            effective = sample;
           end
           begin
             wait_smc_cycles(ResetBound);
@@ -357,6 +357,7 @@ class smc_zeroer_reset_during_operation_test_seq extends smc_base_test_seq;
         disable fork;
       end
     join
+    at_reset = effective;
     `uvm_info(get_type_name(),
               $sformatf(
                   {"ZEROER-RESET-CONTEXT phase=%s pass=%0d request=%0t effective=%0t sample=%0t ",
