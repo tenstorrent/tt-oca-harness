@@ -8,8 +8,11 @@ FIFO counter, or a parity mismatch on the entry at the head of a FIFO. It is
 independent of `INTR_ENABLE`. The pointer error holds until the FIFO is
 cleared or reset; the parity error clears once that entry is read. The SMC
 ORs the instances into `smc_ras_o.i2c_intg_err`." `i2c.rdl` declares
-`INTR_STATE.CONTROLLER_TX_FIFO_ERROR` "asserted when the Controller TX FIFO
-has a parity error. Write `1` to clear."
+`INTR_STATE.CONTROLLER_TX_FIFO_ERROR` "asserted while the Controller TX FIFO
+reports an integrity error: a parity mismatch on the entry at its head, or a
+pointer mismatch in its hardened counter. The parity error clears once that
+entry is read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset.
+Write `1` to clear; the field stays set while the error persists."
 
 Every other leaf reaches the `*_FIFO_ERROR` bits through `INTR_TEST`. Here
 the fault is real, on the controller TX (FMT) FIFO of I2C0:
@@ -22,20 +25,23 @@ the fault is real, on the controller TX (FMT) FIFO of I2C0:
   are X on a four-state simulator. `tb_i2c_intg_err[0]`,
   `tb_ras_i2c_intg_err` and `INTR_STATE.CONTROLLER_TX_FIFO_ERROR` must rise
   with `INTR_ENABLE` all zero and `tb_i2c_irq[0]` low; enabling the source
-  must raise the line; the status bit's reading after a W1C with the fault
-  still live is recorded on `OBS-I2C-FIFO-INTG-W1C-LIVE`, not required
-  (`i2c.rdl` says only "Write `1` to clear"); enabling the controller pops
+  must raise the line; a W1C with the faulted entry still at the head must
+  leave the status bit set, since the field stays set while the error
+  persists; enabling the controller pops
   the entry (the byte goes out with START and STOP and `NAKOK`, so the
   unanswered address ends the transfer) and the error must fall with it.
 * **Pointer.** With the FIFO empty, one bit of the secondary copy of the
   write pointer (`prim_count` keeps two copies whose sum is constant) is
   flipped off its reset value. The error must rise with the FIFO empty, hold,
   and fall on `FIFO_CTRL.FMTRST`, which reloads both copies. The status bit
-  under a pointer fault is recorded on `OBS-I2C-FIFO-INTG-PTR-STATUS`, not
-  required: `i2c.rdl` ties it to a parity error.
+  must be set under the pointer fault with the FIFO empty, and a W1C while
+  the fault persists must leave it set: the field reports the pointer
+  mismatch and holds until the FIFO reset.
 
-Token `CHK-I2C-FIFO-INTG-REAL`, one line per clause, emitted after each
-compare holds.
+Tokens `CHK-I2C-FIFO-INTG-REAL` (the output, the RAS bit, the interrupt line
+and the clearing) and `CHK-I2C-FIFO-INTG-STATUS` (the status bit after a W1C
+under the parity fault, and under the pointer fault before and after a W1C),
+one line per clause, emitted after each compare holds.
 """
 
 from __future__ import annotations
@@ -150,6 +156,9 @@ class smc_i2c_fifo_integrity_fault_test_seq(SmcCsrSeq):
         self.ras_after_pop: int | None = None
         self.ras_pointer_fault: int | None = None
         self.ras_after_fmtrst: int | None = None
+        self.status_w1c_parity_live: int | None = None
+        self.status_pointer_fault: int | None = None
+        self.status_w1c_pointer_live: int | None = None
 
     @staticmethod
     def _intg() -> int:
@@ -267,13 +276,17 @@ class smc_i2c_fifo_integrity_fault_test_seq(SmcCsrSeq):
             "CHK-I2C-FIFO-INTG-REAL: enable: INTR_ENABLE.CONTROLLER_TX_FIFO_ERROR=1 raised "
             "tb_i2c_irq[0] (peripheral interrupt 23) and clearing it released the line"
         )
-        # `i2c.rdl` says "Write `1` to clear" and nothing about a parity error
-        # that is still live, so the reading is recorded, not required.
+        # The field follows the FIFO's error while it persists, so the W1C
+        # with the faulted entry still at the head leaves it set.
+        assert relatched == 1, (
+            f"{label}: INTR_STATE.CONTROLLER_TX_FIFO_ERROR cleared by a W1C with the faulted "
+            f"entry still at the head"
+        )
+        self.status_w1c_parity_live = relatched
         cocotb.log.info(
-            "OBS-I2C-FIFO-INTG-W1C-LIVE: INTR_STATE.CONTROLLER_TX_FIFO_ERROR read %d after a "
-            "W1C with the faulted entry still at the head (observation: no document states "
-            "whether the bit re-latches while the parity error is live)",
-            relatched,
+            "CHK-I2C-FIFO-INTG-STATUS: parity W1C live: INTR_STATE.CONTROLLER_TX_FIFO_ERROR read "
+            "1 after a W1C with the faulted entry still at the head: the field stays set while "
+            "the parity error persists"
         )
 
         # The controller takes the head entry, sends it and pops it after the
@@ -291,8 +304,9 @@ class smc_i2c_fifo_integrity_fault_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-I2C-FIFO-INTG-REAL: pop: CTRL.ENABLEHOST=1 made the controller read the "
             "faulted entry (FMTLVL 1 -> 0); tb_i2c_intg_err[0]=0, tb_ras_i2c_intg_err=0, and "
-            "the W1C cleared INTR_STATE.CONTROLLER_TX_FIFO_ERROR for good: the parity error "
-            "clears once the entry is read",
+            "the W1C cleared INTR_STATE.CONTROLLER_TX_FIFO_ERROR and tb_ras_i2c_intg_err held 0 "
+            "for %d clk_periph cycles: the parity error clears once the entry is read",
+            _HOLD,
         )
         await self._wait_hostidle(f"{label}_DONE")
         await self.csr_write(f"{label}_DISABLE", I2C0_CTRL, 0)
@@ -333,16 +347,25 @@ class smc_i2c_fifo_integrity_fault_test_seq(SmcCsrSeq):
             after,
             _HOLD,
         )
-        # `i2c.rdl` ties INTR_STATE.CONTROLLER_TX_FIFO_ERROR to a parity error
-        # and `index.adoc` names the pointer mismatch only for
-        # `i2c_fifo_intg_err_o`, so the status bit under a pointer fault is
-        # recorded, not required.
+        # The field reports the pointer mismatch as well, and a W1C while the
+        # mismatch persists leaves it set: only FIFO_CTRL.FMTRST or a reset
+        # clears it.
         status_on_pointer = await self._status_bit(f"{label}_FAULT")
+        assert status_on_pointer == 1, (
+            f"{label}: INTR_STATE.CONTROLLER_TX_FIFO_ERROR clear with the pointer fault live"
+        )
+        self.status_pointer_fault = status_on_pointer
+        await self.csr_write(f"{label}_W1C_LIVE", I2C0_INTR_STATE, INTR_CONTROLLER_TX_FIFO_ERROR)
+        relatched = await self._status_bit(f"{label}_W1C_LIVE")
+        assert relatched == 1, (
+            f"{label}: INTR_STATE.CONTROLLER_TX_FIFO_ERROR cleared by a W1C with the pointer "
+            f"fault still live"
+        )
+        self.status_w1c_pointer_live = relatched
         cocotb.log.info(
-            "OBS-I2C-FIFO-INTG-PTR-STATUS: INTR_STATE.CONTROLLER_TX_FIFO_ERROR read %d with "
-            "the pointer fault live and the FIFO empty (observation: no document states the "
-            "status bit for a pointer mismatch)",
-            status_on_pointer,
+            "CHK-I2C-FIFO-INTG-STATUS: pointer: INTR_STATE.CONTROLLER_TX_FIFO_ERROR read 1 with "
+            "the pointer fault live and the FIFO empty, and 1 again after a W1C: the field "
+            "reports the pointer mismatch and stays set across the W1C"
         )
 
         await self.csr_write(f"{label}_FMTRST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_FMTRST)

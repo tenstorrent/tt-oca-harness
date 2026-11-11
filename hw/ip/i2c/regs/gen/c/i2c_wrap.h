@@ -116,26 +116,38 @@ extern "C" {
 #define I2C__INTR_STATE__SMBALERT_bp 15
 #define I2C__INTR_STATE__SMBALERT_bw 1
 #define I2C__INTR_STATE__SMBALERT_reset 0x0
-// Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-// error. Write `1` to clear.
+// Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+// integrity error: a parity mismatch on the entry at its head, or a pointer
+// mismatch in its hardened counter. The parity error clears once that entry is
+// read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+// clear; the field stays set while the error persists.
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_bm 0x10000
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_bp 16
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__CONTROLLER_TX_FIFO_ERROR_reset 0x0
-// Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-// error. Write `1` to clear.
+// Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+// integrity error: a parity mismatch on the entry at its head, or a pointer
+// mismatch in its hardened counter. The parity error clears once that entry is
+// read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+// clear; the field stays set while the error persists.
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_bm 0x20000
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_bp 17
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__CONTROLLER_RX_FIFO_ERROR_reset 0x0
-// Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-// Write `1` to clear.
+// Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+// error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+// hardened counter. The parity error clears once that entry is read; the pointer
+// error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+// stays set while the error persists.
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_bm 0x40000
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_bp 18
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_bw 1
 #define I2C__INTR_STATE__TARGET_TX_FIFO_ERROR_reset 0x0
-// Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-// Write `1` to clear.
+// Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+// error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+// hardened counter. The parity error clears once that entry is read; the pointer
+// error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+// stays set while the error persists.
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_bm 0x80000
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_bp 19
 #define I2C__INTR_STATE__TARGET_RX_FIFO_ERROR_bw 1
@@ -195,17 +207,29 @@ typedef union {
         // Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`
         // to clear.
         uint32_t SMBALERT :1;
-        // Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-        // error. Write `1` to clear.
+        // Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+        // integrity error: a parity mismatch on the entry at its head, or a pointer
+        // mismatch in its hardened counter. The parity error clears once that entry is
+        // read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+        // clear; the field stays set while the error persists.
         uint32_t CONTROLLER_TX_FIFO_ERROR :1;
-        // Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-        // error. Write `1` to clear.
+        // Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+        // integrity error: a parity mismatch on the entry at its head, or a pointer
+        // mismatch in its hardened counter. The parity error clears once that entry is
+        // read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+        // clear; the field stays set while the error persists.
         uint32_t CONTROLLER_RX_FIFO_ERROR :1;
-        // Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-        // Write `1` to clear.
+        // Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+        // error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+        // hardened counter. The parity error clears once that entry is read; the pointer
+        // error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+        // stays set while the error persists.
         uint32_t TARGET_TX_FIFO_ERROR :1;
-        // Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-        // Write `1` to clear.
+        // Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+        // error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+        // hardened counter. The parity error clears once that entry is read; the pointer
+        // error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+        // stays set while the error persists.
         uint32_t TARGET_RX_FIFO_ERROR :1;
         uint32_t :12;
     } f;
