@@ -96,6 +96,13 @@ class SepDrbgScoreboard:
     # Packed-probe index from the DV-owned sink table. Consuming tests bind
     # each name with a single-client beat delta before any concurrent fork.
     _CRYPTO_SINK_IDX = {f"CHK5_{name}": i for i, name in enumerate(CRYPTO_EDN_SINKS)}
+    # The crypto EDN adapter holds a 4-entry staging FIFO and a 1-entry FIFO per
+    # client (hw/sys/sep/doc/assets/sep-trng-distribution.svg, the TRNG
+    # distribution figure in hw/sys/sep/doc/trng.adoc), so at most this many
+    # accepted AXIS1 words wait for a client.
+    _AXIS1_STAGING_DEPTH = 4
+    _AXIS1_CLIENT_DEPTH = 1
+    AXIS1_RESIDUAL_MAX = _AXIS1_STAGING_DEPTH + _AXIS1_CLIENT_DEPTH * len(CRYPTO_EDN_SINKS)
 
     @staticmethod
     def _norm_mode(v, *, what):
@@ -234,6 +241,7 @@ class SepDrbgScoreboard:
         self._axis2_needed = self.sink_mode["pool"] == "golden"
         self.axis1_q = deque()
         self._axis1_words = []
+        self._axis1_task = None
         self.axis2_q = deque()
         self._axis2_words = []
         self._km_words = []
@@ -332,8 +340,10 @@ class SepDrbgScoreboard:
         ]
         # AXIS1 golden tap (crypto-leg pre-adapter word stream): needed for any
         # golden crypto sink's per-sink routing compare + the genbits-chain membership.
+        self._axis1_task = None
         if self._axis1_needed:
-            self._tasks.append(cocotb.start_soon(self._mon_axis1_tap()))
+            self._axis1_task = cocotb.start_soon(self._mon_axis1_tap())
+            self._tasks.append(self._axis1_task)
         if self._axis2_needed:
             self._tasks.append(cocotb.start_soon(self._mon_axis2_tap()))
         # KM sink: AXIS endpoint, tvalid&&tready handshake.
@@ -1107,8 +1117,13 @@ class SepDrbgScoreboard:
             raise AssertionError(f"CHK-CHK1-RO-ENABLE FAIL: {line}")
         self.log.info("CHK-CHK1-RO-ENABLE PASS: %s", line)
 
-    def report(self):
-        """Log per-stream results; in strict mode raise on any mismatch."""
+    def report(self, *, axis1_residual: bool = False):
+        """Log per-stream results; in strict mode raise on any mismatch.
+
+        ``axis1_residual`` adds CHK-AXIS1-RESIDUAL (accepted AXIS1 words no client
+        took are at most ``AXIS1_RESIDUAL_MAX``; it fails when the AXIS1 tap is not
+        running or saw no beat), OBS-SB-GOLDEN-LEFT and the X/Z count INFO lines.
+        """
         self.log.info("==== sep_drbg_scoreboard CHK1..CHK5 report ====")
         any_fail = False
 
@@ -1389,6 +1404,16 @@ class SepDrbgScoreboard:
                     sorted(self.legal_gen_lengths),
                 )
                 any_fail = True
+        if axis1_residual:
+            if not self._report_axis1_residual():
+                any_fail = True
+            self._report_golden_left()
+            self.log.info("INFO-SB-XZ-ROUTED: beats=%d", self._xz_routed_beats)
+            self.log.info(
+                "INFO-SB-XZ-SCORED: beats=%d per_stream=%s",
+                sum(self._xz_scored_beats.values()),
+                dict(sorted(self._xz_scored_beats.items())),
+            )
         self.log.info("==== end report (strict=%s, any_fail=%s) ====", self.strict, any_fail)
         if self.strict and any_fail:
             raise AssertionError(
@@ -1396,3 +1421,44 @@ class SepDrbgScoreboard:
                 "evidence / protocol violation)"
             )
         return not any_fail
+
+    def _report_axis1_residual(self) -> bool:
+        """CHK-AXIS1-RESIDUAL; returns True on PASS."""
+        running = self._axis1_task is not None and not self._axis1_task.done()
+        accepted = len(self._axis1_words)
+        residual = len(self.axis1_q)
+        self.log.info(
+            "CTRL-AXIS1-RESIDUAL: tap_running=%d accepted=%d taken=%d residual=%d",
+            int(running),
+            accepted,
+            accepted - residual,
+            residual,
+        )
+        line = (
+            f"tap_running={int(running)} accepted={accepted} residual={residual} "
+            f"max={self.AXIS1_RESIDUAL_MAX}"
+        )
+        if running and accepted > 0 and residual <= self.AXIS1_RESIDUAL_MAX:
+            self.log.info("CHK-AXIS1-RESIDUAL PASS: %s", line)
+            return True
+        self.log.error("CHK-AXIS1-RESIDUAL FAIL: %s", line)
+        return False
+
+    def _report_golden_left(self) -> None:
+        """OBS-SB-GOLDEN-LEFT: golden items no DUT item matched, and the verified
+        genbits words no tapped stream (KM, AXIS1, AXIS2, pool) carried."""
+        left = {
+            key: len(self._expected_q(key))
+            for key, (qname, _) in self._STREAMS.items()
+            if qname is not None
+        }
+        unseen = Counter(self._genbits_words)
+        unseen.subtract(
+            Counter(self._km_words + self._axis1_words + self._axis2_words + self._pool_words)
+        )
+        self.log.info(
+            "OBS-SB-GOLDEN-LEFT: left=%s seed_packer_words=%d loss=%d",
+            left,
+            len(self.chain.unconsumed_seed_words()),
+            sum(n for n in unseen.values() if n > 0),
+        )
