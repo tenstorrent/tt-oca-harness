@@ -14175,7 +14175,7 @@ leaf compares it to the RDL reset.
 (0xC000_0000) and `GLOBAL_BASE` (0x4000_0000) plus each register's offset, with 4-byte and 8-byte
 accesses; inbound filter entry 0 programmed pass-all over SEP_IN; the registers and memories
 accessed: outbound mailbox 0 `WRITE_DATA`, eFuse map word 0, eFuse interface control `STATUS`,
-`EFUSE_READ_REQ_TIMEOUT` and `EFUSE_PROGRAM_REQ_TIMEOUT`, system timer (OCTS) `TIMER_START`,
+`EFUSE_READ_REQ_TIMEOUT` and `EFUSE_READ_ADDR`, system timer (OCTS) `TIMER_START`,
 `CTRL` and `TIMER_GPIO_ENABLE`, CLA `TRDSTRAMIMPL`, the first and last 64-bit words of the ROM and
 SPM apertures, `SCRATCH_COLD(7)`, `SCRATCH_COLD_WARM(7)`, `LC_STATE`, `NDMRESET_CLUSTER_COUNT`,
 inbound mailbox 31 `CTRL`, DMA control `DST_ADDRESS_LO` and `NUM_REPETITIONS_HI`, zeroer control
@@ -14214,8 +14214,8 @@ bases, and the last register of five units answers over SEP_IN at `LOCAL_BASE`.
 * `SCRATCH_COLD(7)` and `SCRATCH_COLD_WARM(7)` read their reset 0 and round-trip 0x5AC3_A53C
   (`scratch.rdl`, `SCRATCH` is `sw=rw`); `LC_STATE` and `NDMRESET_CLUSTER_COUNT` are hardware
   driven, answer OKAY and are printed with their RDL resets (0xF and 0) without being compared.
-* The last declared register of the eFuse interface control (`EFUSE_PROGRAM_REQ_TIMEOUT`, reset
-  0x0080_0000) and of the system timer (`TIMER_GPIO_ENABLE`, reset 0) read their resets, and
+* The last declared register of the eFuse interface control (`EFUSE_READ_ADDR`, reset 0) and
+  of the system timer (`TIMER_GPIO_ENABLE`, reset 0) read their resets, and
   inbound mailbox 31 `CTRL` answers OKAY and is printed; the last register of the DMA control
   (`NUM_REPETITIONS_HI`, reset 0) and of the zeroer control (`CTRL_STATUS`, reset 0) read their
   resets while distinct patterns written to `DST_ADDRESS_LO` and `DEST_ADDR` stay in place, so a
@@ -14242,8 +14242,8 @@ pair through `GLOBAL_BASE` on JTAG; read it back on JTAG at `GLOBAL_BASE` and on
 . Over SEP_IN, for `SCRATCH_COLD(7)` and `SCRATCH_COLD_WARM(7)` read the reset 0, write and read
 back 0x5AC3_A53C and restore 0; read `LC_STATE` and `NDMRESET_CLUSTER_COUNT`; print
 `CHK-SPARE-LAST-REGS`.
-. Over SEP_IN read inbound mailbox 31 `CTRL`, `EFUSE_PROGRAM_REQ_TIMEOUT` (expecting 0x0080_0000)
-and OCTS `TIMER_GPIO_ENABLE` (expecting 0); print `CHK-LAST-REG-MAILBOX-EFUSE-TIMER`.
+. Over SEP_IN read inbound mailbox 31 `CTRL`, `EFUSE_READ_ADDR` (expecting 0) and OCTS
+`TIMER_GPIO_ENABLE` (expecting 0); print `CHK-LAST-REG-MAILBOX-EFUSE-TIMER`.
 . Over SEP_IN write and read back 0xDA7A_0001 at DMA `DST_ADDRESS_LO` and 0x2E20_0002 at zeroer
 `DEST_ADDR`; read DMA `NUM_REPETITIONS_HI` (expecting 0), `DST_ADDRESS_LO` (expecting its
 pattern), zeroer `CTRL_STATUS` (expecting 0) and `DEST_ADDR` (expecting its pattern); restore both
@@ -14276,7 +14276,7 @@ restore.
 |`CHK-SPARE-LAST-REGS` |`SCRATCH_COLD(7)` and `SCRATCH_COLD_WARM(7)` read 0 and round-trip
 0x5AC3_A53C; `LC_STATE` and `NDMRESET_CLUSTER_COUNT` answer OKAY and the leaf records their values
 without comparing them.
-|`CHK-LAST-REG-MAILBOX-EFUSE-TIMER` |`EFUSE_PROGRAM_REQ_TIMEOUT` reads 0x0080_0000 and OCTS
+|`CHK-LAST-REG-MAILBOX-EFUSE-TIMER` |`EFUSE_READ_ADDR` reads 0 and OCTS
 `TIMER_GPIO_ENABLE` reads 0 with OKAY; inbound mailbox 31 `CTRL` answers OKAY and the leaf records
 its word without comparing it.
 |`CHK-LAST-REG-DMA-ZEROER` |DMA `NUM_REPETITIONS_HI` and zeroer `CTRL_STATUS` read 0 with OKAY
