@@ -38,8 +38,9 @@ divider value D_r (above the reset value, at most 1023), the order of 0 and
 D_r in the period walk and the strobe (1 or 2 after a FIFO word) at which the
 compressor bypass is set and cleared in ``OBS-COND-BYPASS-MIDGROUP``; after
 those, the feedback-on mask class (few = 1 to 3 bits, half = 4, all = 0xFF) and
-its mask, the lane L of ``CHK-COND-ONE-LANE`` and the few (2 or 3) or half lane
-set of ``OBS-COND-LANE-POP-FIFO``.
+its mask, the lane L of ``CHK-COND-ONE-LANE``, the few (2 or 3) or half lane
+set of ``OBS-COND-LANE-POP-FIFO`` and the start bit of each lane's alternating
+fill before ``CHK-COND-LANES-OFF``.
 
 Checkers:
   CHK-COND-MASK        each lane byte == (0xFF if Z[j] else 0x00) AND mask, 16 strobes,
@@ -139,7 +140,10 @@ Checkers:
                        (1, 0), (0, 1), (0, 0) with FIFO_CTRL.ENABLE = 0: FIFO_STATUS LEVEL
                        and write pointer read before and after a window are equal while
                        ``esrc_compress_vld_o`` offers at least one word in it
-                       (entropy_source.rdl FIFO_CTRL.ENABLE; architecture.adoc:150).
+                       (entropy_source.rdl FIFO_CTRL.ENABLE; architecture.adoc:150). The
+                       window is 4 x (n + 1) strobe periods, n the strobes to the first
+                       offered word: 16 with the compressor in use and whitening on (a
+                       16-word block, architecture.adoc:142), else 1.
                        Control ``CTRL-COND-CTRL-CELL``: at least one offered word.
   CHK-COND-DECOR-MASK  feedback on (DECORRELATOR_CTRL.BYPASS = 0), a drawn mask of class
                        few, half or all, compressor bypass 0 and 1: from the
@@ -151,14 +155,20 @@ Checkers:
                        words of each output between two graded strobes equal the packing
                        of its predicted bytes; with it in use only the bytes are graded.
                        Control: at least one predicted unmasked byte is non-zero.
-  CHK-COND-LANES-OFF   RING_OSC_ENABLE.ENABLE = 0: over 4 x (SAMPLE_CLK_DIV + 1) clocks no
-                       strobe of ``esrc_decor_valid_o`` and all 12 slices of
-                       ``esrc_decor_sr_o`` and ``esrc_decor_bytes_o`` unchanged
+  CHK-COND-LANES-OFF   every chain first filled with alternating lane bits (SAMPLE_CLK_DIV
+                       0, a strobe per clk_i), then RING_OSC_ENABLE.ENABLE = 0: from the
+                       first clock that ``esrc_ro_enable_o`` reads 0 to 4 x (reset
+                       SAMPLE_CLK_DIV + 1) clocks after the divider write, no strobe of
+                       ``esrc_decor_valid_o`` and all 12 slices of ``esrc_decor_sr_o`` and
+                       ``esrc_decor_bytes_o`` equal their state at that first clock
                        (architecture.adoc:113: the chain holds while ``enable_i`` is low).
+                       Control ``CTRL-COND-LANES-OFF``: every held chain holds both bit
+                       values, so a shift changes it; the held chains are logged.
   CHK-COND-ONE-LANE    the live control of the same leg: only lane L enabled, its noise
                        bit the complement of its held stage 28, feedback bypassed: lane L's
                        ``esrc_decor_sr_o`` slice changes within RO_OFF_CLKS + 29 clocks and
-                       the other 11 slices of both taps stay unchanged.
+                       the other 11 slices of both taps, which hold both bit values,
+                       stay unchanged.
 Logged only: ``OBS-COND-PASSTHRU-OUTCOUNT`` logs every
 ``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
 (entropy_source.adoc:206 "remains 0 while idle or bypassed"). No bus read in the
@@ -202,6 +212,7 @@ from env.sep_chk_log import SepChkLog
 from env.sep_entropy_golden import BYTES_PER_WORD, SepEntropyGolden, bypass_pack_words
 from env.sep_esrc_pattern_noise import (
     NUM_LANES,
+    Alternate,
     Balanced,
     SepEsrcPatternNoise,
     Stuck,
@@ -309,6 +320,10 @@ HALF_MASK_BITS = MASK_BITS // 2
 FEW_MASK_BITS_MAX = 3
 # CHK-COND-CTRL-CELL cells (BYPASS_ENTROPY_COMPRESSOR, SHA256_WHITENING_ENABLE), ENABLE = 0.
 CTRL_CELLS = ((1, 1), (1, 0), (0, 1), (0, 0))
+# Cell window: CELL_BOUND_FACTOR x (strobes to the first offered word + 1) strobe periods.
+CELL_BOUND_FACTOR = 4
+# SAMPLE_CLK_DIV of the chain fill before CHK-COND-LANES-OFF: a strobe on every clk_i.
+FILL_DIV = 0
 # Lane-population window of OBS-COND-LANE-POP-FIFO, in reset sample periods.
 LANE_POP_PERIODS = 16
 LANE_POP_CLASSES = ("few", "half")
@@ -407,6 +422,7 @@ class Plan:
     one_lane: int
     pop_class: str
     pop_lanes: int
+    fill_starts: int
 
     @property
     def rates(self) -> tuple[int, ...]:
@@ -418,7 +434,8 @@ class Plan:
             f"z=0x{self.z:03x} rates={list(self.rates)} div_r={self.div_r} "
             f"div_walk={list(self.div_walk)} bypass_strobe={self.bypass_strobe} "
             f"decor_mask={self.decor_class}:0x{self.decor_mask:02x} one_lane={self.one_lane} "
-            f"pop_lanes={self.pop_class}:0x{self.pop_lanes:03x} {describe(self.balanced)}"
+            f"pop_lanes={self.pop_class}:0x{self.pop_lanes:03x} "
+            f"fill_starts=0x{self.fill_starts:03x} {describe(self.balanced)}"
         )
 
 
@@ -447,6 +464,7 @@ def draw_plan(seed: int) -> Plan:
     pop_class = rng.choice(LANE_POP_CLASSES)
     k = HALF_LANES if pop_class == "half" else rng.choice(FEW_LANES)
     pop_lanes = sum(1 << j for j in rng.sample(range(NUM_LANES), k))
+    fill_starts = rng.getrandbits(NUM_LANES)
     return Plan(
         seed,
         tuple(legs),
@@ -462,6 +480,7 @@ def draw_plan(seed: int) -> Plan:
         one_lane,
         pop_class,
         pop_lanes,
+        fill_starts,
     )
 
 
@@ -838,62 +857,95 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
 
         architecture.adoc:113: the chain shifts on every clk_i while ``enable_i`` is
         high and holds while it is low; RING_OSC_ENABLE.ENABLE is the enable of each
-        generator (entropy_source.adoc:357). With every lane off, a window of four
-        byte periods shows no strobe and no change of either tap. Then only lane L
-        is enabled, feedback bypassed, with its noise bit the complement of its held
-        stage 28, so the first shift changes its slice: that slice changes and the
-        other 11 slices hold. The window starts at the RING_OSC_ENABLE write
-        response and lasts RO_OFF_CLKS (the enable path) + 29 clocks.
+        generator (entropy_source.adoc:357), and ``esrc_ro_enable_o`` is that enable.
+        First every chain is filled with alternating bits (``_fill_chains``), so each
+        held chain holds both bit values and any shift, whatever the input bit,
+        changes it. Then every lane is turned off: the chain state on the first clock
+        that ``esrc_ro_enable_o`` reads 0 is the state at disable, and on every later
+        clock up to four reset byte periods after the SAMPLE_CLK_DIV write both taps
+        equal that state and no strobe comes. Then only lane L is enabled, feedback
+        bypassed, with its noise bit the complement of its held stage 28: its slice
+        changes and the other 11 slices hold. That window starts at the
+        RING_OSC_ENABLE write response and lasts RO_OFF_CLKS (the enable path) + 29
+        clocks.
         """
         plan = self.plan
         dut = cocotb.top
         lane = plan.one_lane
-        off = await self._lanes_off()
+        fill_strobes = await self._fill_chains()
         decor = _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL, SAMPLE_CLK_DIV=RESET_DIV)
+        window = 4 * (RESET_DIV + 1)
+        rows: list[tuple[int, int, int, int]] = []
+        run = [True]
+
+        async def _off_trace() -> None:
+            while run[0]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                rows.append(
+                    (
+                        self.rd(dut.esrc_ro_enable_o),
+                        self.rd(dut.esrc_decor_sr_o),
+                        self.rd(dut.esrc_decor_bytes_o),
+                        self.rd(dut.esrc_decor_valid_o),
+                    )
+                )
+            await NextTimeStep()
+
+        trace = cocotb.start_soon(_off_trace())
+        off = await self._lanes_off()
         await self._wr(ESRC_DECORRELATOR_CTRL, decor)
         decor_rb = await self._rd(ESRC_DECORRELATOR_CTRL)
         ro_rb = await self._rd(ESRC_RING_OSC_ENABLE)
-        window = 4 * (RESET_DIV + 1)
-        held_sr = held_bytes = None
-        strobes = 0
-        sr_changed: set[int] = set()
-        byte_changed: set[int] = set()
-        for _ in range(window):
-            await RisingEdge(dut.clk_i)
-            await ReadOnly()
-            sr, by = self.rd(dut.esrc_decor_sr_o), self.rd(dut.esrc_decor_bytes_o)
-            strobes += self.rd(dut.esrc_decor_valid_o)
-            if held_sr is None:
-                held_sr, held_bytes = sr, by
-            sr_changed |= {
-                j
-                for j, (a, b) in enumerate(zip(_lanes(sr, SR_LENGTH), _lanes(held_sr, SR_LENGTH)))
-                if a != b
-            }
-            byte_changed |= {
-                j for j, (a, b) in enumerate(zip(_lanes(by, 8), _lanes(held_bytes, 8))) if a != b
-            }
-        await NextTimeStep()
+        await ClockCycles(dut.clk_i, window)
+        run[0] = False
+        await trace
+        d = next((i for i, r in enumerate(rows) if r[0] == 0), None)
+        _, held_sr, held_bytes, _ = rows[d] if d is not None else rows[-1]
+        after = rows[d + 1 :] if d is not None else []
+        held_lanes = _lanes(held_sr, SR_LENGTH)
+        held_by = _lanes(held_bytes, 8)
+        strobes = sum(r[3] for r in after)
+        sr_changed = {
+            j
+            for r in after
+            for j, (a, b) in enumerate(zip(_lanes(r[1], SR_LENGTH), held_lanes))
+            if a != b
+        }
+        byte_changed = {
+            j for r in after for j, (a, b) in enumerate(zip(_lanes(r[2], 8), held_by)) if a != b
+        }
+        constant = [j for j, v in enumerate(held_lanes) if v in (0, (1 << SR_LENGTH) - 1)]
+        held_hex = [f"0x{v:08x}" for v in held_lanes]
+        self.chk.ctrl(
+            "COND-LANES-OFF",
+            d is not None and not constant,
+            fill_strobes=fill_strobes,
+            constant_lanes=constant,
+            held_sr=held_hex,
+        )
         ro_off = _get(ro_rb, "RING_OSC_ENABLE", "ENABLE")
         if self.chk.ok(
             "COND-LANES-OFF",
-            off is not None
+            d is not None
             and ro_off == 0
             and decor_rb == decor
+            and len(after) >= window
             and strobes == 0
             and not sr_changed
             and not byte_changed,
             ro_enable_rb=f"0x{ro_off:03x}",
             off_clk="none" if off is None else off,
             window_clk=window,
+            held_clk=len(after),
             strobes=strobes,
+            held_sr=held_hex,
             sr_changed_lanes=sorted(sr_changed),
             byte_changed_lanes=sorted(byte_changed),
         ):
             await self._cnt_pass(ESRC_CNT_PASS_LANES_OFF)
 
         # One lane: the bit that differs from its held stage 28.
-        held_lanes = _lanes(held_sr, SR_LENGTH)
         b = 1 - ((held_lanes[lane] >> (SR_LENGTH - 1)) & 1)
         one = list(bits)
         one[lane] = b
@@ -909,7 +961,6 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             await ReadOnly()
             sr = _lanes(self.rd(dut.esrc_decor_sr_o), SR_LENGTH)
             by = _lanes(self.rd(dut.esrc_decor_bytes_o), 8)
-            held_by = _lanes(held_bytes, 8)
             if first is None and sr[lane] != held_lanes[lane]:
                 first = clk
             others_sr |= {j for j in range(NUM_LANES) if j != lane and sr[j] != held_lanes[j]}
@@ -931,6 +982,32 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             await self._cnt_pass(ESRC_CNT_PASS_ONE_LANE)
         await self._lane_pop_fifo()
         await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE"))
+
+    async def _fill_chains(self) -> int:
+        """Alternating lane bits through every chain; returns the strobes with the lanes on.
+
+        Lanes off, then (no strobe comes) each lane j gets ``Alternate`` with the drawn
+        start bit j, DECORRELATOR_CTRL = feedback bypassed with SAMPLE_CLK_DIV =
+        FILL_DIV, lanes on. A strobe comes on every clk_i (architecture.adoc:107) and the
+        noise driver gives each lane its next bit at each strobe, so after SR_LENGTH + 1
+        strobes the 29 stages of every chain alternate.
+        """
+        plan = self.plan
+        if await self._lanes_off() is None:
+            raise AssertionError(f"esrc_ro_enable_o not 0 bound={RO_OFF_CLKS}")
+        self.noise.set_lanes(
+            [Alternate((plan.fill_starts >> j) & 1) for j in range(NUM_LANES)], immediate=True
+        )
+        await self._wr(
+            ESRC_DECORRELATOR_CTRL,
+            _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL, SAMPLE_CLK_DIV=FILL_DIV),
+        )
+        mark = self.noise.mark()
+        await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE"))
+        await self.noise.wait_words(
+            SR_LENGTH + 1, RO_OFF_CLKS + CELL_BOUND_FACTOR * (SR_LENGTH + 1) * (FILL_DIV + 1)
+        )
+        return self.noise.words_since(mark)
 
     async def _lane_pop_fifo(self) -> None:
         """OBS-COND-LANE-POP-FIFO: strobes, offered words and LEVEL with a part of the lanes.
@@ -1281,35 +1358,50 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         architecture.adoc:148, :150: ``esrc_compress_vld_o`` carries each offered
         word and ENABLE gates only the FIFO write. Per cell, after a drain, FIFO_STATUS
         is read before and after a window that holds at least one offered word;
-        LEVEL and the write pointer (STATUS) stay. The offered words come from the
+        LEVEL and the write pointer (WPTR) stay. The offered words come from the
         running lanes under the noise driver.
+
+        The window is CELL_BOUND_FACTOR x (n + 1) strobe periods, where n is the
+        strobes to the first offered word: one, for a bypassed output (DOWNSAMPLE_RATE
+        0, entropy_source.adoc:106) or a BIW word passed through (one BIW word per
+        strobe, architecture.adoc:115); BLOCK_WORDS with the compressor in use and
+        whitening on, since the whitener gives no word before a block of 16 input
+        words (architecture.adoc:142).
         """
         dut = cocotb.top
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         fifo_en = _get(await self._rd(ESRC_FIFO_CTRL), "FIFO_CTRL", "ENABLE")
-        cap = (BLOCK_WORDS + DIGEST_WORDS) * self._period() * 4
         for bypass, sha in CTRL_CELLS:
+            need = BLOCK_WORDS if (bypass, sha) == (0, 1) else 1
+            cap = CELL_BOUND_FACTOR * (need + 1) * self._period()
             ctrl = _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=bypass, SHA256_WHITENING_ENABLE=sha)
             await self._wr(ESRC_CTRL, ctrl)
             ctrl_rb = await self._rd(ESRC_CTRL)
             await self._drain_fifo("FIFO_STATUS", ESRC_FIFO_RDATA, ESRC_FIFO_STATUS)
             st_a = await self._rd(ESRC_FIFO_STATUS)
-            words = 0
+            words = strobes = pushes = 0
             for _ in range(cap):
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
+                strobes += self.rd(dut.esrc_decor_valid_o)
+                pushes += self.rd(dut.esrc_whiten_push_o)
                 words += self.rd(dut.esrc_compress_vld_o)
                 if words:
                     break
             await NextTimeStep()
             st_b = await self._rd(ESRC_FIFO_STATUS)
+            sha_rb = await self._rd(ESRC_SHA256_STATUS)
             cell = f"{bypass}{sha}0"
             self.chk.ctrl(
                 "COND-CTRL-CELL",
                 words >= 1 and ctrl_rb == ctrl and fifo_en == 0,
                 cell=cell,
                 offered_words=words,
+                need_strobes=need,
                 bound_clk=cap,
+                strobes=strobes,
+                whiten_pushes=pushes,
+                sha_status_rb=f"0x{sha_rb:08x}",
                 ctrl_rb=f"0x{ctrl_rb:08x}",
                 fifo_enable_rb=fifo_en,
             )

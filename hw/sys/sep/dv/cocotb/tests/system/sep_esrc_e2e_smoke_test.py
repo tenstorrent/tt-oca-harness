@@ -44,8 +44,10 @@ output from the TRNG reset into three words, with no BIW or SHA stage
 scoreboard grades CHK1, CHK2 on the FIFO words, CHK3 the DUT seed against those
 words, CHK4 the genbits and CHK5 the pool beats, and CHK-E2E-SCOREBOARD passes
 only when that report is clean. CTRL-E2E-BYPASS-CFG reads CTRL back after the
-lock and needs the three fields at the written values. The KM image has ended
-its one read, so the KM is idle across the reset and its endpoint is not scored.
+lock and needs the three fields at the written values. Before that bring-up the
+KM is held in software reset (SW_RESET_N KM bit 0), as hw/sys/sep/doc/trng.adoc
+requires before a TRNG reset; CTRL-E2E-KM-PARK reads the bit back as 0. The KM
+endpoint is not scored in this flow.
 
 Closed read path (+esrc_fifo_closed). hw/ip/entropy_source/doc/architecture.adoc:
 ``FIFO_CTRL.ENABLE`` gates only the FIFO write, so the DRBG seed stream continues
@@ -110,6 +112,7 @@ from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcRegSeq,
 )
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
 TEST = "sep_esrc_e2e_smoke_test"
 CLOSED_PLUSARG = "esrc_fifo_closed"
@@ -442,10 +445,20 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         The bring-up builds a new strict scoreboard whose golden takes every gated
         decorrelator sample from the TRNG reset. The FIFO drain starts as soon as
         the bring-up returns, so no bypass word is discarded while the FIFO is full.
+        The KM is held in software reset before the TRNG reset of the bring-up
+        (hw/sys/sep/doc/trng.adoc, TRNG reset: keep the KM idle; its sampler is not
+        scrubbed by the TRNG reset).
         """
         rate = SepSeededRng(self.random_seed()).randrange(BYPASS_RATE_MIN, BYPASS_RATE_MAX + 1)
         cfg = SepEntropyCfg(sha_whitening=False, compressor_bypass=True, downsample_rate=rate)
         self.drbg_sb.stop()
+        resets = SepSwReset(self)
+        resets.value = await resets.read_back()
+        await resets.park("km")
+        parked = await resets.read_back()
+        km_held = not (parked >> SW_RESET_N_BIT["km"]) & 1
+        await self._grade(km_held, f"CTRL-E2E-KM-PARK FAIL: SW_RESET_N=0x{parked:08x} KM not held")
+        self.logger.info("CTRL-E2E-KM-PARK: SW_RESET_N=0x%08x KM held", parked)
         await self.bring_up_entropy(
             cfg, strict=True, score_km=False, score_sinks={"pool": "golden"}
         )
