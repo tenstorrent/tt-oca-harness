@@ -929,6 +929,7 @@ feature rows.
 |`smc_periph_regblock_sweep_test` |3 |The peripheral register blocks no other leaf writes -- AVSBus, telemetry, system timer, eFuse interface, DMA configuration and the log-engine region registers -- cycled against their RDL contract and restored.
 |`smc_pwm_sanity_test` |2 |PWM register reset, read/write, partial-strobe refusal and decoded extent; channel i on GPIO pad 59+i while `PWM_CTRL.CTRL.PAD_EN[i]` is set, with period, active time and phase graded on the pads for seeded configurations, the `INVERT` idle level, software veto, `REGWEN` lock and release; Cool Reset In and Out sit on pads 63 and 64.
 |`smc_rdl_field_sweep_test` |3 |Every software-owned field of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, plus the adopter strap capture registers, driven against its generated RDL contract and restored.
+|`smc_regblock_byte_lane_write_sweep_test` |3 |One register of each of the 12 register blocks whose cpuif carries 32 bits takes a preload, then 1-byte writes at every lane, 2-byte writes at offsets 0 and 2, and 4-byte writes with one lane unstrobed that each complement the plain read-write bits of the lanes they enable; every readback holds the lane image (the enabled lanes complemented, the others as they were), a neighbour register never changes, and a full-width restore reads back the saved word.
 |`smc_regblock_subword_strobe_sweep_test` |3 |One reference register of each of the 135 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
 |`smc_axil_narrow_zero_strobe_write_test` |3 |Narrow and zero-strobe writes over SEP_IN to the 64-bit AXI-Lite links: eleven strobe patterns on the plain CPU_CTRL registers with full-width restores, the reset-unit 32-bit registers, the base configuration and WSTRB 0x00 writes, the core 3 watchdog byte-enable rule with its KEY protocol, the mutex acquire-on-read and release-on-write sequence, the mailbox hole answers, the zeroer start, ISOLATE_REQ_SMC_REG, RESET_CTRL start bits, SEMA and the lock registers; the zeroer start under WSTRB 0x00, 0x0F and 0xF0 is graded by `smc_zeroer_strobe_error_status_test`, and the remaining unstated strobe semantics are observed.
 |`smc_register_boundary_depth_test` |3, planned upgrade |Run a compact safe register-boundary sweep.
@@ -46569,6 +46570,63 @@ Drive `smc_rdl_field_sweep_test_seq`. Each checker below is a named compare the 
 the sequence's exclusion list are not driven. What the strap capture registers hold at cold reset
 is read once and held against the write, not predicted from the integration.
 
+'''''
+
+[[sec-610-smc_regblock_byte_lane_write_sweep_test]]
+===== 610 `smc_regblock_byte_lane_write_sweep_test`
+
+*Phase*: 3
+
+*Area*: FIRMWARE
+
+*Source Module*: `smc_regblock_byte_lane_write_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, single 1-, 2-, 4- and 8-byte accesses and explicit-WSTRB
+single-beat 4-byte writes; bench signal `tb_fuse_sense_done`
+
+*Run mode*: one testlist entry in `testlists/register.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `register`; seed 1; tool VCS or Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: One register of each of the 12 register blocks whose cpuif carries 32 bits takes a preload, then 1-byte writes at every lane, 2-byte writes at offsets 0 and 2, and 4-byte writes with one lane unstrobed that each complement the plain read-write bits of the lanes they enable; every readback holds the lane image (the enabled lanes complemented, the others as they were), a neighbour register never changes, and a full-width restore reads back the saved word.
+
+*Test Coverage*:
+
+* `CLOCK_GATE_CONTROL` is saved and written with `UART_CG_EN` and `TELEMETRY_CG_EN` cleared before the legs and restored after them; both writes are read back.
+* The legs, in order: reset unit `ISOLATE_REQ_FLR_COUNTER_VALUE` (preload 0x04030201, neighbour `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`); GPIO interface 5 `DATA_CTRL` (`core2pad`, `enable_rx_tx` 0x3, `interface_enable`, `lsio_disable`, `interrupt_type` 0x2 with `interrupt_enable` and `lsio_select` 0 through every write; neighbour `DATA_CTRL_ENABLE`); AVSBus `AVS_CFG_1` (`AVS_CLOCK_SELECT` 0x3, `STOP_AVS_CLOCK_ON_IDLE`, `CLK_DIVIDER_VALUE` 0x5A, `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR` 0xA5, `FORCE_SLAVE_RESYNC_OPERATION` and `TURN_OFF_ALL_PREMUX_CLOCKS` 0 through every write; neighbour `AVS_CFG_0`) and `AVS_INTERRUPT_CLEAR` (every clear bit, written back to 0; neighbour `AVS_INTERRUPT`); `I2C_CTRL[0]` (`I2C_EN`, `I2C_CONTROLLER_MODE_EN`, `SMBUS_EN`; neighbour `I2C_CTRL[1]`); I2C0 `INTR_TEST` (the read-write test bits 0x1C17; neighbour `INTR_ENABLE`) and `FIFO_CTRL` (every FIFO reset, written back to 0; neighbour `CTRL`); eFuse `EFUSE_PROGRAM_CTRL` (`efuse_addr` 0x5A5A, `efuse_data`, `efuse_program_read_back`, `efuse_program_go` and `program_enable` 0 through every write; neighbour `EFUSE_READ_CTRL`) and `EFUSE_INTERFACE_CTRL_STATUS` (the three clear bits, written back to 0; neighbour `EFUSE_READ_REQ_TIMEOUT`); UART0 `SCR` 0xA5 (neighbour `MCR`) and `LCR` 0x1F with `DLAB` and `SET_BREAK` 0 through every write (neighbour `SCR`), then one byte write of 0 each to `LSR` and `MSR`; UART0 `FCR` (`FIFO_ENABLE` with `RCVR_TRIGGER` 3) through the write-only map, written back to 0, with `IIR.FIFOS_ENABLED` read after every write (neighbour `MCR`); UART wrapper `CTRL.UART_EN` (neighbour log engine `CTRL`); log engine `INTR_TEST` (both test bits, written back to 0, then `INTR_STATUS` read with both bits set, cleared with them and read 0; neighbour `INTR_ENABLE`); telemetry receiver 1 `CTRL` (`TELEMETRY_RX_FLUSH`, `TELEMETRY_TX_FLUSH`, `BUFFER_THRESHOLD` 0xABC; neighbour `INTR_ENABLE`) and `INTR_TEST` (`BUFFER_THRESHOLD`; neighbour `INTR_ENABLE`); system timer `TIMER_START` (`START`, written back to 0; neighbour `CTRL`).
+* Each leg reads the neighbour and the target's saved word, writes the preload and reads it back, then complements the plain read-write bits of lane 0, 1, 2 and 3 in turn with 1-byte writes, of lanes 0-1 and 2-3 with 2-byte writes, and of the enabled lanes with 4-byte writes whose WSTRB is 0xE, 0xD, 0xB and 0x7 while every lane of the beat carries the complemented bits; the target is read back after each write and must equal the lane image; the saved word (or 0 for a write-only register) is written back and read back; the neighbour is read again.
+* The plain read-write fields of a target are the fields the generated map declares read-write, non-volatile, without a modified-write value or read action (`seq_lib/smc_rdl_regmap.py`), and every preload is composed from those field names; a target with no plain field must read the same word after every write that it read before the leg.
+
+*Test Procedure*:
+
+Drive `smc_regblock_byte_lane_write_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LANE-RESET-UNIT` |Every lane, half-word and strobed write to `ISOLATE_REQ_FLR_COUNTER_VALUE` complements the lanes it enables only and reads back the lane image; the restore reads back the saved word
+|`CHK-LANE-GPIO` |Every write to GPIO interface 5 `DATA_CTRL` reads back the lane image over `core2pad`, `enable_rx_tx`, `interface_enable`, `lsio_disable` and `interrupt_type` with `interrupt_enable` and `lsio_select` at 0; the restore reads back the saved word
+|`CHK-LANE-AVSBUS` |Every write to `AVS_CFG_1` reads back the lane image over its plain fields with `TURN_OFF_ALL_PREMUX_CLOCKS` at 0 and the restore reads back the saved word; every `AVS_INTERRUPT_CLEAR` write answers OKAY and the register reads back the word it read before the leg
+|`CHK-LANE-I2C-CTRL` |Every write to `I2C_CTRL[0]` reads back the lane image over `I2C_EN`, `I2C_CONTROLLER_MODE_EN` and `SMBUS_EN`; the restore reads back the saved word
+|`CHK-LANE-I2C` |Every write to I2C0 `INTR_TEST` reads back the lane image over its read-write bits and the restore reads back the saved word; every `FIFO_CTRL` write answers OKAY and the register reads back the word it read before the leg
+|`CHK-LANE-EFUSE-CTRL` |Every write to `EFUSE_PROGRAM_CTRL` reads back the lane image over `efuse_addr`, `efuse_data` and `efuse_program_read_back` with `program_enable` at 0 and the restore reads back the saved word; every `EFUSE_INTERFACE_CTRL_STATUS` write answers OKAY and the register reads back the word it read before the leg
+|`CHK-LANE-UART` |Every write to UART0 `SCR` and to `LCR` (with `DLAB` and `SET_BREAK` at 0) reads back the lane image, both restores read back the saved words, and `LSR` and `MSR` read the same word before and after their byte writes
+|`CHK-LANE-UART-WO` |Every `FCR` write through the write-only map answers OKAY, `IIR.FIFOS_ENABLED` reads 3 after each of them and 0 after `FCR` is written back to 0, and `MCR` reads the same word before and after the leg
+|`CHK-LANE-UART-CTRL` |Every write to the UART wrapper `CTRL` reads back the lane image over `UART_EN`; the restore reads back the saved word
+|`CHK-LANE-LOG-ENGINE` |Every log engine `INTR_TEST` write answers OKAY and the register reads back the word it read before the leg; `INTR_STATUS` reads `LOG_FETCH_ERR` and `LOG_WRITE_ERR` set before the clear write and 0 after it
+|`CHK-LANE-TELEMETRY` |Every write to telemetry receiver 1 `CTRL` reads back the lane image over `BUFFER_THRESHOLD` and to `INTR_TEST` over `BUFFER_THRESHOLD`; both restores read back the saved words
+|`CHK-LANE-TIMER` |Every `TIMER_START` write answers OKAY, the register reads back the word it read before the leg, and `CTRL` reads the same word before and after the leg
+|`CHK-LANE-RESTORE` |All 17 targets restored and read back, all 17 neighbours unchanged, `CLOCK_GATE_CONTROL` read back at its saved word
+|`CHK-NONVAC` |Ordered fence SETUP < RESET-UNIT < GPIO < AVSBUS < I2C-CTRL < I2C < EFUSE-CTRL < UART < UART-WO < UART-CTRL < LOG-ENGINE < TELEMETRY < TIMER < RESTORE, each term with a non-zero count and a later sim time than the one before
+|===
+
+*Pass Criteria*: all fourteen checkers hold after their compares and every sequence assert holds; the sequence issues exactly the planned 485 SEP_IN accesses. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: Write-only and volatile fields (`AVS_INTERRUPT_CLEAR`, `FIFO_CTRL`, `EFUSE_INTERFACE_CTRL_STATUS` clears, `FCR`, log engine `INTR_TEST`, `TIMER_START.START`, the telemetry flush bits) are driven once per write with the preload value; a register with no plain field is graded only on its unchanged readback, `IIR.FIFOS_ENABLED` after the `FCR` writes and the log engine `INTR_STATUS` bits are the only effects of a write-only field this leaf grades. `efuse_program_go`, `read_go`, `program_enable`, `FORCE_SLAVE_RESYNC_OPERATION`, `TURN_OFF_ALL_PREMUX_CLOCKS`, GPIO `interrupt_enable` and `lsio_select`, UART `DLAB`, `SET_BREAK` and `IER` are never set.
 '''''
 
 [[sec-548-smc_regblock_subword_strobe_sweep_test]]
