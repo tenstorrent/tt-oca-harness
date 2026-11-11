@@ -6142,7 +6142,7 @@ the mismatch shapes of `sep_efuse_token_channel_rand_test`. It samples the added
 taps `tok_words_i` and `sec_disable_expected_i`. Seed-dependent: the two phase bins of
 `cp_stops_sense` (one class of `sep_sec_dis_timing_rand_test` per leaf),
 `cp_reset_values_hold` (only a leaf of the match-before-sense class fills it) and
-`x_state_strap_feat` (drawn states: a strap-1 cell fills only in leg A of a leaf of that state, so each needs a seed of that state with strap 1; a strap-0 cell also fills in the follow-on legs).
+`x_state_strap_feat` (drawn states: the axis is `secure_tm_o`, and while it follows the strap a strap-1 cell fills only in leg A of a leaf of that state, so each needs a seed of that state with strap 1; a strap-0 cell also fills in the follow-on legs).
 
 ===== `sep_efuse_if_status_cg`
 
