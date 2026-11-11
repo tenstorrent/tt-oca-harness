@@ -4008,7 +4008,7 @@ args = [
 # unsigned (secure_boot_control 0); each slot is refused, no decryption starts (no decrypt-path
 # PC, no CPU AES access) and the boot ends on MANIFEST_LOAD_FAILED and the FAIL verdict. The spec
 # names two codes for the refusal (SECURE_BOOT_INVARIANT in PL-050, ENCRYPTION_REQUIRES_SECURE_BOOT
-# in MAN-030 and the registry); bl0_state.error_code must be one of them. Spec conflict: ISSUE-023.
+# in MAN-030 and the registry), so bl0_state.error_code must be one of them.
 name = "sep_rom_encryption_requires_secure_boot_test"
 module = "rom_fw.sep_rom_encryption_requires_secure_boot_test"
 target = "rom_boot"
