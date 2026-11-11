@@ -14,8 +14,9 @@ hold complete before the fall: the bridge holds one operation and drives its
 own BREADY and RREADY, so the leaf prints INFO-CELL-NOT-DRIVABLE for that cell.
 The JTAG2AXI read issued during the hold is accepted on sep_in and gets no
 response; no checker expects one, and that read and the JTAG2AXI read after the
-release are observations of the open question SF-003. The response
-check on dtp_dbg covers both reads and the bridge writes after the release.
+release are observations of an open spec question (whether a request accepted
+before a reset completes or is withdrawn). The response check on dtp_dbg covers
+both reads and the bridge writes after the release.
 The SEP-originated traffic is the ICCM stub of smu_sep_reset_inflight_test
 under the debug module, plus the debug module's system bus. Nothing
 SEP-driven is pending at the fall, so the SEP-driven VALIDs the leaf samples

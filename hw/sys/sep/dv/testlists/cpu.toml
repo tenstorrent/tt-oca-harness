@@ -212,6 +212,18 @@ tags = ["fabric", "dma", "smc", "cpu", "subsystem", "sep_spec_log", "logs_open_s
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_smc_aperture_base=40000000", "+sep_smc_aperture_size=1000000"]
 
+[[tests]]
+# Same module and firmware as sep_fabric_dma_endpoint_matrix_test with the bench extension-port responder answering SLVERR. Only the extension-port legs run: a DMA read and a DMA write that meet the SLVERR end with STATUS.ERROR and ERROR_CODE.BUS_ERROR, and a recovery copy is exact.
+name = "sep_fabric_dma_endpoint_matrix_test_slverr"
+module = "cpu.sep_fabric_dma_endpoint_matrix_test"
+firmware = "dma_endpoint_matrix_test"
+seed = 1
+reseed = 1
+timeout_sec = 900
+tags = ["fabric", "dma", "smc", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_smc_aperture_base=40000000", "+sep_smc_aperture_size=1000000", "+sep_ext_port_responder"]
+
 # Mailbox, IRQ and PIC (docs/SEP_VPLAN.adoc, docs/test_contracts/mailbox_irq_pic.adoc).
 
 [[tests]]
@@ -307,6 +319,8 @@ args = [
 name = "sep_debug_master_target_matrix_test"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
+# No reseed: every run runs all steps; the seed selects only the ungraded uncore write data
+# and the TCK period and phase, which change TAP timing only and no check grades.
 timeout_sec = 900
 tags = ["debug", "jtag", "dmi", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]
