@@ -78,6 +78,15 @@ Checkers:
                          ``hw/ip/entropy_source/doc/architecture.adoc``:177-178 "The same
                          words leave on ``entropy_stream_data_o`` whatever the FIFO does.");
                          control: CTRL-FIFO-STREAM-FULL, the fill offered at least two words.
+  CHK-FIFO-TRNG-RESET    a TRNG reset taken with ENABLE = 1, LEVEL >= H and the producer
+                         live gives LEVEL = 0, WPTR = 0, RPTR = 0 (the RDL reset values)
+                         at the first FIFO_STATUS read after release
+                         (``hw/ip/entropy_source/doc/architecture.adoc``:220-221, :224-227
+                         "This is a full-IP reset"; entropy_source.rdl FIFO_STATUS);
+                         control: CTRL-FIFO-TRNG-RESET, ENABLE reads 1 and
+                         H <= LEVEL <= 63 before the reset, at least one stream word just
+                         before the reset, no stream word from the end of the reset wait
+                         to the graded read, and BOOT_PHASE_DONE = 0 after it.
 Logged only: ``OBS-FIFO-PTR-W1C``, ``OBS-ESRC-LIVE-PIC16`` (source 16 with only the live
 cause enabled: the register text does not state which enabled status bits drive source 16),
 ``OBS-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
@@ -203,6 +212,10 @@ def _status(value: int) -> tuple[int, int, int]:
     )
 
 
+FIFO_STATUS_RESET = tuple(
+    ENTROPY_SOURCE.fields("FIFO_STATUS")[f]["reset"] for f in ("LEVEL", "WPTR", "RPTR")
+)
+
 INTR_FIFO_ERROR = ENTROPY_SOURCE.fields("INTR_STATUS")["FIFO_ERROR"]["bm"]
 INTR_FIFO_OVERFLOW = ENTROPY_SOURCE.fields("INTR_STATUS")["FIFO_OVERFLOW"]["bm"]
 INTR_FIFO_UNDERFLOW = ENTROPY_SOURCE.fields("INTR_STATUS")["FIFO_UNDERFLOW"]["bm"]
@@ -321,6 +334,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         "CHK-FIFO-FLAGS-CLEAR",
         "CHK-FIFO-STREAM-FULL",
         "CHK-ESRC-LIVE-MASKED",
+        "CHK-FIFO-TRNG-RESET",
     )
 
     async def run_scenario(self) -> None:
@@ -352,6 +366,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         await self._intr_test_ctrl()
         close_graded_window(self.logger)
         await self._live_cause_leg()
+        await self._trng_reset_leg()
         await self._parity_trial()
         await self._pointer_trial()
         close_graded_window(self.logger)
@@ -911,6 +926,53 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         await self._pop_to_empty()
         await self._cause_legs("FIFO_UNDERFLOW", INTR_FIFO_UNDERFLOW, self._underflow)
+
+    async def _trng_reset_leg(self) -> None:
+        """A TRNG reset with ENABLE = 1, LEVEL >= H and the producer live empties the FIFO."""
+        plan = self.plan
+        await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
+        enable = _get(await self._rd(ESRC_FIFO_CTRL), "FIFO_CTRL", "ENABLE")
+        held_ok, _, _ = await self._poll(
+            ESRC_FIFO_STATUS,
+            lambda x: _get(x, "FIFO_STATUS", "LEVEL"),
+            lambda x: x >= plan.held,
+            self._fill_bound(),
+        )
+        w0 = self.tap.words
+        await self._next_word()
+        pre = _status(await self._rd(ESRC_FIFO_STATUS))
+        words_pre = self.tap.words - w0
+        await self._trng_reset()
+        w2 = self.tap.words
+        post = _status(await self._rd(ESRC_FIFO_STATUS))
+        words_post = self.tap.words - w2
+        boot_done = _get(await self._rd(ESRC_MAIN_SM_STATUS), "MAIN_SM_STATUS", "BOOT_PHASE_DONE")
+        self.chk.ctrl(
+            "FIFO-TRNG-RESET",
+            enable == 1
+            and held_ok
+            and plan.held <= pre[0] <= DEPTH - 1
+            and words_pre >= 1
+            and words_post == 0
+            and boot_done == 0,
+            enable=enable,
+            h=plan.held,
+            level_pre=pre[0],
+            wptr_pre=pre[1],
+            rptr_pre=pre[2],
+            words_pre=words_pre,
+            words_post=words_post,
+            boot_phase_done=boot_done,
+        )
+        self.chk.ok(
+            "FIFO-TRNG-RESET",
+            post == FIFO_STATUS_RESET,
+            level=post[0],
+            wptr=post[1],
+            rptr=post[2],
+            exp=FIFO_STATUS_RESET,
+            level_pre=pre[0],
+        )
 
     # --- integrity trials (steps 21-28) -------------------------------------------------
     async def _err_alert_obs(self, trial: str) -> None:
