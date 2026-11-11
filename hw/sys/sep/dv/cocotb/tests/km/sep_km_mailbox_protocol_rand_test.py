@@ -48,7 +48,15 @@ Checkers:
                IRQ_STATUS.inbound_write_space_avail track the golden
   CHK-OVR      a 17th write -> SLVERR, inbound_overflow latches, depth stays 16
   CHK-OVR-RESP SEP_CTRL.inbound_overflow_resp turns the next overrun into
-               OKAY; the sticky bit stays; depth stays 16 (drop)
+               OKAY; the sticky bit stays; depth stays 16
+  CHK-OVR-HEAD the head word of the inbound FIFO (KM-INFIFO tap) is the first
+               fill word, separator 0, after the fill and after each of the two
+               overruns: an overrun that writes into the full FIFO at the read
+               slot, or that moves the read pointer, fails (key_manager
+               architecture.adoc:237, "A write to a full FIFO drops the incoming
+               word without changing queued data")
+  OBS-OVR-QUEUE  the inbound entries behind the head, and the absence of the
+               overflow word among them, have no tap: logged as not observed
   CHK-IRQ      enabling the two error IRQs raises aggregator [14]; clearing
                the enable drops the pin while IRQ_STATUS stays; W1C drops both
   CHK-FLUSH    CTRL.FLUSH empties the full inbound FIFO, self-clears, and
@@ -69,11 +77,15 @@ Checkers:
                write sets, or that holds 1 with no arm, fails
 
 Randomization: the run seed selects the 16 inbound fill words and the
-overflow word. A separate salted stream of the same seed selects the armed
+overflow word, which differs from every fill word. A separate salted stream of the same seed selects the armed
 subset of the 16 write-separator words: N armed words in [1, 15] at drawn
 positions, so every seed grades at least one armed and one unarmed word.
 
 Not covered:
+  * Inbound entries 2 to 16 after an overrun. KM-INFIFO shows the head word
+    only, the KM is held so no entry is popped, and the flush discards the
+    entries unread, so only the head word of "without changing queued data"
+    is graded (CHK-OVR-HEAD).
   * inbound_underflow, outbound_overflow, and flushed_by_km need the KM CPU
     as the peer, so this test does not grade them.
   * STATUS.inbound_separator updates only when the KM pops inbound;
@@ -86,6 +98,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_chk_log import word_digest
 from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -187,7 +200,10 @@ class SepKmMboxProtoCfg:
             if w not in words:
                 words.append(w)
         self.fill_words = tuple(words)
-        self.overflow_word = rng.getrandbits(32)
+        overflow_word = rng.getrandbits(32)
+        while overflow_word in words:
+            overflow_word = rng.getrandbits(32)
+        self.overflow_word = overflow_word
         wsep = SepSeededRng(seed ^ _WSEP_SALT)
         n_armed = wsep.randrange(1, KM_MBOX_DEPTH)
         self.wsep_armed = frozenset(wsep.sample(range(1, KM_MBOX_DEPTH + 1), n_armed))
@@ -380,10 +396,13 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
 
     async def _chk_overflow(self, cfg: SepKmMboxProtoCfg) -> None:
+        # KM-INFIFO {separator, data}; the fill words carry separator 0.
+        head = {"fill": self.rd_known(cocotb.top.km_infifo_head_o)}
         resp = await self.mb.write_data_raw(cfg.overflow_word, expect_error=True)
         assert resp == RESP_SLVERR, f"CHK-OVR FAIL: write-to-full resp={resp}, expected SLVERR"
         await self._expect_status("CHK-OVR", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
         await self._expect_irq("CHK-OVR", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
+        head["slverr"] = self.rd_known(cocotb.top.km_infifo_head_o)
         self.logger.info(
             "CHK-OVR PASS: 17th write -> SLVERR, inbound_overflow latched, depth stays %d",
             KM_MBOX_DEPTH,
@@ -396,11 +415,34 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
         await self._expect_status("CHK-OVR-RESP", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
         await self._expect_irq("CHK-OVR-RESP", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
+        head["okay"] = self.rd_known(cocotb.top.km_infifo_head_o)
         self.logger.info(
             "CHK-OVR-RESP PASS: resp-mode=OKAY on the next overrun; depth still %d",
             KM_MBOX_DEPTH,
         )
         await self.mb.write_ctrl(0)
+
+        exp_head = cfg.fill_words[0]
+        got = ", ".join(f"{k}=0x{v:09x}" for k, v in head.items())
+        assert all(v == exp_head for v in head.values()), (
+            f"CHK-OVR-HEAD FAIL: inbound head word {got}, expected 0x{exp_head:09x} "
+            f"(first fill word) at each; overflow word 0x{cfg.overflow_word:08x}"
+        )
+        self.logger.info(
+            "CHK-OVR-HEAD PASS: inbound head word %s, expected 0x%09x (first fill word); "
+            "overflow word 0x%08x not at the head",
+            got,
+            exp_head,
+            cfg.overflow_word,
+        )
+        self.logger.info(
+            "OBS-OVR-QUEUE not observed: inbound entries 2..%d and the absence of the "
+            "overflow word behind the head have no tap (KM held, flush discards unread); "
+            "fill_sha=%s overflow=0x%08x",
+            KM_MBOX_DEPTH,
+            word_digest(cfg.fill_words),
+            cfg.overflow_word,
+        )
 
     async def _chk_irq(self) -> None:
         # Overflow sticky is still set from CHK-OVR. Underflow is clear.

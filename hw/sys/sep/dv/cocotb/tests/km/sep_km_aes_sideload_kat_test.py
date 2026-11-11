@@ -8,7 +8,8 @@ then CMD_KEY_TRANSFER sideloads it to the OpenTitan AES core. The host then runs
 ECB-256 encryptions and proves the AES engine CONSUMED exactly that key:
 
   ct_side  = AES-ECB(sideload key, PT)   (CTRL_SHADOWED.SIDELOAD=1)
-  ct_swref = AES-ECB(known key via SW KEY_SHARE, PT)
+  ct_swref = AES-ECB(drawn software key via SW KEY_SHARE, PT)   (CTRL_SHADOWED.SIDELOAD=0,
+             the sideload key still valid)
   ct_dummy = AES-ECB(unrelated dummy SW key, PT)   (negative reference)
 
 AES KEY CSRs are write-only and AES is not programmable, so (unlike
@@ -49,7 +50,11 @@ Checkers:
            write response to the STATUS read that shows OUTPUT_VALID (includes
            the STATUS read latency). Logged, not graded: the OUTPUT_VALID wait
            has only a liveness timeout, the AES driver default poll bound
-  CHK-H    ct_swref == AES(known_key, PT) golden: SW-key path is correct
+  CHK-H    with SIDELOAD=0 while the sideload key is still valid, ct_swref ==
+           AES(sw_key, PT) golden, where sw_key is drawn per seed and differs from
+           KAT_KEY and from the dummy key in every word: the engine takes the
+           software key and not the sideloaded one (aes.hjson:764 SIDELOAD,
+           hw/sys/sep/doc/aes.adoc:54-55)
   CHK1..CHK4 strict golden proof via the DRBG scoreboard; CHK5_km alive/observed
            (rom_main pull order not golden-predictable) + CHK5_aes alive/observed:
            the released AES masking PRNG reseeds from the crypto EDN leg, so a
@@ -81,6 +86,7 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_aes_golden import aes256_ecb_encrypt_words, aes_encrypt_words
 from env.sep_axi_agent import SepAxiOp
+from env.sep_chk_log import word_digest
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -123,6 +129,9 @@ SEP_SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 # Domain tag of the SRAM-leg draw stream. It differs from the AES driver's
 # key-share stream tag, so the leg's draws do not move the key shares.
 SRAM_LEG_SALT = 0x5A3C
+# Domain tag of the CHK-H software-key draw stream; it differs from the two
+# tags above, so the draw moves neither the key shares nor the SRAM leg.
+SW_KEY_SALT = 0x5357
 
 # Liveness timeout of one OUTPUT_VALID wait: the AES driver's default poll
 # bound (polls x cycles per poll). It is a hang guard, not a graded latency.
@@ -153,6 +162,19 @@ def _unpack64(dwords: list[int]) -> list[int]:
 
 def _hex64(dwords: list[int]) -> str:
     return "[" + ",".join(f"{d:016x}" for d in dwords) + "]"
+
+
+def _draw_sw_key(seed: int) -> list[int]:
+    """The CHK-H software key: 8 words, word i not 0 and not word i of KAT_KEY or the dummy key."""
+    rng = SepSeededRng(seed ^ SW_KEY_SALT)
+    key: list[int] = []
+    for kat, dummy in zip(KAT_KEY, AES_DUMMY_SW_KEY):
+        while True:
+            w = rng.getrandbits(32)
+            if w not in (0, kat, dummy):
+                key.append(w)
+                break
+    return key
 
 
 def _draw64(rng: SepSeededRng, avoid: set[int]) -> int:
@@ -392,17 +414,34 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         # the KAT_KEY golden.
         await self._chk_aes_sram_km()
 
-        # CHK-H: write the KNOWN key through the SW KEY_SHARE path and prove
-        # the SW-key ciphertext equals AES(known_key, PT) golden.
+        # CHK-H: SIDELOAD=0 while the KAT_KEY sideload key is still valid (the
+        # SRAM leg above used it). The software key differs from KAT_KEY and the
+        # dummy key in every word, so an engine that keeps the sideload key, or a
+        # lost key write that leaves the dummy key, gives another ciphertext.
+        sw_key = _draw_sw_key(self.random_seed())
+        exp_sw = aes256_ecb_encrypt_words(sw_key, list(AES_ECB_PT))
+        assert exp_sw not in (golden, exp_dummy), (
+            "test bug: the CHK-H golden equals the sideload or dummy-key golden"
+        )
         await self.aes.configure_ecb_enc_256(sideload=False)
-        await self.aes.write_full_key(list(KAT_KEY))
+        await self.aes.write_full_key(sw_key)
         await self.aes.trigger_prng_reseed()
         ct_swref = await self.aes.run_ecb_block(list(AES_ECB_PT))
-        assert ct_swref == golden, (
-            "SW-key ciphertext != AES(known_key, PT) golden:\n"
-            f"  ct_swref={[hex(w) for w in ct_swref]} golden={[hex(w) for w in golden]}"
+        assert ct_swref == exp_sw, (
+            "CHK-H FAIL: SIDELOAD=0 ciphertext != AES-256-ECB(sw_key, PT) golden "
+            f"sw_key_sha={word_digest(sw_key)} got={[hex(w) for w in ct_swref]} "
+            f"exp={[hex(w) for w in exp_sw]} sideload_golden={[hex(w) for w in golden]}"
         )
-        self.logger.info("CHK-H PASS: consume-proof ct_swref == AES(known_key, PT) golden")
+        self.logger.info(
+            "CHK-H PASS: SIDELOAD=0 with the sideload key valid, ct_swref == "
+            "AES-256-ECB(sw_key, PT) golden sw_key_sha=%s salt=0x%04x got=%s exp=%s "
+            "sideload_golden=%s",
+            word_digest(sw_key),
+            SW_KEY_SALT,
+            [hex(w) for w in ct_swref],
+            [hex(w) for w in exp_sw],
+            [hex(w) for w in golden],
+        )
 
         # --- EOT: entropy health + clean shutdown ------------------------------
         await self.km.check_outbound_empty("EOT")
