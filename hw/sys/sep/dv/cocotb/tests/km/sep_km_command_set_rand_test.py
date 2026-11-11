@@ -65,16 +65,22 @@ Checkers:
               the 16 share-word offsets (the key_valid clear of KEY_CTRL among
               them) are excluded from the terms. Graded: (a) every byte lane
               of each of the 16 share words is written at least once; (b) the
-              CHK5_km EDN->KM beat count rises during the shred; (c) the final
-              share-0 vector, the final share-1 vector and their XOR each
-              differ from the key the engine held; (d) per share, the data
-              written to the share-0 words of one shred is not one repeated
-              value, and neither is the data written to its share-1 words;
-              (e) the ordered share data of the second shred differs from
-              that of the first (firmware.adoc,
+              CHK5_km EDN->KM beat count rises by at least 4 during the shred,
+              the four DRBG words of one PRNG seed (the reseed of every
+              further pass is not graded, because the pass count is not
+              specified); (c) the final share-0 vector, the final share-1
+              vector and their XOR each differ from the key the engine held;
+              (d) per share, the data written to the share-0 words of one
+              shred is not one repeated value, and neither is the data
+              written to its share-1 words; (e) the ordered share data of the
+              second shred differs from that of the first; (f) each final
+              share vector differs from the vector that share held after the
+              CMD_KEY_TRANSFER that loaded the key, which is captured on the
+              same tap with every lane of the 16 share words written and its
+              two share vectors XOR-ing to the key (firmware.adoc,
               "Crypto Engine Drivers", Shred: PRNG data, a DRBG reseed before
-              each pass).
-              Terms (c)-(e) compare whole vectors only. The shred data is
+              each pass; architecture.adoc, "Key Delivery").
+              Terms (c)-(f) compare whole vectors only. The shred data is
               xoshiro128++ output from a 128-bit seed of four DRBG words
               (firmware.adoc, "Firmware PRNG"), so a correct KM fails each of
               them with probability at most 2^-128, and every failure replays
@@ -352,6 +358,8 @@ if len(_AES_SHARE_SET) != 2 * len(KAT_KEY_A) or hasattr(
         f"AES_WRAPPER_KEY: share offsets are not 2 x {len(KAT_KEY_A)} distinct words"
     )
 _WORD_STRB = 0xF
+# DRBG words that seed the firmware PRNG once (firmware.adoc, "Firmware PRNG").
+_PRNG_SEED_WORDS = 4
 
 # Sizes CMD_KEY_GENERATE is asked for, as word counts: CHK-GEN, then CHK-UNIQ.
 GEN_KEY_WORDS = (8, 12)
@@ -463,6 +471,34 @@ class _AesKeyPortWrites:
                     )
             except AssertionError:
                 self.xz += 1
+
+
+class _ShareWrites:
+    """The AES share writes of one capture, merged per word by strobe.
+
+    ``share`` holds the (offset, data, strobe) beats at the 16 share-word
+    offsets in order and ``other`` the rest; ``vectors`` is the final share-0
+    and share-1 vector in index order, with an unwritten byte lane read as 0.
+    """
+
+    def __init__(self, cap: _AesKeyPortWrites) -> None:
+        self.cap_aw = list(cap.aw)
+        self.cap_w = list(cap.w)
+        self.xz = cap.xz
+        self.clean = cap.xz == 0 and len(cap.aw) == len(cap.w)
+        pairs = list(zip(cap.aw, cap.w))
+        self.share = [(off, d, st) for off, (d, st) in pairs if off in _AES_SHARE_SET]
+        self.other = [(off, d, st) for off, (d, st) in pairs if off not in _AES_SHARE_SET]
+        self.strobes: dict[int, list[int]] = {off: [] for off in sorted(_AES_SHARE_SET)}
+        final = dict.fromkeys(self.strobes, 0)
+        self.lanes = dict.fromkeys(self.strobes, 0)
+        for off, data, strb in self.share:
+            mask = sum(0xFF << (8 * b) for b in range(4) if (strb >> b) & 1)
+            final[off] = (final[off] & ~mask) | (data & mask)
+            self.lanes[off] |= strb
+            self.strobes[off].append(strb)
+        self.vectors = tuple(tuple(final[off] for off in AES_SHARE_OFFSETS[s]) for s in (0, 1))
+        self.unwritten = [f"0x{off:03x}/{v:x}" for off, v in self.lanes.items() if v != _WORD_STRB]
 
 
 class SepKmCommandSetCfg:
@@ -730,7 +766,10 @@ class sep_km_command_set_rand_test(sep_base_test):
         # dest differs, so rc=0 here means the refusal above was the destination
         # policy and not a dead handle. It is unconditional, so every seed
         # carries it.
-        rc_ok, arg_ok = await self.km.key_transfer(handle=handle_a, dest=KM_DEST_AES)
+        # This transfer is also the last AES key write before the CHK-SHRED
+        # shred, so its capture is the pre-shred share state of CHK-SHRED-FILL (f).
+        aes_writes = _AesKeyPortWrites(self)
+        rc_ok, arg_ok, loaded_a = await self._aes_transfer_captured(aes_writes, handle_a)
         assert rc_ok == KM_RC_SUCCESS, (
             f"CHK-DEST FAIL: the in-mask control transfer of handle 0x{handle_a:02x} to "
             f"0x{KM_DEST_AES:02x} returned rc={rc_ok}, so the RC_FAILURE above is not "
@@ -754,14 +793,13 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self._check_alive("post-dest-refusal")
 
         # --- CHK-SHRED: destroy the engine's key, then re-key it --------------
-        aes_writes = _AesKeyPortWrites(self)
         rc, arg, shred_beats = await self._aes_shred(aes_writes)
         assert rc == KM_RC_SUCCESS, f"CHK-SHRED FAIL: CMD_ENGINE_SHRED rc={rc}"
         assert (arg & 0xFF) == KM_DEST_AES, (
             f"CHK-SHRED FAIL: RETURN_ARG echoed dest 0x{arg & 0xFF:02x}, requested "
             f"0x{KM_DEST_AES:02x}"
         )
-        shred1_data = self._check_shred_fill(1, aes_writes, shred_beats, KAT_KEY_A, None)
+        shred1_data = self._check_shred_fill(1, aes_writes, shred_beats, KAT_KEY_A, loaded_a, None)
         handle_b = await self.km.key_load(key_words=list(KAT_KEY_B), dest=KM_DEST_AES)
         rc, _ = await self.km.key_transfer(handle=handle_b, dest=KM_DEST_AES)
         assert rc == KM_RC_SUCCESS, f"CHK-SHRED FAIL: post-shred CMD_KEY_TRANSFER rc={rc}"
@@ -1052,7 +1090,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         # that window and match the golden, so the key is live at the shred,
         # the window is long enough for a keyed block, and a missing output
         # afterwards is the shred's doing.
-        rc, _ = await self.km.key_transfer(handle=handle_b, dest=KM_DEST_AES)
+        rc, _, loaded_b = await self._aes_transfer_captured(aes_writes, handle_b)
         assert rc == KM_RC_SUCCESS, (
             f"CHK-GONE FAIL: pre-shred CMD_KEY_TRANSFER of handle 0x{handle_b:02x} rc={rc}"
         )
@@ -1073,7 +1111,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         rc, _, shred_beats = await self._aes_shred(aes_writes)
         assert rc == KM_RC_SUCCESS, f"CHK-GONE FAIL: final CMD_ENGINE_SHRED rc={rc}"
-        self._check_shred_fill(2, aes_writes, shred_beats, KAT_KEY_B, shred1_data)
+        self._check_shred_fill(2, aes_writes, shred_beats, KAT_KEY_B, loaded_b, shred1_data)
         # Same configure + PRNG reseed as the control block above, so the
         # shredded sideload key is the only difference from a start that runs.
         await self.aes.configure_ecb_enc_256(sideload=True)
@@ -1216,33 +1254,41 @@ class sep_km_command_set_rand_test(sep_base_test):
         await cap.stop()
         return rc, arg, beats
 
+    async def _aes_transfer_captured(
+        self, cap: _AesKeyPortWrites, handle: int
+    ) -> tuple[int, int, _ShareWrites]:
+        """CMD_KEY_TRANSFER of ``handle`` to AES under the key-path capture.
+
+        Returns (return_code, return_arg, the share writes of the transfer).
+        """
+        cap.start()
+        rc, arg = await self.km.key_transfer(handle=handle, dest=KM_DEST_AES)
+        await cap.stop()
+        return rc, arg, _ShareWrites(cap)
+
     def _check_shred_fill(
         self,
         shred: int,
         cap: _AesKeyPortWrites,
         drbg_beats: int,
         key: tuple[int, ...],
+        loaded: _ShareWrites,
         prev: tuple[int, ...] | None,
     ) -> tuple[int, ...]:
         """CHK-SHRED-FILL and INFO-SHRED-FILL of one AES shred.
 
+        ``loaded`` is the capture of the CMD_KEY_TRANSFER that loaded ``key``.
         Returns the ordered share data of the shred, which term (e) of the next
         shred compares against.
         """
-        pairs = list(zip(cap.aw, cap.w))
-        share = [(off, data, strb) for off, (data, strb) in pairs if off in _AES_SHARE_SET]
-        other = [(off, data, strb) for off, (data, strb) in pairs if off not in _AES_SHARE_SET]
-        strobes: dict[int, list[int]] = {off: [] for off in sorted(_AES_SHARE_SET)}
-        final = dict.fromkeys(strobes, 0)
-        lanes = dict.fromkeys(strobes, 0)
-        for off, data, strb in share:
-            mask = sum(0xFF << (8 * b) for b in range(4) if (strb >> b) & 1)
-            final[off] = (final[off] & ~mask) | (data & mask)
-            lanes[off] |= strb
-            strobes[off].append(strb)
-        s0 = tuple(final[off] for off in AES_SHARE_OFFSETS[0])
-        s1 = tuple(final[off] for off in AES_SHARE_OFFSETS[1])
+        sw = _ShareWrites(cap)
+        share, other, strobes, lanes = sw.share, sw.other, sw.strobes, sw.lanes
+        s0, s1 = sw.vectors
         xor = tuple(a ^ b for a, b in zip(s0, s1))
+        l0, l1 = loaded.vectors
+        loaded_ok = (
+            loaded.clean and not loaded.unwritten and tuple(a ^ b for a, b in zip(l0, l1)) == key
+        )
         data = tuple(d for _, d, _ in share)
         distinct = [len({d for off, d, _ in share if off in AES_SHARE_OFFSETS[s]}) for s in (0, 1)]
         per_offset = " ".join(
@@ -1259,15 +1305,18 @@ class sep_km_command_set_rand_test(sep_base_test):
             per_offset,
             [f"0x{off:03x}=0x{d:08x}/{st:x}" for off, d, st in other],
         )
-        unwritten = [f"0x{off:03x}/{v:x}" for off, v in lanes.items() if v != _WORD_STRB]
+        unwritten = sw.unwritten
         terms = {
-            "capture": cap.xz == 0 and len(cap.aw) == len(cap.w),
+            "capture": sw.clean,
             "a": not unwritten,
-            "b": drbg_beats > 0,
+            "b": drbg_beats >= _PRNG_SEED_WORDS,
             "c": key not in (s0, s1, xor),
             "d_share0": distinct[0] > 1,
             "d_share1": distinct[1] > 1,
             "e": prev is None or data != prev,
+            "f_loaded": loaded_ok,
+            "f_share0": s0 != l0,
+            "f_share1": s1 != l1,
         }
         failed = [t for t, ok in terms.items() if not ok]
         assert not failed, (
@@ -1276,23 +1325,31 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"distinct_share0_values={distinct[0]} distinct_share1_values={distinct[1]} "
             f"share0={[hex(v) for v in s0]} share1={[hex(v) for v in s1]} "
             f"xor={[hex(v) for v in xor]} key={[hex(v) for v in key]} "
-            f"same_as_prev={prev is not None and data == prev}"
+            f"same_as_prev={prev is not None and data == prev} "
+            f"loaded_aw={len(loaded.cap_aw)} loaded_w={len(loaded.cap_w)} "
+            f"loaded_xz={loaded.xz} loaded_unwritten={loaded.unwritten} "
+            f"loaded_share0={[hex(v) for v in l0]} loaded_share1={[hex(v) for v in l1]}"
         )
         self.logger.info(
             "CHK-SHRED-FILL PASS: contract=key_manager/doc/firmware.adoc:1803-1805"
             "(Crypto_Engine_Drivers_Shred),:1447-1453(Firmware_PRNG),"
             "architecture.adoc:292-294(Key_Delivery) shred=%d aw=%d w=%d xz=0 "
-            "share_offsets=%d all_lanes_written=1 drbg_beats=%d exp_drbg_beats>0 "
+            "share_offsets=%d all_lanes_written=1 drbg_beats=%d exp_drbg_beats>=%d "
             "share0!=key share1!=key xor!=key distinct_share0_values=%d "
-            "distinct_share1_values=%d exp_each>1 differs_from_prev=%s",
+            "distinct_share1_values=%d exp_each>1 differs_from_prev=%s "
+            "loaded_aw=%d loaded_w=%d loaded_all_lanes_written=1 loaded_xor==key "
+            "share0!=loaded_share0 share1!=loaded_share1",
             shred,
             len(cap.aw),
             len(cap.w),
             len(lanes),
             drbg_beats,
+            _PRNG_SEED_WORDS,
             distinct[0],
             distinct[1],
             "n/a" if prev is None else "1",
+            len(loaded.cap_aw),
+            len(loaded.cap_w),
         )
         return data
 
