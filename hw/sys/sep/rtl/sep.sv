@@ -186,6 +186,10 @@ module sep #(
   output logic [2*sep_pkg::LcStateBitWidth-1:0] lc_state_o,     // Differentially encoded lifecycle
                                                                 // state from the eFuse shadow
                                                                 // registers.
+  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,  // Lifecycle feature-control
+                                                                     // vector, 1 = enabled; its
+                                                                     // reserved bits gate adopter
+                                                                     // features.
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,  // Per-interface debug disables for
                                                                // the DTP, active-high (1 =
                                                                // disabled).
@@ -386,6 +390,7 @@ module sep #(
 
   logic security_disable;
   sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl;
+  assign feat_ctrl_o = feat_ctrl;
 
   //////////////
   // SEP Resets

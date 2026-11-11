@@ -96,6 +96,7 @@ module sep_wrapper
   input  sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
   output logic [2*sep_pkg::LcStateBitWidth-1:0] lc_state_o,
+  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
   output logic sep_fuse_dft_disable_o,
   output logic smc_fuse_dft_disable_o,
@@ -232,6 +233,7 @@ module sep_wrapper
     .sep_io_spi_req_o,
     .sep_io_spi_rsp_i,
     .lc_state_o,
+    .feat_ctrl_o,
     .dbg_disable_o,
     .sep_fuse_dft_disable_o,
     .smc_fuse_dft_disable_o,
