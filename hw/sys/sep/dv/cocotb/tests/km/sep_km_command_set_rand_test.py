@@ -23,12 +23,15 @@ Checkers:
               error interrupts; "OTP Change Status": the boot does not enable
               that source). Bits 31:12 are outside the tap and not graded
   CHK-BOOT-IRQ-STATUS
-              at the same sample KMCSR IRQ_STATUS bits 11:0 read 0: the boot
-              clears every status bit, an enabled source that sets after the
-              clear enters a fatal handler that leaves its bit uncleared and
-              traps the CPU until a reset, and OTP_CHANGE sets only on an OTP readout change,
-              which the leaf does not cause before READY (firmware.adoc, "Boot
-              Sequence" and "Interrupt Handlers"; km_csr.rdl IRQ_STATUS)
+              at the same sample KMCSR IRQ_STATUS bits 11:0 read 0: no status
+              bit is set at READY. The boot clears every status bit, an enabled
+              source that sets after the clear enters a fatal handler that
+              leaves its bit uncleared and traps the CPU until a reset, and
+              OTP_CHANGE sets only on an OTP readout change, which the leaf
+              does not cause before READY (firmware.adoc, "Boot Sequence" and
+              "Interrupt Handlers"; km_csr.rdl IRQ_STATUS). The check reads the
+              register at READY only; it does not see a bit that was set
+              before the boot and then cleared
   CTRL-BOOT-FETCH-DECODE
               the KM-FETCH sampler covers the boot: it starts before the
               SW_RESET_N release of the KM and stops at RESP_KM_READY, reads
@@ -182,7 +185,10 @@ Checkers:
               after CHK-RECOV, SEP_IRQ_STATUS flushed_by_km reads 0: a SEP
               flush sets the flushed-by-other status of the KM, not of the SEP,
               and the KM handles it without a second FIFO flush
-              (architecture.adoc, mailbox flush; firmware.adoc, flushed_by_sep)
+              (architecture.adoc, mailbox flush; firmware.adoc, flushed_by_sep).
+              Controls: CTRL-FLUSHED-BY-KM-CLR before it, so the bit was 1 and
+              the write of 1 cleared it, and CTRL-FLUSHED-BY-KM-RESET after it,
+              so the hardware still sets the bit after that write
   CHK-GONE    a shredded engine refuses to start: KAT_KEY_B is transferred to
               AES again and a sideload block encrypts to its golden, then a
               final CMD_ENGINE_SHRED follows and the same start produces no
@@ -246,6 +252,14 @@ Checkers:
               it returns rc=0 with the handle and dest echoed (firmware.adoc,
               "0x24 - CMD_KEY_TRANSFER", Response), so the KM-to-AES transfer
               path is live after the warm reset, and CHK-ALIVE follows
+  CTRL-FLUSHED-BY-KM-RESET
+              after the KM warm reset of CHK-VAULT-WARM-LOAD and its
+              RESP_KM_READY, before any command, SEP_IRQ_STATUS flushed_by_km
+              reads 1: the ROM boot flush sets the flushed-by-other status of
+              the SEP (firmware.adoc, "Boot Sequence": flush both mailbox
+              FIFOs; architecture.adoc, mailbox flush). No SEP_IRQ_STATUS write
+              follows CTRL-FLUSHED-BY-KM-CLR, so this is the positive control of
+              CHK-SEP-FLUSH-NO-PEER
   CHK-ALIVE   after every rejection, and once after the undefined-ID walk,
               CMD_STAT succeeds AND reports no latched recoverable error. The
               second half is what gives the refusal checkers their meaning:
@@ -1476,12 +1490,14 @@ class sep_km_command_set_rand_test(sep_base_test):
         exp_status = 0
         set_names = [name for bm, name in _IRQ_STATUS_NAMES.items() if status & bm]
         assert status == exp_status, (
-            f"CHK-BOOT-IRQ-STATUS FAIL: KMCSR IRQ_STATUS[11:0]=0x{status:03x} {set_names}, "
-            f"expected 0x{exp_status:03x} (firmware.adoc:1349, :1532-1533)"
+            f"CHK-BOOT-IRQ-STATUS FAIL: KMCSR IRQ_STATUS[11:0]=0x{status:03x} {set_names} "
+            f"at RESP_KM_READY, expected 0x{exp_status:03x}: no status bit set "
+            "(firmware.adoc:1349, :1532-1533)"
         )
         self.logger.info(
             "CHK-BOOT-IRQ-STATUS PASS: contract=key_manager/doc/firmware.adoc:1349"
-            "(Boot_Sequence),:1532-1533(Interrupt_Priority) irq_status=0x%03x exp=0x%03x",
+            "(Boot_Sequence),:1532-1533(Interrupt_Priority) no status bit set at "
+            "RESP_KM_READY irq_status=0x%03x exp=0x%03x",
             status,
             exp_status,
         )
@@ -1815,6 +1831,23 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.km.reset_host_seq()
         await self.km.wait_km_ready()
+
+        irq_reset = await self.km.read_irq_status()
+        flushed_reset = irq_reset >> KM_IRQ_FLUSHED_BY_KM & 1
+        exp_reset = 1
+        assert flushed_reset == exp_reset, (
+            f"CTRL-FLUSHED-BY-KM-RESET FAIL: SEP_IRQ_STATUS=0x{irq_reset:08x} after the KM "
+            f"warm reset and RESP_KM_READY has flushed_by_km={flushed_reset}, expected "
+            f"{exp_reset} (firmware.adoc:1384; architecture.adoc:240-241)"
+        )
+        self.logger.info(
+            "CTRL-FLUSHED-BY-KM-RESET PASS: contract=key_manager/doc/firmware.adoc:1384"
+            "(Boot_Sequence),architecture.adoc:240-241(mailbox_flush) "
+            "SEP_IRQ_STATUS=0x%08x flushed_by_km=%d exp_flushed_by_km=%d",
+            irq_reset,
+            flushed_reset,
+            exp_reset,
+        )
 
         rc, arg = await self._resp_cmd(KM_CMD_KEY_LOAD, list(_ONE_SLOT_LOAD))
         word = arg or 0
