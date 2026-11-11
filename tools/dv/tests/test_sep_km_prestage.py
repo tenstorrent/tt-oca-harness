@@ -246,10 +246,16 @@ class ScrPlanTest(unittest.TestCase):
             self.assertNotIn(0, pl.data8 + pl.data64 + pl.data_lock)
             self.assertEqual(len(set(pl.data64)), 64)
             self.assertEqual(sorted(pl.order8), list(range(8)))
+            self.assertEqual(len(pl.data_ep), 24)
+            self.assertEqual(len(set(pl.data_ep)), 24)
+            self.assertNotIn(0, pl.data_ep)
+            self.assertTrue(set(pl.data_ep).isdisjoint(pl.data8 + pl.data64 + pl.data_lock))
 
     def test_payload_offsets(self) -> None:
         pl = P.plan(P.T_SCR, 5)
         pay = pl.payload()
+        self.assertEqual(len(pay), pl.PAYLOAD_WORDS)
+        self.assertEqual(pl.OFF_DATA_EP + 24, pl.PAYLOAD_WORDS)
         self.assertEqual(pay[pl.OFF_KA], pl.ka)
         self.assertEqual(pay[pl.OFF_KB], pl.kb)
         self.assertEqual(pay[pl.OFF_ADDRS8 : pl.OFF_ADDRS8 + 8], pl.addrs8)
@@ -258,6 +264,7 @@ class ScrPlanTest(unittest.TestCase):
         self.assertEqual(pay[pl.OFF_DATA64 : pl.OFF_DATA64 + 64], pl.data64)
         self.assertEqual(pay[pl.OFF_ADDRS_LOCK : pl.OFF_ADDRS_LOCK + 2], pl.addrs_lock)
         self.assertEqual(pay[pl.OFF_DATA_LOCK : pl.OFF_DATA_LOCK + 2], pl.data_lock)
+        self.assertEqual(pay[pl.OFF_DATA_EP : pl.OFF_DATA_EP + 24], pl.data_ep)
         order = [(pay[pl.OFF_ORDER8] >> (4 * i)) & 0xF for i in range(8)]
         self.assertEqual(order, pl.order8)
 

@@ -124,6 +124,7 @@ class ScrPlan:
     data64: list[int]
     addrs_lock: list[int]
     data_lock: list[int]
+    data_ep: list[int]
 
     # Payload offsets (words from the start of the payload).
     OFF_KA = 0
@@ -135,7 +136,8 @@ class ScrPlan:
     OFF_DATA64 = 83
     OFF_ADDRS_LOCK = 147
     OFF_DATA_LOCK = 149
-    PAYLOAD_WORDS = 151
+    OFF_DATA_EP = 151
+    PAYLOAD_WORDS = 175
 
     def payload(self) -> list[int]:
         order = 0
@@ -150,6 +152,7 @@ class ScrPlan:
             + self.data64
             + self.addrs_lock
             + self.data_lock
+            + self.data_ep
         )
         if len(words) != self.PAYLOAD_WORDS:
             raise RuntimeError(f"IMG-SCR payload has {len(words)} words")
@@ -280,6 +283,11 @@ def _scr_plan(seed: int) -> ScrPlan:
     addrs_lock = [_fresh_addr(rng, taken_addr) for _ in range(2)]
     taken_lock: set[int] = set()
     data_lock = [_fresh(rng, taken_lock) for _ in range(2)]
+    # The words of the three phase 5 epochs (keys 0, 0xFFFF_FFFF and kB, 8 each).
+    # They differ from every other drawn word, so a read that returns a word of
+    # another phase cannot match.
+    taken_ep = set(data8) | set(data64) | set(data_lock)
+    data_ep = [_fresh(rng, taken_ep) for _ in range(24)]
     return ScrPlan(
         seed=seed,
         ka=ka,
@@ -291,6 +299,7 @@ def _scr_plan(seed: int) -> ScrPlan:
         data64=data64,
         addrs_lock=addrs_lock,
         data_lock=data_lock,
+        data_ep=data_ep,
     )
 
 
