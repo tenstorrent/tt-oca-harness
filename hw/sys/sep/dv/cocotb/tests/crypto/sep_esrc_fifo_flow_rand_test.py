@@ -83,10 +83,12 @@ Checkers:
                          at the first FIFO_STATUS read after release
                          (``hw/ip/entropy_source/doc/architecture.adoc``:220-221, :224-227
                          "This is a full-IP reset"; entropy_source.rdl FIFO_STATUS);
+                         one FIFO_RDATA pop before the reset moves RPTR off 0;
                          control: CTRL-FIFO-TRNG-RESET, ENABLE reads 1 and
-                         H <= LEVEL <= 63 before the reset, at least one stream word just
-                         before the reset, no stream word from the end of the reset wait
-                         to the graded read, and BOOT_PHASE_DONE = 0 after it.
+                         H <= LEVEL <= 63, WPTR != 0 and RPTR != 0 before the reset,
+                         at least one stream word just before the reset, no stream
+                         word from the end of the reset wait to the graded read, and
+                         BOOT_PHASE_DONE = 0 after it.
 Logged only: ``OBS-FIFO-PTR-W1C``, ``OBS-ESRC-LIVE-PIC16`` (source 16 with only the live
 cause enabled: the register text does not state which enabled status bits drive source 16),
 ``OBS-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
@@ -938,6 +940,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             lambda x: x >= plan.held,
             self._fill_bound(),
         )
+        await self._rd(ESRC_FIFO_RDATA)
         w0 = self.tap.words
         await self._next_word()
         pre = _status(await self._rd(ESRC_FIFO_STATUS))
@@ -952,6 +955,8 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             enable == 1
             and held_ok
             and plan.held <= pre[0] <= DEPTH - 1
+            and pre[1] != 0
+            and pre[2] != 0
             and words_pre >= 1
             and words_post == 0
             and boot_done == 0,
