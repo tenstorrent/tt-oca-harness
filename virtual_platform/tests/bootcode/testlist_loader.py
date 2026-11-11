@@ -337,6 +337,11 @@ def check_spi_spans(name: str, spans: tuple[SpiReadSpan, ...]) -> None:
                 f"testcase {name!r} spi_reads[{span.name!r}] range is empty: "
                 f"[0x{span.low:x},0x{span.high:x})"
             )
+        if type(span.total_bytes) is int and span.total_bytes < 0:
+            raise ValueError(
+                f"testcase {name!r} spi_reads[{span.name!r}] bytes must be non-negative, "
+                f"got {span.total_bytes}"
+            )
     for index, first in enumerate(spans):
         for second in spans[index + 1 :]:
             if first.low < second.high and second.low < first.high:
@@ -438,12 +443,9 @@ def _spi_reads(entry: dict, name: str) -> tuple[SpiReadSpan, ...]:
                 )
         total_bytes = None
         if "bytes" in value:
-            total_bytes = value["bytes"]
-            if type(total_bytes) is int and total_bytes < 0:
-                raise ValueError(
-                    f"testcase {name!r} spi_reads[{span!r}] bytes must be non-negative"
-                )
-            total_bytes = _symbolic(total_bytes, f"testcase {name!r} spi_reads[{span!r}] bytes")
+            total_bytes = _symbolic(
+                value["bytes"], f"testcase {name!r} spi_reads[{span!r}] bytes"
+            )
         spans.append(
             SpiReadSpan(
                 name=span,
@@ -1004,7 +1006,9 @@ def _parse_testcase(
     _check_image_placeholders(name, image, [*expect, *forbid, *expect_counts])
     spi_reads = _spi_reads(entry, name)
     if image is None and any(
-        type(edge) is str for span in spi_reads for edge in (span.low, span.high)
+        type(edge) is str
+        for span in spi_reads
+        for edge in (span.low, span.high, span.total_bytes)
     ):
         raise ValueError(f"testcase {name!r} spi_reads names an image fact but boots no image")
     spi_read_order = _spi_read_order(entry, name, spi_reads)
