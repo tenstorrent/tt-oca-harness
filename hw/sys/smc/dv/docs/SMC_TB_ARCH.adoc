@@ -257,7 +257,7 @@ takes over (see <<sv-uvm-realization>>).
 |SEP_IN AXI |Flattens `s_axi_*` for `SmcSysAxiDriver` / `OcahAxiMasterAgent`
 |SYS_IN AXI |Flattens `sys_axi_*` for `env.sys_in_axi_agent`
 |JTAG AXI |Flattens `jtag_axi_*` for `env.jtag_axi_agent`
-|SYS_OUT AXI |TB responder; `tb_output_axi_*` counters
+|SYS_OUT AXI |TB responder; `tb_output_axi_*` counters; under SV-UVM, `smc_tb_if.output_axi_resp_hold` gates B presentation through `tb_output_axi_resp_hold`
 |CPU JTAG TAP |Exposes `tb_cpu_jtag_{tck,tms,tdi,tdo,reset}` for `SmcJtagTap`
 |I2C0 |Split-port `tb_i2c0_scl/sda` + `tb_i2c0_*_ext_low`
 |I3C0 |Pad-level `check_i3c0_external_pull_low`; DAT/DCT/RLT sit inside `smc_ip_integration`; no protocol VIP
@@ -307,6 +307,11 @@ by `bus_prefix`; plus `protocol_vip_agent` (records scenario evidence items).
 `cpu_trace_mon` (hart-0 retirement trace, <<cpu-trace-monitor>>).
 
 Every agent's analysis port connects to the single `SmcScoreboard`.
+
+The SV-UVM realization additionally has a required-only passive SYS_OUT
+`ocah_axi_env`, `smc_zeroer_range_ref_model`, `smc_zeroer_burst_observer` and
+`smc_zeroer_range_sample` for the Zeroer feature. Its scoreboard uses the
+shared per-feature pairing described in <<sv-uvm-realization>>.
 
 `SmcSysAxiItem` fields: `op`, `addr`, `length`, `wdata`, `expected` (value check),
 `expected_resp` (exact response code), `allow_error` (tolerate non-OKAY),
@@ -940,36 +945,42 @@ SPM model does not impose an undefined retention or commit expectation.
 
 The required-only `zeroer_range` feature adds a passive SYS_OUT AXI env,
 `smc_zeroer_range_ref_model` on completed SEP_IN writes, and
-`smc_zeroer_burst_observer` on completed SYS_OUT writes. The sequence declares
-a byte window before START; the predictor independently derives DEST/SIZE
-and counts START commands. The scoreboard checks that their keys and windows
-agree, then compares a closed observed sample with the prediction. Missing
-bytes, nonzero data and error responses fail the comparison. Repeated writes
-are not graded as a separate contract. The observer accepts aligned,
-full-beat INCR bursts and classifies enabled bytes only.
+`smc_zeroer_burst_observer`, an `ocah_subscriber`, on completed SYS_OUT writes.
+`smc_zeroer_range_sample` carries keyed command windows and byte maps and
+supports copy and diagnostic formatting. The sequence declares a byte window
+before START; the predictor independently derives DEST/SIZE and START keys.
+The scoreboard checks declarations against predictions and pushes expected
+and observed samples through the shared pairing queues with `epoch:id` as
+the lane. Its Zeroer `compare_pair` compares byte maps and response errors.
+Missing or nonzero bytes fail the comparison. Repeated writes are not graded
+as a separate contract. Observer status items feed scoreboard checks for
+aligned full-beat INCR shape and out-of-scope enabled bytes; malformed
+completed DUT bursts report item context without a bench-configuration fatal.
 
-The environment owns the Zeroer reset epoch and passes it to the predictor,
-observer and scoreboard. Uncompared commands become interrupted on primary
-reset. START completes before reset; predictions are keyed by the epoch in
-which START completes. Pending declarations without predictions fail
-end-of-pass and scoreboard end-of-test accounting. The model bounds its per-byte allocation to 64 KiB
-and requires addresses within the responder's backing range; this is a model
-scope limit, not a hardware size limit. Only sequential full-width Zeroer
-programming with no competing writer is supported.
+Each Zeroer component derives its 64-bit epoch from the interface's cold/cool
+reset counters before accepting items or serving command queries. On epoch
+change the observer retires open samples and the scoreboard withdraws their
+queued expectations with `flush_expected` on each command lane. START must
+complete before reset; predictions use the epoch in which START completes.
+A late prediction bearing a retired key is checked against its declaration
+but is not queued for recovery. A closed observed sample with a retired key
+fails the sample-close guard. Expected/observed items left in shared queues
+fail the Zeroer feature summary. Declaration bookkeeping is checked separately
+at pass and test end, including a missing prediction for an interrupted key.
+The predictor bounds its per-byte allocation to 64 KiB and checks the
+responder range at START. Only sequential full-width programming with no
+competing writer is supported.
 
-`smc_tb_if.zeroer_cb` samples the engine port, SYS_OUT handshakes and primary
-reset with input skew. The reset scenario holds W backpressure or B responses,
-records the last pre-reset sample, and grades fresh recovery after release.
-The SYS_OUT responder's completed-burst count is sampled before START, before
-reset request and at primary-reset release. Recovery B handshakes are counted
-by their accepted AW region. Old-window W-byte accounting requires the AW
-to have been sampled before or with W; W beats preceding AW are not counted.
-Old-window traffic, interrupted memory/guard
-contents and unexplained B handshakes are observations. SYS_OUT B handshakes
-without a tracked AW are counted separately as `sys_out_unmatched_b` and do
-not fail a check. An old B interleaved with valid recovery responses can evade
-aggregate accounting. AXI and data-knownness assertions are enabled; the
-passive item monitor itself does not retain data X/Z masks.
+`smc_tb_if.zeroer_cb` samples the engine port and primary reset with input
+skew for reset positioning and IRQ observations. SYS_OUT protocol decoding
+belongs to the shared passive monitor. The observer counts completed bursts
+by command region; old-region byte counts contain only completed monitor
+items and omit AW/W without B completion. The scoreboard owns observer
+verdicts and their evidence; the subscriber has no separate evidence-finalize
+phase. Interrupted memory/guard contents and engine excess-B counts are
+observations. Aggregate engine B accounting cannot distinguish a stale B
+replacing a valid response. AXI and data-knownness assertions are enabled;
+the passive item monitor does not retain data X/Z masks.
 
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`

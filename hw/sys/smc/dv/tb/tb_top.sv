@@ -5879,18 +5879,6 @@ module smc_uvm_top
     assign u_tb_if.zeroer_bready           = tb_zeroer_bready;
     assign u_tb_if.zeroer_intp             = tb_zeroer_intp;
     assign u_tb_if.zeroer_outstanding      = tb_zeroer_outstanding;
-    assign u_tb_if.sys_out_awvalid         = u_output_axi_if.awvalid;
-    assign u_tb_if.sys_out_awready         = u_output_axi_if.awready;
-    assign u_tb_if.sys_out_awaddr          = u_output_axi_if.awaddr;
-    assign u_tb_if.sys_out_awid            = u_output_axi_if.awid;
-    assign u_tb_if.sys_out_wstrb           = u_output_axi_if.wstrb;
-    assign u_tb_if.sys_out_wlast           = u_output_axi_if.wlast;
-    assign u_tb_if.sys_out_bvalid          = u_output_axi_if.bvalid;
-    assign u_tb_if.sys_out_bready          = u_output_axi_if.bready;
-    assign u_tb_if.sys_out_bid             = u_output_axi_if.bid;
-    assign u_tb_if.zeroer_awaddr           = tb_zeroer_awaddr;
-    assign u_tb_if.sys_out_wvalid          = u_output_axi_if.wvalid;
-    assign u_tb_if.sys_out_wready          = u_output_axi_if.wready;
 
     assign u_tb_if.clk_smc                   = clk_smc;
     assign u_tb_if.wdt_first_timeout         = tb_wdt_first_timeout;

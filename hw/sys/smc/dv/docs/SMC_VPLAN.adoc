@@ -56956,27 +56956,37 @@ it gives no safe-drain guarantee for a reset during outstanding writes.
 and places `u_smc_base` on primary SMC reset. Command bookkeeping and
 responder accounting are testbench checks.
 
-*Test Coverage*: Each pass runs A, held while W is still being issued,
-then B, a single aligned burst held after WLAST with B outstanding. Each
-phase has one reset and one fresh 256-byte recovery clear with 64-byte
-guards. Phase windows differ by pass and do not overlap.
+*Test Coverage*: Each pass runs both held phases in seeded order. A holds
+write data in flight; B holds one response after the last burst. Interrupted
+sizes are 2056..3584 bytes for A and 8..2048 bytes for B, in eight-byte steps.
+Each destination has a seeded 0..512-byte aligned offset within its slot.
+Recovery sizes are 8..1024 bytes in eight-byte steps, with 64-byte guards.
+Every window fits one page and is disjoint from the other command windows.
+The pass RNG also selects an 8..32 engine-W-beat threshold and a W stall of
+2048..6144 cycles. `+SMC_ZEROER_RESET_W_STALL=N` overrides the stall within
+that range; zero selects the seeded draw. Draws and effective-reset samples
+are logged separately. Pipeline buffering can admit further engine beats
+after the threshold; it is not an exact SYS_OUT handshake count.
 
-*Test Procedure*: Save the outbound-filter entry. Program and read back
-an allowed window, declare and start the interrupted job. Hold W for A
-or B responses for B, and require the selected engine phase for sixteen
-consecutive samples within a bounded wait.
-Read DEST, SIZE and INT_EN again and require STATUS to be one while the
-selected phase is held. Require enough remaining W stall budget for A and
-request cool reset. Check the last pre-reset sample. Release
-stall/hold while reset is asserted, release cool reset and wait for fuse
-sensing. Compare the reset CSR values and responder count snapshots.
-Poison and read back the new recovery region and guards, declare and run
-recovery, and poll completion with a bound. Drain the passive monitor,
-observe 64 further SMC cycles, close the sample and compare it with the
-prediction. Read back zeros/guards and require one recovery IRQ pulse.
-Record old-window observations, then run the other phase. Restore and
-read back the filter. Require exact comparison and interruption counts
-and no pending declarations at the end of the pass.
+*Test Procedure*: Save the outbound-filter entry and choose the phase order.
+Draw the interrupted and recovery windows and stall controls. Program and
+read back an allowed filter window, declare and start the interrupted job.
+For A, enable W backpressure after the sampled engine-W threshold; for B,
+hold B responses before START. Require the selected engine phase for sixteen
+consecutive samples within a bounded wait. Read DEST, SIZE and INT_EN again
+and require STATUS to be one while the selected phase is held. Require
+enough remaining W stall budget for A and request cool reset. Check the last
+pre-reset sample. Release stall/hold while reset is asserted, release cool
+reset and wait for fuse sensing. Compare reset CSR values and responder
+count snapshots. Poison and read back the recovery region and guards,
+declare and start recovery, and poll completion with a bound. Wait for the
+passive monitor to drain, synchronize through the NBA region, close the
+sample and compare it with the prediction. Read back zeros/guards and require
+one completed recovery burst from the passive SYS_OUT item stream and one
+recovery IRQ pulse. Record old-window observations, then run the other
+phase. Restore and read back the filter. Check command and interruption
+accounting and no pending declarations at the end of the pass. The scoreboard
+also checks pending declarations and shared unpaired streams at end of test.
 
 *Checkers*:
 
@@ -56985,17 +56995,21 @@ and no pending declarations at the end of the pass.
 |Checker |Claim
 |`CHK-ZEROER-RESET-PHASE-A`, `CHK-ZEROER-RESET-PHASE-B` |The selected phase holds for sixteen consecutive samples within a bound and remains present at effective reset; A fits its reserved stall budget
 |`CHK-ZEROER-RESET-PRE-CSR`, `CHK-ZEROER-RESET-CSR` |Programmed non-reset DEST/SIZE/INT_EN values and STATUS = 1 are checked before reset; reset readbacks match RDL defaults
-|`CHK-ZEROER-RESET-EPOCH` |Testbench integrity: predictor, observer and scoreboard use the environment epoch; exactly two cool resets and no cold reset occur per pass
+|`CHK-ZEROER-RESET-EPOCH` |TB guard: components derive the same 64-bit cold/cool counter epoch; exactly two cool resets and no cold reset occur per pass
 |`CHK-ZEROER-RESET-FILTER` |Filter address and all defined software-writable configuration fields have programming and restore readback evidence
 |`CHK-ZEROER-RESET-DONE` |Recovery reaches idle within a bench polling bound
 |`CHK-ZEROER-RESET-ASSERTED`, `CHK-ZEROER-RESET-RELEASED` |Primary and warm reset reach the requested level within a bound; timeout records include the final levels before termination
 |`CHK-ZEROER-RECOVERY-DRAIN` |SYS_OUT monitor pending work drains within a bound; timeout records include pending and recovery accounting before termination
-|`CHK-ZEROER-RESET-RESPONDER` |No burst completes between reset count snapshots; exactly one B handshake matches an accepted AW in each recovery window
-|`CHK-ZEROER-RECOVERY-POISON`, `CHK-ZEROER-RECOVERY-DATA` |Recovery poison is present before START; recovered bytes are zero and guards remain intact
+|`CHK-ZEROER-RESET-RESPONDER` |Responder completed-burst count does not increase between reset snapshots; the passive SYS_OUT monitor publishes exactly one completed recovery burst
+|`CHK-ZEROER-RECOVERY-POISON` |TB guard: responder poison and guards are initialized before START
+|`CHK-ZEROER-RECOVERY-DATA` |Recovered bytes are zero and guards remain intact
 |`CHK-ZEROER-RECOVERY-IRQ` |Exactly one interrupt pulse is sampled during recovery
-|`CHK-ZEROER-DECLARED-VS-PREDICTED` |Independent START keys and predicted windows match declarations
+|`CHK-ZEROER-DECLARED-VS-PREDICTED` |TB guard: independently derived START keys and predicted windows match declarations
 |`CHK-ZEROER-OBSERVED-OUT-OF-SCOPE` |No enabled byte falls outside declared or observed old windows
-|`CHK-ZEROER-OBSERVED-DELTA` |Samples are closed once, observed bytes exist, counts are exact and no command is left pending
+|`CHK-ZEROER-BURST-SHAPE` |Completed DUT bursts are aligned full-beat INCR writes with complete data/strobe arrays
+|`CHK-ZEROER-SAMPLE-CLOSE`, `CHK-ZEROER-PENDING` |TB guards: samples close once with declared current keys; no command bookkeeping is pending at end of test
+|`CHK-ZEROER-ACCOUNTING` |TB guard: exact comparison/mismatch/out-of-scope deltas and interrupted-command counts; no pending command at pass end
+|`CHK-NONVAC` |The passive SYS_OUT item stream supplies enabled recovery bytes
 |`CHK-ZEROER-EXPECTED-TIMEOUT` |A prediction is available within the bounded sample-close wait
 |`CHK-SB-ZEROER-RANGE` |Required Zeroer feature has byte comparisons and no mismatch
 |`CHK-MEM-RESP`, `CHK-FUSE-SENSE-DONE` |CSR accesses return OKAY and fuse sensing releases
@@ -57018,23 +57032,29 @@ be written exactly once. Bounds are bench limits, not specified latency.
 `CHK-ZEROER-RESET-OLD-DATA`, `CHK-ZEROER-RESET-OLD-GUARD` and
 `CHK-ZEROER-RESET-OLD-IRQ` remain OBS-BLOCKED: the documents do not define
 safe interruption, residual traffic, guard preservation or completion
-interrupt behavior for the old job. Aggregate B accounting cannot identify a
-stale response replacing a valid one. SYS_OUT B without a tracked AW is
-reported separately as `sys_out_unmatched_b`, without a verdict. These
-observations do not grade old memory contents or forbid old-region traffic.
+interrupt behavior for the old job. Old-region burst and byte observations
+come only from completed SYS_OUT monitor items; AW/W without a completed B
+are not represented. The engine-port excess-B observation is aggregate and
+cannot identify a stale response replacing a valid one. No observation
+window extends past monitor drain and sample closure. These observations do
+not grade old memory contents or forbid old-region traffic.
 
 *Pass Criteria*: Two command comparisons, two cool resets, one interrupted
-command per phase and two recovery IRQ pulses per pass, with no mismatches
-or pending commands. The default sixteen passes give 32 comparisons and
-32 cool resets. `+SMC_ZEROER_RANGE_SCOREBOARD_NEGATIVE` changes one byte
-prediction of the first recovery: its byte comparison and sequence mismatch
-accounting fail. `+SMC_ZEROER_RESET_SEQUENCE_NEGATIVE` offsets the first
-post-reset SIZE expectation of each pass by one; that CSR check fails with no byte
-mismatch.
-Prerequisites, phase checks and accounting are outside these controls.
-The W-stall budget and remaining-window checks terminate on an invalid
-bench measurement window and are outside both negative controls.
-Enrolled only in `zeroer_uvm_extended`, on demand.
+command per phase and two recovery IRQ pulses per pass, with no mismatches,
+unpaired streams or pending commands. The default sixteen passes give
+32 comparisons and 32 cool resets.
+`+SMC_ZEROER_RANGE_SCOREBOARD_NEGATIVE` changes one byte prediction of the
+first recovery: one byte mismatch, its sequence accounting failure and the
+feature summary give three errors. `+SMC_ZEROER_RESET_SEQUENCE_NEGATIVE`
+inverts all 66 sequence DUT-verdict records per pass and the scoreboard's
+burst-shape and out-of-scope summaries once per test: 1058 failures for the
+default sixteen passes, with no byte mismatch. The sequence targets are
+FILTER, PRE-CSR, CSR, PHASE-A/B, ASSERTED/RELEASED, RESPONDER, DONE,
+RECOVERY-DRAIN, NONVAC, EXPECTED-TIMEOUT, RECOVERY-DATA and RECOVERY-IRQ.
+TB guards EPOCH, RECOVERY-POISON, ACCOUNTING, DECLARED-VS-PREDICTED,
+SAMPLE-CLOSE and PENDING are outside both controls, as are the shared
+CSR-response/fuse checks and the W-stall override and remaining-window
+configuration fatals. Enrolled only in `zeroer_uvm_extended`, on demand.
 
 '''''
 

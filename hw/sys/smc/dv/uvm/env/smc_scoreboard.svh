@@ -93,6 +93,7 @@
 `uvm_analysis_imp_decl(_smc_zeroer_expected)
 `uvm_analysis_imp_decl(_smc_zeroer_observed)
 `uvm_analysis_imp_decl(_smc_zeroer_declared)
+`uvm_analysis_imp_decl(_smc_zeroer_status)
 `uvm_analysis_imp_decl(_smc_mailbox_fifo_observed)
 `uvm_analysis_imp_decl(_smc_mailbox_fifo_expected)
 
@@ -106,10 +107,13 @@ class smc_scoreboard extends ocah_scoreboard;
       zeroer_observed_export;
   uvm_analysis_imp_smc_zeroer_declared #(smc_zeroer_range_sample, smc_scoreboard)
       zeroer_declared_export;
-  protected smc_zeroer_range_sample zeroer_declared[string], zeroer_expected[string];
-  protected smc_zeroer_range_sample zeroer_observed[string];
-  protected bit zeroer_interrupted[string], zeroer_compared[string];
-  int unsigned zeroer_epoch, zeroer_interrupted_count[2];
+  uvm_analysis_imp_smc_zeroer_status #(smc_zeroer_range_sample, smc_scoreboard)
+      zeroer_status_export;
+  virtual smc_tb_if tb_vif;
+  protected smc_zeroer_range_sample zeroer_declared[string];
+  protected bit zeroer_predicted[string], zeroer_compared[string], zeroer_closed[string];
+  protected bit [63:0] zeroer_epoch;
+  protected int unsigned zeroer_interrupted_count[2], zeroer_shape_errors, zeroer_outside_bytes;
 
   uvm_analysis_imp_smc_fabric_reg_observed #(ocah_axi_item, smc_scoreboard)
       fabric_reg_observed_export;
@@ -180,11 +184,15 @@ class smc_scoreboard extends ocah_scoreboard;
     zeroer_expected_export = new("zeroer_expected_export", this);
     zeroer_observed_export = new("zeroer_observed_export", this);
     zeroer_declared_export = new("zeroer_declared_export", this);
+    zeroer_status_export = new("zeroer_status_export", this);
     foreach (cfg.required_features[i]) begin
       require_feature(cfg.required_features[i]);
       if (cfg.required_features[i] == SmcFeatureZeroerRange) begin
         m_evidence.required_ids.push_back("CHK-ZEROER-DECLARED-VS-PREDICTED");
-        m_evidence.required_ids.push_back("CHK-ZEROER-OBSERVED-DELTA");
+        m_evidence.required_ids.push_back("CHK-ZEROER-SAMPLE-CLOSE");
+        m_evidence.required_ids.push_back("CHK-ZEROER-PENDING");
+        m_evidence.required_ids.push_back("CHK-ZEROER-BURST-SHAPE");
+        m_evidence.required_ids.push_back("CHK-ZEROER-OBSERVED-OUT-OF-SCOPE");
       end
     end
   endfunction
@@ -193,11 +201,19 @@ class smc_scoreboard extends ocah_scoreboard;
     foreach (cfg.required_features[i]) begin
       if (cfg.required_features[i] == SmcFeatureZeroerRange) begin
         int unsigned pending = zeroer_pending_count();
-        void'(m_evidence.expect_true(
-            "CHK-ZEROER-OBSERVED-DELTA",
-            pending == 0,
-            $sformatf(
-                "end-of-test pending_commands=%0d", pending)
+        bit expected = !cfg.zeroer_reset_sequence_negative;
+        string detail = $sformatf("end-of-test pending_commands=%0d", pending);
+        void'(m_evidence.expect_true("CHK-ZEROER-PENDING", pending == 0, detail));
+        detail = $sformatf("malformed_bursts=%0d", zeroer_shape_errors);
+        void'(m_evidence.expect_equal(
+            "CHK-ZEROER-BURST-SHAPE", 64'(zeroer_shape_errors == 0), 64'(expected), detail
+        ));
+        detail = $sformatf("outside_bytes=%0d", zeroer_outside_bytes);
+        void'(m_evidence.expect_equal(
+            "CHK-ZEROER-OBSERVED-OUT-OF-SCOPE",
+            64'(zeroer_outside_bytes == 0),
+            64'(expected),
+            detail
         ));
         break;
       end
@@ -205,92 +221,109 @@ class smc_scoreboard extends ocah_scoreboard;
     super.check_phase(phase);
   endfunction
 
+  protected function void sync_zeroer_reset();
+    bit [63:0] epoch = smc_csr_reset_epoch(
+        tb_vif.cold_rst_assert_count, tb_vif.cool_rst_assert_count
+    );
+    if (epoch == zeroer_epoch) return;
+    foreach (zeroer_declared[k]) begin
+      bit active = !zeroer_compared.exists(k) && zeroer_declared[k].epoch == zeroer_epoch;
+      if (active) begin
+        zeroer_interrupted_count[zeroer_declared[k].phase_index]++;
+        void'(flush_expected(SmcFeatureZeroerRange, k));
+      end
+    end
+    zeroer_epoch = epoch;
+  endfunction
+
+  function bit [63:0] zeroer_current_epoch();
+    sync_zeroer_reset();
+    return zeroer_epoch;
+  endfunction
+
+  function int unsigned zeroer_interrupted_commands(bit phase_index);
+    sync_zeroer_reset();
+    return zeroer_interrupted_count[phase_index];
+  endfunction
+
   function void write_smc_zeroer_declared(smc_zeroer_range_sample d);
+    sync_zeroer_reset();
     if (zeroer_declared.exists(d.key()))
-      `uvm_fatal("CHK-ZEROER-DECLARED-VS-PREDICTED", "duplicate declaration")
+      `uvm_fatal(get_type_name(), {"duplicate Zeroer declaration key=", d.key()})
     zeroer_declared[d.key()] = d;
   endfunction
 
   function void write_smc_zeroer_expected(smc_zeroer_range_sample e);
     string k = e.key();
-    bit new_key = zeroer_declared.exists(k) && !zeroer_expected.exists(k);
-    if (!m_evidence.expect_true("CHK-ZEROER-DECLARED-VS-PREDICTED", new_key, {"expected key=", k}))
+    bit new_key;
+    sync_zeroer_reset();
+    new_key = zeroer_declared.exists(k) && !zeroer_predicted.exists(k);
+    if (!m_evidence.expect_true("CHK-ZEROER-DECLARED-VS-PREDICTED", new_key, e.convert2string()))
       return;
     void'(m_evidence.expect_true(
         "CHK-ZEROER-DECLARED-VS-PREDICTED",
         zeroer_declared[k].destination == e.destination && zeroer_declared[k].size == e.size,
-        $sformatf(
-            "key=%s declared=%016h/%0d predicted=%016h/%0d",
-            k,
-            zeroer_declared[k].destination,
-            zeroer_declared[k].size,
-            e.destination,
-            e.size)
+        {
+          "declared=", zeroer_declared[k].convert2string(), " predicted=", e.convert2string()
+        }
     ));
-    zeroer_expected[k] = e;
-    zeroer_try_compare(k);
+    zeroer_predicted[k] = 1;
+    if (e.epoch != zeroer_epoch) return;
+    push_expected(SmcFeatureZeroerRange, e, k);
   endfunction
 
   function void write_smc_zeroer_observed(smc_zeroer_range_sample o);
     string k = o.key();
-    bit new_sample = !zeroer_observed.exists(k);
-    if (!m_evidence.expect_true(
-            "CHK-ZEROER-OBSERVED-DELTA", new_sample, {"new closed sample key=", k}
-        ))
+    bit valid_sample;
+    sync_zeroer_reset();
+    valid_sample = zeroer_declared.exists(k) && !zeroer_closed.exists(k) && o.epoch == zeroer_epoch;
+    if (!m_evidence.expect_true("CHK-ZEROER-SAMPLE-CLOSE", valid_sample, o.convert2string()))
       return;
-    zeroer_observed[o.key()] = o;
-    zeroer_try_compare(o.key());
+    zeroer_closed[k] = 1;
+    push_observed(SmcFeatureZeroerRange, o, k);
   endfunction
 
-  protected function void zeroer_try_compare(string k);
+  function void write_smc_zeroer_status(smc_zeroer_range_sample status);
+    sync_zeroer_reset();
+    if (status.closing) begin
+      void'(m_evidence.expect_true("CHK-ZEROER-SAMPLE-CLOSE", status.close_valid, status.detail));
+      return;
+    end
+    zeroer_shape_errors += status.shape_errors;
+    zeroer_outside_bytes += status.outside_bytes;
+    if (status.shape_errors != 0)
+      void'(m_evidence.expect_true("CHK-ZEROER-BURST-SHAPE", 0, status.detail));
+    if (status.outside_bytes != 0)
+      void'(m_evidence.expect_true("CHK-ZEROER-OBSERVED-OUT-OF-SCOPE", 0, status.detail));
+  endfunction
+
+  protected function void compare_zeroer_pair(uvm_object observed, uvm_object expected);
     smc_zeroer_range_sample e, o;
     bit passed;
     int unsigned bad_bytes = 0;
-    bit ready = zeroer_expected.exists(k) && zeroer_observed.exists(k);
-    bit retired = zeroer_interrupted.exists(k) || zeroer_compared.exists(k);
-    if (!ready || retired) return;
-    e = zeroer_expected[k];
-    o = zeroer_observed[k];
+    if (!$cast(e, expected) || !$cast(o, observed))
+      `uvm_fatal(get_type_name(), "zeroer_range pair requires Zeroer range samples")
     passed = !o.response_error && o.bytes_by_addr.num() == e.bytes_by_addr.num();
     foreach (e.bytes_by_addr[a]) begin
       if (!o.bytes_by_addr.exists(a) || o.bytes_by_addr[a] != e.bytes_by_addr[a]) bad_bytes++;
     end
     passed &= bad_bytes == 0;
-    record_compare(
-        SmcFeatureZeroerRange, passed, $sformatf("dest=%016h bytes=%0d zeros", e.destination, e.size
-        ), $sformatf(
-        "bytes=%0d bad=%0d response_error=%0b", o.bytes_by_addr.num(), bad_bytes, o.response_error),
-        {"key=", k});
-    zeroer_compared[k] = 1;
+    record_compare(SmcFeatureZeroerRange, passed, e.convert2string(), o.convert2string(), $sformatf(
+                   "key=%s bad_bytes=%0d", e.key(), bad_bytes));
+    zeroer_compared[e.key()] = 1;
   endfunction
 
-  function void zeroer_on_reset(int unsigned new_epoch);
-    foreach (zeroer_declared[k]) begin
-      bit active = !zeroer_compared.exists(k) && !zeroer_interrupted.exists(k);
-      if (zeroer_declared[k].epoch == zeroer_epoch && active) begin
-        zeroer_interrupted[k] = 1;
-        zeroer_interrupted_count[zeroer_declared[k].phase_index]++;
-        zeroer_observed.delete(k);
-      end
-    end
-    zeroer_epoch = new_epoch;
-  endfunction
-
-  function bit zeroer_expected_seen(int unsigned epoch, int unsigned id);
-    return zeroer_expected.exists($sformatf("%0d:%0d", epoch, id));
+  function bit zeroer_expected_seen(bit [63:0] epoch, int unsigned id);
+    sync_zeroer_reset();
+    return zeroer_predicted.exists($sformatf("%0d:%0d", epoch, id));
   endfunction
 
   function int unsigned zeroer_pending_count();
     int unsigned count = 0;
+    sync_zeroer_reset();
     foreach (zeroer_declared[k]) begin
-      if (!zeroer_expected.exists(
-              k
-          ) || (!zeroer_compared.exists(
-              k
-          ) && !zeroer_interrupted.exists(
-              k
-          )))
-        count++;
+      bit retired = zeroer_declared[k].epoch != zeroer_epoch;
+      if (!zeroer_predicted.exists(k) || (!zeroer_compared.exists(k) && !retired)) count++;
     end
     return count;
   endfunction
@@ -502,6 +535,10 @@ class smc_scoreboard extends ocah_scoreboard;
   virtual function void compare_pair(string feature, uvm_object observed, uvm_object expected);
     ocah_axi_item obs, exp;
     bit [63:0] word_addr;
+    if (feature == SmcFeatureZeroerRange) begin
+      compare_zeroer_pair(observed, expected);
+      return;
+    end
     if (feature != SmcFeatureScratchCsr && feature != SmcFeatureDefaultReg &&
         feature != SmcFeatureLockCsr && feature != SmcFeatureMutexSema &&
         feature != SmcFeatureSpmMem && feature != SmcFeatureRegblockWide &&

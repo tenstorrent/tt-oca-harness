@@ -56,22 +56,12 @@ interface smc_tb_if;
   logic [7:0] zeroer_wstrb;
   logic [31:0] zeroer_outstanding;
   logic output_axi_resp_hold = 1'b0;
-  logic sys_out_wvalid, sys_out_wready, sys_out_wlast;
-  logic sys_out_awvalid, sys_out_awready, sys_out_bvalid, sys_out_bready;
-  logic [63:0] sys_out_awaddr;
-  logic [55:0] zeroer_awaddr;
-  logic [7:0] sys_out_wstrb;
-  logic [15:0] sys_out_awid, sys_out_bid;
 
   clocking zeroer_cb @(posedge clk_smc);
     default input #1step;
     input rst_primary_smc_clk_n, zeroer_state, zeroer_busy, zeroer_outstanding;
     input zeroer_awvalid, zeroer_awready, zeroer_wvalid, zeroer_wready;
     input zeroer_wlast, zeroer_wstrb, zeroer_bvalid, zeroer_bready, zeroer_intp;
-    input sys_out_wvalid, sys_out_wready, sys_out_wstrb, sys_out_wlast;
-    input sys_out_awvalid, sys_out_awready, sys_out_awaddr;
-    input sys_out_awid;
-    input sys_out_bvalid, sys_out_bready, sys_out_bid, zeroer_awaddr;
   endclocking
 
 

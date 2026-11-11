@@ -23,6 +23,8 @@
 //   * smc_sep_in_reset_monitor on SEP_IN, built only when
 //     enable_sep_in_reset_monitor is set, sampling requests, responses and
 //     stale response VALID across a reset epoch; it drives nothing;
+//   * a required-only passive SYS_OUT env, smc_zeroer_range_ref_model,
+//     smc_zeroer_burst_observer and smc_zeroer_range_sample transactions;
 //   * one reference model per scoreboard feature on the SEP_IN stream
 //     (smc_scratch_csr_ref_model, smc_default_reg_ref_model,
 //     smc_lock_csr_ref_model, smc_mutex_sema_ref_model,
@@ -53,7 +55,6 @@ class smc_env extends ocah_env;
   ocah_axi_slave_config m_sys_out_slave_cfg;
   ocah_axi_slave_agent  m_sys_out_slave_agent;
 
-  protected int unsigned m_zeroer_epoch;
   ocah_axi_env m_sys_out_axi_env;
   smc_zeroer_range_ref_model m_zeroer_range_ref_model;
   smc_zeroer_burst_observer m_zeroer_burst_observer;
@@ -125,27 +126,10 @@ class smc_env extends ocah_env;
         smc_mailbox_fifo_ref_model::type_id::create("m_mailbox_fifo_ref_model", this);
     m_mailbox_fifo_ref_model.tb_vif = tb_vif;
     m_scoreboard = smc_scoreboard::type_id::create("m_scoreboard", this);
+    m_scoreboard.tb_vif = tb_vif;
     m_sep_in_history = smc_sep_in_history::type_id::create("m_sep_in_history", this);
 
-    foreach (cfg.required_features[i]) begin
-      if (cfg.required_features[i] == SmcFeatureZeroerRange) begin
-        ocah_axi_config out_cfg = ocah_axi_config::type_id::create("zeroer_sys_out_cfg");
-        out_cfg.vif = m_sys_out_slave_cfg.vif;
-        out_cfg.protocol = OCAH_AXI_PROTO_AXI4;
-        out_cfg.addr_width = SmcSysOutAddrWidth;
-        out_cfg.data_width = SmcSysOutDataWidth;
-        out_cfg.id_width = SmcSysOutIdWidth;
-        out_cfg.en_ref_model = 0;
-        out_cfg.en_scoreboard = 0;
-        out_cfg.name_tag = "smc_sys_out";
-        uvm_config_db#(ocah_axi_config)::set(this, "m_sys_out_axi_env*", "cfg", out_cfg);
-        m_sys_out_axi_env = ocah_axi_env::type_id::create("m_sys_out_axi_env", this);
-        m_zeroer_range_ref_model =
-            smc_zeroer_range_ref_model::type_id::create("m_zeroer_range_ref_model", this);
-        m_zeroer_burst_observer =
-            smc_zeroer_burst_observer::type_id::create("m_zeroer_burst_observer", this);
-      end
-    end
+    build_zeroer_range();
     m_vseqr = smc_virtual_sequencer::type_id::create("m_vseqr", this);
   endfunction
 
@@ -159,6 +143,8 @@ class smc_env extends ocah_env;
       m_sys_out_axi_env.item_ap.connect(m_zeroer_burst_observer.analysis_export);
       m_zeroer_burst_observer.observed_ap.connect(m_scoreboard.zeroer_observed_export);
       m_zeroer_burst_observer.declaration_ap.connect(m_scoreboard.zeroer_declared_export);
+      m_zeroer_burst_observer.status_ap.connect(m_scoreboard.zeroer_status_export);
+      m_zeroer_burst_observer.evidence = m_scoreboard.m_evidence;
       m_vseqr.m_zeroer_range_ref_model = m_zeroer_range_ref_model;
       m_vseqr.m_zeroer_burst_observer = m_zeroer_burst_observer;
       m_vseqr.m_sys_out_monitor = m_sys_out_axi_env.m_monitor;
@@ -208,17 +194,29 @@ class smc_env extends ocah_env;
   // Composition helpers (build_phase).
   // ------------------------------------------------------------------
 
-  task run_phase(uvm_phase phase);
-    if (m_zeroer_range_ref_model != null) begin
-      forever begin
-        @(negedge tb_vif.rst_primary_smc_clk_n);
-        m_zeroer_epoch++;
-        m_zeroer_range_ref_model.on_reset(m_zeroer_epoch);
-        m_scoreboard.zeroer_on_reset(m_zeroer_epoch);
-        m_zeroer_burst_observer.on_reset(m_zeroer_epoch);
+  protected function void build_zeroer_range();
+    foreach (cfg.required_features[i]) begin
+      if (cfg.required_features[i] == SmcFeatureZeroerRange) begin
+        ocah_axi_config out_cfg = ocah_axi_config::type_id::create("zeroer_sys_out_cfg");
+        out_cfg.vif = m_sys_out_slave_cfg.vif;
+        out_cfg.protocol = OCAH_AXI_PROTO_AXI4;
+        out_cfg.addr_width = SmcSysOutAddrWidth;
+        out_cfg.data_width = SmcSysOutDataWidth;
+        out_cfg.id_width = SmcSysOutIdWidth;
+        out_cfg.en_ref_model = 0;
+        out_cfg.en_scoreboard = 0;
+        out_cfg.name_tag = "smc_sys_out";
+        uvm_config_db#(ocah_axi_config)::set(this, "m_sys_out_axi_env*", "cfg", out_cfg);
+        m_sys_out_axi_env = ocah_axi_env::type_id::create("m_sys_out_axi_env", this);
+        m_zeroer_range_ref_model =
+            smc_zeroer_range_ref_model::type_id::create("m_zeroer_range_ref_model", this);
+        m_zeroer_range_ref_model.tb_vif = tb_vif;
+        m_zeroer_burst_observer =
+            smc_zeroer_burst_observer::type_id::create("m_zeroer_burst_observer", this);
+        m_zeroer_burst_observer.tb_vif = tb_vif;
       end
     end
-  endtask
+  endfunction
 
   protected function void build_sep_in_master();
     m_sep_in_master_cfg = ocah_axi_master_config::type_id::create("m_sep_in_master_cfg");
