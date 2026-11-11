@@ -242,13 +242,15 @@ Isolation proof (both directions, then the remaining isolated bits):
                     walk, on the RND program, up to ``_OTBN_REACH_TRIES``
                     attempts with a walking 0 to 3 clock delay after the state
                     first shows. BUSY_SEC_WIPE_DMEM (0x02) and BUSY_SEC_WIPE_IMEM
-                    (0x03) get one attempt each from a wipe command at IDLE,
-                    with the reset requested on the first clock the state shows;
-                    a state not seen at the reset fall logs
-                    ``INFO-BLOCKED CHK-OTBN-RST-RECOVER state=<s>`` and grades
-                    nothing. ``INFO-OTBN-RST-REACH`` logs, per state, the
-                    attempts, whether the state was reached and the states at
-                    each reset fall.
+                    (0x03) are not graded states: one attempt each from a wipe
+                    command at IDLE, with the reset requested on the first clock
+                    the state shows, is a reach attempt only. The reset request
+                    is an AXI write, and the wipe can end before it lands. A
+                    state seen at the reset fall is graded as above; a state
+                    not seen logs ``INFO-BLOCKED CHK-OTBN-RST-RECOVER
+                    state=<s>`` and grades nothing. ``INFO-OTBN-RST-REACH``
+                    logs, per state, the attempts, whether the state was
+                    reached and the states at each reset fall.
 
 This test proves the reset actually lands in the IP and is domain-isolated at the level of a live
 crypto-datapath result, frontdoor.
