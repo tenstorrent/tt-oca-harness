@@ -223,6 +223,22 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         cfg = SepKmMboxProtoCfg(self.random_seed())
         self.logger.info("km mailbox protocol: %s", cfg.summary())
+        self.required_evidence = (
+            "CHK-HELD",
+            "CHK-IDLE",
+            "CHK-CTRL",
+            "CHK-CTRL-EP",
+            "CHK-FILL",
+            "CHK-OVR",
+            "CHK-OVR-RESP",
+            "CHK-OVR-HEAD",
+            "CHK-UFL",
+            "CHK-UFL-RESP",
+            "CHK-UFL-W1C",
+            "CHK-IRQ",
+            "CHK-FLUSH",
+            "CHK-SEP-WSEP",
+        )
 
         await self.bring_up_no_cpu()
         self.mb = SepKmMailbox(self)
