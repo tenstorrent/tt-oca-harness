@@ -423,13 +423,13 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         await self.mb.write_ctrl(0)
 
         exp_head = cfg.fill_words[0]
-        got = ", ".join(f"{k}=0x{v:09x}" for k, v in head.items())
+        got = ", ".join(f"{k}=0x{v:08x}" for k, v in head.items())
         assert all(v == exp_head for v in head.values()), (
-            f"CHK-OVR-HEAD FAIL: inbound head word {got}, expected 0x{exp_head:09x} "
+            f"CHK-OVR-HEAD FAIL: inbound head word {got}, expected 0x{exp_head:08x} "
             f"(first fill word) at each; overflow word 0x{cfg.overflow_word:08x}"
         )
         self.logger.info(
-            "CHK-OVR-HEAD PASS: inbound head word %s, expected 0x%09x (first fill word); "
+            "CHK-OVR-HEAD PASS: inbound head word %s, expected 0x%08x (first fill word); "
             "overflow word 0x%08x not at the head",
             got,
             exp_head,
