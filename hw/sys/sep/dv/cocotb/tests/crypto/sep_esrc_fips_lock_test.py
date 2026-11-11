@@ -27,10 +27,11 @@ stays 0 so this test does not trip the alert path.
 
 The lock leaves every INTR_* field writable (entropy_source.rdl FIPS_LOCK: only
 swwel fields lock). CHK-LOCK-INTR-CYCLE, under FIPS_LOCK = 1, for each of the
-eight sources with INTR_ENABLE set to that source only: PIC source 16 (vector bit
-15 of sep_internal_interrupts_probe_o) reads 0, an INTR_TEST pulse sets the
-status bit, a W1C clears it, PIC source 16 reads 0 after the clear, and the bit
-reads 0 again RELATCH_CLKS clocks later. For PERSISTENT_FAILURE, PIC source 16
+eight sources with INTR_ENABLE set to that source only: INTR_ENABLE reads back
+as that source alone, PIC source 16 (vector bit 15 of
+sep_internal_interrupts_probe_o) reads 0, an INTR_TEST pulse sets the status
+bit, a W1C clears it, PIC source 16 reads 0 after the clear, and the bit reads 0
+again RELATCH_CLKS clocks later. For PERSISTENT_FAILURE, PIC source 16
 reads 1 while the bit is set (interrupts.adoc:23, :109-111). For the other
 sources that value is logged as OBS-LOCK-INTR-PIC16: no text states whether
 they drive source 16. Control: CTRL-LOCK-INTR-IDLE, the status bit reads 0
@@ -88,6 +89,7 @@ WORD_MASK = 0xFFFF_FFFF
 # Clocks from the W1C read to the re-read of CHK-LOCK-INTR-CYCLE: a bound in
 # which a live cause would set the bit again. INTR_TEST is a single pulse.
 RELATCH_CLKS = 64
+ENABLE_MASK = ENTROPY_SOURCE.mask("INTR_ENABLE")
 
 
 def _resp(code: int | None) -> str:
@@ -221,6 +223,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
         for name, bm in INTR_SOURCES:
             # Only this source is enabled: with its bit clear no enabled bit is set.
             await esrc.write(ESRC_INTR_ENABLE, bm)
+            en_rb = await esrc.read(ESRC_INTR_ENABLE) & ENABLE_MASK
             await esrc.write(ESRC_INTR_STATUS, bm)
             await ClockCycles(cocotb.top.clk_i, RELATCH_CLKS)
             idle = await esrc.read(ESRC_INTR_STATUS)
@@ -250,13 +253,15 @@ class sep_esrc_fips_lock_test(sep_base_test):
             self._grade(
                 "CHK-LOCK-INTR-CYCLE",
                 lock == 1
+                and en_rb == bm
                 and pic_idle == 0
                 and (st_set & bm) != 0
                 and (st_clr & bm) == 0
                 and pic_clr == 0
                 and (st_late & bm) == 0
                 and (not is_pf or pic_set == 1),
-                f"{name} FIPS_LOCK.LOCK={lock} PIC16 {pic_idle} before the pulse; "
+                f"{name} FIPS_LOCK.LOCK={lock} INTR_ENABLE=0x{en_rb:08x} want 0x{bm:08x}; "
+                f"PIC16 {pic_idle} before the pulse; "
                 f"INTR_STATUS=0x{st_set:08x} after INTR_TEST, 0x{st_clr:08x} after W1C, "
                 f"0x{st_late:08x} {RELATCH_CLKS} clocks later; PIC16 after W1C {pic_clr}"
                 + (f"; PIC16 while set {pic_set} want 1" if is_pf else ""),
