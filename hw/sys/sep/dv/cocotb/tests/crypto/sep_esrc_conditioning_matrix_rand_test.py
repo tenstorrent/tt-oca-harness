@@ -185,9 +185,13 @@ Checkers:
                        whitening off, DOWNSAMPLE_RATE ORDER_RATE, each lane driven with
                        its seeded bit table: every complete output popped in
                        ORDER_WINDOWS FIFO-closed windows equals, bit for bit, the packing
-                       of the lane bytes with word u in stage 21 (bit 0) and word u - 7
-                       in stage 28 (bit 7) (architecture.adoc:107, :113, :118;
-                       ``SepEntropyGolden`` in decorrelator bypass, ``decor_sr_word``).
+                       of the lane bytes in which each byte holds its lane's bits of
+                       eight consecutive words, word u in bit 0 and word u - 7 in bit 7
+                       (architecture.adoc:107, :113, :118; ``SepEntropyGolden`` in
+                       decorrelator bypass, ``decor_sr_word``). The searched offset of u
+                       makes this a grade of eight consecutive stages, newest in bit 0,
+                       the same window on every lane, and the packing; it does not tell
+                       which eight stages of the chain form the window.
                        Control ``CTRL-COND-BYPASS-ORDER``: the configuration readbacks, a
                        strobe on every clock of each window (``esrc_decor_valid_o``),
                        exactly one u per output and one offset of u to the strobe count
@@ -383,7 +387,7 @@ HALF_LANES = NUM_LANES // 2
 # ENABLE = 0 write before the 64-entry FIFO fills. ORDER_PERIOD is the period of each
 # lane's seeded bit table and ORDER_SALT the salt of its stream. ORDER_SEARCH is the
 # words searched before the ENABLE = 1 write for the first output, ORDER_EDGE the clocks
-# a tap row may lie outside the bus write at a window edge.
+# a tap row may lie after the ENABLE = 0 write returns.
 ORDER_RATE = 63
 ORDER_WINDOWS = 4
 ORDER_WINDOW_WORDS = 48
@@ -1324,7 +1328,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
                 if tuple(words[i : i + BYPASS_WORDS]) in rev_at
             )
             # The tap rows that offered the popped words give each word its write clock.
-            lo_i, hi_i = max(0, win["i0"] - ORDER_EDGE), min(len(rows), win["i1"] + ORDER_EDGE)
+            lo_i, hi_i = win["i_wr"], min(len(rows), win["i1"] + ORDER_EDGE)
             offered = [(i, rows[i][5]) for i in range(lo_i, hi_i) if rows[i][2]]
             at = [
                 j
@@ -1420,13 +1424,15 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         FIFO_CTRL.ENABLE is 0: drain to LEVEL 0, write-one clear FIFO_OVERFLOW,
         ENABLE = 1, wait ORDER_WINDOW_WORDS words of ``esrc_compress_vld_o`` on the
         tap rows, ENABLE = 0, read FIFO_OVERFLOW and LEVEL, pop LEVEL words, read
-        LEVEL. ``i0`` and ``i1`` are the tap rows after the two ENABLE writes return, and
-        ``lo``/``hi`` the stage-21 word range searched for its outputs.
+        LEVEL. ``i_wr`` is the tap row before the ENABLE = 1 write is issued, ``i0`` and
+        ``i1`` the tap rows after the two ENABLE writes return, and ``lo``/``hi`` the
+        stage-21 word range searched for its outputs.
         """
         await self._drain_fifo("FIFO_STATUS", ESRC_FIFO_RDATA, ESRC_FIFO_STATUS)
         level_before = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
         await self._wr(ESRC_INTR_STATUS, INTR_FIFO_OVERFLOW)
         ovf_before = _get(await self._rd(ESRC_INTR_STATUS), "INTR_STATUS", "FIFO_OVERFLOW")
+        i_wr = len(rows)
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
         i0 = len(rows)
         lo = self.noise.mark() - ORDER_SEARCH
@@ -1444,6 +1450,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         return {
             "level_before": level_before,
             "ovf_before": ovf_before,
+            "i_wr": i_wr,
             "i0": i0,
             "i1": i1,
             "lo": lo,

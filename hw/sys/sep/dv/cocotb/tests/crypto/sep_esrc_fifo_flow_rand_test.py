@@ -87,8 +87,9 @@ Checkers:
                          control: CTRL-FIFO-TRNG-RESET, ENABLE reads 1 and
                          H <= LEVEL <= 63, WPTR != 0 and RPTR != 0 before the reset,
                          at least one stream word just before the reset, no stream
-                         word from the end of the reset wait to the graded read, and
-                         BOOT_PHASE_DONE = 0 after it.
+                         word from the end of the reset wait to the graded read,
+                         BOOT_PHASE_DONE = 0 and FIFO_CTRL.ENABLE = 1 (its reset value)
+                         after it.
 Logged only: ``OBS-FIFO-PTR-W1C``, ``OBS-ESRC-LIVE-PIC16`` (source 16 with only the live
 cause enabled: the register text does not state which enabled status bits drive source 16),
 ``OBS-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
@@ -950,6 +951,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         post = _status(await self._rd(ESRC_FIFO_STATUS))
         words_post = self.tap.words - w2
         boot_done = _get(await self._rd(ESRC_MAIN_SM_STATUS), "MAIN_SM_STATUS", "BOOT_PHASE_DONE")
+        enable_post = _get(await self._rd(ESRC_FIFO_CTRL), "FIFO_CTRL", "ENABLE")
         self.chk.ctrl(
             "FIFO-TRNG-RESET",
             enable == 1
@@ -959,7 +961,8 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             and pre[2] != 0
             and words_pre >= 1
             and words_post == 0
-            and boot_done == 0,
+            and boot_done == 0
+            and enable_post == 1,
             enable=enable,
             h=plan.held,
             level_pre=pre[0],
@@ -968,6 +971,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             words_pre=words_pre,
             words_post=words_post,
             boot_phase_done=boot_done,
+            enable_post=enable_post,
         )
         self.chk.ok(
             "FIFO-TRNG-RESET",
