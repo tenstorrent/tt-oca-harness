@@ -38,9 +38,6 @@ class dtp_test_cfg extends ocah_test_cfg;
   // matrices (scan matrix default 6, JTAG2AXI matrix default 11).
   int unsigned scan_matrix_multi_hot_rows     = 6;
   int unsigned jtag2axi_matrix_multi_hot_rows = 11;
-  // +DTP_J2A_FLUSH_EDGE_READ: the flush-edge and fill legs of the series
-  // corner scenario.
-  bit j2a_flush_edge_read;
   // +DTP_J2A_VISIBLE_RESPONSE_RESET: the visible-response legs of the narrow
   // mid-transaction reset scenario.
   bit j2a_visible_response_reset;
@@ -103,7 +100,6 @@ class dtp_test_cfg extends ocah_test_cfg;
             ocah_knobs::get_int_min("DTP_DBG_DISABLE_MULTI_HOT_ROWS", 6, 1);
     jtag2axi_matrix_multi_hot_rows =
             ocah_knobs::get_int_min("DTP_DBG_DISABLE_MULTI_HOT_ROWS", 11, 1);
-    j2a_flush_edge_read = ocah_knobs::is_set("DTP_J2A_FLUSH_EDGE_READ");
     j2a_visible_response_reset = ocah_knobs::is_set("DTP_J2A_VISIBLE_RESPONSE_RESET");
     family_checker_negative = ocah_knobs::is_set("DTP_JTAG_FAMILY_CHECKER_NEGATIVE");
     tap_checker_negative    = ocah_knobs::is_set("DTP_JTAG_TAP_CHECKER_NEGATIVE");
