@@ -46,7 +46,9 @@ Checkers:
   CHK-BOOT-BAD      stuck0 start, hold of 3 t_boot: BOOT_PHASE_DONE 0, both
                     levels 0, no strobe on ``esrc_whiten_push_o`` or
                     ``esrc_compress_vld_o``, HEALTH_TEST_STATUS bit 0 = 1.
-                    Control: the clean start shows levels and tap strobes.
+                    Control: the clean start shows levels and tap strobes, and
+                    ``BIW_OBS_CTRL.RAW_ENABLE`` reads 1 before the stuck0 enable
+                    (CTRL-BOOT-BAD; its reset value 0 also keeps the BIW level 0).
   CHK-BOOT-IDLE     after MODULE_ENABLE = 0: IDLE = 1, and after BUSY = 0 and a
                     drain the FIFO stays empty and the stream tap silent for
                     3 t_fill. Control: IDLE 0 and a level above 0 before.
@@ -87,8 +89,11 @@ Checkers:
                     FIFO LEVEL 0 at every poll, no strobe on ``esrc_compress_vld_o`` or
                     ``esrc_whiten_push_o``;
                     half=opens, within 4W strobes of the enable (3 windows after the
-                    failing window): BOOT_PHASE_DONE reads 1, then the stream tap shows
-                    a word, no earlier than the first poll that read BOOT_PHASE_DONE 1.
+                    failing window) and no earlier than W strobes after the first stuck0
+                    strobe (the failing window ends at or after the failure and a whole
+                    passing window follows it): BOOT_PHASE_DONE reads 1, then the stream
+                    tap shows a word, no earlier than the first poll that read
+                    BOOT_PHASE_DONE 1.
                     Control: CTRL-BOOT-TRANSIENT, HEALTH_TEST_STATUS bit 0 reads 0 at a
                     poll before strobe W/4 and 1 at a poll before strobe W/2.
 Every bound is a multiple of a clean time of the same seed and is logged.
@@ -469,6 +474,8 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         )
         await self._wr(ESRC_ALERT_THRESHOLD, ENTROPY_SOURCE.value("ALERT_THRESHOLD", THRESHOLD=0))
         await self._wr(ESRC_BIW_OBS_CTRL, ENTROPY_SOURCE.value("BIW_OBS_CTRL", RAW_ENABLE=1))
+        raw_rb = _fld("BIW_OBS_CTRL", "RAW_ENABLE", await self._rd(ESRC_BIW_OBS_CTRL))
+        self.chk.ctrl("BOOT-BAD", raw_rb == 1, biw_obs_raw_enable_rb=raw_rb)
         # MODULE_ENABLE = 0 here, so the immediate change applies stuck0 from the first sample.
         self.noise.set_lanes([Stuck(0)] * NUM_LANES, immediate=True)
         pre = self.noise.words_since(mark)
@@ -921,12 +928,16 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
             if self.vld.any_high_since(vm):
                 push_word = w
         self._bytes_end("transient_boot", base)
+        # The failing window ends at or after the first stuck0 strobe, and a whole
+        # passing window follows it before the gate opens.
+        lower = stuck_first + WINDOW
         self.chk.ok(
             "BOOT-TRANSIENT",
-            done_word is not None and push_word is not None and done_word <= push_word,
+            done_word is not None and push_word is not None and lower <= done_word <= push_word,
             half="opens",
             done_strobe=done_word if done_word is not None else "none",
             first_push_strobe=push_word if push_word is not None else "none",
+            lower_bound_strobes=lower,
             bound_strobes=bound,
         )
         self.chk.obs(

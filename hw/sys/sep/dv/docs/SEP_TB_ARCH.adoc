@@ -664,9 +664,10 @@ Observation probe groups:
   count (`downsample_count`), the decorrelator stream strobe after the boot
   gate (`entropy_stream_valid_gated`), and the divider count of lane 0
   (`gen_ecmplx[0].u_generator.u_decorrelator.clk_divider`). Read-only. Users:
-  the ESRC conditioning entry of the crypto and entropy area and the FCOV
-  sampler (`sep_esrc_conditioning_cg` `cp_ds_midrun`, `cp_div_midrun`,
-  `cp_ds_resume`).
+  the ESRC conditioning entry of the crypto and entropy area, `SepDrbgScoreboard`
+  (with the compressor bypassed its golden chain takes one sample on each
+  `esrc_stream_valid_gated_o` strobe) and the FCOV sampler
+  (`sep_esrc_conditioning_cg` `cp_ds_midrun`, `cp_div_midrun`, `cp_ds_resume`).
 * ESRC decorrelator chain tap (`esrc_decor_sr_o[347:0]`): the 29-stage chain
   of each of the twelve lanes, lane i at bits [29i+28:29i]
   (`gen_ecmplx[i].u_generator.u_decorrelator.ff_stage`). Read-only copy of DUT
@@ -679,8 +680,11 @@ Observation probe groups:
   generator lane i at the generator complex
   (`u_generator_complex.jitter_ro_enable_i`, the stored
   `RING_OSC_ENABLE.ENABLE`). Read-only. A check that anchors on it assumes only
-  a fixed delay from this tap to the lane. Users: the ESRC conditioning entry
-  of the crypto and entropy area (the lane enable clock of the period walk), and
+  a fixed delay from this tap to the lane's oscillator; the decorrelator of
+  lane i takes bit i as its `enable_i`. Users: the ESRC conditioning entry
+  of the crypto and entropy area (the lane enable clock of the period walk, and
+  the clock of the held state in CHK-COND-LANES-OFF: the first clock the tap
+  reads 0), and
   `SepDrbgScoreboard`, which compares it with the `RING_OSC_ENABLE.ENABLE`
   readback twice in every entropy bring-up, with the generators off (0) and on
   (0xFFF) (CHK-CHK1-RO-ENABLE).
