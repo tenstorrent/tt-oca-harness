@@ -2205,7 +2205,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         self.logger.info("LOG tready_monitor xz_cycles=%d runs=%d", self.mon.xz, len(self.mon.runs))
         self.mon.stop()
         if self.noise is not None:
-            self.noise.kill()
+            await self.noise.stop()
             self.noise = None
         self.chk.ok(
             "NONVAC",
