@@ -29050,7 +29050,9 @@ module sep_fcov (
       ignore_bins push_pop_level_0 = {5'b10_000};
       // The stream offers SHA-256 output in 8-word bursts, so a pop window that
       // starts at 62 or 63 and holds a push can reach a full FIFO and lose a
-      // word; the live pop leg grades no such window.
+      // word; the live pop leg grades no window from 63, grades a window from 62
+      // only when at most two words arrive in it, and aims no push and pop
+      // window at 62.
       ignore_bins push_pop_level_62_63 = {5'b10_011};
       // A push and a pop at LEVEL 64 have no stated result: the register text
       // states only that a write while full is discarded (entropy_source.rdl:129).
