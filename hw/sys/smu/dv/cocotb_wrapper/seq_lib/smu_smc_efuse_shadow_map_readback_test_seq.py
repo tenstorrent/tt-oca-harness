@@ -6,14 +6,16 @@ Spec: smc.rdl smc_efuse_map at 0xC0007000 and efuse_interface_ctrl at 0xC0008000
 smc_efuse_map.rdl Address Map; smu-smc.adoc 64 harness plus 128 supplementary 32-bit words per instance; interface.adoc
 fuse_command_resp_t {data, status, valid}; efuse_interface_ctrl.rdl efuse_sense_done bit 0.
 
-The stream is captured at the SMU boundary during the shared bring-up. Sixteen map words are
-read back over JTAG2AXI; each map word and the stream word of the same index are compared with
-the word of that index in the +smc_efuse_hex image the run loads, and the map word with the
-stream word. The sixteen indices and their read order are drawn from the seed, with the first
-word of each of the six named elements pinned into every set because the element compare looks
-each up in the sampled set, and word 191, the last word of the stream and the last store of the
-sense's running count, pinned beside them. The pre-sense status, multi-word elements and the
-per-slice smc_shadow_regs values are not compared.
+The stream is captured at the SMU boundary during the shared bring-up. Sixteen of the 64
+harness map words are read back over JTAG2AXI; each map word and the stream word of the same
+index are compared with the word of that index in the +smc_efuse_hex image the run loads, and
+the map word with the stream word. The sixteen indices and their read order are drawn from the
+seed, with the first word of each of the seven named elements pinned into every set because the
+element compare looks each up in the sampled set, and word 63, the last harness map word, pinned
+beside them. The 128 supplementary stream words (64..191, word 191 the last store of the sense's
+running count) are compared with the image words of the same index directly: the map window
+holds only the harness words. The pre-sense status, multi-word elements and the per-slice
+smc_shadow_regs values are not compared.
 """
 
 from __future__ import annotations
@@ -42,7 +44,8 @@ STATUS_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS
 # Harness map words plus the supplementary region of the reference wrappers
 # (hw/top/smc_supplementary_fuse_example_pkg.sv, FuseWords = 128), sensed as one linear READ.
 SUPPLEMENTARY_WORDS = 128
-STREAM_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE") // 4 + SUPPLEMENTARY_WORDS
+MAP_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE") // 4
+STREAM_WORDS = MAP_WORDS + SUPPLEMENTARY_WORDS
 RESP_WIDTH = 34
 VALID_BIT = 0
 STATUS_BIT = 1
@@ -62,10 +65,10 @@ ELEMENT_INDICES = tuple(
     ((smc_addr(symbol) if index is None else smc_indexed_addr(symbol, index)) - MAP_BASE) // 4
     for _, symbol, index in ELEMENT_CELLS
 )
-# The last word of the bank, the last store of the sense's running count (smu-smc.adoc),
-# pinned beside the element words.
-LAST_WORD = STREAM_WORDS - 1
-PINNED_INDICES = (*ELEMENT_INDICES, LAST_WORD)
+# The last harness map word, pinned beside the element words; the supplementary words
+# (MAP_WORDS..STREAM_WORDS-1) are compared on the stream alone.
+LAST_MAP_WORD = MAP_WORDS - 1
+PINNED_INDICES = (*ELEMENT_INDICES, LAST_MAP_WORD)
 CAPTURE_BOUND_EDGES = 400_000
 DONE_BOUND_EDGES = 200_000
 TAIL_EDGES = 64
@@ -181,7 +184,7 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
         self.sites = {**self.capture.sites, "j2a": _site(J2A_POLL_LIMIT)}
         self.seed = test.random_seed()
         self.rng = random.Random(self.seed)
-        pool = sorted(set(range(STREAM_WORDS)) - set(PINNED_INDICES))
+        pool = sorted(set(range(MAP_WORDS)) - set(PINNED_INDICES))
         drawn = self.rng.sample(pool, SAMPLED_WORDS - len(PINNED_INDICES))
         self.sampled = list(PINNED_INDICES) + drawn
         self.rng.shuffle(self.sampled)
@@ -280,6 +283,20 @@ class smu_smc_efuse_shadow_map_readback_test_seq:
             f"sampled eFuse map words equal the stream word of the same index {self.drawn}",
             [(idx, reads[idx]) for idx in self.sampled],
             [(idx, stream[idx]) for idx in self.sampled],
+            evidence="BOOT_SHADOW_SAMPLES",
+        )
+        supplementary = range(MAP_WORDS, STREAM_WORDS)
+        self._cell(
+            "supplementary_stream_vs_image",
+            f"words {supplementary.start}..{supplementary.stop - 1} first=0x{stream[MAP_WORDS]:08x} "
+            f"last=0x{stream[STREAM_WORDS - 1]:08x} image_last=0x{image[STREAM_WORDS - 1]:08x}",
+        )
+        sb.expect_eq(
+            f"the {SUPPLEMENTARY_WORDS} supplementary stream words ({supplementary.start}.."
+            f"{supplementary.stop - 1}, the last the last store of the sense) equal the eFuse "
+            "image words of the same index",
+            [(idx, stream[idx]) for idx in supplementary],
+            [(idx, image[idx]) for idx in supplementary],
             evidence="BOOT_SHADOW_SAMPLES",
         )
 
