@@ -34,8 +34,9 @@ Legs (one seed draws the plan, logged in one ``PLAN`` line):
              set; then an ``RND`` read held by the TRNG reset keeps ``STATUS`` at
              0x01; k ``CTRL`` writes, j ``CMD`` = SEC_WIPE_DMEM writes, one write
              of a drawn value W (above the length of the ``RND`` program) to
-             ``INSN_CNT``, one write of a drawn non-zero value to ``ERR_BITS``,
-             then an ``ERR_BITS`` read and a ``STATUS`` read.
+             ``INSN_CNT``, one write of a drawn non-zero value with
+             ``illegal_insn`` clear to ``ERR_BITS``, then an ``ERR_BITS`` read
+             and a ``STATUS`` read.
   integrity  the compute program twice under ``+sep_otbn_intg_flip``: once with one
              drawn bit (0 to 38) of every IMEM word that the core fetches inverted,
              once with one drawn bit of a DMEM word that a ``lw`` of the program
@@ -196,7 +197,9 @@ Checkers:
                        ``INFO-OTBN-INSNCNT-EXACT`` logs whether it was.
   CHK-OTBN-ERRBITS-BUSYWR  the ``ERR_BITS`` write at 0x01 is ignored: the
                        ``ERR_BITS`` read after it, with ``STATUS`` still 0x01,
-                       equals the value P that the ``unimp`` run left. Writes to
+                       equals the value P that the ``unimp`` run left. The
+                       written value has ``illegal_insn`` clear and P has it set,
+                       so a stored write differs from P. Writes to
                        ``ERR_BITS`` are ignored while OTBN is busy (``otbn.hjson``
                        :562-563); ``ERR_BITS`` is set at the end of the run
                        (ToO:137), and no text changes it when EXECUTE starts
@@ -620,7 +623,10 @@ def draw_plan(seed: int) -> Plan:
     gaps3 = tuple(rng.randrange(0, 201) for _ in seq3)
     # Busy writes of INSN_CNT (above any count the RND program can reach) and ERR_BITS.
     insn_w = rng.randrange(len(OTBN_RND_PROG) + 1, 1 << 32)
-    errbits_v = rng.randrange(1, 1 << 32)
+    # illegal_insn clear, so the value differs from P, which has illegal_insn set.
+    errbits_v = 0
+    while not errbits_v:
+        errbits_v = rng.randrange(1, 1 << 32) & ~M_ERR_ILLEGAL
     return Plan(
         tuple(seq),
         gaps,
