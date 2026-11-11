@@ -815,13 +815,14 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
     # ---- L1 ------------------------------------------------------------------
     async def _l1_trial(
         self, event: str, en: int
-    ) -> tuple[tuple[int, int, int], int, int, int, DmaStatus]:
+    ) -> tuple[tuple[int, int, int], int, tuple[int, str], int, DmaStatus]:
         """One L1 trial.
 
-        Returns (lines, INTR_STATE at the end, INTR_STATE of the event, STATUS
-        reads with CHUNK_DONE, last STATUS). The event read of the multi-chunk
-        copy is taken at its first CHUNK_DONE stop, before the CHUNK_DONE W1C;
-        the others are the read at the end.
+        Returns (lines, INTR_STATE at the end, (INTR_STATE of the event, where
+        it was read), STATUS reads with CHUNK_DONE, last STATUS). The event read
+        of the multi-chunk copy is taken at its first CHUNK_DONE stop, before
+        the CHUNK_DONE W1C (``first_chunk_done``); when the copy ends without
+        that stop, and for the other events, it is the read at the end (``end``).
         """
         c = self.cfg_t
         ops = self.ops
@@ -862,8 +863,9 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 tag=f" L1 {event}",
             )
             go_writes, statuses = res.go_writes, res.statuses
-            first_chunk = await ops.rd(INTR_STATE) if at_chunk else None
-            if at_chunk and not (res.status.done or res.status.error or res.status.aborted):
+            at_stop = at_chunk and not (res.status.done or res.status.error or res.status.aborted)
+            first_chunk = await ops.rd(INTR_STATE) if at_stop else None
+            if at_stop:
                 res = await ops.run_to_done(
                     total,
                     busy=self.busy,
@@ -896,14 +898,15 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             ecode,
             st.fmt(),
         )
-        return lines, istate, istate if first_chunk is None else first_chunk, chunk_reads, st
+        ev = (istate, "end") if first_chunk is None else (first_chunk, "first_chunk_done")
+        return lines, istate, ev, chunk_reads, st
 
     async def _leg_l1(self) -> None:
         c = self.cfg_t
         got: dict[tuple[str, int], tuple[int, int, int]] = {}
         ends: dict[tuple[str, int], DmaStatus] = {}
         single: dict[int, tuple[int, int]] = {}
-        ev_state: dict[tuple[str, int], int] = {}
+        ev_state: dict[tuple[str, int], tuple[int, str]] = {}
         for event, en in c.trials:
             (
                 got[(event, en)],
@@ -936,7 +939,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
     def _grade_ungated(
         self,
         got: dict[tuple[str, int], tuple[int, int, int]],
-        ev_state: dict[tuple[str, int], int],
+        ev_state: dict[tuple[str, int], tuple[int, str]],
     ) -> None:
         """INTR_STATE sets the bit of each event with its INTR_ENABLE bit clear."""
         c = self.cfg_t
@@ -946,14 +949,16 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             src = EVENTS.index(event)
             off = next(v for e, v in c.trials if e == event and not v & en_bit)
             on = next(v for e, v in c.trials if e == event and v & en_bit)
-            bit = int(bool(ev_state[(event, off)] & intr))
-            twin_bit = int(bool(ev_state[(event, on)] & intr))
+            state, read_at = ev_state[(event, off)]
+            twin_state, twin_read_at = ev_state[(event, on)]
+            bit = int(bool(state & intr))
+            twin_bit = int(bool(twin_state & intr))
             twin_line = got[(event, on)][src]
             line = (
                 f"event={event} intr_en=0x{off:x} intr_state_bit={bit} "
-                f"intr_state=0x{ev_state[(event, off)]:x} line={got[(event, off)][src]} "
+                f"intr_state=0x{state:x} line={got[(event, off)][src]} "
                 f"control_intr_en=0x{on:x} control_intr_state_bit={twin_bit} "
-                f"control_line={twin_line} read_at={'first_chunk_done' if event == 'chunk' else 'end'}"
+                f"control_line={twin_line} read_at={read_at} control_read_at={twin_read_at}"
             )
             if (twin_bit, twin_line) != (1, 1):
                 self._ctrl_missing(

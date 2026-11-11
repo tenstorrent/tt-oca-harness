@@ -51,9 +51,9 @@ handshake run keeps GO set:
   CLEAR_INTR_BUS bit 0 = 1, INTR_SRC_ADDR_0 a SEP SRAM word outside the
   destination, INTR_SRC_WR_VAL_0 a drawn word that differs from the word the
   leaf writes there first; the same copy as the handshake run. CLEAR_INTR_SRC
-  bits 10:1 are a drawn mask; CLEAR_INTR_BUS is 1 on every source, enabled or
-  disabled, so a clear write of any source reaches the DMA master tap and its
-  SRAM word. INTR_SRC_ADDR_1..10 are distinct drawn SRAM words below the
+  bits 10:1 are a drawn mask, neither 0 nor 0x3FF; CLEAR_INTR_BUS is 1 on
+  every source, enabled or disabled, so a clear write of any source reaches
+  the DMA master tap and its SRAM word. INTR_SRC_ADDR_1..10 are distinct drawn SRAM words below the
   destination (outside every footprint of the leaf, inside the handshake
   range). Every clear word, source 0 included, is written with the sentinel
   and read back over the frontdoor before GO. INTR_SRC_WR_VAL_1..10 are
@@ -853,7 +853,8 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         # Appended draw: the clear value, never the word written there first.
         clr_val = unique_words(cfg.rng, 1, exclude={self.sentinel})[0]
         rng = SepSeededRng(cfg.seed ^ CLR_IDX_SALT)
-        upper = rng.getrandbits(N_CLR - 1)
+        # Neither 0 nor all ones, so each run has an enabled source next to a disabled one.
+        upper = rng.randrange(1, (1 << (N_CLR - 1)) - 1)
         src = tuple(1 | (u << 1) for u in (upper, ~upper & (CLR_SRC_MASK >> 1)))
         # Below the destination: outside every footprint, inside the handshake range.
         slots = [a for a in range(SRAM_BASE, HS_DST, 4) if a != CLR_ADDR]
