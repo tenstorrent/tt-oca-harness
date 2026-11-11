@@ -19,7 +19,7 @@ Contract:
     (``hw/ip/entropy_source/regs/entropy_source.rdl:352``).
   * The five total-failure counters count since the last ``MODULE_ENABLE``
     rising edge (``entropy_source.rdl:821-861``), and the rising edge restarts
-    startup health testing (``architecture.adoc:226-227``). A falling edge is not
+    startup health testing (``architecture.adoc:230-231``). A falling edge is not
     that edge, so it does not clear a counter.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
@@ -817,7 +817,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         # REPCNT_TOTAL_FAILS is read first, before the first strobe after the rise;
         # the window counters fail only at a window end, a whole window later.
         after = await self._totals()
-        # The rise restarts startup health testing (architecture.adoc:226-227), and
+        # The rise restarts startup health testing (architecture.adoc:230-231), and
         # BOOT_PHASE_DONE reports its completion (entropy_source.adoc:409), so the
         # first MAIN_SM_STATUS read after the rise, a few register reads into a
         # startup window, reads BOOT_PHASE_DONE = 0.
