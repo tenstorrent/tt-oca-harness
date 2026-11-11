@@ -91,13 +91,13 @@ def _filter_window() -> tuple[int, int]:
     last = 0
     while True:
         try:
-            sym(f"OUTBOUND_FILTER_CTRL_{last + 1}__REG_MAP_BASE_ADDR")
+            sym(f"OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{last + 1}__REG_MAP_BASE_ADDR")
         except KeyError:
             break
         last += 1
-    lo = sym("OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
-    hi = sym(f"OUTBOUND_FILTER_CTRL_{last}__REG_MAP_BASE_ADDR")
-    return lo, hi + sym(f"OUTBOUND_FILTER_CTRL_{last}__REG_MAP_SIZE")
+    lo = sym("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
+    hi = sym(f"OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{last}__REG_MAP_BASE_ADDR")
+    return lo, hi + sym(f"OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{last}__REG_MAP_SIZE")
 
 
 _FILTER_LO, _FILTER_HI = _filter_window()
