@@ -964,6 +964,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             wdata=plan.err02_word,
             length=4,
             size=2,
+            allow_unverified_write_resp=True,
         )
         await self.start_seq(seq)
         return {"msg_word": f"0x{plan.err02_word:08x}", "wr_resp": seq.resp_code}
