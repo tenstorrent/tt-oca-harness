@@ -80,18 +80,18 @@ class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
         # before the core is released so the raw bits are already moving when the
         # firmware opens the health window.
         noise = self.start_esrc_noise_driver()
-
-        await self.boot_firmware(
-            self.sb,
-            _ITCM_HEX,
-            _DTCM_HEX,
-            rst_vec=_ICCM_BASE >> 1,
-            max_run_cycles=_MAX_RUN_CYCLES,
-            no_boot_cycles=_NO_BOOT_CYCLES,
-            progress_every=_PROGRESS_EVERY,
-        )
-
-        await noise.stop()
+        try:
+            await self.boot_firmware(
+                self.sb,
+                _ITCM_HEX,
+                _DTCM_HEX,
+                rst_vec=_ICCM_BASE >> 1,
+                max_run_cycles=_MAX_RUN_CYCLES,
+                no_boot_cycles=_NO_BOOT_CYCLES,
+                progress_every=_PROGRESS_EVERY,
+            )
+        finally:
+            await noise.stop()
 
         # The firmware error count gates the PASS magic, so a failed leg already
         # fails the scoreboard. These gates are here so the kept log cannot show
