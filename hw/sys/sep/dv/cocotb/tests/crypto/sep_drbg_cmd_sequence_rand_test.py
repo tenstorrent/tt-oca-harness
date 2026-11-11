@@ -198,8 +198,8 @@ Checkers:
                  (see the 3-bit decode note above).
   CHK-CSRNG-FLAG0  an instantiate with an invalid value in flag0 [11:8] sets
                  bit 4; after an uninstantiate and an instantiate with flag0 0x9
-                 (the field back to a legal value), bit 4 still reads 1 and a
-                 write of 0 clears it.
+                 (the field back to a legal value) that acknowledges with
+                 ``CMD_STS`` 0, bit 4 still reads 1 and a write of 0 clears it.
                  No write of 0 to bit 4 comes between the invalid instantiate
                  and that read: the live probe writes 1 to bit 4, which leaves
                  it set. Control: bit 4 reads 0 after an instantiate with
@@ -2538,12 +2538,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             _, sts = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), bound, step)
             uni["post_f9b"] = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
             self.chk.obs("CSRNG-HDR-INS", flag0="0x9", cmd_sts=sts, after="ins_fbad")
+            flag0["legal_ins_sts"] = sts
             recov = await r._rd(CSRNG_RECOV_ALERT_STS)
             flag0["set_before_clear"] = int(bool(recov & CS_FLAG0_INV))
             flag0["cleared_by_write0"] = await self._clear_bit(CS_FLAG0_INV)
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound} step={step}"
         close_graded_window(self.logger)
+        flag0.setdefault("legal_ins_sts", "na")
         flag0.setdefault("set_before_clear", 0)
         for fields in (acmd, flag0):
             fields.setdefault("cleared_by_write0", 0)
@@ -2561,6 +2563,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             "CSRNG-FLAG0",
             not reason
             and flag0["alert_set"] == 1
+            and flag0["legal_ins_sts"] == STS_SUCCESS
             and flag0["set_before_clear"] == 1
             and flag0["cleared_by_write0"] == 1,
             **flag0,
