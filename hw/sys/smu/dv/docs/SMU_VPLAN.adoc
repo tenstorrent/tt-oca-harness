@@ -186,7 +186,7 @@ every name that was catalogued against them.
 [cols="1,2",options="header",]
 |===
 |Behaviour |Why it is out of scope here
-|The SMC's internal behaviour (CSRs, peripherals, firmware boot beyond the smoke images) |The SMC plan, `hw/sys/smc/dv/docs/SMC_VPLAN.adoc`; this plan proves what crosses the SMU boundary and the SMC-under-SMU paths
+|The SMC's internal behaviour (CSRs, peripherals, firmware boot beyond the smoke images) |The SMC plan, `hw/sys/smc/dv/docs/SMC_VPLAN.adoc`; this plan proves what crosses the SMU boundary and the SMC-under-SMU paths; the SMU boot as a whole is traced to its specification in <<smu-boot-spec-trace>>
 |The SEP's internal behaviour, its crypto blocks and its lifecycle-controller policy |The SEP plan, `hw/sys/sep/dv/docs/SEP_VPLAN.adoc`; this plan observes the SEP through the wrapper's boot, lifecycle and JTAG-gating outputs
 |The DTP's block-level behaviour (TAP controller, JTAG2AXI bridge internals, iJTAG instruments) |The DTP plan, `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`; this plan proves the DTP-under-SMU paths the wrapper exposes
 |Boundary-scan cells, adopter DFD and DFT scan chains |No cells in the wrapper; the bench loops every host scan chain back on itself (a declared stand-in; `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, "Bench stand-ins and exceptions")
@@ -344,6 +344,43 @@ Signoff Package; this table is the credit decision.
 
 `smu_sep_smoke_test` on `--dut smu` is F1 observe / F6 export on the
 wrapper. It is not F2 credit.
+
+[[smu-boot-spec-trace]]
+==== Boot specification traceability
+
+The SMU boot, from reset until SMC BL1 runs, is specified in the SMU Boot
+Specification (`hw/sys/smu/boot/doc/index.adoc`). Its requirements carry
+`SMU-BOOT-<AREA>-<NNN>` identifiers. The table records, for each requirement, the test that
+checks it and the plan that owns that test. A requirement with no checking test is
+listed as not verified; a test that only exercises it does not count.
+
+[cols="2,4,2",options="header",]
+|===
+|Requirement |Checked by |Plan
+|`SMU-BOOT-HW-010` |not verified |—
+|`SMU-BOOT-HW-020` |`smu_boot_stall_jtag_cold_reset_matrix_test` (sticky stall gates the fuse reset), `smu_ext_boot_seq_gate_test` (boot-sequence done gates it) |this plan, `hosted`
+|`SMU-BOOT-HW-030` |not verified: `smu_sram_auto_init_done_test` and `smu_sram_auto_init_disabled_test` check the sweep and `smc_init_mem_done_o`, not the core hold |—
+|`SMU-BOOT-HW-040` |`smu_smc_cpu_ctrl_boot_state_test` (`RESET_VECTOR[0..3]` and `RESET_CTRL` reset values) |this plan, `hosted`
+|`SMU-BOOT-HW-050` |not verified |—
+|`SMU-BOOT-ROLE-010` to `-030` |not verified |—
+|`SMU-BOOT-LC-010`, `-030` |`sep_rom_lc_state_invalid_0x4_test`, `sep_rom_lc_state_invalid_0x5_test` (SEP side) |SEP ROM plan
+|`SMU-BOOT-LC-010`, `-040` |`smc_rom_invalid_lc_state_test`, `smc_rom_invalid_lc_state_0x4_test`, `smc_rom_invalid_lc_state_0x5_test` (SMC side) |SMC ROM plan
+|`SMU-BOOT-LC-020` |not verified |—
+|`SMU-BOOT-LC-050` |`smc_occp_jump_rejection_test` (secure), `smc_occp_dual_unsecure_boot_test` (non-secure) |SMC ROM plan
+|`SMU-BOOT-SB-010` to `-030` |the "Fuses, lifecycle and secure-boot decision" groups (SEP side) |SEP ROM plan
+|`SMU-BOOT-SB-040` to `-060` |not verified |—
+|`SMU-BOOT-SMC-010` to `-040` |the SMC ROM regression `occp_rom` |SMC ROM plan
+|`SMU-BOOT-SEP-010` to `-050` |the SEP ROM regression |SEP ROM plan
+|`SMU-BOOT-BL1-010` to `-040` |not verified |—
+|`SMU-BOOT-WAIT-010` to `-030` |not verified |—
+|`SMU-BOOT-OBS-010` to `-030` |not verified |—
+|`SMU-BOOT-FAIL-010`, `-020` |not verified |—
+|`SMU-BOOT-FAIL-030` |`CHK-ROM-PARK-ON-HALT`, `CHK-OCCP-PARK-ON-AUTH`, the park interlock group |SMC ROM plan
+|===
+
+Every combined-boot requirement is unverified at this boundary. Each needs both production
+ROMs and both BL1 images running on the wrapper, which the firmware groups outside
+`hosted` will provide.
 
 === Scenario-Expanded Test Summary
 

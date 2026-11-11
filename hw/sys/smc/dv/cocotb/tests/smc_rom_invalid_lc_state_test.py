@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The target ROM must refuse to boot on an illegal lifecycle encoding.
 
-The lifecycle enum the ROM understands runs 0x0..0x8. This test drives one of the
-values above that range into the target before cold reset -- a well-formed
+The lifecycle values the ROM accepts are 0x0..0x3 and 0x6..0x8. This test drives one of the
+others into the target before cold reset -- a well-formed
 {diff_n, diff_p} pair, so the wrapper's smc_ras_o.lc_sigint_err stays clear and the ROM sees a
 structurally valid but semantically illegal state -- and requires the ROM to reach its
 POST error state rather than continue booting.
@@ -18,7 +18,8 @@ target's POST code decides the outcome.
 Plusargs:
     +rom_bin64=<image>        target production ROM               (required)
     +bfm_rom_hex=<image>      controller rom-mode image           (required)
-    +lc_state=<n>             illegal lifecycle value             (default: random 0x9..0xF)
+    +lc_state=<n>             illegal lifecycle value: 0x4, 0x5 or 0x9..0xF
+                                                                  (default: random 0x9..0xF)
     +rom_test_timeout=<ns>    completion bound in ns              (default: DEFAULT_POLL_ITERS)
 """
 
@@ -53,9 +54,11 @@ POLL_CYCLES = 2000
 DEFAULT_POLL_ITERS = 4000
 PROGRESS_EVERY = 200
 
-# smc_rom_defs.h: the ROM's lifecycle enum ends at 0x8, so 0x9..0xF are illegal but still
-# encodable as a complementary pair.
-ILLEGAL_LC_VALUES = (0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF)
+# smc_security.h: RMA chiplet is 0x6..0x7 only, so 0x4..0x5 are illegal, as are 0x9..0xF above
+# PROD_END. Each is still encodable as a complementary pair. A run draws from UNDEFINED_LC_VALUES
+# unless +lc_state names a value.
+UNDEFINED_LC_VALUES = (0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF)
+ILLEGAL_LC_VALUES = (0x4, 0x5) + UNDEFINED_LC_VALUES
 
 # POST code fields the ROM must land on, from the names in smc_occp_dual_defs.
 POST_PHASE_ERROR = 0x7
@@ -78,7 +81,7 @@ def _poll_iterations() -> tuple[int, str]:
 def _illegal_lc_value(rng: random.Random) -> tuple[int, str]:
     named = cocotb.plusargs.get("lc_state")
     if named is None:
-        value = rng.choice(ILLEGAL_LC_VALUES)
+        value = rng.choice(UNDEFINED_LC_VALUES)
         return value, f"randomised to {value:#x}"
     value = int(str(named), 0)
     if value not in ILLEGAL_LC_VALUES:

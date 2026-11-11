@@ -89,7 +89,11 @@ For a valid encoding, the low nibble selects the policy:
 |RMA SoP
 |Non-secure
 
-|`0x4`--`0x7`
+|`0x4`--`0x5`
+|Invalid
+|Record an error and park hart 0
+
+|`0x6`--`0x7`
 |RMA chiplet
 |Non-secure
 
@@ -99,7 +103,7 @@ For a valid encoding, the low nibble selects the policy:
 
 |`0x9`--`0xF`
 |Invalid
-|Record an error and remain in `wfi`
+|Record an error and park hart 0
 |===
 
 This classification affects OCCP address bounds and `ExecuteImage`.

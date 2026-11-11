@@ -59,7 +59,9 @@ ifdef::backend-pdf[]
 https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/sep/rom.html#sep-rom[SEP Boot ROM chapter]
 endif::backend-pdf[]
 of the Technical Reference Manual specifies the boot flow requirements that
-this firmware implements.
+this firmware implements. The <<smu-boot-spec,SMU Boot Specification>> states
+how this boot combines with the SMC Boot ROM's for each lifecycle state and
+boot role.
 
 include::boot-flow.adoc[]
 

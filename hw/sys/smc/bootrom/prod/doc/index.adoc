@@ -39,6 +39,8 @@ The ROM has two terminal handoff paths.
 `ExecuteImage` sends a success response and transfers control directly in non-secure lifecycle states.
 `AuthenticateImage` sends a success response, publishes a manifest offset to the coordination scratch registers, and parks the SMC in `wfi`.
 
+The <<smu-boot-spec,SMU Boot Specification>> states how this ROM's boot combines with the SEP Boot ROM's for each lifecycle state and boot role.
+
 include::occp-protocol.adoc[]
 
 include::boot-flow.adoc[]
