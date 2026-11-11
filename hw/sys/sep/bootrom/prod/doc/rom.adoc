@@ -831,8 +831,8 @@ it enters the handler; a value of zero means "no warm handler — treat any rese
 1. [[req-SEP-ROM-CPU-110]]*[SEP-ROM-CPU-110]* The ROM shall read `cold_scratch[7]` before any
    DCCM access (no stack, no scrub, no `.data`/`.bss` writes), so that a warm reset preserves
    BL1's runtime state in DCCM intact.
-2. If the value is zero, the boot is a cold boot; the ROM defensively clears
-   `cold_scratch[7]` and proceeds (<<sec:cpu_init>>).
+2. If the value is zero, the boot is a cold boot; the ROM poisons `cold_scratch[7]` with
+   `0xFFFFFFFF` and proceeds (<<sec:cpu_init>>).
 3. [[req-SEP-ROM-CPU-120]]*[SEP-ROM-CPU-120]* A non-zero value shall be accepted only if it
    lies within a permitted BL1 execution region — ICCM
    (`[SEP_ICCM_MEM_BASE, SEP_ICCM_MEM_BASE + SEP_ICCM_SIZE)`) or SEP SRAM
