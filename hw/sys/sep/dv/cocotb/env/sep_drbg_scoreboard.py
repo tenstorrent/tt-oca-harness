@@ -204,6 +204,7 @@ class SepDrbgScoreboard:
         #             SHA 16:1 block boundary aligned with the RTL by construction.
         self.golden = SepEntropyGolden(**self._gk)
         self.chain = SepEntropyGolden(**self._gk)
+        self._compressor_bypass = bool(self._gk.get("compressor_bypass"))
 
         # CHK4 protocol-check state (genbits FIPS flag + Generate segmentation).
         # glen is the length the SEQUENCE commands; it is not a global invariant,
@@ -503,7 +504,14 @@ class SepDrbgScoreboard:
             # upstream backpressure), so feeding every decor-valid would misframe
             # the SHA 16:1 blocks after block 0. The held decor byte word at the
             # accept cycle is BIW-compressed into the word the whitener consumes.
-            if state in ("wait_fill", "locked") and whiten_push and dut_decor is not None:
+            # With the compressor bypassed there is no whitener: the chain takes
+            # the sample on each esrc_stream_valid_gated_o strobe from the TRNG
+            # reset, and the golden selects every (N+1)th of them.
+            if self._compressor_bypass:
+                feed = _safe_int(d.esrc_stream_valid_gated_o) or 0
+            else:
+                feed = whiten_push
+            if state in ("wait_fill", "locked") and feed and dut_decor is not None:
                 self.chain.feed_decor_sample(dut_decor)
 
             prev_decor = dut_decor

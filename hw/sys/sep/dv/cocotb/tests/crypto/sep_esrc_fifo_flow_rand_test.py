@@ -43,6 +43,16 @@ Checkers:
                          LEVEL and WPTR still kept after the stream port offers a word;
                          control: CTRL-FIFO-POP offered >= 1 stream word in the window.
   CHK-FIFO-RESUME        LEVEL rises from 0 after ENABLE = 1.
+  CHK-FIFO-POP-LIVE      pops with ENABLE = 1 and the producer running. A window is a
+                         FIFO_STATUS read A, one FIFO_RDATA pop and a FIFO_STATUS read B;
+                         t counts the stream words between the return of read A and the
+                         start of read B. A window is graded when no stream word falls
+                         inside read A or read B, 1 <= L(A) <= 62 and L(A) + t <= 64 (no
+                         word can be discarded): L(B) == L(A) - 1 + t
+                         (entropy_source.rdl FIFO_STATUS.LEVEL, FIFO_RDATA, FIFO_CTRL.ENABLE;
+                         architecture.adoc:148). Controls: CTRL-FIFO-POP-LIVE, graded
+                         windows per L(A) class {1, mid, 62} and per kind {pop_only
+                         (t = 0), push_pop (t >= 1)}, each above 0.
   CHK-FIFO-ORDER         64 popped words == 64 consecutive stream words at one d in 0..8.
   CHK-FIFO-CHURN         w_k XOR w_(k-32) == C for k = 32..63; control: churn off, every word == C.
   CHK-FIFO-NOERR         FIFO_ERROR reads 0 after each leg; control: INTR_TEST sets it.
@@ -71,7 +81,15 @@ Checkers:
 Logged only: ``OBS-FIFO-PTR-W1C``, ``OBS-ESRC-LIVE-PIC16`` (source 16 with only the live
 cause enabled: the register text does not state which enabled status bits drive source 16),
 ``OBS-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
-names no partner for them).
+names no partner for them), ``OBS-FIFO-ERR-ALERT`` (after the parity and the pointer
+trial, with FIFO_ERROR as read: the ESRC interrupt line, and LEVEL and WPTR before and
+after the stream offers a word with ENABLE = 1; no text states an alert or a write stop
+for a FIFO error, and the entropy source has no alert output at the SEP boundary, so the
+line records ``alert=none-at-sep-boundary``).
+
+FCOV pass label ``u_sep_fcov.esrc_fifo_pass`` (``ESRC_FIFO_PASS_*``): the leaf pulses
+the bit of CHK-FIFO-FILL, CHK-FIFO-POP, each CHK-FIFO-POP-LIVE window and CHK-FIFO-CHURN
+after that check passes.
 """
 
 from __future__ import annotations
@@ -90,7 +108,7 @@ from env.sep_esrc_pattern_noise import (
     balanced_lanes,
     describe,
 )
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE
@@ -135,6 +153,34 @@ FILL_STROBE_CAP = 2 * WINDOW + 64
 
 INTR_ENABLE_ALL = ENTROPY_SOURCE.mask("INTR_ENABLE")
 
+# Live pop leg. A window from L(A) = 63 or 64 can lose a push to a full FIFO
+# (entropy_source.rdl:129), so the highest graded L(A) is 62.
+LIVE_TOP = DEPTH - 2
+LIVE_MID = DEPTH // 2
+LIVE_CLASSES = ("1", "mid", "62")
+LIVE_KINDS = ("pop_only", "push_pop")
+# Windows per (L(A) target, kind) attempt before the leg moves on (test parameter).
+LIVE_TRIES = 8
+# A push_pop window holds read B until the stream is quiet for this many clocks, so a
+# burst of digest words does not overlap read B (reach only; read B is graded only
+# when no word falls inside it).
+LIVE_QUIET_CLK = 16
+LIVE_PLAN = (
+    (LIVE_TOP, "pop_only"),
+    (LIVE_MID, "pop_only"),
+    (LIVE_MID, "push_pop"),
+    (1, "push_pop"),
+    (1, "pop_only"),
+)
+
+# Bits of u_sep_fcov.esrc_fifo_pass, one per check of this leaf.
+ESRC_FIFO_PASS_FILL = 1 << 0  # CHK-FIFO-FILL
+ESRC_FIFO_PASS_POP = 1 << 1  # CHK-FIFO-POP
+ESRC_FIFO_PASS_POP_LIVE = 1 << 2  # CHK-FIFO-POP-LIVE
+ESRC_FIFO_PASS_CHURN = 1 << 3  # CHK-FIFO-CHURN
+# Clocks the leaf holds a pass bit before it writes 0.
+FIFO_PASS_HOLD_CLKS = 2
+
 
 def _get(value: int, reg: str, field: str) -> int:
     meta = ENTROPY_SOURCE.fields(reg)[field]
@@ -143,6 +189,10 @@ def _get(value: int, reg: str, field: str) -> int:
 
 def _val(reg: str, **fields: int) -> int:
     return ENTROPY_SOURCE.value(reg, **fields)
+
+
+def _live_class(level: int) -> str:
+    return "1" if level == 1 else "62" if level == LIVE_TOP else "mid"
 
 
 def _status(value: int) -> tuple[int, int, int]:
@@ -261,6 +311,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         "CHK-FIFO-FILL",
         "CHK-FIFO-POP",
         "CHK-FIFO-RESUME",
+        "CHK-FIFO-POP-LIVE",
         "CHK-FIFO-ORDER",
         "CHK-FIFO-CHURN",
         "CHK-FIFO-NOERR",
@@ -295,6 +346,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         if await self._fill_leg():
             await self._pop_leg()
             await self._resume_leg()
+            await self._pop_live_leg()
             await self._order_leg()
             await self._churn_leg()
         await self._intr_test_ctrl()
@@ -366,6 +418,28 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
 
     async def _fifo_error(self) -> int:
         return _get(await self._rd(ESRC_INTR_STATUS), "INTR_STATUS", "FIFO_ERROR")
+
+    async def _fifo_pass(self, bits: int) -> None:
+        """Pulse the esrc_fifo_pass bits of a check that passed (FIFO_PASS_HOLD_CLKS)."""
+        if not fcov_present():
+            return
+        fcov = cocotb.top.u_sep_fcov
+        if not hasattr(fcov, "esrc_fifo_pass"):
+            raise AttributeError("u_sep_fcov has no esrc_fifo_pass variable (cov/sv/sep_fcov.sv)")
+        fcov.esrc_fifo_pass.value = bits
+        self.logger.info("FCOV-ESRC-FIFO-PASS %d", bits)
+        await ClockCycles(cocotb.top.clk_i, FIFO_PASS_HOLD_CLKS)
+        fcov.esrc_fifo_pass.value = 0
+        await RisingEdge(cocotb.top.clk_i)
+
+    async def _next_word(self) -> bool:
+        """Wait for the next stream word, at most the per-word bound; True when one came."""
+        w0 = self.tap.words
+        bound = self._word_bound()
+        t0 = self._now()
+        while self.tap.words == w0 and self._now() - t0 <= bound:
+            await RisingEdge(cocotb.top.clk_i)
+        return self.tap.words > w0
 
     async def _noerr(self, leg: str) -> None:
         err = await self._fifo_error()
@@ -453,7 +527,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         first = samples[0][0]
         self.chk.ctrl("FIFO-FILL", first < DEPTH, level_first=first)
         lvl, wp, rp = samples[-1]
-        self.chk.ok(
+        if self.chk.ok(
             "FIFO-FILL",
             ok and overflow == 1 and ptr_bad == 0 and plateau_bad == 0,
             level_max=max(s[0] for s in samples),
@@ -464,7 +538,8 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             plateau_bad=plateau_bad,
             samples=len(samples),
             fill_clk=fill,
-        )
+        ):
+            await self._fifo_pass(ESRC_FIFO_PASS_FILL)
         await self._noerr("fill")
         return True
 
@@ -493,7 +568,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         prev = cur
         self.chk.ctrl("FIFO-POP", offered >= 1, offered=offered, wait_bound=bound)
         l1, w1, r1 = prev
-        self.chk.ok(
+        if self.chk.ok(
             "FIFO-POP",
             bad == 0,
             pops=plan.k,
@@ -502,7 +577,8 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             rptr_delta=(r1 - r0) % PTR_MOD,
             wptr_delta=(w1 - w0) % PTR_MOD,
             bad_pops=bad,
-        )
+        ):
+            await self._fifo_pass(ESRC_FIFO_PASS_POP)
         await self._pop_to_empty()
         await self._rd(ESRC_FIFO_RDATA)  # one read while empty (data undefined, not graded)
         intr = await self._rd(ESRC_INTR_STATUS)
@@ -535,6 +611,100 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             fields["reason"] = f"timeout:level bound={bound}"
         self.chk.ok("FIFO-RESUME", ok and l0 == 0, **fields)
         await self._noerr("resume")
+
+    # --- live pop leg -------------------------------------------------------------------
+    async def _steer(self, target: int) -> int:
+        """With ENABLE = 1, pop or wait for stream words until LEVEL reads ``target``.
+
+        Pops only the words above ``target`` that a LEVEL read showed, so it never
+        reads an empty FIFO. Returns the last LEVEL read.
+        """
+        level = await self._level()
+        for _ in range(4 * DEPTH):
+            if level == target:
+                break
+            if level > target:
+                for _ in range(level - target):
+                    await self._rd(ESRC_FIFO_RDATA)
+            elif not await self._next_word():
+                break
+            level = await self._level()
+        return level
+
+    async def _live_window(self, hold: bool) -> dict | None:
+        """Read A, one pop, (``hold``: the next word and a quiet stream), read B.
+
+        Returns None without a pop when read A shows LEVEL 0.
+        """
+        a0 = self.tap.words
+        la = _status(await self._rd(ESRC_FIFO_STATUS))[0]
+        a1 = self.tap.words
+        if la == 0:
+            return None
+        await self._rd(ESRC_FIFO_RDATA)
+        if hold and await self._next_word():
+            last = self.tap.words
+            quiet = 0
+            for _ in range(DEPTH * LIVE_QUIET_CLK):
+                await RisingEdge(cocotb.top.clk_i)
+                if self.tap.words != last:
+                    last, quiet = self.tap.words, 0
+                    continue
+                quiet += 1
+                if quiet >= LIVE_QUIET_CLK:
+                    break
+        b0 = self.tap.words
+        lb = _status(await self._rd(ESRC_FIFO_STATUS))[0]
+        b1 = self.tap.words
+        t = b0 - a1
+        return {
+            "l_a": la,
+            "l_b": lb,
+            "t": t,
+            "inside_a": a1 - a0,
+            "inside_b": b1 - b0,
+            "graded": a1 == a0 and b1 == b0 and 1 <= la <= LIVE_TOP and la + t <= DEPTH,
+        }
+
+    async def _pop_live_leg(self) -> None:
+        """CHK-FIFO-POP-LIVE: pops with ENABLE = 1 while the stream writes the FIFO."""
+        await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
+        enable = _get(await self._rd(ESRC_FIFO_CTRL), "FIFO_CTRL", "ENABLE")
+        by_class = dict.fromkeys(LIVE_CLASSES, 0)
+        by_kind = dict.fromkeys(LIVE_KINDS, 0)
+        cells: set[tuple[str, str]] = set()
+        skipped = 0
+        for target, want in LIVE_PLAN:
+            cell = (_live_class(target), want)
+            for _ in range(LIVE_TRIES):
+                if cell in cells:
+                    break
+                await self._steer(target)
+                w = await self._live_window(want == "push_pop")
+                if w is None or not w["graded"]:
+                    skipped += 1
+                    continue
+                kind = "pop_only" if w["t"] == 0 else "push_pop"
+                cls = _live_class(w["l_a"])
+                by_class[cls] += 1
+                by_kind[kind] += 1
+                cells.add((cls, kind))
+                if self.chk.ok(
+                    "FIFO-POP-LIVE",
+                    enable == 1 and w["l_b"] == w["l_a"] - 1 + w["t"],
+                    enable=enable,
+                    l_a=w["l_a"],
+                    l_b=w["l_b"],
+                    t=w["t"],
+                    kind=kind,
+                    level_class=cls,
+                ):
+                    await self._fifo_pass(ESRC_FIFO_PASS_POP_LIVE)
+        self.chk.info("FIFO-POP-LIVE-SKIP", windows=skipped)
+        for cls in LIVE_CLASSES:
+            self.chk.ctrl("FIFO-POP-LIVE", by_class[cls] > 0, level_class=cls, graded=by_class[cls])
+        for kind in LIVE_KINDS:
+            self.chk.ctrl("FIFO-POP-LIVE", by_kind[kind] > 0, kind=kind, graded=by_kind[kind])
 
     # --- order leg (steps 13-15) --------------------------------------------------------
     async def _order_leg(self) -> None:
@@ -628,7 +798,8 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         }
         if on is None:
             fields["reason"] = f"timeout:level64 bound={self._fill_bound()}"
-        self.chk.ok("FIFO-CHURN", on is not None and pairs > 0 and bad == 0, **fields)
+        if self.chk.ok("FIFO-CHURN", on is not None and pairs > 0 and bad == 0, **fields):
+            await self._fifo_pass(ESRC_FIFO_PASS_CHURN)
         await self._noerr("churn")
 
     async def _fill_and_pop(self, *, churn: int) -> list[int] | None:
@@ -748,6 +919,33 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         await self._cause_legs("FIFO_UNDERFLOW", INTR_FIFO_UNDERFLOW, self._underflow)
 
     # --- integrity trials (steps 21-28) -------------------------------------------------
+    async def _err_alert_obs(self, trial: str) -> None:
+        """OBS-FIFO-ERR-ALERT: after a FIFO error, does the FIFO still take a stream word."""
+        close_graded_window(self.logger)
+        err = await self._fifo_error()
+        irq = self._pic16()
+        l0, w0, _ = _status(await self._rd(ESRC_FIFO_STATUS))
+        tap0 = self.tap.words
+        await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
+        await self._next_word()
+        await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
+        offered = self.tap.words - tap0
+        l1, w1, _ = _status(await self._rd(ESRC_FIFO_STATUS))
+        self.chk.obs(
+            "FIFO-ERR-ALERT",
+            trial=trial,
+            fifo_error=err,
+            esrc_irq=irq,
+            level_before=l0,
+            wptr_before=w0,
+            words_offered=offered,
+            level_after=l1,
+            wptr_after=w1,
+            fifo_error_after=await self._fifo_error(),
+            alert="none-at-sep-boundary",
+        )
+        open_graded_window(TEST, self.logger)
+
     async def _hold(self) -> tuple[bool, int]:
         """Set-up, LEVEL >= H, ENABLE = 0; returns (ok, held count)."""
         plan = self.plan
@@ -788,6 +986,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             fields["reason"] = f"timeout:held bound={self._fill_bound()}"
         self.chk.ctrl("FIFO-INTEG-PARITY", e2 == 1, parity_pop_error=e2)
         self.chk.ok("FIFO-INTEG-PARITY", ok and e0 == 0 and e1 == 0 and e2 == 1, **fields)
+        await self._err_alert_obs("parity")
         before = await self._fifo_error()
         await self._wr(ESRC_INTR_STATUS, INTR_FIFO_ERROR)
         after = await self._fifo_error()
@@ -840,6 +1039,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         if not detect:
             fields["reason"] = "timeout"
         self.chk.ok("FIFO-INTEG-PTR", ok and detect and e0 == 0 and e1 == 0, **fields)
+        await self._err_alert_obs("pointer")
         await self._wr(ESRC_INTR_STATUS, INTR_FIFO_ERROR)
         self.chk.obs("FIFO-PTR-W1C", fifo_error=await self._fifo_error())
         close_graded_window(self.logger)
