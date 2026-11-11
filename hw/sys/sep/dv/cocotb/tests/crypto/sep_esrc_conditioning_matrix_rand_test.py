@@ -152,7 +152,7 @@ Checkers:
                        words of the window).
                        Controls ``CTRL-COND-CTRL-CELL``: at least one offered word;
                        ``CTRL-COND-SHA-OFF-MID-HASH``: BUSY falls at the cell 100
-                       write with no digest-output sample after the hash start.
+                       write with no digest-output sample after the hash state is seen.
   CHK-COND-DECOR-MASK  feedback on (DECORRELATOR_CTRL.BYPASS = 0), a drawn mask of class
                        few, half or all, compressor bypass 0 and 1: from the
                        ``esrc_decor_sr_o`` state before a start strobe, the 29-stage XOR
@@ -1459,7 +1459,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         ``esrc_sha256_status_o`` is {OUTPUT_COUNT, INPUT_COUNT, BUSY}. BUSY with
         OUTPUT_COUNT 0 is the hash phase; BUSY with OUTPUT_COUNT 8 to 1 is the digest
         output, which does not stall. The write lands mid-hash when BUSY falls with no
-        digest-output sample between the hash start and the fall. Cell 010 that follows
+        digest-output sample between the first hash-state sample and the fall. Cell 010 that follows
         then grades that SHA256_WHITENING_ENABLE = 1 conditions blocks again
         (entropy_source.rdl SHA256_WHITENING_ENABLE).
         """
