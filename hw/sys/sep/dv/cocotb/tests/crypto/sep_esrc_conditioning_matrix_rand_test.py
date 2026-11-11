@@ -210,8 +210,13 @@ from env.sep_esrc_pattern_noise import (
 )
 from env.sep_esrc_sha_tap import BLOCK_WORDS, DIGEST_WORDS, QUIET_GUARD, SepEsrcShaTap
 from env.sep_fcov_gate import (
+    ESRC_CNT_PASS_CTRL_CELL,
+    ESRC_CNT_PASS_DECOR_MASK,
+    ESRC_CNT_PASS_DS_INTERVAL,
     ESRC_CNT_PASS_FIRST_PUSH,
     ESRC_CNT_PASS_FIRST_STROBE,
+    ESRC_CNT_PASS_LANES_OFF,
+    ESRC_CNT_PASS_ONE_LANE,
     ESRC_CNT_PASS_PERIOD,
     close_graded_window,
     open_graded_window,
@@ -320,15 +325,6 @@ INTR_ENABLE_ALL = ENTROPY_SOURCE.mask("INTR_ENABLE")
 _RO_ENABLE = ENTROPY_SOURCE.fields("RING_OSC_ENABLE")["ENABLE"]
 # RING_OSC_ENABLE.ENABLE with every lane enabled (the reset value, entropy_source.adoc:357).
 RO_ENABLE_ALL = _RO_ENABLE["bm"] >> _RO_ENABLE["bp"]
-
-# Bits of u_sep_fcov.esrc_cnt_pass for the checks that follow the three of
-# env/sep_fcov_gate.py: one per CHK-COND-CTRL-CELL cell, then CHK-COND-DECOR-MASK,
-# CHK-COND-LANES-OFF, CHK-COND-ONE-LANE and CHK-COND-DS-INTERVAL.
-ESRC_CNT_PASS_CTRL_CELL = {cell: 1 << (3 + i) for i, cell in enumerate(CTRL_CELLS)}
-ESRC_CNT_PASS_DECOR_MASK = 1 << 7
-ESRC_CNT_PASS_LANES_OFF = 1 << 8
-ESRC_CNT_PASS_ONE_LANE = 1 << 9
-ESRC_CNT_PASS_DS_INTERVAL = 1 << 10
 
 
 def _get(value: int, reg: str, field: str) -> int:

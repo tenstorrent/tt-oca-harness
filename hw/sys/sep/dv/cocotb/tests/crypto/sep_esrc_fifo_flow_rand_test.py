@@ -108,7 +108,7 @@ from env.sep_esrc_pattern_noise import (
     balanced_lanes,
     describe,
 )
-from env.sep_fcov_gate import close_graded_window, fcov_present, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_esrc_fifo_pass
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE
@@ -421,16 +421,10 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
 
     async def _fifo_pass(self, bits: int) -> None:
         """Pulse the esrc_fifo_pass bits of a check that passed (FIFO_PASS_HOLD_CLKS)."""
-        if not fcov_present():
-            return
-        fcov = cocotb.top.u_sep_fcov
-        if not hasattr(fcov, "esrc_fifo_pass"):
-            raise AttributeError("u_sep_fcov has no esrc_fifo_pass variable (cov/sv/sep_fcov.sv)")
-        fcov.esrc_fifo_pass.value = bits
-        self.logger.info("FCOV-ESRC-FIFO-PASS %d", bits)
-        await ClockCycles(cocotb.top.clk_i, FIFO_PASS_HOLD_CLKS)
-        fcov.esrc_fifo_pass.value = 0
-        await RisingEdge(cocotb.top.clk_i)
+        if set_esrc_fifo_pass(bits, self.logger):
+            await ClockCycles(cocotb.top.clk_i, FIFO_PASS_HOLD_CLKS)
+            set_esrc_fifo_pass(0, self.logger)
+            await RisingEdge(cocotb.top.clk_i)
 
     async def _next_word(self) -> bool:
         """Wait for the next stream word, at most the per-word bound; True when one came."""
