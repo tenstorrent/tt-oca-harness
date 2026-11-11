@@ -91,7 +91,7 @@ class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
             progress_every=_PROGRESS_EVERY,
         )
 
-        # The driver stops at its next clock edge, before the simulator tears the
+        # The driver stops within one clock cycle, before the simulator tears the
         # DUT down. A kill of a task that waits on NextTimeStep leaves the
         # simulator callback registered on Verilator, and the simulator later
         # calls freed callback data.

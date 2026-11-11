@@ -160,8 +160,10 @@ FILE_PLUSARGS: tuple[str, ...] = (
 class SepEsrcNoiseDriver:
     """Raw-noise driver of ``start_esrc_noise_driver`` with a cooperative stop.
 
-    ``stop`` clears the run flag and waits for the loop to leave at its next clock
-    edge, so no trigger is cancelled while it is pending.
+    ``stop`` clears the run flag and waits until the loop exits, so no trigger is
+    cancelled while it is pending. The loop exits at the next clock edge, or after
+    the write of the current cycle when ``stop`` comes between the edge and that
+    write.
     """
 
     def __init__(self, noise_mode: str, seed_base: int) -> None:

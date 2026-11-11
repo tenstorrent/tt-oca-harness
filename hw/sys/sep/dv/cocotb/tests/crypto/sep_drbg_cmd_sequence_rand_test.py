@@ -1623,9 +1623,6 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         # The TRNG reset stops the scoreboard and its noise driver, and this leg runs
         # no scoreboard, so it drives the raw noise itself; with a static noise port
         # ESRC never fills a seed after the generators go on.
-        # The driver ends at a clock edge and the leg waits for it: a cancel of this
-        # driver on Verilator makes the next AXI write time out one time step after
-        # it starts.
         noise = self.start_esrc_noise_driver()
         try:
             await self.assert_noise_force_active()
