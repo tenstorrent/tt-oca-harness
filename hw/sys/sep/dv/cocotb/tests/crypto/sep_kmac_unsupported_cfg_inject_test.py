@@ -44,7 +44,8 @@ Checkers:
   CHK-KMAC-UNSUP     en bit 0, unsupported strength: after CMD.start kmac_err=1,
                      sha3_idle=1, sha3_absorb=0 and kmac_done=0;
                      STATUS still idle and not absorbing after a hold of t_clean.
-                     kmac_err and ERR_CODE read 0 before the start, and the
+                     kmac_err and ERR_CODE read 0 after the CFG_SHADOWED
+                     writes and before the start, and the
                      CFG_SHADOWED readback holds the written mode, kstrength
                      and en bit. INTR_ENABLE.kmac_err reads its reset value 0
                      (kmac.adoc line 67) before the start, and vector bit 22 (KMAC
@@ -483,16 +484,17 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         return await self._rd(KMAC_INTR_STATE), await self._rd(KMAC_ERR_CODE)
 
     async def _arm_cell(self, mode: str, strength: int, en_unsup: int) -> tuple[int, int, int]:
-        """Reset, read the reset values, write PREFIX (cSHAKE) and CFG_SHADOWED twice.
+        """Reset, write PREFIX (cSHAKE) and CFG_SHADOWED twice.
 
-        Returns INTR_STATE and ERR_CODE before the writes and the CFG_SHADOWED
-        readback after them.
+        Returns INTR_STATE and ERR_CODE read after the writes and before the
+        start, and the CFG_SHADOWED readback.
         """
-        pre_intr, pre_code = await self._arm_reset()
+        await self._arm_reset()
         if mode == "cshake":
             await self.kmac._write_prefix(_CSHAKE_EMPTY_PREFIX)
         await self._write_cfg(_cfg_word(mode, strength, en_unsup))
-        return pre_intr, pre_code, await self._rd(KMAC_CFG_SHADOWED)
+        cfg_rb = await self._rd(KMAC_CFG_SHADOWED)
+        return await self._rd(KMAC_INTR_STATE), await self._rd(KMAC_ERR_CODE), cfg_rb
 
     # --- scenario -------------------------------------------------------------
     async def run_scenario(self) -> None:
