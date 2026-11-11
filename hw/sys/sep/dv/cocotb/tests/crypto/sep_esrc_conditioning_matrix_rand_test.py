@@ -1315,8 +1315,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             )
             level_a = _get(st_a, "FIFO_STATUS", "LEVEL")
             level_b = _get(st_b, "FIFO_STATUS", "LEVEL")
-            wptr_a = _get(st_a, "FIFO_STATUS", "STATUS")
-            wptr_b = _get(st_b, "FIFO_STATUS", "STATUS")
+            wptr_a = _get(st_a, "FIFO_STATUS", "WPTR")
+            wptr_b = _get(st_b, "FIFO_STATUS", "WPTR")
             if self.chk.ok(
                 "COND-CTRL-CELL",
                 words >= 1 and level_a < FIFO_DEPTH and level_b == level_a and wptr_b == wptr_a,
