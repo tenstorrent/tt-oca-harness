@@ -29032,17 +29032,18 @@ the end
 `smoke`; `timeout_sec` 1800; tags `ci`, `efuse`; seed 1; args
 `+smc_efuse_hex=smc_efuse_map_sep_write_test.hex`; tool Verilator (cocotb).
 
-*Randomization*: RAND-REP: the seed draws the 32-bit values written, the 256-bit patterns and the
-element order of the map walk.
+*Randomization*: RAND-REP: the seed draws the 32-bit values written, the SPARE and SPARE_TAIL
+patterns and the element order of the map walk.
 
 *Objective*: Unlocked SEP_IN map writes read back and reach the shadow port.
 
 *Test Coverage*:
 
 * With no lock set, every writable class of SMC_EFUSE_MAP accepts SEP_IN writes and reads them
-  back: `JTAG_PUBLIC_IDENTITY` (eight words from 0x08), nine `I2C_I3C_ID` elements (64-bit
-  writes from 0x28), `SMC_CONFIG` (0x70), `OCCP_TRANSPORT_TIMEOUT` (0x78) and 28 `SPARE` elements
-  (eight words each from 0x80) (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`).
+  back: `JTAG_PUBLIC_IDENTITY` (eight words from 0x10), nine `I2C_I3C_ID` elements (64-bit
+  writes from 0x30), `SMC_CONFIG` (0x78), `OCCP_TRANSPORT_TIMEOUT` (0x80), three `SPARE` elements
+  (eight words each from 0x88) and three `SPARE_TAIL` elements (two words each from 0xE8)
+  (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`).
 * The reserved bits of `SMC_CONFIG` (bits 6:1, 14:8 and 63:16) and the upper word of
   `OCCP_TRANSPORT_TIMEOUT` are software read-write fields and read back as written
   (`smc_efuse_map.rdl`, regs `SMC_CONFIG` and `OCCP_TRANSPORT_TIMEOUT`).
@@ -29059,25 +29060,26 @@ element order of the map walk.
 
 [arabic]
 . Check the field sizes and offsets and the all-zero image, wait for `tb_fuse_sense_done` within
-  200000 clocks, then read both `LOCKS` words, `JTAG_PUBLIC_IDENTITY`, `I2C_I3C_ID`, `SMC_CONFIG`,
-  `OCCP_TRANSPORT_TIMEOUT` and every `SPARE` word and require 0.
+  200000 clocks, then read the four `LOCKS` words, `JTAG_PUBLIC_IDENTITY`, `I2C_I3C_ID`,
+  `SMC_CONFIG`, `OCCP_TRANSPORT_TIMEOUT` and every `SPARE` and `SPARE_TAIL` word and require 0.
 . For each of the eight `JTAG_PUBLIC_IDENTITY` words write a fresh distinct pattern, read the word
-  below and the word above (the high `LOCKS` word and the first `I2C_I3C_ID` word), and read the
-  word back.
+  below and the word above (the high `SUPPLEMENTARY_LOCKS` word and the first `I2C_I3C_ID` word),
+  and read the word back.
 . For each of the nine `I2C_I3C_ID` elements write a 64-bit pattern with bits 63:7 non-zero, read
   the neighbours (the last `JTAG_PUBLIC_IDENTITY` word and `SMC_CONFIG`), read both halves and read
   the element as 64 bits.
 . Write 0xFFFF_FFFF_FFFF_7F7E to `SMC_CONFIG` and 0xA5A5_A5A5_5A5A_5A5A to `OCCP_TRANSPORT_TIMEOUT`
   as 64-bit writes, read both back as 64 bits and require the reserved bits and the whole values
   as written.
-. Error injection. Point: the word past the map, directly after `SPARE[27]`, over SEP_IN. Kind: a
-  past-extent read. Expected response: the DECERR read response and the data 0xBADCAB1E from the
-  generated memory map. Before it, in a seeded shuffled order write a 256-bit pattern to each
-  `SPARE` element as eight 32-bit writes, read each word back, and read the word below and above
-  the element.
+. Error injection. Point: the word past the map, directly after `SPARE_TAIL[2]`, over SEP_IN. Kind:
+  a past-extent read. Expected response: the DECERR read response and the data 0xBADCAB1E from the
+  generated memory map. Before it, in a seeded shuffled order over the three `SPARE` and three
+  `SPARE_TAIL` elements write a 256-bit pattern to each `SPARE` element as eight 32-bit writes and
+  a 64-bit pattern to each `SPARE_TAIL` element as two 32-bit writes, read each word back, and
+  read the word below and above the element.
 . Write 0x1234_5678 to the low word of `OCCP_TRANSPORT_TIMEOUT` and require the high word unchanged;
   write 0x9ABC_DEF0 to the high word and require the low word unchanged.
-. Read both `LOCKS` words, require the `shadow_regs` port to equal the packed model, require every
+. Read the four `LOCKS` words, require the `shadow_regs` port to equal the packed model, require every
   `efuse_shadow_probe_o` word to equal the model and require `tb_efuse_locks` to be 0.
 . Require the seven steps in order with increasing time stamps, the checker lines in the order
   printed and the SEP_IN access count at or above the call count; print the fence and the waits.
@@ -29095,11 +29097,12 @@ and the 64-bit value, bits 63:7 included.
 values.
 |`CHK-EMAP-RSVD-BITS` |The `SMC_CONFIG` reserved bits (6:1, 14:8 and 63:16) read back as written,
 and the upper word of `OCCP_TRANSPORT_TIMEOUT` is printed.
-|`CHK-EMAP-WR-SPARE` |All 28 `SPARE` elements read back their 256-bit patterns after eight 32-bit
+|`CHK-EMAP-WR-SPARE` |All three `SPARE` elements read back their 256-bit patterns after eight
+32-bit writes each and all three `SPARE_TAIL` elements their 64-bit patterns after two 32-bit
 writes each, in the printed seeded order.
 |`CHK-EMAP-WR-NEIGHBOUR` |Every word read below and above a written range keeps its model value
-across the `JTAG_PUBLIC_IDENTITY`, `I2C_I3C_ID` and `SPARE` writes, and the read past the last
-`SPARE` element returns the DECERR read response with the data 0xBADCAB1E.
+across the `JTAG_PUBLIC_IDENTITY`, `I2C_I3C_ID`, `SPARE` and `SPARE_TAIL` writes, and the read past
+the last `SPARE_TAIL` element returns the DECERR read response with the data 0xBADCAB1E.
 |`CHK-EMAP-WR-HALVES` |A 32-bit write to one half of `OCCP_TRANSPORT_TIMEOUT` changes that half and
 leaves the other half unchanged, for each half in turn.
 |`CHK-EMAP-SHADOW-OUT-WRITE` |The `shadow_regs` port equals the model word for word,
