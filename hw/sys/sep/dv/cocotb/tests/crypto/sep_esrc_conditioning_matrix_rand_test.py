@@ -143,8 +143,13 @@ Checkers:
                        (entropy_source.rdl FIFO_CTRL.ENABLE; architecture.adoc:150). The
                        window is 4 x (n + 1) strobe periods, n the strobes to the first
                        offered word: 16 with the compressor in use and whitening on (a
-                       16-word block, architecture.adoc:142), else 1.
-                       Control ``CTRL-COND-CTRL-CELL``: at least one offered word.
+                       16-word block, architecture.adoc:142), else 1. The cell 100
+                       write lands while the whitener hashes a block, so cell 010
+                       also grades that SHA256_WHITENING_ENABLE = 1 conditions
+                       blocks again (entropy_source.rdl SHA256_WHITENING_ENABLE).
+                       Controls ``CTRL-COND-CTRL-CELL``: at least one offered word;
+                       ``CTRL-COND-SHA-OFF-MID-HASH``: BUSY falls at the cell 100
+                       write with no digest-output sample after the hash start.
   CHK-COND-DECOR-MASK  feedback on (DECORRELATOR_CTRL.BYPASS = 0), a drawn mask of class
                        few, half or all, compressor bypass 0 and 1: from the
                        ``esrc_decor_sr_o`` state before a start strobe, the 29-stage XOR
@@ -219,7 +224,14 @@ from env.sep_esrc_pattern_noise import (
     balanced_lanes,
     describe,
 )
-from env.sep_esrc_sha_tap import BLOCK_WORDS, DIGEST_WORDS, QUIET_GUARD, SepEsrcShaTap
+from env.sep_esrc_sha_tap import (
+    BLOCK_WORDS,
+    DIGEST_WORDS,
+    OUT_MASK,
+    OUT_SHIFT,
+    QUIET_GUARD,
+    SepEsrcShaTap,
+)
 from env.sep_fcov_gate import (
     ESRC_CNT_PASS_CTRL_CELL,
     ESRC_CNT_PASS_DECOR_MASK,
@@ -1375,7 +1387,10 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             need = BLOCK_WORDS if (bypass, sha) == (0, 1) else 1
             cap = CELL_BOUND_FACTOR * (need + 1) * self._period()
             ctrl = _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=bypass, SHA256_WHITENING_ENABLE=sha)
-            await self._wr(ESRC_CTRL, ctrl)
+            if (bypass, sha) == (1, 0):
+                await self._sha_off_mid_hash(ctrl)
+            else:
+                await self._wr(ESRC_CTRL, ctrl)
             ctrl_rb = await self._rd(ESRC_CTRL)
             await self._drain_fifo("FIFO_STATUS", ESRC_FIFO_RDATA, ESRC_FIFO_STATUS)
             st_a = await self._rd(ESRC_FIFO_STATUS)
@@ -1421,6 +1436,51 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             ):
                 await self._cnt_pass(ESRC_CNT_PASS_CTRL_CELL[(bypass, sha)])
         await self._wr(ESRC_CTRL, _val("CTRL"))
+
+    async def _sha_off_mid_hash(self, ctrl: int) -> None:
+        """Land the cell 100 SHA-off write while the whitener hashes a block.
+
+        ``esrc_sha256_status_o`` is {OUTPUT_COUNT, INPUT_COUNT, BUSY}. BUSY with
+        OUTPUT_COUNT 0 is the hash phase; BUSY with OUTPUT_COUNT 8 to 1 is the digest
+        output, which does not stall. The write lands mid-hash when BUSY falls with no
+        digest-output sample between the hash start and the fall. Cell 010 that follows
+        then grades that SHA256_WHITENING_ENABLE = 1 conditions blocks again
+        (entropy_source.rdl SHA256_WHITENING_ENABLE).
+        """
+        dut = cocotb.top
+        cap = CELL_BOUND_FACTOR * (BLOCK_WORDS + 1) * self._period()
+        hashing = False
+        wait_clk = 0
+        while wait_clk < cap and not hashing:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            wait_clk += 1
+            st = self.rd(dut.esrc_sha256_status_o)
+            hashing = bool(st & 1) and (st >> OUT_SHIFT) & OUT_MASK == 0
+        samples: list[int] = []
+
+        async def _trace() -> None:
+            for _ in range(cap):
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                samples.append(self.rd(dut.esrc_sha256_status_o))
+                if not samples[-1] & 1:
+                    return
+
+        trace = cocotb.start_soon(_trace())
+        await NextTimeStep()
+        await self._wr(ESRC_CTRL, ctrl)
+        await trace
+        fell = bool(samples) and not samples[-1] & 1
+        out_seen = any((s >> OUT_SHIFT) & OUT_MASK for s in samples)
+        self.chk.ctrl(
+            "COND-SHA-OFF-MID-HASH",
+            hashing and fell and not out_seen,
+            wait_clk=wait_clk,
+            fall_clk=len(samples),
+            digest_output_seen=int(out_seen),
+            bound_clk=cap,
+        )
 
     # --- first push, period walk and mid-run writes (downsample leg) -------------
     async def _grade_first_push(self, trace: dict) -> None:
