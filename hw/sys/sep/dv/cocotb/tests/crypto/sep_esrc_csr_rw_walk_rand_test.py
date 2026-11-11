@@ -20,6 +20,15 @@ per check; ``hw/ip/entropy_source/doc/architecture.adoc:220-223``, Reset):
     the ``INTR_TEST`` mask, are independent of each other and clear on write-one; a
     write to ``INTR_TEST`` leaves ``INTR_ENABLE`` unchanged (:128-148, :152-172,
     :176-196).
+  * PIC source 16 (bit 15 of ``sep_internal_interrupts``, ``hw/sys/sep/doc/interrupts.adoc``
+    :22-24, :109-111) carries the persistent-failure interrupt
+    (``hw/ip/entropy_source/regs/entropy_source.rdl``:193): with every enable set it rises
+    from 0 when ``INTR_TEST`` sets every defined bit, ``PERSISTENT_FAILURE`` included, and
+    falls to 0 when a write of one clears every bit (entropy_source.rdl:108-166, :212-262).
+  * An ``rst_ni`` pulse resets the register block and the FIFOs (architecture.adoc:220-222):
+    the first reads after it give the RDL reset values of ``FIFO_STATUS.LEVEL`` (:286),
+    ``INTR_STATUS`` (:108-166), every ``GENERATOR_k_HEALTH_STATUS`` (:426-556) and ``CTRL``
+    (:34-76).
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``, ``+esrc_noise_force``.
 ``SW_RESET_N`` baseline 0x20: the TRNG is released, the Key Manager and every engine
@@ -65,13 +74,27 @@ Checkers:
                     graded from a set value. The walked volatile fields must be
                     exactly the 23 the contract names (``CONTRACT_VOLATILE``).
   CHK-LOCK-MEN      locked trial: ``IDLE`` = 0 and ``LEVEL`` > 0 within 2 t_ref after a
-                    drain and the write of 0. Control: the unlocked trial of the same
+                    drain and the write of 0, which answers OKAY or SLVERR. Control: the unlocked trial of the same
                     seed reads ``IDLE`` = 1 and an empty FIFO for 2 t_ref after
                     ``SHA256_STATUS.BUSY`` (:209) reads 0 and a drain.
   CHK-ESRC-INTR     zero corner status 0; all-ones status = all defined bits; drawn T
                     status = T; after the clear of C status = T & ~C; ``INTR_ENABLE``
                     reads as written (all ones, E, ~E) before and after each clear.
                     Control: the one-bit control reads exactly bit i.
+  CHK-INTR-ALL-ONES PIC source 16 reads 0 in the all-ones corner before the ``INTR_TEST``
+                    write, 1 after it, and 0 after the write-one clear of every bit. The
+                    1 read is the live control of both 0 reads.
+  CHK-ESRC-COLD-RESET after an ``rst_ni`` pulse, the first reads give ``LEVEL`` = 0,
+                    ``INTR_STATUS`` = 0, the twelve ``GENERATOR_k_HEALTH_STATUS`` = 0 and
+                    ``CTRL`` = its RDL reset value, with no X bit (VCS). Control:
+                    CTRL-ESRC-COLD-RESET before the pulse reads ``CTRL`` with
+                    ``AUTOTUNE_ENABLE`` = 1, ``LEVEL`` > 0 and every defined
+                    ``INTR_STATUS`` bit set by ``INTR_TEST``, and after the graded reads
+                    ``MAIN_SM_STATUS.BOOT_PHASE_DONE`` = 0, so no entropy output can have
+                    been written and drained between the release and the ``LEVEL`` read
+                    (entropy_source.rdl:655). The generator status bytes read 0 before
+                    the pulse too, so they are graded at their reset value only. The
+                    pattern driver keeps the ``balanced`` lanes through the pulse.
 The status of a drawn enable mask is logged (``OBS-STATUS-E``), not graded: the
 register text does not state whether a status bit latches with its enable clear.
 t_ref is the clocks from the end of a drain to the 24th word of the entropy stream
@@ -99,6 +122,7 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, reg_sw_readonly, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
+from seq_lib.sep_esrc_alert_seq import IRQ_AGG_IDX
 from seq_lib.sep_esrc_clean_start_seq import (
     LATENCY_FACTOR,
     SepEsrcCleanStart,
@@ -185,6 +209,7 @@ INTR_KEEP = (
     INTR_BITS.index(_fmeta("INTR_STATUS", "FIFO_UNDERFLOW")["bp"]),
 )
 FULL8 = (1 << len(INTR_BITS)) - 1
+GEN_STATUS = tuple(f"GENERATOR_{k}_HEALTH_STATUS" for k in range(12))
 
 
 def intr_value(mask8: int) -> int:
@@ -349,6 +374,8 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         "CHK-ESRC-VOLATILE",
         "CHK-LOCK-MEN",
         "CHK-ESRC-INTR",
+        "CHK-INTR-ALL-ONES",
+        "CHK-ESRC-COLD-RESET",
     )
 
     async def run_scenario(self) -> None:
@@ -389,6 +416,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         await self._intr_leg()
         await self._restore_leg()
         await self._enable_trials()
+        await self._cold_reset_leg()
 
         close_graded_window(self.logger)
         if self._rmon is not None:
@@ -472,6 +500,10 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         if self.t_drain is None:
             self.t_drain = max(1, self._now() - t0)
         return pops
+
+    def _pic16(self) -> int:
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
+        return (vec >> IRQ_AGG_IDX) & 1
 
     def _ctrl_word(self, module_enable: int) -> int:
         return ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=module_enable)
@@ -584,12 +616,24 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         zero_en = f(await self._enable())
         # All-ones corner.
         await self._wr("INTR_ENABLE", d)
+        pic_pre = self._pic16()
         await self._wr("INTR_TEST", d)
         ones_st = f(await self._status())
         ones_en = f(await self._enable())
+        pic_set = self._pic16()
         ones_after = f(await self._w1c(d))
+        pic_clr = self._pic16()
         ones_en_after = f(await self._enable())
         close_graded_window(self.logger)
+        self.chk.ok(
+            "INTR-ALL-ONES",
+            pic_pre == 0 and pic_set == 1 and pic_clr == 0,
+            before_test=pic_pre,
+            after_test=pic_set,
+            after_w1c=pic_clr,
+            all_ones_status=f"0x{ones_st:08x}",
+            all_ones_after_w1c=f"0x{ones_after:x}",
+        )
 
         # One-bit control (fills no bin).
         bit_i = 1 << INTR_BITS[plan.i_bit]
@@ -840,6 +884,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             lock_rb=lk.get("lock_rb"),
             idle_locked=lk.get("idle"),
             level_after_drain=lk.get("level"),
+            ctrl_wr_resp=lk.get("ctrl_wr_resp"),
             bound=2 * lk["t_ref"],
             ctrl_idle_unlocked=ul.get("idle"),
             ctrl_level_after_drain=ul.get("level_max"),
@@ -853,7 +898,9 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             out["lock_rb"] = _fget("FIPS_LOCK", "LOCK", await self._rd("FIPS_LOCK"))
             await self._drain("locked")
             open_graded_window(TEST, self.logger)
-            await self._wr("CTRL", self._ctrl_word(0))
+            # No text states the B code of a write the lock refuses, so OKAY and SLVERR
+            # both pass; a DECERR means the write reached no block.
+            out["ctrl_wr_resp"] = await self._write_resp("CTRL", self._ctrl_word(0))
             t0 = self._now()
             rose = False
             lvl = 0
@@ -867,7 +914,12 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             close_graded_window(self.logger)
             if not rose:
                 out["reason"] = f"timeout:level bound={2 * t_ref}"
-            out["ok"] = rose and out["idle"] == 0 and out["lock_rb"] == 1
+            out["ok"] = (
+                rose
+                and out["idle"] == 0
+                and out["lock_rb"] == 1
+                and out["ctrl_wr_resp"] in RESP_ACCEPTED
+            )
         except TrialTimeout as exc:
             close_graded_window(self.logger)
             out["reason"] = f"timeout:{exc.what} bound={exc.bound}"
@@ -898,3 +950,62 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         except TrialTimeout as exc:
             out["reason"] = f"timeout:{exc.what} bound={exc.bound}"
         return out
+
+    # --- cold reset leg -----------------------------------------------------------------
+    async def _cold_reset_leg(self) -> None:
+        """CHK-ESRC-COLD-RESET: the first reads after an ``rst_ni`` pulse give reset values."""
+        d = INTR_DEF
+        cm = ENTROPY_SOURCE.mask("CTRL")
+        t_ref = await self._start_trial()
+        ctrl_set = ENTROPY_SOURCE.value("CTRL", AUTOTUNE_ENABLE=1) & cm
+        await self._wr("CTRL", ctrl_set)
+        ctrl_pre = await self._rd("CTRL") & cm
+        t0 = self._now()
+        level_pre = 0
+        while level_pre == 0 and self._now() - t0 <= 2 * t_ref:
+            level_pre = await self._level()
+        await self._wr("INTR_ENABLE", d)
+        await self._wr("INTR_TEST", d)
+        intr_pre = await self._status() & d
+        gen_pre = [_fget(r, "STATUS", await self._rd(r)) for r in GEN_STATUS]
+
+        await self.resense()
+        reads: dict[str, int] = {}
+        x_regs = []
+        for reg in ("FIFO_STATUS", "INTR_STATUS", *GEN_STATUS, "CTRL"):
+            reads[reg], known = await self._rd_x(reg)
+            if not known:
+                x_regs.append(reg)
+        boot_done = _fget("MAIN_SM_STATUS", "BOOT_PHASE_DONE", await self._rd("MAIN_SM_STATUS"))
+
+        self.chk.ctrl(
+            "ESRC-COLD-RESET",
+            ctrl_pre == ctrl_set and level_pre > 0 and intr_pre == d and boot_done == 0,
+            ctrl_pre=f"0x{ctrl_pre:08x}",
+            level_pre=level_pre,
+            intr_status_pre=f"0x{intr_pre:08x}",
+            gen_status_pre=gen_pre,
+            boot_phase_done_after=boot_done,
+            level_bound=2 * t_ref,
+        )
+        level = _fget("FIFO_STATUS", "LEVEL", reads["FIFO_STATUS"])
+        intr = reads["INTR_STATUS"] & d
+        ctrl = reads["CTRL"] & cm
+        ctrl_rst = ENTROPY_SOURCE.value("CTRL") & cm
+        gen = [_fget(r, "STATUS", reads[r]) for r in GEN_STATUS]
+        gen_bad = [r for r, v in zip(GEN_STATUS, gen) if v != _fmeta(r, "STATUS")["reset"]]
+        self.chk.ok(
+            "ESRC-COLD-RESET",
+            level == _fmeta("FIFO_STATUS", "LEVEL")["reset"]
+            and intr == ENTROPY_SOURCE.value("INTR_STATUS") & d
+            and not gen_bad
+            and ctrl == ctrl_rst
+            and not x_regs,
+            level=level,
+            intr_status=f"0x{intr:08x}",
+            gen_status=gen,
+            gen_mismatch=",".join(gen_bad) or "none",
+            ctrl=f"0x{ctrl:08x}",
+            ctrl_reset=f"0x{ctrl_rst:08x}",
+            x_regs=",".join(x_regs) or "none",
+        )

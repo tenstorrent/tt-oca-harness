@@ -1126,7 +1126,9 @@ ESRC_PA_DISABLE = 1 << 4  # CHK-PF-DISABLE
 ESRC_PA_HALT = 1 << 5  # CHK-PF-HALT
 ESRC_PA_RECOVER_E = 1 << 6  # CHK-PF-RECOVER, exit by MODULE_ENABLE
 ESRC_PA_RECOVER_R = 1 << 7  # CHK-PF-RECOVER, exit by TRNG reset
-ESRC_PA_SM_ERR = 1 << 8  # CHK-SM-ERR legs set and reset_clears (cp_sm_err, PERSISTENT_FAILURE)
+# CHK-SM-ERR legs set and reset_clears (cp_sm_err, PERSISTENT_FAILURE), and
+# CHK-SM-ERR-W1C (cp_sm_err w1c_clears only).
+ESRC_PA_SM_ERR = 1 << 8
 
 
 def set_esrc_pa_pass(bits: int, log=None) -> bool:

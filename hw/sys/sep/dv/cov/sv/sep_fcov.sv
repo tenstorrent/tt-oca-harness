@@ -28700,8 +28700,8 @@ module sep_fcov (
     logic sf_v;  // 0 failing startup window held, 1 push with BOOT_PHASE_DONE 0
     logic [1:0] tm;
     logic tm_v;  // fall with 0 BOOT_PHASE_DONE 0, 1 BOOT_PHASE_DONE 1, 2 failing pattern
-    logic te;
-    logic te_v;  // stored HEALTH_TEST_CTRL.ENABLE 0 value 6, 1 value 5
+    logic [1:0] te;
+    logic te_v;  // stored HEALTH_TEST_CTRL.ENABLE 0 value 6, 1 value 5, 2 value 0
     logic [1:0] wc;
     logic wc_v;  // stored window 0 below 1024, 1 1024, 2 2048, 3 above 2048
     logic [3:0] ts;
@@ -28740,7 +28740,7 @@ module sep_fcov (
       bins failing_pattern = {2'd2};
     }
     cp_test_enable_set: coverpoint s.te iff (s.te_v) {
-      bins enable_6 = {1'b0}; bins enable_5 = {1'b1};
+      bins enable_6 = {2'd0}; bins enable_5 = {2'd1}; bins enable_0 = {2'd2};
     }
     cp_window_class: coverpoint s.wc iff (s.wc_v) {
       bins below_1024 = {2'd0};
@@ -28870,9 +28870,9 @@ module sep_fcov (
       // While the integrity error persists ERR latches again whatever a write
       // does, so a write of 0 cannot fail; the owner logs it as OBS-SM-ERR-W0.
       ignore_bins w0_keeps = {2'd1};
-      // No text states whether a write of 1 clears ERR while the integrity
-      // error that set it persists; the owner logs that read as OBS-SM-ERR-W1C.
-      ignore_bins w1c_clears = {2'd2};
+      // A write of 1 clears ERR once the state machine error output that set it
+      // is gone (CHK-SM-ERR-W1C).
+      bins w1c_clears = {2'd2};
       bins reset_clears = {2'd3};
     }
   endgroup
@@ -29377,7 +29377,7 @@ module sep_fcov (
         e.tm_v = 1'b1;
       end
       5: begin
-        e.te   = v[0];
+        e.te   = v[1:0];
         e.te_v = 1'b1;
       end
       6: begin
@@ -29855,7 +29855,7 @@ module sep_fcov (
   localparam int unsigned CzPaHalt = 5;  // CHK-PF-HALT
   localparam int unsigned CzPaRecoverE = 6;  // CHK-PF-RECOVER, exit by MODULE_ENABLE
   localparam int unsigned CzPaRecoverR = 7;  // CHK-PF-RECOVER, exit by TRNG reset
-  localparam int unsigned CzPaSmErr = 8;  // CHK-SM-ERR (set, reset_clears)
+  localparam int unsigned CzPaSmErr = 8;  // CHK-SM-ERR (set, reset_clears), CHK-SM-ERR-W1C
   logic [8:0] cz_pa_q = '0;
   wire  [8:0] cz_pa_rel = 9'(esrc_pa_pass) & ~cz_pa_q;
   always @(posedge clk_i) cz_pa_q <= 9'(esrc_pa_pass);
@@ -30112,7 +30112,11 @@ module sep_fcov (
   // under that owner only the cells of that source are taken, and each is
   // held as pending until a check that reads the bit passes (esrc_pa_pass):
   // 0 {status 0, enable 0}, 1 {status 0, enable 1}, 2 {status 1, enable 1},
-  // 3 the hardware raise.
+  // 3 the hardware raise. The bit of CHK-SM-ERR releases these cells only while
+  // no MAIN_SM_STATUS read of the window has shown ERR 1 with the state machine
+  // error output 0 (cz_se_gone): that state follows the error-output inject,
+  // which also drives the PERSISTENT_FAILURE term, and the check that releases
+  // the bit then grades ERR only.
   localparam int unsigned CzPaPfSrc = ENTROPY_SOURCE_INTR_STATUS_PERSISTENT_FAILURE_SHIFT / 4;
   localparam logic [8:0] CzPaIrNc = 9'((1 << CzPaNotrip) | (1 << CzPaConsec));
   localparam logic [8:0] CzPaIrRel[4] = '{
@@ -30122,9 +30126,11 @@ module sep_fcov (
       9'((1 << CzPaTripCount) | (1 << CzPaSmErr))
   };
   logic [3:0] cz_pa_ir = '0;
+  logic cz_se_gone = 1'b0;  // ERR 1 read with esrc_sm_err_i 0 since the window opened
+  wire [8:0] cz_pa_ir_rel = cz_pa_rel & ~(cz_se_gone ? 9'(1 << CzPaSmErr) : 9'h0);
   always @(posedge clk_i) begin
     for (int k = 0; k < 4; k++) begin
-      if (cz_pa_ir[k] && ((cz_pa_rel & CzPaIrRel[k]) != 9'h0)) begin
+      if (cz_pa_ir[k] && ((cz_pa_ir_rel & CzPaIrRel[k]) != 9'h0)) begin
         if (k == 3) cy_intr(7, 6'(CzPaPfSrc));
         else cy_intr(6, 6'({3'(CzPaPfSrc), (k == 2), (k != 0)}));
         cz_pa_ir[k] <= 1'b0;
@@ -30785,6 +30791,7 @@ module sep_fcov (
     if (cy_own_eshp && cz_es_on && cz_sv_ev) begin
       if (cz_ht_en == 3'd6) cz_sth(5, 4'd0);
       if (cz_ht_en == 3'd5) cz_sth(5, 4'd1);
+      if (cz_ht_en == 3'd0) cz_sth(5, 4'd2);
     end
     if (cy_own_eshp && cz_es_on && cz_sv_ev && !$isunknown(cz_wsize)) begin
       if (cz_wsize < 16'd1024) cz_sth(6, 4'd0);
@@ -33198,10 +33205,13 @@ module sep_fcov (
   // sep_esrc_fault_alert_cg cp_sm_err (ESRC_RDL MAIN_SM_STATUS.ERR, sticky,
   // write one to clear). Each cell is a pair of OKAY MAIN_SM_STATUS reads:
   // set (0, then 1 after a counter-copy inject), cleared by the TRNG reset
-  // (1, TRNG reset window, 0). Both are held as pending at the second read
-  // and sample on the rise of esrc_pa_pass bit 8 (CHK-SM-ERR, which also
-  // grades PERSISTENT_FAILURE); a window open drops them. The writes of 0
-  // and 1 run with the window closed and are ignore_bins.
+  // (1, TRNG reset window, 0), cleared by a write of 1 (1, a write of 1, 0,
+  // with esrc_sm_err_i, the state machine error output, 0 from the first read
+  // to the second and no inject or TRNG reset between). Each is held as
+  // pending at the second read and samples on the rise of esrc_pa_pass bit 8
+  // (CHK-SM-ERR, which also grades PERSISTENT_FAILURE, or CHK-SM-ERR-W1C); a
+  // window open drops them. The writes while the counter-copy cause persists
+  // run with the window closed; the write of 0 is an ignore_bins.
   // ---------------------------------------------------------------------
   localparam logic [31:0] CzErrMask = 32'(ENTROPY_SOURCE_MAIN_SM_STATUS_ERR_MASK);
   logic       cz_se_v = 1'b0;    // a MAIN_SM_STATUS read since the window opened
@@ -33209,21 +33219,27 @@ module sep_fcov (
   logic [1:0] cz_se_w = '0;      // 0 no write, 1 a write of 0, 2 a write of 1 since that read
   logic       cz_se_inj = 1'b0;  // a counter-copy inject since that read
   logic       cz_se_rst = 1'b0;  // a TRNG reset window since that read
+  logic       cz_se_live = 1'b0; // esrc_sm_err_i 1 at that read or since
   logic       cz_se_inj_q = 1'b0;
-  logic [1:0] cz_se_pend = '0;   // pending {reset_clears, set}
+  logic [2:0] cz_se_pend = '0;   // pending {w1c_clears, reset_clears, set}
   always @(posedge clk_i) begin
     cz_se_inj_q <= esrc_cntr_inj_i;
     if (cz_pa_rel[CzPaSmErr]) begin
       if (cz_se_pend[0]) cz_falt(8, 6'd0);
       if (cz_se_pend[1]) cz_falt(8, 6'd3);
+      if (cz_se_pend[2]) cz_falt(8, 6'd2);
       cz_se_pend <= '0;
     end
-    if (cz_win_open || in_reset) cz_se_pend <= '0;
+    if (cz_win_open || in_reset) begin
+      cz_se_pend <= '0;
+      cz_se_gone <= 1'b0;
+    end
     if (!cy_own_espa || in_reset) begin
       cz_se_v <= 1'b0;
     end else begin
       if (esrc_cntr_inj_i && !cz_se_inj_q) cz_se_inj <= 1'b1;
       if (cz_trng_rise) cz_se_rst <= 1'b1;
+      if (esrc_sm_err_i) cz_se_live <= 1'b1;
       if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_MAIN_SM_STATUS_REG_ADDR)) begin
         cz_se_w <= ((wr_data & CzErrMask) != 32'h0) ? 2'd2 : 2'd1;
       end
@@ -33233,12 +33249,17 @@ module sep_fcov (
         if (cz_se_v) begin
           if (!cz_se_rd && e && cz_se_inj && !cz_se_rst) cz_se_pend[0] <= 1'b1;
           if (cz_se_rd && !e && (cz_se_w == 2'd0) && cz_se_rst) cz_se_pend[1] <= 1'b1;
+          if (cz_se_rd && !e && (cz_se_w == 2'd2) && !cz_se_inj && !cz_se_rst && !cz_se_live &&
+              !esrc_sm_err_i)
+            cz_se_pend[2] <= 1'b1;
         end
-        cz_se_v   <= 1'b1;
-        cz_se_rd  <= e;
-        cz_se_w   <= 2'd0;
-        cz_se_inj <= 1'b0;
-        cz_se_rst <= 1'b0;
+        if (e && !esrc_sm_err_i) cz_se_gone <= 1'b1;
+        cz_se_v    <= 1'b1;
+        cz_se_rd   <= e;
+        cz_se_w    <= 2'd0;
+        cz_se_inj  <= 1'b0;
+        cz_se_rst  <= 1'b0;
+        cz_se_live <= esrc_sm_err_i;
       end
     end
   end

@@ -93,10 +93,6 @@ APT_WINDOW = 1024
 RCT_ENTROPY_BITS = 20
 # entropy_source.rdl MIN_ENTROPY_H: H is unsigned Q4.4, four fraction bits.
 MIN_ENTROPY_H_FRAC_BITS = 4
-# The advisory-threshold sweep holds one H in [1.0, 8.0) bits/sample (Q4.4
-# 0x10..0x7F) on every seed, between the reset value below 1.0 and the 0xFF top.
-H_MID_LO = 1 << MIN_ENTROPY_H_FRAC_BITS
-H_MID_HI = 8 << MIN_ENTROPY_H_FRAC_BITS
 # entropy_source.rdl marks both HEALTH_TEST_CTRL fields swwel, so the compare
 # window is both field bitmasks, taken from the generated export rather than a
 # hand-typed width.
@@ -435,22 +431,14 @@ class SepEsrcFipsLockCfg:
         lane_reset = NOISE_LANE_SEL.get("reset", 0)
         self.lane_pre = rng.choice(tuple(v for v in range(NOISE_LANES) if v != lane_reset))
         self.lane_post = rng.choice(tuple(v for v in range(NOISE_LANES) if v != self.lane_pre))
-        # Ascending MIN_ENTROPY_H points for the advisory-threshold sweep. The
-        # anchors are H = 0 (no stated cutoff, logged only), the register reset
-        # (below 1.0 bit/sample) and the Q4.4 maximum; the rest come from the
-        # seed so the sweep is not pinned to one corner of the table.
-        h_anchors = {0x00, ENTROPY_SOURCE.reset("MIN_ENTROPY_H"), MIN_ENTROPY_H_MASK}
-        while len(h_anchors) < 8:
-            h_anchors.add(rng.randrange(1, MIN_ENTROPY_H_MASK))
-        self.rec_thresh_h = tuple(sorted(h_anchors))
+        # The advisory-threshold sweep walks every MIN_ENTROPY_H code in
+        # ascending order: H = 0 (no stated cutoff, logged only) and each of the
+        # non-zero codes the H field holds. It draws nothing from the seed.
+        self.rec_thresh_h = tuple(range(MIN_ENTROPY_H_MASK + 1))
         # CHK-POST-UNLOCK must land on a target whose poke differs from the
         # register reset. On a target where they agree, the reset value alone
         # satisfies the readback and a dropped post-unlock write still passes.
         self.release = next(t for t in self.targets if (t.poke & t.mask) != (t.reset & t.mask))
-        # One sweep point in [1.0, 8.0) bits/sample on every seed. Drawn last so
-        # every earlier draw keeps its seed-to-value mapping.
-        self.h_mid = rng.randrange(H_MID_LO, H_MID_HI)
-        self.rec_thresh_h = tuple(sorted(set(self.rec_thresh_h) | {self.h_mid}))
 
     def n_cells(self) -> int:
         return len(self.targets)
@@ -459,8 +447,8 @@ class SepEsrcFipsLockCfg:
         cells = " ".join(t.summary() for t in self.targets)
         return (
             f"seed={self.seed} cells={self.n_cells()} obs_held={self.obs_held} "
-            f"lane_pre={self.lane_pre} lane_post={self.lane_post} h_mid=0x{self.h_mid:02x} "
-            f"rec_thresh_h={[f'0x{h:02x}' for h in self.rec_thresh_h]} {cells}"
+            f"lane_pre={self.lane_pre} lane_post={self.lane_post} "
+            f"rec_thresh_h=0x{self.rec_thresh_h[0]:02x}..0x{self.rec_thresh_h[-1]:02x} {cells}"
         )
 
 
