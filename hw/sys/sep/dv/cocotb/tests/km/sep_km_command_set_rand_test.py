@@ -48,10 +48,10 @@ Checkers:
               the seed (KV pull + KEYGEN vs direct-seed PK) is
               sep_km_abr_seed_sideload_test
   CHK-DEST    a transfer to an engine OUTSIDE the key's DEST_VALID is refused
-              RC_FAILURE, with the target released and idle so a parked engine
-              is not the cause, and with an unconditional control beat -- the
-              SAME handle to an in-mask dest returns rc=0 -- so a dead handle
-              is not the cause either
+              RC_FAILURE, with the target released (its SW_RESET_N bit read
+              back 1) and idle so a parked engine is not the cause, and with
+              an unconditional control beat -- the SAME handle to an in-mask
+              dest returns rc=0 -- so a dead handle is not the cause either
   CHK-SHRED   CMD_ENGINE_SHRED returns rc=0 with its destination echoed, and
               the engine is still correctly re-keyable afterwards: a second,
               DISTINCT known key transferred after the shred encrypts to its
@@ -131,9 +131,10 @@ Checkers:
   CHK-GONE    a shredded engine refuses to start: KAT_KEY_B is transferred to
               AES again and a sideload block encrypts to its golden, then a
               final CMD_ENGINE_SHRED follows and the same start produces no
-              output within a bounded window. The shred is the only change
-              between the two starts, so it reached the key rather than merely
-              returning success. Runs after every AES leg, because an engine
+              output within a bounded window, with STATUS.INPUT_READY then 0
+              (the written block is held, not loaded). The shred is the only
+              change between the two starts, so it reached the key rather than
+              merely returning success. Runs after every AES leg, because an engine
               parked waiting for a key stays that way until its next valid
               key; the vault, OTP-change and warm-reset legs after it run no
               AES block
@@ -234,7 +235,7 @@ from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic
 from sep_base_test import sep_base_test
-from seq_lib.sep_aes_seq import SepAes
+from seq_lib.sep_aes_seq import AES_STATUS_INPUT_READY, SepAes
 from seq_lib.sep_km_mailbox_seq import (
     KM_CMD_ENGINE_SHRED,
     KM_CMD_HW_VER,
@@ -748,6 +749,11 @@ class sep_km_command_set_rand_test(sep_base_test):
         # is outside the key's permitted mask.
         bad_name = DEST_NAME[cfg.bad_dest]
         await self._release_ready(bad_name, "bad-dest-release")
+        sw_reset_n = await self.swrst.read_back()
+        assert sw_reset_n >> SW_RESET_N_BIT[bad_name] & 1, (
+            f"CHK-DEST FAIL: SW_RESET_N reads 0x{sw_reset_n:08x} after the release of "
+            f"{bad_name}, so the engine is still held in reset for the refused transfer"
+        )
         rc, _ = await self.km.key_transfer(handle=handle_a, dest=cfg.bad_dest)
         await self.swrst.park(bad_name)
         assert rc == KM_RC_FAILURE, (
@@ -782,12 +788,13 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.logger.info(
             "CHK-DEST PASS: transfer of handle 0x%02x to 0x%02x (%s, released and idle for "
-            "the beat) refused with RC_FAILURE, while the SAME handle to in-mask dest 0x%02x "
-            "returned rc=0 -- the refusal is the destination policy, not a parked engine and "
-            "not a dead handle",
+            "the beat, SW_RESET_N=0x%08x) refused with RC_FAILURE, while the SAME handle to "
+            "in-mask dest 0x%02x returned rc=0 -- the refusal is the destination policy, not a "
+            "parked engine and not a dead handle",
             handle_a,
             cfg.bad_dest,
             bad_name,
+            sw_reset_n,
             KM_DEST_AES,
         )
         await self._check_alive("post-dest-refusal")
@@ -1121,13 +1128,25 @@ class sep_km_command_set_rand_test(sep_base_test):
             "CHK-GONE FAIL: the AES produced a result with sideload selected after its "
             "key was shredded -- the shred did not reach the key"
         )
+        # INPUT_READY reads 0 while the written DATA_IN block is not loaded
+        # (OpenTitan aes registers.md, STATUS.INPUT_READY), and a sideload start
+        # waits for a valid key (theory_of_operation.md, key sideload). A start
+        # the AES never latched leaves INPUT_READY at 1.
+        status_after = await self.aes.read_status()
+        assert not status_after >> AES_STATUS_INPUT_READY & 1, (
+            f"CHK-GONE FAIL: STATUS=0x{status_after:08x} after the refusal window has "
+            "INPUT_READY=1, so the AES did not hold the written block and the missing output "
+            "does not show a refused start"
+        )
         self.logger.info(
             "CHK-GONE PASS: pre-shred sideload block gave output within %d polls, "
             "ct=%s == AES(KAT_KEY_B, PT) golden; after CMD_ENGINE_SHRED the same start "
-            "produced no output in %d polls (fail-closed START)",
+            "produced no output in %d polls with the block held (STATUS=0x%08x, "
+            "input_ready=0) (fail-closed START)",
             _SHRED_REFUSE_POLLS,
             [hex(w) for w in ct_live],
             _SHRED_REFUSE_POLLS,
+            status_after,
         )
 
         # --- CHK-VAULT-FILL / CHK-VAULT-FULL: fill the KPV, then exhaust it ---
