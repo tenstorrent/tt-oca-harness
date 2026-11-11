@@ -146,7 +146,10 @@ Checkers:
                        16-word block, architecture.adoc:142), else 1. The cell 100
                        write lands while the whitener hashes a block, so cell 010
                        also grades that SHA256_WHITENING_ENABLE = 1 conditions
-                       blocks again (entropy_source.rdl SHA256_WHITENING_ENABLE).
+                       blocks again (entropy_source.rdl SHA256_WHITENING_ENABLE):
+                       its first offered word ends a full 16-word input block
+                       (INPUT_COUNT at the window start plus the whitener input
+                       words of the window).
                        Controls ``CTRL-COND-CTRL-CELL``: at least one offered word;
                        ``CTRL-COND-SHA-OFF-MID-HASH``: BUSY falls at the cell 100
                        write with no digest-output sample after the hash start.
@@ -227,6 +230,8 @@ from env.sep_esrc_pattern_noise import (
 from env.sep_esrc_sha_tap import (
     BLOCK_WORDS,
     DIGEST_WORDS,
+    IN_MASK,
+    IN_SHIFT,
     OUT_MASK,
     OUT_SHIFT,
     QUIET_GUARD,
@@ -1395,9 +1400,12 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             await self._drain_fifo("FIFO_STATUS", ESRC_FIFO_RDATA, ESRC_FIFO_STATUS)
             st_a = await self._rd(ESRC_FIFO_STATUS)
             words = strobes = pushes = 0
+            in_start = None
             for _ in range(cap):
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
+                if in_start is None:
+                    in_start = (self.rd(dut.esrc_sha256_status_o) >> IN_SHIFT) & IN_MASK
                 strobes += self.rd(dut.esrc_decor_valid_o)
                 pushes += self.rd(dut.esrc_whiten_push_o)
                 words += self.rd(dut.esrc_compress_vld_o)
@@ -1407,6 +1415,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             st_b = await self._rd(ESRC_FIFO_STATUS)
             sha_rb = await self._rd(ESRC_SHA256_STATUS)
             cell = f"{bypass}{sha}0"
+            # Whitened cell: the first offered word ends a full 16-word input block.
+            block_ok = (bypass, sha) != (0, 1) or in_start + pushes >= BLOCK_WORDS
             self.chk.ctrl(
                 "COND-CTRL-CELL",
                 words >= 1 and ctrl_rb == ctrl and fifo_en == 0,
@@ -1426,9 +1436,15 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             wptr_b = _get(st_b, "FIFO_STATUS", "WPTR")
             if self.chk.ok(
                 "COND-CTRL-CELL",
-                words >= 1 and level_a < FIFO_DEPTH and level_b == level_a and wptr_b == wptr_a,
+                words >= 1
+                and block_ok
+                and level_a < FIFO_DEPTH
+                and level_b == level_a
+                and wptr_b == wptr_a,
                 cell=cell,
                 offered_words=words,
+                input_count_start=in_start,
+                whiten_pushes=pushes,
                 level_before=level_a,
                 level_after=level_b,
                 wptr_before=wptr_a,

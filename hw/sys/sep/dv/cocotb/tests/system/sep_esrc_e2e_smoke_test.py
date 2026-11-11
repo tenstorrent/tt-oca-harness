@@ -46,7 +46,7 @@ words, CHK4 the genbits and CHK5 the pool beats, and CHK-E2E-SCOREBOARD passes
 only when that report is clean. CTRL-E2E-BYPASS-CFG reads CTRL back after the
 lock and needs the three fields at the written values. Before that bring-up the
 KM is held in software reset (SW_RESET_N KM bit 0), as hw/sys/sep/doc/trng.adoc
-requires before a TRNG reset; CTRL-E2E-KM-PARK reads the bit back as 0. The KM
+requires before a TRNG reset; CTRL-E2E-KM-PARK reads the bit as 1 before and 0 after. The KM
 endpoint is not scored in this flow.
 
 Closed read path (+esrc_fifo_closed). hw/ip/entropy_source/doc/architecture.adoc:
@@ -454,11 +454,19 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         self.drbg_sb.stop()
         resets = SepSwReset(self)
         resets.value = await resets.read_back()
+        km_bit = SW_RESET_N_BIT["km"]
+        before = resets.value
         await resets.park("km")
         parked = await resets.read_back()
-        km_held = not (parked >> SW_RESET_N_BIT["km"]) & 1
-        await self._grade(km_held, f"CTRL-E2E-KM-PARK FAIL: SW_RESET_N=0x{parked:08x} KM not held")
-        self.logger.info("CTRL-E2E-KM-PARK: SW_RESET_N=0x%08x KM held", parked)
+        km_held = (before >> km_bit) & 1 and not (parked >> km_bit) & 1
+        await self._grade(
+            km_held,
+            f"CTRL-E2E-KM-PARK FAIL: SW_RESET_N before=0x{before:08x} "
+            f"after=0x{parked:08x}: KM not released before or not held after",
+        )
+        self.logger.info(
+            "CTRL-E2E-KM-PARK: SW_RESET_N before=0x%08x after=0x%08x KM held", before, parked
+        )
         await self.bring_up_entropy(
             cfg, strict=True, score_km=False, score_sinks={"pool": "golden"}
         )
