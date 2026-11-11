@@ -27595,7 +27595,7 @@ pattern (a fixed-cell variant of the image-pattern family).
 
 *Test Coverage*:
 
-* Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern alt55` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds 0x5555...; the write-lock bit of each schema block is set, which is LOCKS slots 0-4 (the schema carries one lock pair for all of SPARE, so SPARE1 to SPARE27 stay write-unlocked). Every read lock is clear, so every word compares content, and LOCKS is never zero, so sensing it is visible and a write of 0 to it is a real clear attempt.
+* Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern alt55` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds 0x5555...; the write-lock bit of each schema block is set, which is LOCKS slots 0-4 (the schema carries one lock pair for all of SPARE, so SPARE1, SPARE2 and SPARE_TAIL stay write-unlocked). Every read lock is clear, so every word compares content, and LOCKS is never zero, so sensing it is visible and a write of 0 to it is a real clear attempt.
 * Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. Lock semantics come from the RDL `LOCKS` description (a write-locked field "is not programmable", a read-locked shadow register "is not readable") and `architecture.adoc` line 233 (`lock[0] = 1` is read-locked). Neither states the response code or the word a read-locked read returns, so read-locked reads are held to non-disclosure only and their response code is recorded, not asserted.
 * After sense all 64 words are read. Every non-HARNESS_LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
 * HARNESS_LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 64 words then reads HARNESS_LOCKS as all-ones, and each of the 62 other words, now read-locked, must return neither its image word nor its complement.
@@ -27614,9 +27614,9 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 |`CHK-EFUSE-IMG-IMAGE` |The schema the generator used matches the generated RDL map (block order, bit offsets and widths, LOCKS bit positions); the generated image has a non-zero LOCKS, at least one write-locked and one write-unlocked data word, a non-zero data word and no read lock, every data word equals the pattern word, and the bank model's word 0 equals image word 0, so the image reached the model
 |`CHK-EFUSE-IMG-SENSE` |All 64 SMC_EFUSE_MAP words read after the first sense equal the image
 |`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; each of the two counts is at least one
-|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and each of the 254 non-LOCKS words read afterwards, read-locked, returns neither its image word nor its complement (response code not asserted)
+|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and each of the 60 non-LOCKS words read afterwards, read-locked, returns neither its image word nor its complement (response code not asserted)
 |`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 64 words again equal the image
-|`CHK-EFUSE-IMG-SCOREBOARD` |The scoreboard booked exactly the 774 exact-value compares the sequence issues (two 256-word content sweeps, 254 complement readbacks, 6 LOCKS readbacks and 2 LOCKS reads in the read-locked sweep), derived from the RDL map size
+|`CHK-EFUSE-IMG-SCOREBOARD` |The scoreboard booked exactly the 204 exact-value compares the sequence issues (two 64-word content sweeps, 60 complement readbacks, 12 LOCKS readbacks and 4 LOCKS reads in the read-locked sweep), derived from the RDL map size
 |===
 
 *Pass Criteria*: `CHK-EFUSE-IMG-IMAGE`, `CHK-EFUSE-IMG-LOCKS-SET-ONLY`, `CHK-EFUSE-IMG-RESENSE`, `CHK-EFUSE-IMG-SCOREBOARD`, `CHK-EFUSE-IMG-SENSE`, `CHK-EFUSE-IMG-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -27670,9 +27670,9 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 |`CHK-EFUSE-IMG-IMAGE` |The schema the generator used matches the generated RDL map (block order, bit offsets and widths, LOCKS bit positions); the generated image has a non-zero LOCKS, at least one write-locked and one write-unlocked data word, a non-zero data word and no read lock, every data word equals the pattern word, and the bank model's word 0 equals image word 0, so the image reached the model
 |`CHK-EFUSE-IMG-SENSE` |All 64 SMC_EFUSE_MAP words read after the first sense equal the image
 |`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; each of the two counts is at least one
-|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and each of the 254 non-LOCKS words read afterwards, read-locked, returns neither its image word nor its complement (response code not asserted)
+|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and each of the 60 non-LOCKS words read afterwards, read-locked, returns neither its image word nor its complement (response code not asserted)
 |`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 64 words again equal the image
-|`CHK-EFUSE-IMG-SCOREBOARD` |The scoreboard booked exactly the 774 exact-value compares the sequence issues (two 256-word content sweeps, 254 complement readbacks, 6 LOCKS readbacks and 2 LOCKS reads in the read-locked sweep), derived from the RDL map size
+|`CHK-EFUSE-IMG-SCOREBOARD` |The scoreboard booked exactly the 204 exact-value compares the sequence issues (two 64-word content sweeps, 60 complement readbacks, 12 LOCKS readbacks and 4 LOCKS reads in the read-locked sweep), derived from the RDL map size
 |===
 
 *Pass Criteria*: `CHK-EFUSE-IMG-IMAGE`, `CHK-EFUSE-IMG-LOCKS-SET-ONLY`, `CHK-EFUSE-IMG-RESENSE`, `CHK-EFUSE-IMG-SCOREBOARD`, `CHK-EFUSE-IMG-SENSE`, `CHK-EFUSE-IMG-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -27726,9 +27726,9 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 |`CHK-EFUSE-IMG-IMAGE` |The schema the generator used matches the generated RDL map (block order, bit offsets and widths, LOCKS bit positions); the generated image has a non-zero LOCKS, at least one write-locked and one write-unlocked data word, a non-zero data word and no read lock, and the bank model's word 0 equals image word 0, so the image reached the model
 |`CHK-EFUSE-IMG-SENSE` |All 64 SMC_EFUSE_MAP words read after the first sense equal the image
 |`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; each of the two counts is at least one
-|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and each of the 254 non-LOCKS words read afterwards, read-locked, returns neither its image word nor its complement (response code not asserted)
+|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and each of the 60 non-LOCKS words read afterwards, read-locked, returns neither its image word nor its complement (response code not asserted)
 |`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 64 words again equal the image
-|`CHK-EFUSE-IMG-SCOREBOARD` |The scoreboard booked exactly the 774 exact-value compares the sequence issues (two 256-word content sweeps, 254 complement readbacks, 6 LOCKS readbacks and 2 LOCKS reads in the read-locked sweep), derived from the RDL map size
+|`CHK-EFUSE-IMG-SCOREBOARD` |The scoreboard booked exactly the 204 exact-value compares the sequence issues (two 64-word content sweeps, 60 complement readbacks, 12 LOCKS readbacks and 4 LOCKS reads in the read-locked sweep), derived from the RDL map size
 |===
 
 *Pass Criteria*: `CHK-EFUSE-IMG-IMAGE`, `CHK-EFUSE-IMG-LOCKS-SET-ONLY`, `CHK-EFUSE-IMG-RESENSE`, `CHK-EFUSE-IMG-SCOREBOARD`, `CHK-EFUSE-IMG-SENSE`, `CHK-EFUSE-IMG-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -28575,7 +28575,7 @@ handling of a request withdrawn mid-command is outside this test.
 
 *BFM / Model*: SEP_IN AXI driver (word reads compared with the image); the reset agent (cold reset
 assert and release); a passive sampler on every `clk_smc_i` edge of `rst_primary_smc_clk_no` and
-`tb_fuse_sense_done` that captures `efuse_shadow_probe_o` (256 words of 32 bits) on each 0 to 1
+`tb_fuse_sense_done` that captures `efuse_shadow_probe_o` (64 words of 32 bits) on each 0 to 1
 edge of sense done; the shadow-register output port `shadow_regs` (`shadow_regs_o`) read as one
 8192-bit integer; the eFuse bank is the DV model, loaded from the image file the run senses (the
 bench default asset by default, or an image the leaf writes into the run directory under
@@ -28602,7 +28602,7 @@ fixed-cell variant modules.
   finishes and rises once; on that first rise `efuse_shadow_probe_o` already holds the whole image
   (`doc/integrator/src/smu-smc.adoc`, eFuse Interface, sensing once per cold boot;
   `hw/sys/smc/doc/port_table.adoc`, `smc_fuse_sense_done_o` row).
-* All 256 words of the SMC_EFUSE_MAP shadow, including the `LOCKS` words, read over SEP_IN as the
+* All 64 words of the SMC_EFUSE_MAP shadow, including the four `LOCKS` words, read over SEP_IN as the
   image words, and the probe still equals the image after the sweep
   (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`).
 * The sense-done signal does not drop and does not rise a second time over a window of 2000 edges
@@ -28613,23 +28613,24 @@ fixed-cell variant modules.
 * The pattern kinds select the image: the default asset, zero, ones, walking one, random and
   pairwise-distinct (unique) words; the zero kind carries 0 in every data word and the lowest
   write-lock bit in `LOCKS` word 0, so the `LOCKS` compares tell a sensed image from a reset value.
-  Only write-lock bits are ever set in the generated `LOCKS` words, so no word is read-locked in a
-  generated image.
+  Only HARNESS_LOCKS write-lock bits are ever set in `LOCKS` word 0; words 1 to 3 (the upper
+  HARNESS_LOCKS word and the two SUPPLEMENTARY_LOCKS words) carry the pattern like every data
+  word, so no map region is read-locked in a generated image.
 
 *Test Procedure*:
 
 [arabic]
-. Require the image to hold 256 words (pairwise distinct for the unique kind), wait for
+. Require the image to hold 64 words (pairwise distinct for the unique kind), wait for
   `tb_fuse_sense_done` within 200000 clocks, start the sampler and let it take 4 samples.
 . Print the image name, kind, seed and `LOCKS`; send the cold reset assertion, check the reset
   state, wait for `rst_primary_smc_clk_no` low, require 8 samples with the reset low and sense done
   0, release the reset and wait for the release.
 . Wait for the first rise of `tb_fuse_sense_done` (bounded at 200000 edges), require sense done 0
-  on every sample from the reset to that rise and the 256 captured probe words to equal the image;
+  on every sample from the reset to that rise and the 64 captured probe words to equal the image;
   then wait for the warm domain to be released.
 . Read every word that is not read-locked over SEP_IN and require the image word; require words 0
-  and 255 to be read; require the probe to equal the image again.
-. For the unique kind only: after one more edge require all 256 probe words to equal the image.
+  and 63 to be read; require the probe to equal the image again.
+. For the unique kind only: after one more edge require all 64 probe words to equal the image.
 . Issue 64 reads spread over the unlocked words inside a 2000-edge window, wait for the window to
   end, and require sense done 1 on every sample of the window and from the first rise onward and
   exactly one 0 to 1 transition since the release.
@@ -28645,10 +28646,10 @@ fixed-cell variant modules.
 |===
 |Checker |Description
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
-edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+edge before its first rise, rises after the release, and all 64 words of `efuse_shadow_probe_o`
 captured on that rise equal the image.
 |`CHK-EMAP-SENSE-DEFAULT` |For the default image, every SEP_IN read of a non-read-locked word
-equals the image word with words 0 and 255 included, and all 256 probe words equal the image again
+equals the image word with words 0 and 63 included, and all 64 probe words equal the image again
 after the sweep. The id varies with the configuration: `CHK-EMAP-SENSE-UNIQUE` for the unique kind
 and `CHK-EMAP-SENSE-PATTERNS` for the zero, ones, walking and random kinds.
 |`CHK-EMAP-SENSE-DONE-ONCE` |`tb_fuse_sense_done` reads 1 on all 2000 samples of the window with 64
@@ -28716,10 +28717,10 @@ cell's own checker ids.
 reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
-edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+edge before its first rise, rises after the release, and all 64 words of `efuse_shadow_probe_o`
 captured on that rise equal the image.
 |`CHK-EMAP-SENSE-UNIQUE` |For the unique image every SEP_IN read of a non-read-locked word equals
-the image word with words 0 and 255 included, and all 256 probe words equal the image again after
+the image word with words 0 and 63 included, and all 64 probe words equal the image again after
 the sweep.
 |`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
 that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
@@ -28782,10 +28783,10 @@ cell's own checker ids.
 reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
-edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+edge before its first rise, rises after the release, and all 64 words of `efuse_shadow_probe_o`
 captured on that rise equal the image.
 |`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
-image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+image word with words 0 and 63 included, and all 64 probe words equal the image again after the
 sweep.
 |`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
 that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
@@ -28848,10 +28849,10 @@ cell's own checker ids.
 reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
-edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+edge before its first rise, rises after the release, and all 64 words of `efuse_shadow_probe_o`
 captured on that rise equal the image.
 |`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
-image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+image word with words 0 and 63 included, and all 64 probe words equal the image again after the
 sweep.
 |`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
 that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
@@ -28914,10 +28915,10 @@ cell's own checker ids.
 reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
-edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+edge before its first rise, rises after the release, and all 64 words of `efuse_shadow_probe_o`
 captured on that rise equal the image.
 |`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
-image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+image word with words 0 and 63 included, and all 64 probe words equal the image again after the
 sweep.
 |`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
 that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
@@ -28980,10 +28981,10 @@ cell's own checker ids.
 reads issued and on every sample from its first rise, with exactly one 0 to 1 transition since the
 release.
 |`CHK-EMAP-SENSE-FIRST-DONE` |`tb_fuse_sense_done` is 0 on every sample from the cold reset to the
-edge before its first rise, rises after the release, and all 256 words of `efuse_shadow_probe_o`
+edge before its first rise, rises after the release, and all 64 words of `efuse_shadow_probe_o`
 captured on that rise equal the image.
 |`CHK-EMAP-SENSE-PATTERNS` |For this image every SEP_IN read of a non-read-locked word equals the
-image word with words 0 and 255 included, and all 256 probe words equal the image again after the
+image word with words 0 and 63 included, and all 64 probe words equal the image again after the
 sweep.
 |`CHK-EMAP-SHADOW-OUT-SENSED` |The `shadow_regs` port equals the image word for word on every word
 that is not read-locked, and as a whole when none is read-locked; read-locked words are printed
