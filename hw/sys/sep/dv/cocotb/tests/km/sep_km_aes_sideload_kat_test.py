@@ -42,10 +42,13 @@ Checkers:
            software key written) to an encrypt destination, then decrypts that
            region to a decrypt destination. op=enc: the encrypt destination
            reads back AES-256-ECB(known_key, plaintext) (FIPS-197 golden).
-           op=dec: the decrypt destination reads back the plaintext. part=src,
-           guard: the source region and the six 64-bit guard words read back
-           unchanged. The software key registers hold the dummy key, so a
-           wrong key select fails op=enc
+           op=dec: the decrypt destination reads back the plaintext. The
+           software key registers hold the dummy key, so a wrong key select
+           fails op=enc
+  CTRL-AES-SRAM-REGIONS  after both legs, the source region and the six 64-bit
+           guard words read back unchanged (part=src, part=guard). The bench
+           master is the only agent that writes SEP SRAM in this leaf, so these
+           lines prove the bench addressing, not a DUT behavior
   OBS-AES-SRAM-KM-LAT  per leg, min/max/first clk_i cycles from the DATA_IN_3
            write response to the STATUS read that shows OUTPUT_VALID (includes
            the STATUS read latency). Logged, not graded: the OUTPUT_VALID wait
@@ -606,17 +609,17 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
 
         src_got = await self._sram_read(plan.src, 2 * plan.n)
         assert src_got == plan.pt, (
-            "CHK-AES-SRAM-KM FAIL part=src: source region changed "
+            "CTRL-AES-SRAM-REGIONS FAIL part=src: source region changed "
             f"got={_hex64(src_got)} exp={_hex64(plan.pt)}"
         )
         guard_got = [(await self._sram_read(a))[0] for a in plan.guard_addrs]
         assert guard_got == plan.guard_vals, (
-            "CHK-AES-SRAM-KM FAIL part=guard: guard word changed "
+            "CTRL-AES-SRAM-REGIONS FAIL part=guard: guard word changed "
             f"addrs=[{','.join(f'0x{a:08x}' for a in plan.guard_addrs)}] "
             f"got={_hex64(guard_got)} exp={_hex64(plan.guard_vals)}"
         )
         self.logger.info(
-            "CHK-AES-SRAM-KM PASS part=src,guard: source got=%s exp=%s; guards got=%s exp=%s",
+            "CTRL-AES-SRAM-REGIONS PASS part=src,guard: source got=%s exp=%s; guards got=%s exp=%s",
             _hex64(src_got),
             _hex64(plan.pt),
             _hex64(guard_got),

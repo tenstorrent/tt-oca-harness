@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM SRAM scrambler: key and address dependence, the one-to-one row map, the lock, resets, any key.
+"""KM SRAM scrambler: key and address dependence, the one-to-one row map, the lock, resets, key 0 and all-ones.
 
 no_cpu / lsu_stub_all_live / +skip_fuse_sense / +km_rom_hex=km_rom_scr.param.parhex.
 Seeded (``SepSeededRng`` in ``env/sep_km_img_param.py``): every draw is logged as
@@ -58,12 +58,12 @@ Checks:
                     SCRAMBLER_KEY 0x00000000 each of the 8 reads at addrs8
                     returns the epoch word stored there under the same key
                     (``data_ep[0..7]``), and under 0xFFFFFFFF each returns
-                    ``data_ep[8..15]``; 16 of 16. SCRAMBLER_KEY is a 32-bit
+                    ``data_ep[8..15]``; 16 of 16. The store and the read use
+                    the same key, so this grades the round trip under these
+                    keys, not the stored form. SCRAMBLER_KEY is a 32-bit
                     ``sw = rw`` field with no reserved value
-                    (``hw/ip/key_manager/regs/km_csr.rdl:557-567``), and
-                    and the round key "Rkey = scrambler_key[31:0] ^
-                    {addr[N-1:0] repeated to fill 32-bits}" takes any key
-                    (``hw/ip/scrambler/doc/architecture.adoc:132``)
+                    (``hw/ip/key_manager/regs/km_csr.rdl:557-567``), so both
+                    keys are legal (``hw/ip/scrambler/doc/architecture.adoc:132``)
   CHK-SSCR-RT-KB    the same round trip under kB: each of the 8 reads returns
                     ``data_ep[16..23]``; 8 of 8
 
