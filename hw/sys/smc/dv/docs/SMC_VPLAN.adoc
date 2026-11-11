@@ -28091,9 +28091,10 @@ not specified; the peak depth is measured and only a depth above one is required
 *BFM / Model*: SEP_IN AXI driver (32-bit and 64-bit reads, one item inspected for beats and
 transfer bytes, read and write error-response items); the wait probes `tb_fuse_sense_done`,
 `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`; the eFuse bank is the DV model, loaded from the
-256-word marker image the leaf writes into the run directory under `+smc_efuse_hex` (every word
-distinct, `LOCKS` 0x4000_0000_0000_0000); the generated SMC address map symbols for the map base,
-size, region bases and SPARE and I2C_I3C_ID strides; an EFUSE protocol-VIP record is booked at the
+64-word marker image the leaf writes into the run directory under `+smc_efuse_hex` (every word
+distinct, `HARNESS_LOCKS` words 0 and 0x4000_0000, `SUPPLEMENTARY_LOCKS` the marker words 2 and 3,
+no map region locked); the generated SMC address map symbols for the map base, size, region bases
+and the SPARE, SPARE_TAIL and I2C_I3C_ID strides; an EFUSE protocol-VIP record is booked at the
 end
 
 *Run mode*: one testlist entry in `testlists/efuse.toml`; groups `all`, `hosted`; `run_modes`
@@ -28107,16 +28108,17 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* The SMC_EFUSE_MAP register layout: `LOCKS` at 0x0, `JTAG_PUBLIC_IDENTITY` at 0x8 (eight words),
-  nine `I2C_I3C_ID` elements at 0x28 plus 8 per element, `SMC_CONFIG` at 0x70,
-  `OCCP_TRANSPORT_TIMEOUT` at 0x78 and 28 `SPARE` elements at 0x80 with a 0x20 stride, tiling the
-  0x400-byte map (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`).
+* The SMC_EFUSE_MAP register layout: `HARNESS_LOCKS` at 0x0, `SUPPLEMENTARY_LOCKS` at 0x8,
+  `JTAG_PUBLIC_IDENTITY` at 0x10 (eight words), nine `I2C_I3C_ID` elements at 0x30 plus 8 per
+  element, `SMC_CONFIG` at 0x78, `OCCP_TRANSPORT_TIMEOUT` at 0x80, three `SPARE` elements at 0x88
+  with a 0x20 stride and three `SPARE_TAIL` elements at 0xE8 with an 8 stride, tiling the
+  0x100-byte map (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`).
 * Every one of the 64 words reads its own marker word with no gap or alias between adjacent
   regions, region-edge words included.
 * The 64-bit registers read correctly as separate 32-bit halves and as one 64-bit access, with the
   high word above the low word, and `SMC_CONFIG` is read as one 32-bit access in a single beat
   (`smc_efuse_map.rdl`, reg `SMC_CONFIG`).
-* Reads past the 0x400-byte map inside the 0x1000-byte aperture are answered by the past-extent
+* Reads past the 0x100-byte map inside the 0x1000-byte aperture are answered by the past-extent
   responder with a read response of DECERR and data 0xBADCAB1E (`hw/sys/smc/regs/smc.rdl`,
   `smc_efuse_map` past-extent response). The specification does not state the extent of the range.
 * Writes past the map are refused with an error response; `smc.rdl` declares SLVERR for them, and
@@ -28128,28 +28130,30 @@ draws nothing from the seed.
 *Test Procedure*:
 
 [arabic]
-. Check the generated map symbols (size 0x400, region offsets and strides) and the marker image
-  (256 distinct words, `LOCKS` words 0 and 0x4000_0000), then wait for `tb_fuse_sense_done` within
-  200000 clocks.
-. Read the eight `JTAG_PUBLIC_IDENTITY` words at 0x08 to 0x24 and both words of the nine
-  `I2C_I3C_ID` elements and require marker words 2 to 9 and 10 to 27, all 26 values distinct.
-. Read `SMC_CONFIG` (0x70, 0x74) and `OCCP_TRANSPORT_TIMEOUT` (0x78, 0x7C) and require marker words
-  28 to 31 and the two registers to differ.
-. Read the first word of each of the 28 `SPARE` elements and the last words of `SPARE[0]` (0x9C) and
-  `SPARE[27]` (0x3FC); require their marker words and all 30 values distinct.
-. Read all 256 words at 4 times the word number and require each marker word.
-. Read `LOCKS`, the nine `I2C_I3C_ID` elements, `SMC_CONFIG` and `OCCP_TRANSPORT_TIMEOUT` as
-  separate 32-bit halves; require the marker halves and the two halves of each register to differ.
-. Read `LOCKS` and `OCCP_TRANSPORT_TIMEOUT` as single 64-bit accesses and require the high and low
-  marker words in order.
-. Read 0x70 as one 32-bit item and require one beat, four transfer bytes, OKAY and marker word 28.
-. Error injection. Point: offsets 0x400 and 0xFFC over SEP_IN, past the 0x400-byte map inside the
+. Check the generated map symbols (size 0x100, region offsets and strides) and the marker image
+  (64 distinct words, `HARNESS_LOCKS` words 0 and 0x4000_0000, no map region locked), then wait for
+  `tb_fuse_sense_done` within 200000 clocks.
+. Read the eight `JTAG_PUBLIC_IDENTITY` words at 0x10 to 0x2C and both words of the nine
+  `I2C_I3C_ID` elements and require marker words 4 to 11 and 12 to 29, all 26 values distinct.
+. Read `SMC_CONFIG` (0x78, 0x7C) and `OCCP_TRANSPORT_TIMEOUT` (0x80, 0x84) and require marker words
+  30 to 33 and the two registers to differ.
+. Read the first word of each of the three `SPARE` elements, the last words of `SPARE[0]` (0xA4) and
+  `SPARE[2]` (0xE4), the first word of each of the three `SPARE_TAIL` elements and the last word of
+  `SPARE_TAIL[2]` (0xFC); require their marker words and all 9 values distinct.
+. Read all 64 words at 4 times the word number and require each marker word.
+. Read `HARNESS_LOCKS`, `SUPPLEMENTARY_LOCKS`, the nine `I2C_I3C_ID` elements, `SMC_CONFIG` and
+  `OCCP_TRANSPORT_TIMEOUT` as separate 32-bit halves; require the marker halves and the two halves
+  of each register to differ.
+. Read `HARNESS_LOCKS` and `OCCP_TRANSPORT_TIMEOUT` as single 64-bit accesses and require the high
+  and low marker words in order.
+. Read 0x78 as one 32-bit item and require one beat, four transfer bytes, OKAY and marker word 30.
+. Error injection. Point: offsets 0x100 and 0xFFC over SEP_IN, past the 0x100-byte map inside the
   0x1000-byte aperture. Kind: past-extent reads. Expected response: DECERR with data 0xBADCAB1E on
-  each. Before them, read 0x3FC and require marker word 255.
-. Error injection. Point: offsets 0x400 and 0xFFC over SEP_IN. Kind: past-extent writes of
+  each. Before them, read 0xFC and require marker word 63.
+. Error injection. Point: offsets 0x100 and 0xFFC over SEP_IN. Kind: past-extent writes of
   0xFFFF_FFFF. Expected response: an error response on each (SLVERR or DECERR).
-. Read all 256 words again and require the marker words, then read `LOCKS` and require 0x0 and
-  0x4000_0000.
+. Read all 64 words again and require the marker words, then read `HARNESS_LOCKS` and require 0x0
+  and 0x4000_0000.
 . Require the eleven steps in order with increasing time stamps, the checker lines in the order
   printed and the SEP_IN access count at or above the call count; print the fence and the waits.
 
@@ -28158,31 +28162,33 @@ draws nothing from the seed.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EMAP-LAYOUT-JPI-I2C` |The eight `JTAG_PUBLIC_IDENTITY` words at 0x08 to 0x24 read marker
-words 2 to 9 and the nine `I2C_I3C_ID` elements at 0x28 plus 8 per element (first 0x28, last 0x68)
-read marker words 10 to 27, all 26 values pairwise distinct.
-|`CHK-EMAP-LAYOUT-CFG-OCCP` |Offsets 0x70 to 0x7C read marker words 28 to 31 and the `SMC_CONFIG`
+|`CHK-EMAP-LAYOUT-JPI-I2C` |The eight `JTAG_PUBLIC_IDENTITY` words at 0x10 to 0x2C read marker
+words 4 to 11 and the nine `I2C_I3C_ID` elements at 0x30 plus 8 per element (first 0x30, last 0x70)
+read marker words 12 to 29, all 26 values pairwise distinct.
+|`CHK-EMAP-LAYOUT-CFG-OCCP` |Offsets 0x78 to 0x84 read marker words 30 to 33 and the `SMC_CONFIG`
 and `OCCP_TRANSPORT_TIMEOUT` values differ, so the two registers do not alias.
-|`CHK-EMAP-LAYOUT-SPARE` |The first word of each `SPARE[k]` at 0x80 plus 0x20 per element reads its
-marker word, `SPARE[0]` word 7 (0x9C) and the last mapped word 0x3FC read their marker words, and
-the 30 values are distinct.
-|`CHK-EMAP-LAYOUT-SWEEP` |All 256 words read their marker words, region-edge offsets included, so no
+|`CHK-EMAP-LAYOUT-SPARE` |The first word of each `SPARE[k]` at 0x88 plus 0x20 per element reads its
+marker word, `SPARE[0]` word 7 (0xA4) and `SPARE[2]` word 7 (0xE4) read their marker words, the
+first word of each `SPARE_TAIL[k]` at 0xE8 plus 8 per element and the last mapped word 0xFC read
+their marker words, and the 9 values are distinct.
+|`CHK-EMAP-LAYOUT-SWEEP` |All 64 words read their marker words, region-edge offsets included, so no
 gap or alias exists.
-|`CHK-EMAP-WIDTH-32` |Each 32-bit read of the low and high half of `LOCKS`, the nine
-`I2C_I3C_ID` elements, `SMC_CONFIG` and `OCCP_TRANSPORT_TIMEOUT` equals the matching marker half
-and the two halves differ.
-|`CHK-EMAP-WIDTH-64` |The 64-bit read of `LOCKS` returns marker word 1 above word 0 and the 64-bit
-read of `OCCP_TRANSPORT_TIMEOUT` returns word 31 above word 30.
-|`CHK-EMAP-WIDTH-CFG` |The 32-bit read of 0x70 completes as one item with one beat, four transfer
-bytes, OKAY and marker word 28.
-|`CHK-EMAP-PAST-READ` |0x3FC reads marker word 255 with OKAY, and 0x400 and 0xFFC each answer with
+|`CHK-EMAP-WIDTH-32` |Each 32-bit read of the low and high half of `HARNESS_LOCKS`,
+`SUPPLEMENTARY_LOCKS`, the nine `I2C_I3C_ID` elements, `SMC_CONFIG` and `OCCP_TRANSPORT_TIMEOUT`
+equals the matching marker half and the two halves differ.
+|`CHK-EMAP-WIDTH-64` |The 64-bit read of `HARNESS_LOCKS` returns marker word 1 above word 0 and the
+64-bit read of `OCCP_TRANSPORT_TIMEOUT` returns word 33 above word 32.
+|`CHK-EMAP-WIDTH-CFG` |The 32-bit read of 0x78 completes as one item with one beat, four transfer
+bytes, OKAY and marker word 30.
+|`CHK-EMAP-PAST-READ` |0xFC reads marker word 63 with OKAY, and 0x100 and 0xFFC each answer with
 a DECERR read response and data 0xBADCAB1E.
-|`CHK-EMAP-PAST-WRITE` |A write of 0xFFFF_FFFF to 0x400 and to 0xFFC completes with an error
+|`CHK-EMAP-PAST-WRITE` |A write of 0xFFFF_FFFF to 0x100 and to 0xFFC completes with an error
 response (SLVERR or DECERR, any response above OKAY); the leaf prints the two response codes
 beside the declared response name and code from the generated memory map, so the printed codes
 show which one was returned; the exact code is not compared.
-|`CHK-EMAP-PAST-NOCHANGE` |After the past-extent reads and writes all 256 words read their marker
-words again and `LOCKS` reads 0x0000_0000 and 0x4000_0000, so no word and no lock bit changed.
+|`CHK-EMAP-PAST-NOCHANGE` |After the past-extent reads and writes all 64 words read their marker
+words again and `HARNESS_LOCKS` reads 0x0000_0000 and 0x4000_0000, so no word and no lock bit
+changed.
 |`CHK-NONVAC` |The ordered fence (sense done, layout, widths, past-extent read, past-extent
 write, no-change sweep) with increasing time stamps and each checker line printed after its step
 completed.
@@ -28190,7 +28196,7 @@ completed.
 the bound and the last sense state are logged.
 |===
 
-*Pass Criteria*: all twelve checkers hold: every word of the 256-word map reads its marker word at
+*Pass Criteria*: all twelve checkers hold: every word of the 64-word map reads its marker word at
 32-bit and 64-bit width, the past-extent reads answer DECERR with 0xBADCAB1E, the past-extent writes
 get an error response, and no word or lock bit changes. The exact write error code and the extent of
 the past-extent range are not asserted. Enrolled in: `all`, `hosted`.
