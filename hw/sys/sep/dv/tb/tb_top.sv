@@ -3138,18 +3138,20 @@ module sep_uvm_top
 `undef DMA_HOST_AXIL_RSP
 
     // While the input is high, SW_RESET_N reads back its AES bit as 0; the AES stays out of reset.
-`define AES_SW_RST_RDATA `SEP_CORE.u_sep_reset_ctrl.u_reg.cpuif_rd_data
+`define RST_CTRL_REG `SEP_CORE.u_sep_reset_ctrl.u_reg
     logic aes_sw_rst_readback_forced;
     always @(posedge clk_i) begin
         if (aes_sw_rst_readback_inject_i === 1'b1) begin
-            force `AES_SW_RST_RDATA[2] = 1'b0;
+            force `RST_CTRL_REG.cpuif_rd_data = (`RST_CTRL_REG.rd_mux_addr == 4'h0) ?
+                                                (`RST_CTRL_REG.readback_data & ~64'h4) :
+                                                `RST_CTRL_REG.readback_data;
             aes_sw_rst_readback_forced <= 1'b1;
         end else if (aes_sw_rst_readback_forced === 1'b1) begin
-            release `AES_SW_RST_RDATA[2];
+            release `RST_CTRL_REG.cpuif_rd_data;
             aes_sw_rst_readback_forced <= 1'b0;
         end
     end
-`undef AES_SW_RST_RDATA
+`undef RST_CTRL_REG
 
     // While the input is high, the AES core flags a CTRL update error as a recoverable alert.
 `define AES_SHADOWED_UPD_ERR \
