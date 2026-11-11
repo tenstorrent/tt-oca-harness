@@ -27985,8 +27985,8 @@ access); a passive bus monitor on the falling edge of `clk_smc_i` over `s_axi_ar
 `s_axi_rdata`, `s_axi_awvalid`, `s_axi_awready`, `s_axi_awaddr` and the matching `ej_axi_*` read
 signals; the wait probes `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`; the
 eFuse bank is the DV model, loaded from the image the leaf writes into the run directory under
-`+smc_efuse_hex` (`LOCKS` 0, every other word a distinct marker word); an EFUSE protocol-VIP record
-is booked at the end
+`+smc_efuse_hex` (both LOCKS registers 0, every other word a distinct marker word); an EFUSE
+protocol-VIP record is booked at the end
 
 *Run mode*: one testlist entry in `testlists/efuse.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `efuse`; seed 1; args
@@ -28002,7 +28002,7 @@ draws nothing from the seed.
 * The SMC_EFUSE_MAP shadow window is reachable from the SEP_IN path and from the eFuse OTP/JTAG
   AXI-Lite port (`hw/sys/smc/doc/port_table.adoc`, `axil_smc_otp_jtag_req_i` row;
   `hw/ip/efuse/doc/architecture.adoc`).
-* SPARE[0] word 0 (map word 32) and SPARE[1] word 0 (map word 40) are the addresses used; the
+* SPARE[0] word 0 (map word 34) and SPARE[1] word 0 (map word 42) are the addresses used; the
   shadow holds the loaded image word until written
   (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`).
 * Two reads of one word started on the same clock edge from SEP_IN and JTAG both complete and both
@@ -28011,14 +28011,15 @@ draws nothing from the seed.
 * A SEP_IN write and a JTAG read of the same word started together both complete, the JTAG read
   returns the image word or the written pattern and no other value, and a later SEP_IN read returns
   the written pattern.
-* `LOCKS.spare0_write_lock` (bit 8, write-one-to-set) locks SPARE[0] against writes, and the
-  hardware-and-software lock rules apply (`smc_efuse_map.rdl`, reg `LOCKS`; `architecture.adoc`,
+* `HARNESS_LOCKS.spare0_write_lock` (bit 8, write-one-to-set) locks SPARE[0] against writes, and
+  the hardware-and-software lock rules apply (`smc_efuse_map.rdl`, reg `HARNESS_LOCKS`; `architecture.adoc`,
   Hardware vs. Software Locks): sixteen back-to-back SEP_IN writes alternating between the locked
   SPARE[0] word 0 and the unlocked SPARE[1] word 0 leave the locked word unchanged and keep the last
   write of the unlocked word. The response code of the dropped writes is reported, not asserted (OKAY in the kept run).
-* Eight SEP_IN reads of eight distinct SPARE words issued as one outstanding group return their
-  eight responses in request order, each equal to its image word, with a measured outstanding depth
-  above one; the depth the interconnect accepts is not specified.
+* Eight SEP_IN reads of eight distinct words (SPARE[2] words 0 to 4 and word 0 of SPARE_TAIL[0],
+  SPARE_TAIL[1] and SPARE_TAIL[2]) issued as one outstanding group return their eight responses in
+  request order, each equal to its image word, with a measured outstanding depth above one; the
+  depth the interconnect accepts is not specified.
 
 *Test Procedure*:
 
@@ -28032,15 +28033,17 @@ draws nothing from the seed.
 . On one edge start a SEP_IN write of pattern X (0xC3A5_1E7B) to SPARE[0] word 0 and a JTAG read of
   the same word; require the SEP_IN write to complete OKAY, the JTAG read to return the image word
   or X, and a later SEP_IN read to return X.
-. Error injection. Point: SPARE[0] word 0 over SEP_IN, after `LOCKS.spare0_write_lock` is written
-  with a 64-bit write and both `LOCKS` words are read back (low word equal to the bit, high word 0).
+. Error injection. Point: SPARE[0] word 0 over SEP_IN, after `HARNESS_LOCKS.spare0_write_lock` is
+  written with a 64-bit write and both `HARNESS_LOCKS` words are read back (low word equal to the
+  bit, high word 0).
   Kind: sixteen writes issued as one SEP_IN group, alternating between the write-locked SPARE[0]
   word 0 (errors allowed) and the unlocked SPARE[1] word 0. Expected response: the AW handshake
   addresses alternate in order, the unlocked writes complete OKAY, SPARE[0] word 0 still reads X and
   SPARE[1] word 0 reads the last pattern written to it. Print the AW gaps, the AW sampler counts and
   the locked-write responses.
-. Issue eight SEP_IN reads of SPARE[2] to SPARE[9] word 0 as one group; require the AR handshake
-  addresses in request order, eight OKAY responses in request order with each image word and a measured peak outstanding depth above one.
+. Issue eight SEP_IN reads of SPARE[2] words 0 to 4 and SPARE_TAIL[0..2] word 0 as one group;
+  require the AR handshake addresses in request order, eight OKAY responses in request order with
+  each image word and a measured peak outstanding depth above one.
 . Require the five steps in order with increasing time stamps, the checker lines in the order
   printed and the SEP_IN access count at or above the floor; print the fence and the bounded waits.
 
@@ -28054,7 +28057,7 @@ with OKAY and both return the image word; the offset between their address hands
 |`CHK-EMAP-CONC-WR-RD` |A SEP_IN write of X racing a JTAG read of the same word completes on both
 paths, the JTAG read returns the image word or X, and a later SEP_IN read returns X; which of the
 two the JTAG read saw is printed.
-|`CHK-EMAP-CONC-ALTERNATE` |After `LOCKS.spare0_write_lock` is set, sixteen alternating back-to-back
+|`CHK-EMAP-CONC-ALTERNATE` |After `HARNESS_LOCKS.spare0_write_lock` is set, sixteen alternating back-to-back
 writes leave the locked SPARE[0] word 0 at X and the unlocked SPARE[1] word 0 at the last value
 written; the response code of the dropped writes is printed without being compared (OKAY in the kept run).
 |`CHK-EMAP-CONC-OUTSTANDING` |Eight outstanding SEP_IN reads return eight OKAY responses in
@@ -28236,13 +28239,15 @@ protocol-VIP record is booked at the end
 
 *Test Coverage*:
 
-* `LOCKS` holds a write lock and a read lock for each lockable field, set by writing 1 and never
-  cleared by software (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, reg `LOCKS`,
-  `onwrite = woset`; `hw/ip/efuse/doc/architecture.adoc`, Hardware vs. Software Locks).
-* A write lock holds the whole field against writes: all eight words of SPARE[0], SPARE[27] and
+* `HARNESS_LOCKS` holds a write lock and a read lock for each lockable field, set by writing 1 and
+  never cleared by software (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, reg
+  `HARNESS_LOCKS`, `onwrite = woset`; `hw/ip/efuse/doc/architecture.adoc`, Hardware vs. Software
+  Locks); the three SPARE_TAIL elements share one lock pair (slot 7).
+* A write lock holds the whole field against writes: all eight words of SPARE[0], SPARE[2] and
   `JTAG_PUBLIC_IDENTITY` and all 18 words of `I2C_I3C_ID` keep their value after a write
   (`smc_efuse_map.rdl`: one lock bit covers the whole field).
-* Neighbouring fields (SPARE[1], SPARE[26]) stay writable while their neighbours are locked.
+* Neighbouring fields (SPARE[1], the six SPARE_TAIL words) stay writable while their neighbours
+  are locked.
 * A read lock hides the whole field: reads of a read-locked word return neither the stored value
   nor its complement. The response code of a read-locked read is not asserted.
 * A read lock alone does not reject a write: the write lands in the shadow, and a write lock plus
@@ -28255,16 +28260,17 @@ protocol-VIP record is booked at the end
 *Test Procedure*:
 
 [arabic]
-. Check the lock bit masks against the named `LOCKS` bits (SPARE[0] bits 8 and 9, SPARE[1] bit 11,
-  SPARE[27] bit 62, `I2C_I3C_ID` bits 2 and 3, `JTAG_PUBLIC_IDENTITY` bits 0 and 1) and the field
-  sizes, wait for `tb_fuse_sense_done` within 200000 clocks and read both `LOCKS` words as 0.
+. Check the lock bit masks against the named `HARNESS_LOCKS` bits (SPARE[0] bits 8 and 9, SPARE[1]
+  bit 11, SPARE[2] bit 12, SPARE_TAIL bits 14 and 15, `I2C_I3C_ID` bits 2 and 3,
+  `JTAG_PUBLIC_IDENTITY` bits 0 and 1) and the field sizes, wait for `tb_fuse_sense_done` within
+  200000 clocks and read both `HARNESS_LOCKS` words as 0.
 . Positive control: write a fresh distinct random word to every word of SPARE[0], SPARE[1],
-  SPARE[27], `I2C_I3C_ID` and `JTAG_PUBLIC_IDENTITY` and read each back.
-. Error injection. Point: every word of SPARE[0] and SPARE[27] over SEP_IN, after their write locks
-  are set and `LOCKS` is read back. Kind: a new pattern written to all words of both write-locked
-  fields, with the shadow port sampled before and after. Expected response: the shadow port is
-  unchanged and the locked words read back at their S2 values. Write and read back new patterns in
-  SPARE[1] and SPARE[26].
+  SPARE[2], the SPARE_TAIL elements, `I2C_I3C_ID` and `JTAG_PUBLIC_IDENTITY` and read each back.
+. Error injection. Point: every word of SPARE[0] and SPARE[2] over SEP_IN, after their write locks
+  are set and `HARNESS_LOCKS` is read back. Kind: a new pattern written to all words of both
+  write-locked fields, with the shadow port sampled before and after. Expected response: the shadow
+  port is unchanged and the locked words read back at their S2 values. Write and read back new
+  patterns in SPARE[1] and the six SPARE_TAIL words.
 . Error injection. Point: the 18 words of `I2C_I3C_ID` over SEP_IN, after its write lock is set.
   Kind: a new pattern written to all 18 words of the write-locked field. Expected response: the
   words read back at their earlier values.
@@ -28272,8 +28278,9 @@ protocol-VIP record is booked at the end
   lock is set. Kind: a new pattern written to all eight words of the write-locked field. Expected
   response: the words read back at their earlier values.
 . Error injection. Point: the words of SPARE[1], then the 18 words of `I2C_I3C_ID`, over SEP_IN,
-  with only the read lock of each set in turn. Kind: reads of read-locked words, and a write of a
-  new pattern to SPARE[1] under its read lock alone. Expected response: each SPARE[1] word reads
+  with the SPARE[1] read lock set alone and the `I2C_I3C_ID` read lock added to the write lock set
+  in step 4. Kind: reads of read-locked words, and a write of a new pattern to SPARE[1] under its
+  read lock alone. Expected response: each SPARE[1] word reads
   neither the stored value nor its complement with `efuse_shadow_probe_o` equal to the model, the
   SPARE[1] write lands (probe equals the pattern), and the 18 `I2C_I3C_ID` words read as hidden with
   the shadow port, sampled before those reads, unchanged.
@@ -28289,10 +28296,10 @@ protocol-VIP record is booked at the end
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EMAP-ENF-WR-SPARE` |With the SPARE[0] and SPARE[27] write locks set, all 16 words of the two
+|`CHK-EMAP-ENF-WR-SPARE` |With the SPARE[0] and SPARE[2] write locks set, all 16 words of the two
 fields reject a new pattern and read their earlier value.
-|`CHK-EMAP-ENF-NEIGHBOUR` |SPARE[1] and SPARE[26], the neighbours of the locked fields, accept a new
-pattern and read it back on all 16 words.
+|`CHK-EMAP-ENF-NEIGHBOUR` |SPARE[1] and the SPARE_TAIL elements, the neighbours of the locked
+fields, accept a new pattern and read it back on all 14 words.
 |`CHK-EMAP-ENF-PORT` |The shadow output port is bit-identical before and after the rejected writes
 and across the hidden reads; the port mode, value count and digests are printed.
 |`CHK-EMAP-WHOLE-I2C-WR` |With the single `I2C_I3C_ID` write lock set, all 18 words keep their
@@ -28334,13 +28341,14 @@ field is not specified, so only its stability across rejected writes and hidden 
 
 *Source Module*: `smc_efuse_map_locks_register_test`
 
-*BFM / Model*: SEP_IN AXI driver (32-bit and 64-bit `LOCKS` accesses, field word reads and writes,
-items that allow an error response for rejected writes and read-locked reads); the reset agent
-(cold reset assert and release); `efuse_shadow_probe_o` read as 32 bits per map word; the wait
+*BFM / Model*: SEP_IN AXI driver (32-bit and 64-bit `HARNESS_LOCKS` accesses, field word reads and
+writes, items that allow an error response for rejected writes and read-locked reads); the reset
+agent (cold reset assert and release); `efuse_shadow_probe_o` read as 32 bits per map word; the wait
 probes `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`; the eFuse bank is the DV
 model, loaded from an image the leaf writes into the run directory under `+smc_efuse_hex` (every
-field 0, `LOCKS` 0x4000_0000_0000_0000); the sequence's 64-bit `LOCKS` model and per-word shadow
-model; an EFUSE protocol-VIP record is booked at the end
+field 0, `HARNESS_LOCKS` 0x4000, `SUPPLEMENTARY_LOCKS` 0); the sequence's 64-bit `HARNESS_LOCKS`
+and `SUPPLEMENTARY_LOCKS` models and per-word shadow model; an EFUSE protocol-VIP record is booked
+at the end
 
 *Run mode*: one testlist entry in `testlists/efuse.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `efuse`; seed 1; args
@@ -28353,17 +28361,22 @@ each lock.
 
 *Test Coverage*:
 
-* `LOCKS` is a 64-bit register of write-one-to-set bits: slot n holds a write lock at bit 2n and a
-  read lock at bit 2n+1, for 32 slots, slots 0 to 3 for `JTAG_PUBLIC_IDENTITY`, `I2C_I3C_ID`,
-  `SMC_CONFIG` and `OCCP_TRANSPORT_TIMEOUT` and slots 4 to 31 for SPARE[0] to SPARE[27]
-  (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, reg `LOCKS`).
-* The sensed value of `LOCKS` is the image value, and a cold reset restores it
+* `HARNESS_LOCKS` is a 64-bit register of write-one-to-set bits: slot n holds a write lock at bit
+  2n and a read lock at bit 2n+1, for 8 slots, slots 0 to 3 for `JTAG_PUBLIC_IDENTITY`,
+  `I2C_I3C_ID`, `SMC_CONFIG` and `OCCP_TRANSPORT_TIMEOUT`, slots 4 to 6 for SPARE[0] to SPARE[2]
+  and slot 7 for the three SPARE_TAIL elements together; bits [63:16] are reserved and never
+  set (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, reg `HARNESS_LOCKS`).
+* The sensed value of `HARNESS_LOCKS` is the image value, and a cold reset restores it
   (`hw/ip/efuse/doc/architecture.adoc`, Hardware vs. Software Locks: software locks are set by
   writing 1 and cannot be loosened without a reset).
-* The low and high 32-bit halves can be set by separate 32-bit writes, a repeated write of a set bit
-  changes nothing, and one 64-bit write sets several bits across both halves.
-* All 64 bits are set one lock at a time in a seeded random slot order; each write lock rejects
-  writes to its own field only, and each read lock hides the first word of its own field.
+* Separate 32-bit writes to the low word set one bit each, a 32-bit write of 0 to the reserved high
+  word is accepted and changes nothing, a repeated write of a set bit changes nothing, and one 64-bit
+  write sets several bits. `SUPPLEMENTARY_LOCKS`, the next register of the map with every field
+  `onwrite = woset` (`smc_efuse_map.rdl`), carries the cross-half proof: a 32-bit write
+  to its high word sets region 16's write lock (bit 32) and one 64-bit write sets region 16's read
+  lock (bit 33) with region 2's write lock (bit 4); a cold reset clears them.
+* All 16 assigned bits are set one lock at a time in a seeded random slot order; each write lock
+  rejects writes to its own field only, and each read lock hides the first word of its own field.
 * Fields not yet locked keep accepting writes after another slot's lock is set.
 * With every lock set, a write to a field is still rejected as seen on `efuse_shadow_probe_o`.
 * The response codes of rejected writes and hidden reads are not asserted.
@@ -28371,21 +28384,24 @@ each lock.
 *Test Procedure*:
 
 [arabic]
-. Check the 32 regions against the lock bit masks (write lock 2n, read lock 2n+1) and the image
-  (`LOCKS` words 0 and 0x4000_0000, every other word 0), then wait for `tb_fuse_sense_done` within
-  200000 clocks.
-. Read both `LOCKS` words and require the image values.
-. Error injection. Point: every word of every field over SEP_IN, SPARE[27] included, whose write
-  lock the image sets. Kind: a fresh random word written to every word, the write-locked SPARE[27]
-  among them. Expected response: every unlocked word reads back against the model and SPARE[27]
+. Check the 8 lock slots against the lock bit masks (write lock 2n, read lock 2n+1; the three
+  SPARE_TAIL regions share slot 7 and form one six-word field) and the image (`HARNESS_LOCKS` word 0
+  0x4000, every other word 0), then wait for `tb_fuse_sense_done` within 200000 clocks.
+. Read both `HARNESS_LOCKS` words and both `SUPPLEMENTARY_LOCKS` words and require the image values.
+. Error injection. Point: every word of every field over SEP_IN, SPARE_TAIL included, whose write
+  lock the image sets. Kind: a fresh random word written to every word, the write-locked SPARE_TAIL
+  among them. Expected response: every unlocked word reads back against the model and SPARE_TAIL
   keeps its value.
-. Write 1 to the low `LOCKS` word with a 32-bit write and read both words back; write 1 to the high
-  word and read both words back; each compare is against the model that ORs in the written bits.
-. Repeat the write of 1 to the low word and require `LOCKS` unchanged.
-. Write 0x0000_0002_0000_0010 as one 64-bit write; read both words and read the register as 64 bits;
-  require the model.
-. Run a cold reset, wait for the sense, require `LOCKS` to read the image values, and re-apply the
-  random patterns to every field.
+. Write 0x1 to the low `HARNESS_LOCKS` word with a 32-bit write and read both words back; write 0x4
+  to the low word and read both words back; write 0 to the high word with a 32-bit write and read
+  both words back; write 0x1 to the high `SUPPLEMENTARY_LOCKS` word with a 32-bit write and read
+  both of its words back; each compare is against the model that ORs in the written bits.
+. Repeat the write of 0x1 to the low word and require `HARNESS_LOCKS` unchanged.
+. Write 0x0000_0000_0000_0810 as one 64-bit write; read both words and read the register as 64 bits;
+  require the model. Write 0x0000_0002_0000_0010 to `SUPPLEMENTARY_LOCKS` as one 64-bit write; read
+  both of its words and the register as 64 bits; require the model.
+. Run a cold reset, wait for the sense, require `HARNESS_LOCKS` to read the image values and
+  `SUPPLEMENTARY_LOCKS` to read 0, and re-apply the random patterns to every field.
 . Error injection. Point: each slot's own field over SEP_IN, in a seeded shuffled slot order, after
   the slot's write lock and later its read lock are set with 64-bit `LOCKS` writes, `LOCKS` being
   read against the model after each. Kind: fresh words written to the write-locked field, then a
@@ -28393,11 +28409,12 @@ each lock.
   keep their value (read back over SEP_IN, or compared with `efuse_shadow_probe_o` when its read
   lock is already set), and the first word reads neither its value nor its complement. Between the
   two locks, write and read back every field that is still unlocked, and check once that the probe
-  word equals the field and differs from its mirror word. Finish with `LOCKS` reading all ones.
+  word equals the field and differs from its mirror word. Finish with `HARNESS_LOCKS` reading
+  0xFFFF, every assigned bit.
 . Error injection. Point: `JTAG_PUBLIC_IDENTITY` word 0 over SEP_IN, with every lock set. Kind: a
   fresh word written to the locked word. Expected response: its `efuse_shadow_probe_o` word,
   required beforehand to equal the model and be non-zero, is unchanged.
-. Run a cold reset, wait for the sense and require `LOCKS` to read the image values.
+. Run a cold reset, wait for the sense and require `HARNESS_LOCKS` to read the image values.
 . Require the nine steps in order with increasing time stamps, the checker lines in the order
   printed and the SEP_IN access count at or above the floor; print the fence and the waits.
 
@@ -28406,17 +28423,22 @@ each lock.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EMAP-LOCKS-SENSED` |After the sense, `LOCKS` reads the image words 0x0000_0000 and
-0x4000_0000.
-|`CHK-EMAP-LOCKS-HALVES` |A 32-bit write of 1 to the low word and one to the high word each set only
-the written bit, and both halves read the model value after each write.
-|`CHK-EMAP-LOCKS-IDEMPOTENT` |Repeating the write of 1 to the low word leaves both halves unchanged.
-|`CHK-EMAP-LOCKS-WIDE` |One 64-bit write of 0x0000_0002_0000_0010 sets exactly those bits on top of
-the earlier ones, and the two 32-bit reads and the 64-bit read all return the model value.
-|`CHK-EMAP-LOCKS-BITWISE` |All 64 bits (the bit the image presets being a no-op write) are set one
-at a time in the printed seeded order and `LOCKS` equals the model after every write, ending at all
-ones; after the cold reset `LOCKS` reads the image words again.
-|`CHK-EMAP-SLOT-MAP` |For each of the 32 slots the write lock at bit 2n makes its own field reject
+|`CHK-EMAP-LOCKS-SENSED` |After the sense, `HARNESS_LOCKS` reads the image words 0x0000_4000 and
+0x0000_0000 and `SUPPLEMENTARY_LOCKS` reads 0 and 0.
+|`CHK-EMAP-LOCKS-HALVES` |Two 32-bit writes to the low word (0x1, then 0x4) each set only the written
+bit, a 32-bit write of 0 to the reserved high word changes nothing, a 32-bit write of 0x1 to the
+high `SUPPLEMENTARY_LOCKS` word sets bit 32 of that register alone, and both halves of each
+register read the model value after each write.
+|`CHK-EMAP-LOCKS-IDEMPOTENT` |Repeating the write of 0x1 to the low word leaves both halves unchanged.
+|`CHK-EMAP-LOCKS-WIDE` |One 64-bit write of 0x0000_0000_0000_0810 sets exactly those bits on top of
+the earlier ones, one 64-bit write of 0x0000_0002_0000_0010 to `SUPPLEMENTARY_LOCKS` sets exactly
+bits 33 and 4 there, and the two 32-bit reads and the 64-bit read of each register return the model
+value.
+|`CHK-EMAP-LOCKS-BITWISE` |All 16 assigned bits (the bit the image presets being a no-op write) are
+set one at a time in the printed seeded order and `HARNESS_LOCKS` equals the model after every
+write, ending at 0xFFFF; after the re-sense `SUPPLEMENTARY_LOCKS` reads 0 again, and after the cold
+reset `HARNESS_LOCKS` reads the image words again.
+|`CHK-EMAP-SLOT-MAP` |For each of the 8 slots the write lock at bit 2n makes its own field reject
 writes (read back unchanged, or unchanged on `efuse_shadow_probe_o` when the read lock is already
 set) and the read lock at bit 2n+1 makes the first word of its field read neither value nor
 complement.
@@ -28431,11 +28453,11 @@ completed.
 and the last sense states are logged.
 |===
 
-*Pass Criteria*: all ten checkers hold: `LOCKS` follows the write-one-to-set model after every
-32-bit, 64-bit and per-slot write, each slot's write and read lock affect only its own field, the
-unlocked fields keep accepting writes, a locked field stays unchanged on the probe, and a cold reset
-restores the image value of `LOCKS`. Response codes of rejected writes and hidden reads are not
-asserted. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all ten checkers hold: `HARNESS_LOCKS` follows the write-one-to-set model after
+every 32-bit, 64-bit and per-slot write, each slot's write and read lock affect only its own field,
+the unlocked fields keep accepting writes, a locked field stays unchanged on the probe, and a cold
+reset restores the image value of `HARNESS_LOCKS`. Response codes of rejected writes and hidden
+reads are not asserted. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response codes of rejected writes and hidden reads are not asserted; only their
 effect on the field, read back over SEP_IN or seen on `efuse_shadow_probe_o`, is.
@@ -28458,7 +28480,7 @@ agent (cold reset assert and release); the bench JTAG reset-control override `tb
 `tb_rst_warm_smc_clk_n`, `tb_fuse_sense_done`, `tb_fuse_reset_n`, `rst_primary_smc_clk_no`,
 `s_axi_rvalid`, `s_axi_arvalid` and `s_axi_arready` sampled on `clk_smc_i`; the eFuse bank is the DV
 model, loaded from an image the leaf writes into the run directory under `+smc_efuse_hex` (every
-word 0 except SPARE[5] word 0, which holds the marker 0x5A5A_1234);
+word 0 except SPARE_TAIL[0] word 0, which holds the marker 0x5A5A_1234);
 an EFUSE protocol-VIP record is booked at the end
 
 *Run mode*: one testlist entry in `testlists/efuse.toml`; groups `all`, `hosted`; `run_modes`
@@ -28476,9 +28498,9 @@ draws nothing from the seed.
   resets do not repeat the sense (`doc/integrator/src/smu-smc.adoc`, eFuse Interface, sensing once
   per cold boot).
 * A warm reset (`rst_warm_n` is a term of the warm reset equation, `hw/sys/smc/doc/clk_rst.adoc`)
-  leaves the shadow words and the `LOCKS` bits unchanged: SPARE[3] keeps its pattern under its
-  write lock and SPARE[4] word 0 stays hidden under its read lock
-  (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, reg `LOCKS`).
+  leaves the shadow words and the `HARNESS_LOCKS` bits unchanged: SPARE[1] keeps its pattern under
+  its write lock and SPARE[2] word 0 stays hidden under its read lock
+  (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, reg `HARNESS_LOCKS`).
 * `tb_fuse_sense_done` stays 1 on every sample from 100 edges before to 2000 edges after the warm
   reset, so the bank is not re-sensed.
 * A cold reset clears the lock bits and the written patterns and re-senses the image, so the word
@@ -28494,35 +28516,35 @@ draws nothing from the seed.
 *Test Procedure*:
 
 [arabic]
-. Check the SPARE[3] words 56 to 63, SPARE[4] word 64, the lock masks (SPARE[3] write lock bit 14,
-  SPARE[4] read lock bit 17), the override width and the image (all words 0 except the SPARE[5]
-  marker word), wait for
-  `tb_fuse_sense_done` within 200000 clocks and read `LOCKS` as 0.
-. Write P1 (0xA5C3_1E71) to the eight SPARE[3] words and P2 (0x3C69_D2B4) to SPARE[4] word 0, read
-  them back, read SPARE[5] word 0 and require the marker, write 0xE2B4_6D09 to it and read it
-  back, write `LOCKS` bits 14 and 17 as one 64-bit write and require `LOCKS` to read 0x24000
-  and 0.
+. Check the SPARE[1] words 42 to 49, SPARE[2] word 50, SPARE_TAIL[0] word 58, the lock masks
+  (SPARE[1] write lock bit 10, SPARE[2] read lock bit 13), the override width and the image (all
+  words 0 except the SPARE_TAIL[0] marker word), wait for `tb_fuse_sense_done` within 200000 clocks
+  and read `HARNESS_LOCKS` as 0.
+. Write P1 (0xA5C3_1E71) to the eight SPARE[1] words and P2 (0x3C69_D2B4) to SPARE[2] word 0, read
+  them back, read SPARE_TAIL[0] word 0 and require the marker, write 0xE2B4_6D09 to it and read it
+  back, write `HARNESS_LOCKS` bits 10 and 13 as one 64-bit write and require `HARNESS_LOCKS` to
+  read 0x2400 and 0.
 . Start the `tb_fuse_sense_done` sampler and wait for 100 samples. Assert the warm reset by
   setting the override bits (bounded at 64 edges for `tb_rst_warm_smc_clk_n` to fall), clear the
-  override and wait up to 50000 edges for it to rise; read all eight SPARE[3] words and require P1.
-. Error injection. Point: SPARE[3] word 0 (write-locked) and SPARE[4] word 0 (read-locked) over
+  override and wait up to 50000 edges for it to rise; read all eight SPARE[1] words and require P1.
+. Error injection. Point: SPARE[1] word 0 (write-locked) and SPARE[2] word 0 (read-locked) over
   SEP_IN, after the warm reset. Kind: a write of P3 (0x5AE1_7C93) to the write-locked word and a
-  read of the read-locked word. Expected response: SPARE[3] word 0 still reads P1 and SPARE[4]
-  word 0 reads neither P2 nor its complement. Read `LOCKS` and require 0x24000 and 0.
+  read of the read-locked word. Expected response: SPARE[1] word 0 still reads P1 and SPARE[2]
+  word 0 reads neither P2 nor its complement. Read `HARNESS_LOCKS` and require 0x2400 and 0.
 . Wait for the sampler to cover 2000 edges after the release; require no 1-to-0 transition and no
-  sample of 0 across the window, and SPARE[3] word 0 still P1.
-. Start a SEP_IN `LOCKS` read, assert the warm reset two edges later through the override and
-  release it; require the read to be outstanding at the fall, whether it then completes with OKAY or
-  is aborted by the reset flush, within 200000 edges and with no driver timeout; read `LOCKS` and
-  require 0x24000 and 0.
-. Run a cold reset (assert, release, wait for the sense); require `LOCKS` to read 0 and 0 and all
-  eight SPARE[3] words to read 0 and SPARE[5] word 0 to read the marker 0x5A5A_1234; write P3 to SPARE[3] word 0 and P4 (0xC7D2_0B58) to SPARE[4] word
-  0 and read both back.
-. Write the SPARE[3] write lock again and read `LOCKS` back, send the cold reset assertion, and
-  re-issue SEP_IN `LOCKS` reads back to back until one is aborted or the primary reset falls; watch
-  `s_axi_rvalid` from the fall to the next accepted read request. Release the reset, wait for the
-  sense and require `LOCKS` to read 0 and 0, no `s_axi_rvalid` sample in the watch window and an
-  accepted read request after the release.
+  sample of 0 across the window, and SPARE[1] word 0 still P1.
+. Start a SEP_IN `HARNESS_LOCKS` read, assert the warm reset two edges later through the override
+  and release it; require the read to be outstanding at the fall, whether it then completes with
+  OKAY or is aborted by the reset flush, within 200000 edges and with no driver timeout; read
+  `HARNESS_LOCKS` and require 0x2400 and 0.
+. Run a cold reset (assert, release, wait for the sense); require `HARNESS_LOCKS` to read 0 and 0
+  and all eight SPARE[1] words to read 0 and SPARE_TAIL[0] word 0 to read the marker 0x5A5A_1234;
+  write P3 to SPARE[1] word 0 and P4 (0xC7D2_0B58) to SPARE[2] word 0 and read both back.
+. Write the SPARE[1] write lock again and read `HARNESS_LOCKS` back, send the cold reset assertion,
+  and re-issue SEP_IN `HARNESS_LOCKS` reads back to back until one is aborted or the primary reset
+  falls; watch `s_axi_rvalid` from the fall to the next accepted read request. Release the reset,
+  wait for the sense and require `HARNESS_LOCKS` to read 0 and 0, no `s_axi_rvalid` sample in the
+  watch window and an accepted read request after the release.
 . Require the eight steps in order with increasing time stamps, the checker lines in the order
   printed and the SEP_IN access count at or above the floor; print the fence and the waits.
 
@@ -28531,24 +28553,26 @@ draws nothing from the seed.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EMAP-RST-WARM-VALUES` |After the warm reset through the JTAG override all eight SPARE[3] words
+|`CHK-EMAP-RST-WARM-VALUES` |After the warm reset through the JTAG override all eight SPARE[1] words
 still read P1; the edges to the fall and the rise of `tb_rst_warm_smc_clk_n` are printed.
-|`CHK-EMAP-RST-WARM-LOCKS` |After the warm reset `LOCKS` reads 0x00024000, the SPARE[3] write lock
-rejects P3 (the word still reads P1) and SPARE[4] word 0 reads neither P2 nor its complement; the
-write response code is printed without being compared.
+|`CHK-EMAP-RST-WARM-LOCKS` |After the warm reset `HARNESS_LOCKS` reads 0x00002400, the SPARE[1]
+write lock rejects P3 (the word still reads P1) and SPARE[2] word 0 reads neither P2 nor its
+complement; the write response code is printed without being compared.
 |`CHK-EMAP-RST-WARM-NORESENSE` |`tb_fuse_sense_done` reads 1 on every sample from 100 edges before
-to 2000 edges after the warm reset with no 1-to-0 transition, and SPARE[3] word 0 still reads P1.
-|`CHK-EMAP-RST-WARM-MID` |A SEP_IN `LOCKS` read with the warm reset asserted two edges later is
-outstanding at the fall and then either completes with OKAY or is aborted by the reset flush,
-within 200000 edges and with no driver timeout, and `LOCKS` reads 0x00024000 after the release;
+to 2000 edges after the warm reset with no 1-to-0 transition, and SPARE[1] word 0 still reads P1.
+|`CHK-EMAP-RST-WARM-MID` |A SEP_IN `HARNESS_LOCKS` read with the warm reset asserted two edges later
+is outstanding at the fall and then either completes with OKAY or is aborted by the reset flush,
+within 200000 edges and with no driver timeout, and `HARNESS_LOCKS` reads 0x00002400 after the
+release;
 which outcome occurred is printed, and the line always carries the fixed text `orphan_r=n/a`
 whatever the outcome.
-|`CHK-EMAP-RST-COLD-LOCKS` |After the cold reset and sense done `LOCKS` reads 0 on both words, all
-eight SPARE[3] words read 0, SPARE[5] word 0 reads the sensed marker, and P3 and P4 written to SPARE[3] word 0 and SPARE[4] word 0 read back.
-|`CHK-EMAP-RST-COLD-MID` |Back-to-back SEP_IN `LOCKS` reads over a cold reset each complete or are
-aborted by the reset flush within 200000 edges with no driver timeout, no read data beat is
-presented between the primary reset fall and the next accepted read request, and `LOCKS` reads 0
-and 0 after the release and sense; which outcome occurred is printed.
+|`CHK-EMAP-RST-COLD-LOCKS` |After the cold reset and sense done `HARNESS_LOCKS` reads 0 on both
+words, all eight SPARE[1] words read 0, SPARE_TAIL[0] word 0 reads the sensed marker, and P3 and P4
+written to SPARE[1] word 0 and SPARE[2] word 0 read back.
+|`CHK-EMAP-RST-COLD-MID` |Back-to-back SEP_IN `HARNESS_LOCKS` reads over a cold reset each complete
+or are aborted by the reset flush within 200000 edges with no driver timeout, no read data beat is
+presented between the primary reset fall and the next accepted read request, and `HARNESS_LOCKS`
+reads 0 and 0 after the release and sense; which outcome occurred is printed.
 |`CHK-NONVAC` |The ordered fence (setup, warm values, warm locks, warm no re-sense, warm mid-read,
 cold locks, cold mid-read) with increasing time stamps and each checker line printed after its step
 completed.
@@ -28557,9 +28581,10 @@ sampler window is bounded and fails with an assertion on expiry; the bounds and 
 logged.
 |===
 
-*Pass Criteria*: all eight checkers hold: SPARE[3] keeps P1, `LOCKS` keeps 0x00024000 and SPARE[4]
-word 0 stays hidden across the warm reset with `tb_fuse_sense_done` never dropping; after the cold
-reset `LOCKS` and SPARE[3] read 0, SPARE[5] word 0 reads the marker again and writes land; and each mid-reset read ends within its bound
+*Pass Criteria*: all eight checkers hold: SPARE[1] keeps P1, `HARNESS_LOCKS` keeps 0x00002400 and
+SPARE[2] word 0 stays hidden across the warm reset with `tb_fuse_sense_done` never dropping; after
+the cold reset `HARNESS_LOCKS` and SPARE[1] read 0, SPARE_TAIL[0] word 0 reads the marker again and
+writes land; and each mid-reset read ends within its bound
 with no driver timeout and no stray data beat. The write response code and the completed-or-aborted
 outcome are recorded only. Enrolled in: `all`, `hosted`.
 
@@ -42133,7 +42158,8 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 *BFM / Model*: ocah_axi_vip (AXI-Lite) on the JTAG eFuse port (`ej_axi`), ocah_axi_vip (AXI) on SEP_IN, eFuse bank model
 
 *Run mode*: one testlist entry in `testlists/efuse.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool VCS or Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; args `+axi_sva_need_otp_jtag`; tool VCS or
+Verilator (cocotb).
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the contract and the sequence
 draws nothing from the seed.
@@ -42144,11 +42170,11 @@ draws nothing from the seed.
 
 * Contract `SMC_COV_W2T_009` revision 4 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
 * `tb_lc_state` is driven to TEST_DEV (0xF0) for the run and back to that value at the end (SF-017); `EFUSE_INTERFACE_CTRL_STATUS` must read `efuse_sense_done` 1 with bits [6:4] 0 before the first write.
-* Through the JTAG eFuse port, EFUSE_PROGRAM_CTRL takes 0x0805_FFFF, 0 and a walking one over its 19 RW bits; EFUSE_READ_CTRL 0x1000_FFFF, 0 and a walking one over its 17 RW bits; each timeout register 0x1FFF_FFFF, 0 and a walking one over bits [28:0], then 0x0080_0000. Every write is read back over SEP_IN at the same generated address (`efuse_interface_ctrl.adoc`).
-* EFUSE_PROGRAM_CTRL takes 0x0000_1234 full width, then 0x0805_FFA5 with WSTRB 0x1, then 0x0805_FFA5 with WSTRB 0x2 (byte lane 1 on, lane 0 off), then 0 full width; both strobed readbacks and responses are logged (SF-009).
-* Bit A (bit 5 of SPARE[2]) is read through the read interface, programmed with `efuse_data` 1 and read again; bit A2 (bit 9 of SPARE[3]) is read, takes a program request with `efuse_data` 0 and is read again; `program_busy`, `program_done` and `program_status` are recorded before that GO write and EFUSE_PROGRAM_CTRL is polled after it until the write has completed and `program_busy` has read 0 on eight consecutive samples; whether the request shows a lifecycle at all is logged, not compared, since `efuse_interface_ctrl.rdl` says a request with `efuse_data` 0 is ignored (SF-034). Both regions are unlocked in the default image and their image words are 0. Every read first writes EFUSE_PROGRAM_CTRL to 0: `program_enable` and `read_enable` are mutually exclusive owners of the command path, and a read issued while `program_enable` is set does not reach the bank (`hw/ip/efuse/doc/architecture.adoc`, Command-path ownership).
+* Through the JTAG eFuse port, EFUSE_PROGRAM_CTRL takes 0x0805_0000, 0 and a walking one over its 3 RW bits; EFUSE_READ_CTRL 0x1000_0000, 0 and a walking one over its 1 RW bit; EFUSE_PROGRAM_ADDR and EFUSE_READ_ADDR 0xFFFF_FFFF, 0 and a walking one over bits [31:0]; each timeout register 0x1FFF_FFFF, 0 and a walking one over bits [28:0], then 0x0080_0000. Every write is read back over SEP_IN at the same generated address (`efuse_interface_ctrl.adoc`). The walked address words reach beyond the implemented fuse size; an address error reports an invalid address that a command used (`hw/ip/efuse/regs/efuse_interface_ctrl.rdl`, `efuse_program_addr_error` and `efuse_read_addr_error`; `hw/ip/efuse/doc/architecture.adoc`, "Commands at or above bit 2048 + 32 × `WORDS` set the address error status"), so without a GO EFUSE_INTERFACE_CTRL_STATUS, read after the walks, must show no address error; `CHK-EFUSE-OOR-PROG` and `CHK-EFUSE-OOR-READ` prove that an address error sets and clears.
+* EFUSE_PROGRAM_ADDR takes 0x0000_1234 full width, then 0x0805_FFA5 with WSTRB 0x1, then 0x0805_FFA5 with WSTRB 0x2 (byte lane 1 on, lane 0 off), then 0 full width; both strobed readbacks and responses are logged (SF-009).
+* Bit A (bit 5 of SPARE[1]) is read through the read interface, programmed with `efuse_data` 1 and read again; bit A2 (bit 9 of SPARE[2]) is read, takes a program request with `efuse_data` 0 and is read again; `program_busy`, `program_done` and `program_status` are recorded before that GO write and EFUSE_PROGRAM_CTRL is polled after it until the write has completed and `program_busy` has read 0 on eight consecutive samples; whether the request shows a lifecycle at all is logged, not compared, since `efuse_interface_ctrl.rdl` says a request with `efuse_data` 0 is ignored (SF-034). Both regions are unlocked in the default image and their image words are 0. Every read first writes EFUSE_PROGRAM_CTRL to 0: `program_enable` and `read_enable` are mutually exclusive owners of the command path, and a read issued while `program_enable` is set does not reach the bank (`hw/ip/efuse/doc/architecture.adoc`, Command-path ownership).
 * After the data-0 program, EFUSE_PROGRAM_CTRL is read over the JTAG eFuse port and the value read is written back, with AxPROT 0b101, then 0b000, then the port default 0b010 (stimulus for the AxPROT bits of the JTAG eFuse request path, which every other access drives at 0b010). The register holds the data-0 word, so no write-back starts a fuse program (`efuse_interface_ctrl.adoc`).
-* EFUSE_PROGRAM_CTRL and EFUSE_READ_CTRL end at 0 and both timeouts at 0x0080_0000.
+* EFUSE_PROGRAM_CTRL, EFUSE_READ_CTRL, EFUSE_PROGRAM_ADDR and EFUSE_READ_ADDR end at 0 and both timeouts at 0x0080_0000.
 
 *Test Procedure*:
 
@@ -42159,8 +42185,8 @@ Drive `smc_efuse_jtag_otp_data_walk_test_seq`. Each checker below is a named com
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-JTAG-WALK` |Every SEP_IN readback equals the JTAG-written word masked to the register's RW fields with the status fields 0, in 21 + 19 + 31 + 31 writes, every JTAG write answers OKAY, and both timeouts read 0x0080_0000 at the end; reserved bits logged (LINKED-ISSUE SF-001)
-|`CHK-EFUSE-JTAG-PARTIAL-STRB` |The full-width writes read back exactly 0x0000_1234 and 0x0; the WSTRB 0x1 readback and response are logged against 0x0000_12A5, and the WSTRB 0x2 readback and response against the WSTRB 0x1 readback with `efuse_addr[15:8]` 0xFF (both LINKED-ISSUE SF-009)
+|`CHK-EFUSE-JTAG-WALK` |Every SEP_IN readback equals the JTAG-written word masked to the register's RW fields with the status fields 0, in 5 + 3 + 34 + 34 + 31 + 31 writes, every JTAG write answers OKAY, both timeouts read 0x0080_0000 at the end, and EFUSE_INTERFACE_CTRL_STATUS shows no address error after the out-of-range address walks without GO; reserved bits logged (LINKED-ISSUE SF-001)
+|`CHK-EFUSE-JTAG-PARTIAL-STRB` |The full-width writes to EFUSE_PROGRAM_ADDR read back exactly 0x0000_1234 and 0x0; the WSTRB 0x1 readback and response are logged against 0x0000_12A5, and the WSTRB 0x2 readback and response against the WSTRB 0x1 readback with bits [15:8] 0xFF (both LINKED-ISSUE SF-009)
 |`CHK-EFUSE-JTAG-PROGRAM` |After the go write `program_busy` reads 1 on at least one sample before `program_done` reads 1, and `program_status` reads 0, within the poll bound
 |`CHK-EFUSE-JTAG-READBACK` |The read of A completes with `read_done` 1 and `read_status` 0, and its dout differs from the pre-program dout in exactly one bit, which went 0 to 1; the bit position is logged (LINKED-ISSUE SF-016)
 |`CHK-EFUSE-JTAG-DATA0` |After the data-0 GO write EFUSE_PROGRAM_CTRL is polled until the write has completed and `program_busy` reads 0 on eight consecutive samples, within the poll bound, and the read of A2 afterwards returns exactly its pre-request dout. Whether the request showed a lifecycle (`program_busy` 1 on a sample, or `program_done` / `program_status` differing from its pre-GO value; the first kind is printed, else `none`), `program_status` before and after and the `program_done` / `program_busy` samples are logged only (LINKED-ISSUE SF-034: `efuse_interface_ctrl.rdl` says a data-0 request is ignored, and whether that means no lifecycle is open)
@@ -42169,7 +42195,7 @@ Drive `smc_efuse_jtag_otp_data_walk_test_seq`. Each checker below is a named com
 |`CHK-TIMEOUT-PATHS` |Every program / read poll, JTAG access and SEP_IN access is bounded; the line logs each bound and the last observed state, and no wait expires
 |===
 
-*Pass Criteria*: all eight checkers hold after their compares and the protocol-VIP record clears its 118-access floor. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all eight checkers hold after their compares and the protocol-VIP record clears its 158-access floor. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The partial-strobe outcome, reserved bits, the lifecycle state that admits JTAG eFuse requests and the dout bit that carries the addressed fuse are logged only (SF-009, SF-001, SF-017, SF-016). Whether the eFuse registers require an elevated AxPROT on the JTAG port is open (SF-033), and so is what "ignored" means for a data-0 program request: whether it shows a lifecycle at all and the `program_status` it leaves are logged (SF-034). The fuse bank is the DV model; a programmed bit stays programmed for the rest of the run.
 

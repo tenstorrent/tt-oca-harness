@@ -2,11 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Software lock enforcement per field of SMC_EFUSE_MAP.
 
-Sources: smc_efuse_map.rdl (LOCKS), architecture.adoc (Hardware vs. Software Locks),
+Sources: smc_efuse_map.rdl (HARNESS_LOCKS), architecture.adoc (Hardware vs. Software Locks),
 smc-programming.adoc (whole-field locks), port_table.adoc (shadow_regs_o).
 
-The image is written into the run directory during ``build_phase``: every field and LOCKS
-are 0.
+The image is written into the run directory during ``build_phase``: every field and both
+LOCKS registers are 0.
 """
 
 from __future__ import annotations

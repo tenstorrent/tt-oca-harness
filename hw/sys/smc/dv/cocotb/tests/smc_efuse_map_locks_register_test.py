@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""LOCKS register behaviour and the 32-slot lock assignment of SMC_EFUSE_MAP.
+"""HARNESS_LOCKS register behaviour and the 8-slot lock assignment of SMC_EFUSE_MAP.
 
-Sources: smc_efuse_map.rdl (LOCKS, slot assignment), architecture.adoc (Hardware vs.
+Sources: smc_efuse_map.rdl (HARNESS_LOCKS, slot assignment), architecture.adoc (Hardware vs.
 Software Locks).
 
 The image is written into the run directory during ``build_phase``: every field is 0 and
-LOCKS is 0x40000000_00000000, the SPARE[27] write lock.
+HARNESS_LOCKS is 0x4000, the SPARE_TAIL write lock (slot 7).
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ _CONFIG_TEMPLATE = """\
     write_locked = "False"
     read_locked = "False"
     [LOCKS.fields.lock_entries]
-    value = 0x{locks:016x}
+    value = 0x{locks:x}
 
 [JTAG_PUBLIC_IDENTITY]
     write_locked = "False"
@@ -146,7 +146,8 @@ class smc_efuse_map_locks_register_test(smc_base_test):
             csr_accesses=seq.accesses,
             proxy=False,
             details=(
-                "SMC_EFUSE_MAP LOCKS write-one-to-set at 32 and 64 bits, 32-slot lock "
-                "assignment and cold-reset restore (eFuse bank is the DV model)"
+                "SMC_EFUSE_MAP HARNESS_LOCKS write-one-to-set at 32 and 64 bits (cross-half "
+                "writes on SUPPLEMENTARY_LOCKS), 8-slot lock assignment and cold-reset restore "
+                "(eFuse bank is the DV model)"
             ),
         )

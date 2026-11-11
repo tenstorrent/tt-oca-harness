@@ -2,8 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Software lock enforcement per field of SMC_EFUSE_MAP.
 
-Sources: smc_efuse_map.rdl (LOCKS), architecture.adoc (Hardware vs. Software Locks),
+Sources: smc_efuse_map.rdl (HARNESS_LOCKS), architecture.adoc (Hardware vs. Software Locks),
 smc-programming.adoc (whole-field locks), port_table.adoc (shadow_regs_o).
+
+The fields under test are SPARE[0], SPARE[1], SPARE[2] (eight words each, lock slots 4 to 6),
+the three SPARE_TAIL elements (six words, one shared lock pair in slot 7), I2C_I3C_ID and
+JTAG_PUBLIC_IDENTITY.
 
 Every field word compare is against ``shadow``, a per-word model that starts from the image and
 changes only when a write to an unlocked field lands. A read-locked word is read with errors
@@ -34,7 +38,8 @@ _SENSE_BOUND_CYCLES = 200_000
 _LOCK_BITS = (
     ("SPARE0", 8, 9),
     ("SPARE1", None, 11),
-    ("SPARE27", 62, None),
+    ("SPARE2", 12, None),
+    ("SPARE_TAIL0", 14, 15),
     ("I2C_I3C_ID", 2, 3),
     ("JTAG_PUBLIC_IDENTITY", 0, 1),
 )
@@ -117,7 +122,7 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
     async def _read_locks(self, label: str) -> tuple[int, int]:
         addr = word_addr(LOCKS_WORDS[0])
         lo = await self._rd(f"{label}_LO", addr, self.locks_model & _WORD_MASK)
-        hi = await self._rd(f"{label}_HI", addr + 4, self.locks_model >> 32)
+        hi = await self._rd(f"{label}_HI", addr + 4, (self.locks_model >> 32) & _WORD_MASK)
         return lo & _WORD_MASK, hi & _WORD_MASK
 
     async def _set_locks(self, label: str, bits: int) -> tuple[int, int]:
@@ -210,12 +215,26 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
                         f"{name} {kind} lock mask 0x{mask:x} is not LOCKS bit {bit}"
                     )
         spare = {
-            k: range(reg[f"SPARE{k}"].first_word, reg[f"SPARE{k}"].end_word) for k in (0, 1, 26, 27)
+            k: range(reg[f"SPARE{k}"].first_word, reg[f"SPARE{k}"].end_word) for k in (0, 1, 2)
         }
+        tails = [r for r in REGIONS if r.name.startswith("SPARE_TAIL")]
+        assert len(tails) == 3 and all(
+            (t.write_lock, t.read_lock) == (tails[0].write_lock, tails[0].read_lock)
+            and t.first_word == tails[0].first_word + 2 * k
+            for k, t in enumerate(tails)
+        ), f"SPARE_TAIL regions {tails}"
+        #: The three SPARE_TAIL elements, one field under one lock pair.
+        tail = range(tails[0].first_word, tails[-1].end_word)
         i2c = range(reg["I2C_I3C_ID"].first_word, reg["I2C_I3C_ID"].end_word)
         jpi = range(reg["JTAG_PUBLIC_IDENTITY"].first_word, reg["JTAG_PUBLIC_IDENTITY"].end_word)
-        assert len(i2c) == 18 and len(jpi) == 8 and all(len(r) == 8 for r in spare.values()), (
-            f"field sizes i2c={len(i2c)} jpi={len(jpi)} spare={[len(r) for r in spare.values()]}"
+        assert (
+            len(i2c) == 18
+            and len(jpi) == 8
+            and len(tail) == 6
+            and all(len(r) == 8 for r in spare.values())
+        ), (
+            f"field sizes i2c={len(i2c)} jpi={len(jpi)} tail={len(tail)} "
+            f"spare={[len(r) for r in spare.values()]}"
         )
         assert all(w == 0 for w in image.words), "the image has a non-zero word"
         self.shadow = list(image.words)
@@ -223,6 +242,7 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
         assert self.locks_model == 0, f"image LOCKS 0x{self.locks_model:x} is not 0"
         wl = {n: reg[n].write_lock for n in reg}
         rl = {n: reg[n].read_lock for n in reg}
+        wl["SPARE_TAIL"], rl["SPARE_TAIL"] = tails[0].write_lock, tails[0].read_lock
 
         # S1: sense, LOCKS 0
         await self._sense_wait("sense1")
@@ -230,37 +250,39 @@ class smc_efuse_map_lock_field_enforce_test_seq(SmcCsrSeq):
         self._done("S1")
 
         # S2: positive control
-        groups = [spare[0], spare[1], spare[27], i2c, jpi]
+        groups = [spare[0], spare[1], spare[2], tail, i2c, jpi]
         for rng in groups:
             await self._write_pattern("S2_WR", rng, lands=True)
             await self._expect_words("S2_RB", rng)
         self._done("S2")
 
-        # S3: SPARE[0] and SPARE[27] write locks, neighbours
-        await self._set_locks("S3_WLOCK", wl["SPARE0"] | wl["SPARE27"])
+        # S3: SPARE[0] and SPARE[2] write locks; SPARE[1] and SPARE_TAIL, their neighbours
+        await self._set_locks("S3_WLOCK", wl["SPARE0"] | wl["SPARE2"])
         port_a = self._port()
-        for k in (0, 27):
+        for k in (0, 2):
             await self._write_pattern(f"S3_LOCKED_SPARE{k}", spare[k], lands=False)
         port_b = self._port()
         assert port_a == port_b, (
             f"shadow port changed across rejected writes: {self._digest(port_a)} -> "
             f"{self._digest(port_b)}"
         )
-        for k in (0, 27):
+        for k in (0, 2):
             await self._expect_words(f"S3_HELD_SPARE{k}", spare[k])
-        for k in (1, 26):
-            await self._write_pattern(f"S3_NB_SPARE{k}", spare[k], lands=True)
-            await self._expect_words(f"S3_NB_RB_SPARE{k}", spare[k])
+        for name, rng in (("SPARE1", spare[1]), ("SPARE_TAIL", tail)):
+            await self._write_pattern(f"S3_NB_{name}", rng, lands=True)
+            await self._expect_words(f"S3_NB_RB_{name}", rng)
         self._done("S3")
         self._chk(
             "CHK-EMAP-ENF-WR-SPARE",
-            "LOCKS=0x%016x write locks SPARE[0] bit 8 and SPARE[27] bit 62: 16 words rejected a "
+            "LOCKS=0x%016x write locks SPARE[0] bit 8 and SPARE[2] bit 12: %d words rejected a "
             "new pattern and read their S2 pattern",
             self.locks_model,
+            len(spare[0]) + len(spare[2]),
         )
         self._chk(
             "CHK-EMAP-ENF-NEIGHBOUR",
-            "SPARE[1] and SPARE[26] accepted a new pattern and read it back: 16 words",
+            "SPARE[1] and SPARE_TAIL[0..2] accepted a new pattern and read it back: %d words",
+            len(spare[1]) + len(tail),
         )
         port_s3 = self._digest(port_a)
 

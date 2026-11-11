@@ -27,7 +27,7 @@ from ocah_axi_vip import OcahAxiLiteMasterAgent
 from ._one_shot import _OneShot
 from .smc_addr_map import smc_addr, smc_efuse_map_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_efuse_image_pattern_test_seq import EFUSE_MAP_WORDS, EfuseImage
+from .smc_efuse_image_pattern_test_seq import EFUSE_MAP_WORDS, LOCKS_WORDS, EfuseImage
 
 _MASK32 = 0xFFFF_FFFF
 _STEPS = ("S1", "S2", "S3", "S4", "S5")
@@ -44,7 +44,9 @@ _AXI_OKAY = 0
 _PATTERN_X = 0xC3A5_1E7B
 _ALTERNATIONS = 16
 _OUTSTANDING = 8
-_SPARE_WORDS = 8
+#: The outstanding read targets: the first five words of SPARE[2] and word 0 of each
+#: SPARE_TAIL element.
+_OUTSTANDING_SPARE2_WORDS = 5
 _PORT_SIGNALS = {
     "s_axi": ("arvalid", "arready", "arid", "araddr", "rvalid", "rready", "rid", "rdata"),
     "ej_axi": ("arvalid", "arready", "araddr", "rvalid", "rready", "rdata"),
@@ -211,19 +213,25 @@ class smc_efuse_map_concurrency_test_seq(SmcCsrSeq):
         def spare(k: int) -> int:
             return smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k)
 
+        def tail(k: int) -> int:
+            return smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", k)
+
         spare0, spare1 = spare(0), spare(1)
         w0, w1 = (spare0 - base) // 4, (spare1 - base) // 4
-        assert (w0, w1) == (32, 40), f"SPARE[0]/SPARE[1] first words are {w0}/{w1}"
-        outstanding = [spare(k) for k in range(2, 2 + _SPARE_WORDS)]
+        assert (w0, w1) == (34, 42), f"SPARE[0]/SPARE[1] first words are {w0}/{w1}"
+        outstanding = [spare(2) + 4 * k for k in range(_OUTSTANDING_SPARE2_WORDS)]
+        outstanding += [tail(k) for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM"))]
+        assert len(outstanding) == _OUTSTANDING, f"{len(outstanding)} outstanding targets"
         owords = [(a - base) // 4 for a in outstanding]
+        assert owords == [50, 51, 52, 53, 54, 58, 60, 62], f"outstanding map words {owords}"
         locks_addr = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
         wlock = smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE0_WRITE_LOCK_bm")
         assert wlock == 1 << 8, f"SPARE0_WRITE_LOCK mask 0x{wlock:x}"
 
-        assert len(words) == EFUSE_MAP_WORDS and words[0] == 0 and words[1] == 0, (
-            f"LOCKS words 0x{words[0]:08x}/0x{words[1]:08x}"
+        assert len(words) == EFUSE_MAP_WORDS and all(words[w] == 0 for w in LOCKS_WORDS), (
+            f"LOCKS words {[hex(words[w]) for w in LOCKS_WORDS]}"
         )
-        data_words = words[2:]
+        data_words = words[LOCKS_WORDS[-1] + 1 :]
         assert len(set(data_words)) == len(data_words), (
             f"image holds {len(set(data_words))} distinct words of {len(data_words)} "
             "non-LOCKS words"
@@ -426,9 +434,12 @@ class smc_efuse_map_concurrency_test_seq(SmcCsrSeq):
         assert [v for _t, _i, v in ars] == outstanding, (
             f"S5: AR addresses {[hex(v) for _t, _i, v in ars]}"
         )
-        assert [v & _MASK32 for _t, _i, v in rs] == [words[w] for w in owords], (
-            f"S5: response data {[hex(v & _MASK32) for _t, _i, v in rs]}"
-        )
+        # s_axi_rdata is the 64-bit bus value; a word at offset 4 of its 8-byte lane
+        # arrives in the upper half, so each response is read from its own lane.
+        r_data = [
+            (v >> (32 * ((addr >> 2) & 1))) & _MASK32 for addr, (_t, _i, v) in zip(outstanding, rs)
+        ]
+        assert r_data == [words[w] for w in owords], f"S5: response data {[hex(v) for v in r_data]}"
         r_times = [t for t, _i, _v in rs]
         assert all(r.resp_code == _AXI_OKAY for r in reads), (
             f"S5: response codes {[r.resp_code for r in reads]}"
@@ -447,16 +458,17 @@ class smc_efuse_map_concurrency_test_seq(SmcCsrSeq):
         self._done("S5")
         self._chk(
             "CHK-EMAP-CONC-OUTSTANDING",
-            "%d SEP_IN reads of SPARE[2..9] word 0 (map words %s) issued as one group from %d to "
-            "%d ps; AR handshakes %s ps; R handshakes %s ps in request order with data %s, each "
-            "= its image word; measured peak outstanding depth %d",
+            "%d SEP_IN reads of SPARE[2] words 0-4 and SPARE_TAIL[0..2] word 0 (map words %s) "
+            "issued as one group from %d to %d ps; AR handshakes %s ps; R handshakes %s ps in "
+            "request order with data %s, each = its image word; measured peak outstanding "
+            "depth %d",
             _OUTSTANDING,
             ",".join(str(w) for w in owords),
             start5,
             end5,
             ",".join(str(t) for t, _i, _v in ars),
             ",".join(str(t) for t in r_times),
-            ",".join(f"0x{v & _MASK32:08x}" for _t, _i, v in rs),
+            ",".join(f"0x{v:08x}" for v in r_data),
             peak,
         )
         monitor.kill()
