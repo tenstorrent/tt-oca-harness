@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="671" viewBox="0 0 1040 671" role="img" aria-labelledby="title desc">
 <title id="title">SEP cryptographic subsystem resets</title>
-<desc id="desc">Resets inside u_sep_crypto. rst_ni resets the interconnect, life cycle controller, eFuse shim mux, alert receivers and encoders. In u_sep_trng, rst_ni is the power-on reset of a 2-flop synchroniser that samples the inverted gated TRNG reset and drives trng_reset_active, which clears both EDN AXIS adapters and, as trng_entropy_clear_o, the entropy pool. The adapters take rst_ni. The gated resets reset OTBN, AES, HMAC, KMAC and Adams Bridge. In the Key Manager reset conditioner, sep_reset_n feeds u_cold_rst_sync for the cold domain; a NAND of the gated Key Manager reset and soft_rst_n triggers a hold counter, reset by the cold output, that holds the warm domain in reset for at least 10 cycles.</desc>
+<desc id="desc">Resets inside u_sep_crypto. rst_ni resets the interconnect, life cycle controller, alert receivers and encoders. In u_sep_trng, rst_ni is the power-on reset of a 2-flop synchroniser that samples the inverted gated TRNG reset and drives trng_reset_active, which clears both EDN AXIS adapters and, as trng_entropy_clear_o, the entropy pool. The adapters take rst_ni. The gated resets reset OTBN, AES, HMAC, KMAC and Adams Bridge. In the Key Manager reset conditioner, sep_reset_n feeds u_cold_rst_sync for the cold domain; a NAND of the gated Key Manager reset and soft_rst_n triggers a hold counter, reset by the cold output, that holds the warm domain in reset for at least 10 cycles.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -84,11 +84,10 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect width="1040" height="671" fill="#ffffff"/>
 <g transform="translate(0,-480)">
 <rect class="core" x="290" y="502" width="510" height="569" rx="6"/>
-<rect class="core" x="310" y="536" width="478" height="70" rx="4"/>
+<rect class="core" x="310" y="536" width="478" height="54" rx="4"/>
 <text class="s" x="320" y="552" text-anchor="start">u_sep_crypto_axi_interconnect, u_sep_lifecycle_ctrl</text>
-<text class="s" x="320" y="568" text-anchor="start">u_efuse_shim_axi_mux, u_efuse_shim_id_conv</text>
-<text class="s" x="320" y="584" text-anchor="start">gen_alert_receivers, u_*_enc</text>
-<text class="s" x="320" y="600" text-anchor="start">u_abr_*_err_slv (SEP_ABR_EN undefined)</text>
+<text class="s" x="320" y="568" text-anchor="start">gen_alert_receivers, u_*_enc</text>
+<text class="s" x="320" y="584" text-anchor="start">u_abr_*_err_slv (SEP_ABR_EN undefined)</text>
 <path class="a-smu" d="M240,571 L306,571"/>
 <circle cx="240" cy="571" r="4" fill="#103525"/>
 <rect class="core" x="310" y="618" width="300" height="64" rx="4"/>

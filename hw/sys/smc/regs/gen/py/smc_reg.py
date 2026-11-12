@@ -1876,154 +1876,154 @@ SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_14__REG_TYPE = 'LOG_EN
 SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_15__REG_OFFSET = 0x0000007C
 SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_15__REG_ADDR = 0xC0006E7C
 SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTRL_15__REG_TYPE = 'LOG_ENGINE_LOG_CTRL'
-SMC_EFUSE_MAP_REG_MAP_BASE_ADDR = 0xC0007000
-SMC_EFUSE_MAP_REG_MAP_SIZE = 0x00000400
-SMC_EFUSE_MAP_LOCKS_REG_OFFSET = 0x00000000
-SMC_EFUSE_MAP_LOCKS_REG_ADDR = 0xC0007000
-SMC_EFUSE_MAP_LOCKS_REG_TYPE = 'SMC_EFUSE_MAP_LOCKS'
-SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_OFFSET = 0x00000008
-SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_ADDR = 0xC0007008
-SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_TYPE = 'SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY'
-SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_OFFSET = 0x00000028
-SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR = 0xC0007028
-SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_OFFSET = 0x00000030
-SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR = 0xC0007030
-SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_OFFSET = 0x00000038
-SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_ADDR = 0xC0007038
-SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_OFFSET = 0x00000040
-SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR = 0xC0007040
-SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_OFFSET = 0x00000048
-SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_ADDR = 0xC0007048
-SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_OFFSET = 0x00000050
-SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_ADDR = 0xC0007050
-SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_OFFSET = 0x00000058
-SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR = 0xC0007058
-SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_OFFSET = 0x00000060
-SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR = 0xC0007060
-SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_OFFSET = 0x00000068
-SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_ADDR = 0xC0007068
-SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
-SMC_EFUSE_MAP_SMC_CONFIG_REG_OFFSET = 0x00000070
-SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR = 0xC0007070
-SMC_EFUSE_MAP_SMC_CONFIG_REG_TYPE = 'SMC_EFUSE_MAP_SMC_CONFIG'
-SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_OFFSET = 0x00000078
-SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR = 0xC0007078
-SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_TYPE = 'SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT'
-SMC_EFUSE_MAP_SPARE_0__REG_OFFSET = 0x00000080
-SMC_EFUSE_MAP_SPARE_0__REG_ADDR = 0xC0007080
-SMC_EFUSE_MAP_SPARE_0__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_1__REG_OFFSET = 0x000000A0
-SMC_EFUSE_MAP_SPARE_1__REG_ADDR = 0xC00070A0
-SMC_EFUSE_MAP_SPARE_1__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_2__REG_OFFSET = 0x000000C0
-SMC_EFUSE_MAP_SPARE_2__REG_ADDR = 0xC00070C0
-SMC_EFUSE_MAP_SPARE_2__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_3__REG_OFFSET = 0x000000E0
-SMC_EFUSE_MAP_SPARE_3__REG_ADDR = 0xC00070E0
-SMC_EFUSE_MAP_SPARE_3__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_4__REG_OFFSET = 0x00000100
-SMC_EFUSE_MAP_SPARE_4__REG_ADDR = 0xC0007100
-SMC_EFUSE_MAP_SPARE_4__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_5__REG_OFFSET = 0x00000120
-SMC_EFUSE_MAP_SPARE_5__REG_ADDR = 0xC0007120
-SMC_EFUSE_MAP_SPARE_5__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_6__REG_OFFSET = 0x00000140
-SMC_EFUSE_MAP_SPARE_6__REG_ADDR = 0xC0007140
-SMC_EFUSE_MAP_SPARE_6__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_7__REG_OFFSET = 0x00000160
-SMC_EFUSE_MAP_SPARE_7__REG_ADDR = 0xC0007160
-SMC_EFUSE_MAP_SPARE_7__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_8__REG_OFFSET = 0x00000180
-SMC_EFUSE_MAP_SPARE_8__REG_ADDR = 0xC0007180
-SMC_EFUSE_MAP_SPARE_8__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_9__REG_OFFSET = 0x000001A0
-SMC_EFUSE_MAP_SPARE_9__REG_ADDR = 0xC00071A0
-SMC_EFUSE_MAP_SPARE_9__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_10__REG_OFFSET = 0x000001C0
-SMC_EFUSE_MAP_SPARE_10__REG_ADDR = 0xC00071C0
-SMC_EFUSE_MAP_SPARE_10__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_11__REG_OFFSET = 0x000001E0
-SMC_EFUSE_MAP_SPARE_11__REG_ADDR = 0xC00071E0
-SMC_EFUSE_MAP_SPARE_11__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_12__REG_OFFSET = 0x00000200
-SMC_EFUSE_MAP_SPARE_12__REG_ADDR = 0xC0007200
-SMC_EFUSE_MAP_SPARE_12__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_13__REG_OFFSET = 0x00000220
-SMC_EFUSE_MAP_SPARE_13__REG_ADDR = 0xC0007220
-SMC_EFUSE_MAP_SPARE_13__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_14__REG_OFFSET = 0x00000240
-SMC_EFUSE_MAP_SPARE_14__REG_ADDR = 0xC0007240
-SMC_EFUSE_MAP_SPARE_14__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_15__REG_OFFSET = 0x00000260
-SMC_EFUSE_MAP_SPARE_15__REG_ADDR = 0xC0007260
-SMC_EFUSE_MAP_SPARE_15__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_16__REG_OFFSET = 0x00000280
-SMC_EFUSE_MAP_SPARE_16__REG_ADDR = 0xC0007280
-SMC_EFUSE_MAP_SPARE_16__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_17__REG_OFFSET = 0x000002A0
-SMC_EFUSE_MAP_SPARE_17__REG_ADDR = 0xC00072A0
-SMC_EFUSE_MAP_SPARE_17__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_18__REG_OFFSET = 0x000002C0
-SMC_EFUSE_MAP_SPARE_18__REG_ADDR = 0xC00072C0
-SMC_EFUSE_MAP_SPARE_18__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_19__REG_OFFSET = 0x000002E0
-SMC_EFUSE_MAP_SPARE_19__REG_ADDR = 0xC00072E0
-SMC_EFUSE_MAP_SPARE_19__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_20__REG_OFFSET = 0x00000300
-SMC_EFUSE_MAP_SPARE_20__REG_ADDR = 0xC0007300
-SMC_EFUSE_MAP_SPARE_20__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_21__REG_OFFSET = 0x00000320
-SMC_EFUSE_MAP_SPARE_21__REG_ADDR = 0xC0007320
-SMC_EFUSE_MAP_SPARE_21__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_22__REG_OFFSET = 0x00000340
-SMC_EFUSE_MAP_SPARE_22__REG_ADDR = 0xC0007340
-SMC_EFUSE_MAP_SPARE_22__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_23__REG_OFFSET = 0x00000360
-SMC_EFUSE_MAP_SPARE_23__REG_ADDR = 0xC0007360
-SMC_EFUSE_MAP_SPARE_23__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_24__REG_OFFSET = 0x00000380
-SMC_EFUSE_MAP_SPARE_24__REG_ADDR = 0xC0007380
-SMC_EFUSE_MAP_SPARE_24__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_25__REG_OFFSET = 0x000003A0
-SMC_EFUSE_MAP_SPARE_25__REG_ADDR = 0xC00073A0
-SMC_EFUSE_MAP_SPARE_25__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_26__REG_OFFSET = 0x000003C0
-SMC_EFUSE_MAP_SPARE_26__REG_ADDR = 0xC00073C0
-SMC_EFUSE_MAP_SPARE_26__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-SMC_EFUSE_MAP_SPARE_27__REG_OFFSET = 0x000003E0
-SMC_EFUSE_MAP_SPARE_27__REG_ADDR = 0xC00073E0
-SMC_EFUSE_MAP_SPARE_27__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
-EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR = 0xC0008000
+EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR = 0xC0007000
 EFUSE_INTERFACE_CTRL_REG_MAP_SIZE = 0x0000001C
 EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET = 0x00000000
-EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR = 0xC0008000
+EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR = 0xC0007000
 EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS'
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_OFFSET = 0x00000004
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR = 0xC0008004
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR = 0xC0007004
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL'
 EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_OFFSET = 0x00000008
-EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR = 0xC0008008
+EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR = 0xC0007008
 EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL'
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_OFFSET = 0x0000000C
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR = 0xC000800C
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR = 0xC000700C
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA'
 EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_OFFSET = 0x00000010
-EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR = 0xC0008010
+EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR = 0xC0007010
 EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA'
 EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_OFFSET = 0x00000014
-EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR = 0xC0008014
+EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR = 0xC0007014
 EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT'
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET = 0x00000018
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR = 0xC0008018
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR = 0xC0007018
 EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_TYPE = 'EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT'
+SMC_EFUSE_MAP_REG_MAP_BASE_ADDR = 0xC0007400
+SMC_EFUSE_MAP_REG_MAP_SIZE = 0x00000400
+SMC_EFUSE_MAP_LOCKS_REG_OFFSET = 0x00000000
+SMC_EFUSE_MAP_LOCKS_REG_ADDR = 0xC0007400
+SMC_EFUSE_MAP_LOCKS_REG_TYPE = 'SMC_EFUSE_MAP_LOCKS'
+SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_OFFSET = 0x00000008
+SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_ADDR = 0xC0007408
+SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_TYPE = 'SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY'
+SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_OFFSET = 0x00000028
+SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR = 0xC0007428
+SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
+SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_OFFSET = 0x00000030
+SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR = 0xC0007430
+SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
+SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_OFFSET = 0x00000038
+SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_ADDR = 0xC0007438
+SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
+SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_OFFSET = 0x00000040
+SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR = 0xC0007440
+SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
+SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_OFFSET = 0x00000048
+SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_ADDR = 0xC0007448
+SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
+SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_OFFSET = 0x00000050
+SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_ADDR = 0xC0007450
+SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
+SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_OFFSET = 0x00000058
+SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR = 0xC0007458
+SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
+SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_OFFSET = 0x00000060
+SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR = 0xC0007460
+SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
+SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_OFFSET = 0x00000068
+SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_ADDR = 0xC0007468
+SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_TYPE = 'SMC_EFUSE_MAP_I2C_I3C_ID'
+SMC_EFUSE_MAP_SMC_CONFIG_REG_OFFSET = 0x00000070
+SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR = 0xC0007470
+SMC_EFUSE_MAP_SMC_CONFIG_REG_TYPE = 'SMC_EFUSE_MAP_SMC_CONFIG'
+SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_OFFSET = 0x00000078
+SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR = 0xC0007478
+SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_TYPE = 'SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT'
+SMC_EFUSE_MAP_SPARE_0__REG_OFFSET = 0x00000080
+SMC_EFUSE_MAP_SPARE_0__REG_ADDR = 0xC0007480
+SMC_EFUSE_MAP_SPARE_0__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_1__REG_OFFSET = 0x000000A0
+SMC_EFUSE_MAP_SPARE_1__REG_ADDR = 0xC00074A0
+SMC_EFUSE_MAP_SPARE_1__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_2__REG_OFFSET = 0x000000C0
+SMC_EFUSE_MAP_SPARE_2__REG_ADDR = 0xC00074C0
+SMC_EFUSE_MAP_SPARE_2__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_3__REG_OFFSET = 0x000000E0
+SMC_EFUSE_MAP_SPARE_3__REG_ADDR = 0xC00074E0
+SMC_EFUSE_MAP_SPARE_3__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_4__REG_OFFSET = 0x00000100
+SMC_EFUSE_MAP_SPARE_4__REG_ADDR = 0xC0007500
+SMC_EFUSE_MAP_SPARE_4__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_5__REG_OFFSET = 0x00000120
+SMC_EFUSE_MAP_SPARE_5__REG_ADDR = 0xC0007520
+SMC_EFUSE_MAP_SPARE_5__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_6__REG_OFFSET = 0x00000140
+SMC_EFUSE_MAP_SPARE_6__REG_ADDR = 0xC0007540
+SMC_EFUSE_MAP_SPARE_6__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_7__REG_OFFSET = 0x00000160
+SMC_EFUSE_MAP_SPARE_7__REG_ADDR = 0xC0007560
+SMC_EFUSE_MAP_SPARE_7__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_8__REG_OFFSET = 0x00000180
+SMC_EFUSE_MAP_SPARE_8__REG_ADDR = 0xC0007580
+SMC_EFUSE_MAP_SPARE_8__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_9__REG_OFFSET = 0x000001A0
+SMC_EFUSE_MAP_SPARE_9__REG_ADDR = 0xC00075A0
+SMC_EFUSE_MAP_SPARE_9__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_10__REG_OFFSET = 0x000001C0
+SMC_EFUSE_MAP_SPARE_10__REG_ADDR = 0xC00075C0
+SMC_EFUSE_MAP_SPARE_10__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_11__REG_OFFSET = 0x000001E0
+SMC_EFUSE_MAP_SPARE_11__REG_ADDR = 0xC00075E0
+SMC_EFUSE_MAP_SPARE_11__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_12__REG_OFFSET = 0x00000200
+SMC_EFUSE_MAP_SPARE_12__REG_ADDR = 0xC0007600
+SMC_EFUSE_MAP_SPARE_12__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_13__REG_OFFSET = 0x00000220
+SMC_EFUSE_MAP_SPARE_13__REG_ADDR = 0xC0007620
+SMC_EFUSE_MAP_SPARE_13__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_14__REG_OFFSET = 0x00000240
+SMC_EFUSE_MAP_SPARE_14__REG_ADDR = 0xC0007640
+SMC_EFUSE_MAP_SPARE_14__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_15__REG_OFFSET = 0x00000260
+SMC_EFUSE_MAP_SPARE_15__REG_ADDR = 0xC0007660
+SMC_EFUSE_MAP_SPARE_15__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_16__REG_OFFSET = 0x00000280
+SMC_EFUSE_MAP_SPARE_16__REG_ADDR = 0xC0007680
+SMC_EFUSE_MAP_SPARE_16__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_17__REG_OFFSET = 0x000002A0
+SMC_EFUSE_MAP_SPARE_17__REG_ADDR = 0xC00076A0
+SMC_EFUSE_MAP_SPARE_17__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_18__REG_OFFSET = 0x000002C0
+SMC_EFUSE_MAP_SPARE_18__REG_ADDR = 0xC00076C0
+SMC_EFUSE_MAP_SPARE_18__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_19__REG_OFFSET = 0x000002E0
+SMC_EFUSE_MAP_SPARE_19__REG_ADDR = 0xC00076E0
+SMC_EFUSE_MAP_SPARE_19__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_20__REG_OFFSET = 0x00000300
+SMC_EFUSE_MAP_SPARE_20__REG_ADDR = 0xC0007700
+SMC_EFUSE_MAP_SPARE_20__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_21__REG_OFFSET = 0x00000320
+SMC_EFUSE_MAP_SPARE_21__REG_ADDR = 0xC0007720
+SMC_EFUSE_MAP_SPARE_21__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_22__REG_OFFSET = 0x00000340
+SMC_EFUSE_MAP_SPARE_22__REG_ADDR = 0xC0007740
+SMC_EFUSE_MAP_SPARE_22__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_23__REG_OFFSET = 0x00000360
+SMC_EFUSE_MAP_SPARE_23__REG_ADDR = 0xC0007760
+SMC_EFUSE_MAP_SPARE_23__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_24__REG_OFFSET = 0x00000380
+SMC_EFUSE_MAP_SPARE_24__REG_ADDR = 0xC0007780
+SMC_EFUSE_MAP_SPARE_24__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_25__REG_OFFSET = 0x000003A0
+SMC_EFUSE_MAP_SPARE_25__REG_ADDR = 0xC00077A0
+SMC_EFUSE_MAP_SPARE_25__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_26__REG_OFFSET = 0x000003C0
+SMC_EFUSE_MAP_SPARE_26__REG_ADDR = 0xC00077C0
+SMC_EFUSE_MAP_SPARE_26__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
+SMC_EFUSE_MAP_SPARE_27__REG_OFFSET = 0x000003E0
+SMC_EFUSE_MAP_SPARE_27__REG_ADDR = 0xC00077E0
+SMC_EFUSE_MAP_SPARE_27__REG_TYPE = 'SMC_EFUSE_MAP_SPARE_256_BITS'
 SMC_TELEMETRY_RECEIVER_WRAP_REG_MAP_BASE_ADDR = 0xC0009000
 SMC_TELEMETRY_RECEIVER_WRAP_REG_MAP_SIZE = 0x00000300
 SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0xC0009000
@@ -15304,6 +15304,330 @@ class LOG_ENGINE_LOG_CTRL_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
+EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT = 0x00000000
+EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_FIELD_ACCESS = (
+    ('efuse_sense_done', 'r', '', '', False),
+    ('efuse_req_error', 'r', '', '', False),
+    ('efuse_program_addr_error', 'r', '', '', False),
+    ('efuse_read_addr_error', 'r', '', '', False),
+    ('efuse_req_error_clear', 'w', '', '', True),
+    ('efuse_program_addr_error_clear', 'w', '', '', True),
+    ('efuse_read_addr_error_clear', 'w', '', '', True),
+)
+
+EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_WIDTH = 32
+EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_FIELDS = (
+    ('efuse_sense_done', 0, 0, 'r', 'w', '', '', False, True, None),
+    ('efuse_req_error', 4, 4, 'r', 'w', '', '', False, True, 0),
+    ('efuse_program_addr_error', 5, 5, 'r', 'w', '', '', False, True, 0),
+    ('efuse_read_addr_error', 6, 6, 'r', 'w', '', '', False, True, 0),
+    ('efuse_req_error_clear', 8, 8, 'w', 'r', '', '', True, True, 0),
+    ('efuse_program_addr_error_clear', 9, 9, 'w', 'r', '', '', True, True, 0),
+    ('efuse_read_addr_error_clear', 10, 10, 'w', 'r', '', '', True, True, 0),
+)
+
+class EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_t(Structure):
+    _fields_ = [
+        ('efuse_sense_done', c_uint16, 1),
+        ('rsvd_0', c_uint16, 3),
+        ('efuse_req_error', c_uint16, 1),
+        ('efuse_program_addr_error', c_uint16, 1),
+        ('efuse_read_addr_error', c_uint16, 1),
+        ('rsvd_1', c_uint16, 1),
+        ('efuse_req_error_clear', c_uint16, 1),
+        ('efuse_program_addr_error_clear', c_uint16, 1),
+        ('efuse_read_addr_error_clear', c_uint16, 1),
+    ]
+
+EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT = 0x00000000
+
+class EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT = 0x00000000
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_FIELD_ACCESS = (
+    ('efuse_addr', 'rw', '', '', False),
+    ('efuse_data', 'rw', '', '', False),
+    ('efuse_program_go', 'rw', '', '', True),
+    ('efuse_program_read_back', 'rw', '', '', False),
+    ('program_busy', 'r', '', '', False),
+    ('program_done', 'r', '', '', False),
+    ('program_status', 'r', '', '', False),
+    ('program_enable', 'rw', '', '', False),
+)
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_WIDTH = 32
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_FIELDS = (
+    ('efuse_addr', 0, 15, 'rw', 'r', '', '', False, False, 0),
+    ('efuse_data', 16, 16, 'rw', 'r', '', '', False, False, 0),
+    ('efuse_program_go', 17, 17, 'rw', 'r', '', '', True, True, 0),
+    ('efuse_program_read_back', 18, 18, 'rw', 'r', '', '', False, False, 0),
+    ('program_busy', 24, 24, 'r', 'w', '', '', False, True, 0),
+    ('program_done', 25, 25, 'r', 'w', '', '', False, True, 0),
+    ('program_status', 26, 26, 'r', 'w', '', '', False, True, 0),
+    ('program_enable', 27, 27, 'rw', 'r', '', '', False, False, 0),
+)
+
+class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_t(Structure):
+    _fields_ = [
+        ('efuse_addr', c_uint32, 16),
+        ('efuse_data', c_uint32, 1),
+        ('efuse_program_go', c_uint32, 1),
+        ('efuse_program_read_back', c_uint32, 1),
+        ('rsvd_0', c_uint32, 5),
+        ('program_busy', c_uint32, 1),
+        ('program_done', c_uint32, 1),
+        ('program_status', c_uint32, 1),
+        ('program_enable', c_uint32, 1),
+    ]
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT = 0x00000000
+
+class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT = 0x00000000
+EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_FIELD_ACCESS = (
+    ('efuse_addr', 'rw', '', '', False),
+    ('efuse_read_go', 'rw', '', '', True),
+    ('read_busy', 'r', '', '', False),
+    ('read_done', 'r', '', '', False),
+    ('read_status', 'r', '', '', False),
+    ('read_enable', 'rw', '', '', False),
+)
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_WIDTH = 32
+EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_FIELDS = (
+    ('efuse_addr', 0, 15, 'rw', 'r', '', '', False, False, 0),
+    ('efuse_read_go', 16, 16, 'rw', 'r', '', '', True, True, 0),
+    ('read_busy', 24, 24, 'r', 'w', '', '', False, True, 0),
+    ('read_done', 25, 25, 'r', 'w', '', '', False, True, 0),
+    ('read_status', 26, 26, 'r', 'w', '', '', False, True, 0),
+    ('read_enable', 28, 28, 'rw', 'r', '', '', False, False, 0),
+)
+
+class EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_t(Structure):
+    _fields_ = [
+        ('efuse_addr', c_uint32, 16),
+        ('efuse_read_go', c_uint32, 1),
+        ('rsvd_0', c_uint32, 7),
+        ('read_busy', c_uint32, 1),
+        ('read_done', c_uint32, 1),
+        ('read_status', c_uint32, 1),
+        ('rsvd_1', c_uint32, 1),
+        ('read_enable', c_uint32, 1),
+    ]
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT = 0x00000000
+
+class EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_DEFAULT = 0x00000000
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_FIELD_ACCESS = (
+    ('dout', 'r', '', '', False),
+)
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_WIDTH = 32
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_FIELDS = (
+    ('dout', 0, 31, 'r', 'w', '', '', False, True, 0),
+)
+
+class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_t(Structure):
+    _fields_ = [
+        ('dout', c_uint32, 32),
+    ]
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_DEFAULT = 0x00000000
+
+class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT = 0x00000000
+EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_FIELD_ACCESS = (
+    ('dout', 'r', '', '', False),
+)
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_WIDTH = 32
+EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_FIELDS = (
+    ('dout', 0, 31, 'r', 'w', '', '', False, True, 0),
+)
+
+class EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_t(Structure):
+    _fields_ = [
+        ('dout', c_uint32, 32),
+    ]
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT = 0x00000000
+
+class EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT = 0x00800000
+EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_FIELD_ACCESS = (
+    ('read_req_timeout_cycles', 'rw', '', '', False),
+    ('read_req_timout_enable', 'rw', '', '', False),
+)
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_WIDTH = 32
+EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_FIELDS = (
+    ('read_req_timeout_cycles', 0, 27, 'rw', 'r', '', '', False, False, 8388608),
+    ('read_req_timout_enable', 28, 28, 'rw', 'r', '', '', False, False, 0),
+)
+
+class EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_reg_t(Structure):
+    _fields_ = [
+        ('read_req_timeout_cycles', c_uint32, 28),
+        ('read_req_timout_enable', c_uint32, 1),
+    ]
+
+EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT = 0x00800000
+
+class EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT = 0x00800000
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_FIELD_ACCESS = (
+    ('program_req_timeout_cycles', 'rw', '', '', False),
+    ('program_req_timeout_enable', 'rw', '', '', False),
+)
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_WIDTH = 32
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_FIELDS = (
+    ('program_req_timeout_cycles', 0, 27, 'rw', 'r', '', '', False, False, 8388608),
+    ('program_req_timeout_enable', 28, 28, 'rw', 'r', '', '', False, False, 0),
+)
+
+class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_t(Structure):
+    _fields_ = [
+        ('program_req_timeout_cycles', c_uint32, 28),
+        ('program_req_timeout_enable', c_uint32, 1),
+    ]
+
+EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT = 0x00800000
+
+class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
 SMC_EFUSE_MAP_LOCKS_REG_DEFAULT = 0x0000000000000000
 SMC_EFUSE_MAP_LOCKS_REG_FIELD_ACCESS = (
     ('jtag_public_identity_write_lock', 'rw', 'woset', '', False),
@@ -15676,330 +16000,6 @@ SMC_EFUSE_MAP_SPARE_256_BITS_REG_WIDTH = 256
 SMC_EFUSE_MAP_SPARE_256_BITS_REG_FIELDS = (
     ('rsvd', 0, 255, 'rw', 'r', '', '', False, False, 0),
 )
-
-EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT = 0x00000000
-EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_FIELD_ACCESS = (
-    ('efuse_sense_done', 'r', '', '', False),
-    ('efuse_req_error', 'r', '', '', False),
-    ('efuse_program_addr_error', 'r', '', '', False),
-    ('efuse_read_addr_error', 'r', '', '', False),
-    ('efuse_req_error_clear', 'w', '', '', True),
-    ('efuse_program_addr_error_clear', 'w', '', '', True),
-    ('efuse_read_addr_error_clear', 'w', '', '', True),
-)
-
-EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_WIDTH = 32
-EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_FIELDS = (
-    ('efuse_sense_done', 0, 0, 'r', 'w', '', '', False, True, None),
-    ('efuse_req_error', 4, 4, 'r', 'w', '', '', False, True, 0),
-    ('efuse_program_addr_error', 5, 5, 'r', 'w', '', '', False, True, 0),
-    ('efuse_read_addr_error', 6, 6, 'r', 'w', '', '', False, True, 0),
-    ('efuse_req_error_clear', 8, 8, 'w', 'r', '', '', True, True, 0),
-    ('efuse_program_addr_error_clear', 9, 9, 'w', 'r', '', '', True, True, 0),
-    ('efuse_read_addr_error_clear', 10, 10, 'w', 'r', '', '', True, True, 0),
-)
-
-class EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_t(Structure):
-    _fields_ = [
-        ('efuse_sense_done', c_uint16, 1),
-        ('rsvd_0', c_uint16, 3),
-        ('efuse_req_error', c_uint16, 1),
-        ('efuse_program_addr_error', c_uint16, 1),
-        ('efuse_read_addr_error', c_uint16, 1),
-        ('rsvd_1', c_uint16, 1),
-        ('efuse_req_error_clear', c_uint16, 1),
-        ('efuse_program_addr_error_clear', c_uint16, 1),
-        ('efuse_read_addr_error_clear', c_uint16, 1),
-    ]
-
-EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT = 0x00000000
-
-class EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_reg_u, self).__init__(*args, **kwargs)
-        self.val = EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT = 0x00000000
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_FIELD_ACCESS = (
-    ('efuse_addr', 'rw', '', '', False),
-    ('efuse_data', 'rw', '', '', False),
-    ('efuse_program_go', 'rw', '', '', True),
-    ('efuse_program_read_back', 'rw', '', '', False),
-    ('program_busy', 'r', '', '', False),
-    ('program_done', 'r', '', '', False),
-    ('program_status', 'r', '', '', False),
-    ('program_enable', 'rw', '', '', False),
-)
-
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_WIDTH = 32
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_FIELDS = (
-    ('efuse_addr', 0, 15, 'rw', 'r', '', '', False, False, 0),
-    ('efuse_data', 16, 16, 'rw', 'r', '', '', False, False, 0),
-    ('efuse_program_go', 17, 17, 'rw', 'r', '', '', True, True, 0),
-    ('efuse_program_read_back', 18, 18, 'rw', 'r', '', '', False, False, 0),
-    ('program_busy', 24, 24, 'r', 'w', '', '', False, True, 0),
-    ('program_done', 25, 25, 'r', 'w', '', '', False, True, 0),
-    ('program_status', 26, 26, 'r', 'w', '', '', False, True, 0),
-    ('program_enable', 27, 27, 'rw', 'r', '', '', False, False, 0),
-)
-
-class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_t(Structure):
-    _fields_ = [
-        ('efuse_addr', c_uint32, 16),
-        ('efuse_data', c_uint32, 1),
-        ('efuse_program_go', c_uint32, 1),
-        ('efuse_program_read_back', c_uint32, 1),
-        ('rsvd_0', c_uint32, 5),
-        ('program_busy', c_uint32, 1),
-        ('program_done', c_uint32, 1),
-        ('program_status', c_uint32, 1),
-        ('program_enable', c_uint32, 1),
-    ]
-
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT = 0x00000000
-
-class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_reg_u, self).__init__(*args, **kwargs)
-        self.val = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT = 0x00000000
-EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_FIELD_ACCESS = (
-    ('efuse_addr', 'rw', '', '', False),
-    ('efuse_read_go', 'rw', '', '', True),
-    ('read_busy', 'r', '', '', False),
-    ('read_done', 'r', '', '', False),
-    ('read_status', 'r', '', '', False),
-    ('read_enable', 'rw', '', '', False),
-)
-
-EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_WIDTH = 32
-EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_FIELDS = (
-    ('efuse_addr', 0, 15, 'rw', 'r', '', '', False, False, 0),
-    ('efuse_read_go', 16, 16, 'rw', 'r', '', '', True, True, 0),
-    ('read_busy', 24, 24, 'r', 'w', '', '', False, True, 0),
-    ('read_done', 25, 25, 'r', 'w', '', '', False, True, 0),
-    ('read_status', 26, 26, 'r', 'w', '', '', False, True, 0),
-    ('read_enable', 28, 28, 'rw', 'r', '', '', False, False, 0),
-)
-
-class EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_t(Structure):
-    _fields_ = [
-        ('efuse_addr', c_uint32, 16),
-        ('efuse_read_go', c_uint32, 1),
-        ('rsvd_0', c_uint32, 7),
-        ('read_busy', c_uint32, 1),
-        ('read_done', c_uint32, 1),
-        ('read_status', c_uint32, 1),
-        ('rsvd_1', c_uint32, 1),
-        ('read_enable', c_uint32, 1),
-    ]
-
-EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT = 0x00000000
-
-class EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_reg_u, self).__init__(*args, **kwargs)
-        self.val = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_DEFAULT = 0x00000000
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_FIELD_ACCESS = (
-    ('dout', 'r', '', '', False),
-)
-
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_WIDTH = 32
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_FIELDS = (
-    ('dout', 0, 31, 'r', 'w', '', '', False, True, 0),
-)
-
-class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_t(Structure):
-    _fields_ = [
-        ('dout', c_uint32, 32),
-    ]
-
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_DEFAULT = 0x00000000
-
-class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_reg_u, self).__init__(*args, **kwargs)
-        self.val = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT = 0x00000000
-EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_FIELD_ACCESS = (
-    ('dout', 'r', '', '', False),
-)
-
-EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_WIDTH = 32
-EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_FIELDS = (
-    ('dout', 0, 31, 'r', 'w', '', '', False, True, 0),
-)
-
-class EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_t(Structure):
-    _fields_ = [
-        ('dout', c_uint32, 32),
-    ]
-
-EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT = 0x00000000
-
-class EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_reg_u, self).__init__(*args, **kwargs)
-        self.val = EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT = 0x00800000
-EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_FIELD_ACCESS = (
-    ('read_req_timeout_cycles', 'rw', '', '', False),
-    ('read_req_timout_enable', 'rw', '', '', False),
-)
-
-EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_WIDTH = 32
-EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_FIELDS = (
-    ('read_req_timeout_cycles', 0, 27, 'rw', 'r', '', '', False, False, 8388608),
-    ('read_req_timout_enable', 28, 28, 'rw', 'r', '', '', False, False, 0),
-)
-
-class EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_reg_t(Structure):
-    _fields_ = [
-        ('read_req_timeout_cycles', c_uint32, 28),
-        ('read_req_timout_enable', c_uint32, 1),
-    ]
-
-EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT = 0x00800000
-
-class EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_reg_u, self).__init__(*args, **kwargs)
-        self.val = EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT = 0x00800000
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_FIELD_ACCESS = (
-    ('program_req_timeout_cycles', 'rw', '', '', False),
-    ('program_req_timeout_enable', 'rw', '', '', False),
-)
-
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_WIDTH = 32
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_FIELDS = (
-    ('program_req_timeout_cycles', 0, 27, 'rw', 'r', '', '', False, False, 8388608),
-    ('program_req_timeout_enable', 28, 28, 'rw', 'r', '', '', False, False, 0),
-)
-
-class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_t(Structure):
-    _fields_ = [
-        ('program_req_timeout_cycles', c_uint32, 28),
-        ('program_req_timeout_enable', c_uint32, 1),
-    ]
-
-EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT = 0x00800000
-
-class EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_reg_u, self).__init__(*args, **kwargs)
-        self.val = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
 
 TELEMETRY_RECEIVER_CTRL_REG_DEFAULT = 0x00000000
 TELEMETRY_RECEIVER_CTRL_REG_FIELD_ACCESS = (

@@ -2213,121 +2213,121 @@ localparam int unsigned SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_3__LOG_ENGINE_LOG_CTR
 
 
 //==============================================================================
-// Addresses for Address Map: smc_efuse_map
-//==============================================================================
-
-
-localparam int unsigned SMC_EFUSE_MAP_REG_MAP_BASE_ADDR                                                           = 32'hC0007000;
-localparam int unsigned SMC_EFUSE_MAP_REG_MAP_SIZE                                                                = 32'h00000400;
-
-
-localparam int unsigned SMC_EFUSE_MAP_LOCKS_REG_OFFSET                                                            = 32'h00000000;
-localparam int unsigned SMC_EFUSE_MAP_LOCKS_REG_ADDR                                                              = 32'hC0007000;
-localparam int unsigned SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_OFFSET                                             = 32'h00000008;
-localparam int unsigned SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_ADDR                                               = 32'hC0007008;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_OFFSET                                                    = 32'h00000028;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR                                                      = 32'hC0007028;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_OFFSET                                                    = 32'h00000030;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR                                                      = 32'hC0007030;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_OFFSET                                                    = 32'h00000038;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_ADDR                                                      = 32'hC0007038;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_OFFSET                                                    = 32'h00000040;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR                                                      = 32'hC0007040;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_OFFSET                                                    = 32'h00000048;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_ADDR                                                      = 32'hC0007048;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_OFFSET                                                    = 32'h00000050;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_ADDR                                                      = 32'hC0007050;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_OFFSET                                                    = 32'h00000058;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR                                                      = 32'hC0007058;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_OFFSET                                                    = 32'h00000060;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR                                                      = 32'hC0007060;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_OFFSET                                                    = 32'h00000068;
-localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_ADDR                                                      = 32'hC0007068;
-localparam int unsigned SMC_EFUSE_MAP_SMC_CONFIG_REG_OFFSET                                                       = 32'h00000070;
-localparam int unsigned SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR                                                         = 32'hC0007070;
-localparam int unsigned SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_OFFSET                                           = 32'h00000078;
-localparam int unsigned SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR                                             = 32'hC0007078;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_0__REG_OFFSET                                                         = 32'h00000080;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_0__REG_ADDR                                                           = 32'hC0007080;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_1__REG_OFFSET                                                         = 32'h000000A0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_1__REG_ADDR                                                           = 32'hC00070A0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_2__REG_OFFSET                                                         = 32'h000000C0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_2__REG_ADDR                                                           = 32'hC00070C0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_3__REG_OFFSET                                                         = 32'h000000E0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_3__REG_ADDR                                                           = 32'hC00070E0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_4__REG_OFFSET                                                         = 32'h00000100;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_4__REG_ADDR                                                           = 32'hC0007100;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_5__REG_OFFSET                                                         = 32'h00000120;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_5__REG_ADDR                                                           = 32'hC0007120;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_6__REG_OFFSET                                                         = 32'h00000140;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_6__REG_ADDR                                                           = 32'hC0007140;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_7__REG_OFFSET                                                         = 32'h00000160;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_7__REG_ADDR                                                           = 32'hC0007160;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_8__REG_OFFSET                                                         = 32'h00000180;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_8__REG_ADDR                                                           = 32'hC0007180;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_9__REG_OFFSET                                                         = 32'h000001A0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_9__REG_ADDR                                                           = 32'hC00071A0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_10__REG_OFFSET                                                        = 32'h000001C0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_10__REG_ADDR                                                          = 32'hC00071C0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_11__REG_OFFSET                                                        = 32'h000001E0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_11__REG_ADDR                                                          = 32'hC00071E0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_12__REG_OFFSET                                                        = 32'h00000200;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_12__REG_ADDR                                                          = 32'hC0007200;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_13__REG_OFFSET                                                        = 32'h00000220;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_13__REG_ADDR                                                          = 32'hC0007220;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_14__REG_OFFSET                                                        = 32'h00000240;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_14__REG_ADDR                                                          = 32'hC0007240;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_15__REG_OFFSET                                                        = 32'h00000260;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_15__REG_ADDR                                                          = 32'hC0007260;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_16__REG_OFFSET                                                        = 32'h00000280;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_16__REG_ADDR                                                          = 32'hC0007280;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_17__REG_OFFSET                                                        = 32'h000002A0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_17__REG_ADDR                                                          = 32'hC00072A0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_18__REG_OFFSET                                                        = 32'h000002C0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_18__REG_ADDR                                                          = 32'hC00072C0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_19__REG_OFFSET                                                        = 32'h000002E0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_19__REG_ADDR                                                          = 32'hC00072E0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_20__REG_OFFSET                                                        = 32'h00000300;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_20__REG_ADDR                                                          = 32'hC0007300;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_21__REG_OFFSET                                                        = 32'h00000320;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_21__REG_ADDR                                                          = 32'hC0007320;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_22__REG_OFFSET                                                        = 32'h00000340;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_22__REG_ADDR                                                          = 32'hC0007340;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_23__REG_OFFSET                                                        = 32'h00000360;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_23__REG_ADDR                                                          = 32'hC0007360;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_24__REG_OFFSET                                                        = 32'h00000380;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_24__REG_ADDR                                                          = 32'hC0007380;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_25__REG_OFFSET                                                        = 32'h000003A0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_25__REG_ADDR                                                          = 32'hC00073A0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_26__REG_OFFSET                                                        = 32'h000003C0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_26__REG_ADDR                                                          = 32'hC00073C0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_27__REG_OFFSET                                                        = 32'h000003E0;
-localparam int unsigned SMC_EFUSE_MAP_SPARE_27__REG_ADDR                                                          = 32'hC00073E0;
-
-
-//==============================================================================
 // Addresses for Address Map: efuse_interface_ctrl
 //==============================================================================
 
 
-localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR                                                    = 32'hC0008000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR                                                    = 32'hC0007000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_REG_MAP_SIZE                                                         = 32'h0000001C;
 
 
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET                               = 32'h00000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR                                 = 32'hC0008000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR                                 = 32'hC0007000;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_OFFSET                                        = 32'h00000004;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR                                          = 32'hC0008004;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR                                          = 32'hC0007004;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR                                             = 32'hC0008008;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR                                             = 32'hC0007008;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_OFFSET                         = 32'h0000000C;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR                           = 32'hC000800C;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR                           = 32'hC000700C;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_OFFSET                            = 32'h00000010;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR                              = 32'hC0008010;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR                              = 32'hC0007010;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_OFFSET                                    = 32'h00000014;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR                                      = 32'hC0008014;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR                                      = 32'hC0007014;
 localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET                                 = 32'h00000018;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR                                   = 32'hC0008018;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR                                   = 32'hC0007018;
+
+
+//==============================================================================
+// Addresses for Address Map: smc_efuse_map
+//==============================================================================
+
+
+localparam int unsigned SMC_EFUSE_MAP_REG_MAP_BASE_ADDR                                                           = 32'hC0007400;
+localparam int unsigned SMC_EFUSE_MAP_REG_MAP_SIZE                                                                = 32'h00000400;
+
+
+localparam int unsigned SMC_EFUSE_MAP_LOCKS_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned SMC_EFUSE_MAP_LOCKS_REG_ADDR                                                              = 32'hC0007400;
+localparam int unsigned SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_OFFSET                                             = 32'h00000008;
+localparam int unsigned SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_REG_ADDR                                               = 32'hC0007408;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_OFFSET                                                    = 32'h00000028;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR                                                      = 32'hC0007428;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_OFFSET                                                    = 32'h00000030;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR                                                      = 32'hC0007430;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_OFFSET                                                    = 32'h00000038;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_2__REG_ADDR                                                      = 32'hC0007438;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_OFFSET                                                    = 32'h00000040;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR                                                      = 32'hC0007440;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_OFFSET                                                    = 32'h00000048;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_4__REG_ADDR                                                      = 32'hC0007448;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_OFFSET                                                    = 32'h00000050;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_5__REG_ADDR                                                      = 32'hC0007450;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_OFFSET                                                    = 32'h00000058;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR                                                      = 32'hC0007458;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_OFFSET                                                    = 32'h00000060;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR                                                      = 32'hC0007460;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_OFFSET                                                    = 32'h00000068;
+localparam int unsigned SMC_EFUSE_MAP_I2C_I3C_ID_8__REG_ADDR                                                      = 32'hC0007468;
+localparam int unsigned SMC_EFUSE_MAP_SMC_CONFIG_REG_OFFSET                                                       = 32'h00000070;
+localparam int unsigned SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR                                                         = 32'hC0007470;
+localparam int unsigned SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_OFFSET                                           = 32'h00000078;
+localparam int unsigned SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR                                             = 32'hC0007478;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_0__REG_OFFSET                                                         = 32'h00000080;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_0__REG_ADDR                                                           = 32'hC0007480;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_1__REG_OFFSET                                                         = 32'h000000A0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_1__REG_ADDR                                                           = 32'hC00074A0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_2__REG_OFFSET                                                         = 32'h000000C0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_2__REG_ADDR                                                           = 32'hC00074C0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_3__REG_OFFSET                                                         = 32'h000000E0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_3__REG_ADDR                                                           = 32'hC00074E0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_4__REG_OFFSET                                                         = 32'h00000100;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_4__REG_ADDR                                                           = 32'hC0007500;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_5__REG_OFFSET                                                         = 32'h00000120;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_5__REG_ADDR                                                           = 32'hC0007520;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_6__REG_OFFSET                                                         = 32'h00000140;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_6__REG_ADDR                                                           = 32'hC0007540;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_7__REG_OFFSET                                                         = 32'h00000160;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_7__REG_ADDR                                                           = 32'hC0007560;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_8__REG_OFFSET                                                         = 32'h00000180;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_8__REG_ADDR                                                           = 32'hC0007580;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_9__REG_OFFSET                                                         = 32'h000001A0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_9__REG_ADDR                                                           = 32'hC00075A0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_10__REG_OFFSET                                                        = 32'h000001C0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_10__REG_ADDR                                                          = 32'hC00075C0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_11__REG_OFFSET                                                        = 32'h000001E0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_11__REG_ADDR                                                          = 32'hC00075E0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_12__REG_OFFSET                                                        = 32'h00000200;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_12__REG_ADDR                                                          = 32'hC0007600;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_13__REG_OFFSET                                                        = 32'h00000220;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_13__REG_ADDR                                                          = 32'hC0007620;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_14__REG_OFFSET                                                        = 32'h00000240;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_14__REG_ADDR                                                          = 32'hC0007640;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_15__REG_OFFSET                                                        = 32'h00000260;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_15__REG_ADDR                                                          = 32'hC0007660;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_16__REG_OFFSET                                                        = 32'h00000280;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_16__REG_ADDR                                                          = 32'hC0007680;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_17__REG_OFFSET                                                        = 32'h000002A0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_17__REG_ADDR                                                          = 32'hC00076A0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_18__REG_OFFSET                                                        = 32'h000002C0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_18__REG_ADDR                                                          = 32'hC00076C0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_19__REG_OFFSET                                                        = 32'h000002E0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_19__REG_ADDR                                                          = 32'hC00076E0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_20__REG_OFFSET                                                        = 32'h00000300;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_20__REG_ADDR                                                          = 32'hC0007700;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_21__REG_OFFSET                                                        = 32'h00000320;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_21__REG_ADDR                                                          = 32'hC0007720;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_22__REG_OFFSET                                                        = 32'h00000340;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_22__REG_ADDR                                                          = 32'hC0007740;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_23__REG_OFFSET                                                        = 32'h00000360;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_23__REG_ADDR                                                          = 32'hC0007760;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_24__REG_OFFSET                                                        = 32'h00000380;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_24__REG_ADDR                                                          = 32'hC0007780;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_25__REG_OFFSET                                                        = 32'h000003A0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_25__REG_ADDR                                                          = 32'hC00077A0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_26__REG_OFFSET                                                        = 32'h000003C0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_26__REG_ADDR                                                          = 32'hC00077C0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_27__REG_OFFSET                                                        = 32'h000003E0;
+localparam int unsigned SMC_EFUSE_MAP_SPARE_27__REG_ADDR                                                          = 32'hC00077E0;
 
 
 //==============================================================================
@@ -11049,10 +11049,6 @@ localparam longint unsigned LOG_ENGINE_INTR_STATUS_REG_DEFAULT                  
 localparam longint unsigned LOG_ENGINE_INTR_ENABLE_REG_DEFAULT                                                    = 32'h00000000;
 localparam longint unsigned LOG_ENGINE_INTR_TEST_REG_DEFAULT                                                      = 32'h00000000;
 localparam longint unsigned LOG_ENGINE_LOG_CTRL_REG_DEFAULT                                                       = 32'h00000000;
-localparam longint unsigned SMC_EFUSE_MAP_LOCKS_REG_DEFAULT                                                       = 64'h0000000000000000;
-localparam longint unsigned SMC_EFUSE_MAP_I2C_I3C_ID_REG_DEFAULT                                                  = 64'h0000000000000000;
-localparam longint unsigned SMC_EFUSE_MAP_SMC_CONFIG_REG_DEFAULT                                                  = 64'h0000000000000000;
-localparam longint unsigned SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_DEFAULT                                      = 64'h0000000000000000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT                          = 32'h00000000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT                                   = 32'h00000000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT                                      = 32'h00000000;
@@ -11060,6 +11056,10 @@ localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DA
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT                       = 32'h00000000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT                               = 32'h00800000;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT                            = 32'h00800000;
+localparam longint unsigned SMC_EFUSE_MAP_LOCKS_REG_DEFAULT                                                       = 64'h0000000000000000;
+localparam longint unsigned SMC_EFUSE_MAP_I2C_I3C_ID_REG_DEFAULT                                                  = 64'h0000000000000000;
+localparam longint unsigned SMC_EFUSE_MAP_SMC_CONFIG_REG_DEFAULT                                                  = 64'h0000000000000000;
+localparam longint unsigned SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_DEFAULT                                      = 64'h0000000000000000;
 localparam longint unsigned TELEMETRY_RECEIVER_CTRL_REG_DEFAULT                                                   = 32'h00000000;
 localparam longint unsigned TELEMETRY_RECEIVER_STATUS_REG_DEFAULT                                                 = 32'h00000001;
 localparam longint unsigned TELEMETRY_RECEIVER_INTR_STATUS_REG_DEFAULT                                            = 32'h00000000;
@@ -12496,6 +12496,87 @@ localparam int unsigned LOG_ENGINE_INTR_TEST_LOG_WRITE_ERR_SHIFT                
 localparam int unsigned LOG_ENGINE_LOG_CTRL_LOG_LEN_MASK                                                          = 32'hFFFF;
 localparam int unsigned LOG_ENGINE_LOG_CTRL_LOG_LEN_SHIFT                                                         = 0;
 
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_MASK                    = 32'h1;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_SHIFT                   = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_MASK                     = 32'h10;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_SHIFT                    = 4;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_MASK            = 32'h20;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_SHIFT           = 5;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_MASK               = 32'h40;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_SHIFT              = 6;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_MASK               = 32'h100;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_SHIFT              = 8;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_MASK      = 32'h200;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_SHIFT     = 9;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_MASK         = 32'h400;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_SHIFT        = 10;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK                                   = 32'hFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT                                  = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK                                   = 32'h10000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_SHIFT                                  = 16;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK                             = 32'h20000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_SHIFT                            = 17;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_READ_BACK_MASK                      = 32'h40000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_READ_BACK_SHIFT                     = 18;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_MASK                                 = 32'h1000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_SHIFT                                = 24;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_MASK                                 = 32'h2000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_SHIFT                                = 25;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_MASK                               = 32'h4000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_SHIFT                              = 26;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK                               = 32'h8000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_SHIFT                              = 27;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK                                      = 32'hFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_SHIFT                                     = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK                                   = 32'h10000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_SHIFT                                  = 16;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_MASK                                       = 32'h1000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_SHIFT                                      = 24;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_MASK                                       = 32'h2000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_SHIFT                                      = 25;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_MASK                                     = 32'h4000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_SHIFT                                    = 26;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_MASK                                     = 32'h10000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_SHIFT                                    = 28;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_MASK                          = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_SHIFT                         = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_MASK                             = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_SHIFT                            = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_MASK                  = 32'hFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_SHIFT                 = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_MASK                   = 32'h10000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_SHIFT                  = 28;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_MASK            = 32'hFFFFFFF;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_SHIFT           = 0;
+
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_MASK            = 32'h10000000;
+localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_SHIFT           = 28;
+
 localparam longint unsigned SMC_EFUSE_MAP_LOCKS_JTAG_PUBLIC_IDENTITY_WRITE_LOCK_MASK                              = 64'h1;
 localparam     int unsigned SMC_EFUSE_MAP_LOCKS_JTAG_PUBLIC_IDENTITY_WRITE_LOCK_SHIFT                             = 0;
 
@@ -12720,87 +12801,6 @@ localparam     int unsigned SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_TIMEOUT_RSVD_SH
 
 localparam  bit [255:0] SMC_EFUSE_MAP_SPARE_256_BITS_RSVD_MASK                                                    = 256'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 localparam int unsigned SMC_EFUSE_MAP_SPARE_256_BITS_RSVD_SHIFT                                                   = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_MASK                    = 32'h1;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_SENSE_DONE_SHIFT                   = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_MASK                     = 32'h10;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_SHIFT                    = 4;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_MASK            = 32'h20;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_SHIFT           = 5;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_MASK               = 32'h40;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_SHIFT              = 6;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_MASK               = 32'h100;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_REQ_ERROR_CLEAR_SHIFT              = 8;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_MASK      = 32'h200;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_PROGRAM_ADDR_ERROR_CLEAR_SHIFT     = 9;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_MASK         = 32'h400;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_EFUSE_READ_ADDR_ERROR_CLEAR_SHIFT        = 10;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK                                   = 32'hFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT                                  = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK                                   = 32'h10000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_SHIFT                                  = 16;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK                             = 32'h20000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_SHIFT                            = 17;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_READ_BACK_MASK                      = 32'h40000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_READ_BACK_SHIFT                     = 18;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_MASK                                 = 32'h1000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_BUSY_SHIFT                                = 24;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_MASK                                 = 32'h2000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_SHIFT                                = 25;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_MASK                               = 32'h4000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_STATUS_SHIFT                              = 26;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK                               = 32'h8000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_SHIFT                              = 27;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK                                      = 32'hFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_SHIFT                                     = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK                                   = 32'h10000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_SHIFT                                  = 16;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_MASK                                       = 32'h1000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_SHIFT                                      = 24;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_MASK                                       = 32'h2000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_SHIFT                                      = 25;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_MASK                                     = 32'h4000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_STATUS_SHIFT                                    = 26;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_MASK                                     = 32'h10000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_SHIFT                                    = 28;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_MASK                          = 32'hFFFFFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_DOUT_SHIFT                         = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_MASK                             = 32'hFFFFFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_DOUT_SHIFT                            = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_MASK                  = 32'hFFFFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_SHIFT                 = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_MASK                   = 32'h10000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMOUT_ENABLE_SHIFT                  = 28;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_MASK            = 32'hFFFFFFF;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_CYCLES_SHIFT           = 0;
-
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_MASK            = 32'h10000000;
-localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_PROGRAM_REQ_TIMEOUT_ENABLE_SHIFT           = 28;
 
 localparam int unsigned TELEMETRY_RECEIVER_CTRL_BUFFER_POP_MASK                                                   = 32'h1;
 localparam int unsigned TELEMETRY_RECEIVER_CTRL_BUFFER_POP_SHIFT                                                  = 0;
@@ -18252,6 +18252,73 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   efuse_read_addr_error_clear ;
+    logic [0:0]   efuse_program_addr_error_clear ;
+    logic [0:0]   efuse_req_error_clear ;
+    logic [0:0]   rsvd_1 ;
+    logic [0:0]   efuse_read_addr_error ;
+    logic [0:0]   efuse_program_addr_error ;
+    logic [0:0]   efuse_req_error ;
+    logic [2:0]   rsvd_0 ;
+    logic [0:0]   efuse_sense_done ;
+} efuse_interface_ctrl_efuse_interface_ctrl_status_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   program_enable ;
+    logic [0:0]   program_status ;
+    logic [0:0]   program_done ;
+    logic [0:0]   program_busy ;
+    logic [4:0]   rsvd_0 ;
+    logic [0:0]   efuse_program_read_back ;
+    logic [0:0]   efuse_program_go ;
+    logic [0:0]   efuse_data ;
+    logic [15:0]   efuse_addr ;
+} efuse_interface_ctrl_efuse_program_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   read_enable ;
+    logic [0:0]   rsvd_1 ;
+    logic [0:0]   read_status ;
+    logic [0:0]   read_done ;
+    logic [0:0]   read_busy ;
+    logic [6:0]   rsvd_0 ;
+    logic [0:0]   efuse_read_go ;
+    logic [15:0]   efuse_addr ;
+} efuse_interface_ctrl_efuse_read_ctrl_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   dout ;
+} efuse_interface_ctrl_efuse_program_interface_read_data_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   dout ;
+} efuse_interface_ctrl_efuse_read_interface_read_data_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   read_req_timout_enable ;
+    logic [27:0]   read_req_timeout_cycles ;
+} efuse_interface_ctrl_efuse_read_req_timeout_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   program_req_timeout_enable ;
+    logic [27:0]   program_req_timeout_cycles ;
+} efuse_interface_ctrl_efuse_program_req_timeout_reg_t;
+
+
+
+typedef struct packed {
     logic [0:0]   spare27_read_lock ;
     logic [0:0]   spare27_write_lock ;
     logic [0:0]   spare26_read_lock ;
@@ -18353,73 +18420,6 @@ typedef struct packed {
 typedef struct packed {
     logic [255:0]   rsvd ;
 } smc_efuse_map_spare_256_bits_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   efuse_read_addr_error_clear ;
-    logic [0:0]   efuse_program_addr_error_clear ;
-    logic [0:0]   efuse_req_error_clear ;
-    logic [0:0]   rsvd_1 ;
-    logic [0:0]   efuse_read_addr_error ;
-    logic [0:0]   efuse_program_addr_error ;
-    logic [0:0]   efuse_req_error ;
-    logic [2:0]   rsvd_0 ;
-    logic [0:0]   efuse_sense_done ;
-} efuse_interface_ctrl_efuse_interface_ctrl_status_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   program_enable ;
-    logic [0:0]   program_status ;
-    logic [0:0]   program_done ;
-    logic [0:0]   program_busy ;
-    logic [4:0]   rsvd_0 ;
-    logic [0:0]   efuse_program_read_back ;
-    logic [0:0]   efuse_program_go ;
-    logic [0:0]   efuse_data ;
-    logic [15:0]   efuse_addr ;
-} efuse_interface_ctrl_efuse_program_ctrl_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   read_enable ;
-    logic [0:0]   rsvd_1 ;
-    logic [0:0]   read_status ;
-    logic [0:0]   read_done ;
-    logic [0:0]   read_busy ;
-    logic [6:0]   rsvd_0 ;
-    logic [0:0]   efuse_read_go ;
-    logic [15:0]   efuse_addr ;
-} efuse_interface_ctrl_efuse_read_ctrl_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   dout ;
-} efuse_interface_ctrl_efuse_program_interface_read_data_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   dout ;
-} efuse_interface_ctrl_efuse_read_interface_read_data_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   read_req_timout_enable ;
-    logic [27:0]   read_req_timeout_cycles ;
-} efuse_interface_ctrl_efuse_read_req_timeout_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   program_req_timeout_enable ;
-    logic [27:0]   program_req_timeout_cycles ;
-} efuse_interface_ctrl_efuse_program_req_timeout_reg_t;
 
 
 

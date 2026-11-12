@@ -4,20 +4,25 @@
 // Wrap efuse_interface_controller with SEP datapath conversion, JTAG policy, and secure
 // test mode.
 //
-// Downsizes the functional 64-bit AXI4 slave to 32-bit, converts it to AXI4-Lite, and
-// muxes it with the Key Manager AXI-Lite path into the eFuse controller register port. The
-// controller's shim CSR port leaves through an axi_cut.
-// In a restricted state (PROD / RMA_SiP, or an LC-state differential-decode integrity
-// error), JTAG accesses outside the MMR / token register space receive DECERR with read
-// data 0xBADCAB1E; the MMR space stays accessible for RMA_SiP token programming.
+// Downsizes the functional 64-bit AXI4 slaves to 32-bit and converts them to AXI4-Lite. The
+// register slave is muxed with the Key Manager AXI-Lite path into the eFuse controller; the
+// shim slave is muxed with JTAG shim accesses onto efuse_bank_ctrl_req_o through an axi_cut.
+// JTAG accesses go to the eFuse controller inside the eFuse register page and to the shim
+// inside the EFUSE_SHIM_SIZE bytes at the base of the external aperture; every other JTAG
+// access receives DECERR with read data 0xBADCAB1E. In a restricted state (PROD / RMA_SiP, or
+// an LC-state differential-decode integrity error), so does every JTAG access outside the
+// MMR / token register space, which stays accessible for RMA_SiP token programming.
 // secure_tm_req_i is latched into secure_tm_o on the second clock edge after rst_ni
 // release when security is disabled, and otherwise on the rising edge of fuse sense done.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
+`include "ocah_assert.svh"
 `include "ocah_registers.svh"
 
 module sep_efuse_wrapper #(
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the eFuse shim CSR window
+                                                 // at the base of the external aperture.
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
                                                         // digest; replace at synthesis.
 ) (
@@ -60,11 +65,15 @@ module sep_efuse_wrapper #(
                                                                    // functional path.
   output sep_efuse_pkg::efuse_axil_resp_t    km_efuse_axil_resp_o,  // Response from the eFuse controller to the Key Manager.
 
-  input  sep_pkg::sep_crypto_axi_req_t       sep_efuse_axi_req_i,  // Functional 64-bit AXI4 slave;
-                                                                   // in sep_crypto, the merged
-                                                                   // crypto eFuse and eFuse shim
-                                                                   // CSR legs.
+  input  sep_pkg::sep_crypto_axi_req_t       sep_efuse_axi_req_i,  // Functional 64-bit AXI4 slave
+                                                                   // for the eFuse register page.
   output sep_pkg::sep_crypto_axi_resp_t      sep_efuse_axi_resp_o,  // Response on the functional AXI4 slave.
+
+  input  sep_pkg::sep_crypto_axi_req_t       sep_efuse_shim_axi_req_i,  // Functional 64-bit AXI4
+                                                                        // slave for the eFuse shim
+                                                                        // CSR window.
+  output sep_pkg::sep_crypto_axi_resp_t      sep_efuse_shim_axi_resp_o,  // Response on the
+                                                                         // functional shim slave.
 
   output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,  // eFuse controller AXI-Lite requests to the eFuse shim CSRs.
   input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,  // Response from the eFuse shim CSRs.
@@ -102,14 +111,24 @@ module sep_efuse_wrapper #(
 
   sep_efuse_axi32_req_t  sep_efuse_axi32_req;
   sep_efuse_axi32_resp_t sep_efuse_axi32_resp;
+  sep_efuse_axi32_req_t  sep_efuse_shim_axi32_req;
+  sep_efuse_axi32_resp_t sep_efuse_shim_axi32_resp;
 
   // Intermediate AXI4-Lite (after data-width conversion)
   sep_efuse_pkg::efuse_axil_req_t efuse_axil_req_i;
   sep_efuse_pkg::efuse_axil_resp_t efuse_axil_resp_o;
+  sep_efuse_pkg::efuse_axil_req_t  efuse_shim_axil_req;
+  sep_efuse_pkg::efuse_axil_resp_t efuse_shim_axil_resp;
+
+  typedef enum logic [1:0] {
+    JTAG_TARGET_REGS  = 2'd0,
+    JTAG_TARGET_ERROR = 2'd1,
+    JTAG_TARGET_SHIM  = 2'd2
+  } jtag_target_e;
 
   // JTAG AXI4-Lite Post-access-control demux
-  sep_efuse_pkg::efuse_axil_req_t  [1:0] axil_sep_otp_jtag_req_filtered;
-  sep_efuse_pkg::efuse_axil_resp_t [1:0] axil_sep_otp_jtag_resp_filtered;
+  sep_efuse_pkg::efuse_axil_req_t  [2:0] axil_sep_otp_jtag_req_filtered;
+  sep_efuse_pkg::efuse_axil_resp_t [2:0] axil_sep_otp_jtag_resp_filtered;
 
   // AXI4-Lite after muxing the crossbar path with the Key Manager path
   sep_efuse_pkg::efuse_axil_req_t  efuse_axil_mux_req;
@@ -128,6 +147,27 @@ module sep_efuse_wrapper #(
       sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_BASE_ADDR);
   localparam sep_efuse_pkg::addr_t EfuseMmrSize =
       sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE);
+  localparam sep_efuse_pkg::addr_t EfusePageBase =
+      sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR);
+  localparam sep_efuse_pkg::addr_t EfusePageLast =
+      EfusePageBase + sep_efuse_pkg::addr_t'(sep_pkg::RegPageSize - 1);
+  localparam sep_efuse_pkg::addr_t EfuseShimBase =
+      sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR);
+  localparam sep_efuse_pkg::addr_t EfuseShimLast =
+      sep_efuse_pkg::addr_t'(EfuseShimBase + EFUSE_SHIM_SIZE - 1);
+
+  `OCAH_ASSERT_STATIC(EfusePageAligned_A,
+                      EfusePageBase % sep_efuse_pkg::addr_t'(sep_pkg::RegPageSize) == 0)
+
+  function automatic jtag_target_e jtag_target(sep_efuse_pkg::addr_t addr, logic blocked);
+    if (blocked) return JTAG_TARGET_ERROR;
+    if (addr inside {[EfusePageBase : EfusePageLast]}) return JTAG_TARGET_REGS;
+    if (addr inside {[EfuseShimBase : EfuseShimLast]}) return JTAG_TARGET_SHIM;
+    return JTAG_TARGET_ERROR;
+  endfunction
+
+  jtag_target_e jtag_aw_target;
+  jtag_target_e jtag_ar_target;
 
   // Efuse signals
   logic fuse_sense_done;
@@ -197,6 +237,60 @@ module sep_efuse_wrapper #(
     .mst_resp_i(efuse_axil_resp_o)
   );
 
+  axi_dw_converter #(
+    .AxiMaxReads         (8),
+    .AxiSlvPortDataWidth (sep_pkg::SEP_CRYPTO_AXI_DATA_WIDTH),
+    .AxiMstPortDataWidth (SepEfuseAxi32DataWidth),
+    .AxiAddrWidth        (sep_pkg::SEP_CRYPTO_AXI_ADDR_WIDTH),
+    .AxiIdWidth          (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
+    .aw_chan_t           (sep_pkg::sep_crypto_axi_aw_chan_t),
+    .mst_w_chan_t        (sep_efuse_axi32_w_chan_t),
+    .slv_w_chan_t        (sep_pkg::sep_crypto_axi_w_chan_t),
+    .b_chan_t            (sep_pkg::sep_crypto_axi_b_chan_t),
+    .ar_chan_t           (sep_pkg::sep_crypto_axi_ar_chan_t),
+    .mst_r_chan_t        (sep_efuse_axi32_r_chan_t),
+    .slv_r_chan_t        (sep_pkg::sep_crypto_axi_r_chan_t),
+    .axi_mst_req_t       (sep_efuse_axi32_req_t),
+    .axi_mst_resp_t      (sep_efuse_axi32_resp_t),
+    .axi_slv_req_t       (sep_pkg::sep_crypto_axi_req_t),
+    .axi_slv_resp_t      (sep_pkg::sep_crypto_axi_resp_t)
+  ) u_sep_efuse_shim_axi_dw_conv (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .slv_req_i (sep_efuse_shim_axi_req_i),
+    .slv_resp_o(sep_efuse_shim_axi_resp_o),
+    .mst_req_o (sep_efuse_shim_axi32_req),
+    .mst_resp_i(sep_efuse_shim_axi32_resp)
+  );
+
+  axi_to_axi_lite #(
+    .AxiAddrWidth   (sep_pkg::SEP_CRYPTO_AXI_ADDR_WIDTH),
+    .AxiDataWidth   (SepEfuseAxi32DataWidth),
+    .AxiIdWidth     (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
+    .AxiUserWidth   (sep_pkg::SEP_CRYPTO_AXI_USER_WIDTH),
+    .AxiMaxWriteTxns(16),
+    .AxiMaxReadTxns (16),
+    .FullBW         (1'b0),
+    .FallThrough    (1'b0),
+    .SpillAw        (1'b0),
+    .SpillW         (1'b0),
+    .SpillB         (1'b0),
+    .SpillAr        (1'b0),
+    .SpillR         (1'b0),
+    .full_req_t     (sep_efuse_axi32_req_t),
+    .full_resp_t    (sep_efuse_axi32_resp_t),
+    .lite_req_t     (sep_efuse_pkg::efuse_axil_req_t),
+    .lite_resp_t    (sep_efuse_pkg::efuse_axil_resp_t)
+  ) u_sep_efuse_shim_axi_to_axi_lite (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .test_i    (test_en_i),
+    .slv_req_i (sep_efuse_shim_axi32_req),
+    .slv_resp_o(sep_efuse_shim_axi32_resp),
+    .mst_req_o (efuse_shim_axil_req),
+    .mst_resp_i(efuse_shim_axil_resp)
+  );
+
   /////////////////////////////////////////////////////////////
   // Secure Test Mode Control
   /////////////////////////////////////////////////////////////
@@ -248,6 +342,11 @@ module sep_efuse_wrapper #(
                                  (lc_state_local_raw == 4'b0001) ||                               // PROD STATE
                                  (lc_state_local_raw[sep_pkg::LcStateBitWidth-1:1] == 3'b001);    // RMA_SIP STATE
 
+  assign jtag_aw_target = jtag_target(axil_sep_otp_jtag_req_i.aw.addr,
+                                      lc_restricted_state && !is_wr_access_token);
+  assign jtag_ar_target = jtag_target(axil_sep_otp_jtag_req_i.ar.addr,
+                                      lc_restricted_state && !is_rd_access_token);
+
   axi_lite_demux #(
     .aw_chan_t(sep_efuse_pkg::efuse_axil_aw_chan_t),
     .w_chan_t(sep_efuse_pkg::efuse_axil_w_chan_t),
@@ -256,7 +355,7 @@ module sep_efuse_wrapper #(
     .r_chan_t(sep_efuse_pkg::efuse_axil_r_chan_t),
     .axi_req_t(sep_efuse_pkg::efuse_axil_req_t),
     .axi_resp_t(sep_efuse_pkg::efuse_axil_resp_t),
-    .NoMstPorts(2),
+    .NoMstPorts(3),
     .MaxTrans(2),
     .FallThrough(1'b1),
     .SpillAw(1'b1),
@@ -269,8 +368,8 @@ module sep_efuse_wrapper #(
     .rst_ni(rst_ni),
     .test_i(test_en_i),
     .slv_req_i(axil_sep_otp_jtag_req_i),
-    .slv_aw_select_i(lc_restricted_state && !is_wr_access_token),
-    .slv_ar_select_i(lc_restricted_state && !is_rd_access_token),
+    .slv_aw_select_i(jtag_aw_target),
+    .slv_ar_select_i(jtag_ar_target),
     .slv_resp_o(axil_sep_otp_jtag_resp_o),
     .mst_reqs_o(axil_sep_otp_jtag_req_filtered),
     .mst_resps_i(axil_sep_otp_jtag_resp_filtered)
@@ -288,8 +387,35 @@ module sep_efuse_wrapper #(
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_en_i  (test_en_i),
-    .axil_req_i (axil_sep_otp_jtag_req_filtered[1]),
-    .axil_resp_o(axil_sep_otp_jtag_resp_filtered[1])
+    .axil_req_i (axil_sep_otp_jtag_req_filtered[JTAG_TARGET_ERROR]),
+    .axil_resp_o(axil_sep_otp_jtag_resp_filtered[JTAG_TARGET_ERROR])
+  );
+
+  // Slave port 0 = functional shim slave, slave port 1 = JTAG.
+  axi_lite_mux #(
+    .aw_chan_t   (sep_efuse_pkg::efuse_axil_aw_chan_t),
+    .w_chan_t    (sep_efuse_pkg::efuse_axil_w_chan_t),
+    .b_chan_t    (sep_efuse_pkg::efuse_axil_b_chan_t),
+    .ar_chan_t   (sep_efuse_pkg::efuse_axil_ar_chan_t),
+    .r_chan_t    (sep_efuse_pkg::efuse_axil_r_chan_t),
+    .axi_req_t   (sep_efuse_pkg::efuse_axil_req_t),
+    .axi_resp_t  (sep_efuse_pkg::efuse_axil_resp_t),
+    .NoSlvPorts  (2),
+    .MaxTrans    (2),
+    .FallThrough (1'b0),
+    .SpillAw     (1'b1),
+    .SpillW      (1'b1),
+    .SpillB      (1'b1),
+    .SpillAr     (1'b1),
+    .SpillR      (1'b1)
+  ) u_efuse_shim_axi_lite_mux (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .test_i      (test_en_i),
+    .slv_reqs_i  ({axil_sep_otp_jtag_req_filtered[JTAG_TARGET_SHIM],  efuse_shim_axil_req}),
+    .slv_resps_o ({axil_sep_otp_jtag_resp_filtered[JTAG_TARGET_SHIM], efuse_shim_axil_resp}),
+    .mst_req_o   (efuse_bank_ctrl_precut_req),
+    .mst_resp_i  (efuse_bank_ctrl_precut_resp)
   );
 
   // Merge the crossbar-sourced AXI-Lite path with the Key Manager AXI-Lite
@@ -383,12 +509,8 @@ module sep_efuse_wrapper #(
     .axil_req_i                 (efuse_axil_mux_req),
     .axil_resp_o                (efuse_axil_mux_resp),
 
-    .axil_jtag_req_i            (axil_sep_otp_jtag_req_filtered[0]),
-    .axil_jtag_resp_o           (axil_sep_otp_jtag_resp_filtered[0]),
-
-    // AXI4-Lite Register Interface from Efuse Controller to shim CSR
-    .fuse_bank_ctrl_req_o       (efuse_bank_ctrl_precut_req),
-    .fuse_bank_ctrl_resp_i      (efuse_bank_ctrl_precut_resp),
+    .axil_jtag_req_i            (axil_sep_otp_jtag_req_filtered[JTAG_TARGET_REGS]),
+    .axil_jtag_resp_o           (axil_sep_otp_jtag_resp_filtered[JTAG_TARGET_REGS]),
 
     // eFuse Command Interface - custom interface for SHIM state machine
     .fuse_command_req_o         (efuse_shim_command_req_o),

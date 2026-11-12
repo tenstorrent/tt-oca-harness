@@ -7,8 +7,8 @@
 // and Key Manager error interfaces to the integrator.
 // sep_global_base_addr_o and sep_region_size_o publish the SEP aperture from sep_cpu_ctrl
 // CSRs for the SMU AXI crossbar SEP-target rule.
-// External-aperture requests inside the eFuse shim CSR window are diverted to the eFuse
-// wrapper; the rest leave on sep_external_axi_req_o through an axi_cut. PIC source i+1 is internal interrupt i
+// The local crossbar routes the eFuse shim CSR window at the base of the external aperture
+// to the eFuse wrapper; the rest leave on sep_external_axi_req_o through an axi_cut. PIC source i+1 is internal interrupt i
 // for the NUM_INTERNAL_IRQS internal sources (mailbox, DMA, WDT, SPI, crypto, eFuse and
 // bridge faults), followed by extintsrc_req_i. The WDT bark drives the CPU NMI, which jumps
 // to SEP_NMI_VEC.
@@ -25,8 +25,8 @@ module sep #(
   parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports; must
                                                  // be 3, one per entropy mux leg.
   parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the eFuse shim CSR window
-                                                 // diverted from the external aperture to the eFuse
-                                                 // wrapper.
+                                                 // at the base of the external aperture, routed
+                                                 // to the eFuse wrapper.
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
                                                         // digest; replace at synthesis.
 ) (
@@ -298,8 +298,8 @@ module sep #(
   sep_pkg::sep_32_64_6_12_axi_resp_t cpu_tcm_axi_resp;
   sep_pkg::sep_32_64_6_12_axi_req_t  sep_crypto_axi_req;
   sep_pkg::sep_32_64_6_12_axi_resp_t sep_crypto_axi_resp;
-  sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_pre_demux_req;
-  sep_pkg::sep_32_64_6_12_axi_resp_t sep_external_pre_demux_resp;
+  sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_axi_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t sep_external_axi_resp;
   sep_pkg::sep_32_64_6_12_axi_req_t  efuse_shim_axi_req;
   sep_pkg::sep_32_64_6_12_axi_resp_t efuse_shim_axi_resp;
   sep_pkg::sep_32_64_6_12_axi_req_t  sep_io_axi_req;
@@ -412,7 +412,9 @@ module sep #(
   // Address width = 32 bits
   // Data width = 64 bits
   // Local generated crossbar wrapper (AXI only)
-  sep_local_axi_xbar_wrapper u_sep_local_axi_xbar_wrapper (
+  sep_local_axi_xbar_wrapper #(
+    .EFUSE_SHIM_SIZE(EFUSE_SHIM_SIZE)
+  ) u_sep_local_axi_xbar_wrapper (
     .clk_i                              (clk_i),
     .rst_ni                             (rst_ni),
     .test_i                             (test_en_i),
@@ -461,81 +463,12 @@ module sep #(
     .sep_reset_ctrl_axi_req_o           (sep_reset_ctrl_axi_req),
     .sep_reset_ctrl_axi_resp_i          (sep_reset_ctrl_axi_resp),
 
-    .sep_external_axi_req_o            (sep_external_pre_demux_req),
-    .sep_external_axi_resp_i           (sep_external_pre_demux_resp)
+    .sep_external_axi_req_o             (sep_external_axi_req),
+    .sep_external_axi_resp_i            (sep_external_axi_resp),
+
+    .efuse_shim_axi_req_o               (efuse_shim_axi_req),
+    .efuse_shim_axi_resp_i              (efuse_shim_axi_resp)
   );
-
-  ///////////////////////////
-  // eFuse SHIM Routing    //
-  ///////////////////////////
-
-  // eFuse shim CSR lives in sep_external addr map but must pass through efuse controller before reaching ip_integration
-  // Added demux to reroute eFuse shim traffic from xbar external to efuse_wrapper
-
-  localparam logic [31:0] EfuseShimBase =
-        32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR);
-
-  localparam int unsigned NumExtDemuxPorts = 2;
-  typedef enum logic [$clog2(
-NumExtDemuxPorts
-)-1:0] {
-    EXT_DEMUX_EXTERNAL   = 1'd0,
-    EXT_DEMUX_EFUSE_SHIM = 1'd1
-  } ext_demux_target_e;
-
-  sep_pkg::sep_32_64_6_12_axi_req_t  [NumExtDemuxPorts-1:0]    ext_demux_req;
-  sep_pkg::sep_32_64_6_12_axi_resp_t [NumExtDemuxPorts-1:0]    ext_demux_resp;
-  ext_demux_target_e                                           ext_demux_aw_select;
-  ext_demux_target_e                                           ext_demux_ar_select;
-
-  function automatic ext_demux_target_e ext_demux_decode(
-      input logic [sep_pkg::SEP_32_64_6_12_ADDR_WIDTH-1:0] addr);
-    if (addr >= EfuseShimBase && addr < EfuseShimBase + EFUSE_SHIM_SIZE) begin
-      return EXT_DEMUX_EFUSE_SHIM;
-    end else begin
-      return EXT_DEMUX_EXTERNAL;
-    end
-  endfunction
-
-  always_comb begin
-    ext_demux_aw_select = ext_demux_decode(sep_external_pre_demux_req.aw.addr);
-    ext_demux_ar_select = ext_demux_decode(sep_external_pre_demux_req.ar.addr);
-  end
-
-  axi_demux #(
-    .AxiIdWidth  (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-    .AtopSupport (1'b0),
-    .aw_chan_t   (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-    .w_chan_t    (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
-    .b_chan_t    (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
-    .ar_chan_t   (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-    .r_chan_t    (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-    .axi_req_t   (sep_pkg::sep_32_64_6_12_axi_req_t),
-    .axi_resp_t  (sep_pkg::sep_32_64_6_12_axi_resp_t),
-    .NoMstPorts  (NumExtDemuxPorts),
-    .MaxTrans    (4),
-    .AxiLookBits (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-    .UniqueIds   (1'b0),
-    .SpillAw     (1'b1),
-    .SpillW      (1'b0),
-    .SpillB      (1'b0),
-    .SpillAr     (1'b1),
-    .SpillR      (1'b0)
-  ) u_efuse_shim_demux (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_ni),
-    .test_i          (test_en_i),
-    .slv_req_i       (sep_external_pre_demux_req),
-    .slv_resp_o      (sep_external_pre_demux_resp),
-    .slv_aw_select_i (ext_demux_aw_select),
-    .slv_ar_select_i (ext_demux_ar_select),
-    .sel_hash_i      ('0),
-    .mst_reqs_o      (ext_demux_req),
-    .mst_resps_i     (ext_demux_resp)
-  );
-
-  assign efuse_shim_axi_req                    = ext_demux_req [EXT_DEMUX_EFUSE_SHIM];
-  assign ext_demux_resp[EXT_DEMUX_EFUSE_SHIM]  = efuse_shim_axi_resp;
 
   axi_cut #(
     .aw_chan_t  (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
@@ -548,8 +481,8 @@ NumExtDemuxPorts
   ) u_sep_external_cut (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .slv_req_i  (ext_demux_req[EXT_DEMUX_EXTERNAL]),
-    .slv_resp_o (ext_demux_resp[EXT_DEMUX_EXTERNAL]),
+    .slv_req_i  (sep_external_axi_req),
+    .slv_resp_o (sep_external_axi_resp),
     .mst_req_o  (sep_external_axi_req_o),
     .mst_resp_i (sep_external_axi_resp_i)
   );
@@ -896,6 +829,7 @@ NumSramDemuxPorts
     .MASKING_EN        (ABR_MASKING_EN),
     .SRAM_LATENCY      (ABR_SRAM_LATENCY),
     .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
+    .EFUSE_SHIM_SIZE   (EFUSE_SHIM_SIZE),
     .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN)
   ) u_sep_crypto (
     .clk_i                        (clk_i),

@@ -1667,7 +1667,7 @@ word and advance the bit address by 32 each time.
 ----
 // eFuse Register addresses.
 // In SMC-local address space.
-#define EFUSE_CTRL_BASE             0xC0008000
+#define EFUSE_CTRL_BASE             0xC0007000
 #define EFUSE_CTRL_REG_PROGRAM_CTRL (EFUSE_CTRL_BASE + 0x4)
 #define EFUSE_CTRL_REG_READ_CTRL    (EFUSE_CTRL_BASE + 0x8)
 #define EFUSE_CTRL_REG_READ_DATA    (EFUSE_CTRL_BASE + 0x10)

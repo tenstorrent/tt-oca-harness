@@ -547,10 +547,593 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
+        <ipxact:name>otp_efuse_ctrl</ipxact:name>
+        <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
+        <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
+        <ipxact:baseAddress>'h11000</ipxact:baseAddress>
+        <ipxact:range>'h1c</ipxact:range>
+        <ipxact:width>32</ipxact:width>
+        <ipxact:register>
+          <ipxact:name>EFUSE_INTERFACE_CTRL_STATUS</ipxact:name>
+          <ipxact:description>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</ipxact:description>
+          <ipxact:addressOffset>'h0</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_sense_done</ipxact:name>
+            <ipxact:description>Indicates if the eFuse state machine has completed</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_req_error</ipxact:name>
+            <ipxact:description>Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register</ipxact:description>
+            <ipxact:bitOffset>4</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_program_addr_error</ipxact:name>
+            <ipxact:description>Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.</ipxact:description>
+            <ipxact:bitOffset>5</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_read_addr_error</ipxact:name>
+            <ipxact:description>Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.</ipxact:description>
+            <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_req_error_clear</ipxact:name>
+            <ipxact:description>Clears the blocked request error bit in efuse_ctrl_status</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_program_addr_error_clear</ipxact:name>
+            <ipxact:description>Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status</ipxact:description>
+            <ipxact:bitOffset>9</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_read_addr_error_clear</ipxact:name>
+            <ipxact:description>Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status</ipxact:description>
+            <ipxact:bitOffset>10</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
+          <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</ipxact:description>
+          <ipxact:addressOffset>'h4</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address to program</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>16</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_data</ipxact:name>
+            <ipxact:description>Data to program to eFuse.  If this bit is 0, the program request will be ignored</ipxact:description>
+            <ipxact:bitOffset>16</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_program_go</ipxact:name>
+            <ipxact:description>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</ipxact:description>
+            <ipxact:bitOffset>17</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_program_read_back</ipxact:name>
+            <ipxact:description>When set, trigger a read back after a program</ipxact:description>
+            <ipxact:bitOffset>18</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>program_busy</ipxact:name>
+            <ipxact:description>When set, the program is in progress</ipxact:description>
+            <ipxact:bitOffset>24</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>program_done</ipxact:name>
+            <ipxact:description>When set, the program has completed, the status of which is in program_status</ipxact:description>
+            <ipxact:bitOffset>25</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>program_status</ipxact:name>
+            <ipxact:description>0: No Error.  1: Error</ipxact:description>
+            <ipxact:bitOffset>26</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>program_enable</ipxact:name>
+            <ipxact:description>When set, enables the program request</ipxact:description>
+            <ipxact:bitOffset>27</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_READ_CTRL</ipxact:name>
+          <ipxact:description>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</ipxact:description>
+          <ipxact:addressOffset>'h8</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address to read</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>16</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>efuse_read_go</ipxact:name>
+            <ipxact:description>When set, triggers a read to efuse.</ipxact:description>
+            <ipxact:bitOffset>16</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>read_busy</ipxact:name>
+            <ipxact:description>When set, the read is in progress</ipxact:description>
+            <ipxact:bitOffset>24</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>read_done</ipxact:name>
+            <ipxact:description>When set, the read has completed, the status of which is in read_status</ipxact:description>
+            <ipxact:bitOffset>25</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>read_status</ipxact:name>
+            <ipxact:description>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</ipxact:description>
+            <ipxact:bitOffset>26</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>read_enable</ipxact:name>
+            <ipxact:description>When set, enables the read request</ipxact:description>
+            <ipxact:bitOffset>28</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_PROGRAM_INTERFACE_READ_DATA</ipxact:name>
+          <ipxact:description>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</ipxact:description>
+          <ipxact:addressOffset>'hc</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>dout</ipxact:name>
+            <ipxact:description>Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_READ_INTERFACE_READ_DATA</ipxact:name>
+          <ipxact:description>Read data returned through the eFuse read interface.</ipxact:description>
+          <ipxact:addressOffset>'h10</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>dout</ipxact:name>
+            <ipxact:description>Read Data from eFuse through READ interface.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_READ_REQ_TIMEOUT</ipxact:name>
+          <ipxact:description>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</ipxact:description>
+          <ipxact:addressOffset>'h14</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>read_req_timeout_cycles</ipxact:name>
+            <ipxact:description>Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h800000</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>28</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>read_req_timout_enable</ipxact:name>
+            <ipxact:description>Enable timeout on read interface</ipxact:description>
+            <ipxact:bitOffset>28</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_PROGRAM_REQ_TIMEOUT</ipxact:name>
+          <ipxact:description>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</ipxact:description>
+          <ipxact:addressOffset>'h18</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>program_req_timeout_cycles</ipxact:name>
+            <ipxact:description>Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h800000</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>28</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>program_req_timeout_enable</ipxact:name>
+            <ipxact:description>Enable timeout on program interface.</ipxact:description>
+            <ipxact:bitOffset>28</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+      </ipxact:addressBlock>
+      <ipxact:addressBlock>
+        <ipxact:name>otp_efuse_mmr</ipxact:name>
+        <ipxact:displayName>eFuse Token Registers Address Map</ipxact:displayName>
+        <ipxact:description>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</ipxact:description>
+        <ipxact:baseAddress>'h11100</ipxact:baseAddress>
+        <ipxact:range>'h74</ipxact:range>
+        <ipxact:width>32</ipxact:width>
+        <ipxact:register>
+          <ipxact:name>RMA_SIP_TOKEN_I</ipxact:name>
+          <ipxact:description>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</ipxact:description>
+          <ipxact:dim>8</ipxact:dim>
+          <ipxact:addressOffset>'h0</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>token</ipxact:name>
+            <ipxact:description>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>RMA_CHIPLET_TOKEN_I</ipxact:name>
+          <ipxact:description>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</ipxact:description>
+          <ipxact:dim>8</ipxact:dim>
+          <ipxact:addressOffset>'h20</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>token</ipxact:name>
+            <ipxact:description>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>SEC_DISABLE_TOKEN_I</ipxact:name>
+          <ipxact:description>Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.</ipxact:description>
+          <ipxact:dim>8</ipxact:dim>
+          <ipxact:addressOffset>'h40</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>token</ipxact:name>
+            <ipxact:description>Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>TOKEN_EOP</ipxact:name>
+          <ipxact:description>Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.</ipxact:description>
+          <ipxact:addressOffset>'h60</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>rma_sip_token_go</ipxact:name>
+            <ipxact:description>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>rma_chiplet_token_go</ipxact:name>
+            <ipxact:description>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>secure_disable_token_go</ipxact:name>
+            <ipxact:description>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</ipxact:description>
+            <ipxact:bitOffset>16</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>RMA_SIP_TOKEN_MATCH</ipxact:name>
+          <ipxact:description>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</ipxact:description>
+          <ipxact:addressOffset>'h64</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>token_match_status</ipxact:name>
+            <ipxact:description>Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>RMA_CHIPLET_TOKEN_MATCH</ipxact:name>
+          <ipxact:description>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</ipxact:description>
+          <ipxact:addressOffset>'h68</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>token_match_status</ipxact:name>
+            <ipxact:description>Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>SEC_DISABLE_TOKEN_MATCH</ipxact:name>
+          <ipxact:description>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</ipxact:description>
+          <ipxact:addressOffset>'h6c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>token_match_status</ipxact:name>
+            <ipxact:description>Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>TOKEN_MATCH_FAULT</ipxact:name>
+          <ipxact:description>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</ipxact:description>
+          <ipxact:addressOffset>'h70</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>rma_sip_token_fault</ipxact:name>
+            <ipxact:description>A redundancy fault was detected in the RMA_SIP_TOKEN comparators.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>rma_chiplet_token_fault</ipxact:name>
+            <ipxact:description>A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>secure_disable_token_fault</ipxact:name>
+            <ipxact:description>A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.</ipxact:description>
+            <ipxact:bitOffset>16</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+      </ipxact:addressBlock>
+      <ipxact:addressBlock>
         <ipxact:name>otp_efuse_map</ipxact:name>
         <ipxact:displayName>SEP eFuse Map Address Map</ipxact:displayName>
         <ipxact:description>Per-field write-lock and read-lock registers for the SEP eFuse map.</ipxact:description>
-        <ipxact:baseAddress>'h11000</ipxact:baseAddress>
+        <ipxact:baseAddress>'h11400</ipxact:baseAddress>
         <ipxact:range>'h400</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:register>
@@ -2719,589 +3302,6 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-      </ipxact:addressBlock>
-      <ipxact:addressBlock>
-        <ipxact:name>otp_efuse_ctrl</ipxact:name>
-        <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
-        <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
-        <ipxact:baseAddress>'h11400</ipxact:baseAddress>
-        <ipxact:range>'h1c</ipxact:range>
-        <ipxact:width>32</ipxact:width>
-        <ipxact:register>
-          <ipxact:name>EFUSE_INTERFACE_CTRL_STATUS</ipxact:name>
-          <ipxact:description>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</ipxact:description>
-          <ipxact:addressOffset>'h0</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_sense_done</ipxact:name>
-            <ipxact:description>Indicates if the eFuse state machine has completed</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_req_error</ipxact:name>
-            <ipxact:description>Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register</ipxact:description>
-            <ipxact:bitOffset>4</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_program_addr_error</ipxact:name>
-            <ipxact:description>Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.</ipxact:description>
-            <ipxact:bitOffset>5</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_read_addr_error</ipxact:name>
-            <ipxact:description>Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.</ipxact:description>
-            <ipxact:bitOffset>6</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_req_error_clear</ipxact:name>
-            <ipxact:description>Clears the blocked request error bit in efuse_ctrl_status</ipxact:description>
-            <ipxact:bitOffset>8</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>write-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_program_addr_error_clear</ipxact:name>
-            <ipxact:description>Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status</ipxact:description>
-            <ipxact:bitOffset>9</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>write-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_read_addr_error_clear</ipxact:name>
-            <ipxact:description>Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status</ipxact:description>
-            <ipxact:bitOffset>10</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>write-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
-          <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</ipxact:description>
-          <ipxact:addressOffset>'h4</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to program</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_data</ipxact:name>
-            <ipxact:description>Data to program to eFuse.  If this bit is 0, the program request will be ignored</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_program_go</ipxact:name>
-            <ipxact:description>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</ipxact:description>
-            <ipxact:bitOffset>17</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_program_read_back</ipxact:name>
-            <ipxact:description>When set, trigger a read back after a program</ipxact:description>
-            <ipxact:bitOffset>18</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>program_busy</ipxact:name>
-            <ipxact:description>When set, the program is in progress</ipxact:description>
-            <ipxact:bitOffset>24</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>program_done</ipxact:name>
-            <ipxact:description>When set, the program has completed, the status of which is in program_status</ipxact:description>
-            <ipxact:bitOffset>25</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>program_status</ipxact:name>
-            <ipxact:description>0: No Error.  1: Error</ipxact:description>
-            <ipxact:bitOffset>26</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>program_enable</ipxact:name>
-            <ipxact:description>When set, enables the program request</ipxact:description>
-            <ipxact:bitOffset>27</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>EFUSE_READ_CTRL</ipxact:name>
-          <ipxact:description>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</ipxact:description>
-          <ipxact:addressOffset>'h8</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to read</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_read_go</ipxact:name>
-            <ipxact:description>When set, triggers a read to efuse.</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>read_busy</ipxact:name>
-            <ipxact:description>When set, the read is in progress</ipxact:description>
-            <ipxact:bitOffset>24</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>read_done</ipxact:name>
-            <ipxact:description>When set, the read has completed, the status of which is in read_status</ipxact:description>
-            <ipxact:bitOffset>25</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>read_status</ipxact:name>
-            <ipxact:description>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</ipxact:description>
-            <ipxact:bitOffset>26</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>read_enable</ipxact:name>
-            <ipxact:description>When set, enables the read request</ipxact:description>
-            <ipxact:bitOffset>28</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>EFUSE_PROGRAM_INTERFACE_READ_DATA</ipxact:name>
-          <ipxact:description>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</ipxact:description>
-          <ipxact:addressOffset>'hc</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>dout</ipxact:name>
-            <ipxact:description>Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>EFUSE_READ_INTERFACE_READ_DATA</ipxact:name>
-          <ipxact:description>Read data returned through the eFuse read interface.</ipxact:description>
-          <ipxact:addressOffset>'h10</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>dout</ipxact:name>
-            <ipxact:description>Read Data from eFuse through READ interface.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>EFUSE_READ_REQ_TIMEOUT</ipxact:name>
-          <ipxact:description>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</ipxact:description>
-          <ipxact:addressOffset>'h14</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>read_req_timeout_cycles</ipxact:name>
-            <ipxact:description>Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h800000</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>28</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>read_req_timout_enable</ipxact:name>
-            <ipxact:description>Enable timeout on read interface</ipxact:description>
-            <ipxact:bitOffset>28</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>EFUSE_PROGRAM_REQ_TIMEOUT</ipxact:name>
-          <ipxact:description>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</ipxact:description>
-          <ipxact:addressOffset>'h18</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>program_req_timeout_cycles</ipxact:name>
-            <ipxact:description>Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h800000</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>28</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>program_req_timeout_enable</ipxact:name>
-            <ipxact:description>Enable timeout on program interface.</ipxact:description>
-            <ipxact:bitOffset>28</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-      </ipxact:addressBlock>
-      <ipxact:addressBlock>
-        <ipxact:name>otp_efuse_mmr</ipxact:name>
-        <ipxact:displayName>eFuse Token Registers Address Map</ipxact:displayName>
-        <ipxact:description>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</ipxact:description>
-        <ipxact:baseAddress>'h11500</ipxact:baseAddress>
-        <ipxact:range>'h74</ipxact:range>
-        <ipxact:width>32</ipxact:width>
-        <ipxact:register>
-          <ipxact:name>RMA_SIP_TOKEN_I</ipxact:name>
-          <ipxact:description>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</ipxact:description>
-          <ipxact:dim>8</ipxact:dim>
-          <ipxact:addressOffset>'h0</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>token</ipxact:name>
-            <ipxact:description>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>RMA_CHIPLET_TOKEN_I</ipxact:name>
-          <ipxact:description>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</ipxact:description>
-          <ipxact:dim>8</ipxact:dim>
-          <ipxact:addressOffset>'h20</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>token</ipxact:name>
-            <ipxact:description>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SEC_DISABLE_TOKEN_I</ipxact:name>
-          <ipxact:description>Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.</ipxact:description>
-          <ipxact:dim>8</ipxact:dim>
-          <ipxact:addressOffset>'h40</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>token</ipxact:name>
-            <ipxact:description>Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>TOKEN_EOP</ipxact:name>
-          <ipxact:description>Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.</ipxact:description>
-          <ipxact:addressOffset>'h60</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>rma_sip_token_go</ipxact:name>
-            <ipxact:description>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>write-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>rma_chiplet_token_go</ipxact:name>
-            <ipxact:description>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</ipxact:description>
-            <ipxact:bitOffset>8</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>write-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>secure_disable_token_go</ipxact:name>
-            <ipxact:description>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>write-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>RMA_SIP_TOKEN_MATCH</ipxact:name>
-          <ipxact:description>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</ipxact:description>
-          <ipxact:addressOffset>'h64</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>token_match_status</ipxact:name>
-            <ipxact:description>Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>RMA_CHIPLET_TOKEN_MATCH</ipxact:name>
-          <ipxact:description>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</ipxact:description>
-          <ipxact:addressOffset>'h68</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>token_match_status</ipxact:name>
-            <ipxact:description>Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SEC_DISABLE_TOKEN_MATCH</ipxact:name>
-          <ipxact:description>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</ipxact:description>
-          <ipxact:addressOffset>'h6c</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>token_match_status</ipxact:name>
-            <ipxact:description>Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>6</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>TOKEN_MATCH_FAULT</ipxact:name>
-          <ipxact:description>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</ipxact:description>
-          <ipxact:addressOffset>'h70</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>rma_sip_token_fault</ipxact:name>
-            <ipxact:description>A redundancy fault was detected in the RMA_SIP_TOKEN comparators.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>rma_chiplet_token_fault</ipxact:name>
-            <ipxact:description>A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.</ipxact:description>
-            <ipxact:bitOffset>8</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>secure_disable_token_fault</ipxact:name>
-            <ipxact:description>A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>

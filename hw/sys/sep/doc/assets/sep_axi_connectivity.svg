@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="920" height="654" viewBox="0 0 920 654" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="696" viewBox="0 0 920 696" role="img" aria-labelledby="title desc">
 <title id="title">SEP AXI4 connectivity</title>
-<desc id="desc">Columns are the SEP local crossbar initiators, ifu_sram, lsu, dbg, dma and ext; rows are its ten targets, plus the boot ROM, which the IFU and LSU reach through a dedicated AXI mux outside the crossbar. A filled circle marks a permitted path and a dash marks none, following the Connectivity parameter in sep_local_axi_xbar_pkg.sv.</desc>
+<desc id="desc">Columns are the SEP local crossbar initiators, ifu_sram, lsu, dbg, dma and ext; rows are its eleven targets, plus the boot ROM, which the IFU and LSU reach through a dedicated AXI mux outside the crossbar. A filled circle marks a permitted path and a dash marks none, following the Connectivity parameter in sep_local_axi_xbar_pkg.sv.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -76,7 +76,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
 </style>
 </defs>
-<rect width="920" height="654" fill="#ffffff"/>
+<rect width="920" height="696" fill="#ffffff"/>
 <text class="bs" x="14" y="26" text-anchor="start">Crossbar targets</text>
 <text class="bs" x="643" y="26" text-anchor="middle">Initiators</text>
 <rect class="fabric" x="14" y="38" width="892" height="56" rx="5"/>
@@ -149,22 +149,29 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <circle cx="643" cy="456" r="6.5" fill="#103525"/>
 <path d="M741.2,456 L755.2,456" stroke="#5b6670" stroke-width="2"/>
 <circle cx="853.4" cy="456" r="6.5" fill="#103525"/>
-<text class="t" x="30" y="503" text-anchor="start">sep_external (extension, eFuse shim)</text>
+<text class="t" x="30" y="503" text-anchor="start">sep_external (AXI4 extension port)</text>
 <path d="M425.6,498 L439.6,498" stroke="#5b6670" stroke-width="2"/>
 <circle cx="537.8" cy="498" r="6.5" fill="#103525"/>
 <circle cx="643" cy="498" r="6.5" fill="#103525"/>
 <circle cx="748.2" cy="498" r="6.5" fill="#103525"/>
 <circle cx="853.4" cy="498" r="6.5" fill="#103525"/>
-<text class="bs" x="14" y="546" text-anchor="start">Dedicated path, outside the crossbar</text>
-<rect x="14" y="558" width="892" height="40" rx="3" fill="#f8f4eb"/>
-<text class="t" x="30" y="583" text-anchor="start">boot ROM (u_boot_rom_axi_mux)</text>
-<circle cx="432.6" cy="578" r="6.5" fill="#103525"/>
-<circle cx="537.8" cy="578" r="6.5" fill="#103525"/>
-<path d="M636,578 L650,578" stroke="#5b6670" stroke-width="2"/>
-<path d="M741.2,578 L755.2,578" stroke="#5b6670" stroke-width="2"/>
-<path d="M846.4,578 L860.4,578" stroke="#5b6670" stroke-width="2"/>
-<circle cx="22" cy="627" r="6.5" fill="#103525"/>
-<text class="s" x="38" y="632" text-anchor="start">Connected</text>
-<path d="M134,627 L148,627" stroke="#5b6670" stroke-width="2"/>
-<text class="s" x="158" y="632" text-anchor="start">Not connected</text>
+<rect x="14" y="520" width="892" height="40" rx="3" fill="#f8f4eb"/>
+<text class="t" x="30" y="545" text-anchor="start">efuse_shim (eFuse shim CSR window)</text>
+<path d="M425.6,540 L439.6,540" stroke="#5b6670" stroke-width="2"/>
+<circle cx="537.8" cy="540" r="6.5" fill="#103525"/>
+<circle cx="643" cy="540" r="6.5" fill="#103525"/>
+<circle cx="748.2" cy="540" r="6.5" fill="#103525"/>
+<circle cx="853.4" cy="540" r="6.5" fill="#103525"/>
+<text class="bs" x="14" y="588" text-anchor="start">Dedicated path, outside the crossbar</text>
+<rect x="14" y="600" width="892" height="40" rx="3" fill="#f8f4eb"/>
+<text class="t" x="30" y="625" text-anchor="start">boot ROM (u_boot_rom_axi_mux)</text>
+<circle cx="432.6" cy="620" r="6.5" fill="#103525"/>
+<circle cx="537.8" cy="620" r="6.5" fill="#103525"/>
+<path d="M636,620 L650,620" stroke="#5b6670" stroke-width="2"/>
+<path d="M741.2,620 L755.2,620" stroke="#5b6670" stroke-width="2"/>
+<path d="M846.4,620 L860.4,620" stroke="#5b6670" stroke-width="2"/>
+<circle cx="22" cy="669" r="6.5" fill="#103525"/>
+<text class="s" x="38" y="674" text-anchor="start">Connected</text>
+<path d="M134,669 L148,669" stroke="#5b6670" stroke-width="2"/>
+<text class="s" x="158" y="674" text-anchor="start">Not connected</text>
 </svg>

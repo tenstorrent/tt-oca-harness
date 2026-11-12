@@ -223,6 +223,244 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t KM_CTRL;
 } km_mailbox_km_t;
 
+// reg - efuse_interface_ctrl::EFUSE_INTERFACE_CTRL_STATUS
+// eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.
+// Indicates if the eFuse state machine has completed
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm 0x1
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bw 1
+// Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm 0x10
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bp 4
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_reset 0x0
+// Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bm 0x20
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bp 5
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_reset 0x0
+// Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bm 0x40
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bp 6
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_reset 0x0
+// Clears the blocked request error bit in efuse_ctrl_status
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bm 0x100
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bp 8
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_reset 0x0
+// Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bm 0x200
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bp 9
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_reset 0x0
+// Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bm 0x400
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bp 10
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_reset 0x0
+
+// reg - efuse_interface_ctrl::EFUSE_PROGRAM_CTRL
+// eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.
+// Bit address to program
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bm 0xffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bw 16
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_reset 0x0
+// Data to program to eFuse.  If this bit is 0, the program request will be ignored
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm 0x10000
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bp 16
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_reset 0x0
+// When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm 0x20000
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bp 17
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_reset 0x0
+// When set, trigger a read back after a program
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm 0x40000
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bp 18
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_reset 0x0
+// When set, the program is in progress
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bm 0x1000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bp 24
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_reset 0x0
+// When set, the program has completed, the status of which is in program_status
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm 0x2000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bp 25
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_reset 0x0
+// 0: No Error.  1: Error
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm 0x4000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bp 26
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_reset 0x0
+// When set, enables the program request
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm 0x8000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bp 27
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_reset 0x0
+
+// reg - efuse_interface_ctrl::EFUSE_READ_CTRL
+// eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.
+// Bit address to read
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bm 0xffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bw 16
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_reset 0x0
+// When set, triggers a read to efuse.
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bm 0x10000
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bp 16
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_reset 0x0
+// When set, the read is in progress
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bm 0x1000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bp 24
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_reset 0x0
+// When set, the read has completed, the status of which is in read_status
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bm 0x2000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bp 25
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_reset 0x0
+// 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bm 0x4000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bp 26
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_reset 0x0
+// When set, enables the read request
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bm 0x10000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bp 28
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_reset 0x0
+
+// reg - efuse_interface_ctrl::EFUSE_PROGRAM_INTERFACE_READ_DATA
+// Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.
+// Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bw 32
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset 0x0
+
+// reg - efuse_interface_ctrl::EFUSE_READ_INTERFACE_READ_DATA
+// Read data returned through the eFuse read interface.
+// Read Data from eFuse through READ interface.
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bw 32
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_reset 0x0
+
+// reg - efuse_interface_ctrl::EFUSE_READ_REQ_TIMEOUT
+// Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.
+// Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bm 0xfffffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bw 28
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset 0x800000
+// Enable timeout on read interface
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bm 0x10000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bp 28
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_reset 0x0
+
+// reg - efuse_interface_ctrl::EFUSE_PROGRAM_REQ_TIMEOUT
+// Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
+// Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bm 0xfffffff
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bp 0
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bw 28
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_reset 0x800000
+// Enable timeout on program interface.
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bm 0x10000000
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bp 28
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bw 1
+#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_reset 0x0
+
+// addrmap - efuse_interface_ctrl
+// Program and read command, address, data, status, and timeout registers for the eFuse interface.
+typedef struct __attribute__ ((__packed__)) {
+    uint32_t EFUSE_INTERFACE_CTRL_STATUS;
+    uint32_t EFUSE_PROGRAM_CTRL;
+    uint32_t EFUSE_READ_CTRL;
+    uint32_t EFUSE_PROGRAM_INTERFACE_READ_DATA;
+    uint32_t EFUSE_READ_INTERFACE_READ_DATA;
+    uint32_t EFUSE_READ_REQ_TIMEOUT;
+    uint32_t EFUSE_PROGRAM_REQ_TIMEOUT;
+} efuse_interface_ctrl_t;
+
+// reg - efuse_mmr::RMA_TOKEN_I
+// Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
+// Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
+#define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bm 0xffffffff
+#define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bp 0
+#define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bw 32
+
+// reg - efuse_mmr::SEC_DISABLE_TOKEN_I
+// Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
+// Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.
+#define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bm 0xffffffff
+#define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bp 0
+#define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bw 32
+
+// reg - efuse_mmr::TOKEN_EOP
+// Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.
+// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
+#define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bm 0x1
+#define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bp 0
+#define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bw 1
+#define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_reset 0x0
+// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
+#define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bm 0x100
+#define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bp 8
+#define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bw 1
+#define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_reset 0x0
+// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
+#define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bm 0x10000
+#define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bp 16
+#define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bw 1
+#define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_reset 0x0
+
+// reg - efuse_mmr::TOKEN_MATCH
+// Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
+// Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
+#define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bm 0x3f
+#define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bp 0
+#define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bw 6
+#define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_reset 0x0
+
+// reg - efuse_mmr::TOKEN_MATCH_FAULT
+// Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
+// A redundancy fault was detected in the RMA_SIP_TOKEN comparators.
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bm 0x1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bp 0
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bw 1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_reset 0x0
+// A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bm 0x100
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bp 8
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bw 1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_reset 0x0
+// A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bm 0x10000
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bp 16
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bw 1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_reset 0x0
+
+// addrmap - efuse_mmr
+// Security-token input and match-status registers for RMA and secure-disable eFuse tokens.
+typedef struct __attribute__ ((__packed__)) {
+    uint32_t RMA_SIP_TOKEN_I[8];
+    uint32_t RMA_CHIPLET_TOKEN_I[8];
+    uint32_t SEC_DISABLE_TOKEN_I[8];
+    uint32_t TOKEN_EOP;
+    uint32_t RMA_SIP_TOKEN_MATCH;
+    uint32_t RMA_CHIPLET_TOKEN_MATCH;
+    uint32_t SEC_DISABLE_TOKEN_MATCH;
+    uint32_t TOKEN_MATCH_FAULT;
+} efuse_mmr_t;
+
 // reg - sep_efuse_map::LOCKS
 // lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 #define SEP_EFUSE_MAP__LOCKS__LC_STATE_WRITE_LOCK_bm 0x1
@@ -962,244 +1200,6 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t spare7[8];
     uint32_t spare8[8];
 } sep_efuse_map_t;
-
-// reg - efuse_interface_ctrl::EFUSE_INTERFACE_CTRL_STATUS
-// eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.
-// Indicates if the eFuse state machine has completed
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm 0x1
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bw 1
-// Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm 0x10
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bp 4
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_reset 0x0
-// Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bm 0x20
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bp 5
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_reset 0x0
-// Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bm 0x40
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bp 6
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_reset 0x0
-// Clears the blocked request error bit in efuse_ctrl_status
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bm 0x100
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bp 8
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_reset 0x0
-// Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bm 0x200
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bp 9
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_reset 0x0
-// Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bm 0x400
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bp 10
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_reset 0x0
-
-// reg - efuse_interface_ctrl::EFUSE_PROGRAM_CTRL
-// eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.
-// Bit address to program
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bm 0xffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_bw 16
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_ADDR_reset 0x0
-// Data to program to eFuse.  If this bit is 0, the program request will be ignored
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm 0x10000
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bp 16
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_reset 0x0
-// When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm 0x20000
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bp 17
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_reset 0x0
-// When set, trigger a read back after a program
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm 0x40000
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bp 18
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_reset 0x0
-// When set, the program is in progress
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bm 0x1000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bp 24
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_reset 0x0
-// When set, the program has completed, the status of which is in program_status
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm 0x2000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bp 25
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_reset 0x0
-// 0: No Error.  1: Error
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm 0x4000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bp 26
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_reset 0x0
-// When set, enables the program request
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm 0x8000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bp 27
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_reset 0x0
-
-// reg - efuse_interface_ctrl::EFUSE_READ_CTRL
-// eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.
-// Bit address to read
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bm 0xffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_bw 16
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_ADDR_reset 0x0
-// When set, triggers a read to efuse.
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bm 0x10000
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bp 16
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_reset 0x0
-// When set, the read is in progress
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bm 0x1000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bp 24
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_reset 0x0
-// When set, the read has completed, the status of which is in read_status
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bm 0x2000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bp 25
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_reset 0x0
-// 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bm 0x4000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bp 26
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_reset 0x0
-// When set, enables the read request
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bm 0x10000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bp 28
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_reset 0x0
-
-// reg - efuse_interface_ctrl::EFUSE_PROGRAM_INTERFACE_READ_DATA
-// Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.
-// Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_bw 32
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset 0x0
-
-// reg - efuse_interface_ctrl::EFUSE_READ_INTERFACE_READ_DATA
-// Read data returned through the eFuse read interface.
-// Read Data from eFuse through READ interface.
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bm 0xffffffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_bw 32
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_INTERFACE_READ_DATA__DOUT_reset 0x0
-
-// reg - efuse_interface_ctrl::EFUSE_READ_REQ_TIMEOUT
-// Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.
-// Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bm 0xfffffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_bw 28
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset 0x800000
-// Enable timeout on read interface
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bm 0x10000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bp 28
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMOUT_ENABLE_reset 0x0
-
-// reg - efuse_interface_ctrl::EFUSE_PROGRAM_REQ_TIMEOUT
-// Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.
-// Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bm 0xfffffff
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bp 0
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_bw 28
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_CYCLES_reset 0x800000
-// Enable timeout on program interface.
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bm 0x10000000
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bp 28
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_bw 1
-#define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_REQ_TIMEOUT__PROGRAM_REQ_TIMEOUT_ENABLE_reset 0x0
-
-// addrmap - efuse_interface_ctrl
-// Program and read command, address, data, status, and timeout registers for the eFuse interface.
-typedef struct __attribute__ ((__packed__)) {
-    uint32_t EFUSE_INTERFACE_CTRL_STATUS;
-    uint32_t EFUSE_PROGRAM_CTRL;
-    uint32_t EFUSE_READ_CTRL;
-    uint32_t EFUSE_PROGRAM_INTERFACE_READ_DATA;
-    uint32_t EFUSE_READ_INTERFACE_READ_DATA;
-    uint32_t EFUSE_READ_REQ_TIMEOUT;
-    uint32_t EFUSE_PROGRAM_REQ_TIMEOUT;
-} efuse_interface_ctrl_t;
-
-// reg - efuse_mmr::RMA_TOKEN_I
-// Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.
-// Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
-#define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bm 0xffffffff
-#define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bp 0
-#define EFUSE_MMR__RMA_TOKEN_I__TOKEN_bw 32
-
-// reg - efuse_mmr::SEC_DISABLE_TOKEN_I
-// Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.
-// Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.
-#define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bm 0xffffffff
-#define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bp 0
-#define EFUSE_MMR__SEC_DISABLE_TOKEN_I__TOKEN_bw 32
-
-// reg - efuse_mmr::TOKEN_EOP
-// Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.
-// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
-#define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bm 0x1
-#define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bp 0
-#define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bw 1
-#define EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_reset 0x0
-// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
-#define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bm 0x100
-#define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bp 8
-#define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bw 1
-#define EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_reset 0x0
-// Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
-#define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bm 0x10000
-#define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bp 16
-#define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bw 1
-#define EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_reset 0x0
-
-// reg - efuse_mmr::TOKEN_MATCH
-// Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
-// Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
-#define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bm 0x3f
-#define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bp 0
-#define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bw 6
-#define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_reset 0x0
-
-// reg - efuse_mmr::TOKEN_MATCH_FAULT
-// Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
-// A redundancy fault was detected in the RMA_SIP_TOKEN comparators.
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bm 0x1
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bp 0
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bw 1
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_reset 0x0
-// A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bm 0x100
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bp 8
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bw 1
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_reset 0x0
-// A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bm 0x10000
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bp 16
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bw 1
-#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_reset 0x0
-
-// addrmap - efuse_mmr
-// Security-token input and match-status registers for RMA and secure-disable eFuse tokens.
-typedef struct __attribute__ ((__packed__)) {
-    uint32_t RMA_SIP_TOKEN_I[8];
-    uint32_t RMA_CHIPLET_TOKEN_I[8];
-    uint32_t SEC_DISABLE_TOKEN_I[8];
-    uint32_t TOKEN_EOP;
-    uint32_t RMA_SIP_TOKEN_MATCH;
-    uint32_t RMA_CHIPLET_TOKEN_MATCH;
-    uint32_t SEC_DISABLE_TOKEN_MATCH;
-    uint32_t TOKEN_MATCH_FAULT;
-} efuse_mmr_t;
 
 // reg - km_kpv::key_word_reg
 // One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
@@ -2451,11 +2451,12 @@ typedef struct __attribute__ ((__packed__)) {
     km_sram_t sram;
     km_mailbox_km_t mailbox_km;
     uint8_t RESERVED_1001c_10fff[0xfe4];
-    sep_efuse_map_t otp_efuse_map;
     efuse_interface_ctrl_t otp_efuse_ctrl;
-    uint8_t RESERVED_1141c_114ff[0xe4];
+    uint8_t RESERVED_1101c_110ff[0xe4];
     efuse_mmr_t otp_efuse_mmr;
-    uint8_t RESERVED_11574_11fff[0xa8c];
+    uint8_t RESERVED_11174_113ff[0x28c];
+    sep_efuse_map_t otp_efuse_map;
+    uint8_t RESERVED_11800_11fff[0x800];
     km_kpv_t kpv;
     uint8_t RESERVED_13108_13fff[0xef8];
     km_csr_t kmcsr;

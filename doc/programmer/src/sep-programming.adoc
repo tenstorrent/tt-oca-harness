@@ -941,7 +941,7 @@ interface:
 ----
 // eFuse token register addresses.
 // In SEP-local address space.
-#define TOKEN_BASE                    0x10930500
+#define TOKEN_BASE                    0x10930100
 #define TOKEN_REG_RMA_SIP_TOKEN_I(i)  (TOKEN_BASE + ((i) * 0x4))
 #define TOKEN_REG_TOKEN_EOP           (TOKEN_BASE + 0x60)
 #define TOKEN_REG_RMA_SIP_TOKEN_MATCH (TOKEN_BASE + 0x64)

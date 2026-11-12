@@ -68,9 +68,8 @@ image::sep-reset-ctrl-logic.svg[alt="Gates, muxes and synchronizers in the eFuse
 Within the Reset Controller, `rst_ni` resets the isolation sequencers, the JTAG
 override synchronizers and `u_wdt_rst_sync`. Outside it, `rst_ni` directly
 resets the local crossbar, the watchdog register path, the crypto interconnect,
-the life cycle controller, the eFuse shim mux and demux, the crypto alert
-receivers, encoders and EDN AXIS adapters, the entropy pool and the TRNG
-power-on reset `por_rst_ni`. When the build does not define `SEP_ABR_EN`, the
+the life cycle controller, the crypto alert receivers, encoders and EDN AXIS
+adapters, the entropy pool and the TRNG power-on reset `por_rst_ni`. When the build does not define `SEP_ABR_EN`, the
 Adams Bridge error responders take `rst_ni` in place of the Adams Bridge
 wrapper.
 

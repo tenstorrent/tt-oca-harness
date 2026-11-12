@@ -6,7 +6,8 @@
 // The DMA, watchdog, reset controller, SPI controller and scratch rules start at their
 // sep_top_addrmap_pkg base and end on the 4 KiB page boundary after the registers; each of
 // those targets answers every address in its page. The remaining address rules are explicit
-// integration apertures in AddrMap below.
+// integration apertures in AddrMap below. The efuse_shim rule takes the EFUSE_SHIM_SIZE bytes
+// at the base of the external aperture, and the sep_external rule the rest.
 // Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits
 // than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity
 // get DECERR.
@@ -19,6 +20,10 @@ module sep_local_axi_xbar
   import sep_local_axi_xbar_pkg::axi64_resp_t;
   import sep_local_axi_xbar_pkg::axi_out_req_t;
   import sep_local_axi_xbar_pkg::axi_out_resp_t;
+#(
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4  // Size in bytes of the eFuse shim CSR window
+                                                // at the base of the external aperture.
+)
 (
   input  logic clk_i,                         // System clock.
   input  logic rst_ni,                        // Active-low reset.
@@ -46,7 +51,7 @@ module sep_local_axi_xbar
 
   input  axi64_req_t  ext_req_i,              // Request forwarded by sep_system_peripherals;
                                               // reaches sram, dma_csr, sep_wdt, sep_crypto, sep_io,
-                                              // entropy_fifo and sep_external.
+                                              // entropy_fifo, sep_external and efuse_shim.
   output axi64_resp_t ext_resp_o,             // Response to ext; unmapped or unconnected addresses
                                               // get DECERR.
 
@@ -87,8 +92,13 @@ module sep_local_axi_xbar
   input  axi_out_resp_t entropy_fifo_resp_i,  // Response from the entropy pool.
 
   output axi_out_req_t  sep_external_req_o,   // Request for the external aperture
-                                              // 0x2000_0000-0x3FFF_FFFF, to sep.
-  input  axi_out_resp_t sep_external_resp_i   // Response from the external aperture.
+                                              // 0x2000_0000-0x3FFF_FFFF above the eFuse shim
+                                              // window, to sep.
+  input  axi_out_resp_t sep_external_resp_i,  // Response from the external aperture.
+
+  output axi_out_req_t  efuse_shim_req_o,     // Request for the eFuse shim CSR window, to
+                                              // sep_crypto.
+  input  axi_out_resp_t efuse_shim_resp_i     // Response from the eFuse shim CSR window.
 );
 
   // ===========================================================================
@@ -188,11 +198,19 @@ module sep_local_axi_xbar
           start_addr: 32'h10950000,
           end_addr: 33'h10960000
       },
-      // sep_external.main: 0x20000000 - 0x40000000
+      // sep_external.main: above the eFuse shim window - 0x40000000
       '{
           idx: 9,
-          start_addr: 32'h20000000,
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR
+                          + EFUSE_SHIM_SIZE),
           end_addr: 33'h40000000
+      },
+      // efuse_shim.main: the EFUSE_SHIM_SIZE bytes at the base of the external aperture
+      '{
+          idx: 10,
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR),
+          end_addr: 33'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR
+                        + EFUSE_SHIM_SIZE)
       }
   };
 
@@ -225,8 +243,8 @@ module sep_local_axi_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  sep_local_axi_xbar_pkg::xbar_mst_req_t  [9:0] xbar_mst_req;
-  sep_local_axi_xbar_pkg::xbar_mst_resp_t [9:0] xbar_mst_resp;
+  sep_local_axi_xbar_pkg::xbar_mst_req_t  [10:0] xbar_mst_req;
+  sep_local_axi_xbar_pkg::xbar_mst_resp_t [10:0] xbar_mst_resp;
 
   axi_xbar #(
     .Cfg          (sep_local_axi_xbar_pkg::XbarCfg),
@@ -332,5 +350,12 @@ module sep_local_axi_xbar
   // Direct connection (no conversion needed)
   assign sep_external_req_o = xbar_mst_req[9];
   assign xbar_mst_resp[9] = sep_external_resp_i;
+
+  // ---------------------------------------------------------------------------
+  // Output: efuse_shim (AXI4, 64-bit)
+  // ---------------------------------------------------------------------------
+  // Direct connection (no conversion needed)
+  assign efuse_shim_req_o = xbar_mst_req[10];
+  assign xbar_mst_resp[10] = efuse_shim_resp_i;
 
 endmodule : sep_local_axi_xbar

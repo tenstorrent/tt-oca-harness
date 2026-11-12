@@ -3,11 +3,10 @@
 
 // Control eFuse MAP/CTRL/MMR windows, shadow sense, and the fuse-command path to the SHIM.
 //
-// Arbitrate the functional and JTAG AXI-Lite ports onto one path. Addresses from the MAP
-// base to the MMR end (the CTRL end without HAS_LC_STATE) are bridged to APB and decoded
-// into the MAP, CTRL and MMR windows, with SLVERR for any other address in that span; all
-// other addresses go to the SHIM bank control port. The windows must therefore be ordered
-// MAP, CTRL, MMR.
+// Arbitrate the functional and JTAG AXI-Lite ports onto one path, bridge it to APB and decode
+// it into the MAP, CTRL and MMR windows (MMR only with HAS_LC_STATE), with SLVERR for any other
+// address. Each window decodes only its low address bits, so each window base must be a
+// multiple of its size rounded up to a power of two.
 //
 // SEP_SEC_DISABLE_TOKEN is embedded in RTL. HAS_LC_STATE, CLASS1_SHADOW_RANGES,
 // SECRET_SHADOW_RANGES, and LC_STATE_BIT_POSITION configure lifecycle and secret masking.
@@ -19,6 +18,8 @@
 //
 // Raise locked_field_access_interrupt_o and token_match_fault_o. Debug outputs expose
 // lock, timeout, and token-match state.
+
+`include "ocah_assert.svh"
 
 module efuse_interface_controller #(
   parameter int unsigned ADDR_WIDTH = 32,  // AXI4-Lite address width at the AXI-Lite to APB bridge.
@@ -99,11 +100,6 @@ module efuse_interface_controller #(
   input  efuse_axil_req_t       axil_jtag_req_i,  // AXI4-Lite debug-access request from JTAG.
   output efuse_axil_resp_t      axil_jtag_resp_o,  // AXI4-Lite debug-access response to JTAG.
 
-  output efuse_axil_req_t       fuse_bank_ctrl_req_o,  // AXI4-Lite request to the eFuse bank
-                                                       // control registers in the SHIM.
-  input  efuse_axil_resp_t      fuse_bank_ctrl_resp_i,  // AXI4-Lite response from the eFuse bank
-                                                        // control registers.
-
   output fuse_command_req_t                     fuse_command_req_o,  // Fuse command request to the SHIM: {address,
                                                                      // program data, access_length_words, command, valid}.
   input  fuse_command_resp_t                    fuse_command_resp_i,  // Fuse command response from the SHIM: {read data, command
@@ -178,6 +174,17 @@ module efuse_interface_controller #(
   localparam fuse_command_req_t FuseCommandReqDefault = '0;
 
   localparam logic [5:0] TokenMatchCode = 6'b010101;
+
+  localparam int unsigned EfuseCtrlRegMapWidth = $clog2(EFUSE_CTRL_REG_MAP_SIZE);
+  localparam int unsigned EfuseMmrRegMapWidth = $clog2(EFUSE_MMR_REG_MAP_SIZE);
+
+  `OCAH_ASSERT_STATIC(MapBaseAligned_A,
+                      EFUSE_MAP_REG_MAP_BASE_ADDR % (32'd1 << EfuseMapRegMapWidth) == 0)
+  `OCAH_ASSERT_STATIC(CtrlBaseAligned_A,
+                      EFUSE_CTRL_REG_MAP_BASE_ADDR % (32'd1 << EfuseCtrlRegMapWidth) == 0)
+  `OCAH_ASSERT_STATIC(
+      MmrBaseAligned_A,
+      !HAS_LC_STATE || EFUSE_MMR_REG_MAP_BASE_ADDR % (32'd1 << EfuseMmrRegMapWidth) == 0)
 
   ////////////////////////////////////////////////////////////////////////////
   // Signal Declarations
@@ -263,87 +270,6 @@ module efuse_interface_controller #(
     .mst_resp_i (axil_mux_resp)
   );
 
-  // Demux axil_mux_req to shim request and internal controller request
-  efuse_axil_req_t  [efuse_pkg::NumEndPointsDecode-1:0] axil_mux_req_routed;
-  efuse_axil_resp_t [efuse_pkg::NumEndPointsDecode-1:0] axil_mux_resp_routed;
-
-  efuse_pkg::efuse_req_decode_select_e efuse_req_decode_select_aw, efuse_req_decode_select_ar;
-
-  // Write select
-  always_comb begin
-    if (HAS_LC_STATE) begin
-      // ASSUMPTION: ADDRESS SPACE ORDER IS FUSE MAP, INTERFACE CSR, MMR, SHIM
-      unique if (axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]}) begin
-        efuse_req_decode_select_aw = efuse_pkg::INTERFACE_SEL;
-      end else begin
-        efuse_req_decode_select_aw = efuse_pkg::SHIM_SEL;
-      end
-    end else begin
-      unique if (axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
-        efuse_req_decode_select_aw = efuse_pkg::INTERFACE_SEL;
-      end else begin
-        efuse_req_decode_select_aw = efuse_pkg::SHIM_SEL;
-      end
-    end
-  end
-
-  // Read select
-  always_comb begin
-    if (HAS_LC_STATE) begin
-      // ASSUMPTION: ADDRESS SPACE ORDER IS FUSE MAP, INTERFACE CSR, MMR, SHIM
-      unique if (axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]}) begin
-        efuse_req_decode_select_ar = efuse_pkg::INTERFACE_SEL;
-      end else begin
-        efuse_req_decode_select_ar = efuse_pkg::SHIM_SEL;
-      end
-    end else begin
-      unique if (axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
-        efuse_req_decode_select_ar = efuse_pkg::INTERFACE_SEL;
-      end else begin
-        efuse_req_decode_select_ar = efuse_pkg::SHIM_SEL;
-      end
-    end
-  end
-
-  axi_lite_demux #(
-    .aw_chan_t(efuse_axil_aw_chan_t),
-    .w_chan_t(efuse_axil_w_chan_t),
-    .b_chan_t(efuse_axil_b_chan_t),
-    .ar_chan_t(efuse_axil_ar_chan_t),
-    .r_chan_t(efuse_axil_r_chan_t),
-    .axi_req_t(efuse_axil_req_t),
-    .axi_resp_t(efuse_axil_resp_t),
-    .NoMstPorts(efuse_pkg::NumEndPointsDecode),
-    .MaxTrans(2),
-    .FallThrough(1'b1),
-    .SpillAw(1'b0),
-    .SpillW(1'b0),
-    .SpillB(1'b0),
-    .SpillAr(1'b0),
-    .SpillR(1'b0)
-  ) u_axi_lite_demux_shim_or_interface_request (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .test_i(test_en_i),
-
-    .slv_req_i(axil_mux_req),
-    .slv_aw_select_i(efuse_req_decode_select_aw),
-    .slv_ar_select_i(efuse_req_decode_select_ar),
-    .slv_resp_o(axil_mux_resp),
-
-    .mst_reqs_o(axil_mux_req_routed),
-    .mst_resps_i(axil_mux_resp_routed)
-  );
-
-  ///////////////////////////////////////////////
-  // Efuse Bank Control CSR (interface with SHIM)
-  ///////////////////////////////////////////////
-
-  assign fuse_bank_ctrl_req_o = axil_mux_req_routed[efuse_pkg::SHIM_SEL];
-  assign axil_mux_resp_routed[efuse_pkg::SHIM_SEL] = fuse_bank_ctrl_resp_i;
-
-
-
   // Need to convert AXI-Lite to APB for the interface to use
 
   // AXI-Lite to APB conversion
@@ -359,25 +285,25 @@ module efuse_interface_controller #(
     .rst_ni               (rst_ni),
 
     // AXI-Lite input signals
-    .axi_lite_awvalid_i   (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw_valid),
-    .axi_lite_awaddr_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw.addr),
-    .axi_lite_awprot_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].aw.prot),
-    .axi_lite_awready_o   (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].aw_ready),
-    .axi_lite_wvalid_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w_valid),
-    .axi_lite_wdata_i     (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w.data),
-    .axi_lite_wstrb_i     (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].w.strb),
-    .axi_lite_wready_o    (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].w_ready),
-    .axi_lite_bvalid_o    (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].b_valid),
-    .axi_lite_bresp_o     (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].b.resp),
-    .axi_lite_bready_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].b_ready),
-    .axi_lite_arvalid_i   (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar_valid),
-    .axi_lite_araddr_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar.addr),
-    .axi_lite_arprot_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].ar.prot),
-    .axi_lite_arready_o   (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].ar_ready),
-    .axi_lite_rvalid_o    (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r_valid),
-    .axi_lite_rdata_o     (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r.data),
-    .axi_lite_rresp_o     (axil_mux_resp_routed[efuse_pkg::INTERFACE_SEL].r.resp),
-    .axi_lite_rready_i    (axil_mux_req_routed[efuse_pkg::INTERFACE_SEL].r_ready),
+    .axi_lite_awvalid_i   (axil_mux_req.aw_valid),
+    .axi_lite_awaddr_i    (axil_mux_req.aw.addr),
+    .axi_lite_awprot_i    (axil_mux_req.aw.prot),
+    .axi_lite_awready_o   (axil_mux_resp.aw_ready),
+    .axi_lite_wvalid_i    (axil_mux_req.w_valid),
+    .axi_lite_wdata_i     (axil_mux_req.w.data),
+    .axi_lite_wstrb_i     (axil_mux_req.w.strb),
+    .axi_lite_wready_o    (axil_mux_resp.w_ready),
+    .axi_lite_bvalid_o    (axil_mux_resp.b_valid),
+    .axi_lite_bresp_o     (axil_mux_resp.b.resp),
+    .axi_lite_bready_i    (axil_mux_req.b_ready),
+    .axi_lite_arvalid_i   (axil_mux_req.ar_valid),
+    .axi_lite_araddr_i    (axil_mux_req.ar.addr),
+    .axi_lite_arprot_i    (axil_mux_req.ar.prot),
+    .axi_lite_arready_o   (axil_mux_resp.ar_ready),
+    .axi_lite_rvalid_o    (axil_mux_resp.r_valid),
+    .axi_lite_rdata_o     (axil_mux_resp.r.data),
+    .axi_lite_rresp_o     (axil_mux_resp.r.resp),
+    .axi_lite_rready_i    (axil_mux_req.r_ready),
 
     // APB output signals
     .psel_o               (apb_mux_req.psel),

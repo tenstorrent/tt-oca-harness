@@ -44,11 +44,11 @@
     smc_i2c_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_i2c_wrap->desc = "I2C and SMBus controller.";
     smc_uart_wrap->desc = "UART controller.";
-    smc_efuse_map->ocah_aperture_size = 0x1000;
-    smc_efuse_map->ocah_past_extent_resp = `OCAH_SMC_DECERR;
-    efuse_interface_ctrl->ocah_aperture_size = 0x1000;
-    efuse_interface_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    efuse_interface_ctrl->ocah_aperture_size = 0x400;
+    efuse_interface_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     efuse_interface_ctrl->desc = "eFuse command and status registers.";
+    smc_efuse_map->ocah_aperture_size = 0xC00;
+    smc_efuse_map->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     smc_telemetry_receiver_wrap->ocah_aperture_size = 0x1000;
     smc_telemetry_receiver_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_telemetry_receiver_wrap->desc = "Telemetry data receiver.";

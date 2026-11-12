@@ -25,14 +25,15 @@ image::sep-top-level.svg[alt="SEP top-level microarchitecture",width=100%,pdfwid
 Every AXI4 link carries a manager port (M) at the initiating end and a
 subordinate port (S) at the other. The local crossbar has five managers: the
 CPU IFU, LSU and debug ports, the DMA, and inbound SMN traffic after the system
-peripherals' inbound filter. Its ten subordinates are the CPU TCM port, the
+peripherals' inbound filter. Its eleven subordinates are the CPU TCM port, the
 SRAM interface, the DMA registers, the SPI host, the watchdog, the system
-peripherals, the reset controller, the entropy pool, the crypto subsystem and
-the eFuse shim demux. {sep-axi-connectivity-ref} gives the permitted paths. The
-IFU and LSU reach the boot ROM through a dedicated AXI mux rather than the
-crossbar, and the IFU crossbar port reaches only the SRAM. The eFuse shim demux
-sends accesses in the eFuse shim CSR window to the crypto subsystem and the
-rest of the external aperture to the AXI4 extension port.
+peripherals, the reset controller, the entropy pool, the crypto subsystem, the
+eFuse shim window and the AXI4 extension port. {sep-axi-connectivity-ref} gives
+the permitted paths. The IFU and LSU reach the boot ROM through a dedicated AXI
+mux rather than the crossbar, and the IFU crossbar port reaches only the SRAM.
+The eFuse shim subordinate takes the eFuse shim CSR window at the base of the
+external aperture to the crypto subsystem; the rest of the aperture goes to the
+extension port.
 
 The grey boxes are the memory macros and IP that the integration layer
 instantiates outside the SEP. The Adams Bridge and its SRAMs are present only

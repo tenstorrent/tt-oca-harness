@@ -351,9 +351,8 @@ module key_manager
   //=========================================================================
   // OTP/eFuse Port
   //=========================================================================
-  // Only the MAP, CTRL and MMR register maps reach the eFuse controller. The controller
-  // hands every address outside them to its shim control port, so an offset the KM CPU
-  // must not reach is answered here.
+  // The KM CPU reaches only the MAP, CTRL and MMR register maps of the eFuse controller;
+  // every other offset in the OTP page is answered here.
 
   assign otp_aw_select = km_intf_pkg::otp_addr_decoded(otp_axil_req.aw.addr) ? OtpForwarded : OtpRefused;
   assign otp_ar_select = km_intf_pkg::otp_addr_decoded(otp_axil_req.ar.addr) ? OtpForwarded : OtpRefused;

@@ -63,8 +63,8 @@ addrmap smc_top #(
 
     uart_wrap                                 smc_uart_wrap                  @BASE_ADDR + 0x000_6000;
 
-    smc_efuse_map                             smc_efuse_map                  @BASE_ADDR + 0x000_7000;
-    efuse_interface_ctrl                      efuse_interface_ctrl           @BASE_ADDR + 0x000_8000;
+    efuse_interface_ctrl                      efuse_interface_ctrl           @BASE_ADDR + 0x000_7000;
+    smc_efuse_map                             smc_efuse_map                  @BASE_ADDR + 0x000_7400;
 
     telemetry_receiver_wrap                   smc_telemetry_receiver_wrap    @BASE_ADDR + 0x000_9000;
 
