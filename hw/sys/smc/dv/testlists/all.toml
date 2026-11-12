@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 617
+expected_count = 619
 tests = [
     "smc_dfd_csr_field_access_test",
     "smc_dfx_aperture_extent_test",
@@ -384,6 +384,7 @@ tests = [
     "smc_irq_multi_sample_test",
     "smc_irq_observe_test",
     "smc_jtag_axi_shape_test",
+    "smc_jtag_axi_addr_bits_test",
     "smc_jtag_boot_stall_sanity_test",
     "smc_jtag_dm_cmderr_command_test",
     "smc_jtag_dm_sbcs_haltsum_test",
@@ -543,6 +544,7 @@ tests = [
   "smc_mailbox_access_error_test",
   "smc_mailbox_flush_status_test",
   "smc_mailbox_pair_datapath_test",
+    "smc_mailbox_lane_offset_walk_test",
   "smc_mailbox_threshold_irqs_test",
   "smc_mailbox_irq_ack_output_test",
   "smc_mailbox_register_map_reset_test",
@@ -685,7 +687,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 598
+expected_count = 600
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -926,6 +928,7 @@ tests = [
     "smc_irq_multi_sample_test",
     "smc_irq_observe_test",
     "smc_jtag_axi_shape_test",
+    "smc_jtag_axi_addr_bits_test",
     "smc_jtag_boot_stall_sanity_test",
     "smc_jtag_dm_cmderr_command_test",
     "smc_jtag_dmi_smoke_test",
@@ -1151,6 +1154,7 @@ tests = [
     "smc_mailbox_access_error_test",
     "smc_mailbox_flush_status_test",
     "smc_mailbox_pair_datapath_test",
+    "smc_mailbox_lane_offset_walk_test",
     "smc_mailbox_threshold_irqs_test",
     "smc_mailbox_irq_ack_output_test",
     "smc_mailbox_register_map_reset_test",
