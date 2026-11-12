@@ -32,8 +32,9 @@ prints:
 * CHK-ICCM-HASH-COPY: a DMA copy of the ICCM destination back to the SRAM buffer ends with the
   DONE interrupt and ERROR_CODE 0, and every buffer word equals its source word. The CPU load/store
   unit cannot read ICCM (``hw/sys/sep/doc/rom.adoc``), so the firmware witnesses the ICCM write
-  with this copy. The host also reads the ICCM array at the destination address
-  (``env/sep_mem_backdoor.py``) and requires every word to equal the source word in the SRAM array.
+  with this copy. On Verilator the host also reads the ICCM array at the destination address
+  (``env/sep_mem_backdoor.py``) and requires every word to equal the source word in the SRAM array;
+  VCS gives no access to the ICCM array, so there the host logs ``INFO-ICCM-ARRAY`` instead.
 
 The host pins each count the firmware prints to the firmware's sizes: 14 sentinel words and 56
 bytes for the two-chunk pass, 64 words (256 bytes) for the ICCM pass.
@@ -45,6 +46,7 @@ import os
 import re
 from pathlib import Path
 
+import cocotb
 import pyuvm
 from env import sep_mem_backdoor as mem
 from env.sep_boot_scoreboard import SepBootScoreboard
@@ -286,7 +288,16 @@ class sep_dma_hash_test(sep_base_test):
 
     def _grade_iccm_array(self, iccm_dst: int) -> None:
         """CHK-ICCM-HASH-COPY, array part: the ICCM words at the destination address equal the
-        source words of the ICCM pass at the SRAM base, both read from the storage arrays."""
+        source words of the ICCM pass at the SRAM base, both read from the storage arrays. The
+        arrays are reachable only on Verilator."""
+        sim = str(getattr(cocotb, "SIM_NAME", "") or "")
+        if "verilator" not in sim.lower():
+            self.logger.info(
+                "INFO-ICCM-ARRAY: array compare not run on %s (no access to the ICCM array); "
+                "the DMA copy-back above is the ICCM witness on this simulator",
+                sim,
+            )
+            return
         banks, sram = mem.iccm_banks(), mem.sram_array()
         bad = []
         for i in range(_ICCM_WORDS):
