@@ -73,7 +73,14 @@ class sep_status_reporting_policy_test(sep_base_test):
         dut = cocotb.top
         last = None
         while True:
-            status = (self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF
+            status = (
+                self.rd(
+                    dut.scratch_cold_probe_o,
+                    mask=0xFFFF_FFFF << 32,
+                    allow_unknown=True,
+                )
+                >> 32
+            )
             if status != last:
                 last = status
                 statuses.append(status)

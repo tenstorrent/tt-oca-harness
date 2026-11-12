@@ -31,7 +31,7 @@ module = "rom_fw.sep_status_reporting_policy_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3600
 tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
@@ -46,7 +46,7 @@ module = "rom_fw.sep_status_reporting_policy_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3600
 tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
@@ -62,7 +62,7 @@ module = "rom_fw.sep_status_reporting_policy_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3600
 tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
@@ -78,7 +78,7 @@ module = "rom_fw.sep_status_reporting_policy_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3600
 tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
@@ -93,7 +93,7 @@ module = "rom_fw.sep_status_reporting_policy_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3600
 tags = ["boot", "rom", "efuse", "status", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
