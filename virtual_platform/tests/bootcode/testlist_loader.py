@@ -443,9 +443,7 @@ def _spi_reads(entry: dict, name: str) -> tuple[SpiReadSpan, ...]:
                 )
         total_bytes = None
         if "bytes" in value:
-            total_bytes = _symbolic(
-                value["bytes"], f"testcase {name!r} spi_reads[{span!r}] bytes"
-            )
+            total_bytes = _symbolic(value["bytes"], f"testcase {name!r} spi_reads[{span!r}] bytes")
         spans.append(
             SpiReadSpan(
                 name=span,
@@ -1006,9 +1004,7 @@ def _parse_testcase(
     _check_image_placeholders(name, image, [*expect, *forbid, *expect_counts])
     spi_reads = _spi_reads(entry, name)
     if image is None and any(
-        type(edge) is str
-        for span in spi_reads
-        for edge in (span.low, span.high, span.total_bytes)
+        type(edge) is str for span in spi_reads for edge in (span.low, span.high, span.total_bytes)
     ):
         raise ValueError(f"testcase {name!r} spi_reads names an image fact but boots no image")
     spi_read_order = _spi_read_order(entry, name, spi_reads)
