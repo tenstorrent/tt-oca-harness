@@ -622,6 +622,15 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
     # --- scenario ----------------------------------------------------------------
 
     async def run_scenario(self) -> None:
+        self.noise = None
+        try:
+            await self._scenario()
+        finally:
+            if self.noise is not None:
+                await self.noise.stop()
+                self.noise = None
+
+    async def _scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
         self.rng = SepSeededRng(seed)
@@ -638,7 +647,6 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         self.marks: list[int] = []
         self.true_withdrawals = 0
         self.first_active_graded = 0
-        self.noise = None
         self.entropy_cfg = SepEntropyCfg(glen=_EDN_GLEN, reseed_interval=_EDN_RESEED_EVERY)
 
         # Step 1: cold reset, stalled stream (no entropy initialization), KM boot.
@@ -2205,7 +2213,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         self.logger.info("LOG tready_monitor xz_cycles=%d runs=%d", self.mon.xz, len(self.mon.runs))
         self.mon.stop()
         if self.noise is not None:
-            self.noise.kill()
+            await self.noise.stop()
             self.noise = None
         self.chk.ok(
             "NONVAC",

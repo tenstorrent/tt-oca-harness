@@ -157,6 +157,35 @@ FILE_PLUSARGS: tuple[str, ...] = (
 )
 
 
+class SepEsrcNoiseDriver:
+    """Raw-noise driver of ``start_esrc_noise_driver`` with a cooperative stop.
+
+    ``stop`` clears the run flag and waits until the loop exits, so no trigger is
+    cancelled while it is pending. The loop exits at the next clock edge, or after
+    the write of the current cycle when ``stop`` comes between the edge and that
+    write.
+    """
+
+    def __init__(self, noise_mode: str, seed_base: int) -> None:
+        self._gen = EntropyNoiseModel()
+        self._gen.configure(noise_mode, seed_base=seed_base)
+        self._run = True
+        self._task = cocotb.start_soon(self._drive())
+
+    async def _drive(self) -> None:
+        dut = cocotb.top
+        while self._run:
+            await RisingEdge(dut.clk_i)
+            if not self._run:
+                break
+            await NextTimeStep()
+            dut.esrc_noise_ext_i.value = self._gen.step_all()
+
+    async def stop(self) -> None:
+        self._run = False
+        await self._task
+
+
 class sep_base_test(uvm_test):
     """Shared SEP test: env build, clock/reset bring-up, scenario hook."""
 
@@ -1502,8 +1531,8 @@ class sep_base_test(uvm_test):
 
     def start_esrc_noise_driver(
         self, *, noise_mode: str = "unbiased", seed_base: int = 0x1234_5678
-    ):
-        """Drive tb_top.esrc_noise_ext_i every cycle and return the forked task.
+    ) -> SepEsrcNoiseDriver:
+        """Drive tb_top.esrc_noise_ext_i every cycle and return the driver.
 
         ``+esrc_noise_force`` only routes this port onto the ring-oscillator
         noise input; it does not generate anything. A test that brings the
@@ -1515,21 +1544,15 @@ class sep_base_test(uvm_test):
         no scoring: the caller gets entropy that moves, not entropy that is
         graded. A test that needs the values checked wants ``bring_up_entropy``.
 
-        Kill the returned task before the test ends. A forked task still writing
-        a DUT port while the simulator tears down segfaults the run, which shows
-        up as a non-zero exit on an otherwise passing test.
+        Each cycle waits for ``RisingEdge(clk_i)``, then ``NextTimeStep()``, then
+        writes the next noise word. End the driver with ``await driver.stop()``
+        before the test ends, while ``clk_i`` still toggles. A forked task still
+        writing a DUT port while the simulator tears down segfaults the run.
+        Killing or cancelling a task that waits on ``NextTimeStep`` leaves the
+        simulator callback registered on Verilator, and the simulator later
+        calls freed callback data.
         """
-        dut = cocotb.top
-        gen = EntropyNoiseModel()
-        gen.configure(noise_mode, seed_base=seed_base)
-
-        async def _drive() -> None:
-            while True:
-                await RisingEdge(dut.clk_i)
-                await NextTimeStep()
-                dut.esrc_noise_ext_i.value = gen.step_all()
-
-        return cocotb.start_soon(_drive())
+        return SepEsrcNoiseDriver(noise_mode, seed_base)
 
     async def assert_noise_force_active(self, cycles: int = 16) -> None:
         """Prove +esrc_noise_force took: lane-0's actual DUT noise_i tracks the
