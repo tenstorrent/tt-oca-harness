@@ -252,6 +252,8 @@ module smc_base #(
   // AXI-Lite interface signals
   smc_pkg::smc_axil_32_64_req_t  axil_dfx_csr_req;
   smc_pkg::smc_axil_32_64_resp_t axil_dfx_csr_resp;
+  smc_pkg::smc_axil_32_64_req_t  axil_zeroer_ctrl_req;
+  smc_pkg::smc_axil_32_64_resp_t axil_zeroer_ctrl_resp;
   smc_pkg::smc_axil_32_64_req_t  axil_aR_ctrl_req;
   smc_pkg::smc_axil_32_64_resp_t axil_aR_ctrl_resp;
   smc_pkg::smc_axil_32_64_req_t  axil_mR_ctrl_req;
@@ -528,6 +530,8 @@ module smc_base #(
     .axil_smc_base_config_resp_i            (axil_smc_base_config_resp),
     .axil_dfx_csr_req_o                     (axil_dfx_csr_req),
     .axil_dfx_csr_resp_i                    (axil_dfx_csr_resp),
+    .axil_zeroer_ctrl_req_o                 (axil_zeroer_ctrl_req),
+    .axil_zeroer_ctrl_resp_i                (axil_zeroer_ctrl_resp),
 
     // Output Fabric interfaces (placeholder connections)
     .axi_filtered_remapped_req_o            (output_axi_req_o),
@@ -711,8 +715,10 @@ module smc_base #(
     .zeroer_cg_en_i                     (cg_ctrl_zeroer_cg_en),
     .cg_hysteresis_i                    (cg_ctrl_hysteresis),
 
-    .ctrl_axi_req_i                     (axi_data_accel_ctrl_req),
-    .ctrl_axi_resp_o                    (axi_data_accel_ctrl_rsp),
+    .dma_ctrl_axi_req_i                 (axi_data_accel_ctrl_req),
+    .dma_ctrl_axi_resp_o                (axi_data_accel_ctrl_rsp),
+    .zeroer_ctrl_axil_req_i             (axil_zeroer_ctrl_req),
+    .zeroer_ctrl_axil_resp_o            (axil_zeroer_ctrl_resp),
 
     .mst_axi_req_o                      (axi_data_accel_req),
     .mst_axi_resp_i                     (axi_data_accel_resp),

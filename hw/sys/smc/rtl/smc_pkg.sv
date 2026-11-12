@@ -358,15 +358,6 @@ package smc_pkg;
                    smc_local_fabric_xbar_master_id_t, smc_axi_data_t, smc_axi_strb_t,
                    smc_axi_user_t)
 
-  // Zeroer control interface (5-bit addr matches zeroer_ctrl_reg_pkg::ZEROER_CTRL_REG_MIN_ADDR_WIDTH)
-  localparam int unsigned ZeroerCtrlAddrW = 5;
-  typedef logic [ZeroerCtrlAddrW-1:0] smc_zeroer_ctrl_addr_t;
-  `AXI_LITE_TYPEDEF_ALL(smc_zeroer_ctrl_axil_5_64, smc_zeroer_ctrl_addr_t, smc_axi_data_t,
-                        smc_axi_strb_t)
-  `AXI_TYPEDEF_ALL(smc_zeroer_ctrl_5_64_8_12_axi, smc_zeroer_ctrl_addr_t,
-                   smc_local_fabric_xbar_master_id_t, smc_axi_data_t, smc_axi_strb_t,
-                   smc_axi_user_t)
-
   // AXI data size for byte-lane calculations
   localparam int unsigned AxiDataSize = $clog2(AxiStrbWidth);  // 3.
 

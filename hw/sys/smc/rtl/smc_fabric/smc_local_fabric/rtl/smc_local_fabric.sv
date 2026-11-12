@@ -49,8 +49,7 @@ module smc_local_fabric (
                                                                              // front port in smc.
   input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_front_port_rsp_i,  // AXI response from the CPU cluster's front port.
   output smc_pkg::smc_local_32_64_8_12_axi_req_t      axi_data_accel_ctrl_req_o,  // AXI request to the data accelerator's control port
-                                                                                  // for the page that holds its DMA and zeroer
-                                                                                  // control windows.
+                                                                                  // for the page that holds the DMA control window.
   input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_data_accel_ctrl_rsp_i,  // AXI response from the data accelerator's control port.
 
   output smc_local_xbar_pkg::axi_lite32_req_t         periph_reg_req_o,  // 32-bit AXI-Lite request from the local crossbar
@@ -89,6 +88,10 @@ module smc_local_fabric (
                                                                            // register window.
   input  smc_pkg::smc_axil_32_64_resp_t               axil_dfx_csr_resp_i,  // 64-bit AXI-Lite response from the DFX control
                                                                             // registers.
+  output smc_pkg::smc_axil_32_64_req_t                axil_zeroer_ctrl_req_o,  // 64-bit AXI-Lite request for the memory
+                                                                               // zeroer control registers.
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_zeroer_ctrl_resp_i,  // 64-bit AXI-Lite response from the memory
+                                                                                // zeroer control registers.
 
   output smc_pkg::smc_dfd_apb_req_t                   apb_smc_dfd_reg_req_o,  // APB request from the local crossbar for the
                                                                               // SMC CLA (DFD) register window.
@@ -191,7 +194,9 @@ module smc_local_fabric (
     .mailbox_req_o                    (axil_mailbox_req_o),
     .mailbox_resp_i                   (axil_mailbox_resp_i),
     .dfx_csr_req_o                    (axil_dfx_csr_req_o),
-    .dfx_csr_resp_i                   (axil_dfx_csr_resp_i)
+    .dfx_csr_resp_i                   (axil_dfx_csr_resp_i),
+    .zeroer_ctrl_req_o                (axil_zeroer_ctrl_req_o),
+    .zeroer_ctrl_resp_i               (axil_zeroer_ctrl_resp_i)
   );
 
   // ===========================================================================

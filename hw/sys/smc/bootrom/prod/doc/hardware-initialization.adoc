@@ -76,9 +76,9 @@ Hardware auto-zero is assumed unless either `SRAM_AUTO_ZERO_DISABLE` or eFuse `S
 When explicit clearing is requested, `__metal_sram_init_early`:
 
 . disables machine interrupts while configuring the operation;
-. writes SRAM base `0xC0060000` to zeroer destination register `0xC0038200`;
-. writes size `0x00100000` to zeroer size register `0xC0038208`;
-. writes zero to control/status register `0xC0038210` to start the operation;
+. writes SRAM base `0xC0060000` to zeroer destination register `0xC0011000`;
+. writes size `0x00100000` to zeroer size register `0xC0011008`;
+. writes zero to control/status register `0xC0011010` to start the operation;
 . waits while busy bit 32 is set; and
 . restores the previous `mstatus`.
 

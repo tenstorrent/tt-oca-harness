@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="990" viewBox="0 0 1040 990" role="img" aria-labelledby="title desc">
 <title id="title">SMC local fabric and peripheral islands</title>
-<desc id="desc">smc_local_fabric and the register islands it serves. Its three initiators arrive from the input fabric with 32-bit addresses and 6-bit IDs: system (the filtered system AXI input), sep_in (the SEP AXI input) and local_in (the SMC's own initiators). Each address is rebased onto the local base, keeping the offset within REGION_SIZE, before the 3 by 5 AXI4 crossbar u_smc_local_xbar, which widens the ID to 8 bits, registers every port and answers unmapped addresses with DECERR; every initiator reaches every target. Target 0 is the CPU cluster front port (watchdogs, CPU control, SPM ROM and SPM, PLIC, CLINT and bus-error units) and target 1 the data accelerator control port (DMA and zeroer control), both AXI4. Target 2 is converted to 64-bit AXI-Lite for the 1 by 8 internal CSR crossbar u_smc_internal_axi_lite_xbar, whose targets in smc_internal_regs are the base configuration, alias remap, M-mode remap, Xvisor remap, inbound filter and outbound filter registers, the mailbox and the DFX registers. Target 4, the CLA window, is downsized to 32 bits, converted to AXI-Lite and then to APB for the DFD block in smc_internal_regs. Target 3 is downsized to 32 bits and converted to AXI-Lite for the 1 by 12 peripheral crossbar u_smc_periph_axi_lite_xbar in smc_peripherals, which serves the reset unit, misc, GPIO, AVSBus, I2C, UART, eFuse, telemetry, system timer, DTP CSR and I3C registers and the AXI-Lite extension port. AVSBus, I2C, UART and I3C cross to the peripheral clock. The eFuse registers have a second AXI-Lite port for JTAG.</desc>
+<desc id="desc">smc_local_fabric and the register islands it serves. Its three initiators arrive from the input fabric with 32-bit addresses and 6-bit IDs: system (the filtered system AXI input), sep_in (the SEP AXI input) and local_in (the SMC's own initiators). Each address is rebased onto the local base, keeping the offset within REGION_SIZE, before the 3 by 5 AXI4 crossbar u_smc_local_xbar, which widens the ID to 8 bits, registers every port and answers unmapped addresses with DECERR; every initiator reaches every target. Target 0 is the CPU cluster front port (watchdogs, CPU control, SPM ROM and SPM, PLIC, CLINT and bus-error units) and target 1 the data accelerator control port (DMA control), both AXI4. Target 2 is converted to 64-bit AXI-Lite for the 1 by 9 internal CSR crossbar u_smc_internal_axi_lite_xbar, whose targets in smc_internal_regs are the base configuration, alias remap, M-mode remap, Xvisor remap, inbound filter and outbound filter registers, the mailbox and the DFX registers, and whose ninth target is the zeroer control port of the data accelerator. Target 4, the CLA window, is downsized to 32 bits, converted to AXI-Lite and then to APB for the DFD block in smc_internal_regs. Target 3 is downsized to 32 bits and converted to AXI-Lite for the 1 by 12 peripheral crossbar u_smc_periph_axi_lite_xbar in smc_peripherals, which serves the reset unit, misc, GPIO, AVSBus, I2C, UART, eFuse, telemetry, system timer, DTP CSR and I3C registers and the AXI-Lite extension port. AVSBus, I2C, UART and I3C cross to the peripheral clock. The eFuse registers have a second AXI-Lite port for JTAG.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -113,8 +113,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="si" x="330" y="71" text-anchor="start">WDTs, CPU control, SPM, PLIC, CLINT, BEUs</text>
 <rect class="external" x="700" y="60" width="330" height="40" rx="4"/>
 <text class="t" x="865" y="85" text-anchor="middle">CPU cluster front port</text>
-<path class="axi" d="M316,136 L700,136"/>
-<text class="si" x="330" y="127" text-anchor="start">DMA and zeroer control</text>
+<path class="axi" d="M316,126 L700,126"/>
+<text class="si" x="330" y="117" text-anchor="start">DMA control</text>
 <rect class="external" x="700" y="116" width="330" height="40" rx="4"/>
 <text class="t" x="865" y="141" text-anchor="middle">Data accelerator control</text>
 <path class="axi" d="M316,240 L340,240"/>
@@ -127,10 +127,12 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="bs" x="518" y="257" text-anchor="middle">Internal</text>
 <text class="bs" x="518" y="275" text-anchor="middle">CSR</text>
 <text class="bs" x="518" y="293" text-anchor="middle">crossbar</text>
-<text class="s" x="518" y="311" text-anchor="middle">1 x 8</text>
+<text class="s" x="518" y="311" text-anchor="middle">1 x 9</text>
 <text class="s" x="518" y="329" text-anchor="middle">AXI-Lite 64</text>
 <rect class="smu" x="700" y="166" width="330" height="314" rx="6"/>
 <text class="bs" x="712" y="468" text-anchor="start">smc_internal_regs</text>
+<path class="axil" d="M548,176 L548,148 L700,148"/>
+<text class="si" x="556" y="143" text-anchor="start">zeroer control</text>
 <path class="axil" d="M566,188 L720,188"/>
 <rect class="core" x="720" y="177" width="290" height="22" rx="4"/>
 <text class="s" x="865" y="193" text-anchor="middle">Base configuration</text>
@@ -255,8 +257,10 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="pst" x="16" y="404.5" text-anchor="middle">S</text>
 <rect class="pm" x="665.0" y="71.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="676" y="84.5" text-anchor="middle">M</text>
-<rect class="pm" x="665.0" y="127.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="676" y="140.5" text-anchor="middle">M</text>
+<rect class="pm" x="665.0" y="117.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="676" y="130.5" text-anchor="middle">M</text>
+<rect class="pm" x="665.0" y="139.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="676" y="152.5" text-anchor="middle">M</text>
 <rect class="pm" x="665.0" y="179.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="676" y="192.5" text-anchor="middle">M</text>
 <rect class="pm" x="665.0" y="207.0" width="22" height="18" rx="4"/>

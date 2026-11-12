@@ -75,6 +75,7 @@ addrmap smc_top #(
     misc_wrap                                 smc_misc_wrap                  @BASE_ADDR + 0x000_d000;
 
     smc_base_config                           smc_base_config                @BASE_ADDR + 0x001_0000;
+    zeroer_ctrl                               zeroer_ctrl                    @BASE_ADDR + 0x001_1000;
     alias_remap_wrap #(.NUM_REGIONS(8))       smc_alias_remap_wrap           @BASE_ADDR + 0x001_2000;
     output_remap_wrap #(.NUM_REGIONS(8))      smc_mmode_remap_wrap           @BASE_ADDR + 0x001_3000;
     output_remap_wrap #(.NUM_REGIONS(8))      smc_xvisor_remap_wrap          @BASE_ADDR + 0x001_4000;
@@ -86,7 +87,6 @@ addrmap smc_top #(
     axil_mailbox_smc_wrap                     smc_mailbox                    @BASE_ADDR + 0x001_8000;
 
     dma_ctrl                                  dma_ctrl                       @BASE_ADDR + 0x003_8000;
-    zeroer_ctrl                               zeroer_ctrl                    @BASE_ADDR + 0x003_8200;
 
     cpu_ctrl                                  smc_cpu_ctrl                   @BASE_ADDR + 0x003_9000;
 
