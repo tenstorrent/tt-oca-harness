@@ -1805,8 +1805,8 @@ measured pad interval for the same parameter than a smaller one, for each of the
 other than `T_BUF`, with a positive and a negative change among them on every seed; the bus-free
 time of the `T_BUF` pair is measured and printed.
 |`smc_i2c_tbuf_bus_free_test` |3, held out |Every bus-free time of the `T_BUF` pair after a STOP
-must be at least the programmed `TIMING4.T_BUF` of its run and move the way `T_BUF` moved (issue
-to follow).
+must be at least the programmed `TIMING4.T_BUF` of its run and move the way `T_BUF` moved
+(#3798).
 |===
 
 ==== I3C
@@ -41666,7 +41666,7 @@ and does not move with `T_BUF` when `THD_DAT` is long (25 to 32 here), and is be
 `T_BUF`; the open question is in <<smc-vplan-phase3-blocked-legs>>.
 `smc_i2c_tbuf_bus_free_test` (`rtl_issue`, <<sec-570-smc_i2c_tbuf_bus_free_test>>) runs the same
 draw and is the leaf that grades the pair, every bus-free time at least the programmed `T_BUF`
-and moving with it, under `expect_fail`; the issue number follows once filed. The absolute timings
+and moving with it, under `expect_fail` (#3798). The absolute timings
 are measured only, so no interval is compared with a formula or with the programmed difference; the
 rise and fall times `T_R` and `T_F` and the data setup `TSU_DAT` take a drawn base value but are
 not changed in a pair, and the stretch length and SDA interference point of
@@ -54814,7 +54814,7 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |#3389 |`smc_dfd_cla_irq_w2c_release_test` |`rtl_issue` |`cla_interrupt` stays asserted after the single `CDbgEapStatus` W2C write; the leaf asserts the line drops with the status
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
 |#3510 |`smc_spm_write_cut_by_warm_reset_test` |`rtl_issue` |An SPM write burst from SEP_IN cut by the watchdog warm reset after its AW handshake receives no B after the release, and later SPM and `CPU_CTRL` writes with its AXI ID bits [2:0] never complete; the leaf arms the path, cuts one burst, and asserts the cut write's B and the two later writes completing OKAY
-|to follow |`smc_i2c_tbuf_bus_free_test` |`rtl_issue` |With `THD_DAT` 25 to 32 the bus-free time after a STOP is `T_R` plus `TSU_STA` plus 7 cycles whatever `TIMING4.T_BUF` holds, below it in some samples, where `i2c.rdl` gives `T_BUF` as the time between a STOP and START condition; the leaf runs the `smc_i2c_timing_set_rand_test` draw and asserts every bus-free time of the `T_BUF` pair at least the programmed `T_BUF` and moving with it (the issue number follows once filed)
+|#3798 |`smc_i2c_tbuf_bus_free_test` |`rtl_issue` |With `THD_DAT` 25 to 32 the bus-free time after a STOP is `T_R` plus `TSU_STA` plus 7 cycles whatever `TIMING4.T_BUF` holds, below it in some samples, where `i2c.rdl` gives `T_BUF` as the time between a STOP and START condition; the leaf runs the `smc_i2c_timing_set_rand_test` draw and asserts every bus-free time of the `T_BUF` pair at least the programmed `T_BUF` and moving with it (the issue number follows once filed)
 |#3601 |`smc_flr_hold_edge_requeue_test` |`rtl_issue` |An FLR edge met while the cool-reset hold counter runs restarts the pre-reset count, and when that count outlasts the hold `rst_cool_no` pulses a second time, where `clk_rst.adoc` states the sequencer is not a queue of overlapping requests; the leaf arms with one request and asserts one pulse of that width for edges inside the count and inside the hold
 |#3602 |`smc_clock_gate_inflight_completes_test` |`rtl_issue` |The I2C register block runs on the gated peripheral clock and the peripheral side of its AXI-Lite CDC on the ungated one, so a response handed over as `I2C_CG_EN` closes the gate is taken more than once and every later read of the leg receives the previous read's word, where `clk_rst.adoc` states an accepted access finishes there; the leaf arms with an open and a closed read and asserts every swept read completes once with the leg idle after it
 |#3619 |`smc_fabric_demux_bucket_limits_test` |`rtl_issue` |The vendored `axi_demux` sizes its per-ID-bucket in-flight counter to `clog2(MaxTrans)` bits and reports the bucket full when it is all ones, so the fabric demultiplexers admit 31 same-ID reads per ID bucket and the local crossbar's demux 7 per manager, where the module's parameter contract and `fabric.adoc` give `FabricMaxTrans` 32 and `MaxMstTrans` 8; the leaf holds RREADY, probes at the counters' own handshake points, requires the port behind each demux to withhold nothing, and asserts the chapter's numbers
@@ -54918,8 +54918,8 @@ above are all printed. Enrolled in: `rtl_issue` only.
 
 *Scope limit*: One seed, the `T_BUF` pair of the entry 568 draw only, with `THD_DAT` 25 to 32;
 `smc_i2c_wire_timing_test` set A covers `THD_DAT` 1. The bus-free time is compared with the
-programmed `T_BUF` as a lower bound and in direction, not with a formula. The issue number follows
-once filed, appended to `expect_fail` as "(#NNNN)" and named in the held-out table.
+programmed `T_BUF` as a lower bound and in direction, not with a formula. The defect is #3798,
+named in the held-out table.
 
 '''''
 
@@ -57934,9 +57934,8 @@ and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
 Members: `smc_warm_domain_access_during_reset_test` (#3408),
 `smc_dfd_cla_irq_w2c_release_test` (#3389), `smc_dfd_cla_clock_halt_release_test` (#3390),
-`smc_spm_write_cut_by_warm_reset_test` (#3510), `smc_i2c_tbuf_bus_free_test`,
-`smc_flr_hold_edge_requeue_test` and `smc_clock_gate_inflight_completes_test` (issues to
-follow).
+`smc_spm_write_cut_by_warm_reset_test` (#3510), `smc_i2c_tbuf_bus_free_test` (#3798),
+`smc_flr_hold_edge_requeue_test` (#3601) and `smc_clock_gate_inflight_completes_test` (#3602).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in
