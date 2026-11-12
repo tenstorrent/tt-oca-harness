@@ -14,9 +14,10 @@
 //
 // DefaultCfg enables every JTAG feature with one extra STAP and zero ID fields, and sets 16
 // CTPs, 8 exposed internal CT lanes, 8 exposed clock-stop requests, all lanes in pulse-sync
-// mode, pipeline depths of 3, 256 SMC interrupts, two outstanding SMC AXI-Lite transactions
-// and 4-byte eFuse shim windows. It includes the SEP with a zero secure-disable token, three
-// external TRNG streams, Adams Bridge masking on and a one-cycle Adams Bridge SRAM latency.
+// mode, pipeline depths of 3, 256 SMC interrupts, two outstanding SMC AXI-Lite transactions,
+// 4-byte eFuse shim windows and SMC chip type 0. It includes the SEP with a zero
+// secure-disable token, three external TRNG streams, Adams Bridge masking on and a one-cycle
+// Adams Bridge SRAM latency.
 
 package smu_pkg;
 
@@ -100,6 +101,11 @@ package smu_pkg;
                                        // greater than 0 and smaller than
                                        // smc_pkg::SmcExternalWindowSize; forwarded to the
                                        // SMC EFUSE_SHIM_SIZE.
+    int unsigned SMC_CHIP_ID;          // Chip type the SMC reports in CHIP_CONFIG.CHIP_ID, any
+                                       // value; the SMC ROM shifts it left by 5 and ORs in the
+                                       // CHIP_ID straps for the I3C and I2C address of an
+                                       // unprogrammed eFuse identifier slot. Forwarded to the
+                                       // SMC CHIP_ID.
 
     // SEP
     bit          SEP;                    // 1 includes the Secure Execution Processor and the
@@ -167,6 +173,7 @@ package smu_pkg;
       SMC_WR_PL_DEPTH: 2'h3,
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
+      SMC_CHIP_ID: 32'd0,
       SEP: 1'b1,
       SEP_EFUSE_SHIM_SIZE: 32'h4,
       SEP_SEC_DISABLE_TOKEN: '0,
@@ -204,6 +211,7 @@ package smu_pkg;
       SMC_WR_PL_DEPTH: 2'h3,
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
+      SMC_CHIP_ID: 32'd0,
       SEP: 1'b0,
       SEP_EFUSE_SHIM_SIZE: 32'h4,
       SEP_SEC_DISABLE_TOKEN: '0,
