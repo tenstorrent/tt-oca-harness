@@ -222,8 +222,13 @@ async def sample_pre_sense(dut, out: dict) -> None:
     """From the first clk_smu_i edge until ``sep_fuse_sense_done_o`` reads 1: the number of
     resolved samples and the last resolved ``lc_state_o`` and ``lcc_feat_ctrl_o``."""
     pins = (dut.sep_fuse_sense_done_o, dut.lc_state_o, dut.lcc_feat_ctrl_o)
+    gate_raised = False
     while True:
         await RisingEdge(dut.clk_smu_i)
+        if not gate_raised:
+            # smu_lc_disable_vector_cg samples from the sense through the read-back.
+            dut.tb_fcov_gate.value = 1
+            gate_raised = True
         values = [pin.value for pin in pins]
         if not all(getattr(v, "is_resolvable", True) for v in values):
             continue
@@ -508,110 +513,117 @@ class smu_lc_disable_vector_matrix_test_seq(smu_lc_dis_sys_chiplet_dbg_test_dev_
         return sorted(labels)
 
     async def run(self) -> None:
-        want_shut = sorted(p for p, v in self.want.items() if v == SHUT)
-        want_open = sorted(p for p, v in self.want.items() if v == OPEN)
-        self._log(
-            f"SEED: RANDOM_SEED={self.seed} drawn walk order={self.order}; file={self.image} "
-            f"image={self.state} SIP_DIS=0x{self.sip_dis:016x} SYS_DIS=0x{self.sys_dis:016x} "
-            f"feat_want=0x{self.feat_want:016x} open={want_open} shut={want_shut}"
-        )
-
-        await self._mark(f"SETUP: {self.image}, wait for sep_fuse_sense_done_o")
-        await self._setup()
-
-        await self._mark("IMAGE: lc_state_o and lc_sigint_err_o")
-        await RisingEdge(self.dut.clk_smu_i)
-        lc = self._rd("lc_state_o")
-        sigint = self._rd("lc_sigint_err_o")
-        lc_want = lc_state_word(LC_RAW[self.state])
-        pre = self.test.pre_sense
-        self._log(
-            f"CELL pre-sense samples={pre['samples']} lc_state_o={pre['lc']} "
-            f"lcc_feat_ctrl_o={pre['feat']} (last clk_smu_i edge before sep_fuse_sense_done_o)"
-        )
-        self._log(
-            f"OBSERVATION lcc_demote_state_1_o={self._rd('lcc_demote_state_1_o')} "
-            f"lcc_demote_state_2_o={self._rd('lcc_demote_state_2_o')} "
-            f"lcc_dbg_disable_o=0x{self._rd('lcc_dbg_disable_o'):04x} (measured and logged only)"
-        )
-        self.sb.expect_eq(
-            f"CHK-LCVEC-IMAGE (a pre-sense sample, its lc_state_o and lcc_feat_ctrl_o) and "
-            f"lc_state_o and lc_sigint_err_o after sensing, file={self.image} "
-            f"pre_sense=0x{LC_STATE_PRESENSE:02x}",
-            ((pre["samples"] > 0, pre["lc"], pre["feat"]), (lc, sigint)),
-            ((True, LC_STATE_PRESENSE, FEAT_PRESENSE), (lc_want, 0)),
-            evidence="CHK-LCVEC-IMAGE",
-        )
-        self._log_grade("CHK-LCVEC-IMAGE")
-
-        await self._mark("FEATURE CONTROL: lcc_feat_ctrl_o")
-        await RisingEdge(self.dut.clk_smu_i)
-        self.feat_seen = self._rd("lcc_feat_ctrl_o")
-        self.sb.expect_eq(
-            f"CHK-LCVEC-FEAT lcc_feat_ctrl_o profile word of {self.state} with "
-            f"SIP_DIS=0x{self.sip_dis:016x} SYS_DIS=0x{self.sys_dis:016x} file={self.image}",
-            self.feat_seen,
-            self.feat_want,
-            evidence="CHK-LCVEC-FEAT",
-        )
-        self._log_grade("CHK-LCVEC-FEAT")
-
-        for path in self.order:
-            await self._mark(f"PATH {path} (Case {PATH_CASE[path]}), drawn order {self.order}")
-            await self._walk(path)
-
-        seen_shut = sorted(p for p, v in self.verdicts.items() if v == SHUT)
-        seen_open = sorted(p for p, v in self.verdicts.items() if v == OPEN)
-        detail = "; ".join(f"{p}: {self.details[p]}" for p in self.order)
-        self.sb.expect_eq(
-            f"CHK-LCVEC-SHUT paths that admit nothing, file={self.image}, drawn order "
-            f"{self.order}; {detail}",
-            (seen_shut, len(self.verdicts)),
-            (want_shut, len(PATHS)),
-            evidence="CHK-LCVEC-SHUT",
-        )
-        self._log_grade("CHK-LCVEC-SHUT")
-        debug_bits = self.feat_seen & (DBG_1 | DBG_2)
-        self.sb.expect_eq(
-            f"CHK-LCVEC-OPEN paths that admit, file={self.image}, drawn order {self.order}; "
-            f"debug bits of lcc_feat_ctrl_o=0x{debug_bits:012x} zero when no path is open",
-            (seen_open, debug_bits == 0 if not want_open else True),
-            (want_open, True),
-            evidence="CHK-LCVEC-OPEN",
-        )
-        self._log_grade("CHK-LCVEC-OPEN")
-
-        if self.readback:
-            await self._mark("READ-BACK: LC_STATE, SIP_DIS and SYS_DIS over the system bus")
-            got = await self._read_back()
-            self.sb.expect_eq(
-                f"CHK-LCVEC-READBACK system-bus words equal the words of {self.image}",
-                got,
-                self.file_words,
-                evidence="CHK-LCVEC-READBACK",
+        try:
+            want_shut = sorted(p for p, v in self.want.items() if v == SHUT)
+            want_open = sorted(p for p, v in self.want.items() if v == OPEN)
+            self._log(
+                f"SEED: RANDOM_SEED={self.seed} drawn walk order={self.order}; file={self.image} "
+                f"image={self.state} SIP_DIS=0x{self.sip_dis:016x} SYS_DIS=0x{self.sys_dis:016x} "
+                f"feat_want=0x{self.feat_want:016x} open={want_open} shut={want_shut}"
             )
-            self._log_grade("CHK-LCVEC-READBACK")
-        else:
-            await self._mark("READ-BACK PATH: the read-back request scans over the shut SEP STAP")
-            obs, captured = await self._read_back_closed()
-            self._log(f"OBSERVATION dmi words captured over the shut path {captured} (logged only)")
-            self.sb.expect_eq(
-                f"CHK-LCVEC-READBACK read-back request scans under {self.image} reach no SEP TAP: "
-                f"(host TMS edges, host TMS levels, TDO-enable highs, PTAP TMS edges at least "
-                f"{MIN_PTAP_TMS_EDGES})",
-                (
-                    obs["sep_edges"],
-                    sorted(obs["levels"]),
-                    obs["oen_highs"],
-                    obs["ptap_edges"] >= MIN_PTAP_TMS_EDGES,
-                ),
-                (0, [0], 0, True),
-                evidence="CHK-LCVEC-READBACK",
-            )
-            self._log_grade("CHK-LCVEC-READBACK")
 
-        await self._finish_matrix(want_open)
-        self.done = True
+            await self._mark(f"SETUP: {self.image}, wait for sep_fuse_sense_done_o")
+            await self._setup()
+
+            await self._mark("IMAGE: lc_state_o and lc_sigint_err_o")
+            await RisingEdge(self.dut.clk_smu_i)
+            lc = self._rd("lc_state_o")
+            sigint = self._rd("lc_sigint_err_o")
+            lc_want = lc_state_word(LC_RAW[self.state])
+            pre = self.test.pre_sense
+            self._log(
+                f"CELL pre-sense samples={pre['samples']} lc_state_o={pre['lc']} "
+                f"lcc_feat_ctrl_o={pre['feat']} (last clk_smu_i edge before sep_fuse_sense_done_o)"
+            )
+            self._log(
+                f"OBSERVATION lcc_demote_state_1_o={self._rd('lcc_demote_state_1_o')} "
+                f"lcc_demote_state_2_o={self._rd('lcc_demote_state_2_o')} "
+                f"lcc_dbg_disable_o=0x{self._rd('lcc_dbg_disable_o'):04x} (measured and logged only)"
+            )
+            self.sb.expect_eq(
+                f"CHK-LCVEC-IMAGE (a pre-sense sample, its lc_state_o and lcc_feat_ctrl_o) and "
+                f"lc_state_o and lc_sigint_err_o after sensing, file={self.image} "
+                f"pre_sense=0x{LC_STATE_PRESENSE:02x}",
+                ((pre["samples"] > 0, pre["lc"], pre["feat"]), (lc, sigint)),
+                ((True, LC_STATE_PRESENSE, FEAT_PRESENSE), (lc_want, 0)),
+                evidence="CHK-LCVEC-IMAGE",
+            )
+            self._log_grade("CHK-LCVEC-IMAGE")
+
+            await self._mark("FEATURE CONTROL: lcc_feat_ctrl_o")
+            await RisingEdge(self.dut.clk_smu_i)
+            self.feat_seen = self._rd("lcc_feat_ctrl_o")
+            self.sb.expect_eq(
+                f"CHK-LCVEC-FEAT lcc_feat_ctrl_o profile word of {self.state} with "
+                f"SIP_DIS=0x{self.sip_dis:016x} SYS_DIS=0x{self.sys_dis:016x} file={self.image}",
+                self.feat_seen,
+                self.feat_want,
+                evidence="CHK-LCVEC-FEAT",
+            )
+            self._log_grade("CHK-LCVEC-FEAT")
+
+            for path in self.order:
+                await self._mark(f"PATH {path} (Case {PATH_CASE[path]}), drawn order {self.order}")
+                await self._walk(path)
+
+            seen_shut = sorted(p for p, v in self.verdicts.items() if v == SHUT)
+            seen_open = sorted(p for p, v in self.verdicts.items() if v == OPEN)
+            detail = "; ".join(f"{p}: {self.details[p]}" for p in self.order)
+            self.sb.expect_eq(
+                f"CHK-LCVEC-SHUT paths that admit nothing, file={self.image}, drawn order "
+                f"{self.order}; {detail}",
+                (seen_shut, len(self.verdicts)),
+                (want_shut, len(PATHS)),
+                evidence="CHK-LCVEC-SHUT",
+            )
+            self._log_grade("CHK-LCVEC-SHUT")
+            debug_bits = self.feat_seen & (DBG_1 | DBG_2)
+            self.sb.expect_eq(
+                f"CHK-LCVEC-OPEN paths that admit, file={self.image}, drawn order {self.order}; "
+                f"debug bits of lcc_feat_ctrl_o=0x{debug_bits:012x} zero when no path is open",
+                (seen_open, debug_bits == 0 if not want_open else True),
+                (want_open, True),
+                evidence="CHK-LCVEC-OPEN",
+            )
+            self._log_grade("CHK-LCVEC-OPEN")
+
+            if self.readback:
+                await self._mark("READ-BACK: LC_STATE, SIP_DIS and SYS_DIS over the system bus")
+                got = await self._read_back()
+                self.sb.expect_eq(
+                    f"CHK-LCVEC-READBACK system-bus words equal the words of {self.image}",
+                    got,
+                    self.file_words,
+                    evidence="CHK-LCVEC-READBACK",
+                )
+                self._log_grade("CHK-LCVEC-READBACK")
+            else:
+                await self._mark(
+                    "READ-BACK PATH: the read-back request scans over the shut SEP STAP"
+                )
+                obs, captured = await self._read_back_closed()
+                self._log(
+                    f"OBSERVATION dmi words captured over the shut path {captured} (logged only)"
+                )
+                self.sb.expect_eq(
+                    f"CHK-LCVEC-READBACK read-back request scans under {self.image} reach no SEP TAP: "
+                    f"(host TMS edges, host TMS levels, TDO-enable highs, PTAP TMS edges at least "
+                    f"{MIN_PTAP_TMS_EDGES})",
+                    (
+                        obs["sep_edges"],
+                        sorted(obs["levels"]),
+                        obs["oen_highs"],
+                        obs["ptap_edges"] >= MIN_PTAP_TMS_EDGES,
+                    ),
+                    (0, [0], 0, True),
+                    evidence="CHK-LCVEC-READBACK",
+                )
+                self._log_grade("CHK-LCVEC-READBACK")
+
+            await self._finish_matrix(want_open)
+            self.done = True
+        finally:
+            self.dut.tb_fcov_gate.value = 0
 
     async def _finish_matrix(self, want_open: list[str]) -> None:
         clk = self.dut.clk_smu_i

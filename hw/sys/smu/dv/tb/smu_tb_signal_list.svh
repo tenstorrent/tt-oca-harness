@@ -305,6 +305,8 @@
 // SEP STAP host TCK/TMS as the DTP drives them.
 `SMU_TB_OUT(logic, tb_stap_sep_tck)
 `SMU_TB_OUT(logic, tb_stap_sep_tms)
+// SEP debug STAP host TDO output enable, the DTP's jtag_stap_sep_host_tdo_oen_o.
+`SMU_TB_OUT(logic, tb_stap_sep_host_tdo_oen)
 `SMU_TB_OUT(logic, ext_in_rvalid)
 `SMU_TB_IN(logic, ext_in_rready)
 `SMU_TB_OUT(logic [7:0], ext_in_rid)
@@ -459,6 +461,8 @@
 // samples only inside a graded window holds it 1 over that window. Idle 0.
 `SMU_TB_IN(logic, tb_fcov_gate)
 `SMU_TB_OUT(logic, tb_secure_tm)
+// Fuse-command response valid of the SEP eFuse SHIM at the wrapper.
+`SMU_TB_OUT(logic, tb_efuse_shim_resp_valid)
 // Cross-trigger port pads. The DTP is the pad controller on all four
 // groups. CT_Req_out sits on an ocah_open_drain_bus shared wire, a private
 // wire per pad or the group wire the pads in tb_xtrig_ctp_wire_group
