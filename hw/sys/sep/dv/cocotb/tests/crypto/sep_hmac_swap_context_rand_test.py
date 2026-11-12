@@ -25,6 +25,19 @@ Contracts (spec text, not RTL):
   ``hash_stop``; wait for ``hmac_done``; save DIGEST and MSG_LENGTH; clear
   ``sha_en``; before the restore ``sha_en`` reads 0; write ``CFG``, DIGEST and
   MSG_LENGTH; set ``sha_en``; write ``hash_continue``.
+* While ``STATUS.hmac_idle`` = 1 and ``sha_en`` = 0, software writes to DIGEST_0 to
+  DIGEST_15 and ``MSG_LENGTH_LOWER``/``MSG_LENGTH_UPPER`` load them (hmac.hjson:473,
+  :497, :511; programmers_guide.md:105-108). On every trip, after the save and the
+  ``sha_en`` clear and before the restore, the leaf writes the bitwise complement of
+  the saved words into those registers. ``CTRL-HMAC-CTX-PERTURB`` grades that DIGEST_0,
+  ``MSG_LENGTH_LOWER`` and ``MSG_LENGTH_UPPER`` read back the complement. Every message
+  of the leaf is shorter than 2^32 bits, so the saved ``MSG_LENGTH_UPPER`` is 0 and its
+  complement is 0xFFFFFFFF. A restore write that does not land leaves the complement in
+  the engine, and CHK-HMAC-CTX fails: the engine hashes on from the complemented digest,
+  and the final block carries the message length {MSG_LENGTH_UPPER, MSG_LENGTH_LOWER}
+  in its padding (hmac.hjson:513-514;
+  vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/theory_of_operation.md:62-63), so a
+  wrong length gives a different digest.
 * ``sha_en`` = 0 clears the digest (hmac.adoc:128).
 * A completed hash sets ``INTR_STATE.hmac_done`` (hmac.adoc:51); with
   ``INTR_ENABLE.hmac_done`` set (hmac.adoc:63) vector bit 17 rises, because bit i of
@@ -54,7 +67,16 @@ Checkers:
   CHK-HMAC-STOP       after hash_stop: hmac_done reads 1 (STATUS.hmac_idle is logged as
                       OBS-HMAC-STOP-IDLE; the register text does not state it)
   CHK-HMAC-SHAOFF     sha_en 1 -> 0 after a finished hash: every DIGEST word reads 0
-  CHK-HMAC-DONE-LINE  at a graded completion with the enable set: state 1, bit 17 rises
+  CHK-HMAC-DONE-LINE  at a graded completion with the enable set: bit 17 reads 0 before the
+                      ending command, state reads 1, and bit 17 rises at or after the lower
+                      bound and within LINE_BOUND_X x t_done of the mark taken before the
+                      ending command. The lower bound is the mark taken before the last
+                      INTR_STATE read that shows hmac_done = 0 (lower_src=done0): the state
+                      bit is sticky until its W1C write (hmac.adoc:51), so that read proves
+                      no rise before its mark. When the first read already shows 1, the
+                      lower bound is the mark taken before the ending command
+                      (lower_src=cmd). The line logs rise_clk, lower_clk, lower_src and
+                      zero_reads (the number of reads that showed 0).
 """
 
 from __future__ import annotations
@@ -65,20 +87,20 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
-from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
+from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_hmac_golden import DSWAP_ORDER, sha2_bytes
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import HMAC, sym
+from sep_reg_meta import HMAC
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_hmac_seq import (
     HMAC_CFG,
     HMAC_CMD,
     HMAC_CMD_HASH_PROCESS,
     HMAC_CMD_HASH_START,
-    HMAC_DIGEST_0,
+    HMAC_DIGEST,
     HMAC_DIGEST_WORDS,
     HMAC_INTR_DONE,
     HMAC_INTR_STATE,
@@ -99,10 +121,9 @@ HMAC_INTR_ENABLE = HMAC.addr("INTR_ENABLE")
 HMAC_INTR_ENABLE_DONE = HMAC.field_mask("INTR_ENABLE", "hmac_done")
 HMAC_MSG_LENGTH_LOWER = HMAC.addr("MSG_LENGTH_LOWER")
 HMAC_MSG_LENGTH_UPPER = HMAC.addr("MSG_LENGTH_UPPER")
-HMAC_DIGEST_15 = sym("HMAC_DIGEST_15__REG_ADDR")
 # hmac.hjson:365-366 names DIGEST_0 to DIGEST_15 as the saved hash for every digest size.
 CTX_DIGEST_WORDS = 16
-assert HMAC_DIGEST_15 == HMAC_DIGEST_0 + 4 * (CTX_DIGEST_WORDS - 1), "DIGEST_0..15 not contiguous"
+assert len(HMAC_DIGEST) == CTX_DIGEST_WORDS, "register map does not declare DIGEST_0..15"
 
 # SW_RESET_N baseline: every crypto engine and the TRNG released, Key Manager held
 # (hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc).
@@ -428,16 +449,30 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
                 raise AssertionError(f"HMAC MSG_FIFO {8 * n}-bit write not OKAY (0x{value:x})")
 
     async def _read_digest(self, n: int) -> list[int]:
-        return [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n)]
+        return [await self._rd(HMAC_DIGEST[i]) for i in range(n)]
 
-    async def _poll(self, addr: int, mask: int, want: int, bound: int) -> int | None:
-        """Read ``addr`` until the masked bits equal ``want``; return the clock, None on timeout."""
+    async def _poll(
+        self, addr: int, mask: int, want: int, bound: int
+    ) -> tuple[int | None, BitMark | None, int]:
+        """Read ``addr`` until the masked bits equal ``want``.
+
+        Returns the clock of the matching read (None on timeout), the vector-watch mark
+        taken before the last read that did not match (None when the first read matches),
+        and the number of reads that did not match. A read that does not match was sampled
+        after its mark, so a sticky bit that it shows as not yet set was not set before
+        that mark.
+        """
         start = self.vec.clk
+        last_miss = None
+        misses = 0
         while True:
+            m = self.vec.mark()
             if (await self._rd(addr)) & mask == want:
-                return self.vec.clk
+                return self.vec.clk, last_miss, misses
+            last_miss = m
+            misses += 1
             if self.vec.clk - start > bound:
-                return None
+                return None, last_miss, misses
             await ClockCycles(self.dut.clk_i, POLL_GAP_CLK)
 
     async def _reset_hmac(self) -> None:
@@ -493,7 +528,9 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         mark = self.vec.mark()
         await end_action()
         t_end = self.vec.clk
-        t_done = await self._poll(HMAC_INTR_STATE, HMAC_INTR_DONE, HMAC_INTR_DONE, bound)
+        t_done, done_miss, zero_reads = await self._poll(
+            HMAC_INTR_STATE, HMAC_INTR_DONE, HMAC_INTR_DONE, bound
+        )
         if t_done is None:
             self.chk.ok(owner, False, tag=tag, reason="timeout", bound=bound)
             if graded:
@@ -503,20 +540,28 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
         if graded:
             state = (await self._rd(HMAC_INTR_STATE)) & HMAC_INTR_DONE
             line_bound = LINE_BOUND_X * dt
+            lower, lower_src = mark, "cmd"
+            if done_miss is not None:
+                lower, lower_src = done_miss, "done0"
             try:
-                await self.vec.wait_rise(mark, line_bound, "hmac_done")
-                vec17 = 1
+                rise_clk = await self.vec.wait_rise(mark, line_bound, "hmac_done")
             except BitWatchTimeout:
-                vec17 = 0
+                rise_clk = None
+            in_order = rise_clk is not None and lower.clk <= rise_clk <= mark.clk + line_bound
             self.chk.ok(
                 "HMAC-DONE-LINE",
-                before == 0 and state != 0 and vec17 == 1,
+                before == 0 and state != 0 and in_order,
                 event=idx,
                 tag=tag,
                 enable=1,
                 state=int(state != 0),
                 vec17_before=before,
-                vec17=vec17,
+                vec17=int(rise_clk is not None),
+                rise_clk=rise_clk if rise_clk is not None else "none",
+                lower_clk=lower.clk,
+                lower_src=lower_src,
+                zero_reads=zero_reads,
+                cmd_clk=mark.clk,
                 bound=line_bound,
                 t_done=dt,
             )
@@ -721,7 +766,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
                 "HMAC-STOP-IDLE", tag=tag, part=i, idle=int(bool(st_stop & HMAC_STATUS_IDLE))
             )
             # Precondition of the context save: the engine is idle.
-            t_idle = await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound)
+            t_idle, _, _ = await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound)
             self.chk.ctrl("HMAC-STOP-IDLE-WAIT", t_idle is not None, tag=tag, part=i, bound=bound)
             if t_idle is None:
                 raise _TrialAbort
@@ -732,9 +777,11 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             await self._wr(HMAC_CFG, cfg & ~HMAC_CFG_SHA_EN)
             if trip.interleave:
                 await self._unrelated(trip, cfg, saved, tag, i)
-            if await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound) is None:
+            t_idle, _, _ = await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound)
+            if t_idle is None:
                 self.chk.ok("HMAC-CTX", False, tag=tag, part=i, reason="timeout", bound=bound)
                 raise _TrialAbort
+            await self._perturb(saved, len_lo, len_hi, tag, i)
             # Step 7: sha_en reads 0 before the restore.
             cfg_pre = await self._rd(HMAC_CFG)
             self.chk.ctrl(
@@ -747,7 +794,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             # Step 8: CFG, DIGEST and MSG_LENGTH. Step 9: sha_en = 1.
             await self._wr(HMAC_CFG, cfg & ~HMAC_CFG_SHA_EN)
             for k, w in enumerate(saved):
-                await self._wr(HMAC_DIGEST_0 + 4 * k, w)
+                await self._wr(HMAC_DIGEST[k], w)
             await self._wr(HMAC_MSG_LENGTH_LOWER, len_lo)
             await self._wr(HMAC_MSG_LENGTH_UPPER, len_hi)
             await self._wr(HMAC_CFG, cfg)
@@ -775,6 +822,38 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             got0=f"0x{got[0]:08x}",
             single0=f"0x{single[0]:08x}",
             be0=f"0x{golden[0]:08x}",
+        )
+
+    async def _perturb(
+        self, saved: list[int], len_lo: int, len_hi: int, tag: str, part: int
+    ) -> None:
+        """Write the complement of the saved context into DIGEST_0..15 and MSG_LENGTH.
+
+        The engine is idle with ``sha_en`` = 0, the window in which these registers
+        take software writes. DIGEST_0 and both MSG_LENGTH words must read back the
+        complement, so a register that ignores the write fails here. A restore that does
+        not land leaves the complement in the engine, so the continued hash differs from
+        the single pass and CHK-HMAC-CTX fails.
+        """
+        mask = 0xFFFF_FFFF
+        for k, w in enumerate(saved):
+            await self._wr(HMAC_DIGEST[k], ~w & mask)
+        await self._wr(HMAC_MSG_LENGTH_LOWER, ~len_lo & mask)
+        await self._wr(HMAC_MSG_LENGTH_UPPER, ~len_hi & mask)
+        dig0 = await self._rd(HMAC_DIGEST[0])
+        lo = await self._rd(HMAC_MSG_LENGTH_LOWER)
+        hi = await self._rd(HMAC_MSG_LENGTH_UPPER)
+        self.chk.ctrl(
+            "HMAC-CTX-PERTURB",
+            dig0 == ~saved[0] & mask and lo == ~len_lo & mask and hi == ~len_hi & mask,
+            tag=tag,
+            part=part,
+            digest0=f"0x{dig0:08x}",
+            saved0=f"0x{saved[0]:08x}",
+            len_lo=f"0x{lo:08x}",
+            saved_len_lo=f"0x{len_lo:08x}",
+            len_hi=f"0x{hi:08x}",
+            saved_len_hi=f"0x{len_hi:08x}",
         )
 
     async def _unrelated(

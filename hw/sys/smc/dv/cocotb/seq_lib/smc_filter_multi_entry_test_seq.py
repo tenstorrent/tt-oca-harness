@@ -377,8 +377,9 @@ _PX_SPREAD_GROUPS = 2
 # in the peripheral island and the memory map's system and peripheral control
 # group, one documented register each, every write carrying back the value the
 # register just returned. The DTP CSR window is left out: its response channel
-# is tied idle at this bench, so an access there never completes (SF-039). The
-# list and register choice are a DV reading pending SF-012.
+# is tied idle at this bench, so an access there never completes. The list and
+# register choice are a DV reading pending the peripheral-crossbar target list,
+# registers and response codes.
 _PXBAR_PROBES: tuple[tuple[str, str, bool], ...] = (
     ("reset_unit", "smc_reset_unit/SS_CONFIG", False),
     ("misc_scratch", "smc_misc_wrap/scratch_cold/SCRATCH[0]", False),
@@ -799,7 +800,8 @@ class smc_filter_multi_entry_test_seq(SmcCsrSeq):
             self._px_resp[name] = (first.resp_code, wb.resp_code, again.resp_code)
             cocotb.log.info(
                 "PXBAR %s @0x%08x width=%d value=0x%x rresp=%s bresp=%s rresp2=%s "
-                "(observed; LINKED-ISSUE SF-012)",
+                "(observed; LINKED-ISSUE: the peripheral-crossbar target list, registers and "
+                "response codes)",
                 name,
                 addr,
                 width,
@@ -949,7 +951,7 @@ class smc_filter_multi_entry_test_seq(SmcCsrSeq):
                 "overlap %d pre=%d post=%d skews=%s; held 16R(r32)+16W(b32) x %d once-each; "
                 "restore ok "
                 "%d regs at RDL reset; max group latency %d ns vs TB bound %d ns per access "
-                "(observed; LINKED-ISSUE SF-038)",
+                "(observed; LINKED-ISSUE: the latency bound of a register access group)",
                 fam.chk,
                 blocks,
                 t.sweep_ok,
@@ -969,9 +971,10 @@ class smc_filter_multi_entry_test_seq(SmcCsrSeq):
         assert self._px_groups == len(targets) + _PX_SPREAD_GROUPS, f"{self._px_groups} groups"
         assert self._px_held == len(targets), f"pxbar held {self._px_held}"
         cocotb.log.info(
-            "CHK-HS-PXBAR: responding targets=%d (DTP CSR excluded, SF-039) single once-each "
+            "CHK-HS-PXBAR: responding targets=%d (DTP CSR excluded) single once-each "
             "rb==first; depth-16 groups %d once-each; overlap %d; held 16R(r32)+16W(b32) x %d "
-            "once-each; resp per target %s (LINKED-ISSUE SF-012)",
+            "once-each; resp per target %s (LINKED-ISSUE: the peripheral-crossbar target list, "
+            "registers and response codes)",
             len(targets),
             self._px_groups,
             self._px_overlap,

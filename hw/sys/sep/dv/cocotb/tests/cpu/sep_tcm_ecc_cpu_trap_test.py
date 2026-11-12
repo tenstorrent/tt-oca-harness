@@ -27,8 +27,11 @@ records, the trace events, the pulse counts and the field record:
                   MCEIP set traps once with mcause 0x8000_001E, an arming below
                   2^t does not; the arming at the count 0 reads mie[30] and
                   mstatus.MIE set.
-* CHK-TCM-SILENT  with mie[30] clear the errors count with no trap and no trace
-                  interrupt event, also at a count at or above 2^t.
+* CHK-TCM-SILENT  with mstatus.MIE set and mie clear (every enable, mie[30] and
+                  mie.MEIE included) the errors count with no trap and no trace
+                  interrupt event, also at a count at or above 2^t. Every silent
+                  sample (ICCM before and quiet, DCCM silent and post) reads
+                  mie 0 and mstatus.MIE 1.
 * CHK-TCM-CLAMP   the exponent 31 reads back 26 in both counters; t reads back t.
 * CHK-TCM-UE      the DCCM load traps with mcause 5, the byte store with mcause
                   7, both with mscause 1 and one trace exception event; the clean
@@ -59,8 +62,9 @@ records, the trace events, the pulse counts and the field record:
                   fails once after its other checks if any of them failed.
 
 Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366`` (the
-bit-366 pulse counts in total, inside the ``iccm_ue`` window and in the other windows, and the
-widths of the pulses outside that window),
+bit-366 pulse counts in total and in the windows other than ``iccm_ue``),
+``INFO-TCM-DBG366-WIDTHS`` (the widths of the pulses outside that window, which no
+check of the leaf grades),
 ``OBS-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
 each window), ``OBS-RAS-<FIELD>-COUNT`` (rises per window) and
 ``OBS-RAS-ICCM_ECC_UE-TRAP`` (the trap or NMI of the uncorrectable fetch,
@@ -315,17 +319,17 @@ class TcmCfg:
 
     def draw_lines(self) -> list[str]:
         return [
-            f"DRAW t={self.t} order={'miss_first' if self.order == 0 else 'reach_first'} "
+            f"INFO-DRAW t={self.t} order={'miss_first' if self.order == 0 else 'reach_first'} "
             f"flips_per_memory={self.n}",
-            f"DRAW iccm_slots={self.islots} iccm_bits={self.ibits}",
-            "DRAW dccm_singles="
+            f"INFO-DRAW iccm_slots={self.islots} iccm_bits={self.ibits}",
+            "INFO-DRAW dccm_singles="
             + ",".join(f"0x{self.addr(i):08x}" for i in self.singles)
             + f" dccm_bits={self.sbits}",
-            f"DRAW dccm_load=0x{self.addr(self.ld):08x} bits={list(self.ld_bits)} "
+            f"INFO-DRAW dccm_load=0x{self.addr(self.ld):08x} bits={list(self.ld_bits)} "
             f"neighbour=0x{self.addr(self.ld_nbr):08x} dccm_store=0x{self.addr(self.st):08x} "
             f"bits={list(self.st_bits)} neighbour=0x{self.addr(self.st_nbr):08x} "
             f"lane={self.lane} byte=0x{self.byte:02x} vector_table_bits={list(self.tbl_bits)}",
-            f"DRAW iccm_ue_bits={list(self.iue_bits)}",
+            f"INFO-DRAW iccm_ue_bits={list(self.iue_bits)}",
         ]
 
 
@@ -492,6 +496,28 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
     def _intr_events(self, win: tuple[int, int], ecause: int | None = None) -> list[tuple]:
         return [r for r in self._trace_in(win) if r[4] and (ecause is None or r[5] == ecause)]
 
+    @staticmethod
+    def _silent_csr(kvs: list[dict]) -> tuple[str, list[str]]:
+        """The mie and mstatus.MIE fields of silent samples and the samples off that state.
+
+        A silent sample reads mie 0 and mstatus.MIE 1. The fields print the
+        distinct values seen, so a pass prints one value of each.
+        """
+        mies = sorted({int(kv["mie"]) for kv in kvs})
+        msts = sorted({(int(kv["mst"]) & MSTATUS_MIE) >> 3 for kv in kvs})
+        text = (
+            f"mie={','.join(f'0x{v:08x}' for v in mies)} "
+            f"mie30={','.join(str((v & MIE_MCEIE) >> 30) for v in mies)} "
+            f"mstatus_mie={','.join(map(str, msts))}"
+        )
+        bad = [
+            f"{kv['tag']} k={kv['k']} mie=0x{int(kv['mie']):08x} "
+            f"mstatus_mie={(int(kv['mst']) & MSTATUS_MIE) >> 3}"
+            for kv in kvs
+            if int(kv["mie"]) != 0 or not int(kv["mst"]) & MSTATUS_MIE
+        ]
+        return text, bad
+
     def _chk_ce_silent(self) -> int:
         cfg = self.tcfg
         thr = cfg.thr
@@ -534,15 +560,17 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         ev = self._intr_events(win, 0x1E)
         cnt = int(arm[0]["ic"]) & CNT_MASK if arm else -1
         ntr = int(arm[0]["traps_after"]) - int(arm[0]["traps_before"]) if arm else -1
+        arm_mceip = (int(arm[0]["mip"]) & MIP_MCEIP) >> 30 if arm else -1
         body = (
             f"mem=ICCM order={order} t={cfg.t} arming=after_block counter={cnt} "
-            f"mceip_at_arming=1 traps={ntr} mcause="
+            f"mceip_after_arm={arm_mceip} traps={ntr} mcause="
             + ",".join(f"0x{int(kv['mcause']):08x}" for kv in itraps)
             + f" trace_ecause_0x1e={len(ev)} rewrite_counter={int(rew['ic']) & CNT_MASK} "
             f"rewrite_mceip={(int(rew['mip']) & MIP_MCEIP) >> 30}"
         )
         if (
             ntr != 1
+            or arm_mceip != 1
             or len(itraps) != 1
             or int(itraps[0]["mcause"]) != MCAUSE_MCEIP
             or len(ev) != 1
@@ -554,22 +582,18 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         n += 1
         iccm_trap_ok = True
 
-        # ICCM silent: the block runs with mie[30] clear.
+        # ICCM silent: the block runs with mstatus.MIE set and mie clear.
         bwin = self._window("iccm_block")
         bev = self._intr_events(bwin)
         qcnt = int(qui["ic"]) & CNT_MASK
+        csr_text, csr_bad = self._silent_csr([bef, qui])
         body = (
-            f"mie30=0 mem=ICCM accesses={cfg.n} counter={qcnt} "
+            f"{csr_text} mem=ICCM accesses={cfg.n} counter={qcnt} "
             f"traps={int(qui['traps']) - int(bef['traps'])} trace_irq_events={len(bev)} "
             f"mceip={(int(qui['mip']) & MIP_MCEIP) >> 30} control_trap_at_arming={int(iccm_trap_ok)}"
         )
-        if (
-            int(qui["traps"]) != int(bef["traps"])
-            or bev
-            or qcnt < thr
-            or int(bef["mie"]) & MIE_MCEIE
-        ):
-            raise AssertionError(f"CHK-TCM-SILENT FAIL: {body}")
+        if int(qui["traps"]) != int(bef["traps"]) or bev or qcnt < thr or csr_bad:
+            raise AssertionError(f"CHK-TCM-SILENT FAIL: {body} {csr_bad}")
         self.logger.info("CHK-TCM-SILENT PASS: %s", body)
         n += 1
         # Per-slot ICCM samples: logged, not graded.
@@ -649,17 +673,19 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         dmc = ",".join(f"0x{int(kv['mcause']):08x}" for kv in dtrap) or "none"
         self.logger.info(
             "CHK-TCM-CE PASS: mem=DCCM order=%s t=%d counter=%d mceip=%d mcause=none "
-            "data_corrected=%d/%d",
+            "data_corrected=%d/%d rises=%d/%d",
             order,
             cfg.t,
             last_below[0],
             last_below[1],
             data_ok,
             cfg.n,
+            accesses,
+            cfg.n,
         )
         self.logger.info(
             "CHK-TCM-CE PASS: mem=DCCM order=%s t=%d counter=%d mceip=%d mcause=%s sample=%s "
-            "data_corrected=%d/%d",
+            "data_corrected=%d/%d rises=%d/%d",
             order,
             cfg.t,
             first_at[0],
@@ -667,6 +693,8 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             dmc if first_at[2] == "cross" else "none",
             first_at[2],
             data_ok,
+            cfg.n,
+            accesses,
             cfg.n,
         )
         n += 2
@@ -747,9 +775,9 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 f"CHK-TCM-CE FAIL: {len(mceip_traps)} MCEIP traps in the leaf, expected 2 (one per memory)"
             )
 
-        # DCCM silent: the accesses with mie[30] clear.
+        # DCCM silent: the accesses with mstatus.MIE set and mie clear.
         silent = [kv for kv in ds if kv["tag"] in ("silent", "post")]
-        sbad = []
+        csr_text, sbad = self._silent_csr(silent)
         # The trap count before each access is the count of the last SAMPLE or
         # ARM line of the leg ahead of it (an arming traps between samples).
         seq = sorted(
@@ -764,8 +792,6 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 prev_traps = int(kv["traps_after"])
                 continue
             if kv["tag"] in ("silent", "post"):
-                if int(kv["mie"]) & MIE_MCEIE:
-                    sbad.append(f"k={kv['k']} mie30=1")
                 if prev_traps is not None:
                     trap_deltas.append(int(kv["traps"]) - prev_traps)
                     if trap_deltas[-1]:
@@ -777,7 +803,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         top = max(int(kv["dc"]) & CNT_MASK for kv in silent) if silent else -1
         top_kv = next((kv for kv in silent if int(kv["dc"]) & CNT_MASK == top), None)
         body = (
-            f"mie30=0 mem=DCCM accesses={len(silent)} counter={top} traps={sum(trap_deltas)} "
+            f"{csr_text} mem=DCCM accesses={len(silent)} counter={top} traps={sum(trap_deltas)} "
             f"mceip={(int(top_kv['mip']) & MIP_MCEIP) >> 30 if top_kv else -1} "
             f"control_trap_at_arming={len(dtrap)}"
         )
@@ -917,12 +943,14 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         db366 = [p for p in self.pulses if p.bit == BIT_I_DB]
         outside = [p for p in db366 if not win[0] <= p.nl <= win[1]]
         self.logger.info(
-            "OBS-TCM-DBG366 LOG seed=%d pulses_total=%d pulses_iccm_ue=%d pulses_other_windows=%d "
-            "widths_outside_iccm_ue=%s",
+            "OBS-TCM-DBG366 LOG seed=%d pulses_total=%d pulses_other_windows=%d",
             self.random_seed(),
             len(db366),
-            len(db366) - len(outside),
             len(outside),
+        )
+        self.logger.info(
+            "INFO-TCM-DBG366-WIDTHS LOG seed=%d widths_outside_iccm_ue=%s",
+            self.random_seed(),
             [p.width for p in outside[:8]],
         )
         lo, hi = self._clk_win(win)
@@ -1159,7 +1187,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.tcfg = cfg = TcmCfg.from_seed(seed)
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         for line in cfg.draw_lines():
             self.logger.info("%s", line)
         sy = load_symbols(_FW_DIR)

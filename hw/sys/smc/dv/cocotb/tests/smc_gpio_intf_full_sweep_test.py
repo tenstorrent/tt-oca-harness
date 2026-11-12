@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GPIO_INTF full 65-entry sweep."""
+"""GPIO_INTF full 67-entry sweep."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_gpio_intf_full_sweep_test(smc_base_test):
-    """GPIO_INTF full 65-entry sweep."""
+    """GPIO_INTF full 67-entry sweep."""
 
     required_evidence = ("CHK-GPIO-INTF-DATA-CTRL-SWEEP",)
     min_evidence = 1
@@ -25,11 +25,11 @@ class smc_gpio_intf_full_sweep_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.GPIO_IRQ,
             type(self).__name__,
-            # Directed stimulus floor: 65 GPIO_INTF DATA_CTRL accesses (one per
+            # Directed stimulus floor: 67 GPIO_INTF DATA_CTRL accesses (one per
             # pad entry); a floor taken from `seq.accesses` would shrink with a
             # sequence that stopped issuing them.
-            min_csr_accesses=65,
+            min_csr_accesses=67,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="GPIO_INTF full 65-entry sweep",
+            details="GPIO_INTF full 67-entry sweep",
         )

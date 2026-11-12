@@ -5,7 +5,7 @@
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md @ artifact_revision 7 ENV: cocotb
 """Sub-word reads, byte-lane and strobed writes, and window sweeps of the generated register blocks.
 
-One reference register of each of the 133 register-block instances takes 1- and
+One reference register of each of the 135 register-block instances takes 1- and
 2-byte reads between two full-width reads; five registers take 1-byte writes;
 three remap entries take all ones; the valid bit of all 24 remap regions
 takes lane-7-only and lane-7-unstrobed writes; the system-timer and telemetry windows are
@@ -40,13 +40,13 @@ REQUIRED = (
     "CHK-SWEEP-VALID-LANE",
     "CHK-TIMEOUT-PATHS",
 )
-# S1 3; S2 58 64-bit instances x 17 and 75 32-bit instances x 9; S3 53; S4 12;
+# S1 3; S2 58 64-bit instances x 17 and 77 32-bit instances x 9; S3 53; S4 12;
 # S13 24 x 7 + 8 alias x 2; S5 1024; S6 1026; S7 32 x 58; S8 32 x 2; S9 5; S10 31 x 4;
 # S11 32 x 8. The S8 restores, S10 full-width fallbacks and S13 valid-0 legs on
 # the output remap regions add two accesses each.
 SEP_IN_FIXED = (
     3
-    + (58 * 17 + 75 * 9)
+    + (58 * 17 + 77 * 9)
     + 53
     + 12
     + 24 * 7

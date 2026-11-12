@@ -37,6 +37,11 @@ Checkers:
                    CTRL-KPV-CTRLW-ERASE, the KM-KPV tap shows one rise of the
                    erase bit per erase write of the sequence (1, or 5 in the
                    erase cell), so an erase write that is lost fails.
+  CHK-KPV-RSVD-WR  CTRL bits 31:4 ignore a write: on an erased slot a write of
+                   bits 31:4 alone reads back 0, and a write of field F
+                   (lock_write, then lock_use, each on its own slot) with bits
+                   31:4 set reads back F alone (RDL ``rsvd_31_4`` sw = r,
+                   reset 0). The slots are watched as in CHK-KPV-NEIGH.
   CHK-KPV-STATE    W: read returns the record, no SLVERR. R: write completes
                    with no SLVERR and lands (KM-KPV snapshot after the write). WR: write refused with SLVERR and the 16
                    stored words of the slot unchanged (KM-KPV snapshot before
@@ -89,9 +94,14 @@ Checkers:
                    reset, after a warm reset (SW_RESET_N bit 0) that follows
                    locked, sealed and retired slots, and after a cold reset
                    (rst_ni) that follows CTRL 0x1 on every drawn slot.
+  CTRL-KPV-ERASE-WARM-REACH  at the fall of the KM warm reset
+                   (``km_gated_rst_n_probe_o``) of the erase-warm leg, the
+                   KM-KPV CTRL tap shows at least one of the leg's 8 slots with
+                   the erase bit set, so ``OBS-KPV-ERASE-WARM`` logs a reset
+                   that lands during an erase.
   CHK-KPV-NOX      VCS only: no compared KPV read and no KM-KPV snapshot holds
                    an X or Z bit. On Verilator (two-state) the leaf logs
-                   ``OBS-BLOCKED CHK-KPV-NOX``.
+                   ``INFO-BLOCKED CHK-KPV-NOX``.
   CHK-KPV-RSVD     the reserved bits of CTRL (31:4), KPV_SCRAMBLER_CTRL (31:2) and
                    IRQ_STATUS (31:12) read 0 in every read of the leaf (RDL
                    ``rsvd`` R 0x0).
@@ -123,10 +133,15 @@ Checkers:
                    (the tweak uses the logical index, so only the key differs).
   CHK-NONVAC       every control of a "no effect" check above was seen.
 
-Log only: OBS-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
+Log only: INFO-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
 erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
 (KPV cells after a cold reset are not stated), ``INFO-KPV-RACE-REDRAW`` and
 ``INFO-KPV-RACE``, and ``OBS-KPV-WIPE-ERR-O`` (PIC vector bit 30 at the wipe).
+``OBS-KPV-ERASE-WARM``: a warm reset during a latched erase is not stated; the
+line logs the slots with the erase bit set and the changed stored words at the
+reset fall, and after release and boot the CTRL and the changed stored words of
+each slot. CTRL after the boot is not graded: the erase bit clears when the
+erase ends, so a CTRL of 0 does not show that the reset acted on it.
 
 Log only, not stated: ``OBS-KPV-ACCESS``, a word read and write issued right
 after an erase write, each with the erase bit of a CTRL read right after that
@@ -174,6 +189,11 @@ _KM_WIPE_CTRL = SEP_CPU_CTRL.addr("KM_WIPE_CTRL")
 _KM_WIPE_BIT = SEP_CPU_CTRL.field_mask("KM_WIPE_CTRL", "wipe_state")
 _PIC_KM_UNREC = agg_from_pic("KM unrecoverable error")
 _KM_BIT = 1 << SW_RESET_N_BIT["km"]
+# Erase-warm leg: slots erased by one fill of CTRL.erase, and the bounded
+# waits for the first erase bit after the post and for the KM reset fall.
+_ERASE_WARM_N = 8
+_ERASE_WARM_RISE_BOUND = 200_000
+_ERASE_WARM_SALT = 0x4552_5357 << 32
 
 _STATE_BITS = {"W": m.LOCK_WRITE, "R": m.LOCK_USE, "WR": m.LOCK_WRITE | m.LOCK_USE}
 # CTRL after a write of one field alone to an erased slot (km_kpv.adoc, "CTRL[64]").
@@ -182,6 +202,7 @@ _SET_ALONE = {m.LOCK_WRITE: m.LOCK_WRITE, m.LOCK_USE: m.LOCK_USE, m.ERASE: 0, m.
 _REQUIRED = (
     "CHK-KPV-ADDR",
     "CHK-KPV-CTRLW",
+    "CHK-KPV-RSVD-WR",
     "CHK-KPV-STATE",
     "CHK-KPV-ERASE",
     "CHK-KPV-RETIRED",
@@ -491,6 +512,7 @@ class sep_km_kpv_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("INFO-SEED seed=%d", seed)
+        self.seed = seed
         self.rng = SepSeededRng(seed)
         self.plan = m.draw_plan(self.rng)
         for name, value in self.plan.draws:
@@ -524,6 +546,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         await self._step_power_up()
         await self._step_define()
         await self._step_addr_walk_and_sweep()
+        await self._step_ctrl_reserved()
         await self._step_ctrl_rules()
         await self._step_state_walk()
         await self._step_race()
@@ -532,6 +555,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         await self._step_scrambler()
         await self._step_warm()
         await self._step_cold()
+        await self._step_erase_warm()
         await self._step_wipe()
         await self._step_level_and_edge()
         await self._step_cipher()
@@ -601,6 +625,48 @@ class sep_km_kpv_rand_test(sep_base_test):
             sweep_slots=len(p.sweep_order),
             sweep_ok=sweep_ok,
         )
+
+    # Step 6, reserved bits. Runs on the CTRL-rule slots of lock_write and
+    # lock_use before the CTRL-rule sequences, which start with an erase.
+    async def _step_ctrl_reserved(self) -> None:
+        p = self.plan
+        rsvd = m.WORD & ~m.CTRL_FIELDS
+        for f in (m.LOCK_WRITE, m.LOCK_USE):
+            s = p.ctrlw_slots[f]
+            a = m.ctrl_addr(s)
+            groups = [
+                _erase_ops(s),
+                [kp.rd(a)],
+                [kp.wr(a, rsvd)],
+                [kp.rd(a)],
+                [kp.wr(a, f | rsvd)],
+                [kp.rd(a)],
+            ]
+            res = await self._watched(_Watch(s), groups)
+            self._erase_done(res[0], s)
+            start, rd_rsvd, rd_f = (res[k][0].value for k in (1, 3, 5))
+            for v in (start, rd_rsvd, rd_f):
+                self._ctrl(v)
+            exp_f = f
+            wr = (res[2][0], res[4][0])
+            self.chk.ok(
+                "KPV-RSVD-WR",
+                start == 0
+                and rd_rsvd == 0
+                and rd_f == exp_f
+                and all(w.flags_known and w.slv == 0 and w.dec == 0 for w in wr),
+                contract="key_manager/regs/km_kpv.rdl:144-149",
+                slot=s,
+                field=m.FIELD_NAME[f],
+                start=_h(start),
+                wr_rsvd=_h(rsvd),
+                rd_rsvd=_h(rd_rsvd),
+                wr_f=_h(f | rsvd),
+                rd_f=_h(rd_f),
+                exp_f=_h(exp_f),
+                wr_slv=f"{wr[0].slv},{wr[1].slv}",
+                wr_dec=f"{wr[0].dec},{wr[1].dec}",
+            )
 
     # Step 6.
     async def _step_ctrl_rules(self) -> None:
@@ -1179,6 +1245,115 @@ class sep_km_kpv_rand_test(sep_base_test):
             cold_ctrl=f"0x{cold_scr:x}",
         )
         self.logger.info("OBS-KSCR-COLD LOG cells_ne=%d", cells_ne)
+
+    def _erase_slots_set(self, slots: list[int]) -> int:
+        """Bit i set when the KM-KPV CTRL tap shows the erase bit of ``slots[i]``."""
+        ctrl = self.rd(cocotb.top.km_kpv_ctrl_o, allow_unknown=True)
+        bit = m.ERASE.bit_length() - 1
+        return sum(((ctrl >> (_CTRL_TAP_W * s + bit)) & 1) << i for i, s in enumerate(slots))
+
+    @staticmethod
+    def _changed(words: list[int], slots: list[int], prefill: dict[int, list[int]]) -> str:
+        """Per slot, the number of stored words that differ from the prefill."""
+        out = []
+        for s in slots:
+            got = words[s * m.N_WORDS : (s + 1) * m.N_WORDS]
+            out.append(f"{s}:{sum(1 for g, w in zip(got, prefill[s], strict=True) if g != w)}")
+        return ",".join(out)
+
+    async def _wait_km_reset_fall(self) -> tuple[int, int, list[int]]:
+        """Bounded wait for the KM warm reset fall; the erase set and words at that clock."""
+        top = cocotb.top
+        prev = 1
+        for n in range(1, _SEP_RESET_BOUND + 1):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            cur = self.rd_known(top.km_gated_rst_n_probe_o)
+            if prev and not cur:
+                words, _x = self._snapshot()
+                return n, self._erase_slots_set(self.erase_warm_slots), words
+            prev = cur
+        raise AssertionError(
+            f"km_gated_rst_n_probe_o did not fall within {_SEP_RESET_BOUND} clocks of the park"
+        )
+
+    # Step 13b. A warm reset during a latched erase. The KPV scrambler is 0
+    # after the cold reset, so tap words 16 s to 16 s + 15 are slot s.
+    async def _step_erase_warm(self) -> None:
+        rng = SepSeededRng(self.seed ^ _ERASE_WARM_SALT)
+        q = rng.randrange(0, m.N_SLOTS - _ERASE_WARM_N + 1)
+        slots = list(range(q, q + _ERASE_WARM_N))
+        self.erase_warm_slots = slots
+        prefill = {s: m.distinct_words(rng, m.N_WORDS) for s in slots}
+        self._draw("erase_warm", f"q={q},n={_ERASE_WARM_N},prefill0={_h(prefill[q][0])}")
+        res = await self._run_groups(
+            [[kp.wrblk(m.word_addr(s, 0), prefill[s]), kp.rd(m.ctrl_addr(s))] for s in slots]
+        )
+        await ReadOnly()
+        words, _x = self._snapshot()
+        await RisingEdge(cocotb.top.clk_i)
+        for s, r in zip(slots, res, strict=True):
+            stored = words[s * m.N_WORDS : (s + 1) * m.N_WORDS]
+            if r[0].slv or r[0].dec or self._ctrl(r[1].value) or stored != prefill[s]:
+                raise AssertionError(
+                    f"erase-warm setup: slot {s} wrblk slv={r[0].slv} dec={r[0].dec} "
+                    f"CTRL={_h(r[1].value)} stored word 0={_h(stored[0])} prefill "
+                    f"{_h(prefill[s][0])}; the prefill did not land on a free slot"
+                )
+        await self.poke.prepare_reset()
+        await self.poke.mbox.flush()
+
+        top = cocotb.top
+        bit_q = _CTRL_TAP_W * q + m.ERASE.bit_length() - 1
+        rise = cocotb.start_soon(self._wait_erase_rise(bit_q))
+        await self.poke.post([kp.fill(m.ctrl_addr(q), m.ERASE, _ERASE_WARM_N)])
+        rise_clk = await rise
+        await RisingEdge(top.clk_i)
+        fall = cocotb.start_soon(self._wait_km_reset_fall())
+        await self.swrst.park("km")
+        fall_clk, erase_set, fall_words = await fall
+        await RisingEdge(top.clk_i)
+        self.chk.ctrl(
+            "KPV-ERASE-WARM-REACH",
+            erase_set != 0,
+            q=q,
+            n=_ERASE_WARM_N,
+            erase_set_at_fall=f"0x{erase_set:02x}",
+            rise_clk=rise_clk,
+            fall_clk=fall_clk,
+        )
+        await self.swrst.release("km")
+        await self.poke.wait_boot()
+
+        res = await self._run_groups([[kp.rd(m.ctrl_addr(s))] for s in slots])
+        await ReadOnly()
+        after_words, _x = self._snapshot()
+        after_erase = self._erase_slots_set(slots)
+        await RisingEdge(top.clk_i)
+        ctrl = [self._ctrl(r[0].value) for r in res]
+        self.chk.obs(
+            "KPV-ERASE-WARM",
+            q=q,
+            n=_ERASE_WARM_N,
+            erase_set_at_fall=f"0x{erase_set:02x}",
+            changed_at_fall=self._changed(fall_words, slots, prefill),
+            ctrl_after=",".join(_h(c) for c in ctrl),
+            erase_set_after=f"0x{after_erase:02x}",
+            changed_after=self._changed(after_words, slots, prefill),
+        )
+
+    async def _wait_erase_rise(self, bit: int) -> int:
+        """Bounded wait for the first clock the KM-KPV CTRL tap shows ``bit`` set."""
+        top = cocotb.top
+        for n in range(1, _ERASE_WARM_RISE_BOUND + 1):
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            if (self.rd(top.km_kpv_ctrl_o, allow_unknown=True) >> bit) & 1:
+                return n
+        raise AssertionError(
+            f"erase-warm: the KM-KPV erase bit {bit} did not rise within "
+            f"{_ERASE_WARM_RISE_BOUND} clocks of the fill post"
+        )
 
     # Steps 14, 15 and 16.
     async def _step_wipe(self) -> None:

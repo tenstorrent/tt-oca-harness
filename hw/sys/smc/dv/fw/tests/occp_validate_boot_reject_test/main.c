@@ -4,7 +4,8 @@
 /*
  * Sends VALIDATE_AND_BOOT in non-secure mode and checks that the ROM answers it without an error
  * response, that GET_STATUS reports the expected command count and interface status, and that
- * the ROM keeps serving OCCP commands.
+ * the ROM keeps serving OCCP commands. With the STATUS_RPT_DISABLE strap set, GET_STATUS must
+ * return Unsupported_StatusID instead and the count and interface status are not checked.
  */
 
 #include "occp_test_common.h"

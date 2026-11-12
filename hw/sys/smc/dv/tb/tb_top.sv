@@ -762,6 +762,11 @@ module smc_uvm_top
                                   !u_dut.u_smc.u_smc_peripherals.i3c_sda_to_pad[0];
     assign tb_i3c0_scl = !(tb_i3c0_scl_dut_low || tb_i3c0_scl_ext_low);
     assign tb_i3c0_sda = !(tb_i3c0_sda_dut_low || tb_i3c0_sda_ext_low);
+    assign tb_i3c0_scl_drive_high = u_dut.u_smc.u_smc_peripherals.i3c_scl_oe_to_pad[0] &&
+                                    u_dut.u_smc.u_smc_peripherals.i3c_scl_to_pad[0];
+    assign tb_i3c0_sda_pp_sel = u_dut.u_smc.u_smc_peripherals.i3c_sel_od_pp_to_pad[0];
+    assign tb_i3c0_sda_oe     = u_dut.u_smc.u_smc_peripherals.i3c_sda_oe_to_pad[0];
+    assign tb_i3c0_sda_out    = u_dut.u_smc.u_smc_peripherals.i3c_sda_to_pad[0];
 
     for (genvar i = 0; i < smc_config_pkg::NumI3c; i++) begin : gen_i3c_csr_count
         logic [31:0] reads_q;
@@ -1636,6 +1641,7 @@ module smc_uvm_top
     assign tb_uart_irq_any    = |uart_interrupt;
     assign tb_uart_irq_combined = u_dut.u_smc.peripheral_interrupts[21:18];
     assign tb_i2c_irq = u_dut.u_smc.peripheral_interrupts[25:23];
+    assign tb_i3c_irq = u_dut.u_smc.peripheral_interrupts[12 +: smc_config_pkg::NumI3c];
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];
     assign tb_avsbus_irq      = u_dut.u_smc.peripheral_interrupts[22];
     assign tb_telemetry_irq_any = |u_dut.u_smc.peripheral_interrupts[10:8];
@@ -1823,6 +1829,9 @@ module smc_uvm_top
         u_dut.u_smc.u_smc_peripherals.ndmreset_request_smc_clk;
     assign tb_uart_irq_raw      = u_dut.u_smc.u_smc_peripherals.uart_irq_periph_clk;
     assign tb_uart_err_raw      = u_dut.u_smc.u_smc_peripherals.uart_err_periph_clk;
+    assign tb_i2c_intg_err      = u_dut.u_smc.u_smc_peripherals.i2c_fifo_intg_err_periph_clk;
+    assign tb_ras_i2c_intg_err  = smc_ras.i2c_intg_err;
+    assign tb_ras_uart_intg_err = smc_ras.uart_intg_err;
     assign tb_logengine_irq_raw = u_dut.u_smc.u_smc_peripherals.log_engine_irq_periph_clk;
     assign tb_telemetry_irq     = u_dut.u_smc.u_smc_peripherals.telemetry_irq;
     assign tb_sep_wdt_irq_sync  = u_dut.u_smc.u_smc_peripherals.rst_ext_wdt_smc_clk;
@@ -2826,6 +2835,76 @@ module smc_uvm_top
         .program_addr_i     (tb_efuse_program_addr)
     );
 
+    // eFuse-control covergroups (smc_efuse_ctrl_fcov): the state injections,
+    // the eFuse-map lock walk, the lifecycle-gated JTAG eFuse accesses and
+    // the request timeouts, inside the owning leaves' graded windows. Every
+    // port is a tb signal, a smc_wrapper boundary port or the lifecycle
+    // integrity flag u_smc_efuse_fcov takes.
+    smc_efuse_ctrl_fcov #(
+        .LC_STATE_WIDTH ($bits(tb_lc_state)),
+        .SHADOW_BITS    (smc_efuse_pkg::NumEfuseBits)
+    ) u_smc_efuse_ctrl_fcov (
+        .clk_smc_i           (clk_smc),
+        .rst_cold_ni         (rst_cold_n_int),
+        .sep_awvalid_i       (s_axi_awvalid),
+        .sep_awready_i       (s_axi_awready),
+        .sep_awaddr_i        (s_axi_awaddr),
+        .sep_awsize_i        (s_axi_awsize),
+        .sep_wvalid_i        (s_axi_wvalid),
+        .sep_wready_i        (s_axi_wready),
+        .sep_wlast_i         (s_axi_wlast),
+        .sep_wdata_i         (s_axi_wdata),
+        .sep_wstrb_i         (s_axi_wstrb),
+        .sep_bvalid_i        (s_axi_bvalid),
+        .sep_bready_i        (s_axi_bready),
+        .sep_bresp_i         (s_axi_bresp),
+        .sep_arvalid_i       (s_axi_arvalid),
+        .sep_arready_i       (s_axi_arready),
+        .sep_araddr_i        (s_axi_araddr),
+        .sep_arsize_i        (s_axi_arsize),
+        .sep_rvalid_i        (s_axi_rvalid),
+        .sep_rready_i        (s_axi_rready),
+        .sep_rlast_i         (s_axi_rlast),
+        .sep_rresp_i         (s_axi_rresp),
+        .sep_rdata_i         (s_axi_rdata),
+        .ej_awvalid_i        (ej_axi_awvalid),
+        .ej_awready_i        (ej_axi_awready),
+        .ej_awaddr_i         (ej_axi_awaddr),
+        .ej_bvalid_i         (ej_axi_bvalid),
+        .ej_bready_i         (ej_axi_bready),
+        .ej_bresp_i          (ej_axi_bresp),
+        .ej_arvalid_i        (ej_axi_arvalid),
+        .ej_arready_i        (ej_axi_arready),
+        .ej_araddr_i         (ej_axi_araddr),
+        .ej_rvalid_i         (ej_axi_rvalid),
+        .ej_rready_i         (ej_axi_rready),
+        .ej_rresp_i          (ej_axi_rresp),
+        .ej_rdata_i          (ej_axi_rdata),
+        .lc_state_i          (tb_lc_state),
+        .lc_sigint_err_i     (lc_sigint_err),
+        .zeroer_inject_en_i  (tb_zeroer_state_inject_en),
+        .zeroer_inject_i     (tb_zeroer_state_inject),
+        .zeroer_state_i      (tb_zeroer_state),
+        .zeroer_busy_i       (tb_zeroer_busy),
+        .zeroer_intp_i       (tb_zeroer_intp),
+        .program_inject_en_i (tb_efuse_program_state_inject_en),
+        .program_inject_i    (tb_efuse_program_state_inject),
+        .program_req_valid_i (tb_efuse_program_req_valid),
+        .program_busy_i      (tb_efuse_program_busy),
+        .program_done_i      (tb_efuse_program_done),
+        .program_error_i     (tb_efuse_program_error),
+        .read_inject_en_i    (tb_efuse_read_state_inject_en),
+        .read_inject_i       (tb_efuse_read_state_inject),
+        .read_req_valid_i    (tb_efuse_read_req_valid),
+        .read_busy_i         (tb_efuse_read_busy),
+        .read_done_i         (tb_efuse_read_done),
+        .read_error_i        (tb_efuse_read_error),
+        .shim_resp_valid_i   (tb_efuse_shim_resp_valid),
+        .locks_i             (tb_efuse_locks),
+        .shadow_probe_i      (efuse_shadow_probe_o),
+        .fcov_gate_i         (tb_fcov_gate)
+    );
+
     // AXI order and depth coverage (smc_axi_order_fcov) on the three inbound
     // ports, one instance per port, on the requests and responses the DUT
     // sees and on the reset of the port checkers.
@@ -3645,6 +3724,78 @@ module smc_uvm_top
                  misc_warm_req.ar_valid === 1'b1)),
         `SMC_AXIL_SVA_PORTS_RST(misc_warm_req, misc_warm_resp, 3'd2, misc_warm_rst_n)
     );
+
+    // Reset-protocol rules of cpu.adoc and clk_rst.adoc (smc_reset_sva.sv):
+    // the uncore reset handshake, the cluster boundary isolate, the reset
+    // tree, the isolated ports, the force-mode flush and the FLR cool-reset
+    // pulse, graded on every edge. Two-state, live on both simulators.
+`define SMC_RST_SVA_CPU  u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
+`define SMC_RST_SVA_CTRL u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap
+`define SMC_RST_SVA_L2   `SMC_RST_SVA_CPU.u_l2_frontend_axi_isolate
+`define SMC_RST_SVA_COOL u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_cool_reset_wrap
+`define SMC_RST_SVA_PAD62 u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface
+    smc_reset_sva #(
+        .NUM_CORES       ($bits(tb_cpu_core_resets_n)),
+        .JTAG_CTRL_WIDTH ($bits(tb_jtag_reset_ctrl))
+    ) u_smc_reset_sva (
+        .clk_smc_i                  (clk_smc),
+        .clk_ref_i                  (clk_ref),
+        .en_i                       (`SMC_AXI_SVA_ON),
+        .powergood_stable_i         (powergood_stable_o),
+        .rst_primary_smc_clk_ni     (rst_primary_smc_clk_no),
+        .rst_wdt_smc_clk_ni         (rst_wdt_smc_clk_no),
+        .rst_warm_smc_clk_ni        (tb_rst_warm_smc_clk_n),
+        .rst_cold_stable_ref_clk_ni (rst_cold_stable_ref_clk_no),
+        .jtag_reset_ctrl_i          (tb_jtag_reset_ctrl),
+        .cpu_isolate_req_i          (tb_cpu_isolate_req),
+        .cpu_drained_i              (tb_cpu_drained),
+        .cpu_reset_timeout_i        (tb_cpu_reset_timeout),
+        .cpu_reset_applied_i        (tb_cpu_reset_applied),
+        .cpu_timeout_mode_i         (`SMC_RST_SVA_CTRL.timeout_mode),
+        .cpu_isolate_flush_i        (`SMC_RST_SVA_CTRL.isolate_flush_o),
+        .cpu_uncore_reset_ni        (tb_cpu_uncore_reset_n),
+        .cpu_core_resets_ni         (tb_cpu_core_resets_n),
+        .init_mem_done_i            (smc_init_mem_done_o),
+        .cpu_cluster_isolate_i      (tb_cpu_cluster_isolate),
+        .cpu_l2_isolated_i          (tb_cpu_l2_isolated),
+        .cpu_mmio_isolated_i        (tb_cpu_mmio_isolated),
+        .cpu_l2_flush_active_i      (tb_cpu_l2_flush_active),
+        .cpu_mmio_flush_active_i    (tb_cpu_mmio_flush_active),
+        .cpu_wb_pc_valid_i          (`SMC_RST_SVA_CPU.wb_pc_valid_o),
+        .cpu_wb_reg_pc_i            (`SMC_RST_SVA_CPU.wb_reg_pc_o),
+        .cpu_wdt_reset_i            (`SMC_RST_SVA_CPU.wdt_reset_o),
+        .cpu_l2_pending_aw_i        (tb_cpu_l2_pending_aw),
+        .cpu_l2_pending_ar_i        (tb_cpu_l2_pending_ar),
+        .cpu_mmio_pending_aw_i      (tb_cpu_mmio_pending_aw),
+        .cpu_mmio_pending_ar_i      (tb_cpu_mmio_pending_ar),
+        .l2_slv_aw_valid_i          (`SMC_RST_SVA_L2.slv_req_i.aw_valid),
+        .l2_slv_aw_ready_i          (`SMC_RST_SVA_L2.slv_resp_o.aw_ready),
+        .l2_slv_ar_valid_i          (`SMC_RST_SVA_L2.slv_req_i.ar_valid),
+        .l2_slv_ar_ready_i          (`SMC_RST_SVA_L2.slv_resp_o.ar_ready),
+        .mmio_port_aw_valid_i       (u_dut.u_smc.cpu_axi_mmio_port_req.aw_valid),
+        .mmio_port_aw_ready_i       (u_dut.u_smc.cpu_axi_mmio_port_resp.aw_ready),
+        .mmio_port_w_valid_i        (u_dut.u_smc.cpu_axi_mmio_port_req.w_valid),
+        .mmio_port_w_ready_i        (u_dut.u_smc.cpu_axi_mmio_port_resp.w_ready),
+        .mmio_port_ar_valid_i       (u_dut.u_smc.cpu_axi_mmio_port_req.ar_valid),
+        .mmio_port_ar_ready_i       (u_dut.u_smc.cpu_axi_mmio_port_resp.ar_ready),
+        .mmio_cpu_b_valid_i         (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.b_valid),
+        .mmio_cpu_b_resp_i          (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.b.resp),
+        .mmio_cpu_r_valid_i         (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.r_valid),
+        .mmio_cpu_r_resp_i          (`SMC_RST_SVA_CPU.mmio_axi_cpu_resp.r.resp),
+        .flr_posedge_ref_i          (tb_flr_posedge_ref),
+        .flr_counter_state_i        (tb_flr_counter_state),
+        .flr_cool_reset_ni          (`SMC_RST_SVA_COOL.rst_cool_no),
+        .flr_hold_count_ref_i       (`SMC_RST_SVA_COOL.flr_reset_set_cnt_ref_clk),
+        .cool_reset_ni              (tb_rst_cool_from_flr),
+        .pad62_lsio_pin_i           (`SMC_RST_SVA_PAD62.lsio_pin),
+        .core2pad_62_i              (tb_core2pad_o[62]),
+        .core2pad_en_62_i           (tb_core2pad_en_o[62])
+    );
+`undef SMC_RST_SVA_PAD62
+`undef SMC_RST_SVA_COOL
+`undef SMC_RST_SVA_L2
+`undef SMC_RST_SVA_CTRL
+`undef SMC_RST_SVA_CPU
 
     // Four-state data rules beside every checker instance, on the data the
     // link's DUT side drives: the strobed WDATA lanes where smc is the
@@ -5101,12 +5252,12 @@ module smc_uvm_top
     // firmware's RNG, so all three selectable channels are wired.
     //
     // Channel-to-pad mapping is smc_padring.sv's, not smc_rom_defs.h's:
-    //   I3C[0] -> 27/28, I3C[1] -> 63/64, I3C[2] -> 29/30, I3C[3] -> 31/32.
+    //   I3C[0] -> 27/28, I3C[1] -> 65/66, I3C[2] -> 29/30, I3C[3] -> 31/32.
     // ------------------------------------------------------------------
     localparam int unsigned NumSharedI3c = 3;
     localparam int unsigned SharedI3cIdx    [NumSharedI3c] = '{0,  1,  3};
-    localparam int unsigned SharedI3cSclPad [NumSharedI3c] = '{27, 63, 31};
-    localparam int unsigned SharedI3cSdaPad [NumSharedI3c] = '{28, 64, 32};
+    localparam int unsigned SharedI3cSclPad [NumSharedI3c] = '{27, 65, 31};
+    localparam int unsigned SharedI3cSdaPad [NumSharedI3c] = '{28, 66, 32};
 
     logic [NumSharedI3c-1:0] i3c_scl_dut_low, i3c_sda_dut_low;
     logic [NumSharedI3c-1:0] i3c_scl_bfm_low, i3c_sda_bfm_low;

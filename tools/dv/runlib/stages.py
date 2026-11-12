@@ -395,15 +395,17 @@ BUILD_RECORD_NAME = "build_record.json"
 
 
 def _build_record_decision(
-    record_path: Path, fingerprint: str, requested: bool
+    record_path: Path, fingerprint: str, root: Path, requested: bool
 ) -> tuple[bool, str]:
     """Whether the cocotb build must run clean, and why.
 
     cocotb's runner rebuilds only when a listed source is newer than the model, and this
     flow lists no sources (they arrive through the filelist), so an existing model is
     otherwise reused whatever changed. The record written after each build carries the
-    fingerprint of the inputs that produced the model; a different fingerprint, or no
-    record beside an existing model, forces the clean build.
+    fingerprint of the inputs that produced the model and the checkout it was built in; a
+    different fingerprint or checkout, or no record beside an existing model, forces the
+    clean build. The fingerprint names paths relative to the checkout, while the model
+    holds them absolute.
     """
     if requested:
         return True, "requested"
@@ -413,16 +415,21 @@ def _build_record_decision(
         recorded = json.loads(record_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return True, "no build record"
-    if not isinstance(recorded, dict) or recorded.get("fingerprint") != fingerprint:
+    if (
+        not isinstance(recorded, dict)
+        or recorded.get("fingerprint") != fingerprint
+        or recorded.get("root") != str(root)
+    ):
         return True, "inputs changed"
     return False, ""
 
 
 def _write_build_record(
-    record_path: Path, fingerprint: str, tool_version: str, dry_run: bool
+    record_path: Path, fingerprint: str, root: Path, tool_version: str, dry_run: bool
 ) -> None:
     payload = {
         "fingerprint": fingerprint,
+        "root": str(root),
         "tool_version": tool_version,
         "written_at": datetime.now(UTC).isoformat(),
     }
@@ -2140,6 +2147,7 @@ def _cocotb_build_info(
     vcs_access = _vcs_cocotb_access(build, bool(wave_format)) if tool == "vcs" else []
     vcs_access_extra = [f"vcs_cocotb_access={' '.join(vcs_access)}"] if vcs_access else []
     fingerprint = build_fingerprint(
+        root=root,
         build_args=build_args,
         top_module=top_module,
         tool_version=tool_ver,
@@ -2160,6 +2168,7 @@ def _cocotb_build_info(
     rebuild, rebuild_reason = _build_record_decision(
         build_record,
         fingerprint,
+        root,
         bool(args.rebuild) or bool(options.get("rebuild", False)),
     )
     return {
@@ -2273,7 +2282,9 @@ def cocotb_build(
                         waves=bool(_wave_format(args, tool)),
                         always=info["rebuild"],
                     )
-    _write_build_record(info["build_record"], info["fingerprint"], info["tool_version"], False)
+    _write_build_record(
+        info["build_record"], info["fingerprint"], root, info["tool_version"], False
+    )
     mark_target_built(args, target_name, _cocotb_target_build_metadata(info, tool))
     return 0
 
@@ -2966,6 +2977,7 @@ def _vcs_resolve_build(
         )
         tool_version = vcs_version(root)
         fingerprint = build_fingerprint(
+            root=root,
             build_args=elab_args,
             top_module=top,
             tool_version=tool_version,
@@ -3105,7 +3117,7 @@ def _run_elaboration(
     )
     if rc == 0:
         _write_build_record(
-            record, str(info["fingerprint"]), str(info["tool_version"]), bool(args.dry_run)
+            record, str(info["fingerprint"]), root, str(info["tool_version"]), bool(args.dry_run)
         )
     return rc
 
@@ -3343,6 +3355,7 @@ def _verilator_uvm_resolve_build(
         )
         tool_version = verilator_version(root)
         fingerprint = build_fingerprint(
+            root=root,
             build_args=[*build_args, *coverage_build_args],
             top_module=top,
             tool_version=tool_version,
@@ -3578,6 +3591,7 @@ def _xcelium_resolve_build(
         )
         tool_version = xcelium_version(root)
         fingerprint = build_fingerprint(
+            root=root,
             build_args=[*elab_args, *_xcelium_defines(compile_target, args)],
             top_module=top,
             tool_version=tool_version,

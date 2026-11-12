@@ -21,6 +21,15 @@ Nothing on the single build answers that address, so the header is not
 acknowledged. The response descriptor's `ERR_STATUS` reports an address NACK
 as 0x5 and its `TID` echoes the command's. On I3C0 the bench also sees the
 pad: the controller has to drive SDA low at least once during the transfer.
+
+The I3C0 leg also samples the wrapper's pad-enable gates on every peripheral
+clock. `hw/ip/i3ccore_wrap/doc/index.adoc` states that the wrapper turns the
+core's bus levels into open-drain pad enables: SCL is driven only low (`scl_o`
+tied low, `scl_oe_o` the inverse of the core's SCL level) and SDA is driven in
+both directions while push-pull mode is selected (`sda_oe_o` is `sel_od_pp_o`
+OR the inverse of `sda_o`). The SCL output enable must never be seen with the
+SCL output level high while the controller pulls SCL low at least once, and
+the SDA output enable must equal that OR on every sample.
 """
 
 from __future__ import annotations
@@ -32,23 +41,44 @@ from cocotb.triggers import ClockCycles, RisingEdge
 
 from .smc_addr_map import _REPO, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_i3c_irq_route_test_seq import i3c_field_masks
 from .smc_i3c_to_fabric_test_seq import (
     HC_CONTROL_OFFSET,
     I3C_HC_CONTROL_ENABLED,
     I3C_HC_CONTROL_RESET,
 )
 
+_PIO_INTR_STATUS = i3c_field_masks("pio_registers.rdl", "PIO_INTR_STATUS")
+_PIO_INTR_STATUS_ENABLE = i3c_field_masks("pio_registers.rdl", "PIO_INTR_STATUS_ENABLE")
+_PIO_CONTROL = i3c_field_masks("pio_registers.rdl", "PIO_CONTROL")
+_QUEUE_THLD_CTRL = i3c_field_masks("pio_registers.rdl", "QUEUE_THLD_CTRL")
+_STBY_CR_CONTROL = i3c_field_masks("standby_controller_mode.rdl", "STBY_CR_CONTROL")
+
+
+def _lsb(mask: int) -> int:
+    return mask & -mask
+
+
 #: PIO_INTR_STATUS.RESP_READY_STAT (pio_registers.rdl).
-RESP_READY = 1 << 4
+RESP_READY = _PIO_INTR_STATUS["RESP_READY_STAT"]
 #: PIO_INTR_STATUS_ENABLE: TX/RX threshold, command queue ready, response ready.
-PIO_STATUS_ENABLE = 0x1B
+PIO_STATUS_ENABLE = (
+    _PIO_INTR_STATUS_ENABLE["TX_THLD_STAT_EN"]
+    | _PIO_INTR_STATUS_ENABLE["RX_THLD_STAT_EN"]
+    | _PIO_INTR_STATUS_ENABLE["CMD_QUEUE_READY_STAT_EN"]
+    | _PIO_INTR_STATUS_ENABLE["RESP_READY_STAT_EN"]
+)
 #: PIO_CONTROL: ENABLE and RS.
-PIO_RUN = 0x3
+PIO_RUN = _PIO_CONTROL["ENABLE"] | _PIO_CONTROL["RS"]
 #: QUEUE_THLD_CTRL: command-empty threshold 1, response-buffer threshold 1.
-QUEUE_THRESHOLDS = (1 << 8) | 1
-#: STBY_CR_CONTROL.STBY_CR_ENABLE_INIT[31:30]: 3 is the active controller.
-STBY_ENABLE_INIT_MASK = 3 << 30
-STBY_ACTIVE_CONTROLLER = 3 << 30
+QUEUE_THRESHOLDS = _lsb(_QUEUE_THLD_CTRL["CMD_EMPTY_BUF_THLD"]) | _lsb(
+    _QUEUE_THLD_CTRL["RESP_BUF_THLD"]
+)
+#: STBY_CR_CONTROL.STBY_CR_ENABLE_INIT: ACM_INIT (2'b01) initializes in Active
+#: Controller mode (standby_controller_mode.rdl).
+STBY_ENABLE_INIT_MASK = _STBY_CR_CONTROL["STBY_CR_ENABLE_INIT"]
+STBY_ACM_INIT = 1
+STBY_ACTIVE_CONTROLLER = STBY_ACM_INIT * _lsb(STBY_ENABLE_INIT_MASK)
 #: HCI command descriptor, DWORD0: CMD_ATTR[2:0], TID[6:3], DEV_INDEX[20:16],
 #: DTT[25:23] (immediate byte count), WROC[30], TOC[31]; DWORD1 carries the
 #: immediate data bytes.
@@ -159,13 +189,30 @@ class smc_i3c_private_write_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.responses: dict[int, int] = {}
         self.sda_low_cycles = 0
+        self.scl_low_cycles = 0
+        self.scl_high_drive_cycles = 0
+        self.sda_gate_mismatches = 0
+        self.pp_cycles = 0
+        self.samples = 0
 
-    async def _count_sda_low(self, stop: list[bool]) -> None:
+    @staticmethod
+    def _bit(handle) -> int:
+        value = handle.value
+        assert value.is_resolvable, f"{handle._name} is not resolvable: {value}"
+        return int(value)
+
+    async def _sample_pads(self, stop: list[bool]) -> None:
         dut = cocotb.top
         while not stop[0]:
             await RisingEdge(dut.clk_periph_i)
-            if dut.tb_i3c0_sda_dut_low.value.is_resolvable and int(dut.tb_i3c0_sda_dut_low.value):
-                self.sda_low_cycles += 1
+            self.samples += 1
+            self.sda_low_cycles += self._bit(dut.tb_i3c0_sda_dut_low)
+            self.scl_low_cycles += self._bit(dut.tb_i3c0_scl_dut_low)
+            self.scl_high_drive_cycles += self._bit(dut.tb_i3c0_scl_drive_high)
+            pp = self._bit(dut.tb_i3c0_sda_pp_sel)
+            self.pp_cycles += pp
+            if self._bit(dut.tb_i3c0_sda_oe) != (pp | (1 - self._bit(dut.tb_i3c0_sda_out))):
+                self.sda_gate_mismatches += 1
 
     async def _leg(self, inst: int) -> int:
         label = f"I3C{inst}"
@@ -174,8 +221,13 @@ class smc_i3c_private_write_test_seq(SmcCsrSeq):
         stby = await self.csr_read(f"{label}_STBY", stby_reg)
         pio_ctrl = await self.csr_read(f"{label}_PIO_CTRL_IDLE", _pio("PIO_CONTROL", inst))
         await self.csr_write(f"{label}_BUS_EN", _hc_control(inst), I3C_HC_CONTROL_ENABLED)
-        await self.csr_write(
-            f"{label}_STBY_ACM", stby_reg, (stby & ~STBY_ENABLE_INIT_MASK) | STBY_ACTIVE_CONTROLLER
+        stby_acm = (stby & ~STBY_ENABLE_INIT_MASK) | STBY_ACTIVE_CONTROLLER
+        await self.csr_write(f"{label}_STBY_ACM", stby_reg, stby_acm)
+        stby_rb = await self.csr_read(f"{label}_STBY_ACM_RB", stby_reg)
+        assert stby_rb & STBY_ENABLE_INIT_MASK == STBY_ACTIVE_CONTROLLER, (
+            f"{label}: STBY_CR_CONTROL reads 0x{stby_rb:08x} after STBY_CR_ENABLE_INIT was "
+            f"written ACM_INIT (0x{stby_acm:08x}); the register's hardware-written fields are "
+            f"not compared"
         )
         for name, value in TIMING:
             await self.csr_write(f"{label}_{name}", _ec(f"SOCMGMTIF_{name}", inst), value)
@@ -216,12 +268,36 @@ class smc_i3c_private_write_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         stop = [False]
-        counter = cocotb.start_soon(self._count_sda_low(stop))
+        sampler = cocotb.start_soon(self._sample_pads(stop))
         self.responses[0] = await self._leg(0)
         stop[0] = True
-        await counter
+        await sampler
         assert self.sda_low_cycles > 0, (
             "I3C0 answered a queued private write without its controller ever driving SDA low"
+        )
+        assert self.scl_low_cycles > 0, (
+            "I3C0 answered a queued private write without its controller ever driving SCL low"
+        )
+        assert self.scl_high_drive_cycles == 0, (
+            f"I3C0 asserted its SCL output enable with the SCL output level high on "
+            f"{self.scl_high_drive_cycles} of {self.samples} peripheral clocks; the wrapper ties "
+            f"scl_o low and drives SCL only low"
+        )
+        assert self.sda_gate_mismatches == 0, (
+            f"I3C0's SDA output enable differed from (push-pull select OR NOT sda_o) on "
+            f"{self.sda_gate_mismatches} of {self.samples} peripheral clocks"
+        )
+        cocotb.log.info(
+            "CHK-I3C-SCL-OD-ONLY: over %d peripheral clocks of the I3C0 private write the "
+            "controller pulled SCL low on %d and SDA low on %d, the SCL output enable was never "
+            "asserted with the SCL output level high (%d samples), and the SDA output enable "
+            "equalled push-pull-select OR NOT sda_o on every sample (push-pull selected on %d "
+            "samples)",
+            self.samples,
+            self.scl_low_cycles,
+            self.sda_low_cycles,
+            self.scl_high_drive_cycles,
+            self.pp_cycles,
         )
         self.responses[1] = await self._leg(1)
         cocotb.log.info(

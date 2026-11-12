@@ -17,11 +17,11 @@
 `include "ocah_fcov_macros.svh"
 
 module smc_gpio_fcov #(
-  parameter int unsigned GPIO_WIDTH = 65,
-  // Bonded pads carrying straps: STRAPS_LO/HI cover [60:0].
-  parameter int unsigned STRAP_WIDTH = 61,
-  parameter int unsigned DEFAULT_OUTPUT_COUNT = 3,
-  parameter int unsigned DEFAULT_INPUT_COUNT = 62,
+  parameter int unsigned GPIO_WIDTH = 67,
+  // Bonded pads carrying straps: STRAPS_LO/HI cover [62:0].
+  parameter int unsigned STRAP_WIDTH = 63,
+  parameter int unsigned DEFAULT_OUTPUT_COUNT = 7,
+  parameter int unsigned DEFAULT_INPUT_COUNT = 60,
   // smc_padring_pkg::DefaultDirectionMap, passed in by tb_top: bit i is 1 when
   // pad i is an input by default. The direction map reaches the boundary on
   // pad2core_en_o, so the same vector is the expected value of that bus.
@@ -108,8 +108,8 @@ module smc_gpio_fcov #(
   wire [GPIO_WIDTH-1:0] default_map_diff = (pad2core_en_i ^ DEFAULT_INPUT_MAP) & ~lsio_select_i;
   wire default_map_matches_e = release_primary_smc && lsio_known && (lsio_select_i != '1)
       && (default_map_diff === '0);
-  `OCAH_FCOV_COVER(c_default_output_count_3, default_output_count_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_default_input_count_62, default_input_count_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_default_output_count, default_output_count_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_default_input_count, default_input_count_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_per_instance_default_matches_map, default_map_matches_e, clk_smc_i, in_reset)
 
 endmodule : smc_gpio_fcov

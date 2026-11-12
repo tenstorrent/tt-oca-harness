@@ -22,7 +22,7 @@ the requests. The encoding the DUT forwards on each link is an observation
 Grading, per request, from the port pins the leaf samples on every clk_smc_i
 edge: exactly one B for a write and AxLEN+1 R beats with RID=ARID and RLAST on
 the last beat only for a read, never EXOKAY, within a counted bound. The
-response codes themselves are observations (SF-015, SF-012). The crossing
+response codes themselves are observations. The crossing
 write's BRESP is graded against the write-split rule of memmap.adoc:64-67 over
 the single-beat reference codes of its beats. After each request the reference set (scratch_cold SCRATCH[0..7] and one
 SMC_BASE_CONFIG register) is read back, and only registers inside the
@@ -627,7 +627,8 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
             cocotb.log.info(
                 "OBS-G11-FORWARDED: port=%s shape=%s op=%s link=%s fwd_burst=none fwd_len=none "
                 "fwd_addr=none (no %s handshake on the link while the request was open; "
-                "observation, SF-015; never compared)",
+                "observation; open: how inbound ports answer illegal burst encodings; never "
+                "compared)",
                 req.port,
                 req.shape,
                 req.op,
@@ -638,7 +639,8 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
             cocotb.log.info(
                 "OBS-G11-FORWARDED: port=%s shape=%s op=%s link=%s fwd_burst=%s fwd_len=%s "
                 "fwd_addr=%s checker_burst=%s checker_addr=%s link_handshakes=%d t=%d ns "
-                "(observation, SF-015; never compared)",
+                "(observation; open: how inbound ports answer illegal burst encodings; never "
+                "compared)",
                 req.port,
                 req.shape,
                 req.op,
@@ -785,7 +787,7 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
         bad = {hex(a): hex(v) for a, v in values.items() if v != self._seed_of(a)}
         assert not bad, f"reference set does not read back its seeds: {bad}"
         if monitor is not None:
-            # SF-015: the response to each illegal request is open; a DECERR on one is an
+            # The response to each illegal request is open; a DECERR on one is an
             # observation, so its start address and the reference beat addresses are excused.
             for shape in SHAPES.values():
                 monitor.expected_decerr_addrs.update(shape.values())
@@ -827,7 +829,8 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
             self._stage(shape, f"reqs={2 * len(PORTS)}")
             if shape == "wrap_len0":
                 cocotb.log.info(
-                    "OBS-G11-WRAP-LEN0: %s (observation, SF-015; never compared)",
+                    "OBS-G11-WRAP-LEN0: %s (observation; open: how inbound ports answer "
+                    "illegal burst encodings; never compared)",
                     "; ".join(obs[shape]),
                 )
                 answered = {p: sum(r.answered for r in self.reqs if r.port == p) for p in PORTS}
@@ -840,7 +843,8 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
                 assert answered == {"SEP_IN": 2, "SYS_IN": 2}
             else:
                 cocotb.log.info(
-                    "OBS-G11-RSVD-BURST: %s (observation, SF-015; never compared)",
+                    "OBS-G11-RSVD-BURST: %s (observation; open: how inbound ports answer "
+                    "illegal burst encodings; never compared)",
                     "; ".join(obs[shape]),
                 )
                 answered = {
@@ -892,7 +896,8 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
                 f"BRESP={bresp_name}; RRESP {rhist} per-beat={''.join(str(c)[0] for c in rresp)}"
             )
         cocotb.log.info(
-            "OBS-G11-4KB: %s (observation, SF-015 and SF-012; never compared)",
+            "OBS-G11-4KB: %s (observation; open: how inbound ports answer illegal burst "
+            "encodings and the response past a decoded extent; never compared)",
             " || ".join(obs_4kb),
         )
         answered = {

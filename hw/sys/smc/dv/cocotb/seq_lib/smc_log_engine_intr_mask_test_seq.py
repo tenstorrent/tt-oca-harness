@@ -42,12 +42,12 @@ turn with INTR_ENABLE=0: INTR_TEST=0x01 then 0x10 must read back 0x01 then
 returns within 64 cycles. Each bit is then enabled, forced, masked and cleared
 while `tb_uart_irq_combined` is sampled; the line levels are logged, not
 compared, because no pinned source states the combining function of the
-instance line (SF-001). A real fetch error comes from `LOG_REGION_ADDR` at the
+instance line. A real fetch error comes from `LOG_REGION_ADDR` at the
 refusing address `smc_log_engine_fetch_error_test` uses, with the UART in
-loopback so the write side can drain; it must latch LOG_FETCH_ERR alone. The
-write port reaches only the wrapper's own UART, so LOG_WRITE_ERR is set
-through INTR_TEST=0x10 (SF-039), and the two bits clear one written 1 at a
-time. A last erroring fetch with only INTR_ENABLE.LOG_FETCH_ERR set on the
+loopback so the write side can drain; it must latch LOG_FETCH_ERR alone.
+LOG_WRITE_ERR is set through INTR_TEST=0x10 here (the real write-port error
+is graded by `smc_log_engine_fetch_error_test`), and the two bits clear one
+written 1 at a time. A last erroring fetch with only INTR_ENABLE.LOG_FETCH_ERR set on the
 stimulated engine logs the line before submission, while latched and after
 the clear.
 """
@@ -508,7 +508,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
         )
         self._fence("LOGENG13_TEST_FORCE", ("CHK-LOGENG13-TEST-FORCE",))
 
-        # ---- S4: line with the mask on / off / cleared (SF-001) ------------
+        # ---- S4: line with the mask on / off / cleared ------------
+        # Open: how the per-instance UART interrupt line combines its sources.
         mask_log = []
         for n in _ENGINES:
             for name, enable, test, status in _BITS:
@@ -533,7 +534,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
                 )
         self._chk(
             "CHK-LOGENG13-LINE-MASK",
-            "LINKED-ISSUE SF-001 line levels measured, not compared; " + "; ".join(mask_log),
+            "LINKED-ISSUE: how the per-instance UART interrupt line combines its sources; line "
+            "levels measured, not compared; " + "; ".join(mask_log),
         )
         self._fence("LOGENG13_LINE_MASK", ("CHK-LOGENG13-LINE-MASK",))
 
@@ -580,8 +582,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-LOGENG13-WRITE-ERR-TEST",
             "INTR_TEST=0x10 with INTR_ENABLE=0x0 set LOG_WRITE_ERR and the written 0x10 cleared "
-            f"it: {'; '.join(wtest_log)}; a real write-port error is NOT-REACHABLE-AT-THIS-LEVEL "
-            "(SF-039)",
+            f"it: {'; '.join(wtest_log)}; the real write-port error is graded by "
+            "CHK-LOGENG-WRITE-ERR-REAL (smc_log_engine_fetch_error_test)",
         )
         self._chk(
             "CHK-LOGENG13-PARTIAL-W1C",
@@ -592,7 +594,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
             "LOGENG13_WRITE_ERR_TEST", ("CHK-LOGENG13-WRITE-ERR-TEST", "CHK-LOGENG13-PARTIAL-W1C")
         )
 
-        # ---- S6: enabled real fetch error and the line (SF-001) ------------
+        # ---- S6: enabled real fetch error and the line ------------
+        # Open: how the per-instance UART interrupt line combines its sources.
         real_log = []
         for n in _ENGINES:
             for m in _ENGINES:
@@ -621,7 +624,8 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
             )
         self._chk(
             "CHK-LOGENG13-LINE-REAL",
-            "LINKED-ISSUE SF-001 line levels measured, not compared; INTR_ENABLE=0x01 on the "
+            "LINKED-ISSUE: how the per-instance UART interrupt line combines its sources; line "
+            "levels measured, not compared; INTR_ENABLE=0x01 on the "
             "stimulated engine only, others read INTR_STATUS=0x0; " + "; ".join(real_log),
         )
         self._fence("LOGENG13_LINE_REAL", ("CHK-LOGENG13-LINE-REAL",))

@@ -14,13 +14,14 @@ class smc_i2c_target_event_flags_test(smc_base_test):
     """A bench transfer with the target disabled and enabled, then the flag lifecycle."""
 
     required_evidence = (
+        "CHK-I2C-ACQ-NO-SYMBOLS",
         "CHK-I2C-TGT-FLAG-DISABLE-RETAIN-OBS",
         "CHK-I2C-TGT-FLAG-DISABLED-NOSET",
         "CHK-I2C-TGT-FLAG-SET",
         "CHK-I2C-TGT-FLAG-STICKY-W1C",
         "CHK-NONVAC",
     )
-    min_evidence = 5
+    min_evidence = 6
 
     auto_protocol_vip = False
 

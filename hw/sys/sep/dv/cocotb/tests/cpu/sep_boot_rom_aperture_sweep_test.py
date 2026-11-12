@@ -23,6 +23,9 @@ Checks:
   CHK-ROM-PORT     : each load of steps 7 to 11 appears once on PR-LSU-ROM and
                      once on PR-ROM with its word address and read intent, no
                      write-enable cycle, and PR-LSU-XBAR carries no ROM address.
+                     PR-LSU-ROM returns one R beat per request: the R beats,
+                     paired with the AR beats in issue order per ID, number
+                     the AR count at every word, and each is the last beat.
                      Control: the SRAM word load of step 6 is on PR-LSU-XBAR
                      and not on PR-LSU-ROM.
   CHK-ROM-STORE    : each of 16 byte and halfword stores completes, the word
@@ -32,8 +35,33 @@ Checks:
                      per store (rom.adoc: stores receive a response and do not
                      modify the ROM). The B code is logged
                      (OBS-ROM-STORE-RESP).
+                     Back-to-back pairs: at the first 8 store points, 4 pairs load the
+                     word and then store to it (read_before_store) and 4 pairs
+                     store and then load (store_before_read), with only a
+                     fence between the two accesses. Per pair: the load AR and
+                     the store AW are the only LSU address handshakes between
+                     the record stores, on different clk_i edges and in the
+                     pair order; PR-ROM carries one read request (we=0) at the
+                     word; PR-ROM-MACRO carries one request, at the word, and
+                     its rdata is the image word, so the store reaches no
+                     macro write. A read_before_store load also returns the
+                     image bytes. The register value of a store_before_read
+                     load is logged and not graded (the core may forward store
+                     data to a later load); PR-ROM write requests of the store
+                     are logged.
   CHK-ROM-STORE-WE : in the store leg, PR-ROM-MACRO shows requests at a store
                      word only for its four readback loads.
+  CHK-ROM-PAST-EXTENT: an LSU load at 0x1005_0000, the first address above
+                     the aperture, and one at a drawn word in the next 64 KiB
+                     each appear once on PR-LSU-XBAR at its address; from the
+                     load to the next load (or the leg end marker) PR-LSU-ROM
+                     carries no AR and PR-ROM and PR-ROM-MACRO carry no
+                     request (cpu.adoc: the LSU demux sends boot ROM
+                     addresses to the boot ROM and everything else to the
+                     local crossbar; rom.adoc: the aperture ends at
+                     0x1004_FFFF). Control: the sweep loads of CHK-ROM-PORT
+                     are on PR-LSU-ROM. The leg runs with the graded window
+                     closed, after the bench sets its release flag.
   CHK-ROM-NOECC    : a 1-bit or 2-bit flip in a stored word reads back as the
                      whole flipped 64-bit word with no trap and no NMI; the
                      neighbour words read exact (rom.adoc:59-60, no ECC or
@@ -64,6 +92,11 @@ Checks:
                      SEP Reset Controller). The response window W comes from the
                      same fetch of the calibration boot, whose beat carries
                      image word 1.
+
+Logged only (OBS-ROM-PAST-EXTENT-RESP): for each past-extent load, the
+PR-LSU-XBAR R response code, the loaded value, the NMI count between the load
+and the next one, and the NMI ``mcause`` and ``mdseac``. No TT text states the
+response of that range to the SEP CPU.
 
 Logged only (OBS-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
 closed, a set-up ``rst_ni`` pulse and the same anchor, ``wdt_rst_ni`` falls at
@@ -108,7 +141,10 @@ The core can serve two pending loads of one doubleword with one bus read, and
 it can merge two pending stores to one address. The 16 loads of a block are
 therefore in 16 different words, the two loads of each store-leg readback have
 a fence between them, and a fence follows each record store, so each load is
-one ROM request and each record is one outbound write.
+one ROM request and each record is one outbound write. A fence makes no bus
+request, so in a back-to-back pair the load AR and the store AW are adjacent
+LSU address handshakes; the fence after a store waits for its response, so the
+load after it is a bus read.
 
 Fuse image: the run mode needs a staged image with ``ROM_CTL`` = 0. The default
 preload holds a non-zero ``ROM_CTL``, so the testlist entry stages the PROD
@@ -250,6 +286,14 @@ OFF_RA = 0xC8  # repeat instance: word index
 OFF_RV = 0xD0  # repeat instance: +0 low word, +4 high word
 OFF_TCNT2 = 0xD8
 OFF_DONE2 = 0xE0
+OFF_OO_B = 0xE8
+OFF_OA = 0xF0  # back-to-back pair index
+OFF_OV = 0xF8  # back-to-back pair loaded value
+OFF_OO_E = 0x100
+OFF_PX_B = 0x108
+OFF_PXA = 0x110  # past-extent load address
+OFF_PXV = 0x118  # past-extent loaded value
+OFF_PX_E = 0x120
 FAIL_ROMCTL, FAIL_FLAG = 1, 2
 
 # SRAM layout of the generated image.
@@ -257,6 +301,7 @@ FW_BASE = SRAM_BASE
 TABLE = SRAM_BASE + 0x8000
 FLAG = SRAM_BASE + 0xC000
 FLAG2 = FLAG + 8  # release flag of the repeat instance
+FLAG3 = FLAG + 16  # release flag of the past-extent leg
 CTL_LO = SRAM_BASE + 0xD000
 
 N_SEEDED = 512
@@ -264,6 +309,10 @@ N_SEQ = 512
 SEQ_BASE_MAX = ROM_WORDS - N_SEQ  # 7680
 N_BLOCKS, BLOCK_LEN = 8, 16
 N_STORES = 16
+N_ORDER = 4  # back-to-back pairs of each order
+ORDERS = ("read_before_store", "store_before_read")
+PAST_BASE = ROM_BASE + ROM_BYTES  # first address above the aperture
+PAST_SPAN = ROM_BYTES  # the drawn past-extent word is in the next 64 KiB
 N_FLIP1 = N_FLIP2 = 8
 SIZES = (1, 2, 4)
 BLOCK_REGS = tuple(range(5, 21))  # x5..x20
@@ -377,6 +426,10 @@ class _Plan:
             self.flips.append((w, mask))
         # Reset offset fraction u_o = u / 2^16.
         self.u = rng.randrange(1 << 16)
+        # Back-to-back pairs on the first 2 * N_ORDER store points.
+        self.order = [(ORDERS[k // N_ORDER], *self.stores[k]) for k in range(len(ORDERS) * N_ORDER)]
+        # Past-extent loads; the drawn word is the last draw of the plan.
+        self.past = [PAST_BASE, PAST_BASE + 4 * (1 + rng.randrange(PAST_SPAN // 4 - 1))]
 
     @staticmethod
     def _stub() -> list[int]:
@@ -414,7 +467,7 @@ def build_code(p: _Plan) -> Asm:
     a.li(GP, MBX)
     for reg, val in (
         ("START_ADDR", MBX),
-        ("END_ADDR", MBX + 0xFF),
+        ("END_ADDR", MBX + 0x1FF),
         ("FILTER_CONFIG", FILTER_CFG_OPEN),
     ):
         a.li(T1, _OUTF.addr(reg)).li(T2, val & 0xFFFF_FFFF).op(sw(T2, T1, 0))
@@ -466,6 +519,27 @@ def build_code(p: _Plan) -> Asm:
         a.op(lw(A0, S0, 0), FENCE, lw(A1, S0, 4))
         a.op(sw(A0, GP, OFF_SA), sw(A1, GP, OFF_SA + 4), FENCE)
     _mark(a, OFF_ST_E)
+    # Back-to-back pairs: one load and one store at one ROM word, a fence between.
+    _mark(a, OFF_OO_B)
+    for k, (order, addr, s, data) in enumerate(p.order):
+        a.li(S0, addr & ~3).li(S1, addr).li(A2, data)
+        if order == "read_before_store":
+            a.op(lw(A0, S0, 0), FENCE, store(s, A2, S1, 0), FENCE)
+        else:
+            a.op(store(s, A2, S1, 0), FENCE, lw(A0, S0, 0), FENCE)
+        a.li(T3, k).op(sw(T3, GP, OFF_OA), sw(A0, GP, OFF_OV), FENCE)
+    _mark(a, OFF_OO_E)
+    # Past-extent loads, after the bench closed the graded window.
+    a.li(T0, FLAG3).li(T1, FLIP_POLL)
+    a.label("poll3").op(lw(T2, T0, 0)).br("bne", T2, ZERO, "go3")
+    a.op(addi(T1, T1, -1)).br("bne", T1, ZERO, "poll3")
+    _fail(a, FAIL_FLAG)
+    a.label("go3")
+    _mark(a, OFF_PX_B)
+    for addr in p.past:
+        a.li(S0, addr).op(sw(S0, GP, OFF_PXA), FENCE, lw(A0, S0, 0), FENCE)
+        a.op(sw(A0, GP, OFF_PXV), FENCE)
+    _mark(a, OFF_PX_E)
     # Step 13: wait for the flips, one ecall, then read each flipped word and
     # its neighbours.
     a.op(sw(S11, GP, OFF_TCNT))
@@ -516,6 +590,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         "CHK-ROM-PORT",
         "CHK-ROM-STORE",
         "CHK-ROM-STORE-WE",
+        "CHK-ROM-PAST-EXTENT",
         "CHK-ROM-NOECC",
         "CHK-ROM-OTF",
     )
@@ -586,11 +661,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
     def _marker_t(self, off: int) -> int:
         """Time of the AW handshake of a marker store on PR-LSU-XBAR."""
         self._taps_live()
-        hits = [
-            b.t_ps
-            for b in self.lsu_xbar.beats
-            if b.ch == "aw" and b.addr is not None and (b.addr & ~7) == MBX + off
-        ]
+        hits = self._aw_times(off)
         if len(hits) != 1:
             raise AssertionError(f"marker +0x{off:x}: {len(hits)} AW handshakes on PR-LSU-XBAR")
         return hits[0]
@@ -706,7 +777,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 {
                     FW_BASE: code.to_bytes(),
                     TABLE: table,
-                    FLAG: bytes(16),
+                    FLAG: bytes(24),
                     p.sram_ctl: p.sram_ctl_val.to_bytes(4, "little"),
                 }
             )
@@ -757,8 +828,15 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 raise
         await mbx.wait(OFF_ST_E, LEG_BOUND, what="store end")
         self._grade_store()
+        await mbx.wait(OFF_OO_E, LEG_BOUND, what="back-to-back pairs end")
+        self._grade_order()
         await self._ap_passed()
         close_graded_window(self.logger)
+        # Past-extent loads, with the graded window closed.
+        self._sram_mem()[(FLAG3 - SRAM_BASE) // 8].value = 1
+        await mbx.wait(OFF_PX_E, LEG_BOUND, what="past-extent end")
+        await self._check_fail()
+        self._grade_past()
         # Step 13: the flips are set-up outside the window.
         await mbx.wait(OFF_FLIP_READY, LEG_BOUND, what="FLIP_READY")
         for w, m in p.flips:
@@ -988,6 +1066,22 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         lr_ar = [b for b in lr if b.ch == "ar"]
         lr_aw = [b for b in lr if b.ch in ("aw", "w")]
         lr_words = Counter(None if b.addr is None else (b.addr - ROM_BASE) >> 3 for b in lr_ar)
+        # One R beat per request: each R beat takes the oldest open AR of its ID.
+        open_ar: dict = {}
+        r_words: Counter = Counter()
+        r_not_last = 0
+        for b in lr:
+            if b.ch == "ar":
+                open_ar.setdefault(b.id, []).append(
+                    None if b.addr is None else (b.addr - ROM_BASE) >> 3
+                )
+            elif b.ch == "r":
+                q = open_ar.get(b.id)
+                r_words[q.pop(0) if q else "unpaired"] += 1
+                r_not_last += b.last != 1
+        exp_r = Counter(lr_words)
+        r_word_ok = sum(1 for w, n in exp_r.items() if r_words[w] == n)
+        self.sweep_lsu_rom_ar = len(lr_ar)
         rq = self._in(self.rom.beats, t0, t1, "req")
         rq_words = Counter(None if b.addr is None else b.addr >> 3 for b in rq)
         we = sum(1 for b in rq if b.we != 0)
@@ -1015,12 +1109,23 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             and not xbar_rom
             and ctl_xbar >= 1
             and ctl_rom == 0
+            and r_words == exp_r
+            and r_not_last == 0
         )
         text = (
             f"loads={len(plan)} lsu_rom_req={len(lr_ar)} rom_req={len(rq)} word_addr_ok={word_ok} "
             f"we_cycles={we} lsu_rom_writes={len(lr_aw)} lsu_xbar_rom_addr={len(xbar_rom)} "
+            f"lsu_rom_r={sum(r_words.values())} r_per_request_words={r_word_ok}/{len(exp_r)} "
+            f"r_not_last={r_not_last} "
             f"control_lsu_xbar={ctl_xbar} control_lsu_rom_for_sram={ctl_rom}"
         )
+        if r_words != exp_r:
+            diff = [
+                f"{w}:r={r_words[w]}/exp={exp_r[w]}"
+                for w in sorted(set(r_words) | set(exp_r), key=str)
+                if r_words[w] != exp_r[w]
+            ]
+            text += " r_diff=" + ",".join(diff[:6])
         if lr_words != exp:
             text += f" lsu_rom_diff={dict(list(((lr_words - exp) + (exp - lr_words)).items())[:6])}"
         if rq_words != exp:
@@ -1111,6 +1216,153 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             f"stores={N_STORES} extra_macro_req={extra} control_readback_macro_req={matched} "
             f"expected_readback_macro_req={sum(exp_n.values())} missing={missing}",
         )
+
+    def _aw_times(self, off: int) -> list[int]:
+        """Times of the PR-LSU-XBAR AW handshakes of the record stores at ``off``, in order."""
+        return [
+            b.t_ps
+            for b in self.lsu_xbar.beats
+            if b.ch == "aw" and b.addr is not None and (b.addr & ~7) == MBX + off
+        ]
+
+    def _grade_order(self) -> None:
+        """CHK-ROM-STORE, back-to-back pairs: adjacent handshakes, ROM read request, macro data."""
+        p = self.plan
+        t0, t1 = self._marker_t(OFF_OO_B), self._marker_t(OFF_OO_E)
+        recs = self.mbx.records()
+        seg = recs[self.mbx.find(OFF_OO_B).seq : self.mbx.find(OFF_OO_E).seq + 1]
+        loaded = [r.val for r in seg if r.off == OFF_OV]
+        traps = sum(1 for r in seg if r.off in (OFF_TRAP, OFF_NMI))
+        oa_t = [t for t in self._aw_times(OFF_OA) if t0 < t < t1]
+        ov_t = [t for t in self._aw_times(OFF_OV) if t0 < t < t1]
+        n = len(p.order)
+        if not (len(oa_t) == len(ov_t) == len(loaded) == n):
+            self._grade(
+                "CHK-ROM-STORE",
+                False,
+                f"pairs records={len(loaded)} oa={len(oa_t)} ov={len(ov_t)} expected={n}",
+            )
+            return
+        lsu = sorted(
+            (
+                b
+                for b in self._in(self.lsu_xbar.beats, t0, t1)
+                + self._in(self.lsu_rom.beats, t0, t1)
+                if b.ch in ("ar", "aw")
+            ),
+            key=lambda b: b.t_ps,
+        )
+        for k, (order, addr, s, _data) in enumerate(p.order):
+            word = (addr - ROM_BASE) >> 3
+            lo = t0 if k == 0 else ov_t[k - 1]
+            hi = oa_t[k]
+            hs = [b for b in lsu if lo < b.t_ps < hi]
+            kinds = [b.ch for b in hs]
+            exp_kinds = ["ar", "aw"] if order == "read_before_store" else ["aw", "ar"]
+            at_word = all(b.addr is not None and (b.addr - ROM_BASE) >> 3 == word for b in hs)
+            adjacent = kinds == exp_kinds and at_word and len({b.t_ps for b in hs}) == 2
+            rom_req = self._in(self.rom.beats, lo, hi, "req")
+            rom_rd = [b for b in rom_req if b.we == 0]
+            rom_we = len(rom_req) - len(rom_rd)
+            rd_ok = len(rom_rd) == 1 and rom_rd[0].addr is not None and rom_rd[0].addr >> 3 == word
+            macro_req = self._in(self.macro.beats, lo, hi, "req")
+            macro_rsp = self._in(self.macro.beats, lo, hi, "rsp")
+            rdata = macro_rsp[0].rdata if len(macro_rsp) == 1 else None
+            exp_rdata = p.img.word(word)
+            macro_ok = len(macro_req) == 1 and macro_req[0].addr == word and rdata == exp_rdata
+            exp_load = p.img.read(addr & ~3, 4)
+            load_ok = order == "store_before_read" or loaded[k] == exp_load
+            self._grade(
+                "CHK-ROM-STORE",
+                adjacent and rd_ok and macro_ok and load_ok,
+                f"pair={k} order={order} addr=0x{addr:08x}/{s} word={word} "
+                f"lsu_hs={','.join(kinds) or 'none'} adjacent={int(adjacent)} "
+                f"rom_rd_req={len(rom_rd)} macro_req={len(macro_req)} "
+                f"macro_rdata={'X' if rdata is None else f'0x{rdata:016x}'} "
+                f"exp_rdata=0x{exp_rdata:016x} "
+                + (
+                    f"load=0x{loaded[k]:08x} exp_load=0x{exp_load:08x} "
+                    if order == "read_before_store"
+                    else f"load_logged=0x{loaded[k]:08x} "
+                )
+                + f"rom_we_req_logged={rom_we} traps={traps}",
+            )
+
+    def _grade_past(self) -> None:
+        """CHK-ROM-PAST-EXTENT per load, and OBS-ROM-PAST-EXTENT-RESP."""
+        p = self.plan
+        t_end = self._marker_t(OFF_PX_E)
+        recs = self.mbx.records()
+        seg = recs[self.mbx.find(OFF_PX_B).seq : self.mbx.find(OFF_PX_E).seq + 1]
+        pxa_t = self._aw_times(OFF_PXA)
+        pxv_t = self._aw_times(OFF_PXV)
+        # Records of each load: from its address record to the next one.
+        per_load: list[list] = []
+        for r in seg:
+            if r.off == OFF_PXA:
+                per_load.append([r])
+            elif per_load:
+                per_load[-1].append(r)
+        if not (len(pxa_t) == len(pxv_t) == len(per_load) == len(p.past)):
+            self._grade(
+                "CHK-ROM-PAST-EXTENT",
+                False,
+                f"loads records={len(per_load)} pxa={len(pxa_t)} pxv={len(pxv_t)} "
+                f"expected={len(p.past)}",
+            )
+            return
+        exp_xbar_ar, exp_lsu_rom_ar = 1, 0
+        for i, addr in enumerate(p.past):
+            lo, hi = pxa_t[i], pxv_t[i]
+            end = pxa_t[i + 1] if i + 1 < len(p.past) else t_end
+            ar = [
+                b
+                for b in self._in(self.lsu_xbar.beats, lo, hi, "ar")
+                if b.addr is not None and (b.addr & ~7) == (addr & ~7)
+            ]
+            lsu_rom_ar = len(self._in(self.lsu_rom.beats, lo, end, "ar"))
+            rom_req = len(self._in(self.rom.beats, lo, end, "req"))
+            macro_req = len(self._in(self.macro.beats, lo, end, "req"))
+            ok = (
+                len(ar) == exp_xbar_ar
+                and lsu_rom_ar == exp_lsu_rom_ar
+                and rom_req == 0
+                and macro_req == 0
+                and self.sweep_lsu_rom_ar > 0
+            )
+            self._grade(
+                "CHK-ROM-PAST-EXTENT",
+                ok,
+                f"addr=0x{addr:08x} lsu_xbar_ar={len(ar)} lsu_rom_ar={lsu_rom_ar} "
+                f"rom_req={rom_req} macro_req={macro_req} expect_lsu_xbar_ar={exp_xbar_ar} "
+                f"expect_lsu_rom_ar={exp_lsu_rom_ar} "
+                f"control_sweep_lsu_rom_ar={self.sweep_lsu_rom_ar}",
+            )
+            rresp = None
+            if len(ar) == 1:
+                rresp = next(
+                    (
+                        b.resp
+                        for b in self._in(self.lsu_xbar.beats, ar[0].t_ps, hi, "r")
+                        if b.id == ar[0].id
+                    ),
+                    None,
+                )
+            rl = per_load[i]
+            val = next((r.val for r in rl if r.off == OFF_PXV), None)
+            nmi = [r.val for r in rl if r.off == OFF_NMI]
+            mdseac = [r.val for r in rl if r.off == OFF_NMI_ADDR]
+            self.logger.info(
+                "OBS-ROM-PAST-EXTENT-RESP addr=0x%08x rresp=%s value=%s nmi=%d mcause=%s "
+                "mdseac=%s traps=%d",
+                addr,
+                "X" if rresp is None else str(rresp),
+                "X" if val is None else f"0x{val:08x}",
+                len(nmi),
+                ",".join(f"0x{v:08x}" for v in nmi) or "none",
+                ",".join(f"0x{v:08x}" for v in mdseac) or "none",
+                sum(1 for r in rl if r.off == OFF_TRAP),
+            )
 
     def _grade_noecc(self) -> None:
         p = self.plan
@@ -1402,7 +1654,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         )
         pre_rel = [b for b in beats if t_fall < b.t_ps < t_rel]
         self.logger.info(
-            "OBS-ROM-OTF LOG beats_between_fall_and_release=%d %s cpu_low_t=%d",
+            "INFO-ROM-OTF LOG beats_between_fall_and_release=%d %s cpu_low_t=%d",
             len(pre_rel),
             " ".join(f"{b.ch}@{b.t_ps}" for b in pre_rel[:6]),
             cpu_low,

@@ -186,7 +186,7 @@ def parse_imc_details(
         warnings=warnings,
     )
     scope_payload = "\n".join(
-        f"{path}:{hashlib.sha256(path.read_bytes()).hexdigest()}" for path in detail_paths
+        sorted(path.relative_to(report_dir).as_posix() for path in detail_paths)
     )
     details.scope_fingerprint = hashlib.sha256(scope_payload.encode()).hexdigest()
     details.finalize()

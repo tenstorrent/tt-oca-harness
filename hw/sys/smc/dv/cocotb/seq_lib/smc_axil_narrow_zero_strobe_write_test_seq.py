@@ -22,7 +22,7 @@ step names a strobe; a disabled lane carries its byte of the written data.
   and the two lock registers.
 
 The stated behaviours are CHK lines; every unstated strobe semantics is an OBS line that is
-printed and never compared (SF-012 .. SF-017, SF-034).
+printed and never compared.
 """
 
 from __future__ import annotations
@@ -530,7 +530,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         name = reg.path.split("/")[-1]
         cocotb.log.info(
             "INFO-CELL-NOT-DRIVABLE: REFERENCE_COUNTER WSTRB 0x01 (write-then-poll protocol has "
-            "no observable lane; SF-012)"
+            "no observable lane)"
         )
         for s in STROBES:
             if s and s not in REFCNT_NOT_DRIVEN:

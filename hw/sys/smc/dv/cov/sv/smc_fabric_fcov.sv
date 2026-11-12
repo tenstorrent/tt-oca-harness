@@ -876,7 +876,9 @@ module smc_fabric_fcov (
   // gate was high, and stays open until the next cold reset: the owning leaf
   // holds the gate low over each DMA launch it issues (the NEXT_ID_0 read is
   // the sample event of smc_dma_geometry_cg), so the flag survives those
-  // dips. No other owner writes a zeroer register under its gate.
+  // dips. The reset owner writes the zeroer registers before its gate; the
+  // state-injection owner writes them under its gate, and its control beats
+  // complete OKAY at the SYS_OUT responder, so the flag opens no cell there.
   logic soe_live_q;
   always_ff @(posedge clk_smc_i) begin
     if (in_reset) soe_live_q <= 1'b0;

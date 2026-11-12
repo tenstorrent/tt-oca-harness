@@ -25,6 +25,7 @@ import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
+    GPIO_INTF_NUM,
     LOCAL_BASE_RESET,
     generated_decoded_extent,
     generated_past_extent_resp,
@@ -96,7 +97,9 @@ def _holes() -> tuple[Hole, ...]:
         ),
         Hole(
             "GPIO",
-            smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 64),
+            smc_indexed_addr(
+                "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", GPIO_INTF_NUM - 1
+            ),
             0x1,
             gpio_base + smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE"),
             _aperture_end("gpio_intf_wrap"),

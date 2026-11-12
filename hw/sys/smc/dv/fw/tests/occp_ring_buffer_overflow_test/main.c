@@ -8,7 +8,8 @@
  * overflow limits: status entries keep two slots free, warnings keep one, and
  * errors may fill the last slot. The test sends too few commands to reach the
  * limits, so it only reads and logs entries; every check then reports failure
- * unconditionally, and the test always fails.
+ * unconditionally, and the test always fails. With the STATUS_RPT_DISABLE strap
+ * set, every GET_SMC_STATUS must return Unsupported_StatusID instead of an entry.
  */
 
 #include "occp_test_common.h"
@@ -160,8 +161,13 @@ static bool test_warning_message_overflow_protection(overflow_test_context_t *ct
         uint32_t status;
         int result =
             occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        if (result != OCCP_SUCCESS) {
+            simputs("ERROR: Failed to read SMC status\n");
+            test_passed = false;
+            break;
+        }
 
-        if (result == OCCP_SUCCESS && status != 0) {
+        if (status != 0) {
             uint32_t msg_type = (status >> 24) & 0xF;
             if (msg_type == SMC_STATUS_TYPE_WARNING) {
                 found_warnings = true;
@@ -215,8 +221,13 @@ static bool test_error_message_overflow_protection(overflow_test_context_t *ctx)
         uint32_t status;
         int result =
             occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
+        if (result != OCCP_SUCCESS) {
+            simputs("ERROR: Failed to read SMC status\n");
+            test_passed = false;
+            break;
+        }
 
-        if (result == OCCP_SUCCESS && status != 0) {
+        if (status != 0) {
             uint32_t msg_type = (status >> 24) & 0xF;
             if (msg_type == SMC_STATUS_TYPE_ERROR) {
                 found_errors = true;
@@ -281,7 +292,10 @@ static bool test_overflow_boundary_conditions(overflow_test_context_t *ctx) {
             }
         } else {
             simputshex32("OCCP command failed at iteration: ", i);
-            // A failed read only counts against the success-rate check below.
+            // With the strap clear, a failed read only counts against the success-rate check below.
+            if (ctx->occp_ctx->status_reporting_disabled) {
+                test_passed = false;
+            }
         }
     }
 
@@ -338,7 +352,12 @@ static bool test_specification_discrepancy_detection(overflow_test_context_t *ct
         uint32_t status;
         int result =
             occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
-        if (result == OCCP_SUCCESS && status != 0) {
+        if (result != OCCP_SUCCESS) {
+            simputs("ERROR: Failed to read SMC status\n");
+            test_passed = false;
+            break;
+        }
+        if (status != 0) {
             found_any_status = true;
             break;
         }

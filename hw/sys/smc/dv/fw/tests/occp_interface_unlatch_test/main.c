@@ -3,7 +3,9 @@
 
 /*
  * Latches the ROM onto one I2C interface, sends five invalid commands to unlatch it, and
- * checks the other interface is then accepted; then repeats in the other direction.
+ * checks the other interface is then accepted; then repeats in the other direction. With the
+ * STATUS_RPT_DISABLE strap set, any GetStatus the injections send must return
+ * Unsupported_StatusID, and the valid-command steps send GET_VERSION instead of random commands.
  */
 
 #include "occp_test_common.h"
@@ -54,6 +56,20 @@ static iface_id_t pick_distinct_iface(iface_id_t exclude) {
         iface_id_t c = pick_random_iface();
         if (c != exclude) return c;
     }
+}
+
+// A strap-rejected GetStatus counts toward the five-error unlatch, so it cannot be a valid command.
+static void send_valid_command(test_context_t *ctx) {
+    if (!ctx->status_reporting_disabled) {
+        execute_random_commands(ctx, 1);
+        return;
+    }
+    uint32_t version = 0;
+    if (occp_send_get_version_command(ctx, ctx->slave_addr, &version) != OCCP_SUCCESS) {
+        simputs("FAIL: GET_VERSION failed\n");
+        ctx->overall_result = false;
+    }
+    increment_cmd_count(ctx);
 }
 
 static int send_random_invalid_for_unlatch(test_context_t *ctx) {
@@ -282,7 +298,7 @@ int main(void) {
     // The draw is unused but advances the random sequence that later steps consume.
     int num_initial_commands = (get_random_int() % 2) ? (1) : ((get_random_int() % 5) + 1);
     simputs("Step 1: Send valid commands on ifaceA to trigger latch\n");
-    execute_random_commands(&ctxA, 1);
+    send_valid_command(&ctxA);
 
     simputs("Step 2: Send randomized invalid commands on ifaceA to force unlatch\n");
     for (int i = 0; i < 5; i++) {
@@ -296,7 +312,7 @@ int main(void) {
     ctxB.exp_occp_last_error = ctxA.exp_occp_last_error;
     ctxB.cmd_count = ctxA.cmd_count;
     simputs("Step 3: Send random commands on ifaceB to confirm unlatch\n");
-    execute_random_commands(&ctxB, 1);
+    send_valid_command(&ctxB);
 
     simputs("Step 4: Relatch to ifaceA\n");
     for (int i = 0; i < 5; i++) {
@@ -310,7 +326,7 @@ int main(void) {
     ctxA.exp_occp_last_error = ctxB.exp_occp_last_error;
     ctxA.cmd_count = ctxB.cmd_count;
     simputs("Step 5: Send random commands on ifaceA to confirm relatch\n");
-    execute_random_commands(&ctxA, 1);
+    send_valid_command(&ctxA);
 
     if (ctxA.overall_result && ctxB.overall_result) {
         simputs("\nOCCP INTERFACE UNLATCH TEST PASSED!\n");
