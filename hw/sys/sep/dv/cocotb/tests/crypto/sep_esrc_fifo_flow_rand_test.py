@@ -57,7 +57,9 @@ Checkers:
   CHK-FIFO-CHURN         w_k XOR w_(k-32) == C for k = 32..63; control: churn off, every word == C.
   CHK-FIFO-NOERR         FIFO_ERROR reads 0 after each leg; control: INTR_TEST sets it.
   CHK-FIFO-INTEG-PARITY  0 after the intact pop, 1 after the pop of the corrupted entry.
-  CHK-FIFO-INTEG-PTR     1 within 16 x the clean pop time after a pointer-copy error.
+  CHK-FIFO-INTEG-PTR     1 within 16 x the clean pop time after a pointer-copy error;
+                         the FIFO is first filled to 64 and popped down to H, so a
+                         misaddressed pop reads an entry with a matching parity.
   CHK-FIFO-INTEG-W1C     the parity trial bit reads 1, then 0 after the write-one clear.
   CHK-FIFO-FLAGS-CLEAR   FIFO_OVERFLOW and FIFO_UNDERFLOW read 0 after their write-one
                          clear (entropy_source.rdl FIFO_OVERFLOW, FIFO_UNDERFLOW);
@@ -1011,18 +1013,26 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         )
         open_graded_window(TEST, self.logger)
 
-    async def _hold(self) -> tuple[bool, int]:
-        """Set-up, LEVEL >= H, ENABLE = 0; returns (ok, held count)."""
+    async def _hold(self, fill_all: bool = False) -> tuple[bool, int]:
+        """Set-up, LEVEL >= H, ENABLE = 0; returns (ok, held count).
+
+        With ``fill_all`` the FIFO first fills to DEPTH and pops down to H, so every
+        entry holds a word written after the TRNG reset and a read at any address
+        meets a stored parity that matches its data.
+        """
         plan = self.plan
         await self._setup()
-        bound = self._fill_bound()
+        target = DEPTH if fill_all else plan.held
         ok, _, _ = await self._poll(
             ESRC_FIFO_STATUS,
             lambda x: _get(x, "FIFO_STATUS", "LEVEL"),
-            lambda x: x >= plan.held,
-            bound,
+            lambda x: x >= target,
+            self._fill_bound(),
         )
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
+        if fill_all:
+            for _ in range(DEPTH - plan.held):
+                await self._rd(ESRC_FIFO_RDATA)
         return ok, await self._level()
 
     async def _parity_trial(self) -> None:
@@ -1062,7 +1072,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
     async def _pointer_trial(self) -> None:
         plan = self.plan
         dut = cocotb.top
-        ok, held = await self._hold()
+        ok, held = await self._hold(fill_all=True)
         e0 = await self._fifo_error()
         t0 = self._now()
         await self._rd(ESRC_FIFO_RDATA)
