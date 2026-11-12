@@ -89,7 +89,8 @@ CPU-LSU master reads back the full write of a strobe leg) and CTRL-SRAM-STRB
 data, and one B beat with the ID of the write follows). CTRL-SRAM-XOUT: on at
 least one ``clk_i`` cycle a request of each master is outstanding (from its
 request handshake to its last R or B beat, on the ``s_axi`` and ``m_axi``
-channel monitors).
+channel monitors), and on each port two requests with one ID are outstanding
+together, so the same-ID order grade compares requests in flight at once.
 
 Open-value leg (logged, not graded): no specification or RDL states the result.
   OBS-SRAM-FLIP  one drawn bit of a written word flipped in the SRAM macro array:
@@ -1629,6 +1630,18 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
                 out += list(zip(reqs, ends))
         return out
 
+    @classmethod
+    def _same_id_peak(cls, beats) -> int:
+        """Peak count of outstanding requests that share one ID on one request channel."""
+        return max(
+            (
+                cls._depth_peak([b for b in beats if b.ch in chans and b.axi_id == i])
+                for chans in (("ar", "r"), ("aw", "b"))
+                for i in {b.axi_id for b in beats if b.ch == chans[0]}
+            ),
+            default=0,
+        )
+
     def _grade_port(self, m: str, mon: SepAxiChanMon, mark, mine) -> list[str]:
         """CHK-SRAM-XOUT grades of one port; ``mine`` is (burst, completion) in issue order."""
         beats = mon.since(mark)
@@ -1749,19 +1762,25 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             len(both),
             offset,
         )
-        if not both:
+        same = {"lsu": self._same_id_peak(s_beats), "si": self._same_id_peak(m_beats)}
+        if not both or min(same.values()) < 2:
             msg = (
-                f"CTRL-SRAM-XOUT FAIL: seed={seed} no clock with a request of each master "
-                f"outstanding (s_axi busy {len(s_busy)} clocks, m_axi busy {len(m_busy)} clocks)"
+                f"CTRL-SRAM-XOUT FAIL: seed={seed} overlap_clocks={len(both)} (s_axi busy "
+                f"{len(s_busy)} clocks, m_axi busy {len(m_busy)} clocks), same-ID peak "
+                f"lsu={same['lsu']} si={same['si']}; want a clock with a request of each master "
+                f"outstanding and two same-ID requests outstanding together on each port"
             )
             self.logger.error(msg)
             raise AssertionError(msg)
         self.logger.info(
-            "CTRL-SRAM-XOUT PASS: seed=%d overlap_clocks=%d first=%d last=%d (s_axi clock count)",
+            "CTRL-SRAM-XOUT PASS: seed=%d overlap_clocks=%d first=%d last=%d (s_axi clock count) "
+            "same_id_peak lsu=%d si=%d",
             seed,
             len(both),
             both[0],
             both[-1],
+            same["lsu"],
+            same["si"],
         )
         # Every written word reads back on both masters.
         for m, b, _ in c.xout:

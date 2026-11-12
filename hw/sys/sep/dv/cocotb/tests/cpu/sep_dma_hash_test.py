@@ -31,8 +31,12 @@ prints:
   0, and its hardware digest equals the software SHA-256 of the source.
 * CHK-ICCM-HASH-COPY: a DMA copy of the ICCM destination back to the SRAM buffer ends with the
   DONE interrupt and ERROR_CODE 0, and every buffer word equals its source word. The CPU load/store
-  unit cannot read ICCM (``hw/sys/sep/doc/rom.adoc``), so this copy is the witness of the ICCM
-  write.
+  unit cannot read ICCM (``hw/sys/sep/doc/rom.adoc``), so the firmware witnesses the ICCM write
+  with this copy. The host also reads the ICCM array at the destination address
+  (``env/sep_mem_backdoor.py``) and requires every word to equal the source word in the SRAM array.
+
+The host pins each count the firmware prints to the firmware's sizes: 14 sentinel words and 56
+bytes for the two-chunk pass, 64 words (256 bytes) for the ICCM pass.
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ import re
 from pathlib import Path
 
 import pyuvm
+from env import sep_mem_backdoor as mem
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_smc_mem import load_verilog_hex
 from sep_base_test import sep_base_test
@@ -53,6 +58,12 @@ _ITCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.dtcm.hex")
 
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
+# Sizes in dma_hash_test.c: the two-chunk message (FIPS_MSG_LEN) and the ICCM pass
+# (TEST_DATA_SIZE).
+_MC_BYTES = 56
+_MC_WORDS = _MC_BYTES // 4
+_ICCM_LEN = 0x100
+_ICCM_WORDS = _ICCM_LEN // 4
 # CFG_REGWEN reads its RDL reset (MUBI4 TRUE, unlocked) before any DMA
 # configuration; the value comes from the generated secure_dma C header.
 _CFG_REGWEN_RESET = CHeaderRegBlock("SECURE_DMA", ot_c_header("secure_dma")).reset("CFG_REGWEN")
@@ -226,11 +237,13 @@ class sep_dma_hash_test(sep_base_test):
         )
 
         sent, n = (int(v) for v in _grab(_MC_SENTINEL, console, "CTRL-MULTICHUNK-SENTINEL"))
-        self._grade("CTRL-MULTICHUNK-SENTINEL", n > 0 and sent == n, f"dst_sentinel={sent}/{n}")
+        self._grade(
+            "CTRL-MULTICHUNK-SENTINEL", n == _MC_WORDS and sent == n, f"dst_sentinel={sent}/{n}"
+        )
         match, n = (int(v) for v in _grab(_MC_COPY, console, "CHK-MULTICHUNK-COPY"))
         self._grade(
             "CHK-MULTICHUNK-COPY",
-            n > 0 and match == n,
+            n == _MC_BYTES and match == n,
             f"dst_bytes_equal_source={match}/{n} (two-chunk SHA-256 pass, DCCM destination)",
         )
 
@@ -239,7 +252,7 @@ class sep_dma_hash_test(sep_base_test):
         )
         self._grade(
             "CTRL-ICCM-FILL",
-            src_n > 0 and src_live == src_n and buf_n == src_n and buf_sent == buf_n,
+            src_n == _ICCM_WORDS and src_live == src_n and buf_n == src_n and buf_sent == buf_n,
             f"src_live={src_live}/{src_n} buf_sentinel={buf_sent}/{buf_n}",
         )
         base_s, dst_s, length_s = _grab(_ICCM_DST, console, "CTRL-ICCM-HASH-CLEAR")
@@ -247,7 +260,7 @@ class sep_dma_hash_test(sep_base_test):
         image_end = _ICCM_BASE + _itcm_image_bytes(_ITCM_HEX)
         self._grade(
             "CTRL-ICCM-HASH-CLEAR",
-            fw_base == _ICCM_BASE and length > 0 and image_end <= iccm_dst,
+            fw_base == _ICCM_BASE and length == _ICCM_LEN and image_end <= iccm_dst,
             f"iccm_base=0x{_ICCM_BASE:08x} fw_iccm_base=0x{fw_base:08x} "
             f"image_end=0x{image_end:08x} iccm_dst=0x{iccm_dst:08x} len={length}",
         )
@@ -266,6 +279,24 @@ class sep_dma_hash_test(sep_base_test):
         done, err, match, n, left = int(done), int(err, 16), int(match), int(n), int(left)
         self._grade(
             "CHK-ICCM-HASH-COPY",
-            done == 1 and err == 0 and n > 0 and match == n,
+            done == 1 and err == 0 and n == _ICCM_WORDS and match == n,
             f"done={done} error_code=0x{err:x} words_equal_source={match}/{n} sentinel_left={left}",
+        )
+        self._grade_iccm_array(iccm_dst)
+
+    def _grade_iccm_array(self, iccm_dst: int) -> None:
+        """CHK-ICCM-HASH-COPY, array part: the ICCM words at the destination address equal the
+        source words of the ICCM pass at the SRAM base, both read from the storage arrays."""
+        banks, sram = mem.iccm_banks(), mem.sram_array()
+        bad = []
+        for i in range(_ICCM_WORDS):
+            src = (int(sram[i // 2].value) >> (32 * (i % 2))) & 0xFFFF_FFFF
+            got = mem.iccm_word(banks, iccm_dst + 4 * i)
+            if got != src:
+                bad.append(f"@0x{iccm_dst + 4 * i:08x} iccm=0x{got:08x} source=0x{src:08x}")
+        self._grade(
+            "CHK-ICCM-HASH-COPY",
+            not bad,
+            f"iccm_array_equal_source={_ICCM_WORDS - len(bad)}/{_ICCM_WORDS} at 0x{iccm_dst:08x} "
+            + "; ".join(bad[:4]),
         )
