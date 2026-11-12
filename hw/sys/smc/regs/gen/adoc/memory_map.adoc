@@ -40,8 +40,8 @@
 |BASE + 0x4000 – BASE + 0x4FFF |4 KiB |92 B |AVSBus Controller Address Map |1 instance |- |Command, readback, status, and interrupt registers for the AVSBus (PMBus V1.3 Part III) controller. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
 |BASE + 0x5000 – BASE + 0x5FFF |4 KiB |3600 B |I2C Wrapper Address Map |1 instance |- |I2C and SMBus controller. |between sub-blocks: DECERR, 0xBADCAB1E / DECERR; between instances: SLVERR, 0x0 / SLVERR; past sub-block registers: SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x6000 – BASE + 0x6FFF |4 KiB |4 KiB |UART Wrapper Address Map |1 instance |- |UART controller. |OKAY, 0x0 / OKAY; past sub-block registers: SLVERR, 0x0 / SLVERR |-
-|BASE + 0x7000 – BASE + 0x7FFF |4 KiB |1 KiB |Efuse address map of physical efuse macro |1 instance |- |Address map for efuse shadow registers providing access to various chip configuration and ID fields |- |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0x8000 – BASE + 0x8FFF |4 KiB |28 B |eFuse Interface Control Address Map |1 instance |- |eFuse command and status registers. |- |DECERR, 0xBADCAB1E / DECERR
+|BASE + 0x7000 – BASE + 0x73FF |1 KiB |28 B |eFuse Interface Control Address Map |1 instance |- |eFuse command and status registers. |- |SLVERR, 0xBADCAB1E / SLVERR
+|BASE + 0x7400 – BASE + 0x7FFF |3 KiB |1 KiB |Efuse address map of physical efuse macro |1 instance |- |Address map for efuse shadow registers providing access to various chip configuration and ID fields |- |SLVERR, 0xBADCAB1E / SLVERR
 |BASE + 0x9000 – BASE + 0x9FFF |4 KiB |768 B |Telemetry Receiver Wrapper Address Map |1 instance |- |Telemetry data receiver. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0xA000 – BASE + 0xAFFF |4 KiB |36 B |OCTS System Timer Address Map |1 instance |- |Open Chiplet Time Synchronization (OCTS) System Timer Registers |- |SLVERR, 0x0 / SLVERR
 |BASE + 0xB000 – BASE + 0xBFFF |4 KiB |2 KiB |dtp_ctrl_reg |1 instance |- |512-entry DTP control block. |Forwarded |Forwarded
