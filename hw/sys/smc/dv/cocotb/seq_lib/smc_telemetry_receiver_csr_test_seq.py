@@ -21,17 +21,16 @@ below) and each entry names its source:
   not received a Last Packet flag") and ``doc/architecture.adoc`` ("parsed for
   headers (probe ID)", "detects last-packet boundaries").
 * the bit positions of the probe-ID header, of the last-packet flag and of the
-  first block in each packet -- no document in the tree fixes them, so their
-  values are not derived from any document: they are the layout this bench
-  drives and the receiver under test accepts (``_ATB_PROBE_ID_LSB``,
-  ``_ATB_LAST_PACKET_BIT``, ``_ATB_FIRST_BLOCK_LSB``, ``_ATB_NEXT_BLOCK_LSB``),
-  recorded as DV-owned assumptions; no document in the tree states the packet
-  layout.
+  blocks -- ``doc/index.adoc`` (Telemetry packet fields): ``last_packet`` at
+  bit 63 of each packet, ``probe_id`` at bits [60:56] of the first packet,
+  block i at bits [9i+8:9i] (``_ATB_PROBE_ID_LSB``, ``_ATB_LAST_PACKET_BIT``,
+  ``_ATB_FIRST_BLOCK_LSB`` = block 5, ``_ATB_NEXT_BLOCK_LSB`` = block 6). The
+  counter bytes are placed from that block downward, the bench's own order.
 
 What this testcase scores is the CSR-visible consequence of a message framed
 per that table (STATUS.EMPTY clearing, PROBE_ID reading back the value that was
-framed), not that the table is the specified telemetry format: a receiver that
-decoded a differently laid-out message would fail here without being wrong.
+framed), not the counter decode, which ``smc_telemetry_atb_capture_test``
+grades against the ``doc/index.adoc`` layout.
 """
 
 from __future__ import annotations
@@ -124,7 +123,7 @@ _NUM_BEATS_PER_PACKET = _ATB_PACKET_BITS // _ATB_BEAT_BITS
 _ATB_BLOCK_DATA_BITS = 8  # one counter byte per block (architecture.adoc)
 _ATB_BLOCK_BITS = _ATB_BLOCK_DATA_BITS + 1  # plus its valid flag: "9-bit block"
 _ATB_PROBE_ID_BITS = 5  # telemetry_receiver.rdl PROBE_ID[4:0]
-# Positions no document fixes (DV-owned assumptions, see the module docstring).
+# Positions doc/index.adoc states (Telemetry packet fields); see the module docstring.
 _ATB_PROBE_ID_LSB = 56
 _ATB_LAST_PACKET_BIT = 63
 _ATB_FIRST_BLOCK_LSB = 45  # first block of the packet that carries the header

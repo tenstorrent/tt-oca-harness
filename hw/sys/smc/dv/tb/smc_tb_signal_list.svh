@@ -505,6 +505,10 @@
 
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
+// REFERENCE_COUNTER reload crossing: the count held in the reference-clock
+// domain and the one-cycle update strobe that sends a written value across.
+`SMC_TB_OUT(logic [63:0], tb_cpu_ref_count)
+`SMC_TB_OUT(logic, tb_cpu_ref_count_update)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_read_count)
 `SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NumSramBanks*32-1:0], tb_cpu_scratch_bank_read_count)
 // Scratch macro peek: the 64 data bits of the macro word at the bank and entry
