@@ -41,7 +41,8 @@ Checkers:
                          (WPTR - RPTR) mod 64 == LEVEL mod 64 at every sample.
   CHK-FIFO-POP           each pop with the producer stopped: LEVEL - 1, RPTR + 1, WPTR kept;
                          LEVEL and WPTR still kept after the stream port offers a word;
-                         control: CTRL-FIFO-POP offered >= 1 stream word in the window.
+                         control: CTRL-FIFO-POP, ENABLE reads back 0 and the stream
+                         port offers >= 1 word after the first pop, when LEVEL < 64.
   CHK-FIFO-RESUME        LEVEL rises from 0 after ENABLE = 1.
   CHK-FIFO-POP-LIVE      pops with ENABLE = 1 and the producer running. A window is a
                          FIFO_STATUS read A, one FIFO_RDATA pop and a FIFO_STATUS read B;
@@ -561,12 +562,16 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
     async def _pop_leg(self) -> None:
         plan = self.plan
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
+        enable_rb = _get(await self._rd(ESRC_FIFO_CTRL), "FIFO_CTRL", "ENABLE")
         l0, w0, r0 = _status(await self._rd(ESRC_FIFO_STATUS))
-        tap0 = self.tap.words
         prev = (l0, w0, r0)
         bad = 0
-        for _ in range(plan.k):
+        for i in range(plan.k):
             await self._rd(ESRC_FIFO_RDATA)
+            if i == 0:
+                # Counted from the first pop: a word offered on a full FIFO is
+                # discarded whatever ENABLE holds.
+                tap0 = self.tap.words
             cur = _status(await self._rd(ESRC_FIFO_STATUS))
             bad += cur != (prev[0] - 1, prev[1], (prev[2] + 1) % PTR_MOD)
             prev = cur
@@ -580,7 +585,13 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         cur = _status(await self._rd(ESRC_FIFO_STATUS))
         bad += cur != prev
         prev = cur
-        self.chk.ctrl("FIFO-POP", offered >= 1, offered=offered, wait_bound=bound)
+        self.chk.ctrl(
+            "FIFO-POP",
+            enable_rb == 0 and offered >= 1,
+            enable_rb=enable_rb,
+            offered=offered,
+            wait_bound=bound,
+        )
         l1, w1, r1 = prev
         if self.chk.ok(
             "FIFO-POP",
