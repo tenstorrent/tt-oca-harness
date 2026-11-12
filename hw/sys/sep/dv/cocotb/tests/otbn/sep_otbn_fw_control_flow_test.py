@@ -212,16 +212,18 @@ class sep_otbn_fw_control_flow_test(sep_base_test):
         status_t = SepEdgeTimer(dut.otbn_status_probe_o, name="otbn_status").start()
         irq_t = SepEdgeTimer(dut.sep_internal_interrupts_probe_o, name="internal_irq").start()
         noise = self.start_esrc_noise_driver()
-        await self.boot_firmware(
-            self.sb,
-            _ITCM_HEX,
-            dtcm,
-            rst_vec=_ICCM_BASE >> 1,
-            max_run_cycles=_MAX_RUN_CYCLES,
-            no_boot_cycles=_NO_BOOT_CYCLES,
-            progress_every=_PROGRESS_EVERY,
-        )
-        noise.kill()
+        try:
+            await self.boot_firmware(
+                self.sb,
+                _ITCM_HEX,
+                dtcm,
+                rst_vec=_ICCM_BASE >> 1,
+                max_run_cycles=_MAX_RUN_CYCLES,
+                no_boot_cycles=_NO_BOOT_CYCLES,
+                progress_every=_PROGRESS_EVERY,
+            )
+        finally:
+            await noise.stop()
         t_end = int(get_sim_time("ps"))
         await status_t.stop()
         await irq_t.stop()
