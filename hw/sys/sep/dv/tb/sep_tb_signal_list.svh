@@ -150,6 +150,9 @@
 // SLVERR until the response driver changes, so a DMA transfer after the drop can still fail.
 // See tb_top.sv.
 `SEP_TB_IN(logic, dma_host_rsp_err_inject_i)
+// Response beats of each secure-DMA host transfer that complete normally before the inject above
+// forces SLVERR. Default 0: SLVERR from the first beat. See tb_top.sv.
+`SEP_TB_IN(logic [7:0], dma_host_rsp_err_pass_beats_i)
 // AES software-reset readback inject. Default 0. While 1, reads of sep_reset_ctrl return bit 2
 // (SW_RESET_N.aes_sw_rst_n) as 0; the register and the AES reset are not forced. See tb_top.sv.
 `SEP_TB_IN(logic, aes_sw_rst_readback_inject_i)

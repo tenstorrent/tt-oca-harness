@@ -28,10 +28,16 @@ Status words are STATUS_ENCODE(type, 1 = BL0, code), codes from the registry
 include/status_values.h (SEP-ROM-STAT-030). The OpenTitan driver retries 3 times, so a read makes
 at most 1 + 3 = 4 transport attempts. From the first MANIFEST_LOAD_START word to the verdict,
 dma_host_rsp_err_inject_i makes every secure-DMA host response SLVERR except during a zero fill,
-so each OpenTitan SPI DMA read fails on its first beat in both slots and the SEP SRAM clear
-between slots (RETRY-040) still completes. Each flash frame is matched to the chip-select
-assertion of the same index.
+so the SEP SRAM clear between slots (RETRY-040) still completes, and
+dma_host_rsp_err_pass_beats_i = 4 lets the first four response beats of each transfer complete
+normally. The DMA moves a read frame as 4-byte words, each one R beat from the SPI RX FIFO and one
+B beat into SEP SRAM, so every OpenTitan SPI DMA read lands the frame's first 8 flash bytes, the
+manifest magic included, in the destination buffer and then fails on the third word's read. Each
+flash frame is matched to the chip-select assertion of the same index.
 
+* CTRL-PARTIAL-LANDED: on at least one read attempt, the PR-SRAM write beats between that
+  frame's chip-select assertion and the next frame put the frame's first 8 bytes, starting with
+  the manifest magic, at SEP SRAM offsets 0 to 7, and nothing at offsets 8 to the frame length.
 * CTRL-FAULT-APPLIED: the pin rises after the first MANIFEST_LOAD_START word and is 1 at the
   chip-select assertion of every read frame in either slot; each slot's last read frame is
   followed by a WARN SPI_OT_TRANSPORT_ERROR word before the next slot's first frame; the ROM
@@ -42,9 +48,12 @@ assertion of the same index.
   frame.
 * CHK-ATTEMPTS-BOUNDED ("a bounded number of times (OpenTitan driver: 3)"): at most 4 read frames
   at each slot's manifest address.
-* CHK-NO-PARTIAL-USE ("never by accepting partial data"): no MANIFEST_VALIDATED or
-  PAYLOAD_VALIDATED word, no OCA_BODY=, MANIFEST_OK or PAYLOAD_OK console line, and no read frame
-  in a slot returns a byte outside the span of that slot's first read frame.
+* CHK-NO-PARTIAL-USE ("never by accepting partial data"): after each transport fault the ROM does
+  not act on the partly filled buffer: no read frame in a slot returns a byte outside the span of
+  that slot's first read frame, no WARN word other than SPI_OT_* from the first
+  MANIFEST_LOAD_START to MANIFEST_LOAD_FAILED, no MANIFEST_VALIDATED or PAYLOAD_VALIDATED word,
+  and no OCA_BODY=, MANIFEST_OK or PAYLOAD_OK console line. A ROM that parsed the buffer, which
+  holds a valid magic, or read on past the faulted frame fails one of these.
 * CHK-FALLBACK-OR-TERMINAL ("handled by slot fallback"; RETRY-010, RETRY-050): every read frame
   is inside the primary or backup slot span; a MANIFEST_LOAD_START word between the last primary
   frame and the first backup frame; after the last backup frame an ERROR MANIFEST_LOAD_FAILED
@@ -74,6 +83,7 @@ from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from env.sep_chk_log import SepChkLog
 from env.sep_esrc_noise import esrc_noise_task
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_rom_observer import STORE_LAG_MAX_CYCLES, SepRomObserver
 from ocah_spi_vip import OcahSpiFlash
 from rom_fw.sep_rom_observe_base import ROM_BASE, RUN_PULSE_CYCLES, sep_rom_observe_base
@@ -86,12 +96,17 @@ _SPEC_RETRIES = 3
 _SPEC_MAX_ATTEMPTS = 1 + _SPEC_RETRIES
 _MIN_ATTEMPTS = 2
 
+# One R and one B beat per 4-byte DMA word: two whole words land before the fault.
+_PASS_BEATS = 4
+_PASS_BYTES = 4 * (_PASS_BEATS // 2)
+
 _BL0 = 1 << 16
 _WARN = 0x08
 _ERROR = 0x0F
 _MANIFEST_LOAD_START = 0x0212
 _MANIFEST_LOAD_FAILED = 0x0213
 _SPI_OT_TRANSPORT_ERROR = 0x0223
+_SPI_OT_CODES = (0x0222, _SPI_OT_TRANSPORT_ERROR, 0x0224)
 _MANIFEST_VALIDATED = 0x0053
 _PAYLOAD_VALIDATED = 0x0055
 _VERDICT_FAIL = 0xDEADBEEF
@@ -111,6 +126,7 @@ _HALT_PC_SPAN = 64
 _PROGRESS_CYCLES = 250_000
 
 _CS, _PIN = "spi_cs_n_o", "dma_host_rsp_err_inject_i"
+_PASS_PIN = "dma_host_rsp_err_pass_beats_i"
 
 
 class _HaltObserver(SepRomObserver):
@@ -138,6 +154,18 @@ def _code_ts(status: list[tuple[int, int]], code: int) -> list[int]:
     return [t for t, w in status if w & 0x00FF_FFFF == _BL0 | code]
 
 
+def _landed(beats: list, t0: int, t1: int) -> dict[int, int]:
+    """SEP SRAM byte offset -> byte, from the PR-SRAM write beats in [t0, t1)."""
+    out = {}
+    for b in beats:
+        if b.ch != "req" or not t0 <= b.t_ps < t1 or b.has_unknown() or not b.we:
+            continue
+        for lane in range(8):
+            if b.strb >> lane & 1:
+                out[(b.addr & ~7) + lane] = b.wdata >> (8 * lane) & 0xFF
+    return out
+
+
 def _level(changes: list[tuple[int, int]], t: int) -> int | None:
     """Value of a watched signal at time t, from its change record."""
     v = None
@@ -150,7 +178,7 @@ def _level(changes: list[tuple[int, int]], t: int) -> int | None:
 
 @pyuvm.test()
 class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
-    """SPI boot with every non-zero-fill secure-DMA host response SLVERR from the first slot attempt on."""
+    """SPI boot whose secure-DMA host transfers fail after a partial frame from the first slot attempt on."""
 
     max_run_cycles = 6_000_000
     required_evidence = (
@@ -165,11 +193,18 @@ class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
         dut = cocotb.top
         while not _code_ts(obs.status, _MANIFEST_LOAD_START):
             await ClockCycles(dut.clk_i, 16)
+        self._set_pin(dut, _PASS_PIN, _PASS_BEATS)
         self._set_pin(dut, _PIN, 1)
-        self.logger.info("%s=1 at cycle %d", _PIN, obs.cycle)
+        self.logger.info("%s=1 %s=%d at cycle %d", _PIN, _PASS_PIN, _PASS_BEATS, obs.cycle)
+        self._open_tap("primary")
         next_log = obs.cycle + _PROGRESS_CYCLES
         while obs.verdict_pass() is None:
             await ClockCycles(dut.clk_i, 16)
+            # The primary window ends at its transport report, before the SRAM clear between slots.
+            if _code_ts(obs.status, _SPI_OT_TRANSPORT_ERROR):
+                await self._close_tap("primary")
+            if len(_code_ts(obs.status, _MANIFEST_LOAD_START)) > 1 and "backup" not in self.taps:
+                self._open_tap("backup")
             if obs.cycle >= next_log:
                 next_log += _PROGRESS_CYCLES
                 self.logger.info(
@@ -178,8 +213,19 @@ class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
                     obs.retired,
                     obs.status[-1][1] if obs.status else 0,
                 )
+        await self._close_tap("backup")
         self._set_pin(dut, _PIN, 0)
         self.logger.info("%s=0 at cycle %d", _PIN, obs.cycle)
+
+    def _open_tap(self, slot: str) -> None:
+        tap = SepFabricTap("PR-SRAM").start()
+        self.taps[slot] = (tap, tap.mark())
+
+    async def _close_tap(self, slot: str) -> None:
+        tap = self.taps.get(slot, (None,))[0]
+        if tap is not None and tap.stop_clk is None:
+            await tap.stop()
+            self.tap_end[slot] = int(get_sim_time("ps"))
 
     async def run_scenario(self) -> None:
         self.chk = SepChkLog(self, self.get_type_name(), self.random_seed())
@@ -188,6 +234,8 @@ class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
         self.write_efuse_image(self.build_efuse_image())
         image = _FLASH_IMAGE.read_bytes()
         self._image_len = len(image)
+        self.taps: dict[str, tuple[SepFabricTap, int]] = {}
+        self.tap_end: dict[str, int] = {}
         flash = OcahSpiFlash(
             dut.spi_cs_n_o,
             dut.spi_sck_o,
@@ -207,6 +255,9 @@ class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
         finally:
             stim.cancel()
             self._set_pin(dut, _PIN, 0)
+            self._set_pin(dut, _PASS_PIN, 0)
+            for slot in self.taps:
+                await self._close_tap(slot)
             t_end = int(get_sim_time("ps"))
             await obs.stop()
             await flash.stop()
@@ -306,6 +357,32 @@ class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
             max_attempts=_SPEC_MAX_ATTEMPTS,
         )
 
+        landed = {}
+        partial = []
+        for name, (tap, mark) in self.taps.items():
+            beats = tap.since(mark)
+            rds = in_slot[name]
+            ends = [t for t, _ in rds[1:]] + [self.tap_end.get(name, t_end)]
+            landed[name] = []
+            for (t, x), t1 in zip(rds, ends):
+                data = bytes(x["data_out"])
+                got = _landed(beats, t, t1)
+                landed[name].append(sum(k < len(data) for k in got))
+                if (
+                    data[:4] == mm.MANIFEST_MAGIC
+                    and [got.get(k) for k in range(_PASS_BYTES)] == list(data[:_PASS_BYTES])
+                    and not any(k in got for k in range(_PASS_BYTES, len(data)))
+                ):
+                    partial.append(f"{name}@{_ps(t)}:{data[:_PASS_BYTES].hex()}")
+        chk.ctrl(
+            "PARTIAL-LANDED",
+            bool(partial),
+            pass_beats=_PASS_BEATS,
+            pass_bytes=_PASS_BYTES,
+            frame_bytes_landed_per_attempt=landed,
+            attempts_with_partial=partial[:8],
+        )
+
         used = [
             f"0x{w:08x}"
             for t, w in status
@@ -324,13 +401,24 @@ class sep_rom_spi_retry_exhaust_test(sep_rom_observe_base):
                 for a, b in (ev.read_span(x) for _, x in rds)
                 if a < lo or b > hi
             ]
+        t_fail = next((t for t, w in status if w == _TERMINAL), t_end)
+        warns = [
+            f"0x{w:08x}"
+            for t, w in status
+            if starts
+            and starts[0] <= t <= t_fail
+            and w >> 24 == _WARN
+            and w & 0x00FF_0000 == _BL0
+            and w & 0xFFFF not in _SPI_OT_CODES
+        ]
         chk.ok(
             "NO-PARTIAL-USE",
-            bool(in_slot["primary"]) and not used and not use_lines and not past,
+            bool(in_slot["primary"]) and not used and not use_lines and not past and not warns,
             validated_words=used[:4],
             use_lines=use_lines[:4],
             first_read_span=spans,
             reads_past_first_span=past[:4],
+            non_transport_warns=warns[:4],
         )
 
         verdict = obs.verdict[-1] if obs.verdict else (None, None)
