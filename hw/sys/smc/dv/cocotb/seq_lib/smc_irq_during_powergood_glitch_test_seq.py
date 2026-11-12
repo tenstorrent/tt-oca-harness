@@ -180,71 +180,79 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
         # S1: pre-glitch idle baseline (scoreboard: resolvable + all aggregates 0).
         self.baseline_irq = await self._irq_sample("irq_baseline")
 
-        # S2: arm the continuous observer, then glitch powergood.
-        watcher = cocotb.start_soon(self._watch_irq(dut))
-        await self._reset_item("pg_lo", SmcResetOp.POWERGOOD_LO)
-        hold_start_cycle = self._watch_cycles
-        # Bounded proof that the glitch reached the DUT.
-        self.glitch_effect = await self._reset_item(
-            "pg_glitch_effect",
-            SmcResetOp.WAIT_STATE,
-            expect_powergood_stable=0,
-            expect_left_stable=True,
-            timeout_ref_cycles=self.GLITCH_EFFECT_BOUND_REF_CYCLES,
-        )
+        # smc_powergood_glitch_cg samples the glitch and the recovery; the two idle
+        # bookend samples stay outside the window.
+        dut.tb_fcov_gate.value = 1
+        cocotb.log.info("CTRL-FCOV-GATE: rise %d ps", get_sim_time("ps"))
+        try:
+            # S2: arm the continuous observer, then glitch powergood.
+            watcher = cocotb.start_soon(self._watch_irq(dut))
+            await self._reset_item("pg_lo", SmcResetOp.POWERGOOD_LO)
+            hold_start_cycle = self._watch_cycles
+            # Bounded proof that the glitch reached the DUT.
+            self.glitch_effect = await self._reset_item(
+                "pg_glitch_effect",
+                SmcResetOp.WAIT_STATE,
+                expect_powergood_stable=0,
+                expect_left_stable=True,
+                timeout_ref_cycles=self.GLITCH_EFFECT_BOUND_REF_CYCLES,
+            )
 
-        # S3: IRQ SAMPLEs from inside the glitch hold.
-        for i in range(self.GLITCH_IRQ_SAMPLES):
-            self.glitch_irq_samples.append(await self._irq_sample(f"irq_mid_glitch_{i}"))
-            await ClockCycles(dut.clk_ref_i, self.IRQ_SAMPLE_GAP_REF_CYCLES)
+            # S3: IRQ SAMPLEs from inside the glitch hold.
+            for i in range(self.GLITCH_IRQ_SAMPLES):
+                self.glitch_irq_samples.append(await self._irq_sample(f"irq_mid_glitch_{i}"))
+                await ClockCycles(dut.clk_ref_i, self.IRQ_SAMPLE_GAP_REF_CYCLES)
 
-        # Exact gated state while power-good is not stable (SPEC: POR holds the
-        # SMC functional resets asserted until power-good is stable).
-        await self._reset_item(
-            "pg_mid_glitch",
-            SmcResetOp.RAW_SAMPLE,
-            expect_powergood_stable=0,
-            expect_rst_cold_stable_ref_clk_n=0,
-            expect_rst_primary_ref_clk_n=0,
-            expect_rst_primary_smc_clk_n=0,
-            expect_left_stable=True,
-        )
+            # Exact gated state while power-good is not stable (SPEC: POR holds the
+            # SMC functional resets asserted until power-good is stable).
+            await self._reset_item(
+                "pg_mid_glitch",
+                SmcResetOp.RAW_SAMPLE,
+                expect_powergood_stable=0,
+                expect_rst_cold_stable_ref_clk_n=0,
+                expect_rst_primary_ref_clk_n=0,
+                expect_rst_primary_smc_clk_n=0,
+                expect_left_stable=True,
+            )
 
-        # S4: hold the glitch for at least the drawn glitch length before
-        # releasing it, so the observed low window is a stated stimulus
-        # quantity and not whatever the mid-glitch SAMPLEs happened to take.
-        held = self._watch_cycles - hold_start_cycle
-        if held < self.glitch_ref_cycles:
-            await ClockCycles(dut.clk_ref_i, self.glitch_ref_cycles - held)
-        self.glitch_hold_ref_cycles = self._watch_cycles - hold_start_cycle
-        assert self.glitch_hold_ref_cycles >= self.glitch_ref_cycles, (
-            f"powergood_i was held low for only "
-            f"{self.glitch_hold_ref_cycles} clk_ref_i cycles, below the drawn "
-            f"{self.glitch_ref_cycles}-cycle glitch length"
-        )
+            # S4: hold the glitch for at least the drawn glitch length before
+            # releasing it, so the observed low window is a stated stimulus
+            # quantity and not whatever the mid-glitch SAMPLEs happened to take.
+            held = self._watch_cycles - hold_start_cycle
+            if held < self.glitch_ref_cycles:
+                await ClockCycles(dut.clk_ref_i, self.glitch_ref_cycles - held)
+            self.glitch_hold_ref_cycles = self._watch_cycles - hold_start_cycle
+            assert self.glitch_hold_ref_cycles >= self.glitch_ref_cycles, (
+                f"powergood_i was held low for only "
+                f"{self.glitch_hold_ref_cycles} clk_ref_i cycles, below the drawn "
+                f"{self.glitch_ref_cycles}-cycle glitch length"
+            )
 
-        # Release powergood and keep sampling IRQ while recovery is in flight.
-        await self._reset_item("pg_hi", SmcResetOp.POWERGOOD_HI)
-        for i in range(self.RECOVERY_IRQ_SAMPLES):
-            self.recovery_irq_samples.append(await self._irq_sample(f"irq_recovering_{i}"))
-            await ClockCycles(dut.clk_ref_i, self.IRQ_SAMPLE_GAP_REF_CYCLES)
+            # Release powergood and keep sampling IRQ while recovery is in flight.
+            await self._reset_item("pg_hi", SmcResetOp.POWERGOOD_HI)
+            for i in range(self.RECOVERY_IRQ_SAMPLES):
+                self.recovery_irq_samples.append(await self._irq_sample(f"irq_recovering_{i}"))
+                await ClockCycles(dut.clk_ref_i, self.IRQ_SAMPLE_GAP_REF_CYCLES)
 
-        # S5: positive control for the recovered idle-IRQ leg -- prove the DUT
-        # really came back (all five reset observables released), bounded.
-        self.recovery_wait = await self._reset_item(
-            "pg_recovered",
-            SmcResetOp.WAIT_STATE,
-            expect_powergood_stable=1,
-            expect_rst_cold_stable_ref_clk_n=1,
-            expect_rst_primary_ref_clk_n=1,
-            expect_rst_primary_smc_clk_n=1,
-            expect_rst_wdt_smc_clk_n=1,
-            timeout_ref_cycles=self.RECOVER_BOUND_REF_CYCLES,
-        )
+            # S5: positive control for the recovered idle-IRQ leg -- prove the DUT
+            # really came back (all five reset observables released), bounded.
+            self.recovery_wait = await self._reset_item(
+                "pg_recovered",
+                SmcResetOp.WAIT_STATE,
+                expect_powergood_stable=1,
+                expect_rst_cold_stable_ref_clk_n=1,
+                expect_rst_primary_ref_clk_n=1,
+                expect_rst_primary_smc_clk_n=1,
+                expect_rst_wdt_smc_clk_n=1,
+                timeout_ref_cycles=self.RECOVER_BOUND_REF_CYCLES,
+            )
 
-        # S6: close the observation window and rule on it.
-        watcher.kill()
-        self._check_watch("powergood glitch + recovery")
+            # S6: close the observation window and rule on it.
+            watcher.kill()
+            self._check_watch("powergood glitch + recovery")
+        finally:
+            dut.tb_fcov_gate.value = 0
+            cocotb.log.info("CTRL-FCOV-GATE: fall %d ps", get_sim_time("ps"))
 
         # S7: post-recovery idle IRQ, now that recovery is proven.
         self.recovered_irq = await self._irq_sample("irq_recovered")

@@ -18,7 +18,10 @@
 // DISABLE CONVENTION, unlike the rest of the SMC cov/sv modules: the gate is
 // powergood, not reset. A reset-assertion point behind `disable iff (in
 // reset)` can never fire. Once power is good the signals are driven and reset
-// assertion itself stays observable.
+// assertion itself stays observable. smc_powergood_glitch_cg is the one
+// exception: its stimulus is the powergood_i low run, so its trackers are
+// qualified by tb_fcov_gate alone and clear only when the gate rises, and its
+// glitch-length sample is taken when the gate falls.
 //
 // CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
 // argument is a single continuous-assign wire; no declaration initializers
@@ -52,6 +55,11 @@ module smc_reset_fcov #(
   input wire ss0_warm_reset_ni,
   input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_process_i,
   input wire ndmreset_irq_i,
+
+  // The interrupt aggregates the power-good glitch owner grades.
+  input wire sync_irq_i,
+  input wire gpio_irq_any_i,
+  input wire uart_irq_any_i,
 
   // SEP_IN channels: the SPM burst in flight and the register read-back.
   input wire sep_awvalid_i,
@@ -291,12 +299,18 @@ module smc_reset_fcov #(
   // responder follows the primary reset and drops its responses.
   wire trk_rst_n = (rst_primary_smc_clk_ni === 1'b1) && (rst_warm_smc_clk_ni === 1'b1);
 
+  wire gate_on = (fcov_gate_i === 1'b1);
+  logic gate_smc_q;
+  always_ff @(posedge clk_smc_i) gate_smc_q <= gate_on;
+  wire gate_rise_smc = gate_on && (gate_smc_q !== 1'b1);
+
   // SPM burst over SEP_IN, one burst at a time. Phase of a write: AW not yet
   // accepted (before), AW accepted and WLAST not (data), WLAST accepted and B
   // not returned (awaiting). Phase of a read: AR not yet accepted (before),
   // AR accepted and no R beat yet (awaiting, the R beats are the response),
   // R beats under way and RLAST not returned (data). A burst whose response
-  // returned is completed until the next SPM burst starts.
+  // returned is completed until the next SPM burst starts or tb_fcov_gate
+  // rises, so a completed burst is always the window's own.
   wire spm_aw_pend = (sep_awvalid_i === 1'b1) && in_spm(sep_awaddr_i);
   wire spm_ar_pend = (sep_arvalid_i === 1'b1) && in_spm(sep_araddr_i);
   logic spm_wr_act_q, spm_wr_wdone_q, spm_wr_cmpl_q;
@@ -329,8 +343,27 @@ module smc_reset_fcov #(
         spm_rd_beat_q <= 1'b0;
         spm_rd_cmpl_q <= 1'b1;
       end
+      if (gate_rise_smc) begin
+        spm_wr_cmpl_q <= 1'b0;
+        spm_rd_cmpl_q <= 1'b0;
+      end
     end
   end
+
+  // The tracker state the current clk_smc_i edge leaves, from the handshakes
+  // visible on it: a handshake accepted at an edge counts at that edge.
+  wire spm_aw_new = spm_aw_pend && sep_aw_acc;
+  wire spm_b_end = sep_b_acc && spm_wr_act_q;
+  wire spm_wr_act_nx = (spm_wr_act_q && !spm_b_end) || spm_aw_new;
+  wire spm_wr_wdone_nx = !spm_b_end
+      && (spm_wr_wdone_q || (sep_w_last_acc && (spm_wr_act_q || spm_aw_pend)));
+  wire spm_wr_cmpl_nx = !gate_rise_smc && (spm_b_end || (spm_wr_cmpl_q && !spm_aw_pend));
+  wire spm_ar_new = spm_ar_pend && sep_ar_acc;
+  wire spm_r_end = sep_r_last_acc && spm_rd_act_q;
+  wire spm_rd_act_nx = (spm_rd_act_q && !spm_r_end) || spm_ar_new;
+  wire spm_rd_beat_nx = !spm_r_end
+      && ((sep_r_acc && spm_rd_act_q) || (spm_rd_beat_q && !spm_ar_new));
+  wire spm_rd_cmpl_nx = !gate_rise_smc && (spm_r_end || (spm_rd_cmpl_q && !spm_ar_pend));
 
   // Engine (DMA, zeroer) traffic on SYS_OUT, counted per channel. Data: write
   // data owed after an AW or a burst of W or R beats under way. Awaiting: a
@@ -356,6 +389,11 @@ module smc_reset_fcov #(
 
   logic [7:0] out_ar_q, out_w_owed_q, out_b_q;
   logic out_r_mid_q, out_w_mid_q;
+  wire [7:0] out_ar_nx = count_step(out_ar_q, out_ar_acc, out_r_last_acc);
+  wire [7:0] out_w_owed_nx = count_step(out_w_owed_q, out_aw_acc, out_w_last_acc);
+  wire [7:0] out_b_nx = count_step(out_b_q, out_w_last_acc, out_b_acc);
+  wire out_r_mid_nx = out_r_acc ? !out_r_last_acc : out_r_mid_q;
+  wire out_w_mid_nx = out_w_acc ? !out_w_last_acc : out_w_mid_q;
   always_ff @(posedge clk_smc_i or negedge trk_rst_n) begin
     if (!trk_rst_n) begin
       out_ar_q <= '0;
@@ -364,16 +402,16 @@ module smc_reset_fcov #(
       out_r_mid_q <= 1'b0;
       out_w_mid_q <= 1'b0;
     end else begin
-      out_ar_q <= count_step(out_ar_q, out_ar_acc, out_r_last_acc);
-      out_w_owed_q <= count_step(out_w_owed_q, out_aw_acc, out_w_last_acc);
-      out_b_q <= count_step(out_b_q, out_w_last_acc, out_b_acc);
-      if (out_r_acc) out_r_mid_q <= !out_r_last_acc;
-      if (out_w_acc) out_w_mid_q <= !out_w_last_acc;
+      out_ar_q <= out_ar_nx;
+      out_w_owed_q <= out_w_owed_nx;
+      out_b_q <= out_b_nx;
+      out_r_mid_q <= out_r_mid_nx;
+      out_w_mid_q <= out_w_mid_nx;
     end
   end
 
-  wire eng_data = out_w_mid_q || (out_w_owed_q != 8'd0) || out_r_mid_q;
-  wire eng_awaiting = (out_ar_q != 8'd0) || (out_b_q != 8'd0);
+  wire eng_data = out_w_mid_nx || (out_w_owed_nx != 8'd0) || out_r_mid_nx;
+  wire eng_awaiting = (out_ar_nx != 8'd0) || (out_b_nx != 8'd0);
   wire [1:0] eng_phase = eng_data ? PhData : (eng_awaiting ? PhAwaiting : PhBefore);
 
   logic [2:0] op_now;
@@ -381,14 +419,14 @@ module smc_reset_fcov #(
   always_comb begin
     op_now = OpNone;
     ph_now = PhBefore;
-    if (spm_wr_act_q) begin
+    if (spm_wr_act_nx) begin
       op_now = OpSpmWr;
-      ph_now = spm_wr_wdone_q ? PhAwaiting : PhData;
+      ph_now = spm_wr_wdone_nx ? PhAwaiting : PhData;
     end else if (spm_aw_pend) begin
       op_now = OpSpmWr;
-    end else if (spm_rd_act_q) begin
+    end else if (spm_rd_act_nx) begin
       op_now = OpSpmRd;
-      ph_now = spm_rd_beat_q ? PhData : PhAwaiting;
+      ph_now = spm_rd_beat_nx ? PhData : PhAwaiting;
     end else if (spm_ar_pend) begin
       op_now = OpSpmRd;
     end else if (dma_busy_i === 1'b1) begin
@@ -397,17 +435,19 @@ module smc_reset_fcov #(
     end else if (zeroer_busy_i === 1'b1) begin
       op_now = OpZeroer;
       ph_now = eng_phase;
-    end else if (spm_wr_cmpl_q) begin
+    end else if (spm_wr_cmpl_nx) begin
       op_now = OpSpmWr;
       ph_now = PhCompleted;
-    end else if (spm_rd_cmpl_q) begin
+    end else if (spm_rd_cmpl_nx) begin
       op_now = OpSpmRd;
       ph_now = PhCompleted;
     end
   end
+  wire op_busy = (op_now != OpNone);
 
-  // The state at the last clk_smc_i edge before the assertion: the snapshot
-  // freezes at the first clk_smc_i edge at which any of the four sources the
+  // The state the last clk_smc_i edge before the assertion leaves, the
+  // handshakes accepted at that edge included: the snapshot freezes at the
+  // first clk_smc_i edge at which any of the four sources the
   // kind is read from (rst_cold_ni, the cool pin, the FLR cool reset, the SEP
   // watchdog reset) is seen low, and once the primary or the warm reset
   // asserts. The clk_ref_i sample below reads the frozen value, so a handshake
@@ -444,7 +484,6 @@ module smc_reset_fcov #(
   wire [1:0] fall_kind = cold_fall ? KindCold
                        : cool_fall ? KindCool
                        : flr_fall  ? KindFlr : KindWdt;
-  wire gate_on = (fcov_gate_i === 1'b1);
 
   logic armed_q;
   always_ff @(posedge clk_ref_i) begin
@@ -452,13 +491,42 @@ module smc_reset_fcov #(
     else if (any_fall) armed_q <= 1'b0;
   end
   wire kind_e = gate_on && (armed_q === 1'b1) && any_fall;
+  // An assertion with no operation in flight is no pass of the in-flight
+  // group.
+  wire kind_sample_e = kind_e && (op_snap_q != OpNone);
 
-  // One user point per reset kind: its assertion inside the owner's graded
-  // window. The c_reset_op_* points above record any assertion of any leaf.
-  wire kind_cold_graded_e = kind_e && (fall_kind == KindCold);
-  wire kind_cool_graded_e = kind_e && (fall_kind == KindCool);
-  wire kind_flr_graded_e = kind_e && (fall_kind == KindFlr);
-  wire kind_wdt_graded_e = kind_e && (fall_kind == KindWdt);
+  // A fall with no operation at the snapshot counts its twin when the
+  // window's operation appears: the kind waits until the first clk_ref_i
+  // edge at which an operation is presented or busy, while the gate stays
+  // high and no other source falls. A window with no operation counts none,
+  // and an assertion after the window's engine operation has finished counts
+  // no twin.
+  logic pend_q;
+  logic [1:0] pend_kind_q;
+  wire pend_set_e = kind_e && (op_snap_q == OpNone);
+  wire pend_fire_e = gate_on && (pend_q === 1'b1) && !any_fall && op_busy;
+  always_ff @(posedge clk_ref_i) begin
+    if (not_powered || !gate_on) begin
+      pend_q <= 1'b0;
+    end else if (pend_set_e) begin
+      pend_q <= 1'b1;
+      pend_kind_q <= fall_kind;
+    end else if (any_fall || pend_fire_e) begin
+      pend_q <= 1'b0;
+    end
+  end
+
+  // One user point per reset kind: each assertion of the owner's graded
+  // window, once. The c_reset_op_* points above record any assertion of any
+  // leaf.
+  wire kind_cold_graded_e = (kind_sample_e && (fall_kind == KindCold))
+      || (pend_fire_e && (pend_kind_q == KindCold));
+  wire kind_cool_graded_e = (kind_sample_e && (fall_kind == KindCool))
+      || (pend_fire_e && (pend_kind_q == KindCool));
+  wire kind_flr_graded_e = (kind_sample_e && (fall_kind == KindFlr))
+      || (pend_fire_e && (pend_kind_q == KindFlr));
+  wire kind_wdt_graded_e = (kind_sample_e && (fall_kind == KindWdt))
+      || (pend_fire_e && (pend_kind_q == KindWdt));
   `OCAH_FCOV_COVER(c_reset_kind_cold_graded, kind_cold_graded_e, clk_ref_i, not_powered)
   `OCAH_FCOV_COVER(c_reset_kind_cool_pin_graded, kind_cool_graded_e, clk_ref_i, not_powered)
   `OCAH_FCOV_COVER(c_reset_kind_flr_graded, kind_flr_graded_e, clk_ref_i, not_powered)
@@ -685,7 +753,7 @@ module smc_reset_fcov #(
   smc_reset_kind_inflight_cg u_cg_reset_kind_inflight = new();
 
   always_ff @(posedge clk_ref_i) begin
-    if (!not_powered && kind_e) begin
+    if (!not_powered && kind_sample_e) begin
       u_cg_reset_kind_inflight.sample(fall_kind, op_snap_q, ph_snap_q, KindCold, ClsNone);
     end
   end
@@ -694,6 +762,432 @@ module smc_reset_fcov #(
     if (!not_powered && dom_sample_e) begin
       u_cg_reset_kind_inflight.sample(KindCold, OpNone, PhBefore, dom_kind_q, rb_cls);
     end
+  end
+
+  // ------------------------------------------------------------------
+  // smc_deglitch_cg and smc_powergood_glitch_cg (SMC_FCOV.adoc): the cool-pin
+  // de-glitch window, its pin segments inside the FLR hold, and the power-good
+  // glitch length. Both count consecutive low samples of the port on
+  // clk_ref_i, the clock the pin is driven on; the DUT's primary and
+  // cold-stable resets are cross-check references only.
+  // ------------------------------------------------------------------
+  localparam logic [7:0] DeglitchSamples = 8'd32;
+  // The owner's bench bound on the primary assertion, in clk_ref_i samples.
+  localparam logic [7:0] AssertBound = 8'd128;
+  // The owner's bench bound on the primary release after the last reset
+  // source ends, in clk_ref_i samples.
+  localparam logic [8:0] ReleaseBound = 9'd256;
+  localparam logic [2:0] Wd1 = 3'd0;
+  localparam logic [2:0] Wd2To30 = 3'd1;
+  localparam logic [2:0] Wd31 = 3'd2;
+  localparam logic [2:0] Wd32 = 3'd3;
+  localparam logic [2:0] Wd33To64 = 3'd4;
+  localparam logic [2:0] WdAbove64 = 3'd5;
+  localparam logic OvSub32 = 1'b0;
+  localparam logic OvLater = 1'b1;
+  localparam logic [1:0] LenBelow32 = 2'd0;
+  localparam logic [1:0] Len32 = 2'd1;
+  localparam logic [1:0] LenAbove32 = 2'd2;
+
+  function automatic logic [2:0] width_class(input logic [7:0] n);
+    if (n == 8'd1) return Wd1;
+    if (n <= 8'd30) return Wd2To30;
+    if (n == 8'd31) return Wd31;
+    if (n == 8'd32) return Wd32;
+    if (n <= 8'd64) return Wd33To64;
+    return WdAbove64;
+  endfunction
+
+  function automatic logic [1:0] len_class(input logic [15:0] n);
+    if (n < 16'd32) return LenBelow32;
+    if (n == 16'd32) return Len32;
+    return LenAbove32;
+  endfunction
+
+  function automatic logic [7:0] sat_inc8(input logic [7:0] n);
+    return (n == 8'hFF) ? n : n + 8'd1;
+  endfunction
+
+  logic gate_ref_q;
+  always_ff @(posedge clk_ref_i) gate_ref_q <= gate_on;
+  wire gate_rise_ref = gate_on && (gate_ref_q !== 1'b1);
+
+  // op_seen_q: an SPM, DMA or zeroer operation seen in flight at a clk_smc_i
+  // edge since tb_fcov_gate rose. The de-glitch group samples only while it
+  // is clear, so a window that carries an operation is no de-glitch window.
+  logic op_seen_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (not_powered) op_seen_q <= 1'b0;
+    else if (gate_rise_smc) op_seen_q <= op_busy;
+    else if (gate_on && op_busy) op_seen_q <= 1'b1;
+  end
+
+  wire pin_lo = (rst_cool_ni === 1'b0);
+  wire pin_hi = (rst_cool_ni === 1'b1);
+  wire flr_hi = (rst_cool_from_flr_ni === 1'b1);
+  wire flr_lo = (rst_cool_from_flr_ni === 1'b0);
+  wire prim_ref_lo = (rst_primary_ref_clk_ni === 1'b0);
+  wire prim_smc_lo = (rst_primary_smc_clk_ni === 1'b0);
+  wire prim_ref_hi = (rst_primary_ref_clk_ni === 1'b1);
+  wire prim_smc_hi = (rst_primary_smc_clk_ni === 1'b1);
+  wire dg_live = !not_powered && gate_on && !gate_rise_ref && (op_seen_q !== 1'b1);
+
+  // cp_width: a low run of the pin that begins with the FLR cool reset high.
+  // Its width is the count of consecutive low samples. A run of 32 and above
+  // samples its cell at the later of its end and the sample by which both
+  // primary resets have read 0, when that happens within AssertBound samples
+  // of its first low. A run below 32 samples its cell at the first of two
+  // samples, its AssertBound-th sample counted from its first low and the
+  // first low sample of the next run, when no primary reset read 0 from its
+  // first low through that sample. A run of 32 and above that the next run
+  // supersedes before it resolved samples no cell. A contrary outcome samples
+  // no cell.
+  logic wd_open_q, wd_low_q, wd_ref0_q, wd_smc0_q, wd_hit_q;
+  logic [7:0] wd_cnt_q, wd_age_q;
+  wire wd_start = dg_live && cool_fall && flr_hi;
+  wire wd_open = dg_live && (wd_open_q === 1'b1);
+  wire [7:0] wd_age_now = sat_inc8(wd_age_q);
+  wire wd_ref0_now = wd_ref0_q || prim_ref_lo;
+  wire wd_smc0_now = wd_smc0_q || prim_smc_lo;
+  wire wd_any0_now = wd_ref0_now || wd_smc0_now;
+  wire wd_hit_now = wd_hit_q || (wd_ref0_now && wd_smc0_now && (wd_age_now <= AssertBound));
+  wire wd_ended = !wd_low_q || pin_hi;
+  wire wd_long = (wd_cnt_q >= DeglitchSamples);
+  wire wd_long_e = wd_open && wd_ended && wd_long && wd_hit_now;
+  wire wd_short_e = wd_open && wd_ended && !wd_long && !wd_any0_now
+      && (wd_start || (wd_age_now >= AssertBound));
+  wire wd_drop = wd_open && wd_ended
+      && (wd_long ? (wd_start || ((wd_age_now > AssertBound) && !wd_hit_now)) : wd_any0_now);
+  wire wd_e = wd_long_e || wd_short_e;
+
+  always_ff @(posedge clk_ref_i) begin
+    if (!dg_live) begin
+      wd_open_q <= 1'b0;
+      wd_low_q <= 1'b0;
+    end else if (wd_start) begin
+      wd_open_q <= 1'b1;
+      wd_low_q <= 1'b1;
+      wd_cnt_q <= 8'd1;
+      wd_age_q <= 8'd1;
+      wd_ref0_q <= prim_ref_lo;
+      wd_smc0_q <= prim_smc_lo;
+      wd_hit_q <= prim_ref_lo && prim_smc_lo;
+    end else if (wd_open_q) begin
+      if (wd_e || wd_drop) wd_open_q <= 1'b0;
+      if (wd_low_q && pin_hi) wd_low_q <= 1'b0;
+      else if (wd_low_q && pin_lo) wd_cnt_q <= sat_inc8(wd_cnt_q);
+      wd_age_q <= wd_age_now;
+      wd_ref0_q <= wd_ref0_now;
+      wd_smc0_q <= wd_smc0_now;
+      wd_hit_q <= wd_hit_now;
+    end
+  end
+
+  // Pin control: the first low run of the pin under the group with the FLR
+  // cool reset high at every sample of it, 32 and above, whose primary
+  // resets each read 0 and then read 1 at or after its end (the first sample
+  // with the pin high), with the pin and the FLR cool reset high from that end
+  // until both have, within ReleaseBound samples. Its release offset per
+  // primary reset is the count of samples from the run's end to the first
+  // sample at or after it at which that reset reads 1 having read 0 since the
+  // run's first low sample.
+  logic pc_got_q, pc_act_q, pc_low_q, pc_ref0_q, pc_smc0_q, pc_ref_got_q, pc_smc_got_q;
+  logic [7:0] pc_cnt_q;
+  logic [8:0] pc_age_q, pc_ref_off_q, pc_smc_off_q;
+  wire pc_start = dg_live && (pc_got_q !== 1'b1) && cool_fall && flr_hi;
+  wire pc_act = dg_live && !pc_start && (pc_got_q !== 1'b1) && (pc_act_q === 1'b1);
+  wire pc_ref0_now = (pc_ref0_q === 1'b1) || prim_ref_lo;
+  wire pc_smc0_now = (pc_smc0_q === 1'b1) || prim_smc_lo;
+  wire pc_rise = pc_act && (pc_low_q === 1'b1) && pin_hi;
+  wire pc_hi = pc_act && ((pc_low_q !== 1'b1) || pin_hi);
+  wire pc_bad = pc_act && (!flr_hi || (pc_rise && (pc_cnt_q < DeglitchSamples))
+      || (pc_hi && !pin_hi));
+  wire [8:0] pc_age_now = pc_rise ? 9'd0 : pc_age_q + 9'd1;
+  wire pc_ref_rel = pc_hi && (pc_ref_got_q !== 1'b1) && pc_ref0_now && prim_ref_hi;
+  wire pc_smc_rel = pc_hi && (pc_smc_got_q !== 1'b1) && pc_smc0_now && prim_smc_hi;
+  wire pc_rec_e = pc_hi && !pc_bad && ((pc_ref_got_q === 1'b1) || pc_ref_rel)
+      && ((pc_smc_got_q === 1'b1) || pc_smc_rel);
+  wire pc_late = pc_hi && !pc_rec_e && (pc_age_now >= ReleaseBound);
+
+  always_ff @(posedge clk_ref_i) begin
+    if (!dg_live) begin
+      pc_got_q <= 1'b0;
+      pc_act_q <= 1'b0;
+    end else if (pc_start) begin
+      pc_act_q <= 1'b1;
+      pc_low_q <= 1'b1;
+      pc_cnt_q <= 8'd1;
+      pc_ref0_q <= prim_ref_lo;
+      pc_smc0_q <= prim_smc_lo;
+      pc_ref_got_q <= 1'b0;
+      pc_smc_got_q <= 1'b0;
+    end else if (pc_act) begin
+      if (pc_bad || pc_late || pc_rec_e) pc_act_q <= 1'b0;
+      if (pc_rec_e) pc_got_q <= 1'b1;
+      pc_ref0_q <= pc_ref0_now;
+      pc_smc0_q <= pc_smc0_now;
+      if (pc_rise) pc_low_q <= 1'b0;
+      else if (pc_low_q && pin_lo) pc_cnt_q <= sat_inc8(pc_cnt_q);
+      if (pc_hi) pc_age_q <= pc_age_now;
+      if (pc_ref_rel) begin
+        pc_ref_got_q <= 1'b1;
+        pc_ref_off_q <= pc_age_now;
+      end
+      if (pc_smc_rel) begin
+        pc_smc_got_q <= 1'b1;
+        pc_smc_off_q <= pc_age_now;
+      end
+    end
+  end
+
+  // cp_flr_overlap: an FLR hold (the FLR cool reset low) that begins with the
+  // group live, by the pin low runs whose first low sample falls inside it:
+  // the sub-32 cell when it saw at least one pin run and every run is below
+  // 32, the later-source cell when a run of 32 and above ended and the pin
+  // fell again inside the hold. The sources end at the later of the hold's end
+  // (the first sample with the FLR cool reset high) and the end of its last
+  // pin run (the first sample with the pin high). The hold's window opens at
+  // the first sample inside it at which either primary reset reads 0; a
+  // primary reset's release is the first sample from there at which it reads
+  // 1. The hold resolves at the first sample from the sources' end by which
+  // both have released, within ReleaseBound samples of that end. A hold with
+  // no pin fall inside it samples nothing: it is the control, and when
+  // neither release lies before its end, its release offsets (from its end
+  // to each release) are recorded. A hold samples its cell only when each
+  // primary reset's release lies exactly at the expected sample: the hold's
+  // end plus the last control's offset for that reset, or, in the
+  // later-source cell when the last pin run is of 32 and above and its end
+  // plus the pin control's offset is later, that end plus the pin control's
+  // offset. So a primary reset that reads 1 after the window opens and
+  // before that sample, or releases after it, samples no cell. Both cells
+  // need a control recorded since the group went live, the later-source cell
+  // also the pin control. A hold not resolved within 2047 samples of its
+  // start samples nothing.
+  logic ov_act_q, ov_end_q, ov_in_q, ov_low_q, ov_seg_q, ov_long_q, ov_reas_q, ov_plong_q;
+  logic ov_win_q, ov_ref_got_q, ov_smc_got_q, ov_ctl_q;
+  logic [7:0] ov_cnt_q;
+  logic [10:0] ov_t_q, ov_hend_t_q, ov_pend_t_q, ov_end_t_q, ov_ref_t_q, ov_smc_t_q;
+  logic [8:0] ov_ctl_ref_q, ov_ctl_smc_q;
+  localparam logic [10:0] OvReleaseBound = {2'b00, ReleaseBound};
+  wire ov_start = dg_live && flr_fall;
+  wire ov_act = dg_live && !ov_start && (ov_act_q === 1'b1);
+  wire ov_src = ov_act && (ov_end_q !== 1'b1);
+  wire ov_in = ov_start || (ov_src && (ov_in_q === 1'b1) && flr_lo);
+  wire ov_fall_in = ov_in && cool_fall;
+  wire ov_long_now = ov_long_q || (ov_low_q && pin_hi && (ov_cnt_q >= DeglitchSamples));
+  wire ov_seg_now = ov_seg_q || ov_fall_in;
+  wire ov_reas_now = ov_reas_q || (ov_fall_in && ov_long_q);
+  wire [10:0] ov_t_now = ov_start ? 11'd0 : ((ov_t_q == 11'h7FF) ? ov_t_q : ov_t_q + 11'd1);
+  wire ov_sat = (ov_t_now == 11'h7FF);
+  wire ov_hend_e = ov_src && (ov_in_q === 1'b1) && !flr_lo;
+  wire ov_pend_e = ov_src && (ov_low_q === 1'b1) && pin_hi;
+  wire ov_end_e = ov_src && (!ov_in_q || flr_hi) && (!ov_low_q || pin_hi) && !ov_fall_in;
+  wire [10:0] ov_hend_t_now = ov_hend_e ? ov_t_now : ov_hend_t_q;
+  wire [10:0] ov_pend_t_now = ov_pend_e ? ov_t_now : ov_pend_t_q;
+  wire [10:0] ov_end_t_now = ov_end_e ? ov_t_now : ov_end_t_q;
+  wire ov_plong_now = ov_pend_e ? (ov_cnt_q >= DeglitchSamples) : (ov_plong_q === 1'b1);
+  wire ov_win_now = (ov_act && (ov_win_q === 1'b1)) || (ov_in && (prim_ref_lo || prim_smc_lo));
+  wire ov_ref_kept = ov_act && (ov_ref_got_q === 1'b1);
+  wire ov_smc_kept = ov_act && (ov_smc_got_q === 1'b1);
+  wire ov_ref_got_now = ov_ref_kept || (ov_win_now && prim_ref_hi);
+  wire ov_smc_got_now = ov_smc_kept || (ov_win_now && prim_smc_hi);
+  wire [10:0] ov_ref_t_now = ov_ref_kept ? ov_ref_t_q : ov_t_now;
+  wire [10:0] ov_smc_t_now = ov_smc_kept ? ov_smc_t_q : ov_t_now;
+  wire ov_ended = ov_act && (ov_end_e || (ov_end_q === 1'b1));
+  wire ov_res = ov_ended && ov_ref_got_now && ov_smc_got_now && !ov_sat;
+  wire ov_drop = ov_act && !ov_res
+      && (ov_sat || (ov_ended && ((ov_t_now - ov_end_t_now) >= OvReleaseBound)));
+
+  // The control's offsets.
+  wire [8:0] ov_ref_d = 9'(ov_ref_t_now - ov_hend_t_now);
+  wire [8:0] ov_smc_d = 9'(ov_smc_t_now - ov_hend_t_now);
+  wire ov_ctl_e = ov_res && !ov_seg_now && (ov_ref_t_now >= ov_hend_t_now)
+      && (ov_smc_t_now >= ov_hend_t_now);
+
+  // The expected release samples of a hold with pin runs.
+  wire ov_cls = ov_reas_now ? OvLater : OvSub32;
+  wire ov_elig = (ov_seg_now && !ov_long_now) || ov_reas_now;
+  wire [11:0] ov_hold_ref = {1'b0, ov_hend_t_now} + {3'b000, ov_ctl_ref_q};
+  wire [11:0] ov_hold_smc = {1'b0, ov_hend_t_now} + {3'b000, ov_ctl_smc_q};
+  wire [11:0] ov_pin_ref = {1'b0, ov_pend_t_now} + {3'b000, pc_ref_off_q};
+  wire [11:0] ov_pin_smc = {1'b0, ov_pend_t_now} + {3'b000, pc_smc_off_q};
+  wire ov_pin_src = (ov_cls == OvLater) && ov_plong_now;
+  wire [11:0] ov_exp_ref = (ov_pin_src && (ov_pin_ref > ov_hold_ref)) ? ov_pin_ref : ov_hold_ref;
+  wire [11:0] ov_exp_smc = (ov_pin_src && (ov_pin_smc > ov_hold_smc)) ? ov_pin_smc : ov_hold_smc;
+  wire ov_e = ov_res && ov_elig && (ov_ctl_q === 1'b1)
+      && ((ov_cls == OvSub32) || (pc_got_q === 1'b1))
+      && ({1'b0, ov_ref_t_now} == ov_exp_ref) && ({1'b0, ov_smc_t_now} == ov_exp_smc);
+
+  always_ff @(posedge clk_ref_i) begin
+    if (!dg_live) begin
+      ov_act_q <= 1'b0;
+      ov_ctl_q <= 1'b0;
+    end else if (ov_start) begin
+      ov_act_q <= 1'b1;
+      ov_end_q <= 1'b0;
+      ov_in_q <= 1'b1;
+      ov_low_q <= ov_fall_in;
+      ov_cnt_q <= 8'd1;
+      ov_seg_q <= ov_fall_in;
+      ov_long_q <= 1'b0;
+      ov_reas_q <= 1'b0;
+      ov_plong_q <= 1'b0;
+      ov_t_q <= ov_t_now;
+      ov_win_q <= ov_win_now;
+      ov_ref_got_q <= ov_ref_got_now;
+      ov_smc_got_q <= ov_smc_got_now;
+      ov_ref_t_q <= ov_ref_t_now;
+      ov_smc_t_q <= ov_smc_t_now;
+    end else if (ov_act) begin
+      if (ov_res || ov_drop) ov_act_q <= 1'b0;
+      if (ov_ctl_e) begin
+        ov_ctl_q <= 1'b1;
+        ov_ctl_ref_q <= ov_ref_d;
+        ov_ctl_smc_q <= ov_smc_d;
+      end
+      ov_t_q <= ov_t_now;
+      ov_win_q <= ov_win_now;
+      ov_ref_got_q <= ov_ref_got_now;
+      ov_smc_got_q <= ov_smc_got_now;
+      ov_ref_t_q <= ov_ref_t_now;
+      ov_smc_t_q <= ov_smc_t_now;
+      if (ov_src) begin
+        if (ov_end_e) ov_end_q <= 1'b1;
+        ov_end_t_q <= ov_end_t_now;
+        ov_hend_t_q <= ov_hend_t_now;
+        ov_pend_t_q <= ov_pend_t_now;
+        ov_plong_q <= ov_plong_now;
+        if (!flr_lo) ov_in_q <= 1'b0;
+        if (ov_fall_in) begin
+          ov_low_q <= 1'b1;
+          ov_cnt_q <= 8'd1;
+        end else if (ov_low_q && pin_hi) begin
+          ov_low_q <= 1'b0;
+        end else if (ov_low_q && pin_lo) begin
+          ov_cnt_q <= sat_inc8(ov_cnt_q);
+        end
+        ov_long_q <= ov_long_now;
+        ov_seg_q <= ov_seg_now;
+        ov_reas_q <= ov_reas_now;
+      end
+    end
+  end
+
+  // smc_powergood_glitch_cg: a powergood_i low run that begins with the gate
+  // high. A run whose powergood_stable_o fell inside it leaves the window's
+  // glitch record at the powergood_i rise: the count of consecutive low
+  // samples. cp_glitch_len samples the record at the falling edge of the
+  // gate itself, when the three interrupt aggregates read 0 at every sample
+  // from the gate's rise to its last sample with the gate high (a leaf may end
+  // less than one clk_ref_i period after it drops the gate), and when
+  // powergood_stable_o, the cold-stable reset and both primary resets have
+  // each read 1 at some sample after the one that took the record, before the
+  // gate fell: the recovery. A window with no record, or whose gate falls
+  // without that recovery, samples nothing. cp_cold_assert samples once per run, at the first sample inside
+  // it at which powergood_stable_o, the cold-stable reset and both primary
+  // resets read 0. A run's flags start at its first low sample; the window's
+  // flags clear when the gate rises.
+  logic pg_q, pg_run_q, pg_fell_q, pg_cold_q, pg_irq_ok_q, pg_rec_q;
+  logic [3:0] pg_rcv_q;
+  logic [15:0] pg_cnt_q, pg_rec_cnt_q;
+  always_ff @(posedge clk_ref_i) pg_q <= powergood_i;
+  wire pg_lo = (powergood_i === 1'b0);
+  wire pg_fall = gate_on && (pg_q === 1'b1) && pg_lo;
+  wire pg_rise = (pg_q === 1'b0) && (powergood_i === 1'b1);
+  wire pg_run_p = (pg_run_q === 1'b1) && !gate_rise_ref;
+  wire pg_in_run = gate_on && (pg_fall || (pg_run_p && pg_lo));
+  wire pg_stable_fall = (powergood_stable_q === 1'b1) && (powergood_stable_i === 1'b0);
+  wire pg_fell_now = (pg_fall ? 1'b0 : (pg_fell_q && pg_run_p)) || (pg_in_run && pg_stable_fall);
+  wire pg_irq_quiet = ((sync_irq_i | gpio_irq_any_i | uart_irq_any_i) === 1'b0);
+  wire pg_irq_ok_now = (gate_rise_ref || (pg_irq_ok_q === 1'b1)) && pg_irq_quiet;
+  wire pg_cold_all0 = (powergood_stable_i === 1'b0) && (rst_cold_stable_ref_clk_ni === 1'b0)
+      && prim_ref_lo && prim_smc_lo;
+  wire pg_cold_p = !pg_fall && pg_run_p && (pg_cold_q === 1'b1);
+  wire pg_cold_e = pg_in_run && pg_cold_all0 && !pg_cold_p;
+  wire pg_rec_e = gate_on && pg_run_p && pg_rise && (pg_fell_q === 1'b1);
+  wire [3:0] pg_up = {
+    powergood_stable_i === 1'b1, rst_cold_stable_ref_clk_ni === 1'b1, prim_ref_hi, prim_smc_hi
+  };
+  wire pg_len_e = (pg_rec_q === 1'b1) && (pg_irq_ok_q === 1'b1) && (pg_rcv_q === 4'hF);
+  wire [15:0] pg_cnt_next = (pg_cnt_q == 16'hFFFF) ? pg_cnt_q : pg_cnt_q + 16'd1;
+
+  always_ff @(posedge clk_ref_i) begin
+    if (gate_on) begin
+      pg_run_q <= pg_in_run;
+      pg_fell_q <= pg_fell_now;
+      pg_cold_q <= pg_cold_p || pg_cold_e;
+      pg_irq_ok_q <= pg_irq_ok_now;
+      if (gate_rise_ref) pg_rec_q <= 1'b0;
+      else if (pg_rec_e) pg_rec_q <= 1'b1;
+      if (pg_rec_e) pg_rec_cnt_q <= pg_cnt_q;
+      if (gate_rise_ref || pg_rec_e) pg_rcv_q <= 4'h0;
+      else if (pg_rec_q === 1'b1) pg_rcv_q <= pg_rcv_q | pg_up;
+      if (pg_fall) pg_cnt_q <= 16'd1;
+      else if (pg_run_p && pg_lo) pg_cnt_q <= pg_cnt_next;
+    end
+  end
+
+  // One goal bin of a tuple coverpoint led by the graded flag.
+  `define SMC_RST_GRADED_BIN(name, cls) \
+      bins name = {{1'b1, cls}};
+
+  // Each event fills its coverpoint and passes the other a value no bin lists.
+  covergroup smc_deglitch_cg with function sample (
+      logic wg, logic [2:0] wcls, logic og, logic ocls
+  );
+    option.per_instance = 1;
+    // {graded, width class}: 6 cells.
+    cp_width: coverpoint {
+      wg, wcls
+    } {
+      `SMC_RST_GRADED_BIN(width_1, Wd1)
+      `SMC_RST_GRADED_BIN(width_2_30, Wd2To30)
+      `SMC_RST_GRADED_BIN(width_31, Wd31)
+      `SMC_RST_GRADED_BIN(width_32, Wd32)
+      `SMC_RST_GRADED_BIN(width_33_64, Wd33To64)
+      `SMC_RST_GRADED_BIN(width_above_64, WdAbove64)
+    }
+    // {graded, segment class}: 2 cells.
+    cp_flr_overlap: coverpoint {
+      og, ocls
+    } {
+      `SMC_RST_GRADED_BIN(sub32_in_hold, OvSub32)
+      `SMC_RST_GRADED_BIN(later_source, OvLater)
+    }
+  endgroup
+
+  covergroup smc_powergood_glitch_cg with function sample (logic lg, logic [1:0] lcls, logic ca);
+    option.per_instance = 1;
+    // {graded, length class}: 3 cells.
+    cp_glitch_len: coverpoint {
+      lg, lcls
+    } {
+      `SMC_RST_GRADED_BIN(len_below_32, LenBelow32)
+      `SMC_RST_GRADED_BIN(len_32, Len32)
+      `SMC_RST_GRADED_BIN(len_above_32, LenAbove32)
+    }
+    // The resets the glitch asserts, recorded.
+    cp_cold_assert: coverpoint ca {
+      bins rec_cold_assert_mid_glitch = {1'b1};
+    }
+  endgroup
+  `undef SMC_RST_GRADED_BIN
+
+  smc_deglitch_cg u_cg_deglitch = new();
+  smc_powergood_glitch_cg u_cg_powergood_glitch = new();
+
+  always_ff @(posedge clk_ref_i) begin
+    if (!not_powered && (wd_e || ov_e)) begin
+      u_cg_deglitch.sample(wd_e, width_class(wd_cnt_q), ov_e, ov_cls);
+    end
+  end
+
+  always_ff @(posedge clk_ref_i) begin
+    if (pg_cold_e) u_cg_powergood_glitch.sample(1'b0, LenBelow32, 1'b1);
+  end
+
+  always_ff @(negedge fcov_gate_i) begin
+    if (pg_len_e) u_cg_powergood_glitch.sample(1'b1, len_class(pg_rec_cnt_q), 1'b0);
   end
 
 endmodule : smc_reset_fcov
