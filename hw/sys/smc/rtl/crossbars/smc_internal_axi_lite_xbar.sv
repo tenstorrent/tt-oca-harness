@@ -4,7 +4,7 @@
 // Route the SMC internal AXI-Lite CSR crossbar.
 //
 // Steers one local AXI-Lite initiator to internal CSR targets such as base config,
-// filters, remaps, mailbox, and DFX.
+// filters, remaps, mailbox, DFX, and the memory zeroer.
 // Address rules derive from smc_top_addrmap_pkg, and each target receives the whole 4 KiB
 // pages its block occupies. Addresses outside every rule receive DECERR.
 
@@ -56,7 +56,12 @@ module smc_internal_axi_lite_xbar
   input  axi_lite64_resp_t mailbox_resp_i,  // Response from the SMC mailbox.
 
   output axi_lite64_req_t  dfx_csr_req_o,  // Request for the DFX control register window.
-  input  axi_lite64_resp_t dfx_csr_resp_i  // Response from the DFX control registers.
+  input  axi_lite64_resp_t dfx_csr_resp_i,  // Response from the DFX control registers.
+
+  output axi_lite64_req_t  zeroer_ctrl_req_o,  // Request for the memory zeroer control
+                                               // registers.
+  input  axi_lite64_resp_t zeroer_ctrl_resp_i  // Response from the memory zeroer control
+                                               // registers.
 );
 
   // ===========================================================================
@@ -98,7 +103,11 @@ module smc_internal_axi_lite_xbar
     '{idx: 7,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR),
       end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE))}
+                                            smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE))},
+    '{idx: 8,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR),
+      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR,
+                                            smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE))}
   };
 
   // ===========================================================================
@@ -114,8 +123,8 @@ module smc_internal_axi_lite_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  smc_internal_axi_lite_xbar_pkg::xbar_mst_req_t  [7:0] xbar_mst_req;
-  smc_internal_axi_lite_xbar_pkg::xbar_mst_resp_t [7:0] xbar_mst_resp;
+  smc_internal_axi_lite_xbar_pkg::xbar_mst_req_t  [8:0] xbar_mst_req;
+  smc_internal_axi_lite_xbar_pkg::xbar_mst_resp_t [8:0] xbar_mst_resp;
 
   axi_lite_xbar #(
     .Cfg          (smc_internal_axi_lite_xbar_pkg::XbarCfg),
@@ -190,5 +199,11 @@ module smc_internal_axi_lite_xbar
   // ---------------------------------------------------------------------------
   assign dfx_csr_req_o = xbar_mst_req[7];
   assign xbar_mst_resp[7] = dfx_csr_resp_i;
+
+  // ---------------------------------------------------------------------------
+  // Output: zeroer_ctrl (AXI4_LITE, 64-bit)
+  // ---------------------------------------------------------------------------
+  assign zeroer_ctrl_req_o = xbar_mst_req[8];
+  assign xbar_mst_resp[8] = zeroer_ctrl_resp_i;
 
 endmodule : smc_internal_axi_lite_xbar

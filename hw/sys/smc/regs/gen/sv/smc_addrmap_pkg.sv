@@ -133,6 +133,9 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE = 64'hC;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_SIZE = 64'h4C;
 
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_BASE_ADDR = 64'hC0011000;
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE = 64'h18;
+
 localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR = 64'hC0012000;
 localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_SIZE = 64'h100;
 
@@ -406,9 +409,6 @@ localparam longint unsigned SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_31_SIZE = 64'h50
 
 localparam longint unsigned SMC_TOP_DMA_CTRL_BASE_ADDR = 64'hC0038000;
 localparam longint unsigned SMC_TOP_DMA_CTRL_SIZE = 64'h138;
-
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_BASE_ADDR = 64'hC0038200;
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE = 64'h18;
 
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_BASE_ADDR = 64'hC0039000;
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_SIZE = 64'h2C0;
@@ -990,6 +990,9 @@ localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_A
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010038;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR = 64'hC0010040;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010048;
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR = 64'hC0011000;
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE_BASE_ADDR = 64'hC0011008;
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR = 64'hC0011010;
 function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(input int unsigned alias_remap_idx);
     return 64'hC0012000 + (alias_remap_idx * 64'h20);
 endfunction
@@ -1738,9 +1741,6 @@ localparam longint unsigned SMC_TOP_DMA_CTRL_SRC_STRIDE_LO_BASE_ADDR = 64'hC0038
 localparam longint unsigned SMC_TOP_DMA_CTRL_SRC_STRIDE_HI_BASE_ADDR = 64'hC003812C;
 localparam longint unsigned SMC_TOP_DMA_CTRL_NUM_REPETITIONS_LO_BASE_ADDR = 64'hC0038130;
 localparam longint unsigned SMC_TOP_DMA_CTRL_NUM_REPETITIONS_HI_BASE_ADDR = 64'hC0038134;
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR = 64'hC0038200;
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE_BASE_ADDR = 64'hC0038208;
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR = 64'hC0038210;
 function automatic longint unsigned SMC_TOP_SMC_CPU_CTRL_RESET_VECTOR_BASE_ADDR(input int unsigned RESET_VECTOR_idx);
     return 64'hC0039000 + (RESET_VECTOR_idx * 64'h8);
 endfunction

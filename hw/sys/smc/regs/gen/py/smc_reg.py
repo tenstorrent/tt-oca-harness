@@ -2585,6 +2585,17 @@ SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_REG_TYPE = 'SMC_BASE_CONFIG_HANG_DET_CT
 SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_REG_OFFSET = 0x00000048
 SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_REG_ADDR = 0xC0010048
 SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_REG_TYPE = 'SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD'
+ZEROER_CTRL_REG_MAP_BASE_ADDR = 0xC0011000
+ZEROER_CTRL_REG_MAP_SIZE = 0x00000018
+ZEROER_CTRL_DEST_ADDR_REG_OFFSET = 0x00000000
+ZEROER_CTRL_DEST_ADDR_REG_ADDR = 0xC0011000
+ZEROER_CTRL_DEST_ADDR_REG_TYPE = 'ZEROER_CTRL_DEST_ADDR'
+ZEROER_CTRL_SIZE_REG_OFFSET = 0x00000008
+ZEROER_CTRL_SIZE_REG_ADDR = 0xC0011008
+ZEROER_CTRL_SIZE_REG_TYPE = 'ZEROER_CTRL_SIZE'
+ZEROER_CTRL_CTRL_STATUS_REG_OFFSET = 0x00000010
+ZEROER_CTRL_CTRL_STATUS_REG_ADDR = 0xC0011010
+ZEROER_CTRL_CTRL_STATUS_REG_TYPE = 'ZEROER_CTRL_CTRL_STATUS'
 SMC_ALIAS_REMAP_WRAP_REG_MAP_BASE_ADDR = 0xC0012000
 SMC_ALIAS_REMAP_WRAP_REG_MAP_SIZE = 0x00000100
 SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR = 0xC0012000
@@ -5409,17 +5420,6 @@ DMA_CTRL_NUM_REPETITIONS_LO_REG_TYPE = 'DMA_CTRL_NUM_REPETITIONS_LO'
 DMA_CTRL_NUM_REPETITIONS_HI_REG_OFFSET = 0x00000134
 DMA_CTRL_NUM_REPETITIONS_HI_REG_ADDR = 0xC0038134
 DMA_CTRL_NUM_REPETITIONS_HI_REG_TYPE = 'DMA_CTRL_NUM_REPETITIONS_HI'
-ZEROER_CTRL_REG_MAP_BASE_ADDR = 0xC0038200
-ZEROER_CTRL_REG_MAP_SIZE = 0x00000018
-ZEROER_CTRL_DEST_ADDR_REG_OFFSET = 0x00000000
-ZEROER_CTRL_DEST_ADDR_REG_ADDR = 0xC0038200
-ZEROER_CTRL_DEST_ADDR_REG_TYPE = 'ZEROER_CTRL_DEST_ADDR'
-ZEROER_CTRL_SIZE_REG_OFFSET = 0x00000008
-ZEROER_CTRL_SIZE_REG_ADDR = 0xC0038208
-ZEROER_CTRL_SIZE_REG_TYPE = 'ZEROER_CTRL_SIZE'
-ZEROER_CTRL_CTRL_STATUS_REG_OFFSET = 0x00000010
-ZEROER_CTRL_CTRL_STATUS_REG_ADDR = 0xC0038210
-ZEROER_CTRL_CTRL_STATUS_REG_TYPE = 'ZEROER_CTRL_CTRL_STATUS'
 SMC_CPU_CTRL_REG_MAP_BASE_ADDR = 0xC0039000
 SMC_CPU_CTRL_REG_MAP_SIZE = 0x000002C0
 SMC_CPU_CTRL_RESET_VECTOR_0__REG_OFFSET = 0x00000000
@@ -17630,6 +17630,121 @@ class SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
+ZEROER_CTRL_DEST_ADDR_REG_DEFAULT = 0x0000000000000000
+ZEROER_CTRL_DEST_ADDR_REG_FIELD_ACCESS = (
+    ('DEST_ADDR', 'rw', '', '', False),
+)
+
+ZEROER_CTRL_DEST_ADDR_REG_WIDTH = 64
+ZEROER_CTRL_DEST_ADDR_REG_FIELDS = (
+    ('DEST_ADDR', 0, 63, 'rw', 'r', '', '', False, False, 0),
+)
+
+class ZEROER_CTRL_DEST_ADDR_reg_t(Structure):
+    _fields_ = [
+        ('dest_addr', c_uint64, 64),
+    ]
+
+ZEROER_CTRL_DEST_ADDR_REG_DEFAULT = 0x0000000000000000
+
+class ZEROER_CTRL_DEST_ADDR_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', ZEROER_CTRL_DEST_ADDR_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ZEROER_CTRL_DEST_ADDR_reg_u, self).__init__(*args, **kwargs)
+        self.val = ZEROER_CTRL_DEST_ADDR_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ZEROER_CTRL_SIZE_REG_DEFAULT = 0x0000000000000000
+ZEROER_CTRL_SIZE_REG_FIELD_ACCESS = (
+    ('SIZE', 'rw', '', '', False),
+)
+
+ZEROER_CTRL_SIZE_REG_WIDTH = 64
+ZEROER_CTRL_SIZE_REG_FIELDS = (
+    ('SIZE', 0, 63, 'rw', 'r', '', '', False, False, 0),
+)
+
+class ZEROER_CTRL_SIZE_reg_t(Structure):
+    _fields_ = [
+        ('size', c_uint64, 64),
+    ]
+
+ZEROER_CTRL_SIZE_REG_DEFAULT = 0x0000000000000000
+
+class ZEROER_CTRL_SIZE_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', ZEROER_CTRL_SIZE_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ZEROER_CTRL_SIZE_reg_u, self).__init__(*args, **kwargs)
+        self.val = ZEROER_CTRL_SIZE_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT = 0x0000000000000000
+ZEROER_CTRL_CTRL_STATUS_REG_FIELD_ACCESS = (
+    ('INT_EN', 'rw', '', '', False),
+    ('STATUS', 'r', '', '', False),
+)
+
+ZEROER_CTRL_CTRL_STATUS_REG_WIDTH = 64
+ZEROER_CTRL_CTRL_STATUS_REG_FIELDS = (
+    ('INT_EN', 0, 0, 'rw', 'r', '', '', False, False, 0),
+    ('STATUS', 32, 32, 'r', 'w', '', '', False, True, 0),
+)
+
+class ZEROER_CTRL_CTRL_STATUS_reg_t(Structure):
+    _fields_ = [
+        ('int_en', c_uint64, 1),
+        ('rsvd_0', c_uint64, 31),
+        ('status', c_uint64, 1),
+    ]
+
+ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT = 0x0000000000000000
+
+class ZEROER_CTRL_CTRL_STATUS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint64),
+        ('f', ZEROER_CTRL_CTRL_STATUS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ZEROER_CTRL_CTRL_STATUS_reg_u, self).__init__(*args, **kwargs)
+        self.val = ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
 REMAP_REGION_REGION_START_REG_DEFAULT = 0x0000000000000000
 REMAP_REGION_REGION_START_REG_FIELD_ACCESS = (
     ('start_addr', 'rw', '', '', False),
@@ -19114,121 +19229,6 @@ class DMA_CTRL_NUM_REPETITIONS_HI_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(DMA_CTRL_NUM_REPETITIONS_HI_reg_u, self).__init__(*args, **kwargs)
         self.val = DMA_CTRL_NUM_REPETITIONS_HI_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-ZEROER_CTRL_DEST_ADDR_REG_DEFAULT = 0x0000000000000000
-ZEROER_CTRL_DEST_ADDR_REG_FIELD_ACCESS = (
-    ('DEST_ADDR', 'rw', '', '', False),
-)
-
-ZEROER_CTRL_DEST_ADDR_REG_WIDTH = 64
-ZEROER_CTRL_DEST_ADDR_REG_FIELDS = (
-    ('DEST_ADDR', 0, 63, 'rw', 'r', '', '', False, False, 0),
-)
-
-class ZEROER_CTRL_DEST_ADDR_reg_t(Structure):
-    _fields_ = [
-        ('dest_addr', c_uint64, 64),
-    ]
-
-ZEROER_CTRL_DEST_ADDR_REG_DEFAULT = 0x0000000000000000
-
-class ZEROER_CTRL_DEST_ADDR_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint64),
-        ('f', ZEROER_CTRL_DEST_ADDR_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(ZEROER_CTRL_DEST_ADDR_reg_u, self).__init__(*args, **kwargs)
-        self.val = ZEROER_CTRL_DEST_ADDR_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-ZEROER_CTRL_SIZE_REG_DEFAULT = 0x0000000000000000
-ZEROER_CTRL_SIZE_REG_FIELD_ACCESS = (
-    ('SIZE', 'rw', '', '', False),
-)
-
-ZEROER_CTRL_SIZE_REG_WIDTH = 64
-ZEROER_CTRL_SIZE_REG_FIELDS = (
-    ('SIZE', 0, 63, 'rw', 'r', '', '', False, False, 0),
-)
-
-class ZEROER_CTRL_SIZE_reg_t(Structure):
-    _fields_ = [
-        ('size', c_uint64, 64),
-    ]
-
-ZEROER_CTRL_SIZE_REG_DEFAULT = 0x0000000000000000
-
-class ZEROER_CTRL_SIZE_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint64),
-        ('f', ZEROER_CTRL_SIZE_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(ZEROER_CTRL_SIZE_reg_u, self).__init__(*args, **kwargs)
-        self.val = ZEROER_CTRL_SIZE_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT = 0x0000000000000000
-ZEROER_CTRL_CTRL_STATUS_REG_FIELD_ACCESS = (
-    ('INT_EN', 'rw', '', '', False),
-    ('STATUS', 'r', '', '', False),
-)
-
-ZEROER_CTRL_CTRL_STATUS_REG_WIDTH = 64
-ZEROER_CTRL_CTRL_STATUS_REG_FIELDS = (
-    ('INT_EN', 0, 0, 'rw', 'r', '', '', False, False, 0),
-    ('STATUS', 32, 32, 'r', 'w', '', '', False, True, 0),
-)
-
-class ZEROER_CTRL_CTRL_STATUS_reg_t(Structure):
-    _fields_ = [
-        ('int_en', c_uint64, 1),
-        ('rsvd_0', c_uint64, 31),
-        ('status', c_uint64, 1),
-    ]
-
-ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT = 0x0000000000000000
-
-class ZEROER_CTRL_CTRL_STATUS_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint64),
-        ('f', ZEROER_CTRL_CTRL_STATUS_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(ZEROER_CTRL_CTRL_STATUS_reg_u, self).__init__(*args, **kwargs)
-        self.val = ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

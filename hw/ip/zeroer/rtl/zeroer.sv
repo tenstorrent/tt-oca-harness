@@ -3,8 +3,9 @@
 
 // Write zeros over a programmed AXI address range from a ctrl port.
 //
-// zeroer_ctrl_axi_* programs DEST_ADDR and SIZE in bytes, and a write to CTRL_STATUS starts
-// the clear unless SIZE is 0; mst_axi_* performs the clears.
+// zeroer_ctrl_axil_* programs DEST_ADDR and SIZE in bytes, and a write to CTRL_STATUS starts
+// the clear unless SIZE is 0; mst_axi_* performs the clears. The register block decodes the
+// low ZEROER_CTRL_REG_MIN_ADDR_WIDTH bits of the ctrl address and ignores the rest.
 // The clears are INCR write bursts of zeros at full data width, with ID 0, at most 256 beats,
 // never crossing a 4 KiB boundary, and strobes limited to the range. The master never reads
 // and ignores write response codes. An illegal FSM state locks the zeroer busy until reset.
@@ -14,16 +15,15 @@
 `include "ocah_registers.svh"
 
 module zeroer #(
-  parameter type zeroer_ctrl_req_t  = logic,                // Ctrl AXI request type.
-  parameter type zeroer_ctrl_resp_t = logic,                // Ctrl AXI response type.
+  parameter type zeroer_ctrl_req_t  = logic,                // Ctrl AXI-Lite request type, 64-bit
+                                                            // data.
+  parameter type zeroer_ctrl_resp_t = logic,                // Ctrl AXI-Lite response type.
+  parameter int unsigned CTRL_OUTSTANDING_TX = 1,           // Most ctrl transactions the
+                                                            // initiator keeps in flight; sizes the
+                                                            // register clock gate's snoop.
 
   parameter type mst_req_t  = logic,                        // Master AXI request type.
   parameter type mst_resp_t = logic,                        // Master AXI response type.
-
-  parameter int unsigned CTRL_ADDR_WIDTH = 5,               // Ctrl AXI address width.
-  parameter int unsigned CTRL_DATA_WIDTH = 64,              // Ctrl AXI data width.
-  parameter int unsigned CTRL_ID_WIDTH   = 8,               // Ctrl AXI ID width.
-  parameter int unsigned CTRL_USER_WIDTH = 12,              // Ctrl AXI user width.
 
   parameter int unsigned AXI_ADDR_WIDTH = 56,               // Master AXI address width; DEST_ADDR
                                                             // is truncated to it.
@@ -52,8 +52,8 @@ module zeroer #(
                                                             // pulse when busy falls, if
                                                             // CTRL_STATUS.INT_EN is set.
 
-  input  zeroer_ctrl_req_t  zeroer_ctrl_axi_req_i,          // Ctrl AXI slave request.
-  output zeroer_ctrl_resp_t zeroer_ctrl_axi_resp_o,         // Ctrl AXI slave response.
+  input  zeroer_ctrl_req_t  zeroer_ctrl_axil_req_i,         // Ctrl AXI-Lite slave request.
+  output zeroer_ctrl_resp_t zeroer_ctrl_axil_resp_o,        // Ctrl AXI-Lite slave response.
 
   output mst_req_t  mst_axi_req_o,                          // Clearing AXI master request.
   input  mst_resp_t mst_axi_resp_i,                         // Clearing AXI master response.
@@ -64,7 +64,6 @@ module zeroer #(
 );
 
   `include "ocah_assert.svh"
-  `include "axi/typedef.svh"
 
   // Local type derivations from width parameters
   localparam int unsigned AxiStrbWidth = AXI_DATA_WIDTH / 8;
@@ -76,43 +75,9 @@ module zeroer #(
   typedef logic [AXI_USER_WIDTH-1:0] axi_user_t;
   typedef logic [MST_ID_WIDTH-1:0] mst_id_t;
 
-  // Derive AXI-Lite types internally from ctrl width parameters
-  typedef logic [CTRL_ADDR_WIDTH-1:0] ctrl_addr_t;
-  typedef logic [CTRL_DATA_WIDTH-1:0] ctrl_data_t;
-  typedef logic [CTRL_DATA_WIDTH/8-1:0] ctrl_strb_t;
-  `AXI_LITE_TYPEDEF_ALL(zeroer_ctrl_axil, ctrl_addr_t, ctrl_data_t, ctrl_strb_t)
+  localparam int unsigned CtrlAddrW = zeroer_ctrl_reg_pkg::ZEROER_CTRL_REG_MIN_ADDR_WIDTH;
 
-  ////////////////////////////////////////////
-  // AXI to AXI-Lite for Register Interface //
-  ////////////////////////////////////////////
-
-  zeroer_ctrl_axil_req_t  zeroer_ctrl_axil_req;
-  zeroer_ctrl_axil_resp_t zeroer_ctrl_axil_resp;
-
-  axi_to_axi_lite #(
-    .AxiAddrWidth(CTRL_ADDR_WIDTH),
-    .AxiDataWidth(CTRL_DATA_WIDTH),
-    .AxiIdWidth(CTRL_ID_WIDTH),
-    .AxiUserWidth(CTRL_USER_WIDTH),
-    .AxiMaxWriteTxns(1),
-    .AxiMaxReadTxns(1),
-    .FallThrough(0),
-    .FullBW(0),
-
-    .full_req_t (zeroer_ctrl_req_t),
-    .full_resp_t(zeroer_ctrl_resp_t),
-    .lite_req_t (zeroer_ctrl_axil_req_t),
-    .lite_resp_t(zeroer_ctrl_axil_resp_t)
-
-  ) u_ctrl_axi_to_axilite (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .test_i(test_en_i),
-    .slv_req_i(zeroer_ctrl_axi_req_i),
-    .slv_resp_o(zeroer_ctrl_axi_resp_o),
-    .mst_req_o(zeroer_ctrl_axil_req),
-    .mst_resp_i(zeroer_ctrl_axil_resp)
-  );
+  `OCAH_ASSERT_STATIC(CtrlDataWidth_A, $bits(zeroer_ctrl_axil_req_i.w.data) == 64)
 
   ///////////////////////
   // Zeroer Core Logic //
@@ -160,22 +125,22 @@ module zeroer #(
   );
 
   axi_cg_snoop #(
-    .OUTSTANDING_TX(1),
+    .OUTSTANDING_TX(CTRL_OUTSTANDING_TX),
     .DENY_DELAY(1),
     .HYST_WIDTH(CG_HYSTERESIS_W)
   ) u_zeroer_cg (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
 
-    .snoop_aw_valid_i(zeroer_ctrl_axil_req.aw_valid),
-    .snoop_aw_ready_i(zeroer_ctrl_axil_resp.aw_ready),
-    .snoop_w_valid_i(zeroer_ctrl_axil_req.w_valid),
-    .snoop_b_valid_i(zeroer_ctrl_axil_resp.b_valid),
-    .snoop_b_ready_i(zeroer_ctrl_axil_req.b_ready),
-    .snoop_ar_valid_i(zeroer_ctrl_axil_req.ar_valid),
-    .snoop_ar_ready_i(zeroer_ctrl_axil_resp.ar_ready),
-    .snoop_r_valid_i(zeroer_ctrl_axil_resp.r_valid),
-    .snoop_r_ready_i(zeroer_ctrl_axil_req.r_ready),
+    .snoop_aw_valid_i(zeroer_ctrl_axil_req_i.aw_valid),
+    .snoop_aw_ready_i(zeroer_ctrl_axil_resp_o.aw_ready),
+    .snoop_w_valid_i(zeroer_ctrl_axil_req_i.w_valid),
+    .snoop_b_valid_i(zeroer_ctrl_axil_resp_o.b_valid),
+    .snoop_b_ready_i(zeroer_ctrl_axil_req_i.b_ready),
+    .snoop_ar_valid_i(zeroer_ctrl_axil_req_i.ar_valid),
+    .snoop_ar_ready_i(zeroer_ctrl_axil_resp_o.ar_ready),
+    .snoop_r_valid_i(zeroer_ctrl_axil_resp_o.r_valid),
+    .snoop_r_ready_i(zeroer_ctrl_axil_req_i.r_ready),
     .snoop_r_last_i(1'b1),  // every beat is "last" in AXI-L
 
     .kick_i(disable_cg),  // continuously kick to keep clock awake when not gating
@@ -196,25 +161,25 @@ module zeroer #(
     .clk(reg_clk),
     .arst_n(rst_ni),
 
-    .s_axil_awready(zeroer_ctrl_axil_resp.aw_ready),
-    .s_axil_awvalid(zeroer_ctrl_axil_req.aw_valid),
-    .s_axil_awaddr (zeroer_ctrl_axil_req.aw.addr),
-    .s_axil_awprot (zeroer_ctrl_axil_req.aw.prot),
-    .s_axil_wready (zeroer_ctrl_axil_resp.w_ready),
-    .s_axil_wvalid (zeroer_ctrl_axil_req.w_valid),
-    .s_axil_wdata  (zeroer_ctrl_axil_req.w.data),
-    .s_axil_wstrb  (zeroer_ctrl_axil_req.w.strb),
-    .s_axil_bready (zeroer_ctrl_axil_req.b_ready),
-    .s_axil_bvalid (zeroer_ctrl_axil_resp.b_valid),
-    .s_axil_bresp  (zeroer_ctrl_axil_resp.b.resp),
-    .s_axil_arready(zeroer_ctrl_axil_resp.ar_ready),
-    .s_axil_arvalid(zeroer_ctrl_axil_req.ar_valid),
-    .s_axil_araddr (zeroer_ctrl_axil_req.ar.addr),
-    .s_axil_arprot (zeroer_ctrl_axil_req.ar.prot),
-    .s_axil_rready (zeroer_ctrl_axil_req.r_ready),
-    .s_axil_rvalid (zeroer_ctrl_axil_resp.r_valid),
-    .s_axil_rdata  (zeroer_ctrl_axil_resp.r.data),
-    .s_axil_rresp  (zeroer_ctrl_axil_resp.r.resp),
+    .s_axil_awready(zeroer_ctrl_axil_resp_o.aw_ready),
+    .s_axil_awvalid(zeroer_ctrl_axil_req_i.aw_valid),
+    .s_axil_awaddr (zeroer_ctrl_axil_req_i.aw.addr[CtrlAddrW-1:0]),
+    .s_axil_awprot (zeroer_ctrl_axil_req_i.aw.prot),
+    .s_axil_wready (zeroer_ctrl_axil_resp_o.w_ready),
+    .s_axil_wvalid (zeroer_ctrl_axil_req_i.w_valid),
+    .s_axil_wdata  (zeroer_ctrl_axil_req_i.w.data),
+    .s_axil_wstrb  (zeroer_ctrl_axil_req_i.w.strb),
+    .s_axil_bready (zeroer_ctrl_axil_req_i.b_ready),
+    .s_axil_bvalid (zeroer_ctrl_axil_resp_o.b_valid),
+    .s_axil_bresp  (zeroer_ctrl_axil_resp_o.b.resp),
+    .s_axil_arready(zeroer_ctrl_axil_resp_o.ar_ready),
+    .s_axil_arvalid(zeroer_ctrl_axil_req_i.ar_valid),
+    .s_axil_araddr (zeroer_ctrl_axil_req_i.ar.addr[CtrlAddrW-1:0]),
+    .s_axil_arprot (zeroer_ctrl_axil_req_i.ar.prot),
+    .s_axil_rready (zeroer_ctrl_axil_req_i.r_ready),
+    .s_axil_rvalid (zeroer_ctrl_axil_resp_o.r_valid),
+    .s_axil_rdata  (zeroer_ctrl_axil_resp_o.r.data),
+    .s_axil_rresp  (zeroer_ctrl_axil_resp_o.r.resp),
 
     .hwif_in (hwif_in),
     .hwif_out(hwif_out)

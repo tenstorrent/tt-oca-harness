@@ -105,7 +105,7 @@ SRAM.
 
 ==== SRAM Initialization using Memory Zeroer
 
-The SMC contains a Memory Zeroer unit at `BASE + 0x0003_8200`, which can be used
+The SMC contains a Memory Zeroer unit at `BASE + 0x0001_1000`, which can be used
 to initialize SRAM before use. This can be performed like so:
 
 . Disable interrupts to the core.

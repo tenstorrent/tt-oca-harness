@@ -2848,6 +2848,23 @@ localparam int unsigned SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_RE
 
 
 //==============================================================================
+// Addresses for Address Map: zeroer_ctrl
+//==============================================================================
+
+
+localparam int unsigned ZEROER_CTRL_REG_MAP_BASE_ADDR                                                             = 32'hC0011000;
+localparam int unsigned ZEROER_CTRL_REG_MAP_SIZE                                                                  = 32'h00000018;
+
+
+localparam int unsigned ZEROER_CTRL_DEST_ADDR_REG_OFFSET                                                          = 32'h00000000;
+localparam int unsigned ZEROER_CTRL_DEST_ADDR_REG_ADDR                                                            = 32'hC0011000;
+localparam int unsigned ZEROER_CTRL_SIZE_REG_OFFSET                                                               = 32'h00000008;
+localparam int unsigned ZEROER_CTRL_SIZE_REG_ADDR                                                                 = 32'hC0011008;
+localparam int unsigned ZEROER_CTRL_CTRL_STATUS_REG_OFFSET                                                        = 32'h00000010;
+localparam int unsigned ZEROER_CTRL_CTRL_STATUS_REG_ADDR                                                          = 32'hC0011010;
+
+
+//==============================================================================
 // Addresses for Address Map: smc_alias_remap_wrap
 //==============================================================================
 
@@ -6149,23 +6166,6 @@ localparam int unsigned DMA_CTRL_NUM_REPETITIONS_LO_REG_OFFSET                  
 localparam int unsigned DMA_CTRL_NUM_REPETITIONS_LO_REG_ADDR                                                      = 32'hC0038130;
 localparam int unsigned DMA_CTRL_NUM_REPETITIONS_HI_REG_OFFSET                                                    = 32'h00000134;
 localparam int unsigned DMA_CTRL_NUM_REPETITIONS_HI_REG_ADDR                                                      = 32'hC0038134;
-
-
-//==============================================================================
-// Addresses for Address Map: zeroer_ctrl
-//==============================================================================
-
-
-localparam int unsigned ZEROER_CTRL_REG_MAP_BASE_ADDR                                                             = 32'hC0038200;
-localparam int unsigned ZEROER_CTRL_REG_MAP_SIZE                                                                  = 32'h00000018;
-
-
-localparam int unsigned ZEROER_CTRL_DEST_ADDR_REG_OFFSET                                                          = 32'h00000000;
-localparam int unsigned ZEROER_CTRL_DEST_ADDR_REG_ADDR                                                            = 32'hC0038200;
-localparam int unsigned ZEROER_CTRL_SIZE_REG_OFFSET                                                               = 32'h00000008;
-localparam int unsigned ZEROER_CTRL_SIZE_REG_ADDR                                                                 = 32'hC0038208;
-localparam int unsigned ZEROER_CTRL_CTRL_STATUS_REG_OFFSET                                                        = 32'h00000010;
-localparam int unsigned ZEROER_CTRL_CTRL_STATUS_REG_ADDR                                                          = 32'hC0038210;
 
 
 //==============================================================================
@@ -11101,6 +11101,9 @@ localparam longint unsigned SMC_BASE_CONFIG_REGION_SIZE_REG_DEFAULT             
 localparam longint unsigned SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT                                        = 64'h000000001F000000;
 localparam longint unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_REG_DEFAULT                                = 32'h00001000;
+localparam longint unsigned ZEROER_CTRL_DEST_ADDR_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned ZEROER_CTRL_SIZE_REG_DEFAULT                                                          = 64'h0000000000000000;
+localparam longint unsigned ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT                                                   = 64'h0000000000000000;
 localparam longint unsigned REMAP_REGION_REGION_START_REG_DEFAULT                                                 = 64'h0000000000000000;
 localparam longint unsigned REMAP_REGION_REGION_END_REG_DEFAULT                                                   = 64'h0000000000000000;
 localparam longint unsigned REMAP_REGION_REGION_ATTRS_REG_DEFAULT                                                 = 64'h0000000000000000;
@@ -11137,9 +11140,6 @@ localparam longint unsigned DMA_CTRL_SRC_STRIDE_LO_REG_DEFAULT                  
 localparam longint unsigned DMA_CTRL_SRC_STRIDE_HI_REG_DEFAULT                                                    = 32'h00000000;
 localparam longint unsigned DMA_CTRL_NUM_REPETITIONS_LO_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned DMA_CTRL_NUM_REPETITIONS_HI_REG_DEFAULT                                               = 32'h00000000;
-localparam longint unsigned ZEROER_CTRL_DEST_ADDR_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned ZEROER_CTRL_SIZE_REG_DEFAULT                                                          = 64'h0000000000000000;
-localparam longint unsigned ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT                                                   = 64'h0000000000000000;
 localparam longint unsigned CPU_CTRL_RESET_VECTOR_REG_DEFAULT                                                     = 64'h00000000C0040000;
 localparam longint unsigned CPU_CTRL_RESET_CTRL_REG_DEFAULT                                                       = 64'h000000000000010F;
 localparam longint unsigned CPU_CTRL_CORE_RESET_PULSE_COUNT_REG_DEFAULT                                           = 64'h0000000F00100008;
@@ -13024,6 +13024,18 @@ localparam int unsigned SMC_BASE_CONFIG_HANG_DET_CTRL_IRQ_SHIFT                 
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_VALUE_MASK                                     = 32'hFFFFF;
 localparam int unsigned SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD_VALUE_SHIFT                                    = 0;
 
+localparam longint unsigned ZEROER_CTRL_DEST_ADDR_DEST_ADDR_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned ZEROER_CTRL_DEST_ADDR_DEST_ADDR_SHIFT                                                 = 0;
+
+localparam longint unsigned ZEROER_CTRL_SIZE_SIZE_MASK                                                            = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned ZEROER_CTRL_SIZE_SIZE_SHIFT                                                           = 0;
+
+localparam longint unsigned ZEROER_CTRL_CTRL_STATUS_INT_EN_MASK                                                   = 64'h1;
+localparam     int unsigned ZEROER_CTRL_CTRL_STATUS_INT_EN_SHIFT                                                  = 0;
+
+localparam longint unsigned ZEROER_CTRL_CTRL_STATUS_STATUS_MASK                                                   = 64'h100000000;
+localparam     int unsigned ZEROER_CTRL_CTRL_STATUS_STATUS_SHIFT                                                  = 32;
+
 localparam longint unsigned REMAP_REGION_REGION_START_START_ADDR_MASK                                             = 64'hFFFFFFFFFFF000;
 localparam     int unsigned REMAP_REGION_REGION_START_START_ADDR_SHIFT                                            = 12;
 
@@ -13281,18 +13293,6 @@ localparam int unsigned DMA_CTRL_NUM_REPETITIONS_LO_DATA_SHIFT                  
 
 localparam int unsigned DMA_CTRL_NUM_REPETITIONS_HI_DATA_MASK                                                     = 32'hFFFFFFFF;
 localparam int unsigned DMA_CTRL_NUM_REPETITIONS_HI_DATA_SHIFT                                                    = 0;
-
-localparam longint unsigned ZEROER_CTRL_DEST_ADDR_DEST_ADDR_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned ZEROER_CTRL_DEST_ADDR_DEST_ADDR_SHIFT                                                 = 0;
-
-localparam longint unsigned ZEROER_CTRL_SIZE_SIZE_MASK                                                            = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned ZEROER_CTRL_SIZE_SIZE_SHIFT                                                           = 0;
-
-localparam longint unsigned ZEROER_CTRL_CTRL_STATUS_INT_EN_MASK                                                   = 64'h1;
-localparam     int unsigned ZEROER_CTRL_CTRL_STATUS_INT_EN_SHIFT                                                  = 0;
-
-localparam longint unsigned ZEROER_CTRL_CTRL_STATUS_STATUS_MASK                                                   = 64'h100000000;
-localparam     int unsigned ZEROER_CTRL_CTRL_STATUS_STATUS_SHIFT                                                  = 32;
 
 localparam longint unsigned CPU_CTRL_RESET_VECTOR_VECTOR_MASK                                                     = 64'hFFFFFFFFFFFFFF;
 localparam     int unsigned CPU_CTRL_RESET_VECTOR_VECTOR_SHIFT                                                    = 0;
@@ -18716,6 +18716,26 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [63:0]   dest_addr ;
+} zeroer_ctrl_dest_addr_reg_t;
+
+
+
+typedef struct packed {
+    logic [63:0]   size ;
+} zeroer_ctrl_size_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   status ;
+    logic [30:0]   rsvd_0 ;
+    logic [0:0]   int_en ;
+} zeroer_ctrl_ctrl_status_reg_t;
+
+
+
+typedef struct packed {
     logic [43:0]   start_addr ;
     logic [11:0]   rsvd_0 ;
 } remap_region_region_start_reg_t;
@@ -18991,26 +19011,6 @@ typedef struct packed {
 typedef struct packed {
     logic [31:0]   data ;
 } dma_ctrl_num_repetitions_hi_reg_t;
-
-
-
-typedef struct packed {
-    logic [63:0]   dest_addr ;
-} zeroer_ctrl_dest_addr_reg_t;
-
-
-
-typedef struct packed {
-    logic [63:0]   size ;
-} zeroer_ctrl_size_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   status ;
-    logic [30:0]   rsvd_0 ;
-    logic [0:0]   int_en ;
-} zeroer_ctrl_ctrl_status_reg_t;
 
 
 
