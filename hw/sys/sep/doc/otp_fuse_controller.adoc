@@ -114,6 +114,12 @@ slot of their own, and `LC_STATE` ignores its assigned lock bits. Lifecycle
 transition and token checks still apply to `LC_STATE`. The slot numbers and
 bit positions are defined in <<sep-fuse-fields-table>>.
 
+A write-lock bit exists in two places that must not be confused: the LOCKS *shadow*
+register bit, which firmware sets to close a field for the remainder of the current
+boot and which clears on the next cold reset, and the LOCKS *fuse* bit, whose burn
+closes the field permanently. Setting the shadow bit alone protects the current
+session while leaving the field burnable in a later boot.
+
 The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
 shown in the figure, and each interface has its own access control. In addition
@@ -204,13 +210,15 @@ addresses. Access permissions remain subject to the lock and lifecycle rules abo
 |LOCK |— |96 |set-only |true |Lock state occupies OTP words 0–2:
 
 `LOCKS` (64 bits at `0x0`) covers slots 0–31: write-lock at bit `2n`,
-read-lock at bit `2n+1` for slot `n`.
+read-lock at bit `2n+1` for slot `n`. Slot 23 (SIGNATURE_REVOKE) is in bits
+[47:46].
 
-`LOCKS_SPARE` (32 bits at `0x8`) covers slots 32–40: write-lock at bit
-`2(n-32)`, read-lock at bit `2(n-32)+1`. Bits [31:18] are unassigned slots 41–47.
+`LOCKS_SPARE` (32 bits at `0x8`) covers slots 32–41, SEP_SYS_ID and spare0
+through spare8: write-lock at bit `2(n-32)`, read-lock at bit `2(n-32)+1`.
+Bits [31:20] are unassigned slots 42–47.
 
 Firmware reads the complete state as three consecutive 32-bit words.
-There are 41 assigned slots (0–40); slot 0 belongs to `LC_STATE`, which ignores
+There are 42 assigned slots (0–41); slot 0 belongs to `LC_STATE`, which ignores
 both lock bits. LOCK has no lock-bit pair and cannot lock itself.
 
 |LC_STATE |0 |32 (4-bit state, 8-bit encoding) |set-only |true |Life-cycle state of the
@@ -253,7 +261,7 @@ RMA_CHIPLET_TOKEN that enables entering RMA_CHIPLET Life Cycle state
 
 |CLASS_KEY |7 |256 |true |true |Can be used for firmware encryption and decryption.
 
-|CHIPLET_PUBK_REVOKE |8 |32 |set-only |true |Global public-key revocation
+|PUBK_REVOKE |8 |32 |set-only |true |Global public-key revocation
 vector covering every boot-verification key of every owner (classical and
 PQC). SEP ROM embeds a set of public-key hash digests and accesses
 additional fused key hashes; each key entry maps to one bit here. Once set,
@@ -264,7 +272,12 @@ PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1;
 SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26]
 reserved. Before the chiplet owner transfers a
 part to the customer, the development-key bits shall be set (revoked).
-(Name retained for compatibility; scope is now all owners.)
+The write-lock of this field, LOCKS[16], shall never be programmed in the
+LOCKS fuse: a key whose private key is compromised must remain revocable at
+any point in the device's life, by whichever owner holds it. A write-lock set
+in the LOCKS shadow register lasts for the rest of that boot only.
+(Formerly CHIPLET_PUBK_REVOKE; the RDL, ROM and DV of the 0.5 release use
+that name.)
 
 |BL1_VERSION |9 |256 |set-only |true |BL1 anti-rollback storage. The
 production ROM supplies the low 128 raw bits as security-version flags to
@@ -322,81 +335,106 @@ the hashes embedded in the ROM to authenticate manifests.
 |CHIPLET_PUBK_HASH1 |20 |256 |true |true |Hash of chiplet-owner authentication
 key 1, fused.
 
-|REQUIRED_SIGNERS |21 |32 (use only 2 bits) |true |true |Owners whose signature
-a manifest must carry to be authenticated by SEP ROM. Per owner, 1 = required,
-0 = not-required; the default all-zero value requires no additional owner. [0]
-SiP owner, [1] system owner, [31:2] reserved. The chiplet creator is the root of
-trust -- its classical and PQC root digests are embedded in SEP ROM and always
-authenticate BL1 -- so it has no bit here. Burning a fuse bit only ever adds a
-required signer, so the fuse is monotonic: the standard LOCK bits exist but
-locking this field is unnecessary, since a later burn can never weaken security.
-The value is applied via the shadow register (loaded from the fuse at cold reset,
-SW-writable): firmware may update the shadow to set the required signers for each
-manifest it verifies (BL1, BL2, runtime, ...). See Secure-Boot Signing Model in
-the Life Cycle Controller section.
+|REQUIRED_SIGNERS |21 |64 (40 used) |true |true |Which co-signers a manifest must
+carry to be authenticated by SEP ROM, and whose keys they must use. Bits [7:0] are
+the required-co-signer mask, bit N-1 for co-signer N, matching co_signer_enable in
+the OCA Payload Manifest. Bits [4N+7:4N+4] hold the one-hot owner code of
+co-signer N: 0b0001 anonymous, 0b0010 chiplet-designated, 0b0100 SiP owner,
+0b1000 system owner; other values reserved. Bits [63:40] reserved. The chiplet
+creator is always required and has no slot here. Because the fuse is one-way and
+the codes are one-hot, burn a co-signer's owner code and read it back before
+burning its bit in [7:0]. Owner codes, the requirement rule and policy propagation
+are specified under Secure-Boot Signing Model in the Life Cycle Controller section.
 
-|REQUIRED_ALGS |22 |32 (use only 12 bits) |set-only |true |Per-owner required
-signature algorithms, applied only when that owner is required. Each owner has a
-4-bit nibble; bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum
-(ML-DSA), bits 3:2 reserved. The specific classical scheme and ML-DSA parameter
-set (e.g., ML-DSA-44/65/87) are set by the owner's provisioned keys, not mandated
-here. [3:0] chiplet, [7:4] SiP owner, [11:8] system owner, [31:12] reserved. For
-each required (owner, algorithm) the manifest must carry a signature verified
-against that owner's burned, non-revoked key of that type; all required pairs
-must verify, and any signature from a non-required owner is ignored.
+|REQUIRED_ALGS |22 |64 (40 used) |true |true |Which signature classes each
+verification entity must supply. Each entity has four bits: bit 0 set requires a
+classical signature (RSA, ECDSA or EdDSA), bit 1 set requires a post-quantum
+signature (ML-DSA), both set requires both, bits 3:2 reserved. Bits [3:0] are the
+chiplet creator (the manifest's ROOT), bits [7:4] the verifier key entry, and bits
+[4N+7:4N+4] co-signer N for N = 1 to 8, the same positions as its owner code in
+REQUIRED_SIGNERS. Bits [63:40] reserved. An entity's bits apply only when that
+entity is required. An unprovisioned field reads all-zero, so SEP ROM enforces
+bits [1:0] = 01 (classical required) when the fused value is 00 and writes 01
+to the shadow register before hand-off: an unprovisioned part requires a
+classical chiplet-creator signature rather than none. The requirement rule,
+hybrid verification and policy propagation are specified under Secure-Boot
+Signing Model in the Life Cycle Controller section.
 
-|CHIPLET_PUBK_PQC_HASH0 |23 |256 |true |true |Chiplet owner ML-DSA PQC
+|SIGNATURE_REVOKE |23 |64 (40 used) |set-only |true |Signature-algorithm class
+revocation: a required signature whose class is revoked fails verification, and a
+set group code revokes a whole group, after which SEP ROM no longer enforces that
+group's REQUIRED_ALGS bits for any entity. The layout is that of the OCA Payload
+Manifest's signature_class_revoke
+field. Bits [7:0] classical classes: 0 RSA-3072, 1 RSA-4096, 2 ECDSA P-256, 3
+ECDSA P-384, 4 ECDSA P-521, 5 Ed25519, 6 Ed448, 7 adopter-defined classical
+(signature_type_classic `0xF0-0xFF`). Bits [15:8] classical group code: `0x00`, or
+exactly `0xCA`. Bits [23:16] reserved. Bits [31:24] post-quantum classes: 24
+ML-DSA-44, 25 ML-DSA-65, 26 ML-DSA-87, 27 reserved for FN-DSA, 28 SLH-DSA-128, 29
+SLH-DSA-192, 30 SLH-DSA-256, 31 adopter-defined post-quantum (signature_type_pqc
+`0xF0-0xFF`). Bits [39:32] post-quantum group code: `0x00`, or exactly `0xAC`.
+Bits [63:40] reserved. Programmed only by BL1, and write-locked for the rest of
+each boot in the LOCKS shadow register, never in the LOCKS fuse. Lock slot 23 in
+LOCKS[47:46]. Semantics, group codes and the update procedure are specified
+under Signature Algorithm Revocation in the Life Cycle Controller section.
+
+|CHIPLET_PUBK_PQC_HASH0 |24 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.
 
-|CHIPLET_PUBK_PQC_HASH1 |24 |256 |true |true |Chiplet owner ML-DSA PQC
+|CHIPLET_PUBK_PQC_HASH1 |25 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.
 
-|SIP_PUBK_PQC_HASH0 |25 |256 |true |true |Hash digest of the SiP owner's
+|SIP_PUBK_PQC_HASH0 |26 |256 |true |true |Hash digest of the SiP owner's
 ML-DSA PQC root public key for secure boot (slot 0). PQC counterpart of
 SIP_PUBK_HASH0.
 
-|SYS_PUBK_PQC_HASH |26 |256 |true |true |Hash digest of the system owner's
+|SYS_PUBK_PQC_HASH |27 |256 |true |true |Hash digest of the system owner's
 ML-DSA PQC root public key for secure boot. PQC counterpart of
 SYS_PUBK_HASH.
 
-|SIP_PUBK_HASH1 |27 |256 |true |true |Hash digest of the SiP owner's root
+|SIP_PUBK_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's root
 public key for secure boot, slot 1. Second slot so the SiP owner retains a
-usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].
+usable root key after revoking slot 0 via PUBK_REVOKE[24].
 
-|SIP_PUBK_PQC_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's ML-DSA
+|SIP_PUBK_PQC_HASH1 |29 |256 |true |true |Hash digest of the SiP owner's ML-DSA
 PQC root public key for secure boot, slot 1. PQC counterpart of
-SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].
+SIP_PUBK_HASH1; revocable via PUBK_REVOKE[25].
 
-|SEP_CHIPLET_ID |29 |256 |true |true |Per-owner chiplet public identity fuse
+|SEP_CHIPLET_ID |30 |256 |true |true |Per-owner chiplet public identity fuse
 used as a public identity input to the Key Manager. No read protection
 is required.
 
-|SEP_SIP_ID |30 |256 |true |true |SiP-owner public identity fuse used as a public identity
+|SEP_SIP_ID |31 |256 |true |true |SiP-owner public identity fuse used as a public identity
 input to the Key Manager. No read protection is required.
 
-|SEP_SYS_ID |31 |256 |true |true |System-owner public identity fuse used as a public identity
+|SEP_SYS_ID |32 |256 |true |true |System-owner public identity fuse used as a public identity
 input to the Key Manager. No read protection is required.
 
-|spare0 |32 |256 |true |true |Spare field 0 for future use.
+|spare0 |33 |256 |true |true |Spare field 0 for future use.
 
-|spare1 |33 |256 |true |true |Spare field 1 for future use.
+|spare1 |34 |256 |true |true |Spare field 1 for future use.
 
-|spare2 |34 |256 |true |true |Spare field 2 for future use.
+|spare2 |35 |256 |true |true |Spare field 2 for future use.
 
-|spare3 |35 |256 |true |true |Spare field 3 for future use.
+|spare3 |36 |256 |true |true |Spare field 3 for future use.
 
-|spare4 |36 |256 |true |true |Spare field 4 for future use.
+|spare4 |37 |256 |true |true |Spare field 4 for future use.
 
-|spare5 |37 |256 |true |true |Spare field 5 for future use.
+|spare5 |38 |256 |true |true |Spare field 5 for future use.
 
-|spare6 |38 |256 |true |true |Spare field 6 for future use.
+|spare6 |39 |256 |true |true |Spare field 6 for future use.
 
-|spare7 |39 |256 |true |true |Spare field 7 for future use.
+|spare7 |40 |256 |true |true |Spare field 7 for future use.
 
-|spare8 |40 |256 |true |true |Spare field 8 for future use.
+|spare8 |41 |128 |true |true |Spare field 8 for future use. Reduced from 256 to
+128 bits to fund the REQUIRED_SIGNERS and REQUIRED_ALGS widening and the new
+SIGNATURE_REVOKE field, keeping the map at exactly 8192 bits.
 |=======================================================================
 
 The fuse map is exactly 8192 bits with exclusive end address `0x400` (1024 bytes, 256 × 32-bit words).
+This budget is fully allocated, so every field added or widened must be funded by
+reclaiming bits from the spare pool; the co-signer alignment takes its 128 bits
+(32 each for the REQUIRED_SIGNERS and REQUIRED_ALGS widening, 64 for
+SIGNATURE_REVOKE) out of spare8.
 
 The JTAG_ID field has been removed from the fuse map and will be implemented as a top-level port.
 

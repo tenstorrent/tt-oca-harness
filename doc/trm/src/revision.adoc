@@ -206,4 +206,12 @@ reference clock, reset and powergood rows as having no dedicated interface in
 the harness. Added GPIO pad integration guidance on the bonded and unbonded pad
 counts, the pad types for the JTAG PTAP/STAP, cross trigger ports and the
 clock/reset/powergood inputs.
+|0.5.37 |2026-11-08 |Haohao Liao |Aligned the SEP policy fuses with the OCA
+Payload Manifest: REQUIRED_SIGNERS as a co-signer mask with owner codes,
+REQUIRED_ALGS as a per-entity algorithm requirement, and a new SIGNATURE_REVOKE
+field with per-class bits and group codes. Restored the Secure-Boot Signing
+Model and added Signature Algorithm Revocation to the Life Cycle Controller
+chapter. SEP ROM requires a classical chiplet-creator signature when
+REQUIRED_ALGS is unprovisioned. Renamed CHIPLET_PUBK_REVOKE to PUBK_REVOKE,
+which is never write-locked in the LOCKS fuse.
 |=======================================================================
