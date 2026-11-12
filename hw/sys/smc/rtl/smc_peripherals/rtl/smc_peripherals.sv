@@ -20,11 +20,13 @@
 module smc_peripherals #(
   parameter int unsigned MAX_TRANS = 2,  // Maximum outstanding transactions of the padring
                                          // GPIO demux and of each GPIO interface.
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h4   // Vendor eFuse shim CSR block carved off
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Vendor eFuse shim CSR block carved off
                                                  // the base of the smc_external window;
                                                  // literal because the open smc_external
                                                  // map is opaque. Passed to the peripheral
                                                  // crossbar.
+  parameter int unsigned CHIP_ID = 0  // Chip type reported in CHIP_CONFIG.CHIP_ID, passed to
+                                      // smc_misc_wrap.
 ) (
   input  logic clk_ref_i,               // Reference clock for the reset unit, the AVSBus
                                         // controller and the peripheral CDC.
@@ -1542,7 +1544,7 @@ module smc_peripherals #(
   ///////////////////
 
   smc_misc_wrap #(
-    .CHIP_ID                    (smc_config_pkg::ChipId),
+    .CHIP_ID                    (CHIP_ID),
     .LC_STATE_WIDTH             (2 * smc_pkg::LcStateWidth)
   ) u_smc_misc_wrap (
     .clk_i                      (clk_smc_i),
