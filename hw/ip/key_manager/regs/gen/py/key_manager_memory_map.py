@@ -112,7 +112,7 @@ VIEWS = {
                 "base": 0x00011400,
                 "end": 0x000114FF,
                 "aperture_size": 0x100,
-                "occupied_size": 0x1C,
+                "occupied_size": 0x24,
                 "count": 1,
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "FORWARD", "rdata": 0x0, "bresp": "FORWARD", "text": "Forwarded"}),),

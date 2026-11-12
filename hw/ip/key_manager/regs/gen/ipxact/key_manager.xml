@@ -2729,7 +2729,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
         <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
         <ipxact:baseAddress>'h11400</ipxact:baseAddress>
-        <ipxact:range>'h1c</ipxact:range>
+        <ipxact:range>'h24</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
           <ipxact:name>EFUSE_INTERFACE_CTRL_STATUS</ipxact:name>
@@ -2825,21 +2825,9 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
-          <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR (optionally with read-back), and reports program progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to program</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_data</ipxact:name>
             <ipxact:description>Data to program to eFuse.  If this bit is 0, the program request will be ignored</ipxact:description>
@@ -2931,21 +2919,9 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_READ_CTRL</ipxact:name>
-          <ipxact:description>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to read</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_read_go</ipxact:name>
             <ipxact:description>When set, triggers a read to efuse.</ipxact:description>
@@ -3106,6 +3082,42 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_PROGRAM_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.</ipxact:description>
+          <ipxact:addressOffset>'h1c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address to program. An address at or beyond the implemented eFuse size sets efuse_program_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_READ_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.</ipxact:description>
+          <ipxact:addressOffset>'h20</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address of the word to read. An address at or beyond the implemented eFuse size sets efuse_read_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
