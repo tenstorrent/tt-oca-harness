@@ -147,13 +147,6 @@ module smc_efuse_wrapper #(
   `OCAH_ASSERT_STATIC(EfusePageAligned_A,
                       EfusePageBase % smc_pkg::smc_axi_lite_32_addr_t'(smc_pkg::RegPageSize) == 0)
 
-  function automatic jtag_target_e jtag_target(smc_pkg::smc_axi_lite_32_addr_t addr, logic blocked);
-    if (blocked) return JTAG_TARGET_ERROR;
-    if (addr inside {[EfusePageBase : EfusePageLast]}) return JTAG_TARGET_REGS;
-    if (addr inside {[EfuseShimBase : EfuseShimLast]}) return JTAG_TARGET_SHIM;
-    return JTAG_TARGET_ERROR;
-  endfunction
-
   smc_pkg::smc_axil_32_32_req_t  [2:0] axil_smc_otp_jtag_req_filtered;
   smc_pkg::smc_axil_32_32_resp_t [2:0] axil_smc_otp_jtag_resp_filtered;
 
@@ -183,10 +176,25 @@ module smc_efuse_wrapper #(
   assign is_prod_or_rma_sip = (lc_state_smc_raw == 4'b0001) ||  // PROD
       (lc_state_smc_raw[smc_pkg::LcStateWidth-1:1] == 3'b001);  // RMA_SIP
 
-  assign jtag_aw_target = jtag_target(axil_smc_otp_jtag_req_i.aw.addr,
-                                      is_prod_or_rma_sip || lc_sigint_err);
-  assign jtag_ar_target = jtag_target(axil_smc_otp_jtag_req_i.ar.addr,
-      (is_prod_or_rma_sip && !is_rd_jtag_public_identity) || lc_sigint_err);
+  always_comb begin
+    jtag_aw_target = JTAG_TARGET_ERROR;
+    if (!is_prod_or_rma_sip && !lc_sigint_err) begin
+      if (axil_smc_otp_jtag_req_i.aw.addr inside {[EfusePageBase : EfusePageLast]}) begin
+        jtag_aw_target = JTAG_TARGET_REGS;
+      end else if (axil_smc_otp_jtag_req_i.aw.addr inside {[EfuseShimBase : EfuseShimLast]}) begin
+        jtag_aw_target = JTAG_TARGET_SHIM;
+      end
+    end
+
+    jtag_ar_target = JTAG_TARGET_ERROR;
+    if ((!is_prod_or_rma_sip || is_rd_jtag_public_identity) && !lc_sigint_err) begin
+      if (axil_smc_otp_jtag_req_i.ar.addr inside {[EfusePageBase : EfusePageLast]}) begin
+        jtag_ar_target = JTAG_TARGET_REGS;
+      end else if (axil_smc_otp_jtag_req_i.ar.addr inside {[EfuseShimBase : EfuseShimLast]}) begin
+        jtag_ar_target = JTAG_TARGET_SHIM;
+      end
+    end
+  end
 
   axi_lite_demux #(
     .aw_chan_t  (smc_pkg::smc_axil_32_32_aw_chan_t),

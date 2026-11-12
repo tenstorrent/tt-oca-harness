@@ -163,7 +163,7 @@ package km_intf_pkg;
   );  // DRBG sampler window end
 
   // OTP / eFuse access port. The crossbar routes the OTP page to xbar master port 8.
-  // key_manager.sv forwards only the MAP, CTRL and MMR register maps to efuse_req_o, with
+  // key_manager.sv forwards the page to efuse_req_o with
   // addr[KmAxiAddrWidth-1:OtpRemapAddrWidth] replaced by OTP_EFUSE_REMAP_BASE, so the
   // shared SEP efuse_interface_controller is reached at the same offsets. The register maps
   // come from the generated KM address map and must lie inside the page.
@@ -191,13 +191,6 @@ package km_intf_pkg;
   );  // eFuse token MMR end
   localparam km_addr_t OtpBaseAddr = OtpMapBaseAddr & ~OtpPageMask;  // OTP page base
   localparam km_addr_t OtpEndAddr = km_window_end(OtpBaseAddr, OtpRemapAddrWidth);  // OTP page end
-
-  // True when addr falls in the MAP, CTRL or MMR register map of the OTP page.
-  function automatic logic otp_addr_decoded(km_addr_t addr);
-    return (addr >= OtpMapBaseAddr && addr <= OtpMapEndAddr) ||
-           (addr >= OtpCtrlBaseAddr && addr <= OtpCtrlEndAddr) ||
-           (addr >= OtpMmrBaseAddr && addr <= OtpMmrEndAddr);
-  endfunction
 
   // External crypto engine ports
   localparam km_addr_t OtbnBaseAddr = 32'h0001_8000;  // OTBN window base
