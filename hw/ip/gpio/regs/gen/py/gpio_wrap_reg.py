@@ -184,7 +184,7 @@ class GPIO_INTF_ACCESS_FILTER_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-GPIO_CTRL_CONTROL_REG_DEFAULT = 0x00100002
+GPIO_CTRL_CONTROL_REG_DEFAULT = 0x00000002
 GPIO_CTRL_CONTROL_REG_FIELD_ACCESS = (
     ('drive_strength', 'rw', '', '', False),
     ('pull_enable_n0_scan', 'rw', '', '', False),
@@ -203,7 +203,7 @@ GPIO_CTRL_CONTROL_REG_FIELDS = (
     ('pull_select', 9, 9, 'rw', 'r', '', '', False, False, 0),
     ('schmitt_select', 10, 10, 'rw', 'r', '', '', False, False, 0),
     ('config_enable', 16, 16, 'rw', 'r', '', '', False, False, 0),
-    ('strap_valid', 20, 20, 'r', 'w', '', '', False, True, 1),
+    ('strap_valid', 20, 20, 'r', 'w', '', '', False, True, None),
     ('strap_value', 21, 21, 'r', 'w', '', '', False, True, 0),
     ('hw2_ovrd', 24, 24, 'rw', 'r', '', '', False, False, 0),
 )
@@ -224,7 +224,7 @@ class GPIO_CTRL_CONTROL_reg_t(Structure):
         ('hw2_ovrd', c_uint32, 1),
     ]
 
-GPIO_CTRL_CONTROL_REG_DEFAULT = 0x00100002
+GPIO_CTRL_CONTROL_REG_DEFAULT = 0x00000002
 
 class GPIO_CTRL_CONTROL_reg_u(Union):
     _fields_ = [

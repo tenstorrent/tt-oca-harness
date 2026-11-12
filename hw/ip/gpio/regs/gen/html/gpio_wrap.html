@@ -61,7 +61,7 @@
 <tr><td>24</td><td>hw2_ovrd</td><td>RW</td><td>0x0</td><td>Setting this register will enable the secondary HW function to override the GPIO enable and data lines.</td></tr>
 <tr><td>23:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>21</td><td>strap_value</td><td>R</td><td>0x0</td><td>This register holds the captured value that was applied to the pad when reset was de-asserted.</td></tr>
-<tr><td>20</td><td>strap_valid</td><td>R</td><td>0x1</td><td>When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default</td></tr>
+<tr><td>20</td><td>strap_valid</td><td>R</td><td>-</td><td>Reflects the INPUT_BY_DEFAULT parameter of the instance: 1 when the pad is an input by default and strap capture is supported, 0 otherwise. Fixed at integration; not a capture-done or reset-done flag.</td></tr>
 <tr><td>19:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>16</td><td>config_enable</td><td>RW</td><td>0x0</td><td>Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select</td></tr>
 <tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
