@@ -3012,14 +3012,21 @@ module smc_uvm_top
     // u_cpu_mmio_uncore_rst_axi_sva watches the CPU MMIO link on the cluster
     // uncore reset (tb_cpu_uncore_reset_n), and u_misc_warm_axil_sva watches
     // the SCRATCH_COLD_WARM leg of the misc wrapper's AXI-Lite demux on the
-    // wrapper's warm reset. Their reset rules grade VALID in that reset and
-    // their tracking flushes on it. The MMIO port is shared by the four cores
+    // wrapper's warm reset. The MMIO port is shared by the four cores
     // behind the uncore bridge: the uncore reset isolates it, and a core reset
     // or core reset pulse leaves it connected, carrying the other cores'
     // traffic, so no core reset is a reset of this link. The MMIO instance
     // sets MASTER_SYNC_RESET: AWVALID, WVALID and ARVALID may stay high on the
     // first edge that samples the uncore reset low and must be low from the
-    // next edge on. Each is on once its reset is known; the MMIO instance also
+    // next edge on. Its slave, the primary-domain fabric, is outside the
+    // uncore reset and answers the requests it accepted before it; the
+    // force-mode flush discards those late responses while the reset is held
+    // (cpu.adoc 245-249, 297-299, 304-306). The instance sets
+    // SLAVE_IN_RESET_DOMAIN=0: its B and R reset rules are off and its
+    // tracking keeps those requests open until the fabric answers them. The
+    // misc instance's leg ends in the warm domain, so its reset rules grade
+    // both sides and its tracking flushes on that reset. Each is on once its
+    // reset is known; the MMIO instance also
     // follows the CPU-port hold-off below, and the misc instance is off on the
     // warm-reset cycles where its leg carries the AR the one leaf that presents
     // it on purpose issues (+smc_misc_warm_in_reset_assertoff beside it). The
@@ -3690,11 +3697,12 @@ module smc_uvm_top
     assign misc_warm_rst_n = u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.rst_warm_ni;
 
     ocah_axi_sva #(
-        .IS_LITE           (1'b0),
-        .ADDR_WIDTH        (56),
-        .DATA_WIDTH        (64),
-        .ID_WIDTH          (3),
-        .MASTER_SYNC_RESET (1'b1)
+        .IS_LITE               (1'b0),
+        .ADDR_WIDTH            (56),
+        .DATA_WIDTH            (64),
+        .ID_WIDTH              (3),
+        .MASTER_SYNC_RESET     (1'b1),
+        .SLAVE_IN_RESET_DOMAIN (1'b0)
     ) u_cpu_mmio_uncore_rst_axi_sva (     // CPU MMIO port on the cluster uncore reset
         .en_i (`SMC_AXI_UNCORE_RST_ON),
         `SMC_AXI_SVA_PORTS_RST(u_dut.u_smc.cpu_axi_mmio_port_req,
@@ -4317,14 +4325,15 @@ module smc_uvm_top
     end
     // Own-reset observation for the partial-reset leaf: the edges each
     // own-domain checker spent with its reset low, the edges at which the
-    // condition of one of their <CH>_VALID_RESET_LOW rules held, the AW/W/AR
-    // valids of the CPU MMIO master on the first edge that sampled the uncore
-    // reset low, the AW/AR handshakes the front-port checker graded while the
-    // core reset was low, and the CPU MMIO responses (one per B and per R
-    // carrying RLAST) split by OKAY.
+    // condition of one of their live <CH>_VALID_RESET_LOW rules held (the
+    // MMIO instance's B and R rules are off), the AW/W/AR valids of the CPU
+    // MMIO master on the first edge that sampled the uncore reset low, the
+    // AW/AR handshakes the front-port checker graded while the core reset was
+    // low, and the CPU MMIO responses (one per B and per R carrying RLAST)
+    // split by OKAY.
 `define SMC_AXI_ANY_VALID(REQ, RSP) \
         ((REQ.aw_valid || REQ.w_valid || REQ.ar_valid || RSP.b_valid || RSP.r_valid) === 1'b1)
-`define SMC_AXI_RSP_VALID(RSP) ((RSP.b_valid || RSP.r_valid) === 1'b1)
+`define SMC_AXI_REQ_VALID(REQ) ((REQ.aw_valid || REQ.w_valid || REQ.ar_valid) === 1'b1)
     logic        cpu_uncore_rst_q, misc_warm_rst_q;
     int unsigned axi_uncore_rst_edges, axi_misc_warm_rst_edges, axi_own_rst_valid_hits;
     int unsigned cpu_mmio_msr_first_edges, axi_cpu_front_core_held_hs;
@@ -4341,10 +4350,8 @@ module smc_uvm_top
                                                   u_dut.u_smc.cpu_axi_mmio_port_req.w_valid,
                                                   u_dut.u_smc.cpu_axi_mmio_port_req.ar_valid};
             end
-            if ((cpu_uncore_rst_q === 1'b0 &&
-                 `SMC_AXI_ANY_VALID(u_dut.u_smc.cpu_axi_mmio_port_req,
-                                    u_dut.u_smc.cpu_axi_mmio_port_resp)) ||
-                `SMC_AXI_RSP_VALID(u_dut.u_smc.cpu_axi_mmio_port_resp))
+            if (cpu_uncore_rst_q === 1'b0 &&
+                `SMC_AXI_REQ_VALID(u_dut.u_smc.cpu_axi_mmio_port_req))
                 axi_own_rst_valid_hits <= axi_own_rst_valid_hits + 1;
         end
         if (`SMC_AXI_SVA_ON && !cpu_reset_probe && tb_cpu_core_reset_n === 1'b0 &&
@@ -5084,7 +5091,7 @@ module smc_uvm_top
 `undef SMC_AXI_DK_W
 `undef SMC_FAB
 `undef SMC_BASE
-`undef SMC_AXI_RSP_VALID
+`undef SMC_AXI_REQ_VALID
 `undef SMC_AXI_ANY_VALID
 `undef SMC_AXI_MISC_WARM_ON
 `undef SMC_AXI_UNCORE_RST_ON
