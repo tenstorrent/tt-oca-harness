@@ -1,0 +1,685 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[key-manager-attestation-hw-requirements]]
+= Attestation Hardware Requirements
+ifdef::backend-html5[]
+:km-att-fuse-fields-ref: xref:sep:otp_fuse_controller.adoc#sep-fuse-fields-table[SEP fuse fields]
+:km-att-demotion-ref: xref:sep:lifecycle_controller.adoc#demote-1-2-in-field-debug-demotion[In-Field Debug Demotion]
+:km-att-asset-classes-ref: xref:sep:lifecycle_controller.adoc#asset-classes[Asset Classes]
+:km-att-secure-tm-ref: xref:sep:lifecycle_controller.adoc#secure-tm-vs-scandump[secure_tm and the Secure Scan Chain]
+:km-att-km-reset-ref: xref:sep:reset_controller.adoc#sep-km-reset[Resetting the Key Manager]
+:km-att-reset-ctrl-ref: xref:sep:reset_controller.adoc#sep-reset-controller[SEP Reset Controller]
+:km-att-sep-rom-ref: xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
+:km-att-km-rom-ref: xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
+:km-att-state-reset-ref: xref:ocah-programmer-guide::index.adoc#km-device-state-reset[A device-state change resets the KM]
+:km-att-slot-map-ref: xref:ocah-programmer-guide::index.adoc#km-kpv-slot-map[KPV slot map]
+:km-att-caps-ref: xref:ocah-programmer-guide::index.adoc#km-kdf-caps[CAPS bits]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:km-att-fuse-fields-ref: <<sep-fuse-fields-table>>
+:km-att-demotion-ref: <<demote-1-2-in-field-debug-demotion>>
+:km-att-asset-classes-ref: <<asset-classes>>
+:km-att-secure-tm-ref: <<secure-tm-vs-scandump>>
+:km-att-km-reset-ref: <<sep-km-reset>>
+:km-att-reset-ctrl-ref: <<sep-reset-controller>>
+:km-att-sep-rom-ref: https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+:km-att-km-rom-ref: https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
+:km-att-state-reset-ref: https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-device-state-reset[A device-state change resets the KM]
+:km-att-slot-map-ref: https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-kpv-slot-map[KPV slot map]
+:km-att-caps-ref: https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-kdf-caps[CAPS bits]
+endif::backend-pdf[]
+
+This chapter lists the hardware that the Key Manager needs so that the SEP can prove to a
+remote verifier which firmware it booted and in which device state. It is a first version,
+limited to the minimum hardware, and it is planned for a future release: none of it is
+implemented.
+
+NOTE: This chapter states requirements. It is not the architecture specification: it says
+what the hardware has to provide, not how the blocks are built. The architecture
+specification of this hardware is in preparation and will be added to this manual.
+
+The model is the layered Device Identifier Composition Engine (DICE) architecture of the
+Trusted Computing Group. Each boot stage measures the next stage before starting it. Each
+stage has a secret and a signing key that depend on every measurement up to that stage, and
+each key is certified by the key of the stage before it. The certificate profile and the
+protocol towards the verifier are firmware work and are not part of this chapter.
+
+A requirement carries a tag of the form `KM-ATT-<area>-<number>` and uses "shall". Text
+without a tag is informative. Firmware behavior is described only where it explains or sizes
+the hardware; the Key Manager ROM and SEP boot ROM specifications define it.
+<<km-att-terms-table>> defines the terms this chapter uses.
+
+[[km-att-terms-table]]
+[cols="<24%,<76%",options="header"]
+.Attestation terms
+|===
+|Term |Meaning
+|Measurement |A 384-bit digest that describes a boot stage: its code and the settings that decide how it runs.
+|PCR |Platform Configuration Register. It accumulates measurements through the extend operation and cannot be written in any other way.
+|Extend |Replacing a PCR value with the SHA-384 digest of the old value followed by a measurement.
+|Device secret |`DEVICE_UID`, the fuse value at the start of the key chain.
+|Identity secret, identity key |The first secret of the chain and the signing key generated from it. The identity key identifies the part and does not change with the firmware.
+|Stage secret, stage key |The secret of one boot stage and the signing key generated from it.
+|Device state |The life-cycle state and the two demotion states.
+|Cold reset |The SEP cold reset, which resets the Key Manager cold domain.
+|SEP CPU reset |The watchdog reset of the SEP CPU. It restarts the CPU and clears its warm scratch registers; the rest of the SEP keeps its state.
+|KM restart |A warm reset of the Key Manager, requested by SEP software, by the KM itself or by a device-state change.
+|KM wipe |The wipe event of <<wipe-state>>.
+|ROM mode |The KM CPU executes its ROM, and `SRAM_EXEC_MODE.enable` is 0 (<<execute-permission-whitelist,Execute-Permission Whitelist>>).
+|SEP-side master |A bus master outside the Key Manager that reaches the crypto subsystem: the SEP CPU, its debug master, the secure DMA or the external inbound master.
+|===
+
+[[km-att-overview]]
+== Overview
+
+<<km-att-overview-figure>> shows the Key Manager with the parts that attestation adds.
+
+[[km-att-overview-figure]]
+.Key Manager additions for attestation
+image::km-attestation-overview.svg[alt="Key Manager with the parts that attestation adds: a PCR vault, a SHA-2 engine, an attestation key vault, a root key vault, a DEVICE_UID input, a device-state restart, and a front-door path with an ownership switch towards the crypto engines",width=100%,pdfwidth=100%]
+
+Green boxes and dashed lines are new. White boxes exist today, the cream box is
+interconnect, and grey boxes lie outside the Key Manager. The additions are:
+
+. *PCR vault* (<<km-att-pcr-vault>>). 32 registers of 384 bits that hold measurements. A PCR
+  changes only through an extend that hardware computes, and it can be locked until the next
+  cold reset.
+. *SHA-2 engine* (<<km-att-sha>>). One hash engine inside the Key Manager. It computes the
+  extend, and the ROM uses it for its key derivations.
+. *Attestation key vault* (<<km-att-akv>>). 8 slots next to the PCR vault for the secrets of
+  the key chain, reachable in ROM mode only.
+. *Root key vault* (<<km-att-rkv>>). 8 slots that take the hardware and software roots out of
+  the general key vault.
+. *Engine ownership* (<<km-att-engines>>). A path from the KM to the host registers of each
+  crypto engine and an ownership bit per engine. While the KM owns an engine, the SEP can
+  neither reach nor reset it.
+. *Identity fuse* (<<km-att-device-uid>>). `DEVICE_UID`, a secret fuse value per chiplet that
+  is delivered to the Key Manager only. The key chain starts from it.
+. *Device-state restart* (<<km-att-device-state>>). A change of the life-cycle or demotion
+  state restarts the KM.
+
+The requirements leave out, on purpose:
+
+* *A PCR clear.* PCRs clear only on a cold reset, so a boot is measured once per cold reset
+  (<<km-att-reset-wipe>>).
+* *A boot-stage register and a reset input from the SEP CPU.* The PCR lock bits tell which
+  stages have finished.
+* *A hardware digest of a ROM.* The hash of the SEP boot ROM reaches the Key Manager through
+  a PCR (<<km-att-key-chain>>). Hardware digests are a future option
+  (<<km-att-future-options>>).
+* *A PCR-change interrupt.* Only the KM CPU can start an extend.
+
+[[km-att-key-chain]]
+== Key Chain
+
+<<km-att-key-chain-figure>> shows how measurements become keys. The KM ROM performs every
+derivation. SEP software receives public values only.
+
+[[km-att-key-chain-figure]]
+.Attestation key chain
+image::km-attestation-key-chain.svg[alt="Attestation key chain: DEVICE_UID and the ROM-identity PCR derive the identity secret; each later secret is derived from the secret before it, the PCR of its boot stage, and the life-cycle and demotion state; each secret yields a signing key, and each key signs the certificate of the next",width=100%,pdfwidth=100%]
+
+The chain starts from `DEVICE_UID` and has one link per boot stage:
+
+* The identity secret is derived from `DEVICE_UID` and the ROM-identity PCR, which holds the
+  hash of the SEP boot ROM.
+* The secret of a stage is derived from the secret before it, the current PCR of that stage,
+  and the device state that the KM samples from its hardwired inputs.
+* The signing key of a stage is generated from its secret. Its certificate is signed with the
+  key before it, and it carries the PCR value and the device state as the KM read them. How
+  the identity key is certified when the part is provisioned is outside this chapter.
+
+With `KDF` standing for the key derivation function of the ROM:
+
+----
+identity secret = KDF(DEVICE_UID, ROM-identity PCR)
+stage secret    = KDF(previous secret, current PCR of the stage, life cycle, demotion)
+----
+
+Three properties follow:
+
+* A change in anything a stage measures changes the key of that stage and of every later
+  stage.
+* A stage cannot use the key of an earlier stage: the ROM keeps only the secret of the
+  current stage and signs only with its key.
+* A change of the device state changes every stage key, because the KM restarts and derives
+  the chain again under the new state (<<km-att-device-state>>).
+
+The boot firmware chooses what a stage measures. In DICE terms the inputs are the code of
+the next stage, its configuration, the authority that signed it and the mode the part is in.
+
+<<km-att-pcr-map-table>> gives the intended use of the PCRs. The hardware treats all PCRs
+alike; the map is a firmware convention.
+
+[[km-att-pcr-map-table]]
+[cols="<27%,<31%,<18%,<24%",options="header"]
+.Intended PCR use
+|===
+|PCR |Holds |Extended by |Locked by
+|ROM-identity PCR, one of PCR6 to PCR30 |Hash of the SEP boot ROM |BL0, as its first extend |BL0, right after the extend
+|PCR0 (current), PCR1 (journey) |Boot state and BL1 measurement |BL0 |BL0, before it starts BL1
+|PCR2 (current), PCR3 (journey) |BL2 measurement |BL1 |BL1, before it starts BL2
+|PCR4 (current), PCR5 (journey) |Measurement of BL3 or of the runtime |BL2 |BL2, before it starts that stage
+|PCR6 to PCR30 |Free for runtime measurements | |
+|PCR31 |Measurements stashed for a later stage | |
+|===
+
+Only a current PCR feeds a key. A journey PCR is evidence: it is meant to keep the history of
+every boot since the last cold reset. Because a PCR clears only on a cold reset and is locked
+after its first measurement, a journey PCR receives the same extends as its current PCR. The
+pairs stay in the map so that measuring again without a cold reset can be added later without
+a new map (<<km-att-future-options>>).
+
+[[km-att-pcr-vault]]
+== PCR Vault
+
+<<km-att-pcr-extend-figure>> shows the PCR vault and the path of an extend.
+
+[[km-att-pcr-extend-figure]]
+.PCR extend path
+image::km-attestation-pcr-extend.svg[alt="PCR extend path: the KM CPU writes a measurement and requests an extend; hardware feeds the old PCR value and the measurement to the SHA-2 engine and writes the digest back into the PCR bank; a set lock bit blocks the extend",width=100%,pdfwidth=100%]
+
+[[req-KM-ATT-PCR-010]]*[KM-ATT-PCR-010]* The Key Manager shall contain a PCR vault of 32
+PCRs, PCR0 to PCR31, each 384 bits wide.
+
+[[req-KM-ATT-PCR-020]]*[KM-ATT-PCR-020]* The PCR vault shall be reachable only from the KM
+CPU, through the KM-internal crossbar. No SEP-side master shall have a bus path to it.
+
+[[req-KM-ATT-PCR-030]]*[KM-ATT-PCR-030]* A PCR value shall change in two ways only. A cold
+reset sets it to zero. An extend replaces it with `SHA-384(value || measurement)`, where
+`value` is the PCR value before the extend, `measurement` is a 384-bit value written by the
+KM CPU, and `||` is concatenation. No register write shall load or clear a PCR value.
+
+[[req-KM-ATT-PCR-040]]*[KM-ATT-PCR-040]* An extend shall be atomic. After it the PCR holds
+either the value it had before or the complete new value, also when a KM restart or a KM wipe
+occurs during the extend.
+
+[[req-KM-ATT-PCR-050]]*[KM-ATT-PCR-050]* Each PCR shall have a lock bit that the KM CPU can
+set and that only a cold reset clears. While the lock bit is set, an extend of that PCR shall
+leave the value unchanged and report an error to the KM CPU.
+
+[[req-KM-ATT-PCR-060]]*[KM-ATT-PCR-060]* The KM CPU shall be able to read every PCR value
+and every lock bit at any time.
+
+The lock is what lets a verifier trust a measurement: once the measuring stage has locked a
+PCR, no later stage can add to it. SEP software can restart or wipe the KM whenever it likes,
+so neither event may clear a value or a lock (<<km-att-reset-wipe>>). Otherwise runtime code
+could empty a PCR and then measure a clean boot into it.
+
+PCR values are public. The vault therefore has no read protection, and it does not depend on
+whether the KM runs its ROM or mutable firmware. How a measurement shorter than 384 bits is
+brought to that width is a firmware rule.
+
+[[km-att-sha]]
+== SHA-2 Engine
+
+[[req-KM-ATT-SHA-010]]*[KM-ATT-SHA-010]* The Key Manager shall contain one SHA-2 engine that
+supports SHA-256 and SHA-384. It shall be reachable only from the KM CPU and from the PCR
+vault.
+
+[[req-KM-ATT-SHA-020]]*[KM-ATT-SHA-020]* For an extend, hardware shall initialize the engine,
+feed it the PCR value from the vault followed by the measurement, and write the digest into
+the PCR. No register shall let the KM CPU supply the old value, the initial hash state or the
+digest of an extend, and a hash that the CPU has started shall not be continued as an extend.
+
+[[req-KM-ATT-SHA-030]]*[KM-ATT-SHA-030]* The KM CPU shall be able to hash a message of any
+length with either algorithm through a register interface of the engine.
+
+Because hardware computes the extend, no software can write a PCR value of its choosing, and
+that includes the KM ROM. The message of an extend is 768 bits long and fits one SHA-384
+block.
+
+The register interface lets the ROM build its HMAC and its key derivation function on this
+engine in place of the software SHA-256 it has today. The HMAC engine of the SEP is not used
+for either purpose, because SEP software controls it.
+
+[[km-att-akv]]
+== Attestation Key Vault
+
+[[req-KM-ATT-AKV-010]]*[KM-ATT-AKV-010]* The Key Manager shall contain an attestation key
+vault that is separate from the KPV and has its own address window, reachable only from the
+KM CPU. The number of slots shall be an RTL parameter with a minimum and a default of 8. The
+address window and every field that has one bit per slot shall be sized for 16 slots.
+
+[[req-KM-ATT-AKV-020]]*[KM-ATT-AKV-020]* Each slot shall hold 512 bits of key data and shall
+have the per-slot controls of a KPV slot (`lock_write`, `lock_use`, `erase` and `seal`) with
+the same behavior (<<key-and-policy-vault-kpv>>). Stored key data shall be protected as it is
+in the KPV (<<kpv-scrambling>>).
+
+[[req-KM-ATT-AKV-030]]*[KM-ATT-AKV-030]* The attestation key vault shall be accessible in ROM
+mode only. From the moment `SRAM_EXEC_MODE.enable` is set until a KM restart or a cold reset
+clears it, every access shall be answered with an error: a read shall return zero and a write
+shall have no effect.
+
+The vault holds the secrets of the key chain and, if the ROM chooses to store them, the
+signing keys. Because it opens in ROM mode only, immutable code alone handles these secrets,
+and mutable KM firmware cannot attest. The ROM loads a key from this vault only into an
+engine that the KM owns (<<km-att-engines>>). A slot is wide enough for a 384-bit secret, an
+ECDSA P-384 private key or an ML-DSA seed.
+
+<<km-att-akv-sizing-table>> shows how many slots the chain uses. During a hand-off the
+entries of two stages exist at the same time.
+
+[[km-att-akv-sizing-table]]
+[cols="<52%,^24%,^24%",options="header"]
+.Attestation key vault use
+|===
+|Stored for each stage |Slots while a stage runs |Slots during a hand-off
+|Stage secret only; signing keys are derived again for each use |1 |2
+|Stage secret and ECDSA key |2 |5
+|Stage secret, ECDSA key and ML-DSA seed |3 |7
+|===
+
+The first row is the expected use. An engine is wiped before it goes back to the SEP
+(<<km-att-engines>>), so a signing key is loaded again for every request and little is gained
+by storing it. Eight slots cover every row. Sixteen slots are what the key-transfer model of
+the firmware specification assumes (`PRV_ATTEST` and the attestation-slot bitmap in the
+{km-att-caps-ref}); whether that model stays next to this chain decides the final number
+(<<km-att-open-points>>).
+
+[[km-att-rkv]]
+== Root Key Vault
+
+[[req-KM-ATT-RKV-010]]*[KM-ATT-RKV-010]* The Key Manager shall contain a root key vault of 8
+slots that is separate from the KPV and has its own address window, reachable only from the
+KM CPU.
+
+[[req-KM-ATT-RKV-020]]*[KM-ATT-RKV-020]* Each slot shall have the format, the per-slot
+controls and the storage protection of a KPV slot.
+
+In the root design of <<root-keys-and-hierarchy>> the roots occupy KPV slots that a firmware
+constant selects ({km-att-slot-map-ref}), and nothing in hardware tells a root slot from a key
+slot. With a vault of its own, a command that takes a KPV slot number cannot reach a root.
+
+The vault takes the six hardware and software roots, one `HW_ROOT` and one `SW_ROOT` for
+each owner, and has two slots to spare. The three identity roots stay in the KPV. The root
+key vault is not limited to ROM mode, because the software roots stay available to mutable
+firmware. The `lock_use` and `seal` controls protect the hardware roots at the handover to
+mutable firmware, as the root design specifies.
+
+[[km-att-engines]]
+== Crypto Engine Ownership
+
+An attestation key must sign only what the KM ROM composed. Today the KM reaches the key
+registers of an engine and nothing else; SEP software drives the engine. SEP software that
+drives an engine holding an attestation key could sign a statement of its own with that key,
+and on OTBN it could load a program that copies the key shares out. The KM therefore has to
+drive the engine itself and keep the SEP out while it does.
+<<km-att-engine-ownership-figure>> shows the arrangement for one engine.
+
+[[km-att-engine-ownership-figure]]
+.Crypto engine ownership
+image::km-attestation-engine-ownership.svg[alt="Crypto engine ownership: an ownership switch in the crypto interconnect opens either the SEP host path or the Key Manager front-door path to the host registers of an engine, selected by an ownership bit that only the Key Manager changes; the key port is unchanged",width=100%,pdfwidth=100%]
+
+[[req-KM-ATT-ENG-010]]*[KM-ATT-ENG-010]* For each of OTBN, Adams Bridge, HMAC, AES and KMAC,
+the KM CPU shall have a bus path to the host register interface of the engine, which for
+OTBN includes the instruction and data memories. This front-door path is in addition to the
+key port.
+
+[[req-KM-ATT-ENG-020]]*[KM-ATT-ENG-020]* Each of the five engines shall have an ownership
+bit with the two values SEP and KM. A cold reset shall set it to SEP. Only the KM CPU shall
+be able to change it; no SEP-side master, SEP register or debug path shall.
+
+[[req-KM-ATT-ENG-030]]*[KM-ATT-ENG-030]* The ownership bit shall select the one path that
+reaches the host register interface of the engine: the SEP host path while the SEP owns the
+engine, the front-door path while the KM owns it. An access on the other path shall be
+answered with an error, shall have no effect on the engine and shall return no engine data.
+This holds for every SEP-side master.
+
+[[req-KM-ATT-ENG-040]]*[KM-ATT-ENG-040]* While the KM owns an engine, a software reset
+request of the SEP for that engine (`SW_RESET_N`) shall not reset the engine.
+
+[[req-KM-ATT-ENG-050]]*[KM-ATT-ENG-050]* The ownership bits shall be in the cold reset domain
+of the Key Manager. A KM restart, a KM wipe and a halted KM CPU shall not return an engine
+to the SEP.
+
+[[req-KM-ATT-ENG-060]]*[KM-ATT-ENG-060]* A change of owner shall not break the bus protocol
+on either path. A transaction in flight on the path that closes shall complete or be
+answered with an error before the other path opens.
+
+[[req-KM-ATT-ENG-070]]*[KM-ATT-ENG-070]* Every scrambling-key request of OTBN shall be
+answered with a fresh, unpredictable key and nonce.
+
+[[req-KM-ATT-ROM-010]]*[KM-ATT-ROM-010]* The KM ROM shall be large enough for the attestation
+firmware and for every program that the KM runs on an engine it owns. The 16 KiB window
+reserved above the ROM (`0x0000_4000`–`0x0000_7FFF`) shall stay available for this growth.
+
+The SEP owns every engine after a cold reset, so the SEP boot ROM can use OTBN for secure
+boot as it does today and does not depend on the Key Manager. The KM takes an engine only
+while it serves a request and returns it afterwards. The SEP cannot take an engine back; it
+gets the engine when the KM returns it.
+
+The KM wipes an engine before it uses it and before it returns it, with the wipe functions
+the engine has. OTBN wipes a memory by replacing its scrambling key. The integration answers
+every key request of OTBN with the same fixed key and nonce today, so the key after a wipe is
+the key before it, and the wipe cannot be relied on to remove the contents. KM-ATT-ENG-070
+makes the wipe effective.
+
+Because the ownership bits survive a KM restart, an engine that the KM held when it restarted
+or halted stays closed to the SEP. The ROM wipes and returns it at its next start
+(<<km-att-firmware-use>>).
+
+OTBN lets the program it runs read the key shares, so the KM may load only a program that it
+carries in its ROM or that it checks against a digest in its ROM. The ROM is 16 KiB today,
+and the tree has no OTBN program for ECDSA yet. The ROM size can be fixed once the
+attestation firmware has been sized.
+
+[[km-att-device-uid]]
+== Identity Fuse
+
+[[req-KM-ATT-UID-010]]*[KM-ATT-UID-010]* The fuse map shall carry a 256-bit secret field
+`DEVICE_UID`, one value per chiplet, in the field that is `spare0` today (lock slot 32 of
+{km-att-fuse-fields-ref}).
+
+[[req-KM-ATT-UID-020]]*[KM-ATT-UID-020]* `DEVICE_UID` shall be a Class 1a asset like
+`CHIPLET_UID` ({km-att-asset-classes-ref}): its shadow register shall be on no scan chain,
+and while `secure_tm` is 1 the value driven to downstream logic shall be zero.
+
+[[req-KM-ATT-UID-030]]*[KM-ATT-UID-030]* The sensed `DEVICE_UID` shall be delivered to the
+Key Manager as a hardwired, dual-rail encoded member of the fuse bundle (<<otp>>), and to no
+other block. The Key Manager shall treat it as it treats the other secret fields: a local
+copy that clears on a cold reset and on a KM restart, readout words in KMCSR, the dual-rail
+integrity check and change detection.
+
+[[req-KM-ATT-UID-040]]*[KM-ATT-UID-040]* `OTP_READ_LOCK` and `OTP_READ_LOCK_COLD` shall each
+have a bit for `DEVICE_UID` with the behavior of the existing bits.
+
+NOTE: Using a separate `DEVICE_UID` instead of `CHIPLET_UID` as the device secret is a
+request of the security software team. The reason is not recorded yet and is still to be
+clarified (<<km-att-open-points>>). This chapter follows the request.
+
+Software and JTAG are kept away from the field by its two lock fuse bits, `LOCKS_SPARE[1:0]`,
+which are programmed when the part is provisioned. From the next fuse sensing on, the field
+and its shadow can be neither read nor programmed through the fuse controller. The hardwired
+path to the Key Manager remains, because a read lock does not blank that path. The SEP boot
+ROM does not have to lock the field at every boot.
+
+The cold read lock is the switch that turns attestation off: once the bit is set, the ROM
+cannot read `DEVICE_UID` and so cannot derive the chain until the next cold reset.
+
+[[km-att-device-state]]
+== Device-State Restart
+
+[[req-KM-ATT-DST-010]]*[KM-ATT-DST-010]* A change of the life-cycle state or of either
+demotion state at the hardwired inputs of the Key Manager shall restart the Key Manager
+through its warm reset path. Hardware shall produce the restart, and neither SEP software nor
+KM firmware shall be able to mask, delay or cancel it.
+
+A demotion opens debug access ({km-att-demotion-ref}), and a life-cycle transition changes
+what the part permits. Both change the security policy of the part, and a key derived before
+such a change must not be usable after it. The restart makes that hold without help from
+firmware: the ROM starts again and derives every key under the new state.
+
+The firmware specification already relies on this restart for the roots
+({km-att-state-reset-ref}). The hardware does not produce it yet: a change sets
+`OTP_CHANGE_STATUS` and raises the `OTP_CHANGE` interrupt, which the ROM serves with a change
+hook (<<otp>>), and nothing restarts the KM.
+
+PCR values do not change at such a restart. A PCR records which firmware was loaded, and a
+state change loads no firmware.
+
+[[km-att-reset-wipe]]
+== Reset and Wipe Behavior
+
+[[req-KM-ATT-RST-010]]*[KM-ATT-RST-010]* PCR values and PCR lock bits shall be cleared by a
+cold reset and by nothing else. A SEP CPU reset, a KM restart and a KM wipe shall leave them
+unchanged.
+
+[[req-KM-ATT-RST-020]]*[KM-ATT-RST-020]* A KM wipe shall zero the key data and the slot
+controls of the root key vault and of the attestation key vault, and shall clear the state of
+the SHA-2 engine and the key registers of the five engines, in addition to what it clears in
+the KPV.
+
+[[req-KM-ATT-RST-030]]*[KM-ATT-RST-030]* A KM restart shall clear the state of the SHA-2
+engine and the slot controls of both new vaults. It shall treat their key data as it treats
+the key data of the KPV.
+
+[[req-KM-ATT-RST-040]]*[KM-ATT-RST-040]* A SEP CPU reset shall change no state of the Key
+Manager.
+
+<<km-att-reset-table>> collects the effect of each event on the new state.
+
+[[km-att-reset-table]]
+[cols="<28%,<18%,<16%,<20%,<18%",options="header"]
+.Effect of resets and of a wipe on the attestation hardware
+|===
+|State |Cold reset |SEP CPU reset |KM restart |KM wipe
+|PCR values and lock bits |Cleared |Unchanged |Unchanged |Unchanged
+|Root and attestation key vault: key data |No reset value, as in the KPV |Unchanged |Kept, as in the KPV |Zeroed
+|Root and attestation key vault: slot controls |Cleared |Unchanged |Cleared |Cleared
+|SHA-2 engine state |Cleared |Unchanged |Cleared |Cleared
+|Engine ownership bits |Set to SEP |Unchanged |Unchanged |Unchanged
+|`OTP_READ_LOCK` bit of `DEVICE_UID` |Cleared |Unchanged |Cleared |Unchanged
+|`OTP_READ_LOCK_COLD` bit of `DEVICE_UID` |Cleared |Unchanged |Unchanged |Unchanged
+|===
+
+A wipe erases keys and leaves measurements alone. Keys need confidentiality, and erasing
+them protects it. PCR values are public and need integrity, and erasing them would allow a
+false history to be measured in. A cold reset also restarts the SEP CPU in its boot ROM, so
+the PCRs are never cleared under software that keeps running.
+
+Since a SEP CPU reset does not clear the PCRs, a boot that follows it is not measured: the
+PCRs are locked and describe the boot before the reset. The SEP boot ROM has two paths after
+such a reset. When it resumes a registered warm-reset handler, the software that runs is the
+software that was measured, and attestation continues. When it runs its full boot flow, it
+may start a different image, so it turns attestation off until the next cold reset
+(<<km-att-firmware-use>>). This chapter assumes that the platform follows a watchdog timeout
+with a cold reset, so the second case is short-lived.
+
+`secure_tm` is latched once per cold reset ({km-att-secure-tm-ref}), and a cold reset clears
+the PCR vault. A PCR value or lock that scan shifting changed in secure test mode therefore
+cannot reach a session that holds the real `DEVICE_UID`.
+
+[[km-att-firmware-use]]
+== Firmware Use of the Hardware
+
+This section is informative. It shows the firmware behavior that the requirements above
+assume.
+
+=== Key Manager ROM
+
+*At every start* the ROM does the following before it serves a request:
+
+. It wipes every engine that it finds owned by the KM and returns it to the SEP.
+. It erases the attestation key vault.
+. If `DEVICE_UID` is readable, it derives the chain again as far as the locked PCRs allow:
+  the identity secret, then one stage secret for each stage whose current PCR is locked, each
+  with the device state it samples at that moment. Only the last secret stays in the vault.
+
+The stage that is current is the one whose PCRs were locked last. When a stage locks its
+PCRs, the ROM derives the next secret, signs the next certificate and erases the secret
+before it. Rebuilding at every start treats attestation keys as the ROM treats all other
+keys, and it needs no recovery logic for a restart in the middle of a hand-off. An
+alternative that keeps the stage secret across a restart is an open point
+(<<km-att-open-points>>); the hardware is the same for both.
+
+*Device state in certificates.* The ROM writes the life-cycle and demotion state it sampled
+into every certificate it signs. SEP software therefore cannot obtain a certificate that
+states a device state other than the real one.
+
+*Signing* with an engine follows these steps:
+
+. SEP software sends a request that needs a signature.
+. The ROM sets the ownership bit of the engine, which closes the SEP host path.
+. The ROM wipes the engine.
+. The ROM loads its own program where the engine runs one, and loads the key through the key
+  port.
+. The ROM runs the operation and reads the result.
+. The ROM wipes the engine again, key registers included.
+. The ROM clears the ownership bit, which opens the SEP host path.
+. The ROM answers the SEP with public data only.
+
+*Turning attestation off.* The ROM sets the `DEVICE_UID` bit of `OTP_READ_LOCK_COLD` and
+erases the attestation key vault. No key of the chain exists or can be derived until the next
+cold reset.
+
+*Provisioning `DEVICE_UID`.* The value is meant to be generated on the part, so that it never
+exists outside it: the KM draws 256 bits from its DRBG sampler, sets and programs the read
+lock of the field, programs the value through its eFuse access path and programs the write
+lock. The Key Manager sees the value after the next fuse sensing, that is after the next
+cold reset.
+
+=== SEP Boot ROM Change Request
+
+The SEP boot ROM (BL0) keeps two software PCRs and has no Key Manager client, and the Key
+Manager stays in reset until later software releases it ({km-att-sep-rom-ref}). If BL1
+registered the measurements of BL0, BL1 would report its own measurement, and a BL1 that
+should not run could report the measurement of one that should. BL0 therefore has to send its
+measurements itself. The requested changes are listed below; the tags name the affected
+requirements of the SEP Boot ROM appendix. None of them changes hardware.
+
+. Release the Key Manager from reset early in the boot (`SW_RESET_N.km_sw_rst_n`) and wait
+  until it reports ready.
+. Add a mailbox client for the extend, lock and attestation-off requests.
+. Extend the verified ROM self-hash (SEP-ROM-ATT-060) into the ROM-identity PCR as the first
+  extend, and lock that PCR.
+. Extend the boot-state record (SEP-ROM-ATT-030) and the BL1 measurement into PCR0 and PCR1,
+  and lock both before hand-off. Treat a failed extend or lock as fatal, as an enrollment
+  failure is today.
+. Allow for the restart that the `DEMOTE_1` write causes (KM-ATT-DST-010). BL0 finishes and
+  locks its extends before the write, which SEP-ROM-DEM-035 already places last, and waits
+  until the Key Manager reports ready again before hand-off.
+. On the full boot flow, detect that no cold reset came before the boot, which shows in PCRs
+  that are already locked, and turn attestation off. This is the watchdog reset without a
+  registered warm-reset handler (SEP-ROM-CPU-110).
+. Update SEP-ROM-ATT-040 and SEP-ROM-ATT-050: BL0 writes its measurements to the PCR vault
+  itself, and the PCR numbers follow <<km-att-pcr-map-table>>.
+
+SEP-ROM-SB-110 is not affected. The Key Manager still takes no part in secure boot, and the
+SEP owns every engine after a cold reset.
+
+[[km-att-spec-impact]]
+== Effect on Existing Specification Text
+
+<<km-att-spec-impact-table>> lists the text that these requirements change once they are
+adopted. This chapter does not change that text.
+
+[[km-att-spec-impact-table]]
+[cols="<30%,<70%",options="header"]
+.Specification text affected by the attestation requirements
+|===
+|Location |Change
+|<<otp>>
+|The statement that a PCR vault and a PCR-change interrupt are not present; the readout
+register table and the two read-lock registers gain `DEVICE_UID`.
+|<<wipe-state>>
+|The wipe also covers the two new vaults, the SHA-2 engine and the engine key registers.
+|<<km-scan-and-scan-dump-protection>>
+|`DEVICE_UID` becomes the fifth Class 1 source that secure test mode replaces with zero.
+|<<km-design-target-otp-inputs>> and <<key-revocation,Key revocation>>
+|The PCR-change interrupt is not needed: the ROM performs every extend and can revoke a
+PCR-bound key as part of it.
+|<<remote-attestation-support-in-kpv-and-pcrv>>
+|Superseded. No endorsement or attestation key is stored in OTP or loaded into the KPV; the
+keys are derived from `DEVICE_UID` and the PCRs.
+|{km-att-km-rom-ref}
+|The KPV slot map: six roots move to the root key vault and three identity roots remain. The
+`PRV_ATTEST` capability and the attestation-slot bitmap depend on an open point
+(<<km-att-open-points>>). The device-state reset becomes KM-ATT-DST-010.
+|{km-att-fuse-fields-ref} and the fuse chapter around it
+|`spare0` becomes `DEVICE_UID`. `CHIPLET_UID` is no longer "the UDS": the device secret of
+the attestation chain is `DEVICE_UID`. The Class 1a asset list and the Key Manager fuse
+bundle gain the new field.
+|{km-att-reset-ctrl-ref} and the crypto chapters
+|A software reset request has no effect on an engine that the KM owns. The crypto
+interconnect gains the ownership switch, and the OTBN scrambling keys are no longer fixed.
+|{km-att-sep-rom-ref}
+|The change request of <<km-att-firmware-use>>.
+|===
+
+[[km-att-open-points]]
+== Open Points
+
+*For the security software team:*
+
+. *Why `DEVICE_UID` and not `CHIPLET_UID`.* The reasons below are candidates to confirm or
+  correct.
+** One secret has one purpose: `CHIPLET_UID` already feeds the root keys.
+** A secret of its own can be locked for the rest of a boot without taking the roots away.
+** A secret of its own can be generated on the part, while the owners provision the UIDs and
+   may keep a copy.
+. *Whether the identity root of the chiplet owner and the identity key of
+  `CMD_INVOKE_ID_KEY` are still needed* once the identity of the part comes from
+  `DEVICE_UID`.
+. *Whether this chain replaces the key-transfer model* with `PRV_ATTEST` and 16 attestation
+  slots, or both stay. If both stay, the attestation key vault needs 16 slots.
+. *Rebuild or keep.* <<km-att-firmware-use>> rebuilds the chain at every KM start, which
+  leaves `DEVICE_UID` readable by the ROM for the whole boot. The alternative keeps the
+  stage secret across a restart and sets the cold read lock of `DEVICE_UID` after its first
+  use. The device secret is then out of reach early, but a stage secret that was derived
+  under the old device state survives a state change, and only the keys derived from it
+  afterwards carry the new state.
+
+*For the RTL owners:*
+
+. *How the device-state restart is built.* Either inside the Key Manager or through the Key
+  Manager reset sequencer of the SEP reset controller, which isolates the KM bus paths first
+  ({km-att-km-reset-ref}). The front-door paths are KM bus paths and need the same isolation.
+. *Engine wipe.* Whether the wipe functions of each engine remove all key material, in
+  particular in the working memories of Adams Bridge after a cold reset. If not, the engine
+  needs a reset at each change of owner (<<km-att-future-options>>).
+. *Other paths to a KM-owned engine.* The JTAG reset override of an engine, and the
+  interrupts and alerts that an engine raises towards the SEP while the KM runs it.
+. *Reset of the SEP CPU by its debug module.* The debug module can restart the core without
+  the SEP CPU reset. To the Key Manager this looks like a watchdog reset; confirm that the
+  same boot ROM rule covers it.
+. *Fuse command path during provisioning.* The fuse command registers are shared with the SEP
+  host and JTAG, and `EFUSE_PROGRAM_CTRL` shows the bit address being programmed. A party
+  that reads it while the KM programs `DEVICE_UID` learns the value. Either the provisioning
+  flow excludes such a reader, or the KM needs sole use of the command path while it
+  programs.
+. *KM ROM size*, once the attestation firmware and the OTBN programs have been sized.
+. *Slot width of the root key vault.* A root is 256 bits wide, so half of each 512-bit slot
+  is unused.
+
+[[km-att-future-options]]
+== Future Options
+
+These are not required now. Each needs hardware beyond the minimum.
+
+* *Hardware digests of both ROMs.* Today only the hash of the SEP boot ROM enters the identity
+  secret, and the boot ROM reports that hash itself, so a ROM whose bits were changed can
+  report the hash of the original. An attacker who can change ROM bits can change those of
+  the KM ROM as well. A digest that hardware computes over the SEP boot ROM and over the KM
+  ROM, used as an input to the identity secret, closes this gap; the ROM controller of
+  OpenTitan feeds its key manager in this way. The SEP threat model counts changed ROM
+  contents as a supply-chain attack outside its protection, so this is not a requirement
+  today.
+* *Measuring again without a cold reset.* A hardware indication that the SEP CPU has restarted
+  and runs its ROM would allow the current PCRs to be cleared and measured again after a SEP
+  CPU reset. Journey PCRs would then differ from current PCRs, and the locks of a boot would
+  no longer depend on the boot ROM alone.
+* *Engine reset at each change of owner.* Hardware resets an engine whenever its ownership
+  bit changes, instead of relying on the wipe functions of the engine.
+* *Sixteen attestation key slots*, if the key-transfer model stays (<<km-att-open-points>>).
+
+[[km-att-summary]]
+== Requirement Summary
+
+<<km-att-summary-table>> relates each need to the requirements that meet it.
+
+[[km-att-summary-table]]
+[cols="<34%,<66%",options="header"]
+.Attestation needs and requirements
+|===
+|Need |Requirements
+|Registers for the measurement chain
+|<<req-KM-ATT-PCR-010,KM-ATT-PCR-010>> to <<req-KM-ATT-PCR-060,KM-ATT-PCR-060>>,
+<<req-KM-ATT-SHA-010,KM-ATT-SHA-010>> to <<req-KM-ATT-SHA-030,KM-ATT-SHA-030>>,
+<<req-KM-ATT-RST-010,KM-ATT-RST-010>>, <<req-KM-ATT-RST-040,KM-ATT-RST-040>>
+|Storage for attestation keys, separate from general keys
+|<<req-KM-ATT-AKV-010,KM-ATT-AKV-010>> to <<req-KM-ATT-AKV-030,KM-ATT-AKV-030>>,
+<<req-KM-ATT-RST-020,KM-ATT-RST-020>>, <<req-KM-ATT-RST-030,KM-ATT-RST-030>>
+|Key Manager ownership of the crypto engines and their clean hand-back
+|<<req-KM-ATT-ENG-010,KM-ATT-ENG-010>> to <<req-KM-ATT-ENG-070,KM-ATT-ENG-070>>,
+<<req-KM-ATT-ROM-010,KM-ATT-ROM-010>>
+|Storage for root keys, separate from other keys
+|<<req-KM-ATT-RKV-010,KM-ATT-RKV-010>>, <<req-KM-ATT-RKV-020,KM-ATT-RKV-020>>
+|Derivation inputs: device secret, ROM hash, measurements and policy
+|<<req-KM-ATT-UID-030,KM-ATT-UID-030>>, <<req-KM-ATT-PCR-060,KM-ATT-PCR-060>>,
+<<req-KM-ATT-DST-010,KM-ATT-DST-010>>. The ROM hash arrives through a PCR, and the
+life-cycle and demotion inputs exist today.
+|A dedicated identity fuse
+|<<req-KM-ATT-UID-010,KM-ATT-UID-010>> to <<req-KM-ATT-UID-040,KM-ATT-UID-040>>
+|===

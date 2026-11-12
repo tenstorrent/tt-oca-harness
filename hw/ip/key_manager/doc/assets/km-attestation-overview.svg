@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="618" viewBox="0 0 1040 618" role="img" aria-labelledby="title desc">
+<title id="title">Key Manager additions for attestation</title>
+<desc id="desc">Block diagram of the Key Manager with the parts that attestation adds. Existing parts: the KM CPU with its ROM and SRAM, the Key and Policy Vault of 64 slots, the KM-internal crossbar, the hardwired fuse, life-cycle and demotion inputs, the mailbox to the SEP CPU, the SEP host path to the crypto engines and the key ports from the crossbar to the engine key registers. New parts on the crossbar: a root key vault of 8 slots for the hardware and software roots, a PCR vault of 32 PCRs of 384 bits with a lock bit per PCR, a SHA-2 engine for SHA-256 and SHA-384 that computes the extend for the PCR vault, and an attestation key vault of 8 slots that is reachable in ROM mode only. Further new parts: a DEVICE_UID fuse that is hardwired to a DEVICE_UID input with a warm and a cold read lock, a device-state restart that restarts the KM when the life-cycle or demotion state changes, a front-door path from the crossbar to the engines, and an ownership switch in front of the engine host registers and memories that only the KM can set. The engines are OTBN, Adams Bridge, HMAC, AES and KMAC.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ne" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#336633"/></marker>
+<marker id="ns" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#336633"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="ce" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.new { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.key { fill: #e8f3ff; stroke: #42759b; stroke-width: 2; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axin { fill: none; stroke: #336633; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#ns); marker-end: url(#ne); }
+.der { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.hw { fill: none; stroke: #336633; stroke-width: 2.5; marker-end: url(#ne); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.sign { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 6 4; marker-end: url(#ge); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.cert { fill: none; stroke: #42759b; stroke-width: 1.8; stroke-dasharray: 7 5; marker-end: url(#ce); }
+</style>
+</defs>
+<rect width="1040" height="618" fill="#ffffff"/>
+<rect class="external" x="16" y="58" width="160" height="66" rx="6"/>
+<text class="bs" x="96" y="87" text-anchor="middle">SEP CPU</text>
+<text class="s" x="96" y="104.5" text-anchor="middle">BL0, BL1, BL2, runtime</text>
+<rect class="new" x="16" y="330" width="160" height="56" rx="6"/>
+<text class="bs" x="96" y="354" text-anchor="middle">DEVICE_UID fuse</text>
+<text class="s" x="96" y="371.5" text-anchor="middle">secret, per chiplet</text>
+<rect class="external" x="16" y="408" width="160" height="66" rx="6"/>
+<text class="bs" x="96" y="436" text-anchor="middle">Fuse and life cycle</text>
+<text class="bs" x="96" y="455" text-anchor="middle">controllers</text>
+<rect class="smu" x="236" y="30" width="540" height="478" rx="6"/>
+<text class="b" x="248" y="496" text-anchor="start">Key Manager</text>
+<rect class="core" x="256" y="58" width="150" height="66" rx="6"/>
+<text class="bs" x="331" y="87" text-anchor="middle">KM CPU</text>
+<text class="s" x="331" y="104.5" text-anchor="middle">ROM and SRAM</text>
+<rect class="core" x="426" y="58" width="170" height="66" rx="6"/>
+<text class="bs" x="511" y="87" text-anchor="middle">Key vault (KPV)</text>
+<text class="s" x="511" y="104.5" text-anchor="middle">64 slots, general keys</text>
+<rect class="new" x="614" y="58" width="142" height="66" rx="6"/>
+<text class="bs" x="685" y="78.5" text-anchor="middle">Root key vault</text>
+<text class="s" x="685" y="96" text-anchor="middle">8 slots:</text>
+<text class="s" x="685" y="113" text-anchor="middle">HW and SW roots</text>
+<rect class="fabric" x="256" y="152" width="500" height="34" rx="6"/>
+<text class="bs" x="506" y="173.5" text-anchor="middle">KM-internal crossbar</text>
+<path class="axi" d="M331,128 L331,148"/>
+<path class="axi" d="M511,128 L511,148"/>
+<path class="axi" d="M685,128 L685,148"/>
+<rect class="new" x="256" y="214" width="150" height="80" rx="6"/>
+<text class="bs" x="331" y="241.5" text-anchor="middle">PCR vault</text>
+<text class="s" x="331" y="259" text-anchor="middle">32 PCRs of 384 bits</text>
+<text class="s" x="331" y="276" text-anchor="middle">lock bit per PCR</text>
+<rect class="new" x="456" y="214" width="118" height="80" rx="6"/>
+<text class="bs" x="515" y="241.5" text-anchor="middle">SHA-2 engine</text>
+<text class="s" x="515" y="259" text-anchor="middle">SHA-256,</text>
+<text class="s" x="515" y="276" text-anchor="middle">SHA-384</text>
+<rect class="new" x="588" y="214" width="168" height="80" rx="6"/>
+<text class="bs" x="672" y="241.5" text-anchor="middle">Attestation key vault</text>
+<text class="s" x="672" y="259" text-anchor="middle">8 slots</text>
+<text class="s" x="672" y="276" text-anchor="middle">ROM mode only</text>
+<path class="axin" d="M331,190 L331,210"/>
+<path class="axin" d="M515,190 L515,210"/>
+<path class="axin" d="M672,190 L672,210"/>
+<path class="hw" d="M406,240 L452,240"/>
+<path class="hw" d="M456,268 L410,268"/>
+<text class="s" x="431" y="232" text-anchor="middle">extend</text>
+<rect class="new" x="256" y="330" width="190" height="56" rx="6"/>
+<text class="bs" x="351" y="354" text-anchor="middle">DEVICE_UID input</text>
+<text class="s" x="351" y="371.5" text-anchor="middle">warm and cold read lock</text>
+<rect class="core" x="256" y="408" width="190" height="66" rx="6"/>
+<text class="bs" x="351" y="428.5" text-anchor="middle">Hardwired inputs</text>
+<text class="s" x="351" y="446" text-anchor="middle">UIDs, class key, IDs,</text>
+<text class="s" x="351" y="463" text-anchor="middle">life cycle, demotion</text>
+<rect class="new" x="506" y="408" width="250" height="66" rx="6"/>
+<text class="bs" x="631" y="428.5" text-anchor="middle">Device-state restart</text>
+<text class="s" x="631" y="446" text-anchor="middle">a life-cycle or demotion change</text>
+<text class="s" x="631" y="463" text-anchor="middle">restarts the KM</text>
+<path class="sign" d="M176,358 L252,358"/>
+<path class="sigo" d="M176,441 L252,441"/>
+<path class="sign" d="M446,441 L502,441"/>
+<path class="axi" d="M180,91 L252,91"/>
+<text class="s" x="206" y="83" text-anchor="middle">mailbox</text>
+<rect class="external" x="866" y="30" width="158" height="478" rx="6"/>
+<text class="bs" x="878" y="496" text-anchor="start">Crypto engines</text>
+<text class="s" x="878" y="440" text-anchor="start">OTBN, Adams Bridge,</text>
+<text class="s" x="878" y="457" text-anchor="start">HMAC, AES, KMAC</text>
+<rect class="new" x="878" y="58" width="134" height="66" rx="6"/>
+<text class="bs" x="945" y="77.5" text-anchor="middle">Ownership</text>
+<text class="bs" x="945" y="96.5" text-anchor="middle">switch</text>
+<text class="s" x="945" y="114" text-anchor="middle">set by the KM only</text>
+<rect class="core" x="878" y="160" width="134" height="66" rx="6"/>
+<text class="bs" x="945" y="189" text-anchor="middle">Host registers</text>
+<text class="s" x="945" y="206.5" text-anchor="middle">and memories</text>
+<rect class="core" x="878" y="262" width="134" height="50" rx="6"/>
+<text class="bs" x="945" y="291.5" text-anchor="middle">Key registers</text>
+<path class="axi" d="M945,128 L945,156"/>
+<path class="axi" d="M96,54 L96,20 L945,20 L945,54"/>
+<text class="s" x="520" y="14" text-anchor="middle">SEP host path</text>
+<path class="axin" d="M760,162 L856,162 L856,91 L874,91"/>
+<text class="s" x="811" y="155" text-anchor="middle">front door</text>
+<path class="axi" d="M760,178 L840,178 L840,287 L874,287"/>
+<text class="s" x="807" y="197" text-anchor="middle">key ports</text>
+<rect class="new" x="16" y="540" width="40" height="18" rx="4"/>
+<text class="s" x="64" y="554" text-anchor="start">New</text>
+<rect class="core" x="118" y="540" width="40" height="18" rx="4"/>
+<text class="s" x="166" y="554" text-anchor="start">Exists today</text>
+<rect class="fabric" x="264.1" y="540" width="40" height="18" rx="4"/>
+<text class="s" x="312.1" y="554" text-anchor="start">Interconnect</text>
+<rect class="external" x="411.7" y="540" width="40" height="18" rx="4"/>
+<text class="s" x="459.7" y="554" text-anchor="start">Outside the Key Manager</text>
+<path class="axi" d="M20,581 L56,581"/>
+<text class="s" x="70" y="586" text-anchor="start">Bus path today</text>
+<path class="axin" d="M188.8,581 L224.8,581"/>
+<text class="s" x="238.8" y="586" text-anchor="start">New bus path</text>
+<path class="hw" d="M346.3,581 L386.3,581"/>
+<text class="s" x="400.3" y="586" text-anchor="start">Extend, hardware only</text>
+<path class="sigo" d="M557.7,581 L597.7,581"/>
+<text class="s" x="611.7" y="586" text-anchor="start">Hardwired signals</text>
+<path class="sign" d="M743,581 L783,581"/>
+<text class="s" x="797" y="586" text-anchor="start">New hardwired signal</text>
+</svg>
