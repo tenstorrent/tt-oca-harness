@@ -10,6 +10,11 @@ minor release it updates.
 
 ## [Unreleased]
 
+### RTL bugs
+
+- Entropy source `ANY_FAIL_COUNT` counted the last failing health-test window
+  again at the end of the clean window after it (#3730).
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added
