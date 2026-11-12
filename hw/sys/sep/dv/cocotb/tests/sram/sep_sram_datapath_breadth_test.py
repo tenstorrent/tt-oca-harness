@@ -5,6 +5,13 @@
 Exercises the external scratch SRAM (0x1000_0000, 256 KiB) over the CPU-LSU AXI splice
 (no_cpu) beyond the smoke (a single 64-bit R/W + one 32-bit partial).
 
+The testlist entry passes ``+sep_sram_hex=sep_sram_preload.hex``: the bench loads that
+committed image into the SRAM macro at time 0 (``tb/tb_top.sv``, backdoor image loads).
+Word w of the image is ``preload_word(w)``: an address tag (0x5A, w, ~w) when w % 4 is 0,
+a walking one and a walking zero at bit (w >> 2) % 64 when w % 4 is 1 and 2, and a
+checkerboard (0xAAAA or 0x5555 by bit 2 of w) when w % 4 is 3. The leaf reads every word
+before it writes any word.
+
 `[RANDCFG]` -- ``SepSramBreadthCfg`` is the single source of truth for both the
 DUT programming and the golden expectations. Required coverage is walked
 deterministically so one seed never skips a cell; only legal knobs are
@@ -27,6 +34,14 @@ master.
 
 Checks (each logs a positive PASS line; CHK-SRAM-MACRO-MAP grades the SRAM macro
 request tap, the others value-compare an exact read-back against the cfg golden):
+  CHK-SRAM-PRELOAD-RD: the staged image equals ``preload_word`` for every word; then
+                 each of the SRAM words (the generated SRAM size over the word size)
+                 is read once, before any write, with one 8-byte single-beat read on
+                 the CPU-LSU master (up to seven outstanding, ARID 1 to 7). Every
+                 read answers OKAY with 8 bytes equal to ``preload_word`` of its
+                 word. Control CTRL-SRAM-PRELOAD: the read of word 0 returns
+                 ``preload_word(0)``, which differs from the zero default fill of the
+                 bench, so the image landed.
   CHK-WSTRB    : every contiguous WSTRB mask changes only its byte lanes; all
                  neighbor lanes preserved (independent ``apply_wstrb`` golden).
   CHK-PATTERN  : each cfg data pattern reads back exactly: 0xAAAA/0x5555, a
@@ -62,11 +77,14 @@ address-line class (base word, offset 2^k, top word) to the pass label of
 
 from __future__ import annotations
 
+from collections import deque
+
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge, with_timeout
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_sram_access_pass
+from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_sram_breadth_seq import (
@@ -98,6 +116,24 @@ ADDR_LINE_TOP_CELL = 18
 # memory word, and one macro address per word of the aperture.
 SRAM_WORD_BYTES = sym("SEP_SRAM_MEM_WORD_REG_WIDTH") // 8
 SRAM_WORDS = SEP_SRAM_SIZE // SRAM_WORD_BYTES
+
+MASK64 = (1 << 64) - 1
+# Preload read: s_axi carries a 3-bit ID; IDs 1 to 7 give seven reads in flight.
+PRELOAD_IDS = range(1, 8)
+# Environment choice (logged): completion bound of one preload read.
+PRELOAD_ACCESS_NS = 50_000
+
+
+def preload_word(w: int) -> int:
+    """Word ``w`` of the committed preload image ``sep_sram_preload.hex``."""
+    c, k = w & 3, (w >> 2) & 63
+    if c == 0:
+        return (0x5A << 56) | (w << 32) | (~w & 0xFFFF_FFFF)
+    if c == 1:
+        return 1 << k
+    if c == 2:
+        return MASK64 ^ (1 << k)
+    return 0x5555_5555_5555_5555 if (w >> 2) & 1 else 0xAAAA_AAAA_AAAA_AAAA
 
 
 # The macro request fields: ``we`` qualifies ``req`` as a write, ``addr`` is the
@@ -190,6 +226,7 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         self.scfg = SepSramBreadthCfg(self.random_seed())
         self.logger.info("SRAM-breadth config: %s", self.scfg.summary())
         await self.bring_up_no_cpu()
+        await self._chk_preload()
         self.macro_tap = SepFabricTap("PR-SRAM-MACRO").start()
         self.sram = SepSramMacroMapped(self, self.scfg, self.macro_tap)
         open_graded_window(TEST, self.logger)
@@ -203,7 +240,93 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         close_graded_window(self.logger)
         self.logger.info(
             "SRAM datapath breadth PASS: SRAM datapath breadth verified "
-            "(wstrb / pattern / boundary / seq / nonvac / addr lines)"
+            "(preload / wstrb / pattern / boundary / seq / nonvac / addr lines)"
+        )
+
+    def _check_preload_image(self) -> None:
+        """The staged image file equals ``preload_word`` for every SRAM word."""
+        path = cocotb.plusargs.get("sep_sram_hex")
+        if not path:
+            raise AssertionError("CHK-SRAM-PRELOAD-RD FAIL: no +sep_sram_hex plusarg")
+        with open(path) as fh:
+            words = [int(t, 16) for t in (ln.strip() for ln in fh) if t and not t.startswith("//")]
+        bad = [w for w, v in enumerate(words) if v != preload_word(w)]
+        if len(words) != SRAM_WORDS or bad:
+            raise AssertionError(
+                f"CHK-SRAM-PRELOAD-RD FAIL: image {path} holds {len(words)} words "
+                f"(want {SRAM_WORDS}); {len(bad)} differ from preload_word, first "
+                + ", ".join(f"w{w}=0x{words[w]:016x}" for w in bad[:4])
+            )
+
+    async def _chk_preload(self) -> None:
+        """Read every SRAM word once, before any write, and compare with the image."""
+        self._check_preload_image()
+        self.suppress_host_axi_transaction_info()
+        axi = self.env.axi_agent.driver.axi
+        n_ids = len(PRELOAD_IDS)
+        inflight: deque = deque()
+        bad: list[str] = []
+        first = None
+
+        async def retire() -> None:
+            nonlocal first
+            w, ev = inflight.popleft()
+            addr = SEP_SRAM_BASE + w * SRAM_WORD_BYTES
+            try:
+                await with_timeout(ev.wait(), PRELOAD_ACCESS_NS, "ns")
+            except Exception as exc:
+                raise AssertionError(
+                    f"CHK-SRAM-PRELOAD-RD FAIL: read @0x{addr:08x} did not complete "
+                    f"within {PRELOAD_ACCESS_NS} ns"
+                ) from exc
+            raw = ev.data
+            rd = bytes(getattr(raw, "data", b"") or b"")
+            code = worst_resp(getattr(raw, "resp", None))
+            got = int.from_bytes(rd, "little") if len(rd) == SRAM_WORD_BYTES else None
+            exp = preload_word(w)
+            if w == 0:
+                first = got
+                if got != exp:
+                    raise AssertionError(
+                        f"CTRL-SRAM-PRELOAD FAIL: word 0 @0x{addr:08x} read "
+                        f"{'none' if got is None else f'0x{got:016x}'} resp={code}, "
+                        f"want image word 0x{exp:016x} (default fill 0x0)"
+                    )
+                self.logger.info(
+                    "CTRL-SRAM-PRELOAD PASS: word 0 @0x%08x read 0x%016x = image word, "
+                    "default fill 0x0, so the image landed",
+                    addr,
+                    got,
+                )
+            if code != 0 or got != exp:
+                bad.append(
+                    f"@0x{addr:08x} resp={code} read="
+                    f"{'none' if got is None else f'0x{got:016x}'} want 0x{exp:016x}"
+                )
+
+        for w in range(SRAM_WORDS):
+            if len(inflight) == n_ids:
+                await retire()
+            addr = SEP_SRAM_BASE + w * SRAM_WORD_BYTES
+            ev = axi.init_read(address=addr, length=SRAM_WORD_BYTES, arid=PRELOAD_IDS[w % n_ids])
+            inflight.append((w, ev))
+        while inflight:
+            await retire()
+        if bad:
+            raise AssertionError(
+                f"CHK-SRAM-PRELOAD-RD FAIL: {len(bad)} of {SRAM_WORDS} words: " + "; ".join(bad[:8])
+            )
+        self.logger.info(
+            "CHK-SRAM-PRELOAD-RD PASS: words=%d reads=%d mismatches=0 resp=OKAY "
+            "outstanding<=%d ids=%d..%d first=0x%016x before any write "
+            "(image = preload_word, access bound %d ns)",
+            SRAM_WORDS,
+            SRAM_WORDS,
+            n_ids,
+            PRELOAD_IDS[0],
+            PRELOAD_IDS[-1],
+            first,
+            PRELOAD_ACCESS_NS,
         )
 
     async def _sram_pass(self, point: int, cells) -> None:
@@ -323,10 +446,10 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         rd_addr = cfg.base_addr + cfg.nonvac_rd_offset
         # Both addresses are written, with complementary patterns, and both are read
         # back and value-checked. Comparing a written address against an unwritten one
-        # would not catch the stuck read path this names: zero-initialised memory
-        # differs from any non-zero pattern by construction, so a datapath returning
-        # all-zeros or all-ones would pass. Two written values that must differ from
-        # each other cannot be satisfied by a constant.
+        # would not catch the stuck read path this names: the unwritten word holds its
+        # power-up content, which can differ from the written pattern while the
+        # datapath returns a constant. Two written values that must differ from each
+        # other cannot be satisfied by a constant.
         other_pattern = (~cfg.nonvac_pattern) & ((1 << 64) - 1)
         await self.sram.write(wr_addr, cfg.nonvac_pattern, length=8)
         await self.sram.write(rd_addr, other_pattern, length=8)

@@ -10,9 +10,15 @@
  * - SHA-384 over a fixed 56-byte message, against the published FIPS 180-4
  *   digest (this firmware has no 64-bit SHA-2 core), plus a byte compare of
  *   the copy, so a correct digest over a broken copy still fails.
- * - SHA-256 over the same message in two chunks, against its FIPS 180-4 digest.
+ * - SHA-256 over the same message in two chunks, against its FIPS 180-4 digest,
+ *   plus a byte compare of the copy into a destination refilled with the
+ *   sentinel.
  * - SHA-256 with and without the digest byte swap, which must byte-reverse
  *   every digest word.
+ * - SHA-256 over pseudo-random data from SRAM into ICCM, against a software
+ *   SHA-256. The load/store unit cannot read ICCM, so a DMA copy moves the
+ *   ICCM words back to an SRAM buffer prefilled with the sentinel, and the
+ *   CPU compares that buffer with the source.
  */
 
 #include <stdio.h>
@@ -79,6 +85,30 @@ static const char kFips1804Sha256Hex[] =
 // 31 keeps every source word unequal to it.
 #define DST_SENTINEL 0xA5A5A5A5u
 _Static_assert(RAND_MAX < DST_SENTINEL, "a source word can equal the destination sentinel");
+
+// The ICCM destination of the ICCM pass. The host checks that the code image,
+// linked from the ICCM base, ends below it.
+#define ICCM_HASH_OFFSET 0x20000u
+#define ICCM_HASH_DST (SEP_TOP_SEP_ICCM_BASE_ADDR + ICCM_HASH_OFFSET)
+_Static_assert(ICCM_HASH_OFFSET + TEST_DATA_SIZE <= SEP_TOP_SEP_ICCM_SIZE,
+               "the ICCM pass destination leaves ICCM");
+
+// SRAM buffer that the ICCM words are copied back to, clear of the source.
+#define ICCM_READBACK_OFFSET 0x1000u
+#define ICCM_READBACK_ADDR (SEP_TOP_SEP_SRAM_BASE_ADDR + ICCM_READBACK_OFFSET)
+_Static_assert(TEST_DATA_SIZE <= ICCM_READBACK_OFFSET,
+               "the ICCM readback buffer overlaps the source");
+
+// End of everything the image places in DCCM (fw/link/modes/tcm.ld).
+extern char BSS_END[];
+
+// Waits for the DMA ISR flag; returns it (0 when the wait ran out).
+static int wait_dma_irq(void) {
+    for (int t = 100000; t > 0 && !dma_interrupt_fired; t--) {
+        __asm__ volatile("wfi");
+    }
+    return dma_interrupt_fired;
+}
 
 void compute_sha256(const unsigned char *data, size_t data_len, unsigned char *hash_output) {
     SHA256_CTX ctx;
@@ -153,6 +183,12 @@ int main(void) {
     // holds the sentinel before GO, so a copy that does not run leaves it
     // unequal to the source.
 #define DMA_DST_ADDR (SEP_TOP_SEP_DCCM_BASE_ADDR + 0x2000)
+    printf("DCCM-DST-CLEAR bss_end=0x%08x dst=0x%08x\n", (unsigned)(uintptr_t)BSS_END,
+           (unsigned)DMA_DST_ADDR);
+    if ((uintptr_t)BSS_END > DMA_DST_ADDR) {
+        printf("  ERROR: the DCCM image reaches the DMA destination\n");
+        errors++;
+    }
     volatile uint32_t *dccm_ptr = (volatile uint32_t *)DMA_DST_ADDR;
     for (int i = 0; i < TEST_DATA_SIZE / 4; i++) {
         dccm_ptr[i] = DST_SENTINEL;
@@ -406,6 +442,22 @@ int main(void) {
     printf("\n=== Secure DMA multi-chunk SHA-256 (FIPS 180-4 vector) ===\n");
     WRITE_REG(SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, 0);
 
+    // The destination still holds the SHA-384 copy of the same message, so it
+    // takes the sentinel again before GO.
+    for (int i = 0; i < FIPS_MSG_LEN / 4; i++) {
+        dccm_ptr[i] = DST_SENTINEL;
+    }
+    __asm__ volatile("fence" ::: "memory");
+    int mc_sentinel = 0;
+    for (int i = 0; i < FIPS_MSG_LEN / 4; i++) {
+        if (dccm_ptr[i] == DST_SENTINEL) mc_sentinel++;
+    }
+    printf("MULTICHUNK-SENTINEL dst_sentinel=%d/%d\n", mc_sentinel, FIPS_MSG_LEN / 4);
+    if (mc_sentinel != FIPS_MSG_LEN / 4) {
+        printf("  ERROR: multi-chunk destination sentinel not in place before GO\n");
+        errors++;
+    }
+
     WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
     WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_CHUNK_LEN);
 
@@ -481,6 +533,20 @@ int main(void) {
                    "over %u chunks\n",
                    (unsigned)mc_chunks);
         }
+
+        // The same transfer also copied the message, across both chunks.
+        volatile uint8_t *mc_dst8 = (volatile uint8_t *)DMA_DST_ADDR;
+        int mc_match = 0;
+        for (int i = 0; i < FIPS_MSG_LEN; i++) {
+            if (mc_dst8[i] == (uint8_t)kFips1804Msg[i]) {
+                mc_match++;
+            } else {
+                printf("  ERROR: multi-chunk copy mismatch at byte %d: got 0x%02x want 0x%02x\n", i,
+                       mc_dst8[i], (uint8_t)kFips1804Msg[i]);
+            }
+        }
+        printf("MULTICHUNK-COPY match=%d/%d\n", mc_match, FIPS_MSG_LEN);
+        if (mc_match != FIPS_MSG_LEN) errors++;
     }
     WRITE_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
                                                        SECURE_DMA__STATUS__ERROR_bm |
@@ -550,6 +616,91 @@ int main(void) {
         printf("  PASS: all %d digest words under DIGEST_SWAP=0 are the byte-reverse "
                "of the DIGEST_SWAP=1 run\n",
                SHA256_DIGEST_WORDS);
+    }
+
+    // SHA-256 into ICCM, then a DMA copy of the ICCM words back to SRAM.
+    printf("\n=== Secure DMA SHA-256 into ICCM ===\n");
+
+    volatile uint32_t *iccm_src = (volatile uint32_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
+    volatile uint32_t *iccm_buf = (volatile uint32_t *)ICCM_READBACK_ADDR;
+    for (int i = 0; i < TEST_DATA_SIZE / 4; i++) {
+        iccm_src[i] = (uint32_t)rand();
+        iccm_buf[i] = DST_SENTINEL;
+    }
+    __asm__ volatile("fence" ::: "memory");
+
+    int iccm_src_live = 0;
+    int iccm_buf_sentinel = 0;
+    for (int i = 0; i < TEST_DATA_SIZE / 4; i++) {
+        if (iccm_src[i] != 0 && iccm_src[i] != DST_SENTINEL) iccm_src_live++;
+        if (iccm_buf[i] == DST_SENTINEL) iccm_buf_sentinel++;
+    }
+    printf("ICCM-FILL src_live=%d/%d buf_sentinel=%d/%d\n", iccm_src_live, TEST_DATA_SIZE / 4,
+           iccm_buf_sentinel, TEST_DATA_SIZE / 4);
+    if (iccm_src_live != TEST_DATA_SIZE / 4 || iccm_buf_sentinel != TEST_DATA_SIZE / 4) {
+        printf("  ERROR: ICCM pass source fill or readback sentinel not in place before GO\n");
+        errors++;
+    }
+    printf("ICCM-HASH-DST iccm_base=0x%08x dst=0x%08x len=%u\n",
+           (unsigned)SEP_TOP_SEP_ICCM_BASE_ADDR, (unsigned)ICCM_HASH_DST, (unsigned)TEST_DATA_SIZE);
+
+    dma_interrupt_fired = 0;
+    __asm__ volatile("fence" ::: "memory");
+    sep_dma_sha256_start(SEP_TOP_SEP_SRAM_BASE_ADDR, ICCM_HASH_DST, TEST_DATA_SIZE);
+    int iccm_done = wait_dma_irq();
+    uint32_t iccm_err = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (!iccm_done) {
+        secure_dma__CONTROL_t abort_ctrl = {.f = {.ABORT = 1}};
+        WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, abort_ctrl.w);
+    }
+
+    uint32_t iccm_hw[SHA256_DIGEST_WORDS];
+    for (int i = 0; i < SHA256_DIGEST_WORDS; i++) {
+        iccm_hw[i] = READ_REG(SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
+    }
+    uint8_t iccm_sw[SHA256_DIGEST_BYTES];
+    compute_sha256((unsigned char *)iccm_src, TEST_DATA_SIZE, iccm_sw);
+    char iccm_hw_hex[2 * SHA256_DIGEST_BYTES + 1];
+    char iccm_sw_hex[2 * SHA256_DIGEST_BYTES + 1];
+    digest_to_hex((const uint8_t *)iccm_hw, SHA256_DIGEST_BYTES, iccm_hw_hex);
+    digest_to_hex(iccm_sw, SHA256_DIGEST_BYTES, iccm_sw_hex);
+    printf("ICCM-HASH done=%d error_code=0x%x\n", iccm_done, iccm_err);
+    printf("ICCM-HASH HW = %s\n", iccm_hw_hex);
+    printf("ICCM-HASH SW = %s\n", iccm_sw_hex);
+    if (!iccm_done || iccm_err != 0 || strcmp(iccm_hw_hex, iccm_sw_hex) != 0) {
+        printf("  ERROR: SHA-256 into ICCM did not complete with the software digest\n");
+        errors++;
+    } else {
+        printf("  PASS: SHA-256 into ICCM digest matches the software SHA-256\n");
+    }
+
+    dma_interrupt_fired = 0;
+    __asm__ volatile("fence" ::: "memory");
+    sep_dma_copy_start(ICCM_HASH_DST, ICCM_READBACK_ADDR, TEST_DATA_SIZE);
+    int rb_done = wait_dma_irq();
+    uint32_t rb_err = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (!rb_done) {
+        secure_dma__CONTROL_t abort_ctrl = {.f = {.ABORT = 1}};
+        WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, abort_ctrl.w);
+    }
+    int rb_match = 0;
+    int rb_sentinel = 0;
+    for (int i = 0; i < TEST_DATA_SIZE / 4; i++) {
+        if (iccm_buf[i] == iccm_src[i]) {
+            rb_match++;
+        } else {
+            printf("  ERROR: ICCM copy mismatch at word %d: got 0x%08x want 0x%08x\n", i,
+                   iccm_buf[i], iccm_src[i]);
+        }
+        if (iccm_buf[i] == DST_SENTINEL) rb_sentinel++;
+    }
+    printf("ICCM-HASH-COPY done=%d error_code=0x%x match=%d/%d sentinel_left=%d\n", rb_done, rb_err,
+           rb_match, TEST_DATA_SIZE / 4, rb_sentinel);
+    if (!rb_done || rb_err != 0 || rb_match != TEST_DATA_SIZE / 4) {
+        printf("  ERROR: the ICCM words read back by DMA differ from the hashed source\n");
+        errors++;
+    } else {
+        printf("  PASS: SHA-256 into ICCM also copied the source to ICCM intact\n");
     }
 
     printf("\n=== Test Summary ===\n");
