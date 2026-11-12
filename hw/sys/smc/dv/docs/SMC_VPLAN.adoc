@@ -33030,8 +33030,9 @@ because the offset visible at the port is not specified. The strobe spacing is l
 *BFM / Model*: SEP_IN AXI driver (32-bit reads and writes, items that allow an error response for
 the past-window read, the rejected writes and the hidden reads, and polls of the eFuse control
 registers); the wait probes `tb_fuse_sense_done` and `tb_fuse_reset_n`; the interrupt probe
-`tb_efuse_locked_access_irq` (`peripheral_interrupts[27]`); the bank activity probe
-`tb_axil_efuse_bank_active`; the eFuse bank is the DV model, loaded from a 192-word image the leaf
+`tb_efuse_locked_access_irq` (`peripheral_interrupts[27]`); the fuse-command probes
+`tb_efuse_program_req_valid` and `tb_efuse_read_req_valid` (the request valid of each interface
+towards the SHIM); the eFuse bank is the DV model, loaded from a 192-word image the leaf
 writes into the run directory under `+smc_efuse_hex` (64 harness words at 0, 128 seeded
 supplementary words with the programmed bit cleared); the per-word software model of the
 supplementary shadow held by the sequence; an EFUSE protocol-VIP record is booked at the end
@@ -33076,7 +33077,7 @@ bounded as the eFuse architecture states.
   `LOCK_REGION_END` boundaries.
 * `efuse_guard` checks firmware commands at or above bit 2048 against the region's
   `SUPPLEMENTARY_LOCKS` pair: a program in a write-locked region and a read in a read-locked
-  region set `efuse_req_error` and issue no bank command (`architecture.adoc`, Access Path;
+  region set `efuse_req_error` and issue no fuse command (`architecture.adoc`, Access Path;
   `efuse_interface_ctrl.rdl`, `efuse_req_error`).
 * A command at bit 2048 + 32 x WORDS sets `efuse_program_addr_error` or `efuse_read_addr_error`
   and never reaches the SHIM (`architecture.adoc`, Access Path); the clear bits of
@@ -33092,10 +33093,11 @@ bounded as the eFuse architecture states.
 . Read the first word past the 512-byte window and require an error response.
 . Positive control: write a fresh pattern to the second word of each region and read it back.
 . Program bit 5 of supplementary word 70 through `EFUSE_PROGRAM_ADDR` and `EFUSE_PROGRAM_CTRL`
-  while the bank activity is counted, require `program_status` 0 and at least one bank cycle,
-  read the word at bit 2048 + 32 x 70 through `EFUSE_READ_ADDR` and
-  `EFUSE_READ_CTRL`, require the image word with bit 5 set and no error in
-  `EFUSE_INTERFACE_CTRL_STATUS`; log the window word.
+  while the program request valid is counted, require `program_status` 0 and at least one
+  command cycle, read the word at bit 2048 + 32 x 70 through `EFUSE_READ_ADDR` and
+  `EFUSE_READ_CTRL` while the read request valid is counted, require at least one command
+  cycle, the image word with bit 5 set and no error in `EFUSE_INTERFACE_CTRL_STATUS`; log the
+  window word.
 . Error injection. Point: the first and last word of each region over SEP_IN, after the region's
   write lock is set and `SUPPLEMENTARY_LOCKS` is read back. Kind: a new pattern written to the
   write-locked words while the interrupt line is watched. Expected response: each write raises
@@ -33104,12 +33106,13 @@ bounded as the eFuse architecture states.
   first and last word of each region read `0xBADCAB1E` with OKAY and raise the interrupt, and the
   next region's first word still reads its value.
 . Error injection. Point: the program and read interfaces, with region 1 write- and read-locked.
-  Kind: a program at bit 2048 + 32 x 70 + 6 and a read at bit 2048 + 32 x 70 while
-  `tb_axil_efuse_bank_active` is counted. Expected response: `efuse_req_error` set after each
-  with 0 bank cycles; the clear bit returns the status to 0.
+  Kind: a program at bit 2048 + 32 x 70 + 6 and a read at bit 2048 + 32 x 70 while the
+  interface's request valid is counted. Expected response: `efuse_req_error` set after each
+  with 0 command cycles; the clear bit returns the status to 0.
 . Error injection. Point: the program and read interfaces. Kind: a program and a read at bit
-  2048 + 32 x 128 while the bank activity is counted. Expected response: `efuse_program_addr_error`
-  and `efuse_read_addr_error` set with 0 bank cycles; the clear bits return the status to 0.
+  2048 + 32 x 128 while the interface's request valid is counted. Expected response:
+  `efuse_program_addr_error` and `efuse_read_addr_error` set with 0 command cycles; the clear
+  bits return the status to 0.
 . Require the seven steps in order with increasing time stamps, the checker lines in the order
   printed and the SEP_IN access count at or above the call count; print the fence and the waits.
 
@@ -33125,9 +33128,10 @@ answers the error response of the reference integration's external terminator.
 |`CHK-SUPP-SHADOW-WRITE` |With `SUPPLEMENTARY_LOCKS` 0 a new pattern written to one word of each
 region lands and reads back.
 |`CHK-SUPP-PROGRAM-READ` |A program at a supplementary bit through `EFUSE_PROGRAM_ADDR` completes
-with status 0 while `tb_axil_efuse_bank_active` rose (the live control of the bank probe the
-guard and address-error checkers count), and a read at that word through `EFUSE_READ_ADDR`
-returns the image word with the bit set, with no request or address error.
+with status 0 while `tb_efuse_program_req_valid` rose, and a read at that word through
+`EFUSE_READ_ADDR` returns the image word with the bit set while `tb_efuse_read_req_valid` rose
+(the live controls of the probes the guard and address-error checkers count), with no request
+or address error.
 |`CHK-SUPP-WRITE-LOCK` |With each region's write lock set, the first and last word of the region
 reject a new pattern and keep their value while the next region's first word accepts a write.
 |`CHK-SUPP-READ-LOCK` |With each region's read lock set, the first and last word of the region
@@ -33135,9 +33139,9 @@ read `0xBADCAB1E` with OKAY while the next region's first word still reads its v
 |`CHK-SUPP-LOCK-IRQ` |`tb_efuse_locked_access_irq` pulses on every rejected write and hidden
 read, 0 before and after each access.
 |`CHK-SUPP-GUARD` |A program in a write-locked region and a read in a read-locked region set
-`efuse_req_error` with no bank activity; the clears return the status to 0.
+`efuse_req_error` with no fuse command issued; the clears return the status to 0.
 |`CHK-SUPP-ADDR-ERROR` |A program and a read at bit 2048 + 32 x WORDS set the address errors
-with no bank activity; the clears return the status to 0.
+with no fuse command issued; the clears return the status to 0.
 |`CHK-NONVAC` |The ordered fence (sense, window end, shadow write, program, locks, guard, address
 error) with increasing time stamps and each checker line printed after its step completed.
 |`CHK-TIMEOUT-PATHS` |The sense wait and every control-register poll are bounded and fail with an
@@ -33147,7 +33151,7 @@ assertion on expiry; the bound and the last state are logged.
 *Pass Criteria*: all eleven checkers hold: the window serves the sensed supplementary words and
 ends at 4 x WORDS, the open shadow accepts writes, the address registers program and read a
 supplementary bit, each lock pair rejects writes and hides reads of its region alone with the
-interrupt, and the guard and the region end refuse commands without a bank access. Enrolled in:
+interrupt, and the guard and the region end refuse commands without a fuse command. Enrolled in:
 `all`, `hosted`.
 
 *Scope limit*: The response code of a rejected write is not asserted; only its effect on the shadow

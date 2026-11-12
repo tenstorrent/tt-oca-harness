@@ -79,6 +79,10 @@ READ_BUSY = _f("EFUSE_READ_CTRL", "READ_BUSY")
 READ_DONE = _f("EFUSE_READ_CTRL", "READ_DONE")
 READ_STATUS = _f("EFUSE_READ_CTRL", "READ_STATUS")
 
+#: Fuse-command request valids of the program and read interfaces (tb_top.sv): high while a
+#: command is issued to the SHIM, never for a start the guard or the address bound refuses.
+PROGRAM_PROBE = "tb_efuse_program_req_valid"
+READ_PROBE = "tb_efuse_read_req_valid"
 #: Supplementary word and bit the leaf programs (region 1); the testcase clears that bit in the
 #: image so the program is a 0-to-1 transition.
 PROG_WORD = 70
@@ -188,9 +192,9 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         self._last_result = result
         return edges
 
-    async def _count_bank_activity_during(self, coro) -> int:
-        """clk_smc_i cycles with tb_axil_efuse_bank_active high during ``coro``."""
-        pin = self._sig("tb_axil_efuse_bank_active")
+    async def _count_command_cycles_during(self, probe: str, coro) -> int:
+        """clk_smc_i cycles with ``probe`` (a fuse-command request valid) high during ``coro``."""
+        pin = self._sig(probe)
         clk = cocotb.top.clk_smc_i
         hits = 0
 
@@ -384,12 +388,18 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
 
         # S4: program one supplementary bit and read the word back through the read interface
         bit = supp_bit(PROG_WORD, PROG_BIT)
-        hits_ok = await self._count_bank_activity_during(self._program("S4_PROG", bit))
+        hits_p = await self._count_command_cycles_during(
+            PROGRAM_PROBE, self._program("S4_PROG", bit)
+        )
         ctrl = self._last_result
         assert ctrl & PROG_STATUS == 0, f"S4: program_status 1 (PROGRAM_CTRL=0x{ctrl:08x})"
-        assert hits_ok > 0, "S4: tb_axil_efuse_bank_active never rose during the accepted program"
-        rctrl, data = await self._fuse_read("S4_READ", supp_bit(PROG_WORD))
+        assert hits_p > 0, f"S4: {PROGRAM_PROBE} never rose during the accepted program"
+        hits_r = await self._count_command_cycles_during(
+            READ_PROBE, self._fuse_read("S4_READ", supp_bit(PROG_WORD))
+        )
+        rctrl, data = self._last_result
         assert rctrl & READ_STATUS == 0, f"S4: read_status 1 (READ_CTRL=0x{rctrl:08x})"
+        assert hits_r > 0, f"S4: {READ_PROBE} never rose during the accepted read"
         expected = image[MAP_WORDS + PROG_WORD] | (1 << PROG_BIT)
         assert data == expected, (
             f"S4: fuse word {PROG_WORD} reads 0x{data:08x} after programming bit {PROG_BIT}, "
@@ -401,16 +411,17 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         self._done("S4")
         self._chk(
             "CHK-SUPP-PROGRAM-READ",
-            "EFUSE_PROGRAM_ADDR=%d (word %d bit %d) programmed with status 0 and %d bank cycles "
-            "(the live control of the bank probe); EFUSE_READ_ADDR=%d returned 0x%08x = image "
-            "word | bit; no request or address error; the shadow word reads 0x%08x until the "
-            "next sense (measured, not compared)",
+            "EFUSE_PROGRAM_ADDR=%d (word %d bit %d) programmed with status 0 and %d program "
+            "command cycles; EFUSE_READ_ADDR=%d returned 0x%08x = image word | bit after %d read "
+            "command cycles (the live controls of the command probes); no request or address "
+            "error; the shadow word reads 0x%08x until the next sense (measured, not compared)",
             bit,
             PROG_WORD,
             PROG_BIT,
-            hits_ok,
+            hits_p,
             supp_bit(PROG_WORD),
             data,
+            hits_r,
             window,
         )
 
@@ -480,29 +491,29 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
             hidden,
         )
 
-        # S6: the guard refuses a program and a read in a locked region without a bank command
+        # S6: the guard refuses a program and a read in a locked region without a fuse command
         await self._clear_errors("S6_CLEAR0")
-        hits_p = await self._count_bank_activity_during(
-            self._program_start("S6_PROG", supp_bit(PROG_WORD, PROG_BIT + 1))
+        hits_p = await self._count_command_cycles_during(
+            PROGRAM_PROBE, self._program_start("S6_PROG", supp_bit(PROG_WORD, PROG_BIT + 1))
         )
         status_p = self._last_result
         assert status_p & REQ_ERROR, (
             f"S6: program in a write-locked region: status 0x{status_p:08x}"
         )
-        assert hits_p == 0, f"S6: the refused program drove the bank for {hits_p} cycles"
+        assert hits_p == 0, f"S6: the refused program issued a fuse command for {hits_p} cycles"
         await self._clear_errors("S6_CLEAR1")
-        hits_r = await self._count_bank_activity_during(
-            self._read_start("S6_READ", supp_bit(PROG_WORD))
+        hits_r = await self._count_command_cycles_during(
+            READ_PROBE, self._read_start("S6_READ", supp_bit(PROG_WORD))
         )
         status_r = self._last_result
         assert status_r & REQ_ERROR, f"S6: read in a read-locked region: status 0x{status_r:08x}"
-        assert hits_r == 0, f"S6: the refused read drove the bank for {hits_r} cycles"
+        assert hits_r == 0, f"S6: the refused read issued a fuse command for {hits_r} cycles"
         await self._clear_errors("S6_CLEAR2")
         self._done("S6")
         self._chk(
             "CHK-SUPP-GUARD",
             "a program at bit %d and a read at bit %d (region 1, write and read locked) set "
-            "efuse_req_error (status 0x%08x, 0x%08x) with 0 bank cycles each; the clears "
+            "efuse_req_error (status 0x%08x, 0x%08x) with 0 fuse-command cycles each; the clears "
             "returned the status to 0",
             supp_bit(PROG_WORD, PROG_BIT + 1),
             supp_bit(PROG_WORD),
@@ -510,25 +521,31 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
             status_r,
         )
 
-        # S7: commands at the first bit past the region set the address errors, no bank command
+        # S7: commands at the first bit past the region set the address errors, no fuse command
         end_bit = supp_bit(SUPP_WORDS)
-        hits_p = await self._count_bank_activity_during(self._program_start("S7_PROG", end_bit))
+        hits_p = await self._count_command_cycles_during(
+            PROGRAM_PROBE, self._program_start("S7_PROG", end_bit)
+        )
         status_p = self._last_result
         assert status_p & PROGRAM_ADDR_ERROR, (
             f"S7: program at bit {end_bit}: status 0x{status_p:08x}"
         )
-        assert hits_p == 0, f"S7: the out-of-range program drove the bank for {hits_p} cycles"
-        hits_r = await self._count_bank_activity_during(self._read_start("S7_READ", end_bit))
+        assert hits_p == 0, (
+            f"S7: the out-of-range program issued a fuse command for {hits_p} cycles"
+        )
+        hits_r = await self._count_command_cycles_during(
+            READ_PROBE, self._read_start("S7_READ", end_bit)
+        )
         status_r = self._last_result
         assert status_r & READ_ADDR_ERROR, f"S7: read at bit {end_bit}: status 0x{status_r:08x}"
-        assert hits_r == 0, f"S7: the out-of-range read drove the bank for {hits_r} cycles"
+        assert hits_r == 0, f"S7: the out-of-range read issued a fuse command for {hits_r} cycles"
         await self._clear_errors("S7_CLEAR")
         self._done("S7")
         self._chk(
             "CHK-SUPP-ADDR-ERROR",
             "EFUSE_PROGRAM_ADDR=%d and EFUSE_READ_ADDR=%d (2048 + 32 x %d) set "
             "efuse_program_addr_error (status 0x%08x) and efuse_read_addr_error (status 0x%08x) "
-            "with 0 bank cycles each; the clears returned the status to 0",
+            "with 0 fuse-command cycles each; the clears returned the status to 0",
             end_bit,
             end_bit,
             SUPP_WORDS,
