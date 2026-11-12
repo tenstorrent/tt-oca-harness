@@ -22,8 +22,8 @@
 //   [S04]  main() entry + runtime init check
 //   [S05]  ROM version + hash print (hash filled at build time)
 //   [S06]  init_straps() → structured boot config
-//   [S07]  status reporting init (strap-controlled)
-//   [S08]  fuse-sense readiness (gates every fuse read)
+//   [S07]  fuse-sense readiness (gates every fuse read)
+//   [S08]  status reporting init (eFuse/strap policy)
 //   [S09]  PLL/clock init (strap-controlled)
 //   [S10]  init_bl0_state()   (must precede every bl0_state writer)
 //   [S11]  lifecycle policy
@@ -548,10 +548,19 @@ static void report_rom_hash(void) {
     }
 }
 
-// Status reporting init (strap-controlled).
-// If the disable strap is set, skip reporting; otherwise initialize the ring buffer.
+static bool rom_status_reporting_enabled(const struct boot_straps *straps) {
+    const uint32_t status_rpt = (mmio_read32(SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR) &
+                                 SEP_EFUSE_MAP__STATUS_RPT__RPT_bm) >>
+                                SEP_EFUSE_MAP__STATUS_RPT__RPT_bp;
+
+    if (status_rpt == 0u) {
+        return !straps->status_report_disable;
+    }
+    return status_rpt == 1u;
+}
+
 static void rom_status_reporting_init(const struct boot_straps *straps) {
-    if (straps->status_report_disable) {
+    if (!rom_status_reporting_enabled(straps)) {
         STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_DEBUG, SEP_MSG_STATUS_REPORTING_DISABLED));
         simputs("STATUS_RPT_DISABLED\n");
         return;
@@ -600,15 +609,16 @@ void rom_main(void) {
     struct boot_straps straps;
     init_straps(&straps);
 
-    // ── [S07] Status reporting init (strap-controlled) ──
-    rom_status_reporting_init(&straps);
-
-    // ── [S08] Fuse-sense readiness ──
-    // Gates every later fuse read, [S09]'s SYSCLK_FREQ_MHZ included.
+    // ── [S07] Fuse-sense readiness ──
+    // Gates every later fuse read, including [S08]'s STATUS_RPT and
+    // [S09]'s SYSCLK_FREQ_MHZ.
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_FUSE_SENSE_WAIT);
     simputs("FUSE_SENSE_WAIT\n");
     smc_wait_fuse_sense();
     simputs("FUSE_SENSE_DONE\n");
+
+    // ── [S08] Status reporting init (eFuse/strap policy) ──
+    rom_status_reporting_init(&straps);
 
     // ── [S09] PLL/Clock init (strap-controlled) ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_PLL_CLK_INIT);
