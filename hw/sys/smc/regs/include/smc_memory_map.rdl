@@ -63,6 +63,8 @@
     smc_base_config->ocah_aperture_size = 0x1000;
     smc_base_config->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     smc_base_config->desc = "SMC base-address and aperture configuration.";
+    zeroer_ctrl->ocah_aperture_size = 0x1000;
+    zeroer_ctrl->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     smc_alias_remap_wrap->ocah_aperture_size = 0x1000;
     smc_alias_remap_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_mmode_remap_wrap->ocah_aperture_size = 0x1000;
@@ -80,8 +82,6 @@
     dma_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::OKAY};
     dma_ctrl->ocah_past_extent_note = "The DMA's register file answers OKAY at every offset it does not decode and ignores a write there.";
     dma_ctrl->desc = "Direct-memory-access controller.";
-    zeroer_ctrl->ocah_aperture_size = 0x20;
-    zeroer_ctrl->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     smc_cpu_ctrl->ocah_aperture_size = 0x1000;
     smc_cpu_ctrl->ocah_past_extent_resp = `OCAH_SMC_SLVERR;
     smc_cpu_ctrl->desc = "SMC CPU-cluster control.";

@@ -23,9 +23,20 @@ description = "Reset, GPIO, serial peripherals, eFuse, telemetry, timer, DTP, PW
 
 [[views.rows]]
 kind = "group"
+label = "Base Configuration"
+members = ["smc_base_config"]
+
+[[views.rows]]
+kind = "group"
+label = "Memory Zeroer"
+members = ["zeroer_ctrl"]
+description = "Memory zeroer."
+
+[[views.rows]]
+kind = "group"
 label = "Fabric Control"
-members = ["smc_base_config", "smc_alias_remap_wrap", "smc_mmode_remap_wrap", "smc_xvisor_remap_wrap", "smc_inbound_filter_ctrl_wrap", "smc_outbound_filter_ctrl_wrap", "dfx_ctrl"]
-description = "Base configuration, address remapping, traffic filters, and DFT status."
+members = ["smc_alias_remap_wrap", "smc_mmode_remap_wrap", "smc_xvisor_remap_wrap", "smc_inbound_filter_ctrl_wrap", "smc_outbound_filter_ctrl_wrap", "dfx_ctrl"]
+description = "Address remapping, traffic filters, and DFT status."
 
 [[views.rows]]
 kind = "group"
@@ -34,9 +45,8 @@ members = ["smc_mailbox"]
 
 [[views.rows]]
 kind = "group"
-label = "Data Processing"
-members = ["dma_ctrl", "zeroer_ctrl"]
-description = "DMA controller and memory zeroer."
+label = "DMA"
+members = ["dma_ctrl"]
 
 [[views.rows]]
 kind = "group"

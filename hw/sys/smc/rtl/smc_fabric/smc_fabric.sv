@@ -165,6 +165,11 @@ module smc_fabric #(
                                                              // register window.
   input  smc_pkg::smc_axil_32_64_resp_t axil_dfx_csr_resp_i,  // AXI-Lite response from the DFX
                                                               // control registers.
+  output smc_pkg::smc_axil_32_64_req_t  axil_zeroer_ctrl_req_o,  // AXI-Lite request for the memory
+                                                                 // zeroer control registers.
+  input  smc_pkg::smc_axil_32_64_resp_t axil_zeroer_ctrl_resp_i,  // AXI-Lite response from the
+                                                                  // memory zeroer control
+                                                                  // registers.
 
   output smc_pkg::smc_sys_out_56_64_8_12_axi_req_t  axi_filtered_remapped_req_o,  // System AXI output
                                                                                   // request from the
@@ -345,7 +350,9 @@ module smc_fabric #(
     .axil_smc_base_config_req_o         (axil_smc_base_config_req_o),
     .axil_smc_base_config_resp_i        (axil_smc_base_config_resp_i),
     .axil_dfx_csr_req_o                 (axil_dfx_csr_req_o),
-    .axil_dfx_csr_resp_i                (axil_dfx_csr_resp_i)
+    .axil_dfx_csr_resp_i                (axil_dfx_csr_resp_i),
+    .axil_zeroer_ctrl_req_o             (axil_zeroer_ctrl_req_o),
+    .axil_zeroer_ctrl_resp_i            (axil_zeroer_ctrl_resp_i)
   );
 
   ////////////////////////

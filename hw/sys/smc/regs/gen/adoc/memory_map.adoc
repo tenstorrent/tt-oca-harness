@@ -10,9 +10,11 @@
 |Address Range |Size |Unit |Description
 |BASE + 0x0 – BASE + 0xFFF |4 KiB |Watchdog Timers |Per-core watchdog timers.
 |BASE + 0x2000 – BASE + 0xDFFF |48 KiB |System and Peripheral Control |Reset, GPIO, serial peripherals, eFuse, telemetry, timer, DTP, PWM, and miscellaneous registers.
-|BASE + 0x10000 – BASE + 0x17FFF |32 KiB |Fabric Control |Base configuration, address remapping, traffic filters, and DFT status.
+|BASE + 0x10000 – BASE + 0x10FFF |4 KiB |Base Configuration |SMC base-address and aperture configuration.
+|BASE + 0x11000 – BASE + 0x11FFF |4 KiB |Memory Zeroer |Memory zeroer.
+|BASE + 0x12000 – BASE + 0x17FFF |24 KiB |Fabric Control |Address remapping, traffic filters, and DFT status.
 |BASE + 0x18000 – BASE + 0x37FFF |128 KiB |Mailbox |Thirty-two bidirectional mailbox pairs.
-|BASE + 0x38000 – BASE + 0x3821F |544 B |Data Processing |DMA controller and memory zeroer.
+|BASE + 0x38000 – BASE + 0x381FF |512 B |DMA |Direct-memory-access controller.
 |BASE + 0x39000 – BASE + 0x3FFFF |28 KiB |CPU and I/O Control |CPU-cluster control and OCA I3C controller.
 |BASE + 0x40000 – BASE + 0x15FFFF |1152 KiB |Local Memories |Scratchpad ROM and RAM.
 |BASE + 0x160000 – BASE + 0x163FFF |16 KiB |CLA |Core Logic Analyzer debug and trace.
@@ -46,6 +48,7 @@
 |BASE + 0xC000 – BASE + 0xCFFF |4 KiB |2056 B |PWM Wrapper Address Map |1 instance |- |Pulse-width modulator. |between sub-blocks: DECERR, 0xBADCAB1E / DECERR; past pwm registers: SLVERR, 0xFFFFFFFF / SLVERR; past pwm_ctrl registers: SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0xD000 – BASE + 0xDFFF |4 KiB |528 B |SMC Miscellaneous Wrapper Address Map |1 instance |- |Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks. |SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x10000 – BASE + 0x10FFF |4 KiB |76 B |SMC Base Configuration Address Map |1 instance |- |SMC base-address and aperture configuration. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
+|BASE + 0x11000 – BASE + 0x11FFF |4 KiB |24 B |Zeroer Control Address Map |1 instance |- |Control and status registers for the AXI memory-zeroing engine. |- |SLVERR, 0x0 / SLVERR
 |BASE + 0x12000 – BASE + 0x12FFF |4 KiB |256 B |AXI Alias Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one alias remap register block per remap region. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x13000 – BASE + 0x13FFF |4 KiB |64 B |Output Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one output remap register block per remap region. |- |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x14000 – BASE + 0x14FFF |4 KiB |64 B |Output Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one output remap register block per remap region. |- |DECERR, 0xBADCAB1E / DECERR
@@ -54,7 +57,6 @@
 |BASE + 0x17000 – BASE + 0x17FFF |4 KiB |24 B |DFX Control and Status Address Map |1 instance |- |DFT status exposed to boot firmware. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
 |BASE + 0x18000 – BASE + 0x37FFF |128 KiB |128 KiB |SMC AXI-Lite Mailbox Wrapper Address Map |1 instance |- |Thirty-two bidirectional mailbox pairs. |SLVERR, 0x0 / SLVERR |-
 |BASE + 0x38000 – BASE + 0x381FF |512 B |312 B |iDMA Controller Address Map |1 instance |- |Direct-memory-access controller. |OKAY, 0xFFFFFFFF / OKAY |OKAY, 0xFFFFFFFF / OKAY^<<smc-components-note-3,[3]>>^
-|BASE + 0x38200 – BASE + 0x3821F |32 B |24 B |Zeroer Control Address Map |1 instance |- |Control and status registers for the AXI memory-zeroing engine. |- |SLVERR, 0x0 / SLVERR
 |BASE + 0x39000 – BASE + 0x39FFF |4 KiB |704 B |CPU Control Address Map |1 instance |- |SMC CPU-cluster control. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
 |BASE + 0x3A000 – BASE + 0x3FFFF |24 KiB |24 KiB |OCA I3C Controller Wrapper Address Map |1 instance |- |Wrapper address map instantiating the per-controller I3C CSR blocks. |OKAY, 0x0 / OKAY^<<smc-components-note-4,[4]>>^ |-
 |BASE + 0x40000 – BASE + 0x5FFFF |128 KiB |128 KiB |spm_rom_memory |1 instance |- |Scratchpad ROM memory, present only in non-CPL configurations. |-^<<smc-components-note-5,[5]>>^ |-
