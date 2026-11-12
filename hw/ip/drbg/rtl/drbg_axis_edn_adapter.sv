@@ -55,10 +55,11 @@ module drbg_axis_edn_adapter
                                                             // clear_i is low.
 
   input  wire edn_pkg::edn_req_t [NUM_ENDPOINTS-1:0] edn_req_i, // Native EDN requests from clients.
-  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o,  // Native EDN responses to clients; ack,
-                                                            // bus and fips are forced to zero
-                                                            // during clear_i or that endpoint's
-                                                            // reset.
+  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o,  // Native EDN responses to clients; ack
+                                                            // is forced to zero during clear_i or
+                                                            // that endpoint's cancel. With no word
+                                                            // buffered, bus and fips hold the last
+                                                            // acknowledged word.
   output logic err_o                                        // Illegal edn_ack_sm state in any
                                                             // endpoint; held until reset.
 );
@@ -167,6 +168,8 @@ module drbg_axis_edn_adapter
   logic [StageWidth-1:0]    ep_rdata_raw [NUM_ENDPOINTS];
   logic [NUM_ENDPOINTS-1:0] ep_pop;
   logic [NUM_ENDPOINTS-1:0] ep_ack;
+  logic [NUM_ENDPOINTS-1:0] ep_rsp_ack;
+  logic [StageWidth-1:0]    ep_acked_q [NUM_ENDPOINTS];
   logic [NUM_ENDPOINTS-1:0] ep_err;
   logic [NUM_ENDPOINTS-1:0] ack_sm_err;
 
@@ -223,10 +226,15 @@ module drbg_axis_edn_adapter
       .ack_sm_err_o     (ack_sm_err[i])
     );
 
-    assign edn_rsp_o[i].edn_ack = ep_ack[i] & ~ep_flush[i];
-    assign edn_rsp_o[i].edn_bus = ep_flush[i] ? '0 : ep_rdata_raw[i][DataWidth-1:0];
-    // FIPS forwarded per-beat from the AXI-Stream tuser sideband.
-    assign edn_rsp_o[i].edn_fips = ep_flush[i] ? 1'b0 : ep_rdata_raw[i][DataWidth];
+    assign ep_rsp_ack[i]        = ep_ack[i] & ~ep_flush[i];
+    assign edn_rsp_o[i].edn_ack = ep_rsp_ack[i];
+
+    // The client takes an acknowledged word through its synchronizer some cycles after the
+    // acknowledge. With no word buffered, also after a flush, the bus keeps that word and its
+    // FIPS bit.
+    `OCAH_FFL(ep_acked_q[i], ep_rdata_raw[i], ep_rsp_ack[i], '0, clk_i, rst_ni)
+    assign {edn_rsp_o[i].edn_fips, edn_rsp_o[i].edn_bus} =
+        ep_rvalid[i] ? ep_rdata_raw[i] : ep_acked_q[i];
 
     `OCAH_OT_ASSERT(AxisEdnNoAckDuringClear_A, clear_i |-> !edn_rsp_o[i].edn_ack)
     `OCAH_OT_ASSERT(AxisEdnCancelledEndpointIdle_A,
