@@ -5109,10 +5109,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-SHADOW-SAMPLES",
             "BOOT_SHADOW_SAMPLES",
-            "the sixteen sampled SMC eFuse map words (the six named element words and word 255, "
-            "the last word of the bank, pinned, nine drawn from the seed), read over JTAG2AXI in "
+            "the sixteen sampled SMC eFuse map words (the seven named element words and word 63, "
+            "the last harness map word, pinned, eight drawn from the seed), read over JTAG2AXI in "
             "the drawn order, and the stream words of the same indices equal the words of the "
-            "eFuse image the run loads, and the map words equal the stream words",
+            "eFuse image the run loads, the map words equal the stream words, and the 128 "
+            "supplementary stream words equal the image words of the same index",
         ),
         (
             "CHK-BOOT-SHADOW-ELEMENTS",
@@ -5129,6 +5130,25 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-TIMEOUT-PATHS",
             "CHK_TIMEOUT_PATHS",
             "bounded sense, capture and J2A waits with last state",
+        ),
+    ],
+    "smu_smc_efuse_supplementary_shadow_test": [
+        (
+            "CHK-SUPP-SHADOW-WINDOW",
+            "SUPP_SHADOW_WINDOW",
+            "the 128 words of the SMC supplementary fuse window, read over JTAG2AXI after the "
+            "boot sense, and the stream words 64..191 equal the eFuse image words of the same "
+            "index, and each window word equals its stream word",
+        ),
+        (
+            "CHK-SUPP-LOCKS-WORD",
+            "SUPP_LOCKS_WORD",
+            "SUPPLEMENTARY_LOCKS reads its two image words after the boot sense",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded capture, done-rise and J2A waits with last state",
         ),
     ],
     "smu_smc_efuse_shadow_sense_reset_test": [
