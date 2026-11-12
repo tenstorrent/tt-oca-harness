@@ -35,7 +35,7 @@ timeout_sec = 900
 tags = ["sram", "memory", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_sram_hex=sep_sram_preload.hex"]
 
 [[tests]]
 # Multi-beat FIXED and WRAP bursts into SEP SRAM answer SLVERR and leave SRAM unchanged
