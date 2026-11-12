@@ -5143,7 +5143,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SUPP-LOCKS-WORD",
             "SUPP_LOCKS_WORD",
-            "SUPPLEMENTARY_LOCKS reads its two image words after the boot sense",
+            "SUPPLEMENTARY_LOCKS is reachable after the boot sense and reads its two image words "
+            "(0 in the asset)",
         ),
         (
             "CHK-TIMEOUT-PATHS",

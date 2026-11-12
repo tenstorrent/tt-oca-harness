@@ -161,7 +161,8 @@ class smu_smc_efuse_supplementary_shadow_test_seq:
         hi = await self._rd32(SUPP_LOCKS + 4, "SUPPLEMENTARY_LOCKS high")
         self._cell("supplementary_locks", f"addr=0x{SUPP_LOCKS:08x} lo=0x{lo:08x} hi=0x{hi:08x}")
         sb.expect_eq(
-            "SUPPLEMENTARY_LOCKS reads its two image words after the boot sense",
+            "SUPPLEMENTARY_LOCKS is reachable after the boot sense and reads its two image words "
+            "(both 0 in the asset: no supplementary lock set)",
             (lo, hi),
             (image[SUPP_LOCKS_WORD], image[SUPP_LOCKS_WORD + 1]),
             evidence="SUPP_LOCKS_WORD",

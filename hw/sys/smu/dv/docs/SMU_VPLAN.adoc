@@ -6220,7 +6220,7 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 [arabic]
 . Draw the sixteen sampled indices and their order from the seed and log them; arm the stream capture before bring-up, read the `+smc_efuse_hex` image into 192 words, wait for the reset-done event and for the rise of `smc_fuse_sense_done_o`, require 192 captured strobes, log the stream, reset the TAP, require the IDCODE the bench TAP returns and require the `tb_smc_jtag2axi_security_disable` gate open.
 . Read the sixteen drawn map words in the drawn order, compare each map word and the stream word of the same index with the image word of that index, and compare each map word with the stream word; compare the 128 supplementary stream words with the image words of the same index.
-. Compare the first word of each of the six named map elements with its image word.
+. Compare the first word of each of the seven named map elements with its image word.
 . Read EFUSE_INTERFACE_CTRL_STATUS and require `efuse_sense_done` at 1.
 . Sample `smc_shadow_regs` one `clk_smu_i` edge later, require it resolvable and log the per-index slices and whether it is all zero.
 . Check that the capture, the done-rise wait and every JTAG2AXI poll finished inside their bounds.
@@ -6231,7 +6231,7 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 |===
 |Checker |Description
 |`CHK-BOOT-SHADOW-SAMPLES` |the sixteen sampled SMC eFuse map words (the seven named element words and word 63, the last harness map word, pinned, eight drawn from the seed), read over JTAG2AXI in the drawn order, and the stream words of the same indices equal the words of the eFuse image the run loads, the map words equal the stream words, and the 128 supplementary stream words equal the image words of the same index
-|`CHK-BOOT-SHADOW-ELEMENTS` |the first word of each of the six named map elements equals its word in the eFuse image the run loads
+|`CHK-BOOT-SHADOW-ELEMENTS` |the first word of each of the seven named map elements equals its word in the eFuse image the run loads
 |`CHK-BOOT-SENSE-STATUS` |`efuse_sense_done` of EFUSE_INTERFACE_CTRL_STATUS reads 1 after `smc_fuse_sense_done_o` rose
 |`CHK-TIMEOUT-PATHS` |the stream capture, the done-rise wait and every JTAG2AXI poll finish inside their bounds and no wait record shows an expiry
 |===
@@ -6252,7 +6252,7 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 
 *BFM / Model*: the stream capture class `SmuEfuseStreamCapture` of `smu_smc_efuse_shadow_map_readback_test_seq`, armed ahead of the shared bring-up, which records every rising `valid` of `smc_efuse_shim_command_resp` under `u_dut` and the rise of `smc_fuse_sense_done_o` on `clk_smu_i`; SMC eFuse bank model inside the wrapper composition (declared in *Bench stand-ins and exceptions*); `ocah_jtag_vip` (the primary TAP and the SMC fabric JTAG2AXI bridge, read-only 4-byte accesses); bench observation `tb_smc_jtag2axi_security_disable`; `elaboration` firmware mode under the `sep_rtl_fuse_sense` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images, where `+smc_efuse_hex` names `hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex` (192 words, one per line), which the sequence also reads as the expected words
 
-*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 1800; tags `efuse`, `smc`, `boot`, `sep`, `real_rtl`; run mode `sep_rtl_fuse_sense` (real SMC and SEP fuse sense; no `+skip_fuse_sense`); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+smc_efuse_hex=hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex`.
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 1800; tags `efuse`, `smc`, `boot`, `sep`, `real_rtl`; run mode `sep_rtl_fuse_sense` (real SMC and SEP fuse sense; no `+skip_fuse_sense`); firmware `elaboration` (mode `elaboration`); seed 1 (no `reseed` key, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+smc_efuse_hex={repo_root}/hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex`.
 
 *Randomization*: RAND-NONE: directed, the 128 window words are read in index order under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
 
@@ -6260,9 +6260,9 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 
 *Test Coverage*:
 
-* The reference SMC wrapper of the SMU composition carries the supplementary fuse region of `hw/top/smc_supplementary_fuse_example_pkg.sv` (128 words), sensed after the 64 harness words in one READ and served through the window at the base of the `fuse` slot of the `smc_external` supplementary region, `SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR` (`doc/integrator/src/smu-smc.adoc`, Supplementary Fuse Region; `hw/sys/smc/doc/memmap.adoc`, the supplementary fuse window).
+* The reference SMC wrapper of the SMU composition carries the supplementary fuse region of the reference wrappers, "128 words in three lock regions" (`hw/ip/efuse/doc/architecture.adoc`, Supplementary Fuse Region: Configuration), sensed after the 64 harness words in one READ and served through the window at the base of the `fuse` slot of the `smc_external` supplementary region, `SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR` (`doc/integrator/src/smu-smc.adoc`, Supplementary Fuse Region; `hw/sys/smc/doc/memmap.adoc`, the supplementary fuse window).
 * Each of the 128 window words, read with a 4-byte access over JTAG2AXI in index order, equals the stream word of the same index (64 to 191, the stores of the sense's running count) and the word of that index in the eFuse image the run loads.
-* `SUPPLEMENTARY_LOCKS` at `smc_efuse_map` +0x8 (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`) reads its two image words after the boot sense.
+* `SUPPLEMENTARY_LOCKS` at `smc_efuse_map` +0x8 (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`) is reachable after the boot sense and reads its two image words; both are 0 in the asset, so the row proves the register is served and no supplementary lock is set, not a non-zero store.
 * Measured and logged only: the first and last supplementary stream words, the number of strobes whose `status` bit is set, and the first and last window words next to their stream and image words. The harness map words, the word past the window and the response of a locked region are out of scope; the harness words are the business of `smu_smc_efuse_shadow_map_readback_test`.
 
 *Test Procedure*:
@@ -6279,7 +6279,7 @@ write-only or read-locked register, or the lifecycle gating of the bridges.
 |===
 |Checker |Description
 |`CHK-SUPP-SHADOW-WINDOW` |the 128 words of the SMC supplementary fuse window, read over JTAG2AXI after the boot sense, and the stream words 64 to 191 equal the eFuse image words of the same index, and each window word equals its stream word
-|`CHK-SUPP-LOCKS-WORD` |`SUPPLEMENTARY_LOCKS` reads its two image words after the boot sense
+|`CHK-SUPP-LOCKS-WORD` |`SUPPLEMENTARY_LOCKS` is reachable after the boot sense and reads its two image words (0 in the asset)
 |`CHK-TIMEOUT-PATHS` |the stream capture, the done-rise wait and every JTAG2AXI poll finish inside their bounds and no wait record shows an expiry
 |===
 

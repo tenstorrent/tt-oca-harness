@@ -24,7 +24,9 @@ from seq_lib.smc_efuse_supplementary_region_test_seq import (
     MAP_WORDS,
     PROG_BIT,
     PROG_WORD,
+    SUPP_WORDS,
     smc_efuse_supplementary_region_test_seq,
+    supp_addr,
 )
 from smc_base_test import smc_base_test
 
@@ -96,6 +98,9 @@ class smc_efuse_supplementary_region_test(smc_base_test):
         seq = smc_efuse_supplementary_region_test_seq("smc_efuse_supplementary_region_test_seq")
         seq.image = self.image
         seq.seed = self.random_seed()
+        # The first word past the window leaves on smc_external_req_o and the reference
+        # integration's terminator answers DECERR; the monitor must not count it as a fault.
+        self.env.axi_monitor.expected_decerr_addrs.add(supp_addr(SUPP_WORDS))
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.access_floor > 0 and seq.accesses >= seq.access_floor, (
             f"{seq.accesses} SEP_IN accesses, the sequence computed a floor of {seq.access_floor}"

@@ -25,9 +25,10 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import efuse_ifc_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA
 
 _WORD_MASK = 0xFFFF_FFFF
-_LOCKED_DATA = 0xBADC_AB1E
+_LOCKED_DATA = EFUSE_BLOCKED_READ_DATA
 _RESP_OKAY = 0
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 _SENSE_BOUND_CYCLES = 200_000
@@ -35,8 +36,10 @@ _POLL_BOUND = 10_000
 _IRQ_DRAIN = 8
 
 MAP_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE") // 4
-#: The supplementary region of the reference wrappers (hw/top/smc_supplementary_fuse_example_pkg.sv):
-#: FuseWords and LockRegionEnd; the region's fuse bits start after the 2 kbit harness map.
+#: The supplementary region of the reference wrappers, as architecture.adoc states it: "128 words in
+#: three lock regions" (Configuration) whose LOCK_REGION_END "entries are 64, 96 and 128"
+#: (Supplementary Locks), the window "4 x WORDS bytes" (Region Size) and the fuse bits starting
+#: "at bit 2048, directly after the 2 Kbit harness map" (Sensing and Export).
 SUPP_WORDS = 128
 REGION_END = (64, 96, 128)
 SUPP_BIT_BASE = 32 * MAP_WORDS
@@ -122,6 +125,7 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         self._stamps: list[tuple[str, int]] = []
         self._waits: list[tuple[str, int, str]] = []
         self._used: set[int] = set()
+        #: Pattern draws; seeded apart from the image so a written pattern is never an image word.
         self._rnd = random.Random(1)
         self._last_result = None
 
@@ -323,7 +327,7 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         assert len(image) == IMAGE_WORDS, f"image holds {len(image)} words, not {IMAGE_WORDS}"
         assert all(w == 0 for w in image[:MAP_WORDS]), "the image sets a harness word"
         assert image[MAP_WORDS + PROG_WORD] & (1 << PROG_BIT) == 0, "the program bit is set"
-        self._rnd = random.Random(self.seed)
+        self._rnd = random.Random(self.seed ^ 0x5A5A_0001)
         self.shadow = list(image[MAP_WORDS:])
         self.locks_model = 0
         assert SUPP_WINDOW + 4 * SUPP_WORDS <= SUPP_WINDOW + smc_addr(
@@ -348,15 +352,16 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
             self.shadow[-1],
         )
 
-        # S2: the first word past the window is not served by the shadow
+        # S2: the first word past the window is not served by the shadow (the testcase registers
+        # the address with the AXI monitor: the reference integration's terminator answers DECERR)
         past = supp_addr(SUPP_WORDS)
         past_data = await self.csr_read_expect_error("S2_PAST", past)
         self._calls += 1
         self._done("S2")
         self._chk(
             "CHK-SUPP-WINDOW-END",
-            "the first word past the %d-byte window, 0x%08x, answers an error response "
-            "(rdata 0x%08x); the window ends at 4 x WORDS",
+            "the first word past the %d-byte window, 0x%08x, is not served by the shadow: it "
+            "answers an error response (rdata 0x%08x) from the external terminator",
             4 * SUPP_WORDS,
             past,
             past_data & _WORD_MASK,
@@ -379,8 +384,10 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
 
         # S4: program one supplementary bit and read the word back through the read interface
         bit = supp_bit(PROG_WORD, PROG_BIT)
-        ctrl = await self._program("S4_PROG", bit)
+        hits_ok = await self._count_bank_activity_during(self._program("S4_PROG", bit))
+        ctrl = self._last_result
         assert ctrl & PROG_STATUS == 0, f"S4: program_status 1 (PROGRAM_CTRL=0x{ctrl:08x})"
+        assert hits_ok > 0, "S4: tb_axil_efuse_bank_active never rose during the accepted program"
         rctrl, data = await self._fuse_read("S4_READ", supp_bit(PROG_WORD))
         assert rctrl & READ_STATUS == 0, f"S4: read_status 1 (READ_CTRL=0x{rctrl:08x})"
         expected = image[MAP_WORDS + PROG_WORD] | (1 << PROG_BIT)
@@ -394,12 +401,14 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         self._done("S4")
         self._chk(
             "CHK-SUPP-PROGRAM-READ",
-            "EFUSE_PROGRAM_ADDR=%d (word %d bit %d) programmed with status 0; EFUSE_READ_ADDR=%d "
-            "returned 0x%08x = image word | bit; no request or address error; the shadow word "
-            "reads 0x%08x until the next sense (measured, not compared)",
+            "EFUSE_PROGRAM_ADDR=%d (word %d bit %d) programmed with status 0 and %d bank cycles "
+            "(the live control of the bank probe); EFUSE_READ_ADDR=%d returned 0x%08x = image "
+            "word | bit; no request or address error; the shadow word reads 0x%08x until the "
+            "next sense (measured, not compared)",
             bit,
             PROG_WORD,
             PROG_BIT,
+            hits_ok,
             supp_bit(PROG_WORD),
             data,
             window,
@@ -425,15 +434,6 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
                 await self._wr(f"S5_NB_WR_{nxt}", supp_addr(nxt), value)
                 self.shadow[nxt] = value
                 await self._rd(f"S5_NB_RB_{nxt}", supp_addr(nxt), value)
-        self._chk(
-            "CHK-SUPP-WRITE-LOCK",
-            "SUPPLEMENTARY_LOCKS=0x%x: the first and last word of each region (%s) rejected a new "
-            "pattern and kept their value, %d words; the next region's first word accepted a "
-            "write while its neighbour was locked",
-            self.locks_model,
-            REGION_WORDS,
-            rejected,
-        )
         hidden = 0
         for region, (first, last) in enumerate(REGION_WORDS):
             await self._set_supp_locks(f"S5_RLOCK_{region}", read_lock_bit(region))
@@ -453,6 +453,15 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
                 nxt = REGION_WORDS[region + 1][0]
                 await self._rd(f"S5_NB_RD_{nxt}", supp_addr(nxt), self.shadow[nxt])
         self._done("S5")
+        self._chk(
+            "CHK-SUPP-WRITE-LOCK",
+            "SUPPLEMENTARY_LOCKS=0x%x: the first and last word of each region (%s) rejected a new "
+            "pattern and kept their value, %d words; the next region's first word accepted a "
+            "write while its neighbour was locked",
+            self.locks_model,
+            REGION_WORDS,
+            rejected,
+        )
         self._chk(
             "CHK-SUPP-READ-LOCK",
             "SUPPLEMENTARY_LOCKS=0x%x: the first and last word of each region read 0x%08x with "
@@ -539,7 +548,7 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
             "CHK-SUPP-WINDOW-END": "S2",
             "CHK-SUPP-SHADOW-WRITE": "S3",
             "CHK-SUPP-PROGRAM-READ": "S4",
-            "CHK-SUPP-WRITE-LOCK": "S4",
+            "CHK-SUPP-WRITE-LOCK": "S5",
             "CHK-SUPP-READ-LOCK": "S5",
             "CHK-SUPP-LOCK-IRQ": "S5",
             "CHK-SUPP-GUARD": "S6",

@@ -41,8 +41,9 @@ from seq_lib.smu_jtag_helpers import (
 
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 STATUS_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
-# Harness map words plus the supplementary region of the reference wrappers
-# (hw/top/smc_supplementary_fuse_example_pkg.sv, FuseWords = 128), sensed as one linear READ.
+# Harness map words plus the supplementary region of the reference wrappers ("128 words in three
+# lock regions", hw/ip/efuse/doc/architecture.adoc, Supplementary Fuse Region: Configuration),
+# sensed as one linear READ.
 SUPPLEMENTARY_WORDS = 128
 MAP_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE") // 4
 STREAM_WORDS = MAP_WORDS + SUPPLEMENTARY_WORDS
