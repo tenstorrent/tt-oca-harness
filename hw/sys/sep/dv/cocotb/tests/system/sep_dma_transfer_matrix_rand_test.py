@@ -140,7 +140,10 @@ after its GO cap or poll bound is aborted and must reach BUSY=0.
                       ERROR=0, ERROR_CODE=0, destination equals the model
                       image of the source (``secure_dma.rdl:199``, transactions
                       of the width until TOTAL_DATA_SIZE bytes), guards
-                      intact. Control: a CONTROL read with GO=1 while
+                      intact. On ``leg=N`` also the DMA master tap: AR, AW
+                      and W counts equal TOTAL_DATA_SIZE / width, with the
+                      model addresses and WSTRB lanes of each transaction
+                      (as CHK-DMA-ADDR). Control: a CONTROL read with GO=1 while
                       ``dma_busy_probe_o`` is 1 (Leg B); the destination
                       is filled with the sentinel before GO.
   CHK-DMA-CFG-REGWEN  Leg B totals of 1024 bytes or more: a CFG_REGWEN read
@@ -1922,10 +1925,31 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         raise DmaTimeout(msg)
 
     async def _grade_geom(
-        self, c: CopyXfer, st: DmaStatus, err: int, ctl: int, go_writes: int, cgb: str, lead: str
+        self,
+        c: CopyXfer,
+        st: DmaStatus,
+        err: int,
+        ctl: int,
+        go_writes: int,
+        cgb: str,
+        lead: str,
+        ev: DmaTapEvents | None = None,
     ) -> None:
-        """CHK-DMA-GEOM: DONE=1 BUSY=0 ERROR=0, GO=0, ERROR_CODE=0, model image, guards intact."""
+        """CHK-DMA-GEOM: DONE=1 BUSY=0 ERROR=0, GO=0, ERROR_CODE=0, model image, guards intact.
+
+        With ``ev`` (the DMA master tap events of the run), also the model AR,
+        AW and W counts of TOTAL_DATA_SIZE / width transactions, their
+        addresses and each W beat's WSTRB lanes (``secure_dma.rdl:199``).
+        """
         x = c.x
+        beat_ok, beats = True, ""
+        if ev is not None:
+            addr_mm, strb_mm, _ = self._beat_mm(x, ev)
+            beat_ok = x.n_txn > 0 and addr_mm == 0 and strb_mm == 0
+            beats = (
+                f"ar={len(ev.ar)} aw={len(ev.aw)} w={len(ev.w)} expect_txn={x.n_txn} "
+                f"addr_mismatch={addr_mm} strb_lane_mismatch={strb_mm} "
+            )
         got = await self.mem.read(c.dst_region, c.dst_region_words)
         exp = c.expected_dst()
         mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
@@ -1936,8 +1960,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         fer = field_compare(err, 0, ERROR_CODE_MASK)
         self._pass(
             "CHK-DMA-GEOM",
-            fst.ok and fgo.ok and fer.ok and mism == 0 and guard_ok,
-            f"{lead}total={x.total} chunk={x.chunk} n={x.n_chunks} go_writes={go_writes} "
+            fst.ok and fgo.ok and fer.ok and mism == 0 and guard_ok and beat_ok,
+            f"{lead}total={x.total} chunk={x.chunk} n={x.n_chunks} go_writes={go_writes} {beats}"
             f"done={st.done} busy={st.busy} go={int(bool(ctl & GO_MASK))} error={st.error} "
             f"mem_mismatch={mism} control_go_busy={cgb} guard_ok={int(guard_ok)} "
             f"{ff('status', fst)} {ff('control', fgo)} {ff('error_code', fer)}",
@@ -3112,7 +3136,11 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
 
     # ---- narrow-width and large copies -----------------------------------------
     async def _narrow_copies(self, plan: Plan) -> None:
-        """Width 0 and width 1 copies above 1 KB, graded as CHK-DMA-GEOM with the window closed."""
+        """Width 0 and width 1 copies above 1 KB, graded as CHK-DMA-GEOM with the window closed.
+
+        The transaction count, addresses and WSTRB lanes on the DMA master tap
+        depend on TRANSFER_WIDTH; the destination image does not.
+        """
         ops = self.ops
         for c in plan.narrow:
             x = c.x
@@ -3121,7 +3149,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             await self._fill_copy(c)
             await self._program(c)
             await ops.wr(STATUS, ST_CHUNK_DONE)
-            m_busy = self.busy.mark()
+            m_tap, m_busy = self.tap.mark(), self.busy.mark()
             await ops.go(opcode=OP_COPY, initial=1)
             # The poll bound scales with the transaction count, as in Leg A.
             _, go_writes, reads, _, _ = await self._poll_b(4 * x.n_txn, m_busy, False, tag)
@@ -3132,7 +3160,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 rle([f"b{s.busy}d{s.done}c{s.chunk_done}p{p}" for s, p in reads]),
             )
             st, err, ctl = await self._read_regs()
-            await self._grade_geom(c, st, err, ctl, go_writes, "-", lead)
+            await self._grade_geom(c, st, err, ctl, go_writes, "-", lead, self.tap.since(m_tap))
 
     async def _obs_size_large(self, plan: Plan) -> None:
         """A width-2 COPY above 16 KB; no text states the maximum TOTAL_DATA_SIZE."""
