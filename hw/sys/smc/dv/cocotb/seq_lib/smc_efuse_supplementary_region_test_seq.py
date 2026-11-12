@@ -4,9 +4,9 @@
 
 Sources: architecture.adoc (Supplementary Fuse Region: Sensing and Export, Supplementary Locks,
 Access Path), memmap.adoc (the supplementary fuse window), smc_efuse_map.rdl (SUPPLEMENTARY_LOCKS),
-efuse_interface_ctrl.rdl (EFUSE_PROGRAM_ADDR, EFUSE_READ_ADDR, the request and address errors),
-hw/top/smc_supplementary_fuse_example_pkg.sv (128 words in lock regions ending at words 64, 96
-and 128).
+efuse_interface_ctrl.rdl (EFUSE_PROGRAM_ADDR, EFUSE_READ_ADDR, the request and address errors);
+the region of the reference wrappers is the one architecture.adoc describes (128 words in lock
+regions ending at words 64, 96 and 128).
 
 The image the testcase writes carries a seeded pattern in the 128 supplementary words (image words
 64 to 191) and zero in every harness word, so no lock is set when the sense completes. ``shadow``
@@ -30,6 +30,7 @@ from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA
 _WORD_MASK = 0xFFFF_FFFF
 _LOCKED_DATA = EFUSE_BLOCKED_READ_DATA
 _RESP_OKAY = 0
+_RESP_DECERR = 3
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 _SENSE_BOUND_CYCLES = 200_000
 _POLL_BOUND = 10_000
@@ -221,6 +222,11 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         self._calls += 1
         await self.csr_write(label, addr, data)
 
+    async def _rd_ok(self, label: str, addr: int) -> int:
+        """A read that must complete OKAY; the scoreboard rejects an error response."""
+        self._calls += 1
+        return await self.csr_read(label, addr) & _WORD_MASK
+
     async def _rd_any(self, label: str, addr: int) -> tuple[int, int]:
         item = SmcSysAxiItem(f"rd_{label}")
         item.op = SmcSysAxiOp.READ
@@ -252,10 +258,10 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         clk = cocotb.top.clk_smc_i
         for n in range(_POLL_BOUND):
             await RisingEdge(clk)
-            value = await self._rd_any(f"{label}_{n}", addr)
-            if pred(value[0]):
-                self._waits.append((label, _POLL_BOUND, f"polls={n + 1} value=0x{value[0]:08x}"))
-                return value[0]
+            value = await self._rd_ok(f"{label}_{n}", addr)
+            if pred(value):
+                self._waits.append((label, _POLL_BOUND, f"polls={n + 1} value=0x{value:08x}"))
+                return value
         raise AssertionError(f"{label}: 0x{addr:08x} never satisfied the poll in {_POLL_BOUND}")
 
     def _fresh(self) -> int:
@@ -290,8 +296,7 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         await self._wr(f"{label}_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN)
         await self._poll(f"{label}_IDLE", PROGRAM_CTRL, lambda v: not v & PROG_BUSY)
         await self._wr(f"{label}_OFF", PROGRAM_CTRL, 0)
-        status, _resp = await self._rd_any(f"{label}_STATUS", STATUS)
-        return status
+        return await self._rd_ok(f"{label}_STATUS", STATUS)
 
     async def _fuse_read(self, label: str, bit: int) -> tuple[int, int]:
         """Read the fuse word at ``bit`` through the read interface: (READ_CTRL at done, data)."""
@@ -302,7 +307,7 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         ctrl = await self._poll(
             f"{label}_DONE", READ_CTRL, lambda v: bool(v & READ_DONE) and not v & READ_BUSY
         )
-        data, _resp = await self._rd_any(f"{label}_DATA", READ_DATA)
+        data = await self._rd_ok(f"{label}_DATA", READ_DATA)
         await self._wr(f"{label}_OFF", READ_CTRL, 0)
         return ctrl, data
 
@@ -314,14 +319,13 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         await self._wr(f"{label}_GO", READ_CTRL, READ_EN | READ_GO)
         await self._poll(f"{label}_IDLE", READ_CTRL, lambda v: not v & READ_BUSY)
         await self._wr(f"{label}_OFF", READ_CTRL, 0)
-        status, _resp = await self._rd_any(f"{label}_STATUS", STATUS)
-        return status
+        return await self._rd_ok(f"{label}_STATUS", STATUS)
 
     async def _clear_errors(self, label: str) -> int:
         await self._wr(
             label, STATUS, REQ_ERROR_CLEAR | PROGRAM_ADDR_ERROR_CLEAR | READ_ADDR_ERROR_CLEAR
         )
-        status, _resp = await self._rd_any(f"{label}_RB", STATUS)
+        status = await self._rd_ok(f"{label}_RB", STATUS)
         assert status & ERRORS == 0, f"{label}: status 0x{status:08x} keeps an error after clear"
         return status
 
@@ -359,13 +363,26 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
         # S2: the first word past the window is not served by the shadow (the testcase registers
         # the address with the AXI monitor: the reference integration's terminator answers DECERR)
         past = supp_addr(SUPP_WORDS)
-        past_data = await self.csr_read_expect_error("S2_PAST", past)
+        item = SmcSysAxiItem("rd_S2_PAST")
+        item.op = SmcSysAxiOp.READ
+        item.addr = past
+        item.length = 4
+        item.allow_error = True
+        item.expect_error = True
+        item.expected_resp = _RESP_DECERR
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
         self._calls += 1
+        assert item.resp_code == _RESP_DECERR, (
+            f"S2: 0x{past:08x} answered resp={item.resp_code}, expected DECERR from the terminator"
+        )
+        past_data = item.rdata
         self._done("S2")
         self._chk(
             "CHK-SUPP-WINDOW-END",
             "the first word past the %d-byte window, 0x%08x, is not served by the shadow: it "
-            "answers an error response (rdata 0x%08x) from the external terminator",
+            "answers DECERR (rdata 0x%08x) from the external terminator",
             4 * SUPP_WORDS,
             past,
             past_data & _WORD_MASK,
@@ -405,9 +422,9 @@ class smc_efuse_supplementary_region_test_seq(SmcCsrSeq):
             f"S4: fuse word {PROG_WORD} reads 0x{data:08x} after programming bit {PROG_BIT}, "
             f"expected 0x{expected:08x}"
         )
-        status, _resp = await self._rd_any("S4_STATUS", STATUS)
+        status = await self._rd_ok("S4_STATUS", STATUS)
         assert status & ERRORS == 0, f"S4: status 0x{status:08x} reports an error"
-        window, _resp = await self._rd_any("S4_WINDOW", supp_addr(PROG_WORD))
+        window = await self._rd_ok("S4_WINDOW", supp_addr(PROG_WORD))
         self._done("S4")
         self._chk(
             "CHK-SUPP-PROGRAM-READ",

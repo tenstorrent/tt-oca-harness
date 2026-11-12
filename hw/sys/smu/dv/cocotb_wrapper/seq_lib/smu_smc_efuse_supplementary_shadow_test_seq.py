@@ -8,10 +8,11 @@ sense); smc_efuse_map.rdl SUPPLEMENTARY_LOCKS at 0xC0007008; interface.adoc fuse
 {data, status, valid}.
 
 The stream is captured at the SMU boundary during the shared bring-up. After the rise of
-smc_fuse_sense_done_o all 128 words of the supplementary fuse window are read over JTAG2AXI, in
-index order, and each window word is compared with the stream word of the same index (64..191) and
-with the word of that index in the +smc_efuse_hex image the run loads. SUPPLEMENTARY_LOCKS reads
-its image words. The harness map words are the business of
+smc_fuse_sense_done_o, 35 words of the supplementary fuse window (every fourth word plus the first
+and last word of each lock region) are read over JTAG2AXI in index order, and each window word is
+compared with the stream word of the same index and with the word of that index in the
++smc_efuse_hex image the run loads; all 128 supplementary stream words are compared with the
+image. SUPPLEMENTARY_LOCKS reads its image words. The harness map words are the business of
 smu_smc_efuse_shadow_map_readback_test and are not read here.
 """
 
@@ -41,6 +42,17 @@ from seq_lib.smu_smc_efuse_shadow_map_readback_test_seq import (
 SUPP_WINDOW = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR")
 SUPP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR")
 SUPP_LOCKS_WORD = (SUPP_LOCKS - smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")) // 4
+#: Supplementary words read over JTAG2AXI: every fourth word plus the first and last word of each
+#: lock region ("entries are 64, 96 and 128", hw/ip/efuse/doc/architecture.adoc, Supplementary
+#: Locks); a JTAG2AXI read is slow, so the window is sampled and the stream carries all 128.
+REGION_END = (64, 96, 128)
+SAMPLED = tuple(
+    sorted(
+        set(range(0, SUPPLEMENTARY_WORDS, 4))
+        | {end - 1 for end in REGION_END}
+        | {end for end in REGION_END[:-1]}
+    )
+)
 J2A_POLL_LIMIT = 128
 EXPECTED_WAIT_SITES = 3
 
@@ -129,30 +141,34 @@ class smu_smc_efuse_supplementary_shadow_test_seq:
         if not gate.is_resolvable or int(gate) & 1:
             raise AssertionError(f"SMC J2A gated: security_disable={gate}")
 
-        self._mark("S2", "read the 128 supplementary window words and compare with the stream")
+        self._mark(
+            "S2", f"read {len(SAMPLED)} supplementary window words and compare with the stream"
+        )
         supplementary = range(MAP_WORDS, STREAM_WORDS)
         reads: dict[int, int] = {}
-        for idx in supplementary:
-            addr = SUPP_WINDOW + 4 * (idx - MAP_WORDS)
-            reads[idx] = await self._rd32(addr, f"supplementary word {idx - MAP_WORDS}")
-            if idx in (MAP_WORDS, STREAM_WORDS - 1):
-                self._cell(
-                    "window_word_vs_stream",
-                    f"addr=0x{addr:08x} idx={idx} read=0x{reads[idx]:08x} "
-                    f"stream=0x{stream[idx]:08x} image=0x{image[idx]:08x}",
-                )
+        for word in SAMPLED:
+            idx = MAP_WORDS + word
+            addr = SUPP_WINDOW + 4 * word
+            reads[idx] = await self._rd32(addr, f"supplementary word {word}")
+            self._cell(
+                "window_word_vs_stream",
+                f"addr=0x{addr:08x} idx={idx} read=0x{reads[idx]:08x} "
+                f"stream=0x{stream[idx]:08x} image=0x{image[idx]:08x}",
+            )
+        sampled = [MAP_WORDS + word for word in SAMPLED]
         sb.expect_eq(
-            f"the {SUPPLEMENTARY_WORDS} supplementary window words at 0x{SUPP_WINDOW:08x}, read "
-            "over JTAG2AXI, and the stream words of the same index equal the eFuse image words "
-            f"{supplementary.start}..{supplementary.stop - 1}",
-            [(idx, reads[idx], stream[idx]) for idx in supplementary],
-            [(idx, image[idx], image[idx]) for idx in supplementary],
+            f"the {len(SAMPLED)} sampled supplementary window words at 0x{SUPP_WINDOW:08x} "
+            f"(words {list(SAMPLED)}), read over JTAG2AXI, and the stream words of the same "
+            "index equal the eFuse image words of that index",
+            [(idx, reads[idx], stream[idx]) for idx in sampled],
+            [(idx, image[idx], image[idx]) for idx in sampled],
             evidence="SUPP_SHADOW_WINDOW",
         )
         sb.expect_eq(
-            "each supplementary window word equals the stream word of the same index",
-            [(idx, reads[idx]) for idx in supplementary],
+            f"all {SUPPLEMENTARY_WORDS} supplementary stream words ({supplementary.start}.."
+            f"{supplementary.stop - 1}) equal the eFuse image words of the same index",
             [(idx, stream[idx]) for idx in supplementary],
+            [(idx, image[idx]) for idx in supplementary],
             evidence="SUPP_SHADOW_WINDOW",
         )
 

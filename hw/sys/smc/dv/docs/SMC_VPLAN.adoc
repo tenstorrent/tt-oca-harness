@@ -33061,7 +33061,7 @@ bounded as the eFuse architecture states.
   (`architecture.adoc`, Sensing and Export; `hw/sys/smc/doc/memmap.adoc`, the supplementary fuse
   window). The controller serves only 4 x WORDS bytes; the first word past them leaves on
   `smc_external_req_o`, which the reference integration terminates with an error slave
-  (`hw/top/smc_ip_integration.sv`), so it answers an error response on this bench.
+  (`hw/top/smc_ip_integration.sv`), so it answers DECERR on this bench.
 * With `SUPPLEMENTARY_LOCKS` clear every region is readable and writable in the shadow
   (`architecture.adoc`, Supplementary Locks: "no static lock policy").
 * `EFUSE_PROGRAM_ADDR` and `EFUSE_READ_ADDR` carry the full bit address, so a program at bit
@@ -33090,7 +33090,7 @@ bounded as the eFuse architecture states.
 [arabic]
 . Wait for `tb_fuse_sense_done` within 200000 clocks, read all 128 window words against image
   words 64 to 191, and read the low word of `SUPPLEMENTARY_LOCKS` as 0.
-. Read the first word past the 512-byte window and require an error response.
+. Read the first word past the 512-byte window and require DECERR.
 . Positive control: write a fresh pattern to the second word of each region and read it back.
 . Program bit 5 of supplementary word 70 through `EFUSE_PROGRAM_ADDR` and `EFUSE_PROGRAM_CTRL`
   while the program request valid is counted, require `program_status` 0 and at least one
@@ -33124,7 +33124,7 @@ bounded as the eFuse architecture states.
 |`CHK-SUPP-SENSE-WORDS` |After the sense all 128 supplementary words read through the window
 equal image words 64 to 191 and `SUPPLEMENTARY_LOCKS` reads 0.
 |`CHK-SUPP-WINDOW-END` |The first word past the 4 x WORDS window is not served by the shadow: it
-answers the error response of the reference integration's external terminator.
+answers the DECERR of the reference integration's external terminator.
 |`CHK-SUPP-SHADOW-WRITE` |With `SUPPLEMENTARY_LOCKS` 0 a new pattern written to one word of each
 region lands and reads back.
 |`CHK-SUPP-PROGRAM-READ` |A program at a supplementary bit through `EFUSE_PROGRAM_ADDR` completes

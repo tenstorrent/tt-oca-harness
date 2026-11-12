@@ -5136,9 +5136,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SUPP-SHADOW-WINDOW",
             "SUPP_SHADOW_WINDOW",
-            "the 128 words of the SMC supplementary fuse window, read over JTAG2AXI after the "
-            "boot sense, and the stream words 64..191 equal the eFuse image words of the same "
-            "index, and each window word equals its stream word",
+            "35 sampled words of the SMC supplementary fuse window (every fourth word and the "
+            "first and last word of each lock region), read over JTAG2AXI after the boot sense, "
+            "and their stream words equal the eFuse image words of the same index, and all 128 "
+            "supplementary stream words equal the image words",
         ),
         (
             "CHK-SUPP-LOCKS-WORD",
