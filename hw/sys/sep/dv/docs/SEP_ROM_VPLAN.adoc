@@ -21,7 +21,7 @@
 |Register sources |`hw/sys/sep/regs/` (SystemRDL) and the generated export `hw/sys/sep/regs/gen/`
 |Testbench architecture |<<sep-dv-testbench-architecture,SEP_TB_ARCH>>, Boot ROM Firmware Builds (<<_boot_rom_firmware_builds>>)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep --items rom_fw`)
-|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 191 tests
+|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 237 tests
 |===
 
 This plan is the technical contract for the Boot ROM firmware tests. It states
@@ -51,6 +51,9 @@ never the ROM itself.
   `boot_rom` firmware profile (SECURE_DMA RX drain).
   `sep_rom_ot_pio_boot_test` loads `build_pio/boot_rom.vmem`, the
   `boot_rom_pio` profile (CPU programmed-I/O drain).
+  `sep_rom_sram_iccm_clear_test`, `sep_rom_clear_variant_test` and the `scrub`
+  and `iccm_clear` zero-fill fault entries load `build_clear/boot_rom.vmem`, the
+  `boot_rom_clear` profile (full SEP SRAM scrub and full ICCM clear).
 * *Manifest and payload.* The `oca-images` and `decrypt_negative_images` steps
   pack the OCA images, for example `oca_non_secure_boot.bin`,
   `oca_secure_boot.bin` and `oca_smc_mem.hex`.
@@ -74,7 +77,8 @@ never the ROM itself.
 * *Warm reset.* `+sep_cold_scratch7` seeds the warm-handler slot and
   `+sep_iccm_word` plants the handler instruction.
 * *Fault injection.* `+sep_otbn_cmd_drop` makes OTBN ignore its commands and
-  `+sep_dma_host_stall` wedges the secure DMA host port.
+  `+sep_dma_host_stall` wedges the secure DMA host port. `+zero_fill_fault`
+  makes one secure DMA zero fill end in a bus error.
 * *Entropy.* `+esrc_noise_force` with `env/sep_esrc_noise.py` drives the ESRC
   noise input, because the ring oscillators do not oscillate in simulation.
 
@@ -157,6 +161,15 @@ These 6 entries have a `module` file name that differs from the test name:
 * `sep_firmware_payload_correct_sep_sram_4kb_test` is in `rom_fw.sep_firmware_payload_correct_ext_4kb_test`.
 * `sep_firmware_payload_correct_sep_sram_29kb_test` is in `rom_fw.sep_firmware_payload_correct_ext_29kb_test`.
 
+In <<sep-rom-vplan-spec-graded>>, 18 more entries run a module named for their leaf, not for the entry:
+`sep_rom_fuse_sense_wait_test_hold`, the seven `sep_rom_lc_state_record_test_*` entries, the three
+`sep_rom_smc_manifest_offset_invalid_test_*` entries, the two `sep_rom_status_ring_bounds_test_*`
+entries, `sep_rom_rsa_exponent_non_f4_refuse_test_f4_signed` and the four
+`sep_rom_decrypt_exit_zeroize_test_*` entries. A plusarg in each entry selects its case.
+
+In <<sep-rom-vplan-memory-clear>>, the four `sep_rom_zero_fill_fault_*_test` entries run
+`rom_fw.sep_rom_zero_fill_fault_test`, and `+zero_fill_fault` selects the clear site.
+
 === BFM Policy
 
 [cols="1,1,2",options="header"]
@@ -222,7 +235,7 @@ the jump into BL1, as `rom.adoc` defines it, on the `rom_boot` target.
 |===
 |Group |Role
 |`rom_fw_smoke` |Bring-up of the four boot paths and the hand-off magic: `sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` (`expected_count = 5`)
-|`rom_fw` |The credit denominator of this plan: 191 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
+|`rom_fw` |The credit denominator of this plan: 237 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
 |`all`, `cpu`, `cpu_stub` |Not members. They belong to <<sep-dv-verification-plan>>
 |===
 
@@ -257,20 +270,42 @@ those tests.
 [cols="2,4,3,1",options="header"]
 |===
 |Requirement |Summary |Groups |Tests
+|`SEP-ROM-CPU-010` |Only hart 0 boots; others park |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-CPU-020` |Trap vector before first MMIO |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-CPU-030` |MRAC before warm-scratch read |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-CPU-040` |Outbound filter default-deny; ROM opens no window |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-CPU-050` |Interrupts disabled throughout ROM |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-CPU-070` |Any trap is fatal: report, FAIL, hang |<<sep-rom-vplan-warm-reset>> |1
+|`SEP-ROM-CPU-080` |ROM never arms the WDT |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-CPU-100` |SRAM + ICCM cleared before external content |<<sep-rom-vplan-memory-clear>>, <<sep-rom-vplan-spec-graded>> |2
 |`SEP-ROM-CPU-110` |Warm-handler slot read before any DCCM access |<<sep-rom-vplan-warm-reset>> |2
 |`SEP-ROM-CPU-120` |Warm handler accepted only within ICCM or SEP SRAM |<<sep-rom-vplan-warm-reset>> |4
 |`SEP-ROM-CPU-130` |Poison warm scratch before jump |<<sep-rom-vplan-warm-reset>> |1
 |`SEP-ROM-CPU-140` |Invalid warm handler hangs, never cold-boots |<<sep-rom-vplan-warm-reset>> |2
+|`SEP-ROM-CPU-150` |Stack and C globals live in DCCM, not SRAM |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-CPU-160` |DCCM left deterministic before the C runtime reads it |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-PMP-010` |Fetch only from ROM until hand-off release |<<sep-rom-vplan-spec-graded>> |2
+|`SEP-ROM-PMP-020` |Fences must bind machine mode (lock/Smepmp) |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-PMP-030` |Next-stage regions RW- until hand-off |<<sep-rom-vplan-spec-graded>> |2
+|`SEP-ROM-PMP-040` |Data windows limited to demonstrated needs |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-PMP-060` |RLB set before first locked rule; all fence rules locked |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-PMP-070` |MMWP set after rules; unmatched access traps |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-PMP-080` |Release = single BL1-rule rewrite under RLB, post-self-check |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-FUSE-010` |No fuse consumption before sense complete |<<sep-rom-vplan-spec-graded>> |2
 |`SEP-ROM-FUSE-020` |Invalid LC => SMC reset + fatal |<<sep-rom-vplan-fuse-integrity>> |4
+|`SEP-ROM-FUSE-030` |LC recorded in bl0_state + reported |<<sep-rom-vplan-spec-graded>> |7
 |`SEP-ROM-SMC-010` |SMC SRAM values exchanged as offsets |<<sep-rom-vplan-secondary-chiplet>> |2
+|`SEP-ROM-SMC-020` |Scratch round-trip sanity, fatal on mismatch |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-SMC-030` |Memory-repair gate (strap-bypassable) |<<sep-rom-vplan-dft-gate>> |4
-|`SEP-ROM-SMC-050` |Reject invalid offset; bounds-check staging. Only the invalid-offset clause is mapped; no test maps the SMC SRAM bounds clause |<<sep-rom-vplan-secondary-chiplet>> |1
+|`SEP-ROM-SMC-040` |Wait MANIFEST_READY before scratch[8] |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-SMC-050` |Reject invalid offset; bounds-check staging. No test maps the bounds check of the payload region announced in scratch[13]/[14] |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-spec-graded>> |4
 |`SEP-ROM-STRAP-010` |Exactly one boot mode, recorded + reported |<<sep-rom-vplan-secondary-chiplet>> |2
 |`SEP-ROM-SPI-010` |All flash access via the transport shim |<<sep-rom-vplan-ot-spi-boot>> |2
 |`SEP-ROM-SPI-020` |Doubled, laundered bounds gate; default-reject |<<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>> |3
+|`SEP-ROM-SPI-030` |Bounded transport retries; never partial data |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-SPI-040` |Boot never depends on programmed OTP for SPI |<<sep-rom-vplan-spi-slot-detect>> |1
 |`SEP-ROM-MAN-010` |Manifest hash verified every boot |<<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-structural-fail>> |3
+|`SEP-ROM-MAN-020` |Validate via OCA library + callback table |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-MAN-030` |Canonical check order, first-failure stop |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-enforcing-posture>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-structural-fail>>, <<sep-rom-vplan-primary-length>>, <<sep-rom-vplan-backup-length>>, <<sep-rom-vplan-device-id>> |29
 |`SEP-ROM-MAN-040` |Unavailable constraint input = failure |<<sep-rom-vplan-structural-fail>> |1
 |`SEP-ROM-MAN-050` |Launch BLSTAGE1 image at its TOC `load_addr`/`entry_point` |<<sep-rom-vplan-smc-sram-boot>>, <<sep-rom-vplan-ot-spi-boot>>, <<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-toc-order>> |7
@@ -285,29 +320,44 @@ those tests.
 |`SEP-ROM-SB-050` |Key digest must match an authorized slot |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-chiplet-key>> |13
 |`SEP-ROM-SB-060` |Revocation = manifest or device, before RSA |<<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-rom-key-revoked-backup>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-chiplet-key>> |19
 |`SEP-ROM-SB-070` |Security-version superset, before and again after signature |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>> |3
+|`SEP-ROM-SB-080` |Authenticate-before-update; commit via BL1 |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-SB-090` |RSA-3072-PKCS1v15-SHA256 only; ECDSA rejected |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-enforcing-posture>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>> |11
+|`SEP-ROM-SB-100` |F4 keys only (e = 65537); any other exponent rejected |<<sep-rom-vplan-spec-graded>> |2
+|`SEP-ROM-SB-110` |Public key goes straight to OTBN; Key Manager not involved |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-SB-120` |No verified verdict unless OTBN is confirmed to have executed |<<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-otbn-bypass>> |2
 |`SEP-ROM-ENT-010` |Entropy chain brought up lazily, once, before first use |<<sep-rom-vplan-secure-boot>> |1
+|`SEP-ROM-ENT-020` |Entropy bring-up failure stops the boot; not a per-slot failure |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-ENT-030` |ESRC `FIPS_LOCK` after health test, before first consumer |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-ENT-040` |TRNG source selection locked after bring-up |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-DEM-010` |Demotion only from a validated manifest |<<sep-rom-vplan-demotion-decision>> |1
 |`SEP-ROM-DEM-020` |PROD_END: never demote; lock both registers |<<sep-rom-vplan-demotion-decision>>, <<sep-rom-vplan-demotion-prod-end>> |5
 |`SEP-ROM-DEM-030` |BL1 pair -> DEMOTE_1 write+lock; closed non-demoted by default, left open only on a stated BL2 request |<<sep-rom-vplan-demotion-decision>>, <<sep-rom-vplan-demotion-prod>> |9
+|`SEP-ROM-DEM-035` |DEMOTE_1 write ordered after the fuse-secret lock |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-DEM-040` |BL0 never writes DEMOTE_2; BL2 pair recorded as VALID and ENABLE |<<sep-rom-vplan-demotion-decision>>, <<sep-rom-vplan-demotion-prod>> |9
 |`SEP-ROM-DEM-050` |Demotion state feeds the measurement |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-demotion-decision>>, <<sep-rom-vplan-demotion-prod>>, <<sep-rom-vplan-demotion-prod-end>> |15
 |`SEP-ROM-PL-010` |TOC structural validation rules |<<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-no-payload-images>>, <<sep-rom-vplan-primary-toc>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-toc-order>> |18
 |`SEP-ROM-PL-020` |SEP_BL1 image must be present |<<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-payload-fail>> |2
 |`SEP-ROM-PL-030` |Encrypted: ciphertext hash -> decrypt -> chain |<<sep-rom-vplan-secure-boot>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-primary-toc>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-toc-order>>, <<sep-rom-vplan-decrypt-input>> |20
 |`SEP-ROM-PL-040` |Cleartext payloads still fully hash-checked |<<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-toc-order>> |5
+|`SEP-ROM-PL-050` |Encryption requires secure boot |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-PL-060` |Const-time compares; failures fail the slot |<<sep-rom-vplan-decrypt-input>> |2
 |`SEP-ROM-PL-070` |Decryption requires non-zero CLASS_KEY |<<sep-rom-vplan-decrypt-input>> |1
+|`SEP-ROM-PL-080` |Key material zeroized on every exit path |<<sep-rom-vplan-spec-graded>> |4
 |`SEP-ROM-PL-090` |Payload length fields cross-checked (REQ-BTMANFST-59/-60/-62) |<<sep-rom-vplan-primary-toc>>, <<sep-rom-vplan-backup-toc>> |4
+|`SEP-ROM-ATT-020` |Version + self-hash reported every boot |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-ATT-030` |Boot-state record enrolled in slot 1, raw record kept |<<sep-rom-vplan-secure-boot>> |1
 |`SEP-ROM-ATT-040` |Soft enrollment in bl0_state; BL1 registers into PCRV; legacy after |<<sep-rom-vplan-secure-boot>> |1
+|`SEP-ROM-ATT-050` |Separate slots: 0 = ROM identity, 1 = boot state |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-ATT-060` |Self-hash verified by recompute before enrollment |<<sep-rom-vplan-smc-sram-boot>>, <<sep-rom-vplan-stall-timeout>> |2
 |`SEP-ROM-HOFF-030` |Fuse-secret locks set and independently re-verified |<<sep-rom-vplan-fuse-lock>> |4
-|`SEP-ROM-RETRY-010` |Two slots, rotate-aware order; one attempt for SMC paths |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-bl1-image>> |37
+|`SEP-ROM-HOFF-060` |PMP release only after self-check, last write |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-HOFF-070` |Jump orders memory: mepc, fence.i, fence, mret |<<sep-rom-vplan-spec-graded>> |1
+|`SEP-ROM-RETRY-010` |Two slots, rotate-aware order; one attempt for SMC paths |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-bl1-image>>, <<sep-rom-vplan-spec-graded>> |38
 |`SEP-ROM-RETRY-030` |Retry unit = entire validation chain, BL1 loadability included |<<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-structural-fail>>, <<sep-rom-vplan-primary-length>>, <<sep-rom-vplan-backup-length>>, <<sep-rom-vplan-device-id>>, <<sep-rom-vplan-no-payload-images>>, <<sep-rom-vplan-primary-toc>>, <<sep-rom-vplan-decrypt-input>>, <<sep-rom-vplan-bl1-image>> |44
-|`SEP-ROM-RETRY-040` |Clean state between attempts |<<sep-rom-vplan-spi-slot-detect>> |1
-|`SEP-ROM-RETRY-050` |All failures converge in rom_err_fail |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-fuse-integrity>>, <<sep-rom-vplan-dbg-lock>>, <<sep-rom-vplan-enforcing-posture>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-structural-fail>>, <<sep-rom-vplan-backup-length>>, <<sep-rom-vplan-rom-key-revoked-backup>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-chiplet-key>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-bl1-image>>, <<sep-rom-vplan-stall-timeout>> |71
+|`SEP-ROM-RETRY-040` |Clean state between attempts |<<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-memory-clear>> |2
+|`SEP-ROM-RETRY-050` |All failures converge in rom_err_fail |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-fuse-integrity>>, <<sep-rom-vplan-dbg-lock>>, <<sep-rom-vplan-enforcing-posture>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-structural-fail>>, <<sep-rom-vplan-backup-length>>, <<sep-rom-vplan-rom-key-revoked-backup>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-chiplet-key>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-bl1-image>>, <<sep-rom-vplan-stall-timeout>>, <<sep-rom-vplan-spec-graded>> |72
+|`SEP-ROM-STAT-010` |Ring bounds-checked; degrade gracefully |<<sep-rom-vplan-spec-graded>> |2
+|`SEP-ROM-STAT-020` |Severity-reserved ring capacity |<<sep-rom-vplan-spec-graded>> |1
 |===
 
 [[sep-rom-vplan-summary]]
@@ -324,6 +374,7 @@ holds the stimulus, the checkers and the requirements.
 |`sep_rom_non_secure_boot_test` (smoke) |<<sep-rom-vplan-smc-sram-boot>> |boots: BL1 PASS verdict in cold_scratch[0] after SMC_MEM_CHK, ROM_HASH_VERIFIED, MANIFEST_OK, PAYLOAD_OK, MEAS_BOOT_STATE_OK, BL1, FUSE_CHK.
 |`sep_rom_ot_dma_boot_test` (smoke) |<<sep-rom-vplan-ot-spi-boot>> |boots: BL1 PASS verdict with BOOT_SPI, MANIFEST_SRC=0x00001000, MANIFEST_OK, PAYLOAD_OK; WAIT_SMC_MANIFEST absent.
 |`sep_manifest_magic_survives_handoff_test` (smoke) |<<sep-rom-vplan-ot-spi-boot>> |boots; sram_word0_probe_o low 32 bits read back as b"OCAC" after hand-off.
+|`sep_iccm_pad_sram_top_intact_test` |<<sep-rom-vplan-ot-spi-boot>> |boots as `sep_manifest_magic_survives_handoff_test`; the last SEP SRAM word still holds its pre-boot sentinel at BL1_COPIED.
 |`sep_rom_ot_pio_boot_test` (smoke) |<<sep-rom-vplan-ot-spi-boot>> |boots (same markers and PASS verdict as the DMA base).
 |`sep_rom_ot_secure_boot_test` (smoke) |<<sep-rom-vplan-secure-boot>> |boots after PUBK_AUTHORIZED, ENTROPY_OK, RSA_EXEC and RSA_VERIFY_OK; SBOOT_OFF never printed.
 |`sep_spi_detect_success_test` |<<sep-rom-vplan-spi-slot-detect>> |boots from primary 0x1000; device returned OCAC there and served no read inside the backup span.
@@ -343,6 +394,18 @@ holds the stimulus, the checkers and the requirements.
 |`sep_firmware_secondary_manifest_offset_misaligned_test` |<<sep-rom-vplan-secondary-chiplet>> |complete valid SMC image at 0x40061004 refused before OCA_BODY= with MANIFEST_ALIGN_FAIL and OCA_BOOT_ERR_MANIFEST_ALIGNMENT (0x00030108); one attempt, FAIL verdict, halt.
 |`sep_firmware_secondary_manifest_offset_invalid_test` |<<sep-rom-vplan-secondary-chiplet>> |READY with scratch[8]=0xFFFFFFFF refused before any slot with MANIFEST_OFFSET_INVALID and OCA_BOOT_ERR_MANIFEST_OFFSET_INVALID (0x00030109); no MANIFEST_SRC=, FAIL verdict, halt.
 |`sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test` |<<sep-rom-vplan-secondary-chiplet>> |one attempt at 0x40065000 refused MANIFEST_ERR=0x00030002, then MANIFEST_ALL_FAILED and MANIFEST_BOOT_FAIL=0x00030002; cold_scratch[1] ERROR word; FAIL verdict; halt.
+|===
+
+==== Memory clears
+
+[cols="3,2,4",options="header"]
+|===
+|Test |Procedure group |Expected outcome
+|`sep_rom_clear_variant_test` |<<sep-rom-vplan-memory-clear>> |clear-enabled ROM boots to BL1 PASS; every SEP SRAM word reads zero at SRAM_CLR_OK and every ICCM word outside the BL1 copy span reads zero at BL1_COPIED; ICCM_PAD= absent.
+|`sep_rom_zero_fill_fault_pad_test` |<<sep-rom-vplan-memory-clear>> |faulted ICCM pad: BL1_DST=ICCM then ICCM_PAD_FAIL; ICCM_PAD=, BL1_COPIED, BL1_JUMP= absent; WARN SEP_MSG_DMA_ERROR and ERROR SEP_MSG_BL1_BAD_ADDR on cold_scratch[1]; no PASS verdict.
+|`sep_rom_zero_fill_fault_retry_test` |<<sep-rom-vplan-memory-clear>> |faulted SEP SRAM clear after the erased primary: MANIFEST_ERR=0x00030002, SRAM_RETRY_CLR_FAIL, MANIFEST_BOOT_FAIL=0x00030100 in order; no backup staged; WARN SEP_MSG_DMA_ERROR and ERROR SEP_MSG_MANIFEST_LOAD_FAILED; no PASS verdict.
+|`sep_rom_zero_fill_fault_scrub_test` |<<sep-rom-vplan-memory-clear>> |faulted SEP SRAM scrub (clear-enabled ROM): SRAM_SCRUB_LEN= then SRAM_CLR_FAIL; SRAM_CLR_OK and MANIFEST_SRC= absent; WARN SEP_MSG_DMA_ERROR; no PASS verdict.
+|`sep_rom_zero_fill_fault_iccm_clear_test` |<<sep-rom-vplan-memory-clear>> |faulted full ICCM clear (clear-enabled ROM): SRAM_CLR_OK then ICCM_CLR_FAIL; ICCM_CLR_FULL and MANIFEST_SRC= absent; WARN SEP_MSG_DMA_ERROR; no PASS verdict.
 |===
 
 ==== CPU entry, warm reset and DFT gate
@@ -563,6 +626,53 @@ holds the stimulus, the checkers and the requirements.
 |`sep_rom_hmac_fifo_stall_terminal_test` |<<sep-rom-vplan-stall-timeout>> |terminal ROM_ERR_ROM_HASH_MISMATCH: SHA_FIFO_TIMEOUT then ROM_HASH_COMPUTE_FAIL, WARN 0x0801022A before 0x0F01F005, FAIL verdict, halt.
 |===
 
+==== Spec-graded ROM invariants
+
+[cols="3,2,4",options="header"]
+|===
+|Test |Procedure group |Expected outcome
+|`sep_rom_observer_smoke_test` |<<sep-rom-vplan-spec-graded>> |boots to the BL1 PASS verdict; the observer's retirement, status, console, watch, tracker and verdict records match the spec values and the independent trace count.
+|`sep_rom_reset_entry_order_test` |<<sep-rom-vplan-spec-graded>> |mhartid read, mtvec write and MRAC write 0xAAAAAAA8, in that order, before the first data access; no park-loop retirement; BL1 PASS.
+|`sep_rom_boot_quiet_invariants_test` |<<sep-rom-vplan-spec-graded>> |up to the hand-off mret: no outbound-filter or WDT register write, no interrupt taken or enabled, mie and mstatus.MIE cleared before the PMP programming, sp and gp in DCCM; BL1 PASS.
+|`sep_rom_dccm_scrub_test` |<<sep-rom-vplan-spec-graded>> |with DCCM errors planted before reset, every DCCM read returns a value this boot wrote, and [DCCM base, `__stack_top`) is zero-written before `rom_main`.
+|`sep_rom_sram_iccm_clear_test` |<<sep-rom-vplan-spec-graded>> |every SEP SRAM byte and ICCM bank row is zero-written, and the probed SRAM residue words read zero, before the first manifest read, on the clear-enabled ROM build.
+|`sep_rom_fuse_sense_wait_test` |<<sep-rom-vplan-spec-graded>> |eFuse reads only after an SMC_FUSE_SENSE_STATUS poll that saw sense done.
+|`sep_rom_fuse_sense_wait_test_hold` |<<sep-rom-vplan-spec-graded>> |fuse sense held not-done: no eFuse read, and the poll still runs at the end of the 1.3M-cycle window.
+|`sep_rom_lc_state_record_test_test_dev` |<<sep-rom-vplan-spec-graded>> |raw LC 0x0 recorded in `bl0_state.lc_state` and reported as FUSE_LC_STATE, INFO_EXT(raw), LIFECYCLE_VALID on cold_scratch[1]; BL1 PASS.
+|`sep_rom_lc_state_record_test_prod` |<<sep-rom-vplan-spec-graded>> |raw LC 0x1 recorded and reported as above; the unsigned default image is then refused and the run ends on the FAIL verdict.
+|`sep_rom_lc_state_record_test_rma_sip_0x2` |<<sep-rom-vplan-spec-graded>> |raw LC 0x2 recorded and reported as above; BL1 PASS.
+|`sep_rom_lc_state_record_test_rma_sip_0x3` |<<sep-rom-vplan-spec-graded>> |raw LC 0x3 recorded and reported as above; BL1 PASS.
+|`sep_rom_lc_state_record_test_rma_chiplet_0x6` |<<sep-rom-vplan-spec-graded>> |raw LC 0x6 recorded and reported as above; BL1 PASS.
+|`sep_rom_lc_state_record_test_rma_chiplet_0x7` |<<sep-rom-vplan-spec-graded>> |raw LC 0x7 recorded and reported as above; BL1 PASS.
+|`sep_rom_lc_state_record_test_prod_end` |<<sep-rom-vplan-spec-graded>> |raw LC 0x8 recorded and reported as above; the unsigned default image is then refused and the run ends on the FAIL verdict.
+|`sep_rom_pmp_program_test` |<<sep-rom-vplan-spec-graded>> |before the "PMP programmed" status: RLB set before the first locked rule, every rule locked, MMWP set after the rules, no catch-all, windows equal tbl:pmp_regions, execute on the Boot ROM alone.
+|`sep_rom_pmp_release_handoff_test` |<<sep-rom-vplan-spec-graded>> |one release write adds execute to the BL1-region rule under RLB after the hand-off progress codes; no other CSR write before mepc; mepc, fence.i, fence, mret to the TOC entry.
+|`sep_rom_demote_after_lock_order_test` |<<sep-rom-vplan-spec-graded>> |DEMOTE_1 leaves its reset value only after all six fuse-secret read-lock bits are set; the inherited O5 demotion checks hold.
+|`sep_rom_version_hash_report_test` |<<sep-rom-vplan-spec-graded>> |the console carries BL0_VERSION and the golden ROM SHA-256; ROM_HASH and two INFO_EXT prefix words on cold_scratch[1]; all within [S05].
+|`sep_rom_pcrv_slot_order_test` |<<sep-rom-vplan-spec-graded>> |two enrollments, slot 0 then slot 1; slot 0 after a full read of the hashed ROM region that follows [S14] and [S10]; slot 1 after MANIFEST_VALIDATED; the inherited measurement checks hold.
+|`sep_rom_smc_scratch_sanity_test` |<<sep-rom-vplan-spec-graded>> |the four spec patterns written to SMC scratch[7] and read back equal, then scratch[7] restored to zero; BL1 PASS.
+|`sep_rom_smc_manifest_ready_wait_test` |<<sep-rom-vplan-spec-graded>> |no scratch[8] or SMC SRAM read while MANIFEST_READY is low; after the release a scratch[9] poll, a scratch[8] read and the manifest fetch at the published offset; BL1 PASS.
+|`sep_rom_smc_manifest_offset_invalid_test_window_end` |<<sep-rom-vplan-spec-graded>> |scratch[8] = 0x00100000 (first byte past the window): the single slot fails as above.
+|`sep_rom_smc_manifest_offset_invalid_test_window_straddle` |<<sep-rom-vplan-spec-graded>> |scratch[8] = 0x000FFFF8: the single slot fails as above.
+|`sep_rom_smc_manifest_offset_invalid_test_manifest_straddle` |<<sep-rom-vplan-spec-graded>> |scratch[8] = 0x000FF008 (manifest end crosses the window by 8 bytes): the single slot fails as above; the reads before the refusal are logged only, because `rom.adoc` and `smc-coordination.adoc` disagree on whether the ROM checks the window before it reads.
+|`sep_rom_status_ring_bounds_test_straddle` |<<sep-rom-vplan-spec-graded>> |ring header across the window end: no SMC write outside the window or to the header, STATUS_REPORTING_INVALID on cold_scratch[1], BL1 PASS.
+|`sep_rom_status_ring_bounds_test_bad_header` |<<sep-rom-vplan-spec-graded>> |ring head equal to its entry count: no SMC write outside the window or the declared ring, STATUS_REPORTING_INVALID on cold_scratch[1], BL1 PASS.
+|`sep_rom_status_ring_severity_test` |<<sep-rom-vplan-spec-graded>> |the final 8-entry ring equals expected_ring() of the offered statuses: INFO marker at 3 free slots, WARN marker at 2, ERROR in the last slot.
+|`sep_rom_oca_library_callback_test` |<<sep-rom-vplan-spec-graded>> |the callback table wires all eight spec roles to ROM functions; the library entry retires before MANIFEST_VALIDATED and calls the sha256, verify_signature, revocation and security-version callbacks from library text; BL1 PASS.
+|`sep_rom_entropy_health_fail_terminal_test` |<<sep-rom-vplan-spec-graded>> |ENTROPY_INIT_FAILED, a health-test console marker, then ERROR 0x0F01F009 and 0xDEADBEEF; no backup attempt and no SPI access; halt.
+|`sep_rom_entropy_lock_order_test` |<<sep-rom-vplan-spec-graded>> |FIPS_LOCK after the last health poll and before the first entropy consumer; source lock after the Instantiate and before the hand-off; BL1 PASS.
+|`sep_rom_no_fuse_program_test` |<<sep-rom-vplan-spec-graded>> |a newer manifest security version boots BL1; the OTP bank is unchanged at hand-off and at the end, and no PROGRAM command reaches the eFuse shim.
+|`sep_rom_rsa_exponent_non_f4_refuse_test` |<<sep-rom-vplan-spec-graded>> |primary key with exponent 5 (signature valid under (n, 5)) refused with a MANIFEST_ERR= code; the backup boots to BL1 PASS.
+|`sep_rom_rsa_exponent_non_f4_refuse_test_f4_signed` |<<sep-rom-vplan-spec-graded>> |primary key with exponent 5 (signature valid under (n, 65537)) refused with a MANIFEST_ERR= code; the backup boots to BL1 PASS.
+|`sep_rom_rsa_key_direct_otbn_test` |<<sep-rom-vplan-spec-graded>> |the CPU writes the whole modulus into OTBN DMEM before EXECUTE; the Key Manager key paths, sideload keys, CPU and mailbox stay idle; BL1 PASS.
+|`sep_rom_encryption_requires_secure_boot_test` |<<sep-rom-vplan-spec-graded>> |both unsigned encrypted slots refused, `bl0_state.error_code` one of the two codes the spec names for this refusal, no decryption, ERROR 0x0F010213 and 0xDEADBEEF; halt.
+|`sep_rom_decrypt_exit_zeroize_test_success` |<<sep-rom-vplan-spec-graded>> |boots; no 16-byte window of key material in DCCM when the decryption stage returns and at the hand-off mret.
+|`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` |<<sep-rom-vplan-spec-graded>> |AES-init failure exit: no key material in DCCM at the stage return and at the FAIL verdict.
+|`sep_rom_decrypt_exit_zeroize_test_kdf_fail` |<<sep-rom-vplan-spec-graded>> |key-derivation failure exit: no key material in DCCM at the stage return and at the FAIL verdict.
+|`sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` |<<sep-rom-vplan-spec-graded>> |AES cipher-setup failure exit (CTRL update rejected before the key load): no key material in DCCM at the stage return and at the FAIL verdict.
+|`sep_rom_spi_retry_exhaust_test` |<<sep-rom-vplan-spec-graded>> |each slot's manifest read made 2 to 4 times, the backup tried after the primary, one MANIFEST_LOAD_START per slot attempt, then ERROR MANIFEST_LOAD_FAILED and 0xDEADBEEF; the partial frame each faulted read lands is not used; halt.
+|===
+
 [[sep-rom-vplan-procedures]]
 === Test Procedures
 
@@ -601,7 +711,7 @@ PASS record of its own.
 [[sep-rom-vplan-ot-spi-boot]]
 ===== OpenTitan SPI boot and its variants
 
-*Tests:* 3.
+*Tests:* 4.
 
 *Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_ot_dma_boot_test.py`.
 
@@ -638,6 +748,7 @@ PASS record of its own.
 |Test |Stimulus |Expected |Checkers it adds |Requirements
 |`sep_rom_ot_dma_boot_test` |+sep_boot_from_spi (STRAPS_LO[25]); unsigned oca_non_secure_boot.bin preloaded into OcahSpiFlash at flash 0; TEST_DEV OTP. DV shortcut: esrc_noise_task drives the ESRC noise port (no +esrc_noise_force plusarg in this entry). |boots: BL1 PASS verdict with BOOT_SPI, MANIFEST_SRC=0x00001000, MANIFEST_OK, PAYLOAD_OK; WAIT_SMC_MANIFEST absent. |`CHK-ROM-PATH`, `CHK-VERDICT` |`SEP-ROM-SPI-010`, `SEP-ROM-MAN-050`
 |`sep_manifest_magic_survives_handoff_test` |Unmodified non-secure image under default TEST_DEV; additionally requires ICCM_PAD= and BL1_JUMP= console markers. |boots; sram_word0_probe_o low 32 bits read back as b"OCAC" after hand-off. |`CHK-MANIFEST-INTACT` |`SEP-ROM-MAN-050`
+|`sep_iccm_pad_sram_top_intact_test` |Runs `sep_manifest_magic_survives_handoff_test` and keeps its checks; the sentinel 0xC0FFEE5AA5EEFF0C is written to the last SEP SRAM word before reset and read back. DV shortcut: VPI backdoor write and read of the SEP SRAM macro array via sep_public_scope.vlt; Verilator only. |boots as the parent; the last SEP SRAM word still holds the sentinel when BL1_COPIED reaches the console, after the [S29] ICCM pad and the BL1 copy. |`CHK-SRAM-TOP-INTACT` |None: no `rom.adoc` requirement states it (see the contract)
 |`sep_rom_ot_pio_boot_test` |+sep_boot_rom_hex selects build_pio/boot_rom.vmem (BOOT_OT_SPI_USE_PIO=1); flash image is the shared build/oca_non_secure_boot.bin. |boots (same markers and PASS verdict as the DMA base). |None beyond the group |`SEP-ROM-SPI-010`
 |===
 
@@ -649,6 +760,7 @@ PASS record of its own.
 |`sep_rom_ot_dma_boot_test` |`CHK-ROM-PATH` |Each required marker BOOT_SPI, MANIFEST_SRC=0x00001000, MANIFEST_OK and PAYLOAD_OK appears.
 |`sep_rom_ot_dma_boot_test` |`CHK-VERDICT` |cold_scratch[0] carries the BL1 PASS verdict.
 |`sep_manifest_magic_survives_handoff_test` |`CHK-MANIFEST-INTACT` |SEP SRAM word 0 equals MANIFEST_MAGIC (OCAC) after hand-off.
+|`sep_iccm_pad_sram_top_intact_test` |`CHK-SRAM-TOP-INTACT` |The last SEP SRAM word, sampled when BL1_COPIED reaches the console, still equals the sentinel written before reset. No `rom.adoc` sentence states that the pad or the BL1 copy leaves SEP SRAM unchanged. The nearest are "Every clear is a secure DMA zero fill, which writes zeros without reading memory, so all 256 KiB are available to the manifest body, the payload and BL1's permitted load span." and "It sets the engine's enabled memory range, which bounds every zero-fill write, to the whole of that region". The check samples one word only.
 |===
 
 [[sep-rom-vplan-secure-boot]]
@@ -856,6 +968,67 @@ PASS record of its own.
 |`sep_spi_not_detected_terminal_test` |`CHK-DEVICE-BLANK` |SPI reads covering both slot addresses returned all 0xFF, primary first.
 |`sep_rotate_update_set_test` |`CHK-STIMULUS-ROTATE` |Primary span erased, backup intact and the strap constant sets bit 26.
 |`sep_rotate_update_set_test` |`CHK-ROTATE-ADDR` |The first slot read lands in the backup span, no read touches the primary span, and 0x41000 returned OCAC.
+|===
+
+==== Memory clears
+[[sep-rom-vplan-memory-clear]]
+===== Memory clears and zero-fill faults
+
+*Tests:* 5 entries from 2 leaf modules.
+
+*Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_ot_dma_boot_test.py`. Each member runs the <<sep-rom-vplan-ot-spi-boot>> procedure with the ROM build, markers and stimulus of its row. The four `sep_rom_zero_fill_fault_*_test` entries run `sep_rom_zero_fill_fault_test.py`, and `+zero_fill_fault` selects the clear site.
+
+*Objective:* On the clear-enabled ROM (`boot_rom_clear`, `build_clear/`: `SRAM_SCRUB_BYTES=0x40000`, `ROM_ICCM_CLEAR_FULL=1`) the [S15] SEP SRAM scrub and the [S16] ICCM clear leave the memory they cover at zero. At each place the ROM clears memory with a secure DMA zero fill, one failed fill stops the boot at that place.
+
+*Procedure:*
+
+. Run the <<sep-rom-vplan-ot-spi-boot>> procedure: TEST_DEV zero eFuse image, +sep_boot_from_spi, oca_non_secure_boot.bin in OcahSpiFlash, CPU release at the Boot ROM base and a poll of cold_scratch[0] up to 24M cycles.
+. `sep_rom_clear_variant_test`: before reset, write a non-zero poison to every SEP SRAM word and every ICCM row through the Verilator public scope (`env/sep_mem_backdoor.py`) and read back the last word of each. Scan all of SEP SRAM when SRAM_CLR_OK reaches the console, and all of ICCM outside [COPY_DST, COPY_DST + COPY_LEN) when BL1_COPIED does.
+. Fault members: set `expect_fw_pass` to False and, after bring-up, drive dma_fill_fault_sel_i (1 = ICCM, 2 = SEP SRAM). While a zero fill whose destination lies in the selected region runs, `tb/tb_top.sv` forces an error onto the DMA host-path write responses, so the fill ends in BUS_ERROR. Every other transfer runs unfaulted. Record each change of cold_scratch[1] on every clk edge.
+. Assert the required markers of the member, then the forbidden markers, then the member checks.
+
+*Checkers:*
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|`CHK-ROM-PATH` |Each required console marker of the member appears, with one PASS record per marker. The forbidden markers of the member (always including WAIT_SMC_MANIFEST) are asserted absent, with no record of their own.
+|`CHK-VERDICT` |`sep_rom_clear_variant_test` only: cold_scratch[0] carries the BL1 PASS verdict. The fault members log no CHK-VERDICT PASS: the scoreboard fails them on a PASS verdict and does not require the FAIL verdict.
+|===
+
+*Anti-vacuity:* `sep_rom_clear_variant_test` asserts that the poison stuck before the boot, that both scans ran, and that at least one ICCM word lies outside the BL1 span. The fault leaf requires dma_fill_fault_count_o to be non-zero, so a case whose clear site never ran a fill fails. The first marker of each order (BL1_DST=ICCM, MANIFEST_ERR=, SRAM_SCRUB_LEN=, SRAM_CLR_OK) shows that the ROM reached the step before the clear site.
+
+*Observation:* ROM virt-console markers and their order, cold_scratch[0] verdict, every cold_scratch[1] value, dma_fill_fault_count_o, and the SEP SRAM and ICCM arrays through sep_public_scope.vlt (`sep_rom_clear_variant_test` only).
+
+*Members:*
+
+[cols="3,4,4,4,2",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers it adds |Requirements
+|`sep_rom_clear_variant_test` |+sep_boot_rom_hex selects build_clear/boot_rom.vmem (`boot_rom_clear`); unmodified non-secure image over SPI; nothing preloaded into SEP SRAM for the boot. Requires SRAM_CLR_OK, ICCM_CLR_FULL and BL1_COPIED on top of the base markers and forbids ICCM_PAD=. DV shortcut: VPI backdoor write of the poison to every SEP SRAM word and ICCM row before reset, and backdoor reads of both arrays, via sep_public_scope.vlt; Verilator only. |boots to BL1 PASS; all SEP SRAM words read zero at SRAM_CLR_OK; every ICCM data word outside the BL1 copy span reads zero at BL1_COPIED; ICCM_PAD= absent. |`CHK-SRAM-SCRUBBED`, `CHK-ICCM-CLEARED` |`SEP-ROM-CPU-100`
+|`sep_rom_zero_fill_fault_pad_test` |Default build/boot_rom.vmem; unmodified non-secure image; +zero_fill_fault=pad drives dma_fill_fault_sel_i=1 (ICCM). DV shortcut: tb_top forces an error onto the DMA host-path write responses of a zero fill into ICCM. |BOOT_SPI, MANIFEST_SRC=0x00001000, MANIFEST_OK, PAYLOAD_OK; BL1_DST=ICCM then ICCM_PAD_FAIL; ICCM_PAD=, BL1_COPIED and BL1_JUMP= absent; WARN SEP_MSG_DMA_ERROR (0x0801009D) and ERROR SEP_MSG_BL1_BAD_ADDR (0x0F010217) on cold_scratch[1]; no PASS verdict. |`CHK-FAULT-FIRED`, `CHK-MARKER-ORDER`, `CHK-STATUS` |None: the [S16] stage text states it (see the contracts)
+|`sep_rom_zero_fill_fault_retry_test` |Default build/boot_rom.vmem; primary slot erased to 0xFF (mm.erase_slot, checked erased); +zero_fill_fault=retry drives dma_fill_fault_sel_i=2 (SEP SRAM). DV shortcut: as the pad entry, for a zero fill into SEP SRAM. |BOOT_SPI, MANIFEST_SRC=0x00001000; MANIFEST_ERR=0x00030002 (OCA_FAIL_MAGIC), SRAM_RETRY_CLR_FAIL, MANIFEST_BOOT_FAIL=0x00030100 (OCA_BOOT_ERR_DMA) in order; MANIFEST_BACKUP, MANIFEST_ALL_FAILED and MANIFEST_OK absent; WARN SEP_MSG_DMA_ERROR (0x0801009D) and ERROR SEP_MSG_MANIFEST_LOAD_FAILED (0x0F010213) on cold_scratch[1]; no PASS verdict. |`CHK-FAULT-FIRED`, `CHK-MARKER-ORDER`, `CHK-STATUS` |`SEP-ROM-RETRY-040`
+|`sep_rom_zero_fill_fault_scrub_test` |build_clear/boot_rom.vmem (`boot_rom_clear`); unmodified non-secure image; +zero_fill_fault=scrub drives dma_fill_fault_sel_i=2 (SEP SRAM). DV shortcut: as the retry entry. |SRAM_SCRUB_LEN= then SRAM_CLR_FAIL; SRAM_CLR_OK and MANIFEST_SRC= absent; WARN SEP_MSG_DMA_ERROR (0x0801009D) on cold_scratch[1]; no PASS verdict. |`CHK-FAULT-FIRED`, `CHK-MARKER-ORDER`, `CHK-STATUS` |None: the [S15] stage text states it (see the contracts)
+|`sep_rom_zero_fill_fault_iccm_clear_test` |build_clear/boot_rom.vmem (`boot_rom_clear`); unmodified non-secure image; +zero_fill_fault=iccm_clear drives dma_fill_fault_sel_i=1 (ICCM). DV shortcut: as the pad entry. |SRAM_CLR_OK then ICCM_CLR_FAIL; ICCM_CLR_FULL and MANIFEST_SRC= absent; WARN SEP_MSG_DMA_ERROR (0x0801009D) on cold_scratch[1]; no PASS verdict. |`CHK-FAULT-FIRED`, `CHK-MARKER-ORDER`, `CHK-STATUS` |None: the [S16] stage text states it (see the contracts)
+|===
+
+*Added checker contracts:* each contract states what the check grades and the `rom.adoc` sentence it grades. The console tokens are ROM source names; `rom.adoc` defines only SRAM_RETRY_CLR_FAIL. No fault member grades the FAIL verdict, `bl0_state.error_code` or the halt, beyond the forbidden markers and the absent PASS verdict.
+
+[cols="3,2,5",options="header"]
+|===
+|Test |Checker |Contract
+|`sep_rom_clear_variant_test` |`CHK-ROM-PATH` |SRAM_CLR_OK, ICCM_CLR_FULL and BL1_COPIED appear on top of the base markers, and ICCM_PAD= does not. Spec ([S16]): "`ROM_ICCM_CLEAR_FULL=1` zeroes all of ICCM here instead".
+|`sep_rom_clear_variant_test` |`CHK-SRAM-SCRUBBED` |All SEP SRAM words, each poisoned non-zero before reset, read zero when SRAM_CLR_OK reaches the console. Spec ([S15]): "The first `SRAM_SCRUB_BYTES` of SEP SRAM (`0x10000000`, 256 KiB) zeroed with one secure DMA zero fill", with `SRAM_SCRUB_BYTES=0x40000`; `SEP-ROM-CPU-100`: "The ROM shall clear SEP SRAM and ICCM before loading any external content". The number of fills, the ROM's read-back and the order against the first manifest read are not graded (`sep_rom_sram_iccm_clear_test` grades that order).
+|`sep_rom_clear_variant_test` |`CHK-ICCM-CLEARED` |Every ICCM data word outside [COPY_DST, COPY_DST + COPY_LEN), each poisoned non-zero before reset, reads zero when BL1_COPIED reaches the console, and at least one word is checked. Spec ([S16]): "`ROM_ICCM_CLEAR_FULL=1` zeroes all of ICCM here instead (base and size are build-time parameters), clearing power-up residue too"; `SEP-ROM-CPU-100` as above. The ECC bits and the order against the first manifest read are not graded.
+|`sep_rom_zero_fill_fault_*_test` (4 entries) |`CHK-FAULT-FIRED` |dma_fill_fault_count_o is non-zero at the end of the run: a zero fill with its destination in the selected region ran while the fault was armed. Stimulus control; no `rom.adoc` sentence.
+|`sep_rom_zero_fill_fault_pad_test` |`CHK-MARKER-ORDER` |BL1_DST=ICCM, then ICCM_PAD_FAIL; with `CHK-ROM-PATH`, the base SPI-path markers appear and ICCM_PAD=, BL1_COPIED and BL1_JUMP= do not. Spec ([S16]): "a failed pad stops the hand-off."
+|`sep_rom_zero_fill_fault_pad_test` |`CHK-STATUS` |cold_scratch[1] takes WARN SEP_MSG_DMA_ERROR (0x0801009D) and ERROR SEP_MSG_BL1_BAD_ADDR (0x0F010217) during the run; their order is not graded. Spec (status table, "any secure-DMA copy or fill"): "`DMA_ERROR` (WARN, the engine reported an error)" and "then the caller's error"; `tbl:oca_boot_err`, `OCA_BOOT_ERR_BL1_BAD_ADDR`: "BL1 load or entry address outside the permitted regions, or the DMA copy of BL1 or its ICCM pad failed."
+|`sep_rom_zero_fill_fault_retry_test` |`CHK-MARKER-ORDER` |MANIFEST_ERR=0x00030002 for the erased primary, then SRAM_RETRY_CLR_FAIL, then MANIFEST_BOOT_FAIL=0x00030100; with `CHK-ROM-PATH`, BOOT_SPI and MANIFEST_SRC=0x00001000 appear and MANIFEST_BACKUP, MANIFEST_ALL_FAILED and MANIFEST_OK do not. Spec (`SEP-ROM-RETRY-040` text): "If it fails the ROM prints `SRAM_RETRY_CLR_FAIL` and stages no further slot: the search ends with `OCA_BOOT_ERR_DMA` through the same failure path as exhausting every slot". The absent MANIFEST_ALL_FAILED comes from the ROM source, which prints it only after the last slot fails; no `rom.adoc` sentence. "and the boot halts" is not graded.
+|`sep_rom_zero_fill_fault_retry_test` |`CHK-STATUS` |cold_scratch[1] takes WARN SEP_MSG_DMA_ERROR (0x0801009D) and ERROR SEP_MSG_MANIFEST_LOAD_FAILED (0x0F010213) during the run. Spec (`SEP-ROM-RETRY-040` text): "which reports `MANIFEST_LOAD_FAILED`"; status table: "`DMA_ERROR` (WARN, the engine reported an error)".
+|`sep_rom_zero_fill_fault_scrub_test` |`CHK-MARKER-ORDER` |SRAM_SCRUB_LEN=, then SRAM_CLR_FAIL; with `CHK-ROM-PATH`, SRAM_CLR_OK and MANIFEST_SRC= do not appear. Spec ([S15]): "a failure halts the boot." The halt is graded only as no manifest source line and no PASS verdict for the rest of the run.
+|`sep_rom_zero_fill_fault_scrub_test` |`CHK-STATUS` |cold_scratch[1] takes WARN SEP_MSG_DMA_ERROR (0x0801009D) during the run. Spec: "`DMA_ERROR` (WARN, the engine reported an error)". No ERROR word is graded.
+|`sep_rom_zero_fill_fault_iccm_clear_test` |`CHK-MARKER-ORDER` |SRAM_CLR_OK, then ICCM_CLR_FAIL; with `CHK-ROM-PATH`, ICCM_CLR_FULL and MANIFEST_SRC= do not appear. Spec ([S16]): "a failed full clear halts the boot". The halt is graded as in the scrub entry.
+|`sep_rom_zero_fill_fault_iccm_clear_test` |`CHK-STATUS` |cold_scratch[1] takes WARN SEP_MSG_DMA_ERROR (0x0801009D) during the run. Spec: as the scrub entry. No ERROR word is graded.
 |===
 
 ==== CPU entry, warm reset and DFT gate
@@ -2655,6 +2828,182 @@ PASS record of its own.
 |`sep_rom_hmac_fifo_stall_terminal_test` |`CHK-HMAC-STALL-TERMINAL` |fw_pass=0, 0x0F01F005, quiet 20k cycles.
 |`sep_rom_hmac_fifo_stall_terminal_test` |`CHK-HMAC-STALL-NO-PROGRESS` |ROM_HASH_VERIFIED, >>C9b_ICCM_CLR, FUSE: SBOOT_DIS:, MANIFEST_OK absent.
 |===
+
+==== Spec-graded ROM invariants
+
+[[sep-rom-vplan-spec-graded]]
+===== Leaves graded on `rom.adoc` shall sentences
+
+*Tests:* 40 entries from 26 leaf modules, all in `rom_fw.toml` and in the `rom_fw` group.
+
+*Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_observe_base.py` for the leaves that start from the common bring-up. The other leaves extend an existing test, keep all of its checks and add their own; the Stimulus cell names the parent.
+
+*Objective:* Each leaf grades `rom.adoc` shall sentences that the older groups do not grade. The leaf's module docstring quotes each sentence verbatim and states which sentences or clauses it does not grade. Expected values come from `rom.adoc` and the other ROM documents in `bootrom/prod/doc/`, with two exceptions: the status-ring leaves take the ring header layout from the SMC ROM documents (`hw/sys/smc/bootrom/prod/doc/status-coordination.adoc`) and the SMC DV ring struct (`hw/sys/smc/dv/fw/include/smc_ring_buffer.h`), because the SEP ROM documents give no layout, and the RSA exponent leaf takes the raw public-key layout from the OCA implementation, because `rom.adoc` gives the raw key as a modulus with no exponent. A spec-correct check that fails on the current ROM stays in the testlist, and its entry comment states the spec sentence that the ROM does not meet.
+
+*Procedure:*
+
+. Start `SepRomObserver` (`env/sep_rom_observer.py`) before reset release when the leaf grades order. It records retirements, the `cold_scratch[0]` and `cold_scratch[1]` words, the decoded console, watched ports and fabric beats, each with the time of the `clk_i` edge that showed it.
+. Apply the eFuse image, the plusargs and the runtime stimulus of the member row.
+. Run until the leaf's stop condition, bounded by its cycle limit. An observer-base leaf that does not reach it fails `CTRL-RUN-REACHED`.
+. Grade the record through `SepChkLog` (`env/sep_chk_log.py`). Each `CHK-<NAME>` grades one contract below, each `CTRL-<NAME>` proves that the record a check reads was live, and `OBS-<NAME>` logs a value without grading it. A false control fails the leaf like a failed check.
+
+*Anti-vacuity:* An absence check (no write, no read, no interrupt) needs a control that shows its tap or record saw the healthy activity of the same kind in the same run. A check does not grade absence through `last_store()` or `Retire.mem_addr`, which cannot tell an unresolved address from no access.
+
+*Observation:* `cold_scratch[0]` verdict, `cold_scratch[1]` status words, the scratch console, the CPU retirement trace, the PR-LSU-XBAR, PR-LSU-ROM, PR-SMC and PR-TCM fabric taps, the SRAM and ICCM macro ports, the flash BFM log and the debug-module system-bus reads named in each row.
+
+Where the specification contradicts itself or leaves a value undefined, the leaf grades only the undisputed part and logs the rest as OBS, and the contract below names the clause it does not grade and why. `SEP-ROM-HOFF-050` has no test (<<sep-rom-vplan-known-limitations>>).
+
+*Members:*
+
+[cols="3,4,4,4,2",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers it adds |Requirements
+|`sep_rom_observer_smoke_test` |Observer base; TEST_DEV; SMC-SRAM manifest boot (+sep_smc_mem_hex). Grades the observer, not the ROM. |Boots to BL1 PASS; every observer record kind matches a spec value or an independent observation. |`CHK-OBS-RETIRE`, `CHK-OBS-KEEP`, `CHK-OBS-RESET-VECTOR`, `CHK-OBS-STATUS-ENCODE`, `CHK-OBS-STORE-LAG`, `CHK-OBS-CONSOLE`, `CHK-OBS-MRET`, `CHK-OBS-PC`, `CHK-OBS-WATCH`, `CHK-OBS-TRACKER`, `CHK-OBS-VERDICT` |None (observer infrastructure)
+|`sep_rom_reset_entry_order_test` |Observer base; TEST_DEV; SMC-SRAM boot. Grades the first retirements of the single-hart core. |mhartid read, mtvec write and MRAC write 0xAAAAAAA8 in that order before the first data access; no park-loop retirement; BL1 PASS. |`CHK-HART-GATE`, `CHK-MTVEC-FIRST`, `CHK-MRAC-FIRST`, `CHK-ENTRY-ORDER`, `CHK-MRAC-VALUE`, `CHK-HART-NO-PARK` |`SEP-ROM-CPU-010`, `SEP-ROM-CPU-020`, `SEP-ROM-CPU-030`
+|`sep_rom_boot_quiet_invariants_test` |Observer base; TEST_DEV; SMC-SRAM boot; PR-LSU-XBAR tap and the WDT ports watched up to the hand-off mret. |No filter or WDT register write, no interrupt taken or enabled, mie and mstatus.MIE cleared in list order, sp and gp in DCCM; BL1 PASS. |`CHK-NO-FILTER-WRITE`, `CHK-NO-IRQ`, `CHK-NO-MIE-SET`, `CHK-MIE-CLEAR-ORDER`, `CHK-NO-WDT`, `CHK-STACK-GLOBALS-DCCM` |`SEP-ROM-CPU-040`, `SEP-ROM-CPU-050`, `SEP-ROM-CPU-080`, `SEP-ROM-CPU-150`
+|`sep_rom_dccm_scrub_test` |Observer base; TEST_DEV; SMC-SRAM boot. DV shortcut: the tb TCM bit-flip hook plants double-bit ECC errors in DCCM while rst_ni is low. |Every DCCM read up to the hand-off returns the last value this boot wrote; [DCCM base, `__stack_top`) zero-written before `rom_main`. |`CHK-DCCM-WRITE-BEFORE-READ`, `CHK-DCCM-READ-LAST-WRITE`, `CHK-DCCM-SPEC-RANGE-WRITTEN`, `CHK-DCCM-PLANTED-NOT-REACHED` |`SEP-ROM-CPU-160`
+|`sep_rom_sram_iccm_clear_test` |Observer base; TEST_DEV; SMC-SRAM boot of the clear-enabled ROM (`boot_rom_clear`, `build_clear/`), whose SRAM scrub and full ICCM clear are secure DMA zero fills. DV shortcut: +sep_sram_hex preloads SEP SRAM residue (`sep_rom_sram_residue.hex`), and the TCM bit-flip hook plants ICCM residue while rst_ni is low (not graded). |Every SEP SRAM byte and ICCM bank row zero-written, and the seven probed SRAM words zero, before the first PR-SMC manifest read beat. |`CHK-SRAM-CLEARED-BEFORE-LOAD`, `CHK-SRAM-RESIDUE-CLEARED-AT-LOAD`, `CHK-ICCM-CLEARED-BEFORE-LOAD` |`SEP-ROM-CPU-100`
+|`sep_rom_fuse_sense_wait_test` |Observer base; TEST_DEV; SMC-SRAM boot; the bench raises smc_fuse_sense_done_i 64 clk after reset, before CPU release. |eFuse reads only after an SMC_FUSE_SENSE_STATUS poll that saw sense done. |`CHK-NO-FUSE-READ-BEFORE-SENSE`, `CHK-POLL-GATES-READ`, `CHK-SENSE-THEN-READ` |`SEP-ROM-FUSE-010`
+|`sep_rom_fuse_sense_wait_test_hold` |As above with +sep_smc_fuse_sense_hold: smc_fuse_sense_done_i stays low for the whole run. |No eFuse read in a 1.3M-cycle window and the poll still running at its end. |`CHK-NO-FUSE-READ-BEFORE-SENSE`, `CHK-HOLD-WAITS` |`SEP-ROM-FUSE-010`
+|`sep_rom_lc_state_record_test_test_dev` |Observer base; +sep_rom_lc=0x0 sets the LC_STATE raw value; SMC-SRAM boot. |`bl0_state.lc_state` holds 0x0; FUSE_LC_STATE, INFO_EXT(0x0), LIFECYCLE_VALID on cold_scratch[1]. |`CHK-LC-RECORDED`, `CHK-LC-REPORTED` |`SEP-ROM-FUSE-030`
+|`sep_rom_lc_state_record_test_prod` |As above with +sep_rom_lc=0x1. |As above for 0x1; the run then ends on the FAIL verdict, since PROD refuses the unsigned image. |`CHK-LC-RECORDED`, `CHK-LC-REPORTED` |`SEP-ROM-FUSE-030`
+|`sep_rom_lc_state_record_test_rma_sip_0x2` |As above with +sep_rom_lc=0x2. |As above for 0x2; BL1 PASS. |`CHK-LC-RECORDED`, `CHK-LC-REPORTED` |`SEP-ROM-FUSE-030`
+|`sep_rom_lc_state_record_test_rma_sip_0x3` |As above with +sep_rom_lc=0x3. |As above for 0x3; BL1 PASS. |`CHK-LC-RECORDED`, `CHK-LC-REPORTED` |`SEP-ROM-FUSE-030`
+|`sep_rom_lc_state_record_test_rma_chiplet_0x6` |As above with +sep_rom_lc=0x6. |As above for 0x6; BL1 PASS. |`CHK-LC-RECORDED`, `CHK-LC-REPORTED` |`SEP-ROM-FUSE-030`
+|`sep_rom_lc_state_record_test_rma_chiplet_0x7` |As above with +sep_rom_lc=0x7. |As above for 0x7; BL1 PASS. |`CHK-LC-RECORDED`, `CHK-LC-REPORTED` |`SEP-ROM-FUSE-030`
+|`sep_rom_lc_state_record_test_prod_end` |As above with +sep_rom_lc=0x8. |As above for 0x8; the run then ends on the FAIL verdict, since PROD_END refuses the unsigned image. |`CHK-LC-RECORDED`, `CHK-LC-REPORTED` |`SEP-ROM-FUSE-030`
+|`sep_rom_pmp_program_test` |Observer base; TEST_DEV; SMC-SRAM boot (OpenTitan SPI build, no XIP driver linked); PMP and mseccfg CSR writes replayed from the trace up to BOOTROM_PRESTART_DONE. |RLB first, all rules locked, MMWP after the rules, no catch-all, windows equal tbl:pmp_regions, execute on the Boot ROM alone. |`CHK-PMP-VALUES-KNOWN`, `CHK-RLB-FIRST`, `CHK-ALL-LOCKED`, `CHK-MMWP-AFTER-RULES`, `CHK-NO-CATCH-ALL`, `CHK-WINDOWS-MATCH-SPEC`, `CHK-ONLY-ROM-EXEC` |`SEP-ROM-PMP-010`, `SEP-ROM-PMP-020`, `SEP-ROM-PMP-030`, `SEP-ROM-PMP-040`, `SEP-ROM-PMP-060`, `SEP-ROM-PMP-070`
+|`sep_rom_pmp_release_handoff_test` |Observer base; TEST_DEV; SMC-SRAM boot; window from BOOTROM_PRESTART_DONE to the hand-off mret. |One release adds execute to the BL1-region rule under RLB after the hand-off progress codes; no other CSR write before mepc; mepc, fence.i, fence, mret to the TOC entry 0xC0000000. |`CHK-FETCH-ROM-ONLY`, `CHK-SINGLE-RELEASE`, `CHK-RELEASE-ADDS-ONLY-X`, `CHK-RELEASE-UNDER-RLB`, `CHK-RELEASE-AFTER-PROGRESS`, `CHK-RELEASE-LAST-CSR-WRITE`, `CHK-JUMP-SEQUENCE`, `CHK-JUMP-TARGET` |`SEP-ROM-PMP-010`, `SEP-ROM-PMP-030`, `SEP-ROM-PMP-080`, `SEP-ROM-HOFF-060`, `SEP-ROM-HOFF-070`
+|`sep_rom_demote_after_lock_order_test` |Runs `sep_firmware_demotion_decision_auth_flag_0_prod_test` (PROD, SBOOT_DIS=1, O5: DEMOTE_1 written (0, 1)) and keeps its checks; records the LOCKS shadow word and the DEMOTE_1 ports on change. |All six fuse-secret read-lock bits set on an earlier clk edge than the first DEMOTE_1 change. |`CHK-DEMOTE1-AFTER-LOCK` |`SEP-ROM-DEM-035`
+|`sep_rom_version_hash_report_test` |Observer base; TEST_DEV; SMC-SRAM boot; golden SHA-256 computed from the +sep_boot_rom_hex image; run ends at [S06]. |Console BL0_VERSION and golden hash; ROM_HASH then two INFO_EXT prefix words; all within [S05]. |`CHK-CONSOLE-VERSION`, `CHK-CONSOLE-HASH`, `CHK-STATUS-HASH-PREFIX`, `CHK-REPORT-AT-S05` |`SEP-ROM-ATT-020`
+|`sep_rom_pcrv_slot_order_test` |Runs `sep_boot_measurement_golden_test` (PROD, signed SPI boot) and keeps its checks. DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim). |Slot 0 then slot 1; slot 0 after a full LSU read of the hashed ROM region that follows [S14] and [S10]; slot 1 after MANIFEST_VALIDATED. |`CHK-SEPARATE-SLOTS`, `CHK-SLOT0-AFTER-VERIFY`, `CHK-VERIFY-AFTER-S14-S10`, `CHK-SLOT0-BEFORE-SLOT1`, `CHK-SLOT1-AFTER-VALIDATION` |`SEP-ROM-ATT-050`
+|`sep_rom_smc_scratch_sanity_test` |Observer base; TEST_DEV; SMC-SRAM boot; a leaf R-channel monitor on the SEP->SMC AXI port pairs each scratch[7] read with its data. |Four spec patterns written and read back equal, then scratch[7] restored to zero; BL1 PASS. |`CHK-SANITY-WRITES`, `CHK-SANITY-READBACKS`, `CHK-SANITY-RESTORE` |`SEP-ROM-SMC-020`
+|`sep_rom_smc_manifest_ready_wait_test` |Runs `sep_firmware_secondary_chiplet_bootcode_test`; holds scratch[9].MANIFEST_READY low with decoy offset 0x80000 in scratch[8] for a fixed hold after the first poll, then publishes the real offset and raises MANIFEST_READY. |No scratch[8] or SMC SRAM read before the release; then scratch[9] poll, scratch[8] read, manifest fetch at the published offset; BL1 PASS. |`CHK-NO-CONSUME-BEFORE-READY`, `CHK-CONSUMED-PUBLISHED-OFFSET` |`SEP-ROM-SMC-040`
+|`sep_rom_smc_manifest_offset_invalid_test_window_end` |As above with +sep_smc_scratch8=00100000. |As above. |`CHK-SLOT-REFUSED` |`SEP-ROM-SMC-050`
+|`sep_rom_smc_manifest_offset_invalid_test_window_straddle` |As above with +sep_smc_scratch8=000FFFF8. |As above. |`CHK-SLOT-REFUSED` |`SEP-ROM-SMC-050`
+|`sep_rom_smc_manifest_offset_invalid_test_manifest_straddle` |As above with +sep_smc_scratch8=000FF008. |As above; the SMC SRAM reads before the refusal are logged as OBS-SMC-SRAM-READ (see `CHK-SLOT-REFUSED`). |`CHK-SLOT-REFUSED` |`SEP-ROM-SMC-050`
+|`sep_rom_status_ring_bounds_test_straddle` |Runs `sep_firmware_secondary_chiplet_bootcode_test`; +sep_rom_ring_case=straddle publishes scratch[11]=0x000FFFFC. |No SMC write outside the window or to the header; STATUS_REPORTING_INVALID; BL1 PASS. |`CHK-RING-NO-WRITE-OUTSIDE`, `CHK-INVALID-REPORTED`, `CHK-BOOT-CONTINUES` |`SEP-ROM-STAT-010`
+|`sep_rom_status_ring_bounds_test_bad_header` |As above with +sep_rom_ring_case=bad_header: header at offset 0x000F0000 with 16 entries, head 16, tail 0. |No SMC write outside the window or the declared ring; STATUS_REPORTING_INVALID; BL1 PASS. |`CHK-RING-NO-WRITE-OUTSIDE`, `CHK-INVALID-REPORTED`, `CHK-BOOT-CONTINUES` |`SEP-ROM-STAT-010`
+|`sep_rom_status_ring_severity_test` |Runs `sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test` (+sep_smc_scratch8=00005000) and publishes an undrained 8-entry ring, head = tail = 0, at offset 0x000F0000. |The ring holds expected_ring() of the offered statuses. |`CHK-RING-SEVERITY-RESERVE` |`SEP-ROM-STAT-020`
+|`sep_rom_oca_library_callback_test` |Runs `sep_rom_ot_secure_boot_test` (TEST_DEV, signed SPI boot) and keeps its checks. DV shortcut: +esrc_noise_force (ESRC noise input forced; ring oscillators do not run in sim). |Table wires the eight roles; library entry before MANIFEST_VALIDATED; four callbacks entered from library text. |`CHK-TABLE-WIRED`, `CHK-LIBRARY-ENTERED`, `CHK-CALLBACKS-FROM-LIBRARY` |`SEP-ROM-MAN-020`
+|`sep_rom_entropy_health_fail_terminal_test` |Runs `sep_rom_ot_secure_boot_test` with the noise driver off, so +esrc_noise_force holds every decorrelator input at 0 and the startup health test fails; its success markers and OTBN entropy check are replaced. DV shortcut: debug-module system-bus reads of the ESRC registers after the halt window. |ENTROPY_INIT_FAILED, health-test marker, ERROR 0x0F01F009, 0xDEADBEEF; no backup attempt; halt. |`CHK-ENTROPY-FATAL`, `CHK-STAGE-MARKER`, `CHK-NO-SLOT-RETRY`, `CHK-HALTED` |`SEP-ROM-ENT-020`
+|`sep_rom_entropy_lock_order_test` |Runs `sep_rom_ot_secure_boot_test` and keeps its checks. DV shortcut: +esrc_noise_force; debug-module system-bus reads of both lock registers after the run. |FIPS_LOCK after the health test and before the first consumer; source lock after bring-up and before the hand-off. |`CHK-FIPS-LOCK-AFTER-HEALTH`, `CHK-FIPS-LOCK-BEFORE-CONSUMER`, `CHK-SRC-SEL-LOCK-AFTER-BRINGUP` |`SEP-ROM-ENT-030`, `SEP-ROM-ENT-040`
+|`sep_rom_no_fuse_program_test` |Runs `sep_firmware_bl1_ver_test` (sep_efuse_lc_prod_bl1ver36_spread.toml) and keeps its checks; both slots carry the device flags plus flag 127, with `manifest_security_control` 0. DV shortcut: +esrc_noise_force. |BL1 boots; OTP bank unchanged; no PROGRAM command. |`CHK-NO-OTP-CHANGE`, `CHK-NO-PROGRAM-CMD` |`SEP-ROM-SB-080`
+|`sep_rom_rsa_exponent_non_f4_refuse_test` |Runs `sep_primary_fail_backup_boot_base` (PROD, sep_efuse_lc_prod.toml); the primary keeps the ROM key 0 modulus and selector with raw exponent 5; +sep_rsa_signed_exponent=5 signs it under (n, 5). DV shortcut: +esrc_noise_force. |Primary refused; backup boots to BL1 PASS. |`CHK-NON-F4-REFUSED` |`SEP-ROM-SB-100`
+|`sep_rom_rsa_exponent_non_f4_refuse_test_f4_signed` |As above with +sep_rsa_signed_exponent=65537: the signature verifies under the F4 program, so a ROM that ignores the exponent boots the primary. |As above. |`CHK-NON-F4-REFUSED` |`SEP-ROM-SB-100`
+|`sep_rom_rsa_key_direct_otbn_test` |Runs `sep_rom_ot_secure_boot_test` and keeps its checks; tb_top Key Manager probes recorded each clk. DV shortcut: +esrc_noise_force; debug-module system-bus read-back of the OTBN modulus buffer after the run. |CPU writes the modulus into OTBN DMEM before EXECUTE; Key Manager idle through BL0. |`CHK-NO-KM-TO-OTBN`, `CHK-CPU-WRITES-MODULUS` |`SEP-ROM-SB-110`
+|`sep_rom_encryption_requires_secure_boot_test` |Runs `sep_rom_ot_dma_boot_test` (sep_efuse_class_key.toml: TEST_DEV, debug open, SBOOT_DIS 0, golden CLASS_KEY); both slots carry `oca_encrypted_boot.bin` made validly unsigned (`secure_boot_control` 0, signing fields zero, hash resealed). DV shortcut: +esrc_noise_force. |Both slots refused, no decryption, terminal halt. |`CHK-ENCRYPTED-REFUSED`, `CHK-REFUSAL-CAUSE`, `CHK-NO-DECRYPTION`, `CHK-TERMINAL` |`SEP-ROM-PL-050`
+|`sep_rom_decrypt_exit_zeroize_test_success` |Observer base; SPI boot; sep_efuse_class_key.toml; encrypted primary re-encrypted under an IV that shares no 16-byte window with the key material; backup magic broken; +sep_rom_decrypt_exit=success. DV shortcut: +esrc_noise_force. |Boots; no key-material residue in DCCM at the stage return and at the hand-off mret. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
+|`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` |As above with +sep_rom_decrypt_exit=aes_init_fail. DV shortcut: tb input aes_sw_rst_readback_inject_i makes the AES bit of SW_RESET_N read back 0 from the stage entry to its return; the AES itself stays out of reset. |No residue at the stage return and at the FAIL verdict. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
+|`sep_rom_decrypt_exit_zeroize_test_kdf_fail` |As above with +sep_rom_decrypt_exit=kdf_fail. DV shortcut: hmac_fifo_drain_stall_i stops the HMAC message FIFO from the stage entry to its return. |No residue at the stage return and at the FAIL verdict. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
+|`sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` |As above with +sep_rom_decrypt_exit=aes_dec_fail. DV shortcut: tb input aes_ctrl_update_err_inject_i forces the AES core's CTRL update error from the stage entry to its return, so the cipher configuration is rejected before the key load. |No residue at the stage return and at the FAIL verdict. |`CHK-NO-KEY-RESIDUE`, `CHK-NO-KEY-RESIDUE-AT-END` |`SEP-ROM-PL-080`
+|`sep_rom_spi_retry_exhaust_test` |Observer base with the SPI boot setup of `sep_rom_ot_dma_boot_test` (+sep_boot_from_spi, OcahSpiFlash, ESRC noise). DV shortcut: from the first MANIFEST_LOAD_START word to the verdict, tb input dma_host_rsp_err_inject_i makes every secure-DMA host response outside a zero fill SLVERR after the first dma_host_rsp_err_pass_beats_i = 4 R and B beats of each transfer, so the SEP SRAM clear between slots completes and each DMA read lands the frame's first 8 flash bytes, the manifest magic included, in the destination buffer before it fails (CTRL-PARTIAL-LANDED, from the PR-SRAM tap). |2 to 4 reads per slot, backup after primary, one MANIFEST_LOAD_START per slot attempt, the partial buffer not acted on, ERROR MANIFEST_LOAD_FAILED and 0xDEADBEEF; halt. |`CHK-READ-RETRIED`, `CHK-ATTEMPTS-BOUNDED`, `CHK-NO-PARTIAL-USE`, `CHK-FALLBACK-OR-TERMINAL`, `CHK-LOAD-START-PER-ATTEMPT` |`SEP-ROM-SPI-030`, `SEP-ROM-RETRY-010`, `SEP-ROM-RETRY-050`
+|===
+
+*Added checker contracts:* each contract states what the check grades and the `rom.adoc` sentence it grades.
+
+[cols="3,2,5",options="header"]
+|===
+|Test |Checker |Contract
+|`sep_rom_observer_smoke_test` |`CHK-OBS-RETIRE` |The observer's retirement count equals the `cpu_trace_mon` count within one, and no trap is recorded.
+|`sep_rom_observer_smoke_test` |`CHK-OBS-KEEP` |The keep filter retains stores, fences and SYSTEM instructions.
+|`sep_rom_observer_smoke_test` |`CHK-OBS-RESET-VECTOR` |The first retirement is at `_start` = 0x10040000, the Boot ROM base. Spec: "The core enters at `_start` in the Boot ROM."
+|`sep_rom_observer_smoke_test` |`CHK-OBS-STATUS-ENCODE` |More than five pre-mret words carry the STATUS_ENCODE BL0 layout, which proves the cold_scratch[1] lane. Spec: "every `STATUS_OUT()` encoded status word lands here".
+|`sep_rom_observer_smoke_test` |`CHK-OBS-STORE-LAG` |At least ten status records match a retired cold_scratch[1] store, each 1 to 64 clk after it. A status record whose store address the tracker cannot resolve stays unmatched and is not graded.
+|`sep_rom_observer_smoke_test` |`CHK-OBS-CONSOLE` |MANIFEST_OK precedes the hand-off mret, and the console BL1_JUMP= address equals the first post-mret PC.
+|`sep_rom_observer_smoke_test` |`CHK-OBS-MRET` |The 64-retirement ring ends on mret, and the first post-mret PC equals the entry address the status channel reports. Spec: "`STARTING_BL1` → `INFO_EXT` ×2 (entry address)".
+|`sep_rom_observer_smoke_test` |`CHK-OBS-PC` |The PC watch records `rom_main`, and no retirement falls outside the watch window.
+|`sep_rom_observer_smoke_test` |`CHK-OBS-WATCH` |The watched run request goes 0, 1, 0 with the pulse width that bring-up drives.
+|`sep_rom_observer_smoke_test` |`CHK-OBS-TRACKER` |Every resolved pmpaddr0 write operand is 0x04011FFF, the Boot ROM entry of the reference PMP region set.
+|`sep_rom_observer_smoke_test` |`CHK-OBS-VERDICT` |cold_scratch[0] ends on 0xACAFACA1. Spec: "`0xACAFACA1` PASS ... in DV".
+|`sep_rom_reset_entry_order_test` |`CHK-HART-GATE` |An mhartid read into a non-zero rd retires before the first data access (load or store). Spec: "Only hart 0 shall execute the boot flow." and "*Hart 0* is the hart whose `mhartid` CSR reads zero."
+|`sep_rom_reset_entry_order_test` |`CHK-MTVEC-FIRST` |An mtvec write retires before the first load or store. Spec: "The trap vector (`mtvec`) shall be programmed before the first MMIO access". The mtvec value is not graded: the reset-stub figure names `trap_vector`, and `rom.adoc` does not say which vector applies before sp is set.
+|`sep_rom_reset_entry_order_test` |`CHK-MRAC-FIRST` |An MRAC (0x7C0) write retires before the first load or store, so before the warm-scratch read. Spec: "The VeeR MRAC CSR (`0x7C0`) shall be configured ... before the warm-scratch register is read".
+|`sep_rom_reset_entry_order_test` |`CHK-ENTRY-ORDER` |The hart read, the mtvec write and the MRAC write retire in that order, all before the first data access. Spec: "The following actions occur strictly in order, before any other memory or MMIO access:"
+|`sep_rom_reset_entry_order_test` |`CHK-MRAC-VALUE` |The last MRAC write before the first data access is a csrrw of 0xAAAAAAA8. Spec: "(value `0xAAAAAAA8`: side-effect, non-cacheable attributes for device regions)".
+|`sep_rom_reset_entry_order_test` |`CHK-HART-NO-PARK` |No retirement falls in the secondary-hart park loop. Spec: "Any other hart shall set its trap vector and park permanently in a `wfi` loop." Only the hart-0 side is reachable on the single-hart core.
+|`sep_rom_boot_quiet_invariants_test` |`CHK-NO-FILTER-WRITE` |No CPU write to an OUTBOUND_FILTER_CTRL register before the hand-off mret. Spec: "the ROM shall open no outbound window at all." Default-deny and cold_scratch-only reporting are not graded, because other `rom.adoc` sections reach the SMC through an outbound window and mirror status into the SMC SRAM ring.
+|`sep_rom_boot_quiet_invariants_test` |`CHK-NO-IRQ` |No interrupt trap and no entry at a watched trap vector before the hand-off mret. Spec: "Interrupts shall remain disabled for the entire ROM execution".
+|`sep_rom_boot_quiet_invariants_test` |`CHK-NO-MIE-SET` |No mie or mstatus write sets an interrupt-enable bit; a write that sets mstatus.MPIE counts. Spec: "no ROM stage re-enables them."
+|`sep_rom_boot_quiet_invariants_test` |`CHK-MIE-CLEAR-ORDER` |mie and mstatus.MIE are cleared after the "entered `_start`" status store and before the first PMP write. Spec: "`mie` is cleared and `mstatus.MIE` is cleared at entry". `rom.adoc` does not define "at entry", so the clause is read as its place in the cold-boot list.
+|`sep_rom_boot_quiet_invariants_test` |`CHK-NO-WDT` |No CPU write to a WDT register, and the WDT ports stay at a known 0. Spec: "The ROM shall not arm the watchdog timer."
+|`sep_rom_boot_quiet_invariants_test` |`CHK-STACK-GLOBALS-DCCM` |`__stack_top` and `__global_pointer$` lie in DCCM, the ROM loads them into sp and gp, and no resolved sp or gp value leaves DCCM. Spec: "The stack and the C globals shall live in DCCM."
+|`sep_rom_dccm_scrub_test` |`CHK-DCCM-WRITE-BEFORE-READ` |Every DCCM read on the PR-TCM port from reset to the hand-off mret hits a word written earlier in the run. Spec: "so that no uninitialized-ECC read and no stale value from a previous boot reaches the boot flow."
+|`sep_rom_dccm_scrub_test` |`CHK-DCCM-READ-LAST-WRITE` |Every DCCM read returns the data and ECC of the last write to that word. Spec: as above.
+|`sep_rom_dccm_scrub_test` |`CHK-DCCM-SPEC-RANGE-WRITTEN` |Every word in [DCCM base, `__stack_top`) takes a zero write before the first `rom_main` retirement. Spec: "The ROM shall leave DCCM in a deterministic state before the C runtime reads it" and "The stub zero-fills DCCM from its base up to at most `__stack_top`." The upper bound is not graded, because other `rom.adoc` sections and `hardware-initialization.adoc` scrub the full 128 KiB DCCM.
+|`sep_rom_dccm_scrub_test` |`CHK-DCCM-PLANTED-NOT-REACHED` |No read returns a word that holds a planted double-bit error (the planted-word subset of READ-LAST-WRITE). Spec: as WRITE-BEFORE-READ.
+|`sep_rom_sram_iccm_clear_test` |`CHK-SRAM-CLEARED-BEFORE-LOAD` |Every SEP SRAM byte takes a zero write on the SRAM request port before the first PR-SMC manifest read beat. Spec: "The ROM shall clear SEP SRAM and ICCM before loading any external content".
+|`sep_rom_sram_iccm_clear_test` |`CHK-SRAM-RESIDUE-CLEARED-AT-LOAD` |The seven probed SRAM words planted through +sep_sram_hex read zero at that beat. Spec: "so that no stale or attacker-resident data can survive into the validated-boot environment."
+|`sep_rom_sram_iccm_clear_test` |`CHK-ICCM-CLEARED-BEFORE-LOAD` |Every ICCM bank row takes a zero write on the ICCM macro port before that beat. Spec: as SRAM-CLEARED-BEFORE-LOAD.
+|`sep_rom_fuse_sense_wait_test`, `sep_rom_fuse_sense_wait_test_hold` |`CHK-NO-FUSE-READ-BEFORE-SENSE` |No CPU read of the SEP eFuse map on PR-LSU-XBAR while smc_fuse_sense_done_i is low. Spec: "The ROM shall not consume any fuse shadow value before fuse sensing has completed."
+|`sep_rom_fuse_sense_wait_test` |`CHK-POLL-GATES-READ` |An SMC_FUSE_SENSE_STATUS poll precedes the first eFuse read and saw sense done. Spec: "Completion is indicated by `SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS` bit 0 (`smc_fuse_sense_done`); the ROM polls it" and "The poll is a discrete stage ([S08]) that runs unconditionally, ahead of every fuse consumer".
+|`sep_rom_fuse_sense_wait_test` |`CHK-SENSE-THEN-READ` |Every eFuse read, LC_STATE included, follows sense completion; the positive control that the tap records the ROM's eFuse reads. Spec: as NO-FUSE-READ-BEFORE-SENSE.
+|`sep_rom_fuse_sense_wait_test_hold` |`CHK-HOLD-WAITS` |With sense held not-done, no eFuse read and the poll still running at the end of the 1.3M-cycle window. Spec: "the ROM polls it without timeout", graded up to the window.
+|`sep_rom_lc_state_record_test_*` (7 entries) |`CHK-LC-RECORDED` |After the first LC_STATE read, the raw value is written zero-extended to `bl0_state.lc_state` on the PR-TCM DCCM write port, and the word holds it at the hand-off mret or at the FAIL verdict. Spec: "The validated LC state shall be recorded in `bl0_state.lc_state` for consumption by later stages and by BL1". Reads by later stages and BL1 are not graded.
+|`sep_rom_lc_state_record_test_*` (7 entries) |`CHK-LC-REPORTED` |cold_scratch[1] carries FUSE_LC_STATE 0x01010020, then INFO_EXT 0x8101000<raw>, then LIFECYCLE_VALID 0x0101002C. Spec: "and shall be reported on the status channel." The ring channel is not graded.
+|`sep_rom_pmp_program_test` |`CHK-PMP-VALUES-KNOWN` |The tracker resolves every PMP and mseccfg write operand of the cold rule set. Precondition of the checks below; it grades no spec sentence.
+|`sep_rom_pmp_program_test` |`CHK-RLB-FIRST` |An mseccfg write that sets RLB retires before the first pmpcfg write that sets an L bit. Spec: "The ROM shall set `mseccfg.RLB=1` *before* programming any locked PMP rule".
+|`sep_rom_pmp_program_test` |`CHK-ALL-LOCKED` |Every active rule of the cold set has L=1. Spec: "and shall program all fence rules with `L=1`." and "the fence entries shall either carry the lock bit (`L=1`) or an equivalent machine-mode-binding mechanism".
+|`sep_rom_pmp_program_test` |`CHK-MMWP-AFTER-RULES` |An mseccfg write that sets MMWP retires after the last rule write. Spec: "After the locked rule set is programmed, the ROM shall set `mseccfg.MMWP=1`".
+|`sep_rom_pmp_program_test` |`CHK-NO-CATCH-ALL` |No active rule covers the whole address space. Spec: "No catch-all entry is used".
+|`sep_rom_pmp_program_test` |`CHK-WINDOWS-MATCH-SPEC` |The windows and permissions of the cold rule set equal tbl:pmp_regions; the XIP windows join only when an XIP driver is linked, because `rom.adoc` makes them conditional in one place and unconditional in another and gives no XIP base or size. Spec: "Data windows shall be limited to the regions the ROM demonstrably needs" and "Everything else shall have no PMP grant."
+|`sep_rom_pmp_program_test` |`CHK-ONLY-ROM-EXEC` |Only the Boot ROM window carries execute in the cold rule set. Spec: "instruction fetch shall be possible only from the Boot ROM region (`0x1004_0000`, 64 KiB)" and SEP SRAM and ICCM "shall be writable but *non-executable* (`RW-`)". Fetch traps are not graded.
+|`sep_rom_pmp_release_handoff_test` |`CHK-FETCH-ROM-ONLY` |No retirement outside the Boot ROM from the first PMP write to the release. Spec: "instruction fetch shall be possible only from the Boot ROM region".
+|`sep_rom_pmp_release_handoff_test` |`CHK-SINGLE-RELEASE` |Between the cold rule set and the hand-off mret, the only rule-set change is one write to the BL1-region rule; an mseccfg write that only clears RLB is logged as OBS-RLB-AT-JUMP. Spec: "shall be implemented as a single rewrite of the locked BL1-region rule" and "shall not modify any other rule at release."
+|`sep_rom_pmp_release_handoff_test` |`CHK-RELEASE-ADDS-ONLY-X` |The release adds execute to the BL1-region rule and changes no other bit. Spec: "from `RW-` to executable".
+|`sep_rom_pmp_release_handoff_test` |`CHK-RELEASE-UNDER-RLB` |RLB is 1 and MMWP is not cleared at the release. Spec: "legal only while `mseccfg.RLB=1`" and "The ROM shall not clear `mseccfg.MMWP`".
+|`sep_rom_pmp_release_handoff_test` |`CHK-RELEASE-AFTER-PROGRESS` |The release follows MANIFEST_VALIDATED, FUSE_SECRETS_LOCKED and HANDOFF_CHECK. Spec: "Only after the self-check passes shall the ROM release the PMP execution fence". The "passes" clause is logged as blocked: no spec status reports a passed self-check.
+|`sep_rom_pmp_release_handoff_test` |`CHK-RELEASE-LAST-CSR-WRITE` |No CSR write, other than an RLB clear, between the release and the mepc write. Spec: "The release shall be the last write before the jump sequence." Stores after the release are OBS only: `rom.adoc` does not say whether "write" includes stores, and its hand-off figures copy the BL1 image after the release.
+|`sep_rom_pmp_release_handoff_test` |`CHK-JUMP-SEQUENCE` |mepc write, fence.i, fence and mret retire in that order before the hand-off. Spec: "`mepc ← entry`, `fence.i` (IFU sees the new SRAM contents), `fence` (stores complete), then `mret`."
+|`sep_rom_pmp_release_handoff_test` |`CHK-JUMP-TARGET` |The first post-mret PC equals `load_addr + entry_point` of the TOC BL1 entry and the status-reported entry. Spec: "control transfers to `load_addr + entry_point`".
+|`sep_rom_demote_after_lock_order_test` |`CHK-DEMOTE1-AFTER-LOCK` |The first clk edge where the LOCKS shadow word holds all six read-lock bits is strictly earlier than the first edge where DEMOTE_1 leaves its reset value. Spec: "The `DEMOTE_1` write shall be ordered after the fuse-secret read-locks of [S25]/[S26]". The clause "the last fuse state BL0 changes" is OBS only; the second sentence is not graded.
+|`sep_rom_version_hash_report_test` |`CHK-CONSOLE-VERSION` |The console carries the BL0_VERSION string of the image's build. Spec: "The ROM shall report its version string and self-hash at every boot ([S05]): the full value through the debug console".
+|`sep_rom_version_hash_report_test` |`CHK-CONSOLE-HASH` |The console carries the SHA-256 of [ROM base, `__metadata_end`) of the loaded image. Spec: as CONSOLE-VERSION, with the hashed region from SEP-ROM-ATT-010: "the hash covers the `.text` + `.metadata` bytes — `[ROM base, __metadata_end)`".
+|`sep_rom_version_hash_report_test` |`CHK-STATUS-HASH-PREFIX` |On cold_scratch[1], the ROM_HASH word is followed by two INFO_EXT words that carry the first 32 digest bits, most significant half first; `rom.adoc` does not define the order of the two halves. Spec: "a machine-readable prefix (first 16 bits × 2) as `INFO_EXT` status words following `SEP_MSG_ROM_HASH` on the status channel."
+|`sep_rom_version_hash_report_test` |`CHK-REPORT-AT-S05` |ROM_HASH and both console lines fall after BOOTROM_START_MAIN and before the [S06] DEVICE_MODE_INPUTS_CHECK word. Spec: "at every boot ([S05])"; one cold boot is graded.
+|`sep_rom_pcrv_slot_order_test` |`CHK-SEPARATE-SLOTS` |Exactly two enrollments (RECORD_MEASUREMENT and its INFO_EXT slot word), carrying slot 0 and slot 1. Spec: "BL0's two measurements occupy separate slots ... slot 0 = ROM identity, slot 1 = boot configuration/state". The slot-0 value is not graded.
+|`sep_rom_pcrv_slot_order_test` |`CHK-SLOT0-AFTER-VERIFY` |Every byte of [ROM base, `__metadata_end`) is read on the LSU ROM port before the slot-0 store. Spec (SEP-ROM-ATT-060): "Before enrollment, the ROM shall *verify* its embedded self-hash by recomputing SHA-256 over the hashed ROM region". The read stands for the recompute; the compare is not graded.
+|`sep_rom_pcrv_slot_order_test` |`CHK-VERIFY-AFTER-S14-S10` |That read starts after all eight HMAC DIGEST words are read following CRYPTO_INIT_CHECK and after the first BL0_STATE_INIT word. Spec (SEP-ROM-ATT-060): "This runs after the crypto self-test ([S14]) and `bl0_state` initialization ([S10])."
+|`sep_rom_pcrv_slot_order_test` |`CHK-SLOT0-BEFORE-SLOT1` |The slot-0 enrollment precedes the slot-1 enrollment, the order of fig:measurement_compose and of the stages [S17] and [S27].
+|`sep_rom_pcrv_slot_order_test` |`CHK-SLOT1-AFTER-VALIDATION` |MANIFEST_VALIDATED, then the slot-1 enrollment, then the hand-off mret. Spec (SEP-ROM-ATT-030): "After the manifest has fully validated ... the ROM shall compose the boot-state record below, enroll it into slot 1". The clause "before the fuse-secret locks" is OBS only, because the boot-flow figure and the stage table place the slot-1 enrollment after the DEMOTE_1 write, which follows the locks.
+|`sep_rom_smc_scratch_sanity_test` |`CHK-SANITY-WRITES` |The first four scratch[7] writes carry the four spec patterns, in any order, each with all four byte strobes. Spec: "four patterns (`0xA5A55A5A`, `0x12345678`, `0x00000000`, `0xFFFFFFFF`) are written to scratch[7] and read back."
+|`sep_rom_smc_scratch_sanity_test` |`CHK-SANITY-READBACKS` |Each write is read back before the next scratch[7] write, with an OKAY response and equal data. Spec: as SANITY-WRITES.
+|`sep_rom_smc_scratch_sanity_test` |`CHK-SANITY-RESTORE` |After the fourth read-back the last scratch[7] write up to the hand-off mret is zero, and the responder holds zero. Spec: "the register shall be restored to zero on success." The 0xA001 mismatch path and "Before any protocol decision depends on the SMC" are not graded: the [S03] gate reads the SMC DFX status and straps before the sanity check, and `rom.adoc` does not say whether those reads are exempt.
+|`sep_rom_smc_manifest_ready_wait_test` |`CHK-NO-CONSUME-BEFORE-READY` |No PR-SMC read of scratch[8] from the wait status to the release, and no SMC SRAM read from the first scratch[9] poll to the release. Spec: "The ROM shall wait (unbounded poll) for `scratch9.MANIFEST_READY` before consuming scratch[8]." The pre-wait probe read of scratch[8] is OBS only, because `rom.adoc` does not define "consuming".
+|`sep_rom_smc_manifest_ready_wait_test` |`CHK-CONSUMED-PUBLISHED-OFFSET` |After the release: a scratch[9] poll, a scratch[8] read and the manifest fetch from SMC SRAM at the published offset; no read of the decoy page; MANIFEST_SRC= names the published address. Spec: "The manifest is copied by secure DMA from `SMC_SRAM_base + scratch[8]` into SEP SRAM". The clause "by secure DMA" is not graded.
+|`sep_rom_smc_manifest_offset_invalid_test_*` (3 entries) |`CHK-SLOT-REFUSED` |Between the post-wait scratch[8] read and the verdict an ERROR MANIFEST_LOAD_FAILED; no MANIFEST_VALIDATED; verdict 0xDEADBEEF; no status or console record after it; no MANIFEST_OK or BL1_JUMP= line. Spec: "The ROM shall reject a manifest offset of `0xFFFFFFFF` and shall bounds-check the staged manifest ... against the 1 MiB SMC SRAM window before reading." The clause "before reading" is OBS only, because `smc-coordination.adoc` says the ROM does not range-check the manifest header read and leaves the offset to the SMC; the `_manifest_straddle` entry shows reads before the refusal, which `rom.adoc` alone does not allow.
+|`sep_rom_status_ring_bounds_test_*` (2 entries) |`CHK-RING-NO-WRITE-OUTSIDE` |Up to the hand-off every PR-SMC write lies in the SMC SRAM window or the SMC scratch block; `straddle`: no write touches the header; `bad_header`: every window write lies in the declared ring. Spec: "never write outside the window".
+|`sep_rom_status_ring_bounds_test_*` (2 entries) |`CHK-INVALID-REPORTED` |After the ROM reads scratch[11] (`bad_header`: after its first header read), cold_scratch[1] carries BL0 STATUS_REPORTING_INVALID (code 0x79; the type is logged only, because `rom.adoc` defines ERROR as fatal while this report lets the boot continue). Spec: "report `STATUS_REPORTING_INVALID` on the scratch channel".
+|`sep_rom_status_ring_bounds_test_*` (2 entries) |`CHK-BOOT-CONTINUES` |The invalid-ring report precedes MANIFEST_OK, and the boot reaches the BL1 PASS verdict. Spec: "shall degrade gracefully on an invalid ring". The clause "never disable reporting on a possibly-transient error" is not graded: `rom.adoc` does not say whether an invalid scratch[11] offset is a possibly-transient error.
+|`sep_rom_status_ring_severity_test` |`CHK-RING-SEVERITY-RESERVE` |At the end of the run `entries[0..k)` equal expected_ring(offered, 8), head is k and the slots past k hold the fill words; offered is every non-DEBUG cold_scratch[1] word after the first scratch[11] read. Spec: "`INFO`-class inserts require 3 free slots and degrade to an `INFO_OVERFLOW` marker at exactly 3; `WARN` requires 2, degrading to `WARNING_OVERFLOW`; `ERROR` inserts down to the last free slot." The ring layout and the retention rule are inferences, because the SEP ROM documents define neither.
+|`sep_rom_oca_library_callback_test` |`CHK-TABLE-WIRED` |Each of the eight role members of the ROM's `oca_callbacks_t` table holds a ROM function outside the library text (static check of the loaded image). Spec: "supplying its hardware bindings through the `oca_callbacks_t` table".
+|`sep_rom_oca_library_callback_test` |`CHK-LIBRARY-ENTERED` |`oca_validate` or `oca_validate_manifest` retires before the MANIFEST_VALIDATED word. Spec: "The ROM shall validate manifests with the freestanding OCA validation library".
+|`sep_rom_oca_library_callback_test` |`CHK-CALLBACKS-FROM-LIBRARY` |`sha256`, `verify_signature`, `get_root_key_revocation` and `get_security_version` are each entered between the last library entry and MANIFEST_VALIDATED by a jump from library text. Spec: "(SHA-256 via the HMAC block, RSA-3072 via OTBN, ... device revocation and security-version state from the efuse map)". The hardware route of each callback is not graded.
+|`sep_rom_entropy_health_fail_terminal_test` |`CHK-ENTROPY-FATAL` |ENTROPY_INIT_FAILED follows ENTROPY_INIT_START; the last status word is ERROR ROM_ERR_ENTROPY_INIT_FAILED (0x0F01F009) after it; the last verdict is 0xDEADBEEF. Spec: "A failed bring-up shall stop the boot, reported as `SEP_MSG_ENTROPY_INIT_FAILED` ... and halt on `ROM_ERR_ENTROPY_INIT_FAILED`."
+|`sep_rom_entropy_health_fail_terminal_test` |`CHK-STAGE-MARKER` |A console line between ENTROPY_INIT_START and the failure report names the health test. Spec: "with a console marker naming the stage that failed".
+|`sep_rom_entropy_health_fail_terminal_test` |`CHK-NO-SLOT-RETRY` |After the failure: no slot console marker, no MANIFEST_LOAD_START or MANIFEST_LOAD_FAILED word, no SPI chip-select assertion. Spec: "It shall *not* be treated as a per-slot failure".
+|`sep_rom_entropy_health_fail_terminal_test` |`CHK-HALTED` |For 20,000 clk after the verdict the retired PCs span at most 64 bytes and cold_scratch[1], cold_scratch[0] and the console do not change. Spec: "halt on `ROM_ERR_ENTROPY_INIT_FAILED`", with SEP-ROM-RETRY-050 (d) "parks in `wfi`".
+|`sep_rom_entropy_lock_order_test` |`CHK-FIPS-LOCK-AFTER-HEALTH` |At least one MAIN_SM_STATUS read in the bring-up window, every one before the first FIPS_LOCK AW, and the last gated-out ESRC sample before that AW. Spec: "The ROM shall lock the ESRC configuration (`FIPS_LOCK`) after the startup health test passes".
+|`sep_rom_entropy_lock_order_test` |`CHK-FIPS-LOCK-BEFORE-CONSUMER` |The FIPS_LOCK write is the locking write, and its B precedes the first entropy consumer event (CSRNG seed ack, DRBG stream beat or crypto EDN delivery). Spec: "and *before* any entropy reaches a consumer."
+|`sep_rom_entropy_lock_order_test` |`CHK-SRC-SEL-LOCK-AFTER-BRINGUP` |The first EXT_TRNG_SRC_SEL_LOCK AW follows the FIPS_LOCK AW, the SW_CMD_REQ AW, the CSRNG Instantiate, the seed ack and a SW_CMD_STS read; no SW_CMD_STS read follows it; it is the locking write and its B precedes the hand-off mret. Spec: "The ROM shall lock the TRNG source selection (`EXT_TRNG_SRC_SEL_LOCK`) once bring-up completes". Whether a lock blocks a later write is not graded; the order against the OTBN URND reseed is OBS only, because `rom.adoc` does not say whether that reseed must follow the lock.
+|`sep_rom_no_fuse_program_test` |`CHK-NO-OTP-CHANGE` |The 256-word OTP bank at hand-off and at the end equals the bank at reset. Spec: "*the ROM burns no fuses*".
+|`sep_rom_no_fuse_program_test` |`CHK-NO-PROGRAM-CMD` |No PROGRAM or PROGRAM_READ_BACK command on the eFuse shim tap from the monitor start to the end. Spec: "BL0 therefore has no fuse-programming path by design". The `bl0_state` commit directive is not graded: tbl:bl0_state has no field for it.
+|`sep_rom_rsa_exponent_non_f4_refuse_test`, `sep_rom_rsa_exponent_non_f4_refuse_test_f4_signed` |`CHK-NON-F4-REFUSED` |The primary attempt ends with a MANIFEST_ERR= code, and the ROM then tries the backup; the spec names no code, so any code passes; this is the one exception to the credit rule that a refusal must carry the expected code (<<sep-rom-vplan-credit-rules>>). Spec: "a public key carrying any other exponent shall be rejected." The `_f4_signed` entry separates rejection from an ignored exponent (the key layout comes from the OCA implementation, because `rom.adoc` gives no exponent field).
+|`sep_rom_rsa_key_direct_otbn_test` |`CHK-NO-KM-TO-OTBN` |Across the BL0 run every Key Manager key-path AW and AR valid and every engine sideload key valid stays a known 0, the Key Manager CPU fetch count stays constant, and the CPU makes no access to the mailbox aperture. Spec: "the Key Manager shall take no part in secure-boot signature verification."
+|`sep_rom_rsa_key_direct_otbn_test` |`CHK-CPU-WRITES-MODULUS` |Before the EXECUTE command every word of the 384-byte modulus buffer takes a CPU write with OKAY, the DMEM write count grows only by the CPU writes, and the post-run read-back equals the modulus of the key that signed the accepted manifest. Spec: "The manifest's public key shall be delivered directly to OTBN". The exponent is not graded.
+|`sep_rom_encryption_requires_secure_boot_test` |`CHK-ENCRYPTED-REFUSED` |The flash serves the primary then the backup manifest, and no MANIFEST_VALIDATED or PAYLOAD_VALIDATED word is reported. Spec: "a manifest marking its payload encrypted while the secure-boot decision is *off* shall be rejected".
+|`sep_rom_encryption_requires_secure_boot_test` |`CHK-REFUSAL-CAUSE` |`bl0_state.error_code` at the verdict is `OCA_BOOT_ERR_BASE` combined with `OCA_FAIL_SECURE_BOOT_INVARIANT` or with `OCA_FAIL_ENCRYPTION_REQUIRES_SECURE_BOOT`. Spec: "(the `secure-boot invariant` check)"; PL-050 and the security inventory name `OCA_FAIL_SECURE_BOOT_INVARIANT`, while MAN-030, the pipeline figure and the code registry name `OCA_FAIL_ENCRYPTION_REQUIRES_SECURE_BOOT`, so the set both readings accept is graded.
+|`sep_rom_encryption_requires_secure_boot_test` |`CHK-NO-DECRYPTION` |No DECRYPTION_START, DECRYPTION_END or DECRYPTION_FAILED word and no DECRYPT_OK line; in the manifest-attempt span no retirement at the decrypt, KDF or AES entry and no CPU access to the AES aperture. Spec: "Payload encryption shall require secure boot".
+|`sep_rom_encryption_requires_secure_boot_test` |`CHK-TERMINAL` |ERROR MANIFEST_LOAD_FAILED (0x0F010213) after the last SPI chip-select and before the last verdict, 0xDEADBEEF; no retirement leaves the ROM; 20,000 clk halt window. Spec (SEP-ROM-RETRY-030): "A failure anywhere in that chain fails the *slot*, not the boot, until no slot remains."
+|`sep_rom_decrypt_exit_zeroize_test_*` (4 entries) |`CHK-NO-KEY-RESIDUE` |When the decryption stage returns, no 16-byte window of the class key, the derived key or the KDF input, in byte order or word-reversed, is at any DCCM byte offset. Spec: "All key material (class key, derived key, KDF inputs) shall be zeroized (`explicit_memzero`) on every exit path from the decryption stage, success or failure." Graded as material not found, not as bytes written to zero.
+|`sep_rom_decrypt_exit_zeroize_test_*` (4 entries) |`CHK-NO-KEY-RESIDUE-AT-END` |The same search at the hand-off mret (success) or at the FAIL verdict (failures). Spec: as NO-KEY-RESIDUE.
+|`sep_rom_spi_retry_exhaust_test` |`CHK-READ-RETRIED` |At least two read frames at the primary manifest address before the first backup frame, at least two at the backup address, and each slot's WARN SPI_OT_TRANSPORT_ERROR after its last frame. Spec: "A transport-level read fault shall be retried ... before being reported to the loader".
+|`sep_rom_spi_retry_exhaust_test` |`CHK-ATTEMPTS-BOUNDED` |At most four read frames at each slot's manifest address. Spec: "a bounded number of times (OpenTitan driver: 3)".
+|`sep_rom_spi_retry_exhaust_test` |`CHK-NO-PARTIAL-USE` |With the first 8 bytes of each faulted frame, the manifest magic included, in the buffer, the ROM does not act on them: no frame returns a byte outside the span of its slot's first frame, no WARN word other than SPI_OT_* from the first MANIFEST_LOAD_START to MANIFEST_LOAD_FAILED, no MANIFEST_VALIDATED or PAYLOAD_VALIDATED word, and no OCA_BODY=, MANIFEST_OK or PAYLOAD_OK line. Spec: "never by accepting partial data."
+|`sep_rom_spi_retry_exhaust_test` |`CHK-FALLBACK-OR-TERMINAL` |Every frame lies in the primary or backup slot span; a MANIFEST_LOAD_START word between the last primary and the first backup frame; after the last backup frame ERROR MANIFEST_LOAD_FAILED (0x0F010213), then 0xDEADBEEF, no later frame, and a 20,000 clk halt. Spec: "a read that still fails is handled by slot fallback"; SEP-ROM-RETRY-010 "primary (`0x1000`) then backup (`0x41000`)"; SEP-ROM-RETRY-050 (b) to (d).
+|`sep_rom_spi_retry_exhaust_test` |`CHK-LOAD-START-PER-ATTEMPT` |The number of MANIFEST_LOAD_START words equals the number of slots with read frames, and each such slot has exactly one after the previous slot's last frame and before its own first frame. Spec (tbl:stage_trace, [S23]): "`MANIFEST_LOAD_START` (per attempt)".
+|===
+
 [[sep-rom-vplan-regression-groups]]
 === Regression Groups
 
@@ -2662,7 +3011,7 @@ PASS record of its own.
 |===
 |Group |Tests |Purpose
 |`rom_fw_smoke` |`sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` |Bring-up of the SMC-SRAM, OpenTitan SPI DMA and PIO, and signed boot paths, and of the hand-off magic. Run it first after a ROM or toolchain change
-|`rom_fw` |All 191 tests of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
+|`rom_fw` |All 237 entries of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
 |===
 
 [source,bash]
@@ -2691,8 +3040,9 @@ reset. Test timeouts are 1 to 6 hours of wall time.
 |===
 |Limitation |Impact
 |No CI tier runs `rom_fw` |Boot ROM evidence comes from a local run on a host with the toolchain
-|Cold-path value of `cold_scratch[7]` |`rom.adoc` (Cold Boot Environment Setup, step 1, and Warm-Reset Resume Path, step 2) says the ROM clears the slot on a cold boot. `bl1-handoff.adoc` (Warm-reset return) says the ROM poisons it with `-1`, and `vector.S` writes `0xFFFFFFFF`. `sep_warm_reset_unarmed_cold_boot_test` expects `0xFFFFFFFF`. The two specification chapters disagree, and the ROM owner decides which value is correct
 |Memory-repair gate |`SEP-ROM-SMC-030` names the `mem_repair_bypass` strap (`STRAPS_LO[13]`) as the only escape. `vector.S` also gates on the MBIST result, which `SEP-ROM-SMC-030` does not name; `sep_firmware_mbist_only_fail_test` follows `vector.S` for this behaviour
+|PL-080 AES idle-timeout exits |`sep_rom_decrypt_exit_zeroize_test_aes_init_fail` and `sep_rom_decrypt_exit_zeroize_test_aes_dec_fail` reach the AES failure exits through tb hooks at the first driver check. The ROM's bounded AES idle waits, which return through the same exits, are not executed in simulation
+|`SEP-ROM-HOFF-050` has no test |`rom.adoc` says the gate ledger is not implemented and defines no observable output, so no test maps to the requirement
 |===
 
 [[sep-rom-vplan-formal]]
@@ -2706,7 +3056,7 @@ The Boot ROM has no formal flow.
 [cols="4,1,4",options="header"]
 |===
 |Item |State |Note
-|Every test in the summary has a procedure group |Yes |191 tests in 33 groups
+|Every test in the summary has a procedure group |Yes |237 tests in 35 groups
 |Every documented test exists in `rom_fw.toml` and in the `rom_fw` group |Yes |Checked against both
 |Every test has at least one checker with a PASS record |Yes |Static check of the test source: 0 tests without one
 |`rom_fw` has an `expected_count` |No |`rom_fw_smoke` has one. `rom_fw` does not, so a dropped entry does not fail the testlist load

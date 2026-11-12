@@ -473,6 +473,10 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "dma_fill_fault_sel_i", 0)
         self._set_if_exists(dut, "token_digest_test_en_inject_i", 0)
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
+        self._set_if_exists(dut, "dma_host_rsp_err_inject_i", 0)
+        self._set_if_exists(dut, "dma_host_rsp_err_pass_beats_i", 0)
+        self._set_if_exists(dut, "aes_sw_rst_readback_inject_i", 0)
+        self._set_if_exists(dut, "aes_ctrl_update_err_inject_i", 0)
         self._set_if_exists(dut, "hmac_fifo_drain_stall_i", 0)
         self._set_if_exists(dut, "kmac_fifo_drain_stall_i", 0)
         # Crypto and entropy injects off and the external TRNG streams and

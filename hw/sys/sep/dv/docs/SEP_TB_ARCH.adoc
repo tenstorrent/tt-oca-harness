@@ -1282,6 +1282,27 @@ Exceptions (a closed set):
   beat, so a reader samples the tap after the falling edge: a handshake seen
   there is the one taken at the next rising edge, with the data taken. Owner:
   `sep_mailbox_plic_test`.
+* *DMA host-path response error inject* — `dma_host_rsp_err_inject_i` forces
+  the `resp` of the host adapter's AXI-lite read and write responses to
+  SLVERR, so every secure-DMA host transfer other than a zero fill
+  (`CONTROL.OPCODE` 4) ends in a bus error on its first beat. A zero fill is left
+  alone so the ROM's memory clears complete. Data, valid and ready are not forced. Nothing is forced until the input
+  first rises; a release can keep SLVERR until the response driver changes.
+  `dma_host_rsp_err_pass_beats_i` (default 0) lets that many R and B beats of each transfer, counted
+  from the engine leaving idle, complete normally before SLVERR, so a partial transfer lands first.
+  Owner: `sep_rom_spi_retry_exhaust_test`.
+* *AES software-reset readback inject* — `aes_sw_rst_readback_inject_i`
+  forces bit 2 of the `sep_reset_ctrl` register read data
+  (`SW_RESET_N.aes_sw_rst_n`) to 0, so software sees the AES held in reset.
+  The register field, the AES reset and every other bit are not forced.
+  Nothing is forced until the input first rises; the release restores the read
+  data at once. Owner: `sep_rom_decrypt_exit_zeroize_test`.
+* *AES CTRL update error inject* — `aes_ctrl_update_err_inject_i` forces the
+  AES core's shadowed-register update error input to 1, so
+  `STATUS.ALERT_RECOV_CTRL_UPDATE_ERR` sets and the AES sends its recoverable
+  alert. The alert reaches the crypto alert receiver, the PIC and the RAS
+  outputs only; it does not reset the SEP or raise an NMI. Nothing is forced
+  until the input first rises. Owner: `sep_rom_decrypt_exit_zeroize_test`.
 * *Crypto message-FIFO drain stall* — `hmac_fifo_drain_stall_i` holds the
   read-ready of the HMAC message FIFO (`fifo_rready`) and the word valid that
   `hmac_core` gives the SHA-2 engine (`u_hmac.sha_rvalid_o`, the core's view of

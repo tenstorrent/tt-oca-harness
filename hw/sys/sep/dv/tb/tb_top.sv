@@ -3143,6 +3143,73 @@ module sep_uvm_top
     end
 `undef DMA_HOST_CMD_INTG_DI
 
+    // While the input is high, every secure-DMA host response after the first pass_beats of a
+    // transfer returns SLVERR, except during a zero fill, so a ROM memory clear still completes.
+`define DMA_HOST_AXIL_RSP `SEP_CORE.u_sep_dma_wrap.axi_lite_mst_resp
+`define DMA_HOST_AXIL_REQ `SEP_CORE.u_sep_dma_wrap.axi_lite_mst_req
+    logic dma_host_rsp_err_forced;
+    logic [$bits(dma_host_rsp_err_pass_beats_i)-1:0] dma_host_rsp_beats_q, dma_host_rsp_beats_d;
+    // Saturating count of host response beats since the engine left idle for a new transfer.
+    always_comb begin
+        dma_host_rsp_beats_d = `SEP_CORE.u_sep_dma_wrap.u_secure_dma.clear_status ?
+                               '0 : dma_host_rsp_beats_q;
+        if (`DMA_HOST_AXIL_RSP.r_valid && `DMA_HOST_AXIL_REQ.r_ready &&
+            (dma_host_rsp_beats_d != '1)) begin
+            dma_host_rsp_beats_d = dma_host_rsp_beats_d + 1'b1;
+        end
+        if (`DMA_HOST_AXIL_RSP.b_valid && `DMA_HOST_AXIL_REQ.b_ready &&
+            (dma_host_rsp_beats_d != '1)) begin
+            dma_host_rsp_beats_d = dma_host_rsp_beats_d + 1'b1;
+        end
+    end
+    always @(posedge clk_i) begin
+        dma_host_rsp_beats_q <= dma_host_rsp_beats_d;
+        if ((dma_host_rsp_err_inject_i === 1'b1) &&
+            (`SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.control.opcode.q != 4'h4) &&
+            (dma_host_rsp_beats_d >= dma_host_rsp_err_pass_beats_i)) begin
+            force `DMA_HOST_AXIL_RSP.r.resp = axi_pkg::RESP_SLVERR;
+            force `DMA_HOST_AXIL_RSP.b.resp = axi_pkg::RESP_SLVERR;
+            dma_host_rsp_err_forced <= 1'b1;
+        end else if (dma_host_rsp_err_forced === 1'b1) begin
+            release `DMA_HOST_AXIL_RSP.r.resp;
+            release `DMA_HOST_AXIL_RSP.b.resp;
+            dma_host_rsp_err_forced <= 1'b0;
+        end
+    end
+`undef DMA_HOST_AXIL_REQ
+`undef DMA_HOST_AXIL_RSP
+
+    // While the input is high, SW_RESET_N reads back its AES bit as 0; the AES stays out of reset.
+`define RST_CTRL_REG `SEP_CORE.u_sep_reset_ctrl.u_reg
+    logic aes_sw_rst_readback_forced;
+    always @(posedge clk_i) begin
+        if (aes_sw_rst_readback_inject_i === 1'b1) begin
+            force `RST_CTRL_REG.cpuif_rd_data = (`RST_CTRL_REG.rd_mux_addr == 4'h0) ?
+                                                (`RST_CTRL_REG.readback_data & ~64'h4) :
+                                                `RST_CTRL_REG.readback_data;
+            aes_sw_rst_readback_forced <= 1'b1;
+        end else if (aes_sw_rst_readback_forced === 1'b1) begin
+            release `RST_CTRL_REG.cpuif_rd_data;
+            aes_sw_rst_readback_forced <= 1'b0;
+        end
+    end
+`undef RST_CTRL_REG
+
+    // While the input is high, the AES core flags a CTRL update error as a recoverable alert.
+`define AES_SHADOWED_UPD_ERR \
+    `SEP_CORE.u_sep_crypto.u_aes_wrapper_s3c_scan.u_tt_aes.u_aes_core.shadowed_update_err_i
+    logic aes_ctrl_update_err_forced;
+    always @(posedge clk_i) begin
+        if (aes_ctrl_update_err_inject_i === 1'b1) begin
+            force `AES_SHADOWED_UPD_ERR = 1'b1;
+            aes_ctrl_update_err_forced <= 1'b1;
+        end else if (aes_ctrl_update_err_forced === 1'b1) begin
+            release `AES_SHADOWED_UPD_ERR;
+            aes_ctrl_update_err_forced <= 1'b0;
+        end
+    end
+`undef AES_SHADOWED_UPD_ERR
+
     // ------------------------------------------------------------------
     // Mailbox WRITE_DATA unstrobed-lane inject.
     // ------------------------------------------------------------------
@@ -6046,6 +6113,10 @@ module sep_uvm_top
     assign mbox_lane_inject_arm_i   = 1'b0;
     assign mbox_lane_inject_mbx_i   = '0;
     assign mbox_lane_inject_data_i  = '0;
+    assign dma_host_rsp_err_inject_i = 1'b0;
+    assign dma_host_rsp_err_pass_beats_i = '0;
+    assign aes_sw_rst_readback_inject_i = 1'b0;
+    assign aes_ctrl_update_err_inject_i = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
     assign kmac_fifo_drain_stall_i  = 1'b0;
     assign crypto_alert_inject_i    = 1'b0;
