@@ -3,7 +3,7 @@
 # DV-TESTCASE-CONTRACT: SMC_COV_B1_003 ANCHOR: smc_reference_counter_test
 # DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: 31bb60a38828f335ba0f376099bb58de13c3ac556b44ca2cedc2e5e850f347fa
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 6 ENV: cocotb
-"""CPU_CTRL REFERENCE_COUNTER rate, and its write-load and poll-until-reflected protocol."""
+"""CPU_CTRL REFERENCE_COUNTER rate, its write-load and poll protocol, and the reload spacing."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_reference_counter_test(smc_base_test):
-    """64-bit refclk counter rate check and V1..V8 load legs; not the OCTS timer."""
+    """64-bit refclk counter rate check, V1..V8 load legs and the spaced VA, VB reload; not the OCTS timer."""
 
     required_evidence = (
         "CHK-NONVAC",
@@ -26,10 +26,11 @@ class smc_reference_counter_test(smc_base_test):
         "CHK-REFCNT-LOAD",
         "CHK-REFCNT-MONOTONIC",
         "CHK-REFCNT-RELOAD",
+        "CHK-REFCNT-SPACED-LANDS",
         "CHK-REFCNT-UPPER-HALF",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 8
+    min_evidence = 9
 
     async def run_scenario(self) -> None:
         seq = smc_reference_counter_test_seq("ref_count_seq")

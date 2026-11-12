@@ -18,7 +18,7 @@ two-sided bound on the observed delta, measured over the very interval the two
 CSR samples bracket -- so a counter clocked by ``clk_smc_i`` (faster), by
 ``clk_periph_i``, or at half rate fails.
 
-Load protocol, EXPECT-SOURCE ``hw/sys/smc/regs/gen/adoc/blocks/cpu_ctrl.adoc:118-128``
+Load protocol, EXPECT-SOURCE ``hw/sys/smc/regs/gen/adoc/blocks/cpu_ctrl.adoc:137-146``
 (``rc``, 63:0, RW): software writes the counter once, then polls until the readback
 reflects the written value, at or just above it, before writing again. Every load
 is a full-strobe 64-bit write and every poll a 64-bit read answering OKAY. A poll
@@ -33,12 +33,28 @@ reading).
 V7 and V8 have the Gray images all ones and all zeros, so every bit of the
 Gray-coded count crossing sees both edges; that is a stimulus purpose, not an
 expected value.
+
+Reload spacing, EXPECT-SOURCE ``doc/programmer/src/sep-smc-common.adoc`` (Reference
+Counter): consecutive writes with no poll between them are separated by at least eight
+reference-clock periods; a reload crosses into the reference-clock domain in at most
+three reference-clock periods plus three CPU-clock periods; a write issued before the
+previous one has crossed is dropped with an OKAY response and no status indication.
+The spaced leg writes VA and, at least eight reference-clock periods later, VB with no
+read between; ``tb_cpu_ref_count`` samples the reference-domain count on every
+``clk_ref_i`` edge and ``tb_cpu_ref_count_update`` marks each update strobe, so the leg
+confirms its own strobe spacing met the eight periods, compares the edges each value
+needed to appear in the count against the stated crossing bound, and then polls VB to
+convergence. The dropped write is not driven: the RTL assertion ``CntUpdateAccepted_A``
+is compiled out under Verilator and live under VCS and Xcelium, where the drop fires it
+and stops the run, and the bench holds no plusarg for that assertion.
 """
 
 from __future__ import annotations
 
+import math
+
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import RisingEdge, Timer
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
@@ -69,6 +85,15 @@ V6 = 0x0000_0002_0000_0000
 V7 = 0xAAAA_AAAA_AAAA_AAAA
 V8 = 0x0000_0000_0000_0000
 UPPER_HALF_LOADS = (("V2", V2), ("V3", V3), ("V4", V4))
+VA = 0x0000_0004_0000_0000
+VB = 0x0000_0005_0000_0000
+#: Reference-clock periods between two writes with no poll between them.
+SPACING_REF = 8
+#: A reload crosses within this many reference-clock plus CPU-clock periods.
+CROSS_REF = 3
+CROSS_CPU = 3
+#: Reference-clock edges the spaced leg samples after the second strobe.
+SPACED_SAMPLE_EDGES = 16
 POST_LOAD_READS = 8
 # Reads allowed per convergence poll before the poll fails.
 CONVERGE_POLL_BOUND = 256
@@ -82,6 +107,7 @@ FENCE_TERMS = (
     "RELOAD-HIGHER",
     "LOAD-V7",
     "LOAD-V8",
+    "SPACED-LANDS",
 )
 
 
@@ -140,8 +166,12 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
         Returns (converged readback, polls, ns from the write response to the
         converging read).
         """
-        downward = value <= prev
         await self.csr_write(f"{label}_LOAD", REF_COUNT, value, length=8)
+        return await self._converge(label, value, prev)
+
+    async def _converge(self, label: str, value: int, prev: int) -> tuple[int, int, int]:
+        """Poll until the readback has crossed `value`; see `_load_and_converge`."""
+        downward = value <= prev
         t0 = int(get_sim_time("ns"))
         last = None
         for n in range(1, CONVERGE_POLL_BOUND + 1):
@@ -160,6 +190,109 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
             f"{CONVERGE_POLL_BOUND} polls ({'below' if downward else 'at or above'} "
             f"the previous readback 0x{prev:016x}); last readback 0x{last:016x}"
         )
+
+    @staticmethod
+    async def _period_ns(signal) -> float:
+        await RisingEdge(signal)
+        t0 = int(get_sim_time("ps"))
+        await RisingEdge(signal)
+        return (int(get_sim_time("ps")) - t0) / 1000.0
+
+    @staticmethod
+    def _edges_to_land(samples: list[tuple[int, int]], strobe_ps: int, value: int) -> int | None:
+        """Reference-clock edges after `strobe_ps` until the count first reads `value` or above."""
+        edges = 0
+        for t, count in samples:
+            if t <= strobe_ps:
+                continue
+            edges += 1
+            if value <= count < value + SPACED_SAMPLE_EDGES:
+                return edges
+        return None
+
+    async def _spaced_lands(self, prev: int) -> dict:
+        """Write VA and VB `SPACING_REF` refclk periods apart; both must land in the count."""
+        dut = cocotb.top
+        t_ref = await self._period_ns(dut.clk_ref_i)
+        t_cpu = await self._period_ns(dut.clk_smc_i)
+        bound = math.ceil((CROSS_REF * t_ref + CROSS_CPU * t_cpu) / t_ref)
+        samples: list[tuple[int, int]] = []
+        strobes: list[int] = []
+        stop = {"done": False}
+
+        async def _sample_count() -> None:
+            while not stop["done"]:
+                await RisingEdge(dut.clk_ref_i)
+                await Timer(1, unit="ps")
+                samples.append((int(get_sim_time("ps")), int(dut.tb_cpu_ref_count.value)))
+
+        async def _watch_strobe() -> None:
+            while not stop["done"]:
+                await RisingEdge(dut.tb_cpu_ref_count_update)
+                strobes.append(int(get_sim_time("ps")))
+
+        tasks = (cocotb.start_soon(_sample_count()), cocotb.start_soon(_watch_strobe()))
+        try:
+            await self.csr_write("VA_LOAD", REF_COUNT, VA, length=8)
+            for _ in range(SPACING_REF + 1):
+                await RisingEdge(dut.clk_ref_i)
+            await self.csr_write("VB_LOAD", REF_COUNT, VB, length=8)
+            for _ in range(SPACED_SAMPLE_EDGES):
+                await RisingEdge(dut.clk_ref_i)
+        finally:
+            stop["done"] = True
+            for task in tasks:
+                task.cancel()
+        assert len(strobes) == 2, (
+            f"{len(strobes)} REFERENCE_COUNTER update strobes seen for two writes: {strobes}"
+        )
+        spacing_ns = (strobes[1] - strobes[0]) / 1000.0
+        assert spacing_ns >= SPACING_REF * t_ref, (
+            f"the VA and VB update strobes are {spacing_ns} ns apart, under the "
+            f"{SPACING_REF} reference-clock periods ({SPACING_REF * t_ref} ns) the leg drives"
+        )
+        edges_a = self._edges_to_land(samples, strobes[0], VA)
+        edges_b = self._edges_to_land(samples, strobes[1], VB)
+        legs = (("VA", VA, edges_a, strobes[0]), ("VB", VB, edges_b, strobes[1]))
+        for label, value, edges, strobe_ps in legs:
+            after = [f"0x{c:016x}" for t, c in samples if t > strobe_ps][: bound + 2]
+            assert edges is not None, (
+                f"{label}=0x{value:016x} never appeared in the reference-domain count after its "
+                f"update strobe at {strobe_ps} ps; samples after it: {after}"
+            )
+            assert edges <= bound, (
+                f"{label}=0x{value:016x} appeared in the reference-domain count {edges} clk_ref_i "
+                f"edge(s) after its update strobe, over the stated bound of {bound} "
+                f"({CROSS_REF} reference-clock plus {CROSS_CPU} CPU-clock periods: ref {t_ref} ns, "
+                f"cpu {t_cpu} ns); samples after it: {after}"
+            )
+        r, n, t = await self._converge("VB", VB, prev)
+        assert r >= VB, f"VB converged readback 0x{r:016x} is below 0x{VB:016x}"
+        cocotb.log.info(
+            "CHK-REFCNT-SPACED-LANDS: VA=0x%016x VB=0x%016x written with no read between, update "
+            "strobes %.2f ns apart = %.2f reference-clock periods (at least %d); VA appeared in the "
+            "reference-domain count %d clk_ref_i edge(s) after its strobe and VB %d edge(s) after "
+            "its strobe, bound %d = ceil((%d ref + %d cpu) / ref) with ref %.2f ns and cpu %.2f ns; "
+            "VB then converged R=0x%016x after %d polls %d ns; a write inside the crossing window "
+            "is not driven (dropped with OKAY per the guide; trips CntUpdateAccepted_A where it "
+            "is compiled in)",
+            VA,
+            VB,
+            spacing_ns,
+            spacing_ns / t_ref,
+            SPACING_REF,
+            edges_a,
+            edges_b,
+            bound,
+            CROSS_REF,
+            CROSS_CPU,
+            t_ref,
+            t_cpu,
+            r,
+            n,
+            t,
+        )
+        return {"accesses": 2 + n}
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -234,7 +367,7 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-REF-COUNT-BASIC: delta=%d within the measured refclk-edge "
             "bounds [%d, %d] (one count per clk_ref_i edge, "
-            "doc/trm/src/architecture.adoc:256-265)",
+            "doc/trm/src/clock_domains.adoc Reference Counter)",
             self.delta,
             self.ref_edges_lo - _CDC_SKEW_REF,
             self.ref_edges_hi + _CDC_SKEW_REF,
@@ -309,6 +442,13 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
             f"V8 converged readback 0x{r8:016x} outside [0x{V8:016x}, R7 0x{r7:016x})"
         )
         self._term("LOAD-V8", 1)
+
+        cocotb.log.info(
+            "STEP S8: write VA, then VB %d refclk periods later with no read between", SPACING_REF
+        )
+        spaced = await self._spaced_lands(r8)
+        total += spaced["accesses"]
+        self._term("SPACED-LANDS", 7)
 
         cocotb.log.info(
             "upper-half converged readbacks (LINKED-ISSUE: the bound from a reference counter "

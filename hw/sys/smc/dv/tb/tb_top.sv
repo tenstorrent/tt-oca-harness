@@ -1775,6 +1775,8 @@ module smc_uvm_top
     assign tb_cpu_drained          = `SMC_CPU_WRAP.drained;
     assign tb_cpu_reset_timeout    = `SMC_CPU_CTRL.reset_timeout;
     assign tb_cpu_reset_applied    = `SMC_CPU_CTRL.reset_applied;
+    assign tb_cpu_ref_count        = `SMC_CPU_CTRL.u_refclk_counter.bin_count;
+    assign tb_cpu_ref_count_update = `SMC_CPU_CTRL.u_refclk_counter.cnt_update_i;
     assign tb_cpu_uncore_reset_n   = `SMC_CPU_WRAP.cluster_uncore_reset_n;
     assign tb_cpu_core_resets_n    = `SMC_CPU_WRAP.core_reset_n;
     assign tb_cpu_l2_isolated      = `SMC_CPU.l2_frontend_isolated;
