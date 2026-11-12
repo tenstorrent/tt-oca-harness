@@ -10,8 +10,8 @@
 // An AXI-Lite demux routes each register group the aligned window it decodes: 0x200 bytes for
 // the local-master alias remap, 0x80 each for the AP and STEE output remap, 0x400 for the
 // outbound filter, 0x200 for the inbound filter, 0x2000 for sep_cpu_ctrl, and 0x80 each for the
-// cold and warm scratch registers. The rest of each 4 KiB page reaches a slave that answers
-// DECERR, with read data 0xBADCAB1E. A write to a filter whose FILTER_CONFIG.locked bit is set
+// cold and warm scratch registers, and answers the rest of each 4 KiB page with DECERR and read
+// data 0xBADCAB1E. A write to a filter whose FILTER_CONFIG.locked bit is set
 // receives SLVERR; reads of a locked filter still complete. The cold scratch registers reset on
 // rst_ni and the warm ones on rst_warm_ni; everything else resets on rst_ni. REFERENCE_COUNTER
 // counts clk_ref_i and is read through a CDC into clk_i; a software write loads it.
@@ -95,9 +95,6 @@ module sep_system_csr (
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::SystemCsrDemuxPorts-1:0] sep_system_csr_axil_reqs;
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::SystemCsrDemuxPorts-1:0] sep_system_csr_axil_resps;
 
-  sep_pkg::system_csr_demux_select_e system_csr_demux_select_aw;
-  sep_pkg::system_csr_demux_select_e system_csr_demux_select_ar;
-
   // Outbound Filter signals
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::OutboundFilterNumFilters-1:0] outbound_filter_axil_reqs;
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::OutboundFilterNumFilters-1:0] outbound_filter_axil_resps;
@@ -171,50 +168,10 @@ module sep_system_csr (
       sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM
       * sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE;
 
-  localparam int unsigned AliasRemapWindowW = $clog2(AliasRemapWindowSize);
-  localparam int unsigned ApOutputRemapWindowW = $clog2(ApOutputRemapWindowSize);
-  localparam int unsigned SteeOutputRemapWindowW = $clog2(SteeOutputRemapWindowSize);
-  localparam int unsigned OutboundFilterWindowW = $clog2(OutboundFilterWindowSize);
-  localparam int unsigned InboundFilterWindowW = $clog2(InboundFilterWindowSize);
-  localparam int unsigned CpuCtrlWindowW = sep_cpu_ctrl_reg_pkg::SEP_CPU_CTRL_REG_MIN_ADDR_WIDTH;
-  localparam int unsigned ScratchWindowW = sep_scratch_reg_pkg::SEP_SCRATCH_REG_MIN_ADDR_WIDTH;
-
-  localparam longint unsigned CpuCtrlWindowSize = 64'd1 << CpuCtrlWindowW;
-  localparam longint unsigned ScratchWindowSize = 64'd1 << ScratchWindowW;
-
-  `OCAH_ASSERT_STATIC(AliasRemapWindowPow2_A, AliasRemapWindowSize == (64'd1 << AliasRemapWindowW))
-  `OCAH_ASSERT_STATIC(ApOutputRemapWindowPow2_A,
-                      ApOutputRemapWindowSize == (64'd1 << ApOutputRemapWindowW))
-  `OCAH_ASSERT_STATIC(SteeOutputRemapWindowPow2_A,
-                      SteeOutputRemapWindowSize == (64'd1 << SteeOutputRemapWindowW))
-  `OCAH_ASSERT_STATIC(OutboundFilterWindowPow2_A,
-                      OutboundFilterWindowSize == (64'd1 << OutboundFilterWindowW))
-  `OCAH_ASSERT_STATIC(InboundFilterWindowPow2_A,
-                      InboundFilterWindowSize == (64'd1 << InboundFilterWindowW))
-
-  `OCAH_ASSERT_STATIC(
-      AliasRemapWindowAligned_A,
-      sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR % AliasRemapWindowSize == 0)
-  `OCAH_ASSERT_STATIC(
-      ApOutputRemapWindowAligned_A,
-      sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR % ApOutputRemapWindowSize == 0)
-  `OCAH_ASSERT_STATIC(
-      SteeOutputRemapWindowAligned_A,
-      sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR % SteeOutputRemapWindowSize == 0)
-  `OCAH_ASSERT_STATIC(
-      OutboundFilterWindowAligned_A,
-      sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR % OutboundFilterWindowSize == 0)
-  `OCAH_ASSERT_STATIC(
-      InboundFilterWindowAligned_A,
-      sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR % InboundFilterWindowSize == 0)
-  `OCAH_ASSERT_STATIC(CpuCtrlWindowAligned_A,
-                      sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR % CpuCtrlWindowSize == 0)
-  `OCAH_ASSERT_STATIC(
-      ScratchColdWindowAligned_A,
-      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR % ScratchWindowSize == 0)
-  `OCAH_ASSERT_STATIC(
-      ScratchWarmWindowAligned_A,
-      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR % ScratchWindowSize == 0)
+  localparam longint unsigned CpuCtrlWindowSize =
+      64'd1 << sep_cpu_ctrl_reg_pkg::SEP_CPU_CTRL_REG_MIN_ADDR_WIDTH;
+  localparam longint unsigned ScratchWindowSize =
+      64'd1 << sep_scratch_reg_pkg::SEP_SCRATCH_REG_MIN_ADDR_WIDTH;
 
   `OCAH_ASSERT_STATIC(
       AliasRemapMapFitsWindow_A,
@@ -238,95 +195,52 @@ module sep_system_csr (
   `OCAH_ASSERT_STATIC(ScratchWarmMapFitsWindow_A,
                       sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_SIZE <= ScratchWindowSize)
 
-  function automatic logic in_window(
-      sep_pkg::sep_system_peripherals_system_csr_axi_lite_addr_t addr, longint unsigned base,
-      int unsigned width);
-    return (addr >> width)
-        == sep_pkg::sep_system_peripherals_system_csr_axi_lite_addr_t'(base >> width);
-  endfunction
+  localparam int unsigned AddrW = sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH;
 
-  function automatic sep_pkg::system_csr_demux_select_e system_csr_select(
-      sep_pkg::sep_system_peripherals_system_csr_axi_lite_addr_t addr);
-    if (in_window(
-            addr,
-            sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR,
-            AliasRemapWindowW
-        )) begin
-      return sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
-    end
-    if (in_window(
-            addr,
-            sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR,
-            ApOutputRemapWindowW
-        )) begin
-      return sep_pkg::AP_OUTPUT_REMAP;
-    end
-    if (in_window(
-            addr,
-            sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR,
-            SteeOutputRemapWindowW
-        )) begin
-      return sep_pkg::STEE_OUTPUT_REMAP;
-    end
-    if (in_window(
-            addr,
-            sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
-            OutboundFilterWindowW
-        )) begin
-      return sep_pkg::OUTBOUND_FILTER;
-    end
-    if (in_window(
-            addr,
-            sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
-            InboundFilterWindowW
-        )) begin
-      return sep_pkg::INBOUND_FILTER;
-    end
-    if (in_window(addr, sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR, CpuCtrlWindowW)) begin
-      return sep_pkg::SEP_CPU_CTRL;
-    end
-    if (in_window(
-            addr, sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR, ScratchWindowW
-        )) begin
-      return sep_pkg::SEP_SCRATCH_COLD;
-    end
-    if (in_window(
-            addr, sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR, ScratchWindowW
-        )) begin
-      return sep_pkg::SEP_SCRATCH_WARM;
-    end
-    return sep_pkg::ERR_SLV;
-  endfunction
+  // Entries follow sep_pkg::system_csr_demux_select_e.
+  localparam logic [AddrW-1:0] SystemCsrWindowBase[sep_pkg::SystemCsrDemuxPorts] = '{
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR),
+      AddrW'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR)
+  };
+  localparam logic [AddrW-1:0] SystemCsrWindowSize[sep_pkg::SystemCsrDemuxPorts] = '{
+      AddrW'(AliasRemapWindowSize),
+      AddrW'(ApOutputRemapWindowSize),
+      AddrW'(SteeOutputRemapWindowSize),
+      AddrW'(OutboundFilterWindowSize),
+      AddrW'(InboundFilterWindowSize),
+      AddrW'(CpuCtrlWindowSize),
+      AddrW'(ScratchWindowSize),
+      AddrW'(ScratchWindowSize)
+  };
 
-  assign system_csr_demux_select_aw = system_csr_select(sep_system_csr_axil_req_i.aw.addr);
-  assign system_csr_demux_select_ar = system_csr_select(sep_system_csr_axil_req_i.ar.addr);
-
-  axi_lite_demux #(
-    .aw_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_aw_chan_t),
-    .w_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_w_chan_t),
-    .b_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_b_chan_t),
-    .ar_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_ar_chan_t),
-    .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
-    .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
-    .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
-    .NoMstPorts  (sep_pkg::SystemCsrDemuxPorts),
-    .MaxTrans    (16),
-    .FallThrough (1'b0),
-    .SpillAw     (1'b1),
-    .SpillW      (1'b0),
-    .SpillB      (1'b0),
-    .SpillAr     (1'b1),
-    .SpillR      (1'b0)
-  ) u_system_csr_axil_demux (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_ni),
-    .test_i          (test_en_i),
-    .slv_req_i       (sep_system_csr_axil_req_i),
-    .slv_aw_select_i (system_csr_demux_select_aw),
-    .slv_ar_select_i (system_csr_demux_select_ar),
-    .slv_resp_o      (sep_system_csr_axil_resp_o),
-    .mst_reqs_o      (sep_system_csr_axil_reqs),
-    .mst_resps_i     (sep_system_csr_axil_resps)
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (AddrW),
+    .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
+    .NUM_RANGES     (sep_pkg::SystemCsrDemuxPorts),
+    .RANGE_BASE     (SystemCsrWindowBase),
+    .RANGE_SIZE     (SystemCsrWindowSize),
+    .MAX_TRANS      (16),
+    .aw_chan_t      (sep_pkg::sep_system_peripherals_system_csr_axi_lite_aw_chan_t),
+    .w_chan_t       (sep_pkg::sep_system_peripherals_system_csr_axi_lite_w_chan_t),
+    .b_chan_t       (sep_pkg::sep_system_peripherals_system_csr_axi_lite_b_chan_t),
+    .ar_chan_t      (sep_pkg::sep_system_peripherals_system_csr_axi_lite_ar_chan_t),
+    .r_chan_t       (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
+    .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
+    .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
+  ) u_system_csr_addr_demux (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .test_en_i   (test_en_i),
+    .slv_req_i   (sep_system_csr_axil_req_i),
+    .slv_resp_o  (sep_system_csr_axil_resp_o),
+    .mst_reqs_o  (sep_system_csr_axil_reqs),
+    .mst_resps_i (sep_system_csr_axil_resps)
   );
 
   ////////////////////////////////////////////////////////////////////////////
@@ -989,22 +903,5 @@ module sep_system_csr (
     assign scratch_cold_data[i] = hwif_out_cold.SCRATCH[i].data.value;
     assign scratch_warm_data[i] = hwif_out_warm.SCRATCH[i].data.value;
   end
-
-  /////////////
-  // ERR_SLV //
-  /////////////
-
-  prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH),
-    .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
-    .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
-    .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
-  ) u_err_slv (
-    .clk_i       (clk_i),
-    .rst_ni      (rst_ni),
-    .test_en_i   (test_en_i),
-    .axil_req_i  (sep_system_csr_axil_reqs[sep_pkg::ERR_SLV]),
-    .axil_resp_o (sep_system_csr_axil_resps[sep_pkg::ERR_SLV])
-  );
 
 endmodule
