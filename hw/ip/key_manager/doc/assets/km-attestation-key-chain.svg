@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="764" viewBox="0 0 1040 764" role="img" aria-labelledby="title desc">
+<title id="title">Attestation key chain</title>
+<desc id="desc">Derivation of the attestation keys in three columns: inputs held in hardware on the left, secrets kept in the attestation key vault in the middle and signing keys on the right. DEVICE_UID and the ROM-identity PCR, which holds the hash of the SEP boot ROM measured and locked by BL0, derive the identity secret. The identity secret and PCR0, which holds the boot state, the signer keys and the BL1 hash measured and locked by BL0, derive the BL1 secret. The BL1 secret and PCR2, which holds the BL2 measurement measured and locked by BL1, derive the BL2 secret. The BL2 secret and PCR4, which holds the BL3 measurement measured and locked by BL2, derive the BL3 secret. The life-cycle and demotion state, sampled by the KM from its hardwired inputs, is a further input to the BL1, BL2 and BL3 secrets. Each secret derives one signing key: the identity key, the BL1 key, the BL2 key and the BL3 key. The identity key signs the certificate of the BL1 key, the BL1 key that of the BL2 key, and the BL2 key that of the BL3 key.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ne" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#336633"/></marker>
+<marker id="ns" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#336633"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="ce" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.new { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.key { fill: #e8f3ff; stroke: #42759b; stroke-width: 2; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axin { fill: none; stroke: #336633; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#ns); marker-end: url(#ne); }
+.der { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.hw { fill: none; stroke: #336633; stroke-width: 2.5; marker-end: url(#ne); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.sign { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 6 4; marker-end: url(#ge); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.cert { fill: none; stroke: #42759b; stroke-width: 1.8; stroke-dasharray: 7 5; marker-end: url(#ce); }
+</style>
+</defs>
+<rect width="1040" height="764" fill="#ffffff"/>
+<text class="bs" x="170" y="26" text-anchor="middle">Measurements and device state</text>
+<text class="s" x="170" y="44" text-anchor="middle">PCR vault and hardwired inputs</text>
+<text class="bs" x="530" y="26" text-anchor="middle">Secrets</text>
+<text class="s" x="530" y="44" text-anchor="middle">attestation key vault</text>
+<text class="bs" x="870" y="26" text-anchor="middle">Signing keys</text>
+<text class="s" x="870" y="44" text-anchor="middle">used only in an engine the KM owns</text>
+<rect class="fabric" x="420" y="66" width="220" height="56" rx="6"/>
+<text class="bs" x="530" y="90" text-anchor="middle">DEVICE_UID</text>
+<text class="s" x="530" y="107.5" text-anchor="middle">identity fuse, per chiplet</text>
+<rect class="fabric" x="20" y="159" width="300" height="66" rx="6"/>
+<text class="bs" x="170" y="179.5" text-anchor="middle">ROM-identity PCR</text>
+<text class="s" x="170" y="197" text-anchor="middle">hash of the SEP boot ROM</text>
+<text class="s" x="170" y="214" text-anchor="middle">measured and locked by BL0</text>
+<rect class="core" x="420" y="166" width="220" height="52" rx="6"/>
+<text class="bs" x="530" y="196.5" text-anchor="middle">Identity secret</text>
+<rect class="key" x="760" y="166" width="220" height="52" rx="6"/>
+<text class="bs" x="870" y="196.5" text-anchor="middle">Identity key</text>
+<path class="der" d="M530,122 L530,162"/>
+<path class="der" d="M640,192 L756,192"/>
+<path class="sigo" d="M320,192 L416,192"/>
+<path class="cert" d="M870,218 L870,282"/>
+<rect class="fabric" x="20" y="279" width="300" height="66" rx="6"/>
+<text class="bs" x="170" y="299.5" text-anchor="middle">PCR0</text>
+<text class="s" x="170" y="317" text-anchor="middle">boot state, signer keys, BL1 hash</text>
+<text class="s" x="170" y="334" text-anchor="middle">measured and locked by BL0</text>
+<rect class="core" x="420" y="286" width="220" height="52" rx="6"/>
+<text class="bs" x="530" y="316.5" text-anchor="middle">BL1 secret</text>
+<rect class="key" x="760" y="286" width="220" height="52" rx="6"/>
+<text class="bs" x="870" y="316.5" text-anchor="middle">BL1 key</text>
+<path class="der" d="M530,218 L530,282"/>
+<path class="der" d="M640,312 L756,312"/>
+<path class="sigo" d="M320,300 L416,300"/>
+<path class="sigo" d="M370,324 L416,324"/>
+<path class="cert" d="M870,338 L870,402"/>
+<rect class="fabric" x="20" y="399" width="300" height="66" rx="6"/>
+<text class="bs" x="170" y="419.5" text-anchor="middle">PCR2</text>
+<text class="s" x="170" y="437" text-anchor="middle">BL2 measurement</text>
+<text class="s" x="170" y="454" text-anchor="middle">measured and locked by BL1</text>
+<rect class="core" x="420" y="406" width="220" height="52" rx="6"/>
+<text class="bs" x="530" y="436.5" text-anchor="middle">BL2 secret</text>
+<rect class="key" x="760" y="406" width="220" height="52" rx="6"/>
+<text class="bs" x="870" y="436.5" text-anchor="middle">BL2 key</text>
+<path class="der" d="M530,338 L530,402"/>
+<path class="der" d="M640,432 L756,432"/>
+<path class="sigo" d="M320,420 L416,420"/>
+<path class="sigo" d="M370,444 L416,444"/>
+<path class="cert" d="M870,458 L870,522"/>
+<rect class="fabric" x="20" y="519" width="300" height="66" rx="6"/>
+<text class="bs" x="170" y="539.5" text-anchor="middle">PCR4</text>
+<text class="s" x="170" y="557" text-anchor="middle">BL3 measurement</text>
+<text class="s" x="170" y="574" text-anchor="middle">measured and locked by BL2</text>
+<rect class="core" x="420" y="526" width="220" height="52" rx="6"/>
+<text class="bs" x="530" y="556.5" text-anchor="middle">BL3 secret</text>
+<rect class="key" x="760" y="526" width="220" height="52" rx="6"/>
+<text class="bs" x="870" y="556.5" text-anchor="middle">BL3 key</text>
+<path class="der" d="M530,458 L530,522"/>
+<path class="der" d="M640,552 L756,552"/>
+<path class="sigo" d="M320,540 L416,540"/>
+<path class="sigo" d="M370,564 L416,564"/>
+<text class="s" x="882" y="256" text-anchor="start">signs the</text>
+<text class="s" x="882" y="273" text-anchor="start">certificate of</text>
+<rect class="fabric" x="20" y="626" width="300" height="56" rx="6"/>
+<text class="bs" x="170" y="650" text-anchor="middle">Life cycle and demotion</text>
+<text class="s" x="170" y="667.5" text-anchor="middle">sampled by the KM from its hardwired inputs</text>
+<path class="sigplain" d="M320,654 L370,654 L370,547 M370,533 L370,427 M370,413 L370,324"/>
+<circle cx="370" cy="564" r="3.5" fill="#5b6670"/>
+<circle cx="370" cy="444" r="3.5" fill="#5b6670"/>
+<rect class="fabric" x="16" y="706" width="40" height="18" rx="4"/>
+<text class="s" x="64" y="720" text-anchor="start">Input held in hardware</text>
+<rect class="core" x="220.7" y="706" width="40" height="18" rx="4"/>
+<text class="s" x="268.7" y="720" text-anchor="start">Secret</text>
+<rect class="key" x="334.3" y="706" width="40" height="18" rx="4"/>
+<text class="s" x="382.3" y="720" text-anchor="start">Signing key</text>
+<path class="der" d="M16,745 L56,745"/>
+<text class="s" x="70" y="750" text-anchor="start">Derives</text>
+<path class="sigo" d="M142.1,745 L182.1,745"/>
+<text class="s" x="196.1" y="750" text-anchor="start">Input to the derivation</text>
+<path class="cert" d="M349.1,745 L389.1,745"/>
+<text class="s" x="403.1" y="750" text-anchor="start">Signs the certificate of</text>
+<path class="sigplain" d="M581.0625,727 L581.0625,741 M581.0625,749 L581.0625,763"/>
+<path class="sigplain" d="M559.0625,745 L603.0625,745"/>
+<text class="s" x="613.1" y="750" text-anchor="start">Crossing, not connected</text>
+</svg>
