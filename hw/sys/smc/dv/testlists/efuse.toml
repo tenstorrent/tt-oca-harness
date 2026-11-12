@@ -212,6 +212,17 @@ run_modes = ["smoke"]
 args = ["+smc_efuse_hex=smc_efuse_map_lock_field_enforce_test.hex"]
 
 [[tests]]
+# The supplementary fuse region of the reference wrapper: 128 words sensed after the harness map,
+# served through the window in the supplementary fuse slot and locked per SUPPLEMENTARY_LOCKS pair.
+name = "smc_efuse_supplementary_region_test"
+module = "smc_efuse_supplementary_region_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_supplementary_region_test.hex"]
+
+[[tests]]
 name = "smc_efuse_map_sep_write_test"
 module = "smc_efuse_map_sep_write_test"
 seed = 1
