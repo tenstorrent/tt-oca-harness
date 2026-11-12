@@ -41,6 +41,8 @@ _SENSE_BOUND_CYCLES = 200_000
 _JTAG_BOUND_NS = 400
 _CLK_PS = 1250
 _AXI_OKAY = 0
+# Response of a write-locked shadow write (smc_efuse_map.rdl, LOCKS).
+_AXI_SLVERR = 2
 _PATTERN_X = 0xC3A5_1E7B
 _ALTERNATIONS = 16
 _OUTSTANDING = 8
@@ -383,6 +385,7 @@ class smc_efuse_map_concurrency_test_seq(SmcCsrSeq):
             prev_valid, prev_ready = valid, ready
         valid_cycles = sum(1 for c in window if c[1])
         locked_resp = sorted({m.resp_code for m in members[0::2]})
+        assert locked_resp == [_AXI_SLVERR], f"S4: locked write responses {locked_resp}"
         assert all(m.resp_code == _AXI_OKAY for m in members[1::2]), (
             f"S4: unlocked write responses {[m.resp_code for m in members[1::2]]}"
         )

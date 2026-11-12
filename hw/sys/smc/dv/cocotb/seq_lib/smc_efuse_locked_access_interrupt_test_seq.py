@@ -9,7 +9,7 @@ word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has
 adopter-supplied simulation stand-in for the OTP macro,
 `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the
 bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]`
-entry in `hw/sys/smc/dv/testlists/holdout.toml`). The read-lock leg
+entry in `hw/sys/smc/dv/testlists/efuse.toml`). The read-lock leg
 therefore proves that the DUT ENFORCES a lock it found already set; it does not
 prove a lock can be established through the fuse-programming path. The
 write-lock leg does establish its own lock, through the real `LOCKS` CSR write
@@ -20,11 +20,10 @@ the interrupt itself -- is produced by the design under test. The model
 contributes the fuse CONTENT only, and every expectation that depends on that
 content is derived from the asset at run time rather than hand-transcribed.
 
-The read-locked read is not value-compared. `hw/ip/efuse/doc/architecture.adoc`
-specifies `0xbadcab1e` only for the JTAG lifecycle-demux error slave and does
-not state what a read-locked shadow register returns over the CSR path, so that
-leg claims the interrupt pulse and non-disclosure (the `lock` field table:
-`lock[0] = 1` is read-locked) and nothing about the substituted word.
+A locked shadow access completes with SLVERR and read data `0xBADCAB1E`
+(`smc_efuse_map.rdl`, `LOCKS`). The write-locked write is graded on that
+response, the read-locked read on that response and that word, and both legs
+on the interrupt pulse and on non-disclosure of the field.
 """
 
 from __future__ import annotations
@@ -58,6 +57,8 @@ JTAG_PUBLIC_IDENTITY_CONTENT = efuse_preload_word_at(JTAG_PUBLIC_IDENTITY)
 # write lock: the asset word plus the one bit it writes, both from generated symbols.
 LOCKS_AFTER_WRITE_LOCK = LOCKS_PRELOAD | WRITE_LOCK
 _UNLOCKED_PAT = 0xCAFE0001
+#: AXI response of a locked shadow access (smc_efuse_map.rdl, LOCKS).
+_RESP_SLVERR = 2
 _DRAIN = 8
 
 
@@ -163,8 +164,13 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
         )
 
         async def _locked_write() -> None:
-            await self.csr_write(
-                "JTAG_PUBLIC_IDENTITY_LOCK_WR", JTAG_PUBLIC_IDENTITY, _UNLOCKED_PAT ^ 0xA5A55A5A
+            # The RDL fixes the refusal: SLVERR, graded by the helper and the
+            # scoreboard.
+            await self.csr_write_expect_error(
+                "JTAG_PUBLIC_IDENTITY_LOCK_WR",
+                JTAG_PUBLIC_IDENTITY,
+                _UNLOCKED_PAT ^ 0xA5A55A5A,
+                resp=_RESP_SLVERR,
             )
 
         self.wr_edges = await self._count_edges_during("WRLOCK", _locked_write())
@@ -179,11 +185,12 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
         cocotb.log.info("CHK-EFUSE-LOCK-IRQ-WR: write-locked write edges=%d", self.wr_edges)
 
         async def _locked_read() -> None:
-            # No exact expectation: the architecture document does not state
-            # the word a read-locked shadow register returns (see the module
-            # docstring). The OBSERVED datum feeds the non-disclosure asserts
-            # and the evidence token below.
-            self.rd_data = await self.csr_read("JTAG_PUBLIC_IDENTITY_LOCK_RD", JTAG_PUBLIC_IDENTITY)
+            # The RDL fixes the refusal: SLVERR with 0xBADCAB1E, both graded by
+            # the helper. The returned datum also feeds the non-disclosure
+            # asserts and the evidence token below.
+            self.rd_data = await self.csr_read_err_signature(
+                "JTAG_PUBLIC_IDENTITY_LOCK_RD", JTAG_PUBLIC_IDENTITY, resp=_RESP_SLVERR
+            )
 
         self.rd_edges = await self._count_edges_during("RDLOCK", _locked_read())
         assert self.rd_edges == 1, (
@@ -211,4 +218,11 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
             self.rd_data,
             JTAG_PUBLIC_IDENTITY_CONTENT,
             _UNLOCKED_PAT,
+        )
+        cocotb.log.info(
+            "CHK-EFUSE-LOCKED-RESP: the write-locked write and the read-locked read each "
+            "completed with SLVERR (resp=%d), the read returned 0x%08x, and each pulsed the "
+            "locked-field access interrupt once",
+            _RESP_SLVERR,
+            self.rd_data,
         )

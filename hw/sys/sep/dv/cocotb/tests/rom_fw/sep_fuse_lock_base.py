@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared scenario for the four fuse-lock rows: a 2x2 of lifecycle x device control.
 
-Each row checks that the ROM sets all six secret read-lock bits before the BL1 handoff.
+Each row checks that the ROM sets all six secret read-lock bits before the BL1 handoff,
+and that a BL1 read of each of three locked fields faults with a load bus error at its address.
 The non-secure cells boot the unsigned image: a signed manifest's enforced bit outranks SBOOT_DIS.
 """
 
@@ -63,8 +64,28 @@ BL1_LOCK_FAILURES = (
     "FUSE_LOCK_VERIFY_FAIL",
     "LOCK_RD_FAIL",
     "FAIL:CLASS_KEY=",
+    "FAIL:RMA_SIP=",
+    "FAIL:RMA_CHIP=",
+    "FAIL:LOCK_RD_NMI_COUNT=",
+    "FAIL:LOCK_RD_MCAUSE=",
+    "FAIL:LOCK_RD_DSEAC=",
+    "FAIL:NMI_STRAY=",
+    "FAIL:NMI_VEC=",
     "BL0S_VERIFY_FAIL",
 )
+
+# A read-locked field read completes with SLVERR (otp_fuse_controller.adoc), which VeeR-EL2
+# takes as one load-bus-error NMI with the load address latched in mdseac.
+MCAUSE_NMI_LOAD_BUS_ERROR = 0xF000_0001
+LOCKED_READ_FIELDS = ("CLASS_KEY", "RMA_SIP_TOKEN_DIGEST", "RMA_CHIPLET_TOKEN_DIGEST")
+
+
+def bl1_locked_read_nmi(field: str) -> str:
+    addr = RegBlock("SEP_EFUSE_MAP").addr(field)
+    return (
+        f"LOCK_RD_NMI={field} N=0x00000001 MC=0x{MCAUSE_NMI_LOAD_BUS_ERROR:08X} DSEAC=0x{addr:08X}"
+    )
+
 
 BOOT_FAILURE_TOKENS = (
     "MANIFEST_ERR=",
@@ -133,8 +154,9 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
                 BL1_MARKER,
                 bl1_locks_echo(),
                 BL1_FUSE_OK,
-                BL1_LOCK_RD_OK,
             )
+            + tuple(bl1_locked_read_nmi(f) for f in LOCKED_READ_FIELDS)
+            + (BL1_LOCK_RD_OK,)
         )
 
     @classmethod

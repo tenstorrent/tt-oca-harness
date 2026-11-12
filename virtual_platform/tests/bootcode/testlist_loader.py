@@ -128,7 +128,7 @@ _SMC_SRAM_FIELDS = (
     "smc_sram_offset",
     "smc_sram_manifest_at",
 )
-_SPI_SPAN_FIELDS = {"name", "range", "exact", "min", "max"}
+_SPI_SPAN_FIELDS = {"name", "range", "exact", "min", "max", "bytes"}
 _IMAGE_ASSERT_FIELDS = {
     "range",
     "all",
@@ -337,6 +337,11 @@ def check_spi_spans(name: str, spans: tuple[SpiReadSpan, ...]) -> None:
                 f"testcase {name!r} spi_reads[{span.name!r}] range is empty: "
                 f"[0x{span.low:x},0x{span.high:x})"
             )
+        if type(span.total_bytes) is int and span.total_bytes < 0:
+            raise ValueError(
+                f"testcase {name!r} spi_reads[{span.name!r}] bytes must be non-negative, "
+                f"got {span.total_bytes}"
+            )
     for index, first in enumerate(spans):
         for second in spans[index + 1 :]:
             if first.low < second.high and second.low < first.high:
@@ -426,16 +431,19 @@ def _spi_reads(entry: dict, name: str) -> tuple[SpiReadSpan, ...]:
             _symbolic(edge, f"testcase {name!r} spi_reads[{span!r}] range") for edge in bounds
         )
         counts = {key: value[key] for key in ("exact", "min", "max") if key in value}
-        if not counts:
+        if not counts and "bytes" not in value:
             raise ValueError(
                 f"testcase {name!r} spi_reads[{span!r}] declares no exact/min/max "
-                "read count, so it asserts nothing"
+                "read count or bytes total, so it asserts nothing"
             )
         for key, count in counts.items():
             if type(count) is not int or count < 0:
                 raise ValueError(
                     f"testcase {name!r} spi_reads[{span!r}] {key} must be a non-negative integer"
                 )
+        total_bytes = None
+        if "bytes" in value:
+            total_bytes = _symbolic(value["bytes"], f"testcase {name!r} spi_reads[{span!r}] bytes")
         spans.append(
             SpiReadSpan(
                 name=span,
@@ -444,6 +452,7 @@ def _spi_reads(entry: dict, name: str) -> tuple[SpiReadSpan, ...]:
                 exact=counts.get("exact"),
                 minimum=counts.get("min"),
                 maximum=counts.get("max"),
+                total_bytes=total_bytes,
             )
         )
 
@@ -995,7 +1004,7 @@ def _parse_testcase(
     _check_image_placeholders(name, image, [*expect, *forbid, *expect_counts])
     spi_reads = _spi_reads(entry, name)
     if image is None and any(
-        type(edge) is str for span in spi_reads for edge in (span.low, span.high)
+        type(edge) is str for span in spi_reads for edge in (span.low, span.high, span.total_bytes)
     ):
         raise ValueError(f"testcase {name!r} spi_reads names an image fact but boots no image")
     spi_read_order = _spi_read_order(entry, name, spi_reads)

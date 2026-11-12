@@ -137,8 +137,10 @@ Judging:
 - `expect_verdict`: `PASSED`, `FAILED` or `none`; required for a complete run. `none` requires
   that the firmware prints no verdict. A `FAILED` verdict from the firmware is an error unless
   the entry declares `FAILED`. Expecting the FAILED verdict token in `expect` requires `expect_verdict = "FAILED"`.
-- `spi_reads`: spans `{ name, range = [low, high], exact | min | max }`. At least one count is
-  required, names are unique and spans do not overlap. `spi_read_order` lists span names in the
+- `spi_reads`: spans `{ name, range = [low, high], exact | min | max | bytes }`. `exact`, `min`
+  and `max` count reads; `bytes` is the total the device serves in the span, which does not depend
+  on how the ROM chunks its transfers. At least one is required, names are unique and spans do not
+  overlap. `spi_read_order` lists span names in the
   order of their first read and needs `spi_reads`.
 
 Pre-run image checks (`image_asserts`, needs `image`). Each entry names exactly one mode:
@@ -191,7 +193,7 @@ Image facts:
   BL1 facts need a cleartext slot.
 - An expression is a fact plus or minus integers and other facts, for example
   `"primary.payload_end"` or `"4092 - primary.bl1_len"`. It can replace an integer in an
-  `image_asserts` range bound or `field`/`toc_field` value, an `spi_reads` bound and
+  `image_asserts` range bound or `field`/`toc_field` value, an `spi_reads` bound or `bytes` total and
   `smc_sram_source`. Facts come from the image the case boots, and for `smc_sram_source` from
   `smc_sram_image`.
 - A range bound given as a fact in a `same_as` or `differs_from` check must resolve to the same

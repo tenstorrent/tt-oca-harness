@@ -6310,7 +6310,15 @@ a log entry. The log entries go through round robin arbitration.</ipxact:descrip
         <ipxact:register>
           <ipxact:name>LOCKS</ipxact:name>
           <ipxact:description>Lock controls for each fuse field. When write locked, the corresponding field is not
-programmable. When read locked, the shadow register is not readable.</ipxact:description>
+programmable. When read locked, the shadow register is not readable.
+
+A write to the shadow register of a write-locked field, or a read of the shadow
+register of a read-locked field, completes with SLVERR and read data 0xBADCAB1E,
+leaves the shadow register unchanged and raises the locked-field access interrupt
+for the duration of the access. An attempted fuse program of a write-locked field,
+or an attempted fuse read of a read-locked field, started through the eFuse
+interface control registers is refused and sets
+EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:description>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -7149,7 +7157,9 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
         <ipxact:register>
           <ipxact:name>JTAG_PUBLIC_IDENTITY</ipxact:name>
           <ipxact:description>JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
-are admitted while JTAG access to every other fuse field is blocked. Encoding
+are admitted while every JTAG write and every other JTAG read is blocked. When
+the lifecycle state fails its integrity check, JTAG reads of this range are
+blocked as well. Encoding
 is adopter-defined; the harness does not interpret or consume the value. The
 slot-0 read lock still hides the bits when set.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>

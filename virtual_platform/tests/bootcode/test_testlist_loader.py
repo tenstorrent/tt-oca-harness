@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+import dataclasses
 import importlib.util
 import re
 
@@ -222,6 +223,14 @@ def test_loads_spi_read_contract(tmp_path):
         (
             'spi_reads = [{ name = "a", range = [0x0, 0x100], exact = 0, size = 4 }]',
             "unknown field",
+        ),
+        (
+            'spi_reads = [{ name = "a", range = [0x0, 0x100], bytes = -4 }]',
+            "bytes must be non-negative",
+        ),
+        (
+            'spi_reads = [{ name = "a", range = [0x0, 0x100], bytes = "backup.payload_size" }]',
+            "unknown image fact",
         ),
         ('spi_read_order = ["a"]', "spi_read_order needs spi_reads"),
         (
@@ -1066,6 +1075,32 @@ def test_image_fact_bounds_and_values_load_as_expressions(tmp_path):
     assert case.forbid == ("LEN={primary.bl1_len}", "COPY_SRC={backup.bl1_copy_src}")
 
 
+def test_spi_bytes_total_loads_as_an_image_fact_expression(tmp_path):
+    path = _with(
+        tmp_path,
+        "payload_metadata",
+        'spi_reads = [{ name = "p", range = [0x42000, 0x80000], '
+        'bytes = "backup.payload_end - backup.payload_start" }]',
+    )
+    (case,) = load_testlist(path, known_images={"signed"})
+    span = case.spi_reads[0]
+    assert (span.exact, span.minimum, span.maximum) == (None, None, None)
+    assert span.total_bytes == "backup.payload_end - backup.payload_start"
+
+
+def test_spi_bytes_total_that_resolves_negative_is_rejected(tmp_path):
+    path = _with(
+        tmp_path,
+        "payload_metadata",
+        'spi_reads = [{ name = "p", range = [0x42000, 0x80000], '
+        'bytes = "backup.payload_start - backup.payload_end" }]',
+    )
+    (case,) = load_testlist(path, known_images={"signed"})
+    resolved = (dataclasses.replace(case.spi_reads[0], total_bytes=-4),)
+    with pytest.raises(ValueError, match="bytes must be non-negative, got -4"):
+        testlist_loader.check_spi_spans(case.name, resolved)
+
+
 def test_smc_sram_source_may_end_at_the_image_end(tmp_path):
     path = tmp_path / "testlist.toml"
     path.write_text(_SMC_SRAM_ENTRY.replace("[0x1000, 0x41000]", '[0x0, "image_end"]'))
@@ -1144,6 +1179,11 @@ def test_an_image_fact_needs_a_boot_image(tmp_path):
     for extra, message in (
         ('expect = ["LEN={primary.bl1_len}"]', "boots no image"),
         ('spi_reads = [{ name = "p", range = [0x0, "image_end"], min = 1 }]', "boots no image"),
+        (
+            'spi_reads = [{ name = "p", range = [0x0, 0x100], '
+            'bytes = "backup.payload_end - backup.payload_start" }]',
+            "boots no image",
+        ),
     ):
         path.write_text(
             '[[testcase]]\nname = "a"\nfamily = "manifest"\nclassification = "vp-equivalent"\n'

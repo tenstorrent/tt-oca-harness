@@ -360,9 +360,9 @@ or `unclassified` when the policy has none.
 |`c_axil_external_active` |25 |`smc_err_slv_response_content_test@default` (10116) |
 |`c_efuse_jtag_ar_accept` |6 |`smc_efuse_jtag_lc_access_matrix_test@default` (54) |
 |`c_efuse_jtag_aw_accept` |3 |`smc_efuse_jtag_otp_data_walk_test@default` (131) |
-|`c_efuse_jtag_bresp_decerr` |2 |`smc_efuse_jtag_lc_access_matrix_test@default` (9) |
+|`c_efuse_jtag_bresp_slverr` |2 |`smc_efuse_jtag_lc_access_matrix_test@default` (9) |
 |`c_efuse_jtag_bresp_okay` |2 |`smc_efuse_jtag_otp_data_walk_test@default` (131) |
-|`c_efuse_jtag_rresp_decerr` |2 |`smc_efuse_jtag_lc_access_matrix_test@default` (21) |
+|`c_efuse_jtag_rresp_slverr` |2 |`smc_efuse_jtag_lc_access_matrix_test@default` (21) |
 |`c_efuse_jtag_rresp_okay` |6 |`smc_efuse_jtag_lc_access_matrix_test@default` (33) |
 |`c_efuse_jtag_w_accept` |3 |`smc_efuse_jtag_otp_data_walk_test@default` (131) |
 |`c_full_64bit_beat` |225 |`smc_zeroer_sram_init_test@default` (32812) |

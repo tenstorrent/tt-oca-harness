@@ -58,8 +58,9 @@ module sep #(
                                                                 // per-engine crypto resets, in the
                                                                 // TCK domain.
 
-  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager request to the eFuse wrapper; answered with DECERR in
-                                                                    // restricted lifecycle states.
+  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager request to the eFuse wrapper; in PROD, RMA_SiP or on an
+                                                                    // LC_STATE integrity error, an access outside the eFuse MMR
+                                                                    // space is answered with SLVERR and read data 0xBADCAB1E.
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,  // OTP debug AXI-Lite manager response.
 
   input  logic mpc_debug_halt_req_i,          // Async MPC debug halt request.
