@@ -836,7 +836,8 @@ has no canonical scenario
 |eFuse shadow-register scan protection and the `HARNESS_LOCKS` / `SUPPLEMENTARY_LOCKS` path
 |`scan_protection.adoc` Implementation, Downstream Lock Path, Verification
 |`smc_efuse_lock_guard_test`, `smc_efuse_map_locks_register_test`,
-`smc_efuse_map_lock_field_enforce_test`, `smc_efuse_locked_access_interrupt_test`; the chapter names
+`smc_efuse_map_lock_field_enforce_test`, `smc_efuse_locked_access_interrupt_test`,
+`smc_efuse_supplementary_region_test` (the `SUPPLEMENTARY_LOCKS` pairs); the chapter names
 `smc_efuse_shadow_lock_matrix_test`, a catalog-only name in <<smc-deferred-disposition>>
 |`smc_efuse_fcov` (`c_locks_set_access_refused`, `c_locks_cleared_access_permitted`,
 `c_write_locked_field_unchanged`, `c_read_locked_field_masked`); `smc_periph_fcov`
@@ -1588,6 +1589,7 @@ controls.
 |`smc_efuse_map_concurrency_test` |3 |Overlapping SEP_IN and JTAG map accesses return exact data.
 |`smc_efuse_map_layout_decode_test` |3 |Map layout, read widths and past-extent decode match.
 |`smc_efuse_map_lock_field_enforce_test` |2 |Each field's write and read locks are enforced.
+|`smc_efuse_supplementary_region_test` |3 |The supplementary fuse region is sensed, served, written, programmed, locked and bounded as the eFuse architecture states.
 |`smc_efuse_map_locks_register_test` |2 |HARNESS_LOCKS sets by write-one and each slot locks its field.
 |`smc_efuse_map_reset_persistence_test` |3 |Shadow words and locks survive warm reset, not cold.
 |`smc_efuse_map_sense_image_test` |3 |Sensed image words match the loaded file on every path.
@@ -33016,6 +33018,140 @@ because the offset visible at the port is not specified. The strobe spacing is l
 
 '''''
 
+[[sec-570-smc_efuse_supplementary_region_test]]
+===== 570 `smc_efuse_supplementary_region_test`
+
+*Phase*: 3
+
+*Area*: EFUSE
+
+*Source Module*: `smc_efuse_supplementary_region_test`
+
+*BFM / Model*: SEP_IN AXI driver (32-bit reads and writes, items that allow an error response for
+the past-window read, the rejected writes and the hidden reads, and polls of the eFuse control
+registers); the wait probes `tb_fuse_sense_done` and `tb_fuse_reset_n`; the interrupt probe
+`tb_efuse_locked_access_irq` (`peripheral_interrupts[27]`); the bank activity probe
+`tb_axil_efuse_bank_active`; the eFuse bank is the DV model, loaded from a 192-word image the leaf
+writes into the run directory under `+smc_efuse_hex` (64 harness words at 0, 128 seeded
+supplementary words with the programmed bit cleared); the per-word software model of the
+supplementary shadow held by the sequence; an EFUSE protocol-VIP record is booked at the end
+
+*Run mode*: one testlist entry in `testlists/efuse.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`, `efuse`; seed 1; args
+`+smc_efuse_hex=smc_efuse_supplementary_region_test.hex`; tool Verilator (cocotb).
+
+*Randomization*: RAND-REP: the seed draws the 128 supplementary image words (pairwise distinct,
+neither 0 nor all ones) and the 32-bit patterns the leaf writes; the programmed word and bit, the
+lock regions and the window are fixed by the reference wrapper's configuration.
+
+*Objective*: The supplementary fuse region is sensed, served, written, programmed, locked and
+bounded as the eFuse architecture states.
+
+*Test Coverage*:
+
+* The reference SMC wrapper configures the supplementary region of
+  `hw/top/smc_supplementary_fuse_example_pkg.sv`: 128 words in lock regions ending at words 64,
+  96 and 128, its window at the base of the `fuse` slot of the `smc_external` supplementary
+  region (`SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR`), and its fuse bits starting at
+  2048, after the 2 kbit harness map (`hw/ip/efuse/doc/architecture.adoc`, Supplementary Fuse
+  Region: Configuration, Sensing and Export).
+* The cold-reset sense reads 64 + 128 words in one command and the supplementary shadow file
+  holds words 64 to 191 of the image; the window serves them one 32-bit word per 4 bytes
+  (`architecture.adoc`, Sensing and Export; `hw/sys/smc/doc/memmap.adoc`, the supplementary fuse
+  window). The first word past 4 x WORDS bytes is not served by the shadow and answers an error
+  response.
+* With `SUPPLEMENTARY_LOCKS` clear every region is readable and writable in the shadow
+  (`architecture.adoc`, Supplementary Locks: "no static lock policy").
+* `EFUSE_PROGRAM_ADDR` and `EFUSE_READ_ADDR` carry the full bit address, so a program at bit
+  2048 + 32 x 70 + 5 burns that bit and a read at bit 2048 + 32 x 70 returns the word with the
+  bit set (`hw/ip/efuse/regs/efuse_interface_ctrl.rdl`); the shadow word is unchanged until the
+  next sense (measured, not compared).
+* `SUPPLEMENTARY_LOCKS` bit 2n write-locks region n and bit 2n+1 read-locks it
+  (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, `architecture.adoc`, Supplementary
+  Locks): a write to a write-locked region is rejected without an error response and the word
+  keeps its value, a read of a read-locked region returns `0xBADCAB1E` with OKAY, both raise
+  `locked_field_access_interrupt_o` for the access phase (`architecture.adoc`, Access Path), and
+  the neighbouring region stays open. The first and last word of each region show the
+  `LOCK_REGION_END` boundaries.
+* `efuse_guard` checks firmware commands at or above bit 2048 against the region's
+  `SUPPLEMENTARY_LOCKS` pair: a program in a write-locked region and a read in a read-locked
+  region set `efuse_req_error` and issue no bank command (`architecture.adoc`, Access Path;
+  `efuse_interface_ctrl.rdl`, `efuse_req_error`).
+* A command at bit 2048 + 32 x WORDS sets `efuse_program_addr_error` or `efuse_read_addr_error`
+  and never reaches the SHIM (`architecture.adoc`, Access Path); the clear bits of
+  `EFUSE_INTERFACE_CTRL_STATUS` return the status to 0.
+* The response code of a rejected write is not asserted; the `supplementary_shadow_regs_o` port
+  and the pre-sense error response of the window are out of scope.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done` within 200000 clocks, read all 128 window words against image
+  words 64 to 191, and read `SUPPLEMENTARY_LOCKS` as 0.
+. Read the first word past the 512-byte window and require an error response.
+. Positive control: write a fresh pattern to the second word of each region and read it back.
+. Program bit 5 of supplementary word 70 through `EFUSE_PROGRAM_ADDR` and `EFUSE_PROGRAM_CTRL`,
+  require `program_status` 0, read the word at bit 2048 + 32 x 70 through `EFUSE_READ_ADDR` and
+  `EFUSE_READ_CTRL`, require the image word with bit 5 set and no error in
+  `EFUSE_INTERFACE_CTRL_STATUS`; log the window word.
+. Error injection. Point: the first and last word of each region over SEP_IN, after the region's
+  write lock is set and `SUPPLEMENTARY_LOCKS` is read back. Kind: a new pattern written to the
+  write-locked words while the interrupt line is watched. Expected response: each write raises
+  `tb_efuse_locked_access_irq` (0 before and after), the words read their earlier value, and
+  the next region's first word accepts a write. Then set the read locks region by region: the
+  first and last word of each region read `0xBADCAB1E` with OKAY and raise the interrupt, and the
+  next region's first word still reads its value.
+. Error injection. Point: the program and read interfaces, with region 1 write- and read-locked.
+  Kind: a program at bit 2048 + 32 x 70 + 6 and a read at bit 2048 + 32 x 70 while
+  `tb_axil_efuse_bank_active` is counted. Expected response: `efuse_req_error` set after each
+  with 0 bank cycles; the clear bit returns the status to 0.
+. Error injection. Point: the program and read interfaces. Kind: a program and a read at bit
+  2048 + 32 x 128 while the bank activity is counted. Expected response: `efuse_program_addr_error`
+  and `efuse_read_addr_error` set with 0 bank cycles; the clear bits return the status to 0.
+. Require the seven steps in order with increasing time stamps, the checker lines in the order
+  printed and the SEP_IN access count at or above the call count; print the fence and the waits.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SUPP-SENSE-WORDS` |After the sense all 128 supplementary words read through the window
+equal image words 64 to 191 and `SUPPLEMENTARY_LOCKS` reads 0.
+|`CHK-SUPP-WINDOW-END` |The first word past the 4 x WORDS window answers an error response.
+|`CHK-SUPP-SHADOW-WRITE` |With `SUPPLEMENTARY_LOCKS` 0 a new pattern written to one word of each
+region lands and reads back.
+|`CHK-SUPP-PROGRAM-READ` |A program at a supplementary bit through `EFUSE_PROGRAM_ADDR` completes
+with status 0 and a read at that word through `EFUSE_READ_ADDR` returns the image word with the
+bit set, with no request or address error.
+|`CHK-SUPP-WRITE-LOCK` |With each region's write lock set, the first and last word of the region
+reject a new pattern and keep their value while the next region's first word accepts a write.
+|`CHK-SUPP-READ-LOCK` |With each region's read lock set, the first and last word of the region
+read `0xBADCAB1E` with OKAY while the next region's first word still reads its value.
+|`CHK-SUPP-LOCK-IRQ` |`tb_efuse_locked_access_irq` pulses on every rejected write and hidden
+read, 0 before and after each access.
+|`CHK-SUPP-GUARD` |A program in a write-locked region and a read in a read-locked region set
+`efuse_req_error` with no bank activity; the clears return the status to 0.
+|`CHK-SUPP-ADDR-ERROR` |A program and a read at bit 2048 + 32 x WORDS set the address errors
+with no bank activity; the clears return the status to 0.
+|`CHK-NONVAC` |The ordered fence (sense, window end, shadow write, program, locks, guard, address
+error) with increasing time stamps and each checker line printed after its step completed.
+|`CHK-TIMEOUT-PATHS` |The sense wait and every control-register poll are bounded and fail with an
+assertion on expiry; the bound and the last state are logged.
+|===
+
+*Pass Criteria*: all eleven checkers hold: the window serves the sensed supplementary words and
+ends at 4 x WORDS, the open shadow accepts writes, the address registers program and read a
+supplementary bit, each lock pair rejects writes and hides reads of its region alone with the
+interrupt, and the guard and the region end refuse commands without a bank access. Enrolled in:
+`all`, `hosted`.
+
+*Scope limit*: The response code of a rejected write is not asserted; only its effect on the shadow
+is. The `supplementary_shadow_regs_o` port is not connected on the bench and is not observed. The
+error response of the window before the sense completes and the re-sense of a programmed bit into
+the shadow are not exercised.
+
+'''''
 [[sec-557-smc_efuse_security_disable_bypass_test]]
 ===== 557 `smc_efuse_security_disable_bypass_test`
 
