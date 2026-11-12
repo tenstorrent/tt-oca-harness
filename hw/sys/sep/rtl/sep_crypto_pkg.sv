@@ -45,14 +45,11 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_KMAC_SIZE
   };
 
-  // Contiguous eFuse block: MAP -> INTERFACE CSR -> MMR.
+  // The eFuse page: interface control, MMR and map.
   parameter axi_pkg::xbar_rule_32_t FUSE_RULE = '{
       idx: 4,
-      start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR,
-      end_addr:
-      sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_BASE_ADDR
-      +
-      sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR,
+      end_addr: sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR + sep_pkg::RegPageSize
   };
 
   parameter axi_pkg::xbar_rule_32_t LIFECYCLE_RULE = '{

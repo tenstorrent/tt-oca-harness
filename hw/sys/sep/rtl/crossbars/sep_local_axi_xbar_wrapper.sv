@@ -10,7 +10,10 @@
 `include "axi/assign.svh"
 `include "ocah_assert.svh"
 
-module sep_local_axi_xbar_wrapper (
+module sep_local_axi_xbar_wrapper #(
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4  // Size in bytes of the eFuse shim CSR window
+                                                // at the base of the external aperture.
+) (
   input  logic                                clk_i,  // System clock.
   input  logic                                rst_ni,  // Active-low reset.
   input  logic                                test_i,  // DFT test mode to axi_xbar.
@@ -86,8 +89,14 @@ module sep_local_axi_xbar_wrapper (
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_reset_ctrl_axi_resp_i,  // Response from sep_reset_ctrl.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     sep_external_axi_req_o,  // Request for the external aperture
-                                                                        // 0x2000_0000-0x3FFF_FFFF, to sep.
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_external_axi_resp_i  // Response from the external aperture.
+                                                                        // 0x2000_0000-0x3FFF_FFFF above
+                                                                        // the eFuse shim window, to sep.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_external_axi_resp_i,  // Response from the external aperture.
+
+  output sep_pkg::sep_32_64_6_12_axi_req_t     efuse_shim_axi_req_o,  // Request for the eFuse shim CSR
+                                                                      // window, to sep_crypto.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    efuse_shim_axi_resp_i  // Response from the eFuse shim
+                                                                      // CSR window.
 );
 
   // =========================================================================
@@ -127,6 +136,8 @@ module sep_local_axi_xbar_wrapper (
   sep_local_axi_xbar_pkg::axi_out_resp_t entropy_fifo_resp;
   sep_local_axi_xbar_pkg::axi_out_req_t  sep_external_req;
   sep_local_axi_xbar_pkg::axi_out_resp_t sep_external_resp;
+  sep_local_axi_xbar_pkg::axi_out_req_t  efuse_shim_req;
+  sep_local_axi_xbar_pkg::axi_out_resp_t efuse_shim_resp;
   // =========================================================================
   // Input port assignments (sep_pkg -> xbar_pkg)
   // All input ports have 3-bit ID, 32-bit addr, 64-bit data, 12-bit user
@@ -197,10 +208,16 @@ module sep_local_axi_xbar_wrapper (
   `AXI_ASSIGN_REQ_STRUCT(sep_external_axi_req_o, sep_external_req)
   `AXI_ASSIGN_RESP_STRUCT(sep_external_resp, sep_external_axi_resp_i)
 
+  // efuse_shim
+  `AXI_ASSIGN_REQ_STRUCT(efuse_shim_axi_req_o, efuse_shim_req)
+  `AXI_ASSIGN_RESP_STRUCT(efuse_shim_resp, efuse_shim_axi_resp_i)
+
   // =========================================================================
   // Crossbar
   // =========================================================================
-  sep_local_axi_xbar u_sep_local_axi_xbar (
+  sep_local_axi_xbar #(
+    .EFUSE_SHIM_SIZE(EFUSE_SHIM_SIZE)
+  ) u_sep_local_axi_xbar (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
     .test_i (test_i),
@@ -237,7 +254,9 @@ module sep_local_axi_xbar_wrapper (
     .entropy_fifo_req_o                  (entropy_fifo_req),
     .entropy_fifo_resp_i                 (entropy_fifo_resp),
     .sep_external_req_o                 (sep_external_req),
-    .sep_external_resp_i                (sep_external_resp)
+    .sep_external_resp_i                (sep_external_resp),
+    .efuse_shim_req_o                   (efuse_shim_req),
+    .efuse_shim_resp_i                  (efuse_shim_resp)
   );
 
   // =========================================================================
@@ -553,6 +572,26 @@ module sep_local_axi_xbar_wrapper (
                       $bits(sep_external_axi_resp_i.b.id) == $bits(sep_external_resp.b.id),
                       "SEP_EXTERNAL B ID width mismatch")
 
+  // efuse_shim
+  `OCAH_ASSERT_STATIC(EfuseShimAwIdWidth_A,
+                      $bits(efuse_shim_axi_req_o.aw.id) == $bits(efuse_shim_req.aw.id),
+                      "EFUSE_SHIM AW ID width mismatch")
+  `OCAH_ASSERT_STATIC(EfuseShimAwAddrWidth_A,
+                      $bits(efuse_shim_axi_req_o.aw.addr) == $bits(efuse_shim_req.aw.addr),
+                      "EFUSE_SHIM AW ADDR width mismatch")
+  `OCAH_ASSERT_STATIC(EfuseShimWDataWidth_A,
+                      $bits(efuse_shim_axi_req_o.w.data) == $bits(efuse_shim_req.w.data),
+                      "EFUSE_SHIM W DATA width mismatch")
+  `OCAH_ASSERT_STATIC(EfuseShimArIdWidth_A,
+                      $bits(efuse_shim_axi_req_o.ar.id) == $bits(efuse_shim_req.ar.id),
+                      "EFUSE_SHIM AR ID width mismatch")
+  `OCAH_ASSERT_STATIC(EfuseShimRIdWidth_A,
+                      $bits(efuse_shim_axi_resp_i.r.id) == $bits(efuse_shim_resp.r.id),
+                      "EFUSE_SHIM R ID width mismatch")
+  `OCAH_ASSERT_STATIC(EfuseShimBIdWidth_A,
+                      $bits(efuse_shim_axi_resp_i.b.id) == $bits(efuse_shim_resp.b.id),
+                      "EFUSE_SHIM B ID width mismatch")
+
   // User-field width assertions
   // Input ports
   `OCAH_ASSERT_STATIC(IfuSramAwUserWidth_A,
@@ -800,5 +839,21 @@ module sep_local_axi_xbar_wrapper (
   `OCAH_ASSERT_STATIC(SepExternalBUserWidth_A,
                       $bits(sep_external_axi_resp_i.b.user) == $bits(sep_external_resp.b.user),
                       "SEP_EXTERNAL B USER width mismatch")
+
+  `OCAH_ASSERT_STATIC(EfuseShimAwUserWidth_A,
+                      $bits(efuse_shim_axi_req_o.aw.user) == $bits(efuse_shim_req.aw.user),
+                      "EFUSE_SHIM AW USER width mismatch")
+  `OCAH_ASSERT_STATIC(EfuseShimWUserWidth_A,
+                      $bits(efuse_shim_axi_req_o.w.user) == $bits(efuse_shim_req.w.user),
+                      "EFUSE_SHIM W USER width mismatch")
+  `OCAH_ASSERT_STATIC(EfuseShimArUserWidth_A,
+                      $bits(efuse_shim_axi_req_o.ar.user) == $bits(efuse_shim_req.ar.user),
+                      "EFUSE_SHIM AR USER width mismatch")
+  `OCAH_ASSERT_STATIC(EfuseShimRUserWidth_A,
+                      $bits(efuse_shim_axi_resp_i.r.user) == $bits(efuse_shim_resp.r.user),
+                      "EFUSE_SHIM R USER width mismatch")
+  `OCAH_ASSERT_STATIC(EfuseShimBUserWidth_A,
+                      $bits(efuse_shim_axi_resp_i.b.user) == $bits(efuse_shim_resp.b.user),
+                      "EFUSE_SHIM B USER width mismatch")
 
 endmodule : sep_local_axi_xbar_wrapper

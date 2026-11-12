@@ -51,10 +51,11 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-AXI4-Lite interface to the fuse bank control registers in the SHIM, carried on
-`fuse_bank_ctrl_req_o` and `fuse_bank_ctrl_resp_i` of types `efuse_axil_req_t` and
-`efuse_axil_resp_t`. The controller forwards accesses outside its own address windows on
-this interface.
+AXI4-Lite interface to the fuse bank control registers in the SHIM, carried on the
+SHIM's `fuse_bank_ctrl_req_i` and `fuse_bank_ctrl_resp_o` of types `efuse_axil_req_t` and
+`efuse_axil_resp_t`. The SMC and SEP eFuse wrappers, not the controller, drive it: each
+merges its own shim crossbar port with JTAG accesses to the shim window onto this
+interface.
 
 === Fuse Command Interface
 

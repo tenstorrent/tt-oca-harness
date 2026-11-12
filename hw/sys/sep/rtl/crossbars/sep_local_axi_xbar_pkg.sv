@@ -16,8 +16,8 @@ package sep_local_axi_xbar_pkg;
   // Fabric Parameters
   // ===========================================================================
   localparam int unsigned NumInputs = 5;
-  localparam int unsigned NumOutputs = 10;
-  localparam int unsigned NumAddrRules = 15;
+  localparam int unsigned NumOutputs = 11;
+  localparam int unsigned NumAddrRules = 16;
   localparam int unsigned MaxInputIdW = 3;
   localparam int unsigned XbarOutputIdW = 6;
 
@@ -137,11 +137,11 @@ package sep_local_axi_xbar_pkg;
   // Connectivity Matrix
   // ===========================================================================
   localparam bit [NumInputs-1:0][NumOutputs-1:0] Connectivity = '{
-      0: 10'b0000000010,  // ifu_sram.
-      1: 10'b1111111110,  // lsu.
-      2: 10'b1111111110,  // dbg.
-      3: 10'b1011111011,  // dma.
-      4: 10'b1110101110  // ext.
+      0: 11'b00000000010,  // ifu_sram.
+      1: 11'b11111111110,  // lsu.
+      2: 11'b11111111110,  // dbg.
+      3: 11'b11011111011,  // dma.
+      4: 11'b11110101110  // ext.
   };
 
 endpackage : sep_local_axi_xbar_pkg

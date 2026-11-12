@@ -24,7 +24,7 @@ module smc_peripherals #(
                                                  // the base of the smc_external window;
                                                  // literal because the open smc_external
                                                  // map is opaque. Passed to the peripheral
-                                                 // crossbar.
+                                                 // crossbar and the eFuse wrapper.
 ) (
   input  logic clk_ref_i,               // Reference clock for the reset unit, the AVSBus
                                         // controller and the peripheral CDC.
@@ -409,6 +409,9 @@ module smc_peripherals #(
   smc_pkg::smc_axil_32_32_req_t  axil_efuse_req;
   smc_pkg::smc_axil_32_32_resp_t axil_efuse_resp;
 
+  smc_pkg::smc_axil_32_32_req_t  axil_efuse_shim_req;
+  smc_pkg::smc_axil_32_32_resp_t axil_efuse_shim_resp;
+
   smc_pkg::smc_axil_32_32_req_t  axil_external_req;
   smc_pkg::smc_axil_32_32_resp_t axil_external_resp;
 
@@ -563,6 +566,8 @@ module smc_peripherals #(
     .uart_resp_i                      (axil_uart_resp_xbar),
     .efuse_req_o                      (axil_efuse_req),
     .efuse_resp_i                     (axil_efuse_resp),
+    .efuse_shim_req_o                 (axil_efuse_shim_req),
+    .efuse_shim_resp_i                (axil_efuse_shim_resp),
     .telemetry_req_o                  (axil_telemetry_req_xbar),
     .telemetry_resp_i                 (axil_telemetry_resp_xbar),
     .system_timer_octs_req_o          (axil_system_timer_octs_req),
@@ -1327,15 +1332,19 @@ module smc_peripherals #(
     .ext_boot_seq_done_qual_o (ext_boot_seq_done_qual)
   );
 
-  smc_efuse_wrapper u_smc_efuse_wrapper (
+  smc_efuse_wrapper #(
+    .EFUSE_SHIM_SIZE(EFUSE_SHIM_SIZE)
+  ) u_smc_efuse_wrapper (
     .clk_i                           (clk_smc_i),
     .rst_ni                          (rst_primary_smc_clk_no),
     .test_en_i                       (test_en_i),
     .scan_rst_ni                     (scan_rst_ni),
 
-    // Functional AXI4-Lite slave (SMC peripherals xbar efuse leg + eFuse shim leg)
+    // Functional AXI4-Lite slaves (SMC peripherals xbar efuse and efuse_shim legs)
     .axil_req_i                      (axil_efuse_req),
     .axil_resp_o                     (axil_efuse_resp),
+    .axil_efuse_shim_req_i           (axil_efuse_shim_req),
+    .axil_efuse_shim_resp_o          (axil_efuse_shim_resp),
 
     // JTAG AXI4-Lite slave
     .axil_smc_otp_jtag_req_i         (axil_smc_otp_jtag_req),

@@ -104,14 +104,14 @@ addrmap sep_top #(
     // Key Manager (SEP side)
     km_mailbox_sep                         km_mailbox_sep                      @BASE_ADDR + 0x1092_0000;
 
-    // Efuse Map (OTP Shadow Memory)
-    sep_efuse_map                          sep_efuse_map                       @BASE_ADDR + 0x1093_0000;
-
     // Efuse Interface
-    efuse_interface_ctrl                   efuse_interface_ctrl                @BASE_ADDR + 0x1093_0400;
+    efuse_interface_ctrl                   efuse_interface_ctrl                @BASE_ADDR + 0x1093_0000;
 
     // Efuse MMR
-    efuse_mmr                              efuse_mmr                           @BASE_ADDR + 0x1093_0500;
+    efuse_mmr                              efuse_mmr                           @BASE_ADDR + 0x1093_0100;
+
+    // Efuse Map (OTP Shadow Memory)
+    sep_efuse_map                          sep_efuse_map                       @BASE_ADDR + 0x1093_0400;
 
     // Adams Bridge post-quantum cryptographic accelerator
     external abr_reg                       abr                                 @BASE_ADDR + 0x1094_0000;

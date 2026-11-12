@@ -35,7 +35,7 @@ xref:sep-axi-connectivity[xrefstyle=short] shows the crossbar connectivity imple
 `hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFU, CPU LSU, CPU DBG, DMA, and the System Interface)
-and ten targets. The CPU masters and the DMA issue single-beat transactions
+and eleven targets. The CPU masters and the DMA issue single-beat transactions
 only; the System Interface may issue bursts.
 
 A few access paths are intentionally outside this crossbar:
@@ -93,7 +93,8 @@ closely coupled memory (ICCM) and data closely coupled memory (DCCM).
 |SPI host (`sep_io`) |Local input/output peripheral path, including SPI boot-flash access.
 |Entropy pool (`entropy_fifo`) |Read-only aperture for entropy supplied by the entropy distribution
 network (EDN).
-|Extension, eFuse shim (`sep_external`) |Outbound AXI4 port for resources outside the local crossbar; the eFuse shim CSR window is diverted by `u_efuse_shim_demux` to the eFuse wrapper.
+|Extension (`sep_external`) |Outbound AXI4 port for resources outside the local crossbar.
+|eFuse shim (`efuse_shim`) |The eFuse shim CSR window at the base of the external aperture, routed to the eFuse wrapper in the crypto subsystem.
 |SMN inbound (`ext`) |Filtered inbound path from the System Management Network (SMN).
 |Boot ROM |Read-only boot memory on the dedicated CPU fetch/load path.
 |===

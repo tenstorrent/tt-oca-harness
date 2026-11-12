@@ -164,29 +164,30 @@ addrmap key_manager {
     //
     // Instantiated as 'external' — no KM-side register RTL is generated.
     // The generated address constants reflect the KM CPU view:
-    //   OTP_EFUSE_MAP  @ 0x0001_1000  (sep_efuse_map,      64-bit regwidth)
-    //   OTP_EFUSE_CTRL @ 0x0001_1400  (efuse_interface_ctrl, 32-bit)
-    //   OTP_EFUSE_MMR  @ 0x0001_1500  (efuse_mmr,            32-bit)
-    external sep_efuse_map        otp_efuse_map  @ 0x0001_1000;
-    external efuse_interface_ctrl otp_efuse_ctrl @ 0x0001_1400;
-    external efuse_mmr            otp_efuse_mmr  @ 0x0001_1500;
+    //   OTP_EFUSE_CTRL @ 0x0001_1000  (efuse_interface_ctrl, 32-bit)
+    //   OTP_EFUSE_MMR  @ 0x0001_1100  (efuse_mmr,            32-bit)
+    //   OTP_EFUSE_MAP  @ 0x0001_1400  (sep_efuse_map,      64-bit regwidth)
+    external efuse_interface_ctrl otp_efuse_ctrl @ 0x0001_1000;
+    external efuse_mmr            otp_efuse_mmr  @ 0x0001_1100;
+    external sep_efuse_map        otp_efuse_map  @ 0x0001_1400;
 
 `ifdef OCAH_DOC_MEMORY_MAP
     ocah_aperture_size = 0x1D000;
     ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     mailbox_km->ocah_aperture_size = 0x20;
     mailbox_km->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
-    otp_efuse_map->desc = "SEP eFuse shadow-register pass-through.";
-    otp_efuse_map->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
     otp_efuse_ctrl->ocah_aperture_size = 0x100;
     otp_efuse_ctrl->desc = "SEP eFuse command and status pass-through.";
     otp_efuse_ctrl->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
     otp_efuse_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
-    otp_efuse_mmr->ocah_aperture_size = 0x100;
+    otp_efuse_mmr->ocah_aperture_size = 0x300;
     otp_efuse_mmr->desc = "SEP eFuse security-token pass-through.";
     otp_efuse_mmr->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
     otp_efuse_mmr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
-    otp_efuse_mmr->ocah_following_gap_note = "This range is inside the OTP/eFuse window, which answers every offset outside its register maps with SLVERR and read data 0xBADCAB1E rather than DECERR.";
+    otp_efuse_map->ocah_aperture_size = 0xC00;
+    otp_efuse_map->desc = "SEP eFuse shadow-register pass-through.";
+    otp_efuse_map->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_map->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     kpv->ocah_aperture_size = 0x2000;
     kpv->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     kmcsr->ocah_aperture_size = 0x800;

@@ -110,22 +110,6 @@ package sep_pkg;
   `AXI_TYPEDEF_ALL(sep_56_64_7_12_axi, sep_56_64_7_12_axi_addr_t, sep_56_64_7_12_axi_id_t,
                    sep_56_64_7_12_axi_data_t, sep_56_64_7_12_axi_strb_t, sep_56_64_7_12_axi_user_t)
 
-  // 32/64/7/1 (system peripherals xbar slave 32-bit addr)
-  parameter int unsigned SEP_32_64_7_12_ADDR_WIDTH = 32;
-  parameter int unsigned SEP_32_64_7_12_DATA_WIDTH = 64;
-  parameter int unsigned SEP_32_64_7_12_STRB_WIDTH = SEP_32_64_7_12_DATA_WIDTH / 8;
-  parameter int unsigned SEP_32_64_7_12_USER_WIDTH = 12;
-  parameter int unsigned SEP_32_64_7_12_ID_WIDTH = 7;
-
-  typedef logic [SEP_32_64_7_12_ADDR_WIDTH-1:0] sep_32_64_7_12_axi_addr_t;
-  typedef logic [SEP_32_64_7_12_DATA_WIDTH-1:0] sep_32_64_7_12_axi_data_t;
-  typedef logic [SEP_32_64_7_12_STRB_WIDTH-1:0] sep_32_64_7_12_axi_strb_t;
-  typedef logic [SEP_32_64_7_12_USER_WIDTH-1:0] sep_32_64_7_12_axi_user_t;
-  typedef logic [SEP_32_64_7_12_ID_WIDTH-1:0] sep_32_64_7_12_axi_id_t;
-
-  `AXI_TYPEDEF_ALL(sep_32_64_7_12_axi, sep_32_64_7_12_axi_addr_t, sep_32_64_7_12_axi_id_t,
-                   sep_32_64_7_12_axi_data_t, sep_32_64_7_12_axi_strb_t, sep_32_64_7_12_axi_user_t)
-
   // 56/64/8/1 (system peripherals outbound)
   parameter int unsigned SEP_56_64_8_12_ADDR_WIDTH = 56;
   parameter int unsigned SEP_56_64_8_12_DATA_WIDTH = 64;

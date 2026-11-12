@@ -55,7 +55,7 @@ verification operations
 |MMR |Memory-Mapped Registers for SEP security tokens with specialized
 access control
 
-|Interface SHIM CSR |Configuration registers for foundry-specific timing adaptation. Implemented by the adopter, but always accessed via the interface controller.
+|Interface SHIM CSR |Configuration registers for foundry-specific timing adaptation. Implemented by the adopter, and reached through the subsystem eFuse wrapper.
 |=====================================================================================
 
 === Shadow Register Subsystem

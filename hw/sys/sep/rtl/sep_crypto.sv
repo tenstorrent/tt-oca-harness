@@ -33,6 +33,8 @@ module sep_crypto #(
   parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports and
                                                  // entropy muxes; must equal
                                                  // SepCryptoEdnEndpointCount (3).
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the eFuse shim CSR window
+                                                 // at the base of the external aperture.
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
                                                         // digest; replace at synthesis.
 ) (
@@ -49,9 +51,8 @@ module sep_crypto #(
   input  sep_pkg::sep_32_64_6_12_axi_req_t        sep_crypto_axi_req_i,  // Full AXI4 slave from local crossbar.
   output sep_pkg::sep_32_64_6_12_axi_resp_t       sep_crypto_axi_resp_o,  // Response from the crypto interconnect to the local crossbar.
 
-  input  sep_pkg::sep_32_64_6_12_axi_req_t        efuse_shim_axi_req_i,  // eFuse shim CSR leg, split out of the sep_external crossbar window.
-  output sep_pkg::sep_32_64_6_12_axi_resp_t       efuse_shim_axi_resp_o,  // Response to the eFuse shim CSR leg, from the eFuse wrapper through the shim
-                                                                          // merge mux.
+  input  sep_pkg::sep_32_64_6_12_axi_req_t        efuse_shim_axi_req_i,  // eFuse shim CSR leg, from the local crossbar's efuse_shim target.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t       efuse_shim_axi_resp_o,  // Response to the eFuse shim CSR leg, from the eFuse wrapper.
 
   output logic                               entropy_source_irq_o,  // Entropy source interrupt.
 
@@ -706,77 +707,8 @@ module sep_crypto #(
   // Fuse Wrapper   //
   ////////////////////
 
-  ///////////////////////////////
-  // eFuse leg / SHIM merge    //
-  ///////////////////////////////
-
-  // eFuse decode leg (crypto address space) and the eFuse shim CSR leg that is
-  // split out of the sep_external window (on xbar) are merged here (not in above decode).
-  // Shim addresses never enter the crypto address map.
-
-  // axi_mux widens the ID by one bit (6 -> 7), converter squashes it back so sep_efuse_wrapper keeps its 6-bit port.
-  sep_pkg::sep_32_64_7_12_axi_req_t  efuse_mux_axi_req;
-  sep_pkg::sep_32_64_7_12_axi_resp_t efuse_mux_axi_resp;
-  sep_pkg::sep_32_64_6_12_axi_req_t  efuse_merged_axi_req;
-  sep_pkg::sep_32_64_6_12_axi_resp_t efuse_merged_axi_resp;
-
-  axi_mux #(
-    .SlvAxiIDWidth (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-    .slv_aw_chan_t (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-    .mst_aw_chan_t (sep_pkg::sep_32_64_7_12_axi_aw_chan_t),
-    .w_chan_t      (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
-    .slv_b_chan_t  (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
-    .mst_b_chan_t  (sep_pkg::sep_32_64_7_12_axi_b_chan_t),
-    .slv_ar_chan_t (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-    .mst_ar_chan_t (sep_pkg::sep_32_64_7_12_axi_ar_chan_t),
-    .slv_r_chan_t  (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-    .mst_r_chan_t  (sep_pkg::sep_32_64_7_12_axi_r_chan_t),
-    .slv_req_t     (sep_pkg::sep_32_64_6_12_axi_req_t),
-    .slv_resp_t    (sep_pkg::sep_32_64_6_12_axi_resp_t),
-    .mst_req_t     (sep_pkg::sep_32_64_7_12_axi_req_t),
-    .mst_resp_t    (sep_pkg::sep_32_64_7_12_axi_resp_t),
-    .NoSlvPorts    (2),
-    .MaxWTrans     (4),
-    .FallThrough   (1'b0),
-    .SpillAw       (1'b1),
-    .SpillW        (1'b0),
-    .SpillB        (1'b0),
-    .SpillAr       (1'b1),
-    .SpillR        (1'b0)
-  ) u_efuse_shim_axi_mux (
-    .clk_i       (clk_i),
-    .rst_ni      (rst_ni),
-    .test_i      (test_en_i),
-    .slv_reqs_i  ({efuse_shim_axi_req_i, fuse_axi_req}),
-    .slv_resps_o ({efuse_shim_axi_resp_o, fuse_axi_resp}),
-    .mst_req_o   (efuse_mux_axi_req),
-    .mst_resp_i  (efuse_mux_axi_resp)
-  );
-
-  // The axi mux upstream forces the axi to be 7 bits. Use this converter to turn it back to 6 bits to fit with efuse controller
-  prim_axi_id_converter #(
-    .AXI_ADDR_WIDTH    (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
-    .AXI_DATA_WIDTH    (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-    .AXI_USER_WIDTH    (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
-    .AXI_ID_WIDTH_IN   (sep_pkg::SEP_32_64_7_12_ID_WIDTH),
-    .AXI_ID_WIDTH_OUT  (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-    .input_axi_req_t   (sep_pkg::sep_32_64_7_12_axi_req_t),
-    .input_axi_resp_t  (sep_pkg::sep_32_64_7_12_axi_resp_t),
-    .output_axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
-    .output_axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t),
-    .MAX_INFLIGHT_IDS  (16),
-    .MAX_TXNS_PER_ID   (4)
-  ) u_efuse_shim_id_conv (
-    .clk_i         (clk_i),
-    .rst_ni        (rst_ni),
-    .test_en_i     (test_en_i),
-    .axi_in_req_i  (efuse_mux_axi_req),
-    .axi_in_resp_o (efuse_mux_axi_resp),
-    .axi_out_req_o (efuse_merged_axi_req),
-    .axi_out_resp_i(efuse_merged_axi_resp)
-  );
-
   sep_efuse_wrapper #(
+    .EFUSE_SHIM_SIZE      (EFUSE_SHIM_SIZE),
     .SEP_SEC_DISABLE_TOKEN(SEP_SEC_DISABLE_TOKEN)
   ) u_sep_efuse_wrapper (
     .clk_i (clk_i),
@@ -802,8 +734,10 @@ module sep_crypto #(
     .km_efuse_axil_req_i                   (km_efuse_axil_isolated_req),
     .km_efuse_axil_resp_o                  (km_efuse_axil_isolated_resp),
 
-    .sep_efuse_axi_req_i                   (efuse_merged_axi_req),
-    .sep_efuse_axi_resp_o                  (efuse_merged_axi_resp),
+    .sep_efuse_axi_req_i                   (fuse_axi_req),
+    .sep_efuse_axi_resp_o                  (fuse_axi_resp),
+    .sep_efuse_shim_axi_req_i              (efuse_shim_axi_req_i),
+    .sep_efuse_shim_axi_resp_o             (efuse_shim_axi_resp_o),
     .efuse_bank_ctrl_req_o                 (efuse_bank_ctrl_req_o),
     .efuse_bank_ctrl_resp_i                (efuse_bank_ctrl_resp_i),
     .efuse_shim_command_req_o              (efuse_shim_command_req_o),
@@ -1047,7 +981,7 @@ module sep_crypto #(
     .SRAM_SIZE_BYTES      (32768),
     .MAILBOX_DEPTH        (16),
     .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
-    .OTP_EFUSE_REMAP_BASE (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR))
+    .OTP_EFUSE_REMAP_BASE (32'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR))
   ) u_key_manager_s3c_scan (
     .clk_i              (clk_i),
     // Cold reset: SEP system cold reset (AASD) resets the entire KM.
