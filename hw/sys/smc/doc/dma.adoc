@@ -53,11 +53,13 @@ writes. The DMA and zeroer share the outgoing fabric path shown below.
 .SMC DMA frontend, backend and shared fabric path
 image::smc-dma.svg[alt="SMC DMA frontend, request manager and backend inside the data-accelerator wrapper, with the control demux and master mux shared with the memory zeroer",width=100%,pdfwidth=100%]
 
-The DMA and the zeroer share `smc_data_accelerator_wrap`. Its control port splits each
-burst into single beats. The control demux sends each beat in the DMA's or the zeroer's
-register window to that block, with the address narrowed to the window, and sends every
-other address in the page to the error subordinate `u_ctrl_err_slv`, which answers DECERR
-with read data `0xBADCAB1E`. Its master mux merges the
+The DMA and the zeroer share `smc_data_accelerator_wrap`. Its DMA control port receives
+the page that holds the DMA's 512-byte register window. The DMA decodes only the low 9
+address bits, so the control demux sends a burst to the DMA, with the address narrowed to
+the window, only when its first and last beats both fall in the window. Every other
+burst goes to the error subordinate `u_dma_ctrl_err_slv`, which answers DECERR with read
+data `0xBADCAB1E` on every beat. The zeroer's control port is a separate AXI-Lite port
+from the internal CSR crossbar. The wrapper's master mux merges the
 two master ports onto the port to the input fabric and adds one ID bit to tell their
 responses apart. In the figure, thick lines are AXI4, thin dark lines are the register
 bus, and grey lines are iDMA requests and responses, gated clocks and status outputs.
