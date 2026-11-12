@@ -37,7 +37,8 @@ samples, the held word count H, the parity bit, and the pointer, copy and bit
 of the pointer trial.
 
 Checkers:
-  CHK-FIFO-FILL          LEVEL rises to 64 and stays, FIFO_OVERFLOW = 1,
+  CHK-FIFO-FILL          LEVEL rises to 64 and stays, with WPTR and RPTR held while full
+                         (a write while full is discarded), FIFO_OVERFLOW = 1,
                          (WPTR - RPTR) mod 64 == LEVEL mod 64 at every sample.
   CHK-FIFO-POP           each pop with the producer stopped: LEVEL - 1, RPTR + 1, WPTR kept;
                          LEVEL and WPTR still kept after the stream port offers a word;
@@ -514,11 +515,12 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         )
         overflow = _get(intr, "INTR_STATUS", "FIFO_OVERFLOW")
         plateau_bad = 0
+        full_ptrs = samples[-1][1:]
         t1 = self._now()
         while self._now() - t1 <= self.fill_clk:
             lvl, wp, rp = _status(await self._rd(ESRC_FIFO_STATUS))
             samples.append((lvl, wp, rp))
-            plateau_bad += lvl != DEPTH
+            plateau_bad += lvl != DEPTH or (wp, rp) != full_ptrs
             ptr_bad += ((wp - rp) % PTR_MOD) != (lvl % PTR_MOD)
         # Stream words in a window of STREAM_WINDOW_GAPS x the longest gap between stream
         # words of the fill, with LEVEL held at 64. Control: the fill offered at least two
