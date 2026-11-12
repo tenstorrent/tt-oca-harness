@@ -38,8 +38,9 @@ carry a fuse command and its response. The dashed line separates the OCAH
 controller from the interface shim, which an adopter replaces with one for its
 fuse technology.
 
-Both wrappers pass the OTP JTAG port through a lifecycle filter that answers a
-blocked access with an error response. Inside the controller, an AXI-Lite
+Both `sep_efuse_wrapper` and `smc_efuse_wrapper` pass the OTP JTAG port through
+a lifecycle filter that answers a blocked access with SLVERR and read data
+`0xBADCAB1E`. Inside the controller, an AXI-Lite
 multiplexer merges the functional and JTAG ports. Addresses from the MAP window
 to the end of the last register window go through the AXI-Lite to APB bridge,
 and all others go to the shim's bank control registers. The APB decode answers
