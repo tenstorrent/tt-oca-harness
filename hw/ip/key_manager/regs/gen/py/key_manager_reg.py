@@ -5270,14 +5270,14 @@ class SEP_EFUSE_MAP_LOCKS_SPARE_reg_u(Union):
 
 SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT = 0x0000000F
 SEP_EFUSE_MAP_LC_STATE_REG_FIELD_ACCESS = (
-    ('lc_state', 'r', '', '', False),
-    ('rsvd', 'r', '', '', False),
+    ('lc_state', 'rw', 'woset', '', False),
+    ('rsvd', 'rw', 'woset', '', False),
 )
 
 SEP_EFUSE_MAP_LC_STATE_REG_WIDTH = 32
 SEP_EFUSE_MAP_LC_STATE_REG_FIELDS = (
-    ('lc_state', 0, 7, 'r', 'rw', '', '', False, True, 15),
-    ('rsvd', 8, 31, 'r', 'rw', '', '', False, True, 0),
+    ('lc_state', 0, 7, 'rw', 'rw', 'woset', '', False, True, 15),
+    ('rsvd', 8, 31, 'rw', 'rw', 'woset', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_LC_STATE_reg_t(Structure):
@@ -5310,14 +5310,14 @@ class SEP_EFUSE_MAP_LC_STATE_reg_u(Union):
 
 SEP_EFUSE_MAP_SBOOT_DIS_REG_DEFAULT = 0x00000000
 SEP_EFUSE_MAP_SBOOT_DIS_REG_FIELD_ACCESS = (
-    ('disable_secure_boot', 'r', '', '', False),
-    ('rsvd', 'r', '', '', False),
+    ('disable_secure_boot', 'rw', '', '', False),
+    ('rsvd', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SBOOT_DIS_REG_WIDTH = 32
 SEP_EFUSE_MAP_SBOOT_DIS_REG_FIELDS = (
-    ('disable_secure_boot', 0, 0, 'r', 'rw', '', '', False, True, 0),
-    ('rsvd', 1, 31, 'r', 'rw', '', '', False, True, 0),
+    ('disable_secure_boot', 0, 0, 'rw', 'rw', '', '', False, True, 0),
+    ('rsvd', 1, 31, 'rw', 'rw', '', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_SBOOT_DIS_reg_t(Structure):
@@ -5350,14 +5350,14 @@ class SEP_EFUSE_MAP_SBOOT_DIS_reg_u(Union):
 
 SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_DEFAULT = 0x00000000
 SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_FIELD_ACCESS = (
-    ('transient_rma_en', 'r', '', '', False),
-    ('rsvd', 'r', '', '', False),
+    ('transient_rma_en', 'rw', '', '', False),
+    ('rsvd', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_WIDTH = 32
 SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_FIELDS = (
-    ('transient_rma_en', 0, 0, 'r', 'rw', '', '', False, True, 0),
-    ('rsvd', 1, 31, 'r', 'rw', '', '', False, True, 0),
+    ('transient_rma_en', 0, 0, 'rw', 'rw', '', '', False, True, 0),
+    ('rsvd', 1, 31, 'rw', 'rw', '', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_TRANSIENT_RMA_EN_reg_t(Structure):
@@ -5447,40 +5447,40 @@ class SEP_EFUSE_MAP_LC_DISABLE_reg_u(Union):
         return instance
 
 SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_FIELD_ACCESS = (
-    ('token_digest', 'r', '', '', False),
+    ('token_digest', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_WIDTH = 256
 SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_FIELDS = (
-    ('token_digest', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('token_digest', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_FIELD_ACCESS = (
-    ('token_digest', 'r', '', '', False),
+    ('token_digest', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_WIDTH = 256
 SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_FIELDS = (
-    ('token_digest', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('token_digest', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_CLASS_KEY_REG_FIELD_ACCESS = (
-    ('key', 'r', '', '', False),
+    ('key', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_CLASS_KEY_REG_WIDTH = 256
 SEP_EFUSE_MAP_CLASS_KEY_REG_FIELDS = (
-    ('key', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('key', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_DEFAULT = 0x00000000
 SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_FIELD_ACCESS = (
-    ('select', 'r', '', '', False),
+    ('select', 'rw', 'woset', '', False),
 )
 
 SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_WIDTH = 32
 SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_FIELDS = (
-    ('select', 0, 31, 'r', 'rw', '', '', False, True, 0),
+    ('select', 0, 31, 'rw', 'rw', 'woset', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_reg_t(Structure):
@@ -5511,78 +5511,78 @@ class SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_reg_u(Union):
         return instance
 
 SEP_EFUSE_MAP_BL1_VERSION_REG_FIELD_ACCESS = (
-    ('version', 'r', '', '', False),
+    ('version', 'rw', 'woset', '', False),
 )
 
 SEP_EFUSE_MAP_BL1_VERSION_REG_WIDTH = 256
 SEP_EFUSE_MAP_BL1_VERSION_REG_FIELDS = (
-    ('version', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('version', 0, 255, 'rw', 'rw', 'woset', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_BL2_VERSION_REG_FIELD_ACCESS = (
-    ('version', 'r', '', '', False),
+    ('version', 'rw', 'woset', '', False),
 )
 
 SEP_EFUSE_MAP_BL2_VERSION_REG_WIDTH = 256
 SEP_EFUSE_MAP_BL2_VERSION_REG_FIELDS = (
-    ('version', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('version', 0, 255, 'rw', 'rw', 'woset', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_CHIPLET_UID_REG_FIELD_ACCESS = (
-    ('uid', 'r', '', '', False),
+    ('uid', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_CHIPLET_UID_REG_WIDTH = 256
 SEP_EFUSE_MAP_CHIPLET_UID_REG_FIELDS = (
-    ('uid', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('uid', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_SIP_PUBK_HASH_REG_FIELD_ACCESS = (
-    ('key_hash', 'r', '', '', False),
+    ('key_hash', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SIP_PUBK_HASH_REG_WIDTH = 256
 SEP_EFUSE_MAP_SIP_PUBK_HASH_REG_FIELDS = (
-    ('key_hash', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('key_hash', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_SIP_UID_REG_FIELD_ACCESS = (
-    ('uid', 'r', '', '', False),
+    ('uid', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SIP_UID_REG_WIDTH = 256
 SEP_EFUSE_MAP_SIP_UID_REG_FIELDS = (
-    ('uid', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('uid', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_FIELD_ACCESS = (
-    ('key_hash', 'r', '', '', False),
+    ('key_hash', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_WIDTH = 256
 SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_FIELDS = (
-    ('key_hash', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('key_hash', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_SYS_UID_REG_FIELD_ACCESS = (
-    ('uid', 'r', '', '', False),
+    ('uid', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SYS_UID_REG_WIDTH = 256
 SEP_EFUSE_MAP_SYS_UID_REG_FIELDS = (
-    ('uid', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('uid', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_STATUS_RPT_REG_DEFAULT = 0x00000000
 SEP_EFUSE_MAP_STATUS_RPT_REG_FIELD_ACCESS = (
-    ('rpt', 'r', '', '', False),
-    ('reserved', 'r', '', '', False),
+    ('rpt', 'rw', '', '', False),
+    ('reserved', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_STATUS_RPT_REG_WIDTH = 32
 SEP_EFUSE_MAP_STATUS_RPT_REG_FIELDS = (
-    ('rpt', 0, 1, 'r', 'rw', '', '', False, True, 0),
-    ('reserved', 2, 31, 'r', 'rw', '', '', False, True, 0),
+    ('rpt', 0, 1, 'rw', 'rw', '', '', False, True, 0),
+    ('reserved', 2, 31, 'rw', 'rw', '', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_STATUS_RPT_reg_t(Structure):
@@ -5615,16 +5615,16 @@ class SEP_EFUSE_MAP_STATUS_RPT_reg_u(Union):
 
 SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT = 0x00000000
 SEP_EFUSE_MAP_ROM_CTL_REG_FIELD_ACCESS = (
-    ('rom_endianness_ctrl', 'r', '', '', False),
-    ('rom_swap_ctrl', 'r', '', '', False),
-    ('reserved', 'r', '', '', False),
+    ('rom_endianness_ctrl', 'rw', '', '', False),
+    ('rom_swap_ctrl', 'rw', '', '', False),
+    ('reserved', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_ROM_CTL_REG_WIDTH = 32
 SEP_EFUSE_MAP_ROM_CTL_REG_FIELDS = (
-    ('rom_endianness_ctrl', 0, 0, 'r', 'rw', '', '', False, True, 0),
-    ('rom_swap_ctrl', 1, 5, 'r', 'rw', '', '', False, True, 0),
-    ('reserved', 6, 31, 'r', 'rw', '', '', False, True, 0),
+    ('rom_endianness_ctrl', 0, 0, 'rw', 'rw', '', '', False, True, 0),
+    ('rom_swap_ctrl', 1, 5, 'rw', 'rw', '', '', False, True, 0),
+    ('reserved', 6, 31, 'rw', 'rw', '', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_ROM_CTL_reg_t(Structure):
@@ -5658,14 +5658,14 @@ class SEP_EFUSE_MAP_ROM_CTL_reg_u(Union):
 
 SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_DEFAULT = 0x00000000
 SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_FIELD_ACCESS = (
-    ('sysclk_freq_mhz', 'r', '', '', False),
-    ('rsvd', 'r', '', '', False),
+    ('sysclk_freq_mhz', 'rw', '', '', False),
+    ('rsvd', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_WIDTH = 32
 SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_FIELDS = (
-    ('sysclk_freq_mhz', 0, 10, 'r', 'rw', '', '', False, True, 0),
-    ('rsvd', 11, 31, 'r', 'rw', '', '', False, True, 0),
+    ('sysclk_freq_mhz', 0, 10, 'rw', 'rw', '', '', False, True, 0),
+    ('rsvd', 11, 31, 'rw', 'rw', '', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_reg_t(Structure):
@@ -5697,24 +5697,24 @@ class SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_reg_u(Union):
         return instance
 
 SEP_EFUSE_MAP_CHIPLET_PUBK_HASH_REG_FIELD_ACCESS = (
-    ('key_hash', 'r', '', '', False),
+    ('key_hash', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_CHIPLET_PUBK_HASH_REG_WIDTH = 256
 SEP_EFUSE_MAP_CHIPLET_PUBK_HASH_REG_FIELDS = (
-    ('key_hash', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('key_hash', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_DEFAULT = 0x00000000
 SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_FIELD_ACCESS = (
-    ('required_signers', 'rw', 'woset', '', False),
-    ('reserved', 'r', '', '', False),
+    ('required_signers', 'rw', '', '', False),
+    ('reserved', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_WIDTH = 32
 SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_FIELDS = (
-    ('required_signers', 0, 1, 'rw', 'r', 'woset', '', False, False, 0),
-    ('reserved', 2, 31, 'r', 'rw', '', '', False, True, 0),
+    ('required_signers', 0, 1, 'rw', 'r', '', '', False, False, 0),
+    ('reserved', 2, 31, 'rw', 'rw', '', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_REQUIRED_SIGNERS_reg_t(Structure):
@@ -5750,7 +5750,7 @@ SEP_EFUSE_MAP_REQUIRED_ALGS_REG_FIELD_ACCESS = (
     ('chiplet_algs', 'rw', 'woset', '', False),
     ('sip_algs', 'rw', 'woset', '', False),
     ('sys_algs', 'rw', 'woset', '', False),
-    ('reserved', 'r', '', '', False),
+    ('reserved', 'rw', 'woset', '', False),
 )
 
 SEP_EFUSE_MAP_REQUIRED_ALGS_REG_WIDTH = 32
@@ -5758,7 +5758,7 @@ SEP_EFUSE_MAP_REQUIRED_ALGS_REG_FIELDS = (
     ('chiplet_algs', 0, 3, 'rw', 'r', 'woset', '', False, False, 0),
     ('sip_algs', 4, 7, 'rw', 'r', 'woset', '', False, False, 0),
     ('sys_algs', 8, 11, 'rw', 'r', 'woset', '', False, False, 0),
-    ('reserved', 12, 31, 'r', 'rw', '', '', False, True, 0),
+    ('reserved', 12, 31, 'rw', 'rw', 'woset', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_REQUIRED_ALGS_reg_t(Structure):
@@ -5792,48 +5792,48 @@ class SEP_EFUSE_MAP_REQUIRED_ALGS_reg_u(Union):
         return instance
 
 SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH_REG_FIELD_ACCESS = (
-    ('key_hash', 'r', '', '', False),
+    ('key_hash', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH_REG_WIDTH = 256
 SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH_REG_FIELDS = (
-    ('key_hash', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('key_hash', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH_REG_FIELD_ACCESS = (
-    ('key_hash', 'r', '', '', False),
+    ('key_hash', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH_REG_WIDTH = 256
 SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH_REG_FIELDS = (
-    ('key_hash', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('key_hash', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_FIELD_ACCESS = (
-    ('key_hash', 'r', '', '', False),
+    ('key_hash', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_WIDTH = 256
 SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_FIELDS = (
-    ('key_hash', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('key_hash', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_SEP_ID_REG_FIELD_ACCESS = (
-    ('id', 'r', '', '', False),
+    ('id', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SEP_ID_REG_WIDTH = 256
 SEP_EFUSE_MAP_SEP_ID_REG_FIELDS = (
-    ('id', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('id', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 SEP_EFUSE_MAP_SPARE_256_BITS_REG_FIELD_ACCESS = (
-    ('rsvd', 'r', '', '', False),
+    ('rsvd', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_SPARE_256_BITS_REG_WIDTH = 256
 SEP_EFUSE_MAP_SPARE_256_BITS_REG_FIELDS = (
-    ('rsvd', 0, 255, 'r', 'rw', '', '', False, True, 0),
+    ('rsvd', 0, 255, 'rw', 'rw', '', '', False, True, 0),
 )
 
 EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT = 0x00000000

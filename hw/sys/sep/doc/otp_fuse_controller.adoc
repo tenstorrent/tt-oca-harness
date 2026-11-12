@@ -102,6 +102,7 @@ unwritten. The strobe that arrives while the counter is 255 stores the last
 word and moves the FSM to ST_FINISHED, and `fuse_sense_done_o` rises one cycle
 later. Until then, APB accesses to the MAP window return SLVERR.
 
+[[sep-efuse-shadow-access-control]]
 == Shadow Register and JTAG Access Control
 
 Each assigned lock slot contains an independent write-lock and read-lock bit.
@@ -465,6 +466,14 @@ endif::backend-html5[]
 
 Register offsets are relative to the block base in the subsystem memory map.
 The detailed map below defines each register and its fields.
+
+The software access the detailed map gives a shadow-register field is its
+access while the field's locks are clear, as listed in
+<<sep-fuse-fields-table>>: writable fields are read-write and set-only fields
+are write-1-to-set. The access a given transfer receives is decided by the
+per-field lock rules in <<sep-efuse-shadow-access-control>> and by secure test
+mode, not by the detailed map; no register RTL is generated from it for these
+shadow registers.
 
 === Detailed Register Map
 
