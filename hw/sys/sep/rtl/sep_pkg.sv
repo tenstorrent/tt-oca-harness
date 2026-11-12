@@ -293,7 +293,7 @@ OutboundFilterMuxPorts
   localparam int unsigned MailboxSize = sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR; // 0x800 -> 2kb.
 
   // System CSRs
-  localparam int unsigned SystemCsrDemuxPorts = 9;
+  localparam int unsigned SystemCsrDemuxPorts = 8;
 
   typedef enum logic [$clog2(
 SystemCsrDemuxPorts
@@ -305,8 +305,7 @@ SystemCsrDemuxPorts
     INBOUND_FILTER = 4,
     SEP_CPU_CTRL = 5,
     SEP_SCRATCH_COLD = 6,
-    SEP_SCRATCH_WARM = 7,
-    ERR_SLV = 8
+    SEP_SCRATCH_WARM = 7
   } system_csr_demux_select_e;
 
   //////////
