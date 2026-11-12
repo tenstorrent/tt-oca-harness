@@ -29,12 +29,10 @@
 //
 // OTP_EFUSE_REMAP_BASE is the absolute address of the eFuse controller as seen on
 // efuse_req_o. Transactions from the internal OTP crossbar port (xbar port 8, the KM-local
-// OTP page) that fall in the MAP, CTRL or MMR register map keep their page offset, the low
-// km_intf_pkg::OtpRemapAddrWidth bits, and take their upper bits from
-// OTP_EFUSE_REMAP_BASE before being driven onto efuse_req_o. Every other offset in the page
-// completes locally with SLVERR and never reaches efuse_req_o. The integrator sets
-// OTP_EFUSE_REMAP_BASE to the page-aligned system-level address of the eFuse controller and
-// must connect efuse_req_o/efuse_resp_i to that controller.
+// OTP page) keep their page offset, the low km_intf_pkg::OtpRemapAddrWidth bits, and take
+// their upper bits from OTP_EFUSE_REMAP_BASE before being driven onto efuse_req_o. The
+// integrator sets OTP_EFUSE_REMAP_BASE to the page-aligned system-level address of the eFuse
+// controller and must connect efuse_req_o/efuse_resp_i to that controller.
 //
 // The ROM and SRAM hard macros are instantiated at integration level and connect through
 // the exposed memory ports.
@@ -118,9 +116,8 @@ module key_manager
   input  logic abr_mlkem_sharedkey_irq_i,  // Adams Bridge ML-KEM shared-key valid IRQ
                                            // (level-sensitive, active-high).
 
-  output km_axil_req_t  efuse_req_o,   // OTP/eFuse AXI-Lite master from xbar port 8, carrying
-                                       // only MAP/CTRL/MMR accesses, remapped to
-                                       // OTP_EFUSE_REMAP_BASE.
+  output km_axil_req_t  efuse_req_o,   // OTP/eFuse AXI-Lite master from xbar port 8, remapped
+                                       // to OTP_EFUSE_REMAP_BASE.
   input  km_axil_resp_t efuse_resp_i,  // AXI-Lite response from the system eFuse controller.
 
   output km_rom_mem_req_t  rom_mem_req_o,  // Request to the ROM hard macro.
@@ -229,16 +226,9 @@ module key_manager
   km_axil_resp_t mbox_resp;
   km_axil_req_t  drbg_req;
   km_axil_resp_t drbg_resp;
-  // OTP/eFuse crossbar master port (index 8), split into the refused offsets [OtpRefused]
-  // and the MAP/CTRL/MMR register maps [OtpForwarded], which are remapped onto efuse_req_o
+  // OTP/eFuse crossbar master port (index 8), remapped onto efuse_req_o
   km_axil_req_t  otp_axil_req;
   km_axil_resp_t otp_axil_resp;
-  km_axil_req_t  [1:0] otp_port_req;
-  km_axil_resp_t [1:0] otp_port_resp;
-  logic                otp_aw_select;
-  logic                otp_ar_select;
-  localparam bit OtpRefused = 1'b0;
-  localparam bit OtpForwarded = 1'b1;
 
 
   // KMCSR hardware inputs
@@ -351,67 +341,16 @@ module key_manager
   //=========================================================================
   // OTP/eFuse Port
   //=========================================================================
-  // The KM CPU reaches only the MAP, CTRL and MMR register maps of the eFuse controller;
-  // every other offset in the OTP page is answered here.
-
-  assign otp_aw_select = km_intf_pkg::otp_addr_decoded(otp_axil_req.aw.addr) ? OtpForwarded : OtpRefused;
-  assign otp_ar_select = km_intf_pkg::otp_addr_decoded(otp_axil_req.ar.addr) ? OtpForwarded : OtpRefused;
-
-  axi_lite_demux #(
-    .aw_chan_t   (km_intf_pkg::km_axil_aw_chan_t),
-    .w_chan_t    (km_intf_pkg::km_axil_w_chan_t),
-    .b_chan_t    (km_intf_pkg::km_axil_b_chan_t),
-    .ar_chan_t   (km_intf_pkg::km_axil_ar_chan_t),
-    .r_chan_t    (km_intf_pkg::km_axil_r_chan_t),
-    .axi_req_t   (km_axil_req_t),
-    .axi_resp_t  (km_axil_resp_t),
-    .NoMstPorts  (2),
-    .MaxTrans    (2),
-    .FallThrough (1'b0),
-    .SpillAw     (1'b0),
-    .SpillW      (1'b0),
-    .SpillB      (1'b0),
-    .SpillAr     (1'b0),
-    .SpillR      (1'b0)
-  ) u_otp_demux (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_warm_sync_n),
-    .test_i          (test_en_i),
-    .slv_req_i       (otp_axil_req),
-    .slv_aw_select_i (otp_aw_select),
-    .slv_ar_select_i (otp_ar_select),
-    .slv_resp_o      (otp_axil_resp),
-    .mst_reqs_o      (otp_port_req),
-    .mst_resps_i     (otp_port_resp)
-  );
-
-  prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (km_intf_pkg::KmAxiAddrWidth),
-    .AXI_DATA_WIDTH (km_intf_pkg::KmAxiDataWidth),
-    .axil_req_t     (km_axil_req_t),
-    .axil_resp_t    (km_axil_resp_t),
-    .RESP           (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH     (km_intf_pkg::KmAxiDataWidth),
-    .RESP_DATA      (km_intf_pkg::KmAxiDataWidth'('hBADCAB1E)),
-    .MAX_TRANS      (1)
-  ) u_otp_err_slv (
-    .clk_i       (clk_i),
-    .rst_ni      (rst_warm_sync_n),
-    .test_en_i   (test_en_i),
-    .axil_req_i  (otp_port_req[OtpRefused]),
-    .axil_resp_o (otp_port_resp[OtpRefused])
-  );
-
   // The eFuse controller decodes absolute addresses: keep the page offset and take the
   // upper bits from the integrator-supplied base.
   always_comb begin
-    efuse_req_o         = otp_port_req[OtpForwarded];
+    efuse_req_o         = otp_axil_req;
     efuse_req_o.aw.addr = (OTP_EFUSE_REMAP_BASE & ~OtpPageMask) |
-                          (otp_port_req[OtpForwarded].aw.addr & OtpPageMask);
+                          (otp_axil_req.aw.addr & OtpPageMask);
     efuse_req_o.ar.addr = (OTP_EFUSE_REMAP_BASE & ~OtpPageMask) |
-                          (otp_port_req[OtpForwarded].ar.addr & OtpPageMask);
+                          (otp_axil_req.ar.addr & OtpPageMask);
   end
-  assign otp_port_resp[OtpForwarded] = efuse_resp_i;
+  assign otp_axil_resp = efuse_resp_i;
 
 
   //=========================================================================

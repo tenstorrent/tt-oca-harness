@@ -159,13 +159,6 @@ module sep_efuse_wrapper #(
   `OCAH_ASSERT_STATIC(EfusePageAligned_A,
                       EfusePageBase % sep_efuse_pkg::addr_t'(sep_pkg::RegPageSize) == 0)
 
-  function automatic jtag_target_e jtag_target(sep_efuse_pkg::addr_t addr, logic blocked);
-    if (blocked) return JTAG_TARGET_ERROR;
-    if (addr inside {[EfusePageBase : EfusePageLast]}) return JTAG_TARGET_REGS;
-    if (addr inside {[EfuseShimBase : EfuseShimLast]}) return JTAG_TARGET_SHIM;
-    return JTAG_TARGET_ERROR;
-  endfunction
-
   jtag_target_e jtag_aw_target;
   jtag_target_e jtag_ar_target;
 
@@ -342,10 +335,25 @@ module sep_efuse_wrapper #(
                                  (lc_state_local_raw == 4'b0001) ||                               // PROD STATE
                                  (lc_state_local_raw[sep_pkg::LcStateBitWidth-1:1] == 3'b001);    // RMA_SIP STATE
 
-  assign jtag_aw_target = jtag_target(axil_sep_otp_jtag_req_i.aw.addr,
-                                      lc_restricted_state && !is_wr_access_token);
-  assign jtag_ar_target = jtag_target(axil_sep_otp_jtag_req_i.ar.addr,
-                                      lc_restricted_state && !is_rd_access_token);
+  always_comb begin
+    jtag_aw_target = JTAG_TARGET_ERROR;
+    if (!lc_restricted_state || is_wr_access_token) begin
+      if (axil_sep_otp_jtag_req_i.aw.addr inside {[EfusePageBase : EfusePageLast]}) begin
+        jtag_aw_target = JTAG_TARGET_REGS;
+      end else if (axil_sep_otp_jtag_req_i.aw.addr inside {[EfuseShimBase : EfuseShimLast]}) begin
+        jtag_aw_target = JTAG_TARGET_SHIM;
+      end
+    end
+
+    jtag_ar_target = JTAG_TARGET_ERROR;
+    if (!lc_restricted_state || is_rd_access_token) begin
+      if (axil_sep_otp_jtag_req_i.ar.addr inside {[EfusePageBase : EfusePageLast]}) begin
+        jtag_ar_target = JTAG_TARGET_REGS;
+      end else if (axil_sep_otp_jtag_req_i.ar.addr inside {[EfuseShimBase : EfuseShimLast]}) begin
+        jtag_ar_target = JTAG_TARGET_SHIM;
+      end
+    end
+  end
 
   axi_lite_demux #(
     .aw_chan_t(sep_efuse_pkg::efuse_axil_aw_chan_t),

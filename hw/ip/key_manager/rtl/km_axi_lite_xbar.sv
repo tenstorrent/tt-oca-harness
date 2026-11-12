@@ -68,9 +68,8 @@ module km_axi_lite_xbar
 
   output axil_req_t  otp_req_o,  // OTP/eFuse pass-through port request (index 8,
                                  // OtpBaseAddr-OtpEndAddr). Addresses are forwarded
-                                 // unchanged; key_manager.sv refuses offsets outside the
-                                 // eFuse register maps and applies the OTP_EFUSE_REMAP_BASE
-                                 // remap before driving efuse_req_o.
+                                 // unchanged; key_manager.sv applies the
+                                 // OTP_EFUSE_REMAP_BASE remap before driving efuse_req_o.
   input  axil_resp_t otp_resp_i  // OTP/eFuse pass-through port response.
 );
 
