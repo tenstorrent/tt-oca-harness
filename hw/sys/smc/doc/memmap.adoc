@@ -64,7 +64,9 @@ The local crossbar routes a burst by its start address, so a burst that starts
 between unit apertures answers `DECERR` for every beat. A write burst to a
 register unit is split into single-beat writes. Its write response is that of
 the last beat when the last beat answers `SLVERR` or `DECERR`; otherwise it is
-`SLVERR` when an earlier beat answered an error, and `OKAY` when none did.
+`SLVERR` when an earlier beat answered an error, and `OKAY` when none did. The
+DMA registers are the exception: they accept single-beat accesses only and
+answer a burst `SLVERR` on every beat.
 
 The SMC does not check AXI4 burst encodings on its inbound ports. An illegal
 burst -- a WRAP burst with `AxLEN` 0, the reserved `AxBURST` encoding 2'b11,
