@@ -520,6 +520,7 @@ module smu_wrapper_uvm_top
 
   assign secure_tm_req = tb_secure_tm_req;
   assign tb_secure_tm  = secure_tm_w;
+  assign tb_efuse_shim_resp_valid = u_dut.sep_efuse_shim_command_resp.valid;
   // ------------------------------------------------------------------
   // ext_in AXI master surface.
   //
@@ -1357,6 +1358,7 @@ module smu_wrapper_uvm_top
   assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
   assign tb_stap_sep_tck     = u_dut.u_smu.dtp_sep_stap_tap_ctrl.tck;
   assign tb_stap_sep_tms     = u_dut.u_smu.dtp_sep_stap_tap_ctrl.tms;
+  assign tb_stap_sep_host_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_sep_host_tdo_oen_o;
   // smu_wrapper brings out a real bidirectional pad bus -- smc_ip_integration
   // puts a prim_pad_shim on every pin -- so TB stimulus goes onto the wire
   // itself. A weak pull-down on every pad gives an idle pin a defined 0 on a
@@ -1972,7 +1974,12 @@ module smu_wrapper_uvm_top
     .skip_mem_repair_i           (skip_mem_repair_w),
     .init_mem_done_i             (smc_init_mem_done_o),
     .disable_sram_auto_init_i    (smc_disable_sram_auto_init),
-    .jtag_ptap_state_i           (jtag_ptap_state_w)
+    .jtag_ptap_state_i           (jtag_ptap_state_w),
+    .fcov_gate_i                 (tb_fcov_gate),
+    .sep_clk_i                   (obs_sep_clk_o),
+    .secure_tm_req_i             (tb_secure_tm_req),
+    .secure_tm_i                 (tb_secure_tm),
+    .sep_efuse_shim_resp_valid_i (tb_efuse_shim_resp_valid)
   );
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
@@ -2346,6 +2353,29 @@ module smu_wrapper_uvm_top
     .out_awprot_i     (u_axi_out_if.awprot),
     .out_arvalid_i    (u_axi_out_if.arvalid),
     .out_arready_i    (u_axi_out_if.arready)
+  );
+
+  // The lifecycle image and pair class at the SEP fuse-sense completion, the
+  // posture of the four gated debug paths, and the LC_STATE pair inject.
+  smu_lifecycle_fcov u_smu_lifecycle_fcov (
+    .clk_smu_i             (clk_smu),
+    .rst_cold_ni           (rst_cold_ni),
+    .fcov_gate_i           (tb_fcov_gate),
+    .lc_state_i            (lc_state_o),
+    .lcc_feat_ctrl_i       (lcc_feat_ctrl_o),
+    .sep_fuse_sense_done_i (sep_fuse_sense_done_o),
+    .dbg_ar_count_i        (dtp_smc_dbg_ar_count_o),
+    .dbg_aw_count_i        (dtp_smc_dbg_aw_count_o),
+    .dbg_b_count_i         (dtp_smc_dbg_b_count_o),
+    .ptap_tms_i            (jtag_tms),
+    .stap_io_tms_i         (tb_stap_io_tms),
+    .stap_io_tdo_oen_i     (tb_stap_io_tdo_oen),
+    .stap_sep_tms_i        (tb_stap_sep_tms),
+    .stap_sep_tdo_oen_i    (tb_stap_sep_host_tdo_oen),
+    .dft_secure_select_i   (tb_dft_secure_select),
+    .lc_sigint_inject_i    (lc_sigint_inject_i),
+    .smc_lc_state_in_i     (smc_lc_state_in_o),
+    .lc_sigint_err_i       (lc_sigint_err_o)
   );
 
 

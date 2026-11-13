@@ -219,6 +219,7 @@ sources = [
   "hw/sys/smu/dv/cov/sv/smu_fcov_sep_csr_pkg.sv",
   "hw/sys/smu/dv/cov/sv/smu_remap_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_filter_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lifecycle_fcov.sv",
 ]
 
 [build.verilator]
@@ -786,6 +787,7 @@ sources = [
   "hw/sys/smu/dv/cov/sv/smu_fcov_sep_csr_pkg.sv",
   "hw/sys/smu/dv/cov/sv/smu_remap_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_filter_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lifecycle_fcov.sv",
   # The embedded DTP's bench layer: its bench configuration package (dtp_types reads the
   # bridge geometries and the IDCODE it publishes), its three TB interface partitions (the
   # reference models and the TAP checker read the DTP observables through them; dtp_env
