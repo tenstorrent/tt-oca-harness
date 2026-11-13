@@ -4,11 +4,11 @@
 // Wrap the SMC DMA and zeroer and merge their master ports into one fabric port.
 //
 // Exposes status and clock-gater activity indicators alongside clock-gating control.
-// The DMA control port receives the page that holds the DMA's registers. A burst goes to the
-// DMA only when every beat falls in the DMA's register map, the SMC_TOP_DMA_CTRL_SIZE bytes at
-// the start of the page; every other burst receives SLVERR with read data 0xBADCAB1E on every
-// beat. The zeroer control port is AXI-Lite and carries the zeroer's
-// own page. The master mux prepends a source bit to the transfer IDs.
+// The DMA control port receives the page that holds the DMA's registers. A single-beat access
+// goes to the DMA when it falls in the DMA's register map, the SMC_TOP_DMA_CTRL_SIZE bytes at the
+// start of the page. Every burst, and every access past the map, receives SLVERR with read data
+// 0xBADCAB1E on every beat. The zeroer control port is AXI-Lite and carries the zeroer's own
+// page. The master mux prepends a source bit to the transfer IDs.
 
 `include "ocah_assert.svh"
 
@@ -102,30 +102,16 @@ module smc_data_accelerator_wrap #(
   localparam smc_pkg::smc_axi_local_addr_t DmaMapLast = smc_pkg::smc_axi_local_addr_t'(
       smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE - 1);
 
-  smc_pkg::smc_axi_local_addr_t aw_last_addr, ar_last_addr;
   dma_ctrl_select_t aw_select_dma, ar_select_dma;
 
-  // The port carries only the DMA's page and the register map starts that page, so no beat lies
-  // below it. A FIXED burst repeats its first address, a WRAP burst fills the aligned block of
-  // (len + 1) << size bytes around it, and an INCR burst ends at its last beat. The map ends on a
-  // bus word, so a beat that starts inside it also ends inside it.
-  assign aw_last_addr =
-      (dma_ctrl_axi_req_i.aw.burst == axi_pkg::BURST_FIXED) ? dma_ctrl_axi_req_i.aw.addr :
-      (dma_ctrl_axi_req_i.aw.burst == axi_pkg::BURST_WRAP) ? (dma_ctrl_axi_req_i.aw.addr |
-      (((smc_pkg::smc_axi_local_addr_t'(dma_ctrl_axi_req_i.aw.len) + 1) << dma_ctrl_axi_req_i.aw.size) - 1)) :
-      ((dma_ctrl_axi_req_i.aw.addr >> dma_ctrl_axi_req_i.aw.size) << dma_ctrl_axi_req_i.aw.size) +
-      (smc_pkg::smc_axi_local_addr_t'(dma_ctrl_axi_req_i.aw.len) << dma_ctrl_axi_req_i.aw.size);
-  assign ar_last_addr =
-      (dma_ctrl_axi_req_i.ar.burst == axi_pkg::BURST_FIXED) ? dma_ctrl_axi_req_i.ar.addr :
-      (dma_ctrl_axi_req_i.ar.burst == axi_pkg::BURST_WRAP) ? (dma_ctrl_axi_req_i.ar.addr |
-      (((smc_pkg::smc_axi_local_addr_t'(dma_ctrl_axi_req_i.ar.len) + 1) << dma_ctrl_axi_req_i.ar.size) - 1)) :
-      ((dma_ctrl_axi_req_i.ar.addr >> dma_ctrl_axi_req_i.ar.size) << dma_ctrl_axi_req_i.ar.size) +
-      (smc_pkg::smc_axi_local_addr_t'(dma_ctrl_axi_req_i.ar.len) << dma_ctrl_axi_req_i.ar.size);
-
+  // The port carries only the DMA's page and the register map starts that page. The map ends on a
+  // bus word, so a single beat that starts inside it also ends inside it.
   assign aw_select_dma = dma_ctrl_select_t'(
-      (aw_last_addr > DmaMapLast) ? DmaCtrlErrPort : DmaCtrlDmaPort);
+      ((|dma_ctrl_axi_req_i.aw.len) || (dma_ctrl_axi_req_i.aw.addr > DmaMapLast)) ?
+      DmaCtrlErrPort : DmaCtrlDmaPort);
   assign ar_select_dma = dma_ctrl_select_t'(
-      (ar_last_addr > DmaMapLast) ? DmaCtrlErrPort : DmaCtrlDmaPort);
+      ((|dma_ctrl_axi_req_i.ar.len) || (dma_ctrl_axi_req_i.ar.addr > DmaMapLast)) ?
+      DmaCtrlErrPort : DmaCtrlDmaPort);
 
   axi_demux #(
     .AxiIdWidth                         (smc_pkg::SmcLocalFabricXbarMasterIdWidth),
