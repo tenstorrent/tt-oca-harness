@@ -155,9 +155,11 @@ module smc_efuse_wrapper #(
   jtag_target_e jtag_aw_target;
   jtag_target_e jtag_ar_target;
 
-  assign is_rd_jtag_public_identity = (axil_smc_otp_jtag_req_i.ar.addr inside
-        {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR :
-          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR + 'h1F)]});
+  assign is_rd_jtag_public_identity =
+      (axil_smc_otp_jtag_req_i.ar.addr >=
+       smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR) &&
+      (axil_smc_otp_jtag_req_i.ar.addr <=
+       smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR + 'h1F);
 
   logic [smc_pkg::LcStateWidth-1:0]   lc_state_smc_raw;
   logic                               lc_sigint_err;
@@ -179,18 +181,22 @@ module smc_efuse_wrapper #(
   always_comb begin
     jtag_aw_target = JTAG_TARGET_ERROR;
     if (!is_prod_or_rma_sip && !lc_sigint_err) begin
-      if (axil_smc_otp_jtag_req_i.aw.addr inside {[EfusePageBase : EfusePageLast]}) begin
+      if ((axil_smc_otp_jtag_req_i.aw.addr >= EfusePageBase) &&
+          (axil_smc_otp_jtag_req_i.aw.addr <= EfusePageLast)) begin
         jtag_aw_target = JTAG_TARGET_REGS;
-      end else if (axil_smc_otp_jtag_req_i.aw.addr inside {[EfuseShimBase : EfuseShimLast]}) begin
+      end else if ((axil_smc_otp_jtag_req_i.aw.addr >= EfuseShimBase) &&
+                   (axil_smc_otp_jtag_req_i.aw.addr <= EfuseShimLast)) begin
         jtag_aw_target = JTAG_TARGET_SHIM;
       end
     end
 
     jtag_ar_target = JTAG_TARGET_ERROR;
     if ((!is_prod_or_rma_sip || is_rd_jtag_public_identity) && !lc_sigint_err) begin
-      if (axil_smc_otp_jtag_req_i.ar.addr inside {[EfusePageBase : EfusePageLast]}) begin
+      if ((axil_smc_otp_jtag_req_i.ar.addr >= EfusePageBase) &&
+          (axil_smc_otp_jtag_req_i.ar.addr <= EfusePageLast)) begin
         jtag_ar_target = JTAG_TARGET_REGS;
-      end else if (axil_smc_otp_jtag_req_i.ar.addr inside {[EfuseShimBase : EfuseShimLast]}) begin
+      end else if ((axil_smc_otp_jtag_req_i.ar.addr >= EfuseShimBase) &&
+                   (axil_smc_otp_jtag_req_i.ar.addr <= EfuseShimLast)) begin
         jtag_ar_target = JTAG_TARGET_SHIM;
       end
     end

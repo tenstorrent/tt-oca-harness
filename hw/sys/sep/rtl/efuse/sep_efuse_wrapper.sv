@@ -143,10 +143,10 @@ module sep_efuse_wrapper #(
   logic [sep_pkg::LcStateBitWidth-1:0] lc_state_local_raw;
   logic lc_sigint_err;
   logic lc_restricted_state;
-  localparam sep_efuse_pkg::addr_t EfuseMmrBaseAddr =
+  localparam sep_efuse_pkg::addr_t EfuseMmrBase =
       sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_BASE_ADDR);
-  localparam sep_efuse_pkg::addr_t EfuseMmrSize =
-      sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE);
+  localparam sep_efuse_pkg::addr_t EfuseMmrLast =
+      sep_efuse_pkg::addr_t'(EfuseMmrBase + sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE - 1);
   localparam sep_efuse_pkg::addr_t EfusePageBase =
       sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR);
   localparam sep_efuse_pkg::addr_t EfusePageLast =
@@ -323,12 +323,10 @@ module sep_efuse_wrapper #(
   );
 
   // Additional control shall be applied to the JTAG port, such that, in PROD and RMA_SIP states, it can only access the MMR registers.
-  assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside
-      {[EfuseMmrBaseAddr:
-        EfuseMmrBaseAddr + EfuseMmrSize - sep_efuse_pkg::addr_t'(1)]};
-  assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside
-      {[EfuseMmrBaseAddr:
-        EfuseMmrBaseAddr + EfuseMmrSize - sep_efuse_pkg::addr_t'(1)]};
+  assign is_wr_access_token = (axil_sep_otp_jtag_req_i.aw.addr >= EfuseMmrBase) &&
+                              (axil_sep_otp_jtag_req_i.aw.addr <= EfuseMmrLast);
+  assign is_rd_access_token = (axil_sep_otp_jtag_req_i.ar.addr >= EfuseMmrBase) &&
+                              (axil_sep_otp_jtag_req_i.ar.addr <= EfuseMmrLast);
 
   // A differential-decode integrity error (lc_sigint_err) is treated as a restricted state, exactly like PROD / RMA_SiP.
   assign lc_restricted_state = lc_sigint_err ||
@@ -338,18 +336,22 @@ module sep_efuse_wrapper #(
   always_comb begin
     jtag_aw_target = JTAG_TARGET_ERROR;
     if (!lc_restricted_state || is_wr_access_token) begin
-      if (axil_sep_otp_jtag_req_i.aw.addr inside {[EfusePageBase : EfusePageLast]}) begin
+      if ((axil_sep_otp_jtag_req_i.aw.addr >= EfusePageBase) &&
+          (axil_sep_otp_jtag_req_i.aw.addr <= EfusePageLast)) begin
         jtag_aw_target = JTAG_TARGET_REGS;
-      end else if (axil_sep_otp_jtag_req_i.aw.addr inside {[EfuseShimBase : EfuseShimLast]}) begin
+      end else if ((axil_sep_otp_jtag_req_i.aw.addr >= EfuseShimBase) &&
+                   (axil_sep_otp_jtag_req_i.aw.addr <= EfuseShimLast)) begin
         jtag_aw_target = JTAG_TARGET_SHIM;
       end
     end
 
     jtag_ar_target = JTAG_TARGET_ERROR;
     if (!lc_restricted_state || is_rd_access_token) begin
-      if (axil_sep_otp_jtag_req_i.ar.addr inside {[EfusePageBase : EfusePageLast]}) begin
+      if ((axil_sep_otp_jtag_req_i.ar.addr >= EfusePageBase) &&
+          (axil_sep_otp_jtag_req_i.ar.addr <= EfusePageLast)) begin
         jtag_ar_target = JTAG_TARGET_REGS;
-      end else if (axil_sep_otp_jtag_req_i.ar.addr inside {[EfuseShimBase : EfuseShimLast]}) begin
+      end else if ((axil_sep_otp_jtag_req_i.ar.addr >= EfuseShimBase) &&
+                   (axil_sep_otp_jtag_req_i.ar.addr <= EfuseShimLast)) begin
         jtag_ar_target = JTAG_TARGET_SHIM;
       end
     end
