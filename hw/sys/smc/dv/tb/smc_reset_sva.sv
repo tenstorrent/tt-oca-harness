@@ -24,13 +24,15 @@
 // +smc_reset_sva_need_<group> fails the run when that count is 0. Two counts
 // leave out what every run does on its own: iso_release counts a release of
 // the cluster boundary only after a software reset request was applied, and
-// uncore_low counts an uncore reset only after its first release.
+// uncore_low counts an uncore reset only after its first release. A need
+// plusarg whose group is not reported fails the run too; $value$plusargs
+// returns the first plusarg with the prefix, so the final block sees one need
+// plusarg per run, and the testlist unit test checks every one statically.
 
 `include "ocah_sva_macros.svh"
 
 module smc_reset_sva #(
   parameter int unsigned NUM_CORES       = 4,
-  parameter int unsigned JTAG_CTRL_WIDTH = 8,
   parameter int unsigned FLR_CNT_WIDTH   = 32,
   parameter int unsigned PENDING_WIDTH   = 4,
   parameter int unsigned WB_PC_WIDTH     = 58
@@ -43,7 +45,7 @@ module smc_reset_sva #(
   input  wire logic                       rst_wdt_smc_clk_ni,
   input  wire logic                       rst_warm_smc_clk_ni,
   input  wire logic                       rst_cold_stable_ref_clk_ni,
-  input  wire logic [JTAG_CTRL_WIDTH-1:0] jtag_reset_ctrl_i,
+  input  smc_pkg::jtag_smc_reset_ctrl_t   jtag_reset_ctrl_i,
   // CPU control wrapper: the software uncore reset handshake.
   input  wire logic                       cpu_isolate_req_i,
   input  wire logic                       cpu_drained_i,
@@ -89,23 +91,24 @@ module smc_reset_sva #(
   input  wire logic [1:0]                 flr_counter_state_i,
   input  wire logic                       flr_cool_reset_ni,
   input  wire logic [FLR_CNT_WIDTH-1:0]   flr_hold_count_ref_i,
-  // Cool reset after the JTAG override, and the pad it drives.
+  // Cool reset after the JTAG override, and the cool-reset-out pad it drives.
   input  wire logic                       cool_reset_ni,
-  input  wire logic                       pad62_lsio_pin_i,
-  input  wire logic                       core2pad_62_i,
-  input  wire logic                       core2pad_en_62_i
+  input  wire logic                       cool_pad_lsio_pin_i,
+  input  wire logic                       cool_pad_core2pad_i,
+  input  wire logic                       cool_pad_core2pad_en_i
 );
 
   localparam logic [1:0] RespSlvErr = 2'b10;
 
   bit flr_requeue_assertoff = $test$plusargs("smc_flr_requeue_assertoff");
 
-  logic force_apply, withheld, jtag_ovrd_idle, cluster_ready, flush_active;
+  logic force_apply, withheld, warm_ovrd_idle, cluster_ready, flush_active, mmio_flush;
   assign force_apply    = cpu_reset_timeout_i && cpu_timeout_mode_i;
   assign withheld       = cpu_isolate_req_i && !cpu_drained_i && !force_apply;
-  assign jtag_ovrd_idle = (jtag_reset_ctrl_i == '0);
+  assign warm_ovrd_idle = !jtag_reset_ctrl_i.ovrd.warm_reset_n_ovrd;
   assign cluster_ready  = init_mem_done_i && cpu_uncore_reset_ni && !cpu_isolate_req_i;
   assign flush_active   = cpu_l2_flush_active_i || cpu_mmio_flush_active_i;
+  assign mmio_flush     = cpu_isolate_flush_i || cpu_mmio_flush_active_i;
 
   // The disable term of every rule in this module is a net: a negation inside the disable
   // iff of a non-top module does not compile under expression coverage.
@@ -115,7 +118,7 @@ module smc_reset_sva #(
   assign cold_reset_ref_active = !rst_cold_stable_ref_clk_ni;
 
   // Previous-edge values on clk_smc_i.
-  logic warm_q, withheld_q, applied_q, isolate_q, flush_active_q, force_apply_q;
+  logic warm_q, withheld_q, applied_q, isolate_q, flush_active_q, force_apply_q, w_held_q;
   logic [3:0] ready_q;
   always_ff @(posedge clk_smc_i) begin
     warm_q         <= rst_warm_smc_clk_ni;
@@ -124,6 +127,7 @@ module smc_reset_sva #(
     isolate_q      <= cpu_cluster_isolate_i;
     flush_active_q <= flush_active;
     force_apply_q  <= force_apply;
+    w_held_q       <= mmio_port_w_valid_i && !mmio_port_w_ready_i;
     ready_q        <= {ready_q[2:0], cluster_ready};
   end
 
@@ -177,31 +181,37 @@ module smc_reset_sva #(
                    powergood_lost)
 
   // ------------------------------------------------------------------
-  // A4: the warm reset holds the cluster; with the JTAG overrides idle the
-  // primary reset and the watchdog reset each imply the warm reset
-  // (clk_rst.adoc 287-291, 299-301).
+  // A4: the warm reset holds the cluster; the primary reset and the watchdog
+  // reset each imply the warm reset (clk_rst.adoc 287-291, 299-301). The warm
+  // JTAG override replaces the warm equation, so it is the one override that
+  // qualifies the two implications; the fuse, cold and cool overrides enter
+  // the equation as sources and keep it.
   // ------------------------------------------------------------------
   `OCAH_SVA_ASSERT(
       SMC_RST_WARM_HOLDS_CLUSTER,
       (en_i && !rst_warm_smc_clk_ni) |-> (!cpu_uncore_reset_ni && cpu_core_resets_ni == '0),
       clk_smc_i, powergood_lost)
   `OCAH_SVA_ASSERT(SMC_RST_PRIMARY_IMPLIES_WARM,
-                   (en_i && jtag_ovrd_idle && !rst_primary_smc_clk_ni) |-> !rst_warm_smc_clk_ni,
+                   (en_i && warm_ovrd_idle && !rst_primary_smc_clk_ni) |-> !rst_warm_smc_clk_ni,
                    clk_smc_i, powergood_lost)
   `OCAH_SVA_ASSERT(SMC_RST_WDT_IMPLIES_WARM,
-                   (en_i && jtag_ovrd_idle && !rst_wdt_smc_clk_ni) |-> !rst_warm_smc_clk_ni,
+                   (en_i && warm_ovrd_idle && !rst_wdt_smc_clk_ni) |-> !rst_warm_smc_clk_ni,
                    clk_smc_i, powergood_lost)
 
   // ------------------------------------------------------------------
   // A5: an isolated L2 frontend accepts nothing; an isolated MMIO port
-  // presents nothing to the fabric and answers the cluster with SLVERR
-  // (cpu.adoc 245-249).
+  // presents no address request to the fabric and answers the cluster with
+  // SLVERR (cpu.adoc 245-249). The flush discards the cluster's write data
+  // (cpu.adoc 297-299) and cannot cancel a beat presented without READY
+  // (cpu.adoc 304-306), so a W beat the port presents while isolated is that
+  // held beat, under the flush, and nothing else.
   // ------------------------------------------------------------------
-  logic a5_l2_ant, a5_mmio_ant, a5_b_ant, a5_r_ant, l2_slv_accept;
+  logic a5_l2_ant, a5_mmio_ant, a5_w_ant, a5_b_ant, a5_r_ant, l2_slv_accept;
   assign a5_l2_ant   = en_i && cpu_l2_isolated_i && (l2_slv_aw_valid_i || l2_slv_ar_valid_i);
   assign l2_slv_accept = (l2_slv_aw_valid_i && l2_slv_aw_ready_i)
                          || (l2_slv_ar_valid_i && l2_slv_ar_ready_i);
   assign a5_mmio_ant = en_i && cpu_mmio_isolated_i;
+  assign a5_w_ant    = en_i && cpu_mmio_isolated_i && mmio_port_w_valid_i;
   assign a5_b_ant    = en_i && cpu_mmio_isolated_i && mmio_cpu_b_valid_i;
   assign a5_r_ant    = en_i && cpu_mmio_isolated_i && mmio_cpu_r_valid_i;
 
@@ -210,6 +220,8 @@ module smc_reset_sva #(
   `OCAH_SVA_ASSERT(SMC_ISO_MMIO_PRESENTS_NONE,
                    a5_mmio_ant |-> !(mmio_port_aw_valid_i || mmio_port_ar_valid_i), clk_smc_i,
                    primary_reset_active)
+  `OCAH_SVA_ASSERT(SMC_ISO_MMIO_W_ONLY_HELD, a5_w_ant |-> (cpu_mmio_flush_active_i && w_held_q),
+                   clk_smc_i, primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_ISO_MMIO_B_SLVERR, a5_b_ant |-> (mmio_cpu_b_resp_i == RespSlvErr),
                    clk_smc_i, primary_reset_active)
   `OCAH_SVA_ASSERT(SMC_ISO_MMIO_R_SLVERR, a5_r_ant |-> (mmio_cpu_r_resp_i == RespSlvErr),
@@ -226,14 +238,16 @@ module smc_reset_sva #(
                    clk_smc_i, powergood_lost)
 
   // ------------------------------------------------------------------
-  // A7: a request beat the MMIO port presents to the fabric stays presented
-  // until accepted, through the force-mode flush; the asynchronous warm
+  // A7: a request beat the MMIO port presents to the fabric under the
+  // force-mode flush stays presented until accepted; the flush window is the
+  // flush request and the isolate's latched flush, and the asynchronous warm
   // reset is outside the rule (cpu.adoc 304-306, 328-338).
   // ------------------------------------------------------------------
-  logic a7_aw_ant, a7_w_ant, a7_ar_ant;
-  assign a7_aw_ant = en_i && rst_warm_smc_clk_ni && mmio_port_aw_valid_i && !mmio_port_aw_ready_i;
-  assign a7_w_ant  = en_i && rst_warm_smc_clk_ni && mmio_port_w_valid_i && !mmio_port_w_ready_i;
-  assign a7_ar_ant = en_i && rst_warm_smc_clk_ni && mmio_port_ar_valid_i && !mmio_port_ar_ready_i;
+  logic a7_aw_ant, a7_w_ant, a7_ar_ant, a7_on;
+  assign a7_on     = en_i && rst_warm_smc_clk_ni && mmio_flush;
+  assign a7_aw_ant = a7_on && mmio_port_aw_valid_i && !mmio_port_aw_ready_i;
+  assign a7_w_ant  = a7_on && mmio_port_w_valid_i && !mmio_port_w_ready_i;
+  assign a7_ar_ant = a7_on && mmio_port_ar_valid_i && !mmio_port_ar_ready_i;
 
   `OCAH_SVA_ASSERT(SMC_MMIO_AW_HELD_UNDER_FLUSH,
                    a7_aw_ant |=> (mmio_port_aw_valid_i || !rst_warm_smc_clk_ni), clk_smc_i,
@@ -297,18 +311,19 @@ module smc_reset_sva #(
                    cold_reset_ref_active)
 
   // ------------------------------------------------------------------
-  // A10: GPIO 62 is driven low while the cool reset is asserted and left
-  // undriven otherwise, while the pad is on its LSIO function
-  // (clk_rst.adoc 440-442).
+  // A10: the cool-reset-out pad (BP_COOL_RESET_N_O) is driven low while the
+  // cool reset is asserted and left undriven otherwise, while the pad is on
+  // its LSIO function (clk_rst.adoc 440-442).
   // ------------------------------------------------------------------
   logic a10_low_ant;
-  assign a10_low_ant = en_i && pad62_lsio_pin_i && !cool_reset_ni;
+  assign a10_low_ant = en_i && cool_pad_lsio_pin_i && !cool_reset_ni;
 
-  `OCAH_SVA_ASSERT(SMC_FLR_PAD62_PULLS_LOW, a10_low_ant |-> (core2pad_en_62_i && !core2pad_62_i),
-                   clk_ref_i, cold_reset_ref_active)
-  `OCAH_SVA_ASSERT(SMC_FLR_PAD62_UNDRIVEN,
-                   (en_i && pad62_lsio_pin_i && cool_reset_ni) |-> !core2pad_en_62_i, clk_ref_i,
+  `OCAH_SVA_ASSERT(SMC_FLR_COOL_PAD_PULLS_LOW,
+                   a10_low_ant |-> (cool_pad_core2pad_en_i && !cool_pad_core2pad_i), clk_ref_i,
                    cold_reset_ref_active)
+  `OCAH_SVA_ASSERT(SMC_FLR_COOL_PAD_UNDRIVEN,
+                   (en_i && cool_pad_lsio_pin_i && cool_reset_ni) |-> !cool_pad_core2pad_en_i,
+                   clk_ref_i, cold_reset_ref_active)
 
   // ------------------------------------------------------------------
   // Non-vacuity counts, one per rule group, on the group's clock.
@@ -316,7 +331,7 @@ module smc_reset_sva #(
   int unsigned cnt_uncore_withheld, cnt_uncore_cause, cnt_uncore_applied;
   int unsigned cnt_iso_release, cnt_iso_ready_held, cnt_uncore_low;
   int unsigned cnt_iso_l2_blocked, cnt_iso_mmio_resp, cnt_mmio_held, cnt_flush_rose;
-  int unsigned cnt_flr_fall, cnt_pad62_low;
+  int unsigned cnt_flr_fall, cnt_cool_pad_low;
 
   // A release that follows an applied software request, and an uncore reset
   // after the first release: the cold-boot release and the bring-up reset of
@@ -347,7 +362,7 @@ module smc_reset_sva #(
   always_ff @(posedge clk_ref_i) begin
     if (rst_cold_stable_ref_clk_ni) begin
       if (a9_fall_ant) cnt_flr_fall <= cnt_flr_fall + 1;
-      if (a10_low_ant) cnt_pad62_low <= cnt_pad62_low + 1;
+      if (a10_low_ant) cnt_cool_pad_low <= cnt_cool_pad_low + 1;
     end
   end
 
@@ -355,10 +370,15 @@ module smc_reset_sva #(
 `define SMC_RESET_SVA_REPORT(__group, __plusarg, __cnt)                                 \
     $display("CHK-RESET-SVA-%0s: antecedent_edges=%0d", __group, __cnt);                \
     if ($test$plusargs(__plusarg) && __cnt == 0)                                        \
-      $error("smc_reset_sva: +%0s, but its antecedent never held", __plusarg);
+      $error("smc_reset_sva: +%0s, but its antecedent never held", __plusarg);          \
+    if (need_group == __group) need_known = 1'b1;
   // verilog_format: on
 
   final begin
+    string need_group;
+    bit need_present, need_known;
+    need_present = $value$plusargs("smc_reset_sva_need_%s", need_group);
+    need_known   = 1'b0;
     `SMC_RESET_SVA_REPORT("uncore_withheld", "smc_reset_sva_need_uncore_withheld",
                           cnt_uncore_withheld)
     `SMC_RESET_SVA_REPORT("uncore_cause", "smc_reset_sva_need_uncore_cause", cnt_uncore_cause)
@@ -371,7 +391,9 @@ module smc_reset_sva #(
     `SMC_RESET_SVA_REPORT("mmio_held", "smc_reset_sva_need_mmio_held", cnt_mmio_held)
     `SMC_RESET_SVA_REPORT("flush_rose", "smc_reset_sva_need_flush_rose", cnt_flush_rose)
     `SMC_RESET_SVA_REPORT("flr_fall", "smc_reset_sva_need_flr_fall", cnt_flr_fall)
-    `SMC_RESET_SVA_REPORT("pad62_low", "smc_reset_sva_need_pad62_low", cnt_pad62_low)
+    `SMC_RESET_SVA_REPORT("cool_pad_low", "smc_reset_sva_need_cool_pad_low", cnt_cool_pad_low)
+    if (need_present && !need_known)
+      $error("smc_reset_sva: +smc_reset_sva_need_%0s names no rule group", need_group);
   end
   `undef SMC_RESET_SVA_REPORT
 
