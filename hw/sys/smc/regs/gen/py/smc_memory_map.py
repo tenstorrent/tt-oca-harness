@@ -633,7 +633,7 @@ VIEWS = {
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0xFFFFFFFF, "bresp": "OKAY", "text": "OKAY, 0xFFFFFFFF / OKAY"}),),
                 "hole_notes": (),
                 "past_response": {"rresp": "SLVERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "SLVERR, 0xBADCAB1E / SLVERR"},
-                "past_note": "Up to offset 0x1FF the DMA's register file answers OKAY with read data 0xFFFFFFFF and ignores a write. A burst that reaches past 0x1FF answers SLVERR on every beat.",
+                "past_note": "A burst that reaches past offset 0x137 answers SLVERR on every beat, including those inside the registers.",
             },
             {
                 "key": "main:smc_cpu_ctrl",
