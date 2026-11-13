@@ -1568,7 +1568,8 @@ constraints of the underlying eFuse implementation.
 Direct read and program operations are performed using the eFuse control
 interface, which can program arbitrary data bits and read whole data words
 (32 bits at a time). Programming operations are not reflected in the shadow
-registers until the next reset.
+registers until the next primary reset; a CPU or warm reset does not re-sense
+the fuses.
 
 [WARNING]
 ====
@@ -1578,13 +1579,15 @@ control interface can *never* be cleared.
 
 The `LOCKS` register can be used to lock read and/or write access to fields
 containing eFuse data words. Bits of the `LOCKS` register cannot be cleared
-once they are set by software, but are reset at reset.
+once they are set by software. A primary reset reloads `LOCKS` from the eFuse
+array, so it clears bits that software set only in the register, but not bits
+programmed into the fuses; a CPU or warm reset keeps them.
 
 Locks cover whole fields of eFuse data, not necessarily individual 32-bit words.
-For example, all 9 `I2C_I3C_ID` data words are controlled by a single lock in
-the `LOCKS` register. Accesses through both the shadow registers and direct
-word-read/bit-write accesses through the control interface are affected by the
-setting of the `LOCKS` register.
+For example, all 18 `I2C_I3C_ID` data words (nine 64-bit entries) are controlled
+by a single lock in the `LOCKS` register. Accesses through both the shadow
+registers and direct word-read/bit-write accesses through the control interface
+are affected by the setting of the `LOCKS` register.
 
 Some fields in the shadow registers may be locked by the hardware integrator.
 In that case, access through the shadow registers is forbidden, regardless of
