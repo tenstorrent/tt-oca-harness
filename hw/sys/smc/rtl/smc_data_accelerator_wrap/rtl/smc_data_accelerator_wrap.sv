@@ -6,7 +6,7 @@
 // Exposes status and clock-gater activity indicators alongside clock-gating control.
 // The DMA control port receives the page that holds the DMA's register window. The DMA
 // decodes only the window's offset bits, so a burst goes to the DMA only when its first and
-// last beats both fall in that window; every other burst receives DECERR with read data
+// last beats both fall in that window; every other burst receives SLVERR with read data
 // 0xBADCAB1E on every beat. The zeroer control port is AXI-Lite and carries the zeroer's
 // own page. The master mux prepends a source bit to the transfer IDs.
 
@@ -153,7 +153,7 @@ module smc_data_accelerator_wrap #(
     .AxiIdWidth (smc_pkg::SmcLocalFabricXbarMasterIdWidth),
     .axi_req_t  (smc_pkg::smc_local_32_64_8_12_axi_req_t),
     .axi_resp_t (smc_pkg::smc_local_32_64_8_12_axi_resp_t),
-    .Resp       (axi_pkg::RESP_DECERR),
+    .Resp       (axi_pkg::RESP_SLVERR),
     .ATOPs      (1'b0),
     .MaxTrans   (smc_pkg::ErrSlvMaxTrans)
   ) u_dma_ctrl_err_slv (
